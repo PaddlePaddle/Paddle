@@ -15,14 +15,15 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 def np_masked_select(x, mask):
     result = np.empty(shape=(0), dtype=x.dtype)
+    x, mask = np.broadcast_arrays(x, mask)
     for ele, ma in zip(np.nditer(x), np.nditer(mask)):
         if ma:
             result = np.append(result, ele)
@@ -35,7 +36,7 @@ class TestMaskedSelectOp(OpTest):
         self.op_type = "masked_select"
         self.python_api = paddle.masked_select
         x = np.random.random(self.shape).astype("float64")
-        mask = np.array(np.random.randint(2, size=self.shape, dtype=bool))
+        mask = np.array(np.random.randint(2, size=self.mask_shape, dtype=bool))
         out = np_masked_select(x, mask)
         self.inputs = {'X': x, 'Mask': mask}
         self.outputs = {'Y': out}
@@ -48,16 +49,19 @@ class TestMaskedSelectOp(OpTest):
 
     def init(self):
         self.shape = (50, 3)
+        self.mask_shape = self.shape
 
 
 class TestMaskedSelectOp1(TestMaskedSelectOp):
     def init(self):
         self.shape = (6, 8, 9, 18)
+        self.mask_shape = self.shape
 
 
 class TestMaskedSelectOp2(TestMaskedSelectOp):
     def init(self):
         self.shape = (168,)
+        self.mask_shape = self.shape
 
 
 class TestMaskedSelectFP16Op(OpTest):
@@ -163,6 +167,9 @@ class TestMaskedSelectAPI(unittest.TestCase):
 
 
 class TestMaskedSelectError(unittest.TestCase):
+    def setUp(self):
+        paddle.enable_static()
+
     def test_error(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -190,6 +197,77 @@ class TestMaskedSelectError(unittest.TestCase):
                 paddle.masked_select(x, mask_float)
 
             self.assertRaises(TypeError, test_mask_dtype)
+
+
+class TestMaskedSelectBroadcast(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_broadcast(self):
+        shape = (3, 4)
+        np_x = np.random.random(shape).astype('float32')
+        np_mask = np.array([[True], [False], [False]])
+        x = paddle.to_tensor(np_x)
+        mask = paddle.to_tensor(np_mask)
+        out = paddle.masked_select(x, mask)
+        np_out = np_x[0]
+        np.testing.assert_allclose(out.numpy(), np_out, rtol=1e-05)
+
+    def test_broadcast_grad(self):
+        shape = (3, 4)
+        np_x = np.random.random(shape).astype('float32')
+        np_mask = np.array([[True], [False], [False]])
+        x = paddle.to_tensor(np_x, stop_gradient=False)
+        mask = paddle.to_tensor(np_mask)
+        out = paddle.masked_select(x, mask)
+        out.sum().backward()
+        np_out = np.zeros(shape)
+        np_out[0] = 1.0
+        np.testing.assert_allclose(x.grad.numpy(), np_out, rtol=1e-05)
+
+    def test_broadcast_zerodim(self):
+        shape = (3, 4)
+        np_x = np.random.random(shape).astype('float32')
+        x = paddle.to_tensor(np_x)
+        mask = paddle.to_tensor(True)
+        out = paddle.masked_select(x, mask)
+        np_out = np_x.reshape(-1)
+        np.testing.assert_allclose(out.numpy(), np_out, rtol=1e-05)
+
+    def test_broadcast_zerodim_grad(self):
+        shape = (3, 4)
+        np_x = np.random.random(shape).astype('float32')
+        np_mask = np.array(True)
+        x = paddle.to_tensor(np_x, stop_gradient=False)
+        mask = paddle.to_tensor(np_mask)
+        out = paddle.masked_select(x, mask)
+        out.sum().backward()
+        np_out = np.ones(shape)
+        np.testing.assert_allclose(x.grad.numpy(), np_out, rtol=1e-05)
+
+
+class TestMaskedSelectOpBroadcast(TestMaskedSelectOp):
+    def init(self):
+        self.shape = (3, 40)
+        self.mask_shape = (3, 1)
+
+
+class TestMaskedSelectOpBroadcast2(TestMaskedSelectOp):
+    def init(self):
+        self.shape = (300, 1)
+        self.mask_shape = (300, 40)
+
+
+class TestMaskedSelectOpBroadcast3(TestMaskedSelectOp):
+    def init(self):
+        self.shape = (120,)
+        self.mask_shape = (300, 120)
+
+
+class TestMaskedSelectOpBroadcast4(TestMaskedSelectOp):
+    def init(self):
+        self.shape = (300, 40)
+        self.mask_shape = 40
 
 
 if __name__ == '__main__':

@@ -20,7 +20,7 @@ import numpy as np
 
 import paddle
 import paddle.inference as paddle_infer
-from paddle.fluid.framework import OpProtoHolder, Program, program_guard
+from paddle.base.framework import OpProtoHolder, Program, program_guard
 
 paddle.enable_static()
 
@@ -173,7 +173,6 @@ class TestRegiterSupportTensorInOpMaker(unittest.TestCase):
         self.support_tensor_attrs = {
             'dropout': ['dropout_prob'],
             'tile': ['repeat_times'],
-            'concat': ['axis'],
         }
         # Just add a op example to test not support tensor
         self.not_support_tensor_attrs = {'svd': ['full_matrices']}

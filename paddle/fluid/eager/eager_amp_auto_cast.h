@@ -89,13 +89,14 @@ inline paddle::Tensor EagerAmpAutoCast(const std::string& input_name,
   VLOG(6) << "AMP AmpAutoCasts:"
           << " input(" << egr::EagerUtils::TensorStr(input) << " to dst_dtype("
           << phi::DataTypeToString(dst_dtype) << ").";
+  if ((op_name == "batch_norm" || op_name == "layer_norm" ||
+       op_name == "sync_batch_norm") &&
+      input_name != "x") {
+    return input;
+  }
+
   if (dst_dtype == phi::DataType::FLOAT16) {
     if (op_name == "run_program") {
-      return input;
-    }
-    if ((op_name == "batch_norm" || op_name == "layer_norm" ||
-         op_name == "sync_batch_norm") &&
-        input_name != "x") {
       return input;
     }
     if ((op_name == "fused_attention" || op_name == "fused_feedforward")) {

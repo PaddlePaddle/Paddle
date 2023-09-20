@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
+#include <array>
 #include <memory>
 #include <string>
 #include <vector>
@@ -406,8 +407,8 @@ template <typename T, typename DeviceContext>
 class Pad2dCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    int pads[4];
-    GetPaddings(pads, context);
+    std::array<int, 4> pads;
+    GetPaddings(pads.data(), context);
     auto mode = context.Attr<std::string>("mode");
     auto data_format = context.Attr<std::string>("data_format");
     T value = static_cast<T>(context.Attr<float>("pad_value"));
@@ -433,13 +434,13 @@ class Pad2dCPUKernel : public framework::OpKernel<T> {
 
     const int pad_top = pads[0];
     const int pad_left = pads[2];
-    const int num = in_dims[0];
+    const int num = static_cast<int>(in_dims[0]);
     if (data_format == "NCHW") {
-      const int channels = in_dims[1];
-      const int in_height = in_dims[2];
-      const int in_width = in_dims[3];
-      const int out_height = out_dims[2];
-      const int out_width = out_dims[3];
+      const int channels = static_cast<int>(in_dims[1]);
+      const int in_height = static_cast<int>(in_dims[2]);
+      const int in_width = static_cast<int>(in_dims[3]);
+      const int out_height = static_cast<int>(out_dims[2]);
+      const int out_width = static_cast<int>(out_dims[3]);
       if (mode == "reflect") {
         Pad2DReflectNCHW(in_data,
                          num,
@@ -476,11 +477,11 @@ class Pad2dCPUKernel : public framework::OpKernel<T> {
                        out_data);
       }
     } else {
-      const int channels = in_dims[3];
-      const int in_height = in_dims[1];
-      const int in_width = in_dims[2];
-      const int out_height = out_dims[1];
-      const int out_width = out_dims[2];
+      const int channels = static_cast<int>(in_dims[3]);
+      const int in_height = static_cast<int>(in_dims[1]);
+      const int in_width = static_cast<int>(in_dims[2]);
+      const int out_height = static_cast<int>(out_dims[1]);
+      const int out_width = static_cast<int>(out_dims[2]);
       if (mode == "reflect") {
         Pad2DReflectNHWC(in_data,
                          num,
@@ -524,8 +525,8 @@ template <typename T, typename DeviceContext>
 class Pad2dGradCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    int pads[4];
-    GetPaddings(pads, context);
+    std::array<int, 4> pads;
+    GetPaddings(pads.data(), context);
     auto mode = context.Attr<std::string>("mode");
     auto data_format = context.Attr<std::string>("data_format");
     auto* d_out =
@@ -541,13 +542,13 @@ class Pad2dGradCPUKernel : public framework::OpKernel<T> {
              static_cast<T>(0));
     const int pad_top = pads[0];
     const int pad_left = pads[2];
-    const int num = d_in_dims[0];
+    const int num = static_cast<int>(d_in_dims[0]);
     if (data_format == "NCHW") {
-      const int channels = d_in_dims[1];
-      const int in_height = d_in_dims[2];
-      const int in_width = d_in_dims[3];
-      const int out_height = d_out_dims[2];
-      const int out_width = d_out_dims[3];
+      const int channels = static_cast<int>(d_in_dims[1]);
+      const int in_height = static_cast<int>(d_in_dims[2]);
+      const int in_width = static_cast<int>(d_in_dims[3]);
+      const int out_height = static_cast<int>(d_out_dims[2]);
+      const int out_width = static_cast<int>(d_out_dims[3]);
       if (mode == "reflect") {
         Pad2DGradReflectNCHW(d_in_data,
                              num,
@@ -583,11 +584,11 @@ class Pad2dGradCPUKernel : public framework::OpKernel<T> {
                            d_out_data);
       }
     } else {
-      const int channels = d_in_dims[3];
-      const int in_height = d_in_dims[1];
-      const int in_width = d_in_dims[2];
-      const int out_height = d_out_dims[1];
-      const int out_width = d_out_dims[2];
+      const int channels = static_cast<int>(d_in_dims[3]);
+      const int in_height = static_cast<int>(d_in_dims[1]);
+      const int in_width = static_cast<int>(d_in_dims[2]);
+      const int out_height = static_cast<int>(d_out_dims[1]);
+      const int out_width = static_cast<int>(d_out_dims[2]);
       if (mode == "reflect") {
         Pad2DGradReflectNHWC(d_in_data,
                              num,
@@ -699,13 +700,11 @@ class Pad2dOp : public framework::OperatorWithKernel {
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     // only constant mode and non-blocked layouts are supported for oneDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type) &&
         ctx.Attr<std::string>("mode") == "constant" &&
-        ctx.Input<phi::DenseTensor>("X")
-                ->mem_desc()
-                .data.format_desc.blocking.inner_nblks == 0) {
+        ctx.Input<phi::DenseTensor>("X")->mem_desc().get_inner_nblks() == 0) {
       return phi::KernelKey(phi::Backend::ONEDNN,
                             phi::DataLayout::ONEDNN,
                             phi::TransToPhiDataType(input_data_type));
@@ -718,7 +717,7 @@ class Pad2dOp : public framework::OperatorWithKernel {
       const std::string& var_name,
       const phi::DenseTensor& tensor,
       const phi::KernelKey& expected_kernel_type) const override {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
         (tensor.layout() != phi::DataLayout::ONEDNN)) {
       auto attrs = Attrs();

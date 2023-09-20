@@ -140,14 +140,6 @@ class OpConverter {
               platform::errors::Unimplemented("no OpConverter for optype [%s]",
                                               op_desc.Type()));
         }
-        // lookup_table_v2 == lookup_table
-        if (op_desc.Type() == "lookup_table_v2") {
-          it = Registry<OpConverter>::Global().Lookup("lookup_table");
-          PADDLE_ENFORCE_NOT_NULL(
-              it,
-              platform::errors::Unimplemented("no OpConverter for optype [%s]",
-                                              op_desc.Type()));
-        }
         if (!it) {
           it = Registry<OpConverter>::Global().Lookup(op_desc.Type());
         }
@@ -175,7 +167,7 @@ class OpConverter {
                                         op_desc.Type()));
 
     it->SetEngine(engine);
-    engine->SetScope(scope);
+    engine->SetScope(&scope);
     it->SetBlockDesc(block);
     (*it)(op, scope, test_mode);
 
@@ -309,16 +301,22 @@ class OpConverter {
       nvinfer1::DataType in_dtype = FluidDataType2TRT(var->GetDataType());
       if (engine->precision() == phi::DataType::FLOAT16 &&
           in_dtype == nvinfer1::DataType::kFLOAT &&
-          engine->EnableLowPrecisionIO()) {
+          engine->LowPrecisionIOEnabled()) {
         in_dtype = nvinfer1::DataType::kHALF;
       }
 
       auto var_shape = var->GetShape();
       if (engine->with_dynamic_shape()) {
 #if IS_TRT_VERSION_GE(6000)
-        auto min_input_shape = engine->min_input_shape()[input];
-        auto max_input_shape = engine->max_input_shape()[input];
-        auto optim_input_shape = engine->optim_input_shape()[input];
+        if (!(engine->min_input_shape().count(input) &&
+              engine->max_input_shape().count(input) &&
+              engine->optim_input_shape().count(input))) {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Cannot get %s min/max/opt shape", input));
+        }
+        auto min_input_shape = engine->min_input_shape().at(input);
+        auto max_input_shape = engine->max_input_shape().at(input);
+        auto optim_input_shape = engine->optim_input_shape().at(input);
         size_t ranks = min_input_shape.size();
 
         std::vector<int64_t> input_shape;
@@ -362,7 +360,7 @@ class OpConverter {
       nvinfer1::DataType out_dtype = FluidDataType2TRT(var->GetDataType());
       if (engine->precision() == phi::DataType::FLOAT16 &&
           out_dtype == nvinfer1::DataType::kFLOAT &&
-          engine->EnableLowPrecisionIO()) {
+          engine->LowPrecisionIOEnabled()) {
         out_dtype = nvinfer1::DataType::kHALF;
       }
       engine->DeclareOutput(output, out_dtype);
@@ -373,6 +371,13 @@ class OpConverter {
     engine->ClearWeights();
   }
 
+  nvinfer1::ITensor* Cast(nvinfer1::ITensor* input, nvinfer1::DataType dtype) {
+    auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *input);
+    layer->setOutputType(0, dtype);
+    layer->getOutput(0)->setType(dtype);
+    return layer->getOutput(0);
+  }
+
   // rank(result) = rank(input)
   nvinfer1::ITensor* Gather(nvinfer1::ITensor* input,
                             const std::vector<int32_t> indices,
@@ -381,6 +386,59 @@ class OpConverter {
     auto* result =
         TRT_ENGINE_ADD_LAYER(engine_, Gather, *input, *indices_tensor, axis)
             ->getOutput(0);
+    return result;
+  }
+
+  nvinfer1::ITensor* Unsqueeze(nvinfer1::ITensor* input,
+                               const std::vector<int32_t> axis) {
+    const auto dims = input->getDimensions();
+    const std::unordered_set<int32_t> axis_data(axis.begin(), axis.end());
+    std::vector<int32_t> subscripts(dims.nbDims);
+    std::iota(subscripts.begin(), subscripts.end(), 0);
+    for (const auto& axis_value : axis_data) {
+      subscripts.insert(subscripts.begin() + axis_value, dims.nbDims);
+    }
+    nvinfer1::ITensor* input_shape{nullptr};
+    if (engine_->with_dynamic_shape()) {
+      input_shape = Shape(input);
+    } else {
+      input_shape = Add1DConstantLayer(dims);
+    }
+    auto* new_dim =
+        TRT_ENGINE_ADD_LAYER(engine_,
+                             Gather,
+                             *Concat(std::vector<nvinfer1::ITensor*>{
+                                 input_shape, Add1DConstantLayer(1)}),
+                             *Add1DConstantLayer(subscripts),
+                             0)
+            ->getOutput(0);
+    auto result = Reshape(input, new_dim);
+    return result;
+  }
+
+  nvinfer1::ITensor* Squeeze(nvinfer1::ITensor* input,
+                             const std::vector<int32_t> axis) {
+    const auto dims = input->getDimensions();
+    std::vector<int32_t> subscripts(dims.nbDims);
+    std::iota(subscripts.begin(), subscripts.end(), 0);
+    auto p =
+        std::remove_if(subscripts.begin(), subscripts.end(), [axis](int x) {
+          return std::find(axis.begin(), axis.end(), x) != axis.end();
+        });
+    subscripts.resize(p - subscripts.begin());
+
+    nvinfer1::ITensor* input_shape{nullptr};
+    if (engine_->with_dynamic_shape()) {
+      input_shape = Shape(input);
+    } else {
+      input_shape = Add1DConstantLayer(dims);
+    }
+
+    auto* new_dim =
+        TRT_ENGINE_ADD_LAYER(
+            engine_, Gather, *input_shape, *Add1DConstantLayer(subscripts), 0)
+            ->getOutput(0);
+    auto result = Reshape(input, new_dim);
     return result;
   }
 
@@ -406,8 +464,24 @@ class OpConverter {
                              nvinfer1::ITensor* newShape,
                              const std::string& name = "") {
     auto* shuffle = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
-    shuffle->setInput(1, *newShape);
-    if (name != "") {
+    if (engine_->with_dynamic_shape()) {
+      shuffle->setInput(1, *newShape);
+    } else {
+      auto shape = newShape->getDimensions();
+      shuffle->setReshapeDimensions(shape);
+    }
+    if (!name.empty()) {
+      shuffle->setName(name.c_str());
+    }
+    return shuffle->getOutput(0);
+  }
+
+  nvinfer1::ITensor* Reshape(nvinfer1::ITensor* input,
+                             nvinfer1::Dims shape,
+                             const std::string& name = "") {
+    auto* shuffle = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
+    shuffle->setReshapeDimensions(shape);
+    if (!name.empty()) {
       shuffle->setName(name.c_str());
     }
     return shuffle->getOutput(0);
@@ -664,6 +738,23 @@ class OpConverter {
       layer_name += output_tensor_names[i];
       if (i != num_out - 1) layer_name += ", ";
     }
+    for (size_t i = 0; i < num_out; i++) {
+      nvinfer1::Dims tmp_dims = layer->getOutput(i)->getDimensions();
+      std::vector<int> tmp_vec;
+      for (int i = 0; i < tmp_dims.nbDims; i++)
+        tmp_vec.push_back(tmp_dims.d[i]);
+
+      VLOG(3) << output_tensor_names[i] << "'s dimension :["
+              << string::join_strings(tmp_vec, ',') << "]";
+      // The following check may cause errors in CI, but is necessary in the
+      // latest version.
+      // PADDLE_ENFORCE_GE(
+      //     layer->getOutput(i)->getDimensions().nbDims,
+      //     0,
+      //     platform::errors::InvalidArgument(
+      //         "Error occures in Paddle-TRT layer with output name: %s",
+      //         output_tensor_names[i].c_str()));
+    }
     layer->setName((layer_name + ")").c_str());
   }
   void SetEngine(TensorRTEngine* engine) { engine_ = engine; }
@@ -683,11 +774,6 @@ class OpConverter {
   bool test_mode_;
 
  private:
-  // registered op converter map, whose key is the fluid op type, and value is
-  // the pointer position of corresponding OpConverter class.
-  std::unordered_map<std::string, OpConverter*> converters_;
-  // fluid inference scope
-  framework::Scope* scope_{nullptr};
   std::mutex mut_;
 };
 

@@ -294,8 +294,8 @@ void PrepareLSTMWeight(const phi::DenseTensor& W_forget_w0,
                        const phi::DenseTensor& W_cell_w0,
                        const phi::DenseTensor& W_cell_w1,
                        phi::DenseTensor* out) {
-  int D = W_forget_w0.dims()[0];
-  int M = W_forget_w1.dims()[0];
+  int D = static_cast<int>(W_forget_w0.dims()[0]);
+  int M = static_cast<int>(W_forget_w1.dims()[0]);
   out->Resize(phi::make_ddim({D + M, 4 * D}));
   VLOG(3) << "LSTMWeight resized to " << out->dims();
 
@@ -342,7 +342,7 @@ void PrepareLSTMBias(const phi::DenseTensor& B_forget,
       platform::errors::InvalidArgument(
           "phi::DenseTensor B forget dimension size(%d) must be 1.",
           B_forget.dims().size()));
-  int D = B_forget.dims()[0];
+  int D = static_cast<int>(B_forget.dims()[0]);
   out->Resize(phi::make_ddim({1, 4 * D}));
   auto* out_data = out->mutable_data<float>(platform::CPUPlace());
   for (size_t i = 0; i < tensors.size(); i++) {

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest, skip_check_grad_ci
 from test_conv2d_op import TestConv2DOp, TestConv2DOp_v2
 
 
@@ -70,7 +70,7 @@ class TestConv2DMKLDNNOp(TestConv2DOp):
             output = conv2d_bias_naive(output, bias)
             output = output.astype(self.dtype)
             self.attrs['fuse_bias'] = self.fuse_bias
-            self.inputs['Bias'] = OpTest.np_dtype_to_fluid_dtype(bias)
+            self.inputs['Bias'] = OpTest.np_dtype_to_base_dtype(bias)
 
         if (
             self.fuse_residual_connection
@@ -84,7 +84,7 @@ class TestConv2DMKLDNNOp(TestConv2DOp):
             self.attrs[
                 'fuse_residual_connection'
             ] = self.fuse_residual_connection
-            self.inputs['ResidualData'] = OpTest.np_dtype_to_fluid_dtype(
+            self.inputs['ResidualData'] = OpTest.np_dtype_to_base_dtype(
                 input_residual
             )
 
@@ -92,7 +92,7 @@ class TestConv2DMKLDNNOp(TestConv2DOp):
             output = np.maximum(output, 0).astype(self.dsttype)
 
         if self.fuse_activation == "relu6":
-            output = np.minimum(np.maximum(output, 0), self.fuse_alpha).astype(
+            output = np.minimum(np.maximum(output, 0), self.fuse_beta).astype(
                 self.dsttype
             )
         if (
@@ -120,7 +120,7 @@ class TestWithbreluFusion(TestConv2DMKLDNNOp):
     def init_test_case(self):
         TestConv2DMKLDNNOp.init_test_case(self)
         self.fuse_activation = "relu6"
-        self.fuse_alpha = 6.0
+        self.fuse_beta = 6.0
         self.dsttype = np.float32
 
 

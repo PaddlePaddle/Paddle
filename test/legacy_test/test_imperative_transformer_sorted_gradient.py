@@ -19,9 +19,9 @@ from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.dygraph import guard, to_variable
+from paddle import base
+from paddle.base import core
+from paddle.base.dygraph import guard, to_variable
 from paddle.nn import Layer, Linear
 
 np.set_printoptions(suppress=True)
@@ -150,9 +150,7 @@ def position_encoding_init(n_position, d_pos_vec):
     channels = d_pos_vec
     position = np.arange(n_position)
     num_timescales = channels // 2
-    log_timescale_increment = np.log(float(1e4) / float(1)) / (
-        num_timescales - 1
-    )
+    log_timescale_increment = np.log(1e4 / float(1)) / (num_timescales - 1)
     inv_timescales = (
         np.exp(np.arange(num_timescales)) * -log_timescale_increment
     )
@@ -398,10 +396,10 @@ class PrePostProcessLayer(Layer):
             if cmd == "n":
                 self._layer_norm = paddle.nn.LayerNorm(
                     normalized_shape=d_model,
-                    weight_attr=fluid.ParamAttr(
+                    weight_attr=base.ParamAttr(
                         initializer=paddle.nn.initializer.Constant(1.0)
                     ),
-                    bias_attr=fluid.ParamAttr(
+                    bias_attr=base.ParamAttr(
                         initializer=paddle.nn.initializer.Constant(0.0)
                     ),
                 )
@@ -658,7 +656,7 @@ class PrepareEncoderDecoderLayer(Layer):
             src_vocab_size,
             src_emb_dim,
             sparse=is_sparse,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 name=word_emb_param_name,
                 initializer=paddle.nn.initializer.Normal(
                     0.0, src_emb_dim**-0.5
@@ -674,7 +672,7 @@ class PrepareEncoderDecoderLayer(Layer):
             self._src_max_len,
             src_emb_dim,
             sparse=is_sparse,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 name=pos_enc_param_name,
                 initializer=paddle.nn.initializer.Assign(pos_inp),
                 trainable=False,
@@ -1112,7 +1110,7 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
 
         def run_dygraph():
             # NOTE(xiongkun03): In new executor, the inplace strategy is on by default, which will cause result of sumop have some differences. So we disable inplace.
-            fluid.set_flags({'FLAGS_new_executor_use_inplace': False})
+            base.set_flags({'FLAGS_new_executor_use_inplace': False})
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             transformer = TransFormer(
@@ -1137,21 +1135,21 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                 is_sparse=is_sparse,
             )
             if sync:
-                lr_decay = fluid.layers.learning_rate_scheduler.noam_decay(
+                lr_decay = paddle.optimizer.lr.noam_decay(
                     ModelHyperParams.d_model, TrainTaskConfig.warmup_steps
                 )
-                with fluid.default_main_program()._lr_schedule_guard():
+                with base.default_main_program()._lr_schedule_guard():
                     learning_rate = lr_decay * TrainTaskConfig.learning_rate
-                optimizer = fluid.optimizer.Adam(
+                optimizer = paddle.optimizer.Adam(
                     learning_rate=learning_rate,
                     beta1=TrainTaskConfig.beta1,
                     beta2=TrainTaskConfig.beta2,
                     epsilon=TrainTaskConfig.eps,
-                    parameter_list=transformer.parameters(),
+                    parameters=transformer.parameters(),
                 )
             else:
-                optimizer = fluid.optimizer.SGD(
-                    learning_rate=0.003, parameter_list=transformer.parameters()
+                optimizer = paddle.optimizer.SGD(
+                    learning_rate=0.003, parameters=transformer.parameters()
                 )
             dy_param_init = {}
             dy_param_updated = {}
@@ -1215,12 +1213,12 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                 is_test=False,
                 is_sparse=is_sparse,
             )
-            exe = fluid.Executor(
-                fluid.CPUPlace()
+            exe = base.Executor(
+                base.CPUPlace()
                 if not core.is_compiled_with_cuda()
-                else fluid.CUDAPlace(0)
+                else base.CUDAPlace(0)
             )
-            optimizer = fluid.optimizer.SGD(learning_rate=0.003)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.003)
 
             data_input_names = (
                 encoder_data_input_fields
@@ -1249,7 +1247,7 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
             for param in transformer.parameters():
                 static_param_name_list.append(param.name)
             out = exe.run(
-                fluid.default_startup_program(),
+                base.default_startup_program(),
                 fetch_list=static_param_name_list,
             )
             for i in range(len(static_param_name_list)):
@@ -1269,7 +1267,7 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
 
                 fetch_list.extend(static_param_name_list)
                 out = exe.run(
-                    fluid.default_main_program(),
+                    base.default_main_program(),
                     feed=feed_dict,
                     fetch_list=fetch_list,
                 )
@@ -1285,7 +1283,7 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
 
         # compare eager result with imperative result
         with guard():
-            fluid.set_flags({'FLAGS_sort_sum_gradient': False})
+            base.set_flags({'FLAGS_sort_sum_gradient': False})
             (
                 dy_avg_cost_value,
                 dy_sum_cost_value,

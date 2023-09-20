@@ -1,0 +1,13 @@
+diff --git a/env/libaio.h b/env/libaio.h
+index 9630eac5f..bd9dd9547 100644
+--- a/env/libaio.h
++++ b/env/libaio.h
+@@ -46,7 +46,7 @@ typedef enum io_iocb_cmd {
+ #define PADDED(x, y)	x; unsigned y
+ #define PADDEDptr(x, y)	x; unsigned y
+ #define PADDEDul(x, y)	unsigned long x; unsigned y
+-#elif defined(__ia64__) || defined(__x86_64__) || defined(__alpha__)
++#elif defined(__ia64__) || defined(__x86_64__) || defined(__alpha__) || defined(__aarch64__)
+ #define PADDED(x, y)	x, y
+ #define PADDEDptr(x, y)	x
+ #define PADDEDul(x, y)	unsigned long x

@@ -15,11 +15,12 @@ import time
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 from test_lac import DynamicGRU
 
 import paddle
-from paddle import fluid
-from paddle.fluid.dygraph import to_variable
+from paddle import base
+from paddle.base.dygraph import to_variable
 from paddle.jit.api import to_static
 from paddle.nn import Embedding, Linear
 
@@ -28,8 +29,8 @@ SEED = 2020
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
 #        some algorithm results are non-deterministic, like convolution algorithms.
-if fluid.is_compiled_with_cuda():
-    fluid.set_flags({'FLAGS_cudnn_deterministic': True})
+if base.is_compiled_with_cuda():
+    base.set_flags({'FLAGS_cudnn_deterministic': True})
 
 
 class SimpleConvPool(paddle.nn.Layer):
@@ -170,7 +171,7 @@ class GRU(paddle.nn.Layer):
         self.embedding = Embedding(
             self.dict_dim + 1,
             self.emb_dim,
-            weight_attr=fluid.ParamAttr(learning_rate=30),
+            weight_attr=base.ParamAttr(learning_rate=30),
             sparse=False,
         )
         h_0 = np.zeros((self.batch_size, self.hid_dim), dtype="float32")
@@ -218,7 +219,7 @@ class BiGRU(paddle.nn.Layer):
         self.embedding = Embedding(
             self.dict_dim + 1,
             self.emb_dim,
-            weight_attr=fluid.ParamAttr(learning_rate=30),
+            weight_attr=base.ParamAttr(learning_rate=30),
             sparse=False,
         )
         h_0 = np.zeros((self.batch_size, self.hid_dim), dtype="float32")
@@ -304,12 +305,10 @@ class Args:
 def train(args, to_static):
     paddle.jit.enable_to_static(to_static)
     place = (
-        fluid.CUDAPlace(0)
-        if fluid.is_compiled_with_cuda()
-        else fluid.CPUPlace()
+        base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
     )
 
-    with fluid.dygraph.guard(place):
+    with base.dygraph.guard(place):
         np.random.seed(SEED)
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
@@ -317,7 +316,7 @@ def train(args, to_static):
         train_reader = fake_data_reader(
             args.class_num, args.vocab_size, args.batch_size, args.padding_size
         )
-        train_loader = fluid.io.DataLoader.from_generator(capacity=24)
+        train_loader = base.io.DataLoader.from_generator(capacity=24)
         train_loader.set_sample_list_generator(train_reader)
 
         if args.model_type == 'cnn_net':
@@ -328,8 +327,8 @@ def train(args, to_static):
             model = GRU(args.vocab_size, args.batch_size, args.padding_size)
         elif args.model_type == 'bigru_net':
             model = BiGRU(args.vocab_size, args.batch_size, args.padding_size)
-        sgd_optimizer = fluid.optimizer.Adagrad(
-            learning_rate=args.lr, parameter_list=model.parameters()
+        sgd_optimizer = paddle.optimizer.Adagrad(
+            learning_rate=args.lr, parameters=model.parameters()
         )
 
         loss_data = []
@@ -374,6 +373,7 @@ class TestSentiment(unittest.TestCase):
     def setUp(self):
         self.args = Args()
 
+    @test_and_compare_with_new_ir(False)
     def train_model(self, model_type='cnn_net'):
         self.args.model_type = model_type
         st_out = train(self.args, True)

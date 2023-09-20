@@ -15,18 +15,18 @@
 #include <iostream>
 #include <random>
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/phi/api/profiler/device_tracer.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/jit/kernels.h"
+#include "paddle/utils/flags.h"
 
-DEFINE_int32(burning, 10, "Burning times.");
-DEFINE_int32(repeat, 3000, "Repeat times.");
-DEFINE_int32(max_size, 1000, "The Max size would be tested.");
-DEFINE_string(filter, "", "The Benchmark name would be run.");
+PD_DEFINE_int32(burning, 10, "Burning times.");
+PD_DEFINE_int32(repeat, 3000, "Repeat times.");
+PD_DEFINE_int32(max_size, 1000, "The Max size would be tested.");
+PD_DEFINE_string(filter, "", "The Benchmark name would be run.");  // NOLINT
 
 class BenchJITKernel {
  public:
@@ -97,11 +97,11 @@ struct BenchFunc {
     for (int i = 0; i < FLAGS_burning; ++i) {
       tgt(args...);
     }
-    auto start = phi::PosixInNsec() * 1e-3;
+    double start = static_cast<double>(phi::PosixInNsec()) * 1e-3;
     for (int i = 0; i < FLAGS_repeat; ++i) {
       tgt(args...);
     }
-    auto end = phi::PosixInNsec() * 1e-3;
+    double end = static_cast<double>(phi::PosixInNsec()) * 1e-3;
     return static_cast<double>(end - start) / FLAGS_repeat;
   }
 };
@@ -546,7 +546,7 @@ BENCH_FP32_CPU(VBroadcast);
 //     --max_size: the max size would be tested
 //     --filter: the bench name would be run
 int main(int argc, char* argv[]) {
-  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
+  paddle::flags::ParseCommandLineFlags(&argc, &argv);
   google::InitGoogleLogging(argv[0]);
   LOG(INFO) << "Burning " << FLAGS_burning << " times, Repeat " << FLAGS_repeat
             << " times.";

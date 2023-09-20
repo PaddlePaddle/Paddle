@@ -22,10 +22,10 @@ from io import BytesIO
 import numpy as np
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.framework import Parameter, Variable, static_only
-from paddle.fluid.log_helper import get_logger
-from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+from paddle.base import core
+from paddle.base.framework import Parameter, Variable, static_only
+from paddle.base.log_helper import get_logger
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
@@ -94,12 +94,13 @@ def is_persistable(var):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.fluid as fluid
+            >>> # doctest: +SKIP('ValueError: var fc.b not in this block')
+            >>> import paddle
+            >>> import paddle.base as base
 
-            paddle.enable_static()
-            param = fluid.default_main_program().global_block().var('fc.b')
-            res = fluid.io.is_persistable(param)
+            >>> paddle.enable_static()
+            >>> param = base.default_main_program().global_block().var('fc.b')
+            >>> res = base.io.is_persistable(param)
     """
     if (
         var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH
@@ -124,12 +125,13 @@ def is_parameter(var):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.fluid as fluid
+            >>> # doctest: +SKIP('ValueError: var fc.w not in this block')
+            >>> import paddle
+            >>> import paddle.base as base
 
-            paddle.enable_static()
-            param = fluid.default_main_program().global_block().var('fc.w')
-            res = fluid.io.is_parameter(param)
+            >>> paddle.enable_static()
+            >>> param = base.default_main_program().global_block().var('fc.w')
+            >>> res = base.io.is_parameter(param)
     """
     return isinstance(var, Parameter)
 
@@ -164,13 +166,13 @@ def _clone_var_in_block_(block, var):
 
 @signature_safe_contextmanager
 def _load_program_scope(main=None, startup=None, scope=None):
-    prog = main if main else paddle.fluid.Program()
-    startup_prog = startup if startup else paddle.fluid.Program()
-    scope = scope if scope else paddle.fluid.core.Scope()
-    with paddle.fluid.scope_guard(scope):
-        with paddle.fluid.program_guard(prog, startup_prog):
-            with paddle.fluid.unique_name.guard():
-                with paddle.fluid.framework._dygraph_guard(None):
+    prog = main if main else paddle.base.Program()
+    startup_prog = startup if startup else paddle.base.Program()
+    scope = scope if scope else paddle.base.core.Scope()
+    with paddle.base.scope_guard(scope):
+        with paddle.base.program_guard(prog, startup_prog):
+            with paddle.base.unique_name.guard():
+                with paddle.base.framework._dygraph_guard(None):
                     yield
 
 

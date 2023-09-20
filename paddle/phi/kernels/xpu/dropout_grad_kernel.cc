@@ -39,14 +39,20 @@ void DropoutGradRawKernel(const Context& dev_ctx,
   auto* grad_y = &out_grad;
   dev_ctx.template Alloc<T>(grad_x);
   float dropout_prob = p.to<float>();
-  const T* mask_data = mask.data<T>();
+  const uint8_t* mask_data = mask.data<uint8_t>();
+
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+  XPUType* mask_tmp_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(mask.numel());
+  int r = xpu::cast<uint8_t, XPUType>(
+      dev_ctx.x_context(), mask_data, mask_tmp_data, mask.numel());
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
 
   if (mode != "upscale_in_train") {
-    int r = xpu::mul(dev_ctx.x_context(),
-                     reinterpret_cast<const XPUType*>(grad_y->data<T>()),
-                     reinterpret_cast<const XPUType*>(mask_data),
-                     reinterpret_cast<XPUType*>(grad_x->data<T>()),
-                     grad_y->numel());
+    r = xpu::mul(dev_ctx.x_context(),
+                 reinterpret_cast<const XPUType*>(grad_y->data<T>()),
+                 reinterpret_cast<const XPUType*>(mask_tmp_data),
+                 reinterpret_cast<XPUType*>(grad_x->data<T>()),
+                 grad_y->numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "mul");
     return;
   }
@@ -54,28 +60,25 @@ void DropoutGradRawKernel(const Context& dev_ctx,
   auto version =
       phi::backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId());
   if (version == phi::backends::xpu::XPUVersion::XPU1) {
-    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-    XPUType* mask_new = RAII_GUARD.alloc_l3_or_gm<XPUType>(mask.numel());
     float scale =
         (dropout_prob == 1.0f) ? (1.0f) : (1.0f / (1.0f - dropout_prob));
-    int r = xpu::scale(dev_ctx.x_context(),
-                       reinterpret_cast<const XPUType*>(mask.data<T>()),
-                       reinterpret_cast<XPUType*>(mask_new),
-                       mask.numel(),
-                       false,
-                       scale,
-                       0.0f);
+    r = xpu::scale(dev_ctx.x_context(),
+                   reinterpret_cast<const XPUType*>(mask_tmp_data),
+                   reinterpret_cast<XPUType*>(mask_tmp_data),
+                   mask.numel(),
+                   false,
+                   scale,
+                   0.0f);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
     r = xpu::mul(dev_ctx.x_context(),
                  reinterpret_cast<const XPUType*>(grad_y->data<T>()),
-                 reinterpret_cast<const XPUType*>(mask_new),
+                 reinterpret_cast<const XPUType*>(mask_tmp_data),
                  reinterpret_cast<XPUType*>(grad_x->data<T>()),
                  grad_y->numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "mul");
   } else {
-    int r =
-        xpu::dropout_grad(dev_ctx.x_context(),
-                          reinterpret_cast<const XPUType*>(mask.data<T>()),
+    r = xpu::dropout_grad(dev_ctx.x_context(),
+                          reinterpret_cast<const XPUType*>(mask_tmp_data),
                           reinterpret_cast<const XPUType*>(grad_y->data<T>()),
                           reinterpret_cast<XPUType*>(grad_x->data<T>()),
                           dropout_prob,

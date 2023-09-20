@@ -20,7 +20,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-TEST(DetectorFuse, basic) {
+TEST(FoldInterpOutsizeFusePass, basic) {
   Layers layers;
   auto* block = layers.Block();
 

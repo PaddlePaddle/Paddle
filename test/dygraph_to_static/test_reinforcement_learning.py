@@ -18,11 +18,12 @@ import unittest
 
 import gym
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid.dygraph import to_variable
+from paddle import base
+from paddle.base.dygraph import to_variable
 from paddle.jit.api import to_static
 from paddle.nn import Layer
 
@@ -65,7 +66,7 @@ def train(args, place, to_static):
     env = gym.make('CartPole-v0')
     env.seed(SEED)
 
-    with fluid.dygraph.guard(place):
+    with base.dygraph.guard(place):
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
         local_random = np.random.RandomState(SEED)
@@ -73,8 +74,8 @@ def train(args, place, to_static):
         policy = Policy()
 
         eps = np.finfo(np.float32).eps.item()
-        optimizer = fluid.optimizer.AdamaxOptimizer(
-            learning_rate=1e-2, parameter_list=policy.parameters()
+        optimizer = paddle.optimizer.Adamax(
+            learning_rate=1e-2, parameters=policy.parameters()
         )
 
         def get_mean_and_std(values=[]):
@@ -204,12 +205,13 @@ def train(args, place, to_static):
 class TestDeclarative(unittest.TestCase):
     def setUp(self):
         self.place = (
-            fluid.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
         self.args = Args()
 
+    @test_and_compare_with_new_ir(False)
     def test_train(self):
         st_out = train(self.args, self.place, to_static=True)
         dy_out = train(self.args, self.place, to_static=False)

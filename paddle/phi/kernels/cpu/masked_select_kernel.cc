@@ -13,9 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/masked_select_kernel.h"
-
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/expand_kernel.h"
+#include "paddle/phi/kernels/funcs/common_shape.h"
 
 namespace phi {
 
@@ -24,13 +25,28 @@ void MaskedSelectKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& mask,
                         DenseTensor* out) {
-  auto* mask_data = mask.data<bool>();
-  auto input_data = x.data<T>();
+  DenseTensor mask_expand;
+  DenseTensor x_expand;
 
-  auto mask_size = mask.numel();
+  auto expanded_size = funcs::MatrixGetBroadcastBatchPortion(
+      vectorize(x.dims()), vectorize(mask.dims()));
 
-  auto input_dim = x.dims();
-  auto mask_dim = mask.dims();
+  DDim epxand_dims = make_ddim(expanded_size);
+  if (mask.dims() != epxand_dims) {
+    ExpandKernel<bool, Context>(
+        dev_ctx, mask, IntArray(expanded_size), &mask_expand);
+  } else {
+    mask_expand = mask;
+  }
+
+  if (x.dims() != epxand_dims) {
+    ExpandKernel<T, Context>(dev_ctx, x, IntArray(expanded_size), &x_expand);
+  } else {
+    x_expand = x;
+  }
+
+  auto input_dim = x_expand.dims();
+  auto mask_dim = mask_expand.dims();
   PADDLE_ENFORCE_EQ(input_dim,
                     mask_dim,
                     phi::errors::InvalidArgument(
@@ -40,6 +56,11 @@ void MaskedSelectKernel(const Context& dev_ctx,
                         "value.",
                         input_dim,
                         mask_dim));
+
+  auto input_data = x_expand.data<T>();
+  auto mask_data = mask_expand.data<bool>();
+
+  auto mask_size = mask_expand.numel();
 
   int out_size = 0;
   for (int i = 0; i < mask_size; i++) {

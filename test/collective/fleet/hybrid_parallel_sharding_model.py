@@ -23,6 +23,10 @@ from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding_optimizer import (
     DygraphShardingOptimizer,
 )
+from paddle.distributed.fleet.utils.mix_precision_utils import (
+    MixPrecisionLayer,
+    MixPrecisionOptimizer,
+)
 
 vocab_size = 20
 hidden_size = 10
@@ -176,7 +180,7 @@ class SimpleDPNet(paddle.nn.Layer):
         return x
 
 
-class TestDistMPTraning(unittest.TestCase):
+class TestDistMPTraining(unittest.TestCase):
     def setUp(self):
         random.seed(2021)
         np.random.seed(2021)
@@ -210,47 +214,24 @@ class TestDistMPTraning(unittest.TestCase):
         optimizer.clear_grad()
         return loss
 
-    def build_optimizer(
-        self, model, strategy=None, is_sharding=True, Optimizer="adam"
-    ):
+    def build_optimizer(self, model, strategy=None, Optimizer="adam"):
         clip = paddle.nn.ClipGradByGlobalNorm(0.5)
         if Optimizer == "adam":
-            if is_sharding:
-                optimizer = DygraphShardingOptimizer(
-                    hcg=fleet.get_hybrid_communicate_group(),
-                    user_defined_strategy=strategy,
-                    params=model.parameters(),
-                    inner_optimizer_class=paddle.optimizer.AdamW,
-                    learning_rate=0.001,
-                    weight_decay=0.00001,
-                    grad_clip=clip,
-                )
-            else:
-                optimizer = paddle.optimizer.AdamW(
-                    parameters=model.parameters(),
-                    learning_rate=0.001,
-                    weight_decay=0.00001,
-                    grad_clip=clip,
-                )
+            optimizer = paddle.optimizer.AdamW(
+                parameters=model.parameters(),
+                learning_rate=0.001,
+                weight_decay=0.00001,
+                grad_clip=clip,
+            )
         else:
-            if is_sharding:
-                optimizer = DygraphShardingOptimizer(
-                    hcg=fleet.get_hybrid_communicate_group(),
-                    user_defined_strategy=strategy,
-                    params=model.parameters(),
-                    inner_optimizer_class=paddle.optimizer.Momentum,
-                    learning_rate=0.001,
-                    grad_clip=clip,
-                )
-            else:
-                optimizer = paddle.optimizer.Momentum(
-                    learning_rate=0.001,
-                    parameters=model.parameters(),
-                    grad_clip=clip,
-                )
+            optimizer = paddle.optimizer.Momentum(
+                learning_rate=0.001,
+                parameters=model.parameters(),
+                grad_clip=clip,
+            )
         return optimizer
 
-    def build_model_optimizer(self, Optimizer="adam"):
+    def build_model_optimizer(self, Optimizer="adam", amp_level=None):
         hcg = fleet.get_hybrid_communicate_group()
         word_size = hcg.get_model_parallel_world_size()
         sharding_id = hcg.get_sharding_parallel_rank()
@@ -266,11 +247,8 @@ class TestDistMPTraning(unittest.TestCase):
         optimizer_a = self.build_optimizer(
             model_a,
             strategy=self.strategy,
-            is_sharding=True,
             Optimizer=Optimizer,
         )
-        model_a = fleet.distributed_model(model_a)
-        optimizer_a = fleet.distributed_optimizer(optimizer_a)
 
         model_b = SimpleDPNet(
             vocab_size, hidden_size, inner_size, output_size, np_fc1, np_fc2
@@ -278,15 +256,23 @@ class TestDistMPTraning(unittest.TestCase):
         optimizer_b = self.build_optimizer(
             model_b,
             strategy=self.strategy,
-            is_sharding=False,
             Optimizer=Optimizer,
         )
 
+        if amp_level is not None and amp_level == "O2":
+            model_a = MixPrecisionLayer(model_a)
+            optimizer_a = MixPrecisionOptimizer(optimizer_a)
+            model_b = MixPrecisionLayer(model_b)
+            optimizer_b = MixPrecisionOptimizer(optimizer_b)
+
+        model_a = fleet.distributed_model(model_a)
+        optimizer_a = fleet.distributed_optimizer(optimizer_a)
+
         return model_a, optimizer_a, model_b, optimizer_b
 
-    def sharding_model(self, Optimizer, sharded_accumulators):
+    def sharding_model(self, Optimizer, sharded_accumulators, amp_level=None):
         model_a, optimizer_a, model_b, optimizer_b = self.build_model_optimizer(
-            Optimizer=Optimizer
+            Optimizer=Optimizer, amp_level=amp_level
         )
 
         self.assertTrue(
@@ -296,9 +282,7 @@ class TestDistMPTraning(unittest.TestCase):
         for idx in range(STEPS):
             if idx == 2 and paddle.distributed.get_rank() == 0:
                 self.assertTrue(
-                    set(
-                        optimizer_a._inner_opt._inner_optimizer.state_dict().keys()
-                    )
+                    set(optimizer_a._inner_opt._inner_opt.state_dict().keys())
                     == sharded_accumulators
                 )
 
@@ -350,6 +334,19 @@ class TestDistMPTraning(unittest.TestCase):
         }
         self.sharding_model(
             Optimizer="Momentum", sharded_accumulators=sharded_accumulators
+        )
+
+    def test_sharding_momentum_amp(self):
+        sharded_accumulators = {
+            'linear_12.w_0_velocity_0',
+            'linear_13.b_0_velocity_0',
+            'linear_14.b_0_velocity_0',
+            'embedding_4.w_0_velocity_0',
+        }
+        self.sharding_model(
+            Optimizer="Momentum",
+            sharded_accumulators=sharded_accumulators,
+            amp_level="O2",
         )
 
 

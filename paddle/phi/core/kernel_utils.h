@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/common/tensor_ref.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/extended_tensor.h"
@@ -26,7 +27,6 @@
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/core/tensor_array.h"
-#include "paddle/phi/core/type_defs.h"
 
 namespace phi {
 
@@ -220,6 +220,59 @@ namespace phi {
     }                                                                         \
   }
 
+#define PD_SPECIALIZE_KernelCallHelper_FOR_TENSOR_SCALAR(attr_type)       \
+  template <typename... Tail>                                             \
+  struct KernelCallHelper<const attr_type&, Tail...> {                    \
+    template <int dev_ctx_idx,                                            \
+              int in_idx,                                                 \
+              int attr_idx,                                               \
+              int out_idx,                                                \
+              typename... PreviousArgs>                                   \
+    static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {     \
+      static_assert(out_idx == 0,                                         \
+                    "Kernel's Attributes should appear before Outputs."); \
+      const Attribute& t = ctx->AttrAt(attr_idx);                         \
+      static Attribute cmp_t = phi::TensorRef(nullptr);                   \
+      attr_type attr1;                                                    \
+      if (cmp_t.index() == t.index()) {                                   \
+        attr1 = attr_type(*paddle::get<phi::TensorRef>(t).Get());         \
+      } else {                                                            \
+        attr1 = paddle::get<attr_type>(t);                                \
+      }                                                                   \
+      KernelCallHelper<Tail...>::                                         \
+          template Compute<dev_ctx_idx, in_idx, attr_idx + 1, out_idx>(   \
+              ctx, pargs..., attr1);                                      \
+    }                                                                     \
+  }
+
+#define PD_SPECIALIZE_KernelCallHelper_FOR_TENSOR_INTARRAY(attr_type)     \
+  template <typename... Tail>                                             \
+  struct KernelCallHelper<const attr_type&, Tail...> {                    \
+    template <int dev_ctx_idx,                                            \
+              int in_idx,                                                 \
+              int attr_idx,                                               \
+              int out_idx,                                                \
+              typename... PreviousArgs>                                   \
+    static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {     \
+      static_assert(out_idx == 0,                                         \
+                    "Kernel's Attributes should appear before Outputs."); \
+      const Attribute& t = ctx->AttrAt(attr_idx);                         \
+      static Attribute cmp_t = phi::TensorRef(nullptr);                   \
+      static Attribute vec_ref =                                          \
+          std::vector<phi::TensorRef>({phi::TensorRef(nullptr)});         \
+      attr_type attr1;                                                    \
+      if (cmp_t.index() == t.index()) {                                   \
+        attr1 = attr_type(*paddle::get<phi::TensorRef>(t).Get());         \
+      } else if (vec_ref.index() == t.index()) {                          \
+        attr1 = attr_type(paddle::get<std::vector<phi::TensorRef>>(t));   \
+      } else {                                                            \
+        attr1 = paddle::get<attr_type>(t);                                \
+      }                                                                   \
+      KernelCallHelper<Tail...>::                                         \
+          template Compute<dev_ctx_idx, in_idx, attr_idx + 1, out_idx>(   \
+              ctx, pargs..., attr1);                                      \
+    }                                                                     \
+  }
 template <typename T>
 struct TypeTag {};
 
@@ -256,7 +309,7 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   PD_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(CustomContext);
 #endif
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   PD_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(OneDNNContext);
 #endif
   /* Input Helpers */
@@ -299,8 +352,8 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataLayout);
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(Place);
   PD_SPECIALIZE_KernelCallHelper_FOR_CONST_ATTRIBUTE_REF(std::string);
-  PD_SPECIALIZE_KernelCallHelper_FOR_CONST_ATTRIBUTE_REF(Scalar);
-  PD_SPECIALIZE_KernelCallHelper_FOR_CONST_ATTRIBUTE_REF(IntArray);
+  PD_SPECIALIZE_KernelCallHelper_FOR_TENSOR_SCALAR(Scalar);
+  PD_SPECIALIZE_KernelCallHelper_FOR_TENSOR_INTARRAY(IntArray);
   PD_SPECIALIZE_KernelCallHelper_FOR_CONST_ATTRIBUTE_REF(std::vector<bool>);
   PD_SPECIALIZE_KernelCallHelper_FOR_CONST_ATTRIBUTE_REF(std::vector<int>);
   PD_SPECIALIZE_KernelCallHelper_FOR_CONST_ATTRIBUTE_REF(std::vector<int64_t>);

@@ -20,7 +20,6 @@ limitations under the License. */
 #include <set>
 #include <vector>
 
-#include "gflags/gflags.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -32,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/mem_tracing.h"
 #include "paddle/fluid/string/split.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/utils/flags.h"
 
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/dynload/miopen.h"
@@ -135,7 +135,7 @@ class RecordedGpuMallocHelper {
   explicit RecordedGpuMallocHelper(int dev_id, uint64_t limit_size = 0)
       : dev_id_(dev_id), limit_size_(limit_size) {
     if (NeedRecord()) {
-      mtx_.reset(new std::mutex());
+      mtx_ = std::make_unique<std::mutex>();
     }
 
     if (FLAGS_enable_gpu_memory_usage_log) {
@@ -427,7 +427,7 @@ bool IsGpuMallocRecorded(int dev_id) {
   return RecordedGpuMallocHelper::Instance(dev_id)->NeedRecord();
 }
 
-void EmptyCache(void) {
+void EmptyCache() {
   std::vector<int> devices = GetSelectedDevices();
   for (auto device : devices) {
     memory::Release(CUDAPlace(device));

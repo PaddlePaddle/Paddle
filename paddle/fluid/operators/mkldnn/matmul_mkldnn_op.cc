@@ -160,7 +160,7 @@ class MatMulV1OneDNNHandler
     dnnl::primitive_attr matmul_attrs;
     float scale_out = ComputeOutputScale(ctx);
     if (scale_out != 1.0f) {
-      matmul_attrs.set_output_scales(0, {scale_out});
+      matmul_attrs.set_scales_mask(DNNL_ARG_SRC, 0);
     }
     return matmul_attrs;
   }
@@ -226,7 +226,9 @@ class MatMulOneDNNHandler
     auto out_md = memory::desc(out_dims, OneDNNGetDataType<OT>(), out_strides);
 
     dnnl::primitive_attr attrs;
-    if (scale != 1.0f) attrs.set_output_scales(0, {scale});
+    if (scale != 1.0f) {
+      attrs.set_scales_mask(DNNL_ARG_SRC, 0);
+    }
 
     this->AcquireForwardPrimitiveDescriptor(attrs, x_md, y_md, out_md);
   }
@@ -329,6 +331,15 @@ void ExecuteMatMulV1(const ExecutionContext &ctx,
       {DNNL_ARG_SRC, *src_memory_p},
       {DNNL_ARG_WEIGHTS, *weights_memory_p},
       {DNNL_ARG_DST, *dst_memory_p}};
+
+  float computed_scale_x = handler.ComputeOutputScale(ctx);
+  if (std::fabs(computed_scale_x - 1.f) > 1e-6f) {
+    auto scale_x_md = dnnl::memory::desc(
+        {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
+    auto scale_x_mem =
+        dnnl::memory(scale_x_md, onednn_engine, &computed_scale_x);
+    matmul_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC, scale_x_mem});
+  }
 
   auto &astream = OneDNNContext::tls().get_stream();
   matmul_p->execute(astream, matmul_args);
@@ -589,7 +600,7 @@ class MatMulGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
                          phi::DenseTensor *out) const {
     // gradient is calculated in a different way when broadcasting is used
     bool need_combine = (x->dims().size() == 3 || y->dims().size() == 3) &&
-                        out->dims().size() == 2;
+                        out->dims().size() == 2;  // NOLINT
 
     phi::DenseTensor x_combined, y_combined;
     if (need_combine) {
@@ -601,6 +612,16 @@ class MatMulGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
       x_combined = *x;
       y_combined = *y;
     }
+
+    float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 1.0f;
+
+    auto alpha_md = dnnl::memory::desc(
+        {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
+    auto scale_mem =
+        alpha != 1.0f
+            ? dnnl::memory(
+                  alpha_md, engine, phi::funcs::to_void_cast<float>(&alpha))
+            : dnnl::memory();
 
     MatMulOneDNNHandler<T, T, T> handler(engine,
                                          ctx.GetPlace(),
@@ -621,6 +642,9 @@ class MatMulGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
         {DNNL_ARG_SRC, *src_memory_p},
         {DNNL_ARG_WEIGHTS, *weights_memory_p},
         {DNNL_ARG_DST, *dst_memory_p}};
+    if (alpha != 1.0f) {
+      matmul_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC, scale_mem});
+    }
 
     auto &astream = OneDNNContext::tls().get_stream();
     matmul_p->execute(astream, matmul_args);

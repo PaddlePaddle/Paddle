@@ -171,7 +171,7 @@ int64_t CompatMetaTensor::numel() const {
     return var->Get<phi::DenseTensor>().numel();
   } else {
     auto* var = PADDLE_GET_CONST(VarDesc*, var_);
-    return var->ElementSize();
+    return static_cast<int64_t>(var->ElementSize());
   }
 }
 
@@ -290,7 +290,9 @@ void CompatMetaTensor::set_dims(const DDim& dims) {
     if (var == nullptr) return;
     if (var->IsType<phi::DenseTensor>()) {
       auto* tensor = var->GetMutable<phi::DenseTensor>();
-      phi::DenseTensorUtils::GetMutableMeta(tensor)->dims = dims;
+      auto meta = phi::DenseTensorUtils::GetMutableMeta(tensor);
+      meta->dims = dims;
+      meta->strides = meta->calc_strides(dims);
     } else if (var->IsType<phi::SelectedRows>()) {
       var->GetMutable<phi::SelectedRows>()->set_height(dims[0]);
     } else if (var->IsType<phi::SparseCooTensor>()) {
@@ -355,10 +357,12 @@ void CompatMetaTensor::set_layout(DataLayout layout) {
     if (var == nullptr) return;
     if (var->IsType<phi::DenseTensor>()) {
       auto* tensor = var->GetMutable<phi::DenseTensor>();
-      phi::DenseTensorUtils::GetMutableMeta(tensor)->layout = layout;
+      auto meta = phi::DenseTensorUtils::GetMutableMeta(tensor);
+      meta->layout = layout;
     } else if (var->IsType<phi::SelectedRows>()) {
       auto* tensor = var->GetMutable<phi::SelectedRows>()->mutable_value();
-      phi::DenseTensorUtils::GetMutableMeta(tensor)->layout = layout;
+      auto meta = phi::DenseTensorUtils::GetMutableMeta(tensor);
+      meta->layout = layout;
     } else if (var->IsType<phi::SparseCooTensor>()) {
       auto* tensor = var->GetMutable<phi::SparseCooTensor>();
       phi::DenseTensorUtils::GetMutableMeta(tensor)->layout = layout;
@@ -424,8 +428,10 @@ void CompatMetaTensor::share_dims(const MetaTensor& meta_tensor) {
           static_cast<const CompatMetaTensor&>(meta_tensor).GetSelectedRows();
       selected_rows->set_rows(input_selected_rows.rows());
       selected_rows->set_height(input_selected_rows.height());
-      phi::DenseTensorUtils::GetMutableMeta(selected_rows->mutable_value())
-          ->dims = input_selected_rows.value().dims();
+      auto meta =
+          phi::DenseTensorUtils::GetMutableMeta(selected_rows->mutable_value());
+      meta->dims = input_selected_rows.value().dims();
+      meta->strides = meta->calc_strides(meta->dims);
     }
   }
 }
@@ -439,19 +445,19 @@ void CompatMetaTensor::share_meta(const MetaTensor& meta_tensor) {
 }
 
 void CompatInferMetaContext::EmplaceBackInput(CompatMetaTensor input) {
-  int index = compat_inputs_.size();
+  int index = static_cast<int>(compat_inputs_.size());
   compat_inputs_.emplace_back(std::move(input));
   input_range_.emplace_back(std::pair<int, int>(index, index + 1));
 }
 void CompatInferMetaContext::EmplaceBackOutput(CompatMetaTensor output) {
-  int index = compat_outputs_.size();
+  int index = static_cast<int>(compat_outputs_.size());
   compat_outputs_.emplace_back(std::move(output));
   output_range_.emplace_back(std::pair<int, int>(index, index + 1));
 }
 
 void CompatInferMetaContext::EmplaceBackInputs(
     paddle::small_vector<CompatMetaTensor, phi::kInputSmallVectorSize> inputs) {
-  int index = compat_inputs_.size();
+  int index = static_cast<int>(compat_inputs_.size());
   input_range_.emplace_back(std::pair<int, int>(index, index + inputs.size()));
   compat_inputs_.insert(compat_inputs_.end(),
                         std::make_move_iterator(inputs.begin()),
@@ -461,7 +467,7 @@ void CompatInferMetaContext::EmplaceBackInputs(
 void CompatInferMetaContext::EmplaceBackOutputs(
     paddle::small_vector<CompatMetaTensor, phi::kOutputSmallVectorSize>
         outputs) {
-  int index = compat_outputs_.size();
+  int index = static_cast<int>(compat_outputs_.size());
   output_range_.emplace_back(
       std::pair<int, int>(index, index + outputs.size()));
   compat_outputs_.insert(compat_outputs_.end(),
@@ -700,16 +706,16 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
             if (vars.size() == 1) {
               num_ele = 1;
               const auto& tensor_dims = vars[0]->GetShape();
-              for (size_t i = 0; i < tensor_dims.size(); ++i) {
-                num_ele *= tensor_dims[i];
+              for (auto tensor_dim : tensor_dims) {
+                num_ele *= tensor_dim;
               }
 
               if (num_ele <= 0) {
-                num_ele = tensor_dims.size();
+                num_ele = static_cast<int64_t>(tensor_dims.size());
               }
 
             } else {
-              num_ele = vars.size();
+              num_ele = static_cast<int>(vars.size());
             }
             phi::IntArray tensor_attr(std::vector<int32_t>(num_ele, -1));
             tensor_attr.SetFromTensor(true);

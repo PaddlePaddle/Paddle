@@ -19,11 +19,11 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 
-#include "cinn/frontend/paddle/cpp/block_desc.h"
-#include "cinn/frontend/paddle/cpp/desc_api.h"
-#include "cinn/frontend/paddle/cpp/op_desc.h"
-#include "cinn/frontend/paddle/cpp/program_desc.h"
-#include "cinn/frontend/paddle/cpp/var_desc.h"
+#include "paddle/cinn/frontend/paddle/cpp/block_desc.h"
+#include "paddle/cinn/frontend/paddle/cpp/desc_api.h"
+#include "paddle/cinn/frontend/paddle/cpp/op_desc.h"
+#include "paddle/cinn/frontend/paddle/cpp/program_desc.h"
+#include "paddle/cinn/frontend/paddle/cpp/var_desc.h"
 
 namespace paddle {
 namespace framework {

@@ -370,11 +370,16 @@ def get_host_name_ip():
 
 def add_arguments(argname, type, default, help, argparser, **kwargs):
     """Add argparse's argument.
-    Usage:
-    .. code-block:: python
-        parser = argparse.ArgumentParser()
-        add_argument("name", str, "Jonh", "User name.", parser)
-        args = parser.parse_args()
+
+    Examples:
+        .. code-block:: python
+
+            >>> import argparse
+            >>> from paddle.distributed.fleet.launch_utils import add_arguments
+            >>> parser = argparse.ArgumentParser()
+            >>> add_arguments("name", str, "Jonh", "User name.", parser)
+            >>> args = parser.parse_args()
+
     """
     type = strtobool if type == bool else type
     argparser.add_argument(
@@ -838,7 +843,6 @@ def direct_start(args):
     ] + args.training_script_args
     proc = subprocess.Popen(cmd)
     proc.wait()
-    return
 
 
 def get_custom_endpoints(origin_endpoints, offset=0):

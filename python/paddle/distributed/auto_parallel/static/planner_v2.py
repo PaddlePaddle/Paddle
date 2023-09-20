@@ -15,6 +15,7 @@
 import logging
 import os
 import pickle
+import sys
 
 import numpy as np
 
@@ -40,7 +41,7 @@ class Planner:
     def __init__(self, mode, dist_context):
         self._mode = mode
         self._dist_context = dist_context
-        self._load = False
+        self._load = False  # load dist_attr from file
 
         # NOTE: [HighOrderGrad]. There are grad ops in forward phase, and it need
         # dependency of backward-forward ops in forward completion.
@@ -175,7 +176,7 @@ class Planner:
                 self._completer.complete_forward_annotation()
 
         if os.getenv("PADDLE_AUTO_PARALLEL_STAGE", "run") != "run":
-            quit()
+            sys.exit()
 
         # parse forward sub block
         self._dist_context.block_state.parse_forward_blocks(

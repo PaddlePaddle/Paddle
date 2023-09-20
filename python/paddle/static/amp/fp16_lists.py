@@ -15,20 +15,21 @@
 import copy
 import logging
 
+import paddle
 from paddle.amp.amp_lists import (
+    EXTRA_BLACK_LIST,
     FP16_BLACK_LIST,
-    FP16_EXTRA_BLACK_LIST,
     FP16_WHITE_LIST,
 )
-from paddle.fluid import core
-from paddle.fluid.log_helper import get_logger
+from paddle.base import core
+from paddle.base.log_helper import get_logger
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
 
 black_list = FP16_BLACK_LIST
-_extra_black_list = FP16_EXTRA_BLACK_LIST
+_extra_black_list = EXTRA_BLACK_LIST
 white_list = FP16_WHITE_LIST
 
 
@@ -94,6 +95,10 @@ def _get_sys_unsupported_list(dtype):
     device = None
     if core.is_compiled_with_xpu():
         device = 'XPU'
+    elif isinstance(
+        paddle.framework._current_expected_place(), paddle.CustomPlace
+    ):
+        device = paddle.framework._current_expected_place().get_device_type()
     else:
         device = 'GPU'
     all_ops, _, sys_unsupported_list = core.op_supported_infos(device, var_type)
@@ -138,7 +143,7 @@ def _get_white_list(dtype):
 
 def _get_black_list():
     _black_list = copy.copy(FP16_BLACK_LIST)
-    _black_list = _black_list | FP16_EXTRA_BLACK_LIST
+    _black_list = _black_list | EXTRA_BLACK_LIST
     return _black_list
 
 

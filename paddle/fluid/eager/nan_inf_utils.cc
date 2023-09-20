@@ -37,7 +37,7 @@ static std::unordered_set<std::string>& nan_inf_skip_op_list() {
 
 void SetCheckOpList(const std::string& check_op_list = "") {
   nan_inf_check_op_list();
-  if (check_op_list.size() != 0) {
+  if (!check_op_list.empty()) {
     std::stringstream ss(check_op_list);
     std::string op_type;
     LOG(INFO) << "Please set op's name according to the "
@@ -51,7 +51,7 @@ void SetCheckOpList(const std::string& check_op_list = "") {
 
 void SetSkipOpList(const std::string& skip_op_list = "") {
   nan_inf_skip_op_list();
-  if (skip_op_list.size() != 0) {
+  if (!skip_op_list.empty()) {
     std::stringstream ss(skip_op_list);
     std::string op_type;
     LOG(INFO) << "Please set op's name according to the "
@@ -70,7 +70,7 @@ bool CheckOp(const std::string& api_name) {
     return false;
   }
 
-  if (nan_inf_check_op_list().size() != 0 &&
+  if (!nan_inf_check_op_list().empty() &&
       (!nan_inf_check_op_list().count(api_name))) {
     VLOG(4) << "Current op isn't in checked_op_list : " << api_name;
     return false;

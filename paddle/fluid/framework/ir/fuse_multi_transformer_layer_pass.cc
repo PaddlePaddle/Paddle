@@ -104,9 +104,8 @@ template <typename T>
 inline void MergeAttrs(const std::vector<OpDesc*>& ops,
                        const std::string& attr_name) {
   std::vector<T> res;
-  for (size_t i = 0; i < ops.size(); ++i) {
-    auto scale_vec =
-        PADDLE_GET_CONST(std::vector<T>, ops[i]->GetAttr(attr_name));
+  for (auto op : ops) {
+    auto scale_vec = PADDLE_GET_CONST(std::vector<T>, op->GetAttr(attr_name));
     res.insert(res.end(), scale_vec.begin(), scale_vec.end());
   }
   ops[0]->SetAttr(attr_name, res);

@@ -55,7 +55,7 @@ void OperationMap::Insert(int type,
                         op_type));
   operations_[op_type] = op;
 
-  if (grad_exprs.size() > 0U) {
+  if (!grad_exprs.empty()) {
     std::string grad_op_type = op_type + "_grad";
     // grad_inputs = inputs + outputs + grad of outputs
     std::vector<std::string> grad_input_names = input_names;

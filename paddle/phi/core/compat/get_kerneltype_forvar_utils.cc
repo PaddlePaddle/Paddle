@@ -17,7 +17,7 @@
 #include "paddle/phi/core/enforce.h"
 namespace phi {
 
-const std::string& GetKernelTypeForVarContext::GetVarName(void) const {
+const std::string& GetKernelTypeForVarContext::GetVarName() const {
   PADDLE_ENFORCE_NE(
       var_name_,
       nullptr,
@@ -26,7 +26,7 @@ const std::string& GetKernelTypeForVarContext::GetVarName(void) const {
   return *var_name_;
 }
 
-const DenseTensor& GetKernelTypeForVarContext::GetTensor(void) const {
+const DenseTensor& GetKernelTypeForVarContext::GetTensor() const {
   PADDLE_ENFORCE_NE(
       tensor_,
       nullptr,
@@ -35,7 +35,7 @@ const DenseTensor& GetKernelTypeForVarContext::GetTensor(void) const {
   return *tensor_;
 }
 
-const KernelKey& GetKernelTypeForVarContext::GetKernelKey(void) const {
+const KernelKey& GetKernelTypeForVarContext::GetKernelKey() const {
   PADDLE_ENFORCE_NE(
       kernel_key_,
       nullptr,
@@ -44,7 +44,7 @@ const KernelKey& GetKernelTypeForVarContext::GetKernelKey(void) const {
   return *kernel_key_;
 }
 
-const AttributeMap& GetKernelTypeForVarContext::GetAttrs(void) const {
+const AttributeMap& GetKernelTypeForVarContext::GetAttrs() const {
   return *attrs_;
 }
 

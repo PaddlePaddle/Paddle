@@ -16,12 +16,12 @@ import os
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 from test_attribute_var import UnittestBase
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.framework import Program, program_guard
+from paddle.base import core
+from paddle.base.framework import Program, program_guard
 
 paddle.enable_static()
 
@@ -98,6 +98,20 @@ class TestSqueezeOp1(TestSqueezeOp):
 class TestSqueezeOp1BF16Op(TestSqueezeOp):
     def init_dtype(self):
         self.dtype = np.uint16
+
+
+class TestSqueezeOp_ZeroDim1(TestSqueezeOp):
+    def init_test_case(self):
+        self.ori_shape = ()
+        self.axes = (0,)
+        self.new_shape = ()
+
+
+class TestSqueezeOp_ZeroDim2(TestSqueezeOp):
+    def init_test_case(self):
+        self.ori_shape = (1, 1, 1)
+        self.axes = (0, 1, 2)
+        self.new_shape = ()
 
 
 # Correct: No axes input.

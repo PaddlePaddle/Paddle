@@ -57,13 +57,13 @@ void AppendLoD(LoD *lod, const LoD &lod_length) {
 LoD ConvertToLengthBasedLoD(const LoD &offset_lod) {
   LoD length_lod;
   length_lod.reserve(offset_lod.size());
-  for (size_t lvl = 0; lvl < offset_lod.size(); ++lvl) {
+  for (const auto &item : offset_lod) {
     std::vector<size_t> level;
-    if (offset_lod[lvl].size() > 0) {
-      level.reserve(offset_lod[lvl].size() - 1);
+    if (!item.empty()) {
+      level.reserve(item.size() - 1);
     }
-    for (size_t idx = 0; idx < offset_lod[lvl].size() - 1; ++idx) {
-      level.push_back(offset_lod[lvl][idx + 1] - offset_lod[lvl][idx]);
+    for (size_t idx = 0; idx < item.size() - 1; ++idx) {
+      level.push_back(item[idx + 1] - item[idx]);
     }
     length_lod.push_back(level);
   }

@@ -15,17 +15,17 @@
 import unittest
 
 import numpy as np
-from eager_op_test import (
+from op import Operator
+from op_test import (
     OpTest,
     convert_float_to_uint16,
     convert_uint16_to_float,
     skip_check_grad_ci,
 )
-from op import Operator
 
 import paddle
-from paddle import enable_static, fluid
-from paddle.fluid import core
+from paddle import base, enable_static
+from paddle.base import core
 
 
 def _lookup(weights, ids, flat_ids, op_version="lookup_table"):
@@ -227,25 +227,25 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
         self.flat_ids = self.ids.flatten()
         self.value = 3.0
         self.w_fp32 = np.full(self.w_shape, self.value)
-        self.place = fluid.CPUPlace()
-        self.prog = fluid.Program()
-        self.startup_prog = fluid.Program()
+        self.place = base.CPUPlace()
+        self.prog = base.Program()
+        self.startup_prog = base.Program()
         self.set_initializer()
 
-        with fluid.program_guard(self.prog, self.startup_prog):
+        with base.program_guard(self.prog, self.startup_prog):
             x = paddle.static.data(
                 name='x', shape=self.ids_shape, dtype='int64'
             )
-            self.emb = fluid.layers.embedding(
+            self.emb = paddle.static.nn.embedding(
                 input=x,
                 size=self.w_shape,
-                param_attr=fluid.ParamAttr(
+                param_attr=base.ParamAttr(
                     name="emb_weight", initializer=self.initializer
                 ),
                 is_sparse=False,
                 dtype="uint16",
             )  # bfloat16
-        exe = fluid.Executor(self.place)
+        exe = base.Executor(self.place)
         exe.run(self.startup_prog)
         self.result = exe.run(
             self.prog, feed={'x': self.ids}, fetch_list=['emb_weight', self.emb]
@@ -256,7 +256,7 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
         np.testing.assert_array_equal(self.w_fp32, result)
 
     def test_lookup_results(self):
-        lookup_result = convert_uint16_to_float(self.result[1])
+        lookup_result = convert_uint16_to_float(self.result[1].squeeze(-2))
         lookup_ref = _lookup(self.w_fp32, self.ids, self.flat_ids)
         np.testing.assert_array_equal(lookup_result, lookup_ref)
 

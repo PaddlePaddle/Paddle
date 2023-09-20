@@ -58,6 +58,23 @@ inline void CompareKernelImpl(const Context& ctx,
   funcs::BroadcastKernel<bool>(ctx, ins, &outs, Functor(), axis);
 }
 
+template <typename T,
+          typename Context,
+          typename Functor,
+          typename InverseFunctor>
+inline void InplaceCompareKernelImpl(const Context& ctx,
+                                     const DenseTensor& x,
+                                     const DenseTensor& y,
+                                     int axis,
+                                     DenseTensor* out) {
+  auto x_origin = x;
+  ctx.template Alloc<bool>(out);
+  out->set_type(phi::DataType::BOOL);
+  std::vector<const DenseTensor*> ins{&x_origin, &y};
+  std::vector<DenseTensor*> outs{out};
+  funcs::BroadcastKernel<bool>(ctx, ins, &outs, Functor(), axis);
+}
+
 #ifndef PADDLE_WITH_XPU_KP
 template <typename T, typename Context, typename Functor>
 inline void CompareAllKernelImpl(const Context& ctx,
@@ -114,30 +131,6 @@ PD_REGISTER_KERNEL(not_equal, KPS, ALL_LAYOUT, phi::NotEqualKernel, int) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 
-PD_REGISTER_KERNEL(
-    less_than_raw, KPS, ALL_LAYOUT, phi::LessThanRawKernel, int) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
-}
-PD_REGISTER_KERNEL(
-    less_equal_raw, KPS, ALL_LAYOUT, phi::LessEqualRawKernel, int) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
-}
-PD_REGISTER_KERNEL(
-    greater_than_raw, KPS, ALL_LAYOUT, phi::GreaterThanRawKernel, int) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
-}
-PD_REGISTER_KERNEL(
-    greater_equal_raw, KPS, ALL_LAYOUT, phi::GreaterEqualRawKernel, int) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
-}
-PD_REGISTER_KERNEL(equal_raw, KPS, ALL_LAYOUT, phi::EqualRawKernel, int) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
-}
-PD_REGISTER_KERNEL(
-    not_equal_raw, KPS, ALL_LAYOUT, phi::NotEqualRawKernel, int) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
-}
-
 #else
 
 PD_REGISTER_KERNEL(equal_all,
@@ -157,20 +150,6 @@ PD_REGISTER_KERNEL(equal_all,
                      KPS,                                 \
                      ALL_LAYOUT,                          \
                      phi::func##Kernel,                   \
-                     bool,                                \
-                     int16_t,                             \
-                     int,                                 \
-                     int64_t,                             \
-                     float,                               \
-                     double,                              \
-                     phi::dtype::float16,                 \
-                     phi::dtype::bfloat16) {              \
-    kernel->OutputAt(0).SetDataType(phi::DataType::BOOL); \
-  }                                                       \
-  PD_REGISTER_KERNEL(name##_raw,                          \
-                     KPS,                                 \
-                     ALL_LAYOUT,                          \
-                     phi::func##RawKernel,                \
                      bool,                                \
                      int16_t,                             \
                      int,                                 \

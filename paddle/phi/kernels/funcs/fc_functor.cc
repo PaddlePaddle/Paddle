@@ -66,7 +66,7 @@ void FCFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
   } else {
     blas.MatMul(M, N, K, X, W, Y);
   }
-  if (B == NULL) {
+  if (B == nullptr) {
     if (padding_weights) {
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for

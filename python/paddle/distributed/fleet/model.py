@@ -20,6 +20,7 @@ from .meta_parallel import (
     PipelineLayer,
     PipelineParallel,
     PipelineParallelWithInterleave,
+    SegmentParallel,
     ShardingParallel,
     TensorParallel,
 )
@@ -41,51 +42,47 @@ def distributed_model(model):
 
         .. code-block:: python
 
-            import paddle
-            import paddle.nn as nn
-            from paddle.distributed import fleet
+            >>> import paddle
+            >>> import paddle.nn as nn
+            >>> from paddle.distributed import fleet
 
-            class LinearNet(nn.Layer):
-                def __init__(self):
-                    super().__init__()
-                    self._linear1 = nn.Linear(10, 10)
-                    self._linear2 = nn.Linear(10, 1)
+            >>> class LinearNet(nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self._linear1 = nn.Linear(10, 10)
+            ...         self._linear2 = nn.Linear(10, 1)
+            ...     def forward(self, x):
+            ...         return self._linear2(self._linear1(x))
 
-                def forward(self, x):
-                    return self._linear2(self._linear1(x))
+            >>> # 1. initialize fleet environment
+            >>> fleet.init(is_collective=True)
 
-            # 1. initialize fleet environment
-            fleet.init(is_collective=True)
+            >>> # 2. create layer & optimizer
+            >>> layer = LinearNet()
+            >>> loss_fn = nn.MSELoss()
+            >>> adam = paddle.optimizer.Adam(
+            ...     learning_rate=0.001, parameters=layer.parameters())
 
-            # 2. create layer & optimizer
-            layer = LinearNet()
-            loss_fn = nn.MSELoss()
-            adam = paddle.optimizer.Adam(
-                learning_rate=0.001, parameters=layer.parameters())
+            >>> # 3. get data_parallel model using fleet
+            >>> adam = fleet.distributed_optimizer(adam)
+            >>> dp_layer = fleet.distributed_model(layer)
 
-            # 3. get data_parallel model using fleet
-            adam = fleet.distributed_optimizer(adam)
-            dp_layer = fleet.distributed_model(layer)
-
-            # 4. run layer
-            inputs = paddle.randn([10, 10], 'float32')
-            outputs = dp_layer(inputs)
-            labels = paddle.randn([10, 1], 'float32')
-            loss = loss_fn(outputs, labels)
-
-            print("loss:", loss.numpy())
-
-            loss.backward()
-
-            adam.step()
-            adam.clear_grad()
+            >>> # 4. run layer
+            >>> inputs = paddle.randn([10, 10], 'float32')
+            >>> outputs = dp_layer(inputs)
+            >>> labels = paddle.randn([10, 1], 'float32')
+            >>> loss = loss_fn(outputs, labels)
+            >>> print("loss:", loss.numpy())
+            >>> loss.backward()
+            >>> adam.step()
+            >>> adam.clear_grad()
 
 
     """
     fleet_env = fleet.fleet
 
     assert model is not None, "model should not be None"
-    if fleet_env.worker_num() <= 1:
+    if paddle.distributed.get_world_size() <= 1:
         return model
 
     amp_enable = False
@@ -134,18 +131,6 @@ def distributed_model(model):
     if fleet_env._hcg.get_parallel_mode() == ParallelMode.SHARDING_PARALLEL:
         model = ShardingParallel(model, fleet_env._hcg, strategy=strategy)
     elif fleet_env._hcg.get_parallel_mode() == ParallelMode.DATA_PARALLEL:
-        # NOTE (JZ-LIANG) init parameters broadcast within sharding group
-        # normally it should be done inside DataParallel
-        if fleet_env.sharding_degree > 1:
-            from paddle.distributed.fleet.utils.hybrid_parallel_util import (
-                broadcast_sharding_parameters,
-            )
-
-            assert (
-                fleet_env.sharding_degree
-                == fleet_env._hcg.get_sharding_parallel_world_size()
-            )
-            broadcast_sharding_parameters(model, fleet_env._hcg)
         model = paddle.DataParallel(
             model,
             comm_buffer_size=strategy.fuse_grad_size_in_MB,
@@ -153,6 +138,8 @@ def distributed_model(model):
             find_unused_parameters=strategy.find_unused_parameters,
             group=fleet_env._hcg.get_data_parallel_group(),
         )
+    elif fleet_env._hcg.get_parallel_mode() == ParallelMode.SEGMENT_PARALLEL:
+        model = SegmentParallel(model, fleet_env._hcg, strategy=strategy)
     elif fleet_env._hcg.get_parallel_mode() == ParallelMode.TENSOR_PARALLEL:
         model = TensorParallel(model, fleet_env._hcg, strategy=strategy)
     elif fleet_env._hcg.get_parallel_mode() == ParallelMode.PIPELINE_PARALLEL:

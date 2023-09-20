@@ -18,14 +18,14 @@ import dist_ctr_reader
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 IS_SPARSE = True
 os.environ['PADDLE_ENABLE_REMOTE_PREFETCH'] = "1"
 
 # Fix seed for test
-fluid.default_startup_program().random_seed = 1
-fluid.default_main_program().random_seed = 1
+base.default_startup_program().random_seed = 1
+base.default_main_program().random_seed = 1
 
 
 class TestDistCTR2x2(TestDistRunnerBase):
@@ -53,11 +53,11 @@ class TestDistCTR2x2(TestDistRunnerBase):
 
         # build dnn model
         dnn_layer_dims = [128, 64, 32, 1]
-        dnn_embedding = fluid.layers.embedding(
+        dnn_embedding = paddle.static.nn.embedding(
             is_distributed=False,
             input=dnn_data,
             size=[dnn_input_dim, dnn_layer_dims[0]],
-            param_attr=fluid.ParamAttr(
+            param_attr=base.ParamAttr(
                 name="deep_embedding",
                 initializer=paddle.nn.initializer.Constant(value=0.01),
             ),
@@ -72,7 +72,7 @@ class TestDistCTR2x2(TestDistRunnerBase):
                 x=dnn_out,
                 size=dim,
                 activation="relu",
-                weight_attr=fluid.ParamAttr(
+                weight_attr=base.ParamAttr(
                     initializer=paddle.nn.initializer.Constant(value=0.01)
                 ),
                 name='dnn-fc-%d' % i,
@@ -80,11 +80,11 @@ class TestDistCTR2x2(TestDistRunnerBase):
             dnn_out = fc
 
         # build lr model
-        lr_embedding = fluid.layers.embedding(
+        lr_embedding = paddle.static.nn.embedding(
             is_distributed=False,
             input=lr_data,
             size=[lr_input_dim, 1],
-            param_attr=fluid.ParamAttr(
+            param_attr=base.ParamAttr(
                 name="wide_embedding",
                 initializer=paddle.nn.initializer.Constant(value=0.01),
             ),
@@ -108,7 +108,7 @@ class TestDistCTR2x2(TestDistRunnerBase):
         )
         avg_cost = paddle.mean(x=cost)
 
-        inference_program = paddle.fluid.default_main_program().clone()
+        inference_program = paddle.base.default_main_program().clone()
 
         regularization = None
         use_l2_decay = bool(os.getenv('USE_L2_DECAY', 0))
@@ -117,15 +117,13 @@ class TestDistCTR2x2(TestDistRunnerBase):
         use_lr_decay = bool(os.getenv('LR_DECAY', 0))
         lr = 0.0001
         if use_lr_decay:
-            lr = fluid.layers.exponential_decay(
+            lr = paddle.optimizer.lr.ExponentialDecay(
                 learning_rate=0.0001,
-                decay_steps=10000,
-                decay_rate=0.999,
-                staircase=True,
+                gamma=0.999,
             )
 
-        sgd_optimizer = fluid.optimizer.SGD(
-            learning_rate=lr, regularization=regularization
+        sgd_optimizer = paddle.optimizer.SGD(
+            learning_rate=lr, weight_decay=regularization
         )
         sgd_optimizer.minimize(avg_cost)
 

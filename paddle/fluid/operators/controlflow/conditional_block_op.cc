@@ -13,14 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/controlflow/conditional_block_op.h"
+#include <array>
 
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
-#include "paddle/fluid/operators/assign_op.h"
 #include "paddle/fluid/operators/controlflow/control_flow_op_helper.h"
 #include "paddle/phi/core/flags.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
@@ -29,11 +28,12 @@ PHI_DECLARE_bool(use_mkldnn);
 namespace paddle {
 namespace operators {
 
-const char ConditionalOp::kInputs[] = "Input";
-const char ConditionalOp::kOutputs[] = "Out";
-const char ConditionalOp::kCondition[] = "Cond";
-const char ConditionalOp::kScope[] = "Scope";
-const char ConditionalOp::kSkipEagerDeletionVars[] = "skip_eager_deletion_vars";
+const char ConditionalOp::kInputs[] = "Input";        // NOLINT
+const char ConditionalOp::kOutputs[] = "Out";         // NOLINT
+const char ConditionalOp::kCondition[] = "Cond";      // NOLINT
+const char ConditionalOp::kScope[] = "Scope";         // NOLINT
+const char ConditionalOp::kSkipEagerDeletionVars[] =  // NOLINT
+    "skip_eager_deletion_vars";
 
 using Executor = framework::Executor;
 using ExecutorPrepareContext = framework::ExecutorPrepareContext;
@@ -82,7 +82,7 @@ class ConditionalBlockOp : public ConditionalOp {
       scopes->front() = &scope.NewScope();
 
       auto &cur_scope = *scopes->front();
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
       // Executor on being destroyed clears oneDNN cache and resets
       // registered model data layout. This is unwanted for nested
       // Executors (executors declared inside control ops)
@@ -224,129 +224,6 @@ class ConditionalBlockGradOp : public ConditionalOp {
   mutable std::shared_ptr<Executor> exec_{nullptr};
   mutable std::unique_ptr<ExecutorPrepareContext> ctx_{nullptr};
   mutable std::shared_ptr<InterpreterCore> core_{nullptr};
-
- private:
-  void AssignLocalGradientToParentScope(
-      const platform::Place &place,
-      const framework::Scope &cur_scope,
-      const framework::Scope &parent_scope,
-      const std::vector<std::string> &inside_grads,
-      const std::vector<std::string> &outside_grads,
-      const std::vector<std::string> &inputs) const {
-    std::vector<std::string> assign_zero_outside_grads;
-    std::vector<std::string> assign_zero_inputs;
-    for (size_t i = 0; i < outside_grads.size(); ++i) {
-      const std::string &outside_grad_name = outside_grads[i];
-      const std::string &inside_grad_name = inside_grads[i];
-      VLOG(4) << "[assign local]"
-              << "inside_grad_name = " << inside_grad_name
-              << ", outside_grad_name = " << outside_grad_name;
-      framework::Variable *outside_var =
-          parent_scope.FindVar(outside_grad_name);
-      if (outside_var == nullptr) {
-        continue;
-      }
-      framework::Variable *inside_var =
-          cur_scope.FindLocalVar(inside_grad_name);
-      if (inside_var == nullptr) {
-        assign_zero_outside_grads.emplace_back(outside_grad_name);
-        assign_zero_inputs.emplace_back(inputs[i]);
-        continue;
-      }
-      platform::DeviceContext *dev_ctx =
-          platform::DeviceContextPool::Instance().Get(place);
-      framework::VisitVarType(*inside_var,
-                              AssignFunctor(outside_var, *dev_ctx));
-    }
-    // Assign zero to the grad_vars that are in outside_grads but not in
-    // inside_grads
-    AssignZeroToParentScope(
-        place, parent_scope, assign_zero_inputs, assign_zero_outside_grads);
-  }
-
-  void AssignZeroToParentScope(
-      const platform::Place &place,
-      const framework::Scope &scope,
-      const std::vector<std::string> &inputs,
-      const std::vector<std::string> &outside_grads) const {
-    for (size_t i = 0; i < outside_grads.size(); ++i) {
-      const std::string &outside_grad_name = outside_grads[i];
-      const std::string &input_name = inputs[i];
-      VLOG(4) << "[assign zero]"
-              << "input_name = " << input_name
-              << ", outside_grad_name = " << outside_grad_name;
-      framework::Variable *input_var = scope.FindVar(input_name);
-      if (input_var == nullptr) {
-        continue;
-      }
-      framework::Variable *outside_var = scope.FindVar(outside_grad_name);
-      if (outside_var == nullptr) {
-        continue;
-      }
-
-      if (input_var->IsType<phi::DenseTensor>()) {
-        PADDLE_ENFORCE_EQ(
-            outside_var->IsType<phi::DenseTensor>(),
-            true,
-            platform::errors::InvalidArgument(
-                "Type of outside_var %s is NOT phi::DenseTensor, which "
-                "doesn't match input_var %s.",
-                outside_grad_name,
-                input_name));
-        AssignZeroToOutsideTensor(place,
-                                  scope,
-                                  input_var->Get<phi::DenseTensor>(),
-                                  outside_var->GetMutable<phi::DenseTensor>());
-      } else if (input_var->IsType<framework::LoDTensorArray>()) {
-        PADDLE_ENFORCE_EQ(outside_var->IsType<framework::LoDTensorArray>(),
-                          true,
-                          platform::errors::InvalidArgument(
-                              "Type of outside_var %s is NOT LoDTensorArray, "
-                              "which doesn't match input_var %s.",
-                              outside_grad_name,
-                              input_name));
-        const auto &input_tensors = input_var->Get<framework::LoDTensorArray>();
-        auto *outside_tensors =
-            outside_var->GetMutable<framework::LoDTensorArray>();
-        if (outside_tensors->size() == 0U) {
-          outside_tensors->resize(input_tensors.size());
-        }
-        PADDLE_ENFORCE_EQ(input_tensors.size(),
-                          outside_tensors->size(),
-                          platform::errors::InvalidArgument(
-                              "LoDTensorArray outside_var %s doen't have same "
-                              "size as input_var %s.",
-                              outside_grad_name,
-                              input_name));
-        for (size_t j = 0; j < input_tensors.size(); ++j) {
-          AssignZeroToOutsideTensor(
-              place, scope, input_tensors[j], &((*outside_tensors)[j]));
-        }
-      } else {
-        // TODO(huihuangzheng): add support for SelectedRows
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "Conditional block grad op doesn't support non-phi::DenseTensor "
-            "output "
-            "now."));
-      }
-    }
-  }
-
-  void AssignZeroToOutsideTensor(const platform::Place &place,
-                                 const framework::Scope &cur_scope,
-                                 const phi::DenseTensor &input_tensor,
-                                 phi::DenseTensor *outside_tensor) const {
-    if (!input_tensor.IsInitialized() || input_tensor.numel() == 0) {
-      return;
-    }
-    VLOG(4) << "Assigning zero to " << outside_tensor;
-    outside_tensor->Resize(input_tensor.dims());
-    outside_tensor->mutable_data(place, input_tensor.dtype());
-    const platform::DeviceContext *dev_ctx =
-        platform::DeviceContextPool::Instance().Get(place);
-    phi::funcs::set_constant(*dev_ctx, outside_tensor, 0.0f);
-    outside_tensor->set_lod(input_tensor.lod());
-  }
 };
 
 template <class T>
@@ -415,7 +292,7 @@ class ConditionalBlockGradInferVarType : public framework::VarTypeInference {
     for (size_t i = 0; i < output_size; ++i) {
       ctx->SyncTypeAndDataType(ConditionalOp::kInputs,
                                framework::GradVarName(ConditionalOp::kInputs),
-                               i);
+                               static_cast<int>(i));
     }
   }
 };

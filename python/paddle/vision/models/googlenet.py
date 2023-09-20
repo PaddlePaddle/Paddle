@@ -15,7 +15,7 @@
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
-from paddle.fluid.param_attr import ParamAttr
+from paddle.base.param_attr import ParamAttr
 from paddle.nn import (
     AdaptiveAvgPool2D,
     AvgPool2D,
@@ -110,7 +110,7 @@ class GoogLeNet(nn.Layer):
 
     Args:
         num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer
-                            will not be defined. Default: 1000.
+            will not be defined. Default: 1000.
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
 
     Returns:
@@ -119,17 +119,17 @@ class GoogLeNet(nn.Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.models import GoogLeNet
+            >>> import paddle
+            >>> from paddle.vision.models import GoogLeNet
 
-            # build model
-            model = GoogLeNet()
+            >>> # Build model
+            >>> model = GoogLeNet()
 
-            x = paddle.rand([1, 3, 224, 224])
-            out, out1, out2 = model(x)
+            >>> x = paddle.rand([1, 3, 224, 224])
+            >>> out, out1, out2 = model(x)
 
-            print(out.shape, out1.shape, out2.shape)
-            # [1, 1000] [1, 1000] [1, 1000]
+            >>> print(out.shape, out1.shape, out2.shape)
+            [1, 1000] [1, 1000] [1, 1000]
     """
 
     def __init__(self, num_classes=1000, with_pool=True):
@@ -236,7 +236,7 @@ def googlenet(pretrained=False, **kwargs):
 
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
-                            on ImageNet. Default: False.
+            on ImageNet. Default: False.
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`GoogLeNet <api_paddle_vision_GoogLeNet>`.
 
     Returns:
@@ -245,20 +245,20 @@ def googlenet(pretrained=False, **kwargs):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.models import googlenet
+            >>> import paddle
+            >>> from paddle.vision.models import googlenet
 
-            # build model
-            model = googlenet()
+            >>> # Build model
+            >>> model = googlenet()
 
-            # build model and load imagenet pretrained weight
-            # model = googlenet(pretrained=True)
+            >>> # Build model and load imagenet pretrained weight
+            >>> # model = googlenet(pretrained=True)
 
-            x = paddle.rand([1, 3, 224, 224])
-            out, out1, out2 = model(x)
+            >>> x = paddle.rand([1, 3, 224, 224])
+            >>> out, out1, out2 = model(x)
 
-            print(out.shape, out1.shape, out2.shape)
-            # [1, 1000] [1, 1000] [1, 1000]
+            >>> print(out.shape, out1.shape, out2.shape)
+            [1, 1000] [1, 1000] [1, 1000]
     """
     model = GoogLeNet(**kwargs)
     arch = "googlenet"

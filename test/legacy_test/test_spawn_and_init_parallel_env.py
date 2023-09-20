@@ -18,12 +18,12 @@ import unittest
 
 import paddle
 import paddle.distributed as dist
+from paddle.base import core
 from paddle.distributed.spawn import (
     _get_default_nprocs,
     _get_subprocess_env_list,
     _options_valid_check,
 )
-from paddle.fluid import core
 
 # NOTE(chenweihang): Coverage CI is currently not able to count python3
 # unittest, so the unittests here covers some cases that will only be
@@ -37,7 +37,7 @@ class TestInitParallelEnv(unittest.TestCase):
     def test_check_env_failed(self):
         os.environ['FLAGS_selected_gpus'] = '0'
         os.environ['PADDLE_TRAINER_ID'] = '0'
-        os.environ['PADDLE_CURRENT_ENDPOINT'] = '127.0.0.1:6170'
+        # os.environ['PADDLE_CURRENT_ENDPOINT'] = '127.0.0.1:6170'
         os.environ['PADDLE_TRAINERS_NUM'] = '2'
         with self.assertRaises(ValueError):
             dist.init_parallel_env()

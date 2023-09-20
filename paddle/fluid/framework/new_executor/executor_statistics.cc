@@ -28,7 +28,7 @@
 #include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/utils.h"
 
-DECLARE_bool(use_stream_safe_cuda_allocator);
+PD_DECLARE_bool(use_stream_safe_cuda_allocator);
 PADDLE_DEFINE_EXPORTED_string(static_executor_perfstat_filepath,
                               "",
                               "FLAGS_static_executor_perfstat_filepath "
@@ -174,31 +174,31 @@ int StatisticsEngine::Init(const platform::NodeTrees& trees) {
 
 void StatisticsEngine::InitStdEvents() {
   name2idx_["Total"] = names_.size();
-  names_.push_back("Total");
+  names_.emplace_back("Total");
   name2idx_["PythonEnd"] = names_.size();
-  names_.push_back("PythonEnd");
+  names_.emplace_back("PythonEnd");
   name2idx_["CplusplusEnd"] = names_.size();
-  names_.push_back("CplusplusEnd");
+  names_.emplace_back("CplusplusEnd");
   name2idx_["RunOp"] = names_.size();
-  names_.push_back("RunOp");
+  names_.emplace_back("RunOp");
   name2idx_["LaunchKernel"] = names_.size();
-  names_.push_back("LaunchKernel");
+  names_.emplace_back("LaunchKernel");
   name2idx_["OpCompute"] = names_.size();
-  names_.push_back("OpCompute");
+  names_.emplace_back("OpCompute");
   name2idx_["OpInfershape"] = names_.size();
-  names_.push_back("OpInfershape");
+  names_.emplace_back("OpInfershape");
   name2idx_["DataTransform"] = names_.size();
-  names_.push_back("DataTransform");
+  names_.emplace_back("DataTransform");
   name2idx_["GarbageCollect"] = names_.size();
-  names_.push_back("GarbageCollect");
+  names_.emplace_back("GarbageCollect");
   name2idx_["CalcNextOp"] = names_.size();
-  names_.push_back("CalcNextOp");
+  names_.emplace_back("CalcNextOp");
   name2idx_["AllocateDeviceMem"] = names_.size();
-  names_.push_back("AllocateDeviceMem");
+  names_.emplace_back("AllocateDeviceMem");
   name2idx_["FreeDeviceMem"] = names_.size();
-  names_.push_back("FreeDeviceMem");
+  names_.emplace_back("FreeDeviceMem");
   name2idx_["ThreadpoolAddTask"] = names_.size();
-  names_.push_back("ThreadpoolAddTask");
+  names_.emplace_back("ThreadpoolAddTask");
 
   size_t n = names_.size();
   filters_.resize(n);
@@ -430,7 +430,7 @@ int StatisticsEngine::Stat(const platform::NodeTrees& trees) {
         }
       }
     }
-    if (thr_evts.size() == 0) {
+    if (thr_evts.empty()) {
       continue;
     }
     std::sort(thr_evts.begin(),
@@ -440,7 +440,7 @@ int StatisticsEngine::Stat(const platform::NodeTrees& trees) {
               });
     all_evts.push_back(std::move(thr_evts));
   }
-  if (all_evts.size() == 0) {
+  if (all_evts.empty()) {
     LOG(WARNING) << "No profiler events";
     return -1;
   }
@@ -577,8 +577,8 @@ int StatisticsEngine::StatNormalizationTime(
   // verify
   uint64_t total = statistics_[name2idx_["Total"]].total_time;
   uint64_t normalization_sum = 0;
-  for (size_t idx = 0; idx < statistics_.size(); ++idx) {
-    normalization_sum += statistics_[idx].normalization_time;
+  for (auto& statistic : statistics_) {
+    normalization_sum += statistic.normalization_time;
   }
   if (total - normalization_sum != 0) {
     LOG(WARNING) << "total: " << total
@@ -621,7 +621,7 @@ void StatisticsEngine::Log(const std::string& filepath) {
 
 void StaticGraphExecutorPerfStatistics(
     std::shared_ptr<const platform::NodeTrees> profiling_data) {
-  if (FLAGS_static_executor_perfstat_filepath.size() == 0) {
+  if (FLAGS_static_executor_perfstat_filepath.empty()) {
     VLOG(5) << "StaticGraphExecutorPerfStatistics is disabled";
     return;
   }

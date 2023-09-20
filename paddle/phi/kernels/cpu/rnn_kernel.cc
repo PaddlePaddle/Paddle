@@ -34,7 +34,7 @@ namespace phi {
 
 template <typename T>
 struct Cell {
-  virtual ~Cell() {}
+  virtual ~Cell() = default;
   virtual void operator()(const CPUContext* dev_ctx UNUSED,
                           DenseTensor* input UNUSED,
                           const DenseTensor* weight_hh UNUSED,
@@ -208,7 +208,7 @@ struct LSTMCell : Cell<T> {
 template <typename T, typename CellType>
 struct Layer {
   explicit Layer(const CellType& cell) : cell_(cell) {}
-  virtual ~Layer() {}
+  virtual ~Layer() = default;
   void preprocess(const CPUContext& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& weight,
@@ -218,7 +218,7 @@ struct Layer {
                   bool is_test,
                   DenseTensor* cache_input) {
     // crate the temp input for the X * W_ih^T + Bias_ih
-    const int& hidden_size = weight.dims()[0];
+    const int& hidden_size = weight.dims()[0];  // NOLINT
     cache_input->Resize(
         phi::make_ddim({input.dims()[0], input.dims()[1], hidden_size}));
     if (is_test) {
@@ -242,8 +242,8 @@ struct Layer {
         EigenMatrix<T>::Reshape(*cache_input, cache_input->dims().size() - 1);
     auto bias_ih_tmp =
         EigenMatrix<T>::From(bias_ih, phi::make_ddim({1, bias_ih.dims()[0]}));
-    const int row_num =
-        phi::product(cache_input->dims()) / cache_input->dims()[2];
+    const int row_num = static_cast<int>(phi::product(cache_input->dims()) /
+                                         cache_input->dims()[2]);
     in = in + bias_ih_tmp.broadcast(Eigen::DSizes<int, 2>(row_num, 1));
     if (is_gru(mode)) {
       // reset_gate update_gate cell_gate = [1, 1, 0]
@@ -279,8 +279,8 @@ struct Layer {
         mask_tensor, phi::make_ddim({mask_tensor.dims()[1], 1}));
     auto pre_h = EigenMatrix<T>::Reshape(*init_h, init_h->dims().size() - 1);
     auto curr_h = EigenMatrix<T>::Reshape(*last_h, last_h->dims().size() - 1);
-    auto mask_broadcast =
-        mask.broadcast(Eigen::DSizes<int, 2>(1, output->dims()[2]));
+    auto mask_broadcast = mask.broadcast(
+        Eigen::DSizes<int, 2>(1, static_cast<int>(output->dims()[2])));
     curr_h.device(place) = out * mask_broadcast + pre_h * (1 - mask_broadcast);
     out.device(place) = out * mask_broadcast;
 
@@ -332,7 +332,7 @@ struct Layer {
         is_reverse = true;
       }
     }
-    const int time_step = input->dims()[0];
+    const int time_step = static_cast<int>(input->dims()[0]);
     this->preprocess(dev_ctx,
                      *input,
                      vec[0 + offset * 4],
@@ -532,7 +532,7 @@ struct Layer {
         is_reverse = true;
       }
     }
-    const int time_step = input->dims()[0];
+    const int time_step = static_cast<int>(input->dims()[0]);
     this->preprocess(dev_ctx,
                      *input,
                      vec[0 + offset * 4],
@@ -706,7 +706,7 @@ struct SingleLayer : public Layer<T, CellType> {
                   DenseTensor* cell_value,
                   DenseTensor* cell_act_value,
                   const std::string& mode,
-                  bool is_test) {
+                  bool is_test) override {
     this->RunIter(dev_ctx,
                   input,
                   vec,
@@ -745,13 +745,13 @@ struct BidirLayer : public Layer<T, CellType> {
                   DenseTensor* cell_value,
                   DenseTensor* cell_act_value,
                   const std::string& mode,
-                  bool is_test) {
+                  bool is_test) override {
     std::vector<DenseTensor> output_vec(2);
     DenseTensor forward_input_w, forward_cell_value, forward_cell_act_value;
     DenseTensor backward_input_w, backward_cell_value, backward_cell_act_value;
-    int time_step = input->dims()[0];
-    int batch_size = input->dims()[1];
-    int hidden_size = output->dims()[2];
+    int time_step = static_cast<int>(input->dims()[0]);
+    int batch_size = static_cast<int>(input->dims()[1]);
+    int hidden_size = static_cast<int>(output->dims()[2]);
     for (int i = 0; i < 2; ++i) {
       output_vec[i].Resize({time_step, batch_size, hidden_size / 2});
       dev_ctx.Alloc<T>(&output_vec[i]);

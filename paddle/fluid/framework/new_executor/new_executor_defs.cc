@@ -37,7 +37,7 @@ VariableScope::VariableScope(Scope* scope) {
           "You have passed a nullptr to construct VariableScope."));
 }
 
-VariableScope::~VariableScope() {}
+VariableScope::~VariableScope() = default;
 
 Scope* VariableScope::GetMutableScope() const { return scope_; }
 
@@ -92,7 +92,7 @@ void VariableScope::AddVar(const std::string& name,
                            framework::VarDesc* var_desc) {
   if (!HasVar(name)) {
     auto id = VarSize();
-    name2id_[name] = id;
+    name2id_[name] = static_cast<int>(id);
     vec_meta_info_.emplace_back(0, var_desc);
     if (local_scope_ != nullptr) {
       var_list_.push_back(local_scope_->FindVar(name));
@@ -152,10 +152,18 @@ void VariableScope::CheckExist(const std::string& name) const {
 Instruction::Instruction(size_t id,
                          OpFuncNode&& op_func_node,
                          const platform::DeviceContext& dev_ctx)
-    : is_artificial_(op_func_node.operator_base_->Type() == "depend"),
+    : is_artificial_(false),
       id_(id),
       op_func_node_(op_func_node),
       dev_ctx_(dev_ctx) {
+  if (op_func_node.operator_base_ != nullptr &&
+      op_func_node.operator_base_->Type() == "depend") {
+    is_artificial_ = true;
+  }
+
+  if (op_func_node_.phi_kernel_ != nullptr) {
+    pre_define_context_ = true;
+  }
   PADDLE_ENFORCE_GE(id,
                     0,
                     platform::errors::PreconditionNotMet(
@@ -216,6 +224,10 @@ OperatorBase* Instruction::OpBase() const {
       op_base,
       platform::errors::PreconditionNotMet("op_base shall not be nullptr."));
   return op_base.get();
+}
+
+bool Instruction::OpBaseValid() const {
+  return op_func_node_.operator_base_ != nullptr;
 }
 
 void Instruction::AddGCCheckVar(size_t id) { gc_check_vars_.push_back(id); }

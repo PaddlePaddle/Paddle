@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/fill_diagonal_tensor_grad_kernel.h"
+#include <array>
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -26,7 +27,7 @@ void FillDiagonalTensorGradKernel(const Context& ctx,
                                   int dim1,
                                   int dim2,
                                   DenseTensor* x_grad) {
-  auto matrows = 1;
+  int matrows = 1;
 
   if (x_grad) {
     auto* data = ctx.template Alloc<T>(x_grad);
@@ -34,14 +35,21 @@ void FillDiagonalTensorGradKernel(const Context& ctx,
     auto dx_dims = x_grad->dims();
     for (int i = 0; i < dx_dims.size(); i++) {
       if (i != dim1 && i != dim2) {
-        matrows *= dx_dims[i];
+        matrows *= static_cast<int>(dx_dims[i]);
       }
     }
 
-    int64_t new_dims[2], strides[2];
+    std::array<int64_t, 2> new_dims;
+    std::array<int64_t, 2> strides;
     std::vector<int64_t> matdim;
     matdim.resize(matrows);
-    CalMatDims(dx_dims, dim1, dim2, &offset, new_dims, strides, matdim.data());
+    CalMatDims(dx_dims,
+               dim1,
+               dim2,
+               &offset,
+               new_dims.data(),
+               strides.data(),
+               matdim.data());
 
     auto size = x_grad->numel();
     phi::Copy(ctx, out_grad, ctx.GetPlace(), false, x_grad);

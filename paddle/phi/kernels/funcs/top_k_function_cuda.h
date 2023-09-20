@@ -54,6 +54,15 @@ struct radix_key_codec_base<phi::dtype::float16>
 template <>
 struct radix_key_codec_base<phi::dtype::bfloat16>
     : radix_key_codec_integral<phi::dtype::bfloat16, uint16_t> {};
+
+#if HIP_VERSION >= 50400000
+template <>
+struct float_bit_mask<phi::dtype::float16> : float_bit_mask<rocprim::half> {};
+
+template <>
+struct float_bit_mask<phi::dtype::bfloat16>
+    : float_bit_mask<rocprim::bfloat16> {};
+#endif
 }  // namespace detail
 }  // namespace rocprim
 namespace cub = hipcub;

@@ -16,19 +16,19 @@ import inspect
 from os import path
 
 import paddle
-from paddle.fluid.proto import framework_pb2
+from paddle.base.proto import framework_pb2
 
-from ...fluid import core, unique_name
-from ...fluid.framework import OpProtoHolder
+from ...base import core, unique_name
+from ...base.framework import OpProtoHolder
 
 try:
-    from paddle.fluid.proto import pass_desc_pb2
+    from paddle.base.proto import pass_desc_pb2
 except ModuleNotFoundError:
     import sys
 
-    fluid_path = path.dirname(__file__) + '/../../fluid'
-    sys.path.append(path.join(fluid_path, 'proto'))
-    from paddle.fluid.proto import pass_desc_pb2
+    base_path = path.dirname(__file__) + '/../../base'
+    sys.path.append(path.join(base_path, 'proto'))
+    from paddle.base.proto import pass_desc_pb2
 
 
 class RegisterPassHelper:
@@ -314,6 +314,36 @@ class PassDesc:
             return attr
 
     class OpHelper:
+        def _to_readable_code(self, skip_op_callstack=True):
+            assert isinstance(
+                skip_op_callstack, bool
+            ), "skip_op_callstack parameter's type is error, expect bool, received {}".format(
+                type(skip_op_callstack)
+            )
+            outputs_str = "{"
+            outputs_str += ", ".join(
+                [f"{k}={v}" for k, v in self._outputs.items()]
+            )
+            outputs_str += "}"
+
+            inputs_str = "{"
+            inputs_str += ", ".join(
+                [f"{k}={v}" for k, v in self._inputs.items()]
+            )
+            inputs_str += "}"
+
+            attrs_str = "{"
+            attrs_str += ", ".join([f"{k}={v}" for k, v in self._attrs.items()])
+            attrs_str += "}"
+
+            op_str = "{outputs} = {op_type}(inputs={inputs}, {attrs})".format(
+                outputs=outputs_str,
+                op_type=self._type,
+                inputs=inputs_str,
+                attrs=attrs_str,
+            )
+            return op_str
+
         def __init__(self, type=None):
             self._type = type
 
@@ -439,16 +469,16 @@ def RegisterPass(function=None, input_specs={}):
     Examples:
         .. code-block:: python
 
-        import paddle
-        from paddle.fluid.ir import RegisterPass
+            >>> import paddle
+            >>> from paddle.base.ir import RegisterPass
 
-        @RegisterPass
-        def multi_add_to_addn():
-            def pattern(x, y, z):
-                return paddle.add(paddle.add(x, y), z)
-            def replace(x, y, z):
-                return paddle.add_n([x, y, z])
-            return pattern, replace
+            >>> @RegisterPass
+            >>> def multi_add_to_addn():
+            ...    def pattern(x, y, z):
+            ...        return paddle.add(paddle.add(x, y), z)
+            ...    def replace(x, y, z):
+            ...        return paddle.add_n([x, y, z])
+            ...    return pattern, replace
     """
 
     def _is_pass_pair(check_pair):

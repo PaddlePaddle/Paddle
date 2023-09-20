@@ -30,23 +30,25 @@ namespace operators {
 
 using StepScopeVar = std::vector<framework::Scope *>;
 
-const char RecurrentBase::kInputs[] = "inputs";
-const char RecurrentBase::kInitialStates[] = "initial_states";
-const char RecurrentBase::kParameters[] = "parameters";
-const char RecurrentBase::kOutputs[] = "outputs";
-const char RecurrentBase::kStepScopes[] = "step_scopes";
-const char RecurrentBase::kHasStates[] = "has_states";
-const char RecurrentBase::kExStates[] = "ex_states";
-const char RecurrentBase::kStates[] = "states";
-const char RecurrentBase::kStepBlock[] = "sub_block";
-const char RecurrentBase::kReverse[] = "reverse";
-const char RecurrentBase::kIsTrain[] = "is_train";
-const char RecurrentBase::kSkipEagerDeletionVars[] = "skip_eager_deletion_vars";
+const char RecurrentBase::kInputs[] = "inputs";                 // NOLINT
+const char RecurrentBase::kInitialStates[] = "initial_states";  // NOLINT
+const char RecurrentBase::kParameters[] = "parameters";         // NOLINT
+const char RecurrentBase::kOutputs[] = "outputs";               // NOLINT
+const char RecurrentBase::kStepScopes[] = "step_scopes";        // NOLINT
+const char RecurrentBase::kHasStates[] = "has_states";          // NOLINT
+const char RecurrentBase::kExStates[] = "ex_states";            // NOLINT
+const char RecurrentBase::kStates[] = "states";                 // NOLINT
+const char RecurrentBase::kStepBlock[] = "sub_block";           // NOLINT
+const char RecurrentBase::kReverse[] = "reverse";               // NOLINT
+const char RecurrentBase::kIsTrain[] = "is_train";              // NOLINT
+const char RecurrentBase::kSkipEagerDeletionVars[] =            // NOLINT
+    "skip_eager_deletion_vars";
 #define GRAD_SUFFIX "@GRAD"
-const char RecurrentBase::kInputGrads[] = "inputs" GRAD_SUFFIX;
-const char RecurrentBase::kOutputGrads[] = "outputs" GRAD_SUFFIX;
-const char RecurrentBase::kParamGrads[] = "parameters" GRAD_SUFFIX;
-const char RecurrentBase::kInitStateGrads[] = "initial_states" GRAD_SUFFIX;
+const char RecurrentBase::kInputGrads[] = "inputs" GRAD_SUFFIX;      // NOLINT
+const char RecurrentBase::kOutputGrads[] = "outputs" GRAD_SUFFIX;    // NOLINT
+const char RecurrentBase::kParamGrads[] = "parameters" GRAD_SUFFIX;  // NOLINT
+const char RecurrentBase::kInitStateGrads[] =                        // NOLINT
+    "initial_states" GRAD_SUFFIX;
 
 static void ClearStepScopes(const platform::DeviceContext &dev_ctx,
                             framework::Scope *parent_scope,
@@ -243,18 +245,18 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
 
     // Link outside::input --> inside::input
     //   inside::input = outside::input[seq_offset: seq_offset+1]
-    LinkTensorWithCallback(
-        scope,
-        Inputs(kInputs),
-        &cur_scope,
-        Inputs(kInputs),
-        [&seq_offset](const phi::DenseTensor &outside,
-                      phi::DenseTensor *inside) {
-          inside->ShareDataWith(outside.Slice(seq_offset, seq_offset + 1));
-          auto dims = phi::vectorize(inside->dims());
-          dims.erase(dims.begin());
-          inside->Resize(phi::make_ddim(dims));
-        });
+    LinkTensorWithCallback(scope,
+                           Inputs(kInputs),
+                           &cur_scope,
+                           Inputs(kInputs),
+                           [&seq_offset](const phi::DenseTensor &outside,
+                                         phi::DenseTensor *inside) {
+                             inside->ShareDataWith(outside.Slice(
+                                 seq_offset, seq_offset + 1));  // NOLINT
+                             auto dims = phi::vectorize(inside->dims());
+                             dims.erase(dims.begin());
+                             inside->Resize(phi::make_ddim(dims));
+                           });
 
     if (has_state) {
       if (i == 0) {
@@ -275,7 +277,8 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
 
     // Link inside::output -> outside::output
     //   outside::output[seq_offset: seq_offset + 1] = inside::output
-    executor.CreateVariables(ctx->prog_, &cur_scope, ctx->block_id_);
+    executor.CreateVariables(
+        ctx->prog_, &cur_scope, static_cast<int>(ctx->block_id_));
 
     // Linked now, execute!
     executor.RunPreparedContext(ctx.get(),
@@ -295,7 +298,8 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
             dst_tensor->Resize(PrependDims(seq_len, src_tensor.dims()));
             dst_tensor->mutable_data(place, src_tensor.dtype());
 
-            auto dst_out = dst_tensor->Slice(seq_offset, seq_offset + 1);
+            auto dst_out =
+                dst_tensor->Slice(seq_offset, seq_offset + 1);  // NOLINT
             // Explicit copy output since the local RNN scope can be destroyed
             // early.
             framework::TensorCopy(src_tensor, place, dev_ctx, &dst_out);
@@ -308,7 +312,8 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
           Outputs(kOutputs),
           [&](const phi::DenseTensor &src_tensor,
               phi::DenseTensor *dst_tensor) {
-            auto dst_out = dst_tensor->Slice(seq_offset, seq_offset + 1);
+            auto dst_out =
+                dst_tensor->Slice(seq_offset, seq_offset + 1);  // NOLINT
             framework::TensorCopy(src_tensor, place, dev_ctx, &dst_out);
           });
     }
@@ -376,7 +381,8 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
         &cur_scope,
         Inputs(kOutputGrads),
         [&](const phi::DenseTensor &outside, phi::DenseTensor *inside) {
-          inside->ShareDataWith(outside.Slice(seq_offset, seq_offset + 1));
+          inside->ShareDataWith(
+              outside.Slice(seq_offset, seq_offset + 1));  // NOLINT
           auto dims = phi::vectorize(inside->dims());
           dims.erase(dims.begin());
           inside->Resize(phi::make_ddim(dims));
@@ -427,7 +433,8 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
 
     // Link inside::output -> outside::output
     //   outside::output[seq_offset: seq_offset + 1] = inside::output
-    executor.CreateVariables(ctx->prog_, &cur_scope, ctx->block_id_);
+    executor.CreateVariables(
+        ctx->prog_, &cur_scope, static_cast<int>(ctx->block_id_));
     if (step_id > 0) {
       LinkTensorWithCallback(
           scope,
@@ -441,7 +448,7 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
               return;
             }
             phi::DenseTensor src_slice =
-                src_tensor.Slice(seq_offset, seq_offset + 1);
+                src_tensor.Slice(seq_offset, seq_offset + 1);  // NOLINT
             dst_tensor->ShareDataWith(src_slice);
           },
           true /*is_backward*/);
@@ -530,7 +537,7 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
             outside->Resize(PrependDims(seq_len, inside.dims()));
             outside->mutable_data(place, inside.dtype());
 
-            auto dst = outside->Slice(seq_offset, seq_offset + 1);
+            auto dst = outside->Slice(seq_offset, seq_offset + 1);  // NOLINT
             framework::TensorCopy(inside, place, dev_ctx, &dst);
           },
           true /*is_backward*/);
@@ -642,7 +649,8 @@ The ex-state means the state value in the ex-timestep or the previous time step
             RecurrentBase::kInitStateGrads));
     AddAttr<framework::BlockDesc *>(RecurrentBase::kStepBlock,
                                     "The step block inside RNN");
-    AddAttr<bool>(RecurrentBase::kReverse, R"DOC(Calculate RNN reversely or not.
+    AddAttr<bool>(RecurrentBase::kReverse,
+                  R"DOC(Calculate RNN reversely or not.
 By default reverse=False
 
 Assume the input data is [A, B, C, D]

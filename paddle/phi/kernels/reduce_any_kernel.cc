@@ -31,10 +31,16 @@ void AnyKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(any, CPU, ALL_LAYOUT, phi::AnyKernel, bool) {}
+PD_REGISTER_KERNEL(
+    any, CPU, ALL_LAYOUT, phi::AnyKernel, float, double, int64_t, int, bool) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_KERNEL(any, GPU, ALL_LAYOUT, phi::AnyKernel, bool) {}
+PD_REGISTER_KERNEL(
+    any, GPU, ALL_LAYOUT, phi::AnyKernel, float, double, int, int64_t, bool) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}
 #endif
 
 #if defined(PADDLE_WITH_XPU_KP) && !defined(PADDLE_WITH_XPU)

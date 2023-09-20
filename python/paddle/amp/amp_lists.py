@@ -12,18 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# The set of ops that support fp16 calculation and are considered numerically-
-# safe and performance-critical. These ops are always converted to fp16.
-FP16_WHITE_LIST = {
+# The set of ops that support fp16 and bf16 calculation and are considered numerically-
+# safe and performance-critical. These ops are always converted to fp16 or bf16.
+WHITE_LIST = {
     'conv2d',
     'einsum',
     'matmul',
     'matmul_v2',
     'max_pool2d_with_index',
     'mul',
+    'fused_gemm_epilogue',
+}
+
+# The set of ops that support fp16, and bf16 was unsupported.
+ONLY_FP16_WHITE_LIST = {
     'fake_quantize_dequantize_abs_max',
     'fake_quantize_dequantize_moving_average_abs_max',
+    'fused_attention',
+    'fused_feedforward',
 }
+
+FP16_WHITE_LIST = WHITE_LIST | ONLY_FP16_WHITE_LIST
 
 # The set of ops that support fp16 calculation and are considered numerically-
 # dangerous and whose effects may also be observed in downstream ops.
@@ -75,8 +84,8 @@ FP16_BLACK_LIST = {
     'margin_cross_entropy',
 }
 
-# FP16 performance of grad op is worse than that of FP32. Use FP32 by default.
-FP16_EXTRA_BLACK_LIST = {
+# FP16/BF16 performance of grad op is worse than that of FP32. Use FP32 by default.
+EXTRA_BLACK_LIST = {
     'linear_interp_v2',
     'nearest_interp_v2',
     'bilinear_interp_v2',
@@ -87,8 +96,8 @@ FP16_EXTRA_BLACK_LIST = {
     'scatter',
 }
 
-BF16_WHITE_LIST = {'conv2d', 'einsum', 'matmul_v2'}
-BF16_BLACK_LIST = set()
+BF16_WHITE_LIST = WHITE_LIST
+BF16_BLACK_LIST = FP16_BLACK_LIST
 
 
 # At OD level, ops in WHITE_LIST will use FP16/BF16 and the others will use FP32.
@@ -112,9 +121,13 @@ def black_list():
     black_list = {
         "float16": {
             "OD": set(),
-            "O1": FP16_BLACK_LIST | FP16_EXTRA_BLACK_LIST,
-            "O2": FP16_EXTRA_BLACK_LIST,
+            "O1": FP16_BLACK_LIST | EXTRA_BLACK_LIST,
+            "O2": EXTRA_BLACK_LIST,
         },
-        "bfloat16": {"OD": set(), "O1": BF16_BLACK_LIST, "O2": set()},
+        "bfloat16": {
+            "OD": set(),
+            "O1": BF16_BLACK_LIST | EXTRA_BLACK_LIST,
+            "O2": EXTRA_BLACK_LIST,
+        },
     }
     return black_list

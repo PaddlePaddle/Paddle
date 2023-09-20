@@ -149,7 +149,7 @@ struct YoloBoxPattern : public PatternBase {
 };
 }  // namespace patterns
 
-YoloBoxFusePass::YoloBoxFusePass() {}
+YoloBoxFusePass::YoloBoxFusePass() = default;
 
 void YoloBoxFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(

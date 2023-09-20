@@ -103,11 +103,11 @@ limitations under the License. */
 #include "paddle/fluid/pybind/global_value_getter_setter.h"
 #include "paddle/fluid/pybind/gloo_context_py.h"
 #include "paddle/fluid/pybind/gloo_wrapper_py.h"
+#include "paddle/fluid/pybind/graph.h"
 #include "paddle/fluid/pybind/heter_wrapper_py.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/io.h"
-#include "paddle/fluid/pybind/ir.h"
 #include "paddle/fluid/pybind/metrics_py.h"
 #include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
@@ -394,8 +394,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
     **Note**:
     Examples:
         .. code-block:: python
-          import paddle.fluid as fluid
-          xpu_place = fluid.XPUPlace(0)
+          import paddle.base as base
+          xpu_place = base.XPUPlace(0)
         )DOC");
   g_xpuplace_pytype = reinterpret_cast<PyTypeObject *>(xpuplace.ptr());
   xpuplace
@@ -510,7 +510,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
   m.def("is_float16_supported",
         [](const platform::CPUPlace &place) -> bool { return false; });
   m.def("is_bfloat16_supported", [](const platform::CPUPlace &place) -> bool {
-#ifndef PADDLE_WITH_MKLDNN
+#ifndef PADDLE_WITH_DNNL
     return false;
 #else
     if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_core))
@@ -640,6 +640,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .def("ipu_device_id", [](platform::Place &self) { return self.device; })
       .def("custom_device_id",
            [](platform::Place &self) { return self.device; })
+      .def("custom_device_type",
+           [](platform::Place &self) { return self.GetDeviceType(); })
       .def("set_place",
            [](platform::Place &self, const platform::Place &other) {
              self = other;

@@ -17,11 +17,12 @@ import time
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 from yolov3 import YOLOv3, cfg
 
 import paddle
-from paddle import fluid
-from paddle.fluid.dygraph import to_variable
+from paddle import base
+from paddle.base.dygraph import to_variable
 
 paddle.enable_static()
 random.seed(0)
@@ -82,10 +83,10 @@ def train(to_static):
     random.seed(0)
     np.random.seed(0)
 
-    place = fluid.CUDAPlace(0) if cfg.use_gpu else fluid.CPUPlace()
-    with fluid.dygraph.guard(place):
-        fluid.default_startup_program().random_seed = 1000
-        fluid.default_main_program().random_seed = 1000
+    place = base.CUDAPlace(0) if cfg.use_gpu else base.CPUPlace()
+    with base.dygraph.guard(place):
+        base.default_startup_program().random_seed = 1000
+        base.default_main_program().random_seed = 1000
         model = YOLOv3(3, is_train=True)
 
         boundaries = cfg.lr_steps
@@ -94,22 +95,21 @@ def train(to_static):
         learning_rate = cfg.learning_rate
         values = [learning_rate * (gamma**i) for i in range(step_num + 1)]
 
-        lr = fluid.dygraph.PiecewiseDecay(
-            boundaries=boundaries, values=values, begin=0
+        lr = paddle.optimizer.lr.PiecewiseDecay(
+            boundaries=boundaries, values=values
         )
 
-        lr = fluid.layers.linear_lr_warmup(
+        lr = paddle.optimizer.lr.LinearWarmup(
             learning_rate=lr,
             warmup_steps=cfg.warm_up_iter,
             start_lr=0.0,
             end_lr=cfg.learning_rate,
         )
-
-        optimizer = fluid.optimizer.Momentum(
+        optimizer = paddle.optimizer.Momentum(
             learning_rate=lr,
-            regularization=paddle.regularizer.L2Decay(cfg.weight_decay),
+            weight_decay=paddle.regularizer.L2Decay(cfg.weight_decay),
             momentum=cfg.momentum,
-            parameter_list=model.parameters(),
+            parameters=model.parameters(),
         )
 
         start_time = time.time()
@@ -166,6 +166,7 @@ def train(to_static):
 
 
 class TestYolov3(unittest.TestCase):
+    @test_and_compare_with_new_ir(False)
     def test_dygraph_static_same_loss(self):
         dygraph_loss = train(to_static=False)
         static_loss = train(to_static=True)

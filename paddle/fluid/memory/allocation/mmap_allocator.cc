@@ -17,8 +17,8 @@
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 
 #include <fcntl.h>
-#include <stdlib.h>
 #include <sys/mman.h>
+#include <cstdlib>
 
 #include <atomic>
 #include <random>
@@ -269,7 +269,7 @@ std::shared_ptr<MemoryMapWriterAllocation> AllocateMemoryMapWriterAllocation(
                     platform::errors::Unavailable(
                         "Fruncate a file to a specified length failed!"));
 
-  void *ptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  void *ptr = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   PADDLE_ENFORCE_NE(ptr,
                     MAP_FAILED,
                     platform::errors::Unavailable(
@@ -345,10 +345,11 @@ int MemoryMapAllocationPool::FindFromCache(const int &flag,
                                            const std::string &file_name,
                                            bool check_refcount) {
   std::lock_guard<std::mutex> guard(mtx_);
-  for (size_t idx = 0; idx < memory_map_allocations_.size(); idx++) {
+  for (int idx = 0; idx < static_cast<int>(memory_map_allocations_.size());
+       idx++) {
     if (memory_map_allocations_.at(idx).flags_ == flag &&
         memory_map_allocations_.at(idx).data_size_ == data_size) {
-      if (file_name == "" ||
+      if (file_name.empty() ||
           memory_map_allocations_.at(idx).file_name_ == file_name) {
         if (!check_refcount || reinterpret_cast<CountInfo *>(
                                    memory_map_allocations_.at(idx).mmap_ptr_)
@@ -391,7 +392,7 @@ void MemoryMapAllocationPool::Clear() {
   memory_map_allocations_.clear();
 }
 
-MemoryMapAllocationPool::~MemoryMapAllocationPool() { Clear(); }
+MemoryMapAllocationPool::~MemoryMapAllocationPool() { Clear(); }  // NOLINT
 
 }  // namespace allocation
 }  // namespace memory

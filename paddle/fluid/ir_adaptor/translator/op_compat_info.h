@@ -13,13 +13,12 @@
 // limitations under the License.
 
 #include <functional>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 
 #include "glog/logging.h"
-
-#include "paddle/fluid/ir_adaptor/translator/utils.h"
 
 #pragma once
 
@@ -27,6 +26,9 @@ namespace paddle {
 namespace translator {
 
 using MutableAttributeInfo = std::vector<std::string>;
+
+static constexpr char kPhiGradSuffix[] = "_grad";
+static constexpr char kFluidVarGradSuffix[] = "@GRAD";
 
 class OpNameNormalizer {
  private:
@@ -74,37 +76,77 @@ class OpNameNormalizer {
     return op_mutable_attribute_infos.at(op_type).at(arg_name);
   }
 
-  std::string GetLegacyArgName(const std::string& op_type,
-                               const std::string& arg_name) {
-    bool is_grad_op = (op_type.find("grad") != std::string::npos);
-    bool is_grad_arg = (arg_name.find("grad") != std::string::npos);
-    if (is_grad_op && is_grad_arg) {
-      std::string target = "_grad";
-      std::string data = "@GRAD";
-
-      size_t first_grad_pos = arg_name.find_first_of(target);
-      std::string legacy_name =
-          this->GetLegacyArgName(op_type, arg_name.substr(0, first_grad_pos));
-      legacy_name += arg_name.substr(first_grad_pos);
-      for (size_t pos = 0;
-           legacy_name.npos != (pos = legacy_name.find(target, pos));
-           pos += data.length()) {
-        legacy_name.replace(pos, target.length(), data);
-      }
-      return legacy_name;
-    }
+  std::optional<std::string> GetDirectMapping(const std::string& op_type,
+                                              const std::string& arg_name) {
     if (op_arg_name_mappings.find(op_type) == op_arg_name_mappings.end()) {
-      return UnderscoreToCamelCase(arg_name);
+      return {};
     }
     auto& arg_mappings = op_arg_name_mappings[op_type];
     if (arg_mappings.find(arg_name) == arg_mappings.end()) {
-      return UnderscoreToCamelCase(arg_name);
+      return {};
     }
     return arg_mappings.at(arg_name);
   }
 
+  std::optional<std::string> GetGradNameMapping(const std::string& op_type,
+                                                const std::string& arg_name) {
+    std::string target = kPhiGradSuffix;
+    std::string data = kFluidVarGradSuffix;
+
+    size_t first_grad_pos = arg_name.find(target);
+    size_t type_pos = op_type.find(target);
+    std::string legacy_name = arg_name.substr(0, first_grad_pos);
+    std::optional<std::string> ret =
+        this->GetDirectMapping(op_type.substr(0, type_pos), legacy_name);
+    if (ret) {
+      legacy_name = ret.value();
+    }
+    legacy_name = legacy_name + arg_name.substr(first_grad_pos);
+    for (size_t pos = 0;
+         legacy_name.npos != (pos = legacy_name.find(target, pos));
+         pos += data.length()) {
+      legacy_name.replace(pos, target.length(), data);
+    }
+    return legacy_name;
+  }
+
+  std::string GetLegacyArgName(const std::string& op_type,
+                               const std::string& arg_name) {
+    if (auto ret = GetDirectMapping(op_type, arg_name)) {
+      VLOG(10) << "[" << op_type << "] found " << ret.value();
+      return ret.value();
+    }
+
+    bool is_grad_op = (op_type.find(kPhiGradSuffix) != std::string::npos);
+    bool is_grad_arg = (arg_name.find(kPhiGradSuffix) != std::string::npos);
+
+    if (is_grad_op && is_grad_arg) {
+      if (auto ret = GetGradNameMapping(op_type, arg_name)) {
+        VLOG(10) << "[" << op_type << "] found " << ret.value();
+        return ret.value();
+      }
+    } else if (is_grad_op && !is_grad_arg) {
+      // backwward op using forward args: like trace_grad using forward input
+      size_t type_pos = op_type.find(kPhiGradSuffix);
+      if (auto ret = GetDirectMapping(op_type.substr(0, type_pos), arg_name)) {
+        VLOG(10) << "[" << op_type << "] found " << ret.value();
+        return ret.value();
+      }
+    }
+
+    VLOG(10) << "[" << op_type << "] not found mapping for " << arg_name;
+    return arg_name;
+  }
+
   std::string GetLegacyAttrName(const std::string& op_type,
                                 const std::string& arg_name) {
+    size_t type_pos = op_type.find(kPhiGradSuffix);
+    if (type_pos != std::string::npos) {
+      std::string legacy_name =
+          this->GetLegacyAttrName(op_type.substr(0, type_pos), arg_name);
+      return legacy_name;
+    }
+
     if (op_arg_name_mappings.find(op_type) == op_arg_name_mappings.end()) {
       VLOG(10) << "[" << op_type << "] not found";
       return arg_name;

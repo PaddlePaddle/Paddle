@@ -15,12 +15,12 @@
 import os
 
 import paddle
-from paddle.fluid import core, unique_name
-from paddle.fluid.executor import global_scope
-from paddle.fluid.framework import Variable, name_scope
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.optimizer import Optimizer
+from paddle.base import core, unique_name
+from paddle.base.executor import global_scope
+from paddle.base.framework import Variable, name_scope
+from paddle.base.layer_helper import LayerHelper
 from paddle.nn import ClipGradByGlobalNorm
+from paddle.optimizer import Optimizer
 
 
 def init_communicator(block, rank, ranks, ring_id):
@@ -77,7 +77,12 @@ def init_communicator(block, rank, ranks, ring_id):
         type='c_comm_init',
         inputs={'X': comm_id_var},
         outputs={},
-        attrs={'nranks': len(ranks), 'rank': local_rank, 'ring_id': ring_id},
+        attrs={
+            'nranks': len(ranks),
+            'rank': local_rank,
+            'ring_id': ring_id,
+            'endpoints': ','.join(eps),
+        },
     )
     tmp_var = block.create_var(name=unique_name.generate('tmp'))
     block.append_op(

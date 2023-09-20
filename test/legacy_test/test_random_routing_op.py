@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.base import core
 from paddle.distributed.models.moe import utils
-from paddle.fluid import core
 
 
 def random_routing(topk_idx, topk_value, prob, topk=2):
@@ -59,7 +59,7 @@ class TestNumberCountAPIFp32(unittest.TestCase):
         value = paddle.to_tensor(self.topk_value)
         prob = paddle.to_tensor(self.prob)
         out = utils._random_routing(x, value, prob)
-        assert np.allclose(out.numpy(), self.out)
+        np.testing.assert_allclose(out.numpy(), self.out)
 
 
 @unittest.skipIf(

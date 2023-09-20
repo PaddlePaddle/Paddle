@@ -14,7 +14,6 @@ limitations under the License. */
 #include <cstdlib>
 #include <string>
 
-#include "gflags/gflags.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
@@ -23,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
+#include "paddle/utils/flags.h"
 
 namespace paddle {
 namespace platform {
@@ -98,7 +98,7 @@ phi::backends::xpu::XPUVersion get_xpu_version(int dev_id) {
 size_t XPUMinChunkSize() { return 1 << 6; }
 
 static void RaiseNonOutOfMemoryError(int status) {
-  if (status == XPUERR_NOMEM) {
+  if (-1 * status == XPUERR_NOMEM) {
     status = XPU_SUCCESS;
   }
   PADDLE_ENFORCE_XRE_SUCCESS(status);
@@ -109,7 +109,7 @@ class RecordedXPUMallocHelper {
   explicit RecordedXPUMallocHelper(int dev_id, uint64_t limit_size = 0)
       : dev_id_(dev_id), limit_size_(limit_size) {
     if (NeedRecord()) {
-      mtx_.reset(new std::mutex());
+      mtx_ = std::make_unique<std::mutex>();
     }
   }
 

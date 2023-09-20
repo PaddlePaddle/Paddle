@@ -92,5 +92,10 @@ NO_FP16_CHECK_GRAD_OP_LIST = [
 
 NO_FP16_COMPARED_WITH_FP32_OP_LIST = [
     'fake_quantize_moving_average_abs_max',
+    'fused_scale_bias_relu_conv_bnstats',
     'p_norm',
+]
+
+NO_BF16_COMPARED_WITH_FP32_OP_LIST = [
+    'dequantize',
 ]

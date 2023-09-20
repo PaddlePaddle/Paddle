@@ -16,7 +16,7 @@ import types
 import warnings
 
 import paddle
-from paddle.fluid import (
+from paddle.base import (
     core,
     default_main_program,
     default_startup_program,
@@ -37,10 +37,10 @@ from .function_overload import FunctionType, overload
 def _set_multi_precision(optimizer, multi_precision):
     if not isinstance(
         optimizer,
-        (paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer),
+        (paddle.optimizer.Optimizer),
     ):
         raise RuntimeError(
-            "Current AMP training level is O2, optimizer is expected to be paddle.optimizer.Optimizer or paddle.fluid.optimizer.Optimizer, but receive {}.".format(
+            "Current AMP training level is O2, optimizer is expected to be paddle.optimizer.Optimizer, but receive {}.".format(
                 type(optimizer)
             )
         )
@@ -316,47 +316,48 @@ class OptimizerWithMixedPrecision:
         Examples:
             .. code-block:: python
 
-                import numpy as np
-                import paddle
-                import paddle.nn.functional as F
-                paddle.enable_static()
+                >>> import numpy as np
+                >>> import paddle
+                >>> import paddle.nn.functional as F
+                >>> paddle.enable_static()
 
-                def run_example_code():
-                    place = paddle.CUDAPlace(0)
-                    exe = paddle.static.Executor(place)
-                    data = paddle.static.data(name='X', shape=[None, 1, 28, 28], dtype='float32')
-                    conv2d = paddle.static.nn.conv2d(input=data, num_filters=6, filter_size=3)
-                    # 1) Use fp16_guard to control the range of fp16 kernels used.
-                    with paddle.static.amp.fp16_guard():
-                        bn = paddle.static.nn.batch_norm(input=conv2d, act="relu")
-                        pool = F.max_pool2d(bn, kernel_size=2, stride=2)
-                        hidden = paddle.static.nn.fc(pool, size=10)
-                        loss = paddle.mean(hidden)
-                    # 2) Create the optimizer and set `multi_precision` to True.
-                    # Setting `multi_precision` to True can avoid the poor accuracy
-                    # or the slow convergence in a way.
-                    optimizer = paddle.optimizer.Momentum(learning_rate=0.01, multi_precision=True)
-                    # 3) These ops in `custom_black_list` will keep in the float32 computation type.
-                    amp_list = paddle.static.amp.CustomOpLists(
-                        custom_black_list=['pool2d'])
-                    # 4) The entry of Paddle AMP.
-                    # Enable pure fp16 training by setting `use_pure_fp16` to True.
-                    optimizer = paddle.static.amp.decorate(
-                        optimizer,
-                        amp_list,
-                        init_loss_scaling=128.0,
-                        use_dynamic_loss_scaling=True,
-                        use_pure_fp16=True)
-                    # If you don't use the default_startup_program(), you sholud pass
-                    # your defined `startup_program` into `minimize`.
-                    optimizer.minimize(loss)
-                    exe.run(paddle.static.default_startup_program())
-                    # 5) Use `amp_init` after FP32 parameters initialization(such as `exe.run(startup_program)`).
-                    # If you want to perform the testing process, you should pass `test_program` into `amp_init`.
-                    optimizer.amp_init(place, scope=paddle.static.global_scope())
+                >>> # doctest: +REQUIRES(env:GPU)
+                >>> def run_example_code():
+                ...     place = paddle.CUDAPlace(0)
+                ...     exe = paddle.static.Executor(place)
+                ...     data = paddle.static.data(name='X', shape=[None, 1, 28, 28], dtype='float32')
+                ...     conv2d = paddle.static.nn.conv2d(input=data, num_filters=6, filter_size=3)
+                ...     # 1) Use fp16_guard to control the range of fp16 kernels used.
+                ...     with paddle.static.amp.fp16_guard():
+                ...         bn = paddle.static.nn.batch_norm(input=conv2d, act="relu")
+                ...         pool = F.max_pool2d(bn, kernel_size=2, stride=2)
+                ...         hidden = paddle.static.nn.fc(pool, size=10)
+                ...         loss = paddle.mean(hidden)
+                ...     # 2) Create the optimizer and set `multi_precision` to True.
+                ...     # Setting `multi_precision` to True can avoid the poor accuracy
+                ...     # or the slow convergence in a way.
+                ...     optimizer = paddle.optimizer.Momentum(learning_rate=0.01, multi_precision=True)
+                ...     # 3) These ops in `custom_black_list` will keep in the float32 computation type.
+                ...     amp_list = paddle.static.amp.CustomOpLists(
+                ...         custom_black_list=['pool2d'])
+                ...     # 4) The entry of Paddle AMP.
+                ...     # Enable pure fp16 training by setting `use_pure_fp16` to True.
+                ...     optimizer = paddle.static.amp.decorate(
+                ...         optimizer,
+                ...         amp_list,
+                ...         init_loss_scaling=128.0,
+                ...         use_dynamic_loss_scaling=True,
+                ...         use_pure_fp16=True)
+                ...     # If you don't use the default_startup_program(), you sholud pass
+                ...     # your defined `startup_program` into `minimize`.
+                ...     optimizer.minimize(loss)
+                ...     exe.run(paddle.static.default_startup_program())
+                ...     # 5) Use `amp_init` after FP32 parameters initialization(such as `exe.run(startup_program)`).
+                ...     # If you want to perform the testing process, you should pass `test_program` into `amp_init`.
+                ...     optimizer.amp_init(place, scope=paddle.static.global_scope())
 
-                if paddle.is_compiled_with_cuda() and len(paddle.static.cuda_places()) > 0:
-                    run_example_code()
+                >>> if paddle.is_compiled_with_cuda() and len(paddle.static.cuda_places()) > 0:
+                ...     run_example_code()
         """
         assert (
             self._train_program is not None
@@ -414,7 +415,7 @@ class OptimizerWithMixedPrecision:
             ]
         params_master_grads = []
 
-        assert isinstance(target_block, paddle.fluid.framework.Block)
+        assert isinstance(target_block, paddle.base.framework.Block)
         # create
         for p, g in param_grads:
             if g.name not in self._optimizer._master_grads.keys():
@@ -483,7 +484,7 @@ class OptimizerWithMixedPrecision:
             real_optimizer = real_optimizer.inner_opt
         if isinstance(
             real_optimizer,
-            (paddle.fluid.optimizer.Adam, paddle.optimizer.AdamW),
+            (paddle.optimizer.Adam, paddle.optimizer.AdamW),
         ):
             # NOTE(zhiqiu): Since found_inf needs to be on cpu in adam op, we
             # copy it in advance to avoid multiple time copies.
@@ -712,70 +713,74 @@ def decorate(
         An optimizer acting like a normal one but with mixed-precision training
         enabled.
 
-    Examples 1:
-            .. code-block:: python
+    Examples:
+        .. code-block:: python
+            :name: example-1
 
             # black&white list based strategy example
-            import paddle
-            import paddle.static as static
+            >>> import paddle
+            >>> import paddle.static as static
 
-            paddle.enable_static()
+            >>> paddle.enable_static()
 
-            data = static.data(name='X', shape=[None, 1], dtype='float32')
-            hidden = static.nn.fc(x=data, size=10)
-            loss = paddle.mean(hidden)
-            optimizer = paddle.optimizer.Adam(learning_rate=0.001)
+            >>> data = static.data(name='X', shape=[None, 1], dtype='float32')
+            >>> hidden = static.nn.fc(x=data, size=10)
+            >>> loss = paddle.mean(hidden)
+            >>> optimizer = paddle.optimizer.Adam(learning_rate=0.001)
 
-            mp_optimizer = static.amp.decorate(
-                    optimizer=optimizer, init_loss_scaling=8.0)
+            >>> mp_optimizer = static.amp.decorate(
+            ...         optimizer=optimizer, init_loss_scaling=8.0)
 
-            ops, param_grads = mp_optimizer.minimize(loss)
-            scaled_loss = mp_optimizer.get_scaled_loss()
+            >>> ops, param_grads = mp_optimizer.minimize(loss)
+            >>> scaled_loss = mp_optimizer.get_scaled_loss()
 
-    Examples 2:
+
         .. code-block:: python
+            :name: example-2
 
             # pure fp16 training example
-            import numpy as np
-            import paddle
-            import paddle.nn.functional as F
+            >>> import numpy as np
+            >>> import paddle
+            >>> import paddle.nn.functional as F
+            >>> paddle.enable_static()
 
-            def run_example_code():
-                place = paddle.CUDAPlace(0)
-                exe = paddle.static.Executor(place)
-                data = paddle.static.data(name='X', shape=[None, 1, 28, 28], dtype='float32')
-                conv2d = paddle.static.nn.conv2d(input=data, num_filters=6, filter_size=3)
-                # 1) Use fp16_guard to control the range of fp16 kernels used.
-                with paddle.static.amp.fp16_guard():
-                    bn = paddle.static.nn.batch_norm(input=conv2d, act="relu")
-                    pool = F.max_pool2d(bn, kernel_size=2, stride=2)
-                    hidden = paddle.static.nn.fc(pool, size=10)
-                    loss = paddle.mean(hidden)
-                # 2) Create the optimizer and set `multi_precision` to True.
-                # Setting `multi_precision` to True can avoid the poor accuracy
-                # or the slow convergence in a way.
-                optimizer = paddle.optimizer.Momentum(learning_rate=0.01, multi_precision=True)
-                # 3) These ops in `custom_black_list` will keep in the float32 computation type.
-                amp_list = paddle.static.amp.CustomOpLists(
-                    custom_black_list=['pool2d'])
-                # 4) The entry of Paddle AMP.
-                # Enable pure fp16 training by setting `use_pure_fp16` to True.
-                optimizer = paddle.static.amp.decorate(
-                    optimizer,
-                    amp_list,
-                    init_loss_scaling=128.0,
-                    use_dynamic_loss_scaling=True,
-                    use_pure_fp16=True)
-                # If you don't use the default_startup_program(), you sholud pass
-                # your defined `startup_program` into `minimize`.
-                optimizer.minimize(loss)
-                exe.run(paddle.static.default_startup_program())
-                # 5) Use `amp_init` after FP32 parameters initialization(such as `exe.run(startup_program)`).
-                # If you want to perform the testing process, you should pass `test_program` into `amp_init`.
-                optimizer.amp_init(place, scope=paddle.static.global_scope())
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> def run_example_code():
+            ...     place = paddle.CUDAPlace(0)
+            ...     exe = paddle.static.Executor(place)
+            ...     data = paddle.static.data(name='X', shape=[None, 1, 28, 28], dtype='float32')
+            ...     conv2d = paddle.static.nn.conv2d(input=data, num_filters=6, filter_size=3)
+            ...     # 1) Use fp16_guard to control the range of fp16 kernels used.
+            ...     with paddle.static.amp.fp16_guard():
+            ...         bn = paddle.static.nn.batch_norm(input=conv2d, act="relu")
+            ...         pool = F.max_pool2d(bn, kernel_size=2, stride=2)
+            ...         hidden = paddle.static.nn.fc(pool, size=10)
+            ...         loss = paddle.mean(hidden)
+            ...     # 2) Create the optimizer and set `multi_precision` to True.
+            ...     # Setting `multi_precision` to True can avoid the poor accuracy
+            ...     # or the slow convergence in a way.
+            ...     optimizer = paddle.optimizer.Momentum(learning_rate=0.01, multi_precision=True)
+            ...     # 3) These ops in `custom_black_list` will keep in the float32 computation type.
+            ...     amp_list = paddle.static.amp.CustomOpLists(
+            ...         custom_black_list=['pool2d'])
+            ...     # 4) The entry of Paddle AMP.
+            ...     # Enable pure fp16 training by setting `use_pure_fp16` to True.
+            ...     optimizer = paddle.static.amp.decorate(
+            ...         optimizer,
+            ...         amp_list,
+            ...         init_loss_scaling=128.0,
+            ...         use_dynamic_loss_scaling=True,
+            ...         use_pure_fp16=True)
+            ...     # If you don't use the default_startup_program(), you sholud pass
+            ...     # your defined `startup_program` into `minimize`.
+            ...     optimizer.minimize(loss)
+            ...     exe.run(paddle.static.default_startup_program())
+            ...     # 5) Use `amp_init` after FP32 parameters initialization(such as `exe.run(startup_program)`).
+            ...     # If you want to perform the testing process, you should pass `test_program` into `amp_init`.
+            ...     optimizer.amp_init(place, scope=paddle.static.global_scope())
 
-            if paddle.is_compiled_with_cuda() and len(paddle.static.cuda_places()) > 0:
-                run_example_code()
+            >>> if paddle.is_compiled_with_cuda() and len(paddle.static.cuda_places()) > 0:
+            ...     run_example_code()
     """
     amp_dtype = "bfloat16" if use_bf16 else "float16"
     if amp_lists is None:
@@ -811,11 +816,11 @@ def decorate(  # noqa: F811
     dtype='float16',
     master_weight=None,
     master_grad=False,
-    init_loss_scaling=2**15,
-    incr_every_n_steps=1000,
-    decr_every_n_nan_or_inf=2,
+    init_loss_scaling=2**16,
+    incr_every_n_steps=2000,
+    decr_every_n_nan_or_inf=1,
     incr_ratio=2.0,
-    decr_ratio=0.8,
+    decr_ratio=0.5,
     use_dynamic_loss_scaling=None,
     use_amp_guard=False,
     use_promote=False,
@@ -841,15 +846,15 @@ def decorate(  # noqa: F811
             during weight updating. If master_grad is False, in O2 level optimizer
             will not use master grad. Default is False.
         init_loss_scaling(float, optional): The initial loss scaling factor.
-            Default is 32768.
+            Default is 65536.
         incr_every_n_steps(int, optional): Increases loss scaling every n
-            consecutive steps with finite gradients. Default is 1000.
+            consecutive steps with finite gradients. Default is 2000.
         decr_every_n_nan_or_inf(int, optional): Decreases loss scaling every n
-            accumulated steps with nan or inf gradients. Default is 2.
+            accumulated steps with nan or inf gradients. Default is 1.
         incr_ratio(float, optional): The multiplier to use when increasing the
             loss scaling. Default is 2.
         decr_ratio(float, optional): The less-than-one-multiplier to use when
-            decreasing the loss scaling. Default is 0.8.
+            decreasing the loss scaling. Default is 0.5.
         use_dynamic_loss_scaling(bool, None): Whether to use dynamic loss
             scaling. Default is None, which means True for float16, and False
             for bfloat16.
@@ -859,47 +864,47 @@ def decorate(  # noqa: F811
 
     Examples:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import paddle
+            >>> import paddle
+            >>> paddle.enable_static()
 
-        paddle.enable_static()
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> class SimpleConvNet(paddle.nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self.conv = paddle.nn.Conv2D(in_channels=1, out_channels=6, kernel_size=3)
+            ...         self.linear = paddle.nn.Linear(in_features=26, out_features=10)
+            ...
+            ...     def forward(self, x):
+            ...         out = self.conv(x)
+            ...         out = paddle.nn.functional.relu(out)
+            ...         out = self.linear(out)
+            ...         out = paddle.nn.functional.softmax(out)
+            ...         return out
 
-        class SimpleConvNet(paddle.nn.Layer):
-            def __init__(self):
-                super().__init__()
-                self.conv = paddle.nn.Conv2D(in_channels=1, out_channels=6, kernel_size=3)
-                self.linear = paddle.nn.Linear(in_features=26, out_features=10)
+            >>> main_program = paddle.static.Program()
+            >>> startup_program = paddle.static.Program()
+            >>> with paddle.utils.unique_name.guard():
+            ...     with paddle.static.program_guard(main_program, startup_program):
+            ...         model = SimpleConvNet()
+            ...         x = paddle.static.data(
+            ...             name='input', shape=[None, 1, 28, 28], dtype='float32'
+            ...         )
+            ...         out = model(x)
+            ...         loss = paddle.mean(out)
+            ...         optimizer = paddle.optimizer.AdamW()
+            ...         optimizer = paddle.static.amp.decorate(optimizer, level="O2", dtype="float16")
+            ...         optimizer.minimize(loss)
 
-            def forward(self, x):
-                out = self.conv(x)
-                out = paddle.nn.functional.relu(out)
-                out = self.linear(out)
-                out = paddle.nn.functional.softmax(out)
-                return out
-
-        main_program = paddle.static.Program()
-        startup_program = paddle.static.Program()
-        with paddle.utils.unique_name.guard():
-            with paddle.static.program_guard(main_program, startup_program):
-                model = SimpleConvNet()
-                x = paddle.static.data(
-                    name='input', shape=[None, 1, 28, 28], dtype='float32'
-                )
-                out = model(x)
-                loss = paddle.mean(out)
-                optimizer = paddle.optimizer.AdamW()
-                optimizer = paddle.static.amp.decorate(optimizer, level="O2", dtype="float16")
-                optimizer.minimize(loss)
-
-        if paddle.is_compiled_with_cuda() and len(paddle.static.cuda_places()) > 0:
-            place = paddle.CUDAPlace(0)
-            exe = paddle.static.Executor(place)
-            exe.run(startup_program)
-
-            # Call `amp_init` after FP32 parameters initialization, such as `exe.run(startup_program)`,
-            # to convert FP32 parameters to low precision FP16 / BF16.
-            optimizer.amp_init(place, scope=paddle.static.global_scope())
+            >>> if paddle.is_compiled_with_cuda() and len(paddle.static.cuda_places()) > 0:
+            ...     place = paddle.CUDAPlace(0)
+            ...     exe = paddle.static.Executor(place)
+            ...     exe.run(startup_program)
+            ...
+            ...     # Call `amp_init` after FP32 parameters initialization, such as `exe.run(startup_program)`,
+            ...     # to convert FP32 parameters to low precision FP16 / BF16.
+            ...     optimizer.amp_init(place, scope=paddle.static.global_scope())
 
     """
     # check amp_level: O0-O2

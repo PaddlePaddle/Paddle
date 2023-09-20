@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/device_worker.h"
 
+#include <array>
 #include <chrono>
 #include "paddle/fluid/framework/convert_utils.h"
 namespace phi {
@@ -90,7 +91,7 @@ void PrintLodTensorType<float>(phi::DenseTensor* tensor,
                                std::string& out_val,  // NOLINT
                                char separator,
                                bool need_leading_separator) {
-  char buf[MAX_FLOAT_BUFF_SIZE];
+  std::array<char, MAX_FLOAT_BUFF_SIZE> buf;
   auto count = tensor->numel();
   if (start < 0 || end > count) {
     VLOG(3) << "access violation";
@@ -104,8 +105,8 @@ void PrintLodTensorType<float>(phi::DenseTensor* tensor,
         tensor->data<float>()[i] < FLOAT_EPS) {
       out_val += "0";
     } else {
-      sprintf(buf, "%.9f", tensor->data<float>()[i]);  // NOLINT
-      out_val += buf;
+      sprintf(buf.data(), "%.9f", tensor->data<float>()[i]);  // NOLINT
+      out_val += buf.data();
     }
   }
 }
@@ -208,7 +209,7 @@ void PrintLodTensor(phi::DenseTensor* tensor,
 std::pair<int64_t, int64_t> GetTensorBound(phi::DenseTensor* tensor,
                                            int index) {
   auto& dims = tensor->dims();
-  if (tensor->lod().size() != 0) {
+  if (!tensor->lod().empty()) {
     auto& lod = tensor->lod()[0];
     return {lod[index] * dims[1], lod[index + 1] * dims[1]};
   } else {
@@ -219,7 +220,7 @@ std::pair<int64_t, int64_t> GetTensorBound(phi::DenseTensor* tensor,
 bool CheckValidOutput(phi::DenseTensor* tensor, size_t batch_size) {
   auto& dims = tensor->dims();
   if (dims.size() != 2) return false;
-  if (tensor->lod().size() != 0) {
+  if (!tensor->lod().empty()) {
     auto& lod = tensor->lod()[0];
     if (lod.size() != batch_size + 1) {
       return false;
@@ -308,12 +309,12 @@ void DeviceWorker::DumpField(const Scope& scope,
       }
     }
     if (!has_valid_batch) return;
-  } else if (ins_id_vec.size() > 0) {
+  } else if (!ins_id_vec.empty()) {
     batch_size = ins_id_vec.size();
   }
   std::vector<std::string> ars(batch_size);
   if (dump_mode_ == 3) {
-    if (dump_fields_ == NULL || (*dump_fields_).size() == 0) {
+    if (dump_fields_ == NULL || (*dump_fields_).empty()) {
       return;
     }
     auto set_output_str = [&, this](size_t begin,
@@ -325,7 +326,7 @@ void DeviceWorker::DumpField(const Scope& scope,
         bound = {i * dims[1], (i + 1) * dims[1]};
         // auto bound = GetTensorBound(tensor, i);
 
-        if (ars[i].size() > 0) ars[i] += "\t";
+        if (!ars[i].empty()) ars[i] += "\t";
         // ars[i] += '[';
         PrintLodTensor(tensor, bound.first, bound.second, ars[i], ' ', false);
         // ars[i] += ']';
@@ -388,10 +389,10 @@ void DeviceWorker::DumpField(const Scope& scope,
       size_t end =
           begin + average_size + (i < batch_size % acutal_thread_num ? 1 : 0);
       for (size_t j = begin + 1; j < end; j++) {
-        if (ars[begin].size() > 0 && ars[j].size() > 0) ars[begin] += "\n";
+        if (!ars[begin].empty() && !ars[j].empty()) ars[begin] += "\n";
         ars[begin] += ars[j];
       }
-      if (ars[begin].size() > 0) writer_ << ars[begin];
+      if (!ars[begin].empty()) writer_ << ars[begin];
     }
     return;
   }
@@ -447,7 +448,7 @@ void DeviceWorker::DumpField(const Scope& scope,
       if (!hit[i]) {
         continue;
       }
-      auto bound = GetTensorBound(tensor, i);
+      auto bound = GetTensorBound(tensor, static_cast<int>(i));
       ars[i] +=
           "\t" + field + ":" + std::to_string(bound.second - bound.first) + ":";
       ars[i] += PrintLodTensor(tensor, bound.first, bound.second);
@@ -455,11 +456,11 @@ void DeviceWorker::DumpField(const Scope& scope,
   }
 
   // #pragma omp parallel for
-  for (size_t i = 0; i < ars.size(); i++) {
-    if (ars[i].length() == 0) {
+  for (auto& ar : ars) {
+    if (ar.length() == 0) {
       continue;
     }
-    writer_ << ars[i];
+    writer_ << ar;
   }
   writer_.Flush();
 }

@@ -19,8 +19,8 @@ import numpy as np
 from test_attribute_var import UnittestBase
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -143,20 +143,26 @@ class TestAdaptiveAvgPool2DAPI(unittest.TestCase):
 
             exe = paddle.static.Executor(place=place)
             [res_1, res_2, res_3, res_4, res_5] = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"x": self.x_np},
                 fetch_list=[out_1, out_2, out_3, out_4, out_5],
             )
 
-            assert np.allclose(res_1, self.res_1_np)
-
-            assert np.allclose(res_2, self.res_2_np)
-
-            assert np.allclose(res_3, self.res_3_np)
-
-            assert np.allclose(res_4, self.res_4_np)
-
-            assert np.allclose(res_5, self.res_5_np)
+            np.testing.assert_allclose(
+                res_1, self.res_1_np, rtol=1e-5, atol=1e-8
+            )
+            np.testing.assert_allclose(
+                res_2, self.res_2_np, rtol=1e-5, atol=1e-8
+            )
+            np.testing.assert_allclose(
+                res_3, self.res_3_np, rtol=1e-5, atol=1e-8
+            )
+            np.testing.assert_allclose(
+                res_4, self.res_4_np, rtol=1e-5, atol=1e-8
+            )
+            np.testing.assert_allclose(
+                res_5, self.res_5_np, rtol=1e-5, atol=1e-8
+            )
 
     def test_dynamic_graph(self):
         for use_cuda in (
@@ -169,36 +175,38 @@ class TestAdaptiveAvgPool2DAPI(unittest.TestCase):
             out_1 = paddle.nn.functional.adaptive_avg_pool2d(
                 x=x, output_size=[3, 3]
             )
-
             out_2 = paddle.nn.functional.adaptive_avg_pool2d(x=x, output_size=5)
-
             out_3 = paddle.nn.functional.adaptive_avg_pool2d(
                 x=x, output_size=[2, 5]
             )
-
             out_4 = paddle.nn.functional.adaptive_avg_pool2d(
                 x=x, output_size=[3, 3], data_format="NHWC"
             )
-
             out_5 = paddle.nn.functional.adaptive_avg_pool2d(
                 x=x, output_size=[None, 3]
             )
-
             out_6 = paddle.nn.functional.interpolate(
                 x=x, mode="area", size=[2, 5]
             )
 
-            assert np.allclose(out_1.numpy(), self.res_1_np)
-
-            assert np.allclose(out_2.numpy(), self.res_2_np)
-
-            assert np.allclose(out_3.numpy(), self.res_3_np)
-
-            assert np.allclose(out_4.numpy(), self.res_4_np)
-
-            assert np.allclose(out_5.numpy(), self.res_5_np)
-
-            assert np.allclose(out_6.numpy(), self.res_3_np)
+            np.testing.assert_allclose(
+                out_1.numpy(), self.res_1_np, rtol=1e-5, atol=1e-8
+            )
+            np.testing.assert_allclose(
+                out_2.numpy(), self.res_2_np, rtol=1e-5, atol=1e-8
+            )
+            np.testing.assert_allclose(
+                out_3.numpy(), self.res_3_np, rtol=1e-5, atol=1e-8
+            )
+            np.testing.assert_allclose(
+                out_4.numpy(), self.res_4_np, rtol=1e-5, atol=1e-8
+            )
+            np.testing.assert_allclose(
+                out_5.numpy(), self.res_5_np, rtol=1e-5, atol=1e-8
+            )
+            np.testing.assert_allclose(
+                out_6.numpy(), self.res_3_np, rtol=1e-5, atol=1e-8
+            )
 
 
 class TestAdaptiveAvgPool2DClassAPI(unittest.TestCase):
@@ -255,20 +263,26 @@ class TestAdaptiveAvgPool2DClassAPI(unittest.TestCase):
 
             exe = paddle.static.Executor(place=place)
             [res_1, res_2, res_3, res_4, res_5] = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"x": self.x_np},
                 fetch_list=[out_1, out_2, out_3, out_4, out_5],
             )
 
-            assert np.allclose(res_1, self.res_1_np)
-
-            assert np.allclose(res_2, self.res_2_np)
-
-            assert np.allclose(res_3, self.res_3_np)
-
-            assert np.allclose(res_4, self.res_4_np)
-
-            assert np.allclose(res_5, self.res_5_np)
+            np.testing.assert_allclose(
+                res_1, self.res_1_np, rtol=1e-5, atol=1e-8
+            )
+            np.testing.assert_allclose(
+                res_2, self.res_2_np, rtol=1e-5, atol=1e-8
+            )
+            np.testing.assert_allclose(
+                res_3, self.res_3_np, rtol=1e-5, atol=1e-8
+            )
+            np.testing.assert_allclose(
+                res_4, self.res_4_np, rtol=1e-5, atol=1e-8
+            )
+            np.testing.assert_allclose(
+                res_5, self.res_5_np, rtol=1e-5, atol=1e-8
+            )
 
     def test_dynamic_graph(self):
         for use_cuda in (
@@ -297,15 +311,21 @@ class TestAdaptiveAvgPool2DClassAPI(unittest.TestCase):
             )
             out_5 = adaptive_avg_pool(x=x)
 
-            assert np.allclose(out_1.numpy(), self.res_1_np)
-
-            assert np.allclose(out_2.numpy(), self.res_2_np)
-
-            assert np.allclose(out_3.numpy(), self.res_3_np)
-
-            assert np.allclose(out_4.numpy(), self.res_4_np)
-
-            assert np.allclose(out_5.numpy(), self.res_5_np)
+            np.testing.assert_allclose(
+                out_1.numpy(), self.res_1_np, rtol=1e-5, atol=1e-8
+            )
+            np.testing.assert_allclose(
+                out_2.numpy(), self.res_2_np, rtol=1e-5, atol=1e-8
+            )
+            np.testing.assert_allclose(
+                out_3.numpy(), self.res_3_np, rtol=1e-5, atol=1e-8
+            )
+            np.testing.assert_allclose(
+                out_4.numpy(), self.res_4_np, rtol=1e-5, atol=1e-8
+            )
+            np.testing.assert_allclose(
+                out_5.numpy(), self.res_5_np, rtol=1e-5, atol=1e-8
+            )
 
 
 class TestOutputSizeTensor(UnittestBase):

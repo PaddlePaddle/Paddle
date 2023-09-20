@@ -14,6 +14,8 @@
 
 import unittest
 
+from dygraph_to_static_util import ast_only_test
+
 import paddle
 from paddle.static import InputSpec
 
@@ -75,6 +77,7 @@ class CheckOpAttr(unittest.TestCase):
             'elementwise_sub': self.sub_attrs,
         }
 
+    @ast_only_test
     def test_set_op_attrs(self):
         net = NetWithOpAttr(self.in_num, self.out_num)
         # set attrs
@@ -116,6 +119,7 @@ class CheckOpAttr(unittest.TestCase):
                         else:
                             self.assertEqual(op_val, expect_val)
 
+    @ast_only_test
     def test_set_op_attrs_with_sub_block(self):
         net = NetWithOpAttr(self.in_num, self.out_num)
         # set attrs

@@ -208,7 +208,7 @@ std::vector<std::unique_ptr<ir::Graph>> TrySeparateToMultipleSingleDeviceGraphs(
 
   std::vector<std::unique_ptr<ir::Graph>> graphs(place_num);
   for (auto &g : graphs) {
-    g.reset(new ir::Graph(ProgramDesc()));
+    g = std::make_unique<ir::Graph>(ProgramDesc());
     g->Set(kGraphVars, new GraphVars(1UL));
     g->Set(kGraphDepVars, new GraphDepVars());
   }

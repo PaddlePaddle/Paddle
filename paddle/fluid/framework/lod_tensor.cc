@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/lod_tensor.h"
 
-#include <stdint.h>
+#include <cstdint>
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/version.h"
@@ -60,20 +60,20 @@ LoD SliceInLevel(const LoD &in,
   LoD res;
   res.resize(in.size() - level);
   // copy the first level
-  res[0].assign(in[level].begin() + elem_begin,
-                in[level].begin() + elem_end + 1);
+  res[0].assign(in[level].begin() + elem_begin,     // NOLINT
+                in[level].begin() + elem_end + 1);  // NOLINT
   for (size_t lvl = 1; lvl < res.size(); lvl++) {
     const auto &in_level = in[level + lvl];
     const auto &above_level = res[lvl - 1];
     auto &out_level = res[lvl];
-    out_level.assign(in_level.begin() + above_level.front(),
-                     in_level.begin() + above_level.back() + 1);
+    out_level.assign(in_level.begin() + above_level.front(),      // NOLINT
+                     in_level.begin() + above_level.back() + 1);  // NOLINT
   }
-  for (size_t lvl = 0; lvl < res.size(); lvl++) {
+  for (auto &item : res) {
     // to make the first offset equals 0, all the elements minus the first
     // element
-    size_t front = res[lvl].front();
-    for (auto &ele : res[lvl]) {
+    size_t front = item.front();
+    for (auto &ele : item) {
       ele -= front;
     }
   }
@@ -160,7 +160,7 @@ bool CheckAbsLoD(const LoD &in, int tensor_height) {
     // the same(the height of underlying tensor).
     if (level.front() != 0) return false;
     if (tensor_height < 0) {
-      tensor_height = level.back();
+      tensor_height = static_cast<int>(level.back());
     } else if (static_cast<size_t>(tensor_height) != level.back()) {
       return false;
     }
@@ -323,13 +323,13 @@ void DeserializeFromStream(std::istream &is,
 LoD ConvertToOffsetBasedLoD(const LoD &length_lod) {
   LoD offset_lod;
   offset_lod.reserve(length_lod.size());
-  for (size_t lvl = 0; lvl < length_lod.size(); ++lvl) {
+  for (const auto &item : length_lod) {
     std::vector<size_t> level;
-    level.reserve(length_lod[lvl].size() + 1);
+    level.reserve(item.size() + 1);
     size_t tmp = 0;
     level.push_back(tmp);
-    for (size_t idx = 0; idx < length_lod[lvl].size(); ++idx) {
-      tmp += length_lod[lvl][idx];
+    for (auto i : item) {
+      tmp += i;
       level.push_back(tmp);
     }
     offset_lod.push_back(level);
@@ -362,10 +362,10 @@ std::vector<phi::DenseTensor> SplitLoDTensor(
   if (batch_size == 0) {
     std::vector<phi::DenseTensor> empty_results;
     empty_results.reserve(places.size());
-    for (size_t i = 0; i < places.size(); ++i) {
+    for (auto item : places) {
       phi::DenseTensor dst;
       dst.Resize(src.dims());
-      dst.mutable_data(places[i], src.dtype());
+      dst.mutable_data(item, src.dtype());
       if (!src.lod().empty()) {
         dst.set_lod(src.lod());
       }
@@ -392,7 +392,8 @@ std::vector<phi::DenseTensor> SplitLoDTensor(
 
     phi::DenseTensor dst;
     if (src.lod().empty()) {
-      auto sliced_src = src.Slice(begin, end);
+      auto sliced_src =
+          src.Slice(static_cast<int64_t>(begin), static_cast<int64_t>(end));
       auto &dst_place = places[i];
       framework::TensorCopy(sliced_src, dst_place, &dst);
     } else {
@@ -400,7 +401,8 @@ std::vector<phi::DenseTensor> SplitLoDTensor(
           GetSubLoDAndAbsoluteOffset(src.lod(), begin, end, 0);
 
       auto &offset = lod_and_offset.second;
-      auto sliced_src = src.Slice(offset.first, offset.second);
+      auto sliced_src = src.Slice(static_cast<int64_t>(offset.first),
+                                  static_cast<int64_t>(offset.second));
       auto &dst_place = places[i];
       framework::TensorCopy(sliced_src, dst_place, &dst);
 
@@ -508,7 +510,7 @@ void MergeLoDTensor(phi::DenseTensor *target,
 
   int begin = 0;
   for (auto *src : lod_tensors) {
-    int end = begin + src->dims()[0];
+    int end = static_cast<int>(begin + src->dims()[0]);
     if (end == begin) {
       continue;
     }

@@ -40,7 +40,7 @@ phi::Place GetPlaceFromPtr(void* data);
 
 TEST(from_blob, CPU) {
   // 1. create data
-  int64_t data[] = {4, 3, 2, 1};
+  int64_t data[] = {4, 3, 2, 1};  // NOLINT
 
   ASSERT_EQ(paddle::GetPlaceFromPtr(data), phi::CPUPlace());
 

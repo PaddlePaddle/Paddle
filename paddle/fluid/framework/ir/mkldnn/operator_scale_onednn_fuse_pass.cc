@@ -82,7 +82,7 @@ void FuseOperatorScaleOneDNNPass::FuseScale(Graph *graph,
     bool has_scale_tensor =
         std::find(names.begin(), names.end(), "ScaleTensor") != names.end();
 
-    if (has_scale_tensor && scale_op->Op()->Input("ScaleTensor").size() > 0) {
+    if (has_scale_tensor && !scale_op->Op()->Input("ScaleTensor").empty()) {
       std::string scale_var_name = scale_op->Op()->Input("ScaleTensor").front();
       auto *scale_var = scope->FindVar(scale_var_name);
       // ScaleTensor must be weight

@@ -18,6 +18,8 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -83,6 +85,16 @@ void GradTensorHolder::CopyValueFromTensor(size_t slot_id,
       } else if (t.is_sparse_csr_tensor() || t.is_sparse_coo_tensor()) {
         buffer_[slot_id][rank] =
             paddle::experimental::sparse::full_like(t, 1, t.dtype());
+      } else if (t.is_dist_tensor()) {
+        auto init_grad =
+            paddle::experimental::full(t.shape(), 1, t.dtype(), t.place());
+        auto global_dense_t =
+            static_cast<phi::DenseTensor*>(init_grad.impl().get());
+        auto dist_t =
+            static_cast<phi::distributed::DistTensor*>(t.impl().get());
+        init_grad.set_impl(std::make_shared<phi::distributed::DistTensor>(
+            *global_dense_t, dist_t->dist_attr()));
+        buffer_[slot_id][rank] = init_grad;
       } else {
         PADDLE_THROW(paddle::platform::errors::Fatal(
             "Only Support DENSE_TENSOR, SPARSE_COO_TENSOR, SPARSE_CSR_TENSOR "
@@ -178,6 +190,8 @@ void GradTensorHolder::add(size_t slot_id,
                                                         &buffer_values);
         }
       }
+    } else if (t.is_dist_tensor()) {
+      buffer_tensor = add_ad_func(t, buffer_tensor);
     } else {
       // TODO(jiabin): Support Other TensorBase later
       // TODO(zhanlve): Replace SelectedRowsAddTensor with add_dygraph_function

@@ -76,7 +76,7 @@ class SplitOp : public framework::OperatorWithKernel {
     // Construct sections_final
     if (ctx->IsRuntime() && ctx->HasInputs("SectionsTensorList")) {
       int sections_tensor_list_size =
-          ctx->GetInputVarPtrs("SectionsTensorList").size();
+          static_cast<int>(ctx->GetInputVarPtrs("SectionsTensorList").size());
       const paddle::small_vector<framework::InferShapeVarPtr,
                                  phi::kInputSmallVectorSize>
           &sections_varptr_list = ctx->GetInputVarPtrs("SectionsTensorList");
@@ -94,7 +94,7 @@ class SplitOp : public framework::OperatorWithKernel {
     } else {
       sections_final = std::move(phi::IntArray(sections));
     }
-    if (sections.size() > 0) {
+    if (!sections.empty()) {
       if (ctx->IsRuntime()) {
         phi::SplitInferMeta(
             x, sections_final, axis_final, out_ptr, {true, false});
@@ -117,14 +117,14 @@ class SplitOp : public framework::OperatorWithKernel {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       // OneDNN uses blocking format, which cannot be always supported with
       // reorders, because if blocked dimension is not divisible by 8 or
       // 16(depending on which blocking format is used) submemory cannot be
       // created, so in that scenario a fallback is needed
       const auto x_md = ctx.Input<phi::DenseTensor>("X")->mem_desc();
-      if (x_md.data.format_desc.blocking.inner_nblks == 0) {
+      if (x_md.get_inner_nblks() == 0) {
         return phi::KernelKey(phi::Backend::ONEDNN,
                               phi::DataLayout::ONEDNN,
                               phi::TransToPhiDataType(input_data_type));

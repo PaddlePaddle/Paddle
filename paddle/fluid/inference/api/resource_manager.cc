@@ -50,7 +50,7 @@ class EigenGpuStreamDevice : public Eigen::StreamInterface {
   EigenGpuStreamDevice() : scratch_(nullptr), semaphore_(nullptr) {
     Eigen::initializeDeviceProp();
   }
-  ~EigenGpuStreamDevice() override {}
+  ~EigenGpuStreamDevice() override = default;
 
   void Reinitialize(gpuStream_t cuda_stream,
                     phi::Allocator* allocator,
@@ -127,7 +127,7 @@ Eigen::DefaultDevice* CPUContextResource::GetCPUEigenDevice() const {
 }
 
 void CPUContextResource::InitCPUResource() {
-  cpu_eigen_device_.reset(new Eigen::DefaultDevice());
+  cpu_eigen_device_ = std::make_unique<Eigen::DefaultDevice>();
 }
 
 CPUContextResource::CPUContextResource() { InitCPUResource(); }
@@ -186,9 +186,9 @@ void GPUContextResource::InitGpuEigenDevice() {
   auto* allocator = paddle::memory::allocation::AllocatorFacade::Instance()
                         .GetAllocator(place_)
                         .get();
-  eigen_stream_.reset(new internal::EigenGpuStreamDevice());
+  eigen_stream_ = std::make_unique<internal::EigenGpuStreamDevice>();
   eigen_stream_->Reinitialize(stream_, allocator, place_);
-  gpu_eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
+  gpu_eigen_device_ = std::make_unique<Eigen::GpuDevice>(eigen_stream_.get());
 }
 
 void GPUContextResource::InitDnnHanlde() {
@@ -364,7 +364,7 @@ std::array<int, 3> GPUContextResource::GetGpuMaxGridDimSize() const {
 void ResourceManager::InitCPUResource() {
   std::lock_guard<std::mutex> lock_gurad(cpu_mutex_);
   if (cpu_resource_ == nullptr) {
-    cpu_resource_.reset(new CPUContextResource());
+    cpu_resource_ = std::make_unique<CPUContextResource>();
   }
 }
 

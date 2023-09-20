@@ -53,6 +53,8 @@ class FusedMultiTransformerCacheKVLayoutTransPass : public FusePassBase {
   */
   void FillConstantReshapePass(ir::Graph* graph) const;
 
+  int CountFillConstantReshapePattern(ir::Graph* graph) const;
+
   /*
    Origin subgraph:
         (gather_x: [d0,d1,d2,d3,d4])
@@ -69,6 +71,8 @@ class FusedMultiTransformerCacheKVLayoutTransPass : public FusePassBase {
             fused_multi_transformer
   */
   void GatherReshapePass(ir::Graph* graph) const;
+
+  int CountGatherReshapePattern(ir::Graph* graph) const;
 
   const std::string name_scope_{
       "fused_multi_transformer_cachekv_layout_trans_pass"};

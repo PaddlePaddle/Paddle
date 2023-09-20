@@ -12,18 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/phi/core/flags.h"
+#include "paddle/utils/flags.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-DECLARE_bool(enable_gpu_memory_usage_log);
+PD_DECLARE_bool(enable_gpu_memory_usage_log);
 #endif
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv) {  // NOLINT
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
   testing::InitGoogleTest(&argc, argv);
   std::vector<char*> new_argv;
@@ -32,11 +32,8 @@ int main(int argc, char** argv) {
   }
 
   std::vector<std::string> envs;
-  std::vector<std::string> undefok;
 #if defined(PADDLE_WITH_DISTRIBUTE) && !defined(PADDLE_WITH_PSLIB)
-  std::string str_max_body_size;
-  if (::GFLAGS_NAMESPACE::GetCommandLineOption("max_body_size",
-                                               &str_max_body_size)) {
+  if (paddle::flags::FindFlag("max_body_size")) {
     setenv("FLAGS_max_body_size", "2147483647", 1);
     envs.push_back("max_body_size");
   }
@@ -45,23 +42,13 @@ int main(int argc, char** argv) {
   const auto& flag_map = phi::GetExportedFlagInfoMap();
   for (const auto& pair : flag_map) {
     const std::string& name = pair.second.name;
-    // NOTE(zhiqiu): some names may not linked in some tests, so add to
-    // `undefok`.
-    // One way to handle that is to check each flag item by item, and put it in
-    // `envs` or `undefok`;
-    // another way is to add all flags to `envs` and `undeok`, basically it is
-    // not a good design,
-    // but it can simplify the procedure of creating new flag and seems no side
-    // effects.
-    // see details: https://gflags.github.io/gflags/#special
     if (pair.second.is_writable) {  // means public
       envs.push_back(name);
-      undefok.push_back(name);
     }
   }
 
   char* env_str = nullptr;
-  if (envs.size() > 0) {
+  if (!envs.empty()) {
     std::string env_string = "--tryfromenv=";
     for (auto t : envs) {
       env_string += t + ",";
@@ -72,20 +59,8 @@ int main(int argc, char** argv) {
     VLOG(1) << "gtest env_string:" << env_string;
   }
 
-  char* undefok_str = nullptr;
-  if (undefok.size() > 0) {
-    std::string undefok_string = "--undefok=";
-    for (auto t : undefok) {
-      undefok_string += t + ",";
-    }
-    undefok_string = undefok_string.substr(0, undefok_string.length() - 1);
-    undefok_str = strdup(undefok_string.c_str());
-    new_argv.push_back(undefok_str);
-    VLOG(1) << "gtest undefok_string:" << undefok_string;
-  }
-
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (strstr(undefok_str, "enable_gpu_memory_usage_log")) {
+  if (strstr(env_str, "enable_gpu_memory_usage_log")) {
     VLOG(1) << "Set FLAGS_enable_gpu_memory_usage_log to true";
     FLAGS_enable_gpu_memory_usage_log = true;
   }
@@ -93,15 +68,14 @@ int main(int argc, char** argv) {
 
   int new_argc = static_cast<int>(new_argv.size());
   char** new_argv_address = new_argv.data();
-  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(
-      &new_argc, &new_argv_address, false);
+  paddle::flags::AllowUndefinedFlags();
+  paddle::flags::ParseCommandLineFlags(&new_argc, &new_argv_address);
   paddle::framework::InitMemoryMethod();
   paddle::framework::InitDevices();
   paddle::framework::InitDefaultKernelSignatureMap();
 
   int ret = RUN_ALL_TESTS();
 
-  if (env_str) free(env_str);
-  if (undefok_str) free(undefok_str);
+  if (env_str) free(env_str);  // NOLINT
   return ret;
 }

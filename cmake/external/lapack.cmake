@@ -81,16 +81,13 @@ function(download_lapack)
   endif()
 endfunction()
 
-find_file(
-  LOCAL_LAPACK_LIB_ZIP
-  NAMES ${LAPACK_FILE}
-  PATHS ${LAPACK_DOWNLOAD_DIR}
-  NO_DEFAULT_PATH)
-
 # Download and check lapack.
-if(LOCAL_LAPACK_LIB_ZIP)
+if(EXISTS ${LAPACK_DOWNLOAD_DIR}/${LAPACK_FILE})
   file(MD5 ${LAPACK_DOWNLOAD_DIR}/${LAPACK_FILE} LAPACK_MD5)
-  if(NOT LAPACK_MD5 EQUAL LAPACK_URL_MD5)
+  if(NOT LAPACK_MD5 STREQUAL LAPACK_URL_MD5)
+    # clean build file
+    file(REMOVE_RECURSE ${LAPACK_PREFIX_DIR})
+    file(REMOVE_RECURSE ${LAPACK_INSTALL_DIR})
     download_lapack()
   endif()
 else()

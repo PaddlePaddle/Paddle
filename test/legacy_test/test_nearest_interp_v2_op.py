@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.nn.functional import interpolate
 
 paddle.enable_static()
@@ -107,12 +107,12 @@ def nearest_interp_test(
     align_corners=True,
     align_mode=0,
 ):
-    if isinstance(scale, float) or isinstance(scale, int):
+    if isinstance(scale, (float, int)):
         scale_list = []
         for _ in range(len(x.shape) - 2):
             scale_list.append(scale)
         scale = list(map(float, scale_list))
-    elif isinstance(scale, list) or isinstance(scale, tuple):
+    elif isinstance(scale, (list, tuple)):
         scale = list(map(float, scale))
     if SizeTensor is not None:
         if not isinstance(SizeTensor, list) and not isinstance(
@@ -302,7 +302,7 @@ class TestNearestInterpOp(OpTest):
         scale_h = 0
         scale_w = 0
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0:
                     scale_d = scale_h = scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -374,7 +374,7 @@ class TestNearestInterpOp(OpTest):
                 'data_layout': self.data_layout,
             }
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0:
                     self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -528,7 +528,7 @@ class TestNearestInterpOpBF16(OpTest):
         scale_h = 0
         scale_w = 0
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0:
                     scale_d = scale_h = scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -600,7 +600,7 @@ class TestNearestInterpOpBF16(OpTest):
                 'data_layout': self.data_layout,
             }
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0:
                     self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -697,7 +697,7 @@ class TestNearestInterpOpUint8(OpTest):
         ).astype("uint8")
 
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0:
                     scale_h = scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -731,7 +731,7 @@ class TestNearestInterpOpUint8(OpTest):
             'align_corners': self.align_corners,
         }
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0:
                     self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -827,10 +827,11 @@ class TestNearestInterpOp_attr_tensor(OpTest):
         self.python_api = nearest_interp_test
         self.out_size = None
         self.actual_shape = None
-        self.init_test_case()
-        self.op_type = "nearest_interp_v2"
         self.shape_by_1Dtensor = False
         self.scale_by_1Dtensor = False
+        self.scale_by_2Dtensor = False
+        self.init_test_case()
+        self.op_type = "nearest_interp_v2"
         self.attrs = {
             'interp_method': self.interp_method,
             'align_corners': self.align_corners,
@@ -840,9 +841,15 @@ class TestNearestInterpOp_attr_tensor(OpTest):
         self.inputs = {'X': input_np}
 
         if self.scale_by_1Dtensor:
-            self.inputs['Scale'] = np.array([self.scale]).astype("float64")
+            self.inputs['Scale'] = np.array([self.scale]).astype("float32")
+            out_h = int(self.input_shape[2] * self.scale)
+            out_w = int(self.input_shape[3] * self.scale)
+        elif self.scale_by_2Dtensor:
+            self.inputs['Scale'] = np.array(self.scale).astype("float32")
+            out_h = int(self.input_shape[2] * self.scale[0])
+            out_w = int(self.input_shape[3] * self.scale[1])
         elif self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0:
                     scale_h = scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -869,7 +876,7 @@ class TestNearestInterpOp_attr_tensor(OpTest):
         self.attrs['out_h'] = self.out_h
         self.attrs['out_w'] = self.out_w
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0:
                     self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -941,6 +948,19 @@ class TestNearestInterp_attr_tensor_Case3(TestNearestInterpOp_attr_tensor):
         self.scale_by_1Dtensor = True
 
 
+# scale is a 2-D tensor
+class TestNearestInterp_attr_tensor_Case4(TestNearestInterpOp_attr_tensor):
+    def init_test_case(self):
+        self.interp_method = 'nearest'
+        self.input_shape = [3, 2, 32, 16]
+        self.out_h = 64
+        self.out_w = 32
+        self.scale = [2.0, 2.0]
+        self.out_size = None
+        self.align_corners = True
+        self.scale_by_2Dtensor = True
+
+
 class TestNearestInterpOpAPI_dy(unittest.TestCase):
     def test_case(self):
         import paddle
@@ -949,7 +969,7 @@ class TestNearestInterpOpAPI_dy(unittest.TestCase):
             place = core.CUDAPlace(0)
         else:
             place = core.CPUPlace()
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             input_data = np.random.random((2, 3, 6, 6)).astype("int64")
             scale_np = np.array([2, 2]).astype("int64")
             input_x = paddle.to_tensor(input_data)
@@ -974,7 +994,7 @@ class TestNearestInterp3DOpAPI_dy(unittest.TestCase):
             place = core.CUDAPlace(0)
         else:
             place = core.CPUPlace()
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             input_data = np.random.random((2, 2, 6, 6, 6)).astype("int64")
             scale_np = np.array([2, 2, 2]).astype("int64")
             input_x = paddle.to_tensor(input_data)
@@ -993,7 +1013,7 @@ class TestNearestInterp3DOpAPI_dy(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not fluid.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not base.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestNearestInterp3DOpForFloat16(unittest.TestCase):
     def init_test_case(self):
@@ -1034,7 +1054,7 @@ class TestNearestInterp3DOpForFloat16(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not fluid.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not base.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestNearestInterpOpForFloat16(unittest.TestCase):
     def init_test_case(self):

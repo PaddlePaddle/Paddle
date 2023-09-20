@@ -55,7 +55,7 @@ __pd_give PD_Config* PD_ConfigCreate() {
 }
 
 void PD_ConfigDestroy(__pd_take PD_Config* pd_config) {
-  if (pd_config != NULL) {
+  if (pd_config != nullptr) {
     delete reinterpret_cast<Config*>(pd_config);
   }
 }
@@ -112,7 +112,7 @@ void PD_ConfigDisableFCPadding(__pd_keep PD_Config* pd_config) {
 }
 PD_Bool PD_ConfigUseFcPadding(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  return config->use_fc_padding();
+  return config->use_fc_padding();  // NOLINT
 }
 
 void PD_ConfigEnableUseGpu(__pd_keep PD_Config* pd_config,
@@ -130,7 +130,7 @@ void PD_ConfigDisableGpu(__pd_keep PD_Config* pd_config) {
 }
 PD_Bool PD_ConfigUseGpu(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  return config->use_gpu();
+  return config->use_gpu();  // NOLINT
 }
 
 void PD_ConfigEnableONNXRuntime(__pd_keep PD_Config* pd_config) {
@@ -145,7 +145,7 @@ void PD_ConfigDisableONNXRuntime(__pd_keep PD_Config* pd_config) {
 
 PD_Bool PD_ConfigONNXRuntimeEnabled(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  return config->use_onnxruntime();
+  return config->use_onnxruntime();  // NOLINT
 }
 
 void PD_ConfigEnableORTOptimization(__pd_keep PD_Config* pd_config) {
@@ -173,7 +173,7 @@ void PD_ConfigEnableXpu(__pd_keep PD_Config* pd_config,
 
 PD_Bool PD_ConfigUseXpu(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  return config->use_xpu();
+  return config->use_xpu();  // NOLINT
 }
 
 int32_t PD_ConfigGpuDeviceId(__pd_keep PD_Config* pd_config) {
@@ -193,7 +193,7 @@ void PD_ConfigEnableCustomDevice(__pd_keep PD_Config* pd_config,
 }
 PD_Bool PD_ConfigUseCustomDevice(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  return config->use_custom_device();
+  return config->use_custom_device();  // NOLINT
 }
 int32_t PD_ConfigCustomDeviceId(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
@@ -202,7 +202,8 @@ int32_t PD_ConfigCustomDeviceId(__pd_keep PD_Config* pd_config) {
 char* PD_ConfigCustomDeviceType(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   auto device_type_str = config->custom_device_type();
-  char* c = reinterpret_cast<char*>(malloc(device_type_str.length() + 1));
+  char* c =
+      reinterpret_cast<char*>(malloc(device_type_str.length() + 1));  // NOLINT
   snprintf(c, device_type_str.length() + 1, "%s", device_type_str.c_str());
   return c;
 }
@@ -221,7 +222,7 @@ void PD_ConfigEnableCudnn(__pd_keep PD_Config* pd_config) {
 }
 PD_Bool PD_ConfigCudnnEnabled(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  return config->cudnn_enabled();
+  return config->cudnn_enabled();  // NOLINT
 }
 
 void PD_ConfigSwitchIrOptim(__pd_keep PD_Config* pd_config, PD_Bool x) {
@@ -230,7 +231,7 @@ void PD_ConfigSwitchIrOptim(__pd_keep PD_Config* pd_config, PD_Bool x) {
 }
 PD_Bool PD_ConfigIrOptim(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  return config->ir_optim();
+  return config->ir_optim();  // NOLINT
 }
 
 void PD_ConfigEnableTensorRtEngine(__pd_keep PD_Config* pd_config,
@@ -250,7 +251,7 @@ void PD_ConfigEnableTensorRtEngine(__pd_keep PD_Config* pd_config,
 }
 PD_Bool PD_ConfigTensorRtEngineEnabled(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  return config->tensorrt_engine_enabled();
+  return config->tensorrt_engine_enabled();  // NOLINT
 }
 
 void PD_ConfigSetTrtDynamicShapeInfo(__pd_keep PD_Config* pd_config,
@@ -286,7 +287,7 @@ void PD_ConfigSetTrtDynamicShapeInfo(__pd_keep PD_Config* pd_config,
 
 PD_Bool PD_ConfigTensorRtDynamicShapeEnabled(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  return config->tensorrt_dynamic_shape_enabled();
+  return config->tensorrt_dynamic_shape_enabled();  // NOLINT
 }
 
 void PD_ConfigEnableTunedTensorRtDynamicShape(__pd_keep PD_Config* pd_config,
@@ -299,12 +300,12 @@ void PD_ConfigEnableTunedTensorRtDynamicShape(__pd_keep PD_Config* pd_config,
 
 PD_Bool PD_ConfigTunedTensorRtDynamicShape(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  return config->tuned_tensorrt_dynamic_shape();
+  return config->tuned_tensorrt_dynamic_shape();  // NOLINT
 }
 
 PD_Bool PD_ConfigTrtAllowBuildAtRuntime(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  return config->trt_allow_build_at_runtime();
+  return config->trt_allow_build_at_runtime();  // NOLINT
 }
 
 void PD_ConfigCollectShapeRangeInfo(__pd_keep PD_Config* pd_config,
@@ -316,14 +317,14 @@ void PD_ConfigCollectShapeRangeInfo(__pd_keep PD_Config* pd_config,
 const char* PD_ConfigShapeRangeInfoPath(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   auto shape_str = config->shape_range_info_path();
-  char* c = reinterpret_cast<char*>(malloc(shape_str.length() + 1));
+  char* c = reinterpret_cast<char*>(malloc(shape_str.length() + 1));  // NOLINT
   snprintf(c, shape_str.length() + 1, "%s", shape_str.c_str());
   return c;
 }
 
 PD_Bool PD_ConfigShapeRangeInfoCollected(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  return config->shape_range_info_collected();
+  return config->shape_range_info_collected();  // NOLINT
 }
 
 void PD_ConfigDisableTensorRtOPs(__pd_keep PD_Config* pd_config,
@@ -343,7 +344,7 @@ void PD_ConfigEnableVarseqlen(__pd_keep PD_Config* pd_config) {
 }
 PD_Bool PD_ConfigTensorRtOssEnabled(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  return config->tensorrt_varseqlen_enabled();
+  return config->tensorrt_varseqlen_enabled();  // NOLINT
 }
 
 void PD_ConfigEnableTensorRtDla(__pd_keep PD_Config* pd_config,
@@ -353,7 +354,7 @@ void PD_ConfigEnableTensorRtDla(__pd_keep PD_Config* pd_config,
 }
 PD_Bool PD_ConfigTensorRtDlaEnabled(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  return config->tensorrt_dla_enabled();
+  return config->tensorrt_dla_enabled();  // NOLINT
 }
 
 void PD_ConfigEnableLiteEngine(__pd_keep PD_Config* pd_config,
@@ -378,7 +379,7 @@ void PD_ConfigEnableLiteEngine(__pd_keep PD_Config* pd_config,
 }
 PD_Bool PD_ConfigLiteEngineEnabled(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  return config->lite_engine_enabled();
+  return config->lite_engine_enabled();  // NOLINT
 }
 
 void PD_ConfigSwitchIrDebug(__pd_keep PD_Config* pd_config, PD_Bool x) {
@@ -396,7 +397,7 @@ void PD_ConfigSetMkldnnCacheCapacity(__pd_keep PD_Config* pd_config,
 }
 PD_Bool PD_ConfigMkldnnEnabled(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  return config->mkldnn_enabled();
+  return config->mkldnn_enabled();  // NOLINT
 }
 void PD_ConfigSetCpuMathLibraryNumThreads(
     __pd_keep PD_Config* pd_config, int32_t cpu_math_library_num_threads) {
@@ -428,7 +429,7 @@ void PD_ConfigEnableMkldnnBfloat16(__pd_keep PD_Config* pd_config) {
 }
 PD_Bool PD_ConfigMkldnnBfloat16Enabled(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  return config->mkldnn_bfloat16_enabled();
+  return config->mkldnn_bfloat16_enabled();  // NOLINT
 }
 void PD_ConfigSetBfloat16Op(__pd_keep PD_Config* pd_config,
                             size_t ops_num,
@@ -446,15 +447,15 @@ void PD_ConfigEnableMkldnnInt8(__pd_keep PD_Config* pd_config) {
 }
 PD_Bool PD_ConfigMkldnnInt8Enabled(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  return config->mkldnn_int8_enabled();
+  return config->mkldnn_int8_enabled();  // NOLINT
 }
 PD_Bool PD_ConfigThreadLocalStreamEnabled(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  return config->thread_local_stream_enabled();
+  return config->thread_local_stream_enabled();  // NOLINT
 }
 PD_Bool PD_ConfigMkldnnQuantizerEnabled(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  return config->mkldnn_quantizer_enabled();
+  return config->mkldnn_quantizer_enabled();  // NOLINT
 }
 void PD_ConfigSetModelBuffer(__pd_keep PD_Config* pd_config,
                              const char* prog_buffer,
@@ -467,7 +468,7 @@ void PD_ConfigSetModelBuffer(__pd_keep PD_Config* pd_config,
 }
 PD_Bool PD_ConfigModelFromMemory(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  return config->model_from_memory();
+  return config->model_from_memory();  // NOLINT
 }
 void PD_ConfigEnableMemoryOptim(__pd_keep PD_Config* pd_config, PD_Bool x) {
   CHECK_AND_CONVERT_PD_CONFIG;
@@ -475,7 +476,7 @@ void PD_ConfigEnableMemoryOptim(__pd_keep PD_Config* pd_config, PD_Bool x) {
 }
 PD_Bool PD_ConfigMemoryOptimEnabled(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  return config->enable_memory_optim();
+  return config->enable_memory_optim();  // NOLINT
 }
 void PD_ConfigEnableProfile(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
@@ -483,7 +484,7 @@ void PD_ConfigEnableProfile(__pd_keep PD_Config* pd_config) {
 }
 PD_Bool PD_ConfigProfileEnabled(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  return config->profile_enabled();
+  return config->profile_enabled();  // NOLINT
 }
 void PD_ConfigDisableGlogInfo(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
@@ -491,7 +492,7 @@ void PD_ConfigDisableGlogInfo(__pd_keep PD_Config* pd_config) {
 }
 PD_Bool PD_ConfigGlogInfoDisabled(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  return config->glog_info_disabled();
+  return config->glog_info_disabled();  // NOLINT
 }
 void PD_ConfigSetInvalid(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
@@ -499,7 +500,7 @@ void PD_ConfigSetInvalid(__pd_keep PD_Config* pd_config) {
 }
 PD_Bool PD_ConfigIsValid(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  return config->is_valid();
+  return config->is_valid();  // NOLINT
 }
 void PD_ConfigEnableGpuMultiStream(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;

@@ -34,14 +34,29 @@ void ReshapeKernel(const Context& dev_ctx,
                    DenseTensor* out,
                    DenseTensor* xshape);
 
+template <typename Context>
+void ReshapeStridedKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const IntArray& shape,
+                          DenseTensor* out,
+                          DenseTensor* xshape);
+
+template <typename T, typename Context>
+void Reshape(const Context& dev_ctx,
+             const DenseTensor& x,
+             const std::vector<int64_t>& shape,
+             DenseTensor* out) {
+  MetaTensor meta_out(out);
+  InferMetaFromVecValue(x, shape, &meta_out);
+  ReshapeInferKernel<Context>(dev_ctx, x, IntArray(shape), out);
+}
+
 template <typename T, typename Context>
 DenseTensor Reshape(const Context& dev_ctx,
                     const DenseTensor& x,
                     const std::vector<int64_t>& shape) {
   DenseTensor dense_out;
-  MetaTensor meta_out(&dense_out);
-  InferMetaFromVecValue(x, shape, &meta_out);
-  ReshapeInferKernel<Context>(dev_ctx, x, IntArray(shape), &dense_out);
+  Reshape<T, Context>(dev_ctx, x, shape, &dense_out);
   return dense_out;
 }
 

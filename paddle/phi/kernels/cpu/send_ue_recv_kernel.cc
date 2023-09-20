@@ -115,7 +115,7 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& ctx,
                                          int64_t out_size,
                                          DenseTensor* out,
                                          DenseTensor* dst_count = nullptr) {
-  const int& index_size = src_index.dims()[0];
+  const int& index_size = src_index.dims()[0];  // NOLINT
   auto out_dims = out->dims();
   int64_t memset_size = 1;
   std::vector<int64_t> dims_ = phi::vectorize(out_dims);
@@ -125,8 +125,8 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& ctx,
     dims_[0] = out_size;
   }
   out->Resize(phi::make_ddim(dims_));
-  for (size_t i = 0; i < dims_.size(); i++) {
-    memset_size *= dims_[i];
+  for (auto dim : dims_) {
+    memset_size *= dim;
   }
 
   ctx.template Alloc<T>(out);

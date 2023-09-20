@@ -29,17 +29,17 @@ class TestSparseCreate(unittest.TestCase):
         coo = paddle.sparse.sparse_coo_tensor(
             dense_indices, dense_elements, dense_shape, stop_gradient=False
         )
-        assert np.array_equal(indices, coo.indices().numpy())
-        assert np.array_equal(values, coo.values().numpy())
+        np.testing.assert_array_equal(indices, coo.indices().numpy())
+        np.testing.assert_array_equal(values, coo.values().numpy())
 
     def test_create_coo_by_np(self):
         indices = [[0, 1, 2], [1, 2, 0]]
         values = [1.0, 2.0, 3.0]
         dense_shape = [3, 3]
         coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
-        assert np.array_equal(3, coo.nnz())
-        assert np.array_equal(indices, coo.indices().numpy())
-        assert np.array_equal(values, coo.values().numpy())
+        np.testing.assert_array_equal(3, coo.nnz())
+        np.testing.assert_array_equal(indices, coo.indices().numpy())
+        np.testing.assert_array_equal(values, coo.values().numpy())
 
     def test_place(self):
         indices = [[0, 1], [0, 1]]

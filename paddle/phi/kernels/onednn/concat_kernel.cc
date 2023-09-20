@@ -52,8 +52,8 @@ class ConcatOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::concat> {
     srcs_md.reserve(inputs.size());
 
     // Create memory descriptors for each of inputs
-    for (size_t i = 0; i < inputs.size(); ++i) {
-      srcs_md.push_back(inputs[i]->mem_desc());
+    for (auto input : inputs) {
+      srcs_md.push_back(input->mem_desc());
     }
 
     auto dst_dims = vectorize<int64_t>(output->dims());
@@ -61,16 +61,6 @@ class ConcatOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::concat> {
     memory::desc dst_md = memory::desc(dst_dims, dt, OneDNNMemoryFormat::any);
 
     this->AcquireForwardPrimitiveDescriptor(dst_md, concat_axis, srcs_md);
-  }
-
-  // (jczaja) concat oneDNN prim is not having .desc attribute so
-  // we cannot use base AcquireForwardPrimitiveDescriptor
-  void AcquireForwardPrimitiveDescriptor(
-      const memory::desc& dst_md,
-      const int concat_axis,
-      const std::vector<memory::desc>& srcs_md) {
-    this->fwd_pd_.reset(new dnnl::concat::primitive_desc(
-        dst_md, concat_axis, srcs_md, this->engine_));
   }
 
   std::shared_ptr<dnnl::memory> AcquireSrcMemory(const DenseTensor& input,
@@ -120,8 +110,8 @@ void ConcatKernel(const Context& dev_ctx,
       })) {
     std::vector<phi::DDim> x_dims;
     x_dims.reserve(x.size());
-    for (size_t i = 0; i < x.size(); ++i) {
-      x_dims.push_back(x[i]->dims());
+    for (auto item : x) {
+      x_dims.push_back(item->dims());
     }
 
     DDim out_dims =

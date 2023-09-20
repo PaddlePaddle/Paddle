@@ -35,7 +35,7 @@ batch_size = 4
 micro_batch_size = 2
 
 
-class TestDistPPTraning(unittest.TestCase):
+class TestDistPPTraining(unittest.TestCase):
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 1
@@ -165,5 +165,8 @@ class TestDistPPTraning(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    if check_nccl_version_for_bf16():
+    if (
+        check_nccl_version_for_bf16()
+        and paddle.device.cuda.get_device_properties().major >= 8
+    ):
         unittest.main()

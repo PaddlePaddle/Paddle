@@ -21,9 +21,11 @@ from .activation import elu_  # noqa: F401
 from .activation import gelu  # noqa: F401
 from .activation import hardshrink  # noqa: F401
 from .activation import hardtanh  # noqa: F401
+from .activation import hardtanh_  # noqa: F401
 from .activation import hardsigmoid  # noqa: F401
 from .activation import hardswish  # noqa: F401
 from .activation import leaky_relu  # noqa: F401
+from .activation import leaky_relu_  # noqa: F401
 from .activation import log_sigmoid  # noqa: F401
 from .activation import maxout  # noqa: F401
 from .activation import prelu  # noqa: F401
@@ -44,6 +46,7 @@ from .activation import tanh  # noqa: F401
 from .activation import tanh_  # noqa: F401
 from .activation import tanhshrink  # noqa: F401
 from .activation import thresholded_relu  # noqa: F401
+from .activation import thresholded_relu_  # noqa: F401
 from .activation import log_softmax  # noqa: F401
 from .activation import glu  # noqa: F401
 from .activation import gumbel_softmax  # noqa: F401
@@ -151,9 +154,11 @@ __all__ = [  # noqa
     'gelu',
     'hardshrink',
     'hardtanh',
+    'hardtanh_',
     'hardsigmoid',
     'hardswish',
     'leaky_relu',
+    'leaky_relu_',
     'log_sigmoid',
     'maxout',
     'prelu',
@@ -174,6 +179,7 @@ __all__ = [  # noqa
     'tanh_',
     'tanhshrink',
     'thresholded_relu',
+    'thresholded_relu_',
     'log_softmax',
     'glu',
     'gumbel_softmax',
@@ -253,4 +259,5 @@ __all__ = [  # noqa
     'multi_margin_loss',
     'soft_margin_loss',
     'gaussian_nll_loss',
+    'scaled_dot_product_attention',
 ]

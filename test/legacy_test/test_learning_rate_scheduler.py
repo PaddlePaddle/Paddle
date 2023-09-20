@@ -19,8 +19,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core, framework, layers
+from paddle import base
+from paddle.base import core, framework
 
 
 def exponential_decay(
@@ -118,32 +118,30 @@ def lambda_decay(global_step, learning_rate, lr_lambda):
 
 class TestLearningRateDecayDygraph(unittest.TestCase):
     def test_LR_state_dict(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             x = np.random.uniform(-1, 1, [3, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
-            input = fluid.dygraph.to_variable(x)
+            input = base.dygraph.to_variable(x)
 
-            Exponential_scheduler = fluid.dygraph.ExponentialDecay(
+            Exponential_scheduler = paddle.optimizer.lr.ExponentialDecay(
                 learning_rate=0.1,
-                decay_steps=10000,
-                decay_rate=0.5,
-                staircase=True,
+                gamma=0.5,
             )
-            Step_scheduler = fluid.dygraph.StepDecay(0.5, step_size=3)
-            Reducelr_scheduler = fluid.dygraph.ReduceLROnPlateau(
-                learning_rate=1.0, decay_rate=0.5, patience=5, cooldown=3
+            Step_scheduler = paddle.optimizer.lr.StepDecay(0.5, step_size=3)
+            Reducelr_scheduler = paddle.optimizer.lr.ReduceOnPlateau(
+                learning_rate=1.0, factor=0.5, patience=5, cooldown=3
             )
 
-            adam1 = fluid.optimizer.Adam(
+            adam1 = paddle.optimizer.Adam(
                 learning_rate=Exponential_scheduler,
-                parameter_list=linear.parameters(),
+                parameters=linear.parameters(),
             )
-            adam2 = fluid.optimizer.Adam(
-                learning_rate=Step_scheduler, parameter_list=linear.parameters()
+            adam2 = paddle.optimizer.Adam(
+                learning_rate=Step_scheduler, parameters=linear.parameters()
             )
-            adam3 = fluid.optimizer.Adam(
+            adam3 = paddle.optimizer.Adam(
                 learning_rate=Reducelr_scheduler,
-                parameter_list=linear.parameters(),
+                parameters=linear.parameters(),
             )
             print(adam3.state_dict())
 
@@ -156,129 +154,133 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 adam3.minimize(loss)
                 linear.clear_gradients()
 
-                Step_scheduler.epoch()
+                Step_scheduler.get_lr()
                 Reducelr_scheduler.step(loss)
 
             paddle.save(linear.state_dict(), "save_path.pdparams")
 
-            Exponential_scheduler_test = fluid.dygraph.ExponentialDecay(
+            Exponential_scheduler_test = paddle.optimizer.lr.ExponentialDecay(
                 learning_rate=0.1,
-                decay_steps=10000,
-                decay_rate=0.5,
-                staircase=True,
+                gamma=0.5,
             )
-            Step_scheduler_test = fluid.dygraph.StepDecay(0.5, step_size=3)
-            Reducelr_scheduler_test = fluid.dygraph.ReduceLROnPlateau(
-                learning_rate=1.0, decay_rate=0.5, patience=5, cooldown=3
+            Step_scheduler_test = paddle.optimizer.lr.StepDecay(
+                0.5, step_size=3
+            )
+            Reducelr_scheduler_test = paddle.optimizer.lr.ReduceOnPlateau(
+                learning_rate=1.0, factor=0.5, patience=5, cooldown=3
             )
 
             paddle.save(adam1.state_dict(), "save_path.pdopt")
             opt_state = paddle.load("save_path.pdopt")
-            adam_test = fluid.optimizer.Adam(
+            adam_test = paddle.optimizer.Adam(
                 learning_rate=Exponential_scheduler_test,
-                parameter_list=linear.parameters(),
+                parameters=linear.parameters(),
             )
-            adam_test.set_dict(opt_state)
+            adam_test.set_state_dict(opt_state)
             self.assertEqual(
-                adam_test._learning_rate.step_num,
-                adam1._learning_rate.step_num,
-                "epoch_num is different before and after set_dict",
+                adam_test._learning_rate.last_epoch,
+                adam1._learning_rate.last_epoch,
+                "last_epoch is different before and after set_state_dict",
             )
 
             paddle.save(adam2.state_dict(), "save_path.pdopt")
             opt_state = paddle.load("save_path.pdopt")
-            adam_test = fluid.optimizer.Adam(
+            adam_test = paddle.optimizer.Adam(
                 learning_rate=Step_scheduler_test,
-                parameter_list=linear.parameters(),
+                parameters=linear.parameters(),
             )
-            adam_test.set_dict(opt_state)
+            adam_test.set_state_dict(opt_state)
             self.assertEqual(
-                adam_test._learning_rate.epoch_num,
-                adam2._learning_rate.epoch_num,
-                "epoch_num is different before and after set_dict",
+                adam_test._learning_rate.last_epoch,
+                adam2._learning_rate.last_epoch,
+                "epoch_num is different before and after set_state_dict",
             )
             self.assertEqual(
                 adam_test._learning_rate(),
                 adam2._learning_rate(),
-                "current learning rate is different before and after set_dict",
+                "current learning rate is different before and after set_state_dict",
             )
 
             paddle.save(adam3.state_dict(), "save_path.pdopt")
             opt_state = paddle.load("save_path.pdopt")
-            adam_test = fluid.optimizer.Adam(
+            adam_test = paddle.optimizer.Adam(
                 learning_rate=Reducelr_scheduler_test,
-                parameter_list=linear.parameters(),
+                parameters=linear.parameters(),
             )
-            adam_test.set_dict(opt_state)
+            adam_test.set_state_dict(opt_state)
             self.assertEqual(
-                adam_test._learning_rate.best_loss,
-                adam3._learning_rate.best_loss,
-                "best_loss is different before and after set_dict",
+                adam_test._learning_rate.best,
+                adam3._learning_rate.best,
+                "best_loss is different before and after set_state_dict",
             )
             self.assertEqual(
                 adam_test._learning_rate.cooldown_counter,
                 adam3._learning_rate.cooldown_counter,
-                "cooldown_counter is different before and after set_dict",
+                "cooldown_counter is different before and after set_state_dict",
             )
             self.assertEqual(
                 adam_test._learning_rate.num_bad_epochs,
                 adam3._learning_rate.num_bad_epochs,
-                "num_bad_epochs is different before and after set_dict",
+                "num_bad_epochs is different before and after set_state_dict",
             )
             self.assertEqual(
-                adam_test._learning_rate.epoch_num,
-                adam3._learning_rate.epoch_num,
-                "epoch is different before and after set_dict",
+                adam_test._learning_rate.last_epoch,
+                adam3._learning_rate.last_epoch,
+                "epoch is different before and after set_state_dict",
             )
             self.assertEqual(
                 adam_test._learning_rate(),
                 adam3._learning_rate(),
-                "current learning rate is different before and after set_dict",
+                "current learning rate is different before and after set_state_dict",
             )
 
     def test_NoamDecay(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             d_model = 0.01
             warmup_steps = 200
             learning_rate = 2.0
-            lr = fluid.layers.noam_decay(d_model, warmup_steps, learning_rate)
+            lr = paddle.optimizer.lr.noam_decay(
+                d_model, warmup_steps, learning_rate
+            )
             for step in range(5):
                 step += 1
                 right_result = noam_decay(
                     step, d_model, warmup_steps, learning_rate
                 )
-                fluid_result = lr()
+                lr.step()
+                base_result = lr()
 
                 self.assertAlmostEqual(
                     right_result,
-                    fluid_result[0],
+                    base_result,
                     msg='Failed lr scheduler in step {}, Python result is {}, Fluid result is {}'.format(
-                        step, right_result, fluid_result[0]
+                        step, right_result, base_result
                     ),
                 )
 
     def test_LinearLrWarmup(self):
-        with fluid.dygraph.guard():
-            lr = fluid.layers.polynomial_decay(
+        with base.dygraph.guard():
+            lr = paddle.optimizer.lr.PolynomialDecay(
                 learning_rate=1.0,
                 decay_steps=10,
-                end_learning_rate=0.0,
+                end_lr=0.0,
                 power=1.0,
             )
-            lr = fluid.layers.linear_lr_warmup(
+            lr.step()
+            lr = paddle.optimizer.lr.LinearWarmup(
                 learning_rate=lr, warmup_steps=2, start_lr=0.0, end_lr=1.0
             )
-
+            lr.step()
             right_result = [0.5, 0.9, 0.8, 0.7, 0.6]
             for i in range(5):
+                if i == 1:
+                    lr.step()
                 t = lr()
-
-                np.testing.assert_allclose(
-                    t.numpy().item(), right_result[i], rtol=1e-05
-                )
+                lr.step()
+                np.testing.assert_allclose(t, right_result[i], rtol=1e-05)
 
             with self.assertRaises(TypeError):
-                lr = fluid.layers.linear_lr_warmup(
+                lr = paddle.optimizer.lr.linear_lr_warmup(
                     learning_rate="fake_lr",
                     warmup_steps=2,
                     start_lr=0.0,
@@ -286,125 +288,130 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 )
 
     def test_MultiStepDecay(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             learning_rate = 0.5
             milestones = [2, 4, 8]
             decay_rate = 0.2
             linear = paddle.nn.Linear(10, 10)
 
-            scheduler = fluid.dygraph.MultiStepDecay(
+            scheduler = paddle.optimizer.lr.MultiStepDecay(
                 learning_rate, milestones, decay_rate
             )
 
-            adam = fluid.optimizer.AdamOptimizer(
-                learning_rate=scheduler, parameter_list=linear.parameters()
+            adam = paddle.optimizer.Adam(
+                learning_rate=scheduler, parameters=linear.parameters()
             )
             for epoch in range(10):
                 right_result = multi_step_decay(
                     epoch, learning_rate, milestones, decay_rate
                 )
-                fluid_result = adam.current_step_lr()
-                scheduler.epoch()
+                base_result = adam.get_lr()
+                adam.step()
+                scheduler.step()
                 self.assertAlmostEqual(
                     right_result,
-                    fluid_result,
+                    base_result,
                     msg='Failed lr scheduler in epoch {}, Python result is {}, Fluid result is {}'.format(
-                        epoch, right_result, fluid_result
+                        epoch, right_result, base_result
                     ),
                 )
 
             with self.assertRaises(ValueError):
-                lr = fluid.dygraph.MultiStepDecay(
+                lr = paddle.optimizer.lr.MultiStepDecay(
                     learning_rate, [30, 50, 20], 0.1
                 )
 
             with self.assertRaises(ValueError):
-                lr = fluid.dygraph.MultiStepDecay(
+                lr = paddle.optimizer.lr.MultiStepDecay(
                     learning_rate, [20, 30, 50], 1
                 )
 
             with self.assertRaises(TypeError):
-                lr = fluid.dygraph.MultiStepDecay("test", [20, 30, 50])
+                lr = paddle.optimizer.lr.MultiStepDecay("test", [20, 30, 50])
 
             with self.assertRaises(ValueError):
-                lr = fluid.dygraph.MultiStepDecay(-1, [20, 30, 50])
+                lr = paddle.optimizer.lr.MultiStepDecay(-1, [20, 30, 50])
 
     def test_StepDecay(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             learning_rate = 0.5
             step_size = 3
             decay_rate = 0.2
-            scheduler = fluid.dygraph.StepDecay(
+            scheduler = paddle.optimizer.lr.StepDecay(
                 learning_rate, step_size, decay_rate
             )
             for epoch in range(10):
                 right_result = step_decay(
                     epoch, learning_rate, step_size, decay_rate
                 )
-                fluid_result = scheduler().numpy().item()
-                scheduler.epoch()
+                base_result = scheduler()
+                scheduler.get_lr()
+                scheduler.step()
                 self.assertAlmostEqual(
                     right_result,
-                    fluid_result,
+                    base_result,
                     msg='Failed lr scheduler in epoch {}, Python result is {}, Fluid result is {}'.format(
-                        epoch, right_result, fluid_result
+                        epoch, right_result, base_result
                     ),
                 )
 
             with self.assertRaises(TypeError):
-                lr = fluid.dygraph.StepDecay(learning_rate, "test", 0.1)
+                lr = paddle.optimizer.lr.StepDecay(learning_rate, "test", 0.1)
 
             with self.assertRaises(ValueError):
-                lr = fluid.dygraph.StepDecay(learning_rate, 20, 2)
+                lr = paddle.optimizer.lr.StepDecay(learning_rate, 20, 2)
 
     def test_LambdaDecay(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             learning_rate = 0.5
             lr_lambda = lambda x: 0.95**x
-            scheduler = fluid.dygraph.LambdaDecay(learning_rate, lr_lambda)
+            scheduler = paddle.optimizer.lr.LambdaDecay(
+                learning_rate, lr_lambda
+            )
 
             linear = paddle.nn.Linear(10, 10)
-            adam = fluid.optimizer.Adam(
-                scheduler, parameter_list=linear.parameters()
+            adam = paddle.optimizer.Adam(
+                scheduler, parameters=linear.parameters()
             )
 
             for epoch in range(30):
                 right_result = lambda_decay(epoch, learning_rate, lr_lambda)
-                fluid_result = scheduler().numpy().item()
-                scheduler.epoch()
+                base_result = scheduler()
+                scheduler.get_lr()
+                scheduler.step()
                 self.assertAlmostEqual(
                     right_result,
-                    fluid_result,
+                    base_result,
                     msg='Failed lr scheduler in epoch {}, Python result is {}, Fluid result is {}'.format(
-                        epoch, right_result, fluid_result
+                        epoch, right_result, base_result
                     ),
                 )
 
             with self.assertRaises(TypeError):
-                lr = fluid.dygraph.LambdaDecay(learning_rate, "test")
+                lr = paddle.optimizer.lr.LambdaDecay(learning_rate, "test")
 
 
 class TestLearningRateDecay(unittest.TestCase):
-    def check_decay(self, python_decay_fn, fluid_decay_fn, kwargs):
-        places = [fluid.CPUPlace()]
+    def check_decay(self, python_decay_fn, base_decay_fn, kwargs):
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for place in places:
             self.check_decay_with_place(
-                place, python_decay_fn, fluid_decay_fn, kwargs
+                place, python_decay_fn, base_decay_fn, kwargs
             )
 
     def check_decay_with_place(
-        self, place, python_decay_fn, fluid_decay_fn, kwargs
+        self, place, python_decay_fn, base_decay_fn, kwargs
     ):
-        main_prog = fluid.Program()
-        startup_prog = fluid.Program()
+        main_prog = base.Program()
+        startup_prog = base.Program()
 
-        with fluid.program_guard(main_prog, startup_prog):
-            decayed_lr = fluid_decay_fn(**kwargs)
+        with base.program_guard(main_prog, startup_prog):
+            decayed_lr = base_decay_fn(**kwargs)
 
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        place = base.CPUPlace()
+        exe = base.Executor(place)
 
         exe.run(startup_prog)
 
@@ -438,44 +445,64 @@ class TestLearningRateDecay(unittest.TestCase):
         common_kwargs_false["staircase"] = False
 
         decay_fns = [
-            (exponential_decay, layers.exponential_decay, common_kwargs_true),
-            (exponential_decay, layers.exponential_decay, common_kwargs_false),
-            (natural_exp_decay, layers.natural_exp_decay, common_kwargs_true),
-            (natural_exp_decay, layers.natural_exp_decay, common_kwargs_false),
-            (inverse_time_decay, layers.inverse_time_decay, common_kwargs_true),
+            (
+                exponential_decay,
+                paddle.optimizer.lr.exponential_decay,
+                common_kwargs_true,
+            ),
+            (
+                exponential_decay,
+                paddle.optimizer.lr.exponential_decay,
+                common_kwargs_false,
+            ),
+            (
+                natural_exp_decay,
+                paddle.optimizer.lr.natural_exp_decay,
+                common_kwargs_true,
+            ),
+            (
+                natural_exp_decay,
+                paddle.optimizer.lr.natural_exp_decay,
+                common_kwargs_false,
+            ),
             (
                 inverse_time_decay,
-                layers.inverse_time_decay,
+                paddle.optimizer.lr.inverse_time_decay,
+                common_kwargs_true,
+            ),
+            (
+                inverse_time_decay,
+                paddle.optimizer.lr.inverse_time_decay,
                 common_kwargs_false,
             ),
             (
                 polynomial_decay,
-                layers.polynomial_decay,
+                paddle.optimizer.lr.polynomial_decay,
                 {"learning_rate": 1.0, "decay_steps": 5, "cycle": True},
             ),
             (
                 polynomial_decay,
-                layers.polynomial_decay,
+                paddle.optimizer.lr.polynomial_decay,
                 {"learning_rate": 1.0, "decay_steps": 5, "cycle": False},
             ),
             (
                 piecewise_decay,
-                layers.piecewise_decay,
+                paddle.optimizer.lr.piecewise_decay,
                 {"boundaries": [3, 6, 9], "values": [0.1, 0.2, 0.3, 0.4]},
             ),
             (
                 cosine_decay,
-                layers.cosine_decay,
+                paddle.optimizer.lr.cosine_decay,
                 {"learning_rate": 0.1, "step_each_epoch": 100, "epochs": 120},
             ),
             (
                 noam_decay,
-                layers.noam_decay,
+                paddle.optimizer.lr.noam_decay,
                 {"d_model": 0.01, "warmup_steps": 200, "learning_rate": 2.0},
             ),
         ]
 
-        for py_decay_fn, fluid_decay_fn, kwargs in decay_fns:
+        for py_decay_fn, base_decay_fn, kwargs in decay_fns:
             print(
                 "class="
                 + self.__class__.__name__
@@ -487,32 +514,32 @@ class TestLearningRateDecay(unittest.TestCase):
             main_program = framework.Program()
             startup_program = framework.Program()
             with framework.program_guard(main_program, startup_program):
-                self.check_decay(py_decay_fn, fluid_decay_fn, kwargs)
+                self.check_decay(py_decay_fn, base_decay_fn, kwargs)
 
 
 class TestLinearWamrupLearningRateDecay(unittest.TestCase):
     def check_decay_with_place(
-        self, place, python_decay_fn, fluid_decay_fn, kwargs
+        self, place, python_decay_fn, base_decay_fn, kwargs
     ):
-        main_prog = fluid.Program()
-        startup_prog = fluid.Program()
+        main_prog = base.Program()
+        startup_prog = base.Program()
 
         warmup_steps = 10
         start_lr = 0.1 / 3.0
         end_lr = 0.1
 
-        with fluid.program_guard(main_prog, startup_prog):
-            decayed_lr = layers.linear_lr_warmup(
-                fluid_decay_fn(**kwargs), warmup_steps, start_lr, end_lr
+        with base.program_guard(main_prog, startup_prog):
+            decayed_lr = paddle.optimizer.lr.linear_lr_warmup(
+                base_decay_fn(**kwargs), warmup_steps, start_lr, end_lr
             )
 
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        place = base.CPUPlace()
+        exe = base.Executor(place)
         exe.run(startup_prog)
 
         for step in range(20):
             # Step of NoamDecay starts from 1.
-            if fluid_decay_fn.__name__ == 'noam_decay':
+            if base_decay_fn.__name__ == 'noam_decay':
                 step += 1
             (lr_val,) = exe.run(main_prog, feed={}, fetch_list=[decayed_lr])
             if step < warmup_steps:
@@ -537,17 +564,17 @@ class TestLinearWamrupLearningRateDecay(unittest.TestCase):
 
 class TestLinearWamrupLearningRateDecayWithScalarInput(unittest.TestCase):
     def run_scalar_lr(self, place, lr, start_lr, end_lr):
-        main_prog = fluid.Program()
-        startup_prog = fluid.Program()
+        main_prog = base.Program()
+        startup_prog = base.Program()
 
         warmup_steps = 10
 
-        with fluid.program_guard(main_prog, startup_prog):
-            decayed_lr = layers.linear_lr_warmup(
+        with base.program_guard(main_prog, startup_prog):
+            decayed_lr = paddle.optimizer.lr.linear_lr_warmup(
                 lr, warmup_steps, start_lr, end_lr
             )
 
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         exe.run(startup_prog)
 
         for step in range(20):
@@ -568,9 +595,9 @@ class TestLinearWamrupLearningRateDecayWithScalarInput(unittest.TestCase):
 
     def test_scalar_lr(self):
         def run_places(lr, start_lr, end_lr):
-            places = [fluid.CPUPlace()]
+            places = [base.CPUPlace()]
             if core.is_compiled_with_cuda():
-                places.append(fluid.CUDAPlace(0))
+                places.append(base.CUDAPlace(0))
             for p in places:
                 self.run_scalar_lr(p, lr, start_lr, end_lr)
 

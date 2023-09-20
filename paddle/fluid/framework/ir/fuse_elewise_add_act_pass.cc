@@ -350,7 +350,7 @@ void FuseElewiseAddActPass::RemoveIntermediateOut(Graph *graph) const {
       auto cur_node_outputs = cur_node->outputs;
       for (auto &out : cur_node_outputs) {
         if (out->Name() == intermediate_out_args[0]) {
-          if (out->outputs.size() == 0) {
+          if (out->outputs.empty()) {
             cur_node->outputs = this->RemoveNode(out, cur_node->outputs);
             need_removed_nodes.insert(std::move(out));
             cur_node->Op()->SetAttr("save_intermediate_out", false);

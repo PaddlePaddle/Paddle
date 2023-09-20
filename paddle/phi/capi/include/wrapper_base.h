@@ -25,10 +25,12 @@
 
 #include "paddle/phi/api/ext/exception.h"
 #include "paddle/phi/capi/include/c_device_context.h"
+#include "paddle/phi/capi/include/c_infer_meta_context.h"
 #include "paddle/phi/capi/include/c_int_array.h"
 #include "paddle/phi/capi/include/c_kernel_context.h"
 #include "paddle/phi/capi/include/c_kernel_factory.h"
 #include "paddle/phi/capi/include/c_kernel_registry.h"
+#include "paddle/phi/capi/include/c_meta_tensor.h"
 #include "paddle/phi/capi/include/c_place.h"
 #include "paddle/phi/capi/include/c_scalar.h"
 #include "paddle/phi/capi/include/c_tensor.h"
@@ -64,6 +66,19 @@ inline std::vector<int64_t> PD_TensorGetDims(PD_Tensor* tensor,
     std::vector<int64_t> shape(ndims);
     for (int64_t i = 0; i < ndims; ++i) {
       shape[i] = PD_TensorGetDim(tensor, i, status);
+    }
+    return shape;
+  }
+  return std::vector<int64_t>();
+}
+
+inline std::vector<int64_t> PD_MetaTensorGetDims(PD_MetaTensor* tensor,
+                                                 PD_Status* status) {
+  int64_t ndims = PD_MetaTensorGetNumDims(tensor, status);
+  if (ndims > 0) {
+    std::vector<int64_t> shape(ndims);
+    for (int64_t i = 0; i < ndims; ++i) {
+      shape[i] = PD_MetaTensorGetDim(tensor, i, status);
     }
     return shape;
   }
@@ -212,26 +227,6 @@ class DenseTensor : public WrapperBase<PD_Tensor> {
     return static_cast<T*>(ptr);
   }
 
-  // template <typename T>
-  // T* mutable_data(int64_t size = 0, const PD_DeviceContext* ctx = nullptr) {
-  //   C_Status status;
-  //   auto ptr = PD_DeviceContextAllocateTensor(
-  //       ctx, raw_data(), size, phi::capi::CppTypeToPDType<T>::Type(),
-  //       &status);
-  //   PD_CHECK_STATUS(status);
-  //   return static_cast<T*>(ptr);
-  // }
-
-  // void* mutable_data(PD_DataType data_type,
-  //                    int64_t size = 0,
-  //                    const PD_DeviceContext* ctx = nullptr) {
-  //   C_Status status;
-  //   auto ptr = PD_DeviceContextAllocateTensor(
-  //       ctx, raw_data(), size, data_type, &status);
-  //   PD_CHECK_STATUS(status);
-  //   return static_cast<void*>(ptr);
-  // }
-
   DenseTensor& ShareDataWith(const DenseTensor& src) {
     C_Status status;
     PD_TensorShareDataWith(raw_data(), src.raw_data(), &status);
@@ -302,6 +297,26 @@ class DeviceContext : public WrapperBase<PD_DeviceContext> {
                                        &status);
     PD_CHECK_STATUS(status);
     return static_cast<T*>(ptr);
+  }
+
+  uint64_t seed() const {
+    C_Status status;
+    auto seed_val = PD_DeviceContextGetSeed(raw_data(), &status);
+    PD_CHECK_STATUS(status);
+    return seed_val;
+  }
+
+  void seed(uint64_t seed_val) const {
+    C_Status status;
+    PD_DeviceContextSetSeed(raw_data(), seed_val, &status);
+    PD_CHECK_STATUS(status);
+  }
+
+  uint64_t random() const {
+    C_Status status;
+    auto rand_val = PD_DeviceContextGetRandom(raw_data(), &status);
+    PD_CHECK_STATUS(status);
+    return rand_val;
   }
 };
 
@@ -448,10 +463,6 @@ class KernelArgsDef : WrapperBase<PD_KernelArgsDef> {
     PD_DeletePointerList(list);
     return ret;
   }
-
-  // std::vector<AttributeArgDef>
-  // attribute_defs() {
-  // }
 };
 
 class KernelKey : WrapperBase<PD_KernelKey> {
@@ -459,7 +470,6 @@ class KernelKey : WrapperBase<PD_KernelKey> {
   explicit KernelKey(PD_KernelKey* kernel_key)
       : WrapperBase<PD_KernelKey>(kernel_key) {}
 
-  // Backend backend() const { return backend_; }
   PD_DataLayout layout() const {
     PD_Status status;
     auto layout_ = PD_KernelKeyGetLayout(raw_data(), &status);
@@ -489,6 +499,58 @@ class Kernel : WrapperBase<PD_Kernel> {
   TensorArgDef InputAt(size_t idx) { return args_def().input_defs()[idx]; }
 
   TensorArgDef OutputAt(size_t idx) { return args_def().input_defs()[idx]; }
+};
+
+class MetaTensor : WrapperBase<PD_MetaTensor> {
+ public:
+  explicit MetaTensor(PD_MetaTensor* meta_tensor)
+      : WrapperBase<PD_MetaTensor>(meta_tensor) {}
+
+  std::vector<int64_t> dims() const {
+    C_Status status;
+    auto dimension = PD_MetaTensorGetDims(raw_data(), &status);
+    PD_CHECK_STATUS(status);
+    return dimension;
+  }
+
+  PD_DataType dtype() const {
+    C_Status status;
+    auto data_type = PD_MetaTensorGetPDDataType(raw_data(), &status);
+    PD_CHECK_STATUS(status);
+    return data_type;
+  }
+
+  PD_DataLayout layout() const {
+    C_Status status;
+    auto data_layout = PD_MetaTensorGetDataLayout(raw_data(), &status);
+    PD_CHECK_STATUS(status);
+    return data_layout;
+  }
+
+  int64_t numel() const {
+    C_Status status;
+    auto element_count = PD_MetaTensorGetElementCount(raw_data(), &status);
+    PD_CHECK_STATUS(status);
+    return element_count;
+  }
+
+  void set_dims(const std::vector<int64_t>& dims) {
+    C_Status status;
+    PD_MetaTensorSetDims(raw_data(), dims.size(), dims.data(), &status);
+    PD_CHECK_STATUS(status);
+  }
+
+  void set_dtype(PD_DataType data_type) {
+    C_Status status;
+    PD_MetaTensorSetDataType(raw_data(), data_type, &status);
+    PD_CHECK_STATUS(status);
+  }
+
+  void set_layout(PD_DataLayout data_layout) {
+    C_Status status;
+    PD_MetaTensorSetDataLayout(raw_data(), data_layout, &status);
+    PD_CHECK_STATUS(status);
+  }
 };
 
 }  // namespace capi

@@ -26,16 +26,18 @@ void AbsGradKernel(const Context& ctx,
                    const DenseTensor& dout,
                    DenseTensor* dx) {
   ctx.template Alloc<T>(dx);
+  using XPUType = typename XPUTypeTrait<T>::Type;
   int r = xpu::abs_grad(ctx.x_context(),
-                        x.data<T>(),
-                        dout.data<T>(),
-                        dout.data<T>(),
-                        dx->data<T>(),
+                        reinterpret_cast<const XPUType*>(x.data<T>()),
+                        reinterpret_cast<const XPUType*>(dout.data<T>()),
+                        reinterpret_cast<const XPUType*>(dout.data<T>()),
+                        reinterpret_cast<XPUType*>(dx->data<T>()),
                         x.numel());
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "abs_grad");
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(abs_grad, XPU, ALL_LAYOUT, phi::AbsGradKernel, float) {
+PD_REGISTER_KERNEL(
+    abs_grad, XPU, ALL_LAYOUT, phi::AbsGradKernel, float, phi::dtype::float16) {
   kernel->InputAt(1).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }

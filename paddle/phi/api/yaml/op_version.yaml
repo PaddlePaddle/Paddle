@@ -140,6 +140,14 @@
           comment : In order to add additional size to one side of each dimension in the output.
           default : "std::vector<int>{}"
 
+- op : cumsum
+  version :
+    - checkpoint : Upgrade cumsum add a new attribute [flatten].
+      action :
+        - add_attr : flatten
+          comment : In order to compute the cumsum over the flattened array when the argument `axis` in python API is None.
+          default : "false"
+
 - op : depthwise_conv2d
   version :
     - checkpoint : Upgrade depthwise_conv2d, add a new attribute [use_addto].
@@ -157,12 +165,44 @@
           comment : In order to add additional size to one side of each dimension in the output.
           default : "std::vector<int>{}"
 
+- op : elementwise_floordiv
+  version :
+    - checkpoint : Register elementwise_floordiv for adding the attribute of Scale_y
+      action :
+        - add_attr : Scale_y
+          comment : In order to support the function of scaling the input Y when using the operator of elementwise_floordiv.
+          default : 1.0
+
 - op : elementwise_max
   version :
     - checkpoint : Register elementwise_max for adding the attribute of Scale_y.
       action :
         - add_attr : Scale_y
           comment : In order to support the function of scaling the input Y when using the operator of elementwise_max.
+          default : 1.0
+
+- op : elementwise_min
+  version :
+    - checkpoint : Register elementwise_min for adding the attribute of Scale_y.
+      action :
+        - add_attr : Scale_y
+          comment : In order to support the function of scaling the input Y when using the operator of elementwise_min.
+          default : 1.0
+
+- op : elementwise_mod
+  version :
+    - checkpoint : Register elementwise_mod for adding the attribute of Scale_y
+      action :
+        - add_attr : Scale_y
+          comment : In order to support the function of scaling the input Y when using the operator of elementwise_mod.
+          default : "false"
+
+- op : elementwise_pow
+  version :
+    - checkpoint : Register elementwise_pow for adding the attribute of Scale_y
+      action :
+        - add_attr : Scale_y
+          comment : In order to support the function of scaling the input Y when using the operator of elementwise_pow.
           default : 1.0
 
 - op : embedding
@@ -196,6 +236,13 @@
           default : paddle::none
         - delete_attr : dims
           comment : The attr 'dims' is deleted.
+
+- op : gather
+  version :
+    - checkpoint : Upgrade gather, add a new input [Axis]
+      action :
+        - add_input : Axis
+          comment : Specify the axis of gather operation.
 
 - op : gaussian_random
   version :
@@ -344,6 +391,33 @@
         - add_attr : data_format
           comment : Specify the data format of the input data
           default : "true"
+
+- op : roi_align
+  version :
+    - checkpoint : Incompatible upgrade of input [RpnRoisLod])
+      action :
+        - delete_input : RpnRoisLod
+          comment : Delete RpnRoisLod due to incorrect input name and it is not used in object detection models yet
+    - checkpoint :  Upgrade roi_pool add a new input [RoisNum]
+      action :
+        - add_input : RoisNum
+          comment : The number of RoIs in each image. RoisNum is dispensable
+    - checkpoint :  Upgrade roi_align add a new input [aligned]
+      action :
+        - add_attr : aligned
+          comment : If true, pixel shift it by -0.5 for align more perfectly.
+          default : "false"
+
+- op : roi_pool
+  version :
+    - checkpoint :  Incompatible upgrade of input [RpnRoisLod]
+      action :
+        - delete_input : RpnRoisLod
+          comment : Delete RpnRoisLod due to incorrect input name and it is not used in object detection models yet.
+    - checkpoint :  Upgrade roi_pool add a new input [RoisNum]
+      action :
+        - add_input : RoisNum
+          comment : The number of RoIs in each image. RoisNum is dispensable
 
 - op : roll
   version :

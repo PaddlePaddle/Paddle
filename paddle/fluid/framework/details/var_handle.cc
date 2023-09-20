@@ -18,7 +18,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-VarHandleBase::~VarHandleBase() {}
+VarHandleBase::~VarHandleBase() = default;
 
 VarHandle::~VarHandle() { VLOG(4) << "deleting var handle " << DebugString(); }
 

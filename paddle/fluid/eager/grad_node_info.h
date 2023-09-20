@@ -20,6 +20,7 @@
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/phi/api/all.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 
 namespace egr {
 /**
@@ -158,11 +159,23 @@ class GradSlotMeta {
   Edge& GetMutableEdge() { return adj_edge_; }
   const Edge& GetEdge() const { return adj_edge_; }
 
+  const phi::distributed::TensorDistAttr& DistAttr() const {
+    return dist_attr_;
+  }
+
+  void SetDistAttr(const phi::distributed::TensorDistAttr& dist_attr) {
+    dist_attr_ = dist_attr;
+  }
+
  private:
   bool stop_gradient_{false};
   phi::Place place_;
   std::shared_ptr<phi::DenseTensorMeta> meta_ = nullptr;
   Edge adj_edge_;
+  // For dygraph semi-auto parallel
+  // Save the dist attr of the forward input Tensor for proper resharding
+  // operation when compute the input Tensor's gradient
+  phi::distributed::TensorDistAttr dist_attr_;
 };
 
 class GradNodeBase {
@@ -251,6 +264,10 @@ class GradNodeBase {
     return true;
   }
 
+  std::vector<std::shared_ptr<egr::GradNodeBase>> NextFunctions();
+
+  uintptr_t GetThisPtr() const;
+
   /**
    * Apply GradientHook
    * **/
@@ -296,6 +313,14 @@ class GradNodeBase {
 
   std::string GetForwardTrace() { return forward_trace_; }
 
+  /**
+   * The following interfaces are designed for auto parallel
+   * **/
+  bool IsRunAutoParallel() const { return is_run_auto_parallel_; }
+  void SetIsRunAutoParallel(bool is_run_auto_parallel) {
+    is_run_auto_parallel_ = is_run_auto_parallel;
+  }
+
  private:
   // bwd_out_meta_ is used to record Grad output info for backward
   paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>
@@ -323,6 +348,10 @@ class GradNodeBase {
   bool is_tensor_wrappers_cleared_ = false;
   // The trace of forward function
   std::string forward_trace_ = "";
+
+  // With this flag, short-circuit the backward traversal of Tensor and
+  // set the DistAttr to reduce the impact on scheduling performance
+  bool is_run_auto_parallel_{false};
 };
 
 }  // namespace egr

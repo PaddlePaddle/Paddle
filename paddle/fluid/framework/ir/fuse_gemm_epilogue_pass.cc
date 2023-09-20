@@ -42,7 +42,7 @@ void FuseGemmEpiloguePass::ApplyImpl(ir::Graph *graph) const {
   graph = FuseLinearActBwd(graph, {"relu_grad"}, true, &cache);
   graph = FuseLinearActBwd(graph, {"gelu_grad"}, false, &cache);
   graph = FuseLinearBwd(graph, false);
-  graph = FuseLinearBwd(graph, true);
+  graph = FuseLinearBwd(graph, true);  // NOLINT
 }
 
 ir::Graph *FuseGemmEpiloguePass::FuseLinearFwd(ir::Graph *graph,

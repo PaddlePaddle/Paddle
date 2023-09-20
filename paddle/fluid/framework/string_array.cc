@@ -48,7 +48,7 @@ void NFD(const std::string& s, std::string* ret) {
       utf8proc_NFD(reinterpret_cast<const unsigned char*>(s.c_str())));
   if (result) {
     *ret = std::move(std::string(result));
-    free(result);
+    free(result);  // NOLINT
   }
 }
 
@@ -63,13 +63,13 @@ void StringMapToStream(std::ostream& os,
   }
   {
     // then write the data
-    for (auto it = data.begin(); it != data.end(); ++it) {
-      std::string token = it->first;
-      int32_t token_id = it->second;
+    for (const auto& item : data) {
+      std::string token = item.first;
+      int32_t token_id = item.second;
       // write the token
       size_t length = token.size();
       os.write(reinterpret_cast<const char*>(&length), sizeof(length));
-      os.write(token.c_str(), length);
+      os.write(token.c_str(), length);  // NOLINT
       // write the token_id
       os.write(reinterpret_cast<const char*>(&token_id), sizeof(token_id));
     }
@@ -90,7 +90,7 @@ void StringMapFromStream(std::istream& is,
     size_t token_length;
     is.read(reinterpret_cast<char*>(&token_length), sizeof(token_length));
     char* tmp = new char[token_length];
-    is.read(tmp, token_length);
+    is.read(tmp, token_length);  // NOLINT
     std::string token(tmp, tmp + token_length);
     delete[] tmp;
     // read the token_id

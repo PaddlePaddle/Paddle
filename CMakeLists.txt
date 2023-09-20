@@ -24,9 +24,6 @@ endif()
 # https://cmake.org/cmake/help/v3.0/policy/CMP0026.html?highlight=cmp0026
 cmake_policy(SET CMP0026 OLD)
 cmake_policy(SET CMP0079 NEW)
-if(${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.18)
-  cmake_policy(SET CMP0104 OLD)
-endif()
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
@@ -56,6 +53,7 @@ option(WITH_TENSORRT "Compile PaddlePaddle with NVIDIA TensorRT" OFF)
 option(WITH_XPU "Compile PaddlePaddle with BAIDU KUNLUN XPU" OFF)
 option(WITH_XPU_KP "Compile PaddlePaddle with BAIDU XPU compiler " OFF)
 option(WITH_XPU_XFT "Compile PaddlePaddle with BAIDU XPU-XFT" OFF)
+option(WITH_XPU_PLUGIN "Compile PaddlePaddle with BAIDU XPU plugin" OFF)
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode" OFF)
 option(WITH_ROCM "Compile PaddlePaddle with ROCM platform" OFF)
 option(WITH_IPU "Compile PaddlePaddle with Graphcore IPU" OFF)
@@ -63,6 +61,17 @@ option(WITH_ONNXRUNTIME "Compile PaddlePaddle with ONNXRUNTIME" OFF)
 option(WITH_CUSPARSELT "Compile PaddlePaddle with CUSPARSELT" OFF)
 option(WITH_SETUP_INSTALL "Compile PaddlePaddle with setup.py" OFF)
 option(WITH_SHARED_PHI "Compile PaddlePaddle with SHARED LIB of PHI" OFF)
+option(CINN_ONLY "Compile CINN only in Paddle" OFF)
+option(CINN_WITH_CUDNN "Compile CINN with CUDNN support" ON)
+
+find_package(Git REQUIRED)
+
+# config GIT_URL with github mirrors to speed up dependent repos clone
+option(GIT_URL "Git URL to clone dependent repos" ${GIT_URL})
+if(NOT GIT_URL)
+  set(GIT_URL "https://github.com")
+endif()
+
 # Note(zhouwei): It use option above, so put here
 include(init)
 include(generic) # simplify cmake module
@@ -229,14 +238,6 @@ else()
   )
 endif()
 
-find_package(Git REQUIRED)
-
-# config GIT_URL with github mirrors to speed up dependent repos clone
-option(GIT_URL "Git URL to clone dependent repos" ${GIT_URL})
-if(NOT GIT_URL)
-  set(GIT_URL "https://github.com")
-endif()
-
 find_package(Threads REQUIRED)
 
 include(simd)
@@ -253,6 +254,7 @@ option(WITH_BRPC_RDMA "Use brpc rdma as the rpc protocal" OFF)
 option(ON_INFER "Turn on inference optimization and inference-lib generation"
        ON)
 option(WITH_CPP_DIST "Install PaddlePaddle C++ distribution" OFF)
+option(WITH_GFLAGS "Compile PaddlePaddle with gflags support" OFF)
 ################################ Internal Configurations #######################################
 option(WITH_NV_JETSON "Compile PaddlePaddle with NV JETSON" OFF)
 option(WITH_PROFILER "Compile PaddlePaddle with GPU profiler and gperftools"
@@ -269,7 +271,7 @@ option(WITH_PSCORE "Compile with parameter server support" ${WITH_DISTRIBUTE})
 option(WITH_HETERPS "Compile with heterps" OFF)
 option(WITH_INFERENCE_API_TEST
        "Test fluid inference C++ high-level api interface" OFF)
-option(WITH_INFERENCE_NVTX "Paddle inference with nvtx for profiler" OFF)
+option(WITH_NVTX "Paddle with nvtx for profiler" OFF)
 option(PY_VERSION "Compile PaddlePaddle with python3 support" ${PY_VERSION})
 option(WITH_DGC "Use DGC(Deep Gradient Compression) or not" ${WITH_DISTRIBUTE})
 option(
@@ -307,7 +309,10 @@ option(WITH_CUDNN_FRONTEND
        "Compile with CUDNN Frontend API support (experimental)" OFF)
 option(WITH_CUDNN_DSO "Compile PaddlePaddle with cuDNN dynamic-link libraries"
        OFF)
-option(WITH_IR "Compile PaddlePaddle with NEWIR" ON)
+option(WITH_SHARED_IR "Compile PaddlePaddle with SHARED LIB of IR" ON)
+option(WITH_NVCC_LAZY
+       "Compile PaddlePaddle with nvcc lazy mode, used for CI-Inference only."
+       ON)
 
 if(WITH_RECORD_BUILDTIME)
   set_property(
@@ -423,6 +428,14 @@ if(NOT WITH_XPU AND WITH_XPU_XFT)
   set(WITH_XPU
       ON
       CACHE STRING "Enable WITH_XPU when compiling with WITH_XPU_XFT" FORCE)
+endif()
+
+if(NOT WITH_XPU AND WITH_XPTI)
+  message(
+    WARNING "Disable XPTI when compiling without XPU. Force WITH_XPTI=OFF.")
+  set(WITH_XPTI
+      OFF
+      CACHE STRING "Disable XPTI when compiling without XPU" FORCE)
 endif()
 
 if(NOT WITH_XPU AND WITH_XPU_BKCL)
@@ -569,6 +582,46 @@ include(third_party
 
 include(flags) # set paddle compile flags
 
+#------------- cinn cmake config start --------------
+
+if(WITH_CINN)
+  message(STATUS "Compile Paddle with CINN.")
+  message(
+    WARNING
+      "Enable WITH_SHARED_PHI when compiling with CINN. Force WITH_SHARED_PHI=ON."
+  )
+  set(WITH_SHARED_PHI
+      ON
+      CACHE BOOL "Enable WITH_SHARED_PHI when compiling with CINN" FORCE)
+  # TODO(6clc): Use CINN_WITH_CUDNN to completely replace WITH_CUDNN in CINN.
+  #             Use WITH_GPU to completely replace WITH_CUDA in CINN.
+  set(WITH_MKL_CBLAS ${WITH_MKL})
+  if(WITH_GPU)
+    set(WITH_CUDA ${WITH_GPU})
+    add_definitions(-DCINN_WITH_CUDA)
+    set(WITH_CUDNN ${CINN_WITH_CUDNN})
+    if(WITH_CUDNN)
+      add_definitions(-DCINN_WITH_CUDNN)
+    endif()
+  endif()
+  include(cmake/cinn.cmake)
+  add_definitions(-DPADDLE_WITH_CINN)
+
+  if(CINN_ONLY)
+    add_definitions(-DCINN_WITH_ONLY)
+    if(WITH_PYTHON)
+      add_subdirectory(python)
+    endif()
+    add_subdirectory(test)
+    if(NOT WITH_GFLAGS)
+      add_subdirectory(paddle/utils)
+    endif()
+    return()
+  endif()
+endif()
+
+#------------- cinn cmake config end --------------
+
 if(WITH_PROFILER)
   find_package(Gperftools REQUIRED)
   include_directories(${GPERFTOOLS_INCLUDE_DIR})
@@ -623,6 +676,10 @@ if(WITH_MIPS)
   add_definitions(-DPADDLE_WITH_MIPS)
 endif()
 
+if(WITH_NVTX AND NOT WIN32)
+  add_definitions(-DPADDLE_WITH_NVTX)
+endif()
+
 if(WITH_LOONGARCH)
   set(WITH_XBYAK
       OFF
@@ -655,12 +712,19 @@ if(ON_INFER)
     STATUS "On inference mode, will take place some specific optimization.")
   include(inference_lib)
   add_definitions(-DPADDLE_ON_INFERENCE)
+  set(WITH_SHARED_IR
+      OFF
+      CACHE BOOL "Only paddle_inference.so is allowed in inference." FORCE)
 else()
   #TODO(luotao), combine this warning with `make inference_lib_dist` command.
   message(
     WARNING
       "On inference mode, will take place some specific optimization. Turn on the ON_INFER flag when building inference_lib only."
   )
+endif()
+
+if(NOT WITH_SHARED_IR)
+  add_definitions(-DSTATIC_IR)
 endif()
 
 if(WITH_STRIP)

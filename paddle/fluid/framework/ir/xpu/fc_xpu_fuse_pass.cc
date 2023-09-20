@@ -128,6 +128,9 @@ FcXPUPattern::FcXPUPattern(PDPattern* pattern,
     add_out = pattern->NewNode(add_out_repr())
                   ->assert_is_op_output("elementwise_add", "Out")
                   ->assert_var_not_persistable();
+    if (with_bn_ || !act_type_.empty()) {
+      add_out->assert_has_n_outputs(1);
+    }
     add->LinksFrom({mul_out, bias}).LinksTo({add_out});
   } else {
     add_out = mul_out;
@@ -257,6 +260,10 @@ void FcXPUFusePass::ApplyImpl(ir::Graph* graph) const {
                  "relu",
                  "gelu",
                  "tanh",
+                 "sigmoid",
+                 "swish",
+                 "relu6",
+                 "leaky_relu",
                  "",
              }) {
           found_subgraph_count +=
@@ -309,9 +316,11 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
 
     auto* filter_t =
         scope->FindVar(mul_w->Name())->GetMutable<phi::DenseTensor>();
-    // filter fp16 --> fp32
-    auto tensor_type = filter_t->dtype();
-    if (tensor_type == phi::DataType::FLOAT16) {
+    // weight fp16 --> fp32
+    auto filter_dtype = filter_t->dtype();
+    int out_dtype = proto::VarType::Type::VarType_Type_FP32;
+    if (filter_dtype == phi::DataType::FLOAT16) {
+      out_dtype = proto::VarType::Type::VarType_Type_FP16;
       CastToFp32(filter_t, nullptr);
     }
     auto filter_dims = filter_t->dims();
@@ -431,6 +440,7 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
             "act_alpha", PADDLE_GET_CONST(float, act->Op()->GetAttr("slope")));
       }
     }
+    fc_xpu_op_desc.SetAttr("out_dtype", out_dtype);
     fc_xpu_op_desc.SetOutput("out", {fc_out_name});
     fc_xpu_op_desc.SetOutput("out_max", {fc_out_max_name});
     auto* fc_xpu = graph->CreateOpNode(&fc_xpu_op_desc);

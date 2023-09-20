@@ -98,13 +98,14 @@ FetchResultType ScopeBufferedSSAGraphExecutor::Run(
   if (strategy_.num_iteration_per_drop_scope_ == 1) {
     exe_run_func();
   } else {
-    scope_monitor_.Apply(exe_run_func, fetch_tensors.size() > 0);
+    scope_monitor_.Apply(exe_run_func, !fetch_tensors.empty());
   }
 
   if (VLOG_IS_ON(5)) {
     for (auto *scope : local_exec_scopes_) {
       VLOG(5) << "Left "
-              << string::HumanReadableSize(GetScopeVarMemorySize(scope))
+              << string::HumanReadableSize(
+                     GetScopeVarMemorySize(scope))  // NOLINT
               << " on scope " << scope << " before deleting";
     }
   }
@@ -118,7 +119,8 @@ FetchResultType ScopeBufferedSSAGraphExecutor::Run(
   if (VLOG_IS_ON(5)) {
     for (auto *scope : local_exec_scopes_) {
       VLOG(5) << "Left "
-              << string::HumanReadableSize(GetScopeVarMemorySize(scope))
+              << string::HumanReadableSize(
+                     GetScopeVarMemorySize(scope))  // NOLINT
               << " on scope " << scope << " after deleting";
     }
   }

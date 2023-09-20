@@ -15,14 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import (
-    OpTest,
-    convert_float_to_uint16,
-    convert_uint16_to_float,
-)
+from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 def numpy_topk(x, k=1, axis=-1, largest=True):
@@ -71,6 +67,30 @@ class TestTopkOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
+
+
+class TestTopkOp_ZeroDim(TestTopkOp):
+    def init_args(self):
+        self.k = 1
+        self.axis = 0
+        self.largest = True
+
+    def setUp(self):
+        self.op_type = "top_k_v2"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.topk
+        self.public_python_api = paddle.topk
+        self.dtype = np.float64
+        self.input_data = np.random.random(())
+        self.init_args()
+        self.if_enable_cinn()
+        self.inputs = {'X': self.input_data}
+        self.attrs = {'k': self.k, 'largest': self.largest}
+        output, indices = self.input_data, np.array(0).astype('int64')
+        self.outputs = {'Out': output, 'Indices': indices}
+
+    def if_enable_cinn(self):
+        pass
 
 
 class TestTopkOp1(TestTopkOp):
@@ -264,7 +284,7 @@ class TestTopKAPI(unittest.TestCase):
         self.large_input_data = np.random.rand(2, 1030)
 
     def run_dygraph(self, place):
-        with paddle.fluid.dygraph.guard(place):
+        with paddle.base.dygraph.guard(place):
             input_tensor = paddle.to_tensor(self.input_data)
             large_input_tensor = paddle.to_tensor(self.large_input_data)
             # test case for basic test case 1
@@ -450,7 +470,7 @@ class TestTopKAPI(unittest.TestCase):
             self.run_static(place)
 
     def test_errors(self):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             x = paddle.to_tensor([1, 2, 3])
             with self.assertRaises(BaseException):
                 paddle.topk(x, k=-1)

@@ -91,7 +91,7 @@ void InsertOpToGraph(const std::vector<std::vector<Node *>> &inout_node_vectors,
     weight_decay = config.first_coeff;
     use_adamw = true;
   }
-  if (inout_node_vectors[0].size() > 0 && config.replace_adamw) {
+  if (!inout_node_vectors[0].empty() && config.replace_adamw) {
     OpDesc fuse_adamw_op_desc(config.block);
     fuse_adamw_op_desc.SetType("fused_adam");
 
@@ -102,7 +102,8 @@ void InsertOpToGraph(const std::vector<std::vector<Node *>> &inout_node_vectors,
       i++;
     }
 
-    fuse_adamw_op_desc.SetInput("LearningRate", {config.first_lr->Name()});
+    fuse_adamw_op_desc.SetInput("LearningRate",
+                                {config.first_lr->Name()});  // NOLINT
     if (config.use_skip_update) {
       fuse_adamw_op_desc.SetInput("SkipUpdate",
                                   {config.first_skip_update->Name()});
@@ -245,7 +246,7 @@ void FuseAdamWPass::ApplyImpl(ir::Graph *graph) const {
   graph = FuseAdamWFun(graph, true, true);
   graph = FuseAdamWFun(graph, true, false);
   graph = FuseAdamWFun(graph, false, true);
-  graph = FuseAdamWFun(graph, false, false);
+  graph = FuseAdamWFun(graph, false, false);  // NOLINT
 }
 
 ir::Graph *FuseAdamWPass::FuseAdamWFun(ir::Graph *graph,
@@ -297,7 +298,7 @@ ir::Graph *FuseAdamWPass::FuseAdamWFun(ir::Graph *graph,
   }
 
   // Remove old op
-  if (config.replace_adamw && (inout_node_vectors[0].size() > 0)) {
+  if (config.replace_adamw && !inout_node_vectors[0].empty()) {
     GraphSafeRemoveNodes(graph, adamw_op_del_set);
   }
 
@@ -306,7 +307,7 @@ ir::Graph *FuseAdamWPass::FuseAdamWFun(ir::Graph *graph,
 
   VLOG(4) << "replace adamw with fuse_adamw";
 
-  AddStatis(found_adamw_count);
+  AddStatis(static_cast<int>(found_adamw_count));
   return graph;
 }
 

@@ -16,8 +16,9 @@ import unittest
 
 from test_eager_deletion_padding_rnn import PaddingRNNTestBase, RNNConfig
 
-from paddle import fluid
-from paddle.fluid import core
+import paddle
+from paddle import base
+from paddle.base import core
 
 
 class FusionGroupPaddingRNNTest(PaddingRNNTestBase):
@@ -26,14 +27,15 @@ class FusionGroupPaddingRNNTest(PaddingRNNTestBase):
 
         # Use CUDA executor
         if core.is_compiled_with_cuda():
-            self.exe = fluid.Executor(fluid.CUDAPlace(0))
+            self.exe = base.Executor(base.CUDAPlace(0))
 
     def test_train_enable_fusion_group(self):
         rnn_model = "static"
         config = RNNConfig("test", rnn_model)
-        with fluid.scope_guard(fluid.Scope()):
+        with base.scope_guard(base.Scope()):
             self.train(config, use_program_cache=False)
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

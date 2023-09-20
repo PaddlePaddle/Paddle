@@ -15,10 +15,15 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import (
+    ast_only_test,
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
+from paddle.base import core
 
 
 def apply_to_static(net, use_cinn):
@@ -38,6 +43,7 @@ class PrimeNet(paddle.nn.Layer):
         return out
 
 
+@dy2static_unittest
 class TestPrimForward(unittest.TestCase):
     """
     This case only tests prim_forward + to_static + cinn. Thus we need to
@@ -88,6 +94,7 @@ class TestPrimForward(unittest.TestCase):
         # Ensure that softmax is splitted into small ops
         self.assertTrue('softmax' not in fwd_ops)
 
+    @ast_only_test
     def test_cinn_prim_forward(self):
         dy_res = self.train(use_prim=False)
         cinn_res = self.train(use_prim=True)
@@ -98,6 +105,7 @@ class TestPrimForward(unittest.TestCase):
             )
 
 
+@dy2static_unittest
 class TestPrimForwardAndBackward(unittest.TestCase):
     """
     Test PrimeNet with @to_static + prim forward + prim backward + cinn v.s Dygraph
@@ -153,6 +161,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
             if op != "matmul_v2_grad":
                 self.assertTrue("_grad" not in op)
 
+    @ast_only_test
     def test_cinn_prim(self):
         dy_res = self.train(use_prim=False)
         cinn_res = self.train(use_prim=True)
@@ -164,6 +173,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
 
 
 class TestBackend(unittest.TestCase):
+    @test_and_compare_with_new_ir(False)
     def test_backend(self):
         x = paddle.randn([2, 4])
         out1 = self.forward(x, 'CINN')

@@ -14,21 +14,22 @@ limitations under the License. */
 
 #include "paddle/phi/core/enforce.h"
 
+#include <array>
 #include <map>
 #include <memory>
 #include <unordered_map>
 #include <vector>
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/utils/blank.h"
+#include "paddle/utils/flags.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/core/external_error.pb.h"
 #endif  // PADDLE_WITH_CUDA
 
-DECLARE_int32(call_stack_level);
+PD_DECLARE_int32(call_stack_level);
 
 namespace egr {
 class EagerVariable;
@@ -141,9 +142,9 @@ std::string GetCurrentTraceBackString(bool for_signal) {
 #if !defined(_WIN32) && !defined(PADDLE_WITH_MUSL)
   static constexpr int TRACE_STACK_LIMIT = 100;
 
-  void* call_stack[TRACE_STACK_LIMIT];
-  auto size = backtrace(call_stack, TRACE_STACK_LIMIT);
-  auto symbols = backtrace_symbols(call_stack, size);
+  std::array<void*, TRACE_STACK_LIMIT> call_stack;
+  auto size = backtrace(call_stack.data(), TRACE_STACK_LIMIT);
+  auto symbols = backtrace_symbols(call_stack.data(), size);
   Dl_info info;
   int idx = 0;
   // `for_signal` used to remove the stack trace introduced by
@@ -162,7 +163,7 @@ std::string GetCurrentTraceBackString(bool for_signal) {
       }
     }
   }
-  free(symbols);
+  free(symbols);  // NOLINT
 #else
   sout << "Not support stack backtrace yet.\n";
 #endif
@@ -175,7 +176,7 @@ void ThrowWarnInternal(const std::string& msg) {
 
 std::string SimplifyErrorTypeFormat(const std::string& str) {
   std::ostringstream sout;
-  size_t type_end_pos = str.find(":", 0);
+  size_t type_end_pos = str.find(':', 0);
   if (type_end_pos == std::string::npos) {
     sout << str;
   } else {
@@ -277,7 +278,7 @@ std::string GetExternalErrorMsg(T status) {
     Dl_info info;
     if (dladdr(reinterpret_cast<void*>(GetCurrentTraceBackString), &info)) {
       std::string phi_so_path(info.dli_fname);
-      const size_t last_slash_idx = phi_so_path.find_last_of("/");
+      const size_t last_slash_idx = phi_so_path.find_last_of('/');
       if (std::string::npos != last_slash_idx) {
         phi_so_path.erase(last_slash_idx, std::string::npos);
       }

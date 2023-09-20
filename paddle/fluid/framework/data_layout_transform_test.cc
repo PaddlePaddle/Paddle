@@ -40,7 +40,7 @@ TEST(DataTransform, DataLayoutFunction) {
   EXPECT_TRUE(in.dims() == phi::make_ddim({2, 3, 1, 2}));
 }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(DataTransformBf16, GetDataFromTensorDNNL) {
   auto place = paddle::platform::CPUPlace();
   phi::DenseTensor in = phi::DenseTensor();

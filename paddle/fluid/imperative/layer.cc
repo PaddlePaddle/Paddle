@@ -26,7 +26,7 @@
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
@@ -228,7 +228,7 @@ void VarBase::ClearGradient(bool set_to_zero) {
     if (grad_var_->Var().IsType<phi::SelectedRows>()) {
       auto* grad_t = grad_var_->MutableVar()->GetMutable<phi::SelectedRows>();
       if (grad_t->mutable_value()->IsInitialized()) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
         if (FLAGS_use_mkldnn) platform::ClearMKLDNNCache(grad_t->place());
 #endif
         grad_t->mutable_rows()->clear();
@@ -246,7 +246,7 @@ void VarBase::ClearGradient(bool set_to_zero) {
         } else {
           grad_t->clear();
         }
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
         if (FLAGS_use_mkldnn) platform::ClearMKLDNNCache(grad_t->place());
 #endif
       }
@@ -387,7 +387,7 @@ void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
                             src.Name()));
       place = Place();
     } else {
-      dst_tensor->set_lod(src_tensor.lod());
+      dst_tensor->set_lod(src_tensor.lod());  // NOLINT
       dst_tensor->Resize(src_tensor.dims());
     }
     framework::TensorCopy(src_tensor, place, dst_tensor);

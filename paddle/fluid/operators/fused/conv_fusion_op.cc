@@ -151,7 +151,7 @@ class Conv2DFusionOp : public framework::OperatorWithKernel {
 
     std::vector<int> split_channels =
         ctx->Attrs().Get<std::vector<int>>("split_channels");
-    if (split_channels.size()) {
+    if (!split_channels.empty()) {
       OP_INOUT_CHECK(
           ctx->HasOutputs("Outputs"), "Output", "Outputs", "Conv2DFusion");
       PADDLE_ENFORCE_EQ(

@@ -21,6 +21,8 @@
 #include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/macros.h"
 
+#include "paddle/phi/common/reduce_type.h"
+
 namespace phi {
 namespace ccl {
 typedef void* CCLComm;
@@ -34,8 +36,35 @@ enum CCLDataType {
   CCL_DATA_TYPE_INT64,
   CCL_DATA_TYPE_INT32,
   CCL_DATA_TYPE_INT16,
-  CCL_DATA_TYPE_INT8
+  CCL_DATA_TYPE_INT8,
+  CCL_DATA_TYPE_UINT8
 };
+
+inline CCLReduceOp ToXCCLReduceOp(int reduce_type) {
+  phi::ccl::CCLReduceOp red_type = phi::ccl::CCLReduceOp::SUM;
+  switch (static_cast<phi::ReduceType>(reduce_type)) {
+    case phi::ReduceType::kRedSum:
+      red_type = phi::ccl::CCLReduceOp::SUM;
+      break;
+    case phi::ReduceType::kRedMax:
+      red_type = phi::ccl::CCLReduceOp::MAX;
+      break;
+    case phi::ReduceType::kRedMin:
+      red_type = phi::ccl::CCLReduceOp::MIN;
+      break;
+    case phi::ReduceType::kRedProd:
+      red_type = phi::ccl::CCLReduceOp::PRODUCT;
+      break;
+    case phi::ReduceType::kRedAvg:
+      red_type = phi::ccl::CCLReduceOp::AVG;
+      break;
+    default:
+      PADDLE_THROW(
+          errors::Unavailable("Unsuppored reduce type. Reduce type must be one "
+                              "of SUM, MAX, MIN, PRODUCT and AVG."));
+  }
+  return red_type;
+}
 
 inline CCLDataType ToCCLDataType(phi::DataType type) {
   if (type == phi::DataType::FLOAT64) {
@@ -50,10 +79,41 @@ inline CCLDataType ToCCLDataType(phi::DataType type) {
     return CCL_DATA_TYPE_INT32;
   } else if (type == phi::DataType::INT8) {
     return CCL_DATA_TYPE_INT8;
+  } else if (type == phi::DataType::UINT8) {
+    return CCL_DATA_TYPE_UINT8;
+  } else {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("This datatype %s in CCL is not supported.",
+                                   phi::DataTypeToString(type)));
+  }
+}
+
+inline phi::DataType ToPhiDataType(CCLDataType type) {
+  if (type == CCLDataType::CCL_DATA_TYPE_FP64) {
+    return phi::DataType::FLOAT64;
+  } else if (type == CCLDataType::CCL_DATA_TYPE_FP32) {
+    return phi::DataType::FLOAT32;
+  } else if (type == CCLDataType::CCL_DATA_TYPE_FP16) {
+    return phi::DataType::FLOAT16;
+  } else if (type == CCLDataType::CCL_DATA_TYPE_INT64) {
+    return phi::DataType::INT64;
+  } else if (type == CCLDataType::CCL_DATA_TYPE_INT32) {
+    return phi::DataType::INT32;
+  } else if (type == CCLDataType::CCL_DATA_TYPE_INT8) {
+    return phi::DataType::INT8;
   } else {
     PADDLE_THROW(
         phi::errors::Unimplemented("This datatype in CCL is not supported."));
   }
+}
+
+inline std::string SerializeXCCLUniqueId(const phi::ccl::CCLRootId& ccl_id) {
+  const uint8_t* bytes = ccl_id.data();
+  std::ostringstream oss;
+  for (size_t i = 0; i < ccl_id.size(); ++i) {
+    oss << std::hex << static_cast<int>(bytes[i]);
+  }
+  return oss.str();
 }
 
 }  // namespace ccl

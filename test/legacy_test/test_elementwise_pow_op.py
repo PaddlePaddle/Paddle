@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def pow_grad(x, y, dout):
@@ -44,7 +44,7 @@ class TestElementwisePowOp(OpTest):
         if hasattr(self, 'attrs'):
             self.check_output(check_dygraph=False)
         else:
-            self.check_output()
+            self.check_output(check_new_ir=True)
 
     def test_check_grad_normal(self):
         if hasattr(self, 'attrs'):
@@ -52,7 +52,9 @@ class TestElementwisePowOp(OpTest):
                 ['X', 'Y'], 'Out', check_prim=True, check_dygraph=False
             )
         else:
-            self.check_grad(['X', 'Y'], 'Out', check_prim=True)
+            self.check_grad(
+                ['X', 'Y'], 'Out', check_prim=True, check_new_ir=True
+            )
 
 
 class TestElementwisePowOp_ZeroDim1(TestElementwisePowOp):
@@ -60,7 +62,6 @@ class TestElementwisePowOp_ZeroDim1(TestElementwisePowOp):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
         self.public_python_api = paddle.pow
-        self.enable_cinn = False
         self.prim_op_type = "prim"
 
         self.inputs = {
@@ -75,7 +76,6 @@ class TestElementwisePowOp_ZeroDim2(TestElementwisePowOp):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
         self.public_python_api = paddle.pow
-        self.enable_cinn = False
         self.prim_op_type = "prim"
 
         self.inputs = {
@@ -90,7 +90,6 @@ class TestElementwisePowOp_ZeroDim3(TestElementwisePowOp):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
         self.public_python_api = paddle.pow
-        self.enable_cinn = False
         self.prim_op_type = "prim"
 
         self.inputs = {
@@ -199,7 +198,7 @@ class TestElementwisePowOpInt(OpTest):
         if hasattr(self, 'attrs'):
             self.check_output(check_dygraph=False)
         else:
-            self.check_output()
+            self.check_output(check_new_ir=True)
 
 
 class TestElementwisePowGradOpInt(unittest.TestCase):
@@ -220,13 +219,13 @@ class TestElementwisePowGradOpInt(unittest.TestCase):
         ).astype("int")
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
-        if fluid.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+        places = [base.CPUPlace()]
+        if base.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
         for place in places:
-            with fluid.dygraph.guard(place):
-                x = fluid.dygraph.to_variable(self.x, zero_copy=False)
-                y = fluid.dygraph.to_variable(self.y, zero_copy=False)
+            with base.dygraph.guard(place):
+                x = base.dygraph.to_variable(self.x, zero_copy=False)
+                y = base.dygraph.to_variable(self.y, zero_copy=False)
                 x.stop_gradient = False
                 y.stop_gradient = False
                 res = x**y
@@ -255,7 +254,7 @@ class TestElementwisePowOpFP16(OpTest):
         if hasattr(self, 'attrs'):
             self.check_output(check_dygraph=False)
         else:
-            self.check_output()
+            self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -265,9 +264,14 @@ class TestElementwisePowOpFP16(OpTest):
                 self.inputs['X'], self.inputs['Y'], 1 / self.inputs['X'].size
             ),
             check_prim=True,
+            check_new_ir=True,
         )
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    "BFP16 test runs only on CUDA",
+)
 class TestElementwisePowBF16Op(OpTest):
     def setUp(self):
         self.op_type = "elementwise_pow"
@@ -286,10 +290,7 @@ class TestElementwisePowBF16Op(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        if hasattr(self, 'attrs'):
-            self.check_output()
-        else:
-            self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
         self.check_grad(['X', 'Y'], 'Out')
@@ -300,6 +301,7 @@ class TestElementwisePowBF16Op(OpTest):
                 'Out',
                 check_prim=True,
                 only_check_prim=True,
+                check_new_ir=True,
             )
 
 

@@ -20,10 +20,13 @@ import numpy as np
 
 import paddle
 from paddle import _legacy_C_ops, nn
+from paddle.base import framework
+from paddle.base.dygraph import base as imperative_base
+from paddle.base.dygraph import to_variable
 from paddle.distributed import fleet
-from paddle.fluid import framework
-from paddle.fluid.dygraph import base as imperative_base
-from paddle.fluid.dygraph import to_variable
+from paddle.distributed.fleet.utils.hybrid_parallel_util import (
+    obtain_optimizer_parameters_list,
+)
 from paddle.framework import core
 
 
@@ -52,17 +55,18 @@ class MixPrecisionLayer(nn.Layer):
             ), "In main_grad node, param.grad should be None, but find param[{}] has grad.".format(
                 param.name
             )
-            if param.main_grad is None:
-                param.main_grad = core.eager.Tensor(
-                    value=tmp_grad.cast(paddle.float32).value(),
-                    place=tmp_grad.place,
-                    name="main_grad@" + param.name,
-                )
-            else:
-                param.main_grad.add_(tmp_grad)
+            if tmp_grad._is_initialized():
+                # Some previous pylayer may return None, should check grad validation.
+                if param.main_grad is None:
+                    param.main_grad = core.eager.Tensor(
+                        value=tmp_grad.cast(paddle.float32).value(),
+                        place=tmp_grad.place,
+                        name="main_grad@" + param.name,
+                    )
+                else:
+                    param.main_grad.add_(tmp_grad)
 
-            tmp_grad._clear_data()
-            return None
+                tmp_grad._clear_data()
 
         return param_hook
 
@@ -93,20 +97,7 @@ class MixPrecisionLayer(nn.Layer):
 class MixPrecisionOptimizer:
     def __init__(self, optimizer):
         self._inner_opt = optimizer
-        self._parameter_list = self._obtain_optimizer_parameters_list()
-
-    def _obtain_optimizer_parameters_list(self):
-        if getattr(self._inner_opt, '_param_groups', None) and isinstance(
-            self._inner_opt._param_groups[0], dict
-        ):
-            parameters_list = []
-            for group in self._inner_opt._param_groups:
-                for param in group['params']:
-                    parameters_list.append(param)
-        else:
-            parameters_list = list(self._inner_opt._parameter_list)
-
-        return parameters_list
+        self._parameter_list = obtain_optimizer_parameters_list(optimizer)
 
     @imperative_base.no_grad
     @framework.dygraph_only

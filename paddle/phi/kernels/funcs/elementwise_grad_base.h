@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
@@ -31,11 +32,7 @@ limitations under the License. */
 
 #endif
 
-#ifdef __HIPCC__
-constexpr int ELEMWISE_MAX_BLOCK_DIM = 256;
-#else
 constexpr int ELEMWISE_MAX_BLOCK_DIM = 1024;
-#endif
 
 #define BLOCK_X 32
 #define BLOCK_Y 32
@@ -114,40 +111,42 @@ static void ElemwiseGradBroadcast1CPU(const T *x,
                                       DY_OP dy_op,
                                       T *dx,
                                       T *dy) {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
   if (is_xsize_larger) {
-    for (int i = 0; i < h; ++i) {
-      for (int j = 0; j < w; ++j) {
+    for (int j = 0; j < w; ++j) {
+      MPType sum_y = static_cast<MPType>(0);
+      for (int i = 0; i < h; ++i) {
         int x_offset = i * w + j;
         if (dx != nullptr) {
           dx[x_offset] =
               dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
         }
         if (dy != nullptr) {
-          T tmp = dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
-          if (i == 0) {
-            dy[j] = tmp;
-          } else {
-            dy[j] += tmp;
-          }
+          sum_y += static_cast<MPType>(
+              dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]));
         }
       }
+      if (dy != nullptr) {
+        dy[j] = static_cast<T>(sum_y);
+      }
     }
-  } else {  // x.dims < y.dims, broadcast for x.
-    for (int i = 0; i < h; ++i) {
-      for (int j = 0; j < w; ++j) {
+  } else {
+    for (int j = 0; j < w; ++j) {
+      MPType sum_x = static_cast<MPType>(0);
+      for (int i = 0; i < h; ++i) {
         int y_offset = i * w + j;
         if (dy != nullptr) {
           dy[y_offset] =
               dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
         }
         if (dx != nullptr) {
-          T tmp = dx_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
-          if (i == 0) {
-            dx[j] = tmp;
-          } else {
-            dx[j] += tmp;
-          }
+          sum_x += static_cast<MPType>(
+              dx_op(x[j], y[y_offset], out[y_offset], dout[y_offset]));
         }
+      }
+      if (dx != nullptr) {
+        dx[j] = static_cast<T>(sum_x);
       }
     }
   }
@@ -166,9 +165,12 @@ static void ElemwiseGradBroadcast2CPU(const T *x,
                                       DY_OP dy_op,
                                       T *dx,
                                       T *dy) {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
   if (is_xsize_larger) {
-    for (int i = 0; i < pre; ++i) {
-      for (int j = 0; j < n; ++j) {
+    for (int j = 0; j < n; ++j) {
+      MPType sum_y = static_cast<MPType>(0);
+      for (int i = 0; i < pre; ++i) {
         for (int k = 0; k < post; ++k) {
           int x_offset = i * n * post + j * post + k;
           if (dx != nullptr) {
@@ -176,19 +178,19 @@ static void ElemwiseGradBroadcast2CPU(const T *x,
                 dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
           }
           if (dy != nullptr) {
-            T tmp = dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
-            if (i == 0 && k == 0) {
-              dy[j] = tmp;
-            } else {
-              dy[j] += tmp;
-            }
+            sum_y += static_cast<MPType>(
+                dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]));
           }
         }
       }
+      if (dy != nullptr) {
+        dy[j] = static_cast<T>(sum_y);
+      }
     }
-  } else {  // x.dims < y.dims, broadcast for x.
-    for (int i = 0; i < pre; ++i) {
-      for (int j = 0; j < n; ++j) {
+  } else {
+    for (int j = 0; j < n; ++j) {
+      MPType sum_x = static_cast<MPType>(0);
+      for (int i = 0; i < pre; ++i) {
         for (int k = 0; k < post; ++k) {
           int y_offset = i * n * post + j * post + k;
           if (dy != nullptr) {
@@ -196,14 +198,13 @@ static void ElemwiseGradBroadcast2CPU(const T *x,
                 dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
           }
           if (dx != nullptr) {
-            T tmp = dx_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
-            if (i == 0 && k == 0) {
-              dx[j] = tmp;
-            } else {
-              dx[j] += tmp;
-            }
+            sum_x += static_cast<MPType>(
+                dx_op(x[j], y[y_offset], out[y_offset], dout[y_offset]));
           }
         }
+      }
+      if (dx != nullptr) {
+        dx[j] = static_cast<T>(sum_x);
       }
     }
   }

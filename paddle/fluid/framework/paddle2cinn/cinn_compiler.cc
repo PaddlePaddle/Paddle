@@ -22,22 +22,23 @@
 #include <string>
 #include <unordered_map>
 
-#include "cinn/auto_schedule/auto_tuner.h"
-#include "cinn/auto_schedule/tuning.h"
-#include "cinn/common/target.h"
-#include "cinn/common/type.h"
-#include "cinn/frontend/op_mapper_registry.h"
-#include "cinn/frontend/optimize.h"
-#include "cinn/frontend/syntax.h"
-#include "cinn/hlir/framework/graph.h"
-#include "cinn/hlir/framework/graph_compiler.h"
-#include "cinn/hlir/framework/visualize_helper.h"
-#include "gflags/gflags.h"
+#include "paddle/cinn/auto_schedule/auto_tuner.h"
+#include "paddle/cinn/auto_schedule/tuning.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/common/type.h"
+#include "paddle/cinn/frontend/op_mapper_registry.h"
+#include "paddle/cinn/frontend/optimize.h"
+#include "paddle/cinn/frontend/syntax.h"
+#include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/graph_compiler_util.h"
+#include "paddle/cinn/hlir/framework/visualize_helper.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_graph_symbolization.h"
 #include "paddle/fluid/framework/paddle2cinn/transform_desc.h"
@@ -48,6 +49,9 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/core/flags.h"
+#include "paddle/pir/core/program.h"
+#include "paddle/pir/core/value.h"
+#include "paddle/utils/flags.h"
 
 PHI_DECLARE_bool(enable_pe_launch_cinn);
 PHI_DECLARE_bool(enable_cinn_auto_tune);
@@ -61,6 +65,8 @@ using ::cinn::common::Target;
 using ::cinn::frontend::Optimize;
 using ::cinn::frontend::paddle::InplaceOutSuffix;
 using ::cinn::hlir::framework::BuildScope;
+using ::cinn::hlir::framework::CompilationContext;
+using ::cinn::hlir::framework::CompilationResult;
 using ::cinn::hlir::framework::GraphCompiler;
 using inference::analysis::Dot;
 using ir::Graph;
@@ -109,6 +115,7 @@ const CinnCompiledObject &CinnCompiler::Compile(
 
       auto compiled_res =
           CompileGraph(graph, input_tensors, target, compiled_num, stream);
+
       std::unique_lock<std::mutex> guard(lock_);
       // double check cache_by_struct_
       if (!cache_by_struct_.count(cur_key_by_struct)) {
@@ -314,13 +321,12 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
           << cinn_graph->Visualize();
 
   auto scope = BuildScope(target, cinn_graph);
-  auto graph_compiler =
-      std::make_unique<GraphCompiler>(target, scope, cinn_graph);
-  GraphCompiler::CompileOptions options;
-  options.with_instantiate_variables = false;
+  CompilationContext context(cinn_graph, scope, target);
+  context.with_instantiate_variables = false;
   if (!FLAGS_enable_pe_launch_cinn) {
-    options.with_buffer_handle_instruction_inserted = true;
+    context.with_buffer_handle_instruction_inserted = true;
   }
+  auto graph_compiler = std::make_unique<GraphCompiler>(context);
   std::unique_ptr<AutoTuner> auto_tuner;
   if (FLAGS_enable_cinn_auto_tune) {
     VLOG(4) << "Compile with auto-tune";
@@ -329,14 +335,15 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
     ::cinn::auto_schedule::TuningOptions tuning_options;
     tuning_options.num_measure_trials = 0;
     auto tuning_result = auto_tuner->Tune(tuning_options);
-    options.Apply(tuning_result);
+    context.ApplyTuningResult(tuning_result);
   }
-  auto compiled_res =
-      graph_compiler->Build(options, std::move(fetch_ids), stream);
+  context.fetch_var_ids = std::move(fetch_ids);
+  context.stream = stream;
+  auto compiled_res = graph_compiler->Build(&context);
   auto compiled_obj = std::make_unique<CinnCompiledObject>();
   *compiled_obj = {std::move(graph_compiler),
                    std::move(auto_tuner),
-                   std::move(compiled_res.runtime_program),
+                   std::move(compiled_res.RuntimeProgram()),
                    scope,
                    symbol.var_model_to_program_map()};
   compiled_obj->cached_index = compiled_num;

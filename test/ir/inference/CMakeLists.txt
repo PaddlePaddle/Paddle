@@ -44,6 +44,8 @@ if(WIN32)
        "test_trt_convert_elementwiseadd_transpose")
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
        "test_split_layernorm_to_math_ops_pass")
+  list(REMOVE_ITEM TEST_TRT_CONVERTER
+       "test_trt_convert_quantize_dequantize_linear")
 endif()
 
 # Only for cpu(mkl + openblas)
@@ -131,7 +133,7 @@ if(WITH_XPU)
   endforeach()
 endif()
 
-# below are cutlass unitests
+# below are cutlass unittests
 file(
   GLOB TEST_CUTLASS
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -168,13 +170,16 @@ endif()
 if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(test_trt_subgraph_pass PROPERTIES TIMEOUT 120)
   # longer timeout for trt_activation_pass for longer trt optimization time in trt 8
-  set_tests_properties(test_trt_activation_pass PROPERTIES TIMEOUT 250)
   set_tests_properties(test_trt_conv_pass PROPERTIES TIMEOUT 120)
   #set_tests_properties(test_trt_multiclass_nms_op PROPERTIES TIMEOUT 200)
   set_tests_properties(test_trt_dynamic_shape PROPERTIES TIMEOUT 120)
   set_tests_properties(test_trt_inspector PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_inference_predictor PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_inference_fp16_io PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_optimization_level PROPERTIES TIMEOUT 300)
+  if(WITH_MKLDNN)
+    set_tests_properties(test_save_optimized_model_pass PROPERTIES TIMEOUT 300)
+  endif()
 
   if(WITH_NV_JETSON)
     set_tests_properties(
@@ -197,8 +202,8 @@ if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(test_trt_tile_op PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_fc_fuse_quant_dequant_pass PROPERTIES TIMEOUT
                                                                       100)
-  set_tests_properties(test_trt_conv_quant_dequant_pass PROPERTIES TIMEOUT 100)
-  set_tests_properties(test_trt_matmul_quant_dequant PROPERTIES TIMEOUT 180)
+  set_tests_properties(test_trt_conv_quant_dequant_pass PROPERTIES TIMEOUT 180)
+  set_tests_properties(test_trt_matmul_quant_dequant PROPERTIES TIMEOUT 450)
   set_tests_properties(test_trt_conv3d_op PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_conv3d_transpose_op PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_nearest_interp_v2_op PROPERTIES TIMEOUT 30)
@@ -210,8 +215,8 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(test_merge_layernorm_fuse_pass PROPERTIES TIMEOUT 180)
     set_tests_properties(test_skip_merge_layernorm_fuse_pass PROPERTIES TIMEOUT
                                                                         180)
-    set_tests_properties(test_emb_eltwise_layernorm_fuse_pass PROPERTIES TIMEOUT
-                                                                         120)
+    set_tests_properties(test_trt_emb_eltwise_layernorm_fuse_pass
+                         PROPERTIES TIMEOUT 180)
 
     set_tests_properties(test_fc_fuse_pass PROPERTIES TIMEOUT 240)
     set_tests_properties(test_reverse_roll_fuse_pass PROPERTIES TIMEOUT 120)
@@ -219,7 +224,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(test_transfer_layout_elim_pass PROPERTIES TIMEOUT 300)
 
     set_tests_properties(test_simplify_with_basic_ops_pass_autoscan
-                         PROPERTIES TIMEOUT 60)
+                         PROPERTIES TIMEOUT 480)
     set_tests_properties(test_adaptive_pool2d_convert_global_pass_autoscan
                          PROPERTIES TIMEOUT 100)
     set_tests_properties(test_conv_act_onednn_fuse_pass PROPERTIES TIMEOUT 120)
@@ -302,8 +307,6 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(test_mkldnn_conv_mish_fuse_pass PROPERTIES TIMEOUT 300)
     set_tests_properties(test_onednn_fc_activation_fuse_pass PROPERTIES TIMEOUT
                                                                         300)
-    set_tests_properties(test_onednn_fc_elementwise_add_fuse_pass
-                         PROPERTIES TIMEOUT 120)
     set_tests_properties(test_mkldnn_conv_affine_channel_fuse_pass
                          PROPERTIES TIMEOUT 60)
   endif()

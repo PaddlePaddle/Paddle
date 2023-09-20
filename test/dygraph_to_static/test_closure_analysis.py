@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import inspect
+import os
 import unittest
 
+from dygraph_to_static_util import test_and_compare_with_new_ir
 from numpy import append
 
 import paddle
@@ -259,6 +261,7 @@ class TestClosureAnalysis_PushPop(TestClosureAnalysis):
 
 
 class TestPushPopTrans(unittest.TestCase):
+    @test_and_compare_with_new_ir(False)
     def test(self):
         def vlist_of_dict(x):
             ma = {'a': []}
@@ -270,6 +273,7 @@ class TestPushPopTrans(unittest.TestCase):
         print(paddle.jit.to_static(vlist_of_dict).code)
         print(paddle.jit.to_static(vlist_of_dict)(x))
 
+    @test_and_compare_with_new_ir(False)
     def test2(self):
         import numpy as np
 
@@ -283,6 +287,7 @@ class TestPushPopTrans(unittest.TestCase):
         print(paddle.jit.to_static(vlist_of_dict).code)
         print(paddle.jit.to_static(vlist_of_dict)(x))
 
+    @test_and_compare_with_new_ir(False)
     def test3(self):
         import numpy as np
 
@@ -296,6 +301,7 @@ class TestPushPopTrans(unittest.TestCase):
         print(paddle.jit.to_static(vlist_of_dict).code)
         print(paddle.jit.to_static(vlist_of_dict)(x))
 
+    @test_and_compare_with_new_ir(False)
     def test4(self):
         import numpy as np
 
@@ -309,6 +315,7 @@ class TestPushPopTrans(unittest.TestCase):
         print(paddle.jit.to_static(vlist_of_dict).code)
         print(paddle.jit.to_static(vlist_of_dict)(x))
 
+    @test_and_compare_with_new_ir(False)
     def test5(self):
         import numpy as np
 
@@ -324,4 +331,5 @@ class TestPushPopTrans(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    os.environ['ENABLE_FALL_BACK'] = "False"
     unittest.main()

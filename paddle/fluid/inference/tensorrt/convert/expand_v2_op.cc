@@ -36,11 +36,11 @@ class ExpandOpConverter : public OpConverter {
 
     if (op_type_ == "expand_v2") {
       if (inputs.find("Shape") != inputs.end() &&
-          op_desc.Input("Shape").size() >= 1) {
+          !op_desc.Input("Shape").empty()) {
         shape_tensor = engine_->GetITensor(op_desc.Input("Shape")[0]);
         shape_rank = shape_tensor->getDimensions().nbDims;
       } else if (inputs.find("expand_shapes_tensor") != inputs.end() &&
-                 op_desc.Input("expand_shapes_tensor").size() >= 1) {
+                 !op_desc.Input("expand_shapes_tensor").empty()) {
         int shape_size = op_desc.Input("expand_shapes_tensor").size();
         std::vector<nvinfer1::ITensor*> shape_tensors;
         for (int i = 0; i < shape_size; ++i) {

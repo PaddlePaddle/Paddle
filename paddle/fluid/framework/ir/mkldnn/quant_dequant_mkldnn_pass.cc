@@ -223,9 +223,8 @@ void QuantDequantMkldnnPass::CollectOutputScalesFromAttr(
       std::vector<float> scale_v = {scale};
 
       auto var_name_map = op_desc->Outputs();
-      for (auto iter = var_name_map.begin(); iter != var_name_map.end();
-           ++iter) {
-        for (auto var_name : iter->second) {
+      for (auto& item : var_name_map) {
+        for (auto var_name : item.second) {
           var_quant_scales->insert(std::make_pair(var_name, scale_v));
         }
       }

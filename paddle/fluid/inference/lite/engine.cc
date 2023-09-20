@@ -24,11 +24,13 @@
 
 #include <utility>
 
+#include "glog/logging.h"
+
 namespace paddle {
 namespace inference {
 namespace lite {
 
-bool EngineManager::Empty() const { return engines_.size() == 0; }
+bool EngineManager::Empty() const { return engines_.empty(); }
 
 bool EngineManager::Has(const std::string& name) const {
   if (engines_.count(name) == 0) {
@@ -56,13 +58,29 @@ paddle::lite_api::PaddlePredictor* EngineManager::Create(
 #endif
 
 #ifdef LITE_SUBGRAPH_WITH_XPU
-  lite_cxx_config.set_xpu_l3_cache_method(cfg.xpu_l3_size, cfg.xpu_l3_locked);
-  lite_cxx_config.set_xpu_conv_autotune(cfg.xpu_conv_autotune,
-                                        cfg.xpu_conv_autotune_file);
-  lite_cxx_config.set_xpu_multi_encoder_method(
-      cfg.xpu_transformer_encoder_precision,
-      cfg.xpu_transformer_encoder_adaptive_seqlen);
-  lite_cxx_config.set_xpu_dev_per_thread(cfg.device_id);
+  paddle::lite_api::XpuConfig lite_xpu_config;
+  lite_xpu_config.device_id = cfg.xpu_device_id;
+  lite_xpu_config.l3_size = cfg.xpu_l3_size;
+  lite_xpu_config.l3_ptr = cfg.xpu_l3_ptr;
+  lite_xpu_config.l3_autotune_size = cfg.xpu_l3_size;
+  lite_xpu_config.conv_autotune_level = cfg.xpu_conv_autotune_level;
+  lite_xpu_config.conv_autotune_file = cfg.xpu_conv_autotune_file;
+  lite_xpu_config.conv_autotune_file_writeback =
+      cfg.xpu_conv_autotune_file_writeback;
+  lite_xpu_config.fc_autotune_level = cfg.xpu_fc_autotune_level;
+  lite_xpu_config.fc_autotune_file = cfg.xpu_fc_autotune_file;
+  lite_xpu_config.fc_autotune_file_writeback =
+      cfg.xpu_fc_autotune_file_writeback;
+  lite_xpu_config.gemm_compute_precision = cfg.xpu_gemm_compute_precision;
+  lite_xpu_config.transformer_softmax_optimize_level =
+      cfg.xpu_transformer_softmax_optimize_level;
+  lite_xpu_config.transformer_encoder_adaptive_seqlen =
+      cfg.xpu_transformer_encoder_adaptive_seqlen;
+  lite_xpu_config.quant_post_static_gelu_out_threshold =
+      cfg.xpu_quant_post_static_gelu_out_threshold;
+  lite_xpu_config.quant_post_dynamic_activation_method =
+      cfg.xpu_quant_post_dynamic_activation_method;
+  lite_cxx_config.set_xpu_config(lite_xpu_config);
   if (cfg.xpu_enable_multi_stream) {
     lite_cxx_config.enable_xpu_multi_stream();
   }
@@ -100,6 +118,11 @@ paddle::lite_api::PaddlePredictor* EngineManager::Create(
       paddle::lite_api::CreatePaddlePredictor(lite_cxx_config);
   engines_[name] = std::move(p);
   return engines_[name].get();
+}
+
+void EngineManager::Set(const std::string& name,
+                        std::shared_ptr<paddle::lite_api::PaddlePredictor> p) {
+  engines_[name] = p;
 }
 
 void EngineManager::DeleteAll() {

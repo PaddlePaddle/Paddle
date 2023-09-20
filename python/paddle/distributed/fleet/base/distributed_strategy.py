@@ -19,10 +19,10 @@ import google.protobuf
 import google.protobuf.text_format
 
 import paddle
+from paddle.base.framework import _global_flags
+from paddle.base.wrapped_decorator import wrap_decorator
 from paddle.distributed.fleet.proto import distributed_strategy_pb2
 from paddle.distributed.fleet.utils.log_util import logger
-from paddle.fluid.framework import _global_flags
-from paddle.fluid.wrapped_decorator import wrap_decorator
 
 __all__ = []
 
@@ -153,7 +153,7 @@ class DistributedStrategy:
         if _global_flags().is_public(key):
             self.strategy.sync_nccl_allreduce = bool(_global_flags()[key])
 
-        self.hybrid_parallel_order = ['dp', 'pp', 'sharding', 'mp']
+        self.hybrid_parallel_order = ['dp', 'pp', 'sharding', 'sep', 'mp']
         self.sync_param_name = ["embedding", "layer_norm", ".b_"]
 
         self.__lock_attr = True
@@ -985,6 +985,59 @@ class DistributedStrategy:
             logger.warning("asp should have value of bool type")
 
     @property
+    def qat(self):
+        """
+        Indicating whether we are using quantization aware training
+        Default Value: False
+
+        Examples:
+
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.qat = True # by default this is false
+
+        """
+        return self.strategy.qat
+
+    @qat.setter
+    @is_strict_auto
+    def qat(self, flag):
+        assert isinstance(flag, bool), "qat should have value of bool type"
+        self.strategy.qat = flag
+
+    @property
+    def qat_configs(self):
+        """
+        Set quantization training configurations. In general, qat has serveral configurable
+        settings that can be configured through a dict.
+        **Notes**:
+            channel_wise_abs_max(bool): Whether to use `per_channel` quantization training. Default is True.
+            weight_bits(int): quantization bit number for weight. Default is 8.
+            activation_bits(int): quantization bit number for activation. Default is 8.
+            not_quant_pattern(list[str]): When the skip pattern is detected in an op's name scope,
+                the corresponding op will not be quantized.
+            algo(str): Other quantization training algorithm.
+        Exampless:
+          .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.qat = True
+            strategy.qat_configs = {
+                "channel_wise_abs_max": True,
+                "weight_bits": 8,
+                "activation_bits: 8,
+                "not_quant_pattern": ['skip_quant']}
+        """
+        return get_msg_dict(self.strategy.qat_configs)
+
+    @qat_configs.setter
+    def qat_configs(self, configs):
+        check_configs_key(self.strategy.qat_configs, configs, "qat_configs")
+        assign_configs_value(self.strategy.qat_configs, configs)
+
+    @property
     def recompute(self):
         """
         Indicating whether we are using forward recomputation for memory optimization
@@ -1665,10 +1718,10 @@ class DistributedStrategy:
     def hybrid_configs(self):
         """
 
-        Dynamic graph hybrid parallel strategy configuration. Three-way hybrid parallelism
+        Dynamic graph hybrid parallel strategy configuration. Five-way hybrid parallelism
         needs to meet the following relationships
 
-        total_number_GPUs = dp_degree * mp_degree * pp_degree
+        total_number_GPUs = dp_degree * mp_degree * pp_degree * sharding_degree * sep_degree
 
         **Note**:
             **dp_degree(int)**: set number of GPUs in a data parallel group. Default -1.
@@ -1679,8 +1732,9 @@ class DistributedStrategy:
             **mp_degree(int)**: set number of GPUs in a model parallel group. Default 1
 
             **pp_degree(int)**: set number of GPUs in a pipeline parallel group. Default 1
-
-            **order(list(string))**: set hybrid parallel dimensions, the order is from outside to inside. Default ['dp','pp','sharding','mp']
+            **sep_degree(int)**: set number of GPUs in a sep parallel group. Default 1
+            **sharding_degree(int)**: set number of GPUs in a sharding parallel group. Default 1
+            **order(list(string))**: set hybrid parallel dimensions, the order is from outside to inside. Default ['dp','pp','sharding','sep', 'mp']
 
         Examples:
             .. code-block:: python
@@ -1691,7 +1745,7 @@ class DistributedStrategy:
                     "dp_degree": 1,
                     "mp_degree": 2,
                     "pp_degree": 1,
-                    "order":['dp','pp','sharding','mp']}
+                    "order":['dp','pp','sharding', 'sep', 'mp']}
 
         """
         return get_msg_dict(self.strategy.hybrid_configs)
@@ -2538,8 +2592,10 @@ class DistributedStrategy:
                                     google._upb._message.RepeatedScalarContainer
                                 )
                             else:
+                                from google.protobuf.pyext import _message
+
                                 RepeatedScalarContainer = (
-                                    google.protobuf.pyext._message.RepeatedScalarContainer
+                                    _message.RepeatedScalarContainer
                                 )
                             for ff in config_fields:
                                 if isinstance(

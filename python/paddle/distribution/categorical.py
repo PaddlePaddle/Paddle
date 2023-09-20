@@ -15,9 +15,9 @@
 import numpy as np
 
 import paddle
+from paddle.base.data_feeder import check_type, convert_dtype
+from paddle.base.framework import Variable
 from paddle.distribution import distribution
-from paddle.fluid.data_feeder import check_type, convert_dtype
-from paddle.fluid.layers import tensor
 from paddle.framework import in_dynamic_mode
 from paddle.tensor import multinomial
 
@@ -46,42 +46,48 @@ class Categorical(distribution.Distribution):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.distribution import Categorical
+            >>> import paddle
+            >>> from paddle.distribution import Categorical
 
-            paddle.seed(100) # on CPU device
-            x = paddle.rand([6])
-            print(x)
-            # [0.5535528  0.20714243 0.01162981
-            #  0.51577556 0.36369765 0.2609165 ]
+            >>> paddle.seed(100) # on CPU device
+            >>> x = paddle.rand([6])
+            >>> print(x)
+            Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.55355281, 0.20714243, 0.01162981, 0.51577556, 0.36369765, 0.26091650])
 
-            paddle.seed(200) # on CPU device
-            y = paddle.rand([6])
-            print(y)
-            # [0.77663314 0.90824795 0.15685187
-            #  0.04279523 0.34468332 0.7955718 ]
+            >>> paddle.seed(200) # on CPU device
+            >>> y = paddle.rand([6])
+            >>> print(y)
+            Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.77663314, 0.90824795, 0.15685187, 0.04279523, 0.34468332, 0.79557180])
 
-            cat = Categorical(x)
-            cat2 = Categorical(y)
+            >>> cat = Categorical(x)
+            >>> cat2 = Categorical(y)
 
-            paddle.seed(1000) # on CPU device
-            cat.sample([2,3])
-            # [[0, 0, 5],
-            #  [3, 4, 5]]
+            >>> # doctest: +SKIP
+            >>> paddle.seed(1000) # on CPU device
+            >>> print(cat.sample([2,3]))
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 1, 5],
+            [3, 4, 5]])
 
-            cat.entropy()
-            # [1.77528]
+            >>> # doctest: -SKIP
+            >>> print(cat.entropy())
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            1.77528250)
 
-            cat.kl_divergence(cat2)
-            # [0.071952]
+            >>> print(cat.kl_divergence(cat2))
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.07195196])
 
-            value = paddle.to_tensor([2,1,3])
-            cat.probs(value)
-            # [0.00608027 0.108298 0.269656]
+            >>> value = paddle.to_tensor([2,1,3])
+            >>> print(cat.probs(value))
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.00608027, 0.10829761, 0.26965630])
 
-            cat.log_prob(value)
-            # [-5.10271 -2.22287 -1.31061]
-
+            >>> print(cat.log_prob(value))
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-5.10270691, -2.22287226, -1.31060708])
     """
 
     def __init__(self, logits, name=None):
@@ -94,7 +100,7 @@ class Categorical(distribution.Distribution):
             check_type(
                 logits,
                 'logits',
-                (np.ndarray, tensor.Variable, list, tuple),
+                (np.ndarray, Variable, list, tuple),
                 'Categorical',
             )
 
@@ -128,22 +134,22 @@ class Categorical(distribution.Distribution):
         Examples:
             .. code-block:: python
 
-                import paddle
-                from paddle.distribution import Categorical
+                >>> import paddle
+                >>> from paddle.distribution import Categorical
 
-                paddle.seed(100) # on CPU device
-                x = paddle.rand([6])
-                print(x)
-                # [0.5535528  0.20714243 0.01162981
-                #  0.51577556 0.36369765 0.2609165 ]
+                >>> paddle.seed(100) # on CPU device
+                >>> x = paddle.rand([6])
+                >>> print(x)
+                Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.55355281, 0.20714243, 0.01162981, 0.51577556, 0.36369765, 0.26091650])
 
-                cat = Categorical(x)
-
-                paddle.seed(1000) # on CPU device
-                cat.sample([2,3])
-                # [[0, 0, 5],
-                #  [3, 4, 5]]
-
+                >>> # doctest: +SKIP
+                >>> cat = Categorical(x)
+                >>> paddle.seed(1000) # on CPU device
+                >>> print(cat.sample([2,3]))
+                Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+                [[0, 1, 5],
+                [3, 4, 5]])
         """
         name = self.name + '_sample'
         if not in_dynamic_mode():
@@ -185,27 +191,27 @@ class Categorical(distribution.Distribution):
         Examples:
             .. code-block:: python
 
-                import paddle
-                from paddle.distribution import Categorical
+                >>> import paddle
+                >>> from paddle.distribution import Categorical
 
-                paddle.seed(100) # on CPU device
-                x = paddle.rand([6])
-                print(x)
-                # [0.5535528  0.20714243 0.01162981
-                #  0.51577556 0.36369765 0.2609165 ]
+                >>> paddle.seed(100) # on CPU device
+                >>> x = paddle.rand([6])
+                >>> print(x)
+                Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.55355281, 0.20714243, 0.01162981, 0.51577556, 0.36369765, 0.26091650])
 
-                paddle.seed(200) # on CPU device
-                y = paddle.rand([6])
-                print(y)
-                # [0.77663314 0.90824795 0.15685187
-                #  0.04279523 0.34468332 0.7955718 ]
+                >>> paddle.seed(200) # on CPU device
+                >>> y = paddle.rand([6])
+                >>> print(y)
+                Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.77663314, 0.90824795, 0.15685187, 0.04279523, 0.34468332, 0.79557180])
 
-                cat = Categorical(x)
-                cat2 = Categorical(y)
+                >>> cat = Categorical(x)
+                >>> cat2 = Categorical(y)
 
-                cat.kl_divergence(cat2)
-                # [0.071952]
-
+                >>> print(cat.kl_divergence(cat2))
+                Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.07195196])
         """
         name = self.name + '_kl_divergence'
         if not in_dynamic_mode():
@@ -239,20 +245,20 @@ class Categorical(distribution.Distribution):
         Examples:
             .. code-block:: python
 
-                import paddle
-                from paddle.distribution import Categorical
+                >>> import paddle
+                >>> from paddle.distribution import Categorical
 
-                paddle.seed(100) # on CPU device
-                x = paddle.rand([6])
-                print(x)
-                # [0.5535528  0.20714243 0.01162981
-                #  0.51577556 0.36369765 0.2609165 ]
+                >>> paddle.seed(100) # on CPU device
+                >>> x = paddle.rand([6])
+                >>> print(x)
+                Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.55355281, 0.20714243, 0.01162981, 0.51577556, 0.36369765, 0.26091650])
 
-                cat = Categorical(x)
+                >>> cat = Categorical(x)
 
-                cat.entropy()
-                # [1.77528]
-
+                >>> print(cat.entropy())
+                Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                1.77528250)
         """
         name = self.name + '_entropy'
         logits = self.logits - paddle.max(self.logits, axis=-1, keepdim=True)
@@ -283,21 +289,21 @@ class Categorical(distribution.Distribution):
         Examples:
             .. code-block:: python
 
-                import paddle
-                from paddle.distribution import Categorical
+                >>> import paddle
+                >>> from paddle.distribution import Categorical
 
-                paddle.seed(100) # on CPU device
-                x = paddle.rand([6])
-                print(x)
-                # [0.5535528  0.20714243 0.01162981
-                #  0.51577556 0.36369765 0.2609165 ]
+                >>> paddle.seed(100) # on CPU device
+                >>> x = paddle.rand([6])
+                >>> print(x)
+                Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.55355281, 0.20714243, 0.01162981, 0.51577556, 0.36369765, 0.26091650])
 
-                cat = Categorical(x)
+                >>> cat = Categorical(x)
 
-                value = paddle.to_tensor([2,1,3])
-                cat.probs(value)
-                # [0.00608027 0.108298 0.269656]
-
+                >>> value = paddle.to_tensor([2,1,3])
+                >>> print(cat.probs(value))
+                Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.00608027, 0.10829761, 0.26965630])
         """
         name = self.name + '_probs'
         if len(self._prob.shape) == 1:  # batch_shape is empty
@@ -330,21 +336,21 @@ class Categorical(distribution.Distribution):
         Examples:
             .. code-block:: python
 
-                import paddle
-                from paddle.distribution import Categorical
+                >>> import paddle
+                >>> from paddle.distribution import Categorical
 
-                paddle.seed(100) # on CPU device
-                x = paddle.rand([6])
-                print(x)
-                # [0.5535528  0.20714243 0.01162981
-                #  0.51577556 0.36369765 0.2609165 ]
+                >>> paddle.seed(100) # on CPU device
+                >>> x = paddle.rand([6])
+                >>> print(x)
+                Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.55355281, 0.20714243, 0.01162981, 0.51577556, 0.36369765, 0.26091650])
 
-                cat = Categorical(x)
+                >>> cat = Categorical(x)
 
-                value = paddle.to_tensor([2,1,3])
-                cat.log_prob(value)
-                # [-5.10271 -2.22287 -1.31061]
-
+                >>> value = paddle.to_tensor([2,1,3])
+                >>> print(cat.log_prob(value))
+                Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [-5.10270691, -2.22287226, -1.31060708])
         """
         name = self.name + '_log_prob'
 

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/interpolate_grad_kernel.h"
+#include <array>
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
@@ -39,15 +40,18 @@ static void LinearInterpolationGrad(const DenseTensor& output_grad,
   bool align_flag = (align_mode == 0 && !align_corners);
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   for (int l = 0; l < out_w; l++) {
-    int x_w = align_flag ? static_cast<int>(ratio_w * (l + 0.5) - 0.5)
-                         : static_cast<int>(ratio_w * l);
+    int x_w = static_cast<int>(align_flag ? (ratio_w * (l + 0.5) - 0.5)
+                                          : (ratio_w * static_cast<float>(l)));
     x_w = (x_w > 0) ? x_w : 0;                       // w
     int x_e = (x_w < (in_w - 1)) ? (x_w + 1) : x_w;  // w_id
 
-    float idx_src_x = ratio_w * (l + 0.5) - 0.5;
+    float idx_src_x = ratio_w * (static_cast<float>(l) + 0.5f) - 0.5f;
     idx_src_x = (idx_src_x > 0) ? idx_src_x : 0;
-    float d_w = align_flag ? idx_src_x - x_w : ratio_w * l - x_w;  // w1lambda
-    float d_e = 1.f - d_w;                                         // w2lambda
+    float d_w = static_cast<float>(
+        align_flag ? idx_src_x - static_cast<float>(x_w)
+                   : ratio_w * static_cast<float>(l) -
+                         static_cast<float>(x_w));  // w1lambda
+    float d_e = 1.f - d_w;                          // w2lambda
 
     for (int i = 0; i < n; i++) {    // loop for batches
       for (int j = 0; j < c; j++) {  // loop for channels
@@ -87,23 +91,28 @@ static void BilinearInterpolationGrad(const DenseTensor& output_grad,
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   for (int k = 0; k < out_h; k++) {  // loop for images
-    int y_n = align_flag ? static_cast<int>(ratio_h * (k + 0.5) - 0.5)
-                         : static_cast<int>(ratio_h * k);
+    int y_n = static_cast<int>(align_flag ? (ratio_h * (k + 0.5) - 0.5)
+                                          : (ratio_h * static_cast<float>(k)));
     y_n = (y_n > 0) ? y_n : 0;
     int y_s = (y_n + 1) < (in_h - 1) ? (y_n + 1) : (in_h - 1);
-    float idx_src_y = ratio_h * (k + 0.5) - 0.5;
+    float idx_src_y = ratio_h * (static_cast<float>(k) + 0.5f) - 0.5f;
     idx_src_y = (idx_src_y > 0) ? idx_src_y : 0;
-    float d_n = align_flag ? idx_src_y - y_n : ratio_h * k - y_n;
+    float d_n = align_flag
+                    ? idx_src_y - static_cast<float>(y_n)
+                    : ratio_h * static_cast<float>(k) - static_cast<float>(y_n);
     float d_s = 1.f - d_n;
 
     for (int l = 0; l < out_w; l++) {
-      int x_w = align_flag ? static_cast<int>(ratio_w * (l + 0.5) - 0.5)
-                           : static_cast<int>(ratio_w * l);
+      int x_w = static_cast<int>(
+          align_flag ? (ratio_w * (static_cast<float>(l) + 0.5f) - 0.5f)
+                     : (ratio_w * static_cast<float>(l)));
       x_w = (x_w > 0) ? x_w : 0;
       int x_e = (x_w + 1) < (in_w - 1) ? (x_w + 1) : (in_w - 1);
-      float idx_src_x = ratio_w * (l + 0.5) - 0.5;
+      float idx_src_x = ratio_w * (static_cast<float>(l) + 0.5f) - 0.5f;
       idx_src_x = (idx_src_x > 0) ? idx_src_x : 0;
-      float d_w = align_flag ? idx_src_x - x_w : ratio_w * l - x_w;
+      float d_w = align_flag ? idx_src_x - static_cast<float>(x_w)
+                             : ratio_w * static_cast<float>(l) -
+                                   static_cast<float>(x_w);
       float d_e = 1.f - d_w;
 
       for (int i = 0; i < n; i++) {    // loop for batches
@@ -143,12 +152,14 @@ static void NearestNeighborInterpolateGrad(const DenseTensor& output_grad,
   auto output_grad_t = EigenTensor<T, 4>::From(output_grad);
 
   for (int k = 0; k < out_h; k++) {  // loop for images
-    int in_k = (align_corners) ? static_cast<int>(ratio_h * k + 0.5)
-                               : static_cast<int>(ratio_h * k);
+    int in_k = static_cast<int>(align_corners
+                                    ? (ratio_h * static_cast<float>(k) + 0.5f)
+                                    : (ratio_h * static_cast<float>(k)));
 
     for (int l = 0; l < out_w; l++) {
-      int in_l = (align_corners) ? static_cast<int>(ratio_w * l + 0.5)
-                                 : static_cast<int>(ratio_w * l);
+      int in_l = static_cast<int>(align_corners
+                                      ? (ratio_w * static_cast<float>(l) + 0.5f)
+                                      : (ratio_w * static_cast<float>(l)));
 
       for (int i = 0; i < n; i++) {    // loop for batches
         for (int j = 0; j < c; j++) {  // loop for channels
@@ -181,20 +192,22 @@ static void BicubicInterpolationGrad(const DenseTensor& output_grad,
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   for (int k = 0; k < out_h; k++) {  // loop for images
-    MT y_n = align_corners ? ratio_h * k : ratio_h * (k + 0.5) - 0.5;
+    MT y_n = align_corners ? ratio_h * static_cast<float>(k)
+                           : ratio_h * (static_cast<float>(k) + 0.5f) - 0.5f;
     int input_y = floorf(y_n);
     MT y_t = y_n - input_y;
 
     for (int l = 0; l < out_w; l++) {
-      MT x_n = align_corners ? ratio_w * l : ratio_w * (l + 0.5) - 0.5;
+      MT x_n = align_corners ? ratio_w * static_cast<float>(l)
+                             : ratio_w * (static_cast<float>(l) + 0.5f) - 0.5f;
       int input_x = floorf(x_n);
       MT x_t = x_n - input_x;
 
-      MT x_coeffs[4];
-      MT y_coeffs[4];
+      std::array<MT, 4> x_coeffs;
+      std::array<MT, 4> y_coeffs;
 
-      funcs::get_cubic_upsample_coefficients<MT>(x_coeffs, x_t);
-      funcs::get_cubic_upsample_coefficients<MT>(y_coeffs, y_t);
+      funcs::get_cubic_upsample_coefficients<MT>(x_coeffs.data(), x_t);
+      funcs::get_cubic_upsample_coefficients<MT>(y_coeffs.data(), y_t);
 
       for (int i = 0; i < n; i++) {    // loop for batches
         for (int j = 0; j < c; j++) {  // loop for channels
@@ -244,33 +257,42 @@ static void TrilinearInterpolationGrad(const DenseTensor& output_grad,
   bool align_flag = (align_mode == 0 && !align_corners);
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   for (int j = 0; j < out_d; j++) {  // loop for D
-    int t_f = align_flag ? static_cast<int>(ratio_d * (j + 0.5) - 0.5)
-                         : static_cast<int>(ratio_d * j);
+    int t_f = static_cast<int>(
+        align_flag ? (ratio_d * (static_cast<float>(j) + 0.5f) - 0.5f)
+                   : (ratio_d * static_cast<float>(j)));
     t_f = (t_f > 0) ? t_f : 0;
     int t_b = (t_f + 1) < (in_d - 1) ? (t_f + 1) : (in_d - 1);
-    float idx_src_t = ratio_d * (j + 0.5) - 0.5;
+    float idx_src_t = ratio_d * (static_cast<float>(j) + 0.5f) - 0.5f;
     idx_src_t = (idx_src_t > 0) ? idx_src_t : 0;
-    float d_f = align_flag ? idx_src_t - t_f : ratio_d * j - t_f;
+    float d_f = align_flag
+                    ? idx_src_t - static_cast<float>(t_f)
+                    : ratio_d * static_cast<float>(j) - static_cast<float>(t_f);
     float d_b = 1.f - d_f;
 
     for (int k = 0; k < out_h; k++) {  // loop for H
-      int y_n = align_flag ? static_cast<int>(ratio_h * (k + 0.5) - 0.5)
-                           : static_cast<int>(ratio_h * k);
+      int y_n = static_cast<int>(
+          align_flag ? (ratio_h * (static_cast<float>(k) + 0.5f) - 0.5f)
+                     : (ratio_h * static_cast<float>(k)));
       y_n = (y_n > 0) ? y_n : 0;
       int y_s = (y_n + 1) < (in_h - 1) ? (y_n + 1) : (in_h - 1);
-      float idx_src_y = ratio_h * (k + 0.5) - 0.5;
+      float idx_src_y = ratio_h * (static_cast<float>(k) + 0.5f) - 0.5f;
       idx_src_y = (idx_src_y > 0) ? idx_src_y : 0;
-      float d_n = align_flag ? idx_src_y - y_n : ratio_h * k - y_n;
+      float d_n = align_flag ? idx_src_y - static_cast<float>(y_n)
+                             : ratio_h * static_cast<float>(k) -
+                                   static_cast<float>(y_n);
       float d_s = 1.f - d_n;
 
       for (int l = 0; l < out_w; l++) {  // loop for W
-        int x_w = align_flag ? static_cast<int>(ratio_w * (l + 0.5) - 0.5)
-                             : static_cast<int>(ratio_w * l);
+        int x_w = static_cast<int>(
+            align_flag ? (ratio_w * (static_cast<float>(l) + 0.5f) - 0.5f)
+                       : (ratio_w * static_cast<float>(l)));
         x_w = (x_w > 0) ? x_w : 0;
         int x_e = (x_w + 1) < (in_w - 1) ? (x_w + 1) : (in_w - 1);
-        float idx_src_x = ratio_w * (l + 0.5) - 0.5;
+        float idx_src_x = ratio_w * (static_cast<float>(l) + 0.5f) - 0.5f;
         idx_src_x = (idx_src_x > 0) ? idx_src_x : 0;
-        float d_w = align_flag ? idx_src_x - x_w : ratio_w * l - x_w;
+        float d_w = align_flag ? idx_src_x - static_cast<float>(x_w)
+                               : ratio_w * static_cast<float>(l) -
+                                     static_cast<float>(x_w);
         float d_e = 1.f - d_w;
 
         for (int b = 0; b < n; b++) {    // loop for batches
@@ -337,15 +359,21 @@ static void NearestNeighbor3DInterpolateGrad(const DenseTensor& output_grad,
   auto output_grad_t = EigenTensor<T, 5>::From(output_grad);
 
   for (int d = 0; d < out_d; d++) {
-    int in_d = (align_corners) ? static_cast<int>(ratio_d * d + 0.5)
-                               : static_cast<int>(ratio_d * d);
+    int in_d = static_cast<int>(
+        align_corners
+            ? static_cast<float>(std::lround(ratio_d * static_cast<float>(d)))
+            : (ratio_d * static_cast<float>(d)));
     for (int k = 0; k < out_h; k++) {  // loop for images
-      int in_k = (align_corners) ? static_cast<int>(ratio_h * k + 0.5)
-                                 : static_cast<int>(ratio_h * k);
+      int in_k = static_cast<int>(
+          align_corners
+              ? static_cast<float>(std::lround(ratio_h * static_cast<float>(k)))
+              : (ratio_h * static_cast<float>(k)));
 
       for (int l = 0; l < out_w; l++) {
-        int in_l = (align_corners) ? static_cast<int>(ratio_w * l + 0.5)
-                                   : static_cast<int>(ratio_w * l);
+        int in_l = static_cast<int>(align_corners
+                                        ? static_cast<float>(std::lround(
+                                              ratio_w * static_cast<float>(l)))
+                                        : (ratio_w * static_cast<float>(l)));
 
         for (int i = 0; i < n; i++) {    // loop for batches
           for (int j = 0; j < c; j++) {  // loop for channels
@@ -395,7 +423,7 @@ static void Interpolate1DCPUBwd(
             "should be greater than 0, but received value is %d.",
             scale_w));
   } else {
-    if (scale.size() > 0) {
+    if (!scale.empty()) {
       scale_w = scale[0];
       PADDLE_ENFORCE_EQ(
           scale_w > 0,
@@ -407,14 +435,14 @@ static void Interpolate1DCPUBwd(
     }
   }
   if (scale_w > 0.) {
-    out_w = static_cast<int>(in_w * scale_w);
+    out_w = static_cast<int>(static_cast<float>(in_w) * scale_w);
   }
   if (out_size) {
     auto out_size_data =
         funcs::get_new_data_from_tensor<int>(out_size.get_ptr());
     out_w = out_size_data[0];
   }
-  if (size_tensor && size_tensor->size() > 0) {
+  if (size_tensor && !size_tensor->empty()) {
     // have size tensor
     auto new_size = funcs::get_new_shape(size_tensor.get());
     out_w = new_size[0];
@@ -441,10 +469,13 @@ static void Interpolate1DCPUBwd(
   float ratio_w = 0.f;
   if (out_w > 1) {
     float new_scale_w = 0.f;
-    new_scale_w = (scale_w > 0) ? static_cast<float>(1. / scale_w)
-                                : static_cast<float>(in_w) / out_w;
-    ratio_w = (align_corners) ? static_cast<float>(in_w - 1) / (out_w - 1)
-                              : static_cast<float>(new_scale_w);
+    new_scale_w = static_cast<float>(
+        scale_w > 0 ? (1.f / scale_w)
+                    : static_cast<float>(in_w) / static_cast<float>(out_w));
+    ratio_w =
+        static_cast<float>(align_corners ? (static_cast<float>(in_w) - 1.f) /
+                                               (static_cast<float>(out_w) - 1.f)
+                                         : new_scale_w);
   }
   if ("linear" == interp_method) {
     LinearInterpolationGrad<T>(output_grad,
@@ -527,8 +558,8 @@ static void Interpolate2DCPUBwd(
     }
   }
   if (scale_h > 0. && scale_w > 0.) {
-    out_h = static_cast<int>(in_h * scale_h);
-    out_w = static_cast<int>(in_w * scale_w);
+    out_h = static_cast<int>(in_h * scale_h);  // NOLINT
+    out_w = static_cast<int>(in_w * scale_w);  // NOLINT
   }
   if (out_size) {
     auto out_size_data =
@@ -536,7 +567,7 @@ static void Interpolate2DCPUBwd(
     out_h = out_size_data[0];
     out_w = out_size_data[1];
   }
-  if (size_tensor && size_tensor->size() > 0) {
+  if (size_tensor && !size_tensor->empty()) {
     // have size tensor
     auto new_size = funcs::get_new_shape(size_tensor.get());
     out_h = new_size[0];
@@ -565,17 +596,23 @@ static void Interpolate2DCPUBwd(
   float ratio_w = 0.f;
   if (out_h > 1) {
     float new_scale_h = 0.f;
-    new_scale_h = (scale_h > 0) ? static_cast<float>(1. / scale_h)
-                                : static_cast<float>(in_h) / out_h;
-    ratio_h = (align_corners) ? static_cast<float>(in_h - 1) / (out_h - 1)
-                              : static_cast<float>(new_scale_h);
+    new_scale_h = static_cast<float>(
+        (scale_h > 0) ? (1.f / scale_h)
+                      : static_cast<float>(in_h) / static_cast<float>(out_h));
+    ratio_h =
+        static_cast<float>(align_corners ? (static_cast<float>(in_h) - 1.f) /
+                                               (static_cast<float>(out_h) - 1.f)
+                                         : new_scale_h);
   }
   if (out_w > 1) {
     float new_scale_w = 0.f;
-    new_scale_w = (scale_w > 0) ? static_cast<float>(1. / scale_w)
-                                : static_cast<float>(in_w) / out_w;
-    ratio_w = (align_corners) ? static_cast<float>(in_w - 1) / (out_w - 1)
-                              : static_cast<float>(new_scale_w);
+    new_scale_w = static_cast<float>(
+        (scale_w > 0) ? (1.f / scale_w)
+                      : static_cast<float>(in_w) / static_cast<float>(out_w));
+    ratio_w =
+        static_cast<float>(align_corners ? (static_cast<float>(in_w) - 1.f) /
+                                               (static_cast<float>(out_w) - 1.f)
+                                         : new_scale_w);
   }
 
   if ("bilinear" == interp_method) {
@@ -705,9 +742,9 @@ static void Interpolate3DCPUBwd(
     }
   }
   if (scale_d > 0. && scale_h > 0. && scale_w > 0.) {
-    out_d = static_cast<int>(in_d * scale_d);
-    out_h = static_cast<int>(in_h * scale_h);
-    out_w = static_cast<int>(in_w * scale_w);
+    out_d = static_cast<int>(in_d * scale_d);  // NOLINT
+    out_h = static_cast<int>(in_h * scale_h);  // NOLINT
+    out_w = static_cast<int>(in_w * scale_w);  // NOLINT
   }
   if (out_size) {
     auto out_size_data =
@@ -716,7 +753,7 @@ static void Interpolate3DCPUBwd(
     out_h = out_size_data[1];
     out_w = out_size_data[2];
   }
-  if (size_tensor && size_tensor->size() > 0) {
+  if (size_tensor && !size_tensor->empty()) {
     // have size tensor
     auto new_size = funcs::get_new_shape(size_tensor.get());
     out_d = new_size[0];
@@ -746,24 +783,32 @@ static void Interpolate3DCPUBwd(
   float ratio_w = 0.f;
   if (out_d > 1) {
     float new_scale_d = 0.f;
-    new_scale_d = (scale_d > 0) ? static_cast<float>(1. / scale_d)
-                                : static_cast<float>(in_d) / out_d;
-    ratio_d = (align_corners) ? static_cast<float>(in_d - 1) / (out_d - 1)
-                              : static_cast<float>(new_scale_d);
+    new_scale_d = static_cast<float>(
+        (scale_d > 0) ? (1.f / scale_d)
+                      : static_cast<float>(in_d) / static_cast<float>(out_d));
+    ratio_d =
+        static_cast<float>(align_corners ? (static_cast<float>(in_d) - 1.f) /
+                                               (static_cast<float>(out_d) - 1.f)
+                                         : new_scale_d);
   }
   if (out_h > 1) {
     float new_scale_h = 0.f;
-    new_scale_h = (scale_h > 0) ? static_cast<float>(1. / scale_h)
-                                : static_cast<float>(in_h) / out_h;
-    ratio_h = (align_corners) ? static_cast<float>(in_h - 1) / (out_h - 1)
+    new_scale_h = static_cast<float>(
+        (scale_h > 0) ? (1.f / scale_h)
+                      : static_cast<float>(in_h) / static_cast<float>(out_h));
+    ratio_h = (align_corners) ? static_cast<float>(in_h - 1) /
+                                    (static_cast<float>(out_h) - 1)
                               : static_cast<float>(new_scale_h);
   }
   if (out_w > 1) {
     float new_scale_w = 0.f;
-    new_scale_w = (scale_w > 0) ? static_cast<float>(1. / scale_w)
-                                : static_cast<float>(in_w) / out_w;
-    ratio_w = (align_corners) ? static_cast<float>(in_w - 1) / (out_w - 1)
-                              : static_cast<float>(new_scale_w);
+    new_scale_w = static_cast<float>(
+        (scale_w > 0) ? (1.f / scale_w)
+                      : static_cast<float>(in_w) / static_cast<float>(out_w));
+    ratio_w =
+        static_cast<float>(align_corners ? (static_cast<float>(in_w) - 1.f) /
+                                               (static_cast<float>(out_w) - 1.f)
+                                         : new_scale_w);
   }
 
   if ("trilinear" == interp_method) {

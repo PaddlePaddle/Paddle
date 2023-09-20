@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import (
+from op_test import (
     OpTest,
     convert_float_to_uint16,
     convert_uint16_to_float,
@@ -24,7 +24,7 @@ from eager_op_test import (
 from testsuite import create_op
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -317,7 +317,9 @@ def create_test_bf16_class(parent):
             numeric_grads = self.get_numeric_grad(place, 'X')
             if core.is_bfloat16_supported(place):
                 self.check_grad_with_place(
-                    place, {'X'}, ['Out'], user_defined_grads=[numeric_grads]
+                    place,
+                    {'X'},
+                    ['Out'],
                 )
 
     cls_name = "{}_{}".format(parent.__name__, "BF16OP")

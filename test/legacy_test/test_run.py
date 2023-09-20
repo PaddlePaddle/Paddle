@@ -22,7 +22,7 @@ from os import listdir
 from os.path import isfile, join
 
 pyname = 'train.py'
-colpyfile = '''# train.py for unitest
+colpyfile = '''# train.py for unittest
 import os
 env = os.environ.copy()
 if "PADDLE_AUTO_PARALLEL_CONFIG" not in env:
@@ -33,7 +33,7 @@ assert "PADDLE_GLOBAL_SIZE" in env
 assert "PADDLE_LOCAL_SIZE" in env
 '''
 
-pspyfile = '''# train.py for unitest
+pspyfile = '''# train.py for unittest
 import os
 env = os.environ.copy()
 assert "PADDLE_PSERVERS_IP_PORT_LIST" in env
@@ -55,6 +55,7 @@ def get_files(pth, prefix):
         if isfile(join(pth, f))
         and not f.endswith('gpu.log')
         and not f.startswith('envlog')
+        and not f.startswith('backup_env')
     ]
 
 

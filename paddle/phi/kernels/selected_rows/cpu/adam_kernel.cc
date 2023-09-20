@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/selected_rows/adam_kernel.h"
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
+#include "paddle/utils/flags.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -24,7 +24,7 @@
 #include "paddle/phi/kernels/funcs/adam_functors.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
-DECLARE_int32(inner_op_parallelism);
+PD_DECLARE_int32(inner_op_parallelism);
 
 namespace phi {
 namespace sr {
@@ -103,7 +103,7 @@ void AdamDenseParamSparseGradKernel(
                               "value is:%d.",
                               beta2_pow_out->numel()));
 
-  if (grad.rows().size() == 0) {
+  if (grad.rows().empty()) {
     VLOG(3) << "grad row size is 0!!";
     return;
   }
@@ -192,12 +192,12 @@ void AdamDenseParamSparseGradKernel(
                  "multi thread, currently "
               << param_row_count;
     }
-    for (size_t i = 0; i < grad_rows.size(); ++i) {
+    for (int i = 0; i < static_cast<int>(grad_rows.size()); ++i) {
       row_id_to_grad_row_offset[grad_rows[i]] = i;
     }
     std::vector<std::future<void>> fs;
-    int64_t line_in_each_thread =
-        param_row_count / FLAGS_inner_op_parallelism + 1;
+    int64_t line_in_each_thread = static_cast<int64_t>(
+        param_row_count / FLAGS_inner_op_parallelism + static_cast<int64_t>(1));
     for (int i = 0; i < FLAGS_inner_op_parallelism; ++i) {
       int64_t start = i * line_in_each_thread;
       int64_t end = (i + 1) * line_in_each_thread;
@@ -229,7 +229,7 @@ void AdamDenseParamSparseGradKernel(
         }
       }));
     }
-    for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
+    for (auto& item : fs) item.wait();
   }
 #endif    // !_WIN32
   else {  // NOLINT

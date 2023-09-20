@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
+#include <array>
 #include <memory>
 #include <vector>
 
@@ -41,7 +42,7 @@ bool GT(T a, T b) {
  *check if (x, y) is in the boundary of roi
  */
 template <typename T>
-bool in_quad(T x, T y, T roi_x[], T roi_y[]) {
+bool in_quad(T x, T y, T roi_x[], T roi_y[]) {  // NOLINT
   for (int i = 0; i < 4; i++) {
     T xs = roi_x[i];
     T ys = roi_y[i];
@@ -107,9 +108,9 @@ bool in_quad(T x, T y, T roi_x[], T roi_y[]) {
 template <typename T>
 void get_transform_matrix(const int transformed_width,
                           const int transformed_height,
-                          T roi_x[],
-                          T roi_y[],
-                          T matrix[]) {
+                          T roi_x[],     // NOLINT
+                          T roi_y[],     // NOLINT
+                          T matrix[]) {  // NOLINT
   T x0 = roi_x[0];
   T x1 = roi_x[1];
   T x2 = roi_x[2];
@@ -170,7 +171,8 @@ void get_transform_matrix(const int transformed_width,
  *
  */
 template <typename T>
-void get_source_coords(T matrix[], int out_w, int out_h, T* in_w, T* in_h) {
+void get_source_coords(
+    T matrix[], int out_w, int out_h, T* in_w, T* in_h) {  // NOLINT
   T u = matrix[0] * out_w + matrix[1] * out_h + matrix[2];
   T v = matrix[3] * out_w + matrix[4] * out_h + matrix[5];
   T w = matrix[6] * out_w + matrix[7] * out_h + matrix[8];
@@ -257,10 +259,10 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
 
     auto in_dims = phi::vectorize<int64_t>(in->dims());
-    int channels = in_dims[1];
-    int in_height = in_dims[2];
-    int in_width = in_dims[3];
-    int rois_num = rois->dims()[0];
+    int channels = static_cast<int>(in_dims[1]);
+    int in_height = static_cast<int>(in_dims[2]);
+    int in_width = static_cast<int>(in_dims[3]);
+    int rois_num = static_cast<int>(rois->dims()[0]);
 
     const T* input_data = in->data<T>();
     int* mask_data = mask->mutable_data<int>(ctx.GetPlace());
@@ -271,7 +273,7 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
     auto lod = rois->lod().back();
     for (size_t i = 0; i < lod.size() - 1; ++i) {
       for (size_t j = lod[i]; j < lod[i + 1]; ++j) {
-        roi2image_data[j] = i;
+        roi2image_data[j] = static_cast<int64_t>(i);
       }
     }
 
@@ -283,17 +285,20 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
 
     for (int n = 0; n < rois_num; ++n) {
       const T* n_rois = rois_data + n * 8;
-      T roi_x[4];
-      T roi_y[4];
+      std::array<T, 4> roi_x;
+      std::array<T, 4> roi_y;
       for (int k = 0; k < 4; ++k) {
         roi_x[k] = n_rois[2 * k] * spatial_scale;
         roi_y[k] = n_rois[2 * k + 1] * spatial_scale;
       }
       int image_id = roi2image_data[n];
       // Get transform matrix
-      T matrix[9];
-      get_transform_matrix<T>(
-          transformed_width, transformed_height, roi_x, roi_y, matrix);
+      std::array<T, 9> matrix;
+      get_transform_matrix<T>(transformed_width,
+                              transformed_height,
+                              roi_x.data(),
+                              roi_y.data(),
+                              matrix.data());
       for (int i = 0; i < 9; i++) {
         transform_matrix[n * 9 + i] = matrix[i];
       }
@@ -305,8 +310,8 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
                 c * transformed_height * transformed_width +
                 out_h * transformed_width + out_w;
             T in_w, in_h;
-            get_source_coords<T>(matrix, out_w, out_h, &in_w, &in_h);
-            if (in_quad<T>(in_w, in_h, roi_x, roi_y)) {
+            get_source_coords<T>(matrix.data(), out_w, out_h, &in_w, &in_h);
+            if (in_quad<T>(in_w, in_h, roi_x.data(), roi_y.data())) {
               if (GT_E<T>(-0.5, in_w) ||
                   GT_E<T>(in_w, static_cast<T>(in_width - 0.5)) ||
                   GT_E<T>(-0.5, in_h) ||
@@ -408,7 +413,7 @@ class CPUROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
     int channels = in_dims[1];
     int in_height = in_dims[2];
     int in_width = in_dims[3];
-    int rois_num = rois->dims()[0];
+    int rois_num = static_cast<int>(rois->dims()[0]);
 
     T* in_grad_data = in_grad->mutable_data<T>(ctx.GetPlace());
     const T* out_grad_data = out_grad->data<T>();
@@ -420,7 +425,7 @@ class CPUROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
     auto lod = rois->lod().back();
     for (size_t i = 0; i < lod.size() - 1; ++i) {
       for (size_t j = lod[i]; j < lod[i + 1]; ++j) {
-        roi2image_data[j] = i;
+        roi2image_data[j] = static_cast<int>(i);
       }
     }
 
@@ -431,17 +436,20 @@ class CPUROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
             T gradient = 0.0;
             for (size_t roi_idx = lod[n]; roi_idx < lod[n + 1]; ++roi_idx) {
               const T* rois = rois_data + roi_idx * 8;
-              T roi_x[4];
-              T roi_y[4];
+              std::array<T, 4> roi_x;
+              std::array<T, 4> roi_y;
               for (int k = 0; k < 4; ++k) {
                 roi_x[k] = rois[2 * k] * spatial_scale;
                 roi_y[k] = rois[2 * k + 1] * spatial_scale;
               }
 
               // Get transform matrix
-              T matrix[9];
-              get_transform_matrix<T>(
-                  transformed_width, transformed_height, roi_x, roi_y, matrix);
+              std::array<T, 9> matrix;
+              get_transform_matrix<T>(transformed_width,
+                                      transformed_height,
+                                      roi_x.data(),
+                                      roi_y.data(),
+                                      matrix.data());
               const T* out_grad_ptr = out_grad_data + (roi_idx * channels + c) *
                                                           transformed_height *
                                                           transformed_width;
@@ -449,8 +457,9 @@ class CPUROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
                 for (int out_w = 0; out_w < transformed_width; ++out_w) {
                   T src_w;
                   T src_h;
-                  get_source_coords<T>(matrix, out_w, out_h, &src_w, &src_h);
-                  if (in_quad<T>(src_w, src_h, roi_x, roi_y)) {
+                  get_source_coords<T>(
+                      matrix.data(), out_w, out_h, &src_w, &src_h);
+                  if (in_quad<T>(src_w, src_h, roi_x.data(), roi_y.data())) {
                     if (GT_E<T>(-0.5, src_w) ||
                         GT_E<T>(src_w, static_cast<T>(in_width - 0.5)) ||
                         GT_E<T>(-0.5, src_h) ||

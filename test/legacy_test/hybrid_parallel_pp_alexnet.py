@@ -41,7 +41,7 @@ batch_size = 4
 micro_batch_size = 2
 
 
-class TestDistPPTraning(unittest.TestCase):
+class TestDistPPTraining(unittest.TestCase):
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 1
@@ -136,7 +136,7 @@ class TestDistPPTraning(unittest.TestCase):
             )
 
 
-class TestDistPPDelayScaleLoss(TestDistPPTraning):
+class TestDistPPDelayScaleLoss(TestDistPPTraining):
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 1
@@ -158,7 +158,7 @@ class TestDistPPDelayScaleLoss(TestDistPPTraning):
         fleet.init(is_collective=True, strategy=strategy)
 
 
-class TestDistPPMainGrad(TestDistPPTraning):
+class TestDistPPMainGrad(TestDistPPTraining):
     def wrapper_mix_precision(self, model, optimizer):
         model = MixPrecisionLayer(model, dtype="float16")
         optimizer = MixPrecisionOptimizer(optimizer)

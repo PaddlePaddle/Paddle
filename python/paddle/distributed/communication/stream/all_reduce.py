@@ -13,12 +13,12 @@
 # limitations under the License.
 
 from paddle import framework
+from paddle.base import data_feeder
 from paddle.distributed.communication.group import (
     _get_global_group,
     _warn_cur_rank_not_in_group,
 )
 from paddle.distributed.communication.reduce import ReduceOp, _get_reduce_op
-from paddle.fluid import data_feeder
 
 
 def _all_reduce_in_dygraph(tensor, op, group, sync_op, use_calc_stream):
@@ -47,6 +47,7 @@ def _all_reduce_in_static_mode(tensor, op, group, sync_op, use_calc_stream):
             'int8',
             'uint8',
             'bool',
+            'uint16',
         ],
         'all_reduce',
     )
@@ -66,8 +67,6 @@ def _all_reduce_in_static_mode(tensor, op, group, sync_op, use_calc_stream):
         outputs={'Out': [tensor]},
         attrs={'ring_id': ring_id, 'use_calc_stream': sync_op},
     )
-
-    return None
 
 
 def all_reduce(
@@ -92,21 +91,22 @@ def all_reduce(
     Examples:
         .. code-block:: python
 
-            # required: distributed
-            import paddle
-            import paddle.distributed as dist
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.distributed as dist
 
-            dist.init_parallel_env()
-            local_rank = dist.get_rank()
-            data = None
-            if local_rank == 0:
-                data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
-            else:
-                data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
-            task = dist.stream.all_reduce(data, sync_op=False)
-            task.wait()
-            out = data
-            # [[5, 7, 9], [5, 7, 9]]
+            >>> dist.init_parallel_env()
+            >>> local_rank = dist.get_rank()
+            >>> data = None
+            >>> if local_rank == 0:
+            ...     data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
+            >>> else:
+            ...     data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
+            >>> task = dist.stream.all_reduce(data, sync_op=False)
+            >>> task.wait()
+            >>> out = data
+            >>> print(out)
+            [[5, 7, 9], [5, 7, 9]]
     """
     if _warn_cur_rank_not_in_group(group):
         return

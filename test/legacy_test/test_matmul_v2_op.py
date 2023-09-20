@@ -15,12 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
+from op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
 from testsuite import create_op
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
@@ -98,7 +98,8 @@ class TestMatMulV2Op(OpTest):
 
     def test_check_output(self):
         self.check_output(
-            check_cinn=self.check_cinn if hasattr(self, 'check_cinn') else True
+            check_cinn=self.check_cinn if hasattr(self, 'check_cinn') else True,
+            check_new_ir=True,
         )
 
     def test_check_grad(self):
@@ -110,6 +111,7 @@ class TestMatMulV2Op(OpTest):
                 check_cinn=self.check_cinn
                 if hasattr(self, 'check_cinn')
                 else True,
+                check_new_ir=True,
             )
         else:
             self.check_grad(
@@ -118,6 +120,7 @@ class TestMatMulV2Op(OpTest):
                 check_cinn=self.check_cinn
                 if hasattr(self, 'check_cinn')
                 else True,
+                check_new_ir=True,
             )
 
 
@@ -359,6 +362,7 @@ def create_test_fp16_class(parent, atol=0.001, max_relative_error=1.0):
                         check_cinn=self.check_cinn
                         if hasattr(self, 'check_cinn')
                         else True,
+                        check_new_ir=True,
                     )
 
         def test_check_grad(self):
@@ -372,6 +376,7 @@ def create_test_fp16_class(parent, atol=0.001, max_relative_error=1.0):
                     check_cinn=self.check_cinn
                     if hasattr(self, 'check_cinn')
                     else True,
+                    check_new_ir=True,
                 )
 
     cls_name = "{}_{}".format(parent.__name__, "Fp16")
@@ -405,6 +410,7 @@ create_test_fp16_class(TestMatMulOpBroadcast2)
 def create_test_bf16_class(parent, atol=0.01):
     @unittest.skipIf(
         not core.is_compiled_with_cuda()
+        or paddle.is_compiled_with_rocm()
         or not core.is_bfloat16_supported(core.CUDAPlace(0)),
         "core is not compiled with CUDA and not support the bfloat16",
     )
@@ -430,6 +436,7 @@ def create_test_bf16_class(parent, atol=0.01):
                 check_cinn=self.check_cinn
                 if hasattr(self, 'check_cinn')
                 else True,
+                check_new_ir=True,
             )
 
         def test_check_grad_x(self):
@@ -440,10 +447,13 @@ def create_test_bf16_class(parent, atol=0.01):
                 ['X'],
                 'Out',
                 no_grad_set={'Y'},
+                max_relative_error=3e-2,
+                atol=3e-2,
                 user_defined_grads=[numeric_grads],
                 check_cinn=self.check_cinn
                 if hasattr(self, 'check_cinn')
                 else True,
+                check_new_ir=True,
             )
 
         def test_check_grad_y(self):
@@ -454,10 +464,13 @@ def create_test_bf16_class(parent, atol=0.01):
                 ['Y'],
                 'Out',
                 no_grad_set={'X'},
+                max_relative_error=3e-2,
+                atol=3e-2,
                 user_defined_grads=[numeric_grads],
                 check_cinn=self.check_cinn
                 if hasattr(self, 'check_cinn')
                 else True,
+                check_new_ir=True,
             )
 
         def test_check_grad(self):
@@ -489,12 +502,13 @@ create_test_bf16_class(TestMatMulOp17)
 
 class TestMatMulV2API(unittest.TestCase):
     def setUp(self):
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
 
     def check_static_result(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        paddle.enable_static()
+        with base.program_guard(base.Program(), base.Program()):
             input_x = paddle.static.data(
                 name="input_x", shape=[4, 3], dtype="float32"
             )
@@ -507,12 +521,13 @@ class TestMatMulV2API(unittest.TestCase):
             x_np = np.random.random([4, 3]).astype("float32")
             y_np = np.random.random([3, 4]).astype("float32")
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             fetches = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"input_x": x_np, "input_y": y_np},
                 fetch_list=[result],
             )
+        paddle.disable_static()
 
     def test_static(self):
         for place in self.places:
@@ -520,7 +535,7 @@ class TestMatMulV2API(unittest.TestCase):
 
     def test_dygraph(self):
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 input_x = np.random.random([4, 3]).astype("float64")
                 input_y = np.random.random([3, 4]).astype("float64")
                 x = paddle.to_tensor(input_x)
@@ -531,7 +546,7 @@ class TestMatMulV2API(unittest.TestCase):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                with fluid.dygraph.guard(place):
+                with base.dygraph.guard(place):
                     input_x = np.random.random([4, 3]).astype("float16")
                     input_y = np.random.random([3, 4]).astype("float16")
                     x = paddle.to_tensor(input_x)
@@ -542,7 +557,7 @@ class TestMatMulV2API(unittest.TestCase):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                with fluid.dygraph.guard(place):
+                with base.dygraph.guard(place):
                     paddle.set_flags(
                         {'FLAGS_gemm_use_half_precision_compute_type': False}
                     )
@@ -568,7 +583,7 @@ class TestMatMulV2API(unittest.TestCase):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                with fluid.dygraph.guard(place):
+                with base.dygraph.guard(place):
                     paddle.set_flags(
                         {'FLAGS_gemm_use_half_precision_compute_type': True}
                     )
@@ -600,8 +615,8 @@ class TestComplexMatMulOp(OpTest):
         self.init_input_output()
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.attrs = {'axis': -1, 'use_mkldnn': False}
         self.outputs = {'Out': self.out}
@@ -653,8 +668,8 @@ class TestComplexMatMulOpBroadcast(OpTest):
         self.init_input_output()
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.attrs = {'axis': -1, 'use_mkldnn': False}
         self.outputs = {'Out': self.out}
@@ -705,6 +720,110 @@ class TestMatMulTypePromotion(TestComplexMatMulOp):
             self.dtype
         ) + 1j * np.random.random((10, 10)).astype(self.dtype)
         self.out = np.dot(self.x, self.y)
+
+
+class TestInt32MatmulOp(OpTest):
+    def setUp(self):
+        self.op_type = "matmul_v2"
+        self.python_api = paddle.tensor.matmul
+        self.init_base_dtype()
+        self.init_input_output()
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
+        }
+        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.outputs = {'Out': self.out}
+
+    def init_base_dtype(self):
+        self.dtype = np.int32
+
+    def init_input_output(self):
+        self.x = np.random.random((10, 10)).astype(self.dtype)
+        self.y = np.random.random((10, 10)).astype(self.dtype)
+        self.out = np.matmul(self.x, self.y)
+
+    def test_check_output(self):
+        self.check_output(check_cinn=False, check_new_ir=True)
+
+
+class TestInt32MatMulOpBroadcast(OpTest):
+    def setUp(self):
+        self.op_type = "matmul_v2"
+        self.python_api = paddle.tensor.matmul
+        self.init_base_dtype()
+        self.init_input_output()
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
+        }
+        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.outputs = {'Out': self.out}
+
+    def init_base_dtype(self):
+        self.dtype = np.int32
+
+    def init_input_output(self):
+        self.x = np.random.random((10, 2, 5)).astype(self.dtype)
+        self.y = np.random.random((5, 20)).astype(self.dtype)
+        self.out = np.matmul(self.x, self.y)
+
+    def test_check_output(self):
+        self.check_output(check_cinn=False)
+
+
+class TestInt64MatmulOp(OpTest):
+    def setUp(self):
+        self.op_type = "matmul_v2"
+        self.python_api = paddle.tensor.matmul
+        self.init_base_dtype()
+        self.init_input_output()
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
+        }
+        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.outputs = {'Out': self.out}
+
+    def init_base_dtype(self):
+        self.dtype = np.int64
+
+    def init_input_output(self):
+        self.x = np.random.random((10, 10)).astype(self.dtype)
+        self.y = np.random.random((10, 10)).astype(self.dtype)
+        self.out = np.matmul(self.x, self.y)
+
+    def test_check_output(self):
+        self.check_output(check_cinn=False, check_new_ir=True)
+
+
+class TestInt64MatMulOpBroadcast(OpTest):
+    def setUp(self):
+        self.op_type = "matmul_v2"
+        self.python_api = paddle.tensor.matmul
+        self.init_base_dtype()
+        self.init_input_output()
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
+        }
+        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.outputs = {'Out': self.out}
+
+    def init_base_dtype(self):
+        self.dtype = np.int64
+
+    def init_input_output(self):
+        self.x = np.random.random((10, 2, 5)).astype(self.dtype)
+        self.y = np.random.random((5, 20)).astype(self.dtype)
+        self.out = np.matmul(self.x, self.y)
+
+    def test_check_output(self):
+        self.check_output(check_cinn=False)
 
 
 class TestMatmulop(unittest.TestCase):

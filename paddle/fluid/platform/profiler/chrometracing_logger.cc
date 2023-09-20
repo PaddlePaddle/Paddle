@@ -60,7 +60,7 @@ ChromeTracingLogger::ChromeTracingLogger(const char* filename_cstr) {
   StartLog();
 }
 
-ChromeTracingLogger::~ChromeTracingLogger() {
+ChromeTracingLogger::~ChromeTracingLogger() {  // NOLINT
   EndLog();
   output_file_stream_.close();
 }
@@ -75,18 +75,16 @@ void ChromeTracingLogger::LogNodeTrees(const NodeTrees& node_trees) {
       thread2host_event_nodes = node_trees.Traverse(true);
   // find the earliest time in current timeline
   start_time_ = std::numeric_limits<uint64_t>::max();
-  for (auto it = thread2host_event_nodes.begin();
-       it != thread2host_event_nodes.end();
-       ++it) {
-    if (it->second.begin() + 1 != it->second.end()) {
-      if ((*(it->second.begin() + 1))->StartNs() < start_time_) {
-        start_time_ = (*(it->second.begin() + 1))->StartNs();
+  for (const auto& event_node : thread2host_event_nodes) {
+    if (event_node.second.begin() + 1 != event_node.second.end()) {
+      if ((*(event_node.second.begin() + 1))->StartNs() < start_time_) {
+        start_time_ = (*(event_node.second.begin() + 1))->StartNs();
       }
     } else {
       auto runtimenode =
-          (*(it->second.begin()))->GetRuntimeTraceEventNodes().begin();
+          (*(event_node.second.begin()))->GetRuntimeTraceEventNodes().begin();
       if (runtimenode !=
-          (*(it->second.begin()))->GetRuntimeTraceEventNodes().end()) {
+          (*(event_node.second.begin()))->GetRuntimeTraceEventNodes().end()) {
         if ((*runtimenode)->StartNs() < start_time_) {
           start_time_ = (*runtimenode)->StartNs();
         }
@@ -94,29 +92,21 @@ void ChromeTracingLogger::LogNodeTrees(const NodeTrees& node_trees) {
     }
   }
 
-  for (auto it = thread2host_event_nodes.begin();
-       it != thread2host_event_nodes.end();
-       ++it) {
-    for (auto hostnode = it->second.begin(); hostnode != it->second.end();
+  for (const auto& event_node : thread2host_event_nodes) {
+    for (auto hostnode = event_node.second.begin();
+         hostnode != event_node.second.end();
          ++hostnode) {
-      if (hostnode != it->second.begin()) {  // skip root node
+      if (hostnode != event_node.second.begin()) {  // skip root node
         (*hostnode)->LogMe(this);
       }
-      for (auto runtimenode = (*hostnode)->GetRuntimeTraceEventNodes().begin();
-           runtimenode != (*hostnode)->GetRuntimeTraceEventNodes().end();
-           ++runtimenode) {
-        (*runtimenode)->LogMe(this);
-        for (auto devicenode =
-                 (*runtimenode)->GetDeviceTraceEventNodes().begin();
-             devicenode != (*runtimenode)->GetDeviceTraceEventNodes().end();
-             ++devicenode) {
-          (*devicenode)->LogMe(this);
+      for (auto runtimenode : (*hostnode)->GetRuntimeTraceEventNodes()) {
+        runtimenode->LogMe(this);
+        for (auto devicenode : runtimenode->GetDeviceTraceEventNodes()) {
+          devicenode->LogMe(this);
         }
       }
-      for (auto memnode = (*hostnode)->GetMemTraceEventNodes().begin();
-           memnode != (*hostnode)->GetMemTraceEventNodes().end();
-           ++memnode) {
-        (*memnode)->LogMe(this);
+      for (auto memnode : (*hostnode)->GetMemTraceEventNodes()) {
+        memnode->LogMe(this);
       }
     }
   }
@@ -460,7 +450,8 @@ void ChromeTracingLogger::HandleTypeMemcpy(
   MemcpyEventInfo memcpy_info = device_node.MemcpyInfo();
   float memory_bandwidth = 0;
   if (device_node.Duration() > 0) {
-    memory_bandwidth = memcpy_info.num_bytes * 1.0 / device_node.Duration();
+    memory_bandwidth =
+        memcpy_info.num_bytes * 1.0 / device_node.Duration();  // NOLINT
   }
   float dur = nsToMsFloat(device_node.Duration());
   std::string dur_display;
@@ -575,9 +566,8 @@ void ChromeTracingLogger::LogDeviceProperty(
     )JSON");
   }
 #if defined(PADDLE_WITH_CUDA)
-  for (auto it = device_property_map.begin(); it != device_property_map.end();
-       it++) {
-    const gpuDeviceProp& device_property = it->second;
+  for (const auto& item : device_property_map) {
+    const gpuDeviceProp& device_property = item.second;
     if (device_nums > 1) {
       output_file_stream_ << string_format(
           std::string(
@@ -591,7 +581,7 @@ void ChromeTracingLogger::LogDeviceProperty(
       "smCount": %d, "sharedMemPerBlockOptin": %d
     },
   )JSON"),
-          it->first,
+          item.first,
           device_property.name,
           device_property.totalGlobalMem,
           device_property.major,
@@ -618,7 +608,7 @@ void ChromeTracingLogger::LogDeviceProperty(
         "smCount": %d, "sharedMemPerBlockOptin": %d
       }],
     )JSON"),
-          it->first,
+          item.first,
           device_property.name,
           device_property.totalGlobalMem,
           device_property.major,
@@ -710,7 +700,7 @@ void ChromeTracingLogger::LogExtraInfo(
 
 void ChromeTracingLogger::RefineDisplayName(
     std::unordered_map<std::string, std::string> extra_info) {
-  for (auto it = pid_tid_set_.begin(); it != pid_tid_set_.end(); ++it) {
+  for (const auto& pid_tid : pid_tid_set_) {
     output_file_stream_ << string_format(
         std::string(
             R"JSON(
@@ -764,36 +754,34 @@ void ChromeTracingLogger::RefineDisplayName(
     }
   },
   )JSON"),
-        (*it).first,
-        (*it).second,
-        (*it).first,
-        (*it).first,
-        (*it).second,
-        (*it).first,
-        (*it).first,
-        (*it).second,
-        (*it).second,
-        extra_info[string_format(std::string("%lld"), (*it).second)].c_str(),
-        (*it).first,
-        (*it).second,
-        (*it).second,
-        extra_info[string_format(std::string("%lld"), (*it).second)].c_str(),
-        (*it).first,
-        (*it).second,
-        (*it).first,
-        (*it).first,
-        (*it).second,
-        (*it).second * 2,
-        (*it).first,
-        (*it).second,
-        (*it).second * 2 + 1);
+        pid_tid.first,
+        pid_tid.second,
+        pid_tid.first,
+        pid_tid.first,
+        pid_tid.second,
+        pid_tid.first,
+        pid_tid.first,
+        pid_tid.second,
+        pid_tid.second,
+        extra_info[string_format(std::string("%lld"), pid_tid.second)].c_str(),
+        pid_tid.first,
+        pid_tid.second,
+        pid_tid.second,
+        extra_info[string_format(std::string("%lld"), pid_tid.second)].c_str(),
+        pid_tid.first,
+        pid_tid.second,
+        pid_tid.first,
+        pid_tid.first,
+        pid_tid.second,
+        pid_tid.second * 2,
+        pid_tid.first,
+        pid_tid.second,
+        pid_tid.second * 2 + 1);
   }
 
   static std::string device_type("GPU");
 
-  for (auto it = deviceid_streamid_set_.begin();
-       it != deviceid_streamid_set_.end();
-       ++it) {
+  for (const auto& deviceid_streamid : deviceid_streamid_set_) {
     output_file_stream_ << string_format(std::string(
                                              R"JSON(
   {
@@ -825,19 +813,19 @@ void ChromeTracingLogger::RefineDisplayName(
     }
   },
   )JSON"),
-                                         (*it).first,
-                                         (*it).second,
-                                         (*it).first,
+                                         deviceid_streamid.first,
+                                         deviceid_streamid.second,
+                                         deviceid_streamid.first,
                                          device_type.c_str(),
-                                         (*it).first,
-                                         (*it).second,
-                                         (*it).second,
-                                         (*it).first,
-                                         (*it).second,
-                                         (*it).first + 0x10000000,
-                                         (*it).first,
-                                         (*it).second,
-                                         (*it).second);
+                                         deviceid_streamid.first,
+                                         deviceid_streamid.second,
+                                         deviceid_streamid.second,
+                                         deviceid_streamid.first,
+                                         deviceid_streamid.second,
+                                         deviceid_streamid.first + 0x10000000,
+                                         deviceid_streamid.first,
+                                         deviceid_streamid.second,
+                                         deviceid_streamid.second);
   }
 }
 

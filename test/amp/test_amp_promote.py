@@ -18,9 +18,15 @@ import numpy as np
 from amp_base_models import AmpTestBase, build_conv_model
 
 import paddle
+from paddle.base import core
 from paddle.static import amp
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    "run test when gpu's compute capability is at least 7.0.",
+)
 class TestStaticAmpPromoteStats(AmpTestBase):
     def check_promote_results(
         self, use_amp, dtype, level, use_promote, expected_op_calls, debug_info
@@ -103,6 +109,11 @@ class TestStaticAmpPromoteStats(AmpTestBase):
         )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    "run test when gpu's compute capability is at least 7.0.",
+)
 class TestEagerAmpPromoteStats(AmpTestBase):
     def check_promote_results(
         self, dtype, level, use_promote, expected_op_calls, debug_info
@@ -127,7 +138,7 @@ class TestEagerAmpPromoteStats(AmpTestBase):
         scaler.minimize(optimizer, scaled)
         optimizer.clear_grad()
         paddle.amp.debugging.disable_operator_stats_collection()
-        op_stats = paddle.fluid.core.get_low_precision_op_list()
+        op_stats = paddle.base.core.get_low_precision_op_list()
 
         self._check_op_calls(
             op_stats,
@@ -172,6 +183,11 @@ class TestEagerAmpPromoteStats(AmpTestBase):
         )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    "run test when gpu's compute capability is at least 7.0.",
+)
 class TestEagerAmpPromoteSimple(AmpTestBase):
     def setUp(self):
         self._conv = paddle.nn.Conv2D(

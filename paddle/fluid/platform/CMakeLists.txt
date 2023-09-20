@@ -68,6 +68,10 @@ if(WITH_GPU OR WITH_ROCM)
   set(GPU_CTX_DEPS dynload_cuda dynamic_loader)
 endif()
 
+if(WITH_XPU)
+  set(XPU_CTX_DEPS dynload_xpti dynamic_loader)
+endif()
+
 if(WITH_IPU)
   set(IPU_CTX_DEPS ipu_info)
 else()
@@ -273,6 +277,17 @@ elseif(WITH_ROCM)
     DEPS phi
          gpu_info
          enforce
+         new_profiler
+         stats
+         op_proto_maker
+         shape_inference)
+elseif(WITH_XPU)
+  cc_library(
+    profiler
+    SRCS profiler.cc
+    DEPS phi
+         enforce
+         dynload_xpti
          new_profiler
          stats
          op_proto_maker

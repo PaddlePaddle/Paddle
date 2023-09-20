@@ -12,5 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from paddle.fluid.core import OperatorDistAttr  # noqa: F401
-from paddle.fluid.core import TensorDistAttr  # noqa: F401
+from paddle.base.core import DistTensorSpec  # noqa: F401
+from paddle.base.core import OperatorDistAttr  # noqa: F401
+from paddle.base.core import TensorDistAttr  # noqa: F401

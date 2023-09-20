@@ -76,9 +76,9 @@ class SequenceExpandOp : public framework::OperatorWithKernel {
               y_lod.size(),
               ref_level));
 
-      if (ref_level == -1) ref_level = y_lod.size() - 1;
+      if (ref_level == -1) ref_level = static_cast<int>(y_lod.size() - 1);
 
-      if (x_lod.size() > 0) {
+      if (!x_lod.empty()) {
         PADDLE_ENFORCE_EQ(
             x_lod[0].size(),
             y_lod[ref_level].size(),
@@ -114,10 +114,10 @@ class SequenceExpandOp : public framework::OperatorWithKernel {
         for (size_t i = 1; i < y_lod[ref_level].size(); ++i) {
           int x_seq_len = 1;
           if (x_lod.size() == 1) {
-            x_seq_len = x_lod[0][i] - x_lod[0][i - 1];
+            x_seq_len = static_cast<int>(x_lod[0][i] - x_lod[0][i - 1]);
           }
-          out_first_dim +=
-              (y_lod[ref_level][i] - y_lod[ref_level][i - 1]) * x_seq_len;
+          out_first_dim += static_cast<int64_t>(
+              (y_lod[ref_level][i] - y_lod[ref_level][i - 1]) * x_seq_len);
         }
       }
       out_dims[0] = out_first_dim;

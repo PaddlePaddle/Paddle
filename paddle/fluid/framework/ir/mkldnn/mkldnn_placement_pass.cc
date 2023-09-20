@@ -30,7 +30,7 @@ inline bool FoundOneDNNKernelWithCorrectDataType(
       if (platform::is_cpu_place(kernel_pair.first.place_) &&
           (kernel_pair.first.library_type_ ==
            framework::LibraryType::kMKLDNN)) {
-        if (op->inputs.size() > 0) {
+        if (!op->inputs.empty()) {
           if (op->inputs[0]->IsVar() &&
               op->inputs[0]->Var()->Name() != "feed" &&
               kernel_pair.first.data_type_ ==
@@ -53,7 +53,7 @@ inline bool FoundPhiOneDNNKernelWithCorrectDataType(
 
   for (auto& kernel_pair : phi_kernels) {
     if (kernel_pair.first.backend() == phi::Backend::ONEDNN) {
-      if (op->inputs.size() > 0) {
+      if (!op->inputs.empty()) {
         if (op->inputs[0]->IsVar() && op->inputs[0]->Var()->Name() != "feed" &&
             kernel_pair.first.dtype() ==
                 framework::TransToPhiDataType(

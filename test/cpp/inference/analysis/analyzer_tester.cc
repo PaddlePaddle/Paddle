@@ -14,6 +14,7 @@
 
 #include <google/protobuf/text_format.h>
 #include <gtest/gtest.h>
+#include <array>
 
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
@@ -66,10 +67,10 @@ void TestWord2vecPrediction(const std::string& model_path) {
 
   // One single batch
 
-  int64_t data[4] = {1, 2, 3, 4};
+  std::array<int64_t, 4> data = {1, 2, 3, 4};
   PaddleTensor tensor;
   tensor.shape = std::vector<int>({4, 1});
-  tensor.data = PaddleBuf(data, sizeof(data));
+  tensor.data = PaddleBuf(data.data(), sizeof(data));
   tensor.dtype = PaddleDType::INT64;
 
   // For simplicity, we set all the slots with the same data.
@@ -87,7 +88,7 @@ void TestWord2vecPrediction(const std::string& model_path) {
                     platform::errors::PreconditionNotMet(
                         "Output's data length should be 33168 but got %d",
                         outputs.front().data.length()));
-  float result[5] = {
+  std::array<float, 5> result = {
       0.00129761, 0.00151112, 0.000423564, 0.00108815, 0.000932706};
   const size_t num_elements = outputs.front().data.length() / sizeof(float);
   // The outputs' buffers are in CPU memory.

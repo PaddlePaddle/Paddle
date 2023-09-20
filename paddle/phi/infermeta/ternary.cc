@@ -384,11 +384,18 @@ void InstanceNormInferMeta(const MetaTensor& x,
   y->share_lod(x);
   y->set_dtype(x.dtype());
   y->set_layout(x.layout());
+  phi::DataType x_dtype = x.dtype();
+  phi::DataType param_type =
+      (x_dtype == phi::DataType::BFLOAT16 || x_dtype == phi::DataType::FLOAT16)
+          ? phi::DataType::FLOAT32
+          : x_dtype;
   if (saved_mean) {
     saved_mean->set_dims({NxC});
+    saved_mean->set_dtype(param_type);
   }
   if (saved_variance) {
     saved_variance->set_dims({NxC});
+    saved_variance->set_dtype(param_type);
   }
 }
 
@@ -1053,7 +1060,7 @@ void ScatterInferMeta(const MetaTensor& x,
         (ref_dims.size() == updates_dims.size()),
         true,
         phi::errors::InvalidArgument(
-            "When the Input(Updates) is not a 0D tensor, the "
+            "When the Input(Index) is not a 0D tensor, the "
             "Input(X) and Input(Updates) should have the same shape size, "
             "but received the size of Input(x)'s shape is %d, the size of "
             "Input(Updates)'s shape is %d.",
@@ -1068,6 +1075,17 @@ void ScatterInferMeta(const MetaTensor& x,
             "batch-size is %d.",
             updates_dims[0],
             index_dims[0]));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        (ref_dims.size() - 1 == updates_dims.size()),
+        true,
+        phi::errors::InvalidArgument(
+            "When the Input(Index) is a 0D tensor, the "
+            "Input(Updates) should have the shape size as Input(X)'s "
+            "shape size - 1. But received the size of Input(x)'s shape is %d, "
+            " the size of Input(Updates)'s shape is %d.",
+            ref_dims.size(),
+            updates_dims.size()));
   }
   out->set_dims(ref_dims);
   out->share_lod(x);
@@ -1081,7 +1099,7 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
   const auto& ref_dims = x.dims();
   auto ref_dims_size = ref_dims.size();
   const auto& index_dims = index.dims();
-  auto index_dims_size = index_dims.size();
+  int index_dims_size = static_cast<int>(index_dims.size());
   const auto& updates_dims = updates.dims();
   auto updates_dims_size = updates_dims.size();
 
@@ -1117,10 +1135,12 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
 
     // update.shape = index.shape[:-1] + output.shape[index.shape[-1]:]
     std::vector<int64_t> r_updates_dims;
-    for (int64_t i = 0; i < index_dims_size - 1; ++i) {
+    for (int i = 0; i < index_dims_size - 1; ++i) {
       r_updates_dims.emplace_back(index_dims[i]);
     }
-    for (int64_t i = index_dims[index_dims_size - 1]; i < ref_dims_size; ++i) {
+    for (int i = static_cast<int>(index_dims[index_dims_size - 1]);
+         i < ref_dims_size;
+         ++i) {
       r_updates_dims.emplace_back(ref_dims[i]);
     }
     // check for non-0d updates
@@ -1247,11 +1267,11 @@ void SpectralNormInferMeta(const MetaTensor& weight,
           "Attr(power_iters) should be greater equal then 0, but received %d",
           power_iters));
 
-  int h = dim_weight[dim];
+  int h = static_cast<int>(dim_weight[dim]);
   int w = 1;
   for (int i = 0; i < rank_weight; i++) {
     if (i != dim) {
-      w *= dim_weight[i];
+      w *= static_cast<int>(dim_weight[i]);
     }
   }
   auto dim_u = u.dims();

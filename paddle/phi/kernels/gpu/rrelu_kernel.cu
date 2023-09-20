@@ -93,7 +93,7 @@ void RReluKernel(const Context& ctx,
     RReluTestCudaFunctor<T> functor(x_data, out_data, noise_data, mid_val);
     for_range(functor);
   } else {
-    using MT = typename kps::details::MPTypeTrait<T>::Type;
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     funcs::uniform_distribution<MT> dist;
     funcs::uniform_real_transform<MT> trans(lower, upper);
     funcs::distribution_and_transform<T>(ctx, noise, dist, trans);

@@ -15,16 +15,16 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def broadcast_wrapper(shape=[1, 10, 12, 1]):
     def div_wrapper(x, y, axis=-1):
-        return paddle.divide(x, y.reshape(shape))
+        return paddle.divide(x, paddle.reshape(y, shape))
 
     return div_wrapper
 
@@ -82,6 +82,7 @@ class ElementwiseDivOp(OpTest):
 
     def if_check_prim(self):
         self.check_prim = True
+        self.check_prim_pir = True
 
     def gen_data(self, shape):
         return np.random.uniform(0.1, 1, shape)
@@ -97,9 +98,9 @@ class ElementwiseDivOp(OpTest):
 
     def test_check_output(self):
         if self.place is None:
-            self.check_output()
+            self.check_output(check_new_ir=True)
         else:
-            self.check_output_with_place(self.place)
+            self.check_output_with_place(self.place, check_new_ir=True)
 
     def test_check_gradient(self):
         check_list = []
@@ -124,12 +125,15 @@ class ElementwiseDivOp(OpTest):
                 'user_defined_grad_outputs': [self.grad_out],
                 'check_dygraph': self.check_dygraph,
                 'check_prim': self.check_prim,
+                'check_prim_pir': self.check_prim_pir,
             }
             if self.place is None:
-                self.check_grad(*check_args, **check_kwargs)
+                self.check_grad(*check_args, **check_kwargs, check_new_ir=True)
             else:
                 check_args.insert(0, self.place)
-                self.check_grad_with_place(*check_args, **check_kwargs)
+                self.check_grad_with_place(
+                    *check_args, **check_kwargs, check_new_ir=True
+                )
 
 
 class TestElementwiseDivPrimOpFp32(ElementwiseDivOp):
@@ -212,18 +216,21 @@ class TestElementwiseDivOpBF16(ElementwiseDivOp):
             check_args = [check_option['grad'], 'Out']
             check_kwargs = {
                 'no_grad_set': check_option['no_grad'],
-                'user_defined_grads': check_option['val_grad'],
-                'user_defined_grad_outputs': [self.grad_out],
                 'check_dygraph': self.check_dygraph,
+                'check_prim': self.check_prim,
+                'check_prim_pir': self.check_prim_pir,
             }
             if self.place is None:
-                self.check_grad(*check_args, **check_kwargs)
+                self.check_grad(*check_args, **check_kwargs, check_new_ir=True)
             else:
                 check_args.insert(0, self.place)
-                self.check_grad_with_place(*check_args, **check_kwargs)
+                self.check_grad_with_place(
+                    *check_args, **check_kwargs, check_new_ir=True
+                )
 
     def if_check_prim(self):
         self.check_prim = True
+        self.check_prim_pir = True
 
     def if_enable_cinn(self):
         self.enable_cinn = False
@@ -272,10 +279,12 @@ class TestElementwiseDivOpNoPrim(ElementwiseDivOp):
                 'check_dygraph': self.check_dygraph,
             }
             if self.place is None:
-                self.check_grad(*check_args, **check_kwargs)
+                self.check_grad(*check_args, **check_kwargs, check_new_ir=True)
             else:
                 check_args.insert(0, self.place)
-                self.check_grad_with_place(*check_args, **check_kwargs)
+                self.check_grad_with_place(
+                    *check_args, **check_kwargs, check_new_ir=True
+                )
 
 
 class TestElementwiseDivOpBroadcast0(TestElementwiseDivOpNoPrim):
@@ -445,10 +454,18 @@ def create_test_fp16_class(parent, max_relative_error=2e-3):
                     'max_relative_error': max_relative_error,
                 }
                 if self.place is None:
-                    self.check_grad(*check_args, **check_kwargs)
+                    self.check_grad(
+                        *check_args, **check_kwargs, check_new_ir=True
+                    )
                 else:
                     check_args.insert(0, self.place)
-                    self.check_grad_with_place(*check_args, **check_kwargs)
+                    self.check_grad_with_place(
+                        *check_args,
+                        **check_kwargs,
+                        check_new_ir=True,
+                        check_prim=True,
+                        check_prim_pir=True
+                    )
 
     cls_name = "{}_{}".format(parent.__name__, "Fp16")
     TestElementwiseDivFP16Op.__name__ = cls_name
@@ -474,29 +491,33 @@ create_test_fp16_class(TestElementwiseDivOpXsizeLessThanYsize)
 
 class TestElementwiseDivBroadcast(unittest.TestCase):
     def test_shape_with_batch_sizes(self):
-        with fluid.program_guard(fluid.Program()):
+        paddle.enable_static()
+        with base.program_guard(base.Program()):
             x_var = paddle.static.data(
                 name='x', dtype='float32', shape=[None, 3, None, None]
             )
             one = 2.0
             out = one / x_var
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = base.Executor(base.CPUPlace())
             x = np.random.uniform(0.1, 0.6, (1, 3, 32, 32)).astype("float32")
             (out_result,) = exe.run(feed={'x': x}, fetch_list=[out])
             self.assertEqual((out_result == (2 / x)).all(), True)
+        paddle.disable_static()
 
 
 class TestDivideOp(unittest.TestCase):
     def test_name(self):
-        with fluid.program_guard(fluid.Program()):
+        paddle.enable_static()
+        with base.program_guard(base.Program()):
             x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
             y = paddle.static.data(name='y', shape=[2, 3], dtype='float32')
 
             y_1 = paddle.divide(x, y, name='div_res')
             self.assertEqual(('div_res' in y_1.name), True)
+        paddle.disable_static()
 
     def test_dygraph(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             np_x = np.array([2, 3, 4]).astype('float64')
             np_y = np.array([1, 5, 2]).astype('float64')
             x = paddle.to_tensor(np_x)
@@ -507,6 +528,7 @@ class TestDivideOp(unittest.TestCase):
             self.assertEqual((np_z == z_expected).all(), True)
 
 
+# new ir doesn't support complex right now, skip new ir op test
 class TestComplexElementwiseDivOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_div"
@@ -515,8 +537,8 @@ class TestComplexElementwiseDivOp(OpTest):
         self.init_input_output()
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.attrs = {'axis': -1, 'use_mkldnn': False}
         self.outputs = {'Out': self.out}
@@ -534,12 +556,15 @@ class TestComplexElementwiseDivOp(OpTest):
         self.out = self.x / self.y
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=False)
 
     def test_check_grad_normal(self):
         self.check_grad(
             ['X', 'Y'],
             'Out',
+            numeric_grad_delta=1e-5,
+            max_relative_error=1e-6,
+            check_new_ir=False,
         )
 
     def test_check_grad_ingore_x(self):
@@ -547,6 +572,9 @@ class TestComplexElementwiseDivOp(OpTest):
             ['Y'],
             'Out',
             no_grad_set=set("X"),
+            numeric_grad_delta=1e-5,
+            max_relative_error=1e-6,
+            check_new_ir=False,
         )
 
     def test_check_grad_ingore_y(self):
@@ -554,6 +582,9 @@ class TestComplexElementwiseDivOp(OpTest):
             ['X'],
             'Out',
             no_grad_set=set('Y'),
+            numeric_grad_delta=1e-5,
+            max_relative_error=1e-6,
+            check_new_ir=False,
         )
 
 

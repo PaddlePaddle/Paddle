@@ -63,13 +63,13 @@ class SliceOpConverter : public OpConverter {
       }
       auto slice_inputs = op_desc.Inputs();
       if (slice_inputs.find("StartsTensor") != slice_inputs.end() &&
-          op_desc.Input("StartsTensor").size()) {  // has StartsTensor input
+          !op_desc.Input("StartsTensor").empty()) {  // has StartsTensor input
         for (size_t i = 0; i < axes.size(); ++i) {
           starts_tensor[axes[i]] = GetEleTensorOfShape(
               engine_->GetITensor(op_desc.Input("StartsTensor")[0]), i);
         }
       } else if (slice_inputs.find("StartsTensorList") != slice_inputs.end() &&
-                 op_desc.Input("StartsTensorList").size()) {
+                 !op_desc.Input("StartsTensorList").empty()) {
         for (size_t i = 0; i < axes.size(); ++i) {
           starts_tensor[axes[i]] =
               engine_->GetITensor(op_desc.Input("StartsTensorList")[i]);
@@ -98,13 +98,13 @@ class SliceOpConverter : public OpConverter {
       start_tensor = Concat(starts_tensor);
 
       if (slice_inputs.find("EndsTensor") != slice_inputs.end() &&
-          op_desc.Input("EndsTensor").size()) {  // has EndsTensor input
+          !op_desc.Input("EndsTensor").empty()) {  // has EndsTensor input
         for (size_t i = 0; i < axes.size(); ++i) {
           ends_tensor[axes[i]] = GetEleTensorOfShape(
               engine_->GetITensor(op_desc.Input("EndsTensor")[0]), i);
         }
       } else if (slice_inputs.find("EndsTensorList") != slice_inputs.end() &&
-                 op_desc.Input("EndsTensorList").size()) {
+                 !op_desc.Input("EndsTensorList").empty()) {
         for (size_t i = 0; i < axes.size(); ++i) {
           ends_tensor[axes[i]] =
               engine_->GetITensor(op_desc.Input("EndsTensorList")[i]);
@@ -138,7 +138,7 @@ class SliceOpConverter : public OpConverter {
       layer->setInput(1, *start_tensor);
       layer->setInput(2, *size_tensor);
 
-      if (decrease_axises.size() > 0) {
+      if (!decrease_axises.empty()) {
         std::vector<int32_t> gather_indices;
         for (int i = 0; i < trt_size_dims.nbDims; i++) {
           if (decrease_axises.end() !=
@@ -196,9 +196,9 @@ class SliceOpConverter : public OpConverter {
       nvinfer1::Dims real_trt_size_dims;
       real_trt_size_dims.nbDims = 0;
 
-      if (decrease_axises.size() > 0) {
-        for (size_t i = 0; i < decrease_axises.size(); i++) {
-          decrease_axises[i]--;
+      if (!decrease_axises.empty()) {
+        for (auto& decrease_axis : decrease_axises) {
+          decrease_axis--;
         }
         for (int i = 0; i < trt_size_dims.nbDims; i++) {
           if (decrease_axises.end() !=

@@ -30,6 +30,31 @@ void AddActXPUInferMeta(const MetaTensor& x,
                         MetaTensor* out,
                         MetaTensor* out_max);
 
+void AddLayernormXPUInferMeta(const MetaTensor& x,
+                              const MetaTensor& y,
+                              const MetaTensor& scale,
+                              const MetaTensor& bias,
+                              int begin_norm_axis,
+                              float epsilon,
+                              MetaTensor* out);
+
+void Conv1dXPUInferMeta(const MetaTensor& x,
+                        const MetaTensor& x_max,
+                        const MetaTensor& filter,
+                        const MetaTensor& filter_max,
+                        const MetaTensor& bias,
+                        const MetaTensor& branch,
+                        const MetaTensor& branch_max,
+                        const std::vector<int>& paddings,
+                        const std::string& padding_algorithm,
+                        int dilations,
+                        int strides,
+                        int groups,
+                        int act_type,
+                        float act_param,
+                        MetaTensor* out,
+                        MetaTensor* out_max);
+
 void Conv2dXPUInferMeta(const MetaTensor& x,
                         const MetaTensor& x_max,
                         const MetaTensor& filter,
@@ -42,10 +67,9 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
                         const std::vector<int>& strides,
                         const std::string& padding_algorithm,
                         int groups,
-                        bool has_bias,
-                        bool has_branch,
                         int act_type,
                         float act_param,
+                        DataType out_dtype,
                         MetaTensor* out,
                         MetaTensor* out_max);
 
@@ -68,6 +92,7 @@ void FcXPUInferMeta(const MetaTensor& x,
                     float beta,
                     int act_type,
                     float act_alpha,
+                    DataType out_dtype,
                     MetaTensor* out,
                     MetaTensor* out_max);
 
@@ -98,6 +123,26 @@ void MultiEncoderXPUInferMeta(
     MetaTensor* x_fp16,
     MetaTensor* out_fp16);
 
+void FusedGemmEpilogueInferMeta(const MetaTensor& x,
+                                const MetaTensor& y,
+                                const MetaTensor& bias,
+                                bool trans_x,
+                                bool trans_y,
+                                const std::string& activation,
+                                MetaTensor* out,
+                                MetaTensor* reserve_space);
+
+void FusedGemmEpilogueGradInferMeta(const MetaTensor& x,
+                                    const MetaTensor& y,
+                                    const MetaTensor& reserve_space,
+                                    const MetaTensor& out_grad,
+                                    bool trans_x,
+                                    bool trans_y,
+                                    const std::string& activation_grad,
+                                    MetaTensor* x_grad,
+                                    MetaTensor* y_grad,
+                                    MetaTensor* bias_grad);
+
 void FusedMultiTransformerXpuInferMeta(
     const MetaTensor& x,
     const std::vector<const MetaTensor*>& ln_scale,
@@ -118,11 +163,11 @@ void FusedMultiTransformerXpuInferMeta(
     const std::vector<const MetaTensor*>& ffn2_bias,
     const std::vector<const MetaTensor*>& cache_kv,
     const std::vector<const MetaTensor*>& pre_caches,
-    const std::vector<const MetaTensor*>& rotary_pos_emb,
-    const std::vector<const MetaTensor*>& time_step,
-    const std::vector<const MetaTensor*>& seq_lengths,
-    const std::vector<const MetaTensor*>& src_mask,
-    const std::vector<const MetaTensor*>& gather_index,
+    const MetaTensor& rotary_pos_emb,
+    const MetaTensor& time_step,
+    const MetaTensor& seq_lengths,
+    const MetaTensor& src_mask,
+    const MetaTensor& gather_index,
     bool pre_layer_norm,
     int rotary_emb_dims,
     float epsilon,
@@ -144,5 +189,100 @@ void YoloBoxXPUInferMeta(const MetaTensor& x,
                          float offset,
                          MetaTensor* out,
                          MetaTensor* out_max);
+
+void Conv2dTransposeXPUInferMeta(const MetaTensor& x,
+                                 const MetaTensor& x_max,
+                                 const MetaTensor& filter,
+                                 const MetaTensor& filter_max,
+                                 const MetaTensor& bias,
+                                 const std::vector<int>& strides,
+                                 const std::vector<int>& paddings,
+                                 const std::vector<int>& output_padding,
+                                 const IntArray& output_size,
+                                 const std::string& padding_algorithm,
+                                 int groups,
+                                 const std::vector<int>& dilations,
+                                 const std::string& data_format,
+                                 bool has_bias,
+                                 bool with_act,
+                                 const std::string& act_type,
+                                 MetaTensor* out,
+                                 MetaTensor* out_max);
+
+void FastWhereXPUInferMeta(const MetaTensor& condition,
+                           const MetaTensor& x,
+                           const MetaTensor& y,
+                           MetaTensor* out);
+
+void FastLayernormXPUInferMeta(const MetaTensor& x,
+                               const MetaTensor& scale,
+                               const MetaTensor& bias,
+                               int begin_norm_axis,
+                               float epsilon,
+                               MetaTensor* out);
+
+void BNActXPUInferMeta(const MetaTensor& x,
+                       const MetaTensor& mean,
+                       const MetaTensor& variance,
+                       const MetaTensor& scale,
+                       const MetaTensor& bias,
+                       float momentum,
+                       float epsilon,
+                       const std::string& data_layout,
+                       int act_type,
+                       MetaTensor* y,
+                       MetaConfig config = MetaConfig());
+
+void AddCMulXPUInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         const MetaTensor& w,
+                         MetaTensor* out);
+
+void LayerNormActXPUInferMeta(const MetaTensor& x,
+                              const MetaTensor& scale,
+                              const MetaTensor& bias,
+                              int begin_norm_axis,
+                              float epsilon,
+                              int act_type,
+                              float act_param,
+                              MetaTensor* y);
+
+void FusedScaleBiasReluConvBnstatsInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& w,
+    const MetaTensor& scale,
+    const MetaTensor& bias,
+    const MetaTensor& bn_scale,
+    const MetaTensor& bn_bias,
+    const MetaTensor& input_running_mean,
+    const MetaTensor& input_running_var,
+    const std::vector<int>& paddings,
+    const std::vector<int>& dilations,
+    const std::vector<int>& strides,
+    const std::string& padding_algorithm,
+    int groups,
+    const std::string& data_format,
+    float momentum,
+    float epsilon,
+    bool fuse_prologue,
+    bool exhaustive_search,
+    int64_t accumulation_count,
+    MetaTensor* out,
+    MetaTensor* out_running_mean,
+    MetaTensor* out_running_var,
+    MetaTensor* saved_mean,
+    MetaTensor* saved_var,
+    MetaTensor* eq_scale,
+    MetaTensor* eq_bias);
+
+void SqueezeExcitationInferMeta(const MetaTensor& x,
+                                const MetaTensor& filter,
+                                const MetaTensor& filter_max,
+                                const MetaTensor& bias,
+                                const MetaTensor& branch,
+                                const std::vector<int>& act_type,
+                                const std::vector<float>& act_param,
+                                const std::vector<int>& filter_dims,
+                                MetaTensor* out);
 
 }  // namespace phi

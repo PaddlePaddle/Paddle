@@ -1,9 +1,0 @@
-cc_test_old(
-  pass_manager_test
-  SRCS
-  pass_manager_test.cc
-  DEPS
-  new_pass
-  pd_dialect
-  phi
-  gtest)

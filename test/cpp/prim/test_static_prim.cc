@@ -28,7 +28,7 @@
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-DECLARE_bool(prim_enabled);
+PD_DECLARE_bool(prim_enabled);
 PHI_DECLARE_string(tensor_operants_mode);
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
@@ -41,6 +41,7 @@ PD_DECLARE_KERNEL(multiply, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(concat, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(less_equal, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(less_than, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(less_than_raw, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(equal, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(not_equal, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(greater_equal, CPU, ALL_LAYOUT);
@@ -60,6 +61,7 @@ PD_DECLARE_KERNEL(multiply, KPS, ALL_LAYOUT);
 PD_DECLARE_KERNEL(concat, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(less_equal, KPS, ALL_LAYOUT);
 PD_DECLARE_KERNEL(less_than, KPS, ALL_LAYOUT);
+PD_DECLARE_KERNEL(less_than_raw, KPS, ALL_LAYOUT);
 PD_DECLARE_KERNEL(equal, KPS, ALL_LAYOUT);
 PD_DECLARE_KERNEL(not_equal, KPS, ALL_LAYOUT);
 PD_DECLARE_KERNEL(greater_equal, KPS, ALL_LAYOUT);

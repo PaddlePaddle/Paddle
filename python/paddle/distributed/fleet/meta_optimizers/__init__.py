@@ -14,6 +14,7 @@
 
 from .amp_optimizer import AMPOptimizer
 from .asp_optimizer import ASPOptimizer
+from .qat_optimizer import QATOptimizer
 from .recompute_optimizer import RecomputeOptimizer
 from .gradient_merge_optimizer import GradientMergeOptimizer
 from .ps_optimizer import ParameterServerOptimizer

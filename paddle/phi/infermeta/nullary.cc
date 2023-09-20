@@ -60,6 +60,15 @@ void CreateInferMetaBase(const std::vector<int64_t>& shape,
   out->set_layout(layout);
 }
 
+void DataInferMeta(const std::string& name,
+                   const phi::IntArray& shape,
+                   phi::DataType data_type,
+                   MetaTensor* out) {
+  auto out_dims = phi::make_ddim(shape.GetData());
+  out->set_dims(out_dims);
+  out->set_dtype(data_type);
+}
+
 void EyeInferMeta(const Scalar& num_rows,
                   const Scalar& num_columns,
                   DataType dtype,
@@ -170,6 +179,53 @@ void PRecvArrayInferMeta(int peer,
                                 out_shape[i]));
   }
   out->set_dtype(dtype);
+}
+
+void RecvV2InferMeta(const int ring_id,
+                     const bool dynamic_shape,
+                     const int peer,
+                     const std::vector<int>& out_shape,
+                     DataType dtype,
+                     MetaTensor* out) {
+  PADDLE_ENFORCE_GE(
+      peer,
+      0,
+      errors::InvalidArgument(
+          "The peer (%d) for recv_v2 op must be non-negative.", peer));
+
+  PADDLE_ENFORCE_GE(
+      ring_id,
+      0,
+      errors::InvalidArgument(
+          "The ring_id (%d) for recv_v2 op must be non-negative.", ring_id));
+
+  PADDLE_ENFORCE_GE(out_shape.size(),
+                    1,
+                    errors::InvalidArgument(
+                        "The size of the output shape must be greater than 0 "
+                        "but the value given is %d.",
+                        out_shape.size()));
+
+  if (!dynamic_shape) {
+    for (size_t i = 0; i < out_shape.size(); ++i) {
+      PADDLE_ENFORCE_GE(out_shape[i],
+                        1,
+                        errors::InvalidArgument(
+                            "The shape attribute for recv_v2 must be set "
+                            "explicitly, but the %dth element is %d which "
+                            "is less than 1. Or dynamic_shape should be "
+                            "set to True for both send_v2 and recv_v2.",
+                            i,
+                            out_shape[i]));
+    }
+    out->set_dims(phi::make_ddim(out_shape));
+  }
+  out->set_dtype(dtype);
+}
+
+void SeedInferMeta(int seed, MetaTensor* out) {
+  out->set_dims(phi::make_ddim({1}));
+  out->set_dtype(DataType::INT32);
 }
 
 void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,

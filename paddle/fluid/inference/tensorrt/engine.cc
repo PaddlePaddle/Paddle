@@ -21,17 +21,15 @@ limitations under the License. */
 
 #include "NvInferRuntimeCommon.h"
 #include "cuda_runtime_api.h"  // NOLINT
+
 #include "paddle/fluid/inference/tensorrt/helper.h"
+#include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/phi/common/data_type.h"
-#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-int TensorRTEngine::runtime_batch_ = 1;
 thread_local int TensorRTEngine::predictor_id_per_thread = -1;
 
 void TensorRTEngine::Weight::SetDataType(phi::DataType type) {
@@ -64,10 +62,10 @@ void TensorRTEngine::Weight::SetDataType(phi::DataType type) {
 }
 
 void TensorRTEngine::InitNetwork() {
-  freshDeviceId();
+  FreshDeviceId();
   infer_builder_.reset(createInferBuilder(&logger_));
 
-  if (with_dynamic_shape_) {
+  if (with_dynamic_shape()) {
     infer_network_.reset(infer_builder_->createNetworkV2(
         1U << static_cast<int>(
             nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH)));
@@ -92,7 +90,7 @@ nvinfer1::IExecutionContext *TensorRTEngine::context() {
     // IExecutionContext...
     // It's ok. We will set it later.
     nvinfer1::IExecutionContext *infer_context{nullptr};
-    if (context_memory_sharing_) {
+    if (params_.context_memory_sharing) {
       infer_context =
           infer_engine_->createExecutionContextWithoutDeviceMemory();
     } else {
@@ -102,7 +100,7 @@ nvinfer1::IExecutionContext *TensorRTEngine::context() {
         infer_context,
         platform::errors::InvalidArgument(
             "TensorRT engine can not build execution context."));
-    if (with_dynamic_shape_) {
+    if (with_dynamic_shape()) {
       // need new profile if it's not the first
       if (cur_profile_num_ > 0) {
         infer_context->setOptimizationProfile(cur_profile_num_);
@@ -118,15 +116,15 @@ nvinfer1::IExecutionContext *TensorRTEngine::context() {
 void TensorRTEngine::Execute(int batch_size,
                              std::vector<void *> *buffers,
                              cudaStream_t stream) {
-  freshDeviceId();
+  FreshDeviceId();
   auto infer_context = context();
-  if (context_memory_sharing_) {
+  if (params_.context_memory_sharing) {
     void *context_memory{nullptr};
     context_memory =
         inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
-            .getContextMemory(
+            .GetContextMemory(
                 predictor_id_per_thread,
-                phi::GPUPlace(device_id_),
+                phi::GPUPlace(device_id()),
                 phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
     infer_context->setDeviceMemory(context_memory);
   }
@@ -182,12 +180,11 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
   } else {
     ret = context->enqueueV2(buffers->data(), stream, nullptr);
   }
-  SetRuntimeBatch(batch_size);
   return ret;
 }
 
 void TensorRTEngine::FreezeNetwork() {
-  freshDeviceId();
+  FreshDeviceId();
   VLOG(3) << "TRT to freeze network";
   PADDLE_ENFORCE_NOT_NULL(infer_builder_,
                           platform::errors::InvalidArgument(
@@ -197,17 +194,17 @@ void TensorRTEngine::FreezeNetwork() {
                           platform::errors::InvalidArgument(
                               "Call InitNetwork first to initialize network."));
   // build engine.
-  if (!with_dynamic_shape_) {
-    infer_builder_->setMaxBatchSize(max_batch_);
+  if (!with_dynamic_shape()) {
+    infer_builder_->setMaxBatchSize(params_.max_batch_size);
   }
 #if IS_TRT_VERSION_GE(8300)
   infer_builder_config_->setMemoryPoolLimit(
-      nvinfer1::MemoryPoolType::kWORKSPACE, max_workspace_);
+      nvinfer1::MemoryPoolType::kWORKSPACE, params_.max_workspace_size);
 #else
-  infer_builder_config_->setMaxWorkspaceSize(max_workspace_);
+  infer_builder_config_->setMaxWorkspaceSize(params_.max_workspace_size);
 #endif
 
-  bool enable_fp16 = (precision_ == phi::DataType::FLOAT16);
+  bool enable_fp16 = (precision() == phi::DataType::FLOAT16);
   if (enable_fp16) {
     bool support_fp16 = infer_builder_->platformHasFastFp16();
     infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
@@ -219,15 +216,15 @@ void TensorRTEngine::FreezeNetwork() {
     }
   }
 
-  bool enable_int8 = (precision_ == phi::DataType::INT8);
+  bool enable_int8 = (precision() == phi::DataType::INT8);
   if (enable_int8) {
-    if (!use_dla_) {
+    if (!use_dla()) {
       infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
     }
     infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kINT8);
 
-    if (calibrator_) {
-      infer_builder_config_->setInt8Calibrator(calibrator_);
+    if (params_.calibrator) {
+      infer_builder_config_->setInt8Calibrator(params_.calibrator);
     } else {
       infer_builder_config_->setInt8Calibrator(nullptr);
 
@@ -259,7 +256,7 @@ void TensorRTEngine::FreezeNetwork() {
     }
   }
 
-  if (use_dla_) {
+  if (use_dla()) {
     if (!enable_int8 && !enable_fp16) {
       LOG(WARNING) << "TensorRT DLA must be used with int8 or fp16, but you "
                       "set float32, so DLA is not used.";
@@ -268,42 +265,43 @@ void TensorRTEngine::FreezeNetwork() {
           << "TensorRT DLA is set by config, but your device does not have "
              "DLA, so DLA is not used.";
     } else {
-      if (dla_core_ < 0 || dla_core_ >= infer_builder_->getNbDLACores()) {
-        dla_core_ = 0;
+      if (params_.dla_core < 0 ||
+          params_.dla_core >= infer_builder_->getNbDLACores()) {
+        params_.dla_core = 0;
         LOG(WARNING) << "Invalid DLACore, must be 0 < DLACore < "
                      << infer_builder_->getNbDLACores() << ", but got "
-                     << dla_core_ << ", so use use 0 as default.";
+                     << params_.dla_core << ", so use use 0 as default.";
       }
       infer_builder_config_->setDefaultDeviceType(nvinfer1::DeviceType::kDLA);
-      infer_builder_config_->setDLACore(dla_core_);
+      infer_builder_config_->setDLACore(params_.dla_core);
       infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kGPU_FALLBACK);
       LOG(INFO) << "TensorRT DLA enabled in FreezeNetwork(), DLACore "
-                << dla_core_;
+                << params_.dla_core;
     }
   }
 
-  if (with_dynamic_shape_) {
+  if (with_dynamic_shape()) {
     LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode.";
     for (int i = 0; i < max_profile_num_; i++) {
-      for (auto &input : min_input_shape_) {
+      for (auto &input : min_input_shape()) {
 #if IS_TRT_VERSION_LT(7100)
         // trt6/trt7011 will check all_of input > 0
         if (!(std::all_of(input.second.begin(),
                           input.second.end(),
                           [](int x) { return x > 0; }) &&
-              std::all_of(max_input_shape_[input.first].begin(),
-                          max_input_shape_[input.first].end(),
+              std::all_of(max_input_shape()[input.first].begin(),
+                          max_input_shape()[input.first].end(),
                           [](int x) { return x > 0; }) &&
-              std::all_of(optim_input_shape_[input.first].begin(),
-                          optim_input_shape_[input.first].end(),
+              std::all_of(optim_input_shape()[input.first].begin(),
+                          optim_input_shape()[input.first].end(),
                           [](int x) { return x > 0; }))) {
           continue;
         }
 #endif
         VLOG(4) << "TRT dynamic_shape set " << input.first
                 << " min: " << Vec2Str(input.second)
-                << ", max: " << Vec2Str(max_input_shape_[input.first])
-                << ", opt: " << Vec2Str(optim_input_shape_[input.first]);
+                << ", max: " << Vec2Str(max_input_shape()[input.first])
+                << ", opt: " << Vec2Str(optim_input_shape()[input.first]);
 
         optim_profiles_[i]->setDimensions(
             input.first.c_str(),
@@ -312,38 +310,39 @@ void TensorRTEngine::FreezeNetwork() {
         optim_profiles_[i]->setDimensions(
             input.first.c_str(),
             nvinfer1::OptProfileSelector::kMAX,
-            Vec2TRT_Dims(max_input_shape_[input.first], input.first, true));
+            Vec2TRT_Dims(max_input_shape()[input.first], input.first, true));
         optim_profiles_[i]->setDimensions(
             input.first.c_str(),
             nvinfer1::OptProfileSelector::kOPT,
-            Vec2TRT_Dims(optim_input_shape_[input.first], input.first, true));
+            Vec2TRT_Dims(optim_input_shape()[input.first], input.first, true));
       }
 
       for (int input_id = 0; input_id < network()->getNbInputs(); input_id++) {
         auto input_name = network()->getInput(input_id)->getName();
         if (!itensor_map_.count(input_name)) continue;
         if (!GetITensor(input_name)->isShapeTensor()) continue;
-        PADDLE_ENFORCE_EQ(min_shape_tensor_.count(input_name) &&
-                              max_shape_tensor_.count(input_name) &&
-                              optim_shape_tensor_.count(input_name),
+        PADDLE_ENFORCE_EQ(min_shape_tensor().count(input_name) > 0 &&
+                              max_shape_tensor().count(input_name) > 0 &&
+                              optim_shape_tensor().count(input_name) > 0,
                           true,
                           platform::errors::InvalidArgument(
                               "Fail to find min/max/optim shape value for TRT "
                               "network's shape tensor input named %s.",
                               input_name));
-        auto min_vec = min_shape_tensor_.at(input_name);
+        auto min_vec = min_shape_tensor().at(input_name);
         optim_profiles_[i]->setShapeValues(input_name,
                                            nvinfer1::OptProfileSelector::kMIN,
                                            min_vec.data(),
                                            min_vec.size());
-        optim_profiles_[i]->setShapeValues(input_name,
-                                           nvinfer1::OptProfileSelector::kMAX,
-                                           max_shape_tensor_[input_name].data(),
-                                           min_vec.size());
+        optim_profiles_[i]->setShapeValues(
+            input_name,
+            nvinfer1::OptProfileSelector::kMAX,
+            max_shape_tensor()[input_name].data(),
+            min_vec.size());
         optim_profiles_[i]->setShapeValues(
             input_name,
             nvinfer1::OptProfileSelector::kOPT,
-            optim_shape_tensor_[input_name].data(),
+            optim_shape_tensor()[input_name].data(),
             min_vec.size());
       }
 
@@ -358,10 +357,17 @@ void TensorRTEngine::FreezeNetwork() {
     }
   }
 #if IS_TRT_VERSION_GE(8200)
-  if (use_inspector_) {
+  if (params_.use_inspector) {
     infer_builder_config_->setProfilingVerbosity(
         nvinfer1::ProfilingVerbosity::kDETAILED);
   }
+#endif
+
+#if IS_TRT_VERSION_GE(8600)
+  VLOG(4) << "Set the TensorRT optimization level to be "
+          << params_.optimization_level;
+  infer_builder_config_->setBuilderOptimizationLevel(
+      params_.optimization_level);
 #endif
 
 #if IS_TRT_VERSION_LT(8000)
@@ -388,13 +394,13 @@ void TensorRTEngine::FreezeNetwork() {
     cur_profile_num_ = 0;
   }
   // for engine context memory sharing
-  if (context_memory_sharing_) {
+  if (params_.context_memory_sharing) {
     inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
-        .updateContextMemorySize(infer_engine_->getDeviceMemorySize(),
+        .UpdateContextMemorySize(infer_engine_->getDeviceMemorySize(),
                                  predictor_id_per_thread);
   }
-  if (use_inspector_) {
-    GetEngineInfo();
+  if (params_.use_inspector) {
+    GetEngineInfo(params_.engine_info_path);
   }
 }
 
@@ -532,9 +538,14 @@ nvinfer1::ITensor *TensorRTEngine::ConvertWeight2ITensor(
   for (int64_t i = 0; i < trt_in_shape.nbDims; i++) {
     trt_in_shape.d[i] = var_dims[i];
   }
+  // Make 0-D tensor to 1-D tensor.
+  if (trt_in_shape.nbDims == 0) {
+    trt_in_shape.nbDims = 1;
+    trt_in_shape.d[0] = 1;
+  }
   // In fact , this is not always right, because we can't determine if the 0th
   // dimension is batch. Just for run chenqu's model
-  if (!this->with_dynamic_shape()) {
+  if (!with_dynamic_shape()) {
     trt_in_shape.nbDims--;
     for (int i = 0; i < trt_in_shape.nbDims; i++) {
       trt_in_shape.d[i] = trt_in_shape.d[i + 1];
@@ -558,12 +569,12 @@ std::unordered_map<std::string, nvinfer1::ITensor *>
 }
 
 void TensorRTEngine::Deserialize(const std::string &engine_serialized_data) {
-  freshDeviceId();
+  FreshDeviceId();
   infer_runtime_.reset(createInferRuntime(&logger_));
 
-  if (use_dla_) {
-    if (precision_ != phi::DataType::INT8 &&
-        precision_ != phi::DataType::FLOAT16) {
+  if (use_dla()) {
+    if (precision() != phi::DataType::INT8 &&
+        precision() != phi::DataType::FLOAT16) {
       LOG(WARNING) << "TensorRT DLA must be used with int8 or fp16, but you "
                       "set float32, so DLA is not used.";
     } else if (infer_runtime_->getNbDLACores() == 0) {
@@ -571,15 +582,16 @@ void TensorRTEngine::Deserialize(const std::string &engine_serialized_data) {
           << "TensorRT DLA is set by config, but your device does not have "
              "DLA, so DLA is not used.";
     } else {
-      if (dla_core_ < 0 || dla_core_ >= infer_runtime_->getNbDLACores()) {
-        dla_core_ = 0;
+      if (params_.dla_core < 0 ||
+          params_.dla_core >= infer_runtime_->getNbDLACores()) {
+        params_.dla_core = 0;
         LOG(WARNING) << "Invalid DLACore, must be 0 < DLACore < "
                      << infer_runtime_->getNbDLACores() << ", but got "
-                     << dla_core_ << ", so use use 0 as default.";
+                     << params_.dla_core << ", so use use 0 as default.";
       }
-      infer_runtime_->setDLACore(dla_core_);
+      infer_runtime_->setDLACore(params_.dla_core);
       LOG(INFO) << "TensorRT DLA enabled in Deserialize(), DLACore "
-                << dla_core_;
+                << params_.dla_core;
     }
   }
 
@@ -597,18 +609,14 @@ void TensorRTEngine::Deserialize(const std::string &engine_serialized_data) {
 
   binding_num_ = infer_engine_->getNbBindings();
   // for engine context memory sharing
-  if (context_memory_sharing_) {
+  if (params_.context_memory_sharing) {
     inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
-        .updateContextMemorySize(infer_engine_->getDeviceMemorySize(),
+        .UpdateContextMemorySize(infer_engine_->getDeviceMemorySize(),
                                  predictor_id_per_thread);
   }
-  if (use_inspector_) {
-    GetEngineInfo();
+  if (params_.use_inspector) {
+    GetEngineInfo(params_.engine_info_path);
   }
-}
-
-void TensorRTEngine::SetRuntimeBatch(size_t batch_size) {
-  runtime_batch_ = batch_size;
 }
 
 // Note: Only for support plugin.
@@ -825,8 +833,6 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
   return weight;
 }
 
-int TensorRTEngine::GetRuntimeBatch() { return runtime_batch_; }
-
 nvinfer1::IPluginV2Layer *TensorRTEngine::AddPlugin(
     nvinfer1::ITensor *const *inputs,
     int num_inputs,
@@ -851,28 +857,46 @@ nvinfer1::IPluginV2Layer *TensorRTEngine::AddPluginV2IOExt(
   return network()->addPluginV2(inputs, num_inputs, *plugin);
 }
 
-void TensorRTEngine::freshDeviceId() {
+void TensorRTEngine::FreshDeviceId() {
   int count;
   cudaGetDeviceCount(&count);
-  PADDLE_ENFORCE_LT(device_id_,
+  PADDLE_ENFORCE_LT(device_id(),
                     count,
                     platform::errors::OutOfRange(
                         "Device id %d exceeds the current device count: %d.",
-                        device_id_,
+                        device_id(),
                         count));
-  platform::SetDeviceId(device_id_);
+  platform::SetDeviceId(device_id());
 }
 
-void TensorRTEngine::GetEngineInfo() {
+void TensorRTEngine::GetEngineInfo(const std::string &engine_info_path) {
 #if IS_TRT_VERSION_GE(8200)
-  LOG(INFO) << "====== engine info ======";
   std::unique_ptr<nvinfer1::IEngineInspector> infer_inspector(
       infer_engine_->createEngineInspector());
   auto *infer_context = context();
   infer_inspector->setExecutionContext(infer_context);
-  LOG(INFO) << infer_inspector->getEngineInformation(
-      nvinfer1::LayerInformationFormat::kJSON);
-  LOG(INFO) << "====== engine info end ======";
+  if (engine_info_path.empty()) {
+    LOG(INFO) << "====== engine info ======";
+    for (int i = 0; i < infer_engine_->getNbLayers(); ++i) {
+      LOG(INFO) << infer_inspector->getLayerInformation(
+          i, nvinfer1::LayerInformationFormat::kJSON);
+    }
+    LOG(INFO) << "====== engine info end ======";
+  } else {
+    std::fstream out_file;
+    out_file.open(engine_info_path, std::ios_base::out);
+    out_file << "[";
+    for (int i = 0; i < infer_engine_->getNbLayers(); ++i) {
+      out_file << infer_inspector->getLayerInformation(
+                      i, nvinfer1::LayerInformationFormat::kJSON)
+               << "\n";
+      if (i != infer_engine_->getNbLayers() - 1) {
+        out_file << ",";
+      }
+    }
+    out_file << "]";
+    out_file.close();
+  }
 #else
   LOG(INFO) << "Inspector needs TensorRT version 8.2 and after.";
 #endif

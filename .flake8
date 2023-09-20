@@ -2,14 +2,9 @@
 select = C,E,W
 exclude =
     ./build,
-    # Exclude fluid directory
-    ./python/paddle/fluid/**,
     # Exclude third-party libraries
     ./third_party/**,
     ./python/paddle/utils/gast/**,
-    # Temporarily ignore CINN files, it will fix later
-    ./python/cinn/**,
-    ./test/cinn/**,
 ignore =
     # Whitespace before ‘,’, ‘;’, or ‘:’, it is not compatible with black
     E203,
@@ -30,3 +25,9 @@ ignore =
 per-file-ignores =
     # These files need tabs for testing.
     test/dygraph_to_static/test_error.py:E101,W191
+
+    # temp ignore base directory
+    python/paddle/base/*:
+        E712,
+        E266,
+        E714

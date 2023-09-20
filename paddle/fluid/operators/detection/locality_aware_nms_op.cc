@@ -135,10 +135,10 @@ void GetMaxScoreIndexWithLocalityAware(
         scores[index] += scores[i];
       } else {
         skip[index] = false;
-        index = i;
+        index = static_cast<int>(i);
       }
     } else {
-      index = i;
+      index = static_cast<int>(i);
     }
   }
 
@@ -195,12 +195,11 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
 
     selected_indices->clear();
 
-    while (sorted_indices.size() != 0) {
+    while (!sorted_indices.empty()) {
       const int idx = sorted_indices.front().second;
       bool keep = true;
-      for (size_t k = 0; k < selected_indices->size(); ++k) {
+      for (int kept_idx : *selected_indices) {
         if (keep) {
-          const int kept_idx = (*selected_indices)[k];
           T overlap = T(0.);
           // 4: [xmin ymin xmax ymax]
           if (box_size == 4) {
@@ -263,9 +262,9 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
                            nms_threshold,
                            nms_eta,
                            nms_top_k,
-                           &((*indices)[c]),
+                           &((*indices)[c]),  // NOLINT
                            normalized);
-      num_det += (*indices)[c].size();
+      num_det += (*indices)[c].size();  // NOLINT
     }
 
     *num_nmsed_out = num_det;
@@ -279,8 +278,7 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
         sdata = scores_data + label * scores->dims()[1];
 
         const std::vector<int>& label_indices = it.second;
-        for (size_t j = 0; j < label_indices.size(); ++j) {
-          int idx = label_indices[j];
+        for (auto idx : label_indices) {
           score_index_pairs.push_back(
               std::make_pair(sdata[idx], std::make_pair(label, idx)));
         }
@@ -293,14 +291,14 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
 
       // Store the new indices.
       std::map<int, std::vector<int>> new_indices;
-      for (size_t j = 0; j < score_index_pairs.size(); ++j) {
-        int label = score_index_pairs[j].second.first;
-        int idx = score_index_pairs[j].second.second;
+      for (auto& score_index_pair : score_index_pairs) {
+        int label = score_index_pair.second.first;
+        int idx = score_index_pair.second.second;
         new_indices[label].push_back(idx);
       }
 
       new_indices.swap(*indices);
-      *num_nmsed_out = keep_top_k;
+      *num_nmsed_out = keep_top_k;  // NOLINT
     }
   }
 
@@ -330,9 +328,7 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
       int label = it.first;
       const std::vector<int>& indices = it.second;
       sdata = scores_data + label * predict_dim;
-      for (size_t j = 0; j < indices.size(); ++j) {
-        int idx = indices[j];
-
+      for (auto idx : indices) {
         odata[count * out_dim] = label;  // label
         const T* bdata;
         bdata = bboxes_data + idx * box_size;
@@ -369,7 +365,7 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
     int64_t out_dim = box_dim + 2;
     int num_nmsed_out = 0;
     phi::DenseTensor boxes_slice, scores_slice;
-    int n = batch_size;
+    int n = static_cast<int>(batch_size);
     for (int i = 0; i < n; ++i) {
       scores_slice = scores.Slice(i, i + 1);
       scores_slice.Resize({score_dims[1], score_dims[2]});
@@ -387,7 +383,7 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
       batch_starts.push_back(batch_starts.back() + num_nmsed_out);
     }
 
-    int num_kept = batch_starts.back();
+    int num_kept = static_cast<int>(batch_starts.back());
     if (num_kept == 0) {
       T* od = outs->mutable_data<T>({1, 1}, ctx.GetPlace());
       od[0] = -1;
@@ -402,8 +398,8 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
         scores_slice.Resize({score_dims[1], score_dims[2]});
         boxes_slice.Resize({score_dims[2], box_dim});
 
-        int64_t s = batch_starts[i];
-        int64_t e = batch_starts[i + 1];
+        int64_t s = static_cast<int64_t>(batch_starts[i]);
+        int64_t e = static_cast<int64_t>(batch_starts[i + 1]);
         if (e > s) {
           phi::DenseTensor out = outs->Slice(s, e);
           LocalityAwareNMSOutput(dev_ctx,

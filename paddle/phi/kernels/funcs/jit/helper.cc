@@ -88,7 +88,7 @@ KernelType to_kerneltype(const std::string& act) {
   std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
   if (lower == "relu" || lower == "vrelu") {
     return kVRelu;
-  } else if (lower == "identity" || lower == "videntity" || lower == "") {
+  } else if (lower == "identity" || lower == "videntity" || lower.empty()) {
     return kVIdentity;
   } else if (lower == "exp" || lower == "vexp") {
     return kVExp;
@@ -125,7 +125,7 @@ void pack_weights<float>(const float* src, float* dst, int n, int k) {
                         sum * block,
                         n));
 
-  const int block_len = sizeof(float) * block;
+  const int block_len = static_cast<int>(sizeof(float)) * block;
   int n_offset = 0;
 
   for (size_t g = 0; g < groups.size(); ++g) {

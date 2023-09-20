@@ -297,10 +297,11 @@ class TestNearestInterpOp_attr_tensor(XPUOpTest):
     def setUp(self):
         self.out_size = None
         self.actual_shape = None
-        self.init_test_case()
-        self.op_type = "nearest_interp"
         self.shape_by_1Dtensor = False
         self.scale_by_1Dtensor = False
+        self.scale_by_2Dtensor = False
+        self.init_test_case()
+        self.op_type = "nearest_interp"
         self.attrs = {
             "interp_method": self.interp_method,
             "align_corners": self.align_corners,
@@ -311,10 +312,12 @@ class TestNearestInterpOp_attr_tensor(XPUOpTest):
 
         if self.scale_by_1Dtensor:
             self.inputs["Scale"] = np.array([self.scale]).astype("float32")
-        elif self.scale > 0:
             out_h = int(self.input_shape[2] * self.scale)
             out_w = int(self.input_shape[3] * self.scale)
-            self.attrs["scale"] = self.scale
+        elif self.scale_by_2Dtensor:
+            self.inputs['Scale'] = np.array(self.scale).astype("float32")
+            out_h = int(self.input_shape[2] * self.scale[0])
+            out_w = int(self.input_shape[3] * self.scale[1])
         else:
             out_h = self.out_h
             out_w = self.out_w
@@ -397,6 +400,21 @@ class TestNearestInterp_attr_tensor_Case3(TestNearestInterpOp_attr_tensor):
         self.scale_by_1Dtensor = True
 
 
+# scale is a 2-D tensor
+@unittest.skipIf(not paddle.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
+class TestNearestInterp_attr_tensor_Case4(TestNearestInterpOp_attr_tensor):
+    def init_test_case(self):
+        self.interp_method = 'nearest'
+        self.input_shape = [3, 2, 32, 16]
+        self.out_h = 64
+        self.out_w = 32
+        self.scale = [2.0, 2.0]
+        self.out_size = None
+        self.align_corners = True
+        self.scale_by_2Dtensor = True
+
+
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestNearestInterpException(unittest.TestCase):
@@ -405,14 +423,14 @@ class TestNearestInterpException(unittest.TestCase):
 
         def attr_data_format():
             # for 4-D input, data_format can only be NCHW or NHWC
-            out = fluid.layers.resize_nearest(
+            out = base.layers.resize_nearest(
                 input, out_shape=[4, 8], data_format="NDHWC")
 
         def attr_scale_type():
-            out = fluid.layers.resize_nearest(input, scale="scale")
+            out = base.layers.resize_nearest(input, scale="scale")
 
         def attr_scale_value():
-            out = fluid.layers.resize_nearest(input, scale=-0.3)
+            out = base.layers.resize_nearest(input, scale=-0.3)
 
         self.assertRaises(ValueError, attr_data_format)
         self.assertRaises(TypeError, attr_scale_type)

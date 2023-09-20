@@ -24,4 +24,10 @@ void FlattenGradKernel(const Context& dev_ctx,
                        const DenseTensor& out_grad,
                        DenseTensor* x_grad);
 
+template <typename Context>
+void FlattenGradStridedKernel(const Context& dev_ctx,
+                              const DenseTensor& xshape,
+                              const DenseTensor& out_grad,
+                              DenseTensor* x_grad);
+
 }  // namespace phi

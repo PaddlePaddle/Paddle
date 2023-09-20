@@ -51,7 +51,7 @@ struct ConstantFolding : public PatternBase {
 };
 }  // namespace patterns
 
-ConstantFoldingPass::ConstantFoldingPass() {}
+ConstantFoldingPass::ConstantFoldingPass() = default;
 
 void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
@@ -65,6 +65,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
           "scope must not be null when applying constant folding."));
 
   std::vector<std::string> blacklist{"feed", "matrix_multiply", "save"};
+  int folded_op_num = 0;
 
   auto op_node_sorted = framework::ir::TopologyVarientSort(
       *graph, static_cast<framework::ir::SortKind>(0));
@@ -81,6 +82,8 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
     for (auto in_node : op_node->inputs) {
       map[in_node->Name()] = 0;
       if (!in_node->Var()->Persistable()) {
+        input_persis = false;
+      } else if (!in_node->inputs.empty()) {
         input_persis = false;
       }
     }
@@ -127,19 +130,20 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
         local_scope->FindVar(out_node->Var()->Name())
             ->GetMutable<phi::DenseTensor>();
         // useless out_node can be removed, not need set it persistable !
-        if (out_node->outputs.size() == 0L) remove_nodes.emplace(out_node);
+        if (out_node->outputs.empty()) remove_nodes.emplace(out_node);
       }
       op->Run(*local_scope, platform::CPUPlace());
+      folded_op_num++;
       for (auto out_node : op_node->outputs) {
         // this out_node is useless, do not set it persistable
-        if (out_node->outputs.size() == 0L) continue;
+        if (out_node->outputs.empty()) continue;
         auto out_desc = out_node->Var();
         auto out_name = out_desc->Name();
         auto *local_out_tensor =
             local_scope->FindVar(out_name)->GetMutable<phi::DenseTensor>();
         std::vector<int64_t> out_shape;
         for (int64_t i = 0; i < local_out_tensor->dims().size(); i++) {
-          out_shape.push_back(local_out_tensor->dims()[i]);
+          out_shape.push_back(local_out_tensor->dims()[static_cast<int>(i)]);
         }
         out_desc->SetShape(out_shape);
         out_desc->SetPersistable(true);
@@ -155,6 +159,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
     }
     delete local_scope;
   }
+  AddStatis(folded_op_num);
 }
 
 }  // namespace ir

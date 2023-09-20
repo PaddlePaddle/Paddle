@@ -15,3 +15,15 @@
     func : fused_dropout_add_grad
     data_type : out_grad
   support_dygraph_mode : true
+
+- backward_op : fused_rotary_position_embedding_grad
+  forward: fused_rotary_position_embedding (Tensor q, Tensor k, Tensor v, Tensor sin, Tensor cos, Tensor position_ids, bool use_neox_rotary_style) -> Tensor(out_q), Tensor(out_k), Tensor(out_v)
+  args : (Tensor sin, Tensor cos, Tensor position_ids, Tensor out_q_grad, Tensor out_k_grad,Tensor out_v_grad, bool use_neox_rotary_style)
+  output : Tensor(q_grad), Tensor(k_grad), Tensor(v_grad)
+  optional :  sin, cos, position_ids, out_k_grad, out_v_grad, k_grad, v_grad
+  infer_meta :
+    func : FusedRopeGradInferMeta
+  kernel :
+    func : fused_rotary_position_embedding_grad
+    data_type : out_q_grad
+  support_dygraph_mode : true

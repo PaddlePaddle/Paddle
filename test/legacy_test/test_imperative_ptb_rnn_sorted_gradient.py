@@ -19,10 +19,9 @@ from test_imperative_base import new_program_scope
 from test_imperative_ptb_rnn import PtbModel
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core, framework
-from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.optimizer import SGDOptimizer
+from paddle import base
+from paddle.base import core, framework
+from paddle.base.dygraph.base import to_variable
 
 
 class TestDygraphPtbRnnSortGradient(unittest.TestCase):
@@ -40,8 +39,8 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
         batch_size = 4
         batch_num = 200
 
-        with fluid.dygraph.guard():
-            fluid.set_flags({'FLAGS_sort_sum_gradient': True})
+        with base.dygraph.guard():
+            base.set_flags({'FLAGS_sort_sum_gradient': True})
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
 
@@ -55,8 +54,8 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
                 is_sparse=is_sparse,
             )
 
-            sgd = SGDOptimizer(
-                learning_rate=1e-3, parameter_list=ptb_model.parameters()
+            sgd = paddle.optimizer.SGD(
+                learning_rate=1e-3, parameters=ptb_model.parameters()
             )
             dy_param_updated = {}
             dy_param_init = {}
@@ -109,12 +108,12 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
                 is_sparse=is_sparse,
             )
 
-            exe = fluid.Executor(
-                fluid.CPUPlace()
+            exe = base.Executor(
+                base.CPUPlace()
                 if not core.is_compiled_with_cuda()
-                else fluid.CUDAPlace(0)
+                else base.CUDAPlace(0)
             )
-            sgd = SGDOptimizer(learning_rate=1e-3)
+            sgd = paddle.optimizer.SGD(learning_rate=1e-3)
             x = paddle.static.data(
                 name="x", shape=[-1, num_steps, 1], dtype='int64'
             )
@@ -163,7 +162,7 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
                 fetch_list = [static_loss, static_last_hidden, static_last_cell]
                 fetch_list.extend(static_param_name_list)
                 out = exe.run(
-                    fluid.default_main_program(),
+                    base.default_main_program(),
                     feed={
                         "x": x_data,
                         "y": y_data,

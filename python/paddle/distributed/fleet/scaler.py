@@ -18,8 +18,8 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
+from paddle.base.dygraph import to_variable
 from paddle.distributed import fleet
-from paddle.fluid.dygraph import to_variable
 from paddle.framework import core
 
 from .base.topology import ParallelMode
@@ -47,20 +47,35 @@ def distributed_scaler(scaler):
                         else:
                             param_grads_fp32.append(param._grad_ivar())
         else:
-            param_grads = [
-                param._grad_ivar()
-                for param in optimizer._parameter_list
-                if param._grad_ivar() is not None
-            ]
+            strategy = fleet.fleet._user_defined_strategy
+            sharding_stage_1_overlap = strategy.hybrid_configs[
+                'sharding_configs'
+            ].comm_overlap
+            if sharding_stage_1_overlap:
+                # If sharding stage 1 enable comm overlap and need do loss scale. Here we have to wait all comm tasks.
+                # If no need do loss scale, the wait for all comm tasks will do in the optimizer step.
+                assert hasattr(optimizer, "_comm_buffers")
+                assert hasattr(optimizer, "_sharding_enable")
+                if optimizer._sharding_enable:
+                    # disable origin grad reduce in hybrid optimizer step
+                    optimizer._sharding_enable = False
+                for buffer in optimizer._comm_buffers:
+                    buffer.scale_grads()
+                # For sharding stage 1 under comm overlap, each rank only have to check finite for the response params.
+                # For now, only sharding stage 1 contains this attr, this can be promoted to stage 2 and stage 3.
+                assert hasattr(optimizer, "_local_parameter_list")
+                parameters = optimizer._local_parameter_list
+            else:
+                parameters = optimizer._parameter_list
             param_grads_fp16 = [
                 param._grad_ivar()
-                for param in optimizer._parameter_list
+                for param in parameters
                 if (param._grad_ivar() is not None)
                 and (param._grad_ivar().dtype == core.VarDesc.VarType.FP16)
             ]
             param_grads_fp32 = [
                 param._grad_ivar()
-                for param in optimizer._parameter_list
+                for param in parameters
                 if (param._grad_ivar() is not None)
                 and (param._grad_ivar().dtype == core.VarDesc.VarType.FP32)
             ]

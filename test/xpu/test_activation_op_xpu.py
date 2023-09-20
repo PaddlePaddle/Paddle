@@ -17,12 +17,12 @@ import os
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
 from get_test_cover_info import (
     XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import OpTest
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -46,7 +46,7 @@ class TestActivationOPBase(XPUOpTest):
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         out = np.exp(x)
         self.attrs = {'use_xpu': True}
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
 
     def init_dtype(self):
@@ -72,7 +72,7 @@ class XPUTestExpOP(XPUOpTestWrapper):
             x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
             out = np.exp(x)
             self.attrs = {'use_xpu': True}
-            self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
             self.outputs = {'Out': out}
 
     class XPUTestExp_ZeroDIm(TestActivationOPBase):
@@ -201,7 +201,7 @@ class XPUTestSigmoidOP(XPUOpTestWrapper):
             out = 1 / (1 + np.exp(-self.x))
 
             self.attrs = {'use_xpu': True}
-            self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(self.x)}
+            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(self.x)}
             self.outputs = {'Out': out}
 
         def init_config(self):
@@ -248,7 +248,7 @@ class XPUTestTanhOP(XPUOpTestWrapper):
             x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
             out = np.tanh(x)
             self.attrs = {'use_xpu': True}
-            self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
             self.outputs = {'Out': out}
 
 
@@ -271,7 +271,7 @@ class XPUTestSqrtOP(XPUOpTestWrapper):
             out = np.sqrt(x)
 
             self.attrs = {'use_xpu': True}
-            self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
             self.outputs = {'Out': out}
 
 
@@ -294,7 +294,7 @@ class XPUTestFloorOP(XPUOpTestWrapper):
             out = np.floor(x)
 
             self.attrs = {'use_xpu': True}
-            self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
             self.outputs = {'Out': out}
 
         def test_check_grad(self):
@@ -325,7 +325,7 @@ class XPUTestAbsOP(XPUOpTestWrapper):
             out = np.abs(x)
 
             self.attrs = {'use_xpu': True}
-            self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
             self.outputs = {'Out': out}
 
 
@@ -364,31 +364,50 @@ class XPUTestGeluOP(XPUOpTestWrapper):
         self.op_name = 'gelu'
         self.use_dynamic_create_class = False
 
-    class XPUTestGelu(TestActivationOPBase):
+    class XPUTestGeluBase(TestActivationOPBase):
         def set_case(self):
             self.op_type = "gelu"
             self.dtype = self.in_type
 
-            approximate = False
-            x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
-            out = gelu(x, approximate)
+            self.init_config()
+            out = gelu(self.x, self.approximate)
 
-            self.inputs = {'X': x}
+            self.inputs = {'X': self.x}
             self.outputs = {'Out': out}
-            self.attrs = {"approximate": approximate, 'use_xpu': True}
+            self.attrs = {"approximate": self.approximate, 'use_xpu': True}
 
-    class XPUTestGeluApproximate(TestActivationOPBase):
-        def set_case(self):
-            self.op_type = "gelu"
-            self.dtype = self.in_type
+        def init_config(self):
+            self.approximate = False
+            self.x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
 
-            approximate = True
-            x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
-            out = gelu(x, approximate)
+    class XPUTestGelu_ZeroDim(XPUTestGeluBase):
+        def init_config(self):
+            self.approximate = False
+            self.x = np.random.uniform(-2, 2, []).astype(self.dtype)
 
-            self.inputs = {'X': x}
-            self.outputs = {'Out': out}
-            self.attrs = {"approximate": approximate, 'use_xpu': True}
+    class XPUTestGelu1(XPUTestGeluBase):
+        def init_config(self):
+            self.approximate = True
+            self.x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+
+    class XPUTestGelu2(XPUTestGeluBase):
+        def init_config(self):
+            self.approximate = False
+            self.x = np.random.uniform(-2, 2, [1024, 8]).astype(self.dtype)
+
+    class XPUTestGelu3(XPUTestGeluBase):
+        def init_config(self):
+            self.approximate = True
+            self.x = np.random.uniform(-2, 2, [4, 512, 15, 15]).astype(
+                self.dtype
+            )
+
+    class XPUTestGelu4(XPUTestGeluBase):
+        def init_config(self):
+            self.approximate = False
+            self.x = np.random.uniform(-2, 2, [4, 256, 22, 22]).astype(
+                self.dtype
+            )
 
 
 support_types = get_xpu_op_support_types('gelu')
@@ -457,7 +476,7 @@ class XPUTestLogOP(XPUOpTestWrapper):
             out = np.log(x)
 
             self.attrs = {'use_xpu': True}
-            self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
             self.outputs = {'Out': out}
 
     class TestLogCase_ZeroDim(XPUTestLog):
@@ -499,7 +518,7 @@ class XPUTestSquareOP(XPUOpTestWrapper):
             out = np.square(self.x)
 
             self.attrs = {'use_xpu': True}
-            self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(self.x)}
+            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(self.x)}
             self.outputs = {'Out': out}
 
         def init_config(self):
@@ -544,7 +563,7 @@ class XPUTestPowOP(XPUOpTestWrapper):
             self.init_config()
             out = np.power(self.x, self.factor)
 
-            self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(self.x)}
+            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(self.x)}
             self.attrs = {'factor': self.factor, 'use_xpu': True}
             self.outputs = {'Out': out}
 
@@ -643,7 +662,7 @@ class XPUTestReciprocalOP(XPUOpTestWrapper):
             x = np.random.uniform(1, 2, [1111, 1117]).astype(self.dtype)
             out = np.reciprocal(x)
 
-            self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
             self.outputs = {'Out': out}
             self.attrs = {'use_xpu': True}
 
@@ -756,7 +775,7 @@ class XPUTestCeilOP(XPUOpTestWrapper):
             x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
             out = np.ceil(x)
 
-            self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
             self.outputs = {'Out': out}
             self.attrs = {'use_xpu': True}
 

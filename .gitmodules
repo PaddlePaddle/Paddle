@@ -34,10 +34,6 @@
 	path = third_party/xxhash
 	url = https://github.com/Cyan4973/xxHash.git
 	ignore = dirty
-[submodule "third_party/leveldb"]
-	path = third_party/leveldb
-	url = https://github.com/google/leveldb
-	ignore = dirty
 [submodule "third_party/pybind"]
 	path = third_party/pybind
 	url = https://github.com/pybind/pybind11.git
@@ -85,4 +81,28 @@
 [submodule "third_party/gtest"]
 	path = third_party/gtest
 	url = https://github.com/google/googletest.git
+	ignore = dirty
+[submodule "third_party/openblas"]
+	path = third_party/openblas
+	url = https://github.com/xianyi/OpenBLAS.git
+	ignore = dirty
+[submodule "third_party/leveldb"]
+	path = third_party/leveldb
+	url = https://github.com/google/leveldb.git
+	ignore = dirty
+[submodule "third_party/brpc"]
+	path = third_party/brpc
+	url = https://github.com/apache/brpc.git
+	ignore = dirty
+[submodule "third_party/rocksdb"]
+	path = third_party/rocksdb
+	url = https://github.com/Thunderbrook/rocksdb
+	ignore = dirty
+[submodule "third_party/absl"]
+	path = third_party/absl
+	url = https://github.com/abseil/abseil-cpp.git
+	ignore = dirty
+[submodule "third_party/jitify"]
+	path = third_party/jitify
+	url = https://github.com/NVIDIA/jitify.git
 	ignore = dirty

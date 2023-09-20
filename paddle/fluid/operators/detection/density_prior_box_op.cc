@@ -83,19 +83,20 @@ class DensityPriorBoxOp : public framework::OperatorWithKernel {
             fixed_sizes.size(),
             densities.size()));
     size_t num_priors = 0;
-    for (size_t i = 0; i < densities.size(); ++i) {
-      num_priors += (fixed_ratios.size()) * (pow(densities[i], 2));
+    for (auto densitie : densities) {
+      num_priors += (fixed_ratios.size()) * (pow(densitie, 2));  // NOLINT
     }
     if (!flatten) {
       std::vector<int64_t> dim_vec(4);
       dim_vec[0] = input_dims[2];
       dim_vec[1] = input_dims[3];
-      dim_vec[2] = num_priors;
+      dim_vec[2] = static_cast<int64_t>(num_priors);
       dim_vec[3] = 4;
       ctx->SetOutputDim("Boxes", phi::make_ddim(dim_vec));
       ctx->SetOutputDim("Variances", phi::make_ddim(dim_vec));
     } else if (ctx->IsRuntime()) {
-      int64_t dim0 = input_dims[2] * input_dims[3] * num_priors;
+      int64_t dim0 =
+          static_cast<int64_t>(input_dims[2] * input_dims[3] * num_priors);
       ctx->SetOutputDim("Boxes", {dim0, 4});
       ctx->SetOutputDim("Variances", {dim0, 4});
     } else {
@@ -268,3 +269,11 @@ PD_REGISTER_STRUCT_KERNEL(density_prior_box,
                           ops::DensityPriorBoxOpKernel,
                           float,
                           double) {}
+
+REGISTER_OP_KERNEL(prior_box,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
+                   ops::PriorBoxOpKernel<float>,
+                   ops::PriorBoxOpKernel<double>,
+                   ops::PriorBoxOpKernel<uint8_t>,
+                   ops::PriorBoxOpKernel<int8_t>);

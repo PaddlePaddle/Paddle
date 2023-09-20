@@ -37,12 +37,12 @@ class ReshapeOpConverter : public OpConverter {
     bool one_input = false;
     if (engine_->with_dynamic_shape()) {
       if (op_desc.Inputs().find("ShapeTensor") != op_desc.Inputs().end() &&
-          op_desc.Input("ShapeTensor").size() > 0) {
+          !op_desc.Input("ShapeTensor").empty()) {
         for (auto name : op_desc.Input("ShapeTensor"))
           concat_inputs.push_back(engine_->GetITensor(name));
         real_shape_tensor = Concat(concat_inputs);
       } else if (op_desc.Inputs().find("Shape") != op_desc.Inputs().end() &&
-                 op_desc.Input("Shape").size() > 0) {
+                 !op_desc.Input("Shape").empty()) {
         real_shape_tensor = engine_->GetITensor(op_desc.Input("Shape")[0]);
       } else {
         reshape_dim.nbDims = nbDims_num;

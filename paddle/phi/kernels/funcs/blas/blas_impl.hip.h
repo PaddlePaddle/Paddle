@@ -14,13 +14,13 @@
 
 #pragma once
 
-#include "gflags/gflags.h"
+#include "paddle/utils/flags.h"
 
 #include "paddle/phi/backends/dynload/rocblas.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-DECLARE_bool(enable_cublas_tensor_op_math);
+PD_DECLARE_bool(enable_cublas_tensor_op_math);
 
 namespace phi {
 namespace funcs {
@@ -999,12 +999,10 @@ inline void Blas<phi::GPUContext>::GEMM(bool transA,
                                         int ldc) const {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
-  rocblas_operation cuTransA = (transA == CblasNoTrans)
-                                   ? rocblas_operation_none
-                                   : rocblas_operation_transpose;
-  rocblas_operation cuTransB = (transB == CblasNoTrans)
-                                   ? rocblas_operation_none
-                                   : rocblas_operation_transpose;
+  rocblas_operation cuTransA =
+      transA ? rocblas_operation_none : rocblas_operation_transpose;
+  rocblas_operation cuTransB =
+      transB ? rocblas_operation_none : rocblas_operation_transpose;
   PADDLE_ENFORCE_GE(
       context_.GetComputeCapability(),
       80,
@@ -1172,6 +1170,56 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                   ldc,
                                   strideC,
                                   batchCount);
+  });
+}
+
+template <>
+template <>
+inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
+                                               CBLAS_TRANSPOSE transB,
+                                               int M,
+                                               int N,
+                                               int K,
+                                               float16 alpha,
+                                               const float16 *A,
+                                               const float16 *B,
+                                               float16 beta,
+                                               float16 *C,
+                                               int batchCount,
+                                               int64_t strideA,
+                                               int64_t strideB) const {
+  // Note that cublas follows fortran order, so the order is different from
+  // the cblas convention.
+  int lda = (transA == CblasNoTrans) ? K : M;
+  int ldb = (transB == CblasNoTrans) ? N : K;
+  int ldc = N;
+  rocblas_operation cuTransA = (transA == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+  rocblas_operation cuTransB = (transB == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+  const int64_t strideC = M * N;
+  context_.CublasCall([&](rocblas_handle handle) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_hgemm_strided_batched(
+        handle,
+        cuTransB,
+        cuTransA,
+        N,
+        M,
+        K,
+        reinterpret_cast<const rocblas_half *>(&alpha),
+        reinterpret_cast<const rocblas_half *>(B),
+        ldb,
+        strideB,
+        reinterpret_cast<const rocblas_half *>(A),
+        lda,
+        strideA,
+        reinterpret_cast<const rocblas_half *>(&beta),
+        reinterpret_cast<rocblas_half *>(C),
+        ldc,
+        strideC,
+        batchCount));
   });
 }
 

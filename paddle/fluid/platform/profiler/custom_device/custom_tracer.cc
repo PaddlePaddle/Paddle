@@ -32,10 +32,25 @@ CustomTracer::CustomTracer(const std::string& dev_type) : dev_type_(dev_type) {
 #endif
 }
 
-CustomTracer::~CustomTracer() {
+CustomTracer::~CustomTracer() {  // NOLINT
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   phi::DeviceManager::ProfilerFinalize(dev_type_, &collector_, context_);
 #endif
+}
+
+std::unordered_map<std::string, std::unique_ptr<CustomTracer>>&
+CustomTracer::GetMap() {
+  static std::unordered_map<std::string, std::unique_ptr<CustomTracer>>
+      instance;
+  return instance;
+}
+
+void CustomTracer::Release() {
+  auto& pool = GetMap();
+  for (auto& item : pool) {
+    item.second.reset();
+  }
+  pool.clear();
 }
 
 void CustomTracer::PrepareTracing() {

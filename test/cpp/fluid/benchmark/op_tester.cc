@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include <fstream>
 
-#include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -25,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/pybind/pybind.h"
+#include "paddle/utils/flags.h"
 
 // phi
 #include "paddle/phi/kernels/declarations.h"
@@ -33,8 +33,8 @@ namespace paddle {
 namespace operators {
 namespace benchmark {
 
-DEFINE_string(op_config_list, "", "Path of op config file.");
-DEFINE_int32(specified_config_id, -1, "Test the specified op config.");
+PD_DEFINE_string(op_config_list, "", "Path of op config file.");  // NOLINT
+PD_DEFINE_int32(specified_config_id, -1, "Test the specified op config.");
 
 void OpTester::Init(const std::string &filename) {
   Init(OpTesterConfig(filename));
@@ -57,13 +57,13 @@ void OpTester::Init(const OpTesterConfig &config) {
   }
 
   if (config_.device_id >= 0) {
-    place_ = paddle::platform::CUDAPlace(config_.device_id);
+    place_ = ::paddle::platform::CUDAPlace(config_.device_id);
   } else {
-    place_ = paddle::platform::CPUPlace();
+    place_ = ::paddle::platform::CPUPlace();
   }
 
   framework::InitDevices();
-  scope_.reset(new paddle::framework::Scope());
+  scope_ = std::make_unique<::paddle::framework::Scope>();
 
   op_ = framework::OpRegistry::CreateOp(op_desc_);
   CreateVariables(scope_.get());
@@ -318,7 +318,7 @@ void OpTester::SetupTensor(phi::DenseTensor *tensor,
   }
 
   if (!platform::is_cpu_place(place_)) {
-    paddle::framework::TensorCopySync(cpu_tensor, place_, tensor);
+    ::paddle::framework::TensorCopySync(cpu_tensor, place_, tensor);
   }
 }
 
@@ -379,8 +379,8 @@ void OpTester::CreateVariables(framework::Scope *scope) {
     VLOG(3) << "Set lod for tensor " << var_name;
     std::vector<std::vector<size_t>> &lod_vec = item.second.lod;
     framework::LoD lod;
-    for (size_t i = 0; i < lod_vec.size(); ++i) {
-      lod.push_back(lod_vec[i]);
+    for (auto &item : lod_vec) {
+      lod.push_back(item);
     }
     tensor->set_lod(lod);
   }
@@ -528,9 +528,9 @@ TEST(op_tester, base) {
       tester.Init(op_configs[FLAGS_specified_config_id]);
       tester.Run();
     } else {
-      for (size_t i = 0; i < op_configs.size(); ++i) {
+      for (auto &op_config : op_configs) {
         OpTester tester;
-        tester.Init(op_configs[i]);
+        tester.Init(op_config);
         tester.Run();
       }
     }

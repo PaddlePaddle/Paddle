@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 
@@ -275,11 +275,11 @@ class TestUnsqueezeAPI(unittest.TestCase):
             fetch_list=[out_1, out_2, out_3, out_4, out_5],
         )
 
-        assert np.array_equal(res_1, input.reshape([3, 1, 1, 2, 5, 1]))
-        assert np.array_equal(res_2, input.reshape([3, 1, 1, 2, 5, 1]))
-        assert np.array_equal(res_3, input.reshape([3, 1, 1, 2, 5, 1]))
-        assert np.array_equal(res_4, input.reshape([3, 2, 5, 1]))
-        assert np.array_equal(res_5, input.reshape([3, 1, 1, 2, 5, 1]))
+        np.testing.assert_array_equal(res_1, input.reshape([3, 1, 1, 2, 5, 1]))
+        np.testing.assert_array_equal(res_2, input.reshape([3, 1, 1, 2, 5, 1]))
+        np.testing.assert_array_equal(res_3, input.reshape([3, 1, 1, 2, 5, 1]))
+        np.testing.assert_array_equal(res_4, input.reshape([3, 2, 5, 1]))
+        np.testing.assert_array_equal(res_5, input.reshape([3, 1, 1, 2, 5, 1]))
 
     def test_error(self):
         def test_axes_type():

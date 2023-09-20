@@ -14,8 +14,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.h"
+
 #include <fcntl.h>
 #include <cstddef>
+#include <memory>
 #include <string>
 #include <unordered_set>
 
@@ -32,6 +34,7 @@
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
+#include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
@@ -47,7 +50,8 @@ void OutputProcess(framework::ir::Graph *graph,
                    const std::unordered_set<framework::ir::Node *> &trt_outputs,
                    phi::Backend backend,
                    phi::DataType precision,
-                   const std::unordered_set<std::string> &blacklist) {
+                   const std::unordered_set<std::string> &blacklist,
+                   const std::unordered_set<std::string> &whitelist) {
   framework::BlockDesc *block_desc{nullptr};
   int suffix = 0;
   std::unordered_map<framework::ir::Node *, framework::ir::Node *>
@@ -83,7 +87,8 @@ void OutputProcess(framework::ir::Graph *graph,
                   phi::TransToPhiKernelName(next_op->Op()->Type()),
                   backend,
                   precision,
-                  blacklist)) {
+                  blacklist,
+                  whitelist)) {
             InsertCastOp(graph,
                          var_node,
                          next_op,
@@ -123,11 +128,6 @@ using framework::ir::Node;
 void analysis::TensorRtSubgraphPass::ApplyImpl(
     framework::ir::Graph *graph) const {
   framework::ir::FusePassBase::Init("tensorrt_subgraph_pass", graph);
-
-  static std::once_flag trt_plugin_registered;
-  std::call_once(trt_plugin_registered, []() {
-    tensorrt::plugin::TrtPluginRegistry::Global()->RegistToTrt();
-  });
 
   auto model_precision =
       static_cast<phi::DataType>(Get<int>("model_precision"));
@@ -291,7 +291,6 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   // Add new block for TensorRTEngineOP
   const framework::BlockDesc &main_block =
       program_desc->Block(framework::kRootBlockIndex);
-  // const framework::BlockDesc& main_block = program_desc->Block(0);
   framework::BlockDesc *new_block = program_desc->AppendBlock(main_block);
 
   // A fake block desc.
@@ -319,40 +318,37 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   // is unique.
   std::set<std::string> input_names;
   std::set<std::string> input_names_with_id;
-  std::vector<std::string> params;
-  // if we delete fluid copy of params shared by more than 1 ops, there will be
-  // problem, so we filter them out.
+  std::vector<std::string> parameters;
+  // if we delete fluid copy of parameters shared by more than 1 ops, there will
+  // be problem, so we filter them out.
   std::vector<std::string> params_not_shared;
 
   auto *scope = param_scope();
   // The node->inputs contains input tensors and parameters.
   for (auto *x : node->inputs) {
     input_names.insert(x->Name());
-    input_names_with_id.insert(x->Name() + std::to_string(x->id()));
+    input_names_with_id.insert(
+        RenameVarBeUnique(x->Name(), std::to_string(x->id())));
     if (std::count(graph_params.begin(), graph_params.end(), x->Name()) > 0) {
-      params.push_back(x->Name());
+      parameters.push_back(x->Name());
     }
     if (std::count(graph_params.begin(), graph_params.end(), x->Name()) > 0 &&
         x->outputs.size() <= 1) {
       params_not_shared.push_back(x->Name());
     }
-    // When TRT Engine's input is INT64, we need do some extra work.
-    // So we reserved a name for later use when casting INT64 -> INT32.
-    // We must check whether scope has had the same name var!
+    // When TRT Engine's input is INT64 or FP64, we need do some extra work.
+    // So we reserved a name for later use when casting INT64 -> INT32 or
+    // FP64->FP32. We must check whether scope has had the same name var!
     if (x->Var()->GetDataType() == framework::proto::VarType::INT64) {
-      std::string tmp_name = x->Name() + "_cast_to_INT32";
       LOG(WARNING)
           << "tensorrt_subgraph's input named " << x->Name()
           << " having int64 dtype in pdmodel description, we will cast them to "
              "int32 dtype to feed them into paddle-trt.";
-      /*
-            PADDLE_ENFORCE_EQ(scope->FindVar(tmp_name),
-                              nullptr,
-                              platform::errors::InvalidArgument(
-                                  "The  var name %s has exists in scope.",
-         tmp_name));
-      */
-      scope->Var(tmp_name);
+    } else if (x->Var()->GetDataType() == framework::proto::VarType::FP64) {
+      LOG(WARNING) << "tensorrt_subgraph's input named " << x->Name()
+                   << " having float64 dtype in pdmodel description, we will "
+                      "cast them to "
+                      "float32 dtype to feed them into paddle-trt.";
     }
   }
 
@@ -362,7 +358,8 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   // https://github.com/PaddlePaddle/Paddle/pull/53184
   for (auto *n : graph->Nodes()) {
     if (n->IsVar() && input_names.count(n->Name())) {
-      input_names_with_id.insert(n->Name() + std::to_string(n->id()));
+      input_names_with_id.insert(
+          RenameVarBeUnique(n->Name(), std::to_string(n->id())));
     }
   }
 
@@ -370,6 +367,8 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
       static_cast<phi::DataType>(Get<int>("model_precision"));
   auto mixed_black_list =
       Get<std::unordered_set<std::string>>("mixed_black_list");
+  auto mixed_white_list =
+      Get<std::unordered_set<std::string>>("mixed_white_list");
 
   std::set<std::string> output_names;
   std::set<std::string> output_names_with_id;
@@ -378,17 +377,53 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   // record the origin output data type
   std::vector<int> origin_outputs_dtype;
   std::map<std::string, int> map_origin_outputs_dtype;
+
+  // Mark TensorRT output nodes as trt outputs
+  auto mark_output = Get<bool>("mark_output");
+  auto output_tensor_name =
+      Get<std::vector<std::string>>("output_tensor_names");
+
+  if (mark_output) {
+    VLOG(1) << "begin to mark output ...";
+    for (auto node : subgraph) {
+      if (node->NodeType() == Node::Type::kOperation) {
+        for (auto *x : node->outputs) {
+          if (std::count(parameters.begin(), parameters.end(), x->Name()) > 0)
+            continue;
+          if ((std::count(output_tensor_name.begin(),
+                          output_tensor_name.end(),
+                          x->Name()) > 0) ||
+              !x->outputs.empty()) {
+            VLOG(3) << "output " << x->Name() << " has been marked";
+            output_names.insert(x->Name());
+            output_names_with_id.insert(
+                RenameVarBeUnique(x->Name(), std::to_string(x->id())));
+            origin_name_output_rank[x->Name()] = x->Var()->GetShape().size();
+            trt_outputs.insert(x);
+            map_origin_outputs_dtype[x->Name()] =
+                static_cast<int>(x->Var()->GetDataType());
+          }
+        }
+      }
+    }
+  }
+
   for (auto *x : node->outputs) {
     output_names.insert(x->Name());
-    output_names_with_id.insert(x->Name() + std::to_string(x->id()));
+    output_names_with_id.insert(
+        RenameVarBeUnique(x->Name(), std::to_string(x->id())));
     origin_name_output_rank[x->Name()] = x->Var()->GetShape().size();
     trt_outputs.insert(x);
     map_origin_outputs_dtype[x->Name()] =
         static_cast<int>(x->Var()->GetDataType());
   }
 
-  OutputProcess(
-      graph, trt_outputs, phi::Backend::GPU, model_precision, mixed_black_list);
+  OutputProcess(graph,
+                trt_outputs,
+                phi::Backend::GPU,
+                model_precision,
+                mixed_black_list,
+                mixed_white_list);
 
   std::unordered_map<std::string, std::string> output_name_map;
   std::unordered_map<std::string, framework::ir::Node *> graph_var_map;
@@ -398,10 +433,10 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
       graph_var_map[node->Name()] = node;
     }
   }
-  auto precision_mode = Get<int>("trt_precision_mode");
+  auto precision_mode =
+      static_cast<phi::DataType>(Get<int>("trt_precision_mode"));
   bool enable_fp16 = false;
-  if (precision_mode == static_cast<int>(phi::DataType::FLOAT16))
-    enable_fp16 = true;
+  if (precision_mode == phi::DataType::FLOAT16) enable_fp16 = true;
   auto enable_int8 = Get<bool>("enable_int8");
   auto use_calib_mode = Get<bool>("use_calib_mode");
   auto &subgraph_nodes = *framework::ir::Agent(node).subgraph();
@@ -409,14 +444,14 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
       Get<std::map<std::string, std::vector<int>>>("min_input_shape");
   auto max_input_shape =
       Get<std::map<std::string, std::vector<int>>>("max_input_shape");
-  auto opt_input_shape =
+  auto optim_input_shape =
       Get<std::map<std::string, std::vector<int>>>("optim_input_shape");
 
   auto min_shape_tensor =
       Get<std::map<std::string, std::vector<int>>>("min_shape_tensor");
   auto max_shape_tensor =
       Get<std::map<std::string, std::vector<int>>>("max_shape_tensor");
-  auto opt_shape_tensor =
+  auto optim_shape_tensor =
       Get<std::map<std::string, std::vector<int>>>("optim_shape_tensor");
 
   auto allow_build_at_runtime = Get<bool>("trt_allow_build_at_runtime");
@@ -430,10 +465,10 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
       inference::DeserializeShapeRangeInfo(shape_range_info_path,
                                            &min_input_shape,
                                            &max_input_shape,
-                                           &opt_input_shape,
+                                           &optim_input_shape,
                                            &min_shape_tensor,
                                            &max_shape_tensor,
-                                           &opt_shape_tensor);
+                                           &optim_shape_tensor);
     } else {
       shape_range_info_path =
           Get<std::string>("model_opt_cache_dir") + "shape_range_info.pbtxt";
@@ -443,10 +478,10 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
         inference::DeserializeShapeRangeInfo(shape_range_info_path,
                                              &min_input_shape,
                                              &max_input_shape,
-                                             &opt_input_shape,
+                                             &optim_input_shape,
                                              &min_shape_tensor,
                                              &max_shape_tensor,
-                                             &opt_shape_tensor);
+                                             &optim_shape_tensor);
       } else {
         int fd = open(shape_range_info_path.c_str(), O_WRONLY | O_CREAT, 0644);
         close(fd);
@@ -489,23 +524,26 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
     renamed_output_rank.push_back(origin_name_output_rank[name]);
     origin_outputs_dtype.push_back(map_origin_outputs_dtype[name]);
 
-    // When TRT Engine's output is INT64, we need do some extra work.
-    // So we reserved a name for later use when casting INT32 -> INT64.
-    // We must check whether scope has had the same name var!
+    // When TRT Engine's output is INT64 or FP64, we need do some extra work.
+    // So we reserved a name for later use when casting INT32 -> INT64 or FP32
+    // -> FP64. We must check whether scope has had the same name var!
     if (static_cast<framework::proto::VarType_Type>(
             map_origin_outputs_dtype[name]) ==
         framework::proto::VarType::INT64) {
-      std::string tmp_name = name + "_cast_to_INT64";
       LOG(WARNING) << "tensorrt_subgraph's output named " << name
                    << " having int64 dtype in pdmodel description, but in fact "
                       "it is int32 "
                       "dtype after executing this tensorrt_subgraph, so we "
                       "need cast them into int64.";
-      PADDLE_ENFORCE_EQ(scope->FindVar(tmp_name),
-                        nullptr,
-                        platform::errors::InvalidArgument(
-                            "The  var name %s has exists in scope.", tmp_name));
-      scope->Var(tmp_name);
+    } else if (static_cast<framework::proto::VarType_Type>(
+                   map_origin_outputs_dtype[name]) ==
+               framework::proto::VarType::FP64) {
+      LOG(WARNING)
+          << "tensorrt_subgraph's output named " << name
+          << " having float64 dtype in pdmodel description, but in fact "
+             "it is float32 "
+             "dtype after executing this tensorrt_subgraph, so we "
+             "need cast them into float64.";
     }
   }
   PADDLE_ENFORCE_EQ(output_mapping.empty(),
@@ -517,30 +555,76 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
       true,
       platform::errors::PreconditionNotMet("the block has no var-desc"));
 
-  // Set attrs
+  // Get pass attrs.
+  auto use_varseqlen = Get<bool>("use_varseqlen");
+  auto with_interleaved = Get<bool>("with_interleaved");
+  auto tensorrt_transformer_posid =
+      Get<std::string>("tensorrt_transformer_posid");
+  auto tensorrt_transformer_maskid =
+      Get<std::string>("tensorrt_transformer_maskid");
+  auto use_dla = Get<bool>("trt_use_dla");
+  auto dla_core = Get<int>("trt_dla_core");
+  auto use_inspector = Get<bool>("use_inspector");
+  auto inspector_serialize = Get<bool>("inspector_serialize");
+  auto disable_trt_plugin_fp16 = Get<bool>("disable_trt_plugin_fp16");
+  auto context_memory_sharing = Get<bool>("context_memory_sharing");
+  auto enable_low_precision_io = Get<bool>("enable_low_precision_io");
+  auto workspace_size = Get<int64_t>("workspace_size");
+  auto gpu_device_id = Get<int>("gpu_device_id");
+  auto optimization_level = Get<int>("optimization_level");
+
+  // Set op's attrs.
   op_desc->SetType("tensorrt_engine");
   op_desc->SetInput(
       "Xs", std::vector<std::string>(input_names.begin(), input_names.end()));
-
   op_desc->SetOutput(
       "Ys", std::vector<std::string>(output_names.begin(), output_names.end()));
-
   op_desc->SetBlockAttr("sub_block", new_block);
   op_desc->SetAttr("subgraph", block_desc.Proto()->SerializeAsString());
   op_desc->SetAttr("origin_outputs_dtype", origin_outputs_dtype);
   op_desc->SetAttr("max_batch_size", max_batch_size);
-  op_desc->SetAttr("workspace_size", Get<int64_t>("workspace_size"));
-  op_desc->SetAttr("gpu_id", Get<int>("gpu_device_id"));
+  op_desc->SetAttr("workspace_size", workspace_size);
+  op_desc->SetAttr("gpu_device_id", gpu_device_id);
   op_desc->SetAttr("output_name_mapping", output_mapping);
   op_desc->SetAttr("origin_output_rank", renamed_output_rank);
-  op_desc->SetAttr("parameters", params);
+  op_desc->SetAttr("parameters", parameters);
   op_desc->SetAttr("allow_build_at_runtime", allow_build_at_runtime);
   op_desc->SetAttr("shape_range_info_path", shape_range_info_path);
-  op_desc->SetAttr("use_inspector", Get<bool>("use_inspector"));
-  op_desc->SetAttr("model_precision", Get<int>("model_precision"));
   op_desc->SetAttr("with_dynamic_shape", with_dynamic_shape);
-  op_desc->SetAttr("enable_low_precision_io",
-                   Get<bool>("enable_low_precision_io"));
+  op_desc->SetAttr("enable_low_precision_io", enable_low_precision_io);
+
+  if (!trt_tuned_dynamic_shape) {
+    std::vector<std::string> dynamic_shape_names;
+    std::vector<int> dynamic_shape_lens;
+    std::vector<int> min_input_shape_vector;
+    std::vector<int> max_input_shape_vector;
+    std::vector<int> opt_input_shape_vector;
+    for (const auto &it : min_input_shape) {
+      dynamic_shape_names.push_back(it.first);
+      dynamic_shape_lens.push_back(it.second.size());
+      for (const auto &value : it.second) {
+        min_input_shape_vector.push_back(value);
+      }
+    }
+    for (const auto &it : max_input_shape) {
+      for (const auto &value : it.second) {
+        max_input_shape_vector.push_back(value);
+      }
+    }
+    for (const auto &it : optim_input_shape) {
+      for (const auto &value : it.second) {
+        opt_input_shape_vector.push_back(value);
+      }
+    }
+
+    op_desc->SetAttr("dynamic_shape_names", dynamic_shape_names);
+    op_desc->SetAttr("dynamic_shape_lens", dynamic_shape_lens);
+    op_desc->SetAttr("min_input_shape_vector", min_input_shape_vector);
+    op_desc->SetAttr("max_input_shape_vector", max_input_shape_vector);
+    op_desc->SetAttr("opt_input_shape_vector", opt_input_shape_vector);
+  }
+
+  op_desc->SetAttr("optimization_level", Get<int>("optimization_level"));
 
   // we record all inputs' shapes in attr to check if they are consistent
   // with the real inputs' shapes retrieved from scope when trt runs.
@@ -595,20 +679,36 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetAttr("engine_key", engine_key);
   op_desc->SetAttr("calibration_engine_key", calibration_engine_key);
   op_desc->SetAttr("predictor_id", predictor_id);
-
-  std::string trt_engine_serialized_data = "";
+  op_desc->SetAttr("use_varseqlen", use_varseqlen);
+  op_desc->SetAttr("with_interleaved", with_interleaved);
+  op_desc->SetAttr("use_dla", use_dla);
+  op_desc->SetAttr("dla_core", dla_core);
+  op_desc->SetAttr("disable_trt_plugin_fp16", disable_trt_plugin_fp16);
+  op_desc->SetAttr("context_memory_sharing", context_memory_sharing);
+  std::string trt_engine_serialized_data;
   op_desc->SetAttr("engine_serialized_data", trt_engine_serialized_data);
+
+  // serialization engine info
+  std::string engine_info_path;
+  if (inspector_serialize) {
+    engine_info_path = Get<std::string>("model_opt_cache_dir") +
+                       "engine_info_" + engine_key + ".json";
+    LOG(INFO) << "Serialize engine info to " << engine_info_path;
+  }
+  op_desc->SetAttr("use_inspector", use_inspector);
+  op_desc->SetAttr("engine_info_path", engine_info_path);
   op_desc->Flush();
 
   std::unique_ptr<tensorrt::TRTInt8Calibrator> calibrator;
-  if (enable_int8 && calibration_data.size() != 0) {
-    calibrator.reset(new tensorrt::TRTInt8Calibrator(calibration_data));
+  if (enable_int8 && !calibration_data.empty()) {
+    calibrator =
+        std::make_unique<tensorrt::TRTInt8Calibrator>(calibration_data);
     LOG(INFO) << "RUN Paddle TRT int8 calibration mode...";
   }
   // When in int8 mode and calibration_mode, the program just produce the
   // calibration table data.
   bool calibration_mode =
-      (enable_int8 && calibration_data.size() == 0 && use_calib_mode);
+      (enable_int8 && calibration_data.empty() && use_calib_mode);
   if (calibration_mode) {
     // calibraion mode means generate int8 calibration table data process.
     return calibration_engine_key;
@@ -620,14 +720,14 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
 
   // Check trt version for dynamic shape input.
 
-  if (min_input_shape.size() > 0 && TRT_VERSION < 6000) {
+  if (!min_input_shape.empty() && TRT_VERSION < 6000) {
     LOG_FIRST_N(WARNING, 1) << "You are using the dynamic size input mode of "
                                "Paddle-TRT, but we found that the version of "
                                "the TensorRT is less than 6.0, so we use the "
                                "static shape mode instead.";
     min_input_shape = {};
     max_input_shape = {};
-    opt_input_shape = {};
+    optim_input_shape = {};
   }
 
   const float trt_compile_version = tensorrt::TrtMajorVersion(TRT_VERSION);
@@ -648,42 +748,37 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
       framework::ir::Agent(node).subgraph()->end());
   framework::ir::GraphSafeRemoveNodes(graph, nodes2remove);
 
-  // Setting the disable_trt_plugin_fp16 to true means that TRT plugin will not
-  // run fp16.
-  // When running fp16, the output accuracy of the model will be affected,
-  // closing the plugin fp16 may bring some improvement on accuracy.
-  bool disable_trt_plugin_fp16 = Get<bool>("disable_trt_plugin_fp16");
+  // Adding new parameters must set a new op attribute by "op_desc->SetAttr()"
+  // first and syncing it to tensorrt_engine_op.h
+  tensorrt::TensorRTEngine::ConstructionParams params;
+  params.max_batch_size = max_batch_size;
+  params.max_workspace_size = workspace_size;
+  params.calibrator = calibrator.get();
+  params.device_id = gpu_device_id;
+  params.with_dynamic_shape = with_dynamic_shape;
+  params.min_input_shape = min_input_shape;
+  params.max_input_shape = max_input_shape;
+  params.optim_input_shape = optim_input_shape;
+  params.min_shape_tensor = min_shape_tensor;
+  params.max_shape_tensor = max_shape_tensor;
+  params.optim_shape_tensor = optim_shape_tensor;
+  params.disable_trt_plugin_fp16 = disable_trt_plugin_fp16;
+  params.precision = precision_mode;
+  params.use_varseqlen = use_varseqlen;
+  params.use_dla = use_dla;
+  params.dla_core = dla_core;
+  params.with_interleaved = with_interleaved;
+  params.tensorrt_transformer_posid = tensorrt_transformer_posid;
+  params.tensorrt_transformer_maskid = tensorrt_transformer_maskid;
+  params.context_memory_sharing = context_memory_sharing;
+  params.use_inspector = use_inspector;
+  params.engine_info_path = engine_info_path;
+  params.enable_low_precision_io = enable_low_precision_io;
+  params.optimization_level = optimization_level;
+
   tensorrt::TensorRTEngine *trt_engine =
       inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
-          .Create(engine_key + std::to_string(predictor_id),
-                  max_batch_size,
-                  Get<int64_t>("workspace_size"),
-                  static_cast<phi::DataType>(precision_mode),
-                  calibrator.get(),
-                  Get<int>("gpu_device_id"),
-                  with_dynamic_shape,
-                  min_input_shape,
-                  max_input_shape,
-                  opt_input_shape,
-                  min_shape_tensor,
-                  max_shape_tensor,
-                  opt_shape_tensor,
-                  disable_trt_plugin_fp16,
-                  static_cast<phi::DataType>(Get<int>("model_precision")));
-  trt_engine->SetUseOSS(Get<bool>("use_varseqlen"));
-  trt_engine->SetWithInterleaved(Get<bool>("with_interleaved"));
-  trt_engine->SetTransformerPosid(
-      Get<std::string>("tensorrt_transformer_posid"));
-  trt_engine->SetTransformerMaskid(
-      Get<std::string>("tensorrt_transformer_maskid"));
-  trt_engine->SetUseDLA(Get<bool>("trt_use_dla"));
-  trt_engine->SetDLACore(Get<int>("trt_dla_core"));
-  trt_engine->SetUseInspector(Get<bool>("use_inspector"));
-  trt_engine->SetWithErnie(
-      graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
-      graph->Has(framework::ir::kMultiheadMatmulPass));
-  trt_engine->SetContextMemorySharing(Get<bool>("context_memory_sharing"));
-  trt_engine->SetLowPrecisionIO(Get<bool>("enable_low_precision_io"));
+          .Create(engine_key + std::to_string(predictor_id), params);
 
   if (use_static_engine) {
     trt_engine_serialized_data = GetTrtEngineSerializedData(
@@ -720,13 +815,14 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
                "kernel etc). This process may cost a lot of time.";
 
   framework::BlockDesc block_desc_temp(nullptr, block_desc.Proto());
-  std::unordered_set<std::string> param_set(params.begin(), params.end());
+  std::unordered_set<std::string> parameters_set(parameters.begin(),
+                                                 parameters.end());
   inference::Singleton<inference::tensorrt::OpConverter>::Global()
       .ConvertBlockToTRTEngine(
           &block_desc_temp,
           *scope,
           std::vector<std::string>(input_names.begin(), input_names.end()),
-          param_set,
+          parameters_set,
           output_mapping,
           trt_engine);
 

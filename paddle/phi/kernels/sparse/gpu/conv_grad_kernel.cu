@@ -56,10 +56,14 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
                             const std::string& key,
                             SparseCooTensor* x_grad,
                             DenseTensor* kernel_grad) {
+  const bool is_params_freezing = kernel_grad == nullptr;
   const auto& kernel_dims = kernel.dims();
-  const int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
-  const int in_channels = kernel_dims[3];
-  const int out_channels = kernel_dims[4];
+  const bool is2D = kernel_dims.size() == 4 ? true : false;
+  const int kernel_size =
+      is2D ? kernel_dims[0] * kernel_dims[1]
+           : kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
+  const int in_channels = is2D ? kernel_dims[2] : kernel_dims[3];
+  const int out_channels = is2D ? kernel_dims[3] : kernel_dims[4];
 
   int rulebook_len = 0;
   const IntT* rulebook_ptr = phi::funcs::sparse::GetRulebookPtr<IntT>(
@@ -76,10 +80,13 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
   T* in_features_ptr = in_features.data<T>();
   T* d_x_features_ptr = d_x_features.data<T>();
   T* out_grad_features_ptr = out_grad_features.data<T>();
-  *kernel_grad = phi::EmptyLike<T>(dev_ctx, kernel);
-  T* d_kernel_ptr = kernel_grad->data<T>();
-  phi::backends::gpu::GpuMemsetAsync(
-      d_kernel_ptr, 0, sizeof(T) * kernel_grad->numel(), dev_ctx.stream());
+  T* d_kernel_ptr = nullptr;
+  if (!is_params_freezing) {
+    *kernel_grad = phi::EmptyLike<T>(dev_ctx, kernel);
+    d_kernel_ptr = kernel_grad->data<T>();
+    phi::backends::gpu::GpuMemsetAsync(
+        d_kernel_ptr, 0, sizeof(T) * kernel_grad->numel(), dev_ctx.stream());
+  }
 
   int half_kernel_size = kernel_size / 2;
   auto blas = phi::funcs::GetBlas<GPUContext, T>(dev_ctx);
@@ -181,6 +188,8 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
   }
 #endif
   const T* kernel_ptr = kernel.data<T>();
+  T* tmp_d_x_ptr = nullptr;
+  T* tmp_d_kernel_ptr = nullptr;
   for (int i = 0; i < kernel_size; i++) {
     if (counter_ptr[i] <= 0 || (subm && i == half_kernel_size)) {
       continue;
@@ -192,8 +201,10 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
     T* tmp_in_ptr = in_features_ptr + offsets[i] * in_channels;
     T* tmp_out_grad_ptr = out_grad_features_ptr + offsets[i] * out_channels;
     const T* tmp_kernel_ptr = kernel_ptr + i * in_channels * out_channels;
-    T* tmp_d_x_ptr = d_x_features_ptr + offsets[i] * in_channels;
-    T* tmp_d_kernel_ptr = d_kernel_ptr + i * in_channels * out_channels;
+    tmp_d_x_ptr = d_x_features_ptr + offsets[i] * in_channels;
+    if (!is_params_freezing) {
+      tmp_d_kernel_ptr = d_kernel_ptr + i * in_channels * out_channels;
+    }
 
 #if defined(PADDLE_WITH_CUTLASS) && SPCONV_WITH_CUTLASS
     if (cutlass) {
@@ -201,26 +212,28 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
       const IntT* scatter_x_indices = rulebook_ptr + offsets[i];
       const IntT* gather_out_indices = rulebook_ptr + rulebook_len + offsets[i];
       const size_t key = autotune::GenKey(M / features_num_range, N, K);
-      // call gemm: d_kernel = transpose(x) * out_grad
-      // (in_channels, n) * (n, out_channels)
-      static cutlass::device_memory::allocation<uint8_t> workspace(
-          workspace_size);
-      GatherGemmScatterDriver<80, true, false>(
-          dev_ctx,
-          key,
-          x.values().data<T>(),
-          out_grad.values().data<T>(),
-          tmp_d_kernel_ptr,
-          tmp_d_kernel_ptr,
-          in_channels,
-          out_channels,
-          counter_ptr[i],
-          gather_x_indices,
-          gather_out_indices,
-          static_cast<const IntT*>(nullptr),
-          static_cast<const T>(1.0),
-          static_cast<const T>(0.0),
-          &workspace);
+      if (!is_params_freezing) {
+        // call gemm: d_kernel = transpose(x) * out_grad
+        // (in_channels, n) * (n, out_channels)
+        static cutlass::device_memory::allocation<uint8_t> workspace(
+            workspace_size);
+        GatherGemmScatterDriver<80, true, false>(
+            dev_ctx,
+            key,
+            x.values().data<T>(),
+            out_grad.values().data<T>(),
+            tmp_d_kernel_ptr,
+            tmp_d_kernel_ptr,
+            in_channels,
+            out_channels,
+            counter_ptr[i],
+            gather_x_indices,
+            gather_out_indices,
+            static_cast<const IntT*>(nullptr),
+            static_cast<const T>(1.0),
+            static_cast<const T>(0.0),
+            &workspace);
+      }
       // call gemm: d_x = out_grad * transpose(kernel)
       // (n, out_channels) * (out_channels, in_channels)
       GatherGemmScatterDriver<80, false, true>(
@@ -241,18 +254,20 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
           nullptr);
     } else {
 #endif
-      // call gemm: d_kernel = transpose(x) * out_grad
-      // (in_channels, n) * (n, out_channels)
-      blas.GEMM(CblasTrans,
-                CblasNoTrans,
-                K,
-                N,
-                M,
-                static_cast<T>(1),
-                tmp_in_ptr,
-                tmp_out_grad_ptr,
-                static_cast<T>(0),
-                tmp_d_kernel_ptr);
+      if (!is_params_freezing) {
+        // call gemm: d_kernel = transpose(x) * out_grad
+        // (in_channels, n) * (n, out_channels)
+        blas.GEMM(CblasTrans,
+                  CblasNoTrans,
+                  K,
+                  N,
+                  M,
+                  static_cast<T>(1),
+                  tmp_in_ptr,
+                  tmp_out_grad_ptr,
+                  static_cast<T>(0),
+                  tmp_d_kernel_ptr);
+      }
 
       // call gemm: d_x = out_grad * transpose(kernel)
       // (n, out_channels) * (out_channels, in_channels)
@@ -324,7 +339,6 @@ void Conv3dCooGradKernel(const Context& dev_ctx,
                                           kernel_grad);
       }));
 }
-
 }  // namespace sparse
 }  // namespace phi
 

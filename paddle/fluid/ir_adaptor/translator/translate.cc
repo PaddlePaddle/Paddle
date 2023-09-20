@@ -17,19 +17,21 @@
 #include <memory>
 
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
-#include "paddle/ir/core/program.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/pir/core/builtin_dialect.h"
+#include "paddle/pir/core/program.h"
 
 namespace paddle {
 
 using LegacyProgramDesc = ::paddle::framework::ProgramDesc;
-using Program = ::ir::Program;
+using Program = pir::Program;
 
 std::unique_ptr<Program> TranslateLegacyProgramToProgram(
     const LegacyProgramDesc& legacy_program) {
-  auto program = std::make_unique<Program>(ir::IrContext::Instance());
-
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<dialect::OperatorDialect>();
+  auto program = std::make_unique<Program>(ctx);
   translator::ProgramTranslator program_translator(&legacy_program,
                                                    program.get());
   program_translator.Translate();

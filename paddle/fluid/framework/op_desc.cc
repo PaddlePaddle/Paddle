@@ -62,7 +62,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
                           op_.Type(),
                           idx,
                           op_proto->inputs().size()));
-    return op_proto->inputs()[idx].name();
+    return op_proto->inputs()[static_cast<int>(idx)].name();
   }
 
   std::string GetOutputNameByIdx(size_t idx) const override {
@@ -77,7 +77,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
             op_.Type(),
             idx,
             op_proto->outputs().size()));
-    return op_proto->outputs()[idx].name();
+    return op_proto->outputs()[static_cast<int>(idx)].name();
   }
 
   void ShareDim(const std::string &in,
@@ -346,13 +346,13 @@ class CompileTimeInferShapeContext : public InferShapeContext {
       const std::vector<std::string> &names) const {
     std::vector<proto::VarType::Type> retv;
     retv.resize(names.size());
-    std::transform(
-        names.begin(),
-        names.end(),
-        retv.begin(),
-        std::bind(std::mem_fn(&CompileTimeInferShapeContext::GetVarType),
-                  this,
-                  std::placeholders::_1));
+    std::transform(names.begin(),
+                   names.end(),
+                   retv.begin(),
+                   std::bind(  // NOLINT
+                       std::mem_fn(&CompileTimeInferShapeContext::GetVarType),
+                       this,
+                       std::placeholders::_1));
     return retv;
   }
 
@@ -457,7 +457,7 @@ void OpDesc::CopyFrom(const OpDesc &op_desc) {
   // The record of original_id_ is only for auto parallel.
   original_id_ = op_desc.original_id_;
   if (op_desc.dist_attr_) {
-    dist_attr_.reset(new OperatorDistAttr(*op_desc.dist_attr_));
+    dist_attr_ = std::make_unique<OperatorDistAttr>(*op_desc.dist_attr_);
   }
   need_update_ = true;
 }
@@ -512,6 +512,9 @@ OpDesc::OpDesc(const proto::OpDesc &desc, BlockDesc *block)
 // Explicitly implement the assign operator, Since the added
 // unique_ptr data member does not have the implicit assign operator.
 OpDesc &OpDesc::operator=(const OpDesc &other) {
+  if (this == &other) {
+    return *this;
+  }
   CopyFrom(other);
   block_ = other.block_;
   need_update_ = true;
@@ -583,7 +586,11 @@ bool OpDesc::HasOutput(const std::string &name) const {
   return outputs_.find(name) != outputs_.end();
 }
 
-bool OpDesc::HasInput(const std::string &name) const {
+bool OpDesc::HasInput(const std::string &name, bool with_attr_var) const {
+  if (with_attr_var) {
+    auto it = attrs_.find(name);
+    if (it != attrs_.end() && HasAttrVar(it->second)) return true;
+  }
   return inputs_.find(name) != inputs_.end();
 }
 
@@ -687,7 +694,7 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   // here if we meet this issue
   proto::AttrType attr_type = static_cast<proto::AttrType>(v.index() - 1);
   if (attr_type == proto::AttrType::INTS &&
-      PADDLE_GET_CONST(std::vector<int>, v).size() == 0u) {
+      PADDLE_GET_CONST(std::vector<int>, v).empty()) {
     // Find current attr via attr name and set the correct attribute value
     if (is_runtime_attr) {
       attr_type =
@@ -1141,7 +1148,7 @@ OperatorDistAttr *OpDesc::MutableDistAttr() {
   if (dist_attr_) {
     return dist_attr_.get();
   } else {
-    dist_attr_.reset(new OperatorDistAttr(*this));
+    dist_attr_ = std::make_unique<OperatorDistAttr>(*this);
     return dist_attr_.get();
   }
 }
@@ -1193,7 +1200,7 @@ VarDesc *OpDesc::FindVarRecursive(const std::string &name) {
   PADDLE_THROW(platform::errors::NotFound(
       "Not found Var(%s) from Block(%d) back into global Block.",
       name,
-      block_->ID()));
+      block_->ID()));  // NOLINT
 }
 
 CompileTimeInferShapeContext::CompileTimeInferShapeContext(

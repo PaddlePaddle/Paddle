@@ -29,6 +29,12 @@ def to_named_dict(items: List[Dict], is_op=False) -> Dict[str, Dict]:
             item["name"] = (
                 item["name"] if item["name"][-1] != '_' else item["name"][:-1]
             )
+            if "forward" in item:
+                item["forward"]["name"] = (
+                    item["forward"]["name"]
+                    if item["forward"]["name"][-1] != '_'
+                    else item["forward"]["name"][:-1]
+                )
             name = item["name"]
             named_dict[name] = item
     else:
@@ -144,6 +150,8 @@ def parse_output(op_name: str, s: str) -> Dict[str, str]:
 
 
 def parse_outputs(op_name: str, outputs: str) -> List[Dict]:
+    if outputs is None:
+        return []
     outputs = parse_plain_list(outputs, sep=",")
     output_items = []
     for output in outputs:
@@ -163,6 +171,7 @@ def parse_candidates(s: str) -> Dict[str, Any]:
     delimiter = ">" if ">" in s else ","
     ordered = delimiter == ">"
     candidates = parse_plain_list(s, delimiter)
+    candidates = list(filter(None, candidates))
     return {"ordered": ordered, "candidates": candidates}
 
 
@@ -283,7 +292,7 @@ def parse_invoke(op_name: str, invoke_config: str) -> Dict[str, Any]:
     invoke_config = invoke_config.strip()
     func, rest = invoke_config.split("(", 1)
     func = func.strip()
-    args = rest.rstrip(")").strip()
+    args = rest[:-1].strip()  # deal the last ')'
     invocation = {"func": func, "args": args}
     return invocation
 
@@ -357,7 +366,7 @@ def check_op_config(op_entry, op_name):
         'composite',
         'support_dygraph_mode',
     )
-    infer_meta_key_set = ('func', 'param')
+    infer_meta_key_set = ('func', 'param', 'spmd_rule')
     kernel_key_set = (
         'func',
         'param',
@@ -517,14 +526,20 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
 
     if is_base_op:
         # kernel
-        kernel = parse_kernel(op_name, op_entry["kernel"])
-        if kernel["param"] is None:
-            kernel["param"] = input_names + attr_names
+        if "kernel" in op_entry:
+            kernel = parse_kernel(op_name, op_entry["kernel"])
+            if kernel["param"] is None:
+                kernel["param"] = input_names + attr_names
+            op.update({"kernel": kernel})
 
         # infer meta
-        infer_meta = parse_infer_meta(op_entry["infer_meta"])
-        if infer_meta["param"] is None:
-            infer_meta["param"] = copy(kernel["param"])
+        if "infer_meta" in op_entry:
+            infer_meta = parse_infer_meta(op_entry["infer_meta"])
+            if infer_meta["param"] is None:
+                infer_meta["param"] = copy(kernel["param"])
+            op.update({"infer_meta": infer_meta})
+        # else:
+        #     assert(outputs == []), f"No infer_meta is given in {op_name}."
 
         # inplace
         if "inplace" in op_entry:
@@ -538,8 +553,6 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
             view_pairs = None
         op.update(
             {
-                "infer_meta": infer_meta,
-                "kernel": kernel,
                 "inplace": inplace_pairs,
                 "view": view_pairs,
             }

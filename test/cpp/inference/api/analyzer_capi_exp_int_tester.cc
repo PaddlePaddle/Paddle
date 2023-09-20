@@ -87,7 +87,7 @@ void predictor_run() {
   PD_PredictorDestroy(predictor);
 }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(PD_PredictorRun, predictor_run) { predictor_run(); }
 #endif
 

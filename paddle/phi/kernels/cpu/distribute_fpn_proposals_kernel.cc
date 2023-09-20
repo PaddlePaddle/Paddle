@@ -52,14 +52,15 @@ void DistributeFpnProposalsKernel(
   } else {
     fpn_rois_lod = fpn_rois.lod().back();
   }
-  fpn_rois_num = fpn_rois_lod[fpn_rois_lod.size() - 1];
+  fpn_rois_num = static_cast<int>(fpn_rois_lod[fpn_rois_lod.size() - 1]);
   std::vector<int> target_level;
 
   // record the number of rois in each level
   std::vector<int> num_rois_level(num_level, 0);
   std::vector<int> num_rois_level_integral(num_level + 1, 0);
   for (size_t i = 0; i < fpn_rois_lod.size() - 1; ++i) {
-    auto fpn_rois_slice = fpn_rois.Slice(fpn_rois_lod[i], fpn_rois_lod[i + 1]);
+    auto fpn_rois_slice = fpn_rois.Slice(static_cast<int>(fpn_rois_lod[i]),
+                                         static_cast<int>(fpn_rois_lod[i + 1]));
     const T* rois_data = fpn_rois_slice.data<T>();
     for (int j = 0; j < fpn_rois_slice.dims()[0]; ++j) {
       // get the target level of current rois
@@ -92,7 +93,8 @@ void DistributeFpnProposalsKernel(
   std::vector<int> restore_index_inter(fpn_rois_num, -1);
   // distribute the rois into different fpn level by target level
   for (size_t i = 0; i < fpn_rois_lod.size() - 1; ++i) {
-    auto fpn_rois_slice = fpn_rois.Slice(fpn_rois_lod[i], fpn_rois_lod[i + 1]);
+    auto fpn_rois_slice = fpn_rois.Slice(static_cast<int>(fpn_rois_lod[i]),
+                                         static_cast<int>(fpn_rois_lod[i + 1]));
     const T* rois_data = fpn_rois_slice.data<T>();
     size_t cur_offset = fpn_rois_lod[i];
 
@@ -105,9 +107,10 @@ void DistributeFpnProposalsKernel(
              rois_data,
              funcs::kBoxDim * sizeof(T));
       multi_fpn_rois_data[lvl - min_level] += funcs::kBoxDim;
-      int index_in_shuffle = num_rois_level_integral[lvl - min_level] +
-                             multi_fpn_rois_lod0[lvl - min_level][i + 1];
-      restore_index_inter[index_in_shuffle] = cur_offset + j;
+      int index_in_shuffle =
+          static_cast<int>(num_rois_level_integral[lvl - min_level] +
+                           multi_fpn_rois_lod0[lvl - min_level][i + 1]);
+      restore_index_inter[index_in_shuffle] = static_cast<int>(cur_offset + j);
       multi_fpn_rois_lod0[lvl - min_level][i + 1]++;
       rois_data += funcs::kBoxDim;
     }
@@ -116,8 +119,8 @@ void DistributeFpnProposalsKernel(
     restore_index_data[restore_index_inter[i]] = i;
   }
 
-  if (multi_level_rois_num.size() > 0) {
-    int batch_size = fpn_rois_lod.size() - 1;
+  if (!multi_level_rois_num.empty()) {
+    int batch_size = static_cast<int>(fpn_rois_lod.size() - 1);
     for (int i = 0; i < num_level; ++i) {
       multi_level_rois_num[i]->Resize({batch_size});
       int* rois_num_data = dev_ctx.template Alloc<int>(multi_level_rois_num[i]);

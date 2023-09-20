@@ -114,20 +114,21 @@ def OpNameNormalizerInitialization(
             insert_new_mutable_attributes(
                 legacy_name, op_compat_item["int_array"]
             )
+            for backward_op in legacy_backward_op_names:
+                insert_new_mutable_attributes(
+                    backward_op, op_compat_item["int_array"]
+                )
 
         if "scalar" in op_compat_item:
             insert_new_mutable_attributes(legacy_name, op_compat_item["scalar"])
+            for backward_op in legacy_backward_op_names:
+                insert_new_mutable_attributes(
+                    backward_op, op_compat_item["scalar"]
+                )
 
-        if "int_array" in op_compat_item:
-            insert_new_mutable_attributes(
-                legacy_name, op_compat_item["int_array"]
-            )
-
-        if "scalar" in op_compat_item:
-            insert_new_mutable_attributes(legacy_name, op_compat_item["scalar"])
-
-    # special op mappings
-    op_name_mappings["fetch_v2"] = "fetch"
+    # special mapping list
+    op_arg_name_mappings["set_value_grad"]["values_grad"] = "ValueTensor@GRAD"
+    op_arg_name_mappings["fetch"] = {"x": "X"}
 
     op_name_normailzer_template = env.get_template("op_compat_info.cc.j2")
     with open(output_source_file, 'wt') as f:

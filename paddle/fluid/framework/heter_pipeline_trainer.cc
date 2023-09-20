@@ -307,7 +307,7 @@ void HeterPipelineTrainer::Run() {
   for (auto& th : threads_) {
     th.join();
   }
-  if (threads_.size() > 0) {
+  if (!threads_.empty()) {
     threads_.clear();
   }
   VLOG(3) << "Epoch Training done";

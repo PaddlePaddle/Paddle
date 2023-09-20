@@ -279,5 +279,6 @@ PD_REGISTER_KERNEL(lerp_grad,
                    ALL_LAYOUT,
                    phi::LerpGradKernel,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    float,
                    double) {}

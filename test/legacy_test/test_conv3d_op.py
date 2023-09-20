@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import (
+from op_test import (
     OpTest,
     convert_float_to_uint16,
     get_numeric_gradient,
@@ -24,7 +24,7 @@ from eager_op_test import (
 from testsuite import create_op
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 def conv3d_forward_naive(
@@ -244,7 +244,7 @@ def create_test_cudnn_bf16_class(parent):
 
             self.check_grad_with_place(
                 place,
-                {'Input', 'Filter'},
+                ['Input', 'Filter'],
                 'Output',
                 user_defined_grads=[numeric_input_grads, numeric_fliter_grads],
                 check_dygraph=(not self.use_mkldnn),
@@ -420,14 +420,14 @@ class TestConv3DOp(OpTest):
                 'Filter': convert_float_to_uint16(filter),
             }
             self.inputs_fp32 = {
-                'Input': OpTest.np_dtype_to_fluid_dtype(input),
-                'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
+                'Input': OpTest.np_dtype_to_base_dtype(input),
+                'Filter': OpTest.np_dtype_to_base_dtype(filter),
             }
         else:
             output = output.astype(self.dtype)
             self.inputs = {
-                'Input': OpTest.np_dtype_to_fluid_dtype(input),
-                'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
+                'Input': OpTest.np_dtype_to_base_dtype(input),
+                'Filter': OpTest.np_dtype_to_base_dtype(filter),
             }
 
         self.attrs = {
@@ -751,8 +751,8 @@ class TestConv3DOp_2(OpTest):
         ).astype(self.dtype)
 
         self.inputs = {
-            'Input': OpTest.np_dtype_to_fluid_dtype(input),
-            'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
+            'Input': OpTest.np_dtype_to_base_dtype(input),
+            'Filter': OpTest.np_dtype_to_base_dtype(filter),
         }
         self.attrs = {
             'strides': self.stride,

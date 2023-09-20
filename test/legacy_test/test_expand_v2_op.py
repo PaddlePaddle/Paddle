@@ -17,11 +17,11 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 
 # Situation 1: shape is a list(without tensor)
@@ -36,18 +36,41 @@ class TestExpandV2OpRank1(OpTest):
         self.attrs = {'shape': self.shape}
         output = np.tile(self.inputs['X'], self.expand_times)
         self.outputs = {'Out': output}
-        self.enable_cinn = True
+        self.if_enable_cinn()
 
     def init_data(self):
         self.ori_shape = [100]
         self.shape = [100]
         self.expand_times = [1]
 
+    def if_enable_cinn(self):
+        pass
+
     def test_check_output(self):
-        self.check_output(check_cinn=self.enable_cinn)
+        self.check_output(check_cinn=True, check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
+
+
+class TestExpandV2OpRank1_ZeroDim1(TestExpandV2OpRank1):
+    def init_data(self):
+        self.ori_shape = []
+        self.shape = [10]
+        self.expand_times = [10]
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
+
+class TestExpandV2OpRank1_ZeroDim2(TestExpandV2OpRank1):
+    def init_data(self):
+        self.ori_shape = []
+        self.shape = []
+        self.expand_times = []
+
+    def if_enable_cinn(self):
+        pass
 
 
 class TestExpandV2OpRank2_DimExpanding(TestExpandV2OpRank1):
@@ -107,10 +130,10 @@ class TestExpandV2OpRank1_tensor_attr(OpTest):
         self.infer_expand_shape = [-1]
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_cinn=True)
+        self.check_grad(['X'], 'Out', check_cinn=True, check_new_ir=True)
 
 
 class TestExpandV2OpRank2_Corner_tensor_attr(TestExpandV2OpRank1_tensor_attr):
@@ -144,10 +167,10 @@ class TestExpandV2OpRank1_tensor(OpTest):
         self.expand_shape = [2, 100]
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_cinn=True)
+        self.check_grad(['X'], 'Out', check_cinn=True, check_new_ir=True)
 
 
 # Situation 4: input x is Integer
@@ -165,7 +188,7 @@ class TestExpandV2OpInteger(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_new_ir=True)
 
 
 #  Situation 5: input x is Bool
@@ -181,7 +204,7 @@ class TestExpandV2OpBoolean(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_new_ir=True)
 
 
 #  Situation 6: input x is Integer
@@ -199,7 +222,7 @@ class TestExpandV2OpInt64_t(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_new_ir=True)
 
 
 #  Situation 7: input x is Float16
@@ -221,7 +244,7 @@ class TestExpandV2FP16Op(OpTest):
         self.check_output(check_cinn=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
 
 #  Situation 8: input x is BF16
@@ -245,18 +268,21 @@ class TestExpandV2BF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_cinn=True)
+        self.check_output_with_place(place, check_cinn=True, check_new_ir=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', check_prim=True, check_new_ir=True
+        )
 
 
 class TestExpandV2Error(unittest.TestCase):
     def test_errors(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace()
+            x1 = base.create_lod_tensor(
+                np.array([[-1]]), [[1]], base.CPUPlace()
             )
             shape = [2, 2]
             self.assertRaises(TypeError, paddle.tensor.expand, x1, shape)
@@ -265,6 +291,7 @@ class TestExpandV2Error(unittest.TestCase):
             x3 = paddle.static.data(name='x3', shape=[-1, 4], dtype="bool")
             x3.stop_gradient = False
             self.assertRaises(ValueError, paddle.tensor.expand, x3, shape)
+        paddle.disable_static()
 
 
 # Test python API
@@ -284,20 +311,20 @@ class TestExpandV2API(unittest.TestCase):
         out_2 = paddle.expand(x, shape=[positive_2, 14])
         out_3 = paddle.expand(x, shape=expand_shape)
 
-        g0 = fluid.backward.calc_gradient(out_2, x)
+        g0 = base.backward.calc_gradient(out_2, x)
 
-        exe = fluid.Executor(place=fluid.CPUPlace())
+        exe = base.Executor(place=base.CPUPlace())
         res_1, res_2, res_3 = exe.run(
-            fluid.default_main_program(),
+            base.default_main_program(),
             feed={
                 "x": input,
                 "expand_shape": np.array([12, 14]).astype("int32"),
             },
             fetch_list=[out_1, out_2, out_3],
         )
-        assert np.array_equal(res_1, np.tile(input, (1, 1)))
-        assert np.array_equal(res_2, np.tile(input, (1, 1)))
-        assert np.array_equal(res_3, np.tile(input, (1, 1)))
+        np.testing.assert_array_equal(res_1, np.tile(input, (1, 1)))
+        np.testing.assert_array_equal(res_2, np.tile(input, (1, 1)))
+        np.testing.assert_array_equal(res_3, np.tile(input, (1, 1)))
 
 
 class TestExpandInferShape(unittest.TestCase):
@@ -317,7 +344,7 @@ class TestExpandInferShape(unittest.TestCase):
 # Test python Dygraph API
 class TestExpandV2DygraphAPI(unittest.TestCase):
     def test_expand_times_is_tensor(self):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             paddle.seed(1)
             a = paddle.rand([2, 5])
             expand_1 = paddle.expand(a, shape=[2, 5])
@@ -350,9 +377,9 @@ class TestExpandDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -381,9 +408,9 @@ class TestExpandTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 

@@ -48,7 +48,7 @@ FleetExecutor::FleetExecutor(const FleetExecutorDesc& exe_desc)
   InitMessageBus();
 }
 
-FleetExecutor::~FleetExecutor() {
+FleetExecutor::~FleetExecutor() {  // NOLINT
   for (const auto& carrier_id : carrier_ids_) {
     GlobalMap<std::string, Carrier>::Get(carrier_id)->Release();
   }
@@ -190,7 +190,7 @@ void FleetExecutor::Init(
       framework::GetUnusedVars(program_desc.Block(0), ops, {});
 
   for (auto& unique_op : ops) {
-    unique_op.release();
+    [[maybe_unused]] auto released_op = unique_op.release();
   }
 
   // NOTE: For inference, the vars in inference_root_scope_vars
@@ -261,7 +261,7 @@ void FleetExecutor::InitMessageBus() {
       addr = ip_port;
     }
   }
-  if (addr == "") {
+  if (addr.empty()) {
     PADDLE_ENFORCE_EQ(
         rank_to_addr.size(),
         1,
@@ -273,9 +273,9 @@ void FleetExecutor::InitMessageBus() {
         platform::errors::NotFound("Address is empty but cur rank is not 0."));
   }
   VLOG(3) << "Current rank is " << cur_rank << " and the ip_port is "
-          << (addr == "" ? "empty" : addr) << ".";
+          << (addr.empty() ? "empty" : addr) << ".";
   VLOG(3) << "The number of ranks are "
-          << (rank_to_addr.size() == 0 ? 1 : rank_to_addr.size()) << ".";
+          << (rank_to_addr.empty() ? 1 : rank_to_addr.size()) << ".";
   VLOG(5) << ss.str();
   GlobalVal<MessageBus>::Get()->Init(cur_rank, rank_to_addr, addr);
 }

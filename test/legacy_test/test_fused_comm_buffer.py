@@ -15,7 +15,7 @@
 import unittest
 
 import paddle
-from paddle.distributed.fleet.meta_parallel.pp_utils.utils import (
+from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     HOOK_ACTION,
     FusedCommBuffer,
 )

@@ -17,11 +17,12 @@ import tempfile
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 from test_basic_api_transformation import dyfunc_to_variable
 
 import paddle
-from paddle import fluid
-from paddle.fluid.dygraph import to_variable
+from paddle import base
+from paddle.base.dygraph import to_variable
 from paddle.jit.api import to_static
 from paddle.jit.dy2static.program_translator import (
     ConcreteProgram,
@@ -29,6 +30,8 @@ from paddle.jit.dy2static.program_translator import (
 )
 from paddle.nn import Layer
 from paddle.static import InputSpec
+
+os.environ['ENABLE_FALL_BACK'] = "False"  # NOTE: ast only
 
 
 class SimpleNet(Layer):
@@ -88,7 +91,7 @@ class SimpleNet(Layer):
 
 class TestStaticFunctionInstance(unittest.TestCase):
     def test_instance_same_class(self):
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+        with base.dygraph.guard(base.CPUPlace()):
             net_1 = SimpleNet()
             net_2 = SimpleNet()
 
@@ -111,8 +114,9 @@ class TestInputSpec(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @test_and_compare_with_new_ir(False)
     def test_with_input_spec(self):
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+        with base.dygraph.guard(base.CPUPlace()):
             x = to_variable(np.ones([4, 10]).astype('float32'))
             y = to_variable(np.ones([4, 10]).astype('float32') * 2)
             int_val = 4.0
@@ -148,7 +152,7 @@ class TestInputSpec(unittest.TestCase):
             out = net.func_with_list_dict([int_np, {'x': x, 'y': y}])
 
     def test_with_error(self):
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+        with base.dygraph.guard(base.CPUPlace()):
             x = to_variable(np.ones([4, 10]).astype('float32'))
             y = to_variable(np.ones([4, 10]).astype('float32') * 2)
             int_val = 4.0
@@ -172,7 +176,7 @@ class TestInputSpec(unittest.TestCase):
                 net.add_func(x, y)
 
     def test_concrete_program(self):
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+        with base.dygraph.guard(base.CPUPlace()):
             x = to_variable(np.ones([4, 10]).astype('float32'))
             y = to_variable(np.ones([4, 10]).astype('float32') * 2)
             int_val = 4.0
@@ -210,8 +214,9 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
     def setUp(self):
         paddle.jit.enable_to_static(True)
 
+    @test_and_compare_with_new_ir(False)
     def test_with_different_input(self):
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+        with base.dygraph.guard(base.CPUPlace()):
             x_data = np.ones([16, 10]).astype('float32')
             y_data = np.ones([10]).astype('float32') * 2
             z_data = np.ones([10]).astype('float32') * 2.2
@@ -295,8 +300,9 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
                 InputSpec([10]), InputSpec([10]), e=4
             )
 
+    @test_and_compare_with_new_ir(False)
     def test_concrete_program(self):
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+        with base.dygraph.guard(base.CPUPlace()):
             # usage 1
             foo_1 = paddle.jit.to_static(
                 foo_func,
@@ -356,7 +362,7 @@ class TestDeclarativeAPI(unittest.TestCase):
         paddle.jit.enable_to_static(False)
         with self.assertRaises(AssertionError):
             # AssertionError: We Only support to_variable in imperative mode,
-            #  please use fluid.dygraph.guard() as context to run it in imperative Mode
+            #  please use base.dygraph.guard() as context to run it in imperative Mode
             func(np.ones(5).astype("int32"))
 
 
@@ -366,6 +372,7 @@ class TestDecorateModelDirectly(unittest.TestCase):
         paddle.jit.enable_to_static(True)
         self.x = to_variable(np.ones([4, 10]).astype('float32'))
 
+    @test_and_compare_with_new_ir(False)
     def test_fake_input(self):
         net = SimpleNet()
         net = to_static(net)
@@ -429,6 +436,7 @@ class CallNonForwardFuncSubNet(paddle.nn.Layer):
 
 
 class TestCallNonForwardFunc(unittest.TestCase):
+    @test_and_compare_with_new_ir(False)
     def test_call_non_forward(self):
         paddle.disable_static()
         net = CallNonForwardFuncNet()
@@ -468,6 +476,7 @@ class TestSetBuffers(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @test_and_compare_with_new_ir(False)
     def test_set_buffers1(self):
         paddle.disable_static()
         net = SetBuffersNet1()

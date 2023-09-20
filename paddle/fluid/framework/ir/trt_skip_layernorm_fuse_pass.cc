@@ -152,6 +152,13 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     }
 
     VLOG(4) << "handle TrtSkipLayerNorm fuse";
+
+    // x and y 's rank must be same
+    if (subgraph.at(x)->Var()->GetShape().size() !=
+        subgraph.at(y)->Var()->GetShape().size()) {
+      return;
+    }
+
     GET_IR_NODE_FROM_SUBGRAPH(elementwise, elementwise, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm, layer_norm, fused_pattern);
@@ -238,7 +245,7 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
     std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
 
-    if (use_varseqlen && pos_id != "" && mask_id != "") {
+    if (use_varseqlen && !pos_id.empty() && !mask_id.empty()) {
       if ((graph->Has(framework::ir::kEmbEltwiseLayernormPass) ||
            graph->Has(framework::ir::kPrelnEmbEltwiseLayernormPass)) &&
           graph->Has(framework::ir::kMultiheadMatmulPass)) {
@@ -249,7 +256,7 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
             "trt_embedding_eltwise_layernorm_fuse_pass, "
             "trt_multihead_matmul_fuse_pass. please use no_varseqlen"));
       }
-    } else if (!use_varseqlen && pos_id == "") {
+    } else if (!use_varseqlen && pos_id.empty()) {
       VLOG(3) << "start no_varseqlen trt_skip_layernorm_fuse_pass";
     } else {
       PADDLE_THROW(

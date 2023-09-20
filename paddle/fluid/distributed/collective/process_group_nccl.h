@@ -26,6 +26,7 @@
 #include "paddle/phi/backends/gpu/forwards.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
 #include "paddle/phi/core/distributed/store/store.h"
 
 namespace paddle {
@@ -219,7 +220,7 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   void SyncCalcStream(const Place& place);
 
   std::shared_ptr<ProcessGroup::Task> RunFnInNCCLEnv(
-      std::function<void(ncclComm_t, gpuStream_t)> fn,
+      std::function<void(gpuStream_t)> fn,
       const phi::DenseTensor& tensor,
       CommType comm_type,
       bool sync_op,
@@ -248,6 +249,8 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
 
   void CreateNCCLManagerCache(const std::string& places_key,
                               const std::vector<Place>& places);
+
+  phi::distributed::NCCLCommContext* GetCommContext();
 
  private:
   std::shared_ptr<phi::distributed::Store> store_;

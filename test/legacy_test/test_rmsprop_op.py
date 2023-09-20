@@ -18,8 +18,8 @@ import numpy as np
 from op import Operator
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def create_selected_rows_and_tensor(
@@ -56,7 +56,7 @@ class TestBase(unittest.TestCase):
     ):
         np.random.seed(5)  # fix seed
 
-        self.scope = fluid.global_scope()
+        self.scope = base.global_scope()
         self.place = place
 
         self.param_name = "param"
@@ -231,12 +231,12 @@ class TestRmspropOp(TestBase):
         size = (128, 320)
         for place in places:
             for centered in [False, True]:
-                with fluid.scope_guard(core.Scope()):
+                with base.scope_guard(core.Scope()):
                     self.check_with_place(
                         place, is_sparse=False, centered=centered, size=size
                     )
 
-                with fluid.scope_guard(core.Scope()):
+                with base.scope_guard(core.Scope()):
                     self.check_with_place(
                         place,
                         is_sparse=True,
@@ -245,7 +245,7 @@ class TestRmspropOp(TestBase):
                         size=size,
                     )
 
-                with fluid.scope_guard(core.Scope()):
+                with base.scope_guard(core.Scope()):
                     self.check_with_place(
                         place,
                         is_sparse=True,
@@ -274,9 +274,9 @@ class TestRMSPropV2(unittest.TestCase):
 
     def test_rmsprop(self):
         paddle.enable_static()
-        place = fluid.CPUPlace()
-        main = fluid.Program()
-        with fluid.program_guard(main):
+        place = base.CPUPlace()
+        main = base.Program()
+        with base.program_guard(main):
             x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
             y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
             y_predict = paddle.static.nn.fc(x, size=1)
@@ -292,9 +292,9 @@ class TestRMSPropV2(unittest.TestCase):
             train_reader = paddle.batch(
                 paddle.dataset.uci_housing.train(), batch_size=1
             )
-            feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
+            feeder = base.DataFeeder(place=place, feed_list=[x, y])
+            exe = base.Executor(place)
+            exe.run(base.default_startup_program())
             for data in train_reader():
                 exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
 
@@ -449,119 +449,6 @@ class TestRMSPropMultiPrecision2_0(unittest.TestCase):
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         optimizer = paddle.optimizer.RMSProp(0.1)
-        optimizer._multi_precision = mp
-
-        if use_amp:
-            optimizer = paddle.static.amp.decorate(
-                optimizer,
-                init_loss_scaling=128.0,
-                use_dynamic_loss_scaling=True,
-                use_pure_fp16=True,
-                use_fp16_guard=False,
-            )
-        with paddle.static.program_guard(train_program, startup_program):
-            if use_amp:
-                data = paddle.static.data(
-                    shape=[2, 2], name='X', dtype='float16'
-                )
-            else:
-                data = paddle.static.data(
-                    shape=[2, 2], name='X', dtype='float32'
-                )
-            hidden = paddle.static.nn.fc(x=data, size=10)
-            loss = paddle.mean(hidden)
-            optimizer.minimize(loss)
-        exe.run(startup_program)
-
-        if use_amp:
-            optimizer.amp_init(
-                place=paddle.CUDAPlace(0), scope=paddle.static.global_scope()
-            )
-            x = np.random.random(size=(2, 2)).astype('float16')
-        else:
-            x = np.random.random(size=(2, 2)).astype('float32')
-        out = []
-        for idx in range(5):
-            (loss_data,) = exe.run(
-                train_program, feed={"X": x}, fetch_list=[loss.name]
-            )
-            out.append(loss_data)
-        return out
-
-    def test_main(self):
-        if not paddle.is_compiled_with_cuda():
-            return
-        "Test dygraph mode"
-        output1_dy, params1_dy = self.dygraph_rmsprop_mp(use_amp=True, mp=True)
-        output2_dy, params2_dy = self.dygraph_rmsprop_mp(
-            use_amp=False, mp=False
-        )
-        np.testing.assert_allclose(
-            output1_dy.astype('float32').numpy(),
-            output2_dy.astype('float32').numpy(),
-            rtol=1e-05,
-            atol=0.1,
-        )
-        for idx in range(len(params1_dy)):
-            np.testing.assert_allclose(
-                params1_dy[idx].astype('float32').numpy(),
-                params2_dy[idx].astype('float32').numpy(),
-                rtol=1e-05,
-                atol=0.1,
-            )
-        "Test static mode"
-        output1_st = self.static_rmsprop_mp(use_amp=True, mp=True)
-        output2_st = self.static_rmsprop_mp(use_amp=False, mp=False)
-        for idx in range(len(output1_st)):
-            np.testing.assert_allclose(
-                output1_st[idx].astype('float32'),
-                output2_st[idx].astype('float32'),
-                rtol=1e-05,
-                atol=0.1,
-            )
-
-
-class TestRMSPropMultiPrecision1_0(unittest.TestCase):
-    def dygraph_rmsprop_mp(self, use_amp, mp):
-        paddle.disable_static()
-        paddle.seed(10)
-        paddle.set_device('gpu')
-        input = paddle.randn((2, 2))
-        model = paddle.nn.Linear(2, 2)
-        optimizer = paddle.fluid.optimizer.RMSProp(
-            learning_rate=0.001,
-            parameter_list=model.parameters(),
-        )
-        optimizer._multi_precision = mp
-        if use_amp:
-            model = paddle.amp.decorate(models=model, level='O2')
-            scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
-
-        for idx in range(5):
-            if use_amp:
-                with paddle.amp.auto_cast(level='O2'):
-                    output = model(input)
-                    loss = paddle.mean(output)
-                scaled = scaler.scale(loss)
-                scaled.backward()
-                scaler.minimize(optimizer, scaled)
-                optimizer.clear_gradients()
-            else:
-                output = model(input)
-                loss = paddle.mean(output)
-                optimizer.minimize(loss)
-                optimizer.clear_gradients()
-
-        return output, model.parameters()
-
-    def static_rmsprop_mp(self, use_amp, mp):
-        paddle.enable_static()
-        paddle.seed(100)
-        np.random.seed(100)
-        exe = paddle.static.Executor('gpu')
-        train_program = paddle.static.Program()
-        startup_program = paddle.static.Program()
-        optimizer = paddle.fluid.optimizer.RMSProp(learning_rate=0.001)
         optimizer._multi_precision = mp
 
         if use_amp:

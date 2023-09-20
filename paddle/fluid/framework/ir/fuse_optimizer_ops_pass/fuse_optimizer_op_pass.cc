@@ -95,8 +95,14 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
   const std::string prefix(details::kFusedVarNamePrefix);
   for (auto &var_name : aux_var_names) {
     // NOTE: the fused_var_name should be unique.
-    auto fused_var_name = prefix + "_" + fuse_op_type + "_" + var_name + "_" +
-                          aux_var_map[var_name][0];
+    std::string fused_var_name;
+    fused_var_name.append(prefix)
+        .append("_")
+        .append(fuse_op_type)
+        .append("_")
+        .append(var_name)
+        .append("_")
+        .append(aux_var_map[var_name][0]);
     VLOG(6) << var_name << ": " << fused_var_name;
     PADDLE_ENFORCE_EQ(
         fused_var_set.count(fused_var_name),
@@ -143,7 +149,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
     // with the kGrad. The gradients of kParamsAndDenseGrads is
     // collected during backward stage, but in optimization state, the
     // some gradient's name maybe changed.
-    if (new_grad_idx.size() == 0) {
+    if (new_grad_idx.empty()) {
       if (!result.Has(details::kFusedGrads)) {
         PADDLE_THROW(platform::errors::PreconditionNotMet(
             "The coalesce_grad_tensor_pass should "
@@ -287,7 +293,7 @@ bool FuseOptimizerOpPass::OpWithKernelSupportCPUAndGPU(
   auto &kernel_factory = phi::KernelFactory::Instance();
   auto kernel_key_map =
       kernel_factory.SelectKernelMap(phi::TransToPhiKernelName(op_type));
-  bool has_op_kernel = kernel_key_map.size() > 0 ? true : false;
+  bool has_op_kernel = !kernel_key_map.empty() ? true : false;
   for (auto &kernel : kernel_key_map) {
     if (platform::is_gpu_place(phi::TransToPhiPlace(kernel.first.backend()))) {
       support_gpu = true;

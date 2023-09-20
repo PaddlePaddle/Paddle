@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
-from paddle import fluid
+from paddle import base
 
 
 class TestSpaceToDepthOp(OpTest):
@@ -75,9 +75,9 @@ class TestSpaceToDepthOp(OpTest):
 
     def test_check_output(self):
         place = (
-            fluid.core.CUDAPlace(0)
-            if fluid.core.is_compiled_with_cuda()
-            else fluid.core.CPUPlace()
+            base.core.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda()
+            else base.core.CPUPlace()
         )
         self.check_output_with_place(
             place=place, atol=1e-5, no_check_set=None, equal_nan=False
@@ -85,9 +85,9 @@ class TestSpaceToDepthOp(OpTest):
 
     def test_check_grad(self):
         place = (
-            fluid.core.CUDAPlace(0)
-            if fluid.core.is_compiled_with_cuda()
-            else fluid.core.CPUPlace()
+            base.core.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda()
+            else base.core.CPUPlace()
         )
         self.check_grad_with_place(place, ['X'], 'Out')
 

@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <array>
 #include <ctime>
 
 #include "paddle/fluid/framework/barrier.h"
@@ -85,9 +86,9 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
       InitializeVariable(ptr, var->GetType());
       if (stat_var_name_map_.find(var->Name()) != stat_var_name_map_.end() &&
           thread_id_ != 0) {
-        int tensor_dim = root_scope_->FindVar(var->Name())
-                             ->GetMutable<phi::DenseTensor>()
-                             ->numel();
+        int tensor_dim = static_cast<int>(root_scope_->FindVar(var->Name())
+                                              ->GetMutable<phi::DenseTensor>()
+                                              ->numel());
         auto *ptr1 = thread_scope_->Var(var->Name());
         InitializeVariable(ptr1, var->GetType());
         phi::DenseTensor *thread_tensor = ptr1->GetMutable<phi::DenseTensor>();
@@ -186,8 +187,8 @@ void HogwildWorker::TrainFilesWithProfiler() {
     op_name.push_back(op->Type());
   }
   op_total_time.resize(ops_.size());
-  for (size_t i = 0; i < op_total_time.size(); ++i) {
-    op_total_time[i] = 0.0;
+  for (double &op_time : op_total_time) {
+    op_time = 0.0;
   }
   platform::Timer timeline;
   double total_time = 0.0;
@@ -212,7 +213,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   device_reader_->InitGraphTrainResource();
 #endif
-  while (1) {
+  while (true) {
     cur_batch = device_reader_->Next();
 #if defined(PADDLE_WITH_GPU_GRAPH)
     if (is_multi_node) {
@@ -240,8 +241,8 @@ void HogwildWorker::TrainFilesWithProfiler() {
     total_time += timeline.ElapsedSec();
     for (size_t i = 0; i < ops_.size(); ++i) {
       bool need_skip = false;
-      for (auto t = 0u; t < skip_ops_.size(); ++t) {
-        if (ops_[i]->Type().find(skip_ops_[t]) != std::string::npos) {
+      for (auto &skip_op : skip_ops_) {
+        if (ops_[i]->Type().find(skip_op) != std::string::npos) {
           need_skip = true;
           break;
         }
@@ -289,7 +290,8 @@ void HogwildWorker::TrainFilesWithProfiler() {
         }
         fprintf(stderr, "mean read time: %fs\n", read_time / batch_cnt);
         fprintf(stderr, "IO percent: %f\n", read_time / total_time * 100);
-        fprintf(stderr, "%6.2f instances/s\n", total_inst / total_time);
+        fprintf(
+            stderr, "%6.2f instances/s\n", total_inst / total_time);  // NOLINT
       }
     }
 #endif
@@ -347,7 +349,7 @@ void HogwildWorker::TrainFiles() {
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   device_reader_->InitGraphTrainResource();
 #endif
-  while (1) {
+  while (true) {
     cur_batch = device_reader_->Next();
 #if defined(PADDLE_WITH_GPU_GRAPH)
     if (is_multi_node) {
@@ -371,8 +373,8 @@ void HogwildWorker::TrainFiles() {
     }
     for (auto &op : ops_) {
       bool need_skip = false;
-      for (auto t = 0u; t < skip_ops_.size(); ++t) {
-        if (op->Type().find(skip_ops_[t]) != std::string::npos) {
+      for (auto &skip_op : skip_ops_) {
+        if (op->Type().find(skip_op) != std::string::npos) {
           need_skip = true;
           break;
         }
@@ -425,12 +427,14 @@ void HogwildWorker::PrintFetchVars() {
   if (thread_id_ == 0 && batch_num_ % batch_per_print == 0) {
     time_t curtime;
     time(&curtime);
-    char mbstr[80];
-    std::strftime(
-        mbstr, sizeof(mbstr), "%Y-%m-%d %H:%M:%S", std::localtime(&curtime));
+    std::array<char, 80> mbstr;
+    std::strftime(mbstr.data(),
+                  sizeof(mbstr),
+                  "%Y-%m-%d %H:%M:%S",
+                  std::localtime(&curtime));
 
     std::stringstream ss;
-    ss << "time: [" << mbstr << "], ";
+    ss << "time: [" << mbstr.data() << "], ";
     ss << "batch: [" << batch_num_ << "], ";
 
     for (int i = 0; i < fetch_var_num; ++i) {

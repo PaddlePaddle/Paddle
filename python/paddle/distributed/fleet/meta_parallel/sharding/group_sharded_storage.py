@@ -30,6 +30,14 @@ from paddle.framework import core
 from .group_sharded_utils import Type, cvt_to_device, device_guard
 
 
+class BufferWarper(core.eager.Tensor):
+    def __init__(self):
+        super().__init__()
+        self.need_clip = True
+        self.is_distributed = False
+        self.trainable = True
+
+
 class InternalStorage:
     """
     This is a basic class, which is responsible for consolidating the basic storage tensor.
@@ -96,6 +104,12 @@ class InternalStorage:
         if dtype is not None:
             self.buffer = self.buffer.cast(dtype=dtype)
             self._dtype = dtype
+
+    def warp_buffer(self):
+        tmp_buffer = BufferWarper()
+        self._buffer = self.buffer
+        tmp_buffer.get_tensor()._share_data_with(self.buffer.get_tensor())
+        self.buffer = tmp_buffer
 
 
 class ParamStorage(InternalStorage):
@@ -286,7 +300,11 @@ class GradStorage(InternalStorage):
         """
         if not self._release:
             for p in self._params:
-                if p.grad is not None:
+                use_main_grad = hasattr(p, "main_grad")
+                if use_main_grad and p.main_grad is not None:
+                    p.main_grad._clear_data()
+                    p.main_grad = None
+                elif p.grad is not None:
                     p.clear_gradient(False)
 
             self.buffer = None

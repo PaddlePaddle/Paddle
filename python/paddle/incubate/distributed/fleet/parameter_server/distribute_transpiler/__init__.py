@@ -27,8 +27,7 @@ from paddle.static import (
     Program,
     Executor,
 )
-from paddle.fluid.compiler import CompiledProgram
-from paddle.fluid.optimizer import Optimizer
+from paddle.base.compiler import CompiledProgram
 
 from paddle.distributed.transpiler.distribute_transpiler import (
     DistributeTranspilerConfig,
@@ -157,7 +156,7 @@ class FleetTranspiler(Fleet):
 
                 if len(dist_varnames) != 0:
                     raise ValueError(
-                        "GeoStrategy can not support large scale embeding now, please use fluid.layers.embedding"
+                        "GeoStrategy can not support large scale embeding now, please use paddle.static.nn.embedding"
                     )
 
                 init_attrs = []
@@ -367,7 +366,7 @@ class FleetTranspiler(Fleet):
             TranspilerOptimizer: subclass of DistributedOptimizer.
         """
 
-        if not isinstance(optimizer, Optimizer):
+        if not isinstance(optimizer, paddle.optimizer.Optimizer):
             raise ValueError("optimizer must be an instance of Optimizer")
         if not self._is_initialized:
             raise ValueError(
@@ -813,8 +812,8 @@ fleet = FleetTranspiler()
 
 class ParameterServerOptimizer(DistributedOptimizer):
     """
-    DistributedOptimizer is a wrapper for paddle.fluid.optimizer
-    A user should pass a paddle.fluid.optimizer to DistributedOptimizer
+    DistributedOptimizer is a wrapper for paddle.base.optimizer
+    A user should pass a paddle.base.optimizer to DistributedOptimizer
     minimize() function is implemented.
     DistributedOptimizer is the starting point for a user who wants to
     run distributed training. The optimized information will be stored in

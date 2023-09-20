@@ -89,7 +89,7 @@ void ConvertSetValueOp(OpDesc* op) {
   op->SetAttr("fp16_values", std::vector<float>());
 
   phi::DataType dtype = phi::DataType::FLOAT32;
-  if (values.size()) {
+  if (!values.empty()) {
     dtype = values.at(0).dtype();
   }
 
@@ -139,7 +139,7 @@ void ConvertProgram(ProgramDesc* program) {
     BlockDesc* block = program->MutableBlock(i);
     const size_t num_ops = block->OpSize();
     for (size_t j = 0; j < num_ops; j++) {
-      OpDesc* op = block->Op(j);
+      OpDesc* op = block->Op(static_cast<int>(j));
       const std::string op_type = op->Type();
       if (op_type == "set_value" || op_type == "set_value_grad") {
         ConvertSetValueOp(op);
@@ -156,7 +156,7 @@ void ConvertSetValueOp(OpDesc* op) {
   if (op->HasAttr("bool_values")) {
     std::vector<int> bool_values =
         PADDLE_GET_CONST(std::vector<int>, op->GetAttr("bool_values", false));
-    if (bool_values.size()) {
+    if (!bool_values.empty()) {
       values = WrapAsScalars(bool_values);
     }
     op->RemoveAttr("bool_values");
@@ -164,7 +164,7 @@ void ConvertSetValueOp(OpDesc* op) {
   if (op->HasAttr("fp32_values")) {
     std::vector<float> fp32_values =
         PADDLE_GET_CONST(std::vector<float>, op->GetAttr("fp32_values", false));
-    if (fp32_values.size()) {
+    if (!fp32_values.empty()) {
       values = WrapAsScalars(fp32_values);
     }
     op->RemoveAttr("fp32_values");
@@ -172,7 +172,7 @@ void ConvertSetValueOp(OpDesc* op) {
   if (op->HasAttr("int32_values")) {
     std::vector<int> int32_values =
         PADDLE_GET_CONST(std::vector<int>, op->GetAttr("int32_values", false));
-    if (int32_values.size()) {
+    if (!int32_values.empty()) {
       values = WrapAsScalars(int32_values);
     }
     op->RemoveAttr("int32_values");
@@ -180,7 +180,7 @@ void ConvertSetValueOp(OpDesc* op) {
   if (op->HasAttr("int64_values")) {
     std::vector<int64_t> int64_values = PADDLE_GET_CONST(
         std::vector<int64_t>, op->GetAttr("int64_values", false));
-    if (int64_values.size()) {
+    if (!int64_values.empty()) {
       values = WrapAsScalars(int64_values);
     }
     op->RemoveAttr("int64_values");
@@ -188,7 +188,7 @@ void ConvertSetValueOp(OpDesc* op) {
   if (op->HasAttr("fp64_values")) {
     std::vector<double> fp64_values = PADDLE_GET_CONST(
         std::vector<double>, op->GetAttr("fp64_values", false));
-    if (fp64_values.size()) {
+    if (!fp64_values.empty()) {
       values = WrapAsScalars(fp64_values);
     }
     op->RemoveAttr("fp64_values");
@@ -196,7 +196,7 @@ void ConvertSetValueOp(OpDesc* op) {
   if (op->HasAttr("fp16_values")) {
     std::vector<float> fp16_values =
         PADDLE_GET_CONST(std::vector<float>, op->GetAttr("fp16_values", false));
-    if (fp16_values.size()) {
+    if (!fp16_values.empty()) {
       values = WrapAsScalars(fp16_values);
     }
     op->RemoveAttr("fp16_values");
@@ -230,7 +230,7 @@ void ConvertProgram(ProgramDesc* program) {
     BlockDesc* block = program->MutableBlock(i);
     const size_t num_ops = block->OpSize();
     for (size_t j = 0; j < num_ops; j++) {
-      OpDesc* op = block->Op(j);
+      OpDesc* op = block->Op(static_cast<int>(j));
       const std::string op_type = op->Type();
       if (!legacy_op_versions.count(op_type)) {
         continue;

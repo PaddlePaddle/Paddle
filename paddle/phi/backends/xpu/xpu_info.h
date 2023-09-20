@@ -95,6 +95,8 @@ class XPUDeviceGuard {
 enum XPUVersion { XPU1, XPU2 };
 XPUVersion get_xpu_version(int dev_id);
 
+int get_xpu_max_ptr_size(int dev_id);
+
 }  // namespace xpu
 }  // namespace backends
 }  // namespace phi

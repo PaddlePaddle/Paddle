@@ -16,11 +16,11 @@
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
+from paddle.base.framework import _current_expected_place
 from paddle.common_ops_import import Variable
-from paddle.fluid.framework import _current_expected_place
-from paddle.framework import in_dynamic_mode
+from paddle.framework import in_dynamic_mode, in_dynamic_or_pir_mode
 
-from ..fluid.data_feeder import (
+from ..base.data_feeder import (
     check_dtype,
     check_shape,
     check_type,
@@ -102,7 +102,7 @@ def poisson(x, name=None):
 
     Args:
         x(Tensor):  A tensor with rate parameter of poisson Distribution. The data type
-            should be float32, float64.
+            should be bfloat16, float16, float32, float64.
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
@@ -183,10 +183,6 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
 
     """
 
-    assert (
-        not core.is_compiled_with_rocm()
-    ), "multinomial op is not supported on ROCM yet."
-
     if in_dynamic_mode():
         return _C_ops.multinomial(x, num_samples, replacement)
     else:
@@ -259,7 +255,7 @@ def uniform_random_batch_size_like(
     Examples:
         .. code-block:: python
             import paddle
-            import paddle.fluid as fluid
+            import paddle.base as base
             from paddle.tensor import random
             paddle.enable_static()
             # example 1:
@@ -327,7 +323,7 @@ def gaussian(shape, mean=0.0, std=1.0, seed=0, dtype=None, name=None):
         distribution, with ``shape`` and ``dtype``.
     """
     op_type_for_check = 'gaussian/standard_normal/randn/normal'
-    supported_dtypes = ['float32', 'float64', 'float16', 'uint16']
+    supported_dtypes = ['float32', 'float64', 'float16', 'uint16', 'bfloat16']
 
     if dtype is None:
         dtype = paddle.framework.get_default_dtype()
@@ -649,7 +645,7 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         shape = paddle.utils.convert_shape_to_list(shape)
         return _C_ops.uniform(
             shape,

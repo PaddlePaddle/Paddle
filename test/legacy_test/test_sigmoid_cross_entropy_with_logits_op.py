@@ -15,17 +15,19 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 from scipy.special import expit, logit
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, program_guard
+from paddle import base
+from paddle.base import Program, program_guard
 
 
-def loss_wrapper(logit, label, normalize=False, ignore_index=-100):
+def loss_wrapper(
+    logit, label, pos_weight=None, normalize=False, ignore_index=-100
+):
     out = paddle._C_ops.sigmoid_cross_entropy_with_logits(
-        logit, label, normalize, ignore_index
+        logit, label, pos_weight, normalize, ignore_index
     )
     return out
 
@@ -129,6 +131,44 @@ class TestSigmoidCrossEntropyWithLogitsOp3(OpTest):
         term1 = self.inputs['Label'] * np.log(sigmoid_X)
         term2 = (1 - self.inputs['Label']) * np.log(1 - sigmoid_X)
         self.outputs = {'Out': -term1 - term2}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestSigmoidCrossEntropyWithLogitsOp4(OpTest):
+    """Test sigmoid_cross_entropy_with_logit_op with probabalistic label"""
+
+    def setUp(self):
+        self.op_type = "sigmoid_cross_entropy_with_logits"
+        self.python_api = loss_wrapper
+        batch_size = 64
+        num_classes = 20
+
+        x = logit(
+            np.random.uniform(0, 1, (batch_size, num_classes)).astype("float64")
+        )
+        label = np.random.uniform(0, 1, (batch_size, num_classes)).astype(
+            "float64"
+        )
+        pos_weight = np.random.uniform(0, 1, (batch_size, num_classes)).astype(
+            "float64"
+        )
+        self.inputs = {
+            'X': x,
+            'Label': label,
+            'pos_weight': pos_weight,
+        }
+
+        # Fw Pass is implemented as elementwise sigmoid followed by
+        # elementwise logistic loss
+        term1 = np.maximum(self.inputs['X'], 0)
+        term2 = self.inputs['X'] * self.inputs['Label']
+        term3 = np.log(1 + np.exp(-1 * np.abs(self.inputs['X']))) * pos_weight
+        self.outputs = {'Out': term1 - term2 + term3}
 
     def test_check_output(self):
         self.check_output()
@@ -281,15 +321,15 @@ class TestSigmoidCrossEntropyWithNorm2(OpTest):
 
                 def test_Variable():
                     # the input of sigmoid_cross_entropy_with_logits must be Variable.
-                    x1 = fluid.create_lod_tensor(
+                    x1 = base.create_lod_tensor(
                         np.array([-1, 3, 5, 5]),
                         [[1, 1, 1, 1]],
-                        fluid.CPUPlace(),
+                        base.CPUPlace(),
                     )
-                    lab1 = fluid.create_lod_tensor(
+                    lab1 = base.create_lod_tensor(
                         np.array([-1, 3, 5, 5]),
                         [[1, 1, 1, 1]],
-                        fluid.CPUPlace(),
+                        base.CPUPlace(),
                     )
                     paddle.nn.functional.binary_cross_entropy_with_logits(
                         x1, lab1

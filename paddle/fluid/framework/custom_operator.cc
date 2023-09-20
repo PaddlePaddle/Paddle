@@ -28,9 +28,6 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/custom_operator_utils.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
@@ -41,7 +38,11 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/utils/any.h"
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/capi/include/c_infer_meta_context.h"
+#include "paddle/phi/capi/include/c_kernel_registry.h"
+#include "paddle/phi/capi/include/c_meta_tensor.h"
 #endif
 
 #include "paddle/phi/api/include/operants_manager.h"
@@ -269,8 +270,8 @@ static void RunKernelFunc(
 
     FLAGS_tensor_operants_mode = "phi";
     if (paddle::OperantsManager::Instance().phi_operants.get() == nullptr) {
-      paddle::OperantsManager::Instance().phi_operants.reset(
-          new paddle::operants::PhiTensorOperants());
+      paddle::OperantsManager::Instance().phi_operants =
+          std::make_unique<paddle::operants::PhiTensorOperants>();
       VLOG(4) << "Initialize phi tensor operants successfully";
     }
 
@@ -309,6 +310,7 @@ static void RunKernelFunc(
       true_out_meta->dtype = calc_out->dtype();
       true_out_meta->layout = calc_out->layout();
       true_out_meta->offset = calc_out->offset();
+      true_out_meta->strides = true_out_meta->calc_strides(true_out_meta->dims);
       // lod no need to be reset
       // reset holder if needed
       if (true_out->Holder() != calc_out->Holder()) {
@@ -532,8 +534,7 @@ static void RunInferShapeFunc(
       << inplace_map.size()
       << ", output_shapes.size() = " << output_shapes.size();
   size_t output_shape_idx = 0;
-  for (size_t i = 0; i < outputs.size(); ++i) {
-    auto out_name = outputs[i];
+  for (auto out_name : outputs) {
     if (detail::IsDuplicableVar(out_name)) {
       PADDLE_ENFORCE(
           inplace_reverse_map.find(out_name) != inplace_reverse_map.end(),
@@ -652,8 +653,8 @@ static void RunDefaultInferDtypeFunc(
       if (detail::IsDuplicableVar(pair.first)) {
         size_t size = ctx->InputSize(pair.first);
         for (size_t i = 0; i < size; ++i) {
-          auto dtype = ctx->GetInputDataType(pair.first, i);
-          ctx->SetOutputDataType(pair.second, dtype, i);
+          auto dtype = ctx->GetInputDataType(pair.first, static_cast<int>(i));
+          ctx->SetOutputDataType(pair.second, dtype, static_cast<int>(i));
         }
       } else {
         auto dtype = ctx->GetInputDataType(pair.first);
@@ -668,6 +669,7 @@ static void RunInferDtypeFunc(
     const paddle::InferDtypeFunc& func,
     const std::vector<std::string>& inputs,
     const std::vector<std::string>& outputs,
+    const std::vector<std::string>& attrs,
     const std::unordered_map<std::string, std::string>& inplace_map,
     const std::unordered_map<std::string, std::string>& inplace_reverse_map) {
   std::vector<DataType> input_dtypes;
@@ -679,7 +681,7 @@ static void RunInferDtypeFunc(
       std::vector<DataType> vec_custom_dtype;
       if (ctx->HasInput(in_name)) {  // general inputs
         for (size_t i = 0; i < ctx->InputSize(in_name); ++i) {
-          auto dtype = ctx->GetInputDataType(in_name, i);
+          auto dtype = ctx->GetInputDataType(in_name, static_cast<int>(i));
           vec_custom_dtype.emplace_back(
               paddle::framework::TransToPhiDataType(dtype));
         }
@@ -710,8 +712,51 @@ static void RunInferDtypeFunc(
     }
   }
 
+  std::vector<paddle::any> custom_attrs;
+  for (auto& attr_str : attrs) {
+    auto attr_name_and_type = paddle::ParseAttrStr(attr_str);
+    auto attr_name = attr_name_and_type[0];
+    auto attr_type_str = attr_name_and_type[1];
+    if (attr_type_str == "bool") {
+      custom_attrs.emplace_back(
+          PADDLE_GET_CONST(bool, ctx->GetAttr(attr_name)));
+    } else if (attr_type_str == "int") {
+      custom_attrs.emplace_back(PADDLE_GET_CONST(int, ctx->GetAttr(attr_name)));
+    } else if (attr_type_str == "float") {
+      custom_attrs.emplace_back(
+          PADDLE_GET_CONST(float, ctx->GetAttr(attr_name)));
+    } else if (attr_type_str == "int64_t") {
+      custom_attrs.emplace_back(
+          PADDLE_GET_CONST(int64_t, ctx->GetAttr(attr_name)));
+    } else if (attr_type_str == "std::string") {
+      custom_attrs.emplace_back(
+          PADDLE_GET_CONST(std::string, ctx->GetAttr(attr_name)));
+    } else if (attr_type_str == "std::vector<int>") {
+      custom_attrs.emplace_back(
+          PADDLE_GET_CONST(std::vector<int>, ctx->GetAttr(attr_name)));
+    } else if (attr_type_str == "std::vector<float>") {
+      custom_attrs.emplace_back(
+          PADDLE_GET_CONST(std::vector<float>, ctx->GetAttr(attr_name)));
+    } else if (attr_type_str == "std::vector<int64_t>") {
+      custom_attrs.emplace_back(
+          PADDLE_GET_CONST(std::vector<int64_t>, ctx->GetAttr(attr_name)));
+    } else if (attr_type_str == "std::vector<std::string>") {
+      custom_attrs.emplace_back(
+          PADDLE_GET_CONST(std::vector<std::string>, ctx->GetAttr(attr_name)));
+    } else {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Unsupported `%s` type value as custom attribute now. "
+          "Supported data types include `bool`, `int`, `float`, "
+          "`int64_t`, `std::string`, `std::vector<int>`, "
+          "`std::vector<float>`, `std::vector<int64_t>`, "
+          "`std::vector<std::string>`, Please check whether the attribute data "
+          "type and data type string are matched.",
+          attr_type_str));
+    }
+  }
+
   VLOG(3) << "Custom Operator: InferDtype - infer output dtype.";
-  auto output_dtypes = func(input_dtypes, vec_input_dtypes);
+  auto output_dtypes = func(input_dtypes, vec_input_dtypes, custom_attrs);
   if (inplace_map.empty()) {
     PADDLE_ENFORCE_EQ(outputs.size(),
                       output_dtypes.size(),
@@ -740,8 +785,7 @@ static void RunInferDtypeFunc(
       << inplace_map.size()
       << ", output_dtypes.size() = " << output_dtypes.size();
   size_t output_dtype_idx = 0;
-  for (size_t i = 0; i < outputs.size(); ++i) {
-    auto out_name = outputs[i];
+  for (auto out_name : outputs) {
     if (detail::IsDuplicableVar(out_name)) {
       PADDLE_ENFORCE(
           inplace_reverse_map.find(out_name) != inplace_reverse_map.end(),
@@ -755,8 +799,8 @@ static void RunInferDtypeFunc(
       if (ctx->HasOutput(out_name)) {
         size_t size = ctx->InputSize(in_name);
         for (size_t i = 0; i < size; ++i) {
-          auto dtype = ctx->GetInputDataType(in_name, i);
-          ctx->SetOutputDataType(out_name, dtype, i);
+          auto dtype = ctx->GetInputDataType(in_name, static_cast<int>(i));
+          ctx->SetOutputDataType(out_name, dtype, static_cast<int>(i));
         }
       } else {
         PADDLE_ENFORCE(
@@ -843,289 +887,6 @@ class CustomOperator : public OperatorWithKernel {
   }
 };
 
-class CustomOpMaker : public OpProtoAndCheckerMaker {
- public:
-  explicit CustomOpMaker(const std::vector<std::string>& inputs,
-                         const std::vector<std::string>& outputs,
-                         const std::vector<std::string>& attrs)
-      : inputs_(inputs), outputs_(outputs), attrs_(attrs) {}
-
-  void Make() override {
-    for (auto& in_name : inputs_) {
-      auto input_var_builder =
-          AddInput(in_name, "The input " + in_name + "of Custom operator.");
-      if (detail::IsDuplicableVar(in_name)) {
-        input_var_builder.AsDuplicable();
-      }
-      if (detail::IsOptionalVar(in_name)) {
-        input_var_builder.AsDispensable();
-      }
-    }
-    for (auto& out_name : outputs_) {
-      auto output_var_builder =
-          AddOutput(out_name, "The output " + out_name + "of Custom Operator.");
-      if (detail::IsDuplicableVar(out_name)) {
-        output_var_builder.AsDuplicable();
-      }
-      if (detail::IsOptionalVar(out_name)) {
-        output_var_builder.AsDispensable();
-      }
-    }
-    for (auto& attr : attrs_) {
-      auto attr_name_and_type = paddle::ParseAttrStr(attr);
-      auto attr_name = attr_name_and_type[0];
-      auto attr_type_str = attr_name_and_type[1];
-      if (attr_type_str == "bool") {
-        AddAttr<bool>(attr_name, "custom operator bool attribute.")
-            .SetDefault(false);
-      } else if (attr_type_str == "int") {
-        AddAttr<int>(attr_name, "custom operator int attribute.").SetDefault(1);
-      } else if (attr_type_str == "float") {
-        AddAttr<float>(attr_name, "custom operator float attribute.")
-            .SetDefault(1.0f);
-      } else if (attr_type_str == "int64_t") {
-        AddAttr<int64_t>(attr_name, "custom operator int64_t attribute.")
-            .SetDefault(1);
-      } else if (attr_type_str == "std::string") {
-        AddAttr<std::string>(attr_name, "custom operator int attribute.")
-            .SetDefault("");
-      } else if (attr_type_str == "std::vector<int>") {
-        AddAttr<std::vector<int>>(attr_name,
-                                  "custom operator std::vector<int> attribute.")
-            .SetDefault({});
-      } else if (attr_type_str == "std::vector<float>") {
-        AddAttr<std::vector<float>>(
-            attr_name, "custom operator std::vector<float> attribute.")
-            .SetDefault({});
-      } else if (attr_type_str == "std::vector<int64_t>") {
-        AddAttr<std::vector<int64_t>>(
-            attr_name, "custom operator std::vector<int64_t> attribute.")
-            .SetDefault({});
-      } else if (attr_type_str == "std::vector<std::string>") {
-        AddAttr<std::vector<std::string>>(
-            attr_name, "custom operator std::vector<std::string> attribute.")
-            .SetDefault({});
-      } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Unsupported `%s` type value as custom attribute now. "
-            "Supported data types include `bool`, `int`, `float`, "
-            "`int64_t`, `std::string`, `std::vector<int>`, "
-            "`std::vector<float>`, `std::vector<int64_t>`, "
-            "`std::vector<std::string>`, Please check whether "
-            "the attribute data type and data type string are matched.",
-            attr_type_str));
-      }
-    }
-    AddComment(R"DOC(
-Custom Operator.
-
-According to the phi::DenseTensor operation function implemented by the user
-independently of the framework, it is encapsulated into a framework
-operator to adapt to various execution scenarios such as dynamic graph
-mode, static graph mode, and inference mode.
-
-)DOC");
-  }
-
- private:
-  std::vector<std::string> inputs_;
-  std::vector<std::string> outputs_;
-  std::vector<std::string> attrs_;
-};
-
-template <typename T>
-class CustomGradOpMaker;
-
-template <>
-class CustomGradOpMaker<OpDesc> : public SingleGradOpMaker<OpDesc> {
- public:
-  explicit CustomGradOpMaker(
-      const OpDesc& fwd_op,
-      const std::unordered_set<std::string>& no_grad_set,
-      std::unordered_map<std::string, std::string>* grad_to_var,
-      const std::vector<BlockDesc*>& grad_block,
-      const std::string& name,
-      const std::vector<std::string>& inputs,
-      const std::vector<std::string>& outputs,
-      bool is_double_grad)
-      : SingleGradOpMaker<OpDesc>(fwd_op, no_grad_set, grad_to_var, grad_block),
-        name_(name),
-        inputs_(inputs),
-        outputs_(outputs),
-        is_double_grad_(is_double_grad) {}
-
- protected:
-  void Apply(GradOpPtr<OpDesc> grad_op) const override {
-    grad_op->SetType(name_);
-
-    auto fwd_op_inputs = this->InputNames();
-    auto fwd_op_outputs = this->OutputNames();
-
-    for (auto& in_name : inputs_) {
-      VLOG(3) << "Custom Operator: GradOpDescMaker - input: " << in_name;
-      if (!detail::IsGradVar(in_name, is_double_grad_)) {
-        if (detail::IsMemberOf(fwd_op_inputs, in_name)) {
-          grad_op->SetInput(in_name, this->Input(in_name));
-        } else if (detail::IsMemberOf(fwd_op_outputs, in_name)) {
-          grad_op->SetInput(in_name, this->Output(in_name));
-        } else {
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "The input tensor name `%s` is invalid, expected it is the input "
-              "or output of forward operator.",
-              in_name));
-        }
-      } else {
-        if (this->HasOutput(detail::NoGrad(in_name))) {
-          grad_op->SetInput(in_name, this->OutputGrad(detail::NoGrad(in_name)));
-        } else {
-          // Maybe visit here! handle inplace optional case
-          PADDLE_ENFORCE(
-              in_name.find(paddle::kOptionalSuffix) != std::string::npos,
-              phi::errors::InvalidArgument(
-                  "Custom operator couldn't find grad operator input name for "
-                  "%s. If you are using inplace optional inputs & outputs, "
-                  "please check your InplaceMap and `Outputs` again and make "
-                  "sure %s is wrapped by `paddle::Optional`",
-                  in_name,
-                  in_name));
-          VLOG(3) << "Custom Operator: GradOpDescMaker - handle unfound input: "
-                  << in_name;
-        }
-      }
-    }
-    for (auto& out_name : outputs_) {
-      // Handle inplace optional case
-      if (!this->HasInput(detail::NoGrad(out_name, is_double_grad_))) {
-        PADDLE_ENFORCE(
-            out_name.find(paddle::kOptionalSuffix) != std::string::npos,
-            phi::errors::InvalidArgument(
-                "Custom operator couldn't find grad operator output name for "
-                "%s. If you are using inplace optional inputs & outputs, "
-                "please check your InplaceMap and `Outputs` again and make "
-                "sure %s is wrapped by `paddle::Optional`",
-                out_name,
-                out_name));
-        VLOG(3) << "Custom Operator: GradOpDescMaker - handle unfound output: "
-                << out_name;
-        continue;
-      }
-      VLOG(3) << "Custom Operator: GradOpDescMaker - output: " << out_name;
-      if (detail::IsDuplicableVar(out_name)) {
-        grad_op->SetOutput(
-            out_name,
-            this->InputGrad(detail::NoGrad(out_name, is_double_grad_),
-                            /*drop_empty_grad=*/false));
-      } else {
-        grad_op->SetOutput(
-            out_name,
-            this->InputGrad(detail::NoGrad(out_name, is_double_grad_)));
-      }
-    }
-    grad_op->SetAttrMap(this->Attrs());
-  }
-
- private:
-  std::string name_;
-  std::vector<std::string> inputs_;
-  std::vector<std::string> outputs_;
-  bool is_double_grad_{false};
-};
-
-template <>
-class CustomGradOpMaker<imperative::OpBase>
-    : public SingleGradOpMaker<imperative::OpBase> {
- public:
-  explicit CustomGradOpMaker(
-      const std::string& type,
-      const imperative::NameVarBaseMap& var_base_map_in,
-      const imperative::NameVarBaseMap& var_base_map_out,
-      const AttributeMap& attrs,
-      const std::map<std::string, std::string>& inplace_map,
-      const std::string& name,
-      const std::vector<std::string>& inputs,
-      const std::vector<std::string>& outputs,
-      bool is_double_grad)
-      : SingleGradOpMaker<imperative::OpBase>(
-            type, var_base_map_in, var_base_map_out, attrs, inplace_map),
-        name_(name),
-        inputs_(inputs),
-        outputs_(outputs),
-        is_double_grad_(is_double_grad) {}
-
- protected:
-  // TODO(chenweihang): The code is duplicated with the previous one, because
-  // ere OpMaker's Input, Output and other methods are protected. Putting the
-  // function implementation outside the class will cause the method to be
-  // uncallable,
-  // so it is still implemented in the class for the time being.
-  void Apply(GradOpPtr<imperative::OpBase> grad_op) const override {
-    grad_op->SetType(name_);
-
-    auto fwd_op_inputs = this->InputNames();
-    auto fwd_op_outputs = this->OutputNames();
-
-    for (auto& in_name : inputs_) {
-      VLOG(3) << "Custom Operator: GradOpBaseMaker - input: " << in_name;
-      if (!detail::IsGradVar(in_name, is_double_grad_)) {
-        if (detail::IsMemberOf(fwd_op_inputs, in_name)) {
-          grad_op->SetInput(in_name, this->Input(in_name));
-        } else if (detail::IsMemberOf(fwd_op_outputs, in_name)) {
-          grad_op->SetInput(in_name, this->Output(in_name));
-        } else {
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "The input tensor name `%s` is invalid, expected it is the input "
-              "or output of forward operator.",
-              in_name));
-        }
-      } else {
-        // Handle inplace optional case
-        if (this->HasOutput(detail::NoGrad(in_name))) {
-          grad_op->SetInput(in_name, this->OutputGrad(detail::NoGrad(in_name)));
-        } else {
-          PADDLE_ENFORCE(
-              in_name.find(paddle::kOptionalSuffix) != std::string::npos,
-              phi::errors::InvalidArgument(
-                  "Custom operator couldn't find grad operator input name for "
-                  "%s. If you are using inplace optional inputs & outputs, "
-                  "please check your InplaceMap and `Outputs` again and make "
-                  "sure %s is wrapped by `paddle::Optional`",
-                  in_name,
-                  in_name));
-          VLOG(3) << "Custom Operator: GradOpBaseMaker - handle unfound input: "
-                  << in_name;
-        }
-      }
-    }
-    for (auto& out_name : outputs_) {
-      // Handle inplace optional case
-      if (!this->HasInput(detail::NoGrad(out_name, is_double_grad_))) {
-        PADDLE_ENFORCE(
-            out_name.find(paddle::kOptionalSuffix) != std::string::npos,
-            phi::errors::InvalidArgument(
-                "Custom operator couldn't find grad operator output name for "
-                "%s. If you are using inplace optional inputs & outputs, "
-                "please check your InplaceMap and `Outputs` again and make "
-                "sure %s is wrapped by `paddle::Optional`",
-                out_name,
-                out_name));
-        VLOG(3) << "Custom Operator: GradOpBaseMaker - handle unfound output: "
-                << out_name;
-        continue;
-      }
-      VLOG(3) << "Custom Operator: GradOpBaseMaker - output: " << out_name;
-      grad_op->SetOutput(
-          out_name, this->InputGrad(detail::NoGrad(out_name, is_double_grad_)));
-    }
-    grad_op->SetAttrMap(this->Attrs());
-  }
-
- private:
-  std::string name_;
-  std::vector<std::string> inputs_;
-  std::vector<std::string> outputs_;
-  bool is_double_grad_{false};
-};
-
 //////////// Operator and Kernel Register //////////////
 
 static void RegisterOperatorKernelWithPlace(
@@ -1155,11 +916,12 @@ static void RegisterOperatorKernel(
   OperatorWithKernel::OpKernelFunc op_kernel_func;
   if (kernel_func) {
     VLOG(3) << "Register custom operator " << name << " with kernel func";
-    op_kernel_func = [kernel_func, inputs, outputs, attrs, inplace_map](
-                         const framework::ExecutionContext& ctx) {
-      VLOG(3) << "Custom Operator: run custom kernel func in lambda.";
-      RunKernelFunc(ctx, kernel_func, inputs, outputs, attrs, inplace_map);
-    };
+    op_kernel_func =
+        [kernel_func, inputs, outputs, attrs, inplace_map](  // NOLINT
+            const framework::ExecutionContext& ctx) {
+          VLOG(3) << "Custom Operator: run custom kernel func in lambda.";
+          RunKernelFunc(ctx, kernel_func, inputs, outputs, attrs, inplace_map);
+        };
   } else {
     VLOG(3) << "Register custom operator " << name
             << " with raw op kernel func";
@@ -1185,14 +947,10 @@ static void RegisterOperatorKernel(
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
   for (const auto& dev_type : device_types) {
-    for (size_t dev_id = 0;
-         dev_id < phi::DeviceManager::GetDeviceCount(dev_type);
-         dev_id++) {
-      RegisterOperatorKernelWithPlace(name,
-                                      op_kernel_func,
-                                      proto::VarType::RAW,
-                                      platform::CustomPlace(dev_type, dev_id));
-    }
+    RegisterOperatorKernelWithPlace(name,
+                                    op_kernel_func,
+                                    proto::VarType::RAW,
+                                    platform::CustomPlace(dev_type));
   }
 #endif
 }
@@ -1268,12 +1026,12 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
   // InferShape
   if (infer_shape_func == nullptr) {
     // use default InferShape
-    info.infer_shape_ =
-        [op_inputs, op_outputs, op_inplace_map](InferShapeContext* ctx) {
-          RunDefaultInferShapeFunc(ctx, op_inputs, op_outputs, op_inplace_map);
-        };
+    info.infer_shape_ = [op_inputs, op_outputs, op_inplace_map](  // NOLINT
+                            InferShapeContext* ctx) {
+      RunDefaultInferShapeFunc(ctx, op_inputs, op_outputs, op_inplace_map);
+    };
   } else {
-    info.infer_shape_ = [op_inputs,
+    info.infer_shape_ = [op_inputs,  // NOLINT
                          op_outputs,
                          op_attrs,
                          op_inplace_map,
@@ -1292,13 +1050,14 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
   // Infer Dtype
   if (infer_dtype_func == nullptr) {
     // use default InferDtype
-    info.infer_var_type_ =
-        [op_inputs, op_outputs, op_inplace_map](InferVarTypeContext* ctx) {
-          RunDefaultInferDtypeFunc(ctx, op_inputs, op_outputs, op_inplace_map);
-        };
+    info.infer_var_type_ = [op_inputs, op_outputs, op_inplace_map](  // NOLINT
+                               InferVarTypeContext* ctx) {
+      RunDefaultInferDtypeFunc(ctx, op_inputs, op_outputs, op_inplace_map);
+    };
   } else {
-    info.infer_var_type_ = [op_inputs,
+    info.infer_var_type_ = [op_inputs,  // NOLINT
                             op_outputs,
+                            op_attrs,
                             op_inplace_map,
                             op_inplace_reverse_map,
                             infer_dtype_func](InferVarTypeContext* ctx) {
@@ -1306,6 +1065,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
                         infer_dtype_func,
                         op_inputs,
                         op_outputs,
+                        op_attrs,
                         op_inplace_map,
                         op_inplace_reverse_map);
     };
@@ -1334,6 +1094,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
         OpMetaInfoHelper::GetInplaceReverseMap(cur_grad_op);
     auto& grad_kernel_fn = OpMetaInfoHelper::GetKernelFn(cur_grad_op);
     auto& grad_infer_shape_fn = OpMetaInfoHelper::GetInferShapeFn(cur_grad_op);
+    auto& grad_infer_dtype_fn = OpMetaInfoHelper::GetInferDtypeFn(cur_grad_op);
 
     VLOG(3) << "Custom Operator: backward, op name: " << grad_op_name;
     VLOG(3) << "Custom Operator: backward, op inputs: "
@@ -1353,7 +1114,10 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
 
     // GradOpDescMaker
     info.grad_op_maker_ =
-        [grad_op_name, grad_op_inputs, grad_op_outputs, is_double_grad](
+        [grad_op_name,  // NOLINT
+         grad_op_inputs,
+         grad_op_outputs,
+         is_double_grad](
             const OpDesc& fwd_op,
             const std::unordered_set<std::string>& no_grad_set,
             std::unordered_map<std::string, std::string>* grad_to_var,
@@ -1371,7 +1135,10 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
 
     // GradOpBaseMaker
     info.dygraph_grad_op_maker_ =
-        [grad_op_name, grad_op_inputs, grad_op_outputs, is_double_grad](
+        [grad_op_name,  // NOLINT
+         grad_op_inputs,
+         grad_op_outputs,
+         is_double_grad](
             const std::string& type,
             const imperative::NameVarBaseMap& var_base_map_in,
             const imperative::NameVarBaseMap& var_base_map_out,
@@ -1411,7 +1178,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
 
     // Grad InferShape
     if (grad_infer_shape_fn == nullptr) {
-      grad_info.infer_shape_ = [grad_op_inputs,
+      grad_info.infer_shape_ = [grad_op_inputs,  // NOLINT
                                 grad_op_outputs,
                                 is_double_grad](InferShapeContext* ctx) {
         // 1. if forward input exists, gradient's shape is same with forward
@@ -1449,7 +1216,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
         }
       };
     } else {
-      grad_info.infer_shape_ = [grad_op_inputs,
+      grad_info.infer_shape_ = [grad_op_inputs,  // NOLINT
                                 grad_op_outputs,
                                 grad_op_attrs,
                                 grad_op_inplace_map,
@@ -1463,6 +1230,25 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
                           grad_op_inplace_map,
                           grad_op_inplace_reverse_map);
       };
+    }
+
+    // Grad InferDtype
+    if (grad_infer_dtype_fn != nullptr) {
+      grad_info.infer_var_type_ =
+          [grad_op_inputs,  // NOLINT
+           grad_op_outputs,
+           grad_op_attrs,
+           grad_op_inplace_map,
+           grad_op_inplace_reverse_map,
+           grad_infer_dtype_fn](InferVarTypeContext* ctx) {
+            RunInferDtypeFunc(ctx,
+                              grad_infer_dtype_fn,
+                              grad_op_inputs,
+                              grad_op_outputs,
+                              grad_op_attrs,
+                              grad_op_inplace_map,
+                              grad_op_inplace_reverse_map);
+          };
     }
 
     // Kernel func
@@ -1512,3 +1298,112 @@ LoadOpMetaInfoAndRegisterOp(const std::string& dso_name) {
 
 }  // namespace framework
 }  // namespace paddle
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+void PD_RegisterOperator(const char* kernel_name_cstr,
+                         size_t in_nargs,
+                         PD_KernelArgumentType* in_args_type,
+                         size_t attr_nargs,
+                         PD_KernelArgumentType* attr_args_type,
+                         size_t out_nargs,
+                         PD_KernelArgumentType* out_args_type,
+                         void (*infer_shape_fn)(PD_InferMetaContext*)) {
+  std::string kernel_name(kernel_name_cstr);
+  if (infer_shape_fn &&
+      !paddle::framework::OpInfoMap::Instance().Has(kernel_name)) {
+    VLOG(8) << "Registering a new operator: " << kernel_name;
+
+    std::vector<std::string> op_inputs, op_outputs, op_attrs;
+
+    for (size_t i = 0; i < in_nargs; ++i) {
+      if (in_args_type[i] == PD_KernelArgumentType::PD_ARG_TYPE_TENSOR) {
+        op_inputs.push_back("Input_" + std::to_string(i));
+      } else if (in_args_type[i] ==
+                 PD_KernelArgumentType::PD_ARG_TYPE_LIST_TENSOR) {
+        op_inputs.push_back("Input_" + std::to_string(i) +
+                            paddle::kTensorVectorSuffix);
+      } else if (in_args_type[i] ==
+                 PD_KernelArgumentType::PD_ARG_TYPE_OPTIONAL_TENSOR) {
+        op_inputs.push_back("Input_" + std::to_string(i) +
+                            paddle::kOptionalSuffix);
+      } else {
+        op_inputs.push_back("Input_unknown");
+      }
+    }
+    for (size_t i = 0; i < out_nargs; ++i) {
+      if (out_args_type[i] == PD_KernelArgumentType::PD_ARG_TYPE_TENSOR) {
+        op_outputs.push_back("Output_" + std::to_string(i));
+      } else if (out_args_type[i] ==
+                 PD_KernelArgumentType::PD_ARG_TYPE_LIST_TENSOR) {
+        op_outputs.push_back("Output_" + std::to_string(i) +
+                             paddle::kTensorVectorSuffix);
+      } else {
+        op_outputs.push_back("Output_unknown");
+      }
+    }
+    for (size_t i = 0; i < attr_nargs; ++i) {
+      auto attr_type = attr_args_type[i];
+      if (attr_type == PD_KernelArgumentType::PD_ARG_TYPE_BOOL) {
+        op_attrs.push_back("Attr_" + std::to_string(i) + ":bool");
+      } else if (attr_type == PD_KernelArgumentType::PD_ARG_TYPE_INT32) {
+        op_attrs.push_back("Attr_" + std::to_string(i) + ":int");
+      } else if (attr_type == PD_KernelArgumentType::PD_ARG_TYPE_FLOAT32) {
+        op_attrs.push_back("Attr_" + std::to_string(i) + ":float");
+      } else if (attr_type == PD_KernelArgumentType::PD_ARG_TYPE_INT64) {
+        op_attrs.push_back("Attr_" + std::to_string(i) + ":int64_t");
+      } else if (attr_type == PD_KernelArgumentType::PD_ARG_TYPE_STRING) {
+        op_attrs.push_back("Attr_" + std::to_string(i) + ":std::string");
+      } else if (attr_type == PD_KernelArgumentType::PD_ARG_TYPE_LIST_INT32) {
+        op_attrs.push_back("Attr_" + std::to_string(i) + ":std::vector<int>");
+      } else if (attr_type == PD_KernelArgumentType::PD_ARG_TYPE_LIST_FLOAT32) {
+        op_attrs.push_back("Attr_" + std::to_string(i) + ":std::vector<float>");
+      } else if (attr_type == PD_KernelArgumentType::PD_ARG_TYPE_LIST_INT64) {
+        op_attrs.push_back("Attr_" + std::to_string(i) +
+                           ":std::vector<int64_t>");
+      } else if (attr_type == PD_KernelArgumentType::PD_ARG_TYPE_LIST_STRING) {
+        op_attrs.push_back("Attr_" + std::to_string(i) +
+                           ":std::vector<std::string>");
+      } else {
+        op_attrs.push_back("Attr_unknown");
+      }
+    }
+
+    paddle::framework::OpInfo info;
+    // Op
+    info.creator_ = [](const std::string& op_name,
+                       const paddle::framework::VariableNameMap& inputs,
+                       const paddle::framework::VariableNameMap& outputs,
+                       const paddle::framework::AttributeMap& attrs) {
+      return new paddle::framework::OperatorWithKernel(
+          op_name, inputs, outputs, attrs);
+    };
+
+    // OpMaker
+    info.proto_ = new paddle::framework::proto::OpProto;
+    info.proto_->set_type(kernel_name);
+
+    info.checker_ = new paddle::framework::OpAttrChecker();
+
+    paddle::framework::CustomOpMaker custom_maker(
+        op_inputs, op_outputs, op_attrs);
+    custom_maker(info.proto_, info.checker_);
+    PADDLE_ENFORCE_EQ(
+        info.proto_->IsInitialized(),
+        true,
+        phi::errors::PreconditionNotMet(
+            "Fail to initialize %s's OpProto, because %s is not initialized.",
+            kernel_name,
+            info.proto_->InitializationErrorString()));
+
+    info.infer_shape_ = [infer_shape_fn, kernel_name](
+                            paddle::framework::InferShapeContext* ctx) {
+      auto infer_meta_context =
+          paddle::framework::BuildInferMetaContext(ctx, kernel_name);
+      infer_shape_fn(
+          reinterpret_cast<PD_InferMetaContext*>(&infer_meta_context));
+    };
+
+    paddle::framework::OpInfoMap::Instance().Insert(kernel_name, info);
+  }
+}
+#endif

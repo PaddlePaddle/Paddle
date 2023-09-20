@@ -1,11 +1,8 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -32,7 +29,7 @@ class ExpandOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     auto expand_times = ctx->Attrs().Get<std::vector<int>>("expand_times");
 
-    if (expand_times.size() == 0) {
+    if (expand_times.empty()) {
       expand_times = std::vector<int>(x_dims.size(), -1);
     }
 
@@ -54,7 +51,7 @@ class ExpandOp : public framework::OperatorWithKernel {
             x_dims.size()));
 
     std::vector<int64_t> out_shape(x_dims.size());
-    for (size_t i = 0; i < expand_times.size(); ++i) {
+    for (int i = 0; i < static_cast<int>(expand_times.size()); ++i) {
       if (x_dims[i] == -1 || expand_times[i] == -1) {
         out_shape[i] = -1;
       } else {
@@ -128,23 +125,17 @@ Expand operator tiles the input by given times number. You should set times
 number for each dimension by providing attribute 'expand_times'. The rank of X
 should be in [1, 6]. Please note that size of 'expand_times' must be the same
 with X's rank. Following is a using case:
-
 Input(X) is a 3-D tensor with shape [2, 3, 1]:
-
         [
            [[1], [2], [3]],
            [[4], [5], [6]]
         ]
-
 Attr(expand_times):  [1, 2, 2]
-
 Output(Out) is a 3-D tensor with shape [2, 6, 2]:
-
         [
             [[1, 1], [2, 2], [3, 3], [1, 1], [2, 2], [3, 3]],
             [[4, 4], [5, 5], [6, 6], [4, 4], [5, 5], [6, 6]]
         ]
-
 )DOC");
   }
 };

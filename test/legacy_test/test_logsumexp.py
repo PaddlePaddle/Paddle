@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 def ref_logsumexp(x, axis=None, keepdim=False, reduce_all=False):
@@ -125,7 +125,7 @@ class TestLogsumexp_axis_all(TestLogsumexp):
         self.axis = [0, 1, 2, 3]
 
     def set_attrs_addition(self):
-        if paddle.fluid.core.is_compiled_with_rocm():
+        if paddle.base.core.is_compiled_with_rocm():
             self.user_defined_grads = [self.calc_grad()]
             self.user_defined_grad_outputs = [np.ones(1, dtype=self.dtype)]
 
@@ -140,7 +140,7 @@ class TestLogsumexp_reduce_all(TestLogsumexp):
         self.reduce_all = True
 
     def set_attrs_addition(self):
-        if paddle.fluid.core.is_compiled_with_rocm():
+        if paddle.base.core.is_compiled_with_rocm():
             self.user_defined_grads = [self.calc_grad()]
             self.user_defined_grad_outputs = [np.ones(1, dtype=self.dtype)]
 
@@ -239,7 +239,7 @@ class TestLogsumexpAPI(unittest.TestCase):
         self.x = np.random.uniform(-1, 1, self.shape).astype(np.float32)
         self.place = (
             paddle.CUDAPlace(0)
-            if paddle.fluid.core.is_compiled_with_cuda()
+            if paddle.base.core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
 
@@ -281,7 +281,7 @@ class TestLogsumexpAPI(unittest.TestCase):
 # Test logsumexp bug
 class TestLogZeroError(unittest.TestCase):
     def test_errors(self):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
 
             def test_0_size():
                 array = np.array([], dtype=np.float32)

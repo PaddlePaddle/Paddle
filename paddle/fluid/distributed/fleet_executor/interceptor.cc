@@ -24,7 +24,7 @@ namespace distributed {
 Interceptor::Interceptor(int64_t interceptor_id, TaskNode* node)
     : interceptor_id_(interceptor_id), node_(node) {}
 
-Interceptor::~Interceptor() {
+Interceptor::~Interceptor() {  // NOLINT
   // FIXME(wangxi): throw in stop function
   // std::lock_guard<std::mutex> lock(mutex_);
   // PADDLE_ENFORCE_EQ(messages_.empty(), true,

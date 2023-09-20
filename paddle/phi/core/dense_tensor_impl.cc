@@ -42,16 +42,18 @@ void DenseTensor::check_memory_size() const {
       holder_,
       phi::errors::PreconditionNotMet("Tensor holds no memory. "
                                       "Call Tensor::mutable_data firstly."));
-  PADDLE_ENFORCE_LE(
-      numel() * SizeOf(dtype()),
-      memory_size(),
-      phi::errors::PreconditionNotMet(
-          "Tensor's dimension is out of bound."
-          "Tensor's dimension must be equal or less than the size of its "
-          "memory."
-          "But received Tensor's dimension is %d, memory's size is %d.",
-          numel() * SizeOf(dtype()),
-          memory_size()));
+  if (meta_.is_contiguous()) {
+    PADDLE_ENFORCE_LE(
+        numel() * SizeOf(dtype()),
+        memory_size(),
+        phi::errors::PreconditionNotMet(
+            "Tensor's dimension is out of bound."
+            "Tensor's dimension must be equal or less than the size of its "
+            "memory."
+            "But received Tensor's dimension is %d, memory's size is %d.",
+            numel() * SizeOf(dtype()),
+            memory_size()));
+  }
 }
 
 const Place& DenseTensor::place() const {
@@ -64,11 +66,16 @@ const Place& DenseTensor::place() const {
 
 phi::DataType DenseTensor::type() const { return meta_.dtype; }
 
-void DenseTensor::set_layout(const DataLayout layout) { meta_.layout = layout; }
+void DenseTensor::set_layout(const DataLayout layout) {
+  if (meta_.strides.size() == -1) {
+    meta_.strides = meta_.calc_strides(meta_.dims);
+  }
+  meta_.layout = layout;
+}
 
 // Note: When you reset holder, you need to ensure the offset is correct
 void DenseTensor::ResetHolder(const std::shared_ptr<phi::Allocation>& holder) {
-  if (holder_) {
+  if (holder_ && meta_.is_contiguous()) {
     PADDLE_ENFORCE_LE(
         numel() * static_cast<int64_t>(SizeOf(dtype())) +
             static_cast<int64_t>(meta_.offset),
@@ -156,7 +163,20 @@ inline T* DenseTensor::mutable_data(const DDim& dims,
                                     const Place& place,
                                     size_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
+  if (meta_.dims.size() != -1 && meta_.dims != dims) {
+    PADDLE_ENFORCE_EQ(meta_.is_contiguous(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Right now Resize is only supported for contiguous "
+                          "Tensor. Tensor dims is %s, Tensor layout is %s, "
+                          "Tensor stride is %s. New dims is %s.",
+                          meta_.dims,
+                          meta_.layout,
+                          meta_.strides,
+                          dims));
+  }
   meta_.dims = dims;
+  meta_.strides = meta_.calc_strides(meta_.dims);
   return mutable_data<T>(place, requested_size);
 }
 
@@ -250,7 +270,20 @@ size_t DenseTensor::NumElements(size_t level) const {
 }
 
 DenseTensor& DenseTensor::Resize(const DDim& dims) {
+  if (meta_.dims.size() != -1 && meta_.dims != dims) {
+    PADDLE_ENFORCE_EQ(meta_.is_contiguous(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Right now Resize is only supported for contiguous "
+                          "Tensor. Tensor dims is %s, Tensor layout is %s, "
+                          "Tensor stride is %s. New dims is %s.",
+                          meta_.dims,
+                          meta_.layout,
+                          meta_.strides,
+                          dims));
+  }
   meta_.dims = dims;
+  meta_.strides = meta_.calc_strides(meta_.dims);
   return *this;
 }
 
@@ -307,7 +340,7 @@ std::vector<DenseTensor> DenseTensor::Split(int64_t split_size,
           "split expects split_size be non-negative, but got split_size is %d",
           split_size));
 
-  int64_t numel_size = meta_.dims[axis];
+  int64_t numel_size = meta_.dims[static_cast<int>(axis)];
 
   int64_t num_splits = 1;
   if (split_size != 0) {
@@ -338,12 +371,12 @@ std::vector<DenseTensor> DenseTensor::Chunk(int64_t chunks,
       phi::errors::OutOfRange(
           "chunks expects to be greater than 0, but got chunks is %d", chunks));
 
-  int64_t numel_size = meta_.dims[axis];
+  int64_t numel_size = meta_.dims[static_cast<int>(axis)];
   int64_t split_size = (numel_size + chunks - 1) / chunks;
   return Split(split_size, axis);
 }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 const dnnl::memory::desc& DenseTensor::mem_desc() const { return mem_desc_; }
 #endif
 
@@ -358,9 +391,13 @@ DenseTensor& DenseTensor::ShareDataWith(const DenseTensor& src) {
   meta_.layout = src.meta_.layout;
   meta_.offset = src.meta_.offset;
   meta_.use_gpudnn = src.meta_.use_gpudnn;
+  meta_.strides = src.meta_.strides;
+#ifdef PADDLE_WITH_XPU
+  meta_.scale_value = src.meta_.scale_value;
+#endif
   storage_properties_ =
       std::move(CopyStorageProperties(src.storage_properties_));
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   mem_desc_ = src.mem_desc_;
 #endif
   return *this;

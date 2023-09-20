@@ -30,8 +30,6 @@
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 
-using eager_test::CreateTensorWithValue;
-
 namespace egr {
 
 paddle::Tensor hook_function(const paddle::Tensor& t) {
@@ -47,7 +45,7 @@ paddle::Tensor hook_function(const paddle::Tensor& t) {
   float* t_ptr = t_dense->mutable_data<float>(place);
   float* ret_ptr = ret_dense->mutable_data<float>(place);
   for (int i = 0; i < ret_dense->numel(); i++) {
-    ret_ptr[i] = t_ptr[i] + 3.0;
+    ret_ptr[i] = t_ptr[i] + 3.0f;
   }
 
   auto ret_impl = std::dynamic_pointer_cast<phi::TensorBase>(ret_dense);
@@ -65,12 +63,13 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  paddle::Tensor tensor = CreateTensorWithValue(ddim,
-                                                paddle::platform::CPUPlace(),
-                                                phi::DataType::FLOAT32,
-                                                phi::DataLayout::NCHW,
-                                                1.0 /*value*/,
-                                                false /*is_leaf*/);
+  paddle::Tensor tensor =
+      eager_test::CreateTensorWithValue(ddim,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::FLOAT32,
+                                        phi::DataLayout::NCHW,
+                                        1.0 /*value*/,
+                                        false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
   paddle::Tensor& target_tensor = target_tensors[0];
 
@@ -140,12 +139,13 @@ TEST(RetainGrad, HookAfterRetainGrad) {
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  paddle::Tensor tensor = CreateTensorWithValue(ddim,
-                                                paddle::platform::CPUPlace(),
-                                                phi::DataType::FLOAT32,
-                                                phi::DataLayout::NCHW,
-                                                1.0 /*value*/,
-                                                false /*is_leaf*/);
+  paddle::Tensor tensor =
+      eager_test::CreateTensorWithValue(ddim,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::FLOAT32,
+                                        phi::DataLayout::NCHW,
+                                        1.0 /*value*/,
+                                        false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
   paddle::Tensor& target_tensor = target_tensors[0];
 

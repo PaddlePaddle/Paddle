@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid, nn, static
+from paddle import base, nn, static
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.static.completion import Completer
 from paddle.distributed.auto_parallel.static.dist_context import (
@@ -111,7 +111,7 @@ def get_program():
 
     train_program = static.Program()
     start_program = static.Program()
-    with fluid.program_guard(train_program, start_program):
+    with base.program_guard(train_program, start_program):
         # 循环计数器
         i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)
         auto.shard_tensor(i, _g_process_mesh, [None])
@@ -134,7 +134,7 @@ def get_program():
 
         data_holder = [input, label]
         # dataloader
-        dataloader = fluid.io.DataLoader.from_generator(
+        dataloader = base.io.DataLoader.from_generator(
             feed_list=data_holder, capacity=4 * batch_size, iterable=False
         )
         dataloader.set_batch_generator(
@@ -145,8 +145,18 @@ def get_program():
         auto.shard_tensor(label, _g_process_mesh, [None, None, None])
 
         # fill constant bsz like
-        tmp = paddle.fluid.layers.fill_constant_batch_size_like(
-            input=input, shape=[-1, 16, 0, 48], dtype='float32', value=0
+        block = train_program.current_block()
+        fill_shape = [-1, 16, 0, 48]
+        tmp = block.create_var(name='tmp', dtype='float32')
+        block.append_op(
+            type='fill_constant_batch_size_like',
+            outputs={'Out': [tmp]},
+            inputs={'Input': [input]},
+            attrs={
+                'shape': fill_shape,
+                'value': 0,
+            },
+            stop_gradient=True,
         )
         auto.shard_tensor(tmp, _g_process_mesh, [None, 'x', None, None])
 
@@ -369,7 +379,6 @@ class TestMLP(unittest.TestCase):
             train_program, start_program, dist_context
         )
         dist_context.block_state.parse_forward_blocks(train_program)
-
         dist_main_prog, dist_startup_prog = partition(
             train_program, start_program, dist_context
         )
@@ -388,8 +397,8 @@ class TestMLP(unittest.TestCase):
         self.assertTrue("c_allreduce_sum" in sub_block_ops)
 
         # test fill_constant_batch_size_like
-
         self.assertIsNotNone(fill_op)
+
         ref_shape = [-1, 8, 0, 48]
         shape = fill_op.attr("shape")
         self.assertTrue(ref_shape == shape)

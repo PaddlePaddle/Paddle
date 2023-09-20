@@ -14,8 +14,55 @@
     data_type : x
   optional : x_max, y_max
 
+- op : add_layernorm_xpu
+  args : (Tensor x, Tensor y, Tensor scale, Tensor bias, int begin_norm_axis, float epsilon)
+  output : Tensor(out)
+  infer_meta :
+    func : AddLayernormXPUInferMeta
+  kernel :
+    func : add_layernorm_xpu
+    data_type : x
+
+- op : addcmul_xpu
+  args : (Tensor x, Tensor y, Tensor w)
+  output : Tensor(out)
+  infer_meta :
+    func : AddCMulXPUInferMeta
+  kernel :
+    func : addcmul_xpu
+    data_type : x
+
+- op : bn_act_xpu
+  args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, float momentum, float epsilon, str data_layout, int act_type)
+  output : Tensor(out)
+  infer_meta :
+    func : BNActXPUInferMeta
+  kernel :
+    func : bn_act_xpu
+    data_type : x
+
+- op : conv1d_xpu
+  args : (Tensor x, Tensor x_max, Tensor filter, Tensor filter_max, Tensor bias, Tensor branch, Tensor branch_max, int[] paddings, str padding_algorithm, int dilations, int strides, int groups, int act_type, float act_param)
+  output : Tensor(out), Tensor(out_max)
+  infer_meta :
+    func : Conv1dXPUInferMeta
+  kernel :
+    func : conv1d_xpu
+    data_type : x
+  optional : bias, branch, branch_max, x_max
+
+- op : conv2d_transpose_xpu
+  args : (Tensor x, Tensor x_max, Tensor filter, Tensor filter_max, Tensor bias, int[] strides, int[] paddings, int[] output_padding, IntArray output_size, str padding_algorithm, int groups, int[] dilations, str data_format, bool has_bias, bool with_act, str act_type)
+  output : Tensor(out), Tensor(out_max)
+  infer_meta :
+    func : Conv2dTransposeXPUInferMeta
+  kernel :
+    func : conv2d_transpose_xpu
+    data_type : x
+  optional : bias, x_max
+
 - op : conv2d_xpu
-  args : (Tensor x, Tensor x_max, Tensor filter, Tensor filter_max, Tensor bias, Tensor branch, Tensor branch_max, int[] paddings, int[] dilations, int[] strides, str padding_algorithm, int groups, bool has_bias, bool has_branch, int act_type, float act_param)
+  args : (Tensor x, Tensor x_max, Tensor filter, Tensor filter_max, Tensor bias, Tensor branch, Tensor branch_max, int[] paddings, int[] dilations, int[] strides, str padding_algorithm, int groups, int act_type, float act_param, DataType out_dtype)
   output : Tensor(out), Tensor(out_max)
   infer_meta :
     func : Conv2dXPUInferMeta
@@ -29,13 +76,32 @@
   output: Tensor(out), Tensor(seq_lod), Tensor(max_seq_len)
   infer_meta :
     func: EmbeddingWithEltwiseAddXPUInferMeta
+    param : [ids, tables, mask]
   kernel:
     func: embedding_with_eltwise_add_xpu
     data_type: tables
   optional : mask, seq_lod, max_seq_len
 
+- op : fast_layernorm_xpu
+  args : (Tensor x, Tensor scale, Tensor bias, int begin_norm_axis, float epsilon)
+  output : Tensor(out)
+  infer_meta :
+    func : FastLayernormXPUInferMeta
+  kernel :
+    func : fast_layernorm_xpu
+    data_type : x
+
+- op : fast_where_xpu
+  args : (Tensor condition, Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : FastWhereXPUInferMeta
+  kernel :
+    func : fast_where_xpu
+    data_type : x
+
 - op : fc_xpu
-  args : (Tensor x, Tensor x_max, Tensor w, Tensor w_max, Tensor bias, int in_num_col_dims, bool transpose_x, float alpha, float beta, int act_type, float act_alpha)
+  args : (Tensor x, Tensor x_max, Tensor w, Tensor w_max, Tensor bias, int in_num_col_dims, bool transpose_x, float alpha, float beta, int act_type, float act_alpha, DataType out_dtype)
   output : Tensor(out), Tensor(out_max)
   infer_meta :
     func : FcXPUInferMeta
@@ -43,6 +109,28 @@
     func : fc_xpu
     data_type : x
   optional : bias, x_max
+
+- op : fused_bias_act
+  args : (Tensor x, Tensor bias, Tensor dequant_scales, Tensor shift, Tensor smooth, str act_method = "gelu", str compute_dtype = "default", float quant_scale = -1, int quant_round_type = 1, float quant_max_bound = 127.0, float quant_min_bound = -127.0)
+  output : Tensor(out)
+  infer_meta :
+    func: FusedBiasActInferMeta
+  kernel :
+    func : fused_bias_act
+    data_type : x
+  optional : bias, dequant_scales, shift, smooth
+  support_dygraph_mode : true
+
+- op : fused_bias_residual_layernorm
+  args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, float epsilon, float residual_alpha, int begin_norm_axis, float quant_scale, int quant_round_type, float quant_max_bound, float quant_min_bound)
+  output : Tensor(out), Tensor(residual_out), Tensor(mean), Tensor(variance)
+  infer_meta :
+    func : FusedLayerNormInferMeta
+  kernel :
+    func : fused_bias_residual_layernorm
+    data_type : x
+  optional : bias, residual, norm_weight, norm_bias, residual_out
+  support_dygraph_mode : true
 
 - op : fused_dropout_add
   args : (Tensor x, Tensor y, Tensor seed_tensor, Scalar p, bool is_test, str mode, int seed = 0, bool fix_seed = false)
@@ -58,7 +146,7 @@
   support_dygraph_mode : true
 
 - op : fused_linear_param_grad_add
-  args : (Tensor x, Tensor dout, Tensor dweight, Tensor dbias, bool multi_precision = true)
+  args : (Tensor x, Tensor dout, Tensor dweight, Tensor dbias, bool multi_precision = true, bool has_bias = true)
   output : Tensor(dweight_out), Tensor(dbias_out)
   infer_meta:
     func : FusedLinearParamGradAddInferMeta
@@ -78,6 +166,28 @@
     data_type : x
   optional : cache_kv, pre_caches, rotary_pos_emb, time_step, seq_lengths, src_mask, gather_index
 
+- op : fused_rotary_position_embedding
+  args : (Tensor q, Tensor k, Tensor v, Tensor sin, Tensor cos, Tensor position_ids, bool use_neox_rotary_style = true)
+  output : Tensor(out_q), Tensor(out_k), Tensor(out_v)
+  infer_meta :
+    func : FusedRopeInferMeta
+  optional : k, v, sin, cos, position_ids, out_k, out_v
+  kernel :
+    func : fused_rotary_position_embedding
+    data_type : q
+  backward: fused_rotary_position_embedding_grad
+  support_dygraph_mode : true
+
+- op : fused_scale_bias_relu_conv_bnstats
+  args : (Tensor x, Tensor w, Tensor scale, Tensor bias, Tensor bn_scale, Tensor bn_bias, Tensor input_running_mean, Tensor input_running_var, int[] paddings, int[] dilations, int[] strides, str padding_algorithm, int groups, str data_format, float momentum, float epsilon, bool fuse_prologue, bool exhaustive_search, int64_t accumulation_count = 0)
+  optional : scale, bias
+  output : Tensor(out), Tensor(out_running_mean), Tensor(out_running_var), Tensor(saved_mean), Tensor(saved_var), Tensor(eq_scale), Tensor(eq_bias)
+  infer_meta :
+    func : FusedScaleBiasReluConvBnstatsInferMeta
+  kernel :
+    func : fused_scale_bias_relu_conv_bnstats
+    data_type : x
+
 - op : generate_sequence_xpu
   args : (Tensor x, DataType dtype)
   output : Tensor
@@ -86,6 +196,15 @@
   kernel :
     func : generate_sequence_xpu
     data_type : dtype
+
+- op : layer_norm_act_xpu
+  args : (Tensor x, Tensor scale, Tensor bias, int begin_norm_axis, float epsilon, int act_type, float act_param)
+  output : Tensor(out)
+  infer_meta :
+    func : LayerNormActXPUInferMeta
+  kernel :
+    func : layer_norm_act_xpu
+    data_type : x
 
 - op : multi_encoder_xpu
   args : (Tensor x, Tensor[] fc_weight, Tensor[] fc_weight_max, Tensor[] fc_bias, Tensor[] ln_scale, Tensor[] ln_bias, Tensor mask, Tensor seq_lod, Tensor max_seq_len, int layer_num, bool norm_before, int hidden_dim, int head_num, int size_per_head, int ffn_hidden_dim_scale, int act_type, int relative_type, int slice_idx)
@@ -96,6 +215,26 @@
     func : multi_encoder_xpu
     data_type : x
   optional : mask, seq_lod, max_seq_len, x_fp16, out_fp16
+
+- op : multihead_matmul
+  args : (Tensor input, Tensor w, Tensor bias, Tensor bias_qk, bool transpose_q = false, bool transpose_k = true, bool transpose_v = false, float alpha = 1.0f, int head_number = 1)
+  output : Tensor(out)
+  infer_meta :
+    func : MultiheadMatmulInferMeta
+  kernel :
+    func : multihead_matmul
+    data_type : input
+  optional : bias_qk
+
+- op : squeeze_excitation_block
+  args : (Tensor x, Tensor filter, Tensor filter_max, Tensor bias, Tensor branch, int[] act_type, float[] act_param, int[] filter_dims)
+  output : Tensor(out)
+  infer_meta :
+    func : SqueezeExcitationInferMeta
+  kernel :
+    func : squeeze_excitation_block
+    data_type : x
+  optional : bias, branch
 
 - op : yolo_box_xpu
   args : (Tensor x, Tensor x_max, Tensor grid, Tensor stride, Tensor anchor_grid, float offset)

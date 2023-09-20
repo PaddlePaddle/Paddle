@@ -21,7 +21,7 @@
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/phi/backends/onednn/onednn_context.h"
 #endif
@@ -187,7 +187,7 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   } else if (platform::is_gpu_place(place)) {
     // MemcpyD2H in gpu is synchronous, see
     // https://docs.nvidia.com/cuda/cuda-runtime-api/api-sync-behavior.html#api-sync-behavior__memcpy-async
-    // for more detial.
+    // for more detail.
     new_op_func_node.type_ =
         (op_type == kMemcpyD2H ? OpFuncType::kGpuSync : OpFuncType::kGpuAsync);
   } else if (platform::is_xpu_place(place)) {
@@ -257,7 +257,7 @@ std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
                                              VariableScope* var_scope,
                                              framework::Scope* local_scope,
                                              bool is_fetch_v2) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 
   // NOTE(zhiqiu): hot fix, follow the same logic in DataCopy() in fetch_op.cc
   if (in_layout == phi::DataLayout::ONEDNN &&
@@ -299,8 +299,8 @@ std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
   VLOG(3) << "Create Variable " << *new_var_name
           << " locally, which pointer is " << ptr << "Variable Type "
           << var_type;
-  var_scope->MutableDataTransferAddedVars().push_back(
-      std::make_pair(*new_var_name, var_type));
+  var_scope->MutableDataTransferAddedVars().emplace_back(*new_var_name,
+                                                         var_type);
   var_scope->AddVar(*new_var_name, nullptr);
 
   // 2. Construct VariableNameMap
@@ -347,8 +347,8 @@ std::shared_ptr<OperatorBase> TransferDtype(const std::string& var_name,
   VLOG(3) << "Create Variable " << *new_var_name
           << " locally, which pointer is " << ptr << "Variable Type "
           << var_type;
-  var_scope->MutableDataTransferAddedVars().push_back(
-      std::make_pair(*new_var_name, var_type));
+  var_scope->MutableDataTransferAddedVars().emplace_back(*new_var_name,
+                                                         var_type);
   var_scope->AddVar(*new_var_name, nullptr);
 
   // 2. Construct VariableNameMap
@@ -398,8 +398,8 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
   VLOG(3) << "Create Variable " << *new_var_name
           << " locally, which pointer is " << ptr << "Variable Type "
           << var_type;
-  var_scope->MutableDataTransferAddedVars().push_back(
-      std::make_pair(*new_var_name, var_type));
+  var_scope->MutableDataTransferAddedVars().emplace_back(*new_var_name,
+                                                         var_type);
   var_scope->AddVar(*new_var_name, nullptr);
 
   // 2. Construct VariableNameMap
@@ -513,7 +513,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
               var->IsType<phi::SelectedRows>()) {
             tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
           } else if (var->IsType<LoDTensorArray>()) {
-            if (var->Get<LoDTensorArray>().size() == 0) {
+            if (var->Get<LoDTensorArray>().empty()) {
               continue;
             }
             tensor_in = static_cast<const phi::DenseTensor*>(
@@ -527,7 +527,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
           // special case
           if (!tensor_in->IsInitialized()) {
             if (should_skip_input) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
               // Var without buffer may be needed
               // for some situation like InferShape().
               // In this situation We cannot skip Var analysis, as
@@ -702,7 +702,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                                              should_skip_input,
                                              &arguments);
     }
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     // For input that is Extra, only MKLDNN will use Extra Inputs
     auto& extra_input_names =
         paddle::operators::ExtraInfoUtils::Instance().GetExtraInputNamesMap(

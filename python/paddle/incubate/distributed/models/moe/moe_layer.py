@@ -19,6 +19,8 @@
 #     Copyright 2021, Jiaao He. All rights reserved.
 #   Licensed under the Apache License, Version 2.0 (the "License").
 
+import os
+
 import numpy as np
 
 import paddle
@@ -261,63 +263,68 @@ def prepare_forward(gate, num_expert, world_size, moe_group):
 class MoELayer(nn.Layer):
     """MoE Layer
     Args:
-        d_model: (int) model dimention
-        experts: (nn.LayerList) expert networks list
-        gate: (dict|NaiveGate|SwitchGate|NaiveGate):
-                if gate is a dict:
-                    gate is a gate network config, containing 2 keys:
-                    `type`(str) value can be: "naive", "gshard", "switch" or None, default is "gshard"
-                    `top_k`(int) default value is 2
-                else gate is an instance of NaiveGate|SwitchGate|NaiveGate:
+        d_model (int): Model dimention.
+        experts (nn.LayerList): Expert networks list.
+        gate (dict|NaiveGate|SwitchGate|NaiveGate):
 
-        moe_group: moe group for experts communication
-        mp_group: mp group for mp commutication
-        recompute_interval(int, optional): whether to use recompute, default 0, means to disable recompute.
-        recompute_ctx(dict, optional): the context for recompute, if recompute_interval > 1, recompute_ctx must be given.
+            - If gate is a dict:
+              gate is a gate network config, containing 2 keys:
+              `type` (str) value can be: "naive", "gshard", "switch" or None, default is "gshard".
+              `top_k` (int) Default value is 2.
+            else gate is an instance of NaiveGate|SwitchGate|NaiveGate:
+
+        moe_group: moe group for experts communication.
+        mp_group: mp group for mp communication.
+        recompute_interval (int, optional): Whether to use recompute, default 0, means to disable recompute.
+        recompute_ctx (dict, optional): The context for recompute, if recompute_interval > 1, recompute_ctx must be given.
+
     Examples:
+
         .. code-block:: python
-        from paddle.nn import layer, LayerList
-        from paddle.distributed.moe import MoElayer
-        from paddle.distributed.collective import Group
-        from paddle.distributed import fleet
 
-        moe_group = Group(fleet.worker_index(),
-                          0,
-                          list(range(fleet.worker_num())))
-        mp_group = None
+            >>> # doctest: +SKIP('Until Distributed move successfully, just skip it')
+            >>> from paddle.nn import layer, LayerList
+            >>> from paddle.distributed.moe import MoElayer
+            >>> from paddle.distributed.collective import Group
+            >>> from paddle.distributed import fleet
 
-        num_experts=8
-        dim_feedforward=512
-        d_model=8
-        top_k=2
+            >>> moe_group = Group(fleet.worker_index(),
+            ...                   0,
+            ...                   list(range(fleet.worker_num())))
+            >>> mp_group = None
 
-        class ExpertLayer(Layer):
-            def __init__(self, d_model, d_hidden, name=None,rank=0, windex = 0, num_expert=1):
-                super().__init__()
-                self.htoh4 = nn.Linear(d_model, d_hidden)
-                self.h4toh = nn.Linear(d_hidden, d_model)
+            >>> num_experts=8
+            >>> dim_feedforward=512
+            >>> d_model=8
+            >>> top_k=2
 
-            def forward(self, x):
-                x = self.htoh4(x)
-                x = self.h4toh(x)
-                return x
+            >>> class ExpertLayer(Layer):
+            ...     def __init__(self, d_model, d_hidden, name=None,rank=0, windex = 0, num_expert=1):
+            ...         super().__init__()
+            ...         self.htoh4 = nn.Linear(d_model, d_hidden)
+            ...         self.h4toh = nn.Linear(d_hidden, d_model)
 
-        gate_config = {
-                "type": "gshard",
-                "top_k": top_k,
-        }
+            ...     def forward(self, x):
+            ...         x = self.htoh4(x)
+            ...         x = self.h4toh(x)
+            ...         return x
 
-        experts_list = LayerList()
-        for expi in range(num_experts):
-            exp_layer = ExpertLayer(d_model, dim_feedforward // top_k, windex=expi, num_expert=num_experts)
-            experts_list.append(exp_layer)
+            >>> gate_config = {
+            ...         "type": "gshard",
+            ...         "top_k": top_k,
+            ... }
 
-        moeLayer = MoELayer(d_model = d_model,
-                            experts=experts_list,
-                            gate=gate_config,
-                            moe_group=moe_group,
-                            mp_group=mp_group,
-                            recompute_interval=0)
+            >>> experts_list = LayerList()
+            >>> for expi in range(num_experts):
+            ...     exp_layer = ExpertLayer(d_model, dim_feedforward // top_k, windex=expi, num_expert=num_experts)
+            ...     experts_list.append(exp_layer)
+
+            >>> moeLayer = MoELayer(d_model = d_model,
+            ...                     experts=experts_list,
+            ...                     gate=gate_config,
+            ...                     moe_group=moe_group,
+            ...                     mp_group=mp_group,
+            ...                     recompute_interval=0)
 
     """
 
@@ -352,7 +359,10 @@ class MoELayer(nn.Layer):
         assert experts is not None
         self.experts = experts
 
-        if self.world_size > 1:
+        if (
+            self.world_size > 1
+            and os.getenv("PADDLE_DISTRI_BACKEND", None) != "xccl"
+        ):
             check_nccl_version_for_p2p()
 
         self.mp_group = mp_group

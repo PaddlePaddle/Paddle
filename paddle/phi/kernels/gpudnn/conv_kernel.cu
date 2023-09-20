@@ -261,28 +261,18 @@ void ConvCudnnKernelImplV8(const DenseTensor* input_tensor,
       alpha,
       beta);
 
-  if (plan_cache.FindPlan(op_graph)) {
-    auto engine_config = plan_cache.GetConfig(op_graph, handle);
-    auto cached_plan = cudnn_frontend::ExecutionPlanBuilder()
-                           .setHandle(handle)
-                           .setEngineConfig(engine_config, op_graph.getTag())
-                           .build();
-    auto workspace_size = cached_plan.getWorkspaceSize();
-    VLOG(4) << "Cached execution plan found." << cached_plan.getTag()
-            << "; Require workspace: " << workspace_size;
-    workspace_handle.RunFunc(
-        [&](void* workspace_ptr) {
-          void* data_ptrs[] = {input_data, output_data, filter_data};
-          int64_t uids[] = {'x', 'y', 'w'};
-          auto variant_pack = cudnn_frontend::VariantPackBuilder()
-                                  .setWorkspacePointer(workspace_ptr)
-                                  .setDataPointers(3, data_ptrs)
-                                  .setUids(3, uids)
-                                  .build();
-          PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnBackendExecute(
-              handle, cached_plan.get_raw_desc(), variant_pack.get_raw_desc()));
-        },
-        workspace_size);
+  if (plan_cache.FindPlan(op_graph, handle)) {
+    const cudnn_frontend::ExecutionPlan* cached_plan = nullptr;
+    int64_t workspace_size = 0;
+    plan_cache.GetPlanAndWorkspaceSize(
+        op_graph, &cached_plan, &workspace_size, handle);
+    helper::ExecutePlan(handle,
+                        &workspace_handle,
+                        input_data,
+                        output_data,
+                        filter_data,
+                        cached_plan->get_raw_desc(),
+                        workspace_size);
     return;
   }
 
@@ -295,37 +285,15 @@ void ConvCudnnKernelImplV8(const DenseTensor* input_tensor,
                                           handle,
                                           &workspace_handle);
 
-  for (auto& plan : plans) {
-    try {
-      int64_t workspace_size = plan.getWorkspaceSize();
-      workspace_handle.RunFunc(
-          [&](void* workspace_ptr) {
-            void* data_ptrs[] = {input_data, output_data, filter_data};
-            int64_t uids[] = {'x', 'y', 'w'};
-            auto variant_pack = cudnn_frontend::VariantPackBuilder()
-                                    .setWorkspacePointer(workspace_ptr)
-                                    .setDataPointers(3, data_ptrs)
-                                    .setUids(3, uids)
-                                    .build();
-            PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnBackendExecute(
-                handle, plan.get_raw_desc(), variant_pack.get_raw_desc()));
-          },
-          workspace_size);
-      if (!exhaustive_search || plan_cache.IsStable(op_graph, plan.getTag())) {
-        plan_cache.InsertPlan(op_graph, plan);
-      }
-      return;
-    } catch (cudnn_frontend::cudnnException& e) {
-      VLOG(4) << "Plan " << plan.describe()
-              << "failed to execute. Trying next plan.";
-    } catch (phi::enforce::EnforceNotMet& e) {
-      VLOG(4) << "Plan " << plan.describe()
-              << "failed to execute. Trying next plan.";
-    }
-  }
-  PADDLE_THROW(
-      phi::errors::InvalidArgument("[CUDNN Frontend API] No valid plan could "
-                                   "be found to execute conv."));
+  helper::ExecutePlansAndCache(handle,
+                               &workspace_handle,
+                               input_data,
+                               output_data,
+                               filter_data,
+                               &plans,
+                               exhaustive_search,
+                               op_graph,
+                               &plan_cache);
 }
 #endif
 

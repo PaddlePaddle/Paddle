@@ -21,13 +21,13 @@ from paddle.distributed.passes import PassContext, new_pass
 class TestStandaloneExecutorFThenBPlan(unittest.TestCase):
     def test_standalone_executor_fthenb_plan(self):
         config = {}
-        config["micro_batch_size"] = 4
+        config["num_micro_batches"] = 4
         pass_context = PassContext()
 
         startup_program = static.Program()
         main_program = static.Program()
 
-        pipeline_fthenb_pass = new_pass("pipeline_fthenb_scheduler", config)
+        pipeline_fthenb_pass = new_pass("pipeline_scheduler_FThenB", config)
         pipeline_fthenb_pass.apply(
             [main_program], [startup_program], pass_context
         )

@@ -36,26 +36,26 @@ class TestNewGroupAPI:
             result, [self.tensor2, self.tensor1], src=0, group=gp, sync_op=True
         )
         if gp.rank == 0:
-            assert np.array_equal(result, self.tensor2)
+            np.testing.assert_array_equal(result, self.tensor2)
         elif gp.rank == 1:
-            assert np.array_equal(result, self.tensor1)
+            np.testing.assert_array_equal(result, self.tensor1)
         print("test scatter api ok")
 
         paddle.distributed.broadcast(result, src=1, group=gp, sync_op=True)
-        assert np.array_equal(result, self.tensor1)
+        np.testing.assert_array_equal(result, self.tensor1)
         print("test broadcast api ok")
 
         paddle.distributed.reduce(result, dst=0, group=gp, sync_op=True)
         if gp.rank == 0:
-            assert np.array_equal(
+            np.testing.assert_array_equal(
                 result, paddle.add(self.tensor1, self.tensor1)
             )
         elif gp.rank == 1:
-            assert np.array_equal(result, self.tensor1)
+            np.testing.assert_array_equal(result, self.tensor1)
         print("test reduce api ok")
 
         paddle.distributed.all_reduce(result, sync_op=True)
-        assert np.array_equal(
+        np.testing.assert_array_equal(
             result,
             paddle.add(paddle.add(self.tensor1, self.tensor1), self.tensor1),
         )
@@ -69,14 +69,12 @@ class TestNewGroupAPI:
         paddle.distributed.all_gather(
             result, self.tensor1, group=gp, sync_op=True
         )
-        assert np.array_equal(result[0], self.tensor1)
-        assert np.array_equal(result[1], self.tensor1)
+        np.testing.assert_array_equal(result[0], self.tensor1)
+        np.testing.assert_array_equal(result[1], self.tensor1)
         print("test all_gather api ok")
 
         paddle.distributed.barrier(group=gp)
         print("test barrier api ok")
-
-        return
 
 
 if __name__ == "__main__":

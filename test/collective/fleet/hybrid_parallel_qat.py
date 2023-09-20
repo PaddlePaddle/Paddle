@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-from paddle import fluid, nn
+from paddle import base, nn
 from paddle.distributed import fleet
 from paddle.distributed.utils.launch_utils import find_free_ports, get_cluster
 from paddle.quantization import ImperativeQuantAware
@@ -235,7 +235,7 @@ class SimpleDPNet(nn.Layer):
         return x
 
 
-class TestDistMPTraning(unittest.TestCase):
+class TestDistMPTraining(unittest.TestCase):
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 2
@@ -328,8 +328,8 @@ class TestDistMPTraning(unittest.TestCase):
 
     def test_mp_model_1(self):
         if (
-            not fluid.core.is_compiled_with_cuda()
-            or fluid.core.get_cuda_device_count() == 0
+            not base.core.is_compiled_with_cuda()
+            or base.core.get_cuda_device_count() == 0
         ):
             return
         selected_gpus = get_gpus('0,1')
@@ -344,8 +344,8 @@ class TestDistMPTraning(unittest.TestCase):
 
     def test_mp_model_2(self):
         if (
-            not fluid.core.is_compiled_with_cuda()
-            or fluid.core.get_cuda_device_count() == 0
+            not base.core.is_compiled_with_cuda()
+            or base.core.get_cuda_device_count() == 0
         ):
             return
         selected_gpus = get_gpus('0,1')

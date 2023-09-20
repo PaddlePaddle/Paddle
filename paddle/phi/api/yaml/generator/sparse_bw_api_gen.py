@@ -121,11 +121,12 @@ def source_include(header_file_path):
 #include <memory>
 
 #include "glog/logging.h"
-#include "gflags/gflags.h"
+#include "paddle/utils/flags.h"
 
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
+#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 #include "paddle/phi/infermeta/unary.h"
@@ -136,7 +137,7 @@ def source_include(header_file_path):
 #include "paddle/phi/infermeta/sparse/binary.h"
 #include "paddle/phi/infermeta/sparse/backward.h"
 
-DECLARE_int32(low_precision_op_list);
+PD_DECLARE_int32(low_precision_op_list);
 """
 
 

@@ -22,14 +22,17 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/denormal.h"
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 #ifdef PADDLE_WITH_TENSORRT
 #include "paddle/fluid/operators/tensorrt/tensorrt_engine_op.h"
 #endif
-#ifdef PADDLE_WITH_INFERENCE_NVTX
+#ifdef PADDLE_WITH_NVTX
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
+#endif
+#ifdef PADDLE_WITH_LITE
+#include "paddle/fluid/operators/lite/lite_engine_op.h"
 #endif
 
 namespace paddle {
@@ -49,28 +52,35 @@ void NaiveExecutor::Prepare(Scope *scope,
 }
 
 void NaiveExecutor::Run() {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   platform::AttachPointerHashToMKLDNNKey(this, place_);
   platform::RegisterModelLayout(ops_, place_);
 #endif
   platform::ScopedFlushDenormal flush;
-#ifdef PADDLE_WITH_INFERENCE_NVTX
+#ifdef PADDLE_WITH_NVTX
   platform::CudaNvtxRangePush("model", platform::NvtxRangeColor::Yellow);
 #endif
   for (auto &op : ops_) {
     VLOG(4) << std::this_thread::get_id() << " run "
             << op->DebugStringEx(scope_) << " on scope " << scope_;
     op->SetIsCalledByExecutor(false);
-#ifdef PADDLE_WITH_INFERENCE_NVTX
+
+    for (auto &func : input_hookfuncs_) {
+      func(op.get(), scope_);
+    }
+
+    if (op->Type() == "while") {
+      op->SetOutputHooks(output_hookfuncs_);
+    }
+
+#ifdef PADDLE_WITH_NVTX
     platform::CudaNvtxRangePush(op->Type() + "|" + op->OutputVars(true).front(),
                                 platform::NvtxRangeColor::Green);
 #endif
-
-    if (op->Type() == "while") {
-      op->SetOutputHooks(hookfuncs_);
-    }
-
     op->Run(*scope_, place_);
+#ifdef PADDLE_WITH_NVTX
+    platform::CudaNvtxRangePop();
+#endif
 
     // Update the shared_holder so that only records the max one.
     if (reuse_cache_.count(op.get())) {
@@ -98,14 +108,11 @@ void NaiveExecutor::Run() {
       }
     }
 
-#ifdef PADDLE_WITH_INFERENCE_NVTX
-    platform::CudaNvtxRangePop();
-#endif
-    for (auto &func : hookfuncs_) {
+    for (auto &func : output_hookfuncs_) {
       func(op.get(), scope_);
     }
   }
-#ifdef PADDLE_WITH_INFERENCE_NVTX
+#ifdef PADDLE_WITH_NVTX
   platform::CudaNvtxRangePop();
 #endif
 }
@@ -182,7 +189,11 @@ phi::DenseTensor *NaiveExecutor::FindTensor(const std::string &name) {
 }
 
 void NaiveExecutor::RegisterOutputHook(const HookFunc &hookfunc) {
-  hookfuncs_.push_back(hookfunc);
+  output_hookfuncs_.push_back(hookfunc);
+}
+
+void NaiveExecutor::RegisterInputHook(const HookFunc &hookfunc) {
+  input_hookfuncs_.push_back(hookfunc);
 }
 
 void NaiveExecutor::MakeReusePlan(
@@ -204,7 +215,7 @@ void NaiveExecutor::MakeReusePlan(
         const auto &reuse_name = reuse_table.at(name);
         auto it =
             std::find(cluster_names.begin(), cluster_names.end(), reuse_name);
-        int idx = it - cluster_names.begin();
+        int idx = static_cast<int>(it - cluster_names.begin());
         auto *var = scope_->FindVar(name);
         auto *reuse_var = scope_->FindVar(reuse_name);
         if (var && reuse_var && var->IsType<phi::DenseTensor>() &&
@@ -225,7 +236,7 @@ void NaiveExecutor::MakeReusePlan(
 }
 
 NaiveExecutor::~NaiveExecutor() {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   // Clear mkl-dnn cache,
   // this is needed to have mkl-dnn unit tests working
   platform::ClearMKLDNNCache(place_, this);
@@ -266,6 +277,39 @@ void NaiveExecutor::ResetTrtOps(int num) {
         }
         trtop->PrepareTRTEngine(*anc, trt_engine);
       }
+    }
+  }
+#endif
+}
+
+void NaiveExecutor::CloneLiteEnigne(int num, void *stream) {
+#ifdef PADDLE_WITH_LITE
+  for (auto &op : ops_) {
+    if (op->Type() == "lite_engine") {
+      operators::LiteEngineOp *lite_op =
+          dynamic_cast<operators::LiteEngineOp *>(op.get());
+      PADDLE_ENFORCE_NOT_NULL(
+          lite_op,
+          phi::errors::InvalidArgument(
+              "lite_op(type: lite_engine) should be created."));
+      std::string engine_key = lite_op->Attr<std::string>("engine_key");
+      std::string new_engine_key = engine_key + "_" + std::to_string(num);
+      PADDLE_ENFORCE(
+          paddle::inference::Singleton<inference::lite::EngineManager>::Global()
+              .Has(engine_key),
+          phi::errors::InvalidArgument(
+              "lite_engine(key: %s) should be created.", engine_key));
+      auto *lite_engine =
+          paddle::inference::Singleton<inference::lite::EngineManager>::Global()
+              .Get(engine_key);
+      auto new_lite_engine = lite_engine->Clone();
+#ifdef LITE_SUBGRAPH_WITH_XPU
+      new_lite_engine->SetStream(TARGET(kXPU), stream);
+#endif
+      paddle::inference::Singleton<inference::lite::EngineManager>::Global()
+          .Set(new_engine_key, new_lite_engine);
+      lite_op->SetAttr("engine_key", new_engine_key);
+      lite_op->SetEngine(new_lite_engine.get());
     }
   }
 #endif

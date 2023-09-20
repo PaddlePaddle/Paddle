@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/index_put_grad_kernel.h"
+#include <array>
 #include <numeric>
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/index_put_utils.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
@@ -77,7 +79,7 @@ void LaunchIndexPutGradKernel(const Context& dev_ctx,
                               bool accumulate,
                               DenseTensor* value_grad,
                               DenseTensor* x_grad) {
-  const int64_t* pd_indices[7];
+  std::array<const int64_t*, 7> pd_indices;
   for (size_t i = 0; i < indices.size(); ++i) {
     pd_indices[i] = indices[i]->data<int64_t>();
   }
@@ -92,7 +94,7 @@ void LaunchIndexPutGradKernel(const Context& dev_ctx,
       auto x_grad_stride = phi::stride(x_grad_dims);
 
       set_zero_kernel<T>(
-          numel, pd_indices, x_grad_stride, x_grad_dims, x_grad_data);
+          numel, pd_indices.data(), x_grad_stride, x_grad_dims, x_grad_data);
     }
   }
 
@@ -110,7 +112,7 @@ void LaunchIndexPutGradKernel(const Context& dev_ctx,
 
       index_put_grad_kernel<T>(numel,
                                out_grad_data,
-                               pd_indices,
+                               pd_indices.data(),
                                out_grad_stride,
                                out_grad_dims,
                                tmp_value_grad_data);
@@ -130,7 +132,7 @@ void LaunchIndexPutGradKernel(const Context& dev_ctx,
 
       index_put_grad_kernel<T>(numel,
                                out_grad_data,
-                               pd_indices,
+                               pd_indices.data(),
                                out_grad_stride,
                                out_grad_dims,
                                value_grad_data);
@@ -143,7 +145,7 @@ void LaunchIndexPutGradKernel(const Context& dev_ctx,
 
       index_put_grad_kernel<T>(numel,
                                out_grad_data,
-                               pd_indices,
+                               pd_indices.data(),
                                out_grad_stride,
                                out_grad_dims,
                                tmp_value_grad_data);
@@ -188,6 +190,19 @@ void IndexPutGradKernel(const Context& dev_ctx,
   std::vector<DenseTensor> tmp_args;
   std::vector<const phi::DenseTensor*> int_indices_v =
       funcs::DealWithBoolIndices<T, Context>(dev_ctx, indices, &tmp_args);
+  if (int_indices_v.empty()) {
+    if (x_grad) {
+      phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    }
+    if (value_grad) {
+      FullKernel<T, Context>(dev_ctx,
+                             phi::vectorize(value_grad->dims()),
+                             0.0f,
+                             value_grad->dtype(),
+                             value_grad);
+    }
+    return;
+  }
   auto bd_dim = funcs::BroadCastTensorsDims(int_indices_v);
 
   std::vector<int64_t> res_dim_v(phi::vectorize(bd_dim));
@@ -195,7 +210,8 @@ void IndexPutGradKernel(const Context& dev_ctx,
   std::vector<DenseTensor> tmp_res_indices_v;
   std::vector<DenseTensor> range_tensor_v;
 
-  for (int i = indices.size(); i < x.dims().size(); ++i) {
+  for (int i = static_cast<int>(int_indices_v.size()); i < x.dims().size();
+       ++i) {
     range_tensor_v.emplace_back(funcs::GetRangeTensor<int64_t, Context>(
         dev_ctx, x.dims()[i], phi::DataType::INT64));
   }

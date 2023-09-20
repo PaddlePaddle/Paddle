@@ -15,13 +15,13 @@
 import os
 import subprocess
 import sys
-import time
+import tempfile
 import unittest
 
 import numpy
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
 from paddle.distributed.utils.launch_utils import find_free_ports
@@ -36,10 +36,10 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
             name='x1', shape=[-1, 1], dtype='int64', lod_level=1
         )
 
-        emb = fluid.layers.embedding(
+        emb = paddle.static.nn.embedding(
             input=x1,
             size=[10000, 10],
-            param_attr=fluid.ParamAttr(
+            param_attr=base.ParamAttr(
                 name="embedding",
                 initializer=paddle.nn.initializer.Constant(value=0.01),
             ),
@@ -47,7 +47,7 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
         )
 
         pool = paddle.static.nn.sequence_lod.sequence_pool(
-            input=emb, pool_type="sum"
+            input=emb.squeeze(-2), pool_type="sum"
         )
         z = paddle.concat([x, pool], axis=1)
 
@@ -70,7 +70,7 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
     def run_pserver(self, role, strategy):
         fleet.init(role)
         avg_cost, x, z, y = self.net()
-        optimizer = fluid.optimizer.SGD(0.01)
+        optimizer = paddle.optimizer.SGD(0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
 
@@ -78,24 +78,24 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
         fleet.run_server()
 
     def run_trainer(self, role, strategy):
-        place = fluid.core.CPUPlace()
-        exe = fluid.Executor(place)
+        place = base.core.CPUPlace()
+        exe = base.Executor(place)
 
         fleet.init(role)
         avg_cost, x, z, y = self.net()
-        optimizer = fluid.optimizer.SGD(0.01)
+        optimizer = paddle.optimizer.SGD(0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
 
-        exe.run(fluid.default_startup_program())
+        exe.run(base.default_startup_program())
         fleet.init_worker()
 
         train_reader = paddle.batch(self.fake_reader(), batch_size=24)
-        feeder = fluid.DataFeeder(place=place, feed_list=[x, z, y])
+        feeder = base.DataFeeder(place=place, feed_list=[x, z, y])
 
         for batch_id, data in enumerate(train_reader()):
             exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed=feeder.feed(data),
                 fetch_list=[],
             )
@@ -124,51 +124,22 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
             self.run_pserver(role, strategy)
 
     def test_communicator(self):
-        run_server_cmd = """
-
-import sys
-import os
-
-import time
-import threading
-import subprocess
-import unittest
-import numpy
-
-import paddle
-import paddle.fluid as fluid
-
-from paddle.distributed.communicator import Communicator
-import paddle.incubate.distributed.fleet.role_maker as role_maker
-from paddle.incubate.distributed.fleet.parameter_server.mode import DistributedMode
-import paddle.distributed.fleet as fleet
-
-from test_communicator_geo import TestCommunicatorGeoEnd2End
-
-paddle.enable_static()
-
-class RunServer(TestCommunicatorGeoEnd2End):
-    def runTest(self):
-        pass
-
-os.environ["TRAINING_ROLE"] = "PSERVER"
-
-half_run_server = RunServer()
-half_run_server.run_ut()
-"""
-
-        server_file = "run_server_for_communicator_geo.py"
-        with open(server_file, "w") as wb:
-            wb.write(run_server_cmd)
+        temp_dir = tempfile.TemporaryDirectory()
+        pipe_name = os.path.join(temp_dir.name, 'mypipe')
+        try:
+            os.mkfifo(pipe_name)
+        except OSError as oe:
+            print(f"Failed to create pipe: {oe}")
 
         port = find_free_ports(1).pop()
 
         os.environ["TRAINING_ROLE"] = "PSERVER"
         os.environ["PADDLE_PORT"] = str(port)
         os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = f"127.0.0.1:{port}"
+        os.environ["PIPE_FILE"] = pipe_name
 
         _python = sys.executable
-
+        server_file = "run_server_for_communicator_geo.py"
         ps_cmd = f"{_python} {server_file}"
 
         ps_proc = subprocess.Popen(
@@ -177,7 +148,8 @@ half_run_server.run_ut()
             stderr=subprocess.PIPE,
         )
 
-        time.sleep(5)
+        with open(pipe_name, 'r') as pipe:
+            start_command = pipe.read()
 
         os.environ["TRAINING_ROLE"] = "TRAINER"
 
@@ -185,9 +157,6 @@ half_run_server.run_ut()
         ps_proc.kill()
         ps_proc.wait()
         outs, errs = ps_proc.communicate()
-
-        if os.path.exists(server_file):
-            os.remove(server_file)
 
 
 if __name__ == '__main__':

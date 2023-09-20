@@ -107,7 +107,7 @@ __global__ void GroupNormBackward(const T* x,
                                   int group_size,
                                   float epsilon,
                                   T* d_x) {
-  // using AccT = typename kps::details::MPTypeTrait<T>::Type;
+  // using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   int gid = blockIdx.y;
   int cid = blockIdx.x;
@@ -279,7 +279,7 @@ void GroupNormGradKernel(const Context& dev_ctx,
                          DenseTensor* d_x,
                          DenseTensor* d_scale,
                          DenseTensor* d_bias) {
-  using AccT = typename kps::details::MPTypeTrait<T>::Type;
+  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
   const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();
@@ -336,13 +336,8 @@ void GroupNormGradKernel(const Context& dev_ctx,
     }
   }
 
-#ifdef __HIPCC__
-  int block_size = std::max(std::min(256, imsize), 64);
-  const int block_dims = 256;
-#else
   int block_size = std::min(1024, imsize);
   const int block_dims = 1024;
-#endif
   dim3 grid(group_size, groups, x_dims[0]);
   dim3 threads(block_size, 1, 1);
   int flags =

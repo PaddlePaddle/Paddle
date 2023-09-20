@@ -32,6 +32,18 @@ bool PyCheckTensor(PyObject* obj) {
   return PyObject_TypeCheck(obj, p_tensor_type);
 }
 
+void ShareTensor(PyObject* src, PyObject* dst) {
+  if (PyObject_TypeCheck(src, p_tensor_type) &&
+      PyObject_TypeCheck(dst, p_tensor_type)) {
+    auto& src_tensor = reinterpret_cast<TensorObject*>(src)->tensor;
+    const auto& dst_tensor = reinterpret_cast<TensorObject*>(dst)->tensor;
+    src_tensor = dst_tensor;
+  } else {
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("Share tensor only support DenseTensor."));
+  }
+}
+
 paddle::Tensor CastPyArg2Tensor(PyObject* obj, Py_ssize_t arg_pos) {
   if (PyObject_TypeCheck(obj, p_tensor_type) ||
       PyObject_TypeCheck(obj, p_string_tensor_type)) {

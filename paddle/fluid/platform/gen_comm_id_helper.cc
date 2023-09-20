@@ -19,10 +19,11 @@ limitations under the License. */
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/in.h>
-#include <stdlib.h>
 #include <sys/socket.h>
+#include <cstdlib>
 
 #include <algorithm>
+#include <array>
 #include <string>
 #include <thread>  // NOLINT
 
@@ -220,7 +221,7 @@ static int SocketAccept(int server_fd, const CommHead head) {
 
   struct sockaddr_in client_addr;
   socklen_t addr_length = sizeof(client_addr);
-  char buffer[1024] = {0};
+  std::array<char, 1024> buffer{0};
   int conn = -1;
   const char* phead = reinterpret_cast<const char*>(&head);
 
@@ -231,8 +232,8 @@ static int SocketAccept(int server_fd, const CommHead head) {
                        "accept",
                        conn);
 
-    int ret_val = SocketRecv(conn, buffer, sizeof(head));
-    if (ret_val > 0 && memcmp(buffer, phead, sizeof(head)) == 0) {
+    int ret_val = SocketRecv(conn, buffer.data(), sizeof(head));
+    if (ret_val > 0 && memcmp(buffer.data(), phead, sizeof(head)) == 0) {
       // send a message to the sender, indicating that the link is correct
       CHECK_SYS_CALL(SocketSend(conn, phead, sizeof(head)), "send");
       break;  // accept client
@@ -259,13 +260,13 @@ static int ConnectAddr(const std::string& ep, const CommHead head) {
   server_addr.sin_family = AF_INET;
   server_addr.sin_port = htons(port);
 
-  char* ip = NULL;
-  struct hostent* hp = NULL;
+  char* ip = nullptr;
+  struct hostent* hp = nullptr;
 
   // sleep for get_host_by_name_time seconds.
   for (int i = 0; 2 * i < FLAGS_get_host_by_name_time; i++) {
     hp = gethostbyname(host.c_str());
-    if (hp != NULL) {
+    if (hp != nullptr) {
       break;
     }
     std::this_thread::sleep_for(std::chrono::seconds(2));
@@ -276,7 +277,7 @@ static int ConnectAddr(const std::string& ep, const CommHead head) {
       platform::errors::InvalidArgument("Fail to get host by name %s.", host));
 
   int i = 0;
-  while (hp->h_addr_list[i] != NULL) {
+  while (hp->h_addr_list[i] != nullptr) {
     ip = inet_ntoa(*(struct in_addr*)hp->h_addr_list[i]);
     VLOG(3) << "gethostbyname  host:" << host << "  ->ip: " << ip;
     break;
@@ -289,7 +290,7 @@ static int ConnectAddr(const std::string& ep, const CommHead head) {
 
   static_assert(sizeof(CommHead) <= 1024,
                 "sizeof(CommHead) must <= buffer size");
-  char buffer[1024] = {0};
+  std::array<char, 1024> buffer{0};
   const char* phead = reinterpret_cast<const char*>(&head);
 
   // TODO(wangxi) Set from env, default 900s=15min
@@ -312,15 +313,15 @@ static int ConnectAddr(const std::string& ep, const CommHead head) {
     }
 
     CHECK_SYS_CALL(SocketSend(sock, phead, sizeof(head)), "send");
-    ret_val = SocketRecv(sock, buffer, sizeof(head));
-    if (ret_val > 0 && memcmp(buffer, phead, sizeof(head)) == 0) {
+    ret_val = SocketRecv(sock, buffer.data(), sizeof(head));
+    if (ret_val > 0 && memcmp(buffer.data(), phead, sizeof(head)) == 0) {
       // recv same message from receiver, indicating that the link is correct
       break;  // accept client
     } else {
       VLOG(3) << "socket read failed with ret_val=" << ret_val;
       CloseSocket(sock);
     }
-    sock = -1;
+    sock = -1;  // NOLINT
     CHECK_SYS_CALL_VAL(socket(AF_INET, SOCK_STREAM, 0), "socket", sock);
     // unmatched link, retry after 80ms
     std::this_thread::sleep_for(std::chrono::milliseconds(80));
@@ -333,71 +334,77 @@ static int ConnectAddr(const std::string& ep, const CommHead head) {
 
 template <typename CommUniqueId>
 static void RecvCommID(int conn, CommUniqueId* nccl_id) {
-  char buffer[MAX_COMMUNIQUEID_LEN] = {0};
+  std::array<char, MAX_COMMUNIQUEID_LEN> buffer{0};
   static_assert(sizeof(CommUniqueId) <= MAX_COMMUNIQUEID_LEN,
                 "nccl id bytes must <= buffer size");
 
-  CHECK_SYS_CALL(SocketRecv(conn, buffer, sizeof(CommUniqueId)),
+  CHECK_SYS_CALL(SocketRecv(conn, buffer.data(), sizeof(CommUniqueId)),
                  "recv comm unique id");
-  memcpy(nccl_id, buffer, sizeof(CommUniqueId));
+  memcpy(nccl_id, buffer.data(), sizeof(CommUniqueId));
 }
 
 template <typename CommUniqueId>
 static void SendCommID(int conn, CommUniqueId* nccl_id) {
-  char buffer[MAX_COMMUNIQUEID_LEN] = {0};
-  memcpy(buffer, nccl_id, sizeof(CommUniqueId));
+  std::array<char, MAX_COMMUNIQUEID_LEN> buffer{0};
+  memcpy(buffer.data(), nccl_id, sizeof(CommUniqueId));
 
-  CHECK_SYS_CALL(SocketSend(conn, buffer, sizeof(CommUniqueId)),
+  CHECK_SYS_CALL(SocketSend(conn, buffer.data(), sizeof(CommUniqueId)),
                  "send comm unique id");
 }
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 template <>
 void RecvCommID<phi::ccl::CCLRootId>(int conn, phi::ccl::CCLRootId* nccl_id) {
-  char buffer[MAX_COMMUNIQUEID_LEN] = {0};
-  CHECK_SYS_CALL(SocketRecv(conn, buffer, sizeof(size_t)),
+  std::array<char, MAX_COMMUNIQUEID_LEN> buffer{0};
+  CHECK_SYS_CALL(SocketRecv(conn, buffer.data(), sizeof(size_t)),
                  "recv comm unique id size");
-  size_t unique_id_size = *reinterpret_cast<size_t*>(buffer);
+  size_t unique_id_size = *reinterpret_cast<size_t*>(buffer.data());
   VLOG(6) << "RecvCommID size: " << unique_id_size;
   nccl_id->resize(unique_id_size);
 
   size_t n_repeat = unique_id_size / MAX_COMMUNIQUEID_LEN;
   size_t n_remain = unique_id_size % MAX_COMMUNIQUEID_LEN;
   for (size_t i = 0; i < n_repeat; ++i) {
-    CHECK_SYS_CALL(SocketRecv(conn, buffer, MAX_COMMUNIQUEID_LEN),
+    CHECK_SYS_CALL(SocketRecv(conn, buffer.data(), MAX_COMMUNIQUEID_LEN),
                    "recv comm unique id");
     memcpy(nccl_id->data() + i * MAX_COMMUNIQUEID_LEN,
-           buffer,
+           buffer.data(),
            MAX_COMMUNIQUEID_LEN);
   }
   if (n_remain) {
-    CHECK_SYS_CALL(SocketRecv(conn, buffer, n_remain), "recv comm unique id");
-    memcpy(nccl_id->data() + n_repeat * MAX_COMMUNIQUEID_LEN, buffer, n_remain);
+    CHECK_SYS_CALL(SocketRecv(conn, buffer.data(), n_remain),
+                   "recv comm unique id");
+    memcpy(nccl_id->data() + n_repeat * MAX_COMMUNIQUEID_LEN,
+           buffer.data(),
+           n_remain);
   }
   VLOG(6) << "RecvCommID done";
 }
 
 template <>
 void SendCommID<phi::ccl::CCLRootId>(int conn, phi::ccl::CCLRootId* nccl_id) {
-  char buffer[MAX_COMMUNIQUEID_LEN] = {0};
+  std::array<char, MAX_COMMUNIQUEID_LEN> buffer{0};
   size_t unique_id_size = nccl_id->size();
   VLOG(6) << "SendCommID size: " << unique_id_size;
-  memcpy(buffer, &unique_id_size, sizeof(size_t));
-  CHECK_SYS_CALL(SocketSend(conn, buffer, sizeof(size_t)),
+  memcpy(buffer.data(), &unique_id_size, sizeof(size_t));
+  CHECK_SYS_CALL(SocketSend(conn, buffer.data(), sizeof(size_t)),
                  "send comm unique id size");
 
   size_t n_repeat = unique_id_size / MAX_COMMUNIQUEID_LEN;
   size_t n_remain = unique_id_size % MAX_COMMUNIQUEID_LEN;
   for (size_t i = 0; i < n_repeat; ++i) {
-    memcpy(buffer,
+    memcpy(buffer.data(),
            nccl_id->data() + i * MAX_COMMUNIQUEID_LEN,
            MAX_COMMUNIQUEID_LEN);
-    CHECK_SYS_CALL(SocketSend(conn, buffer, MAX_COMMUNIQUEID_LEN),
+    CHECK_SYS_CALL(SocketSend(conn, buffer.data(), MAX_COMMUNIQUEID_LEN),
                    "send comm unique id");
   }
   if (n_remain) {
-    memcpy(buffer, nccl_id->data() + n_repeat * MAX_COMMUNIQUEID_LEN, n_remain);
-    CHECK_SYS_CALL(SocketSend(conn, buffer, n_remain), "send comm unique id");
+    memcpy(buffer.data(),
+           nccl_id->data() + n_repeat * MAX_COMMUNIQUEID_LEN,
+           n_remain);
+    CHECK_SYS_CALL(SocketSend(conn, buffer.data(), n_remain),
+                   "send comm unique id");
   }
   VLOG(6) << "SendCommID done";
 }

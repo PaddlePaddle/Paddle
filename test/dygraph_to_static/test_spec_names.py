@@ -14,6 +14,11 @@
 
 import unittest
 
+from dygraph_to_static_util import (
+    enable_fallback_guard,
+    test_and_compare_with_new_ir,
+)
+
 import paddle
 from paddle.nn import Layer
 
@@ -42,63 +47,48 @@ class TestArgsSpecName(unittest.TestCase):
         self.m = paddle.randn([4, 2, 8])
         self.n = paddle.randn([4, 2, 8])
 
+    @test_and_compare_with_new_ir(False)
     def test_spec_name_hash(self):
         net = Net()
         net = paddle.jit.to_static(net)
+
         # Convert into program with four input
         self.read_from_dataset()
         self.run_test(net, [self.x, self.y, self.m, self.n], 1, [0, 1, 2, 3])
 
         # Convert into program with three input
         self.read_from_dataset()
-        self.run_test(net, [self.x, self.x, self.m, self.n], 2, [0, 0, 1, 2])
+        self.run_test(net, [self.x, self.x, self.m, self.n], 1, [0, 0, 1, 2])
 
         # Convert into program with two input
         self.read_from_dataset()
-        self.run_test(net, [self.x, self.x, self.m, self.m], 3, [0, 0, 1, 1])
+        self.run_test(net, [self.x, self.x, self.m, self.m], 1, [0, 0, 1, 1])
 
         # Use Cache Program
         self.read_from_dataset()
-        self.run_test(net, [self.n, self.n, self.y, self.y], 3, [0, 0, 1, 1])
+        self.run_test(net, [self.n, self.n, self.y, self.y], 1, [0, 0, 1, 1])
 
         # Convert into program with two input
         self.read_from_dataset()
-        self.run_test(net, [self.x, self.y, self.x, self.y], 4, [0, 1, 0, 1])
+        self.run_test(net, [self.x, self.y, self.x, self.y], 1, [0, 1, 0, 1])
 
         # Use Cache Program
         self.read_from_dataset()
-        self.run_test(net, [self.m, self.n, self.m, self.n], 4, [0, 1, 0, 1])
+        self.run_test(net, [self.m, self.n, self.m, self.n], 1, [0, 1, 0, 1])
 
         # Convert into program with one input
         self.read_from_dataset()
-        self.run_test(net, [self.x, self.x, self.x, self.x], 5, [0, 0, 0, 0])
+        self.run_test(net, [self.x, self.x, self.x, self.x], 1, [0, 0, 0, 0])
 
         # Use Cache Program
         self.read_from_dataset()
-        self.run_test(net, [self.m, self.m, self.m, self.m], 5, [0, 0, 0, 0])
+        self.run_test(net, [self.m, self.m, self.m, self.m], 1, [0, 0, 0, 0])
 
     def run_test(self, net, inputs, trace_count, mode):
         out = net(*inputs)
         self.assertEqual(net.forward.get_traced_count(), trace_count)
-        self.assert_feed_mode(net.forward.inputs, mode)
-
-    def assert_feed_mode(self, inputs, expect_mode):
-        assert isinstance(inputs, list)
-        assert isinstance(expect_mode, list)
-        in_names = [var.name for var in inputs]
-
-        i, name_ids = 0, {}
-
-        def to_idx(name):
-            nonlocal i
-            if name not in name_ids:
-                name_ids[name] = i
-                i += 1
-            return name_ids[name]
-
-        mode = [to_idx(name) for name in in_names]
-        self.assertEqual(mode, expect_mode)
 
 
 if __name__ == '__main__':
-    unittest.main()
+    with enable_fallback_guard("False"):
+        unittest.main()

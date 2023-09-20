@@ -28,7 +28,7 @@
 namespace phi {
 namespace tests {
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(DEV_API, transfer_layout) {
   // 1. create tensor
 

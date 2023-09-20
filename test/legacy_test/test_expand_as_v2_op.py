@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestExpandAsBasic(OpTest):
@@ -52,6 +52,31 @@ class TestExpandAsBasic(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
+
+
+class TestExpandAs_ZeroDim1(TestExpandAsBasic):
+    def init_inputs_and_outputs(self):
+        x = np.random.random(()).astype(self.dtype)
+        target_tensor = np.random.random(1).astype(self.dtype)
+        self.inputs = {'X': x, "Y": target_tensor}
+        self.attrs = {'target_shape': target_tensor.shape}
+        bcast_dims = [1]
+        output = np.tile(self.inputs['X'], bcast_dims)
+        self.outputs = {'Out': output}
+
+
+class TestExpandAs_ZeroDim2(TestExpandAsBasic):
+    def init_inputs_and_outputs(self):
+        x = np.random.random(()).astype(self.dtype)
+        target_tensor = np.random.random(()).astype(self.dtype)
+        self.inputs = {'X': x, "Y": target_tensor}
+        self.attrs = {'target_shape': target_tensor.shape}
+        bcast_dims = []
+        output = np.tile(self.inputs['X'], bcast_dims)
+        self.outputs = {'Out': output}
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
 
 @unittest.skipIf(
@@ -225,7 +250,7 @@ class TestExpandAsOpRank5BFP16OP(TestExpandAsOpRank5):
 
 class TestExpandAsV2Error(unittest.TestCase):
     def test_errors(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             x1 = paddle.static.data(name='x1', shape=[-1, 4], dtype="uint8")
             x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="int32")
             self.assertRaises(TypeError, paddle.tensor.expand_as, x1, x2)
@@ -249,13 +274,13 @@ class TestExpandAsV2API(unittest.TestCase):
 
         out_1 = paddle.expand_as(x, y=y)
 
-        exe = fluid.Executor(place=fluid.CPUPlace())
+        exe = base.Executor(place=base.CPUPlace())
         res_1 = exe.run(
-            fluid.default_main_program(),
+            base.default_main_program(),
             feed={"x": input1, "target_tensor": input2},
             fetch_list=[out_1],
         )
-        assert np.array_equal(res_1[0], np.tile(input1, (2, 1, 1)))
+        np.testing.assert_array_equal(res_1[0], np.tile(input1, (2, 1, 1)))
 
 
 if __name__ == "__main__":

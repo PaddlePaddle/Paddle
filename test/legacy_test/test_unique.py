@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, paddle_static_guard
+from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestUniqueOp(OpTest):
@@ -147,7 +147,14 @@ class TestSortedUniqueOp(TestUniqueOp):
         self.dtype = np.float64
 
     def init_config(self):
-        self.inputs = {'X': np.array([2, 3, 3, 1, 5, 3], dtype=self.dtype)}
+        if self.dtype == np.uint16:
+            self.inputs = {
+                'X': convert_float_to_uint16(
+                    np.array([2, 3, 3, 1, 5, 3], dtype=np.float32)
+                )
+            }
+        else:
+            self.inputs = {'X': np.array([2, 3, 3, 1, 5, 3], dtype=self.dtype)}
         unique, indices, inverse, count = np.unique(
             self.inputs['X'],
             return_index=True,
@@ -197,9 +204,16 @@ class TestUniqueOpAxisNone(TestUniqueOp):
         self.dtype = np.float64
 
     def init_config(self):
-        self.inputs = {
-            'X': np.random.randint(0, 100, (4, 7, 10)).astype(self.dtype)
-        }
+        if self.dtype == np.uint16:
+            self.inputs = {
+                'X': convert_float_to_uint16(
+                    np.random.randint(0, 100, (4, 7, 10)).astype(np.float32)
+                )
+            }
+        else:
+            self.inputs = {
+                'X': np.random.randint(0, 100, (4, 7, 10)).astype(self.dtype)
+            }
         unique, indices, inverse, counts = np.unique(
             self.inputs['X'],
             return_index=True,

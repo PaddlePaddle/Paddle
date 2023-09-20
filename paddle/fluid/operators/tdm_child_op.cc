@@ -24,7 +24,7 @@ namespace paddle {
 namespace operators {
 class TDMChildOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X",
              "X(Tensor), dtype support int32/int64, X variable is the "
              "node id of TDM-Tree");

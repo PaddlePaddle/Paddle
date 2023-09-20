@@ -19,9 +19,13 @@ import unittest
 
 import numpy
 
+# TODO: remove sys.path.append
+sys.path.append("../legacy_test")
+import nets
+
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -45,7 +49,7 @@ def mlp(img, label):
 
 
 def conv_net(img, label):
-    conv_pool_1 = fluid.nets.simple_img_conv_pool(
+    conv_pool_1 = nets.simple_img_conv_pool(
         input=img,
         filter_size=5,
         num_filters=20,
@@ -54,7 +58,7 @@ def conv_net(img, label):
         act="relu",
     )
     conv_pool_1 = paddle.static.nn.batch_norm(conv_pool_1)
-    conv_pool_2 = fluid.nets.simple_img_conv_pool(
+    conv_pool_2 = nets.simple_img_conv_pool(
         input=conv_pool_1,
         filter_size=5,
         num_filters=50,
@@ -75,7 +79,7 @@ def train(
     params_filename=None,
     is_local=True,
 ):
-    if use_cuda and not fluid.core.is_compiled_with_cuda():
+    if use_cuda and not base.core.is_compiled_with_cuda():
         return
     img = paddle.static.data(name='img', shape=[-1, 1, 28, 28], dtype='float32')
     label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
@@ -90,14 +94,14 @@ def train(
     else:
         prediction, avg_loss, acc = net_conf(img, label)
 
-    test_program = fluid.default_main_program().clone(for_test=True)
+    test_program = base.default_main_program().clone(for_test=True)
 
-    optimizer = fluid.optimizer.Adam(learning_rate=0.001)
+    optimizer = paddle.optimizer.Adam(learning_rate=0.001)
     optimizer.minimize(avg_loss)
 
-    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+    place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
 
-    exe = fluid.Executor(place)
+    exe = base.Executor(place)
 
     train_reader = paddle.batch(
         paddle.reader.shuffle(paddle.dataset.mnist.train(), buf_size=500),
@@ -106,10 +110,10 @@ def train(
     test_reader = paddle.batch(
         paddle.dataset.mnist.test(), batch_size=BATCH_SIZE
     )
-    feeder = fluid.DataFeeder(feed_list=[img, label], place=place)
+    feeder = base.DataFeeder(feed_list=[img, label], place=place)
 
     def train_loop(main_program):
-        exe.run(fluid.default_startup_program())
+        exe.run(base.default_startup_program())
 
         PASS_NUM = 100
         for pass_id in range(PASS_NUM):
@@ -133,23 +137,18 @@ def train(
                     if float(acc_val) > 0.2 or pass_id == (PASS_NUM - 1):
                         # Smaller value to increase CI speed
                         if save_dirname is not None:
-                            fluid.io.save_inference_model(
+                            paddle.static.io.save_inference_model(
                                 save_dirname,
-                                ["img"],
+                                img,
                                 [prediction],
                                 exe,
-                                model_filename=model_filename,
-                                params_filename=params_filename,
                             )
                         if save_full_dirname is not None:
-                            fluid.io.save_inference_model(
+                            paddle.static.save_inference_model(
                                 save_full_dirname,
                                 [],
                                 [],
                                 exe,
-                                model_filename=model_filename,
-                                params_filename=params_filename,
-                                export_for_deployment=False,
                             )
                         return
                     else:
@@ -166,7 +165,7 @@ def train(
         raise AssertionError("Loss of recognize digits is too large")
 
     if is_local:
-        train_loop(fluid.default_main_program())
+        train_loop(base.default_main_program())
     else:
         port = os.getenv("PADDLE_PSERVER_PORT", "6174")
         pserver_ips = os.getenv("PADDLE_PSERVER_IPS")  # ip,ip...
@@ -197,12 +196,12 @@ def infer(
     if save_dirname is None:
         return
 
-    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    exe = fluid.Executor(place)
+    place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+    exe = base.Executor(place)
 
-    inference_scope = fluid.core.Scope()
-    with fluid.scope_guard(inference_scope):
-        # Use fluid.io.load_inference_model to obtain the inference program desc,
+    inference_scope = base.core.Scope()
+    with base.scope_guard(inference_scope):
+        # Use paddle.static.io.load_inference_model to obtain the inference program desc,
         # the feed_target_names (the names of variables that will be feeded
         # data using feed operators), and the fetch_targets (variables that
         # we want to obtain data from using fetch operators).
@@ -210,8 +209,9 @@ def infer(
             inference_program,
             feed_target_names,
             fetch_targets,
-        ] = fluid.io.load_inference_model(
-            save_dirname, exe, model_filename, params_filename
+        ] = paddle.static.io.load_inference_model(
+            save_dirname,
+            exe,
         )
 
         # The input's dimension of conv should be 4-D or 5-D.
@@ -237,11 +237,13 @@ def main(use_cuda, parallel, nn_type, combine):
     model_filename = None
     params_filename = None
     if not use_cuda and not parallel:
-        save_dirname = "recognize_digits_" + nn_type + ".inference.model"
-        save_full_dirname = "recognize_digits_" + nn_type + ".train.model"
+        save_dirname = "recognize_digits_" + nn_type + "_inference_model"
+        save_full_dirname = "recognize_digits_" + nn_type + "_train_model"
         if combine:
             model_filename = "__model_combined__"
             params_filename = "__params_combined__"
+            save_dirname = save_dirname + model_filename
+            save_full_dirname = params_filename + params_filename
 
     # call train() with is_local argument to run distributed train
     train(
@@ -267,11 +269,11 @@ class TestRecognizeDigits(unittest.TestCase):
 
 def inject_test_method(use_cuda, parallel, nn_type, combine):
     def __impl__(self):
-        prog = fluid.Program()
-        startup_prog = fluid.Program()
-        scope = fluid.core.Scope()
-        with fluid.scope_guard(scope):
-            with fluid.program_guard(prog, startup_prog):
+        prog = base.Program()
+        startup_prog = base.Program()
+        scope = base.core.Scope()
+        with base.scope_guard(scope):
+            with base.program_guard(prog, startup_prog):
                 main(use_cuda, parallel, nn_type, combine)
 
     fn = 'test_{}_{}_{}_{}'.format(

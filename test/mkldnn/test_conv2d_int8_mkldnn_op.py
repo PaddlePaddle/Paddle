@@ -16,10 +16,10 @@ import os
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 from test_conv2d_op import TestConv2DOp, conv2d_forward_naive
 
-from paddle.fluid import core
+from paddle.base import core
 
 
 def conv2d_forward_refer(input, filter, group, conv_param):
@@ -41,6 +41,7 @@ class TestConv2DInt8Op(TestConv2DOp):
         self.mkldnn_data_type = "int8"
         self.weighttype = np.float32
         self.use_mkldnn = True
+        self.init_weight_quantization_type()
         self.init_group()
         self.init_dilation()
         self.init_test_case()
@@ -147,11 +148,11 @@ class TestConv2DInt8Op(TestConv2DOp):
         output = np.round(output).astype(self.dsttype)
 
         self.inputs = {
-            'Input': OpTest.np_dtype_to_fluid_dtype(input.astype(self.srctype)),
-            'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
+            'Input': OpTest.np_dtype_to_base_dtype(input.astype(self.srctype)),
+            'Filter': OpTest.np_dtype_to_base_dtype(filter),
         }
         if self.fuse_residual:
-            self.inputs['ResidualData'] = OpTest.np_dtype_to_fluid_dtype(
+            self.inputs['ResidualData'] = OpTest.np_dtype_to_base_dtype(
                 input_residual
             )
 
@@ -181,8 +182,9 @@ class TestConv2DInt8Op(TestConv2DOp):
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # the atol for integer tests should be 1
         self.check_output_with_place(
-            core.CPUPlace(), atol=0, check_dygraph=False
+            core.CPUPlace(), atol=1, check_dygraph=False
         )
 
     def test_check_grad(self):
@@ -202,8 +204,15 @@ class TestConv2DInt8Op(TestConv2DOp):
         self.filter_size = [2, f_c, 3, 3]
         self.scale_in = 0.95
         self.scale_out = 0.5
-        self.scale_weights = [10.0]
+        self.scale_weights = (
+            [10.0] * self.filter_size[0]
+            if self.per_channel_quantize_weight
+            else [10.0]
+        )
         self.scale_in_eltwise = 0.6
+
+    def init_weight_quantization_type(self):
+        self.per_channel_quantize_weight = False
 
     def init_data_type(self):
         self.srctype = np.uint8
@@ -239,15 +248,15 @@ class TestConv2D(TestConv2DInt8Op):
 class TestWithHardSwish(TestConv2D):
     def init_fuse_activation(self):
         self.fuse_activation = "hard_swish"
-        self.fuse_alpha = 0
-        self.fuse_beta = 0
+        self.fuse_alpha = 1.0 / 6.0
+        self.fuse_beta = 1.0 / 2.0
 
 
 class TestWithRelu6(TestConv2D):
     def init_fuse_activation(self):
         self.fuse_activation = "relu6"
-        self.fuse_alpha = 6
-        self.fuse_beta = 0
+        self.fuse_alpha = 0
+        self.fuse_beta = 6
 
 
 class TestWithSwish(TestConv2D):
@@ -348,6 +357,34 @@ def init_data_type_with_fusion(self, input_dt, fuse_activation, fuse_residual):
     self.fuse_activation = fuse_activation
 
     self.fuse_residual = fuse_residual
+
+
+class TestDepthwiseConv2d(TestConv2D):
+    def init_test_case(self):
+        self.pad = [1, 1]
+        self.stride = [1, 1]
+        self.input_size = [1, 32, 112, 112]
+        self.input_residual_size = [1, 32, 112, 112]
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [32, f_c, 3, 3]
+        self.scale_in = 0.95
+        self.scale_out = 0.5
+        self.scale_weights = (
+            [10.0] * self.filter_size[0]
+            if self.per_channel_quantize_weight
+            else [10.0]
+        )
+        self.scale_in_eltwise = 0.8
+
+    def init_group(self):
+        self.groups = 32
+
+    def init_weight_quantization_type(self):
+        self.per_channel_quantize_weight = True
+
+    def init_fuse_residual(self):
+        self.fuse_residual = False
 
 
 def create_test_int8_class(parent):

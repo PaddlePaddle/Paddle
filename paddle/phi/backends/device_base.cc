@@ -14,13 +14,13 @@
 
 #include "paddle/phi/backends/device_base.h"
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/utils/flags.h"
 
-DECLARE_double(fraction_of_gpu_memory_to_use);
-DECLARE_uint64(initial_gpu_memory_in_mb);
-DECLARE_uint64(reallocate_gpu_memory_in_mb);
+PD_DECLARE_double(fraction_of_gpu_memory_to_use);
+PD_DECLARE_uint64(initial_gpu_memory_in_mb);
+PD_DECLARE_uint64(reallocate_gpu_memory_in_mb);
 
 constexpr static float fraction_reserve_gpu_memory = 0.05f;
 
@@ -353,6 +353,19 @@ void DeviceInterface::CCLRecv(void* recvbuf,
                               size_t src_rank,
                               const ccl::CCLComm& ccl_comm,
                               const stream::Stream& stream) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::CCLAllToAll(const void** send_buf,
+                                  const size_t* send_count,
+                                  const ccl::CCLDataType* send_dtype,
+                                  void** recv_buf,
+                                  const size_t* recv_count,
+                                  const ccl::CCLDataType* recv_dtype,
+                                  size_t rank,
+                                  size_t nranks,
+                                  const ccl::CCLComm& comm,
+                                  const stream::Stream& stream) {
   INTERFACE_UNIMPLEMENT;
 }
 

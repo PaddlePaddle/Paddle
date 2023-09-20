@@ -101,23 +101,45 @@ inline void GetOutShape(const DDim& x_dims,
                         const std::vector<int>& dilations,
                         const std::vector<int>& strides,
                         DDim* out_dims) {
-  PADDLE_ENFORCE_EQ(
-      x_dims.size(),
-      5,
-      phi::errors::InvalidArgument("the shape of x should be (N, D, H, W, C)"));
-  PADDLE_ENFORCE_EQ(kernel_sizes.size(),
-                    5,
-                    phi::errors::InvalidArgument(
-                        "the shape of kernel should be (D, H, W, C, OC)"));
+  const bool is2D = out_dims->size() == 4 ? true : false;
+  if (is2D) {
+    PADDLE_ENFORCE_EQ(
+        x_dims.size(),
+        4,
+        phi::errors::InvalidArgument("the shape of x should be (N, H, W, C)"));
+    PADDLE_ENFORCE_EQ(kernel_sizes.size(),
+                      4,
+                      phi::errors::InvalidArgument(
+                          "the shape of kernel should be (H, W, C, OC)"));
 
-  // infer out shape
-  (*out_dims)[0] = x_dims[0];
-  (*out_dims)[4] = kernel_sizes[4];
-  for (int i = 1; i < 4; i++) {
-    (*out_dims)[i] = (x_dims[i] + 2 * paddings[i - 1] -
-                      dilations[i - 1] * (kernel_sizes[i - 1] - 1) - 1) /
-                         strides[i - 1] +
-                     1;
+    // infer out shape
+    (*out_dims)[0] = x_dims[0];
+    (*out_dims)[3] = kernel_sizes[3];
+    for (int i = 1; i < 3; i++) {
+      (*out_dims)[i] = (x_dims[i] + 2 * paddings[i - 1] -
+                        dilations[i - 1] * (kernel_sizes[i - 1] - 1) - 1) /
+                           strides[i - 1] +
+                       1;
+    }
+  } else {
+    PADDLE_ENFORCE_EQ(x_dims.size(),
+                      5,
+                      phi::errors::InvalidArgument(
+                          "the shape of x should be (N, D, H, W, C)"));
+    PADDLE_ENFORCE_EQ(kernel_sizes.size(),
+                      5,
+                      phi::errors::InvalidArgument(
+                          "the shape of kernel should be (D, H, W, C, OC)"));
+
+    // infer out shape
+    (*out_dims)[0] = x_dims[0];
+    (*out_dims)[4] = kernel_sizes[4];
+    for (int i = 1; i < 4; i++) {
+      (*out_dims)[i] = (x_dims[i] + 2 * paddings[i - 1] -
+                        dilations[i - 1] * (kernel_sizes[i - 1] - 1) - 1) /
+                           strides[i - 1] +
+                       1;
+    }
   }
 }
 
@@ -141,17 +163,20 @@ inline void SubmPreProcess(const Context& dev_ctx,
                            DenseTensor* kernel_grad,
                            DenseTensor* x_grad) {
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
-  T* d_kernel_ptr = kernel_grad->data<T>();
-  blas.GEMM(CblasTrans,
-            CblasNoTrans,
-            x.non_zero_elements().dims()[1],
-            out_grad.dims()[1],
-            x.non_zero_elements().dims()[0],
-            static_cast<T>(1),
-            x.non_zero_elements().data<T>(),
-            out_grad.data<T>(),
-            static_cast<T>(0),
-            d_kernel_ptr + half_kernel_size * in_channels * out_channels);
+  const bool is_params_freezing = kernel_grad == nullptr;
+  if (!is_params_freezing) {
+    T* d_kernel_ptr = kernel_grad->data<T>();
+    blas.GEMM(CblasTrans,
+              CblasNoTrans,
+              x.non_zero_elements().dims()[1],
+              out_grad.dims()[1],
+              x.non_zero_elements().dims()[0],
+              static_cast<T>(1),
+              x.non_zero_elements().data<T>(),
+              out_grad.data<T>(),
+              static_cast<T>(0),
+              d_kernel_ptr + half_kernel_size * in_channels * out_channels);
+  }
 
   // call gemm: d_x = out_grad * transpose(kernel)
   // (n, out_channels) * (out_channels, in_channels)

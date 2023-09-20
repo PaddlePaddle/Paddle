@@ -13,12 +13,11 @@
 # limitations under the License.
 
 include(ExternalProject)
-
+set(OPENSSL_USE_STATIC_LIBS ON)
 find_package(OpenSSL REQUIRED)
 
 message(STATUS "ssl:" ${OPENSSL_SSL_LIBRARY})
 message(STATUS "crypto:" ${OPENSSL_CRYPTO_LIBRARY})
-message(STATUS "WITH_SNAPPY:" ${WITH_SNAPPRY})
 
 add_library(ssl SHARED IMPORTED GLOBAL)
 set_property(TARGET ssl PROPERTY IMPORTED_LOCATION ${OPENSSL_SSL_LIBRARY})
@@ -37,6 +36,11 @@ set(BRPC_LIBRARIES
 
 include_directories(${BRPC_INCLUDE_DIR})
 
+# clone brpc to Paddle/third_party
+set(BRPC_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/brpc)
+set(BRPC_URL https://github.com/apache/brpc.git)
+set(BRPC_TAG 1.4.0)
+
 # Reference https://stackoverflow.com/questions/45414507/pass-a-list-of-prefix-paths-to-externalproject-add-in-cmake-args
 set(prefix_path
     "${THIRD_PARTY_PATH}/install/gflags|${THIRD_PARTY_PATH}/install/leveldb|${THIRD_PARTY_PATH}/install/snappy|${THIRD_PARTY_PATH}/install/gtest|${THIRD_PARTY_PATH}/install/protobuf|${THIRD_PARTY_PATH}/install/zlib|${THIRD_PARTY_PATH}/install/glog"
@@ -46,8 +50,7 @@ set(prefix_path
 ExternalProject_Add(
   extern_brpc
   ${EXTERNAL_PROJECT_LOG_ARGS}
-  GIT_REPOSITORY "https://github.com/apache/incubator-brpc"
-  GIT_TAG 1.4.0
+  SOURCE_DIR ${BRPC_SOURCE_DIR}
   PREFIX ${BRPC_PREFIX_DIR}
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
@@ -88,3 +91,16 @@ add_dependencies(brpc extern_brpc)
 add_definitions(-DBRPC_WITH_GLOG)
 
 list(APPEND external_project_dependencies brpc)
+
+set(EXTERNAL_BRPC_DEPS
+    brpc
+    protobuf
+    ssl
+    crypto
+    leveldb
+    glog
+    snappy)
+
+if(NOT WITH_GFLAGS)
+  set(EXTERNAL_BRPC_DEPS ${EXTERNAL_BRPC_DEPS} gflags)
+endif()

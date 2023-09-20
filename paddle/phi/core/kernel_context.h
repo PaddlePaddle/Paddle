@@ -139,6 +139,7 @@ class KernelContext {
 
   template <typename AttrType>
   const AttrType& AttrAt(size_t idx) const;
+  const Attribute& AttrAt(size_t idx) const;
 
   size_t InputsSize() const { return inputs_.size(); }
   size_t OutputsSize() const { return outputs_.size(); }

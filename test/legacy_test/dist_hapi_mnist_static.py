@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import Model, fluid, set_device
+from paddle import Model, base, set_device
 from paddle.metric import Accuracy
 from paddle.nn.layer.loss import CrossEntropyLoss
 from paddle.static import InputSpec as Input
@@ -50,9 +50,9 @@ def compute_accuracy(pred, gt):
 
 
 @unittest.skipIf(
-    not fluid.is_compiled_with_cuda(), 'CPU testing is not supported'
+    not base.is_compiled_with_cuda(), 'CPU testing is not supported'
 )
-class TestDistTraning(unittest.TestCase):
+class TestDistTraining(unittest.TestCase):
     def test_static_multiple_gpus(self):
         paddle.enable_static()
         device = set_device('gpu')
@@ -64,8 +64,8 @@ class TestDistTraning(unittest.TestCase):
         labels = [Input([None, 1], 'int64', 'label')]
 
         model = Model(LeNet(), inputs, labels)
-        optim = fluid.optimizer.Momentum(
-            learning_rate=0.001, momentum=0.9, parameter_list=model.parameters()
+        optim = paddle.optimizer.Momentum(
+            learning_rate=0.001, momentum=0.9, parameters=model.parameters()
         )
         model.prepare(optim, CrossEntropyLoss(), Accuracy())
 

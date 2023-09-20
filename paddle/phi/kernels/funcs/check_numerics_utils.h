@@ -265,7 +265,7 @@ static void CheckNumericsCpuImpl(const T* value_ptr,
       } else if (std::isinf(value)) {
         thread_num_inf[tid] += 1;
       }
-      if (value == 0) {
+      if (value == static_cast<MT>(0)) {
         thread_num_zero[tid] += 1;
       }
     }

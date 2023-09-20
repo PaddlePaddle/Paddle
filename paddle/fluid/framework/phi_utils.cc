@@ -40,7 +40,7 @@ class KernelArgsNameMakerByOpProto : public KernelArgsNameMaker {
         platform::errors::InvalidArgument("Op proto cannot be nullptr."));
   }
 
-  ~KernelArgsNameMakerByOpProto() {}
+  ~KernelArgsNameMakerByOpProto() override = default;
 
   const paddle::small_vector<const char*>& GetInputArgsNames() override;
   const paddle::small_vector<const char*>& GetOutputArgsNames() override;
@@ -251,9 +251,9 @@ void InitDefaultKernelSignatureMap() {
 
 static void SetAllocationForUninitializedDenseTensor(
     phi::DenseTensor* dense_tensor, const platform::Place& place) {
-  int dtype_size = dense_tensor->dtype() == DataType::UNDEFINED
-                       ? 0
-                       : phi::SizeOf(dense_tensor->dtype());
+  int dtype_size = static_cast<int>(dense_tensor->dtype() == DataType::UNDEFINED
+                                        ? 0
+                                        : phi::SizeOf(dense_tensor->dtype()));
   int64_t numels = product(dense_tensor->dims());
   numels = numels < 0 ? 0 : numels;
   auto tmp_allocation_ptr = memory::Alloc(place, numels * dtype_size);
@@ -306,7 +306,7 @@ phi::IntArray MakePhiIntArrayFromVar(const framework::Variable& variable) {
 // TODO(chentianyu03): Inplace with IntArray constructor
 phi::IntArray MakePhiIntArrayFromVarList(
     const std::vector<framework::Variable*>& variable_list) {
-  if (variable_list.size() == 0) {
+  if (variable_list.empty()) {
     return phi::IntArray();
   }
   auto expected_place = phi::TransToPhiPlace(phi::Backend::CPU);

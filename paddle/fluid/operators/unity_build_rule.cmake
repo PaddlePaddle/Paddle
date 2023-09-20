@@ -104,7 +104,6 @@ register_unity_group(
   flatten_op.cc
   fsp_op.cc
   gather_nd_op.cc
-  gather_op.cc
   gather_tree_op.cc
   gaussian_random_batch_size_like_op.cc
   mkldnn/gaussian_random_mkldnn_op.cc

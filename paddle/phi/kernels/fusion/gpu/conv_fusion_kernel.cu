@@ -130,34 +130,32 @@ class CudnnConvDescManager {
     XXH64_hash_t hash_key = XXH64_digest(state);
     XXH64_freeState(state);
 
+    std::lock_guard<std::mutex> lock(cache_mutex_);
     if (!cudnn_conv_cache_.count(hash_key)) {
-      std::lock_guard<std::mutex> lock(cache_mutex_);
-      if (!cudnn_conv_cache_.count(hash_key)) {
-        cudnn_conv_cache_[hash_key] = CudnnCacheInfo();
-        cudnn_conv_cache_[hash_key].x_desc =
-            GetTensorDescInfo(input_dims, input_dtype, format);
-        cudnn_conv_cache_[hash_key].w_desc =
-            GetFilterDescInfo(filter_dims, input_dtype, format);
-        cudnn_conv_cache_[hash_key].o_desc =
-            GetTensorDescInfo(output_dims, input_dtype, format);
-        cudnn_conv_cache_[hash_key].b_desc =
-            GetTensorDescInfo(bias_dims, input_dtype, format);
-        cudnn_conv_cache_[hash_key].conv_desc =
-            GetConvDescInfo(paddings, strides, dilations, groups, dtype);
-        cudnn_conv_cache_[hash_key].act_desc =
-            GetActivationDescInfo(act, value_max);
+      cudnn_conv_cache_[hash_key] = CudnnCacheInfo();
+      cudnn_conv_cache_[hash_key].x_desc =
+          GetTensorDescInfo(input_dims, input_dtype, format);
+      cudnn_conv_cache_[hash_key].w_desc =
+          GetFilterDescInfo(filter_dims, input_dtype, format);
+      cudnn_conv_cache_[hash_key].o_desc =
+          GetTensorDescInfo(output_dims, input_dtype, format);
+      cudnn_conv_cache_[hash_key].b_desc =
+          GetTensorDescInfo(bias_dims, input_dtype, format);
+      cudnn_conv_cache_[hash_key].conv_desc =
+          GetConvDescInfo(paddings, strides, dilations, groups, dtype);
+      cudnn_conv_cache_[hash_key].act_desc =
+          GetActivationDescInfo(act, value_max);
 
-        size_t workspace_size;
-        cudnnConvolutionFwdAlgo_t algo;
-        search_func(&algo,
-                    &workspace_size,
-                    cudnn_conv_cache_[hash_key].x_desc->desc(),
-                    cudnn_conv_cache_[hash_key].w_desc->desc(),
-                    cudnn_conv_cache_[hash_key].o_desc->desc(),
-                    cudnn_conv_cache_[hash_key].conv_desc->desc());
-        cudnn_conv_cache_[hash_key].workspace_size = workspace_size;
-        cudnn_conv_cache_[hash_key].algo = algo;
-      }
+      size_t workspace_size;
+      cudnnConvolutionFwdAlgo_t algo;
+      search_func(&algo,
+                  &workspace_size,
+                  cudnn_conv_cache_[hash_key].x_desc->desc(),
+                  cudnn_conv_cache_[hash_key].w_desc->desc(),
+                  cudnn_conv_cache_[hash_key].o_desc->desc(),
+                  cudnn_conv_cache_[hash_key].conv_desc->desc());
+      cudnn_conv_cache_[hash_key].workspace_size = workspace_size;
+      cudnn_conv_cache_[hash_key].algo = algo;
     }
 
     return &cudnn_conv_cache_.at(hash_key);
@@ -199,90 +197,86 @@ class CudnnConvDescManager {
     XXH64_hash_t hash_key = XXH64_digest(state);
     XXH64_freeState(state);
 
+    std::lock_guard<std::mutex> lock(attr_mutex_);
     if (!conv_attr_cache_.count(hash_key)) {
-      std::lock_guard<std::mutex> lock(attr_mutex_);
-      if (!conv_attr_cache_.count(hash_key)) {
-        ConvAttrCacheInfo cache;
-        auto paddings = paddings_t;
-        auto dilations = dilations_t;
-        std::vector<int> in_data_dims(input_dims.size() - 2);
-        std::vector<int> ksize(filter_dims.size() - 2);
-        if (format == CUDNN_TENSOR_NHWC) {
-          for (size_t i = 1; i < input_dims.size() - 1; ++i) {
-            in_data_dims[i - 1] = input_dims[i];
-          }
-          for (size_t i = 1; i < filter_dims.size() - 1; ++i) {
-            ksize[i - 1] = filter_dims[i];
-          }
-        } else {
-          for (size_t i = 2; i < input_dims.size(); ++i) {
-            in_data_dims[i - 2] = input_dims[i];
-          }
-          for (size_t i = 2; i < filter_dims.size(); ++i) {
-            ksize[i - 2] = filter_dims[i];
-          }
+      ConvAttrCacheInfo cache;
+      auto paddings = paddings_t;
+      auto dilations = dilations_t;
+      std::vector<int> in_data_dims(input_dims.size() - 2);
+      std::vector<int> ksize(filter_dims.size() - 2);
+      if (format == CUDNN_TENSOR_NHWC) {
+        for (size_t i = 1; i < input_dims.size() - 1; ++i) {
+          in_data_dims[i - 1] = input_dims[i];
         }
-        phi::UpdatePaddingAndDilation(&paddings,
-                                      &dilations,
-                                      padding_algorithm,
-                                      make_ddim(in_data_dims),
-                                      strides,
-                                      ksize);
-
-        int data_dim = strides.size();  // 2d or 3d
-        bool is_sys_pad = funcs::IsSymmetricPadding(paddings, data_dim);
-        std::vector<int> padding_common(data_dim, 0);
-        if (!is_sys_pad) {
-          std::vector<int> padding_diff(data_dim);
-          std::vector<int> new_input_shape_vec(data_dim + 2);
-          new_input_shape_vec[0] = input_dims[0];
-
-          if (format == CUDNN_TENSOR_NCHW) {
-            new_input_shape_vec[1] = input_dims[1];
-          } else {
-            new_input_shape_vec[data_dim + 1] = input_dims[data_dim + 1];
-          }
-
-          std::vector<int> input_pad(input_dims.size() * 2, 0);
-          for (size_t i = 0; i < data_dim; ++i) {
-            padding_diff[i] = std::abs(paddings[2 * i] - paddings[2 * i + 1]);
-            padding_common[i] = std::min(paddings[2 * i], paddings[2 * i + 1]);
-            if (format == CUDNN_TENSOR_NCHW) {
-              new_input_shape_vec[i + 2] = input_dims[i + 2] + padding_diff[i];
-            } else {
-              new_input_shape_vec[i + 1] = input_dims[i + 1] + padding_diff[i];
-            }
-            if (format == CUDNN_TENSOR_NCHW) {
-              input_pad[2 * i + 4] = paddings[2 * i] - padding_common[i];
-              input_pad[2 * i + 4 + 1] =
-                  paddings[2 * i + 1] - padding_common[i];
-            } else {
-              input_pad[2 * i + 2] = paddings[2 * i] - padding_common[i];
-              input_pad[2 * i + 2 + 1] =
-                  paddings[2 * i + 1] - padding_common[i];
-            }
-          }
-
-          cache.is_sys_pad = false;
-          cache.input_pad = input_pad;
-          cache.new_input_shape_vec = new_input_shape_vec;
-        } else {
-          cache.is_sys_pad = true;
-          if (paddings.size() == data_dim) {
-            for (size_t i = 0; i < data_dim; ++i) {
-              padding_common[i] = paddings[i];
-            }
-          } else {
-            for (size_t i = 0; i < data_dim; ++i) {
-              padding_common[i] = paddings[2 * i];
-            }
-          }
+        for (size_t i = 1; i < filter_dims.size() - 1; ++i) {
+          ksize[i - 1] = filter_dims[i];
         }
-
-        cache.dilations = dilations;
-        cache.paddings = padding_common;
-        conv_attr_cache_[hash_key] = cache;
+      } else {
+        for (size_t i = 2; i < input_dims.size(); ++i) {
+          in_data_dims[i - 2] = input_dims[i];
+        }
+        for (size_t i = 2; i < filter_dims.size(); ++i) {
+          ksize[i - 2] = filter_dims[i];
+        }
       }
+      phi::UpdatePaddingAndDilation(&paddings,
+                                    &dilations,
+                                    padding_algorithm,
+                                    make_ddim(in_data_dims),
+                                    strides,
+                                    ksize);
+
+      int data_dim = strides.size();  // 2d or 3d
+      bool is_sys_pad = funcs::IsSymmetricPadding(paddings, data_dim);
+      std::vector<int> padding_common(data_dim, 0);
+      if (!is_sys_pad) {
+        std::vector<int> padding_diff(data_dim);
+        std::vector<int> new_input_shape_vec(data_dim + 2);
+        new_input_shape_vec[0] = input_dims[0];
+
+        if (format == CUDNN_TENSOR_NCHW) {
+          new_input_shape_vec[1] = input_dims[1];
+        } else {
+          new_input_shape_vec[data_dim + 1] = input_dims[data_dim + 1];
+        }
+
+        std::vector<int> input_pad(input_dims.size() * 2, 0);
+        for (size_t i = 0; i < data_dim; ++i) {
+          padding_diff[i] = std::abs(paddings[2 * i] - paddings[2 * i + 1]);
+          padding_common[i] = std::min(paddings[2 * i], paddings[2 * i + 1]);
+          if (format == CUDNN_TENSOR_NCHW) {
+            new_input_shape_vec[i + 2] = input_dims[i + 2] + padding_diff[i];
+          } else {
+            new_input_shape_vec[i + 1] = input_dims[i + 1] + padding_diff[i];
+          }
+          if (format == CUDNN_TENSOR_NCHW) {
+            input_pad[2 * i + 4] = paddings[2 * i] - padding_common[i];
+            input_pad[2 * i + 4 + 1] = paddings[2 * i + 1] - padding_common[i];
+          } else {
+            input_pad[2 * i + 2] = paddings[2 * i] - padding_common[i];
+            input_pad[2 * i + 2 + 1] = paddings[2 * i + 1] - padding_common[i];
+          }
+        }
+
+        cache.is_sys_pad = false;
+        cache.input_pad = input_pad;
+        cache.new_input_shape_vec = new_input_shape_vec;
+      } else {
+        cache.is_sys_pad = true;
+        if (paddings.size() == data_dim) {
+          for (size_t i = 0; i < data_dim; ++i) {
+            padding_common[i] = paddings[i];
+          }
+        } else {
+          for (size_t i = 0; i < data_dim; ++i) {
+            padding_common[i] = paddings[2 * i];
+          }
+        }
+      }
+
+      cache.dilations = dilations;
+      cache.paddings = padding_common;
+      conv_attr_cache_[hash_key] = cache;
     }
 
     return &conv_attr_cache_.at(hash_key);

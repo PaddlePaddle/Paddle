@@ -27,7 +27,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 struct DebugTools {
-  DebugTools() {}
+  DebugTools() = default;
   std::string path = "";
   int stack_limit = 1;
 };
@@ -141,7 +141,7 @@ static void InitWhiteListFormEnv() {
     std::stringstream ss(op_var_skip);
     std::string op_var;
     while (std::getline(ss, op_var, ',')) {
-      auto pos = op_var.find(":");
+      auto pos = op_var.find(':');
       PADDLE_ENFORCE_EQ(
           pos != std::string::npos,
           true,

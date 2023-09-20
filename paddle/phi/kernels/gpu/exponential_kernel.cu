@@ -25,7 +25,7 @@ void ExponentialKernel(const Context &dev_ctx,
                        const DenseTensor &x,
                        float lambda,
                        DenseTensor *out) {
-  using MT = typename kps::details::MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   phi::funcs::uniform_distribution<MT> dist;
   phi::funcs::exponential_transform<MT> trans(lambda);
   phi::funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);

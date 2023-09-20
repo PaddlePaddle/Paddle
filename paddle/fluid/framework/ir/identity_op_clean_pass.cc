@@ -21,104 +21,196 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class Graph;
+namespace patterns {
 
-void IdentityOpCleanPass::ApplyImpl(ir::Graph* graph) const {
-  FusePassBase::Init("identity_scale_op_clean", graph);
+// pre_op -> useless_op_in -> useless_op -> useless_op_out
+// ->
+// pre_op -> useless_op_out
+struct FindUselessOpPattern : public PatternBase {
+  FindUselessOpPattern(PDPattern* pattern, const std::string& name_scope);
 
-  // pre_op -> useless_op_in -> useless_op -> useless_op_out
-  // ->
-  // pre_op -> useless_op_out
-  GraphPatternDetector detector;
-  auto useless_op_in =
-      detector.mutable_pattern()
-          ->NewNode("useless_op_in")
-          ->assert_has_n_outputs(1)
-          ->assert_var_not_persistable()
-          ->assert_more([](Node* x) {
-            for (auto* op : x->inputs) {
-              auto op_type = op->Op()->Type();
-              if (op_type == "conditional_block" || op_type == "while") {
-                return false;
-              }
-            }
-            return true;
-          });
+  // declare operator node's name
+  PATTERN_DECL_NODE(useless_op_in);
+  PATTERN_DECL_NODE(useless_op);
+  PATTERN_DECL_NODE(useless_op_out);
+};
+
+FindUselessOpPattern::FindUselessOpPattern(PDPattern* pattern,
+                                           const std::string& name_scope)
+    : PatternBase(pattern, name_scope, name_scope) {
+  auto* useless_op_in = pattern->NewNode(useless_op_in_repr())
+                            ->assert_is_var()
+                            ->assert_var_not_persistable()
+                            ->assert_has_n_outputs(1)
+                            ->assert_more([](Node* x) {
+                              for (auto* op : x->inputs) {
+                                CHECK_EQ(op->IsOp(), true);
+                                const auto& op_type = op->Op()->Type();
+                                if (op_type == "conditional_block" ||
+                                    op_type == "while" || op_type == "feed") {
+                                  return false;
+                                }
+                              }
+                              return true;
+                            });
 
   // This useless_op must have only one input and one output!
-  auto useless_op =
-      detector.mutable_pattern()
-          ->NewNode("useless_op")
+  auto* useless_op =
+      pattern->NewNode(useless_op_repr())
+          ->assert_is_op()
           ->assert_has_n_inputs(1)
           ->assert_has_n_outputs(1)
           ->assert_more([](Node* x) {
-            if (!x->IsOp()) {
-              return false;
-            }
-            if (x->Op()->Type() == "scale") {
+            const auto& op_type = x->Op()->Type();
+            if (op_type == "scale") {
               auto scale = x->Op()->GetAttrIfExists<float>("scale");
               auto bias = x->Op()->GetAttrIfExists<float>("bias");
-              if (std::abs(bias) <= 1e-6 && std::abs(scale - 1) <= 1e-6) {
-                return true;
-              }
-            }
-            if (x->Op()->Type() == "cast") {
+              return bias == 0.f && scale == 1.f;
+            } else if (op_type == "cast") {
               auto in_dtype = x->Op()->GetAttrIfExists<int>("in_dtype");
               auto out_dtype = x->Op()->GetAttrIfExists<int>("out_dtype");
-              if (in_dtype == out_dtype) {
-                return true;
-              }
-            }
-            if (x->Op()->Type() == "c_identity") {
+              return in_dtype == out_dtype;
+            } else if (op_type == "c_identity") {
               return true;
+            } else if (op_type == "assign") {
+              const auto& in_name = x->Op()->Input("X")[0];
+              const auto& out_name = x->Op()->Output("Out")[0];
+              return in_name == out_name;
+            } else if (op_type == "concat") {
+              return x->Op()->Input("X").size() == 1;
             }
             // you can add more cases here.
             return false;
           });
-  auto useless_op_out = detector.mutable_pattern()->NewNode("useless_op_out");
+
+  auto* useless_op_out =
+      pattern->NewNode(useless_op_out_repr())->assert_is_var();
 
   useless_op->LinksFrom({useless_op_in}).LinksTo({useless_op_out});
+}
 
-  int found_subgraph_count = 0;
+// pre_op -> pre_op_out -> cast_op_1 -> cast_op_1_out -> cast_op_2 ->
+// cast_op_2_out
+// ->
+// pre_op -> cast_op_2_out
+struct FindTwoCastOpPattern : public PatternBase {
+  FindTwoCastOpPattern(PDPattern* pattern, const std::string& name_scope);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(pre_op_out);
+  PATTERN_DECL_NODE(cast_op_1);
+  PATTERN_DECL_NODE(cast_op_1_out);
+  PATTERN_DECL_NODE(cast_op_2);
+  PATTERN_DECL_NODE(cast_op_2_out);
+};
+
+FindTwoCastOpPattern::FindTwoCastOpPattern(PDPattern* pattern,
+                                           const std::string& name_scope)
+    : PatternBase(pattern, name_scope, name_scope) {
+  auto* pre_op_out = pattern->NewNode(pre_op_out_repr())
+                         ->assert_is_var()
+                         ->assert_var_not_persistable()
+                         ->assert_has_n_outputs(1)
+                         ->assert_more([](Node* x) {
+                           for (auto* op : x->inputs) {
+                             CHECK_EQ(op->IsOp(), true);
+                             const auto& op_type = op->Op()->Type();
+                             if (op_type == "conditional_block" ||
+                                 op_type == "while" || op_type == "feed") {
+                               return false;
+                             }
+                           }
+                           return true;
+                         });
+
+  auto* cast_op_1 = pattern->NewNode(cast_op_1_repr())->assert_is_op("cast");
+  auto* cast_op_1_out = pattern->NewNode(cast_op_1_out_repr())
+                            ->assert_is_var()
+                            ->assert_is_op_output("cast", "Out")
+                            ->assert_more([](Node* x) {
+                              const auto& var_type = x->Var()->GetDataType();
+                              return var_type != proto::VarType::INT32 &&
+                                     var_type != proto::VarType::INT64;
+                            });
+  auto* cast_op_2 = pattern->NewNode(cast_op_2_repr())->assert_is_op("cast");
+  auto* cast_op_2_out = pattern->NewNode(cast_op_2_out_repr())->assert_is_var();
+
+  cast_op_1->LinksFrom({pre_op_out}).LinksTo({cast_op_1_out});
+  cast_op_2->LinksFrom({cast_op_1_out}).LinksTo({cast_op_2_out});
+}
+
+}  // namespace patterns
+
+int IdentityOpCleanPass::CleanUselessOp(ir::Graph* graph) const {
+  GraphPatternDetector gpd;
+  patterns::FindUselessOpPattern pattern(gpd.mutable_pattern(), name_scope_);
+
+  int found_count = 0;
   GraphPatternDetector::handle_t handler =
       [&](const GraphPatternDetector::subgraph_t& subgraph, Graph* graph) {
-        Node* useless_op_var = subgraph.at(useless_op);
-        Node* useless_op_in_var = subgraph.at(useless_op_in);
-        Node* useless_op_out_var = subgraph.at(useless_op_out);
-        const std::string useless_op_in_name = useless_op_in_var->Name();
-        const std::string useless_op_out_name = useless_op_out_var->Name();
-        // Remove links in graph
-        GraphSafeRemoveNodes(graph, {useless_op_in_var, useless_op_var});
-        // Modify pre_op_desc
-        // Link pre_op directly to scale_out
-        for (auto& node : graph->Nodes()) {
-          if (node->IsOp()) {
-            auto* op_desc = node->Op();
-            auto out_vars_map = op_desc->Outputs();
-            for (auto out_var_map : out_vars_map) {
-              auto names = out_var_map.second;
-              bool reset = false;
-              for (size_t i = 0; i < names.size(); i++) {
-                if (names[i] == useless_op_in_name) {
-                  reset = true;
-                  names[i] = useless_op_out_name;
-                  break;
-                }
-              }
-              if (reset) {
-                op_desc->SetOutput(out_var_map.first, names);
-                op_desc->Flush();
-                IR_NODE_LINK_TO(node, useless_op_out_var);
-                break;
-              }
-            }
-          }
+        GET_IR_NODE_FROM_SUBGRAPH(useless_op_in, useless_op_in, pattern);
+        GET_IR_NODE_FROM_SUBGRAPH(useless_op, useless_op, pattern);
+        GET_IR_NODE_FROM_SUBGRAPH(useless_op_out, useless_op_out, pattern);
+        CHECK_EQ(useless_op_in->IsVar(), true);
+        CHECK_EQ(useless_op_out->IsVar(), true);
+        CHECK_EQ(useless_op->IsOp(), true);
+
+        for (auto* prev_op : useless_op_in->inputs) {
+          CHECK_EQ(prev_op->IsOp(), true);
+          prev_op->Op()->RenameOutput(useless_op_in->Var()->Name(),
+                                      useless_op_out->Var()->Name());
+          IR_NODE_LINK_TO(prev_op, useless_op_out);
         }
-        found_subgraph_count++;
+
+        GraphSafeRemoveNodes(graph, {useless_op_in, useless_op});
+        found_count++;
       };
 
-  detector(graph, handler);
-  AddStatis(found_subgraph_count);
+  gpd(graph, handler);
+  return found_count;
+}
+
+int IdentityOpCleanPass::CleanTwoCastOp(ir::Graph* graph) const {
+  GraphPatternDetector gpd;
+  patterns::FindTwoCastOpPattern pattern(gpd.mutable_pattern(), name_scope_);
+
+  int found_count = 0;
+  GraphPatternDetector::handle_t handler =
+      [&](const GraphPatternDetector::subgraph_t& subgraph, Graph* graph) {
+        GET_IR_NODE_FROM_SUBGRAPH(pre_op_out, pre_op_out, pattern);
+        GET_IR_NODE_FROM_SUBGRAPH(cast_op_1, cast_op_1, pattern);
+        GET_IR_NODE_FROM_SUBGRAPH(cast_op_1_out, cast_op_1_out, pattern);
+        GET_IR_NODE_FROM_SUBGRAPH(cast_op_2, cast_op_2, pattern);
+        GET_IR_NODE_FROM_SUBGRAPH(cast_op_2_out, cast_op_2_out, pattern);
+        CHECK_EQ(pre_op_out->IsVar(), true);
+        CHECK_EQ(cast_op_1_out->IsVar(), true);
+        CHECK_EQ(cast_op_2_out->IsVar(), true);
+        CHECK_EQ(cast_op_1->IsOp(), true);
+        CHECK_EQ(cast_op_2->IsOp(), true);
+        if (pre_op_out->Var()->GetDataType() ==
+            cast_op_2_out->Var()->GetDataType()) {
+          for (auto* prev_op : pre_op_out->inputs) {
+            CHECK_EQ(prev_op->IsOp(), true);
+            prev_op->Op()->RenameOutput(pre_op_out->Var()->Name(),
+                                        cast_op_2_out->Var()->Name());
+            IR_NODE_LINK_TO(prev_op, cast_op_2_out);
+          }
+
+          GraphSafeRemoveNodes(
+              graph, {pre_op_out, cast_op_1, cast_op_1_out, cast_op_2});
+          found_count++;
+        }
+      };
+
+  gpd(graph, handler);
+  return found_count;
+}
+
+void IdentityOpCleanPass::ApplyImpl(ir::Graph* graph) const {
+  Init(name_scope_, graph);
+  int found_count = CleanUselessOp(graph);
+  found_count += CleanTwoCastOp(graph);
+  AddStatis(found_count);
 }
 
 }  // namespace ir

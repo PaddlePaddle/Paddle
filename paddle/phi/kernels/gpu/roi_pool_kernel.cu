@@ -118,7 +118,10 @@ void RoiPoolKernel(const Context& dev_ctx,
 
   int rois_num = boxes.dims()[0];
 
-  if (rois_num == 0) return;
+  if (rois_num == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
 
   int output_size = out->numel();
   int blocks = NumBlocks(output_size);

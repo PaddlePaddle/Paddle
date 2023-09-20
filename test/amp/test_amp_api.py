@@ -20,9 +20,15 @@ from amp_base_models import AmpTestBase
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
+from paddle.base import core
 from paddle.static import amp
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    "run test when gpu's compute capability is at least 7.0.",
+)
 class TestAutoCast(AmpTestBase):
     def setUp(self):
         self._conv = paddle.nn.Conv2D(
@@ -56,6 +62,11 @@ class SimpleConvNet(nn.Layer):
         return out3
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    "run test when gpu's compute capability is at least 7.0.",
+)
 class TestStaticDecorate(AmpTestBase):
     def check_results(
         self, use_amp, dtype, level, use_promote, expected_op_calls
@@ -70,7 +81,7 @@ class TestStaticDecorate(AmpTestBase):
                 )
                 out = model(x)
                 loss = paddle.mean(out)
-                optimizer = paddle.fluid.optimizer.Adadelta(learning_rate=0.001)
+                optimizer = paddle.optimizer.Adadelta(learning_rate=0.001)
                 optimizer = paddle.static.amp.decorate(
                     optimizer,
                     init_loss_scaling=128.0,
@@ -127,6 +138,11 @@ class TestStaticDecorate(AmpTestBase):
         paddle.disable_static()
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    "run test when gpu's compute capability is at least 7.0.",
+)
 class TestGradScaler(AmpTestBase):
     def test_amp_grad_scaler(self):
         model = paddle.nn.Conv2D(3, 2, 3)
@@ -146,7 +162,7 @@ class TestGradScaler(AmpTestBase):
         scaler.minimize(optimizer, scaled)
         optimizer.clear_grad()
         paddle.amp.debugging.disable_operator_stats_collection()
-        op_list = paddle.fluid.core.get_low_precision_op_list()
+        op_list = paddle.base.core.get_low_precision_op_list()
 
         self.assertEqual(scaler._enable, False)
         self.assertEqual(scaler._use_dynamic_loss_scaling, False)
@@ -154,6 +170,11 @@ class TestGradScaler(AmpTestBase):
         self.assertTrue('check_finite_and_unscale' not in op_list)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    "run test when gpu's compute capability is at least 7.0.",
+)
 class TestFp16Guard(AmpTestBase):
     def test_fp16_gurad(self):
         paddle.enable_static()
@@ -235,6 +256,52 @@ class TestFp16Guard(AmpTestBase):
         ):
             run_example_code()
         paddle.disable_static()
+
+
+class SimpleModelIncludeSetValue(nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.norm = nn.LayerNorm(3)
+
+    def forward(self, x):
+        x = x + 1
+        tmp = x * 1
+        y = self.norm(tmp)
+        x[:] = y
+
+        z = x * 1
+        return z
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    "run test when gpu's compute capability is at least 7.0.",
+)
+class TestDy2STWithSetValue(AmpTestBase):
+    def test_op_called_as_expected(self):
+        expected_fp16_calls = {
+            "cast": 1,
+            "layer_norm": 1,
+            "scale": 3,
+            "set_value": 1,
+        }
+
+        func = SimpleModelIncludeSetValue()
+        func = paddle.amp.decorate(func, level='O2')
+        func = paddle.jit.to_static(func)
+        input = paddle.randn((2, 3))
+
+        with paddle.amp.auto_cast(level='O2'):
+            res = func(input)
+            loss = res.sum()
+            prog = func.forward.get_concrete_program(input)[1].forward_program
+            amp.debugging.collect_operator_stats(prog)
+            op_stats_list = amp.debugging._get_op_stats_list(prog)
+        loss.backward()
+        self._check_op_calls(
+            op_stats_list[0], expected_fp16_calls=expected_fp16_calls
+        )
 
 
 if __name__ == '__main__':

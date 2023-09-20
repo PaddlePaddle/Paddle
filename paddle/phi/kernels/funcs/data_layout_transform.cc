@@ -23,7 +23,7 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #endif
@@ -31,7 +31,7 @@
 namespace phi {
 namespace funcs {
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 
 void* GetDataFromTensor(const DenseTensor& tensor,
                         dnnl::memory::data_type type) {
@@ -65,7 +65,7 @@ dnnl::memory::desc make_memory_desc(const phi::DenseTensor& ref_tensor,
                         "Ref tensor type (%s) is not supported by oneDNN.",
                         ref_tensor.dtype()));
 
-  auto md_dims = ref_dims.size() != 0 ? ref_dims : std::vector<int64_t>{1};
+  auto md_dims = !ref_dims.empty() ? ref_dims : std::vector<int64_t>{1};
   auto md_format =
       OneDNNFormatForSize(md_dims.size(), ToOneDNNFormat(target_layout));
   dnnl::memory::desc md(md_dims, ref_type, md_format);

@@ -103,8 +103,6 @@ DEFINE_GPU_ACTIVATION_KERNEL(Relu, CudaReluFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Tanh, CudaTanhFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(TanhShrink, CudaTanhShrinkFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Silu, CudaSiluFunctor)
-DEFINE_GPU_ACTIVATION_KERNEL(Exp, CudaExpFunctor)
-DEFINE_GPU_ACTIVATION_KERNEL(Expm1, CudaExpm1Functor)
 DEFINE_GPU_ACTIVATION_KERNEL(Reciprocal, CudaReciprocalFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Square, CudaSquareFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Sqrt, CudaSqrtFunctor)
@@ -120,19 +118,19 @@ DEFINE_GPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Log, CudaLogFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Log2, CudaLog2Functor)
 DEFINE_GPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Log10, CudaLog10Functor)
 DEFINE_GPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Log1p, CudaLog1pFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Exp, CudaExpFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Expm1, CudaExpm1Functor)
 
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, CudaLeakyReluFunctor, alpha)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(LogitCUDA, CudaLogitFunctor, eps)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu,
                                      CudaThresholdedReluFunctor,
                                      threshold)
-DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Relu6Raw, CudaRelu6Functor, threshold)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(HardShrink,
                                      CudaHardShrinkFunctor,
                                      threshold)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(SoftShrink, CudaSoftShrinkFunctor, lambda)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Elu, CudaELUFunctor, alpha)
-DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(SwishRaw, CudaSwishFunctor, beta)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Mish, CudaMishFunctor, threshold)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Celu, CudaCELUFunctor, alpha)
 
@@ -167,6 +165,27 @@ void HardSwishKernel(const Context& dev_ctx,
       dev_ctx, x, out, functor);
 }
 
+template <typename T, typename Context>
+void SwishKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 DenseTensor* out) {
+  funcs::CudaSwishFunctor<T> functor;
+  auto attrs = functor.GetAttrs();
+  *(attrs[0].second) = 1.0;
+  ActivationGPUImpl<T, Context, funcs::CudaSwishFunctor<T>>(
+      dev_ctx, x, out, functor);
+}
+
+template <typename T, typename Context>
+void Relu6Kernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 DenseTensor* out) {
+  funcs::CudaRelu6Functor<T> functor;
+  auto attrs = functor.GetAttrs();
+  *(attrs[0].second) = 6.0;
+  ActivationGPUImpl<T, Context, funcs::CudaRelu6Functor<T>>(
+      dev_ctx, x, out, functor);
+}
 }  // namespace phi
 
 #ifdef PADDLE_WITH_HIP
@@ -198,21 +217,33 @@ PD_REGISTER_KERNEL(relu,
                      phi::dtype::float16,         \
                      phi::dtype::bfloat16) {}
 
-PD_REGISTER_ACTIVATION_KERNEL(sin, SinKernel)
-PD_REGISTER_ACTIVATION_KERNEL(cos, CosKernel)
-PD_REGISTER_ACTIVATION_KERNEL(tan, TanKernel)
-PD_REGISTER_ACTIVATION_KERNEL(acos, AcosKernel)
-PD_REGISTER_ACTIVATION_KERNEL(asin, AsinKernel)
-PD_REGISTER_ACTIVATION_KERNEL(atan, AtanKernel)
-PD_REGISTER_ACTIVATION_KERNEL(sinh, SinhKernel)
-PD_REGISTER_ACTIVATION_KERNEL(cosh, CoshKernel)
-PD_REGISTER_ACTIVATION_KERNEL(asinh, AsinhKernel)
-PD_REGISTER_ACTIVATION_KERNEL(acosh, AcoshKernel)
-PD_REGISTER_ACTIVATION_KERNEL(atanh, AtanhKernel)
-PD_REGISTER_ACTIVATION_KERNEL(tanh, TanhKernel)
+#define PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(name, func) \
+  PD_REGISTER_KERNEL(name,                                     \
+                     GPU,                                      \
+                     ALL_LAYOUT,                               \
+                     phi::func,                                \
+                     float,                                    \
+                     double,                                   \
+                     phi::dtype::float16,                      \
+                     phi::dtype::bfloat16,                     \
+                     phi::dtype::complex<float>,               \
+                     phi::dtype::complex<double>) {}
+
+PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(sin, SinKernel)
+PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(cos, CosKernel)
+PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(tan, TanKernel)
+PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(acos, AcosKernel)
+PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(asin, AsinKernel)
+PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(atan, AtanKernel)
+PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(sinh, SinhKernel)
+PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(cosh, CoshKernel)
+PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(asinh, AsinhKernel)
+PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(acosh, AcoshKernel)
+PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(atanh, AtanhKernel)
+PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(tanh, TanhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hardtanh, HardTanhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(thresholded_relu, ThresholdedReluKernel)
-PD_REGISTER_ACTIVATION_KERNEL(relu6_raw, Relu6RawKernel)
+PD_REGISTER_ACTIVATION_KERNEL(relu6, Relu6Kernel)
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(mish, MishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(stanh, StanhKernel)
@@ -230,15 +261,21 @@ PD_REGISTER_KERNEL(exp,
                    int,
                    int64_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 PD_REGISTER_KERNEL(expm1,
                    GPU,
                    ALL_LAYOUT,
                    phi::Expm1Kernel,
                    float,
                    double,
+                   int,
+                   int64_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 PD_REGISTER_KERNEL(square,
                    GPU,
                    ALL_LAYOUT,
@@ -254,13 +291,13 @@ PD_REGISTER_ACTIVATION_KERNEL(hard_shrink, HardShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softshrink, SoftShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(tanh_shrink, TanhShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(elu, EluKernel)
-PD_REGISTER_ACTIVATION_KERNEL(silu, SiluKernel)
+PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(silu, SiluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softsign, SoftsignKernel)
-PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
-PD_REGISTER_ACTIVATION_KERNEL(logsigmoid, LogSigmoidKernel)
-PD_REGISTER_ACTIVATION_KERNEL(hard_sigmoid, HardSigmoidKernel)
+PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(sigmoid, SigmoidKernel)
+PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(logsigmoid, LogSigmoidKernel)
+PD_REGISTER_ACTIVATION_KERNEL(hardsigmoid, HardSigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hardswish, HardSwishKernel)
-PD_REGISTER_ACTIVATION_KERNEL(swish_raw, SwishRawKernel)
+PD_REGISTER_ACTIVATION_KERNEL(swish, SwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(round, RoundKernel)
 PD_REGISTER_ACTIVATION_KERNEL(floor, FloorKernel)
 PD_REGISTER_ACTIVATION_KERNEL(ceil, CeilKernel)

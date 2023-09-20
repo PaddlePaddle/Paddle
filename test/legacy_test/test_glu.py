@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.dygraph as dg
-from paddle import fluid
+import paddle.base.dygraph as dg
+from paddle import base
 from paddle.nn import functional as F
 
 
@@ -30,26 +30,6 @@ def glu(x, dim=-1):
     a, b = np.split(x, 2, axis=dim)
     out = a * sigmoid(b)
     return out
-
-
-class TestGLUCase(unittest.TestCase):
-    def setUp(self):
-        self.x = np.random.randn(5, 20)
-        self.dim = -1
-        self.out = glu(self.x, self.dim)
-
-    def check_identity(self, place):
-        with dg.guard(place):
-            x_var = dg.to_variable(self.x)
-            y_var = fluid.nets.glu(x_var, self.dim)
-            y_np = y_var.numpy()
-
-        np.testing.assert_allclose(y_np, self.out)
-
-    def test_case(self):
-        self.check_identity(fluid.CPUPlace())
-        if fluid.is_compiled_with_cuda():
-            self.check_identity(fluid.CUDAPlace(0))
 
 
 class TestGLUV2(unittest.TestCase):
@@ -67,9 +47,9 @@ class TestGLUV2(unittest.TestCase):
         np.testing.assert_allclose(y_np, self.out)
 
     def test_case(self):
-        self.check_identity(fluid.CPUPlace())
-        if fluid.is_compiled_with_cuda():
-            self.check_identity(fluid.CUDAPlace(0))
+        self.check_identity(base.CPUPlace())
+        if base.is_compiled_with_cuda():
+            self.check_identity(base.CUDAPlace(0))
 
 
 class TestGlu(unittest.TestCase):

@@ -37,7 +37,6 @@ namespace paddle {
 
 using framework::Variable;
 using framework::ir::Graph;
-using phi::CPUPlace;
 using ConstEigenVectorArrayMap =
     Eigen::Map<const Eigen::Array<float, Eigen::Dynamic, 1>>;
 using EigenMatrixDoubleArray =
@@ -592,7 +591,7 @@ void AnalysisPredictor::MkldnnQuantizer::PrepareArgument() const {
   auto& arg = predictor_.argument_;
   if (!arg->scope_valid()) arg->SetScope(new framework::Scope);
   arg->SetMainProgramNotOwned(predictor_.inference_program_.get());
-  auto graph = std::unique_ptr<Graph>(new Graph(arg->main_program()));
+  auto graph = std::make_unique<Graph>(arg->main_program());
   arg->SetMainGraph(graph.release());
   auto* scope_ptr = arg->scope_ptr();
   PADDLE_ENFORCE_NOT_NULL(
@@ -601,10 +600,7 @@ void AnalysisPredictor::MkldnnQuantizer::PrepareArgument() const {
   arg->main_graph().SetNotOwned(framework::ir::kParamScopeAttr, scope_ptr);
 
   auto* builder = predictor_.config_.pass_builder();
-  builder->SetPasses({"cpu_quantize_pass",
-                      "cpu_quantize_squash_pass",
-                      "int8_scale_calculation_mkldnn_pass",
-                      "params_quantization_mkldnn_pass"});
+  builder->SetPasses({"cpu_quantize_pass", "cpu_quantize_squash_pass"});
   if (predictor_.config_.ir_debug_) builder->TurnOnDebug();
   auto passes = builder->AllPasses();
   predictor_.argument_->SetIrAnalysisPasses(passes);

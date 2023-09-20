@@ -34,11 +34,9 @@ detection_library(density_prior_box_op SRCS density_prior_box_op.cc
 if(WITH_XPU)
   detection_library(iou_similarity_op SRCS iou_similarity_op.cc
                     iou_similarity_op_xpu.cc)
-  detection_library(prior_box_op SRCS prior_box_op.cc)
 else()
   detection_library(iou_similarity_op SRCS iou_similarity_op.cc
                     iou_similarity_op.cu)
-  detection_library(prior_box_op SRCS prior_box_op.cc)
 endif()
 
 detection_library(bipartite_match_op SRCS bipartite_match_op.cc)

@@ -71,7 +71,7 @@ struct TestReduceOpHandle {
         gpu_list_.push_back(p);
         ctxs_.emplace_back(new phi::GPUContext(p));
       }
-      nccl_ctxs_.reset(new platform::NCCLContextMap(gpu_list_));
+      nccl_ctxs_ = std::make_unique<platform::NCCLContextMap>(gpu_list_);
 #else
       PADDLE_THROW(
           platform::errors::PreconditionNotMet("Not compiled with NCLL."));

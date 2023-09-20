@@ -169,12 +169,15 @@ paddle::Tensor CallScalarFuction(const paddle::Tensor& self_tensor,
                                  std::string op_type) {
   paddle::Tensor ret;
   if (op_type == "add" || op_type == "radd") {
-    ret = scale_ad_func(self_tensor, phi::Scalar(1.0), other, true);
+    ret = scale_ad_func(
+        self_tensor, phi::Scalar(1.0), static_cast<float>(other), true);
   } else if (op_type == "sub") {
-    ret = scale_ad_func(self_tensor, phi::Scalar(1.0), -other, true);
+    ret = scale_ad_func(
+        self_tensor, phi::Scalar(1.0), static_cast<float>(-other), true);
 
   } else if (op_type == "rsub") {
-    ret = scale_ad_func(self_tensor, phi::Scalar(-1.0), other, true);
+    ret = scale_ad_func(
+        self_tensor, phi::Scalar(-1.0), static_cast<float>(other), true);
   } else if (op_type == "mul") {
     ret = scale_ad_func(self_tensor, phi::Scalar(other), 0.0, true);
   } else if (op_type == "div") {
@@ -1024,12 +1027,12 @@ static PyObject* tensor__mod__method(TensorObject* self,
 
   // 1. scalar exists cases
   // there is no scalar_mod function for __mod__ now
-  float other_double = 0.0;
+  float other_double = 0.0f;
   bool has_other_double = false;
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (PyFloat_Check(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__mod__", 0);
+      other_double = CastPyArg2Double(other_obj, "__mod__", 0);  // NOLINT
       has_other_double = true;
       if (_supported_int_dtype_.find(self_tensor.dtype()) !=
           _supported_int_dtype_.end()) {
@@ -1037,7 +1040,7 @@ static PyObject* tensor__mod__method(TensorObject* self,
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__mod__", 0);
+      other_double = CastPyArg2Double(other_obj, "__mod__", 0);  // NOLINT
       has_other_double = true;
     }
   }
@@ -1114,12 +1117,12 @@ static PyObject* tensor__matmul__method(TensorObject* self,
 
   // 1. scalar exists cases
   // there is no scalar_matmul function for __matmul__ now
-  float other_double = 0.0;
+  float other_double = 0.0f;
   bool has_other_double = false;
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (PyFloat_Check(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__matmul__", 0);
+      other_double = CastPyArg2Double(other_obj, "__matmul__", 0);  // NOLINT
       has_other_double = true;
       if (_supported_int_dtype_.find(self_tensor.dtype()) !=
           _supported_int_dtype_.end()) {
@@ -1127,7 +1130,7 @@ static PyObject* tensor__matmul__method(TensorObject* self,
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__matmul__", 0);
+      other_double = CastPyArg2Double(other_obj, "__matmul__", 0);  // NOLINT
       has_other_double = true;
     }
   }
@@ -1222,12 +1225,12 @@ static PyObject* tensor__lt__method(TensorObject* self,
 
   // 1. scalar exists cases
   // there is no scalar function for __lt__ now
-  float other_double = 0.0;
+  float other_double = 0.0f;
   bool has_other_double = false;
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (PyFloat_Check(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__lt__", 0);
+      other_double = CastPyArg2Double(other_obj, "__lt__", 0);  // NOLINT
       has_other_double = true;
       if (_supported_int_dtype_.find(self_tensor.dtype()) !=
           _supported_int_dtype_.end()) {
@@ -1235,7 +1238,7 @@ static PyObject* tensor__lt__method(TensorObject* self,
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__lt__", 0);
+      other_double = CastPyArg2Double(other_obj, "__lt__", 0);  // NOLINT
       has_other_double = true;
     }
   }
@@ -1312,12 +1315,12 @@ static PyObject* tensor__le__method(TensorObject* self,
 
   // 1. scalar exists cases
   // there is no scalar function for __le__ now
-  float other_double = 0.0;
+  float other_double = 0.0f;
   bool has_other_double = false;
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (PyFloat_Check(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__le__", 0);
+      other_double = CastPyArg2Double(other_obj, "__le__", 0);  // NOLINT
       has_other_double = true;
       if (_supported_int_dtype_.find(self_tensor.dtype()) !=
           _supported_int_dtype_.end()) {
@@ -1325,7 +1328,7 @@ static PyObject* tensor__le__method(TensorObject* self,
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__le__", 0);
+      other_double = CastPyArg2Double(other_obj, "__le__", 0);  // NOLINT
       has_other_double = true;
     }
   }
@@ -1833,92 +1836,92 @@ static PyObject* tensor__eq__method(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyMethodDef math_op_patch_methods[] = {
+PyMethodDef math_op_patch_methods[] = {  // NOLINT
     {"__add__",
-     (PyCFunction)(void (*)(void))tensor__add__method,
+     (PyCFunction)(void (*)())tensor__add__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__radd__",
-     (PyCFunction)(void (*)(void))tensor__add__method,
+     (PyCFunction)(void (*)())tensor__add__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__sub__",
-     (PyCFunction)(void (*)(void))tensor__sub__method,
+     (PyCFunction)(void (*)())tensor__sub__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__rsub__",
-     (PyCFunction)(void (*)(void))tensor__rsub__method,
+     (PyCFunction)(void (*)())tensor__rsub__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__mul__",
-     (PyCFunction)(void (*)(void))tensor__mul__method,
+     (PyCFunction)(void (*)())tensor__mul__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__rmul__",
-     (PyCFunction)(void (*)(void))tensor__mul__method,
+     (PyCFunction)(void (*)())tensor__mul__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__div__",
-     (PyCFunction)(void (*)(void))tensor__div__method,
+     (PyCFunction)(void (*)())tensor__div__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__truediv__",
-     (PyCFunction)(void (*)(void))tensor__div__method,
+     (PyCFunction)(void (*)())tensor__div__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__rdiv__",
-     (PyCFunction)(void (*)(void))tensor__rdiv__method,
+     (PyCFunction)(void (*)())tensor__rdiv__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__rtruediv__",
-     (PyCFunction)(void (*)(void))tensor__rdiv__method,
+     (PyCFunction)(void (*)())tensor__rdiv__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__floordiv__",
-     (PyCFunction)(void (*)(void))tensor__floordiv__method,
+     (PyCFunction)(void (*)())tensor__floordiv__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__pow__",
-     (PyCFunction)(void (*)(void))tensor__pow__method,
+     (PyCFunction)(void (*)())tensor__pow__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__rpow__",
-     (PyCFunction)(void (*)(void))tensor__rpow__method,
+     (PyCFunction)(void (*)())tensor__rpow__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__mod__",
-     (PyCFunction)(void (*)(void))tensor__mod__method,
+     (PyCFunction)(void (*)())tensor__mod__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__matmul__",
-     (PyCFunction)(void (*)(void))tensor__matmul__method,
+     (PyCFunction)(void (*)())tensor__matmul__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__gt__",
-     (PyCFunction)(void (*)(void))tensor__gt__method,
+     (PyCFunction)(void (*)())tensor__gt__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__ge__",
-     (PyCFunction)(void (*)(void))tensor__ge__method,
+     (PyCFunction)(void (*)())tensor__ge__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__lt__",
-     (PyCFunction)(void (*)(void))tensor__lt__method,
+     (PyCFunction)(void (*)())tensor__lt__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__le__",
-     (PyCFunction)(void (*)(void))tensor__le__method,
+     (PyCFunction)(void (*)())tensor__le__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__eq__",
-     (PyCFunction)(void (*)(void))tensor__eq__method,
+     (PyCFunction)(void (*)())tensor__eq__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__ne__",
-     (PyCFunction)(void (*)(void))tensor__ne__method,
+     (PyCFunction)(void (*)())tensor__ne__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
-    {NULL, NULL, 0, NULL}};
+     nullptr},
+    {nullptr, nullptr, 0, nullptr}};
 
 }  // namespace pybind
 }  // namespace paddle

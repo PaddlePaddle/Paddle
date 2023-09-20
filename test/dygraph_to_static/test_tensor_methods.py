@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test, test_and_compare_with_new_ir
 
 import paddle
 
@@ -32,7 +33,9 @@ class TestTensorClone(unittest.TestCase):
         x = paddle.ones([1, 2, 3])
         return tensor_clone(x).numpy()
 
+    @test_and_compare_with_new_ir(False)
     def test_tensor_clone(self):
+        paddle.disable_static()
         dygraph_res = self._run(to_static=False)
         static_res = self._run(to_static=True)
         np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
@@ -52,7 +55,10 @@ class TestTensorDygraphOnlyMethodError(unittest.TestCase):
         y = tensor_numpy(x)
         return y.numpy()
 
+    @ast_only_test
+    @test_and_compare_with_new_ir(False)
     def test_to_static_numpy_report_error(self):
+        paddle.disable_static()
         dygraph_res = self._run(to_static=False)
         with self.assertRaises(AssertionError):
             static_res = self._run(to_static=True)
@@ -73,7 +79,9 @@ class TestTensorItem(unittest.TestCase):
             return tensor_item(x).numpy()
         return tensor_item(x)
 
+    @test_and_compare_with_new_ir(False)
     def test_tensor_clone(self):
+        paddle.disable_static()
         dygraph_res = self._run(to_static=False)
         static_res = self._run(to_static=True)
         np.testing.assert_allclose(dygraph_res, static_res)
@@ -93,9 +101,14 @@ class TestTensorSize(unittest.TestCase):
         x = paddle.ones([1, 2, 3])
         if not to_static:
             return tensor_size(x)
-        return tensor_size(x).numpy()
+        ret = tensor_size(x)
+        if hasattr(ret, 'numpy'):
+            ret = ret.numpy()
+        return ret
 
+    @test_and_compare_with_new_ir(False)
     def test_tensor_clone(self):
+        paddle.disable_static()
         dygraph_res = self._run(to_static=False)
         static_res = self._run(to_static=True)
         np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-5)
@@ -114,7 +127,9 @@ class TestTrueDiv(unittest.TestCase):
         y = paddle.to_tensor([4], dtype='int64')
         return true_div(x, y).numpy()
 
+    @test_and_compare_with_new_ir(False)
     def test_ture_div(self):
+        paddle.disable_static()
         dygraph_res = self._run(to_static=False)
         static_res = self._run(to_static=True)
         np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-5)

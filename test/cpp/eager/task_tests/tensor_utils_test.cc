@@ -24,8 +24,6 @@
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 
-using eager_test::CreateTensorWithValue;
-
 namespace egr {
 
 TEST(TensorUtils, Test) {
@@ -37,19 +35,21 @@ TEST(TensorUtils, Test) {
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  paddle::Tensor t = CreateTensorWithValue(ddim,
-                                           paddle::platform::CPUPlace(),
-                                           phi::DataType::FLOAT32,
-                                           phi::DataLayout::NCHW,
-                                           5.0 /*value*/,
-                                           true /*is_leaf*/);
+  paddle::Tensor t =
+      eager_test::CreateTensorWithValue(ddim,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::FLOAT32,
+                                        phi::DataLayout::NCHW,
+                                        5.0 /*value*/,
+                                        true /*is_leaf*/);
 
-  paddle::Tensor t_grad = CreateTensorWithValue(ddim,
-                                                paddle::platform::CPUPlace(),
-                                                phi::DataType::FLOAT32,
-                                                phi::DataLayout::NCHW,
-                                                1.0 /*value*/,
-                                                false /*is_leaf*/);
+  paddle::Tensor t_grad =
+      eager_test::CreateTensorWithValue(ddim,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::FLOAT32,
+                                        phi::DataLayout::NCHW,
+                                        1.0 /*value*/,
+                                        false /*is_leaf*/);
 
   CHECK_EQ(EagerUtils::IsLeafTensor(t), true);
 

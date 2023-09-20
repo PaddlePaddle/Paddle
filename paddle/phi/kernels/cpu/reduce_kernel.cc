@@ -20,6 +20,9 @@
 #if defined(PADDLE_WITH_GLOO)
 #include "paddle/phi/core/distributed/gloo_comm_context.h"
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/core/distributed/xccl_comm_context.h"
+#endif
 
 namespace phi {
 
@@ -29,6 +32,10 @@ void ReduceKernel(const Context& dev_ctx,
                   int root,
                   int reduce_type,
                   DenseTensor* out) {
+  PADDLE_ENFORCE_GT(
+      x.numel(),
+      0,
+      phi::errors::InvalidArgument("Tensor need be reduced must not empty."));
 #if defined(PADDLE_WITH_GLOO)
   out->Resize(x.dims());
   dev_ctx.template Alloc<T>(out);
@@ -47,6 +54,35 @@ void ReduceKernel(const Context& dev_ctx,
 #endif
 }
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+template <typename T>
+void ReduceKernel(const phi::CustomContext& dev_ctx,
+                  const DenseTensor& x,
+                  int root,
+                  int reduce_type,
+                  DenseTensor* out) {
+  PADDLE_ENFORCE_GT(
+      x.numel(),
+      0,
+      phi::errors::InvalidArgument("Tensor need be reduced must not empty."));
+  out->Resize(x.dims());
+  dev_ctx.template Alloc<T>(out);
+
+  auto comm_ctx =
+      static_cast<distributed::XCCLCommContext*>(dev_ctx.GetCommContext());
+  PADDLE_ENFORCE_NE(
+      comm_ctx,
+      nullptr,
+      errors::Unavailable("XCCLCommContext is nullptr, collective op should "
+                          "has ring_id attr."));
+  comm_ctx->Reduce(out,
+                   x,
+                   phi::ccl::ToXCCLReduceOp(reduce_type),
+                   root,
+                   *dev_ctx.GetStream());
+}
+#endif
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(reduce,
@@ -61,3 +97,18 @@ PD_REGISTER_KERNEL(reduce,
                    uint8_t,
                    int64_t,
                    phi::dtype::float16) {}
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+PD_REGISTER_KERNEL(reduce,
+                   Custom,
+                   ALL_LAYOUT,
+                   phi::ReduceKernel,
+                   float,
+                   double,
+                   int,
+                   bool,
+                   int8_t,
+                   uint8_t,
+                   int64_t,
+                   phi::dtype::float16) {}
+#endif

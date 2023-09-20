@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.vision.models import resnet50
 
 SEED = 2020
@@ -42,19 +42,19 @@ epoch_num = 1
 #     8.438933372497559,
 #     10.305074691772461,
 
-
+# note: Version 2.0 momentum is fused to OP when L2Decay is available, and the results are different from the base version.
 # The results in ci as as follows:
 DY2ST_CINN_GT = [
-    5.828789710998535,
-    8.340764999389648,
-    4.998944282531738,
-    8.474305152893066,
-    8.09157943725586,
-    7.440057754516602,
-    9.907357215881348,
-    8.304681777954102,
-    8.383116722106934,
-    10.120304107666016,
+    5.847333908081055,
+    8.347576141357422,
+    5.1415300369262695,
+    8.373777389526367,
+    8.05331802368164,
+    7.437496185302734,
+    9.630914688110352,
+    8.547889709472656,
+    8.343082427978516,
+    10.203847885131836,
 ]
 
 if core.is_compiled_with_cuda():
@@ -71,12 +71,33 @@ def reader_decorator(reader):
     return __reader__
 
 
+class TransedFlowerDataSet(paddle.io.Dataset):
+    def __init__(self, flower_data, length):
+        self.img = []
+        self.label = []
+        self.flower_data = flower_data()
+        self._generate(length)
+
+    def _generate(self, length):
+        for i, data in enumerate(self.flower_data):
+            if i >= length:
+                break
+            self.img.append(data[0])
+            self.label.append(data[1])
+
+    def __getitem__(self, idx):
+        return self.img[idx], self.label[idx]
+
+    def __len__(self):
+        return len(self.img)
+
+
 def optimizer_setting(parameter_list=None):
-    optimizer = fluid.optimizer.Momentum(
+    optimizer = paddle.optimizer.Momentum(
         learning_rate=base_lr,
         momentum=momentum_rate,
-        regularization=paddle.regularizer.L2Decay(l2_decay),
-        parameter_list=parameter_list,
+        weight_decay=paddle.regularizer.L2Decay(l2_decay),
+        parameters=parameter_list,
     )
 
     return optimizer
@@ -136,8 +157,6 @@ def run(model, data_loader, optimizer, mode):
                 )
             )
             if batch_id >= end_step:
-                # avoid dataloader throw abort signaal
-                data_loader._reset()
                 break
     print(losses)
     return losses
@@ -151,15 +170,15 @@ def train(to_static, enable_prim, enable_cinn):
     np.random.seed(SEED)
     paddle.seed(SEED)
     paddle.framework.random._manual_program_seed(SEED)
-    fluid.core._set_prim_all_enabled(enable_prim)
+    base.core._set_prim_all_enabled(enable_prim)
 
-    train_reader = paddle.batch(
+    dataset = TransedFlowerDataSet(
         reader_decorator(paddle.dataset.flowers.train(use_xmap=False)),
-        batch_size=batch_size,
-        drop_last=True,
+        batch_size * (10 + 1),
     )
-    data_loader = fluid.io.DataLoader.from_generator(capacity=5, iterable=True)
-    data_loader.set_sample_list_generator(train_reader)
+    data_loader = paddle.io.DataLoader(
+        dataset, batch_size=batch_size, drop_last=True
+    )
 
     resnet = resnet50(False)
     if to_static:

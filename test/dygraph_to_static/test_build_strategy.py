@@ -15,11 +15,13 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test, dy2static_unittest
 from test_resnet import ResNetHelper
 
 import paddle
 
 
+@dy2static_unittest
 class TestResnetWithPass(unittest.TestCase):
     def setUp(self):
         self.build_strategy = paddle.static.BuildStrategy()
@@ -29,7 +31,7 @@ class TestResnetWithPass(unittest.TestCase):
         self.build_strategy.enable_addto = True
         self.resnet_helper = ResNetHelper()
         # NOTE: for enable_addto
-        paddle.fluid.set_flags({"FLAGS_max_inplace_grad_add": 8})
+        paddle.base.set_flags({"FLAGS_max_inplace_grad_add": 8})
 
     def train(self, to_static):
         paddle.jit.enable_to_static(to_static)
@@ -64,6 +66,7 @@ class TestResnetWithPass(unittest.TestCase):
             ),
         )
 
+    @ast_only_test
     def test_resnet(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
@@ -77,13 +80,14 @@ class TestResnetWithPass(unittest.TestCase):
         )
         self.verify_predict()
 
+    @ast_only_test
     def test_in_static_mode_mkldnn(self):
-        paddle.fluid.set_flags({'FLAGS_use_mkldnn': True})
+        paddle.base.set_flags({'FLAGS_use_mkldnn': True})
         try:
-            if paddle.fluid.core.is_compiled_with_mkldnn():
+            if paddle.base.core.is_compiled_with_mkldnn():
                 self.resnet_helper.train(True, self.build_strategy)
         finally:
-            paddle.fluid.set_flags({'FLAGS_use_mkldnn': False})
+            paddle.base.set_flags({'FLAGS_use_mkldnn': False})
 
 
 class TestError(unittest.TestCase):

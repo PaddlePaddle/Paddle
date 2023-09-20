@@ -17,6 +17,7 @@ import tempfile
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test
 
 import paddle
 from paddle.static import InputSpec
@@ -51,7 +52,6 @@ def test_slice_in_if(x):
     return out
 
 
-@paddle.jit.to_static
 def test_slice_in_while_loop(x, iter_num=3):
     x = paddle.to_tensor(x)
     iter_num_var = paddle.full(shape=[1], fill_value=iter_num, dtype="int32")
@@ -129,8 +129,12 @@ class TestSliceWithoutControlFlow(unittest.TestCase):
         return self._run(to_static=False)
 
     def _run(self, to_static):
-        paddle.jit.enable_to_static(to_static)
-        res = self.dygraph_func(self.input)
+        func = (
+            paddle.jit.to_static(self.dygraph_func)
+            if to_static
+            else self.dygraph_func
+        )
+        res = func(self.input)
         return res.numpy()
 
     def run_static_mode(self):
@@ -149,7 +153,7 @@ class TestSliceInIf(TestSliceWithoutControlFlow):
 
 class TestSliceInWhileLoop(TestSliceWithoutControlFlow):
     def init_dygraph_func(self):
-        self.dygraph_func = test_slice_in_while_loop
+        self.dygraph_func = paddle.jit.to_static(test_slice_in_while_loop)
 
 
 class TestSliceInForLoop(TestSliceWithoutControlFlow):
@@ -175,6 +179,7 @@ class TestSetValueWithLayerAndSave(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @ast_only_test
     def test_set_value_with_save(self):
         paddle.jit.enable_to_static(True)
         model = LayerWithSetValue(input_dim=10, hidden=1)

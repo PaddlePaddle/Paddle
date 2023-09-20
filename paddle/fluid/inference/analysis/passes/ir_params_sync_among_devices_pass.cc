@@ -27,7 +27,7 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 
-DEFINE_bool(
+PD_DEFINE_bool(  // NOLINT
     custom_model_save_cpu,
     false,
     "Keep old mode for developers, the model is saved on cpu not device.");
@@ -65,9 +65,9 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
   bool with_dynamic_shape = false;
   if (argument->Has("max_input_shape") && argument->Has("min_input_shape") &&
       argument->Has("optim_input_shape")) {
-    with_dynamic_shape = (argument->max_input_shape().size() > 0 &&
-                          argument->min_input_shape().size() > 0 &&
-                          argument->optim_input_shape().size() > 0);
+    with_dynamic_shape = (!argument->max_input_shape().empty() &&
+                          !argument->min_input_shape().empty() &&
+                          !argument->optim_input_shape().empty());
   }
   with_dynamic_shape =
       with_dynamic_shape || (argument->Has("tensorrt_tuned_dynamic_shape") &&

@@ -73,6 +73,13 @@ if(WITH_MKLML)
   endif()
 endif()
 
+if(WITH_XPU)
+  cc_library(
+    phi_dynload_xpti
+    SRCS xpti.cc
+    DEPS phi)
+endif()
+
 if(WITH_FLASHATTN)
   list(APPEND DYNLOAD_COMMON_SRCS flashattn.cc)
 endif()

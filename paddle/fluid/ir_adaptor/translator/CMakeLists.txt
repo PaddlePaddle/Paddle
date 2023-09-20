@@ -20,4 +20,4 @@ file(GLOB PD_PROGRAM_TRANSLATOR_SRCS "*.cc")
 cc_library(
   program_translator
   SRCS ${PD_PROGRAM_TRANSLATOR_SRCS} ${op_compat_source_file}
-  DEPS proto_desc pd_dialect new_ir framework_proto)
+  DEPS proto_desc pd_op_dialect pir framework_proto)

@@ -298,7 +298,7 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
     buff->Resize(phi::make_ddim({bottom->dims()[0], bottom->dims()[1]}));
     float* bottom_data = buff->mutable_data<float>(ctx.GetPlace());
     for (int i = 0; i < bottom->dims()[0]; i++) {
-      bottom_data[i] = bottom_data_ori[i];
+      bottom_data[i] = bottom_data_ori[i];  // NOLINT
     }
 
     const auto* weights = _blobs_0->data<T>();
@@ -307,8 +307,8 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
     top_offset.resize(offset.size());
     top_offset[0] = 0;
 
-    math::bloomfilter* _filter = NULL;
-    math::bloomfilter* _black_filter = NULL;
+    math::bloomfilter* _filter = nullptr;
+    math::bloomfilter* _black_filter = nullptr;
     if (use_filter) {
       if (white_list_len != 0) {
         _filter = (math::bloomfilter*)_blobs_1->data<float>();
@@ -341,7 +341,7 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
     int* iter_end = iter;
 
     for (size_t i = 0; i < top_offset.size() - 1; ++i) {
-      int w = offset[i + 1] - offset[i];
+      int w = static_cast<int>(offset[i + 1] - offset[i]);
       int nsentense_with_pyramid = 0;
       if (w < 2) {
         nsentense_with_pyramid = 0;
@@ -354,7 +354,8 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
                                 ilayer + 1)) {
               if (_is_training != 0) {
                 unsigned int rand_val = rand_r(&_seed);
-                float rate = static_cast<float>(rand_val) / (RAND_MAX);
+                float rate =
+                    static_cast<float>(rand_val) / (RAND_MAX);  // NOLINT
                 *(iter_end++) = (rate < _drop_out_percent ? 0 : 1);
               } else {
                 *(iter_end++) = 1;
@@ -364,7 +365,8 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
             }
           }
         }
-        nsentense_with_pyramid = std::count(iter, iter_end, 1);
+        nsentense_with_pyramid =
+            static_cast<int>(std::count(iter, iter_end, 1));
         iter = iter_end;
       }
       drop_pos_offset[i + 1] = drop_pos_offset[i] + nsentense_with_pyramid;
@@ -373,7 +375,7 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
           (nsentense_with_pyramid == 0 ? 1 : nsentense_with_pyramid);
     }
 
-    int top_l = top_offset[top_offset.size() - 1];
+    int top_l = static_cast<int>(top_offset[top_offset.size() - 1]);
 
     framework::LoD top_lod;
     top_lod.push_back(top_offset);
@@ -388,8 +390,9 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
     iter = drop_pos->mutable_data<int>(ctx.GetPlace());
     int top_counter = 0;
     for (size_t i = 0; i < offset.size() - 1; ++i) {
-      int w_drop = drop_pos_offset[i + 1] - drop_pos_offset[i];
-      int w = offset[i + 1] - offset[i];
+      int w_drop =
+          static_cast<int>(drop_pos_offset[i + 1] - drop_pos_offset[i]);
+      int w = static_cast<int>(offset[i + 1] - offset[i]);
       if (w_drop == 0) {
         if (w >= 2) {
           for (int ilayer = 1; ilayer < _pyramid_layer && ilayer < w;
@@ -524,7 +527,7 @@ class CPUPyramidHashOPGradKernel : public framework::OpKernel<T> {
     auto* buff = ctx.Input<phi::DenseTensor>("X_Temp_Out");
     auto* bottom_data = buff->data<T>();
 
-    int _slot_len = bottom->dims()[0];
+    int _slot_len = static_cast<int>(bottom->dims()[0]);
     if (static_cast<size_t>(_slot_len) == bottom->lod()[0].size() - 1 &&
         std::count(bottom_data, bottom_data + _slot_len, -1) == _slot_len) {
       return;
@@ -541,8 +544,9 @@ class CPUPyramidHashOPGradKernel : public framework::OpKernel<T> {
     const int* iter = drop_pos->data<int>();
     int top_counter = 0;
     for (size_t i = 0; i < offset.size() - 1; ++i) {
-      int w = offset[i + 1] - offset[i];
-      int w_drop = drop_pos_offset[i + 1] - drop_pos_offset[i];
+      int w = static_cast<int>(offset[i + 1] - offset[i]);
+      int w_drop =
+          static_cast<int>(drop_pos_offset[i + 1] - drop_pos_offset[i]);
       if (w_drop == 0) {
         top_counter++;
       }
@@ -575,8 +579,7 @@ class CPUPyramidHashOPGradKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plt = paddle::platform;
-namespace frm = paddle::framework;
+
 REGISTER_OPERATOR(pyramid_hash,
                   ops::PyramidHashOP,
                   ops::PyramidHashOpMaker,

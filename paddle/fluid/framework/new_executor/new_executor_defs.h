@@ -20,6 +20,7 @@
 
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/variable_helper.h"
+#include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/platform/device_event_base.h"
 #include "paddle/fluid/platform/event.h"
 #include "paddle/phi/core/utils/rw_lock.h"
@@ -164,13 +165,25 @@ struct OpFuncNode {
   std::map<std::string, std::vector<int>> output_index;
 
   // TODO(zhiqiu): Better make it unique_ptr
-  std::shared_ptr<OperatorBase> operator_base_;
+  std::shared_ptr<OperatorBase> operator_base_{nullptr};
   std::string execution_stream_{kDefaultStream};
+  bool force_record_event_{false};
+  std::vector<std::string> events_to_wait_;
+  std::string event_to_record_{"default"};
 
   OpFuncType type_;
   OpKernelComputeFunc kernel_func_;
 
   SchedulingPriority scheduling_priority_{0};  // lower value, higher priority
+
+  // the next only for new IR
+  phi::KernelContext kernel_context_;
+  phi::InferMetaContext infer_meta_context_;
+  std::string phi_op_name_;
+  paddle::dialect::InferMetaInterface::Concept* infer_meta_interface_{nullptr};
+
+  bool fluid_op{false};
+  std::shared_ptr<RuntimeContext> runtime_ctx_{nullptr};
 };
 
 class Instruction {
@@ -202,8 +215,16 @@ class Instruction {
     events_to_wait_.emplace_back(instr_id, event, waiter_type);
   }
 
+  void AddEventToWait(const EventInter* event_inter) {
+    events_to_wait_.push_back(*event_inter);
+  }
+
   const std::vector<EventInter>& EventsToWait() const {
     return events_to_wait_;
+  }
+
+  const std::shared_ptr<EventInter>& EventToRecord() const {
+    return event_to_record_;
   }
 
   void AddNextInstrInDifferentThread(size_t id) {
@@ -234,6 +255,8 @@ class Instruction {
 
   OperatorBase* OpBase() const;
 
+  bool OpBaseValid() const;
+
   void AddGCCheckVar(size_t id);
 
   const std::vector<size_t>& GCCheckVars() const;
@@ -263,6 +286,10 @@ class Instruction {
     return op_func_node_.scheduling_priority_;
   }
 
+  bool PreDefineContext() const { return pre_define_context_; }
+
+  const OpFuncNode* OpFunc() const { return &op_func_node_; }
+
  private:
   bool is_artificial_;  // Instruction is artificial means that it is only used
                         // to assist scheduling and no need to be executed.
@@ -285,6 +312,8 @@ class Instruction {
   std::vector<size_t> gc_check_vars_;
 
   std::vector<std::pair<Variable*, Variable*>> vec_inplace_in_to_out_;
+
+  bool pre_define_context_{false};
 };
 
 namespace interpreter {

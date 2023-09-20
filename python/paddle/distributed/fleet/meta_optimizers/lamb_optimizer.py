@@ -13,8 +13,8 @@
 
 import logging
 
-from paddle.fluid.optimizer import AdamOptimizer
-from paddle.fluid.optimizer import LambOptimizer as LAMB
+import paddle
+from paddle.optimizer import Adam
 
 from .meta_optimizer_base import MetaOptimizerBase
 
@@ -38,7 +38,7 @@ class LambOptimizer(MetaOptimizerBase):
         )
 
         opt = self.inner_opt
-        if not isinstance(opt, AdamOptimizer):
+        if not isinstance(opt, Adam):
             return
 
         configs = self.user_defined_strategy.lamb_configs
@@ -55,14 +55,13 @@ class LambOptimizer(MetaOptimizerBase):
 
             _exclude_from_weight_decay_fn = exclude_fn
 
-        self.lamb_opt = LAMB(
+        self.lamb_opt = paddle.optimizer.Lamb(
             learning_rate=opt._learning_rate,
             lamb_weight_decay=configs['lamb_weight_decay'],
             beta1=opt._beta1,
             beta2=opt._beta2,
             epsilon=opt._epsilon,
-            parameter_list=opt._parameter_list,
-            regularization=opt.regularization,
+            parameters=opt._parameter_list,
             grad_clip=opt._grad_clip,
             exclude_from_weight_decay_fn=_exclude_from_weight_decay_fn,
             name=opt._name,
@@ -73,7 +72,7 @@ class LambOptimizer(MetaOptimizerBase):
             return False
 
         if self.user_defined_strategy.lamb:
-            if not isinstance(self.inner_opt, AdamOptimizer):
+            if not isinstance(self.inner_opt, Adam):
                 logging.warn(
                     "lamb need the inner optimizer to be AdamOptimizer optimizer but got {}.".format(
                         self.inner_opt.type
@@ -111,7 +110,7 @@ class LambOptimizer(MetaOptimizerBase):
         return self.lamb_opt.apply_gradients(params_grads=params_grads)
 
     def apply_optimize(self, loss, startup_program, params_grads):
-        return self.lamb_opt.apply_optimize(
+        return self.lamb_opt._apply_optimize(
             loss, startup_program=startup_program, params_grads=params_grads
         )
 

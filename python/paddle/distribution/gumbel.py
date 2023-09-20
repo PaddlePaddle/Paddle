@@ -18,8 +18,8 @@ import numbers
 import numpy as np
 
 import paddle
+from paddle.base import framework
 from paddle.distribution.transformed_distribution import TransformedDistribution
-from paddle.fluid import framework
 
 
 class Gumbel(TransformedDistribution):
@@ -46,25 +46,40 @@ class Gumbel(TransformedDistribution):
     Examples:
         .. code-block:: python
 
-          import paddle
-          from paddle.distribution.gumbel import Gumbel
+            >>> import paddle
+            >>> from paddle.distribution.gumbel import Gumbel
 
-          # Gumbel distributed with loc=0, scale=1
-          dist = Gumbel(paddle.full([1], 0.0), paddle.full([1], 1.0))
-          dist.sample([2])
-          # Tensor(shape=[2, 1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [[-0.27544352], [-0.64499271]])
-          value = paddle.full([1], 0.5)
-          dist.prob(value)
-          # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [0.33070430])
-          dist.log_prob(value)
-          # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [-1.10653067])
-          dist.cdf(value)
-          # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [0.54523915])
-          dist.entropy()
-          # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [1.57721567])
-          dist.rsample([2])
-          # Tensor(shape=[2, 1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [[0.80463481], [0.91893655]])
+            >>> # Gumbel distributed with loc=0, scale=1
+            >>> dist = Gumbel(paddle.full([1], 0.0), paddle.full([1], 1.0))
 
+            >>> # doctest: +SKIP
+            >>> print(dist.sample([2]))
+            Tensor(shape=[2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.40484068],
+            [3.19400501]])
+
+            >>> print(dist.rsample([2]))
+            Tensor(shape=[2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.95093185],
+            [ 0.32422572]])
+
+            >>> # doctest: -SKIP
+            >>> value = paddle.full([1], 0.5)
+            >>> print(dist.prob(value))
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.33070430])
+
+            >>> print(dist.log_prob(value))
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-1.10653067])
+
+            >>> print(dist.cdf(value))
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.54523921])
+
+            >>> print(dist.entropy())
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1.57721567])
     """
 
     def __init__(self, loc, scale):

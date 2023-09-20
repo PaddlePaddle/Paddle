@@ -13,7 +13,8 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/phi/common/float16.h"
+
+#include "paddle/phi/common/amp_type_traits.h"
 #include "xpu/kernel/cluster_header.h"
 #include "xpu/kernel/debug.h"
 #include "xpu/kernel/math.h"
@@ -26,18 +27,6 @@ namespace details {
 // kGlobalMode: block reduce, each block gets an output;
 // kLocalMode: thread reduce, each thread gets an output;
 enum ReduceMode { kGlobalMode, kLocalMode };
-
-template <typename T>
-class MPTypeTrait {
- public:
-  using Type = T;
-};
-
-template <>
-class MPTypeTrait<phi::dtype::float16> {
- public:
-  using Type = float;
-};
 
 static inline __device__ void sync_all() {
   __asm__ __volatile__(

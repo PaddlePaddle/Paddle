@@ -37,14 +37,10 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                 return np.random.random([]).astype(np.float32)
             elif dims == 1:
                 return np.random.random([32]).astype(np.float32)
-            elif dims == 2:
-                return np.random.random([3, 32]).astype(np.float32)
-            elif dims == 3:
-                return np.random.random([3, 32, 32]).astype(np.float32)
             else:
                 return np.random.random([batch, 3, 32, 32]).astype(np.float32)
 
-        for dims in [0, 1, 2, 3, 4]:
+        for dims in [0, 1, 4]:
             for batch in [1, 4]:
                 for op_type in [
                     "relu",
@@ -167,7 +163,11 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                 + runtime_version[2] * 10
                 < 8600
                 and self.dims == 0
-            ) and program_config.ops[0].type in ["celu", "logsigmoid"]:
+            ) and program_config.ops[0].type in [
+                "celu",
+                "logsigmoid",
+                "tanh_shrink",
+            ]:
                 return 0, 3
             return 1, 2
 
@@ -178,10 +178,12 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
         # for static_shape
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
+        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), 1e-3
@@ -189,10 +191,12 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
+        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-3

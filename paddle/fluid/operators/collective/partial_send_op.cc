@@ -60,7 +60,7 @@ class PartialSendOp : public framework::OperatorWithKernel {
 
 class PartialSendMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "(Tensor) tensor to be sent.");
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
         .SetDefault(0);

@@ -18,6 +18,7 @@
 #include <unordered_set>
 #include <utility>
 
+#include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/execution_context.h"
@@ -29,12 +30,15 @@
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/flags.h"
 
 PHI_DECLARE_bool(use_mkldnn);
 PHI_DECLARE_string(tracer_mkldnn_ops_on);
 PHI_DECLARE_string(tracer_mkldnn_ops_off);
+PHI_DECLARE_bool(use_stride_kernel);
 
 namespace paddle {
 namespace imperative {
@@ -52,7 +56,7 @@ thread_local AmpLevel Tracer::amp_level_ = AmpLevel::O0;
 
 thread_local phi::DataType Tracer::amp_dtype_ = phi::DataType::FLOAT32;
 
-static std::shared_ptr<Tracer> g_current_tracer(nullptr);
+static thread_local std::shared_ptr<Tracer> g_current_tracer(nullptr);
 
 const std::shared_ptr<Tracer>& GetCurrentTracer() { return g_current_tracer; }
 
@@ -107,7 +111,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
     std::unique_ptr<framework::GarbageCollector> gc;
     if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      gc.reset(new framework::DefaultStreamGarbageCollector(place, 0));
+      gc = std::make_unique<framework::DefaultStreamGarbageCollector>(place, 0);
 
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
@@ -117,7 +121,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
 #endif
     } else if (platform::is_cuda_pinned_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      gc.reset(new framework::CUDAPinnedGarbageCollector(place, 0));
+      gc = std::make_unique<framework::CUDAPinnedGarbageCollector>(place, 0);
 
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
@@ -128,7 +132,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
 #endif
     } else if (platform::is_xpu_place(place)) {
 #if defined(PADDLE_WITH_XPU)
-      gc.reset(new framework::XPUGarbageCollector(place, 0));
+      gc = std::make_unique<framework::XPUGarbageCollector>(place, 0);
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
       PADDLE_THROW(platform::errors::PermissionDenied(
@@ -136,11 +140,11 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
           "Please recompile or reinstall Paddle with XPU support."));
 #endif
     } else if (platform::is_cpu_place(place)) {
-      gc.reset(new framework::CPUGarbageCollector(place, 0));
+      gc = std::make_unique<framework::CPUGarbageCollector>(place, 0);
       VLOG(10) << "Created GarbageCollector at " << place;
     } else if (platform::is_ipu_place(place)) {
 #if defined(PADDLE_WITH_IPU)
-      gc.reset(new framework::IPUGarbageCollector(place, 0));
+      gc = std::make_unique<framework::IPUGarbageCollector>(place, 0);
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
       PADDLE_THROW(platform::errors::PermissionDenied(
@@ -150,11 +154,13 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
     } else if (platform::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
       if (framework::IsFastEagerDeletionModeEnabled()) {
-        gc.reset(
-            new framework::CustomDeviceUnsafeFastGarbageCollector(place, 0));
+        gc =
+            std::make_unique<framework::CustomDeviceUnsafeFastGarbageCollector>(
+                place, 0);
         VLOG(10) << "Created UnsafeFastGarbageCollector at " << place;
       } else {
-        gc.reset(new framework::CustomDefaultStreamGarbageCollector(place, 0));
+        gc = std::make_unique<framework::CustomDefaultStreamGarbageCollector>(
+            place, 0);
         VLOG(10) << "Created GarbageCollector at " << place;
       }
 #else
@@ -222,12 +228,14 @@ void Tracer::TraceOpImpl(const std::string& type,
       attrs["use_mkldnn"] = !is_off;
     }
   }
+
   auto op = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
   const auto& op_info = op->Info();
   auto* attr_checker = op_info.Checker();
   if (attr_checker) {
     attr_checker->Check(&attrs, true, /*only_check_exist_value=*/true);
   }
+
   const auto& extra_attr_checkers =
       operators::ExtraInfoUtils::Instance().GetExtraAttrsChecker(type);
   for (const auto& checker : extra_attr_checkers) {
@@ -296,6 +304,7 @@ void Tracer::TraceOpImpl(const std::string& type,
           "CustomPlace."));
 #endif
     }
+
     if (!use_default_attr_map) {
       PADDLE_ENFORCE_NOT_NULL(passed_default_attrs_,
                               paddle::platform::errors::PermissionDenied(
@@ -400,15 +409,65 @@ void Tracer::TraceOp(const std::string& type,
                      const std::map<std::string, std::string>& inplace_map) {
   VLOG(6) << "Running On Eager TraceOp with use_default_attr_map: "
           << use_default_attr_map;
-  TraceOpImpl<egr::EagerVariable>(type,
-                                  ins,
-                                  outs,
-                                  attrs,
-                                  place,
-                                  false,
-                                  inplace_map,
-                                  default_attrs,
-                                  use_default_attr_map);
+  std::map<phi::DenseTensor*, phi::DenseTensor*> need_backup_inputs2outputs;
+  std::map<phi::DenseTensor*, std::shared_ptr<phi::Allocation>>
+      need_backup_inputs2holder;
+  std::map<phi::DenseTensor*, phi::DDim> need_backup_inputs2strides;
+  std::map<phi::DenseTensor*, size_t> need_backup_inputs2offset;
+  if (FLAGS_use_stride_kernel) {
+    for (auto& iter : inplace_map) {
+      auto inputs_iter = ins.find(iter.first);
+      for (size_t i = 0; i < inputs_iter->second.size(); i++) {
+        auto var = inputs_iter->second[i]->MutableVar();
+        if (var->IsType<phi::DenseTensor>()) {
+          auto dense_tensor = var->GetMutable<phi::DenseTensor>();
+          if (!dense_tensor->meta().is_contiguous()) {
+            NameTensorMap* tmp_out = const_cast<NameTensorMap*>(&outs);
+            auto outputs_iter = tmp_out->find(iter.second);
+            outputs_iter->second[i] = std::make_shared<egr::EagerVariable>(
+                egr::Controller::Instance().GenerateUniqueName());
+            need_backup_inputs2outputs[dense_tensor] =
+                outputs_iter->second[i]
+                    ->MutableVar()
+                    ->GetMutable<phi::DenseTensor>();
+            need_backup_inputs2holder[dense_tensor] = dense_tensor->Holder();
+            need_backup_inputs2strides[dense_tensor] = dense_tensor->strides();
+            need_backup_inputs2offset[dense_tensor] = dense_tensor->offset();
+          }
+        }
+      }
+    }
+    TraceOpImpl<egr::EagerVariable>(type,
+                                    ins,
+                                    outs,
+                                    attrs,
+                                    place,
+                                    false,
+                                    {},
+                                    default_attrs,
+                                    use_default_attr_map);
+
+    auto dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
+    for (auto& iter : need_backup_inputs2outputs) {
+      iter.first->ResetHolder(need_backup_inputs2holder[iter.first]);
+      iter.first->set_strides(need_backup_inputs2strides[iter.first]);
+      iter.first->set_offset(need_backup_inputs2offset[iter.first]);
+      paddle::experimental::TransStrideLegacy(dev_ctx, iter.second, iter.first);
+      iter.second->ResetHolder(need_backup_inputs2holder[iter.first]);
+      iter.second->set_strides(need_backup_inputs2strides[iter.first]);
+      iter.second->set_offset(need_backup_inputs2offset[iter.first]);
+    }
+  } else {
+    TraceOpImpl<egr::EagerVariable>(type,
+                                    ins,
+                                    outs,
+                                    attrs,
+                                    place,
+                                    false,
+                                    inplace_map,
+                                    default_attrs,
+                                    use_default_attr_map);
+  }
 }
 
 void Tracer::TraceOp(const std::string& type,
@@ -426,15 +485,40 @@ void Tracer::TraceOp(const std::string& type,
                      paddle::framework::AttributeMap& attrs,
                      const std::map<std::string, std::string>& inplace_map) {
   VLOG(6) << "Running On Eager TraceOp(less): ";
-  TraceOpImpl<egr::EagerVariable>(type,
-                                  ins,
-                                  outs,
-                                  attrs,
-                                  expected_place_,
-                                  false,
-                                  inplace_map,
-                                  nullptr,
-                                  true);
+
+  std::map<phi::DenseTensor*, phi::DenseTensor*> need_backup_inputs2outputs;
+
+  if (FLAGS_use_stride_kernel) {
+    for (auto& iter : inplace_map) {
+      auto inputs_iter = ins.find(iter.first);
+      for (size_t i = 0; i < inputs_iter->second.size(); i++) {
+        auto var = inputs_iter->second[i]->MutableVar();
+        if (var->IsType<phi::DenseTensor>()) {
+          auto dense_tensor = var->GetMutable<phi::DenseTensor>();
+          if (!dense_tensor->meta().is_contiguous()) {
+            NameTensorMap* tmp_out = const_cast<NameTensorMap*>(&outs);
+            auto outputs_iter = tmp_out->find(iter.second);
+            outputs_iter->second[i] = std::make_shared<egr::EagerVariable>(
+                egr::Controller::Instance().GenerateUniqueName());
+            need_backup_inputs2outputs[dense_tensor] =
+                outputs_iter->second[i]
+                    ->MutableVar()
+                    ->GetMutable<phi::DenseTensor>();
+          }
+        }
+      }
+    }
+  } else {
+    TraceOpImpl<egr::EagerVariable>(type,
+                                    ins,
+                                    outs,
+                                    attrs,
+                                    expected_place_,
+                                    false,
+                                    inplace_map,
+                                    nullptr,
+                                    true);
+  }
 }
 
 void Tracer::SetExpectedPlace(platform::Place place) {

@@ -35,4 +35,14 @@ void AnyRawKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(any_raw, CPU, ALL_LAYOUT, phi::AnyRawKernel, bool) {}
+PD_REGISTER_KERNEL(any_raw,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::AnyRawKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   bool) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}

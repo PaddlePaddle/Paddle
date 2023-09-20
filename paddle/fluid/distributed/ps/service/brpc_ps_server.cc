@@ -30,15 +30,15 @@ class RpcController;
 }  // namespace protobuf
 }  // namespace google
 
-DEFINE_int32(pserver_timeout_ms_s2s,
-             10000,
-             "pserver request server timeout_ms");
-DEFINE_int32(pserver_connect_timeout_ms_s2s,
-             10000,
-             "pserver connect server timeout_ms");
-DEFINE_string(pserver_connection_type_s2s,
-              "pooled",
-              "pserver connection_type[pooled:single]");
+PD_DEFINE_int32(pserver_timeout_ms_s2s,
+                10000,
+                "pserver request server timeout_ms");
+PD_DEFINE_int32(pserver_connect_timeout_ms_s2s,
+                10000,
+                "pserver connect server timeout_ms");
+PD_DEFINE_string(pserver_connection_type_s2s,
+                 "pooled",
+                 "pserver connection_type[pooled:single]");
 
 namespace paddle {
 namespace distributed {
@@ -169,7 +169,7 @@ int32_t BrpcPsServer::ReceiveFromPServer(int msg_type,
     LOG(WARNING) << "SERVER>>RESPONSE>>msg = 0 Finish S2S Response";
     return 0;
   }
-  paddle::framework::BinaryArchive ar;
+  ::paddle::framework::BinaryArchive ar;
   ar.SetReadBuffer(const_cast<char *>(msg.c_str()), msg.length(), nullptr);
   if (ar.Cursor() == ar.Finish()) {
     LOG(WARNING) << "SERVER>>RESPONSE ar = 0>> Finish S2S Response";
@@ -428,7 +428,7 @@ int32_t BrpcPsService::PushSparseParam(Table *table,
                                      1);
   CHECK_TABLE_EXIST(table, request, response)
   auto &push_data = request.data();
-  if (push_data.size() < 1) {
+  if (push_data.empty()) {
     // set_response_code(response, 0, "push sparse data is empty");
     return 0;
   }
@@ -557,7 +557,7 @@ int32_t BrpcPsService::PushSparse(Table *table,
       "PsService->PushSparse", platform::TracerEventType::Communication, 1);
   CHECK_TABLE_EXIST(table, request, response)
   auto &push_data = request.data();
-  if (push_data.size() < 1) {
+  if (push_data.empty()) {
     // set_response_code(response, 0, "push sparse data is empty");
     return 0;
   }
@@ -598,7 +598,7 @@ int32_t BrpcPsService::PrintTableStat(Table *table,
                                       brpc::Controller *cntl) {
   CHECK_TABLE_EXIST(table, request, response)
   std::pair<int64_t, int64_t> ret = table->PrintTableStat();
-  paddle::framework::BinaryArchive ar;
+  ::paddle::framework::BinaryArchive ar;
   ar << ret.first << ret.second;
   std::string table_info(ar.Buffer(), ar.Length());
   response.set_data(table_info);
@@ -723,7 +723,7 @@ int32_t BrpcPsService::CacheShuffle(Table *table,
   table->Flush();
   double cache_threshold = std::stod(request.params(2));
   LOG(INFO) << "cache threshold for cache shuffle: " << cache_threshold;
-  //    auto shuffled_ins = paddle::ps::make_channel<std::pair<uint64_t,
+  //    auto shuffled_ins = ::paddle::ps::make_channel<std::pair<uint64_t,
   //    std::string>>();
   //    shuffled_ins->set_block_size(80000);
   _server->StartS2S();

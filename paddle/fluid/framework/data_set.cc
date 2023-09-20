@@ -227,13 +227,13 @@ void DatasetImpl<T>::CreateChannel() {
   if (input_channel_ == nullptr) {
     input_channel_ = paddle::framework::MakeChannel<T>();
   }
-  if (multi_output_channel_.size() == 0) {
+  if (multi_output_channel_.empty()) {
     multi_output_channel_.reserve(channel_num_);
     for (int i = 0; i < channel_num_; ++i) {
       multi_output_channel_.push_back(paddle::framework::MakeChannel<T>());
     }
   }
-  if (multi_consume_channel_.size() == 0) {
+  if (multi_consume_channel_.empty()) {
     multi_consume_channel_.reserve(channel_num_);
     for (int i = 0; i < channel_num_; ++i) {
       multi_consume_channel_.push_back(paddle::framework::MakeChannel<T>());
@@ -242,13 +242,13 @@ void DatasetImpl<T>::CreateChannel() {
   if (input_pv_channel_ == nullptr) {
     input_pv_channel_ = paddle::framework::MakeChannel<PvInstance>();
   }
-  if (multi_pv_output_.size() == 0) {
+  if (multi_pv_output_.empty()) {
     multi_pv_output_.reserve(channel_num_);
     for (int i = 0; i < channel_num_; ++i) {
       multi_pv_output_.push_back(paddle::framework::MakeChannel<PvInstance>());
     }
   }
-  if (multi_pv_consume_.size() == 0) {
+  if (multi_pv_consume_.empty()) {
     multi_pv_consume_.reserve(channel_num_);
     for (int i = 0; i < channel_num_; ++i) {
       multi_pv_consume_.push_back(paddle::framework::MakeChannel<PvInstance>());
@@ -295,7 +295,7 @@ static void compute_batch_num(const int64_t ins_num,
   int thread_batch_num = batch_size * thread_num;
   // less data
   if (static_cast<int64_t>(thread_batch_num) > ins_num) {
-    compute_left_batch_num(ins_num, thread_num, offset, 0);
+    compute_left_batch_num(static_cast<int>(ins_num), thread_num, offset, 0);
     return;
   }
 
@@ -338,7 +338,7 @@ static int compute_thread_batch_nccl(
   auto& offset = (*nccl_offsets);
   // split data avg by thread num
   compute_batch_num(total_instance_num, minibatch_size, thr_num, &offset);
-  thread_avg_batch_num = static_cast<int>(offset.size() / thr_num);
+  thread_avg_batch_num = static_cast<int>(offset.size() / thr_num);  // NOLINT
 #ifdef PADDLE_WITH_GLOO
   auto gloo_wrapper = paddle::framework::GlooWrapper::GetInstance();
   if (gloo_wrapper->Size() > 1) {
@@ -413,7 +413,7 @@ static int compute_thread_batch_nccl(
 void MultiSlotDataset::PrepareTrain() {
 #ifdef PADDLE_WITH_GLOO
   if (enable_heterps_) {
-    if (input_records_.size() == 0 && input_channel_ != nullptr &&
+    if (input_records_.empty() && input_channel_ != nullptr &&
         input_channel_->Size() != 0) {
       input_channel_->ReadAll(input_records_);
       VLOG(3) << "read from channel to records with records size: "
@@ -510,8 +510,8 @@ void DatasetImpl<T>::LoadIntoMemory() {
 #endif
   } else {
     for (int64_t i = 0; i < thread_num_; ++i) {
-      load_threads.push_back(std::thread(
-          &paddle::framework::DataFeed::LoadIntoMemory, readers_[i].get()));
+      load_threads.emplace_back(&paddle::framework::DataFeed::LoadIntoMemory,
+                                readers_[i].get());
     }
     for (std::thread& t : load_threads) {
       t.join();
@@ -534,16 +534,16 @@ void DatasetImpl<T>::PreLoadIntoMemory() {
     CHECK(static_cast<size_t>(preload_thread_num_) == preload_readers_.size());
     preload_threads_.clear();
     for (int64_t i = 0; i < preload_thread_num_; ++i) {
-      preload_threads_.push_back(
-          std::thread(&paddle::framework::DataFeed::LoadIntoMemory,
-                      preload_readers_[i].get()));
+      preload_threads_.emplace_back(
+          &paddle::framework::DataFeed::LoadIntoMemory,
+          preload_readers_[i].get());
     }
   } else {
     CHECK(static_cast<size_t>(thread_num_) == readers_.size());
     preload_threads_.clear();
     for (int64_t i = 0; i < thread_num_; ++i) {
-      preload_threads_.push_back(std::thread(
-          &paddle::framework::DataFeed::LoadIntoMemory, readers_[i].get()));
+      preload_threads_.emplace_back(
+          &paddle::framework::DataFeed::LoadIntoMemory, readers_[i].get());
     }
   }
   VLOG(3) << "DatasetImpl<T>::PreLoadIntoMemory() end";
@@ -594,20 +594,20 @@ void DatasetImpl<T>::ReleaseMemoryFun() {
     input_pv_channel_->Clear();
     input_pv_channel_ = nullptr;
   }
-  for (size_t i = 0; i < multi_pv_output_.size(); ++i) {
-    if (!multi_pv_output_[i]) {
+  for (auto& pv_output : multi_pv_output_) {
+    if (!pv_output) {
       continue;
     }
-    multi_pv_output_[i]->Clear();
-    multi_pv_output_[i] = nullptr;
+    pv_output->Clear();
+    pv_output = nullptr;
   }
   std::vector<paddle::framework::Channel<PvInstance>>().swap(multi_pv_output_);
-  for (size_t i = 0; i < multi_pv_consume_.size(); ++i) {
-    if (!multi_pv_consume_[i]) {
+  for (auto& pv_consume : multi_pv_consume_) {
+    if (!pv_consume) {
       continue;
     }
-    multi_pv_consume_[i]->Clear();
-    multi_pv_consume_[i] = nullptr;
+    pv_consume->Clear();
+    pv_consume = nullptr;
   }
   if (enable_heterps_) {
     input_records_.clear();
@@ -727,20 +727,20 @@ void MultiSlotDataset::TDMSample(const std::string tree_name,
     VLOG(1) << "sample_results(" << sample_slot << ") = " << tmp_results.size();
     VLOG(0) << "start to put sample in vector!";
     // sample_results.push_back(tmp_results);
-    for (unsigned int j = 0; j < tmp_results.size(); j++) {
+    for (auto& tmp_result : tmp_results) {
       std::vector<Record> tmp_vec;
-      tmp_vec.emplace_back(tmp_results[j]);
+      tmp_vec.emplace_back(tmp_result);
       sample_results.emplace_back(tmp_vec);
     }
     VLOG(0) << "finish to put sample in vector!";
   }
 
   auto output_channel_num = multi_output_channel_.size();
-  for (unsigned int i = 0; i < sample_results.size(); i++) {
+  for (auto& sample_result : sample_results) {
     auto output_idx = fleet_ptr->LocalRandomEngine()() % output_channel_num;
     multi_output_channel_[output_idx]->Open();
     // vector?
-    multi_output_channel_[output_idx]->Write(std::move(sample_results[i]));
+    multi_output_channel_[output_idx]->Write(std::move(sample_result));
   }
 
   data.clear();
@@ -849,7 +849,7 @@ void MultiSlotDataset::GlobalShuffle(int thread_num) {
   }
   VLOG(3) << "start global shuffle threads, num = " << thread_num;
   for (int i = 0; i < thread_num; ++i) {
-    global_shuffle_threads.push_back(std::thread(global_shuffle_func));
+    global_shuffle_threads.emplace_back(global_shuffle_func);
   }
   for (std::thread& t : global_shuffle_threads) {
     t.join();
@@ -1009,7 +1009,7 @@ void DatasetImpl<T>::CreateReaders() {
   CHECK(channel_num_ > 0) << "channel num should > 0";
   CHECK(channel_num_ <= thread_num_) << "channel num should <= thread num";
   VLOG(3) << "readers size: " << readers_.size();
-  if (readers_.size() != 0) {
+  if (!readers_.empty()) {
     VLOG(3) << "readers_.size() = " << readers_.size()
             << ", will not create again";
     return;
@@ -1234,22 +1234,22 @@ void MultiSlotDataset::PostprocessInstance() {
                  fleet_ptr->LocalRandomEngine());
     input_channel_->Open();
     input_channel_->Write(std::move(input_records_));
-    for (size_t i = 0; i < multi_pv_consume_.size(); ++i) {
-      multi_pv_consume_[i]->Clear();
+    for (auto& pv_consume : multi_pv_consume_) {
+      pv_consume->Clear();
     }
     input_channel_->Close();
     input_records_.clear();
     input_records_.shrink_to_fit();
   } else {
     input_channel_->Open();
-    for (size_t i = 0; i < multi_consume_channel_.size(); ++i) {
+    for (auto& consume_channel : multi_consume_channel_) {
       std::vector<Record> ins_data;
-      multi_consume_channel_[i]->Close();
-      multi_consume_channel_[i]->ReadAll(ins_data);
+      consume_channel->Close();
+      consume_channel->ReadAll(ins_data);
       input_channel_->Write(std::move(ins_data));
       ins_data.clear();
       ins_data.shrink_to_fit();
-      multi_consume_channel_[i]->Clear();
+      consume_channel->Clear();
     }
     input_channel_->Close();
     this->LocalShuffle();
@@ -1271,7 +1271,7 @@ void MultiSlotDataset::PreprocessInstance() {
     input_channel_->Close();
     std::vector<PvInstance> pv_data;
     input_channel_->ReadAll(input_records_);
-    int all_records_num = input_records_.size();
+    int all_records_num = static_cast<int>(input_records_.size());
     std::vector<Record*> all_records;
     all_records.reserve(all_records_num);
     for (int index = 0; index < all_records_num; ++index) {
@@ -1333,14 +1333,14 @@ void MultiSlotDataset::GenerateLocalTablesUnlock(int table_id,
       local_map_tables = fleet_ptr_->GetLocalTable();
   local_map_tables.resize(shard_num);
   // read thread
-  int channel_num = multi_output_channel_.size();
+  int channel_num = static_cast<int>(multi_output_channel_.size());
   if (read_thread_num < channel_num) {
     read_thread_num = channel_num;
   }
   std::vector<std::thread> threads(read_thread_num);
   consume_task_pool_.resize(consume_thread_num);
-  for (size_t i = 0; i < consume_task_pool_.size(); i++) {
-    consume_task_pool_[i].reset(new ::ThreadPool(1));
+  for (auto& consume_task : consume_task_pool_) {
+    consume_task.reset(new ::ThreadPool(1));
   }
   auto consume_func = [&local_map_tables](int shard_id,
                                           int feadim,
@@ -1359,9 +1359,10 @@ void MultiSlotDataset::GenerateLocalTablesUnlock(int table_id,
         std::vector<std::future<void>> task_futures;
         this->multi_output_channel_[i]->Close();
         this->multi_output_channel_[i]->ReadAll(vec_data);
-        for (size_t j = 0; j < vec_data.size(); j++) {
-          for (auto& feature : vec_data[j].uint64_feasigns_) {
-            int shard = feature.sign().uint64_feasign_ % shard_num;
+        for (auto& item : vec_data) {
+          for (auto& feature : item.uint64_feasigns_) {
+            int shard =
+                static_cast<int>(feature.sign().uint64_feasign_ % shard_num);
             task_keys[shard].push_back(feature.sign().uint64_feasign_);
           }
         }
@@ -1391,8 +1392,8 @@ void MultiSlotDataset::GenerateLocalTablesUnlock(int table_id,
   for (std::thread& t : threads) {
     t.join();
   }
-  for (size_t i = 0; i < consume_task_pool_.size(); i++) {
-    consume_task_pool_[i].reset();
+  for (auto& consume_task : consume_task_pool_) {
+    consume_task.reset();
   }
   consume_task_pool_.clear();
   fleet_ptr_->PullSparseToLocal(table_id, feadim);
@@ -1417,14 +1418,14 @@ void MultiSlotDataset::MergeByInsId() {
   CHECK(multi_output_channel_.size() != 0);  // NOLINT
   auto channel_data = paddle::framework::MakeChannel<Record>();
   VLOG(3) << "multi_output_channel_.size() " << multi_output_channel_.size();
-  for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
+  for (auto& item : multi_output_channel_) {
     std::vector<Record> vec_data;
-    multi_output_channel_[i]->Close();
-    multi_output_channel_[i]->ReadAll(vec_data);
+    item->Close();
+    item->ReadAll(vec_data);
     channel_data->Write(std::move(vec_data));
     vec_data.clear();
     vec_data.shrink_to_fit();
-    multi_output_channel_[i]->Clear();
+    item->Clear();
   }
   channel_data->Close();
   std::vector<Record> recs;
@@ -1581,11 +1582,11 @@ void MultiSlotDataset::MergeByInsId() {
   VLOG(3) << "channel data size " << channel_data->Size();
   channel_data->SetBlockSize(channel_data->Size() / channel_num_ + 1);
   VLOG(3) << "channel data block size " << channel_data->BlockSize();
-  for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
+  for (auto& item : multi_output_channel_) {
     std::vector<Record> vec_data;
     channel_data->Read(vec_data);
-    multi_output_channel_[i]->Open();
-    multi_output_channel_[i]->Write(std::move(vec_data));
+    item->Open();
+    item->Write(std::move(vec_data));
     vec_data.clear();
     vec_data.shrink_to_fit();
   }
@@ -1618,7 +1619,7 @@ void MultiSlotDataset::GetRandomData(
     for (auto slot : slots_to_replace) {
       auto range = rand_rec.feas_.equal_range(slot);
       for (auto it = range.first; it != range.second; ++it) {
-        new_rec.uint64_feasigns_.push_back({it->second, it->first});
+        new_rec.uint64_feasigns_.emplace_back(it->second, it->first);
         debug_push_cnt += 1;
       }
     }
@@ -1633,12 +1634,12 @@ void MultiSlotDataset::PreprocessChannel(
     std::unordered_set<uint16_t>& index_slots) {  // NOLINT
   int out_channel_size = 0;
   if (cur_channel_ == 0) {
-    for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
-      out_channel_size += multi_output_channel_[i]->Size();
+    for (auto& item : multi_output_channel_) {
+      out_channel_size += static_cast<int>(item->Size());
     }
   } else {
-    for (size_t i = 0; i < multi_consume_channel_.size(); ++i) {
-      out_channel_size += multi_consume_channel_[i]->Size();
+    for (auto& item : multi_consume_channel_) {
+      out_channel_size += static_cast<int>(item->Size());
     }
   }
   VLOG(2) << "DatasetImpl<T>::SlotsShuffle() begin with input channel size: "
@@ -1646,7 +1647,7 @@ void MultiSlotDataset::PreprocessChannel(
           << " output channel size: " << out_channel_size;
 
   if ((!input_channel_ || input_channel_->Size() == 0) &&
-      slots_shuffle_original_data_.size() == 0 && out_channel_size == 0) {
+      slots_shuffle_original_data_.empty() && out_channel_size == 0) {
     VLOG(3) << "DatasetImpl<T>::SlotsShuffle() end, no data to slots shuffle";
     return;
   }
@@ -1658,7 +1659,7 @@ void MultiSlotDataset::PreprocessChannel(
       index_slots.insert(i);
     }
   }
-  if (slots_shuffle_original_data_.size() == 0) {
+  if (slots_shuffle_original_data_.empty()) {
     // before first slots shuffle, instances could be in
     // input_channel, oupput_channel or consume_channel
     if (input_channel_ && input_channel_->Size() != 0) {
@@ -1668,10 +1669,10 @@ void MultiSlotDataset::PreprocessChannel(
     } else {
       CHECK(out_channel_size > 0);  // NOLINT
       if (cur_channel_ == 0) {
-        for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
+        for (auto& item : multi_output_channel_) {
           std::vector<Record> vec_data;
-          multi_output_channel_[i]->Close();
-          multi_output_channel_[i]->ReadAll(vec_data);
+          item->Close();
+          item->ReadAll(vec_data);
           slots_shuffle_original_data_.reserve(
               slots_shuffle_original_data_.size() + vec_data.size());
           slots_shuffle_original_data_.insert(
@@ -1680,13 +1681,13 @@ void MultiSlotDataset::PreprocessChannel(
               std::make_move_iterator(vec_data.end()));
           vec_data.clear();
           vec_data.shrink_to_fit();
-          multi_output_channel_[i]->Clear();
+          item->Clear();
         }
       } else {
-        for (size_t i = 0; i < multi_consume_channel_.size(); ++i) {
+        for (auto& item : multi_consume_channel_) {
           std::vector<Record> vec_data;
-          multi_consume_channel_[i]->Close();
-          multi_consume_channel_[i]->ReadAll(vec_data);
+          item->Close();
+          item->ReadAll(vec_data);
           slots_shuffle_original_data_.reserve(
               slots_shuffle_original_data_.size() + vec_data.size());
           slots_shuffle_original_data_.insert(
@@ -1695,7 +1696,7 @@ void MultiSlotDataset::PreprocessChannel(
               std::make_move_iterator(vec_data.end()));
           vec_data.clear();
           vec_data.shrink_to_fit();
-          multi_consume_channel_[i]->Clear();
+          item->Clear();
         }
       }
     }
@@ -1703,35 +1704,35 @@ void MultiSlotDataset::PreprocessChannel(
     // if already have original data for slots shuffle, clear channel
     input_channel_->Clear();
     if (cur_channel_ == 0) {
-      for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
-        if (!multi_output_channel_[i]) {
+      for (auto& item : multi_output_channel_) {
+        if (!item) {
           continue;
         }
-        multi_output_channel_[i]->Clear();
+        item->Clear();
       }
     } else {
-      for (size_t i = 0; i < multi_consume_channel_.size(); ++i) {
-        if (!multi_consume_channel_[i]) {
+      for (auto& item : multi_consume_channel_) {
+        if (!item) {
           continue;
         }
-        multi_consume_channel_[i]->Clear();
+        item->Clear();
       }
     }
   }
   int end_size = 0;
   if (cur_channel_ == 0) {
-    for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
-      if (!multi_output_channel_[i]) {
+    for (auto& item : multi_output_channel_) {
+      if (!item) {
         continue;
       }
-      end_size += multi_output_channel_[i]->Size();
+      end_size += static_cast<int>(item->Size());
     }
   } else {
-    for (size_t i = 0; i < multi_consume_channel_.size(); ++i) {
-      if (!multi_consume_channel_[i]) {
+    for (auto& item : multi_consume_channel_) {
+      if (!item) {
         continue;
       }
-      end_size += multi_consume_channel_[i]->Size();
+      end_size += static_cast<int>(item->Size());
     }
   }
   CHECK(input_channel_->Size() == 0)
@@ -1782,7 +1783,7 @@ void SlotRecordDataset::CreateReaders() {
   CHECK(channel_num_ > 0) << "channel num should > 0";
   CHECK(channel_num_ <= thread_num_) << "channel num should <= thread num";
   VLOG(3) << "readers size: " << readers_.size();
-  if (readers_.size() != 0) {
+  if (!readers_.empty()) {
     VLOG(3) << "readers_.size() = " << readers_.size()
             << ", will not create again";
     return;
@@ -1870,7 +1871,7 @@ void SlotRecordDataset::DynamicAdjustChannelNum(int channel_num,
 void SlotRecordDataset::PrepareTrain() {
 #ifdef PADDLE_WITH_GLOO
   if (enable_heterps_) {
-    if (input_records_.size() == 0 && input_channel_ != nullptr &&
+    if (input_records_.empty() && input_channel_ != nullptr &&
         input_channel_->Size() != 0) {
       input_channel_->ReadAll(input_records_);
       VLOG(3) << "read from channel to records with records size: "

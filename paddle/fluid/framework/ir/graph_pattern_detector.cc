@@ -24,9 +24,6 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-using string::PrettyLog;
-using string::Style;
-
 size_t PDPattern::id_ = 0UL;
 
 #ifdef PADDLE_WITH_TENSORRT
@@ -75,10 +72,12 @@ PDNode *PDPattern::RetrieveNode(const std::string &id) const {
 }
 
 void PDPattern::AddEdge(PDNode *a, PDNode *b) {
-  PADDLE_ENFORCE_NOT_NULL(
-      a, platform::errors::NotFound("PDNode %s is not found.", a->name()));
-  PADDLE_ENFORCE_NOT_NULL(
-      b, platform::errors::NotFound("PDNode %s is not found.", b->name()));
+  PADDLE_ENFORCE_NOT_NULL(a,
+                          platform::errors::NotFound("PDNode %s is not found.",
+                                                     a->name()));  // NOLINT
+  PADDLE_ENFORCE_NOT_NULL(b,
+                          platform::errors::NotFound("PDNode %s is not found.",
+                                                     b->name()));  // NOLINT
   PADDLE_ENFORCE_NE(a,
                     b,
                     platform::errors::PermissionDenied(
@@ -942,29 +941,6 @@ PDNode *patterns::ConvBN::operator()(paddle::framework::ir::PDNode *conv_input,
   return bn_out_var;
 }
 
-PDNode *patterns::LayerNormShiftScale::operator()() {
-  auto layer_norm_in = pattern->NewNode(layer_norm_in_repr())
-                           ->AsInput()
-                           ->assert_is_op_input("layer_norm", "X");
-  auto layer_norm_bias = pattern->NewNode(layer_norm_bias_repr())
-                             ->AsInput()
-                             ->assert_is_op_input("layer_norm", "Bias");
-  auto layer_norm_scale = pattern->NewNode(layer_norm_scale_repr())
-                              ->AsInput()
-                              ->assert_is_op_input("layer_norm", "Scale");
-
-  auto layer_norm_op =
-      pattern->NewNode(layer_norm_op_repr())->assert_is_op("layer_norm");
-
-  auto layer_norm_out = pattern->NewNode(layer_norm_out_repr())
-                            ->assert_is_op_output("layer_norm", "Y")
-                            ->AsOutput();
-
-  layer_norm_op->LinksFrom({layer_norm_in, layer_norm_bias, layer_norm_scale})
-      .LinksTo({layer_norm_out});
-  return layer_norm_out;
-}
-
 PDNode *patterns::OperatorActivation::operator()(
     const std::string &operator_type, const std::string &activation_type) {
   auto *preceding_op =
@@ -1210,7 +1186,7 @@ PDNode *patterns::FCMKLDNN::operator()(bool with_residual_data) {
   } else {
     fc_op->assert_more([&](Node *x) {
       if (!HasInput(x, "ResidualData") ||
-          x->Op()->Input("ResidualData").size() == 0)
+          x->Op()->Input("ResidualData").empty())
         return true;
       return false;
     });
@@ -1741,7 +1717,7 @@ PDNode *patterns::LinearAct::operator()(
     elementwise_add_grad_op->LinksFrom({matmul_out_var});
   }
 
-  if (act_types.size() > 0) {
+  if (!act_types.empty()) {
     ele_out_var->AsIntermediate()->assert_is_ops_input(act_types);
 
     auto *act = pattern->NewNode(act_repr())->assert_is_ops(act_types);
@@ -1812,7 +1788,7 @@ PDNode *patterns::ElewiseAddMatmulAct::operator()(
     matmul_grad->LinksTo({matmul_grad_dx_var, matmul_grad_dw_var});
   }
 
-  if (!without_x_gradient && act_grad_types.size() > 0) {
+  if (!without_x_gradient && !act_grad_types.empty()) {
     matmul_grad_dx_var->AsIntermediate()->assert_is_ops_input(
         act_grad_types, GradVarName("Out"));
 
@@ -2059,7 +2035,7 @@ PDNode *patterns::FusedMatmul::operator()(bool with_residual) {
   if (!with_residual) {
     matmul_op->assert_more([&](Node *x) {
       return (!HasInput(x, "ResidualData") ||
-              x->Op()->Input("ResidualData").size() == 0);
+              x->Op()->Input("ResidualData").empty());
     });
   }
 
@@ -2115,7 +2091,7 @@ PDNode *patterns::ConvResidual::operator()(const std::string &conv_type,
   if (!with_residual_data) {
     conv_op->assert_more([&](Node *x) {
       if (!HasInput(x, "ResidualData") ||
-          x->Op()->Input("ResidualData").size() == 0)
+          x->Op()->Input("ResidualData").empty())
         return true;
       return false;
     });
@@ -2902,10 +2878,10 @@ PDNode *patterns::MultipleQuantize::operator()() {
 
   // find nodes that are inputs to quantize operators
   prev_out->assert_more([&](Node *node) {
-    int counter = std::count_if(
+    int counter = static_cast<int>(std::count_if(
         node->outputs.begin(), node->outputs.end(), [&](Node const *iter) {
           return iter && iter->IsOp() && iter->Op()->Type() == "quantize";
-        });
+        }));
     return (counter > 1);
   });
 
@@ -3799,7 +3775,7 @@ PDNode *patterns::AddSupportInt8::operator()() {
   auto quant_out =
       pattern->NewNode(quant_out_repr())
           ->assert_is_var()
-          ->assert_more([&](Node *node) { return node->outputs.size() > 0; })
+          ->assert_more([&](Node *node) { return !node->outputs.empty(); })
           ->AsOutput();
   quant_op->LinksTo({quant_out});
   return quant_out;

@@ -148,7 +148,7 @@ FetchResultType AsyncSSAGraphExecutor::Run(
                         "AsyncSSAGraphExecutor does not support unmerged "
                         "results to be fetched!"));
   // init once
-  if (run_futures_.size() == 0 && places_.size() > 1) {
+  if (run_futures_.empty() && places_.size() > 1) {
 #if defined PADDLE_WITH_PSCORE
     if (strategy_.thread_barrier_) {
       paddle::distributed::Communicator::GetInstance()->BarrierTriggerReset(
@@ -187,9 +187,9 @@ FetchResultType AsyncSSAGraphExecutor::Run(
       auto array = PADDLE_GET(LoDTensorArray, val.at(fetch_idx));
       LoDTensorArray item_array;
       item_array.reserve(array.size());
-      for (size_t i = 0; i < array.size(); ++i) {
+      for (auto &item : array) {
         std::vector<const phi::DenseTensor *> lodtensor_ptrs;
-        lodtensor_ptrs.push_back(&array[i]);
+        lodtensor_ptrs.push_back(&item);
         item_array.emplace_back();
         MergeLoDTensor(
             &(item_array.back()), lodtensor_ptrs, platform::CPUPlace());

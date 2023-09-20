@@ -31,13 +31,15 @@ import unittest
 import numpy as np
 from PIL import Image, ImageOps
 
-from paddle import fluid
+from paddle import base
 
 # Use GPU:0 to elimate the influence of other tasks.
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
+from dygraph_to_static_util import test_and_compare_with_new_ir
+
 import paddle
-from paddle.fluid.dygraph import to_variable
+from paddle.base.dygraph import to_variable
 from paddle.jit.api import to_static
 from paddle.nn import BatchNorm
 
@@ -46,8 +48,8 @@ from paddle.nn import BatchNorm
 #        some algorithm results are non-deterministic, like convolution algorithms.
 #     2. If include BatchNorm, please set `use_global_stats=True` to avoid using
 #        cudnnBatchNormalizationBackward which is non-deterministic.
-if fluid.is_compiled_with_cuda():
-    fluid.set_flags({'FLAGS_cudnn_deterministic': True})
+if base.is_compiled_with_cuda():
+    base.set_flags({'FLAGS_cudnn_deterministic': True})
 
 # set False to speed up training.
 use_cudnn = False
@@ -351,7 +353,7 @@ class conv2d(paddle.nn.Layer):
         if not use_bias:
             con_bias_attr = False
         else:
-            con_bias_attr = fluid.ParamAttr(
+            con_bias_attr = base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(0.0)
             )
 
@@ -369,16 +371,16 @@ class conv2d(paddle.nn.Layer):
         # Note(Aurelius84): The calculation of GPU kernel in BN is non-deterministic,
         # failure rate is 1/100 in Dev but seems incremental in CE platform.
         # If on GPU, we disable BN temporarily.
-        if fluid.is_compiled_with_cuda():
+        if base.is_compiled_with_cuda():
             norm = False
         if norm:
             self.bn = BatchNorm(
                 use_global_stats=True,  # set True to use deterministic algorithm
                 num_channels=num_filters,
-                param_attr=fluid.ParamAttr(
+                param_attr=base.ParamAttr(
                     initializer=paddle.nn.initializer.Normal(1.0, 0.02)
                 ),
-                bias_attr=fluid.ParamAttr(
+                bias_attr=base.ParamAttr(
                     initializer=paddle.nn.initializer.Constant(0.0)
                 ),
                 trainable_statistics=True,
@@ -418,7 +420,7 @@ class DeConv2D(paddle.nn.Layer):
         if not use_bias:
             de_bias_attr = False
         else:
-            de_bias_attr = fluid.ParamAttr(
+            de_bias_attr = base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(0.0)
             )
 
@@ -428,21 +430,21 @@ class DeConv2D(paddle.nn.Layer):
             filter_size,
             stride=stride,
             padding=padding,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Normal(mean=0.0, std=stddev)
             ),
             bias_attr=de_bias_attr,
         )
-        if fluid.is_compiled_with_cuda():
+        if base.is_compiled_with_cuda():
             norm = False
         if norm:
             self.bn = BatchNorm(
                 use_global_stats=True,  # set True to use deterministic algorithm
                 num_channels=num_filters,
-                param_attr=fluid.ParamAttr(
+                param_attr=base.ParamAttr(
                     initializer=paddle.nn.initializer.Normal(1.0, 0.02)
                 ),
-                bias_attr=fluid.ParamAttr(
+                bias_attr=base.ParamAttr(
                     initializer=paddle.nn.initializer.Constant(0.0)
                 ),
                 trainable_statistics=True,
@@ -529,8 +531,8 @@ class Args:
 
 def optimizer_setting(parameters):
     lr = 0.0002
-    optimizer = fluid.optimizer.Adam(
-        learning_rate=fluid.layers.piecewise_decay(
+    optimizer = paddle.optimizer.Adam(
+        learning_rate=paddle.optimizer.lr.PiecewiseDecay(
             boundaries=[
                 100 * step_per_epoch,
                 120 * step_per_epoch,
@@ -540,7 +542,7 @@ def optimizer_setting(parameters):
             ],
             values=[lr, lr * 0.8, lr * 0.6, lr * 0.4, lr * 0.2, lr * 0.1],
         ),
-        parameter_list=parameters,
+        parameters=parameters,
         beta1=0.5,
     )
     return optimizer
@@ -548,21 +550,19 @@ def optimizer_setting(parameters):
 
 def train(args, to_static):
     place = (
-        fluid.CUDAPlace(0)
-        if fluid.is_compiled_with_cuda()
-        else fluid.CPUPlace()
+        base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
     )
 
     paddle.jit.enable_to_static(to_static)
 
-    with fluid.dygraph.guard(place):
+    with base.dygraph.guard(place):
         max_images_num = args.max_images_num
         data_shape = [-1] + args.image_shape
 
         random.seed(SEED)
         np.random.seed(SEED)
-        fluid.default_startup_program().random_seed = SEED
-        fluid.default_main_program().random_seed = SEED
+        base.default_startup_program().random_seed = SEED
+        base.default_main_program().random_seed = SEED
 
         A_pool = ImagePool()
         B_pool = ImagePool()
@@ -694,21 +694,18 @@ class TestCycleGANModel(unittest.TestCase):
         out = train(self.args, to_static)
         return out
 
+    @test_and_compare_with_new_ir(False)
     def test_train(self):
         st_out = self.train(to_static=True)
         dy_out = self.train(to_static=False)
 
-        assert_func = np.allclose
         # Note(Aurelius84): Because we disable BN on GPU,
         # but here we enhance the check on CPU by `np.array_equal`
         # which means the dy_out and st_out shall be exactly same.
-        if not fluid.is_compiled_with_cuda():
-            assert_func = np.array_equal
-
-        self.assertTrue(
-            assert_func(dy_out, st_out),
-            msg=f"dy_out:\n {dy_out}\n st_out:\n{st_out}",
-        )
+        if not base.is_compiled_with_cuda():
+            np.testing.assert_array_equal(dy_out, st_out)
+        else:
+            np.testing.assert_allclose(dy_out, st_out, rtol=1e-5, atol=1e-8)
 
 
 if __name__ == "__main__":

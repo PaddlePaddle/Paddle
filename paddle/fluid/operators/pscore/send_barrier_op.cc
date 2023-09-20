@@ -47,7 +47,7 @@ class SendBarrierOp : public framework::OperatorBase {
 
 class SendBarrierOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "(Any) Dummy inputs, used for control dependency")
         .AsDuplicable();
     AddOutput("Out", "(Any) Dummy outputs, used for control dependency")

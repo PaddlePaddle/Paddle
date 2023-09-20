@@ -113,7 +113,7 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
 
   ASSERT_EQ(block_->ops_size(), 2);
 
-  LOG(INFO) << "create tensorrt desc";
+  LOG(INFO) << "create tensorrt op desc";
   framework::OpDesc engine_op_desc(nullptr);
   engine_op_desc.SetType("tensorrt_engine");
   engine_op_desc.SetInput("Xs", std::vector<std::string>({"x"}));
@@ -138,19 +138,19 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
   engine_op_desc.SetAttr("subgraph", std::string(block_->SerializeAsString()));
   engine_op_desc.SetAttr("engine_serialized_data", std::string(""));
   int device_id = 0;
-  engine_op_desc.SetAttr("gpu_id", device_id);
+  engine_op_desc.SetAttr("gpu_device_id", device_id);
   engine_op_desc.SetAttr("shape_range_info_path", std::string(""));
   engine_op_desc.SetAttr("model_opt_cache_dir", std::string(""));
   engine_op_desc.SetAttr("allow_build_at_runtime", allow_build_at_runtime);
-  engine_op_desc.SetAttr("use_static_engine", true);
-  engine_op_desc.SetAttr("dynamic_shape_names", std::vector<std::string>{"x"});
-  engine_op_desc.SetAttr("dynamic_shape_lens", std::vector<int>{4});
-  engine_op_desc.SetAttr("with_dynamic_shape", true);
-  engine_op_desc.SetAttr("min_input_shape", std::vector<int>{1, 1, 1, 1});
-  engine_op_desc.SetAttr("max_input_shape", std::vector<int>{16, 16, 16, 16});
-  engine_op_desc.SetAttr("opt_input_shape", std::vector<int>{2, 4, 4, 4});
-  engine_op_desc.SetAttr("model_precision",
-                         static_cast<int>(phi::DataType::FLOAT32));
+  engine_op_desc.SetAttr("use_static_engine", false);
+  engine_op_desc.SetAttr("with_dynamic_shape", false);
+  engine_op_desc.SetAttr("context_memory_sharing", true);
+  engine_op_desc.SetAttr("disable_trt_plugin_fp16", false);
+  engine_op_desc.SetAttr("enable_low_precision_io", false);
+  engine_op_desc.SetAttr("use_inspector", false);
+  engine_op_desc.SetAttr("engine_info_path", std::string(""));
+  engine_op_desc.SetAttr("use_dla", false);
+  engine_op_desc.SetAttr("dla_core", 0);
 
   LOG(INFO) << "create engine op";
   auto engine_op = framework::OpRegistry::CreateOp(engine_op_desc);
@@ -263,7 +263,7 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
              {output_dim, output_dim},
              {batch_size, output_dim});
 
-  LOG(INFO) << "create tensorrt desc";
+  LOG(INFO) << "create tensorrt op desc";
   framework::OpDesc engine_op_desc(nullptr);
   engine_op_desc.SetType("tensorrt_engine");
   engine_op_desc.SetInput("Xs", std::vector<std::string>({"x0"}));
@@ -288,11 +288,19 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
   engine_op_desc.SetAttr("subgraph", std::string(block_->SerializeAsString()));
   engine_op_desc.SetAttr("engine_serialized_data", std::string(""));
   int device_id = 0;
-  engine_op_desc.SetAttr("gpu_id", device_id);
+  engine_op_desc.SetAttr("gpu_device_id", device_id);
   engine_op_desc.SetAttr("shape_range_info_path", std::string(""));
   engine_op_desc.SetAttr("model_opt_cache_dir", std::string(""));
   engine_op_desc.SetAttr("allow_build_at_runtime", false);
   engine_op_desc.SetAttr("use_static_engine", false);
+  engine_op_desc.SetAttr("with_dynamic_shape", false);
+  engine_op_desc.SetAttr("context_memory_sharing", true);
+  engine_op_desc.SetAttr("disable_trt_plugin_fp16", false);
+  engine_op_desc.SetAttr("enable_low_precision_io", false);
+  engine_op_desc.SetAttr("use_inspector", false);
+  engine_op_desc.SetAttr("engine_info_path", std::string(""));
+  engine_op_desc.SetAttr("use_dla", false);
+  engine_op_desc.SetAttr("dla_core", 0);
 
   auto engine_op = framework::OpRegistry::CreateOp(engine_op_desc);
 

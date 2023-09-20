@@ -13,8 +13,8 @@
 # limitations under the License.
 
 from paddle import _C_ops, in_dynamic_mode
-from paddle.fluid.framework import core, dygraph_only
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base.framework import core, dygraph_only
+from paddle.base.layer_helper import LayerHelper
 
 from .unary import cast
 
@@ -64,39 +64,46 @@ def matmul(x, y, name=None):
 
         .. code-block:: python
 
-            # required: gpu
-            import paddle
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
 
-            # csr @ dense -> dense
-            crows = [0, 1, 2, 3]
-            cols = [1, 2, 0]
-            values = [1., 2., 3.]
-            csr = paddle.sparse.sparse_csr_tensor(crows, cols, values, [3, 3])
-            # Tensor(shape=[3, 3], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
-            #        crows=[0, 1, 2, 3],
-            #        cols=[1, 2, 0],
-            #        values=[1., 2., 3.])
-            dense = paddle.ones([3, 2])
-            out = paddle.sparse.matmul(csr, dense)
-            # Tensor(shape=[3, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[1., 1.],
-            #         [2., 2.],
-            #         [3., 3.]])
+            >>> # csr @ dense -> dense
+            >>> crows = [0, 1, 2, 3]
+            >>> cols = [1, 2, 0]
+            >>> values = [1., 2., 3.]
+            >>> csr = paddle.sparse.sparse_csr_tensor(crows, cols, values, [3, 3])
+            >>> print(csr)
+            Tensor(shape=[3, 3], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
+                   crows=[0, 1, 2, 3],
+                   cols=[1, 2, 0],
+                   values=[1., 2., 3.])
 
-            # coo @ dense -> dense
-            indices = [[0, 1, 2], [1, 2, 0]]
-            values = [1., 2., 3.]
-            coo = paddle.sparse.sparse_coo_tensor(indices, values, [3, 3])
-            # Tensor(shape=[3, 3], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
-            #        indices=[[0, 1, 2],
-            #                 [1, 2, 0]],
-            #        values=[1., 2., 3.])
-            dense = paddle.ones([3, 2])
-            out = paddle.sparse.matmul(coo, dense)
-            # Tensor(shape=[3, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[1., 1.],
-            #         [2., 2.],
-            #         [3., 3.]])
+            >>> dense = paddle.ones([3, 2])
+            >>> out = paddle.sparse.matmul(csr, dense)
+            >>> print(out)
+            Tensor(shape=[3, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [[1., 1.],
+                    [2., 2.],
+                    [3., 3.]])
+
+            >>> # coo @ dense -> dense
+            >>> indices = [[0, 1, 2], [1, 2, 0]]
+            >>> values = [1., 2., 3.]
+            >>> coo = paddle.sparse.sparse_coo_tensor(indices, values, [3, 3])
+            >>> print(coo)
+            Tensor(shape=[3, 3], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
+                   indices=[[0, 1, 2],
+                            [1, 2, 0]],
+                   values=[1., 2., 3.])
+
+            >>> dense = paddle.ones([3, 2])
+            >>> out = paddle.sparse.matmul(coo, dense)
+            >>> print(out)
+            Tensor(shape=[3, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [[1., 1.],
+                    [2., 2.],
+                    [3., 3.]])
     """
     return _C_ops.sparse_matmul(x, y)
 
@@ -134,29 +141,32 @@ def masked_matmul(x, y, mask, name=None):
 
         .. code-block:: python
 
-            # required: gpu
-            import paddle
-            paddle.seed(100)
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+            >>> paddle.seed(100)
 
-            # dense @ dense * csr_mask -> csr
-            crows = [0, 2, 3, 5]
-            cols = [1, 3, 2, 0, 1]
-            values = [1., 2., 3., 4., 5.]
-            dense_shape = [3, 4]
-            mask = paddle.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
-            # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
-            #       crows=[0, 2, 3, 5],
-            #       cols=[1, 3, 2, 0, 1],
-            #       values=[1., 2., 3., 4., 5.])
+            >>> # dense @ dense * csr_mask -> csr
+            >>> crows = [0, 2, 3, 5]
+            >>> cols = [1, 3, 2, 0, 1]
+            >>> values = [1., 2., 3., 4., 5.]
+            >>> dense_shape = [3, 4]
+            >>> mask = paddle.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
+            >>> print(mask)
+            Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
+                  crows=[0, 2, 3, 5],
+                  cols=[1, 3, 2, 0, 1],
+                  values=[1., 2., 3., 4., 5.])
 
-            x = paddle.rand([3, 5])
-            y = paddle.rand([5, 4])
+            >>> x = paddle.rand([3, 5])
+            >>> y = paddle.rand([5, 4])
 
-            out = paddle.sparse.masked_matmul(x, y, mask)
-            # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
-            #        crows=[0, 2, 3, 5],
-            #        cols=[1, 3, 2, 0, 1],
-            #        values=[0.98986477, 0.97800624, 1.14591956, 0.68561077, 0.94714981])
+            >>> out = paddle.sparse.masked_matmul(x, y, mask)
+            >>> print(out)
+            Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
+                   crows=[0, 2, 3, 5],
+                   cols=[1, 3, 2, 0, 1],
+                   values=[0.98986477, 0.97800624, 1.14591956, 0.68561077, 0.94714981])
 
     """
     return _C_ops.sparse_masked_matmul(x, y, mask)
@@ -193,25 +203,28 @@ def mv(x, vec, name=None):
 
         .. code-block:: python
 
-            # required: gpu
-            import paddle
-            paddle.seed(100)
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+            >>> paddle.seed(100)
 
-            # csr @ dense -> dense
-            crows = [0, 2, 3, 5]
-            cols = [1, 3, 2, 0, 1]
-            values = [1., 2., 3., 4., 5.]
-            dense_shape = [3, 4]
-            csr = paddle.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
-            # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
-            #        crows=[0, 2, 3, 5],
-            #        cols=[1, 3, 2, 0, 1],
-            #        values=[1., 2., 3., 4., 5.])
-            vec = paddle.randn([4])
+            >>> # csr @ dense -> dense
+            >>> crows = [0, 2, 3, 5]
+            >>> cols = [1, 3, 2, 0, 1]
+            >>> values = [1., 2., 3., 4., 5.]
+            >>> dense_shape = [3, 4]
+            >>> csr = paddle.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
+            >>> print(csr)
+            Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
+                   crows=[0, 2, 3, 5],
+                   cols=[1, 3, 2, 0, 1],
+                   values=[1., 2., 3., 4., 5.])
+            >>> vec = paddle.randn([4])
 
-            out = paddle.sparse.mv(csr, vec)
-            # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [-3.85499096, -2.42975140, -1.75087738])
+            >>> out = paddle.sparse.mv(csr, vec)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [-3.85499096, -2.42975140, -1.75087738])
 
     """
     return _C_ops.sparse_mv(x, vec)
@@ -238,20 +251,20 @@ def add(x, y, name=None):
 
     ..  code-block:: python
 
-        import paddle
+        >>> import paddle
 
-        paddle.device.set_device("cpu")
+        >>> paddle.device.set_device("cpu")
 
-        x = paddle.to_tensor([[0, -1, 0, 2], [0, 0, -3, 0], [4, 5, 0, 0]], 'float32')
-        y = paddle.to_tensor([[0, 0, 0, -2], [0, 2, -3, 0], [2, 3, 4, 8]], 'float32')
-        sparse_x = x.to_sparse_csr()
-        sparse_y = y.to_sparse_csr()
-        sparse_z = paddle.sparse.add(sparse_x, sparse_y)
-        print(sparse_z.to_dense())
-
-        # [[ 0., -1.,  0.,  0.],
-        # [ 0.,  2., -6.,  0.],
-        # [ 6.,  8.,  4.,  8.]]
+        >>> x = paddle.to_tensor([[0, -1, 0, 2], [0, 0, -3, 0], [4, 5, 0, 0]], 'float32')
+        >>> y = paddle.to_tensor([[0, 0, 0, -2], [0, 2, -3, 0], [2, 3, 4, 8]], 'float32')
+        >>> sparse_x = x.to_sparse_csr()
+        >>> sparse_y = y.to_sparse_csr()
+        >>> sparse_z = paddle.sparse.add(sparse_x, sparse_y)
+        >>> print(sparse_z.to_dense())
+        Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+               [[ 0., -1.,  0.,  0.],
+                [ 0.,  2., -6.,  0.],
+                [ 6.,  8.,  4.,  8.]])
 
     """
     if y.dtype != x.dtype:
@@ -290,22 +303,22 @@ def subtract(x, y, name=None):
 
     Examples:
 
-    ..  code-block:: python
+        ..  code-block:: python
 
-        import paddle
+            >>> import paddle
 
-        paddle.device.set_device("cpu")
+            >>> paddle.device.set_device("cpu")
 
-        x = paddle.to_tensor([[0, -1, 0, 2], [0, 0, -3, 0], [4, 5, 0, 0]], 'float32')
-        y = paddle.to_tensor([[0, 0, 0, -2], [0, 2, -3, 0], [2, 3, 4, 8]], 'float32')
-        sparse_x = x.to_sparse_csr()
-        sparse_y = y.to_sparse_csr()
-        sparse_z = paddle.sparse.subtract(sparse_x, sparse_y)
-        print(sparse_z.to_dense())
-
-        # [[ 0., -1.,  0.,  4.],
-        # [ 0., -2.,  0.,  0.],
-        # [ 2.,  2., -4., -8.]]
+            >>> x = paddle.to_tensor([[0, -1, 0, 2], [0, 0, -3, 0], [4, 5, 0, 0]], 'float32')
+            >>> y = paddle.to_tensor([[0, 0, 0, -2], [0, 2, -3, 0], [2, 3, 4, 8]], 'float32')
+            >>> sparse_x = x.to_sparse_csr()
+            >>> sparse_y = y.to_sparse_csr()
+            >>> sparse_z = paddle.sparse.subtract(sparse_x, sparse_y)
+            >>> print(sparse_z.to_dense())
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[ 0., -1.,  0.,  4.],
+                    [ 0., -2.,  0.,  0.],
+                    [ 2.,  2., -4., -8.]])
 
     """
     if y.dtype != x.dtype:
@@ -333,22 +346,22 @@ def multiply(x, y, name=None):
 
     Examples:
 
-    ..  code-block:: python
+        ..  code-block:: python
 
-        import paddle
+            >>> import paddle
 
-        paddle.device.set_device("cpu")
+            >>> paddle.device.set_device("cpu")
 
-        x = paddle.to_tensor([[0, -1, 0, 2], [0, 0, -3, 0], [4, 5, 0, 0]], 'float32')
-        y = paddle.to_tensor([[0, 0, 0, -2], [0, 2, -3, 0], [2, 3, 4, 8]], 'float32')
-        sparse_x = x.to_sparse_csr()
-        sparse_y = y.to_sparse_csr()
-        sparse_z = paddle.sparse.multiply(sparse_x, sparse_y)
-        print(sparse_z.to_dense())
-
-        # [[ 0.,  0.,  0., -4.],
-        # [ 0.,  0.,  9.,  0.],
-        # [ 8., 15.,  0.,  0.]]
+            >>> x = paddle.to_tensor([[0, -1, 0, 2], [0, 0, -3, 0], [4, 5, 0, 0]], 'float32')
+            >>> y = paddle.to_tensor([[0, 0, 0, -2], [0, 2, -3, 0], [2, 3, 4, 8]], 'float32')
+            >>> sparse_x = x.to_sparse_csr()
+            >>> sparse_y = y.to_sparse_csr()
+            >>> sparse_z = paddle.sparse.multiply(sparse_x, sparse_y)
+            >>> print(sparse_z.to_dense())
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[ 0., -0.,  0., -4.],
+                    [ 0.,  0.,  9.,  0.],
+                    [ 8., 15.,  0.,  0.]])
 
     """
     if isinstance(y, (int, float)):
@@ -379,22 +392,22 @@ def divide(x, y, name=None):
 
     Examples:
 
-    ..  code-block:: python
+        ..  code-block:: python
 
-        import paddle
+            >>> import paddle
 
-        paddle.device.set_device("cpu")
+            >>> paddle.device.set_device("cpu")
 
-        x = paddle.to_tensor([[0, -1, 0, 2], [0, 0, -3, 0], [4, 5, 0, 0]], 'float32')
-        y = paddle.to_tensor([[0, 0, 0, -2], [0, 2, -3, 0], [2, 3, 4, 8]], 'float32')
-        sparse_x = x.to_sparse_csr()
-        sparse_y = y.to_sparse_csr()
-        sparse_z = paddle.sparse.divide(sparse_x, sparse_y)
-        print(sparse_z.to_dense())
-
-        # [[ nan      , -inf.     ,  nan      , -1.       ],
-        # [ nan      ,  0.       ,  1.       ,  nan      ],
-        # [ 2.       , 1.66666663,  0.       ,  0.       ]]
+            >>> x = paddle.to_tensor([[0, -1, 0, 2], [0, 0, -3, 0], [4, 5, 0, 0]], 'float32')
+            >>> y = paddle.to_tensor([[0, 0, 0, -2], [0, 2, -3, 0], [2, 3, 4, 8]], 'float32')
+            >>> sparse_x = x.to_sparse_csr()
+            >>> sparse_y = y.to_sparse_csr()
+            >>> sparse_z = paddle.sparse.divide(sparse_x, sparse_y)
+            >>> print(sparse_z.to_dense())
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[ nan      , -inf.     ,  nan      , -1.       ],
+                    [ nan      ,  0.       ,  1.       ,  nan      ],
+                    [ 2.       , 1.66666663,  0.       ,  0.       ]])
 
     """
     if x.dtype in _int_dtype_:
@@ -425,17 +438,17 @@ def is_same_shape(x, y):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.rand([2, 3, 8])
-            y = paddle.rand([2, 3, 8])
-            y = y.to_sparse_csr()
-            z = paddle.rand([2, 5])
+            >>> x = paddle.rand([2, 3, 8])
+            >>> y = paddle.rand([2, 3, 8])
+            >>> y = y.to_sparse_csr()
+            >>> z = paddle.rand([2, 5])
 
-            paddle.sparse.is_same_shape(x, y)
-            # True
-            paddle.sparse.is_same_shape(x, z)
-            # False
+            >>> paddle.sparse.is_same_shape(x, y)
+            True
+            >>> paddle.sparse.is_same_shape(x, z)
+            False
 
     """
     return x.is_same_shape(y)

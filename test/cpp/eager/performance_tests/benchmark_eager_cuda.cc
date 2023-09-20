@@ -45,19 +45,18 @@ PD_DECLARE_KERNEL(add_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(sum, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(sum_grad, GPU, ALL_LAYOUT);
 
-using eager_test::CreateTensorWithValue;
-
 TEST(Benchmark, EagerScaleCUDA) {
   eager_test::InitEnv(paddle::platform::CUDAPlace());
 
   for (const std::string mode : {"Accuracy", "WarmUp", "Performance"}) {
     paddle::framework::DDim ddim = phi::make_ddim({2, 4, 4, 4});
-    paddle::Tensor tensor = CreateTensorWithValue(ddim,
-                                                  paddle::platform::CUDAPlace(),
-                                                  phi::DataType::FLOAT32,
-                                                  phi::DataLayout::NCHW,
-                                                  5.0 /*value*/,
-                                                  true /*is_leaf*/);
+    paddle::Tensor tensor =
+        eager_test::CreateTensorWithValue(ddim,
+                                          paddle::platform::CUDAPlace(),
+                                          phi::DataType::FLOAT32,
+                                          phi::DataLayout::NCHW,
+                                          5.0 /*value*/,
+                                          true /*is_leaf*/);
     RetainGradForTensor(tensor);
 
     if (mode == "Accuracy") {
@@ -93,21 +92,23 @@ TEST(Benchmark, EagerMatmulCUDA) {
 
   for (const std::string mode : {"Accuracy", "WarmUp", "Performance"}) {
     paddle::framework::DDim ddimX = phi::make_ddim({2, 2});
-    paddle::Tensor X = CreateTensorWithValue(ddimX,
-                                             paddle::platform::CUDAPlace(),
-                                             phi::DataType::FLOAT32,
-                                             phi::DataLayout::NCHW,
-                                             1.0,
-                                             true);
+    paddle::Tensor X =
+        eager_test::CreateTensorWithValue(ddimX,
+                                          paddle::platform::CUDAPlace(),
+                                          phi::DataType::FLOAT32,
+                                          phi::DataLayout::NCHW,
+                                          1.0,
+                                          true);
     RetainGradForTensor(X);
 
     paddle::framework::DDim ddimY = phi::make_ddim({2, 2});
-    paddle::Tensor Y = CreateTensorWithValue(ddimY,
-                                             paddle::platform::CUDAPlace(),
-                                             phi::DataType::FLOAT32,
-                                             phi::DataLayout::NCHW,
-                                             2.0,
-                                             true);
+    paddle::Tensor Y =
+        eager_test::CreateTensorWithValue(ddimY,
+                                          paddle::platform::CUDAPlace(),
+                                          phi::DataType::FLOAT32,
+                                          phi::DataLayout::NCHW,
+                                          2.0,
+                                          true);
     RetainGradForTensor(Y);
 
     if (mode == "Accuracy") {
@@ -147,21 +148,23 @@ TEST(Benchmark, EagerIntermediateMatmulCUDA) {
 
   for (const std::string mode : {"Accuracy", "WarmUp", "Performance"}) {
     paddle::framework::DDim ddimX = phi::make_ddim({2, 2});
-    paddle::Tensor X = CreateTensorWithValue(ddimX,
-                                             paddle::platform::CUDAPlace(),
-                                             phi::DataType::FLOAT32,
-                                             phi::DataLayout::NCHW,
-                                             1.0,
-                                             true);
+    paddle::Tensor X =
+        eager_test::CreateTensorWithValue(ddimX,
+                                          paddle::platform::CUDAPlace(),
+                                          phi::DataType::FLOAT32,
+                                          phi::DataLayout::NCHW,
+                                          1.0,
+                                          true);
     RetainGradForTensor(X);
 
     paddle::framework::DDim ddimY = phi::make_ddim({2, 2});
-    paddle::Tensor Y = CreateTensorWithValue(ddimY,
-                                             paddle::platform::CUDAPlace(),
-                                             phi::DataType::FLOAT32,
-                                             phi::DataLayout::NCHW,
-                                             2.0,
-                                             true);
+    paddle::Tensor Y =
+        eager_test::CreateTensorWithValue(ddimY,
+                                          paddle::platform::CUDAPlace(),
+                                          phi::DataType::FLOAT32,
+                                          phi::DataLayout::NCHW,
+                                          2.0,
+                                          true);
     RetainGradForTensor(Y);
 
     if (mode == "Accuracy") {
@@ -201,33 +204,36 @@ TEST(Benchmark, EagerIntermediateMLPCUDA) {
 
   for (const std::string mode : {"Accuracy", "WarmUp", "Performance"}) {
     paddle::framework::DDim ddimX = phi::make_ddim({MLP_M, MLP_N});
-    paddle::Tensor X = CreateTensorWithValue(ddimX,
-                                             paddle::platform::CUDAPlace(),
-                                             phi::DataType::FLOAT32,
-                                             phi::DataLayout::NCHW,
-                                             MLP_X_VAL,
-                                             true);
+    paddle::Tensor X =
+        eager_test::CreateTensorWithValue(ddimX,
+                                          paddle::platform::CUDAPlace(),
+                                          phi::DataType::FLOAT32,
+                                          phi::DataLayout::NCHW,
+                                          MLP_X_VAL,
+                                          true);
     RetainGradForTensor(X);
 
     std::vector<paddle::Tensor> Ws;
     std::vector<paddle::Tensor> Bs;
     for (size_t i = 0; i < MLP_NUM_LINEAR; i++) {
       paddle::framework::DDim ddimW = phi::make_ddim({MLP_N, MLP_K});
-      paddle::Tensor W = CreateTensorWithValue(ddimW,
-                                               paddle::platform::CUDAPlace(),
-                                               phi::DataType::FLOAT32,
-                                               phi::DataLayout::NCHW,
-                                               MLP_W_VAL,
-                                               true);
+      paddle::Tensor W =
+          eager_test::CreateTensorWithValue(ddimW,
+                                            paddle::platform::CUDAPlace(),
+                                            phi::DataType::FLOAT32,
+                                            phi::DataLayout::NCHW,
+                                            MLP_W_VAL,
+                                            true);
       RetainGradForTensor(W);
 
       paddle::framework::DDim ddimB = phi::make_ddim({MLP_K});
-      paddle::Tensor B = CreateTensorWithValue(ddimB,
-                                               paddle::platform::CUDAPlace(),
-                                               phi::DataType::FLOAT32,
-                                               phi::DataLayout::NCHW,
-                                               MLP_B_VAL,
-                                               true);
+      paddle::Tensor B =
+          eager_test::CreateTensorWithValue(ddimB,
+                                            paddle::platform::CUDAPlace(),
+                                            phi::DataType::FLOAT32,
+                                            phi::DataLayout::NCHW,
+                                            MLP_B_VAL,
+                                            true);
       RetainGradForTensor(B);
 
       Ws.emplace_back(std::move(W));

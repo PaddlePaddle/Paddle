@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from copy import deepcopy
 
 import numpy as np
@@ -19,11 +20,12 @@ import numpy as np
 import paddle
 from paddle import _legacy_C_ops
 from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
-from paddle.fluid import backward, core, framework, program_guard
-from paddle.fluid.compiler import BuildStrategy
-from paddle.fluid.data_feeder import check_type, convert_dtype
-from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.framework import _apply_pass
+from paddle.base import backward, core, framework, program_guard
+from paddle.base.compiler import BuildStrategy
+from paddle.base.data_feeder import check_type, convert_dtype
+from paddle.base.dygraph.base import switch_to_static_graph
+from paddle.base.framework import _apply_pass
+from paddle.base.unique_name import guard as UniqueNameGuard
 from paddle.optimizer.lr import LRScheduler
 
 from . import logging_utils
@@ -31,6 +33,7 @@ from .utils import (
     RETURN_NO_VALUE_MAGIC_NUM,
     backend_guard,
     construct_grad_names,
+    tensor_name_guard,
 )
 
 __all__ = []
@@ -169,18 +172,26 @@ class PartialProgramLayer:
     """
 
     def __init__(
-        self, main_program, inputs, outputs, parameters=None, **kwargs
+        self,
+        main_program,
+        inputs,
+        outputs,
+        name_generator,
+        parameters=None,
+        **kwargs
     ):
         super().__init__()
         self._inputs = NestSequence(inputs)
         self._outputs = NestSequence(outputs, need_check=True)
         self._params = parameters if parameters is not None else []
+        self._name_generator = name_generator
 
         self._build_strategy = kwargs.get('build_strategy', BuildStrategy())
         assert isinstance(self._build_strategy, BuildStrategy)
 
         self._origin_main_program = self._verify_program(main_program)
-        self._cuda_graph_vec = self._create_cuda_graph_vec()
+        with paddle.base.framework._dygraph_guard(paddle.base.dygraph.Tracer()):
+            self._cuda_graph_vec = self._create_cuda_graph_vec()
         self._cuda_graph_capture_mode = ""
         self._cuda_graph_pool_id = 0
         # Set default mode to train
@@ -213,25 +224,30 @@ class PartialProgramLayer:
         """
         Execute static graph by Interpreter and Return dynamic Tensors.
         """
-        in_vars, out_vars = self._prepare(inputs)
-        self._cast_fp16_if_pure_fp16(in_vars)
-        attrs = self._prepare_attributes()
+        with UniqueNameGuard(self._name_generator):
+            in_vars, out_vars, in_var_names = self._prepare(inputs)
+            self._cast_fp16_if_pure_fp16(in_vars)
+            attrs = self._prepare_attributes()
+            attrs.extend(["x_names", in_var_names])
 
-        self._sync_lr_value_with_scheduler()
+            self._sync_lr_value_with_scheduler()
 
-        _legacy_C_ops.run_program(
-            self._valid_vars(in_vars),
-            self._valid_vars(self._params),
-            self._valid_vars(out_vars),
-            self._create_scope_vec(
-                program_id=self.program_id, use_scope_cache=True
-            ),
-            self._double_grads,
-            self._cuda_graph_vec,
-            *attrs
-        )
-        restored_nest_out = self._restore_out(out_vars)
-        return self._remove_no_value(restored_nest_out)
+            with tensor_name_guard(in_vars, in_var_names):
+                _legacy_C_ops.run_program(
+                    self._valid_vars(in_vars),
+                    self._valid_vars(self._params),
+                    self._valid_vars(out_vars),
+                    self._create_scope_vec(
+                        program_id=self.program_id, use_scope_cache=True
+                    ),
+                    self._double_grads,
+                    self._cuda_graph_vec,
+                    *attrs
+                )
+
+            self._update_stop_gradient(out_vars)
+            restored_nest_out = self._restore_out(out_vars)
+            return self._remove_no_value(restored_nest_out)
 
     def _sync_lr_value_with_scheduler(self):
         """Update lr_var value with calculated by lr_scheduler."""
@@ -619,7 +635,9 @@ class PartialProgramLayer:
             filter(_need_aggregation, self._outputs.tolist())
         )
         for _var in to_processed_vars:
-            _insert_aggregation_ops_for_var(target_program, _var)
+            target_program: paddle.static.Program
+            target_var = target_program.global_block().var(_var.name)
+            _insert_aggregation_ops_for_var(target_program, target_var)
 
     @switch_to_static_graph
     def _append_backward_desc(self, main_program):
@@ -821,26 +839,28 @@ class PartialProgramLayer:
                 "mem_opt_skip_vars": forward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            _apply_pass(
-                forward_program,
-                empty_startup_program,
-                "buffer_shared_inplace_pass",
-                attrs,
-                attr_types,
-            )
+            if not os.getenv("FLAGS_enable_new_ir_in_executor"):
+                _apply_pass(
+                    forward_program,
+                    empty_startup_program,
+                    "buffer_shared_inplace_pass",
+                    attrs,
+                    attr_types,
+                )
         if backward_program:
             attrs = {
                 "use_cuda": use_cuda,
                 "mem_opt_skip_vars": backward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            _apply_pass(
-                backward_program,
-                empty_startup_program,
-                "buffer_shared_inplace_pass",
-                attrs,
-                attr_types,
-            )
+            if not os.getenv("FLAGS_enable_new_ir_in_executor"):
+                _apply_pass(
+                    backward_program,
+                    empty_startup_program,
+                    "buffer_shared_inplace_pass",
+                    attrs,
+                    attr_types,
+                )
 
     @LazyInitialized
     def _inout_var_names(self):
@@ -849,10 +869,10 @@ class PartialProgramLayer:
         """
         var_names = []
         for var in self._inputs:
-            if isinstance(var, paddle.fluid.framework.Variable):
+            if isinstance(var, paddle.base.framework.Variable):
                 var_names.append(var.desc.name())
         for var in self._outputs:
-            if isinstance(var, paddle.fluid.framework.Variable):
+            if isinstance(var, paddle.base.framework.Variable):
                 var_names.append(var.desc.name())
         return var_names
 
@@ -883,6 +903,7 @@ class PartialProgramLayer:
         flatten_inputs = paddle.utils.flatten(inputs)
         # Convert variable into Tensor and feed in training data.
         input_vars = []
+        input_var_names = []
         expected_place = framework._current_expected_place()
         for i, value in enumerate(flatten_inputs):
             if isinstance(value, np.ndarray):
@@ -905,9 +926,9 @@ class PartialProgramLayer:
                     var.stop_gradient = True
                 else:
                     var = value
-                var.name = self._inputs[i].desc.name()
             else:
                 continue
+            input_var_names.append(self._inputs[i].desc.name())
             input_vars.append(var)
 
         # mapping from name(string) -> Tensor
@@ -935,7 +956,7 @@ class PartialProgramLayer:
         # Create Tensor to receive output data.
         out_vars = list(map(create_out, self._outputs.var_ids))
 
-        return input_vars, out_vars
+        return input_vars, out_vars, input_var_names
 
     def _create_scope_vec(self, program_id=None, use_scope_cache=False):
         # Hold forward variables
@@ -956,6 +977,16 @@ class PartialProgramLayer:
         )
         var.stop_gradient = True
         return var
+
+    def _update_stop_gradient(self, out_vars):
+        # Update stop_gradient for all outputs
+        def set_stop_gradient(var_id, eager_tensor):
+            var = self._outputs[var_id]
+            assert isinstance(var, framework.Variable)
+            eager_tensor.stop_gradient = var.stop_gradient
+
+        for idx, var in zip(self._outputs.var_ids, out_vars):
+            set_stop_gradient(idx, var)
 
     def _restore_out(self, out_vars):
         """
@@ -1091,6 +1122,7 @@ def partial_program_from(concrete_program, from_method=False):
         concrete_program.main_program,
         inputs,
         concrete_program.outputs,
+        concrete_program.name_generator,
         concrete_program.parameters,
         **concrete_program.kwargs
     )

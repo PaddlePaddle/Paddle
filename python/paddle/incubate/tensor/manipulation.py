@@ -13,8 +13,8 @@
 # limitations under the License.
 
 from paddle import _C_ops
-from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base.data_feeder import check_variable_and_dtype
+from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_mode
 
 __all__ = []
@@ -40,12 +40,14 @@ def _npu_identity(x, format=-1):
     Examples:
         .. code-block:: python
 
-            # required: npu
-            import paddle
+            >>> # doctest: +REQUIRES(env:NPU)
+            >>> import paddle
+            >>> paddle.device.set_device('npu')
 
-            x = paddle.ones(shape=[6])
-            y = paddle.incubate._npu_identity(x, 3) # ACL_FORMAT_NC1HWC0 = 3
-            # y.shape = [1, 1, 1, 1, 16]
+            >>> x = paddle.ones(shape=[6])
+            >>> y = paddle.incubate._npu_identity(x, 3) # ACL_FORMAT_NC1HWC0 = 3
+            >>> print(y.shape)
+            [1, 1, 1, 1, 16]
     """
     if in_dynamic_mode():
         return _C_ops.npu_identity(x, format)
