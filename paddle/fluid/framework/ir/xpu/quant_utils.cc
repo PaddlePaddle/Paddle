@@ -64,9 +64,12 @@ void Transpose2D(phi::DenseTensor* in, phi::DenseTensor* out) {
     case phi::DataType::FLOAT32:
       phi::TransposeKernel<float>(*cpu_ctx, *in, axis, out_ptr);
       break;
+    case phi::DataType::INT8:
+      phi::TransposeKernel<int8_t>(*cpu_ctx, *in, axis, out_ptr);
+      break;
     default:
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Only support fp16 and fp32, but received dtype is %s.",
+          "Only support fp16/fp32/int8, but received dtype is %s.",
           phi::DataTypeToString(in->dtype())));
       break;
   }

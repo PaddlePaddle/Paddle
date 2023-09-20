@@ -367,8 +367,7 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
   }
   // Get Weight scale in int8 scene
   std::vector<float> weight_scale =
-      mul->Op()->GetAttrIfExists<std::vector<float>>("Input_scale_" +
-                                                     mul_w->Name());
+      mul->Op()->GetAttrIfExists<std::vector<float>>("weight_scale");
   // Create fusion_bias_node
   auto filter_dims = filter_t->dims();
   bool has_bias = with_bn || with_bias;
@@ -754,8 +753,11 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
     GET_IR_NODE(act);
     GET_IR_NODE(act_out);
     std::map<std::string, std::map<std::string, Node*>> nodes_map;
-    nodes_map.insert(
-        {"mul", {{"mul_x", mul_x}, {"mul_w", mul_w}, {"mul_out", mul_out}}});
+    nodes_map.insert({"mul",
+                      {{"mul", mul},
+                       {"mul_x", mul_x},
+                       {"mul_w", mul_w},
+                       {"mul_out", mul_out}}});
     nodes_map.insert({"ew_bias_add",
                       {{"ew_bias_add", add},
                        {"ew_bias_add_bias", bias},
@@ -785,7 +787,7 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
 
     bool enable_int8 = mul->Op()->GetAttrIfExists<bool>("enable_int8");
     std::string op_precision_str = enable_int8 ? "int8" : "fp32";
-    VLOG(4) << "FC fusion fuse pass is running on " << op_precision_str
+    VLOG(1) << "FC fusion fuse pass is running on " << op_precision_str
             << " precision!";
     auto* block = mul->Op()->Block();
     CreateFusionWeightsAndBias(graph,

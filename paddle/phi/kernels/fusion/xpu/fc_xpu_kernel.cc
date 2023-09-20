@@ -133,7 +133,7 @@ void FcXPUKernel(const Context& ctx,
                  DenseTensor* out,
                  DenseTensor* out_max) {
   // Dont use template T param
-  VLOG(1) << "Kernel type: " << x.dtype() << "," << w.dtype() << " ,"
+  VLOG(1) << "Kernel type: " << x.dtype() << " ," << w.dtype() << " ,"
           << out_dtype;
   if (x.dtype() == DataType::FLOAT32) {
     // float32/float16 kernel
@@ -155,6 +155,8 @@ void FcXPUKernel(const Context& ctx,
         FC_XPU_KERNEL_IMPL(float, int8_t, float, int8_t);
       } else if (out_dtype == DataType::INT8) {
         FC_XPU_KERNEL_IMPL(float, int8_t, int8_t, int8_t);
+      } else if (out_dtype == DataType::FLOAT16) {
+        FC_XPU_KERNEL_IMPL(float, int8_t, dtype::float16, int8_t);
       } else {
         PADDLE_THROW(phi::errors::Unimplemented(
             "Not support x_dtype is %s, w_dtype is %s and out_dtype is "

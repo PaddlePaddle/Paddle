@@ -44,7 +44,7 @@ class AutoTransQuantizeOpPrecisionPass : public FusePassBase {
 
   const std::string name_scope_{"auto_trans_quantize_op_precision_pass"};
   const std::unordered_set<std::string> support_fusion_quant_op_type_{
-      "conv2d_xpu"};
+      "conv2d_xpu", "fc_xpu"};
 };
 
 static inline Node* GetOpOutVarNodeByArgsName(ir::Graph* graph,
@@ -72,34 +72,32 @@ void AutoTransQuantizeOpPrecisionPass::FirstRound(ir::Graph* graph) const {
         bool enable_int8 = op_node->Op()->GetAttrIfExists<bool>("enable_int8");
         int out_dtype = op_node->Op()->GetAttrIfExists<int>("out_dtype");
         if (enable_int8) {
-          if (op_type == "conv2d_xpu") {
-            auto* out_var_node =
-                GetOpOutVarNodeByArgsName(subgraph, op_node, "out");
-            PADDLE_ENFORCE_NOT_NULL(
-                out_var_node,
-                platform::errors::InvalidArgument(
-                    "out_var_node in graph cannot be nullptr."));
-            bool is_int8_out = true;
-            for (auto* next_op_node : out_var_node->outputs) {
-              auto next_op_type = next_op_node->Op()->Type();
-              bool is_next_op_support_int8 =
-                  next_op_node->Op()->GetAttrIfExists<bool>("enable_int8") &&
-                  ((support_fusion_quant_op_type_.find(next_op_type) !=
-                    support_fusion_quant_op_type_.end()));
-              if (!is_next_op_support_int8) {
-                is_int8_out = false;
-                break;
-              }
+          auto* out_var_node =
+              GetOpOutVarNodeByArgsName(subgraph, op_node, "out");
+          PADDLE_ENFORCE_NOT_NULL(
+              out_var_node,
+              platform::errors::InvalidArgument(
+                  "out_var_node in graph cannot be nullptr."));
+          bool is_int8_out = true;
+          for (auto* next_op_node : out_var_node->outputs) {
+            auto next_op_type = next_op_node->Op()->Type();
+            bool is_next_op_support_int8 =
+                next_op_node->Op()->GetAttrIfExists<bool>("enable_int8") &&
+                ((support_fusion_quant_op_type_.find(next_op_type) !=
+                  support_fusion_quant_op_type_.end()));
+            if (!is_next_op_support_int8) {
+              is_int8_out = false;
+              break;
             }
-            if (is_int8_out) {
-              op_node->Op()->SetAttr(
-                  "out_dtype",
-                  static_cast<int>(proto::VarType::Type::VarType_Type_INT8));
-              out_var_node->Var()->SetDataType(
-                  proto::VarType::Type::VarType_Type_INT8);
-              VLOG(1) << "The out var node " << out_var_node->Name()
-                      << " is INT8";
-            }
+          }
+          if (is_int8_out) {
+            op_node->Op()->SetAttr(
+                "out_dtype",
+                static_cast<int>(proto::VarType::Type::VarType_Type_INT8));
+            out_var_node->Var()->SetDataType(
+                proto::VarType::Type::VarType_Type_INT8);
+            VLOG(1) << "The out var node " << out_var_node->Name()
+                    << " is INT8";
           }
         }
       }
