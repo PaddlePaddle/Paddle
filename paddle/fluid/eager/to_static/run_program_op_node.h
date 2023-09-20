@@ -316,19 +316,14 @@ static void ShareTensorsFromScopeWithPartialBlock(
     const std::vector<Tensor *> &tensors,
     const paddle::framework::BlockDesc &forward_global_block,
     const paddle::framework::BlockDesc *backward_global_block,
-    const paddle::framework::BlockDesc *backward_global_block,
     paddle::framework::Scope *scope) {
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto &name = tensors[i]->name();
     bool in_forward_block = forward_global_block.HasVar(name);
     bool in_backward_block =
         backward_global_block && backward_global_block->HasVar(name);
-    bool in_forward_block = forward_global_block.HasVar(name);
-    bool in_backward_block =
-        backward_global_block && backward_global_block->HasVar(name);
     if (name == paddle::framework::kEmptyVarName ||
         name == paddle::framework::kFakeVarName ||
-        (!in_forward_block && !in_backward_block)) {
         (!in_forward_block && !in_backward_block)) {
       VLOG(2) << "find tensor name is " << name << ", skip it!";
       continue;
@@ -678,15 +673,6 @@ inline void RunProgramAPI(
     backward_program = backward_global_block->Program();
   }
 
-  paddle::framework::BlockDesc *backward_global_block = nullptr;
-  paddle::framework::ProgramDesc *backward_program = nullptr;
-
-  if (!is_test) {
-    backward_global_block = PADDLE_GET_CONST(paddle::framework::BlockDesc *,
-                                             attrs.at("backward_global_block"));
-    backward_program = backward_global_block->Program();
-  }
-
   auto &interpretercore_info_cache =
       paddle::framework::InterpreterCoreInfoCache::Instance();
   std::shared_ptr<paddle::framework::InterpreterCore> interpreter_core =
@@ -734,12 +720,9 @@ inline void RunProgramAPI(
     // Step 3. get all eager gc vars
     std::set<std::string> skip_eager_delete_vars;
     if (!is_test) {
-      skip_eager_delete_vars;
-    if (!is_test) {
       skip_eager_delete_vars =
-            paddle::framework::details::ParseSafeEagerDeletionSkipVarsSet(
-                *backward_program);
-    }
+          paddle::framework::details::ParseSafeEagerDeletionSkipVarsSet(
+              *backward_program);
     }
 
     // all out_vars are skip_eager_var
@@ -799,9 +782,6 @@ inline void RunProgramAPI(
         "fetch_and_gc", paddle::platform::TracerEventType::UserDefined, 1);
     // Get Output
     details::ShareTensorsFromScopeWithPartialBlock(
-        out, *forward_global_block, backward_global_block, global_inner_scope);
-    details::ShareTensorsFromScopeWithPartialBlock(
-        dout, *forward_global_block, backward_global_block, global_inner_scope);
         out, *forward_global_block, backward_global_block, global_inner_scope);
     details::ShareTensorsFromScopeWithPartialBlock(
         dout, *forward_global_block, backward_global_block, global_inner_scope);
@@ -966,7 +946,6 @@ inline void RunProgramGradAPI(
     // Step 4. get outputs
     details::ShareTensorsFromScopeWithPartialBlock(x_grad,
                                                    *forward_global_block,
-                                                   backward_global_block,
                                                    backward_global_block,
                                                    global_inner_scope);
     details::ShareTensorsFromScopeWithPartialBlock(params_grad,
