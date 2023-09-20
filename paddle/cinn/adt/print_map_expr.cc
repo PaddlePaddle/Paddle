@@ -138,12 +138,13 @@ void ToTextString(const AnchoredMapStmt& anchored_map_stmt,
   *string += GetIndentString(indent_size * kIndentSpaceSize) + "}\n";
 }
 
-void ToTextString(const MapExpr& map_expr,
+void ToTextString(const std::string& group_id,
+                  const MapExpr& map_expr,
                   std::size_t indent_size,
                   std::string* txt_string) {
   const auto& [anchored_map_stmts, inputs, outputs] = map_expr.tuple();
 
-  *txt_string += "\nMapExpr";
+  *txt_string += "\n" + group_id;
   ToTxtString(outputs.value(), inputs.value(), txt_string, false);
   *txt_string += " {\n";
   for (const auto& anchored_map_stmt : *anchored_map_stmts) {
@@ -152,9 +153,9 @@ void ToTextString(const MapExpr& map_expr,
   *txt_string += "}\n";
 }
 
-void PrintMapExpr(const MapExpr& map_expr) {
+void PrintMapExpr(const MapExpr& map_expr, const std::string& group_id) {
   std::string txt_string{};
-  ToTextString(map_expr, 0, &txt_string);
+  ToTextString(group_id, map_expr, 0, &txt_string);
   LOG(ERROR) << txt_string;
 }
 

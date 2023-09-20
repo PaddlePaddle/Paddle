@@ -14,6 +14,7 @@ gather_srcs(
   schedule_descriptor.cc
   simplify_value.cc)
 
-cinn_cc_test(equation_value_test SRCS equation_value_test.cc DEPS gtest glog)
+cinn_cc_test(equation_value_match_trait_test SRCS
+             equation_value_match_trait_test.cc DEPS gtest glog)
 
 message(STATUS "ADT srcs: ${cinnapi_src}")

@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/adt/equation_value.h"
-#include "gtest/gtest.h"
 #include "paddle/cinn/adt/equation_value_match_trait.h"
+#include "gtest/gtest.h"
+#include "paddle/cinn/adt/equation_value.h"
 #include "paddle/cinn/adt/match.h"
 
 namespace cinn::adt::test {
