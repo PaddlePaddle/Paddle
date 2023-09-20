@@ -27,6 +27,7 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
@@ -40,7 +41,6 @@
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/type.h"
 #include "paddle/pir/core/value.h"
-#include "paddle/pir/core/value_utils.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pass/pass_registry.h"
@@ -89,6 +89,20 @@ inline void SetProgramInt64Attr(std::shared_ptr<Program> program,
   auto op = program->module_op();
   op->set_attribute(
       attr_name, pir::Int64Attribute::get(pir::IrContext::Instance(), value));
+}
+
+std::string GetValueInfo(Value v) {
+  std::stringstream ss;
+  ss << "op name=" << v.dyn_cast<OpResult>().owner()->name();
+  ss << ", index=" << v.dyn_cast<OpResult>().index();
+  ss << ", dtype=" << v.type();
+  if (v.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+    ss << ", place="
+       << v.type()
+              .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+              .place();
+  }
+  return ss.str();
 }
 
 void BindProgram(py::module *m) {
@@ -346,7 +360,7 @@ void BindValue(py::module *m) {
       .def("__str__", [](const Value &self) -> py::str {
         std::ostringstream print_stream;
         print_stream << "Value(";
-        print_stream << pir::GetValueInfo(self);
+        print_stream << GetValueInfo(self);
         print_stream << ")";
         return print_stream.str();
       });
@@ -462,7 +476,7 @@ void BindOpResult(py::module *m) {
            [](OpResult &self) -> py::str {
              std::ostringstream print_stream;
              print_stream << "OpResult(";
-             print_stream << pir::GetValueInfo(self);
+             print_stream << GetValueInfo(self);
              if (GetOpResultBoolAttr(self, kAttrStopGradients)) {
                print_stream << ", stop_gradient=True";
              } else {
