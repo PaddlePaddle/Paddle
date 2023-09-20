@@ -316,6 +316,10 @@ def in_pir_mode():
     return global_var._use_pir_api_ and not in_dygraph_mode()
 
 
+def use_pir_api():
+    return global_var._use_pir_api_
+
+
 def in_dynamic_or_pir_mode():
     """
 
