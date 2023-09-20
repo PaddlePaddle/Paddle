@@ -929,6 +929,157 @@ static void UpdateTensor(DenseTensor *x,
 }
 
 template <typename OutT, typename Functor, int kArity, int NumOuts = 1>
+void BroadcastKernelSplit(const KPDevice &ctx,
+                          const std::vector<const DenseTensor *> &ins,
+                          std::vector<DenseTensor *> *outs,
+                          int axis,
+                          Functor func,
+                          const int64_t compute_size) {
+  const auto dims_simplifier =
+      BroadcastDimsSimplifier(ins, (*outs)[0]->dims(), axis);
+  if (VLOG_IS_ON(6)) {
+    DimsSimplifiedLogger<int64_t>::Log(
+        ins, outs, dims_simplifier, "GPU Broadcast");
+  }
+
+  std::vector<int64_t> origin_out_strides;
+  int all_rank = dims_simplifier.rank;
+  auto origin_in_dims = dims_simplifier.in_dims;
+  auto origin_out_dims = dims_simplifier.out_dims;
+  auto origin_in_strides = dims_simplifier.in_dims;
+
+  origin_out_strides.resize(all_rank);
+  origin_out_strides[0] = 1;
+  // for split
+  std::vector<int64_t> loop_num_out;
+  std::vector<int64_t> loop_num_out_stride;
+  initDims(&loop_num_out, all_rank, 1);
+  initDims(&loop_num_out_stride, all_rank, 1);
+
+  // for input's offset
+  std::vector<int64_t> ins_offset;
+  std::vector<int64_t> ins_scale_for_dim;
+  initDims(&origin_out_strides, all_rank, 1);
+  initDims(&ins_offset, kArity, 0);
+  initDims(&ins_scale_for_dim, kArity, 0);
+
+  // init offset and check in's dim
+  for (int k = 0; k < kArity; k++) {
+    ins_scale_for_dim[k] = ins[k]->dims().size() == 0 ? 0 : 1;
+    if (ins_scale_for_dim[k]) {
+      origin_in_strides[k][0] = 1;
+    }
+  }
+
+  updateStridesDims(&origin_out_strides, &origin_out_dims);
+  for (int k = 0; k < kArity; k++) {
+    if (ins_scale_for_dim[k]) {
+      updateStridesDims(&origin_in_strides[k], &origin_in_dims[k]);
+    }
+  }
+
+  // init out_split_dim and in_split_dims
+  auto out_split_dim = origin_out_dims;
+  auto in_split_dims = origin_in_dims;
+
+  // init
+  int64_t loop_num = 1;
+  int64_t split_idx = 0;
+
+  for (int r = 0; r < all_rank; r++) {
+    // if the compute_size was too small the split_size must be 0, but the
+    // dim_num must ge 1
+    int64_t split_size = compute_size / origin_out_strides[r];
+    out_split_dim[r] = std::max(split_size, static_cast<int64_t>(1));
+    loop_num_out[r] =
+        (origin_out_dims[r] + out_split_dim[r] - 1) / out_split_dim[r];
+    loop_num *= loop_num_out[r];
+
+    for (int k = 0; k < kArity; k++) {
+      if (ins_scale_for_dim[k]) {
+        in_split_dims[k][r] = std::min(origin_in_dims[k][r], out_split_dim[r]);
+      }
+    }
+
+    // split_idx is the index for lash split dim
+    if (split_size != 0) {
+      split_idx = r;
+      break;
+    }
+  }
+
+  loop_num_out_stride[all_rank - 1] = 1;
+  for (int r = all_rank - 2; r >= 0; r--) {
+    loop_num_out_stride[r] = loop_num_out_stride[r + 1] * loop_num_out[r + 1];
+  }
+
+  // compute
+  DenseTensor tmp_in[kArity];
+  DenseTensor tmp_out[NumOuts];
+
+  for (int iter = 0; iter < loop_num; iter++) {
+    std::vector<const DenseTensor *> new_ins = {};
+    std::vector<DenseTensor *> new_outs = {};
+    phi::DenseTensor tmp_in[kArity];
+
+    int64_t tmp_size = iter;
+    int64_t out_offset = 0;
+    // compute the offset before  last split dim
+    for (int i = 0; i < split_idx; i++) {
+      auto repeat_times = tmp_size / loop_num_out_stride[i];
+      out_offset += repeat_times * origin_out_strides[i];
+      for (int k = 0; k < kArity; k++) {
+        if (ins_scale_for_dim[k]) {
+          ins_offset[k] +=
+              (repeat_times % origin_in_dims[k][i]) * origin_in_strides[k][i];
+        }
+      }
+      tmp_size = tmp_size % loop_num_out_stride[i];
+    }
+    // tmp_size is the last split_dims's repeat idx
+    auto pre_deal_size = tmp_size * out_split_dim[split_idx];
+    out_offset += pre_deal_size * origin_out_strides[split_idx];
+    // compute_size
+    auto remainder_size = origin_out_dims[split_idx] - pre_deal_size;
+
+    // get current compute size
+    auto out_compute_dims = out_split_dim;
+    out_compute_dims[split_idx] =
+        std::min(out_split_dim[split_idx], remainder_size);
+
+    // in + compute_size
+    auto in_compute_dims = in_split_dims;
+    for (int k = 0; k < kArity; k++) {
+      if (ins_scale_for_dim[k]) {
+        auto split_repeat =
+            origin_in_dims[k][split_idx] == origin_out_dims[split_idx]
+                ? tmp_size
+                : 0;
+        ins_offset[k] += split_repeat * in_split_dims[k][split_idx] *
+                         origin_in_strides[k][split_idx];
+        in_compute_dims[k][split_idx] =
+            std::min(in_split_dims[k][split_idx], out_compute_dims[split_idx]);
+      }
+      UpdateTensor(&tmp_in[k],
+                   ins[k],
+                   in_compute_dims[k],
+                   ins_scale_for_dim[k] * ins_offset[k]);
+      new_ins.emplace_back(&tmp_in[k]);
+      ins_offset[k] = 0;
+    }
+
+    for (int n = 0; n < NumOuts; n++) {
+      UpdateTensor(&tmp_out[n], (*outs)[n], out_compute_dims, out_offset);
+      new_outs.emplace_back(&tmp_out[n]);
+    }
+
+    BroadcastKernelForDifferentVecSize<OutT, Functor, kArity, NumOuts>(
+        ctx, new_ins, &new_outs, axis, func);
+  }
+  return;
+}
+
+template <typename OutT, typename Functor, int kArity, int NumOuts = 1>
 void BroadcastKernelApply(const KPDevice &ctx,
                           const std::vector<const DenseTensor *> &ins,
                           std::vector<DenseTensor *> *outs,
@@ -940,158 +1091,14 @@ void BroadcastKernelApply(const KPDevice &ctx,
   }
 #ifndef PADDLE_WITH_XPU_KP
   constexpr bool kEnabledInt64IndexKernel = (NumOuts == 1 && kArity <= 3);
-  auto loader_classifier =
-      BroadcastTypeClassifier<OutT, Functor, kArity, NumOuts>(ins, outs, axis);
   // check whether need broadcast
   auto compute_size = std::numeric_limits<int32_t>::max();
-  bool use_int64_index_kernel = kEnabledInt64IndexKernel &&
-                                (*outs)[0]->numel() >= compute_size &&
-                                (!loader_classifier.all_elementwise);
+  bool use_int64_index_kernel =
+      kEnabledInt64IndexKernel && (*outs)[0]->numel() >= compute_size;
 
   if (use_int64_index_kernel) {  // use_int64_index_kernel
-    const auto dims_simplifier =
-        BroadcastDimsSimplifier(ins, (*outs)[0]->dims(), axis);
-    if (VLOG_IS_ON(6)) {
-      DimsSimplifiedLogger<int64_t>::Log(
-          ins, outs, dims_simplifier, "GPU Broadcast");
-    }
-
-    std::vector<int64_t> origin_out_strides;
-    int all_rank = dims_simplifier.rank;
-    auto origin_in_dims = dims_simplifier.in_dims;
-    auto origin_out_dims = dims_simplifier.out_dims;
-    auto origin_in_strides = dims_simplifier.in_dims;
-
-    origin_out_strides.resize(all_rank);
-    origin_out_strides[0] = 1;
-    // for split
-    std::vector<int64_t> loop_num_out;
-    std::vector<int64_t> loop_num_out_stride;
-    initDims(&loop_num_out, all_rank, 1);
-    initDims(&loop_num_out_stride, all_rank, 1);
-
-    // for input's offset
-    std::vector<int64_t> ins_offset;
-    std::vector<int64_t> ins_scale_for_dim;
-    initDims(&origin_out_strides, all_rank, 1);
-    initDims(&ins_offset, kArity, 0);
-    initDims(&ins_scale_for_dim, kArity, 0);
-
-    // init offset and check in's dim
-    for (int k = 0; k < kArity; k++) {
-      ins_scale_for_dim[k] = ins[k]->dims().size() == 0 ? 0 : 1;
-      if (ins_scale_for_dim[k]) {
-        origin_in_strides[k][0] = 1;
-      }
-    }
-
-    updateStridesDims(&origin_out_strides, &origin_out_dims);
-    for (int k = 0; k < kArity; k++) {
-      if (ins_scale_for_dim[k]) {
-        updateStridesDims(&origin_in_strides[k], &origin_in_dims[k]);
-      }
-    }
-
-    // init out_split_dim and in_split_dims
-    auto out_split_dim = origin_out_dims;
-    auto in_split_dims = origin_in_dims;
-
-    // init
-    int64_t loop_num = 1;
-    int64_t split_idx = 0;
-
-    for (int r = 0; r < all_rank; r++) {
-      // if the compute_size was too small the split_size must be 0, but the
-      // dim_num must ge 1
-      int64_t split_size = compute_size / origin_out_strides[r];
-      out_split_dim[r] = std::max(split_size, static_cast<int64_t>(1));
-      loop_num_out[r] =
-          (origin_out_dims[r] + out_split_dim[r] - 1) / out_split_dim[r];
-      loop_num *= loop_num_out[r];
-
-      for (int k = 0; k < kArity; k++) {
-        if (ins_scale_for_dim[k]) {
-          in_split_dims[k][r] =
-              std::min(origin_in_dims[k][r], out_split_dim[r]);
-        }
-      }
-
-      // split_idx is the index for lash split dim
-      if (split_size != 0) {
-        split_idx = r;
-        break;
-      }
-    }
-
-    loop_num_out_stride[all_rank - 1] = 1;
-    for (int r = all_rank - 2; r >= 0; r--) {
-      loop_num_out_stride[r] = loop_num_out_stride[r + 1] * loop_num_out[r + 1];
-    }
-
-    // compute
-    DenseTensor tmp_in[kArity];
-    DenseTensor tmp_out[NumOuts];
-
-    for (int iter = 0; iter < loop_num; iter++) {
-      std::vector<const DenseTensor *> new_ins = {};
-      std::vector<DenseTensor *> new_outs = {};
-      phi::DenseTensor tmp_in[kArity];
-
-      int64_t tmp_size = iter;
-      int64_t out_offset = 0;
-      // compute the offset before  last split dim
-      for (int i = 0; i < split_idx; i++) {
-        auto repeat_times = tmp_size / loop_num_out_stride[i];
-        out_offset += repeat_times * origin_out_strides[i];
-        for (int k = 0; k < kArity; k++) {
-          if (ins_scale_for_dim[k]) {
-            ins_offset[k] +=
-                (repeat_times % origin_in_dims[k][i]) * origin_in_strides[k][i];
-          }
-        }
-        tmp_size = tmp_size % loop_num_out_stride[i];
-      }
-      // tmp_size is the last split_dims's repeat idx
-      auto pre_deal_size = tmp_size * out_split_dim[split_idx];
-      out_offset += pre_deal_size * origin_out_strides[split_idx];
-      // compute_size
-      auto remainder_size = origin_out_dims[split_idx] - pre_deal_size;
-
-      // get current compute size
-      auto out_compute_dims = out_split_dim;
-      out_compute_dims[split_idx] =
-          std::min(out_split_dim[split_idx], remainder_size);
-
-      // in + compute_size
-      auto in_compute_dims = in_split_dims;
-      for (int k = 0; k < kArity; k++) {
-        if (ins_scale_for_dim[k]) {
-          auto split_repeat =
-              origin_in_dims[k][split_idx] == origin_out_dims[split_idx]
-                  ? tmp_size
-                  : 0;
-          ins_offset[k] += split_repeat * in_split_dims[k][split_idx] *
-                           origin_in_strides[k][split_idx];
-          in_compute_dims[k][split_idx] = std::min(in_split_dims[k][split_idx],
-                                                   out_compute_dims[split_idx]);
-        }
-        UpdateTensor(&tmp_in[k],
-                     ins[k],
-                     in_compute_dims[k],
-                     ins_scale_for_dim[k] * ins_offset[k]);
-        new_ins.emplace_back(&tmp_in[k]);
-        ins_offset[k] = 0;
-      }
-
-      for (int n = 0; n < NumOuts; n++) {
-        UpdateTensor(&tmp_out[n], (*outs)[n], out_compute_dims, out_offset);
-        new_outs.emplace_back(&tmp_out[n]);
-      }
-
-      BroadcastKernelForDifferentVecSize<OutT, Functor, kArity, NumOuts>(
-          ctx, new_ins, &new_outs, axis, func);
-    }
-
+    BroadcastKernelSplit<OutT, Functor, kArity, NumOuts>(
+        ctx, ins, outs, axis, func, compute_size);
     return;
   }
 #endif
