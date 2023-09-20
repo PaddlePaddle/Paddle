@@ -34,7 +34,6 @@ from .operators import (
 from .process_group import get_world_process_group
 from .utils import (
     __no_shape_var_type__,
-    format_op_name,
     get_logger,
     is_gradient_clip_op,
     is_naive_data_parallel,
@@ -128,10 +127,8 @@ def _can_apply_infer_spmd_rule(dist_op):
         enable = True if enable == 'true' else False
     enable = bool(enable)
 
-    if not enable:
-        return False
-    # TODO remove me, ops to be adapted: lookup_table_v2, layer_norm, reshape2, split, transpose2,  reduce_sum,
-    if dist_op.serial_op.type in [
+    # TODO remove me. ops to be adapted: lookup_table_v2, layer_norm, reshape2, split, transpose2,
+    __adapted_ops__ = [
         "matmul_v2",
         "elementwise_div",
         "gelu",
@@ -141,19 +138,20 @@ def _can_apply_infer_spmd_rule(dist_op):
         "scale",
         "dropout",
         "reduce_sum",
-    ]:
-        return True
-    else:
-        return False
-    op_name = format_op_name(dist_op.serial_op.type)
-    return contains_spmd_rule(op_name)
+    ]
+    op_type = dist_op.serial_op.type
+    return enable and contains_spmd_rule(op_type) and op_type in __adapted_ops__
 
 
 def _update_op_dims_mapping_and_distoperatorimpl(
     dist_op, original_op_dist_attr, changed
 ):
     dist_op_container = find_distributed_operator_impl_container(dist_op)
-    print(dist_op.serial_op.type, dist_op_container.type)
+    print(
+        "dist op: {} container: {}".format(
+            dist_op.serial_op.type, dist_op_container.type
+        )
+    )
     updated = dist_op_container.update_dims_mapping(dist_op)
     changed = updated or changed
     # TODO(ljz) remove the below code once we introduce general reshard to replace specifc distopimpls
@@ -393,7 +391,7 @@ class Completer:
                 )
             )
             return _update_op_dims_mapping_and_distoperatorimpl(
-                dist_op, original_op_dist_attr
+                dist_op, original_op_dist_attr, changed
             )
         else:
             self._logger.debug(

@@ -42,6 +42,7 @@ class DistributedReduceSum(DistributedOperatorImplContainer):
     @staticmethod
     def update_dims_mapping(dist_op):
         # step1: prepare inputs need for rule (order args as PHI definition and filter out unnecessary args)
+
         op_desc = dist_op.serial_op.desc
         assert (
             len(op_desc.input_arg_names()) == 1
@@ -56,22 +57,21 @@ class DistributedReduceSum(DistributedOperatorImplContainer):
         )
         output_arg_name = op_desc.output_arg_names()[0]
         keep_dim = op_desc.attr('keep_dim')
-        axis = op_desc.attr('dim')
+        dims = op_desc.attr('dim')
 
         # TODO (zhangyichen) replace dist tensor spece by dist tensor in future.
         input_spec = get_dist_tensor_spec(dist_op, input_arg_name)
         output_spec = get_dist_tensor_spec(dist_op, output_arg_name, False)
-        # axis = None means reduce_all
-        if axis is None:
-            axis = list(range(len(input_spec.shape)))
+        # len(dims) == 0 means reduce_all
+        if len(dims) == 0:
+            dims = list(range(len(input_spec.shape)))
 
         # step2: infer spmd
-        rule = get_phi_spmd_rule("sum")
-        fw_results = rule.infer_forward(input_spec, axis, keep_dim)
+        rule = get_phi_spmd_rule("reduce_sum")
+        fw_results = rule.infer_forward(input_spec, dims, keep_dim)
         bw_results = rule.infer_backward(
-            input_spec, output_spec, axis, keep_dim
+            input_spec, output_spec, dims, keep_dim
         )
-
         # step3: merge fw & bw results
         (
             infered_input_dims_mappings,
@@ -95,7 +95,7 @@ class DistributedReduceSum(DistributedOperatorImplContainer):
     def mapping_to_dist_operator_impl(dist_op, original_op_dist_attr):
         op_dist_attr = dist_op.dist_attr
         op_desc = dist_op.serial_op.desc
-        input_name = op_desc.input_arg_names[0]
+        input_name = op_desc.input_arg_names()[0]
         input_dims_mapping = copy.deepcopy(
             op_dist_attr.get_input_dims_mapping(input_name)
         )
@@ -110,7 +110,7 @@ class DistributedReduceSum(DistributedOperatorImplContainer):
             # and if any axis of reduce input is sharded, the result loss would be partial.
             # BUT we keep the loss as partial instead of allreduce it for performance, since it would effect the backward.
             # we should use an optimization pass for the Hack in future.
-            if (axes is not None) and (len(axes) < len(dims_mapping)):
+            if len(axes) != 0 and (len(axes) < len(dims_mapping)):
                 for axis in axes:
                     if is_dim_shard(dims_mapping[axis]):
                         return True  # reverted
@@ -126,7 +126,6 @@ class DistributedReduceSum(DistributedOperatorImplContainer):
             default_impl = get_default_distributed_operator_impl()
             op_dist_attr.impl_type = default_impl.type
             op_dist_attr.impl_idx = default_impl.idx
-
         return reverted
 
 
@@ -222,7 +221,7 @@ class DistributedReduceSumPrimtiveImpl0(DistributedOperatorImpl):
         # TODO: should we add a new dist attr for the new op here?
 
         # batch dimension synchronization
-        var_name = src_op.output_arg_names[0]
+        var_name = src_op.output_arg_names()[0]
         sync_group = new_process_group(ctx.data_parallel_group)
         allreduce_op = main_block.append_op(
             type='c_allreduce_sum',

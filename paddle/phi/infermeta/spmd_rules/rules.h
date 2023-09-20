@@ -46,6 +46,12 @@ namespace distributed {
 PD_REGISTER_SPMD_RULE(matmul,
                       PD_INFER_SPMD(phi::distributed::MatmulInferSpmd),
                       PD_INFER_SPMD(phi::distributed::MatmulInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(matmul_v2,  // static mode
+                      PD_INFER_SPMD(phi::distributed::MatmulInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::MatmulInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(mul,  // static mode
+                      PD_INFER_SPMD(phi::distributed::MatmulInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::MatmulInferSpmdReverse));
 
 PD_REGISTER_SPMD_RULE(
     elementwise_unary,
@@ -70,6 +76,14 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::ReplicatedInferSpmdReverse));
 
 // elementwise unary rule
+PD_REGISTER_SPMD_RULE(
+    fused_softmax_mask_upper_triangle,  // static mode
+    PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(
+    dropout,
+    PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmdReverse));
 PD_REGISTER_SPMD_RULE(
     assign,
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
@@ -418,51 +432,45 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
 
 // TODO(pkuzyc): add multiary elementwise rule
-
 PD_REGISTER_SPMD_RULE(
     all,
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
-
 PD_REGISTER_SPMD_RULE(
     amax,
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
-
 PD_REGISTER_SPMD_RULE(
     amin,
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
-
 PD_REGISTER_SPMD_RULE(
     any,
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
-
 PD_REGISTER_SPMD_RULE(
     frobenius_norm,
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
-
 PD_REGISTER_SPMD_RULE(
     max,
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
-
 PD_REGISTER_SPMD_RULE(
     min,
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
-
 PD_REGISTER_SPMD_RULE(
     prod,
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
-
 PD_REGISTER_SPMD_RULE(
     sum,
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
-
+PD_REGISTER_SPMD_RULE(
+    reduce_sum,  // static mode
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
 }  // namespace distributed
 }  // namespace phi

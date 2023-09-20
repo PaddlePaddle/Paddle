@@ -128,6 +128,9 @@ class DistributedOperatorImplContainer(abc.ABC):
     def update_dims_mapping(self, dist_op):
         raise NotImplementedError("Please Implement this method in Subclass.")
 
+    def mapping_to_dist_operator_impl(dist_op, original_op_dist_attr):
+        raise NotImplementedError("Please Implement this method in Subclass.")
+
 
 class DistributedOperatorImpl(abc.ABC):
     def __init__(self, name):

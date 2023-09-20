@@ -57,7 +57,7 @@ class DistributedElementwise(DistributedOperatorImplContainer):
         assert (
             len(op_desc.output_arg_names()) == 1
         ), "elementwsie op [{}] has [{}] outputs".format(
-            op_desc.type, len(op_desc.output_arg_names())
+            str(dist_op.serial_op), len(op_desc.output_arg_names())
         )
         output_arg_name = op_desc.output_arg_names()[0]
         num_inputs = len(input_arg_names)
@@ -73,8 +73,6 @@ class DistributedElementwise(DistributedOperatorImplContainer):
         # step2: infer spmd
         # TODO reivse me
         op_type = op_desc.type()
-        if op_desc.type() in ["fused_softmax_mask_upper_triangle"]:
-            op_type = "gelu"
         rule = get_phi_spmd_rule(op_type)
         fw_results = rule.infer_forward(*input_specs)
         bw_results = rule.infer_backward(*input_specs, output_spec)
