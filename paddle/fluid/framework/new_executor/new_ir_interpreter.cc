@@ -69,6 +69,7 @@ NewIRInterpreter::NewIRInterpreter(
       ir_block_(ir_block),
       ir_stream_analyzer_(place),
       fetch_var_names_(fetch_var_names) {
+  std::cout << "NewIRInterpreter place = " << place << std::endl;
   VLOG(4) << "NewIRInterpreter(): " << this << " on " << place_;
   static_build_ = FLAGS_new_executor_static_build &&
                   !FLAGS_new_executor_use_cuda_graph &&

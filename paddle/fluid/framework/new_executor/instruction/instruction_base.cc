@@ -30,6 +30,10 @@ InstructionBase::InstructionBase(size_t id, const platform::Place& place) {
 
   is_artificial_ = false;
 
+  if (platform::is_xpu_place(place)) {
+    PADDLE_THROW(platform::errors::Unimplemented("XPU is not supported yet."));
+  }
+
   if (platform::is_cpu_place(place)) {
     type_ = OpFuncType::kCpuSync;
   } else {
