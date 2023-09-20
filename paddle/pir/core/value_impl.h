@@ -17,8 +17,11 @@
 #include "paddle/pir/core/op_operand_impl.h"
 #include "paddle/pir/core/value.h"
 
+#define OUTLINE_RESULT_IDX 6u
+#define MAX_INLINE_RESULT_IDX (OUTLINE_RESULT_IDX - 1u)
+#define BLOCK_ARG_IDX (OUTLINE_RESULT_IDX + 1u)
+
 namespace pir {
-static const uint32_t OUTLINE_OP_RESULT_INDEX = 6;
 class Operation;
 
 namespace detail {
@@ -41,12 +44,12 @@ class alignas(8) ValueImpl {
 
   OpOperandImpl *first_use() const {
     return reinterpret_cast<OpOperandImpl *>(
-        reinterpret_cast<uintptr_t>(first_use_offseted_by_index_) & (~0x07));
+        reinterpret_cast<uintptr_t>(first_use_offseted_by_kind_) & (~0x07));
   }
 
   void set_first_use(OpOperandImpl *first_use);
 
-  OpOperandImpl **first_use_addr() { return &first_use_offseted_by_index_; }
+  OpOperandImpl **first_use_addr() { return &first_use_offseted_by_kind_; }
 
   bool use_empty() const { return first_use() == nullptr; }
 
@@ -57,17 +60,22 @@ class alignas(8) ValueImpl {
   std::string PrintUdChain();
 
   ///
-  /// \brief Interface functions of "first_use_offseted_by_index_" attribute.
+  /// \brief Interface functions of "first_use_offseted_by_kind_" attribute.
   ///
   uint32_t kind() const {
-    return reinterpret_cast<uintptr_t>(first_use_offseted_by_index_) & 0x07;
+    return reinterpret_cast<uintptr_t>(first_use_offseted_by_kind_) & 0x07;
+  }
+
+  template <typename T>
+  bool isa() {
+    return T::classof(*this);
   }
 
  protected:
   ///
   /// \brief Only can be constructed by derived classes such as OpResultImpl.
   ///
-  ValueImpl(Type type, uint32_t index);
+  ValueImpl(Type type, uint32_t kind);
 
   ///
   /// \brief Attribute1: Type of value.
@@ -83,7 +91,7 @@ class alignas(8) ValueImpl {
   /// output(OpInlineResultImpl); (2) index = 6: represent the position >=6
   /// outline output(OpOutlineResultImpl); (3) index = 7 is reserved.
   ///
-  OpOperandImpl *first_use_offseted_by_index_ = nullptr;
+  OpOperandImpl *first_use_offseted_by_kind_ = nullptr;
 };
 
 }  // namespace detail

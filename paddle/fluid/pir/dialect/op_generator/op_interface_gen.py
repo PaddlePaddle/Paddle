@@ -27,7 +27,7 @@ OP_VJP_FORWARD_INPUT_OR_OUTPUT_TEMPLATE = """
 
 OP_VJP_FORWARD_MULTI_INPUT_TEMPLATE = """
     pir::CombineOp combine_op_obj =
-      op_obj.{input_name}().GetDefiningOp()->dyn_cast<pir::CombineOp>();
+      op_obj.{input_name}().dyn_cast<pir::OpResult>().owner()->dyn_cast<pir::CombineOp>();
     std::vector<Tensor> {input_name};
     for (size_t idx = 0; idx < combine_op_obj.inputs().size(); idx++) {{
         {input_name}.emplace_back(
@@ -36,7 +36,7 @@ OP_VJP_FORWARD_MULTI_INPUT_TEMPLATE = """
 
 OP_VJP_FORWARD_OPTIONAL_INPUT_TEMPLATE = """
     paddle::optional<Tensor> {input_name};
-    if (op_obj.{input_name}().type().storage()){{
+    if (op_obj.{input_name}() && op_obj.{input_name}().type().storage()){{
         {input_name} = paddle::make_optional<Tensor>(Tensor(std::make_shared<primitive::LazyTensor>(op_obj.{input_name}())));
     }}"""
 
@@ -56,6 +56,11 @@ OP_VJP_ATTRIBUTE_TEMPLATE = """
 OP_VJP_ATTRIBUTE_DEFAULT_TEMPLATE = """
     {attr_type} {attr_name} = {default_value};"""
 
+OP_VJP_ATTRIBUTE_ARRAY_TEMPLATE = """
+    {attr_type} {attr_name};
+    for (size_t i = 0; i < op->attribute("{attr_name}").dyn_cast<pir::ArrayAttribute>().size(); i++) {{
+        {attr_name}.push_back(op->attribute("{attr_name}").dyn_cast<pir::ArrayAttribute>().at(i).dyn_cast<{inner_type}>().{func}());
+    }}"""
 
 OP_VJP_CALL_VJP_TEMPLATE = """
     std::vector<std::vector<Tensor>> tensor_res =
@@ -74,8 +79,8 @@ OP_VJP_STOPGRADIENT_TEMPLATE = """
     }"""
 
 OP_VJP_DEFINE_TEMPLATE = """
-std::vector<std::vector<pir::OpResult>> {op_class_name}::Vjp(pir::Operation* op, const std::vector<std::vector<pir::OpResult>>& out_grads, const std::vector<std::vector<bool>>& stop_gradients){{
-    {op_class_name} op_obj = op->dyn_cast<{op_class_name}>();
+std::vector<std::vector<pir::OpResult>> {op_class_name}::Vjp(pir::Operation* op, const std::vector<std::vector<pir::Value>>& out_grads, const std::vector<std::vector<bool>>& stop_gradients){{
+    {op_class_name} op_obj = op->dyn_cast<{op_class_name}>(); (void)op_obj;
 
     VLOG(6) << "Prepare inputs of {op_grad_name}";
 {forward_input_output_code}
@@ -96,10 +101,6 @@ std::vector<std::vector<pir::OpResult>> {op_class_name}::Vjp(pir::Operation* op,
 input_types_map = {
     'paddle::dialect::DenseTensorType': 'Tensor',
     'pir::VectorType<paddle::dialect::DenseTensorType>': 'Tensor[]',
-}
-
-attr_data_map = {
-    'pir::StrAttribute': 'AsString',
 }
 
 
@@ -161,8 +162,9 @@ def gen_op_vjp_str(
                     )
     op_attribute_list = op_grad_info.attribute_name_list
     attribute_code = ''
+    build_attr_str = ''
+    array_attr_str = "pir::ArrayAttribute"
     for idx in range(len(op_attribute_list)):
-        build_args_str += op_attribute_list[idx] + ", "
         if op_attribute_list[idx] in op_info.attribute_name_list:
             if op_attribute_list[idx] in op_info.mutable_attribute_name_list:
                 attribute_code += (
@@ -171,19 +173,38 @@ def gen_op_vjp_str(
                         input_name=op_attribute_list[idx],
                     )
                 )
+                build_args_str += op_attribute_list[idx] + ", "
             else:
-                func = 'data'
-                if (
-                    op_grad_info.attribute_type_list[idx]
-                    in attr_data_map.keys()
-                ):
-                    func = attr_data_map[op_grad_info.attribute_type_list[idx]]
-                attribute_code += OP_VJP_ATTRIBUTE_TEMPLATE.format(
-                    attr_type=op_grad_info.attribute_gen_arg_type_list[idx],
-                    attr_name=op_attribute_list[idx],
-                    attr_parse_type=op_grad_info.attribute_type_list[idx],
-                    func=func,
-                )
+                func = "data"
+                attr_type = op_grad_info.attribute_gen_arg_type_list[idx]
+                attr_type = attr_type.replace("const ", "")
+                attr_type = attr_type.replace("&", "")
+                if array_attr_str in op_grad_info.attribute_type_list[idx]:
+                    inner_type = op_grad_info.attribute_type_list[idx][
+                        len(array_attr_str) + 1 : -1
+                    ]
+                    func = "data"
+                    if inner_type == "pir::StrAttribute":
+                        func = "AsString"
+                    attribute_code += OP_VJP_ATTRIBUTE_ARRAY_TEMPLATE.format(
+                        attr_type=attr_type,
+                        attr_name=op_attribute_list[idx],
+                        inner_type=inner_type,
+                        func=func,
+                    )
+                else:
+                    if (
+                        op_grad_info.attribute_type_list[idx]
+                        == "pir::StrAttribute"
+                    ):
+                        func = "AsString"
+                    attribute_code += OP_VJP_ATTRIBUTE_TEMPLATE.format(
+                        attr_type=attr_type,
+                        attr_name=op_attribute_list[idx],
+                        attr_parse_type=op_grad_info.attribute_type_list[idx],
+                        func=func,
+                    )
+                build_attr_str += op_attribute_list[idx] + ", "
 
         else:
             attribute_code += OP_VJP_ATTRIBUTE_DEFAULT_TEMPLATE.format(
@@ -191,6 +212,8 @@ def gen_op_vjp_str(
                 attr_name=op_attribute_list[idx],
                 default_value=op_grad_info.attribute_default_value_list[idx],
             )
+            build_attr_str += op_attribute_list[idx] + ", "
+    build_args_str += build_attr_str
     op_phi_name_format = op_phi_name
     if op_phi_name[-1] == '_':
         op_phi_name_format = op_phi_name[:-1]
@@ -214,22 +237,35 @@ def gen_op_vjp_str(
     return str
 
 
-def gen_op_infer_meta_str(op_info, op_class_name):
+def gen_op_infer_meta_str(op_info, op_class_name, op_info_items):
     op_infer_meta_str = ""
     if op_info.infer_meta_func:
         op_infer_meta_str = OP_INFER_SHAPE_TEMPLATE.format(
             op_name=op_class_name,
             infer_meta_func=op_info.infer_meta_func,
         )
+    elif op_info.invoke_map and op_info.invoke_map['func'] in op_info_items:
+        if op_info_items[op_info.invoke_map['func']].infer_meta_func:
+            op_infer_meta_str = OP_INFER_SHAPE_TEMPLATE.format(
+                op_name=op_class_name,
+                infer_meta_func=op_info_items[
+                    op_info.invoke_map['func']
+                ].infer_meta_func,
+            )
     return op_infer_meta_str
 
 
-def gen_exclusive_interface_str(op_info):
+def gen_exclusive_interface_str(op_info, op_info_items):
     exclusive_interface_str = ""
     if op_info.infer_meta_func:
         exclusive_interface_str += (
             "  static void InferMeta( phi::InferMetaContext *infer_meta );"
         )
+    elif op_info.invoke_map and op_info.invoke_map['func'] in op_info_items:
+        if op_info_items[op_info.invoke_map['func']].infer_meta_func:
+            exclusive_interface_str += (
+                "  static void InferMeta( phi::InferMetaContext *infer_meta );"
+            )
     if op_info.op_phi_name[0] in vjp_interface_declare_gen_op_list:
-        exclusive_interface_str += "\n  static std::vector<std::vector<pir::OpResult>> Vjp(pir::Operation* op, const std::vector<std::vector<pir::OpResult>>& out_grads, const std::vector<std::vector<bool>>& stop_gradients);"
+        exclusive_interface_str += "\n  static std::vector<std::vector<pir::OpResult>> Vjp(pir::Operation* op, const std::vector<std::vector<pir::Value>>& out_grads, const std::vector<std::vector<bool>>& stop_gradients);"
     return exclusive_interface_str

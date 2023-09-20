@@ -125,12 +125,12 @@ class Op : public OpBase {
     return op && op->info().id() == TypeId::get<ConcreteOp>();
   }
 
-  static std::vector<details::InterfaceValue> GetInterfaceMap() {
-    return pir::details::GetInterfaceMap<ConcreteOp, InterfaceList>();
+  static std::vector<InterfaceValue> GetInterfaceMap() {
+    return pir::detail::GetInterfaceMap<ConcreteOp, InterfaceList>();
   }
 
   static std::vector<TypeId> GetTraitSet() {
-    return pir::details::GetTraitSet<ConcreteOp, TraitList>();
+    return pir::detail::GetTraitSet<ConcreteOp, TraitList>();
   }
 
   // Checking that the derived class does not define any member by comparing
