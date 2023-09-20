@@ -34,14 +34,27 @@ if os.path.exists(legacy_core):
 
 # import all class inside framework into base module
 from . import framework
-from .framework import *  # noqa: F403
+from .framework import (
+    Program,
+    Variable,
+    default_startup_program,
+    default_main_program,
+    program_guard,
+    cuda_places,
+    cpu_places,
+    cuda_pinned_places,
+    in_dygraph_mode,
+)
 
 # import all class inside executor into base module
 from . import executor
-from .executor import *  # noqa: F403
+from .executor import (
+    Executor,
+    global_scope,
+)
 
 from . import data_feed_desc
-from .data_feed_desc import *  # noqa: F403
+from .data_feed_desc import DataFeedDesc
 
 from . import dataset
 
@@ -71,7 +84,7 @@ from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
 
 from . import unique_name
 from . import compiler
-from .compiler import *  # noqa: F403
+from .compiler import CompiledProgram
 from paddle.base.layers.math_op_patch import monkey_patch_variable
 from .dygraph.base import enable_dygraph, disable_dygraph
 from .dygraph.tensor_patch_methods import monkey_patch_tensor
