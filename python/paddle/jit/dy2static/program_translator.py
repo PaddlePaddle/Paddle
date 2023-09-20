@@ -48,7 +48,7 @@ from .origin_info import (
     update_op_callstack_with_origin_info,
 )
 
-if ir_static.in_pir_mode():
+if in_pir_mode():
     from .newir_partial_program import (
         PartialProgramLayerHook,
         partial_program_from,
