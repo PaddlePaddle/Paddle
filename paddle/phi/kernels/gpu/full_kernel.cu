@@ -21,6 +21,20 @@ limitations under the License. */
 
 namespace phi {
 
+template <typename InT, typename OutT = InT>
+struct FullFunctor {
+  OutT value;
+
+  template <typename VType>
+  explicit inline FullFunctor(VType val) {
+    value = static_cast<OutT>(val);
+  }
+
+  __device__ __forceinline__ OutT operator()() const {
+    return static_cast<OutT>(value);
+  }
+};
+
 template <typename T, typename Context>
 void FullKernel(const Context& dev_ctx,
                 const IntArray& shape,
@@ -31,7 +45,14 @@ void FullKernel(const Context& dev_ctx,
   int numel = out->numel();
   dev_ctx.template Alloc<T>(out);
   if (numel > 0) {
-    phi::Full<T, Context>(dev_ctx, shape, val, out);
+    // in transformer model the numel of outpout will be zero.
+    std::vector<const DenseTensor*> inputs = {};
+    std::vector<DenseTensor*> outputs = {out};
+    // This function has no input, so the inputs.size() == 0. Use kUnary, but
+    // the data will not be loaded in the kernel because the number of
+    // parameters in the operator is 0
+    phi::funcs::ElementwiseKernel<T>(
+        dev_ctx, inputs, &outputs, FullFunctor<T>(val.to<T>()));
   }
 }
 
@@ -76,11 +97,16 @@ void FullLikeKernel(const Context& dev_ctx,
           static_cast<CommonType>(std::numeric_limits<T>::lowest()),
           static_cast<CommonType>(std::numeric_limits<T>::max()),
           static_cast<float>(value)));
-
+  std::vector<const DenseTensor*> inputs = {};
+  std::vector<DenseTensor*> outputs = {out};
   dev_ctx.template Alloc<T>(out);
+  // This function has no input, so the inputs.size() == 0. Use kUnary, but the
+  // data will not be loaded in the kernel because the number of parameters in
+  // the operator is 0
   int numel = out->numel();
   if (numel > 0) {
-    phi::Full<T, Context>(dev_ctx, phi::vectorize(x.dims()), val, out);
+    phi::funcs::ElementwiseKernel<T>(
+        dev_ctx, inputs, &outputs, FullFunctor<T>(value));
   }
 }
 
