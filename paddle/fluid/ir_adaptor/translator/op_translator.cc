@@ -1740,6 +1740,7 @@ OpTranslator::OpTranslator() {
   special_handlers["one_hot_v2"] = OneHotTranscriber();
   special_handlers["reduce_all"] = ReduceOpTranscriber();
   special_handlers["reduce_any"] = ReduceOpTranscriber();
+  special_handlers["frobenius_norm"] = ReduceOpTranscriber();
   special_handlers["rnn"] = RnnOpTranscriber();
   special_handlers["shadow_output"] = ShadowOutputOpTranscriber();
   special_handlers["set_value"] = LegacySetValueDispatcher();
