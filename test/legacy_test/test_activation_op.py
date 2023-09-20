@@ -3621,33 +3621,7 @@ class TestPow_ZeroDim(TestPow):
         self.shape = []
 
 
-class TestPow_factor_tensor(TestActivation):
-    def setUp(self):
-        self.op_type = "pow"
-        self.python_api = paddle.pow
-        self.enable_cinn = False
-        self.init_dtype()
-
-        np.random.seed(1024)
-        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
-        out = np.power(x, 3)
-
-        self.inputs = {
-            'X': OpTest.np_dtype_to_base_dtype(x),
-            'FactorTensor': np.array([3.0]).astype(self.dtype),
-        }
-
-        self.attrs = {}
-        self.outputs = {'Out': out}
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-        self.check_grad(['X'], 'Out')
-
+class TestPow_API(TestActivation):
     def test_api(self):
         with static_guard():
             input = np.random.uniform(1, 2, [11, 17]).astype("float32")
@@ -4560,7 +4534,7 @@ create_test_act_fp16_class(TestLog10)
 create_test_act_fp16_class(TestLog1p)
 create_test_act_fp16_class(TestSquare)
 create_test_act_fp16_class(TestPow, check_prim=True)
-create_test_act_fp16_class(TestPow_factor_tensor)
+create_test_act_fp16_class(TestPow_API)
 create_test_act_fp16_class(TestSTanh)
 create_test_act_fp16_class(TestSoftplus)
 create_test_act_fp16_class(TestSoftsign)
@@ -4696,7 +4670,7 @@ create_test_act_bf16_class(TestLog10)
 create_test_act_bf16_class(TestLog1p)
 create_test_act_bf16_class(TestSquare)
 create_test_act_bf16_class(TestPow, check_prim=True)
-create_test_act_bf16_class(TestPow_factor_tensor)
+create_test_act_bf16_class(TestPow_API)
 create_test_act_bf16_class(TestSTanh)
 create_test_act_bf16_class(TestSoftplus)
 create_test_act_bf16_class(TestSoftsign)

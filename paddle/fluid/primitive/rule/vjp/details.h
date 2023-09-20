@@ -252,7 +252,9 @@ void concat_grad(const std::vector<Tensor>& x,
   std::vector<Tensor> x_grad_tmp =
       split<T>(out_grad, IntArray(sections), axis_value);
   for (int i = 0; i < x_num; ++i) {
-    set_output<T>(x_grad_tmp.at(i), x_grad.at(i));
+    if (x_grad[i]) {
+      set_output<T>(x_grad_tmp.at(i), x_grad.at(i));
+    }
   }
 }
 
