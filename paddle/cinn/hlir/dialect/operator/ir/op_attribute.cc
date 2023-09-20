@@ -12,20 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 
-#include "paddle/fluid/primitive/primitive/primitive.h"
-#include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/common/int_array.h"
-#include "paddle/pir/core/value.h"
+namespace cinn {
+namespace dialect {
+const GroupInfo &GroupInfoAttribute::data() const {
+  return storage()->GetAsKey();
+}
+}  // namespace dialect
+}  // namespace cinn
 
-namespace paddle {
-namespace primitive {
-
-using IntArray = paddle::experimental::IntArray;
-std::vector<std::vector<paddle::Tensor>> add_n_vjp(
-    const std::vector<paddle::Tensor>& x,
-    const Tensor& out_grad,
-    const std::vector<std::vector<bool>>& stop_gradients);
-}  // namespace primitive
-}  // namespace paddle
+IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::GroupInfoAttribute)

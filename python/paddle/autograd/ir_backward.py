@@ -207,6 +207,23 @@ def prune_ops(total_ops, inputs_set, outputs_set, no_grad_set):
             union_op_flags[i] = False
             intersection_op_flags[i] = False
 
+    # some inputs in no_grad_set but its next op is effective,
+    # add their defining op here.
+    total_ops_list = list(total_ops)
+    for i, op in enumerate(total_ops_list):
+        if union_op_flags[i] is False:
+            for result in op.results():
+                if result.has_one_use():
+                    next_op = result.first_use().owner()
+                    if (
+                        next_op in total_ops
+                        and union_op_flags[total_ops_list.index(next_op)]
+                        is True
+                    ):
+                        union_op_flags[i] = True
+                else:
+                    continue
+
     effective_ops = [
         total_ops[i] for i in range(len(total_ops)) if intersection_op_flags[i]
     ]
