@@ -111,17 +111,10 @@ void XgbCostModel::Train(const std::vector<std::vector<float>>& samples,
   update_labels_ = labels;
   pybind11::array np_samples = VectorToNumpy<float>(samples);
   pybind11::array np_labels = VectorToNumpy<float>(labels);
-  std::cerr << "where the error?"
-            << "file is " << __FILE__ << __LINE__ << "\n";
 
   pybind11::object dmatrix = xgb_module_.attr("DMatrix")(np_samples, np_labels);
-  std::cerr << "where the error?"
-            << "file is " << __FILE__ << __LINE__ << "\n";
-
   xgb_booster_ = xgb_module_.attr("train")(
       pybind11::dict(), dmatrix, pybind11::int_(kTrainRound_));
-  std::cerr << "where the error?"
-            << "file is " << __FILE__ << __LINE__ << "\n";
 }
 
 std::vector<float> XgbCostModel::Predict(
