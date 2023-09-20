@@ -308,8 +308,8 @@ def in_pir_mode():
             False
 
             >>> paddle.enable_static()
-            >>> with paddle.new_ir_utils.IrGuard():
-            >>>     print(paddle.framework.in_pir_mode())
+            >>> with paddle.pir_utils.IrGuard():
+            ...     print(paddle.framework.in_pir_mode())
             True
 
     """
@@ -1671,7 +1671,7 @@ class Variable(metaclass=VariableMetaClass):
         param_grad_list = append_backward(self)
         for param, param_grad in param_grad_list:
             # set grad to simulate dygraph loss.backward() in static mode.
-            setattr(param, "grad", param_grad)
+            param.grad = param_grad
 
     @fake_interface_only
     def gradient(self):
@@ -7203,17 +7203,11 @@ class Program:
                 try:
                     vars_dict[name].set_value(value, scope)
                 except ValueError as err:
-                    warnings.warn((f"Skip loading for '{name}'. " + str(err)))
+                    warnings.warn(f"Skip loading for '{name}'. " + str(err))
                 except TypeError as err:
-                    warnings.warn((f"Skip loading for '{name}'. " + str(err)))
+                    warnings.warn(f"Skip loading for '{name}'. " + str(err))
             else:
-                warnings.warn(
-                    (
-                        "Skip loading for '{0}'. Because '{0}' not in the program.".format(
-                            name
-                        )
-                    )
-                )
+                warnings.warn(f"Skip loading for '{name}'. Because '{name}' not in the program.")
 
 
 class Parameter(Variable, metaclass=ParameterMetaClass):
@@ -7731,16 +7725,6 @@ def _dygraph_guard(tracer):
     tmp_tracer = global_var._dygraph_tracer_
     global_var._dygraph_tracer_ = tracer
 
-    try:
-        yield
-    finally:
-        global_var._dygraph_tracer_ = tmp_tracer
-
-
-@signature_safe_contextmanager
-def _static_guard():
-    tmp_tracer = global_var._dygraph_tracer_
-    global_var._dygraph_tracer_ = None
     try:
         yield
     finally:

@@ -60,7 +60,6 @@ def reduce_new(tensor, dst, reduce_type=str(dist.ReduceOp.SUM), group=None):
             'reduce_type': int(reduce_type),
         },
     )
-    return None
 
 
 class TestCollectiveReduceAPI(TestCollectiveAPIRunnerBase):

@@ -125,7 +125,7 @@ paddle::framework::Variable* CreateVar(
         variable_2_var_name,
     std::map<std::string, int>* var_name_2_id,
     std::vector<paddle::framework::Variable*>* variable_list) {
-  Operation* def_op = value.GetDefiningOp();
+  Operation* def_op = value.dyn_cast<OpResult>().owner();
   bool is_persisable = false;
   if (def_op->isa<::pir::SetParameterOp>()) {
     is_persisable = true;
@@ -273,7 +273,7 @@ void HandleForSpecialOp(
 
     std::string name =
         op->attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
-    paddle::framework::Variable* var = inner_scope->FindVar(name);
+    paddle::framework::Variable* var = inner_scope->Var(name);
     PADDLE_ENFORCE(var,
                    paddle::platform::errors::InvalidArgument(
                        "The variable %s shoud exist", name));
