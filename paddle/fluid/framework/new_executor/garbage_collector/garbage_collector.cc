@@ -54,10 +54,13 @@ CreateInterpreterCoreGarbageCollector(
     const platform::Place& place,
     const std::vector<std::unique_ptr<InstructionBase>>& vec_instruction) {
   if (platform::is_gpu_place(place)) {
+    std::cout << "place is gpu" << std::endl;
     if (IsInterpretercoreFastGCEnabled()) {
+      std::cout << "place is gpu 2" << std::endl;
       return std::unique_ptr<InterpreterCoreGarbageCollector>(
           new InterpreterCoreFastGarbageCollector());
     } else {
+      std::cout << "place is gpu 3" << std::endl;
       return std::unique_ptr<InterpreterCoreGarbageCollector>(
           new InterpreterCoreEventGarbageCollector(vec_instruction));
     }
@@ -74,6 +77,7 @@ CreateInterpreterCoreGarbageCollector(
     return std::unique_ptr<InterpreterCoreGarbageCollector>(
         new InterpreterCoreNoEventGarbageCollector());
   } else {
+    std::cout << "place is cpu" << std::endl;
     return std::unique_ptr<InterpreterCoreGarbageCollector>(
         new InterpreterCoreEventGarbageCollector(vec_instruction));
   }
