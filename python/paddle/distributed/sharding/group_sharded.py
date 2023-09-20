@@ -114,9 +114,10 @@ def group_sharded_parallel(
     assert isinstance(
         model, paddle.nn.Layer
     ), "The model must be the instance of paddle.nn.Layer."
-    assert isinstance(
-        optimizer, (MixPrecisionOptimizer, Optimizer)
-    ), "The optimizer must be the instance of paddle.optimizer.Optimizer or MixPrecisionOptimizer for main grad."
+    assert isinstance(optimizer, (MixPrecisionOptimizer, Optimizer)), (
+        "The optimizer must be the instance of paddle.optimizer.Optimizer "
+        "or MixPrecisionOptimizer for main grad."
+    )
     assert level in [
         'os',
         'os_g',
