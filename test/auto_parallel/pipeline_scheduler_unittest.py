@@ -34,7 +34,7 @@ def apply_pass(schedule_mode="FThenB"):
     pipeline = strategy.pipeline
     pipeline.enable = True
     pipeline.schedule_mode = schedule_mode
-    pipeline.accumulate_steps = 2
+    pipeline.accumulate_steps = 4
 
     return strategy
 
@@ -48,7 +48,7 @@ class Test1F1BPass(unittest.TestCase):
     def setUp(self):
         self.rtol = 1e-5
         self.atol = 1e-8
-        self.batch_size = 2
+        self.batch_size = 4
         self.batch_num = 10
         self.clip_norm = 0.2
         self.dataset = FakeDataset(self.batch_size * self.batch_num)
@@ -112,19 +112,32 @@ class Test1F1BPass(unittest.TestCase):
         assert engine_1f1b._strategy.pipeline.schedule_mode == "1F1B"
         assert os.environ.get('FLAGS_new_executor_micro_batching') == "True"
 
+        # pp2 eager1f1b training with standalone executor
+        os.environ['FLAGS_new_executor_micro_batching'] = 'True'
+        engine_eager1f1b = self.get_engine(schedule_mode="Eager1F1B")
+        history_eager1f1b = engine_eager1f1b.fit(
+            self.dataset, 3, batch_size=self.batch_size, log_freq=1
+        )
+        assert engine_eager1f1b._strategy.pipeline.schedule_mode == "Eager1F1B"
+        assert os.environ.get('FLAGS_new_executor_micro_batching') == "True"
+
         # NOTE: every sample data from dataset is all the same
         if paddle.distributed.get_rank() == 1:
             losses_fleet_1f1b = np.array(history_fleet_1f1b.history["loss"])
             losses_fthenb = np.array(history_fthenb.history["loss"])
             losses_1f1b = np.array(history_1f1b.history["loss"])
-            # accumulate_steps is 2
-            assert losses_fthenb[0].shape[0] == 2
-            assert losses_1f1b[0].shape[0] == 2
+            losses_eager1f1b = np.array(history_eager1f1b.history["loss"])
+            # accumulate_steps is 4
+            assert losses_fthenb[0].shape[0] == 4
+            assert losses_1f1b[0].shape[0] == 4
+            assert losses_eager1f1b[0].shape[0] == 4
             # losses_fleet_1f1b is the last loss of accumulate_steps
             # losses_fthenb is all the losses of accumulate_steps
             # losses_1f1b is alla the losses of accumulate_steps
+            # losses_eager1f1b is alla the losses of accumulate_steps
             self.check_results(losses_fleet_1f1b[0], losses_fthenb[0][-1])
             self.check_results(losses_fleet_1f1b[0], losses_1f1b[0][-1])
+            self.check_results(losses_fleet_1f1b[0], losses_eager1f1b[0][-1])
 
 
 if __name__ == "__main__":
