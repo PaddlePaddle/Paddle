@@ -13,19 +13,27 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/cinn/hlir/dialect/operator/ir/attribute_storage.h"
+#include "paddle/pir/core/attribute_base.h"
 
-#include "paddle/fluid/primitive/primitive/primitive.h"
-#include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/common/int_array.h"
-#include "paddle/pir/core/value.h"
+namespace cinn {
+namespace dialect {
 
-namespace paddle {
-namespace primitive {
+class GroupInfoAttribute : public pir::Attribute {
+ public:
+  using Attribute::Attribute;
 
-using IntArray = paddle::experimental::IntArray;
-std::vector<std::vector<paddle::Tensor>> add_n_vjp(
-    const std::vector<paddle::Tensor>& x,
-    const Tensor& out_grad,
-    const std::vector<std::vector<bool>>& stop_gradients);
-}  // namespace primitive
-}  // namespace paddle
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(GroupInfoAttribute,
+                                    GroupInfoAttributeStorage);
+
+  bool operator<(const GroupInfoAttribute& right) const {
+    return storage() < right.storage();
+  }
+
+  const GroupInfo& data() const;
+};
+
+}  // namespace dialect
+}  // namespace cinn
+
+IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::GroupInfoAttribute)
