@@ -2679,7 +2679,12 @@ def cauchy_(x, loc=0, scale=1, name=None):
             >>> import paddle
             >>> x = paddle.randn([3, 4])
             >>> x.cauchy_(1, 2)
+            >>> # doctest: +SKIP('random check')
             >>> print(x)
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[ 3.80087137,  2.25415039,  2.77960515,  7.64125967],
+             [ 0.76541221,  2.74023032,  1.99383152, -0.12685823],
+             [ 1.45228469,  1.76275957, -4.30458832, 34.74880219]])
 
     """
     x.normal_()
@@ -2708,7 +2713,12 @@ def geometric_(x, probs, name=None):
             >>> import paddle
             >>> x = paddle.randn([3, 4])
             >>> x.geometric_(0.3)
+            >>> # doctest: +SKIP('random check')
             >>> print(x)
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[2.42739224, 4.78268528, 1.23302543, 3.76555204],
+             [1.38877118, 0.16075331, 0.16401523, 2.47349310],
+             [1.72872102, 2.76533413, 0.33410925, 1.63351011]])
 
     """
     tiny = np.finfo(dtype=convert_dtype(x.dtype)).tiny

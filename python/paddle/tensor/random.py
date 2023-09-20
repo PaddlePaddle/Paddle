@@ -626,15 +626,15 @@ def normal_(x, mean=0.0, std=1.0, name=None):
     Examples:
         .. code-block:: python
 
-
             >>> import paddle
             >>> x = paddle.randn([3, 4])
             >>> x.normal_()
+            >>> # doctest: +SKIP('random check')
             >>> print(x)
             Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
-                [[ 0.12059668,  0.56952161,  0.18628767, -1.30914187],
-                [ 1.66127622, -0.09351987,  0.46843046, -1.29227293],
-                [ 0.54782867, -0.83025306, -0.23135018,  0.29596999]])
+            [[ 0.06132207,  1.11349595,  0.41906244, -0.24858207],
+             [-1.85169315, -1.50370061,  1.73954511,  0.13331604],
+             [ 1.66359663, -0.55764782, -0.59911072, -0.57773495]])
 
     """
     return gaussian_(x, mean=mean, std=std)
