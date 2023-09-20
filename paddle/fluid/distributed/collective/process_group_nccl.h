@@ -171,6 +171,8 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
 
   ncclComm_t NCCLComm(const Place& place) const;
 
+  std::vector<double> GetEventTimeAndRelease();
+
  private:
   std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(const Place& place,
                                                          int rank,
@@ -205,6 +207,16 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
       bool sync_op,
       bool use_calc_stream);
 
+ public:
+  gpuEvent_t RecordStartEventOnCalcStream();
+
+  void RecordEndEventOnCalcStream(gpuEvent_t event);
+
+ private:
+  gpuEvent_t RecordStartEvent(gpuStream_t stream);
+
+  void RecordEndEvent(gpuEvent_t event, gpuStream_t stream);
+
  private:
   std::shared_ptr<phi::distributed::Store> store_;
 
@@ -214,6 +226,14 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   std::unordered_map<std::string, std::unique_ptr<phi::GPUContext>>
       place_to_comm_ctx_;
 
+  struct Events {
+    std::vector<std::pair<gpuEvent_t, gpuEvent_t>> events;
+    size_t length{0};
+
+    ~Events();
+  };
+
+  std::vector<Events> events_;
   uint64_t comm_seq_{0};
 
   // TODO(sunyilun): attrs below will be removed later

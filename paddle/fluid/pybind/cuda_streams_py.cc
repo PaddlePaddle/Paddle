@@ -391,6 +391,7 @@ void BindCudaStream(py::module *m_ptr) {
                 event.synchronize()
 
            )DOC")
+      .def("elapsed_time", &paddle::platform::CudaEvent::ElapsedTime)
 #endif
       .def(
           "__init__",
