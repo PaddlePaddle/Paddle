@@ -93,7 +93,7 @@ inline void SetProgramInt64Attr(std::shared_ptr<Program> program,
 
 std::string GetValueInfo(Value v) {
   std::stringstream ss;
-  ss << "op name=" << v.dyn_cast<OpResult>().owner()->name();
+  ss << "define_op_name=" << v.dyn_cast<OpResult>().owner()->name();
   ss << ", index=" << v.dyn_cast<OpResult>().index();
   ss << ", dtype=" << v.type();
   if (v.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
