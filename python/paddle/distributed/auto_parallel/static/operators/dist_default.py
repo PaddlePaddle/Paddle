@@ -92,8 +92,6 @@ def prim_operator_data_parallel_functor(ctx, src_op):
         op_attr.set_input_dims_mapping(grad_var.name, dims_mapping)
         ctx.set_op_dist_attr_for_program(allreduce_op, op_attr)
 
-    return
-
 
 class DistributedDefault(DistributedOperatorImplContainer):
     def __init__(self, op_type):

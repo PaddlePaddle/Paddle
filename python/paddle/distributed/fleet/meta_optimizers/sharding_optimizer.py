@@ -714,7 +714,9 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._recreate_not_persist_param_as_var()
 
         self._dump_program_for_debug()
-        self._wait()
+        use_new_comm = os.getenv("FLAGS_dynamic_static_unified_comm", "0")
+        if use_new_comm not in ["1", "True", "true"]:
+            self._wait()
         return optimize_ops, params_grads
 
     def _init_pair_comm(self, pair, ring_id):
@@ -976,7 +978,6 @@ class ShardingOptimizer(MetaOptimizerBase):
                         ].desc.input_arg_names(),
                     )
                 )
-        return
 
     def _prune_main_program(self, block, shard, rings):
         """
@@ -1092,7 +1093,6 @@ class ShardingOptimizer(MetaOptimizerBase):
                         reserved_x.append(var_name)
                 op.desc.set_input('X', reserved_x)
         block._sync_with_cpp()
-        return
 
     def _add_broadcast_allreduce(self, block):
         """
@@ -1661,8 +1661,6 @@ class ShardingOptimizer(MetaOptimizerBase):
         logger.info(f"pure dp ring id: {self.dp_ring_id}")
         logger.info("#####" * 6)
 
-        return
-
     def _recreate_not_persist_param_as_var(self):
         def recreate_not_persist_param_as_var(program):
             block = program.global_block()
@@ -1828,7 +1826,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         zero_var = create_global_var(
             name="gradient_merge_zero",
             shape=[1],
-            value=int(0),
+            value=0,
             dtype='int32',
             persistable=True,
             force_cpu=True,
@@ -1838,7 +1836,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         current_step_var = create_global_var(
             name="gradient_merge_current_step",
             shape=[1],
-            value=int(0),
+            value=0,
             dtype='int32',
             persistable=True,
             force_cpu=True,

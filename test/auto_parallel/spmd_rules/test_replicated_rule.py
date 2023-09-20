@@ -60,11 +60,9 @@ class TestReplicatedSPMDRule(unittest.TestCase):
         # 2 inputs 2 outputs
         in_vec = [self.x_dist_tensor_spec, self.y_dist_tensor_spec]
         out_vec = [self.out1_dist_tensor_spec, self.out2_dist_tensor_spec]
-        result_dist_attrs = self.rule.infer_forward(
-            [(0, len(in_vec)), (len(in_vec), len(in_vec) + len(out_vec))],
-            in_vec + out_vec,
-            [],
-        )
+
+        result_dist_attrs = self.rule.infer_forward(in_vec, out_vec)
+
         self.assertEqual(len(result_dist_attrs), 2)
         self.assertEqual(len(result_dist_attrs[0]), 2)
         self.assertEqual(len(result_dist_attrs[1]), 2)
@@ -77,11 +75,9 @@ class TestReplicatedSPMDRule(unittest.TestCase):
         # 1 inputs 2 outputs
         in_vec = [self.y_dist_tensor_spec]
         out_vec = [self.out1_dist_tensor_spec, self.out2_dist_tensor_spec]
-        result_dist_attrs = self.rule.infer_forward(
-            [(0, len(in_vec)), (len(in_vec), len(in_vec) + len(out_vec))],
-            in_vec + out_vec,
-            [],
-        )
+
+        result_dist_attrs = self.rule.infer_forward(in_vec, out_vec)
+
         self.assertEqual(len(result_dist_attrs), 2)
         self.assertEqual(len(result_dist_attrs[0]), 1)
         self.assertEqual(len(result_dist_attrs[1]), 2)
@@ -99,11 +95,9 @@ class TestReplicatedSPMDRule(unittest.TestCase):
 
         in_vec = [self.x_dist_tensor_spec, self.y_dist_tensor_spec]
         out_vec = [self.out1_dist_tensor_spec, self.out2_dist_tensor_spec]
-        result_dist_attrs = self.rule.infer_backward(
-            [(0, len(in_vec)), (len(in_vec), len(in_vec) + len(out_vec))],
-            in_vec + out_vec,
-            [],
-        )
+
+        result_dist_attrs = self.rule.infer_backward(in_vec, out_vec)
+
         self.assertEqual(len(result_dist_attrs), 2)
         self.assertEqual(len(result_dist_attrs[0]), 2)
         self.assertEqual(len(result_dist_attrs[1]), 2)
@@ -120,11 +114,9 @@ class TestReplicatedSPMDRule(unittest.TestCase):
             self.out1_dist_tensor_spec,
             self.out2_dist_tensor_spec,
         ]
-        result_dist_attrs = self.rule.infer_backward(
-            [(0, len(in_vec)), (len(in_vec), len(in_vec) + len(out_vec))],
-            in_vec + out_vec,
-            [],
-        )
+
+        result_dist_attrs = self.rule.infer_backward(in_vec, out_vec)
+
         self.assertEqual(len(result_dist_attrs), 2)
         self.assertEqual(len(result_dist_attrs[0]), 1)
         self.assertEqual(len(result_dist_attrs[1]), 3)

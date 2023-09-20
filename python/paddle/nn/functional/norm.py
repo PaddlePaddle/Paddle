@@ -17,7 +17,7 @@ import numbers
 # TODO: define normalization api
 import paddle
 from paddle import _C_ops, base, in_dynamic_mode
-from paddle.base.framework import in_dygraph_mode
+from paddle.base.framework import in_dygraph_mode, in_dynamic_or_pir_mode
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
@@ -342,7 +342,7 @@ def layer_norm(
             + str(input_shape)
         )
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.layer_norm(x, weight, bias, epsilon, begin_norm_axis)
         return out
 

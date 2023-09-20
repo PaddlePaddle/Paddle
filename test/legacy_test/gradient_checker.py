@@ -25,7 +25,7 @@ from paddle.base.backward import _append_grad_suffix_, _as_list
 
 
 def _product(t):
-    return int(np.product(t))
+    return int(np.prod(t))
 
 
 def dtype_to_np_dtype(dtype):

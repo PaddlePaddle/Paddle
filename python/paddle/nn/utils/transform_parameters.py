@@ -178,4 +178,3 @@ def vector_to_parameters(vec, parameters, name=None):
 
     for i, param in enumerate(parameters):
         _inplace_reshape_dygraph(param, origin_shapes[i])
-    return

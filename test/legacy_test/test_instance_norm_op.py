@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 import parameterized as param
 from op_test import OpTest
+from utils import static_guard
 
 import paddle
 from paddle import base, nn
@@ -428,7 +429,7 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
         if len(self.places) < 1:
             return
 
-        with paddle.base.framework._static_guard():
+        with static_guard():
             for place in self.places:
                 fwd_actual.append([])
                 rev_actual.append([])
