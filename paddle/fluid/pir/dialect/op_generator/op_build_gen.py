@@ -25,6 +25,7 @@ _PREPARE_DATA_WITH_VECTOR_INT64_MTTABLE_ATTRIBUTE = {'FrobeniusNormOp'}
 
 OP_BUILD_TEMPLATE = """
 void {op_name}::Build({build_args}) {{
+{build_info}
 {get_attributes}
 {build_mutable_attributes}
 {build_inputs}
@@ -32,6 +33,8 @@ void {op_name}::Build({build_args}) {{
 {build_outputs}
 }}
 """
+
+OP_INFO_TEMPLATE = '  VLOG(4) << "Start build {op_name}";\n'
 
 
 def GenBuildInputArgsStr(
@@ -624,6 +627,7 @@ def gen_build_func_str(
 ):
     build_args_for_declare = ""
     build_func = ""
+    build_info_str = OP_INFO_TEMPLATE.format(op_name=op_class_name)
 
     build_args_for_declare = GenBuildInputArgsStr(
         op_input_name_list,
@@ -797,6 +801,7 @@ def gen_build_func_str(
 
     build_func = OP_BUILD_TEMPLATE.format(
         op_name=op_class_name,
+        build_info=build_info_str,
         build_args=build_args_for_define,
         build_mutable_attributes=inset_full_for_mutable_attributes_str,
         get_attributes=get_attributes_str,
