@@ -79,8 +79,12 @@ class StaticPyLayer:
         dyfunc_sig = inspect.signature(self.dyfunc_self.forward)
         bound_args = dyfunc_sig.bind(self.dyfunc_self, *args, **kwargs)
         bound_args.apply_defaults()
-        input_args = [item for i, item in enumerate(bound_args.arguments.values()) if i > 0]   # index 0 indicate `dyfunc_self` which shouldn't be put into `input_args`
-        
+        input_args = [
+            item
+            for i, item in enumerate(bound_args.arguments.values())
+            if i > 0
+        ]  # index 0 indicate `dyfunc_self` which shouldn't be put into `input_args`
+
         return static_pylayer(
             forward_fn=self.forward_fn_with_ctx,
             inputs=input_args,

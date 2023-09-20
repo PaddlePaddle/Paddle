@@ -45,9 +45,12 @@ class StaticPyLayerBlockGuard(BlockGuard):
 
 class StaticPyLayerBlock:
     def __init__(self, inputs, name=None, pylayer_context=None):
-        
         # used to specify the Variable type `Input` to `pylayer` op
-        self.fwd_inputs = [each_input for each_input in inputs if isinstance(each_input, Variable)]     # filter non-Variable inputs
+        self.fwd_inputs = [
+            each_input
+            for each_input in inputs
+            if isinstance(each_input, Variable)
+        ]  # filter non-Variable inputs
 
         # used to specify the `Out` to `pylayer` op
         self.fwd_outputs = []
@@ -343,7 +346,9 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
         origin_output = forward_fn(*inputs)
         if origin_output is not None:
             output = map_structure(copy_to_parent_func, origin_output)
-            mgr.fwd_outputs = [x for x in flatten(output) if isinstance(x, Variable)]
+            mgr.fwd_outputs = [
+                x for x in flatten(output) if isinstance(x, Variable)
+            ]
         else:
             mgr.fwd_outputs = []
 
@@ -357,7 +362,7 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
         # **Create the backward input** from the output of the op to build the
         # backward block, and then delete it.
         grad_var_ins = []
-        for fwd_var in pylayer_block_manager.fwd_outputs:        
+        for fwd_var in pylayer_block_manager.fwd_outputs:
             fwd_var_name = fwd_var.name
             bwd_var_name = _append_grad_suffix_(fwd_var_name)
             if not current_block.desc.has_var_recursive(fwd_var_name.encode()):
