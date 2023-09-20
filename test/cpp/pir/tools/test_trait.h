@@ -11,26 +11,27 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "test/cpp/pir/tools/test_dialect.h"
-#include "paddle/pir/core/ir_printer.h"
-#include "test/cpp/pir/tools/test_op.h"
+#pragma once
+#include <gtest/gtest.h>
+#include <sstream>
+
+#include "paddle/pir/core/op_base.h"
+
 namespace test {
 
-TestDialect::TestDialect(pir::IrContext *context)
-    : pir::Dialect(name(), context, pir::TypeId::get<TestDialect>()) {
-  initialize();
-}
-void TestDialect::initialize() {
-  RegisterOps<RegionOp, BranchOp, Operation1, Operation2>();
-}
+class ReadOnlyTrait : public pir::OpTraitBase<ReadOnlyTrait> {
+ public:
+  explicit ReadOnlyTrait(pir::Operation *op)
+      : pir::OpTraitBase<ReadOnlyTrait>(op) {}
+};
 
-void TestDialect::PrintOperation(pir::Operation *op,
-                                 pir::IrPrinter &printer) const {
-  printer.PrintOpResult(op);
-  printer.os << " =";
+class OneRegionTrait : public pir::OpTraitBase<OneRegionTrait> {
+ public:
+  explicit OneRegionTrait(pir::Operation *op)
+      : pir::OpTraitBase<OneRegionTrait>(op) {}
+  static void Verify(pir::Operation *op);
+};
 
-  printer.os << " \"" << op->name() << "\"";
-  printer.PrintOpOperands(op);
-}
 }  // namespace test
-IR_DEFINE_EXPLICIT_TYPE_ID(test::TestDialect)
+IR_DECLARE_EXPLICIT_TYPE_ID(test::ReadOnlyTrait)
+IR_DECLARE_EXPLICIT_TYPE_ID(test::OneRegionTrait)

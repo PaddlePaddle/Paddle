@@ -584,7 +584,7 @@ Operation *BuildOpFrom(
                  std::back_inserter(to_create_argument.inputs),
                  [&value_map](const pir::OpOperand &operand) {
                    // Operand -> OpResult
-                   return OpResult::dyn_cast_from(value_map[operand.source()]);
+                   return value_map[operand.source()];
                  });
   auto *cloned_op = Operation::Create(std::move(to_create_argument));
 
@@ -780,11 +780,8 @@ SplitedResult ForwardBackwardSplit(
          pir::StrAttribute::get(
              ctx, std::string("output_") + std::to_string(counter))},
     };
-    pir::Operation *operation =
-        pir::Operation::Create({OpResult::dyn_cast_from(forward_value_map[v])},
-                               attribute_map,
-                               {},
-                               op_info);
+    pir::Operation *operation = pir::Operation::Create(
+        {forward_value_map[v]}, attribute_map, {}, op_info);
     forward_program->block()->push_back(operation);
     counter += 1;
   };
@@ -803,10 +800,7 @@ SplitedResult ForwardBackwardSplit(
              ctx, std::string("output_") + std::to_string(counter))},
     };
     pir::Operation *operation = pir::Operation::Create(
-        {OpResult::dyn_cast_from(backward_value_map.at(v))},
-        attribute_map,
-        {},
-        op_info);
+        {backward_value_map.at(v)}, attribute_map, {}, op_info);
     backward_program->block()->push_back(operation);
     counter += 1;
   };
