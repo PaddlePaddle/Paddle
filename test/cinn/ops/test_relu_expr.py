@@ -21,7 +21,7 @@ from op_test import OpTest
 
 inputs = {"x": OpTest.random([8, 8], "float32", -1.0, 1.0)}
 
-builder = NetBuilder("relu")
+builder = NetBuilder("MapExprTest")
 x = builder.create_input(Float(32), inputs["x"].shape, "x")
 y = builder.sin(x)
 out = builder.relu(y)
