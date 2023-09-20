@@ -48,5 +48,16 @@ void APIBuilder::ResetInsertionPointToEnd() {
   builder_->SetInsertionPointToEnd(builder_->block());
 }
 
+pir::Parameter* APIBuilder::GetParameter(const std::string& name) const {
+  pir::Program* program = builder_->block()->GetParentOp()->GetParentProgram();
+  return program->GetParameter(name);
+}
+
+void APIBuilder::SetParameter(const std::string& name,
+                              std::unique_ptr<pir::Parameter>&& parameter) {
+  pir::Program* program = builder_->block()->GetParentOp()->GetParentProgram();
+  program->SetParameter(name, std::move(parameter));
+}
+
 }  // namespace dialect
 }  // namespace paddle

@@ -515,11 +515,12 @@ def _add_pir_fetch_ops(program, fetch_list, fetch_var_name):
     if not has_fetch_operations(
         global_block, fetch_list, fetch_var_name, fetch_op
     ):
-        for i, fetch_input in enumerate(fetch_list):
-            assert isinstance(
-                fetch_input, OpResult
-            ), "Wrong type for fetch_list[%s]: %s" % (i, type(fetch_input))
-            paddle._ir_ops.fetch(fetch_input, fetch_var_name + str(i), i)
+        with paddle.static.program_guard(program):
+            for i, fetch_input in enumerate(fetch_list):
+                assert isinstance(
+                    fetch_input, OpResult
+                ), "Wrong type for fetch_list[%s]: %s" % (i, type(fetch_input))
+                paddle._ir_ops.fetch(fetch_input, fetch_var_name + str(i), i)
 
 
 def _merge_tensors(tensor, micro_batch_num):

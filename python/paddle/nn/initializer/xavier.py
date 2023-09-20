@@ -88,12 +88,13 @@ class XavierInitializer(Initializer):
 
         block = self._check_block(block)
         assert isinstance(block, (framework.Block, paddle.ir.Block))
-        check_variable_and_dtype(
-            var,
-            "Out",
-            ["uint16", "float16", "float32", "float64"],
-            "xavier_init",
-        )
+        if not isinstance(var, paddle.ir.core.ParameterMeta):
+            check_variable_and_dtype(
+                var,
+                "Out",
+                ["uint16", "float16", "float32", "float64"],
+                "xavier_init",
+            )
 
         f_in, f_out = self._compute_fans(var)
 

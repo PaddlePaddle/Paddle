@@ -58,7 +58,12 @@ class ConstantInitializer(Initializer):
 
         assert isinstance(
             var,
-            (framework.Variable, framework.EagerParamBase, paddle.ir.OpResult),
+            (
+                framework.Variable,
+                framework.EagerParamBase,
+                paddle.ir.OpResult,
+                paddle.ir.core.ParameterMeta,
+            ),
         )
         assert isinstance(block, (framework.Block, paddle.ir.Block))
 

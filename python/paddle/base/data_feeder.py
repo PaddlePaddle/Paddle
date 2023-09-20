@@ -47,7 +47,7 @@ _PADDLE_DTYPE_2_NUMPY_DTYPE = {
 _PADDLE_NEW_IR_DTYPE_2_NUMPY_DTYPE = {
     core.DataType.BOOL: 'bool',
     core.DataType.FLOAT16: 'float16',
-    core.DataType.UINT16: 'uint16',
+    core.DataType.BFLOAT16: 'uint16',
     core.DataType.FLOAT32: 'float32',
     core.DataType.FLOAT64: 'float64',
     core.DataType.INT8: 'int8',
