@@ -41,9 +41,6 @@ REGISTER_SPMD_RULE(min, ReductionSPMDRule);
 REGISTER_SPMD_RULE(prod, ReductionSPMDRule);
 REGISTER_SPMD_RULE(sum, ReductionSPMDRule);
 
-// layer_norm rule
-REGISTER_SPMD_RULE(layer_norm, LayerNormSPMDRule);
-
 // replicated rule
 REGISTER_SPMD_RULE(replicated, ReplicatedSPMDRule);
 
