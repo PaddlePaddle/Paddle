@@ -598,22 +598,17 @@ def mapping_to_dist_operator_impl_matmul(dist_op, original_op_dist_attr):
     k_axis_dim = x_dims_mapping[-2] if trans_x else x_dims_mapping[-1]
     n_axis_dim = y_dims_mapping[-2] if trans_y else y_dims_mapping[-1]
 
-    print(f"matmul  k:{k_axis_dim}, n:{n_axis_dim}")
     # col parallel matmul
     if is_dim_replicate(k_axis_dim) and is_dim_shard(n_axis_dim):
         op_dist_attr.impl_idx = 0
-        print("col parallel matmul")
     # row parallel matmul
     elif is_dim_shard(k_axis_dim) and is_dim_replicate(n_axis_dim):
         op_dist_attr.impl_idx = 1
-        print("row parallel matmul")
     # k, n unsharded matmul
     elif is_dim_replicate(n_axis_dim) and is_dim_replicate(k_axis_dim):
         op_dist_attr.impl_idx = 2
-        print("unsharded parallel matmul")
     # TODO support new dist op impl: m (not broadcast axis) sharded, backward need allreduce on Y
     else:
-        print("revert parallel matmul")
         dist_op.dist_attr = original_op_dist_attr
         reverted = True
 

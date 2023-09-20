@@ -638,7 +638,7 @@ def update_op_dims_mapping(
         if (infered_dims_mapping is not None) and (
             original_dims_mapping != infered_dims_mapping
         ):
-            print(
+            distop_logger.debug(
                 "Changed: Op [{}], name [{}], Original [{}], Infered [{}]".format(
                     dist_op.serial_op.type,
                     input_arg_names[i],
@@ -659,7 +659,7 @@ def update_op_dims_mapping(
         if (infered_dims_mapping is not None) and (
             original_dims_mapping != infered_dims_mapping
         ):
-            print(
+            distop_logger.debug(
                 "Changed: Op [{}], name [{}], Original [{}], Infered [{}]".format(
                     dist_op.serial_op.type,
                     output_arg_names[i],
