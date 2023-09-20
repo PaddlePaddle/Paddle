@@ -2709,7 +2709,7 @@ class OpTest(unittest.TestCase):
         outs.sort(key=len)
         checker(outs)
         if check_new_ir:
-            with paddle.new_ir_utils.IrGuard():
+            with paddle.pir_utils.IrGuard():
                 outs_p = self._calc_new_ir_output(place)
                 outs_p = [outs_p[out] for out in outs_p]
                 outs_p.sort(key=len)

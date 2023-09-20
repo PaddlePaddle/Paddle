@@ -422,6 +422,7 @@ class TestPoissonBF16Op(OpTest):
             user_defined_grad_outputs=[
                 np.random.rand(2048, 1024).astype("float32")
             ],
+            check_new_ir=True,
         )
 
 

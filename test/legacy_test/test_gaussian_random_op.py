@@ -106,10 +106,19 @@ class TestGaussianRandomFP16Op(OpTest):
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
+def gaussian_wrapper(dtype_=np.uint16):
+    def gauss_wrapper(shape, mean, std, seed, dtype=np.uint16, name=None):
+        return paddle.tensor.random.gaussian(
+            shape, mean, std, seed, dtype, name
+        )
+
+    return gauss_wrapper
+
+
 class TestGaussianRandomBF16Op(OpTest):
     def setUp(self):
         self.op_type = "gaussian_random"
-        self.python_api = paddle.tensor.random.gaussian
+        self.python_api = gaussian_wrapper(dtype_=np.uint16)
         self.set_attrs()
         self.inputs = {}
         self.use_mkldnn = False
@@ -226,28 +235,28 @@ class TestGaussianRandomOp4_ShapeTensorList(
 
 
 # Situation 3: shape is a tensor
-# class TestGaussianRandomOp1_ShapeTensor(TestGaussianRandomOp):
-#     def setUp(self):
-#         '''Test gaussian_random op with specified value'''
-#         self.op_type = "gaussian_random"
-#         self.init_data()
-#         self.use_mkldnn = False
-#         self.python_api = paddle.tensor.random.gaussian
-#         self.inputs = {"ShapeTensor": np.array(self.shape).astype("int32")}
-#         self.attrs = {
-#             'mean': self.mean,
-#             'std': self.std,
-#             'seed': self.seed,
-#             'use_mkldnn': self.use_mkldnn,
-#         }
-#         self.outputs = {'Out': np.zeros((123, 92), dtype='float32')}
+class TestGaussianRandomOp1_ShapeTensor(TestGaussianRandomOp):
+    def setUp(self):
+        '''Test gaussian_random op with specified value'''
+        self.op_type = "gaussian_random"
+        self.init_data()
+        self.use_mkldnn = False
+        self.python_api = paddle.tensor.random.gaussian
+        self.inputs = {"ShapeTensor": np.array(self.shape).astype("int32")}
+        self.attrs = {
+            'mean': self.mean,
+            'std': self.std,
+            'seed': self.seed,
+            'use_mkldnn': self.use_mkldnn,
+        }
+        self.outputs = {'Out': np.zeros((123, 92), dtype='float32')}
 
-#     def init_data(self):
-#         self.shape = [123, 92]
-#         self.use_mkldnn = False
-#         self.mean = 1.0
-#         self.std = 2.0
-#         self.seed = 10
+    def init_data(self):
+        self.shape = [123, 92]
+        self.use_mkldnn = False
+        self.mean = 1.0
+        self.std = 2.0
+        self.seed = 10
 
 
 # Test python API

@@ -121,7 +121,7 @@ class TestEmptyOp_ShapeTensor(OpTest):
         self.outputs = {'Out': np.zeros(self.shape).astype(dtype)}
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output, check_new_ir=False)
+        self.check_output_customized(self.verify_output, check_new_ir=True)
 
     def verify_output(self, outs):
         data_type = outs[0].dtype

@@ -69,6 +69,7 @@ VJPS = [
     'layer_norm_grad',
     'embedding_grad',
     'scale_grad',
+    'poission_grad',
 ]
 
 
