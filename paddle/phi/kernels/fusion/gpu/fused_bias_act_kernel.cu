@@ -223,6 +223,7 @@ void ComputeImpl(const Context &dev_ctx,
     }
   } else if (act_method == "relu") {
     VLOG(8) << "Doing RELU";
+    // for opt model
     LaunchBiasAct<T, Context, ReluFunctor<T>, LoadFunc, StoreFunc, LoadT>(
         dev_ctx, bias_data, rows, cols, load_func, store_func);
   } else {
