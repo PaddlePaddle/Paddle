@@ -700,7 +700,7 @@ class PartialProgramLayer:
         extra_info['forward_inputs'] = inputs
         extra_info['forward_outputs'] = targets
         extra_info['forward_end_op_idx'] = forward_end_idx
-        inputs_size = len(self._inputs.tolist())
+        inputs_size = len(inputs)
         extra_info['forward_inputs_grads'] = list(
             map(mapping_op_result, grad_info_map[0:inputs_size])
         )
@@ -726,7 +726,7 @@ class PartialProgramLayer:
         required_param_values = []
         block = program.global_block()
         for param, param_value in zip(self._params, self._param_values):
-            if param_value.has_one_use():
+            if not param_value.use_empty():
                 required_params.append(param)
                 required_param_values.append(param_value)
 
@@ -818,7 +818,6 @@ class PartialProgramLayer:
         # backward_skip_vars = self._parse_skip_gc_vars(
         # whole_program
         # ) + self._grad_var_names.get('param', [])
-
         (
             forward_program,
             backward_program,
@@ -960,11 +959,8 @@ class PartialProgramLayer:
                 tensor_type = paddle.dtype(8)  # SELECT ROW TENSOR
 
             # TODO(xiongkun): more elegent way to do it.
-            ir_dtype_2_tensor_dtype = {
-                10: paddle.dtype(5),
-            }
             out = core.eager.Tensor(
-                ir_dtype_2_tensor_dtype[int(var.dtype)],
+                ir_static.ir_dtype_2_tensor_dtype[var.dtype],
                 var.shape,
                 "",
                 tensor_type,

@@ -125,7 +125,7 @@ def _convert_into_variable(tensor):
     """
     Convert Tensor into Variable.
     """
-    if paddle.ir.core._use_new_ir_api():
+    if paddle.framework.use_pir_api():
         return paddle.ir.core._convert_into_opresult(tensor)
     if isinstance(tensor, core.eager.Tensor):
         # Check whether has been created before.

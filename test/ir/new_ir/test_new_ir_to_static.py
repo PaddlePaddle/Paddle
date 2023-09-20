@@ -152,5 +152,48 @@ class TestLossFor10Steps(unittest.TestCase):
         )
 
 
+class TestDy2staticNewIR5(unittest.TestCase):
+    def test_run(self):
+        # Dy2static RunProgramOp support nn.Layer's forward and backward training.
+        class SimpleNet(paddle.nn.Layer):
+            def __init__(self):
+                super().__init__()
+                self.linear = paddle.nn.Linear(10, 10)
+
+            def forward(self, x, y):
+                if y is True:
+                    return self.linear(x)
+                else:
+                    m = self.linear(x)
+                    return m * m
+
+        def train_step(to_static=True):
+            paddle.seed(2023)
+            x = paddle.randn((10, 10), dtype='float32')
+            y = paddle.randn((10, 10), dtype='float32')
+            loss_fn = paddle.nn.loss.MSELoss()
+            net = SimpleNet()
+            optimizer = paddle.optimizer.SGD(
+                learning_rate=0.1, parameters=net.parameters()
+            )
+            if to_static:
+                net = paddle.jit.to_static(net)
+            losses = []
+            for step in range(100):
+                y_pred = net(x, step % 2 == 1)
+                loss = loss_fn(y_pred, y)
+                loss.backward()
+                optimizer.step()
+                optimizer.clear_grad()
+                losses.append(loss.numpy())
+            return losses
+
+        expected_losses = train_step(True)
+        losses = train_step(False)
+        np.testing.assert_allclose(
+            losses, expected_losses, rtol=1e-05, atol=1e-8
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
