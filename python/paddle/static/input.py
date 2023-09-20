@@ -128,9 +128,9 @@ def data(name, shape, dtype=None, lod_level=0):
     if in_pir_mode():
         ir_dtype = paddle.ir.core.convert_np_dtype_to_dtype_(dtype)
         _reset_data_op_insertion_point()
-        data_op = paddle._ir_ops.data(name, shape, ir_dtype, core.Place())
+        out = paddle._ir_ops.data(name, shape, ir_dtype, core.Place())
         paddle.ir.reset_insertion_point_to_end()
-        return data_op
+        return out
 
     out = helper.create_global_variable(
         name=name,

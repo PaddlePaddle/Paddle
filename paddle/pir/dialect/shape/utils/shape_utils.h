@@ -187,4 +187,38 @@ class SymbolicDimShapeAnalysis : public ShapeAnalysis {
   SymbolicDimMgr mgr_;
   std::unordered_map<Value, std::vector<SymbolicDim>> value2SymDims_;
 };
+
+class ShapeComputationIRAnalysis {
+ public:
+  using func = std::function<bool(Operation* op)>;
+  explicit ShapeComputationIRAnalysis(ModuleOp m,
+                                      SymbolicDimMgr& mgr);  // NOLINT
+  bool Run();
+
+ private:
+  bool RunOnRegion(Region* region, func fn);
+  bool RunOnBlock(Block* block, func fn);
+  bool RunOnOperation(Operation* op, func fn);
+
+  bool BuildShapeOnOperation(Operation* op);
+  bool BuildShapeOnValue(Value value);
+
+  bool ApplyOpConstraint(Operation* op);
+  bool ApplyIndexOpConstraint(Operation* op);
+  bool ApplyTieShapeOpConstraint(Operation* op);
+
+  bool initialized_ = false;
+  ModuleOp m_;
+  SymbolicDimMgr& mgr_;
+
+  std::unordered_map<Value, SymbolicDim> value2SymDim_;
+
+  // shape tensor is the 1D ranked tensor with int/index dtype.
+  std::unordered_map<Value, std::vector<SymbolicDim>> shapeTensor2SymDims_;
+
+  std::unordered_map<Value, std::vector<SymbolicDim>> rankedTensor2SymDims_;
+};
+
+bool IsIntOrIndex(Type type);
+bool IsCandidateShapeTensorType(Type ty);
 }  // namespace pir
