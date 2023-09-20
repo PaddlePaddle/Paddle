@@ -23,7 +23,6 @@
 namespace cinn {
 namespace hlir {
 namespace framework {
-using newir::CompatibleInfo;
 
 // TODO(Aurelius84): Need abstract this logic to implement Proxy for
 // the co-existance with GraphCompiler.
@@ -131,7 +130,7 @@ std::shared_ptr<Scope> BuildScope(const Target& target,
     if (visited.count(value) > 0) return;
     visited.emplace(value);
 
-    std::string name = CompatibleInfo::ValueName(value);
+    std::string name = newir::CompatibleInfo::ValueName(value);
     auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
     auto* var = scope->Var<Tensor>(name);
     auto& tensor = absl::get<Tensor>(*var);
