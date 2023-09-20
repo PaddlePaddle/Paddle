@@ -393,7 +393,7 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
   // PyInterpreterFrame and causes a Segmentation Fault when Fallback to run
   // original frame. So we pass a PyInterpreterFrame to
   // _PyFrame_FastToLocalsWithError directly. But this is an internal API, so we
-  // copy lots of code from CPython project into our project.
+  // copy many code from CPython project into our project.
   if (Internal_PyFrame_FastToLocalsWithError(frame) < 0) {
 #else
   if (PyFrame_FastToLocalsWithError(frame) < 0) {
