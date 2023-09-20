@@ -670,7 +670,7 @@ class PartialProgramLayer:
                         continue
                     opres = (
                         program.global_block()
-                        .ops[forward_end_idx + not_stop_gradient_num]
+                        .ops[forward_end_idx + 2 * not_stop_gradient_num + 1]
                         .results()[0]
                     )
                     forward_outputs_grads.append(opres)
@@ -796,7 +796,7 @@ class PartialProgramLayer:
         forward_outputs_grads = self.get_program_extra(whole_program)[
             'forward_outputs_grads'
         ]
-        backward_start_op_index = forward_end_op_index + len(
+        backward_start_op_index = forward_end_op_index + 2 * len(
             list(filter(lambda r: r.stop_gradient is False, self._outputs))
         )
         backward_end_op_index = len(whole_program.global_block().ops)
