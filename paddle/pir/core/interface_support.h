@@ -23,8 +23,7 @@ template <typename ConcreteT, typename... Args>
 class ConstructInterfacesOrTraits {
  public:
   /// Construct method for interfaces.
-  static details::InterfaceValue *interface(
-      details::InterfaceValue *p_interface) {
+  static InterfaceValue *interface(InterfaceValue *p_interface) {
     (void)std::initializer_list<int>{
         0, (PlacementConstrctInterface<Args>(p_interface), 0)...};
     return p_interface;
@@ -41,8 +40,8 @@ class ConstructInterfacesOrTraits {
   /// Placement new interface.
   template <typename T>
   static void PlacementConstrctInterface(
-      details::InterfaceValue *&p_interface) {  // NOLINT
-    p_interface->swap(details::InterfaceValue::get<ConcreteT, T>());
+      InterfaceValue *&p_interface) {  // NOLINT
+    p_interface->swap(InterfaceValue::get<ConcreteT, T>());
     VLOG(6) << "New a interface: id["
             << (p_interface->type_id()).AsOpaquePointer() << "].";
     ++p_interface;
@@ -62,8 +61,7 @@ template <typename ConcreteT, typename... Args>
 class ConstructInterfacesOrTraits<ConcreteT, std::tuple<Args...>> {
  public:
   /// Construct method for interfaces.
-  static details::InterfaceValue *interface(
-      details::InterfaceValue *p_interface) {
+  static InterfaceValue *interface(InterfaceValue *p_interface) {
     return ConstructInterfacesOrTraits<ConcreteT, Args...>::interface(
         p_interface);
   }
@@ -80,10 +78,10 @@ void *LookUp(const TypeId &interface_id,
              const uint32_t num_traits,
              const T *t) {
   if (num_interfaces > 0) {
-    const details::InterfaceValue *p_first_interface =
-        reinterpret_cast<const details::InterfaceValue *>(
+    const InterfaceValue *p_first_interface =
+        reinterpret_cast<const InterfaceValue *>(
             reinterpret_cast<const char *>(t) - sizeof(TypeId) * num_traits -
-            sizeof(details::InterfaceValue) * num_interfaces);
+            sizeof(InterfaceValue) * num_interfaces);
     size_t left = 0, right = num_interfaces;
     while (left < right) {
       size_t mid = (left + right) / 2;
@@ -100,9 +98,9 @@ void *LookUp(const TypeId &interface_id,
 }
 
 template <typename ConcreteT, typename InterfaceList>
-std::vector<details::InterfaceValue> GetInterfaceMap() {
+std::vector<InterfaceValue> GetInterfaceMap() {
   constexpr size_t interfaces_num = std::tuple_size<InterfaceList>::value;
-  std::vector<details::InterfaceValue> interfaces_map(interfaces_num);
+  std::vector<InterfaceValue> interfaces_map(interfaces_num);
   ConstructInterfacesOrTraits<ConcreteT, InterfaceList>::interface(
       interfaces_map.data());
   return interfaces_map;

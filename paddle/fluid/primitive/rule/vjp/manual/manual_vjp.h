@@ -23,5 +23,9 @@ namespace paddle {
 namespace primitive {
 
 using IntArray = paddle::experimental::IntArray;
+std::vector<std::vector<paddle::Tensor>> add_n_vjp(
+    const std::vector<paddle::Tensor>& x,
+    const Tensor& out_grad,
+    const std::vector<std::vector<bool>>& stop_gradients);
 }  // namespace primitive
 }  // namespace paddle
