@@ -12,18 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef GET_MANUAL_OP_LIST
-#undef GET_MANUAL_OP_LIST
-paddle::dialect::AddNOp, paddle::dialect::SplitGradOp, paddle::dialect::IfOp
-
-#else
-
 #pragma once
 #include <vector>
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
+#include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_util.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
@@ -36,7 +31,10 @@ paddle::dialect::AddNOp, paddle::dialect::SplitGradOp, paddle::dialect::IfOp
 namespace paddle {
 namespace dialect {
 
-class AddNOp : public pir::Op<AddNOp, OpYamlInfoInterface, InferMetaInterface> {
+class AddNOp : public pir::Op<AddNOp,
+                              paddle::dialect::OpYamlInfoInterface,
+                              paddle::dialect::InferMetaInterface,
+                              paddle::dialect::VjpInterface> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.add_n"; }
@@ -51,6 +49,10 @@ class AddNOp : public pir::Op<AddNOp, OpYamlInfoInterface, InferMetaInterface> {
   pir::Value inputs() { return operand_source(0); }
   pir::OpResult out() { return result(0); }
   static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<std::vector<pir::OpResult>> Vjp(
+      pir::Operation *op,
+      const std::vector<std::vector<pir::Value>> &out_grads,
+      const std::vector<std::vector<bool>> &stop_gradients);
 };
 
 class AddN_Op : public pir::Op<AddN_Op,
@@ -201,4 +203,3 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNWithKernelOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueGradOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::IfOp)
-#endif

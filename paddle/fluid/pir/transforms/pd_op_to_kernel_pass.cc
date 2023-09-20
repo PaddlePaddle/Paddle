@@ -663,6 +663,7 @@ void HandleForIfOp(
     std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
     std::unordered_map<pir::Value, pir::OpResult>* map_value_pair) {
   auto cur_in = op_item->operand_source(0);
+
   PADDLE_ENFORCE_EQ(
       map_value_pair->count(cur_in),
       true,
@@ -673,13 +674,16 @@ void HandleForIfOp(
   pir::Builder builder(ctx, block);
 
   auto base_if_op = op_item->dyn_cast<paddle::dialect::IfOp>();
-  auto allocated_dense_tensor_dtype =
-      paddle::dialect::AllocatedDenseTensorType::get(
-          ctx,
-          place,
-          base_if_op.result(0).type().dyn_cast<dialect::DenseTensorType>());
-  auto new_if_op = builder.Build<paddle::dialect::IfOp>(
-      new_in, std::vector<pir::Type>{allocated_dense_tensor_dtype});
+  std::vector<pir::Type> op_output_types;
+  for (size_t i = 0; i < base_if_op.num_results(); ++i) {
+    op_output_types.push_back(paddle::dialect::AllocatedDenseTensorType::get(
+        ctx,
+        place,
+        base_if_op.result(i).type().dyn_cast<dialect::DenseTensorType>()));
+  }
+  auto new_if_op =
+      builder.Build<paddle::dialect::IfOp>(new_in, std::move(op_output_types));
+
   // process true block
   pir::Block* true_block = new_if_op.true_block();
   ProcessBlock(place,
