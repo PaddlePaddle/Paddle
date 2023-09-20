@@ -109,10 +109,10 @@ tmp_dir=`mktemp -d`
 tmpfile_rand=`date +%s%N`
 tmpfile=$tmp_dir/$tmpfile_rand"_"$i
 set +e
-ctest --output-on-failure -R "($parallel_list)" --timeout 120 -j4 | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0;
+ctest --output-on-failure -R "($parallel_list)" --timeout 120 -j4 | tee -a $tmpfile; test ${PIPESTATUS[0]} -eq 0;
 EXIT_CODE_1=$?
 
-ctest --output-on-failure -R "($serial_list)" --timeout 120 -j1 | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0;
+ctest --output-on-failure -R "($serial_list)" --timeout 120 -j1 | tee -a $tmpfile; test ${PIPESTATUS[0]} -eq 0;
 EXIT_CODE_2=$?
 set -e
 
