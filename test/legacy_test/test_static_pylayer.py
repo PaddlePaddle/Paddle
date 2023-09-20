@@ -16,10 +16,11 @@ import functools
 import unittest
 
 import numpy as np
+from legacy_test.test_prune import TestExecutorRunAutoPrune, TestPruneBase
 
 import paddle
 from paddle import base
-from paddle.base import core, framework
+from paddle.base import core
 from paddle.base.backward import append_backward
 from paddle.base.framework import Program, program_guard
 
@@ -27,14 +28,15 @@ np.random.seed(123)
 
 
 class TestStaticPyLayerInputOutput(unittest.TestCase):
+    def setUp(self):
+        paddle.enable_static()
+
     def test_return_single_var(self):
         """
         pseudocode:
 
         y = 3 * x
         """
-
-        paddle.enable_static()
 
         def forward_fn(x):
             return 3 * x
@@ -65,8 +67,6 @@ class TestStaticPyLayerInputOutput(unittest.TestCase):
         y = 3 * x
         """
 
-        paddle.enable_static()
-
         def forward_fn(x):
             return 3 * x
 
@@ -95,8 +95,6 @@ class TestStaticPyLayerInputOutput(unittest.TestCase):
         y = 3 * x
         dx = -5 * dy
         '''
-
-        paddle.enable_static()
 
         def forward_fn(x):
             return 3 * x
@@ -132,8 +130,6 @@ class TestStaticPyLayerInputOutput(unittest.TestCase):
         self.assertEqual(x_grad.shape, ())
 
     def test_return_var_typle(self):
-        paddle.enable_static()
-
         def forward_fn(a, b):
             return 3 * a, -2 * b
 
@@ -168,8 +164,6 @@ class TestStaticPyLayerInputOutput(unittest.TestCase):
         )
 
     def test_return_forward_none(self):
-        paddle.enable_static()
-
         input_shape = (1, 3)
 
         def forward_fn(x):
@@ -198,8 +192,6 @@ class TestStaticPyLayerInputOutput(unittest.TestCase):
         test not all ``stop_gradient`` of inputs is True when ``backward_fn`` is None, and
         wrong number of inputs and outputs returned by ``forward_fn`` and ``backward_fn``
         """
-
-        paddle.enable_static()
 
         def forward_fn(a, b):
             return 3 * a, -b, paddle.mean(b)
@@ -233,6 +225,9 @@ class TestStaticPyLayerInputOutput(unittest.TestCase):
 
 
 class TestControlFlowNestedStaticPyLayer(unittest.TestCase):
+    def setUp(self):
+        paddle.enable_static()
+
     def test_cond_inside_static_pylayer(self):
         """
         forward propagation:
@@ -256,8 +251,6 @@ class TestControlFlowNestedStaticPyLayer(unittest.TestCase):
             else:
                 return daout_scaled, daout * daout
         """
-
-        paddle.enable_static()
 
         def forward_fn(i, a):
             return i, paddle.static.nn.cond(
@@ -344,9 +337,10 @@ class TestControlFlowNestedStaticPyLayer(unittest.TestCase):
 
 
 class TestStaticPyLayerBackward(unittest.TestCase):
-    def test_identity_backward(self):
+    def setUp(self):
         paddle.enable_static()
 
+    def test_identity_backward(self):
         def forward_fn(x):
             return x
 
@@ -406,8 +400,6 @@ class TestStaticPyLayerBackward(unittest.TestCase):
         dx = tanh(dy)
         '''
 
-        paddle.enable_static()
-
         def forward_fn(x):
             return 3 * x
 
@@ -456,7 +448,10 @@ class TestStaticPyLayerBackward(unittest.TestCase):
         )
 
 
-class TestStaticPyLayerPrune(unittest.TestCase):
+class TestStaticPyLayerPrune(TestPruneBase):
+    def setUp(self):
+        paddle.enable_static()
+
     def net(self):
         def forward_fn(x):
             y = 3 * x
@@ -511,200 +506,172 @@ class TestStaticPyLayerPrune(unittest.TestCase):
         return x, hidden, label, loss1, loss2, w_param_attrs
 
     def test_prune_with_input(self):
-        paddle.enable_static()
+        ops_before_pruned = [
+            "mul",
+            "elementwise_add",
+            "softmax",
+            "pylayer",
+            "reduce_mean",
+        ]
 
-        program = framework.Program()
-        startup_program = framework.Program()
-        block = program.global_block()
-        with base.program_guard(program, startup_program):
-            (x, hidden, y, loss) = self.net()
+        ops_after_pruned = ["pylayer", "reduce_mean"]
 
-        self.assertEqual(len(block.ops), 5)
-        self.assertEqual(
-            [op.type for op in block.ops],
-            [
-                "mul",
-                "elementwise_add",
-                "softmax",
-                "pylayer",
-                "reduce_mean",
-            ],
-        )
+        (x, hidden, y, loss), program = self.run_net(self.net)
 
-        pruned_program = program._prune_with_input(
-            feeded_var_names=[hidden.name], targets=[loss]
-        )
-
-        self.assertEqual(len(pruned_program.global_block().ops), 2)
-        self.assertEqual(
-            [op.type for op in pruned_program.global_block().ops],
-            ["pylayer", "reduce_mean"],
+        self.check_prune_with_input(
+            program, [hidden.name], [loss], ops_before_pruned, ops_after_pruned
         )
 
     def test_prune(self):
-        paddle.enable_static()
+        ops_before_pruned = [
+            "mul",
+            "elementwise_add",
+            "softmax",
+            "pylayer",
+            "reduce_mean",
+        ]
 
-        program = framework.Program()
-        startup_program = framework.Program()
-        block = program.global_block()
-        with base.program_guard(program, startup_program):
-            (x, hidden, y, loss) = self.net()
+        ops_after_pruned = [
+            "mul",
+            "elementwise_add",
+            "softmax",
+            "pylayer",
+            "reduce_mean",
+        ]
 
-        self.assertEqual(len(block.ops), 5)
-        self.assertEqual(
-            [op.type for op in block.ops],
-            [
-                "mul",
-                "elementwise_add",
-                "softmax",
-                "pylayer",
-                "reduce_mean",
-            ],
+        (x, hidden, y, loss), program = self.run_net(self.net)
+
+        self.check_prune(program, [loss], ops_before_pruned, ops_after_pruned)
+
+    def test_prune_target_not_list(self):
+        ops_before_pruned = [
+            "mul",
+            "elementwise_add",
+            "softmax",
+            "pylayer",
+            "reduce_mean",
+        ]
+
+        ops_after_pruned = [
+            "mul",
+            "elementwise_add",
+            "softmax",
+            "pylayer",
+            "reduce_mean",
+        ]
+
+        (x, hidden, y, loss), program = self.run_net(self.net)
+        self.check_prune_target_not_list(
+            program, loss, ops_before_pruned, ops_after_pruned
         )
 
-        pruned_program = program._prune(targets=[loss])
+    def test_prune_target_none(self):
+        ops_before_pruned = [
+            "mul",
+            "elementwise_add",
+            "softmax",
+            "pylayer",
+            "reduce_mean",
+        ]
 
-        self.assertEqual(len(pruned_program.global_block().ops), 5)
-        self.assertEqual(
-            [op.type for op in pruned_program.global_block().ops],
-            [
-                "mul",
-                "elementwise_add",
-                "softmax",
-                "pylayer",
-                "reduce_mean",
-            ],
-        )
+        (x, hidden, y, loss), program = self.run_net(self.net)
+        self.check_prune_target_none(program, ops_before_pruned)
 
-    def test_prune_fetches_without_optimizer(self):
-        """
-        Prune operators and variables which are not needed to generate 'fetches'.
-        """
+
+def net_with_weight1():
+    def forward_fn(x):
+        y = 3 * x
+        return y
+
+    def backward_fn(dy):
+        grad = paddle.exp(dy)
+        return grad
+
+    x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
+    x.desc.set_need_check_feed(False)
+    label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
+    label.desc.set_need_check_feed(False)
+    w_param_attrs = base.ParamAttr(
+        name="fc_weight",
+        learning_rate=0.5,
+        initializer=paddle.nn.initializer.Constant(1.0),
+        trainable=True,
+    )
+
+    y = paddle.static.nn.static_pylayer(forward_fn, [x], backward_fn)
+    hidden = paddle.static.nn.fc(
+        x=[y], size=4, activation="softmax", weight_attr=w_param_attrs
+    )
+    loss1 = paddle.nn.functional.cross_entropy(
+        input=hidden, label=label, reduction='none', use_softmax=False
+    )
+    loss1 = paddle.mean(x=loss1)
+    loss2 = paddle.nn.functional.cross_entropy(
+        input=hidden, label=label, reduction='none', use_softmax=False
+    )
+    loss2 = paddle.mean(x=loss2)
+    loss1.persistable = True
+    loss2.persistable = True
+
+    return x, hidden, label, loss1, loss2, w_param_attrs
+
+
+def net_with_weight2():
+    def forward_fn(x):
+        y = 3 * x
+        return y
+
+    def backward_fn(dy):
+        grad = paddle.exp(dy)
+        return grad
+
+    x1 = paddle.static.data(name='x1', shape=[-1, 2], dtype='float32')
+    x1.desc.set_need_check_feed(False)
+    x2 = paddle.static.data(name='x2', shape=[-1, 2], dtype='float32')
+    x2.desc.set_need_check_feed(False)
+    label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
+    label.desc.set_need_check_feed(False)
+    w1_param_attrs = base.ParamAttr(
+        name="fc_weight1",
+        learning_rate=0.5,
+        initializer=paddle.nn.initializer.Constant(1.0),
+        trainable=True,
+    )
+    w2_param_attrs = base.ParamAttr(
+        name="fc_weight2",
+        learning_rate=0.5,
+        initializer=paddle.nn.initializer.Constant(1.0),
+        trainable=True,
+    )
+
+    y1 = paddle.static.nn.static_pylayer(forward_fn, [x1], backward_fn)
+    hidden1 = paddle.static.nn.fc(
+        x=[y1], size=4, activation="softmax", weight_attr=w1_param_attrs
+    )
+    y2 = paddle.static.nn.static_pylayer(forward_fn, [x2], backward_fn)
+    hidden2 = paddle.static.nn.fc(
+        x=[y2], size=4, activation="softmax", weight_attr=w2_param_attrs
+    )
+
+    loss1 = paddle.nn.functional.cross_entropy(
+        input=hidden1, label=label, reduction='none', use_softmax=False
+    )
+    loss1 = paddle.mean(x=loss1)
+    loss2 = paddle.nn.functional.cross_entropy(
+        input=hidden2, label=label, reduction='none', use_softmax=False
+    )
+    loss2 = paddle.mean(x=loss2)
+    loss1.persistable = True
+    loss2.persistable = True
+
+    return x1, x2, y1, y2, label, loss1, loss2, w1_param_attrs, w2_param_attrs
+
+
+class TestStaticPyLayerExecutorAutoPrune(TestExecutorRunAutoPrune):
+    def setUp(self):
         paddle.enable_static()
-
-        program = framework.Program()
-        startup_program = framework.Program()
-        scope = base.Scope()
-        with base.scope_guard(scope):
-            with base.program_guard(program, startup_program):
-                (
-                    x,
-                    y,
-                    label,
-                    loss1,
-                    loss2,
-                    w_param_attrs,
-                ) = self.net_with_weight()
-                exe = base.Executor(base.CPUPlace())
-                exe.run(startup_program)
-                weight_init = np.array(
-                    scope.find_var(w_param_attrs.name).get_tensor()
-                )
-                x_np = np.random.random(size=(10, 2)).astype('float32')
-                label_np = np.random.randint(1, size=(10, 1)).astype('int64')
-                res = exe.run(
-                    program,
-                    feed={'x': x_np, 'label': label_np},
-                    fetch_list=[loss1.name],
-                    use_prune=True,
-                )
-                self.assertIsNotNone(scope.find_var(loss1.name))
-                self.assertIsNone(scope.find_var(loss2.name))  # loss2 is pruned
-                weight = np.array(
-                    scope.find_var(w_param_attrs.name).get_tensor()
-                )
-                np.testing.assert_array_equal(
-                    weight_init, weight
-                )  # weight not changed
-
-    def test_prune_fetches_with_optimizer(self):
-        """
-        Prune operators and operators which are not needed to generate 'fetches'.
-        In train mode, the operators and operators in backward and optimization should be kept.
-        """
-        paddle.enable_static()
-
-        program = framework.Program()
-        startup_program = framework.Program()
-        scope = base.Scope()
-        with base.scope_guard(scope):
-            with base.program_guard(program, startup_program):
-                (
-                    x,
-                    y,
-                    label,
-                    loss1,
-                    loss2,
-                    w_param_attrs,
-                ) = self.net_with_weight()
-                sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
-                sgd_optimizer.minimize(loss1)
-                exe = base.Executor(base.CPUPlace())
-                exe.run(startup_program)
-                weight_init = np.array(
-                    scope.find_var(w_param_attrs.name).get_tensor()
-                )
-                x_np = np.random.random(size=(10, 2)).astype('float32')
-                label_np = np.random.randint(1, size=(10, 1)).astype('int64')
-                res = exe.run(
-                    program,
-                    feed={'x': x_np, 'label': label_np},
-                    fetch_list=[loss1.name],
-                    use_prune=True,
-                )
-                self.assertIsNotNone(scope.find_var(loss1.name))
-                self.assertIsNone(scope.find_var(loss2.name))  # loss2 is pruned
-                weight = np.array(
-                    scope.find_var(w_param_attrs.name).get_tensor()
-                )
-                self.assertFalse(
-                    np.array_equal(weight_init, weight)
-                )  # weight changed
-
-    def test_prune_compiled_program(self):
-        paddle.enable_static()
-
-        program = framework.Program()
-        startup_program = framework.Program()
-        scope = base.Scope()
-        with base.scope_guard(scope):
-            with base.program_guard(program, startup_program):
-                (
-                    x,
-                    y,
-                    label,
-                    loss1,
-                    loss2,
-                    w_param_attrs,
-                ) = self.net_with_weight()
-                sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
-                sgd_optimizer.minimize(loss1)
-                exe = base.Executor(base.CPUPlace())
-                exe.run(startup_program)
-                compiled_prog = base.CompiledProgram(program)
-                weight_init = np.array(
-                    scope.find_var(w_param_attrs.name).get_tensor()
-                )
-                x_np = np.random.random(size=(10, 2)).astype('float32')
-                label_np = np.random.randint(1, size=(10, 1)).astype('int64')
-                res = exe.run(
-                    compiled_prog,
-                    feed={'x': x_np, 'label': label_np},
-                    fetch_list=[loss1.name],
-                    use_prune=True,
-                )
-                self.assertIsNotNone(scope.find_var(loss1.name))
-                self.assertIsNone(scope.find_var(loss2.name))
-                weight = np.array(
-                    scope.find_var(w_param_attrs.name).get_tensor()
-                )
-                self.assertFalse(
-                    np.array_equal(weight_init, weight)
-                )  # weight changed
-
-
-class TestLoadModel(unittest.TestCase):
-    ...
+        self.net1 = net_with_weight1
+        self.net2 = net_with_weight2
 
 
 if __name__ == '__main__':
