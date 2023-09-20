@@ -81,11 +81,11 @@ class TestDropoutOp(OpTest):
         self.enable_check_static_comp = False
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_new_ir=True)
 
     def test_check_grad_normal(self):
         # Now in dy2st mode x_grad = [], so set check_prim=False
-        self.check_grad(['X'], 'Out', check_prim=False)
+        self.check_grad(['X'], 'Out', check_prim=False, check_new_ir=True)
 
 
 class TestDropoutOp_ZeroDim(TestDropoutOp):
