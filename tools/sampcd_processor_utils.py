@@ -187,7 +187,7 @@ class TestResult:
         for name, value in kwargs.items():
             # check attr name
             if not (hasattr(self, name) or name in MetaResult.cls_map()):
-                raise KeyError('`{}` is not a valid result type.'.format(name))
+                raise KeyError(f'`{name}` is not a valid result type.')
 
             setattr(self, name, value)
 
@@ -207,7 +207,7 @@ class TestResult:
         return self.__unique_state
 
     def __str__(self) -> str:
-        return '{}, running time: {:.3f}s'.format(self.name, self.time)
+        return f'{self.name}, running time: {self.time:.3f}s'
 
 
 class DocTester:
