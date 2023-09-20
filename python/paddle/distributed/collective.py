@@ -239,7 +239,7 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
         # three in the future.
         _add_new_group(group)
 
-        if os.getenv("FLAGS_eager_communication_connection", 0) == 1:
+        if int(os.getenv("FLAGS_eager_communication_connection", 0)) == 1:
             paddle.distributed.all_reduce(
                 paddle.zeros([1], dtype=paddle.uint8), group=group, sync_op=True
             )
