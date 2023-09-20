@@ -25,6 +25,120 @@
 namespace paddle {
 namespace framework {
 
+static DDim GetDimsDebug(const Scope& scope,
+                         const std::string& name,
+                         bool get_actual_dim = false) {
+  Variable* var = scope.FindVar(name);
+  if (var == nullptr) {
+    return DDim({-1});
+  }
+
+  if (var->IsType<phi::DenseTensor>()) {
+    const phi::DenseTensor& tensor = var->Get<phi::DenseTensor>();
+    return tensor.dims();
+  } else if (var->IsType<phi::SelectedRows>()) {
+    if (get_actual_dim) {
+      return var->Get<phi::SelectedRows>().value().dims();
+    } else {
+      return var->Get<phi::SelectedRows>().GetCompleteDims();
+    }
+  } else if (var->IsType<Strings>()) {
+    return DDim({static_cast<int64_t>(var->Get<Strings>().size())});
+  } else {
+    return DDim({-1});
+  }
+}
+
+static bool VarInited(const Scope& scope, const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  if (var == nullptr) return false;
+  return var->IsInitialized();
+}
+
+static std::string GetDtype(const Scope& scope, const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  if (var == nullptr) {
+    return "";
+  }
+
+  if (var->IsType<phi::DenseTensor>()) {
+    const phi::DenseTensor& tensor = var->Get<phi::DenseTensor>();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return "";
+    }
+    return DataTypeToString(framework::TransToProtoVarType(tensor.dtype()));
+  } else if (var->IsType<phi::SelectedRows>()) {
+    auto tensor = var->Get<phi::SelectedRows>().value();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return "uninited";
+    } else {
+      return DataTypeToString(framework::TransToProtoVarType(tensor.dtype()));
+    }
+  } else if (var->IsType<Strings>()) {
+    return "strings";
+  } else {
+    return "";
+  }
+}
+
+static std::string GetPlace(const Scope& scope, const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  if (var == nullptr) {
+    return "";
+  }
+  auto to_string = [](const platform::Place& p) {
+    std::stringstream sstream;
+    sstream << p;
+    return sstream.str();
+  };
+
+  if (var->IsType<phi::DenseTensor>()) {
+    const phi::DenseTensor& tensor = var->Get<phi::DenseTensor>();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return "";
+    }
+    return to_string(tensor.place());
+  } else if (var->IsType<phi::SelectedRows>()) {
+    auto tensor = var->Get<phi::SelectedRows>().value();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return "uninited";
+    } else {
+      return to_string(tensor.place());
+    }
+  } else {
+    return "";
+  }
+}
+
+static int GetRowSize(const Scope& scope, const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  if (var == nullptr) {
+    return -1;
+  }
+
+  if (var->IsType<phi::SelectedRows>()) {
+    return static_cast<int>(var->Get<phi::SelectedRows>().rows().size());
+  }
+
+  return -1;
+}
+
+static LoD GetLoDDebug(const Scope& scope, const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  auto default_lod = LoD({{}});
+
+  if (var == nullptr) {
+    return default_lod;
+  }
+
+  if (var->IsType<phi::DenseTensor>()) {
+    const phi::DenseTensor& tensor = var->Get<phi::DenseTensor>();
+    return tensor.lod();
+  } else {
+    return default_lod;
+  }
+}
+
 InstructionBase::InstructionBase(size_t id, const platform::Place& place) {
   id_ = id;
 
@@ -153,5 +267,71 @@ void InstructionBase::InitInputsOutputsIds(
   VLOG(8) << "finish process outputs_index";
 }
 
+std::string InstructionBase::DebugStringEx(
+    const paddle::framework::Scope* scope,
+    const std::unordered_map<::pir::Value, std::string>& value_2_var_name)
+    const {
+  std::stringstream ss;
+  ss << "Op(" << Name() << "), inputs:{";
+
+  const std::unordered_set<::pir::Value> no_need_buffer_vars = NoNeedBuffer();
+
+  for (auto it = Inputs().begin(); it != Inputs().end();) {
+    auto& input = *it;
+    bool is_no_need_buffer_var = (!no_need_buffer_vars.empty() &&
+                                  no_need_buffer_vars.count(input.first) > 0);
+    auto var_name = value_2_var_name.at(input.first);
+    ss << var_name;
+    if (scope) {
+      if (!VarInited(*scope, var_name)) {
+        ss << "[uninited]";
+      } else {
+        int row_size = GetRowSize(*scope, var_name);
+        if (row_size >= 0) {
+          ss << "[row_size=" << row_size << "]";
+        }
+        std::string dtype = is_no_need_buffer_var ? "unknown_dtype"
+                                                  : GetDtype(*scope, var_name);
+        std::string place = is_no_need_buffer_var ? "unknown_place"
+                                                  : GetPlace(*scope, var_name);
+        ss << ":" << dtype;
+        ss << "[" << GetDimsDebug(*scope, var_name, true) << "]";
+        ss << "(" << GetLoDDebug(*scope, var_name) << ")";
+        ss << "(" << place << ")";
+      }
+    }
+    ++it;
+    if (it != Inputs().end()) {
+      ss << ", ";
+    }
+  }
+  ss << "}, outputs:{";
+  for (auto it = Outputs().begin(); it != Outputs().end();) {
+    auto& output = *it;
+    auto var_name = value_2_var_name.at(output.first);
+    ss << var_name;
+    if (scope) {
+      if (!VarInited(*scope, var_name)) {
+        ss << "[uninited]";
+      } else {
+        int row_size = GetRowSize(*scope, var_name);
+        if (row_size >= 0) {
+          ss << "[row_size=" << row_size << "]";
+        }
+        std::string dtype = GetDtype(*scope, var_name);
+        ss << ":" << dtype;
+        ss << "[" << GetDimsDebug(*scope, var_name, true) << "]";
+        ss << "(" << GetLoDDebug(*scope, var_name) << ")";
+        ss << "(" << GetPlace(*scope, var_name) << ")";
+      }
+    }
+    ++it;
+    if (it != Outputs().end()) {
+      ss << ", ";
+    }
+  }
+  ss << "}.";
+  return ss.str();
+}
 }  // namespace framework
 }  // namespace paddle

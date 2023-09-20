@@ -16,7 +16,7 @@ import unittest
 from functools import partial
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 

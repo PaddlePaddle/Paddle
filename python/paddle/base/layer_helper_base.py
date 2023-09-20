@@ -21,6 +21,7 @@ from .framework import (
     default_main_program,
     default_startup_program,
     in_dygraph_mode,
+    in_pir_mode,
     _current_expected_place,
 )
 from . import unique_name
@@ -431,6 +432,12 @@ class LayerHelperBase:
                 **attr._to_kwargs(with_initializer=True)
             )
         else:
+            if in_pir_mode():
+                return paddle.ir.core.create_parameter(
+                    dtype=dtype,
+                    shape=shape,
+                    **attr._to_kwargs(with_initializer=True)
+                )
             self.startup_program.global_block().create_parameter(
                 dtype=dtype,
                 shape=shape,

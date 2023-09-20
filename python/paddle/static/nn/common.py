@@ -2566,10 +2566,10 @@ def bilinear_tensor_product(
             :ref:`api_guide_Name` . Usually name is no need to set and None by default.
         param_attr (ParamAttr|None): To specify the weight parameter attribute.
             Default: None, which means the default weight parameter property is
-            used. See usage for details in :ref:`api_base_ParamAttr` .
+            used. See usage for details in :ref:`api_paddle_ParamAttr` .
         bias_attr (ParamAttr|None): To specify the bias parameter attribute.
             Default: None, which means the default bias parameter property is
-            used. See usage for details in :ref:`api_base_ParamAttr` .
+            used. See usage for details in :ref:`api_paddle_ParamAttr` .
 
     Returns:
         Tensor, A 2-D Tensor of shape [batch_size, size]. Data type is the same as input **x**.

@@ -1234,6 +1234,139 @@ void BuildId2VarName(const std::map<std::string, int>& var_name_2_id,
   }
 }
 
+const paddle::framework::Variable* GetVariableByName(
+    const std::string& var_name,
+    const std::unordered_map<const paddle::framework::Variable*, std::string>&
+        variable_2_var_name) {
+  for (auto kv : variable_2_var_name) {
+    if (kv.second == var_name) {
+      return kv.first;
+    }
+  }
+  return nullptr;
+}
+
+void PrintValuesAndVariables(
+    const pir::Block& block,
+    const std::unordered_map<pir::Value, std::string>* value_2_var_name,
+    const std::unordered_map<const paddle::framework::Variable*, std::string>*
+        variable_2_var_name) {
+  std::stringstream ss;
+  for (const auto& op : block) {
+    VLOG(6) << "-----------------------------";
+    op->Print(ss);
+    VLOG(6) << ss.str();
+
+    // 1. output string
+    std::string ret_value_str = "Value   : (";
+    std::string ret_variable_str = "Variable: (";
+    if (!op->results().empty()) {
+      for (auto& out_value : op->results()) {
+        if ((*value_2_var_name).count(out_value)) {
+          auto& var_name = (*value_2_var_name).at(out_value);
+          const paddle::framework::Variable* out_variable =
+              GetVariableByName(var_name, *variable_2_var_name);
+          ss.str("");
+          ss << out_value.impl();
+          ret_value_str +=
+              (std::string(var_name.length(), ' ') + "[" + ss.str() + "]");
+          ss.str("");
+          if (out_variable) {
+            ss << out_variable;
+            ret_variable_str += (var_name + "[" + ss.str() + "]");
+          } else {
+            ret_variable_str += (var_name + "[NULL]");
+          }
+        } else {
+          ret_value_str += "NULL";
+        }
+        ret_value_str += ", ";
+        ret_variable_str += ", ";
+      }
+      ret_value_str = ret_value_str.substr(0, ret_value_str.length() - 2);
+      ret_variable_str =
+          ret_variable_str.substr(0, ret_variable_str.length() - 2);
+    }
+    ret_value_str += ") = ";
+    ret_variable_str += ") = ";
+
+    // 2. op name
+    std::string op_name;
+    if (op->attributes().find("op_name") != op->attributes().end()) {
+      op_name = op->attributes()
+                    .at("op_name")
+                    .dyn_cast<::pir::StrAttribute>()
+                    .AsString();
+    } else {
+      op_name = op->name();
+    }
+    ret_value_str += op_name;
+    ret_variable_str += op_name;
+
+    // 3. input string
+    ret_value_str += "(";
+    ret_variable_str += "(";
+    if (!op->operands().empty()) {
+      for (auto& input : op->operands()) {
+        ::pir::Value in_value = input.source();
+        if ((*value_2_var_name).count(in_value)) {
+          auto& var_name = (*value_2_var_name).at(in_value);
+          const paddle::framework::Variable* in_variable =
+              GetVariableByName(var_name, *variable_2_var_name);
+          ss.str("");
+          ss << in_value.impl();
+          ret_value_str +=
+              (std::string(var_name.length(), ' ') + "[" + ss.str() + "]");
+          ss.str("");
+          if (in_variable) {
+            ss << in_variable;
+            ret_variable_str += (var_name + "[" + ss.str() + "]");
+          } else {
+            ret_variable_str += (var_name + "[NULL]");
+          }
+        } else {
+          ret_value_str += "NULL";
+        }
+        ret_value_str += ", ";
+        ret_variable_str += ", ";
+      }
+      ret_value_str = ret_value_str.substr(0, ret_value_str.length() - 2);
+      ret_variable_str =
+          ret_variable_str.substr(0, ret_variable_str.length() - 2);
+    }
+    ret_value_str += ")";
+    ret_variable_str += ")";
+    VLOG(6) << ret_value_str;
+    VLOG(6) << ret_variable_str;
+  }
+  return;
+}
+
+const std::vector<std::string> GetInstructionCallStack(
+    const std::string& type, const pir::AttributeMap& attrs) {
+  std::vector<std::string> vec_str;
+  if (attrs.count("sub_block") != 0) {
+    return vec_str;
+  }
+  auto iter = attrs.find(OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+  if (iter != attrs.end()) {
+    auto attr = iter->second;
+    PADDLE_ENFORCE(
+        attr.isa<pir::ArrayAttribute>(),
+        paddle::platform::errors::InvalidArgument(
+            "%s: Callstack attributes of %s is not ArrayAttribute type", type));
+    pir::ArrayAttribute array_attribute = attr.dyn_cast<pir::ArrayAttribute>();
+    std::vector<pir::Attribute> vec_attr = array_attribute.AsVector();
+    for (auto value : vec_attr) {
+      PADDLE_ENFORCE(
+          value.isa<pir::StrAttribute>(),
+          paddle::platform::errors::InvalidArgument(
+              "%s: Callstack attributes of %s is not StrAttribute type", type));
+      vec_str.emplace_back(value.dyn_cast<pir::StrAttribute>().AsString());
+    }
+  }
+  return vec_str;
+}
 }  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle

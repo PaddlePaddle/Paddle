@@ -18,7 +18,7 @@ from paddle import _C_ops
 
 from ..base import framework
 from ..base.dygraph import no_grad
-from ..base.framework import in_dygraph_mode
+from ..base.framework import in_dynamic_or_pir_mode
 from .optimizer import Optimizer
 
 __all__ = []
@@ -41,7 +41,7 @@ class SGD(Optimizer):
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
             It can be a float value as coeff of L2 regularization or \
             :ref:`api_base_regularizer_L1Decay`, :ref:`api_base_regularizer_L2Decay`.
-            If a parameter has set regularizer using :ref:`api_base_ParamAttr` already, \
+            If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already, \
             the regularization setting here in optimizer will be ignored for this parameter. \
             Otherwise, the regularization setting here in optimizer will take effect. \
             Default None, meaning there is no regularization.
@@ -129,7 +129,7 @@ class SGD(Optimizer):
         )
 
         lr = self._create_param_lr(param_and_grad)
-        if in_dygraph_mode():
+        if in_dynamic_or_pir_mode():
             _C_ops.sgd_(
                 param_and_grad[0],
                 lr,

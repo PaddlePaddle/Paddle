@@ -262,6 +262,7 @@ function cmake_base() {
         -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF}
         -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}"
         -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
+        -DWITH_NVCC_LAZY=${WITH_NVCC_LAZY:-ON}
         -DWITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
     ========================================
 EOF
@@ -313,6 +314,7 @@ EOF
         -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}  \
         -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}  \
+        -DWITH_NVCC_LAZY=${WITH_NVCC_LAZY:-ON} \
         -DWITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF};build_error=$?
 
     if [ "$build_error" != 0 ];then
@@ -783,7 +785,7 @@ function run_linux_cpu_test() {
     if [ -d "${PADDLE_ROOT}/dist/" ]; then
         pip install ${PADDLE_ROOT}/dist/*whl
     fi
-    cp ${PADDLE_ROOT}/build/test/legacy_test/eager_op_test.py ${PADDLE_ROOT}/build/python
+    cp ${PADDLE_ROOT}/build/test/legacy_test/op_test.py ${PADDLE_ROOT}/build/python
     cp ${PADDLE_ROOT}/build/test/legacy_test/testsuite.py ${PADDLE_ROOT}/build/python
     cp -r ${PADDLE_ROOT}/build/test/white_list ${PADDLE_ROOT}/build/python
     ut_total_startTime_s=`date +%s`
@@ -987,10 +989,10 @@ function check_whl_size() {
     fi
 
     set +x
-    pr_whl_size=`du -m ${PADDLE_ROOT}/build/pr_whl/*.whl|awk '{print $1}'`
+    pr_whl_size=`du -m ${PADDLE_ROOT}/build/pr_whl/paddle*.whl|awk '{print $1}'`
     echo "pr_whl_size: ${pr_whl_size}"
 
-    dev_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
+    dev_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/paddle*.whl|awk '{print $1}'`
     echo "dev_whl_size: ${dev_whl_size}"
 
     whldiffSize=`echo $(($pr_whl_size - $dev_whl_size))`
@@ -1174,9 +1176,9 @@ EOF
 }
 
 function check_diff_file_for_coverage() {
-    diff_h_file=$(git diff --name-status test develop | awk '$1 != "D" {print $2}' | grep '\.h$' | awk -F "/" '{printf "%s,",$NF}')
-    diff_cc_file=$(git diff --name-status test develop | awk '$1 != "D" {print $2}' | grep -E '\.(cc|c)$' | awk -F "/" '{printf "%s,",$NF}')
-    diff_py_file=$(git diff --name-status test develop | grep '\.py$' | awk '$1 != "D" {printf "%s,",$2}')
+    diff_h_file=$(git diff --name-status test -- | awk '$1 != "D" {print $2}' | grep '\.h$' | awk -F "/" '{printf "%s,",$NF}')
+    diff_cc_file=$(git diff --name-status test -- | awk '$1 != "D" {print $2}' | grep -E '\.(cc|c)$' | awk -F "/" '{printf "%s,",$NF}')
+    diff_py_file=$(git diff --name-status test -- | grep '\.py$' | awk '$1 != "D" {printf "%s,",$2}')
     export PADDLE_GIT_DIFF_H_FILE=${diff_h_file%*,}
     export PADDLE_GIT_DIFF_CC_FILE=${diff_cc_file%*,}
     export PADDLE_GIT_DIFF_PY_FILE=${diff_py_file%*,}
@@ -2370,7 +2372,7 @@ set -x
         export FLAGS_trt_ibuilder_cache=1
         precison_cases=""
         bash $PADDLE_ROOT/tools/check_added_ut.sh
-        #check change of pr_unnitests and dev_unnitests
+        #check change of pr_unittests and dev_unittests
         check_approvals_of_unittest 2
         ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > ${PADDLE_ROOT}/build/all_ut_list
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
@@ -2479,7 +2481,7 @@ set +x
         noparallel_ut_startTime_s=`date +%s`
         while read line
         do
-            card_test "$line" -1 2
+            card_test "$line" -1 4
         done < $PADDLE_ROOT/tools/no_parallel_case_file
         noparallel_ut_endTime_s=`date +%s`
         echo "ipipe_log_param_noparallel_TestCases_Total_Time: $[ $noparallel_ut_endTime_s - $noparallel_ut_startTime_s ]s"

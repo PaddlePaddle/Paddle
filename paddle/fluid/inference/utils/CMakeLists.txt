@@ -19,6 +19,7 @@ cc_test_old(
   DEPS
   infer_io_utils
   fleet_executor
+  parallel_executor
   python)
 
 if(WITH_ONNXRUNTIME AND WIN32)

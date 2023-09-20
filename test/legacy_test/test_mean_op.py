@@ -17,7 +17,7 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from eager_op_test import OpTest, OpTestTool, convert_float_to_uint16
+from op_test import OpTest, OpTestTool, convert_float_to_uint16
 from test_sum_op import TestReduceOPTensorAxisBase
 
 import paddle
@@ -78,6 +78,7 @@ class TestMeanOpError(unittest.TestCase):
         paddle.enable_static()
         with program_guard(Program(), Program()):
             # The input type of mean_op must be Variable.
+
             input1 = 12
             self.assertRaises(TypeError, paddle.mean, input1)
             # The input dtype of mean_op must be float16, float32, float64.
@@ -188,7 +189,9 @@ class TestReduceMeanOp(OpTest):
 
     def test_check_output(self):
         if self.dtype != 'float16':
-            self.check_output(check_prim=True, check_new_ir=True)
+            self.check_output(
+                check_prim=True, check_prim_pir=True, check_new_ir=True
+            )
         else:
             place = paddle.CUDAPlace(0)
             self.check_output_with_place(
@@ -197,7 +200,13 @@ class TestReduceMeanOp(OpTest):
 
     def test_check_grad(self):
         if self.dtype != 'float16':
-            self.check_grad(['X'], ['Out'], check_prim=True, check_new_ir=True)
+            self.check_grad(
+                ['X'],
+                ['Out'],
+                check_prim=True,
+                check_prim_pir=True,
+                check_new_ir=True,
+            )
         else:
             place = paddle.CUDAPlace(0)
             self.check_grad_with_place(
@@ -206,6 +215,7 @@ class TestReduceMeanOp(OpTest):
                 ['Out'],
                 numeric_grad_delta=0.5,
                 check_prim=True,
+                check_prim_pir=True,
                 check_new_ir=True,
             )
 
@@ -266,6 +276,7 @@ class TestReduceMeanBF16Op(OpTest):
             ['Out'],
             numeric_grad_delta=0.05,
             check_prim=True,
+            check_prim_pir=True,
         )
 
 

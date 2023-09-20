@@ -53,8 +53,15 @@ if(NOT CINN_ONLY)
             ${cinn_op_compat_yaml_file}
     VERBATIM)
 
-  cinn_cc_library(cinn_op_dialect SRCS op_dialect.cc ${cinn_op_source_file}
-                  DEPS pd_op_dialect)
+  cinn_cc_library(
+    cinn_op_dialect
+    SRCS
+    op_dialect.cc
+    ${cinn_op_source_file}
+    manual_op.cc
+    op_attribute.cc
+    DEPS
+    pd_op_dialect)
 
   target_include_directories(cinn_op_dialect PRIVATE ${CINN_DIALECT_BINARY_DIR})
 endif()

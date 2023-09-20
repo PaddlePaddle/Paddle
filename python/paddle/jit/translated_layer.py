@@ -1008,14 +1008,13 @@ def _run_dygraph(instance, input, program_holder):
                 forward_program.block(0),
             )
         )
-
-    if not instance._is_test:
-        attrs.extend(
-            (
-                'backward_global_block',
-                program_holder.backward_program.block(0),
+        if not instance._is_test:
+            attrs.extend(
+                (
+                    'backward_global_block',
+                    program_holder.backward_program.block(0),
+                )
             )
-        )
 
     _legacy_C_ops.run_program(
         _valid_vars(input_vars),
