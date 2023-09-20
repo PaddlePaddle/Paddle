@@ -17,8 +17,8 @@ import unittest
 
 import numpy as np
 
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestTensorPtr(unittest.TestCase):
@@ -175,7 +175,7 @@ class TestTensor(unittest.TestCase):
         lod_tensor.set_recursive_sequence_lengths([[2, 2]])
 
         lod_v = np.array(lod_tensor)
-        self.assertTrue(np.alltrue(array == lod_v))
+        self.assertTrue(np.all(array == lod_v))
 
         lod = lod_tensor.recursive_sequence_lengths()
         self.assertEqual(2, lod[0][0])
@@ -263,7 +263,7 @@ class TestTensor(unittest.TestCase):
             self.assertEqual((0, 1), tensor_array.shape)
 
     def run_slice_tensor(self, place, dtype):
-        tensor = fluid.Tensor()
+        tensor = base.Tensor()
         shape = [3, 3, 3]
         tensor._set_dims(shape)
 
@@ -358,7 +358,7 @@ class TestTensor(unittest.TestCase):
             self.assertTrue(
                 isinstance(tensor._mutable_data(place, dtype), numbers.Integral)
             )
-            places = fluid.cuda_pinned_places()
+            places = base.cuda_pinned_places()
             self.assertTrue(
                 isinstance(
                     tensor._mutable_data(places[0], dtype), numbers.Integral
@@ -367,7 +367,7 @@ class TestTensor(unittest.TestCase):
 
     def test_tensor_set_fp16(self):
         array = np.random.random((300, 500)).astype("float16")
-        tensor = fluid.Tensor()
+        tensor = base.Tensor()
         place = core.CPUPlace()
         tensor.set(array, place)
         self.assertEqual(tensor._dtype(), core.VarDesc.VarType.FP16)
@@ -386,7 +386,7 @@ class TestTensor(unittest.TestCase):
 
     def test_tensor_set_int16(self):
         array = np.random.randint(100, size=(300, 500)).astype("int16")
-        tensor = fluid.Tensor()
+        tensor = base.Tensor()
         place = core.CPUPlace()
         tensor.set(array, place)
         self.assertEqual(tensor._dtype(), core.VarDesc.VarType.INT16)
@@ -406,7 +406,7 @@ class TestTensor(unittest.TestCase):
     def test_tensor_set_from_array_list(self):
         array = np.random.randint(1000, size=(200, 300))
         list_array = [array, array]
-        tensor = fluid.Tensor()
+        tensor = base.Tensor()
         place = core.CPUPlace()
         tensor.set(list_array, place)
         self.assertEqual([2, 200, 300], tensor.shape())
@@ -443,7 +443,7 @@ class TestTensor(unittest.TestCase):
         array = (
             np.random.random((100, 100)) + 1j * np.random.random((100, 100))
         ).astype(np.complex128)
-        tensor = fluid.Tensor()
+        tensor = base.Tensor()
         place = core.CPUPlace()
         tensor.set(array, place)
 
@@ -474,7 +474,7 @@ class TestTensor(unittest.TestCase):
         array = (
             np.random.random((100, 100)) + 1j * np.random.random((100, 100))
         ).astype(np.complex64)
-        tensor = fluid.Tensor()
+        tensor = base.Tensor()
         place = core.CPUPlace()
         tensor.set(array, place)
 

@@ -31,7 +31,7 @@ void BroadcastKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_GT(
       x.numel(),
       0,
-      phi::errors::InvalidArgument("Tensor need be broadcast must not empyt."));
+      phi::errors::InvalidArgument("Tensor need be broadcast must not empty."));
 
 #if defined(PADDLE_WITH_GLOO)
   dev_ctx.template Alloc<T>(out);

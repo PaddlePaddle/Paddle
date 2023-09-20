@@ -34,6 +34,11 @@ void IndexSelectGradStridedKernel(const Context& dev_ctx,
                            dev_ctx, *x_grad, 0, x_grad);
                      }));
   DenseTensor tmp;
+  tmp.set_layout(out_grad.layout());
+  tmp.set_lod(out_grad.lod());
+  tmp.set_type(out_grad.dtype());
+  tmp.Resize(out_grad.dims());
+
   IndexSelectStridedKernel<Context>(dev_ctx, *x_grad, index, dim, &tmp);
   PD_VISIT_ALL_TYPES(out_grad.dtype(), "IndexSelectGradStridedKernel", ([&] {
                        phi::StridedCopyKernel<data_t, Context>(

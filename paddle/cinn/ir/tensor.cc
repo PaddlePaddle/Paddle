@@ -16,6 +16,7 @@
 
 #include <cstring>
 
+#include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/common/arithmatic.h"
 #include "paddle/cinn/common/axis.h"

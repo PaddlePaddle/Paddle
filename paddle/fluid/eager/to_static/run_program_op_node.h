@@ -19,18 +19,38 @@
 #include "paddle/fluid/eager/tensor_wrapper.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/ir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 #include "paddle/fluid/operators/run_program_op.h"
+#include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/ir/core/program.h"
-#include "paddle/ir/core/value.h"
+#include "paddle/phi/api/lib/data_transform.h"
+#include "paddle/pir/core/program.h"
+#include "paddle/pir/core/value.h"
 
 PHI_DECLARE_bool(enable_new_ir_in_executor);
 
 namespace details {
 using Tensor = paddle::Tensor;
+
+static void Trans2ContiguousTensorsInplace(
+    const std::vector<paddle::Tensor> &tensors) {
+  std::vector<Tensor> res;
+  for (auto &t : tensors) {
+    if (t.is_initialized() && t.is_dense_tensor() &&
+        !std::dynamic_pointer_cast<phi::DenseTensor>(t.impl())
+             ->meta()
+             .is_contiguous()) {
+      auto tmp = paddle::experimental::Trans2Contiguous(
+          *(std::dynamic_pointer_cast<phi::DenseTensor>(t.impl())));
+      auto holder = tmp.MoveMemoryHolder();
+      std::dynamic_pointer_cast<phi::DenseTensor>(t.impl())->ResetHolder(
+          holder);
+      std::dynamic_pointer_cast<phi::DenseTensor>(t.impl())->set_meta(
+          tmp.meta());
+    }
+  }
+}
 
 static std::vector<Tensor> DereferenceTensors(
     const std::vector<Tensor *> &tensor_ptr) {
@@ -403,8 +423,14 @@ inline void RunProgramAPI(
 
     if (FLAGS_enable_new_ir_in_executor) {
       // build new ir program
-      auto ir_program = paddle::framework::ConstructFowardIrProgram(
-          forward_global_block, backward_global_block, output_names, x, params);
+      auto ir_program =
+          paddle::framework::ConstructFowardIrProgram(forward_global_block,
+                                                      backward_global_block,
+                                                      output_names,
+                                                      x,
+                                                      input_names,
+                                                      params,
+                                                      place);
       interpreter_core =
           paddle::framework::CreateNewIRInterpreterCoreInfoToCache(
               std::move(ir_program),
@@ -538,6 +564,8 @@ inline void RunProgramGradAPI(
       paddle::framework::BlockDesc *, attrs.at("backward_global_block"));
   auto *backward_program = backward_global_block->Program();
 
+  details::Trans2ContiguousTensorsInplace(out_grad);
+
   auto out_grad_names = details::GetTensorsName(out_grad);
   auto &interpretercore_info_cache =
       paddle::framework::InterpreterCoreInfoCache::Instance();
@@ -558,7 +586,8 @@ inline void RunProgramGradAPI(
                                                         out_grad,
                                                         x_grad,
                                                         params_grad,
-                                                        global_inner_scope);
+                                                        global_inner_scope,
+                                                        place);
 
       interpreter_core =
           paddle::framework::CreateNewIRInterpreterCoreInfoToCache(

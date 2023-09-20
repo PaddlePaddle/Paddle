@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid.core import VarDesc
-from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
-from paddle.fluid.framework import Variable, in_dygraph_mode
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.layers.layer_function_generator import templatedoc
+from paddle.base.core import VarDesc
+from paddle.base.data_feeder import check_type, check_variable_and_dtype
+from paddle.base.framework import Variable, in_dygraph_mode
+from paddle.base.layer_helper import LayerHelper
+from paddle.base.layers.layer_function_generator import templatedoc
 
 __all__ = []
 
@@ -38,7 +38,7 @@ def sequence_conv(
     r"""
 
     Note:
-        Only receives Tensor as input. If your input is Tensor, please use conv2d Op.(fluid.layers.** :ref:`api_fluid_layers_conv2d` ).
+        Only receives Tensor as input. If your input is Tensor, please use conv2d Op.(base.layers.** :ref:`api_base_layers_conv2d` ).
 
     This operator receives input sequences with variable length and other convolutional
     configuration parameters(num_filters, filter_size) to apply the convolution operation.
@@ -108,9 +108,9 @@ def sequence_conv(
             on both sides of the sequence. If set 0, the length of :math:`filter\_size - 1` data
             is padded at the end of each input sequence. Default: None.
         bias_attr (ParamAttr): To specify the bias parameter property. Default: None, which means the
-            default bias parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` .
+            default bias parameter property is used. See usage for details in :ref:`api_paddle_ParamAttr` .
         param_attr (ParamAttr): To specify the weight parameter property. Default: None, which means the
-            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` .
+            default weight parameter property is used. See usage for details in :ref:`api_paddle_ParamAttr` .
         act (str): Activation to be applied to the output of this layer, such as tanh, softmax,
             sigmoid, relu. For more information, please refer to :ref:`api_guide_activations_en` . Default: None.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
@@ -123,11 +123,11 @@ def sequence_conv(
 
         .. code-block:: python
 
-             import paddle
-             paddle.enable_static()
+            >>> import paddle
+            >>> paddle.enable_static()
 
-             x = paddle.static.data(name='x', shape=[-1, 10], dtype='float32', lod_level=1)
-             x_conved = paddle.static.nn.sequence_conv(input=x, num_filters=2, filter_size=3, padding_start=-1)
+            >>> x = paddle.static.data(name='x', shape=[-1, 10], dtype='float32', lod_level=1)
+            >>> x_conved = paddle.static.nn.sequence_conv(input=x, num_filters=2, filter_size=3, padding_start=-1)
     """
 
     assert (
@@ -221,16 +221,16 @@ def sequence_softmax(input, use_cudnn=False, name=None):
 
         .. code-block:: python
 
-             import paddle
-             paddle.enable_static()
+            >>> import paddle
+            >>> paddle.enable_static()
 
-             x = paddle.static.data(name='x', shape=[7, 1],
+            >>> x = paddle.static.data(name='x', shape=[7, 1],
                               dtype='float32', lod_level=1)
-             x_sequence_softmax_1 = paddle.static.nn.sequence_softmax(input=x)
+            >>> x_sequence_softmax_1 = paddle.static.nn.sequence_softmax(input=x)
 
-             y = paddle.static.data(name='y', shape=[7],
-                 dtype='float32', lod_level=1)
-             x_sequence_softmax_2 = paddle.static.nn.sequence_softmax(input=y)
+            >>> y = paddle.static.data(name='y', shape=[7],
+            ...     dtype='float32', lod_level=1)
+            >>> x_sequence_softmax_2 = paddle.static.nn.sequence_softmax(input=y)
     """
     assert (
         not in_dygraph_mode()
@@ -326,16 +326,16 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
 
         .. code-block:: python
 
-            import paddle
-            paddle.enable_static()
+            >>> import paddle
+            >>> paddle.enable_static()
 
-            x = paddle.static.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
-            avg_x = paddle.static.nn.sequence_pool(input=x, pool_type='average')
-            sum_x = paddle.static.nn.sequence_pool(input=x, pool_type='sum')
-            sqrt_x = paddle.static.nn.sequence_pool(input=x, pool_type='sqrt')
-            max_x = paddle.static.nn.sequence_pool(input=x, pool_type='max')
-            last_x = paddle.static.nn.sequence_pool(input=x, pool_type='last')
-            first_x = paddle.static.nn.sequence_pool(input=x, pool_type='first')
+            >>> x = paddle.static.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
+            >>> avg_x = paddle.static.nn.sequence_pool(input=x, pool_type='average')
+            >>> sum_x = paddle.static.nn.sequence_pool(input=x, pool_type='sum')
+            >>> sqrt_x = paddle.static.nn.sequence_pool(input=x, pool_type='sqrt')
+            >>> max_x = paddle.static.nn.sequence_pool(input=x, pool_type='max')
+            >>> last_x = paddle.static.nn.sequence_pool(input=x, pool_type='last')
+            >>> first_x = paddle.static.nn.sequence_pool(input=x, pool_type='first')
     """
     assert (
         not in_dygraph_mode()
@@ -408,12 +408,12 @@ def sequence_concat(input, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            paddle.enable_static()
+            >>> import paddle
+            >>> paddle.enable_static()
 
-            x = paddle.static.data(name='x', shape=[-1, 10], dtype='float32', lod_level=1)
-            y = paddle.static.data(name='y', shape=[-1, 10], dtype='float32', lod_level=1)
-            out = paddle.static.nn.sequence_concat(input=[x, y])
+            >>> x = paddle.static.data(name='x', shape=[-1, 10], dtype='float32', lod_level=1)
+            >>> y = paddle.static.data(name='y', shape=[-1, 10], dtype='float32', lod_level=1)
+            >>> out = paddle.static.nn.sequence_concat(input=[x, y])
     """
     assert (
         not in_dygraph_mode()
@@ -484,11 +484,11 @@ def sequence_first_step(input):
 
         .. code-block:: python
 
-             import paddle
-             paddle.enable_static()
+            >>> import paddle
+            >>> paddle.enable_static()
 
-             x = paddle.static.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
-             x_first_step = paddle.static.nn.sequence_first_step(input=x)
+            >>> x = paddle.static.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
+            >>> x_first_step = paddle.static.nn.sequence_first_step(input=x)
     """
     check_variable_and_dtype(
         input, 'input', ['float32', 'float64'], 'sequence_first_step'
@@ -543,11 +543,11 @@ def sequence_last_step(input):
 
         .. code-block:: python
 
-             import paddle
-             paddle.enable_static()
+            >>> import paddle
+            >>> paddle.enable_static()
 
-             x = paddle.static.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
-             x_last_step = paddle.static.nn.sequence_last_step(input=x)
+            >>> x = paddle.static.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
+            >>> x_last_step = paddle.static.nn.sequence_last_step(input=x)
     """
     check_variable_and_dtype(
         input, 'input', ['float32', 'float64'], 'sequence_last_step'
@@ -605,16 +605,16 @@ def sequence_slice(input, offset, length, name=None):
 
         .. code-block:: python
 
-             import paddle
-             paddle.enable_static()
+            >>> import paddle
+            >>> paddle.enable_static()
 
-             import numpy as np
-             seqs = paddle.static.data(name='x', shape=[10, 5],
-                              dtype='float32', lod_level=1)
-             offset = paddle.assign(np.array([[0, 1]]).astype("int32"))
-             length = paddle.assign(np.array([[2, 1]]).astype("int32"))
-             subseqs = paddle.static.nn.sequence_slice(input=seqs, offset=offset,
-                                                   length=length)
+            >>> import numpy as np
+            >>> seqs = paddle.static.data(name='x', shape=[10, 5],
+            ...                  dtype='float32', lod_level=1)
+            >>> offset = paddle.assign(np.array([[0, 1]]).astype("int32"))
+            >>> length = paddle.assign(np.array([[2, 1]]).astype("int32"))
+            ... subseqs = paddle.static.nn.sequence_slice(input=seqs, offset=offset,
+            ...                                       length=length)
     """
     assert (
         not in_dygraph_mode()
@@ -729,46 +729,49 @@ def sequence_expand(x, y, ref_level=-1, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle import fluid
-            paddle.enable_static()
-            import numpy as np
+            >>> import paddle
+            >>> from paddle import base
+            >>> paddle.enable_static()
+            >>> import numpy as np
 
-            x = paddle.static.data(name='x', shape=[4, 1], dtype='float32')
-            y = paddle.static.data(name='y', shape=[8, 1],
-                        dtype='float32', lod_level=1)
-            out = paddle.static.nn.sequence_expand(x=x, y=y, ref_level=0)
+            >>> x = paddle.static.data(name='x', shape=[4, 1], dtype='float32')
+            >>> y = paddle.static.data(name='y', shape=[8, 1],
+            ...             dtype='float32', lod_level=1)
+            >>> out = paddle.static.nn.sequence_expand(x=x, y=y, ref_level=0)
 
-            exe = paddle.static.Executor(fluid.CPUPlace())
-            place = paddle.CPUPlace()
+            >>> exe = paddle.static.Executor(base.CPUPlace())
+            >>> place = paddle.CPUPlace()
 
-            np_data = np.array([[1], [2], [3], [4]]).astype('float32')
-            x_lod_tensor = fluid.create_lod_tensor(np_data, [[2, 2]], place)
-            print(x_lod_tensor)
-            #lod: [[0, 2, 4]]
-            #    dim: 4, 1
-            #    layout: NCHW
-            #    dtype: float
-            #    data: [1 2 3 4]
+            >>> np_data = np.array([[1], [2], [3], [4]]).astype('float32')
+            >>> x_lod_tensor = base.create_lod_tensor(np_data, [[2, 2]], place)
+            >>> print(x_lod_tensor)
+            - lod: {{0, 2, 4}}
+            - place: Place(cpu)
+            - shape: [4, 1]
+            - layout: NCHW
+            - dtype: float32
+            - data: [1 2 3 4]
 
-            np_data = np.array([[1], [2], [3], [4], [5], [6], [7], [8]]).astype('float32')
-        y_lod_tensor = fluid.create_lod_tensor(np_data, [[2, 2], [3,3,1,1]], place)
-            print(y_lod_tensor)
-            #lod: [[0, 2, 4][0, 3, 6, 7, 8]]
-            #    dim: 8, 1
-            #    layout: NCHW
-            #    dtype: int64_t
-            #    data: [0 0 1 1 1 1 1 0]
+            >>> np_data = np.array([[1], [2], [3], [4], [5], [6], [7], [8]]).astype('float32')
+            >>> y_lod_tensor = base.create_lod_tensor(np_data, [[2, 2], [3,3,1,1]], place)
+            >>> print(y_lod_tensor)
+            - lod: {{0, 2, 4}{0, 3, 6, 7, 8}}
+            - place: Place(cpu)
+            - shape: [8, 1]
+            - layout: NCHW
+            - dtype: float32
+            - data: [1 2 3 4 5 6 7 8]
 
-            out_main = exe.run(fluid.default_main_program(),
-                            feed={'x': x_lod_tensor, 'y': y_lod_tensor},
-                            fetch_list=[out], return_numpy=False)
-            print(out_main[0])
-            #lod: [[0, 2, 4, 6, 8]]
-            #    dim: 8, 1
-            #    layout: NCHW
-            #    dtype: float
-            #    data: [1 2 1 2 3 4 3 4]
+            >>> out_main = exe.run(base.default_main_program(),
+            ...                 feed={'x': x_lod_tensor, 'y': y_lod_tensor},
+            ...                 fetch_list=[out], return_numpy=False)
+            >>> print(out_main[0])
+            - lod: {{0, 2, 4, 6, 8}}
+            - place: Place(cpu)
+            - shape: [8, 1]
+            - layout: NCHW
+            - dtype: float32
+            - data: [1 2 1 2 3 4 3 4]
     """
     assert (
         not in_dygraph_mode()
@@ -852,45 +855,48 @@ def sequence_expand_as(x, y, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.fluid as fluid
-            paddle.enable_static()
-            import numpy as np
+            >>> import paddle
+            >>> import paddle.base as base
+            >>> paddle.enable_static()
+            >>> import numpy as np
 
-            x = paddle.static.data(name='x', shape=[4, 1], dtype='float32')
-            y = paddle.static.data(name='y', shape=[8, 1], dtype='float32', lod_level=1)
-            out = paddle.static.nn.sequence_expand_as(x=x, y=y)
+            >>> x = paddle.static.data(name='x', shape=[4, 1], dtype='float32')
+            >>> y = paddle.static.data(name='y', shape=[8, 1], dtype='float32', lod_level=1)
+            >>> out = paddle.static.nn.sequence_expand_as(x=x, y=y)
 
-            exe = fluid.Executor(fluid.CPUPlace())
-            place = fluid.CPUPlace()
+            >>> exe = base.Executor(base.CPUPlace())
+            >>> place = base.CPUPlace()
 
-            np_data = np.array([[1], [2], [3], [4]]).astype('float32')
-            x_lod_tensor = fluid.create_lod_tensor(np_data, [[2, 2]], place)
-            print(x_lod_tensor)
-            #lod: [[0, 2, 4]]
-            #    dim: 4, 1
-            #    layout: NCHW
-            #    dtype: float
-            #    data: [1 2 3 4]
+            >>> np_data = np.array([[1], [2], [3], [4]]).astype('float32')
+            >>> x_lod_tensor = base.create_lod_tensor(np_data, [[2, 2]], place)
+            >>> print(x_lod_tensor)
+            - lod: {{0, 2, 4}}
+            - place: Place(cpu)
+            - shape: [4, 1]
+            - layout: NCHW
+            - dtype: float32
+            - data: [1 2 3 4]
 
-            np_data = np.array([[1], [2], [3], [4], [5], [6], [7], [8]]).astype('float32')
-        y_lod_tensor = fluid.create_lod_tensor(np_data, [[3,3,1,1]], place)
-            print(y_lod_tensor)
-            #lod: [[0, 3, 6, 7, 8]]
-            #    dim: 8, 1
-            #    layout: NCHW
-            #    dtype: int64_t
-            #    data: [0 0 1 0 1 1 1 0]
+            >>> np_data = np.array([[1], [2], [3], [4], [5], [6], [7], [8]]).astype('float32')
+            >>> y_lod_tensor = base.create_lod_tensor(np_data, [[3,3,1,1]], place)
+            >>> print(y_lod_tensor)
+            - lod: {{0, 3, 6, 7, 8}}
+            - place: Place(cpu)
+            - shape: [8, 1]
+            - layout: NCHW
+            - dtype: float32
+            - data: [1 2 3 4 5 6 7 8]
 
-            out_main = exe.run(fluid.default_main_program(),
-                            feed={'x': x_lod_tensor, 'y': y_lod_tensor},
-                            fetch_list=[out], return_numpy=False)
-            print(out_main[0])
-            #lod: [[0, 3, 6, 7, 8]]
-            #    dim: 8, 1
-            #    layout: NCHW
-            #    dtype: float
-            #    data: [1 1 1 2 2 2 3 4]
+            >>> out_main = exe.run(base.default_main_program(),
+            ...                 feed={'x': x_lod_tensor, 'y': y_lod_tensor},
+            ...                 fetch_list=[out], return_numpy=False)
+            >>> print(out_main[0])
+            - lod: {{0, 3, 6, 7, 8}}
+            - place: Place(cpu)
+            - shape: [8, 1]
+            - layout: NCHW
+            - dtype: float32
+            - data: [1 1 1 2 2 2 3 4]
     """
     assert (
         not in_dygraph_mode()
@@ -984,15 +990,15 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            paddle.enable_static()
-            import paddle.fluid as fluid
-            import numpy
+            >>> import paddle
+            >>> paddle.enable_static()
+            >>> import paddle.base as base
+            >>> import numpy
 
-            x = paddle.static.data(name='x', shape=[10, 5], dtype='float32', lod_level=1)
-            pad_value = paddle.assign(
-                numpy.array([0.0], dtype=numpy.float32))
-            out = paddle.static.nn.sequence_pad(x=x, pad_value=pad_value)
+            >>> x = paddle.static.data(name='x', shape=[10, 5], dtype='float32', lod_level=1)
+            >>> pad_value = paddle.assign(
+            ...     numpy.array([0.0], dtype=numpy.float32))
+            >>> out = paddle.static.nn.sequence_pad(x=x, pad_value=pad_value)
     """
 
     assert (
@@ -1070,18 +1076,18 @@ def sequence_unpad(x, length, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            paddle.enable_static()
-            import paddle.fluid as fluid
-            import numpy
+            >>> import paddle
+            >>> paddle.enable_static()
+            >>> import paddle.base as base
+            >>> import numpy
 
-            # pad data
-            x = paddle.static.data(name='x', shape=[10, 5], dtype='float32', lod_level=1)
-            pad_value = paddle.assign(numpy.array([0.0], dtype=numpy.float32))
-            pad_data, len = paddle.static.nn.sequence_pad(x=x, pad_value=pad_value)
+            >>> # pad data
+            >>> x = paddle.static.data(name='x', shape=[10, 5], dtype='float32', lod_level=1)
+            >>> pad_value = paddle.assign(numpy.array([0.0], dtype=numpy.float32))
+            >>> pad_data, len = paddle.static.nn.sequence_pad(x=x, pad_value=pad_value)
 
-            # unpad data
-            unpad_data = paddle.static.nn.sequence_unpad(x=pad_data, length=len)
+            >>> # unpad data
+            >>> unpad_data = paddle.static.nn.sequence_unpad(x=pad_data, length=len)
     """
 
     assert (
@@ -1156,11 +1162,11 @@ def sequence_reshape(input, new_dim):
     Examples:
         .. code-block:: python
 
-            import paddle
-            paddle.enable_static()
+            >>> import paddle
+            >>> paddle.enable_static()
 
-            x = paddle.static.data(name='x', shape=[None, 16], dtype='float32', lod_level=1)
-            x_reshaped = paddle.static.nn.sequence_reshape(input=x, new_dim=4)
+            >>> x = paddle.static.data(name='x', shape=[None, 16], dtype='float32', lod_level=1)
+            >>> x_reshaped = paddle.static.nn.sequence_reshape(input=x, new_dim=4)
     """
     assert (
         not in_dygraph_mode()
@@ -1238,13 +1244,13 @@ def sequence_scatter(input, index, updates, name=None):
 
         .. code-block:: python
 
-            import paddle
-            paddle.enable_static()
+            >>> import paddle
+            >>> paddle.enable_static()
 
-            input = paddle.static.data(name="x", shape=[None, 3, 6], dtype='float32' )
-            index = paddle.static.data(name='index', shape=[12, 1],  dtype='int64', lod_level=1)
-            updates = paddle.static.data(name='updates', shape=[12, 1], dtype='float32', lod_level=1)
-            output = paddle.static.nn.sequence_scatter(input, index, updates)
+            >>> input = paddle.static.data(name="x", shape=[None, 3, 6], dtype='float32' )
+            >>> index = paddle.static.data(name='index', shape=[12, 1],  dtype='int64', lod_level=1)
+            >>> updates = paddle.static.data(name='updates', shape=[12, 1], dtype='float32', lod_level=1)
+            >>> output = paddle.static.nn.sequence_scatter(input, index, updates)
 
     """
     assert (
@@ -1323,11 +1329,11 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            paddle.enable_static()
+            >>> import paddle
+            >>> paddle.enable_static()
 
-            x = paddle.static.data(name='x', shape=[-1, 1], dtype='int32', lod_level=1)
-            out = paddle.static.nn.sequence_enumerate(input=x, win_size=3, pad_value=0)
+            >>> x = paddle.static.data(name='x', shape=[-1, 1], dtype='int32', lod_level=1)
+            >>> out = paddle.static.nn.sequence_enumerate(input=x, win_size=3, pad_value=0)
     """
     assert (
         not in_dygraph_mode()
@@ -1395,15 +1401,15 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            lengths = paddle.to_tensor([10, 9, 8])
-            mask = paddle.nn.functional.sequence_mask(lengths)
+            >>> lengths = paddle.to_tensor([10, 9, 8])
+            >>> mask = paddle.nn.functional.sequence_mask(lengths)
 
-            print(mask.numpy())
-            # [[1 1 1 1 1 1 1 1 1 1]
-            #  [1 1 1 1 1 1 1 1 1 0]
-            #  [1 1 1 1 1 1 1 1 0 0]]
+            >>> print(mask.numpy())
+            [[1 1 1 1 1 1 1 1 1 1]
+             [1 1 1 1 1 1 1 1 1 0]
+             [1 1 1 1 1 1 1 1 0 0]]
 
     """
 
@@ -1418,7 +1424,7 @@ def sequence_reverse(x, name=None):
 
     Only supports Tensor as input. It will reverse each sequence for input Tensor.
     Currently it only supports 1-level Tensor. This operator is very useful when building a
-    reverse :ref:`api_fluid_layers_DynamicRNN` network.
+    reverse :ref:`api_base_layers_DynamicRNN` network.
 
     .. code-block:: text
 
@@ -1452,11 +1458,11 @@ def sequence_reverse(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            paddle.enable_static()
+            >>> import paddle
+            >>> paddle.enable_static()
 
-            x = paddle.static.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
-            x_reversed = paddle.static.nn.sequence_reverse(x)
+            >>> x = paddle.static.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
+            >>> x_reversed = paddle.static.nn.sequence_reverse(x)
     """
     assert (
         not in_dygraph_mode()

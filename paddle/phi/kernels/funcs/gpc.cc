@@ -893,7 +893,7 @@ void gpc_add_contour(gpc_polygon *p, gpc_vertex_list *new_contour, int hole) {
   /* Copy the old contour and hole data into the extended arrays */
   for (c = 0; c < p->num_contours; c++) {
     extended_hole[c] = p->hole[c];
-    extended_contour[c] = p->contour[c];
+    extended_contour[c] = p->contour[c];  // NOLINT
   }
 
   /* Copy the new contour and hole onto the end of the extended arrays */
@@ -905,7 +905,7 @@ void gpc_add_contour(gpc_polygon *p, gpc_vertex_list *new_contour, int hole) {
       new_contour->num_vertices * static_cast<int>(sizeof(gpc_vertex)),
       const_cast<char *>("contour addition"));
   for (v = 0; v < new_contour->num_vertices; v++) {
-    extended_contour[c].vertex[v] = new_contour->vertex[v];
+    extended_contour[c].vertex[v] = new_contour->vertex[v];  // NOLINT
   }
 
   /* Dispose of the old contour */
@@ -1048,7 +1048,7 @@ void gpc_polygon_clip(gpc_op op,
     px = -DBL_MAX;
     /* Create bundles within AET */
     e0 = aet;
-    e1 = aet;
+    e1 = aet;  // NOLINT
     /* Set up bundle fields of first edge */
     PADDLE_ENFORCE_NOT_NULL(
         aet, phi::errors::InvalidArgument("Edge node AET is nullptr."));
@@ -1689,7 +1689,7 @@ void gpc_tristrip_clip(gpc_op op,
     /* Create bundles within AET */
     px = -DBL_MAX;
     e0 = aet;
-    e1 = aet;
+    e1 = aet;  // NOLINT
 
     /* Set up bundle fields of first edge */
     PADDLE_ENFORCE_NOT_NULL(

@@ -45,8 +45,10 @@ parallel_list="^init_phi_test$|\
 ^test_custom_kernel$|\
 ^test_dist_fleet_ps11$|\
 ^test_dist_fleet_ps12$|\
+^test_dygraph_sharding_stage2_bf16$|\
 ^test_executor_feed_non_tensor$|\
 ^test_flash_attention$|\
+^test_flash_attention_deterministic$|\
 ^test_fused_adam_op$|\
 ^test_fused_attention_no_dropout$|\
 ^test_fused_attention_op$|\

@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestInverseOp(OpTest):
@@ -90,12 +90,12 @@ class TestInverseOpLargeFP32(TestInverseOpFP32):
 class TestInverseAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
 
     def check_static_result(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             input = paddle.static.data(
                 name="input", shape=[4, 4], dtype="float64"
             )
@@ -103,9 +103,9 @@ class TestInverseAPI(unittest.TestCase):
             input_np = np.random.random([4, 4]).astype("float64")
             result_np = np.linalg.inv(input_np)
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             fetches = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"input": input_np},
                 fetch_list=[result],
             )
@@ -119,9 +119,9 @@ class TestInverseAPI(unittest.TestCase):
 
     def test_dygraph(self):
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 input_np = np.random.random([4, 4]).astype("float64")
-                input = fluid.dygraph.to_variable(input_np)
+                input = base.dygraph.to_variable(input_np)
                 result = paddle.inverse(input)
                 np.testing.assert_allclose(
                     result.numpy(), np.linalg.inv(input_np), rtol=1e-05
@@ -156,12 +156,12 @@ class TestInverseAPIError(unittest.TestCase):
 
 class TestInverseSingularAPI(unittest.TestCase):
     def setUp(self):
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
 
     def check_static_result(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             input = paddle.static.data(
                 name="input", shape=[4, 4], dtype="float64"
             )
@@ -169,10 +169,10 @@ class TestInverseSingularAPI(unittest.TestCase):
 
             input_np = np.zeros([4, 4]).astype("float64")
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             try:
                 fetches = exe.run(
-                    fluid.default_main_program(),
+                    base.default_main_program(),
                     feed={"input": input_np},
                     fetch_list=[result],
                 )
@@ -187,9 +187,9 @@ class TestInverseSingularAPI(unittest.TestCase):
 
     def test_dygraph(self):
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 input_np = np.ones([4, 4]).astype("float64")
-                input = fluid.dygraph.to_variable(input_np)
+                input = base.dygraph.to_variable(input_np)
                 try:
                     result = paddle.inverse(input)
                 except RuntimeError as ex:

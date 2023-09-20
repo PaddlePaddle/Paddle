@@ -173,7 +173,8 @@ class ConvShiftKernel<T, phi::CPUContext> : public framework::OpKernel<T> {
     for (size_t k = 0; k < batch_size; ++k) {
       for (size_t i = 0; i < x_width; ++i) {
         for (size_t j = 0; j < y_width; ++j) {
-          int index = (i + j - y_half_width + x_width) % x_width;
+          int index =
+              static_cast<int>((i + j - y_half_width + x_width) % x_width);
           out(k, i) += x(k, index) * y(k, j);
         }
       }
@@ -211,7 +212,8 @@ class ConvShiftGradKernel<T, phi::CPUContext> : public framework::OpKernel<T> {
       for (size_t k = 0; k < batch_size; ++k) {
         for (size_t i = 0; i < x_width; ++i) {
           for (size_t j = 0; j < y_width; ++j) {
-            int index = (i + j - y_half_width + x_width) % x_width;
+            int index =
+                static_cast<int>((i + j - y_half_width + x_width) % x_width);
             dx(k, index) += dout(k, i) * y(k, j);
           }
         }
@@ -225,7 +227,8 @@ class ConvShiftGradKernel<T, phi::CPUContext> : public framework::OpKernel<T> {
       for (size_t k = 0; k < batch_size; ++k) {
         for (size_t i = 0; i < x_width; ++i) {
           for (size_t j = 0; j < y_width; ++j) {
-            int index = (i + j - y_half_width + x_width) % x_width;
+            int index =
+                static_cast<int>((i + j - y_half_width + x_width) % x_width);
             dy(k, j) += x(k, index) * dout(k, i);
           }
         }

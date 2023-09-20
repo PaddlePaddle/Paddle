@@ -21,7 +21,7 @@ import unittest
 import numpy
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
 from paddle.distributed.utils.launch_utils import find_free_ports
@@ -39,7 +39,7 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
         emb = paddle.static.nn.embedding(
             input=x1,
             size=[10000, 10],
-            param_attr=fluid.ParamAttr(
+            param_attr=base.ParamAttr(
                 name="embedding",
                 initializer=paddle.nn.initializer.Constant(value=0.01),
             ),
@@ -78,8 +78,8 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
         fleet.run_server()
 
     def run_trainer(self, role, strategy):
-        place = fluid.core.CPUPlace()
-        exe = fluid.Executor(place)
+        place = base.core.CPUPlace()
+        exe = base.Executor(place)
 
         fleet.init(role)
         avg_cost, x, z, y = self.net()
@@ -87,15 +87,15 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
 
-        exe.run(fluid.default_startup_program())
+        exe.run(base.default_startup_program())
         fleet.init_worker()
 
         train_reader = paddle.batch(self.fake_reader(), batch_size=24)
-        feeder = fluid.DataFeeder(place=place, feed_list=[x, z, y])
+        feeder = base.DataFeeder(place=place, feed_list=[x, z, y])
 
         for batch_id, data in enumerate(train_reader()):
             exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed=feeder.feed(data),
                 fetch_list=[],
             )

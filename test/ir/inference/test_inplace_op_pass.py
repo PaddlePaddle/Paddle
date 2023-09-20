@@ -20,7 +20,7 @@ import numpy as np
 from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
-from paddle.fluid import core
+from paddle.base import core
 
 
 @unittest.skipIf(

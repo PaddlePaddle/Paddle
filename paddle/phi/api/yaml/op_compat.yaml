@@ -435,6 +435,13 @@
   outputs :
     out : Out
 
+- op : c_embedding
+  backward : c_embedding_grad
+  inputs :
+    {weight : W, x : Ids}
+  outputs :
+    out : Out
+
 - op : cast
   inputs :
     x : X
@@ -803,6 +810,7 @@
   backward : dropout_grad
   inputs :
     x : X
+    seed_tensor : Seed
   outputs :
     out : Out
     mask : Mask
@@ -1928,6 +1936,14 @@
   outputs :
     {out : Out, index : Index, nms_rois_num : NmsRoisNum}
 
+- op : multihead_matmul
+  inputs :
+    {input : Input, w : W, bias : Bias, bias_qk : BiasQK}
+  outputs :
+    out : Out
+  attrs :
+    {transpose_q : transpose_Q,  transpose_k : transpose_K, transpose_v : transpose_V}
+
 - op : multinomial
   inputs :
     {x : X}
@@ -2413,6 +2429,8 @@
     out : Out
 
 - op : seed
+  outputs :
+    out : Out
   extra :
     attrs : [bool deterministic = false, str rng_name = "", bool force_cpu = false]
 
@@ -2623,6 +2641,7 @@
     out : Out
 
 - op : split
+  backward : split_grad
   inputs:
     x : X
   outputs:
@@ -2630,6 +2649,7 @@
   int_array:
       sections :
           data_type : int
+          support_tensor : true
   scalar :
       axis :
         data_type : int
@@ -3032,11 +3052,41 @@
     yolo_loss : GetYoloLossExpectedKernelType
     yolo_loss_grad : GetYoloLossExpectedKernelType
 
+- op: c_allgather
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
+- op: c_allreduce_max
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
+- op: c_allreduce_sum
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
 - op: c_broadcast
   inputs :
     x : X
   outputs :
     out : Out
+
+- op: c_identity
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
+- op: c_reduce_sum
+  inputs :
+    x : X
+  outputs :
+    out: Out
 
 - op: c_sync_calc_stream
   inputs :
@@ -3140,6 +3190,12 @@
     steps:
       data_type : int64_t
       tensors_name : StepsTensorList
+
+- op: share_data
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad
