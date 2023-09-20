@@ -277,6 +277,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(tensorrt_use_explicit_quantization,
                       TensorRtUseExplicitQuantization,
                       bool);
+  DECL_ARGUMENT_FIELD(tensorrt_optimization_level,
+                      TensorRtOptimizationLevel,
+                      int);
 
   DECL_ARGUMENT_FIELD(use_dlnne, UseDlnne, bool);
   DECL_ARGUMENT_FIELD(dlnne_min_subgraph_size, DlnneMinSubgraphSize, int);
