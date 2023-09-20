@@ -129,11 +129,18 @@ void ParallelCompiler::RunTask() {
 }
 
 void ParallelCompiler::LaunchTask() {
+  int device_id;
+  CUDA_CALL(cudaGetDevice(&device_id));
+  int num_threads = FLAGS_cinn_parallel_compile_thread;
+#if defined(PADDLE_WITH_DISTRIBUTE)
+  if (device_id > 0) {
+    num_threads = 1;
+  }
+#endif
   // multi thread compilation
   std::vector<std::thread> threads;
-  VLOG(4) << "Compile with " << FLAGS_cinn_parallel_compile_thread
-          << " threads";
-  for (int idx = 1; idx < FLAGS_cinn_parallel_compile_thread; ++idx) {
+  VLOG(4) << "Compile with " << num_threads << " threads";
+  for (int idx = 1; idx < num_threads; ++idx) {
     threads.emplace_back(&ParallelCompiler::RunTask, this);
   }
 
