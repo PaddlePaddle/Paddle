@@ -194,9 +194,17 @@ function make_ubuntu18_cu112_dockerfile(){
     ENV PATH=/usr/local/gcc-8.2/bin:\$PATH #g" ${dockerfile_name}
 }
 
+function make_ubuntu_trt7_dockerfile_temp_ues(){
+  dockerfile_name="Dockerfile.cuda102_cudnn8_gcc82_ubuntu16"
+  echo "FROM registry.baidubce.com/paddlepaddle/paddleqa:coverage-ci-temp-use" >> ${dockerfile_name}
+  echo "RUN wget https://www.openssl.org/source/openssl-1.1.1v.tar.gz && tar -xvf openssl-1.1.1v.tar.gz && cd openssl-1.1.1v && ./config -fPIC --prefix=/usr/local/ssl > /dev/null && make > /dev/null && make install > /dev/null && cd ../ && rm -rf openssl-1.1.1v*" >> ${dockerfile_name}
+  echo "ENV OPENSSL_ROOT_DIR=/usr/local/ssl" >> ${dockerfile_name}
+  echo "ENV LD_LIBRARY_PATH=/usr/local/ssl/lib:\g$LD_LIBRARY_PATH" >> ${dockerfile_name}
+}
+
 function main() {
   make_ubuntu_dockerfile
-  make_ubuntu_trt7_dockerfile
+  make_ubuntu_trt7_dockerfile_temp_ues
   make_centos_dockerfile
   make_cinn_dockerfile
   make_ce_framework_dockcerfile
