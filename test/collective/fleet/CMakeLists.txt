@@ -298,6 +298,21 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
 endif()
 if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   bash_test_modules(
+    test_dygraph_sharding_stage2_bf16
+    START_BASH
+    ../../legacy_test/dist_test.sh
+    TIMEOUT
+    "200"
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=22024;NVIDIA_TF32_OVERRIDE=0;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_dygraph_sharding_stage2_bf16 PROPERTIES TIMEOUT
+                                                                    "200")
+endif()
+if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
+  bash_test_modules(
     test_parallel_dygraph_control_flow
     START_BASH
     ../../legacy_test/dist_test.sh
@@ -946,11 +961,8 @@ if((WITH_GPU) AND (LINUX))
     MODULES
     test_dygraph_save_for_auto_infer
     ENVS
-    "NVIDIA_TF32_OVERRIDE=0;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "NVIDIA_TF32_OVERRIDE=0;FLAGS_new_executor_micro_batching=False;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_dygraph_save_for_auto_infer
                        PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
-  set_tests_properties(
-    test_dygraph_save_for_auto_infer
-    PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
 endif()
