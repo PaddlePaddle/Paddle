@@ -120,9 +120,11 @@ PyInterpreterFrameProxy *PyInterpreterFrameProxy_New(
   return self;
 }
 
-static int _PyFrame_OpAlreadyRan(_PyInterpreterFrame *frame,
-                                 int opcode,
-                                 int oparg) {
+// We copy some cpython internal API from cpython project.
+// To avoid name conflict, we use "Internal_" prefix to mark them.
+static int Internal_PyFrame_OpAlreadyRan(_PyInterpreterFrame *frame,
+                                         int opcode,
+                                         int oparg) {
   // This only works when opcode is a non-quickened form:
   assert(_PyOpcode_Deopt[opcode] == opcode);
   int check_oparg = 0;
@@ -144,7 +146,7 @@ static int _PyFrame_OpAlreadyRan(_PyInterpreterFrame *frame,
   return 0;
 }
 
-int Paddle_PyFrame_FastToLocalsWithError(_PyInterpreterFrame *frame) {
+int Internal_PyFrame_FastToLocalsWithError(_PyInterpreterFrame *frame) {
   /* Merge fast locals into f->f_locals */
   PyObject *locals;
   PyObject **fast;
@@ -201,7 +203,7 @@ int Paddle_PyFrame_FastToLocalsWithError(_PyInterpreterFrame *frame) {
         // run yet.
         if (value != NULL) {
           if (PyCell_Check(value) &&
-              _PyFrame_OpAlreadyRan(frame, MAKE_CELL, i)) {
+              Internal_PyFrame_OpAlreadyRan(frame, MAKE_CELL, i)) {
             // (likely) MAKE_CELL must have executed already.
             value = PyCell_GET(value);
           }
@@ -388,11 +390,11 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
   }
   // PyFrame_FastToLocalsWithError receives a PyFrameObject, but if we created a
   // PyFrameObject from a PyInterpreterFrame, it will changes the original
-  // PyInterpreterFrame and causes a SegmentationError when Fallback to run
+  // PyInterpreterFrame and causes a Segmentation Fault when Fallback to run
   // original frame. So we pass a PyInterpreterFrame to
   // _PyFrame_FastToLocalsWithError directly. But this is an internal API, so we
   // copy lots of code from CPython project into our project.
-  if (Paddle_PyFrame_FastToLocalsWithError(frame) < 0) {
+  if (Internal_PyFrame_FastToLocalsWithError(frame) < 0) {
 #else
   if (PyFrame_FastToLocalsWithError(frame) < 0) {
 #endif
