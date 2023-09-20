@@ -73,11 +73,13 @@ typedef struct PyInterpreterFrameProxy {
     return reinterpret_cast<PyObject *>(self->frame->name); \
   }
 
+// clang-format off
 #define REGISTER_PROXY_PROPERTY(name)                                         \
   {                                                                           \
-#name, (getter)PyInterpreterFrameProxy_property_##name, nullptr, nullptr, \
+    #name, (getter)PyInterpreterFrameProxy_property_##name, nullptr, nullptr, \
         nullptr                                                               \
   }
+// clang-format on
 
 DECLARE_PROXY_PROPERTY(f_code)
 DECLARE_PROXY_PROPERTY(f_locals)
@@ -95,7 +97,7 @@ static PyGetSetDef PyInterpreterFrameProxy_properties[] = {
 // clang-format off
 static PyTypeObject PyInterpreterFrameProxyType = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "paddle.framework.core._PyInterpreterFrameProxy",
+    .tp_name = "paddle.framework.core.PyInterpreterFrameProxy",
     .tp_doc = PyDoc_STR("A proxy object for _PyInterpreterFrame, "
                         "it's only define all properties we need."),
     .tp_basicsize = sizeof(PyInterpreterFrameProxy),
@@ -265,37 +267,84 @@ inline static PyObject *eval_frame_default(PyThreadState *tstate,
 #endif
 }
 
-// Start a new frame and run code in this frame.
-// Execute a piece of code by default frame-hook.
-inline static PyObject *eval_custom_code(PyThreadState *tstate,
-                                         FrameObject *frame,
-                                         PyCodeObject *code,
-                                         int throw_flag) {
+#if PY_VERSION_HEX >= 0x030b0000
+
+inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
+                                                    FrameObject *frame,
+                                                    PyCodeObject *code,
+                                                    int throw_flag) {
+  // Create a new PyInterpreterFrame. Refer to CALL.
+  // PyInterpreterFrame has a head section calls "specials". It follows
+  // a contiguous section containing localplus and interpreter stack space.
+  size_t size = code->co_nlocalsplus + code->co_stacksize + FRAME_SPECIALS_SIZE;
+  CALL_STAT_INC(frames_pushed);
+  _PyInterpreterFrame *shadow = reinterpret_cast<_PyInterpreterFrame *>(
+      malloc(sizeof(PyObject *) * size));
+  if (shadow == nullptr) {
+    VLOG(7) << "Failed to allocate memory for shadow frame.";
+    return nullptr;
+  }
+  // Create a new function object from code object. Refer to MAKE_FUNCTION.
+  PyFunctionObject *func = reinterpret_cast<PyFunctionObject *>(
+      PyFunction_New(reinterpret_cast<PyObject *>(code), frame->f_globals));
+  _PyFrame_InitializeSpecials(shadow, func, nullptr, code->co_nlocalsplus);
+
+  PyObject **fastlocals_old = frame->localsplus;
+  PyObject **fastlocals_new = shadow->localsplus;
+
+  for (size_t i = 0; i < code->co_nlocalsplus; ++i) {
+    fastlocals_new[i] = nullptr;
+  }
+
+  // The namemap to map the name to index in new frame localsplus.
+  PyObject *namemap = PyDict_New();
+  if (namemap == nullptr) {
+    VLOG(7) << "Failed to create namemap.";
+    free(shadow);
+    return nullptr;
+  }
+  for (size_t i = 0; i < code->co_nlocalsplus; ++i) {
+    PyObject *name = PyTuple_GET_ITEM(code->co_localsplusnames, i);
+    PyObject *index = PyLong_FromSize_t(i);
+    PyDict_SetItem(namemap, name, index);
+  }
+  for (size_t i = 0; i < frame->f_code->co_nlocalsplus; ++i) {
+    PyObject *name = PyTuple_GET_ITEM(frame->f_code->co_localsplusnames, i);
+    PyObject *index = PyDict_GetItem(namemap, name);
+    if (index == nullptr) {
+      continue;
+    }
+    Py_XINCREF(fastlocals_old[i]);
+    fastlocals_new[PyLong_AsSize_t(index)] = fastlocals_old[i];
+  }
+
+  PyObject *result = eval_frame_default(tstate, shadow, throw_flag);
+  free(shadow);
+  Py_DECREF(namemap);
+  return result;
+}
+
+#else
+
+inline static PyObject *eval_custom_code_py310_minus(PyThreadState *tstate,
+                                                     FrameObject *frame,
+                                                     PyCodeObject *code,
+                                                     int throw_flag) {
   Py_ssize_t ncells = 0;
   Py_ssize_t nfrees = 0;
   Py_ssize_t nlocals_new = code->co_nlocals;
   Py_ssize_t nlocals_old = frame->f_code->co_nlocals;
 
-#if PY_VERSION_HEX >= 0x030b0000
-  ncells = code->co_ncellvars;
-  nfrees = code->co_nfreevars;
-#else
   ncells = PyTuple_GET_SIZE(code->co_cellvars);
   nfrees = PyTuple_GET_SIZE(code->co_freevars);
-#endif
 
   PyFrameObject *shadow = PyFrame_New(tstate, code, frame->f_globals, nullptr);
   if (shadow == nullptr) {
     return nullptr;
   }
 
-#if PY_VERSION_HEX >= 0x030b0000
-  PyObject **fastlocals_old = frame->localsplus;
-  PyObject **fastlocals_new = shadow->f_frame->localsplus;
-#else
   PyObject **fastlocals_old = frame->f_localsplus;
   PyObject **fastlocals_new = shadow->f_localsplus;
-#endif
 
   for (Py_ssize_t i = 0; i < nlocals_old; i++) {
     Py_XINCREF(fastlocals_old[i]);
@@ -307,13 +356,24 @@ inline static PyObject *eval_custom_code(PyThreadState *tstate,
     fastlocals_new[nlocals_new + i] = fastlocals_old[nlocals_old + i];
   }
 
-#if PY_VERSION_HEX >= 0x030b0000
-  PyObject *result = eval_frame_default(tstate, shadow->f_frame, throw_flag);
-#else
   PyObject *result = eval_frame_default(tstate, shadow, throw_flag);
-#endif
   Py_DECREF(shadow);
   return result;
+}
+
+#endif
+
+// Start a new frame and run code in this frame.
+// Execute a piece of code by default frame-hook.
+inline static PyObject *eval_custom_code(PyThreadState *tstate,
+                                         FrameObject *frame,
+                                         PyCodeObject *code,
+                                         int throw_flag) {
+#if PY_VERSION_HEX >= 0x030b0000
+  return eval_custom_code_py311_plus(tstate, frame, code, throw_flag);
+#else
+  return eval_custom_code_py310_minus(tstate, frame, code, throw_flag);
+#endif
 }
 
 static PyObject *_custom_eval_frame(PyThreadState *tstate,
