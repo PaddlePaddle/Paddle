@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 from test_fusion_gru_op import ACTIVATION, fusion_gru
 
 

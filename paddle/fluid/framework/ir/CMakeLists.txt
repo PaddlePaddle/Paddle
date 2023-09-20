@@ -46,7 +46,7 @@ cc_library(
 cc_library(
   op_compat_sensible_pass
   SRCS op_compat_sensible_pass.cc
-  DEPS graph_pattern_detector op_def_api pass)
+  DEPS graph_pattern_detector op_def_api pass pir_core)
 cc_library(
   subgraph_detector
   SRCS subgraph_detector.cc
@@ -243,6 +243,7 @@ if(WITH_XPU)
   pass_library(yolo_box_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(cast_embedding_trans_ids_to_int32_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
+  pass_library(bn_act_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   # pass_library(conv1d_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(conv2d_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(conv2d_bias_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
@@ -291,6 +292,8 @@ if(WITH_XPU)
                ${XPU_PASS_DEPS})
   pass_library(gather_squeeze_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(fast_where_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(layer_norm_act_xpu_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
   pass_library(fast_layernorm_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(squeeze_excitation_fuse_pass inference DIR xpu DEPS

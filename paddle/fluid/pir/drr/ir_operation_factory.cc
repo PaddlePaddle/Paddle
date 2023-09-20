@@ -51,17 +51,12 @@ void OperationFactory::RegisterManualOpCreator() {
             inputs[3].dyn_cast<pir::OpResult>(),
             attrs);
       });
-  RegisterOperationCreator(
-      "builtin.combine",
-      [](const std::vector<Value>& inputs,
-         const pir::AttributeMap& attrs,
-         pir::PatternRewriter& rewriter) {
-        std::vector<pir::OpResult> ir_results;
-        for (auto value : inputs) {
-          ir_results.push_back(value.dyn_cast<pir::OpResult>());
-        }
-        return rewriter.Build<pir::CombineOp>(ir_results);
-      });
+  RegisterOperationCreator("builtin.combine",
+                           [](const std::vector<Value>& inputs,
+                              const pir::AttributeMap& attrs,
+                              pir::PatternRewriter& rewriter) {
+                             return rewriter.Build<pir::CombineOp>(inputs);
+                           });
 }
 
 static pir::Attribute CreateIrAttribute(const std::any& obj) {

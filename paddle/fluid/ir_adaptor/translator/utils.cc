@@ -29,7 +29,7 @@ namespace translator {
 pir::Operation* InsertSliceOperationForTarget(
     pir::IrContext* ctx,
     TranslationContext* param_map,
-    pir::Program* program,
+    pir::Block* block,
     const VariableDefiningInfo& defining_info,
     const std::string& arg_name) {
   std::string slice_op_name(pir::SliceOp::name());
@@ -44,7 +44,7 @@ pir::Operation* InsertSliceOperationForTarget(
                              op_attribute_map,
                              {src_vec_type[defining_info.idx_in_vector]},
                              op_info);
-  program->block()->push_back(operation);
+  block->push_back(operation);
   pir::OpResult target_op_result = operation->result(0);
   (*param_map)[arg_name] = VariableDefiningInfo(target_op_result);
   return operation;

@@ -108,10 +108,10 @@ class BufferedLineFileReader {
         uniform_distribution_(0.0f, 1.0f) {
     total_len_ = 0;
     sample_line_ = 0;
-    buff_ =
-        reinterpret_cast<char*>(calloc(MAX_FILE_BUFF_SIZE + 1, sizeof(char)));
+    buff_ = reinterpret_cast<char*>(
+        calloc(MAX_FILE_BUFF_SIZE + 1, sizeof(char)));  // NOLINT
   }
-  ~BufferedLineFileReader() { free(buff_); }
+  ~BufferedLineFileReader() { free(buff_); }  // NOLINT
 
   int read_file(FILE* fp, LineFunc func, int skip_lines) {
     FILEReader reader(fp);

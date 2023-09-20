@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 from paddle import base, incubate
@@ -50,10 +50,12 @@ class TestSoftmaxMaskFuseOp(OpTest):
         self.outputs = {'Out': rst}
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0))
+        self.check_output_with_place(core.CUDAPlace(0), check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad_with_place(core.CUDAPlace(0), ["X"], "Out")
+        self.check_grad_with_place(
+            core.CUDAPlace(0), ["X"], "Out", check_new_ir=True
+        )
 
 
 @unittest.skipIf(
@@ -70,13 +72,15 @@ class TestSoftmaxMaskFuseOp1(OpTest):
 
     def test_check_output(self):
         try:
-            self.check_output_with_place(core.CPUPlace())
+            self.check_output_with_place(core.CPUPlace(), check_new_ir=True)
         except (NotImplementedError, RuntimeError):
             pass
 
     def test_check_grad(self):
         try:
-            self.check_grad_with_place(core.CPUPlace(), ["X"], "Out")
+            self.check_grad_with_place(
+                core.CPUPlace(), ["X"], "Out", check_new_ir=True
+            )
         except (NotImplementedError, RuntimeError):
             pass
 

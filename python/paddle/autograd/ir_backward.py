@@ -88,8 +88,8 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
         # fwd : op1 -> op2 -> op3 -> output
         # bwd : op1G <- op2G <- op3G <- outputG <- fillop/feedop
         if grad is None:
-            output_grad = paddle.full(
-                output.shape,
+            output_grad = paddle.full_like(
+                output,
                 1.0,
                 dtype=output.dtype,
             )
@@ -104,13 +104,13 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
         else:
             if output.shape != grad.shape:
                 raise ValueError(
-                    "The shape of grad_output[%d] should be the same as the shape of output[%d]"
-                    % (i, i)
+                    "The shape of grad_output[%d] %s should be the same as the shape of output[%d] %s"
+                    % (i, str(output.shape), i, str(grad.shape))
                 )
             if output.dtype != grad.dtype:
                 raise ValueError(
-                    "The dtype of grad_output[%d] should be the same as the dtype of output[%d]"
-                    % (i, i)
+                    "The dtype of grad_output[%d] %s should be the same as the dtype of output[%d] %s"
+                    % (i, str(output.dtype), i, str(grad.dtype))
                 )
             feedop = grad.get_defining_op()
             update_bwdop_structure(
@@ -133,8 +133,8 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
                 visited_output.add(opresult)
                 continue
             else:
-                grad_value = paddle.full(
-                    opresult.shape,
+                grad_value = paddle.full_like(
+                    opresult,
                     0.0,
                     opresult.dtype,
                 )
@@ -206,6 +206,23 @@ def prune_ops(total_ops, inputs_set, outputs_set, no_grad_set):
         else:
             union_op_flags[i] = False
             intersection_op_flags[i] = False
+
+    # some inputs in no_grad_set but its next op is effective,
+    # add their defining op here.
+    total_ops_list = list(total_ops)
+    for i, op in enumerate(total_ops_list):
+        if union_op_flags[i] is False:
+            for result in op.results():
+                if result.has_one_use():
+                    next_op = result.first_use().owner()
+                    if (
+                        next_op in total_ops
+                        and union_op_flags[total_ops_list.index(next_op)]
+                        is True
+                    ):
+                        union_op_flags[i] = True
+                else:
+                    continue
 
     effective_ops = [
         total_ops[i] for i in range(len(total_ops)) if intersection_op_flags[i]
@@ -346,48 +363,12 @@ def append_backward_ops(
         output_grads = []
         for i, value in enumerate(op.results()):
             if (
-                value not in state.value_to_valuegrad
-                or state.value_to_valuegrad[value] is None
-            ):
-                if (
-                    not value.use_empty()
-                    and value.first_use().owner().name() == "builtin.split"
-                ):
-                    # pattern case:
-                    # this fwd_op's output is vectorType, it will split to
-                    # Type by builtin.split op, so need get from split op's ouput
-                    split_zero_flag, split_output_grad = make_output_grad(
-                        value.first_use().owner()
-                    )
-                    zero_flag[i] = all(split_zero_flag)
-                    state.value_to_valuegrad[value] = [split_output_grad]
-                else:
-                    # first case:
-                    # this fwd_op's output didn't used by other fwd_op,
-                    # so no output_grad created.
-
-                    # second case:
-                    # last bwd_op return None because input in no_grad_set,
-                    # but this bwd_op need a input.
-                    grad_value = paddle.full(
-                        value.shape,
-                        0.0,
-                        dtype=value.dtype,
-                    )
-                    fillop = grad_value.get_defining_op()
-
-                    update_bwdop_structure(
-                        backward_ops, state.op_to_opgrad[op], fillop
-                    )
-                    zero_flag[i] = True
-
-                    state.value_to_valuegrad[value] = [[grad_value]]
-
-            if len(state.value_to_valuegrad[value]) > 1:
+                value in state.value_to_valuegrad
+                and len(state.value_to_valuegrad[value])
+            ) > 1:
                 # one value is input of more than one fwd_op,
                 # so more than one bwd_op create input_grad,
                 # need add sum op to accumulate gradient
-
                 paddle.add_n(
                     [item[0] for item in state.value_to_valuegrad[value]]
                 )
@@ -404,27 +385,90 @@ def append_backward_ops(
                     value
                 ]
 
-            output_grads.append(state.value_to_valuegrad[value][0][0])
+            if (
+                value not in state.value_to_valuegrad
+                or state.value_to_valuegrad[value] == []
+            ):
+                if (
+                    not value.use_empty()
+                    and value.first_use().owner().name() == "builtin.split"
+                ):
+                    # pattern case:
+                    # this fwd_op's output is vectorType, it will split to
+                    # Type by builtin.split op, so need get from split op's ouput
+                    split_zero_flag, split_output_grad = make_output_grad(
+                        value.first_use().owner()
+                    )
+                    zero_flag[i] = all(split_zero_flag)
+                    grad_values = [value[0] for value in split_output_grad]
+                    state.value_to_valuegrad[value] = [grad_values]
+                else:
+                    # first case:
+                    # this fwd_op's output didn't used by other fwd_op,
+                    # so no output_grad created.
+
+                    # second case:
+                    # last bwd_op return None because input in no_grad_set,
+                    # but this bwd_op need a input.
+                    grad_value = paddle.full_like(
+                        value,
+                        0.0,
+                        dtype=value.dtype,
+                    )
+                    fillop = grad_value.get_defining_op()
+
+                    update_bwdop_structure(
+                        backward_ops, state.op_to_opgrad[op], fillop
+                    )
+                    zero_flag[i] = True
+
+                    state.value_to_valuegrad[value] = [[grad_value]]
+
+            output_grads.append(state.value_to_valuegrad[value][0])
+
         return zero_flag, output_grads
 
     def make_input_stopgradient(op):
         input_grad_stopgradients = []
-        for input in op.operands_source():
-            if input.get_defining_op().name() == "builtin.combine":
+        if op.name() == "builtin.combine":
+            grad_semantic_info = [True for _ in range(op.num_operands())]
+        else:
+            grad_semantic_info = op.get_input_grad_semantics()
+        for input, grad_semantic in zip(
+            op.operands_source(), grad_semantic_info
+        ):
+            if not grad_semantic:
+                continue
+            if (
+                input.get_defining_op() is not None
+                and input.get_defining_op().name() == "builtin.combine"
+            ):
                 stop_gradient = make_input_stopgradient(input.get_defining_op())
                 input_grad_stopgradients.append(
                     [info[0] for info in stop_gradient]
                 )
             else:
-                if input in no_grad_set:
+                if input.get_defining_op() is None or input in no_grad_set:
                     input_grad_stopgradients.append([True])
                 else:
                     input_grad_stopgradients.append([False])
         return input_grad_stopgradients
 
     def update_input_grad_map(op, input_grads):
-        for i, input in enumerate(op.operands_source()):
-            if input.get_defining_op().name() == "builtin.combine":
+        i = 0
+        if op.name() == "builtin.combine":
+            grad_semantic_info = [True for _ in range(op.num_operands())]
+        else:
+            grad_semantic_info = op.get_input_grad_semantics()
+        for input, grad_semantic in zip(
+            op.operands_source(), grad_semantic_info
+        ):
+            if not grad_semantic:
+                continue
+            if (
+                input.get_defining_op() is not None
+                and input.get_defining_op().name() == "builtin.combine"
+            ):
                 update_input_grad_map(input.get_defining_op(), input_grads[i])
             else:
                 input_grad = input_grads[i]
@@ -432,6 +476,7 @@ def append_backward_ops(
                     state.value_to_valuegrad[input].append(input_grad)
                 else:
                     state.value_to_valuegrad[input].append([input_grad])
+            i += 1
 
     # there are four patterns:
     # [builtin.combine , op1] (op1's one input is vectorType, outputs are not vectorType)
@@ -449,9 +494,7 @@ def append_backward_ops(
     for op in clear_effective_forward_ops:
         if paddle.framework.core.has_vjp(op):
             # prepare output_grad
-            output_grads = []  # (opresult)
-            zero_flag, output_grad = make_output_grad(op)
-            output_grads.append(output_grad)
+            zero_flag, output_grads = make_output_grad(op)
 
             # all(zero_flag) support this op has no contribution for grad
             # should be delete (prune sub_graph)
@@ -502,8 +545,8 @@ def append_backward_ops(
                         ] = state.value_to_valuegrad[value]
                     else:
                         state.op_to_opgrad[op] = []
-                else:
-                    state.op_to_opgrad[op] = []
+            else:
+                state.op_to_opgrad[op] = []
 
 
 def create_backward_prune_set(inputs, outputs, no_grad_set, state):
@@ -529,7 +572,7 @@ def create_backward_prune_set(inputs, outputs, no_grad_set, state):
 
     no_gradvar_set = set()  # grad_value of value in no_grad_set
     for key in state.value_to_valuegrad:
-        if key in no_grad_set:
+        if key in no_grad_set and state.value_to_valuegrad[key] != []:
             no_gradvar_set.add(state.value_to_valuegrad[key][0][0])
     for key in state.value_to_sumvaluegrad:
         if key in no_grad_set:
@@ -561,7 +604,7 @@ def remove_op(block, op, state):
 
 def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     block = outputs[0].get_defining_op().get_parent_block()
-    state = State(block.get_parent_program())
+    state = State(block.program)
     # check all inputs and outputs in the same block
     check_all_puts(block, inputs, outputs)
     # update no_grad_set if some value stop_gradient=True
@@ -585,7 +628,6 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
         block, inverse_effective_forward_ops, no_grad_set, backward_ops, state
     )
     # now value_to_valuegrad should be value <-> value (add sum op for the same values's gradvalue)
-
     outputs_set, inputs_set, no_gradvar_set = create_backward_prune_set(
         inputs, complete_outputs, no_grad_set, state
     )

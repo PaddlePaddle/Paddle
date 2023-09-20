@@ -16,8 +16,8 @@ import unittest
 
 import numpy as np
 from decorator_helper import prog_scope
-from eager_op_test import OpTest, skip_check_grad_ci
 from gradient_checker import grad_check
+from op_test import OpTest, skip_check_grad_ci
 
 import paddle
 from paddle import base
