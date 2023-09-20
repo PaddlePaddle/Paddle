@@ -88,10 +88,6 @@ std::vector<int> InferSpmdContext::AttrAt(size_t idx) const {
   }
 }
 
-// template const std::vector<int64_t>& InferSpmdContext::AttrAt(size_t idx)
-// const; template const std::vector<int>& InferSpmdContext::AttrAt(size_t idx)
-// const;
-
 const Attribute& InferSpmdContext::AttrAt(size_t idx) const {
   return attrs_.at(idx);
 }
