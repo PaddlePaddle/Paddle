@@ -41,7 +41,8 @@ def compute_index_put_ref(x, axis, index, value):
     while finished == 0:
         for i in index:
             out[x_data + i * x_stride] = value
-        if ndims == 1: break
+        if ndims == 1:
+            break
         for dim_i in range(ndims):
             if dim_i == axis:
                 if dim_i == ndims - 1:
@@ -69,7 +70,9 @@ class TestIndexFillAPIBase(unittest.TestCase):
         self.init_setting()
         self.modify_setting()
         self.x_np = np.random.random(self.x_shape).astype(self.dtype_np)
-        self.index_np = np.array(self.combs[np.random.randint(0, 252)]).astype(self.index_type)
+        self.index_np = np.array(self.combs[np.random.randint(0, 252)]).astype(
+            self.index_type
+        )
 
         self.place = ['cpu']
         if paddle.is_compiled_with_cuda():
@@ -82,7 +85,9 @@ class TestIndexFillAPIBase(unittest.TestCase):
         self.index_size = (5,)
         self.axis = 0
         self.value = -1
-        self.combs = list(combinations([i for i in range(10)], self.index_size[0]))
+        self.combs = list(
+            combinations(list(range(10)), self.index_size[0])
+        )
 
     def modify_setting(self):
         pass
@@ -91,8 +96,12 @@ class TestIndexFillAPIBase(unittest.TestCase):
         paddle.enable_static()
         for place in self.place:
             with paddle.static.program_guard(Program()):
-                x = paddle.static.data(name="x", shape=self.x_shape, dtype=self.dtype_np)
-                index = paddle.static.data(name="index", shape=self.index_size, dtype=self.index_type)
+                x = paddle.static.data(
+                    name="x", shape=self.x_shape, dtype=self.dtype_np
+                )
+                index = paddle.static.data(
+                    name="index", shape=self.index_size, dtype=self.index_type
+                )
                 out = paddle.index_fill(x, index, self.axis, self.value)
                 exe = paddle.static.Executor(place=place)
                 feed_list = {"x": self.x_np, "index": self.index_np}
@@ -113,8 +122,29 @@ class TestIndexFillAPIBase(unittest.TestCase):
             x_pd = paddle.to_tensor(self.x_np)
             index_pd = paddle.to_tensor(self.index_np)
             pd_res = paddle.index_fill(x_pd, index_pd, self.axis, self.value)
-            ref_res = compute_index_put_ref(self.x_np, self.axis, self.index_np, self.value)
+            ref_res = compute_index_put_ref(
+                self.x_np, self.axis, self.index_np, self.value
+            )
             np.testing.assert_allclose(ref_res, pd_res, atol=1e-5)
+
+    def test_errors(self):
+        data_np = np.random.random((10, 10)).astype(np.float32)
+        index = paddle.to_tensor([0, 2])
+
+        def test_index_not_tensor():
+            res = paddle.index_fill(data_np, [0, 2], axis=-1, value=-1)
+
+        self.assertRaises(ValueError, test_index_not_tensor)
+
+        def test_value_shape():
+            res = paddle.index_fill(data_np, index, axis=-1, value=paddle.to_tensor([-1, -4]))
+
+        self.assertRaises(ValueError, test_value_shape)
+
+        def test_axis_range():
+            res = paddle.index_fill(data_np, index, axis=4, value=-1)
+
+        self.assertRaises(ValueError, test_axis_range)
 
 
 class TestIndexFillAPI1(TestIndexFillAPIBase):

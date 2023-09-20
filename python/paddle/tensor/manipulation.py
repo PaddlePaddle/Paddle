@@ -5174,18 +5174,15 @@ def _index_fill_impl(x, index, axis, value, inplace):
 
 
     x_dim = len(x.shape)
-    if axis < 0: axis = axis + x_dim
+    if axis < 0:
+        axis = axis + x_dim
 
-    if (
-            not (isinstance(axis, int))
-            or (axis > x_dim - 1)
-            or axis < -x_dim
-    ):
+    if not (isinstance(axis, int)) or (axis > x_dim - 1) or axis < -x_dim:
         raise ValueError(
-            "The start_axis should be a int, and in range [-rank(x), rank(x))"
+            "The axis should be a int, and in range [-rank(x), rank(x))"
         )
 
-    perm = [i for i in range(len(x.shape))]
+    perm = list(range(len(x.shape)))
     perm[0] = axis
     perm[axis] = 0
 
@@ -5214,7 +5211,7 @@ def index_fill(x, index, axis, value, name=None):
             input_tensor = paddle.to_tensor(arr)
             index = paddle.to_tensor([0, 2], dtype="int32")
             value = -1
-            res = paddle.index_fill(input_tensor, 0, index, value)
+            res = paddle.index_fill(input_tensor, index, 0, value)
             print(input_tensor)
             # Tensor(shape=[3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
             #        [[1, 2, 3],
@@ -5254,7 +5251,7 @@ def index_fill_(x, index, axis, value, name=None):
             input_tensor = paddle.to_tensor(arr)
             index = paddle.to_tensor([0, 2], dtype="int32")
             value = -1
-            res = paddle.index_fill(input_tensor, 0, index, value)
+            res = paddle.index_fill(input_tensor, index, 0, value)
             print(input_tensor)
             # Tensor(shape=[3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
             #        [[-1, -1, -1],
