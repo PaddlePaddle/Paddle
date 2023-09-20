@@ -743,7 +743,7 @@ void Copy<phi::Place, phi::Place>(phi::Place dst_place,
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
           << dst_place;
   if (src_place.GetType() == phi::AllocationType::CPU &&
-      dst_place.GetType() == phi::AllocationType::CPU) {
+      dst_place.GetType() == phi::AllocationType::CPU) {  // NOLINT
     std::memcpy(dst, src, num);
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

@@ -1990,7 +1990,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
       static_cast<void *>(scope), this->GetDeviceContexts()));
   res->input_or_output_ = true;
   res->SetName(name);
-  if (platform::is_cpu_place(place_)) {
+  if (platform::is_cpu_place(place_)) {  // NOLINT
     res->SetPlace(PaddlePlace::kCPU);
   } else if (platform::is_ipu_place(place_)) {
     // Currently, IPUPlace's tensor copy between cpu and ipu has been set in
@@ -2041,7 +2041,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
       static_cast<void *>(scope), this->GetDeviceContexts()));
   res->input_or_output_ = false;
   res->SetName(name);
-  if (platform::is_cpu_place(place_)) {
+  if (platform::is_cpu_place(place_)) {  // NOLINT
     res->SetPlace(PaddlePlace::kCPU);
   } else if (platform::is_ipu_place(place_)) {
     // Currently, IPUPlace's tensor copy between cpu and ipu has been set in

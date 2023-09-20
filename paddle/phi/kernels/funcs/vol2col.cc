@@ -66,7 +66,7 @@ class Vol2ColFunctor<phi::CPUContext, T> {
 
     // changed
     bool paddings_size_is_6 = (paddings.size() == 6);
-    int pad_d_forth = paddings_size_is_6 ? paddings[0] : paddings[0];
+    int pad_d_forth = paddings[0];
     int pad_d_back = paddings_size_is_6 ? paddings[1] : paddings[0];
     int pad_h_up = paddings_size_is_6 ? paddings[2] : paddings[1];
     int pad_h_down = paddings_size_is_6 ? paddings[3] : paddings[1];
@@ -191,7 +191,7 @@ class Col2VolFunctor<phi::CPUContext, T> {
         input_channels * filter_depth * filter_height * filter_width;
 
     bool paddings_size_is_6 = (paddings.size() == 6);
-    int pad_d_forth = paddings_size_is_6 ? paddings[0] : paddings[0];
+    int pad_d_forth = paddings[0];
     int pad_d_back = paddings_size_is_6 ? paddings[1] : paddings[0];
     int pad_h_up = paddings_size_is_6 ? paddings[2] : paddings[1];
     int pad_h_down = paddings_size_is_6 ? paddings[3] : paddings[1];

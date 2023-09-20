@@ -47,7 +47,7 @@ static ExecutionStrategy GetExecutionStrategy(const platform::Place &place) {
       execution_strategy.num_threads_ = 2;
       break;
     }
-    case platform::DeviceType::CUDA: {
+    case platform::DeviceType::CUDA: {  // NOLINT
       // NOTE: According experiments, one thread is faster in
       // most model training.
       execution_strategy.num_threads_ = 1;

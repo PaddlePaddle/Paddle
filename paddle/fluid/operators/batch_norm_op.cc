@@ -386,8 +386,6 @@ phi::KernelKey BatchNormGradOp::GetExpectedKernelType(
   const phi::DenseTensor *t = nullptr;
   if (var->IsType<phi::DenseTensor>()) {
     t = &var->Get<phi::DenseTensor>();
-  } else if (var->IsType<phi::DenseTensor>()) {
-    t = &var->Get<phi::DenseTensor>();
   }
   if (t == nullptr) {
     PADDLE_THROW(
@@ -529,8 +527,6 @@ phi::KernelKey BatchNormDoubleGradOp::GetExpectedKernelType(
   }
   const phi::DenseTensor *t = nullptr;
   if (var->IsType<phi::DenseTensor>()) {
-    t = &var->Get<phi::DenseTensor>();
-  } else if (var->IsType<phi::DenseTensor>()) {
     t = &var->Get<phi::DenseTensor>();
   }
   if (t == nullptr) {

@@ -78,7 +78,8 @@ void TensorCopyImpl(const TENSOR& src,
   auto size = src.numel() * phi::SizeOf(src.dtype());
 #endif
 
-  if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
+  if (platform::is_cpu_place(src_place) &&
+      platform::is_cpu_place(dst_place)) {  // NOLINT
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -327,7 +328,8 @@ void TensorCopySync(const phi::DenseTensor& src,
     return;
   }
   auto size = src.numel() * phi::SizeOf(src.dtype());
-  if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
+  if (platform::is_cpu_place(src_place) &&
+      platform::is_cpu_place(dst_place)) {  // NOLINT
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #ifdef PADDLE_WITH_CUSTOM_DEVICE

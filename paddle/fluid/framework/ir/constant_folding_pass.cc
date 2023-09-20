@@ -81,9 +81,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
     std::unordered_map<std::string, int> map;
     for (auto in_node : op_node->inputs) {
       map[in_node->Name()] = 0;
-      if (!in_node->Var()->Persistable()) {
-        input_persis = false;
-      } else if (!in_node->inputs.empty()) {
+      if (!in_node->Var()->Persistable() || !in_node->inputs.empty()) {
         input_persis = false;
       }
     }

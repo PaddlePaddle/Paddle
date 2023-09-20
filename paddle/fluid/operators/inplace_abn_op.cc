@@ -284,8 +284,6 @@ class InplaceABNGradOp : public framework::OperatorWithKernel {
     const phi::DenseTensor* t = nullptr;
     if (var->IsType<phi::DenseTensor>()) {
       t = &var->Get<phi::DenseTensor>();
-    } else if (var->IsType<phi::DenseTensor>()) {
-      t = &var->Get<phi::DenseTensor>();
     }
     if (t == nullptr) {
       PADDLE_THROW(
