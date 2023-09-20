@@ -1138,6 +1138,10 @@ def init_parallel_env():
         _set_group_map_backend(group, backend)
         _add_new_group(group)
         parallel_helper._set_parallel_ctx(True)
+        if os.getenv("FLAGS_eage_nccl_connection", 0) == 1:
+            paddle.distributed.all_reduce(
+                paddle.zeros([1], dtype=paddle.uint8), group=group, sync_op=True
+            )
         return group
 
     node_num = {i.split(":")[0] for i in parallel_env.trainer_endpoints}
