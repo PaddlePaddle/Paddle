@@ -580,9 +580,6 @@ class MultiClassNMS2Op : public MultiClassNMSOp {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     MultiClassNMSOp::InferShape(ctx);
-
-    auto score_dims = ctx->GetInputDim("Scores");
-
     ctx->SetOutputDim("Index", {-1, 1});
     if (!ctx->IsRuntime()) {
       ctx->SetLoDLevel("Index", std::max(ctx->GetLoDLevel("BBoxes"), 1));
