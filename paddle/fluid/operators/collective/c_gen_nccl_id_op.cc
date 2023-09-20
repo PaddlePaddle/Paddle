@@ -66,18 +66,23 @@ class CGenNCCLIdOp : public framework::OperatorBase {
     };
 
     std::string endpoint = Attr<std::string>("endpoint");
-    int server_fd = platform::SocketServer::GetInstance(endpoint).socket();
 
     std::vector<ncclUniqueId> nccl_ids;
     nccl_ids.resize(1);
 
-    if (rank == 0) {
-      GenNCCLID(&nccl_ids);
-      std::vector<std::string> endpoint_list =
-          Attr<std::vector<std::string>>("other_endpoints");
-      platform::SendBroadCastCommID(endpoint_list, &nccl_ids, ring_id);
-    } else {
-      platform::RecvBroadCastCommID(server_fd, endpoint, &nccl_ids, ring_id);
+    const char* dynamic_static_unified_comm =
+        getenv("FLAGS_dynamic_static_unified_comm");
+    if (!dynamic_static_unified_comm ||
+        std::string(dynamic_static_unified_comm) != "1") {
+      int server_fd = platform::SocketServer::GetInstance(endpoint).socket();
+      if (rank == 0) {
+        GenNCCLID(&nccl_ids);
+        std::vector<std::string> endpoint_list =
+            Attr<std::vector<std::string>>("other_endpoints");
+        platform::SendBroadCastCommID(endpoint_list, &nccl_ids, ring_id);
+      } else {
+        platform::RecvBroadCastCommID(server_fd, endpoint, &nccl_ids, ring_id);
+      }
     }
 
     CopyNCCLIDToVar(nccl_ids, func, scope);
