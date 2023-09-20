@@ -897,6 +897,37 @@ BroadcastKernelForDifferentVecSize(const KPDevice &ctx,
   }
 }
 
+static void initDims(std::vector<int64_t> *dims, int size, int64_t value) {
+  dims->resize(size);
+  for (int i = 0; i < size; i++) {
+    (*dims)[i] = value;
+  }
+}
+
+static void updateStridesDims(std::vector<int64_t> *strides,
+                              std::vector<int64_t> *dims) {
+  for (int i = 1; i < strides->size(); i++) {
+    (*strides)[i] = (*strides)[i - 1] * (*dims)[i - 1];
+  }
+  // reverse origin_in_dim and origin_in_stride if in's dim_size > 0
+  std::reverse(strides->begin(), strides->end());
+  std::reverse(dims->begin(), dims->end());
+}
+
+static void UpdateTensor(DenseTensor *x,
+                         const DenseTensor *share,
+                         const std::vector<int64_t> &out_compute_dims,
+                         int64_t offset) {
+  auto new_dim = make_ddim(out_compute_dims);
+  DenseTensorMeta meta(share->dtype(),
+                       new_dim,
+                       share->layout(),
+                       offset * SizeOf(share->dtype()));
+  x->set_meta(meta);
+  x->ShareBufferWith(*(share), true);
+  x->Resize(new_dim);
+}
+
 template <typename OutT, typename Functor, int kArity, int NumOuts = 1>
 void BroadcastKernelApply(const KPDevice &ctx,
                           const std::vector<const DenseTensor *> &ins,
@@ -936,48 +967,30 @@ void BroadcastKernelApply(const KPDevice &ctx,
     // for split
     std::vector<int64_t> loop_num_out;
     std::vector<int64_t> loop_num_out_stride;
-    loop_num_out.resize(all_rank);
-    loop_num_out_stride.resize(all_rank);
+    initDims(&loop_num_out, all_rank, 1);
+    initDims(&loop_num_out_stride, all_rank, 1);
 
     // for input's offset
     std::vector<int64_t> ins_offset;
     std::vector<int64_t> ins_scale_for_dim;
-
-    ins_offset.resize(kArity);
-    ins_scale_for_dim.resize(kArity);
+    initDims(&origin_out_strides, all_rank, 1);
+    initDims(&ins_offset, kArity, 0);
+    initDims(&ins_scale_for_dim, kArity, 0);
 
     // init offset and check in's dim
     for (int k = 0; k < kArity; k++) {
-      ins_offset[k] = 0;
       ins_scale_for_dim[k] = ins[k]->dims().size() == 0 ? 0 : 1;
       if (ins_scale_for_dim[k]) {
         origin_in_strides[k][0] = 1;
       }
     }
 
-    // out_dims and has been reversed in BroadcastDimsSimplifier
-    for (int i = 1; i < all_rank; i++) {
-      loop_num_out[i] = 1;
-      loop_num_out_stride[i] = 1;
-      origin_out_strides[i] =
-          origin_out_strides[i - 1] * origin_out_dims[i - 1];
-      for (int k = 0; k < kArity; k++) {
-        if (ins_scale_for_dim[k]) {
-          origin_in_strides[k][i] =
-              origin_in_strides[k][i - 1] * origin_in_dims[k][i - 1];
-        }
-      }
-    }
-
-    // reverse origin_in_dim and origin_in_stride if in's dim_size > 0
+    updateStridesDims(&origin_out_strides, &origin_out_dims);
     for (int k = 0; k < kArity; k++) {
       if (ins_scale_for_dim[k]) {
-        std::reverse(origin_in_dims[k].begin(), origin_in_dims[k].end());
-        std::reverse(origin_in_strides[k].begin(), origin_in_strides[k].end());
+        updateStridesDims(&origin_in_strides[k], &origin_in_dims[k]);
       }
     }
-    std::reverse(origin_out_dims.begin(), origin_out_dims.end());
-    std::reverse(origin_out_strides.begin(), origin_out_strides.end());
 
     // init out_split_dim and in_split_dims
     auto out_split_dim = origin_out_dims;
@@ -988,18 +1001,15 @@ void BroadcastKernelApply(const KPDevice &ctx,
     int64_t split_idx = 0;
 
     for (int r = 0; r < all_rank; r++) {
-      // compute the split_dims
-      int64_t split_size = compute_size / origin_out_strides[r];
       // if the compute_size was too small the split_size must be 0, but the
       // dim_num must ge 1
+      int64_t split_size = compute_size / origin_out_strides[r];
       out_split_dim[r] = std::max(split_size, static_cast<int64_t>(1));
-      // get the split num of current dim
       loop_num_out[r] =
           (origin_out_dims[r] + out_split_dim[r] - 1) / out_split_dim[r];
       loop_num *= loop_num_out[r];
 
       for (int k = 0; k < kArity; k++) {
-        // compute the split_dim of input if in's dim_size > 0
         if (ins_scale_for_dim[k]) {
           in_split_dims[k][r] =
               std::min(origin_in_dims[k][r], out_split_dim[r]);
@@ -1065,29 +1075,16 @@ void BroadcastKernelApply(const KPDevice &ctx,
           in_compute_dims[k][split_idx] = std::min(in_split_dims[k][split_idx],
                                                    out_compute_dims[split_idx]);
         }
-        auto new_dim = make_ddim(in_compute_dims[k]);
-        DenseTensorMeta meta(
-            ins[k]->dtype(),
-            new_dim,
-            ins[k]->layout(),
-            ins_scale_for_dim[k] * ins_offset[k] * SizeOf(ins[k]->dtype()));
-        tmp_in[k].set_meta(meta);
-        tmp_in[k].ShareBufferWith(*(ins[k]), true);
-        tmp_in[k].Resize(new_dim);
+        UpdateTensor(&tmp_in[k],
+                     ins[k],
+                     in_compute_dims[k],
+                     ins_scale_for_dim[k] * ins_offset[k]);
         new_ins.emplace_back(&tmp_in[k]);
         ins_offset[k] = 0;
       }
 
       for (int n = 0; n < NumOuts; n++) {
-        auto new_dim = make_ddim(out_compute_dims);
-        DenseTensorMeta meta((*outs)[n]->dtype(),
-                             new_dim,
-                             (*outs)[n]->layout(),
-                             out_offset * sizeof(OutT));
-
-        tmp_out[n].set_meta(meta);
-        tmp_out[n].ShareBufferWith(*(*outs)[n], true);
-        tmp_out[n].Resize(new_dim);
+        UpdateTensor(&tmp_out[n], (*outs)[n], out_compute_dims, out_offset);
         new_outs.emplace_back(&tmp_out[n]);
       }
 
