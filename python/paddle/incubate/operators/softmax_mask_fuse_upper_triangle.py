@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _legacy_C_ops
+from paddle import _C_ops
 from paddle.base.layer_helper import LayerHelper
-from paddle.framework import in_dynamic_mode
+from paddle.framework import in_dynamic_or_pir_mode
 
 
 def softmax_mask_fuse_upper_triangle(x):
@@ -68,8 +68,8 @@ def softmax_mask_fuse_upper_triangle(x):
                [0.02280738, 0.03144657, 0.02892209, ..., 0.03885521,
                 0.03342311, 0.02842640]]]])
     """
-    if in_dynamic_mode():
-        out = _legacy_C_ops.fused_softmax_mask_upper_triangle(x)
+    if in_dynamic_or_pir_mode():
+        out = _C_ops.fused_softmax_mask_upper_triangle(x)
         return out
 
     helper = LayerHelper('fused_softmax_mask_upper_triangle', **locals())

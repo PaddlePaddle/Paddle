@@ -207,16 +207,16 @@ void IrParser::ParseBlock(Block& block) {  // NOLINT
   ConsumeAToken("}");
 }
 
-// Operation := OpResultList ":=" Opname "(" OprandList ? ")" AttributeMap ":"
+// Operation := ValueList ":=" Opname "(" OprandList ? ")" AttributeMap ":"
 // FunctionType
 // FunctionType := "(" TypeList ")"  "->" TypeList
 Operation* IrParser::ParseOperation() {
-  std::vector<std::string> opresultindex = ParseOpResultList();
+  std::vector<std::string> value_index = ParseValueList();
   ConsumeAToken("=");
 
   OpInfo opinfo = ParseOpInfo();
 
-  std::vector<OpResult> inputs = ParseOprandList();
+  std::vector<Value> inputs = ParseOprandList();
 
   pir::AttributeMap attributeMap = ParseAttributeMap();
 
@@ -232,31 +232,30 @@ Operation* IrParser::ParseOperation() {
       Operation::Create(inputs, attributeMap, type_vector, opinfo, 0);
 
   for (uint32_t i = 0; i < op->num_results(); i++) {
-    std::string key_t = opresultindex[i];
-    opresultmap[key_t] = op->result(i);
+    std::string key_t = value_index[i];
+    value_map[key_t] = op->result(i);
   }
 
   return op;
 }
 
-// OpResultList := ValueList
 // ValueList := ValueId(,ValueId)*
-std::vector<std::string> IrParser::ParseOpResultList() {
-  std::vector<std::string> opresultindex{};
+std::vector<std::string> IrParser::ParseValueList() {
+  std::vector<std::string> value_index{};
   ConsumeAToken("(");
   Token index_token = ConsumeToken();
   while (index_token.val_ != ")") {
     if (index_token.token_type_ == NULL_) {
-      opresultindex.push_back("null");
+      value_index.push_back("null");
     } else {
       std::string str = index_token.val_;
-      opresultindex.push_back(str);
+      value_index.push_back(str);
     }
     if (ConsumeToken().val_ == ")") break;
     index_token = ConsumeToken();
   }
 
-  return opresultindex;
+  return value_index;
 }
 
 // OpName := "\"" StringIdentifer "." StringIdentifer "\""
@@ -269,17 +268,17 @@ OpInfo IrParser::ParseOpInfo() {
 
 // OprandList := ValueList
 // ValueList := ValueId(,ValueId)*
-std::vector<OpResult> IrParser::ParseOprandList() {
+std::vector<Value> IrParser::ParseOprandList() {
   ConsumeAToken("(");
-  std::vector<OpResult> inputs{};
+  std::vector<Value> inputs{};
   Token ind_token = ConsumeToken();
   while (ind_token.val_ != ")") {
     std::string t = "";
     if (ind_token.token_type_ == NULL_) {
-      inputs.push_back(GetNullValue());
+      inputs.emplace_back();
     } else {
       t = ind_token.val_;
-      inputs.push_back(opresultmap[t]);
+      inputs.push_back(value_map[t]);
     }
     Token token = ConsumeToken();
     if (token.val_ == ")") {
@@ -325,12 +324,6 @@ std::vector<Type> IrParser::ParseTypeList() {
     ConsumeAToken(",");
   }
   return type_vector;
-}
-
-OpResult IrParser::GetNullValue() {
-  Value* v = new Value{nullptr};
-  OpResult* opresult = static_cast<OpResult*>(v);
-  return *opresult;
 }
 
 Attribute Attribute::Parse(std::istream& is, IrContext* ctx) {

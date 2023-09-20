@@ -25,7 +25,7 @@ namespace pir {
 std::pair<std::string, pir::Parameter*> GetParameterFromValue(
     pir::Value value) {
   pir::GetParameterOp op =
-      value.GetDefiningOp()->dyn_cast<pir::GetParameterOp>();
+      value.dyn_cast<OpResult>().owner()->dyn_cast<pir::GetParameterOp>();
   PADDLE_ENFORCE_NOT_NULL(
       op,
       phi::errors::InvalidArgument(
@@ -66,7 +66,7 @@ Operation* GetDefiningOpForInput(Operation* op, uint32_t index) {
       index < op->num_operands(),
       true,
       phi::errors::InvalidArgument("Intput operand's index must be valid."));
-  return op->operand_source(index).GetDefiningOp();
+  return op->operand_source(index).dyn_cast<OpResult>().owner();
 }
 
 Operation* GetFirstUseOperationForOutput(Operation* op, uint32_t index) {

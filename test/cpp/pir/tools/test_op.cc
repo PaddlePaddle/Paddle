@@ -28,7 +28,7 @@ void BranchOp::Build(pir::Builder &builder,  // NOLINT
                      pir::OperationArgument &argument,
                      const std::vector<pir::OpResult> &target_operands,
                      pir::Block *target) {
-  argument.AddOperands(target_operands.begin(), target_operands.end());
+  argument.AddInputs(target_operands.begin(), target_operands.end());
   argument.AddSuccessor(target);
 }
 
