@@ -17,9 +17,10 @@ from collections import OrderedDict
 import numpy as np
 
 import paddle
+from paddle.base.core import VarDesc
 from paddle.utils.flops import flops
 
-from ..cluster import LinkType, get_default_cluster
+from ..cluster import DeviceType, LinkType, get_default_cluster
 from ..dist_tensor import DistributedTensor
 from ..process_group import get_process_group
 from ..utils import _get_comm_group, _get_idx_in_axis
@@ -936,7 +937,13 @@ def calc_time_by_cost_model(op, cluster=None):
         )
     if not cluster:
         cluster = get_default_cluster()
-    time = 0.0
+
+    assert cluster._gpu_model in [
+        "V100",
+        "A100",
+    ], "Only A100 and V100 gpu has been supported currently."
+
+    time = 0.0  # microsecond
     op_type = op.type
     # calc comp op time by flops
     if op_type not in NON_COMP_TYPE:
@@ -958,14 +965,28 @@ def calc_time_by_cost_model(op, cluster=None):
         else:
             flops_count = flops(op_type, inputs, attrs)
 
-        if cluster._gpu_model == "V100":
-            time = flops_count * 2.9e-7 * 2.6
-        elif cluster._gpu_model == "A100":
-            time = flops_count * 2.9e-7
+        # FIXME(Ruibiao): Need a better way to get dtype
+        var_name = op.output_arg_names[0]
+        dtype = op.block._var_recursive(var_name).dtype
+        device = cluster.get_device(0)
+        assert (
+            device.type == DeviceType.GPU
+        ), "Only GPU device is supported currently."
+
+        gflops = 0.0
+        if dtype == VarDesc.VarType.FP64:
+            gflops = device.dp_gflops
+        elif dtype == VarDesc.VarType.FP32:
+            gflops = device.sp_gflops
+        elif dtype == VarDesc.VarType.FP16 or dtype == VarDesc.VarType.BF16:
+            gflops = device.hp_gflops
         else:
             raise ValueError(
-                "Only A100 and V100 gpu has been supported currently."
+                f"Unsupported modeling compute time for dtype: {dtype}."
             )
+
+        utilization_rate = 0.98
+        time = flops_count / (utilization_rate * gflops) * 1e-3
 
     # calc comm op time by communication modeling formula
     elif op_type in COMM_OP_TYPE:

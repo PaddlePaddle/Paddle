@@ -16,6 +16,7 @@
 
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/builtin_type_interfaces.h"
+#include "paddle/pir/core/ir_printer.h"
 #include "paddle/pir/core/op_base.h"
 
 namespace pir {
@@ -75,7 +76,7 @@ class IR_API DimOp : public Op<DimOp> {
 
   const std::string getName();
   void setName(std::string attrValue);
-  pir::OpResult out() { return result(0); }
+  OpResult out() { return result(0); }
   void Verify() {}
 };
 
@@ -96,8 +97,8 @@ class IR_API TieProductEqualOp : public Op<TieProductEqualOp> {
                     OperationArgument &argument,  // NOLINT
                     const std::vector<Value> &lhs,
                     const std::vector<Value> &rhs);
-  std::vector<pir::Value> getLhs();
-  std::vector<pir::Value> getRhs();
+  std::vector<Value> lhs();
+  std::vector<Value> rhs();
   void Verify() {}
 };
 
@@ -117,8 +118,8 @@ class IR_API TieShapeOp : public Op<TieShapeOp> {
                     OperationArgument &argument,  // NOLINT
                     Value input,
                     const std::vector<Value> &dims);
-  Value getValue();
-  std::vector<Value> getShapeDimIndexes();
+  Value value();
+  std::vector<Value> dims();
   void Verify() {}
 };
 
@@ -132,7 +133,8 @@ class IR_API FuncOp : public Op<FuncOp> {
 
   static void Build(Builder &builder,              // NOLINT
                     OperationArgument &argument);  // NOLINT
-  pir::Block *block();
+  void Print(IrPrinter &printer);                  // NOLINT
+  Block *block();
   void Verify() {}
 };
 
@@ -152,8 +154,8 @@ class IR_API TensorDimOp : public Op<TensorDimOp> {
                     OperationArgument &argument,  // NOLINT
                     Value source,
                     int64_t index);
-  Value getIndex();
-  Value getSource();
+  Value index();
+  Value source();
   OpResult out() { return result(0); }
   void Verify() {}
 };

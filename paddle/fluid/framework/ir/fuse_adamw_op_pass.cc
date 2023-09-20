@@ -246,7 +246,7 @@ void FuseAdamWPass::ApplyImpl(ir::Graph *graph) const {
   graph = FuseAdamWFun(graph, true, true);
   graph = FuseAdamWFun(graph, true, false);
   graph = FuseAdamWFun(graph, false, true);
-  graph = FuseAdamWFun(graph, false, false);
+  graph = FuseAdamWFun(graph, false, false);  // NOLINT
 }
 
 ir::Graph *FuseAdamWPass::FuseAdamWFun(ir::Graph *graph,

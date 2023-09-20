@@ -25,6 +25,9 @@ namespace dialect {
 
 pir::OpResult builtin_combine(const std::vector<pir::Value>& x);
 
+std::vector<pir::OpResult> add_n_grad(std::vector<pir::Value> inputs,
+                                      pir::Value out_grad);
+
 pir::OpResult zeros_like(pir::Value x,
                          phi::DataType dtype = phi::DataType::UNDEFINED,
                          const Place& place = {});
@@ -41,5 +44,9 @@ pir::OpResult embedding_grad(pir::Value x,
                              int64_t padding_idx = -1,
                              bool sparse = false);
 
+pir::OpResult split_with_num_grad(std::vector<pir::Value> out_grad, int axis);
+
+pir::OpResult split_with_num_grad(std::vector<pir::Value> out_grad,
+                                  pir::Value axis);
 }  // namespace dialect
 }  // namespace paddle
