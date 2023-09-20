@@ -16,7 +16,11 @@ from . import base
 from .base import (
     no_grad,
     no_grad_,
+    grad,
     guard,
+    enable_dygraph,
+    disable_dygraph,
+    enabled,
     to_variable,
 )
 
