@@ -95,7 +95,7 @@ void CommTaskManager::CommTaskLoop() {
         wait_comm_task_map_[task_key] = task;
         iter = comm_task_list_.erase(iter);
       } else {
-         ++iter;
+        ++iter;
       }
     }
 
