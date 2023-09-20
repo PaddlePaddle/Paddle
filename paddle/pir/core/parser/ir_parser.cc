@@ -24,23 +24,14 @@ IrParser::IrParser(IrContext* ctx, std::istream& is) {
   builder.reset(new Builder{ctx});
 }
 
-Token IrParser::ConsumeToken() {
-  auto token = lexer->ConsumeToken();
-  return token;
-}
+Token IrParser::ConsumeToken() { return lexer->ConsumeToken(); }
 
 std::string IrParser::GetErrorLocationInfo() {
   return "The error occurred in line " + std::to_string(lexer->GetLine()) +
          ", column " + std::to_string(lexer->GetColumn());
 }
 
-Token IrParser::PeekToken() {
-  auto token = lexer->ConsumeToken();
-  if (token.token_type_ != EOF_) {
-    lexer->Unget(token.val_.size());
-  }
-  return token;
-}
+Token IrParser::PeekToken() { return lexer->PeekToken(); }
 
 void IrParser::ConsumeAToken(std::string expect_token_val) {
   std::string token_val = ConsumeToken().val_;
@@ -128,14 +119,13 @@ Attribute IrParser::ParseAttribute() {
   auto parenthesis_token = ConsumeToken();
   if (parenthesis_token.val_ == "true" || parenthesis_token.val_ == "false") {
     return builder->bool_attr(parenthesis_token.val_ == "true");
+  } else if (parenthesis_token.token_type_ == STRING) {
+    std::string val = parenthesis_token.val_;
+    val = val.substr(1, val.size() - 2);
+    return builder->str_attr(val);
   }
   std::string attribute_type = PeekToken().val_;
-  if (attribute_type == "String") {
-    ConsumeAToken("String");
-    ConsumeAToken(")");
-    std::string val = ConsumeToken().val_;
-    return builder->str_attr(val);
-  } else if (attribute_type == "Float") {
+  if (attribute_type == "Float") {
     ConsumeAToken("Float");
     ConsumeAToken(")");
     std::string val = ConsumeToken().val_;
@@ -216,7 +206,7 @@ Operation* IrParser::ParseOperation() {
 
   OpInfo opinfo = ParseOpInfo();
 
-  std::vector<Value> inputs = ParseOprandList();
+  std::vector<Value> inputs = ParseOperandList();
 
   pir::AttributeMap attributeMap = ParseAttributeMap();
 
@@ -268,7 +258,7 @@ OpInfo IrParser::ParseOpInfo() {
 
 // OprandList := ValueList
 // ValueList := ValueId(,ValueId)*
-std::vector<Value> IrParser::ParseOprandList() {
+std::vector<Value> IrParser::ParseOperandList() {
   ConsumeAToken("(");
   std::vector<Value> inputs{};
   Token ind_token = ConsumeToken();

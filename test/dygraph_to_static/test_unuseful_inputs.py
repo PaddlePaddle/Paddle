@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 
 import paddle
 from paddle import nn
@@ -67,6 +68,7 @@ class TestDuplicateOutput(unittest.TestCase):
     dependent on tensor in Dygraph into Static `base.layers.cond`.
     """
 
+    @test_and_compare_with_new_ir(False)
     def test_case(self):
         # create network
         layer = Layer0(0)

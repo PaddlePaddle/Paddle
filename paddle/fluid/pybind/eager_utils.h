@@ -131,7 +131,6 @@ PyObject* ToPyObject(
 PyObject* ToPyObject(const paddle::framework::Vocab& value);
 
 PyObject* ToPyObject(std::shared_ptr<egr::GradNodeBase> grad_node);
-
 PyObject* ToPyObject(const pir::OpResult& value);
 PyObject* ToPyObject(const std::vector<pir::OpResult>& value);
 

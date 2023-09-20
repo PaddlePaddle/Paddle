@@ -525,7 +525,7 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
         attrs={
             'shape': [-1, 1],
             'dtype': tmp_ones.dtype,
-            'value': float(1.0),
+            'value': 1.0,
         },
     )
     helper.append_op(
