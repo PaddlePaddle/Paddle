@@ -21,7 +21,7 @@ from utils import static_guard
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
-from paddle.base.framework import convert_np_dtype_to_dtype_
+from paddle.base.framework import convert_np_dtype_to_dtype_, in_pir_mode
 
 
 class TestSumOp(OpTest):
@@ -1204,7 +1204,7 @@ def reduce_sum_wrapper2(x, axis=[0], dtype=None, keepdim=False):
     if paddle.in_dynamic_mode():
         return paddle._C_ops.sum(x, axis, dtype, keepdim)
     else:
-        if paddle.ir.core._use_new_ir_api():
+        if in_pir_mode():
             return paddle._ir_ops.sum(x, axis, dtype, keepdim)
 
 
