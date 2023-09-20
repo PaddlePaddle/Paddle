@@ -64,8 +64,6 @@ class TestPrimForwardAndBackward(unittest.TestCase):
 
         self.check_prim(net)
 
-        return
-
     def check_prim(self, net):
         ops = [
             op.type
