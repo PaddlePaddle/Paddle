@@ -326,7 +326,7 @@ class PythonCCodeGen(CodeGen):
                         type='',
                         name_=name,
                         name=name,
-                        cast_func='CastPyArg2OpResult',
+                        cast_func='CastPyArg2Value',
                         api_name=op_name,
                         index=input_size + i,
                     )
