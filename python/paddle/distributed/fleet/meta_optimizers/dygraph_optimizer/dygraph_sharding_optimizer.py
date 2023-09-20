@@ -18,6 +18,7 @@ from functools import reduce
 
 import paddle
 from paddle import framework
+from paddle.base.framework import EagerParamBase
 from paddle.distributed import fleet
 
 from ...utils.log_util import logger
@@ -459,17 +460,18 @@ class DygraphShardingOptimizerV2:
             raise ValueError(
                 "the optimzier object should have _apply_optimize function"
             )
+
+        self._inner_opt = optimizer
+        self._hcg = hcg
+        self._sharding_world_size = self._hcg.get_sharding_parallel_world_size()
+        self._sharding_rank = self._hcg.get_sharding_parallel_rank()
+
         # the self._parameter_list holds the whole model parameter slices
         self._parameter_list = optimizer._parameter_list
         # slice parameter list
         self._local_parameter_list = [
             self._partition_param(p) for p in optimizer._parameter_list
         ]
-
-        self._inner_opt = optimizer
-        self._hcg = hcg
-        self._sharding_world_size = self._hcg.get_sharding_parallel_world_size()
-        self._sharding_rank = self._hcg.get_sharding_parallel_rank()
 
         strategy = fleet.fleet._user_defined_strategy
         self.tensor_fusion = strategy.hybrid_configs[
@@ -611,11 +613,12 @@ class DygraphShardingOptimizerV2:
         with framework.no_grad():
             param_shape = param.shape
             param.flatten_()
-            param_slice = paddle.zero(shape=[shard_size], dtype=param.dtype)
+            param_slice = paddle.zeros(shape=[shard_size], dtype=param.dtype)
             param_slice[0 : slice_end - slice_end] = param[
                 slice_begin:slice_end
             ]
-            param.reshape(param_shape)
+            param_slice = EagerParamBase.from_tensor(param_slice)
+            param.get_tensor()._set_dims(param_shape)
             param_slice.name = f"shard@{param.name}"
             param.shard_slice = param_slice
             return param_slice
@@ -629,9 +632,9 @@ class DygraphShardingOptimizerV2:
         with framework.no_grad():
             t_shape = t.shape
             t.flatten_()
-            t_padded = paddle.zero(shape=[padded_size], dtype=t.dtype)
+            t_padded = paddle.zeros(shape=[padded_size], dtype=t.dtype)
             t_padded[0:size] = t
-            t.reshape(t_shape)
+            t.get_tensor()._set_dims(t_shape)
             return t_padded
 
     def _assign_param(self, param, full_param):
@@ -643,13 +646,17 @@ class DygraphShardingOptimizerV2:
             param_shape = param.shape
             param.flatten_()
             param[0:size] = full_param[0:size]
-            param.reshape(param_shape)
+            param.get_tensor()._set_dims(param_shape)
 
     def _assign_slice_grad(self, param, slice_grad):
         # assign slice grad to parameter
         with framework.no_grad():
             assert hasattr(param, "shard_slice")
-            param.shard_slice._copy_gradient_from(slice_grad)
+            shard_slice = param.shard_slice
+            if hasattr(param, "main_grad"):
+                shard_slice.main_grad = slice_grad
+            else:
+                shard_slice._copy_gradient_from(slice_grad)
 
     def step(self):
         # TODO Check whether the model trainable param changed and update state accordingly
