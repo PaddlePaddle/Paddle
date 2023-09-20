@@ -23,8 +23,7 @@ namespace ir {
 
 bool operator==(Expr a, Expr b) {
   if (a.get() == b.get()) return true;
-  IrEqualVisitor cmp;
-  return cmp.Compare(a, b);
+  return ir_utils::IRCompare(a, b);
 }
 
 bool operator!=(Expr a, Expr b) { return !(a == b); }
