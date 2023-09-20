@@ -3219,7 +3219,8 @@ DDim ReduceInferDim(const MetaTensor& x,
       break;
     }
   }
-  reduce_all = reduce_all || full_dim;
+  bool empty_dim = axis.size() == 0;
+  reduce_all = reduce_all || full_dim || empty_dim;
 
   std::vector<int64_t> out_dim_vector;
   for (int i = 0; i < x_rank; ++i) {

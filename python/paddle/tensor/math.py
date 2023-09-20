@@ -1525,8 +1525,8 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
     if in_dynamic_or_pir_mode():
         return _C_ops.sum(x, axis, dtype, keepdim)
     else:
-        if axis is None:
-            axis = list(range(len(x.shape)))
+        reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
+
         attrs = {'dim': axis, 'keep_dim': keepdim}
 
         if dtype_flag:
