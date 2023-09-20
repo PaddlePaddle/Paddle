@@ -18,10 +18,11 @@
 #include "paddle/cinn/ir/ir.h"
 
 namespace cinn {
-namespace optim {
+namespace ir {
+namespace ir_utils {
 
 //! Replace the variable \p v to expression \p e in expression \p expr.
 void IrReplace(ir::Expr* expr, ir::Expr from, ir::Expr to);
-
-}  // namespace optim
+}  // namespace ir_utils
+}  // namespace ir
 }  // namespace cinn

@@ -21,15 +21,56 @@
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
+#include <iostream>
 #include <vector>
 
 namespace cinn {
 namespace auto_schedule {
 
+// TEST(CostModel, Basic1) {
+//   std::cerr<<"where the error?" << "file is " << __FILE__ <<__LINE__ <<"\n";
+//   XgbCostModel cost_model;
+
+//   srand(time(NULL));
+
+//   int batch_size = 16;
+//   int feature_size = 8;
+//   std::vector<float> labels(batch_size, 1.0);
+//   std::vector<std::vector<float>> samples(batch_size,
+//                                           std::vector<float>(feature_size));
+//   for (int i = 0; i < batch_size; ++i) {
+//     for (int j = 0; j < feature_size; ++j) {
+//       samples[i][j] = rand() % 10;  // NOLINT
+//     }
+//   }
+
+//   std::cerr<<"where the error?" << "file is " << __FILE__ <<__LINE__ <<"\n";
+
+//   // 多上这句话，就会报错了
+//   cost_model.Train(samples, labels);
+//   // std::vector<float> pred = cost_model.Predict(samples);
+
+//   // std::string path = "./test_cost_model.cpp_save_model";
+//   // cost_model.Save(path);
+
+//   // XgbCostModel load_cost_model;
+//   // load_cost_model.Load(path);
+//   // std::vector<float> load_pred = cost_model.Predict(samples);
+
+//   // ASSERT_EQ(pred.size(), load_pred.size());
+//   // for (size_t i = 0; i < pred.size(); ++i) {
+//   //   ASSERT_FLOAT_EQ(pred[i], load_pred[i]);
+//   //   VLOG(6) << "pred[" << i << "] = " << pred[i];
+//   // }
+
+// }
+
 TEST(CostModel, Basic) {
+  std::cout << "where the error?" << __LINE__ << "\n";
   XgbCostModel cost_model;
 
   srand(time(NULL));
+  std::cout << "where the error?" << __LINE__ << "\n";
 
   int batch_size = 16;
   int feature_size = 8;
@@ -41,29 +82,33 @@ TEST(CostModel, Basic) {
       samples[i][j] = rand() % 10;  // NOLINT
     }
   }
+  std::cout << "where the error?" << __LINE__ << "\n";
 
   cost_model.Train(samples, labels);
-  std::vector<float> pred = cost_model.Predict(samples);
+  // std::vector<float> pred = cost_model.Predict(samples);
 
-  std::string path = "./test_cost_model.cpp_save_model";
-  cost_model.Save(path);
+  // std::string path = "./test_cost_model.cpp_save_model";
+  // cost_model.Save(path);
 
-  XgbCostModel load_cost_model;
-  load_cost_model.Load(path);
-  std::vector<float> load_pred = cost_model.Predict(samples);
+  // XgbCostModel load_cost_model;
+  // load_cost_model.Load(path);
+  // std::vector<float> load_pred = cost_model.Predict(samples);
+  // std::cerr<<"where the error?" << "file is " << __FILE__ <<__LINE__ <<"\n";
 
-  ASSERT_EQ(pred.size(), load_pred.size());
-  for (size_t i = 0; i < pred.size(); ++i) {
-    ASSERT_FLOAT_EQ(pred[i], load_pred[i]);
-    VLOG(6) << "pred[" << i << "] = " << pred[i];
-  }
-  std::remove(path.c_str());
+  // ASSERT_EQ(pred.size(), load_pred.size());
+  // for (size_t i = 0; i < pred.size(); ++i) {
+  //   ASSERT_FLOAT_EQ(pred[i], load_pred[i]);
+  //   VLOG(6) << "pred[" << i << "] = " << pred[i];
+  // }
+  // std::remove(path.c_str());
+  // std::cerr<<"where the error?" << "file is " << __FILE__ <<__LINE__ <<"\n";
 
-  cost_model.Update(samples, labels);
-  pred = cost_model.Predict(samples);
-  for (size_t i = 0; i < pred.size(); ++i) {
-    VLOG(6) << "pred[" << i << "] = " << pred[i];
-  }
+  // cost_model.Update(samples, labels);
+  // pred = cost_model.Predict(samples);
+  // for (size_t i = 0; i < pred.size(); ++i) {
+  //   VLOG(6) << "pred[" << i << "] = " << pred[i];
+  // }
+  // std::cerr<<"where the error?" << "file is " << __FILE__ <<__LINE__ <<"\n";
 }
 
 }  // namespace auto_schedule

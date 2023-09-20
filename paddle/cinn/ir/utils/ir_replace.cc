@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/optim/ir_replace.h"
+#include "paddle/cinn/ir/utils/ir_replace.h"
 
 #include <set>
 
@@ -22,7 +22,8 @@
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {
-namespace optim {
+namespace ir {
+namespace ir_utils {
 using utils::GetStreamCnt;
 
 namespace {
@@ -65,5 +66,6 @@ void IrReplace(ir::Expr* expr, ir::Expr from, ir::Expr to) {
   IrReplaceMutator(from, to)(expr);
 }
 
-}  // namespace optim
+}  // namespace ir_utils
+}  // namespace ir
 }  // namespace cinn

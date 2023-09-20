@@ -16,6 +16,7 @@
 
 #include <gtest/gtest.h>
 
+#include <iostream>
 #include <memory>
 #include <utility>
 
@@ -129,6 +130,7 @@ TEST(EvolutionarySearch, GetOneBest) {
 }
 
 TEST(EvolutionarySearch, GetEpsGreedy) {
+  std::cout << "where the error?" << __LINE__ << "\n";
   TuneTask mock_tune_task;
   mock_tune_task.serialized_key = "mock_task";
   mock_tune_task.target = common::DefaultTarget();
@@ -155,6 +157,7 @@ TEST(EvolutionarySearch, GetEpsGreedy) {
 }
 
 TEST(EvolutionarySearch, Evolve) {
+  std::cout << "where the error?" << __LINE__ << "\n";
   auto target = common::DefaultNVGPUTarget();
   auto tasks = CreateTasks(
       tests::OpBuilder("matmul").Build({{"X", {32, 32}}, {"Y", {32, 32}}}),

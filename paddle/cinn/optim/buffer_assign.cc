@@ -17,8 +17,8 @@
 #include "paddle/cinn/common/union_find.h"
 #include "paddle/cinn/ir/utils/ir_mutator.h"
 #include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/utils/ir_replace.h"
 #include "paddle/cinn/lang/lower_impl.h"
-#include "paddle/cinn/optim/ir_replace.h"
 
 namespace cinn {
 namespace optim {
