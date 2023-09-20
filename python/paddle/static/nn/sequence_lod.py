@@ -108,9 +108,9 @@ def sequence_conv(
             on both sides of the sequence. If set 0, the length of :math:`filter\_size - 1` data
             is padded at the end of each input sequence. Default: None.
         bias_attr (ParamAttr): To specify the bias parameter property. Default: None, which means the
-            default bias parameter property is used. See usage for details in :ref:`api_base_ParamAttr` .
+            default bias parameter property is used. See usage for details in :ref:`api_paddle_ParamAttr` .
         param_attr (ParamAttr): To specify the weight parameter property. Default: None, which means the
-            default weight parameter property is used. See usage for details in :ref:`api_base_ParamAttr` .
+            default weight parameter property is used. See usage for details in :ref:`api_paddle_ParamAttr` .
         act (str): Activation to be applied to the output of this layer, such as tanh, softmax,
             sigmoid, relu. For more information, please refer to :ref:`api_guide_activations_en` . Default: None.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
