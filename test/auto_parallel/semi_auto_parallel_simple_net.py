@@ -35,7 +35,7 @@ class RandomDataset(paddle.io.Dataset):
 
     def __getitem__(self, idx):
         image = np.random.random([IMAGE_SIZE]).astype('float32')
-        label = np.random.randint(0, CLASS_NUM, (1,)).astype('int64')
+        label = np.random.random([CLASS_NUM]).astype('float32')
         return image, label
 
     def __len__(self):
@@ -58,15 +58,24 @@ class DemoNet(nn.Layer):
 class DPDemoNet(nn.Layer):
     def __init__(self, mesh):
         super().__init__()
-        self.w0 = self.create_parameter(shape=[IMAGE_SIZE, IMAGE_SIZE])
-        self.w1 = self.create_parameter(shape=[IMAGE_SIZE, CLASS_NUM])
-        self.mesh = mesh
+        self.replicate_dist_attr = dist.DistAttr(
+            mesh=mesh, sharding_specs=[None, None]
+        )
+        self.shard_axis0_dist_attr = dist.DistAttr(
+            mesh=mesh, sharding_specs=['x', None]
+        )
+        self.w0 = dist.shard_tensor(
+            self.create_parameter(shape=[IMAGE_SIZE, IMAGE_SIZE]),
+            dist_attr=self.replicate_dist_attr,
+        )
+        self.w1 = dist.shard_tensor(
+            self.create_parameter(shape=[IMAGE_SIZE, CLASS_NUM]),
+            dist_attr=self.replicate_dist_attr,
+        )
 
     def forward(self, x):
         y = paddle.matmul(
-            dist.shard_tensor(
-                x, dist.DistAttr(mesh=self.mesh, sharding_specs=['x', None])
-            ),
+            dist.shard_tensor(x, dist_attr=self.shard_axis0_dist_attr),
             self.w0,
         )
         z = paddle.matmul(y, self.w1)
@@ -76,24 +85,35 @@ class DPDemoNet(nn.Layer):
 class MPDemoNet(nn.Layer):
     def __init__(self, mesh):
         super().__init__()
+        self.replicate_dist_attr = dist.DistAttr(
+            mesh=mesh, sharding_specs=[None, None]
+        )
+        self.shard_axis0_dist_attr = dist.DistAttr(
+            mesh=mesh, sharding_specs=['x', None]
+        )
+        self.shard_axis1_dist_attr = dist.DistAttr(
+            mesh=mesh, sharding_specs=['x', None]
+        )
         self.w0 = dist.shard_tensor(
             self.create_parameter(shape=[IMAGE_SIZE, IMAGE_SIZE]),
-            dist.DistAttr(mesh=mesh, sharding_specs=[None, 'x']),
+            dist_attr=self.shard_axis1_dist_attr,
         )
         self.w1 = dist.shard_tensor(
             self.create_parameter(shape=[IMAGE_SIZE, CLASS_NUM]),
-            dist.DistAttr(mesh=mesh, sharding_specs=['x', None]),
+            dist_attr=self.shard_axis0_dist_attr,
         )
 
     def forward(self, x):
-        y = paddle.matmul(x, self.w0)
+        y = paddle.matmul(
+            dist.shard_tensor(x, dist_attr=self.replicate_dist_attr), self.w0
+        )
         z = paddle.matmul(y, self.w1)
         return z
 
 
-def train_dynamic(layer):
+def train_dynamic(layer, mesh=None):
     # create loss and optimizer
-    loss_fn = nn.CrossEntropyLoss()
+    loss_fn = nn.MSELoss()
     sgd = opt.SGD(learning_rate=0.001, parameters=layer.parameters())
     # create data loader
     dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
@@ -102,12 +122,22 @@ def train_dynamic(layer):
         batch_size=BATCH_SIZE,
         shuffle=True,
         drop_last=True,
-        num_workers=2,
+        num_workers=0,
     )
     # train
     for epoch_id in range(EPOCH_NUM):
         for batch_id, (image, label) in enumerate(loader()):
             out = layer(image)
+            label = (
+                dist.shard_tensor(
+                    label,
+                    dist_attr=dist.DistAttr(
+                        mesh=mesh, sharding_specs=[None, None]
+                    ),
+                )
+                if mesh is not None
+                else label
+            )
             loss = loss_fn(out, label)
             loss.backward()
             sgd.step()
@@ -124,19 +154,22 @@ class TestSimpleNetForSemiAutoParallel:
         self._seeds = eval(os.getenv("seeds"))
         self._backend = os.getenv("backend")
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
-        self.init_single_card_net_result()
+
+        paddle.set_device(self._backend)
+        # self.init_single_card_net_result()
 
     def init_single_card_net_result(self):
         self.base_loss = train_dynamic(DemoNet())
 
     def test_dp_demo_net(self):
-        self.dp_loss = train_dynamic(DPDemoNet(self._mesh))
+        self.dp_loss = train_dynamic(DPDemoNet(self._mesh), mesh=self._mesh)
 
     def test_mp_demo_net(self):
-        self.mp_loss = train_dynamic(MPDemoNet(self._mesh))
+        self.mp_loss = train_dynamic(MPDemoNet(self._mesh), mesh=self._mesh)
 
     def run_test_case(self):
-        self.test_mp_demo_net()
+        self.test_dp_demo_net()
+        # self.test_mp_demo_net()
 
 
 if __name__ == '__main__':
