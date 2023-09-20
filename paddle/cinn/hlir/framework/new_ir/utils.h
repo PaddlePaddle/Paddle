@@ -16,7 +16,7 @@
 #include <string>
 #include <unordered_map>
 #include "paddle/cinn/common/context.h"
-#include "paddle/ir/core/operation.h"
+#include "paddle/pir/core/operation.h"
 
 namespace cinn {
 namespace hlir {
@@ -24,26 +24,23 @@ namespace framework {
 namespace newir {
 
 struct CompatibleInfo {
-  static constexpr char* kInputPrefix = "input_";
-  static constexpr char* kOutputPrefix = "output_";
+  static constexpr char* kNamePrefix = "var_";
   // TODO(Aurelius): Need add name mapping logic in REGISTER_CINN_OP
   // macros or attempt to unify Op name with Paddle and CINN.
   static const std::unordered_map<std::string, std::string> OP_NAMES;
 
-  static std::string OpName(const ::ir::Operation& op);
+  static std::string OpName(const ::pir::Operation& op);
 
-  static std::string InputName(const ::ir::Value& value);
+  static std::string ValueName(const ::pir::Value& value);
 
-  static std::string OutputName(const ::ir::Value& value);
+  static std::string OpFuncName(const ::pir::Operation& op);
 
-  static std::string OpFuncName(const ::ir::Operation& op);
+  static std::string GroupOpsName(const std::vector<::pir::Operation*>& ops);
 
-  static std::string GroupOpsName(const std::vector<::ir::Operation*>& ops);
-
-  static std::vector<std::string> InputNames(const ::ir::Operation& op,
+  static std::vector<std::string> InputNames(const ::pir::Operation& op,
                                              bool allow_duplicate = false);
 
-  static std::vector<std::string> OutputNames(const ::ir::Operation& op);
+  static std::vector<std::string> OutputNames(::pir::Operation& op);  // NOLINT
 };
 
 }  // namespace newir

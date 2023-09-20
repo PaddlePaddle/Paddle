@@ -17,13 +17,12 @@
 #include <absl/types/variant.h>
 #include "paddle/cinn/hlir/framework/new_ir/utils.h"
 #include "paddle/cinn/utils/attribute_util.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
-#include "paddle/ir/core/builtin_type.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/pir/core/builtin_type.h"
 
 namespace cinn {
 namespace hlir {
 namespace framework {
-using newir::CompatibleInfo;
 
 // TODO(Aurelius84): Need abstract this logic to implement Proxy for
 // the co-existance with GraphCompiler.
@@ -33,9 +32,8 @@ std::unique_ptr<Program> NewIRCompiler::Build() {
   std::vector<newir::GroupPtr> groups;
   for (auto it = program_.block()->begin(); it != program_.block()->end();
        ++it) {
-    std::vector<::ir::Operation*> ops = {*it};
+    std::vector<::pir::Operation*> ops = {*it};
     groups.push_back(std::make_shared<newir::Group>(ops));
-    groups.back()->fn_name = CompatibleInfo::GroupOpsName(groups.back()->ops);
   }
   VLOG(4) << "Groups size: " << groups.size();
   return std::move(Build(groups));
@@ -103,23 +101,20 @@ std::vector<std::unique_ptr<Instruction>> NewIRCompiler::BuildInstructions(
     const std::vector<newir::GroupPtr>& groups) {
   std::vector<std::unique_ptr<Instruction>> instructions;
   for (int idx = 0; idx < groups.size(); ++idx) {
-    // TODO(Aurelius84): only support single op in groups
-    auto& op = *(groups[idx]->ops[0]);
-
     auto& fn_name = groups[idx]->fn_name;
-    auto instr = std::unique_ptr<Instruction>(
-        new Instruction(target_,
-                        scope_.get(),
-                        CompatibleInfo::InputNames(op),
-                        CompatibleInfo::OutputNames(op),
-                        fn_name));
+    auto instr =
+        std::unique_ptr<Instruction>(new Instruction(target_,
+                                                     scope_.get(),
+                                                     groups[idx]->input_names,
+                                                     groups[idx]->output_names,
+                                                     fn_name));
     VLOG(1) << "Lookup kernel name: " << fn_name;
     auto* fn_ptr = compiler_->Lookup(fn_name);
     CHECK(fn_ptr);
     instr->SetLoweredFunc(reinterpret_cast<void*>(fn_ptr), fn_name);
     // As some instruction like reduce, will generate more than one kernel.
     // So try to find the rest kernel, if it exists.
-    // SetSubKernels(instr.get(), op_func_name);
+    // SetSubKernels(instr.get(), fn_name);
     instr->Finalize();
     instructions.push_back(std::move(instr));
   }
@@ -127,20 +122,19 @@ std::vector<std::unique_ptr<Instruction>> NewIRCompiler::BuildInstructions(
 }
 
 std::shared_ptr<Scope> BuildScope(const Target& target,
-                                  const ::ir::Program& program) {
-  std::unordered_set<::ir::Value> visited;
+                                  const ::pir::Program& program) {
+  std::unordered_set<::pir::Value> visited;
   auto scope = std::make_shared<Scope>();
 
-  auto create_var = [&](const std::string& name_prefix, ::ir::Value value) {
+  auto create_var = [&](::pir::Value value) {
     if (visited.count(value) > 0) return;
     visited.emplace(value);
 
-    std::string name =
-        name_prefix + std::to_string(std::hash<::ir::Value>()(value));
+    std::string name = newir::CompatibleInfo::ValueName(value);
     auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
     auto* var = scope->Var<Tensor>(name);
     auto& tensor = absl::get<Tensor>(*var);
-    // NOTE: can be replaced with phi::vectorized ?
+
     std::vector<Shape::dim_t> shape;
     for (auto i = 0; i < type_info.dims().size(); ++i) {
       shape.push_back(Shape::dim_t(type_info.dims()[i]));
@@ -150,14 +144,12 @@ std::shared_ptr<Scope> BuildScope(const Target& target,
   };
 
   for (auto it = program.block()->begin(); it != program.block()->end(); ++it) {
-    for (auto i = 0; i < (*it)->num_operands(); ++i) {
-      auto in_value = (*it)->operand_source(i);
-      create_var(CompatibleInfo::kInputPrefix, in_value);
+    for (auto& oprand : (*it)->operands()) {
+      create_var(oprand.source());
     }
 
-    for (auto i = 0; i < (*it)->num_results(); ++i) {
-      auto out_value = (*it)->result(i);
-      create_var(CompatibleInfo::kOutputPrefix, out_value);
+    for (auto& result : (*it)->results()) {
+      create_var(result);
     }
   }
   return scope;

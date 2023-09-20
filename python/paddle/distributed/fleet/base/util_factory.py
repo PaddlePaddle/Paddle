@@ -26,8 +26,8 @@ from google.protobuf import text_format
 
 import paddle
 from paddle import framework
-from paddle.fluid import core
-from paddle.fluid.proto import framework_pb2
+from paddle.base import core
+from paddle.base.proto import framework_pb2
 from paddle.static import Program
 
 from ..utils.fs import FS
@@ -68,7 +68,7 @@ class UtilBase:
         All reduce `input` between specified collection. This is a distributed API.
 
         Args:
-            input (list|numpy.array): The input variable to do all_reduce between specified collection.
+            input (list|tuple|numpy.array): The input variable to do all_reduce between specified collection.
             mode (str): "sum" or "min" or "max".
             comm_world (str, optional): Collection used to execute all_reduce operation. Supported collections incude `worker` , `server` and `all` . The default is `worker` .
 
@@ -109,6 +109,8 @@ class UtilBase:
                 >>> if __name__ == "__main__":
                 ...     train()
         """
+        if isinstance(input, tuple):
+            input = list(input)
         return self.role_maker._all_reduce(input, mode, comm_world)
 
     def barrier(self, comm_world="worker"):
@@ -644,7 +646,7 @@ class UtilBase:
                             dtype=feed_config.feeded_vars_types[i],
                         )
                         feed_tensors.append(
-                            paddle.fluid.create_lod_tensor(
+                            paddle.base.create_lod_tensor(
                                 t, [[1] * config.batch_size], place
                             )
                         )
@@ -673,7 +675,7 @@ class UtilBase:
                     )
                     for i in range(len(feed_config.feeded_vars_names))
                 ]
-                feeder = paddle.fluid.DataFeeder(
+                feeder = paddle.base.DataFeeder(
                     feed_list=feed_vars, place=place
                 )
                 batch_feed = feed_gen(

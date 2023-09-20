@@ -24,8 +24,8 @@ import numpy as np
 import paddle
 import paddle.distributed.auto_parallel.static.utils as auto_utils
 from paddle import static, utils
+from paddle.base.executor import _to_name_str
 from paddle.distributed import fleet
-from paddle.fluid.executor import _to_name_str
 from paddle.framework import IrGraph
 from paddle.framework import _current_expected_place as _get_device
 from paddle.framework import core, in_dynamic_mode
@@ -54,10 +54,8 @@ from .process_group import get_all_process_groups, new_process_group
 
 class Engine:
     """
-    An Engine object can provide the full power of auto parallel to users.
-    With the help of it, users can easily obtain the abilities of the
-    distributed training and inference. It also support the dynamic graph and
-    static graph at the same time.
+    An High-Level API for auto parallel, which could be used for distributed Training (engine.fit) and Inferenced (engine.predict).
+    Static graph mode is supported natively, Dynamic graph mode is also supported under `@to_static <https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/api/paddle/jit/to_static_cn.html#to-static>`_ .
 
     Args:
         model (paddle.nn.Layer, optional): The model is an instance of
@@ -1033,6 +1031,7 @@ class Engine:
                                 use_program_cache=self._strategy.use_cache,
                                 return_numpy=self._strategy.return_numpy,
                             )
+
                             lr = auto_utils.get_lr(self.optimizer)
                             logs = self._prepare_logger(
                                 outs,

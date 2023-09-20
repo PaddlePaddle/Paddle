@@ -17,9 +17,9 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid, nn
-from paddle.fluid import framework
-from paddle.fluid.core import VarDesc
+from paddle import base, nn
+from paddle.base import framework
+from paddle.base.core import VarDesc
 from paddle.nn import initializer
 
 DELTA = 0.00001
@@ -71,7 +71,7 @@ class TestConstantInitializer(unittest.TestCase):
 
     def test_constant_initializer_default_value_dygraph(self, dtype="float32"):
         """Test constant initializer with supplied value in dygraph"""
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             linear = nn.Linear(2, 4, weight_attr=nn.initializer.Constant())
             mat_target = np.ones((2, 4), dtype=dtype) * 0.0
             mat_linear = linear.weight.numpy()
@@ -89,7 +89,7 @@ class TestConstantInitializer(unittest.TestCase):
 
     def test_constant_initializer_dygraph(self, dtype="float32"):
         """Test constant initializer with supplied value in dygraph"""
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             linear = nn.Linear(
                 2, 4, weight_attr=nn.initializer.Constant(value=2.0)
             )

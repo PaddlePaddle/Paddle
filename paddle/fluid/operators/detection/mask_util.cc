@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/detection/mask_util.h"
 
-#include <math.h>
-#include <stdlib.h>
+#include <cmath>
+#include <cstdlib>
 
 #include "paddle/fluid/memory/memory.h"
 
@@ -51,12 +51,14 @@ void Poly2Mask(const float* xy, int k, int h, int w, uint8_t* mask) {
   x = reinterpret_cast<int*>(xptr->ptr());
   y = x + (k + 1);
 
-  for (j = 0; j < k; j++) x[j] = std::lround(scale * xy[j * 2 + 0]);
+  for (j = 0; j < k; j++)
+    x[j] = static_cast<int>(std::lround(scale * xy[j * 2 + 0]));
   x[k] = x[0];
-  for (j = 0; j < k; j++) y[j] = std::lround(scale * xy[j * 2 + 1]);
+  for (j = 0; j < k; j++)
+    y[j] = static_cast<int>(std::lround(scale * xy[j * 2 + 1]));
   y[k] = y[0];
   for (j = 0; j < k; j++) {
-    m += UMax(abs(x[j] - x[j + 1]), abs(y[j] - y[j + 1])) + 1;
+    m += static_cast<int>(UMax(abs(x[j] - x[j + 1]), abs(y[j] - y[j + 1])) + 1);
   }
   auto vptr = memory::Alloc(cpu, sizeof(int) * m * 2);
   u = reinterpret_cast<int*>(vptr->ptr());
@@ -82,7 +84,7 @@ void Poly2Mask(const float* xy, int k, int h, int w, uint8_t* mask) {
       for (d = 0; d <= dx; d++) {
         t = flip ? dx - d : d;
         u[m] = t + xs;
-        v[m] = std::lround(ys + s * t);
+        v[m] = static_cast<int>(std::lround(ys + s * t));
         m++;
       }
     } else {
@@ -90,7 +92,7 @@ void Poly2Mask(const float* xy, int k, int h, int w, uint8_t* mask) {
       for (d = 0; d <= dy; d++) {
         t = flip ? dy - d : d;
         v[m] = t + ys;
-        u[m] = std::lround(xs + s * t);
+        u[m] = static_cast<int>(std::lround(xs + s * t));
         m++;
       }
     }
@@ -196,14 +198,14 @@ void Polys2MaskWrtBox(const std::vector<std::vector<float>>& polygons,
     msk = mask;
   } else {
     msk = reinterpret_cast<uint8_t*>(
-        malloc(M * M * polygons.size() * sizeof(uint8_t)));
+        malloc(M * M * polygons.size() * sizeof(uint8_t)));  // NOLINT
   }
   for (size_t i = 0; i < polygons.size(); ++i) {
-    int k = polygons[i].size() / 2;
+    int k = static_cast<int>(polygons[i].size() / 2);
     std::vector<float> p;
     for (int j = 0; j < k; ++j) {
-      float pw = (polygons[i][2 * j] - box[0]) * M / w;
-      float ph = (polygons[i][2 * j + 1] - box[1]) * M / h;
+      float pw = (polygons[i][2 * j] - box[0]) * M / w;      // NOLINT
+      float ph = (polygons[i][2 * j + 1] - box[1]) * M / h;  // NOLINT
       p.push_back(pw);
       p.push_back(ph);
     }
@@ -222,7 +224,7 @@ void Polys2MaskWrtBox(const std::vector<std::vector<float>>& polygons,
         }
       }
     }
-    free(msk);
+    free(msk);  // NOLINT
   }
 }
 

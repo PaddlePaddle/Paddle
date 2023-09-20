@@ -15,11 +15,15 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test, dy2static_unittest
+from dygraph_to_static_util import (
+    ast_only_test,
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 from test_fetch_feed import Linear
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.jit.api import to_static
 
 SEED = 2020
@@ -50,7 +54,7 @@ def nested_output(x, y):
 
 def fake_data(shape):
     x_data = np.random.random(shape).astype('float32')
-    return fluid.dygraph.to_variable(x_data)
+    return base.dygraph.to_variable(x_data)
 
 
 @dy2static_unittest
@@ -73,7 +77,7 @@ class TestWithNestedInput(unittest.TestCase):
         ]
 
     def _run(self, to_static):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             if self.x is None or self.y is None:
                 self.fake_input()
 
@@ -84,6 +88,7 @@ class TestWithNestedInput(unittest.TestCase):
 
         return out.numpy()
 
+    @test_and_compare_with_new_ir(False)
     def test_nest(self):
         dygraph_res = self._run(to_static=False)
         static_res = self._run(to_static=True)
@@ -97,7 +102,7 @@ class TestWithNestedOutput(unittest.TestCase):
         self.y = None
 
     def _run(self, to_static):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             if self.x is None or self.y is None:
                 self.x = fake_data([10, 16])
                 self.y = fake_data([10, 16])
@@ -109,6 +114,7 @@ class TestWithNestedOutput(unittest.TestCase):
 
         return out
 
+    @test_and_compare_with_new_ir(False)
     def test_nest(self):
         dygraph_res = self._run(to_static=False)
         dygraph_res = paddle.utils.flatten(dygraph_res)
@@ -119,7 +125,7 @@ class TestWithNestedOutput(unittest.TestCase):
         self.assertTrue(len(dygraph_res) == len(static_res))
 
         for dy_var, st_var in zip(dygraph_res, static_res):
-            if isinstance(dy_var, fluid.core.eager.Tensor):
+            if isinstance(dy_var, base.core.eager.Tensor):
                 np.testing.assert_allclose(
                     dy_var.numpy(), st_var.numpy(), rtol=1e-05
                 )
@@ -130,12 +136,13 @@ class TestWithNestedOutput(unittest.TestCase):
 @dy2static_unittest
 class TestWithTrainAndEval(unittest.TestCase):
     @ast_only_test
+    @test_and_compare_with_new_ir(False)
     def test_switch_eval_and_train(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             linear_net = Linear()
             linear_net = paddle.jit.to_static(linear_net)
             x_data = np.random.random((4, 10)).astype('float32')
-            x = fluid.dygraph.to_variable(x_data)
+            x = base.dygraph.to_variable(x_data)
             linear_net(x)
 
             _, train_partial_layer = linear_net.forward.program_cache.last()[-1]
@@ -163,12 +170,13 @@ class TestWithTrainAndEval(unittest.TestCase):
 @dy2static_unittest
 class TestWithNoGrad(unittest.TestCase):
     @ast_only_test
+    @test_and_compare_with_new_ir(False)
     def test_with_no_grad(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             linear_net = Linear()
             linear_net = paddle.jit.to_static(linear_net)
             x_data = np.random.random((5, 10)).astype('float32')
-            x = fluid.dygraph.to_variable(x_data)
+            x = base.dygraph.to_variable(x_data)
 
             with paddle.no_grad():
                 linear_net.train()
@@ -198,11 +206,12 @@ class GPT2LMHeadModel(paddle.nn.Layer):
 
 @dy2static_unittest
 class TestPruneUnusedParamInProgram(unittest.TestCase):
+    @test_and_compare_with_new_ir(False)
     def test_prune(self):
         input_ids = np.array([[15, 11, 6, 3, 18, 13]]).astype("float32")
 
-        place = fluid.CPUPlace()
-        with fluid.dygraph.guard(place):
+        place = base.CPUPlace()
+        with base.dygraph.guard(place):
             model = GPT2LMHeadModel()
             model.eval()
             input_ids = paddle.to_tensor(input_ids)

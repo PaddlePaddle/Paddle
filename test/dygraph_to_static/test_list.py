@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 SEED = 2020
 np.random.seed(SEED)
@@ -27,7 +27,7 @@ np.random.seed(SEED)
 # Situation 1: Test list append
 def test_list_append_without_control_flow(x):
     # Python list will not be transformed.
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     a = []
     # It's a plain python control flow which won't be transformed
     if 2 > 1:
@@ -36,7 +36,7 @@ def test_list_append_without_control_flow(x):
 
 
 def test_list_append_in_if(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     a = []
     if x.numpy()[0] > 0:
         a.append(x)
@@ -49,7 +49,7 @@ def test_list_append_in_if(x):
 
 
 def test_list_append_in_for_loop(x, iter_num):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     # Use `fill_constant` so that static analysis can analyze the type of iter_num is Tensor
     iter_num = paddle.tensor.fill_constant(
         shape=[1], value=iter_num, dtype="int32"
@@ -61,7 +61,7 @@ def test_list_append_in_for_loop(x, iter_num):
 
 
 def test_list_append_in_for_subscript(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     iter_num = paddle.shape(x)[0]
     a = []
     for i in range(iter_num):
@@ -72,7 +72,7 @@ def test_list_append_in_for_subscript(x):
 
 
 def test_list_append_in_while_loop_subscript(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     iter_num = paddle.shape(x)[0]
     a = []
     i = 0
@@ -85,7 +85,7 @@ def test_list_append_in_while_loop_subscript(x):
 
 
 def test_list_append_in_for_loop_with_concat(x, iter_num):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     a = []
     # Use `fill_constant` so that static analysis can analyze the type of iter_num is Tensor
     iter_num = paddle.tensor.fill_constant(
@@ -98,7 +98,7 @@ def test_list_append_in_for_loop_with_concat(x, iter_num):
 
 
 def test_list_append_in_while_loop(x, iter_num):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     iter_num = paddle.tensor.fill_constant(
         shape=[1], value=iter_num, dtype="int32"
     )
@@ -111,7 +111,7 @@ def test_list_append_in_while_loop(x, iter_num):
 
 
 def test_list_append_in_while_loop_with_stack(x, iter_num):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     iter_num = paddle.tensor.fill_constant(
         shape=[1], value=iter_num, dtype="int32"
     )
@@ -134,7 +134,7 @@ def test_tensor_array_slice(x, iter_num):
 
 # Situation 2: Test list pop
 def test_list_pop_without_control_flow_1(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     a = []
     if 2 > 1:
         a.append(x)
@@ -143,7 +143,7 @@ def test_list_pop_without_control_flow_1(x):
 
 
 def test_list_pop_without_control_flow_2(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     a = []
     if 2 > 1:
         a.append(x)
@@ -153,7 +153,7 @@ def test_list_pop_without_control_flow_2(x):
 
 
 def test_list_pop_in_if(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     a = []
     b = [x * 2 + (x + 1)]
     if x.numpy()[0] > 0:
@@ -169,7 +169,7 @@ def test_list_pop_in_if(x):
 
 
 def test_list_pop_in_for_loop(x, iter_num):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     # Use `fill_constant` so that static analysis can analyze the type of iter_num is Tensor
     iter_num = paddle.tensor.fill_constant(
         shape=[1], value=iter_num, dtype="int32"
@@ -188,7 +188,7 @@ def test_list_pop_in_for_loop(x, iter_num):
 
 
 def test_list_pop_in_while_loop(x, iter_num):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     iter_num = paddle.tensor.fill_constant(
         shape=[1], value=iter_num, dtype="int32"
     )
@@ -210,9 +210,9 @@ def test_list_pop_in_while_loop(x, iter_num):
 class TestListWithoutControlFlow(unittest.TestCase):
     def setUp(self):
         self.place = (
-            fluid.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
 
         self.init_data()
@@ -242,7 +242,7 @@ class TestListWithoutControlFlow(unittest.TestCase):
         return self.train(to_static=False)
 
     def train(self, to_static=False):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             if to_static:
                 res = paddle.jit.to_static(self.dygraph_func)(self.input)
             else:
@@ -284,7 +284,7 @@ class TestListInWhileLoop(TestListWithoutControlFlow):
         ]
 
     def train(self, to_static=False):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             if to_static:
                 # print(paddle.jit.to_static(self.dygraph_func).code)
                 res = paddle.jit.to_static(self.dygraph_func)(

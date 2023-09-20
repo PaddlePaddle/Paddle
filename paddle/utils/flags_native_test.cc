@@ -34,7 +34,8 @@ void SplitCommandlineArg(const std::string& commandline,
     end_pos = commandline.find(' ', start_pos);
     args.push_back(commandline.substr(start_pos, end_pos - start_pos));
   }
-  *argc = args.size();
+  args.push_back("");  // test empty argument
+  *argc = static_cast<int>(args.size());
   *argv = new char*[*argc];
   for (size_t i = 0; i < args.size(); i++) {
     (*argv)[i] = const_cast<char*>(args[i].c_str());
@@ -88,6 +89,11 @@ TEST(flags_native_test, SetFlagsFromEnv) {
   ASSERT_TRUE(SetEnvVar("FLAGS_paddle_test_env_bool", "true"));
   ASSERT_TRUE(SetEnvVar("FLAGS_paddle_test_env_double", "2.71"));
 
+  // test GetFromEnv
+  ASSERT_EQ(GetFromEnv<bool>("FLAGS_paddle_test_env_bool", false), true);
+  ASSERT_EQ(GetFromEnv<int32_t>("FLAGS_int32_not_defined", 34), 34);
+
+  // test SetFlagsFromEnv
   std::string commandline =
       "test --fromenv=paddle_test_env_bool,paddle_test_env_double";
   int argc;

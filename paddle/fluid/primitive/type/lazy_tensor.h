@@ -13,12 +13,12 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
-#include "paddle/ir/core/value.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/extended_tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
+#include "paddle/pir/core/value.h"
 
 namespace paddle {
 namespace primitive {
@@ -26,7 +26,7 @@ namespace primitive {
 class LazyTensor : public phi::ExtendedTensor,
                    public phi::TypeInfoTraits<phi::TensorBase, LazyTensor> {
  public:
-  explicit LazyTensor(ir::Value value)
+  explicit LazyTensor(pir::Value value)
       : value_(value),
         dims_(value.type().dyn_cast<dialect::DenseTensorType>().dims()) {}
 
@@ -41,14 +41,16 @@ class LazyTensor : public phi::ExtendedTensor,
         value_.type().dyn_cast<paddle::dialect::DenseTensorType>().dtype());
   }
 
-  ir::Value getValue() const { return value_; }
+  pir::Value value() const { return value_; }
 
   const phi::Place& place() const override { return place_; }
 
   bool initialized() const override { return value_.impl() != nullptr; }
 
+  void set_empty() { value_.set_type(pir::Type()); }
+
  private:
-  ir::Value value_;
+  pir::Value value_;
   mutable phi::DDim dims_;
   phi::Place place_;
 };

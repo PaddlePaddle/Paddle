@@ -15,14 +15,30 @@
 // Auto Generated, DO NOT EDIT!
 
 #include "paddle/fluid/primitive/rule/vjp/manual/manual_vjp.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_api.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/prim/utils/static/static_global_utils.h"
 #include "paddle/fluid/primitive/backend/backend.h"
 #include "paddle/fluid/primitive/rule/vjp/details.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/fluid/primitive/utils/utils.h"
-#include "paddle/ir/core/operation.h"
+#include "paddle/pir/core/operation.h"
 
 namespace paddle {
-namespace primitive {}  // namespace primitive
+namespace primitive {
+
+std::vector<std::vector<paddle::Tensor>> add_n_vjp(
+    const std::vector<paddle::Tensor>& x,
+    const Tensor& out_grad,
+    const std::vector<std::vector<bool>>& stop_gradients) {
+  std::vector<std::vector<paddle::Tensor>> vjp_res;
+  for (auto arg : stop_gradients) {
+    vjp_res.push_back(std::vector<paddle::Tensor>(arg.size()));
+  }
+  auto op_res = backend::add_n_grad<LazyTensor>(x, out_grad);
+  vjp_res[0] = op_res;
+  vjp_res = ConstructVjpResultByStopGradients(vjp_res, stop_gradients);
+  return vjp_res;
+}
+
+}  // namespace primitive
 }  // namespace paddle

@@ -949,7 +949,7 @@ static bool CollectGradInformationFromOpInfo(
   op_base_infos->resize(grad_node->size());
   for (auto iter = grad_node->begin(); iter < grad_node->end(); iter++) {
     // Each OpBase
-    int index = std::distance(grad_node->begin(), iter);
+    int index = static_cast<int>(std::distance(grad_node->begin(), iter));
     paddle::imperative::OpBase& op_base = *iter;
     (*op_base_infos)[index].SetOpBaseType(op_base.Type());
   }
@@ -957,7 +957,7 @@ static bool CollectGradInformationFromOpInfo(
   /* ------ Get Grad ins/outs/attrs ---- */
   VLOG(6) << "In function size: " << grad_node->size();
   for (auto iter = grad_node->begin(); iter < grad_node->end(); iter++) {
-    int index = std::distance(grad_node->begin(), iter);
+    int index = static_cast<int>(std::distance(grad_node->begin(), iter));
     auto* op_base_grad_ins = (*op_base_infos)[index].GetMutableGradIns();
     auto* op_base_grad_outs = (*op_base_infos)[index].GetMutableGradOuts();
     auto* op_base_grad_attrs = (*op_base_infos)[index].GetMutableGradAttrs();
@@ -3160,7 +3160,8 @@ static void DygraphCodeGeneration(const std::string& output_dir,
     op_info_map_need_gen.emplace(pair);
   }
 
-  int each_cc_file_api_size = op_info_map_need_gen.size() / split_count;
+  int each_cc_file_api_size =
+      static_cast<int>(op_info_map_need_gen.size() / split_count);
   if (op_info_map_need_gen.size() % split_count != 0) {
     each_cc_file_api_size++;
   }
