@@ -16,7 +16,7 @@
 
 #include <iostream>
 
-#include "paddle/cinn/adt/naive_op_equation_context.h"
+#include "paddle/cinn/adt/op_equation_context.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
@@ -125,8 +125,7 @@ std::vector<Type> InferDtypeForBroadcast(const std::vector<Type> &inputs_type,
   return res;
 }
 
-void GenerateEquationsForBroadcast(
-    cinn::adt::config::NaiveOpEquationContext *ctx) {
+void GenerateEquationsForBroadcast(cinn::adt::config::OpEquationContext *ctx) {
   // Note (Hongyu Jia) : Support broadcast afterwards
   CHECK(ctx->GetInTensorsRanks().size() == 2)
       << "The inputs is " << ctx->GetInTensorsRanks().size()

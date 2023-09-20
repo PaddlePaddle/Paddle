@@ -16,7 +16,7 @@
 
 #include <functional>
 
-#include "paddle/cinn/adt/naive_op_equation_context.h"
+#include "paddle/cinn/adt/op_equation_context.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
@@ -79,7 +79,7 @@ std::vector<framework::shape_t> InferShapeForRelu(
   return res;
 }
 
-void GenerateEquationsForRelu(cinn::adt::config::NaiveOpEquationContext *ctx) {
+void GenerateEquationsForRelu(cinn::adt::config::OpEquationContext *ctx) {
   CHECK(ctx->GetInTensorsRanks().size() != 0)
       << "The inputs is empty! Please check again.";
   ctx->Equal(ctx->GetInIteratorTuple(0), ctx->GetOutIteratorTuple(0));

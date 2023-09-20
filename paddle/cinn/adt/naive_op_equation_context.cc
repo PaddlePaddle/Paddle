@@ -96,7 +96,7 @@ void GenerateOpEquations(const OpStmt& op_stmt,
   const hlir::framework::Node* op_node = op.Get<const hlir::framework::Node*>();
 
   using GenerateEquationFunc =
-      std::function<void(config::NaiveOpEquationContext * ctx)>;
+      std::function<void(config::OpEquationContext * ctx)>;
 
   const auto& generate_equations =
       hlir::framework::Operator::GetAttrs<GenerateEquationFunc>(
