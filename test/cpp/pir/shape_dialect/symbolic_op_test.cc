@@ -45,7 +45,7 @@ pir::Operation *CreateDenseTensorOp(
     const phi::DDim &dims,
     const std::vector<std::string> &attribute_names,
     const std::vector<std::string> &attributes) {
-  std::vector<pir::OpResult> op_inputs = {};
+  std::vector<pir::Value> op_inputs = {};
   pir::Type fp32_dtype = pir::Float32Type::get(ctx);
   phi::DataLayout data_layout = phi::DataLayout::NCHW;
   phi::LoD lod = {{0, 1, 2}};
@@ -77,8 +77,8 @@ TEST(assist_struct_test, symbolic_dim) {
   EXPECT_FALSE(symDim.getKnownNonSizeZero());
   EXPECT_FALSE(symDim.getKnownNonNegative());
 
-  EXPECT_FALSE(symDim.isDynamic());
-  EXPECT_TRUE(symDim.merge(symDim_));
+  EXPECT_FALSE(symDim.IsDynamic());
+  EXPECT_TRUE(symDim.Merge(symDim_));
 
   symDim.updateValue(20);
   symDim.updateSymName("S2");
@@ -87,7 +87,7 @@ TEST(assist_struct_test, symbolic_dim) {
   symDim.updateKnownNonSizeZero(true);
   symDim.updateKnownNonNegative(true);
 
-  EXPECT_FALSE(symDim.merge(symDim_));
+  EXPECT_FALSE(symDim.Merge(symDim_));
 
   EXPECT_EQ(symDim.getValue(), 20);
   EXPECT_EQ(symDim.getSymName(), "S2");
@@ -123,9 +123,9 @@ TEST(assist_struct_test, symbolic_dim_table) {
 
   pir::SymbolTable symbolTable(program.module_op());
   EXPECT_EQ(symbolTable.insert(symDim), "S0");
-  EXPECT_EQ(symbolTable.lookup<pir::dialect::SymbolicDim>("S0"), symDim);
+  EXPECT_EQ(symbolTable.Lookup<pir::dialect::SymbolicDim>("S0"), symDim);
   EXPECT_EQ(symbolTable.getOp(), program.module_op());
-  EXPECT_FALSE(symbolTable.lookup<pir::dialect::SymbolicDim>("S1"));
+  EXPECT_FALSE(symbolTable.Lookup<pir::dialect::SymbolicDim>("S1"));
 }
 
 TEST(assist_struct_test, symbolic_dim_mgr_simple) {
@@ -138,17 +138,17 @@ TEST(assist_struct_test, symbolic_dim_mgr_simple) {
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
   pir::SymbolicDimMgr symDimMgr(program.module_op());
-  pir::dialect::SymbolicDim symDimS0 = symDimMgr.newSymbolicDim();
-  pir::dialect::SymbolicDim symDimS1 = symDimMgr.newSymbolicDim();
-  pir::dialect::SymbolicDim symDimC10 = symDimMgr.newConstantSymbolicDim(10);
-  symDimMgr.mapSymbolicDimEqual(symDimS0, symDimS1);
+  pir::dialect::SymbolicDim symDimS0 = symDimMgr.NewSymbolicDim();
+  pir::dialect::SymbolicDim symDimS1 = symDimMgr.NewSymbolicDim();
+  pir::dialect::SymbolicDim symDimC10 = symDimMgr.NewConstantSymbolicDim(10);
+  symDimMgr.MapSymbolicDimEqual(symDimS0, symDimS1);
 
   auto op = CreateDenseTensorOp(
       ctx, {pir::ShapedTypeInterface::kDynamic, 2}, {"op_attr"}, {"op_name"});
   pir::Value res = op->result(0);
 
   std::vector<pir::dialect::SymbolicDim> symDimVec =
-      symDimMgr.createSymbolicDimsForRankedValue(res);
+      symDimMgr.CreateSymbolicDimsForRankedValue(res);
 
   EXPECT_EQ(symDimS0.getSymName(), "S0");
   EXPECT_EQ(symDimS1.getSymName(), "S1");
@@ -157,13 +157,13 @@ TEST(assist_struct_test, symbolic_dim_mgr_simple) {
   EXPECT_EQ(symDimC10.getValue(), 10);
   EXPECT_EQ(symDimVec[0].getSymName(), "S2");
   EXPECT_EQ(symDimVec[1].getSymName(), "C2");
-  EXPECT_EQ(symDimMgr.symbolTable().lookup<pir::dialect::SymbolicDim>("S0"),
+  EXPECT_EQ(symDimMgr.symbolTable().Lookup<pir::dialect::SymbolicDim>("S0"),
             symDimS0);
-  EXPECT_EQ(symDimMgr.symbolTable().lookup<pir::dialect::SymbolicDim>("C10"),
+  EXPECT_EQ(symDimMgr.symbolTable().Lookup<pir::dialect::SymbolicDim>("C10"),
             symDimC10);
-  EXPECT_EQ(symDimMgr.getRootSymbolicDim(symDimS1), symDimS0);
-  EXPECT_TRUE(symDimMgr.isSymbolicDimEqual(symDimS0, symDimS1));
-  EXPECT_FALSE(symDimMgr.isSymbolicDimEqual(symDimS0, symDimC10));
+  EXPECT_EQ(symDimMgr.GetRootSymbolicDim(symDimS1), symDimS0);
+  EXPECT_TRUE(symDimMgr.IsSymbolicDimEqual(symDimS0, symDimS1));
+  EXPECT_FALSE(symDimMgr.IsSymbolicDimEqual(symDimS0, symDimC10));
 }
 
 TEST(assist_struct_test, symbolic_dim_mgr_complex) {
@@ -181,21 +181,21 @@ TEST(assist_struct_test, symbolic_dim_mgr_complex) {
 
   pir::Builder builder = pir::Builder(ctx, funcOp.block());
 
-  pir::dialect::SymbolicDim symDimS0 = symDimMgr.newSymbolicDim("S0");
-  pir::dialect::SymbolicDim symDimS1 = symDimMgr.newSymbolicDim("S1");
-  pir::dialect::SymbolicDim symDimS2 = symDimMgr.newSymbolicDim("S2");
-  pir::dialect::SymbolicDim symDimS3 = symDimMgr.newSymbolicDim("S3");
-  pir::dialect::SymbolicDim symDimS4 = symDimMgr.newSymbolicDim("S4");
-  pir::dialect::SymbolicDim symDimS5 = symDimMgr.newSymbolicDim("S5");
-  pir::dialect::SymbolicDim symDimS6 = symDimMgr.newSymbolicDim("S6");
-  pir::dialect::SymbolicDim symDimS7 = symDimMgr.newSymbolicDim("S7");
-  pir::dialect::SymbolicDim symDimS8 = symDimMgr.newSymbolicDim("S8");
-  pir::dialect::SymbolicDim symDimS9 = symDimMgr.newSymbolicDim("S9");
-  pir::dialect::SymbolicDim symDimS10 = symDimMgr.newSymbolicDim("S10");
-  pir::dialect::SymbolicDim symDimS11 = symDimMgr.newSymbolicDim("S11");
-  pir::dialect::SymbolicDim symDimS12 = symDimMgr.newSymbolicDim("S12");
-  pir::dialect::SymbolicDim symDimC10 = symDimMgr.newConstantSymbolicDim(10);
-  pir::dialect::SymbolicDim symDimC20 = symDimMgr.newConstantSymbolicDim(20);
+  pir::dialect::SymbolicDim symDimS0 = symDimMgr.NewSymbolicDim("S0");
+  pir::dialect::SymbolicDim symDimS1 = symDimMgr.NewSymbolicDim("S1");
+  pir::dialect::SymbolicDim symDimS2 = symDimMgr.NewSymbolicDim("S2");
+  pir::dialect::SymbolicDim symDimS3 = symDimMgr.NewSymbolicDim("S3");
+  pir::dialect::SymbolicDim symDimS4 = symDimMgr.NewSymbolicDim("S4");
+  pir::dialect::SymbolicDim symDimS5 = symDimMgr.NewSymbolicDim("S5");
+  pir::dialect::SymbolicDim symDimS6 = symDimMgr.NewSymbolicDim("S6");
+  pir::dialect::SymbolicDim symDimS7 = symDimMgr.NewSymbolicDim("S7");
+  pir::dialect::SymbolicDim symDimS8 = symDimMgr.NewSymbolicDim("S8");
+  pir::dialect::SymbolicDim symDimS9 = symDimMgr.NewSymbolicDim("S9");
+  pir::dialect::SymbolicDim symDimS10 = symDimMgr.NewSymbolicDim("S10");
+  pir::dialect::SymbolicDim symDimS11 = symDimMgr.NewSymbolicDim("S11");
+  pir::dialect::SymbolicDim symDimS12 = symDimMgr.NewSymbolicDim("S12");
+  pir::dialect::SymbolicDim symDimC10 = symDimMgr.NewConstantSymbolicDim(10);
+  pir::dialect::SymbolicDim symDimC20 = symDimMgr.NewConstantSymbolicDim(20);
 
   pir::OpResult dimOpS0 = builder.Build<pir::dialect::DimOp>("S0").out();
   pir::OpResult dimOpS1 = builder.Build<pir::dialect::DimOp>("S1").out();
@@ -219,29 +219,29 @@ TEST(assist_struct_test, symbolic_dim_mgr_complex) {
 
   // Mark S1 == S2.
   builder.Build<pir::dialect::TieProductEqualOp>(
-      2, 2, std::vector<pir::OpResult>{constant, dimOpS1, dimOpS2, constant});
+      2, 2, std::vector<pir::Value>{constant, dimOpS1, dimOpS2, constant});
   // Mark S0 * S1 == S2 * S3, For check S0 == S3.
   builder.Build<pir::dialect::TieProductEqualOp>(
-      2, 2, std::vector<pir::OpResult>{dimOpS0, dimOpS1, dimOpS2, dimOpS3});
+      2, 2, std::vector<pir::Value>{dimOpS0, dimOpS1, dimOpS2, dimOpS3});
   // Mark S4 * S0 * S1 == S2 * S3 * S5, For check S4 == S5.
   builder.Build<pir::dialect::TieProductEqualOp>(
       3,
       3,
-      std::vector<pir::OpResult>{
+      std::vector<pir::Value>{
           dimOpS4, dimOpS0, dimOpS1, dimOpS2, dimOpS3, dimOpS5});
   // For check S6 == C10 * C20.
   builder.Build<pir::dialect::TieProductEqualOp>(
-      1, 2, std::vector<pir::OpResult>{dimOpS6, dimOpC10, dimOpC20});
+      1, 2, std::vector<pir::Value>{dimOpS6, dimOpC10, dimOpC20});
   // Mark C10 * S0 * S1 == S2 * S3 * S7, for check C10 == S7.
   builder.Build<pir::dialect::TieProductEqualOp>(
       3,
       3,
-      std::vector<pir::OpResult>{
+      std::vector<pir::Value>{
           dimOpC10, dimOpS0, dimOpS1, dimOpS2, dimOpS3, dimOpS7});
 
   // For unsimplify product case: S8 * S9 == S10 * S11
   builder.Build<pir::dialect::TieProductEqualOp>(
-      2, 2, std::vector<pir::OpResult>{dimOpS8, dimOpS9, dimOpS10, dimOpS11});
+      2, 2, std::vector<pir::Value>{dimOpS8, dimOpS9, dimOpS10, dimOpS11});
 
   auto op = CreateDenseTensorOp(ctx,
                                 {pir::ShapedTypeInterface::kDynamic,
@@ -301,7 +301,7 @@ TEST(assist_struct_test, symbolic_dim_mgr_complex) {
   tieShapeOp_->set_attribute(
       pir::dialect::SymbolicDim::getSymbolicDimAttrName(), arrayAttr_);
 
-  EXPECT_TRUE(symDimMgr.load());
+  EXPECT_TRUE(symDimMgr.Load());
 
   // For check indirect equality: S1 * S4 == S2 * S5
   pir::SymbolicDimProduct symDimProductLhs;
@@ -325,14 +325,14 @@ TEST(assist_struct_test, symbolic_dim_mgr_complex) {
   symDimProductRhs_.symbols.push_back(symDimS11);
   symDimProductRhs_.symbols.push_back(symDimS12);
 
-  // For check simplifySymbolicDimProduct, {factor = 1, Sym = {S7}} => {factor =
+  // For check SimplifySymbolicDimProduct, {factor = 1, Sym = {S7}} => {factor =
   // 10}
   pir::SymbolicDimProduct symDimProductS7;
   symDimProductS7.symbols.push_back(symDimS7);
   pir::SymbolicDimProduct simplifiedProductS7 =
-      symDimMgr.simplifySymbolicDimProduct(symDimProductS7);
+      symDimMgr.SimplifySymbolicDimProduct(symDimProductS7);
 
-  // For check simplifySymbolicDimProductPair, X * Y * Y, Y * Y * Z => X, Z
+  // For check SimplifySymbolicDimProductPair, X * Y * Y, Y * Y * Z => X, Z
   pir::SymbolicDimProduct symDimProductPairLhs;
   pir::SymbolicDimProduct symDimProductPairRhs;
   pir::SymbolicDimProduct newLhs, newRhs;
@@ -343,10 +343,10 @@ TEST(assist_struct_test, symbolic_dim_mgr_complex) {
   symDimProductPairRhs.symbols.push_back(symDimS2);
   symDimProductPairRhs.symbols.push_back(symDimS3);
 
-  std::tie(newLhs, newRhs) = symDimMgr.simplifySymbolicDimProductPair(
+  std::tie(newLhs, newRhs) = symDimMgr.SimplifySymbolicDimProductPair(
       symDimProductPairLhs, symDimProductPairRhs);
 
-  // For check symbolicDimProductDivide, {S4 * S1 * C20} / {S1 * C10} => {factor
+  // For check SymbolicDimProductDivide, {S4 * S1 * C20} / {S1 * C10} => {factor
   // = 2 Sym = {S4}}
   pir::SymbolicDimProduct symDimProductDivLhs;
   pir::SymbolicDimProduct symDimProductDivRhs;
@@ -356,39 +356,39 @@ TEST(assist_struct_test, symbolic_dim_mgr_complex) {
   symDimProductDivRhs.symbols.push_back(symDimS1);
   symDimProductDivRhs.symbols.push_back(symDimC10);
 
-  pir::SymbolicDimProduct *divRes = symDimMgr.symbolicDimProductDivide(
+  pir::SymbolicDimProduct *divRes = symDimMgr.SymbolicDimProductDivide(
       symDimProductDivLhs, symDimProductDivRhs);
 
-  EXPECT_TRUE(symDimMgr.isSymbolicDimEqual(symDimS1, symDimS2));
-  EXPECT_TRUE(symDimMgr.isSymbolicDimEqual(symDimS0, symDimS3));
-  EXPECT_TRUE(symDimMgr.isSymbolicDimEqual(symDimS4, symDimS5));
+  EXPECT_TRUE(symDimMgr.IsSymbolicDimEqual(symDimS1, symDimS2));
+  EXPECT_TRUE(symDimMgr.IsSymbolicDimEqual(symDimS0, symDimS3));
+  EXPECT_TRUE(symDimMgr.IsSymbolicDimEqual(symDimS4, symDimS5));
   EXPECT_EQ(symDimS6.getValue(), 200);
-  EXPECT_EQ(symDimMgr.symbolTable().lookup<pir::dialect::SymbolicDim>("C20"),
+  EXPECT_EQ(symDimMgr.symbolTable().Lookup<pir::dialect::SymbolicDim>("C20"),
             symDimC20);
   EXPECT_EQ(symDimS7.getValue(), symDimC10.getValue());
   EXPECT_EQ(simplifiedProductS7.factor, 10);
   EXPECT_EQ(simplifiedProductS7.symbols.size(), static_cast<size_t>(0));
   EXPECT_EQ(newLhs.symbols.size(), static_cast<size_t>(1));
   EXPECT_EQ(newRhs.symbols.size(), static_cast<size_t>(1));
-  EXPECT_EQ(newLhs.symbols[0], symDimMgr.getRootSymbolicDim(symDimS4));
-  EXPECT_EQ(newRhs.symbols[0], symDimMgr.getRootSymbolicDim(symDimS3));
+  EXPECT_EQ(newLhs.symbols[0], symDimMgr.GetRootSymbolicDim(symDimS4));
+  EXPECT_EQ(newRhs.symbols[0], symDimMgr.GetRootSymbolicDim(symDimS3));
   EXPECT_EQ(divRes->factor, 2);
   EXPECT_EQ(divRes->symbols.size(), static_cast<size_t>(1));
-  EXPECT_EQ(divRes->symbols[0], symDimMgr.getRootSymbolicDim(symDimS4));
+  EXPECT_EQ(divRes->symbols[0], symDimMgr.GetRootSymbolicDim(symDimS4));
   EXPECT_TRUE(
-      symDimMgr.isSymbolicDimProductEqual(symDimProductLhs, symDimProductRhs));
-  EXPECT_TRUE(symDimMgr.isSymbolicDimProductEqual(symDimProductLhs_,
+      symDimMgr.IsSymbolicDimProductEqual(symDimProductLhs, symDimProductRhs));
+  EXPECT_TRUE(symDimMgr.IsSymbolicDimProductEqual(symDimProductLhs_,
                                                   symDimProductRhs_));
-  EXPECT_TRUE(symDimMgr.save());
+  EXPECT_TRUE(symDimMgr.Save());
 
   pir::SymbolicDimMgr symDimMgr_(program.module_op());
-  EXPECT_TRUE(symDimMgr_.load());
+  EXPECT_TRUE(symDimMgr_.Load());
   auto attrs = tieShapeOp.attribute<pir::ArrayAttribute>(
       pir::dialect::SymbolicDim::getSymbolicDimAttrName());
   EXPECT_FALSE(
-      symDimMgr_.symbolTable().lookup<pir::dialect::SymbolicDim>("S7"));
+      symDimMgr_.symbolTable().Lookup<pir::dialect::SymbolicDim>("S7"));
   EXPECT_EQ(symDimMgr_.symbolTable()
-                .lookup<pir::dialect::TieProductEqualOp>("tie_product_equal")
+                .Lookup<pir::dialect::TieProductEqualOp>("tie_product_equal")
                 .size(),
             static_cast<size_t>(1));
 
@@ -406,7 +406,7 @@ TEST(shape_op, dim) {
   EXPECT_EQ(dimOp.getName(), "S0");
   dimOp.setName("S1");
   EXPECT_EQ(dimOp.getName(), "S1");
-  EXPECT_EQ(res.GetDefiningOp(), dimOp.operation());
+  EXPECT_EQ(res.owner(), dimOp.operation());
   EXPECT_EQ(res.type(), pir::IndexType::get(ctx));
 }
 
@@ -427,20 +427,20 @@ TEST(shape_op, tie_product_equal) {
       builder.Build<pir::dialect::TieProductEqualOp>(
           2,
           3,
-          std::vector<pir::OpResult>{dimOp0, dimOp1, dimOp2, dimOp3, dimOp4});
+          std::vector<pir::Value>{dimOp0, dimOp1, dimOp2, dimOp3, dimOp4});
 
-  std::vector<pir::Value> lhs = tie_product_equal.getLhs();
-  std::vector<pir::Value> rhs = tie_product_equal.getRhs();
+  std::vector<pir::Value> lhs = tie_product_equal.lhs();
+  std::vector<pir::Value> rhs = tie_product_equal.rhs();
 
   std::vector<pir::Value> lhs_ref{dimOp0, dimOp1};
   std::vector<pir::Value> rhs_ref{dimOp2, dimOp3, dimOp4};
 
   EXPECT_EQ(symbolTable.insert(tie_product_equal), "tie_product_equal");
   EXPECT_EQ(
-      symbolTable.lookup<pir::dialect::TieProductEqualOp>("tie_product_equal")
+      symbolTable.Lookup<pir::dialect::TieProductEqualOp>("tie_product_equal")
           .size(),
       static_cast<size_t>(1));
-  EXPECT_EQ(symbolTable.lookup<pir::dialect::TieProductEqualOp>(
+  EXPECT_EQ(symbolTable.Lookup<pir::dialect::TieProductEqualOp>(
                 "tie_product_equal")[0],
             tie_product_equal);
   EXPECT_EQ(lhs, lhs_ref);
@@ -461,7 +461,7 @@ TEST(shape_op, tie_shape) {
 
   pir::dialect::TieShapeOp tieShapeOp =
       builder.Build<pir::dialect::TieShapeOp>(res);
-  pir::Value tieShapeOpValue = tieShapeOp.getValue();
+  pir::Value tieShapeOpValue = tieShapeOp.value();
 
   pir::Attribute attrS0 = pir::StrAttribute::get(ctx, "S0");
   pir::Attribute attrS1 = pir::StrAttribute::get(ctx, "S1");
@@ -572,17 +572,48 @@ TEST(assist_struct_test, shape_analysis) {
       pir::dialect::SymbolicDim::getSymbolicDimAttrName(), attrOp5);
 
   pir::SymbolicDimShapeAnalysis shapeAnalysis(program.module_op());
-  EXPECT_TRUE(shapeAnalysis.isShapeEqual(value3, value4));
-  EXPECT_FALSE(shapeAnalysis.isShapeEqual(value1, value2));
-  EXPECT_FALSE(shapeAnalysis.isShapeEqual(value1, value3));
-  EXPECT_FALSE(shapeAnalysis.isShapeEqual(value1, value5));
-  EXPECT_FALSE(shapeAnalysis.isShapeEqual(value3, value5));
-  EXPECT_TRUE(shapeAnalysis.isProductEqual(value1, {1}, value3, {0}));
-  EXPECT_TRUE(shapeAnalysis.isSameNumElements(value4, value3));
+  EXPECT_TRUE(shapeAnalysis.IsShapeEqual(value3, value4));
+  EXPECT_FALSE(shapeAnalysis.IsShapeEqual(value1, value2));
+  EXPECT_FALSE(shapeAnalysis.IsShapeEqual(value1, value3));
+  EXPECT_FALSE(shapeAnalysis.IsShapeEqual(value1, value5));
+  EXPECT_FALSE(shapeAnalysis.IsShapeEqual(value3, value5));
+  EXPECT_TRUE(shapeAnalysis.IsProductEqual(value1, {1}, value3, {0}));
+  EXPECT_TRUE(shapeAnalysis.IsSameNumElements(value4, value3));
 
-  shapeAnalysis.symbolicDimMgr().mapSymbolicDimEqual(symDimS0, symDimS1);
-  shapeAnalysis.symbolicDimMgr().mapSymbolicDimEqual(symDimS0, symDimS2);
+  shapeAnalysis.symbolicDimMgr().MapSymbolicDimEqual(symDimS0, symDimS1);
+  shapeAnalysis.symbolicDimMgr().MapSymbolicDimEqual(symDimS0, symDimS2);
 
-  EXPECT_TRUE(shapeAnalysis.isShapeEqual(value1, value2));
-  EXPECT_FALSE(shapeAnalysis.isShapeEqual(value1, value5));
+  EXPECT_TRUE(shapeAnalysis.IsShapeEqual(value1, value2));
+  EXPECT_FALSE(shapeAnalysis.IsShapeEqual(value1, value5));
+}
+
+TEST(shape_op, tensor_dim) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  pir::Program program(ctx);
+  ctx->GetOrRegisterDialect<pir::dialect::ShapeDialect>();
+  pir::Builder builder = pir::Builder(ctx, program.block());
+
+  pir::Operation *op = CreateDenseTensorOp(
+      ctx, {pir::ShapedTypeInterface::kDynamic, 2}, {"op_attr"}, {"op_name"});
+  pir::OpResult resDenseTensorValue = op->result(0);
+
+  pir::dialect::TensorDimOp tensorDimOp0 =
+      builder.Build<pir::dialect::TensorDimOp>(resDenseTensorValue, 0);
+  pir::OpResult res0 = tensorDimOp0.out();
+
+  pir::OpResult indexValue =
+      builder
+          .Build<pir::ConstantOp>(
+              pir::Int64Attribute::get(pir::IrContext::Instance(), 1),
+              pir::IndexType::get(pir::IrContext::Instance()))
+          ->result(0);
+  pir::dialect::TensorDimOp tensorDimOp1 =
+      builder.Build<pir::dialect::TensorDimOp>(resDenseTensorValue, indexValue);
+  pir::OpResult res1 = tensorDimOp1.out();
+
+  EXPECT_EQ(res0.type(), pir::IndexType::get(ctx));
+  EXPECT_EQ(res1.type(), pir::IndexType::get(ctx));
+  EXPECT_EQ(tensorDimOp0.source(), resDenseTensorValue);
+  EXPECT_EQ(tensorDimOp1.source(), resDenseTensorValue);
+  EXPECT_EQ(tensorDimOp1.index(), indexValue);
 }

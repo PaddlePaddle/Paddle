@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 
 import paddle
 from paddle import base
@@ -78,6 +79,7 @@ class TestPool2D(unittest.TestCase):
 
             return prediction.numpy()
 
+    @test_and_compare_with_new_ir(True)
     def train_static(self):
         return self.train(to_static=True)
 

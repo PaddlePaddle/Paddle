@@ -29,6 +29,7 @@ from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.base.framework import _apply_pass
 from paddle.base.libpaddle.ir import OpResult, fake_op_result, is_fake_op_result
+from paddle.framework import use_pir_api
 from paddle.optimizer.lr import LRScheduler
 
 from . import logging_utils
@@ -223,7 +224,7 @@ class PartialProgramLayer:
         # self._sync_lr_value_with_scheduler()
 
         c_run_program_fn = None
-        if ir_static._use_new_ir_api():
+        if use_pir_api():
             c_run_program_fn = _legacy_C_ops.newir_run_program
         else:
             c_run_program_fn = _legacy_C_ops.run_program
@@ -627,7 +628,7 @@ class PartialProgramLayer:
                 op._rename_output(var_grad_name, new_grad_name)
             # step3: insert sum op to aggregate the gradient.
             #        var.name@GRAD = sum(var.name@dy2static@GRAD, var.name@GRAD)
-            target_program.block(0)._insert_op(
+            target_program.global_block()._insert_op(
                 finded_ops[-1][0] + 1,
                 type='sum',
                 inputs={'X': [var_grad_name, new_grad_name]},
@@ -1003,7 +1004,6 @@ class PartialProgramLayer:
             var = self._outputs[var_id]
             assert isinstance(var, OpResult)
             eager_tensor.stop_gradient = var.stop_gradient
-            return None
 
         for idx, var in zip(self._outputs.var_ids, out_vars):
             set_stop_gradient(idx, var)

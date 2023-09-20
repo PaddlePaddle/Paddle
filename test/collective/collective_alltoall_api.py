@@ -95,8 +95,6 @@ def alltoall_new(
                 paddle.split(out_tensor, nranks, 0)
             )
 
-    return None
-
 
 class TestCollectiveAllToAllAPI(TestCollectiveAPIRunnerBase):
     def __init__(self):

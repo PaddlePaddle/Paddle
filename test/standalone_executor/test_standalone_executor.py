@@ -20,6 +20,7 @@ import shutil
 import unittest
 
 import numpy as np
+from utils import static_guard
 
 import paddle
 from paddle.base import core
@@ -236,7 +237,7 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
         data = np.ones([2, 2], dtype="float32")
         feed = {"a": data, 'fake_input': data}
 
-        with paddle.base.framework._static_guard():
+        with static_guard():
             res = self.run_new_executor(feed)
         with paddle.base.dygraph.guard():
             gt = self.run_dygraph(feed)

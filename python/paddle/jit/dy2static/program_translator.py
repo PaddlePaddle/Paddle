@@ -30,8 +30,7 @@ from paddle.base.dygraph.base import (
 )
 from paddle.base.unique_name import UniqueNameGenerator
 from paddle.base.unique_name import guard as UniqueNameGuard
-from paddle.framework import in_dynamic_mode
-from paddle.ir.core import _use_new_ir_api
+from paddle.framework import in_dynamic_mode, use_pir_api
 from paddle.nn.layer import layers
 from paddle.utils import flatten, gast
 
@@ -48,15 +47,7 @@ from .origin_info import (
     create_and_update_origin_info_map,
     update_op_callstack_with_origin_info,
 )
-
-if ir_static._use_new_ir_api():
-    from .newir_partial_program import (
-        PartialProgramLayerHook,
-        partial_program_from,
-    )
-else:
-    from .partial_program import PartialProgramLayerHook, partial_program_from
-
+from .partial_program import PartialProgramLayerHook
 from .utils import (
     ALREADY_D2S,
     NO_SHAPE_VAR_TYPE,
@@ -1504,7 +1495,7 @@ class ProgramCache:
         # NOTE(xiongkun): Need a global FLAGS to enable/disable fallback
         enable_fallback = enable_prim
         try:
-            if _use_new_ir_api():
+            if use_pir_api():
                 concrete_program = ConcreteProgram.newir_from_func_spec(
                     func_spec=cache_key.function_spec,
                     input_spec=cache_key.input_args_with_spec,
@@ -1549,11 +1540,15 @@ class ProgramCache:
                         )
                     )
 
-        if ir_static._use_new_ir_api():
+        if use_pir_api():
+            from .newir_partial_program import partial_program_from
+
             partial_program = partial_program_from(
                 concrete_program, cache_key.class_instance is not None
             )
         else:  # TODO(new_ir): remove later.
+            from .partial_program import partial_program_from
+
             partial_program = partial_program_from(
                 concrete_program, cache_key.class_instance is not None
             )

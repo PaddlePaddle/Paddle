@@ -26,5 +26,6 @@ from .tensor_parallel import TensorParallel  # noqa: F401
 from .pipeline_parallel import PipelineParallel  # noqa: F401
 from .pipeline_parallel import PipelineParallelWithInterleave  # noqa: F401
 from .sharding_parallel import ShardingParallel  # noqa: F401
+from .segment_parallel import SegmentParallel  # noqa: F401
 
 __all__ = []

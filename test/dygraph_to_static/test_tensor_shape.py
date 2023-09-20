@@ -15,7 +15,11 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test, dy2static_unittest
+from dygraph_to_static_util import (
+    ast_only_test,
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 from paddle import base
@@ -263,6 +267,7 @@ class TestTensorShapeBasic(unittest.TestCase):
     def get_dygraph_output(self):
         return self._run(to_static=False)
 
+    @test_and_compare_with_new_ir(True)
     def get_static_output(self):
         return self._run(to_static=True)
 

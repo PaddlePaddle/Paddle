@@ -133,7 +133,7 @@ if(WITH_XPU)
   endforeach()
 endif()
 
-# below are cutlass unitests
+# below are cutlass unittests
 file(
   GLOB TEST_CUTLASS
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -176,6 +176,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(test_trt_inspector PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_inference_predictor PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_inference_fp16_io PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_optimization_level PROPERTIES TIMEOUT 300)
   if(WITH_MKLDNN)
     set_tests_properties(test_save_optimized_model_pass PROPERTIES TIMEOUT 300)
   endif()
