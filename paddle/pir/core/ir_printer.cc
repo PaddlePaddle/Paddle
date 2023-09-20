@@ -87,7 +87,15 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) {
   }
 
   if (auto s = attr.dyn_cast<StrAttribute>()) {
-    os << "(String)" << s.AsString();
+    std::string s_val = s.AsString();
+    std::string replacement = "\\\"";
+    std::string search = "\"";
+    size_t found = s_val.find(search);
+    while (found != std::string::npos) {
+      s_val.replace(found, search.length(), replacement);
+      found = s_val.find(search, found + replacement.length());
+    }
+    os << "\"" << s_val << "\"";
   } else if (auto b = attr.dyn_cast<BoolAttribute>()) {
     if (b.data()) {
       os << "true";
