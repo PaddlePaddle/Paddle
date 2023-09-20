@@ -499,4 +499,11 @@ void Unpool3dInferMeta(const MetaTensor& x,
                        MetaTensor* out,
                        MetaConfig config = MetaConfig());
 
+void WeightDequantizeInferMeta(const MetaTensor& x,
+                               const MetaTensor& scale,
+                               DataType out_dtype,
+                               const std::string& algo,
+                               const bool transpose,
+                               MetaTensor* out);
+
 }  // namespace phi

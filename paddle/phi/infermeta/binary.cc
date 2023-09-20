@@ -3289,6 +3289,17 @@ void Unpool3dInferMeta(const MetaTensor& x,
   }
 }
 
+void WeightDequantizeInferMeta(const MetaTensor& x,
+                               const MetaTensor& scale,
+                               DataType out_dtype,
+                               const std::string& algo,
+                               const bool transpose,
+                               MetaTensor* out) {
+  int n = scale.dims()[0];
+  int k = x.dims()[1];
+  out->set_dims(phi::make_ddim({n, k}));
+  out->set_dtype(out_dtype);
+}
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(add_raw, phi::ElementwiseRawInferMeta);
