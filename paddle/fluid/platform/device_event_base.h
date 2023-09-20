@@ -67,7 +67,7 @@ class DeviceEvent {
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
     // TODO(Aurelius84): only support CPU/CUDA.
     PADDLE_ENFORCE_LT(type_id_,
-                      3,
+                      4,
                       platform::errors::Unavailable(
                           "Currently DeviceEvent do not support %s", place));
 #endif
