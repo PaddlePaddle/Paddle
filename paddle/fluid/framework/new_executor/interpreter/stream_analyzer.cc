@@ -72,26 +72,29 @@ void StreamAnalyzer::ConstructEvents(std::vector<Instruction>* instructions) {
         cross_step_merged_instructions_ptr, run_type_info, event_info_.get());
     ShrinkEventInfo(dependency_builder, event_info_.get());
     is_event_info_build_ = true;
-  }
-  // print event info
-  if (FLAGS_new_executor_log_stream_events) {
-    for (auto& context_item : *event_info_) {
-      for (auto& waiter_recorders : context_item.second) {
-        auto& waiter_id = waiter_recorders.first;
-        auto& recorder_ids = waiter_recorders.second;
-        if (waiter_id >= instructions->size()) {
-          continue;
-        }
-        auto& waiter_name = (*instructions)[waiter_id].OpBase()->Type();
-        std::cout << "waiter op_name: " << waiter_name << std::endl;
-        std::cout << "recorder op_name: ";
-        for (auto& records_id : recorder_ids) {
-          if (records_id >= instructions->size()) {
+
+    // print event info
+    if (FLAGS_new_executor_log_stream_events) {
+      for (auto& context_item : *event_info_) {
+        for (auto& waiter_recorders : context_item.second) {
+          auto& waiter_id = waiter_recorders.first;
+          auto& recorder_ids = waiter_recorders.second;
+          if (waiter_id >= instructions->size()) {
             continue;
           }
-          std::cout << (*instructions)[records_id].OpBase()->Type() << ", ";
+          auto& waiter_name = (*instructions)[waiter_id].OpBase()->Type();
+          std::cout << "waiter op_id: " << waiter_id
+                    << " op_name: " << waiter_name << std::endl;
+          std::cout << "recorder ";
+          for (auto& recorder_id : recorder_ids) {
+            if (recorder_id >= instructions->size()) {
+              continue;
+            }
+            std::cout << "op_id: " << recorder_id << " op_name: "
+                      << (*instructions)[recorder_id].OpBase()->Type() << ", ";
+          }
+          std::cout << std::endl;
         }
-        std::cout << std::endl;
       }
     }
   }

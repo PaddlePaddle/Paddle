@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import re
 from collections import OrderedDict
 from typing import List
 
@@ -421,23 +422,36 @@ def _insert_sync_for_fthenb_1f1b(program):
         block._sync_with_cpp()
 
 
-def _overlap_send_recv(program):
+def _overlap_send_recv(program, set_embedding_recv_default=True):
+    """
+    This function is used to replace the function '_insert_sync_for_fthenb_1f1b'.
+    The finally target of this function is as follows:
+        1. no need to insert the 'c_sync_calc' and 'c_sync_calc' operators
+        2. 'send_v2' operator uses 'dist_attr.execution_stream' to set stream of its own.
+        3. 'recv_v2' opeator uses 'dist_attr.execution_stream' to set stream of its own.
+    Nowly the first two tagets above has already been achieved.
+    TODO(lizhiyu): The third target will make the peak reserved memory of GPU grow too much.
+    """
+    pattern = re.compile(r'.*embedding_0.*')  # For embedding and embedding_grad
     for block in program.blocks:
-        for op in block.ops:
+        offset = 0
+        for index, op in enumerate(list(block.ops)):
             if op.type == 'send_v2':
                 op._set_attr("dynamic_shape", False)
                 ring_id = op.attr("ring_id")
-                op.desc.dist_attr.execution_stream = "send_stream_" + str(
-                    ring_id
-                )
-                op.desc.dist_attr.stream_priority = 0
+                op_role = op.attr("op_role")
+                op.dist_attr.execution_stream = "send_stream_" + str(ring_id)
+                op.dist_attr.stream_priority = 0
             elif op.type == 'recv_v2':
                 op._set_attr("dynamic_shape", False)
                 ring_id = op.attr("ring_id")
-                op.desc.dist_attr.execution_stream = "recv_stream_" + str(
-                    ring_id
-                )
-                op.desc.dist_attr.stream_priority = 0
+                op_role = op.attr("op_role")
+                var_name = op.output_arg_names[0]
+                if set_embedding_recv_default and pattern.match(var_name):
+                    pass
+                else:
+                    op.dist_attr.execution_stream = "recv_stream"
+                    op.dist_attr.stream_priority = 0
             else:
                 pass
 
@@ -447,7 +461,8 @@ def _program_for_fthenb_and_1f1b(program):
     This implementation is for fthenb and 1f1b programs and is called in partial_programs function.
     """
     # _insert_sync_for_fthenb_1f1b(program)
-    _overlap_send_recv(program)
+    _overlap_send_recv(program, set_embedding_recv_default=True)
+    print(f"++++partial program:\n{program}")
 
     lr_prog = Program()
     fwd_prog = Program()

@@ -1235,7 +1235,7 @@ void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
       VLOG(4) << "done instruction node run";
       CheckGC(instr_node);
       VLOG(4) << "done CheckGC";
-      interpreter::LogDeviceMemoryStats(place_);
+      interpreter::LogDeviceMemoryStats(place_, instr_node->Name());
     }
     VLOG(5) << "after run kernel";
     instr_node->RecordEvent(place_);
