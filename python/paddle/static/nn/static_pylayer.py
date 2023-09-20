@@ -236,8 +236,6 @@ def copy_var_from_parent_block(parent_block_var, layer_helper):
     return current_block_var
 
 
-# TODO(MarioLulab):
-# Need to support non-Variable in ``inputs``
 def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
     """
     This API returns ``forward_fn(inputs)``, and two sub-block are created based on
