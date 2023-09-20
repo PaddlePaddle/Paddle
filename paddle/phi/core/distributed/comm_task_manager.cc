@@ -46,7 +46,9 @@ const int64_t CommTaskManager::loop_thread_sleep_millis = 10000;
 std::atomic<bool> CommTaskManager::terminated_;
 std::mutex CommTaskManager::comm_task_list_mutex_;
 std::condition_variable CommTaskManager::comm_task_list_cv_;
-std::list<std::unique_ptr<CommTask>> CommTaskManager::comm_task_list_;
+std::list<std::shared_ptr<CommTask>> CommTaskManager::comm_task_list_;
+std::unordered_map<std::string, std::shared_ptr<CommTask>>
+    CommTaskManager::wait_comm_task_map_;
 
 CommTaskManager::CommTaskManager() {
   terminated_.store(false);
@@ -63,10 +65,10 @@ CommTaskManager::~CommTaskManager() {
   LOG(INFO) << "CommTaskManager destruct success.";
 }
 
-void CommTaskManager::CommTaskEnqueue(std::unique_ptr<CommTask> comm_task) {
+void CommTaskManager::CommTaskEnqueue(std::shared_ptr<CommTask> comm_task) {
   if (!terminated_.load()) {
     std::lock_guard<std::mutex> lock(comm_task_list_mutex_);
-    comm_task_list_.emplace_back(std::move(comm_task));
+    comm_task_list_.push(std::move(comm_task));
   }
 }
 
@@ -78,24 +80,34 @@ void CommTaskManager::CommTaskLoop() {
         lock,
         std::chrono::milliseconds(loop_thread_sleep_millis),
         [&]() -> bool { return terminated_.load(); });
-    for (auto task = comm_task_list_.begin(); task != comm_task_list_.end();) {
-      if ((*task)->IsTimeout()) {
-        LOG(WARNING) << "Detected timeout process_group: " << (*task)->GetGid();
-        std::string error_msg = (*task)->GetTraceMsg();
+    while (!comm_task_list_.empty()) {
+      auto task = comm_task_list_.front();
+      if (task->IsTimeout()) {
+        LOG(WARNING) << "Detected timeout process_group: " << task->GetGid();
+        std::string error_msg = task->GetTraceMsg();
         LOG(ERROR) << error_msg;
 
-        error_msg = (*task)->GetCommErrors();
+        error_msg = task->GetCommErrors();
         if (!error_msg.empty()) {
           LOG(ERROR) << error_msg;
         }
+        std::string task_key = task->GetUniqueKey();
+        wait_comm_task_map_[task_key] = *task;
       }
-      if ((*task)->IsCompleted()) {
-        task = comm_task_list_.erase(task);
+      comm_task_list_.pop();
+    }
+
+    for (auto iter = wait_comm_task_map_.begin();
+         iter != wait_comm_task_map_.end();) {
+      auto task = iter->second;
+      if (task->IsCompleted()) {
+        iter = wait_comm_task_map_.erase(iter);
+        LOG(INFO) << "Timeout task finished: " << task->GetTraceMsg();
       } else {
-        ++task;
+        ++iter;
       }
     }
-    if (comm_task_list_.empty()) {
+    if (comm_task_list_.empty() && wait_comm_task_map_.empty()) {
       done = true;
     }
   }

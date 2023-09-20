@@ -54,6 +54,10 @@ class CommTask {
   }
   virtual ~CommTask() = default;
 
+  std::string UniqueKey() {
+    return CommTypeToString(comm_type_) + "," + std::to_string(gid_) + "," +
+           std::to_string(seq_);
+  }
   std::string GetBackend() { return backend_; }
   phi::Place GetPlace() { return place_; }
   int GetGlobalRank() { return global_rank_; }
