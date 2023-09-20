@@ -31,87 +31,6 @@ namespace funcs {
 
 enum BroadcastType { kMixed = 1, kBroadcast = 2, kElementwise = 3 };
 
-template <typename OutT, typename Functor, int Arity, int NumOuts>
-struct BroadcastTypeClassifier {
-  int64_t numel{0};
-  int broadcast_num{0};                   // Not used for XPU
-  bool all_elementwise{true};             // Not used for XPU
-  phi::Array<bool, Arity> use_broadcast;  // Not used for XPU
-  phi::Array<kps::details::BroadcastConfig, Arity> configs;
-  phi::Array<const _ptr_ char *__restrict__, Arity> ins_data;
-  phi::Array<_ptr_ OutT *, NumOuts> outs_data;
-
-  BroadcastTypeClassifier() {}
-  BroadcastTypeClassifier(const std::vector<const DenseTensor *> &ins,
-                          std::vector<DenseTensor *> *outs,
-                          int axis) {
-    numel = (*outs)[0]->numel();
-
-#ifndef PADDLE_WITH_XPU_KP
-    for (size_t i = 0; i < ins.size(); ++i) {
-      bool is_same_dim = ins[i]->numel() == numel;
-      if (is_same_dim) {
-        use_broadcast[i] = false;
-      } else {
-        use_broadcast[i] = true;
-        broadcast_num++;
-      }
-      all_elementwise &= is_same_dim;
-    }
-#endif
-
-    InitBroadcastConfigs(ins, outs, axis);
-
-    using Traits = phi::funcs::FunctionTraits<Functor>;
-    using ArgsT = typename Traits::ArgsTuple;
-    ArgsT arg;
-    UnrollerWithoutVecSize<InputSetter, Arity>::step(ins, arg, &ins_data);
-    for (int i = 0; i < NumOuts; ++i) {
-      outs_data[i] = (*outs)[i]->data<OutT>();
-    }
-  }
-
-  void InitBroadcastConfigs(const std::vector<const DenseTensor *> &ins,
-                            std::vector<DenseTensor *> *outs,
-                            int axis) {
-#ifdef PADDLE_WITH_XPU_KP
-    const auto dims_simplifier =
-        BroadcastDimsSimplifier(ins, (*outs)[0]->dims(), axis);
-    if (VLOG_IS_ON(6)) {
-      DimsSimplifiedLogger<int64_t>::Log(
-          ins, outs, dims_simplifier, "BroadcastKernel");
-    }
-    configs[0] = kps::details::BroadcastConfig(dims_simplifier.out_dims,
-                                               dims_simplifier.in_dims[0],
-                                               dims_simplifier.in_dims[1],
-                                               dims_simplifier.rank);
-    configs[1] = kps::details::BroadcastConfig(dims_simplifier.out_dims,
-                                               dims_simplifier.in_dims[1],
-                                               dims_simplifier.in_dims[0],
-                                               dims_simplifier.rank);
-#else
-    if (!all_elementwise) {
-      const auto dims_simplifier =
-          BroadcastDimsSimplifier(ins, (*outs)[0]->dims(), axis);
-      if (VLOG_IS_ON(6)) {
-        DimsSimplifiedLogger<int64_t>::Log(
-            ins, outs, dims_simplifier, "BroadcastKernel");
-      }
-      for (int i = 0; i < Arity; ++i) {
-        // if data shape is[m, n], then you should set data_dim = {n, m}
-        // eg: out's shape [3, 45, 1]. then out_dims = {1, 45, 3}
-        // if (ins[i]->numel() != (*outs)[0]->numel()) {
-        if (ins[i]->numel()) {
-          configs[i] = kps::details::BroadcastConfig(dims_simplifier.out_dims,
-                                                     dims_simplifier.in_dims[i],
-                                                     dims_simplifier.rank);
-        }
-      }
-    }
-#endif
-  }
-};
-
 // Common broadcast/elementwise Loader.
 template <int Index, int VecSize, bool IsBoundary, int LoadType>
 struct BroadcastDataLoader {
@@ -433,83 +352,6 @@ __global__ void VectorizedBroadcastKernel(
 #endif
 }
 
-template <typename OutT, typename Functor, int Arity, int NumOuts, int VecSize>
-void LaunchBroadcastKernel(
-    const KPDevice &ctx,
-    const BroadcastTypeClassifier<OutT, Functor, Arity, NumOuts> &classifier,
-    Functor func) {
-#ifdef PADDLE_WITH_XPU_KP
-  int numel = classifier.numel;
-  const int threads = 64;
-  const int blocks = 8;
-  int read_lens = configs[0].buf_len;
-  auto stream = ctx.x_context()->xpu_stream;
-  int main_offset = (numel / (read_lens * threads)) * read_lens * threads;
-  int tail_tid = numel % (read_lens * threads);
-
-  VectorizedBroadcastKernel<Functor, OutT, Arity, NumOuts, VecSize, false>
-      <<<blocks, threads, 0, stream>>>(classifier.ins_data,
-                                       classifier.outs_data,
-                                       classifier.use_broadcast,
-                                       numel,
-                                       classifier.configs,
-                                       main_offset,
-                                       tail_tid,
-                                       read_lens,
-                                       func);
-#else
-  const auto &numel = classifier.numel;
-  auto gpu_config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, VecSize);
-  auto stream = ctx.stream();
-  auto threads = gpu_config.GetBlockSize();
-  auto blocks = gpu_config.block_per_grid;
-  int main_offset = (numel / (VecSize * threads)) * VecSize * threads;
-  int tail_tid = numel % (VecSize * threads);
-
-  if (classifier.all_elementwise) {
-    VectorizedBroadcastKernel<Functor,
-                              OutT,
-                              Arity,
-                              NumOuts,
-                              VecSize,
-                              kElementwise>
-        <<<blocks, threads, 0, stream>>>(classifier.ins_data,
-                                         classifier.outs_data,
-                                         classifier.use_broadcast,
-                                         numel,
-                                         classifier.configs,
-                                         main_offset,
-                                         tail_tid,
-                                         VecSize,
-                                         func);
-  } else if (classifier.broadcast_num > (Arity >> 1)) {
-    constexpr BroadcastType type_ = (Arity > 1) ? kBroadcast : kMixed;
-    VectorizedBroadcastKernel<Functor, OutT, Arity, NumOuts, VecSize, type_>
-        <<<blocks, threads, 0, stream>>>(classifier.ins_data,
-                                         classifier.outs_data,
-                                         classifier.use_broadcast,
-                                         numel,
-                                         classifier.configs,
-                                         main_offset,
-                                         tail_tid,
-                                         VecSize,
-                                         func);
-  } else {
-    VectorizedBroadcastKernel<Functor, OutT, Arity, NumOuts, VecSize, kMixed>
-        <<<blocks, threads, 0, stream>>>(classifier.ins_data,
-                                         classifier.outs_data,
-                                         classifier.use_broadcast,
-                                         numel,
-                                         classifier.configs,
-                                         main_offset,
-                                         tail_tid,
-                                         VecSize,
-                                         func);
-  }
-#endif
-}
-
 #ifndef PADDLE_WITH_XPU_KP
 HOSTDEVICE static int64_t ConvertSrcIdxToDstIdx(
     int64_t src_idx,
@@ -822,132 +664,274 @@ struct LaunchBroadcastKernelWithInt64IndexHelper<OutT,
 };
 #endif
 
-template <typename OutT, typename Functor, int Arity, int NumOuts = 1>
-typename std::enable_if<!NeedVectorized<OutT>::value, void>::type
-BroadcastKernelForDifferentVecSize(const KPDevice &ctx,
-                                   const std::vector<const DenseTensor *> &ins,
-                                   std::vector<DenseTensor *> *outs,
-                                   int axis,
-                                   Functor func) {
+template <typename OutT, typename Functor, int NumOuts>
+class BroadcastInvokerBase {
+ public:
+  using Traits = phi::funcs::FunctionTraits<Functor>;
+
+  BroadcastInvokerBase(const std::vector<const DenseTensor *> &ins,
+                       std::vector<DenseTensor *> *outs) {
+    using ArgsT = typename Traits::ArgsTuple;
+    ArgsT arg;
+    UnrollerWithoutVecSize<InputSetter, Traits::arity>::step(ins, arg, &ins_);
+
+    // There are at least 1 output, but maybe 0 input (ins.size() == 0).
+    // For large tensor numel * sizeof(T) > 2^31, we must use int64_t as index
+    // type.
+    numel_ = (*outs)[0]->numel();
+    for (int i = 0; i < outs->size(); ++i) {
+      outs_[i] = (*outs)[i]->data<OutT>();
+    }
+
 #ifndef PADDLE_WITH_XPU_KP
-  constexpr bool kEnabledInt64IndexKernel = (NumOuts == 1 && Arity <= 3);
-  bool use_int64_index_kernel =
-      kEnabledInt64IndexKernel &&
-      (*outs)[0]->numel() >= std::numeric_limits<int32_t>::max();
-  if (use_int64_index_kernel) {
-    LaunchBroadcastKernelWithInt64IndexHelper<OutT,
-                                              Functor,
-                                              Arity,
-                                              NumOuts,
-                                              VecSizeS>::Run(ctx,
-                                                             ins,
-                                                             outs,
-                                                             axis,
-                                                             func);
-    return;
+    constexpr bool kEnabledInt64IndexKernel =
+        (NumOuts == 1 && Traits::arity <= 3);
+    use_int64_index_kernel_ =
+        kEnabledInt64IndexKernel &&
+        (*outs)[0]->numel() >= std::numeric_limits<int32_t>::max();
+#endif
   }
-#endif
 
-  auto classifier =
-      BroadcastTypeClassifier<OutT, Functor, Arity, NumOuts>(ins, outs, axis);
-  LaunchBroadcastKernel<OutT, Functor, Arity, NumOuts, VecSizeS>(
-      ctx, classifier, func);
-}
-
-template <typename OutT, typename Functor, int Arity, int NumOuts = 1>
-typename std::enable_if<NeedVectorized<OutT>::value, void>::type
-BroadcastKernelForDifferentVecSize(const KPDevice &ctx,
-                                   const std::vector<const DenseTensor *> &ins,
-                                   std::vector<DenseTensor *> *outs,
-                                   int axis,
-                                   Functor func) {
-#ifdef PADDLE_WITH_XPU_KP
-  auto type = kps::details::OptType::CanNotOptimize;
-  bool is_optimize = classifier.configs[0].cmp_type != type;
-  int vec_size = is_optimize ? VecSizeL : VecSizeM;
-#else
-  // Calculate the max vec_size for all ins and outs.
-  int vec_size = GetVectorizedSizeForTensors(ins, *outs);
-#endif
-
+  template <int VecSize>
+  void RunImpl(const KPDevice &ctx,
+               const std::vector<const DenseTensor *> &ins,
+               std::vector<DenseTensor *> *outs,
+               int axis,
+               Functor func) {
 #ifndef PADDLE_WITH_XPU_KP
-  constexpr bool kEnabledInt64IndexKernel = (NumOuts == 1 && Arity <= 3);
-  bool use_int64_index_kernel =
-      kEnabledInt64IndexKernel &&
-      (*outs)[0]->numel() >= std::numeric_limits<int32_t>::max();
-  if (use_int64_index_kernel) {
+    if (use_int64_index_kernel_) {
+      LaunchBroadcastKernelWithInt64IndexHelper<OutT,
+                                                Functor,
+                                                Traits::arity,
+                                                NumOuts,
+                                                VecSize>::Run(ctx,
+                                                              ins,
+                                                              outs,
+                                                              axis,
+                                                              func);
+      return;
+    }
+#endif
+
+    InitBroadcastConfigs(ins, outs, axis);
+    LaunchBroadcastKernel<VecSize>(ctx, func);
+  }
+
+  void InitBroadcastConfigs(const std::vector<const DenseTensor *> &ins,
+                            std::vector<DenseTensor *> *outs,
+                            int axis) {
+#ifdef PADDLE_WITH_XPU_KP
+    const auto dims_simplifier =
+        BroadcastDimsSimplifier(ins, (*outs)[0]->dims(), axis);
+    if (VLOG_IS_ON(6)) {
+      DimsSimplifiedLogger<int64_t>::Log(
+          ins, outs, dims_simplifier, "BroadcastKernel");
+    }
+    configs_[0] = kps::details::BroadcastConfig(dims_simplifier.out_dims,
+                                                dims_simplifier.in_dims[0],
+                                                dims_simplifier.in_dims[1],
+                                                dims_simplifier.rank);
+    configs_[1] = kps::details::BroadcastConfig(dims_simplifier.out_dims,
+                                                dims_simplifier.in_dims[1],
+                                                dims_simplifier.in_dims[0],
+                                                dims_simplifier.rank);
+#else
+    for (size_t i = 0; i < ins.size(); ++i) {
+      bool is_same_dim = ins[i]->numel() == numel_;
+      if (is_same_dim) {
+        use_broadcast_[i] = false;
+      } else {
+        use_broadcast_[i] = true;
+        broadcast_num_++;
+      }
+      all_elementwise_ &= is_same_dim;
+    }
+    if (!all_elementwise_) {
+      const auto dims_simplifier =
+          BroadcastDimsSimplifier(ins, (*outs)[0]->dims(), axis);
+      if (VLOG_IS_ON(6)) {
+        DimsSimplifiedLogger<int64_t>::Log(
+            ins, outs, dims_simplifier, "BroadcastKernel");
+      }
+      for (int i = 0; i < ins.size(); ++i) {
+        // if data shape is[m, n], then you should set data_dim = {n, m}
+        // eg: out's shape [3, 45, 1]. then out_dims = {1, 45, 3}
+        // if (ins[i]->numel() != (*outs)[0]->numel()) {
+        if (ins[i]->numel()) {
+          configs_[i] =
+              kps::details::BroadcastConfig(dims_simplifier.out_dims,
+                                            dims_simplifier.in_dims[i],
+                                            dims_simplifier.rank);
+        }
+      }
+    }
+#endif
+  }
+
+  template <int VecSize>
+  void LaunchBroadcastKernel(const KPDevice &ctx, Functor func) {
+    const uint32_t numel = numel_;
+
+#ifdef PADDLE_WITH_XPU_KP
+    const int threads = 64;
+    const int blocks = 8;
+    int read_lens = configs_[0].buf_len;
+    auto stream = ctx.x_context()->xpu_stream;
+    int main_offset = (numel / (read_lens * threads)) * read_lens * threads;
+    int tail_tid = numel % (read_lens * threads);
+
+    VectorizedBroadcastKernel<Functor,
+                              OutT,
+                              Traits::arity,
+                              NumOuts,
+                              VecSize,
+                              false>
+        <<<blocks, threads, 0, stream>>>(ins_,
+                                         outs_,
+                                         use_broadcast_,
+                                         numel,
+                                         configs_,
+                                         main_offset,
+                                         tail_tid,
+                                         read_lens,
+                                         func);
+#else
+    auto gpu_config =
+        phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, VecSize);
+    auto stream = ctx.stream();
+    auto threads = gpu_config.GetBlockSize();
+    auto blocks = gpu_config.block_per_grid;
+    int main_offset = (numel / (VecSize * threads)) * VecSize * threads;
+    int tail_tid = numel % (VecSize * threads);
+
+    if (all_elementwise_) {
+      VectorizedBroadcastKernel<Functor,
+                                OutT,
+                                Traits::arity,
+                                NumOuts,
+                                VecSize,
+                                kElementwise>
+          <<<blocks, threads, 0, stream>>>(ins_,
+                                           outs_,
+                                           use_broadcast_,
+                                           numel,
+                                           configs_,
+                                           main_offset,
+                                           tail_tid,
+                                           VecSize,
+                                           func);
+    } else if (broadcast_num_ > (Traits::arity >> 1)) {
+      constexpr BroadcastType loader_type =
+          (Traits::arity > 1) ? kBroadcast : kMixed;
+      VectorizedBroadcastKernel<Functor,
+                                OutT,
+                                Traits::arity,
+                                NumOuts,
+                                VecSize,
+                                loader_type>
+          <<<blocks, threads, 0, stream>>>(ins_,
+                                           outs_,
+                                           use_broadcast_,
+                                           numel,
+                                           configs_,
+                                           main_offset,
+                                           tail_tid,
+                                           VecSize,
+                                           func);
+    } else {
+      VectorizedBroadcastKernel<Functor,
+                                OutT,
+                                Traits::arity,
+                                NumOuts,
+                                VecSize,
+                                kMixed>
+          <<<blocks, threads, 0, stream>>>(ins_,
+                                           outs_,
+                                           use_broadcast_,
+                                           numel,
+                                           configs_,
+                                           main_offset,
+                                           tail_tid,
+                                           VecSize,
+                                           func);
+    }
+#endif
+  }
+
+ protected:
+  bool use_int64_index_kernel_;
+  int64_t numel_{0};
+  int broadcast_num_{0};                           // Not used for XPU
+  bool all_elementwise_{true};                     // Not used for XPU
+  phi::Array<bool, Traits::arity> use_broadcast_;  // Not used for XPU
+  phi::Array<kps::details::BroadcastConfig, Traits::arity> configs_;
+  phi::Array<_ptr_ OutT *, NumOuts> outs_;
+  phi::Array<const _ptr_ char *__restrict__, Traits::arity> ins_;
+};
+
+template <typename OutT, typename Functor, int NumOuts, typename Enable = void>
+class BroadcastInvoker : public BroadcastInvokerBase<OutT, Functor, NumOuts> {
+ public:
+  BroadcastInvoker(const std::vector<const DenseTensor *> &ins,
+                   std::vector<DenseTensor *> *outs)
+      : BroadcastInvokerBase<OutT, Functor, NumOuts>(ins, outs) {}
+
+  void Run(const KPDevice &ctx,
+           const std::vector<const DenseTensor *> &ins,
+           std::vector<DenseTensor *> *outs,
+           int axis,
+           Functor func) {
+#ifdef PADDLE_WITH_XPU_KP
+    auto type = kps::details::OptType::CanNotOptimize;
+    bool is_optimize = classifier.configs[0].cmp_type != type;
+    int vec_size = is_optimize ? VecSizeL : VecSizeM;
+#else
+    // Calculate the max vec_size for all ins and outs.
+    int vec_size = GetVectorizedSizeForTensors(ins, *outs);
+#endif
     switch (vec_size) {
-      case VecSizeL: {
-        LaunchBroadcastKernelWithInt64IndexHelper<OutT,
-                                                  Functor,
-                                                  Arity,
-                                                  NumOuts,
-                                                  VecSizeL>::Run(ctx,
-                                                                 ins,
-                                                                 outs,
-                                                                 axis,
-                                                                 func);
+      case VecSizeL:
+        BroadcastInvokerBase<OutT, Functor, NumOuts>::template RunImpl<
+            VecSizeL>(ctx, ins, outs, axis, func);
         break;
-      }
-      case VecSizeM: {
-        LaunchBroadcastKernelWithInt64IndexHelper<OutT,
-                                                  Functor,
-                                                  Arity,
-                                                  NumOuts,
-                                                  VecSizeM>::Run(ctx,
-                                                                 ins,
-                                                                 outs,
-                                                                 axis,
-                                                                 func);
+      case VecSizeM:
+        BroadcastInvokerBase<OutT, Functor, NumOuts>::template RunImpl<
+            VecSizeM>(ctx, ins, outs, axis, func);
         break;
-      }
-      case VecSizeS: {
-        LaunchBroadcastKernelWithInt64IndexHelper<OutT,
-                                                  Functor,
-                                                  Arity,
-                                                  NumOuts,
-                                                  VecSizeS>::Run(ctx,
-                                                                 ins,
-                                                                 outs,
-                                                                 axis,
-                                                                 func);
+      case VecSizeS:
+        BroadcastInvokerBase<OutT, Functor, NumOuts>::template RunImpl<
+            VecSizeS>(ctx, ins, outs, axis, func);
         break;
-      }
       default: {
         PADDLE_THROW(phi::errors::Unimplemented(
-            "Unsupported vectorized size: %d!", vec_size));
+            "Unsupported vectorized size: %d !", vec_size));
         break;
       }
     }
-    return;
   }
-#endif
+};
 
-  auto classifier =
-      BroadcastTypeClassifier<OutT, Functor, Arity, NumOuts>(ins, outs, axis);
-  switch (vec_size) {
-    case VecSizeL: {
-      LaunchBroadcastKernel<OutT, Functor, Arity, NumOuts, VecSizeL>(
-          ctx, classifier, func);
-      break;
-    }
-    case VecSizeM: {
-      LaunchBroadcastKernel<OutT, Functor, Arity, NumOuts, VecSizeM>(
-          ctx, classifier, func);
-      break;
-    }
-    case VecSizeS: {
-      LaunchBroadcastKernel<OutT, Functor, Arity, NumOuts, VecSizeS>(
-          ctx, classifier, func);
-      break;
-    }
-    default: {
-      PADDLE_THROW(phi::errors::Unimplemented(
-          "Unsupported vectorized size: %d!", vec_size));
-      break;
-    }
+template <typename OutT, typename Functor, int NumOuts>
+class BroadcastInvoker<
+    OutT,
+    Functor,
+    NumOuts,
+    typename std::enable_if<!NeedVectorized<OutT>::value, void>::type>
+    : public BroadcastInvokerBase<OutT, Functor, NumOuts> {
+ public:
+  BroadcastInvoker(const std::vector<const DenseTensor *> &ins,
+                   std::vector<DenseTensor *> *outs)
+      : BroadcastInvokerBase<OutT, Functor, NumOuts>(ins, outs) {}
+
+  void Run(const KPDevice &ctx,
+           const std::vector<const DenseTensor *> &ins,
+           std::vector<DenseTensor *> *outs,
+           int axis,
+           Functor func) {
+    BroadcastInvokerBase<OutT, Functor, NumOuts>::template RunImpl<VecSizeS>(
+        ctx, ins, outs, axis, func);
   }
-}
+};
 
 template <typename OutT, typename Functor, int NumOuts = 1>
 void BroadcastKernel(const KPDevice &ctx,
@@ -1013,8 +997,8 @@ void BroadcastKernel(const KPDevice &ctx,
     max_rank = std::max(max_rank, (*outs)[0]->dims().size());
   }
   axis = axis == -1 ? max_rank - min_rank : axis;
-  BroadcastKernelForDifferentVecSize<OutT, Functor, kArity, NumOuts>(
-      ctx, ins, outs, axis, func);
+  BroadcastInvoker<OutT, Functor, NumOuts> invoker(ins, outs);
+  invoker.Run(ctx, ins, outs, axis, func);
 }
 
 template <typename Functor, typename T, typename OutType = T>
