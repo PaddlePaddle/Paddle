@@ -44,6 +44,128 @@ inline void GetDims(const phi::DDim& dim,
 }
 
 template <typename T, typename Context>
+struct PNormGradFunctor {
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const DenseTensor& out,
+                  const DenseTensor& out_grad,
+                  float porder,
+                  int axis,
+                  float epsilon,
+                  bool keepdim UNUSED,
+                  bool asvector,
+                  DenseTensor* x_grad) {
+    std::cout << "run PNormGradKernel" << std::endl;
+    auto* in_x = &x;
+    auto* in_norm = &out;
+    auto* in_norm_dy = &out_grad;
+    auto* out_dx = x_grad;
+    dev_ctx.template Alloc<T>(out_dx);
+
+    T eps = static_cast<T>(epsilon);
+    auto xdim = in_x->dims();
+
+    if (axis < 0) axis = xdim.size() + axis;
+    int pre, n, post;
+    GetDims(xdim, axis, &pre, &n, &post, asvector);
+    Eigen::DSizes<int, 3> shape(pre, n, post);
+    Eigen::DSizes<int, 3> rshape(pre, 1, post);
+
+    auto* place = dev_ctx.eigen_device();
+
+    auto x_e = phi::EigenVector<T>::Flatten(*in_x);
+    auto dx_e = phi::EigenVector<T>::Flatten(*out_dx);
+    auto norm_e = phi::EigenVector<T>::Flatten(*in_norm);
+    auto norm_dy_e = phi::EigenVector<T>::Flatten(*in_norm_dy);
+
+    auto xr = x_e.reshape(shape);
+    auto dx = dx_e.reshape(shape);
+    auto norm = norm_e.reshape(rshape);
+    auto norm_dy = norm_dy_e.reshape(rshape);
+
+    Eigen::DSizes<int, 1> rdim(1);
+    Eigen::DSizes<int, 3> bcast(1, n, 1);
+
+    if (porder == 0) {
+      phi::funcs::SetConstant<Context, T> set_zero;
+      set_zero(dev_ctx, out_dx, static_cast<T>(0));
+    } else if (porder == INFINITY || porder == -INFINITY) {
+      dx.device(*place) =
+          (xr.abs() == norm.broadcast(bcast)).template cast<T>() * xr.sign() *
+          norm_dy.broadcast(bcast);
+    } else {
+      dx.device(*place) =
+          (xr.abs()).pow(porder - 1.0f) /
+          ((norm.broadcast(bcast)).pow(porder - 1.0f) + xr.constant(eps));
+      dx.device(*place) = dx * norm_dy.broadcast(bcast) * xr.sign();
+    }
+  }
+};
+
+template <typename T>
+using ComplexType = phi::dtype::complex<T>;
+
+template <typename T, typename Context>
+struct PNormGradFunctor<ComplexType<T>, Context> {
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const DenseTensor& out,
+                  const DenseTensor& out_grad,
+                  float porder,
+                  int axis,
+                  float epsilon,
+                  bool keepdim UNUSED,
+                  bool asvector,
+                  DenseTensor* x_grad) {
+    std::cout << "run PNormGradKernel" << std::endl;
+    auto* in_x = &x;
+    auto* in_norm = &out;
+    auto* in_norm_dy = &out_grad;
+    auto* out_dx = x_grad;
+    dev_ctx.template Alloc<ComplexType<T>>(out_dx);
+
+    ComplexType<T> eps = static_cast<ComplexType<T>>(epsilon);
+    auto xdim = in_x->dims();
+
+    if (axis < 0) axis = xdim.size() + axis;
+    int pre, n, post;
+    GetDims(xdim, axis, &pre, &n, &post, asvector);
+    Eigen::DSizes<int, 3> shape(pre, n, post);
+    Eigen::DSizes<int, 3> rshape(pre, 1, post);
+
+    auto* place = dev_ctx.eigen_device();
+
+    auto x_e = phi::EigenVector<ComplexType<T>>::Flatten(*in_x);
+    auto dx_e = phi::EigenVector<ComplexType<T>>::Flatten(*out_dx);
+    auto norm_e = phi::EigenVector<ComplexType<T>>::Flatten(*in_norm);
+    auto norm_dy_e = phi::EigenVector<ComplexType<T>>::Flatten(*in_norm_dy);
+
+    auto xr = x_e.reshape(shape);
+    auto dx = dx_e.reshape(shape);
+    auto norm = norm_e.reshape(rshape);
+    auto norm_dy = norm_dy_e.reshape(rshape);
+
+    Eigen::DSizes<int, 1> rdim(1);
+    Eigen::DSizes<int, 3> bcast(1, n, 1);
+
+    if (porder == 0) {
+      phi::funcs::SetConstant<Context, ComplexType<T>> set_zero;
+      set_zero(dev_ctx, out_dx, static_cast<ComplexType<T>>(0));
+    } else if (porder == INFINITY || porder == -INFINITY) {
+      dx.device(*place) =
+          (xr.abs() == norm.broadcast(bcast)).template cast<ComplexType<T>>() *
+          norm_dy.broadcast(bcast) * xr.conjugate() / xr.abs();
+    } else {
+      dx.device(*place) =
+          (xr.abs()).pow(porder - 1.0f) /
+          ((norm.broadcast(bcast)).pow(porder - 1.0f) + xr.constant(eps));
+      dx.device(*place) =
+          dx * norm_dy.broadcast(bcast) * xr.conjugate() / xr.abs();
+    }
+  }
+};
+
+template <typename T, typename Context>
 void PNormGradKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& out,
@@ -51,52 +173,27 @@ void PNormGradKernel(const Context& dev_ctx,
                      float porder,
                      int axis,
                      float epsilon,
-                     bool keepdim UNUSED,
+                     bool keepdim,
                      bool asvector,
                      DenseTensor* x_grad) {
-  auto* in_x = &x;
-  auto* in_norm = &out;
-  auto* in_norm_dy = &out_grad;
-  auto* out_dx = x_grad;
-  dev_ctx.template Alloc<T>(out_dx);
-
-  T eps = static_cast<T>(epsilon);
-  auto xdim = in_x->dims();
-
-  if (axis < 0) axis = xdim.size() + axis;
-  int pre, n, post;
-  GetDims(xdim, axis, &pre, &n, &post, asvector);
-  Eigen::DSizes<int, 3> shape(pre, n, post);
-  Eigen::DSizes<int, 3> rshape(pre, 1, post);
-
-  auto* place = dev_ctx.eigen_device();
-
-  auto x_e = phi::EigenVector<T>::Flatten(*in_x);
-  auto dx_e = phi::EigenVector<T>::Flatten(*out_dx);
-  auto norm_e = phi::EigenVector<T>::Flatten(*in_norm);
-  auto norm_dy_e = phi::EigenVector<T>::Flatten(*in_norm_dy);
-
-  auto xr = x_e.reshape(shape);
-  auto dx = dx_e.reshape(shape);
-  auto norm = norm_e.reshape(rshape);
-  auto norm_dy = norm_dy_e.reshape(rshape);
-
-  Eigen::DSizes<int, 1> rdim(1);
-  Eigen::DSizes<int, 3> bcast(1, n, 1);
-
-  if (porder == 0) {
-    phi::funcs::SetConstant<Context, T> set_zero;
-    set_zero(dev_ctx, out_dx, static_cast<T>(0));
-  } else if (porder == INFINITY || porder == -INFINITY) {
-    dx.device(*place) = (xr.abs() == norm.broadcast(bcast)).template cast<T>() *
-                        xr.sign() * norm_dy.broadcast(bcast);
-  } else {
-    dx.device(*place) =
-        (xr.abs()).pow(porder - 1.0f) /
-        ((norm.broadcast(bcast)).pow(porder - 1.0f) + xr.constant(eps));
-    dx.device(*place) = dx * norm_dy.broadcast(bcast) * xr.sign();
-  }
+  PNormGradFunctor<T, Context>()(dev_ctx,
+                                 x,
+                                 out,
+                                 out_grad,
+                                 porder,
+                                 axis,
+                                 epsilon,
+                                 keepdim,
+                                 asvector,
+                                 x_grad);
 }
+
 }  // namespace phi
-PD_REGISTER_KERNEL(
-    p_norm_grad, CPU, ALL_LAYOUT, phi::PNormGradKernel, float, double, phi::dtype::complex<float>, phi::dtype::complex<double>) {}
+PD_REGISTER_KERNEL(p_norm_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::PNormGradKernel,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

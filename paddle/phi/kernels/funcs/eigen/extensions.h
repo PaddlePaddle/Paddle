@@ -286,6 +286,11 @@ HOSTDEVICE inline float abs(const complex<float>& a) {
   return phi::dtype::abs(a);
 }
 
+template <>
+HOSTDEVICE inline complex<float> conj(const complex<float>& a) {
+  return phi::dtype::conj(a);
+}
+
 //////////// complex<double> methods /////////////
 
 template <>
@@ -350,6 +355,11 @@ HOSTDEVICE inline complex<double> pow(const complex<double>& a,
 template <>
 HOSTDEVICE inline double abs(const complex<double>& a) {
   return phi::dtype::abs(a);
+}
+
+template <>
+HOSTDEVICE inline complex<double> conj(const complex<double>& a) {
+  return phi::dtype::conj(a);
 }
 
 //////////// float16 methods /////////////

@@ -21,6 +21,9 @@
 namespace phi {
 
 template <typename T>
+using ComplexType = phi::dtype::complex<T>;
+
+template <typename T>
 struct AbsMaxAndMinGradFunctor {
   template <typename Context,
             typename X,
@@ -37,6 +40,27 @@ struct AbsMaxAndMinGradFunctor {
                   int size) {
     dx->device(place) = dy->broadcast(dim) * (*x).sign() *
                         ((*x).abs() == y->broadcast(dim)).template cast<T>();
+  }
+};
+
+template <typename T>
+struct AbsMaxAndMinGradFunctor<ComplexType<T>> {
+  template <typename Context,
+            typename X,
+            typename Y,
+            typename DX,
+            typename DY,
+            typename Dim>
+  void operator()(const Context& place,
+                  X* x,
+                  Y* y,
+                  DX* dx,
+                  DY* dy,
+                  const Dim& dim,
+                  int size) {
+    dx->device(place) =
+        dy->broadcast(dim) * (*x).conjugate() / xr.abs() *
+        ((*x).abs() == y->broadcast(dim)).template cast<ComplexType<T>>();
   }
 };
 
@@ -60,7 +84,35 @@ struct PNormGradFunctor {
                   const Dim& dim,
                   int size) {
     dx->device(place) =
-        (*x).abs().pow(this->porder) * (*x).sign() * dy->broadcast(dim) *
+        (*x).abs().pow(this->porder) * (*x).sign() *
+        (*y + y->constant(eps)).pow(-this->porder).broadcast(dim);
+  }
+  T porder;
+  T eps;
+};
+
+template <typename T>
+struct PNormGradFunctor<ComplexType<T>> {
+  HOSTDEVICE explicit inline PNormGradFunctor(float porder, float eps) {
+    this->porder = static_cast<T>(porder - 1.);
+    this->eps = static_cast<T>(eps);
+  }
+  template <typename Context,
+            typename X,
+            typename Y,
+            typename DX,
+            typename DY,
+            typename Dim>
+  void operator()(const Context& place,
+                  X* x,
+                  Y* y,
+                  DX* dx,
+                  DY* dy,
+                  const Dim& dim,
+                  int size) {
+    dx->device(place) =
+        (*x).abs().pow(this->porder) * (*x).conjugate() / xr.abs() *
+        dy->broadcast(dim) * dy->broadcast(dim) *
         (*y + y->constant(eps)).pow(-this->porder).broadcast(dim);
   }
   T porder;
