@@ -80,8 +80,10 @@ void ParallelCompiler::SplitTask() {
   CHECK(context_->lowered_funcs.empty() ||
         context_->graph->fusion_groups.size() ==
             context_->lowered_funcs.size());
-  int device_id;
+  int device_id = 0;
+#ifdef CINN_WITH_CUDA
   CUDA_CALL(cudaGetDevice(&device_id));
+#endif
   for (int group_id = 0; group_id < context_->graph->fusion_groups.size();
        ++group_id) {
     tasks_.emplace_back(device_id, group_id, this, context_);
@@ -129,8 +131,10 @@ void ParallelCompiler::RunTask() {
 }
 
 void ParallelCompiler::LaunchTask() {
-  int device_id;
+  int device_id = 0;
+#ifdef CINN_WITH_CUDA
   CUDA_CALL(cudaGetDevice(&device_id));
+#endif
   int num_threads = FLAGS_cinn_parallel_compile_thread;
 #if defined(PADDLE_WITH_DISTRIBUTE)
   if (device_id > 0) {
