@@ -335,8 +335,7 @@ __device__ void VectorizedBroadcastKernelImpl(
   SameDimsElementwisePrimitiveCaller<ConditionalT<OutT, NumOuts>,
                                      VecSize,
                                      Functor,
-                                     ArgsT,
-                                     Arity>()(func, args, result, read_lens);
+                                     ArgsT>()(func, args, result, read_lens);
   phi::funcs::
       ElementwiseWriteDataCallerBc<OutT, VecSize, IsBoundary, NumOuts>()(
           outs, result, block_offset, num, read_lens);
