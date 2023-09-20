@@ -18,6 +18,7 @@
 #include <sstream>
 
 #include "paddle/cinn/hlir/framework/visualize_helper.h"
+#include "paddle/cinn/runtime/cuda/cuda_util.h"
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/string.h"
 
@@ -315,9 +316,12 @@ void Graph::VisualizeGroupedGraph(
   const auto& group_dots = VisualizeGroups(groups, fetch_var_ids);
   for (int idx = 0; idx < groups.size(); ++idx) {
     // Create fusion_group_x folder
+    int current_device_id;
+    cudaGetDevice(&current_device_id);
     auto group_path =
-        utils::StringFormat("%s/fusion_group_%d",
+        utils::StringFormat("%s/device_%d/fusion_group_%d",
                             FLAGS_cinn_fusion_groups_graphviz_dir.c_str(),
+                            current_device_id,
                             idx);
     if (!MakeDirectory(group_path,
                        S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)) {

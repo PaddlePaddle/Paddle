@@ -80,8 +80,11 @@ void ParallelCompiler::SplitTask() {
   CHECK(context_->lowered_funcs.empty() ||
         context_->graph->fusion_groups.size() ==
             context_->lowered_funcs.size());
-  for (int i = 0; i < context_->graph->fusion_groups.size(); ++i) {
-    tasks_.emplace_back(i, this, context_);
+  int device_id;
+  CUDA_CALL(cudaGetDevice(&device_id));
+  for (int group_id = 0; group_id < context_->graph->fusion_groups.size();
+       ++group_id) {
+    tasks_.emplace_back(device_id, group_id, this, context_);
   }
 }
 
@@ -208,7 +211,7 @@ void ParallelCompiler::Task::Lowering() {
     pcompiler->result_.SetLoweredFuncs(group_id, lowered_funcs);
   }
   backends::CompilationInfoDumper::DumpLoweredFuncByGroupIndex(
-      pcompiler->result_.LoweredFuncs(group_id).front(), group_id);
+      pcompiler->result_.LoweredFuncs(group_id).front(), group_id, device_id);
 }
 
 void ParallelCompiler::Task::CodegenAndJit() {
@@ -239,8 +242,8 @@ void ParallelCompiler::Task::CodegenAndJit() {
     }
     CHECK(!cuda_c.empty()) << "Compile CUDA C code failed from device module:\n"
                            << dmodule;
-    backends::CompilationInfoDumper::DumpSourceCodeByGroupIndex(cuda_c,
-                                                                group_id);
+    backends::CompilationInfoDumper::DumpSourceCodeByGroupIndex(
+        cuda_c, group_id, device_id);
     pcompiler->result_.SetSourceCode(group_id, cuda_c);
 
     cinn::backends::SourceCodePrint::GetInstance()->write(cuda_c);
@@ -249,7 +252,8 @@ void ParallelCompiler::Task::CodegenAndJit() {
     backends::nvrtc::Compiler compiler;
     auto ptx = compiler(cuda_c);
     CHECK(!ptx.empty()) << "Compile PTX failed from source code:\n" << cuda_c;
-    backends::CompilationInfoDumper::DumpPtxCodeByGroupIndex(ptx, group_id);
+    backends::CompilationInfoDumper::DumpPtxCodeByGroupIndex(
+        ptx, group_id, device_id);
     pcompiler->result_.SetSourcePtx(group_id, ptx);
     // load cumodule
     cumodule = std::make_unique<CUDAModule>(ptx,
@@ -260,7 +264,7 @@ void ParallelCompiler::Task::CodegenAndJit() {
     // register kernel
     backends::RuntimeSymbols symbols;
     for (auto& fn : dmodule.functions()) {
-      auto cufunc = cumodule->GetFunction(0, fn->name);
+      auto cufunc = cumodule->GetFunction(device_id, fn->name);
       CHECK(cufunc);
       symbols.RegisterVar(fn->name + "_ptr_", reinterpret_cast<void*>(cufunc));
     }
@@ -291,7 +295,8 @@ void ParallelCompiler::Task::BuildInstruction() {
   instr->SetLoweredFunc(reinterpret_cast<void*>(fn_ptr), group->GetFuncName());
 
   instr->Finalize();
-  backends::CompilationInfoDumper::DumpInstructionByGroupIndex(instr, group_id);
+  backends::CompilationInfoDumper::DumpInstructionByGroupIndex(
+      instr, group_id, device_id);
   pcompiler->result_.SetInstruction(group_id, std::move(instr));
 }
 
