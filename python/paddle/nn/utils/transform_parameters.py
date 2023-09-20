@@ -31,13 +31,15 @@ def _inplace_reshape_dygraph(x, shape):
         with paddle.base.dygraph.no_grad():
             tmp_out = _C_ops.reshape(x, shape)
             tmp_out._share_underline_tensor_to(x)
+            tmp_out.stop_gradient = False
+            return tmp_out
     else:
         _dygraph_tracer().trace_op(
             type="reshape2",
             inputs={'X': x},
             outputs={'Out': x, 'XShape': x_shape},
             attrs={'shape': shape},
-            stop_gradient=True,
+            stop_gradient=False,
         )
 
 
