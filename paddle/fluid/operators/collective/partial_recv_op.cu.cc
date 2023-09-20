@@ -128,17 +128,27 @@ class PartialRecvOpCUDAKernel : public framework::OpKernel<T> {
 
         VLOG(3) << "old NCCLCommContext has ring_id" << rid;
       }
+
       if (ctx.Attr<bool>("use_calc_stream")) {
         // should ExecutionContext for calc stream.
         stream = ctx.cuda_device_context().stream();
-        PADDLE_ENFORCE_LT(peer,
-                          nranks,
-                          platform::errors::InvalidArgument(
-                              "The value of peer (%d) you set must "
-                              "be less than nranks (%d).",
-                              peer,
-                              nranks));
-        ncclDataType_t dtype = platform::ToNCCLDataType(type);
+      }
+
+      PADDLE_ENFORCE_LT(peer,
+                        nranks,
+                        platform::errors::InvalidArgument(
+                            "The value of peer (%d) you set must "
+                            "be less than nranks (%d).",
+                            peer,
+                            nranks));
+
+      ncclDataType_t dtype = platform::ToNCCLDataType(type);
+
+      if (comm_ctx) {
+        auto recv_buf = distributed::GetPartialTensor(*out, offset, recv_numel);
+
+        comm_ctx->Recv(&recv_buf, recv_numel, peer, stream);
+      } else {
         PADDLE_ENFORCE_GPU_SUCCESS(
             platform::dynload::ncclRecv(out->data<T>() + offset,
                                         recv_numel,
@@ -146,15 +156,15 @@ class PartialRecvOpCUDAKernel : public framework::OpKernel<T> {
                                         peer,
                                         comm->comm(),
                                         stream));
-        VLOG(3) << "rank " << rank << " recv " << recv_numel << " from offset["
-                << offset << "] from " << peer;
       }
+      VLOG(3) << "rank " << rank << " recv " << recv_numel << " from offset["
+              << offset << "] from " << peer;
+    }
 #else
     PADDLE_THROW(platform::errors::Unavailable(
         "PaddlePaddle should be compiled with NCCL and "
         "NCCL version >= 2.7.3 is needed."));
 #endif
-    }
   }
 };
 
