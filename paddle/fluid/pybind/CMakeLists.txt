@@ -274,7 +274,8 @@ if(WITH_PYTHON)
 
   add_executable(eager_legacy_op_function_generator
                  eager_legacy_op_function_generator.cc)
-  target_link_libraries(eager_legacy_op_function_generator ${PYBIND_DEPS})
+  target_link_libraries(eager_legacy_op_function_generator ${PYBIND_DEPS}
+                        ${PYTHON_LIBRARIES})
   if(NOT WIN32)
     add_executable(kernel_signature_generator kernel_signature_generator.cc)
     target_link_libraries(kernel_signature_generator
