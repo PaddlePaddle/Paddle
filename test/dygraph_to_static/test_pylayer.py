@@ -35,9 +35,7 @@ def compare_result(dygraph_res, static_res, rtol=1e-5, atol=0):
         static_res.detach().numpy(),
         rtol=rtol,
         atol=atol,
-        err_msg='dygraph result is {}\nstatic_result is {}'.format(
-            dygraph_res, static_res
-        ),
+        err_msg=f'dygraph result is {dygraph_res}\nstatic_result is {static_res}',
     )
 
 
@@ -545,9 +543,7 @@ class TestTrainingPyLayer(PyLayerTrainHelper):
             static_loss,
             dygraph_loss,
             rtol=1e-05,
-            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                static_loss, dygraph_loss
-            ),
+            err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
         )
 
     def test_sigmoid_pylayer(self):
@@ -562,9 +558,7 @@ class TestTrainingPyLayer(PyLayerTrainHelper):
             static_loss,
             dygraph_loss,
             rtol=1e-05,
-            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                static_loss, dygraph_loss
-            ),
+            err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
         )
 
     def test_pylayer_net_no_grad(self):
@@ -579,9 +573,7 @@ class TestTrainingPyLayer(PyLayerTrainHelper):
             static_loss,
             dygraph_loss,
             rtol=1e-05,
-            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                static_loss, dygraph_loss
-            ),
+            err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
         )
 
 
