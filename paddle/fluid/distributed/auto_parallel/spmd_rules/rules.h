@@ -29,9 +29,6 @@ namespace paddle {
 namespace distributed {
 namespace auto_parallel {
 
-// layer_norm rule
-REGISTER_SPMD_RULE(layer_norm, LayerNormSPMDRule);
-
 // replicated rule
 REGISTER_SPMD_RULE(replicated, ReplicatedSPMDRule);
 

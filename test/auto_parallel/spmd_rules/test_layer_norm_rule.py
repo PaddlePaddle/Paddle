@@ -64,8 +64,11 @@ class TestLayerNormSPMDRule(unittest.TestCase):
         self.scale_spec.set_dims_mapping([-1])
 
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_spec, self.scale_spec, self.bias_spec],
-            list(self.attrs.values()),
+            self.x_spec,
+            self.scale_spec,
+            self.bias_spec,
+            self.attrs['epsilon'],
+            self.attrs['begin_norm_axis'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -90,8 +93,11 @@ class TestLayerNormSPMDRule(unittest.TestCase):
         self.bias_spec.set_dims_mapping([0])
 
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_spec, self.scale_spec, self.bias_spec],
-            list(self.attrs.values()),
+            self.x_spec,
+            self.scale_spec,
+            self.bias_spec,
+            self.attrs['epsilon'],
+            self.attrs['begin_norm_axis'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -120,8 +126,11 @@ class TestLayerNormSPMDRule(unittest.TestCase):
         self.bias_spec.set_dims_mapping([1])
 
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_spec, self.scale_spec, self.bias_spec],
-            list(self.attrs.values()),
+            self.x_spec,
+            self.scale_spec,
+            self.bias_spec,
+            self.attrs['epsilon'],
+            self.attrs['begin_norm_axis'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -158,9 +167,14 @@ class TestLayerNormSPMDRule(unittest.TestCase):
         self.var_spec.set_dims_mapping([1])
 
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_spec, self.scale_spec, self.bias_spec],
-            [self.out_spec, self.mean_spec, self.var_spec],
-            list(self.attrs.values()),
+            self.x_spec,
+            self.scale_spec,
+            self.bias_spec,
+            self.out_spec,
+            self.mean_spec,
+            self.var_spec,
+            self.attrs['epsilon'],
+            self.attrs['begin_norm_axis'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -198,9 +212,14 @@ class TestLayerNormSPMDRule(unittest.TestCase):
         self.var_spec.set_dims_mapping([0])
 
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_spec, self.scale_spec, self.bias_spec],
-            [self.out_spec, self.mean_spec, self.var_spec],
-            list(self.attrs.values()),
+            self.x_spec,
+            self.scale_spec,
+            self.bias_spec,
+            self.out_spec,
+            self.mean_spec,
+            self.var_spec,
+            self.attrs['epsilon'],
+            self.attrs['begin_norm_axis'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -238,9 +257,14 @@ class TestLayerNormSPMDRule(unittest.TestCase):
         self.var_spec.set_dims_mapping([-1])
 
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_spec, self.scale_spec, self.bias_spec],
-            [self.out_spec, self.mean_spec, self.var_spec],
-            list(self.attrs.values()),
+            self.x_spec,
+            self.scale_spec,
+            self.bias_spec,
+            self.out_spec,
+            self.mean_spec,
+            self.var_spec,
+            self.attrs['epsilon'],
+            self.attrs['begin_norm_axis'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -278,9 +302,14 @@ class TestLayerNormSPMDRule(unittest.TestCase):
         self.var_spec.set_dims_mapping([-1])
 
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_spec, self.scale_spec, self.bias_spec],
-            [self.out_spec, self.mean_spec, self.var_spec],
-            list(self.attrs.values()),
+            self.x_spec,
+            self.scale_spec,
+            self.bias_spec,
+            self.out_spec,
+            self.mean_spec,
+            self.var_spec,
+            self.attrs['epsilon'],
+            self.attrs['begin_norm_axis'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -317,11 +346,16 @@ class TestLayerNormSPMDRule(unittest.TestCase):
         self.mean_spec.set_dims_mapping([0])
         self.var_spec.set_dims_mapping([-1])
 
-        with self.assertRaises(BaseException):
+        with self.assertRaises(NotImplementedError):
             result_dist_attrs = self.rule.infer_backward(
-                [self.x_spec, self.scale_spec, self.bias_spec],
-                [self.out_spec, self.mean_spec, self.var_spec],
-                list(self.attrs.values()),
+                self.x_spec,
+                self.scale_spec,
+                self.bias_spec,
+                self.out_spec,
+                self.mean_spec,
+                self.var_spec,
+                self.attrs['epsilon'],
+                self.attrs['begin_norm_axis'],
             )
 
         # [-1, 1, -1], [0], [-1] (outputs) -->
@@ -346,9 +380,14 @@ class TestLayerNormSPMDRule(unittest.TestCase):
         self.var_spec.set_dims_mapping([-1])
 
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_spec, self.scale_spec, self.bias_spec],
-            [self.out_spec, self.mean_spec, self.var_spec],
-            list(self.attrs.values()),
+            self.x_spec,
+            self.scale_spec,
+            self.bias_spec,
+            self.out_spec,
+            self.mean_spec,
+            self.var_spec,
+            self.attrs['epsilon'],
+            self.attrs['begin_norm_axis'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -386,9 +425,14 @@ class TestLayerNormSPMDRule(unittest.TestCase):
         self.var_spec.set_dims_mapping([-1])
 
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_spec, self.scale_spec, self.bias_spec],
-            [self.out_spec, self.mean_spec, self.var_spec],
-            list(self.attrs.values()),
+            self.x_spec,
+            self.scale_spec,
+            self.bias_spec,
+            self.out_spec,
+            self.mean_spec,
+            self.var_spec,
+            self.attrs['epsilon'],
+            self.attrs['begin_norm_axis'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -426,9 +470,14 @@ class TestLayerNormSPMDRule(unittest.TestCase):
         self.var_spec.set_dims_mapping([-1])
 
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_spec, self.scale_spec, self.bias_spec],
-            [self.out_spec, self.mean_spec, self.var_spec],
-            list(self.attrs.values()),
+            self.x_spec,
+            self.scale_spec,
+            self.bias_spec,
+            self.out_spec,
+            self.mean_spec,
+            self.var_spec,
+            self.attrs['epsilon'],
+            self.attrs['begin_norm_axis'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
