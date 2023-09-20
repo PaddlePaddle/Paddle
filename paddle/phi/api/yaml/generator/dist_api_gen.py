@@ -405,7 +405,7 @@ class DistForwardAPI(ForwardAPI):
         input_names = self.inputs['names']
         attr_names = self.attrs['names']
 
-        # TODO(chenweihang): here we need use infer_meta params,
+        # TODO(chenweihang): here we need to use infer_meta params,
         # if it is inconsistent, you need to change the infermeta func
         kernel_params = self.kernel['param']
         if kernel_params is None:

@@ -17,7 +17,7 @@ import unittest
 import collective.test_communication_api_base as test_base
 
 
-class TestSemiAutoParallelMatmul(test_base.CommunicationTestDistBase):
+class TestSemiAutoParallelBasic(test_base.CommunicationTestDistBase):
     def setUp(self):
         super().setUp(
             num_of_devices=2,
