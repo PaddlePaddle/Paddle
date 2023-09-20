@@ -15,10 +15,15 @@
 import numpy
 
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, ir
 from paddle.base.layer_helper import LayerHelper
 from paddle.common_ops_import import Variable, default_main_program
-from paddle.framework import core, in_dynamic_mode, in_pir_mode
+from paddle.framework import (
+    core,
+    in_dynamic_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+)
 from paddle.tensor.creation import full
 
 from ...base.data_feeder import (
@@ -1090,7 +1095,7 @@ def dropout(
             [[0., 0., 6.],
              [0., 0., 0.]])
     """
-    if not isinstance(p, (float, int, Variable)):
+    if not isinstance(p, (float, int, Variable, ir.OpResult)):
         raise TypeError("p argument should be a number or Variable")
 
     if isinstance(p, (int, float)):
@@ -1112,7 +1117,7 @@ def dropout(
             'downgrade_in_infer' if mode == 'downscale_in_infer' else mode
         )  # semantic transfer
 
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             if default_main_program().random_seed != 0:
                 seed = default_main_program().random_seed
 
@@ -1176,7 +1181,7 @@ def dropout(
         dtype = x.dtype
         keep_prob = 1 - p
         if training:
-            if in_dynamic_mode() and p == 1.0:
+            if in_dynamic_or_pir_mode() and p == 1.0:
                 return paddle.scale(x, scale=0.0)
 
             scale_input = (
@@ -1187,7 +1192,7 @@ def dropout(
 
             # get mask shape
             input_shape = x.shape
-            if not in_dynamic_mode():
+            if not in_dynamic_or_pir_mode():
                 input_shape_tensor = paddle.shape(x)
             drop_axes = [axis] if isinstance(axis, int) else list(axis)
             if min(drop_axes) < 0 or max(drop_axes) > len(input_shape) - 1:
@@ -1203,7 +1208,7 @@ def dropout(
                     )
                 )
             mask_shape = [1] * len(input_shape)
-            if not in_dynamic_mode():
+            if not in_dynamic_or_pir_mode():
                 for i in drop_axes:
                     mask_shape[i] = input_shape_tensor[i]
             else:
