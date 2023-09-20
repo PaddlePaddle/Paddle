@@ -88,6 +88,7 @@ test_fmax_op
 test_fmin_op
 test_fold_op
 test_frame_op
+test_fused_attention_op_api
 test_gather_tree_op
 test_gaussian_random_op
 test_generate_proposals_v2_op
