@@ -21,16 +21,18 @@ namespace dialect {
 ///
 /// \brief Shape Dialect:
 ///
-class IR_API ShapeDialect : public pir::Dialect {
+class IR_API ShapeDialect : public Dialect {
  public:
-  explicit ShapeDialect(pir::IrContext *context);
+  explicit ShapeDialect(IrContext* context);
   ///
   /// \brief Each Dialect needs to provide a name function to return the name of
   /// the Dialect.
   ///
   /// \return The name of this Dialect.
   ///
-  static const char *name() { return "shape"; }
+  static const char* name() { return "shape"; }
+  void PrintOperation(Operation* op,
+                      IrPrinter& printer) const override;  // NOLINT
 
  private:
   void initialize();

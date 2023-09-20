@@ -200,6 +200,7 @@ class {} : public egr::GradNodeBase {{
 GRAD_FUNCTION_TEMPLATE = """
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}::operator()(paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph, bool is_new_grad) {{
   VLOG(3) << \"Running AD API GRAD: \" << \"{}\";
+
   // Fill Zero For GradIn Tensors
 {}
   // Apply Gradient Hooks
@@ -210,6 +211,8 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
   // Prepare Grad function call
 {}
   // Runtime check if we need next grad
+{}
+  // Set DistAttr of Out Tensor for semi-auto parallel
 {}
   // Inplace Check
 {}
@@ -228,7 +231,9 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
   // Create Grad Node
 {}
   VLOG(4) << \"Finish AD API GRAD: {}";
+  VLOG(6) << "gradnode_ptr = " << this;
   // LOG IF DEBUG
+
   {}
   // Return
 {}
@@ -527,6 +532,12 @@ CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE = """
 CREATE_RECOVER_OPTIONAL_VECTOR_TENSOR_TEMPLATE = """
   paddle::optional<std::vector<paddle::Tensor>> {}_optional;
   if( !{}.empty() ) {}_optional = paddle::make_optional<std::vector<paddle::Tensor>>({});
+"""
+
+SET_GRAD_OUT_DIST_ATTR_TEMPLATE = """
+  if (IsRunAutoParallel()) {{
+    egr::EagerUtils::SetGradOutputDistAttr(out_metas, {}, {});
+  }}
 """
 
 CHECK_BACKWARD_INPLACE_TEMPLATE = """
@@ -2181,6 +2192,8 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         )
         grad_api_args = ["" for i in range(grad_api_args_len)]
         get_grad_in_args_list = []
+        grad_api_out_args_list = []
+        fwd_positions_list = []
 
         # Fill Grad Ins with Zero
         fill_zero_str = ""
@@ -2388,6 +2401,8 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                     out_assign_str += f"{indent}*api_output_{out_index} = std::get<{out_index}>(api_output);\n"
             else:
                 grad_api_args.append(f"api_output_{out_index}")
+                grad_api_out_args_list.append(f"api_output_{out_index}")
+                fwd_positions_list.append(f"{fwd_position}")
             if inplace_grad_input_str in optional_inplace_var_name:
                 optional_inplace_str = "VLOG(6) << \"No Inplace should happend for wrappered input: {inplace_grad_input_str}\";"
             else:
@@ -2432,6 +2447,16 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         grad_api_args_str = ", ".join(grad_api_args)
         composite_grad_api_args_str = ", ".join(grad_api_args)
         composite_template_name = "<paddle::Tensor>"
+
+        # Set DistAttr Func Construct
+        set_out_dist_attr_str = ""
+        if not is_invoke_forward_api:
+            fwd_positions_str = "{" + ", ".join(fwd_positions_list) + "}"
+            grad_api_out_args_str = ", ".join(grad_api_out_args_list)
+            set_out_dist_attr_str = SET_GRAD_OUT_DIST_ATTR_TEMPLATE.format(
+                fwd_positions_str,
+                grad_api_out_args_str,
+            )
 
         if is_invoke_forward_api:
             autograd_api_out = "auto"
@@ -2600,6 +2625,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             get_grad_in_args_str,
             grad_function_prepare_str,
             compute_require_next_grad_str,
+            set_out_dist_attr_str,
             inplace_check_str,
             inplace_for_grad_outs_str,
             self.backward_api_name,

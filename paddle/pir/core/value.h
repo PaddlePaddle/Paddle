@@ -33,7 +33,7 @@ class IR_API Value {
  public:
   Value() = default;
 
-  Value(const detail::ValueImpl *impl);  // NOLINT
+  Value(detail::ValueImpl *impl) : impl_(impl) {}  // NOLINT
 
   Value(const Value &other) = default;
 
@@ -58,8 +58,6 @@ class IR_API Value {
   Type type() const;
 
   void set_type(Type type);
-
-  Operation *GetDefiningOp() const;
 
   std::string PrintUdChain();
 

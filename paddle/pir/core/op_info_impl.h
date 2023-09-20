@@ -38,7 +38,7 @@ class OpInfoImpl {
   static OpInfo Create(Dialect *dialect,
                        TypeId op_id,
                        const char *op_name,
-                       std::vector<details::InterfaceValue> &&interface_map,
+                       std::vector<InterfaceValue> &&interface_map,
                        const std::vector<TypeId> &trait_set,
                        size_t attributes_num,
                        const char *attributes_name[],

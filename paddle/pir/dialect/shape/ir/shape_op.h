@@ -16,6 +16,7 @@
 
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/builtin_type_interfaces.h"
+#include "paddle/pir/core/ir_printer.h"
 #include "paddle/pir/core/op_base.h"
 
 namespace pir {
@@ -75,7 +76,7 @@ class IR_API DimOp : public Op<DimOp> {
 
   const std::string getName();
   void setName(std::string attrValue);
-  pir::OpResult out() { return result(0); }
+  OpResult out() { return result(0); }
   void Verify() {}
 };
 
@@ -91,13 +92,13 @@ class IR_API TieProductEqualOp : public Op<TieProductEqualOp> {
                     OperationArgument &argument,  // NOLINT
                     int64_t lhs_len,
                     int64_t rhs_len,
-                    const std::vector<pir::OpResult> &inputs);
+                    const std::vector<Value> &inputs);
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    const std::vector<pir::OpResult> &lhs,
-                    const std::vector<pir::OpResult> &rhs);
-  std::vector<pir::Value> getLhs();
-  std::vector<pir::Value> getRhs();
+                    const std::vector<Value> &lhs,
+                    const std::vector<Value> &rhs);
+  std::vector<Value> lhs();
+  std::vector<Value> rhs();
   void Verify() {}
 };
 
@@ -111,15 +112,14 @@ class IR_API TieShapeOp : public Op<TieShapeOp> {
 
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    const pir::OpResult &input);
+                    pir::Value input);
 
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    const pir::OpResult &input,
-                    const std::vector<pir::OpResult> &dims);
-
-  pir::Value getValue();
-  std::vector<pir::Value> getShapeDimIndexes();
+                    Value input,
+                    const std::vector<Value> &dims);
+  Value value();
+  std::vector<Value> dims();
   void Verify() {}
 };
 
@@ -133,7 +133,8 @@ class IR_API FuncOp : public Op<FuncOp> {
 
   static void Build(Builder &builder,              // NOLINT
                     OperationArgument &argument);  // NOLINT
-  pir::Block *block();
+  void Print(IrPrinter &printer);                  // NOLINT
+  Block *block();
   void Verify() {}
 };
 
@@ -147,15 +148,15 @@ class IR_API TensorDimOp : public Op<TensorDimOp> {
 
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    const pir::OpResult &source,
-                    const pir::OpResult &index);
+                    Value source,
+                    Value index);
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    const pir::OpResult &source,
+                    Value source,
                     int64_t index);
-  pir::Value getIndex();
-  pir::Value getSource();
-  pir::OpResult out() { return result(0); }
+  Value index();
+  Value source();
+  OpResult out() { return result(0); }
   void Verify() {}
 };
 

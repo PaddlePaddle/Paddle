@@ -118,6 +118,33 @@ template <typename T>
 DLL_EXPORT int fast_addcmul(
     Context* ctx, const T* w, const T* x, const T* y, T* z, int64_t len);
 
+template <typename T>
+DLL_EXPORT int bn_act_fusion_infer(Context* ctx,
+                                   const T* x,
+                                   T* y,
+                                   int64_t n,
+                                   int64_t c,
+                                   int64_t h,
+                                   int64_t w,
+                                   float eps,
+                                   const float* scale,
+                                   const float* bias,
+                                   const float* global_mean,
+                                   const float* global_var,
+                                   bool is_nchw,
+                                   int act_type);
+
+template <typename T>
+DLL_EXPORT int layer_norm_act_fusion(Context* ctx,
+                                     const T* x,
+                                     T* y,
+                                     int64_t m,
+                                     int64_t n,
+                                     float eps,
+                                     const float* scale,
+                                     const float* bias,
+                                     const Activation_t& act);
+
 }  // namespace plugin
 }  // namespace api
 }  // namespace xpu

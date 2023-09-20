@@ -740,7 +740,7 @@ class SimpleRNNCell(RNNCellBase):
         - **states** (Tensor): shape `[batch_size, hidden_size]`, the new hidden state, corresponding to :math:`h_{t}` in the formula.
 
     Notes:
-        All the weights and bias are initialized with `Uniform(-std, std)` by default. Where std = :math:`\frac{1}{\sqrt{hidden\_size}}`. For more information about parameter initialization, please refer to :ref:`api_base_ParamAttr`.
+        All the weights and bias are initialized with `Uniform(-std, std)` by default. Where std = :math:`\frac{1}{\sqrt{hidden\_size}}`. For more information about parameter initialization, please refer to :ref:`api_paddle_ParamAttr`.
 
     Examples:
 
@@ -893,7 +893,7 @@ class LSTMCell(RNNCellBase):
     Notes:
         All the weights and bias are initialized with `Uniform(-std, std)` by
         default. Where std = :math:`\frac{1}{\sqrt{hidden\_size}}`. For more
-        information about parameter initialization, please refer to :ref:`api_base_ParamAttr`.
+        information about parameter initialization, please refer to :ref:`api_paddle_ParamAttr`.
 
     Examples:
 
@@ -1054,7 +1054,7 @@ class GRUCell(RNNCellBase):
     Notes:
         All the weights and bias are initialized with `Uniform(-std, std)` by
         default. Where std = :math:`\frac{1}{\sqrt{hidden\_size}}`. For more
-        information about parameter initialization, please refer to s:ref:`api_base_ParamAttr`.
+        information about parameter initialization, please refer to s:ref:`api_paddle_ParamAttr`.
 
     Examples:
 
