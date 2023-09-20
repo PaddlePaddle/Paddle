@@ -45,6 +45,7 @@ VJPS = [
     'sum_grad',
     'concat_grad',
     'split_grad',
+    'split_with_num_grad',
     'gelu_grad',
     'softmax_grad',
     'silu_grad',
@@ -66,6 +67,8 @@ VJPS = [
     'cast_grad',
     'slice_double_grad',
     'layer_norm_grad',
+    'embedding_grad',
+    'scale_grad',
 ]
 
 
@@ -95,6 +98,7 @@ BACKENDS = [
     'sum_grad',
     'concat_grad',
     'split_grad',
+    'split_with_num_grad',
     'gelu_grad',
     'softmax_grad',
     'silu_grad',
@@ -142,6 +146,9 @@ BACKENDS = [
     'dropout_grad',
     'slice',
     'layer_norm_grad',
+    'embedding_grad',
+    'sqrt',
+    'uniform',
 ]
 
 

@@ -243,25 +243,6 @@ std::set<ir::Tensor> CollectTempTensorsFromCtrlDepends(
   return res;
 }
 
-void InitReduceTensor(TensorGroup* tensor_group,
-                      const Tensor& tensor,
-                      const Target& target) {
-  if (tensor->is_reduce_tensor()) {
-    tensor_group->MarkReduceInit(tensor->name);
-  }
-  auto uninited_reduce_tensors =
-      ir::CollectIRNodes(tensor->body(), [&](const Expr* x) {
-        return x && x->defined() && x->as_tensor() &&
-               x->as_tensor()->is_reduce_tensor() &&
-               !tensor_group->HasMarkedReduceInit(x->as_tensor()->name);
-      });
-  for (auto& t : uninited_reduce_tensors) {
-    std::string reduce_name = t.as_tensor()->name;
-    VLOG(3) << "Init reduce tensor: " << reduce_name;
-    tensor_group->MarkReduceInit(reduce_name);
-  }
-}
-
 void InitReduceTensor(StageMap stages,
                       const Tensor& tensor,
                       const Target& target) {
@@ -301,10 +282,6 @@ ir::LoweredFunc LowerToAst(const std::string& name,
                            const std::vector<Tensor>& tensor_args,
                            ast_gen_ius::TensorGroup* tensor_group,
                            const Target& target) {
-  // Init the reduce tensors first before any process.
-  for (auto& t : tensor_args) {
-    InitReduceTensor(tensor_group, t, target);
-  }
   // Merge the ctrl_deps with the given temp_tensors ang get a new temp_tensors
   std::set<ir::Tensor> ctrl_deps =
       CollectTempTensorsFromCtrlDepends(tensor_group, tensor_args);

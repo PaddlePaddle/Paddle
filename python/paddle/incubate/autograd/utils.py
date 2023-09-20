@@ -127,17 +127,17 @@ def disable_prim():
 
 
 INT_DTYPE_2_STRING = {
-    int(0): 'bool',
-    int(1): 'int16',
-    int(2): 'int32',
-    int(3): 'int64',
-    int(4): 'float16',
-    int(5): 'float32',
-    int(6): 'float64',
-    int(20): 'uint8',
-    int(21): 'int8',
-    int(23): 'complex64',
-    int(24): 'complex128',
+    0: 'bool',
+    1: 'int16',
+    2: 'int32',
+    3: 'int64',
+    4: 'float16',
+    5: 'float32',
+    6: 'float64',
+    20: 'uint8',
+    21: 'int8',
+    23: 'complex64',
+    24: 'complex128',
 }
 
 

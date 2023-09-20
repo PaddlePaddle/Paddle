@@ -41,7 +41,7 @@ void FuseBatchNormActPass::ApplyImpl(ir::Graph *graph) const {
   graph = FuseBatchNormAct(graph, act_types);
   // backward
   std::unordered_set<std::string> act_grad_types = {"relu_grad"};
-  graph = FuseBatchNormActGrad(graph, act_grad_types);
+  graph = FuseBatchNormActGrad(graph, act_grad_types);  // NOLINT
 #endif
 #endif
 }
