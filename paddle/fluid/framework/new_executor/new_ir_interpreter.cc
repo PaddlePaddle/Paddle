@@ -1045,6 +1045,7 @@ void NewIRInterpreter::TraceRunImpl() {
 void NewIRInterpreter::MultiThreadRunImpl() {
   // lazy initialization of gc, do not create gc is the program only run once
   if (!gc_) {
+    std::cout << "place_ = " << place_ << std::endl;
     gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_base_);
   }
 
