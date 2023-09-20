@@ -122,6 +122,7 @@ def init_communicator(
 ):
     if nranks < 2:
         return
+    endpoints_str = ",".join(endpoints)
     other_endpoints = endpoints[:]
     other_endpoints.remove(current_endpoint)
     block = program.global_block()
@@ -153,6 +154,7 @@ def init_communicator(
                 'nranks': nranks,
                 'rank': rank,
                 'ring_id': 0,
+                'endpoints': endpoints_str,
             },
         )
     elif core.is_compiled_with_xpu():
@@ -181,6 +183,7 @@ def init_communicator(
                 'nranks': nranks,
                 'rank': rank,
                 'ring_id': 0,
+                'endpoints': endpoints_str,
             },
         )
     elif (
@@ -212,6 +215,7 @@ def init_communicator(
                 'nranks': nranks,
                 'rank': rank,
                 'ring_id': 0,
+                'endpoints': endpoints_str,
             },
         )
 

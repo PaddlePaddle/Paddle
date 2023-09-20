@@ -158,10 +158,11 @@ def create_parameter(
 
     Args:
         shape (list of int): Shape of the parameter
-        dtype (str): Data type of the parameter
+        dtype (str): Data type of the parameter. It can be set as 'float16', 'float32', 'float64'.
         name (str, optional): For detailed information, please refer to
            :ref:`api_guide_Name` . Usually name is no need to set and None by default.
-        attr (ParamAttr, optional): Attributes of the parameter
+        attr (ParamAttr, optional): Attribute object of the specified argument. For detailed information, please refer to
+           :ref:`api_paddle_ParamAttr` None by default, which means that ParamAttr will be initialized as it is.
         is_bias (bool, optional): This can affect which default initializer is chosen
                        when default_initializer is None. If is_bias,
                        initializer.Constant(0.0) will be used. Otherwise,

@@ -39,6 +39,7 @@
 #ifdef PADDLE_WITH_CINN
 #include "paddle/fluid/framework/new_executor/instruction/cinn_jit_instruction.h"
 #endif
+#include "paddle/fluid/framework/new_executor/instruction/cond_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
@@ -107,6 +108,19 @@ NewIRInterpreter::NewIRInterpreter(
   };
 
   PrepareForCUDAGraphCapture();
+
+  std::stringstream ss;
+  ss << this;
+  ::pir::BuildScope(*ir_block_,
+                    InnerScope(),
+                    ss.str(),
+                    &value_2_var_name_,
+                    &variable_2_var_name_,
+                    &var_name_2_id_,
+                    &variable_list_,
+                    &sub_blocks_);
+
+  interpreter::BuildId2VarName(var_name_2_id_, &id_2_var_name_);
 }
 
 NewIRInterpreter::~NewIRInterpreter() {
@@ -513,6 +527,17 @@ void NewIRInterpreter::BuildInstruction() {
       }
     } else if (op->dialect()->name() == "cf") {
       continue;
+    } else if (op->dialect()->name() == "pd_op") {
+      vec_instruction_base_.emplace_back(
+          std::make_unique<CondInstruction>(op_idx++,
+                                            place_,
+                                            op,
+                                            scope_,
+                                            local_scope_,
+                                            value_2_var_name_,
+                                            var_name_2_id_,
+                                            variable_2_var_name_,
+                                            sub_blocks_));
     } else if (op->dialect()->name() == "pd_kernel") {
       auto op_name = op->attributes()
                          .at("op_name")
@@ -926,19 +951,6 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is BetaRunning.";
     // Build
-    std::stringstream ss;
-    ss << this;
-    ::pir::BuildScope(*ir_block_,
-                      InnerScope(),
-                      ss.str(),
-                      &value_2_var_name_,
-                      &variable_2_var_name_,
-                      &var_name_2_id_,
-                      &variable_list_,
-                      &sub_blocks_);
-
-    interpreter::BuildId2VarName(var_name_2_id_, &id_2_var_name_);
-
     VLOG(4) << "Done BuildScope";
     VLOG(4) << DebugValueInfo();
 
@@ -1237,15 +1249,24 @@ void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
 
   try {
     instr_node->WaitEvent(place_);
-
-    VLOG(5) << "begin to run op " << instr_node->Name();
+    VLOG(4) << "begin to run op " << instr_node->Name();
     if (!instr_node->IsArtificial()) {
       instr_node->Run();
+      VLOG(4) << __func__ << " OP id:" << instr_node->Id()
+              << " name:" << instr_node->Name() << " type:"
+              << (instr_node->KernelType() == OpFuncType::kCpuSync
+                      ? "kCpuSync"
+                      : (instr_node->KernelType() == OpFuncType::kGpuSync
+                             ? "kGpuSync"
+                             : "kGpuAsync"))
+              << " runs on " << platform::GetCurrentThreadName();
       VLOG(4) << "done instruction node run";
       CheckGC(instr_node);
       VLOG(4) << "done CheckGC";
       interpreter::LogDeviceMemoryStats(place_);
     }
+    VLOG(4) << place_ << " "
+            << instr_node->DebugStringEx(scope_, value_2_var_name_);
     VLOG(5) << "after run kernel";
     instr_node->RecordEvent(place_);
   } catch (platform::EnforceNotMet& ex) {
