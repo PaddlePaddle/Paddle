@@ -72,6 +72,10 @@ from . import data_feed_desc
 from .data_feed_desc import DataFeedDesc
 
 from . import dataset
+from .dataset import (
+    DatasetFactory,
+    InMemoryDataset,
+)
 
 from . import trainer_desc
 
