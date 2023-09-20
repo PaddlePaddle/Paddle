@@ -343,7 +343,7 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
         origin_output = forward_fn(*inputs)
         if origin_output is not None:
             output = map_structure(copy_to_parent_func, origin_output)
-            mgr.fwd_outputs = flatten(output)
+            mgr.fwd_outputs = [x for x in flatten(output) if isinstance(x, Variable)]
         else:
             mgr.fwd_outputs = []
 
@@ -357,7 +357,7 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
         # **Create the backward input** from the output of the op to build the
         # backward block, and then delete it.
         grad_var_ins = []
-        for fwd_var in flatten(output):
+        for fwd_var in pylayer_block_manager.fwd_outputs:        
             fwd_var_name = fwd_var.name
             bwd_var_name = _append_grad_suffix_(fwd_var_name)
             if not current_block.desc.has_var_recursive(fwd_var_name.encode()):
@@ -404,7 +404,7 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
                     but got {len(forward_input_names)} and {len(flat_grad_origin)}"
 
                 # Step4. Rename var name with suffix of "@GRAD"
-                for bwd_output_name, fwd_input_name in zip(
+                for bwd_output, fwd_input_name in zip(
                     flat_grad_origin, forward_input_names
                 ):
                     # NOTE(MarioLulab): Because `flat_grad_origin` are the Variables inside the backward block, which one by one corresponds
@@ -427,12 +427,13 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
                     # TODO(MarioLulab): We will validate the assumption above is whether a strong hypothesis or not.
 
                     # attach old var name into new
-                    bwd_out_new = _append_grad_suffix_(
-                        fwd_input_name
-                    )  # "X" => "X@GRAD"
-                    mgr.var_old_to_new[
-                        bwd_output_name.name
-                    ] = bwd_out_new  # e.g. "tmp_0.mean_0": "X@GRAD"
+                    if isinstance(bwd_output, Variable):
+                        bwd_out_new = _append_grad_suffix_(
+                            fwd_input_name
+                        )  # "X" => "X@GRAD"
+                        mgr.var_old_to_new[
+                            bwd_output.name
+                        ] = bwd_out_new  # e.g. "tmp_0.mean_0": "X@GRAD"
 
         # **Delete the backward input**
         for bwd_var in grad_var_ins:

@@ -93,7 +93,46 @@ class cus_tanh_2(PyLayer):
         y, = ctx.saved_tensor()
         grad = dy * (1 - ctx.func(y))
         return grad
-    
+
+class cus_tanh_3(PyLayer):
+    @staticmethod
+    def forward(ctx, x1, x2, func1, func2=paddle.square):
+        ctx.func = func2
+        y1 = func1(x1)
+        y2 = func1(x2)
+        ctx.save_for_backward(y1, y2)
+        return 1, None, y1, y2, ''
+
+    @staticmethod
+    def backward(ctx, dy1, dy2):
+        y1, y2 = ctx.saved_tensor()
+        re1 = dy1 * (1 - ctx.func(y1))
+        re2 = dy2 * (1 - paddle.square(y2))
+        return re1, None
+
+
+def user_defined_tanh(x):
+    y = paddle.tanh(x)
+    return y
+
+def user_defined_square(x):
+    y = paddle.square(x)
+    return y
+
+class cus_tanh_4(PyLayer):
+    @staticmethod
+    def forward(ctx, x, func, name="cus_tanh_4"):
+        ctx.func = func
+        y = user_defined_tanh(x)
+        ctx.save_for_backward(y)
+        return y
+
+    @staticmethod
+    def backward(ctx, dy):
+        y, = ctx.saved_tensor()
+        grad = dy * (1 - ctx.func(y))
+        return grad
+
 class cus_sigmoid(PyLayer):
     @staticmethod
     def forward(ctx, x, func1, func2):
@@ -178,6 +217,35 @@ class SimplePyLayerNet(paddle.nn.Layer):
         out = cus_tanh_2.apply(y, func1=paddle.tanh)
         out = paddle.mean(out)
         return out
+
+
+class SimplePyLayerNetMultiIn(paddle.nn.Layer):
+    def __init__(self, in_size, out_size):
+        super().__init__()
+        self.linear1 = paddle.nn.Linear(in_size, out_size)
+        self.linear2 = paddle.nn.Linear(in_size, out_size)
+
+    @paddle.jit.to_static
+    def forward(self, x1, x2):
+        y1 = self.linear1(x1)
+        y2 = self.linear1(x2)
+        out = cus_tanh_2.apply(y1, func1=paddle.tanh)
+        out = out + y2
+        out = paddle.mean(out)
+        return out
+
+class SimplePyLayerNetStopGrad(paddle.nn.Layer):
+    def __init__(self, in_size, out_size):
+        super().__init__()
+        self.linear = paddle.nn.Linear(in_size, out_size)
+
+    @paddle.jit.to_static
+    def forward(self, x):
+        y = self.linear(x)
+        y.stop_gradient = True
+        out = cus_tanh_2.apply(y, func1=paddle.tanh)
+        return out
+
 
 class TestPyLayerBase(unittest.TestCase):
     def setUp(self):
@@ -361,6 +429,36 @@ class TestPyLayerWithContext(TestPyLayerBase):
 
         self._run_and_compare(input1)
         
+    def test_simple_pylayer_return_none_with_no_grad(self):
+        @paddle.jit.to_static
+        def test_func(input1, input2):
+            z = cus_tanh_3.apply(input1, input2, paddle.tanh, paddle.square)
+            z = z[2] + z[3]
+            return z        
+        
+        self.dygraph_func = test_func
+        
+        input1 = paddle.randn([2, 3]).astype("float32")
+        input2 = paddle.randn([2, 3]).astype("float32")
+        input1.stop_gradient = False
+        input2.stop_gradient = True
+        
+        self._run_and_compare(input1, input2)
+        
+        
+    def test_non_variable_inputs_and_userdefined_call(self):
+        @paddle.jit.to_static
+        def test_func(input1):
+            y = cus_tanh_4.apply(input1, func=user_defined_square, name="cus_tanh_test")
+            return y
+        
+        self.dygraph_func = test_func
+        
+        input1 = paddle.randn([2, 3]).astype("float32")
+        input1.stop_gradient = False
+        
+        self._run_and_compare(input1)        
+        
         
 class TestPyLayerInsideNet(TestPyLayerBase):
     def test_single_in_single_out(self):
@@ -386,6 +484,17 @@ class TestPyLayerInsideNet(TestPyLayerBase):
         input1 = paddle.randn([3, 4]).astype("float32")
         input1.stop_gradient = False
         self._run_and_compare(input1) 
+        
+    def test_pylayer_net_with_no_grad(self):
+        simple_net = SimplePyLayerNetMultiIn(in_size=4, out_size=8)
+        self.dygraph_func = simple_net
+                    
+        input1 = paddle.randn([3, 4]).astype("float32")
+        input2 = paddle.randn([3, 4]).astype("float32")
+        input1.stop_gradient = False
+        input2.stop_gradient = True
+        self._run_and_compare(input1, input2)
+            
 
 class PyLayerTrainHelper(unittest.TestCase):
     def setUp(self):
@@ -444,6 +553,22 @@ class TestTrainingPyLayer(PyLayerTrainHelper):
                 static_loss, dygraph_loss
             ),
         )
+        
+    def test_pylayer_net_no_grad(self):
+        build_layer = lambda :  SimplePyLayerNetStopGrad(784, 20)
+
+        static_loss = self._run_train(to_static=True, layer_builder=build_layer)
+        dygraph_loss = self._run_train(to_static=False, layer_builder=build_layer)
+        
+        np.testing.assert_allclose(
+            static_loss,
+            dygraph_loss,
+            rtol=1e-05,
+            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
+                static_loss, dygraph_loss
+            ),
+        )
+        
         
         
 if __name__ == "__main__":
