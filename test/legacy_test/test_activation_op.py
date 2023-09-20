@@ -2530,7 +2530,7 @@ class TestGelu(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_prim=True, check_new_ir=True, check_prim_pir=False
+            check_prim=False, check_new_ir=False, check_prim_pir=True
         )
 
     def test_check_grad(self):
