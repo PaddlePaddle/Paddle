@@ -21,8 +21,6 @@
 namespace paddle {
 namespace operators {
 
-namespace framework = paddle::framework;
-
 static void BuildScopeForControlFlowOp(
     const framework::InterpreterCore &interpreter_core,
     const framework::BlockDesc &block,

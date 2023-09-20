@@ -115,6 +115,7 @@ class ConditionalBlockOp : public ConditionalOp {
         BuildScopeForControlFlowOp(*core_, *block, &cur_scope);
         core_->reset_scope(&cur_scope);
       }
+
       core_->Run({}, false);
     }
   }
