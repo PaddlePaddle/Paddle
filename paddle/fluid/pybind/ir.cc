@@ -40,6 +40,7 @@
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/type.h"
 #include "paddle/pir/core/value.h"
+#include "paddle/pir/core/value_utils.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pass/pass_registry.h"
@@ -342,7 +343,7 @@ void BindValue(py::module *m) {
       .def("__str__", [](const Value &self) -> py::str {
         std::ostringstream print_stream;
         print_stream << "Value(";
-        print_stream << self.GetValueInfo();
+        print_stream << pir::GetValueInfo(self);
         print_stream << ")";
         return print_stream.str();
       });
@@ -458,7 +459,7 @@ void BindOpResult(py::module *m) {
            [](OpResult &self) -> py::str {
              std::ostringstream print_stream;
              print_stream << "OpResult(";
-             print_stream << self.GetValueInfo();
+             print_stream << pir::GetValueInfo(self);
              if (GetOpResultBoolAttr(self, kAttrStopGradients)) {
                print_stream << ", stop_gradient=True";
              } else {

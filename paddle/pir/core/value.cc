@@ -95,13 +95,4 @@ void Value::ReplaceAllUsesWith(Value new_value) const {
   }
 }
 
-std::string Value::GetValueInfo() const {
-  std::stringstream ss;
-  ss << "name=";
-  Print(ss);
-  Type new_type = type();
-  ss << ", dtype=";
-  new_type.Print(ss);
-  return ss.str();
-}
 }  // namespace pir
