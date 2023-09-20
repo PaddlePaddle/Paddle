@@ -81,6 +81,8 @@ def pow_composite(x, y):
 
     if isinstance(y, (int, float)):
         y = full(x.shape if len(x.shape) == 0 else [1], y, x.dtype)
+    if y.dtype != x.dtype:
+        y = cast(y, x.dtype)
     res = pow(x, y)
     if is_amp:
         res = cast(res, dtype)
