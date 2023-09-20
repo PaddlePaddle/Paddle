@@ -37,6 +37,7 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
             >>> import paddle.base as base
 
@@ -207,6 +208,7 @@ def _save_distributed_persistables(executor, dirname, main_program):
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
             >>> import paddle
 
@@ -366,12 +368,16 @@ def is_persistable(var):
     Examples:
         .. code-block:: python
 
-            >>> import paddle
-            >>> import paddle.base as base
 
+            >>> import paddle
             >>> paddle.enable_static()
-            >>> param = base.default_main_program().global_block().var('fc.b')
-            >>> res = base.io.is_persistable(param)
+            >>> image = paddle.static.data(
+            ...     name='image', shape=[None, 28], dtype='float32')
+            >>> bias_attr = paddle.ParamAttr('fc.b')
+            >>> fc = paddle.static.nn.fc(image, size=10, bias_attr=bias_attr)
+            >>> param = paddle.static.default_main_program().global_block().var('fc.b')
+            >>> res = paddle.distributed.io.is_persistable(param)
+
     """
     if (
         var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH
@@ -425,9 +431,9 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
             >>> paddle.enable_static()
             >>> dir_path = "./my_paddle_model"
             >>> file_name = "persistables"
-            >>> image = paddle.static..data(name='img', shape=[None, 28, 28], dtype='float32')
+            >>> image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
             >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
-            >>> feeder = paddle.static.DataFeeder(feed_list=[image, label], place=paddle.CPUPlace())
+            >>> feeder = paddle.base.DataFeeder(feed_list=[image, label], place=paddle.CPUPlace())
 
             >>> predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
             >>> loss = paddle.nn.functional.cross_entropy(input=predict, label=label)
@@ -510,10 +516,10 @@ def load_inference_model_distributed(
 
             >>> paddle.enable_static()
             >>> # Build the model
-            >>> main_prog = base.Program()
-            >>> startup_prog = base.Program()
-            >>> with base.program_guard(main_prog, startup_prog):
-            ...     data = base.layers.data(name="img", shape=[64, 784], append_batch_size=False)
+            >>> main_prog = paddle.static.Program()
+            >>> startup_prog = paddle.static.Program()
+            >>> with paddle.static.program_guard(main_prog, startup_prog):
+            ...     data = paddle.static.data(name="img", shape=[64, 784], append_batch_size=False)
             ...     w = paddle.create_parameter(shape=[784, 200], dtype='float32')
             ...     b = paddle.create_parameter(shape=[200], dtype='float32')
             ...     hidden_w = paddle.matmul(x=data, y=w)

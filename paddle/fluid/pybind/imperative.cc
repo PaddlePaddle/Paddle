@@ -1167,10 +1167,9 @@ void BindImperative(py::module *m_ptr) {
             >>> import paddle
             >>> from paddle.base import core
             >>> from paddle.device import cuda
-            ...
             >>> if core.is_compiled_with_cuda():
             ...     src = paddle.rand(shape=[100, 50, 50])
-            ...     dst = paddle.emtpy(shape=[200, 50, 50]).pin_memory()
+            ...     dst = paddle.empty(shape=[200, 50, 50]).pin_memory()
             ...     offset = paddle.to_tensor(
             ...         np.array([0, 60], dtype="int64"), place=paddle.CPUPlace())
             ...     count = paddle.to_tensor(
@@ -1178,7 +1177,7 @@ void BindImperative(py::module *m_ptr) {
             ...
             ...     stream = cuda.Stream()
             ...     with cuda.stream_guard(stream):
-            ...         core.async_write(src, dst, offset, count)
+            ...         core.eager.async_write(src, dst, offset, count)
             ...
             ...     offset_a = paddle.gather(dst, paddle.to_tensor(np.arange(0, 40)))
             ...     offset_b = paddle.gather(dst, paddle.to_tensor(np.arange(60, 120)))
@@ -1414,7 +1413,7 @@ void BindImperative(py::module *m_ptr) {
             ...
             ...     stream = cuda.Stream()
             ...     with cuda.stream_guard(stream):
-            ...         core.async_read(src, dst, index, buffer, offset, count)
+            ...         core.eager.async_read(src, dst, index, buffer, offset, count)
 )DOC");
 #endif
 }
