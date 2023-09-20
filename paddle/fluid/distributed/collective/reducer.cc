@@ -18,7 +18,7 @@
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/core/flags.h"
 
-DECLARE_bool(use_stream_safe_cuda_allocator);
+PD_DECLARE_bool(use_stream_safe_cuda_allocator);
 PHI_DECLARE_string(allocator_strategy);
 
 namespace paddle {
@@ -953,9 +953,9 @@ void EagerReducer::MarkGroupReady(size_t group_index) {
        ++next_group_) {
     UNUSED auto &group = groups_[next_group_];
     if (group.is_sparse_) {
-      AllReduceSparse(&group, next_group_);
+      AllReduceSparse(&group, static_cast<int>(next_group_));
     } else {
-      FusedAllReduceSchedule(&group, next_group_);
+      FusedAllReduceSchedule(&group, static_cast<int>(next_group_));
     }
   }
 }
@@ -1078,7 +1078,7 @@ void EagerReducer::FusedAllReduceSchedule(EagerGroup *group,
 
   // div nranks
   paddle::experimental::scale_(
-      group->dense_contents_, 1.0 / nranks_, 0.0, false);
+      group->dense_contents_, 1.0 / nranks_, 0.0, false);  // NOLINT
 
   // all_reduce
   std::vector<Tensor> reduce_tensors = {group->dense_contents_};
@@ -1104,11 +1104,13 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
                                    const int curr_group_index) {
   // div nranks
   Tensor sparse_tensor(group->sparse_contents_);
-  paddle::experimental::scale_(sparse_tensor, 1.0 / nranks_, 0.0, false);
+  paddle::experimental::scale_(
+      sparse_tensor, 1.0 / nranks_, 0.0, false);  // NOLINT
 
   VLOG(3) << "sparse_group [" << curr_group_index << "] start allreduce.";
 
-  auto *dev_ctx = platform::DeviceContextPool::Instance().Get(inner_place_);
+  auto *dev_ctx =
+      platform::DeviceContextPool::Instance().Get(inner_place_);  // NOLINT
   if (platform::is_gpu_place(inner_place_)) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     dev_ctx = static_cast<phi::GPUContext *>(

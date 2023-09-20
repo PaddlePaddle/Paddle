@@ -15,6 +15,9 @@
 #include "paddle/phi/core/compat/op_utils.h"
 
 namespace phi {
+KernelSignature CEmbeddingOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("c_embedding", {"W", "Ids"}, {"start_index"}, {"Out"});
+}
 
 KernelSignature CEmbeddingGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
@@ -23,8 +26,9 @@ KernelSignature CEmbeddingGradOpArgumentMapping(
                          {"start_index"},
                          {"W@GRAD"});
 }
-
 }  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(c_embedding, phi::CEmbeddingOpArgumentMapping);
 
 PD_REGISTER_ARG_MAPPING_FN(c_embedding_grad,
                            phi::CEmbeddingGradOpArgumentMapping);

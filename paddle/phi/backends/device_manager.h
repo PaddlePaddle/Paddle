@@ -32,6 +32,10 @@ class Device final {
  public:
   Device(size_t dev_id, DeviceInterface* impl) : dev_id_(dev_id), impl_(impl) {}
 
+  ~Device();
+
+  void CheckInitialized();
+
   // Stream
   // ! Create an asynchronous stream
   void CreateStream(
@@ -123,6 +127,8 @@ class Device final {
  private:
   size_t dev_id_;
   DeviceInterface* impl_;
+  std::once_flag initialized_once_flag_;
+  bool initialized_{false};
 };
 
 class DeviceManager {
@@ -143,10 +149,6 @@ class DeviceManager {
   static void Finalize(const std::string& device_type);
 
   static void SynchronizeDevice(const Place& place);
-
-  static void InitDevice(const Place& place);
-
-  static void DeInitDevice(const Place& place);
 
   static void SetDevice(const std::string& device_type, size_t device_id);
 

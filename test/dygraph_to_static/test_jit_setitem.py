@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import unittest
 
 import numpy as np
 
 import paddle
+import paddle.nn.functional as F
 
 
 class TestSetItemBase(unittest.TestCase):
@@ -179,22 +181,82 @@ class TestCase11(TestSetItemBase):
 
 
 class TestCase12(TestSetItemBase):
-    # Test combind-indexing
+    # Test gradient of value tensor
     def init_func(self):
-        def foo(x, value):
-            y = x + 1
-            y[[0, 1], 1, :2] = value
-            return y
+        def foo():
+            res = paddle.zeros([4, 3, 2])
+            b = paddle.zeros([4, 3, 2])
+            v = paddle.to_tensor(1.0)
+            for i in range(paddle.shape(b)[0]):
+                res[i] = v
+            return res
 
         return foo
 
     def run_dygraph(self, func):
-        x = self.init_data()
-        value = paddle.ones((32,))
-        value.stop_gradient = False
-        y = func(x, value)
-        x_grad, value_grad = paddle.grad(y, [x, value])
-        return y, x_grad, value_grad
+        y = func()
+        return (y,)
+
+
+class TestCase13(TestSetItemBase):
+    # Test gradient of value tensor
+    def init_func(self):
+        def foo():
+            res = paddle.zeros([4, 3, 2])
+            v = paddle.to_tensor(1.0)
+            for i in range(4):
+                res[i] = v
+            return res
+
+        return foo
+
+    def run_dygraph(self, func):
+        y = func()
+        return (y,)
+
+
+class TestCase14(TestSetItemBase):
+    # Test gradient of value tensor
+    def init_func(self):
+        def foo():
+            data = np.arange(8).reshape((2, 4)).astype('float32')
+            x = paddle.to_tensor(data)
+            x[:, 1:] = x[:, :-1].clone()
+            x[:, 0] = 1
+            res = x.flatten()
+            return res
+
+        return foo
+
+    def run_dygraph(self, func):
+        y = func()
+        return (y,)
+
+
+class TestCase15(TestSetItemBase):
+    # Test gradient of value tensor
+    def init_func(self):
+        def foo(x, H, W):
+            B, _, _, C = x.shape
+            pad_list = paddle.zeros([4], dtype="int32")
+            pad_list[3] = H // 2
+            pad_list[1] = W // 2
+
+            # 问题在这里，进去F.pad以后，pad_list是初始变量而非赋值后的变量
+            # 在修改前，赋值前后的变量是同一个，没有问题
+            # 修改后，期望接收赋值后的变量，接收赋值前变量结果是不对的
+            x = F.pad(x, pad_list, data_format="NHWC")
+            return x
+
+        return foo
+
+    def run_dygraph(self, func):
+        # 注释这句看结果diff
+        x = paddle.ones((1, 6, 6, 3))
+        H = paddle.full([1], 6, dtype='int32')
+        W = paddle.full([1], 6, dtype='int32')
+        y = func(x, H, W)
+        return (y,)
 
 
 if __name__ == '__main__':

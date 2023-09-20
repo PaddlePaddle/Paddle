@@ -19,8 +19,8 @@ from legacy_test.test_collective_api_base import (
 
 import paddle
 import paddle.distributed as dist
-from paddle import fluid, framework
-from paddle.fluid import data_feeder
+from paddle import base, framework
+from paddle.base import data_feeder
 
 paddle.enable_static()
 
@@ -95,15 +95,13 @@ def alltoall_new(
                 paddle.split(out_tensor, nranks, 0)
             )
 
-    return None
-
 
 class TestCollectiveAllToAllAPI(TestCollectiveAPIRunnerBase):
     def __init__(self):
         self.global_ring_id = 0
 
     def get_model(self, main_prog, startup_program, rank):
-        with fluid.program_guard(main_prog, startup_program):
+        with base.program_guard(main_prog, startup_program):
             tindata = paddle.static.data(
                 name="tindata", shape=[-1, 10, 1000], dtype='float32'
             )
@@ -116,7 +114,7 @@ class TestCollectiveAllToAllAPI(TestCollectiveAPIRunnerBase):
     def get_model_new(
         self, main_prog, startup_program, rank, dtype=None, reduce_type=None
     ):
-        with fluid.program_guard(main_prog, startup_program):
+        with base.program_guard(main_prog, startup_program):
             tindata = paddle.static.data(
                 name="tindata", shape=[-1, 10, 1000], dtype=dtype
             )
@@ -124,6 +122,19 @@ class TestCollectiveAllToAllAPI(TestCollectiveAPIRunnerBase):
             tindata = paddle.split(tindata, 2, axis=0)
             tout_data = []
             alltoall_new(tindata, tout_data)
+            return tout_data
+
+    def get_model_new_comm(
+        self, main_prog, startup_program, rank, dtype='float32'
+    ):
+        with base.program_guard(main_prog, startup_program):
+            tindata = paddle.static.data(
+                name="tindata", shape=[-1, 10, 1000], dtype=dtype
+            )
+            tindata.desc.set_need_check_feed(False)
+            tindata = paddle.split(tindata, 2, axis=0)
+            tout_data = []
+            paddle.distributed.alltoall(tindata, tout_data)
             return tout_data
 
 

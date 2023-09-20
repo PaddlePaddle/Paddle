@@ -571,6 +571,9 @@ void ConcatFunctorWithIndexType(const phi::GPUContext& ctx,
 
   IndexT inputs_col_num = in_num + 1;
   std::vector<const T*> inputs_data_vec(in_num, nullptr);
+  for (size_t i = 0; i < ins.size(); ++i) {
+    inputs_data_vec[i] = ins[i].data<T>();
+  }
   std::vector<IndexT> inputs_col_vec(inputs_col_num, 0);
   const T** inputs_data = inputs_data_vec.data();
   IndexT* inputs_col = inputs_col_vec.data();

@@ -30,6 +30,8 @@ class PrimCommonUtils {
   static void SetAllPrimEnabled(bool enabled);
   static size_t CheckSkipCompOps(const std::string& op_type);
   static void AddSkipCompOps(const std::string& op_type);
+  static void SetPrimBackwardBlacklist(
+      const std::unordered_set<std::string>& op_types);
   static void RemoveSkipCompOps(const std::string& op_type);
   static void SetTargetGradName(const std::map<std::string, std::string>& m);
 };

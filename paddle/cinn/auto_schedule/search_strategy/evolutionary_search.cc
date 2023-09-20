@@ -36,7 +36,7 @@
 #include "paddle/cinn/utils/sized_multi_set.h"
 #include "paddle/cinn/utils/string.h"
 
-DECLARE_bool(auto_schedule_use_cost_model);
+PD_DECLARE_bool(auto_schedule_use_cost_model);
 
 namespace cinn {
 namespace auto_schedule {

@@ -15,7 +15,7 @@
 Print all signature of a python module in alphabet order.
 
 Usage:
-    ./print_signature  "paddle.fluid" > signature.txt
+    ./print_signature  "paddle.base" > signature.txt
 """
 
 import argparse
@@ -88,7 +88,7 @@ def visit_all_module(mod):
     if mod_name != 'paddle' and not mod_name.startswith('paddle.'):
         return
 
-    if mod_name.startswith('paddle.fluid.core'):
+    if mod_name.startswith('paddle.base.core'):
         return
 
     if mod in visited_modules:
@@ -353,7 +353,7 @@ def parse_args():
         dest='skipped',
         type=str,
         help='Skip Checking submodules',
-        default='paddle.fluid.libpaddle.eager.ops',
+        default='paddle.base.libpaddle.eager.ops',
     )
 
     if len(sys.argv) == 1:

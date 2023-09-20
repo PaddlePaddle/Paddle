@@ -61,6 +61,8 @@ class Device:
         self._dp_gflops = None
         # Single precision GFLOPS
         self._sp_gflops = None
+        # Half precision GFLOPS
+        self._hp_gflops = None
         # Memory is stored by GB
         self._memory = None
 
@@ -121,6 +123,14 @@ class Device:
         self._sp_gflops = value
 
     @property
+    def hp_gflops(self):
+        return self._hp_gflops
+
+    @hp_gflops.setter
+    def hp_gflops(self, value):
+        self._hp_gflops = value
+
+    @property
     def memory(self):
         return self._memory
 
@@ -130,7 +140,7 @@ class Device:
 
     def __str__(self):
         str = ""
-        str += "global_id: {}, local_id: {}, machine_id: {}, type: {}, model: {}, dp_flops: {}, sp_flops: {}, memory: {}".format(
+        str += "global_id: {}, local_id: {}, machine_id: {}, type: {}, model: {}, dp_flops: {}, sp_flops: {}, hp_flops: {}, memory: {}".format(
             self.global_id,
             self.local_id,
             self.machine.id,
@@ -138,6 +148,7 @@ class Device:
             self.model,
             self.dp_gflops,
             self.sp_gflops,
+            self.hp_gflops,
             self.memory,
         )
         return str
@@ -429,6 +440,7 @@ class Cluster:
         # This property only be valid when the cluster consists of machines,
         # which have the same number accelerators.
         self._num_devices_per_machine = None
+        self._gpu_model = None
 
     def gen_default_config_cluster(
         self,
@@ -442,6 +454,7 @@ class Cluster:
         intra_bandwidth=235,
         gpu_dp_gflops=7800,
         gpu_sp_gflops=15700,
+        gpu_hp_gflops=31400,
         cpu_dp_gflops=75,
         cpu_sp_gflops=150,
     ):
@@ -451,6 +464,7 @@ class Cluster:
         dcu_models = ["DCU"]
         all_gpu_models = gpu_models + xpu_models + dcu_models
         self._num_devices_per_machine = device_count
+        self._gpu_model = gpu_model
 
         def _convert_to_type(gpu_model):
             type = None
@@ -522,8 +536,6 @@ class Cluster:
                 local_id += 1
                 type = _convert_to_type(gpu_model)
                 model = _convert_to_model(gpu_model, gpu_memory)
-                dp_gflops = gpu_dp_gflops
-                sp_gflops = gpu_dp_gflops
                 memory = gpu_memory
 
                 device["global_id"] = global_id
@@ -531,8 +543,9 @@ class Cluster:
                 device["type"] = type
                 device["model"] = model
                 device["memory"] = memory
-                device["sp_gflops"] = sp_gflops
-                device["dp_gflops"] = dp_gflops
+                device["sp_gflops"] = gpu_sp_gflops
+                device["dp_gflops"] = gpu_dp_gflops
+                device["hp_gflops"] = gpu_hp_gflops
                 # hard code
                 device["type"] = "GPU"
                 global_id_to_device_type[global_id] = type
@@ -692,6 +705,7 @@ class Cluster:
                 device.model = device_info.get("model", None)
                 device.dp_gflops = float(device_info.get("dp_gflops", 0))
                 device.sp_gflops = float(device_info.get("sp_gflops", 0))
+                device.hp_gflops = float(device_info.get("hp_gflops", 0))
                 device.memory = float(device_info.get("memory", 0))
                 self.add_device(device)
             self.add_machine(machine)
@@ -882,7 +896,7 @@ def get_default_cluster(json_config=None):
             gpu_name = os.getenv("PADDLE_XCCL_BACKEND", None)
             gpu_model = gpu_name
             memory = int(
-                paddle.fluid.core.libpaddle._get_device_total_memory(gpu_name)
+                paddle.base.core.libpaddle._get_device_total_memory(gpu_name)
             ) // (1000**3)
         else:
             gpu_info = paddle.device.cuda.get_device_properties()
@@ -907,10 +921,22 @@ def get_default_cluster(json_config=None):
             os.getenv("PADDLE_CURRENT_ENDPOINT", None),
         )
     )
+
+    gflops_info = {
+        "V100": {"dp": 7800, "sp": 15700, "hp": 125000},
+        "A100": {"dp": 9700, "sp": 19500, "hp": 624000},
+    }
+    default_gflops = (
+        gflops_info["A100"] if gpu_model == "A100" else gflops_info["V100"]
+    )
+
     cluster.gen_default_config_cluster(
         node_count=node_count,
         device_count=local_device_count,
         gpu_model=gpu_model,
         gpu_memory=memory,
+        gpu_dp_gflops=default_gflops["dp"],
+        gpu_sp_gflops=default_gflops["sp"],
+        gpu_hp_gflops=default_gflops["hp"],
     )
     return cluster

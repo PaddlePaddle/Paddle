@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
 from op import Operator
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestShapeOp(OpTest):
@@ -36,7 +36,7 @@ class TestShapeOp(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_new_ir=True)
 
 
 class case1(TestShapeOp):
@@ -125,7 +125,7 @@ class TestShapeOpBf16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_cinn=True)
+        self.check_output_with_place(place, check_cinn=True, check_new_ir=True)
 
 
 class case1Bf16(TestShapeOpBf16):

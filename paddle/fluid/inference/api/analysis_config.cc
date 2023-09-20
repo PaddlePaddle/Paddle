@@ -448,6 +448,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   // Mixed precision related.
   CP_MEMBER(mixed_black_list_);
+  CP_MEMBER(mixed_white_list_);
   CP_MEMBER(enable_gpu_mixed_);
   CP_MEMBER(mixed_precision_mode_);
   CP_MEMBER(enable_low_precision_io_);
@@ -459,6 +460,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(tensorrt_max_batchsize_);
   CP_MEMBER(tensorrt_min_subgraph_size_);
   CP_MEMBER(tensorrt_precision_mode_);
+  CP_MEMBER(trt_mark_output_);
+  CP_MEMBER(trt_output_tensor_names_);
   CP_MEMBER(trt_disabled_ops_);
   CP_MEMBER(trt_use_dla_);
   CP_MEMBER(trt_dla_core_);
@@ -474,8 +477,11 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(collect_shape_range_info_);
   CP_MEMBER(shape_range_info_path_);
   CP_MEMBER(trt_use_inspector_);
+  CP_MEMBER(trt_inspector_serialize_);
+  CP_MEMBER(trt_use_explicit_quantization_);
   CP_MEMBER(trt_engine_memory_sharing_);
   CP_MEMBER(trt_engine_memory_sharing_identifier_);
+  CP_MEMBER(trt_optimization_level_);
   // Dlnne related
   CP_MEMBER(use_dlnne_);
   CP_MEMBER(dlnne_min_subgraph_size_);
@@ -757,6 +763,12 @@ void AnalysisConfig::EnableTensorRtEngine(int64_t workspace_size,
 #endif
 }
 
+void AnalysisConfig::MarkTrtEngineOutputs(
+    const std::vector<std::string> &output_tensor_names) {
+  trt_mark_output_ = true;
+  trt_output_tensor_names_ = output_tensor_names;
+}
+
 void AnalysisConfig::EnableTensorRTMemoryOptim(bool engine_memory_sharing,
                                                int sharing_identifier) {
   PADDLE_ENFORCE_EQ(
@@ -828,7 +840,15 @@ void AnalysisConfig::EnableTensorRtDLA(int dla_core) {
   trt_dla_core_ = dla_core;
 }
 
-void AnalysisConfig::EnableTensorRtInspector() { trt_use_inspector_ = true; }
+void AnalysisConfig::EnableTensorRtInspector(bool inspector_serialize) {
+  trt_use_inspector_ = true;
+  trt_inspector_serialize_ = inspector_serialize;
+}
+
+void AnalysisConfig::EnableTensorRtExplicitQuantization() {
+  trt_use_explicit_quantization_ = true;
+  Update();
+}
 
 void AnalysisConfig::Exp_DisableTensorRtOPs(
     const std::vector<std::string> &ops) {
@@ -836,6 +856,17 @@ void AnalysisConfig::Exp_DisableTensorRtOPs(
 }
 
 void AnalysisConfig::EnableVarseqlen() { trt_use_varseqlen_ = true; }
+
+void AnalysisConfig::SetTensorRtOptimizationLevel(int level) {
+  PADDLE_ENFORCE(
+      level >= 0 && level <= 5,
+      platform::errors::InvalidArgument(
+          "The input level in SetTRTOptimizationLevel is invalid. The "
+          "level must be in range [0, 5], but received level = %d (default "
+          "level is 3).",
+          level));
+  trt_optimization_level_ = level;
+}
 
 // TODO(Superjomn) refactor this, buggy.
 void AnalysisConfig::Update() {
@@ -904,6 +935,13 @@ void AnalysisConfig::Update() {
     for (const auto &pass : kTRTSubgraphPasses) {
       if (tensorrt_precision_mode_ == Precision::kInt8 &&
           (pass == "conv_bn_fuse_pass")) {
+        continue;
+      }
+      // The following two IR pass will remove QDQ nodes. For explicit
+      // quantization, they are unnecessary.
+      if (trt_use_explicit_quantization_ &&
+          (pass == "trt_delete_weight_dequant_linear_op_pass" ||
+           pass == "delete_quant_dequant_linear_op_pass")) {
         continue;
       }
       pass_builder()->AppendPass(pass);
@@ -1050,6 +1088,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << tensorrt_workspace_size_;
   ss << tensorrt_max_batchsize_;
   ss << tensorrt_min_subgraph_size_;
+  ss << trt_mark_output_;
 
   ss << use_dlnne_;
   ss << dlnne_min_subgraph_size_;
@@ -1132,6 +1171,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
     for (auto attr : pattern) ss << attr;
   ss << ";";
   for (auto &op : mixed_black_list_) ss << op.c_str();
+  for (auto &op : mixed_white_list_) ss << op.c_str();
   return ss.str();
 }
 
@@ -1331,6 +1371,7 @@ std::string AnalysisConfig::Summary() {
       }
       os.InsertRow({"trt_engine_memory_sharing",
                     trt_engine_memory_sharing_ ? "true" : "false"});
+      os.InsertRow({"trt_mark_output", trt_mark_output_ ? "true" : "false"});
 #endif
     }
   }
@@ -1510,6 +1551,11 @@ bool AnalysisConfig::trt_allow_build_at_runtime() const {
 void AnalysisConfig::Exp_DisableMixedPrecisionOps(
     const std::unordered_set<std::string> &black_list) {
   mixed_black_list_ = black_list;
+}
+
+void AnalysisConfig::Exp_EnableMixedPrecisionOps(
+    const std::unordered_set<std::string> &white_list) {
+  mixed_white_list_ = white_list;
 }
 
 void AnalysisConfig::Exp_EnableCINNCompiler() {

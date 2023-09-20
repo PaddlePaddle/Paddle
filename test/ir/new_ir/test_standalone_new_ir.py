@@ -328,6 +328,43 @@ class TestJitSaveOp(unittest.TestCase):
         )
 
 
+class TestNewIrConcatDygraph(unittest.TestCase):
+    def test_with_new_ir(self):
+        paddle.disable_static()
+
+        @paddle.jit.to_static
+        def func(x, y):
+            return paddle.concat([paddle.shape(x), y], -1)
+
+        x = paddle.ones([2, 2], dtype='float32')
+        y = paddle.ones([2], dtype='int32') * 2
+
+        z = func(x, y)
+
+        gold_res = np.ones([4], dtype="float32") * 2
+        np.testing.assert_array_equal(z.numpy(), gold_res)
+
+
+# TODO(phlrain): open this after fix pr(55509) confict
+# class TestNewIrLogicalDygraph(unittest.TestCase):
+#     def test_with_new_ir(self):
+#         paddle.disable_static()
+
+#         @paddle.jit.to_static
+#         def func(x, y, z):
+#             a = paddle.logical_and(x, y)
+#             return z + a.cast("float32")
+
+#         x = paddle.ones([2, 2], dtype='float32')
+#         y = paddle.ones([2, 2], dtype='float32')
+#         z = paddle.ones([2, 2], dtype='float32')
+
+#         z = func(x, y, z)
+
+#         gold_res = np.ones([2, 2], dtype="float32") * 2
+#         np.testing.assert_array_equal(z.numpy(), gold_res)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

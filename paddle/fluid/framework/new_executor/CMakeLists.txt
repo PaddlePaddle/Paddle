@@ -11,12 +11,13 @@ set(STANDALONE_EXECUTOR_DEPS
     interpreter
     interpretercore_garbage_collector
     workqueue
-    pd_dialect
+    pd_op_dialect
     pd_op_to_kernel_pass
     phi_kernel_adaptor
     program_translator
     instruction_base
-    ir)
+    pd_inplace_pass
+    pir)
 
 cc_library(
   standalone_executor

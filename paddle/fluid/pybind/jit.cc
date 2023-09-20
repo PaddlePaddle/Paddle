@@ -206,6 +206,9 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
   // _PyFrame_GetFrameObject(frame) # this function should be the right answer,
   // but nm libpython.so | grep _PyFrame_MakeAndSetFrameObject is a `t' symbol,
   // which means it's local to library. we will get a link error if we use it.
+  if (frame->owner == FRAME_OWNED_BY_GENERATOR) {
+    return eval_frame_default(tstate, frame, throw_flag);
+  }
   if (PyFrame_FastToLocalsWithError(Paddle_PyFrame_GetFrameObject(frame)) < 0) {
 #else
   if (PyFrame_FastToLocalsWithError(frame) < 0) {
@@ -255,12 +258,22 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
       // Re-enable custom behavior
       eval_frame_callback_set(callback);
       VLOG(7) << "Start eval new frame and code.";
-      auto out = eval_custom_code(tstate, frame, code, throw_flag);
+      PyObject *out;
+      if (reinterpret_cast<PyObject *>(code) != Py_None) {
+        out = eval_custom_code(tstate, frame, code, throw_flag);
+      } else {
+        out = eval_frame_default(tstate, frame, throw_flag);
+      }
       Py_DECREF(result);
       Py_DECREF(code);
       return out;
     } else {
-      auto out = eval_custom_code(tstate, frame, code, throw_flag);
+      PyObject *out;
+      if (reinterpret_cast<PyObject *>(code) != Py_None) {
+        out = eval_custom_code(tstate, frame, code, throw_flag);
+      } else {
+        out = eval_frame_default(tstate, frame, throw_flag);
+      }
       // Re-enable custom behavior
       eval_frame_callback_set(callback);
       Py_DECREF(result);

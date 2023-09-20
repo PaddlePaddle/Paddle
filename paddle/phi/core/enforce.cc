@@ -20,16 +20,16 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/utils/blank.h"
+#include "paddle/utils/flags.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/core/external_error.pb.h"
 #endif  // PADDLE_WITH_CUDA
 
-DECLARE_int32(call_stack_level);
+PD_DECLARE_int32(call_stack_level);
 
 namespace egr {
 class EagerVariable;
@@ -163,7 +163,7 @@ std::string GetCurrentTraceBackString(bool for_signal) {
       }
     }
   }
-  free(symbols);
+  free(symbols);  // NOLINT
 #else
   sout << "Not support stack backtrace yet.\n";
 #endif

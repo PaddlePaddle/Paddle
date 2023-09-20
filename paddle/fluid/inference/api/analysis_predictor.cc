@@ -154,7 +154,6 @@ void UpdatePrivateDeviceContext(InferGPUContext *gpu_context,
 #endif
 }  // namespace
 
-using inference::Singleton;
 #ifdef PADDLE_WITH_TENSORRT
 using inference::tensorrt::TRTCalibratorEngine;
 using inference::tensorrt::TRTCalibratorEngineManager;
@@ -226,6 +225,8 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
     input_ptr = t->mutable_data<int32_t>(ddim, place);
   } else if (pt.dtype == PaddleDType::FLOAT16) {
     input_ptr = t->mutable_data<float16>(ddim, place);
+  } else if (pt.dtype == PaddleDType::BFLOAT16) {
+    input_ptr = t->mutable_data<bfloat16>(ddim, place);
   } else {
     LOG(ERROR) << "unsupported feed type " << pt.dtype;
     return false;
@@ -837,6 +838,10 @@ void AnalysisPredictor::InsertCommOp(
     ss << ep << ", ";
   }
   VLOG(3) << ss.str();
+  std::string endpoints_str = config_.dist_config().current_endpoint();
+  for (const auto &peer : peer_endpoints) {
+    endpoints_str += "," + peer;
+  }
   if (config_.use_gpu()) {
     framework::VarDesc *new_var = block->Var(tmp_var_name);
     new_var->SetType(framework::proto::VarType::RAW);
@@ -858,6 +863,7 @@ void AnalysisPredictor::InsertCommOp(
     comm_init_op->SetAttr("rank", rank);
     comm_init_op->SetAttr("nranks", nranks);
     comm_init_op->SetAttr("ring_id", ring_id);
+    comm_init_op->SetAttr("endpoints", endpoints_str);
     comm_init_op->SetAttr("op_role",
                           static_cast<int>(framework::OpRole::kForward));
     comm_init_op->CheckAttrs();
@@ -882,6 +888,7 @@ void AnalysisPredictor::InsertCommOp(
     comm_init_op->SetAttr("rank", rank);
     comm_init_op->SetAttr("nranks", nranks);
     comm_init_op->SetAttr("ring_id", ring_id);
+    comm_init_op->SetAttr("endpoints", endpoints_str);
     comm_init_op->SetAttr("op_role",
                           static_cast<int>(framework::OpRole::kForward));
     comm_init_op->CheckAttrs();
@@ -906,6 +913,7 @@ void AnalysisPredictor::InsertCommOp(
     comm_init_op->SetAttr("rank", rank);
     comm_init_op->SetAttr("nranks", nranks);
     comm_init_op->SetAttr("ring_id", ring_id);
+    comm_init_op->SetAttr("endpoints", endpoints_str);
     comm_init_op->SetAttr("op_role",
                           static_cast<int>(framework::OpRole::kForward));
     comm_init_op->CheckAttrs();
@@ -1094,6 +1102,10 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   }
 #endif
 
+  if (config_.shape_range_info_collected()) {
+    HookCollectShapeRangeInfo();
+  }
+
   // Run the inference program
   // if share variables, we need not create variables
   executor_->Run();
@@ -1158,6 +1170,10 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   }
 #endif
 
+  if (config_.shape_range_info_collected()) {
+    HookCollectShapeRangeInfo();
+  }
+
   // Run the inference program
   // if share variables, we need not create variables
   executor_->Run();
@@ -1219,7 +1235,7 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
         LOG(ERROR) << "feed names from program do not have name: [" << name
                    << "] from specified input";
       }
-      idx = feed_names_[name];
+      idx = static_cast<int>(feed_names_[name]);
     } else {
       idx = PADDLE_GET_CONST(int, feeds_[i]->GetAttr("col"));
     }
@@ -1318,9 +1334,13 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
     } else if (type == framework::proto::VarType::FP16) {
       GetFetchOne<float16>(fetch, output);
       output->dtype = PaddleDType::FLOAT16;
+    } else if (type == framework::proto::VarType::BF16) {
+      GetFetchOne<bfloat16>(fetch, output);
+      output->dtype = PaddleDType::BFLOAT16;
     } else {
-      LOG(ERROR) << "unknown type, only support float32, float16, int64 and "
-                    "int32 now.";
+      LOG(ERROR)
+          << "unknown type, only support float32, float16, bfloat16, int64 and "
+             "int32 now.";
     }
   }
   return true;
@@ -1386,6 +1406,8 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetTensorRtWorkspaceSize(config_.tensorrt_workspace_size_);
     argument_->SetTensorRtMaxBatchSize(config_.tensorrt_max_batchsize_);
     argument_->SetTensorRtMinSubgraphSize(config_.tensorrt_min_subgraph_size_);
+    argument_->SetTRTMarkOutput(config_.trt_mark_output_);
+    argument_->SetTRTOutputTensorNames(config_.trt_output_tensor_names_);
     argument_->SetTensorRtDisabledOPs(config_.trt_disabled_ops_);
     argument_->SetTensorRtUseDLA(config_.trt_use_dla_);
     argument_->SetTensorRtDLACore(config_.trt_dla_core_);
@@ -1397,7 +1419,11 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetTensorRtAllowBuildAtRuntime(
         config_.trt_allow_build_at_runtime());
     argument_->SetTensorRtUseInspector(config_.trt_use_inspector_);
+    argument_->SetTensorRtInspectorSerialize(config_.trt_inspector_serialize_);
+    argument_->SetTensorRtUseExplicitQuantization(
+        config_.trt_use_explicit_quantization_);
     argument_->SetTrtEngineMemorySharing(config_.trt_engine_memory_sharing());
+    argument_->SetTensorRtOptimizationLevel(config_.trt_optimization_level_);
   }
 
   if (config_.dlnne_enabled()) {
@@ -1562,6 +1588,8 @@ void AnalysisPredictor::PrepareArgument() {
         }
       } else if (config_.use_xpu()) {
         // All passes support fp16. Not reset pass_builder.
+      } else if (config_.use_custom_device()) {
+        // All passes support fp16. Not reset pass_builder.
       } else {
         pass_builder->ClearPasses();
       }
@@ -1606,6 +1634,7 @@ void AnalysisPredictor::PrepareArgument() {
   // mixed precison.
   argument_->SetModelPrecision(static_cast<int>(model_precision_));
   argument_->SetMixedBlackList(config_.mixed_black_list_);
+  argument_->SetMixedWhiteList(config_.mixed_white_list_);
   argument_->SetEnableGPUMixed(config_.enable_gpu_mixed_);
   argument_->SetMixedPrecisionMode(static_cast<int>(
       paddle::ConvertPrecision(config_.mixed_precision_mode_)));
@@ -1696,10 +1725,10 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
 
   auto SetGflags = [](const AnalysisConfig &config) {
     auto SetGflag = [](const char *name, const char *value) {
-      std::string ret = ::GFLAGS_NAMESPACE::SetCommandLineOption(name, value);
+      bool success = paddle::flags::SetFlagValue(name, value);
       PADDLE_ENFORCE_EQ(
-          ret.empty(),
-          false,
+          success,
+          true,
           platform::errors::InvalidArgument(
               "Fail to set gflag: %s, please make sure the gflag exists.",
               name));
@@ -1879,6 +1908,8 @@ AnalysisPredictor::GetInputTypes() {
       input_type[name] = paddle_infer::DataType::FLOAT32;
     } else if (dtype == paddle::framework::proto::VarType::FP16) {
       input_type[name] = paddle_infer::DataType::FLOAT16;
+    } else if (dtype == paddle::framework::proto::VarType::BF16) {
+      input_type[name] = paddle_infer::DataType::BFLOAT16;
     } else if (dtype == paddle::framework::proto::VarType::INT64) {
       input_type[name] = paddle_infer::DataType::INT64;
     } else if (dtype == paddle::framework::proto::VarType::INT32) {
@@ -1936,6 +1967,8 @@ AnalysisPredictor::GetOutputTypes() {
       output_type[name] = paddle_infer::DataType::FLOAT32;
     } else if (dtype == paddle::framework::proto::VarType::FP16) {
       output_type[name] = paddle_infer::DataType::FLOAT16;
+    } else if (dtype == paddle::framework::proto::VarType::BF16) {
+      output_type[name] = paddle_infer::DataType::BFLOAT16;
     } else if (dtype == paddle::framework::proto::VarType::INT64) {
       output_type[name] = paddle_infer::DataType::INT64;
     } else if (dtype == paddle::framework::proto::VarType::INT32) {
@@ -1993,12 +2026,9 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
     }
   } else if (platform::is_custom_place(place_)) {
     auto custom_place = place_;
-    auto paddleplace = static_cast<PaddlePlace>(
-        static_cast<size_t>(PaddlePlace::kCUSTOM) +
-        phi::CustomRegisteredDeviceMap::Instance()
-            .GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
-    res->SetPlace(
-        paddleplace, custom_place.GetDeviceId(), place_.GetDeviceType());
+    res->SetPlace(PaddlePlace::kCUSTOM,
+                  custom_place.GetDeviceId(),
+                  custom_place.GetDeviceType());
   } else {
     auto gpu_place = place_;
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
@@ -2047,12 +2077,9 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
     }
   } else if (platform::is_custom_place(place_)) {
     auto custom_place = place_;
-    auto paddleplace = static_cast<PaddlePlace>(
-        static_cast<size_t>(PaddlePlace::kCUSTOM) +
-        phi::CustomRegisteredDeviceMap::Instance()
-            .GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
-    res->SetPlace(
-        paddleplace, custom_place.GetDeviceId(), place_.GetDeviceType());
+    res->SetPlace(PaddlePlace::kCUSTOM,
+                  custom_place.GetDeviceId(),
+                  custom_place.GetDeviceType());
   } else {
     auto gpu_place = place_;
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
@@ -2225,7 +2252,8 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
     if (!tensor.initialized()) return;
     framework::DDim dim = tensor.dims();
     std::vector<int32_t> shape(dim.size());
-    for (size_t i = 0; i < shape.size(); ++i) shape[i] = dim[i];
+    for (int i = 0; i < static_cast<int>(shape.size()); ++i)
+      shape[i] = static_cast<int32_t>(dim[i]);
     if (!shape.empty()) {
       shape_info_[input_name].emplace_back(shape);
     } else if (tensor.numel() > 0) {
@@ -2418,7 +2446,7 @@ bool AnalysisPredictor::LoadProgramDesc() {
     fin.seekg(0, std::ios::end);
     pb_content.resize(fin.tellg());
     fin.seekg(0, std::ios::beg);
-    fin.read(&(pb_content.at(0)), pb_content.size());
+    fin.read(&(pb_content.at(0)), pb_content.size());  // NOLINT
     fin.close();
 
     proto.ParseFromString(pb_content);
@@ -2512,6 +2540,7 @@ void AnalysisPredictor::ClearIntermediateTensor() {
 }
 
 #ifdef PADDLE_WITH_TENSORRT
+using inference::Singleton;
 bool AnalysisPredictor::SaveTrtCalibToDisk() {
   PADDLE_ENFORCE_EQ(config_.tensorrt_engine_enabled(),
                     true,
@@ -2566,7 +2595,7 @@ bool AnalysisPredictor::SaveTrtCalibToDisk() {
 }
 #endif
 
-AnalysisPredictor::~AnalysisPredictor() {
+AnalysisPredictor::~AnalysisPredictor() {  // NOLINT
 #ifdef PADDLE_WITH_TENSORRT
   if (config_.tensorrt_engine_enabled() &&
       config_.tensorrt_precision_mode_ == AnalysisConfig::Precision::kInt8 &&
@@ -2695,8 +2724,7 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
 }
 
 void AnalysisPredictor::RegisterInputHook(const InputTensorHookFunc &hookfunc) {
-  static std::once_flag register_input_hook_flag;
-  std::call_once(register_input_hook_flag, [this] {
+  std::call_once(register_input_hook_flag_, [this] {
     executor_->RegisterInputHook(
         [this](framework::OperatorBase *op, framework::Scope *scope) {
           for (auto &input : op->Inputs()) {
@@ -2719,8 +2747,7 @@ void AnalysisPredictor::RegisterInputHook(const InputTensorHookFunc &hookfunc) {
 
 void AnalysisPredictor::RegisterOutputHook(
     const OutputTensorHookFunc &hookfunc) {
-  static std::once_flag register_output_hook_flag;
-  std::call_once(register_output_hook_flag, [this] {
+  std::call_once(register_output_hook_flag_, [this] {
     executor_->RegisterOutputHook(
         [this](framework::OperatorBase *op, framework::Scope *scope) {
           for (auto &output : op->Outputs()) {
@@ -2877,6 +2904,7 @@ USE_TRT_CONVERTER(sign);
 #endif
 USE_TRT_CONVERTER(rsqrt);
 USE_TRT_CONVERTER(fused_preln_embedding_eltwise_layernorm)
+USE_TRT_CONVERTER(prompt_tuning_emb_eltwise_layernorm);
 USE_TRT_CONVERTER(fused_embedding_eltwise_layernorm);
 USE_TRT_CONVERTER(preln_skip_layernorm)
 USE_TRT_CONVERTER(fused_bias_dropout_residual_layer_norm)
@@ -2939,6 +2967,10 @@ USE_TRT_CONVERTER(temporal_shift)
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 USE_TRT_CONVERTER(sparse_fc)
 USE_TRT_CONVERTER(sparse_multihead_matmul)
+#endif
+#if IS_TRT_VERSION_GE(8000)
+USE_TRT_CONVERTER(quantize_linear)
+USE_TRT_CONVERTER(dequantize_linear)
 #endif
 #endif
 
@@ -3070,8 +3102,8 @@ std::tuple<int, int, int> GetTrtRuntimeVersion() {
 #endif
 }
 
-std::string UpdateDllFlag(const char *name, const char *value) {
-  return paddle::UpdateDllFlag(name, value);
+void UpdateDllFlag(const char *name, const char *value) {
+  paddle::UpdateDllFlag(name, value);
 }
 
 void ConvertToMixedPrecision(const std::string &model_file,
@@ -3081,7 +3113,8 @@ void ConvertToMixedPrecision(const std::string &model_file,
                              PrecisionType mixed_precision,
                              paddle_infer::PlaceType backend,
                              bool keep_io_types,
-                             std::unordered_set<std::string> black_list) {
+                             std::unordered_set<std::string> black_list,
+                             std::unordered_set<std::string> white_list) {
   auto phi_backend = paddle::ConvertBackend(backend);
   auto phi_precision = paddle::ConvertPrecision(mixed_precision);
   paddle::inference::analysis::ConvertToMixedPrecision(model_file,
@@ -3091,7 +3124,8 @@ void ConvertToMixedPrecision(const std::string &model_file,
                                                        phi_precision,
                                                        phi_backend,
                                                        keep_io_types,
-                                                       black_list);
+                                                       black_list,
+                                                       white_list);
 }
 
 }  // namespace paddle_infer

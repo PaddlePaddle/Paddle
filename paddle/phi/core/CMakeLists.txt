@@ -37,5 +37,8 @@ collect_srcs(
   mixed_vector.cc
   generator.cc
   kernel_factory.cc
+  kernel_registry.cc
   tensor_utils.cc
   utils/type_info.cc)
+
+cc_library(ddim SRCS ddim.cc)

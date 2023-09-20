@@ -15,7 +15,7 @@
 import legacy_test.test_collective_api_base as test_base
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class TestCollectiveAllgatherObjectAPI(test_base.TestCollectiveAPIRunnerBase):
@@ -23,7 +23,7 @@ class TestCollectiveAllgatherObjectAPI(test_base.TestCollectiveAPIRunnerBase):
         self.global_ring_id = 0
 
     def get_model(self, main_prog, startup_program, rank, indata=None):
-        with fluid.program_guard(main_prog, startup_program):
+        with base.program_guard(main_prog, startup_program):
             object_list = []
             paddle.distributed.all_gather_object(object_list, indata)
             return object_list
