@@ -44,6 +44,9 @@
 PADDLE_DEFINE_EXPORTED_string(parameter_names_run_fp16,
                               "",
                               "parameter names seperated by comma");
+PADDLE_DEFINE_EXPORTED_string(parameter_names_run_int8,
+                              "",
+                              "parameter names seperated by comma");
 
 namespace paddle {
 namespace inference {
@@ -452,12 +455,11 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
 
 
 auto parameter_names_fp16 = paddle::string::Split(FLAGS_parameter_names_run_fp16, ',');
+auto parameter_names_int8 = paddle::string::Split(FLAGS_parameter_names_run_int8, ',');
 
 for (auto para : parameters) {
-  for (auto fp16_names : parameter_names_fp16)
-  {
-    if (para == fp16_names)
-    {
+  for (auto fp16_names : parameter_names_fp16) {
+    if (para == fp16_names) {
       precision_mode = phi::DataType::FLOAT16;
     }
   }
@@ -466,6 +468,16 @@ for (auto para : parameters) {
   bool enable_fp16 = false;
   if (precision_mode == phi::DataType::FLOAT16) enable_fp16 = true;
   auto enable_int8 = Get<bool>("enable_int8");
+
+for (auto para : parameters) {
+  for (auto int8_names : parameter_names_int8) {
+    if (para == int8_names) {
+      enable_int8 = true;
+      precision_mode = phi::DataType::INT8;
+    }
+  }
+}
+
   auto use_calib_mode = Get<bool>("use_calib_mode");
   auto &subgraph_nodes = *framework::ir::Agent(node).subgraph();
   auto min_input_shape =

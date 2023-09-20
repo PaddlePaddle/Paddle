@@ -77,11 +77,11 @@ void ConvertConv2d(TensorRTEngine* engine,
     filter_w = filter->getDimensions().d[3];
   }
 
-  bool enable_int8 = op_desc.HasAttr("enable_int8");
+  // bool enable_int8 = op_desc.HasAttr("enable_int8");
 
-  if (enable_int8) {
+  if (op_desc.HasAttr("Input")) {
 #if IS_TRT_VERSION_GE(5000)
-    float in_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("Input_scale"));
+    float in_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("Input"));
     engine->SetTensorDynamicRange(X, in_scale);
 #endif
   }

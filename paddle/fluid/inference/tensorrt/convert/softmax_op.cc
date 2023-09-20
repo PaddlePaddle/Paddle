@@ -85,7 +85,7 @@ class SoftMaxOpConverter : public OpConverter {
     layer->setAxes(1 << axes);
 
     // The trt will not run int for softmax.
-    engine_->SetTensorDynamicRange(input1, 1.0);
+    // engine_->SetTensorDynamicRange(input1, 1.0);
     auto output_name = op_desc.Output("Out")[0];
 
     // support 0 or 1 dims input
