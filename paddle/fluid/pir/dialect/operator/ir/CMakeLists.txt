@@ -201,7 +201,7 @@ cc_library(
   SRCS ${api_source_file} manual_api.cc
   DEPS api_builder pd_op_dialect_op pd_op_dialect_utils)
 set_target_properties(pd_op_dialect_api PROPERTIES COMPILE_FLAGS
-                                                   "-Wno-maybe-uninitialized")
+                                                   "-Wno-error=uninitialized")
 
 target_include_directories(pd_op_dialect_api INTERFACE ${PD_DIALECT_BINARY_DIR})
 
