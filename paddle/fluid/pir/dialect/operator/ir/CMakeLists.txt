@@ -200,8 +200,10 @@ cc_library(
   pd_op_dialect_api
   SRCS ${api_source_file} manual_api.cc
   DEPS api_builder pd_op_dialect_op pd_op_dialect_utils)
-set_target_properties(pd_op_dialect_api PROPERTIES COMPILE_FLAGS
-                                                   "-Wno-error=uninitialized")
+if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
+  set_target_properties(pd_op_dialect_api PROPERTIES COMPILE_FLAGS
+                                                     "-Wno-maybe-uninitialized")
+endif()
 
 target_include_directories(pd_op_dialect_api INTERFACE ${PD_DIALECT_BINARY_DIR})
 
