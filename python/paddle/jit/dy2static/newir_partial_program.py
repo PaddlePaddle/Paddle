@@ -28,6 +28,7 @@ from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.base.framework import _apply_pass
 from paddle.base.libpaddle.ir import OpResult, fake_op_result
+from paddle.framework import in_pir_mode
 from paddle.optimizer.lr import LRScheduler
 
 from . import logging_utils
@@ -220,7 +221,7 @@ class PartialProgramLayer:
         # self._sync_lr_value_with_scheduler()
 
         c_run_program_fn = None
-        if ir_static._use_new_ir_api():
+        if in_pir_mode():
             c_run_program_fn = _legacy_C_ops.newir_run_program
         else:
             c_run_program_fn = _legacy_C_ops.run_program
