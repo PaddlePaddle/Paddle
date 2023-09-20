@@ -2505,7 +2505,7 @@ class OpTest(unittest.TestCase):
             self.__class__.op_type = self.op_type
 
         if check_prim_pir:
-            with paddle.new_ir_utils.IrGuard():
+            with paddle.pir_utils.IrGuard():
                 prim_checker = PrimForwardChecker(self, place)
                 prim_checker.check()
                 # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
@@ -2527,7 +2527,7 @@ class OpTest(unittest.TestCase):
                 type(place) is paddle.base.libpaddle.CPUPlace
                 or type(place) is paddle.base.libpaddle.CUDAPlace
             ):
-                with paddle.new_ir_utils.IrGuard():
+                with paddle.pir_utils.IrGuard():
                     new_ir_checker = NewIRChecker(self, self.outputs)
                     new_ir_checker.check()
 
@@ -2696,7 +2696,7 @@ class OpTest(unittest.TestCase):
             outs.sort(key=len)
             checker(outs)
             if check_new_ir:
-                with paddle.new_ir_utils.IrGuard():
+                with paddle.pir_utils.IrGuard():
                     outs_p = self._calc_new_ir_output(place)
                     outs_p = [outs_p[out] for out in outs_p]
                     outs_p.sort(key=len)
@@ -2910,7 +2910,7 @@ class OpTest(unittest.TestCase):
             self.__class__.check_prim = True
 
         if check_prim_pir:
-            with paddle.new_ir_utils.IrGuard():
+            with paddle.pir_utils.IrGuard():
                 self._check_grad_helper()
                 prim_grad_checker = PrimGradChecker(
                     self,
@@ -3107,7 +3107,7 @@ class OpTest(unittest.TestCase):
                 type(place) is paddle.base.libpaddle.CPUPlace
                 or type(place) is paddle.base.libpaddle.CUDAPlace
             ):
-                with paddle.new_ir_utils.IrGuard():
+                with paddle.pir_utils.IrGuard():
                     new_ir_grad = self._get_ir_gradient(
                         inputs_to_check,
                         place,
