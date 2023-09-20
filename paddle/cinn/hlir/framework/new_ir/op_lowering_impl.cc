@@ -23,7 +23,7 @@
 #include "paddle/cinn/hlir/framework/new_ir/utils.h"
 #include "paddle/cinn/lang/placeholder.h"
 #include "paddle/cinn/utils/attribute_util.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/phi/core/ddim.h"
 
 PD_DECLARE_bool(cinn_use_cuda_vectorize);
@@ -39,7 +39,7 @@ using framework::OpPatternKind;
 using framework::StrategyFunction;
 
 namespace details {
-ir::Tensor GetTensor(const ::ir::Value& value) {
+ir::Tensor GetTensor(const ::pir::Value& value) {
   auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
   auto in_shape = phi::vectorize<int>(type_info.dims());
   auto dtype = type_info.dtype();
@@ -49,13 +49,11 @@ ir::Tensor GetTensor(const ::ir::Value& value) {
 }
 
 std::vector<ir::Tensor> CollectInputTensor(
-    const ::ir::Operation* op,
+    const ::pir::Operation* op,
     std::vector<ir::Tensor>* func_args,
-    std::unordered_map<::ir::Value, ir::Tensor>* tensor_map) {
+    std::unordered_map<::pir::Value, ir::Tensor>* tensor_map) {
   std::vector<ir::Tensor> tensors;
-  for (auto& operand : op->operands()) {
-    CHECK(operand);
-    auto in_value = operand.source();
+  for (auto in_value : op->operands_source()) {
     VLOG(4) << "input tensor name: " << CompatibleInfo::ValueName(in_value);
     // NOTE(Aurelius84): Need always to create placeholder for input tensor.
     ir::Tensor tensor = details::GetTensor(in_value);
@@ -72,7 +70,7 @@ std::vector<ir::Tensor> CollectInputTensor(
   return tensors;
 }
 
-void CollectOutputInfo(const ::ir::Operation* op,
+void CollectOutputInfo(::pir::Operation* op,
                        std::vector<Type>* out_types,
                        std::vector<std::vector<int>>* out_shapes) {
   auto op_results = op->results();
@@ -88,7 +86,7 @@ void CollectOutputInfo(const ::ir::Operation* op,
   }
 }
 
-NodeAttr CollectAttrs(const ::ir::Operation& op) {
+NodeAttr CollectAttrs(const ::pir::Operation& op) {
   NodeAttr node_attrs;
   VLOG(4) << "op.attributes():" << op.attributes().size();
   auto attrs = utils::ConvertAttributes(op.attributes());
@@ -134,18 +132,18 @@ std::vector<ir::LoweredFunc> OpLowererImpl::Lower(const GroupPtr& group,
   }
 }
 
-bool OpLowererImpl::ElementwiseScheduleDetermineFunction(::ir::Operation* op) {
+bool OpLowererImpl::ElementwiseScheduleDetermineFunction(::pir::Operation* op) {
   return true;
 }
 
-bool OpLowererImpl::ReduceScheduleDetermineFunction(::ir::Operation* op) {
+bool OpLowererImpl::ReduceScheduleDetermineFunction(::pir::Operation* op) {
   // TODO(Aurelius84): Support this.
   // auto& op_pattern_dict = Operator::GetAttrs<OpPatternKind>("OpPattern");
   // return op_pattern_dict[op] == framework::kReduction;
   return true;
 }
 
-bool OpLowererImpl::NonFusibleScheduleDetermineFunction(::ir::Operation* op) {
+bool OpLowererImpl::NonFusibleScheduleDetermineFunction(::pir::Operation* op) {
   return true;
 }
 
@@ -160,7 +158,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
     return LowerCustomCall(group);
   }
   std::vector<ir::Tensor> group_func_arg_tensors;
-  std::unordered_map<::ir::Value, ir::Tensor> tensor_map;
+  std::unordered_map<::pir::Value, ir::Tensor> tensor_map;
   bool do_op_schedule = apply_group_schedule || apply_op_schedule;
   std::vector<ir::Expr> func_bodies = LowerOps(ops,
                                                do_op_schedule,
@@ -191,8 +189,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerCustomCall(
     const GroupPtr& group) {
   auto& ops = group->ops;
   CHECK_EQ(ops.size(), 1);
-  ::ir::Operation* op = ops[0];
-  std::unordered_map<::ir::Value, ir::Tensor> tensor_map;
+  ::pir::Operation* op = ops[0];
+  std::unordered_map<::pir::Value, ir::Tensor> tensor_map;
   std::vector<ir::Tensor> op_func_arg_tensors =
       details::CollectInputTensor(op, nullptr, &tensor_map);
   VLOG(4) << "inputs.size(): " << op_func_arg_tensors.size();
@@ -234,7 +232,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerCustomCall(
 
 std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     const GroupPtr& group,
-    const std::unordered_map<::ir::Value, ir::Tensor>& tensor_map,
+    const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
     bool done_op_schedule,
     ir::IRSchedule* ir_sch,
     std::vector<ir::Tensor>* group_func_arg_tensors) {
@@ -313,11 +311,11 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
 }
 
 std::vector<ir::Expr> OpLowererImpl::LowerOps(
-    const std::vector<::ir::Operation*>& ops,
+    const std::vector<::pir::Operation*>& ops,
     bool apply_op_schedule,
     ScheduleDetermineFunction schedule_determine_func,
     std::vector<ir::Tensor>* group_func_arg_tensors,
-    std::unordered_map<::ir::Value, ir::Tensor>* tensor_map) {
+    std::unordered_map<::pir::Value, ir::Tensor>* tensor_map) {
   auto& strategy = Operator::GetAttrs<StrategyFunction>("CINNStrategy");
   std::vector<Expr> func_bodies;
   for (auto* op : ops) {
@@ -359,8 +357,8 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
 
 std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
     std::shared_ptr<hlir::framework::OpImpl> op_impl,
-    const ::ir::Operation* op,
-    std::unordered_map<::ir::Value, ir::Tensor>* tensor_map,
+    ::pir::Operation* op,
+    std::unordered_map<::pir::Value, ir::Tensor>* tensor_map,
     std::vector<ir::Tensor>* op_func_arg_tensors) {
   VLOG(4) << "Do lower with Compute, op: " << op->name();
   std::vector<common::CINNValue> cinn_inputs;

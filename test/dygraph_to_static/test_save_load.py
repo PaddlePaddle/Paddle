@@ -17,21 +17,19 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test
+from dygraph_to_static_util import ast_only_test, test_and_compare_with_new_ir
 from test_fetch_feed import Linear
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid, nn
-from paddle.fluid import core
+from paddle import base, nn
+from paddle.base import core
 from paddle.nn import BatchNorm
 from paddle.optimizer import Adam
 
 np.random.seed(2020)
 
-place = (
-    fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
-)
+place = base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
 
 
 class PrimeNet(paddle.nn.Layer):
@@ -71,9 +69,9 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
         x_data = np.random.randn(30, 10, 32).astype('float32')
         batch_num = 3
 
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             paddle.jit.enable_to_static(True)
-            x = fluid.dygraph.to_variable(x_data)
+            x = base.dygraph.to_variable(x_data)
             net = Linear(32, 64)
             adam = Adam(learning_rate=0.1, parameters=net.parameters())
 
@@ -92,7 +90,7 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
             static_out, static_loss = net(x)
 
         # load parameters into dygraph
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             dygraph_net = Linear(32, 64)
 
             # Load parameters
@@ -101,7 +99,7 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
             # Switch into eval mode.
             dygraph_net.eval()
 
-            x = fluid.dygraph.to_variable(x_data)
+            x = base.dygraph.to_variable(x_data)
             # predict output
             paddle.jit.enable_to_static(False)
             dygraph_out, dygraph_loss = dygraph_net(x)
@@ -114,8 +112,9 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
         )
 
     @ast_only_test
+    @test_and_compare_with_new_ir(False)
     def test_save_load_prim(self):
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             self.x = paddle.randn([4, 2, 6, 6], dtype="float32")
             self.x.stop_gradient = False
             net = PrimeNet(data_layout="NCHW")
@@ -155,8 +154,9 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
             np.testing.assert_allclose(res.numpy(), new_res.numpy(), rtol=1e-05)
 
     @ast_only_test
+    @test_and_compare_with_new_ir(False)
     def test_save_load_prim_with_hook(self):
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             self.x = paddle.randn([4, 2, 6, 6], dtype="float32")
             self.x.stop_gradient = False
             net = PrimeNet(data_layout="NCHW")

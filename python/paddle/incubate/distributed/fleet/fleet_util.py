@@ -24,9 +24,9 @@ import time
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
+from paddle.base.log_helper import get_logger
 from paddle.distributed.fleet.utils.fs import HDFSClient
-from paddle.fluid.log_helper import get_logger
 
 from . import utils
 
@@ -136,8 +136,8 @@ class FleetUtil:
     def set_zero(
         self,
         var_name,
-        scope=fluid.global_scope(),
-        place=fluid.CPUPlace(),
+        scope=base.global_scope(),
+        place=base.CPUPlace(),
         param_type="int64",
     ):
         """
@@ -145,8 +145,8 @@ class FleetUtil:
 
         Args:
             var_name(str): name of Variable
-            scope(Scope): Scope object, default is fluid.global_scope()
-            place(Place): Place object, default is fluid.CPUPlace()
+            scope(Scope): Scope object, default is base.global_scope()
+            place(Place): Place object, default is base.CPUPlace()
             param_type(str): param data type, default is int64
 
         Examples:
@@ -165,7 +165,7 @@ class FleetUtil:
 
     def print_global_auc(
         self,
-        scope=fluid.global_scope(),
+        scope=base.global_scope(),
         stat_pos="_generated_var_2",
         stat_neg="_generated_var_3",
         print_prefix="",
@@ -174,7 +174,7 @@ class FleetUtil:
         Print global auc of all distributed workers.
 
         Args:
-            scope(Scope): Scope object, default is fluid.global_scope()
+            scope(Scope): Scope object, default is base.global_scope()
             stat_pos(str): name of auc pos bucket Variable
             stat_neg(str): name of auc neg bucket Variable
             print_prefix(str): prefix of print auc
@@ -191,11 +191,11 @@ class FleetUtil:
 
                 >>> # below is part of model
                 >>> emb = my_slot_net(slots, label) # emb can be fc layer of size 1
-                >>> similarity_norm = fluid.layers.sigmoid(paddle.clip(
+                >>> similarity_norm = paddle.nn.functional.sigmoid(paddle.clip(
                 ...     emb, min=-15.0, max=15.0), name="similarity_norm")
-                >>> binary_predict = fluid.layers.concat(input=[
+                >>> binary_predict = paddle.concat(input=[
                 ...     paddle.subtract(
-                ...         fluid.layers.ceil(similarity_norm),
+                ...         paddle.ceil(similarity_norm),
                 ...         similarity_norm),
                 ...     similarity_norm],
                 ...     axis=1)
@@ -210,7 +210,7 @@ class FleetUtil:
 
     def get_global_auc(
         self,
-        scope=fluid.global_scope(),
+        scope=base.global_scope(),
         stat_pos="_generated_var_2",
         stat_neg="_generated_var_3",
     ):
@@ -218,7 +218,7 @@ class FleetUtil:
         Get global auc of all distributed workers.
 
         Args:
-            scope(Scope): Scope object, default is fluid.global_scope()
+            scope(Scope): Scope object, default is base.global_scope()
             stat_pos(str): name of auc pos bucket Variable
             stat_neg(str): name of auc neg bucket Variable
 
@@ -890,8 +890,8 @@ class FleetUtil:
         pull all dense params in trainer of rank 0
 
         Args:
-            scope(Scope): fluid Scope
-            program(Program): fluid Program
+            scope(Scope): base Scope
+            program(Program): base Program
 
         Examples:
             .. code-block:: python
@@ -956,9 +956,9 @@ class FleetUtil:
         save paddle inference model, and upload to hdfs dnn_plugin path
 
         Args:
-            executor(Executor): fluid Executor
-            scope(Scope): fluid Scope
-            program(Program): fluid Program
+            executor(Executor): base Executor
+            scope(Scope): base Scope
+            program(Program): base Program
             feeded_vars(list[Variable]): feed vars
             target_vars(list[variable]): fetch vars
             output_path(str): hdfs/afs output path
@@ -994,7 +994,7 @@ class FleetUtil:
         # pull dense before save
         self.pull_all_dense_params(scope, program)
         if fleet.worker_index() == 0:
-            with fluid.scope_guard(scope):
+            with base.scope_guard(scope):
                 if save_combine:
                     paddle.static.io.save_inference_model(
                         model_name,
@@ -1052,9 +1052,9 @@ class FleetUtil:
         save paddle model, and upload to hdfs dnn_plugin path
 
         Args:
-            executor(Executor): fluid Executor
-            scope(Scope): fluid Scope
-            program(Program): fluid Program
+            executor(Executor): base Executor
+            scope(Scope): base Scope
+            program(Program): base Program
             model_name(str): save model local dir or filename
             output_path(str): hdfs/afs output path
             day(str|int): training day
@@ -1111,7 +1111,7 @@ class FleetUtil:
         self.pull_all_dense_params(scope, program)
         if fleet.worker_index() == 0:
             vars = [program.global_block().var(i) for i in var_names]
-            with fluid.scope_guard(scope):
+            with base.scope_guard(scope):
                 if save_combine:
                     paddle.static.io.save_vars(
                         executor, "./", program, vars=vars, filename=model_name
@@ -1362,7 +1362,7 @@ class FleetUtil:
 
     def get_global_metrics(
         self,
-        scope=fluid.global_scope(),
+        scope=base.global_scope(),
         stat_pos_name="_generated_var_2",
         stat_neg_name="_generated_var_3",
         sqrerr_name="sqrerr",
@@ -1377,7 +1377,7 @@ class FleetUtil:
         actual_ctr, predicted_ctr, copc, mean_predict_qvalue, total_ins_num.
 
         Args:
-            scope(Scope): Scope object, default is fluid.global_scope()
+            scope(Scope): Scope object, default is base.global_scope()
             stat_pos_name(str): name of auc pos bucket Variable
             stat_neg_name(str): name of auc neg bucket Variable
             sqrerr_name(str): name of sqrerr Variable
@@ -1412,11 +1412,11 @@ class FleetUtil:
                 >>> label = paddle.static.data(name="click", shape=[-1, 1],\
                 ...     dtype="int64", lod_level=0)
                 >>> emb = my_slot_net(slots, label) # emb can be fc layer of size 1
-                >>> similarity_norm = fluid.layers.sigmoid(paddle.clip(\
+                >>> similarity_norm = paddle.nn.functional.sigmoid(paddle.clip(\
                 ...     emb, min=-15.0, max=15.0), name="similarity_norm")\
-                >>> binary_predict = fluid.layers.concat(input=[\
+                >>> binary_predict = paddle.concat(input=[\
                 ...     paddle.subtract(\
-                ...         fluid.layers.ceil(similarity_norm), similarity_norm),\
+                ...         paddle.ceil(similarity_norm), similarity_norm),\
                 ...     similarity_norm], axis=1)
                 >>> auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos, \
                 ...     stat_neg] = paddle.static.auc(input=binary_predict,\
@@ -1566,7 +1566,7 @@ class FleetUtil:
 
     def print_global_metrics(
         self,
-        scope=fluid.global_scope(),
+        scope=base.global_scope(),
         stat_pos_name="_generated_var_2",
         stat_neg_name="_generated_var_3",
         sqrerr_name="sqrerr",
@@ -1582,7 +1582,7 @@ class FleetUtil:
         actual_ctr, predicted_ctr, copc, mean_predict_qvalue, total_ins_num.
 
         Args:
-            scope(Scope): Scope object, default is fluid.global_scope()
+            scope(Scope): Scope object, default is base.global_scope()
             stat_pos_name(str): name of auc pos bucket Variable
             stat_neg_name(str): name of auc neg bucket Variable
             sqrerr_name(str): name of sqrerr Variable
@@ -1614,11 +1614,11 @@ class FleetUtil:
                 >>> label = paddle.static.data(name="click", shape=[-1, 1],\
                 ...     dtype="int64", lod_level=0)
                 >>> emb = my_slot_net(slots, label) # emb can be fc layer of size 1
-                >>> similarity_norm = fluid.layers.sigmoid(paddle.clip(\
+                >>> similarity_norm = paddle.nn.functional.sigmoid(paddle.clip(\
                 ...     emb, min=-15.0, max=15.0), name="similarity_norm")\
-                >>> binary_predict = fluid.layers.concat(input=[\
+                >>> binary_predict = paddle.concat(input=[\
                 ...     paddle.subtract(\
-                ...         fluid.layers.ceil(similarity_norm), similarity_norm),\
+                ...         paddle.ceil(similarity_norm), similarity_norm),\
                 ...     similarity_norm], axis=1)
                 >>> auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos, \
                 ...     stat_neg] = paddle.static.auc(input=binary_predict,\

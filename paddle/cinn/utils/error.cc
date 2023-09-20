@@ -24,7 +24,7 @@ std::string ErrorHandler::FormatErrorMessage(
                             ? DetailedErrorMessage()
                             : GeneralErrorMessage();
 
-  os << "[Error info] " << err_msg;
+  os << err_msg;
   return os.str();
 }
 

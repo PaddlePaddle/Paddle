@@ -28,9 +28,7 @@ bool RToPReshardFunction::IsSuitable(const DistTensor& in,
   bool flag = true;
   const auto& in_dist_attr = in.dist_attr();
 
-  const auto& in_dims_mapping = in_dist_attr.dims_mapping();
-
-  flag &= IsDimsMappingReplicated(in_dims_mapping);
+  flag &= in_dist_attr.is_replicated();
   flag &= out_dist_attr.is_partial();
 
   const auto& in_process_mesh = in_dist_attr.process_mesh();
@@ -56,20 +54,8 @@ void RToPReshardFunction::Eval(phi::DeviceContext* dev_ctx,
     RESHARD_FUNCTOR(dev_ctx, Full, in.dtype(), shape, 0, GetMutableTensor(out));
   } else {
     // assign the input value to output
-    if (phi::CPUContext::classof(dev_ctx)) {
-      Assign(static_cast<const CPUContext&>(*dev_ctx),
-             in.value(),
-             GetMutableTensor(out));
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    } else if (phi::GPUContext::classof(dev_ctx)) {
-      Assign(static_cast<const GPUContext&>(*dev_ctx),
-             in.value(),
-             GetMutableTensor(out));
-#endif
-    } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
-          "The assign in reshard only supported on CPU and GPU for now."));
-    }
+    RESHARD_FUNCTOR_WITHOUT_DTYPE(
+        dev_ctx, Assign, in.value(), GetMutableTensor(out));
   }
   SetDistProps(out, in.dims(), out_dist_attr);
 }

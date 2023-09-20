@@ -144,11 +144,20 @@ phi::distributed::DistTensor* SetKernelDistOutput(
     const phi::distributed::TensorDistAttr& dist_attr =
         phi::distributed::TensorDistAttr());
 
+std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
+    const phi::distributed::TensorDistAttr& dist_attr);
+
 std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
     std::vector<Tensor*> out);
 
 std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
     size_t out_size, std::vector<Tensor>* out);
+
+std::vector<phi::distributed::DistTensor*> SetKernelDistInplaceOutput(
+    size_t out_size, std::vector<Tensor>* out);
+
+std::vector<phi::distributed::DistTensor*> SetKernelDistInplaceOptionalOutput(
+    size_t out_size, paddle::optional<std::vector<Tensor>> out);
 
 }  // namespace experimental
 }  // namespace paddle

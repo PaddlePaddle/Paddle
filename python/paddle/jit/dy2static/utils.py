@@ -31,11 +31,11 @@ import astor
 import numpy as np
 
 import paddle
-from paddle import fluid  # noqa: F401
-from paddle.fluid import backward, core, framework, unique_name
-from paddle.fluid.data_feeder import convert_dtype
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+from paddle import base  # noqa: F401
+from paddle.base import backward, core, framework, unique_name
+from paddle.base.data_feeder import convert_dtype
+from paddle.base.layer_helper import LayerHelper
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.utils import gast
 
 from .ast_utils import ast_to_source_code
@@ -326,7 +326,6 @@ def _delete_keywords_from(node):
     full_args_name = full_args[0]
 
     node.keywords = [k for k in node.keywords if k.arg in full_args_name]
-    return
 
 
 def to_static_api(dygraph_class):
@@ -361,7 +360,6 @@ def _add_keywords_to(node, dygraph_api_name):
         for ast_keyword in node.keywords:
             if ast_keyword.arg == "input":
                 ast_keyword.arg = "x"
-    return
 
 
 def to_static_ast(node, class_node):
@@ -376,7 +374,7 @@ def to_static_ast(node, class_node):
             attr='layers',
             ctx=gast.Load(),
             value=gast.Name(
-                ctx=gast.Load(), id='fluid', annotation=None, type_comment=None
+                ctx=gast.Load(), id='base', annotation=None, type_comment=None
             ),
         ),
     )
@@ -609,7 +607,7 @@ def _inject_import_statements():
     import_statements = [
         "import paddle",
         "from paddle import Tensor",
-        "import paddle.fluid as fluid",
+        "import paddle.base as base",
         "import paddle.jit.dy2static as _jst",
         "from typing import *",
         "import numpy as np",
@@ -760,7 +758,6 @@ class IsControlFlowVisitor(gast.NodeVisitor):
     def _visit_If(self, node):
         assert isinstance(node, gast.If)
         self.visit(node.test)
-        return
 
     def _visit_For(self, node):
         assert isinstance(node, gast.For)
@@ -801,7 +798,6 @@ class IsControlFlowVisitor(gast.NodeVisitor):
         for child_node in gast.walk(node):
             if isinstance(child_node, (gast.Continue, gast.Break)):
                 self._visit_break_continue(child_node)
-        return
 
     def _visit_break_continue(self, node):
         assert isinstance(node, (gast.Break, gast.Continue))

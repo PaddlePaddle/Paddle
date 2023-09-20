@@ -15,8 +15,8 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
 from numpy.lib.stride_tricks import as_strided
+from op_test import OpTest
 
 import paddle
 

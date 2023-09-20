@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 
@@ -187,18 +187,18 @@ class TestRowConvLayer(unittest.TestCase):
         self.out = row_conv_foward_Tensor(self.x, self.w)
 
     def check_identity(self):
-        start = fluid.Program()
-        main = fluid.Program()
-        with fluid.unique_name.guard():
-            with fluid.program_guard(main, start):
+        start = base.Program()
+        main = base.Program()
+        with base.unique_name.guard():
+            with base.program_guard(main, start):
                 x = paddle.static.data("x", (-1, -1, self.C), "float32")
                 out = paddle.static.nn.row_conv(
                     x,
                     self.context_length,
                     param_attr=paddle.nn.initializer.Assign(self.w),
                 )
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        place = base.CPUPlace()
+        exe = base.Executor(place)
         exe.run(start)
         (out_np,) = exe.run(main, feed={'x': self.x}, fetch_list=[out])
 

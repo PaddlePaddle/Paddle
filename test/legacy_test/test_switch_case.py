@@ -18,10 +18,10 @@ from functools import partial
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import Program, program_guard
+from paddle import base
+from paddle.base import core
+from paddle.base.backward import append_backward
+from paddle.base.framework import Program, program_guard
 
 paddle.enable_static()
 
@@ -85,11 +85,11 @@ class TestAPISwitchCase(unittest.TestCase):
             )
 
             place = (
-                fluid.CUDAPlace(0)
+                base.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
-                else fluid.CPUPlace()
+                else base.CPUPlace()
             )
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
 
             res = exe.run(
                 main_program, fetch_list=[out_0, out_1, out_2, out_3, out_4]
@@ -172,11 +172,11 @@ class TestAPISwitchCase(unittest.TestCase):
             )
 
             place = (
-                fluid.CUDAPlace(0)
+                base.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
-                else fluid.CPUPlace()
+                else base.CPUPlace()
             )
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
 
             res = exe.run(
                 main_program, fetch_list=[out_0, out_1, out_2, out_3, out_4]
@@ -234,11 +234,11 @@ class TestAPISwitchCase(unittest.TestCase):
             append_backward(out)
 
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
 
         res = exe.run(main_program, fetch_list=[out.name, x.grad_name])
         np.testing.assert_allclose(
@@ -365,11 +365,11 @@ class TestAPISwitchCase(unittest.TestCase):
             )
 
             place = (
-                fluid.CUDAPlace(0)
+                base.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
-                else fluid.CPUPlace()
+                else base.CPUPlace()
             )
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             ret = exe.run(main_program, fetch_list=out)
 
             np.testing.assert_allclose(
@@ -463,11 +463,11 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
             )
 
             place = (
-                fluid.CUDAPlace(0)
+                base.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
-                else fluid.CPUPlace()
+                else base.CPUPlace()
             )
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
 
             res = exe.run(
                 main_program,
@@ -560,11 +560,11 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
             )
 
             place = (
-                fluid.CUDAPlace(0)
+                base.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
-                else fluid.CPUPlace()
+                else base.CPUPlace()
             )
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
 
             res = exe.run(
                 main_program,

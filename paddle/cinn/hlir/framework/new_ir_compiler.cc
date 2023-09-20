@@ -17,13 +17,12 @@
 #include <absl/types/variant.h>
 #include "paddle/cinn/hlir/framework/new_ir/utils.h"
 #include "paddle/cinn/utils/attribute_util.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
-#include "paddle/ir/core/builtin_type.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/pir/core/builtin_type.h"
 
 namespace cinn {
 namespace hlir {
 namespace framework {
-using newir::CompatibleInfo;
 
 // TODO(Aurelius84): Need abstract this logic to implement Proxy for
 // the co-existance with GraphCompiler.
@@ -33,7 +32,7 @@ std::unique_ptr<Program> NewIRCompiler::Build() {
   std::vector<newir::GroupPtr> groups;
   for (auto it = program_.block()->begin(); it != program_.block()->end();
        ++it) {
-    std::vector<::ir::Operation*> ops = {*it};
+    std::vector<::pir::Operation*> ops = {*it};
     groups.push_back(std::make_shared<newir::Group>(ops));
   }
   VLOG(4) << "Groups size: " << groups.size();
@@ -123,15 +122,15 @@ std::vector<std::unique_ptr<Instruction>> NewIRCompiler::BuildInstructions(
 }
 
 std::shared_ptr<Scope> BuildScope(const Target& target,
-                                  const ::ir::Program& program) {
-  std::unordered_set<::ir::Value> visited;
+                                  const ::pir::Program& program) {
+  std::unordered_set<::pir::Value> visited;
   auto scope = std::make_shared<Scope>();
 
-  auto create_var = [&](::ir::Value value) {
+  auto create_var = [&](::pir::Value value) {
     if (visited.count(value) > 0) return;
     visited.emplace(value);
 
-    std::string name = CompatibleInfo::ValueName(value);
+    std::string name = newir::CompatibleInfo::ValueName(value);
     auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
     auto* var = scope->Var<Tensor>(name);
     auto& tensor = absl::get<Tensor>(*var);

@@ -16,11 +16,12 @@ import os
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 from test_attribute_var import UnittestBase
+from utils import static_guard
 
 import paddle
-from paddle.fluid import Program, core, program_guard
+from paddle.base import Program, core, program_guard
 
 
 def pad_wrapper(x, paddings, pad_value):
@@ -115,7 +116,7 @@ create_test_fp16(TestCase3)
 
 class TestPadOpError(unittest.TestCase):
     def test_errors(self):
-        with paddle.fluid.framework._static_guard():
+        with static_guard():
             with program_guard(Program(), Program()):
                 input_data = np.random.random((2, 2)).astype("float32")
 
@@ -136,7 +137,7 @@ class TestPaddingValueTensor(UnittestBase):
         self.save_path = os.path.join(self.temp_dir.name, self.path_prefix())
 
     def test_static(self):
-        with paddle.fluid.framework._static_guard():
+        with static_guard():
             main_prog = Program()
             starup_prog = Program()
             with program_guard(main_prog, starup_prog):
@@ -196,7 +197,7 @@ class TestPaddingValueTensor2(TestPaddingValueTensor):
 
 class TestPaddingValueTensor3(unittest.TestCase):
     def test_static(self):
-        with paddle.fluid.framework._static_guard():
+        with static_guard():
             np_x = np.random.random((16, 16)).astype('float32')
             main_prog = Program()
             starup_prog = Program()
