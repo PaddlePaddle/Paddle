@@ -1031,6 +1031,7 @@ class Engine:
                                 use_program_cache=self._strategy.use_cache,
                                 return_numpy=self._strategy.return_numpy,
                             )
+
                             lr = auto_utils.get_lr(self.optimizer)
                             logs = self._prepare_logger(
                                 outs,
