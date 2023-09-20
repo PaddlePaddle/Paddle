@@ -457,8 +457,6 @@ def convert_shape_to_list(shape):
     else:
         if in_dygraph_mode():
             shape = shape.astype(int).tolist()
-        else:
-            shape = [shape]
     return shape
 
 
