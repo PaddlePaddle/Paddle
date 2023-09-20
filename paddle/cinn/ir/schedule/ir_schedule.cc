@@ -767,7 +767,7 @@ struct CacheWriteRewriter : public ir::IRMutator<> {
     rewriter(&info->cache_block);
     rewriter.mutate_cache_block = false;
     rewriter(&new_root);
-    auto find_tensor = ir::CollectIRNodesWithoutTensor(
+    auto find_tensor = ir::ir_utils::CollectIRNodesWithoutTensor(
         new_root,
         [&](const Expr* x) {
           return x->As<Store>() &&
@@ -775,7 +775,7 @@ struct CacheWriteRewriter : public ir::IRMutator<> {
         },
         true);
     if (!find_tensor.empty()) {
-      auto find_store = ir::CollectIRNodesWithoutTensor(
+      auto find_store = ir::ir_utils::CollectIRNodesWithoutTensor(
           (*find_tensor.begin()), [&](const Expr* x) {
             return x->As<Load>() &&
                    (x->As<Load>()->tensor == Expr(info->write_tensor));
@@ -864,7 +864,7 @@ struct ChangeBodyToBlock : public ir::IRMutator<> {
 
 DeviceAPI ScheduleImpl::GetDeviceAPI() const {
   auto exprs = this->GetModule().GetExprs();
-  auto find_for_nodes = ir::CollectIRNodesWithoutTensor(
+  auto find_for_nodes = ir::ir_utils::CollectIRNodesWithoutTensor(
       exprs.front(), [&](const Expr* x) { return x->As<ir::For>(); }, true);
   CHECK(!find_for_nodes.empty());
   return (*find_for_nodes.begin()).As<ir::For>()->device_api;
@@ -925,7 +925,7 @@ Expr ScheduleImpl::CacheWrite(const Expr& block,
           ->schedule_block.As<ScheduleBlock>()
           ->body);
 
-  auto find_cache_block = ir::CollectIRNodesWithoutTensor(
+  auto find_cache_block = ir::ir_utils::CollectIRNodesWithoutTensor(
       root,
       [&](const Expr* x) {
         return x->As<ir::ScheduleBlockRealize>() &&
@@ -937,9 +937,10 @@ Expr ScheduleImpl::CacheWrite(const Expr& block,
   CHECK(info.write_tensor->buffer.defined());
 
   // Replace buffer
-  auto all_tensors = ir::CollectIRNodesWithoutTensor(root, [&](const Expr* x) {
-    return x->as_tensor() && x->as_tensor()->buffer.defined();
-  });
+  auto all_tensors =
+      ir::ir_utils::CollectIRNodesWithoutTensor(root, [&](const Expr* x) {
+        return x->as_tensor() && x->as_tensor()->buffer.defined();
+      });
 
   for (auto i : all_tensors) {
     if (i.as_tensor()->name != info.write_tensor->name &&
@@ -1119,7 +1120,7 @@ Expr ScheduleImpl::Reorder(const Expr& block,
 Expr ScheduleImpl::GetRootBlock(const Expr& expr) const {
   auto exprs = this->GetModule().GetExprs();
   for (auto& it_expr : exprs) {
-    auto find_expr = ir::CollectIRNodesWithoutTensor(
+    auto find_expr = ir::ir_utils::CollectIRNodesWithoutTensor(
         it_expr,
         [&](const Expr* x) {
           return x->node_type() == expr.node_type() && *x == expr;
@@ -1198,20 +1199,21 @@ struct LoopReconstructor : public ir::IRMutator<> {
     // Replace the copied Tensor object with the original Tensor object,
     // to ensure that the same Tensor in a AST is the same object.
     std::unordered_map<std::string, ir::Expr> tensors_map;
-    ir::CollectIRNodesWithoutTensor(loop_, [&tensors_map](const Expr* x) {
-      if (x->as_tensor()) {
-        tensors_map.insert({x->as_tensor()->name, *x});
-        return true;
-      }
-      return false;
-    });
-    auto find_store = ir::CollectIRNodesWithoutTensor(
+    ir::ir_utils::CollectIRNodesWithoutTensor(
+        loop_, [&tensors_map](const Expr* x) {
+          if (x->as_tensor()) {
+            tensors_map.insert({x->as_tensor()->name, *x});
+            return true;
+          }
+          return false;
+        });
+    auto find_store = ir::ir_utils::CollectIRNodesWithoutTensor(
         new_loop_, [](const Expr* x) { return x->As<ir::Store>(); });
     for (auto store : find_store) {
       store.As<ir::Store>()->tensor =
           tensors_map.at(store.As<ir::Store>()->tensor.as_tensor()->name);
     }
-    auto find_load = ir::CollectIRNodesWithoutTensor(
+    auto find_load = ir::ir_utils::CollectIRNodesWithoutTensor(
         new_loop_, [](const Expr* x) { return x->As<ir::Load>(); });
     for (auto load : find_load) {
       load.As<ir::Load>()->tensor =
@@ -1275,7 +1277,7 @@ void ScheduleImpl::SetBuffer(Expr& block,
                              const std::string& memory_type,
                              bool fixed) {
   CHECK(block.As<ir::ScheduleBlockRealize>());
-  auto find_tensor = ir::CollectIRNodesWithoutTensor(
+  auto find_tensor = ir::ir_utils::CollectIRNodesWithoutTensor(
       block, [&](const Expr* x) { return x->As<ir::Store>(); }, true);
   CHECK_EQ(find_tensor.size(), 1U)
       << "One block should only have one Store node!(except for root block)";
@@ -1286,7 +1288,7 @@ void ScheduleImpl::SetBuffer(Expr& block,
   auto exprs = this->GetModule().GetExprs();
   for (auto& it_expr : exprs) {
     auto find_tensor =
-        ir::CollectIRNodesWithoutTensor(it_expr, [&](const Expr* x) {
+        ir::ir_utils::CollectIRNodesWithoutTensor(it_expr, [&](const Expr* x) {
           return x->as_tensor() &&
                  (x->as_tensor()->name == tensor.as_tensor_ref()->name ||
                   x->as_tensor()->name ==
@@ -1328,7 +1330,7 @@ void ScheduleImpl::MergeExprs() {
                              ->body);
   VLOG(3) << "Before merging, exprs[0] is : " << exprs[0];
   for (int i = 1; i < exprs.size(); ++i) {
-    auto root_block = ir::CollectIRNodesWithoutTensor(
+    auto root_block = ir::ir_utils::CollectIRNodesWithoutTensor(
         exprs[i],
         [&](const Expr* x) {
           return x->As<ir::ScheduleBlockRealize>() &&
@@ -1437,7 +1439,7 @@ void ScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
   auto body = block_loops.at(loops.size() - 1).As<ir::For>()->body;
   // collect if
   auto if_checker = [](const Expr* x) { return x->As<ir::IfThenElse>(); };
-  auto if_set = ir::CollectIRNodesWithoutTensor(body, if_checker);
+  auto if_set = ir::ir_utils::CollectIRNodesWithoutTensor(body, if_checker);
   for (auto if_expr : if_set) {
     auto checker = [block_name](const Expr* x) {
       return x->As<ir::ScheduleBlockRealize>() &&
@@ -1445,7 +1447,8 @@ void ScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
                      ->schedule_block.As<ScheduleBlock>()
                      ->name == block_name;
     };
-    if (ir::CollectIRNodesWithoutTensor(if_expr, checker, true).size() > 0) {
+    if (ir::ir_utils::CollectIRNodesWithoutTensor(if_expr, checker, true)
+            .size() > 0) {
       result =
           IfThenElse::Make(if_expr.As<ir::IfThenElse>()->condition, result);
       break;
@@ -1582,7 +1585,7 @@ bool ComputeInliner::BodyPatternAllowInline() {
     return false;
   }
   CHECK(inlined_store_.As<Store>());
-  auto find_vars = ir::CollectIRNodesWithoutTensor(
+  auto find_vars = ir::ir_utils::CollectIRNodesWithoutTensor(
       inlined_store_, [&](const Expr* x) { return x->as_var(); });
   std::set<Var, CompVar> vars_set;
   for (auto& i : find_vars) vars_set.insert(i.as_var_ref());
@@ -1650,7 +1653,7 @@ bool ReverseComputeInliner::BodyPatternAllowInline() {
   CHECK(inlined_store_.As<Store>());
   CHECK(inlined_load_.As<Load>());
   CHECK(target_store_.As<Store>());
-  auto find_vars = ir::CollectIRNodesWithoutTensor(
+  auto find_vars = ir::ir_utils::CollectIRNodesWithoutTensor(
       inlined_store_, [&](const Expr* x) { return x->as_var(); });
   std::set<Var, CompVar> vars_set;
   for (auto& i : find_vars) vars_set.insert(i.as_var_ref());
@@ -2036,7 +2039,7 @@ void ScheduleImpl::FlattenLoops(const std::vector<Expr>& loops,
       }
     }
 
-    auto exprs = ir::CollectIRNodesInOrder(
+    auto exprs = ir::ir_utils::CollectIRNodesInOrder(
         schedule_block->body,
         [&](const Expr* x) { return x->As<ir::Store>() || x->As<ir::Load>(); });
     // reverse exprs from last to first.
@@ -2185,7 +2188,7 @@ void ScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
   std::set<std::string> used_target_loop_vars;
   for (auto& iter_val : new_iter_values) {
     auto find_partial_loop =
-        ir::CollectIRNodesWithoutTensor(iter_val, [&](const Expr* x) {
+        ir::ir_utils::CollectIRNodesWithoutTensor(iter_val, [&](const Expr* x) {
           if (x->as_var()) used_target_loop_vars.insert(x->as_var_ref()->name);
           return x->as_var();
         });
@@ -2194,7 +2197,7 @@ void ScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
   std::vector<Expr> used_target_loops;
   auto expr_copy = optim::IRCopy(expr);
   for (auto& var : used_target_loop_vars) {
-    auto find_loop_var = ir::CollectIRNodesWithoutTensor(
+    auto find_loop_var = ir::ir_utils::CollectIRNodesWithoutTensor(
         expr_copy,
         [&](const Expr* x) {
           return x->As<ir::For>() && x->As<ir::For>()->loop_var->name == var &&
@@ -2222,7 +2225,7 @@ void ScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
   } else {
     CHECK(old_iter_values[changed_loop_num].as_var());
     auto old_var = old_iter_values[changed_loop_num].as_var_ref();
-    auto find_partial_loop = ir::CollectIRNodesWithoutTensor(
+    auto find_partial_loop = ir::ir_utils::CollectIRNodesWithoutTensor(
         expr,
         [&](const Expr* x) {
           return x->As<ir::For>() &&
@@ -2232,7 +2235,7 @@ void ScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
         true);
     CHECK_EQ(find_partial_loop.size(), 1U);
     new_loop = optim::IRCopy(*find_partial_loop.begin());
-    auto find_schedule_block = ir::CollectIRNodesWithoutTensor(
+    auto find_schedule_block = ir::ir_utils::CollectIRNodesWithoutTensor(
         new_loop,
         [&](const Expr* x) { return x->As<ir::ScheduleBlockRealize>(); },
         true);

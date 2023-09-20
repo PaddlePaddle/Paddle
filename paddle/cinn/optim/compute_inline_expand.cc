@@ -225,7 +225,7 @@ void ComputeInlineExpand(Expr *expr,
                          poly::StageMap stages,
                          std::map<std::string, ir::Tensor> *all_tensor_map) {
   // the inline tensors contained in the expression.
-  auto inline_tensors = ir::CollectIRNodes(*expr, [&](const Expr *x) {
+  auto inline_tensors = ir::ir_utils::CollectIRNodes(*expr, [&](const Expr *x) {
     return x->as_tensor() && stages[x->as_tensor()]->inlined();
   });
 
@@ -240,9 +240,10 @@ void ComputeInlineExpand(Expr *expr,
       TensorInlineExpandMutator(tensor->name, all_tensor_map, stages)(expr);
     }
 
-    inline_tensors = ir::CollectLoadTensors(*expr, [&](const Expr *x) {
-      return x->as_tensor() && stages[x->as_tensor()]->inlined();
-    });
+    inline_tensors =
+        ir::ir_utils::CollectLoadTensors(*expr, [&](const Expr *x) {
+          return x->as_tensor() && stages[x->as_tensor()]->inlined();
+        });
   }
 }
 

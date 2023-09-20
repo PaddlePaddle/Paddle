@@ -19,6 +19,7 @@
 
 namespace cinn {
 namespace ir {
+namespace ir_utils {
 
 TEST(CollectIRNodes, basic0) {
   Expr C = Expr(1) + 2;
@@ -57,6 +58,6 @@ TEST(CollectIRNodes, basic) {
       CollectIRNodes(fn_body, [](const Expr* x) { return x->as_tensor(); });
   auto exprs = CollectIRNodes(fn_body, [](const Expr* x) { return x; });
 }
-
+}  // namespace ir_utils
 }  // namespace ir
 }  // namespace cinn

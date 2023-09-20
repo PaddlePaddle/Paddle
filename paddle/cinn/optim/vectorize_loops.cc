@@ -129,7 +129,8 @@ class TensorVectorizeTeller : public ir::IRMutator<const Expr *> {
 
     // the iter val must appear in the last index
     if (indices.empty() ||
-        ir::CollectIRNodes(indices.back(), find_matched_var_fn).empty()) {
+        ir::ir_utils::CollectIRNodes(indices.back(), find_matched_var_fn)
+            .empty()) {
       VLOG(5) << "Loop var:" << iter_var_->name
               << " is not used in the last index";
       return false;
@@ -137,7 +138,8 @@ class TensorVectorizeTeller : public ir::IRMutator<const Expr *> {
 
     // the iter val can't appear in mulitple indices
     for (int i = 0; i < indices.size() - 1; ++i) {
-      auto repeat_found = ir::CollectIRNodes(indices[i], find_matched_var_fn);
+      auto repeat_found =
+          ir::ir_utils::CollectIRNodes(indices[i], find_matched_var_fn);
       if (!repeat_found.empty()) {
         VLOG(5) << "Loop var:" << iter_var_->name
                 << " is used at more than last index, current:" << i;
@@ -214,7 +216,7 @@ class CudaVectorizer : public IRMutator<Expr *> {
   }
 
   void Visit(Expr *expr) {
-    write_teller_ = ir::CollectTensorNeedsWrite(expr);
+    write_teller_ = ir::ir_utils::CollectTensorNeedsWrite(expr);
     vectorized_teller_.Collect(expr);
     IRMutator<Expr *>::Visit(expr, expr);
   }
