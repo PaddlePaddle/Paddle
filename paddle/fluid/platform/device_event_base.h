@@ -65,7 +65,7 @@ class DeviceEvent {
                           MaxDeviceTypes,
                           type_id_));
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
-    // TODO(Aurelius84): only support CPU/CUDA.
+    // TODO(Aurelius84): only support CPU/CUDA/XPU.
     PADDLE_ENFORCE_LT(type_id_,
                       4,
                       platform::errors::Unavailable(
