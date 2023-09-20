@@ -1102,6 +1102,10 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   }
 #endif
 
+  if (config_.shape_range_info_collected()) {
+    HookCollectShapeRangeInfo();
+  }
+
   // Run the inference program
   // if share variables, we need not create variables
   executor_->Run();
@@ -1165,6 +1169,10 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
             << inference::tensorrt::TensorRTEngine::predictor_id_per_thread;
   }
 #endif
+
+  if (config_.shape_range_info_collected()) {
+    HookCollectShapeRangeInfo();
+  }
 
   // Run the inference program
   // if share variables, we need not create variables
