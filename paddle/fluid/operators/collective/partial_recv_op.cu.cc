@@ -95,7 +95,7 @@ class PartialRecvOpCUDAKernel : public framework::OpKernel<T> {
           phi::distributed::CommContextManager::GetInstance();
 
       if (FLAGS_dynamic_static_unified_comm) {
-        // Use New Communication Libaray
+        // Use New Communication Library
         PADDLE_ENFORCE_EQ(
             comm_context_manager.Has(std::to_string(rid)),
             true,
