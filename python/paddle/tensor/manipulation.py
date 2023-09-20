@@ -4580,59 +4580,9 @@ def masked_fill(x, mask, value, name=None):
     if np.isscalar(value):
         value = paddle.full([1], value, x.dtype)
 
-    if in_dynamic_mode():
-        out = paddle.where(mask, value, x)
-        return out
-    else:
-        check_variable_and_dtype(mask, 'mask', ['bool'], 'masked_fill')
-        check_variable_and_dtype(
-            value,
-            'value',
-            ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64'],
-            'masked_fill',
-        )
-        check_variable_and_dtype(
-            x,
-            'x',
-            ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64'],
-            'masked_fill',
-        )
-        helper = LayerHelper("masked_fill", **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-        mask_shape = list(mask.shape)
-        value_shape = list(value.shape)
-        x_shape = list(x.shape)
-
-        if value_shape == x_shape and mask_shape == value_shape:
-            broadcast_mask = mask
-            broadcast_value = value
-            broadcast_x = x
-        else:
-            zeros_like_value = paddle.zeros_like(value)
-            zeros_like_x = paddle.zeros_like(x)
-            zeros_like_mask = paddle.zeros_like(mask)
-            zeros_like_mask = paddle.cast(zeros_like_mask, value.dtype)
-            cast_cond = paddle.cast(mask, x.dtype)
-
-            broadcast_zeros = paddle.add(zeros_like_value, zeros_like_x)
-            broadcast_zeros = paddle.add(broadcast_zeros, zeros_like_mask)
-            broadcast_value = paddle.add(value, broadcast_zeros)
-            broadcast_x = paddle.add(x, broadcast_zeros)
-            broadcast_mask = paddle.add(cast_cond, broadcast_zeros)
-            broadcast_mask = paddle.cast(broadcast_mask, 'bool')
-
-        helper.append_op(
-            type='where',
-            inputs={
-                'Condition': broadcast_mask,
-                'X': broadcast_value,
-                'Y': broadcast_x,
-            },
-            outputs={'Out': [out]},
-        )
-
-        return out
+    mask = paddle.bitwise_not(mask)
+    out = paddle.where(mask, x, value)
+    return out
 
 
 @inplace_apis_in_dygraph_only
@@ -4653,11 +4603,37 @@ def masked_fill_(x, mask, value, name=None):
                     [2., 1., 1.],
                     [2., 1., 1.]])
     """
-    if in_dynamic_mode():
-        if np.isscalar(value):
-            value = paddle.full([1], value, x.dtype)
-        out = paddle.where(mask, value, x)
-        return out
+    if np.isscalar(value):
+        value = paddle.full([1], value, x.dtype)
+
+    mask = paddle.bitwise_not(mask)
+    out = paddle.where_(mask, x, value)
+    return out
+
+    # mask_shape = list(mask.shape)
+    # value_shape = list(value.shape)
+    # x_shape = list(x.shape)
+
+    # if value_shape == x_shape and mask_shape == value_shape:
+    #     broadcast_mask = mask
+    #     broadcast_value = value
+    #     broadcast_x = x
+    # else:
+    #     zeros_like_value = paddle.zeros_like(value)
+    #     zeros_like_x = paddle.zeros_like(x)
+    #     zeros_like_mask = paddle.zeros_like(mask)
+    #     zeros_like_mask = paddle.cast(zeros_like_mask, value.dtype)
+    #     cast_mask = paddle.cast(mask, x.dtype)
+
+    #     broadcast_zeros = paddle.add(zeros_like_value, zeros_like_x)
+    #     broadcast_zeros = paddle.add(broadcast_zeros, zeros_like_mask)
+    #     broadcast_value = paddle.add(value, broadcast_zeros)
+    #     broadcast_x = x.add_(x, broadcast_zeros)
+    #     broadcast_mask = paddle.add(cast_mask, broadcast_zeros)
+    #     broadcast_mask = paddle.cast(broadcast_mask, 'bool')
+
+    # if in_dynamic_mode():
+    #     return _C_ops.where_(broadcast_mask, broadcast_x, broadcast_value)
 
 
 def non_negative_axis(arr, axis):

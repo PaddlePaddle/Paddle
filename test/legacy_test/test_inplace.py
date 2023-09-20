@@ -261,9 +261,29 @@ class TestDygraphInplaceMaskedFill(TestDygraphInplace):
     def inplace_api_processing(self, var):
         return paddle.masked_fill_(var, self.mask, self.value)
 
-    def init_data(self, var):
+    def init_data(self):
+        self.dtype = "float32"
+        self.input_var_numpy = np.random.uniform(-5, 5, [30, 3])
         self.value = np.random.uniform(-10, 10)
-        self.mask = np.random.randint(2, var.shape).astype('bool')
+        self.value = paddle.to_tensor(self.value, dtype=self.dtype)
+        self.mask = np.random.randint(0, 2, [30, 3]).astype('bool')
+        self.mask = paddle.to_tensor(self.mask, dtype='bool')
+
+
+class TestDygraphInplaceMaskedFill2(TestDygraphInplace):
+    def non_inplace_api_processing(self, var):
+        return paddle.masked_fill(var, self.mask, self.value)
+
+    def inplace_api_processing(self, var):
+        return paddle.masked_fill_(var, self.mask, self.value)
+
+    def init_data(self):
+        self.dtype = "float32"
+        self.input_var_numpy = np.random.uniform(-5, 5, [30, 3])
+        self.value = np.random.uniform(-10, 10)
+        self.value = paddle.to_tensor(self.value, dtype=self.dtype)
+        self.mask = np.random.randint(0, 2, [30, 1]).astype('bool')
+        self.mask = paddle.to_tensor(self.mask, dtype='bool')
 
 
 class TestDygraphInplaceWithContinuous(TestDygraphInplace):
