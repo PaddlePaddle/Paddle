@@ -34,7 +34,9 @@ std::vector<std::vector<pir::OpResult>> AddNOp::Vjp(
   AddNOp op_obj = op->dyn_cast<AddNOp>();
 
   VLOG(6) << "Prepare inputs of add_n_grad";
-
+  PADDLE_ENFORCE(
+      op_obj.inputs() != nullptr,
+      paddle::platform::errors::Fatal("addn op's inputs can't be null"));
   pir::CombineOp combine_op_obj = op_obj.inputs()
                                       .dyn_cast<pir::OpResult>()
                                       .owner()
