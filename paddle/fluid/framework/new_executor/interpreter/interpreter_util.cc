@@ -1271,14 +1271,21 @@ void PrintValuesAndVariables(
           ret_value_str +=
               (std::string(var_name.length(), ' ') + "[" + ss.str() + "]");
           ss.str("");
-          ss << out_variable;
-          ret_variable_str += (var_name + "[" + ss.str() + "]");
-          if (out_value != op->results().back()) {
-            ret_value_str += ", ";
-            ret_variable_str += ", ";
+          if (out_variable) {
+            ss << out_variable;
+            ret_variable_str += (var_name + "[" + ss.str() + "]");
+          } else {
+            ret_variable_str += (var_name + "[NULL]");
           }
+        } else {
+          ret_value_str += "NULL";
         }
+        ret_value_str += ", ";
+        ret_variable_str += ", ";
       }
+      ret_value_str = ret_value_str.substr(0, ret_value_str.length() - 2);
+      ret_variable_str =
+          ret_variable_str.substr(0, ret_variable_str.length() - 2);
     }
     ret_value_str += ") = ";
     ret_variable_str += ") = ";
@@ -1311,14 +1318,21 @@ void PrintValuesAndVariables(
           ret_value_str +=
               (std::string(var_name.length(), ' ') + "[" + ss.str() + "]");
           ss.str("");
-          ss << in_variable;
-          ret_variable_str += (var_name + "[" + ss.str() + "]");
-          if (input != op->operands().back()) {
-            ret_value_str += ", ";
-            ret_variable_str += ", ";
+          if (in_variable) {
+            ss << in_variable;
+            ret_variable_str += (var_name + "[" + ss.str() + "]");
+          } else {
+            ret_variable_str += (var_name + "[NULL]");
           }
+        } else {
+          ret_value_str += "NULL";
         }
+        ret_value_str += ", ";
+        ret_variable_str += ", ";
       }
+      ret_value_str = ret_value_str.substr(0, ret_value_str.length() - 2);
+      ret_variable_str =
+          ret_variable_str.substr(0, ret_variable_str.length() - 2);
     }
     ret_value_str += ")";
     ret_variable_str += ")";
