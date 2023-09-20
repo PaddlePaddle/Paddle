@@ -1462,15 +1462,6 @@ class TestDygraphInplaceIndexFill(TestDygraphInplace):
     def non_inplace_api_processing(self, var):
         return paddle.index_fill(var, self.index, self.axis, self.value)
 
-    def test_backward_error(self):
-        pass
-
-    def test_forward_version(self):
-        pass
-
-    def test_leaf_inplace_var_error(self):
-        pass
-
 
 if __name__ == '__main__':
     unittest.main()

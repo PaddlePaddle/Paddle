@@ -123,3 +123,12 @@ class TestIndexFillAPI1(TestIndexFillAPIBase):
         self.index_type = 'int32'
         self.x_shape = (10, 15, 10)
         self.axis = 1
+
+
+class TestIndexFillAPI2(TestIndexFillAPIBase):
+    def modify_setting(self):
+        self.dtype_np = 'bool'
+        self.index_type = 'int32'
+        self.x_shape = (10, 15, 10)
+        self.axis = 1
+        self.value = True

@@ -5162,6 +5162,44 @@ for name, func in __METHODS.items():
     setattr(core.eager.Tensor, name, func)
 
 
+def _index_fill_impl(x, index, axis, value, inplace):
+    if not isinstance(index, Variable):
+        raise ValueError("index must be Tensor")
+
+    if not isinstance(value, Variable):
+        value = paddle.to_tensor(value, dtype=x.dtype)
+    else:
+        if len(value.shape) > 0:
+            raise ValueError("value must be scalar or 0-D tensor")
+
+
+    x_dim = len(x.shape)
+    if axis < 0: axis = axis + x_dim
+
+    if (
+            not (isinstance(axis, int))
+            or (axis > x_dim - 1)
+            or axis < -x_dim
+    ):
+        raise ValueError(
+            "The start_axis should be a int, and in range [-rank(x), rank(x))"
+        )
+
+    perm = [i for i in range(len(x.shape))]
+    perm[0] = axis
+    perm[axis] = 0
+
+    if inplace:
+        paddle.transpose(x, perm)
+        paddle.index_put_(x, (index,), value)
+        return x
+    else:
+        out = paddle.clone(x)
+        out = paddle.transpose(out, perm)
+        out = paddle.index_put(out, (index,), value)
+        return paddle.transpose(out, perm)
+
+
 def index_fill(x, index, axis, value, name=None):
     """
     Outplace version of ``index_fill_`` API, the output Tensor will be inplaced with input ``x``.
@@ -5188,20 +5226,7 @@ def index_fill(x, index, axis, value, name=None):
             #         [ 4,  5,  6],
             #         [-1, -1, -1]])
     """
-    if not isinstance(index, (paddle.Tensor, Variable)):
-        raise ValueError("index must be Tensor")
-
-    perm = [i for i in range(len(x.shape))]
-    perm[0] = axis
-    perm[axis] = 0
-
-    out = paddle.clone(x)
-    out = paddle.transpose(out, perm)
-    if in_dynamic_mode():
-        out[index] = value
-    else:
-        out = paddle.static.setitem(out, index, value)
-    return paddle.transpose(out, perm)
+    return _index_fill_impl(x, index, axis, value, False)
 
 
 @inplace_apis_in_dygraph_only
@@ -5241,13 +5266,4 @@ def index_fill_(x, index, axis, value, name=None):
             #         [ 4,  5,  6],
             #         [-1, -1, -1]])
     """
-    if not isinstance(index, (paddle.Tensor, Variable)):
-        raise ValueError("index must be Tensor")
-
-    perm = [i for i in range(len(x.shape))]
-    perm[0] = axis
-    perm[axis] = 0
-
-    out = paddle.transpose(x, perm)
-    out[index] = value
-    return x
+    return _index_fill_impl(x, index, axis, value, True)
