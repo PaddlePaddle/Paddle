@@ -582,7 +582,6 @@ class MultiClassNMS2Op : public MultiClassNMSOp {
     MultiClassNMSOp::InferShape(ctx);
 
     auto score_dims = ctx->GetInputDim("Scores");
-    auto score_size = score_dims.size();
 
     ctx->SetOutputDim("Index", {-1, 1});
     if (!ctx->IsRuntime()) {
