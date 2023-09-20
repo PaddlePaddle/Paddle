@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import logging
-
-### Dygraph DataLoader configs ###
 import multiprocessing
 import queue
 import sys
