@@ -61,7 +61,11 @@ class TestSplitOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], ['out0', 'out1', 'out2'], check_prim=True, check_new_ir=True
+            ['X'],
+            ['out0', 'out1', 'out2'],
+            check_prim=True,
+            check_prim_pir=True,
+            check_new_ir=True,
         )
 
 
@@ -117,7 +121,11 @@ class TestSplitWithNumOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], ['out0', 'out1', 'out2'], check_prim=True, check_new_ir=True
+            ['X'],
+            ['out0', 'out1', 'out2'],
+            check_prim=True,
+            check_prim_pir=True,
+            check_new_ir=True,
         )
 
 
@@ -243,7 +251,11 @@ class TestSplitOp_unk_section(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], ['out0', 'out1', 'out2'], check_prim=True, check_new_ir=True
+            ['X'],
+            ['out0', 'out1', 'out2'],
+            check_prim=True,
+            check_prim_pir=True,
+            check_new_ir=True,
         )
 
 
@@ -291,7 +303,12 @@ def create_test_bf16(parent):
         def test_check_grad(self):
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, ['X'], 'out2', check_prim=True, check_new_ir=True
+                place,
+                ['X'],
+                'out2',
+                check_prim=True,
+                check_prim_pir=True,
+                check_new_ir=True,
             )
 
     cls_name = "{}_{}".format(parent.__name__, "BF16Op")
