@@ -130,10 +130,10 @@ class TestExpandV2OpRank1_tensor_attr(OpTest):
         self.infer_expand_shape = [-1]
 
     def test_check_output(self):
-        self.check_output(check_cinn=True, check_new_ir=False)
+        self.check_output(check_cinn=True, check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_cinn=True, check_new_ir=False)
+        self.check_grad(['X'], 'Out', check_cinn=True, check_new_ir=True)
 
 
 class TestExpandV2OpRank2_Corner_tensor_attr(TestExpandV2OpRank1_tensor_attr):
@@ -167,10 +167,10 @@ class TestExpandV2OpRank1_tensor(OpTest):
         self.expand_shape = [2, 100]
 
     def test_check_output(self):
-        self.check_output(check_cinn=True, check_new_ir=False)
+        self.check_output(check_cinn=True, check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_cinn=True, check_new_ir=False)
+        self.check_grad(['X'], 'Out', check_cinn=True, check_new_ir=True)
 
 
 # Situation 4: input x is Integer

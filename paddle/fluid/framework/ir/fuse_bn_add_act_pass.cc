@@ -32,7 +32,7 @@ void FuseBatchNormAddActPass::ApplyImpl(ir::Graph *graph) const {
   graph = FuseBatchNormAddAct(graph, act_types);
   // backward
   std::unordered_set<std::string> act_grad_types = {"relu_grad"};
-  graph = FuseBatchNormAddActGrad(graph, act_grad_types);
+  graph = FuseBatchNormAddActGrad(graph, act_grad_types);  // NOLINT
 #endif
 #endif
 }

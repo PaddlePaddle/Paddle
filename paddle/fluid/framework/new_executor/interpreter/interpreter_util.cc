@@ -1262,24 +1262,30 @@ void PrintValuesAndVariables(
     std::string ret_variable_str = "Variable: (";
     if (!op->results().empty()) {
       for (auto& out_value : op->results()) {
-        PADDLE_ENFORCE(
-            (*value_2_var_name).count(out_value) > 0,
-            platform::errors::PreconditionNotMet(
-                "var(%s) should exist in var_name_2_id_", out_value.impl()));
-        auto& var_name = (*value_2_var_name).at(out_value);
-        const paddle::framework::Variable* out_variable =
-            GetVariableByName(var_name, *variable_2_var_name);
-        ss.str("");
-        ss << out_value.impl();
-        ret_value_str +=
-            (std::string(var_name.length(), ' ') + "[" + ss.str() + "], ");
-        ss.str("");
-        ss << out_variable;
-        ret_variable_str += (var_name + "[" + ss.str() + "], ");
+        if ((*value_2_var_name).count(out_value)) {
+          auto& var_name = (*value_2_var_name).at(out_value);
+          const paddle::framework::Variable* out_variable =
+              GetVariableByName(var_name, *variable_2_var_name);
+          ss.str("");
+          ss << out_value.impl();
+          ret_value_str +=
+              (std::string(var_name.length(), ' ') + "[" + ss.str() + "]");
+          ss.str("");
+          if (out_variable) {
+            ss << out_variable;
+            ret_variable_str += (var_name + "[" + ss.str() + "]");
+          } else {
+            ret_variable_str += (var_name + "[NULL]");
+          }
+        } else {
+          ret_value_str += "NULL";
+        }
+        ret_value_str += ", ";
+        ret_variable_str += ", ";
       }
-      ret_value_str = ret_value_str.substr(0, ret_value_str.size() - 2);
+      ret_value_str = ret_value_str.substr(0, ret_value_str.length() - 2);
       ret_variable_str =
-          ret_variable_str.substr(0, ret_variable_str.size() - 2);
+          ret_variable_str.substr(0, ret_variable_str.length() - 2);
     }
     ret_value_str += ") = ";
     ret_variable_str += ") = ";
@@ -1303,24 +1309,30 @@ void PrintValuesAndVariables(
     if (!op->operands().empty()) {
       for (auto& input : op->operands()) {
         ::pir::Value in_value = input.source();
-        PADDLE_ENFORCE(
-            (*value_2_var_name).count(in_value) > 0,
-            platform::errors::PreconditionNotMet(
-                "var(%s) should exist in var_name_2_id_", in_value.impl()));
-        auto& var_name = (*value_2_var_name).at(in_value);
-        const paddle::framework::Variable* in_variable =
-            GetVariableByName(var_name, *variable_2_var_name);
-        ss.str("");
-        ss << in_value.impl();
-        ret_value_str +=
-            (std::string(var_name.length(), ' ') + "[" + ss.str() + "], ");
-        ss.str("");
-        ss << in_variable;
-        ret_variable_str += (var_name + "[" + ss.str() + "], ");
+        if ((*value_2_var_name).count(in_value)) {
+          auto& var_name = (*value_2_var_name).at(in_value);
+          const paddle::framework::Variable* in_variable =
+              GetVariableByName(var_name, *variable_2_var_name);
+          ss.str("");
+          ss << in_value.impl();
+          ret_value_str +=
+              (std::string(var_name.length(), ' ') + "[" + ss.str() + "]");
+          ss.str("");
+          if (in_variable) {
+            ss << in_variable;
+            ret_variable_str += (var_name + "[" + ss.str() + "]");
+          } else {
+            ret_variable_str += (var_name + "[NULL]");
+          }
+        } else {
+          ret_value_str += "NULL";
+        }
+        ret_value_str += ", ";
+        ret_variable_str += ", ";
       }
-      ret_value_str = ret_value_str.substr(0, ret_value_str.size() - 2);
+      ret_value_str = ret_value_str.substr(0, ret_value_str.length() - 2);
       ret_variable_str =
-          ret_variable_str.substr(0, ret_variable_str.size() - 2);
+          ret_variable_str.substr(0, ret_variable_str.length() - 2);
     }
     ret_value_str += ")";
     ret_variable_str += ")";
