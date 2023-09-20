@@ -29,6 +29,7 @@ from ..utils import (
 from .common import (
     DistributedOperatorImpl,
     DistributedOperatorImplContainer,
+    get_default_distributed_operator_impl,
     is_elementwise_op,
     is_parameter_related,
     merge_forward_backward_dims_mapping,
@@ -56,7 +57,7 @@ class DistributedElementwise(DistributedOperatorImplContainer):
         assert (
             len(op_desc.output_arg_names()) == 1
         ), "elementwsie op [{}] has [{}] outputs".format(
-            op_desc.type, len(op_desc.output_arg_names())
+            str(dist_op.serial_op), len(op_desc.output_arg_names())
         )
         output_arg_name = op_desc.output_arg_names()[0]
         num_inputs = len(input_arg_names)
@@ -70,7 +71,9 @@ class DistributedElementwise(DistributedOperatorImplContainer):
         output_spec = get_dist_tensor_spec(dist_op, output_arg_name, False)
 
         # step2: infer spmd
-        rule = get_phi_spmd_rule(op_desc.type())
+        # TODO reivse me
+        op_type = op_desc.type()
+        rule = get_phi_spmd_rule(op_type)
         fw_results = rule.infer_forward(*input_specs)
         bw_results = rule.infer_backward(*input_specs, output_spec)
 
@@ -97,8 +100,9 @@ class DistributedElementwise(DistributedOperatorImplContainer):
     def mapping_to_dist_operator_impl(dist_op, original_op_dist_attr):
         # all elementwise op use default dist operator impl.
         op_dist_attr = dist_op.dist_attr
-        op_dist_attr.impl_type = DistributedDefaultImpl0.type
-        op_dist_attr.impl_idx = 0
+        default_impl = get_default_distributed_operator_impl()
+        op_dist_attr.impl_type = default_impl.type
+        op_dist_attr.impl_idx = default_impl.idx
 
         return False
 
