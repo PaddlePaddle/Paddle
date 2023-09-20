@@ -145,7 +145,7 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
                     state.op_to_opgrad[opresult.get_defining_op()],
                     fillop,
                 )
-                state.value_to_valuegrad[opresult] = [grad_value]
+                state.value_to_valuegrad[opresult] = [[grad_value]]
 
                 visited_output.add(opresult)
 
