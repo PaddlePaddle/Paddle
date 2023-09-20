@@ -426,32 +426,31 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
   PyObject *result = PyObject_CallObject(callback, args);
   Py_DECREF(args);
   VLOG(7) << "After call eval_frame_function and decrease frame.";
-  // result: GuardedCode
+  // class CustomCode(Protocal):
+  //     code: CodeType | None
+  //     disable_eval_frame: bool
+  // result: CustomCode
   if (result == nullptr) {
     // internal exception
     VLOG(7) << "Error happened.";
     return nullptr;
-  } else if (result != Py_None) {
+  } else {
     //  NOTE: Cache is not supported now
     PyCodeObject *code = reinterpret_cast<PyCodeObject *>(
         PyObject_GetAttrString(result, "code"));
     PyObject *disable_eval_frame =
         PyObject_GetAttrString(result, "disable_eval_frame");
+    PyObject *out;
+    VLOG(7) << "Start eval new frame and code.";
     if (disable_eval_frame != Py_True) {
       // Re-enable custom behavior
       eval_frame_callback_set(callback);
-      VLOG(7) << "Start eval new frame and code.";
-      PyObject *out;
       if (reinterpret_cast<PyObject *>(code) != Py_None) {
         out = eval_custom_code(tstate, frame, code, throw_flag);
       } else {
         out = eval_frame_default(tstate, frame, throw_flag);
       }
-      Py_DECREF(result);
-      Py_DECREF(code);
-      return out;
     } else {
-      PyObject *out;
       if (reinterpret_cast<PyObject *>(code) != Py_None) {
         out = eval_custom_code(tstate, frame, code, throw_flag);
       } else {
@@ -459,14 +458,10 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
       }
       // Re-enable custom behavior
       eval_frame_callback_set(callback);
-      Py_DECREF(result);
-      Py_DECREF(code);
-      return out;
     }
-  } else {
-    // Re-enable custom behavior
-    eval_frame_callback_set(callback);
-    return eval_frame_default(tstate, frame, throw_flag);
+    Py_DECREF(result);
+    Py_DECREF(code);
+    return out;
   }
 }
 
