@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 
 import paddle
 from paddle import base
@@ -45,6 +46,7 @@ class TestTransformWhileLoop(unittest.TestCase):
     def _init_dyfunc(self):
         self.dyfunc = function
 
+    @test_and_compare_with_new_ir(True)
     def _run_static(self):
         return self._run(to_static=True)
 

@@ -2373,6 +2373,16 @@ class TestSubLayerCount(unittest.TestCase):
             self.assertTrue(len(mySuperlayer.sublayers(include_self=True)) == 4)
 
 
+class TestExcludedLayersSupportBool(unittest.TestCase):
+    def test_support_tuple(self):
+        with base.dygraph.guard():
+            model = MyLayer()
+            model.float16(excluded_layers=[paddle.nn.Linear])
+            self.assertTrue(model._linear.weight.dtype == paddle.float32)
+            model.bfloat16(excluded_layers=(paddle.nn.Linear))
+            self.assertTrue(model._linear.weight.dtype == paddle.float32)
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
