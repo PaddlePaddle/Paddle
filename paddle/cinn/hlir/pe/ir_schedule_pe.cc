@@ -37,7 +37,7 @@
 #include "paddle/cinn/poly/isl_utils.h"
 #include "paddle/cinn/utils/string.h"
 
-DECLARE_bool(cinn_new_group_scheduler);
+PD_DECLARE_bool(cinn_new_group_scheduler);
 namespace cinn {
 namespace hlir {
 namespace pe {

@@ -29,7 +29,7 @@
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 
-DECLARE_bool(cinn_new_group_scheduler);
+PD_DECLARE_bool(cinn_new_group_scheduler);
 
 namespace cinn {
 namespace hlir {

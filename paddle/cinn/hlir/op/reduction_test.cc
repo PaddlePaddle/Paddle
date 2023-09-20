@@ -40,7 +40,7 @@
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
 
-DECLARE_bool(cinn_new_group_scheduler);
+PD_DECLARE_bool(cinn_new_group_scheduler);
 
 namespace cinn {
 namespace hlir {

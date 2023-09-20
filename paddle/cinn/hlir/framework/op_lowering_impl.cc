@@ -23,8 +23,8 @@
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/cinn/runtime/flags.h"
 
-DECLARE_bool(cinn_use_cuda_vectorize);
-DECLARE_bool(cinn_new_group_scheduler);
+PD_DECLARE_bool(cinn_use_cuda_vectorize);
+PD_DECLARE_bool(cinn_new_group_scheduler);
 
 namespace cinn {
 namespace hlir {

@@ -20,7 +20,7 @@
 #include "paddle/cinn/hlir/framework/op_lowering.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 
-DECLARE_bool(cinn_new_group_scheduler);
+PD_DECLARE_bool(cinn_new_group_scheduler);
 
 namespace cinn {
 namespace ir {
