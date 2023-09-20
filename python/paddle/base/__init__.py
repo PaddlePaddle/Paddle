@@ -36,7 +36,6 @@ if os.path.exists(legacy_core):
 from . import framework
 from .framework import (
     Program,
-    Variable,
     default_startup_program,
     default_main_program,
     program_guard,
@@ -44,6 +43,14 @@ from .framework import (
     cpu_places,
     cuda_pinned_places,
     in_dygraph_mode,
+    is_compiled_with_cinn,
+    is_compiled_with_cuda,
+    is_compiled_with_rocm,
+    Variable,
+    require_version,
+    device_guard,
+    set_flags,
+    get_flags,
 )
 
 # import all class inside executor into base module
