@@ -225,7 +225,8 @@ pir::OpInfo OpTranscriber::LoopkUpOpInfo(pir::IrContext* ctx,
              target_op_name);
   }
 
-  if (!paddle::dialect::HaveLegacyOpToPdOpsMap(target_op_name)) {
+  if (!paddle::dialect::HaveLegacyOpToPdOpsMap(
+          OpNameCompatibleMapping(op_desc.Type()))) {
     return op_info;
   }
 
@@ -242,6 +243,9 @@ pir::OpInfo OpTranscriber::LoopkUpOpInfo(pir::IrContext* ctx,
   auto& op_normalizer = OpNameNormalizer::instance();
   std::vector<std::string> need_inputs_sig;
   for (const auto& info : input_infos) {
+    if (info.is_mutable_attribute) {
+      continue;
+    }
     std::string legacy_input_name =
         op_normalizer.GetLegacyArgName(op_desc.Type(), info.name);
     auto legacy_input_vars = op_desc.Input(legacy_input_name, true);

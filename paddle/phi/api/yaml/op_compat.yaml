@@ -3116,6 +3116,12 @@
   outputs:
     {out: Out}
 
+- op: get_tensor_from_selected_rows
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op: logspace
   inputs:
     {start: Start, stop: Stop, num: Num, base: Base}
@@ -3215,5 +3221,11 @@
   backward: temporal_shift_grad
   inputs :
     x : X
+  outputs :
+    out : Out
+
+- op: write_to_array
+  inputs :
+    {x: X, i: I}
   outputs :
     out : Out
