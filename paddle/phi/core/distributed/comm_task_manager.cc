@@ -82,8 +82,8 @@ void CommTaskManager::CommTaskLoop() {
         [&]() -> bool { return terminated_.load(); });
     for (auto iter = comm_task_list_.begin(); iter != comm_task_list_.end();) {
       auto task = *iter;
-      if (task->IsTimeout()) {
-        LOG(WARNING) << "Detected timeout process_group: " << task->GetGid();
+      if (task->IsStarted() && !task->IsCompleted() && task->IsTimeout()) {
+        LOG(WARNING) << "Detected timeout task: " << task->UniqueKey();
         std::string error_msg = task->GetTraceMsg();
         LOG(ERROR) << error_msg;
 

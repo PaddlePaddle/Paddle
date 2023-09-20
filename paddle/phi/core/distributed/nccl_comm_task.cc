@@ -37,7 +37,7 @@ NCCLCommTask::NCCLCommTask(const phi::Place& place,
                            gpuStream_t stream,
                            CommType comm_type,
                            int64_t timeout)
-    : CommTask("NCCL", place, rank, size, seq, numel, gid, comm_type),
+    : CommTask("NCCL", place, rank, size, gid, seq, numel, comm_type),
       sync_op_(sync_op),
       use_calc_stream_(use_calc_stream),
       nccl_comm_(nccl_comm),
@@ -169,16 +169,16 @@ std::string NCCLCommTask::GetTraceMsg() {
   return "Find timeout task :"
          " comm_type: " +
          CommTypeToString(comm_type_) +
+         ", group_id: " + std::to_string(gid_) +
+         ", seq: " + std::to_string(seq_) +
+         ", started: " + std::to_string(IsStarted()) +
+         ", completed: " + std::to_string(IsCompleted()) +
          ", global_rank: " + std::to_string(global_rank_) +
          ", local_rank: " + std::to_string(rank_) +
-         ", seq: " + std::to_string(seq_) +
-         ", group_id: " + std::to_string(gid_) +
          ", size: " + std::to_string(size_) +
          ", numel: " + std::to_string(numel_) +
          ", sync_op: " + std::to_string(sync_op_) +
          ", use_calc_stream: " + std::to_string(use_calc_stream_) +
-         ", started: " + std::to_string(IsStarted()) +
-         ", completed: " + std::to_string(IsCompleted()) +
          ", timeout : " + std::to_string(timeout_.count()) +
          ", is_timeout: " + std::to_string(IsTimeout()) +
          ", time_elapsed: " + std::to_string(time_elapsed.count());
