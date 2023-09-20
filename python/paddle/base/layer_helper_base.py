@@ -26,7 +26,6 @@ from .framework import (
     default_startup_program,
     in_dygraph_mode,
     in_pir_mode,
-    _current_expected_place,
 )
 from .initializer import _global_bias_initializer, _global_weight_initializer
 from .param_attr import ParamAttr, WeightNormParamAttr

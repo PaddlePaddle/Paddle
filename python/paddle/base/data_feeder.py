@@ -17,6 +17,7 @@ import warnings
 
 import numpy as np
 
+from ..ir import OpResult
 from . import core
 from .framework import (
     Variable,
@@ -26,8 +27,6 @@ from .framework import (
     in_dygraph_mode,
     in_pir_mode,
 )
-
-from ..ir import OpResult
 
 __all__ = ['DataFeeder']
 

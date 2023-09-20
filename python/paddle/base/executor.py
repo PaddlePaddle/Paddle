@@ -22,10 +22,8 @@ from functools import lru_cache
 import numpy as np
 
 from ..ir import OpResult
-from ..ir import core as ir_core
 from . import compiler, core, framework, get_flags, set_flags, unique_name
 from .data_feeder import convert_dtype
-from .framework import Variable, Operator, in_pir_mode
 from .framework import (
     Operator,
     Program,
@@ -33,6 +31,7 @@ from .framework import (
     _apply_pass,
     convert_np_dtype_to_dtype_,
     default_main_program,
+    in_pir_mode,
     paddle_type_to_proto_type,
 )
 from .incubate.checkpoint import auto_checkpoint as acp
