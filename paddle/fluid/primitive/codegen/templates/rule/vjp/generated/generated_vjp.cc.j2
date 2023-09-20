@@ -106,7 +106,7 @@ paddle::Tensor* {{api.outputs[i].name}} = !stop_gradients[{{i}}][0] ? &vjp_res[{
     {% else %}
 std::vector<paddle::Tensor*> {{api.outputs[i].name}}(stop_gradients[{{i}}].size(), nullptr);
 for (size_t i=0; i< stop_gradients[{{i}}].size(); i++ ) {
-  {{api.outputs[i].name}} =  !stop_gradients[{{i}}][i] ?  &vjp_res[{{i}}][i] : nullptr;
+  {{api.outputs[i].name}}[i] =  !stop_gradients[{{i}}][i] ?  &vjp_res[{{i}}][i] : nullptr;
 }
     {% endif %}
   {% endfor %}

@@ -79,3 +79,25 @@ def rsqrt_composite(x):
     y = full(x.shape if len(x.shape) == 0 else [1], -0.5, x.dtype)
     res = pow(x, y)
     return res if not is_amp else cast(res, dtype)
+
+
+@register_decomp('pd_op.pow')
+def pow_composite(x, y):
+    """
+    define composite rule of op pow
+    res = x^y
+    """
+    is_amp = False
+    from paddle.base.data_feeder import convert_dtype
+
+    dtype = convert_dtype(x.dtype)
+    if dtype in ["float16", "uint16"]:
+        is_amp = True
+        x = cast(x, "float32")
+
+    if isinstance(y, (int, float)):
+        y = full(x.shape if len(x.shape) == 0 else [1], y, x.dtype)
+    res = pow(x, y)
+    if is_amp:
+        res = cast(res, dtype)
+    return res

@@ -47,7 +47,13 @@ class TestReshapeOp(OpTest):
         self.check_output(no_check_set=['XShape'], check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_prim=True, check_new_ir=True)
+        self.check_grad(
+            ["X"],
+            "Out",
+            check_prim=True,
+            check_new_ir=True,
+            check_prim_pir=True,
+        )
 
 
 class TestReshapeOp_ZeroDim1(TestReshapeOp):

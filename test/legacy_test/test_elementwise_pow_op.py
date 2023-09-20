@@ -309,7 +309,6 @@ class TestElementwisePowBF16Op(OpTest):
                 check_prim=True,
                 only_check_prim=True,
                 check_prim_pir=True,
-                check_new_ir=True,
             )
 
 
