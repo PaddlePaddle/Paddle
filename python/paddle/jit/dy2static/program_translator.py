@@ -20,6 +20,7 @@ import threading
 import warnings
 import weakref
 
+import paddle.ir.core as ir_static
 from paddle.base import core, framework
 from paddle.base.data_feeder import check_type
 from paddle.base.dygraph.base import (
@@ -29,7 +30,7 @@ from paddle.base.dygraph.base import (
 )
 from paddle.base.unique_name import UniqueNameGenerator
 from paddle.base.unique_name import guard as UniqueNameGuard
-from paddle.framework import in_dynamic_mode
+from paddle.framework import in_dynamic_mode, use_pir_api
 from paddle.nn.layer import layers
 from paddle.utils import flatten, gast
 
@@ -46,7 +47,7 @@ from .origin_info import (
     create_and_update_origin_info_map,
     update_op_callstack_with_origin_info,
 )
-from .partial_program import PartialProgramLayerHook, partial_program_from
+from .partial_program import PartialProgramLayerHook
 from .utils import (
     ALREADY_D2S,
     NO_SHAPE_VAR_TYPE,
@@ -1158,6 +1159,106 @@ class ConcreteProgram:
 
     @staticmethod
     @switch_to_static_graph
+    def newir_from_func_spec(
+        func_spec, input_spec, input_kwargs_spec, class_instance, **kwargs
+    ):
+        """
+        Builds the main_program with specialized inputs and returns outputs
+        of program as fetch_list.
+
+        Args:
+            func_spec(FunctionSpec): A FunctionSpec instance for decorated function.
+            input_spec(list[InputSpec]):
+        """
+        # verify the instance is initialized in imperative mode.
+        _verify_init_in_dynamic_mode(class_instance)
+
+        # Transforms dygraph function into static function and caches it.
+        dygraph_function = func_spec.dygraph_function
+        static_func = convert_to_static(dygraph_function)
+        # apply pre\post hook for outermost layer
+        hook_helper = HookHelper(
+            dygraph_function, class_instance, kwargs.get("with_hook", False)
+        )
+
+        main_program, startup_program = ir_static.Program(), ir_static.Program()
+        # Note: The random seed should be synchronized into cached program
+        # if set in `fluid.dygraph_guard` because some ops rely on it, such as
+        # `fluid.layers.dropout`.
+
+        # TODO: new ir has no random seed.
+        #  {{{
+        # main_program.random_seed = static.default_main_program().random_seed
+        # startup_program.random_seed = (
+        # framework.default_startup_program().random_seed
+        # ) }}}
+        with ir_static.program_guard(main_program, startup_program):
+            with _to_static_mode_guard_(is_to_static=True):
+                # 1. Adds `paddle.static.data` layers for input if needed
+                static_inputs = func_spec.newir_to_static_inputs_with_spec(
+                    input_spec, main_program
+                )
+                _kwargs = func_spec.newir_to_static_inputs_with_spec(
+                    input_kwargs_spec, main_program
+                )
+                if class_instance:
+                    static_inputs = tuple(
+                        [class_instance] + list(static_inputs)
+                    )
+
+                # 2. Builds program only once and returns the output Variables.
+                with param_guard(
+                    get_parameters(class_instance, False)
+                ), param_guard(get_buffers(class_instance, False)):
+                    try:
+                        # only for jit.save, do nothing while train and eval process
+                        inputs = hook_helper.apply_pre_hooks(static_inputs)
+                        if _kwargs:
+                            outputs = static_func(*inputs, **_kwargs)
+                        else:
+                            outputs = static_func(*inputs)
+                        outputs = hook_helper.apply_post_hooks(inputs, outputs)
+                    except BaseException as e:
+                        # NOTE: If e is raised in compile time, e should be attached to ERROR_DATA here.
+                        error.attach_error_data(e)
+                        error_data = getattr(e, error.ERROR_DATA, None)
+                        if error_data:
+                            error_data.raise_new_exception()
+                        raise
+
+                # 3. Gets all ParamBases and buffered VarBases in the function
+                all_parameters_and_buffers = (
+                    ProgramTranslator.get_instance()._params_recorder.pop(
+                        main_program
+                    )
+                )
+
+                if outputs is not None:
+                    need_wrap_into_list = (
+                        not isinstance(outputs, (tuple, list))
+                        or len(outputs) == 1
+                    )
+                    if need_wrap_into_list:
+                        outputs = [outputs]
+
+        # TODO(@xiongkun): support op call stack in new ir?
+        # main_program = update_op_callstack_with_origin_info(main_program)
+
+        new_name_generator = UniqueNameGenerator()
+        return ConcreteProgram(
+            inputs=static_inputs,
+            outputs=outputs,
+            parameters=all_parameters_and_buffers,
+            name_generator=new_name_generator,
+            function=dygraph_function,
+            main_program=main_program,
+            startup_program=startup_program,
+            **kwargs,
+        )
+
+    # TODO(@xiongkun): remove after new ir is switch
+    @staticmethod
+    @switch_to_static_graph
     def from_func_spec(
         func_spec, input_spec, input_kwargs_spec, class_instance, **kwargs
     ):
@@ -1393,13 +1494,22 @@ class ProgramCache:
         # NOTE(xiongkun): Need a global FLAGS to enable/disable fallback
         enable_fallback = enable_prim
         try:
-            concrete_program = ConcreteProgram.from_func_spec(
-                func_spec=cache_key.function_spec,
-                input_spec=cache_key.input_args_with_spec,
-                input_kwargs_spec=cache_key.input_kwargs_with_spec,
-                class_instance=cache_key.class_instance,
-                **cache_key.kwargs,
-            )
+            if use_pir_api():
+                concrete_program = ConcreteProgram.newir_from_func_spec(
+                    func_spec=cache_key.function_spec,
+                    input_spec=cache_key.input_args_with_spec,
+                    input_kwargs_spec=cache_key.input_kwargs_with_spec,
+                    class_instance=cache_key.class_instance,
+                    **cache_key.kwargs,
+                )
+            else:
+                concrete_program = ConcreteProgram.from_func_spec(
+                    func_spec=cache_key.function_spec,
+                    input_spec=cache_key.input_args_with_spec,
+                    input_kwargs_spec=cache_key.input_kwargs_with_spec,
+                    class_instance=cache_key.class_instance,
+                    **cache_key.kwargs,
+                )
         except Exception as e:
             if enable_fallback:
                 warnings.warn(
@@ -1429,9 +1539,18 @@ class ProgramCache:
                         )
                     )
 
-        partial_program = partial_program_from(
-            concrete_program, cache_key.class_instance is not None
-        )
+        if use_pir_api():
+            from .newir_partial_program import partial_program_from
+
+            partial_program = partial_program_from(
+                concrete_program, cache_key.class_instance is not None
+            )
+        else:  # TODO(new_ir): remove later.
+            from .partial_program import partial_program_from
+
+            partial_program = partial_program_from(
+                concrete_program, cache_key.class_instance is not None
+            )
         with backend_guard(backend):
             if core._is_fwd_prim_enabled():
                 partial_program.set_hooker(
