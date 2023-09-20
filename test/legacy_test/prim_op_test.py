@@ -413,8 +413,6 @@ class PrimForwardChecker:
                 with scope_guard(Scope()):
                     self.check_static_comp()
 
-        self.recover_eager_or_static_status()
-
     def get_kernel_sig(self):
         with dygraph_guard():
             if type(self.place) is paddle.base.libpaddle.CPUPlace:
