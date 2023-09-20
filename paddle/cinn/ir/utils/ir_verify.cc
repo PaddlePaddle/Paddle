@@ -17,7 +17,10 @@
 #include "paddle/cinn/ir/utils/ir_mutator.h"
 #include "paddle/cinn/ir/utils/ir_printer.h"
 
-namespace cinn::ir {
+namespace cinn {
+namespace ir {
+namespace ir_utils {
+namespace {
 
 struct IrVerifyVisitor : public ir::IRMutator<> {
   using ir::IRMutator<>::Visit;
@@ -30,10 +33,11 @@ struct IrVerifyVisitor : public ir::IRMutator<> {
   NODETY_FORALL(__)
 #undef __
 };
-
+}  // namespace
 void IrVerify(Expr e) {
   IrVerifyVisitor visitor;
   visitor.Visit(&e, &e);
 }
-
-}  // namespace cinn::ir
+}  // namespace ir_utils
+}  // namespace ir
+}  // namespace cinn

@@ -790,7 +790,7 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Call *op) {
 llvm::Value *CodeGenLLVM::Visit(const ir::_Module_ *op) {
   {
     Expr body_to_verify(&Reference(op));
-    ir::IrVerify(body_to_verify);
+    ir::ir_utils::IrVerify(body_to_verify);
   }
 
   for (auto &fn : op->functions) {
