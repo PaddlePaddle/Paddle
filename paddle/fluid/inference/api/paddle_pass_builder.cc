@@ -74,11 +74,11 @@ size_t PaddlePassBuilder::GetPassIndex(const std::string &pass_type) {
 }
 
 void PaddlePassBuilder::InsertPass(size_t idx, const std::string &pass_type) {
-  passes_.insert(std::begin(passes_) + idx, pass_type);
+  passes_.insert(std::begin(passes_) + idx, pass_type);  // NOLINT
 }
 
 void PaddlePassBuilder::DeletePass(size_t idx) {
-  passes_.erase(std::begin(passes_) + idx);
+  passes_.erase(std::begin(passes_) + idx);  // NOLINT
 }
 
 void PaddlePassBuilder::AppendAnalysisPass(const std::string &pass) {
@@ -498,7 +498,7 @@ void CpuPassStrategy::EraseFcMkldnnPasses() {
   std::vector<std::string> fc_passes_to_erase(
       {"fc_mkldnn_pass", "fc_act_mkldnn_fuse_pass"});
   for (const auto &pass : fc_passes_to_erase) {
-    int idx = GetPassIndex(pass);
+    int idx = static_cast<int>(GetPassIndex(pass));
     if (idx != -1) {
       passes_.erase(std::begin(passes_) + idx);
     }
@@ -552,7 +552,9 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "squeeze_excitation_fuse_pass",
       "add_activation_xpu_fuse_pass",
       "add_layernorm_xpu_fuse_pass",
+      "layer_norm_act_xpu_fuse_pass",
       "fast_layernorm_xpu_fuse_pass",
+      "bn_act_xpu_fuse_pass",
       "yolo_box_xpu_fuse_pass",
       "fast_where_xpu_fuse_pass",
       "elementwise_mul_add_fuse_pass",

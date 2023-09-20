@@ -17,7 +17,7 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test
+from dygraph_to_static_util import ast_only_test, test_and_compare_with_new_ir
 from test_fetch_feed import Linear
 
 import paddle
@@ -112,6 +112,7 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
         )
 
     @ast_only_test
+    @test_and_compare_with_new_ir(False)
     def test_save_load_prim(self):
         with base.dygraph.guard(place):
             self.x = paddle.randn([4, 2, 6, 6], dtype="float32")
@@ -153,6 +154,7 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
             np.testing.assert_allclose(res.numpy(), new_res.numpy(), rtol=1e-05)
 
     @ast_only_test
+    @test_and_compare_with_new_ir(False)
     def test_save_load_prim_with_hook(self):
         with base.dygraph.guard(place):
             self.x = paddle.randn([4, 2, 6, 6], dtype="float32")

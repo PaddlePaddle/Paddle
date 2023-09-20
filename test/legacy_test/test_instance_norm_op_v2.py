@@ -16,7 +16,8 @@ import os
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
+from utils import static_guard
 
 import paddle
 from paddle import base
@@ -140,7 +141,7 @@ class TestInstanceNorm(unittest.TestCase):
             np.testing.assert_allclose(y1, y2, rtol=1e-05)
 
     def test_static(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             places = [base.CPUPlace()]
             if core.is_compiled_with_cuda() and core.op_support_gpu(
                 "instance_norm"

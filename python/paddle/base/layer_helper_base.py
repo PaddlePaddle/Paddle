@@ -21,6 +21,7 @@ from .framework import (
     default_main_program,
     default_startup_program,
     in_dygraph_mode,
+    in_pir_mode,
     _current_expected_place,
 )
 from . import unique_name
@@ -76,15 +77,15 @@ class LayerHelperBase:
 
         Examples:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import numpy as np
-            import paddle.base as base
+                >>> import numpy as np
+                >>> import paddle.base as base
 
-            with base.dygraph.guard():
-                x = np.ones([2, 2], np.float32)
-                y = base.dygraph.to_variable(x)
-
+                >>> with base.dygraph.guard():
+                ...     x = np.ones([2, 2], np.float32)
+                ...     y = base.dygraph.to_variable(x)
+                ...
         """
         if isinstance(value, np.ndarray):
             return core.eager.Tensor(
@@ -431,6 +432,12 @@ class LayerHelperBase:
                 **attr._to_kwargs(with_initializer=True)
             )
         else:
+            if in_pir_mode():
+                return paddle.ir.core.create_parameter(
+                    dtype=dtype,
+                    shape=shape,
+                    **attr._to_kwargs(with_initializer=True)
+                )
             self.startup_program.global_block().create_parameter(
                 dtype=dtype,
                 shape=shape,

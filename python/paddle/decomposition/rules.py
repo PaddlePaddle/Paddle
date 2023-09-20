@@ -34,7 +34,7 @@ def mean(x, axis, keepdim):
         value=value_to_fill,
         dtype=sum_x.dtype,
     )
-    res = divide(sum_x, norm)
+    res = sum_x / norm
     return res
 
 
@@ -60,16 +60,6 @@ def gelu_composite(x, approximate):
     else:
         # gelu(x) = 0.5 * x *  (1 + erf(x / sqrt(2)))
 
-        cdf = _ir_ops.multiply(
-            half,
-            (
-                _ir_ops.add(
-                    one,
-                    _ir_ops.erf(
-                        _ir_ops.multiply(x, full(x.shape, M_SQRT1_2, x.dtype))
-                    ),
-                )
-            ),
-        )
-        out = _ir_ops.multiply(x, cdf)
+        cdf = half * (one + _ir_ops.erf(x * full(x.shape, M_SQRT1_2, x.dtype)))
+        out = x * cdf
         return out

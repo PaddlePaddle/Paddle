@@ -16,7 +16,8 @@ import unittest
 
 import numpy as np
 import parameterized as param
-from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from utils import static_guard
 
 import paddle
 from paddle import _C_ops, base, static
@@ -80,11 +81,11 @@ class TestDropoutOp(OpTest):
         self.enable_check_static_comp = False
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_new_ir=True)
 
     def test_check_grad_normal(self):
         # Now in dy2st mode x_grad = [], so set check_prim=False
-        self.check_grad(['X'], 'Out', check_prim=False)
+        self.check_grad(['X'], 'Out', check_prim=False, check_new_ir=True)
 
 
 class TestDropoutOp_ZeroDim(TestDropoutOp):
@@ -1682,7 +1683,7 @@ class TestCompositeDropout(unittest.TestCase):
         fwd_actual = []
         rev_actual = []
         mps = []
-        with paddle.base.framework._static_guard():
+        with static_guard():
             for place in self.places:
                 paddle.seed(self.seed)
                 mp, sp = paddle.static.Program(), paddle.static.Program()

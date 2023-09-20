@@ -15,12 +15,13 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from utils import static_guard
 
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
-from paddle.base.framework import convert_np_dtype_to_dtype_
+from paddle.base.framework import convert_np_dtype_to_dtype_, in_pir_mode
 
 
 class TestSumOp(OpTest):
@@ -54,10 +55,16 @@ class TestSumOp(OpTest):
         self.out = self.x.sum(axis=tuple(self.attrs['dim']))
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_new_ir=True,
+            check_prim_pir=True,
+        )
 
 
 class TestComplexSumOP(TestSumOp):
@@ -85,7 +92,13 @@ class TestSumOp_ZeroDim(TestSumOp):
         self.out = self.x.sum(axis=None)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_new_ir=True,
+            check_prim=True,
+            check_prim_pir=True,
+        )
 
 
 class TestSumOp5D(TestSumOp):
@@ -112,10 +125,10 @@ class TestSumOp8D(TestSumOp):
         self.attrs = {'dim': (0, 3)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_new_ir=True)
 
 
 class TestSumOp_withInt(TestSumOp):
@@ -128,7 +141,7 @@ class TestSumOp_withInt(TestSumOp):
         self.attrs = {'dim': (0, 1)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def calc_gradient(self):
         x = self.inputs["X"]
@@ -141,6 +154,8 @@ class TestSumOp_withInt(TestSumOp):
             'Out',
             user_defined_grads=self.calc_gradient(),
             check_prim=True,
+            check_prim_pir=True,
+            check_new_ir=True,
         )
 
 
@@ -152,7 +167,7 @@ class TestSumOp3Dim(TestSumOp):
         self.attrs = {'dim': (0, 1, 2)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def calc_gradient(self):
         x = self.inputs["X"]
@@ -165,6 +180,8 @@ class TestSumOp3Dim(TestSumOp):
             'Out',
             user_defined_grads=self.calc_gradient(),
             check_prim=True,
+            check_prim_pir=True,
+            check_new_ir=True,
         )
 
 
@@ -177,13 +194,15 @@ def create_test_fp16_class(parent):
             self.dtype = np.float16
 
         def test_check_output(self):
-            self.check_output()
+            self.check_output(check_new_ir=True)
 
         def test_check_grad(self):
             self.check_grad(
                 ['X'],
                 'Out',
                 check_prim=True,
+                check_prim_pir=True,
+                check_new_ir=True,
             )
 
 
@@ -212,7 +231,7 @@ def create_test_bf16_class(parent):
 
         def test_check_output(self):
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place)
+            self.check_output_with_place(place, check_new_ir=True)
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
@@ -222,6 +241,8 @@ def create_test_bf16_class(parent):
                 'Out',
                 user_defined_grads=self.gradient,
                 check_prim=True,
+                check_prim_pir=True,
+                check_new_ir=True,
             )
 
         def calc_gradient(self):
@@ -258,7 +279,7 @@ class TestMaxOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
         # only composite op support gradient check of reduce_max
@@ -292,7 +313,7 @@ class TestMaxOp_ZeroDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
         # only composite op support gradient check of reduce_max
@@ -345,7 +366,7 @@ class TestMaxFP32Op(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
         # only composite op support gradient check of reduce_max
@@ -379,7 +400,7 @@ class TestMaxBF16Op(TestMaxFP32Op):
         self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0))
+        self.check_output_with_place(core.CUDAPlace(0), check_new_ir=True)
 
     def test_check_grad(self):
         # only composite op support gradient check of reduce_max
@@ -1183,7 +1204,7 @@ def reduce_sum_wrapper2(x, axis=[0], dtype=None, keepdim=False):
     if paddle.in_dynamic_mode():
         return paddle._C_ops.sum(x, axis, dtype, keepdim)
     else:
-        if paddle.ir.core._use_new_ir_api():
+        if in_pir_mode():
             return paddle._ir_ops.sum(x, axis, dtype, keepdim)
 
 
@@ -1278,7 +1299,7 @@ class TestReduceMaxOpMultiAxises(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
         # only composite op support gradient check of reduce_max
@@ -1578,7 +1599,7 @@ class TestReduceWithDtype2(TestReduceWithDtype):
 
 class TestReduceSumOpError(unittest.TestCase):
     def test_errors(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with program_guard(Program(), Program()):
                 # The input type of reduce_sum_op must be Variable.
                 x1 = base.create_lod_tensor(
