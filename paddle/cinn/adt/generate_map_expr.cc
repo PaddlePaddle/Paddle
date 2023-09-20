@@ -27,7 +27,7 @@
 
 #include "glog/logging.h"
 
-DECLARE_bool(cinn_enable_map_expr);
+PD_DECLARE_bool(cinn_enable_map_expr);
 
 namespace cinn::adt {
 

@@ -71,17 +71,9 @@ PD_DEFINE_string(
     StringFromEnv("FLAGS_cinn_custom_call_deny_ops", ""),
     "a blacklist of op are denied by MarkCustomCallOps pass, separated by ;");
 
-/*
- * CINN related FLAG
- * Name: FLAGS_cinn_enable_map_expr
- * Since Version: 2.5
- * Value Range: bool, default=false
- * Example: FLAGS_cinn_enable_map_expr=true would use CINN with its
- * map_expr feature enabled
- */
-DEFINE_bool(cinn_enable_map_expr,
-            BoolFromEnv("FLAGS_cinn_enable_map_expr", false),
-            "It controls whether to use cinn with map_expr");
+PD_DEFINE_bool(cinn_enable_map_expr,
+               BoolFromEnv("FLAGS_cinn_enable_map_expr", false),
+               "It controls whether to use cinn with map_expr");
 
 PD_DEFINE_bool(
     cinn_use_custom_call,
