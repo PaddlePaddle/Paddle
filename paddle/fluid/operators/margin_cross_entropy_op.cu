@@ -30,6 +30,7 @@ namespace cub = hipcub;
 #include "paddle/phi/kernels/margin_cross_entropy_grad_kernel.h"
 
 #include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/visit_type.h"
@@ -39,6 +40,9 @@ namespace cub = hipcub;
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/flags.h"
+PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 #include "paddle/phi/backends/gpu/gpu_context.h"
 
@@ -87,21 +91,50 @@ void GetClassInterval(const gpuStream_t& stream,
     auto task = pg->AllReduce(in_tensor, out_tensor, opts);
     task->Wait();
   } else {
-    const auto& comm =
-        paddle::platform::NCCLCommContext::Instance().Get(rid, place);
+    paddle::platform::NCCLComm* comm = nullptr;
+    const auto& comm_context_manager =
+        phi::distributed::CommContextManager::GetInstance();
+    phi::distributed::NCCLCommContext* comm_ctx = nullptr;
+    if (FLAGS_dynamic_static_unified_comm) {
+      PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
+                        true,
+                        paddle::platform::errors::InvalidArgument(
+                            "You choose to use new communication library by "
+                            "setting environment "
+                            "variable FLAGS_dynamic_static_unified_comm True. "
+                            "But ring_id(%d) is "
+                            "not found in comm_context_manager.",
+                            std::to_string(rid)));
+      comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
+          comm_context_manager.Get(std::to_string(rid)));
+      PADDLE_ENFORCE_NE(comm_ctx,
+                        nullptr,
+                        paddle::platform::errors::Unavailable(
+                            "NCCLCommContext is nullptr, collective op should "
+                            "has ring_id attr."));
+    } else {
+      comm = paddle::platform::NCCLCommContext::Instance().Get(rid, place);
+    }
+
     // use global calculate stream
     const auto calcu_stream =
         static_cast<GPUContext*>(phi::DeviceContextPool::Instance().Get(place))
             ->stream();
-
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
-        num_classes_per_device_ptr,
-        num_classes_per_device_ptr,
-        num_classes_per_device.numel(),
-        phi::ToNCCLDataType(num_classes_per_device.dtype()),
-        ncclSum,
-        comm->comm(),
-        calcu_stream));
+    if (comm_ctx) {
+      comm_ctx->AllReduce(&num_classes_per_device,
+                          num_classes_per_device,
+                          ncclSum,
+                          calcu_stream);
+    } else {
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
+          num_classes_per_device_ptr,
+          num_classes_per_device_ptr,
+          num_classes_per_device.numel(),
+          phi::ToNCCLDataType(num_classes_per_device.dtype()),
+          ncclSum,
+          comm->comm(),
+          calcu_stream));
+    }
   }
 
   class_interval->Resize({nranks + 1});
@@ -238,7 +271,10 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
   const auto& place = dev_ctx.GetPlace();  // old code
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  paddle::platform::NCCLComm* comm;
+  paddle::platform::NCCLComm* comm = nullptr;
+  const auto& comm_context_manager =
+      phi::distributed::CommContextManager::GetInstance();
+  phi::distributed::NCCLCommContext* comm_ctx = nullptr;
   paddle::distributed::ProcessGroup* pg = nullptr;
   gpuStream_t stream;
   if (nranks > 1) {
@@ -247,8 +283,29 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
       // Use ProcessGroup
       pg = map->get(ring_id);
     } else {
-      comm = paddle::platform::NCCLCommContext::Instance().Get(ring_id, place);
-
+      if (FLAGS_dynamic_static_unified_comm) {
+        PADDLE_ENFORCE_EQ(
+            comm_context_manager.Has(std::to_string(ring_id)),
+            true,
+            paddle::platform::errors::InvalidArgument(
+                "You choose to use new communication library by "
+                "setting environment "
+                "variable FLAGS_dynamic_static_unified_comm True. "
+                "But ring_id(%d) is "
+                "not found in comm_context_manager.",
+                std::to_string(ring_id)));
+        comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
+            comm_context_manager.Get(std::to_string(ring_id)));
+        PADDLE_ENFORCE_NE(
+            comm_ctx,
+            nullptr,
+            paddle::platform::errors::Unavailable(
+                "NCCLCommContext is nullptr, collective op should "
+                "has ring_id attr."));
+      } else {
+        comm =
+            paddle::platform::NCCLCommContext::Instance().Get(ring_id, place);
+      }
       // use global calculate stream
       stream = static_cast<GPUContext*>(
                    phi::DeviceContextPool::Instance().Get(place))
@@ -361,14 +418,18 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
       auto task = pg->AllReduce(in_tensor, out_tensor, opts);
       task->Wait();
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::ncclAllReduce(logits_max_buff,
-                                      logits_max_buff,
-                                      logits_max.numel(),
-                                      phi::ToNCCLDataType(logits_max.dtype()),
-                                      ncclMax,
-                                      comm->comm(),
-                                      stream));
+      if (comm_ctx) {
+        comm_ctx->AllReduce(&logits_max, logits_max, ncclMax, stream);
+      } else {
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            phi::dynload::ncclAllReduce(logits_max_buff,
+                                        logits_max_buff,
+                                        logits_max.numel(),
+                                        phi::ToNCCLDataType(logits_max.dtype()),
+                                        ncclMax,
+                                        comm->comm(),
+                                        stream));
+      }
     }
   }
 #endif
@@ -402,14 +463,18 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
       auto task = pg->AllReduce(in_tensor, out_tensor, opts);
       task->Wait();
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
-          sum_exp_logits_buff,
-          sum_exp_logits_buff,
-          sum_exp_logits.numel(),
-          phi::ToNCCLDataType(sum_exp_logits.dtype()),
-          ncclSum,
-          comm->comm(),
-          stream));
+      if (comm_ctx) {
+        comm_ctx->AllReduce(&sum_exp_logits, sum_exp_logits, ncclSum, stream);
+      } else {
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
+            sum_exp_logits_buff,
+            sum_exp_logits_buff,
+            sum_exp_logits.numel(),
+            phi::ToNCCLDataType(sum_exp_logits.dtype()),
+            ncclSum,
+            comm->comm(),
+            stream));
+      }
     }
   }
 #endif
@@ -460,14 +525,18 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
       auto task = pg->AllReduce(in_tensor, out_tensor, opts);
       task->Wait();
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::ncclAllReduce(loss_ptr,
-                                      loss_ptr,
-                                      loss->numel(),
-                                      phi::ToNCCLDataType(loss->dtype()),
-                                      ncclSum,
-                                      comm->comm(),
-                                      stream));
+      if (comm_ctx) {
+        comm_ctx->AllReduce(loss, *loss, ncclSum, stream);
+      } else {
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            phi::dynload::ncclAllReduce(loss_ptr,
+                                        loss_ptr,
+                                        loss->numel(),
+                                        phi::ToNCCLDataType(loss->dtype()),
+                                        ncclSum,
+                                        comm->comm(),
+                                        stream));
+      }
     }
   }
 #endif
