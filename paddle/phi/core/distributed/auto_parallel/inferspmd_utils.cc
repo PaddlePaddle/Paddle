@@ -53,6 +53,9 @@ AttrType InferSpmdContext::AttrAt(size_t idx) const {
   }
 }
 
+template float InferSpmdContext::AttrAt(size_t idx) const;
+template int InferSpmdContext::AttrAt(size_t idx) const;
+
 template <>
 bool InferSpmdContext::AttrAt(size_t idx) const {
   try {

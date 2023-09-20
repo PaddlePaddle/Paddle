@@ -20,17 +20,15 @@
 #include <tuple>
 #include <unordered_map>
 
-#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
-#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/program.h"
-
-#include "paddle/cinn/utils/data_util.h"
-
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/cinn/hlir/framework/convert_to_dialect.h"
 #include "paddle/cinn/hlir/framework/new_ir_compiler.h"
+#include "paddle/cinn/utils/data_util.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/pir/core/ir_context.h"
+#include "paddle/pir/core/program.h"
 
 using cinn::hlir::framework::newir::Group;
 using cinn::hlir::framework::newir::GroupPtr;
