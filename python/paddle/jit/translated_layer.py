@@ -1006,6 +1006,12 @@ def _run_dygraph(instance, input, program_holder):
             (
                 'forward_global_block',
                 forward_program.block(0),
+            )
+        )
+
+    if not instance._is_test:
+        attrs.extend(
+            (
                 'backward_global_block',
                 program_holder.backward_program.block(0),
             )
@@ -1051,7 +1057,6 @@ def _run_static_graph(input, program_holder, trace_program):
         trace_program, exclude=param_var_names
     )
     trace_program.flush()
-    output_names = [var.name() for var in program_holder.output_descs]
     # append blocks from 'trace_program'
     _append_block(
         main_program,

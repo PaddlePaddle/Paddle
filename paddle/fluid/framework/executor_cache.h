@@ -252,7 +252,7 @@ std::shared_ptr<InterpreterCore> CreateNewIRInterpreterCoreInfoToCache(
 std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
     const paddle::framework::BlockDesc* forward_global_block,
     const paddle::framework::BlockDesc* backward_global_block,
-    const std::vector<std::string> output_names,
+    const std::vector<std::string>& output_names,
     const std::vector<paddle::Tensor>& x,
     const std::vector<paddle::Tensor>& params);
 
