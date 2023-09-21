@@ -49,7 +49,7 @@ class TestTransposeSPMDRule(unittest.TestCase):
         self.attrs['perm'] = [1, 0]
         self.x_dist_tensor_spec.set_dims_mapping([0, -1])
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec], list(self.attrs.values())
+            self.x_dist_tensor_spec, self.attrs['perm']
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -65,7 +65,7 @@ class TestTransposeSPMDRule(unittest.TestCase):
         self.attrs['perm'] = [0, 1]
         self.x_dist_tensor_spec.set_dims_mapping([0, -1])
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec], list(self.attrs.values())
+            self.x_dist_tensor_spec, self.attrs['perm']
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -79,7 +79,7 @@ class TestTransposeSPMDRule(unittest.TestCase):
         self.attrs['perm'] = [0, 2, 3, 1]
         self.x_dist_tensor_spec.set_dims_mapping([-1, -1, 0, -1])
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec], list(self.attrs.values())
+            self.x_dist_tensor_spec, self.attrs['perm']
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -101,7 +101,7 @@ class TestTransposeSPMDRule(unittest.TestCase):
         self.attrs['perm'] = [0, 2, 3, 1]
         self.x_dist_tensor_spec.set_dims_mapping([-1, 0, 1, -1])
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec], list(self.attrs.values())
+            self.x_dist_tensor_spec, self.attrs['perm']
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -121,7 +121,7 @@ class TestTransposeSPMDRule(unittest.TestCase):
         self.attrs['perm'] = [0, 2, 3, 1]
         self.x_dist_tensor_spec.set_dims_mapping([-1, -1, -1, -1])
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec], list(self.attrs.values())
+            self.x_dist_tensor_spec, self.attrs['perm']
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -138,7 +138,7 @@ class TestTransposeSPMDRule(unittest.TestCase):
         self.attrs['perm'] = [-1, 0, -2, 1]
         self.x_dist_tensor_spec.set_dims_mapping([-1, -1, 0, 1])
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec], list(self.attrs.values())
+            self.x_dist_tensor_spec, self.attrs['perm']
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -157,9 +157,9 @@ class TestTransposeSPMDRule(unittest.TestCase):
         self.out_dist_tensor_spec.shape = [36, 64]
         self.out_dist_tensor_spec.set_dims_mapping([-1, 0])
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_dist_tensor_spec],
-            [self.out_dist_tensor_spec],
-            list(self.attrs.values()),
+            self.x_dist_tensor_spec,
+            self.out_dist_tensor_spec,
+            self.attrs['perm'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -176,9 +176,9 @@ class TestTransposeSPMDRule(unittest.TestCase):
         self.out_dist_tensor_spec.shape = [64, 36]
         self.out_dist_tensor_spec.set_dims_mapping([0, -1])
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_dist_tensor_spec],
-            [self.out_dist_tensor_spec],
-            list(self.attrs.values()),
+            self.x_dist_tensor_spec,
+            self.out_dist_tensor_spec,
+            self.attrs['perm'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -194,9 +194,9 @@ class TestTransposeSPMDRule(unittest.TestCase):
 
         self.out_dist_tensor_spec.set_dims_mapping([-1, 0, -1, -1])
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_dist_tensor_spec],
-            [self.out_dist_tensor_spec],
-            list(self.attrs.values()),
+            self.x_dist_tensor_spec,
+            self.out_dist_tensor_spec,
+            self.attrs['perm'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -220,9 +220,9 @@ class TestTransposeSPMDRule(unittest.TestCase):
         self.out_dist_tensor_spec.shape = [64, 36, 24, 48]
         self.out_dist_tensor_spec.set_dims_mapping([-1, 1, -1, 0])
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_dist_tensor_spec],
-            [self.out_dist_tensor_spec],
-            list(self.attrs.values()),
+            self.x_dist_tensor_spec,
+            self.out_dist_tensor_spec,
+            self.attrs['perm'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -242,9 +242,9 @@ class TestTransposeSPMDRule(unittest.TestCase):
         self.attrs['perm'] = [0, 2, 3, 1]
         self.out_dist_tensor_spec.set_dims_mapping([-1, -1, -1, -1])
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_dist_tensor_spec],
-            [self.out_dist_tensor_spec],
-            list(self.attrs.values()),
+            self.x_dist_tensor_spec,
+            self.out_dist_tensor_spec,
+            self.attrs['perm'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -263,9 +263,9 @@ class TestTransposeSPMDRule(unittest.TestCase):
         self.out_dist_tensor_spec.shape = [24, 64, 36, 48]
         self.out_dist_tensor_spec.set_dims_mapping([1, -1, 0, -1])
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_dist_tensor_spec],
-            [self.out_dist_tensor_spec],
-            list(self.attrs.values()),
+            self.x_dist_tensor_spec,
+            self.out_dist_tensor_spec,
+            self.attrs['perm'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
