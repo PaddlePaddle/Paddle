@@ -244,25 +244,41 @@ def shard_layer(
     output_fn: Callable = None,
 ) -> nn.Layer:
     """
-    This function converts all layer's parameters to DistTensor parameters
-    according to the `shard_fn` specified. It could also control the input or
-    output of the layer by specifying the `input_fn` and `output_fn`.
+    Converts all layer's parameters to DistTensor parameters according to
+    the `shard_fn` specified. It could also control the conversion of input
+    or output of the layer by specifying the `input_fn` and `output_fn`.
     (i.e. convert the input to `paddle.Tensor` with DistTensor, convert output
     back to `paddle.Tensor` with DenseTensor.)
 
+    The `shard_fn` should have the following signature:
+
+        def shard_fn(layer_name, layer, process_mesh) -> None
+
+    The `input_fn` should have the following signature:
+
+        def input_fn(inputs, process_mesh) -> list(paddle.Tensor)
+
+    In general, the type of `input_fn` return value is paddle.Tensor with DistTensor.
+
+    The `output_fn` should have the following signature:
+
+        def output_fn(outputs, process_mesh) -> list(paddle.Tensor)
+
+    In general, the type of `output_fn` return value is paddle.Tensor with DenseTensor.
+
     Args:
-        layer (nn.Layer): The Layer object to be shard.
-        process_mesh (ProcessMesh): The `ProcessMesh` information to be place
-            the input `layer`.
+        layer (paddle.nn.Layer): The Layer object to be shard.
+        process_mesh (paddle.distributed.ProcessMesh): The `ProcessMesh` information
+            to be place the input `layer`.
         shard_fn (Callable): The function to shard layer parameters across
             the `process_mesh`. If not specified, by default we replicate
             all parameters of the layer across the `process_mesh`.
         input_fn (Callable): Specify how the input of the layer is sharded.
-            The `input_fn` will be installed for the Layer as a `forward pre-hook`.
+            The `input_fn` will be registered for the Layer as a `forward pre-hook`.
             By default we do not shard the input.
-        ouput_fn (Callable): Specify how the output of the layer is sharded or
+        output_fn (Callable): Specify how the output of the layer is sharded or
             convert it back to `paddle.Tensor` with DenseTensor.
-            The `output_fn` will be installed for the Layer as `forward post-hook`.
+            The `output_fn` will be registered for the Layer as `forward post-hook`.
             By default we do not shard or convert the output.
     Returns:
         Layer: A layer that contains parameters/buffers

@@ -14,8 +14,6 @@
 
 import unittest
 
-import numpy as np
-
 import paddle
 import paddle.distributed as dist
 from paddle import nn
@@ -92,15 +90,15 @@ class TestShardLayer(unittest.TestCase):
         def output_fn(outputs, process_mesh):
             assert outputs.is_dist()
             # TODO(chenweihang): replace by dist.unshard_dtensor later
-            return outputs.numpy()
+            return paddle.to_tensor(outputs.numpy())
 
         replicate_layer = dist.shard_layer(
             layer, self.mesh, input_fn=input_fn, output_fn=output_fn
         )
 
         x = paddle.randn([5, self.num_features])
-        local_out_numpy = replicate_layer(x)
-        self.assertTrue(isinstance(local_out_numpy, np.ndarray))
+        dense_out = replicate_layer(x)
+        self.assertTrue(dense_out.is_dense())
 
 
 if __name__ == '__main__':
