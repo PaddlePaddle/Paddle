@@ -70,6 +70,7 @@ VJPS = [
     'embedding_grad',
     'scale_grad',
     'poisson_grad',
+    'gumbel_softmax_grad',
 ]
 
 
@@ -151,6 +152,7 @@ BACKENDS = [
     'sqrt',
     'uniform',
     'poisson_grad',
+    'gumbel_softmax_grad',
 ]
 
 

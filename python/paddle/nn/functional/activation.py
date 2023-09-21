@@ -1822,7 +1822,7 @@ def gumbel_softmax(x, temperature=1.0, hard=False, axis=-1, name=None):
              [0.00000000, 1.        , 0.00000000, 0.00000000, 0.00000000, 0.00000000]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.gumbel_softmax(x, temperature, hard, axis)
 
     helper = LayerHelper("gumbel_softmax", **locals())
