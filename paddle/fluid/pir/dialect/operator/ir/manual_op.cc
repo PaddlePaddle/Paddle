@@ -16,6 +16,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/primitive/rule/vjp/vjp.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
@@ -101,6 +102,8 @@ void AddNOp::Verify() {
 void AddNOp::Build(pir::Builder &builder,             // NOLINT
                    pir::OperationArgument &argument,  // NOLINT
                    pir::Value inputs) {
+  VLOG(4) << "Start build AddNOp";
+
   VLOG(4) << "Builder construction inputs";
   argument.AddInput(inputs);
 
@@ -148,6 +151,7 @@ void AddNOp::Build(pir::Builder &builder,             // NOLINT
       dense_out.offset());
   argument_outputs.push_back(out_dense_tensor_type);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
 }
 
 void AddNOp::InferMeta(phi::InferMetaContext *infer_meta) {
@@ -176,6 +180,8 @@ OpInfoTuple AddN_Op::GetOpInfo() {
 void AddN_Op::Build(pir::Builder &builder,
                     pir::OperationArgument &argument,
                     pir::Value inputs_) {
+  VLOG(4) << "Start build AddN_Op";
+
   VLOG(4) << "Builder construction inputs";
   argument.AddInput(inputs_);
 
@@ -303,6 +309,8 @@ OpInfoTuple AddNWithKernelOp::GetOpInfo() {
 void AddNWithKernelOp::Build(pir::Builder &builder,
                              pir::OperationArgument &argument,
                              pir::Value inputs_) {
+  VLOG(4) << "Start build AddNWithKernelOp";
+
   VLOG(4) << "Builder construction inputs";
   argument.AddInput(inputs_);
 
@@ -453,6 +461,8 @@ void FusedGemmEpilogueOp::Build(pir::Builder &builder,
                                 pir::Value y_,
                                 pir::Value bias_,
                                 pir::AttributeMap attributes) {
+  VLOG(4) << "Start build FusedGemmEpilogueOp";
+
   PADDLE_ENFORCE(
       attributes.find("trans_x") != attributes.end(),
       phi::errors::NotFound(
@@ -706,6 +716,8 @@ void FusedGemmEpilogueGradOp::Build(pir::Builder &builder,
                                     pir::Value reserve_space_,
                                     pir::Value out_grad_,
                                     pir::AttributeMap attributes) {
+  VLOG(4) << "Start build FusedGemmEpilogueGradOp";
+
   PADDLE_ENFORCE(
       attributes.find("trans_x") != attributes.end(),
       phi::errors::NotFound(
@@ -903,6 +915,8 @@ void SplitGradOp::Build(pir::Builder &builder,
                         pir::OperationArgument &argument,
                         pir::Value out_grad_,
                         float axis) {
+  VLOG(4) << "Start build SplitGradOp";
+
   // Generate scalar mutable attribute: axis
   paddle::dialect::FullOp full_axis_op = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1}, axis, phi::DataType::FLOAT32, phi::CPUPlace());
@@ -965,6 +979,8 @@ void SplitGradOp::Build(pir::Builder &builder,
                         pir::OperationArgument &argument,
                         pir::Value out_grad_,
                         pir::Value axis_) {
+  VLOG(4) << "Start build SplitGradOp";
+
   VLOG(4) << "Builder construction inputs";
   argument.AddInputs({out_grad_, axis_});
 
@@ -1085,6 +1101,8 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
                  pir::OperationArgument &argument,  // NOLINT
                  pir::Value cond,
                  std::vector<pir::Type> &&output_types) {
+  VLOG(4) << "Start build IfOp";
+
   argument.num_regions = 2;
   argument.AddInput(cond);
   argument.output_types.swap(output_types);

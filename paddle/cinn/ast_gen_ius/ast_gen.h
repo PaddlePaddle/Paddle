@@ -23,7 +23,7 @@ namespace ast_gen_ius {
 
 class AstGen {
  public:
-  static ir::Expr Build(const ir::Tensor& tensor);
+  static ir::Expr Build(const ir::Tensor& tensor, TensorGroup* tensor_group);
 };
 
 }  // namespace ast_gen_ius

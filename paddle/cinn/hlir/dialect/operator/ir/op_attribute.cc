@@ -1,4 +1,4 @@
-// Copyright (c) 2021 CINN Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,16 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-#include <string>
-
-#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 
 namespace cinn {
-namespace optim {
-
-//! Replace the variable \p v to expression \p e in expression \p expr.
-void IrReplace(ir::Expr* expr, ir::Expr from, ir::Expr to);
-
-}  // namespace optim
+namespace dialect {
+const GroupInfo &GroupInfoAttribute::data() const {
+  return storage()->GetAsKey();
+}
+}  // namespace dialect
 }  // namespace cinn
+
+IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::GroupInfoAttribute)

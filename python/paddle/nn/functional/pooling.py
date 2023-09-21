@@ -18,7 +18,7 @@ from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
 from paddle.base.framework import Variable, in_dygraph_mode
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
-from ...base.layers import LayerHelper
+from ...base.layer_helper import LayerHelper
 from ...tensor.manipulation import squeeze, unsqueeze
 
 # TODO: define pooling functions

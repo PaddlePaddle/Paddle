@@ -1016,7 +1016,7 @@ void ReduceKernel(const KPDevice& dev_ctx,
   PADDLE_ENFORCE_GT(
       x.numel(),
       0,
-      phi::errors::InvalidArgument("Tensor need be reduced must not empyt."));
+      phi::errors::InvalidArgument("Tensor need be reduced must not empty."));
 #ifdef PADDLE_WITH_XPU_KP
   auto stream = dev_ctx.x_context()->xpu_stream;
 #else
@@ -1334,7 +1334,7 @@ void ReduceKernelImpl(const Context& dev_ctx,
   PADDLE_ENFORCE_GT(
       input.numel(),
       0,
-      phi::errors::InvalidArgument("Tensor need be reduced must not empyt."));
+      phi::errors::InvalidArgument("Tensor need be reduced must not empty."));
 
   dev_ctx.template Alloc<OutT>(output);
 

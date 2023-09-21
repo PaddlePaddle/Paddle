@@ -68,8 +68,6 @@ def _all_reduce_in_static_mode(tensor, op, group, sync_op, use_calc_stream):
         attrs={'ring_id': ring_id, 'use_calc_stream': sync_op},
     )
 
-    return None
-
 
 def all_reduce(
     tensor, op=ReduceOp.SUM, group=None, sync_op=True, use_calc_stream=False

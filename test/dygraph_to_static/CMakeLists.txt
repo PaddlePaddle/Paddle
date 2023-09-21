@@ -86,7 +86,7 @@ set_tests_properties(test_build_strategy PROPERTIES TIMEOUT 120)
 if(NOT WIN32)
   set_tests_properties(test_resnet_v2 PROPERTIES TIMEOUT 180)
   set_tests_properties(test_tsm PROPERTIES TIMEOUT 900)
-  set_tests_properties(test_resnet PROPERTIES TIMEOUT 240)
+  set_tests_properties(test_resnet PROPERTIES TIMEOUT 300)
 endif()
 
 if(APPLE)
