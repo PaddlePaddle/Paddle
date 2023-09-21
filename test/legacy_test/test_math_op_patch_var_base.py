@@ -626,6 +626,15 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         self.assertTrue(inspect.ismethod(x.triu_))
         self.assertTrue(inspect.ismethod(x.stft))
         self.assertTrue(inspect.ismethod(x.istft))
+        self.assertTrue(inspect.ismethod(x.abs_))
+        self.assertTrue(inspect.ismethod(x.acos_))
+        self.assertTrue(inspect.ismethod(x.atan_))
+        self.assertTrue(inspect.ismethod(x.cos))
+        self.assertTrue(inspect.ismethod(x.cosh_))
+        self.assertTrue(inspect.ismethod(x.sin))
+        self.assertTrue(inspect.ismethod(x.sinh_))
+        self.assertTrue(inspect.ismethod(x.cosh_))
+        self.assertTrue(inspect.ismethod(x.asinh_))
 
     def test_complex_scalar(self):
         a_np = np.random.random(self.shape).astype(self.dtype)

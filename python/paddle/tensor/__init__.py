@@ -489,8 +489,6 @@ tensor_method_func = [  # noqa
     'add_',
     'subtract',
     'subtract_',
-    'atan',
-    'logsumexp',
     'inverse',
     'log1p',
     'log1p_',
@@ -694,6 +692,15 @@ tensor_method_func = [  # noqa
     'triu_',
     'stft',
     'istft',
+    'abs_',
+    'acos_',
+    'atan_',
+    'cos_',
+    'cosh_',
+    'sin_',
+    'sinh_',
+    'acosh_',
+    'asinh_',
 ]
 
 # this list used in math_op_patch.py for magic_method bind
