@@ -278,6 +278,8 @@ from .tensor.math import square  # noqa: F401
 from .tensor.math import square_  # noqa: F401
 from .tensor.math import stanh  # noqa: F401
 from .tensor.math import sum  # noqa: F401
+from .tensor.math import multigammaln  # noqa: F401
+from .tensor.math import multigammaln_  # noqa: F401
 from .tensor.math import nan_to_num  # noqa: F401
 from .tensor.math import nan_to_num_  # noqa: F401
 from .tensor.math import nansum  # noqa: F401

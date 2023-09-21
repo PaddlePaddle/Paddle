@@ -5052,6 +5052,46 @@ def lgamma_(x, name=None):
         return _C_ops.lgamma_(x)
 
 
+def multigammaln(x, p, name=None):
+    """
+    This function computes the log of multivariate gamma, also sometimes called the generalized gamma.
+
+    Args:
+        x (Tensor): Input Tensor. Must be one of the following types: float16, float32, float64, uint16.
+        p (int): The dimension of the space of integration.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): The values of the log multivariate gamma at the given tensor x.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([2.5, 3.5, 4, 6.5, 7.8, 10.23, 34.25])
+            >>> p = 2
+            >>> out = paddle.multigammaln(x)
+            >>> out
+            Tensor(shape=[7], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+                [0.85704780  , 2.46648571  , 3.56509800  , 11.02241873 , 15.84497717 ,
+                    26.09257938 , 170.68316451])
+    """
+
+    c = 0.25 * p * (p - 1) * np.log(np.pi)
+    b = 0.5 * paddle.arange(start=(1 - p), end=1, step=1, dtype=x.dtype)
+    return paddle.sum(paddle.lgamma(x.unsqueeze(-1) + b), axis=-1) + c
+
+
+@inplace_apis_in_dygraph_only
+def multigammaln_(x, p, name=None):
+    r"""
+    Inplace version of ``multigammaln`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_multigammaln`.
+    """
+    return x.multigammaln_(p, name=name)
+
+
 def neg(x, name=None):
     """
     This function computes the negative of the Tensor elementwisely.
