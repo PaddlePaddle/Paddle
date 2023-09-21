@@ -35,13 +35,8 @@ static PyObject *static_api_get_parameter(PyObject *self,
     // Parse Attributes
     PyObject *name_obj = PyTuple_GET_ITEM(args, 0);
     std::string name = CastPyArg2String(name_obj, "name", 0);
-    PyObject *dtype_obj = PyTuple_GET_ITEM(args, 1);
-    phi::DataType dtype = CastPyArg2DataTypeDirectly(dtype_obj, "dtype", 1);
-    PyObject *shape_obj = PyTuple_GET_ITEM(args, 2);
-    phi::IntArray shape = CastPyArg2IntArray(shape_obj, "shape", 2);
     // Call ir static api
-    auto static_api_out =
-        paddle::dialect::get_parameter(name, dtype, shape.GetData());
+    auto static_api_out = paddle::dialect::get_parameter(name);
 
     return ToPyObject(static_api_out);
   } catch (...) {
