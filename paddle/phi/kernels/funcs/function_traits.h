@@ -18,18 +18,6 @@ limitations under the License. */
 
 namespace phi {
 namespace funcs {
-// template <int Arity, typename... Args>
-// struct IsPointerArgs {
-//   static_assert(Arity == sizeof...(Args), "Arity and Args not match!");
-//   static constexpr bool value = false;
-// };
-//
-// template <typename... Args>
-// struct IsPointerArgs<1, Args...> {
-//   static_assert(1 == sizeof...(Args), "Arity and Args not match!");
-//   static constexpr bool value = std::is_pointer<
-//       typename std::tuple_element<0, std::tuple<Args...>>::type>::value;
-// };
 
 // Declare a template class with a single template parameter.
 template <typename>
@@ -53,10 +41,7 @@ struct FunctionTraits<ReturnType (ClassType::*)(Args...)>
 template <typename ReturnType, typename... Args>
 struct FunctionTraits<ReturnType(Args...)> {
   static constexpr size_t arity = sizeof...(Args);
-  // static constexpr bool has_pointer_args = IsPointerArgs<arity,
-  // Args...>::value;
   using ArgsTuple = std::tuple<Args...>;
-  using ResultType = ReturnType;
 };
 
 }  // namespace funcs
