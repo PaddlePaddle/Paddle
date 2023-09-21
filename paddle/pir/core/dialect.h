@@ -56,7 +56,7 @@ class IR_API Dialect {
   ///
   template <typename... Args>
   void RegisterTypes() {
-    (void)std::initializer_list<int>{0, (RegisterType<Args>(), 0)...};
+    (RegisterType<Args>(),...);
   }
 
   template <typename T>
