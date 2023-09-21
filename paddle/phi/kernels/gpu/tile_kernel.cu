@@ -27,7 +27,6 @@ void TileKernel(const Context& dev_ctx,
                 DenseTensor* out) {
   auto x_dims = x.dims();
   auto rank = x_dims.size();
-  printf("rank = %d", rank);
   auto repeat_times_data = repeat_times.GetData();
   int repeat_times_size = repeat_times_data.size();
   rank = std::max(rank, repeat_times_size);
