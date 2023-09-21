@@ -20,6 +20,7 @@ from test_trt_explicit_quantization_model import TestExplicitQuantizationModel
 import paddle
 
 
+@unittest.skipIf(paddle.inference.get_trt_compile_version() < (8, 0, 0))
 class ResNet:
     def __init__(self, layers=50, prefix_name=''):
         self.layers = layers
@@ -35,9 +36,7 @@ class ResNet:
         supported_layers = [34, 50, 101, 152]
         assert (
             layers in supported_layers
-        ), "supported layers are {} but input layer is {}".format(
-            supported_layers, layers
-        )
+        ), f"supported layers are {supported_layers} but input layer is {layers}"
 
         if layers == 34 or layers == 50:
             depth = [3, 4, 6, 3]

@@ -20,6 +20,7 @@ import paddle
 from paddle.nn.initializer import KaimingUniform
 
 
+@unittest.skipIf(paddle.inference.get_trt_compile_version() < (8, 0, 0))
 class MobileNet:
     def __init__(self):
         self.params = {

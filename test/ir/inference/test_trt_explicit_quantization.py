@@ -24,6 +24,7 @@ from paddle.inference import Config, PrecisionType, create_predictor
 from paddle.static.quantization import QuantizationTransformPassV2
 
 
+@unittest.skipIf(paddle.inference.get_trt_compile_version() < (8, 0, 0))
 class TestExplicitQuantizationLayer:
     def setUp(self):
         paddle.enable_static()
