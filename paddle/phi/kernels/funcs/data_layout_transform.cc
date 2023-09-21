@@ -88,10 +88,10 @@ void TransDataLayoutFromOneDNN(DataLayout in_layout,
 
   auto md_dims = !in_dims.empty() ? in_dims : std::vector<int64_t>{1};
   const auto src_mem_desc =
-      !in_dims.empty()
-          ? in.mem_desc()
-          : dnnl::memory::desc(
-                md_dims, OneDNNGetDataType<in>(), dnnl::memory::format_tag::x);
+      !in_dims.empty() ? in.mem_desc()
+                       : dnnl::memory::desc(md_dims,
+                                            ToOneDNNDataType(in.dtype()),
+                                            dnnl::memory::format_tag::x);
 
   dnnl::memory::desc out_mem_desc = make_memory_desc(in, out_layout);
 
