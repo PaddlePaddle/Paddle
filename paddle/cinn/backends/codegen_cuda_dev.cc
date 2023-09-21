@@ -90,7 +90,7 @@ std::vector<Expr> CodeGenCUDA_Dev::GenerateBufferAliasExprs(
                                        temp_buffers.end());
   // prepare temp buffer alias
   std::vector<Expr> buffer_alias;
-  auto tensors = ir::CollectIRNodes(op->body, [&](const Expr *x) {
+  auto tensors = ir::ir_utils::CollectIRNodes(op->body, [&](const Expr *x) {
     return x->as_tensor() && x->as_tensor()->buffer.defined() &&
            temp_buffer_set.count(x->as_tensor()->buffer);
   });
