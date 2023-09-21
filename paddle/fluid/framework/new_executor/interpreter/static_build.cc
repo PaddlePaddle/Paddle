@@ -267,10 +267,8 @@ phi::TensorBase* GetTensorFormVar(framework::Variable* var) {
       return var->template GetMutable<phi::TensorArray>();
     } else if (var->template IsType<framework::Strings>()) {
       return var->template GetMutable<framework::Strings>();
-    } else if (var->template IsType<paddle::framework::RawTensor>()) {
-      return var->template GetMutable<paddle::framework::RawTensor>();
-    } else if (!var->IsInitialized()) {
-      // The following is for RAW type of var
+    } else if (var->template IsType<paddle::framework::RawTensor>() ||
+               !var->IsInitialized()) {
       return var->template GetMutable<paddle::framework::RawTensor>();
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
