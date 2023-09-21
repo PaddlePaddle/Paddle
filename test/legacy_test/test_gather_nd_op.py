@@ -56,7 +56,7 @@ class TestGatherNdOpWithEmptyIndex(OpTest):
         self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=False)
 
 
 class TestGatherNdOpWithEmptyIndexFP16(TestGatherNdOpWithEmptyIndex):
@@ -79,7 +79,9 @@ class TestGatherNdOpWithEmptyIndexBF16(TestGatherNdOpWithEmptyIndex):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', check_prim=True, check_new_ir=False
+        )
 
 
 class TestGatherNdOpWithIndex1(OpTest):
@@ -115,7 +117,7 @@ class TestGatherNdOpWithIndex1(OpTest):
         self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=False)
 
 
 class TestGatherNdOpWithIndex1_ZeroDim(TestGatherNdOpWithIndex1):
@@ -165,7 +167,9 @@ class TestGatherNdOpWithIndex1BF16(TestGatherNdOpWithIndex1):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', check_prim=True, check_new_ir=False
+        )
 
 
 class TestGatherNdOpWithLowIndex(OpTest):
@@ -201,7 +205,7 @@ class TestGatherNdOpWithLowIndex(OpTest):
         self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=False)
 
 
 class TestGatherNdOpWithLowIndexFP16(TestGatherNdOpWithLowIndex):
@@ -225,7 +229,12 @@ class TestGatherNdOpWithLowIndexBF16(TestGatherNdOpWithLowIndex):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X'], 'Out', check_prim=True, numeric_grad_delta=0.5
+            place,
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_new_ir=False,
+            numeric_grad_delta=0.5,
         )
 
 
@@ -267,7 +276,13 @@ class TestGatherNdOpIndex1(OpTest):
         self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, numeric_grad_delta=0.05)
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_new_ir=False,
+            numeric_grad_delta=0.05,
+        )
 
 
 class TestGatherNdOpIndex1FP16(TestGatherNdOpIndex1):
@@ -291,7 +306,12 @@ class TestGatherNdOpIndex1BF16(TestGatherNdOpIndex1):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X'], 'Out', check_prim=True, numeric_grad_delta=0.5
+            place,
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_new_ir=False,
+            numeric_grad_delta=0.5,
         )
 
 
@@ -325,7 +345,7 @@ class TestGatherNdOpWithSameIndexAsX(OpTest):
         self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=False)
 
 
 class TestGatherNdOpWithSameIndexAsXFP16(TestGatherNdOpWithSameIndexAsX):
@@ -349,7 +369,12 @@ class TestGatherNdOpWithSameIndexAsXBF16(TestGatherNdOpWithSameIndexAsX):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X'], 'Out', check_prim=True, numeric_grad_delta=0.5
+            place,
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_new_ir=False,
+            numeric_grad_delta=0.5,
         )
 
 
@@ -385,7 +410,7 @@ class TestGatherNdOpWithHighRankSame(OpTest):
         self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=False)
 
 
 class TestGatherNdOpWithHighRankSameFP16(TestGatherNdOpWithHighRankSame):
@@ -408,7 +433,9 @@ class TestGatherNdOpWithHighRankSameBF16(TestGatherNdOpWithHighRankSame):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', check_prim=True, check_new_ir=False
+        )
 
 
 class TestGatherNdOpWithHighRankDiff(OpTest):
@@ -444,7 +471,7 @@ class TestGatherNdOpWithHighRankDiff(OpTest):
         self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=False)
 
 
 class TestGatherNdOpWithHighRankDiffFP16(TestGatherNdOpWithHighRankDiff):
