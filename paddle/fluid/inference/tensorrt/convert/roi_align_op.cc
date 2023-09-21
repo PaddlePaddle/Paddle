@@ -43,6 +43,8 @@ class RoiAlignOpConverter : public OpConverter {
     const auto sampling_ratio =
         PADDLE_GET_CONST(int, op_desc.GetAttr("sampling_ratio"));
     const auto aligned = PADDLE_GET_CONST(bool, op_desc.GetAttr("aligned"));
+    const auto data_format =
+        PADDLE_GET_CONST(std::string, op_desc.GetAttr("data_format"));
 
     const auto input_tensor = engine_->GetITensor(input_name);
     const auto rois_tensor = engine_->GetITensor(rois_name);

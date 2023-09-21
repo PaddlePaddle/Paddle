@@ -29,6 +29,7 @@ void RoiAlignKernel(const Context& dev_ctx,
                     float spatial_scale,
                     int sampling_ratio,
                     bool aligned,
+                    const std::string& data_format,
                     DenseTensor* out);
 
 }  // namespace phi

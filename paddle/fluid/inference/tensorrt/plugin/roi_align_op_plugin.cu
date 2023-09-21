@@ -70,7 +70,14 @@ __global__ void GPUROIAlignOpt(const int nthreads,
                                const int sampling_ratio,
                                const int num_rois,
                                const bool aligned,
+                               const std::string& data_format,
                                OutT* __restrict__ output_data) {
+  PADDLE_ENFORCE_EQ(
+      data_format == "NHWC",
+      false,
+      phi::errors::InvalidArgument(
+          ("TensorRT does not support data_format is NHWC in RoiAlign op.")));
+
   const int batch = blockIdx.x;
   const int channel = blockIdx.y;
   const T* offset_input_data =

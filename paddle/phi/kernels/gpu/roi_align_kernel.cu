@@ -19,6 +19,7 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 
 namespace phi {
 
@@ -144,8 +145,24 @@ void RoiAlignKernel(const Context& dev_ctx,
                     float spatial_scale,
                     int sampling_ratio,
                     bool aligned,
+                    const std::string& data_format,
                     DenseTensor* out) {
-  auto in_dims = x.dims();
+  const bool channel_last = data_format == "NHWC";
+
+  DenseTensor transformed_input(x.type());
+  DenseTensor transformed_output(out->type());
+
+  if (channel_last) {
+    ResizeToChannelFirst<Context, T>(dev_ctx, &x, &transformed_input);
+    TransToChannelFirst<Context, T>(dev_ctx, &x, &transformed_input);
+
+    ResizeToChannelFirst<Context, T>(dev_ctx, out, &transformed_output);
+  } else {
+    transformed_input = x;
+    transformed_output = *out;
+  }
+
+  auto in_dims = transformed_input.dims();
   int batch_size = in_dims[0];
   int channels = in_dims[1];
   int height = in_dims[2];
@@ -158,7 +175,7 @@ void RoiAlignKernel(const Context& dev_ctx,
     return;
   }
 
-  int output_size = out->numel();
+  int output_size = transformed_output.numel();
   int blocks = NumBlocks(output_size);
   int threads = kNumCUDAThreads;
 #ifdef WITH_NV_JETSON
@@ -237,20 +254,23 @@ void RoiAlignKernel(const Context& dev_ctx,
   int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
   memory_utils::Copy(
       gplace, roi_id_data, cplace, roi_batch_id_data, bytes, dev_ctx.stream());
-  GPURoiAlignForward<T>
-      <<<blocks, threads, 0, dev_ctx.stream()>>>(output_size,
-                                                 x.data<T>(),
-                                                 boxes.data<T>(),
-                                                 spatial_scale,
-                                                 channels,
-                                                 height,
-                                                 width,
-                                                 pooled_height,
-                                                 pooled_width,
-                                                 sampling_ratio,
-                                                 roi_id_data,
-                                                 dev_ctx.template Alloc<T>(out),
-                                                 aligned);
+  GPURoiAlignForward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
+      output_size,
+      transformed_input.data<T>(),
+      boxes.data<T>(),
+      spatial_scale,
+      channels,
+      height,
+      width,
+      pooled_height,
+      pooled_width,
+      sampling_ratio,
+      roi_id_data,
+      dev_ctx.template Alloc<T>(&transformed_output),
+      aligned);
+  if (channel_last) {
+    TransToChannelLast<Context, T>(dev_ctx, &transformed_output, out);
+  }
 }
 
 }  // namespace phi

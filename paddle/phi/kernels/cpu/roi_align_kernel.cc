@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 
 namespace phi {
 
@@ -185,8 +186,25 @@ void RoiAlignKernel(const Context& dev_ctx,
                     float spatial_scale,
                     int sampling_ratio,
                     bool aligned,
+                    const std::string& data_format,
                     DenseTensor* out) {
-  auto in_dims = x.dims();
+  const bool channel_last = data_format == "NHWC";
+
+  DenseTensor transformed_input(x.type());
+  DenseTensor transformed_output(out->type());
+
+  if (channel_last) {
+    ResizeToChannelFirst<Context, T>(dev_ctx, &x, &transformed_input);
+    TransToChannelFirst<Context, T>(dev_ctx, &x, &transformed_input);
+
+    ResizeToChannelFirst<Context, T>(dev_ctx, out, &transformed_output);
+
+  } else {
+    transformed_input = x;
+    transformed_output = *out;
+  }
+
+  auto in_dims = transformed_input.dims();
   int batch_size = static_cast<int>(in_dims[0]);
   int channels = static_cast<int>(in_dims[1]);
   int height = static_cast<int>(in_dims[2]);
@@ -200,9 +218,9 @@ void RoiAlignKernel(const Context& dev_ctx,
 
   auto in_stride = phi::stride(in_dims);
   auto roi_stride = phi::stride(boxes.dims());
-  auto out_stride = phi::stride(out->dims());
+  auto out_stride = phi::stride(transformed_output.dims());
 
-  const T* input_data = x.data<T>();
+  const T* input_data = transformed_input.data<T>();
   DenseTensor roi_batch_id_list = Empty<int>(dev_ctx, {rois_num});
   int* roi_batch_id_data = roi_batch_id_list.data<int>();
   int boxes_batch_size;
@@ -260,7 +278,7 @@ void RoiAlignKernel(const Context& dev_ctx,
       }
     }
   }
-  T* output_data = dev_ctx.template Alloc<T>(out);
+  T* output_data = dev_ctx.template Alloc<T>(&transformed_output);
   const T* boxes_data = boxes.data<T>();
   T roi_offset = aligned ? T(0.5) : 0;
   for (int n = 0; n < rois_num; ++n) {
@@ -311,6 +329,10 @@ void RoiAlignKernel(const Context& dev_ctx,
       interpolated_values.clear();
     }
     boxes_data += roi_stride[0];
+  }
+
+  if (channel_last) {
+    TransToChannelLast<Context, T>(dev_ctx, &transformed_output, out);
   }
 }
 

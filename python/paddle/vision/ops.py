@@ -1628,6 +1628,7 @@ def roi_align(
     sampling_ratio=-1,
     aligned=True,
     name=None,
+    data_format='NCHW',
 ):
     """
     Implementing the roi_align layer.
@@ -1710,6 +1711,7 @@ def roi_align(
             spatial_scale,
             sampling_ratio,
             aligned,
+            data_format,
         )
     else:
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'roi_align')
@@ -1735,6 +1737,7 @@ def roi_align(
                 "spatial_scale": spatial_scale,
                 "sampling_ratio": sampling_ratio,
                 "aligned": aligned,
+                "data_format": data_format,
             },
         )
         return align_out
@@ -1751,10 +1754,11 @@ class RoIAlign(Layer):
         spatial_scale (float32, optional): Multiplicative spatial scale factor
             to translate ROI coords from their input scale to the scale used
             when pooling. Default: 1.0.
+        data_format (str, optional): The data format of input and output data.
 
     Returns:
         The output of ROIAlign operator is a 4-D tensor with \
-            shape (num_boxes, channels, pooled_h, pooled_w).
+            shape (num_boxes, channels, pooled_h, pooled_w) / (num_boxes, pooled_h, pooled_w, channels).
 
     Examples:
         .. code-block:: python
@@ -1773,10 +1777,11 @@ class RoIAlign(Layer):
             [3, 256, 4, 3]
     """
 
-    def __init__(self, output_size, spatial_scale=1.0):
+    def __init__(self, output_size, spatial_scale=1.0, data_format='NCHW'):
         super().__init__()
         self._output_size = output_size
         self._spatial_scale = spatial_scale
+        self._data_format = data_format
 
     def forward(self, x, boxes, boxes_num, aligned=True):
         return roi_align(
@@ -1786,6 +1791,7 @@ class RoIAlign(Layer):
             output_size=self._output_size,
             spatial_scale=self._spatial_scale,
             aligned=aligned,
+            data_format=self._data_format,
         )
 
 

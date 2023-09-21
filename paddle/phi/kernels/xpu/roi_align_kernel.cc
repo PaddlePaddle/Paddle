@@ -31,7 +31,13 @@ void RoiAlignKernel(const Context& dev_ctx,
                     float spatial_scale,
                     int sampling_ratio,
                     bool aligned,
+                    const std::string& data_format,
                     DenseTensor* out) {
+  PADDLE_ENFORCE_EQ(
+      data_format == "NHWC",
+      false,
+      phi::errors::InvalidArgument(
+          ("XPU does not support data_format is NHWC in RoiAlign op.")));
   const auto& in_dims = x.dims();
   int batch_size = in_dims[0];
   int channels = in_dims[1];
