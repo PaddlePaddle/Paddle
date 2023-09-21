@@ -842,8 +842,8 @@ struct AssignValueOpTranscriber : public OpTranscriber {
         attribute_translator(attr_info_maps.at("dtype").type_name, legacy_attr);
     attribute_map["dtype"] = attr_dtype;
 
-    pir::Attribute attr_place =
-        dialect::PlaceAttribute::get(ctx, phi::CPUPlace());
+    pir::Attribute attr_place = dialect::PlaceAttribute::get(
+        ctx, phi::Place(phi::AllocationType::UNDEFINED));
     attribute_map["place"] = attr_place;
 
     int dtype = paddle::get<int>(op_desc.GetAttr("dtype"));

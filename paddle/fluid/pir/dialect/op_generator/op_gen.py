@@ -962,6 +962,14 @@ def OpGenerator(
             and 'forward' in op
         ):
             op_compat_item = op_compat_parser.get_compat(op['forward']['name'])
+
+        if (
+            op_compat_item is not None
+            and op_compat_item['op'] == "pow"
+            and 'scalar' in op_compat_item
+        ):
+            op_compat_item = op_compat_item.pop('scalar')
+
         op_info_items[op['name']] = OpInfoParser(op, op_compat_item)
     # (3) CodeGen: Traverse op_info_items and generate
     ops_name_list = []  # all op class name store in this list

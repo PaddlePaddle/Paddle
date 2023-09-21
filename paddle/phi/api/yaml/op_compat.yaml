@@ -2103,6 +2103,13 @@
   outputs :
     out : Out
 
+- op : pixel_unshuffle
+  backward : pixel_unshuffle_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : poisson
   inputs :
     x : X

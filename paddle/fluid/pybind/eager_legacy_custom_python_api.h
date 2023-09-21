@@ -21,7 +21,7 @@
 namespace paddle {
 namespace pybind {
 
-static PyObject *eager_api_run_program(PyObject *self,
+static PyObject *eager_api_run_program(PyObject *self,  // TOREMOVE
                                        PyObject *args,
                                        PyObject *kwargs) {
   PyThreadState *tstate = nullptr;
@@ -61,9 +61,56 @@ static PyObject *eager_api_run_program(PyObject *self,
   }
 }
 
+static PyObject *newir_eager_api_run_program(PyObject *self,
+                                             PyObject *args,
+                                             PyObject *kwargs) {
+  PyThreadState *tstate = nullptr;
+  try {
+    auto X = GetTensorListFromArgs("run_program", "X", args, 0, true);
+    auto Params = GetTensorListFromArgs("run_program", "Params", args, 1, true);
+    auto Out = GetTensorPtrListFromArgs("run_program", "Out", args, 2, true);
+    auto OutScope =
+        GetScopePtrListFromArgs("run_program", "OutScope", args, 3, false);
+    auto DOut = GetTensorPtrListFromArgs("run_program", "DOut", args, 4, true);
+    framework::AttributeMap attrs;
+    // TODO(zengjinle): support CUDA Graph on eager mode
+    VLOG(1) << "Start NewIR ConstructAttrMapFromPyArgs";
+
+    ConstructAttrMapForRunProgram(
+        "run_program", args, 6, PyTuple_GET_SIZE(args), attrs);
+
+    VLOG(1) << "Finish NewIR ConstructAttrMapFromPyArgs";
+    tstate = PyEval_SaveThread();
+    newir_run_program_ad_func(X, Params, Out, OutScope, DOut, attrs);
+    PyEval_RestoreThread(tstate);
+    tstate = nullptr;
+    Py_RETURN_NONE;
+  } catch (paddle::platform::EnforceNotMet &exception) {
+    if (tstate) {
+      PyEval_RestoreThread(tstate);
+    }
+    std::ostringstream sout;
+    sout << exception.what();
+    sout << "  [operator < run_program > error]";
+    exception.set_error_str(sout.str());
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  } catch (...) {
+    if (tstate) {
+      PyEval_RestoreThread(tstate);
+    }
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
 static PyMethodDef CustomEagerMethods[] = {
     {"run_program",
      (PyCFunction)(void (*)(void))eager_api_run_program,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for run_program in dygraph."},
+    {"newir_run_program",
+     (PyCFunction)(void (*)(void))newir_eager_api_run_program,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for run_program in dygraph."},
     {nullptr, nullptr, 0, nullptr}};
