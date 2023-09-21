@@ -51,7 +51,7 @@ void SetReduceAxis(ir::Expr loop, ir::Expr block) {
       block.As<ir::ScheduleBlockRealize>()->iter_values;
   CHECK_EQ(iter_vars.size(), iter_values.size());
   for (int i = 0; i < iter_values.size(); ++i) {
-    std::set<Expr> contains = ir::CollectIRNodesWithoutTensor(
+    std::set<Expr> contains = ir::ir_utils::CollectIRNodesWithoutTensor(
         iter_values[i],
         [&var_name](const Expr *expr) {
           return expr->As<ir::_Var_>() != nullptr &&

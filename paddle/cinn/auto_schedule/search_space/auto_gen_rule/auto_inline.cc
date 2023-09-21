@@ -84,7 +84,7 @@ bool AutoInline::CanInlineIntoConsumer(const Expr& sche_block_realize_expr,
   std::vector<ir::Expr> consumers =
       ir::GetConsumers(sche_block_realize_expr, root);
   for (const ir::Expr& consumer : consumers) {
-    std::set<ir::Expr> find_load = ir::CollectIRNodesWithoutTensor(
+    std::set<ir::Expr> find_load = ir::ir_utils::CollectIRNodesWithoutTensor(
         consumer.As<ir::ScheduleBlockRealize>()
             ->schedule_block.As<ir::ScheduleBlock>()
             ->body,

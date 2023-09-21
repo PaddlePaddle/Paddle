@@ -886,9 +886,10 @@ std::vector<Expr> GetProducers(const Expr& block, const Expr& root) {
         }
         const ir::Store* store = x->As<ir::Store>();
         if (store) {
-          std::set<ir::Expr> call_nodes = ir::CollectIRNodesWithoutTensor(
-              store->value,
-              [](const ir::Expr* x) { return x->As<ir::Call>(); });
+          std::set<ir::Expr> call_nodes =
+              ir::ir_utils::CollectIRNodesWithoutTensor(
+                  store->value,
+                  [](const ir::Expr* x) { return x->As<ir::Call>(); });
           for (ir::Expr call : call_nodes) {
             const std::vector<ir::Expr>& read_args =
                 call.As<ir::Call>()->read_args;

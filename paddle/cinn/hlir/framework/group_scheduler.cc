@@ -57,7 +57,7 @@ bool IsProhibitScheduleExternCallBlock(ir::Expr block) {
       sch_block_realize->schedule_block.As<ir::ScheduleBlock>();
   CHECK_NOTNULL(sch_block);
 
-  auto find_call = ir::CollectIRNodesWithoutTensor(
+  auto find_call = ir::ir_utils::CollectIRNodesWithoutTensor(
       sch_block->body, [&](const Expr* x) { return x->As<ir::Call>(); });
   for (ir::Expr call : find_call) {
     ir::Call* call_node = call.As<ir::Call>();
@@ -100,12 +100,13 @@ std::unordered_set<std::string> GetReduceLoopVarNames(ir::Expr block) {
   std::unordered_set<std::string> reduce_loop_var_names;
   for (int i = 0; i < iter_vars.size(); ++i) {
     if (iter_vars[i]->is_reduce_axis) {
-      ir::CollectIRNodesWithoutTensor(iter_values[i], [&](const ir::Expr* x) {
-        if (x->as_var()) {
-          reduce_loop_var_names.insert(x->as_var_ref()->name);
-        }
-        return false;
-      });
+      ir::ir_utils::CollectIRNodesWithoutTensor(
+          iter_values[i], [&](const ir::Expr* x) {
+            if (x->as_var()) {
+              reduce_loop_var_names.insert(x->as_var_ref()->name);
+            }
+            return false;
+          });
     }
   }
   return reduce_loop_var_names;
@@ -234,7 +235,7 @@ void GroupScheduler::DoLoopAlignment() {
   std::unordered_set<std::string> reduce_var_names =
       GetReduceVarNames(master_block);
   if (!reduce_var_names.empty()) {
-    std::set<ir::Expr> reduce_loads = ir::CollectIRNodesWithoutTensor(
+    std::set<ir::Expr> reduce_loads = ir::ir_utils::CollectIRNodesWithoutTensor(
         master_block,
         [&](const ir::Expr* x) {
           bool find_reduce_var = false;
@@ -267,7 +268,7 @@ void GroupScheduler::DoLoopAlignment() {
         ++idx;
       }
       std::vector<ir::Var> loop_vars_in_order;
-      ir::CollectIRNodesInOrder(
+      ir::ir_utils::CollectIRNodesInOrder(
           master_iter_values[idx], [&](const ir::Expr* x) {
             if (x->as_var()) {
               loop_vars_in_order.push_back(x->as_var_ref());
@@ -693,7 +694,7 @@ void GroupScheduler::AllocateStorage() {
                                    const std::string& block_name) {
     ir::Expr copy_for_upper_bound = optim::IRCopy(indice_value);
     ir::Expr copy_for_lower_bound = optim::IRCopy(indice_value);
-    std::set<ir::Expr> var_set = ir::CollectIRNodesWithoutTensor(
+    std::set<ir::Expr> var_set = ir::ir_utils::CollectIRNodesWithoutTensor(
         indice_value, [](const ir::Expr* x) { return x->as_var(); });
     for (ir::Expr var : var_set) {
       std::string name = var.as_var_ref()->name;
@@ -793,7 +794,7 @@ void GroupScheduler::AllocateStorage() {
     for (int i = 0; i < 3; ++i) {
       indice_copies.push_back(optim::IRCopy(indice_value));
     }
-    std::set<ir::Expr> var_set = ir::CollectIRNodesWithoutTensor(
+    std::set<ir::Expr> var_set = ir::ir_utils::CollectIRNodesWithoutTensor(
         indice_value, [](const ir::Expr* x) { return x->as_var(); });
     std::unordered_set<std::string> visited_var_names;
     for (ir::Expr var : var_set) {
@@ -1011,7 +1012,7 @@ void GroupScheduler::AllocateStorage() {
         ir::GetConsumers(cur_block, root_block);
     // find store and corresponding load nodes
     ir::Expr find_store =
-        *ir::CollectIRNodesWithoutTensor(
+        *ir::ir_utils::CollectIRNodesWithoutTensor(
              cur_block,
              [&](const ir::Expr* x) { return x->As<ir::Store>(); },
              true)
@@ -1019,13 +1020,14 @@ void GroupScheduler::AllocateStorage() {
     ir::Expr store_indice_value = AnalyzeIndiceValue(find_store, cur_block);
     std::vector<std::tuple<ir::Expr, ir::Expr>> loads_and_blocks;
     for (const ir::Expr& consumer_block : consumer_blocks) {
-      ir::CollectIRNodesWithoutTensor(consumer_block, [&](const Expr* x) {
-        if (x->As<ir::Load>() &&
-            (x->As<ir::Load>()->name() == find_store.As<ir::Store>()->name())) {
-          loads_and_blocks.push_back(std::make_tuple(*x, consumer_block));
-        }
-        return false;
-      });
+      ir::ir_utils::CollectIRNodesWithoutTensor(
+          consumer_block, [&](const Expr* x) {
+            if (x->As<ir::Load>() && (x->As<ir::Load>()->name() ==
+                                      find_store.As<ir::Store>()->name())) {
+              loads_and_blocks.push_back(std::make_tuple(*x, consumer_block));
+            }
+            return false;
+          });
     }
     // Traverse load nodes to check if there are loads that cross cuda blocks or
     // threads
