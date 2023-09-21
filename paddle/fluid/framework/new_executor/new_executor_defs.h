@@ -24,6 +24,7 @@
 #include "paddle/fluid/platform/device_event_base.h"
 #include "paddle/fluid/platform/event.h"
 #include "paddle/phi/core/utils/rw_lock.h"
+#include "paddle/pir/core/value.h"
 
 #define SCOPE_VARS_READER_LOCK AutoRDLock auto_lock(&vars_lock_);
 #define SCOPE_VARS_WRITER_LOCK AutoWRLock auto_lock(&vars_lock_);
@@ -135,6 +136,41 @@ class VariableScope {
 
   // var_name -> var_type
   std::vector<std::pair<std::string, int>> data_transfer_added_vars_;
+};
+
+class NewIRInterpreter;
+class ValueExecutionInfo {
+  explicit ValueExecutionInfo(Scope* scope) : scope_(scope) {}
+
+  std::shared_ptr<ValueExecutionInfo> NewChild(Scope* scope) const;
+
+  std::unique_ptr<Scope> NewTmp(Scope* scope) const;
+
+  void Add(::pir::Value value, std::string var_name);
+
+  void Rename(pir::Value value, std::string new_name, std::string orig_name);
+
+  int GetIdByName(const std::string& name) const;
+
+  std::string GetNameById(int id) const;
+
+ private:
+  mutable std::list<std::shared_ptr<ValueExecutionInfo>> kids_;
+
+  const ValueExecutionInfo* parent_{nullptr};
+
+  Scope* scope_{nullptr};
+
+  std::unordered_map<::pir::Value, std::string> value_2_var_name_;
+
+  std::unordered_map<const paddle::framework::Variable*, std::string>
+      var_2_var_name_;
+
+  std::map<std::string, int> var_name_2_id_;
+
+  std::unordered_map<int, std::string> id_2_var_name_;
+
+  std::vector<Variable*> var_list_;
 };
 
 struct EventInter {
