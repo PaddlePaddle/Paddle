@@ -41,6 +41,7 @@
 #include "paddle/phi/core/enforce.h"
 
 #include "glog/logging.h"
+#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
@@ -124,7 +125,8 @@ paddle::framework::Variable* CreateVar(
     std::unordered_map<const paddle::framework::Variable*, std::string>*
         variable_2_var_name,
     std::map<std::string, int>* var_name_2_id,
-    std::vector<paddle::framework::Variable*>* variable_list) {
+    std::vector<paddle::framework::Variable*>* variable_list,
+    paddle::framework::ValueExecutionInfo* value_exe_info) {
   Operation* def_op = value.dyn_cast<OpResult>().owner();
   bool is_persisable = false;
   if (def_op->isa<::pir::SetParameterOp>()) {
@@ -150,6 +152,9 @@ paddle::framework::Variable* CreateVar(
              variable_2_var_name,
              var_name_2_id,
              variable_list);
+
+  value_exe_info->Add(value, name);
+
   return var;
 }
 
@@ -181,7 +186,8 @@ void BuildValue(pir::Value value,
                 std::unordered_map<const paddle::framework::Variable*,
                                    std::string>* variable_2_var_name,
                 std::map<std::string, int>* var_name_2_id,
-                std::vector<paddle::framework::Variable*>* variable_list) {
+                std::vector<paddle::framework::Variable*>* variable_list,
+                paddle::framework::ValueExecutionInfo* value_exe_info) {
   paddle::framework::Variable* var = nullptr;
   if (value_2_var_name->find(value) != value_2_var_name->end()) {
     var = inner_scope->FindVar(value_2_var_name->at(value));
@@ -193,7 +199,8 @@ void BuildValue(pir::Value value,
                     value_2_var_name,
                     variable_2_var_name,
                     var_name_2_id,
-                    variable_list);
+                    variable_list,
+                    value_exe_info);
   }
   // Only support DenseTensor or Vector<DenseTensor>
   if (!value.type()) {
@@ -219,7 +226,8 @@ void BuildValue(pir::Value value,
                              value_2_var_name,
                              variable_2_var_name,
                              var_name_2_id,
-                             variable_list);
+                             variable_list,
+                             value_exe_info);
 
       var_i->GetMutable<phi::DenseTensor>();
       tensor_array->emplace_back(var_i);
@@ -239,7 +247,8 @@ void HandleForSpecialOp(
         variable_2_var_name,
     std::map<std::string, int>* var_name_2_id,
     std::vector<paddle::framework::Variable*>* variable_list,
-    std::map<pir::Block*, paddle::framework::Scope*>* sub_blocks) {
+    std::map<pir::Block*, paddle::framework::Scope*>* sub_blocks,
+    paddle::framework::ValueExecutionInfo* value_exe_info) {
   std::string op_name = op->name();
   if (op->attributes().count("op_name")) {
     op_name =
@@ -264,6 +273,7 @@ void HandleForSpecialOp(
                variable_2_var_name,
                var_name_2_id,
                variable_list);
+    value_exe_info->Add(value, fetch_var_name);
   }
 
   if (op_name == "pd_op.feed" || op_name == "pd_op.data") {
@@ -285,6 +295,7 @@ void HandleForSpecialOp(
                variable_2_var_name,
                var_name_2_id,
                variable_list);
+    value_exe_info->Add(value, name);
   }
 
   if (op_name == "builtin.combine") {
@@ -301,7 +312,8 @@ void HandleForSpecialOp(
                       value_2_var_name,
                       variable_2_var_name,
                       var_name_2_id,
-                      variable_list);
+                      variable_list,
+                      value_exe_info);
     }
 
     auto tensor_array = var->GetMutable<paddle::framework::VariableRefArray>();
@@ -349,6 +361,7 @@ void HandleForSpecialOp(
                value_2_var_name,
                variable_2_var_name,
                var_name_2_id);
+    value_exe_info->Rename(value, param_name, orig_name);
   }
 
   if (op_name == "pd_op.shadow_output") {
@@ -370,6 +383,7 @@ void HandleForSpecialOp(
                value_2_var_name,
                variable_2_var_name,
                var_name_2_id);
+    value_exe_info->Rename(value, var_name, orig_name);
   }
 
   if (op_name == "builtin.get_parameter") {
@@ -388,6 +402,7 @@ void HandleForSpecialOp(
                variable_2_var_name,
                var_name_2_id,
                variable_list);
+    value_exe_info->Add(value, param_name);
   }
 
   if (op_name == "builtin.slice") {
@@ -462,7 +477,8 @@ void HandleForSpecialOp(
                  value_2_var_name,
                  variable_2_var_name,
                  var_name_2_id,
-                 variable_list);
+                 variable_list,
+                 value_exe_info);
     }
   }
 }
@@ -475,7 +491,8 @@ void HandleForInplaceOp(
     std::unordered_map<const paddle::framework::Variable*, std::string>*
         variable_2_var_name,
     std::map<std::string, int>* var_name_2_id,
-    std::vector<paddle::framework::Variable*>* variable_list) {
+    std::vector<paddle::framework::Variable*>* variable_list,
+    paddle::framework::ValueExecutionInfo* value_exe_info) {
   if (op->num_results() < 1) return;
   pir::IrContext* ctx = pir::IrContext::Instance();
   std::string op_name = op->name();
@@ -518,7 +535,8 @@ void HandleForInplaceOp(
                  value_2_var_name,
                  variable_2_var_name,
                  var_name_2_id,
-                 variable_list);
+                 variable_list,
+                 value_exe_info);
     }
   }
 }
@@ -533,7 +551,8 @@ void BuildScope(const pir::Block& block,
                                    std::string>* variable_2_var_name,
                 std::map<std::string, int>* var_name_2_id,
                 std::vector<paddle::framework::Variable*>* variable_list,
-                std::map<pir::Block*, paddle::framework::Scope*>* sub_blocks) {
+                std::map<pir::Block*, paddle::framework::Scope*>* sub_blocks,
+                paddle::framework::ValueExecutionInfo* value_exe_info) {
   VLOG(4) << "***** [before build] scope"
           << "(" << inner_scope << ") ******\n"
           << paddle::framework::GenScopeTreeDebugInfo(
@@ -556,7 +575,8 @@ void BuildScope(const pir::Block& block,
                          variable_2_var_name,
                          var_name_2_id,
                          variable_list,
-                         sub_blocks);
+                         sub_blocks,
+                         value_exe_info);
       continue;
     }
 
@@ -574,7 +594,8 @@ void BuildScope(const pir::Block& block,
                          value_2_var_name,
                          variable_2_var_name,
                          var_name_2_id,
-                         variable_list);
+                         variable_list,
+                         value_exe_info);
       continue;
     } else {
       for (size_t i = 0; i < op->num_results(); ++i) {
@@ -584,7 +605,8 @@ void BuildScope(const pir::Block& block,
                    value_2_var_name,
                    variable_2_var_name,
                    var_name_2_id,
-                   variable_list);
+                   variable_list,
+                   value_exe_info);
       }
     }
   }

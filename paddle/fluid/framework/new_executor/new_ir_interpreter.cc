@@ -32,6 +32,7 @@
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/device_manager.h"
@@ -70,6 +71,9 @@ NewIRInterpreter::NewIRInterpreter(
       ir_stream_analyzer_(place),
       fetch_var_names_(fetch_var_names) {
   VLOG(4) << "NewIRInterpreter(): " << this << " on " << place_;
+
+  value_exe_info_ = std::make_shared<ValueExecutionInfo>(scope_);
+
   static_build_ = FLAGS_new_executor_static_build &&
                   !FLAGS_new_executor_use_cuda_graph &&
                   !execution_config.used_for_control_flow_op;
@@ -118,7 +122,8 @@ NewIRInterpreter::NewIRInterpreter(
                     &variable_2_var_name_,
                     &var_name_2_id_,
                     &variable_list_,
-                    &sub_blocks_);
+                    &sub_blocks_,
+                    value_exe_info_.get());
 
   interpreter::BuildId2VarName(var_name_2_id_, &id_2_var_name_);
 }

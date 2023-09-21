@@ -212,14 +212,13 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   // value execution info
   std::unordered_map<::pir::Value, std::string> value_2_var_name_;
-
   std::unordered_map<const paddle::framework::Variable*, std::string>
       variable_2_var_name_;
-
   std::map<std::string, int> var_name_2_id_;
   std::unordered_map<int, std::string> id_2_var_name_;
-
   std::vector<Variable*> variable_list_;
+
+  std::shared_ptr<ValueExecutionInfo> value_exe_info_;
 
   std::map<pir::Block*, paddle::framework::Scope*> sub_blocks_;
 
