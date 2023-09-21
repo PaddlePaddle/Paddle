@@ -132,7 +132,7 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
    */
   std::vector<ir::LoweredFunc> DoOpLower(
       std::shared_ptr<hlir::framework::OpImpl> op_impl,
-      const ::pir::Operation* op,
+      ::pir::Operation* op,
       std::unordered_map<::pir::Value, ir::Tensor>* tensor_map,
       std::vector<ir::Tensor>* op_func_arg_tensors);
 

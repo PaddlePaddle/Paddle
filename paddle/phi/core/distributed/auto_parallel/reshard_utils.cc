@@ -112,9 +112,9 @@ CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
   return comm_context;
 }
 
-std::map<int64_t, int64_t> GetSplitAxisWithDimsMapping(
+std::map<int, int64_t> GetSplitAxisWithDimsMapping(
     const std::vector<int64_t>& dims_mapping) {
-  std::map<int64_t, int64_t> split_axis_to_mesh_axis;
+  std::map<int, int64_t> split_axis_to_mesh_axis;
   for (size_t i = 0; i < dims_mapping.size(); ++i) {
     if (dims_mapping[i] != -1) {
       split_axis_to_mesh_axis.emplace(i, dims_mapping[i]);

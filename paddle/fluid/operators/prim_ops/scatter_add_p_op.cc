@@ -80,7 +80,8 @@ class ScatterAddPrimOpShapeInference : public framework::InferShapeBase {
                             index_shape.size()));
       num_index = index_shape[0];
     } else {
-      num_index = ctx->Attrs().Get<std::vector<int64_t>>("index").size();
+      num_index = static_cast<int64_t>(
+          ctx->Attrs().Get<std::vector<int64_t>>("index").size());
     }
     auto axis = ctx->Attrs().Get<int64_t>("axis");
     framework::VarDesc *x_var = PADDLE_GET(framework::VarDesc *, x_var_ptr);

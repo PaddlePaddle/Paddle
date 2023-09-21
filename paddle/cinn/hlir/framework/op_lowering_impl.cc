@@ -14,6 +14,8 @@
 
 #include "paddle/cinn/hlir/framework/op_lowering_impl.h"
 
+#include "paddle/cinn/hlir/framework/compile_error.h"
+#include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/hlir/framework/op_lowering_util.h"
 #include "paddle/cinn/hlir/op/external_api_registry.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
@@ -140,12 +142,36 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
 std::vector<ir::LoweredFunc> OpLowererImpl::LowerCustomCall(
     const GroupPtr& group) {
   std::vector<Node*> nodes = group->CollectNodes();
-  CHECK_EQ(nodes.size(), 1);
+  if (nodes.size() != 1) {
+    std::ostringstream err_msg;
+    err_msg << "Lowering custom call, group func name: " << group->GetFuncName()
+            << ", expect 1 node, but got " << nodes.size();
+    std::ostringstream detail_info;
+    detail_info << "Node id:";
+    for (const Node* node : nodes) {
+      detail_info << node->id() << ", ";
+    }
+    throw CompileErrorHandler(CompilationStatus::LOWERING_FAIL,
+                              err_msg.str(),
+                              detail_info.str(),
+                              __FILE__,
+                              __LINE__);
+  }
   Node* node = nodes[0];
   std::vector<ir::Tensor> op_func_arg_tensors;
   std::unordered_map<std::string, ir::Tensor> tensor_map;
   for (auto& node_data : GetInputNodeData(node)) {
-    CHECK(node_data);
+    if (node_data == nullptr) {
+      std::ostringstream err_msg;
+      err_msg << "Lowering custom call, group func name: "
+              << group->GetFuncName() << ",  one of input node data of "
+              << node->id() << " is nullptr";
+      throw CompileErrorHandler(CompilationStatus::LOWERING_FAIL,
+                                err_msg.str(),
+                                "",
+                                __FILE__,
+                                __LINE__);
+    }
     ir::Tensor tensor;
     if (!tensor_map.count(node_data->id())) {
       tensor = GetTensor(node_data, this->type_dict_, this->shape_dict_);
@@ -181,7 +207,17 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerCustomCall(
       common::CINNValue(group->GetFuncName()), common::CINNValue(external_api)};
   common::CINNValuePack pack =
       impl->fcompute(common::CINNValuePack{compute_args});
-  CHECK_EQ(pack.size(), 1UL);
+  if (pack.size() != 1) {
+    std::ostringstream err_msg;
+    err_msg << "Lowering custom call, group func name: " << group->GetFuncName()
+            << ", expect 1 pack after executing fcompute, but got "
+            << pack.size();
+    throw CompileErrorHandler(CompilationStatus::LOWERING_FAIL,
+                              err_msg.str(),
+                              "",
+                              __FILE__,
+                              __LINE__);
+  }
   // reset input names as extern api input args can't be remove duplicate.
   group->input_names.clear();
   for (auto& inode : node->inlinks_in_order()) {
@@ -215,8 +251,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     for (auto node_data : GetAllNodeData(node)) {
       std::string output_node_data_name = node_data->id();
       group->output_names.push_back(output_node_data_name);
-      // CHECK(tensor_map.count(output_node_data_name)) << "Can't find output
-      // tensor " << output_node_data_name;
       if (tensor_map.count(output_node_data_name) == 0) {
         continue;
       }
@@ -383,7 +417,17 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
 
   op_func_arg_tensors->clear();
   for (int idx = 0; idx < pack.size() - 1; ++idx) {
-    CHECK(pack[idx].is_tensor());
+    if (!pack[idx].is_tensor()) {
+      std::ostringstream err_msg;
+      err_msg << "Lowering op: " << node->op()->name
+              << ", after executing fcompute, pack [" << idx
+              << "] is not a tensor.";
+      throw CompileErrorHandler(CompilationStatus::LOWERING_FAIL,
+                                err_msg.str(),
+                                "",
+                                __FILE__,
+                                __LINE__);
+    }
     op_func_arg_tensors->push_back(
         pack[idx].operator ir::Expr().as_tensor_ref());
   }
@@ -557,9 +601,22 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
 
   // only support first block?
   auto block = all_blocks[0];
-  CHECK(block->as<ir::ScheduleBlockRealize>());
-  CHECK(block->as<ir::ScheduleBlockRealize>()
-            ->schedule_block->as<ir::ScheduleBlock>());
+
+  if (block->as<ir::ScheduleBlockRealize>() == nullptr ||
+      block->as<ir::ScheduleBlockRealize>()
+              ->schedule_block->as<ir::ScheduleBlock>() == nullptr) {
+    std::string err_msg =
+        "Group scheduling, the Expr is not wrapped by ScheduleBlockRealize or "
+        "ScheduleBlock, cannot be scheduled.";
+    std::ostringstream detail_info;
+    detail_info << "Expr:\n";
+    detail_info << block;
+    throw CompileErrorHandler(CompilationStatus::LOWERING_FAIL,
+                              err_msg,
+                              detail_info.str(),
+                              __FILE__,
+                              __LINE__);
+  }
   auto is_tensor_block = true;
   auto tensor_name = block->as<ir::ScheduleBlockRealize>()
                          ->schedule_block->as<ir::ScheduleBlock>()

@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <initializer_list>
 #include <memory>
 #include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/op_info.h"
@@ -33,7 +34,7 @@ using AttributeMap = std::unordered_map<std::string, Attribute>;
 // This represents an operation arguments in an combined form, suitable for use
 // with the builder APIs.
 struct OperationArgument {
-  std::vector<OpResult> inputs;
+  std::vector<Value> inputs;
   AttributeMap attributes;
   std::vector<Type> output_types;
   OpInfo info;
@@ -43,24 +44,32 @@ struct OperationArgument {
  public:
   OperationArgument(IrContext* ir_context, const std::string& name);
   explicit OperationArgument(OpInfo info) : info(info) {}
-  OperationArgument(const std::vector<OpResult>& operands,
+  OperationArgument(const std::vector<Value>& inputs,
                     const AttributeMap& attributes,
                     const std::vector<Type>& types,
                     OpInfo info,
                     size_t num_regions = 0,
                     const std::vector<Block*> successors = {})
-      : inputs(operands),
+      : inputs(inputs),
         attributes(attributes),
         output_types(types),
         info(info),
         num_regions(num_regions),
         successors(successors) {}
 
-  /// Add Operand.
-  void AddOperand(OpResult operand) { inputs.emplace_back(operand); }
+  void AddInput(Value input) { inputs.emplace_back(input); }
 
   template <class InputIt>
-  void AddOperands(InputIt first, InputIt last);
+  void AddInputs(InputIt first, InputIt last);
+
+  void AddInputs(std::initializer_list<Value> value_list) {
+    AddInputs(std::begin(value_list), std::end(value_list));
+  }
+
+  template <class ValueContainer>
+  void AddInputs(const ValueContainer& value_container) {
+    AddInputs(std::begin(value_container), std::end(value_container));
+  }
 
   /// Add Output.
   void AddOutput(Type type) { output_types.emplace_back(type); }
@@ -82,11 +91,12 @@ struct OperationArgument {
 };
 
 template <class InputIt>
-void OperationArgument::AddOperands(InputIt first, InputIt last) {
+void OperationArgument::AddInputs(InputIt first, InputIt last) {
   while (first != last) {
-    inputs.emplace_back(*first++);
+    AddInput(*first++);
   }
 }
+
 template <class InputIt>
 void OperationArgument::AddOutputs(InputIt first, InputIt last) {
   while (first != last) {

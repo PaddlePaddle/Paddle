@@ -390,6 +390,7 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
     out->set_dims(in_dim);
   }
   out->share_lod(*x[0]);
+  out->set_dtype(x[0]->dtype());
 }
 
 // TODO(YuanRisheng) This InferMeta is used in Fluid
@@ -4398,7 +4399,7 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
 void FullWithTensorInferMeta(const MetaTensor& shape,
                              DataType dtype,
                              MetaTensor* out) {
-  out->set_dims(make_ddim({-1}));
+  out->set_dims(make_ddim(std::vector<int64_t>(shape.numel(), -1)));
   out->set_dtype(dtype);
 }
 

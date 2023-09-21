@@ -109,8 +109,8 @@ class RecomputeOptimizer(Optimizer):
             checkpoints, list
         ), "_checkpoints should be a list of Variable or a list of String"
         for ckpt in checkpoints:
-            assert isinstance(ckpt, str) or isinstance(
-                ckpt, Variable
+            assert isinstance(
+                ckpt, (Variable, str)
             ), "_checkpoints should be a list of Variable or a list of String"
         self._checkpoints = checkpoints
 
@@ -273,8 +273,6 @@ class RecomputeOptimizer(Optimizer):
                     OP_ROLE_KEY: op_role,
                 },
             )
-
-        return
 
     def _insert_async_memcpy_op(
         self, insert_idx, src_varname, dst_varname, op_role, dst_place_type
@@ -638,8 +636,6 @@ class RecomputeOptimizer(Optimizer):
             self._update_forward()
             # step 4. verify the correctness
             self._check_offload_fetch()
-
-        return
 
     def backward(
         self,

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import argparse
-import dataclasses
 import inspect
 import logging
 import os
@@ -50,17 +49,165 @@ API_DIFF_SPEC_FN = 'dev_pr_diff_api.spec'
 TEST_TIMEOUT = 10
 
 
-@dataclasses.dataclass
+class Result:
+    # name/key for result
+    name: str = ''
+
+    # default value
+    default: bool = False
+
+    # is failed result or not
+    is_fail: bool = False
+
+    # logging
+    logger: typing.Callable = logger.info
+
+    # logging print order(not logging level, just for convenient)
+    order: int = 0
+
+    @classmethod
+    def msg(cls, count: int, env: typing.Set) -> str:
+        """Message for logging with api `count` and running `env`."""
+        raise NotImplementedError
+
+
+class MetaResult(type):
+    """A meta class to record `Result` subclasses."""
+
+    __slots__ = ()
+
+    # hold result cls
+    __cls_map = {}
+
+    # result added order
+    __order = 0
+
+    def __new__(
+        mcs,
+        name: str,
+        bases: typing.Tuple[type, ...],
+        namespace: typing.Dict[str, typing.Any],
+    ) -> type:
+        cls = super().__new__(mcs, name, bases, namespace)
+        if issubclass(cls, Result):
+            # set cls order as added to Meta
+            cls.order = mcs.__order
+            mcs.__order += 1
+
+            # put cls into Meta's map
+            mcs.__cls_map[namespace.get('name')] = cls
+
+        return cls
+
+    @classmethod
+    def get(mcs, name: str) -> type:
+        return mcs.__cls_map.get(name)
+
+    @classmethod
+    def cls_map(mcs) -> typing.Dict[str, Result]:
+        return mcs.__cls_map
+
+
+class Passed(Result, metaclass=MetaResult):
+    name = 'passed'
+    is_fail = False
+
+    @classmethod
+    def msg(cls, count, env):
+        return f">>> {count} sample codes ran success in env: {env}"
+
+
+class Skipped(Result, metaclass=MetaResult):
+    name = 'skipped'
+    is_fail = False
+    logger = logger.warning
+
+    @classmethod
+    def msg(cls, count, env):
+        return f">>> {count} sample codes skipped in env: {env}"
+
+
+class Failed(Result, metaclass=MetaResult):
+    name = 'failed'
+    is_fail = True
+    logger = logger.error
+
+    @classmethod
+    def msg(cls, count, env):
+        return f">>> {count} sample codes ran failed in env: {env}"
+
+
+class NoCode(Result, metaclass=MetaResult):
+    name = 'nocode'
+    is_fail = True
+    logger = logger.error
+
+    @classmethod
+    def msg(cls, count, env):
+        return f">>> {count} apis don't have sample codes or could not run test in env: {env}"
+
+
+class Timeout(Result, metaclass=MetaResult):
+    name = 'timeout'
+    is_fail = True
+    logger = logger.error
+
+    @classmethod
+    def msg(cls, count, env):
+        return f">>> {count} sample codes ran timeout or error in env: {env}"
+
+
+class BadStatement(Result, metaclass=MetaResult):
+    name = 'badstatement'
+    is_fail = True
+    logger = logger.error
+
+    @classmethod
+    def msg(cls, count, env):
+        return (
+            f">>> {count} bad statements detected in sample codes in env: {env}"
+        )
+
+
 class TestResult:
-    name: str
-    nocode: bool = False
-    passed: bool = False
-    skipped: bool = False
-    failed: bool = False
-    timeout: bool = False
+    name: str = ""
     time: float = float('inf')
     test_msg: str = ""
     extra_info: str = ""
+
+    # there should be only one result be True.
+    __unique_state: Result = None
+
+    def __init__(self, **kwargs) -> None:
+        # set all attr from metaclass
+        for result_name, result_cls in MetaResult.cls_map().items():
+            setattr(self, result_name, result_cls.default)
+
+        # overwrite attr from kwargs
+        for name, value in kwargs.items():
+            # check attr name
+            if not (hasattr(self, name) or name in MetaResult.cls_map()):
+                raise KeyError('`{}` is not a valid result type.'.format(name))
+
+            setattr(self, name, value)
+
+            if name in MetaResult.cls_map() and value:
+                if self.__unique_state is not None:
+                    logger.warning('Only one result state should be True.')
+
+                self.__unique_state = MetaResult.get(name)
+
+        if self.__unique_state is None:
+            logger.warning('Default result will be set to FAILED!')
+            setattr(self, Failed.name, True)
+            self.__unique_state = Failed
+
+    @property
+    def state(self) -> Result:
+        return self.__unique_state
+
+    def __str__(self) -> str:
+        return '{}, running time: {:.3f}s'.format(self.name, self.time)
 
 
 class DocTester:

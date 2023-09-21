@@ -22,6 +22,7 @@
 # remove this file and support Vjp methods
 # code gen.
 
+
 vjp_interface_declare_gen_op_list = [
     "tanh",
     "mean",
@@ -30,6 +31,7 @@ vjp_interface_declare_gen_op_list = [
     "add",
     "concat",
     "split",
+    "split_with_num",
     "gelu",
     "matmul",
     "erf",
@@ -44,6 +46,15 @@ vjp_interface_declare_gen_op_list = [
     'layer_norm',
     'reshape',
     'cast',
+    "scale",
+    'softmax',
+    'silu',
+    'elementwise_pow',
+    'embedding',
+    'fused_softmax_mask_upper_triangle',
+    'slice',
+    'transpose',
+    'slice_double',
 ]
 vjp_interface_implementation_gen_op_list = [
     "tanh",
@@ -53,6 +64,7 @@ vjp_interface_implementation_gen_op_list = [
     "add",
     "concat",
     "split",
+    "split_with_num",
     "gelu",
     "matmul",
     "erf",
@@ -67,4 +79,13 @@ vjp_interface_implementation_gen_op_list = [
     'layer_norm',
     'reshape',
     'cast',
+    "scale",
+    'softmax',
+    'silu',
+    'elementwise_pow',
+    'embedding',
+    'fused_softmax_mask_upper_triangle',
+    'slice',
+    'transpose',
+    'slice_double',
 ]

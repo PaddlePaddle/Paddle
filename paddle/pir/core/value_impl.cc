@@ -18,11 +18,11 @@ namespace pir {
 namespace detail {
 void ValueImpl::set_first_use(OpOperandImpl *first_use) {
   uint32_t offset = kind();
-  first_use_offseted_by_index_ = reinterpret_cast<OpOperandImpl *>(
+  first_use_offseted_by_kind_ = reinterpret_cast<OpOperandImpl *>(
       reinterpret_cast<uintptr_t>(first_use) + offset);
   VLOG(4) << "The index of this value is " << offset
           << ". Offset and set first use: " << first_use << " -> "
-          << first_use_offseted_by_index_ << ".";
+          << first_use_offseted_by_kind_ << ".";
 }
 
 std::string ValueImpl::PrintUdChain() {
@@ -40,16 +40,17 @@ std::string ValueImpl::PrintUdChain() {
   result << "nullptr";
   return result.str();
 }
-ValueImpl::ValueImpl(Type type, uint32_t index) {
-  if (index > OUTLINE_OP_RESULT_INDEX) {
-    throw("The value of index must not exceed 6");
+ValueImpl::ValueImpl(Type type, uint32_t kind) {
+  if (kind > BLOCK_ARG_IDX) {
+    LOG(FATAL) << "The kind of value_impl(" << kind
+               << "), is bigger than BLOCK_ARG_IDX(7)";
   }
   type_ = type;
-  first_use_offseted_by_index_ = reinterpret_cast<OpOperandImpl *>(
-      reinterpret_cast<uintptr_t>(nullptr) + index);
-  VLOG(4) << "Construct a ValueImpl whose's index is " << index
+  first_use_offseted_by_kind_ = reinterpret_cast<OpOperandImpl *>(
+      reinterpret_cast<uintptr_t>(nullptr) + kind);
+  VLOG(4) << "Construct a ValueImpl whose's kind is " << kind
           << ". The offset first_use address is: "
-          << first_use_offseted_by_index_;
+          << first_use_offseted_by_kind_;
 }
 
 }  // namespace detail

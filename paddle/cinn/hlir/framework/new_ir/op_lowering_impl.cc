@@ -53,9 +53,7 @@ std::vector<ir::Tensor> CollectInputTensor(
     std::vector<ir::Tensor>* func_args,
     std::unordered_map<::pir::Value, ir::Tensor>* tensor_map) {
   std::vector<ir::Tensor> tensors;
-  for (auto& operand : op->operands()) {
-    CHECK(operand);
-    auto in_value = operand.source();
+  for (auto in_value : op->operands_source()) {
     VLOG(4) << "input tensor name: " << CompatibleInfo::ValueName(in_value);
     // NOTE(Aurelius84): Need always to create placeholder for input tensor.
     ir::Tensor tensor = details::GetTensor(in_value);
@@ -72,7 +70,7 @@ std::vector<ir::Tensor> CollectInputTensor(
   return tensors;
 }
 
-void CollectOutputInfo(const ::pir::Operation* op,
+void CollectOutputInfo(::pir::Operation* op,
                        std::vector<Type>* out_types,
                        std::vector<std::vector<int>>* out_shapes) {
   auto op_results = op->results();
@@ -360,7 +358,7 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
 
 std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
     std::shared_ptr<hlir::framework::OpImpl> op_impl,
-    const ::pir::Operation* op,
+    ::pir::Operation* op,
     std::unordered_map<::pir::Value, ir::Tensor>* tensor_map,
     std::vector<ir::Tensor>* op_func_arg_tensors) {
   VLOG(4) << "Do lower with Compute, op: " << op->name();

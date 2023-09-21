@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-import numpy as np
-from . import unique_name
-from . import core
-import paddle
-import warnings
 import itertools
+import warnings
 
+import numpy as np
+
+import paddle
+
+from . import core, unique_name
 
 MAX_INTEGER = 2**31 - 1
 
@@ -371,10 +371,7 @@ def _setitem_for_tensor_array(var, item, value):
         not paddle.in_dynamic_mode()
     ), "setitem for tensor_array must be called in static graph mode."
     if isinstance(item, (Variable, int)):
-        from paddle.jit.dy2static.variable_trans_func import (
-            to_static_variable,
-        )
-        from paddle import cast
+        from paddle.jit.dy2static.variable_trans_func import to_static_variable
         from paddle.tensor import array_write
 
         item = paddle.cast(to_static_variable(item), dtype='int64')
@@ -390,7 +387,8 @@ def _setitem_for_tensor_array(var, item, value):
 
 def _setitem_impl_(var, item, value):
     from paddle.base import core
-    from .framework import default_main_program, Variable
+
+    from .framework import Variable, default_main_program
 
     if var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
         return _setitem_for_tensor_array(var, item, value)
@@ -574,9 +572,7 @@ def _setitem_impl_(var, item, value):
 
     if not paddle.in_dynamic_mode():
         # map var to the new output
-        from paddle.jit.dy2static.program_translator import (
-            ProgramTranslator,
-        )
+        from paddle.jit.dy2static.program_translator import ProgramTranslator
 
         ProgramTranslator.get_instance()._inplace_map.add(
             cur_block.program, var.desc.id(), output
@@ -603,8 +599,8 @@ def set_value_for_bool_tensor(var, item, value):
             )
 
     def idx_not_empty(var, item, value):
-        from .framework import Variable
         from ..tensor import gather_nd, scatter_nd_add
+        from .framework import Variable
 
         if not isinstance(value, Variable):
             value = paddle.assign(value).cast(var.dtype)
@@ -828,7 +824,7 @@ def _setitem_static(x, indices, values):
         indices(int|slice|None|Tensor|List|Tuple...): Indices, used to indicate the position of the element to be fetched.
         values(Tensor|Number|Ndarray): values to be assigned to the x.
     """
-    from .framework import default_main_program, Variable
+    from .framework import Variable, default_main_program
 
     if x.type == paddle.base.core.VarDesc.VarType.LOD_TENSOR_ARRAY:
         return _setitem_for_tensor_array(x, indices, values)
@@ -892,6 +888,7 @@ def _setitem_static(x, indices, values):
             attrs["shape"] = shape
 
         elif isinstance(values, Variable):
+            values = values.astype(dtype)
             inputs["ValueTensor"] = values
             value_tensor = values
 
@@ -966,6 +963,9 @@ def _setitem_static(x, indices, values):
         ) = deal_advanced_index(sub_tensor, advanced_index, True)
         if not isinstance(values, Variable):
             values = paddle.assign(values).astype(transed_sub_tensor.dtype)
+
+        if values.dtype != transed_sub_tensor.dtype:
+            values = values.astype(transed_sub_tensor.dtype)
 
         if paddle.in_dynamic_mode():
             return transed_sub_tensor.index_put_(

@@ -45,7 +45,7 @@ paddle::Tensor hook_function(const paddle::Tensor& t) {
   float* t_ptr = t_dense->mutable_data<float>(place);
   float* ret_ptr = ret_dense->mutable_data<float>(place);
   for (int i = 0; i < ret_dense->numel(); i++) {
-    ret_ptr[i] = t_ptr[i] + 3.0;
+    ret_ptr[i] = t_ptr[i] + 3.0f;
   }
 
   auto ret_impl = std::dynamic_pointer_cast<phi::TensorBase>(ret_dense);

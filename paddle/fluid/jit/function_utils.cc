@@ -94,7 +94,7 @@ void RemoveFeedFetch(framework::ProgramDesc *program_desc) {
     const auto &all_ops = block->AllOps();
     size_t op_size = all_ops.size();
     VLOG(3) << "op_size: " << op_size;
-    for (int i = op_size - 1; i >= 0; i--) {
+    for (int i = static_cast<int>(op_size - 1); i >= 0; i--) {
       auto op = all_ops[i];
       if (op->Type() == "feed") {
         VLOG(3) << "remove op type: " << op->Type() << ", index: " << i
