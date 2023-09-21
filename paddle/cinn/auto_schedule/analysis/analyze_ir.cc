@@ -203,12 +203,13 @@ std::unordered_set<std::string> GetReduceLoopVarName(const ir::Expr block) {
   std::unordered_set<std::string> reduce_loop_var;
   for (int i = 0; i < iter_vars.size(); ++i) {
     if (iter_vars[i]->is_reduce_axis) {
-      ir::CollectIRNodesWithoutTensor(iter_values[i], [&](const ir::Expr* x) {
-        if (x->as_var()) {
-          reduce_loop_var.insert(x->as_var_ref()->name);
-        }
-        return false;
-      });
+      ir::ir_utils::CollectIRNodesWithoutTensor(
+          iter_values[i], [&](const ir::Expr* x) {
+            if (x->as_var()) {
+              reduce_loop_var.insert(x->as_var_ref()->name);
+            }
+            return false;
+          });
     }
   }
   return reduce_loop_var;
