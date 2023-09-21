@@ -247,12 +247,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
                 << ", use_calc_stream: " << use_calc_stream << ", "
                 << GetGroupMessage();
 
-        int64_t numel = in_tensor.numel();
         NCCL_CHECK(
             phi::dynload::ncclAllReduce(in_tensor.data(),
                                         out_tensor->data(),
-                                        // in_tensor.numel(),
-                                        numel,
+                                        in_tensor.numel(),
                                         phi::ToNCCLDataType(in_tensor.dtype()),
                                         ToNCCLRedType(opts.reduce_op),
                                         comm,
@@ -895,7 +893,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
     fn(nccl_comm, nccl_stream);
   } else {
     auto comm_task =
-        std::make_unique<phi::distributed::NCCLCommTask>(place,
+        std::make_shared<phi::distributed::NCCLCommTask>(place,
                                                          rank_,
                                                          size_,
                                                          gid_,
@@ -982,7 +980,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
   auto nccl_stream = use_calc_stream ? calc_ctx->stream() : comm_ctx->stream();
 
   auto comm_task =
-      std::make_unique<phi::distributed::NCCLCommTask>(place,
+      std::make_shared<phi::distributed::NCCLCommTask>(place,
                                                        rank_,
                                                        size_,
                                                        gid_,

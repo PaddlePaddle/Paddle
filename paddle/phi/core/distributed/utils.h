@@ -54,35 +54,35 @@ inline bool IsP2POP(CommType comm_type, bool is_batch_p2p = false) {
 inline std::string CommTypeToString(CommType CommType) {
   switch (CommType) {
     case CommType::BROADCAST:
-      return "BROADCAST";
+      return "Broadcast";
     case CommType::ALLREDUCE:
-      return "ALLREDUCE";
+      return "AllReduce";
     case CommType::ALLREDUCE_SPARSE:
-      return "ALLREDUCE_SPARSE";
+      return "AllReduce_Sparse";
     case CommType::REDUCE:
-      return "REDUCE";
+      return "Reduce";
     case CommType::ALLGATHER:
-      return "ALLGATHER";
+      return "AllGather";
     case CommType::GATHER:
-      return "GATHER";
+      return "Gather";
     case CommType::SCATTER:
-      return "SCATTER";
+      return "Scatter";
     case CommType::REDUCE_SCATTER:
-      return "REDUCE_SCATTER";
+      return "ReduceScatter";
     case CommType::ALLTOALL:
-      return "ALLTOALL";
+      return "AllToAll";
     case CommType::SEND:
-      return "SEND";
+      return "Send";
     case CommType::RECV:
-      return "RECV";
+      return "Recv";
     case CommType::BARRIER:
-      return "BARRIER";
+      return "Barrier";
     case CommType::UNKNOWN:
-      return "UNKNOWN";
+      return "Unknown";
     default:
-      return "UNKNOWN";
+      return "Unknown";
   }
-  return "UNKNOWN";
+  return "Unknown";
 }
 
 }  //  namespace distributed

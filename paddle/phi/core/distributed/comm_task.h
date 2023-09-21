@@ -23,6 +23,12 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/macros.h"
 
+#if defined(PADDLE_WITH_RCCL)
+#include "paddle/phi/backends/dynload/rccl.h"
+#else
+#include "paddle/phi/backends/dynload/nccl.h"
+#endif
+
 namespace phi {
 namespace distributed {
 
@@ -36,6 +42,8 @@ class CommTask {
            int gid = 0,
            uint64_t seq = 0,
            int64_t numel = 0,
+           ncclComm_t nccl_comm = nullptr,
+           gpuStream_t nccl_stream = nullptr,
            CommType comm_type = CommType::UNKNOWN)
       : backend_(backend),
         place_(place),
@@ -44,6 +52,8 @@ class CommTask {
         gid_(gid),
         seq_(seq),
         numel_(numel),
+        nccl_comm_(nccl_comm),
+        nccl_stream_(nccl_stream),
         comm_type_(comm_type) {
     const char* global_rank = std::getenv("PADDLE_TRAINER_ID");
     PADDLE_ENFORCE_NOT_NULL(
@@ -54,6 +64,10 @@ class CommTask {
   }
   virtual ~CommTask() = default;
 
+  std::string UniqueKey() {
+    return "op:" + CommTypeToString(comm_type_) +
+           ",gid:" + std::to_string(gid_) + ",seq:" + std::to_string(seq_);
+  }
   std::string GetBackend() { return backend_; }
   phi::Place GetPlace() { return place_; }
   int GetGlobalRank() { return global_rank_; }
@@ -71,6 +85,9 @@ class CommTask {
   std::shared_ptr<Store> GetStore() { return store_; }
   void SetStore(std::shared_ptr<Store> store) { store_ = store; }
 
+  ncclComm_t nccl_comm() { return nccl_comm_; }
+  gpuStream_t nccl_stream() { return nccl_stream_; }
+
   virtual std::string GetTraceMsg() {
     PADDLE_THROW(
         phi::errors::Unimplemented("%s is not implemented.", __func__));
@@ -87,20 +104,10 @@ class CommTask {
     return;
   }
 
-  virtual void SetException(std::exception_ptr exception) {
+  virtual std::string GetCommErrors() {
     PADDLE_THROW(
         phi::errors::Unimplemented("%s is not implemented.", __func__));
-    return;
-  }
-  virtual void CheckAndSetException() {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("%s is not implemented.", __func__));
-    return;
-  }
-  virtual std::exception_ptr CheckCommErrors() {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("%s is not implemented.", __func__));
-    return nullptr;
+    return "";
   }
   virtual bool IsStarted() {
     PADDLE_THROW(
@@ -117,16 +124,6 @@ class CommTask {
         phi::errors::Unimplemented("%s is not implemented.", __func__));
     return false;
   }
-  virtual bool IsSuccess() {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("%s is not implemented.", __func__));
-    return false;
-  }
-  virtual std::exception_ptr GetException() {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("%s is not implemented.", __func__));
-    return nullptr;
-  }
   virtual void AbortComm() {
     PADDLE_THROW(
         phi::errors::Unimplemented("%s is not implemented.", __func__));
@@ -142,6 +139,8 @@ class CommTask {
   int gid_;
   uint64_t seq_{0};
   int64_t numel_;
+  ncclComm_t nccl_comm_;
+  gpuStream_t nccl_stream_;
   CommType comm_type_;
   bool start_trace_updated_{false};
 
