@@ -16,10 +16,7 @@ import paddle
 from paddle.base.data_feeder import check_type
 from paddle.regularizer import WeightDecayRegularizer
 
-__all__ = [
-    'ParamAttr',
-    'WeightNormParamAttr',
-]
+__all__ = []
 
 
 class ParamAttr:

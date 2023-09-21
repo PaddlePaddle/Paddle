@@ -40,32 +40,7 @@ import functools
 from .variable_index import _getitem_static, _setitem_static, _setitem_impl_
 import threading
 
-__all__ = [
-    'Program',
-    'default_startup_program',
-    'default_main_program',
-    'program_guard',
-    'name_scope',
-    'ipu_shard_guard',
-    'set_ipu_shard',
-    'cuda_places',
-    'cpu_places',
-    'xpu_places',
-    'cuda_pinned_places',
-    'in_dygraph_mode',
-    'in_pir_mode',
-    'in_dynamic_or_pir_mode',
-    'is_compiled_with_cinn',
-    'is_compiled_with_cuda',
-    'is_compiled_with_rocm',
-    'is_compiled_with_xpu',
-    'Variable',
-    'require_version',
-    'device_guard',
-    'set_flags',
-    'get_flags',
-    '_stride_in_no_check_dy2st_diff',
-]
+__all__ = []
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
 TEMP_VAR_NAME = core.kTempVarName()

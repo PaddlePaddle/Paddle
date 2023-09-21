@@ -43,7 +43,7 @@ from .trainer_desc import (  # noqa: F401
     PSGPUTrainer,
 )
 
-__all__ = ["TrainerFactory", "FetchHandlerMonitor"]
+__all__ = []
 
 
 class TrainerFactory:

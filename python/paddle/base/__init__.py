@@ -128,40 +128,7 @@ Tensor = LoDTensor
 enable_imperative = enable_dygraph
 disable_imperative = disable_dygraph
 
-__all__ = (
-    framework.__all__
-    + executor.__all__
-    + trainer_desc.__all__
-    + lod_tensor.__all__
-    + data_feed_desc.__all__
-    + compiler.__all__
-    + backward.__all__
-    + [
-        'io',
-        'initializer',
-        'layers',
-        'dygraph',
-        'enable_dygraph',
-        'disable_dygraph',
-        'enable_imperative',
-        'disable_imperative',
-        'backward',
-        'LoDTensor',
-        'LoDTensorArray',
-        'CPUPlace',
-        'XPUPlace',
-        'CUDAPlace',
-        'CUDAPinnedPlace',
-        'IPUPlace',
-        'Tensor',
-        'ParamAttr',
-        'WeightNormParamAttr',
-        'DataFeeder',
-        'unique_name',
-        'Scope',
-        '_cuda_synchronize',
-    ]
-)
+__all__ = []
 
 
 def __bootstrap__():

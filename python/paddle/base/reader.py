@@ -54,7 +54,7 @@ from .unique_name import UniqueNameGenerator
 # NOTE: [ avoid hanging & failed quickly ] These value is used in getting data from another process
 QUEUE_GET_TIMEOUT = 60
 
-__all__ = ['PyReader', 'DataLoader']
+__all__ = []
 
 data_loader_unique_name_generator = UniqueNameGenerator()
 
