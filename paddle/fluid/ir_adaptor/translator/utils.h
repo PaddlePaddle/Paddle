@@ -38,7 +38,7 @@ struct PdOpSig {
       : name(name), inputs(inputs), outputs(outputs) {}
 };
 
-bool HaveLegacyOpToPdOpsMap(std::string op_name);
+bool HaveOpToMultiKernelsMap(std::string op_name);
 
 const std::vector<PdOpSig>& LegacyOpToPdOpsMapping(std::string op_name);
 

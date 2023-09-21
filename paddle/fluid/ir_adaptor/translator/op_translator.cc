@@ -225,7 +225,7 @@ pir::OpInfo OpTranscriber::LoopkUpOpInfo(pir::IrContext* ctx,
              target_op_name);
   }
 
-  if (!paddle::dialect::HaveLegacyOpToPdOpsMap(
+  if (!paddle::dialect::HaveOpToMultiKernelsMap(
           OpNameCompatibleMapping(op_desc.Type()))) {
     return op_info;
   }

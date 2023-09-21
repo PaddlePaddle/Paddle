@@ -79,6 +79,7 @@ def train_dygraph():
     return train(net, adam, x)
 
 
+@test_and_compare_with_new_ir(True)
 def train_static():
     paddle.seed(100)
     net = IRSelectedRowsTestNet()
@@ -93,7 +94,6 @@ def train_static():
 
 
 class TestSimnet(unittest.TestCase):
-    @test_and_compare_with_new_ir(True)
     def test_dygraph_static_same_loss(self):
         dygraph_loss = train_dygraph()
         static_loss = train_static()

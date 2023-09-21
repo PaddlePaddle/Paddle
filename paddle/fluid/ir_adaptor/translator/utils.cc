@@ -26,12 +26,12 @@
 
 namespace paddle {
 namespace dialect {
-bool HaveLegacyOpToPdOpsMap(std::string op_name) {
-  return legacy_op_to_pd_ops_map.find(op_name) != legacy_op_to_pd_ops_map.end();
+bool HaveOpToMultiKernelsMap(std::string op_name) {
+  return op_to_multi_kernels_map.find(op_name) != op_to_multi_kernels_map.end();
 }
 
 const std::vector<PdOpSig>& LegacyOpToPdOpsMapping(std::string op_name) {
-  return legacy_op_to_pd_ops_map[op_name];
+  return op_to_multi_kernels_map[op_name];
 }
 }  // namespace dialect
 }  // namespace paddle
