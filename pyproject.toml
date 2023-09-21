@@ -16,8 +16,9 @@ skip = ["build", "third_party", "__init__.py"]
 extend_skip_glob = [
     # These files do not need to be formatted,
     # see .flake8 for more details
-    "python/paddle/base/**",
     "python/paddle/utils/gast/**",
+    "python/paddle/base/core.py",
+    "python/paddle/base/framework.py",
 ]
 
 [tool.ruff]
