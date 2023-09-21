@@ -183,8 +183,7 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
         )
     if not isinstance(input, expected_type):
         raise TypeError(
-            "The type of '%s' in %s must be %s, but received %s. %s"
-            % (input_name, op_name, expected_type, type(input), extra_message)
+            "The type of '{}' in {} must be {}, but received {}. {}".format(input_name, op_name, expected_type, type(input), extra_message)
         )
 
 
@@ -196,8 +195,7 @@ def check_dtype(
         return
     if convert_dtype(input_dtype) in ['float16']:
         warnings.warn(
-            "The data type of '%s' in %s only support float16 in GPU now. %s"
-            % (input_name, op_name, extra_message)
+            "The data type of '{}' in {} only support float16 in GPU now. {}".format(input_name, op_name, extra_message)
         )
     if convert_dtype(input_dtype) in ['uint16'] and op_name not in [
         'reshape',
@@ -205,13 +203,11 @@ def check_dtype(
         'scale',
     ]:
         warnings.warn(
-            "The data type of '%s' in %s only support bfloat16 in OneDNN now. %s"
-            % (input_name, op_name, extra_message)
+            "The data type of '{}' in {} only support bfloat16 in OneDNN now. {}".format(input_name, op_name, extra_message)
         )
     if convert_dtype(input_dtype) not in expected_dtype:
         raise TypeError(
-            "The data type of '%s' in %s must be %s, but received %s. %s"
-            % (
+            "The data type of '{}' in {} must be {}, but received {}. {}".format(
                 input_name,
                 op_name,
                 expected_dtype,
