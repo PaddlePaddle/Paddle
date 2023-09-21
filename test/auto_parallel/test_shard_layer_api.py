@@ -21,19 +21,28 @@ import paddle.distributed as dist
 from paddle import nn
 
 
+# TODO(chenweihang): test for paddle nn Layer API
+class DemoLayer(nn.Layer):
+    def __init__(self, num_features):
+        super().__init__()
+        self.w0 = self.create_parameter(shape=[num_features, num_features])
+        self.w1 = self.create_parameter(shape=[num_features, num_features])
+
+    def forward(self, x):
+        y = paddle.matmul(x, self.w0)
+        z = paddle.matmul(y, self.w1)
+        return z
+
+
 class MyLayer(nn.Layer):
     def __init__(self, num_features, num_layers):
         super().__init__()
         self.seq = nn.Sequential(
-            *[nn.Linear(num_features, num_features) for _ in range(num_layers)]
+            *[DemoLayer(num_features) for _ in range(num_layers)]
         )
 
     def forward(self, x):
         return self.seq(x)
-
-    def reset_parameters(self):
-        for m in self.seq:
-            m.reset_parameters()
 
 
 class TestShardLayer(unittest.TestCase):
@@ -46,36 +55,50 @@ class TestShardLayer(unittest.TestCase):
         layer = MyLayer(self.num_features, self.num_layers)
         dist_attr = dist.DistAttr(mesh=self.mesh, sharding_specs=[None, None])
 
-        def shard_fn(layer_name, layer):
+        def shard_fn(layer_name, layer, process_mesh):
             if isinstance(layer, nn.Linear):
                 for name, param in layer.named_parameters():
-                    dist_param = dist.shard_tensor(param, dist_attr=dist_attr)
+                    if 'weight' in name:
+                        dist_param = dist.shard_tensor(
+                            param,
+                            dist_attr=dist.DistAttr(
+                                mesh=process_mesh, sharding_specs=[None, None]
+                            ),
+                        )
+                    else:
+                        dist_param = dist.shard_tensor(
+                            param,
+                            dist_attr=dist.DistAttr(
+                                mesh=process_mesh, sharding_specs=[None]
+                            ),
+                        )
                     layer.add_parameter(name, dist_param)
 
         sharded_layer = dist.shard_layer(layer, self.mesh, shard_fn)
 
         for param in sharded_layer.parameters():
             self.assertTrue(param.is_dist())
-            self.assertEqual(param.dist_attr.dims_mapping, [-1, -1])
+            for x in param.dist_attr.dims_mapping:
+                self.assertEqual(x, -1)
 
     def test_shard_layer_input_fn_and_output_fn(self):
         layer = MyLayer(self.num_features, self.num_layers)
 
         def input_fn(inputs, process_mesh):
             return dist.shard_tensor(
-                inputs[0], dist.DistAttr(process_mesh, [None, None])
+                inputs[0], dist_attr=dist.DistAttr(process_mesh, [None, None])
             )
 
         def output_fn(outputs, process_mesh):
             assert outputs.is_dist()
-            # replace by dist.unshard_dtensor later
+            # TODO(chenweihang): replace by dist.unshard_dtensor later
             return outputs.numpy()
 
         replicate_layer = dist.shard_layer(
-            layer, self.mesh, input_fn=input_fn, ouput_fn=output_fn
+            layer, self.mesh, input_fn=input_fn, output_fn=output_fn
         )
 
-        x = paddle.randn(5, self.num_features)
+        x = paddle.randn([5, self.num_features])
         local_out_numpy = replicate_layer(x)
         self.assertTrue(isinstance(local_out_numpy, np.ndarray))
 
