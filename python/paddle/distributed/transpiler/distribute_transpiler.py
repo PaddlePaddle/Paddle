@@ -175,7 +175,7 @@ class DistributeTranspilerConfig:
     Examples:
         .. code-block:: python
 
-            >>> from paddle.distributed.transpiler.ps_dispatcher import RoundRobin
+            >>> from paddle.distributed.transpiler.distribute_transpiler import RoundRobin
             >>> import paddle.distributed.transpiler as transpiler
 
             >>> config = transpiler.DistributeTranspilerConfig()
@@ -283,7 +283,7 @@ class DistributeTranspiler:
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:distributed)
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle
             >>> import paddle.base as base
             >>> import paddle.distributed.transpiler as transpiler
@@ -332,7 +332,7 @@ class DistributeTranspiler:
             ...     loss_name=avg_loss.name,
             ...     num_trainers=trainer_num,
             ...     trainer_id=trainer_id
-            >>> )
+            ... )
 
     """
 
@@ -614,7 +614,7 @@ class DistributeTranspiler:
         Examples:
             .. code-block:: python
 
-                >>> # doctest: +REQUIRES(env:distributed)
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> t = paddle.distributed.transpiler.DistributeTranspiler()
                 >>> t.transpile(
                 ...     trainer_id=0,
@@ -1134,7 +1134,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         Examples:
             .. code-block:: python
 
-                >>> # doctest: +REQUIRES(env:distributed)
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import paddle.distributed.transpiler as transpiler
                 >>> # this is an example, find available endpoints in your case
                 >>> pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
@@ -1283,7 +1283,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         Examples:
             .. code-block:: python
 
-                >>> # doctest: +REQUIRES(env:distributed)
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import paddle.distributed.transpiler as transpiler
                 >>> # this is an example, find available endpoints in your case
                 >>> pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
@@ -1596,7 +1596,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         Examples:
             .. code-block:: python
 
-                >>> # doctest: +REQUIRES(env:distributed)
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import paddle.distributed.transpiler as transpiler
                 >>> # this is an example, find available endpoints in your case
                 >>> pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
@@ -1638,7 +1638,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         Examples:
             .. code-block:: python
 
-                >>> # doctest: +REQUIRES(env:distributed)
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
                 >>> trainer_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
                 >>> current_endpoint = "192.168.0.1:6174"
