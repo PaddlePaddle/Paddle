@@ -18,7 +18,6 @@
 #include <vector>
 
 #include "paddle/phi/api/include/tensor.h"
-#include "paddle/utils/optional.h"
 
 namespace paddle {
 namespace primitive {

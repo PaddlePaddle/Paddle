@@ -642,11 +642,15 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _append_backward_desc(self, main_program):
         program = main_program
-        # if self._hooker:
-        # program = self._hooker.before_append_backward(program)
+
         targets = list(
             filter(lambda x: isinstance(x, OpResult), self._outputs.tolist())
         )
+        if self._hooker:
+            program, targets = self._hooker.before_append_backward(
+                program, targets
+            )
+            self._outputs = NestSequence(targets, need_check=True)
         inputs = list(
             filter(lambda x: isinstance(x, OpResult), self._inputs.tolist())
         )
@@ -676,11 +680,15 @@ class PartialProgramLayer:
                     forward_outputs_grads.append(opres)
                     not_stop_gradient_num += 1
 
-            # TODO: add later.
-            # if self._hooker:
-            # program, start_idx = self._hooker.after_append_backward(
-            # program, start_idx
-            # )
+            if self._hooker:
+                (
+                    program,
+                    forward_end_idx,
+                    targets,
+                ) = self._hooker.after_append_backward(
+                    program, targets, forward_end_idx
+                )
+                self._outputs = NestSequence(targets, need_check=True)
 
             # TODO: add later
             # self.prepare_gradient_aggregation(
@@ -692,6 +700,8 @@ class PartialProgramLayer:
         )
         hash_id = paddle.utils._hash_with_id(program, self)
         extra_info = self._program_extra_info.get(hash_id, {})
+        extra_info['forward_inputs'] = inputs
+        extra_info['forward_outputs'] = targets
         extra_info['forward_end_op_idx'] = forward_end_idx
         extra_info['forward_inputs_grads'] = list(
             map(mapping_op_result, grad_info_map)
@@ -791,8 +801,10 @@ class PartialProgramLayer:
         forward_inputs_grads = self.get_program_extra(whole_program)[
             'forward_inputs_grads'
         ]
-        forward_inputs = self._inputs.tolist()
-        forward_outputs = self._outputs.tolist()
+        forward_inputs = self.get_program_extra(whole_program)['forward_inputs']
+        forward_outputs = self.get_program_extra(whole_program)[
+            'forward_outputs'
+        ]
         forward_outputs_grads = self.get_program_extra(whole_program)[
             'forward_outputs_grads'
         ]
@@ -947,9 +959,11 @@ class PartialProgramLayer:
                 tensor_type = paddle.dtype(8)  # SELECT ROW TENSOR
 
             # TODO(xiongkun): more elegent way to do it.
+
             ir_dtype_2_tensor_dtype = {
                 10: paddle.dtype(5),
             }
+
             out = core.eager.Tensor(
                 ir_dtype_2_tensor_dtype[int(var.dtype)],
                 var.shape,
