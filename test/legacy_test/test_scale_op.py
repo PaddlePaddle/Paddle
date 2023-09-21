@@ -66,10 +66,10 @@ class TestScaleOpScaleVariable(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_new_ir=True)
 
 
 class TestScaleOpSelectedRows(unittest.TestCase):
@@ -150,10 +150,10 @@ class TestScaleFp16Op(TestScaleOp):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_new_ir=True)
 
 
 @unittest.skipIf(
@@ -172,14 +172,10 @@ class TestScaleBF16Op(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            numeric_grad_delta=0.8,
-        )
+        self.check_grad(['X'], 'Out', numeric_grad_delta=0.8, check_new_ir=True)
 
 
 @unittest.skipIf(
@@ -192,12 +188,12 @@ class TestScaleFp16OpSelectedRows(TestScaleOpSelectedRows):
     def test_scale_selected_rows(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_with_place(place, 'in', 'out')
+            self.check_with_place(place, 'in', 'out', check_new_ir=True)
 
     def test_scale_selected_rows_inplace(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_with_place(place, 'in', 'in')
+            self.check_with_place(place, 'in', 'in', check_new_ir=True)
 
 
 class TestScaleApiStatic(unittest.TestCase):

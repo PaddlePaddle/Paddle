@@ -1579,7 +1579,7 @@ std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
       }
     }
   } else if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
-    return {::pybind11::handle(obj).cast<pir::Value>()};
+    return {::pybind11::handle(obj).cast<pir::OpResult>()};
   } else if (obj == Py_None) {
     return {};
   } else {
