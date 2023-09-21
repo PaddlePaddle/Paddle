@@ -386,11 +386,8 @@ struct SetVarAttrDescVisitor {
   template <typename T>
   void operator()(T &&v) {
     using U = std::decay_t<decltype(v)>;
-    if (std::is_same<U, int>::value) {
-      set_attr_value(v);
-    } else if (std::is_same<U, std::string>::value) {
-      set_attr_value(v);
-    } else if (std::is_same<U, std::vector<int>>::value) {
+    if (std::is_same<U, int>::value || std::is_same<U, std::string>::value ||
+        std::is_same<U, std::vector<int>>::value) {
       set_attr_value(v);
     } else {
       PADDLE_THROW(platform::errors::Unavailable(
