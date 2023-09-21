@@ -36,10 +36,10 @@ class TestUnsqueezeOp(OpTest):
         self.outputs = {"Out": self.inputs["X"].reshape(self.new_shape)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_new_ir=True)
 
     def init_test_case(self):
         self.ori_shape = (3, 40)
@@ -59,10 +59,10 @@ class TestUnsqueezeFP16Op(OpTest):
         self.outputs = {"Out": self.inputs["X"].reshape(self.new_shape)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_new_ir=True)
 
     def init_test_case(self):
         self.ori_shape = (3, 40)
@@ -85,10 +85,10 @@ class TestUnsqueezeBF16Op(OpTest):
         self.outputs = {"Out": convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_new_ir=True)
 
     def init_test_case(self):
         self.ori_shape = (3, 40)
