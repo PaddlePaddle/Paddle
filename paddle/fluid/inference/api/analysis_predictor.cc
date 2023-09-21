@@ -1102,6 +1102,10 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   }
 #endif
 
+  if (config_.shape_range_info_collected()) {
+    HookCollectShapeRangeInfo();
+  }
+
   // Run the inference program
   // if share variables, we need not create variables
   executor_->Run();
@@ -1165,6 +1169,10 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
             << inference::tensorrt::TensorRTEngine::predictor_id_per_thread;
   }
 #endif
+
+  if (config_.shape_range_info_collected()) {
+    HookCollectShapeRangeInfo();
+  }
 
   // Run the inference program
   // if share variables, we need not create variables
@@ -1998,7 +2006,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
       static_cast<void *>(scope), this->GetDeviceContexts()));
   res->input_or_output_ = true;
   res->SetName(name);
-  if (platform::is_cpu_place(place_)) {
+  if (platform::is_cpu_place(place_)) {  // NOLINT
     res->SetPlace(PaddlePlace::kCPU);
   } else if (platform::is_ipu_place(place_)) {
     // Currently, IPUPlace's tensor copy between cpu and ipu has been set in
@@ -2049,7 +2057,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
       static_cast<void *>(scope), this->GetDeviceContexts()));
   res->input_or_output_ = false;
   res->SetName(name);
-  if (platform::is_cpu_place(place_)) {
+  if (platform::is_cpu_place(place_)) {  // NOLINT
     res->SetPlace(PaddlePlace::kCPU);
   } else if (platform::is_ipu_place(place_)) {
     // Currently, IPUPlace's tensor copy between cpu and ipu has been set in

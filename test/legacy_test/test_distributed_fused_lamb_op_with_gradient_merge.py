@@ -33,6 +33,23 @@ class TestDistributedFusedLambGradientMerge(unittest.TestCase):
             use_master_acc_grad=False,
         )
 
+    def test_gm_new_comm(self):
+        run_test(
+            clip_after_allreduce=True,
+            max_global_norm=-1.0,
+            gradient_merge_steps=2,
+            need_env={"FLAGS_dynamic_static_unified_comm": "1"},
+        )
+
+    def test_gm_with_fp16_acc_grad_new_comm(self):
+        run_test(
+            clip_after_allreduce=True,
+            max_global_norm=-1.0,
+            gradient_merge_steps=2,
+            use_master_acc_grad=False,
+            need_env={"FLAGS_dynamic_static_unified_comm": "1"},
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
