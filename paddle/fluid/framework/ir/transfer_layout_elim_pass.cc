@@ -148,7 +148,7 @@ bool TransferLayoutElimPass::AllInputIsTransferlayout(
   std::set<int> dst_layouts;
   std::set<int> src_layouts;
 
-  auto *scope = param_scope();
+  auto *scope = param_scope();  // NOLINT
 
   for (auto var : op_node->inputs) {
     // If this input is a 1D persistable tensor，we allow transfer_layout not
