@@ -22,7 +22,8 @@ from utils import dygraph_guard, static_guard
 
 import paddle
 from paddle.autograd.ir_backward import grad as ir_grad
-from paddle.base import core
+from paddle.base import Scope, core
+from paddle.base.executor import scope_guard
 from paddle.base.framework import (
     OpProtoHolder,
     _dygraph_tracer,
@@ -409,7 +410,8 @@ class PrimForwardChecker:
                 self.check_jit_comp_with_cinn()
         else:
             if self.enable_check_static_comp:
-                self.check_static_comp()
+                with scope_guard(Scope()):
+                    self.check_static_comp()
 
     def get_kernel_sig(self):
         with dygraph_guard():
@@ -870,7 +872,8 @@ class PrimGradChecker(PrimForwardChecker):
                 self.check_jit_comp_with_cinn()
         else:
             if self.enable_check_static_comp:
-                self.check_static_comp()
+                with scope_guard(Scope()):
+                    self.check_static_comp()
 
     def get_output_dict(self, np_outputs, api_outputs, outputs_sig):
         assert len(api_outputs) <= len(outputs_sig), (
