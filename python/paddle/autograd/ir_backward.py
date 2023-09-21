@@ -207,6 +207,23 @@ def prune_ops(total_ops, inputs_set, outputs_set, no_grad_set):
             union_op_flags[i] = False
             intersection_op_flags[i] = False
 
+    # some inputs in no_grad_set but its next op is effective,
+    # add their defining op here.
+    total_ops_list = list(total_ops)
+    for i, op in enumerate(total_ops_list):
+        if union_op_flags[i] is False:
+            for result in op.results():
+                if result.has_one_use():
+                    next_op = result.first_use().owner()
+                    if (
+                        next_op in total_ops
+                        and union_op_flags[total_ops_list.index(next_op)]
+                        is True
+                    ):
+                        union_op_flags[i] = True
+                else:
+                    continue
+
     effective_ops = [
         total_ops[i] for i in range(len(total_ops)) if intersection_op_flags[i]
     ]
@@ -422,13 +439,16 @@ def append_backward_ops(
         ):
             if not grad_semantic:
                 continue
-            if input.get_defining_op().name() == "builtin.combine":
+            if (
+                input.get_defining_op() is not None
+                and input.get_defining_op().name() == "builtin.combine"
+            ):
                 stop_gradient = make_input_stopgradient(input.get_defining_op())
                 input_grad_stopgradients.append(
                     [info[0] for info in stop_gradient]
                 )
             else:
-                if input in no_grad_set:
+                if input.get_defining_op() is None or input in no_grad_set:
                     input_grad_stopgradients.append([True])
                 else:
                     input_grad_stopgradients.append([False])
@@ -445,7 +465,10 @@ def append_backward_ops(
         ):
             if not grad_semantic:
                 continue
-            if input.get_defining_op().name() == "builtin.combine":
+            if (
+                input.get_defining_op() is not None
+                and input.get_defining_op().name() == "builtin.combine"
+            ):
                 update_input_grad_map(input.get_defining_op(), input_grads[i])
             else:
                 input_grad = input_grads[i]
@@ -522,8 +545,8 @@ def append_backward_ops(
                         ] = state.value_to_valuegrad[value]
                     else:
                         state.op_to_opgrad[op] = []
-                else:
-                    state.op_to_opgrad[op] = []
+            else:
+                state.op_to_opgrad[op] = []
 
 
 def create_backward_prune_set(inputs, outputs, no_grad_set, state):

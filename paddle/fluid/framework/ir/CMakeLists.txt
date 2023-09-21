@@ -292,6 +292,8 @@ if(WITH_XPU)
                ${XPU_PASS_DEPS})
   pass_library(gather_squeeze_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(fast_where_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(layer_norm_act_xpu_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
   pass_library(fast_layernorm_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(squeeze_excitation_fuse_pass inference DIR xpu DEPS

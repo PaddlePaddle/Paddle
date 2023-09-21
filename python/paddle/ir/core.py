@@ -80,25 +80,6 @@ def convert_np_dtype_to_dtype_(np_dtype):
         raise ValueError("Not supported numpy dtype %s" % dtype)
 
 
-def _use_new_ir_api():
-    """
-    This API checks whether paddle use new ir api.
-
-    Returns:
-        bool: Whether paddle use new ir api.
-
-    """
-    # TODO(YuanRisheng): need move import to the top of this file after break import circle
-    import paddle
-
-    if paddle.framework.get_flags("FLAGS_enable_new_ir_api")[
-        'FLAGS_enable_new_ir_api'
-    ]:
-        return True
-    else:
-        return False
-
-
 # program is a global instance.
 _main_program_ = Program()
 # set the global program for c++ and this program will be used to build ops in c++

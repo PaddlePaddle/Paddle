@@ -2682,8 +2682,9 @@ def cross_entropy(
 
     Examples:
         .. code-block:: python
+            :name: code-example1
 
-            # hard labels
+            >>> # hard labels
             >>> import paddle
             >>> paddle.seed(99999)
             >>> N=100
@@ -2704,9 +2705,10 @@ def cross_entropy(
                    5.35419278)
 
         .. code-block:: python
+            :name: code-example2
 
-            # soft labels
-            # case1: soft labels without label_smoothing
+            >>> # soft labels
+            >>> # case1: soft labels without label_smoothing
             >>> import paddle
             >>> paddle.seed(99999)
             >>> axis = -1
@@ -2730,7 +2732,7 @@ def cross_entropy(
                    1.12801195)
 
 
-            # case2: soft labels with label_smoothing
+            >>> # case2: soft labels with label_smoothing
             >>> import paddle
             >>> paddle.seed(99999)
             >>> axis = -1
@@ -2741,18 +2743,32 @@ def cross_entropy(
             >>> reduction='mean'
             >>> weight = None
             >>> logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
-            >>> labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
-            >>> labels /= paddle.sum(labels, axis=axis, keepdim=True)
-            >>> paddle_loss_mean = paddle.nn.functional.cross_entropy(
+            >>> interger_labels = paddle.randint(low=0, high=C, shape=[N], dtype='int64')
+            >>> one_hot_labels = paddle.nn.functional.one_hot(interger_labels, C).astype('float32')
+
+            >>> # integer labels
+            >>> paddle_interger_loss_mean = paddle.nn.functional.cross_entropy(
             ...                                                         logits,
-            ...                                                         labels,
+            ...                                                         interger_labels,
             ...                                                         axis=axis,
             ...                                                         weight=weight,
             ...                                                         label_smoothing=label_smoothing,
             ...                                                         reduction=reduction)
-            >>> print(paddle_loss_mean)
+            >>> print(paddle_interger_loss_mean)
             Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
-            1.12226281)
+            1.08317309)
+
+            >>> # one_hot labels
+            >>> paddle_one_hot_loss_mean = paddle.nn.functional.cross_entropy(
+            ...                                                         logits,
+            ...                                                         one_hot_labels,
+            ...                                                         axis=axis,
+            ...                                                         weight=weight,
+            ...                                                         label_smoothing=label_smoothing,
+            ...                                                         reduction=reduction)
+            >>> print(paddle_one_hot_loss_mean)
+            Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
+            1.08317309)
 
     """
 

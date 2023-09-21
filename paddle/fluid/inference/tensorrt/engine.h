@@ -168,6 +168,7 @@ class TensorRTEngine {
     // not run fp16. When running fp16, the output accuracy of the model will be
     // affected, closing the plugin fp16 may bring some improvement on accuracy.
     bool disable_trt_plugin_fp16{false};
+    int optimization_level{3};
   };
 
   // Weight is model parameter.
