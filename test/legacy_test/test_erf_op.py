@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
 from scipy.special import erf
+from utils import static_guard
 
 import paddle
 import paddle.base.dygraph as dg
@@ -65,13 +66,13 @@ class TestErfLayer(unittest.TestCase):
         np.testing.assert_allclose(y_ref, y_test, rtol=1e-05)
 
     def test_case(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             self._test_case(base.CPUPlace())
             if base.is_compiled_with_cuda():
                 self._test_case(base.CUDAPlace(0))
 
     def test_name(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with base.program_guard(base.Program()):
                 x = paddle.static.data('x', [3, 4])
                 y = paddle.erf(x, name='erf')

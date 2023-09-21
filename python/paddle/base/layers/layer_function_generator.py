@@ -13,22 +13,22 @@
 # limitations under the License.
 
 import re
-import functools
-import warnings
 import string
-
+import warnings
 from io import StringIO
-from ..proto import framework_pb2
+
+from paddle import _C_ops, _legacy_C_ops
+
+from ..data_feeder import check_variable_and_dtype
 from ..framework import (
     OpProtoHolder,
     Variable,
-    core,
     convert_np_dtype_to_dtype_,
+    core,
     in_dygraph_mode,
 )
 from ..layer_helper import LayerHelper
-from ..data_feeder import check_variable_and_dtype
-from paddle import _C_ops, _legacy_C_ops
+from ..proto import framework_pb2
 
 __all__ = [
     'generate_layer_fn',
@@ -236,11 +236,7 @@ def generate_layer_fn(op_type):
         outputs = dict()
         out = kwargs.pop(_convert_(o_name), [])
         if out:
-            out_var = (
-                out[0]
-                if (isinstance(out, list) or isinstance(out, tuple))
-                else out
-            )
+            out_var = out[0] if (isinstance(out, (list, tuple))) else out
         else:
             out_var = helper.create_variable_for_type_inference(dtype=dtype)
         outputs[o_name] = [out_var]

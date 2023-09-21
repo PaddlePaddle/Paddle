@@ -40,6 +40,7 @@ from ..framework import (
     convert_np_dtype_to_dtype_,
     core,
     in_dynamic_mode,
+    in_dynamic_or_pir_mode,
     in_pir_mode,
 )
 
@@ -157,10 +158,11 @@ def create_parameter(
 
     Args:
         shape (list of int): Shape of the parameter
-        dtype (str): Data type of the parameter
+        dtype (str): Data type of the parameter. It can be set as 'float16', 'float32', 'float64'.
         name (str, optional): For detailed information, please refer to
            :ref:`api_guide_Name` . Usually name is no need to set and None by default.
-        attr (ParamAttr, optional): Attributes of the parameter
+        attr (ParamAttr, optional): Attribute object of the specified argument. For detailed information, please refer to
+           :ref:`api_paddle_ParamAttr` None by default, which means that ParamAttr will be initialized as it is.
         is_bias (bool, optional): This can affect which default initializer is chosen
                        when default_initializer is None. If is_bias,
                        initializer.Constant(0.0) will be used. Otherwise,
@@ -301,7 +303,7 @@ def linspace(start, stop, num, dtype=None, name=None):
 
     """
     if dtype is None:
-        dtype = 'float32'
+        dtype = paddle.get_default_dtype()
     tensor_num = num
     tensor_start = start
     tensor_stop = stop
@@ -432,7 +434,7 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
             [1.]
     """
     if dtype is None:
-        dtype = 'float32'
+        dtype = paddle.get_default_dtype()
     tensor_num = num
     tensor_start = start
     tensor_stop = stop
@@ -831,8 +833,7 @@ def full_like(x, fill_value, dtype=None, name=None):
     if in_dynamic_mode():
         return _C_ops.full_like(x, fill_value, dtype, x.place)
     elif in_pir_mode():
-        place = _current_expected_place()
-        return _C_ops.full_like(x, fill_value, dtype, place)
+        return _C_ops.full_like(x, fill_value, dtype, core.Place())
     else:
         helper = LayerHelper("full_like", **locals())
         check_variable_and_dtype(
@@ -878,42 +879,33 @@ def full_like(x, fill_value, dtype=None, name=None):
 
 
 def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
-    if in_dynamic_mode():
-        place = _current_expected_place()
+    if in_dynamic_or_pir_mode():
+        place = (
+            _current_expected_place()
+            if not in_pir_mode()
+            else paddle.base.core.Place()
+        )
         if force_cpu:
             place = core.CPUPlace()
         if isinstance(shape, (list, tuple)):
             shape = paddle.utils.convert_shape_to_list(shape)
 
-        if not isinstance(dtype, core.VarDesc.VarType):
+        if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
         if out is None:
-            out = _C_ops.full(shape, float(value), dtype, place)
+            value = float(value) if in_dynamic_mode() else value
+            out = _C_ops.full(shape, value, dtype, place)
             out.stop_gradient = True
             return out
 
         if out is not None:
+            value = float(value) if in_dynamic_mode() else value
             # final state mode is support out is not None.
-            _C_ops.full_(out, shape, float(value), dtype, place)
+            _C_ops.full_(out, shape, value, dtype, place)
             out.stop_gradient = True
             return out
     else:
-        if paddle.ir.core._use_new_ir_api():
-            # Below code will be removed after we can generate IR api automatically
-            place = _current_expected_place()
-            if force_cpu:
-                place = core.CPUPlace()
-            if isinstance(shape, (list, tuple)):
-                shape = paddle.utils.convert_shape_to_list(shape)
-
-            if not isinstance(dtype, core.DataType):
-                dtype = paddle.ir.core.convert_np_dtype_to_dtype_(dtype)
-
-            if out is None:
-                out = paddle._ir_ops.full(shape, float(value), dtype, place)
-                out.stop_gradient = True
-                return out
         attrs = {'force_cpu': force_cpu}
         dtype = convert_dtype(dtype)
         if not isinstance(value, Variable):
@@ -1021,7 +1013,7 @@ def ones(shape, dtype=None, name=None):
              [1. 1.]]
     """
     if dtype is None:
-        dtype = core.VarDesc.VarType.FP32
+        dtype = paddle.get_default_dtype()
     return fill_constant(value=1.0, shape=shape, dtype=dtype, name=name)
 
 
@@ -1105,7 +1097,7 @@ def zeros(shape, dtype=None, name=None):
              [0. 0.]]
     """
     if dtype is None:
-        dtype = 'float32'
+        dtype = paddle.get_default_dtype()
     return fill_constant(value=0.0, shape=shape, dtype=dtype, name=name)
 
 
@@ -1187,8 +1179,8 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
     _check_attr(num_rows, "num_rows")
 
     if dtype is None:
-        dtype = core.VarDesc.VarType.FP32
-    elif not isinstance(dtype, core.VarDesc.VarType):
+        dtype = paddle.get_default_dtype()
+    if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
     if num_columns is not None:
         _check_attr(num_columns, "num_columns")
@@ -1281,7 +1273,7 @@ def full(shape, fill_value, dtype=None, name=None):
     """
 
     if dtype is None:
-        dtype = 'float32'
+        dtype = paddle.get_default_dtype()
 
     return fill_constant(shape=shape, dtype=dtype, value=fill_value, name=name)
 

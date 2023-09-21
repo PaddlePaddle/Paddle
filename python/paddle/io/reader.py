@@ -13,13 +13,13 @@
 # limitations under the License.
 
 import copy
+import logging
 import multiprocessing
 import sys
 import time
 import warnings
 
 import paddle
-from paddle.base.framework import logging
 
 from ..base.framework import (
     _current_expected_place,

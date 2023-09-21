@@ -13,37 +13,33 @@
 # limitations under the License.
 
 import inspect
-import numpy as np
-import warnings
-import weakref
 import sys
+import warnings
+
+import numpy as np
 
 import paddle
-from .. import framework
-from ..framework import convert_np_dtype_to_dtype_
-from .. import core
-from .. import unique_name
+import paddle.profiler as profiler
+import paddle.utils.deprecated as deprecated
+from paddle import _C_ops
+from paddle.base.data_feeder import (
+    _PADDLE_DTYPE_2_NUMPY_DTYPE,
+    convert_uint16_to_float,
+)
+from paddle.profiler.utils import in_profiler_mode
+
+from .. import core, framework, unique_name
 from ..framework import (
-    Variable,
-    Parameter,
-    _getitem_static,
-    _setitem_static,
-    _setitem_impl_,
     EagerParamBase,
-    in_dygraph_mode,
+    Parameter,
+    Variable,
+    _getitem_static,
+    _setitem_impl_,
+    _setitem_static,
+    convert_np_dtype_to_dtype_,
 )
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_tensor
-from paddle.base.data_feeder import (
-    convert_uint16_to_float,
-    _PADDLE_DTYPE_2_NUMPY_DTYPE,
-)
-import paddle.utils.deprecated as deprecated
-import paddle.profiler as profiler
-from paddle.profiler.utils import in_profiler_mode
-from paddle import _C_ops, _legacy_C_ops
-from paddle.device import get_all_custom_device_type
-from paddle.base.framework import _global_flags
 
 _grad_scalar = None
 
@@ -1028,7 +1024,7 @@ def monkey_patch_tensor():
                 # for example, paddle.base.core.VarDesc.VarType.LOD_TENSOR
                 return origin(dtype)
 
-        setattr(core.VarDesc.VarType, "__str__", dtype_str)
+        core.VarDesc.VarType.__str__ = dtype_str
         _already_patch_repr = True
 
     # patch math methods for tensor

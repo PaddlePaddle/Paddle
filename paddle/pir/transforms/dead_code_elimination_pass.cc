@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/pir/transforms/dead_code_elimination_pass.h"
-
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/pass/pass.h"
@@ -63,7 +62,7 @@ class DeadCodeEliminationPass : public pir::Pass {
   }
 
   bool CanApplyOn(pir::Operation *op) const override {
-    return op->name() == "builtin.module" && op->num_regions() > 0;
+    return op->isa<::pir::ModuleOp>() && op->num_regions() > 0;
   }
 };
 

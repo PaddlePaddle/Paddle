@@ -82,6 +82,7 @@ class ElementwiseDivOp(OpTest):
 
     def if_check_prim(self):
         self.check_prim = True
+        self.check_prim_pir = True
 
     def gen_data(self, shape):
         return np.random.uniform(0.1, 1, shape)
@@ -124,6 +125,7 @@ class ElementwiseDivOp(OpTest):
                 'user_defined_grad_outputs': [self.grad_out],
                 'check_dygraph': self.check_dygraph,
                 'check_prim': self.check_prim,
+                'check_prim_pir': self.check_prim_pir,
             }
             if self.place is None:
                 self.check_grad(*check_args, **check_kwargs, check_new_ir=True)
@@ -215,6 +217,8 @@ class TestElementwiseDivOpBF16(ElementwiseDivOp):
             check_kwargs = {
                 'no_grad_set': check_option['no_grad'],
                 'check_dygraph': self.check_dygraph,
+                'check_prim': self.check_prim,
+                'check_prim_pir': self.check_prim_pir,
             }
             if self.place is None:
                 self.check_grad(*check_args, **check_kwargs, check_new_ir=True)
@@ -226,6 +230,7 @@ class TestElementwiseDivOpBF16(ElementwiseDivOp):
 
     def if_check_prim(self):
         self.check_prim = True
+        self.check_prim_pir = True
 
     def if_enable_cinn(self):
         self.enable_cinn = False
@@ -455,7 +460,11 @@ def create_test_fp16_class(parent, max_relative_error=2e-3):
                 else:
                     check_args.insert(0, self.place)
                     self.check_grad_with_place(
-                        *check_args, **check_kwargs, check_new_ir=True
+                        *check_args,
+                        **check_kwargs,
+                        check_new_ir=True,
+                        check_prim=True,
+                        check_prim_pir=True
                     )
 
     cls_name = "{}_{}".format(parent.__name__, "Fp16")

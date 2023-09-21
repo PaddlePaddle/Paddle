@@ -12,19 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-import logging
-import hashlib
 import json
+import logging
 import os
+import sys
 import time
-import collections
-from threading import Thread, current_thread
-from contextlib import contextmanager
+from threading import current_thread
 
-from paddle.base import unique_name, compiler
-from .checkpoint_saver import SerializableBase, CheckpointSaver, PaddleModel
-from paddle.base.framework import in_dygraph_mode, Program
+from paddle.base import compiler, unique_name
+from paddle.base.framework import Program, in_dygraph_mode
+
+from .checkpoint_saver import CheckpointSaver, PaddleModel, SerializableBase
 
 g_train_epoch_range = None
 g_checker = None
@@ -397,7 +395,7 @@ class TrainEpochRange(SerializableBase):
                 "load tain_epoch_range checkpoint:{}".format(self._serialize())
             )
         else:
-            assert False, "not supported acp_type:{}".format(g_acp_type)
+            raise AssertionError("not supported acp_type:{}".format(g_acp_type))
 
     def _to_dict(self):
         d = {
@@ -503,7 +501,9 @@ class TrainEpochRange(SerializableBase):
                 elif g_acp_type == CONST_DACP_TYPE:
                     self._save_checkpoint()
                 else:
-                    assert False, "not supported acp_type:{}".format(g_acp_type)
+                    raise AssertionError(
+                        "not supported acp_type:{}".format(g_acp_type)
+                    )
             self._last_checkpoint_time = time.time()
 
     def _save_checkpoint(self):
@@ -632,10 +632,7 @@ def _get_checker():
 def _normal_yield(max_epoch_num):
     if max_epoch_num < 0:
         max_epoch_num = sys.maxint
-    for i in range(0, max_epoch_num):
-        yield i
-
-    return
+    yield from range(0, max_epoch_num)
 
 
 def train_epoch_range(max_epoch_num, save_checkpoint_inter=None):

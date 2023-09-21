@@ -211,8 +211,7 @@ def cluster_files_reader(
         for fn in my_file_list:
             with open(fn, "r") as f:
                 lines = loader(f)
-                for line in lines:
-                    yield line
+                yield from lines
 
     return reader
 

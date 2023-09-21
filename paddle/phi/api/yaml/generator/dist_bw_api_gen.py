@@ -25,21 +25,30 @@ from dist_api_gen import DistForwardAPI
 MAIN_DIST_BRANCH_TEMPLATE = """
   // Auto Parallel condition
   if ({}) {{
-    // 1. Create API Output & Prepare Dist and Dense Output{}
-    // 2. Infer DistTensor's Global Shape{}
-    // 3. Select Kernel{}
-    // 4. PrepareData (DataTransform & Prepare Dense Input){}
-    // 5. Infer Local DenseTensor Meta{}
-    // 6. DenseTensor Kernel Call{}
-    // 7. Return
+    // 1. InferSpmd (Infer DistAttr of Inputs&Outputs){}
+    // 2. Create Temporary Output & Prepare Dist and Dense Output{}
+    // 3. Infer DistTensor's Global Shape{}
+    // 4. Select Kernel{}
+    // 5. Reshard Input{}\n
+    // 6. PrepareData (DataTransform & Prepare Dense Input){}
+    // 7. Infer Local DenseTensor Meta{}
+    // 8. DenseTensor Kernel Call{}
+    // 9. Reshard Output{}\n
+    // 10. Return
     {}
   }}
 """
 
 # 1. Create API Outputs
-SINGLE_OUT_CREATION_TEMPLATE = """
+SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD = """
     auto dist_out = SetKernelDistOutput({});
     auto dense_out = dist_out->unsafe_mutable_value();
+"""
+SINGLE_OUT_CREATION_TEMPLATE = """
+    std::shared_ptr<phi::distributed::DistTensor> shared_dist_out =
+        CreateKernelDistOutput(spmd_info.second[0]);
+    phi::distributed::DistTensor* dist_out = shared_dist_out.get();
+    phi::DenseTensor* dense_out = dist_out->unsafe_mutable_value();
 """
 VECTOR_OUT_CREATION_TEMPLATE = """
     auto dist_out = SetKernelDistOutput({name});
@@ -58,17 +67,15 @@ VECTOR_OUT_CREATION_TEMPLATE = """
 INPLACE_OUT_CREATION_TEMPLATE = """
     *{} = {};
 """
-MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
-    auto dist_out_{} = SetKernelDistOutput({});
-    auto dense_out_{} = dist_out_{}->unsafe_mutable_value();
+MULTI_SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD = """
+    auto dist_out_{idx} = SetKernelDistOutput({name});
+    auto dense_out_{idx} = dist_out_{idx}->unsafe_mutable_value();
 """
-
-# 2. Infer Global Shape
-SINGLE_DIST_META_IN_TEMPLATE = """MakeDistMetaTensor(*{}.impl()), """
-SINGLE_DIST_META_OUT_DECL_TEMPLATE = """
-    phi::distributed::DistMetaTensor meta_{}({});"""
-INFER_GLOBAL_SHAPE_TEMPLATE = """
-    phi::{}({}{});
+MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
+    std::shared_ptr<phi::distributed::DistTensor> shared_dist_out_{idx} =
+        CreateKernelDistOutput(spmd_info.second[{idx}]);
+    phi::distributed::DistTensor* dist_out_{idx} = shared_dist_out_{idx}.get();
+    phi::DenseTensor* dense_out_{idx} = dist_out_{idx}->unsafe_mutable_value();
 """
 
 # 4. PrepareData (DataTransform & Prepare Dist and Dense Input)
@@ -83,6 +90,12 @@ MULTI_VECTOR_OUT_CREATION_TEMPLATE = """
         dense_out_{i}[i] = const_cast<phi::DenseTensor*>(&dist_out_{i}[i]->value());
     }}
 """
+
+# 9. Reshard Output
+RESHARD_SINGLE_OUTPUT_TEMPLATE = """
+    ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out, {});"""
+RESHARD_MULTI_SINGLE_OUTPUT_TEMPLATE = """
+    ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out_{}, {});"""
 
 
 class DistBackwardAPI(DistForwardAPI, BackwardAPI):
@@ -99,9 +112,16 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
             self.dist_output_args.append('dist_out')
             self.dense_output_args.append('dense_out')
             if self.outputs['types'][0] == 'Tensor':
-                output_creation_code += SINGLE_OUT_CREATION_TEMPLATE.format(
-                    self.outputs['names'][0]
-                )
+                if self.infer_meta['spmd_rule'] is not None:
+                    output_creation_code += SINGLE_OUT_CREATION_TEMPLATE.format(
+                        self.outputs['names'][0]
+                    )
+                else:
+                    output_creation_code += (
+                        SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD.format(
+                            self.outputs['names'][0]
+                        )
+                    )
             elif self.outputs['types'][0] == 'std::vector<Tensor>':
                 output_creation_code += VECTOR_OUT_CREATION_TEMPLATE.format(
                     name=self.outputs['names'][0]
@@ -113,11 +133,18 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
                 self.dist_output_args.append(f'dist_out_{i}')
                 self.dense_output_args.append(f'dense_out_{i}')
                 if out_type == 'Tensor':
-                    output_creation_code += (
-                        MULTI_SINGLE_OUT_CREATION_TEMPLATE.format(
-                            i, self.outputs['names'][i], i, i
+                    if self.infer_meta['spmd_rule'] is not None:
+                        output_creation_code += (
+                            MULTI_SINGLE_OUT_CREATION_TEMPLATE.format(
+                                name=self.outputs['names'][i], idx=i
+                            )
                         )
-                    )
+                    else:
+                        output_creation_code += (
+                            MULTI_SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD.format(
+                                name=self.outputs['names'][i], idx=i
+                            )
+                        )
                 elif out_type == 'std::vector<Tensor>':
                     output_creation_code += (
                         MULTI_VECTOR_OUT_CREATION_TEMPLATE.format(
@@ -179,18 +206,56 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
     def gene_api_declaration(self) -> str:
         return BackwardAPI.gene_api_declaration(self)
 
+    def generate_reshard_output_code(self):
+        reshard_output_code = ""
+        if self.infer_meta['spmd_rule'] is not None:
+            output_num = len(self.outputs['types'])
+            if output_num == 1:
+                if self.outputs['types'][0] == 'Tensor':
+                    reshard_output_code += (
+                        RESHARD_SINGLE_OUTPUT_TEMPLATE.format(
+                            self.outputs['names'][0]
+                        )
+                    )
+                else:
+                    self.vector_output_size_assertion_check()
+            elif output_num > 1:
+                for i, out_type in enumerate(self.outputs['types']):
+                    if out_type == 'Tensor':
+                        reshard_output_code += (
+                            RESHARD_MULTI_SINGLE_OUTPUT_TEMPLATE.format(
+                                i, self.outputs['names'][i]
+                            )
+                        )
+                    else:
+                        self.vector_output_size_assertion_check()
+            else:
+                raise ValueError(
+                    "{} : Output error: the output should not be empty.".format(
+                        self.api
+                    )
+                )
+        else:
+            # do nothing
+            pass
+
+        return reshard_output_code
+
     def generate_auto_paralel_branch(self) -> str:
         # if no tensor input, do not genetate auto parallel branch
         if len(self.inputs['names']) == 0:
             return ""
         return MAIN_DIST_BRANCH_TEMPLATE.format(
             self.generate_if_condition_code(),
+            self.generate_infer_spmd_code(),
             self.generate_output_creation_code(),
             self.generate_infer_global_shape_code(),
             self.generate_kernel_selection_code(),
+            self.generate_reshard_input_code(),
             self.generate_prepare_data_code(),
             self.generate_infer_meta_code(),
             self.generate_kernel_call_code(),
+            self.generate_reshard_output_code(),
             self.generate_return_code(),
         )
 
@@ -226,6 +291,10 @@ def source_include(header_file_path, fw_header_file_path):
 
 #include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/api/profiler/supplement_tracing.h"
+
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/phi/infermeta/spmd_rules/rules.h"
+#endif
 
 PD_DECLARE_bool(conv2d_disable_cudnn);
 PD_DECLARE_int32(low_precision_op_list);

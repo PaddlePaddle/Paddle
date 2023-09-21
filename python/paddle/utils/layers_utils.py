@@ -158,8 +158,7 @@ def _yield_value(iterable):
 def _yield_flat_nest(nest):
     for n in _yield_value(nest):
         if is_sequence(n):
-            for ni in _yield_flat_nest(n):
-                yield ni
+            yield from _yield_flat_nest(n)
         else:
             yield n
 
@@ -456,7 +455,10 @@ def convert_shape_to_list(shape):
     if isinstance(shape, (list, tuple)):
         shape = [x.item(0) if isinstance(x, Variable) else x for x in shape]
     else:
-        shape = shape.astype(int).tolist()
+        if in_dygraph_mode():
+            shape = shape.astype(int).tolist()
+        else:
+            shape = [shape]
     return shape
 
 

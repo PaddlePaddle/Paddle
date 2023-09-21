@@ -36,7 +36,7 @@ pir::AttributeMap CreateAttributeMap(std::string attribute_name,
 TEST(value_test, value_test) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   // 1. Construct OP1: a = OP1()
-  std::vector<pir::OpResult> op1_inputs = {};
+  std::vector<pir::Value> op1_inputs = {};
   std::vector<pir::Type> op1_output_types = {pir::Float32Type::get(ctx)};
   pir::Operation *op1 =
       pir::Operation::Create(op1_inputs,
@@ -47,7 +47,7 @@ TEST(value_test, value_test) {
   pir::OpResult a = op1->result(0);
   EXPECT_TRUE(a.use_empty());
   // 2. Construct OP2: b = OP2();
-  std::vector<pir::OpResult> op2_inputs = {};
+  std::vector<pir::Value> op2_inputs = {};
   std::vector<pir::Type> op2_output_types = {pir::Float32Type::get(ctx)};
   pir::Operation *op2 =
       pir::Operation::Create(op2_inputs,
@@ -58,7 +58,7 @@ TEST(value_test, value_test) {
   pir::OpResult b = op2->result(0);
   EXPECT_TRUE(b.use_empty());
   // 3. Construct OP3: c = OP3(a, b);
-  std::vector<pir::OpResult> op3_inputs{a, b};
+  std::vector<pir::Value> op3_inputs{a, b};
   std::vector<pir::Type> op3_output_types = {pir::Float32Type::get(ctx)};
   pir::Operation *op3 =
       pir::Operation::Create(op3_inputs,
@@ -71,7 +71,7 @@ TEST(value_test, value_test) {
   op3->Print(std::cout);
   pir::OpResult c = op3->result(0);
   // 4. Construct OP4: d, e, f, g, h, i, j = OP4(a, c);
-  std::vector<pir::OpResult> op4_inputs = {a, c};
+  std::vector<pir::Value> op4_inputs = {a, c};
   std::vector<pir::Type> op4_output_types;
   for (size_t i = 0; i < 7; i++) {
     op4_output_types.push_back(pir::Float32Type::get(ctx));
@@ -84,10 +84,10 @@ TEST(value_test, value_test) {
   op4->Print(std::cout);
 
   // Test 1:
-  EXPECT_EQ(op1->result(0).GetDefiningOp(), op1);
-  EXPECT_EQ(op2->result(0).GetDefiningOp(), op2);
-  EXPECT_EQ(op3->result(0).GetDefiningOp(), op3);
-  EXPECT_EQ(op4->result(6).GetDefiningOp(), op4);
+  EXPECT_EQ(op1->result(0).owner(), op1);
+  EXPECT_EQ(op2->result(0).owner(), op2);
+  EXPECT_EQ(op3->result(0).owner(), op3);
+  EXPECT_EQ(op4->result(6).owner(), op4);
 
   // Test 2: op1_first_output -> op4_first_input
   pir::OpResult op1_first_output = op1->result(0);
