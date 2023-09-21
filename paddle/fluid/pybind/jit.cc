@@ -143,6 +143,11 @@ PyInterpreterFrameProxy *PyInterpreterFrameProxy_New(
 
 // We copy some cpython internal API from cpython project.
 // To avoid name conflict, we use "Internal_" prefix to mark them.
+int Internal_PyInterpreterFrame_GetLine(_PyInterpreterFrame *frame) {
+  int addr = _PyInterpreterFrame_LASTI(frame) * sizeof(_Py_CODEUNIT);
+  return PyCode_Addr2Line(frame->f_code, addr);
+}
+
 static int Internal_PyFrame_OpAlreadyRan(_PyInterpreterFrame *frame,
                                          int opcode,
                                          int oparg) {
