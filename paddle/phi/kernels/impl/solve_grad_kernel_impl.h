@@ -64,7 +64,6 @@ struct ReduceSumForSolvelGrad<GPUContext, T> {
                   DenseTensor* output,
                   const std::vector<int>& reduce_dims,
                   bool keep_dims) {
-    
     phi::SumKernel<T, GPUContext>(dev_ctx, input, reduce_dims, input.dtype(), false, output);
   }
 };
