@@ -44,7 +44,10 @@ InterpreterCoreEventGarbageCollector::InterpreterCoreEventGarbageCollector(
                            /*allow_spinning*/ true,
                            /*track_task*/ false);
   queue_ = CreateSingleThreadedWorkQueue(options);
+  std::cout << "vec_instruction size = " << vec_instruction.size() << std::endl;
   for (auto& instruc : vec_instruction) {
+    std::cout << instruc->Name() << " = " << instruc->DeviceContext().GetPlace()
+              << std::endl;
     gc_event_.emplace_back(instruc->DeviceContext().GetPlace(),
                            platform::GenerateDeviceEventFlag());
   }

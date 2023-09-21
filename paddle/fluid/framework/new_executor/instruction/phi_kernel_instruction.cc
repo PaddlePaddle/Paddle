@@ -54,6 +54,7 @@ PhiKernelInstruction::PhiKernelInstruction(
       pir::IrContext::Instance()->GetRegisteredOpInfo(op_name);
   op_ = op;
   phi_op_name_ = op_name;
+  std::cout << "PhiKernelInstruction: " << phi_op_name_ << std::endl;
   VLOG(6) << "construct phi kernel instruction for: " << phi_op_name_;
 
   // Todo: support paddle::dialect::DistAttribute

@@ -65,6 +65,7 @@ CreateInterpreterCoreGarbageCollector(
           new InterpreterCoreEventGarbageCollector(vec_instruction));
     }
   } else if (platform::is_xpu_place(place)) {
+    std::cout << "place is xpu" << std::endl;
     // Because there is no multi-stream on XPU device, fast GC can
     // be used.
     // Previously, XPU used no_event GC. But `Wait` in no_event GC
@@ -77,7 +78,12 @@ CreateInterpreterCoreGarbageCollector(
     return std::unique_ptr<InterpreterCoreGarbageCollector>(
         new InterpreterCoreNoEventGarbageCollector());
   } else {
-    std::cout << "place is cpu" << std::endl;
+    std::cout << "InterpreterCoreEventGarbageCollector place is cpu"
+              << std::endl;
+    for (auto& instruction : vec_instruction) {
+      std::cout << instruction->Name() << " = "
+                << instruction->DeviceContext().GetPlace() << std::endl;
+    }
     return std::unique_ptr<InterpreterCoreGarbageCollector>(
         new InterpreterCoreEventGarbageCollector(vec_instruction));
   }

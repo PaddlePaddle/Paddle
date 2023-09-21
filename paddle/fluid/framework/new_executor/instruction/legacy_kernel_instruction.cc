@@ -50,6 +50,7 @@ LegacyKernelInstruction::LegacyKernelInstruction(
       pir::IrContext::Instance()->GetRegisteredOpInfo(op_name);
   op_ = op;
   legacy_op_name_ = op_name;
+  std::cout << "LegacyKernelInstruction: " << legacy_op_name_ << std::endl;
   VLOG(6) << "construct phi kernel instruction for: " << legacy_op_name_;
 
   // Todo: support paddle::dialect::DistAttribute
