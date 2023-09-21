@@ -13,21 +13,22 @@
 # limitations under the License.
 
 import copy
+
 import numpy as np
+
 import paddle
 
+from . import core, unique_name
 from .framework import (
     Variable,
+    _current_expected_place,
     default_main_program,
     default_startup_program,
     in_dygraph_mode,
     in_pir_mode,
-    _current_expected_place,
 )
-from . import unique_name
+from .initializer import _global_bias_initializer, _global_weight_initializer
 from .param_attr import ParamAttr, WeightNormParamAttr
-from . import core
-from .initializer import _global_weight_initializer, _global_bias_initializer
 
 __all__ = ['LayerHelperBase']
 
