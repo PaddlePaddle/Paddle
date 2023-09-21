@@ -586,7 +586,7 @@ class ResizeBufferSizeVisitor : public ir::IRMutator<> {
 
   int BufferSize(ir::Expr indice) {
     auto copy = IRCopy(indice);
-    auto vars = ir::CollectIRNodesInOrder(
+    auto vars = ir::ir_utils::CollectIRNodesInOrder(
         copy, [](const ir::Expr *expr) { return expr->As<ir::_Var_>(); });
 
     int max_range = 1;

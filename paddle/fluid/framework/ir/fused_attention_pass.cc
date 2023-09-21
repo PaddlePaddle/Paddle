@@ -847,7 +847,7 @@ void FusedAttentionsPass::ApplyImpl(Graph* graph) const {
   cache.ResetCache();
 
   graph = PreMaskDropResMPFwd(graph, &cache);
-  graph = PreMaskDropResMPBwd(graph, &cache);
+  graph = PreMaskDropResMPBwd(graph, &cache);  // NOLINT
   cache.ResetCache();
 }
 

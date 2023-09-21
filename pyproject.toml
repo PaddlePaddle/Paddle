@@ -16,8 +16,9 @@ skip = ["build", "third_party", "__init__.py"]
 extend_skip_glob = [
     # These files do not need to be formatted,
     # see .flake8 for more details
-    "python/paddle/base/**",
     "python/paddle/utils/gast/**",
+    "python/paddle/base/core.py",
+    "python/paddle/base/framework.py",
 ]
 
 [tool.ruff]
@@ -39,7 +40,7 @@ select = [
 
     # NumPy-specific rules
     "NPY001",
-    # "NPY003",
+    "NPY003",
 
     # Bugbear
     "B002",
@@ -69,10 +70,10 @@ select = [
     "PLC3002",
     "PLR0206",
     "PLR0402",
-    # "PLR1701",
-    # "PLR1711",  # Confirmation required
+    "PLR1701",
+    "PLR1711",
     "PLR1722",
-    # "PLW3301",  # Confirmation required
+    "PLW3301",
 ]
 unfixable = [
     "NPY001"
@@ -104,20 +105,10 @@ ignore = [
 
 # Temporarily ignored
 "python/paddle/base/**" = [
-    "F401",
     "UP032",
     "UP031",
     "C408",
     "UP030",
-    "F403",
-    "F522",
-    "B010",
-    "PLR1722",
-    "UP028",
-    "C403",
-    "F811",
-    "UP034",
-    "B011",
     "C405",
     "C417",
     "PLR0402",
@@ -131,28 +122,16 @@ ignore = [
     "PLC0414",
 ]
 
-# UP018
-"python/paddle/distributed/fleet/meta_optimizers/localsgd_optimizer.py" = ["UP018"]
-"python/paddle/distributed/fleet/meta_optimizers/sharding/utils.py" = ["UP018", "UP032"]
-"python/paddle/distributed/fleet/meta_optimizers/sharding_optimizer.py" = ["UP018", "UP032"]
-"python/paddle/distributed/fleet/utils/pp_parallel_adaptor.py" = ["UP018", "UP032"]
-"python/paddle/incubate/autograd/utils.py" = ["UP018"]
-"python/paddle/incubate/optimizer/gradient_merge.py" = ["UP018", "UP032"]
-"python/paddle/nn/functional/loss.py" = ["UP018", "UP032"]
-"python/paddle/distributed/passes/auto_parallel_gradient_merge.py" = ["UP018"]
-"python/paddle/hapi/dynamic_flops.py" = ["UP018", "UP032"]
-"python/paddle/incubate/optimizer/pipeline.py" = ["UP018", "UP032"]
-"python/paddle/static/nn/metric.py" = ["UP018"]
-"test/cinn/ops/test_fill_constant_op.py" = ["UP018"]
-"test/collective/fleet/parallel_dygraph_transformer.py" = ["UP018"]
-"test/collective/fleet/test_dgc_op.py" = ["UP018"]
-"test/dygraph_to_static/transformer_dygraph_model.py" = ["UP018"]
-"test/legacy_test/fleet_heter_ps_training.py" = ["UP018"]
-"test/legacy_test/test_fake_quantize_op.py" = ["UP018"]
-"test/legacy_test/test_generate_mask_labels_op.py" = ["UP018"]
-"test/legacy_test/test_imperative_transformer_sorted_gradient.py" = ["UP018"]
-"test/legacy_test/test_progressbar.py" = ["UP018"]
-"test/legacy_test/test_tensor_fill_.py" = ["UP018"]
+# UP032
+
+"python/paddle/distributed/fleet/meta_optimizers/sharding/utils.py" = ["UP032"]
+"python/paddle/distributed/fleet/meta_optimizers/sharding_optimizer.py" = ["UP032"]
+"python/paddle/distributed/fleet/utils/pp_parallel_adaptor.py" = ["UP032"]
+"python/paddle/incubate/optimizer/gradient_merge.py" = ["UP032"]
+"python/paddle/nn/functional/loss.py" = ["UP032"]
+"python/paddle/hapi/dynamic_flops.py" = [ "UP032"]
+"python/paddle/incubate/optimizer/pipeline.py" = ["UP032"]
+
 
 # B017
 "test/auto_parallel/spmd_rules/test_reshape_rule.py" = ["B017"]
@@ -164,15 +143,6 @@ ignore = [
 "test/legacy_test/test_eigvals_op.py" = ["B017"]
 "test/legacy_test/test_tensordot.py" = ["B017"]
 "test/legacy_test/test_top_k_v2_op.py" = ["B017"]
-
-# UP028
-"python/paddle/dataset/cifar.py" = ["UP028"]
-"python/paddle/dataset/common.py" = ["UP028", "UP032"]
-"python/paddle/io/dataloader/dataset.py" = ["UP028"]
-"python/paddle/nn/layer/layers.py" = ["UP028", "UP032"]
-"python/paddle/utils/layers_utils.py" = ["UP028", "UP032"]
-"test/legacy_test/test_lstm_cudnn_op.py" = ["UP028", "UP032"]
-"test/rnn/rnn_numpy.py" = ["UP028", "UP032"]
 
 # UP032
 "paddle/fluid/ir/dialect/op_generator/api_gen.py" = ["UP032"]
@@ -190,6 +160,7 @@ ignore = [
 "python/paddle/audio/backends/init_backend.py" = ["UP032"]
 "python/paddle/audio/backends/wave_backend.py" = ["UP032"]
 "python/paddle/batch.py" = ["UP032"]
+"python/paddle/dataset/common.py" = ["UP032"]
 "python/paddle/device/cuda/__init__.py" = ["UP032"]
 "python/paddle/distributed/auto_parallel/interface.py" = ["UP032"]
 "python/paddle/distributed/auto_parallel/static/completion.py" = ["UP032"]
@@ -312,6 +283,7 @@ ignore = [
 "python/paddle/nn/layer/activation.py" = ["UP032"]
 "python/paddle/nn/layer/common.py" = ["UP032"]
 "python/paddle/nn/layer/container.py" = ["UP032"]
+"python/paddle/nn/layer/layers.py" = ["UP032"]
 "python/paddle/nn/layer/loss.py" = ["UP032"]
 "python/paddle/nn/layer/norm.py" = ["UP032"]
 "python/paddle/nn/layer/pooling.py" = ["UP032"]
@@ -346,6 +318,7 @@ ignore = [
 "python/paddle/utils/dlpack.py" = ["UP032"]
 "python/paddle/utils/download.py" = ["UP032"]
 "python/paddle/utils/install_check.py" = ["UP032"]
+"python/paddle/utils/layers_utils.py" = ["UP032"]
 "python/paddle/vision/datasets/cifar.py" = ["UP032"]
 "python/paddle/vision/datasets/flowers.py" = ["UP032"]
 "python/paddle/vision/datasets/mnist.py" = ["UP032"]
@@ -437,6 +410,7 @@ ignore = [
 "test/legacy_test/test_imperative_se_resnext.py" = ["UP032"]
 "test/legacy_test/test_inplace.py" = ["UP032"]
 "test/legacy_test/test_layers.py" = ["UP032"]
+"test/legacy_test/test_lstm_cudnn_op.py" = ["UP032"]
 "test/legacy_test/test_multi_dot_op.py" = ["UP032"]
 "test/legacy_test/test_multiprocess_dataloader_iterable_dataset_static.py" = ["UP032"]
 "test/legacy_test/test_multiprocess_dataloader_static.py" = ["UP032"]
@@ -464,6 +438,7 @@ ignore = [
 "test/quantization/test_post_training_quantization_while.py" = ["UP032"]
 "test/quantization/test_quant_post_quant_aware.py" = ["UP032"]
 "test/quantization/test_weight_quantization_mobilenetv1.py" = ["UP032"]
+"test/rnn/rnn_numpy.py" = ["UP032"]
 "test/tokenizer/bert_tokenizer.py" = ["UP032"]
 "test/tokenizer/tokenizer_utils.py" = ["UP032"]
 "test/xpu/test_generate_proposals_v2_op_xpu.py" = ["UP032"]

@@ -19,7 +19,7 @@ namespace pir {
 void YieldOp::Build(Builder &builder,
                     OperationArgument &argument,
                     std::vector<OpResult> &&inputs) {
-  argument.AddOperands(inputs.begin(), inputs.end());
+  argument.AddInputs(inputs.begin(), inputs.end());
 }
 }  // namespace pir
 

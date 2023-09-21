@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/phi_kernel_adaptor/phi_kernel_util.h"
-
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
@@ -21,6 +20,7 @@
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/utils.h"
@@ -125,9 +125,9 @@ paddle::framework::Variable* CreateVar(
         variable_2_var_name,
     std::map<std::string, int>* var_name_2_id,
     std::vector<paddle::framework::Variable*>* variable_list) {
-  Operation* def_op = value.GetDefiningOp();
+  Operation* def_op = value.dyn_cast<OpResult>().owner();
   bool is_persisable = false;
-  if (def_op->name() == "builtin.set_parameter") {
+  if (def_op->isa<::pir::SetParameterOp>()) {
     is_persisable = true;
   }
 
@@ -196,9 +196,8 @@ void BuildValue(pir::Value value,
                     variable_list);
   }
   // Only support DenseTensor or Vector<DenseTensor>
-  if (!value.type()) {
-    var->GetMutable<phi::DenseTensor>();
-  } else if (value.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+  if (!value.type() ||
+      value.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
     var->GetMutable<phi::DenseTensor>();
   } else if (value.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
     var->GetMutable<phi::SelectedRows>();
@@ -273,7 +272,7 @@ void HandleForSpecialOp(
 
     std::string name =
         op->attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
-    paddle::framework::Variable* var = inner_scope->FindVar(name);
+    paddle::framework::Variable* var = inner_scope->Var(name);
     PADDLE_ENFORCE(var,
                    paddle::platform::errors::InvalidArgument(
                        "The variable %s shoud exist", name));

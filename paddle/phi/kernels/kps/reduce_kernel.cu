@@ -16,6 +16,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
+#include "paddle/phi/kernels/prod_kernel.h"
 #include "paddle/phi/kernels/reduce_all_kernel.h"
 #include "paddle/phi/kernels/reduce_amin_kernel.h"
 #include "paddle/phi/kernels/reduce_any_kernel.h"
@@ -28,6 +29,19 @@
 #endif
 
 namespace phi {
+
+template <typename T, typename Context>
+void ProdKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                const IntArray& dims,
+                bool keep_dim,
+                bool reduce_all,
+                DenseTensor* out) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
+  auto out_dtype = x.dtype();
+  phi::Reduce<T, kps::MulFunctor, kps::IdentityFunctor>(
+      dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
+}
 
 template <typename T, typename Context>
 void AllRawKernel(const Context& dev_ctx,
@@ -248,6 +262,8 @@ PD_REGISTER_KERNEL(all_raw, KPS, ALL_LAYOUT, phi::AllRawKernel, bool) {
 
 PD_REGISTER_KERNEL(amax_raw, KPS, ALL_LAYOUT, phi::AMaxRawKernel, float) {}
 
+PD_REGISTER_KERNEL(prod, KPS, ALL_LAYOUT, phi::ProdKernel, float) {}
+
 PD_REGISTER_KERNEL(amin_raw, KPS, ALL_LAYOUT, phi::AMinRawKernel, float) {}
 
 PD_REGISTER_KERNEL(any_raw, KPS, ALL_LAYOUT, phi::AnyRawKernel, bool) {}
@@ -361,4 +377,15 @@ PD_REGISTER_KERNEL(sum_raw,
                    complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
+
+PD_REGISTER_KERNEL(prod,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::ProdKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 #endif

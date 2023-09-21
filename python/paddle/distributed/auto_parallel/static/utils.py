@@ -2421,6 +2421,7 @@ def use_new_executor():
         'FLAGS_new_executor_micro_batching', None
     )
     return new_executor_micro_batching in [
+        None,
         1,
         '1',
         True,
