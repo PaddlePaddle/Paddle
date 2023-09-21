@@ -466,12 +466,16 @@ class DygraphShardingOptimizerV2:
         self._sharding_world_size = self._hcg.get_sharding_parallel_world_size()
         self._sharding_rank = self._hcg.get_sharding_parallel_rank()
 
-        # the self._parameter_list holds the whole model parameter slices
-        self._parameter_list = optimizer._parameter_list
         # slice parameter list
         self._local_parameter_list = [
-            self._partition_param(p) for p in optimizer._parameter_list
+            self._create_slice_param(p) for p in optimizer._parameter_list
         ]
+
+        # padded_param_buffer
+        self._padded_param_buffer = {}
+
+        # padded_param_grad
+        self._padded_grad_buffer = {}
 
         strategy = fleet.fleet._user_defined_strategy
         self.tensor_fusion = strategy.hybrid_configs[
@@ -538,14 +542,14 @@ class DygraphShardingOptimizerV2:
                     g_var = param.main_grad
                 if g_var is not None:
                     g_var.scale_(1.0 / sharding_nrank)
-                    # extend the grad tensor to padded buffer
-                    g_var = self._create_padded_buffer(g_var)
+                    g_var = self._get_padded_grad(param, g_var)
                     # reduce scatter
                     assert g_var._numel() % self._sharding_world_size == 0
-                    reduce_scattered = paddle.empty(
-                        [g_var._numel() // self._sharding_world_size],
-                        dtype=g_var.dtype,
-                    )
+                    # reuse grad buffer
+                    shard_size = g_var._numel() // self._sharding_world_size
+                    begin = shard_size * self._sharding_rank
+                    end = begin + shard_size
+                    reduce_scattered = g_var._slice(begin, end)
                     paddle.distributed.reduce_scatter(
                         reduce_scattered,
                         g_var,
@@ -602,26 +606,34 @@ class DygraphShardingOptimizerV2:
 
         return result
 
-    def _partition_param(self, param):
+    def _fill_slice_param(self, p):
+        """
+        create padded buffer for parameter
+        """
+        shard_slice = p.shard_slice
+        begin = self._sharding_rank * shard_slice._numel()
+        end = begin + shard_slice._numel()
+        if p.name not in self._padded_param_buffer:
+            padded_buffer = self._create_padded_buffer(p)
+            padded_buffer._slice(0, p._numel())._share_buffer_to(p)
+            self._padded_param_buffer[p.name] = padded_buffer
+        padded_buffer = self._padded_param_buffer[p.name]
+        if not padded_buffer._is_shared_buffer_with(p):
+            del self._padded_param_buffer[p.name]
+            self._fill_slice_param(p)
+            return
+        padded_buffer._slice(begin, end)._share_buffer_to(shard_slice)
+
+    def _create_slice_param(self, param):
         # partition param to slice
         size = param._numel()
         shard_size = (
             size + self._sharding_world_size - 1
         ) // self._sharding_world_size
-        slice_begin = shard_size * self._sharding_rank
-        slice_end = min(slice_begin + shard_size, size)
-        with framework.no_grad():
-            param_shape = param.shape
-            param.flatten_()
-            param_slice = paddle.zeros(shape=[shard_size], dtype=param.dtype)
-            param_slice[0 : (slice_end - slice_begin)] = param[
-                slice_begin:slice_end
-            ]
-            param_slice = EagerParamBase.from_tensor(param_slice)
-            param.get_tensor()._set_dims(param_shape)
-            param_slice.name = f"shard@{param.name}"
-            param.shard_slice = param_slice
-            return param_slice
+        param_slice = EagerParamBase(shape=[shard_size], dtype=param.dtype)
+        param_slice.name = f"shard@{param.name}"
+        param.shard_slice = param_slice
+        return param_slice
 
     def _create_padded_buffer(self, t):
         # extend grad to padded buffer
@@ -634,6 +646,7 @@ class DygraphShardingOptimizerV2:
             # no need padding
             if size == padded_size:
                 return t.reshape([-1])
+            # TODO(liuzhnehai): check capicity, if capicity is enough, reallocation can be avoided
             t_shape = t.shape
             t.flatten_()
             t_padded = paddle.zeros(shape=[padded_size], dtype=t.dtype)
@@ -641,20 +654,36 @@ class DygraphShardingOptimizerV2:
             t.get_tensor()._set_dims(t_shape)
             return t_padded
 
-    def _assign_param(self, param, full_param):
+    def _assign_param(self, param, padded_buffer):
         # recover param from padded buffer
         size = param._numel()
-        padded_size = full_param._numel()
+        padded_size = padded_buffer._numel()
         assert padded_size >= size
         with framework.no_grad():
-            full_param._share_buffer_to(param)
+            padded_buffer._share_buffer_to(param)
+            self._padded_param_buffer[param.name] = padded_buffer
+            param.shard_slice._clear_data()
+
+    def _get_padded_grad(self, param, g_var):
+        if param.name not in self._padded_grad_buffer:
+            padded_grad = self._create_padded_buffer(param, g_var)
+            self._padded_grad_buffer[param.name] = padded_grad
+            return padded_grad
+        padded_grad = self._padded_grad_buffer[param.name]
+        if not padded_grad._is_shared_buffer_with(g_var):
+            del self._padded_grad_buffer[param.name]
+            return self._get_padded_grad(param, g_var)
+        return padded_grad
 
     def _assign_slice_grad(self, param, slice_grad):
         # assign slice grad to parameter
         with framework.no_grad():
             assert hasattr(param, "shard_slice")
+            self._fill_slice_param(param)
+            param._clear_data()
             shard_slice = param.shard_slice
             if hasattr(param, "main_grad"):
+                # TODO(liuzhnehai): share buffer to if not None
                 shard_slice.main_grad = slice_grad
             else:
                 shard_slice._copy_gradient_from(slice_grad)
@@ -662,10 +691,6 @@ class DygraphShardingOptimizerV2:
     def step(self):
         # TODO Check whether the model trainable param changed and update state accordingly
 
-        # hack to grad_clip all parameters,
-        # otherwise the self._inner_opt will only grad_clip the self._rank2params[self._sharding_rank] params
-        # TODO(pangengzheng): remove the hacked grad_clip codes here when there is no diff in calculating global norm values in HybridParallelClipGrad compared to dp.
-        origin_clip = self._inner_opt._grad_clip
         if not isinstance(self._parameter_list[0], dict):
             params_grads = []
             for param in self._parameter_list:
@@ -686,7 +711,7 @@ class DygraphShardingOptimizerV2:
                 grad_var = param._grad_ivar()
                 if hasattr(param, "main_grad") and param.main_grad is not None:
                     grad_var = param.main_grad
-                    params_grads.append((param, grad_var))
+                params_grads.append((param, grad_var))
 
             self._apply_optimize(
                 loss=None,
