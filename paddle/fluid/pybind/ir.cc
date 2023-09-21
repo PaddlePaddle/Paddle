@@ -27,6 +27,7 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
@@ -91,6 +92,20 @@ inline void SetProgramInt64Attr(std::shared_ptr<Program> program,
       attr_name, pir::Int64Attribute::get(pir::IrContext::Instance(), value));
 }
 
+std::string GetValueInfo(Value v) {
+  std::stringstream ss;
+  ss << "define_op_name=" << v.dyn_cast<OpResult>().owner()->name();
+  ss << ", index=" << v.dyn_cast<OpResult>().index();
+  ss << ", dtype=" << v.type();
+  if (v.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+    ss << ", place="
+       << v.type()
+              .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+              .place();
+  }
+  return ss.str();
+}
+
 void BindProgram(py::module *m) {
   py::class_<Program, std::shared_ptr<Program>> program(*m, "Program", R"DOC(
     Create Python Program. Program is an abstraction of model structure, divided into
@@ -152,6 +167,11 @@ void BindProgram(py::module *m) {
       .def("parameters_num",
            [](const std::shared_ptr<Program> &self) {
              return self->parameters_num();
+           })
+      .def("move_parameters_from",
+           [](const std::shared_ptr<Program> &self,
+              const std::shared_ptr<Program> &other) {
+             self->set_parameters(std::move(other->parameters()));
            })
       .def(
           "global_block",
@@ -348,7 +368,14 @@ void BindValue(py::module *m) {
              return self.impl() == other.Value::impl();
            })
       .def("__hash__",
-           [](const Value &self) { return std::hash<pir::Value>{}(self); });
+           [](const Value &self) { return std::hash<pir::Value>{}(self); })
+      .def("__str__", [](const Value &self) -> py::str {
+        std::ostringstream print_stream;
+        print_stream << "Value(";
+        print_stream << GetValueInfo(self);
+        print_stream << ")";
+        return print_stream.str();
+      });
 }
 
 void BindOpOperand(py::module *m) {
@@ -375,9 +402,19 @@ void BindOpOperand(py::module *m) {
 bool GetOpResultBoolAttr(const OpResult &self, const std::string &attr_name) {
   auto *defining_op = self.owner();
   if (defining_op->HasAttribute(attr_name)) {
+    PADDLE_ENFORCE(
+        defining_op->attribute(attr_name).isa<pir::ArrayAttribute>(),
+        paddle::platform::errors::InvalidArgument(
+            "%s: Callstack attributes of %s is not ArrayAttribute type",
+            attr_name));
     auto attrs = defining_op->attribute(attr_name)
                      .dyn_cast<pir::ArrayAttribute>()
                      .AsVector();
+    PADDLE_ENFORCE(attrs[self.index()].isa<pir::BoolAttribute>(),
+                   paddle::platform::errors::InvalidArgument(
+                       "The index %d in %s is not BoolAttribute type",
+                       self.index(),
+                       attr_name));
     return attrs[self.index()].dyn_cast<pir::BoolAttribute>().data();
   } else {
     return true;
@@ -457,6 +494,19 @@ void BindOpResult(py::module *m) {
            })
       .def("__hash__",
            [](OpResult &self) { return std::hash<pir::Value>{}(self); })
+      .def("__str__",
+           [](OpResult &self) -> py::str {
+             std::ostringstream print_stream;
+             print_stream << "OpResult(";
+             print_stream << GetValueInfo(self);
+             if (GetOpResultBoolAttr(self, kAttrStopGradients)) {
+               print_stream << ", stop_gradient=True";
+             } else {
+               print_stream << ", stop_gradient=False";
+             }
+             print_stream << ")";
+             return print_stream.str();
+           })
       .def(
           "get_defining_op",
           [](const OpResult &self) -> pir::Operation * {
