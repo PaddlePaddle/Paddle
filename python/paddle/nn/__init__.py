@@ -169,8 +169,8 @@ from paddle.utils import deprecated
 
 
 @deprecated(
-    since="2.0.0",
-    update_to="paddle.nn.functional.diag_embed",
+    since="2.6.0",
+    update_to="paddle.diag_embed",
     level=1,
     reason="diag_embed in paddle.nn will be removed in future",
 )

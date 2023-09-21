@@ -14,19 +14,13 @@
 
 # TODO: define the extention functions
 
-import numpy as np
 
-from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
+from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode, tensor
 
-from ...base.data_feeder import (
-    check_dtype,
-    check_type,
-    check_variable_and_dtype,
-)
+from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
 from ...common_ops_import import Variable
 from ...framework import convert_np_dtype_to_dtype_, core
-from ...tensor.creation import assign
 
 __all__ = []
 
@@ -96,59 +90,7 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
              [[0, 0, 2],
               [0, 0, 5]]])
     """
-    if not isinstance(input, Variable):
-        input = assign(input)
-
-    if in_dynamic_mode():
-        return _C_ops.diag_embed(input, offset, dim1, dim2)
-
-    inputs = {'Input': [input]}
-    attrs = {'offset': offset, 'dim1': dim1, 'dim2': dim2}
-
-    def __check_input(input, offset, dim1, dim2):
-        check_dtype(
-            input.dtype,
-            'Input',
-            ['int32', 'int64', 'float16', 'float32', 'float64'],
-            'diag_embed',
-        )
-
-        input_shape = list(input.shape)
-        assert len(input_shape) >= 1, (
-            "Input must be at least 1-dimensional, "
-            "But received Input's dimensional: %s.\n" % len(input_shape)
-        )
-
-        assert np.abs(dim1) <= len(input_shape), (
-            "Dim1 is out of range (expected to be in range of [%d, %d], but got %d).\n"
-            % (-(len(input_shape) + 1), len(input_shape), dim1)
-        )
-
-        assert np.abs(dim2) <= len(input_shape), (
-            "Dim2 is out of range (expected to be in range of [%d, %d], but got %d).\n"
-            % (-(len(input_shape) + 1), len(input_shape), dim2)
-        )
-
-        dim1_ = dim1 if dim1 >= 0 else len(input_shape) + dim1 + 1
-        dim2_ = dim2 if dim2 >= 0 else len(input_shape) + dim2 + 1
-        assert dim1_ != dim2_, (
-            "dim1 and dim2 cannot be the same dimension."
-            "But received dim1 = %d, dim2 = %d\n" % (dim1, dim2)
-        )
-
-    __check_input(input, offset, dim1, dim2)
-    helper = LayerHelper("diag_embed", **locals())
-
-    out = helper.create_variable_for_type_inference(dtype=input.dtype)
-
-    helper.append_op(
-        type='diag_embed',
-        inputs={'Input': [input]},
-        attrs={'offset': offset, 'dim1': dim1, 'dim2': dim2},
-        outputs={'Out': [out]},
-    )
-    out.stop_gradient = True
-    return out
+    return tensor.diag_embed(input, offset, dim1, dim2)
 
 
 def sequence_mask(x, maxlen=None, dtype='int64', name=None):
