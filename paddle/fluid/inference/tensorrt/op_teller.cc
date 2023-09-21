@@ -1844,7 +1844,8 @@ struct SimpleOpTypeSetTeller : public Teller {
                                      "pooled_width",
                                      "spatial_scale",
                                      "sampling_ratio",
-                                     "aligned"};
+                                     "aligned",
+                                     "data_format"};
       for (auto const& attr : attrs) {
         if (!desc.HasAttr(attr)) return false;
       }

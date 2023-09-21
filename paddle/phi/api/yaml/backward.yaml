@@ -1820,7 +1820,7 @@
   invoke : reverse(out_grad, axis)
 
 - backward_op : roi_align_grad
-  forward : roi_align (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height=1, int pooled_width=1, float spatial_scale=1.0, int sampling_ratio=-1, bool aligned=false) -> Tensor(out)
+  forward : roi_align (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height=1, int pooled_width=1, float spatial_scale=1.0, int sampling_ratio=-1, bool aligned=false, str data_format="NCHW") -> Tensor(out)
   args : (Tensor x, Tensor boxes, Tensor boxes_num, Tensor out_grad, int pooled_height, int pooled_width, float spatial_scale, int sampling_ratio, bool aligned)
   output : Tensor(x_grad)
   infer_meta :
