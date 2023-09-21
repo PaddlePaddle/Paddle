@@ -85,7 +85,11 @@ PRIM_VJP = [
     'transpose_grad',
     'concat_grad',
 ]  # vjp list of primitive op
-CUSTOM_VJP = ['gelu_grad', 'layer_norm_grad']  # custom vjp list of composite op
+CUSTOM_VJP = [
+    'gelu_grad',
+    'layer_norm_grad',
+    'dropout_grad',
+]  # custom vjp list of composite op
 VJP_COMPS = PRIM_VJP + CUSTOM_VJP
 
 BACKENDS = [
