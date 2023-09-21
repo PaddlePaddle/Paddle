@@ -57,6 +57,7 @@ class TestElementwiseAddOp(OpTest):
         self.check_output(
             check_dygraph=self.check_dygraph(),
             check_prim=self.check_prim,
+            check_prim_pir=self.check_dygraph(),
             check_new_ir=self.check_dygraph(),
         )
 
@@ -69,6 +70,7 @@ class TestElementwiseAddOp(OpTest):
             'Out',
             check_dygraph=self.check_dygraph(),
             check_prim=self.check_prim,
+            check_prim_pir=self.check_dygraph(),
             check_new_ir=self.check_dygraph(),
         )
 
@@ -82,6 +84,7 @@ class TestElementwiseAddOp(OpTest):
             no_grad_set=set("X"),
             check_dygraph=self.check_dygraph(),
             check_prim=self.check_prim,
+            check_prim_pir=self.check_dygraph(),
             check_new_ir=self.check_dygraph(),
         )
 
@@ -95,6 +98,7 @@ class TestElementwiseAddOp(OpTest):
             no_grad_set=set('Y'),
             check_dygraph=self.check_dygraph(),
             check_prim=self.check_prim,
+            check_prim_pir=self.check_dygraph(),
             check_new_ir=self.check_dygraph(),
         )
 
@@ -152,6 +156,7 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
             atol=1e-3,
             check_dygraph=self.check_dygraph(),
             check_prim=self.check_prim,
+            check_prim_pir=self.check_dygraph(),
             check_new_ir=self.check_dygraph(),
         )
 
@@ -167,6 +172,7 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
             'Out',
             no_grad_set=set("X"),
             check_prim=True,
+            check_prim_pir=True,
             check_new_ir=True,
         )
 
@@ -178,6 +184,7 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
             'Out',
             no_grad_set=set('Y'),
             check_prim=True,
+            check_prim_pir=True,
             check_new_ir=True,
         )
 
@@ -221,6 +228,7 @@ class TestBF16ElementwiseAddOp(OpTest):
             ['X', 'Y'],
             'Out',
             check_prim=True,
+            check_prim_pir=True,
             check_new_ir=True,
         )
 
@@ -232,6 +240,7 @@ class TestBF16ElementwiseAddOp(OpTest):
             'Out',
             no_grad_set=set("X"),
             check_prim=True,
+            check_prim_pir=True,
             check_new_ir=True,
         )
 
@@ -243,6 +252,7 @@ class TestBF16ElementwiseAddOp(OpTest):
             'Out',
             no_grad_set=set('Y'),
             check_prim=True,
+            check_prim_pir=True,
             check_new_ir=True,
         )
 
