@@ -18,7 +18,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/builtin_op.h"
-
+#include "paddle/pir/core/parameter.h"
 namespace paddle {
 namespace dialect {
 
@@ -46,25 +46,19 @@ pir::OpResult zeros_like(const pir::Value& x,
   return paddle::dialect::full_like(x, 0, dtype, place);
 }
 
-pir::OpResult get_parameter(const std::string& name,
-                            phi::DataType dtype,
-                            const std::vector<int64_t>& shape) {
-  phi::LoD lod;
-  size_t offset{0};
-  pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
-      pir::IrContext::Instance(),
-      TransToIrDataType(dtype),
-      phi::DDim(shape.data(), shape.size()),
-      phi::DataLayout::UNDEFINED,
-      lod,
-      offset);
+pir::OpResult get_parameter(const std::string& name) {
+  pir::Parameter* param = APIBuilder::Instance().GetParameter(name);
   pir::GetParameterOp get_parameter_op =
       APIBuilder::Instance().GetBuilder()->Build<pir::GetParameterOp>(
-          name, out_dense_tensor_type);
+          name, param->type());
   return get_parameter_op.result(0);
 }
 
-void set_parameter(const pir::Value& parameter, const std::string& name) {
+
+void set_parameter(pir::Value& parameter, const std::string& name) {
+  std::unique_ptr<pir::Parameter> param(
+      new pir::Parameter(nullptr, 0, parameter.type()));
+  APIBuilder::Instance().SetParameter(name, std::move(param));
   APIBuilder::Instance().GetBuilder()->Build<pir::SetParameterOp>(parameter,
                                                                   name);
 }
