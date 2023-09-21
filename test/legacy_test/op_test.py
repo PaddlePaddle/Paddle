@@ -2393,14 +2393,10 @@ class OpTest(unittest.TestCase):
                         f"Found failed {new_ir_outs.keys()} {target_name}",
                     )
 
-            def find_imperative_expect(target_name, new_ir_outs, place):
+            def find_imperative_expect(self, target_name, new_ir_outs, place):
                 for name in new_ir_outs:
                     if name == target_name:
                         return new_ir_outs[name][0]
-                    var_list = new_ir_outs[name]
-                    for i, var in enumerate(var_list):
-                        if var.name == target_name:
-                            return new_ir_outs[name][i]
                 self.assertTrue(
                     False,
                     f"Found failed {new_ir_outs.keys()} {target_name}",
@@ -2420,7 +2416,7 @@ class OpTest(unittest.TestCase):
                 with paddle.ir.core.program_guard(
                     paddle.ir.core.default_main_program()
                 ):
-                    expect = find_imperative_expect(
+                    expect = self.find_imperative_expect(
                         target_name, self.ref_outputs, place
                     )
                     expect_t = np.array(expect)
