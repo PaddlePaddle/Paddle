@@ -442,19 +442,16 @@ phi::DataType GetOpResultDtype(const OpResult &result) {
                                    bias_after_scale) \
   OVERRIDE_OPERATOR(operator, api, OpResult)         \
   OVERRIDE_OPERATOR_WITH_SCALE(operator,             \
-                               scale,                \
                                int,                  \
                                scale_value,          \
                                bias_value,           \
                                bias_after_scale)     \
   OVERRIDE_OPERATOR_WITH_SCALE(operator,             \
-                               scale,                \
                                float,                \
                                scale_value,          \
                                bias_value,           \
                                bias_after_scale)     \
   OVERRIDE_OPERATOR_WITH_SCALE(operator,             \
-                               scale,                \
                                double,               \
                                scale_value,          \
                                bias_value,           \
