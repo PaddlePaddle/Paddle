@@ -46,20 +46,20 @@ void Reduce(const DeviceContext& dev_ctx,
 
   // no need to cast dtype
   if (out_dtype == phi::DataType::UNDEFINED || out_dtype == x.dtype()) {
-    // do reduce sum
-    PD_VISIT_ALL_TYPES(
-        x.dtype(), "ReduceKernelImpl", ([&] {
-          phi::funcs::ReduceKernelImpl<DeviceContext, T, data_t, Functor>(
-              dev_ctx, x, out, dims, keep_dim, reduce_all);
-        }));
+    phi::funcs::ReduceKernelImpl<DeviceContext, T, T, Functor>(
+        dev_ctx, x, out, dims, keep_dim, reduce_all);
 
   } else {
     // cast x tensor to out_dtype
     auto tmp_tensor = phi::Cast<T, DeviceContext>(dev_ctx, x, out_dtype);
-
-    // do reduce sum
-    PD_VISIT_ALL_TYPES(
-        out_dtype, "ReduceKernelImpl", ([&] {
+    PD_VISIT_BOOL_AND_FLOATING_AND_COMPLEX_AND_4_TYPES(
+        phi::DataType::INT32,
+        phi::DataType::INT64,
+        phi::DataType::FLOAT16,
+        phi::DataType::BFLOAT16,
+        out_dtype,
+        "ReduceKernelImpl",
+        ([&] {
           phi::funcs::ReduceKernelImpl<DeviceContext, T, data_t, Functor>(
               dev_ctx, tmp_tensor, out, dims, keep_dim, reduce_all);
         }));
