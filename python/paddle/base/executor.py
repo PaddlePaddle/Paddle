@@ -515,7 +515,7 @@ def _add_pir_fetch_ops(program, fetch_list, fetch_var_name):
                 assert isinstance(
                     fetch_input, OpResult
                 ), "Wrong type for fetch_list[%s]: %s" % (i, type(fetch_input))
-                paddle._ir_ops.fetch(fetch_input, fetch_var_name + str(i), i)
+                paddle._pir_ops.fetch(fetch_input, fetch_var_name + str(i), i)
 
 
 def _merge_tensors(tensor, micro_batch_num):
