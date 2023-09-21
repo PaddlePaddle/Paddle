@@ -5071,9 +5071,9 @@ def multigammaln(x, p, name=None):
 
             >>> x = paddle.to_tensor([2.5, 3.5, 4, 6.5, 7.8, 10.23, 34.25])
             >>> p = 2
-            >>> out = paddle.multigammaln(x)
+            >>> out = paddle.multigammaln(x, p)
             >>> out
-            Tensor(shape=[7], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+            Tensor(shape=[7], dtype=float64, place=Place(cpu), stop_gradient=True,
                 [0.85704780  , 2.46648571  , 3.56509800  , 11.02241873 , 15.84497717 ,
                     26.09257938 , 170.68316451])
     """

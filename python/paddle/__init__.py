@@ -814,6 +814,8 @@ __all__ = [  # noqa
     'renorm_',
     'take_along_axis',
     'put_along_axis',
+    'multigammaln',
+    'multigammaln_',
     'nan_to_num',
     'nan_to_num_',
     'heaviside',
