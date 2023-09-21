@@ -61,4 +61,5 @@ PD_REGISTER_KERNEL(gather_nd_grad,
                    float,
                    double,
                    int64_t,
-                   int) {}
+                   int,
+                   uint8) {}

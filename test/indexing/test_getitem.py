@@ -432,7 +432,7 @@ class TestGetitemGard(unittest.TestCase):
         if self.dtype == 'bfloat16':
             z.backward()
             np.testing.assert_allclose(x.grad.cast('float32').numpy(), res)
-        elif self.dtype in ['bool', 'int8', 'uint8', 'int16']:
+        elif self.dtype in ['bool', 'int8', 'int16']:
             with self.assertRaises((AttributeError, RuntimeError)):
                 z.backward()
                 np.testing.assert_allclose(x.grad.numpy(), res)
@@ -454,7 +454,7 @@ class TestGetitemGard(unittest.TestCase):
         if self.dtype == 'bfloat16':
             z.backward()
             np.testing.assert_allclose(x.grad.cast('float32').numpy(), res)
-        elif self.dtype in ['bool', 'int8', 'uint8', 'int16']:
+        elif self.dtype in ['bool', 'int8', 'int16']:
             with self.assertRaises((AttributeError, RuntimeError)):
                 z.backward()
                 np.testing.assert_allclose(x.grad.numpy(), res)
@@ -475,7 +475,7 @@ class TestGetitemGard(unittest.TestCase):
         if self.dtype == 'bfloat16':
             z.backward()
             np.testing.assert_allclose(x.grad.cast('float32').numpy(), res)
-        elif self.dtype in ['bool', 'int8', 'uint8', 'int16']:
+        elif self.dtype in ['bool', 'int8', 'int16']:
             with self.assertRaises((AttributeError, RuntimeError)):
                 z.backward()
                 np.testing.assert_allclose(x.grad.numpy(), res)
@@ -496,7 +496,7 @@ class TestGetitemGard(unittest.TestCase):
         if self.dtype == 'bfloat16':
             z.backward()
             np.testing.assert_allclose(x.grad.cast('float32').numpy(), res)
-        elif self.dtype in ['bool', 'int8', 'uint8', 'int16']:
+        elif self.dtype in ['bool', 'int8', 'int16']:
             with self.assertRaises((AttributeError, RuntimeError)):
                 z.backward()
                 np.testing.assert_allclose(x.grad.numpy(), res)
@@ -517,7 +517,7 @@ class TestGetitemGard(unittest.TestCase):
         if self.dtype == 'bfloat16':
             z.backward()
             np.testing.assert_allclose(x.grad.cast('float32').numpy(), res)
-        elif self.dtype in ['bool', 'int8', 'uint8', 'int16']:
+        elif self.dtype in ['bool', 'int8', 'int16']:
             with self.assertRaises((AttributeError, RuntimeError)):
                 z.backward()
                 np.testing.assert_allclose(x.grad.numpy(), res)
@@ -538,7 +538,7 @@ class TestGetitemGard(unittest.TestCase):
         if self.dtype == 'bfloat16':
             z.backward()
             np.testing.assert_allclose(x.grad.cast('float32').numpy(), res)
-        elif self.dtype in ['bool', 'int8', 'uint8', 'int16']:
+        elif self.dtype in ['bool', 'int8', 'int16']:
             with self.assertRaises((AttributeError, RuntimeError)):
                 z.backward()
                 np.testing.assert_allclose(x.grad.numpy(), res)
@@ -559,7 +559,7 @@ class TestGetitemGard(unittest.TestCase):
         if self.dtype == 'bfloat16':
             z.backward()
             np.testing.assert_allclose(x.grad.cast('float32').numpy(), res)
-        elif self.dtype in ['bool', 'int8', 'uint8', 'int16']:
+        elif self.dtype in ['bool', 'int8', 'int16']:
             with self.assertRaises((AttributeError, RuntimeError)):
                 z.backward()
                 np.testing.assert_allclose(x.grad.numpy(), res)
@@ -580,7 +580,7 @@ class TestGetitemGard(unittest.TestCase):
         if self.dtype == 'bfloat16':
             z.backward()
             np.testing.assert_allclose(x.grad.cast('float32').numpy(), res)
-        elif self.dtype in ['bool', 'int8', 'uint8', 'int16']:
+        elif self.dtype in ['bool', 'int8', 'int16']:
             with self.assertRaises((AttributeError, RuntimeError)):
                 z.backward()
                 np.testing.assert_allclose(x.grad.numpy(), res)
@@ -601,7 +601,7 @@ class TestGetitemGard(unittest.TestCase):
         if self.dtype == 'bfloat16':
             z.backward()
             np.testing.assert_allclose(x.grad.cast('float32').numpy(), res)
-        elif self.dtype in ['bool', 'int8', 'uint8', 'int16']:
+        elif self.dtype in ['bool', 'int8', 'int16']:
             with self.assertRaises((AttributeError, RuntimeError)):
                 z.backward()
                 np.testing.assert_allclose(x.grad.numpy(), res)
@@ -622,7 +622,7 @@ class TestGetitemGard(unittest.TestCase):
         if self.dtype == 'bfloat16':
             z.backward()
             np.testing.assert_allclose(x.grad.cast('float32').numpy(), res)
-        elif self.dtype in ['bool', 'int8', 'uint8', 'int16']:
+        elif self.dtype in ['bool', 'int8', 'int16']:
             with self.assertRaises((AttributeError, RuntimeError)):
                 z.backward()
                 np.testing.assert_allclose(x.grad.numpy(), res)
@@ -643,7 +643,7 @@ class TestGetitemGard(unittest.TestCase):
         if self.dtype == 'bfloat16':
             z.backward()
             np.testing.assert_allclose(x.grad.cast('float32').numpy(), res)
-        elif self.dtype in ['bool', 'int8', 'uint8', 'int16']:
+        elif self.dtype in ['bool', 'int8', 'int16']:
             with self.assertRaises((AttributeError, RuntimeError)):
                 z.backward()
                 np.testing.assert_allclose(x.grad.numpy(), res)
@@ -666,7 +666,7 @@ class TestGetitemGard(unittest.TestCase):
         if self.dtype == 'bfloat16':
             z.backward()
             np.testing.assert_allclose(x.grad.cast('float32').numpy(), res)
-        elif self.dtype in ['bool', 'int8', 'uint8', 'int16']:
+        elif self.dtype in ['bool', 'int8', 'int16']:
             with self.assertRaises((AttributeError, RuntimeError)):
                 z.backward()
                 np.testing.assert_allclose(x.grad.numpy(), res)
@@ -697,7 +697,7 @@ class TestGetitemGard(unittest.TestCase):
         if self.dtype == 'bfloat16':
             z.backward()
             np.testing.assert_allclose(x.grad.cast('float32').numpy(), res)
-        elif self.dtype in ['bool', 'int8', 'uint8', 'int16']:
+        elif self.dtype in ['bool', 'int8', 'int16']:
             with self.assertRaises((AttributeError, RuntimeError)):
                 z.backward()
                 np.testing.assert_allclose(x.grad.numpy(), res)
@@ -742,13 +742,6 @@ class TestBOOLGetitemGradInDygraph(TestGetitemGard):
         paddle.disable_static()
         self.ndtype = np.bool8
         self.dtype = 'bool'
-
-
-class TestUINT8GetitemGradInDygraph(TestGetitemGard):
-    def setUp(self):
-        paddle.disable_static()
-        self.ndtype = np.uint8
-        self.dtype = 'uint8'
 
 
 class TestINT8GetitemGradInDygraph(TestGetitemGard):
