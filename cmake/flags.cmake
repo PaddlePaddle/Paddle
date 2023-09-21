@@ -34,8 +34,11 @@ function(CheckCompilerCXX14Flag)
 endfunction()
 
 checkcompilercxx14flag()
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+if(NOT WIN32)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+else()
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17")
+endif()
 set(CMAKE_CXX_STANDARD 17)
 
 
