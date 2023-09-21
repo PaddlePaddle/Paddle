@@ -38,7 +38,7 @@ def get_ir_program_0():
 
 class TesBackward_1(unittest.TestCase):
     def tearDown(self) -> None:
-        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
+        paddle.framework.set_flags({"FLAGS_enable_pir_api": False})
 
     def test_grad(self):
         newir_program = get_ir_program_0()
@@ -155,7 +155,7 @@ def get_ir_program_1():
 
 class TesBackward_2(unittest.TestCase):
     def tearDown(self) -> None:
-        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
+        paddle.framework.set_flags({"FLAGS_enable_pir_api": False})
 
     def test_add_n(self):
         newir_program = get_ir_program_1()
@@ -231,7 +231,7 @@ def get_ir_program_2():
 
 class TestBackward_3(unittest.TestCase):
     def tearDown(self) -> None:
-        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
+        paddle.framework.set_flags({"FLAGS_enable_pir_api": False})
 
     def test_basic_network(self):
         newir_program = get_ir_program_2()
