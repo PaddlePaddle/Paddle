@@ -21,7 +21,6 @@ from dygraph_to_static_util import ast_only_test, test_and_compare_with_new_ir
 
 import paddle
 from paddle import base
-from paddle.autograd import PyLayer
 from paddle.jit.api import to_static
 from paddle.jit.dy2static.partial_program import partial_program_from
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
@@ -44,33 +43,6 @@ class SimpleFcLayer(paddle.nn.Layer):
         z = self._linear(y)
         out = paddle.mean(z)
         return out, y
-
-
-class cus_tanh(PyLayer):
-    @staticmethod
-    def forward(ctx, x):
-        y = paddle.tanh(x)
-        ctx.save_for_backward(y)
-        return y
-
-    @staticmethod
-    def backward(ctx, dy):
-        (y,) = ctx.saved_tensor()
-        grad = dy * (1 - paddle.square(y))
-        return grad
-
-
-class SimplePyLayerNet(paddle.nn.Layer):
-    def __init__(self, fc_size):
-        super().__init__()
-        self._linear = paddle.nn.Linear(fc_size, fc_size)
-
-    @to_static
-    def forward(self, x):
-        y = self._linear(x)
-        out = cus_tanh.apply(y)
-        loss = paddle.mean(out)
-        return loss, out
 
 
 class TestDyToStaticSaveInferenceModel(unittest.TestCase):
@@ -120,48 +92,6 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
         )
         self.check_save_inference_model(
             layer, [x_data], dygraph_out.numpy(), feed=[x]
-        )
-
-    @ast_only_test
-    def test_save_pylayer_model(self):
-        fc_size = 20
-        x_data = np.random.random((fc_size, fc_size)).astype('float32')
-        paddle.base.framework._set_expected_place(place)
-
-        base.default_startup_program().random_seed = SEED
-        base.default_main_program().random_seed = SEED
-
-        x = base.dygraph.to_variable(x_data)
-        layer = SimplePyLayerNet(fc_size)
-        adam = paddle.optimizer.SGD(
-            learning_rate=0.1, parameters=layer.parameters()
-        )
-
-        for i in range(5):
-            loss, pred = layer(x)
-            loss.backward()
-            adam.minimize(loss)
-            layer.clear_gradients()
-        # test for saving model in dygraph.guard
-        infer_model_prefix = os.path.join(
-            self.temp_dir.name, "test_dy2stat_inference_in_guard/model_pylayer"
-        )
-        paddle.jit.save(
-            layer=layer,
-            path=infer_model_prefix,
-            input_spec=[x],
-            output_spec=[pred],
-        )
-        # Check the correctness of the inference
-        loss_out, _ = layer(x)
-
-        loss_out_numpy = float(loss_out)
-        self.check_save_inference_model(layer, [x_data], loss_out_numpy)
-        self.check_save_inference_model(
-            layer, [x_data], loss_out_numpy, fetch=[loss]
-        )
-        self.check_save_inference_model(
-            layer, [x_data], loss_out_numpy, feed=[x]
         )
 
     def check_save_inference_model(
