@@ -12,23 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .proto import framework_pb2
-
-from paddle.base import framework as framework
-from paddle.base import program_guard
-from . import core
 import collections
 import copy
 import logging
-from . import unique_name
-from . import log_helper
-import paddle.base
-from .data_feeder import check_type
+import re
 import warnings
-
 from collections.abc import Sequence
 
-import re
+import paddle.base
+from paddle.base import framework as framework
+from paddle.base import program_guard
+
+from . import core, log_helper, unique_name
+from .data_feeder import check_type
+from .proto import framework_pb2
 
 __all__ = [
     'append_backward',
@@ -739,9 +736,9 @@ def _remove_no_grad_branch_(
         return False
 
     # Remove ops whose outputs are all in no_grad_dict
-    target_grad_var_names = set(
-        [var.name + core.grad_var_suffix() for var in target_vars]
-    )
+    target_grad_var_names = {
+        var.name + core.grad_var_suffix() for var in target_vars
+    }
     op_descs = [
         op_desc
         for op_desc in op_descs
@@ -2266,7 +2263,7 @@ def _get_output_names(cur_block, targets):
     """
 
     block = targets[0].block if targets else cur_block
-    current_output_names = set([out.name for out in targets])
+    current_output_names = {out.name for out in targets}
 
     # 1. If `targets` in cur_block or the ancestral block of `cur_block`
     if block.idx == cur_block.idx or _is_ancestor_block(block, cur_block):
@@ -2336,7 +2333,7 @@ def _find_op_path_(
         The forward op path of block corresponding to backward op.
     """
 
-    input_names = set([inp.name for inp in inputs])
+    input_names = {inp.name for inp in inputs}
     output_names = _get_output_names(block, targets)
     if op_path_dict is None:
         op_path_dict = dict()

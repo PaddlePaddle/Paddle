@@ -52,11 +52,6 @@ void Value::set_type(pir::Type type) {
   impl_->set_type(type);
 }
 
-Operation *Value::GetDefiningOp() const {
-  if (auto result = dyn_cast<OpResult>()) return result.owner();
-  return nullptr;
-}
-
 std::string Value::PrintUdChain() {
   CHECK_VALUE_NULL_IMPL(PrintUdChain);
   return impl()->PrintUdChain();

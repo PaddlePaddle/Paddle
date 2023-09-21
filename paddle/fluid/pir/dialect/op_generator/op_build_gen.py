@@ -19,12 +19,14 @@ _INFERMETA_NEED_META_CONFIG = {
     'SplitWithNumInferMeta',
     'ConcatInferMeta',
     'ReduceIntArrayAxisInferMeta',
+    'SliceRawInferMeta',
 }
 
 _PREPARE_DATA_WITH_VECTOR_INT64_MTTABLE_ATTRIBUTE = {'FrobeniusNormOp'}
 
 OP_BUILD_TEMPLATE = """
 void {op_name}::Build({build_args}) {{
+{build_info}
 {get_attributes}
 {build_mutable_attributes}
 {build_inputs}
@@ -32,6 +34,8 @@ void {op_name}::Build({build_args}) {{
 {build_outputs}
 }}
 """
+
+OP_INFO_TEMPLATE = '  VLOG(4) << "Start build {op_name}";\n'
 
 
 def GenBuildInputArgsStr(
@@ -56,44 +60,14 @@ def GenBuildInputArgsStr(
         for input_name in op_input_name_list:
             build_args_str += ", pir::Value " + input_name + "_"
 
-    if attr_args_is_map:
-        build_args_str += ", pir::AttributeMap attributes"
-    else:
-        if not mutable_attr_is_input:
-            # add attributes
-            for attr_idx in range(len(op_attribute_name_list)):
-                build_args_str += (
-                    ", "
-                    + op_attribute_build_arg_type_list[attr_idx]
-                    + " "
-                    + op_attribute_name_list[attr_idx]
-                )
-                if for_func_define:
-                    if op_attribute_default_value_list[attr_idx] is not None:
-                        default_value = op_attribute_default_value_list[
-                            attr_idx
-                        ]
-                        if (
-                            op_attribute_build_arg_type_list[attr_idx]
-                            != "const std::string&"
-                        ):
-                            if (
-                                default_value[0] == "'"
-                                or default_value[0] == '"'
-                            ):
-                                default_value = default_value[1:]
-                            if (
-                                default_value[-1] == "'"
-                                or default_value[-1] == '"'
-                            ):
-                                default_value = default_value[0:-1]
-                        build_args_str += "=" + default_value
+    if mutable_attr_is_input:
+        # add mutable attributes as inputs
+        if len(op_mutable_attribute_name_list) > 0:
+            for mutable_attr in op_mutable_attribute_name_list:
+                build_args_str += ", pir::Value " + mutable_attr + "_"
+        if attr_args_is_map:
+            build_args_str += ", pir::AttributeMap attributes"
         else:
-            # add mutable attributes as inputs
-            if len(op_mutable_attribute_name_list) > 0:
-                for mutable_attr in op_mutable_attribute_name_list:
-                    build_args_str += ", pir::Value " + mutable_attr + "_"
-
             # add non-mutable attributes
             for attr_idx in range(len(op_non_mutable_attribute_name_list)):
                 build_args_str += (
@@ -129,6 +103,38 @@ def GenBuildInputArgsStr(
                             ):
                                 default_value = default_value[0:-1]
                         build_args_str += "=" + default_value
+    else:
+        if attr_args_is_map:
+            build_args_str += ", pir::AttributeMap attributes"
+        else:
+            # add attributes
+            for attr_idx in range(len(op_attribute_name_list)):
+                build_args_str += (
+                    ", "
+                    + op_attribute_build_arg_type_list[attr_idx]
+                    + " "
+                    + op_attribute_name_list[attr_idx]
+                )
+                if for_func_define:
+                    if op_attribute_default_value_list[attr_idx] is not None:
+                        default_value = op_attribute_default_value_list[
+                            attr_idx
+                        ]
+                        if (
+                            op_attribute_build_arg_type_list[attr_idx]
+                            != "const std::string&"
+                        ):
+                            if (
+                                default_value[0] == "'"
+                                or default_value[0] == '"'
+                            ):
+                                default_value = default_value[1:]
+                            if (
+                                default_value[-1] == "'"
+                                or default_value[-1] == '"'
+                            ):
+                                default_value = default_value[0:-1]
+                        build_args_str += "=" + default_value
 
     return build_args_str
 
@@ -144,6 +150,7 @@ mutable_attribute_phi_type_maps = {
 
 
 def GenBuildInserFullForMutableAttribute(
+    op_class_name,
     op_attribute_name_list,
     op_attribute_build_arg_type_list,
     op_mutable_attribute_name_list,
@@ -171,6 +178,7 @@ def GenBuildInserFullForMutableAttribute(
             phi_dtype = mutable_attribute_phi_type_maps[
                 op_mutable_attribute_type_list[idx][1]
             ]
+
         if attr_type == "paddle::dialect::IntArrayAttribute":
             build_mutable_attribute += BUILD_INTARRAY_ATTRIBUTE_TEMPLATE.format(
                 attr_name=attr_name, phi_dtype=phi_dtype
@@ -312,10 +320,11 @@ def GenBuildOutputs(
 
     CREATE_OPTIONAL_INPUT_METATENSOR_TEMPLATE = """
   phi::MetaTensor meta_{name};
+  paddle::dialect::IrMetaTensor ir_meta_tensor_{name};
   if ({name}_.impl() != nullptr) {{
     paddle::dialect::DenseTensorType {name} = {name}_.type().dyn_cast<paddle::dialect::DenseTensorType>();
     VLOG(4) << "Builder construction  dense_{name}";
-    paddle::dialect::IrMetaTensor ir_meta_tensor_{name}(paddle::dialect::TransToPhiDataType({name}.dtype()),
+    ir_meta_tensor_{name} = paddle::dialect::IrMetaTensor(paddle::dialect::TransToPhiDataType({name}.dtype()),
                                                         {name}.dims(),
                                                         {name}.data_layout(),
                                                         {name}.lod(),
@@ -619,6 +628,7 @@ def gen_build_func_str(
 ):
     build_args_for_declare = ""
     build_func = ""
+    build_info_str = OP_INFO_TEMPLATE.format(op_name=op_class_name)
 
     build_args_for_declare = GenBuildInputArgsStr(
         op_input_name_list,
@@ -651,6 +661,7 @@ def gen_build_func_str(
     if not muta_attr_is_input:
         inset_full_for_mutable_attributes_str = (
             GenBuildInserFullForMutableAttribute(
+                op_class_name,
                 op_attribute_name_list,
                 op_attribute_build_arg_type_list,
                 op_mutable_attribute_name_list,
@@ -722,18 +733,28 @@ def gen_build_func_str(
 
     get_attributes_str = ""
     array_attr_str = "pir::ArrayAttribute"
+
+    attr_names = []
+    attr_types = []
+    attr_build_arg_types = []
+    if not muta_attr_is_input:
+        attr_names = op_attribute_name_list
+        attr_types = op_attribute_type_list
+        attr_build_arg_types = op_attribute_build_arg_type_list
+    else:
+        attr_names = op_non_mutable_attribute_name_list
+        attr_types = op_non_mutable_attribute_type_list
+        attr_build_arg_types = op_non_mutable_attribute_build_arg_type_list
     if attr_args_is_map:
-        for idx in range(len(op_attribute_name_list)):
-            attr_type = op_attribute_build_arg_type_list[idx]
+        for idx in range(len(attr_names)):
+            attr_type = attr_build_arg_types[idx]
             attr_type = attr_type.replace("const ", "")
             attr_type = attr_type.replace("&", "")
-            # if op_attribute_build_arg_type_list[idx] == "const std::vector<int>&":
+            # if attr_build_arg_types[idx] == "const std::vector<int>&":
             #     attr_type = "std::vector<int>"
 
-            if array_attr_str in op_attribute_type_list[idx]:
-                inner_type = op_attribute_type_list[idx][
-                    len(array_attr_str) + 1 : -1
-                ]
+            if array_attr_str in attr_types[idx]:
+                inner_type = attr_types[idx][len(array_attr_str) + 1 : -1]
                 data_name = "data"
                 if inner_type == "pir::StrAttribute":
                     data_name = "AsString"
@@ -741,58 +762,134 @@ def gen_build_func_str(
                     GET_ARRAY_ATTRIBUTE_FROM_MAP_TEMPLATE.format(
                         op_name=op_class_name,
                         attr_type=attr_type,
-                        attribute_name=op_attribute_name_list[idx],
+                        attribute_name=attr_names[idx],
                         inner_type=inner_type,
                         data_name=data_name,
                     )
                 )
-            elif (
-                "paddle::dialect::IntArrayAttribute"
-                in op_attribute_type_list[idx]
-            ):
+            elif "paddle::dialect::IntArrayAttribute" in attr_types[idx]:
                 get_attributes_str += (
                     GET_INTARRAY_ATTRIBUTE_FROM_MAP_TEMPLATE.format(
                         op_name=op_class_name,
                         attr_type=attr_type,
-                        attribute_name=op_attribute_name_list[idx],
+                        attribute_name=attr_names[idx],
                     )
                 )
-            elif (
-                "paddle::dialect::ScalarAttribute"
-                in op_attribute_type_list[idx]
-            ):
+            elif "paddle::dialect::ScalarAttribute" in attr_types[idx]:
                 get_attributes_str += (
                     GET_SCALAR_ATTRIBUTE_FROM_MAP_TEMPLATE.format(
                         op_name=op_class_name,
                         attr_type=attr_type,
-                        attribute_name=op_attribute_name_list[idx],
+                        attribute_name=attr_names[idx],
                     )
                 )
-            elif "pir::StrAttribute" in op_attribute_type_list[idx]:
+            elif "pir::StrAttribute" in attr_types[idx]:
                 get_attributes_str += (
                     GET_STR_ATTRIBUTES_FROM_MAP_TEMPLATE.format(
                         op_name=op_class_name,
                         attr_type=attr_type,
-                        attribute_name=op_attribute_name_list[idx],
-                        attr_ir_type=op_attribute_type_list[idx],
+                        attribute_name=attr_names[idx],
+                        attr_ir_type=attr_types[idx],
                     )
                 )
             else:
                 get_attributes_str += GET_ATTRIBUTES_FROM_MAP_TEMPLATE.format(
                     op_name=op_class_name,
                     attr_type=attr_type,
-                    attribute_name=op_attribute_name_list[idx],
-                    attr_ir_type=op_attribute_type_list[idx],
+                    attribute_name=attr_names[idx],
+                    attr_ir_type=attr_types[idx],
                 )
 
     build_func = OP_BUILD_TEMPLATE.format(
         op_name=op_class_name,
+        build_info=build_info_str,
         build_args=build_args_for_define,
         build_mutable_attributes=inset_full_for_mutable_attributes_str,
         get_attributes=get_attributes_str,
         build_inputs=build_inputs_str,
         build_attributes=build_attributes_str,
         build_outputs=build_outputs_str,
+    )
+
+    return (build_args_for_declare, build_func)
+
+
+OP_BUILD_BY_INVOKE_TEMPLATE = """
+void {op_name}::Build({build_args}) {{
+  {invoke_class}::Build(builder, argument{invoke_args});
+}}
+"""
+
+
+def gen_build_func_str_by_invoke(
+    op_class_name,
+    op_input_name_list,
+    op_input_type_list,
+    op_input_optional_list,
+    op_attribute_name_list,
+    op_attribute_type_list,
+    op_attribute_build_arg_type_list,
+    op_attribute_default_value_list,
+    op_mutable_attribute_name_list,
+    op_mutable_attribute_type_list,
+    op_non_mutable_attribute_name_list,
+    op_non_mutable_attribute_type_list,
+    op_non_mutable_attribute_build_arg_type_list,
+    op_non_mutable_attribute_default_value_list,
+    op_invoke_class_name,
+    op_invoke_map,
+):
+    build_args_for_declare = ""
+    build_func = ""
+
+    build_args_for_declare = GenBuildInputArgsStr(
+        op_input_name_list,
+        op_attribute_name_list,
+        op_attribute_build_arg_type_list,
+        op_attribute_default_value_list,
+        op_mutable_attribute_name_list,
+        op_non_mutable_attribute_name_list,
+        op_non_mutable_attribute_build_arg_type_list,
+        op_non_mutable_attribute_default_value_list,
+        True,
+        False,
+        False,
+    )
+
+    build_args_for_define = GenBuildInputArgsStr(
+        op_input_name_list,
+        op_attribute_name_list,
+        op_attribute_build_arg_type_list,
+        op_attribute_default_value_list,
+        op_mutable_attribute_name_list,
+        op_non_mutable_attribute_name_list,
+        op_non_mutable_attribute_build_arg_type_list,
+        op_non_mutable_attribute_default_value_list,
+        False,
+        False,
+        False,
+    )
+
+    invoke_args = op_invoke_map['args'].split(", ")
+    invoke_args_str = ""
+    for item in invoke_args:
+        if item in op_input_name_list:
+            invoke_args_str += ", " + item + "_"
+        elif ".dtype()" in item:
+            invoke_args_str += (
+                ", paddle::dialect::TransToPhiDataType("
+                + item[:-8]
+                + "_"
+                + ".type().dyn_cast<paddle::dialect::DenseTensorType>().dtype())"
+            )
+        else:
+            invoke_args_str += ", " + item
+
+    build_func = OP_BUILD_BY_INVOKE_TEMPLATE.format(
+        op_name=op_class_name,
+        build_args=build_args_for_define,
+        invoke_class=op_invoke_class_name,
+        invoke_args=invoke_args_str,
     )
 
     return (build_args_for_declare, build_func)

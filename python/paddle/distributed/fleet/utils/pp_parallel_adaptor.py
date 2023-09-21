@@ -232,7 +232,7 @@ class PipeLineModelAdaptor:
         def priority(elem):
             layer_name = elem[0]
             if "shared_layers" in layer_name:
-                return -float(0.5)
+                return -0.5
             match = re.search(
                 r"^_layers((\.\d+)+|(\.shared_layers\.[^\.]+))", layer_name
             )

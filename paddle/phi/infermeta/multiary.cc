@@ -390,6 +390,7 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
     out->set_dims(in_dim);
   }
   out->share_lod(*x[0]);
+  out->set_dtype(x[0]->dtype());
 }
 
 // TODO(YuanRisheng) This InferMeta is used in Fluid

@@ -159,10 +159,6 @@
     func: shadow_feed
     param: [x]
 
-- op : share_buffer_
-  args : (Tensor[] x, bool[] share_dims_and_dtype = {})
-  output : Tensor[](out){x.size()}, Tensor[](xout){x.size()}
-
 - op : share_data
   args : (Tensor x)
   output : Tensor(out)

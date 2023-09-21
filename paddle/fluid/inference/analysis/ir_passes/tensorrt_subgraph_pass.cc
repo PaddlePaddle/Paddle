@@ -382,7 +382,6 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   auto mark_output = Get<bool>("mark_output");
   auto output_tensor_name =
       Get<std::vector<std::string>>("output_tensor_names");
-  auto mark_output_with_id = Get<bool>("mark_output_with_id");
 
   if (mark_output) {
     VLOG(1) << "begin to mark output ...";
@@ -391,17 +390,14 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
         for (auto *x : node->outputs) {
           if (std::count(parameters.begin(), parameters.end(), x->Name()) > 0)
             continue;
-          std::string name_with_id = x->Name() + std::to_string(x->id());
-          if (((!mark_output_with_id && std::count(output_tensor_name.begin(),
-                                                   output_tensor_name.end(),
-                                                   x->Name()) > 0) ||
-               (mark_output_with_id && std::count(output_tensor_name.begin(),
-                                                  output_tensor_name.end(),
-                                                  name_with_id) > 0)) &&
+          if ((std::count(output_tensor_name.begin(),
+                          output_tensor_name.end(),
+                          x->Name()) > 0) ||
               !x->outputs.empty()) {
             VLOG(3) << "output " << x->Name() << " has been marked";
             output_names.insert(x->Name());
-            output_names_with_id.insert(name_with_id);
+            output_names_with_id.insert(
+                RenameVarBeUnique(x->Name(), std::to_string(x->id())));
             origin_name_output_rank[x->Name()] = x->Var()->GetShape().size();
             trt_outputs.insert(x);
             map_origin_outputs_dtype[x->Name()] =
@@ -575,6 +571,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   auto enable_low_precision_io = Get<bool>("enable_low_precision_io");
   auto workspace_size = Get<int64_t>("workspace_size");
   auto gpu_device_id = Get<int>("gpu_device_id");
+  auto optimization_level = Get<int>("optimization_level");
 
   // Set op's attrs.
   op_desc->SetType("tensorrt_engine");
@@ -626,6 +623,8 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
     op_desc->SetAttr("max_input_shape_vector", max_input_shape_vector);
     op_desc->SetAttr("opt_input_shape_vector", opt_input_shape_vector);
   }
+
+  op_desc->SetAttr("optimization_level", Get<int>("optimization_level"));
 
   // we record all inputs' shapes in attr to check if they are consistent
   // with the real inputs' shapes retrieved from scope when trt runs.
@@ -775,6 +774,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   params.use_inspector = use_inspector;
   params.engine_info_path = engine_info_path;
   params.enable_low_precision_io = enable_low_precision_io;
+  params.optimization_level = optimization_level;
 
   tensorrt::TensorRTEngine *trt_engine =
       inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()

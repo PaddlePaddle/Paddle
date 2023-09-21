@@ -43,6 +43,7 @@ from paddle.static import default_main_program, default_startup_program
 from paddle.utils import unique_name
 
 from .pass_base import PassBase, register_pass
+from .pass_utils import AutoParallelStreamType
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
@@ -748,13 +749,11 @@ class ShardingPass(PassBase):
                     group = sharding_info.group
                 else:
                     group = new_process_group(ranks, force_new_group=True)
-                # NOTE here stream is just a presentation with different name,
-                # it is up to executor to create the exact streams given the name.
-                stream = f"sharding_param_comm_stream{i}"
+
                 self.param_comm_group_stream_pairs.append(
                     {
                         "comm_group": group,
-                        "comm_stream": stream,
+                        "comm_stream": AutoParallelStreamType.SHARDING_STREAM.value,
                     }
                 )
             _logger.info(
@@ -1430,7 +1429,6 @@ def _insert_init_and_broadcast_op(
             broadcast_var_dist_attr.dims_mapping,
             dist_context,
         )
-    return
 
 
 def _insert_reduce_op(

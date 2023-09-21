@@ -163,8 +163,6 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("min_subgraph_size",
                 new int(argument->tensorrt_min_subgraph_size()));
       pass->Set("mark_output", new bool(argument->trt_mark_output()));
-      pass->Set("mark_output_with_id",
-                new bool(argument->trt_mark_output_with_id()));
       pass->Set(
           "output_tensor_names",
           new std::vector<std::string>(argument->trt_output_tensor_names()));
@@ -239,6 +237,8 @@ void IRPassManager::CreatePasses(Argument *argument,
           new std::vector<std::string>(argument->tensorrt_disabled_ops()));
       pass->Set("trt_use_dla", new bool(argument->tensorrt_use_dla()));
       pass->Set("trt_dla_core", new int(argument->tensorrt_dla_core()));
+      pass->Set("optimization_level",
+                new int(argument->tensorrt_optimization_level()));
 
       // Setting the disable_trt_plugin_fp16 to true means that TRT plugin will
       // not run fp16.
