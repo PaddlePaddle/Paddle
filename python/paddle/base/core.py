@@ -278,7 +278,7 @@ try:
     # assign tensor alias
     libpaddle.LoDTensor = libpaddle.Tensor
 
-    from .libpaddle import *
+    from .libpaddle import *  # noqa: F403
     from .libpaddle import (  # noqa: F401
         __doc__,
         __file__,
