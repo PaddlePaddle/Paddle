@@ -5172,7 +5172,6 @@ def _index_fill_impl(x, index, axis, value, inplace):
         if len(value.shape) > 0:
             raise ValueError("value must be scalar or 0-D tensor")
 
-
     x_dim = len(x.shape)
     if axis < 0:
         axis = axis + x_dim
@@ -5186,15 +5185,16 @@ def _index_fill_impl(x, index, axis, value, inplace):
     perm[0] = axis
     perm[axis] = 0
 
+    out = paddle.clone(x)
+    out = paddle.transpose(out, perm)
+    out = paddle.index_put(out, (index,), value)
+    out = paddle.transpose(out, perm)
+
     if inplace:
-        paddle.transpose(x, perm)
-        paddle.index_put_(x, (index,), value)
+        x[:] = out
         return x
     else:
-        out = paddle.clone(x)
-        out = paddle.transpose(out, perm)
-        out = paddle.index_put(out, (index,), value)
-        return paddle.transpose(out, perm)
+        return out
 
 
 def index_fill(x, index, axis, value, name=None):

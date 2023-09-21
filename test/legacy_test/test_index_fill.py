@@ -85,9 +85,8 @@ class TestIndexFillAPIBase(unittest.TestCase):
         self.index_size = (5,)
         self.axis = 0
         self.value = -1
-        self.combs = list(
-            combinations(list(range(10)), self.index_size[0])
-        )
+        self.combs = list(combinations(list(range(10)), self.index_size[0]))
+
 
     def modify_setting(self):
         pass
@@ -137,7 +136,9 @@ class TestIndexFillAPIBase(unittest.TestCase):
         self.assertRaises(ValueError, test_index_not_tensor)
 
         def test_value_shape():
-            res = paddle.index_fill(data_np, index, axis=-1, value=paddle.to_tensor([-1, -4]))
+            res = paddle.index_fill(
+                data_np, index, axis=-1, value=paddle.to_tensor([-1, -4])
+            )
 
         self.assertRaises(ValueError, test_value_shape)
 
