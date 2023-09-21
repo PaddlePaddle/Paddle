@@ -221,9 +221,9 @@ class CodeGen:
         ret = []
         for name, type, optional in zip(name_list, type_list, optional_list):
             if optional == 'true':
-                ret.append(f'{OPTIONAL_INPUT_TYPE_MAP[type]} {name}')
+                ret.append(f'const {OPTIONAL_INPUT_TYPE_MAP[type]}& {name}')
             else:
-                ret.append(f'{INPUT_TYPE_MAP[type]} {name}')
+                ret.append(f'const {INPUT_TYPE_MAP[type]}& {name}')
         return ', '.join(ret)
 
     def _gen_api_attrs(

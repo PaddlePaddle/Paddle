@@ -174,7 +174,7 @@ FULL_INT_ARRAY_OP_TEMPLATE = """
 """
 
 BUILTIN_STACK_OP_TEMPLATE = """
-            {name} = paddle::dialect::stack({name}_tmp, 0);
+            {name} = paddle::dialect::stack({name}_tmp, /*axis*/0);
 """
 TYPE_TO_FUNC_MAP = {
     "bool": "CastPyArg2Boolean",
