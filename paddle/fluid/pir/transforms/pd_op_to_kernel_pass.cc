@@ -401,7 +401,8 @@ phi::DataType GetKernelDataTypeByYamlInfo(
 phi::Backend GetKernelBackendByYamlInfo(
     const pir::Operation* op,
     const std::unordered_map<pir::Value, pir::OpResult>& map_value_pair,
-    const dialect::OpYamlInfoParser* op_info_parser) {
+    const dialect::OpYamlInfoParser* op_info_parser,
+    const phi::Place& place) {
   auto& attr_map = op->attributes();
   auto& backend_info = op_info_parser->OpRuntimeInfo().kernel_key_backend;
   phi::Backend kernel_backend = phi::Backend::UNDEFINED;
@@ -465,6 +466,10 @@ phi::Backend GetKernelBackendByYamlInfo(
     }
   }
 
+  if (backend_info.size() > 0 && kernel_backend == phi::Backend::UNDEFINED) {
+    kernel_backend = paddle::experimental::ParseBackend(place);
+  }
+
   return kernel_backend;
 }
 
@@ -518,7 +523,7 @@ phi::KernelKey GetKernelKey(
     kernel_data_type =
         GetKernelDataTypeByYamlInfo(op, map_value_pair, op_info_parser);
     kernel_backend =
-        GetKernelBackendByYamlInfo(op, map_value_pair, op_info_parser);
+        GetKernelBackendByYamlInfo(op, map_value_pair, op_info_parser, place);
 
     // parse all the input tensor
     if (tensor_input_number == 0 || op->isa<paddle::dialect::Full_Op>()) {
@@ -550,7 +555,9 @@ phi::KernelKey GetKernelKey(
     }
   }
 
-  if (op->num_operands() > 0) {
+  if ((kernel_backend == phi::Backend::UNDEFINED ||
+       kernel_data_type == phi::DataType::UNDEFINED) &&
+      op->num_operands() > 0) {
     paddle::experimental::detail::KernelKeyParser kernel_key_parser;
 
     for (size_t i = 0; i < op->num_operands(); ++i) {
@@ -724,7 +731,7 @@ void HandleForSpecialOp(
     pir::IrContext* ctx,
     std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
     std::unordered_map<pir::Value, pir::OpResult>* map_value_pair) {
-  if (op_item->name() == "pd_op.if") {
+  if (op_item->isa<paddle::dialect::IfOp>()) {
     HandleForIfOp(place, op_item, block, ctx, map_op_pair, map_value_pair);
     return;
   }

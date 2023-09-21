@@ -833,8 +833,7 @@ def full_like(x, fill_value, dtype=None, name=None):
     if in_dynamic_mode():
         return _C_ops.full_like(x, fill_value, dtype, x.place)
     elif in_pir_mode():
-        place = _current_expected_place()
-        return _C_ops.full_like(x, fill_value, dtype, place)
+        return _C_ops.full_like(x, fill_value, dtype, core.Place())
     else:
         helper = LayerHelper("full_like", **locals())
         check_variable_and_dtype(
@@ -881,7 +880,11 @@ def full_like(x, fill_value, dtype=None, name=None):
 
 def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     if in_dynamic_or_pir_mode():
-        place = _current_expected_place()
+        place = (
+            _current_expected_place()
+            if not in_pir_mode()
+            else paddle.base.core.Place()
+        )
         if force_cpu:
             place = core.CPUPlace()
         if isinstance(shape, (list, tuple)):
