@@ -363,7 +363,7 @@ class DataFeeder:
             you want to feed data into GPU, please using :code:`base.CUDAPlace(i)`
             (:code:`i` represents the GPU id), or if you want to feed data into CPU,
             please using :code:`base.CPUPlace()`.
-        program (:ref:`api_paddle_static_Program` , optional): The Program that will
+        program (:ref:`api_paddle_base_Program` , optional): The Program that will
             feed data into, if program is None, it will use default_main_program().
             Default None.
 
