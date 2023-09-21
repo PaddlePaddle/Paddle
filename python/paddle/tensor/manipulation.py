@@ -1630,7 +1630,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
 def flatten_(x, start_axis=0, stop_axis=-1, name=None):
     """
     Inplace version of ``flatten`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_tensor_flatten`.
+    Please refer to :ref:`api_paddle_Tensor_flatten_`.
     """
     if not (isinstance(x, Variable)):
         raise ValueError("The input x should be a Tensor")
@@ -4723,7 +4723,7 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
 def put_along_axis_(arr, indices, values, axis, reduce='assign'):
     r"""
     Inplace version of ``put_along_axis`` API, the output Tensor will be inplaced with input ``arr``.
-    Please refer to :ref:`api_tensor_put_along_axis`.
+    Please refer to :ref:`api_paddle_Tensor_put_along_axis_`.
     """
     if len(arr.shape) != len(indices.shape):
         raise ValueError(

@@ -461,7 +461,7 @@ def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
 def channel_shuffle(x, groups, data_format="NCHW", name=None):
     """
     This API implements channel shuffle operation.
-    See more details in :ref:`api_nn_vision_ChannelShuffle`.
+    See more details in :ref:`api_paddle_nn_ChannelShuffle`.
 
     Parameters:
         x (Tensor): 4-D tensor, the data type should be float32 or float64.
