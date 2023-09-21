@@ -1560,12 +1560,14 @@ class Executor:
                 >>> loss_val, array_val = exe.run(feed={'X': x},
                 ...                                 fetch_list=[loss.name, array.name])
                 >>> print(array_val)
-                [array([0.02153828], dtype=float32)]
+                >>> # doctest: +SKIP("Random output")
+                [array(0.16870381, dtype=float32)]
+                >>> # doctest: -SKIP
 
             .. code-block:: python
                 :name: code-example-2
 
-                >>> # required: gpu
+                >>> # doctest: +REQUIRES(env:GPU)
                 >>> import paddle
                 >>> import numpy as np
 
@@ -1599,12 +1601,14 @@ class Executor:
                 The prediction shape: (6, 2)
 
                 >>> print(prediction)
+                >>> # doctest: +SKIP("Random output")
                 [[-0.37789783 -0.19921964]
                  [-0.3577645  -0.18863106]
                  [-0.24274671 -0.12814042]
                  [-0.24635398 -0.13003758]
                  [-0.49232286 -0.25939852]
                  [-0.44514108 -0.2345845 ]]
+                >>> # doctest: -SKIP
 
         """
         # Temporary FLAGS, just for testing the performance of program cache

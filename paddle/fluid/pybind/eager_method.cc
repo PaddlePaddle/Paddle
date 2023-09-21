@@ -140,7 +140,6 @@ Examples:
 
         >>> import paddle
 
-        >>> paddle.disable_static()
         >>> data = paddle.uniform([30, 10, 32], dtype="float32", min=-1, max=1)
         >>> linear = paddle.nn.Linear(32, 64)
         >>> data = paddle.to_tensor(data)
@@ -841,9 +840,11 @@ Examples:
         >>> out = linear(input)
         >>> out.backward()
         >>> print("Before clear_gradient, linear.weight.grad: {}".format(linear.weight.grad))
+        >>> # doctest: +SKIP("Random output")
         Before clear_gradient, linear.weight.grad: Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
         [[-0.03178465, -0.03178465, -0.03178465],
          [-0.98546225, -0.98546225, -0.98546225]])
+        >>> # doctest: -SKIP
         >>> linear.weight.clear_gradient()
         >>> print("After clear_gradient, linear.weight.grad: {}".format(linear.weight.grad))
         After clear_gradient, linear.weight.grad: Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
@@ -1168,11 +1169,11 @@ Examples:
         >>> x = paddle.to_tensor([1.0], stop_gradient=False)
         >>> underline_x = x.get_tensor()
         >>> print(underline_x)
-        - place: Place(cpu)
-        - shape: [1]
-        - layout: NCHW
-        - dtype: 5
-        - data: [1]
+         - place: Place(cpu)
+         - shape: [1]
+         - layout: NCHW
+         - dtype: 5
+         - data: [1]
 )DOC");
 
 static PyObject* tensor_method_get_underline_tensor(TensorObject* self,
@@ -2945,6 +2946,7 @@ Examples:
 
         >>> x = paddle.to_tensor([1, 2, 3])
         >>> y = x[1]
+        >>> print(y.is_contiguous())
 )DOC");
 static PyObject* tensor_is_contiguous(TensorObject* self,
                                       PyObject* args,

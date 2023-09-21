@@ -605,6 +605,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                 it may make the execution faster. Default is False.
                 Examples:
                     .. code-block:: python
+
                         >>> import paddle
                         >>> import paddle.static as static
                         >>> paddle.enable_static()

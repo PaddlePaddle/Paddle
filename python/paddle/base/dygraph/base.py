@@ -213,15 +213,15 @@ def enable_dygraph(place=None):
         .. code-block:: python
 
             >>> import paddle
-            >>> print(paddle.in_dynamic_mode())  # True, dynamic mode is turn ON by default since paddle 2.0.0
+            >>> print(paddle.in_dynamic_mode())
             True
 
             >>> paddle.enable_static()
-            >>> print(paddle.in_dynamic_mode())  # False, Now we are in static graph mode
+            >>> print(paddle.in_dynamic_mode())
             False
 
             >>> paddle.disable_static()
-            >>> print(paddle.in_dynamic_mode())  # True, Now we are in dynamic mode
+            >>> print(paddle.in_dynamic_mode())
             True
 
     """
@@ -251,15 +251,15 @@ def disable_dygraph():
         .. code-block:: python
 
             >>> import paddle
-            >>> print(paddle.in_dynamic_mode())  # True, dynamic mode is turn ON by default since paddle 2.0.0
+            >>> print(paddle.in_dynamic_mode())
             True
 
             >>> paddle.enable_static()
-            >>> print(paddle.in_dynamic_mode())  # False, Now we are in static graph mode
+            >>> print(paddle.in_dynamic_mode())
             False
 
             >>> paddle.disable_static()
-            >>> print(paddle.in_dynamic_mode())  # True, Now we are in dynamic mode
+            >>> print(paddle.in_dynamic_mode())
             True
 
     """
@@ -303,8 +303,8 @@ def no_grad(func=None):
 
             >>> data = np.array([[2, 3], [4, 5]]).astype('float32')
             >>> with base.dygraph.guard():
-            ...     l0 = base.Linear(2, 2)  # l0.weight.gradient() is None
-            ...     l1 = base.Linear(2, 2)
+            ...     l0 = paddle.nn.Linear(2, 2)  # l0.weight.gradient() is None
+            ...     l1 = paddle.nn.Linear(2, 2)
             ...     with base.dygraph.no_grad():
             ...         # l1.weight.stop_gradient is False
             ...         tmp = l1.weight * 2  # tmp.stop_gradient is True
@@ -312,8 +312,8 @@ def no_grad(func=None):
             ...     y = l0(x) + tmp
             ...     o = l1(y)
             ...     o.backward()
-            ...     print(tmp.gradient() is None)  # True
-            ...     print(l0.weight.gradient() is None)  # False
+            ...     print(tmp.gradient() is None)
+            ...     print(l0.weight.gradient() is None)
             True
             False
 
@@ -322,8 +322,8 @@ def no_grad(func=None):
             ...     with base.dygraph.guard():
             ...         inp = np.ones([3, 1024], dtype='float32')
             ...         t = base.dygraph.base.to_variable(inp)
-            ...         linear1 = base.Linear(1024, 4, bias_attr=False)
-            ...         linear2 = base.Linear(4, 4)
+            ...         linear1 = paddle.nn.Linear(1024, 4, bias_attr=False)
+            ...         linear2 = paddle.nn.Linear(4, 4)
             ...         ret = linear1(t)
             ...         dy_ret = linear2(ret)
             ...
@@ -429,15 +429,18 @@ class set_grad_enabled(_DecoratorContextManager):
             >>> is_train = False
             >>> with paddle.set_grad_enabled(is_train):
             ...     y = x * 2
-            >>> assert(y.stop_gradient == True)
+            >>> print(y.stop_gradient)
+            True
 
             >>> paddle.set_grad_enabled(True)
             >>> y = x * 2
-            >>> assert(y.stop_gradient == False)
+            >>> print(y.stop_gradient)
+            False
 
             >>> paddle.set_grad_enabled(False)
             >>> y = x * 2
-            >>> assert(y.stop_gradient == True)
+            >>> print(y.stop_gradient)
+            True
     """
 
     def __init__(self, mode):
@@ -485,8 +488,8 @@ class no_grad_(_DecoratorContextManager):
             >>> o = l1(y)
             >>> o.backward()
             >>> print(tmp.gradient() is None)
-            >>> print(l0.weight.gradient() is None)
             True
+            >>> print(l0.weight.gradient() is None)
             False
 
             >>> # use as decorator
@@ -585,8 +588,8 @@ def guard(place=None):
             >>> with base.dygraph.guard():
             ...     inp = np.ones([3, 1024], dtype='float32')
             ...     t = base.dygraph.base.to_variable(inp)
-            ...     linear1 = base.Linear(1024, 4, bias_attr=False)
-            ...     linear2 = base.Linear(4, 4)
+            ...     linear1 = paddle.nn.Linear(1024, 4, bias_attr=False)
+            ...     linear2 = paddle.nn.Linear(4, 4)
             ...     ret = linear1(t)
             ...     dy_ret = linear2(ret)
             ...
@@ -699,8 +702,8 @@ def grad(
             ...     return x.gradient()
             ...
             >>> print(test_dygraph_grad(create_graph=False))
-            >>> print(test_dygraph_grad(create_graph=True))
             [2.]
+            >>> print(test_dygraph_grad(create_graph=True))
             [4.]
 
         .. code-block:: python
@@ -735,7 +738,7 @@ def grad(
             >>> grad_value = paddle.to_tensor(4.0)
             >>> # dy1 = [1], dy2 = [1]
             >>> print(test_dygraph_grad(None))
-            [7.]
+            7.
 
             >>> # dy1 = [1], dy2 = [4]
             >>> print(test_dygraph_grad([None, grad_value]))
@@ -883,26 +886,26 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
             ...     x = np.ones([2, 2], np.float32)
             ...     y = base.dygraph.to_variable(x, zero_copy=False)
             ...     x[0][0] = -1
-            ...     y[0][0].numpy()
+            ...     print(y[0][0].numpy())
             ...     y = base.dygraph.to_variable(x)
             ...     x[0][0] = 0
-            ...     y[0][0].numpy()
+            ...     print(y[0][0].numpy())
             ...     c = np.array([2+1j, 2])
             ...     z = base.dygraph.to_variable(c)
-            ...     z.numpy()
-            ...     z.dtype
+            ...     print(z.numpy())
+            ...     print(z.dtype)
             ...
             ...     y = base.dygraph.to_variable([[0.1, 1.2], [2.2, 3.1], [4.9, 5.2]])
-            ...     y.shape
+            ...     print(y.shape)
             ...
             ...     y = base.dygraph.to_variable(((0.1, 1.2), (2.2, 3.1), (4.9, 5.2)), dtype='int32')
-            ...     y.shape
-            array([1.], dtype=float32)
-            array([0.], dtype=float32)
+            ...     print(y.shape)
+            array(1, dtype=float32)
+            array(-1, dtype=float32)
             array([2.+1.j, 2.+0.j])
             complex128
-            [3L, 2L]
-            [3L, 2L]
+            [3, 2]
+            [3, 2]
     """
     support_type = (
         list,
