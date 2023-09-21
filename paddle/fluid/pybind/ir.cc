@@ -420,19 +420,19 @@ phi::DataType GetOpResultDtype(const OpResult &result) {
   }
 }
 
-#define OVERRIDE_OPERATOR(operator, api, other_type)                \
-  op_result.def(#operator, [](OpResult &self, ##other_type other) { \
-    return paddle::dialect::##api(self, other);                     \
+#define OVERRIDE_OPERATOR(operator, api, other_type)              \
+  op_result.def(#operator, [](OpResult &self, other_type other) { \
+    return paddle::dialect::api(self, other);                     \
   });
 
-#define OVERRIDE_OPERATOR_WITH_SCALE(operator,                      \
-                                     other_type,                    \
-                                     scale_value,                   \
-                                     bias_value,                    \
-                                     bias_after_scale)              \
-  op_result.def(#operator, [](OpResult &self, ##other_type other) { \
-    return paddle::dialect::scale(                                  \
-        self, ##scale_value, ##bias_value, ##bias_after_scale);     \
+#define OVERRIDE_OPERATOR_WITH_SCALE(operator,                    \
+                                     other_type,                  \
+                                     scale_value,                 \
+                                     bias_value,                  \
+                                     bias_after_scale)            \
+  op_result.def(#operator, [](OpResult &self, other_type other) { \
+    return paddle::dialect::scale(                                \
+        self, scale_value, bias_value, bias_after_scale);         \
   });
 
 #define OVERRIDE_OPERATOR_FOR_EACH(operator,         \
@@ -461,10 +461,10 @@ phi::DataType GetOpResultDtype(const OpResult &result) {
                                bias_after_scale)
 
 #define OVERRIDE_COMPARE_OP_WITH_FULL(operator, api, other_type)            \
-  op_result.def(#operator, [](OpResult &self, ##other_type other) {         \
+  op_result.def(#operator, [](OpResult &self, other_type other) {           \
     auto rhs =                                                              \
         paddle::dialect::full(/*shape=*/{}, other, GetOpResultDtype(self)); \
-    return paddle::dialect::##api(self, rhs);                               \
+    return paddle::dialect::api(self, rhs);                                 \
   });
 
 #define OVERRIDE_COMPARE_OP_FOR_EACH(operator, api)   \
