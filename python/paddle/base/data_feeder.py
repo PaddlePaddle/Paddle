@@ -12,20 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import core
-import numpy as np
-import warnings
 import struct
+import warnings
 
+import numpy as np
+
+from ..ir import OpResult
+from . import core
 from .framework import (
     Variable,
+    _cpu_num,
+    _cuda_ids,
     default_main_program,
     in_dygraph_mode,
     in_pir_mode,
 )
-from .framework import _cpu_num, _cuda_ids
-
-from ..ir import OpResult
 
 __all__ = ['DataFeeder']
 
@@ -47,7 +48,7 @@ _PADDLE_DTYPE_2_NUMPY_DTYPE = {
 _PADDLE_NEW_IR_DTYPE_2_NUMPY_DTYPE = {
     core.DataType.BOOL: 'bool',
     core.DataType.FLOAT16: 'float16',
-    core.DataType.UINT16: 'uint16',
+    core.DataType.BFLOAT16: 'uint16',
     core.DataType.FLOAT32: 'float32',
     core.DataType.FLOAT64: 'float64',
     core.DataType.INT8: 'int8',
