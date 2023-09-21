@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -80,8 +81,26 @@ void RoiAlignGradKernel(const Context& dev_ctx,
                         float spatial_scale,
                         int sampling_ratio,
                         bool aligned,
+                        const std::string& data_format,
                         DenseTensor* dx) {
-  const auto& in_dims = phi::vectorize<int>(x.dims());
+  const bool channel_last = data_format == "NHWC";
+
+  DenseTensor transformed_input(x.type());
+  DenseTensor transformed_output_grad(out_grad.type());
+
+  if (channel_last) {
+    ResizeToChannelFirst<Context, T>(dev_ctx, &x, &transformed_input);
+    TransToChannelFirst<Context, T>(dev_ctx, &x, &transformed_input);
+
+    ResizeToChannelFirst<Context, T>(
+        dev_ctx, &out_grad, &transformed_output_grad);
+
+  } else {
+    transformed_input = x;
+    transformed_output_grad = out_grad;
+  }
+
+  const auto& in_dims = phi::vectorize<int>(transformed_input.dims());
   int channels = in_dims[1];
   int height = in_dims[2];
   int width = in_dims[3];
@@ -119,19 +138,19 @@ void RoiAlignGradKernel(const Context& dev_ctx,
   phi::funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, dx, static_cast<T>(0));
 
-  int output_grad_size = static_cast<int>(out_grad.numel());
+  int output_grad_size = static_cast<int>(transformed_output_grad.numel());
 
-  if ((!out_grad.IsInitialized()) || (output_grad_size <= 0)) {
+  if ((!transformed_output_grad.IsInitialized()) || (output_grad_size <= 0)) {
     return;
   }
 
   const T* boxes_data = boxes.data<T>();
-  const T* out_grad_data = out_grad.data<T>();
+  const T* out_grad_data = transformed_output_grad.data<T>();
   T* dx_data = dev_ctx.template Alloc<T>(dx);
 
   auto in_stride = phi::stride(x.dims());
   auto roi_stride = phi::stride(boxes.dims());
-  auto out_stride = phi::stride(out_grad.dims());
+  auto out_stride = phi::stride(transformed_output_grad.dims());
 
   T roi_offset = aligned ? T(0.5) : 0;
   for (int n = 0; n < rois_num; ++n) {

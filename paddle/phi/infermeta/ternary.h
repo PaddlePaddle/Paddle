@@ -162,6 +162,7 @@ void RoiAlignInferMeta(const MetaTensor& x,
                        float spatial_scale,
                        int sampling_ratio,
                        bool aligned,
+                       const std::string& data_format,
                        MetaTensor* out,
                        MetaConfig config = MetaConfig());
 
