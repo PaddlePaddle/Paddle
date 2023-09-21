@@ -173,13 +173,11 @@ bool PyObject_CheckIRVectorOfOpResult(PyObject* obj) {
   }
 }
 bool CastPyArg2AttrBoolean(PyObject* obj, ssize_t arg_pos) {
-  if (obj == Py_None) {
+  if (obj == Py_None || obj == Py_False) {
     return false;  // To be compatible with QA integration testing. Some
                    // test cases pass in None.
   } else if (obj == Py_True) {
     return true;
-  } else if (obj == Py_False) {
-    return false;
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
@@ -1125,9 +1123,8 @@ static paddle::Tensor& GetTensorFromPyObject(const std::string& op_type,
     return emptytensor;
   }
 
-  if (PyObject_TypeCheck(obj, p_tensor_type)) {
-    return reinterpret_cast<TensorObject*>(obj)->tensor;
-  } else if (PyObject_TypeCheck(obj, p_string_tensor_type)) {
+  if (PyObject_TypeCheck(obj, p_tensor_type) ||
+      PyObject_TypeCheck(obj, p_string_tensor_type)) {
     return reinterpret_cast<TensorObject*>(obj)->tensor;
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(

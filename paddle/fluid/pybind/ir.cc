@@ -464,6 +464,10 @@ void BindOpResult(py::module *m) {
            [](OpResult &self, OpResult &other) {
              return paddle::dialect::add(self, other);
            })
+      .def("__add__",
+           [](OpResult &self, float &bias) {
+             return paddle::dialect::scale(self, 1.0, bias, false);
+           })
       .def("__sub__",
            [](OpResult &self, OpResult &other) {
              return paddle::dialect::subtract(self, other);
