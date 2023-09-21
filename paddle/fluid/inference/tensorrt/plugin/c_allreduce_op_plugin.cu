@@ -203,7 +203,14 @@ int CAllReducePluginDynamic::enqueue(
                           "has ring_id attr."));
     auto stream = comm_ctx->GetStream();
     ncclRedOp_t nccl_red_type = ncclSum;
-    comm_ctx->AllReduce(&inputs[0], inputs[0], nccl_red_type, stream);
+    // comm_ctx->AllReduce(&inputs[0], inputs[0], nccl_red_type, stream);
+    phi::dynload::ncclAllReduce(sendbuff,
+                                recvbuff,
+                                numel,
+                                dtype,
+                                nccl_red_type,
+                                comm_ctx->GetNcclComm(),
+                                stream);
     VLOG(3) << "new NCCLCommContext has ring_id_ " << ring_id_;
   } else {
     auto comm = platform::NCCLCommContext::Instance().Get(ring_id_);
