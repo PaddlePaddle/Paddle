@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace phi {
 
@@ -40,5 +41,18 @@ template <typename T, typename Context>
 void BitwiseNotKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       DenseTensor* out);
+
+template <typename T, typename Context>
+DenseTensor BitwiseAnd(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y) {
+  DenseTensor dense_out;
+  MetaTensor meta_out(&dense_out);
+  MetaTensor meta_x(&x);
+  MetaTensor meta_y(&y);
+  ElementwiseInferMeta(meta_x, meta_y, &meta_out);
+  BitwiseAndKernel<T, Context>(dev_ctx, x, y, &dense_out);
+  return dense_out;
+}
 
 }  // namespace phi

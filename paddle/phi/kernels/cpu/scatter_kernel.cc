@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/cpu/scatter_kernel_impl.h"
 #include "paddle/phi/kernels/funcs/scatter.h"
 
 namespace phi {
@@ -27,17 +28,13 @@ void ScatterKernel(const Context &ctx,
                    const DenseTensor &index,
                    const DenseTensor &updates,
                    bool overwrite,
-
+                   int axis,
                    const std::string &reduce,
+                   bool include_self,
                    DenseTensor *out) {
-  // In place output: Out = X, Out[Ids] = Updates
-  phi::Copy(ctx, x, ctx.GetPlace(), false, out);
-  // Apply ScatterUpdate: Out[index] = Updates[:]
   const auto &index_type = index.dtype();
-  bool index_type_match =
-      index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;
   PADDLE_ENFORCE_EQ(
-      index_type_match,
+      index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64,
       true,
       phi::errors::InvalidArgument("Index holds the wrong type, it holds [%s],"
                                    "but desires to be [%s] or [%s].",
@@ -45,37 +42,28 @@ void ScatterKernel(const Context &ctx,
                                    phi::DataType::INT32,
                                    phi::DataType::INT64));
 
-  bool reduce_value_match = reduce == "sum" || reduce == "mul";
-  PADDLE_ENFORCE_EQ(reduce_value_match,
-                    true,
-                    phi::errors::InvalidArgument(
-                        "Reduce holds the wrong value, it holds [%s],"
-                        "but desires to be [%s] or [%s].",
-                        reduce,
-                        "sum",
-                        "mul"));
+  PADDLE_ENFORCE_EQ(
+      reduce == "add" || reduce == "mul" || reduce == "muliply" ||
+          reduce == "mean" || reduce == "amin" || reduce == "amax",
+      true,
+      phi::errors::InvalidArgument(
+          "Reduce holds the wrong value, it holds [%s],"
+          "but desires to be add, mul, multiply, mean, amin, amax.",
+          reduce));
 
+  std::string reducer = reduce;
   if (overwrite) {
-    if (index_type == phi::DataType::INT32) {
-      phi::funcs::ScatterAssign<T, int32_t>(ctx, updates, index, out);
-    } else {
-      phi::funcs::ScatterAssign<T, int64_t>(ctx, updates, index, out);
-    }
-  } else {
-    if (index_type == phi::DataType::INT32) {
-      if (reduce == "sum") {
-        phi::funcs::ScatterAssignAdd<T, int32_t>(ctx, updates, index, out);
-      } else {
-        phi::funcs::ScatterAssignMul<T, int32_t>(ctx, updates, index, out);
-      }
-    } else {
-      if (reduce == "sum") {
-        phi::funcs::ScatterAssignAdd<T, int64_t>(ctx, updates, index, out);
-      } else {
-        phi::funcs::ScatterAssignMul<T, int64_t>(ctx, updates, index, out);
-      }
-    }
+    reducer = "assign";
   }
+
+  IndexReduceBaseKernel<T, Context>(ctx,
+                                    x,
+                                    index,
+                                    const_cast<DenseTensor &>(updates),
+                                    axis,
+                                    reducer,
+                                    include_self,
+                                    out);
 }
 
 }  // namespace phi

@@ -1191,11 +1191,15 @@ void cos_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
 }
 
 template <typename T>
-void scatter_grad(const Tensor& index,
+void scatter_grad(const Tensor& x,
+                  const Tensor& index,
                   const Tensor& updates,
+                  const Tensor& out,
                   const Tensor& out_grad,
                   bool overwrite,
+                  int axis,
                   const std::string& reduce,
+                  bool include_self,
                   Tensor* x_grad,
                   Tensor* updates_grad) {
   if (x_grad) {

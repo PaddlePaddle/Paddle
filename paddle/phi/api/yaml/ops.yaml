@@ -2176,7 +2176,7 @@
   backward : scale_grad
 
 - op : scatter
-  args : (Tensor x, Tensor index, Tensor updates, bool overwrite=true, str reduce="ADD")
+  args : (Tensor x, Tensor index, Tensor updates, bool overwrite=true, int axis=0, str reduce="add", bool include_self=false)
   output : Tensor(out)
   infer_meta :
     func : ScatterInferMeta

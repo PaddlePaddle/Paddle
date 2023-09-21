@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace phi {
 template <typename T, typename Context>
@@ -31,5 +32,18 @@ void AnyKernel(const Context& dev_ctx,
                const std::vector<int64_t>& dims,
                bool keep_dim,
                DenseTensor* out);
+
+template <typename T, typename Context>
+DenseTensor Any(const Context& dev_ctx,
+                const DenseTensor& x,
+                const std::vector<int64_t>& dims,
+                bool keep_dim) {
+  DenseTensor dense_out;
+  MetaTensor meta_out(&dense_out);
+  MetaTensor meta_x(&x);
+  ReduceInferMeta(meta_x, dims, keep_dim, &meta_out);
+  AnyKernel<T, Context>(dev_ctx, x, dims, keep_dim, &dense_out);
+  return dense_out;
+}
 
 }  // namespace phi

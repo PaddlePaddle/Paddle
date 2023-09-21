@@ -2871,7 +2871,16 @@ def unbind(input, axis=0):
         return outs
 
 
-def scatter(x, index, updates, overwrite=True, reduce='sum', name=None):
+def scatter(
+    x,
+    index,
+    updates,
+    overwrite=True,
+    axis=0,
+    reduce='add',
+    include_self=False,
+    name=None,
+):
     """
     **Scatter Layer**
     Output is obtained by updating the input on selected indices based on updates.
@@ -2911,8 +2920,9 @@ def scatter(x, index, updates, overwrite=True, reduce='sum', name=None):
 
             If True, use the overwrite mode to update the output of the same index,
             if False, use the accumulate mode to update the output of the same index. Default value is True.
-
-        reduce (str, optional): Reduction operation to apply, can be either 'sum' or 'multiply'.
+        axis(int, optional): The axis along which the scatter operation is performed. The default is 0.
+        reduce (str, optional): Reduction operation to apply, can be either 'add', 'mul', 'multiply', 'mean', 'amin', 'amax'. The default is 'add'.
+        include_self(bool, optional): If True, the self index will be included in output. Default value is False.
         name(str, optional): The default value is None. Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
@@ -2948,7 +2958,9 @@ def scatter(x, index, updates, overwrite=True, reduce='sum', name=None):
             #  [1., 1.]]
     """
     if in_dynamic_mode():
-        return _C_ops.scatter(x, index, updates, overwrite, reduce)
+        return _C_ops.scatter(
+            x, index, updates, overwrite, axis, reduce, include_self
+        )
     else:
         check_variable_and_dtype(
             x,
@@ -2957,24 +2969,43 @@ def scatter(x, index, updates, overwrite=True, reduce='sum', name=None):
             'scatter',
         )
         check_type(overwrite, 'overwrite', bool, 'scatter')
+        check_type(overwrite, 'axis', int, 'scatter')
+        check_type(overwrite, 'reduce', str, 'scatter')
+        check_type(overwrite, 'include_self', bool, 'scatter')
         helper = LayerHelper('scatter', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
         helper.append_op(
             type="scatter",
             inputs={"X": x, "Ids": index, "Updates": updates},
-            attrs={'overwrite': overwrite, 'reduce': reduce},
+            attrs={
+                'overwrite': overwrite,
+                'axis': axis,
+                'reduce': reduce,
+                'include_self': include_self,
+            },
             outputs={"Out": out},
         )
         return out
 
 
 @inplace_apis_in_dygraph_only
-def scatter_(x, index, updates, overwrite=True, reduce='sum', name=None):
+def scatter_(
+    x,
+    index,
+    updates,
+    overwrite=True,
+    axis=0,
+    reduce='add',
+    include_self=False,
+    name=None,
+):
     """
     Inplace version of ``scatter`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_tensor_scatter`.
     """
-    return _C_ops.scatter_(x, index, updates, overwrite, reduce)
+    return _C_ops.scatter_(
+        x, index, updates, overwrite, axis, reduce, include_self
+    )
 
 
 def scatter_nd_add(x, index, updates, name=None):

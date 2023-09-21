@@ -401,8 +401,6 @@ void RnnGradInferMeta(const MetaTensor& x,
 void ScatterGradInferMeta(const MetaTensor& index,
                           const MetaTensor& updates,
                           const MetaTensor& out_grad,
-                          bool overwrite,
-                          const std::string& reduce,
                           MetaTensor* x_grad,
                           MetaTensor* updates_grad);
 

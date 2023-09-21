@@ -28,7 +28,9 @@ void ScatterKernel(const Context &ctx,
                    const DenseTensor &index,
                    const DenseTensor &updates,
                    bool overwrite,
+                   int axis,
                    const std::string &reduce,
+                   bool include_self,
                    DenseTensor *out) {
   phi::Copy(ctx, x, ctx.GetPlace(), false, out);
   // use template class to support int32_t and int64_t

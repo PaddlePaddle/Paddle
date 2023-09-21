@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace phi {
 
@@ -25,4 +26,21 @@ void IndexAddKernel(const Context& ctx,
                     const DenseTensor& add_value,
                     int axis,
                     DenseTensor* output);
+
+template <typename T, typename Context>
+DenseTensor IndexAdd(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& index,
+                     const DenseTensor& add_value,
+                     int axis) {
+  DenseTensor dense_out;
+  MetaTensor meta_out(&dense_out);
+  MetaTensor meta_x(&x);
+  MetaTensor meta_index(&index);
+  MetaTensor meta_add_value(&add_value);
+  IndexAddInferMeta(meta_x, meta_index, meta_add_value, axis, &meta_out);
+  IndexAddKernel<T, Context>(dev_ctx, x, index, add_value, axis, &dense_out);
+  return dense_out;
+}
+
 }  // namespace phi

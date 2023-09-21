@@ -1897,16 +1897,16 @@
   invoke : scale(out_grad, scale, 0.0f, true)
 
 - backward_op : scatter_grad
-  forward : scatter (Tensor x, Tensor index, Tensor updates, bool overwrite=true, str reduce="ADD") -> Tensor(out)
-  args : (Tensor index, Tensor updates, Tensor out_grad, bool overwrite, str reduce="ADD")
+  forward : scatter (Tensor x, Tensor index, Tensor updates, bool overwrite=true, int axis=0, str reduce="add", bool include_self=false) -> Tensor(out)
+  args : (Tensor x, Tensor index, Tensor updates, Tensor out, Tensor out_grad, bool overwrite, int axis, str reduce, bool include_self)
   output : Tensor(x_grad), Tensor(updates_grad)
   infer_meta :
     func : ScatterGradInferMeta
-    param : [index, updates, out_grad, overwrite, reduce]
+    param : [index, updates, out_grad]
   kernel :
     func : scatter_grad
-  no_need_buffer : updates
-  composite: scatter_grad(index, updates, out_grad, overwrite, reduce, x_grad, updates_grad)
+  # no_need_buffer : updates
+  composite: scatter_grad(x, index, updates, out, out_grad, overwrite, axis, reduce, include_self, x_grad, updates_grad)
 
 - backward_op : scatter_nd_add_grad
   forward : scatter_nd_add (Tensor x, Tensor index, Tensor updates) -> Tensor(out)

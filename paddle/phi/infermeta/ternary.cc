@@ -1035,8 +1035,9 @@ void ScatterInferMeta(const MetaTensor& x,
                       const MetaTensor& index,
                       const MetaTensor& updates,
                       bool overwrite,
-
+                      int axis,
                       const std::string& reduce,
+                      bool include_self,
                       MetaTensor* out) {
   const auto& updates_dims = updates.dims();
   const auto& ref_dims = x.dims();

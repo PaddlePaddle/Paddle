@@ -66,44 +66,6 @@ elementwise_inner_add(const phi::CPUContext& ctx UNUSED,
 }
 
 /**
- * Return the updated array pointer, use blas or eigen lib to optimize time
- * cost
- */
-template <typename T, typename IndexT = int>
-typename std::enable_if<std::is_floating_point<T>::value>::type
-elementwise_inner_mul(const phi::CPUContext& ctx,
-                      const T* src_pointer,
-                      T* dst_pointer,
-                      size_t src_index,
-                      IndexT dst_index,
-                      size_t slice_size) {
-  auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(ctx);
-  blas.VMUL(slice_size,
-            src_pointer + src_index * slice_size,
-            dst_pointer + dst_index * slice_size,
-            dst_pointer + dst_index * slice_size);
-}
-
-template <typename T, typename IndexT = int>
-typename std::enable_if<!std::is_floating_point<T>::value>::type
-elementwise_inner_mul(const phi::CPUContext& ctx UNUSED,
-                      const T* src_pointer,
-                      T* dst_pointer,
-                      size_t src_index,
-                      IndexT dst_index,
-                      size_t slice_size) {
-  using EigenVector = typename phi::EigenTensor<T, 1>::Type;
-  using ConstEigenVector = typename phi::EigenTensor<T, 1>::ConstType;
-
-  phi::EigenDim<1>::Type dim;
-  dim[0] = slice_size;
-
-  ConstEigenVector eigen_src(src_pointer + src_index * slice_size, dim);
-  EigenVector eigen_dst(dst_pointer + dst_index * slice_size, dim);
-  eigen_dst *= eigen_src;
-}
-
-/**
  * Return an updated tensor from source tensor, scattered according to index:
  * dst[i] = src[index[i]]
  * input[src]: type-T source Tensor
@@ -273,90 +235,6 @@ void ScatterAssignAdd(const phi::CPUContext& ctx,
   for (int64_t i = 0; i < index_size; ++i) {
     const IndexT& index_val = p_index[i];
     elementwise_inner_add<T, IndexT>(
-        ctx, p_src, p_output, i, index_val, slice_size);
-  }
-}
-
-template <typename T, typename IndexT = int>
-void ScatterAssignMul(const phi::CPUContext& ctx,
-                      const DenseTensor& src,
-                      const DenseTensor& index,
-                      DenseTensor* output) {
-  PADDLE_ENFORCE_EQ(
-      index.dims().size() == 1 || index.dims().size() == 0 ||
-          (index.dims().size() == 2 && index.dims()[1] == 1),
-      true,
-      phi::errors::InvalidArgument(
-          "index's shape is error, "
-          "expect index'dims shape is 0, 1, 2 (index.dims[1] should "
-          "be 1), but got index'dims shape is %d",
-          index.dims().size()));
-
-  int64_t index_size = index.dims().size() == 0 ? 1 : index.dims()[0];
-
-  auto src_dims = src.dims();
-  auto dst_dims = output->dims();
-
-  const T* p_src = src.data<T>();
-  const IndexT* p_index = index.data<IndexT>();
-  T* p_output = output->data<T>();
-
-  if (index.dims().size() != 0) {
-    // check src shape and dst shape should match
-    for (int i = 1; i < src_dims.size(); i++)
-      PADDLE_ENFORCE_EQ(
-          src_dims[i],
-          dst_dims[i],
-          phi::errors::InvalidArgument(
-              "The dimensions of the source tensor and target tensor should"
-              " match, but received source tensor's %d-th dimension is %d,"
-              "target tensor's %d-th dimension is %d.",
-              i,
-              src_dims[i],
-              i,
-              dst_dims[i]));
-  }
-
-  // slice size
-  size_t slice_size = 1;
-  if (index.dims().size() != 0) {
-    for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
-  } else {
-    for (int i = 0; i < src_dims.size(); ++i) slice_size *= src_dims[i];
-  }
-
-  const size_t& slice_bytes = slice_size * sizeof(T);
-  auto ones = phi::Full<T, phi::CPUContext>(
-      ctx, {static_cast<long>(slice_size)}, static_cast<T>(1));
-
-  // if not in overwrite mode, need to init output data
-  auto max_index = dst_dims[0];
-  for (int64_t i = 0; i < index_size; ++i) {
-    const IndexT& index_val = p_index[i];
-    PADDLE_ENFORCE_GE(index_val,
-                      0,
-                      phi::errors::OutOfRange(
-                          "The index is out of bounds, "
-                          "please check whether the dimensions of index and "
-                          "input meet the requirements. It should "
-                          "be greater than or equal to 0, but received [%d]",
-                          index_val));
-    PADDLE_ENFORCE_LT(index_val,
-                      max_index,
-                      phi::errors::OutOfRange(
-                          "The index is out of bounds, "
-                          "please check whether the dimensions of index and "
-                          "input meet the requirements. It should "
-                          "be less than %d, but received %d",
-                          max_index,
-                          index_val));
-    memcpy(p_output + slice_size * index_val, ones.data(), slice_bytes);
-  }
-
-  // if not in overwrite mode, need to init output data
-  for (int64_t i = 0; i < index_size; ++i) {
-    const IndexT& index_val = p_index[i];
-    elementwise_inner_mul<T, IndexT>(
         ctx, p_src, p_output, i, index_val, slice_size);
   }
 }

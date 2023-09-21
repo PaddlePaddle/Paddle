@@ -310,6 +310,123 @@ CUDA_ATOMIC_WRAPPER(Add, complex<double>) {
                          CudaAtomicAdd(imag, val.imag));
 }
 
+// Atomic multiplication implementation.
+CUDA_ATOMIC_WRAPPER(Mul, int64_t) {
+  // Here, we check long long int must be int64_t.
+  static_assert(sizeof(int64_t) == sizeof(long long int),  // NOLINT
+                "long long should be int64");
+  unsigned long long int *address_as_ull =       // NOLINT
+      (unsigned long long int *)address;         // NOLINT
+  unsigned long long int old = *address_as_ull;  // NOLINT
+  unsigned long long int assumed;                // NOLINT
+
+  do {
+    assumed = old;
+    old = atomicCAS(address_as_ull,
+                    assumed,
+                    static_cast<unsigned long long int>(  // NOLINT
+                        val * static_cast<int64_t>(assumed)));
+    // Note: uses integer comparison to avoid hang in case of NaN (since NaN
+    // != NaN)
+  } while (assumed != old);
+
+  return static_cast<int64_t>(old);
+}
+
+CUDA_ATOMIC_WRAPPER(Mul, int) {
+  int old = *address;
+  int assumed;
+
+  do {
+    assumed = old;
+    old = atomicCAS(address, assumed, val * assumed);
+
+    // Note: uses integer comparison to avoid hang in case of NaN (since NaN !=
+    // NaN)
+  } while (assumed != old);
+
+  return old;
+}
+
+#ifdef PADDLE_CUDA_FP16
+CUDA_ATOMIC_WRAPPER(Mul, phi::dtype::float16) {
+  unsigned int *address_as_ui =
+      (unsigned int *)((char *)address - ((size_t)address & 2));  // NOLINT
+  unsigned int old = *address_as_ui;
+  unsigned int assumed;
+
+  phi::dtype::float16 hsum;
+  do {
+    assumed = old;
+    hsum.x = (size_t)address & 2 ? (old >> 16) : (old & 0xffff);  // NOLINT
+
+    hsum = hsum * val;
+    old = (size_t)address & 2 ? (old & 0xffff) | (hsum.x << 16)  // NOLINT
+                              : (old & 0xffff0000) | hsum.x;     // NOLINT
+    old = atomicCAS(address_as_ui, assumed, old);
+  } while (assumed != old);
+  hsum.x = (size_t)address & 2 ? (old >> 16) : (old & 0xffff);  // NOLINT
+  return hsum;
+}
+#endif
+
+CUDA_ATOMIC_WRAPPER(Mul, phi::dtype::bfloat16) {
+  unsigned int *address_as_ui =
+      (unsigned int *)((char *)address - ((size_t)address & 2));  // NOLINT
+  unsigned int old = *address_as_ui;
+  unsigned int assumed;
+
+  phi::dtype::bfloat16 bsum;
+  do {
+    assumed = old;
+    bsum.x = (size_t)address & 2 ? (old >> 16) : (old & 0xffff);  // NOLINT
+    bsum = bsum * val;
+    old = (size_t)address & 2 ? (old & 0xffff) | (bsum.x << 16)  // NOLINT
+                              : (old & 0xffff0000) | bsum.x;     // NOLINT
+    old = atomicCAS(address_as_ui, assumed, old);
+  } while (assumed != old);
+  bsum.x = (size_t)address & 2 ? (old >> 16) : (old & 0xffff);  // NOLINT
+  return bsum;
+}
+
+CUDA_ATOMIC_WRAPPER(Mul, double) {
+  unsigned long long int *address_as_ull =       // NOLINT
+      (unsigned long long int *)address;         // NOLINT
+  unsigned long long int old = *address_as_ull;  // NOLINT
+  unsigned long long int assumed;                // NOLINT
+
+  do {
+    assumed = old;
+    old = atomicCAS(
+        address_as_ull,
+        assumed,
+        __double_as_longlong(val * __longlong_as_double(assumed)));  // NOLINT
+    // Note: uses integer comparison to avoid hang in case of NaN (since NaN
+    // != NaN)
+  } while (assumed != old);
+
+  return __longlong_as_double(old);
+}
+
+// Dont use a templated function for this since the addition function defaults
+// to the CUDA built-in.
+CUDA_ATOMIC_WRAPPER(Mul, float) {
+  unsigned int *address_as_ull = (unsigned int *)address;  // NOLINT
+  unsigned int old = *address_as_ull;
+  unsigned int assumed;
+
+  do {
+    assumed = old;
+    old = atomicCAS(
+        address_as_ull, assumed, __float_as_int(val * __int_as_float(assumed)));
+
+    // Note: uses integer comparison to avoid hang in case of NaN (since NaN !=
+    // NaN)
+  } while (assumed != old);
+
+  return __int_as_float(old);
+}
+
 // For atomicMax
 USE_CUDA_ATOMIC(Max, int);
 USE_CUDA_ATOMIC(Max, unsigned int);
