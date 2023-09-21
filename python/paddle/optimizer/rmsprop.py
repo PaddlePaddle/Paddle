@@ -98,8 +98,8 @@ class RMSProp(Optimizer):
           Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of
           some derived class of ``GradientClipBase`` . There are three clipping strategies
-          ( :ref:`api_base_clip_GradientClipByGlobalNorm` , :ref:`api_base_clip_GradientClipByNorm` ,
-          :ref:`api_base_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
+          ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
+          :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): This parameter is used by developers to print debugging information.
           For details, please refer to :ref:`api_guide_Name`. Default is None.
 
