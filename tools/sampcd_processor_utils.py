@@ -108,7 +108,7 @@ class MetaResult(type):
         return mcs.__cls_map
 
 
-class Passed(Result, metaclass=MetaResult):
+class RPassed(Result, metaclass=MetaResult):
     name = 'passed'
     is_fail = False
 
@@ -117,7 +117,7 @@ class Passed(Result, metaclass=MetaResult):
         return f">>> {count} sample codes ran success in env: {env}"
 
 
-class Skipped(Result, metaclass=MetaResult):
+class RSkipped(Result, metaclass=MetaResult):
     name = 'skipped'
     is_fail = False
     logger = logger.warning
@@ -127,7 +127,7 @@ class Skipped(Result, metaclass=MetaResult):
         return f">>> {count} sample codes skipped in env: {env}"
 
 
-class Failed(Result, metaclass=MetaResult):
+class RFailed(Result, metaclass=MetaResult):
     name = 'failed'
     is_fail = True
     logger = logger.error
@@ -137,7 +137,7 @@ class Failed(Result, metaclass=MetaResult):
         return f">>> {count} sample codes ran failed in env: {env}"
 
 
-class NoCode(Result, metaclass=MetaResult):
+class RNoCode(Result, metaclass=MetaResult):
     name = 'nocode'
     is_fail = True
     logger = logger.error
@@ -147,7 +147,7 @@ class NoCode(Result, metaclass=MetaResult):
         return f">>> {count} apis don't have sample codes or could not run test in env: {env}"
 
 
-class Timeout(Result, metaclass=MetaResult):
+class RTimeout(Result, metaclass=MetaResult):
     name = 'timeout'
     is_fail = True
     logger = logger.error
@@ -157,7 +157,7 @@ class Timeout(Result, metaclass=MetaResult):
         return f">>> {count} sample codes ran timeout or error in env: {env}"
 
 
-class BadStatement(Result, metaclass=MetaResult):
+class RBadStatement(Result, metaclass=MetaResult):
     name = 'badstatement'
     is_fail = True
     logger = logger.error
@@ -199,8 +199,8 @@ class TestResult:
 
         if self.__unique_state is None:
             logger.warning('Default result will be set to FAILED!')
-            setattr(self, Failed.name, True)
-            self.__unique_state = Failed
+            setattr(self, RFailed.name, True)
+            self.__unique_state = RFailed
 
     @property
     def state(self) -> Result:
