@@ -21,7 +21,7 @@
 namespace paddle {
 namespace framework {
 
-void SetColAttrForFeedFetchOps(const std::shared_ptr<ProgramDesc> program_desc,
+void SetColAttrForFeedFetchOps(std::shared_ptr<ProgramDesc> program_desc,
                                const int64_t micro_batch_num,
                                const int64_t micro_batch_id) {
   if (micro_batch_num < 2) return;
