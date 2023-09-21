@@ -160,7 +160,7 @@ __global__ void int8_weight_only_dequant(const uint8_t* weight,
   // interleaving.
   int row_id = tile_id * 2 + ((lane_id % 8) > 3 ? 1 : 0);
   weight += tile_id * k * 2;
-  output += tile_id * k * 2;
+  output += row_id * k;
   float scale = scale_list[row_id];
 #pragma unroll
   for (int i = lane_id * 16; i < k * 2; i += 16 * 32) {
@@ -187,7 +187,7 @@ __global__ void int8_weight_only_dequant(const uint8_t* weight,
       // * ((p % 8) / 2) + p % 2 + 2 * (p / 8)]));
       vec_out[p] = vec_weight_f16[4 * ((p % 8) / 2) + p % 2 + 2 * (p / 8)];
     }
-    Store<T, 16>(vec_out, &output[i]);
+    Store<T, 16>(vec_out, &output[i / 128 * 64 + (i % 64)]);
   }
 }
 
@@ -218,7 +218,7 @@ __global__ void int4_weight_only_dequant(const uint8_t* weight,
   // interleaving.
   int row_id = tile_id * 4 + ((lane_id % 8) / 2);
   weight += tile_id * k / 2 * 4;
-  output += tile_id * k / 2 * 4 * 2;
+  output += row_id * k;
   float scale = scale_list[row_id];
 #pragma unroll
   for (int i = lane_id * 32; i < k * 4; i += 32 * 32) {
@@ -245,7 +245,7 @@ __global__ void int4_weight_only_dequant(const uint8_t* weight,
       // 12 13 20 21 28 29 6 7 14 15 22 23 30 31
       vec_out[p] = vec_weight_f16[8 * ((p % 8) / 2) + p % 2 + 2 * (p / 8)];
     }
-    Store<T, 32>(vec_out, &output[i]);
+    Store<T, 32>(vec_out, &output[i / 256 * 64 + (i % 64)]);
   }
 }
 
