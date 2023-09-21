@@ -21,6 +21,7 @@ from paddle.base.core import (  # noqa: F401
     get_phi_spmd_rule,
     get_spmd_rule,
 )
+from paddle.base.log_helper import get_logger
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.framework import core
 
@@ -34,13 +35,13 @@ from .operators import (
 from .process_group import get_world_process_group
 from .utils import (
     __no_shape_var_type__,
-    get_logger,
     is_gradient_clip_op,
     is_naive_data_parallel,
 )
 
-logger = get_logger(logging.INFO, "Completer")
-
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
+)
 __skip_dims_mapping_op__ = [
     "create_py_reader",
     "create_double_buffer_reader",
@@ -150,7 +151,7 @@ def _update_op_dims_mapping_and_distoperatorimpl(
     dist_op, original_op_dist_attr, changed
 ):
     dist_op_container = find_distributed_operator_impl_container(dist_op)
-    logger(
+    _logger.debug(
         "dist op: {} container: {}".format(
             dist_op.serial_op.type, dist_op_container.type
         )
@@ -161,7 +162,7 @@ def _update_op_dims_mapping_and_distoperatorimpl(
     reverted = dist_op_container.mapping_to_dist_operator_impl(
         dist_op, original_op_dist_attr
     )
-    logger(
+    _logger.debug(
         "Op [{}] use dist op impl [{}] idx [{}].".format(
             dist_op.serial_op.type,
             dist_op.dist_attr.impl_type,
@@ -342,7 +343,7 @@ class Completer:
 
         # step 2: Infer & Update dims mapping of op node using SPMD Rule.
         if _can_apply_infer_spmd_rule(dist_op):
-            logger.debug(
+            _logger.debug(
                 "Op [{}] update dims mapping using New InferSPMD Rule.".format(
                     dist_op.serial_op.type
                 )
@@ -351,7 +352,7 @@ class Completer:
                 dist_op, original_op_dist_attr, changed
             )
         else:
-            logger.debug(
+            _logger.debug(
                 "Op [{}] update dims mapping using Original DistOp Rule.".format(
                     dist_op.serial_op.type
                 )
@@ -978,7 +979,7 @@ class Completer:
             # Copy the corresponding distributed attribute from graph to serial_main_program
             self._dist_context.copy_dist_attr_from_graph_to_program()
         else:
-            logger.info("Default distributed attributed will be set.")
+            _logger.info("Default distributed attributed will be set.")
             self._dist_context.initialize(with_graph=False)
             # A fast and special completion for data parallel
             self._update_dist_attr_for_dp()
