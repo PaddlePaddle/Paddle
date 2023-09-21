@@ -177,8 +177,7 @@ paddle::framework::FetchList StandaloneExecutor::Run(
 
   if (FLAGS_enable_new_ir_in_executor) {
     std::vector<phi::DenseTensor> splited_feeds;
-    auto micro_batch_num = 4;
-    SplitFeedTensor(feed_names, micro_batch_num, scope_, &splited_feeds);
+    SplitFeedTensor(feed_names, plan_.MicroBatchNum(), scope_, &splited_feeds);
   }
 
   for (size_t job_idx = 0; job_idx < jobs.size(); ++job_idx) {
