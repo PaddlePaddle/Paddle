@@ -1028,7 +1028,7 @@ XPUOpMap& get_kl3_ops() {
                      phi::DataType::FLOAT64,
                      phi::DataType::INT32,
                      phi::DataType::INT64})},
-      };
+  };
 
   return s_xpu3_kernels;
 }
