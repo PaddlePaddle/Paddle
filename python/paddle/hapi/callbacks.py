@@ -882,7 +882,7 @@ class EarlyStopping(Callback):
 
 class VisualDL(Callback):
     """
-    VisualDL callback function.
+    VisualDL callback class. After storing the loss values and evaluation metrics in a log file during the training time , the panel is launched to view the visual results.
 
     Args:
         log_dir (str): The directory to save visualdl log file.

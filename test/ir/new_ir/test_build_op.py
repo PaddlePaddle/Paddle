@@ -41,7 +41,7 @@ class TestBuildOp(unittest.TestCase):
     def test_build_mean_op(self):
         newir_program = get_ir_program()
         tanh_out = newir_program.global_block().ops[-1].result(0)
-        with paddle.new_ir_utils.IrGuard(), paddle.ir.core.program_guard(
+        with paddle.pir_utils.IrGuard(), paddle.ir.core.program_guard(
             newir_program
         ):
             out = paddle.mean(tanh_out)
@@ -60,7 +60,7 @@ class TestBuildOp2(unittest.TestCase):
     def test_build_add_n_op(self):
         newir_program = get_ir_program()
         tanh_out = newir_program.global_block().ops[-1].result(0)
-        with paddle.new_ir_utils.IrGuard(), paddle.ir.core.program_guard(
+        with paddle.pir_utils.IrGuard(), paddle.ir.core.program_guard(
             newir_program
         ):
             out1 = paddle.mean(tanh_out)
@@ -80,7 +80,7 @@ class TestBuildOp2(unittest.TestCase):
 class TestBuildOp3(unittest.TestCase):
     def test_insertion_point(self):
         newir_program = get_ir_program()
-        with paddle.new_ir_utils.IrGuard():
+        with paddle.pir_utils.IrGuard():
             add_op = newir_program.global_block().ops[-2]
             tanh_op = newir_program.global_block().ops[-1]
             add_out = add_op.result(0)
@@ -106,7 +106,7 @@ class TestBuildOp4(unittest.TestCase):
     def test_build_concat_op(self):
         newir_program = get_ir_program()
         tanh_out = newir_program.global_block().ops[-1].result(0)
-        with paddle.new_ir_utils.IrGuard(), paddle.ir.core.program_guard(
+        with paddle.pir_utils.IrGuard(), paddle.ir.core.program_guard(
             newir_program
         ):
             out = paddle.concat([tanh_out, tanh_out], 0)
@@ -125,7 +125,7 @@ class TestBuildOp5(unittest.TestCase):
     def test_build_split_op(self):
         newir_program = get_ir_program()
         tanh_out = newir_program.global_block().ops[-1].result(0)
-        with paddle.new_ir_utils.IrGuard(), paddle.ir.core.program_guard(
+        with paddle.pir_utils.IrGuard(), paddle.ir.core.program_guard(
             newir_program
         ):
             out = paddle.split(tanh_out, [2, 2], 0)

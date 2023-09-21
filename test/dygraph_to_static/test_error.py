@@ -28,7 +28,7 @@ os.environ['ENABLE_FALL_BACK'] = "False"  # NOTE: ast only
 
 def inner_func():
     paddle.tensor.fill_constant(shape=[1, 2], value=9, dtype="int")
-    return
+    return  # noqa: PLR1711
 
 
 @paddle.jit.to_static
@@ -97,7 +97,7 @@ class LayerErrorInCompiletime2(paddle.nn.Layer):
         NOTE: The next line has a tab. And this test to check the IndentationError when spaces and tabs are mixed.
 	A tab here.
         """  # fmt: skip
-        return
+        return  # noqa: PLR1711
 
 
 @paddle.jit.to_static

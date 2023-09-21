@@ -26,8 +26,9 @@ A `scoped_function` will take a `function` as input. That function will be
 invoked in a new local scope.
 """
 
-import paddle.base.core
 import threading
+
+import paddle.base.core
 
 __tl_scope__ = threading.local()
 

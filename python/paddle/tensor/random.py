@@ -18,7 +18,7 @@ import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.base.framework import _current_expected_place
 from paddle.common_ops_import import Variable
-from paddle.framework import in_dynamic_mode
+from paddle.framework import in_dynamic_mode, in_dynamic_or_pir_mode
 
 from ..base.data_feeder import (
     check_dtype,
@@ -645,7 +645,7 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         shape = paddle.utils.convert_shape_to_list(shape)
         return _C_ops.uniform(
             shape,

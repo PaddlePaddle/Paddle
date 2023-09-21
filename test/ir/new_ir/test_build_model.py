@@ -31,12 +31,12 @@ class TestBuildModule(unittest.TestCase):
             exe = paddle.static.Executor()
             x_feed = np.ones([4, 4], dtype=np.float32) * 10
             y_feed = np.ones([4, 4], dtype=np.float32) * 2
-            (sum_value,) = exe.run(
-                main_program,
-                feed={'x': x_feed, 'y': y_feed},
-                fetch_list=[sum_out],
-            )
-            self.assertEqual(sum_value, 5 * 4 * 4)
+        (sum_value,) = exe.run(
+            main_program,
+            feed={'x': x_feed, 'y': y_feed},
+            fetch_list=[sum_out],
+        )
+        self.assertEqual(sum_value, 5 * 4 * 4)
 
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
