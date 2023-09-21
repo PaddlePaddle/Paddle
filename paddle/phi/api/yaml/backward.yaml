@@ -1646,6 +1646,15 @@
   kernel :
     func : pixel_shuffle_grad
 
+- backward_op : pixel_unshuffle_grad
+  forward : pixel_unshuffle (Tensor x, int downscale_factor=1, str data_format="NCHW") -> Tensor(out)
+  args : (Tensor out_grad, int downscale_factor, str data_format)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : PixelUnshuffleGradInferMeta
+  kernel :
+    func : pixel_unshuffle_grad
+
 - backward_op : poisson_grad
   forward : poisson (Tensor x) -> Tensor(out)
   args : (Tensor out_grad)
