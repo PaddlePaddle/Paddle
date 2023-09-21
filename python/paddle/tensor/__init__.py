@@ -24,6 +24,7 @@ from .creation import create_tensor  # noqa: F401
 from .creation import to_tensor  # noqa: F401
 from .creation import diag  # noqa: F401
 from .creation import diagflat  # noqa: F401
+from .creation import diag_embed  # noqa: F401
 from .creation import eye  # noqa: F401
 from .creation import linspace  # noqa: F401
 from .creation import fill_constant  # noqa: F401
@@ -597,7 +598,7 @@ tensor_method_func = [  # noqa
     'digamma',
     'digamma_',
     'diagonal',
-    'trunc',
+    'diag_embed' 'trunc',
     'trunc_',
     'frac',
     'frac_',
