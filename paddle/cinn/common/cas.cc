@@ -1868,7 +1868,7 @@ bool IsExprCasCompatible(Expr expr) {
     return expr->As<Add>() || expr->As<Sub>() || expr->As<Mul>() ||
            expr->As<Div>();
   };
-  return ir::CollectIRNodes(expr, teller).empty();
+  return ir::ir_utils::CollectIRNodes(expr, teller).empty();
 }
 
 // Partially divide a by b. e.g. (2x+y)/2 => x + y/2

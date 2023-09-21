@@ -162,8 +162,8 @@ class GlobalThreadLocal(threading.local):
         self._in_to_static_mode_ = False
         self._functional_dygraph_context_manager = None
         self._dygraph_tracer_ = _dygraph_tracer_
-        self._use_pir_api_ = get_flags("FLAGS_enable_new_ir_api")[
-            'FLAGS_enable_new_ir_api'
+        self._use_pir_api_ = get_flags("FLAGS_enable_pir_api")[
+            'FLAGS_enable_pir_api'
         ]
 
     def __str__(self):
@@ -316,6 +316,10 @@ def in_pir_mode():
     return global_var._use_pir_api_ and not in_dygraph_mode()
 
 
+def use_pir_api():
+    return global_var._use_pir_api_
+
+
 def in_dynamic_or_pir_mode():
     """
 
@@ -336,8 +340,8 @@ def in_dynamic_or_pir_mode():
             >>> print(paddle.framework.in_dynamic_or_pir_mode())
             False
 
-            >>> paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
-            >>> print(paddle.framework.in_dynamic_or_pir_mode())
+            >>> with paddle.pir_utils.IrGuard():
+            ...     print(paddle.framework.in_dynamic_or_pir_mode())
             True
 
     """

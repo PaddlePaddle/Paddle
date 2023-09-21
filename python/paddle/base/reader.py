@@ -12,44 +12,44 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import core
+import logging
+import multiprocessing
+import queue
 import sys
-import numpy as np
 import threading
-import paddle
+import warnings
 
+import numpy as np
+
+import paddle
+from paddle.base.framework import _set_expected_place
+
+from . import core
+from .data_feeder import BatchedTensorProvider, DataFeeder
+from .executor import global_scope
 from .framework import (
     Program,
-    program_guard,
+    _current_expected_place,
+    _get_paddle_place,
+    _get_paddle_place_list,
     default_main_program,
     default_startup_program,
     in_dygraph_mode,
-    _current_expected_place,
-)
-from .executor import global_scope
-from .data_feeder import DataFeeder, BatchedTensorProvider
-from .multiprocess_utils import (
-    multiprocess_queue_set,  # noqa: F401
-    CleanupFuncRegistrar,
-    _cleanup_mmap,
-    _cleanup,  # noqa: F401
-    _set_SIGCHLD_handler,
+    program_guard,
 )
 from .layers.io import (
-    monkey_patch_reader_methods,
-    _copy_reader_var_,
     __create_unshared_decorated_reader__,
+    _copy_reader_var_,
+    monkey_patch_reader_methods,
+)
+from .multiprocess_utils import _cleanup  # noqa: F401
+from .multiprocess_utils import multiprocess_queue_set  # noqa: F401
+from .multiprocess_utils import (
+    CleanupFuncRegistrar,
+    _cleanup_mmap,
+    _set_SIGCHLD_handler,
 )
 from .unique_name import UniqueNameGenerator
-from .framework import _get_paddle_place, _get_paddle_place_list
-from paddle.base.framework import _set_expected_place
-import logging
-import warnings
-
-### Dygraph DataLoader configs ###
-import multiprocessing
-
-import queue
 
 # NOTE: [ avoid hanging & failed quickly ] These value is used in getting data from another process
 QUEUE_GET_TIMEOUT = 60
