@@ -121,15 +121,15 @@
   invoke : full_like(out_grad, 0.0f)
 
 - backward_op : frobenius_norm_grad
-  forward: frobenius_norm (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1) -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
+  forward: frobenius_norm (Tensor x, IntArray dim={0}, bool keep_dim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, IntArray dim={0}, bool keep_dim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
   kernel :
     func : frobenius_norm_grad
-    param : [x, out, out_grad, axis, keepdim, reduce_all]
+    param : [x, out, out_grad, dim, keep_dim, reduce_all]
 
 - backward_op : hardswish_grad
   forward : hardswish (Tensor x, float threshold = 6.0f, float scale = 6.0f, float offset = 3.0f) -> Tensor(out)

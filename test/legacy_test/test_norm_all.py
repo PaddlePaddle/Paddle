@@ -80,7 +80,7 @@ def numpy_frobenius_norm(x, axis=None, keepdims=False):
     return r
 
 
-def frobenius_norm(x, dim, keep_dim, reduce_all):
+def frobenius_norm(x, dim, keep_dim, reduce_all=False):
     return paddle.linalg.norm(x, p='fro', axis=dim, keepdim=keep_dim)
 
 

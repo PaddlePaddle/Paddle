@@ -1152,13 +1152,14 @@
   inputs:
     x : X
   attrs:
-    { dims : dim,  keepdim : keep_dim}
+    { dims : dim,  keep_dim : keep_dim}
   outputs:
     out : Out
   int_array:
-    dims :
+    dim :
       data_type : int
-      support_tensor : true
+      tensor_name : DimTensor
+      tensors_name : DimTensorList
   get_expected_kernel_type :
     frobenius_norm : GetReduceExpectedKernelType
     frobenius_norm_grad : GetReduceGradExpectedKernelType

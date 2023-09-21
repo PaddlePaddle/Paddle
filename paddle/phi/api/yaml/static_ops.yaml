@@ -253,13 +253,13 @@
     func : floor_divide
 
 - op : frobenius_norm
-  args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
+  args : (Tensor x, IntArray dim={0}, bool keep_dim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
   output : Tensor(out)
   infer_meta :
     func : ReduceIntArrayAxisInferMetaBase
   kernel :
     func : frobenius_norm
-    param : [x, axis, keepdim, reduce_all]
+    param : [x, dim, keep_dim, reduce_all]
   backward : frobenius_norm_grad
 
 - op : full_like
