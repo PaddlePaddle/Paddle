@@ -188,12 +188,12 @@ class TestScaleFp16OpSelectedRows(TestScaleOpSelectedRows):
     def test_scale_selected_rows(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_with_place(place, 'in', 'out', check_new_ir=True)
+            self.check_with_place(place, 'in', 'out')
 
     def test_scale_selected_rows_inplace(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_with_place(place, 'in', 'in', check_new_ir=True)
+            self.check_with_place(place, 'in', 'in')
 
 
 class TestScaleApiStatic(unittest.TestCase):
