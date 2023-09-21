@@ -54,7 +54,7 @@ void Module::Builder::Clear() {
   module_->submodules.clear();
 }
 
-Target::Arch Module::Builder::GetTarget() { return module_->target.arch; }
+Target::Arch Module::Builder::GetTargetArch() { return module_->target.arch; }
 
 Module Module::Builder::Build() {
   if (module_->functions.empty()) {

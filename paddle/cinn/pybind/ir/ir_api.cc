@@ -267,10 +267,10 @@ void BindNode(py::module *m) {
 
 // empty visitor
 void BindIrVisitor(py::module *m) {
-  py::class_<ir::IrEqualVisitor> ir_compare(*m, "IrCompare");
+  py::class_<ir::ir_utils::IrEqualVisitor> ir_compare(*m, "IrCompare");
   ir_compare.def(py::init<bool, bool>())
       .def("compare",
-           [](ir::IrEqualVisitor &self,
+           [](ir::ir_utils::IrEqualVisitor &self,
               const cinn::ir::Expr &lhs,
               const cinn::ir::Expr &rhs) { return self.Compare(lhs, rhs); });
 

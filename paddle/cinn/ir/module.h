@@ -45,7 +45,7 @@ class Module : public ir::IrNodeRef {
     void AddFunctionWithoutOptim(const ir::LoweredFunc& func);
     void AddBuffer(ir::Buffer buffer);
     void Clear();
-    Target::Arch GetTarget();
+    Target::Arch GetTargetArch();
 
     Module Build();
 

@@ -26,12 +26,17 @@
 namespace cinn {
 namespace pybind {
 
+/**
+ * A base context that represents the CINN IR that need context information
+ */
 class IRContextNode : public common::Object {
  public:
   std::vector<ir::Expr> exprs;
 
  public:
+  // Corresponds to the __enter__ method in python's context manager
   virtual void EnterWithContext();
+  // Corresponds to the __exit__ method in python's context manager
   virtual void ExitWithContext();
   const char* type_info() const override { return __type_info__; }
 
@@ -39,6 +44,10 @@ class IRContextNode : public common::Object {
   static constexpr char* __type_info__ = "IRContextNode";
 };
 
+/**
+ * The lifecycle of RAII resource management for IRContextNode
+ * is determined at the Python.
+ */
 class IRContext {
  public:
   IRContext() = default;
@@ -184,6 +193,9 @@ class ElseContextNode : public IRContextNode {
   static constexpr const char* __type_info__ = "ElseContextNode";
 };
 
+/**
+ * A stack used to store current IRContext
+ */
 class IRBuilderNode : public common::Object {
  public:
   std::vector<IRContext> contexts;
@@ -201,6 +213,11 @@ class IRBuilderNode : public common::Object {
  public:
   static constexpr const char* __type_info__ = "IRBuilderNode";
 };
+
+/**
+ * The lifecycle of RAII resource management for IRBuilderNode
+ * is determined at the Python.
+ */
 class IRBuilder {
  public:
   IRBuilder();
