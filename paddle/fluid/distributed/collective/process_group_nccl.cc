@@ -594,7 +594,7 @@ ProcessGroupNCCL::NCCLTask::NCCLTask(
     CommType CommType,
     const std::vector<phi::DenseTensor>& inputs)
     : TaskStream(rank, inputs, CommType),
-      comm_event_(places[0]),
+      comm_event_(places[0], platform::GenerateDeviceEventFlag()),
       task_place_(places[0]) {}
 
 // create NCCLManager cache for places_key
