@@ -34,11 +34,13 @@ class NewIRInterpreter : public InterpreterBaseImpl {
                           InstructionSchedulingPriorityLess>;
 
  public:
-  NewIRInterpreter(const platform::Place& place,
-                   const std::vector<std::string>& fetch_var_names,
-                   const ::pir::Block* ir_block,
-                   Scope* scope,
-                   const ExecutionConfig& execution_config = ExecutionConfig());
+  NewIRInterpreter(
+      const platform::Place& place,
+      const std::vector<std::string>& fetch_var_names,
+      const ::pir::Block* ir_block,
+      Scope* scope,
+      const std::unordered_map<::pir::Value, std::string>& parent_value_2_names,
+      const ExecutionConfig& execution_config = ExecutionConfig());
 
   ~NewIRInterpreter();
 

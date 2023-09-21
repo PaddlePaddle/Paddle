@@ -61,12 +61,14 @@ NewIRInterpreter::NewIRInterpreter(
     const std::vector<std::string>& fetch_var_names,
     const ::pir::Block* ir_block,
     framework::Scope* scope,
+    const std::unordered_map<::pir::Value, std::string>& parent_value_2_names,
     const ExecutionConfig& execution_config)
     : place_(place),
       execution_config_(execution_config),
       var_scope_(scope),
       scope_(scope),
       ir_block_(ir_block),
+      value_2_var_name_(parent_value_2_names),
       ir_stream_analyzer_(place),
       fetch_var_names_(fetch_var_names) {
   VLOG(4) << "NewIRInterpreter(): " << this << " on " << place_;
@@ -108,6 +110,20 @@ NewIRInterpreter::NewIRInterpreter(
   };
 
   PrepareForCUDAGraphCapture();
+
+  for (auto it = value_2_var_name_.begin(); it != value_2_var_name_.end();
+       ++it) {
+    auto var = InnerScope()->FindVar(it->second);
+    PADDLE_ENFORCE_NOT_NULL(var,
+                            phi::errors::PreconditionNotMet(
+                                "variable [%s] MUST in scope", it->second));
+
+    variable_2_var_name_.emplace(var, it->second);
+
+    auto id = var_name_2_id_.size();
+    var_name_2_id_.emplace(it->second, id);
+    variable_list_.push_back(var);
+  }
 
   std::stringstream ss;
   ss << this;
@@ -528,6 +544,7 @@ void NewIRInterpreter::BuildInstruction() {
     } else if (op->dialect()->name() == "cf") {
       continue;
     } else if (op->dialect()->name() == "pd_op") {
+      std::cerr << "build cond instruct" << std::endl;
       vec_instruction_base_.emplace_back(
           std::make_unique<CondInstruction>(op_idx++,
                                             place_,
@@ -874,6 +891,8 @@ void NewIRInterpreter::CalculateLastLiveOps() {
     }
   }
   VLOG(4) << "var_ref_count_.size() : " << var_ref_count_.size();
+  // why not iterator??
+  // var id from 0 to ?
   for (size_t i = 0; i < last_live_ops_.size(); ++i) {
     std::set<size_t> minumum_last_live_ops;
     for (size_t item : last_live_ops_[i]) {
@@ -1248,6 +1267,7 @@ void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
   SetDeviceId(instr_node->DeviceContext().GetPlace());
 
   try {
+    std::cerr << "run instr " << instr_node->Name() << std::endl;
     instr_node->WaitEvent(place_);
     VLOG(4) << "begin to run op " << instr_node->Name();
     if (!instr_node->IsArtificial()) {

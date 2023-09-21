@@ -105,8 +105,10 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                     "@fetch";
         }
       }
+      base_program->Print(std::cout);
       auto kernel_program =
           paddle::dialect::PdOpLowerToKernelPass(base_program.get(), place);
+      kernel_program->Print(std::cout);
       std::shared_ptr<pir::Program> shared_program = std::move(kernel_program);
       plan_.UpdateIrProgram("base", shared_program);
 

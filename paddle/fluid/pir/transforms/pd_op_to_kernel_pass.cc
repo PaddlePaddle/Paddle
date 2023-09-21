@@ -671,6 +671,18 @@ void HandleForIfOp(
           "[%d]'s input of [%s] op MUST in map pair", 0, op_item->name()));
   auto new_in = map_value_pair->at(cur_in);
 
+  auto in_place =
+      new_in.type().dyn_cast<dialect::AllocatedDenseTensorType>().place();
+  if (in_place.GetType() == phi::AllocationType::GPU) {
+    auto out_place = phi::CPUPlace();
+    auto out_type = dialect::AllocatedDenseTensorType::get(
+        ctx, out_place, cur_in.type().dyn_cast<dialect::DenseTensorType>());
+    phi::KernelKey kernel_key(
+        phi::Backend::GPU, phi::DataLayout::ALL_LAYOUT, phi::DataType::BOOL);
+    new_in = AddPlaceTransferOp(
+        new_in, out_type, in_place, out_place, kernel_key, block);
+  }
+
   pir::Builder builder(ctx, block);
 
   auto base_if_op = op_item->dyn_cast<paddle::dialect::IfOp>();
@@ -701,6 +713,12 @@ void HandleForIfOp(
                ctx,
                map_op_pair,
                map_value_pair);
+
+  // update map
+  (*map_op_pair)[op_item] = new_if_op;
+  for (size_t i = 0; i < op_item->num_results(); ++i) {
+    (*map_value_pair)[op_item->result(i)] = new_if_op->result(i);
+  }
 }
 
 pir::OpResult GetNewInput(
@@ -1249,7 +1267,7 @@ void ProcessBlock(
     // build output type
     auto op_output_types =
         BuildOpOutputType(op_item, kernel_fn_str, kernel_key, ctx);
-
+    VLOG(6) << "Finish build op output types";
     // build input
     auto vec_inputs = BuildOpInputList(op_item,
                                        kernel_fn_str,
@@ -1260,6 +1278,7 @@ void ProcessBlock(
                                        map_op_pair,
                                        map_value_pair,
                                        new_block);
+    VLOG(6) << "Finish build op input list";
 
     // build op
     pir::Operation* op = BuildPhiKernelOp(kernel_fn_str,

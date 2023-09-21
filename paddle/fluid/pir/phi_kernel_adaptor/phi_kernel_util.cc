@@ -449,12 +449,25 @@ void HandleForSpecialOp(
     auto& true_branch_scope = inner_scope->NewScope();
     sub_blocks->emplace(true_block, &true_branch_scope);
 
+    // build true branch scope
+    // BuildScope( *true_block, &true_branch_scope, var_name_prefix,
+    //              value_2_var_name,
+    //              variable_2_var_name,
+    //              var_name_2_id,
+    //              variable_list,
+    //              sub_blocks);
+
     auto& false_branch_scope = inner_scope->NewScope();
     sub_blocks->emplace(false_block, &false_branch_scope);
 
-    for (size_t i = 0; i < if_op->num_results(); ++i) {
-      // auto true_value = true_yeid_op->operand_source(i);
+    // BuildScope( *false_block, &false_branch_scope, var_name_prefix,
+    //              value_2_var_name,
+    //              variable_2_var_name,
+    //              var_name_2_id,
+    //              variable_list,
+    //              sub_blocks);
 
+    for (size_t i = 0; i < if_op->num_results(); ++i) {
       auto if_op_out_value = if_op->result(i);
       BuildValue(if_op_out_value,
                  inner_scope,

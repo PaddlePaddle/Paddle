@@ -147,6 +147,10 @@ OpFuncType AnalyseOpFuncType(pir::Operation* op, const platform::Place& place) {
     return OpFuncType::kCpuSync;
   }
 
+  if (op->dialect()->name() == "pd_op") {
+    return OpFuncType::kGpuAsync;
+  }
+
   auto kernel_key = op->attributes()
                         .at("kernel_key")
                         .dyn_cast<dialect::KernelAttribute>()

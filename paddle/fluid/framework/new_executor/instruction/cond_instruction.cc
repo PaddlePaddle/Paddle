@@ -184,13 +184,26 @@ CondInstruction::CondInstruction(
   auto true_branch_block = if_op.true_block();
   auto false_branch_block = if_op.false_block();
 
+  std::unordered_map<pir::Value, std::vector<int>> true_inputs;
+  GetOutsideOpInputs(true_branch_block,
+                     inner_scope,
+                     value_2_var_name,
+                     var_name_2_id,
+                     variable_2_var_name,
+                     &true_inputs);
+  std::unordered_map<::pir::Value, std::string> true_value_map;
+  for (auto it = true_inputs.begin(); it != true_inputs.end(); ++it) {
+    true_value_map.emplace(it->first, value_2_var_name.at(it->first));
+  }
+
   auto true_branch_yied_inputs = GetYiedOpInputs(true_branch_block);
   auto false_branch_yied_inputs = GetYiedOpInputs(false_branch_block);
-
+  std::cerr << "builld true inter 11" << std::endl;
   auto true_scope = sub_blocks.at(true_branch_block);
-  true_branch_inter =
-      new NewIRInterpreter(place, {}, true_branch_block, true_scope, {});
+  true_branch_inter = new NewIRInterpreter(
+      place, {}, true_branch_block, true_scope, true_value_map, {});
 
+  std::cerr << "builld true inter fin" << std::endl;
   std::set<std::string> true_skip_gc_names_set;
   for (auto value : true_branch_yied_inputs) {
     true_skip_gc_names_.push_back(true_branch_inter->GetNameByValue(value));
@@ -198,10 +211,24 @@ CondInstruction::CondInstruction(
   }
   true_branch_inter->SetSkipGcVars(true_skip_gc_names_set);
 
+  std::cerr << "builld false inter" << std::endl;
   auto false_scope = sub_blocks.at(false_branch_block);
-  false_branch_inter =
-      new NewIRInterpreter(place, {}, false_branch_block, false_scope, {});
+  std::unordered_map<pir::Value, std::vector<int>> false_inputs;
+  GetOutsideOpInputs(false_branch_block,
+                     inner_scope,
+                     value_2_var_name,
+                     var_name_2_id,
+                     variable_2_var_name,
+                     &false_inputs);
+  std::unordered_map<::pir::Value, std::string> false_value_map;
+  for (auto it = false_inputs.begin(); it != false_inputs.end(); ++it) {
+    false_value_map.emplace(it->first, value_2_var_name.at(it->first));
+  }
 
+  false_branch_inter = new NewIRInterpreter(
+      place, {}, false_branch_block, false_scope, false_value_map, {});
+
+  std::cerr << "builld false inter fin" << std::endl;
   std::set<std::string> false_skip_gc_names_set;
   for (auto value : false_branch_yied_inputs) {
     false_skip_gc_names_.push_back(false_branch_inter->GetNameByValue(value));
@@ -266,11 +293,20 @@ void CondInstruction::CopyBranchOutput(
 }
 
 void CondInstruction::Run() {
+  DeviceContext().Wait();
+  std::cerr << "run " << std::endl;
   if (cond_var->Get<phi::DenseTensor>().data<bool>()[0]) {
+    std::cerr << "true " << std::endl;
     true_branch_inter->Run({}, false);
+    std::cerr << "true fin " << std::endl;
+    DeviceContext().Wait();
     CopyBranchOutput(true_skip_gc_names_, true_branch_inter);
+    std::cerr << "cpy fin " << std::endl;
   } else {
+    std::cerr << "false " << std::endl;
     false_branch_inter->Run({}, false);
+    DeviceContext().Wait();
+    std::cerr << "false fin " << std::endl;
     CopyBranchOutput(false_skip_gc_names_, false_branch_inter);
   }
 
