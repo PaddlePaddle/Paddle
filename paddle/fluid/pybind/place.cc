@@ -213,9 +213,9 @@ void BindPlace(pybind11::module &m) {  // NOLINT
     Examples:
         .. code-block:: python
 
-          import paddle
-          fake_cpu_place = paddle.CustomPlace("FakeCPU", 0)
-                                             )DOC");
+            >>> import paddle
+            >>> fake_cpu_place = paddle.CustomPlace("FakeCPU", 0)
+                                                )DOC");
   g_customplace_pytype = reinterpret_cast<PyTypeObject *>(customplace.ptr());
   customplace
       .def("__init__",
@@ -309,9 +309,9 @@ void BindPlace(pybind11::module &m) {  // NOLINT
     Examples:
         .. code-block:: python
 
-          import paddle
+            >>> import paddle
 
-          place = paddle.CUDAPlace(0)
+            >>> place = paddle.CUDAPlace(0)
 
         )DOC");
   g_cudaplace_pytype = reinterpret_cast<PyTypeObject *>(cudaplace.ptr());
@@ -391,11 +391,13 @@ void BindPlace(pybind11::module &m) {  // NOLINT
   });
 #endif
   py::class_<platform::XPUPlace> xpuplace(m, "XPUPlace", R"DOC(
-    **Note**:
+    Return a Baidu Kunlun Place
+
     Examples:
         .. code-block:: python
-          import paddle.base as base
-          xpu_place = base.XPUPlace(0)
+
+            >>> import paddle.base as base
+            >>> xpu_place = base.XPUPlace(0)
         )DOC");
   g_xpuplace_pytype = reinterpret_cast<PyTypeObject *>(xpuplace.ptr());
   xpuplace
@@ -492,8 +494,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
     Examples:
         .. code-block:: python
 
-          import paddle
-          cpu_place = paddle.CPUPlace()
+            >>> import paddle
+            >>> cpu_place = paddle.CPUPlace()
 
         )DOC");
   g_cpuplace_pytype = reinterpret_cast<PyTypeObject *>(cpuplace.ptr());
@@ -531,8 +533,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
     Examples:
         .. code-block:: python
 
-          import paddle
-          place = paddle.CUDAPinnedPlace()
+            >>> import paddle
+            >>> place = paddle.CUDAPinnedPlace()
 
         )DOC");
   g_cudapinnedplace_pytype =
@@ -567,11 +569,9 @@ void BindPlace(pybind11::module &m) {  // NOLINT
 
     Examples:
         .. code-block:: python
-          import paddle
-
-          # required: ipu
-
-          ipu_place = paddle.IPUPlace()
+        
+            >>> import paddle
+            >>> ipu_place = paddle.IPUPlace()
 
         )DOC");
   g_ipuplace_pytype = reinterpret_cast<PyTypeObject *>(ipuplace.ptr());
