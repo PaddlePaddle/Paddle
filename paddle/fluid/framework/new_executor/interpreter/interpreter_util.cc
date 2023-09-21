@@ -527,11 +527,13 @@ platform::DeviceContext* ConstructDeviceContext(const OperatorBase* op,
   return default_dev_ctx;
 }
 
-void HandleOperatorBase(const platform::Place& place,
-                        std::shared_ptr<OperatorBase> op,
-                        OpFuncNode* op_func_node,
-                        Scope* scope,
-                        bool static_build) {
+void HandleOperatorBase(
+    const platform::Place& place,
+    std::shared_ptr<OperatorBase> op,
+    OpFuncNode* op_func_node,
+    Scope* scope,
+    bool static_build,
+    std::vector<std::shared_ptr<OperatorBase>> following_ops) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
   // input, output is prepared. set the other attributes.
@@ -542,7 +544,8 @@ void HandleOperatorBase(const platform::Place& place,
     if (OperatorBasesMustRunInStaticBuild.count(op->Type())) {
       op->Run(*scope, place);
     }
-    FakeInitializeOutputsForOperatorBase(*op, place, scope);
+
+    FakeInitializeOutputsForOperatorBase(*op, place, scope, following_ops);
   } else {
     op->Run(*scope, place);  // Run without data transformer.
   }
@@ -690,8 +693,15 @@ void BuildOpFuncList(const platform::Place& place,
       if (dynamic_cast<framework::OperatorWithKernel*>(op) == nullptr) {
         VLOG(4) << "HandleOperatorBase";
         // op is not a operatorwithkernel, so direcly run OperatorBase::Run()
-        HandleOperatorBase(
-            place, ops[i], &op_func_node, local_scope, static_build);
+
+        std::vector<std::shared_ptr<OperatorBase>> following_ops(
+            ops.begin() + i + 1, ops.end());
+        HandleOperatorBase(place,
+                           ops[i],
+                           &op_func_node,
+                           local_scope,
+                           static_build,
+                           following_ops);
         vec_func_list->emplace_back(op_func_node);
       } else {
         VLOG(4) << "OP is not null";

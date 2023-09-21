@@ -74,6 +74,11 @@ class InterpreterCore {
 
   void SetOutputHooks(const std::vector<HookFunc>& hookfuncs);
 
+  void Build(const std::vector<std::string>& feed_names,
+             std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
+
+  bool IsStaticBuild() const;
+
  private:
   DISABLE_COPY_AND_ASSIGN(InterpreterCore);
 
