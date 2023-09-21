@@ -119,6 +119,7 @@ class TestGaussianRandomBF16Op(OpTest):
     def setUp(self):
         self.op_type = "gaussian_random"
         self.python_api = gaussian_wrapper(dtype_=np.uint16)
+        self.__class__.op_type = self.op_type
         self.set_attrs()
         self.inputs = {}
         self.use_mkldnn = False

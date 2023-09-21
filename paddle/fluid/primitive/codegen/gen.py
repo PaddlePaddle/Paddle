@@ -69,7 +69,7 @@ VJPS = [
     'layer_norm_grad',
     'embedding_grad',
     'scale_grad',
-    'poission_grad',
+    'poisson_grad',
 ]
 
 
@@ -150,6 +150,7 @@ BACKENDS = [
     'embedding_grad',
     'sqrt',
     'uniform',
+    'poisson_grad',
 ]
 
 
