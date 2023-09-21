@@ -125,11 +125,15 @@ class DistributedOperatorImplContainer(abc.ABC):
         return compatible_impls
 
     # (NOTE) Currently, both DistributedOperatorImplContainer and DistributedOperatorImpl have update_dims_mapping method.
-    # But this method is supposed to be maitained by ImplContainer, and we are ongoing adding method to DistributedOperatorImplContainer and removing it from DistributedOperatorImpl.
+    # But this method is supposed to be maitained by DistributedOperatorImplContainer, and we are ongoing adding method
+    # to DistributedOperatorImplContainer and removing those in DistributedOperatorImpl.
     # @abc.abstractmethod
     def update_dims_mapping(self, dist_op):
         raise NotImplementedError("Please Implement this method in Subclass.")
 
+    # (NOTE) Currently we has limited DistributedOperatorImpls for an op to deal with different parallel patterns of this op.
+    # This function help to choose the correct DistributedOperatorImpl based on the result from InferSPMD.
+    # @abc.abstractmethod
     def mapping_to_dist_operator_impl(dist_op, original_op_dist_attr):
         raise NotImplementedError("Please Implement this method in Subclass.")
 
@@ -166,14 +170,17 @@ class DistributedOperatorImpl(abc.ABC):
     def idx(self, impl_idx):
         self._idx = impl_idx
 
+    # to be deprecated
     @abc.abstractmethod
     def is_input_compatible(self, dist_op):
         raise NotImplementedError("Please Implement this method in Subclass.")
 
+    # to be deprecated
     @abc.abstractmethod
     def is_output_compatible(self, dist_op):
         raise NotImplementedError("Please Implement this method in Subclass.")
 
+    # to be deprecated
     @abc.abstractmethod
     def is_auto_compatible(self, dist_op):
         raise NotImplementedError("Please Implement this method in Subclass.")
@@ -188,6 +195,7 @@ class DistributedOperatorImpl(abc.ABC):
     def backward(dist_ctx, *grad_outputs, **kwargs):
         raise NotImplementedError("Please Implement this method in Subclass.")
 
+    # to be deprecated
     def update_dims_mapping(self, dist_op):
         raise NotImplementedError("Please Implement this method in Subclass.")
 
