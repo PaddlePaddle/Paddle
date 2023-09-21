@@ -288,12 +288,14 @@ void Instruction::ClearInplace() { vec_inplace_in_to_out_.clear(); }
 
 std::shared_ptr<ValueExecutionInfo> ValueExecutionInfo::NewChild(
     Scope* scope) const {
-  kids_.push_back(std::make_shared<ValueExecutionInfo>(this));
+  kids_.push_back(std::make_shared<ValueExecutionInfo>(scope));
+  kids_.back()->parent_ = this;
   return kids_.back();
 }
 
-std::unique_ptr<Scope> ValueExecutionInfo::NewTmp(Scope* scope) const {
-  return std::make_unique<ValueExecutionInfo>(this);
+std::unique_ptr<ValueExecutionInfo> ValueExecutionInfo::NewTmp(
+    Scope* scope) const {
+  return std::make_unique<ValueExecutionInfo>(scope);
 }
 
 void ValueExecutionInfo::Add(::pir::Value value, std::string var_name) {
@@ -301,22 +303,22 @@ void ValueExecutionInfo::Add(::pir::Value value, std::string var_name) {
   PADDLE_ENFORCE_NOT_NULL(
       var, platform::errors::NotFound("Cannot find %s in scope.", var_name));
 
-  if (value_2_var_name_->count(value) == 0) {
-    value_2_var_name->emplace(value, var_name);
+  if (value_2_var_name_.count(value) == 0) {
+    value_2_var_name_.emplace(value, var_name);
   }
 
-  var_2_var_name_->emplace(var, var_name);
+  var_2_var_name_.emplace(var, var_name);
 
-  if (var_name_2_id_->count(var_name) == 0) {
-    auto id = var_name_2_id_->size();
-    var_name_2_id_->emplace(var_name, id);
-    id_2_var_name_->emplace(id, var_name);
-    var_list_->push_back(var);
+  if (var_name_2_id_.count(var_name) == 0) {
+    auto id = var_name_2_id_.size();
+    var_name_2_id_.emplace(var_name, id);
+    id_2_var_name_.emplace(id, var_name);
+    var_list_.push_back(var);
   }
 
   PADDLE_ENFORCE_EQ(
-      var_list_->size(),
-      var_name_2_id_->size(),
+      var_list_.size(),
+      var_name_2_id_.size(),
       paddle::platform::errors::InvalidArgument(
           "The size of variable_list and var_name_2_id map should be equal"));
 }
@@ -324,27 +326,27 @@ void ValueExecutionInfo::Add(::pir::Value value, std::string var_name) {
 void ValueExecutionInfo::Rename(pir::Value value,
                                 std::string new_name,
                                 std::string orig_name) {
-  (*value_2_var_name_)[value] = new_name;
+  value_2_var_name_[value] = new_name;
 
-  for (auto kv : (*value_2_var_name)) {
+  for (auto kv : value_2_var_name_) {
     if (kv.second == orig_name) {
-      (*value_2_var_name_)[kv.first] = new_name;
+      value_2_var_name_[kv.first] = new_name;
     }
   }
 
-  for (auto kv : (*var_2_var_name_)) {
+  for (auto kv : var_2_var_name_) {
     if (kv.second == orig_name) {
-      (*var_2_var_name_)[kv.first] = new_name;
+      var_2_var_name_[kv.first] = new_name;
     }
   }
 
-  for (auto kv : *(var_name_2_id_)) {
+  for (auto kv : var_name_2_id_) {
     if (kv.first == orig_name) {
-      var_name_2_id_->emplace(new_name, kv.second);
+      var_name_2_id_.emplace(new_name, kv.second);
       id_2_var_name_[kv.second] = new_name;
     }
   }
-  var_name_2_id_->erase(orig_name);
+  var_name_2_id_.erase(orig_name);
 }
 
 int ValueExecutionInfo::GetIdByName(const std::string& name) const {
