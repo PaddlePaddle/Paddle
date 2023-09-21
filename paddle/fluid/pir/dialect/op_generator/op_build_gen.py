@@ -19,6 +19,7 @@ _INFERMETA_NEED_META_CONFIG = {
     'SplitWithNumInferMeta',
     'ConcatInferMeta',
     'ReduceIntArrayAxisInferMeta',
+    'SliceRawInferMeta',
 }
 
 _PREPARE_DATA_WITH_VECTOR_INT64_MTTABLE_ATTRIBUTE = {'FrobeniusNormOp'}
