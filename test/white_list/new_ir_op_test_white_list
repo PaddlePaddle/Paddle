@@ -116,8 +116,6 @@ test_kron_op
 test_kthvalue_op
 test_label_smooth_op
 test_label_smooth_op_new_ir
-test_lamb_op
-test_lamb_op_static_build
 test_lerp_op
 test_lgamma_op
 test_linear_interp_v2_op

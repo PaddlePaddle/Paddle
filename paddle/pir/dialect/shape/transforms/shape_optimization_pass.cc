@@ -18,10 +18,14 @@
 
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/program.h"
+#include "paddle/pir/dialect/shape/utils/shape_utils.h"
 #include "paddle/pir/pass/pass.h"
+#include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pass/pass_registry.h"
 
 namespace {
+using PassPipelineRunner =
+    std::function<bool(pir::PassManager&, pir::ModuleOp)>;
 
 bool InsertTieShapeOnValue(pir::Value value,
                            pir::Builder& builder) {  // NOLINT
@@ -41,8 +45,9 @@ bool InsertTieShapeOnRegion(pir::Region* region);
 
 bool InsertTieShapeOnOperation(pir::Operation* op,
                                pir::Builder& builder) {  // NOLINT
-  if (op->isa<pir::dialect::TieShapeOp>()) return true;
-  // TODO(liujinnan): skip the specialized Ops.
+  // TODO(zhangbo63): skip more specialized Ops.
+  if (op->isa<pir::dialect::TieShapeOp>() || op->isa<pir::dialect::FuncOp>())
+    return true;
 
   for (size_t i = 0; i < op->num_regions(); ++i) {
     if (!InsertTieShapeOnRegion(&(op->region(i)))) return false;
@@ -55,7 +60,7 @@ bool InsertTieShapeOnOperation(pir::Operation* op,
   return true;
 }
 
-bool insertTieShapeOnBlock(pir::Block* block) {
+bool InsertTieShapeOnBlock(pir::Block* block) {
   pir::Builder builder =
       pir::Builder(pir::IrContext::Instance(), block, block->begin());
   // TODO(liujinnan): mapping block arguments
@@ -70,7 +75,7 @@ bool insertTieShapeOnBlock(pir::Block* block) {
 
 bool InsertTieShapeOnRegion(pir::Region* region) {
   for (pir::Block* block : *region) {
-    if (!insertTieShapeOnBlock(block)) return false;
+    if (!InsertTieShapeOnBlock(block)) return false;
   }
   return true;
 }
@@ -78,6 +83,20 @@ bool InsertTieShapeOnRegion(pir::Region* region) {
 bool MaterializeShapeComputation(pir::ModuleOp m) {
   if (!InsertTieShapeOnRegion(&(m->region(0)))) return false;
   // TODO(liujinnan): add rewitter pattern for reifyInferShape.
+  return true;
+}
+
+bool OptimizeShapeComputation(pir::ModuleOp m, PassPipelineRunner runner) {
+  // TODO(liujinnan): Do some Canonicalizer.
+  pir::SymbolicDimMgr mgr(m);
+  IR_ENFORCE(mgr.Load(),
+             "SymbolicDimMgr Load failed in OptimizeShapeComputation.");
+  pir::ShapeComputationIRAnalysis analysis(m, mgr);
+  if (!analysis.Run()) {
+    return false;
+  }
+  IR_ENFORCE(mgr.Save(),
+             "SymbolicDimMgr save failed in OptimizeShapeComputation.");
   return true;
 }
 
@@ -89,10 +108,17 @@ class ShapeOptimizationPass : public pir::Pass {
     auto module_op = op->dyn_cast<pir::ModuleOp>();
     IR_ENFORCE(module_op, "ShapeOptimizationPass should run on module op.");
     MaterializeShapeComputation(module_op);
+    // runner is for Canonicalizer.
+    PassPipelineRunner runner = [this](pir::PassManager& pm, pir::ModuleOp m) {
+      return pm.Run(m.program());
+    };
+    if (!OptimizeShapeComputation(module_op, runner)) {
+      return;
+    }
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    return op->name() == "builtin.module" && op->num_regions() > 0;
+    return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
   }
 };
 

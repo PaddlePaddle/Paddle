@@ -308,12 +308,16 @@ def in_pir_mode():
             False
 
             >>> paddle.enable_static()
-            >>> with paddle.new_ir_utils.IrGuard():
+            >>> with paddle.pir_utils.IrGuard():
             ...     print(paddle.framework.in_pir_mode())
             True
 
     """
     return global_var._use_pir_api_ and not in_dygraph_mode()
+
+
+def use_pir_api():
+    return global_var._use_pir_api_
 
 
 def in_dynamic_or_pir_mode():

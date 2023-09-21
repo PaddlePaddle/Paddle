@@ -41,7 +41,11 @@ __global__ void IndexPutCudaKernel(const T* x,
     return;
   }
   int64_t offset = 0;
-  for (int i = 0; i < rank; ++i) {
+#pragma unroll
+  for (int i = 0; i < DDim::kMaxRank; ++i) {
+    if (i >= rank) {
+      break;
+    }
     cur_ix = (static_cast<int64_t>(*(indices[i] + idx)));
     if (cur_ix < 0) {
       cur_ix += shape[i];

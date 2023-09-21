@@ -28,6 +28,9 @@ from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_utils import (
     GroupShardedScaler,
 )
+from paddle.distributed.fleet.utils.mix_precision_utils import (
+    MixPrecisionOptimizer,
+)
 from paddle.distributed.utils.log_utils import get_logger
 from paddle.optimizer import Optimizer
 
@@ -111,9 +114,10 @@ def group_sharded_parallel(
     assert isinstance(
         model, paddle.nn.Layer
     ), "The model must be the instance of paddle.nn.Layer."
-    assert isinstance(
-        optimizer, Optimizer
-    ), "The optimizer must be the instance of paddle.optimizer.Optimizer."
+    assert isinstance(optimizer, (MixPrecisionOptimizer, Optimizer)), (
+        "The optimizer must be the instance of paddle.optimizer.Optimizer "
+        "or MixPrecisionOptimizer for main grad."
+    )
     assert level in [
         'os',
         'os_g',

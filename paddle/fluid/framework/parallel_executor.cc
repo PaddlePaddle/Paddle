@@ -1512,7 +1512,7 @@ std::vector<ir::Graph *> ParallelExecutor::CompileGraphWithBuildStrategy(
                           device_count,
                           graphs.size()));
     VLOG(3) << "use local async mode";
-    graph = member_->build_strategy_.Apply(graph,
+    graph = member_->build_strategy_.Apply(graph,  // NOLINT
                                            {member_->places_[0]},
                                            loss_var_name,
                                            {member_->local_scopes_[0]},
@@ -1530,7 +1530,7 @@ std::vector<ir::Graph *> ParallelExecutor::CompileGraphWithBuildStrategy(
       async_graphs[i] = graphs[i];
     }
   } else {
-    graph = member_->build_strategy_.Apply(graph,
+    graph = member_->build_strategy_.Apply(graph,  // NOLINT
                                            member_->places_,
                                            loss_var_name,
                                            member_->local_scopes_,
