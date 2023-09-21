@@ -13,16 +13,22 @@
 # limitations under the License
 
 import copy
+import logging
+
+from paddle.base.log_helper import get_logger
 
 from ..completion import get_phi_spmd_rule
 from ..utils import get_dist_tensor_spec, is_dim_shard
 from .common import (
     DistributedOperatorImplContainer,
-    distop_logger,
     get_default_distributed_operator_impl,
     merge_forward_backward_dims_mapping,
     register_distributed_operator_impl_container,
     update_op_dims_mapping,
+)
+
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
 
 
@@ -100,7 +106,7 @@ class DistributedLayerNorm(DistributedOperatorImplContainer):
             x_dims_mapping[begin_norm_axis]
         ):
             # TODO (ljz) support sharding on `begin_norm_axis`
-            distop_logger.info(
+            _logger.info(
                 "sharding on `begin_norm_axis` is not supported yet, we resharded it as replicated"
             )
             x_dims_mapping[begin_norm_axis] = -1

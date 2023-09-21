@@ -15,6 +15,7 @@
 import abc
 import logging
 
+from paddle.base.log_helper import get_logger
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 
 from ..dist_attribute import OperatorDistAttr
@@ -23,11 +24,12 @@ from ..utils import (
     _get_comm_group,
     _get_corresponding_rank,
     compute_compatible_dims_mapping,
-    get_logger,
     is_optimize_op,
 )
 
-distop_logger = get_logger(logging.INFO, "DistOpst")
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
+)
 
 _g_distributed_operator_impl_containers = {}
 
@@ -313,7 +315,7 @@ def find_distributed_operator_impl_container(dist_op):
                 "default"
             )
 
-    distop_logger.debug(
+    _logger.debug(
         "Op [{}] Complete DistAttr using {}".format(
             op_type, type(dist_op_impl_container).__name__
         )
@@ -638,7 +640,7 @@ def update_op_dims_mapping(
         if (infered_dims_mapping is not None) and (
             original_dims_mapping != infered_dims_mapping
         ):
-            distop_logger.debug(
+            _logger.debug(
                 "Changed: Op [{}], name [{}], Original [{}], Infered [{}]".format(
                     dist_op.serial_op.type,
                     input_arg_names[i],
@@ -659,7 +661,7 @@ def update_op_dims_mapping(
         if (infered_dims_mapping is not None) and (
             original_dims_mapping != infered_dims_mapping
         ):
-            distop_logger.debug(
+            _logger.debug(
                 "Changed: Op [{}], name [{}], Original [{}], Infered [{}]".format(
                     dist_op.serial_op.type,
                     output_arg_names[i],

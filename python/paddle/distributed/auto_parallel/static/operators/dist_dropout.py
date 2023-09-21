@@ -11,8 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License
+import logging
 
 import paddle
+from paddle.base.log_helper import get_logger
 from paddle.framework import core
 from paddle.utils import unique_name
 
@@ -25,13 +27,16 @@ from ..utils import (
 )
 from .common import (
     DistributedOperatorImplContainer,
-    distop_logger,
     merge_forward_backward_dims_mapping,
     register_distributed_operator_impl,
     register_distributed_operator_impl_container,
     update_op_dims_mapping,
 )
 from .dist_eltwise import DistributedDefaultImpl0, DistributedElementwiseImpl0
+
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
+)
 
 
 class DistributedDropout(DistributedOperatorImplContainer):
@@ -130,7 +135,7 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                 and src_op.has_attr("seed")
                 and src_op.attr("seed")
             ):
-                distop_logger.info(
+                _logger.info(
                     "Auto Parallel Random Control Skipped Since manul seed is set by user: {}".format(
                         src_op
                     )
@@ -163,7 +168,7 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                     pre_op._set_attr("deterministic", True)
                     pre_op._set_attr("force_cpu", True)
                 else:
-                    distop_logger.info(
+                    _logger.info(
                         "Auto Parallel Random Control Skipped Since manul seed is set by user: {}".format(
                             src_op
                         )
