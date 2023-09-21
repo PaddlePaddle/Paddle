@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/tile_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 
 namespace phi {
@@ -26,6 +27,7 @@ void TileKernel(const Context& dev_ctx,
                 DenseTensor* out) {
   auto x_dims = x.dims();
   auto rank = x_dims.size();
+  printf("rank = %d", rank);
   auto repeat_times_data = repeat_times.GetData();
   int repeat_times_size = repeat_times_data.size();
   rank = std::max(rank, repeat_times_size);
@@ -78,8 +80,10 @@ void TileKernel(const Context& dev_ctx,
         tmp_out.Resize(make_ddim(vec_x_dims));
         dev_ctx.template Alloc<T>(&tmp_out);
         std::vector<DenseTensor*> outs = {&tmp_out};
-        phi::funcs::BroadcastKernel<T>(
-            dev_ctx, ins, &outs, kps::IdentityFunctor<T>(), i);
+        // phi::funcs::BroadcastKernel<T>(
+        //     dev_ctx, ins, &outs, kps::IdentityFunctor<T>(), i);
+        CastKernel<T, Context>(dev_ctx, new_x, tmp_out.dtype(), &tmp_out);
+
         tmp_out.Resize(out_dims);
         new_x = tmp_out;
       }
@@ -89,8 +93,9 @@ void TileKernel(const Context& dev_ctx,
       out->Resize(make_ddim(vec_x_dims));
       dev_ctx.template Alloc<T>(out);
       std::vector<DenseTensor*> outs = {out};
-      phi::funcs::BroadcastKernel<T>(
-          dev_ctx, ins, &outs, kps::IdentityFunctor<T>(), i);
+      CastKernel<T, Context>(dev_ctx, new_x, out->dtype(), out);
+      // phi::funcs::BroadcastKernel<T>(
+      //     dev_ctx, ins, &outs, kps::IdentityFunctor<T>(), i);
       out->Resize(out_dims);
     }
   }
