@@ -150,7 +150,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
       std::vector<phi::DenseTensor> out_tensor;
       auto out_shape = ctx.Attr<std::vector<int>>("out_shape");
       auto out = ctx.Output<phi::DenseTensor>("Out");
-      auto out_dims = out->dims();
+      // auto out_dims = out->dims();
 
       if (dynamic_shape) {
         VLOG(3) << "recv_v2 will use dynamic shape with send_v2 for switch";
@@ -162,9 +162,11 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
                             peer,
                             pg);
         out->Resize(new_dim);
-        out->mutable_data<T>(new_dim, place);
+        // out->mutable_data<T>(new_dim, place);
+        ctx.cuda_device_context().Alloc<T>(out);
       } else {
-        out->mutable_data<T>(out_dims, place);
+        // out->mutable_data<T>(out_dims, place);
+        ctx.cuda_device_context().Alloc<T>(out);
       }
 
       out_tensor.emplace_back(*out);
@@ -230,7 +232,8 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
         VLOG(3) << "LodTensorArray: idx(" << idx << ")";
         auto out = &out_array->at(idx);
         auto out_dims = out->dims();
-        out->mutable_data<T>(out_dims, place, 0);
+        // out->mutable_data<T>(out_dims, place, 0);
+        ctx.cuda_device_context().Alloc<T>(out);
         auto numel = out->numel();
         if (comm_ctx) {
           comm_ctx->Recv(out, numel, peer, stream);
@@ -246,7 +249,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
 
     auto out_shape = ctx.Attr<std::vector<int>>("out_shape");
     auto out = ctx.Output<phi::DenseTensor>("Out");
-    auto out_dims = out->dims();
+    // auto out_dims = out->dims();
     auto numel = out->numel();
 
     if (dynamic_shape) {
@@ -259,9 +262,11 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
                                                 /* ProcessGroup* */ nullptr);
       out->Resize(new_dim);
       numel = out->numel();
-      out->mutable_data<T>(new_dim, place);
+      // out->mutable_data<T>(new_dim, place);
+      ctx.cuda_device_context().Alloc<T>(out);
     } else {
-      out->mutable_data<T>(out_dims, place);
+      // out->mutable_data<T>(out_dims, place);
+      ctx.cuda_device_context().Alloc<T>(out);
     }
     if (comm_ctx) {
       comm_ctx->Recv(out, numel, peer, stream);
