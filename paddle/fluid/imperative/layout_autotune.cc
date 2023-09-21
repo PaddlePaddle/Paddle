@@ -63,7 +63,7 @@ LayoutAutoTune::LayoutAutoTune() {
           layout_agnostic == true) {
         VLOG(4) << "Heavily layout sensitive OP: " << info.first;
         heavily_layout_sensitive_ops_.emplace(info.first);
-        layout_agnostic = false;
+        layout_agnostic = false;  // NOLINT
         continue;
       }
     }

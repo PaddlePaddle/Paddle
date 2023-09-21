@@ -21,7 +21,7 @@ from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import check_dtype, check_type, check_variable_and_dtype
 from ..common_ops_import import Variable
-from ..framework import LayerHelper, in_dynamic_mode
+from ..framework import LayerHelper, in_dynamic_mode, in_dynamic_or_pir_mode
 from .creation import full
 from .manipulation import cast
 from .math import _get_reduce_axis
@@ -82,7 +82,7 @@ def transpose(x, perm, name=None):
             [3, 2, 4]
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.transpose(x, perm)
     else:
         check_variable_and_dtype(
@@ -236,7 +236,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
             [10, 3, 5, 5]
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.matmul(x, y, transpose_x, transpose_y)
     else:
         attrs = {
@@ -251,6 +251,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
                     val,
                     name,
                     [
+                        'int8',
                         'uint16',
                         'float16',
                         'float32',

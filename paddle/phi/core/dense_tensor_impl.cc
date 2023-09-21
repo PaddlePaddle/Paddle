@@ -392,6 +392,9 @@ DenseTensor& DenseTensor::ShareDataWith(const DenseTensor& src) {
   meta_.offset = src.meta_.offset;
   meta_.use_gpudnn = src.meta_.use_gpudnn;
   meta_.strides = src.meta_.strides;
+#ifdef PADDLE_WITH_XPU
+  meta_.scale_value = src.meta_.scale_value;
+#endif
   storage_properties_ =
       std::move(CopyStorageProperties(src.storage_properties_));
 #ifdef PADDLE_WITH_DNNL

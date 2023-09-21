@@ -962,7 +962,7 @@ if(WIN32)
 else()
   set_tests_properties(test_static_save_load_large PROPERTIES TIMEOUT 600)
   set_tests_properties(test_paddle_save_load PROPERTIES TIMEOUT 250)
-  set_tests_properties(test_cdist PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_cdist PROPERTIES TIMEOUT 150)
 endif()
 if(WITH_NV_JETSON)
   set_tests_properties(test_concat_op PROPERTIES TIMEOUT 1200)
@@ -1272,6 +1272,10 @@ set_tests_properties(
 set_tests_properties(
   test_cuda_graph_static_mode_error
   PROPERTIES ENVIRONMENT "FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR=1")
+# In test_conditional_block, the sub block changes the dtype and place of the output variable.
+# The changed variable is used in the following op. Static build is not supported for this case.
+set_tests_properties(test_conditional_block
+                     PROPERTIES ENVIRONMENT "FLAGS_new_executor_static_build=0")
 
 # These UTs are to temporarily test static build for standalone_executor, will be removed after static build is enabled by default.
 set(STATIC_BUILD_TESTS
@@ -1439,3 +1443,16 @@ py_test_modules(test_stride MODULES test_stride ENVS
                 FLAGS_use_stride_kernel=true)
 
 set_tests_properties(test_slice_op_with_stride PROPERTIES TIMEOUT 300)
+
+if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
+  # These UTs are specially designed for FleetExecutor
+  set_tests_properties(
+    test_fleet_executor PROPERTIES ENVIRONMENT
+                                   "FLAGS_new_executor_micro_batching=False")
+  set_tests_properties(
+    test_fleet_executor_origin_scheduler
+    PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
+  set_tests_properties(
+    test_fleet_executor_with_task_nodes
+    PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
+endif()

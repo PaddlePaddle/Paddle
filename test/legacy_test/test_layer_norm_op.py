@@ -17,11 +17,7 @@ from functools import reduce
 from operator import mul
 
 import numpy as np
-from eager_op_test import (
-    OpTest,
-    _set_use_system_allocator,
-    convert_float_to_uint16,
-)
+from op_test import OpTest, _set_use_system_allocator, convert_float_to_uint16
 
 import paddle
 import paddle.nn.functional as F
@@ -146,6 +142,7 @@ class TestLayerNormOpByOpTest(OpTest):
             atol=self.ori_atol,
             rtol=self.ori_rtol,
             check_prim=True,
+            check_new_ir=True,
         )
 
     def test_check_grad(self):
@@ -154,6 +151,7 @@ class TestLayerNormOpByOpTest(OpTest):
             ['Y'],
             max_relative_error=self.max_relative_error,
             check_prim=True,
+            check_new_ir=True,
         )
 
     def initConfig(self):
@@ -243,6 +241,7 @@ class TestLayerNormBF16OpByOpTest(OpTest):
             atol=self.ori_atol,
             rtol=self.ori_rtol,
             check_prim=True,
+            check_new_ir=True,
         )
 
     def test_check_grad(self):
@@ -252,6 +251,7 @@ class TestLayerNormBF16OpByOpTest(OpTest):
             ['Y'],
             max_relative_error=self.max_relative_error,
             check_prim=True,
+            check_new_ir=True,
         )
 
     def initConfig(self):
@@ -523,6 +523,7 @@ class TestLayerNormOpByOpTestFP32_case4(TestLayerNormOpByOpTest):
 class TestLayerNormOp(unittest.TestCase):
     def setUp(self):
         self.use_cudnn = True
+        paddle.enable_static()
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         np.testing.assert_allclose(

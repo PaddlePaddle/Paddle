@@ -129,7 +129,7 @@ def decompose(
         return src_vars
     if not isinstance(program, Program):
         raise TypeError(f"Expect type Program, but got type {type(program)}.")
-    block = program.block()
+    block = program.global_block()
 
     if not isinstance(blacklist, (set, frozenset)):
         raise TypeError(

@@ -24,12 +24,14 @@
 #include "paddle/cinn/ir/buffer.h"
 #include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/lang/lower_impl.h"
+#include "paddle/cinn/lang/lower_tensor_group.h"
 #include "paddle/cinn/optim/optimize.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace lang {
 
+using ast_gen_ius::TensorGroup;
 using ir::Tensor;
 using poly::Stage;
 
@@ -82,6 +84,49 @@ std::vector<ir::Argument> GetArgs(
     for (auto& i : res) VLOG(3) << "In res, arg has : " << i.name();
   }
   return res;
+}
+
+//! Collect the temporary tensors from a computational graph.
+std::vector<ir::Buffer> GetTempBuffers(const std::vector<Tensor>& tensor_args,
+                                       const TensorGroup& tensor_group,
+                                       Expr body) {
+  std::unordered_set<std::string> tensor_arg_names;
+  std::unordered_set<std::string> buffer_arg_names;
+  for (auto& tensor : tensor_args) {
+    tensor_arg_names.insert(tensor->name);
+    if (tensor->buffer.defined()) {
+      buffer_arg_names.insert(tensor->buffer->name);
+    }
+  }
+  std::map<std::string, ir::Buffer>
+      name_to_buffer;  // used to avoid duplication.
+
+  auto all_temp_tensors =
+      ir::CollectIRNodesWithoutTensor(body, [&](const Expr* x) {
+        return x->as_tensor() && x->as_tensor()->buffer.defined() &&
+               (!tensor_group.Contain(x->as_tensor()->name) &&
+                ((!buffer_arg_names.count(x->as_tensor()->buffer->name) &&
+                  !tensor_arg_names.count(x->as_tensor()->name)) ||
+                 utils::Endswith(x->as_tensor()->buffer->name, "temp_buffer")));
+      });
+  for (auto& e : all_temp_tensors) {
+    auto buffer_name = e.as_tensor()->buffer->name;
+    if (!name_to_buffer.count(buffer_name)) {
+      name_to_buffer[buffer_name] = e.as_tensor()->buffer;
+    } else {
+      // Just copy from old code, but why?
+      if (e.as_tensor()->buffer->numel() <
+          name_to_buffer[buffer_name]->numel()) {
+        name_to_buffer[buffer_name] = e.as_tensor()->buffer;
+      }
+    }
+  }
+
+  std::vector<ir::Buffer> temp_buffers;
+  for (auto& i : name_to_buffer) {
+    temp_buffers.push_back(i.second);
+  }
+  return temp_buffers;
 }
 
 //! Collect the temporary tensors from a computational graph.
@@ -214,6 +259,59 @@ void InitReduceTensor(StageMap stages,
     VLOG(3) << "Init reduce tensor: " << t.as_tensor()->name;
     t.as_tensor()->InitReduction(stages, target);
   }
+}
+
+std::set<ir::Tensor> CollectTempTensorsFromCtrlDepends(
+    ast_gen_ius::TensorGroup* tensor_group,
+    const std::vector<Tensor>& tensor_args) {
+  std::set<ir::Tensor> res;
+  for (const ir::Tensor& a : tensor_group->GetAllTensors()) {
+    for (const ir::Tensor& t : tensor_group->GetCrtlDepTensors(a->name)) {
+      res.emplace(t);
+    }
+  }
+  for (const ir::Tensor& t : tensor_args) {
+    if (res.count(t)) {
+      res.erase(t);
+    }
+  }
+  return res;
+}
+
+ir::LoweredFunc LowerToAst(const std::string& name,
+                           const std::vector<Tensor>& tensor_args,
+                           ast_gen_ius::TensorGroup* tensor_group,
+                           const Target& target) {
+  // Merge the ctrl_deps with the given temp_tensors ang get a new temp_tensors
+  std::set<ir::Tensor> ctrl_deps =
+      CollectTempTensorsFromCtrlDepends(tensor_group, tensor_args);
+  std::vector<ast_gen_ius::TensorGroup*> group_vec = {tensor_group};
+  auto lower_instance = detail::LowerTensorGroup(
+      name,
+      tensor_args,
+      {},
+      group_vec,
+      std::vector<Tensor>(ctrl_deps.begin(), ctrl_deps.end()),
+      target);
+  std::vector<ir::LoweredFunc> result = lower_instance();
+  for (auto& res : result) {
+    if (target == common::DefaultNVGPUTarget()) {
+      res->device_api = ir::DeviceAPI::GPU;
+    }
+  }
+  return result[0];
+}
+
+std::vector<ir::LoweredFunc> LowerToAstVec(
+    const std::string& name,
+    const std::vector<Tensor>& tensor_args,
+    std::vector<ast_gen_ius::TensorGroup*> tensor_groups,
+    const Target& target) {
+  std::vector<ir::LoweredFunc> ret;
+  for (ast_gen_ius::TensorGroup* tg : tensor_groups) {
+    ret.push_back(LowerToAst(name, tensor_args, tg, target));
+  }
+  return ret;
 }
 
 ir::LoweredFunc Lower(const std::string& name,

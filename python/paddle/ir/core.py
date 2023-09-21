@@ -15,10 +15,28 @@
 
 import numpy as np
 
+from paddle.base.core import VarDesc
 from paddle.base.libpaddle import DataType
 from paddle.base.libpaddle.ir import Program, set_global_program
 
+from .._ir_ops import get_parameter, set_parameter
+from ..base import unique_name
 from ..base.wrapped_decorator import signature_safe_contextmanager
+
+vartype_to_datatype = {
+    VarDesc.VarType.FP32: DataType.FLOAT32,
+    VarDesc.VarType.FP64: DataType.FLOAT64,
+    VarDesc.VarType.FP16: DataType.FLOAT16,
+    VarDesc.VarType.BF16: DataType.BFLOAT16,
+    VarDesc.VarType.INT32: DataType.INT32,
+    VarDesc.VarType.INT16: DataType.INT16,
+    VarDesc.VarType.INT64: DataType.INT64,
+    VarDesc.VarType.BOOL: DataType.BOOL,
+    VarDesc.VarType.UINT8: DataType.UINT8,
+    VarDesc.VarType.INT8: DataType.INT8,
+    VarDesc.VarType.COMPLEX64: DataType.COMPLEX64,
+    VarDesc.VarType.COMPLEX128: DataType.COMPLEX128,
+}
 
 np_type_to_paddle_type = {
     np.dtype("float32"): DataType.FLOAT32,
@@ -62,25 +80,6 @@ def convert_np_dtype_to_dtype_(np_dtype):
         raise ValueError("Not supported numpy dtype %s" % dtype)
 
 
-def _use_new_ir_api():
-    """
-    This API checks whether paddle use new ir api.
-
-    Returns:
-        bool: Whether paddle use new ir api.
-
-    """
-    # TODO(YuanRisheng): need move import to the top of this file after break import circle
-    import paddle
-
-    if paddle.framework.get_flags("FLAGS_enable_new_ir_api")[
-        'FLAGS_enable_new_ir_api'
-    ]:
-        return True
-    else:
-        return False
-
-
 # program is a global instance.
 _main_program_ = Program()
 # set the global program for c++ and this program will be used to build ops in c++
@@ -107,13 +106,13 @@ def default_startup_program():
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.enable_static()
-            x = paddle.static.data(name="x", shape=[-1, 784], dtype='float32')
-            out = paddle.static.nn.fc(name="fc", x=x, size=10, activation="relu")
-            print("main program is: {}".format(paddle.static.default_main_program()))
-            print("start up program is: {}".format(paddle.static.default_startup_program()))
+            >>> paddle.enable_static()
+            >>> x = paddle.static.data(name="x", shape=[-1, 784], dtype='float32')
+            >>> out = paddle.static.nn.fc(name="fc", x=x, size=10, activation="relu")
+            >>> print("main program is: {}".format(paddle.static.default_main_program()))
+            >>> print("start up program is: {}".format(paddle.static.default_startup_program()))
     """
     return _startup_program_
 
@@ -136,20 +135,20 @@ def default_main_program():
         Program: A ``Program`` which holding the descriptions of OPs and tensors in the network.
 
     Examples:
-        ..  code-block:: python
+        .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.enable_static()
-            # Sample Network:
-            x = paddle.static.data(name='x', shape=[100, 100], dtype='float32')
-            y = paddle.static.data(name='y', shape=[100, 100], dtype='float32')
-            out = paddle.add(x, y)
+            >>> paddle.enable_static()
+            >>> # Sample Network:
+            >>> x = paddle.static.data(name='x', shape=[100, 100], dtype='float32')
+            >>> y = paddle.static.data(name='y', shape=[100, 100], dtype='float32')
+            >>> out = paddle.add(x, y)
 
-            #print the number of blocks in the program, 1 in this case
-            print(paddle.static.default_main_program().num_blocks) # 1
-            #print the default_main_program
-            print(paddle.static.default_main_program())
+            >>> print the number of blocks in the program, 1 in this case
+            >>> print(paddle.static.default_main_program().num_blocks) # 1
+            >>> print the default_main_program
+            >>> print(paddle.static.default_main_program())
     """
     return _main_program_
 
@@ -206,14 +205,14 @@ def program_guard(main_program, startup_program=None):
         .. code-block:: python
             :name: code-example-1
 
-            import paddle
+            >>> import paddle
 
-            paddle.enable_static()
-            main_program = paddle.static.Program()
-            startup_program = paddle.static.Program()
-            with paddle.static.program_guard(main_program, startup_program):
-                data = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
-                hidden = paddle.static.nn.fc(x=data, size=10, activation='relu')
+            >>> paddle.enable_static()
+            >>> main_program = paddle.static.Program()
+            >>> startup_program = paddle.static.Program()
+            >>> with paddle.static.program_guard(main_program, startup_program):
+            ...     data = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
+            ...     hidden = paddle.static.nn.fc(x=data, size=10, activation='relu')
 
     Notes: The temporary :code:`Program` can be used if the user does not need
     to construct either of startup program or main program.
@@ -222,14 +221,13 @@ def program_guard(main_program, startup_program=None):
         .. code-block:: python
             :name: code-example-2
 
-            import paddle
+            >>> import paddle
 
-            paddle.enable_static()
-            main_program = paddle.static.Program()
-            # does not care about startup program. Just pass a temporary value.
-            with paddle.static.program_guard(main_program, paddle.static.Program()):
-                data = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
-
+            >>> paddle.enable_static()
+            >>> main_program = paddle.static.Program()
+            >>> # does not care about startup program. Just pass a temporary value.
+            >>> with paddle.static.program_guard(main_program, paddle.static.Program()):
+            ...     data = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
     """
     from ..base.data_feeder import check_type
 
@@ -251,3 +249,44 @@ def program_guard(main_program, startup_program=None):
         switch_main_program(main_program)
         if startup_program is not None:
             switch_startup_program(startup_program)
+
+
+class ParameterMeta:
+    def __init__(self, shape, dtype):
+        self.shape = shape
+        self.dtype = dtype
+
+
+def create_parameter(
+    dtype,
+    shape,
+    **kwargs,
+):
+    if 'initializer' not in kwargs:
+        raise ValueError(
+            "initializer is None, if you want to create parameter, please pass its initializer."
+        )
+    if dtype is not None:
+        if not isinstance(dtype, DataType):
+            dtype = convert_np_dtype_to_dtype_(dtype)
+    op_result_name = unique_name.generate('parameter')
+    startup_program = default_startup_program()
+    main_program = default_main_program()
+    parameter_meta = ParameterMeta(shape, dtype)
+
+    with program_guard(startup_program):
+        initializer = kwargs['initializer']
+        init_result = initializer(
+            parameter_meta, startup_program.global_block()
+        )
+        init_result.is_persistable = True
+        set_parameter(init_result, op_result_name)
+
+    main_program.move_parameters_from(startup_program)
+    with program_guard(default_main_program()):
+        param = get_parameter(op_result_name, dtype, shape)
+        trainable = kwargs.get('trainable', True)
+        param.stop_gradient = not trainable
+        param.is_persistable = True
+
+    return param

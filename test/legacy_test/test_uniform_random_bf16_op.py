@@ -15,8 +15,8 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_uint16_to_float
 from op import Operator
+from op_test import OpTest, convert_uint16_to_float
 from test_uniform_random_op import output_hist, output_hist_diag
 
 import paddle

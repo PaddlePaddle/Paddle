@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
 from paddle import base
@@ -44,7 +44,7 @@ class TestElementwisePowOp(OpTest):
         if hasattr(self, 'attrs'):
             self.check_output(check_dygraph=False)
         else:
-            self.check_output()
+            self.check_output(check_new_ir=True)
 
     def test_check_grad_normal(self):
         if hasattr(self, 'attrs'):
@@ -52,7 +52,9 @@ class TestElementwisePowOp(OpTest):
                 ['X', 'Y'], 'Out', check_prim=True, check_dygraph=False
             )
         else:
-            self.check_grad(['X', 'Y'], 'Out', check_prim=True)
+            self.check_grad(
+                ['X', 'Y'], 'Out', check_prim=True, check_new_ir=True
+            )
 
 
 class TestElementwisePowOp_ZeroDim1(TestElementwisePowOp):
@@ -196,7 +198,7 @@ class TestElementwisePowOpInt(OpTest):
         if hasattr(self, 'attrs'):
             self.check_output(check_dygraph=False)
         else:
-            self.check_output()
+            self.check_output(check_new_ir=True)
 
 
 class TestElementwisePowGradOpInt(unittest.TestCase):
@@ -252,7 +254,7 @@ class TestElementwisePowOpFP16(OpTest):
         if hasattr(self, 'attrs'):
             self.check_output(check_dygraph=False)
         else:
-            self.check_output()
+            self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -262,6 +264,7 @@ class TestElementwisePowOpFP16(OpTest):
                 self.inputs['X'], self.inputs['Y'], 1 / self.inputs['X'].size
             ),
             check_prim=True,
+            check_new_ir=True,
         )
 
 
@@ -287,10 +290,7 @@ class TestElementwisePowBF16Op(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        if hasattr(self, 'attrs'):
-            self.check_output()
-        else:
-            self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
         self.check_grad(['X', 'Y'], 'Out')
@@ -301,6 +301,7 @@ class TestElementwisePowBF16Op(OpTest):
                 'Out',
                 check_prim=True,
                 only_check_prim=True,
+                check_new_ir=True,
             )
 
 

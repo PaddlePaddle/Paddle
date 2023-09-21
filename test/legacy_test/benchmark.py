@@ -15,8 +15,8 @@
 import time
 
 import numpy as np
-from eager_op_test import OpTest
 from op import Operator
+from op_test import OpTest
 
 
 class BenchmarkSuite(OpTest):

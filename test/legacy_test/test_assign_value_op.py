@@ -14,8 +14,8 @@
 
 import unittest
 
-import eager_op_test
 import numpy as np
+import op_test
 
 import paddle
 from paddle import base
@@ -31,7 +31,7 @@ def assign_value_wrapper(
     )
 
 
-class TestAssignValueOp(eager_op_test.OpTest):
+class TestAssignValueOp(op_test.OpTest):
     def setUp(self):
         self.op_type = "assign_value"
         self.python_api = assign_value_wrapper
@@ -74,7 +74,7 @@ class TestAssignValueOp4(TestAssignValueOp):
 
 class TestAssignApi(unittest.TestCase):
     def setUp(self):
-        with eager_op_test.paddle_static_guard():
+        with op_test.paddle_static_guard():
             self.init_dtype()
             self.value = (-100 + 200 * np.random.random(size=(2, 5))).astype(
                 self.dtype
@@ -89,7 +89,7 @@ class TestAssignApi(unittest.TestCase):
         self.dtype = "float32"
 
     def test_assign(self):
-        with eager_op_test.paddle_static_guard():
+        with op_test.paddle_static_guard():
             main_program = base.Program()
             with base.program_guard(main_program):
                 x = paddle.tensor.create_tensor(dtype=self.dtype)
@@ -113,7 +113,7 @@ class TestAssignApi3(TestAssignApi):
 
 class TestAssignApi4(TestAssignApi):
     def setUp(self):
-        with eager_op_test.paddle_static_guard():
+        with op_test.paddle_static_guard():
             self.init_dtype()
             self.value = np.random.choice(a=[False, True], size=(2, 5)).astype(
                 np.bool_

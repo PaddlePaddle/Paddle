@@ -26,6 +26,8 @@ using LoD = std::vector<std::vector<size_t>>;
 class IrMetaTensor : public phi::TensorBase,
                      public phi::TypeInfoTraits<phi::TensorBase, IrMetaTensor> {
  public:
+  IrMetaTensor() = default;
+
   IrMetaTensor(phi::DataType dtype,
                const phi::DDim& dims,
                phi::DataLayout layout,

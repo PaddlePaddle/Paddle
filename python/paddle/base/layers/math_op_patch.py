@@ -236,7 +236,6 @@ def monkey_patch_variable():
         warnings.warn(
             "Variable do not have 'place' interface for static graph mode, try not to use it. None will be returned."
         )
-        return None
 
     def astype(self, dtype):
         """

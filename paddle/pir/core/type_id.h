@@ -50,6 +50,10 @@ class TypeId {
 
   TypeId &operator=(const TypeId &other) = default;
 
+  ///
+  /// \brief Support PointerLikeTypeTraits.
+  ///
+  operator const void *() const { return storage_; }
   void *AsOpaquePointer() const { return storage_; }
   static TypeId RecoverFromOpaquePointer(void *pointer) {
     return TypeId(static_cast<Storage *>(pointer));
@@ -67,11 +71,6 @@ class TypeId {
   inline bool operator<(const TypeId &other) const {
     return storage_ < other.storage_;
   }
-
-  ///
-  /// \brief Enable hashing TypeId instances.
-  ///
-  friend struct std::hash<TypeId>;
 
  private:
   ///
@@ -147,7 +146,7 @@ namespace std {
 template <>
 struct hash<pir::TypeId> {
   std::size_t operator()(const pir::TypeId &obj) const {
-    return std::hash<const pir::TypeId::Storage *>()(obj.storage_);
+    return std::hash<const void *>()(obj);
   }
 };
 }  // namespace std

@@ -1308,7 +1308,7 @@ class PipelineOptimizer:
                     # and the value in those sections are nan/inf, it will trigger the nan/inf check.
                     # To avoid these problematic triggers, set constant is needed for npu
                     "set_constant": core.is_compiled_with_custom_device('npu'),
-                    "constant": float(0.0),
+                    "constant": 0.0,
                 },
             )
             offset += 1
@@ -1326,7 +1326,7 @@ class PipelineOptimizer:
                 attrs={
                     "user_defined_size_of_dtype": 2,
                     "set_constant": True,
-                    "constant": float(0.0),
+                    "constant": 0.0,
                     "copy_data": False,
                     "use_align": True,
                     "dtype": merged_grads[0].dtype,

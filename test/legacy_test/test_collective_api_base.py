@@ -24,7 +24,7 @@ from contextlib import closing
 sys.path.append("../legacy_test")
 
 import numpy as np
-from eager_op_test import convert_float_to_uint16, convert_uint16_to_float
+from op_test import convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
 import paddle.distributed as dist

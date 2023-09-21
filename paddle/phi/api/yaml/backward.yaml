@@ -1713,6 +1713,7 @@
   kernel :
     func : pow_triple_grad
     data_type : x
+  optional : grad_grad_out_grad
 
 - backward_op : prelu_grad
   forward : prelu(Tensor x, Tensor alpha, str data_format="NCHW", str mode="all") -> Tensor(out)

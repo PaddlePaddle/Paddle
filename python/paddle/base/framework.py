@@ -14,9 +14,7 @@
 
 import textwrap
 import collections
-from collections import defaultdict
 from collections.abc import Iterable
-import contextlib
 from .wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 import os
 import re
@@ -28,9 +26,9 @@ import numpy as np
 import subprocess
 import multiprocessing
 import sys
-import logging
 
-from .proto import framework_pb2, data_feed_pb2
+from .proto import framework_pb2
+from .proto import data_feed_pb2  # noqa: F401
 
 from . import core
 from . import unique_name
@@ -55,8 +53,8 @@ __all__ = [
     'xpu_places',
     'cuda_pinned_places',
     'in_dygraph_mode',
-    'in_new_ir_mode',
-    'in_dynamic_or_new_ir_mode',
+    'in_pir_mode',
+    'in_dynamic_or_pir_mode',
     'is_compiled_with_cinn',
     'is_compiled_with_cuda',
     'is_compiled_with_rocm',
@@ -74,6 +72,83 @@ TEMP_VAR_NAME = core.kTempVarName()
 GRAD_VAR_SUFFIX = core.kGradVarSuffix()
 ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
+_global_flags_ = core.globals()
+
+
+def _global_flags():
+    return _global_flags_
+
+
+def set_flags(flags):
+    """
+    This function sets the GFlags value in Paddle.
+    For FLAGS please refer to :ref:`en_guides_flags_flags`
+
+    Args:
+        flags (dict): A dict contains flags and its value.
+
+    Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> paddle.set_flags({'FLAGS_eager_delete_tensor_gb': 1.0})
+    """
+    if not isinstance(flags, dict):
+        raise TypeError('flags in set_flags should be a dict')
+    for key, value in flags.items():
+        if _global_flags().is_public(key):
+            _global_flags()[key] = value
+        else:
+            raise ValueError(
+                "Flag %s cannot set its value through this function." % (key)
+            )
+
+
+def get_flags(flags):
+    """
+    This function gets the GFlags value in Paddle.
+    For FLAGS please refer to :ref:`en_guides_flags_flags`
+
+    Args:
+        flags(list|tuple|str): A list/tuple of string or a string which is the flag's name.
+
+    Returns:
+        flag's value in Paddle.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> flags = ['FLAGS_eager_delete_tensor_gb', 'FLAGS_check_nan_inf']
+            >>> res = paddle.get_flags(flags)
+            >>> print(res)
+            {'FLAGS_eager_delete_tensor_gb': 0.0, 'FLAGS_check_nan_inf': False}
+    """
+    flags_value = {}
+    if isinstance(flags, (list, tuple)):
+        for key in flags:
+            if _global_flags().is_public(key):
+                value = _global_flags()[key]
+                temp = {key: value}
+                flags_value.update(temp)
+            else:
+                raise ValueError(
+                    'Flag %s cannot get its value through this function.'
+                    % (key)
+                )
+    elif isinstance(flags, str):
+        if _global_flags().is_public(flags):
+            value = _global_flags()[flags]
+            temp = {flags: value}
+            flags_value.update(temp)
+        else:
+            raise ValueError(
+                'Flag %s cannot get its value through this function.' % (flags)
+            )
+    else:
+        raise TypeError('Flags in get_flags should be a list, tuple or string.')
+    return flags_value
 
 
 # use thread local to create thread save global variables.
@@ -87,6 +162,9 @@ class GlobalThreadLocal(threading.local):
         self._in_to_static_mode_ = False
         self._functional_dygraph_context_manager = None
         self._dygraph_tracer_ = _dygraph_tracer_
+        self._use_pir_api_ = get_flags("FLAGS_enable_new_ir_api")[
+            'FLAGS_enable_new_ir_api'
+        ]
 
     def __str__(self):
         strings = []
@@ -114,7 +192,6 @@ _current_device = None
 global_prog_seed = 0
 _current_pipeline_stage = None
 _current_cuda_graph_mode = None
-_global_flags_ = core.globals()
 _stride_in_no_check_dy2st_diff_mode = False
 
 # special_op_attrs, extra_op_attrs are prepared for printing warnings
@@ -214,7 +291,7 @@ def in_dygraph_mode():
     return global_var._dygraph_tracer_ is not None
 
 
-def in_new_ir_mode():
+def in_pir_mode():
     """
 
     This API checks whether paddle runs in static graph mode and use new ir api.
@@ -227,19 +304,23 @@ def in_new_ir_mode():
 
             >>> import paddle
 
-            >>> print(paddle.framework.in_new_ir_mode())
+            >>> print(paddle.framework.in_pir_mode())
             False
 
             >>> paddle.enable_static()
-            >>> paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
-            >>> print(paddle.framework.in_new_ir_mode())
+            >>> with paddle.pir_utils.IrGuard():
+            ...     print(paddle.framework.in_pir_mode())
             True
 
     """
-    return ir.core._use_new_ir_api() and not in_dygraph_mode()
+    return global_var._use_pir_api_ and not in_dygraph_mode()
 
 
-def in_dynamic_or_new_ir_mode():
+def use_pir_api():
+    return global_var._use_pir_api_
+
+
+def in_dynamic_or_pir_mode():
     """
 
     This API checks whether paddle runs in dynamic graph or new ir mode.
@@ -252,19 +333,19 @@ def in_dynamic_or_new_ir_mode():
 
             >>> import paddle
 
-            >>> print(paddle.framework.in_dynamic_or_new_ir_mode())
+            >>> print(paddle.framework.in_dynamic_or_pir_mode())
             True
 
             >>> paddle.enable_static()
-            >>> print(paddle.framework.in_dynamic_or_new_ir_mode())
+            >>> print(paddle.framework.in_dynamic_or_pir_mode())
             False
 
             >>> paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
-            >>> print(paddle.framework.in_dynamic_or_new_ir_mode())
+            >>> print(paddle.framework.in_dynamic_or_pir_mode())
             True
 
     """
-    return in_dygraph_mode() or in_new_ir_mode()
+    return in_dygraph_mode() or in_pir_mode()
 
 
 global_ipu_index = -1
@@ -606,10 +687,6 @@ non_static_only = wrap_decorator(_non_static_only_)
 
 def _dygraph_tracer():
     return global_var._dygraph_tracer_
-
-
-def _global_flags():
-    return _global_flags_
 
 
 def _current_expected_place():
@@ -1084,7 +1161,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
         core.VarDesc.VarType / core.DataType : The data type in Paddle.
 
     """
-    if in_new_ir_mode():
+    if in_pir_mode():
         return ir.core.convert_np_dtype_to_dtype_(np_dtype)
 
     # Convert the data type string to numpy data type.
@@ -1602,7 +1679,7 @@ class Variable(metaclass=VariableMetaClass):
         param_grad_list = append_backward(self)
         for param, param_grad in param_grad_list:
             # set grad to simulate dygraph loss.backward() in static mode.
-            setattr(param, "grad", param_grad)
+            param.grad = param_grad
 
     @fake_interface_only
     def gradient(self):
@@ -3200,7 +3277,7 @@ class Operator:
             if attr_type == core.AttrType.VAR:
                 attr_var_name = self.desc.attr(name, True).name()
                 a = "{name} = Var['{value}']".format(
-                    name=name, type=attr_type, value=attr_var_name
+                    name=name, value=attr_var_name
                 )
                 attrs_str += a
                 if i != len(attr_names) - 1:
@@ -3212,7 +3289,7 @@ class Operator:
                     "'%s'" % var.name() for var in self.desc.attr(name, True)
                 ]
                 a = "{name} = Vars[{value}]".format(
-                    name=name, type=attr_type, value=','.join(attr_var_names)
+                    name=name, value=','.join(attr_var_names)
                 )
                 attrs_str += a
                 if i != len(attr_names) - 1:
@@ -3221,7 +3298,7 @@ class Operator:
 
             if attr_type == core.AttrType.BLOCK:
                 a = "{name} = block[{value}]".format(
-                    name=name, type=attr_type, value=self._block_attr_id(name)
+                    name=name, value=self._block_attr_id(name)
                 )
                 attrs_str += a
                 if i != len(attr_names) - 1:
@@ -3230,7 +3307,7 @@ class Operator:
 
             if attr_type == core.AttrType.BLOCKS:
                 a = "{name} = blocks{value}".format(
-                    name=name, type=attr_type, value=self._blocks_attr_ids(name)
+                    name=name, value=self._blocks_attr_ids(name)
                 )
                 attrs_str += a
                 if i != len(attr_names) - 1:
@@ -3254,9 +3331,7 @@ class Operator:
             else:
                 value = self.desc.attr(name)
 
-            a = "{name} = {value}".format(
-                name=name, type=attr_type, value=value
-            )
+            a = "{name} = {value}".format(name=name, value=value)
 
             attrs_str += a
             if i != len(attr_names) - 1:
@@ -3434,9 +3509,7 @@ class Operator:
             self.desc.set_block_attr(name, val.desc)
         elif isinstance(val, list) and val and _all_is_type(val, Block):
             self.desc.set_blocks_attr(name, [v.desc for v in val])
-        elif isinstance(val, core.BlockDesc) or isinstance(
-            val, core.ProgramDesc
-        ):
+        elif isinstance(val, (core.BlockDesc, core.ProgramDesc)):
             self.desc.set_serialized_attr(name, val.serialize_to_string())
         else:
             self._update_desc_plain_attr(name, val)
@@ -3672,9 +3745,9 @@ def _stride_in_no_check_dy2st_diff():
 
 
 def check_if_to_static_diff_with_dygraph(op_type, inplace_map, outputs):
-    if (
-        op_type == "while"
-    ):  # dont' need check while, while is only a wrapper of inner ops, we will stuck in inner op.
+    if op_type in {"while", "conditional_block"}:
+        # Dont' need check while and conditional_block, it is only a wrapper of inner ops
+        # we will stuck in inner op.
         return
     if outputs is not None:
         for k, v in outputs.items():
@@ -5072,9 +5145,7 @@ class IrOpNode(IrNode):
             desc.set_block_attr(name, val.desc)
         elif isinstance(val, list) and val and _all_is_type(val, Block):
             desc.set_blocks_attr(name, [v.desc for v in val])
-        elif isinstance(val, core.BlockDesc) or isinstance(
-            val, core.ProgramDesc
-        ):
+        elif isinstance(val, (core.BlockDesc, core.ProgramDesc)):
             desc.set_serialized_attr(name, val.serialize_to_string())
         else:
             desc._set_attr(name, val)
@@ -5551,9 +5622,7 @@ class IrGraph:
             desc.set_block_attr(name, val.desc)
         elif isinstance(val, list) and val and _all_is_type(val, Block):
             desc.set_blocks_attr(name, [v.desc for v in val])
-        elif isinstance(val, core.BlockDesc) or isinstance(
-            val, core.ProgramDesc
-        ):
+        elif isinstance(val, (core.BlockDesc, core.ProgramDesc)):
             desc.set_serialized_attr(name, val.serialize_to_string())
         else:
             desc._set_attr(name, val)
@@ -6956,8 +7025,7 @@ class Program:
                 >>> # var label : LOD_TENSOR.shape(-1, 1).dtype(int64).stop_gradient(True)
         """
         for each_block in self.blocks:
-            for each_var in list(each_block.vars.values()):
-                yield each_var
+            yield from list(each_block.vars.values())
 
     def all_parameters(self):
         """
@@ -7171,18 +7239,16 @@ class Program:
                     vars_dict[name].set_value(value, scope)
                 except ValueError as err:
                     warnings.warn(
-                        ("Skip loading for '{}'. ".format(name) + str(err))
+                        "Skip loading for '{}'. ".format(name) + str(err)
                     )
                 except TypeError as err:
                     warnings.warn(
-                        ("Skip loading for '{}'. ".format(name) + str(err))
+                        "Skip loading for '{}'. ".format(name) + str(err)
                     )
             else:
                 warnings.warn(
-                    (
-                        "Skip loading for '{0}'. Because '{0}' not in the program.".format(
-                            name
-                        )
+                    "Skip loading for '{0}'. Because '{0}' not in the program.".format(
+                        name
                     )
                 )
 
@@ -7375,6 +7441,22 @@ class EagerParamBase(core.eager.Tensor):
         # hook functions for lazy initialization
         self._init_func = None
         self._init_op_creator = None
+
+    @classmethod
+    def from_tensor(cls, tensor, **kwargs):
+        # 1. construct EagerParamBase
+        param = cls(tensor.shape, tensor.dtype, **kwargs)
+
+        # 2. transform data if needed
+        dist_attr = kwargs.get('dist_attr', None)
+        src_tensor = tensor
+        if dist_attr is not None:
+            src_tensor = core.eager.Tensor(tensor, dist_attr=dist_attr)
+
+        # 3. set param data
+        param._set_impl(src_tensor)
+
+        return param
 
     def set_init_func(self, obj):
         self._init_func = obj
@@ -7695,16 +7777,6 @@ def _dygraph_guard(tracer):
 
 
 @signature_safe_contextmanager
-def _static_guard():
-    tmp_tracer = global_var._dygraph_tracer_
-    global_var._dygraph_tracer_ = None
-    try:
-        yield
-    finally:
-        global_var._dygraph_tracer_ = tmp_tracer
-
-
-@signature_safe_contextmanager
 def _dygraph_place_guard(place):
     global _global_expected_place_
     tmp_place = _global_expected_place_
@@ -7826,78 +7898,6 @@ def _cuda_graph_guard(cuda_graph_attr=None):
         yield
     finally:
         _switch_cuda_graph_mode(pre_mode)
-
-
-def set_flags(flags):
-    """
-    This function sets the GFlags value in Paddle.
-    For FLAGS please refer to :ref:`en_guides_flags_flags`
-
-    Args:
-        flags (dict): A dict contains flags and its value.
-
-    Examples:
-            .. code-block:: python
-
-                >>> import paddle
-                >>> paddle.set_flags({'FLAGS_eager_delete_tensor_gb': 1.0})
-    """
-    if not isinstance(flags, dict):
-        raise TypeError('flags in set_flags should be a dict')
-    for key, value in flags.items():
-        if _global_flags().is_public(key):
-            _global_flags()[key] = value
-        else:
-            raise ValueError(
-                "Flag %s cannot set its value through this function." % (key)
-            )
-
-
-def get_flags(flags):
-    """
-    This function gets the GFlags value in Paddle.
-    For FLAGS please refer to :ref:`en_guides_flags_flags`
-
-    Args:
-        flags(list|tuple|str): A list/tuple of string or a string which is the flag's name.
-
-    Returns:
-        flag's value in Paddle.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> flags = ['FLAGS_eager_delete_tensor_gb', 'FLAGS_check_nan_inf']
-            >>> res = paddle.get_flags(flags)
-            >>> print(res)
-            {'FLAGS_eager_delete_tensor_gb': 0.0, 'FLAGS_check_nan_inf': False}
-    """
-    flags_value = {}
-    if isinstance(flags, (list, tuple)):
-        for key in flags:
-            if _global_flags().is_public(key):
-                value = _global_flags()[key]
-                temp = {key: value}
-                flags_value.update(temp)
-            else:
-                raise ValueError(
-                    'Flag %s cannot get its value through this function.'
-                    % (key)
-                )
-    elif isinstance(flags, str):
-        if _global_flags().is_public(flags):
-            value = _global_flags()[flags]
-            temp = {flags: value}
-            flags_value.update(temp)
-        else:
-            raise ValueError(
-                'Flag %s cannot get its value through this function.' % (flags)
-            )
-    else:
-        raise TypeError('Flags in get_flags should be a list, tuple or string.')
-    return flags_value
 
 
 def _get_paddle_place(place):

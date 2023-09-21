@@ -341,8 +341,25 @@ class AdamW(Optimizer):
         acc_dtype = p.dtype
         if self._is_dtype_fp16_or_bf16(acc_dtype):
             acc_dtype = core.VarDesc.VarType.FP32
-        self._add_accumulator(self._moment1_acc_str, p, dtype=acc_dtype)
-        self._add_accumulator(self._moment2_acc_str, p, dtype=acc_dtype)
+        if core.is_compiled_with_xpu():
+            import os
+
+            xpu_adamw_moment_dtype = os.getenv(
+                "xpu_adamw_moment_dtype", default="fp32"
+            )
+            if xpu_adamw_moment_dtype == "fp16":
+                self._add_accumulator(
+                    self._moment1_acc_str, p, dtype=core.VarDesc.VarType.FP16
+                )
+                self._add_accumulator(
+                    self._moment2_acc_str, p, dtype=core.VarDesc.VarType.FP16
+                )
+            else:
+                self._add_accumulator(self._moment1_acc_str, p, dtype=acc_dtype)
+                self._add_accumulator(self._moment2_acc_str, p, dtype=acc_dtype)
+        else:
+            self._add_accumulator(self._moment1_acc_str, p, dtype=acc_dtype)
+            self._add_accumulator(self._moment2_acc_str, p, dtype=acc_dtype)
         self._add_accumulator(
             name=self._beta1_pow_acc_str,
             param=p,

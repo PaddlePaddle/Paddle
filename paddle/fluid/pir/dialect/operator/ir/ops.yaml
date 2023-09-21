@@ -106,6 +106,15 @@
     param: [x, file_path, overwrite, save_as_fp16, save_to_memory]
   optional : out
 
+- op : seed
+  args : (int seed, bool deterministic, str rng_name, bool force_cpu)
+  output : Tensor(out)
+  infer_meta:
+    func: SeedInferMeta
+    param: [seed]
+  kernel:
+    func: seed
+
 - op : send_v2
   args : (Tensor x, int ring_id = 0, int peer = 0, bool use_calc_stream = false, bool dynamic_shape = false)
   output :
@@ -150,9 +159,12 @@
     func: shadow_feed
     param: [x]
 
-- op : share_buffer_
-  args : (Tensor[] x, bool[] share_dims_and_dtype = {})
-  output : Tensor[](out){x.size()}, Tensor[](xout){x.size()}
+- op : share_data
+  args : (Tensor x)
+  output : Tensor(out)
+  kernel:
+    func: share_data
+    param: [x]
 
 - op : write_to_array
   args : (Tensor i, Tensor x)

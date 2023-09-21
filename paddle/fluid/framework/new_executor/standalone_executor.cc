@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
-
 #include "paddle/fluid/framework/new_executor/feed_fetch_utils.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/program_interpreter.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/flags.h"
 
@@ -86,7 +86,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       }
       auto block = base_program->block();
       for (auto it = block->begin(); it != block->end(); ++it) {
-        if ((*it)->name() == "pd_op.fetch") {
+        if ((*it)->isa<paddle::dialect::FetchOp>()) {
           size_t index = (*it)
                              ->attributes()
                              .at("col")
@@ -107,17 +107,19 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       }
       auto kernel_program =
           paddle::dialect::PdOpLowerToKernelPass(base_program.get(), place);
+      std::shared_ptr<pir::Program> shared_program = std::move(kernel_program);
+      plan_.UpdateIrProgram("base", shared_program);
 
       if (FLAGS_new_ir_apply_inplace_pass) {
         pir::PassManager pm(pir::IrContext::Instance(), 3);
         pm.AddPass(pir::CreateInplacePass());
-        pm.Run(kernel_program.get());
+        pm.Run(shared_program.get());
       }
 
       interpretercores_.emplace_back(
           std::make_shared<InterpreterCore>(place_,
                                             fetch_var_names_,
-                                            std::move(kernel_program),
+                                            shared_program->block(),
                                             scope_,
                                             execution_config));
     } else {

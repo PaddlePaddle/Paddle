@@ -14,7 +14,6 @@
 
 import logging
 import os
-import multiprocessing
 import sys
 import warnings
 import numpy as np
@@ -22,11 +21,10 @@ import numpy as np
 from . import set_flags, get_flags
 from .framework import Program, default_main_program
 
-from ..ir import core as ir_core
 from ..ir import OpResult
 from .wrapped_decorator import signature_safe_contextmanager
 from .data_feeder import convert_dtype
-from .framework import Variable, Operator
+from .framework import Variable, Operator, in_pir_mode
 
 from .framework import (
     convert_np_dtype_to_dtype_,
@@ -42,7 +40,6 @@ from .trainer_factory import FetchHandlerMonitor
 import copy
 from . import framework
 from .incubate.checkpoint import auto_checkpoint as acp
-from .compiler import _prune_feed_ops
 
 from functools import lru_cache
 
@@ -270,7 +267,7 @@ def check_feed_shape_type(var, feed, num_places=1):
     return True
 
 
-def new_ir_check_feed_shape_type(feed, name, target_shape, dtype, num_places=1):
+def pir_check_feed_shape_type(feed, name, target_shape, dtype, num_places=1):
     """
     Returns True if the variable doesn't require feed check or it is compatible
     with the shape and have same dtype as the fed value.
@@ -433,7 +430,7 @@ def has_fetch_operations(
     for op in block.ops:
         if op.name() == fetch_op:
             fetch_count += 1
-            if op.operand_source() not in fetch_targets:
+            if op.operand_source(0) not in fetch_targets:
                 raise Exception(
                     "There is a fetch op in Program which will fetch variable that is not belong to fetch_targets."
                 )
@@ -497,8 +494,8 @@ def _add_feed_fetch_ops(
         global_block, fetch_list, fetch_var_name, fetch_op
     ):
         for i, var in enumerate(fetch_list):
-            assert isinstance(var, Variable) or isinstance(
-                var, str
+            assert isinstance(
+                var, (Variable, str)
             ), "Wrong type for fetch_list[%s]: %s" % (i, type(var))
             global_block.append_op(
                 type=fetch_op,
@@ -510,19 +507,20 @@ def _add_feed_fetch_ops(
     return tmp_program
 
 
-def _add_new_ir_fetch_ops(program, fetch_list, fetch_var_name):
+def _add_pir_fetch_ops(program, fetch_list, fetch_var_name):
     import paddle
 
-    global_block = program.block()
+    global_block = program.global_block()
     fetch_op = "pd_op.fetch"
     if not has_fetch_operations(
         global_block, fetch_list, fetch_var_name, fetch_op
     ):
-        for i, fetch_input in enumerate(fetch_list):
-            assert isinstance(
-                fetch_input, OpResult
-            ), "Wrong type for fetch_list[%s]: %s" % (i, type(fetch_input))
-            paddle._ir_ops.fetch(fetch_input, fetch_var_name + str(i), i)
+        with paddle.static.program_guard(program):
+            for i, fetch_input in enumerate(fetch_list):
+                assert isinstance(
+                    fetch_input, OpResult
+                ), "Wrong type for fetch_list[%s]: %s" % (i, type(fetch_input))
+                paddle._ir_ops.fetch(fetch_input, fetch_var_name + str(i), i)
 
 
 def _merge_tensors(tensor, micro_batch_num):
@@ -666,7 +664,7 @@ def _get_program_cache_key(feed, fetch_list):
     feed_var_names = []
     if isinstance(feed, dict):
         feed_var_names = list(feed.keys())
-    elif isinstance(feed, list) or isinstance(feed, tuple):
+    elif isinstance(feed, (list, tuple)):
         for i, each in enumerate(feed):
             feed_var_names += list(each.keys())
     fetch_var_names = list(map(_to_name_str, fetch_list))
@@ -1011,7 +1009,7 @@ class _ExecutorCache:
         new_exe = _StandaloneExecutor(place, plan, scope)
         return new_program, new_exe
 
-    def get_new_ir_program_and_executor(
+    def get_pir_program_and_executor(
         self,
         program,
         feed,
@@ -1021,7 +1019,7 @@ class _ExecutorCache:
         place,
         scope,
     ):
-        _add_new_ir_fetch_ops(
+        _add_pir_fetch_ops(
             program, fetch_list=fetch_list, fetch_var_name=fetch_var_name
         )
 
@@ -1204,8 +1202,8 @@ class Executor:
                         )
                     check_feed_shape_type(var, cur_feed)
                 idx = op.desc.attr('col')
-                new_ir_flag_name = 'FLAGS_enable_new_ir_in_executor'
-                if get_flags(new_ir_flag_name)[new_ir_flag_name]:
+                pir_flag_name = 'FLAGS_enable_new_ir_in_executor'
+                if get_flags(pir_flag_name)[pir_flag_name]:
                     core.set_feed_variable(
                         scope, cur_feed, feed_target_name, idx
                     )
@@ -1245,9 +1243,9 @@ class Executor:
             else:
                 break
 
-    def _new_ir_feed_data(self, program, feed, scope):
+    def _pir_feed_data(self, program, feed, scope):
         # feed var to framework
-        global_block = program.block()
+        global_block = program.global_block()
         for op in global_block.ops:
             if op.name() == 'pd_op.data':
                 feed_target_name = op.attrs()["name"]
@@ -1256,7 +1254,7 @@ class Executor:
                 cur_feed = feed[feed_target_name]
                 if not isinstance(cur_feed, core.LoDTensor):
                     cur_feed = _as_lodtensor(cur_feed, self.place, var_type)
-                new_ir_check_feed_shape_type(
+                pir_check_feed_shape_type(
                     cur_feed, feed_target_name, var_shape, var_type
                 )
                 # the last arg of set_feed_variable has no effect in new ir, we pass 0 by default.
@@ -1297,11 +1295,7 @@ class Executor:
                     raise TypeError(
                         "The operator in fetch_list is not an optimize_op"
                     )
-            elif (
-                isinstance(item, Variable)
-                or isinstance(item, str)
-                or isinstance(item, str)
-            ):
+            elif isinstance(item, (Variable, str)):
                 _fetch_list.append(item)
             else:
                 raise TypeError(
@@ -1367,7 +1361,7 @@ class Executor:
         feed_names = []
         if isinstance(feed, dict):
             feed_names = list(feed.keys())
-        elif isinstance(feed, list) or isinstance(feed, tuple):
+        elif isinstance(feed, (list, tuple)):
             for i, each in enumerate(feed):
                 feed_names += list(each.keys())
 
@@ -1428,7 +1422,7 @@ class Executor:
                         % feed_name
                     )
 
-        elif isinstance(feed, list) or isinstance(feed, tuple):
+        elif isinstance(feed, (list, tuple)):
             for i, each in enumerate(feed):
                 for feed_name in list(each.keys()):
                     if not global_block.has_var(feed_name):
@@ -1621,8 +1615,8 @@ class Executor:
                 'true',
             ]
             self._log_force_set_program_cache(use_program_cache)
-        if ir_core._use_new_ir_api():
-            res = self._run_new_ir_impl(
+        if in_pir_mode():
+            res = self._run_pir_impl(
                 program=program,
                 feed=feed,
                 fetch_list=fetch_list,
@@ -1874,7 +1868,7 @@ class Executor:
         ), f"Program must have _is_inference = True, but get {program._is_inference}"
         return self._run_inference(program._executor, feed)
 
-    def _run_new_ir_impl(
+    def _run_pir_impl(
         self,
         program,
         feed,
@@ -1898,7 +1892,10 @@ class Executor:
 
         fetch_list = self._check_fetch_list(fetch_list)
 
-        if isinstance(program, Program) and len(program.block().ops) == 0:
+        if (
+            isinstance(program, Program)
+            and len(program.global_block().ops) == 0
+        ):
             if use_default_main_program:
                 error_info = (
                     "Now you are using default_main_program, "
@@ -1928,7 +1925,7 @@ class Executor:
                 % (type(feed))
             )
 
-        program, new_exe = self._executor_cache.get_new_ir_program_and_executor(
+        program, new_exe = self._executor_cache.get_pir_program_and_executor(
             program,
             feed,
             fetch_list,
@@ -1938,7 +1935,7 @@ class Executor:
             scope,
         )
 
-        self._new_ir_feed_data(program, feed, scope)
+        self._pir_feed_data(program, feed, scope)
 
         ret = new_exe.run(list(feed.keys()), return_numpy)
         return ret
@@ -2804,8 +2801,8 @@ class Executor:
             global_block, fetch_list, fetch_var_name, fetch_op
         ):
             for i, var in enumerate(fetch_list):
-                assert isinstance(var, Variable) or isinstance(
-                    var, str
+                assert isinstance(
+                    var, (Variable, str)
                 ), "Wrong type for fetch_list[%s]: %s" % (i, type(var))
                 global_block.append_op(
                     type=fetch_op,

@@ -65,11 +65,12 @@ TEST(type_test, type_base) {
   // Test 1: Test the function of IrContext to register Dialect.
   pir::IrContext *ctx = pir::IrContext::Instance();
   pir::Dialect *fake_dialect = ctx->GetOrRegisterDialect<FakeDialect>();
+  std::vector<pir::InterfaceValue> interface_map;
 
   // Test 2: Test the get method of AbstractType.
   pir::TypeId a_id = pir::TypeId::get<TypeA>();
   pir::AbstractType abstract_type_a =
-      pir::AbstractType::get(a_id, *fake_dialect);
+      pir::AbstractType::get(a_id, *fake_dialect, std::move(interface_map));
   EXPECT_EQ(abstract_type_a.type_id(), a_id);
 
   // Test 3: Test the constructor of TypeStorage.
@@ -190,10 +191,10 @@ struct IntegerTypeStorage : public pir::TypeStorage {
 
 // Customize a parameterized type: IntegerType, storage type is
 // IntegerTypeStorage.
-class IntegerType : public pir::Type {
+class IntegerType
+    : public pir::Type::TypeBase<IntegerType, pir::Type, IntegerTypeStorage> {
  public:
-  using Type::Type;
-  DECLARE_TYPE_UTILITY_FUNCTOR(IntegerType, IntegerTypeStorage);
+  using Base::Base;
 };
 IR_DECLARE_EXPLICIT_TYPE_ID(IntegerType)
 IR_DEFINE_EXPLICIT_TYPE_ID(IntegerType)

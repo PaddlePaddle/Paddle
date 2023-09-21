@@ -226,6 +226,15 @@ class DygraphShardingOptimizer:
                 mapping[param.name] = rank
         return mapping
 
+    def filter_parameters(self, parameter_list, hcg):
+        sharding_parallel_rank = hcg.get_sharding_parallel_rank()
+        parameter_list = [
+            param
+            for param in parameter_list
+            if self._param2rank[param.name] == sharding_parallel_rank
+        ]
+        return parameter_list
+
     def reduce_gradients(self, parameter_list, hcg):
         # TODO merge grad / nrank with dp
         logger.debug("sharding start gradients sync")

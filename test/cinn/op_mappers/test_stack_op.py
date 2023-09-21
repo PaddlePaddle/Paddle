@@ -52,5 +52,10 @@ class TestStackOp(OpMapperTest):
         self.check_outputs_and_grads()
 
 
+class TestStackOpAxisNegative(TestStackOp):
+    def set_op_attrs(self):
+        return {"axis": -1}
+
+
 if __name__ == "__main__":
     unittest.main()

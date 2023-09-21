@@ -527,7 +527,7 @@ PyObject* tensor_properties_get_strides(TensorObject* self, void* closure) {
   size_t rank = static_cast<size_t>(stride.size());
   value.resize(rank);
 
-  for (size_t i = 0; i < rank; i++) {
+  for (int i = 0; i < static_cast<int>(rank); i++) {
     value[i] = stride[i];
   }
 

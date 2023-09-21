@@ -19,8 +19,8 @@
 #include <numeric>
 #include <sstream>
 #include <vector>
-
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
+
 #include "paddle/fluid/pir/transforms/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -244,7 +244,7 @@ class RedundantTransposeFusePattern
 
   std::vector<int> GetPerm(const std::vector<int> &perm1,
                            const std::vector<int> &perm2) const {
-    int n = perm1.size();
+    int n = static_cast<int>(perm1.size());
     std::vector<int> axis(n), axis1(n), axis2(n);
     std::iota(axis.begin(), axis.end(), 0);
     for (int i = 0; i < n; ++i) {
@@ -583,7 +583,7 @@ void Conv2dFusionOpTest::Build(pir::Builder &builder,
   VLOG(4) << "Builder construction inputs";
   std::vector<pir::OpResult> argument_inputs = {
       input_, filter_, bias_, residual_};
-  argument.AddOperands(argument_inputs.begin(), argument_inputs.end());
+  argument.AddInputs(argument_inputs.begin(), argument_inputs.end());
 
   VLOG(4) << "Builder construction attributes";
   std::vector<pir::Attribute> vec_strides;
@@ -1044,7 +1044,7 @@ class TestPass : public pir::Pass {
   }
 
   bool CanApplyOn(pir::Operation *op) const override {
-    return op->name() == "builtin.module" && op->num_regions() > 0;
+    return op->isa<::pir::ModuleOp>() && op->num_regions() > 0;
   }
 
  private:

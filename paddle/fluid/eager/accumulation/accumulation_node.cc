@@ -171,19 +171,23 @@ GradNodeAccumulation::operator()(
   if (ReduceHooksRegistered()) {
     ApplyReduceHooks();
   }
+
   VLOG(3) << "Finish AD API Grad: GradNodeAccumulation";
   if (VLOG_IS_ON(4)) {
     const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s], Output: [%s] } ";
 
     std::string input_str = "";
     std::string output_str = "";
+
     const char* TENSOR_OUT_GRAD_TEMPLATE = "(grads[0][0], [%s]), ";
     std::string input_out_grad_str = paddle::string::Sprintf(
         TENSOR_OUT_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(grads[0][0]));
+    input_str += input_out_grad_str;
     const char* TENSOR_X_GRAD_TEMPLATE = "(grad_out, [%s]), ";
     std::string output_x_grad_str = paddle::string::Sprintf(
         TENSOR_X_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(grad_out));
     output_str += output_x_grad_str;
+    VLOG(6) << "gradnode_ptr = " << this;
     VLOG(4) << paddle::string::Sprintf(
         INPUT_PRINT_TEMPLATE, input_str, output_str);
   }

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import base
@@ -44,10 +44,10 @@ class TestReshapeOp(OpTest):
         self.infered_shape = (12, 10)
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'])
+        self.check_output(no_check_set=['XShape'], check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_prim=True)
+        self.check_grad(["X"], "Out", check_prim=True, check_new_ir=True)
 
 
 class TestReshapeOp_ZeroDim1(TestReshapeOp):
@@ -460,6 +460,7 @@ class TestReshapeOpError(unittest.TestCase):
         self.reshape = paddle.reshape
 
     def _test_errors(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             # The x type of reshape_op must be Variable.
             def test_x_type():
@@ -510,6 +511,7 @@ class TestReshapeOpError(unittest.TestCase):
                 self.reshape(x3, [-1, -2, 5])
 
             self.assertRaises(AssertionError, test_shape_3)
+        paddle.disable_static()
 
     def test_paddle_api_error(self):
         self._set_paddle_api()

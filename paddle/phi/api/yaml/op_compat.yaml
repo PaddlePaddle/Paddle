@@ -810,6 +810,7 @@
   backward : dropout_grad
   inputs :
     x : X
+    seed_tensor : Seed
   outputs :
     out : Out
     mask : Mask
@@ -2428,6 +2429,8 @@
     out : Out
 
 - op : seed
+  outputs :
+    out : Out
   extra :
     attrs : [bool deterministic = false, str rng_name = "", bool force_cpu = false]
 
@@ -2638,6 +2641,7 @@
     out : Out
 
 - op : split
+  backward : split_grad
   inputs:
     x : X
   outputs:
@@ -2645,6 +2649,7 @@
   int_array:
       sections :
           data_type : int
+          support_tensor : true
   scalar :
       axis :
         data_type : int
@@ -3047,6 +3052,18 @@
     yolo_loss : GetYoloLossExpectedKernelType
     yolo_loss_grad : GetYoloLossExpectedKernelType
 
+- op: c_allgather
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
+- op: c_allreduce_max
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
 - op: c_allreduce_sum
   inputs :
     x : X
@@ -3060,6 +3077,12 @@
     out : Out
 
 - op: c_identity
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
+- op: c_reduce_sum
   inputs :
     x : X
   outputs :
@@ -3167,6 +3190,12 @@
     steps:
       data_type : int64_t
       tensors_name : StepsTensorList
+
+- op: share_data
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad

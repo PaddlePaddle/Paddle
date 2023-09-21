@@ -305,6 +305,33 @@ struct SimplifyBlocksMutator : public ir::IRMutator<> {
       expr->As<ir::Block>()->stmts = stmts;
     }
   }
+
+  void Visit(const ScheduleBlock* op, Expr* expr) override {
+    auto* node = expr->As<ScheduleBlock>();
+    CHECK(node);
+    for (auto& var : node->iter_vars) {
+      if (var->lower_bound.defined()) {
+        Visit(&var->lower_bound, &var->lower_bound);
+      }
+      if (var->upper_bound.defined()) {
+        Visit(&var->upper_bound, &var->upper_bound);
+      }
+    }
+    for (auto& buffer_region : node->read_buffers) {
+      Visit(&buffer_region, &buffer_region);
+    }
+    for (auto& buffer_region : node->write_buffers) {
+      Visit(&buffer_region, &buffer_region);
+    }
+
+    if (node->body.As<Block>()) {
+      if (node->body.As<Block>()->stmts.size() == 1) {
+        node->body = node->body.As<Block>()->stmts[0];
+      }
+    }
+
+    Visit(&(node->body), &(node->body));
+  }
 };
 
 struct SimplifyForLoopsMutator : public ir::IRMutator<> {

@@ -982,7 +982,10 @@ class DistributedContext:
                     ):
                         dims_mapping[i] = -1
                 dist_attr.set_output_dims_mapping(arg_name, dims_mapping)
-            if len(process_mesh_processes) == 1:
+            if (
+                len(process_mesh_processes) == 1
+                and dist_op.serial_op.type != "dropout"
+            ):
                 dist_op.dist_attr.impl_type = "default"
                 dist_op.dist_attr.impl_idx = 0
 

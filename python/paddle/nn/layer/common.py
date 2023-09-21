@@ -730,6 +730,9 @@ class Dropout(Layer):
 
     In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 
+    Warning:
+        The corresponding `functional methods` please reference :ref:`api_paddle_nn_functional_dropout`.
+
     Parameters:
         p (float|int, optional): Probability of setting units to zero. Default: 0.5
         axis (int|list|tuple, optional): The axis along which the dropout is performed. Default: None.

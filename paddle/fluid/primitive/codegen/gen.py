@@ -31,7 +31,7 @@ from parse_utils import to_named_dict
 
 # import from paddle/fluid/pir/dialect/op_generator/api_gen.py
 sys.path.append(
-    str(pathlib.Path(__file__).resolve().parents[2] / 'ir/dialect/op_generator')
+    str(pathlib.Path(__file__).resolve().parents[2] / 'pir/dialect/op_generator')
 )
 
 # fmt: on
@@ -45,6 +45,7 @@ VJPS = [
     'sum_grad',
     'concat_grad',
     'split_grad',
+    'split_with_num_grad',
     'gelu_grad',
     'softmax_grad',
     'silu_grad',
@@ -61,12 +62,20 @@ VJPS = [
     'rsqrt_grad',
     'slice_grad',
     'transpose_grad',
+    'square_grad',
     'dropout_grad',
     'cast_grad',
     'slice_double_grad',
     'layer_norm_grad',
+    'embedding_grad',
+    'scale_grad',
 ]
-VJP_COMPS = ['divide_grad', 'sum_grad', 'gelu_grad']
+
+
+PRIM_VJP = ['divide_grad', 'sum_grad']  # vjp list of primitive op
+CUSTOM_VJP = ['gelu_grad']  # custom vjp list of composite op
+VJP_COMPS = PRIM_VJP + CUSTOM_VJP
+
 BACKENDS = [
     'add_n',
     'mean',
@@ -89,6 +98,7 @@ BACKENDS = [
     'sum_grad',
     'concat_grad',
     'split_grad',
+    'split_with_num_grad',
     'gelu_grad',
     'softmax_grad',
     'silu_grad',
@@ -132,9 +142,13 @@ BACKENDS = [
     'roll',
     'scatter',
     'scatter_nd_add',
+    'square_grad',
     'dropout_grad',
     'slice',
     'layer_norm_grad',
+    'embedding_grad',
+    'sqrt',
+    'uniform',
 ]
 
 
@@ -277,7 +291,7 @@ def extend_compat_info(apis, compats):
                 backward_apis.append(apis_dict[backward_op_name])
         support_tensor_attrs_names = []
         compat_attrs_data_type = {}
-        if 'scalar' in compat_item:
+        if 'scalar' in compat_item and compat_item['op'] != "pow":
             for attr_name, attr_info in compat_item['scalar'].items():
                 if (
                     'support_tensor' in attr_info
