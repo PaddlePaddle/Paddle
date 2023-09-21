@@ -798,7 +798,7 @@ class TesetconsistencyOfDynamicAndStaticGraph(unittest.TestCase):
         paddle.set_device('cpu')
         SEED = 123
         weight_attr = paddle.framework.ParamAttr(
-            name="linear_weight",
+            name="linear_weight2",
             learning_rate=1.0,
             trainable=False,
             regularizer=None,
@@ -807,7 +807,7 @@ class TesetconsistencyOfDynamicAndStaticGraph(unittest.TestCase):
             ),
         )
         bias_attr = paddle.framework.ParamAttr(
-            name="linear_bias",
+            name="linear_bias2",
             learning_rate=1.0,
             trainable=False,
             regularizer=None,
@@ -819,7 +819,26 @@ class TesetconsistencyOfDynamicAndStaticGraph(unittest.TestCase):
         def run_dynamic_graph():
             paddle.seed(SEED)
             linear = paddle.nn.Linear(
-                1, 1, weight_attr=weight_attr, bias_attr=bias_attr
+                1,
+                1,
+                weight_attr=paddle.framework.ParamAttr(
+                    name="linear_weight1",
+                    learning_rate=1.0,
+                    trainable=False,
+                    regularizer=None,
+                    initializer=paddle.nn.initializer.TruncatedNormal(
+                        mean=0.0, std=2.0
+                    ),
+                ),
+                bias_attr=paddle.framework.ParamAttr(
+                    name="linear_bias1",
+                    learning_rate=1.0,
+                    trainable=False,
+                    regularizer=None,
+                    initializer=paddle.nn.initializer.TruncatedNormal(
+                        mean=0.0, std=2.0
+                    ),
+                ),
             )
             return linear.weight.numpy(), linear.bias.numpy()
 
@@ -831,20 +850,20 @@ class TesetconsistencyOfDynamicAndStaticGraph(unittest.TestCase):
             )
             res = exe.run(
                 paddle.static.default_startup_program(),
-                fetch_list=['linear_weight', 'linear_bias'],
+                fetch_list=['linear_weight2', 'linear_bias2'],
             )
             return res[0], res[1]
 
-        paddle.disable_static()
-        dynamic_res = run_dynamic_graph()
-        paddle.enable_static()
-        static_res = run_static_graph()
+        with dygraph_guard():
+            dynamic_res = run_dynamic_graph()
+        with static_guard():
+            static_res = run_static_graph()
 
         np.testing.assert_array_equal(dynamic_res[0], static_res[0])
         np.testing.assert_array_equal(dynamic_res[1], static_res[1])
 
     def test_assign_static_fp32(self):
-        random_value = np.random.randn(128, 128)
+        random_value = np.random.randn(128, 128).astype("float32")
 
         def run_dynamic_graph(dtype):
             with dygraph_guard():
@@ -877,17 +896,18 @@ class TesetconsistencyOfDynamicAndStaticGraph(unittest.TestCase):
         dynamic_res = run_dynamic_graph("float32")
         static_res = run_static_graph("float32")
 
-        np.testing.assert_array_equal(dynamic_res[0], static_res[0])
-        np.testing.assert_array_equal(dynamic_res[1], static_res[1])
+        np.testing.assert_array_equal(dynamic_res.numpy(), static_res)
+        np.testing.assert_array_equal(dynamic_res.numpy(), static_res)
 
     def test_assign_static_fp64(self):
-        random_value = np.random.randn(128, 128)
+        random_value = np.random.randn(128, 128).astype("float64")
 
         def run_dynamic_graph(dtype):
             with dygraph_guard():
                 w = paddle.create_parameter(
                     random_value.shape,
                     dtype,
+                    "www",
                     default_initializer=paddle.nn.initializer.Assign(
                         random_value
                     ),
@@ -900,22 +920,22 @@ class TesetconsistencyOfDynamicAndStaticGraph(unittest.TestCase):
                 w = paddle.create_parameter(
                     random_value.shape,
                     dtype,
-                    "w",
+                    "ww",
                     default_initializer=paddle.nn.initializer.Assign(
                         random_value
                     ),
                 )
                 res = exe.run(
                     paddle.static.default_startup_program(),
-                    fetch_list=['w'],
+                    fetch_list=['ww'],
                 )
             return res[0]
 
         dynamic_res = run_dynamic_graph("float64")
         static_res = run_static_graph("float64")
 
-        np.testing.assert_array_equal(dynamic_res[0], static_res[0])
-        np.testing.assert_array_equal(dynamic_res[1], static_res[1])
+        np.testing.assert_array_equal(dynamic_res.numpy(), static_res)
+        np.testing.assert_array_equal(dynamic_res.numpy(), static_res)
 
 
 # 2-D Parameter with shape: [10, 15]
