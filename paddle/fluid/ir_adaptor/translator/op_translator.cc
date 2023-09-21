@@ -766,8 +766,6 @@ struct AssignValueOpTranscriber : public OpTranscriber {
       legacy_attr = op_desc.GetAttr("int32_values");
     } else if (dtype == /*FP32*/ 5) {
       legacy_attr = op_desc.GetAttr("fp32_values");
-    } else if (dtype == /*FP64*/ 6) {
-      legacy_attr = op_desc.GetAttr("fp64_values");
     } else if (dtype == /*INT64*/ 3) {
       legacy_attr = op_desc.GetAttr("int64_values");
     } else {
