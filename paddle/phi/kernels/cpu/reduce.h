@@ -43,7 +43,6 @@ void Reduce(const DeviceContext& dev_ctx,
     }
   }
   reduce_all = (reduce_all || full_dim);
-
   // no need to cast dtype
   if (out_dtype == phi::DataType::UNDEFINED || out_dtype == x.dtype()) {
     phi::funcs::ReduceKernelImpl<DeviceContext, T, T, Functor>(
