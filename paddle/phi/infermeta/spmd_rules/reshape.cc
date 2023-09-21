@@ -76,9 +76,9 @@ std::vector<DimTrans*> MakeReshapeDimTrans(
   std::vector<int64_t> inferred_tgt_shape =
       InferTargetShape(tgt_shape, total_elem_num_src);
 
-  int64_t src_idx = 0, tgt_idx = 0;
-  int64_t s, t;
-  int64_t src_len, tgt_len;
+  int src_idx = 0, tgt_idx = 0;
+  int s, t;
+  int src_len, tgt_len;
   src_len = static_cast<int64_t>(src_shape.size());
   tgt_len = static_cast<int64_t>(inferred_tgt_shape.size());
   while (src_idx < src_len || tgt_idx < tgt_len) {
