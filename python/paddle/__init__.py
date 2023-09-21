@@ -99,6 +99,7 @@ from .tensor.creation import create_parameter  # noqa: F401
 from .tensor.creation import to_tensor  # noqa: F401
 from .tensor.creation import diag  # noqa: F401
 from .tensor.creation import diagflat  # noqa: F401
+from .tensor.creation import diag_embed  # noqa: F401
 from .tensor.creation import eye  # noqa: F401
 from .tensor.creation import linspace  # noqa: F401
 from .tensor.creation import logspace  # noqa: F401
@@ -509,6 +510,7 @@ __all__ = [  # noqa
     'subtract',
     'diag',
     'diagflat',
+    'diag_embed',
     'isnan',
     'scatter_nd_add',
     'unstack',
