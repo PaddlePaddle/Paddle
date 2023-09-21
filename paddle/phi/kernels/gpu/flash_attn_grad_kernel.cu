@@ -92,10 +92,8 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
                            scale,
                            causal,
                            q.dtype(),
+                           attn_mask,
                            seed_offset.data<int64_t>());
-
-  const DenseTensor* attn_mask_tensor = attn_mask.get_ptr();
-  std::vector<int64_t> mask_dims = GetAttnMaskDims(attn_mask_tensor);
 
   VLOG(10) << "FlashAttn bwd seed: " << params.seed
            << ", offset: " << params.offset;
@@ -133,8 +131,8 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
       stream,
       params.seed,
       params.offset,
-      attn_mask_tensor ? attn_mask_tensor->data() : nullptr,
-      mask_dims.data());
+      params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
+      params.mask_dims.data());
   CheckFlashAttnStatus(succ);
 #else
   RaiseNotSupportedError();
@@ -195,6 +193,7 @@ void FlashAttnGradKernel(const Context& ctx,
                            scale,
                            causal,
                            q.dtype(),
+                           attn_mask,
                            seed_offset.data<int64_t>());
 
   ctx.template Alloc<T>(dq);
@@ -205,9 +204,6 @@ void FlashAttnGradKernel(const Context& ctx,
 
   VLOG(10) << "FlashAttn bwd seed: " << params.seed
            << ", offset: " << params.offset;
-
-  const DenseTensor* attn_mask_tensor = attn_mask.get_ptr();
-  std::vector<int64_t> mask_dims = GetAttnMaskDims(attn_mask_tensor);
 
   int num_splits = get_num_split();
 
@@ -242,8 +238,8 @@ void FlashAttnGradKernel(const Context& ctx,
       stream,
       params.seed,
       params.offset,
-      attn_mask_tensor ? attn_mask_tensor->data() : nullptr,
-      mask_dims.data());
+      params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
+      params.mask_dims.data());
   CheckFlashAttnStatus(succ);
 #else
   RaiseNotSupportedError();

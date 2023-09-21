@@ -73,9 +73,6 @@ void FlashAttnUnpaddedKernel(
 
   // TODO(umiswing): add shape check
 
-  const DenseTensor* attn_mask_tensor = attn_mask.get_ptr();
-  std::vector<int64_t> mask_dims = GetAttnMaskDims(attn_mask_tensor);
-
   FlashAttnFwdParamsV2<T> params = FlashAttnFwdParamsV2<T>(ctx,
                                                            batch_size,
                                                            max_seqlen_q,
@@ -91,6 +88,7 @@ void FlashAttnUnpaddedKernel(
                                                            is_test,
                                                            rng_name,
                                                            fixed_seed_offset,
+                                                           attn_mask,
                                                            softmax,
                                                            softmax_lse,
                                                            seed_offset);
@@ -126,8 +124,8 @@ void FlashAttnUnpaddedKernel(
       stream,
       params.seed,
       params.offset,
-      attn_mask_tensor ? attn_mask_tensor->data() : nullptr,
-      mask_dims.data());
+      params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
+      params.mask_dims.data());
   CheckFlashAttnStatus(succ);
 #else
   RaiseNotSupportedError();
@@ -173,9 +171,6 @@ void FlashAttnKernel(const Context& ctx,
 
   const float scale = 1.0f / std::sqrt(head_size);
 
-  const DenseTensor* attn_mask_tensor = attn_mask.get_ptr();
-  std::vector<int64_t> mask_dims = GetAttnMaskDims(attn_mask_tensor);
-
   FlashAttnFwdParamsV2<T> params = FlashAttnFwdParamsV2<T>(ctx,
                                                            batch_size,
                                                            seqlen_q,
@@ -191,6 +186,7 @@ void FlashAttnKernel(const Context& ctx,
                                                            is_test,
                                                            rng_name,
                                                            fixed_seed_offset,
+                                                           attn_mask,
                                                            softmax,
                                                            softmax_lse,
                                                            seed_offset);
@@ -230,8 +226,8 @@ void FlashAttnKernel(const Context& ctx,
       stream,
       params.seed,
       params.offset,
-      attn_mask_tensor ? attn_mask_tensor->data() : nullptr,
-      mask_dims.data());
+      params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
+      params.mask_dims.data());
   CheckFlashAttnStatus(succ);
 #else
   RaiseNotSupportedError();
