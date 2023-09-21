@@ -960,12 +960,8 @@ class PartialProgramLayer:
 
             # TODO(xiongkun): more elegent way to do it.
 
-            ir_dtype_2_tensor_dtype = {
-                10: paddle.dtype(5),
-            }
-
             out = core.eager.Tensor(
-                ir_dtype_2_tensor_dtype[int(var.dtype)],
+                framework.paddle_type_to_proto_type[var.dtype],
                 var.shape,
                 "",
                 tensor_type,
