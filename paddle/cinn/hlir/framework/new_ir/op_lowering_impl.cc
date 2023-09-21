@@ -104,7 +104,8 @@ OpLowererImpl::OpLowererImpl(const Target& target) : target_(target) {}
 
 std::vector<ir::LoweredFunc> OpLowererImpl::Lower(const GroupPtr& group,
                                                   bool apply_op_schedule,
-                                                  bool apply_group_schedule) {
+                                                  bool apply_group_schedule,
+                                                  bool apply_pass) {
   VLOG(3) << "Lowering Group : " << group->group_id
           << " , Op Pattern : " << group->op_pattern_kind;
   group->input_names.clear();
