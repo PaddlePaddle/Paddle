@@ -451,7 +451,12 @@ void BindOpResult(py::module *m) {
         when build network.
   )DOC");
   g_ir_opresult_pytype = reinterpret_cast<PyTypeObject *>(op_result.ptr());
-  op_result.def("__eq__", &OpResult::operator==)
+  op_result
+      .def(
+          "__init__",
+          [](OpResult &self) { new (&self) OpResult(); },
+          pybind11::return_value_policy::reference)
+      .def("__eq__", &OpResult::operator==)
       .def("__eq__",
            [](OpResult &self, Value &other) {
              return self.Value::impl() == other.impl();
@@ -532,6 +537,14 @@ void BindOpResult(py::module *m) {
                   "persistable"));
             }
           })
+      .def("initialized",
+           [](OpResult &self) {
+             if (self.impl() == nullptr || self.type().storage() == nullptr) {
+               return false;
+             } else {
+               return true;
+             }
+           })
       .def("first_use", &OpResult::first_use, return_value_policy::reference)
       .def("has_one_use", &Value::HasOneUse)
       .def("use_empty", &OpResult::use_empty)

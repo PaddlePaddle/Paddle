@@ -130,6 +130,11 @@ class TestPybind(unittest.TestCase):
 
         self.assertEqual(add_op.result(0).use_empty(), True)
 
+        self.assertEqual(add_op.result(0).initialized(), True)
+
+        uninit_op_result = paddle.ir.OpResult()
+        self.assertEqual(uninit_op_result.initialized(), False)
+
     def test_type(self):
         newir_program = get_ir_program()
         matmul_op = newir_program.global_block().ops[1]
