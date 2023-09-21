@@ -52,10 +52,6 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
       var_scope_(scope) {
   VLOG(4) << "ProgramInterpreter(): " << this << " on " << place_;
 
-  static_build_ = FLAGS_new_executor_static_build &&
-                  !FLAGS_new_executor_use_cuda_graph &&
-                  interpreter::BlockCanBeStaticBuilt(block);
-
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
 
@@ -72,6 +68,10 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
     local_scope_ = local_scope;
   }
   var_scope_.SetLocalScope(local_scope_);
+
+  static_build_ = FLAGS_new_executor_static_build &&
+                  !FLAGS_new_executor_use_cuda_graph &&
+                  interpreter::BlockCanBeStaticBuilt(block);
 
   instruction_scheduling_priority_less = [this](size_t lhs, size_t rhs) {
     SchedulingPriority lhs_scheduling_priority =
@@ -129,28 +129,10 @@ void ProgramInterpreter::RunImpl() {
 
 FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
                                   bool need_fetch) {
-  SetDeviceId(place_);
-  CheckCUDAGraphBeforeRun(feed_names);
-
-#ifdef PADDLE_WITH_DNNL
-  platform::AttachPointerHashToMKLDNNKey(this, place_);
-#endif
+  std::vector<paddle::framework::OpFuncNode> op_func_nodes;
+  Build(feed_names, &op_func_nodes);
 
   if (!is_build_) {
-    LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
-    paddle::framework::interpreter::BuildVariableScope(
-        block_, execution_config_, &var_scope_);
-
-    std::vector<paddle::framework::OpFuncNode> op_func_nodes;
-    paddle::framework::interpreter::BuildOpFuncList(
-        place_,
-        block_,
-        execution_config_.skip_gc_vars,
-        &op_func_nodes,
-        &var_scope_,
-        execution_config_,
-        HasLocalScope(),
-        static_build_);
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
@@ -186,6 +168,33 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
     return fetch_list;
   } else {
     return {};
+  }
+}
+
+void ProgramInterpreter::Build(
+    const std::vector<std::string>& feed_names,
+    std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {
+  SetDeviceId(place_);
+  CheckCUDAGraphBeforeRun(feed_names);
+
+#ifdef PADDLE_WITH_DNNL
+  platform::AttachPointerHashToMKLDNNKey(this, place_);
+#endif
+
+  if (!is_build_) {
+    LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
+    paddle::framework::interpreter::BuildVariableScope(
+        block_, execution_config_, &var_scope_);
+
+    paddle::framework::interpreter::BuildOpFuncList(
+        place_,
+        block_,
+        execution_config_.skip_gc_vars,
+        op_func_nodes,
+        &var_scope_,
+        execution_config_,
+        HasLocalScope(),
+        static_build_);
   }
 }
 
