@@ -27,6 +27,7 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
@@ -89,6 +90,20 @@ inline void SetProgramInt64Attr(std::shared_ptr<Program> program,
   auto op = program->module_op();
   op->set_attribute(
       attr_name, pir::Int64Attribute::get(pir::IrContext::Instance(), value));
+}
+
+std::string GetValueInfo(Value v) {
+  std::stringstream ss;
+  ss << "define_op_name=" << v.dyn_cast<OpResult>().owner()->name();
+  ss << ", index=" << v.dyn_cast<OpResult>().index();
+  ss << ", dtype=" << v.type();
+  if (v.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+    ss << ", place="
+       << v.type()
+              .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+              .place();
+  }
+  return ss.str();
 }
 
 void BindProgram(py::module *m) {
@@ -353,7 +368,14 @@ void BindValue(py::module *m) {
              return self.impl() == other.Value::impl();
            })
       .def("__hash__",
-           [](const Value &self) { return std::hash<pir::Value>{}(self); });
+           [](const Value &self) { return std::hash<pir::Value>{}(self); })
+      .def("__str__", [](const Value &self) -> py::str {
+        std::ostringstream print_stream;
+        print_stream << "Value(";
+        print_stream << GetValueInfo(self);
+        print_stream << ")";
+        return print_stream.str();
+      });
 }
 
 void BindOpOperand(py::module *m) {
@@ -472,6 +494,19 @@ void BindOpResult(py::module *m) {
            })
       .def("__hash__",
            [](OpResult &self) { return std::hash<pir::Value>{}(self); })
+      .def("__str__",
+           [](OpResult &self) -> py::str {
+             std::ostringstream print_stream;
+             print_stream << "OpResult(";
+             print_stream << GetValueInfo(self);
+             if (GetOpResultBoolAttr(self, kAttrStopGradients)) {
+               print_stream << ", stop_gradient=True";
+             } else {
+               print_stream << ", stop_gradient=False";
+             }
+             print_stream << ")";
+             return print_stream.str();
+           })
       .def(
           "get_defining_op",
           [](const OpResult &self) -> pir::Operation * {
