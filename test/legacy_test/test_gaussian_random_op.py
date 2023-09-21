@@ -103,9 +103,6 @@ class TestGaussianRandomFP16Op(OpTest):
         np.testing.assert_allclose(hist, hist2, rtol=0, atol=0.015)
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-)
 def gaussian_wrapper(dtype_=np.uint16):
     def gauss_wrapper(shape, mean, std, seed, dtype=np.uint16, name=None):
         return paddle.tensor.random.gaussian(
@@ -115,6 +112,9 @@ def gaussian_wrapper(dtype_=np.uint16):
     return gauss_wrapper
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestGaussianRandomBF16Op(OpTest):
     def setUp(self):
         self.op_type = "gaussian_random"
