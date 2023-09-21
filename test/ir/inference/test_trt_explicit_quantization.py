@@ -24,7 +24,6 @@ from paddle.inference import Config, PrecisionType, create_predictor
 from paddle.static.quantization import QuantizationTransformPassV2
 
 
-@unittest.skipIf(paddle.inference.get_trt_compile_version() < (8, 0, 0))
 class TestExplicitQuantizationLayer:
     def setUp(self):
         paddle.enable_static()
@@ -71,6 +70,10 @@ class TestExplicitQuantizationLayer:
         np.testing.assert_allclose(predict, baseline, rtol=1e-2, atol=1e-2)
 
 
+@unittest.skipIf(
+    paddle.inference.get_trt_compile_version() < (8, 0, 0),
+    "TensorRt supports explicit quantization with version >= 8.0.0",
+)
 class TestExplicitQuantizationConv2d(
     TestExplicitQuantizationLayer, unittest.TestCase
 ):
@@ -132,6 +135,10 @@ class TestExplicitQuantizationConv2d(
         ]
 
 
+@unittest.skipIf(
+    paddle.inference.get_trt_compile_version() < (8, 0, 0),
+    "TensorRt supports explicit quantization with version >= 8.0.0",
+)
 class TestExplicitQuantizationMatmul(
     TestExplicitQuantizationLayer, unittest.TestCase
 ):

@@ -46,6 +46,10 @@ if(WIN32)
        "test_split_layernorm_to_math_ops_pass")
   list(REMOVE_ITEM TEST_TRT_CONVERTER
        "test_trt_convert_quantize_dequantize_linear")
+  list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_explicit_quantization")
+  list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_explicit_quantization_resnet")
+  list(REMOVE_ITEM TEST_TRT_IR_PASSES
+       "test_trt_explicit_quantization_mobilenet")
 endif()
 
 # Only for cpu(mkl + openblas)

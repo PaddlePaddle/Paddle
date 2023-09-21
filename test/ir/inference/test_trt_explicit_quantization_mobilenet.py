@@ -20,7 +20,6 @@ import paddle
 from paddle.nn.initializer import KaimingUniform
 
 
-@unittest.skipIf(paddle.inference.get_trt_compile_version() < (8, 0, 0))
 class MobileNet:
     def __init__(self):
         self.params = {
@@ -224,6 +223,10 @@ class MobileNet:
         return pointwise_conv
 
 
+@unittest.skipIf(
+    paddle.inference.get_trt_compile_version() < (8, 0, 0),
+    "TensorRt supports explicit quantization with version >= 8.0.0",
+)
 class TestExplicitMobilenet(TestExplicitQuantizationModel, unittest.TestCase):
     def build_model(self):
         model = MobileNet()

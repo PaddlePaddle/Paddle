@@ -20,7 +20,6 @@ from test_trt_explicit_quantization_model import TestExplicitQuantizationModel
 import paddle
 
 
-@unittest.skipIf(paddle.inference.get_trt_compile_version() < (8, 0, 0))
 class ResNet:
     def __init__(self, layers=50, prefix_name=''):
         self.layers = layers
@@ -224,6 +223,10 @@ class ResNet:
         return paddle.nn.functional.relu(out)
 
 
+@unittest.skipIf(
+    paddle.inference.get_trt_compile_version() < (8, 0, 0),
+    "TensorRt supports explicit quantization with version >= 8.0.0",
+)
 class TestExplicitQuantizationResNet(
     TestExplicitQuantizationModel, unittest.TestCase
 ):
