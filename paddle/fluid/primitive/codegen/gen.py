@@ -291,7 +291,7 @@ def extend_compat_info(apis, compats):
                 backward_apis.append(apis_dict[backward_op_name])
         support_tensor_attrs_names = []
         compat_attrs_data_type = {}
-        if 'scalar' in compat_item:
+        if 'scalar' in compat_item and compat_item['op'] != "pow":
             for attr_name, attr_info in compat_item['scalar'].items():
                 if (
                     'support_tensor' in attr_info
