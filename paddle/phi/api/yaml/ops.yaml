@@ -1934,6 +1934,15 @@
     func : pixel_shuffle
   backward : pixel_shuffle_grad
 
+- op : pixel_unshuffle
+  args : (Tensor x, int downscale_factor=1, str data_format="NCHW")
+  output : Tensor
+  infer_meta :
+    func : PixelUnshuffleInferMeta
+  kernel :
+    func : pixel_unshuffle
+  backward : pixel_unshuffle_grad
+
 - op : poisson
   args : (Tensor x)
   output : Tensor
