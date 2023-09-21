@@ -12,20 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import core
-import numpy as np
-import warnings
 import struct
+import warnings
 
+import numpy as np
+
+from ..ir import OpResult
+from . import core
 from .framework import (
     Variable,
+    _cpu_num,
+    _cuda_ids,
     default_main_program,
     in_dygraph_mode,
     in_pir_mode,
 )
-from .framework import _cpu_num, _cuda_ids
-
-from ..ir import OpResult
 
 __all__ = ['DataFeeder']
 
