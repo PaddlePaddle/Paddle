@@ -182,6 +182,30 @@ class TestMaskedFillFP16APIBroadcast2(TestMaskedFillAPI):
         self.dtype = "float16"
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support bfloat16",
+)
+class TestMaskedFillBF16(TestMaskedFillAPI):
+    def init(self):
+        self.x_shape = (300, 1)
+        self.mask_shape = (300, 1)
+        self.dtype = "uint16"
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support bfloat16",
+)
+class TestMaskedFillBF16APIBroadcast2(TestMaskedFillAPI):
+    def init(self):
+        self.x_shape = (300, 1)
+        self.mask_shape = (300, 3)
+        self.dtype = "uint16"
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
