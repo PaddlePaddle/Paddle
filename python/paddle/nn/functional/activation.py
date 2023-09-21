@@ -1198,7 +1198,11 @@ def softmax(x, axis=-1, dtype=None, name=None):
               [0.03205860, 0.08714432, 0.23688282, 0.64391426]]])
     """
 
-    if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
+    if (
+        (dtype is not None)
+        and (not isinstance(dtype, core.VarDesc.VarType))
+        and (not isinstance(dtype, core.DataType))
+    ):
         dtype = convert_np_dtype_to_dtype_(dtype)
     if in_dynamic_or_pir_mode():
         outs_cast = x if dtype is None else _C_ops.cast(x, dtype)
