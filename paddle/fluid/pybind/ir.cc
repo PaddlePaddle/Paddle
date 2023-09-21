@@ -153,6 +153,11 @@ void BindProgram(py::module *m) {
            [](const std::shared_ptr<Program> &self) {
              return self->parameters_num();
            })
+      .def("move_parameters_from",
+           [](const std::shared_ptr<Program> &self,
+              const std::shared_ptr<Program> &other) {
+             self->set_parameters(std::move(other->parameters()));
+           })
       .def(
           "global_block",
           [](std::shared_ptr<Program> self) { return self->block(); },
@@ -375,9 +380,19 @@ void BindOpOperand(py::module *m) {
 bool GetOpResultBoolAttr(const OpResult &self, const std::string &attr_name) {
   auto *defining_op = self.owner();
   if (defining_op->HasAttribute(attr_name)) {
+    PADDLE_ENFORCE(
+        defining_op->attribute(attr_name).isa<pir::ArrayAttribute>(),
+        paddle::platform::errors::InvalidArgument(
+            "%s: Callstack attributes of %s is not ArrayAttribute type",
+            attr_name));
     auto attrs = defining_op->attribute(attr_name)
                      .dyn_cast<pir::ArrayAttribute>()
                      .AsVector();
+    PADDLE_ENFORCE(attrs[self.index()].isa<pir::BoolAttribute>(),
+                   paddle::platform::errors::InvalidArgument(
+                       "The index %d in %s is not BoolAttribute type",
+                       self.index(),
+                       attr_name));
     return attrs[self.index()].dyn_cast<pir::BoolAttribute>().data();
   } else {
     return true;
