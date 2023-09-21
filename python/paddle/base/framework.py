@@ -690,6 +690,8 @@ def _dygraph_tracer():
 
 
 def _current_expected_place():
+    if in_pir_mode():
+        return core.Place()
     global _global_expected_place_
     if _global_expected_place_ is None:
         if core.is_compiled_with_cuda():
