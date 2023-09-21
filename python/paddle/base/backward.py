@@ -12,23 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .proto import framework_pb2
-
-from paddle.base import framework as framework
-from paddle.base import program_guard
-from . import core
 import collections
 import copy
 import logging
-from . import unique_name
-from . import log_helper
-import paddle.base
-from .data_feeder import check_type
+import re
 import warnings
-
 from collections.abc import Sequence
 
-import re
+import paddle.base
+from paddle.base import framework as framework
+from paddle.base import program_guard
+
+from . import core, log_helper, unique_name
+from .data_feeder import check_type
+from .proto import framework_pb2
 
 __all__ = [
     'append_backward',
