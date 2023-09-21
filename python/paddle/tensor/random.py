@@ -62,16 +62,21 @@ def bernoulli(x, name=None):
             >>> paddle.set_device('cpu')  # on CPU device
             >>> paddle.seed(100)
 
-            >>> # doctest: +SKIP("Random output")
             >>> x = paddle.rand([2,3])
             >>> print(x)
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0.55355281, 0.20714243, 0.01162981],
-            [0.51577556, 0.36369765, 0.26091650]]
+             [0.51577556, 0.36369765, 0.26091650]])
+            >>> # doctest: -SKIP
 
             >>> out = paddle.bernoulli(x)
             >>> print(out)
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[1., 0., 1.],
-             [0., 1., 0.]]
+             [0., 1., 0.]])
+            >>> # doctest: -SKIP
 
     """
 
@@ -117,12 +122,14 @@ def poisson(x, name=None):
             >>> paddle.set_device('cpu')
             >>> paddle.seed(100)
 
-            >>> # doctest: +SKIP("Random output")
             >>> x = paddle.uniform([2,3], min=1.0, max=5.0)
             >>> out = paddle.poisson(x)
             >>> print(out)
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[2., 5., 0.],
-             [5., 1., 3.]]
+             [5., 1., 3.]])
+            >>> # doctest: -SKIP
     """
     if in_dynamic_mode():
         return _C_ops.poisson(x)
@@ -162,17 +169,22 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
             >>> import paddle
             >>> paddle.seed(100) # on CPU device
 
-            >>> # doctest: +SKIP("Random output")
             >>> x = paddle.rand([2,4])
             >>> print(x)
-            [[0.5535528  0.20714243 0.01162981 0.51577556]
-             [0.36369765 0.2609165  0.18905126 0.5621971 ]]
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[2, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.55355281, 0.20714243, 0.01162981, 0.51577556],
+             [0.36369765, 0.26091650, 0.18905126, 0.56219709]])
+            >>> # doctest: -SKIP
 
             >>> paddle.seed(200) # on CPU device
             >>> out1 = paddle.multinomial(x, num_samples=5, replacement=True)
             >>> print(out1)
-            [[3 3 0 0 0]
-             [3 3 3 1 0]]
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[2, 5], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[3, 3, 0, 0, 0],
+             [3, 3, 3, 1, 0]])
+            >>> # doctest: -SKIP
 
             >>> # out2 = paddle.multinomial(x, num_samples=5)
             >>> # InvalidArgumentError: When replacement is False, number of samples
@@ -181,8 +193,11 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
             >>> paddle.seed(300) # on CPU device
             >>> out3 = paddle.multinomial(x, num_samples=3)
             >>> print(out3)
-            [[3 0 1]
-             [3 1 0]]
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[3, 0, 1],
+             [3, 1, 0]])
+            >>> # doctest: -SKIP
 
     """
 
@@ -257,6 +272,7 @@ def uniform_random_batch_size_like(
         Variable: A Tensor of the specified shape filled with uniform_random values. The shape of the Tensor is determined by the shape parameter and the specified dimension of the input Tensor.
     Examples:
         .. code-block:: python
+
             >>> import paddle
             >>> import paddle.base as base
             >>> from paddle.tensor import random
@@ -409,27 +425,36 @@ def standard_normal(shape, dtype=None, name=None):
             >>> # example 1: attr shape is a list which doesn't contain Tensor.
             >>> out1 = paddle.standard_normal(shape=[2, 3])
             >>> print(out1)
-            [[-2.923464  ,  0.11934398, -0.51249987],  # random
-             [ 0.39632758,  0.08177969,  0.2692008 ]]  # random
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.33719197, -0.25688133, -0.42868865],
+             [-0.27804616, -0.25058213, -0.28209466]])
+            >>> # doctest: -SKIP
 
             >>> # example 2: attr shape is a list which contains Tensor.
             >>> dim1 = paddle.to_tensor(2, 'int64')
             >>> dim2 = paddle.to_tensor(3, 'int32')
             >>> out2 = paddle.standard_normal(shape=[dim1, dim2, 2])
             >>> print(out2)
-            [[[-2.8852394 , -0.25898588],  # random
-              [-0.47420555,  0.17683524],  # random
-              [-0.7989969 ,  0.00754541]],  # random
-             [[ 0.85201347,  0.32320443],  # random
-              [ 1.1399018 ,  0.48336947],  # random
-              [ 0.8086993 ,  0.6868893 ]]]  # random
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[2, 3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[ 0.81888396, -0.64831746],
+              [ 1.28911388, -1.88154876],
+              [-0.03271919, -0.32410008]],
+             [[-0.20224631,  0.46683890],
+              [ 1.91947734,  0.71657443],
+              [ 0.33410960, -0.64256823]]])
+            >>> # doctest: -SKIP
 
             >>> # example 3: attr shape is a Tensor, the data type must be int64 or int32.
             >>> shape_tensor = paddle.to_tensor([2, 3])
             >>> out3 = paddle.standard_normal(shape_tensor)
             >>> print(out3)
-            [[-2.878077 ,  0.17099959,  0.05111201]  # random
-             [-0.3761474, -1.044801  ,  1.1870178 ]]  # random
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[ 0.01182475, -0.44895259, -1.79227340],
+             [ 1.52022707, -0.83830303,  0.05261501]])
+            >>> # doctest: -SKIP
 
     """
     return gaussian(shape=shape, mean=0.0, std=1.0, dtype=dtype, name=name)
@@ -462,31 +487,39 @@ def randn(shape, dtype=None, name=None):
 
             >>> import paddle
 
-            >>> # doctest: +SKIP("Random output")
             >>> # example 1: attr shape is a list which doesn't contain Tensor.
             >>> out1 = paddle.randn(shape=[2, 3])
             >>> print(out1)
-            [[-2.923464  ,  0.11934398, -0.51249987],  # random
-             [ 0.39632758,  0.08177969,  0.2692008 ]]  # random
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.29270014, -0.02925120, -1.07807338],
+             [ 1.19966674, -0.46673676, -0.18050613]])
+            >>> # doctest: -SKIP
 
             >>> # example 2: attr shape is a list which contains Tensor.
             >>> dim1 = paddle.to_tensor(2, 'int64')
             >>> dim2 = paddle.to_tensor(3, 'int32')
             >>> out2 = paddle.randn(shape=[dim1, dim2, 2])
             >>> print(out2)
-            [[[-2.8852394 , -0.25898588],  # random
-              [-0.47420555,  0.17683524],  # random
-              [-0.7989969 ,  0.00754541]],  # random
-             [[ 0.85201347,  0.32320443],  # random
-              [ 1.1399018 ,  0.48336947],  # random
-              [ 0.8086993 ,  0.6868893 ]]]  # random
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[2, 3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[-0.26019713,  0.54994684],
+              [ 0.46403214, -1.41178775],
+              [-0.15682915, -0.26639181]],
+             [[ 0.01364388, -2.81676364],
+              [ 0.86996621,  0.07524570],
+              [ 0.21443737,  0.90938759]]])
+            >>> # doctest: -SKIP
 
             >>> # example 3: attr shape is a Tensor, the data type must be int64 or int32.
             >>> shape_tensor = paddle.to_tensor([2, 3])
             >>> out3 = paddle.randn(shape_tensor)
             >>> print(out3)
-            [[-2.878077 ,  0.17099959,  0.05111201]  # random
-             [-0.3761474, -1.044801  ,  1.1870178 ]]  # random
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[ 0.57575506, -1.60349274, -0.27124876],
+             [ 1.08381045,  0.81270242, -0.26763600]])
+            >>> # doctest: -SKIP
     """
     return standard_normal(shape, dtype, name)
 
@@ -527,22 +560,29 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
 
             >>> import paddle
 
-            >>> # doctest: +SKIP("Random output")
             >>> out1 = paddle.normal(shape=[2, 3])
             >>> print(out1)
-            [[ 0.17501129  0.32364586  1.561118  ]  # random
-             [-1.7232178   1.1545963  -0.76156676]]  # random
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.85107994, -0.85490644, -1.35941815],
+             [-0.55500370,  0.20964541,  2.24193954]])
+            >>> # doctest: -SKIP
 
             >>> mean_tensor = paddle.to_tensor([1.0, 2.0, 3.0])
             >>> out2 = paddle.normal(mean=mean_tensor)
             >>> print(out2)
-            [ 0.18644847 -1.19434458  3.93694787]  # random
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1.05411839, 3.71514320, 3.42665267])
+            >>> # doctest: -SKIP
 
             >>> std_tensor = paddle.to_tensor([1.0, 2.0, 3.0])
             >>> out3 = paddle.normal(mean=mean_tensor, std=std_tensor)
             >>> print(out3)
-            [1.00780561 3.78457445 5.81058198]  # random
-
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.48646951, 0.00815189, 3.74022293])
+            >>> # doctest: -SKIP
     """
     if not in_dynamic_mode():
         check_type(mean, 'mean', (int, float, Variable), 'normal')
@@ -630,14 +670,16 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
 
             >>> import paddle
 
-            >>> # doctest: +SKIP("Random output")
             >>> # example 1:
             >>> # attr shape is a list which doesn't contain Tensor.
             >>> out1 = paddle.uniform(shape=[3, 4])
             >>> print(out1)
-            [[ 0.84524226,  0.6921872,   0.56528175,  0.71690357], # random
-             [-0.34646994, -0.45116323, -0.09902662, -0.11397249], # random
-             [ 0.433519,    0.39483607, -0.8660099,   0.83664286]] # random
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[ 0.38170254, -0.47945309,  0.39794648, -0.94233936],
+             [-0.85296679, -0.76094693,  0.10565400,  0.59155810],
+             [ 0.11681318, -0.42144555, -0.81596589,  0.62113667]])
+            >>> # doctest: -SKIP
 
             >>> # example 2:
             >>> # attr shape is a list which contains Tensor.
@@ -645,16 +687,22 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
             >>> dim2 = paddle.to_tensor(3, 'int32')
             >>> out2 = paddle.uniform(shape=[dim1, dim2])
             >>> print(out2)
-            [[-0.9951253,   0.30757582, 0.9899647 ], # random
-             [ 0.5864527,   0.6607096,  -0.8886161]] # random
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.00294012, -0.07210171, -0.44236207],
+             [ 0.70089281,  0.21500075, -0.22084606]])
+            >>> # doctest: -SKIP
 
             >>> # example 3:
             >>> # attr shape is a Tensor, the data type must be int64 or int32.
             >>> shape_tensor = paddle.to_tensor([2, 3])
             >>> out3 = paddle.uniform(shape_tensor)
             >>> print(out3)
-            [[-0.8517412,  -0.4006908,   0.2551912 ], # random
-             [ 0.3364414,   0.36278176, -0.16085452]] # random
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.60801756,  0.32448411,  0.90269291],
+             [-0.66421294, -0.95218551, -0.51022208]])
+            >>> # doctest: -SKIP
     """
     supported_dtypes = ['float32', 'float64', 'float16', 'uint16']
     if dtype is None:
@@ -731,14 +779,15 @@ def uniform_(x, min=-1.0, max=1.0, seed=0, name=None):
 
             >>> import paddle
 
-            >>> # doctest: +SKIP("Random output")
             >>> # example:
             >>> x = paddle.ones(shape=[3, 4])
             >>> x.uniform_()
-            >>> print(x)
-            [[ 0.84524226,  0.6921872,   0.56528175,  0.71690357], # random
-             [-0.34646994, -0.45116323, -0.09902662, -0.11397249], # random
-             [ 0.433519,    0.39483607, -0.8660099,   0.83664286]] # random
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.50484276,  0.49580324,  0.33357990, -0.93924278],
+             [ 0.39779735,  0.87677515, -0.24377221,  0.06212139],
+             [-0.92499518, -0.96244860,  0.79210341, -0.78228098]])
+            >>> # doctest: -SKIP
     """
     return _C_ops.uniform_inplace_(x, min, max, seed, 0, 0, 1.0)
 
@@ -775,12 +824,15 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
 
             >>> import paddle
 
-            >>> # doctest: +SKIP("Random output")
             >>> # example 1:
             >>> # attr shape is a list which doesn't contain Tensor.
             >>> out1 = paddle.randint(low=-5, high=5, shape=[2, 3])
             >>> print(out1)
-            [0, -3, 2]  # random
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[-1,  4,  4],
+             [-2, -5, -2]])
+            >>> # doctest: -SKIP
 
             >>> # example 2:
             >>> # attr shape is a list which contains Tensor.
@@ -788,29 +840,41 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
             >>> dim2 = paddle.to_tensor(3, 'int32')
             >>> out2 = paddle.randint(low=-5, high=5, shape=[dim1, dim2])
             >>> print(out2)
-            [[0, -1, -3],  # random
-             [4, -2,  0]]  # random
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[-4, -4,  2],
+             [-3, -1, -5]])
+            >>> # doctest: -SKIP
 
             >>> # example 3:
             >>> # attr shape is a Tensor
             >>> shape_tensor = paddle.to_tensor([2, 3])
             >>> out3 = paddle.randint(low=-5, high=5, shape=shape_tensor)
             >>> print(out3)
-            [[ 2, -3, -1],    # random
-             [-3, -2,  1]])   # random
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[-1,  4, -3],
+             [ 1,  2, -1]])
+            >>> # doctest: -SKIP
 
             >>> # example 4:
             >>> # data type is int32
             >>> out4 = paddle.randint(low=-5, high=5, shape=[3], dtype='int32')
             >>> print(out4)
-            [-5, 4, -4]  # random
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[3], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [4, 4, 0])
+            >>> # doctest: -SKIP
 
             >>> # example 5:
             >>> # Input only one parameter
             >>> # low=0, high=10, shape=[1], dtype='int64'
             >>> out5 = paddle.randint(10)
             >>> print(out5)
-            [7]  # random
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [7])
+            >>> # doctest: -SKIP
 
     """
     if high is None:
@@ -892,9 +956,10 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
             >>> # dtype is None and the dtype of x is float32
             >>> x = paddle.zeros((1,2)).astype("float32")
             >>> out2 = paddle.randint_like(x, low=-5, high=5)
-            >>> # doctest: +SKIP("Random output")
             >>> print(out2)
-            [[0, -3]]  # random
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[1, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0., 0.]])
             >>> # doctest: -SKIP
             >>> print(out2.dtype)
             paddle.float32
@@ -902,89 +967,97 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
             >>> # example 2:
             >>> # dtype is None and the dtype of x is float64
             >>> x = paddle.zeros((1,2)).astype("float64")
-            >>> out3 = paddle.randint_like(x, low=-5, high=5)
+            >>> out2 = paddle.randint_like(x, low=-5, high=5)
+            >>> print(out2)
             >>> # doctest: +SKIP("Random output")
-            >>> print(out3)
-            [[0, -3]]  # random
+            Tensor(shape=[1, 2], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [[ 4., -5.]])
             >>> # doctest: -SKIP
-            >>> print(out3.dtype)
+            >>> print(out2.dtype)
             paddle.float64
 
             >>> # example 3:
             >>> # dtype is None and the dtype of x is int32
             >>> x = paddle.zeros((1,2)).astype("int32")
-            >>> out4 = paddle.randint_like(x, low=-5, high=5)
+            >>> out3 = paddle.randint_like(x, low=-5, high=5)
+            >>> print(out3)
             >>> # doctest: +SKIP("Random output")
-            >>> print(out4)
-            [[0, -3]]  # random
+            Tensor(shape=[1, 2], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [[ 0, -4]])
             >>> # doctest: -SKIP
-            >>> print(out4.dtype)
+            >>> print(out3.dtype)
             paddle.int32
 
             >>> # example 4:
             >>> # dtype is None and the dtype of x is int64
             >>> x = paddle.zeros((1,2)).astype("int64")
-            >>> out5 = paddle.randint_like(x, low=-5, high=5)
+            >>> out4 = paddle.randint_like(x, low=-5, high=5)
+            >>> print(out4)
             >>> # doctest: +SKIP("Random output")
-            >>> print(out5)
-            [[0, -3]]  # random
+            Tensor(shape=[1, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[ 4, -3]])
             >>> # doctest: -SKIP
-            >>> print(out5.dtype)
+            >>> print(out4.dtype)
             paddle.int64
 
             >>> # example 5:
             >>> # dtype is float64 and the dtype of x is float32
             >>> x = paddle.zeros((1,2)).astype("float32")
-            >>> out6 = paddle.randint_like(x, low=-5, high=5, dtype="float64")
+            >>> out5 = paddle.randint_like(x, low=-5, high=5, dtype="float64")
+            >>> print(out5)
             >>> # doctest: +SKIP("Random output")
-            >>> print(out6)
-            [[0, -1]]  # random
+            Tensor(shape=[1, 2], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [[3., 1.]])
             >>> # doctest: -SKIP
-            >>> print(out6.dtype)
+            >>> print(out5.dtype)
             paddle.float64
 
             >>> # example 6:
             >>> # dtype is bool and the dtype of x is float32
             >>> x = paddle.zeros((1,2)).astype("float32")
-            >>> out7 = paddle.randint_like(x, low=-5, high=5, dtype="bool")
+            >>> out6 = paddle.randint_like(x, low=-5, high=5, dtype="bool")
+            >>> print(out6)
             >>> # doctest: +SKIP("Random output")
-            >>> print(out7)
-            [[0, -1]]  # random
+            Tensor(shape=[1, 2], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [[False, True ]])
             >>> # doctest: -SKIP
-            >>> print(out7.dtype)
+            >>> print(out6.dtype)
             paddle.bool
 
             >>> # example 7:
             >>> # dtype is int32 and the dtype of x is float32
             >>> x = paddle.zeros((1,2)).astype("float32")
-            >>> out8 = paddle.randint_like(x, low=-5, high=5, dtype="int32")
+            >>> out7 = paddle.randint_like(x, low=-5, high=5, dtype="int32")
+            >>> print(out7)
             >>> # doctest: +SKIP("Random output")
-            >>> print(out8)
-            [[0, -1]]  # random
+            Tensor(shape=[1, 2], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [[-2, -2]])
             >>> # doctest: -SKIP
-            >>> print(out8.dtype)
+            >>> print(out7.dtype)
             paddle.int32
 
             >>> # example 8:
             >>> # dtype is int64 and the dtype of x is float32
             >>> x = paddle.zeros((1,2)).astype("float32")
-            >>> out9 = paddle.randint_like(x, low=-5, high=5, dtype="int64")
+            >>> out8 = paddle.randint_like(x, low=-5, high=5, dtype="int64")
+            >>> print(out8)
             >>> # doctest: +SKIP("Random output")
-            >>> print(out9)
-            [[0, -1]]  # random
+            Tensor(shape=[1, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[-5,  4]])
             >>> # doctest: -SKIP
-            >>> print(out9.dtype)
+            >>> print(out8.dtype)
             paddle.int64
 
             >>> # example 9:
             >>> # dtype is int64 and the dtype of x is bool
             >>> x = paddle.zeros((1,2)).astype("bool")
-            >>> out10 = paddle.randint_like(x, low=-5, high=5, dtype="int64")
+            >>> out9 = paddle.randint_like(x, low=-5, high=5, dtype="int64")
+            >>> print(out9)
             >>> # doctest: +SKIP("Random output")
-            >>> print(out10)
-            [[0, -1]]  # random
+            Tensor(shape=[1, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[ 1, -2]])
             >>> # doctest: -SKIP
-            >>> print(out10.dtype)
+            >>> print(out9.dtype)
             paddle.int64
 
     """
@@ -1077,12 +1150,19 @@ def randperm(n, dtype="int64", name=None):
 
             >>> import paddle
 
-            >>> # doctest: +SKIP("Random output")
             >>> out1 = paddle.randperm(5)
-            [4, 1, 2, 3, 0]  # random
+            >>> print(out1)
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[5], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [3, 0, 1, 4, 2])
+            >>> #doctest: -SKIP
 
             >>> out2 = paddle.randperm(7, 'int32')
-            [1, 6, 2, 0, 4, 3, 5]  # random
+            >>> print(out2)
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[7], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [3, 2, 0, 6, 5, 4, 1])
+            >>> #doctest: -SKIP
 
     """
     if not isinstance(dtype, core.VarDesc.VarType):
@@ -1135,28 +1215,39 @@ def rand(shape, dtype=None, name=None):
 
             >>> import paddle
 
-            >>> # doctest: +SKIP("Random output")
             >>> # example 1: attr shape is a list which doesn't contain Tensor.
             >>> out1 = paddle.rand(shape=[2, 3])
-            [[0.451152  , 0.55825245, 0.403311  ],  # random
-             [0.22550228, 0.22106001, 0.7877319 ]]  # random
+            >>> print(out1)
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.68532258, 0.69431782, 0.44835982],
+             [0.13204314, 0.48128194, 0.36574543]])
+            >>> # doctest: -SKIP
 
             >>> # example 2: attr shape is a list which contains Tensor.
             >>> dim1 = paddle.to_tensor(2, 'int64')
             >>> dim2 = paddle.to_tensor(3, 'int32')
             >>> out2 = paddle.rand(shape=[dim1, dim2, 2])
-            [[[0.8879919 , 0.25788337],  # random
-              [0.28826773, 0.9712097 ],  # random
-              [0.26438272, 0.01796806]],  # random
-             [[0.33633623, 0.28654453],  # random
-              [0.79109055, 0.7305809 ],  # random
-              [0.870881  , 0.2984597 ]]]  # random
+            >>> print(out2)
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[2, 3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[0.62102991, 0.45255184],
+              [0.81386960, 0.22463219],
+              [0.87946558, 0.28097662]],
+             [[0.36565998, 0.63203937],
+              [0.58640617, 0.92696166],
+              [0.85060406, 0.38138932]]])
+            >>> # doctest: -SKIP
 
             >>> # example 3: attr shape is a Tensor, the data type must be int64 or int32.
             >>> shape_tensor = paddle.to_tensor([2, 3])
             >>> out3 = paddle.rand(shape_tensor)
-           [[0.22920267, 0.841956  , 0.05981819],  # random
-            [0.4836288 , 0.24573246, 0.7516129 ]]  # random
+            >>> print(out3)
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.77650446, 0.12870903, 0.05153799],
+             [0.27029657, 0.03963696, 0.42487794]])
+            >>> # doctest: -SKIP
     """
     return uniform(shape, dtype, min=0.0, max=1.0, name=name)
 
@@ -1187,11 +1278,13 @@ def exponential_(x, lam=1.0, name=None):
             >>> paddle.set_device('cpu')
             >>> paddle.seed(100)
 
-            >>> # doctest: +SKIP("Random output")
             >>> x = paddle.empty([2,3])
             >>> x.exponential_()
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0.80643415, 0.23211166, 0.01169797],
-             [0.72520673, 0.45208144, 0.30234432]]
+             [0.72520679, 0.45208144, 0.30234432]])
+            >>> # doctest: -SKIP
 
     """
     if in_dynamic_mode():
