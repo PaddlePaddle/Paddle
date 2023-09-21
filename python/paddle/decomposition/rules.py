@@ -143,3 +143,11 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
     if is_amp:
         out = cast(out, dtype)
     return out, mean_, variance
+
+
+@register_decomp('pd_op.add_n')
+def sum_composite(x):
+    ans = 0
+    for xi in x:
+        ans += xi
+    return ans

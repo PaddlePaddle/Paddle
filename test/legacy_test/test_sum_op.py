@@ -58,7 +58,12 @@ class TestSumOp(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_cinn=True, check_new_ir=True)
+        self.check_output(
+            check_prim=True,
+            check_cinn=True,
+            check_prim_pir=True,
+            check_new_ir=True,
+        )
 
     def test_check_grad(self):
         self.check_grad(
@@ -301,7 +306,7 @@ class TestAFP16SumOp(TestSumOp):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
             self.check_output_with_place(
-                place, check_cinn=True, check_new_ir=True
+                place, check_cinn=True, check_prim_pir=True, check_new_ir=True
             )
 
     # FIXME: Because of the precision fp16, max_relative_error
@@ -363,7 +368,9 @@ class TestSumBF16Op(OpTest):
 
     def test_check_output(self):
         # new dynamic graph mode does not support unit16 type
-        self.check_output(check_dygraph=False, check_new_ir=True)
+        self.check_output(
+            check_dygraph=False, check_prim_pir=True, check_new_ir=True
+        )
 
     def test_check_grad(self):
         # new dynamic graph mode does not support unit16 type
