@@ -342,7 +342,7 @@ def get_value_for_bool_tensor(var, item):
     def idx_not_empty(var, item):
         from ..tensor import gather_nd
 
-        bool_2_idx = paddle.nonzero(item == True)
+        bool_2_idx = paddle.nonzero(item is True)
         return gather_nd(var, bool_2_idx)
 
     from paddle.static.nn import cond

@@ -46,7 +46,7 @@ from paddle.base.framework import _set_expected_place
 import logging
 import warnings
 
-### Dygraph DataLoader configs ###
+# Dygraph DataLoader configs ###
 import multiprocessing
 
 import queue
