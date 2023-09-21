@@ -480,9 +480,9 @@ void GroupNormGradKernel(const Context& dev_ctx,
     constexpr const int vec_size = 2;
     constexpr const int acc_size = 128;
 #ifdef __HIPCC__
-    int block_size_nhwc = std::max(std::min(256, C / 2), 64);
+    int block_size_nhwc = std::max(std::min(256, (C / vec_size)), 64);
 #else
-    int block_size_nhwc = std::min(1024, C / 2);
+    int block_size_nhwc = std::min(1024, (C / vec_size));
 #endif
     dim3 grid_nhwc(((imsize + acc_size - 1) / acc_size), x_dims[0], 1);
     dim3 block_nhwc(block_size_nhwc, 1, 1);
