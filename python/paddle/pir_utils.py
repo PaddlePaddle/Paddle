@@ -63,7 +63,7 @@ class IrGuard:
             paddle.framework.set_flags(
                 {"FLAGS_enable_new_ir_in_executor": True}
             )
-            paddle.ir.register_paddle_dialect()
+            paddle.pir.register_paddle_dialect()
             paddle.static.Program = paddle.pir.Program
             paddle.base.Program = paddle.pir.Program
             paddle.base.program_guard = paddle.pir.core.program_guard

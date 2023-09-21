@@ -3586,7 +3586,7 @@ class OpTest(unittest.TestCase):
                     cast_outputs = []
                     for cast_input in cast_inputs:
                         if isinstance(
-                            cast_input, paddle.base.libpaddle.ir.OpResult
+                            cast_input, paddle.base.libpaddle.pir.OpResult
                         ):
                             cast_outputs.append(
                                 paddle.cast(

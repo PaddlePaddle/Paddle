@@ -70,7 +70,7 @@ class TestVjpPrim(unittest.TestCase):
             out_grads = [[dout]]
             stop_gradients = [[False], [False]]
             divide_op = newir_program.global_block().ops[-1]
-            with paddle.ir.core.program_guard(newir_program):
+            with paddle.pir.core.program_guard(newir_program):
                 grad_outs = call_vjp(divide_op, out_grads, stop_gradients)
             reshape_op2 = newir_program.global_block().ops[-1]
             reshape_op1 = newir_program.global_block().ops[-8]
@@ -131,7 +131,7 @@ class TestVjpPrim(unittest.TestCase):
             out_grads = [[dout]]
             stop_gradients = [[False]]
             sum_op = newir_program.global_block().ops[-1]
-            with paddle.ir.core.program_guard(newir_program):
+            with paddle.pir.core.program_guard(newir_program):
                 grad_outs = call_vjp(sum_op, out_grads, stop_gradients)
             expand_op = newir_program.global_block().ops[-1]
             self.assertEqual(len(grad_outs), 1)

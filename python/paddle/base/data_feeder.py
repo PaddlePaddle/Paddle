@@ -17,7 +17,7 @@ import warnings
 
 import numpy as np
 
-from ..ir import OpResult
+from ..pir import OpResult
 from . import core
 from .framework import (
     Variable,
@@ -147,7 +147,6 @@ def convert_dtype(dtype):
 def check_variable_and_dtype(
     input, input_name, expected_dtype, op_name, extra_message=''
 ):
-
     if in_pir_mode():
         check_type(input, input_name, OpResult, op_name, extra_message)
     else:
