@@ -71,12 +71,6 @@ void FlashAttnUnpaddedKernel(
   const int64_t num_heads_k = k.dims()[1];
   const int64_t batch_size = cu_seqlens_q.numel() - 1;
 
-  // TODO(umiswing): add deterministic in fa2.
-  // int num_splits = 0;  // 0 for an internal heuristic, which is optimal
-  // if (FLAGS_cudnn_deterministic) {
-  //   num_splits = 1;
-  // }
-
   // TODO(umiswing): add shape check
 
   const DenseTensor* attn_mask_tensor = attn_mask.get_ptr();

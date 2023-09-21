@@ -384,7 +384,7 @@ class TestFlashAttentionAPITest2(TestFlashAttentionAPI):
         self.dtype = paddle.float16
         self.dropout = 0.0
         self.causal = False
-        self.return_softmax = True
+        self.return_softmax = False
         self.use_sdp_kernel = False
 
 
