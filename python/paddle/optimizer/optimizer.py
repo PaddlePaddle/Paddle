@@ -1251,7 +1251,7 @@ class Optimizer:
 
         Args:
             loss (Tensor): ``loss`` tensor to run optimizations.
-            startup_program (Program, optional): :ref:`api_paddle_Program` for
+            startup_program (Program, optional): :ref:`api_paddle_static_Program` for
                 initializing parameters in ``parameters``. The default value
                 is None, at this time :ref:`api_base_default_startup_program` will be used.
             parameters (list, optional): List of ``Tensor`` or ``Tensor.name`` to update
@@ -1612,7 +1612,7 @@ class Optimizer:
 
         Args:
             loss (Tensor): A ``Tensor`` containing the value to minimize.
-            startup_program (Program, optional): :ref:`api_paddle_Program` for
+            startup_program (Program, optional): :ref:`api_paddle_static_Program` for
                 initializing parameters in ``parameters``. The default value
                 is None, at this time :ref:`api_base_default_startup_program` will be used.
             parameters (list, optional): List of ``Tensor`` or ``Tensor.name`` to update
