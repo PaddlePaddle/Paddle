@@ -54,8 +54,7 @@ pir::OpResult get_parameter(const std::string& name) {
   return get_parameter_op.result(0);
 }
 
-
-void set_parameter(pir::Value& parameter, const std::string& name) {
+void set_parameter(const pir::Value& parameter, const std::string& name) {
   std::unique_ptr<pir::Parameter> param(
       new pir::Parameter(nullptr, 0, parameter.type()));
   APIBuilder::Instance().SetParameter(name, std::move(param));
