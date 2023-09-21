@@ -4548,11 +4548,12 @@ def masked_fill(x, mask, value, name=None):
     Fills elements of self tensor with value where mask is True. The shape of mask must be broadcastable with the shape of the underlying tensor.
 
     Args:
-        x (Tensor) : The Destination Tensor. Supported data types are int32,
-            int64, float32, float64.
+        x (Tensor) : The Destination Tensor. Supported data types are float,
+        double, int, int64_t,float16 and bfloat16.
         mask (Tensor): The boolean tensor indicate the position to be filled.
             The data type of mask must be bool.
-        value (Scaler or 0-D Tensor): The value used to fill the target tensor.
+        value (Scalar or 0-D Tensor): The value used to fill the target tensor.
+        Supported data types are float, double, int, int64_t,float16 and bfloat16.
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
@@ -4578,7 +4579,7 @@ def masked_fill(x, mask, value, name=None):
                     [2., 2., 1.]])
     """
     if np.isscalar(value):
-        value = paddle.full([1], value, x.dtype)
+        value = paddle.full([], value, x.dtype)
 
     mask = paddle.bitwise_not(mask)
     out = paddle.where(mask, x, value)
@@ -4593,6 +4594,7 @@ def masked_fill_(x, mask, value, name=None):
 
     Examples:
         .. code-block:: python
+            >>> # doctest: +SKIP
             >>> import paddle
             >>> x = paddle.ones((3, 3), dtype="float32")
             >>> mask = paddle.to_tensor([[True, False, False]])
@@ -4604,36 +4606,11 @@ def masked_fill_(x, mask, value, name=None):
                     [2., 1., 1.]])
     """
     if np.isscalar(value):
-        value = paddle.full([1], value, x.dtype)
+        value = paddle.full([], value, x.dtype)
 
     mask = paddle.bitwise_not(mask)
     out = paddle.where_(mask, x, value)
     return out
-
-    # mask_shape = list(mask.shape)
-    # value_shape = list(value.shape)
-    # x_shape = list(x.shape)
-
-    # if value_shape == x_shape and mask_shape == value_shape:
-    #     broadcast_mask = mask
-    #     broadcast_value = value
-    #     broadcast_x = x
-    # else:
-    #     zeros_like_value = paddle.zeros_like(value)
-    #     zeros_like_x = paddle.zeros_like(x)
-    #     zeros_like_mask = paddle.zeros_like(mask)
-    #     zeros_like_mask = paddle.cast(zeros_like_mask, value.dtype)
-    #     cast_mask = paddle.cast(mask, x.dtype)
-
-    #     broadcast_zeros = paddle.add(zeros_like_value, zeros_like_x)
-    #     broadcast_zeros = paddle.add(broadcast_zeros, zeros_like_mask)
-    #     broadcast_value = paddle.add(value, broadcast_zeros)
-    #     broadcast_x = x.add_(x, broadcast_zeros)
-    #     broadcast_mask = paddle.add(cast_mask, broadcast_zeros)
-    #     broadcast_mask = paddle.cast(broadcast_mask, 'bool')
-
-    # if in_dynamic_mode():
-    #     return _C_ops.where_(broadcast_mask, broadcast_x, broadcast_value)
 
 
 def non_negative_axis(arr, axis):

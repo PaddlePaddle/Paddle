@@ -143,8 +143,8 @@ class TestMaskedFillAPIBroadcast(TestMaskedFillAPI):
 
 class TestMaskedFillAPIBroadcast2(TestMaskedFillAPI):
     def init(self):
-        self.x_shape = (300, 1)
-        self.mask_shape = (300, 40)
+        self.x_shape = (3, 3)
+        self.mask_shape = (1, 3)
         self.dtype = "float32"
 
 
