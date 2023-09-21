@@ -22,6 +22,8 @@ from typing import Tuple
 
 def divisor(num, reverse=False):
     """Return the divisor of the given number."""
+    if num == 1:
+        return [num]
     results = set()
     i = 1
     mid = num // 2 + 1

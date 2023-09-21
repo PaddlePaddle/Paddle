@@ -529,7 +529,7 @@ def launch():
         auto_tuner = AutoTuner(tuner_cfg)
         cur_cfg = auto_tuner.search_once()
         auto_tuner.add_cfg(cur_cfg)
-
+        assert cur_cfg is not None, "No config can run."
         while cur_cfg:
             task_start_time = time.time()
             ctx = copy.deepcopy(raw_ctx)
