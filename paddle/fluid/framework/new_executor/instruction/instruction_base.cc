@@ -44,7 +44,11 @@ InstructionBase::InstructionBase(size_t id, const platform::Place& place) {
     type_ = OpFuncType::kGpuAsync;
   }
 
+  std::cout << "InstructionBase::InstructionBase() place: " << place
+            << std::endl;
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place);
+  std::cout << "InstructionBase::InstructionBase() dev_ctx_->GetPlace(): "
+            << dev_ctx_->GetPlace() << std::endl;
 }
 
 OpFuncType InstructionBase::KernelType() const { return type_; }
