@@ -561,7 +561,7 @@ class DygraphShardingOptimizerV2:
 
         logger.debug("sharding start sync parameters")
         with framework.no_grad():
-            params = zip(self._full_parameter_list, self._parameter_list)
+            params = zip(self._parameter_list, self._local_parameter_list)
             for full, slice in params:
                 gather_list = []
                 paddle.distributed.all_gather(
@@ -614,7 +614,7 @@ class DygraphShardingOptimizerV2:
             param_shape = param.shape
             param.flatten_()
             param_slice = paddle.zeros(shape=[shard_size], dtype=param.dtype)
-            param_slice[0 : slice_end - slice_end] = param[
+            param_slice[0 : (slice_end - slice_begin)] = param[
                 slice_begin:slice_end
             ]
             param_slice = EagerParamBase.from_tensor(param_slice)
@@ -629,7 +629,11 @@ class DygraphShardingOptimizerV2:
         padded_size = (
             (size + self._sharding_world_size - 1) // self._sharding_world_size
         ) * self._sharding_world_size
+
         with framework.no_grad():
+            # no need padding
+            if size == padded_size:
+                return t.reshape([-1])
             t_shape = t.shape
             t.flatten_()
             t_padded = paddle.zeros(shape=[padded_size], dtype=t.dtype)
@@ -643,10 +647,7 @@ class DygraphShardingOptimizerV2:
         padded_size = full_param._numel()
         assert padded_size >= size
         with framework.no_grad():
-            param_shape = param.shape
-            param.flatten_()
-            param[0:size] = full_param[0:size]
-            param.get_tensor()._set_dims(param_shape)
+            full_param._share_buffer_to(param)
 
     def _assign_slice_grad(self, param, slice_grad):
         # assign slice grad to parameter
@@ -685,7 +686,7 @@ class DygraphShardingOptimizerV2:
                 grad_var = param._grad_ivar()
                 if hasattr(param, "main_grad") and param.main_grad is not None:
                     grad_var = param.main_grad
-                params_grads.append((param, grad_var))
+                    params_grads.append((param, grad_var))
 
             self._apply_optimize(
                 loss=None,
@@ -709,13 +710,13 @@ class DygraphShardingOptimizerV2:
             inner_state["master_weights"] = {}
             for p in parameters:
                 for k, v in master.items():
-                    if p.name == k:
+                    if f"shard@{p.name}" == k:
                         v.name = self._inner_opt._gen_master_weight_var_name(p)
                         inner_state["master_weights"][k] = v
 
         for p in parameters:
             for k, v in state_dict.items():
-                if p.name in k:
+                if f"shard@{p.name}" in k:
                     inner_state[k] = v
 
         self._inner_opt.set_state_dict(inner_state)
