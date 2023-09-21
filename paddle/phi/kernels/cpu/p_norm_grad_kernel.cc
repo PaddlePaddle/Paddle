@@ -55,7 +55,6 @@ struct PNormGradFunctor {
                   bool keepdim UNUSED,
                   bool asvector,
                   DenseTensor* x_grad) {
-    std::cout << "run PNormGradKernel" << std::endl;
     auto* in_x = &x;
     auto* in_norm = &out;
     auto* in_norm_dy = &out_grad;
@@ -117,7 +116,6 @@ struct PNormGradFunctor<ComplexType<T>, Context> {
                   bool keepdim UNUSED,
                   bool asvector,
                   DenseTensor* x_grad) {
-    std::cout << "run PNormGradKernel" << std::endl;
     auto* in_x = &x;
     auto* in_norm = &out;
     auto* in_norm_dy = &out_grad;

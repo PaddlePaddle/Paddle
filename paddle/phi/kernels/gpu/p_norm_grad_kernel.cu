@@ -59,7 +59,7 @@ struct AbsMaxAndMinGradFunctor<ComplexType<T>> {
                   const Dim& dim,
                   int size) {
     dx->device(place) =
-        dy->broadcast(dim) * (*x).conjugate() / xr.abs() *
+        dy->broadcast(dim) * (*x).conjugate() / x.abs() *
         ((*x).abs() == y->broadcast(dim)).template cast<ComplexType<T>>();
   }
 };
@@ -111,7 +111,7 @@ struct PNormGradFunctor<ComplexType<T>> {
                   const Dim& dim,
                   int size) {
     dx->device(place) =
-        (*x).abs().pow(this->porder) * (*x).conjugate() / xr.abs() *
+        (*x).abs().pow(this->porder) * (*x).conjugate() / x.abs() *
         dy->broadcast(dim) * dy->broadcast(dim) *
         (*y + y->constant(eps)).pow(-this->porder).broadcast(dim);
   }
