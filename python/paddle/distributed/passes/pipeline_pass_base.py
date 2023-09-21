@@ -14,6 +14,7 @@
 
 import logging
 
+import paddle
 from paddle.base import core
 from paddle.distributed.auto_parallel.static.utils import get_logger
 
@@ -76,7 +77,14 @@ class PipelinePassBase(PassBase):
 
         type_to_program = {}
         for type, sub_program in zip(type_list, sub_program_list):
-            type_to_program[type] = sub_program.desc
+            if paddle.framework.get_flags("FLAGS_enable_new_ir_in_executor")[
+                'FLAGS_enable_new_ir_in_executor'
+            ]:
+                type_to_program[type] = paddle.ir.translate_to_new_ir(
+                    sub_program.desc
+                )
+            else:
+                type_to_program[type] = sub_program.desc
 
         plan = core.Plan(job_list, type_to_program)
         context.set_attr("plan", plan)
