@@ -209,7 +209,7 @@ bool IsSubBlockDependent(const proto::OpDesc& op_desc,
                          int parent_block_id) {
   for (auto& var : op_desc.outputs()) {
     for (auto& argu : var.arguments()) {
-      if (((HasSubBlock(op_desc) || HasSubBlocks(op_desc)) &&
+      if ((HasSubBlock(op_desc) || HasSubBlocks(op_desc) ||
            parent_block_id != -1) &&
           feed_vars.count(argu) != 0) {
         return true;
