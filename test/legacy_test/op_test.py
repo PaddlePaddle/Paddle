@@ -1340,8 +1340,11 @@ class OpTest(unittest.TestCase):
 
                 if len(fetch_list) == 0:
                     if isinstance(ret_tuple, (tuple, list)):
-                        for var in ret_tuple:
+                        assert len(ret_tuple) == len(outputs_sig)
+                        for var, output_name in zip(ret_tuple, outputs_sig):
                             if no_check_set is not None and var in no_check_set:
+                                continue
+                            if output_name not in self.outputs.keys():
                                 continue
                             if isinstance(var, list):
                                 for v in var:
@@ -1363,6 +1366,9 @@ class OpTest(unittest.TestCase):
                     ir_program, feed=feed, fetch_list=[fetch_list]
                 )
 
+                outputs_sig = [
+                    name for name in outputs_sig if name in self.outputs.keys()
+                ]
                 result = construct_output_dict_by_kernel_sig(outs, outputs_sig)
                 if hasattr(self, "python_out_sig_sub_name"):
                     for key in self.python_out_sig_sub_name.keys():

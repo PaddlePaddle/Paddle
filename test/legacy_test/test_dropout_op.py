@@ -191,7 +191,7 @@ class TestDropoutOp4(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_new_ir=False)
+        self.check_output(check_prim=True, check_new_ir=True)
 
 
 @skip_check_grad_ci(reason="For inference, check_grad is not required.")
@@ -208,7 +208,7 @@ class TestDropoutOp5(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_new_ir=False)
+        self.check_output(check_prim=True, check_new_ir=True)
 
 
 class TestDropoutOp6(TestDropoutOp):
@@ -270,7 +270,7 @@ class TestDropoutOp8(OpTest):
         self.outputs = {'Out': self.inputs['X']}
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_new_ir=False)
+        self.check_output(check_prim=True, check_new_ir=True)
 
 
 @skip_check_grad_ci(reason="For inference, check_grad is not required.")
@@ -289,7 +289,7 @@ class TestDropoutOp9(OpTest):
         self.outputs = {'Out': self.inputs['X']}
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_new_ir=False)
+        self.check_output(check_prim=True, check_new_ir=True)
 
 
 class TestDropoutOpWithSeed(OpTest):
