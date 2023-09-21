@@ -37,7 +37,16 @@ NCCLCommTask::NCCLCommTask(const phi::Place& place,
                            gpuStream_t stream,
                            CommType comm_type,
                            int64_t timeout)
-    : CommTask("NCCL", place, rank, size, gid, seq, numel, nccl_comm, stream, comm_type),
+    : CommTask("NCCL",
+               place,
+               rank,
+               size,
+               gid,
+               seq,
+               numel,
+               nccl_comm,
+               stream,
+               comm_type),
       sync_op_(sync_op),
       use_calc_stream_(use_calc_stream) {
   start_trace_updated_ = false;
@@ -164,15 +173,13 @@ std::string NCCLCommTask::GetTraceMsg() {
   auto current_timepoint = std::chrono::steady_clock::now();
   auto time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
       current_timepoint - start_time_);
-  return "op:" + CommTypeToString(comm_type_) +
-         ",gid:" + std::to_string(gid_) +
+  return "op:" + CommTypeToString(comm_type_) + ",gid:" + std::to_string(gid_) +
          ",seq:" + std::to_string(seq_) +
          ",started:" + std::to_string(IsStarted()) +
          ",completed:" + std::to_string(IsCompleted()) +
          ",global_rank:" + std::to_string(global_rank_) +
          ",local_rank:" + std::to_string(rank_) +
-         ",size:" + std::to_string(size_) +
-         ",numel:" + std::to_string(numel_) +
+         ",size:" + std::to_string(size_) + ",numel:" + std::to_string(numel_) +
          ",sync_op:" + std::to_string(sync_op_) +
          ",use_calc_stream:" + std::to_string(use_calc_stream_) +
          ",timeout:" + std::to_string(timeout_.count()) +

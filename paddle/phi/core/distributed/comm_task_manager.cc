@@ -85,18 +85,22 @@ void CommTaskManager::CommTaskLoop() {
     for (auto iter = comm_task_list_.begin(); iter != comm_task_list_.end();) {
       auto task = *iter;
       if (task->IsTimeout()) {
-          if (!task->IsStarted()) {
-            LOG(ERROR) << "Find timeout init but not start task: " << task->GetTraceMsg() << ",comm:" << task->nccl_comm() << ",stream:" << task->nccl_stream();
-            std::string task_key = task->UniqueKey();
-            init_comm_task_map_[task_key] = task;
-          } else if (!task->IsCompleted()) {
-            LOG(ERROR) << "Find timeout start but not finish task: " << task->GetTraceMsg() << ",comm:" << task->nccl_comm() << ",stream:" << task->nccl_stream();
-            std::string task_key = task->UniqueKey();
-            start_comm_task_map_[task_key] = task;
-          }
-          iter = comm_task_list_.erase(iter);
+        if (!task->IsStarted()) {
+          LOG(ERROR) << "Find timeout init but not start task: "
+                     << task->GetTraceMsg() << ",comm:" << task->nccl_comm()
+                     << ",stream:" << task->nccl_stream();
+          std::string task_key = task->UniqueKey();
+          init_comm_task_map_[task_key] = task;
+        } else if (!task->IsCompleted()) {
+          LOG(ERROR) << "Find timeout start but not finish task: "
+                     << task->GetTraceMsg() << ",comm:" << task->nccl_comm()
+                     << ",stream:" << task->nccl_stream();
+          std::string task_key = task->UniqueKey();
+          start_comm_task_map_[task_key] = task;
+        }
+        iter = comm_task_list_.erase(iter);
       } else {
-          ++iter;
+        ++iter;
       }
     }
 
@@ -124,7 +128,8 @@ void CommTaskManager::CommTaskLoop() {
       }
     }
 
-    if (comm_task_list_.empty() && init_comm_task_map_.empty() && start_comm_task_map_.empty()) {
+    if (comm_task_list_.empty() && init_comm_task_map_.empty() &&
+        start_comm_task_map_.empty()) {
       done = true;
     }
   }

@@ -85,12 +85,8 @@ class CommTask {
   std::shared_ptr<Store> GetStore() { return store_; }
   void SetStore(std::shared_ptr<Store> store) { store_ = store; }
 
-  ncclComm_t nccl_comm() {
-      return nccl_comm_;
-  }
-  gpuStream_t nccl_stream() {
-      return nccl_stream_;
-  }
+  ncclComm_t nccl_comm() { return nccl_comm_; }
+  gpuStream_t nccl_stream() { return nccl_stream_; }
 
   virtual std::string GetTraceMsg() {
     PADDLE_THROW(
