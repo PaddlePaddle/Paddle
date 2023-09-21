@@ -633,7 +633,7 @@ void IRCudaScheduleBlockShuffleReduce(ir::IRSchedule &ir_sch,  // NOLINT
     // simplify reshape index
     auto hand_write_simplify = [](std::vector<ir::Expr> loops, ir::Expr block) {
       // check exist select.
-      auto find_select = ir::CollectIRNodesInOrder(
+      auto find_select = ir::ir_utils::CollectIRNodesInOrder(
           block, [&](const Expr *x) { return x->As<ir::Select>(); });
       if (find_select.size() > 0) {
         return;
@@ -667,7 +667,7 @@ void IRCudaScheduleBlockShuffleReduce(ir::IRSchedule &ir_sch,  // NOLINT
         index = index + ir::Expr(schedule_block->iter_vars[idx]) * stride;
       }
 
-      auto exprs = ir::CollectIRNodesInOrder(
+      auto exprs = ir::ir_utils::CollectIRNodesInOrder(
           block, [&](const Expr *x) { return x->As<ir::Load>(); });
       CHECK_EQ(exprs.size(), 1);
       auto load = exprs.front().As<ir::Load>();
@@ -709,7 +709,7 @@ void IRCudaScheduleBlockShuffleReduce(ir::IRSchedule &ir_sch,  // NOLINT
       break;
     }
 
-    auto exprs = ir::CollectIRNodesInOrder(
+    auto exprs = ir::ir_utils::CollectIRNodesInOrder(
         block, [&](const Expr *x) { return x->As<ir::Load>(); });
     for (auto expr : exprs) {
       auto load = expr.As<ir::Load>();

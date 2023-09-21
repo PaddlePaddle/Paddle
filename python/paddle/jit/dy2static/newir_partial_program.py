@@ -645,11 +645,15 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _append_backward_desc(self, main_program):
         program = main_program
-        # if self._hooker:
-        # program = self._hooker.before_append_backward(program)
+
         targets = list(
             filter(lambda x: isinstance(x, OpResult), self._outputs.tolist())
         )
+        if self._hooker:
+            program, targets = self._hooker.before_append_backward(
+                program, targets
+            )
+            self._outputs = NestSequence(targets, need_check=True)
         inputs = list(
             filter(lambda x: isinstance(x, OpResult), self._inputs.tolist())
         )
@@ -681,11 +685,15 @@ class PartialProgramLayer:
                     forward_outputs_grads.append(opres)
                     not_stop_gradient_num += 1
 
-            # TODO: add later.
-            # if self._hooker:
-            # program, start_idx = self._hooker.after_append_backward(
-            # program, start_idx
-            # )
+            if self._hooker:
+                (
+                    program,
+                    forward_end_idx,
+                    targets,
+                ) = self._hooker.after_append_backward(
+                    program, targets, forward_end_idx
+                )
+                self._outputs = NestSequence(targets, need_check=True)
 
             # TODO: add later
             # self.prepare_gradient_aggregation(

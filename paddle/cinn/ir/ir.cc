@@ -535,7 +535,7 @@ std::vector<const Expr *> PolyFor::expr_fields() const {
 }
 
 Expr PolyFor::ExtractExtent() const {
-  auto nodes = CollectIRNodes(condition, [&](const Expr *e) {
+  auto nodes = ir::ir_utils::CollectIRNodes(condition, [&](const Expr *e) {
     return e->As<NE>() ||   //
            e->As<EQ>() ||   //
            e->As<Min>() ||  //
