@@ -56,7 +56,7 @@ std::string CodeGenCUDA_Dev::Compile(const ir::Module &module, bool for_nvrtc) {
 
 void CodeGenCUDA_Dev::Compile(const ir::Module &module,
                               const Outputs &outputs) {
-  ir::IrVerify(Expr(module));
+  ir::ir_utils::IrVerify(Expr(module));
 
   CodeGenC::inline_builtin_codes_ = false;
   if (!outputs.c_header_name.empty()) {
