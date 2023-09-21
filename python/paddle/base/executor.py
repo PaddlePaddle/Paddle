@@ -12,36 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import logging
 import os
 import sys
 import warnings
+from functools import lru_cache
+
 import numpy as np
 
-from . import set_flags, get_flags
-from .framework import Program, default_main_program
-
 from ..ir import OpResult
-from .wrapped_decorator import signature_safe_contextmanager
+from . import compiler, core, framework, get_flags, set_flags, unique_name
 from .data_feeder import convert_dtype
-from .framework import Variable, Operator, in_pir_mode
-
 from .framework import (
-    convert_np_dtype_to_dtype_,
+    Operator,
+    Program,
+    Variable,
     _apply_pass,
+    convert_np_dtype_to_dtype_,
+    default_main_program,
+    in_pir_mode,
     paddle_type_to_proto_type,
 )
-
-from . import core
-from . import unique_name
-from . import compiler
-from .trainer_factory import TrainerFactory
-from .trainer_factory import FetchHandlerMonitor
-import copy
-from . import framework
 from .incubate.checkpoint import auto_checkpoint as acp
-
-from functools import lru_cache
+from .trainer_factory import FetchHandlerMonitor, TrainerFactory
+from .wrapped_decorator import signature_safe_contextmanager
 
 __all__ = ['Executor', 'global_scope', 'scope_guard']
 
@@ -614,8 +609,8 @@ def _to_name_str(var):
 
 
 def _prepare_fleet_executor():
-    from ..distributed.fleet.proto import fleet_executor_desc_pb2
     from ..distributed.backup_env import getenv_or_backup
+    from ..distributed.fleet.proto import fleet_executor_desc_pb2
 
     trainer_endpoints_str = getenv_or_backup("PADDLE_TRAINER_ENDPOINTS", "")
     trainer_endpoints = trainer_endpoints_str.split(',')
@@ -945,7 +940,7 @@ class _ExecutorCache:
             # print(f"Program after convert:\n {inner_program}", flush=True)
         else:
             build_strategy = None
-            from paddle.incubate.autograd import prim_enabled, prim2orig
+            from paddle.incubate.autograd import prim2orig, prim_enabled
 
             if prim_enabled() and program == default_main_program():
                 prim2orig()
