@@ -156,7 +156,8 @@ class Op : public OpBase {
     static_assert(HasNoDataMembers(),
                   "Op class shouldn't define new data members");
     op->dyn_cast<ConcreteOp>().Verify();
-    (VerifyTraitOrInterface<TraitOrInterface>::call(op), ...);
+    (void)std::initializer_list<int>{
+        0, (VerifyTraitOrInterface<TraitOrInterface>::call(op), 0)...};
   }
 };
 
