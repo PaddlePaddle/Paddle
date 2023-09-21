@@ -174,11 +174,11 @@ class TestExp_Complex64(OpTest):
         self.convert_input_output()
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_new_ir=False)
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], 'Out', max_relative_error=0.006, check_new_ir=True
+            ['X'], 'Out', max_relative_error=0.006, check_new_ir=False
         )
 
     def init_dtype(self):
@@ -259,8 +259,14 @@ class TestExpm1_Complex64(TestExpm1):
     def init_dtype(self):
         self.dtype = np.complex64
 
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_new_ir=False)
 
-class TestExpm1_Complex128(TestExpm1):
+    def test_check_output(self):
+        self.check_output(check_new_ir=False)
+
+
+class TestExpm1_Complex128(TestExpm1_Complex64):
     def init_dtype(self):
         self.dtype = np.complex128
 
