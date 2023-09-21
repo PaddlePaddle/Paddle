@@ -60,15 +60,11 @@ class IRContext {
     CHECK(data_.get()) << "IrContext holds null";
     auto* ctx_node = data_.get()->safe_as<TIRContextNode>();
     if (!ctx_node) {
-      // TODO(6clc):
       std::stringstream err_msg;
       err_msg << "TypeConvertError: convert " << data_.get()->type_info()
               << " to " << TIRContextNode::__type_info__;
 
       CINN_THROW(err_msg.str());
-      // CINN_THROW(...) << "TypeConvertError: convert " <<
-      // data_.get()->type_info()
-      //            << " to " << TIRContextNode::__type_info__;
     }
     return ctx_node;
   }

@@ -27,9 +27,9 @@ namespace ir_utils {
 class IrEqualVisitor : public IRVisitorRequireReImpl<bool, const Expr*> {
  public:
   explicit IrEqualVisitor(bool allow_name_suffix_diff = false,
-                          bool only_compare_sturcture = false)
+                          bool only_compare_structure = false)
       : allow_name_suffix_diff_(allow_name_suffix_diff),
-        only_compare_sturcture_(only_compare_sturcture) {}
+        only_compare_structure_(only_compare_structure) {}
   // Return true if they are euqal, otherwise false;
   bool Compare(const Expr& lhs, const Expr& rhs);
 
@@ -47,7 +47,7 @@ class IrEqualVisitor : public IRVisitorRequireReImpl<bool, const Expr*> {
   // whether allowing name suffix ends with "_[0-9]+" different
   bool allow_name_suffix_diff_ = false;
   // not compare name field of Expr
-  bool only_compare_sturcture_ = false;
+  bool only_compare_structure_ = false;
 };
 
 bool IRCompare(const Expr& lhs,

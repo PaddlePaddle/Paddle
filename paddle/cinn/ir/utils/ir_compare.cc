@@ -29,7 +29,7 @@ bool IrEqualVisitor::Compare(const Expr& lhs, const Expr& rhs) {
     return true;
   }
 
-  if (only_compare_sturcture_ && !lhs.defined() && !rhs.defined()) {
+  if (only_compare_structure_ && !lhs.defined() && !rhs.defined()) {
     return true;
   }
 
@@ -188,7 +188,7 @@ bool IrEqualVisitor::Visit(const Call* lhs, const Expr* other) {
               Compare(lhs->write_args, rhs->write_args) &&
               Compare(lhs->attrs, rhs->attrs) &&
               lhs->call_type == rhs->call_type;
-  if (only_compare_sturcture_) {
+  if (only_compare_structure_) {
     return flag;
   }
   return lhs->name == rhs->name && flag;
@@ -200,7 +200,7 @@ bool IrEqualVisitor::Visit(const _Var_* lhs, const Expr* other) {
   bool flag = Compare(lhs->lower_bound, rhs->lower_bound) &&
               Compare(lhs->upper_bound, rhs->upper_bound) &&
               lhs->tag == rhs->tag;
-  if (only_compare_sturcture_) {
+  if (only_compare_structure_) {
     return flag;
   }
   return lhs->name == rhs->name && flag;
@@ -239,7 +239,7 @@ bool IrEqualVisitor::Visit(const _Buffer_* lhs, const Expr* other) {
       lhs->offset_factor == rhs->offset_factor && lhs->target == rhs->target &&
       lhs->data_alignment == rhs->data_alignment &&
       lhs->memory_type == rhs->memory_type && lhs->dtype == rhs->dtype;
-  if (only_compare_sturcture_) {
+  if (only_compare_structure_) {
     return flag;
   }
   return flag && lhs->name == rhs->name;
@@ -248,7 +248,7 @@ bool IrEqualVisitor::Visit(const _Buffer_* lhs, const Expr* other) {
 bool IrEqualVisitor::Visit(const _Tensor_* lhs, const Expr* other) {
   auto* rhs = other->As<_Tensor_>();
   bool flag = Compare(lhs->shape, rhs->shape);
-  if (only_compare_sturcture_) {
+  if (only_compare_structure_) {
     return flag;
   }
   return flag && Compare(lhs->name, rhs->name);
@@ -304,7 +304,7 @@ bool IrEqualVisitor::Visit(const _Module_* lhs, const Expr* other) {
               Compare(lhs->functions, rhs->functions) &&
               Compare(lhs->submodules, rhs->submodules);
 
-  if (only_compare_sturcture_) {
+  if (only_compare_structure_) {
     return flag;
   }
 
@@ -375,7 +375,7 @@ bool IrEqualVisitor::Visit(const ScheduleBlock* lhs, const Expr* other) {
               Compare(lhs->write_buffers, rhs->write_buffers) &&
               Compare(lhs->body, rhs->body);
 
-  if (only_compare_sturcture_) {
+  if (only_compare_structure_) {
     return flag;
   }
   return flag && Compare(lhs->attrs, rhs->attrs) &&
