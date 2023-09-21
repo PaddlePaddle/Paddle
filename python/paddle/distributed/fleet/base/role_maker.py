@@ -497,7 +497,6 @@ class RoleMakerBase:
 
     def _all_gather(self, input, comm_world="worker"):
         print("warning: RoleMakerBase does not have all gather worker.")
-        return None
 
     def _all_reduce(self, input, mode="sum", comm_world="worker"):
         """
@@ -507,7 +506,6 @@ class RoleMakerBase:
             mode(str): "sum" or "min" or "max"
         """
         print("warning: RoleMakerBase does not have all reduce worker.")
-        return None
 
     def _barrier(self, comm_world):
         """

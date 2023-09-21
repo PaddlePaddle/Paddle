@@ -51,7 +51,7 @@ class IrParser {
 
   std::vector<std::string> ParseValueList();
 
-  std::vector<Value> ParseOprandList();
+  std::vector<Value> ParseOperandList();
 
   AttributeMap ParseAttributeMap();
 

@@ -15,10 +15,15 @@
 import numpy
 
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, ir
 from paddle.base.layer_helper import LayerHelper
 from paddle.common_ops_import import Variable, default_main_program
-from paddle.framework import core, in_dynamic_mode, in_pir_mode
+from paddle.framework import (
+    core,
+    in_dynamic_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+)
 from paddle.tensor.creation import full
 
 from ...base.data_feeder import (
@@ -64,19 +69,19 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
     Parameters:
         x(Tensor):              4-D Tensor, input tensor of format [N, C, H, W],
                                   data type can be float32 or float64
-        kernel_sizes(int|list):   The size of convolution kernel, should be [k_h, k_w]
+        kernel_sizes(int|list|tuple):   The size of convolution kernel, should be [k_h, k_w]
                                   or an integer k treated as [k, k].
-        strides(int|list, optional):        The strides, should be [stride_h, stride_w]
+        strides(int|list|tuple, optional):        The strides, should be [stride_h, stride_w]
                                   or an integer stride treated as [sride, stride].
                                   For default, strides will be [1, 1].
-        paddings(int|list, optional):       The paddings of each dimension, should be
+        paddings(int|list|tuple, optional):       The paddings of each dimension, should be
                                   [padding_top, padding_left, padding_bottom, padding_right]
                                   or [padding_h, padding_w] or an integer padding.
                                   If [padding_h, padding_w] was given, it will expanded to
                                   [padding_h, padding_w, padding_h, padding_w]. If an integer
                                   padding was given, [padding, padding, padding, padding] will
                                   be used. For default, paddings will be [0, 0, 0, 0]
-        dilations(int|list, optional):      the dilations of convolution kernel, should be
+        dilations(int|list|tuple, optional):      the dilations of convolution kernel, should be
                                   [dilation_h, dilation_w], or an integer dilation treated as
                                   [dilation, dilation]. For default, it will be [1, 1].
         name(str, optional): The default value is None.
@@ -111,38 +116,42 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
     if isinstance(kernel_sizes, int):
         kernel_sizes = [kernel_sizes, kernel_sizes]
     else:
-        assert isinstance(kernel_sizes, list) and (
+        assert isinstance(kernel_sizes, (list, tuple)) and (
             len(kernel_sizes) == 2
-        ), "kernel_sizes should either be an integer or a list of two integers"
+        ), "kernel_sizes should either be an integer or a list/tuple of two integers"
+        kernel_sizes = list(kernel_sizes)
 
     if isinstance(strides, int):
         strides = [strides, strides]
     else:
-        assert isinstance(strides, list) and (
+        assert isinstance(strides, (list, tuple)) and (
             len(strides) == 2
-        ), "strides should either be an integer or a list of two integers"
+        ), "strides should either be an integer or a list/tuple of two integers"
+        strides = list(strides)
 
     if isinstance(dilations, int):
         dilations = [dilations, dilations]
     else:
-        assert isinstance(dilations, list) and (
+        assert isinstance(dilations, (list, tuple)) and (
             len(dilations) == 2
-        ), "dilations should either be an integer or a list of two integers"
+        ), "dilations should either be an integer or a list/tuple of two integers"
+        dilations = list(dilations)
 
     if isinstance(paddings, int):
         paddings = [paddings] * 4
-    elif isinstance(paddings, list):
+    elif isinstance(paddings, (list, tuple)):
+        paddings = list(paddings)
         if len(paddings) == 2:
             paddings = paddings * 2
         elif len(paddings) == 4:
             pass
         else:
             raise ValueError(
-                "paddings should either be an integer or a list of 2 or 4 integers"
+                "paddings should either be an integer or a list/tuple of 2 or 4 integers"
             )
     else:
         raise ValueError(
-            "Unexpected type of paddings, it should be either an integer or a list"
+            "Unexpected type of paddings, it should be either an integer or a list/tuple"
             "of 2 or 4 integers"
         )
 
@@ -1090,7 +1099,7 @@ def dropout(
             [[0., 0., 6.],
              [0., 0., 0.]])
     """
-    if not isinstance(p, (float, int, Variable)):
+    if not isinstance(p, (float, int, Variable, ir.OpResult)):
         raise TypeError("p argument should be a number or Variable")
 
     if isinstance(p, (int, float)):
@@ -1112,7 +1121,7 @@ def dropout(
             'downgrade_in_infer' if mode == 'downscale_in_infer' else mode
         )  # semantic transfer
 
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             if default_main_program().random_seed != 0:
                 seed = default_main_program().random_seed
 
@@ -1176,7 +1185,7 @@ def dropout(
         dtype = x.dtype
         keep_prob = 1 - p
         if training:
-            if in_dynamic_mode() and p == 1.0:
+            if in_dynamic_or_pir_mode() and p == 1.0:
                 return paddle.scale(x, scale=0.0)
 
             scale_input = (
@@ -1187,7 +1196,7 @@ def dropout(
 
             # get mask shape
             input_shape = x.shape
-            if not in_dynamic_mode():
+            if not in_dynamic_or_pir_mode():
                 input_shape_tensor = paddle.shape(x)
             drop_axes = [axis] if isinstance(axis, int) else list(axis)
             if min(drop_axes) < 0 or max(drop_axes) > len(input_shape) - 1:
@@ -1203,7 +1212,7 @@ def dropout(
                     )
                 )
             mask_shape = [1] * len(input_shape)
-            if not in_dynamic_mode():
+            if not in_dynamic_or_pir_mode():
                 for i in drop_axes:
                     mask_shape[i] = input_shape_tensor[i]
             else:

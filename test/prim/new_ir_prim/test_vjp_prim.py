@@ -22,6 +22,7 @@ paddle.enable_static()
 
 
 def get_ir_divide_program():
+    paddle.enable_static()
     main_program, start_program = (
         paddle.static.Program(),
         paddle.static.Program(),
@@ -43,6 +44,7 @@ def get_ir_divide_program():
 
 
 def get_ir_sum_program():
+    paddle.enable_static()
     main_program, start_program = (
         paddle.static.Program(),
         paddle.static.Program(),
@@ -63,46 +65,45 @@ class TestVjpPrim(unittest.TestCase):
     def test_divide_grad_prim_case1(self):
         newir_program = get_ir_divide_program()
         paddle.framework.core._set_prim_backward_enabled(True)
-        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
-        dout = newir_program.global_block().ops[-2].result(0)
-        out_grads = [[dout]]
-        stop_gradients = [[False], [False]]
-        divide_op = newir_program.global_block().ops[-1]
-        with paddle.pir.core.program_guard(newir_program):
-            grad_outs = call_vjp(divide_op, out_grads, stop_gradients)
-        reshape_op2 = newir_program.global_block().ops[-1]
-        reshape_op1 = newir_program.global_block().ops[-8]
-        self.assertEqual(len(grad_outs), 2)
-        self.assertEqual(len(newir_program.global_block().ops), 21)
-        self.assertEqual(reshape_op2.result(0), grad_outs[0][0])
-        self.assertEqual(reshape_op1.result(0), grad_outs[1][0])
-        all_op_names = [
-            "pd_op.full",
-            "pd_op.full",
-            "pd_op.full",
-            "pd_op.divide",
-            "pd_op.full",
-            "pd_op.elementwise_pow",
-            "pd_op.divide",
-            "pd_op.full",
-            "pd_op.scale",
-            "pd_op.multiply",
-            "pd_op.full_int_array",
-            "pd_op.sum",
-            "pd_op.full_int_array",
-            "pd_op.reshape",
-            "pd_op.full",
-            "pd_op.divide",
-            "pd_op.multiply",
-            "pd_op.full_int_array",
-            "pd_op.sum",
-            "pd_op.full_int_array",
-            "pd_op.reshape",
-        ]
-        for idx, op in enumerate(newir_program.global_block().ops):
-            self.assertEqual(op.name(), all_op_names[idx])
-        paddle.framework.core._set_prim_backward_enabled(False)
-        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
+        with paddle.pir_utils.IrGuard():
+            dout = newir_program.global_block().ops[-2].result(0)
+            out_grads = [[dout]]
+            stop_gradients = [[False], [False]]
+            divide_op = newir_program.global_block().ops[-1]
+            with paddle.ir.core.program_guard(newir_program):
+                grad_outs = call_vjp(divide_op, out_grads, stop_gradients)
+            reshape_op2 = newir_program.global_block().ops[-1]
+            reshape_op1 = newir_program.global_block().ops[-8]
+            self.assertEqual(len(grad_outs), 2)
+            self.assertEqual(len(newir_program.global_block().ops), 21)
+            self.assertEqual(reshape_op2.result(0), grad_outs[0][0])
+            self.assertEqual(reshape_op1.result(0), grad_outs[1][0])
+            all_op_names = [
+                "pd_op.full",
+                "pd_op.full",
+                "pd_op.full",
+                "pd_op.divide",
+                "pd_op.full",
+                "pd_op.elementwise_pow",
+                "pd_op.divide",
+                "pd_op.full",
+                "pd_op.scale",
+                "pd_op.multiply",
+                "pd_op.full_int_array",
+                "pd_op.sum",
+                "pd_op.full_int_array",
+                "pd_op.reshape",
+                "pd_op.full",
+                "pd_op.divide",
+                "pd_op.multiply",
+                "pd_op.full_int_array",
+                "pd_op.sum",
+                "pd_op.full_int_array",
+                "pd_op.reshape",
+            ]
+            for idx, op in enumerate(newir_program.global_block().ops):
+                self.assertEqual(op.name(), all_op_names[idx])
+            paddle.framework.core._set_prim_backward_enabled(False)
 
     def test_divide_grad_no_prim(self):
         newir_program = get_ir_divide_program()
@@ -125,31 +126,30 @@ class TestVjpPrim(unittest.TestCase):
     def test_sum_grad_prim(self):
         newir_program = get_ir_sum_program()
         paddle.framework.core._set_prim_backward_enabled(True)
-        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
-        dout = newir_program.global_block().ops[-3].result(0)
-        out_grads = [[dout]]
-        stop_gradients = [[False]]
-        sum_op = newir_program.global_block().ops[-1]
-        with paddle.pir.core.program_guard(newir_program):
-            grad_outs = call_vjp(sum_op, out_grads, stop_gradients)
-        expand_op = newir_program.global_block().ops[-1]
-        self.assertEqual(len(grad_outs), 1)
-        self.assertEqual(len(newir_program.global_block().ops), 8)
-        self.assertEqual(expand_op.result(0), grad_outs[0][0])
-        all_op_names = [
-            "pd_op.full",
-            "pd_op.full",
-            "pd_op.full_int_array",
-            "pd_op.sum",
-            "pd_op.full_int_array",
-            "pd_op.reshape",
-            "pd_op.full_int_array",
-            "pd_op.expand",
-        ]
-        for idx, op in enumerate(newir_program.global_block().ops):
-            self.assertEqual(op.name(), all_op_names[idx])
-        paddle.framework.core._set_prim_backward_enabled(False)
-        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
+        with paddle.pir_utils.IrGuard():
+            dout = newir_program.global_block().ops[-3].result(0)
+            out_grads = [[dout]]
+            stop_gradients = [[False]]
+            sum_op = newir_program.global_block().ops[-1]
+            with paddle.ir.core.program_guard(newir_program):
+                grad_outs = call_vjp(sum_op, out_grads, stop_gradients)
+            expand_op = newir_program.global_block().ops[-1]
+            self.assertEqual(len(grad_outs), 1)
+            self.assertEqual(len(newir_program.global_block().ops), 8)
+            self.assertEqual(expand_op.result(0), grad_outs[0][0])
+            all_op_names = [
+                "pd_op.full",
+                "pd_op.full",
+                "pd_op.full_int_array",
+                "pd_op.sum",
+                "pd_op.full_int_array",
+                "pd_op.reshape",
+                "pd_op.full_int_array",
+                "pd_op.expand",
+            ]
+            for idx, op in enumerate(newir_program.global_block().ops):
+                self.assertEqual(op.name(), all_op_names[idx])
+            paddle.framework.core._set_prim_backward_enabled(False)
 
     def test_sum_grad_no_prim(self):
         newir_program = get_ir_sum_program()

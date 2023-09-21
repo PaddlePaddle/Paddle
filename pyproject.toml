@@ -16,8 +16,9 @@ skip = ["build", "third_party", "__init__.py"]
 extend_skip_glob = [
     # These files do not need to be formatted,
     # see .flake8 for more details
-    "python/paddle/base/**",
     "python/paddle/utils/gast/**",
+    "python/paddle/base/core.py",
+    "python/paddle/base/framework.py",
 ]
 
 [tool.ruff]
@@ -39,7 +40,7 @@ select = [
 
     # NumPy-specific rules
     "NPY001",
-    # "NPY003",
+    "NPY003",
 
     # Bugbear
     "B002",
@@ -70,9 +71,9 @@ select = [
     "PLR0206",
     "PLR0402",
     "PLR1701",
-    # "PLR1711",  # Confirmation required
+    "PLR1711",
     "PLR1722",
-    "PLW3301",  # Confirmation required
+    "PLW3301",
 ]
 unfixable = [
     "NPY001"
@@ -108,11 +109,6 @@ ignore = [
     "UP031",
     "C408",
     "UP030",
-    "F403",
-    "B010",
-    "PLR1722",
-    "C403",
-    "UP034",
     "C405",
     "C417",
     "PLR0402",
@@ -126,28 +122,16 @@ ignore = [
     "PLC0414",
 ]
 
-# UP018
-"python/paddle/distributed/fleet/meta_optimizers/localsgd_optimizer.py" = ["UP018"]
-"python/paddle/distributed/fleet/meta_optimizers/sharding/utils.py" = ["UP018", "UP032"]
-"python/paddle/distributed/fleet/meta_optimizers/sharding_optimizer.py" = ["UP018", "UP032"]
-"python/paddle/distributed/fleet/utils/pp_parallel_adaptor.py" = ["UP018", "UP032"]
-"python/paddle/incubate/autograd/utils.py" = ["UP018"]
-"python/paddle/incubate/optimizer/gradient_merge.py" = ["UP018", "UP032"]
-"python/paddle/nn/functional/loss.py" = ["UP018", "UP032"]
-"python/paddle/distributed/passes/auto_parallel_gradient_merge.py" = ["UP018"]
-"python/paddle/hapi/dynamic_flops.py" = ["UP018", "UP032"]
-"python/paddle/incubate/optimizer/pipeline.py" = ["UP018", "UP032"]
-"python/paddle/static/nn/metric.py" = ["UP018"]
-"test/cinn/ops/test_fill_constant_op.py" = ["UP018"]
-"test/collective/fleet/parallel_dygraph_transformer.py" = ["UP018"]
-"test/collective/fleet/test_dgc_op.py" = ["UP018"]
-"test/dygraph_to_static/transformer_dygraph_model.py" = ["UP018"]
-"test/legacy_test/fleet_heter_ps_training.py" = ["UP018"]
-"test/legacy_test/test_fake_quantize_op.py" = ["UP018"]
-"test/legacy_test/test_generate_mask_labels_op.py" = ["UP018"]
-"test/legacy_test/test_imperative_transformer_sorted_gradient.py" = ["UP018"]
-"test/legacy_test/test_progressbar.py" = ["UP018"]
-"test/legacy_test/test_tensor_fill_.py" = ["UP018"]
+# UP032
+
+"python/paddle/distributed/fleet/meta_optimizers/sharding/utils.py" = ["UP032"]
+"python/paddle/distributed/fleet/meta_optimizers/sharding_optimizer.py" = ["UP032"]
+"python/paddle/distributed/fleet/utils/pp_parallel_adaptor.py" = ["UP032"]
+"python/paddle/incubate/optimizer/gradient_merge.py" = ["UP032"]
+"python/paddle/nn/functional/loss.py" = ["UP032"]
+"python/paddle/hapi/dynamic_flops.py" = [ "UP032"]
+"python/paddle/incubate/optimizer/pipeline.py" = ["UP032"]
+
 
 # B017
 "test/auto_parallel/spmd_rules/test_reshape_rule.py" = ["B017"]

@@ -21,8 +21,8 @@
 namespace cinn {
 namespace ir {
 
+namespace ir_utils {
 namespace {
-
 struct IrNodesCollector : public IRVisitorRequireReImpl<void> {
   using teller_t = std::function<bool(const Expr*)>;
   using handler_t = std::function<void(const Expr*)>;
@@ -317,6 +317,6 @@ std::set<std::string> CollectTensorNeedsWrite(const Expr* e) {
   collector.Visit(e);
   return tensor_written;
 }
-
+}  // namespace ir_utils
 }  // namespace ir
 }  // namespace cinn

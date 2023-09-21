@@ -321,7 +321,7 @@ static int ConnectAddr(const std::string& ep, const CommHead head) {
       VLOG(3) << "socket read failed with ret_val=" << ret_val;
       CloseSocket(sock);
     }
-    sock = -1;
+    sock = -1;  // NOLINT
     CHECK_SYS_CALL_VAL(socket(AF_INET, SOCK_STREAM, 0), "socket", sock);
     // unmatched link, retry after 80ms
     std::this_thread::sleep_for(std::chrono::milliseconds(80));
