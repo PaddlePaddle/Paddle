@@ -641,8 +641,9 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
             ...                                     nshards=2,
             ...                                     shard_id=0)
             >>> print(shard_label)
+            Tensor(shape=[2, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[-1],
-             [ 1]]
+             [ 1]])
     """
     if in_dynamic_mode():
         return _C_ops.shard_index(
@@ -1368,21 +1369,23 @@ def flip(x, axis, name=None):
             >>> img = paddle.arange(image_shape[0] * image_shape[1] * image_shape[2]).reshape(image_shape)
             >>> tmp = paddle.flip(img, [0,1])
             >>> print(tmp)
-            [[[10,11],
-              [8, 9]],
-              [[6, 7],
-               [4, 5]],
-              [[2, 3],
-               [0, 1]]]
+            Tensor(shape=[3, 2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[[10, 11],
+              [8 , 9 ]],
+             [[6 , 7 ],
+              [4 , 5 ]],
+             [[2 , 3 ],
+              [0 , 1 ]]])
 
             >>> out = paddle.flip(tmp,-1)
             >>> print(out)
-            [[[11,10],
-              [9, 8]],
-             [[7, 6],
-              [5, 4]],
-             [[3, 2],
-              [1, 0]]]
+            Tensor(shape=[3, 2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[[11, 10],
+              [9 , 8 ]],
+             [[7 , 6 ],
+              [5 , 4 ]],
+             [[3 , 2 ],
+              [1 , 0 ]]])
     """
     if isinstance(axis, int):
         axis = [axis]
@@ -1439,33 +1442,38 @@ def rot90(x, k=1, axes=[0, 1], name=None):
             >>> data = paddle.arange(4)
             >>> data = paddle.reshape(data, (2, 2))
             >>> print(data)
+            Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[0, 1],
-             [2, 3]]
+             [2, 3]])
 
             >>> y = paddle.rot90(data, 1, [0, 1])
             >>> print(y)
+            Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[1, 3],
-             [0, 2]]
+             [0, 2]])
 
             >>> y= paddle.rot90(data, -1, [0, 1])
             >>> print(y)
+            Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[2, 0],
-             [3, 1]]
+             [3, 1]])
 
             >>> data2 = paddle.arange(8)
             >>> data2 = paddle.reshape(data2, (2,2,2))
             >>> print(data2)
+            Tensor(shape=[2, 2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[[0, 1],
               [2, 3]],
              [[4, 5],
-              [6, 7]]]
+              [6, 7]]])
 
             >>> y = paddle.rot90(data2, 1, [1, 2])
             >>> print(y)
+            Tensor(shape=[2, 2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[[1, 3],
               [0, 2]],
              [[5, 7],
-              [4, 6]]]
+              [4, 6]]])
     """
 
     helper = LayerHelper("rot90", **locals())
@@ -1589,7 +1597,8 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
             >>> # out shares data with img in dygraph mode
             >>> img[0, 0, 0, 0] = -1
             >>> print(out[0, 0, 0])
-            [-1]
+            Tensor(shape=[1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [-1])
     """
     if not (isinstance(x, Variable)):
         raise ValueError("The input x should be a Tensor")
@@ -1725,19 +1734,22 @@ def roll(x, shifts, axis=None, name=None):
             ...                         [7.0, 8.0, 9.0]])
             >>> out_z1 = paddle.roll(x, shifts=1)
             >>> print(out_z1)
-            [[9. 1. 2.]
-             [3. 4. 5.]
-             [6. 7. 8.]]
+            Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[9., 1., 2.],
+             [3., 4., 5.],
+             [6., 7., 8.]])
             >>> out_z2 = paddle.roll(x, shifts=1, axis=0)
             >>> print(out_z2)
-            [[7. 8. 9.]
-             [1. 2. 3.]
-             [4. 5. 6.]]
+            Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[7., 8., 9.],
+             [1., 2., 3.],
+             [4., 5., 6.]])
             >>> out_z3 = paddle.roll(x, shifts=1, axis=1)
             >>> print(out_z3)
-            [[3. 1. 2.]
-             [6. 4. 5.]
-             [9. 7. 8.]]
+            Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[3., 1., 2.],
+             [6., 4., 5.],
+             [9., 7., 8.]])
     """
     origin_shape = x.shape
     if type(shifts) == int:
@@ -1871,11 +1883,13 @@ def stack(x, axis=0, name=None):
             >>> x3 = paddle.to_tensor([[5.0, 6.0]])
 
             >>> out = paddle.stack([x1, x2, x3], axis=0)
-            >>> print(out.shape)  # [3, 1, 2]
+            >>> print(out.shape)
+            [3, 1, 2]
             >>> print(out)
+            Tensor(shape=[3, 1, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[1., 2.]],
-             [[3., 4.]],
-             [[5., 6.]]]
+            [[3., 4.]],
+            [[5., 6.]]])
 
         out = paddle.stack([x1, x2, x3], axis=-2)
         print(out.shape)  # [1, 3, 2]
@@ -2935,11 +2949,6 @@ def scatter(x, index, updates, overwrite=True, name=None):
     .. code-block:: python
         :name: code-example1
 
-        >>> import paddle
-        >>> #input:
-        >>> x = paddle.to_tensor([[1, 1], [2, 2], [3, 3]], dtype='float32')
-        >>> index = paddle.to_tensor([2, 1, 0, 1], dtype='int64')
-        >>> # shape of updates should be the same as x
         >>> # shape of updates with dim > 1 should be the same as input
         >>> updates = paddle.to_tensor([[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32')
         >>> overwrite = False
@@ -2984,25 +2993,29 @@ def scatter(x, index, updates, overwrite=True, name=None):
 
             >>> output1 = paddle.scatter(x, index, updates, overwrite=False)
             >>> print(output1)
+            Tensor(shape=[3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[3., 3.],
              [6., 6.],
-             [1., 1.]]
+             [1., 1.]])
 
             >>> output2 = paddle.scatter(x, index, updates, overwrite=True)
             >>> print(output2)
             >>> # CPU device:
+            Tensor(shape=[3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[3., 3.],
              [4., 4.],
-             [1., 1.]]
+             [1., 1.]])
             >>> # GPU device maybe have two results because of the repeated numbers in index
             >>> # result 1:
+            Tensor(shape=[3, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             [[3., 3.],
              [4., 4.],
-             [1., 1.]]
+             [1., 1.]])
             >>> # result 2:
+            Tensor(shape=[3, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             [[3., 3.],
              [2., 2.],
-             [1., 1.]]
+             [1., 1.]])
     """
     if in_dynamic_mode():
         return _C_ops.scatter(x, index, updates, overwrite)
@@ -3419,7 +3432,9 @@ def broadcast_to(x, shape, name=None):
             >>> data = paddle.to_tensor([1, 2, 3], dtype='int32')
             >>> out = paddle.broadcast_to(data, shape=[2, 3])
             >>> print(out)
-            [[1, 2, 3], [1, 2, 3]]
+            Tensor(shape=[2, 3], dtype=int32, place=Place(gpu:0), stop_gradient=True,
+            [[1, 2, 3],
+             [1, 2, 3]])
     """
     if in_dynamic_mode():
         return _C_ops.expand(x, shape)
@@ -3521,7 +3536,9 @@ def expand(x, shape, name=None):
             >>> data = paddle.to_tensor([1, 2, 3], dtype='int32')
             >>> out = paddle.expand(data, shape=[2, 3])
             >>> print(out)
-            [[1, 2, 3], [1, 2, 3]]
+            Tensor(shape=[2, 3], dtype=int32, place=Place(gpu:0), stop_gradient=True,
+            [[1, 2, 3],
+             [1, 2, 3]])
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.expand(x, shape)
@@ -3682,11 +3699,12 @@ def reshape(x, shape, name=None):
             >>> shape_tensor = paddle.to_tensor([8, 6], dtype=paddle.int32)
             >>> out = paddle.reshape(x, shape=shape_tensor)
             >>> print(out.shape)
-            [8, 6].
+            [8, 6]
             >>> # out shares data with x in dygraph mode
             >>> x[0, 0, 0] = 10.
             >>> print(out[0, 0])
-            [10.]
+            Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            [10.])
 
     """
     if in_dynamic_or_pir_mode():
@@ -3894,7 +3912,8 @@ def gather_nd(x, index, name=None):
 
             >>> output = paddle.gather_nd(x, index)
             >>> print(output)
-            [[3, 4]]
+            Tensor(shape=[1, 2], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            [[3, 4]])
 
     """
     if in_dynamic_mode():
@@ -4197,6 +4216,7 @@ def tensordot(x, y, axes=2, name=None):
             >>> y = paddle.arange(4, dtype=data_type).reshape([2, 2])
             >>> z = paddle.tensordot(x, y, axes=0)
             >>> print(z)
+            Tensor(shape=[2, 2, 2, 2], dtype=float64, place=Place(cpu), stop_gradient=True,
             [[[[0., 0.],
                [0., 0.]],
               [[0., 1.],
@@ -4204,7 +4224,7 @@ def tensordot(x, y, axes=2, name=None):
              [[[0., 2.],
                [4., 6.]],
               [[0., 3.],
-               [6., 9.]]]]
+               [6., 9.]]]])
 
 
             >>> # For two 1-d tensor x and y, the case axes=1 is equivalent to inner product.
@@ -4213,21 +4233,25 @@ def tensordot(x, y, axes=2, name=None):
             >>> z1 = paddle.tensordot(x, y, axes=1)
             >>> z2 = paddle.dot(x, y)
             >>> print(z1)
-            [285.]
+            Tensor(shape=[1], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [285.])
             >>> print(z2)
-            [285.]
+            Tensor(shape=[1], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [285.])
 
             >>> # For two 2-d tensor x and y, the case axes=1 is equivalent to matrix multiplication.
             >>> x = paddle.arange(6, dtype=data_type).reshape([2, 3])
             >>> y = paddle.arange(12, dtype=data_type).reshape([3, 4])
             >>> z1 = paddle.tensordot(x, y, axes=1)
             >>> print(z1)
+            Tensor(shape=[2, 4], dtype=float64, place=Place(cpu), stop_gradient=True,
             [[20., 23., 26., 29.],
-             [56., 68., 80., 92.]]
+             [56., 68., 80., 92.]])
             >>> z2 = paddle.matmul(x, y)
             >>> print(z2)
+            Tensor(shape=[2, 4], dtype=float64, place=Place(cpu), stop_gradient=True,
             [[20., 23., 26., 29.],
-             [56., 68., 80., 92.]]
+             [56., 68., 80., 92.]])
 
 
             >>> # When axes is a 1-d int list, x and y will be contracted along the same given axes.
@@ -4236,8 +4260,9 @@ def tensordot(x, y, axes=2, name=None):
             >>> y = paddle.arange(36, dtype=data_type).reshape([3, 3, 4])
             >>> z = paddle.tensordot(x, y, axes=[1, 2])
             >>> print(z)
+            Tensor(shape=[2, 3], dtype=float64, place=Place(cpu), stop_gradient=True,
             [[506. , 1298., 2090.],
-             [1298., 3818., 6338.]]
+             [1298., 3818., 6338.]])
 
 
             >>> # When axes is a list containing two 1-d int list, the first will be applied to x and the second to y.
@@ -4245,11 +4270,12 @@ def tensordot(x, y, axes=2, name=None):
             >>> y = paddle.arange(24, dtype=data_type).reshape([4, 3, 2])
             >>> z = paddle.tensordot(x, y, axes=([1, 0], [0, 1]))
             >>> print(z)
+            Tensor(shape=[5, 2], dtype=float64, place=Place(cpu), stop_gradient=True,
             [[4400., 4730.],
              [4532., 4874.],
              [4664., 5018.],
              [4796., 5162.],
-             [4928., 5306.]]
+             [4928., 5306.]])
 
 
             >>> # Thanks to the support of axes expansion, axes=[[0, 1, 3, 4], [1, 0, 3, 4]] can be abbreviated as axes= [[0, 1, 3, 4], [1, 0]].
@@ -4257,10 +4283,11 @@ def tensordot(x, y, axes=2, name=None):
             >>> y = paddle.arange(720, dtype=data_type).reshape([3, 2, 4, 5, 6])
             >>> z = paddle.tensordot(x, y, axes=[[0, 1, 3, 4], [1, 0]])
             >>> print(z)
+            Tensor(shape=[4, 4], dtype=float64, place=Place(cpu), stop_gradient=True,
             [[23217330., 24915630., 26613930., 28312230.],
              [24915630., 26775930., 28636230., 30496530.],
              [26613930., 28636230., 30658530., 32680830.],
-             [28312230., 30496530., 32680830., 34865130.]]
+             [28312230., 30496530., 32680830., 34865130.]])
     """
     op_type = 'tensordot'
     input_dtype = ['float16', 'float32', 'float64']
@@ -4690,7 +4717,8 @@ def take_along_axis(arr, indices, axis):
             >>> axis = 0
             >>> result = paddle.take_along_axis(x, index, axis)
             >>> print(result)
-            [[1, 2, 3]]
+            Tensor(shape=[1, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1, 2, 3]])
     """
     if len(arr.shape) != len(indices.shape):
         raise ValueError(
@@ -4768,8 +4796,9 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
             >>> axis = 0
             >>> result = paddle.put_along_axis(x, index, value, axis)
             >>> print(result)
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[99, 99, 99],
-             [60, 40, 50]]
+             [60, 40, 50]])
 
     """
     if len(arr.shape) != len(indices.shape):
@@ -5243,6 +5272,8 @@ def view_as(x, other, name=None):
             >>> import paddle
             >>> paddle.base.set_flags({"FLAGS_use_stride_kernel": True})
 
+
+            >>> paddle.seed(1)
             >>> x = paddle.rand([2, 4, 6], dtype="float32")
             >>> y = paddle.rand([8, 6], dtype="float32")
 
