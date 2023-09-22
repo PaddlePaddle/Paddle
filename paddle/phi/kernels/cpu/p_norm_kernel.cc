@@ -95,4 +95,11 @@ void PNormKernel(const Context& dev_ctx,
   }
 }
 }  // namespace phi
-PD_REGISTER_KERNEL(p_norm, CPU, ALL_LAYOUT, phi::PNormKernel, float, double, phi::dtype::complex<float>, phi::dtype::complex<double>) {}
+PD_REGISTER_KERNEL(p_norm,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::PNormKernel,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
