@@ -115,13 +115,13 @@ void AddNOp::Build(pir::Builder &builder,             // NOLINT
 
   std::vector<paddle::dialect::IrMetaTensor> vec_dense_x;
   for (size_t i = 0; i < x.size(); i++) {
-    vec_dense_x.push_back(
+    vec_dense_x.push_back(paddle::dialect::IrMetaTensor(
         TransToPhiDataType(
             x[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
         x[i].dyn_cast<paddle::dialect::DenseTensorType>().dims(),
         x[i].dyn_cast<paddle::dialect::DenseTensorType>().data_layout(),
         x[i].dyn_cast<paddle::dialect::DenseTensorType>().lod(),
-        x[i].dyn_cast<paddle::dialect::DenseTensorType>().offset());
+        x[i].dyn_cast<paddle::dialect::DenseTensorType>().offset()));
   }
   std::vector<phi::MetaTensor> vec_meta_x;
   for (size_t i = 0; i < vec_dense_x.size(); i++) {
@@ -188,13 +188,13 @@ void AddN_Op::Build(pir::Builder &builder,
   pir::VectorType inputs = inputs_.type().dyn_cast<pir::VectorType>();
   std::vector<paddle::dialect::IrMetaTensor> vec_dense_inputs;
   for (size_t i = 0; i < static_cast<size_t>(inputs.size()); i++) {
-    vec_dense_inputs.push_back(
+    vec_dense_inputs.push_back(paddle::dialect::IrMetaTensor(
         paddle::dialect::TransToPhiDataType(
             inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
         inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().dims(),
         inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().data_layout(),
         inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().lod(),
-        inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().offset());
+        inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().offset()));
   }
   std::vector<phi::MetaTensor> vec_meta_inputs;
   for (size_t i = 0; i < vec_dense_inputs.size(); i++) {
@@ -311,13 +311,13 @@ void AddNWithKernelOp::Build(pir::Builder &builder,
   pir::VectorType inputs = inputs_.type().dyn_cast<pir::VectorType>();
   std::vector<paddle::dialect::IrMetaTensor> vec_dense_inputs;
   for (size_t i = 0; i < static_cast<size_t>(inputs.size()); i++) {
-    vec_dense_inputs.push_back(
+    vec_dense_inputs.push_back(paddle::dialect::IrMetaTensor(
         paddle::dialect::TransToPhiDataType(
             inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
         inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().dims(),
         inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().data_layout(),
         inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().lod(),
-        inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().offset());
+        inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().offset()));
   }
   std::vector<phi::MetaTensor> vec_meta_inputs;
   for (size_t i = 0; i < vec_dense_inputs.size(); i++) {
