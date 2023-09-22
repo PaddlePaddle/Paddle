@@ -123,40 +123,10 @@ CondInstruction::CondInstruction(
     pir::Operation* op,
     Scope* scope,
     Scope* local_scope,
-    const std::unordered_map<::pir::Value, std::string>& value_2_var_name,
-    const std::map<std::string, int>& var_name_2_id,
-    const std::unordered_map<const paddle::framework::Variable*, std::string>&
-        variable_2_var_name,
+    ValueExecutionInfo* parent_exe_info,
     const std::map<pir::Block*, paddle::framework::Scope*>& sub_blocks)
     : InstructionBase(id, place) {
   op_ = op;
-  // Todo: support paddle::dialect::DistAttribute
-  //   if (op_attributes.count("dist_attr") != 0) {
-  //     if (op_attributes.count("execution_stream") != 0) {
-  //         SetExecutionStream(op_attributes.at("execution_stream")
-  //                             .dyn_cast<::ir::StrAttribute>()
-  //                             .data());
-  //     }
-  //     if (op_attributes.count("stream_priority") != 0) {
-  //         SetStreamPriority(op_attributes.at("stream_priority")
-  //                             .dyn_cast<::ir::Int32Attribute>()
-  //                             .data());
-  //     }
-  //     if (op_attributes.count("scheduling_priority") != 0) {
-  //         SetSchedulingPriority(op_attributes.at("scheduling_priority")
-  //                                 .dyn_cast<::ir::Int64Attribute>()
-  //                                 .data());
-  //     }
-  //   } else {
-  //     if (interpreter::IsCommunicationOp(op)) {
-  //       // NOTE(Ruibiao): Dispatching computation before communication
-  //       improves
-  //       // multi-stream overlap when the time cost of communication less than
-  //       // that of the calculation (e.g., ResNet50_bs128_pure_fp16 N4C32
-  //       // training).
-  //       op_func_node.scheduling_priority_ = 1;
-  //     }
-  //   }
   VLOG(6) << "finish process dist attributes";
 
   SetKernelType(AnalyseOpFuncType(op, place));
@@ -173,35 +143,28 @@ CondInstruction::CondInstruction(
   auto if_op = op->dyn_cast<paddle::dialect::IfOp>();
 
   for (size_t i = 0; i < if_op.num_results(); ++i) {
-    if_op_outputs_.push_back(
-        inner_scope->GetVar(value_2_var_name.at(if_op.result(i))));
+    if_op_outputs_.push_back(inner_scope->GetVar(
+        parent_exe_info->GetValue2VarName().at(if_op.result(i))));
   }
 
   auto cond_value = if_op.operand_source(0);
-  auto var_name = value_2_var_name.at(cond_value);
+  auto var_name = parent_exe_info->GetValue2VarName().at(cond_value);
   cond_var = inner_scope->FindVar(var_name);
 
   auto true_branch_block = if_op.true_block();
   auto false_branch_block = if_op.false_block();
 
-  std::unordered_map<pir::Value, std::vector<int>> true_inputs;
-  GetOutsideOpInputs(true_branch_block,
-                     inner_scope,
-                     value_2_var_name,
-                     var_name_2_id,
-                     variable_2_var_name,
-                     &true_inputs);
-  std::unordered_map<::pir::Value, std::string> true_value_map;
-  for (auto it = true_inputs.begin(); it != true_inputs.end(); ++it) {
-    true_value_map.emplace(it->first, value_2_var_name.at(it->first));
-  }
-
   auto true_branch_yied_inputs = GetYiedOpInputs(true_branch_block);
   auto false_branch_yied_inputs = GetYiedOpInputs(false_branch_block);
   std::cerr << "builld true inter 11" << std::endl;
   auto true_scope = sub_blocks.at(true_branch_block);
-  true_branch_inter = new NewIRInterpreter(
-      place, {}, true_branch_block, true_scope, true_value_map, {});
+  true_branch_inter =
+      new NewIRInterpreter(place,
+                           {},
+                           true_branch_block,
+                           true_scope,
+                           parent_exe_info->NewChild(true_scope),
+                           {});
 
   std::cerr << "builld true inter fin" << std::endl;
   std::set<std::string> true_skip_gc_names_set;
@@ -213,20 +176,14 @@ CondInstruction::CondInstruction(
 
   std::cerr << "builld false inter" << std::endl;
   auto false_scope = sub_blocks.at(false_branch_block);
-  std::unordered_map<pir::Value, std::vector<int>> false_inputs;
-  GetOutsideOpInputs(false_branch_block,
-                     inner_scope,
-                     value_2_var_name,
-                     var_name_2_id,
-                     variable_2_var_name,
-                     &false_inputs);
-  std::unordered_map<::pir::Value, std::string> false_value_map;
-  for (auto it = false_inputs.begin(); it != false_inputs.end(); ++it) {
-    false_value_map.emplace(it->first, value_2_var_name.at(it->first));
-  }
 
-  false_branch_inter = new NewIRInterpreter(
-      place, {}, false_branch_block, false_scope, false_value_map, {});
+  false_branch_inter =
+      new NewIRInterpreter(place,
+                           {},
+                           false_branch_block,
+                           false_scope,
+                           parent_exe_info->NewChild(false_scope),
+                           {});
 
   std::cerr << "builld false inter fin" << std::endl;
   std::set<std::string> false_skip_gc_names_set;
@@ -241,22 +198,22 @@ CondInstruction::CondInstruction(
   std::unordered_map<pir::Value, std::vector<int>> inputs;
   GetInputIds(op,
               inner_scope,
-              value_2_var_name,
-              var_name_2_id,
-              variable_2_var_name,
+              parent_exe_info->GetValue2VarName(),
+              parent_exe_info->GetVarName2Id(),
+              parent_exe_info->GetVar2VarName(),
               &inputs);
   GetOutsideOpInputs(true_branch_block,
                      inner_scope,
-                     value_2_var_name,
-                     var_name_2_id,
-                     variable_2_var_name,
+                     parent_exe_info->GetValue2VarName(),
+                     parent_exe_info->GetVarName2Id(),
+                     parent_exe_info->GetVar2VarName(),
                      &inputs);
 
   GetOutsideOpInputs(false_branch_block,
                      inner_scope,
-                     value_2_var_name,
-                     var_name_2_id,
-                     variable_2_var_name,
+                     parent_exe_info->GetValue2VarName(),
+                     parent_exe_info->GetVarName2Id(),
+                     parent_exe_info->GetVar2VarName(),
                      &inputs);
   SetInputs(inputs);
 
@@ -265,17 +222,18 @@ CondInstruction::CondInstruction(
     pir::Value value = op->result(i);
     if (value && value.type()) {
       PADDLE_ENFORCE_NE(
-          value_2_var_name.find(value),
-          value_2_var_name.end(),
+          parent_exe_info->GetValue2VarName().find(value),
+          parent_exe_info->GetValue2VarName().end(),
           phi::errors::PreconditionNotMet(
               "input should in name map, [%d] 'th input of [%s] op",
               i,
               "if op"));
-      std::vector<int> outputs_id = GetValueIds(value,
-                                                inner_scope,
-                                                value_2_var_name,
-                                                var_name_2_id,
-                                                variable_2_var_name);
+      std::vector<int> outputs_id =
+          GetValueIds(value,
+                      inner_scope,
+                      parent_exe_info->GetValue2VarName(),
+                      parent_exe_info->GetVarName2Id(),
+                      parent_exe_info->GetVar2VarName());
       outputs.emplace(value, outputs_id);
     }
   }

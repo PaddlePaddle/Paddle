@@ -34,13 +34,18 @@ class NewIRInterpreter : public InterpreterBaseImpl {
                           InstructionSchedulingPriorityLess>;
 
  public:
-  NewIRInterpreter(
-      const platform::Place& place,
-      const std::vector<std::string>& fetch_var_names,
-      const ::pir::Block* ir_block,
-      Scope* scope,
-      const std::unordered_map<::pir::Value, std::string>& parent_value_2_names,
-      const ExecutionConfig& execution_config = ExecutionConfig());
+  NewIRInterpreter(const platform::Place& place,
+                   const std::vector<std::string>& fetch_var_names,
+                   const ::pir::Block* ir_block,
+                   Scope* scope,
+                   const ExecutionConfig& execution_config = ExecutionConfig());
+
+  NewIRInterpreter(const platform::Place& place,
+                   const std::vector<std::string>& fetch_var_names,
+                   const ::pir::Block* ir_block,
+                   Scope* scope,
+                   std::shared_ptr<ValueExecutionInfo> value_exe_info,
+                   const ExecutionConfig& execution_config = ExecutionConfig());
 
   ~NewIRInterpreter();
 
@@ -212,15 +217,9 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   std::vector<std::unique_ptr<InstructionBase>> vec_instruction_base_;
 
-  std::unordered_map<::pir::Value, std::string> value_2_var_name_;
+  // value execution info
+  std::shared_ptr<ValueExecutionInfo> value_exe_info_;
 
-  std::unordered_map<const paddle::framework::Variable*, std::string>
-      variable_2_var_name_;
-
-  std::map<std::string, int> var_name_2_id_;
-  std::unordered_map<int, std::string> id_2_var_name_;
-
-  std::vector<Variable*> variable_list_;
   std::map<pir::Block*, paddle::framework::Scope*> sub_blocks_;
 
   std::vector<int> var_ref_count_;

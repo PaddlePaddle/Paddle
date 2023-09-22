@@ -32,6 +32,7 @@
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/device_manager.h"
@@ -61,7 +62,6 @@ NewIRInterpreter::NewIRInterpreter(
     const std::vector<std::string>& fetch_var_names,
     const ::pir::Block* ir_block,
     framework::Scope* scope,
-    const std::unordered_map<::pir::Value, std::string>& parent_value_2_names,
     const ExecutionConfig& execution_config)
     : place_(place),
       execution_config_(execution_config),
@@ -72,6 +72,7 @@ NewIRInterpreter::NewIRInterpreter(
       ir_stream_analyzer_(place),
       fetch_var_names_(fetch_var_names) {
   VLOG(4) << "NewIRInterpreter(): " << this << " on " << place_;
+
   static_build_ = FLAGS_new_executor_static_build &&
                   !FLAGS_new_executor_use_cuda_graph &&
                   !execution_config.used_for_control_flow_op;
@@ -111,32 +112,73 @@ NewIRInterpreter::NewIRInterpreter(
 
   PrepareForCUDAGraphCapture();
 
-  for (auto it = value_2_var_name_.begin(); it != value_2_var_name_.end();
-       ++it) {
-    auto var = InnerScope()->FindVar(it->second);
-    PADDLE_ENFORCE_NOT_NULL(var,
-                            phi::errors::PreconditionNotMet(
-                                "variable [%s] MUST in scope", it->second));
-
-    variable_2_var_name_.emplace(var, it->second);
-
-    auto id = var_name_2_id_.size();
-    var_name_2_id_.emplace(it->second, id);
-    variable_list_.push_back(var);
-  }
+  value_exe_info_ = std::make_shared<ValueExecutionInfo>(InnerScope());
 
   std::stringstream ss;
   ss << this;
-  ::pir::BuildScope(*ir_block_,
-                    InnerScope(),
-                    ss.str(),
-                    &value_2_var_name_,
-                    &variable_2_var_name_,
-                    &var_name_2_id_,
-                    &variable_list_,
-                    &sub_blocks_);
+  ::pir::BuildScope(*ir_block_, ss.str(), &sub_blocks_, value_exe_info_.get());
+}
 
-  interpreter::BuildId2VarName(var_name_2_id_, &id_2_var_name_);
+NewIRInterpreter::NewIRInterpreter(
+    const platform::Place& place,
+    const std::vector<std::string>& fetch_var_names,
+    const ::pir::Block* ir_block,
+    framework::Scope* scope,
+    std::shared_ptr<ValueExecutionInfo> value_exe_info,
+    const ExecutionConfig& execution_config)
+    : place_(place),
+      execution_config_(execution_config),
+      var_scope_(scope),
+      scope_(scope),
+      ir_block_(ir_block),
+      ir_stream_analyzer_(place),
+      fetch_var_names_(fetch_var_names) {
+  VLOG(4) << "NewIRInterpreter(): " << this << " on " << place_;
+
+  static_build_ = FLAGS_new_executor_static_build &&
+                  !FLAGS_new_executor_use_cuda_graph &&
+                  !execution_config.used_for_control_flow_op;
+  //    &&interpreter::BlockCanBeStaticBuilt(block);
+  static_build_ = true;
+
+  exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
+  completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
+
+  dependecy_count_ = std::make_shared<std::vector<size_t>>();
+
+  if (!FLAGS_new_executor_use_local_scope) {
+    execution_config_.create_local_scope = false;
+  }
+  if (execution_config_.create_local_scope) {
+    auto local_scope = &scope_->NewScope();
+    local_scope_ = local_scope;
+    VLOG(6) << "new ir interpretercore scope: " << scope_ << "\t"
+            << "; local scope: " << local_scope_;
+  }
+  // TODO(zhangbo): delete var_scope
+  var_scope_.SetLocalScope(local_scope_);
+
+  execution_config_.AnalyzeThreadPoolConfig(place, 1);
+  execution_config_.Log(/*log_level=*/8);
+
+  ir_instruction_scheduling_priority_less = [this](size_t lhs, size_t rhs) {
+    SchedulingPriority lhs_scheduling_priority =
+        vec_instruction_base_[lhs]->GetSchedulingPriority();
+    SchedulingPriority rhs_scheduling_priority =
+        vec_instruction_base_[rhs]->GetSchedulingPriority();
+    if (lhs_scheduling_priority == rhs_scheduling_priority) {
+      return lhs < rhs;
+    }
+    return lhs_scheduling_priority > rhs_scheduling_priority;
+  };
+
+  PrepareForCUDAGraphCapture();
+
+  value_exe_info_ = value_exe_info;
+
+  std::stringstream ss;
+  ss << this;
+  ::pir::BuildScope(*ir_block_, ss.str(), &sub_blocks_, value_exe_info_.get());
 }
 
 NewIRInterpreter::~NewIRInterpreter() {
@@ -153,8 +195,8 @@ NewIRInterpreter::~NewIRInterpreter() {
 }
 
 int NewIRInterpreter::GetIdByName(const std::string& name) const {
-  auto it = var_name_2_id_.find(name);
-  if (it != var_name_2_id_.end()) {
+  auto it = value_exe_info_->GetVarName2Id().find(name);
+  if (it != value_exe_info_->GetVarName2Id().end()) {
     return it->second;
   }
   return -1;
@@ -200,16 +242,18 @@ const VariableScope* NewIRInterpreter::GetVariableScope() const {
 void NewIRInterpreter::reset_scope(Scope* new_scope) {
   var_scope_.SetScope(new_scope);
   scope_ = new_scope;
-  for (size_t i = 0; i < variable_list_.size(); i++) {
+  for (size_t i = 0; i < value_exe_info_->GetVarList().size(); i++) {
     const auto& var_name = GetNameById(static_cast<int>(i));
-    variable_list_[i] = new_scope->FindVar(var_name);
+    value_exe_info_->ResetVarList(i, new_scope->FindVar(var_name));
   }
   // The index should be assured valid, cause the InterpreterCore may not be
   // fully built, but was still cached and used. For example, see unit test
   // `test_assert.py`, it may exit before `NewIRInterpreter::Convert`,
   // but still was cached and used by later tests.
-  for (size_t i = 0; i < std::min(refs_.size(), variable_list_.size()); i++) {
-    refs_[i]->ResetVariable(variable_list_[i]);
+  for (size_t i = 0;
+       i < std::min(refs_.size(), value_exe_info_->GetVarList().size());
+       i++) {
+    refs_[i]->ResetVariable(value_exe_info_->GetVarList()[i]);
   }
 }
 
@@ -222,8 +266,8 @@ std::string NewIRInterpreter::GetNameById(int id) const {
   // desc, but created by interpretercore.
   // For example, created and used by d2h_copy or h2d_copy operator.
 
-  auto it = id_2_var_name_.find(id);
-  if (it != id_2_var_name_.end()) {
+  auto it = value_exe_info_->GetId2VarName().find(id);
+  if (it != value_exe_info_->GetId2VarName().end()) {
     return it->second;
   }
   return "";
@@ -364,7 +408,7 @@ Scope* NewIRInterpreter::InnerScope() {
 }
 
 std::string NewIRInterpreter::GetNameByValue(::pir::Value value) const {
-  return value_2_var_name_.at(value);
+  return value_exe_info_->GetValue2VarName().at(value);
 }
 
 void NewIRInterpreter::UpdateSyncOpNum() {
@@ -551,9 +595,7 @@ void NewIRInterpreter::BuildInstruction() {
                                             op,
                                             scope_,
                                             local_scope_,
-                                            value_2_var_name_,
-                                            var_name_2_id_,
-                                            variable_2_var_name_,
+                                            value_exe_info_.get(),
                                             sub_blocks_));
     } else if (op->dialect()->name() == "pd_kernel") {
       auto op_name = op->attributes()
@@ -568,24 +610,26 @@ void NewIRInterpreter::BuildInstruction() {
 
       if (op->name().compare(paddle::dialect::LegacyKernelOp::name()) == 0) {
         vec_instruction_base_.emplace_back(
-            std::make_unique<LegacyKernelInstruction>(op_idx++,
-                                                      place_,
-                                                      op,
-                                                      scope_,
-                                                      local_scope_,
-                                                      value_2_var_name_,
-                                                      var_name_2_id_,
-                                                      variable_2_var_name_));
+            std::make_unique<LegacyKernelInstruction>(
+                op_idx++,
+                place_,
+                op,
+                scope_,
+                local_scope_,
+                value_exe_info_->GetValue2VarName(),
+                value_exe_info_->GetVarName2Id(),
+                value_exe_info_->GetVar2VarName()));
       } else {
         vec_instruction_base_.emplace_back(
-            std::make_unique<PhiKernelInstruction>(op_idx++,
-                                                   place_,
-                                                   op,
-                                                   scope_,
-                                                   local_scope_,
-                                                   value_2_var_name_,
-                                                   var_name_2_id_,
-                                                   variable_2_var_name_));
+            std::make_unique<PhiKernelInstruction>(
+                op_idx++,
+                place_,
+                op,
+                scope_,
+                local_scope_,
+                value_exe_info_->GetValue2VarName(),
+                value_exe_info_->GetVarName2Id(),
+                value_exe_info_->GetVar2VarName()));
       }
 #ifdef PADDLE_WITH_CINN
     } else if (op->dialect()->name() == "cinn_runtime") {
@@ -605,14 +649,15 @@ std::string NewIRInterpreter::DebugValueInfo() {
      << "value -> var_name -> id -> variable*"
      << "\n";
 
-  interpreter::PrintValuesAndVariables(
-      *ir_block_, &value_2_var_name_, &variable_2_var_name_);
+  interpreter::PrintValuesAndVariables(*ir_block_,
+                                       value_exe_info_->GetValue2VarName(),
+                                       value_exe_info_->GetVar2VarName());
 
-  for (auto kv : value_2_var_name_) {
+  for (auto kv : value_exe_info_->GetValue2VarName()) {
     PADDLE_ENFORCE((bool)kv.first,
                    platform::errors::PreconditionNotMet(
                        "vlaue(%s) should not be nullptr", kv.second));
-    PADDLE_ENFORCE(var_name_2_id_.count(kv.second) > 0,
+    PADDLE_ENFORCE(value_exe_info_->GetVarName2Id().count(kv.second) > 0,
                    platform::errors::PreconditionNotMet(
                        "var(%s) should exist in var_name_2_id_", kv.second));
     auto* var = InnerScope()->FindVar(kv.second);
@@ -621,7 +666,8 @@ std::string NewIRInterpreter::DebugValueInfo() {
         platform::errors::PreconditionNotMet(
             "var(%s) should exist in scope (%p)", kv.second, InnerScope()));
     os << kv.first.impl() << " -> " << kv.second << " -> "
-       << var_name_2_id_.at(kv.second) << " -> " << var << "\n";
+       << value_exe_info_->GetVarName2Id().at(kv.second) << " -> " << var
+       << "\n";
   }
   return os.str();
 }
@@ -768,7 +814,7 @@ void NewIRInterpreter::RecordStreamForGC(InstructionBase* instr) {
       continue;
     }
 
-    paddle::framework::Variable* var = variable_list_[var_id];
+    paddle::framework::Variable* var = value_exe_info_->GetVarList()[var_id];
     if (var == nullptr) {
       continue;
     }
@@ -884,7 +930,7 @@ void NewIRInterpreter::CalculateLastLiveOps() {
   // c = op2(a, b)
   // in this case, a is the input of op1 and op2, we only need to check
   // a after op2, because op2 always uses a after op1.
-  var_ref_count_.resize(variable_list_.size());
+  var_ref_count_.resize(value_exe_info_->GetVarList().size());
   VLOG(4) << "last_live_ops_.size() : " << last_live_ops_.size();
   for (auto kv : last_live_ops_) {
     for (auto val : kv.second) {
@@ -922,9 +968,9 @@ void NewIRInterpreter::CalculateLastLiveOps() {
   for (auto& dep : *dependecy_count_) {
     deps_.emplace_back(std::make_shared<interpreter::OpDepInfo>(dep));
   }
-  for (size_t i = 0; i < variable_list_.size(); ++i) {
+  for (size_t i = 0; i < value_exe_info_->GetVarList().size(); ++i) {
     refs_.emplace_back(std::make_shared<interpreter::VarRefInfo>(
-        var_ref_count_[i], variable_list_[i]));
+        var_ref_count_[i], value_exe_info_->GetVarList()[i]));
   }
 }
 
@@ -1398,7 +1444,8 @@ void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
       interpreter::LogDeviceMemoryStats(place_);
     }
     VLOG(4) << place_ << " "
-            << instr_node->DebugStringEx(scope_, value_2_var_name_);
+            << instr_node->DebugStringEx(scope_,
+                                         value_exe_info_->GetValue2VarName());
     VLOG(5) << "after run kernel";
     instr_node->RecordEvent(place_);
   } catch (platform::EnforceNotMet& ex) {
@@ -1455,7 +1502,7 @@ void NewIRInterpreter::Build(
 }
 
 ::pir::Value NewIRInterpreter::GetValueByName(const std::string& var_name) {
-  for (auto kv : value_2_var_name_) {
+  for (auto kv : value_exe_info_->GetValue2VarName()) {
     if (kv.second == var_name) {
       return kv.first;
     }
@@ -1465,7 +1512,7 @@ void NewIRInterpreter::Build(
 
 void NewIRInterpreter::SolvePersisableVarNames() {
   VLOG(6) << "SolvePersisableVarNames";
-  for (auto kv : value_2_var_name_) {
+  for (auto kv : value_exe_info_->GetValue2VarName()) {
     ::pir::Value value = kv.first;
     const std::string& var_name = kv.second;
     ::pir::OpResult result = value.dyn_cast<::pir::OpResult>();

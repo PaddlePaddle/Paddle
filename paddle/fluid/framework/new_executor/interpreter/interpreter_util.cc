@@ -1258,8 +1258,8 @@ const paddle::framework::Variable* GetVariableByName(
 
 void PrintValuesAndVariables(
     const pir::Block& block,
-    const std::unordered_map<pir::Value, std::string>* value_2_var_name,
-    const std::unordered_map<const paddle::framework::Variable*, std::string>*
+    const std::unordered_map<pir::Value, std::string>& value_2_var_name,
+    const std::unordered_map<const paddle::framework::Variable*, std::string>&
         variable_2_var_name) {
   std::stringstream ss;
   for (const auto& op : block) {
@@ -1272,10 +1272,10 @@ void PrintValuesAndVariables(
     std::string ret_variable_str = "Variable: (";
     if (!op->results().empty()) {
       for (auto& out_value : op->results()) {
-        if ((*value_2_var_name).count(out_value)) {
-          auto& var_name = (*value_2_var_name).at(out_value);
+        if (value_2_var_name.count(out_value)) {
+          auto& var_name = value_2_var_name.at(out_value);
           const paddle::framework::Variable* out_variable =
-              GetVariableByName(var_name, *variable_2_var_name);
+              GetVariableByName(var_name, variable_2_var_name);
           ss.str("");
           ss << out_value.impl();
           ret_value_str +=
@@ -1319,10 +1319,10 @@ void PrintValuesAndVariables(
     if (!op->operands().empty()) {
       for (auto& input : op->operands()) {
         ::pir::Value in_value = input.source();
-        if ((*value_2_var_name).count(in_value)) {
-          auto& var_name = (*value_2_var_name).at(in_value);
+        if (value_2_var_name.count(in_value)) {
+          auto& var_name = value_2_var_name.at(in_value);
           const paddle::framework::Variable* in_variable =
-              GetVariableByName(var_name, *variable_2_var_name);
+              GetVariableByName(var_name, variable_2_var_name);
           ss.str("");
           ss << in_value.impl();
           ret_value_str +=
