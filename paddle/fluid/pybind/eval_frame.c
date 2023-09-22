@@ -282,10 +282,12 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
                                                     FrameObject *frame,
                                                     PyCodeObject *code,
                                                     int throw_flag) {
+  Py_ssize_t nlocalsplus_new = code->co_nlocalsplus;
+  Py_ssize_t nlocalsplus_old = frame->f_code->co_nlocalsplus;
   // Create a new PyInterpreterFrame. Refer to CALL.
   // PyInterpreterFrame has a head section calls "specials". It follows
   // a contiguous section containing localplus and interpreter stack space.
-  size_t size = code->co_nlocalsplus + code->co_stacksize + FRAME_SPECIALS_SIZE;
+  size_t size = nlocalsplus_new + code->co_stacksize + FRAME_SPECIALS_SIZE;
   CALL_STAT_INC(frames_pushed);
   _PyInterpreterFrame *shadow =
       (_PyInterpreterFrame *)malloc(sizeof(PyObject *) * size);
@@ -296,12 +298,12 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
   // Create a new function object from code object. Refer to MAKE_FUNCTION.
   PyFunctionObject *func =
       (PyFunctionObject *)PyFunction_New((PyObject *)code, frame->f_globals);
-  _PyFrame_InitializeSpecials(shadow, func, NULL, code->co_nlocalsplus);
+  _PyFrame_InitializeSpecials(shadow, func, NULL, nlocalsplus_new);
 
   PyObject **fastlocals_old = frame->localsplus;
   PyObject **fastlocals_new = shadow->localsplus;
 
-  for (size_t i = 0; i < code->co_nlocalsplus; ++i) {
+  for (Py_ssize_t i = 0; i < nlocalsplus_new; ++i) {
     fastlocals_new[i] = NULL;
   }
 
@@ -312,12 +314,12 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
     free(shadow);
     return NULL;
   }
-  for (size_t i = 0; i < code->co_nlocalsplus; ++i) {
+  for (Py_ssize_t i = 0; i < nlocalsplus_new; ++i) {
     PyObject *name = PyTuple_GET_ITEM(code->co_localsplusnames, i);
     PyObject *index = PyLong_FromSize_t(i);
     PyDict_SetItem(namemap, name, index);
   }
-  for (size_t i = 0; i < frame->f_code->co_nlocalsplus; ++i) {
+  for (Py_ssize_t i = 0; i < nlocalsplus_old; ++i) {
     PyObject *name = PyTuple_GET_ITEM(frame->f_code->co_localsplusnames, i);
     PyObject *index = PyDict_GetItem(namemap, name);
     if (index == NULL) {

@@ -66,7 +66,6 @@ void BindEvalFrame(pybind11::module *m) {
       [](const py::object &py_func) {
         VLOG(5) << "start call set_eval_frame_py.";
         auto ret = set_eval_frame_py(py_func.ptr());
-        VLOG(0) << "end call set_eval_frame_py.";
         auto obj = py::reinterpret_borrow<py::object>(ret);
         return obj;
       },
