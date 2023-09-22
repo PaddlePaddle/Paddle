@@ -28,9 +28,9 @@ from paddle.base.compiler import BuildStrategy
 from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.base.framework import _apply_pass
-from paddle.base.libpaddle.ir import OpResult, fake_op_result, is_fake_op_result
 from paddle.framework import use_pir_api
 from paddle.optimizer.lr import LRScheduler
+from paddle.pir import OpResult, fake_op_result, is_fake_op_result
 
 from . import logging_utils
 from .utils import RETURN_NO_VALUE_MAGIC_NUM, backend_guard

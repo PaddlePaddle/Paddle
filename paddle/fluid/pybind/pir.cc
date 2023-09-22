@@ -926,7 +926,7 @@ SplitedResult ForwardBackwardSplit(
     counter += 1;
   };
 
-  counter = 0;
+  // counter = 0;
   VLOG(4) << "Create pd.data for backward program: fo, start with input_"
           << counter;
   std::for_each(forward_outputs.begin(), forward_outputs.end(), create_data_fn);
@@ -945,7 +945,7 @@ SplitedResult ForwardBackwardSplit(
                 forward_outputs_grads.end(),
                 create_data_fn);
 
-  counter = 0;
+  // counter = 0;
   std::for_each(
       middle_values.begin(), middle_values.end(), create_output_fn_forward);
   std::for_each(
@@ -958,7 +958,7 @@ SplitedResult ForwardBackwardSplit(
                    auto *cloned_op = BuildOpFrom(op, backward_value_map);
                    backward_program->block()->push_back(cloned_op);
                  });
-  counter = 0;
+  // counter = 0;
   std::for_each(forward_inputs_grads.begin(),
                 forward_inputs_grads.end(),
                 create_output_fn_backward);
