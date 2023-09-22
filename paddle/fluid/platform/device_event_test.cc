@@ -127,7 +127,7 @@ TEST(DeviceEvent, CUDA) {
 TEST(DeviceEvent, CPU) {
   using paddle::platform::CPUPlace;
   auto place = CPUPlace();
-  DeviceEvent event(place);
+  DeviceEvent event(place, platform::GenerateDeviceEventFlag());
   auto& pool = DeviceContextPool::Instance();
   auto* context = pool.Get(place);
 
