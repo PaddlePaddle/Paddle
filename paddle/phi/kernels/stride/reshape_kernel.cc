@@ -54,6 +54,7 @@ void ReshapeStridedKernel(const Context& dev_ctx,
     out->set_strides(DenseTensorMeta::calc_strides(out->dims()));
     out->set_offset(0);
     out->ResetHolder(tmp.Holder());
+    out->ShareInplaceVersionCounterWith(tmp);
   }
 }
 

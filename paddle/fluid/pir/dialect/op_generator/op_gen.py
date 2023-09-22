@@ -393,9 +393,7 @@ class OpInfoParser:
         return False
 
     def parse_op_phi_name(self):
-        if (self.parse_op_inplace_info() is None) and (
-            self.parse_op_view_info() is None
-        ):
+        if self.parse_op_inplace_info() is None:
             return [self.op_yaml_item['name']]
         else:
             if self.op_yaml_item['name'][-1] == "_":

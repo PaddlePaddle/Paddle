@@ -504,6 +504,15 @@ class FunctionGeneratorBase:
         inplace_map_str = forward_api_contents['inplace']
         self.forward_inplace_map = ParseYamlInplaceInfo(inplace_map_str)
 
+    def ParseForwardViewInfo(self):
+        forward_api_contents = self.forward_api_contents
+        if 'view' not in forward_api_contents.keys():
+            self.forward_view_map = None
+            return
+
+        view_map_str = forward_api_contents['view']
+        self.forward_view_map = ParseYamlInplaceInfo(view_map_str)
+
     def ParseNoNeedBuffer(self):
         grad_api_contents = self.grad_api_contents
 

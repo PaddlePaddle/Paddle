@@ -851,6 +851,7 @@
   kernel :
     func : flatten_grad
     data_type : out_grad
+  view: (out_grad -> x_grad)
   inplace : (out_grad -> x_grad)
 
 - backward_op : flip_grad
@@ -2235,6 +2236,7 @@
   output : Tensor(grad_out_grad), Tensor(xshape)
   invoke: squeeze(grad_x_grad, axis)
   intermediate : xshape
+  view: (grad_x_grad -> grad_out_grad)
 
 - backward_op : squeeze_grad
   forward : squeeze(Tensor x, IntArray axis) -> Tensor(out), Tensor(xshape)
@@ -2246,6 +2248,7 @@
   kernel :
     func : squeeze_grad
     data_type : out_grad
+  view: (out_grad -> x_grad)
   inplace : (out_grad -> x_grad)
   backward: squeeze_double_grad
 
@@ -2479,6 +2482,7 @@
   output : Tensor(grad_out_grad), Tensor(xshape)
   invoke : unsqueeze(grad_x_grad, axes)
   intermediate : xshape
+  view: (grad_x_grad -> grad_out_grad)
 
 - backward_op : unsqueeze_grad
   forward : unsqueeze(Tensor x, IntArray axes) -> Tensor(out), Tensor(xshape)
@@ -2491,6 +2495,7 @@
     func : unsqueeze_grad
     param : [xshape, out_grad]
     data_type : out_grad
+  view: (out_grad -> x_grad)
   inplace : (out_grad -> x_grad)
   backward : unsqueeze_double_grad
 
@@ -2513,6 +2518,7 @@
   kernel :
     func : view_dtype_grad
     data_type : out_grad
+  view: (out_grad -> input_grad)
 
 - backward_op : view_shape_grad
   forward : view_shape (Tensor input, int64_t[] dims = {}) -> Tensor(out)
@@ -2523,6 +2529,7 @@
     param : [input]
   kernel :
     func : view_shape_grad
+  view: (out_grad -> input_grad)
 
 - backward_op : warpctc_grad
   forward : warpctc (Tensor logits, Tensor label, Tensor logits_length, Tensor labels_length, int blank = 0, bool norm_by_times = false) -> Tensor(loss), Tensor(warpctcgrad)

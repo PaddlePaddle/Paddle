@@ -44,4 +44,4 @@ void UnbindStridedKernel(const Context& dev_ctx,
 
 }  // namespace phi
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    unbind, STRIDED, phi::UnbindStridedKernel) {}
+    unbind_strided, STRIDED, phi::UnbindStridedKernel) {}

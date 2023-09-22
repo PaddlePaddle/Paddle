@@ -120,6 +120,7 @@
     func : batch_norm
     data_type : x
   view : (mean -> mean_out), (variance -> variance_out)
+  inplace : (mean -> mean_out), (variance -> variance_out)
   backward : batch_norm_grad
   optional : reserve_space
 
@@ -954,11 +955,12 @@
 
 - op : slice
   args : (Tensor input, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : SliceRawInferMeta
   kernel :
     func : slice
+  view: (input -> out)
   backward : slice_grad
 
 - op : softmax
@@ -991,11 +993,12 @@
 
 - op : strided_slice
   args : (Tensor x, int[] axes, IntArray starts, IntArray ends, IntArray strides)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : StridedSliceInferMeta
   kernel :
     func : strided_slice
+  view: (x -> out)
   backward : strided_slice_grad
 
 - op : subtract
@@ -1065,6 +1068,7 @@
     func : TransposeInferMeta
   kernel :
     func : transpose
+  view: (x -> out)
   backward : transpose_grad
 
 - op : tril

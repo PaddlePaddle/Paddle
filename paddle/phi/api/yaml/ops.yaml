@@ -180,12 +180,13 @@
 
 - op : as_strided
   args : (Tensor input, int64_t[] dims = {}, int64_t[] stride = {}, int64_t offset = 0)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : StridedUnChangedInferMeta
     param : [input]
   kernel :
     func : as_strided
+  view: (input -> out)
   backward : as_strided_grad
   no_need_buffer : input
 
@@ -685,11 +686,12 @@
 
 - op : diagonal
   args : (Tensor x, int offset = 0, int axis1 = 0, int axis2 = 1)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : DiagonalInferMeta
   kernel :
     func : diagonal
+  view: (x -> out)
   backward : diagonal_grad
 
 - op : digamma
@@ -1261,6 +1263,7 @@
   kernel :
     func : index_select_strided
     data_type : x
+  view: (x -> out)
   backward : index_select_strided_grad
 
 - op : instance_norm
@@ -2718,6 +2721,7 @@
   kernel :
     func : view_dtype
     data_type : input
+  view: (input -> out)
   backward : view_dtype_grad
   no_need_buffer : input
 
@@ -2729,6 +2733,7 @@
     param : [input]
   kernel :
     func : view_shape
+  view: (input -> out)
   backward : view_shape_grad
   no_need_buffer : input
 
