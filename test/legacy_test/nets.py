@@ -46,7 +46,7 @@ def simple_img_conv_pool(
     r"""
         :api_attr: Static Graph
 
-    The simple_img_conv_pool api is composed of :ref:`api_base_layers_conv2d` and :ref:`api_base_layers_pool2d` .
+    The simple_img_conv_pool api is composed of :ref:`api_paddle_nn_Conv2D` and :ref:`api_base_layers_pool2d` .
 
     Args:
         input (Variable): 4-D Tensor, shape is [N, C, H, W], data type can be float32 or float64.
