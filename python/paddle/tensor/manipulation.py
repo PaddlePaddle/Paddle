@@ -3639,7 +3639,10 @@ def reshape(x, shape, name=None):
                     new_shape.append(ele.item())
                 else:
                     new_shape.append(ele)
-            out = _C_ops.reshape(x, new_shape)
+            if new_shape == x.shape:
+                out = x
+            else:
+                out = _C_ops.reshape(x, new_shape)
         elif isinstance(shape, core.eager.Tensor):
             shape.stop_gradient = True
             out = _C_ops.reshape(x, shape)
