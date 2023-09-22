@@ -700,8 +700,8 @@ class ParallelEnv:
 
         # imperative only support one gpu or xpu
         if self._device_type != "":
-            FLAGS_selected_custom_devices = 'FLAGS_selected_{}s'.format(
-                self._device_type
+            FLAGS_selected_custom_devices = (
+                f'FLAGS_selected_{self._device_type}s'
             )
             selected_custom_devices = os.getenv(
                 FLAGS_selected_custom_devices, "0"
@@ -1014,8 +1014,8 @@ def init_parallel_env():
         )
 
     if backend == "xccl":
-        FLAGS_selected_custom_devices = 'FLAGS_selected_{}s'.format(
-            parallel_env.device_type
+        FLAGS_selected_custom_devices = (
+            f'FLAGS_selected_{parallel_env.device_type}s'
         )
         _check_var_exists(FLAGS_selected_custom_devices)
     else:

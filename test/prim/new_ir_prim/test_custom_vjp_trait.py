@@ -15,7 +15,7 @@
 import unittest
 
 import paddle
-from paddle import ir, nn
+from paddle import nn, pir
 from paddle.base.core import has_custom_vjp
 
 paddle.enable_static()
@@ -30,7 +30,7 @@ def get_gelu_program_new_ir():
         x = paddle.static.data('x', [2, 3, 3], dtype='float32')
         net = nn.GELU()
         out = net(x)
-    newir_program = ir.translate_to_new_ir(main_program.desc)
+    newir_program = pir.translate_to_new_ir(main_program.desc)
     return newir_program
 
 
@@ -43,7 +43,7 @@ def get_multiply_program_new_ir():
         x = paddle.static.data('x', [2, 3, 3], dtype='float32')
         y = paddle.static.data('y', [2, 3, 3], dtype='float32')
         out = paddle.multiply(x, y)
-    newir_program = ir.translate_to_new_ir(main_program.desc)
+    newir_program = pir.translate_to_new_ir(main_program.desc)
     return newir_program
 
 

@@ -28,12 +28,13 @@ class Lexer {
   explicit Lexer(std::istream& is) : is(is) {}
   ~Lexer() = default;
   Token ConsumeToken();
+  Token PeekToken();
   std::unique_ptr<Token> LexIdentifer();
   std::unique_ptr<Token> LexNumberOrArraow();
   std::unique_ptr<Token> LexEndTagOrNullVal();
   std::unique_ptr<Token> LexValueId();
   std::unique_ptr<Token> LexEOF();
-  std::unique_ptr<Token> LexOpName();
+  std::unique_ptr<Token> LexString();
   char GetChar();
   void SkipWhitespace();
   bool IsEndTag(char);

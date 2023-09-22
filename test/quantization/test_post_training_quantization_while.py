@@ -59,22 +59,14 @@ class TestPostTrainingQuantization(unittest.TestCase):
         try:
             os.system("mkdir -p " + self.int8_model_path)
         except Exception as e:
-            print(
-                "Failed to create {} due to {}".format(
-                    self.int8_model_path, str(e)
-                )
-            )
+            print(f"Failed to create {self.int8_model_path} due to {str(e)}")
             sys.exit(-1)
 
     def tearDown(self):
         try:
             os.system(f"rm -rf {self.int8_model_path}")
         except Exception as e:
-            print(
-                "Failed to delete {} due to {}".format(
-                    self.int8_model_path, str(e)
-                )
-            )
+            print(f"Failed to delete {self.int8_model_path} due to {str(e)}")
 
     def cache_unzipping(self, target_folder, zip_path):
         cmd = f'tar xf {zip_path} -C {target_folder}'

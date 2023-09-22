@@ -12,19 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import core
-import numpy as np
-import warnings
 import struct
+import warnings
 
+import numpy as np
+
+from ..pir import OpResult
+from . import core
 from .framework import (
     Variable,
+    _cpu_num,
+    _cuda_ids,
     default_main_program,
     in_dygraph_mode,
+    in_pir_mode,
 )
-from .framework import _cpu_num, _cuda_ids
 
-__all__ = ['DataFeeder']
+__all__ = []
 
 _PADDLE_DTYPE_2_NUMPY_DTYPE = {
     core.VarDesc.VarType.BOOL: 'bool',
@@ -44,7 +48,7 @@ _PADDLE_DTYPE_2_NUMPY_DTYPE = {
 _PADDLE_NEW_IR_DTYPE_2_NUMPY_DTYPE = {
     core.DataType.BOOL: 'bool',
     core.DataType.FLOAT16: 'float16',
-    core.DataType.UINT16: 'uint16',
+    core.DataType.BFLOAT16: 'uint16',
     core.DataType.FLOAT32: 'float32',
     core.DataType.FLOAT64: 'float64',
     core.DataType.INT8: 'int8',
@@ -143,12 +147,8 @@ def convert_dtype(dtype):
 def check_variable_and_dtype(
     input, input_name, expected_dtype, op_name, extra_message=''
 ):
-    import paddle
-
-    if paddle.ir.core._use_new_ir_api():
-        check_type(
-            input, input_name, paddle.ir.OpResult, op_name, extra_message
-        )
+    if in_pir_mode():
+        check_type(input, input_name, OpResult, op_name, extra_message)
     else:
         check_type(input, input_name, Variable, op_name, extra_message)
     check_dtype(input.dtype, input_name, expected_dtype, op_name, extra_message)

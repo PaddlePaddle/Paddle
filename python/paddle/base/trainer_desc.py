@@ -13,17 +13,10 @@
 # limitations under the License.
 """Definition of trainers."""
 
-import sys
 import os
+import sys
 
-__all__ = [
-    'TrainerDesc',
-    'MultiTrainer',
-    'DistMultiTrainer',
-    'PipelineTrainer',
-    'HeterXpuTrainer',
-    'HeterPipelineTrainer',
-]
+__all__ = []
 
 
 class TrainerDesc:

@@ -10,6 +10,7 @@ if(NOT WIN32)
     pd_op_dialect
     pd_kernel_dialect
     pir
+    phi
     standalone_executor)
 endif()
 

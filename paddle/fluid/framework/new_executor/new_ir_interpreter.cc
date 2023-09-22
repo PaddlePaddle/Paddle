@@ -758,9 +758,10 @@ void NewIRInterpreter::RecordStreamForGC(InstructionBase* instr) {
 
     if (var->IsType<phi::DenseTensor>()) {
       TensorRecordStream(*(var->GetMutable<phi::DenseTensor>()));
-    } else if (var->IsType<
-                   operators::reader::
-                       OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {
+    } else if (
+        var->IsType<
+            operators::reader::
+                OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {  // NOLINT
       // do nothing
     } else if (var->IsType<phi::SelectedRows>()) {
       TensorRecordStream(
@@ -935,8 +936,108 @@ void NewIRInterpreter::ConstructEventForJitInput() {
 paddle::framework::FetchList NewIRInterpreter::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<phi::DenseTensor>& feed_tensors) {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "Run with feed_tensors is not implemented in NewIRInterpreter."));
+  auto FeedInput = [&] {
+    VLOG(4) << "Feed inputs";
+    for (size_t i = 0; i < feed_names.size(); ++i) {
+      auto* feed_var = InnerScope()->FindVar(feed_names[i]);
+      PADDLE_ENFORCE_NOT_NULL(
+          feed_var,
+          platform::errors::NotFound("Variable %s should not be nullptr.",
+                                     feed_names[i]));
+
+      auto feed_tensor = feed_var->GetMutable<phi::DenseTensor>();
+      feed_tensor->ShareDataWith(feed_tensors[i]);
+      feed_tensor->set_lod(feed_tensors[i].lod());
+    }
+  };
+
+  SetDeviceId(place_);
+  CheckCUDAGraphBeforeRun(feed_names);
+
+#ifdef PADDLE_WITH_DNNL
+  platform::AttachPointerHashToMKLDNNKey(this, place_);
+#endif
+
+  FeedInput();
+
+  if (!is_build_) {
+    LOG_FIRST_N(INFO, 1) << "New Executor is BetaRunning.";
+    // Build
+    VLOG(4) << "Done BuildScope";
+    VLOG(4) << DebugValueInfo();
+
+    SolvePersisableVarNames();
+
+    VLOG(4) << "Parameter value include: ";
+    for (auto parameter : parameter_var_names_) {
+      VLOG(4) << "Parameter value: " << parameter;
+    }
+
+    BuildInstruction();
+    VLOG(4) << "Done BuildInstruction";
+
+    PreAnalysis();
+    VLOG(4) << "Done PreAnalysis";
+
+    // Run
+    if (FLAGS_enable_new_ir_in_executor_trace_run || nccl_op_num_ > 1 ||
+        ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
+         (sync_op_num_ == 0))) {
+      LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode "
+                              "with trace version.";
+      TraceRunImpl();
+    } else {
+      LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode "
+                              "with multi thread version.";
+      MultiThreadRunImpl();
+    }
+
+    is_build_ = true;
+    is_shared_results_build_ = true;
+  } else {
+    if (FLAGS_enable_new_ir_in_executor_trace_run || nccl_op_num_ > 1 ||
+        ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
+         (sync_op_num_ == 0))) {
+      TraceRunImpl();
+    } else {
+      MultiThreadRunImpl();
+    }
+  }
+
+  if (HasLocalScope()) {
+    ClearLoDTensorArrayInLocalScope();
+  }
+  // return Fetch Tensors
+  Scope* inner_scope = InnerScope();
+  if (FLAGS_enable_new_ir_in_executor) {
+    framework::FetchList fetch_res;
+
+    for (auto& var_name : fetch_var_names_) {
+      auto* var = inner_scope->FindVar(var_name);
+      VLOG(0) << "fetch " << var_name << "[" << var << "]";
+      fetch_res.push_back(var->Get<phi::DenseTensor>());
+    }
+
+    VLOG(4) << "get fetch list size: " << fetch_res.size();
+    return fetch_res;
+  } else {
+    auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
+    if (fetch_var) {
+      auto fetch_list =
+          std::move(*fetch_var->GetMutable<framework::FetchList>());
+#ifdef PADDLE_WITH_CUDA
+      if (platform::IsCUDAGraphCapturing()) {
+        PADDLE_ENFORCE_EQ(fetch_list.empty(),
+                          true,
+                          platform::errors::InvalidArgument(
+                              "Cannot fetch data when using CUDA Graph."));
+      }
+#endif
+      return fetch_list;
+    } else {
+      return {};
+    }
+  }
 }
 
 FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
@@ -1252,6 +1353,16 @@ void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
     VLOG(4) << "begin to run op " << instr_node->Name();
     if (!instr_node->IsArtificial()) {
       instr_node->Run();
+
+      if (FLAGS_benchmark) {
+        instr_node->DeviceContext().Wait();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
+        VLOG(4) << "Operator(" << instr_node->Name()  // NOLINT
+                << "): context wait and get last error";
+#endif
+      }
+
       VLOG(4) << __func__ << " OP id:" << instr_node->Id()
               << " name:" << instr_node->Name() << " type:"
               << (instr_node->KernelType() == OpFuncType::kCpuSync
@@ -1260,6 +1371,7 @@ void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
                              ? "kGpuSync"
                              : "kGpuAsync"))
               << " runs on " << platform::GetCurrentThreadName();
+
       VLOG(4) << "done instruction node run";
       CheckGC(instr_node);
       VLOG(4) << "done CheckGC";
@@ -1313,6 +1425,13 @@ void NewIRInterpreter::PreAnalysis() {
 
   UpdateNcclOpNum();
   VLOG(4) << "Done UpdateNcclOpNum";
+}
+
+void NewIRInterpreter::Build(
+    const std::vector<std::string>& feed_names,
+    std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "Build is not implemented in NewIRInterpreter."));
 }
 
 ::pir::Value NewIRInterpreter::GetValueByName(const std::string& var_name) {

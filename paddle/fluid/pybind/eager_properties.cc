@@ -92,13 +92,11 @@ Examples:
 
 PyObject* tensor_properties_get_type(TensorObject* self, void* closure) {
   EAGER_TRY
-  if (!self->tensor.defined()) {
+  if (!self->tensor.defined() || self->tensor.is_dense_tensor()) {
     // be same to old dygraph
     return ToPyObject(paddle::framework::proto::VarType::LOD_TENSOR);
   }
-  if (self->tensor.is_dense_tensor()) {
-    return ToPyObject(paddle::framework::proto::VarType::LOD_TENSOR);
-  } else if (self->tensor.is_selected_rows()) {
+  if (self->tensor.is_selected_rows()) {
     return ToPyObject(paddle::framework::proto::VarType::SELECTED_ROWS);
   } else if (egr::IsVariableCompatTensor(self->tensor)) {
     return ToPyObject(static_cast<paddle::framework::proto::VarType::Type>(
