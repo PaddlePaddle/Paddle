@@ -1516,13 +1516,11 @@ paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
   }
 }
 
-pir::OpResult CastPyArg2OpResult(PyObject* obj,
-                                 const std::string& op_type,
-                                 size_t arg_pos) {
+pir::Value CastPyArg2Value(PyObject* obj,
+                           const std::string& op_type,
+                           size_t arg_pos) {
   if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
     return ::pybind11::handle(obj).cast<pir::OpResult>();
-  } else if (obj == nullptr || obj == Py_None) {
-    return pir::OpResult();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
@@ -1531,6 +1529,16 @@ pir::OpResult CastPyArg2OpResult(PyObject* obj,
         arg_pos + 1,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
+}
+
+paddle::optional<pir::Value> CastPyArg2OptionalValue(PyObject* obj,
+                                                     const std::string& op_type,
+                                                     size_t arg_pos) {
+  if (obj == nullptr || obj == Py_None) {
+    return paddle::none;
+  }
+  return paddle::make_optional<pir::Value>(
+      CastPyArg2Value(obj, op_type, arg_pos));
 }
 
 std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
@@ -1577,8 +1585,6 @@ std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
     }
   } else if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
     return {::pybind11::handle(obj).cast<pir::Value>()};
-  } else if (obj == Py_None) {
-    return {};
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
@@ -1588,6 +1594,15 @@ std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
   return value_list;
+}
+
+paddle::optional<std::vector<pir::Value>> CastPyArg2OptionalVectorOfValue(
+    PyObject* obj, const std::string& op_type, size_t arg_pos) {
+  if (obj == nullptr || obj == Py_None) {
+    return paddle::none;
+  }
+  return paddle::make_optional<std::vector<pir::Value>>(
+      CastPyArg2VectorOfValue(obj, op_type, arg_pos));
 }
 
 paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,

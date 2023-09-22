@@ -15,8 +15,15 @@
 #include <cstring>
 
 #include "glog/logging.h"
+#include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/fluid/inference/tensorrt/plugin/c_allreduce_op_plugin.h"
 #include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/flags.h"
+PHI_DECLARE_bool(dynamic_static_unified_comm);
+#endif
 
 namespace paddle {
 namespace inference {
@@ -175,12 +182,48 @@ int CAllReducePluginDynamic::enqueue(
       PADDLE_THROW(platform::errors::InvalidArgument("Invalid reduce type: %d",
                                                      red_type_));
   }
-
-  auto comm = platform::NCCLCommContext::Instance().Get(ring_id_);
-  cudaStream_t custream = use_calc_stream_ ? stream : comm->stream();
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-      sendbuff, recvbuff, numel, dtype, nccl_red_type, comm->comm(), stream));
-
+  const auto& comm_context_manager =
+      phi::distributed::CommContextManager::GetInstance();
+  if (FLAGS_dynamic_static_unified_comm) {
+    PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id_)),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "You choose to use new communication library by "
+                          "setting environment "
+                          "variable FLAGS_dynamic_static_unified_comm True. "
+                          "But ring_id(%d) is "
+                          "not found in comm_context_manager.",
+                          std::to_string(ring_id_)));
+    auto comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
+        comm_context_manager.Get(std::to_string(ring_id_)));
+    PADDLE_ENFORCE_NE(comm_ctx,
+                      nullptr,
+                      platform::errors::Unavailable(
+                          "NCCLCommContext is nullptr, collective op should "
+                          "has ring_id attr."));
+    auto stream = comm_ctx->GetStream();
+    ncclRedOp_t nccl_red_type = ncclSum;
+    // comm_ctx->AllReduce(&inputs[0], inputs[0], nccl_red_type, stream);
+    phi::dynload::ncclAllReduce(sendbuff,
+                                recvbuff,
+                                numel,
+                                dtype,
+                                nccl_red_type,
+                                comm_ctx->GetNcclComm(),
+                                stream);
+    VLOG(3) << "new NCCLCommContext has ring_id_ " << ring_id_;
+  } else {
+    auto comm = platform::NCCLCommContext::Instance().Get(ring_id_);
+    cudaStream_t custream = use_calc_stream_ ? stream : comm->stream();
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(sendbuff,
+                                                                recvbuff,
+                                                                numel,
+                                                                dtype,
+                                                                nccl_red_type,
+                                                                comm->comm(),
+                                                                custream));
+    VLOG(3) << "old NCCLCommContext has ring_id_ " << ring_id_;
+  }
 #endif
   return (cudaGetLastError() != cudaSuccess);
 }

@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import io
+from . import io  # noqa: F401
 from . import math_op_patch
 
 
 __all__ = []
-__all__ += io.__all__

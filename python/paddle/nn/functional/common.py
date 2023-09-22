@@ -15,7 +15,7 @@
 import numpy
 
 import paddle
-from paddle import _C_ops, ir
+from paddle import _C_ops, pir
 from paddle.base.layer_helper import LayerHelper
 from paddle.common_ops_import import Variable, default_main_program
 from paddle.framework import (
@@ -1099,7 +1099,7 @@ def dropout(
             [[0., 0., 6.],
              [0., 0., 0.]])
     """
-    if not isinstance(p, (float, int, Variable, ir.OpResult)):
+    if not isinstance(p, (float, int, Variable, pir.OpResult)):
         raise TypeError("p argument should be a number or Variable")
 
     if isinstance(p, (int, float)):
@@ -1944,9 +1944,9 @@ def linear(x, weight, bias=None, name=None):
         return _C_ops.linear(x, weight, bias)
 
     elif in_pir_mode():
-        out = paddle._ir_ops.matmul(x, weight, False, False)
+        out = paddle._pir_ops.matmul(x, weight, False, False)
         if bias is not None:
-            return paddle._ir_ops.add(out, bias)
+            return paddle._pir_ops.add(out, bias)
         else:
             return out
     else:

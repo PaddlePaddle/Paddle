@@ -18,7 +18,7 @@ import inspect
 import numpy as np
 
 import paddle
-import paddle.ir.core as ir_static
+import paddle.pir.core as ir_static
 from paddle.base import core
 from paddle.base.data_feeder import convert_dtype
 from paddle.base.dygraph.base import switch_to_static_graph
