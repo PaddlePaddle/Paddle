@@ -17,7 +17,7 @@ import warnings
 
 import numpy as np
 
-from ..ir import OpResult
+from ..pir import OpResult
 from . import core
 from .framework import (
     Variable,
@@ -28,7 +28,7 @@ from .framework import (
     in_pir_mode,
 )
 
-__all__ = ['DataFeeder']
+__all__ = []
 
 _PADDLE_DTYPE_2_NUMPY_DTYPE = {
     core.VarDesc.VarType.BOOL: 'bool',

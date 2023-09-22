@@ -53,8 +53,8 @@ def _import_module(name, repo_dir):
 
 def _git_archive_link(repo_owner, repo_name, branch, source):
     if source == 'github':
-        return 'https://github.com/{}/{}/archive/{}.zip'.format(
-            repo_owner, repo_name, branch
+        return (
+            f'https://github.com/{repo_owner}/{repo_name}/archive/{branch}.zip'
         )
     elif source == 'gitee':
         return 'https://gitee.com/{}/{}/repository/archive/{}.zip'.format(
@@ -199,9 +199,7 @@ def list(repo_dir, source='github', force_reload=False):
     """
     if source not in ('github', 'gitee', 'local'):
         raise ValueError(
-            'Unknown source: "{}". Allowed values: "github" | "gitee" | "local".'.format(
-                source
-            )
+            f'Unknown source: "{source}". Allowed values: "github" | "gitee" | "local".'
         )
 
     if source in ('github', 'gitee'):
@@ -248,9 +246,7 @@ def help(repo_dir, model, source='github', force_reload=False):
     """
     if source not in ('github', 'gitee', 'local'):
         raise ValueError(
-            'Unknown source: "{}". Allowed values: "github" | "gitee" | "local".'.format(
-                source
-            )
+            f'Unknown source: "{source}". Allowed values: "github" | "gitee" | "local".'
         )
 
     if source in ('github', 'gitee'):
@@ -293,9 +289,7 @@ def load(repo_dir, model, source='github', force_reload=False, **kwargs):
     """
     if source not in ('github', 'gitee', 'local'):
         raise ValueError(
-            'Unknown source: "{}". Allowed values: "github" | "gitee" | "local".'.format(
-                source
-            )
+            f'Unknown source: "{source}". Allowed values: "github" | "gitee" | "local".'
         )
 
     if source in ('github', 'gitee'):

@@ -187,7 +187,7 @@ class TestResult:
         for name, value in kwargs.items():
             # check attr name
             if not (hasattr(self, name) or name in MetaResult.cls_map()):
-                raise KeyError('`{}` is not a valid result type.'.format(name))
+                raise KeyError(f'`{name}` is not a valid result type.')
 
             setattr(self, name, value)
 
@@ -207,7 +207,7 @@ class TestResult:
         return self.__unique_state
 
     def __str__(self) -> str:
-        return '{}, running time: {:.3f}s'.format(self.name, self.time)
+        return f'{self.name}, running time: {self.time:.3f}s'
 
 
 class DocTester:
@@ -654,9 +654,7 @@ def check_old_style(docstrings_to_test: typing.Dict[str, str]):
                 codeblock_name = codeblock['name']
                 codeblock_id = codeblock['id']
 
-                docstring_name = '{}:{}'.format(
-                    api_name, codeblock_name or codeblock_id
-                )
+                docstring_name = f'{api_name}:{codeblock_name or codeblock_id}'
 
                 old_style_apis.append(docstring_name)
 
@@ -738,9 +736,7 @@ def get_test_results(
                 docstring = doctester.ensemble_docstring(
                     codeblock=codeblock['codes']
                 )
-                docstring_name = '{}:{}'.format(
-                    api_name, codeblock_name or codeblock_id
-                )
+                docstring_name = f'{api_name}:{codeblock_name or codeblock_id}'
 
                 docstrings_extracted.append(
                     {'name': docstring_name, 'docstring': docstring}

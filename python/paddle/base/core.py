@@ -210,7 +210,7 @@ def load_dso(dso_absolute_path):
 
             cdll.LoadLibrary(dso_absolute_path)
         except:
-            warnings.warn("Load {} failed".format(dso_absolute_path))
+            warnings.warn(f"Load {dso_absolute_path} failed")
 
 
 def pre_load(dso_name):
