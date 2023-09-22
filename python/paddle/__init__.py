@@ -464,7 +464,7 @@ from . import hub  # noqa: F401
 from . import linalg  # noqa: F401
 from . import fft  # noqa: F401
 from . import signal  # noqa: F401
-from . import _ir_ops  # noqa: F401
+from . import _pir_ops  # noqa: F401
 
 import paddle.text  # noqa: F401
 import paddle.vision  # noqa: F401

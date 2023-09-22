@@ -18,6 +18,6 @@
 
 namespace paddle {
 namespace pybind {
-void BindNewIR(pybind11::module *m);
+void BindPIR(pybind11::module *m);
 }  // namespace pybind
 }  // namespace paddle
