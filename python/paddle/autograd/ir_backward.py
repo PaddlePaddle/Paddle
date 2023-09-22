@@ -288,7 +288,7 @@ def inverse_sort_op(ops):
     sorted_list = []
     for op in ops:
         for x in op.operands():
-            if x.source().get_defining_op() in ops_set:
+            if x.source() and x.source().get_defining_op() in ops_set:
                 pending_count[x.source().get_defining_op()] += 1
 
     queue = collections.deque()
