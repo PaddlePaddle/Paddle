@@ -92,7 +92,7 @@ void BroadcastTensorsGradKernel(const Context& ctx,
       phi::SumKernel<T, Context>(ctx,
                                  *input_tensor,
                                  reduce_dims_vec,
-                                 input_tensor->dtype(),
+                                 output_tensor->dtype(),
                                  false,
                                  output_tensor);
     }
