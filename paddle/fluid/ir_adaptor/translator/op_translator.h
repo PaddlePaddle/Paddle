@@ -54,7 +54,7 @@ struct OpTranscriber {
                                                      const OpDesc&,
                                                      const std::string&,
                                                      const OpInputInfo&,
-                                                     pir::Program*)>;
+                                                     pir::Block*)>;
   using AttributeHandlerFn = std::function<pir::Attribute(
       pir::IrContext*, const OpDesc&, const OpAttributeInfo&)>;
 
@@ -62,17 +62,17 @@ struct OpTranscriber {
   virtual pir::Operation* operator()(pir::IrContext* ctx,
                                      TranslationContext* param_map,
                                      const OpDesc& op_desc,
-                                     pir::Program* program);
+                                     pir::Block* block);
 
  public:
   virtual pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx, const OpDesc& op_desc);
-  virtual std::vector<pir::OpResult> GenerateOperationInput(
+  virtual std::vector<pir::Value> GenerateOperationInput(
       pir::IrContext* ctx,
       TranslationContext* param_map,
       const OpDesc& op_desc,
       const std::string& normalized_op_name,
       const OpInputInfoList& input_infos,
-      pir::Program* program);
+      pir::Block* block);
   virtual std::tuple<OpOutputTypeList, OpOutputMapping> GenerateOperationOutput(
       pir::IrContext* ctx,
       const OpDesc& op_desc,
@@ -86,7 +86,7 @@ struct OpTranscriber {
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc);
   virtual pir::OpResult GetAttributeAsInput(pir::IrContext* ctx,
-                                            pir::Program* program,
+                                            pir::Block* block,
                                             const OpDesc& op_desc,
                                             const OpInputInfo& input_info);
 
@@ -109,7 +109,7 @@ struct OpTranscriber {
                                             TranslationContext* param_map,
                                             const OpDesc& op_desc,
                                             const OpInputInfoList& input_infos,
-                                            pir::Program* program);
+                                            pir::Block* block);
 };
 
 class OpTranslator {
@@ -119,7 +119,7 @@ class OpTranslator {
   using BlockDesc = paddle::framework::BlockDesc;
   using VarDesc = paddle::framework::VarDesc;
   using OpTranslateFn = std::function<pir::Operation*(
-      pir::IrContext*, TranslationContext*, const OpDesc&, pir::Program*)>;
+      pir::IrContext*, TranslationContext*, const OpDesc&, pir::Block*)>;
 
  private:
   OpTranslator();  // Disallow instantiation outside of the class.

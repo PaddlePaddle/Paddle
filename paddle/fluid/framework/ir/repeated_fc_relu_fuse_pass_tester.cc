@@ -51,12 +51,12 @@ void TestMain(int num_fc) {
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   auto pass = PassRegistry::Instance().Get("repeated_fc_relu_fuse_pass");
-  int num_nodes_before = graph->Nodes().size();
+  int num_nodes_before = static_cast<int>(graph->Nodes().size());
   int num_fc_nodes_before = GetNumOpNodes(graph, "fc");
   VLOG(3) << DebugString(graph);
 
   graph.reset(pass->Apply(graph.release()));
-  int num_nodes_after = graph->Nodes().size();
+  int num_nodes_after = static_cast<int>(graph->Nodes().size());
   int num_fused_nodes_after = GetNumOpNodes(graph, "fusion_repeated_fc_relu");
   VLOG(3) << DebugString(graph);
 

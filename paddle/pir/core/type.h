@@ -24,7 +24,6 @@ class TypeStorage;
 class AbstractType;
 class IrContext;
 class Dialect;
-class ShapedTypeInterface;
 ///
 /// \brief Unified interface of the Type class. Derivation of all Type classes
 /// only derives interfaces, not members. For example, DenseTensorType,
@@ -49,7 +48,7 @@ class IR_API Type {
   Type() = default;
 
   Type(const Storage *storage)  // NOLINT
-      : storage_(const_cast<Storage *>(storage)) {}
+      : storage_(storage) {}
 
   Type(const Type &other) = default;
 
@@ -74,10 +73,7 @@ class IR_API Type {
   ///
   /// \brief Support PointerLikeTypeTraits.
   ///
-  ///
-  const void *AsOpaquePointer() const {
-    return static_cast<const void *>(storage_);
-  }
+  operator const void *() const { return storage_; }
   static Type RecoverFromOpaquePointer(const void *pointer) {
     return Type(reinterpret_cast<Storage *>(const_cast<void *>(pointer)));
   }
@@ -120,11 +116,6 @@ class IR_API Type {
 
   static Type Parse(std::istream &is, IrContext *ctx);
 
-  ///
-  /// \brief Enable hashing Type.
-  ///
-  friend struct std::hash<Type>;
-
   template <typename U>
   U cast() const {
     return pir::cast<U>(*this);
@@ -163,8 +154,12 @@ class TypeInterfaceBase : public pir::Type {
   static TypeId GetInterfaceId() { return TypeId::get<ConcreteInterface>(); }
 
   static ConcreteInterface dyn_cast(Type type) {
-    return ConcreteInterface(
-        type, type.abstract_type().GetInterfaceImpl<ConcreteInterface>());
+    if (type &&
+        type.abstract_type().HasInterface(TypeId::get<ConcreteInterface>())) {
+      return ConcreteInterface(
+          type, type.abstract_type().GetInterfaceImpl<ConcreteInterface>());
+    }
+    return ConcreteInterface(Type(), nullptr);
   }
 };
 
@@ -185,7 +180,7 @@ namespace std {
 template <>
 struct hash<pir::Type> {
   std::size_t operator()(const pir::Type &obj) const {
-    return std::hash<const pir::Type::Storage *>()(obj.storage_);
+    return std::hash<const void *>()(obj);
   }
 };
 }  // namespace std

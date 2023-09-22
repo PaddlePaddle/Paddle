@@ -95,8 +95,6 @@ class LAMBOptimizer(paddle.optimizer.Lamb):
         paddle.assign(next_v, v)
         paddle.assign(next_param, param_and_grad[0])
 
-        return None
-
 
 class TestLambOpV2(unittest.TestCase):
     def test_lamb_op(self):

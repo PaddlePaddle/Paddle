@@ -16,6 +16,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/primitive/rule/vjp/vjp.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
@@ -43,7 +44,7 @@ OpInfoTuple AddNOp::GetOpInfo() {
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
       OpOutputInfo("out", "paddle::dialect::DenseTensorType", false, false)};
   paddle::dialect::OpRunTimeInfo run_time_info = OpRunTimeInfo(
-      "AddNInferMeta", {"inputs"}, {"add_n"}, {"inputs"}, {}, {}, {}, {});
+      "AddNInferMeta", {"inputs"}, "add_n", {"inputs"}, {}, {}, {}, {});
 
   return std::make_tuple(inputs, attributes, outputs, run_time_info, "add_n");
 }
@@ -100,10 +101,11 @@ void AddNOp::Verify() {
 
 void AddNOp::Build(pir::Builder &builder,             // NOLINT
                    pir::OperationArgument &argument,  // NOLINT
-                   pir::OpResult inputs) {
+                   pir::Value inputs) {
+  VLOG(4) << "Start build AddNOp";
+
   VLOG(4) << "Builder construction inputs";
-  std::vector<pir::OpResult> argument_inputs = {inputs};
-  argument.AddOperands(argument_inputs.begin(), argument_inputs.end());
+  argument.AddInput(inputs);
 
   VLOG(4) << "Builder construction attributes";
 
@@ -149,6 +151,7 @@ void AddNOp::Build(pir::Builder &builder,             // NOLINT
       dense_out.offset());
   argument_outputs.push_back(out_dense_tensor_type);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
 }
 
 void AddNOp::InferMeta(phi::InferMetaContext *infer_meta) {
@@ -170,16 +173,17 @@ OpInfoTuple AddN_Op::GetOpInfo() {
       paddle::dialect::OpOutputInfo(
           "out", "paddle::dialect::DenseTensorType", false, false)};
   paddle::dialect::OpRunTimeInfo run_time_info = paddle::dialect::OpRunTimeInfo(
-      "AddNInferMeta", {"inputs"}, {"add_n"}, {"inputs"}, {}, {}, {}, {});
+      "AddNInferMeta", {"inputs"}, "add_n", {"inputs"}, {}, {}, {}, {});
   return std::make_tuple(inputs, attributes, outputs, run_time_info, "add_n_");
 }
 
 void AddN_Op::Build(pir::Builder &builder,
                     pir::OperationArgument &argument,
-                    pir::OpResult inputs_) {
+                    pir::Value inputs_) {
+  VLOG(4) << "Start build AddN_Op";
+
   VLOG(4) << "Builder construction inputs";
-  std::vector<pir::OpResult> argument_inputs = {inputs_};
-  argument.AddOperands(argument_inputs.begin(), argument_inputs.end());
+  argument.AddInput(inputs_);
 
   VLOG(4) << "Builder construction attributes";
 
@@ -297,17 +301,18 @@ OpInfoTuple AddNWithKernelOp::GetOpInfo() {
       paddle::dialect::OpOutputInfo(
           "out", "paddle::dialect::DenseTensorType", false, false)};
   paddle::dialect::OpRunTimeInfo run_time_info = paddle::dialect::OpRunTimeInfo(
-      "AddNInferMeta", {"inputs"}, {"add_n"}, {"inputs"}, {}, {}, {}, {});
+      "AddNInferMeta", {"inputs"}, "add_n", {"inputs"}, {}, {}, {}, {});
   return std::make_tuple(
       inputs, attributes, outputs, run_time_info, "add_n_with_kernel");
 }
 
 void AddNWithKernelOp::Build(pir::Builder &builder,
                              pir::OperationArgument &argument,
-                             pir::OpResult inputs_) {
+                             pir::Value inputs_) {
+  VLOG(4) << "Start build AddNWithKernelOp";
+
   VLOG(4) << "Builder construction inputs";
-  std::vector<pir::OpResult> argument_inputs = {inputs_};
-  argument.AddOperands(argument_inputs.begin(), argument_inputs.end());
+  argument.AddInput(inputs_);
 
   VLOG(4) << "Builder construction attributes";
 
@@ -439,7 +444,7 @@ OpInfoTuple FusedGemmEpilogueOp::GetOpInfo() {
   paddle::dialect::OpRunTimeInfo run_time_info(
       "FusedGemmEpilogueInferMeta",
       {"x", "y", "bias", "trans_x", "trans_y", "activation"},
-      {""},
+      "",
       {""},
       {""},
       {},
@@ -452,10 +457,12 @@ OpInfoTuple FusedGemmEpilogueOp::GetOpInfo() {
 
 void FusedGemmEpilogueOp::Build(pir::Builder &builder,
                                 pir::OperationArgument &argument,
-                                pir::OpResult x_,
-                                pir::OpResult y_,
-                                pir::OpResult bias_,
+                                pir::Value x_,
+                                pir::Value y_,
+                                pir::Value bias_,
                                 pir::AttributeMap attributes) {
+  VLOG(4) << "Start build FusedGemmEpilogueOp";
+
   PADDLE_ENFORCE(
       attributes.find("trans_x") != attributes.end(),
       phi::errors::NotFound(
@@ -476,8 +483,7 @@ void FusedGemmEpilogueOp::Build(pir::Builder &builder,
       attributes.at("activation").dyn_cast<pir::StrAttribute>().AsString();
 
   VLOG(4) << "Builder construction inputs";
-  std::vector<pir::OpResult> argument_inputs = {x_, y_, bias_};
-  argument.AddOperands(argument_inputs.begin(), argument_inputs.end());
+  argument.AddInputs({x_, y_, bias_});
 
   VLOG(4) << "Builder construction attributes";
   pir::Attribute attr_trans_x =
@@ -692,7 +698,7 @@ OpInfoTuple FusedGemmEpilogueGradOp::GetOpInfo() {
                                                 "trans_x",
                                                 "trans_y",
                                                 "activation_grad"},
-                                               {""},
+                                               "",
                                                {""},
                                                {""},
                                                {},
@@ -705,11 +711,13 @@ OpInfoTuple FusedGemmEpilogueGradOp::GetOpInfo() {
 
 void FusedGemmEpilogueGradOp::Build(pir::Builder &builder,
                                     pir::OperationArgument &argument,
-                                    pir::OpResult x_,
-                                    pir::OpResult y_,
-                                    pir::OpResult reserve_space_,
-                                    pir::OpResult out_grad_,
+                                    pir::Value x_,
+                                    pir::Value y_,
+                                    pir::Value reserve_space_,
+                                    pir::Value out_grad_,
                                     pir::AttributeMap attributes) {
+  VLOG(4) << "Start build FusedGemmEpilogueGradOp";
+
   PADDLE_ENFORCE(
       attributes.find("trans_x") != attributes.end(),
       phi::errors::NotFound(
@@ -730,9 +738,7 @@ void FusedGemmEpilogueGradOp::Build(pir::Builder &builder,
       attributes.at("activation_grad").dyn_cast<pir::StrAttribute>().AsString();
 
   VLOG(4) << "Builder construction inputs";
-  std::vector<pir::OpResult> argument_inputs = {
-      x_, y_, reserve_space_, out_grad_};
-  argument.AddOperands(argument_inputs.begin(), argument_inputs.end());
+  argument.AddInputs({x_, y_, reserve_space_, out_grad_});
 
   VLOG(4) << "Builder construction attributes";
   pir::Attribute attr_trans_x =
@@ -894,7 +900,7 @@ OpInfoTuple SplitGradOp::GetOpInfo() {
   paddle::dialect::OpRunTimeInfo run_time_info =
       OpRunTimeInfo("ConcatInferMeta",
                     {"out_grad", "axis"},
-                    {"concat"},
+                    "concat",
                     {"out_grad", "axis"},
                     {"out_grad"},
                     {},
@@ -907,16 +913,17 @@ OpInfoTuple SplitGradOp::GetOpInfo() {
 
 void SplitGradOp::Build(pir::Builder &builder,
                         pir::OperationArgument &argument,
-                        pir::OpResult out_grad_,
+                        pir::Value out_grad_,
                         float axis) {
+  VLOG(4) << "Start build SplitGradOp";
+
   // Generate scalar mutable attribute: axis
   paddle::dialect::FullOp full_axis_op = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1}, axis, phi::DataType::FLOAT32, phi::CPUPlace());
   pir::OpResult axis_ = full_axis_op->result(0);
 
   VLOG(4) << "Builder construction inputs";
-  std::vector<pir::OpResult> argument_inputs = {out_grad_, axis_};
-  argument.AddOperands(argument_inputs.begin(), argument_inputs.end());
+  argument.AddInputs({out_grad_, axis_});
 
   VLOG(4) << "Builder construction attributes";
 
@@ -970,21 +977,21 @@ void SplitGradOp::Build(pir::Builder &builder,
 
 void SplitGradOp::Build(pir::Builder &builder,
                         pir::OperationArgument &argument,
-                        pir::OpResult out_grad_,
-                        pir::OpResult axis_) {
+                        pir::Value out_grad_,
+                        pir::Value axis_) {
+  VLOG(4) << "Start build SplitGradOp";
+
   VLOG(4) << "Builder construction inputs";
-  std::vector<pir::OpResult> argument_inputs = {out_grad_, axis_};
-  argument.AddOperands(argument_inputs.begin(), argument_inputs.end());
+  argument.AddInputs({out_grad_, axis_});
 
   VLOG(4) << "Builder construction attributes";
 
   VLOG(4) << "Builder construction outputs";
   pir::VectorType out_grad = out_grad_.type().dyn_cast<pir::VectorType>();
-  int axis = axis_.owner()
+  int axis = axis_.dyn_cast<pir::OpResult>()
+                 .owner()
                  ->dyn_cast<paddle::dialect::FullOp>()
-                 .attributes()
-                 .at("value")
-                 .dyn_cast<paddle::dialect::ScalarAttribute>()
+                 .attribute<paddle::dialect::ScalarAttribute>("value")
                  .data()
                  .to<int>();
 
@@ -1092,10 +1099,12 @@ void SplitGradOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 void IfOp::Build(pir::Builder &builder,             // NOLINT
                  pir::OperationArgument &argument,  // NOLINT
-                 pir::OpResult cond,
+                 pir::Value cond,
                  std::vector<pir::Type> &&output_types) {
+  VLOG(4) << "Start build IfOp";
+
   argument.num_regions = 2;
-  argument.AddOperand(cond);
+  argument.AddInput(cond);
   argument.output_types.swap(output_types);
 }
 pir::Block *IfOp::true_block() {

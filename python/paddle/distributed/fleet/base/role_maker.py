@@ -58,8 +58,8 @@ class Gloo:
             "gloo is not initialized, will not communicator with other nodes"
         )
         self._err_type = "gloo initialized error, please check arguments"
-        self._err_world = "argument error, comm_world must in {}".format(
-            self._comm_world
+        self._err_world = (
+            f"argument error, comm_world must in {self._comm_world}"
         )
 
         self._is_initialized = False
@@ -497,7 +497,6 @@ class RoleMakerBase:
 
     def _all_gather(self, input, comm_world="worker"):
         print("warning: RoleMakerBase does not have all gather worker.")
-        return None
 
     def _all_reduce(self, input, mode="sum", comm_world="worker"):
         """
@@ -507,7 +506,6 @@ class RoleMakerBase:
             mode(str): "sum" or "min" or "max"
         """
         print("warning: RoleMakerBase does not have all reduce worker.")
-        return None
 
     def _barrier(self, comm_world):
         """
@@ -1175,9 +1173,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         else:
             type = "FILE"
         print(
-            "Gloo init with {}: need_init_all: {}, args: {}".format(
-                type, need_init_all, kwargs
-            )
+            f"Gloo init with {type}: need_init_all: {need_init_all}, args: {kwargs}"
         )
 
         self._gloo.init(

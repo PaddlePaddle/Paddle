@@ -31,7 +31,7 @@ void CPUAllocator::FreeImpl(phi::Allocation *allocation) {
 #ifdef _WIN32
   _aligned_free(p);
 #else
-  free(p);
+  free(p);  // NOLINT
 #endif
   HOST_MEMORY_STAT_UPDATE(Reserved, 0, -size);
   delete allocation;

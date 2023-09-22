@@ -18,7 +18,7 @@ import unittest
 from time import time
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test
+from dygraph_to_static_util import ast_only_test, test_and_compare_with_new_ir
 from predictor_utils import PredictorTools
 
 import paddle
@@ -153,6 +153,7 @@ class TestMNISTWithToStatic(TestMNIST):
     still works if model is trained in dygraph mode.
     """
 
+    @test_and_compare_with_new_ir(True)
     def train_static(self):
         return self.train(to_static=True)
 
@@ -167,9 +168,7 @@ class TestMNISTWithToStatic(TestMNIST):
             dygraph_loss,
             static_loss,
             rtol=1e-05,
-            err_msg='dygraph is {}\n static_res is \n{}'.format(
-                dygraph_loss, static_loss
-            ),
+            err_msg=f'dygraph is {dygraph_loss}\n static_res is \n{static_loss}',
         )
 
     def test_mnist_declarative_cpu_vs_mkldnn(self):

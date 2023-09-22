@@ -24,12 +24,34 @@
 #include "paddle/pir/core/program.h"
 
 namespace paddle {
+namespace dialect {
+struct PdOpSig {
+  std::string name;
+  std::vector<std::string> inputs;
+  std::vector<std::string> outputs;
+  PdOpSig() = default;
+  PdOpSig(const PdOpSig& input_info) = default;
+
+  PdOpSig(const std::string& name,
+          const std::vector<std::string>& inputs,
+          const std::vector<std::string>& outputs)
+      : name(name), inputs(inputs), outputs(outputs) {}
+};
+
+bool HaveOpToMultiKernelsMap(std::string op_name);
+
+const std::vector<PdOpSig>& LegacyOpToPdOpsMapping(std::string op_name);
+
+}  // namespace dialect
+}  // namespace paddle
+
+namespace paddle {
 namespace translator {
 
 pir::Operation* InsertSliceOperationForTarget(
     pir::IrContext* ctx,
     TranslationContext* param_map,
-    pir::Program* program,
+    pir::Block* block,
     const VariableDefiningInfo& defining_info,
     const std::string& arg_name);
 

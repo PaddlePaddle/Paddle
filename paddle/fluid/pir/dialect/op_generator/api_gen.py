@@ -84,8 +84,9 @@ SPLIT_OP_TEMPLATE = """
 COMPUTE_OP_TEMPLATE = """
     paddle::dialect::{op_class_name} {op_inst_name} = APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::{op_class_name}>({args});"""
 
-OP_RESULT = 'pir::OpResult'
+OP_INPUT = 'pir::Value'
 VECTOR_TYPE = 'pir::VectorType'
+INTARRAY_ATTRIBUTE = "paddle::dialect::IntArrayAttribute"
 
 
 def get_op_class_name(op_name):
@@ -95,6 +96,11 @@ def get_op_class_name(op_name):
 class CodeGen:
     def __init__(self) -> None:
         self._type_map = {
+            'paddle::dialect::DenseTensorType': 'pir::Value',
+            'paddle::dialect::SelectedRowsType': 'pir::Value',
+            'pir::VectorType<paddle::dialect::DenseTensorType>': 'std::vector<pir::Value>',
+        }
+        self._ret_type_map = {
             'paddle::dialect::DenseTensorType': 'pir::OpResult',
             'paddle::dialect::SelectedRowsType': 'pir::OpResult',
             'pir::VectorType<paddle::dialect::DenseTensorType>': 'std::vector<pir::OpResult>',
@@ -110,9 +116,24 @@ class CodeGen:
                 op_yaml_items = op_yaml_items + ops
         op_info_items = []
         for op in op_yaml_items:
-            op_info_items.append(
-                OpInfoParser(op, op_compat_parser.get_compat(op['name']))
-            )
+            op_compat_item = op_compat_parser.get_compat(op['name'])
+            if (
+                op_compat_item is None
+                and op['name'].endswith(('_grad', '_grad_'))
+                and 'forward' in op
+            ):
+                op_compat_item = op_compat_parser.get_compat(
+                    op['forward']['name']
+                )
+
+            if (
+                op_compat_item is not None
+                and op_compat_item['op'] == "pow"
+                and 'scalar' in op_compat_item
+            ):
+                op_compat_item = op_compat_item.pop('scalar')
+
+            op_info_items.append(OpInfoParser(op, op_compat_item))
         return op_info_items
 
     def _need_skip(self, op_info, op_name):
@@ -129,11 +150,11 @@ class CodeGen:
         assert len(name_list) == len(type_list)
         ret = []
         for name, type in zip(name_list, type_list):
-            ret.append(f'{self._type_map[type]} {name}')
+            ret.append(f'const {self._type_map[type]}& {name}')
         return ', '.join(ret)
 
     def _gen_api_attrs(
-        self, op_info, with_default, is_mutable_attr, is_vector_mutable_sttr
+        self, op_info, with_default, is_mutable_attr, is_vector_mutable_attr
     ):
         name_list = op_info.attribute_name_list
         type_list = op_info.attribute_build_arg_type_list
@@ -149,21 +170,17 @@ class CodeGen:
             if is_mutable_attr and name in mutable_name_list:
                 if (
                     mutable_type_list[mutable_name_list.index(name)][0]
-                    == "paddle::dialect::IntArrayAttribute"
-                    and is_vector_mutable_sttr
+                    == INTARRAY_ATTRIBUTE
+                    and is_vector_mutable_attr
                 ):
-                    mutable_attr.append(f'std::vector<{OP_RESULT}> {name}')
+                    mutable_attr.append(f'std::vector<{OP_INPUT}> {name}')
                 else:
-                    mutable_attr.append(f'{OP_RESULT} {name}')
+                    mutable_attr.append(f'{OP_INPUT} {name}')
                 continue
             if with_default and default_value is not None:
                 if type in ['float', 'double']:
                     default_value = default_value.strip('"')
-                no_mutable_attr.append(
-                    '{type} {name} = {default_value}'.format(
-                        type=type, name=name, default_value=default_value
-                    )
-                )
+                no_mutable_attr.append(f'{type} {name} = {default_value}')
             else:
                 no_mutable_attr.append(f'{type} {name}')
         return ', '.join(mutable_attr + no_mutable_attr)
@@ -191,7 +208,7 @@ class CodeGen:
             return 'std::tuple<{}>'.format(
                 ', '.join(
                     [
-                        self._type_map[type]
+                        self._ret_type_map[type]
                         for type, intermediate in zip(
                             type_list, intermediate_list
                         )
@@ -201,7 +218,7 @@ class CodeGen:
             )
         elif output_num == 1:
             index = intermediate_list.index('false')
-            return self._type_map[type_list[index]]
+            return self._ret_type_map[type_list[index]]
         elif output_num == 0:
             return 'void'
 
@@ -231,7 +248,7 @@ class CodeGen:
                     declare_str += self._gen_one_declare(
                         op_info, op_name, True, False
                     )
-                    if "paddle::dialect::IntArrayAttribute" in {
+                    if INTARRAY_ATTRIBUTE in {
                         type[0] for type in op_info.mutable_attribute_type_list
                     }:
                         declare_str += self._gen_one_declare(
@@ -267,10 +284,7 @@ class CodeGen:
             type_list = op_info.mutable_attribute_type_list
             assert len(name_list) == len(type_list)
             for name, type in zip(name_list, type_list):
-                if (
-                    type[0] == "paddle::dialect::IntArrayAttribute"
-                    and is_vector_mutable_attr
-                ):
+                if type[0] == INTARRAY_ATTRIBUTE and is_vector_mutable_attr:
                     op_name = f'{name}_combine_op'
                     combine_op += COMBINE_OP_TEMPLATE.format(
                         op_name=op_name, in_name=name
@@ -400,7 +414,7 @@ class CodeGen:
                     impl_str += self._gen_one_impl(
                         op_info, op_name, True, False
                     )
-                    if "paddle::dialect::IntArrayAttribute" in {
+                    if INTARRAY_ATTRIBUTE in {
                         type[0] for type in op_info.mutable_attribute_type_list
                     }:
                         impl_str += self._gen_one_impl(

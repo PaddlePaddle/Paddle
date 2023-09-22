@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/phi_kernel_adaptor/phi_kernel_util.h"
-
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
@@ -21,6 +20,7 @@
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/utils.h"
@@ -43,8 +43,20 @@
 #include "glog/logging.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 
 namespace pir {
+
+const std::unordered_set<std::string> SpecialOps = {"pd_op.feed",
+                                                    "pd_op.fetch",
+                                                    "builtin.combine",
+                                                    "builtin.set_parameter",
+                                                    "builtin.get_parameter",
+                                                    "builtin.slice",
+                                                    "builtin.split",
+                                                    "pd_op.data",
+                                                    "pd_op.shadow_output",
+                                                    "pd_op.if"};
 
 void AddNewData(pir::Value value,
                 std::string name,
@@ -113,9 +125,9 @@ paddle::framework::Variable* CreateVar(
         variable_2_var_name,
     std::map<std::string, int>* var_name_2_id,
     std::vector<paddle::framework::Variable*>* variable_list) {
-  Operation* def_op = value.GetDefiningOp();
+  Operation* def_op = value.dyn_cast<OpResult>().owner();
   bool is_persisable = false;
-  if (def_op->name() == "builtin.set_parameter") {
+  if (def_op->isa<::pir::SetParameterOp>()) {
     is_persisable = true;
   }
 
@@ -184,9 +196,8 @@ void BuildValue(pir::Value value,
                     variable_list);
   }
   // Only support DenseTensor or Vector<DenseTensor>
-  if (!value.type()) {
-    var->GetMutable<phi::DenseTensor>();
-  } else if (value.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+  if (!value.type() ||
+      value.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
     var->GetMutable<phi::DenseTensor>();
   } else if (value.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
     var->GetMutable<phi::SelectedRows>();
@@ -226,7 +237,8 @@ void HandleForSpecialOp(
     std::unordered_map<const paddle::framework::Variable*, std::string>*
         variable_2_var_name,
     std::map<std::string, int>* var_name_2_id,
-    std::vector<paddle::framework::Variable*>* variable_list) {
+    std::vector<paddle::framework::Variable*>* variable_list,
+    std::map<pir::Block*, paddle::framework::Scope*>* sub_blocks) {
   std::string op_name = op->name();
   if (op->attributes().count("op_name")) {
     op_name =
@@ -260,7 +272,7 @@ void HandleForSpecialOp(
 
     std::string name =
         op->attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
-    paddle::framework::Variable* var = inner_scope->FindVar(name);
+    paddle::framework::Variable* var = inner_scope->Var(name);
     PADDLE_ENFORCE(var,
                    paddle::platform::errors::InvalidArgument(
                        "The variable %s shoud exist", name));
@@ -425,6 +437,33 @@ void HandleForSpecialOp(
       value_2_var_name->emplace(out_value, var_name);
     }
   }
+
+  if (op_name == "pd_op.if") {
+    auto if_op = op->dyn_cast<paddle::dialect::IfOp>();
+
+    auto true_block = if_op.true_block();
+
+    auto false_block = if_op.false_block();
+
+    auto& true_branch_scope = inner_scope->NewScope();
+    sub_blocks->emplace(true_block, &true_branch_scope);
+
+    auto& false_branch_scope = inner_scope->NewScope();
+    sub_blocks->emplace(false_block, &false_branch_scope);
+
+    for (size_t i = 0; i < if_op->num_results(); ++i) {
+      // auto true_value = true_yeid_op->operand_source(i);
+
+      auto if_op_out_value = if_op->result(i);
+      BuildValue(if_op_out_value,
+                 inner_scope,
+                 var_name_prefix,
+                 value_2_var_name,
+                 variable_2_var_name,
+                 var_name_2_id,
+                 variable_list);
+    }
+  }
 }
 
 void HandleForInplaceOp(
@@ -483,8 +522,8 @@ void HandleForInplaceOp(
   }
 }
 
-// NOTE(zhiqiu): the persistable is created in inner_scope's root, and other is
-// created in inner_scope.
+// NOTE(zhiqiu): the persistable is created in inner_scope's root, and other
+// is created in inner_scope.
 void BuildScope(const pir::Block& block,
                 paddle::framework::Scope* inner_scope,
                 const std::string& var_name_prefix,
@@ -492,7 +531,8 @@ void BuildScope(const pir::Block& block,
                 std::unordered_map<const paddle::framework::Variable*,
                                    std::string>* variable_2_var_name,
                 std::map<std::string, int>* var_name_2_id,
-                std::vector<paddle::framework::Variable*>* variable_list) {
+                std::vector<paddle::framework::Variable*>* variable_list,
+                std::map<pir::Block*, paddle::framework::Scope*>* sub_blocks) {
   VLOG(4) << "***** [before build] scope"
           << "(" << inner_scope << ") ******\n"
           << paddle::framework::GenScopeTreeDebugInfo(
@@ -507,19 +547,15 @@ void BuildScope(const pir::Block& block,
                     .AsString();
     }
     VLOG(4) << "build op:" << op_name;
-
-    if (op_name == "pd_op.feed" || op_name == "pd_op.fetch" ||
-        op_name == "builtin.combine" || op_name == "builtin.set_parameter" ||
-        op_name == "builtin.get_parameter" || op_name == "builtin.slice" ||
-        op_name == "builtin.split" || op_name == "pd_op.data" ||
-        op_name == "pd_op.shadow_output") {
+    if (SpecialOps.count(op_name)) {
       HandleForSpecialOp(op,
                          inner_scope,
                          var_name_prefix,
                          value_2_var_name,
                          variable_2_var_name,
                          var_name_2_id,
-                         variable_list);
+                         variable_list,
+                         sub_blocks);
       continue;
     }
 
@@ -698,7 +734,8 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
       } else if (array_list[0].isa<pir::Int64Attribute>()) {
         std::vector<int> vec_int64;
         for (auto attribute : array_list) {
-          vec_int64.push_back(attribute.dyn_cast<pir::Int64Attribute>().data());
+          vec_int64.push_back(
+              attribute.dyn_cast<pir::Int64Attribute>().data());  // NOLINT
         }
         attr_map[name] = vec_int64;
       } else if (array_list[0].isa<pir::BoolAttribute>()) {
@@ -710,14 +747,15 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
       } else if (array_list[0].isa<pir::FloatAttribute>()) {
         std::vector<int> vec_float;
         for (auto attribute : array_list) {
-          vec_float.push_back(attribute.dyn_cast<pir::FloatAttribute>().data());
+          vec_float.push_back(
+              attribute.dyn_cast<pir::FloatAttribute>().data());  // NOLINT
         }
         attr_map[name] = vec_float;
       } else if (array_list[0].isa<pir::DoubleAttribute>()) {
         std::vector<int> vec_double;
         for (auto attribute : array_list) {
           vec_double.push_back(
-              attribute.dyn_cast<pir::DoubleAttribute>().data());
+              attribute.dyn_cast<pir::DoubleAttribute>().data());  // NOLINT
         }
         attr_map[name] = vec_double;
       } else {

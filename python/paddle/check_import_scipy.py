@@ -26,4 +26,3 @@ def check_import_scipy(OsName):
                     print_info
                     + "\nplease download Visual C++ Redistributable from https://support.microsoft.com/en-us/topic/the-latest-supported-visual-c-downloads-2647da03-1eea-4433-9aff-95f26a218cc0"
                 )
-    return
