@@ -237,7 +237,7 @@ class SimplePyLayerNetMultiIn(paddle.nn.Layer):
     def forward(self, x1, x2):
         y1 = self.linear1(x1)
         y2 = self.linear1(x2)
-        out = cus_tanh_2.apply(y1, func1=paddle.tanh)
+        out = cus_tanh_2.apply(y1, paddle.tanh)
         out = out + y2
         out = paddle.mean(out)
         return out
