@@ -89,13 +89,11 @@ def create_global_var(
     Examples:
         .. code-block:: python
 
-            >>> # required: gpu
             >>> import paddle
             >>> paddle.enable_static()
             >>> var = paddle.static.create_global_var(shape=[2,3], value=1.0, dtype='float32',
             ...                                persistable=True, force_cpu=True, name='new_var')
     """
-    # TODO
     check_type(shape, 'shape', (list, tuple, np.ndarray), 'create_global_var')
     for item in shape:
         check_type(
@@ -178,11 +176,9 @@ def create_parameter(
         .. code-block:: python
 
             >>> import paddle
-            >>> #require:gpu
             >>> paddle.enable_static()
             >>> W = paddle.create_parameter(shape=[784, 200], dtype='float32')
     """
-    # TODO
     check_type(shape, 'shape', (list, tuple, np.ndarray), 'create_parameter')
     for item in shape:
         check_type(
@@ -250,11 +246,9 @@ def create_tensor(dtype, name=None, persistable=False):
     Examples:
         .. code-block:: python
 
-            >>> # requires: gpu,xpu
             >>> import paddle
             >>> tensor = paddle.tensor.create_tensor(dtype='float32')
     """
-    # TODO
     check_dtype(
         dtype,
         'dtype',
@@ -303,13 +297,11 @@ def linspace(start, stop, num, dtype=None, name=None):
             >>> data = paddle.linspace(0, 10, 5, 'float32')
             >>> print(data.numpy())
             [0. 2.5 5. 7.5 10.]
-            >>> # required:GPU
             >>> data = paddle.linspace(0, 10, 1, 'float32')
             >>> print(data.numpy())
             [0.]
 
     """
-    # TODO
     if dtype is None:
         dtype = paddle.get_default_dtype()
     tensor_num = num
@@ -437,13 +429,10 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
             >>> data = paddle.logspace(0, 10, 5, 2, 'float32')
             >>> print(data.numpy())
             [1.0000000e+00 5.6568542e+00 3.2000000e+01 1.8101933e+02 1.0240000e+03]
-
-            >>> # required: gpu, distributed
             >>> data = paddle.logspace(0, 10, 1, 2, 'float32')
             >>> print(data.numpy())
             [1.]
     """
-    # TODO
     if dtype is None:
         dtype = paddle.get_default_dtype()
     tensor_num = num
@@ -2435,14 +2424,11 @@ def complex(real, imag, name=None):
             >>> x = paddle.arange(2, dtype=paddle.float32).unsqueeze(-1)
             >>> y = paddle.arange(3, dtype=paddle.float32)
             >>> z = paddle.complex(x, y)
-            >>> # doctest: +SKIP('SKIP...')
             >>> print(z)
             Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
             [[0j    , 1j    , 2j    ],
              [(1+0j), (1+1j), (1+2j)]])
     """
-    # TODO
-
     if in_dynamic_mode():
         return _C_ops.complex(real, imag)
     else:
@@ -2508,7 +2494,6 @@ def tril_indices(row, col, offset=0, dtype='int64'):
             [[0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3],
              [0, 1, 2, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3]])
 
-            >>> # doctest: +SKIP
             >>> # example 3, negative offset value
             >>> data3 = paddle.tril_indices(4,4,-1)
             >>> print(data3)
@@ -2516,8 +2501,6 @@ def tril_indices(row, col, offset=0, dtype='int64'):
             [[1, 2, 2, 3, 3, 3],
              [0, 0, 1, 0, 1, 2]])
     """
-    # TODO
-
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
@@ -2591,15 +2574,12 @@ def triu_indices(row, col=None, offset=0, dtype='int64'):
             >>> print(data2.numpy())
             [[0 0 1]
              [2 3 3]]
-
             >>> # example 3, negative offset value
             >>> data3 = paddle.triu_indices(4,4,-1)
             >>> print(data3.numpy())
             [[0 0 0 0 1 1 1 1 2 2 2 3 3]
              [0 1 2 3 0 1 2 3 1 2 3 2 3]]
     """
-    # TODO
-
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
@@ -2661,14 +2641,11 @@ def polar(abs, angle, name=None):
             >>> abs = paddle.to_tensor([1, 2], dtype=paddle.float64)
             >>> angle = paddle.to_tensor([np.pi / 2, 5 * np.pi / 4], dtype=paddle.float64)
             >>> out = paddle.polar(abs, angle)
-
             >>> print(out)
             Tensor(shape=[2], dtype=complex128, place=Place(cpu), stop_gradient=True,
             [ (6.123233995736766e-17+1j)             ,
              (-1.4142135623730954-1.414213562373095j)])
     """
-    # TODO
-
     check_variable_and_dtype(abs, 'abs', ['float32', 'float64'], 'paddle.polar')
     check_variable_and_dtype(
         angle, 'angle', ['float32', 'float64'], 'paddle.polar'
