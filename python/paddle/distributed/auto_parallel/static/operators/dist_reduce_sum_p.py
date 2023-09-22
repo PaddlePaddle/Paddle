@@ -215,7 +215,7 @@ class DistributedReduceSumPrimtiveImpl0(DistributedOperatorImpl):
         # TODO: should we add a new dist attr for the new op here?
 
         # batch dimension synchronization
-        var_name = src_op.output_arg_names()[0]
+        var_name = src_op.output_arg_names[0]
         sync_group = new_process_group(ctx.data_parallel_group)
         allreduce_op = main_block.append_op(
             type='c_allreduce_sum',
