@@ -262,6 +262,7 @@ function cmake_base() {
         -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF}
         -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}"
         -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
+        -DWITH_NVCC_LAZY=${WITH_NVCC_LAZY:-ON}
         -DWITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
     ========================================
 EOF
@@ -313,6 +314,7 @@ EOF
         -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}  \
         -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}  \
+        -DWITH_NVCC_LAZY=${WITH_NVCC_LAZY:-ON} \
         -DWITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF};build_error=$?
 
     if [ "$build_error" != 0 ];then
@@ -783,7 +785,7 @@ function run_linux_cpu_test() {
     if [ -d "${PADDLE_ROOT}/dist/" ]; then
         pip install ${PADDLE_ROOT}/dist/*whl
     fi
-    cp ${PADDLE_ROOT}/build/test/legacy_test/eager_op_test.py ${PADDLE_ROOT}/build/python
+    cp ${PADDLE_ROOT}/build/test/legacy_test/op_test.py ${PADDLE_ROOT}/build/python
     cp ${PADDLE_ROOT}/build/test/legacy_test/testsuite.py ${PADDLE_ROOT}/build/python
     cp -r ${PADDLE_ROOT}/build/test/white_list ${PADDLE_ROOT}/build/python
     ut_total_startTime_s=`date +%s`
@@ -987,10 +989,10 @@ function check_whl_size() {
     fi
 
     set +x
-    pr_whl_size=`du -m ${PADDLE_ROOT}/build/pr_whl/*.whl|awk '{print $1}'`
+    pr_whl_size=`du -m ${PADDLE_ROOT}/build/pr_whl/paddle*.whl|awk '{print $1}'`
     echo "pr_whl_size: ${pr_whl_size}"
 
-    dev_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
+    dev_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/paddle*.whl|awk '{print $1}'`
     echo "dev_whl_size: ${dev_whl_size}"
 
     whldiffSize=`echo $(($pr_whl_size - $dev_whl_size))`
@@ -1025,7 +1027,7 @@ function generate_upstream_develop_api_spec() {
     git log --pretty=oneline -10
 
     dev_commit=`git log -1|head -1|awk '{print $2}'`
-    dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${dev_commit}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl"
+    dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${dev_commit}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl"
     url_return=`curl -s -m 5 -IL ${dev_url} |awk 'NR==1{print $2}'`
     if [ "$url_return" == '200' ];then
         echo "wget develop whl from bos! "
@@ -1174,9 +1176,9 @@ EOF
 }
 
 function check_diff_file_for_coverage() {
-    diff_h_file=$(git diff --name-status test develop | awk '$1 != "D" {print $2}' | grep '\.h$' | awk -F "/" '{printf "%s,",$NF}')
-    diff_cc_file=$(git diff --name-status test develop | awk '$1 != "D" {print $2}' | grep -E '\.(cc|c)$' | awk -F "/" '{printf "%s,",$NF}')
-    diff_py_file=$(git diff --name-status test develop | grep '\.py$' | awk '$1 != "D" {printf "%s,",$2}')
+    diff_h_file=$(git diff --name-status test -- | awk '$1 != "D" {print $2}' | grep '\.h$' | awk -F "/" '{printf "%s,",$NF}')
+    diff_cc_file=$(git diff --name-status test -- | awk '$1 != "D" {print $2}' | grep -E '\.(cc|c)$' | awk -F "/" '{printf "%s,",$NF}')
+    diff_py_file=$(git diff --name-status test -- | grep '\.py$' | awk '$1 != "D" {printf "%s,",$2}')
     export PADDLE_GIT_DIFF_H_FILE=${diff_h_file%*,}
     export PADDLE_GIT_DIFF_CC_FILE=${diff_cc_file%*,}
     export PADDLE_GIT_DIFF_PY_FILE=${diff_py_file%*,}
@@ -2370,7 +2372,7 @@ set -x
         export FLAGS_trt_ibuilder_cache=1
         precison_cases=""
         bash $PADDLE_ROOT/tools/check_added_ut.sh
-        #check change of pr_unnitests and dev_unnitests
+        #check change of pr_unittests and dev_unittests
         check_approvals_of_unittest 2
         ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > ${PADDLE_ROOT}/build/all_ut_list
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
@@ -2479,7 +2481,7 @@ set +x
         noparallel_ut_startTime_s=`date +%s`
         while read line
         do
-            card_test "$line" -1 2
+            card_test "$line" -1 4
         done < $PADDLE_ROOT/tools/no_parallel_case_file
         noparallel_ut_endTime_s=`date +%s`
         echo "ipipe_log_param_noparallel_TestCases_Total_Time: $[ $noparallel_ut_endTime_s - $noparallel_ut_startTime_s ]s"
@@ -2574,7 +2576,7 @@ set -ex
 
 function parallel_test_base_ipu() {
     mkdir -p ${PADDLE_ROOT}/build
-    cd ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/ipu
+    cd ${PADDLE_ROOT}/build/python/paddle/base/tests/unittests/ipu
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
     cat <<EOF
     ========================================
@@ -3199,8 +3201,19 @@ function summary_check_problems() {
         echo "==============================================================================="
         echo "*****Example code error***** Please fix the error listed in the information:"
         echo "==============================================================================="
-        echo "$example_info" | grep "API check -- Example Code" -A $(echo "$example_info" | wc -l)
+        echo "$example_info"
+        echo "==============================================================================="
+        echo "*****Example code FAIL*****"
+        echo "==============================================================================="
         exit $example_code
+    else
+        echo "==============================================================================="
+        echo "*****Example code info*****"
+        echo "==============================================================================="
+        echo "$example_info"
+        echo "==============================================================================="
+        echo "*****Example code PASS*****"
+        echo "==============================================================================="
     fi
     set -x
 }
@@ -3265,17 +3278,17 @@ function build_pr_and_develop() {
 
     git checkout $BRANCH
     dev_commit=`git log -1|head -1|awk '{print $2}'`
-    dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${dev_commit}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl"
+    dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${dev_commit}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl"
     url_return=`curl -s -m 5 -IL ${dev_url} |awk 'NR==1{print $2}'`
     if [ "$url_return" == '200' ];then
         mkdir ${PADDLE_ROOT}/build/dev_whl && wget -q -P ${PADDLE_ROOT}/build/dev_whl ${dev_url}
-        cp ${PADDLE_ROOT}/build/dev_whl/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl ${PADDLE_ROOT}/build/python/dist
+        cp ${PADDLE_ROOT}/build/dev_whl/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl ${PADDLE_ROOT}/build/python/dist
     else
         if [[ ${cmake_change} ]];then
             rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt ${PADDLE_ROOT}/build/build.ninja
             rm -rf ${PADDLE_ROOT}/build/third_party
         fi
-
+        
         git checkout -b develop_base_pr upstream/$BRANCH
         git submodule update --init
         run_setup ${PYTHON_ABI:-""} "rerun-cmake bdist_wheel" ${parallel_number}
@@ -3285,6 +3298,7 @@ function build_pr_and_develop() {
         mv ${PADDLE_ROOT}/dist/*.whl ${PADDLE_ROOT}/build/python/dist/
         mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
     fi
+    
     generate_api_spec "$1" "DEV"
 
 }
@@ -3552,9 +3566,11 @@ EOF
     if [ "$3" != "" ]; then
       parallel_number=$3
     fi
-    export MAX_JOBS=${parallel_number}
+    
     # reset ccache zero stats for collect PR's actual hit rate
-
+    if [ "${MAX_JOBS}" == "" ]; then
+        export MAX_JOBS=${parallel_number}
+    fi
     ccache -z
     cd ..
     if [ "${PYTHON_EXECUTABLE}" != "" ];then
@@ -3865,10 +3881,10 @@ function main() {
         example_info_gpu=""
         example_code_gpu=0
         if [ "${WITH_GPU}" == "ON" ] ; then
-            example_info_gpu=$(exec_samplecode_test gpu)
+            { example_info_gpu=$(exec_samplecode_test gpu 2>&1 1>&3 3>/dev/null); } 3>&1
             example_code_gpu=$?
         fi
-        example_info=$(exec_samplecode_test cpu)
+        { example_info=$(exec_samplecode_test cpu 2>&1 1>&3 3>/dev/null); } 3>&1
         example_code=$?
         summary_check_problems $[${example_code_gpu} + ${example_code}] "${example_info_gpu}\n${example_info}"
         assert_api_spec_approvals
@@ -3885,10 +3901,10 @@ function main() {
         example_info_gpu=""
         example_code_gpu=0
         if [ "${WITH_GPU}" == "ON" ] ; then
-            example_info_gpu=$(exec_samplecode_test gpu)
+            { example_info_gpu=$(exec_samplecode_test gpu 2>&1 1>&3 3>/dev/null); } 3>&1
             example_code_gpu=$?
         fi
-        example_info=$(exec_samplecode_test cpu)
+        { example_info=$(exec_samplecode_test cpu 2>&1 1>&3 3>/dev/null); } 3>&1
         example_code=$?
         summary_check_problems $[${example_code_gpu} + ${example_code}] "${example_info_gpu}\n${example_info}"
         assert_api_spec_approvals
@@ -4098,7 +4114,7 @@ function main() {
         build_document_preview
         ;;
       api_example)
-        example_info=$(exec_samplecode_test cpu)
+        { example_info=$(exec_samplecode_test cpu 2>&1 1>&3 3>/dev/null); } 3>&1
         example_code=$?
         summary_check_problems $example_code "$example_info"
         ;;

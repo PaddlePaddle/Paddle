@@ -41,7 +41,7 @@ PADDLE_DEFINE_EXPORTED_bool(
 PHI_DECLARE_double(fraction_of_gpu_memory_to_use);
 PHI_DECLARE_uint64(initial_gpu_memory_in_mb);
 PHI_DECLARE_uint64(reallocate_gpu_memory_in_mb);
-DECLARE_bool(benchmark);
+PD_DECLARE_bool(benchmark);
 
 namespace paddle {
 namespace memory {
@@ -386,8 +386,7 @@ void *Alloc<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
   if (ptr == nullptr) {
     LOG(WARNING) << "cudaHostAlloc Cannot allocate " << size
                  << " bytes in CUDAPinnedPlace";
-  }
-  if (FLAGS_init_allocated_mem) {
+  } else if (FLAGS_init_allocated_mem) {
     memset(ptr, 0xEF, size);
   }
   return ptr;

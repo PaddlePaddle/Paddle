@@ -17,14 +17,14 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle import base
+from paddle.base import core
+from paddle.base.dygraph.base import switch_to_static_graph
 
 
 class LAMBOptimizer(paddle.optimizer.Lamb):
     def _append_optimize_op(self, block, param_and_grad):
-        assert isinstance(block, fluid.framework.Block)
+        assert isinstance(block, base.framework.Block)
         block.program._use_lamb = True
 
         m = moment1 = self._get_accumulator(
@@ -95,8 +95,6 @@ class LAMBOptimizer(paddle.optimizer.Lamb):
         paddle.assign(next_v, v)
         paddle.assign(next_param, param_and_grad[0])
 
-        return None
-
 
 class TestLambOpV2(unittest.TestCase):
     def test_lamb_op(self):
@@ -119,7 +117,7 @@ class TestLambOpWithCombinedOp(unittest.TestCase):
         paddle.enable_static()
 
         def _build_static_model(main, startup, seed=100):
-            with fluid.program_guard(main, startup):
+            with base.program_guard(main, startup):
                 main.random_seed = seed
                 startup.random_seed = seed
                 x = paddle.static.data(
@@ -133,21 +131,21 @@ class TestLambOpWithCombinedOp(unittest.TestCase):
                 avg_loss = paddle.mean(loss)
             return avg_loss
 
-        place = fluid.CPUPlace()
+        place = base.CPUPlace()
         num_steps = 10
 
         for i in range(num_steps):
             feed_x = np.random.random(size=(10, 13)).astype('float32')
             feed_y = np.random.random(size=(10, 1)).astype('float32')
 
-            main_program = fluid.Program()
-            startup_program = fluid.Program()
-            with fluid.program_guard(main_program, startup_program):
+            main_program = base.Program()
+            startup_program = base.Program()
+            with base.program_guard(main_program, startup_program):
                 avg_loss = _build_static_model(main_program, startup_program)
                 lamb_kernel = paddle.optimizer.Lamb(learning_rate=0.2)
                 lamb_kernel.minimize(avg_loss)
 
-            executor = fluid.Executor(place)
+            executor = base.Executor(place)
             executor.run(startup_program)
             output = executor.run(
                 program=main_program,
@@ -155,14 +153,14 @@ class TestLambOpWithCombinedOp(unittest.TestCase):
                 fetch_list=[avg_loss.name],
             )
 
-            main = fluid.Program()
-            startup = fluid.Program()
-            with fluid.program_guard(main, startup):
+            main = base.Program()
+            startup = base.Program()
+            with base.program_guard(main, startup):
                 loss = _build_static_model(main, startup)
                 lamb = LAMBOptimizer(learning_rate=0.2)
                 lamb.minimize(loss)
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             exe.run(startup)
             out = exe.run(
                 program=main,

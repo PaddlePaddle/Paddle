@@ -18,7 +18,7 @@
 
 namespace cinn {
 namespace ir {
-
+namespace ir_utils {
 /**
  * Collect the IR Nodes(without duplication) in the expression.
  */
@@ -65,5 +65,24 @@ std::map<std::string, Expr> CollectTensorMap(
       return true;
     });
 
+/**
+ * Collect undefined vars in the scope.
+ *
+ * e.g.
+ *
+ * The expression:
+ * for i
+ *  for j
+ *    a[i, j] = b[i, j]
+ *
+ * here a, b are vars without definition
+ */
+std::vector<std::string> CollectUndefinedVars(const Expr* e);
+
+/**
+ * Collect the Tensor Nodes which will be Writed by Store or Call Nodes
+ */
+std::set<std::string> CollectTensorNeedsWrite(const Expr* e);
+}  // namespace ir_utils
 }  // namespace ir
 }  // namespace cinn

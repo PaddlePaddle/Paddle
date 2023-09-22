@@ -79,7 +79,11 @@ opmaker_attr_types_map = {
     'str[]': 'std::vector<std::string>',
 }
 
-output_type_map = {'Tensor': 'Tensor', 'Tensor[]': 'std::vector<Tensor>'}
+output_type_map = {
+    'Tensor': 'Tensor',
+    'Tensor[]': 'std::vector<Tensor>',
+    'SelectedRows': 'SelectedRows',
+}
 
 # ------------------------------ phi attr ------------------------------
 phi_attr_types_map = attr_types_map.copy()

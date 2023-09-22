@@ -15,19 +15,19 @@
 import logging
 import typing
 
-from paddle import ir
-from paddle.fluid.libpaddle.ir import Block, Program
+from paddle import pir
+from paddle.base.libpaddle.pir import Block, Program
 from paddle.framework import core
 
 from . import register
 
 
 def _build_tensor_tuple(xs):
-    if isinstance(xs, ir.OpResult):
+    if isinstance(xs, pir.OpResult):
         return (xs,)
     elif isinstance(xs, typing.Sequence):
         return tuple(xs)
-    return TypeError(f"Type {type(xs)} is not supported")
+    return TypeError(f"Type {type(xs)} is not supported.")
 
 
 def _prepare_python_api_arguments(op):
@@ -125,9 +125,11 @@ def decompose(
     Returns:
         dst_vars (list): A list contains all vars which replace origin ones in src_vars.
     """
+    if not core._is_fwd_prim_enabled():
+        return src_vars
     if not isinstance(program, Program):
         raise TypeError(f"Expect type Program, but got type {type(program)}.")
-    block = program.block()
+    block = program.global_block()
 
     if not isinstance(blacklist, (set, frozenset)):
         raise TypeError(
@@ -155,23 +157,26 @@ def decompose(
     dst_vars = [None] * len(src_vars)
     dst_vars_dct = {}
     for idx, item in enumerate(src_vars):
-        if not isinstance(item, ir.OpResult):
+        if not isinstance(item, pir.OpResult):
             raise TypeError(
                 f"Each var in dst_vars should map corresponding var in src_vars, but got type {type(item)} in {src_vars}."
             )
         dst_vars_dct[item] = idx
-    with ir.core.program_guard(program):
+    with pir.core.program_guard(program):
         _decompose_subgraph(
             block,
             dst_vars_dct,
             dst_vars,
             op_filter,
         )
-    for item in dst_vars:
-        if not isinstance(item, ir.OpResult):
-            raise TypeError(
-                f"Each var in dst_vars should map corresponding var in src_vars, but got type {type(item)} in {dst_vars}."
-            )
+    for idx, item in enumerate(dst_vars):
+        if not isinstance(item, pir.OpResult):
+            if item is None:
+                dst_vars[idx] = src_vars[idx]
+            else:
+                raise TypeError(
+                    f"Each var in dst_vars should map corresponding var in src_vars, but got type {type(item)} in {dst_vars}."
+                )
     logging.debug(
         "Decompose composite forward ops finish: {}".format(
             core.prim_config["composite_ops_record"]
@@ -201,7 +206,7 @@ def _decompose_subgraph(block, orig_vars, dst_vars, op_filter):
             if lower:
                 core.prim_config["composite_ops_record"].add(op_name)
                 input_args = _prepare_python_api_arguments(op)
-                ir.set_insertion_point(op)
+                pir.set_insertion_point(op)
                 orig_outs = op.results()
                 new_outs = _build_tensor_tuple(decom_rule(*input_args))
 

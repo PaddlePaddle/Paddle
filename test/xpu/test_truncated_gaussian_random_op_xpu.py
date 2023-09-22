@@ -23,8 +23,8 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid.executor import Executor
+from paddle import base
+from paddle.base.executor import Executor
 
 paddle.enable_static()
 
@@ -58,10 +58,10 @@ class XPUTestTruncatedGaussianRandomOp(XPUOpTestWrapper):
             self.std = 1.0
 
         def test_check_output(self):
-            self.gaussian_random_test(place=fluid.XPUPlace(0))
+            self.gaussian_random_test(place=base.XPUPlace(0))
 
         def gaussian_random_test(self, place):
-            program = fluid.Program()
+            program = base.Program()
             block = program.global_block()
             vout = block.create_var(name="Out")
             op = block.append_op(

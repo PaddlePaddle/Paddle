@@ -27,8 +27,8 @@ def get_include():
     Examples:
         .. code-block:: python
 
-            import paddle
-            include_dir = paddle.sysconfig.get_include()
+            >>> import paddle
+            >>> include_dir = paddle.sysconfig.get_include()
 
     """
     import paddle
@@ -46,8 +46,8 @@ def get_lib():
     Examples:
         .. code-block:: python
 
-            import paddle
-            include_dir = paddle.sysconfig.get_lib()
+            >>> import paddle
+            >>> include_dir = paddle.sysconfig.get_lib()
 
     """
     import paddle

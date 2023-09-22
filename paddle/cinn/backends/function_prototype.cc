@@ -21,7 +21,7 @@
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/runtime/flags.h"
 
-DECLARE_bool(verbose_function_register);
+PD_DECLARE_bool(verbose_function_register);
 
 namespace cinn {
 namespace backends {

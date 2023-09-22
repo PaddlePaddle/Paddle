@@ -21,11 +21,11 @@ limitations under the License. */
 #include <string>
 #include <thread>  // NOLINT
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/utils/flags.h"
 
-DECLARE_bool(enable_host_event_recorder_hook);
+PD_DECLARE_bool(enable_host_event_recorder_hook);
 
 namespace phi {
 

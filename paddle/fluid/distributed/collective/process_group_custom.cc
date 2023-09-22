@@ -27,7 +27,7 @@
 
 constexpr int64_t kWaitBlockTImeout = 10;
 
-DECLARE_bool(use_stream_safe_cuda_allocator);
+PD_DECLARE_bool(use_stream_safe_cuda_allocator);
 
 namespace paddle {
 namespace distributed {
@@ -815,7 +815,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
       CommType::BROADCAST);
 }
 
-void CheckTensorsInDifferentDevices(
+inline void CheckTensorsInDifferentDevices(
     const std::vector<phi::DenseTensor>& tensors, const size_t num_devices) {
   PADDLE_ENFORCE_EQ(
       tensors.empty(),

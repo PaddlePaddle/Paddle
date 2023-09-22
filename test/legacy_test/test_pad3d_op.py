@@ -15,12 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
-from paddle.fluid import (
+from paddle.base import (
     Executor,
     Program,
     core,

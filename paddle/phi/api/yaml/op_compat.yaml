@@ -435,6 +435,13 @@
   outputs :
     out : Out
 
+- op : c_embedding
+  backward : c_embedding_grad
+  inputs :
+    {weight : W, x : Ids}
+  outputs :
+    out : Out
+
 - op : cast
   inputs :
     x : X
@@ -803,6 +810,7 @@
   backward : dropout_grad
   inputs :
     x : X
+    seed_tensor : Seed
   outputs :
     out : Out
     mask : Mask
@@ -1172,6 +1180,41 @@
     value :
       data_type : float
       support_tensor : true
+
+- op : fused_attention
+  inputs:
+    x: X
+    ln_scale: LnScale
+    ln_bias: LnBias
+    qkv_weight: QKVW
+    qkv_bias: QKVBias
+    cache_kv: CacheKV
+    src_mask: SrcMask
+    out_linear_weight: OutLinearW
+    out_linear_bias: OutLinearBias
+    ln_scale_2: Ln2Scale
+    ln_bias_2: Ln2Bias
+  outputs:
+    ln_mean: LnMean
+    ln_var: LnVariance
+    ln_out: LnOut
+    qkv_out: QKVOut
+    qkv_bias_out: QKVBiasOut
+    transpose_out_2: TransposeOut2
+    qk_out: QKOut
+    qktv_out: QKTVOut
+    softmax_out: SoftmaxOut
+    attn_dropout_mask_out: AttnDropoutMaskOut
+    attn_dropout_out: AttnDropoutOut
+    src_mask_out: SrcMaskOut
+    fmha_out: FMHAOut
+    out_linear_out: OutLinearOut
+    dropout_mask_out: DropoutMaskOut
+    ln_mean_2: Ln2Mean
+    ln_var_2: Ln2Variance
+    bias_dropout_residual_out: BiasDropoutResidualOut
+    cache_kv_out: CacheKVOut
+    out: Y
 
 - op : fused_batch_norm_act
   backward : fused_batch_norm_act_grad
@@ -1932,6 +1975,14 @@
   outputs :
     {out : Out, index : Index, nms_rois_num : NmsRoisNum}
 
+- op : multihead_matmul
+  inputs :
+    {input : Input, w : W, bias : Bias, bias_qk : BiasQK}
+  outputs :
+    out : Out
+  attrs :
+    {transpose_q : transpose_Q,  transpose_k : transpose_K, transpose_v : transpose_V}
+
 - op : multinomial
   inputs :
     {x : X}
@@ -2086,6 +2137,13 @@
 
 - op : pixel_shuffle
   backward : pixel_shuffle_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : pixel_unshuffle
+  backward : pixel_unshuffle_grad
   inputs :
     x : X
   outputs :
@@ -2379,6 +2437,10 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : save_combine
+  inputs :
+    {x : X}
+
 - op : scale
   backward : scale_grad
   inputs :
@@ -2413,6 +2475,8 @@
     out : Out
 
 - op : seed
+  outputs :
+    out : Out
   extra :
     attrs : [bool deterministic = false, str rng_name = "", bool force_cpu = false]
 
@@ -2623,6 +2687,7 @@
     out : Out
 
 - op : split
+  backward : split_grad
   inputs:
     x : X
   outputs:
@@ -2630,6 +2695,7 @@
   int_array:
       sections :
           data_type : int
+          support_tensor : true
   scalar :
       axis :
         data_type : int
@@ -3032,11 +3098,41 @@
     yolo_loss : GetYoloLossExpectedKernelType
     yolo_loss_grad : GetYoloLossExpectedKernelType
 
+- op: c_allgather
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
+- op: c_allreduce_max
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
+- op: c_allreduce_sum
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
 - op: c_broadcast
   inputs :
     x : X
   outputs :
     out : Out
+
+- op: c_identity
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
+- op: c_reduce_sum
+  inputs :
+    x : X
+  outputs :
+    out: Out
 
 - op: c_sync_calc_stream
   inputs :
@@ -3065,6 +3161,12 @@
     {input: Input}
   outputs:
     {out: Out}
+
+- op: get_tensor_from_selected_rows
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op: logspace
   inputs:
@@ -3141,6 +3243,12 @@
       data_type : int64_t
       tensors_name : StepsTensorList
 
+- op: share_data
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad
   inputs :
@@ -3159,5 +3267,11 @@
   backward: temporal_shift_grad
   inputs :
     x : X
+  outputs :
+    out : Out
+
+- op: write_to_array
+  inputs :
+    {x: X, i: I}
   outputs :
     out : Out

@@ -16,12 +16,12 @@ import os
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 from test_attribute_var import UnittestBase
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 
 def sample_output_one_dimension(out, dim):
@@ -48,6 +48,7 @@ class TestMultinomialOp(OpTest):
     def setUp(self):
         paddle.enable_static()
         self.op_type = "multinomial"
+        self.python_api = paddle.multinomial
         self.init_data()
         self.inputs = {"X": self.input_np}
 
@@ -58,7 +59,7 @@ class TestMultinomialOp(OpTest):
         self.attrs = {"num_samples": 100000, "replacement": True}
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        self.check_output_customized(self.verify_output, check_new_ir=True)
 
     def sample_output(self, out):
         return sample_output_one_dimension(out, 4)
@@ -109,6 +110,7 @@ class TestMultinomialFP16Op(OpTest):
     def setUp(self):
         paddle.enable_static()
         self.op_type = "multinomial"
+        self.python_api = paddle.multinomial
         self.dtype = np.float16
         self.init_data()
         self.inputs = {"X": self.input_np}
@@ -120,7 +122,7 @@ class TestMultinomialFP16Op(OpTest):
         self.attrs = {"num_samples": 100000, "replacement": True}
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        self.check_output_customized(self.verify_output, check_new_ir=True)
 
     def sample_output(self, out):
         return sample_output_one_dimension(out, 4)
@@ -306,16 +308,16 @@ class TestMultinomialApi(unittest.TestCase):
 
     def test_static(self):
         paddle.enable_static()
-        startup_program = fluid.Program()
-        train_program = fluid.Program()
-        with fluid.program_guard(train_program, startup_program):
+        startup_program = base.Program()
+        train_program = base.Program()
+        with base.program_guard(train_program, startup_program):
             x = paddle.static.data('x', shape=[4], dtype='float32')
             out = paddle.multinomial(x, num_samples=100000, replacement=True)
 
-            place = fluid.CPUPlace()
-            if fluid.core.is_compiled_with_cuda():
-                place = fluid.CUDAPlace(0)
-            exe = fluid.Executor(place)
+            place = base.CPUPlace()
+            if base.core.is_compiled_with_cuda():
+                place = base.CUDAPlace(0)
+            exe = base.Executor(place)
 
         exe.run(startup_program)
         x_np = np.random.rand(4).astype('float32')
@@ -450,6 +452,7 @@ class TestMultinomialTensorNumSamples(UnittestBase):
         return out
 
     def test_static(self):
+        paddle.enable_static()
         main_prog = Program()
         starup_prog = Program()
         with program_guard(main_prog, starup_prog):
@@ -473,6 +476,7 @@ class TestMultinomialTensorNumSamples(UnittestBase):
             # Test for Inference Predictor
             infer_outs = self.infer_prog()
             np.testing.assert_equal(infer_outs[1].shape, (3, 3))
+        paddle.disable_static()
 
 
 if __name__ == "__main__":

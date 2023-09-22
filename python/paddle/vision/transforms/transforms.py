@@ -53,9 +53,7 @@ def _check_input(
     if isinstance(value, numbers.Number):
         if value < 0:
             raise ValueError(
-                "If {} is a single number, it must be non negative.".format(
-                    name
-                )
+                f"If {name} is a single number, it must be non negative."
             )
         value = [center - value, center + value]
         if clip_first_on_zero:
@@ -65,9 +63,7 @@ def _check_input(
             raise ValueError(f"{name} values should be between {bound}")
     else:
         raise TypeError(
-            "{} should be a single number or a list/tuple with lenght 2.".format(
-                name
-            )
+            f"{name} should be a single number or a list/tuple with lenght 2."
         )
 
     if value[0] == value[1] == center:
@@ -91,16 +87,16 @@ class Compose:
 
         .. code-block:: python
 
-            from paddle.vision.datasets import Flowers
-            from paddle.vision.transforms import Compose, ColorJitter, Resize
-
-            transform = Compose([ColorJitter(), Resize(size=608)])
-            flowers = Flowers(mode='test', transform=transform)
-
-            for i in range(10):
-                sample = flowers[i]
-                print(sample[0].size, sample[1])
-
+            >>> from paddle.vision.datasets import Flowers
+            >>> from paddle.vision.transforms import Compose, ColorJitter, Resize
+            >>> transform = Compose([ColorJitter(), Resize(size=608)])
+            >>> flowers = Flowers(mode='test', transform=transform)
+            >>> for i in range(3):
+            ...     sample = flowers[i]
+            ...     print(sample[0].size, sample[1])
+            (916, 608) [1]
+            (758, 608) [1]
+            (811, 608) [1]
     """
 
     def __init__(self, transforms):
@@ -113,8 +109,8 @@ class Compose:
             except Exception as e:
                 stack_info = traceback.format_exc()
                 print(
-                    "fail to perform transform [{}] with error: "
-                    "{} and stack:\n{}".format(f, e, str(stack_info))
+                    f"fail to perform transform [{f}] with error: "
+                    f"{e} and stack:\n{str(stack_info)}"
                 )
                 raise e
         return data
@@ -166,72 +162,72 @@ class BaseTransform:
 
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            import paddle.vision.transforms.functional as F
-            from paddle.vision.transforms import BaseTransform
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> import paddle.vision.transforms.functional as F
+            >>> from paddle.vision.transforms import BaseTransform
 
-            def _get_image_size(img):
-                if F._is_pil_image(img):
-                    return img.size
-                elif F._is_numpy_image(img):
-                    return img.shape[:2][::-1]
-                else:
-                    raise TypeError("Unexpected type {}".format(type(img)))
-
-            class CustomRandomFlip(BaseTransform):
-                def __init__(self, prob=0.5, keys=None):
-                    super().__init__(keys)
-                    self.prob = prob
-
-                def _get_params(self, inputs):
-                    image = inputs[self.keys.index('image')]
-                    params = {}
-                    params['flip'] = np.random.random() < self.prob
-                    params['size'] = _get_image_size(image)
-                    return params
-
-                def _apply_image(self, image):
-                    if self.params['flip']:
-                        return F.hflip(image)
-                    return image
-
-                # if you only want to transform image, do not need to rewrite this function
-                def _apply_coords(self, coords):
-                    if self.params['flip']:
-                        w = self.params['size'][0]
-                        coords[:, 0] = w - coords[:, 0]
-                    return coords
-
-                # if you only want to transform image, do not need to rewrite this function
-                def _apply_boxes(self, boxes):
-                    idxs = np.array([(0, 1), (2, 1), (0, 3), (2, 3)]).flatten()
-                    coords = np.asarray(boxes).reshape(-1, 4)[:, idxs].reshape(-1, 2)
-                    coords = self._apply_coords(coords).reshape((-1, 4, 2))
-                    minxy = coords.min(axis=1)
-                    maxxy = coords.max(axis=1)
-                    trans_boxes = np.concatenate((minxy, maxxy), axis=1)
-                    return trans_boxes
-
-                # if you only want to transform image, do not need to rewrite this function
-                def _apply_mask(self, mask):
-                    if self.params['flip']:
-                        return F.hflip(mask)
-                    return mask
-
-            # create fake inputs
-            fake_img = Image.fromarray((np.random.rand(400, 500, 3) * 255.).astype('uint8'))
-            fake_boxes = np.array([[2, 3, 200, 300], [50, 60, 80, 100]])
-            fake_mask = fake_img.convert('L')
-
-            # only transform for image:
-            flip_transform = CustomRandomFlip(1.0)
-            converted_img = flip_transform(fake_img)
-
-            # transform for image, boxes and mask
-            flip_transform = CustomRandomFlip(1.0, keys=('image', 'boxes', 'mask'))
-            (converted_img, converted_boxes, converted_mask) = flip_transform((fake_img, fake_boxes, fake_mask))
-            print('converted boxes', converted_boxes)
+            >>> def _get_image_size(img):
+            ...     if F._is_pil_image(img):
+            ...         return img.size
+            ...     elif F._is_numpy_image(img):
+            ...         return img.shape[:2][::-1]
+            ...     else:
+            ...         raise TypeError("Unexpected type {}".format(type(img)))
+            ...
+            >>> class CustomRandomFlip(BaseTransform):
+            ...     def __init__(self, prob=0.5, keys=None):
+            ...         super().__init__(keys)
+            ...         self.prob = prob
+            ...
+            ...     def _get_params(self, inputs):
+            ...         image = inputs[self.keys.index('image')]
+            ...         params = {}
+            ...         params['flip'] = np.random.random() < self.prob
+            ...         params['size'] = _get_image_size(image)
+            ...         return params
+            ...
+            ...     def _apply_image(self, image):
+            ...         if self.params['flip']:
+            ...             return F.hflip(image)
+            ...         return image
+            ...
+            ...     # if you only want to transform image, do not need to rewrite this function
+            ...     def _apply_coords(self, coords):
+            ...         if self.params['flip']:
+            ...             w = self.params['size'][0]
+            ...             coords[:, 0] = w - coords[:, 0]
+            ...         return coords
+            ...
+            ...     # if you only want to transform image, do not need to rewrite this function
+            ...     def _apply_boxes(self, boxes):
+            ...         idxs = np.array([(0, 1), (2, 1), (0, 3), (2, 3)]).flatten()
+            ...         coords = np.asarray(boxes).reshape(-1, 4)[:, idxs].reshape(-1, 2)
+            ...         coords = self._apply_coords(coords).reshape((-1, 4, 2))
+            ...         minxy = coords.min(axis=1)
+            ...         maxxy = coords.max(axis=1)
+            ...         trans_boxes = np.concatenate((minxy, maxxy), axis=1)
+            ...         return trans_boxes
+            ...
+            ...     # if you only want to transform image, do not need to rewrite this function
+            ...     def _apply_mask(self, mask):
+            ...         if self.params['flip']:
+            ...             return F.hflip(mask)
+            ...         return mask
+            ...
+            >>> # create fake inputs
+            >>> fake_img = Image.fromarray((np.random.rand(400, 500, 3) * 255.).astype('uint8'))
+            >>> fake_boxes = np.array([[2, 3, 200, 300], [50, 60, 80, 100]])
+            >>> fake_mask = fake_img.convert('L')
+            >>> # only transform for image:
+            >>> flip_transform = CustomRandomFlip(1.0)
+            >>> converted_img = flip_transform(fake_img)
+            >>> # transform for image, boxes and mask
+            >>> flip_transform = CustomRandomFlip(1.0, keys=('image', 'boxes', 'mask'))
+            >>> (converted_img, converted_boxes, converted_mask) = flip_transform((fake_img, fake_boxes, fake_mask))
+            >>> converted_boxes
+            array([[300,   3, 498, 300],
+                   [420,  60, 450, 100]])
 
     """
 
@@ -319,23 +315,18 @@ class ToTensor(BaseTransform):
 
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> import paddle.vision.transforms as T
+            >>> import paddle.vision.transforms.functional as F
 
-            import paddle.vision.transforms as T
-            import paddle.vision.transforms.functional as F
-
-            fake_img = Image.fromarray((np.random.rand(4, 5, 3) * 255.).astype(np.uint8))
-
-            transform = T.ToTensor()
-
-            tensor = transform(fake_img)
-
-            print(tensor.shape)
-            # [3, 4, 5]
-
-            print(tensor.dtype)
-            # paddle.float32
+            >>> fake_img = Image.fromarray((np.random.rand(4, 5, 3) * 255.).astype(np.uint8))
+            >>> transform = T.ToTensor()
+            >>> tensor = transform(fake_img)
+            >>> print(tensor.shape)
+            [3, 4, 5]
+            >>> print(tensor.dtype)
+            paddle.float32
     """
 
     def __init__(self, data_format='CHW', keys=None):
@@ -389,21 +380,19 @@ class Resize(BaseTransform):
 
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import Resize
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import Resize
 
-            fake_img = Image.fromarray((np.random.rand(256, 300, 3) * 255.).astype(np.uint8))
-
-            transform = Resize(size=224)
-            converted_img = transform(fake_img)
-            print(converted_img.size)
-            # (262, 224)
-
-            transform = Resize(size=(200,150))
-            converted_img = transform(fake_img)
-            print(converted_img.size)
-            # (150, 200)
+            >>> fake_img = Image.fromarray((np.random.rand(256, 300, 3) * 255.).astype(np.uint8))
+            >>> transform = Resize(size=224)
+            >>> converted_img = transform(fake_img)
+            >>> print(converted_img.size)
+            (262, 224)
+            >>> transform = Resize(size=(200,150))
+            >>> converted_img = transform(fake_img)
+            >>> print(converted_img.size)
+            (150, 200)
     """
 
     def __init__(self, size, interpolation='bilinear', keys=None):
@@ -456,16 +445,15 @@ class RandomResizedCrop(BaseTransform):
 
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import RandomResizedCrop
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import RandomResizedCrop
 
-            transform = RandomResizedCrop(224)
-
-            fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
-
-            fake_img = transform(fake_img)
-            print(fake_img.size)
+            >>> transform = RandomResizedCrop(224)
+            >>> fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
+            >>> fake_img = transform(fake_img)
+            >>> print(fake_img.size)
+            (224, 224)
 
     """
 
@@ -643,16 +631,16 @@ class CenterCrop(BaseTransform):
 
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import CenterCrop
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import CenterCrop
 
-            transform = CenterCrop(224)
+            >>> transform = CenterCrop(224)
+            >>> fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
+            >>> fake_img = transform(fake_img)
+            >>> print(fake_img.size)
+            (224, 224)
 
-            fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
-
-            fake_img = transform(fake_img)
-            print(fake_img.size)
     """
 
     def __init__(self, size, keys=None):
@@ -684,16 +672,15 @@ class RandomHorizontalFlip(BaseTransform):
 
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import RandomHorizontalFlip
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import RandomHorizontalFlip
 
-            transform = RandomHorizontalFlip(0.5)
-
-            fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
-
-            fake_img = transform(fake_img)
-            print(fake_img.size)
+            >>> transform = RandomHorizontalFlip(0.5)
+            >>> fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
+            >>> fake_img = transform(fake_img)
+            >>> print(fake_img.size)
+            (320, 300)
     """
 
     def __init__(self, prob=0.5, keys=None):
@@ -738,16 +725,14 @@ class RandomVerticalFlip(BaseTransform):
 
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import RandomVerticalFlip
-
-            transform = RandomVerticalFlip()
-
-            fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
-
-            fake_img = transform(fake_img)
-            print(fake_img.size)
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import RandomVerticalFlip
+            >>> transform = RandomVerticalFlip()
+            >>> fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
+            >>> fake_img = transform(fake_img)
+            >>> print(fake_img.size)
+            (320, 300)
 
     """
 
@@ -799,21 +784,22 @@ class Normalize(BaseTransform):
     Examples:
 
         .. code-block:: python
-          :name: code-example
-            import paddle
-            from paddle.vision.transforms import Normalize
+            :name: code-example
 
-            normalize = Normalize(mean=[127.5, 127.5, 127.5],
-                                  std=[127.5, 127.5, 127.5],
-                                  data_format='HWC')
+            >>> import paddle
+            >>> from paddle.vision.transforms import Normalize
+            >>> paddle.seed(2023)
 
-            fake_img = paddle.rand([300,320,3]).numpy() * 255.
-
-            fake_img = normalize(fake_img)
-            print(fake_img.shape)
-            # (300, 320, 3)
-            print(fake_img.max(), fake_img.min())
-            # 0.99999905 -0.999974
+            >>> normalize = Normalize(mean=[127.5, 127.5, 127.5],
+            ...                         std=[127.5, 127.5, 127.5],
+            ...                         data_format='HWC')
+            ...
+            >>> fake_img = paddle.rand([300,320,3]).numpy() * 255.
+            >>> fake_img = normalize(fake_img)
+            >>> print(fake_img.shape)
+            (300, 320, 3)
+            >>> print(fake_img.max(), fake_img.min())
+            0.99999464 -0.9999929
 
     """
 
@@ -860,16 +846,15 @@ class Transpose(BaseTransform):
 
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import Transpose
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import Transpose
 
-            transform = Transpose()
-
-            fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
-
-            fake_img = transform(fake_img)
-            print(fake_img.shape)
+            >>> transform = Transpose()
+            >>> fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
+            >>> fake_img = transform(fake_img)
+            >>> print(fake_img.shape)
+            (3, 300, 320)
 
     """
 
@@ -908,15 +893,19 @@ class BrightnessTransform(BaseTransform):
 
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import BrightnessTransform
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import BrightnessTransform
+            >>> np.random.seed(2023)
 
-            transform = BrightnessTransform(0.4)
-
-            fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
-
-            fake_img = transform(fake_img)
+            >>> transform = BrightnessTransform(0.4)
+            >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
+            >>> print(fake_img.load()[1,1])
+            (60, 169, 34)
+            >>> # doctest: +SKIP('random sample in Brightness function')
+            >>> fake_img = transform(fake_img)
+            >>> print(fake_img.load()[1,1])
+            (68, 192, 38)
 
     """
 
@@ -951,15 +940,15 @@ class ContrastTransform(BaseTransform):
 
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import ContrastTransform
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import ContrastTransform
 
-            transform = ContrastTransform(0.4)
-
-            fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
-
-            fake_img = transform(fake_img)
+            >>> transform = ContrastTransform(0.4)
+            >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
+            >>> fake_img = transform(fake_img)
+            >>> print(fake_img.size)
+            (224, 224)
 
     """
 
@@ -996,16 +985,15 @@ class SaturationTransform(BaseTransform):
 
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import SaturationTransform
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import SaturationTransform
 
-            transform = SaturationTransform(0.4)
-
-            fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
-
-            fake_img = transform(fake_img)
-
+            >>> transform = SaturationTransform(0.4)
+            >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
+            >>> fake_img = transform(fake_img)
+            >>> print(fake_img.size)
+            (224, 224)
     """
 
     def __init__(self, value, keys=None):
@@ -1039,15 +1027,15 @@ class HueTransform(BaseTransform):
 
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import HueTransform
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import HueTransform
 
-            transform = HueTransform(0.4)
-
-            fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
-
-            fake_img = transform(fake_img)
+            >>> transform = HueTransform(0.4)
+            >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
+            >>> fake_img = transform(fake_img)
+            >>> print(fake_img.size)
+            (224, 224)
 
     """
 
@@ -1090,15 +1078,15 @@ class ColorJitter(BaseTransform):
 
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import ColorJitter
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import ColorJitter
 
-            transform = ColorJitter(0.4, 0.4, 0.4, 0.4)
-
-            fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
-
-            fake_img = transform(fake_img)
+            >>> transform = ColorJitter(0.4, 0.4, 0.4, 0.4)
+            >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
+            >>> fake_img = transform(fake_img)
+            >>> print(fake_img.size)
+            (224, 224)
 
     """
 
@@ -1195,17 +1183,19 @@ class RandomCrop(BaseTransform):
     Examples:
 
         .. code-block:: python
-          :name: code-example1
+            :name: code-example1
 
-            import paddle
-            from paddle.vision.transforms import RandomCrop
-            transform = RandomCrop(224)
+            >>> import paddle
+            >>> from paddle.vision.transforms import RandomCrop
+            >>> transform = RandomCrop(224)
 
-            fake_img = paddle.randint(0, 255, shape=(3, 324,300), dtype = 'int32')
-            print(fake_img.shape) # [3, 324, 300]
+            >>> fake_img = paddle.randint(0, 255, shape=(3, 324,300), dtype = 'int32')
+            >>> print(fake_img.shape)
+            [3, 324, 300]
 
-            crop_img = transform(fake_img)
-            print(crop_img.shape) # [3, 224, 224]
+            >>> crop_img = transform(fake_img)
+            >>> print(crop_img.shape)
+            [3, 224, 224]
     """
 
     def __init__(
@@ -1313,16 +1303,15 @@ class Pad(BaseTransform):
 
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import Pad
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import Pad
 
-            transform = Pad(2)
-
-            fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
-
-            fake_img = transform(fake_img)
-            print(fake_img.size)
+            >>> transform = Pad(2)
+            >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
+            >>> fake_img = transform(fake_img)
+            >>> print(fake_img.size)
+            (228, 228)
     """
 
     def __init__(self, padding, fill=0, padding_mode='constant', keys=None):
@@ -1429,15 +1418,14 @@ class RandomAffine(BaseTransform):
 
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.transforms import RandomAffine
+            >>> import paddle
+            >>> from paddle.vision.transforms import RandomAffine
 
-            transform = RandomAffine([-90, 90], translate=[0.2, 0.2], scale=[0.5, 0.5], shear=[-10, 10])
-
-            fake_img = paddle.randn((3, 256, 300)).astype(paddle.float32)
-
-            fake_img = transform(fake_img)
-            print(fake_img.shape)
+            >>> transform = RandomAffine([-90, 90], translate=[0.2, 0.2], scale=[0.5, 0.5], shear=[-10, 10])
+            >>> fake_img = paddle.randn((3, 256, 300)).astype(paddle.float32)
+            >>> fake_img = transform(fake_img)
+            >>> print(fake_img.shape)
+            [3, 256, 300]
     """
 
     def __init__(
@@ -1583,16 +1571,15 @@ class RandomRotation(BaseTransform):
 
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import RandomRotation
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import RandomRotation
 
-            transform = RandomRotation(90)
-
-            fake_img = Image.fromarray((np.random.rand(200, 150, 3) * 255.).astype(np.uint8))
-
-            fake_img = transform(fake_img)
-            print(fake_img.size)
+            >>> transform = RandomRotation(90)
+            >>> fake_img = Image.fromarray((np.random.rand(200, 150, 3) * 255.).astype(np.uint8))
+            >>> fake_img = transform(fake_img)
+            >>> print(fake_img.size)
+            (150, 200)
     """
 
     def __init__(
@@ -1683,15 +1670,14 @@ class RandomPerspective(BaseTransform):
 
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.transforms import RandomPerspective
+            >>> import paddle
+            >>> from paddle.vision.transforms import RandomPerspective
 
-            transform = RandomPerspective(prob=1.0, distortion_scale=0.9)
-
-            fake_img = paddle.randn((3, 200, 150)).astype(paddle.float32)
-
-            fake_img = transform(fake_img)
-            print(fake_img.shape)
+            >>> transform = RandomPerspective(prob=1.0, distortion_scale=0.9)
+            >>> fake_img = paddle.randn((3, 200, 150)).astype(paddle.float32)
+            >>> fake_img = transform(fake_img)
+            >>> print(fake_img.shape)
+            [3, 200, 150]
     """
 
     def __init__(
@@ -1806,16 +1792,15 @@ class Grayscale(BaseTransform):
 
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import Grayscale
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import Grayscale
 
-            transform = Grayscale()
-
-            fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
-
-            fake_img = transform(fake_img)
-            print(np.array(fake_img).shape)
+            >>> transform = Grayscale()
+            >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
+            >>> fake_img = transform(fake_img)
+            >>> print(np.array(fake_img).shape)
+            (224, 224)
     """
 
     def __init__(self, num_output_channels=1, keys=None):
@@ -1861,13 +1846,20 @@ class RandomErasing(BaseTransform):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            fake_img = paddle.randn((3, 10, 10)).astype(paddle.float32)
-            transform = paddle.vision.transforms.RandomErasing()
-            result = transform(fake_img)
+            >>> fake_img = paddle.randn((1, 5, 5)).astype(paddle.float32)
+            >>> transform = paddle.vision.transforms.RandomErasing()
+            >>> result = transform(fake_img)
+            >>> # doctest: +SKIP('random sample')
+            >>> print(result)
+            Tensor(shape=[1, 5, 5], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            [[[-0.22141267, -0.71004093,  1.71224928,  2.99622107, -0.82959402],
+              [ 0.36916021, -0.25601348,  0.86669374,  1.27504587, -0.56462914],
+              [-0.45704395, -0.87613666,  1.12195814, -0.87974882,  0.04902615],
+              [-0.91549885, -0.15066874,  1.26381516,  0.        ,  0.        ],
+              [ 0.87887472, -1.59914243, -0.73970413,  0.        ,  0.        ]]])
 
-            print(result)
     """
 
     def __init__(

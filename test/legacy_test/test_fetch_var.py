@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class TestFetchVar(unittest.TestCase):
@@ -30,9 +30,9 @@ class TestFetchVar(unittest.TestCase):
             dtype="int32", persistable=True, name="x"
         )
         paddle.assign(self.val, output=x)
-        exe = fluid.Executor(fluid.CPUPlace())
-        exe.run(fluid.default_main_program(), feed={}, fetch_list=[])
-        fetched_x = fluid.executor._fetch_var("x")
+        exe = base.Executor(base.CPUPlace())
+        exe.run(base.default_main_program(), feed={}, fetch_list=[])
+        fetched_x = base.executor._fetch_var("x")
         np.testing.assert_array_equal(fetched_x, self.val)
         self.assertEqual(fetched_x.dtype, self.val.dtype)
 

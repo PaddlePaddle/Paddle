@@ -24,22 +24,25 @@ import paddle
 from paddle import _C_ops
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
-from ..fluid.data_feeder import (
+from ..base.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
     convert_dtype,
     convert_float_to_uint16,
 )
-from ..fluid.framework import Variable, device_guard
-from ..fluid.param_attr import ParamAttr
+from ..base.framework import Variable, device_guard
+from ..base.param_attr import ParamAttr
 from ..framework import (
     LayerHelper,
     _current_expected_place,
     _get_paddle_place,
     convert_np_dtype_to_dtype_,
     core,
+    dygraph_only,
     in_dynamic_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
 )
 
 __all__ = []
@@ -156,10 +159,11 @@ def create_parameter(
 
     Args:
         shape (list of int): Shape of the parameter
-        dtype (str): Data type of the parameter
+        dtype (str): Data type of the parameter. It can be set as 'float16', 'float32', 'float64'.
         name (str, optional): For detailed information, please refer to
            :ref:`api_guide_Name` . Usually name is no need to set and None by default.
-        attr (ParamAttr, optional): Attributes of the parameter
+        attr (ParamAttr, optional): Attribute object of the specified argument. For detailed information, please refer to
+           :ref:`api_paddle_ParamAttr` None by default, which means that ParamAttr will be initialized as it is.
         is_bias (bool, optional): This can affect which default initializer is chosen
                        when default_initializer is None. If is_bias,
                        initializer.Constant(0.0) will be used. Otherwise,
@@ -300,7 +304,7 @@ def linspace(start, stop, num, dtype=None, name=None):
 
     """
     if dtype is None:
-        dtype = 'float32'
+        dtype = paddle.get_default_dtype()
     tensor_num = num
     tensor_start = start
     tensor_stop = stop
@@ -431,7 +435,7 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
             [1.]
     """
     if dtype is None:
-        dtype = 'float32'
+        dtype = paddle.get_default_dtype()
     tensor_num = num
     tensor_start = start
     tensor_stop = stop
@@ -680,8 +684,6 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
                             d, dtype, stop_gradient
                         )
                     data = paddle.stack(to_stack_list)
-                    data = paddle.squeeze(data, -1)
-
             else:
                 raise RuntimeError(
                     f"Do not support transform type `{type(data)}` to tensor"
@@ -822,13 +824,17 @@ def full_like(x, fill_value, dtype=None, name=None):
             [[2. 2. 2.]
              [2. 2. 2.]]
     """
+
     if dtype is None:
         dtype = x.dtype
     else:
-        if not isinstance(dtype, core.VarDesc.VarType):
+        if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
+
     if in_dynamic_mode():
         return _C_ops.full_like(x, fill_value, dtype, x.place)
+    elif in_pir_mode():
+        return _C_ops.full_like(x, fill_value, dtype, core.Place())
     else:
         helper = LayerHelper("full_like", **locals())
         check_variable_and_dtype(
@@ -874,42 +880,33 @@ def full_like(x, fill_value, dtype=None, name=None):
 
 
 def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
-    if in_dynamic_mode():
-        place = _current_expected_place()
+    if in_dynamic_or_pir_mode():
+        place = (
+            _current_expected_place()
+            if not in_pir_mode()
+            else paddle.base.core.Place()
+        )
         if force_cpu:
             place = core.CPUPlace()
         if isinstance(shape, (list, tuple)):
             shape = paddle.utils.convert_shape_to_list(shape)
 
-        if not isinstance(dtype, core.VarDesc.VarType):
+        if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
         if out is None:
-            out = _C_ops.full(shape, float(value), dtype, place)
+            value = float(value) if in_dynamic_mode() else value
+            out = _C_ops.full(shape, value, dtype, place)
             out.stop_gradient = True
             return out
 
         if out is not None:
+            value = float(value) if in_dynamic_mode() else value
             # final state mode is support out is not None.
-            _C_ops.full_(out, shape, float(value), dtype, place)
+            _C_ops.full_(out, shape, value, dtype, place)
             out.stop_gradient = True
             return out
     else:
-        if paddle.ir.core._use_new_ir_api():
-            # Below code will be removed after we can generate IR api automatically
-            place = _current_expected_place()
-            if force_cpu:
-                place = core.CPUPlace()
-            if isinstance(shape, (list, tuple)):
-                shape = paddle.utils.convert_shape_to_list(shape)
-
-            if not isinstance(dtype, core.DataType):
-                dtype = paddle.ir.core.convert_np_dtype_to_dtype_(dtype)
-
-            if out is None:
-                out = paddle._ir_ops.full(shape, float(value), dtype, place)
-                out.stop_gradient = True
-                return out
         attrs = {'force_cpu': force_cpu}
         dtype = convert_dtype(dtype)
         if not isinstance(value, Variable):
@@ -1017,7 +1014,7 @@ def ones(shape, dtype=None, name=None):
              [1. 1.]]
     """
     if dtype is None:
-        dtype = core.VarDesc.VarType.FP32
+        dtype = paddle.get_default_dtype()
     return fill_constant(value=1.0, shape=shape, dtype=dtype, name=name)
 
 
@@ -1065,7 +1062,7 @@ def zeros(shape, dtype=None, name=None):
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         dtype(np.dtype|str, optional): Data type of output Tensor, it supports
-            bool, float16, float32, float64, int32 and int64. Default: if None, the date type is float32.
+            bool, float16, float32, float64, int32 and int64. Default: if None, the data type is float32.
         name(str, optional): The default value is None.  Normally there is no need for user to set this
             property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1101,7 +1098,7 @@ def zeros(shape, dtype=None, name=None):
              [0. 0.]]
     """
     if dtype is None:
-        dtype = 'float32'
+        dtype = paddle.get_default_dtype()
     return fill_constant(value=0.0, shape=shape, dtype=dtype, name=name)
 
 
@@ -1183,8 +1180,8 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
     _check_attr(num_rows, "num_rows")
 
     if dtype is None:
-        dtype = core.VarDesc.VarType.FP32
-    elif not isinstance(dtype, core.VarDesc.VarType):
+        dtype = paddle.get_default_dtype()
+    if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
     if num_columns is not None:
         _check_attr(num_columns, "num_columns")
@@ -1277,7 +1274,7 @@ def full(shape, fill_value, dtype=None, name=None):
     """
 
     if dtype is None:
-        dtype = 'float32'
+        dtype = paddle.get_default_dtype()
 
     return fill_constant(shape=shape, dtype=dtype, value=fill_value, name=name)
 
@@ -1962,7 +1959,7 @@ def empty(shape, dtype=None, name=None):
 
     dtype = convert_dtype(dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         shape = paddle.utils.convert_shape_to_list(shape)
         out = _C_ops.empty(
             shape, convert_np_dtype_to_dtype_(dtype), _current_expected_place()
@@ -2659,3 +2656,71 @@ def polar(abs, angle, name=None):
     )
 
     return paddle.complex(abs * paddle.cos(angle), abs * paddle.sin(angle))
+
+
+@dygraph_only
+def cauchy_(x, loc=0, scale=1, name=None):
+    """Fills the tensor with numbers drawn from the Cauchy distribution.
+
+    Args:
+        x (Tenosr): the tensor will be filled, The data type is float32 or float64.
+        loc (scalar, optional):  Location of the peak of the distribution. The data type is float32 or float64.
+        scale (scalar, optional): The half-width at half-maximum (HWHM). The data type is float32 or float64. Must be positive values.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor: input tensor with numbers drawn from the Cauchy distribution.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.randn([3, 4])
+            >>> x.cauchy_(1, 2)
+            >>> # doctest: +SKIP('random check')
+            >>> print(x)
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[ 3.80087137,  2.25415039,  2.77960515,  7.64125967],
+             [ 0.76541221,  2.74023032,  1.99383152, -0.12685823],
+             [ 1.45228469,  1.76275957, -4.30458832, 34.74880219]])
+
+    """
+    x.normal_()
+    loc = paddle.to_tensor(loc).astype(x.dtype)
+    half = paddle.to_tensor(0.5).astype(x.dtype)
+    x.subtract_(half).scale_(np.pi).tan_().scale_(scale).add_(loc)
+    return x
+
+
+@dygraph_only
+def geometric_(x, probs, name=None):
+    """Fills the tensor with numbers drawn from the Geometric distribution.
+
+    Args:
+        x (Tenosr): the tensor will be filled, The data type is float32 or float64.
+        probs (Real|Tensor): Probability parameter.
+            The value of probs must be positive. When the parameter is a tensor, probs is probability of success for each trial.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor: input tensor with numbers drawn from the Geometric distribution.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.randn([3, 4])
+            >>> x.geometric_(0.3)
+            >>> # doctest: +SKIP('random check')
+            >>> print(x)
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[2.42739224, 4.78268528, 1.23302543, 3.76555204],
+             [1.38877118, 0.16075331, 0.16401523, 2.47349310],
+             [1.72872102, 2.76533413, 0.33410925, 1.63351011]])
+
+    """
+    tiny = np.finfo(dtype=convert_dtype(x.dtype)).tiny
+    probs = paddle.to_tensor(probs).astype(x.dtype)
+    x.uniform_(min=float(tiny), max=float(1))
+    x.log_().divide_(paddle.log1p(-(probs)))
+    return x

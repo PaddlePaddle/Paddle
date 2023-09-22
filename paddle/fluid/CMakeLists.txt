@@ -8,7 +8,7 @@ add_subdirectory(pybind)
 add_subdirectory(eager)
 add_subdirectory(prim)
 add_subdirectory(jit)
-add_subdirectory(ir)
+add_subdirectory(pir)
 add_subdirectory(ir_adaptor)
 add_subdirectory(primitive)
 # NOTE: please add subdirectory inference at last.

@@ -35,9 +35,9 @@ limitations under the License. */
 
 #include "paddle/phi/core/flags.h"
 
-DECLARE_double(fraction_of_cpu_memory_to_use);
-DECLARE_uint64(initial_cpu_memory_in_mb);
-DECLARE_double(fraction_of_cuda_pinned_memory_to_use);
+PD_DECLARE_double(fraction_of_cpu_memory_to_use);
+PD_DECLARE_uint64(initial_cpu_memory_in_mb);
+PD_DECLARE_double(fraction_of_cuda_pinned_memory_to_use);
 
 // If use_pinned_memory is true, CPUAllocator calls mlock, which
 // returns pinned and locked memory as staging areas for data exchange

@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -389,7 +389,7 @@ class TestPool2D_Op_Mixin:
             self.inputs = {'X': convert_float_to_uint16(input)}
         else:
             output = output.astype(self.dtype)
-            self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(input)}
+            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(input)}
 
         self.attrs = {
             'strides': self.strides,

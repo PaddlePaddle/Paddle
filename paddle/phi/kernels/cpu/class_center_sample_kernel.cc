@@ -63,7 +63,7 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
   auto* label_ptr = label.data<T>();
 
   // get unique positive class center by ascending
-  std::set<T, std::less<T>> unique_label;
+  std::set<T, std::less<T>> unique_label;  // NOLINT
   for (int64_t i = 0; i < numel; ++i) {
     unique_label.insert(label_ptr[i]);
   }

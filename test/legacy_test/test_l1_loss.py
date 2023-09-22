@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class TestFunctionalL1Loss(unittest.TestCase):
@@ -55,9 +55,9 @@ class TestFunctionalL1Loss(unittest.TestCase):
         result2 = paddle.nn.functional.l1_loss(input, label, reduction='none')
         y = paddle.nn.functional.l1_loss(input, label, name='aaa')
 
-        place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
         static_result = exe.run(
             feed={"input": self.input_np, "label": self.label_np},
             fetch_list=[result0, result1, result2],
@@ -73,22 +73,22 @@ class TestFunctionalL1Loss(unittest.TestCase):
         self.assertTrue('aaa' in y.name)
 
     def test_cpu(self):
-        paddle.disable_static(place=paddle.fluid.CPUPlace())
+        paddle.disable_static(place=paddle.base.CPUPlace())
         self.run_imperative()
         paddle.enable_static()
 
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
             self.run_static()
 
     def test_gpu(self):
-        if not fluid.core.is_compiled_with_cuda():
+        if not base.core.is_compiled_with_cuda():
             return
 
-        paddle.disable_static(place=paddle.fluid.CUDAPlace(0))
+        paddle.disable_static(place=paddle.base.CUDAPlace(0))
         self.run_imperative()
         paddle.enable_static()
 
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
             self.run_static(use_gpu=True)
 
     # test case the raise message
@@ -149,9 +149,9 @@ class TestClassL1Loss(unittest.TestCase):
         l1_loss = paddle.nn.loss.L1Loss(name='aaa')
         result3 = l1_loss(input, label)
 
-        place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
         static_result = exe.run(
             feed={"input": self.input_np, "label": self.label_np},
             fetch_list=[result0, result1, result2],
@@ -166,22 +166,22 @@ class TestClassL1Loss(unittest.TestCase):
         self.assertTrue('aaa' in result3.name)
 
     def test_cpu(self):
-        paddle.disable_static(place=paddle.fluid.CPUPlace())
+        paddle.disable_static(place=paddle.base.CPUPlace())
         self.run_imperative()
         paddle.enable_static()
 
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
             self.run_static()
 
     def test_gpu(self):
-        if not fluid.core.is_compiled_with_cuda():
+        if not base.core.is_compiled_with_cuda():
             return
 
-        paddle.disable_static(place=paddle.fluid.CUDAPlace(0))
+        paddle.disable_static(place=paddle.base.CUDAPlace(0))
         self.run_imperative()
         paddle.enable_static()
 
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
             self.run_static(use_gpu=True)
 
     # test case the raise message

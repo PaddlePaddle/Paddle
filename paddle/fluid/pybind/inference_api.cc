@@ -239,12 +239,14 @@ void PaddleInferTensorCreate(paddle_infer::Tensor &tensor,  // NOLINT
 
 paddle_infer::PlaceType ToPaddleInferPlace(
     phi::AllocationType allocation_type) {
-  if (allocation_type == phi::AllocationType::CPU) {
+  if (allocation_type == phi::AllocationType::CPU) {  // NOLINT
     return paddle_infer::PlaceType::kCPU;
   } else if (allocation_type == phi::AllocationType::GPU) {
     return paddle_infer::PlaceType::kGPU;
   } else if (allocation_type == phi::AllocationType::XPU) {
     return paddle_infer::PlaceType::kXPU;
+  } else if (allocation_type == phi::AllocationType::CUSTOM) {
+    return paddle_infer::PlaceType::kCUSTOM;
   } else {
     return paddle_infer::PlaceType::kCPU;
   }
@@ -254,7 +256,7 @@ void PaddleInferShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
                                   phi::DenseTensor input_tensor) {
   std::vector<int> shape;
   for (int i = 0; i < input_tensor.dims().size(); ++i) {
-    shape.push_back(input_tensor.dims()[i]);
+    shape.push_back(input_tensor.dims()[i]);  // NOLINT
   }
   if (input_tensor.dtype() == phi::DataType::FLOAT64) {
     tensor.ShareExternalData(
@@ -302,7 +304,7 @@ void PaddleTensorShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
                                    paddle::Tensor &&paddle_tensor) {
   std::vector<int> shape;
   for (int i = 0; i < paddle_tensor.dims().size(); ++i) {
-    shape.push_back(paddle_tensor.dims()[i]);
+    shape.push_back(paddle_tensor.dims()[i]);  // NOLINT
   }
 
   if (paddle_tensor.dtype() == phi::DataType::FLOAT64) {
@@ -918,7 +920,8 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("dla_core") = 0)
       .def("tensorrt_dla_enabled", &AnalysisConfig::tensorrt_dla_enabled)
       .def("enable_tensorrt_inspector",
-           &AnalysisConfig::EnableTensorRtInspector)
+           &AnalysisConfig::EnableTensorRtInspector,
+           py::arg("inspector_serialize") = false)
       .def("tensorrt_inspector_enabled",
            &AnalysisConfig::tensorrt_inspector_enabled)
       .def("enable_tensorrt_explicit_quantization",
@@ -926,6 +929,10 @@ void BindAnalysisConfig(py::module *m) {
       .def("tensorrt_explicit_quantization_enabled",
            &AnalysisConfig::tensorrt_explicit_quantization_enabled)
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
+      .def("set_tensorrt_optimization_level",
+           &AnalysisConfig::SetTensorRtOptimizationLevel)
+      .def("tensorrt_optimization_level",
+           &AnalysisConfig::tensorrt_optimization_level)
       .def("enable_dlnne",
            &AnalysisConfig::EnableDlnne,
            py::arg("min_subgraph_size") = 3,
@@ -974,19 +981,19 @@ void BindAnalysisConfig(py::module *m) {
       .def("disable_mkldnn_fc_passes",
            &AnalysisConfig::DisableMkldnnFcPasses,
            R"DOC(
-           Disable Mkldnn FC
-           Args:
+            Disable Mkldnn FC
+            Returns:
                 None.
-           Returns:
-                None.
-           Examples:
-               .. code-block:: python
-                from paddle.inference import Config
 
-                config = Config("")
-                config.enable_mkldnn()
-                config.disable_mkldnn_fc_passes()
-           )DOC")
+            Examples:
+                .. code-block:: python
+
+                    >>> from paddle.inference import Config
+
+                    >>> config = Config("")
+                    >>> config.enable_mkldnn()
+                    >>> config.disable_mkldnn_fc_passes()
+            )DOC")
 #endif
       .def("set_mkldnn_op", &AnalysisConfig::SetMKLDNNOp)
       .def("set_model_buffer", &AnalysisConfig::SetModelBuffer)

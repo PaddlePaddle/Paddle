@@ -16,14 +16,14 @@
 
 #include <thread>
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/utils/flags.h"
 
-DECLARE_int32(dist_threadpool_size);
-DEFINE_int32(io_threadpool_size,
-             100,
-             "number of threads used for doing IO, default 100");
+PD_DECLARE_int32(dist_threadpool_size);
+PD_DEFINE_int32(io_threadpool_size,
+                100,
+                "number of threads used for doing IO, default 100");
 
 namespace phi {
 

@@ -20,6 +20,7 @@ limitations under the License. */
 
 #include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/string_tensor_utils.h"
 #include "paddle/phi/core/tensor_utils.h"
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -50,6 +51,8 @@ bool HasAllocation(const phi::TensorBase& t) {
   } else if (phi::StringTensor::classof(&t)) {
     return phi::StringTensorUtils::GetHolder(
                static_cast<const phi::StringTensor&>(t)) != nullptr;
+  } else if (phi::distributed::DistTensor::classof(&t)) {
+    return static_cast<const phi::distributed::DistTensor&>(t).defined();
   } else {
     return false;
   }

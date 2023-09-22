@@ -25,11 +25,7 @@
 #include <cooperative_groups.h>
 #endif
 
-#ifdef __HIPCC__
-#define LARS_BLOCK_SIZE 256
-#else
 #define LARS_BLOCK_SIZE 512
-#endif
 
 #define LARS_MAX_MERGED_OPS 60
 

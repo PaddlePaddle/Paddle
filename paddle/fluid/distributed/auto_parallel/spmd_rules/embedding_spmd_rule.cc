@@ -33,8 +33,8 @@ EmbeddingSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
           input_specs_size));
   auto x_shape = input_specs[0].shape();
   auto weight_shape = input_specs[1].shape();
-  int x_ndim = x_shape.size();
-  int weight_ndim = weight_shape.size();
+  int x_ndim = static_cast<int>(x_shape.size());
+  int weight_ndim = static_cast<int>(weight_shape.size());
   auto x_dist_attr_src = input_specs[0].dist_attr();
   auto weight_dist_attr_src = input_specs[1].dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
@@ -170,9 +170,9 @@ EmbeddingSPMDRule::InferBackward(
           output_specs_size));
 
   auto x_shape = input_specs[0].shape();
-  int x_ndim = x_shape.size();
+  int x_ndim = static_cast<int>(x_shape.size());
   auto out_shape = output_specs[0].shape();
-  int out_ndim = out_shape.size();
+  int out_ndim = static_cast<int>(out_shape.size());
 
   PADDLE_ENFORCE_EQ(x_ndim,
                     out_ndim - 1,

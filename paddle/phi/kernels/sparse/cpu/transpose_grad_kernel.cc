@@ -26,7 +26,7 @@ namespace sparse {
 std::vector<int> get_cpu_grad_perm(std::vector<int> perm) {
   std::vector<int> grad_perm(perm.size());
   for (unsigned int i = 0; i < perm.size(); ++i) {
-    grad_perm[perm[i]] = i;
+    grad_perm[perm[i]] = static_cast<int>(i);
   }
   return grad_perm;
 }

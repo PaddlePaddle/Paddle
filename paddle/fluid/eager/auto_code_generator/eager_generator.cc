@@ -827,9 +827,8 @@ static bool CollectGradInformationFromOpInfo(
     const std::string& in_name = op_proto.inputs()[0].name();
     ins[in_name] = {};
     for (size_t i = 0; i < NUM_CREATED_DUP_INPUTS; i++) {
-      ins[in_name].emplace_back(std::shared_ptr<paddle::imperative::VarBase>(
-          new paddle::imperative::VarBase("auto_" + in_name + "_" +
-                                          std::to_string(i))));
+      ins[in_name].emplace_back(std::make_shared<paddle::imperative::VarBase>(
+          "auto_" + in_name + "_" + std::to_string(i)));
       ins[in_name][i]->SetOverridedStopGradient(false);
       ins[in_name][i]->MutableVar()->GetMutable<phi::DenseTensor>();
     }
@@ -852,8 +851,8 @@ static bool CollectGradInformationFromOpInfo(
       // but we only need to identify the slot name order,
       // therefore fill in 1 single input VarBase is enough in this scenario
 
-      ins[in_name] = {std::shared_ptr<paddle::imperative::VarBase>(
-          new paddle::imperative::VarBase("auto_" + in_name))};
+      ins[in_name] = {
+          std::make_shared<paddle::imperative::VarBase>("auto_" + in_name)};
       ins[in_name][0]->SetOverridedStopGradient(false);
       ins[in_name][0]->MutableVar()->GetMutable<phi::DenseTensor>();
     }
@@ -870,8 +869,8 @@ static bool CollectGradInformationFromOpInfo(
     // We always create output VarBase regardless of its dispensability.
     // We dont know the exact number of outputs during code generation,
     // however, simply identifying the slot name order would be enough
-    outs[out_name] = {std::shared_ptr<paddle::imperative::VarBase>(
-        new paddle::imperative::VarBase("auto_" + out_name))};
+    outs[out_name] = {
+        std::make_shared<paddle::imperative::VarBase>("auto_" + out_name)};
     outs[out_name][0]->SetOverridedStopGradient(false);
     outs[out_name][0]->MutableVar()->GetMutable<phi::DenseTensor>();
   }
@@ -950,7 +949,7 @@ static bool CollectGradInformationFromOpInfo(
   op_base_infos->resize(grad_node->size());
   for (auto iter = grad_node->begin(); iter < grad_node->end(); iter++) {
     // Each OpBase
-    int index = std::distance(grad_node->begin(), iter);
+    int index = static_cast<int>(std::distance(grad_node->begin(), iter));
     paddle::imperative::OpBase& op_base = *iter;
     (*op_base_infos)[index].SetOpBaseType(op_base.Type());
   }
@@ -958,7 +957,7 @@ static bool CollectGradInformationFromOpInfo(
   /* ------ Get Grad ins/outs/attrs ---- */
   VLOG(6) << "In function size: " << grad_node->size();
   for (auto iter = grad_node->begin(); iter < grad_node->end(); iter++) {
-    int index = std::distance(grad_node->begin(), iter);
+    int index = static_cast<int>(std::distance(grad_node->begin(), iter));
     auto* op_base_grad_ins = (*op_base_infos)[index].GetMutableGradIns();
     auto* op_base_grad_outs = (*op_base_infos)[index].GetMutableGradOuts();
     auto* op_base_grad_attrs = (*op_base_infos)[index].GetMutableGradAttrs();
@@ -1179,7 +1178,7 @@ static std::string GenerateGradNodeCreationContent(
   const char* GRAD_OP_NODE_TEMPLATE =
       "      auto grad_node = std::shared_ptr<%sGradNodeCompat>(new "
       "%sGradNodeCompat(%d, "
-      "%d));\n";
+      "%d)); // NOLINT\n";
   grad_node_creation_str += "    // Create GradOpNode\n";
   grad_node_creation_str += paddle::string::Sprintf(GRAD_OP_NODE_TEMPLATE,
                                                     op_type,
@@ -3161,7 +3160,8 @@ static void DygraphCodeGeneration(const std::string& output_dir,
     op_info_map_need_gen.emplace(pair);
   }
 
-  int each_cc_file_api_size = op_info_map_need_gen.size() / split_count;
+  int each_cc_file_api_size =
+      static_cast<int>(op_info_map_need_gen.size() / split_count);
   if (op_info_map_need_gen.size() % split_count != 0) {
     each_cc_file_api_size++;
   }

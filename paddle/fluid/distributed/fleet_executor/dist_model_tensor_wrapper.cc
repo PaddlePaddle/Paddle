@@ -78,7 +78,8 @@ DistModelDataBuf& DistModelDataBuf::operator=(const DistModelDataBuf& other) {
   return *this;
 }
 
-DistModelDataBuf& DistModelDataBuf::operator=(DistModelDataBuf&& other) {
+DistModelDataBuf& DistModelDataBuf::operator=(
+    DistModelDataBuf&& other) noexcept {
   data_ = other.data_;
   memory_owned_ = other.memory_owned_;
   length_ = other.length_;
@@ -88,7 +89,7 @@ DistModelDataBuf& DistModelDataBuf::operator=(DistModelDataBuf&& other) {
   return *this;
 }
 
-DistModelDataBuf::DistModelDataBuf(DistModelDataBuf&& other)
+DistModelDataBuf::DistModelDataBuf(DistModelDataBuf&& other) noexcept
     : data_(other.data_),
       length_(other.length_),
       memory_owned_(other.memory_owned_) {

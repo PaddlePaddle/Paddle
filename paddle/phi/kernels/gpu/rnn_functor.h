@@ -110,7 +110,7 @@ class RNNDescriptors {
       dropout_state->Resize({static_cast<int64_t>(state_size)});
       dev_ctx.template Alloc<uint8_t>(dropout_state);
     }
-    dropout_desc_.descriptor(handle,
+    dropout_desc_.descriptor(handle,  // NOLINT
                              dev_ctx.GetPlace(),
                              is_initialized,
                              dropout_prob_,

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 
 def generate_compatible_shapes_mul_head(dim_X, dim_Y, transpose_X, transpose_Y):

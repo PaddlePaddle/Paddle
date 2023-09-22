@@ -18,13 +18,13 @@ import numpy as np
 from pass_test import PassTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class FCFusePassTest(PassTest):
     def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             data = paddle.static.data(
                 name="data", shape=[32, 128], dtype="float32", lod_level=0
             )
@@ -46,7 +46,7 @@ class FCFusePassTest(PassTest):
             use_gpu_set.append(True)
         for use_gpu in use_gpu_set:
             self.pass_attrs = {"fc_fuse_pass": {"use_gpu": use_gpu}}
-            place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
+            place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
             self.check_output_with_place(place, startup_on_cpu=True)
 
 

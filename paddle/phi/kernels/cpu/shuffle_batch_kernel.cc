@@ -27,12 +27,13 @@ void ShuffleBatchKernel(const Context& dev_ctx,
                         DenseTensor* shuffleidx,
                         DenseTensor* seed_out) {
   auto x_embed_size = x.dims()[x.dims().size() - 1];
-  auto elem_size = 1;
-  for (auto i = 0; i < x.dims().size() - 1; i++) elem_size *= x.dims()[i];
+  int elem_size = 1;
+  for (auto i = 0; i < x.dims().size() - 1; i++)
+    elem_size *= static_cast<int>(x.dims()[i]);
 
   std::vector<int64_t> idx_vec;  // record shuffled order
   idx_vec.reserve(elem_size);
-  for (auto i = 0; i < elem_size; i++) {
+  for (int i = 0; i < elem_size; i++) {
     idx_vec.push_back(i);
   }
   int64_t seed_int = 0;
@@ -48,7 +49,7 @@ void ShuffleBatchKernel(const Context& dev_ctx,
     std::random_device rnd;
     int64_t seed_tmp = rnd();
     std::default_random_engine rng(seed_tmp);
-    const int n = idx_vec.size();
+    const int n = static_cast<int>(idx_vec.size());
     std::vector<int> v(n);
     std::iota(v.begin(), v.end(), 0);
     std::vector<bool> visit(n, false);
@@ -73,7 +74,7 @@ void ShuffleBatchKernel(const Context& dev_ctx,
         std::shuffle(v.begin(), v.end(), rng);
         idx_vec[curr] = v.back();
         v.pop_back();
-        curr = idx_vec[curr];
+        curr = static_cast<int>(idx_vec[curr]);
       }
     }
   };

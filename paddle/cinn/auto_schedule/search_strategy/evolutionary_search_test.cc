@@ -27,6 +27,7 @@
 #include "paddle/cinn/auto_schedule/task/task_registry.h"
 #include "paddle/cinn/auto_schedule/task/tune_task.h"
 #include "paddle/cinn/auto_schedule/tuning.h"
+#include "paddle/cinn/hlir/framework/op_lowering.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "test/cpp/cinn/program_builder.h"
@@ -44,11 +45,11 @@ std::vector<TuneTask> CreateTasks(const frontend::Program& program,
           "inferdtype");
   const auto& shape_dict = graph->GetAttrs<
       absl::flat_hash_map<std::string, hlir::framework::shape_t>>("infershape");
-  auto op_lowerer = std::make_unique<hlir::framework::OpLowerer>(
-      dtype_dict, shape_dict, target);
+  auto op_lowerer =
+      hlir::framework::CreateOpLowerer(dtype_dict, shape_dict, target);
   InitialTaskRegistry* task_registry = InitialTaskRegistry::Global();
   for (auto i = 0; i < tasks.size(); ++i) {
-    tasks[i].Initialize(shape_dict, dtype_dict, op_lowerer.get());
+    tasks[i].Initialize(shape_dict, dtype_dict, &op_lowerer);
     task_registry->Regist(tasks[i].serialized_key,
                           ir::ModuleExpr(tasks[i].GetLoweredFuncBodyExprs()));
   }

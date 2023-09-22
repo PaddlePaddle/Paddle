@@ -148,8 +148,11 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
     for (size_t i = 0; i < input_scope_idxes.size(); ++i) {
       const std::string& varname("out_var" + std::to_string(i));
       for (size_t j = 0; j < place_list_.size(); ++j) {
-        SelectedRowsEqual(
-            varname, input_scope_idxes[i], send_vector[i], rows, height);
+        SelectedRowsEqual(varname,
+                          static_cast<int>(input_scope_idxes[i]),
+                          send_vector[i],
+                          rows,
+                          height);
       }
     }
   }

@@ -69,7 +69,7 @@ class DenseTensor : public TensorBase,
   /// \brief DenseTensor shallow copy assignment.
   DenseTensor& operator=(const DenseTensor& other);
 
-  DenseTensor& operator=(DenseTensor&& other);
+  DenseTensor& operator=(DenseTensor&& other) noexcept;
 
   DenseTensor();
 

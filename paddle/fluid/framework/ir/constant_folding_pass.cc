@@ -81,9 +81,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
     std::unordered_map<std::string, int> map;
     for (auto in_node : op_node->inputs) {
       map[in_node->Name()] = 0;
-      if (!in_node->Var()->Persistable()) {
-        input_persis = false;
-      } else if (!in_node->inputs.empty()) {
+      if (!in_node->Var()->Persistable() || !in_node->inputs.empty()) {
         input_persis = false;
       }
     }
@@ -143,7 +141,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
             local_scope->FindVar(out_name)->GetMutable<phi::DenseTensor>();
         std::vector<int64_t> out_shape;
         for (int64_t i = 0; i < local_out_tensor->dims().size(); i++) {
-          out_shape.push_back(local_out_tensor->dims()[i]);
+          out_shape.push_back(local_out_tensor->dims()[static_cast<int>(i)]);
         }
         out_desc->SetShape(out_shape);
         out_desc->SetPersistable(true);

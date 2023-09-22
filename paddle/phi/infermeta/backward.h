@@ -186,9 +186,11 @@ void FusedDropoutAddGradInferMeta(const MetaTensor& seed_offset,
 
 void FusedRopeGradInferMeta(const MetaTensor& sin,
                             const MetaTensor& cos,
+                            const MetaTensor& position_ids,
                             const MetaTensor& dout_q,
                             const MetaTensor& dout_k,
                             const MetaTensor& dout_v,
+                            bool use_neox_rotary_style,
                             MetaTensor* dq,
                             MetaTensor* dk,
                             MetaTensor* dv);

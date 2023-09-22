@@ -18,13 +18,13 @@ import numpy as np
 from pass_test import PassTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class EmbEltwiseLayerNormFusePassTest(PassTest):
     def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             word_id = paddle.static.data(
                 name="word_id",
                 shape=[1, 128],
@@ -127,7 +127,7 @@ class EmbEltwiseLayerNormFusePassTest(PassTest):
         self.pass_attrs = {
             "embedding_eltwise_layernorm_fuse_pass": {"use_gpu": True}
         }
-        place = fluid.CUDAPlace(0)
+        place = base.CUDAPlace(0)
         self.check_output_with_place(place, startup_on_cpu=True)
 
 

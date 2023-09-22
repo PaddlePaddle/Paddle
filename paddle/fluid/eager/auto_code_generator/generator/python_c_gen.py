@@ -87,7 +87,7 @@ RETURN_INPLACE_PYOBJECT_TEMPLATE = """
 
 
 PYTHON_C_FUNCTION_TEMPLATE = """
-static PyObject * eager_api_{}(PyObject *self, PyObject *args, PyObject *kwargs) {{
+PyObject * eager_api_{}(PyObject *self, PyObject *args, PyObject *kwargs) {{
   {}
   PyThreadState *tstate = nullptr;
   try {{
@@ -173,6 +173,7 @@ PYTHON_C_WRAPPER_TEMPLATE = """
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/eager/amp_utils.h"
 #include "paddle/fluid/eager/eager_amp_auto_cast.h"
+#include "paddle/fluid/pybind/eager_op_function.h"
 namespace paddle {{
 namespace pybind {{
 
@@ -253,6 +254,29 @@ NAMESPACE_WRAPPER_TEMPLATE = """namespace {} {{
 }}
 """
 
+PYTHON_C_H_TEMPLATE = """
+#pragma once
+
+#include <Python.h>
+
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
+
+namespace paddle {{
+namespace pybind {{
+
+{body}
+
+}} // namespace pybind
+}} // namespace paddle
+"""
+
+PYTHON_C_FUNCTION_DECLARE_TEMPLATE = """
+PyObject *eager_api_{name}(PyObject *self, PyObject *args, PyObject *kwargs);
+"""
+
 
 #####################
 # Generator Classes #
@@ -279,6 +303,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         # Generated Results
         self.python_c_function_str = ""
         self.python_c_function_reg_str = ""
+        self.python_c_funcion_declare_str = ""
 
     def CollectIsForwardOnly(self):
         forward_api_contents = self.forward_api_contents
@@ -428,6 +453,9 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             noamp_dygraph_function_str,
             return_str,
         )
+        self.python_c_funcion_declare_str = (
+            PYTHON_C_FUNCTION_DECLARE_TEMPLATE.format(name=forward_api_name)
+        )
 
         # Set prefix of forward_api_name to avoid conflicts
         prefix = self.namespace.strip("::")
@@ -483,6 +511,12 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                 return_str,
             )
 
+            python_c_funcion_declare_str = (
+                PYTHON_C_FUNCTION_DECLARE_TEMPLATE.format(
+                    name=inplaced_forward_api_name
+                )
+            )
+
             python_c_inplace_func_reg_str = (
                 PYTHON_C_FUNCTION_REG_TEMPLATE.format(
                     forward_api_name_prefix,
@@ -496,10 +530,14 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             # self.forward_api_name ending with '_' means it only has inplace api
             if self.forward_api_name[-1] == '_':
                 self.python_c_function_str = python_c_inplace_func_str
+                self.python_c_funcion_declare_str = python_c_funcion_declare_str
                 # Generate Python-C Function Registration
                 self.python_c_function_reg_str = python_c_inplace_func_reg_str
             else:
                 self.python_c_function_str += python_c_inplace_func_str
+                self.python_c_funcion_declare_str += (
+                    python_c_funcion_declare_str
+                )
                 # Generate Python-C Function Registration
                 self.python_c_function_reg_str += python_c_inplace_func_reg_str
 
@@ -541,6 +579,7 @@ class PythonCGenerator(GeneratorBase):
         # Generated Result
         self.python_c_functions_str = ""
         self.python_c_functions_reg_str = ""
+        self.python_c_funcion_declare_str = ""
 
     def GeneratePythonCFunctions(self):
         namespace = self.namespace
@@ -559,6 +598,9 @@ class PythonCGenerator(GeneratorBase):
                 self.python_c_functions_reg_str += (
                     f_generator.python_c_function_reg_str
                 )
+                self.python_c_funcion_declare_str += (
+                    f_generator.python_c_funcion_declare_str
+                )
 
     def AttachNamespace(self):
         namespace = self.namespace
@@ -569,6 +611,11 @@ class PythonCGenerator(GeneratorBase):
                 namespace = namespace[:-2]
             self.python_c_functions_str = NAMESPACE_WRAPPER_TEMPLATE.format(
                 namespace, python_c_functions_str
+            )
+            self.python_c_funcion_declare_str = (
+                NAMESPACE_WRAPPER_TEMPLATE.format(
+                    namespace, self.python_c_funcion_declare_str
+                )
             )
 
     def run(self):
@@ -593,7 +640,8 @@ def ParseArguments():
         description='Eager Code Generator Args Parser'
     )
     parser.add_argument('--api_yaml_path', type=str)
-    parser.add_argument('--output_path', type=str)
+    parser.add_argument('--source_path', type=str)
+    parser.add_argument('--header_path', type=str)
 
     args = parser.parse_args()
     return args
@@ -631,6 +679,7 @@ if __name__ == "__main__":
 
     generated_python_c_functions = ""
     generated_python_c_registration = ""
+    generated_python_c_functions_header = ""
     for i in range(len(api_yaml_paths)):
         api_yaml_path = api_yaml_paths[i]
 
@@ -643,14 +692,22 @@ if __name__ == "__main__":
         generated_python_c_registration += (
             py_c_generator.python_c_functions_reg_str
         )
+        generated_python_c_functions_header += (
+            py_c_generator.python_c_funcion_declare_str
+        )
 
     python_c_str = GeneratePythonCWrappers(
         generated_python_c_functions, generated_python_c_registration
     )
 
-    output_path = args.output_path
-    for path in [output_path]:
+    soucre_path = args.source_path
+    header_path = args.header_path
+    for path in [soucre_path, header_path]:
         if os.path.exists(path):
             os.remove(path)
 
-    GeneratePythonCFile(output_path, python_c_str)
+    GeneratePythonCFile(soucre_path, python_c_str)
+    GeneratePythonCFile(
+        header_path,
+        PYTHON_C_H_TEMPLATE.format(body=generated_python_c_functions_header),
+    )

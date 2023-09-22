@@ -16,6 +16,7 @@ from ..utils.hybrid_parallel_util import (
     broadcast_dp_parameters,
     broadcast_input_data,
     broadcast_mp_parameters,
+    broadcast_sep_parameters,
     broadcast_sharding_parameters,
 )
 from ..utils.log_util import logger
@@ -31,6 +32,10 @@ class TensorParallel(MetaParallelBase):
     def _prepare_for_model(self):
         logger.info("start broadcast mp parameters")
         broadcast_mp_parameters(self._layers, self._hcg)
+
+        if self._hcg.get_sep_parallel_world_size() > 1:
+            logger.info("start broadcast sep parameters")
+            broadcast_sep_parameters(self._layers, self._hcg)
 
         if self._hcg.get_sharding_parallel_world_size() > 1:
             logger.info("start broadcast sharding parameters")

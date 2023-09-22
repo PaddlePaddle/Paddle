@@ -41,7 +41,7 @@ std::vector<ir::Var> IndicesToVars(const std::vector<ir::Expr>& indices) {
   for (const ir::Expr& e : indices) {
     // Whether we have to convert other types, like const numbers to Var?
     if (e.As<ir::_Var_>() != nullptr) {
-      ir::Expr copy_e = optim::IRCopy(e);
+      ir::Expr copy_e = ir::ir_utils::IRCopy(e);
       ir::_Var_* var_ref = copy_e.As<ir::_Var_>();
       result.emplace_back(ir::Var(var_ref));
     }
@@ -54,29 +54,30 @@ void AnalyzeScheduleBlockReadWriteBuffer(ir::ScheduleBlock* sche_block) {
     return;
   }
 
-  ir::CollectIRNodesWithoutTensor(sche_block->body, [&](const Expr* x) {
-    const ir::Load* load_expr = x->As<ir::Load>();
-    if (load_expr != nullptr) {
-      const ir::Tensor t = load_expr->tensor.as_tensor_ref();
-      sche_block->read_buffers.emplace_back(
-          ir::BufferRange(t->buffer, IndicesToVars(load_expr->indices)));
-      return false;
-    }
-    const ir::Store* store_expr = x->As<ir::Store>();
-    if (store_expr != nullptr) {
-      const ir::Tensor t = store_expr->tensor.as_tensor_ref();
-      sche_block->write_buffers.emplace_back(
-          ir::BufferRange(t->buffer, IndicesToVars(store_expr->indices)));
-      return false;
-    }
-    return false;
-  });
+  ir::ir_utils::CollectIRNodesWithoutTensor(
+      sche_block->body, [&](const Expr* x) {
+        const ir::Load* load_expr = x->As<ir::Load>();
+        if (load_expr != nullptr) {
+          const ir::Tensor t = load_expr->tensor.as_tensor_ref();
+          sche_block->read_buffers.emplace_back(
+              ir::BufferRange(t->buffer, IndicesToVars(load_expr->indices)));
+          return false;
+        }
+        const ir::Store* store_expr = x->As<ir::Store>();
+        if (store_expr != nullptr) {
+          const ir::Tensor t = store_expr->tensor.as_tensor_ref();
+          sche_block->write_buffers.emplace_back(
+              ir::BufferRange(t->buffer, IndicesToVars(store_expr->indices)));
+          return false;
+        }
+        return false;
+      });
 }
 
 bool ContainsNodeType(ir::Expr expr,
                       const std::unordered_set<ir::IrNodeTy>& node_types) {
   std::set<ir::Expr> collection =
-      ir::CollectIRNodesWithoutTensor(expr, [&](const Expr* x) {
+      ir::ir_utils::CollectIRNodesWithoutTensor(expr, [&](const Expr* x) {
         return node_types.find(x->node_type()) != node_types.end();
       });
   return !collection.empty();

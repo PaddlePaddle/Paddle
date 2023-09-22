@@ -166,7 +166,7 @@ class Transform:
         Returns:
             Tensor: Outcome of forward transformation.
         """
-        if not isinstance(x, paddle.fluid.framework.Variable):
+        if not isinstance(x, paddle.base.framework.Variable):
             raise TypeError(
                 f"Expected 'x' is a Tensor or Real, but got {type(x)}."
             )
@@ -187,7 +187,7 @@ class Transform:
         Returns:
             Tensor: Outcome of inverse transform.
         """
-        if not isinstance(y, paddle.fluid.framework.Variable):
+        if not isinstance(y, paddle.base.framework.Variable):
             raise TypeError(
                 f"Expected 'y' is a Tensor or Real, but got {type(y)}."
             )
@@ -209,12 +209,12 @@ class Transform:
         Returns:
             Tensor: The log of the absolute value of Jacobian determinant.
         """
-        if not isinstance(x, paddle.fluid.framework.Variable):
+        if not isinstance(x, paddle.base.framework.Variable):
             raise TypeError(
                 f"Expected 'y' is a Tensor or Real, but got {type(x)}."
             )
         if (
-            isinstance(x, paddle.fluid.framework.Variable)
+            isinstance(x, paddle.base.framework.Variable)
             and x.dim() < self._domain.event_rank
         ):
             raise ValueError(
@@ -241,7 +241,7 @@ class Transform:
         Returns:
             Tensor: The value of :math:`log|det J_{f^{-1}}(y)|`.
         """
-        if not isinstance(y, paddle.fluid.framework.Variable):
+        if not isinstance(y, paddle.base.framework.Variable):
             raise TypeError(f"Expected 'y' is a Tensor, but got {type(y)}.")
         if y.dim() < self._codomain.event_rank:
             raise ValueError(
@@ -441,9 +441,9 @@ class AffineTransform(Transform):
     _type = Type.BIJECTION
 
     def __init__(self, loc, scale):
-        if not isinstance(loc, paddle.fluid.framework.Variable):
+        if not isinstance(loc, paddle.base.framework.Variable):
             raise TypeError(f"Expected 'loc' is a Tensor, but got {type(loc)}")
-        if not isinstance(scale, paddle.fluid.framework.Variable):
+        if not isinstance(scale, paddle.base.framework.Variable):
             raise TypeError(
                 f"Expected scale is a Tensor, but got {type(scale)}"
             )
@@ -791,7 +791,7 @@ class PowerTransform(Transform):
     _type = Type.BIJECTION
 
     def __init__(self, power):
-        if not isinstance(power, paddle.fluid.framework.Variable):
+        if not isinstance(power, paddle.base.framework.Variable):
             raise TypeError(
                 f"Expected 'power' is a tensor, but got {type(power)}"
             )

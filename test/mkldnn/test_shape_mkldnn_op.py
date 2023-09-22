@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, OpTestTool
+from op_test import OpTest, OpTestTool
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestShape3DFP32OneDNNOp(OpTest):

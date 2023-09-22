@@ -17,7 +17,6 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 
-#include "gflags/gflags.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/data_type_transform.h"
@@ -43,6 +42,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/ops/compat/signatures.h"
+#include "paddle/utils/flags.h"
 
 namespace phi {
 class DenseTensor;
@@ -62,9 +62,9 @@ class DenseTensor;
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #endif
 
-DECLARE_bool(benchmark);
+PD_DECLARE_bool(benchmark);
 PHI_DECLARE_bool(check_nan_inf);
-DECLARE_bool(enable_unused_var_check);
+PD_DECLARE_bool(enable_unused_var_check);
 PHI_DECLARE_bool(run_kp_kernel);
 PHI_DECLARE_bool(enable_host_event_recorder_hook);
 
@@ -170,7 +170,7 @@ static int GetRowSize(const Scope& scope, const std::string& name) {
   }
 
   if (var->IsType<phi::SelectedRows>()) {
-    return var->Get<phi::SelectedRows>().rows().size();
+    return static_cast<int>(var->Get<phi::SelectedRows>().rows().size());
   }
 
   return -1;
@@ -309,7 +309,7 @@ std::string RuntimeInferShapeContext::GetInputNameByIdx(size_t idx) const {
                         op_.Type(),
                         idx,
                         op_proto->inputs().size()));
-  return op_proto->inputs()[idx].name();
+  return op_proto->inputs()[static_cast<int>(idx)].name();
 }
 
 std::string RuntimeInferShapeContext::GetOutputNameByIdx(size_t idx) const {
@@ -323,7 +323,7 @@ std::string RuntimeInferShapeContext::GetOutputNameByIdx(size_t idx) const {
                         op_.Type(),
                         idx,
                         op_proto->outputs().size()));
-  return op_proto->outputs()[idx].name();
+  return op_proto->outputs()[static_cast<int>(idx)].name();
 }
 
 void RuntimeInferShapeContext::ShareDim(const std::string& in,
@@ -2022,7 +2022,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx));
     }
     if (fallback_to_cpu) {
-      phi_kernel_.release();
+      [[maybe_unused]] auto released_kernel = phi_kernel_.release();
     }
   }
 
@@ -2777,8 +2777,6 @@ void OperatorWithKernel::ParseInputDataType(
     const phi::DenseTensor* t = nullptr;
     if (var->IsType<phi::DenseTensor>()) {
       t = &var->Get<phi::DenseTensor>();
-    } else if (var->IsType<phi::DenseTensor>()) {
-      t = &var->Get<phi::DenseTensor>();
     } else if (var->IsType<phi::SelectedRows>()) {
       t = &(var->Get<phi::SelectedRows>().value());
     } else if (var->IsType<phi::SparseCooTensor>()) {
@@ -3221,11 +3219,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
         } else if (var->template IsType<framework::Strings>()) {
           tensor_out = var->template GetMutable<framework::Strings>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
-        } else if (var->template IsType<paddle::framework::RawTensor>()) {
-          tensor_out = var->template GetMutable<paddle::framework::RawTensor>();
-          phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
-        } else if (!var->IsInitialized()) {
-          // The following is for RAW type of var
+        } else if (var->template IsType<paddle::framework::RawTensor>() ||
+                   !var->IsInitialized()) {
           tensor_out = var->template GetMutable<paddle::framework::RawTensor>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else {

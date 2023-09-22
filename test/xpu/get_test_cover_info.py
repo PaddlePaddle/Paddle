@@ -19,7 +19,7 @@ import os
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 type_dict_paddle_to_str = {
     paddle.bool: 'bool',

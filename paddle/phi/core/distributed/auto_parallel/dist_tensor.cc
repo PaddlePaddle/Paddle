@@ -14,6 +14,7 @@
 
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 
+#include "glog/logging.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
@@ -34,10 +35,14 @@ inline void check_defined(const DistTensor& dist_tensor,
 DistTensor::DistTensor(const phi::DenseTensor& global_value,
                        const TensorDistAttr& dist_attr)
     : dims_(global_value.dims()), dist_attr_(dist_attr), value_(global_value) {
-  if (!IsDimsMappingReplicated(dist_attr_.dims_mapping())) {
+  if (value_.initialized() && !dist_attr.is_replicated()) {
     // 1. create replicated global tensor
     int64_t dims_size = global_value.dims().size();
     std::vector<int64_t> dims_mapping(dims_size, -1);
+    dist_attr_.set_dims_mapping(dims_mapping);
+    if (dist_attr_.is_partial()) {
+      dist_attr_.clean_partial_status();
+    }
     dist_attr_.set_dims_mapping(dims_mapping);
 
     // 2. reshard from replicated to other state
@@ -50,15 +55,20 @@ DistTensor::DistTensor(const phi::DenseTensor& global_value,
 DistTensor::DistTensor(const DDim& dims, const TensorDistAttr& dist_attr)
     : dims_(dims), dist_attr_(dist_attr) {}
 
-void DistTensor::set_dims(const DDim& dims) {
-  PADDLE_ENFORCE_EQ(
-      this->initialized(),
-      false,
-      phi::errors::Unimplemented(
-          "DistTensor's set_dims method can only be used when the `value` "
-          "is not initialized (generally used in the InferMeta and "
-          "InferSPMD stages)."));
+void DistTensor::unsafe_set_dims(const DDim& dims) {
+  if (this->initialized()) {
+    VLOG(3) << "You try to set an initialized DistTensor's global dims. "
+               "Make sure you are aware of where you change its dims.";
+  }
   dims_ = dims;
+}
+
+void DistTensor::unsafe_set_dist_attr(const TensorDistAttr& dist_attr) {
+  if (this->initialized()) {
+    VLOG(3) << "You try to set an initialized DistTensor's dist attr. "
+               "Make sure you are aware of where you change its dist attr.";
+  }
+  dist_attr_ = dist_attr;
 }
 
 int64_t DistTensor::numel() const {

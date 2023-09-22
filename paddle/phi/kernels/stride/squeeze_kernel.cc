@@ -49,7 +49,8 @@ void SqueezeInferStridedKernel(const Context& dev_ctx,
     } else {
       for (auto& item : axes) {
         item = item < 0 ? item + input_stride.size() : item;
-        if (item != 0 && input_stride[item] == input_stride[item - 1]) {
+        if (item != 0 && input_stride[static_cast<int>(item)] ==
+                             input_stride[static_cast<int>(item) - 1]) {
           axes_set.insert(item);
         }
       }
@@ -65,7 +66,8 @@ void SqueezeInferStridedKernel(const Context& dev_ctx,
 
     auto meta = out->meta();
     meta.offset = input.offset();
-    meta.strides = DDim(output_stride.data(), output_stride.size());
+    meta.strides =
+        DDim(output_stride.data(), static_cast<int>(output_stride.size()));
     out->set_meta(meta);
     return;
   }
@@ -80,7 +82,7 @@ void SqueezeInferStridedKernel(const Context& dev_ctx,
   } else {
     for (auto item : axes) {
       auto axis = item < 0 ? item + input_dims.size() : item;
-      if (input_dims[axis] == 1) {
+      if (input_dims[static_cast<int>(axis)] == 1) {
         axes_set.insert(axis);
       }
     }
@@ -94,7 +96,7 @@ void SqueezeInferStridedKernel(const Context& dev_ctx,
   }
 
   auto meta = out->meta();
-  auto tmp_dim = DDim(output_dims.data(), output_dims.size());
+  auto tmp_dim = DDim(output_dims.data(), static_cast<int>(output_dims.size()));
   // if (product(meta.dims) > 0 && meta.dims != tmp_dim) {
   //   PADDLE_THROW(
   //       phi::errors::Fatal("Unsqueeze kernel stride compute diff, infer
@@ -104,7 +106,8 @@ void SqueezeInferStridedKernel(const Context& dev_ctx,
   //                          tmp_dim));
   // }
   meta.dims = tmp_dim;
-  meta.strides = DDim(output_stride.data(), output_stride.size());
+  meta.strides =
+      DDim(output_stride.data(), static_cast<int>(output_stride.size()));
   meta.offset = input.offset();
   out->set_meta(meta);
   out->ResetHolder(input.Holder());

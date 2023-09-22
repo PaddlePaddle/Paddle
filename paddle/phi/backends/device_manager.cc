@@ -30,10 +30,17 @@
 namespace phi {
 
 void Device::CheckInitialized() {
-  std::call_once(initialized_, [&]() { this->impl_->InitDevice(dev_id_); });
+  std::call_once(initialized_once_flag_, [&]() {
+    this->impl_->InitDevice(dev_id_);
+    this->initialized_ = true;
+  });
 }
 
-Device::~Device() { impl_->DeInitDevice(dev_id_); }
+Device::~Device() {
+  if (initialized_) {
+    impl_->DeInitDevice(dev_id_);
+  }
+}
 
 void Device::CreateStream(stream::Stream* stream,
                           const stream::Stream::Priority& priority,

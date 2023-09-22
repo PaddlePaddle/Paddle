@@ -423,14 +423,14 @@ class TestNearestInterpException(unittest.TestCase):
 
         def attr_data_format():
             # for 4-D input, data_format can only be NCHW or NHWC
-            out = fluid.layers.resize_nearest(
+            out = base.layers.resize_nearest(
                 input, out_shape=[4, 8], data_format="NDHWC")
 
         def attr_scale_type():
-            out = fluid.layers.resize_nearest(input, scale="scale")
+            out = base.layers.resize_nearest(input, scale="scale")
 
         def attr_scale_value():
-            out = fluid.layers.resize_nearest(input, scale=-0.3)
+            out = base.layers.resize_nearest(input, scale=-0.3)
 
         self.assertRaises(ValueError, attr_data_format)
         self.assertRaises(TypeError, attr_scale_type)

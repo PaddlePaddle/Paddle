@@ -45,7 +45,7 @@ CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(
   // case, the allocation will be pinnded device memory local to a given device.
   prop.type = CU_MEM_ALLOCATION_TYPE_PINNED;
   prop.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
-  prop.location.id = place.device;
+  prop.location.id = place.device;  // NOLINT
   prop_ = prop;
 
   // Prepare the access descriptor array indicating where and how the backings

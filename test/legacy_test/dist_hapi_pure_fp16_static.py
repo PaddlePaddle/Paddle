@@ -17,18 +17,18 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import Model, fluid
+from paddle import Model, base
 from paddle.nn.layer.loss import CrossEntropyLoss
 from paddle.static import InputSpec
 from paddle.vision.models import LeNet
 
 
 @unittest.skipIf(
-    not fluid.is_compiled_with_cuda(), 'CPU testing is not supported'
+    not base.is_compiled_with_cuda(), 'CPU testing is not supported'
 )
 class TestDistTrainingWithPureFP16(unittest.TestCase):
     def test_amp_training_purefp16(self):
-        if not fluid.is_compiled_with_cuda():
+        if not base.is_compiled_with_cuda():
             self.skipTest('module not tested when ONLY_CPU compiling')
         data = np.random.random(size=(4, 1, 28, 28)).astype(np.float32)
         label = np.random.randint(0, 10, size=(4, 1)).astype(np.int64)

@@ -18,7 +18,7 @@ import numpy as np
 from op import Operator
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestSparseSquareOp(unittest.TestCase):

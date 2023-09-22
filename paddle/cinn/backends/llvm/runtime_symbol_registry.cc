@@ -19,10 +19,10 @@
 
 #include <iostream>
 
-#include "gflags/gflags_declare.h"
 #include "paddle/cinn/runtime/flags.h"
+#include "paddle/utils/flags.h"
 
-DECLARE_bool(verbose_function_register);
+PD_DECLARE_bool(verbose_function_register);
 
 namespace cinn {
 namespace backends {

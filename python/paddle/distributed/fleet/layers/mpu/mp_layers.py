@@ -14,8 +14,8 @@
 
 import paddle
 from paddle.autograd import PyLayer
+from paddle.base import core
 from paddle.distributed import fleet
-from paddle.fluid import core
 from paddle.nn import functional as F
 
 from ....communication.reduce import ReduceOp, _get_reduce_op
@@ -387,10 +387,8 @@ class ColumnParallelLinear(paddle.nn.Layer):
 
         self.gather_output = gather_output
         assert out_features % self.world_size == 0, (
-            "Number of column of the weight for linear ({}) must be"
-            " divisible by model parallel size ({})".format(
-                out_features, self.world_size
-            )
+            f"Number of column of the weight for linear ({out_features}) must be"
+            f" divisible by model parallel size ({self.world_size})"
         )
         self.output_size_per_partition = out_features // self.world_size
 
@@ -450,6 +448,14 @@ class ColumnParallelLinear(paddle.nn.Layer):
             and mp_configs.mp_async_allreduce
             and mp_configs.mp_fused_linear_param_grad_add
         )
+        if (
+            self.mp_async_allreduce
+            or self.mp_skip_c_identity
+            or self.mp_fused_linear_param_grad_add
+        ):
+            assert (
+                paddle.in_dynamic_mode()
+            ), "mp_async_allreduce, mp_skip_c_identity and mp_fused_linear_param_grad_add are only available under dygraph mode"
         if self.fuse_matmul_bias:
             if not is_fused_matmul_bias_supported():
                 raise NotImplementedError(
@@ -614,11 +620,17 @@ class RowParallelLinear(paddle.nn.Layer):
             and mp_configs.mp_async_allreduce
             and mp_configs.mp_fused_linear_param_grad_add
         )
+        if (
+            self.mp_async_allreduce
+            or self.mp_skip_c_identity
+            or self.mp_fused_linear_param_grad_add
+        ):
+            assert (
+                paddle.in_dynamic_mode()
+            ), "mp_async_allreduce, mp_skip_c_identity and mp_fused_linear_param_grad_add are only available under dygraph mode"
         assert in_features % self.world_size == 0, (
-            "Number of row of the weight for linear ({}) must be"
-            " divisible by model parallel size ({})".format(
-                in_features, self.world_size
-            )
+            f"Number of row of the weight for linear ({in_features}) must be"
+            f" divisible by model parallel size ({self.world_size})"
         )
 
         self.input_size_per_partition = in_features // self.world_size

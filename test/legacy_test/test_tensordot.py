@@ -17,13 +17,13 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 np.random.seed(2021)
 
 
 def tensordot_np(x, y, axes):
-    if isinstance(axes, paddle.fluid.framework.Variable):
+    if isinstance(axes, paddle.base.framework.Variable):
         axes = axes.tolist()
 
     # np.tensordot does not support empty axes
@@ -228,7 +228,7 @@ class TestTensordotAPI(unittest.TestCase):
 
     def test_fp16_with_gpu(self):
         paddle.enable_static()
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             for axes in self.all_axes:
                 place = paddle.CUDAPlace(0)
                 with paddle.static.program_guard(
