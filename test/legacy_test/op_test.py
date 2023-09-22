@@ -1290,6 +1290,17 @@ class OpTest(unittest.TestCase):
                 input_dict.update({name: x})
         return static_inputs, attrs_outputs, input_dict, feed
 
+    def _need_fetch(self, sig_name):
+        if sig_name in self.outputs.keys():
+            return True
+        for _, value in self.outputs.items():
+            if not isinstance(value, (tuple, list)):
+                return False
+            for var_name, _ in value:
+                if sig_name == var_name:
+                    return True
+        return False
+
     def _calc_new_ir_output(
         self, place, no_check_set=None, inps=None, oups=None
     ):
@@ -1330,6 +1341,8 @@ class OpTest(unittest.TestCase):
                     kernel_sig,
                 )
                 inputs_sig, attrs_sig, outputs_sig = kernel_sig
+                if hasattr(self, "python_out_sig"):
+                    outputs_sig = self.python_out_sig
                 args = OpTestUtils.assumption_assert_and_transform(
                     args, len(inputs_sig)
                 )
@@ -1341,10 +1354,10 @@ class OpTest(unittest.TestCase):
                 if len(fetch_list) == 0:
                     if isinstance(ret_tuple, (tuple, list)):
                         assert len(ret_tuple) == len(outputs_sig)
-                        for var, output_name in zip(ret_tuple, outputs_sig):
+                        for var, sig_name in zip(ret_tuple, outputs_sig):
                             if no_check_set is not None and var in no_check_set:
                                 continue
-                            if output_name not in self.outputs.keys():
+                            if not self._need_fetch(sig_name):
                                 continue
                             if isinstance(var, list):
                                 for v in var:
@@ -1367,7 +1380,9 @@ class OpTest(unittest.TestCase):
                 )
 
                 outputs_sig = [
-                    name for name in outputs_sig if name in self.outputs.keys()
+                    sig_name
+                    for sig_name in outputs_sig
+                    if self._need_fetch(sig_name)
                 ]
                 result = construct_output_dict_by_kernel_sig(outs, outputs_sig)
                 if hasattr(self, "python_out_sig_sub_name"):
