@@ -4723,7 +4723,7 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
 def put_along_axis_(arr, indices, values, axis, reduce='assign'):
     r"""
     Inplace version of ``put_along_axis`` API, the output Tensor will be inplaced with input ``arr``.
-    Please refer to :ref:`api_paddle_Tensor_put_along_axis_`.
+    Please refer to :ref:`api_paddle_put_along_axis`.
     """
     if len(arr.shape) != len(indices.shape):
         raise ValueError(
