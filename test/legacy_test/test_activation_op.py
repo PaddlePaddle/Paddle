@@ -3634,7 +3634,13 @@ class TestSTanh(TestActivation):
         scale_b = self.get_scale_b()
 
         np.random.seed(1024)
-        x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        if self.dtype is np.complex64 or self.dtype is np.complex128:
+            x = (
+                np.random.uniform(0.1, 1, self.shape)
+                + 1j * np.random.uniform(0.1, 1, self.shape)
+            ).astype(self.dtype)
+        else:
+            x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
         # The same reason with TestAbs
         out = ref_stanh(x, scale_a, scale_b)
 
@@ -3662,6 +3668,16 @@ class TestSTanhScaleB(TestSTanh):
 class TestSTanh_ZeroDim(TestSTanh):
     def init_shape(self):
         self.shape = []
+
+
+class TestSTanhComplex64(TestSTanh):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestSTanhComplex128(TestSTanh):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestSTanhAPI(unittest.TestCase):
