@@ -51,6 +51,7 @@
 namespace py = pybind11;
 using paddle::dialect::APIBuilder;
 using paddle::dialect::DenseTensorType;
+using paddle::dialect::SelectedRowsType;
 using pir::Block;
 using pir::Operation;
 using pir::OpOperand;
@@ -442,6 +443,70 @@ void SetOpResultBoolAttr(const OpResult &self,
       attr_name, pir::ArrayAttribute::get(pir::IrContext::Instance(), attrs));
 }
 
+phi::DataType GetOpResultDtype(const OpResult &result) {
+  if (result.type().isa<DenseTensorType>()) {
+    return paddle::dialect::TransToPhiDataType(
+        result.type().dyn_cast<DenseTensorType>().dtype());
+  } else if (result.type().isa<SelectedRowsType>()) {
+    return paddle::dialect::TransToPhiDataType(
+        result.type().dyn_cast<SelectedRowsType>().dtype());
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get phi::DataType from DenseTensorType and "
+        "SelectedRowsType."));
+  }
+}
+
+#define OVERRIDE_OPERATOR(operator, api, other_type)              \
+  op_result.def(#operator, [](OpResult &self, other_type other) { \
+    return paddle::dialect::api(self, other);                     \
+  });
+
+#define OVERRIDE_OPERATOR_WITH_SCALE(operator,                    \
+                                     other_type,                  \
+                                     scale_value,                 \
+                                     bias_value,                  \
+                                     bias_after_scale)            \
+  op_result.def(#operator, [](OpResult &self, other_type other) { \
+    return paddle::dialect::scale(                                \
+        self, scale_value, bias_value, bias_after_scale);         \
+  });
+
+#define OVERRIDE_OPERATOR_FOR_EACH(operator,         \
+                                   api,              \
+                                   scale_value,      \
+                                   bias_value,       \
+                                   bias_after_scale) \
+  OVERRIDE_OPERATOR(operator, api, OpResult)         \
+  OVERRIDE_OPERATOR_WITH_SCALE(operator,             \
+                               int,                  \
+                               scale_value,          \
+                               bias_value,           \
+                               bias_after_scale)     \
+  OVERRIDE_OPERATOR_WITH_SCALE(operator,             \
+                               float,                \
+                               scale_value,          \
+                               bias_value,           \
+                               bias_after_scale)     \
+  OVERRIDE_OPERATOR_WITH_SCALE(operator,             \
+                               double,               \
+                               scale_value,          \
+                               bias_value,           \
+                               bias_after_scale)
+
+#define OVERRIDE_COMPARE_OP_WITH_FULL(operator, api, other_type)            \
+  op_result.def(#operator, [](OpResult &self, other_type other) {           \
+    auto rhs =                                                              \
+        paddle::dialect::full(/*shape=*/{}, other, GetOpResultDtype(self)); \
+    return paddle::dialect::api(self, rhs);                                 \
+  });
+
+#define OVERRIDE_COMPARE_OP_FOR_EACH(operator, api)   \
+  OVERRIDE_OPERATOR(operator, api, OpResult)          \
+  OVERRIDE_COMPARE_OP_WITH_FULL(operator, api, int)   \
+  OVERRIDE_COMPARE_OP_WITH_FULL(operator, api, float) \
+  OVERRIDE_COMPARE_OP_WITH_FULL(operator, api, double)
+
 void BindOpResult(py::module *m) {
   py::class_<OpResult> op_result(*m, "OpResult", R"DOC(
     OpResult class represents the value(output) defined by a result of operation.
@@ -451,12 +516,23 @@ void BindOpResult(py::module *m) {
         when build network.
   )DOC");
   g_ir_opresult_pytype = reinterpret_cast<PyTypeObject *>(op_result.ptr());
-  op_result
-      .def(
-          "__init__",
-          [](OpResult &self) { new (&self) OpResult(); },
-          pybind11::return_value_policy::reference)
-      .def("__eq__", &OpResult::operator==)
+  op_result.def(
+      "__init__",
+      [](OpResult &self) { new (&self) OpResult(); },
+      pybind11::return_value_policy::reference);
+
+  // For basaic operators
+  OVERRIDE_OPERATOR_FOR_EACH(__add__, add, 1.0, other, true);
+  OVERRIDE_OPERATOR_FOR_EACH(__sub__, subtract, 1.0, -1.0 * other, true);
+  OVERRIDE_OPERATOR_FOR_EACH(__mul__, multiply, other, 0.0, false);
+  OVERRIDE_OPERATOR_FOR_EACH(__truediv__, divide, 1.0 / other, 0.0, false);
+  // For compare opeartors
+  OVERRIDE_COMPARE_OP_FOR_EACH(__lt__, less_than);
+  OVERRIDE_COMPARE_OP_FOR_EACH(__le__, less_equal);
+  OVERRIDE_COMPARE_OP_FOR_EACH(__gt__, greater_than);
+  OVERRIDE_COMPARE_OP_FOR_EACH(__ge__, greater_equal);
+
+  op_result.def("__eq__", &OpResult::operator==)
       .def("__eq__",
            [](OpResult &self, Value &other) {
              return self.Value::impl() == other.impl();
@@ -464,42 +540,6 @@ void BindOpResult(py::module *m) {
       .def("__neg__",
            [](OpResult &self) {
              return paddle::dialect::scale(self, -1.0, 0.0, true);
-           })
-      .def("__add__",
-           [](OpResult &self, OpResult &other) {
-             return paddle::dialect::add(self, other);
-           })
-      .def("__add__",
-           [](OpResult &self, float &bias) {
-             return paddle::dialect::scale(self, 1.0, bias, false);
-           })
-      .def("__sub__",
-           [](OpResult &self, OpResult &other) {
-             return paddle::dialect::subtract(self, other);
-           })
-      .def("__mul__",
-           [](OpResult &self, OpResult &other) {
-             return paddle::dialect::multiply(self, other);
-           })
-      .def("__truediv__",
-           [](OpResult &self, OpResult &other) {
-             return paddle::dialect::divide(self, other);
-           })
-      .def("__lt__",
-           [](OpResult &self, OpResult &other) {
-             return paddle::dialect::less_than(self, other);
-           })
-      .def("__le__",
-           [](OpResult &self, OpResult &other) {
-             return paddle::dialect::less_equal(self, other);
-           })
-      .def("__gt__",
-           [](OpResult &self, OpResult &other) {
-             return paddle::dialect::greater_than(self, other);
-           })
-      .def("__ge__",
-           [](OpResult &self, OpResult &other) {
-             return paddle::dialect::greater_equal(self, other);
            })
       .def("__hash__",
            [](OpResult &self) { return std::hash<pir::Value>{}(self); })
@@ -537,7 +577,8 @@ void BindOpResult(py::module *m) {
               return param_name;
             } else {
               PADDLE_THROW(phi::errors::InvalidArgument(
-                  "Currently, we can only get name of OpResult that is "
+                  "Currently, we can only get name of OpResult that "
+                  "is "
                   "persistable"));
             }
           })
@@ -567,8 +608,8 @@ void BindOpResult(py::module *m) {
             return GetOpResultBoolAttr(self, kAttrStopGradients);
           },
           [](OpResult &self, bool stop_gradient) {
-            // NOTE(Aurelius84): For other OpResult, set theirs stop_gradient
-            // default value as true.
+            // NOTE(Aurelius84): For other OpResult, set theirs
+            // stop_gradient default value as true.
             SetOpResultBoolAttr(self,
                                 kAttrStopGradients,
                                 stop_gradient,
@@ -580,8 +621,8 @@ void BindOpResult(py::module *m) {
             return GetOpResultBoolAttr(self, kAttrIsPersisable);
           },
           [](OpResult &self, bool is_persistable) {
-            // NOTE(Aurelius84): For other OpResult, set theirs is_persistable
-            // default value as false.
+            // NOTE(Aurelius84): For other OpResult, set theirs
+            // is_persistable default value as false.
             SetOpResultBoolAttr(self,
                                 kAttrIsPersisable,
                                 is_persistable,
@@ -595,7 +636,8 @@ void BindOpResult(py::module *m) {
                   self.type().dyn_cast<DenseTensorType>().dims());
             } else {
               PADDLE_THROW(phi::errors::InvalidArgument(
-                  "Currently, we can only get shape for dense tensor."));
+                  "Currently, we can only get shape for dense "
+                  "tensor."));
             }
           },
           [](OpResult &self, const std::vector<int> &shape) {
@@ -610,7 +652,8 @@ void BindOpResult(py::module *m) {
                   self.type().dyn_cast<DenseTensorType>().dtype());
             } else {
               PADDLE_THROW(phi::errors::InvalidArgument(
-                  "Currently, we can only get dtype for dense tensor."));
+                  "Currently, we can only get dtype for dense "
+                  "tensor."));
             }
           },
           [](OpResult &self, phi::DataType dtype) {
@@ -655,7 +698,8 @@ Operation *BuildOpFrom(
                  });
   auto *cloned_op = Operation::Create(std::move(to_create_argument));
 
-  // update the mapping of value_map. std::transform is a map(func, zip()).
+  // update the mapping of value_map. std::transform is a map(func,
+  // zip()).
   std::vector<int> tmp;
   std::transform(origin_results.begin(),
                  origin_results.end(),
@@ -918,10 +962,12 @@ SplitedResult ForwardBackwardSplit(
   mapping_value(forward_inputs, forward_value_map, fx);   // write 'fx'
   mapping_value(forward_inputs, backward_value_map, bx);  // write 'bx'
   mapping_value(forward_outputs, forward_value_map, fo);  // write 'fo'
-  mapping_value(
-      forward_inputs_grads, backward_value_map, bx_g);  // write 'fx_g'
-  mapping_value(
-      forward_outputs_grads, backward_value_map, bo_g);    // write 'bo_g'
+  mapping_value(forward_inputs_grads,
+                backward_value_map,
+                bx_g);  // write 'fx_g'
+  mapping_value(forward_outputs_grads,
+                backward_value_map,
+                bo_g);                                     // write 'bo_g'
   mapping_value(forward_outputs, backward_value_map, bo);  // write 'bo'
 
   std::map<std::string, std::vector<pir::Value>> attr = {{"fx", fx},
