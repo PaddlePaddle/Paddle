@@ -40,6 +40,13 @@ class NewIRInterpreter : public InterpreterBaseImpl {
                    Scope* scope,
                    const ExecutionConfig& execution_config = ExecutionConfig());
 
+  NewIRInterpreter(const platform::Place& place,
+                   const std::vector<std::string>& fetch_var_names,
+                   const ::pir::Block* ir_block,
+                   Scope* scope,
+                   std::shared_ptr<ValueExecutionInfo> value_exe_info,
+                   const ExecutionConfig& execution_config = ExecutionConfig());
+
   ~NewIRInterpreter();
 
   paddle::framework::FetchList Run(

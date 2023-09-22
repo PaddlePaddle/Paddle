@@ -118,6 +118,68 @@ NewIRInterpreter::NewIRInterpreter(
   ::pir::BuildScope(*ir_block_, ss.str(), &sub_blocks_, value_exe_info_.get());
 }
 
+NewIRInterpreter::NewIRInterpreter(
+    const platform::Place& place,
+    const std::vector<std::string>& fetch_var_names,
+    const ::pir::Block* ir_block,
+    framework::Scope* scope,
+    std::shared_ptr<ValueExecutionInfo> value_exe_info,
+    const ExecutionConfig& execution_config)
+    : place_(place),
+      execution_config_(execution_config),
+      var_scope_(scope),
+      scope_(scope),
+      ir_block_(ir_block),
+      ir_stream_analyzer_(place),
+      fetch_var_names_(fetch_var_names) {
+  VLOG(4) << "NewIRInterpreter(): " << this << " on " << place_;
+
+  static_build_ = FLAGS_new_executor_static_build &&
+                  !FLAGS_new_executor_use_cuda_graph &&
+                  !execution_config.used_for_control_flow_op;
+  //    &&interpreter::BlockCanBeStaticBuilt(block);
+  static_build_ = true;
+
+  exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
+  completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
+
+  dependecy_count_ = std::make_shared<std::vector<size_t>>();
+
+  if (!FLAGS_new_executor_use_local_scope) {
+    execution_config_.create_local_scope = false;
+  }
+  if (execution_config_.create_local_scope) {
+    auto local_scope = &scope_->NewScope();
+    local_scope_ = local_scope;
+    VLOG(6) << "new ir interpretercore scope: " << scope_ << "\t"
+            << "; local scope: " << local_scope_;
+  }
+  // TODO(zhangbo): delete var_scope
+  var_scope_.SetLocalScope(local_scope_);
+
+  execution_config_.AnalyzeThreadPoolConfig(place, 1);
+  execution_config_.Log(/*log_level=*/8);
+
+  ir_instruction_scheduling_priority_less = [this](size_t lhs, size_t rhs) {
+    SchedulingPriority lhs_scheduling_priority =
+        vec_instruction_base_[lhs]->GetSchedulingPriority();
+    SchedulingPriority rhs_scheduling_priority =
+        vec_instruction_base_[rhs]->GetSchedulingPriority();
+    if (lhs_scheduling_priority == rhs_scheduling_priority) {
+      return lhs < rhs;
+    }
+    return lhs_scheduling_priority > rhs_scheduling_priority;
+  };
+
+  PrepareForCUDAGraphCapture();
+
+  value_exe_info_ = value_exe_info;
+
+  std::stringstream ss;
+  ss << this;
+  ::pir::BuildScope(*ir_block_, ss.str(), &sub_blocks_, value_exe_info_.get());
+}
+
 NewIRInterpreter::~NewIRInterpreter() {
   // cancle gc's thread
   gc_.reset(nullptr);
@@ -531,13 +593,8 @@ void NewIRInterpreter::BuildInstruction() {
                                             op,
                                             scope_,
                                             local_scope_,
-                                            value_exe_info_->GetValue2VarName(),
-                                            value_exe_info_->GetVarName2Id(),
-                                            value_exe_info_->GetVar2VarName(),
+                                            value_exe_info_.get(),
                                             sub_blocks_));
-      std::shared_ptr<ValueExecutionInfo> child =
-          value_exe_info_->NewChild(local_scope_);
-      (void)child;
     } else if (op->dialect()->name() == "pd_kernel") {
       auto op_name = op->attributes()
                          .at("op_name")

@@ -181,7 +181,7 @@ class ValueExecutionInfo {
 
   void ResetVarList(int id, Variable* var) { var_list_[id] = var; }
 
-  friend class NewIRInterpreter;
+  friend class CondInstruction;
 
  private:
   std::shared_ptr<ValueExecutionInfo> NewChild(Scope* scope);
