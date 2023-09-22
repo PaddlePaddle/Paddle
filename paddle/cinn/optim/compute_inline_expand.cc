@@ -150,7 +150,7 @@ struct TensorInlineExpandMutator : public ir::IRMutator<> {
         }
         ir::IRMutator<>::Visit(&node->tensor, &node->tensor);
         for (int i = 0; i < node->indices.size(); i++) {
-          auto temp = optim::IRCopy(node->indices[i]);
+          auto temp = ir::ir_utils::IRCopy(node->indices[i]);
           ir::IRMutator<>::Visit(&temp, &temp);
           node->indices[i] = temp;
         }
@@ -159,7 +159,7 @@ struct TensorInlineExpandMutator : public ir::IRMutator<> {
       } else {
         ir::IRMutator<>::Visit(&node->tensor, &node->tensor);
         for (int i = 0; i < node->indices.size(); i++) {
-          auto temp = optim::IRCopy(node->indices[i]);
+          auto temp = ir::ir_utils::IRCopy(node->indices[i]);
           ir::IRMutator<>::Visit(&temp, &temp);
           node->indices[i] = temp;
         }
@@ -167,7 +167,7 @@ struct TensorInlineExpandMutator : public ir::IRMutator<> {
     } else {
       ir::IRMutator<>::Visit(&node->tensor, &node->tensor);
       for (int i = 0; i < node->indices.size(); i++) {
-        auto temp = optim::IRCopy(node->indices[i]);
+        auto temp = ir::ir_utils::IRCopy(node->indices[i]);
         ir::IRMutator<>::Visit(&temp, &temp);
         node->indices[i] = temp;
       }

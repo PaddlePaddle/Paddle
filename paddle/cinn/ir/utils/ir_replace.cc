@@ -43,14 +43,14 @@ struct IrReplaceMutator : ir::IRMutator<Expr*> {
   void Visit(const ir::_Var_* op, Expr* expr) override {
     if (op->node_type() == from_->node_type() &&
         from_repr_ == GetStreamCnt(*expr)) {
-      *expr = optim::IRCopy(to_);
+      *expr = ir::ir_utils::IRCopy(to_);
     }
   }
 
   void Visit(const ir::Broadcast* op, Expr* expr) override {
     if (op->node_type() == from_->node_type() &&
         from_repr_ == GetStreamCnt(*expr)) {
-      *expr = optim::IRCopy(to_);
+      *expr = ir::ir_utils::IRCopy(to_);
     }
   }
 

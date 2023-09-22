@@ -127,7 +127,7 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
   }
 
   Expr CreateDeviceFunctionGivenDeviceKernel(Expr expr) {
-    auto copied = optim::IRCopy(expr);
+    auto copied = ir::ir_utils::IRCopy(expr);
     auto* lowered_func = copied.as_lowered_func();
     lowered_func->name = GenDeviceKernelName(lowered_func->name);
     return copied;

@@ -41,7 +41,7 @@ struct ReplaceVarWithExprMutator : public ir::IRMutator<> {
  private:
   void Visit(const ir::_Var_* expr, Expr* op) override {
     if (expr->name == var_->name && (do_replace_ || visit_all_)) {
-      auto copied = IRCopy(expr_);
+      auto copied = ir::ir_utils::IRCopy(expr_);
       *op = copied;
     }
   }

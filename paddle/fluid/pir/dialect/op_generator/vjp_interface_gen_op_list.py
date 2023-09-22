@@ -42,6 +42,7 @@ vjp_interface_declare_gen_op_list = [
     "square",
     "dropout",
     'exp',
+    'expm1',
     'expand',
     'layer_norm',
     'reshape',
@@ -55,6 +56,8 @@ vjp_interface_declare_gen_op_list = [
     'slice',
     'transpose',
     'slice_double',
+    'poisson',
+    'gumbel_softmax',
 ]
 vjp_interface_implementation_gen_op_list = [
     "tanh",
@@ -75,6 +78,7 @@ vjp_interface_implementation_gen_op_list = [
     "square",
     "dropout",
     'exp',
+    'expm1',
     'expand',
     'layer_norm',
     'reshape',
@@ -88,4 +92,6 @@ vjp_interface_implementation_gen_op_list = [
     'slice',
     'transpose',
     'slice_double',
+    'poisson',
+    'gumbel_softmax',
 ]

@@ -19,13 +19,14 @@
 #include "paddle/cinn/ir/ir_printer.h"
 
 namespace cinn {
-namespace optim {
+namespace ir {
+namespace ir_utils {
 
 TEST(IrCopy, basic) {
   Expr a(1.f);
   auto aa = IRCopy(a);
   LOG(INFO) << "aa " << aa;
 }
-
-}  // namespace optim
+}  // namespace ir_utils
+}  // namespace ir
 }  // namespace cinn

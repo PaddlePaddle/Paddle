@@ -564,7 +564,7 @@ def prelu(x, weight, data_format="NCHW", name=None):
         if data_format not in true_data_format:
             raise ValueError(
                 "data_format must be one of 'NC', 'NCL', 'NCHW', 'NCDHW', "
-                "'NLC', 'NHWC', 'NDHWC' but receive {}".format(data_format)
+                f"'NLC', 'NHWC', 'NDHWC' but receive {data_format}"
             )
 
         data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
@@ -700,9 +700,7 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
 
     if upper > 1:
         raise ValueError(
-            "The upper value must be no greater than one. Received: {}.".format(
-                upper
-            )
+            f"The upper value must be no greater than one. Received: {upper}."
         )
 
     is_test = not training
@@ -761,7 +759,7 @@ def relu(x, name=None):
     else:
         if paddle.framework.in_dynamic_or_pir_mode():
             # Below code will be removed after we can generate IR api automatically
-            return paddle._ir_ops.relu(x)
+            return paddle._pir_ops.relu(x)
 
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'relu'
@@ -1198,9 +1196,13 @@ def softmax(x, axis=-1, dtype=None, name=None):
               [0.03205860, 0.08714432, 0.23688282, 0.64391426]]])
     """
 
-    if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
+    if (
+        (dtype is not None)
+        and (not isinstance(dtype, core.VarDesc.VarType))
+        and (not isinstance(dtype, core.DataType))
+    ):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         outs_cast = x if dtype is None else _C_ops.cast(x, dtype)
         return _C_ops.softmax(outs_cast, axis)
     else:
@@ -1344,9 +1346,7 @@ def softshrink(x, threshold=0.5, name=None):
     """
     if threshold < 0:
         raise ValueError(
-            "The threshold must be no less than zero. Received: {}.".format(
-                threshold
-            )
+            f"The threshold must be no less than zero. Received: {threshold}."
         )
 
     if in_dynamic_mode():
@@ -1822,7 +1822,7 @@ def gumbel_softmax(x, temperature=1.0, hard=False, axis=-1, name=None):
              [0.00000000, 1.        , 0.00000000, 0.00000000, 0.00000000, 0.00000000]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.gumbel_softmax(x, temperature, hard, axis)
 
     helper = LayerHelper("gumbel_softmax", **locals())

@@ -56,7 +56,7 @@ ir::IRSchedule MakeIRSchedule(const std::vector<ir::LoweredFunc>& lowered_funcs,
                               const std::string& task_key) {
   std::vector<Expr> exprs;
   for (auto&& func : lowered_funcs) {
-    exprs.emplace_back(optim::IRCopy(func->body));
+    exprs.emplace_back(ir::ir_utils::IRCopy(func->body));
   }
   InitialTaskRegistry* task_registry = InitialTaskRegistry::Global();
   task_registry->Regist(task_key, ir::ModuleExpr(exprs));

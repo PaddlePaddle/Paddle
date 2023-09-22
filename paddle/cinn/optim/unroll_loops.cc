@@ -94,7 +94,7 @@ struct UnrollMutator : public ir::IRMutator<Expr*> {
 
     for (int i = min->value; i < extent->value; i++) {
       Expr start = op->min + i;
-      body.push_back(optim::IRCopy(op->body));
+      body.push_back(ir::ir_utils::IRCopy(op->body));
       cinn::ir::ir_utils::IrReplace(&body.back(), op->loop_var, start);
     }
 
