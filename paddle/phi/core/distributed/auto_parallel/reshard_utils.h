@@ -30,6 +30,11 @@ class DeviceContext;
 namespace distributed {
 class ProcessMesh;
 
+bool IsCurRankInMesh(const ProcessMesh& process_mesh);
+
+int64_t GetLocalRankInParticipate(const std::vector<int64_t>& process_ids,
+                                  int64_t global_rank = -1);
+
 // Get the coordinate of cur rank in process mesh. For example, the process mesh
 // is [[0, 1], [2, 3], [4, 5], [6, 7]], if the current rank is 4, then will
 // return [2, 0]; if the current rank is 3, then will return [1, 1].
