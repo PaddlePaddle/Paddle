@@ -81,12 +81,12 @@ class StaticCode1:
         def true_fn_0():
             nonlocal x_v
             x_v = x_v - 1
-            return
+            return  # noqa: PLR1711
 
         def false_fn_0():
             nonlocal x_v
             x_v = x_v + 1
-            return
+            return  # noqa: PLR1711
 
         _jst.IfElse(
             paddle.mean(x_v)[0] > 5,
@@ -113,13 +113,13 @@ class StaticCode1:
             )
             __return_0 = _jst.create_bool_as_type(label is not None, True)
             __return_value_0 = loss
-            return
+            return  # noqa: PLR1711
 
         def false_fn_1():
             nonlocal __return_0, __return_1, __return_value_0, loss
             __return_1 = _jst.create_bool_as_type(label is not None, True)
             __return_value_0 = x_v
-            return
+            return  # noqa: PLR1711
 
         _jst.IfElse(
             label is not None,
@@ -152,12 +152,12 @@ class StaticCode2:
         def true_fn_2():
             nonlocal x_v
             x_v = x_v - 1
-            return
+            return  # noqa: PLR1711
 
         def false_fn_2():
             nonlocal x_v
             x_v = x_v + 1
-            return
+            return  # noqa: PLR1711
 
         _jst.IfElse(
             paddle.mean(x_v)[0] > 5,
@@ -184,13 +184,13 @@ class StaticCode2:
             )
             __return_2 = _jst.create_bool_as_type(label is not None, True)
             __return_value_1 = loss
-            return
+            return  # noqa: PLR1711
 
         def false_fn_3():
             nonlocal __return_2, __return_3, __return_value_1, loss
             __return_3 = _jst.create_bool_as_type(label is not None, True)
             __return_value_1 = x_v
-            return
+            return  # noqa: PLR1711
 
         _jst.IfElse(
             label is not None,

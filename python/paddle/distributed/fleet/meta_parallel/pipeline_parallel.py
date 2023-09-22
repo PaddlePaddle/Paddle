@@ -250,9 +250,7 @@ class PipelineParallel(MetaParallelBase):
         self._compute_loss = True
 
         logger.info(
-            "Pipeline Info -- num_stages: {}, stage_id: {}".format(
-                self.num_stages, self.stage_id
-            )
+            f"Pipeline Info -- num_stages: {self.num_stages}, stage_id: {self.stage_id}"
         )
 
         if self.use_model_parallel:

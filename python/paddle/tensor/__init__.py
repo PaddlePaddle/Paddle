@@ -44,6 +44,8 @@ from .creation import empty  # noqa: F401
 from .creation import empty_like  # noqa: F401
 from .creation import complex  # noqa: F401
 from .creation import polar  # noqa: F401
+from .creation import cauchy_  # noqa: F401
+from .creation import geometric_  # noqa: F401
 from .linalg import matmul  # noqa: F401
 from .linalg import dot  # noqa: F401
 from .linalg import cov  # noqa: F401
@@ -52,9 +54,11 @@ from .linalg import norm  # noqa: F401
 from .linalg import pca_lowrank  # noqa: F401
 from .linalg import cond  # noqa: F401
 from .linalg import transpose  # noqa: F401
+from .linalg import transpose_  # noqa: F401
 from .linalg import lstsq  # noqa: F401
 from .linalg import dist  # noqa: F401
 from .linalg import t  # noqa: F401
+from .linalg import t_  # noqa: F401
 from .linalg import cross  # noqa: F401
 from .linalg import cholesky  # noqa: F401
 from .linalg import bmm  # noqa: F401
@@ -328,6 +332,7 @@ from .math import polygamma_  # noqa: F401
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
 from .random import normal  # noqa: F401
+from .random import normal_  # noqa: F401
 from .random import uniform  # noqa: F401
 from .random import uniform_  # noqa: F401
 from .random import randn  # noqa: F401
@@ -382,9 +387,12 @@ tensor_method_func = [  # noqa
     'norm',
     'cond',
     'transpose',
+    'cauchy_',
+    'geometric_',
     'lstsq',
     'dist',
     't',
+    't_',
     'cross',
     'cholesky',
     'bmm',
@@ -559,6 +567,10 @@ tensor_method_func = [  # noqa
     'stack',
     'strided_slice',
     'transpose',
+    'transpose_',
+    'cauchy_',
+    'geometric_',
+    'tan_',
     'unique',
     'unique_consecutive',
     'unsqueeze',
@@ -675,6 +687,7 @@ tensor_method_func = [  # noqa
     'polygamma',
     'polygamma_',
     'diag_embed',
+    'normal_',
 ]
 
 # this list used in math_op_patch.py for magic_method bind

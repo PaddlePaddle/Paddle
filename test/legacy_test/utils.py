@@ -16,6 +16,7 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base.framework import _dygraph_guard
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
 __all__ = ['DyGraphProgramDescTracerTestHelper', 'is_equal_program']
 
@@ -119,3 +120,27 @@ class DyGraphProgramDescTracerTestHelper:
 
         for v1, v2 in zip(out_dygraph, out_static_graph):
             self.unittest_obj.assertTrue(func(v1.numpy(), v2))
+
+
+@signature_safe_contextmanager
+def dygraph_guard():
+    in_dygraph_outside = paddle.base.framework.in_dygraph_mode()
+    try:
+        if not in_dygraph_outside:
+            paddle.disable_static()
+        yield
+    finally:
+        if not in_dygraph_outside:
+            paddle.enable_static()
+
+
+@signature_safe_contextmanager
+def static_guard():
+    in_dygraph_outside = paddle.base.framework.in_dygraph_mode()
+    try:
+        if in_dygraph_outside:
+            paddle.enable_static()
+        yield
+    finally:
+        if in_dygraph_outside:
+            paddle.disable_static()

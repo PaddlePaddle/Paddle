@@ -45,6 +45,7 @@ VJPS = [
     'sum_grad',
     'concat_grad',
     'split_grad',
+    'split_with_num_grad',
     'gelu_grad',
     'softmax_grad',
     'silu_grad',
@@ -68,11 +69,25 @@ VJPS = [
     'layer_norm_grad',
     'embedding_grad',
     'scale_grad',
+    'poisson_grad',
+    'gumbel_softmax_grad',
 ]
 
 
-PRIM_VJP = ['divide_grad', 'sum_grad']  # vjp list of primitive op
-CUSTOM_VJP = ['gelu_grad']  # custom vjp list of composite op
+PRIM_VJP = [
+    'divide_grad',
+    'sum_grad',
+    'cast_grad',
+    'add_grad',
+    'multiply_grad',
+    'elementwise_pow_grad',
+    'reshape_grad',
+    'split_grad',
+    'tanh_grad',
+    'transpose_grad',
+    'concat_grad',
+]  # vjp list of primitive op
+CUSTOM_VJP = ['gelu_grad', 'layer_norm_grad']  # custom vjp list of composite op
 VJP_COMPS = PRIM_VJP + CUSTOM_VJP
 
 BACKENDS = [
@@ -97,6 +112,7 @@ BACKENDS = [
     'sum_grad',
     'concat_grad',
     'split_grad',
+    'split_with_num_grad',
     'gelu_grad',
     'softmax_grad',
     'silu_grad',
@@ -145,7 +161,12 @@ BACKENDS = [
     'slice',
     'layer_norm_grad',
     'embedding_grad',
+    'sqrt',
     'uniform',
+    'poisson_grad',
+    'gumbel_softmax_grad',
+    'split',
+    'transpose',
 ]
 
 
@@ -288,7 +309,7 @@ def extend_compat_info(apis, compats):
                 backward_apis.append(apis_dict[backward_op_name])
         support_tensor_attrs_names = []
         compat_attrs_data_type = {}
-        if 'scalar' in compat_item:
+        if 'scalar' in compat_item and compat_item['op'] != "pow":
             for attr_name, attr_info in compat_item['scalar'].items():
                 if (
                     'support_tensor' in attr_info

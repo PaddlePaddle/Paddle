@@ -100,16 +100,12 @@ def case_generator(op_type, Xshape, diagonal, expected, dtype):
     If arg`expercted` is 'success', it will register an Optest case and expect to pass.
     Otherwise, it will register an API case and check the expect failure.
     """
-    cls_name = "{}_{}_shape_{}_diag_{}_dtype_{}".format(
-        expected, op_type, Xshape, diagonal, dtype
+    cls_name = (
+        f"{expected}_{op_type}_shape_{Xshape}_diag_{diagonal}_dtype_{dtype}"
     )
     errmsg = {
-        "diagonal: TypeError": "diagonal in {} must be a python Int".format(
-            op_type
-        ),
-        "input: ValueError": "x shape in {} must be at least 2-D".format(
-            op_type
-        ),
+        "diagonal: TypeError": f"diagonal in {op_type} must be a python Int",
+        "input: ValueError": f"x shape in {op_type} must be at least 2-D",
     }
 
     class FailureCase(unittest.TestCase):

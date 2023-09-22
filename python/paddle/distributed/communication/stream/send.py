@@ -58,7 +58,6 @@ def _send_in_static_mode(
             'use_calc_stream': sync_op,
         },
     )
-    return None
 
 
 def send(tensor, dst=0, group=None, sync_op=True, use_calc_stream=False):
@@ -95,7 +94,7 @@ def send(tensor, dst=0, group=None, sync_op=True, use_calc_stream=False):
             >>> task.wait()
             >>> out = data.numpy()
             >>> print(out)
-            >>> # [[4, 5, 6], [4, 5, 6]] (2 GPUs)
+            [[4, 5, 6], [4, 5, 6]]
     """
     if _warn_cur_rank_not_in_group(group):
         return

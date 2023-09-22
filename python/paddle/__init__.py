@@ -123,12 +123,16 @@ from .tensor.creation import clone  # noqa: F401
 from .tensor.creation import tril_indices  # noqa: F401
 from .tensor.creation import triu_indices  # noqa: F401
 from .tensor.creation import polar  # noqa: F401
+from .tensor.creation import geometric_  # noqa: F401
+from .tensor.creation import cauchy_  # noqa: F401
 from .tensor.linalg import matmul  # noqa: F401
 from .tensor.linalg import dot  # noqa: F401
 from .tensor.linalg import norm  # noqa: F401
 from .tensor.linalg import transpose  # noqa: F401
+from .tensor.linalg import transpose_  # noqa: F401
 from .tensor.linalg import dist  # noqa: F401
 from .tensor.linalg import t  # noqa: F401
+from .tensor.linalg import t_  # noqa: F401
 from .tensor.linalg import cdist  # noqa: F401
 from .tensor.linalg import cross  # noqa: F401
 from .tensor.linalg import cholesky  # noqa: F401
@@ -382,6 +386,7 @@ from .tensor.random import poisson  # noqa: F401
 from .tensor.random import multinomial  # noqa: F401
 from .tensor.random import standard_normal  # noqa: F401
 from .tensor.random import normal  # noqa: F401
+from .tensor.random import normal_  # noqa: F401
 from .tensor.random import uniform  # noqa: F401
 from .tensor.random import randn  # noqa: F401
 from .tensor.random import rand  # noqa: F401
@@ -460,7 +465,7 @@ from . import hub  # noqa: F401
 from . import linalg  # noqa: F401
 from . import fft  # noqa: F401
 from . import signal  # noqa: F401
-from . import _ir_ops  # noqa: F401
+from . import _pir_ops  # noqa: F401
 
 import paddle.text  # noqa: F401
 import paddle.vision  # noqa: F401
@@ -480,10 +485,10 @@ if is_compiled_with_cinn():
 
 disable_static()
 
-from .new_ir_utils import IrGuard  # noqa: F401
+from .pir_utils import IrGuard  # noqa: F401
 
 ir_change = IrGuard()
-ir_change._switch_to_new_ir()
+ir_change._switch_to_pir()
 
 __all__ = [  # noqa
     'iinfo',
@@ -506,6 +511,7 @@ __all__ = [  # noqa
     'allclose',
     'isclose',
     't',
+    't_',
     'add',
     'subtract',
     'diag',
@@ -558,6 +564,7 @@ __all__ = [  # noqa
     'any',
     'slice',
     'normal',
+    'normal_',
     'logsumexp',
     'full',
     'unsqueeze',
@@ -738,6 +745,9 @@ __all__ = [  # noqa
     'tanh',
     'tanh_',
     'transpose',
+    'transpose_',
+    'cauchy_',
+    'geometric_',
     'randn',
     'strided_slice',
     'unique',

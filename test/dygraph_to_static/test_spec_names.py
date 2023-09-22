@@ -14,7 +14,10 @@
 
 import unittest
 
-from dygraph_to_static_util import enable_fallback_guard
+from dygraph_to_static_util import (
+    enable_fallback_guard,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 from paddle.nn import Layer
@@ -44,6 +47,7 @@ class TestArgsSpecName(unittest.TestCase):
         self.m = paddle.randn([4, 2, 8])
         self.n = paddle.randn([4, 2, 8])
 
+    @test_and_compare_with_new_ir(False)
     def test_spec_name_hash(self):
         net = Net()
         net = paddle.jit.to_static(net)
