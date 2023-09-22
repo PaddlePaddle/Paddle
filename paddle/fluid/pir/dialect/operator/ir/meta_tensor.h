@@ -51,13 +51,21 @@ class IrMetaTensor : public phi::TensorBase,
 
   const phi::DDim& dims() const noexcept override { return dims_; }
 
+  void SetDims(const phi::DDim& dims) { dims_ = dims; }
+
   const phi::Place& place() const override;
 
   phi::DataType dtype() const noexcept override { return dtype_; }
 
+  void SetDtype(phi::DataType dtype) { dtype_ = dtype; }
+
   phi::DataLayout layout() const noexcept override { return layout_; }
 
+  void SetLayout(phi::DataLayout layout) { layout_ = layout; }
+
   const LoD& lod() const noexcept { return lod_; }
+
+  void SetLod(LoD lod) { lod_ = lod; }
 
   size_t offset() const noexcept { return offset_; }
 
@@ -73,7 +81,7 @@ class IrMetaTensor : public phi::TensorBase,
  private:
   phi::DDim dims_;
   phi::DataType dtype_{phi::DataType::UNDEFINED};
-  phi::DataLayout layout_{phi::DataLayout::UNDEFINED};
+  phi::DataLayout layout_{phi::DataLayout::NCHW};
   LoD lod_;
   size_t offset_{0};
 };
