@@ -34,7 +34,9 @@ __device__ __forceinline__ double inline_abs(double x) { return abs(x); }
 
 __device__ __forceinline__ complex64 inline_abs(complex64 x) { return abs(x); }
 
-__device__ __forceinline__ complex128 inline_abs(complex128 x) { return abs(x); }
+__device__ __forceinline__ complex128 inline_abs(complex128 x) {
+  return abs(x);
+}
 
 __device__ __forceinline__ dtype::float16 inline_pow(dtype::float16 base,
                                                      dtype::float16 exponent) {
@@ -53,10 +55,12 @@ __device__ __forceinline__ double inline_pow(double base, double exponent) {
   return pow(base, exponent);
 }
 
-__device__ __forceinline__ complex64 inline_pow(complex64 base, complex64 exponent) {
+__device__ __forceinline__ complex64 inline_pow(complex64 base,
+                                                complex64 exponent) {
   return pow(base, exponent);
 }
-__device__ __forceinline__ complex128 inline_pow(complex128 base, complex128 exponent) {
+__device__ __forceinline__ complex128 inline_pow(complex128 base,
+                                                 complex128 exponent) {
   return pow(base, exponent);
 }
 
