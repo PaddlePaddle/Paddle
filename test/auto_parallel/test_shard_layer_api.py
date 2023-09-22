@@ -163,7 +163,7 @@ class TestShardLayer(unittest.TestCase):
             dist.shard_layer(layer, self.mesh)
         except NotImplementedError as ex:
             self.assertIn(
-                "`paddle.distributed.shard_layer` only support dynamic graph mode now",
+                "`paddle.distributed.shard_layer` only supports dynamic graph mode now",
                 str(ex),
             )
             exception = ex
