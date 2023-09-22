@@ -58,6 +58,8 @@ vjp_interface_declare_gen_op_list = [
     'slice_double',
     'poisson',
     'gumbel_softmax',
+    'squeeze',
+    'unsqueeze',
 ]
 vjp_interface_implementation_gen_op_list = [
     "tanh",
@@ -94,4 +96,6 @@ vjp_interface_implementation_gen_op_list = [
     'slice_double',
     'poisson',
     'gumbel_softmax',
+    'squeeze',
+    'unsqueeze',
 ]

@@ -72,6 +72,8 @@ VJPS = [
     'scale_grad',
     'poisson_grad',
     'gumbel_softmax_grad',
+    'squeeze_grad',
+    'unsqueeze_grad',
 ]
 
 
@@ -169,6 +171,8 @@ BACKENDS = [
     'gumbel_softmax_grad',
     'split',
     'transpose',
+    'squeeze_grad',
+    'unsqueeze_grad',
 ]
 
 
