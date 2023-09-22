@@ -32,11 +32,7 @@ using detail::OpOutlineResultImpl;
 using detail::OpResultImpl;
 
 Operation *Operation::Create(const OperationArgument &argument) {
-  std::vector<Value> inputs;
-  for (auto op_result : argument.inputs) {
-    inputs.emplace_back(op_result);
-  }
-  return Create(inputs,
+  return Create(argument.inputs,
                 argument.attributes,
                 argument.output_types,
                 argument.info,

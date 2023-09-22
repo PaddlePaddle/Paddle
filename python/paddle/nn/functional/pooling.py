@@ -18,7 +18,7 @@ from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
 from paddle.base.framework import Variable, in_dygraph_mode
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
-from ...base.layers import LayerHelper
+from ...base.layer_helper import LayerHelper
 from ...tensor.manipulation import squeeze, unsqueeze
 
 # TODO: define pooling functions
@@ -48,9 +48,7 @@ def _check_input(x, dimension):
 def _check_instance(x, x_name, types=(int, float)):
     if not isinstance(x, types):
         raise ValueError(
-            "Excepted {} type for {} but received type: {}. ".format(
-                types, x_name, type(x)
-            )
+            f"Excepted {types} type for {x_name} but received type: {type(x)}. "
         )
 
 
@@ -112,9 +110,7 @@ def _update_padding_nd(padding, num_dims, channel_last=False, ceil_mode=False):
         padding = padding.upper()
         if padding not in ["SAME", "VALID"]:
             raise ValueError(
-                "Unknown padding: '{}'. It can only be 'SAME' or 'VALID'.".format(
-                    padding
-                )
+                f"Unknown padding: '{padding}'. It can only be 'SAME' or 'VALID'."
             )
         if padding == "VALID":
             if ceil_mode is not False:
@@ -135,8 +131,8 @@ def _update_padding_nd(padding, num_dims, channel_last=False, ceil_mode=False):
         if len(padding) == 2 + num_dims and _is_list_or_tuple(padding[0]):
             if not _zero_padding_in_batch_and_channel(padding, channel_last):
                 raise ValueError(
-                    "Non-zero padding({}) in the batch or channel dimensions "
-                    "is not supported.".format(padding)
+                    f"Non-zero padding({padding}) in the batch or channel dimensions "
+                    "is not supported."
                 )
             padding_algorithm = "EXPLICIT"
             padding = _exclude_padding_in_batch_and_channel(

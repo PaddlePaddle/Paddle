@@ -1002,9 +1002,9 @@ class OptimizerWithSparsityGuarantee:
         )
         for param_name, var in asp_info.mask_vars.items():
             param_mask_name = ASPHelper._get_mask_name(param_name)
-            assert param_mask_name in state_dict, "The {} is not found.".format(
-                param_mask_name
-            )
+            assert (
+                param_mask_name in state_dict
+            ), f"The {param_mask_name} is not found."
             var.set_value(state_dict[param_mask_name])
             asp_info.update_masks(param_name, var.numpy())
         return self._optimizer.set_state_dict(state_dict)

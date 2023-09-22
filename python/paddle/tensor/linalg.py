@@ -17,6 +17,7 @@ import numpy as np
 import paddle
 from paddle import _C_ops
 from paddle.common_ops_import import VarDesc
+from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import check_dtype, check_type, check_variable_and_dtype
 from ..common_ops_import import Variable
@@ -81,7 +82,7 @@ def transpose(x, perm, name=None):
             [3, 2, 4]
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.transpose(x, perm)
     else:
         check_variable_and_dtype(
@@ -107,10 +108,8 @@ def transpose(x, perm, name=None):
             raise ValueError(
                 "Input(perm) is the permutation of dimensions of Input(x), "
                 "its length should be equal to dimensions of Input(x), "
-                "but received dimension of Input(x) is {}, "
-                "the length of Input(perm) is {}.".format(
-                    len(x.shape), len(perm)
-                )
+                f"but received dimension of Input(x) is {len(x.shape)}, "
+                f"the length of Input(perm) is {len(perm)}."
             )
         for idx, dim in enumerate(perm):
             if dim >= len(x.shape):
@@ -130,6 +129,16 @@ def transpose(x, perm, name=None):
             attrs={'axis': perm},
         )
         return out
+
+
+@inplace_apis_in_dygraph_only
+def transpose_(x, perm, name=None):
+    r"""
+    Inplace version of ``transpose`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_transpose`.
+    """
+    if in_dynamic_mode():
+        return _C_ops.transpose_(x, perm)
 
 
 def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
@@ -594,9 +603,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             )
         else:
             raise ValueError(
-                "unspport p for p-order vector norm. except float, found {}".format(
-                    p
-                )
+                f"unspport p for p-order vector norm. except float, found {p}"
             )
     # calculate matrix norm, where axis is list with two integers
     elif isinstance(axis, list) and len(axis) == 2:
@@ -616,9 +623,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             )
     else:
         raise ValueError(
-            "except axis type int or list (length of list <=2), found {}".format(
-                axis
-            )
+            f"except axis type int or list (length of list <=2), found {axis}"
         )
 
 
@@ -1255,7 +1260,7 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
         if fweights.min() < 0:
             raise ValueError(
                 "The value of Input(fweights) cannot be negtive, but received "
-                "min of Input(fweights) is {}.".format(fweights.min())
+                f"min of Input(fweights) is {fweights.min()}."
             )
         if not paddle.all(fweights == paddle.round(fweights.astype('float64'))):
             raise ValueError("Input(fweights) must be integer ")
@@ -1280,7 +1285,7 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
         if aweights.min() < 0:
             raise ValueError(
                 "The value of Input(aweights) cannot be negtive, but received "
-                "min of Input(aweights) is {}.".format(aweights.min())
+                f"min of Input(aweights) is {aweights.min()}."
             )
         if w is not None:
             w = w * aw
@@ -1397,6 +1402,27 @@ def t(input, name=None):
                 outputs={'Out': [out], 'XShape': [input_shape]},
                 attrs={'axis': [1, 0]},
             )
+        return out
+
+
+@inplace_apis_in_dygraph_only
+def t_(input, name=None):
+    r"""
+    Inplace version of ``t`` API, the output Tensor will be inplaced with input ``input``.
+    Please refer to :ref:`api_paddle_t`.
+    """
+    if len(input.shape) > 2:
+        raise ValueError(
+            "Input(input) only support N-D (N<=2) tensor, but received "
+            "length of Input(input) is %s. Perhaps you can use paddle."
+            "tensor.transpose() instead." % len(input.shape)
+        )
+    if in_dynamic_mode():
+        if len(input.shape) <= 1:
+            return input
+        # 2-D tensor
+        perm = [1, 0]
+        out = _C_ops.transpose_(input, perm)
         return out
 
 
@@ -1834,9 +1860,7 @@ def mv(x, vec, name=None):
             vec_shape = list(vec.shape)
             if len(x_shape) != 2:
                 raise ValueError(
-                    "x should be 2-dimensional. But received x's dimention: {}".format(
-                        x_shape
-                    )
+                    f"x should be 2-dimensional. But received x's dimention: {x_shape}"
                 )
             if len(vec_shape) != 1:
                 raise ValueError(
@@ -2192,8 +2216,8 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
         q = min(6, m, n)
     elif not (q >= 0 and q <= min(m, n)):
         raise ValueError(
-            'q(={}) must be non-negative integer'
-            ' and not greater than min(m, n)={}'.format(q, min(m, n))
+            f'q(={q}) must be non-negative integer'
+            f' and not greater than min(m, n)={min(m, n)}'
         )
     if not (niter >= 0):
         raise ValueError(f'niter(={niter}) must be non-negative integer')
@@ -3669,8 +3693,8 @@ def cdist(
     )
     assert x_shape[-1] == y_shape[-1], (
         "The x and y must have same last dimension, "
-        "But received Input x's last dimension is {}, "
-        "Input y's last dimension is {}.\n".format(x_shape[-1], y_shape[-1])
+        f"But received Input x's last dimension is {x_shape[-1]}, "
+        f"Input y's last dimension is {y_shape[-1]}.\n"
     )
     assert p >= 0, (
         "The p must be greater than or equal to 0, "

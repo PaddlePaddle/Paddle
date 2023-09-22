@@ -249,8 +249,8 @@ Expr or_all(const std::vector<Expr> &conds) {
 }
 
 void CheckTensorUniqueInExpr(Expr expr) {
-  auto tensor_uniq =
-      ir::CollectIRNodes(expr, [](const Expr *x) { return x->as_tensor(); });
+  auto tensor_uniq = ir::ir_utils::CollectIRNodes(
+      expr, [](const Expr *x) { return x->as_tensor(); });
   absl::flat_hash_map<std::string, const ir::_Tensor_ *> tensor_names;
   for (auto &t : tensor_uniq) {
     auto *tp = t.as_tensor();
@@ -269,9 +269,9 @@ void CheckBufferUniqueInExpr(Expr expr) {
   // the buffers exists in tensor and lowered functions.
   CheckTensorUniqueInExpr(expr);
 
-  auto tensors =
-      ir::CollectIRNodes(expr, [](const Expr *x) { return x->as_tensor(); });
-  auto funcs = ir::CollectIRNodes(
+  auto tensors = ir::ir_utils::CollectIRNodes(
+      expr, [](const Expr *x) { return x->as_tensor(); });
+  auto funcs = ir::ir_utils::CollectIRNodes(
       expr, [](const Expr *x) { return x->as_lowered_func(); });
 
   absl::flat_hash_map<std::string, const ir::_Buffer_ *> buffer_name;
