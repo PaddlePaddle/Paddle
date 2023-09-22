@@ -57,6 +57,10 @@ std::vector<ir::LoweredFunc> LowerTensorGroup::operator()() {
   for (ast_gen_ius::TensorGroup* tensor_group : tensor_groups_) {
     // 1. Generate function body
     ir::Expr func_body = GenerateFunctionBody(tensor_group);
+    func_body = ir::ScheduleBlockRealize::Make(
+        {},
+        ir::ScheduleBlock::Make(
+            {}, {}, {}, common::UniqName("root"), func_body));
     // 2. Assign buffer to tensors
     auto tensor_map = tensor_group->AllocateBuffers();
     // copy the tensor(with buffer assigned) back to func's args.
@@ -202,6 +206,7 @@ ir::Expr LowerTensorGroup::GenerateFunctionBody(
   std::vector<ir::Expr> bodies;
   for (const ir::Tensor& tensor : ordered_tensors) {
     if (!tensor->is_placeholder_node()) {
+      VLOG(6) << "ast_gen_ius::AstGen::Build for Tensor " << tensor;
       bodies.emplace_back(ast_gen_ius::AstGen::Build(tensor, tensor_group));
     }
   }

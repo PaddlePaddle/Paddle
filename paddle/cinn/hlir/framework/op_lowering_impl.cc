@@ -345,6 +345,24 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
   return func_bodies;
 }
 
+// TODO(zhhsplendid): remove stage_map need to change all fcompute CINNValuePack
+// we will change it in the next PR
+ast_gen_ius::TensorGroup ConvertStageMapToTensorGroup(
+    const poly::StageMap& stage_map,
+    const std::unordered_map<std::string, ir::Tensor>& tensor_map) {
+  std::vector<ir::Tensor> stage_tensors;
+  for (auto iter = stage_map.begin(); iter != stage_map.end(); ++iter) {
+    VLOG(6) << "Checking stage_map tensor_name = " << iter->first;
+    if (iter->second->has_expression()) {
+      const std::string& tensor_name = iter->first;
+      stage_tensors.push_back(tensor_map.at(tensor_name));
+      VLOG(6) << "TensorGroup will add tensor_name = " << tensor_name;
+    }
+  }
+  VLOG(6) << "Before returning TensorGroup";
+  return ast_gen_ius::TensorGroup(stage_tensors);
+}
+
 std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
     std::shared_ptr<hlir::framework::OpImpl> op_impl,
     Node* node,
@@ -365,6 +383,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
   common::CINNValuePack pack =
       op_impl->fcompute(common::CINNValuePack{cinn_inputs});
 
+  poly::StageMap tmp_stages = pack.back();
   std::string post = "";
   for (int idx = 0; idx < pack.size() - 1; ++idx) {
     Expr expr = pack[idx];
@@ -391,11 +410,25 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
   }
 
   // 2.Do lower
-  ast_gen_ius::TensorGroup tensor_group(*tensor_map);
+  /*
+  std::vector<ir::LoweredFunc> funcs = lang::LowerVec("fn_" + node->id(),
+                                                       tmp_stages,
+                                                       *op_func_arg_tensors,
+                                                       {},
+                                                       {},
+                                                       nullptr,
+                                                       this->target_,
+                                                       true);
+
+  */
+  ast_gen_ius::TensorGroup tensor_group =
+      ConvertStageMapToTensorGroup(tmp_stages, *tensor_map);
   std::vector<ir::LoweredFunc> funcs = lang::LowerToAstVec(
       "fn_" + node->id(), *op_func_arg_tensors, {&tensor_group}, this->target_);
+
   VLOG(4) << "Lower op: " << node->op()->name << ", get " << funcs.size()
           << " LoweredFunc:\n";
+  VLOG(4) << funcs[0];
 
   op_func_arg_tensors->clear();
   for (int idx = 0; idx < pack.size() - 1; ++idx) {
