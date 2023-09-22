@@ -333,8 +333,8 @@ def to_static_api(dygraph_class):
         return dygraph_class_to_static_api[dygraph_class]
     else:
         raise NotImplementedError(
-            "Paddle dygraph API {} cannot be converted "
-            "to static graph at present.".format(dygraph_class)
+            f"Paddle dygraph API {dygraph_class} cannot be converted "
+            "to static graph at present."
         )
 
 
@@ -1303,12 +1303,10 @@ def create_get_args_node(names):
     """
 
     def empty_node():
-        func_def = """
-        def {func_name}():
+        func_def = f"""
+        def {unique_name.generate(GET_ARGS_FUNC_PREFIX)}():
             return
-        """.format(
-            func_name=unique_name.generate(GET_ARGS_FUNC_PREFIX)
-        )
+        """
         return gast.parse(textwrap.dedent(func_def)).body[0]
 
     assert isinstance(names, (list, tuple))
@@ -1342,12 +1340,10 @@ def create_set_args_node(names):
     """
 
     def empty_node():
-        func_def = """
-        def {func_name}({args}):
+        func_def = f"""
+        def {unique_name.generate(SET_ARGS_FUNC_PREFIX)}({ARGS_NAME}):
             pass
-        """.format(
-            func_name=unique_name.generate(SET_ARGS_FUNC_PREFIX), args=ARGS_NAME
-        )
+        """
         return gast.parse(textwrap.dedent(func_def)).body[0]
 
     assert isinstance(names, (list, tuple))
@@ -1416,9 +1412,7 @@ class GetterSetterHelper:
         for n in names:
             assert (
                 n in self.name2id
-            ), "the name `{}` not in name union set`{}`.".format(
-                n, self.name2id.keys()
-            )
+            ), f"the name `{n}` not in name union set`{self.name2id.keys()}`."
         return tuple(vars[self.name2id[n]] for n in names)
 
     def set(self, names, values):
@@ -1432,9 +1426,7 @@ class GetterSetterHelper:
         for n in names:
             assert (
                 n in self.name2id
-            ), "the name `{}` not in name union set`{}`.".format(
-                n, self.name2id.keys()
-            )
+            ), f"the name `{n}` not in name union set`{self.name2id.keys()}`."
         vars = list(vars)
         indices = [self.name2id[n] for n in names]
         for i, v in zip(indices, values):

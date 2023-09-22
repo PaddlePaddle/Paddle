@@ -35,9 +35,7 @@ def get_place(target):
         return base.CPUPlace()
     else:
         raise ValueError(
-            "Target `{}` is not on the support list: `cuda`, `xpu` and `cpu`.".format(
-                target
-            )
+            f"Target `{target}` is not on the support list: `cuda`, `xpu` and `cpu`."
         )
 
 

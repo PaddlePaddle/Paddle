@@ -470,9 +470,7 @@ class UtilBase:
             v for v in prog.list_vars() if paddle.static.io.is_persistable(v)
         ]
         print(
-            "persistable vars in dump program: {}".format(
-                [v.name for v in saved_params]
-            )
+            f"persistable vars in dump program: {[v.name for v in saved_params]}"
         )
 
         def check_not_expected_ops(prog, not_expected_op_types):
@@ -665,9 +663,7 @@ class UtilBase:
                 )
             else:
                 print(
-                    "load feed vars from files: {}.".format(
-                        feed_config.feeded_vars_filelist
-                    )
+                    f"load feed vars from files: {feed_config.feeded_vars_filelist}."
                 )
                 feed_vars = [
                     inference_program.global_block().var(

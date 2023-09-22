@@ -395,9 +395,7 @@ def convert_to_input_spec(inputs, input_spec):
     def check_type_and_len(input, spec, check_length=False):
         if type(input) is not type(spec):
             raise TypeError(
-                'type(input) should be {}, but received {}.'.format(
-                    type(spec), type(input)
-                )
+                f'type(input) should be {type(spec)}, but received {type(input)}.'
             )
         if check_length and len(input) < len(spec):
             raise ValueError(
@@ -444,9 +442,7 @@ def convert_to_input_spec(inputs, input_spec):
         real_spec = _replace_value_with_input_spec([inputs])[0]
         if not isinstance(real_spec, paddle.static.InputSpec):
             raise RuntimeError(
-                "Give input spec into a non-tensorable arguments `{}`.".format(
-                    inputs
-                )
+                f"Give input spec into a non-tensorable arguments `{inputs}`."
             )
         real_spec.name = input_spec.name
         if spec_greater(input_spec, real_spec):

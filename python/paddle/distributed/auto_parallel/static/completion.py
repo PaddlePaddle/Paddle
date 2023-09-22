@@ -1290,9 +1290,7 @@ class Completer:
                     output_name = grad_op.output_arg_names[0]
                     assert (
                         output_name in grad_var_to_var[appended_grad_times]
-                    ), "sum op's output '{}' has no corresponding var".format(
-                        output_name
-                    )
+                    ), f"sum op's output '{output_name}' has no corresponding var"
                     ref_fwd_var_name = grad_var_to_var[appended_grad_times][
                         output_name
                     ]
@@ -1592,9 +1590,7 @@ class Completer:
                     output_name = grad_op.output_arg_names[0]
                     assert (
                         output_name in grad_var_to_var
-                    ), "sum op's output '{}' has no corresponding var".format(
-                        output_name
-                    )
+                    ), f"sum op's output '{output_name}' has no corresponding var"
                     ref_fwd_var_name = grad_var_to_var[output_name]
                     ref_fwd_var = vars[ref_fwd_var_name]
                     ref_fwd_dist_attr = (

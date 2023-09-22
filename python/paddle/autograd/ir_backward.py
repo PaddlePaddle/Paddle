@@ -94,7 +94,6 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
                 dtype=output.dtype,
             )
             fillop = output_grad.get_defining_op()
-
             update_bwdop_structure(
                 backward_ops,
                 state.op_to_opgrad[output.get_defining_op()],
@@ -138,14 +137,14 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
                     0.0,
                     opresult.dtype,
                 )
-                fillop = grad.get_defining_op()
+                fillop = grad_value.get_defining_op()
 
                 update_bwdop_structure(
                     backward_ops,
                     state.op_to_opgrad[opresult.get_defining_op()],
                     fillop,
                 )
-                state.value_to_valuegrad[opresult] = [grad_value]
+                state.value_to_valuegrad[opresult] = [[grad_value]]
 
                 visited_output.add(opresult)
 
@@ -289,7 +288,7 @@ def inverse_sort_op(ops):
     sorted_list = []
     for op in ops:
         for x in op.operands():
-            if x.source().get_defining_op() in ops_set:
+            if x.source() and x.source().get_defining_op() in ops_set:
                 pending_count[x.source().get_defining_op()] += 1
 
     queue = collections.deque()
