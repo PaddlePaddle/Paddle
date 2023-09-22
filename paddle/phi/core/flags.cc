@@ -1269,15 +1269,8 @@ PADDLE_DEFINE_EXPORTED_bool(use_shm_cache,
 PADDLE_DEFINE_EXPORTED_string(tensor_operants_mode,
                               "eager",
                               "Tensor operants mode");
-<<<<<<< Updated upstream
-=======
 
 PADDLE_DEFINE_EXPORTED_bool(
     use_auto_growth_pinned_allocator,
     false,
     "Whether to use the auto_growth CUDA pinned allocator.");
-
-PADDLE_DEFINE_EXPORTED_bool(enable_process_group_event_record,
-                            false,
-                            "Whether to enable process group event record.");
->>>>>>> Stashed changes
