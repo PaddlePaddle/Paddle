@@ -292,5 +292,13 @@ PD_REGISTER_KERNEL(negative,
                    int,
                    int64_t) {}
 PD_REGISTER_ACTIVATION_KERNEL(celu, CeluKernel)
-PD_REGISTER_KERNEL(
-    pow, CPU, ALL_LAYOUT, phi::PowKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(pow,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::PowKernel,
+                   float,
+                   double,
+                   int,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>,
+                   int64_t) {}

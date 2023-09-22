@@ -352,6 +352,8 @@ PD_REGISTER_KERNEL(pow,
                    double,
                    int,
                    int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(selu,

@@ -3526,7 +3526,13 @@ class TestPow(TestActivation):
         self.if_enable_cinn()
 
         np.random.seed(1024)
-        x = np.random.uniform(1, 2, self.shape).astype(self.dtype)
+        if self.dtype is np.complex64 or self.dtype is np.complex128:
+            x = (
+                np.random.uniform(1, 2, self.shape)
+                + 1j * np.random.uniform(1, 2, self.shape)
+            ).astype(self.dtype)
+        else:
+            x = np.random.uniform(1, 2, self.shape).astype(self.dtype)
         out = np.power(x, 3)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -3538,17 +3544,37 @@ class TestPow(TestActivation):
         pass
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(
+            check_prim=True
+            if self.dtype not in [np.complex64, np.complex128]
+            else False
+        )
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=True
+            if self.dtype not in [np.complex64, np.complex128]
+            else False,
+        )
 
 
 class TestPow_ZeroDim(TestPow):
     def init_shape(self):
         self.shape = []
+
+
+class TestPowComplex64(TestPow):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestPowComplex128(TestPow):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestPow_factor_tensor(TestActivation):
