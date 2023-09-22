@@ -11,22 +11,5 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-#pragma once
-
-#include "paddle/pir/core/dialect.h"
-
-namespace test {
-class TestDialect : public pir::Dialect {
- public:
-  explicit TestDialect(pir::IrContext *context);
-  static const char *name() { return "test"; }
-  void PrintOperation(pir::Operation *op,
-                      pir::IrPrinter &printer) const override;
-
- private:
-  void initialize();
-};
-
-}  // namespace test
-IR_DECLARE_EXPLICIT_TYPE_ID(test::TestDialect)
+#include "test/cpp/pir/tools/test_interface.h"
+IR_DEFINE_EXPLICIT_TYPE_ID(test::InferShapeInterface)

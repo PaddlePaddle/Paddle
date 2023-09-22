@@ -11,22 +11,20 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include "test/cpp/pir/tools/test_trait.h"
+#include "glog/logging.h"
 
-#pragma once
-
-#include "paddle/pir/core/dialect.h"
+#include "paddle/pir/core/enforce.h"
 
 namespace test {
-class TestDialect : public pir::Dialect {
- public:
-  explicit TestDialect(pir::IrContext *context);
-  static const char *name() { return "test"; }
-  void PrintOperation(pir::Operation *op,
-                      pir::IrPrinter &printer) const override;
-
- private:
-  void initialize();
-};
-
+void OneRegionTrait::Verify(pir::Operation *op) {
+  VLOG(1) << "here";
+  IR_ENFORCE(op->num_regions() == 1u,
+             "%s op has one region trait, but its region size is %u",
+             op->name(),
+             op->num_regions());
+}
 }  // namespace test
-IR_DECLARE_EXPLICIT_TYPE_ID(test::TestDialect)
+
+IR_DEFINE_EXPLICIT_TYPE_ID(test::ReadOnlyTrait)
+IR_DEFINE_EXPLICIT_TYPE_ID(test::OneRegionTrait)
