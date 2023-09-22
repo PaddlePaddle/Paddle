@@ -24,7 +24,7 @@ class Block;
 
 namespace paddle {
 namespace framework {
-
+class ValueExecutionInfo;
 class NewIRInterpreter : public InterpreterBaseImpl {
   using ExecutionConfig = interpreter::ExecutionConfig;
   using InstructionSchedulingPriorityLess = std::function<bool(size_t, size_t)>;

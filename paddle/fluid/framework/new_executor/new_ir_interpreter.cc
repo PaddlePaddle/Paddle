@@ -32,7 +32,6 @@
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
-#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/device_manager.h"
