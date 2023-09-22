@@ -1347,7 +1347,7 @@ def max_pool3d(
     name=None,
 ):
     """
-    This API implements max pooling 2d operation.
+    This API implements max pooling 3d operation.
     See more details in :ref:`api_paddle_nn_MaxPool3D` .
 
     Args:

@@ -167,7 +167,7 @@ def sequence_softmax(input, use_cudnn=False, name=None):
     r"""
 
     Note:
-        The input type of the OP must be Tensor. For Tensor, use:** :ref:`api_paddle_static_nn_sequence_softmax`
+        The input type of the OP must be Tensor. For Tensor, use:** :ref:`api_paddle_nn_functional_softmax`
 
     A LoD-tensor can be regarded as several sequences, and this op apply softmax algo on each sequence.
     The shape of input Tensor can be :math:`[N, 1]` or :math:`[N]`, where :math:`N`
@@ -254,7 +254,7 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
     r"""
 
     Note:
-        Only receives Tensor as input. If your input is Tensor, please use pool2d Op.(static.nn.** :ref:`api_paddle_static_nn_sequence_pool` ).
+        Only receives Tensor as input. If your input is Tensor, please use pool2d Op.(paddle.flip.** :ref:`paddle_nn_functional_avg_pool2d` )(paddle.flip.** :ref:`paddle_nn_functional_max_pool2d` ).
 
     This operator only supports Tensor as input. It will apply specified pooling
     operation on the input Tensor. It pools features of all time-steps of each
@@ -372,7 +372,7 @@ def sequence_concat(input, name=None):
     """
 
     Note:
-        Only receives Tensor as input. If your input is Tensor, please use concat Op.(static.nn.** :ref:`api_paddle_static_nn_sequence_concat` ).
+        Only receives Tensor as input. If your input is Tensor, please use concat Op.(paddle.flip.** :ref:`api_paddle_concat` ).
 
     This operator only supports Tensor as input. It concatenates the multiple Tensor from input by the LoD information,
     and outputs the concatenated Tensor.
@@ -1123,7 +1123,7 @@ def sequence_reshape(input, new_dim):
     """
 
     Note:
-        Only receives Tensor as input. If your input is Tensor, please use reshape Op.(static.nn.** :ref:`api_paddle_static_nn_sequence_reshape` ).
+        Only receives Tensor as input. If your input is Tensor, please use reshape Op.(paddle.filp.** :ref:`api_paddle_reshape` ).
 
     Only supports Tensor as input. Given :attr:`new_dim` ,
     it will compute new shape according to original length of each sequence,
@@ -1420,7 +1420,7 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
 def sequence_reverse(x, name=None):
     """
     Note:
-        Only receives Tensor as input. If your input is Tensor, please use reverse Op.(static.nn.** :ref:`api_paddle_static_nn_sequence_reverse` ).
+        Only receives Tensor as input. If your input is Tensor, please use reverse Op.(paddle.flip.** :ref:`api_paddle_static_nn_sequence_reverse` ).
 
     Only supports Tensor as input. It will reverse each sequence for input Tensor.
     Currently it only supports 1-level Tensor. This operator is very useful when building a
