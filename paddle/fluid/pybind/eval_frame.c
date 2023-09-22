@@ -304,7 +304,7 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
       (PyFunctionObject *)PyFunction_New((PyObject *)code, frame->f_globals);
   Py_XINCREF(frame->f_func->func_closure);
   func->func_closure = frame->f_func->func_closure;
-  _PyFrame_InitializeSpecials(shadow, func, NULL, nlocalsplus_new);
+  _PyFrame_InitializeSpecials(shadow, func, NULL, code->co_nlocalsplus);
 
   PyObject **fastlocals_old = frame->localsplus;
   PyObject **fastlocals_new = shadow->localsplus;
