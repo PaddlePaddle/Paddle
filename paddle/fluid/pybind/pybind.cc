@@ -871,7 +871,7 @@ PYBIND11_MODULE(libpaddle, m) {
             return self->NextFunctions();
           })
 
-      .def("node_this_ptr", &egr::GradNodeBase::GetThisPtr)
+      .def("node_ptr", &egr::GradNodeBase::GetThisPtr)
       .def("input_meta",
            [](const std::shared_ptr<egr::GradNodeBase> &self) {
              return self->InputMeta();
