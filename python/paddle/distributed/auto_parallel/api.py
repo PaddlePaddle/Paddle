@@ -350,29 +350,36 @@ def shard_layer(
                 # do nothing, the dist buffers has already been shard by shard_fn
                 pass
 
-    if shard_fn is None:
-        # if shard_fn not specified, by default replicate
-        # all layer's parameters and buffers
-        for name, sublayers in layer.named_sublayers(include_self=True):
-            replicate_layer_params_and_buffers(sublayers, process_mesh)
+    if paddle.in_dynamic_mode():
+        if shard_fn is None:
+            # if shard_fn not specified, by default replicate
+            # all layer's parameters and buffers
+            for name, sublayers in layer.named_sublayers(include_self=True):
+                replicate_layer_params_and_buffers(sublayers, process_mesh)
+        else:
+            # apply shard_fn to sublayers, contains self
+            for name, sublayers in layer.named_sublayers(include_self=True):
+                shard_fn(name, sublayers, process_mesh)
+                # shard_fn may not deal with all parameters and buffers,
+                # the parameters and buffers that are not shard by shard_fn
+                # still need to be shard to replicated
+                replicate_layer_params_and_buffers(sublayers, process_mesh)
+
+        # register input_fn as layer's forward pre hook
+        if input_fn is not None:
+            layer.register_forward_pre_hook(
+                lambda _, inputs: input_fn(inputs, process_mesh)
+            )
+        # register output_fn as layer's forward post hook
+        if output_fn is not None:
+            layer.register_forward_post_hook(
+                lambda _, inputs, outputs: output_fn(outputs, process_mesh)
+            )
+
+        return layer
     else:
-        # apply shard_fn to sublayers, contains self
-        for name, sublayers in layer.named_sublayers(include_self=True):
-            shard_fn(name, sublayers, process_mesh)
-            # shard_fn may not deal with all parameters and buffers,
-            # the parameters and buffers that are not shard by shard_fn
-            # still need to be shard to replicated
-            replicate_layer_params_and_buffers(sublayers, process_mesh)
-
-    # register input_fn as layer's forward pre hook
-    if input_fn is not None:
-        layer.register_forward_pre_hook(
-            lambda _, inputs: input_fn(inputs, process_mesh)
+        # TODO(chenweihang): Support static mode branch later.
+        raise NotImplementedError(
+            "`paddle.distributed.shard_layer` only supports dynamic graph mode "
+            "now. It will be supported for static graph mode later."
         )
-    # register output_fn as layer's forward post hook
-    if output_fn is not None:
-        layer.register_forward_post_hook(
-            lambda _, inputs, outputs: output_fn(outputs, process_mesh)
-        )
-
-    return layer

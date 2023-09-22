@@ -138,7 +138,6 @@ class TestShardLayer(unittest.TestCase):
                 str(ex),
             )
             exception = ex
-
         self.assertIsNotNone(exception)
 
         exception = None
@@ -153,7 +152,21 @@ class TestShardLayer(unittest.TestCase):
                 str(ex),
             )
             exception = ex
+        self.assertIsNotNone(exception)
 
+    def test_shard_layer_static_mode(self):
+        paddle.enable_static()
+        layer = MyLayer(self.num_features, self.num_layers)
+
+        exception = None
+        try:
+            dist.shard_layer(layer, self.mesh)
+        except NotImplementedError as ex:
+            self.assertIn(
+                "`paddle.distributed.shard_layer` only support dynamic graph mode now",
+                str(ex),
+            )
+            exception = ex
         self.assertIsNotNone(exception)
 
 
