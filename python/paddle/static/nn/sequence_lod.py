@@ -1123,7 +1123,7 @@ def sequence_reshape(input, new_dim):
     """
 
     Note:
-        Only receives Tensor as input. If your input is Tensor, please use reshape Op.(static.nn.** :ref:`api_paddle_static_nn_sequence_reshape` ).
+        Only receives Tensor as input. If your input is Tensor, please use reshape Op.(static.nn.** :ref:`api_paddle_reshape` ).
 
     Only supports Tensor as input. Given :attr:`new_dim` ,
     it will compute new shape according to original length of each sequence,
