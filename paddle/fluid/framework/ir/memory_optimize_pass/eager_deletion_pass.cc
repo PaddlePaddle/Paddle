@@ -247,7 +247,7 @@ void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
         op->GetScope(),
         op->GetScopeIdx(),
         op->GetPlace(),
-        std::move(var_info),
+        var_info,
         gcs.at(places[op->GetScopeIdx()]).get());
 
     auto it = std::find_if(

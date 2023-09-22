@@ -108,7 +108,7 @@ class PyVariableWrapperHook : public imperative::VariableWrapperHook {
       res = PyObject_CallFunctionObjArgs(
           py_func_, py::cast(tmp_varbase).ptr(), nullptr);
     } catch (platform::EnforceNotMet &e) {
-      throw std::move(e);
+      throw e;
     } catch (std::exception &e) {
       PADDLE_THROW(platform::errors::Unavailable(
           "Hook function of Tensor raises an exception: %s.", e.what()));

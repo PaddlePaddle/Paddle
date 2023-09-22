@@ -1018,7 +1018,7 @@ void ProgramInterpreter::RunInstruction(const Instruction& instr_node) {
     instr_node.RecordEvent(place_);
   } catch (platform::EnforceNotMet& ex) {
     framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
-    exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
+    exception_holder_.Catch(std::make_exception_ptr(ex));
   } catch (platform::EOFException&) {
     exception_holder_.Catch(std::current_exception());
   } catch (std::exception& ex) {
