@@ -47,31 +47,22 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 
 #include "glog/logging.h"
+#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/pir/phi_kernel_adaptor/phi_kernel_util.h"
 
 class PhiKernelAdaptor {
  public:
-  explicit PhiKernelAdaptor(paddle::framework::Scope* scope) : scope_(scope) {}
+  explicit PhiKernelAdaptor(paddle::framework::Scope* scope) : scope_(scope) {
+    value_exe_info_ = std::make_shared<ValueExecutionInfo>(scope_);
+  }
 
   void run_kernel_prog(pir::Program* program) {
     auto block = program->block();
-    std::unordered_map<pir::Value, std::string> value_2_var_name;
-    std::unordered_map<const paddle::framework::Variable*, std::string>
-        variable_2_var_name;
-    std::map<std::string, int> var_name_2_id;
-    std::vector<paddle::framework::Variable*> variable_list;
     std::map<pir::Block*, paddle::framework::Scope*> sub_blocks;
     std::stringstream ss;
     ss << this;
 
-    BuildScope(*block,
-               scope_,
-               ss.str(),
-               &value_2_var_name,
-               &variable_2_var_name,
-               &var_name_2_id,
-               &variable_list,
-               &sub_blocks);
+    BuildScope(*block, ss.str(), &sub_blocks, value_exe_info_.get());
     pir::IrContext* ctx = pir::IrContext::Instance();
 
     ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -104,8 +95,12 @@ class PhiKernelAdaptor {
           phi::MetaTensor,
           paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
           paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-          false>(
-          (*it), value_2_var_name, scope_, nullptr, op_yaml_info_parser, &ctx);
+          false>((*it),
+                 value_exe_info_->GetValue2VarName(),
+                 scope_,
+                 nullptr,
+                 op_yaml_info_parser,
+                 &ctx);
 
       infer_meta_impl->infer_meta_(&ctx);
 
@@ -126,7 +121,7 @@ class PhiKernelAdaptor {
                            paddle::small_vector<const phi::TensorBase*>,
                            paddle::small_vector<phi::TensorBase*>,
                            true>((*it),
-                                 value_2_var_name,
+                                 value_exe_info_->GetValue2VarName(),
                                  scope_,
                                  nullptr,
                                  op_yaml_info_parser,
@@ -134,7 +129,7 @@ class PhiKernelAdaptor {
       kernel_fn(&kernel_ctx);
 
       auto out_value = (*it)->result(0);
-      out_name = value_2_var_name[out_value];
+      out_name = value_exe_info_->GetValue2VarName()[out_value];
     }
   }
 
@@ -142,4 +137,5 @@ class PhiKernelAdaptor {
 
  private:
   paddle::framework::Scope* scope_;
+  std::shared_ptr<ValueExecutionInfo> value_exe_info_;
 };
