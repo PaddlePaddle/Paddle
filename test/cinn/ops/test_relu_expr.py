@@ -32,3 +32,5 @@ target = DefaultNVGPUTarget()
 result = prog.build_and_get_output(
     target, [x], [inputs["x"]], [out], passes=[], scope=None
 )
+
+print("Finish TestReluExpr")

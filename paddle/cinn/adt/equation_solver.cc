@@ -43,6 +43,17 @@ std::unordered_map<Variable, Value> InferValuesImpl(
   return {{out_index.value(), ctx->GetValue(in_variable)}};
 }
 
+bool HasReplicatedValues(const List<Value>& values) {
+  for (std::size_t i = 0; i < values->size(); ++i) {
+    for (std::size_t j = i + 1; j < values->size(); ++j) {
+      if (values->at(i) == values->at(j)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 std::unordered_map<Variable, Value> InferValuesImpl(
     const Dot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>& dot,
     IndexExprInferContext* ctx) {
@@ -50,6 +61,9 @@ std::unordered_map<Variable, Value> InferValuesImpl(
   List<Value> in_values;
   for (const auto& iter : *in_iters.value()) {
     in_values->emplace_back(ctx->GetValue(iter));
+  }
+  if (HasReplicatedValues(in_values)) {
+    return {{out_index.value(), Undefined{}}};
   }
   List<Constant> stride_constants{};
   for (const auto& stride : *strides) {
@@ -114,33 +128,35 @@ std::unordered_map<Variable, Value> InferValues(const Function* function,
       function->variant());
 }
 
-DEFINE_ADT_TAG(tHasUniqueInferedValue);
+DEFINE_ADT_TAG(tValueInferSuccess);
 
 template <typename OnFailT>
-tHasUniqueInferedValue<bool> MergeInferedValuesIntoCtx(
-    const Function* function,
-    IndexExprInferContext* ctx,
-    const OnFailT& OnFail) {
+tValueInferSuccess<bool> MergeInferedValuesIntoCtx(const Function* function,
+                                                   IndexExprInferContext* ctx,
+                                                   const OnFailT& OnFail) {
   auto output_variable2value = InferValues(function, ctx);
   for (const auto& [variable, unsimplified_value] : output_variable2value) {
     Value simplified_value({SimplifyValue(unsimplified_value)});
+    if (simplified_value.Has<Undefined>()) {
+      return OnFail(std::optional<Value>{std::nullopt}, simplified_value);
+    }
     if (!ctx->HasValue(variable)) {
       ctx->SetValue(variable, simplified_value);
     } else {
-      const Value& old_value = ctx->GetValue(variable);
-      if (simplified_value != old_value) {
-        return OnFail(old_value, simplified_value);
+      std::optional<Value> opt_old_value = ctx->GetValue(variable);
+      if (simplified_value != opt_old_value.value()) {
+        return OnFail(opt_old_value, simplified_value);
       }
     }
   }
-  return tHasUniqueInferedValue<bool>{true};
+  return tValueInferSuccess<bool>{true};
 }
 
-tHasUniqueInferedValue<bool> MergeInferedValuesIntoCtx(
-    const Function* function, IndexExprInferContext* ctx) {
+tValueInferSuccess<bool> MergeInferedValuesIntoCtx(const Function* function,
+                                                   IndexExprInferContext* ctx) {
   return MergeInferedValuesIntoCtx(
       function, ctx, [&](const auto&, const auto&) {
-        return tHasUniqueInferedValue<bool>{false};
+        return tValueInferSuccess<bool>{false};
       });
 }
 
@@ -150,10 +166,18 @@ void SolveEquations(
     IndexExprInferContext* ctx) {
   walker.WalkFunction(
       starts.begin(), starts.end(), [&](const Function* function) {
-        tHasUniqueInferedValue<bool> has_unique_value =
+        tValueInferSuccess<bool> has_unique_value =
             MergeInferedValuesIntoCtx(function, ctx);
         CHECK(has_unique_value.value());
       });
+}
+
+std::string GetDebugString(const std::optional<Value>& opt_old_value) {
+  if (opt_old_value.has_value()) {
+    return DebugString(opt_old_value.value());
+  } else {
+    return "";
+  }
 }
 
 void CheckEquationsSolvable(
@@ -164,11 +188,11 @@ void CheckEquationsSolvable(
     MergeInferedValuesIntoCtx(
         function,
         ctx,
-        [&](const auto& old_value, const auto& simplified_value) {
-          LOG(ERROR) << "old_value: " << DebugString(old_value);
+        [&](const auto& opt_old_value, const auto& simplified_value) {
+          LOG(ERROR) << "old_value: " << GetDebugString(opt_old_value);
           LOG(ERROR) << "simplified_value: " << DebugString(simplified_value);
           LOG(FATAL) << "CheckEquationsSolvable Failed";
-          return tHasUniqueInferedValue<bool>{false};
+          return tValueInferSuccess<bool>{false};
         });
   };
 
@@ -182,7 +206,7 @@ tHasNoConflictValue<bool> TrySolveEquations(
   bool has_no_conflict_value = true;
 
   const auto& HasConflictInferedValue = [&](const Function* function) {
-    tHasUniqueInferedValue<bool> has_unique_value =
+    tValueInferSuccess<bool> has_unique_value =
         MergeInferedValuesIntoCtx(function, ctx);
     return !has_unique_value.value();
   };
