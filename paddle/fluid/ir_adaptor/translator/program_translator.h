@@ -49,7 +49,9 @@ class ConditionBlockCombination {
  public:
   ConditionBlockCombination(const ::paddle::framework::BlockDesc& src_block,
                             const std::vector<uint64_t>& op_ids);
+  ConditionBlockCombination() = default;
   const std::string& CondVarName() const;
+  const std::string& CastOutVarName() const;
   size_t OutputSize() const;
   std::vector<::paddle::framework::VarDesc*> OutputVars() const;
   const std::vector<std::string>& TrueBlockOutputVarNames() const;
@@ -61,6 +63,28 @@ class ConditionBlockCombination {
   bool Verify(const std::vector<::paddle::framework::OpDesc*>& op_list);
 
   std::vector<::paddle::framework::OpDesc*> op_list_;
+};
+
+class BackwardConditionBlockCombination {
+ public:
+  BackwardConditionBlockCombination(
+      const ::paddle::framework::BlockDesc& src_block,
+      const std::vector<uint64_t>& op_ids);
+  const std::string& CondVarName() const;
+  size_t OutputSize() const;
+  std::vector<::paddle::framework::VarDesc*> OutputVars() const;
+  const std::vector<std::string>& TrueBlockOutputVarNames() const;
+  int TrueBlockId() const;
+  std::vector<std::string> FalseBlockOutputVarNames() const;
+  int FalseBlockId() const;
+
+  const std::vector<::paddle::framework::OpDesc*>& OpList() const;
+
+ private:
+  bool Verify(const std::vector<::paddle::framework::OpDesc*>& op_list);
+
+  std::vector<::paddle::framework::OpDesc*> op_list_;
+  size_t output_num_;
 };
 
 using TranslationContext =
@@ -87,6 +111,9 @@ class ProgramTranslator {
   std::unordered_map<std::string, VarDesc*> parameter_name_mappings_;
   std::unordered_set<std::string> parameter_visited_;
 
+  std::unordered_map<std::string, ConditionBlockCombination>
+      foward_condition_block_map_;
+
   /// In the legacy program desc, there are two special named varibales:
   /// 1. "feed", the input variable of feed op
   /// 2. "fetch", the output variable of fetch op
@@ -112,6 +139,10 @@ class ProgramTranslator {
   /// Translate methods for control flow ops.
   pir::Operation* TranslateCondIfOperation(
       const ConditionBlockCombination& cond_ops, pir::Block* dest_block);
+
+  pir::Operation* TranslateBackwardCondIfOperation(
+      const BackwardConditionBlockCombination& cond_ops,
+      pir::Block* dest_block);
 };
 
 }  // namespace translator

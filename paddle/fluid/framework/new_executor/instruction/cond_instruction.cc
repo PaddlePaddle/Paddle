@@ -299,13 +299,13 @@ void CondInstruction::Run() {
     std::cerr << "true " << std::endl;
     true_branch_inter->Run({}, false);
     std::cerr << "true fin " << std::endl;
-    DeviceContext().Wait();
+    // DeviceContext().Wait();
     CopyBranchOutput(true_skip_gc_names_, true_branch_inter);
     std::cerr << "cpy fin " << std::endl;
   } else {
     std::cerr << "false " << std::endl;
     false_branch_inter->Run({}, false);
-    DeviceContext().Wait();
+    // DeviceContext().Wait();
     std::cerr << "false fin " << std::endl;
     CopyBranchOutput(false_skip_gc_names_, false_branch_inter);
   }

@@ -75,6 +75,31 @@ static std::vector<uint64_t> GetCondOpIds(const BlockDesc& src_block,
   return op_list;
 }
 
+static std::vector<uint64_t> GetBackwardCondOpIds(const BlockDesc& src_block,
+                                                  uint64_t first_id) {
+  std::vector<uint64_t> op_list = {first_id};
+  int offset = 1;
+  size_t output_num = 1;
+  if (src_block.Op(first_id + offset)->Type() == "conditional_block_grad") {
+    output_num = src_block.Op(first_id + offset)->Output("Input@GRAD").size();
+    op_list.emplace_back(first_id + offset++);
+  }
+
+  if (src_block.Op(first_id + offset)->Type() == "conditional_block_grad") {
+    op_list.emplace_back(first_id + offset++);
+  }
+
+  std::cerr << "output num " << output_num << std::endl;
+  size_t i = 0;
+  while (i < output_num) {
+    if (src_block.Op(first_id + offset)->Type() == "sum") {
+      i++;
+    }
+    op_list.emplace_back(first_id + offset++);
+  }
+  return op_list;
+}
+
 ConditionBlockCombination::ConditionBlockCombination(
     const ::paddle::framework::BlockDesc& src_block,
     const std::vector<uint64_t>& op_ids) {
@@ -90,6 +115,11 @@ ConditionBlockCombination::ConditionBlockCombination(
 
 const std::string& ConditionBlockCombination::CondVarName() const {
   return op_list_[0]->Input("Cond")[0];
+}
+
+const std::string& ConditionBlockCombination::CastOutVarName() const {
+  assert(op_list_[3]->Input("X")[0] == CondVarName());
+  return op_list_[3]->Output("Out")[0];
 }
 
 size_t ConditionBlockCombination::OutputSize() const {
@@ -175,6 +205,99 @@ bool ConditionBlockCombination::Verify(
   return true;
 }
 
+BackwardConditionBlockCombination::BackwardConditionBlockCombination(
+    const ::paddle::framework::BlockDesc& src_block,
+    const std::vector<uint64_t>& op_ids) {
+  output_num_ = 0;
+  for (auto op_id : op_ids) {
+    if (src_block.Op(op_id)->Type() == "select_output") {
+      output_num_++;
+    }
+    op_list_.emplace_back(src_block.Op(op_id));
+  }
+
+  std::cerr << "output num " << output_num_ << std::endl;
+  PADDLE_ENFORCE(Verify(op_list_),
+                 platform::errors::NotFound(
+                     "There are cond operators in this program that do not "
+                     "meet the translation requirements. Please check the "
+                     "program based on the Verify function"));
+}
+
+const std::string& BackwardConditionBlockCombination::CondVarName() const {
+  return op_list_[0]->Input("Mask")[0];
+}
+
+size_t BackwardConditionBlockCombination::OutputSize() const {
+  return output_num_;
+}
+
+std::vector<::paddle::framework::VarDesc*>
+BackwardConditionBlockCombination::OutputVars() const {
+  std::vector<::paddle::framework::VarDesc*> outputs;
+  if (this->OutputSize() > 0) {
+    for (size_t i = 3; i < op_list_.size(); i++) {
+      if (op_list_[i]->Type() == "sum") {
+        outputs.emplace_back(op_list_[i]->Block()->FindVarRecursive(
+            op_list_[i]->Output("Out")[0]));
+      }
+    }
+  }
+  return outputs;
+}
+
+const std::vector<std::string>&
+BackwardConditionBlockCombination::TrueBlockOutputVarNames() const {
+  return op_list_[output_num_]->Output("Input@GRAD");
+}
+
+int BackwardConditionBlockCombination::TrueBlockId() const {
+  if (op_list_.size() > output_num_ + 2) {
+    return op_list_[output_num_ + 1]->GetBlockAttrId("sub_block");
+  }
+  return -1;
+}
+
+std::vector<std::string>
+BackwardConditionBlockCombination::FalseBlockOutputVarNames() const {
+  if (op_list_.size() > output_num_ + 2) {
+    return op_list_[output_num_ + 1]->Output("Input@GRAD");
+  }
+  return {""};
+}
+
+int BackwardConditionBlockCombination::FalseBlockId() const {
+  return op_list_[output_num_]->GetBlockAttrId("sub_block");
+}
+
+const std::vector<::paddle::framework::OpDesc*>&
+BackwardConditionBlockCombination::OpList() const {
+  return op_list_;
+}
+
+bool BackwardConditionBlockCombination::Verify(
+    const std::vector<::paddle::framework::OpDesc*>& op_list) {
+  for (size_t id = 0; id < op_list.size(); id++) {
+    if (id == 0) {
+      if (op_list[id]->Type() != "select_output") {
+        return false;
+      }
+      if (op_list.size() == 1 && op_list[id]->Output("Out").size() != 0) {
+        return false;
+      }
+    } else if (id == 1) {
+      if (op_list[id]->Type() != "conditional_block_grad") {
+        return false;
+      }
+    } else if (id == 2) {
+      if (op_list[id]->Type() != "conditional_block_grad") {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 ProgramTranslator::ProgramTranslator(const ProgramDesc* legacy_program,
                                      pir::Program* program)
     : legacy_program_(legacy_program), program_(program) {
@@ -240,7 +363,22 @@ void ProgramTranslator::TranslateBlock(const BlockDesc& src_block,
       for (auto cond_id : cond_op_ids) {
         translate_completed[cond_id] = true;
       }
+
+      foward_condition_block_map_[cond_op_combination.CastOutVarName()] =
+          cond_op_combination;
       VLOG(10) << "[op translated][conditional_block]" << if_op;
+    } else if (op->Type() == "select_output") {
+      std::cerr << "backward if op" << std::endl;
+      std::vector<uint64_t> cond_op_ids =
+          GetBackwardCondOpIds(src_block, op_id);
+      BackwardConditionBlockCombination backward_cond_op_combination(
+          src_block, cond_op_ids);
+      pir::Operation* if_op = TranslateBackwardCondIfOperation(
+          backward_cond_op_combination, dest_block);
+      for (auto cond_id : cond_op_ids) {
+        translate_completed[cond_id] = true;
+      }
+      VLOG(10) << "[op translated][conditional_block_grad]" << if_op;
     } else {
       TranslateGeneralOperation(op, dest_block);
       translate_completed[op_id] = true;
@@ -290,6 +428,7 @@ pir::Operation* ProgramTranslator::TranslateCondIfOperation(
       op_inputs, attribute_map, op_output_types, op_info, 2);
 
   for (size_t i = 0; i < output_vardescs.size(); i++) {
+    std::cerr << "forward name " << output_vardescs[i]->Name() << std::endl;
     param_map_[output_vardescs[i]->Name()] =
         VariableDefiningInfo(operation->result(i));
   }
@@ -326,6 +465,177 @@ pir::Operation* ProgramTranslator::TranslateCondIfOperation(
   return operation;
 }
 
+pir::Operation* ProgramTranslator::TranslateBackwardCondIfOperation(
+    const BackwardConditionBlockCombination& cond_ops, pir::Block* dest_block) {
+  auto& type_translator = TypeTranslator::instance();
+  auto op_info = ctx_->GetRegisteredOpInfo(paddle::dialect::IfOp::name());
+
+  std::cerr << "found vond var " << cond_ops.CondVarName() << "\t"
+            << foward_condition_block_map_.count(cond_ops.CondVarName())
+            << std::endl;
+  auto& foward_cond_ops =
+      foward_condition_block_map_.at(cond_ops.CondVarName());
+
+  std::vector<pir::Value> op_inputs = {
+      param_map_[foward_cond_ops.CondVarName()].value};
+
+  // proccess select output
+  for (size_t i = 0; i < cond_ops.OutputSize(); ++i) {
+    auto op_desc = cond_ops.OpList()[i];
+    assert(op_desc->Type() == "select_output");
+    std::cerr << "selec output in " << op_desc->Input("X")[0] << "\t"
+              << param_map_.count(op_desc->Input("X")[0]) << std::endl;
+    param_map_[op_desc->Output("Out")[0]] = param_map_[op_desc->Input("X")[0]];
+    param_map_[op_desc->Output("Out")[1]] = param_map_[op_desc->Input("X")[0]];
+  }
+
+  // NOTE(zhangbo): Now paddle::dialect::IfOp has 0 attribute
+  pir::AttributeMap attribute_map;
+
+  std::vector<pir::Type> op_output_types;
+  std::vector<::paddle::framework::VarDesc*> output_vardescs =
+      cond_ops.OutputVars();
+  for (auto var_desc : output_vardescs) {
+    IR_ENFORCE(var_desc != nullptr, "[control flow] Output should not be null");
+    pir::Type translated_var_type =
+        type_translator[var_desc->GetType()](ctx_, *var_desc);
+    op_output_types.emplace_back(translated_var_type);
+  }
+  VLOG(4) << "[general op][conditional_block_grad] IfOp preparation end.";
+
+  pir::Operation* operation = pir::Operation::Create(
+      op_inputs, attribute_map, op_output_types, op_info, 2);
+
+  std::unordered_map<std::string, pir::Value> true_branch_map;
+
+  dest_block->push_back(operation);
+  VLOG(4) << "[general op][conditional_block_grad] IfOp creation end.";
+
+  if (cond_ops.TrueBlockId() != -1) {
+    const BlockDesc& true_sub_block =
+        legacy_program_->Block(cond_ops.TrueBlockId());
+    pir::Region& true_region = operation->region(0);
+    if (true_region.empty()) true_region.emplace_back();
+    // update start here
+    std::cerr << "process block id " << cond_ops.TrueBlockId() << std::endl;
+    TranslateBlock(
+        true_sub_block, 0, true_sub_block.OpSize(), true_region.front(), false);
+    // insert yied op here
+    auto cond_output_var_name = cond_ops.OutputVars();
+    std::vector<pir::Value> yeild_inputs;
+    for (auto& name : cond_output_var_name) {
+      std::cerr << "name " << name->Name() << "\t"
+                << param_map_.count(name->Name()) << std::endl;
+      yeild_inputs.emplace_back(param_map_[name->Name()].value);
+    }
+
+    auto true_branch_output_var_name = cond_ops.TrueBlockOutputVarNames();
+
+    for (size_t i = 0; i < true_branch_output_var_name.size(); ++i) {
+      std::cerr << "true map " << cond_output_var_name[i]->Name() << "\t"
+                << true_branch_output_var_name[i] << std::endl;
+      // true_branch_map[true_branch_output_var_name[i] ] = param_map_[
+      // cond_output_var_name[i]->Name() ].value;
+      true_branch_map[true_branch_output_var_name[i]] = operation->result(0);
+    }
+
+    pir::AttributeMap attribute_map;
+    auto yeild_info = ctx_->GetRegisteredOpInfo(pir::YieldOp::name());
+    pir::Operation* yeild_op =
+        pir::Operation::Create(yeild_inputs, attribute_map, {}, yeild_info);
+    true_region.front()->push_back(yeild_op);
+  }
+  VLOG(4)
+      << "[general op][conditional_block_grad] IfOp true block translate end.";
+
+  std::unordered_set<std::string> false_branch_output_var_name;
+  if (cond_ops.FalseBlockId() != -1) {
+    const BlockDesc& false_sub_block =
+        legacy_program_->Block(cond_ops.FalseBlockId());
+    pir::Region& false_region = operation->region(1);
+    if (false_region.empty()) false_region.emplace_back();
+    // update start here
+    std::cerr << "process false block id " << cond_ops.FalseBlockId()
+              << std::endl;
+    TranslateBlock(false_sub_block,
+                   0,
+                   false_sub_block.OpSize(),
+                   false_region.front(),
+                   false);
+    auto cond_output_var_name = cond_ops.OutputVars();
+    std::vector<pir::Value> yeild_inputs;
+    for (auto& name : cond_output_var_name) {
+      std::cerr << "name " << name->Name() << "\t"
+                << param_map_.count(name->Name()) << std::endl;
+      yeild_inputs.emplace_back(param_map_[name->Name()].value);
+    }
+
+    auto false_output_var_name = cond_ops.FalseBlockOutputVarNames();
+
+    for (auto& name : false_output_var_name) {
+      false_branch_output_var_name.insert(name);
+    }
+
+    pir::AttributeMap attribute_map;
+    auto yeild_info = ctx_->GetRegisteredOpInfo(pir::YieldOp::name());
+    pir::Operation* yeild_op =
+        pir::Operation::Create(yeild_inputs, attribute_map, {}, yeild_info);
+    false_region.front()->push_back(yeild_op);
+  }
+
+  for (size_t i = 0; i < output_vardescs.size(); i++) {
+    std::cerr << "var name " << output_vardescs[i]->Name() << std::endl;
+    param_map_[output_vardescs[i]->Name()] =
+        VariableDefiningInfo(operation->result(i));
+  }
+
+  // proess next ops
+
+  auto op_list = cond_ops.OpList();
+  for (size_t i = cond_ops.OutputSize() + 2; i < op_list.size(); ++i) {
+    if (op_list[i]->Type() == "sum") {
+      if (op_list[i]->Input("X").size() == 2) {
+        std::cerr << "skip sum !!" << std::endl;
+        continue;
+      }
+
+      // add sum op
+      std::cerr << "process sum" << std::endl;
+      auto input_names = op_list[i]->Input("X");
+      std::vector<pir::Value> sum_input;
+      for (size_t i = 0; i < input_names.size(); ++i) {
+        std::cerr << "input name " << input_names[i] << std::endl;
+        if (true_branch_map.count(input_names[i])) {
+          std::cerr << "true" << std::endl;
+          sum_input.push_back(true_branch_map.at(input_names[i]));
+        } else if (false_branch_output_var_name.count(input_names[i])) {
+          std::cerr << "falter" << std::endl;
+          continue;
+        } else {
+          assert(param_map_.count(input_names[i]));
+
+          sum_input.push_back(param_map_.at(input_names[i]).value);
+        }
+      }
+      std::cerr << "build here\n";
+
+      pir::Builder builder(ctx_, dest_block);
+
+      auto combine_op = builder.Build<pir::CombineOp>(sum_input);
+      auto add_n =
+          builder.Build<paddle::dialect::AddNWithKernelOp>(combine_op.out());
+
+      param_map_[op_list[i]->Output("Out")[0]] = add_n->result(0);
+    } else {
+      TranslateGeneralOperation(op_list[i], dest_block);
+    }
+  }
+  VLOG(4)
+      << "[general op][conditional_block_grad] IfOp false block translate end.";
+  VLOG(4) << "[general op][conditional_block_grad] IfOp translate end.";
+  return operation;
+}
+
 void ProgramTranslator::TranslateGeneralOperation(const OpDesc* src_op,
                                                   pir::Block* dest_block) {
   auto& op_translator = OpTranslator::instance();
@@ -336,7 +646,7 @@ void ProgramTranslator::TranslateGeneralOperation(const OpDesc* src_op,
     }
   }
   pir::Operation* operation = fn(ctx_, &param_map_, *src_op, dest_block);
-  VLOG(10) << "[op translated][special]" << operation << "end";
+  VLOG(10) << "[op translated][special] [" << operation->name() << "] end";
 }
 
 inline pir::Operation* InsertGetParamaterOp(pir::IrContext* ctx,
