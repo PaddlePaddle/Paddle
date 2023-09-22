@@ -14,6 +14,12 @@
 
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 
+#include "glog/logging.h"
+#include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+#include "paddle/phi/core/distributed/store/store_utils.h"
+
 namespace phi {
 namespace distributed {
 
@@ -27,28 +33,50 @@ inline void check_defined(const DistTensor& dist_tensor,
           method_hint));
 }
 
-// TODO(chenweihang): Reshard the input global value into local value
 DistTensor::DistTensor(const phi::DenseTensor& global_value,
                        const TensorDistAttr& dist_attr)
-    : dims_(global_value.dims()), dist_attr_(dist_attr), value_(global_value) {}
+    : dims_(global_value.dims()), dist_attr_(dist_attr), value_(global_value) {
+  // TODO(liyurui): This is a temporary solution. We need to support only infer
+  // meta when the input dense_tensor is empty.
+  // Support the value in DistTensor only has DenseTensor meta
+  // but without actual data. So we can visit its meta attr even if it is
+  // undefined.
+  if (IsCurRankInMesh(dist_attr.process_mesh())) {
+    if (value_.initialized() && !dist_attr.is_replicated()) {
+      // 1. create replicated global tensor
+      int64_t dims_size = global_value.dims().size();
+      std::vector<int64_t> dims_mapping(dims_size, -1);
+      dist_attr_.set_dims_mapping(dims_mapping);
+      if (dist_attr_.is_partial()) {
+        dist_attr_.clean_partial_status();
+      }
+      dist_attr_.set_dims_mapping(dims_mapping);
 
-DistTensor::DistTensor(const phi::DenseTensor& value,
-                       const DDim& dims,
-                       const TensorDistAttr& dist_attr)
-    : dims_(dims), dist_attr_(dist_attr), value_(value) {}
+      // 2. reshard from replicated to other state
+      auto* func = ChooseProperReshardFunction(*this, dist_attr);
+      auto* dev_ctx = DeviceContextPool::Instance().Get(global_value.place());
+      func->Eval(dev_ctx, *this, dist_attr, this);
+    }
+  }
+}
 
 DistTensor::DistTensor(const DDim& dims, const TensorDistAttr& dist_attr)
     : dims_(dims), dist_attr_(dist_attr) {}
 
-void DistTensor::set_dims(const DDim& dims) {
-  PADDLE_ENFORCE_EQ(
-      this->initialized(),
-      false,
-      phi::errors::Unimplemented(
-          "DistTensor's set_dims method can only be used when the `value` "
-          "is not initialized (generally used in the InferMeta and "
-          "InferSPMD stages)."));
+void DistTensor::unsafe_set_dims(const DDim& dims) {
+  if (this->initialized()) {
+    VLOG(3) << "You try to set an initialized DistTensor's global dims. "
+               "Make sure you are aware of where you change its dims.";
+  }
   dims_ = dims;
+}
+
+void DistTensor::unsafe_set_dist_attr(const TensorDistAttr& dist_attr) {
+  if (this->initialized()) {
+    VLOG(3) << "You try to set an initialized DistTensor's dist attr. "
+               "Make sure you are aware of where you change its dist attr.";
+  }
+  dist_attr_ = dist_attr;
 }
 
 int64_t DistTensor::numel() const {

@@ -15,10 +15,10 @@
 import os
 
 import paddle
+from paddle.base import unique_name
 from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
-from paddle.fluid import unique_name
 from paddle.framework import core
 from paddle.static import default_main_program, default_startup_program
 
@@ -123,6 +123,7 @@ class Collective:
         wait_port,
         has_multitrainer=False,
     ):
+        endpoints_str = ",".join(endpoints)
         nranks = len(endpoints)
         other_endpoints = endpoints[:]
         other_endpoints.remove(current_endpoint)
@@ -158,6 +159,7 @@ class Collective:
                         'nranks': nranks,
                         'rank': rank,
                         'ring_id': ring_id,
+                        'endpoints': endpoints_str,
                         self.op_role_key: OpRole.Forward,
                     },
                 )
@@ -198,6 +200,7 @@ class Collective:
                     'nranks': nranks,
                     'rank': rank,
                     'ring_id': ring_id,
+                    'endpoints': endpoints_str,
                     self.op_role_key: OpRole.Forward,
                 },
             )
@@ -229,6 +232,7 @@ class Collective:
                     'nranks': nranks,
                     'rank': rank,
                     'ring_id': ring_id,
+                    'endpoints': endpoints_str,
                     self.op_role_key: OpRole.Forward,
                 },
             )

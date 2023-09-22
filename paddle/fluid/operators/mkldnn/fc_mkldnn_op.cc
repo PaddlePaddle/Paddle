@@ -284,7 +284,13 @@ class FCMKLDNNHandler
 
   std::shared_ptr<dnnl::memory> AcquireWeightsMemoryWithReorder(
       const phi::DenseTensor* weights, const std::vector<float>& scale_data) {
-    const std::string weights_key = this->memory_key_ + "@weights";
+    const std::string weights_base_key = this->memory_key_ + "@weights";
+    std::string weights_key;
+    weights_key.reserve(128);
+    weights_key = phi::funcs::ExtendKeyWithThreadInfoIfNeeded(
+        dev_ctx_,
+        phi::funcs::CreateKey(
+            dev_ctx_, weights_base_key, this->fwd_pd_->weights_desc()));
     auto memory_p = std::static_pointer_cast<dnnl::memory>(
         this->dev_ctx_.GetBlob(weights_key));
 
@@ -353,7 +359,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
     bool fuse_relu = ctx.Attr<std::string>("activation_type") == "relu";
 
     IF_CHANGE_FC_TW_TYPENAME((std::is_same<T_in, uint8_t>::value), ([&] {
-                               if (force_fp32_output) {
+                               if (force_fp32_output) {  // NOLINT
                                  this->RunKernel<float, T_w>(ctx);
                                } else if (phi::funcs::is_int8<T_in>()) {
                                  if (fuse_relu) {
@@ -410,7 +416,8 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
         phi::funcs::CreateKey(dev_ctx,
                               ctx.InputName("Input"),
                               ctx.InputName("W"),
-                              phi::vectorize(x->dims())));
+                              phi::vectorize(x->dims()),
+                              phi::vectorize(weights->dims())));
 
     auto inner_product_cache =
         std::static_pointer_cast<InnerProductCache>(dev_ctx.GetBlob(cache_key));

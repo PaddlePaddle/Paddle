@@ -207,14 +207,14 @@ void Conv1dXPUInferMeta(const MetaTensor& x,
           groups));
 
   std::vector<int64_t> out_shape({in_dims[0], filter_dims[0]});
-  out_shape.push_back(ConvOutSize(in_dims[2],
-                                  filter_dims[2],
+  out_shape.push_back(ConvOutSize(static_cast<int>(in_dims[2]),
+                                  static_cast<int>(filter_dims[2]),
                                   dilations,
                                   paddings[0],
                                   paddings[1],
                                   strides));
   // set output and output max dims
-  out->set_dims(DDim(out_shape.data(), out_shape.size()));
+  out->set_dims(DDim(out_shape.data(), static_cast<int>(out_shape.size())));
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
   out_max->set_dims(phi::make_ddim({6}));
@@ -264,9 +264,9 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
           filter_dims.size()));
 
   const auto input_channels = in_dims[1];
-  int stride_size = strides.size();
+  int stride_size = static_cast<int>(strides.size());
   int in_sub_stride_size = in_dims.size() - stride_size;
-  int dilation_size = dilations.size();
+  int dilation_size = static_cast<int>(dilations.size());
   PADDLE_ENFORCE_EQ(
       in_dims.size(),
       strides.size() + 2U,
@@ -333,16 +333,16 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
                                 ksize);
 
   std::vector<int64_t> out_shape({in_dims[0], filter_dims[0]});
-  for (size_t i = 0; i < strides.size(); ++i) {
-    out_shape.push_back(ConvOutSize(in_dims[i + 2],
-                                    filter_dims[i + 2],
+  for (int i = 0; i < static_cast<int>(strides.size()); ++i) {
+    out_shape.push_back(ConvOutSize(static_cast<int>(in_dims[i + 2]),
+                                    static_cast<int>(filter_dims[i + 2]),
                                     dilations[i],
                                     paddings_vec[i * 2],
                                     paddings_vec[i * 2 + 1],
                                     strides[i]));
   }
   // set output and output max dims
-  out->set_dims(DDim(out_shape.data(), out_shape.size()));
+  out->set_dims(DDim(out_shape.data(), static_cast<int>(out_shape.size())));
   out_max->set_dims(phi::make_ddim({6}));
   out->set_dtype(out_dtype);
 }
@@ -388,10 +388,10 @@ void FcXPUInferMeta(const MetaTensor& x,
                     MetaTensor* out_max) {
   std::vector<int> out_shape(in_num_col_dims + 1);
   for (int i = 0; i < in_num_col_dims; i++) {
-    out_shape[i] = x.dims()[i];
+    out_shape[i] = static_cast<int>(x.dims()[i]);
   }
-  out_shape[in_num_col_dims] = w.dims()[0];
-  out->set_dims(DDim(out_shape.data(), out_shape.size()));
+  out_shape[in_num_col_dims] = static_cast<int>(w.dims()[0]);
+  out->set_dims(DDim(out_shape.data(), static_cast<int>(out_shape.size())));
   out->set_dtype(out_dtype);
   out->set_layout(x.layout());
   out_max->set_dims(phi::make_ddim({6}));
@@ -446,6 +446,190 @@ void MultiEncoderXPUInferMeta(
   }
 }
 
+void FusedGemmEpilogueInferMeta(const MetaTensor& x,
+                                const MetaTensor& y,
+                                const MetaTensor& bias,
+                                bool trans_x,
+                                bool trans_y,
+                                const std::string& activation,
+                                MetaTensor* out,
+                                MetaTensor* reserve_space) {
+  const auto& x_dims = x.dims();
+  const auto& y_dims = y.dims();
+  const auto& bias_dims = bias.dims();
+
+  PADDLE_ENFORCE_EQ(y_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The Input tensor Y's dimension of FusedGemmEpilogueOp "
+                        " should be 2, but got %d.",
+                        y_dims.size()));
+
+  PADDLE_ENFORCE_GE(x_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The Input tensor X's dimension of FusedGemmEpilogueOp "
+                        " should be >= 2, but got %d.",
+                        x_dims.size()));
+
+  PADDLE_ENFORCE_EQ(
+      bias_dims.size(),
+      1,
+      phi::errors::InvalidArgument(
+          "The Input tensor bias's dimension of FusedGemmEpilogueOp "
+          " should be == 1, but got %d.",
+          bias_dims.size()));
+
+  PADDLE_ENFORCE_EQ(bias_dims[0],
+                    trans_y ? y_dims[0] : y_dims[1],
+                    phi::errors::InvalidArgument(
+                        "The Input tensor bias's dimension 0"
+                        " should be == Y[-1], but got bias's shape = [%s] "
+                        "and Y's shape = [%s]",
+                        bias_dims,
+                        y_dims));
+
+  auto x_mat_dims = phi::flatten_to_2d(x_dims, trans_x ? 1 : x_dims.size() - 1);
+
+  int K_from_x = trans_x ? x_mat_dims[0] : x_mat_dims[1];
+  int K_from_y = trans_y ? y_dims[1] : y_dims[0];
+
+  PADDLE_ENFORCE_EQ(
+      K_from_x,
+      K_from_y,
+      phi::errors::InvalidArgument(
+          "The last dimension of X should be equal with Y's first dimension."
+          "But received X[-1] = [%d], Y[0] = [%d].",
+          K_from_x,
+          K_from_y));
+
+  std::vector<int64_t> out_dims;
+  out_dims.reserve(static_cast<size_t>(x_dims.size()));
+  if (trans_x) {
+    for (int i = 1; i < x_dims.size(); ++i) out_dims.push_back(x_dims[i]);
+  } else {
+    for (int i = 0; i < x_dims.size() - 1; ++i) out_dims.push_back(x_dims[i]);
+  }
+
+  if (trans_y) {
+    out_dims.push_back(y_dims[0]);
+  } else {
+    out_dims.push_back(y_dims[1]);
+  }
+  out->set_dims(phi::make_ddim(out_dims));
+  out->set_dtype(x.dtype());
+
+  if (reserve_space) {
+    reserve_space->set_dims(phi::make_ddim(out_dims));
+    reserve_space->set_dtype(x.dtype());
+    if (activation == "none") {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "The ReserveSpace would not be used when activation = \"none\""));
+    } else {
+      int min_size_of_n = activation == "relu" ? 128 : 8;
+      int N_size = trans_y ? y_dims[0] : y_dims[1];
+      PADDLE_ENFORCE_EQ(N_size % min_size_of_n,
+                        0,
+                        phi::errors::InvalidArgument(
+                            "The output dimension N (X(MxK) * Y(KxN) = C(MxN)) "
+                            "should be multiple of %d when auxiliary_key given "
+                            "and activation=%s, but got N = %d.",
+                            min_size_of_n,
+                            activation,
+                            N_size));
+    }
+  }
+}
+
+void FusedGemmEpilogueGradInferMeta(const MetaTensor& x,
+                                    const MetaTensor& y,
+                                    const MetaTensor& reserve_space,
+                                    const MetaTensor& out_grad,
+                                    bool trans_x,
+                                    bool trans_y,
+                                    const std::string& activation_grad,
+                                    MetaTensor* x_grad,
+                                    MetaTensor* y_grad,
+                                    MetaTensor* bias_grad) {
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  auto dout_dims = out_grad.dims();
+
+  PADDLE_ENFORCE_GE(
+      dout_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The Input tensor DOut's dimension of FusedGemmEpilogueGradOp "
+          " should be >= 2, but got %d.",
+          dout_dims.size()));
+
+  PADDLE_ENFORCE_EQ(
+      y_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The Input tensor Y's dimension of FusedGemmEpilogueGradOp "
+          " should be 2, but got %d.",
+          y_dims.size()));
+
+  PADDLE_ENFORCE_GE(
+      x_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The Input tensor X's dimension of FusedGemmEpilogueGradOp "
+          " should be >= 2, but got %d.",
+          x_dims.size()));
+
+  PADDLE_ENFORCE_EQ(
+      dout_dims.size(),
+      x_dims.size(),
+      phi::errors::InvalidArgument(
+          "The Input tensor DOut's and X's dimension of "
+          "FusedGemmEpilogueGradOp "
+          " should be the same, but got DOut's dim = %d and X's = %d.",
+          dout_dims.size(),
+          x_dims.size()));
+
+  auto dout_mat_dims = phi::flatten_to_2d(dout_dims, dout_dims.size() - 1);
+  auto x_mat_dims = phi::flatten_to_2d(x_dims, x_dims.size() - 1);
+
+  PADDLE_ENFORCE_EQ(
+      dout_mat_dims[1],
+      trans_y ? y_dims[0] : y_dims[1],
+      phi::errors::InvalidArgument(
+          "The last dimension of DOut should be equal with Y's last"
+          "dimension. But received DOut[-1] = [%d], Y[1] = [%d].",
+          dout_mat_dims[1],
+          y_dims[1]));
+
+  PADDLE_ENFORCE_EQ(
+      dout_mat_dims[0],
+      trans_x ? x_mat_dims[1] : x_mat_dims[0],
+      phi::errors::InvalidArgument(
+          "The first dimension of DOut should be equal with X's first"
+          "dimension. But received DOut[0] = [%d], Y[0] = [%d].",
+          dout_mat_dims[0],
+          x_mat_dims[0]));
+
+  if (activation_grad != "none" && !reserve_space) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The ReserveSpace should not be empty. "
+        "when activation == {relu_grad, gelu_grad}."));
+  }
+
+  if (x_grad) {
+    x_grad->set_dims(x_dims);
+    x_grad->set_dtype(x.dtype());
+  }
+  y_grad->set_dims(y_dims);
+  y_grad->set_dtype(y.dtype());
+
+  if (bias_grad) {
+    int64_t dbias_dim = trans_y ? y_dims[0] : y_dims[1];
+    bias_grad->set_dims(phi::make_ddim({dbias_dim}));
+    bias_grad->set_dtype(y.dtype());
+  }
+}
+
 void FusedMultiTransformerXpuInferMeta(
     const MetaTensor& x,
     const std::vector<const MetaTensor*>& ln_scale,
@@ -466,11 +650,11 @@ void FusedMultiTransformerXpuInferMeta(
     const std::vector<const MetaTensor*>& ffn2_bias,
     const std::vector<const MetaTensor*>& cache_kv,
     const std::vector<const MetaTensor*>& pre_caches,
-    const std::vector<const MetaTensor*>& rotary_pos_emb,
-    const std::vector<const MetaTensor*>& time_step,
-    const std::vector<const MetaTensor*>& seq_lengths,
-    const std::vector<const MetaTensor*>& src_mask,
-    const std::vector<const MetaTensor*>& gather_index,
+    const MetaTensor& rotary_pos_emb,
+    const MetaTensor& time_step,
+    const MetaTensor& seq_lengths,
+    const MetaTensor& src_mask,
+    const MetaTensor& gather_index,
     bool pre_layer_norm,
     int rotary_emb_dims,
     float epsilon,
@@ -671,7 +855,7 @@ void ConvTransposeXPUInferMeta(const MetaTensor& x,
           filter_dims,
           filter_dims.size()));
 
-  int stride_size = strides.size();
+  int stride_size = static_cast<int>(strides.size());
   for (int i = 0; i < stride_size; ++i) {
     PADDLE_ENFORCE_GT(
         strides[i],
@@ -744,7 +928,7 @@ void ConvTransposeXPUInferMeta(const MetaTensor& x,
     output_shape.push_back(filter_dims[1] * groups);
   }
   const int offset = (data_format != "NHWC" ? 2 : 1);
-  for (size_t i = 0; i < strides.size(); ++i) {
+  for (int i = 0; i < static_cast<int>(strides.size()); ++i) {
     auto filter_extent = dilations_[i] * (filter_dims[i + 2] - 1) + 1;
     auto infer_shape = (x_dims[i + offset] > 0)
                            ? (x_dims[i + offset] - 1) * strides[i] -
@@ -819,6 +1003,283 @@ void FastLayernormXPUInferMeta(const MetaTensor& x,
   out->set_dims(x.dims());
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
+}
+
+void BNActXPUInferMeta(const MetaTensor& x,
+                       const MetaTensor& mean,
+                       const MetaTensor& variance,
+                       const MetaTensor& scale,
+                       const MetaTensor& bias,
+                       float momentum,
+                       float epsilon,
+                       const std::string& data_layout,
+                       int act_type,
+                       MetaTensor* y,
+                       MetaConfig config) {
+  const auto x_dims = x.dims();
+  for (int i = 0; i < x_dims.size(); i++) {
+    PADDLE_ENFORCE_EQ(
+        (x_dims[i] == -1) || (x_dims[i] > 0),
+        true,
+        phi::errors::InvalidArgument(
+            "Each dimension of input tensor is expected to be -1 or a "
+            "positive number, but received %d. Input's shape is [%s].",
+            x_dims[i],
+            x_dims));
+  }
+
+  const DataLayout data_layout_str = phi::StringToDataLayout(data_layout);
+
+  PADDLE_ENFORCE_GE(
+      x_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "ShapeError: the dimension of input "
+          "X must greater than or equal to 2. But received: the shape of input "
+          "X = [%s], the dimension of input X =[%d]",
+          x_dims,
+          x_dims.size()));
+  PADDLE_ENFORCE_LE(
+      x_dims.size(),
+      5,
+      phi::errors::InvalidArgument(
+          "ShapeError: the dimension of input X "
+          "must smaller than or equal to 5. But received: the shape of input X "
+          "= [%s], the dimension of input X = [%d]",
+          x_dims,
+          x_dims.size()));
+
+  const int64_t C = ((config.is_run_mkldnn_kernel == true) ||
+                             (data_layout_str == DataLayout::kNCHW)
+                         ? x_dims[1]
+                         : x_dims[x_dims.size() - 1]);
+  auto scale_dim = scale.dims();
+  auto bias_dim = bias.dims();
+
+  PADDLE_ENFORCE_EQ(
+      scale_dim.size(),
+      1UL,
+      phi::errors::InvalidArgument(
+          "ShapeError: the dimension of scale must equal to 1."
+          "But received: the shape of scale is [%s], the dimension "
+          "of scale is [%d]",
+          scale_dim,
+          scale_dim.size()));
+  PADDLE_ENFORCE_EQ(bias_dim.size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "ShapeError: the dimension of bias must equal to 1."
+                        "But received: the shape of bias is [%s],the dimension "
+                        "of bias is [%d]",
+                        bias_dim,
+                        bias_dim.size()));
+
+  bool check = true;
+  if ((!config.is_runtime) &&
+      (phi::product(scale_dim) <= 0 || phi::product(bias_dim) <= 0)) {
+    check = false;
+  }
+
+  if (check) {
+    PADDLE_ENFORCE_EQ(scale_dim[0],
+                      C,
+                      phi::errors::InvalidArgument(
+                          "ShapeError: the shape of scale must equal to [%d]"
+                          "But received: the shape of scale is [%d]",
+                          C,
+                          scale_dim[0]));
+    PADDLE_ENFORCE_EQ(bias_dim[0],
+                      C,
+                      phi::errors::InvalidArgument(
+                          "ShapeError: the shape of bias must equal to [%d]"
+                          "But received: the shape of bias is [%d]",
+                          C,
+                          bias_dim[0]));
+  }
+  y->set_dims(x_dims);
+  y->share_lod(x);
+  y->set_dtype(x.dtype());
+}
+void AddCMulXPUInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         const MetaTensor& w,
+                         MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+}
+
+void LayerNormActXPUInferMeta(const MetaTensor& x,
+                              const MetaTensor& scale,
+                              const MetaTensor& bias,
+                              int begin_norm_axis,
+                              float epsilon,
+                              int act_type,
+                              float act_param,
+                              MetaTensor* y) {
+  y->set_dims(x.dims());
+  //   y->share_lod(x);
+  y->set_dtype(x.dtype());
+  y->set_layout(x.layout());
+}
+
+void FusedScaleBiasReluConvBnstatsInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& w,
+    const MetaTensor& scale,
+    const MetaTensor& bias,
+    const MetaTensor& bn_scale,
+    const MetaTensor& bn_bias,
+    const MetaTensor& input_running_mean,
+    const MetaTensor& input_running_var,
+    const std::vector<int>& paddings,
+    const std::vector<int>& dilations,
+    const std::vector<int>& strides,
+    const std::string& padding_algorithm,
+    int groups,
+    const std::string& data_format,
+    float momentum,
+    float epsilon,
+    bool fuse_prologue,
+    bool exhaustive_search,
+    int64_t accumulation_count,
+    MetaTensor* out,
+    MetaTensor* out_running_mean,
+    MetaTensor* out_running_var,
+    MetaTensor* saved_mean,
+    MetaTensor* saved_var,
+    MetaTensor* eq_scale,
+    MetaTensor* eq_bias) {
+  auto in_dims = x.dims();
+  auto filter_dims = w.dims();
+  // do some checks
+  PADDLE_ENFORCE_EQ(
+      in_dims.size(),
+      4,
+      phi::errors::InvalidArgument(
+          "The input of Op(FusedScaleBiasReluConvBnstats) should be a 4-D "
+          "Tensor. But "
+          "received: input's dimension is %u, input's shape is [%s].",
+          in_dims.size(),
+          in_dims));
+
+  PADDLE_ENFORCE_EQ(
+      in_dims.size(),
+      filter_dims.size(),
+      phi::errors::InvalidArgument(
+          "The input's dimension and filter's dimension of "
+          "Op(FusedScaleBiasReluConvBnstats) should be equal. But received: "
+          "the input's"
+          " shape is [%s], "
+          "the input's dimension is %d; the filter's shape is [%s],  "
+          "the filter's dimension is %d.",
+          in_dims,
+          in_dims.size(),
+          filter_dims,
+          filter_dims.size()));
+
+  // Check if data format is NHWC
+  PADDLE_ENFORCE_EQ(
+      data_format,
+      "NHWC",
+      phi::errors::InvalidArgument(
+          "Operator(FusedScaleBiasReluConvBnstats) only supports data format "
+          "of "
+          "channel last (NHWC) now. But recieved: data_format = '%s'.",
+          data_format));
+
+  PADDLE_ENFORCE_EQ(
+      groups,
+      1,
+      phi::errors::InvalidArgument("Expect group to be 1, got %d.", groups));
+
+  const auto input_channels = in_dims[in_dims.size() - 1];
+  int dilation_size = static_cast<int>(dilations.size());
+  for (int i = 0; i < dilation_size; ++i) {
+    PADDLE_ENFORCE_GT(
+        dilations[i],
+        0,
+        phi::errors::InvalidArgument(
+            "The dilation of Op(Conv) should be larget than 0, but received "
+            "dilation is %d.",
+            dilations[i]));
+  }
+
+  PADDLE_ENFORCE_EQ(
+      input_channels,
+      filter_dims[1] * groups,
+      phi::errors::InvalidArgument(
+          "The number of input's channels should be equal to filter's channels "
+          "* groups for Op(FusedScaleBiasReluConvBnstats). But received: the "
+          "input's"
+          " channels is %d, "
+          "the input's shape is [%s]; the filter's channels is %d, the "
+          "filter's shape is [%s]; the groups is %d. ",
+          input_channels,
+          in_dims,
+          filter_dims[1],
+          filter_dims,
+          groups));
+
+  // update paddings and dilations accoring to padding_algorithm
+  std::vector<int> paddings_vec = paddings;
+  std::vector<int> dilations_vec = dilations;
+  // get "HW" from "NHWC"
+  DDim in_data_dims = phi::slice_ddim(in_dims, 1, in_dims.size() - 1);
+  DDim filter_data_dims = phi::slice_ddim(filter_dims, 2, filter_dims.size());
+  std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
+  phi::UpdatePaddingAndDilation(&paddings_vec,
+                                &dilations_vec,
+                                padding_algorithm,
+                                in_data_dims,
+                                strides,
+                                ksize);
+
+  std::vector<int64_t> out_shape({in_dims[0]});
+  for (int i = 0; i < static_cast<int>(strides.size()); ++i) {
+    out_shape.push_back(ConvOutSize(static_cast<int>(in_dims[i + 1]),
+                                    static_cast<int>(filter_dims[i + 2]),
+                                    dilations[i],
+                                    paddings_vec[i * 2],
+                                    paddings_vec[i * 2 + 1],
+                                    strides[i]));
+  }
+  out_shape.push_back(filter_dims[0]);
+  // make shape for other outputs
+  auto c_dims = phi::make_ddim({filter_dims[0]});
+  // set output and output max dims
+  out->set_dims(DDim(out_shape.data(), static_cast<int>(out_shape.size())));
+  out_running_mean->set_dims(c_dims);
+  out_running_var->set_dims(c_dims);
+  saved_mean->set_dims(c_dims);
+  saved_var->set_dims(c_dims);
+  eq_scale->set_dims(c_dims);
+  eq_bias->set_dims(c_dims);
+}
+
+void SqueezeExcitationInferMeta(const MetaTensor& x,
+                                const MetaTensor& filter,
+                                const MetaTensor& filter_max,
+                                const MetaTensor& bias,
+                                const MetaTensor& branch,
+                                const std::vector<int>& act_type,
+                                const std::vector<float>& act_param,
+                                const std::vector<int>& filter_dims,
+                                MetaTensor* out) {
+  auto in_dims = x.dims();
+  // do some checks
+  PADDLE_ENFORCE_EQ(
+      in_dims.size(),
+      4,
+      phi::errors::InvalidArgument(
+          "The input should be a 4-D Tensor. But "
+          "received: input's dimension is %u, input's shape is [%s].",
+          in_dims.size(),
+          in_dims));
+  std::vector<int64_t> out_shape(
+      {in_dims[0], filter_dims[1], in_dims[2], in_dims[3]});
+  // set output dims
+  out->set_dims(DDim(out_shape.data(), static_cast<int>(out_shape.size())));
 }
 
 }  // namespace phi

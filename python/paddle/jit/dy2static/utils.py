@@ -31,11 +31,11 @@ import astor
 import numpy as np
 
 import paddle
-from paddle import fluid  # noqa: F401
-from paddle.fluid import backward, core, framework, unique_name
-from paddle.fluid.data_feeder import convert_dtype
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+from paddle import base  # noqa: F401
+from paddle.base import backward, core, framework, unique_name
+from paddle.base.data_feeder import convert_dtype
+from paddle.base.layer_helper import LayerHelper
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.utils import gast
 
 from .ast_utils import ast_to_source_code
@@ -326,7 +326,6 @@ def _delete_keywords_from(node):
     full_args_name = full_args[0]
 
     node.keywords = [k for k in node.keywords if k.arg in full_args_name]
-    return
 
 
 def to_static_api(dygraph_class):
@@ -334,8 +333,8 @@ def to_static_api(dygraph_class):
         return dygraph_class_to_static_api[dygraph_class]
     else:
         raise NotImplementedError(
-            "Paddle dygraph API {} cannot be converted "
-            "to static graph at present.".format(dygraph_class)
+            f"Paddle dygraph API {dygraph_class} cannot be converted "
+            "to static graph at present."
         )
 
 
@@ -361,7 +360,6 @@ def _add_keywords_to(node, dygraph_api_name):
         for ast_keyword in node.keywords:
             if ast_keyword.arg == "input":
                 ast_keyword.arg = "x"
-    return
 
 
 def to_static_ast(node, class_node):
@@ -376,7 +374,7 @@ def to_static_ast(node, class_node):
             attr='layers',
             ctx=gast.Load(),
             value=gast.Name(
-                ctx=gast.Load(), id='fluid', annotation=None, type_comment=None
+                ctx=gast.Load(), id='base', annotation=None, type_comment=None
             ),
         ),
     )
@@ -609,7 +607,7 @@ def _inject_import_statements():
     import_statements = [
         "import paddle",
         "from paddle import Tensor",
-        "import paddle.fluid as fluid",
+        "import paddle.base as base",
         "import paddle.jit.dy2static as _jst",
         "from typing import *",
         "import numpy as np",
@@ -760,7 +758,6 @@ class IsControlFlowVisitor(gast.NodeVisitor):
     def _visit_If(self, node):
         assert isinstance(node, gast.If)
         self.visit(node.test)
-        return
 
     def _visit_For(self, node):
         assert isinstance(node, gast.For)
@@ -801,7 +798,6 @@ class IsControlFlowVisitor(gast.NodeVisitor):
         for child_node in gast.walk(node):
             if isinstance(child_node, (gast.Continue, gast.Break)):
                 self._visit_break_continue(child_node)
-        return
 
     def _visit_break_continue(self, node):
         assert isinstance(node, (gast.Break, gast.Continue))
@@ -1307,12 +1303,10 @@ def create_get_args_node(names):
     """
 
     def empty_node():
-        func_def = """
-        def {func_name}():
+        func_def = f"""
+        def {unique_name.generate(GET_ARGS_FUNC_PREFIX)}():
             return
-        """.format(
-            func_name=unique_name.generate(GET_ARGS_FUNC_PREFIX)
-        )
+        """
         return gast.parse(textwrap.dedent(func_def)).body[0]
 
     assert isinstance(names, (list, tuple))
@@ -1346,12 +1340,10 @@ def create_set_args_node(names):
     """
 
     def empty_node():
-        func_def = """
-        def {func_name}({args}):
+        func_def = f"""
+        def {unique_name.generate(SET_ARGS_FUNC_PREFIX)}({ARGS_NAME}):
             pass
-        """.format(
-            func_name=unique_name.generate(SET_ARGS_FUNC_PREFIX), args=ARGS_NAME
-        )
+        """
         return gast.parse(textwrap.dedent(func_def)).body[0]
 
     assert isinstance(names, (list, tuple))
@@ -1420,9 +1412,7 @@ class GetterSetterHelper:
         for n in names:
             assert (
                 n in self.name2id
-            ), "the name `{}` not in name union set`{}`.".format(
-                n, self.name2id.keys()
-            )
+            ), f"the name `{n}` not in name union set`{self.name2id.keys()}`."
         return tuple(vars[self.name2id[n]] for n in names)
 
     def set(self, names, values):
@@ -1436,9 +1426,7 @@ class GetterSetterHelper:
         for n in names:
             assert (
                 n in self.name2id
-            ), "the name `{}` not in name union set`{}`.".format(
-                n, self.name2id.keys()
-            )
+            ), f"the name `{n}` not in name union set`{self.name2id.keys()}`."
         vars = list(vars)
         indices = [self.name2id[n] for n in names]
         for i, v in zip(indices, values):
@@ -1527,3 +1515,16 @@ def construct_grad_names(grad_info_map, x_vars, param_vars, out_vars):
     out_grad_vars = backward._get_grad_vars(grad_info_map, out_vars)
     grad_var_names['out'] = list(map(fn, out_grad_vars))
     return grad_var_names
+
+
+@signature_safe_contextmanager
+def tensor_name_guard(tensors, names):
+    try:
+        assert len(tensors) == len(names)
+        origin_names = [t.name for t in tensors]
+        for t, name in zip(tensors, names):
+            t.name = name
+        yield
+    finally:
+        for t, name in zip(tensors, origin_names):
+            t.name = name

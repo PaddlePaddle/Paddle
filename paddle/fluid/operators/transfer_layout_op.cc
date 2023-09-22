@@ -118,7 +118,6 @@ class TransferLayoutOpProtoMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 DECLARE_INFER_SHAPE_FUNCTOR(transfer_layout,
                             TransferLayoutInferShapeFunctor,
                             PD_INFER_META(phi::TransferLayoutInferMeta));

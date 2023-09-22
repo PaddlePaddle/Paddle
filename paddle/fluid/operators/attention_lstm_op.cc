@@ -51,7 +51,7 @@ void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
       ctx->HasOutput("LSTMOUT"), "Output", "LSTMOUT", "AttentionLstm");
 
   auto x_dims = ctx->GetInputDim("X");
-  const int M = x_dims[1];
+  const int M = static_cast<int>(x_dims[1]);
   PADDLE_ENFORCE_EQ(x_dims.size(),
                     2,
                     platform::errors::InvalidArgument(
@@ -59,7 +59,7 @@ void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
                         x_dims.size()));
 
   auto w_dims = ctx->GetInputDim("LSTMWeight");
-  const int D = w_dims[1] / 4;
+  const int D = static_cast<int>(w_dims[1] / 4);
   PADDLE_ENFORCE_EQ(
       w_dims.size(),
       2,
@@ -364,18 +364,18 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
 
     // some shape should be reshape here since infershape can not get lod info
     auto x_lod = x->lod();
-    const int N = x_lod[0].size() - 1;  // batch size
-    auto x_dims = x->dims();            // T x M
-    auto w_dims = lstm_w->dims();       // (D+M) x 4D
-    const int total_T = x_dims[0];
-    const int M = x_dims[1];      // x frame size
-    const int D = w_dims[1] / 4;  // gate frame size
-    const int D2 = D * 2;
-    const int D3 = D * 3;
-    const int D4 = w_dims[1];
-    int max_seq_len = x_lod[0][1];
+    const int N = static_cast<int>(x_lod[0].size() - 1);  // batch size
+    auto x_dims = x->dims();                              // T x M
+    auto w_dims = lstm_w->dims();                         // (D+M) x 4D
+    const int total_T = static_cast<int>(x_dims[0]);
+    const int M = static_cast<int>(x_dims[1]);      // x frame size
+    const int D = static_cast<int>(w_dims[1] / 4);  // gate frame size
+    const int D2 = static_cast<int>(D * 2);
+    const int D3 = static_cast<int>(D * 3);
+    const int D4 = static_cast<int>(w_dims[1]);
+    int max_seq_len = static_cast<int>(x_lod[0][1]);
     for (int i = 1; i < N; ++i) {
-      int len = x_lod[0][i + 1] - x_lod[0][i];
+      int len = static_cast<int>(x_lod[0][i + 1] - x_lod[0][i]);
       max_seq_len = max_seq_len < len ? len : max_seq_len;
     }
     PADDLE_ENFORCE_EQ(
@@ -443,7 +443,7 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
     T* cur_cell_out_data = cell_out_data;
     T* cur_hidden_out_data = hidden_out_data;
     for (int i = 0; i < N; ++i) {
-      int seq_len = x_lod[0][i + 1] - x_lod[0][i];
+      int seq_len = static_cast<int>(x_lod[0][i + 1] - x_lod[0][i]);
       prev_cell_data = c0_data + i * D;
       prev_hidden_data = h0_data ? h0_data + i * D : NULL;
       for (int step = 0; step < seq_len; ++step) {

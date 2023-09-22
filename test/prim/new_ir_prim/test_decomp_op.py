@@ -15,13 +15,15 @@
 import unittest
 
 import paddle
-from paddle import ir
+from paddle import pir
 from paddle.decomposition import decompose
+from paddle.framework import core
 
 paddle.enable_static()
 
 
 def get_ir_program():
+    paddle.enable_static()
     x = paddle.randn([4, 4])
     main_program, start_program = (
         paddle.static.Program(),
@@ -34,35 +36,39 @@ def get_ir_program():
         y_s = paddle.add(x_s, y_s)
         y_s = paddle.mean(y_s)
         y_s = paddle.tanh(y_s)
-    newir_program = ir.translate_to_new_ir(main_program.desc)
+    newir_program = pir.translate_to_new_ir(main_program.desc)
     return newir_program
 
 
 class TestBuildOp(unittest.TestCase):
     def test_build_op(self):
         newir_program = get_ir_program()
-        y = newir_program.block().ops[-2].results()
+        y = newir_program.global_block().ops[-2].results()
         orig_shape = y[0].shape
-        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
-        y_new = decompose(newir_program, y)
-        new_shape = y_new[0].shape
-        assert (
-            orig_shape == new_shape
-        ), f"Original shape {orig_shape} is not equal to new shape {new_shape}"
-        op_name_list = [op.name() for op in newir_program.block().ops]
-        self.assertEqual(
-            op_name_list,
-            [
-                'pd.data',
-                'pd.matmul',
-                'pd.add',
-                'pd.full_int_array',
-                'pd.sum',
-                'pd.full',
-                'pd.divide',
-                'pd.tanh',
-            ],
-        )
+        with paddle.pir_utils.IrGuard():
+            core._set_prim_forward_enabled(True)
+            y_new = decompose(newir_program, y)
+            core._set_prim_forward_enabled(False)
+            new_shape = y_new[0].shape
+            assert (
+                orig_shape == new_shape
+            ), f"Original shape {orig_shape} is not equal to new shape {new_shape}"
+            op_name_list = [
+                op.name() for op in newir_program.global_block().ops
+            ]
+            self.assertEqual(
+                op_name_list,
+                [
+                    'pd_op.data',
+                    'pd_op.matmul',
+                    'pd_op.add',
+                    'pd_op.full_int_array',
+                    'pd_op.sum',
+                    'pd_op.full',
+                    'pd_op.divide',
+                    'pd_op.tanh',
+                ],
+            )
 
 
 if __name__ == "__main__":

@@ -18,8 +18,8 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid, static
-from paddle.fluid import backward
+from paddle import base, static
+from paddle.base import backward
 
 
 class BackwardNet:
@@ -59,16 +59,16 @@ class TestBackward(unittest.TestCase):
 
     def _check_all(self, net):
         place = (
-            fluid.CUDAPlace(0)
-            if fluid.core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
 
-        main = fluid.Program()
-        startup = fluid.Program()
+        main = base.Program()
+        startup = base.Program()
 
-        with fluid.program_guard(main, startup):
+        with base.program_guard(main, startup):
             loss = net.build_model()
             self._check_backward(loss, main)
 
@@ -96,11 +96,11 @@ class TestBackward(unittest.TestCase):
         # update no_grad_dict
         block_no_grad_set.update(no_grad_vars)
         no_grad_dict[global_block_idx].update(
-            list(map(fluid.backward._append_grad_suffix_, block_no_grad_set))
+            list(map(base.backward._append_grad_suffix_, block_no_grad_set))
         )
 
     def _check_params_grad(self, loss, parameter_list=None, no_grad_set=None):
-        params_grads = fluid.backward.append_backward(
+        params_grads = base.backward.append_backward(
             loss, parameter_list, no_grad_set
         )
         params_names = {
@@ -111,7 +111,7 @@ class TestBackward(unittest.TestCase):
         return params_grads
 
     def _check_stop_gradient(self, program):
-        no_grad_dict = fluid.backward._get_stop_gradients_(program)
+        no_grad_dict = base.backward._get_stop_gradients_(program)
         if no_grad_dict is not None and isinstance(no_grad_dict, dict):
             self.assertSetEqual(
                 no_grad_dict[self.global_block_idx],
@@ -126,11 +126,11 @@ class TestBackward(unittest.TestCase):
         else:
             block_no_grad_set = set(
                 map(
-                    fluid.backward._strip_grad_suffix_,
+                    base.backward._strip_grad_suffix_,
                     no_grad_dict[self.global_block_idx],
                 )
             )
-        op_path = fluid.backward._find_op_path_(
+        op_path = base.backward._find_op_path_(
             root_block, outputs, inputs, block_no_grad_set
         )
         op_types = [op.type for op in op_path]
@@ -141,7 +141,7 @@ class TestBackward(unittest.TestCase):
     def _check_find_no_grad_vars(
         self, root_block, op_path, targets, block_no_grad_set
     ):
-        no_grad_vars = fluid.backward._find_no_grad_vars(
+        no_grad_vars = base.backward._find_no_grad_vars(
             root_block, op_path, targets, block_no_grad_set
         )
         self.assertSetEqual(no_grad_vars, self.net.no_grad_vars)
@@ -150,16 +150,16 @@ class TestBackward(unittest.TestCase):
 
     def _check_error_param_list(self, net, parameter_list):
         place = (
-            fluid.CUDAPlace(0)
-            if fluid.core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
 
-        main = fluid.Program()
-        startup = fluid.Program()
+        main = base.Program()
+        startup = base.Program()
 
-        with fluid.program_guard(main, startup):
+        with base.program_guard(main, startup):
             loss = net.build_model()
             optimizer = paddle.optimizer.SGD(learning_rate=0.1)
             optimizer.minimize(loss, parameter_list=parameter_list)
@@ -168,16 +168,16 @@ class TestBackward(unittest.TestCase):
 
     def _check_error_no_grad_set(self, net, no_grad_set):
         place = (
-            fluid.CUDAPlace(0)
-            if fluid.core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
 
-        main = fluid.Program()
-        startup = fluid.Program()
+        main = base.Program()
+        startup = base.Program()
 
-        with fluid.program_guard(main, startup):
+        with base.program_guard(main, startup):
             loss = net.build_model()
             optimizer = paddle.optimizer.SGD(learning_rate=0.1)
             optimizer.minimize(loss, no_grad_set=no_grad_set)
@@ -239,13 +239,13 @@ class SimpleNet(BackwardNet):
         # shared layer, the grad of 'w2v' will be summed and renamed.
         # To test  _addup_repetitive_outputs_
         x_emb = paddle.static.nn.embedding(
-            x, size=[100, 64], param_attr=fluid.ParamAttr(name='w2v')
+            x, size=[100, 64], param_attr=base.ParamAttr(name='w2v')
         )
         x2_emb = paddle.static.nn.embedding(
-            x2, size=[100, 64], param_attr=fluid.ParamAttr(name='w2v')
+            x2, size=[100, 64], param_attr=base.ParamAttr(name='w2v')
         )
         x3_emb = paddle.static.nn.embedding(
-            x3, size=[100, 64], param_attr=fluid.ParamAttr(name='w2v')
+            x3, size=[100, 64], param_attr=base.ParamAttr(name='w2v')
         )
         # merge layers
         x_merge = paddle.add(x_emb, x2_emb, name='x_add_x2')
@@ -255,7 +255,7 @@ class SimpleNet(BackwardNet):
             x=x_merge,
             size=1,
             activation='softmax',
-            weight_attr=fluid.ParamAttr(name='fc_w'),
+            weight_attr=base.ParamAttr(name='fc_w'),
             name='fc_predict',
         )
         # useless layer for calculating loss
@@ -263,7 +263,7 @@ class SimpleNet(BackwardNet):
             x=x2_merge,
             size=1,
             activation='sigmoid',
-            weight_attr=fluid.ParamAttr(name='fc_w'),
+            weight_attr=base.ParamAttr(name='fc_w'),
             name='fc_no_use',
         )
         # loss
@@ -293,16 +293,16 @@ class TestGradientsError(unittest.TestCase):
         y = F.relu(conv)
 
         with self.assertRaises(TypeError):
-            x_grad = fluid.gradients(y.name, x)
+            x_grad = base.gradients(y.name, x)
 
         with self.assertRaises(TypeError):
-            x_grad = fluid.gradients(y, x.name)
+            x_grad = base.gradients(y, x.name)
 
         with self.assertRaises(TypeError):
-            x_grad = fluid.gradients([y], [x], target_gradients=x.name)
+            x_grad = base.gradients([y], [x], target_gradients=x.name)
 
         with self.assertRaises(TypeError):
-            x_grad = fluid.gradients([y], x, no_grad_set=conv)
+            x_grad = base.gradients([y], x, no_grad_set=conv)
 
 
 class TestSimpleNetWithErrorParamList(TestBackward):
@@ -345,24 +345,24 @@ class TestAppendBackwardWithError(unittest.TestCase):
         avg_loss = paddle.mean(loss)
         param_names = [
             param.name
-            for param in fluid.default_main_program().block(0).all_parameters()
+            for param in base.default_main_program().block(0).all_parameters()
         ]
 
         return avg_loss, param_names
 
     def setUp(self):
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
+        main_program = base.Program()
+        with base.program_guard(main_program):
             self.avg_loss, self.param_names = self.build_net()
 
     def test_loss_type_error(self):
         with self.assertRaises(TypeError):
-            fluid.backward.append_backward(loss=self.avg_loss.name)
+            base.backward.append_backward(loss=self.avg_loss.name)
 
     def test_parameter_list_type_error(self):
         with self.assertRaises(TypeError):
             self.param_names[0] = np.random.random([10])
-            fluid.backward.append_backward(
+            base.backward.append_backward(
                 loss=self.avg_loss, parameter_list=self.param_names
             )
 
@@ -372,7 +372,7 @@ class TestAppendBackwardWithError(unittest.TestCase):
             def callback(block, context):
                 return
 
-            fluid.backward.append_backward(
+            base.backward.append_backward(
                 loss=self.avg_loss, callbacks=callback
             )
 
@@ -387,10 +387,10 @@ class TestGradientsWithOptimizer(unittest.TestCase):
         )
 
     def test_gradient_with_optimizer(self):
-        main = fluid.Program()
-        startup = fluid.Program()
+        main = base.Program()
+        startup = base.Program()
 
-        with fluid.program_guard(main, startup):
+        with base.program_guard(main, startup):
             img = static.data(name='image', shape=[None, 784])
             pred = static.nn.fc(x=img, size=10, activation='relu')
             loss = paddle.mean(pred)
@@ -436,7 +436,7 @@ class TestBackwardUninitializedVariable(unittest.TestCase):
                 + (gt[2:4] * x).sum()
             )
             exe = paddle.static.Executor()
-            paddle.fluid.backward.gradients(loss, [])
+            paddle.base.backward.gradients(loss, [])
             exe.run(startup_prg)
             # Optimizer
             out = exe.run(

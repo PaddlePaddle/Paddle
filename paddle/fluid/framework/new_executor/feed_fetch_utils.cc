@@ -23,24 +23,28 @@
 namespace paddle {
 namespace framework {
 
-void SetColAttrForFetchOps(const interpreter::Job& job,
-                           std::shared_ptr<ProgramDesc> program_desc) {
-  const std::set<std::string>& valid_feed_fetch_op_types = {"fetch",
-                                                            "fetch_v2"};
-
-  const std::vector<int> all_op_ids = job.AllFetchOpIds();
-  for (int op_id : all_op_ids) {
-    int col_attr = job.ColAttrForFetchOp(op_id);
-    OpDesc* op_desc = program_desc->MutableBlock(0)->Op(op_id);
-    PADDLE_ENFORCE(valid_feed_fetch_op_types.find(op_desc->Type()) !=
-                       valid_feed_fetch_op_types.end(),
-                   phi::errors::InvalidArgument(
-                       "Op (%s) corressponding to feed_fetch_op_id (%d) is not "
-                       "in valid_feed_fetch_op_types.",
-                       op_desc->Type(),
-                       op_id));
-
-    op_desc->SetAttr("col", col_attr);
+void SetColAttrForFeedFetchOps(std::shared_ptr<ProgramDesc> program_desc,
+                               const int64_t micro_batch_num,
+                               const int64_t micro_batch_id) {
+  const std::set<std::string>& valid_feed_fetch_op_types = {
+      "fetch", "fetch_v2", "feed"};
+  for (const auto& op_desc : program_desc->MutableBlock(0)->AllOps()) {
+    if (valid_feed_fetch_op_types.find(op_desc->Type()) !=
+        valid_feed_fetch_op_types.end()) {
+      int col = op_desc->GetAttrIfExists<int>("col");
+      PADDLE_ENFORCE_GE(
+          col,
+          0,
+          platform::errors::InvalidArgument(
+              "Expected the column index (the attribute 'col' of "
+              "operator 'Fetch') of current fetching variable to be "
+              "no less than 0. But received column index = %d.",
+              col));
+      int new_col = static_cast<int>(col * micro_batch_num + micro_batch_id);
+      op_desc->SetAttr("col", new_col);
+      VLOG(6) << "Job (" << micro_batch_id << ") Set " << op_desc->Type()
+              << "'s attr col=" << new_col;
+    }
   }
 }
 

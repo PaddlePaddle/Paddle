@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid, tensor
-from paddle.fluid import core
+from paddle import base, tensor
+from paddle.base import core
 
 
 class TestTraceOp(OpTest):
@@ -154,9 +154,9 @@ class TestTraceAPICase(unittest.TestCase):
         out2 = tensor.trace(data1, offset=-5, axis1=1, axis2=-1)
 
         place = core.CPUPlace()
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         results = exe.run(
-            fluid.default_main_program(),
+            base.default_main_program(),
             feed={"data1": case},
             fetch_list=[out1, out2],
             return_numpy=True,

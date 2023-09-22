@@ -106,9 +106,6 @@ void ComputeFullArg(const phi::GPUContext& dev_ctx,
       block_size = 32;
     else if (col > 8)
       block_size = 16;
-#ifdef __HIPCC__
-    block_size = std::min(block_size, 256);
-#endif
     return block_size;
   };
 

@@ -50,44 +50,44 @@ class MNIST(Dataset):
 
         .. code-block:: python
 
-            import itertools
-            import paddle.vision.transforms as T
-            from paddle.vision.datasets import MNIST
+            >>> import itertools
+            >>> import paddle.vision.transforms as T
+            >>> from paddle.vision.datasets import MNIST
 
 
-            mnist = MNIST()
-            print(len(mnist))
-            # 60000
+            >>> mnist = MNIST()
+            >>> print(len(mnist))
+            60000
 
-            for i in range(5):  # only show first 5 images
-                img, label = mnist[i]
-                # do something with img and label
-                print(type(img), img.size, label)
-                # <class 'PIL.Image.Image'> (28, 28) [5]
+            >>> for i in range(5):  # only show first 5 images
+            ...     img, label = mnist[i]
+            ...     # do something with img and label
+            ...     print(type(img), img.size, label)
+            ...     # <class 'PIL.Image.Image'> (28, 28) [5]
 
 
-            transform = T.Compose(
-                [
-                    T.ToTensor(),
-                    T.Normalize(
-                        mean=[127.5],
-                        std=[127.5],
-                    ),
-                ]
-            )
+            >>> transform = T.Compose(
+            ...     [
+            ...         T.ToTensor(),
+            ...         T.Normalize(
+            ...             mean=[127.5],
+            ...             std=[127.5],
+            ...         ),
+            ...     ]
+            ... )
 
-            mnist_test = MNIST(
-                mode="test",
-                transform=transform,  # apply transform to every image
-                backend="cv2",  # use OpenCV as image transform backend
-            )
-            print(len(mnist_test))
-            # 10000
+            >>> mnist_test = MNIST(
+            ...     mode="test",
+            ...     transform=transform,  # apply transform to every image
+            ...     backend="cv2",  # use OpenCV as image transform backend
+            ... )
+            >>> print(len(mnist_test))
+            10000
 
-            for img, label in itertools.islice(iter(mnist_test), 5):  # only show first 5 images
-                # do something with img and label
-                print(type(img), img.shape, label)
-                # <class 'paddle.Tensor'> [1, 28, 28] [7]
+            >>> for img, label in itertools.islice(iter(mnist_test), 5):  # only show first 5 images
+            ...     # do something with img and label
+            ...     print(type(img), img.shape, label)
+            ...     # <class 'paddle.Tensor'> [1, 28, 28] [7]
     """
 
     NAME = 'mnist'
@@ -119,9 +119,7 @@ class MNIST(Dataset):
             backend = paddle.vision.get_image_backend()
         if backend not in ['pil', 'cv2']:
             raise ValueError(
-                "Expected backend are one of ['pil', 'cv2'], but got {}".format(
-                    backend
-                )
+                f"Expected backend are one of ['pil', 'cv2'], but got {backend}"
             )
         self.backend = backend
 
@@ -261,44 +259,44 @@ class FashionMNIST(MNIST):
 
         .. code-block:: python
 
-            import itertools
-            import paddle.vision.transforms as T
-            from paddle.vision.datasets import FashionMNIST
+            >>> import itertools
+            >>> import paddle.vision.transforms as T
+            >>> from paddle.vision.datasets import FashionMNIST
 
 
-            fashion_mnist = FashionMNIST()
-            print(len(fashion_mnist))
-            # 60000
+            >>> fashion_mnist = FashionMNIST()
+            >>> print(len(fashion_mnist))
+            60000
 
-            for i in range(5):  # only show first 5 images
-                img, label = fashion_mnist[i]
-                # do something with img and label
-                print(type(img), img.size, label)
-                # <class 'PIL.Image.Image'> (28, 28) [9]
+            >>> for i in range(5):  # only show first 5 images
+            ...     img, label = fashion_mnist[i]
+            ...     # do something with img and label
+            ...     print(type(img), img.size, label)
+            ...     # <class 'PIL.Image.Image'> (28, 28) [9]
 
 
-            transform = T.Compose(
-                [
-                    T.ToTensor(),
-                    T.Normalize(
-                        mean=[127.5],
-                        std=[127.5],
-                    ),
-                ]
-            )
+            >>> transform = T.Compose(
+            ...     [
+            ...         T.ToTensor(),
+            ...         T.Normalize(
+            ...             mean=[127.5],
+            ...             std=[127.5],
+            ...         ),
+            ...     ]
+            ... )
 
-            fashion_mnist_test = FashionMNIST(
-                mode="test",
-                transform=transform,  # apply transform to every image
-                backend="cv2",  # use OpenCV as image transform backend
-            )
-            print(len(fashion_mnist_test))
-            # 10000
+            >>> fashion_mnist_test = FashionMNIST(
+            ...     mode="test",
+            ...     transform=transform,  # apply transform to every image
+            ...     backend="cv2",  # use OpenCV as image transform backend
+            ... )
+            >>> print(len(fashion_mnist_test))
+            10000
 
-            for img, label in itertools.islice(iter(fashion_mnist_test), 5):  # only show first 5 images
-                # do something with img and label
-                print(type(img), img.shape, label)
-                # <class 'paddle.Tensor'> [1, 28, 28] [9]
+            >>> for img, label in itertools.islice(iter(fashion_mnist_test), 5):  # only show first 5 images
+            ...     # do something with img and label
+            ...     print(type(img), img.shape, label)
+            ...     # <class 'paddle.Tensor'> [1, 28, 28] [9]
     """
 
     NAME = 'fashion-mnist'

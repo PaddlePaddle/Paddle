@@ -394,8 +394,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
     **Note**:
     Examples:
         .. code-block:: python
-          import paddle.fluid as fluid
-          xpu_place = fluid.XPUPlace(0)
+          import paddle.base as base
+          xpu_place = base.XPUPlace(0)
         )DOC");
   g_xpuplace_pytype = reinterpret_cast<PyTypeObject *>(xpuplace.ptr());
   xpuplace

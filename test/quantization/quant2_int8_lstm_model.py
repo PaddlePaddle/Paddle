@@ -81,9 +81,7 @@ class TestLstmModelPTQ(unittest.TestCase):
                     [len(feat) // 4 // 8, 8]
                 )
                 lod_feat = [feat.shape[0]]
-                minputs = paddle.fluid.create_lod_tensor(
-                    feat, [lod_feat], place
-                )
+                minputs = paddle.base.create_lod_tensor(feat, [lod_feat], place)
 
                 infer_data = core.PaddleTensor()
                 infer_data.lod = minputs.lod()
@@ -253,21 +251,15 @@ class TestLstmModelPTQ(unittest.TestCase):
         )
 
         print(
-            "FP32: fps {}, hx_acc {}, ctc_acc {}".format(
-                fp32_fps, fp32_hx_acc, fp32_ctc_acc
-            )
+            f"FP32: fps {fp32_fps}, hx_acc {fp32_hx_acc}, ctc_acc {fp32_ctc_acc}"
         )
 
         print(
-            "PTQ_INT8: fps {}, hx_acc {}, ctc_acc {}".format(
-                int8_fps, int8_hx_acc, int8_ctc_acc
-            )
+            f"PTQ_INT8: fps {int8_fps}, hx_acc {int8_hx_acc}, ctc_acc {int8_ctc_acc}"
         )
 
         print(
-            "QAT: fps {}, hx_acc {}, ctc_acc {}".format(
-                quant_fps, quant_hx_acc, quant_ctc_acc
-            )
+            f"QAT: fps {quant_fps}, hx_acc {quant_hx_acc}, ctc_acc {quant_ctc_acc}"
         )
 
         sys.stdout.flush()

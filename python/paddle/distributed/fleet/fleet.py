@@ -16,8 +16,8 @@ import copy
 import os
 
 import paddle
-from paddle.fluid import compiler
-from paddle.fluid.wrapped_decorator import wrap_decorator
+from paddle.base import compiler
+from paddle.base.wrapped_decorator import wrap_decorator
 from paddle.framework import _global_flags, in_dynamic_mode
 from paddle.framework.ir import apply_build_strategy
 
@@ -370,21 +370,26 @@ class Fleet:
         return self
 
     def _init_hybrid_parallel_env(self):
-        """initialize the hybrid environment"""
+        """initialize the hybrid environment."""
         self.hybrid_configs = self._user_defined_strategy.hybrid_configs
         self.dp_degree = self.hybrid_configs["dp_degree"]
         self.mp_degree = self.hybrid_configs["mp_degree"]
         self.pp_degree = self.hybrid_configs["pp_degree"]
+        self.sep_degree = self.hybrid_configs["sep_degree"]
         self.sharding_degree = self.hybrid_configs["sharding_degree"]
 
         assert self.mp_degree >= 0, "mp_degree should be greater or equal to 0"
         assert self.pp_degree >= 0, "pp_degree should be greater or equal to 0"
+        assert (
+            self.sep_degree >= 0
+        ), "sep_degree should be greater or equal to 0"
         assert (
             self.sharding_degree >= 0
         ), "sharding_degree should be greater or equal to 0"
 
         self.mp_degree = max(self.mp_degree, 1)
         self.pp_degree = max(self.pp_degree, 1)
+        self.sep_degree = max(self.sep_degree, 1)
 
         if self.dp_degree < 0:
             nranks = paddle.distributed.get_world_size()
@@ -397,6 +402,7 @@ class Fleet:
             "pp": ['pipe', self.pp_degree],
             "sharding": ['sharding', self.sharding_degree],
             "mp": ['model', self.mp_degree],
+            "sep": ["sep", self.sep_degree],
         }
 
         order = self._user_defined_strategy.hybrid_parallel_order
@@ -1246,9 +1252,9 @@ class Fleet:
 
         Args:
             loss (Tensor): A ``Tensor`` containing the value to minimize.
-            startup_program (Program, optional): :ref:`api_fluid_Program` for
+            startup_program (Program, optional): :ref:`api_base_Program` for
                 initializing parameters in ``parameter_list``. The default value
-                is None, at this time :ref:`api_fluid_default_startup_program` will be used.
+                is None, at this time :ref:`api_base_default_startup_program` will be used.
             parameter_list (Iterable, optional): Iterable of ``Tensor`` or ``Tensor.name`` to update
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.

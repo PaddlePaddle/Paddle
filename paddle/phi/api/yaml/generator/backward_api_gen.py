@@ -237,9 +237,7 @@ PADDLE_API void {api_func_name}({self.get_declare_args()});
 
         else:
             raise ValueError(
-                "{} : Output error: the output should not be empty.".format(
-                    self.api
-                )
+                f"{self.api} : Output error: the output should not be empty."
             )
 
         return kernel_output, output_names, output_create
@@ -275,7 +273,7 @@ def source_include(header_file_path, fw_header_file_path):
 #include <memory>
 
 #include "glog/logging.h"
-#include "gflags/gflags.h"
+#include "paddle/utils/flags.h"
 
 #include "paddle/phi/api/lib/api_custom_impl.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
@@ -290,8 +288,8 @@ def source_include(header_file_path, fw_header_file_path):
 #include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/api/profiler/supplement_tracing.h"
 
-DECLARE_bool(conv2d_disable_cudnn);
-DECLARE_int32(low_precision_op_list);
+PD_DECLARE_bool(conv2d_disable_cudnn);
+PD_DECLARE_int32(low_precision_op_list);
 """
 
 

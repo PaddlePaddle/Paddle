@@ -81,8 +81,8 @@ class FlattenOp : public framework::OperatorWithKernel {
       }
     }
     std::vector<int32_t> out_shape(2);
-    out_shape[0] = outer;
-    out_shape[1] = inner;
+    out_shape[0] = static_cast<int32_t>(outer);
+    out_shape[1] = static_cast<int32_t>(inner);
     return out_shape;
   }
 

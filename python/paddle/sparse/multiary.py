@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle import _C_ops
-from paddle.fluid.framework import dygraph_only
+from paddle.base.framework import dygraph_only
 
 __all__ = []
 
@@ -58,25 +58,26 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
 
         .. code-block:: python
 
-            # required: gpu
-            import paddle
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
 
-            # dense + csr @ dense -> dense
-            input = paddle.rand([3, 2])
-            crows = [0, 1, 2, 3]
-            cols = [1, 2, 0]
-            values = [1., 2., 3.]
-            x = paddle.sparse.sparse_csr_tensor(crows, cols, values, [3, 3])
-            y = paddle.rand([3, 2])
-            out = paddle.sparse.addmm(input, x, y, 3.0, 2.0)
+            >>> # dense + csr @ dense -> dense
+            >>> input = paddle.rand([3, 2])
+            >>> crows = [0, 1, 2, 3]
+            >>> cols = [1, 2, 0]
+            >>> values = [1., 2., 3.]
+            >>> x = paddle.sparse.sparse_csr_tensor(crows, cols, values, [3, 3])
+            >>> y = paddle.rand([3, 2])
+            >>> out = paddle.sparse.addmm(input, x, y, 3.0, 2.0)
 
-            # dense + coo @ dense -> dense
-            input = paddle.rand([3, 2])
-            indices = [[0, 1, 2], [1, 2, 0]]
-            values = [1., 2., 3.]
-            x = paddle.sparse.sparse_coo_tensor(indices, values, [3, 3])
-            y = paddle.rand([3, 2])
-            out = paddle.sparse.addmm(input, x, y, 3.0, 2.0)
+            >>> # dense + coo @ dense -> dense
+            >>> input = paddle.rand([3, 2])
+            >>> indices = [[0, 1, 2], [1, 2, 0]]
+            >>> values = [1., 2., 3.]
+            >>> x = paddle.sparse.sparse_coo_tensor(indices, values, [3, 3])
+            >>> y = paddle.rand([3, 2])
+            >>> out = paddle.sparse.addmm(input, x, y, 3.0, 2.0)
 
     """
     return _C_ops.sparse_addmm(input, x, y, beta, alpha)

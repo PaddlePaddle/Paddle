@@ -38,7 +38,8 @@ class RandomCropOp : public framework::OperatorWithKernel {
     for (size_t i = 1; i <= shape.size(); ++i) {
       size_t x_i = x_dim.size() - i;
       size_t shape_i = shape.size() - i;
-      if (ctx->IsRuntime() || (x_dim[x_i] > 0 && shape[shape_i] > 0)) {
+      if (ctx->IsRuntime() ||
+          (x_dim[static_cast<int>(x_i)] > 0 && shape[shape_i] > 0)) {
         PADDLE_ENFORCE_GE(
             x_dim[x_i],
             shape[shape_i],
@@ -88,7 +89,6 @@ class RandomCropOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace f = paddle::framework;
 REGISTER_OPERATOR(
     random_crop,
     ops::RandomCropOp,

@@ -14,8 +14,8 @@
 
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.framework import (
+from paddle.base import core
+from paddle.base.framework import (
     Variable,
     default_main_program,
     default_startup_program,
@@ -51,7 +51,7 @@ class GradientMergeOptimizer:
         .. code-block:: python
 
         import paddle
-        import paddle.fluid as fluid
+        import paddle.base as base
         import numpy as np
 
         def gen_data(batch_size):
@@ -75,13 +75,13 @@ class GradientMergeOptimizer:
         sgd = paddle.incubate.optimizer.GradientMergeOptimizer(sgd, k_steps=4, avg=True)
         sgd.minimize(cost)
 
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        place = base.CPUPlace()
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
 
         for i in range(10):
             cost_val = exe.run(feed=gen_data(32),
-                       program=fluid.default_main_program(),
+                       program=base.default_main_program(),
                        fetch_list=[cost.name])
             print("step=%d, cost=%f" % (i, cost_val[0]))
     """
@@ -154,9 +154,7 @@ class GradientMergeOptimizer:
         op = grad.op
         assert self._is_the_backward_op(
             op
-        ), 'grad.op={} is not the backward op which produces the grad={}'.format(
-            op, grad.name
-        )
+        ), f'grad.op={op} is not the backward op which produces the grad={grad.name}'
 
         block = grad.block
         var_attr = op.all_attrs()[op_maker.kOpRoleVarAttrName()]
@@ -208,7 +206,7 @@ class GradientMergeOptimizer:
         zero_var = paddle.static.create_global_var(
             name="gradient_merge_zero",
             shape=[1],
-            value=int(0),
+            value=0,
             dtype='int32',
             persistable=True,
             force_cpu=True,
@@ -218,7 +216,7 @@ class GradientMergeOptimizer:
         step_var = paddle.static.create_global_var(
             name="gradient_merge_step",
             shape=[1],
-            value=int(0),
+            value=0,
             dtype='int32',
             persistable=True,
             force_cpu=True,

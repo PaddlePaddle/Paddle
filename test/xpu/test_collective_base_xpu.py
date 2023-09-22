@@ -24,9 +24,9 @@ from contextlib import closing
 
 import numpy as np
 
-import paddle.fluid.unique_name as nameGen
-from paddle import fluid
-from paddle.fluid import core
+import paddle.base.unique_name as nameGen
+from paddle import base
+from paddle.base import core
 
 
 def DataTypeCast(date_type):
@@ -127,8 +127,8 @@ class TestCollectiveRunnerBase:
         )
 
     def run_trainer(self, args):
-        train_prog = fluid.Program()
-        startup_prog = fluid.Program()
+        train_prog = base.Program()
+        startup_prog = base.Program()
         endpoints = args["endpoints"].split(",")
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
@@ -139,8 +139,8 @@ class TestCollectiveRunnerBase:
         self.rank = rank
         result = self.get_model(train_prog, startup_prog)
         device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
-        place = fluid.XPUPlace(device_id)
-        exe = fluid.Executor(place)
+        place = base.XPUPlace(device_id)
+        exe = base.Executor(place)
         exe.run(startup_prog)
         np.random.seed(os.getpid())
         np_data_type = DataTypeCast(args["data_type"])

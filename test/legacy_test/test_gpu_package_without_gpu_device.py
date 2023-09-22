@@ -18,7 +18,7 @@ import sys
 import tempfile
 import unittest
 
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestGPUPackagePaddle(unittest.TestCase):

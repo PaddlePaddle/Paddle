@@ -295,7 +295,7 @@ class FleetWrapper {
   // FleetWrapper singleton
   static std::shared_ptr<FleetWrapper> GetInstance() {
     if (NULL == s_instance_) {
-      s_instance_.reset(new paddle::distributed::FleetWrapper());
+      s_instance_.reset(new ::paddle::distributed::FleetWrapper());
     }
     return s_instance_;
   }
@@ -322,13 +322,13 @@ class FleetWrapper {
   std::string PullFlStrategy();
   //**********
 
-  static std::shared_ptr<paddle::distributed::PSCore> pserver_ptr_;
-  static std::shared_ptr<paddle::distributed::PSClient> worker_ptr_;
+  static std::shared_ptr<::paddle::distributed::PSCore> pserver_ptr_;
+  static std::shared_ptr<::paddle::distributed::PSClient> worker_ptr_;
 
  private:
   static std::shared_ptr<FleetWrapper> s_instance_;
   std::string dist_desc_;
-  paddle::distributed::PaddlePSEnvironment ps_env_;
+  ::paddle::distributed::PaddlePSEnvironment ps_env_;
   size_t GetAbsoluteSum(size_t start,
                         size_t end,
                         size_t level,
@@ -336,7 +336,7 @@ class FleetWrapper {
 
  protected:
   static bool is_initialized_;
-  std::map<uint64_t, std::vector<paddle::distributed::Region>> regions_;
+  std::map<uint64_t, std::vector<::paddle::distributed::Region>> regions_;
   bool scale_sparse_gradient_with_batch_size_;
   int32_t sleep_seconds_before_fail_exit_;
   int client2client_request_timeout_ms_;

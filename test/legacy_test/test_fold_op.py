@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -39,7 +39,15 @@ class TestFoldOp(OpTest):
         self.dilations = [1, 1]
         self.output_sizes = [4, 5]
         input_shape = [self.batch_size, self.input_channels, self.length]
-        self.x = np.random.rand(*input_shape).astype(np.float64)
+        self.x = np.random.rand(*input_shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            self.x = (
+                np.random.uniform(-1, 1, input_shape)
+                + 1j * np.random.uniform(-1, 1, input_shape)
+            ).astype(self.dtype)
+
+    def init_dtype(self):
+        self.dtype = np.float64
 
     def calc_fold(self):
         output_shape = [0] * 4
@@ -75,7 +83,7 @@ class TestFoldOp(OpTest):
             )
             + 1
         )
-        output = np.zeros(output_shape).astype(np.float64)
+        output = np.zeros(output_shape).astype(self.dtype)
         # ------------- calculate output ------------- #
         for b in range(output_shape[0]):
             for c in range(self.input_channels):
@@ -106,9 +114,10 @@ class TestFoldOp(OpTest):
         self.outputs = output
 
     def set_data(self):
+        self.init_dtype()
         self.init_data()
         self.calc_fold()
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(self.x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(self.x)}
         self.attrs = {
             'kernel_sizes': self.kernel_sizes,
             'paddings': self.paddings,
@@ -128,6 +137,16 @@ class TestFoldOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Y')
+
+
+class TestFold_Complex64(TestFoldOp):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestFold_Complex128(TestFoldOp):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestFoldshape(TestFoldOp):
@@ -151,13 +170,13 @@ class TestFoldAPI(TestFoldOp):
         self.op_type = 'fold'
         self.python_api = paddle.nn.functional.fold
         self.set_data()
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
 
     def test_api(self):
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 input = paddle.to_tensor(self.x)
                 m = paddle.nn.Fold(**self.attrs)
                 m.eval()
@@ -172,7 +191,7 @@ class TestFoldAPI(TestFoldOp):
 
 class TestFoldOpError(unittest.TestCase):
     def test_errors(self):
-        from paddle.fluid.framework import Program, program_guard
+        from paddle.base.framework import Program, program_guard
         from paddle.nn.functional import fold
 
         with program_guard(Program(), Program()):

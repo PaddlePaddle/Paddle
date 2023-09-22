@@ -18,8 +18,8 @@ from collections import defaultdict
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid.backward import _append_grad_suffix_
+from paddle import base
+from paddle.base.backward import _append_grad_suffix_
 
 paddle.enable_static()
 
@@ -79,20 +79,20 @@ class SimpleNetWithCond:
         param_x = paddle.create_parameter(
             dtype="float32",
             shape=self.shape,
-            attr=fluid.ParamAttr(learning_rate=self.param_lr, name="param_x"),
+            attr=base.ParamAttr(learning_rate=self.param_lr, name="param_x"),
             default_initializer=paddle.nn.initializer.Assign(self.x),
         )
 
         param_y = paddle.create_parameter(
             dtype="float32",
             shape=self.shape,
-            attr=fluid.ParamAttr(learning_rate=self.param_lr, name="param_y"),
+            attr=base.ParamAttr(learning_rate=self.param_lr, name="param_y"),
             default_initializer=paddle.nn.initializer.Assign(self.y),
         )
         param_z = paddle.create_parameter(
             dtype="float32",
             shape=self.shape,
-            attr=fluid.ParamAttr(learning_rate=self.param_lr, name="param_z"),
+            attr=base.ParamAttr(learning_rate=self.param_lr, name="param_z"),
             default_initializer=paddle.nn.initializer.Assign(self.z),
         )
 
@@ -193,9 +193,9 @@ class TestOptimizer(unittest.TestCase):
         """
         main logic code to check the validity of apply_optimize.
         """
-        places = [fluid.CPUPlace()]
-        if fluid.core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+        places = [base.CPUPlace()]
+        if base.core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
         # test on CPU and GPU
         for place in places:
             for param_lr in self.param_lr:
@@ -206,9 +206,9 @@ class TestOptimizer(unittest.TestCase):
                         )
                         self._init_param_attr()
 
-                        main_program = fluid.Program()
-                        init_program = fluid.Program()
-                        with fluid.program_guard(main_program, init_program):
+                        main_program = base.Program()
+                        init_program = base.Program()
+                        with base.program_guard(main_program, init_program):
                             # reset optimizer._accumulators to avoid duplicate name in loop.
                             self.optimizer._accumulators = defaultdict(
                                 lambda: {}
@@ -223,7 +223,7 @@ class TestOptimizer(unittest.TestCase):
                             if use_bf16:
                                 self.optimizer = decorated_optimizer
 
-                            exe = fluid.Executor(place)
+                            exe = base.Executor(place)
                             exe.run(init_program)
                             if use_bf16:
                                 self.optimizer.amp_init(exe.place)
@@ -245,7 +245,7 @@ class TestOptimizer(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not fluid.core.supports_bfloat16(), "place does not support BF16 evaluation"
+    not base.core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
 class TestSGDOptimizer(TestOptimizer):
     def test_optimizer_multiblock_except(self):

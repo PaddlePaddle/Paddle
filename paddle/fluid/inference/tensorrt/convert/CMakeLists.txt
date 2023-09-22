@@ -116,7 +116,7 @@ list(
 
 if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
   list(APPEND CONVERT_FILES emb_eltwise_layernorm.cc
-       preln_emb_eltwise_layernorm.cc)
+       preln_emb_eltwise_layernorm.cc prompt_tuning_emb_eltwise_layernorm.cc)
 endif()
 
 if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)

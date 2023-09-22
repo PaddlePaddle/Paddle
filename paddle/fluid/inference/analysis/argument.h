@@ -271,9 +271,15 @@ struct Argument {
                       TensorRtAllowBuildAtRuntime,
                       bool);
   DECL_ARGUMENT_FIELD(tensorrt_use_inspector, TensorRtUseInspector, bool);
+  DECL_ARGUMENT_FIELD(tensorrt_inspector_serialize,
+                      TensorRtInspectorSerialize,
+                      bool);
   DECL_ARGUMENT_FIELD(tensorrt_use_explicit_quantization,
                       TensorRtUseExplicitQuantization,
                       bool);
+  DECL_ARGUMENT_FIELD(tensorrt_optimization_level,
+                      TensorRtOptimizationLevel,
+                      int);
 
   DECL_ARGUMENT_FIELD(use_dlnne, UseDlnne, bool);
   DECL_ARGUMENT_FIELD(dlnne_min_subgraph_size, DlnneMinSubgraphSize, int);
@@ -418,6 +424,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(model_precision, ModelPrecision, int);
   DECL_ARGUMENT_FIELD(mixed_black_list,
                       MixedBlackList,
+                      std::unordered_set<std::string>);
+  DECL_ARGUMENT_FIELD(mixed_white_list,
+                      MixedWhiteList,
                       std::unordered_set<std::string>);
   DECL_ARGUMENT_FIELD(enable_gpu_mixed, EnableGPUMixed, bool);
   DECL_ARGUMENT_FIELD(mixed_precision_mode, MixedPrecisionMode, int);

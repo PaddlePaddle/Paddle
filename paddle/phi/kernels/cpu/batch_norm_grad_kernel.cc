@@ -104,10 +104,10 @@ void BatchNormGradFunctor(const Context& ctx,
           "The size of input X's dimensions should be less than 6."
           "But received: the size of input X's dimensions is [%d]",
           x_dims.size()));
-  const int N = x_dims[0];
-  const int C = (data_layout == DataLayout::kNCHW ? x_dims[1]
-                                                  : x_dims[x_dims.size() - 1]);
-  const int sample_size = x.numel() / N / C;
+  const int N = static_cast<int>(x_dims[0]);
+  const int C = static_cast<int>(
+      data_layout == DataLayout::kNCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
+  const int sample_size = static_cast<int>(x.numel() / N / C);
 
   // input dimension is 2 and the format is NCHW. The input can be regarded as
   // NHWC format
@@ -382,9 +382,9 @@ void BatchNormDoubleGradKernel(
   ctx.template Alloc<T>(ddY);
 
   const auto& x_dims = X->dims();
-  const int C = (data_layout == DataLayout::kNCHW ? x_dims[1]
-                                                  : x_dims[x_dims.size() - 1]);
-  const int sample_size = X->numel() / C;
+  const int C = static_cast<int>(
+      data_layout == DataLayout::kNCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
+  const int sample_size = static_cast<int>(X->numel() / C);
   phi::funcs::SetConstant<Context, T> set_constant;
 
   const T* mean_data = Saved_mean->data<T>();

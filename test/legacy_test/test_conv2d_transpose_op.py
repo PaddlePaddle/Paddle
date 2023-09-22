@@ -21,12 +21,12 @@ import paddle
 from paddle import nn
 
 paddle.enable_static()
-from eager_op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
+from op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
 from test_attribute_var import UnittestBase
 from testsuite import create_op
 
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 
 def conv2dtranspose_forward_naive(input_, filter_, attrs):
@@ -1172,10 +1172,10 @@ class TestConv2DTransposeAPI(unittest.TestCase):
             place = core.CUDAPlace(0)
         else:
             place = core.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
         results = exe.run(
-            fluid.default_main_program(),
+            base.default_main_program(),
             feed={"data1": data1_np, "data2": data2_np},
             fetch_list=[out1, out2, out3, out4, out5, out6, out7],
             return_numpy=True,

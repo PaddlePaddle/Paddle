@@ -25,8 +25,8 @@
 #include <unordered_set>
 #include <vector>
 
-#include "gflags/gflags.h"
 #include "paddle/phi/core/macros.h"
+#include "paddle/utils/flags.h"
 
 namespace paddle {
 namespace distributed {

@@ -94,16 +94,16 @@ class Col2ImFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
                           "The dimension of tensor 'col' should be 5. But got "
                           "the dims of tensor 'col' is [%s].",
                           col.dims()));
-    int im_channels =
-        (data_layout != DataLayout::kNHWC ? im->dims()[0] : im->dims()[2]);
-    int im_height =
-        (data_layout != DataLayout::kNHWC ? im->dims()[1] : im->dims()[0]);
-    int im_width =
-        (data_layout != DataLayout::kNHWC ? im->dims()[2] : im->dims()[1]);
-    int filter_height = col.dims()[1];
-    int filter_width = col.dims()[2];
-    int col_height = col.dims()[3];
-    int col_width = col.dims()[4];
+    int im_channels = static_cast<int>(
+        data_layout != DataLayout::kNHWC ? im->dims()[0] : im->dims()[2]);
+    int im_height = static_cast<int>(
+        data_layout != DataLayout::kNHWC ? im->dims()[1] : im->dims()[0]);
+    int im_width = static_cast<int>(
+        data_layout != DataLayout::kNHWC ? im->dims()[2] : im->dims()[1]);
+    int filter_height = static_cast<int>(col.dims()[1]);
+    int filter_width = static_cast<int>(col.dims()[2]);
+    int col_height = static_cast<int>(col.dims()[3]);
+    int col_width = static_cast<int>(col.dims()[4]);
 
     PADDLE_ENFORCE_EQ(
         (im_height + padding[0] + padding[2] -
@@ -160,12 +160,24 @@ template class Im2ColFunctor<phi::funcs::ColFormat::kCFO,
 template class Im2ColFunctor<phi::funcs::ColFormat::kCFO,
                              phi::CPUContext,
                              double>;
+template class Im2ColFunctor<phi::funcs::ColFormat::kCFO,
+                             phi::CPUContext,
+                             phi::dtype::complex<float>>;
+template class Im2ColFunctor<phi::funcs::ColFormat::kCFO,
+                             phi::CPUContext,
+                             phi::dtype::complex<double>>;
 template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
                              phi::CPUContext,
                              float>;
 template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
                              phi::CPUContext,
                              double>;
+template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
+                             phi::CPUContext,
+                             phi::dtype::complex<float>>;
+template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
+                             phi::CPUContext,
+                             phi::dtype::complex<double>>;
 
 /*
  * im = [input_channels, input_height, input_width]
@@ -194,13 +206,13 @@ class Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
                           "The dimension of tensor 'col' should be 5. But got "
                           "the dims of tensor 'col' is [%s].",
                           col->dims()));
-    int im_channels = im.dims()[0];
-    int im_height = im.dims()[1];
-    int im_width = im.dims()[2];
-    int filter_height = col->dims()[3];
-    int filter_width = col->dims()[4];
-    int col_height = col->dims()[0];
-    int col_width = col->dims()[1];
+    int im_channels = static_cast<int>(im.dims()[0]);
+    int im_height = static_cast<int>(im.dims()[1]);
+    int im_width = static_cast<int>(im.dims()[2]);
+    int filter_height = static_cast<int>(col->dims()[3]);
+    int filter_width = static_cast<int>(col->dims()[4]);
+    int col_height = static_cast<int>(col->dims()[0]);
+    int col_width = static_cast<int>(col->dims()[1]);
 
     const T* im_data = im.data<T>();
     T* col_data = col->data<T>();
@@ -267,13 +279,13 @@ class Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
                           "The dimension of tensor 'col' should be 5. But got "
                           "the dims of tensor 'col' is [%s].",
                           col.dims()));
-    int im_channels = im->dims()[0];
-    int im_height = im->dims()[1];
-    int im_width = im->dims()[2];
-    int filter_height = col.dims()[3];
-    int filter_width = col.dims()[4];
-    int col_height = col.dims()[0];
-    int col_width = col.dims()[1];
+    int im_channels = static_cast<int>(im->dims()[0]);
+    int im_height = static_cast<int>(im->dims()[1]);
+    int im_width = static_cast<int>(im->dims()[2]);
+    int filter_height = static_cast<int>(col.dims()[3]);
+    int filter_width = static_cast<int>(col.dims()[4]);
+    int col_height = static_cast<int>(col.dims()[0]);
+    int col_width = static_cast<int>(col.dims()[1]);
 
     PADDLE_ENFORCE_EQ(
         (im_height + padding[0] + padding[2] - filter_height) / stride[0] + 1,
@@ -331,11 +343,23 @@ template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
 template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
                              phi::CPUContext,
                              double>;
+template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
+                             phi::CPUContext,
+                             phi::dtype::complex<float>>;
+template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
+                             phi::CPUContext,
+                             phi::dtype::complex<double>>;
 template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
                              phi::CPUContext,
                              float>;
 template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
                              phi::CPUContext,
                              double>;
+template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
+                             phi::CPUContext,
+                             phi::dtype::complex<float>>;
+template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
+                             phi::CPUContext,
+                             phi::dtype::complex<double>>;
 }  // namespace funcs
 }  // namespace phi

@@ -16,7 +16,7 @@ import copy
 import logging
 
 import paddle
-from paddle.fluid.log_helper import get_logger
+from paddle.base.log_helper import get_logger
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
@@ -35,11 +35,11 @@ class OperatorStatsUnit:
         if dtype is None:
             self.other_calls = self.other_calls + 1
         else:
-            if dtype == paddle.fluid.core.VarDesc.VarType.FP32:
+            if dtype == paddle.base.core.VarDesc.VarType.FP32:
                 self.fp32_calls = self.fp32_calls + 1
-            elif dtype == paddle.fluid.core.VarDesc.VarType.FP16:
+            elif dtype == paddle.base.core.VarDesc.VarType.FP16:
                 self.fp16_calls = self.fp16_calls + 1
-            elif dtype == paddle.fluid.core.VarDesc.VarType.BF16:
+            elif dtype == paddle.base.core.VarDesc.VarType.BF16:
                 self.bf16_calls = self.bf16_calls + 1
             else:
                 self.other_calls = self.other_calls + 1
@@ -61,10 +61,10 @@ class OperatorStatsUnit:
 
 def _is_floating_point(dtype):
     if dtype in [
-        paddle.fluid.core.VarDesc.VarType.FP64,
-        paddle.fluid.core.VarDesc.VarType.FP32,
-        paddle.fluid.core.VarDesc.VarType.FP16,
-        paddle.fluid.core.VarDesc.VarType.BF16,
+        paddle.base.core.VarDesc.VarType.FP64,
+        paddle.base.core.VarDesc.VarType.FP32,
+        paddle.base.core.VarDesc.VarType.FP16,
+        paddle.base.core.VarDesc.VarType.BF16,
     ]:
         return True
     else:
@@ -203,65 +203,64 @@ def collect_operator_stats(program=None, print_subblocks=False):
 
     Examples:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import paddle
+            >>> import paddle
+            >>> paddle.enable_static()
 
-        paddle.enable_static()
+            >>> class SimpleConvNet(paddle.nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self.conv = paddle.nn.Conv2D(in_channels=1, out_channels=6, kernel_size=3)
+            ...         self.linear = paddle.nn.Linear(in_features=26, out_features=10)
+            ...
+            ...     def forward(self, x):
+            ...         out = self.conv(x)
+            ...         out = paddle.nn.functional.relu(out)
+            ...         out = self.linear(out)
+            ...         out = paddle.nn.functional.softmax(out)
+            ...         return out
 
-        class SimpleConvNet(paddle.nn.Layer):
-            def __init__(self):
-                super().__init__()
-                self.conv = paddle.nn.Conv2D(in_channels=1, out_channels=6, kernel_size=3)
-                self.linear = paddle.nn.Linear(in_features=26, out_features=10)
-
-            def forward(self, x):
-                out = self.conv(x)
-                out = paddle.nn.functional.relu(out)
-                out = self.linear(out)
-                out = paddle.nn.functional.softmax(out)
-                return out
-
-        main_program = paddle.static.Program()
-        startup_program = paddle.static.Program()
-        with paddle.utils.unique_name.guard():
-            with paddle.static.program_guard(main_program, startup_program):
-                model = SimpleConvNet()
-                x = paddle.static.data(
-                    name='input', shape=[None, 1, 28, 28], dtype='float32'
-                )
-                out = model(x)
-                loss = paddle.mean(out)
-                optimizer = paddle.optimizer.AdamW()
-                optimizer = paddle.static.amp.decorate(optimizer)
-                optimizer.minimize(loss)
-        paddle.static.amp.debugging.collect_operator_stats(main_program)
-        # <------------------------------------------------ op list of all blocks ------------------------------------------------->
-        # <------------------------------------------------------- op list -------------------------------------------------------->
-        # <--------------- Op Name ---------------- | -- FP16 Calls --- | -- BF16 Calls --- | --- FP32 Calls--- | -- Other Calls -->
-        #   adamw                                   |  0                |  0                |  4                |  0
-        #   cast                                    |  5                |  0                |  6                |  0
-        #   check_finite_and_unscale                |  0                |  0                |  1                |  0
-        #   conv2d                                  |  1                |  0                |  0                |  0
-        #   conv2d_grad                             |  1                |  0                |  0                |  0
-        #   elementwise_add                         |  2                |  0                |  0                |  0
-        #   elementwise_add_grad                    |  2                |  0                |  0                |  0
-        #   elementwise_mul                         |  0                |  0                |  1                |  0
-        #   elementwise_mul_grad                    |  0                |  0                |  1                |  0
-        #   fill_constant                           |  0                |  0                |  1                |  0
-        #   matmul_v2                               |  1                |  0                |  0                |  0
-        #   matmul_v2_grad                          |  1                |  0                |  0                |  0
-        #   memcpy                                  |  0                |  0                |  0                |  1
-        #   reduce_mean                             |  0                |  0                |  1                |  0
-        #   reduce_mean_grad                        |  0                |  0                |  1                |  0
-        #   relu                                    |  1                |  0                |  0                |  0
-        #   relu_grad                               |  1                |  0                |  0                |  0
-        #   reshape2                                |  0                |  0                |  1                |  0
-        #   reshape2_grad                           |  0                |  0                |  1                |  0
-        #   softmax                                 |  0                |  0                |  1                |  0
-        #   softmax_grad                            |  0                |  0                |  1                |  0
-        #   update_loss_scaling                     |  0                |  0                |  1                |  0
-        # <----------------------------------------------------- op count: 22 ----------------------------------------------------->
+            >>> main_program = paddle.static.Program()
+            >>> startup_program = paddle.static.Program()
+            >>> with paddle.utils.unique_name.guard():
+            ...     with paddle.static.program_guard(main_program, startup_program):
+            ...         model = SimpleConvNet()
+            ...         x = paddle.static.data(
+            ...             name='input', shape=[None, 1, 28, 28], dtype='float32'
+            ...         )
+            ...         out = model(x)
+            ...         loss = paddle.mean(out)
+            ...         optimizer = paddle.optimizer.AdamW()
+            ...         optimizer = paddle.static.amp.decorate(optimizer)
+            ...         optimizer.minimize(loss)
+            >>> paddle.static.amp.debugging.collect_operator_stats(main_program)
+            <------------------------------------------------ op list of all blocks ------------------------------------------------->
+            <------------------------------------------------------- op list -------------------------------------------------------->
+            <--------------- Op Name ---------------- | -- FP16 Calls --- | -- BF16 Calls --- | --- FP32 Calls--- | -- Other Calls -->
+            adamw                                   |  0                |  0                |  4                |  0
+            cast                                    |  5                |  0                |  6                |  0
+            check_finite_and_unscale                |  0                |  0                |  1                |  0
+            conv2d                                  |  1                |  0                |  0                |  0
+            conv2d_grad                             |  1                |  0                |  0                |  0
+            elementwise_add                         |  2                |  0                |  0                |  0
+            elementwise_add_grad                    |  2                |  0                |  0                |  0
+            elementwise_mul                         |  0                |  0                |  1                |  0
+            elementwise_mul_grad                    |  0                |  0                |  1                |  0
+            fill_constant                           |  0                |  0                |  1                |  0
+            matmul_v2                               |  1                |  0                |  0                |  0
+            matmul_v2_grad                          |  1                |  0                |  0                |  0
+            memcpy                                  |  0                |  0                |  0                |  1
+            reduce_mean                             |  0                |  0                |  1                |  0
+            reduce_mean_grad                        |  0                |  0                |  1                |  0
+            relu                                    |  1                |  0                |  0                |  0
+            relu_grad                               |  1                |  0                |  0                |  0
+            reshape2                                |  0                |  0                |  1                |  0
+            reshape2_grad                           |  0                |  0                |  1                |  0
+            softmax                                 |  0                |  0                |  1                |  0
+            softmax_grad                            |  0                |  0                |  1                |  0
+            update_loss_scaling                     |  0                |  0                |  1                |  0
+            <----------------------------------------------------- op count: 22 ----------------------------------------------------->
     """
 
     def _convert_to_list(op_stats_unit_dict):

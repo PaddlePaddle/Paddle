@@ -15,8 +15,8 @@
 import numpy as np
 
 import paddle
-from paddle.fluid.data_feeder import check_dtype, convert_dtype
-from paddle.fluid.framework import Variable
+from paddle.base.data_feeder import check_dtype, convert_dtype
+from paddle.base.framework import Variable
 
 
 def convert_out_size_to_list(out_size):

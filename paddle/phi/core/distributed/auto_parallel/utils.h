@@ -14,6 +14,7 @@ limitations under the License. */
 #pragma once
 
 #include <algorithm>
+#include <iterator>
 #include <map>
 #include <sstream>
 #include <string>

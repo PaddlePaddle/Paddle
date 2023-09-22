@@ -155,5 +155,60 @@ class TestIdentityScaleCleanPass_V2(PassAutoScanTest):
         self.run_and_statis(max_examples=25, passes=["identity_op_clean_pass"])
 
 
+class TestIdentityCastCleanPass(PassAutoScanTest):
+    def sample_predictor_configs(self, program_config):
+        config = self.create_inference_config(use_gpu=True)
+        yield config, ['relu', 'relu'], (1e-2, 1e-2)
+
+    def sample_program_config(self, draw):
+        n = draw(st.integers(min_value=1, max_value=4))
+        c = draw(st.integers(min_value=1, max_value=20))
+        h = draw(st.integers(min_value=1, max_value=20))
+        w = draw(st.integers(min_value=1, max_value=20))
+
+        relu_op_1 = OpConfig(
+            "relu",
+            inputs={"X": ["relu_op_1_in"]},
+            outputs={"Out": ["relu_op_1_out"]},
+        )
+        cast_op_1 = OpConfig(
+            "cast",
+            inputs={"X": ["relu_op_1_out"]},
+            outputs={"Out": ["cast_op_1_out"]},
+            in_dtype=5,
+            out_dtype=5,
+        )
+        relu_op_2 = OpConfig(
+            "relu",
+            inputs={"X": ["cast_op_1_out"]},
+            outputs={"Out": ["relu_op_2_out"]},
+        )
+        cast_op_2 = OpConfig(
+            "cast",
+            inputs={"X": ["relu_op_2_out"]},
+            outputs={"Out": ["cast_op_2_out"]},
+            in_dtype=5,
+            out_dtype=4,
+        )
+        cast_op_3 = OpConfig(
+            "cast",
+            inputs={"X": ["cast_op_2_out"]},
+            outputs={"Out": ["cast_op_3_out"]},
+            in_dtype=4,
+            out_dtype=5,
+        )
+
+        program_config = ProgramConfig(
+            ops=[relu_op_1, cast_op_1, relu_op_2, cast_op_2, cast_op_3],
+            weights={},
+            inputs={"relu_op_1_in": TensorConfig(shape=[n, c, h, w])},
+            outputs=["cast_op_3_out"],
+        )
+        return program_config
+
+    def test(self):
+        self.run_and_statis(max_examples=25, passes=["identity_op_clean_pass"])
+
+
 if __name__ == "__main__":
     unittest.main()

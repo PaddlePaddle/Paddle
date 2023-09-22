@@ -24,9 +24,14 @@
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
 
-DECLARE_bool(cudnn_deterministic);
+PD_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
+
+int get_num_split() {
+  // 0 for an internal heuristic, which is optimal
+  return FLAGS_cudnn_deterministic ? 1 : 0;
+}
 
 template <typename T, typename Context>
 void FlashAttnUnpaddedGradImpl(const Context& ctx,
@@ -236,11 +241,7 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
     const int64_t total_k = k.dims()[0];
     const int64_t num_heads_k = k.dims()[1];
 
-    // TODO(umiswing): add deterministic in fa2.
-    // int num_splits = 0;  // 0 for an internal heuristic, which is optimal
-    // if (FLAGS_cudnn_deterministic) {
-    //   num_splits = 1;
-    // }
+    int num_splits = get_num_split();
 
     // TODO(umiswing): add shape check
     PADDLE_ENFORCE_EQ(
@@ -294,6 +295,7 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
                                             params.scale,
                                             params.causal,
                                             params.is_bf16,
+                                            num_splits,
                                             stream,
                                             params.seed,
                                             params.offset);
@@ -401,6 +403,8 @@ void FlashAttnGradKernel(const Context& ctx,
     VLOG(10) << "FlashAttn bwd seed: " << params.seed
              << ", offset: " << params.offset;
 
+    int num_splits = get_num_split();
+
     bool succ = phi::dynload::flash_attn_bwd(dout.data(),
                                              q.data(),
                                              k.data(),
@@ -426,6 +430,7 @@ void FlashAttnGradKernel(const Context& ctx,
                                              params.scale,
                                              params.causal,
                                              params.is_bf16,
+                                             num_splits,
                                              stream,
                                              params.seed,
                                              params.offset);

@@ -35,8 +35,8 @@ import numpy as np
 from paddle import _C_ops, in_dynamic_mode
 from paddle.device import get_all_custom_device_type
 
-from ...fluid import dygraph_utils
-from ...fluid.data_feeder import check_variable_and_dtype
+from ...base import dygraph_utils
+from ...base.data_feeder import check_variable_and_dtype
 from ...framework import ParamAttr, _global_flags, get_default_dtype, no_grad
 from .. import functional as F
 from ..functional import batch_norm, instance_norm, layer_norm
@@ -109,9 +109,7 @@ class _InstanceNormBase(Layer):
         )
 
     def extra_repr(self):
-        return 'num_features={}, epsilon={}'.format(
-            self._num_features, self._epsilon
-        )
+        return f'num_features={self._num_features}, epsilon={self._epsilon}'
 
 
 class InstanceNorm1D(_InstanceNormBase):
@@ -202,9 +200,7 @@ class InstanceNorm1D(_InstanceNormBase):
     def _check_input_dim(self, input):
         if len(input.shape) != 2 and len(input.shape) != 3:
             raise ValueError(
-                'expected 2D or 3D input (got {}D input)'.format(
-                    len(input.shape)
-                )
+                f'expected 2D or 3D input (got {len(input.shape)}D input)'
             )
 
 
@@ -692,9 +688,7 @@ class LayerNorm(Layer):
         )
 
     def extra_repr(self):
-        return 'normalized_shape={}, epsilon={}'.format(
-            self._normalized_shape, self._epsilon
-        )
+        return f'normalized_shape={self._normalized_shape}, epsilon={self._epsilon}'
 
 
 class _BatchNormBase(Layer):
@@ -894,8 +888,8 @@ class BatchNorm(Layer):
     - :math:`x` : mini-batch data
     - :math:`m` : the size of the mini-batch data
 
-    When use_global_stats = True, the :math:`\\mu_{\\beta}`
-    and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
+    When use_global_stats = True, the :math:`\mu_{\beta}`
+    and :math:`\sigma_{\beta}^{2}` are not the statistics of one mini-batch.
     They are global or running statistics (moving_mean and moving_variance). It usually got from the
     pre-trained model. Calculated as follows:
 
@@ -955,14 +949,14 @@ class BatchNorm(Layer):
     Examples:
         .. code-block:: python
 
-            >>> import paddle.fluid as fluid
+            >>> import paddle.base as base
             >>> import paddle.nn as nn
-            >>> from paddle.fluid.dygraph.base import to_variable
+            >>> from paddle.base.dygraph.base import to_variable
             >>> import numpy as np
 
 
             >>> x = np.random.random(size=(3, 10, 3, 7)).astype('float32')
-            >>> with fluid.dygraph.guard():
+            >>> with base.dygraph.guard():
             ...     x = to_variable(x)
             ...     batch_norm = nn.layer.norm.BatchNorm(10)
             ...     hidden1 = batch_norm(x)
@@ -1181,6 +1175,9 @@ class BatchNorm1D(_BatchNormBase):
         \sigma_{\beta}^{2} &\gets \frac{1}{m} \sum_{i=1}^{m}(x_i - \
         \mu_{\beta})^2 \qquad &//\ mini-batch\ variance \\
 
+    - :math:`x` : mini-batch data
+    - :math:`m` : the size of the mini-batch data
+
     When use_global_stats = True, the :math:`\mu_{\beta}`
     and :math:`\sigma_{\beta}^{2}` are not the statistics of one mini-batch.
     They are global or running statistics (moving_mean and moving_variance). It usually got from the
@@ -1276,9 +1273,7 @@ class BatchNorm1D(_BatchNormBase):
     def _check_input_dim(self, input):
         if len(input.shape) != 2 and len(input.shape) != 3:
             raise ValueError(
-                'expected 2D or 3D input (got {}D input)'.format(
-                    len(input.shape)
-                )
+                f'expected 2D or 3D input (got {len(input.shape)}D input)'
             )
 
 
@@ -1830,9 +1825,7 @@ class LocalResponseNorm(Layer):
         return out
 
     def extra_repr(self):
-        main_str = 'size={}, alpha={}, beta={}, k={}'.format(
-            self.size, self.alpha, self.beta, self.k
-        )
+        main_str = f'size={self.size}, alpha={self.alpha}, beta={self.beta}, k={self.k}'
         if self.data_format != 'NCHW':
             main_str += f', data_format={self.data_format}'
         if self.name is not None:
@@ -1919,7 +1912,7 @@ class SpectralNorm(Layer):
         assert dim < len(self._weight_shape), (
             "The input `dim` should be less than the "
             "length of `weight_shape`, but received dim="
-            "{}".format(dim)
+            f"{dim}"
         )
         h = self._weight_shape[self._dim]
         w = np.prod(self._weight_shape) // h

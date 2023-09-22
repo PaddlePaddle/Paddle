@@ -16,9 +16,9 @@
 
 #include "paddle/fluid/imperative/data_loader.h"
 
-#include <stdlib.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <cstdlib>
 
 #include <csignal>
 

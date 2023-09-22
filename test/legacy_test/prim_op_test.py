@@ -18,15 +18,20 @@ from collections import defaultdict
 
 import config
 import numpy as np
+from utils import dygraph_guard, static_guard
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.framework import (
+from paddle.autograd.ir_backward import grad as ir_grad
+from paddle.base import Scope, core
+from paddle.base.executor import scope_guard
+from paddle.base.framework import (
     OpProtoHolder,
     _dygraph_tracer,
     canonicalize_attrs,
     in_dygraph_mode,
+    in_pir_mode,
 )
+from paddle.decomposition import decompose
 from paddle.incubate.autograd import primapi
 from paddle.jit.dy2static.utils import parse_arg_and_kwargs
 
@@ -247,21 +252,11 @@ class PrimForwardChecker:
         self.checker_name = "PrimForwardChecker"
         self.place = place
         self.op_test = op_test
-        self.save_eager_or_static_status()
         self.init()
         self.init_checker()
 
     def init(self):
         pass
-
-    def save_eager_or_static_status(self):
-        self.eager_mode = True if in_dygraph_mode() else False
-
-    def recover_eager_or_static_status(self):
-        if self.eager_mode:
-            paddle.disable_static()
-        else:
-            paddle.enable_static()
 
     def init_checker(self):
         assert hasattr(
@@ -401,67 +396,72 @@ class PrimForwardChecker:
 
     def check(self):
         if (
-            type(self.place) is paddle.fluid.libpaddle.CUDAPlace
+            type(self.place) is paddle.base.libpaddle.CUDAPlace
             and not paddle.is_compiled_with_cuda()
         ):
             return
         self.eager_desire = self.get_eager_desire()
-        if self.enable_check_static_comp:
-            self.check_static_comp()
-        if self.enable_check_jit_comp:
-            self.check_jit_comp()
-        if self.enable_check_jit_comp_with_cinn:
-            self.check_jit_comp_with_cinn()
-
-        self.recover_eager_or_static_status()
+        if not in_pir_mode():
+            if self.enable_check_static_comp:
+                self.check_static_comp()
+            if self.enable_check_jit_comp:
+                self.check_jit_comp()
+            if self.enable_check_jit_comp_with_cinn:
+                self.check_jit_comp_with_cinn()
+        else:
+            if self.enable_check_static_comp:
+                with scope_guard(Scope()):
+                    self.check_static_comp()
 
     def get_kernel_sig(self):
-        paddle.disable_static()
-        if type(self.place) is paddle.fluid.libpaddle.CPUPlace:
-            paddle.device.set_device("cpu")
-        if type(self.place) is paddle.fluid.libpaddle.CUDAPlace:
-            paddle.device.set_device("gpu:0")
-        (
-            eager_tensor_inputs,
-            attrs_outputs,
-            _,
-        ) = self.get_eager_input_attr_and_inputdict(stop_gradient=True)
-        eager_tensor_outputs = self.get_eager_empty_output(stop_gradient=True)
-        kernel_sig = OpTestUtils._get_kernel_signature(
-            self.op_type,
-            eager_tensor_inputs,
-            eager_tensor_outputs,
-            attrs_outputs,
-        )
+        with dygraph_guard():
+            if type(self.place) is paddle.base.libpaddle.CPUPlace:
+                paddle.device.set_device("cpu")
+            if type(self.place) is paddle.base.libpaddle.CUDAPlace:
+                paddle.device.set_device("gpu:0")
+            (
+                eager_tensor_inputs,
+                attrs_outputs,
+                _,
+            ) = self.get_eager_input_attr_and_inputdict(stop_gradient=True)
+            eager_tensor_outputs = self.get_eager_empty_output(
+                stop_gradient=True
+            )
+            kernel_sig = OpTestUtils._get_kernel_signature(
+                self.op_type,
+                eager_tensor_inputs,
+                eager_tensor_outputs,
+                attrs_outputs,
+            )
         return kernel_sig
 
     def get_eager_desire(self):
-        paddle.disable_static()
-        if type(self.place) is paddle.fluid.libpaddle.CPUPlace:
-            paddle.device.set_device("cpu")
-        if type(self.place) is paddle.fluid.libpaddle.CUDAPlace:
-            paddle.device.set_device("gpu:0")
-        (
-            eager_tensor_inputs,
-            attrs_outputs,
-            _,
-        ) = self.get_eager_input_attr_and_inputdict(stop_gradient=True)
-        args = OpTestUtils.prepare_python_api_arguments(
-            self.public_python_api,
-            eager_tensor_inputs,
-            attrs_outputs,
-            self.kernel_sig,
-        )
-        inputs_sig, _, _ = self.kernel_sig
-        args = OpTestUtils.assumption_assert_and_transform(
-            args, len(inputs_sig)
-        )
-        ret = flatten(_as_list(self.public_python_api(*args)))
-        ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
-        if OpTestUtils.is_bfloat16_type(self.dtype):
-            ret = paddle.utils.map_structure(
-                lambda x: convert_uint16_to_float(x), ret
+        with dygraph_guard():
+            if type(self.place) is paddle.base.libpaddle.CPUPlace:
+                paddle.device.set_device("cpu")
+            if type(self.place) is paddle.base.libpaddle.CUDAPlace:
+                paddle.device.set_device("gpu:0")
+            (
+                eager_tensor_inputs,
+                attrs_outputs,
+                _,
+            ) = self.get_eager_input_attr_and_inputdict(stop_gradient=True)
+            args = OpTestUtils.prepare_python_api_arguments(
+                self.public_python_api,
+                eager_tensor_inputs,
+                attrs_outputs,
+                self.kernel_sig,
             )
+            inputs_sig, _, _ = self.kernel_sig
+            args = OpTestUtils.assumption_assert_and_transform(
+                args, len(inputs_sig)
+            )
+            ret = flatten(_as_list(self.public_python_api(*args)))
+            ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
+            if OpTestUtils.is_bfloat16_type(self.dtype):
+                ret = paddle.utils.map_structure(
+                    lambda x: convert_uint16_to_float(x), ret
+                )
         return ret
 
     def get_eager_input_attr_and_inputdict(self, stop_gradient):
@@ -578,7 +578,7 @@ class PrimForwardChecker:
         # forward comp only for comp op
         if self.prim_op_type == "prim":
             return
-        with paddle.fluid.framework._static_guard():
+        with static_guard():
             core._set_prim_forward_enabled(self.enable_fw_comp)
             startup_program, main_program = (
                 paddle.static.Program(),
@@ -604,19 +604,23 @@ class PrimForwardChecker:
                     args, len(inputs_sig)
                 )
                 ret = flatten(_as_list(self.public_python_api(*args)))
-                primapi.to_prim(main_program.blocks)
-            # ensure the operator not in program if check_prim is True
-            forward_ops = [op.type for op in main_program.blocks[0].ops]
-            assert self.op_type not in forward_ops, (
-                "%s shouldn't appear in program when check_prim is True"
-            ) % (self.op_type)
-            exe = paddle.static.Executor(self.place)
-            exe.run(startup_program)
-            ret = exe.run(main_program, feed=feed, fetch_list=ret)
-            if OpTestUtils.is_bfloat16_type(self.dtype):
-                ret = paddle.utils.map_structure(
-                    lambda x: convert_uint16_to_float(x), ret
-                )
+                if not in_pir_mode():
+                    primapi.to_prim(main_program.blocks)
+                else:
+                    ret = decompose(main_program, ret)
+                # ensure the operator not in program if check_prim is True
+                if not in_pir_mode():
+                    forward_ops = [op.type for op in main_program.blocks[0].ops]
+                    assert self.op_type not in forward_ops, (
+                        "%s shouldn't appear in program when check_prim is True"
+                    ) % (self.op_type)
+                exe = paddle.static.Executor(self.place)
+                exe.run(startup_program)
+                ret = exe.run(main_program, feed=feed, fetch_list=ret)
+                if OpTestUtils.is_bfloat16_type(self.dtype):
+                    ret = paddle.utils.map_structure(
+                        lambda x: convert_uint16_to_float(x), ret
+                    )
         # check static forward
         if len(ret) != len(self.eager_desire):
             msg = (
@@ -648,183 +652,187 @@ class PrimForwardChecker:
                     )
                 ),
             )
-        paddle.disable_static()
-        core._set_prim_forward_enabled(False)
+        with dygraph_guard():
+            core._set_prim_forward_enabled(False)
 
     def check_jit_comp(self):
         if self.prim_op_type == "prim":
             return
-        paddle.disable_static()
-        if type(self.place) == paddle.fluid.libpaddle.CPUPlace:
-            paddle.device.set_device("cpu")
-        if type(self.place) == paddle.fluid.libpaddle.CUDAPlace:
-            paddle.device.set_device("gpu:0")
-        atol = self.fw_comp_atol if self.enable_fw_comp else self.jit_comp_atol
-        rtol = self.fw_comp_rtol if self.enable_fw_comp else self.jit_comp_rtol
-        core._set_prim_forward_enabled(self.enable_fw_comp)
-        (
-            eager_tensor_inputs,
-            attrs_outputs,
-            _,
-        ) = self.get_eager_input_attr_and_inputdict(stop_gradient=True)
-        args = OpTestUtils.prepare_python_api_arguments(
-            self.public_python_api,
-            eager_tensor_inputs,
-            attrs_outputs,
-            self.kernel_sig,
-        )
-        inputs_sig, _, _ = self.kernel_sig
-        args = OpTestUtils.assumption_assert_and_transform(
-            args, len(inputs_sig)
-        )
-        net = PrimNet(self.public_python_api)
-        net = apply_to_static(net, False)
-        # ensure the operator not in program if check_prim is True
-        forward_ops = [
-            op.type
-            for op in net.forward.get_concrete_program(args)[1]
-            .forward_program.block(0)
-            .ops
-        ]
-        assert self.op_type not in forward_ops, (
-            "%s shouldn't appear in program when check_prim is True"
-        ) % (self.op_type)
-        ret = flatten(_as_list(net(args)))
-        ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
-        if OpTestUtils.is_bfloat16_type(self.dtype):
-            ret = paddle.utils.map_structure(
-                lambda x: convert_uint16_to_float(x), ret
+        with dygraph_guard():
+            if type(self.place) == paddle.base.libpaddle.CPUPlace:
+                paddle.device.set_device("cpu")
+            if type(self.place) == paddle.base.libpaddle.CUDAPlace:
+                paddle.device.set_device("gpu:0")
+            atol = (
+                self.fw_comp_atol if self.enable_fw_comp else self.jit_comp_atol
             )
-        # check jit comp forward
-        if len(ret) != len(self.eager_desire):
-            msg = (
-                "The jit comp forward api out tensor nums is different with eager forward api out tensor nums on {}."
-                'when enable_fw_comp is {}, jit comp forward api out tensor nums = {}, eager forward api out tensor nums = {}. \n'.format(
-                    str(self.place),
-                    self.enable_fw_comp,
-                    len(ret),
-                    len(self.eager_desire),
+            rtol = (
+                self.fw_comp_rtol if self.enable_fw_comp else self.jit_comp_rtol
+            )
+            core._set_prim_forward_enabled(self.enable_fw_comp)
+            (
+                eager_tensor_inputs,
+                attrs_outputs,
+                _,
+            ) = self.get_eager_input_attr_and_inputdict(stop_gradient=True)
+            args = OpTestUtils.prepare_python_api_arguments(
+                self.public_python_api,
+                eager_tensor_inputs,
+                attrs_outputs,
+                self.kernel_sig,
+            )
+            inputs_sig, _, _ = self.kernel_sig
+            args = OpTestUtils.assumption_assert_and_transform(
+                args, len(inputs_sig)
+            )
+            net = PrimNet(self.public_python_api)
+            net = apply_to_static(net, False)
+            # ensure the operator not in program if check_prim is True
+            forward_ops = [
+                op.type
+                for op in net.forward.get_concrete_program(args)[1]
+                .forward_program.block(0)
+                .ops
+            ]
+            assert self.op_type not in forward_ops, (
+                "%s shouldn't appear in program when check_prim is True"
+            ) % (self.op_type)
+            ret = flatten(_as_list(net(args)))
+            ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
+            if OpTestUtils.is_bfloat16_type(self.dtype):
+                ret = paddle.utils.map_structure(
+                    lambda x: convert_uint16_to_float(x), ret
                 )
-            )
-            raise RuntimeError(msg)
-        for i in range(len(ret)):
-            np.testing.assert_allclose(
-                ret[i],
-                self.eager_desire[i],
-                rtol=rtol,
-                atol=atol,
-                err_msg=(
-                    'Check jit comp forward api out failed. Mismatch between jit comp '
-                    'and eager on %s, when enable_fw_comp is %s,the forward api out tensor\'s index is : %d \n'
-                    'jit comp forward api out tensor:\n%s\n eager forward api out tensor:\n%s\n'
-                    % (
+            # check jit comp forward
+            if len(ret) != len(self.eager_desire):
+                msg = (
+                    "The jit comp forward api out tensor nums is different with eager forward api out tensor nums on {}."
+                    'when enable_fw_comp is {}, jit comp forward api out tensor nums = {}, eager forward api out tensor nums = {}. \n'.format(
                         str(self.place),
                         self.enable_fw_comp,
-                        i,
-                        ret[i],
-                        self.eager_desire[i],
+                        len(ret),
+                        len(self.eager_desire),
                     )
-                ),
-            )
-        core._set_prim_forward_enabled(False)
-        net.forward.program_cache.clear()
+                )
+                raise RuntimeError(msg)
+            for i in range(len(ret)):
+                np.testing.assert_allclose(
+                    ret[i],
+                    self.eager_desire[i],
+                    rtol=rtol,
+                    atol=atol,
+                    err_msg=(
+                        'Check jit comp forward api out failed. Mismatch between jit comp '
+                        'and eager on %s, when enable_fw_comp is %s,the forward api out tensor\'s index is : %d \n'
+                        'jit comp forward api out tensor:\n%s\n eager forward api out tensor:\n%s\n'
+                        % (
+                            str(self.place),
+                            self.enable_fw_comp,
+                            i,
+                            ret[i],
+                            self.eager_desire[i],
+                        )
+                    ),
+                )
+            core._set_prim_forward_enabled(False)
+            net.forward.program_cache.clear()
 
     def check_jit_comp_with_cinn(self):
         if self.prim_op_type == "prim":
             return
         # cinn doesn't support cpu place
         if (
-            type(self.place) == paddle.fluid.libpaddle.CPUPlace
+            type(self.place) == paddle.base.libpaddle.CPUPlace
             and self.enable_cinn
             and core.is_compiled_with_cinn()
         ):
             return
-        paddle.disable_static()
-        atol = (
-            self.cinn_atol
-            if self.enable_cinn and core.is_compiled_with_cinn()
-            else self.fw_comp_atol
-        )
-        rtol = (
-            self.cinn_rtol
-            if self.enable_cinn and core.is_compiled_with_cinn()
-            else self.fw_comp_rtol
-        )
-        core._set_prim_forward_enabled(self.enable_fw_comp)
-        if type(self.place) is paddle.fluid.libpaddle.CPUPlace:
-            paddle.device.set_device("cpu")
-        if type(self.place) is paddle.fluid.libpaddle.CUDAPlace:
-            paddle.device.set_device("gpu:0")
-        (
-            eager_tensor_inputs,
-            attrs_outputs,
-            _,
-        ) = self.get_eager_input_attr_and_inputdict(stop_gradient=True)
-        args = OpTestUtils.prepare_python_api_arguments(
-            self.public_python_api,
-            eager_tensor_inputs,
-            attrs_outputs,
-            self.kernel_sig,
-        )
-        inputs_sig, _, _ = self.kernel_sig
-        args = OpTestUtils.assumption_assert_and_transform(
-            args, len(inputs_sig)
-        )
-        net = PrimNet(self.public_python_api)
-        net = apply_to_static(
-            net, core.is_compiled_with_cinn() and self.enable_cinn
-        )
-        # check the operator not in program if check prim is True
-        forward_ops = [
-            op.type
-            for op in net.forward.get_concrete_program(args)[1]
-            .forward_program.block(0)
-            .ops
-        ]
-        assert self.op_type not in forward_ops, (
-            "%s shouldn't appear in program when check_prim is True"
-        ) % (self.op_type)
-        ret = flatten(_as_list(net(args)))
-        ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
-        if OpTestUtils.is_bfloat16_type(self.dtype):
-            ret = paddle.utils.map_structure(
-                lambda x: convert_uint16_to_float(x), ret
+        with dygraph_guard():
+            atol = (
+                self.cinn_atol
+                if self.enable_cinn and core.is_compiled_with_cinn()
+                else self.fw_comp_atol
             )
-        # check jit comp forward
-        if len(ret) != len(self.eager_desire):
-            msg = (
-                "The jit comp with cinn forward api out tensor nums is different with eager forward api out tensor nums on {}."
-                'when enable_fw_comp is {}, enable_cinn is {}, jit comp forward api out tensor nums = {}, eager forward api out tensor nums = {}. \n'.format(
-                    str(self.place),
-                    self.enable_fw_comp,
-                    core.is_compiled_with_cinn() and self.enable_cinn,
-                    len(ret),
-                    len(self.eager_desire),
+            rtol = (
+                self.cinn_rtol
+                if self.enable_cinn and core.is_compiled_with_cinn()
+                else self.fw_comp_rtol
+            )
+            core._set_prim_forward_enabled(self.enable_fw_comp)
+            if type(self.place) is paddle.base.libpaddle.CPUPlace:
+                paddle.device.set_device("cpu")
+            if type(self.place) is paddle.base.libpaddle.CUDAPlace:
+                paddle.device.set_device("gpu:0")
+            (
+                eager_tensor_inputs,
+                attrs_outputs,
+                _,
+            ) = self.get_eager_input_attr_and_inputdict(stop_gradient=True)
+            args = OpTestUtils.prepare_python_api_arguments(
+                self.public_python_api,
+                eager_tensor_inputs,
+                attrs_outputs,
+                self.kernel_sig,
+            )
+            inputs_sig, _, _ = self.kernel_sig
+            args = OpTestUtils.assumption_assert_and_transform(
+                args, len(inputs_sig)
+            )
+            net = PrimNet(self.public_python_api)
+            net = apply_to_static(
+                net, core.is_compiled_with_cinn() and self.enable_cinn
+            )
+            # check the operator not in program if check prim is True
+            forward_ops = [
+                op.type
+                for op in net.forward.get_concrete_program(args)[1]
+                .forward_program.block(0)
+                .ops
+            ]
+            assert self.op_type not in forward_ops, (
+                "%s shouldn't appear in program when check_prim is True"
+            ) % (self.op_type)
+            ret = flatten(_as_list(net(args)))
+            ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
+            if OpTestUtils.is_bfloat16_type(self.dtype):
+                ret = paddle.utils.map_structure(
+                    lambda x: convert_uint16_to_float(x), ret
                 )
-            )
-            raise RuntimeError(msg)
-        for i in range(len(ret)):
-            np.testing.assert_allclose(
-                ret[i],
-                self.eager_desire[i],
-                rtol=rtol,
-                atol=atol,
-                err_msg=(
-                    'Check jit comp with cinn forward api out failed. Mismatch between jit comp and eager on %s, '
-                    'when enable_fw_comp is %s, enable_cinn is %s, the forward api out tensor\'s index is : %d \n'
-                    'jit comp forward api out tensor:\n%s\n eager forward api out tensor:\n%s\n'
-                    % (
+            # check jit comp forward
+            if len(ret) != len(self.eager_desire):
+                msg = (
+                    "The jit comp with cinn forward api out tensor nums is different with eager forward api out tensor nums on {}."
+                    'when enable_fw_comp is {}, enable_cinn is {}, jit comp forward api out tensor nums = {}, eager forward api out tensor nums = {}. \n'.format(
                         str(self.place),
                         self.enable_fw_comp,
                         core.is_compiled_with_cinn() and self.enable_cinn,
-                        i,
-                        ret[i],
-                        self.eager_desire[i],
+                        len(ret),
+                        len(self.eager_desire),
                     )
-                ),
-            )
-        core._set_prim_forward_enabled(False)
-        net.forward.program_cache.clear()
+                )
+                raise RuntimeError(msg)
+            for i in range(len(ret)):
+                np.testing.assert_allclose(
+                    ret[i],
+                    self.eager_desire[i],
+                    rtol=rtol,
+                    atol=atol,
+                    err_msg=(
+                        'Check jit comp with cinn forward api out failed. Mismatch between jit comp and eager on %s, '
+                        'when enable_fw_comp is %s, enable_cinn is %s, the forward api out tensor\'s index is : %d \n'
+                        'jit comp forward api out tensor:\n%s\n eager forward api out tensor:\n%s\n'
+                        % (
+                            str(self.place),
+                            self.enable_fw_comp,
+                            core.is_compiled_with_cinn() and self.enable_cinn,
+                            i,
+                            ret[i],
+                            self.eager_desire[i],
+                        )
+                    ),
+                )
+            core._set_prim_forward_enabled(False)
+            net.forward.program_cache.clear()
 
 
 class PrimGradChecker(PrimForwardChecker):
@@ -848,21 +856,24 @@ class PrimGradChecker(PrimForwardChecker):
 
     def check(self):
         if (
-            type(self.place) is paddle.fluid.libpaddle.CUDAPlace
+            type(self.place) is paddle.base.libpaddle.CUDAPlace
             and not paddle.is_compiled_with_cuda()
         ):
             return
         self.eager_desire = self.get_eager_desire()
-        if self.enable_check_eager_comp:
-            self.check_eager_comp()
-        if self.enable_check_static_comp:
-            self.check_static_comp()
-        if self.enable_check_jit_comp:
-            self.check_jit_comp()
-        if self.enable_check_jit_comp_with_cinn:
-            self.check_jit_comp_with_cinn()
-
-        self.recover_eager_or_static_status()
+        if not in_pir_mode():
+            if self.enable_check_eager_comp:
+                self.check_eager_comp()
+            if self.enable_check_static_comp:
+                self.check_static_comp()
+            if self.enable_check_jit_comp:
+                self.check_jit_comp()
+            if self.enable_check_jit_comp_with_cinn:
+                self.check_jit_comp_with_cinn()
+        else:
+            if self.enable_check_static_comp:
+                with scope_guard(Scope()):
+                    self.check_static_comp()
 
     def get_output_dict(self, np_outputs, api_outputs, outputs_sig):
         assert len(api_outputs) <= len(outputs_sig), (
@@ -924,100 +935,100 @@ class PrimGradChecker(PrimForwardChecker):
         return no_grad_set
 
     def get_eager_desire(self):
-        paddle.disable_static()
-        if type(self.place) is paddle.fluid.libpaddle.CPUPlace:
-            paddle.device.set_device("cpu")
-        if type(self.place) is paddle.fluid.libpaddle.CUDAPlace:
-            paddle.device.set_device("gpu:0")
-        (
-            eager_tensor_inputs,
-            attrs_outputs,
-            inputs_dict,
-        ) = self.get_eager_input_attr_and_inputdict(stop_gradient=False)
-        args = OpTestUtils.prepare_python_api_arguments(
-            self.public_python_api,
-            eager_tensor_inputs,
-            attrs_outputs,
-            self.kernel_sig,
-        )
-        inputs_sig, _, outputs_sig = self.kernel_sig
-        if hasattr(self.op_test, "python_out_sig"):
-            outputs_sig = self.op_test.python_out_sig
-        args = OpTestUtils.assumption_assert_and_transform(
-            args, len(inputs_sig)
-        )
-        ret = _as_list(self.public_python_api(*args))
-        outputs_dict = self.get_output_dict(self.outputs, ret, outputs_sig)
-        ys = []
-        if isinstance(self.output_names, list):
-            for output_name in self.output_names:
-                ys.append(outputs_dict[output_name])
-        else:
-            ys.append(outputs_dict[self.output_names])
-        xs = []
-        if isinstance(self.inputs_to_check, list):
-            for input_name in self.inputs_to_check:
-                xs.append(inputs_dict[input_name])
-        else:
-            xs.append(inputs_dict[self.inputs_to_check])
-        vs = self.gen_eager_grad_outputs()
-        no_grad_vars = self.gen_no_grad_set(
-            var_dict={**inputs_dict, **outputs_dict}
-        )
-        ret = paddle.grad(
-            ys, xs, vs, allow_unused=True, no_grad_vars=no_grad_vars
-        )
-        ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
-        if OpTestUtils.is_bfloat16_type(self.dtype):
-            ret = paddle.utils.map_structure(
-                lambda x: convert_uint16_to_float(x), ret
+        with dygraph_guard():
+            if type(self.place) is paddle.base.libpaddle.CPUPlace:
+                paddle.device.set_device("cpu")
+            if type(self.place) is paddle.base.libpaddle.CUDAPlace:
+                paddle.device.set_device("gpu:0")
+            (
+                eager_tensor_inputs,
+                attrs_outputs,
+                inputs_dict,
+            ) = self.get_eager_input_attr_and_inputdict(stop_gradient=False)
+            args = OpTestUtils.prepare_python_api_arguments(
+                self.public_python_api,
+                eager_tensor_inputs,
+                attrs_outputs,
+                self.kernel_sig,
             )
+            inputs_sig, _, outputs_sig = self.kernel_sig
+            if hasattr(self.op_test, "python_out_sig"):
+                outputs_sig = self.op_test.python_out_sig
+            args = OpTestUtils.assumption_assert_and_transform(
+                args, len(inputs_sig)
+            )
+            ret = _as_list(self.public_python_api(*args))
+            outputs_dict = self.get_output_dict(self.outputs, ret, outputs_sig)
+            ys = []
+            if isinstance(self.output_names, list):
+                for output_name in self.output_names:
+                    ys.append(outputs_dict[output_name])
+            else:
+                ys.append(outputs_dict[self.output_names])
+            xs = []
+            if isinstance(self.inputs_to_check, list):
+                for input_name in self.inputs_to_check:
+                    xs.append(inputs_dict[input_name])
+            else:
+                xs.append(inputs_dict[self.inputs_to_check])
+            vs = self.gen_eager_grad_outputs()
+            no_grad_vars = self.gen_no_grad_set(
+                var_dict={**inputs_dict, **outputs_dict}
+            )
+            ret = paddle.grad(
+                ys, xs, vs, allow_unused=True, no_grad_vars=no_grad_vars
+            )
+            ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
+            if OpTestUtils.is_bfloat16_type(self.dtype):
+                ret = paddle.utils.map_structure(
+                    lambda x: convert_uint16_to_float(x), ret
+                )
         return ret
 
     def check_eager_comp(self):
         if self.prim_op_type == "comp":
             return
-        paddle.disable_static()
-        if type(self.place) is paddle.fluid.libpaddle.CPUPlace:
-            paddle.device.set_device("cpu")
-        if type(self.place) is paddle.fluid.libpaddle.CUDAPlace:
-            paddle.device.set_device("gpu:0")
-        atol = self.rev_comp_atol
-        rtol = self.rev_comp_rtol
-        core.set_prim_eager_enabled(self.enable_rev_comp)
-        actual_ret = self.get_eager_desire()
-        # check static forward
-        if len(actual_ret) != len(self.eager_desire):
-            msg = (
-                "The eager comp grad out tensor nums is different with eager grad out tensor nums on {}."
-                'when enable_rev_comp is {}, eager comp grad api out tensor nums = {}, eager grad out tensor nums = {}. \n'.format(
-                    str(self.place),
-                    self.enable_rev_comp,
-                    len(actual_ret),
-                    len(self.eager_desire),
-                )
-            )
-            raise RuntimeError(msg)
-        for i in range(len(actual_ret)):
-            np.testing.assert_allclose(
-                actual_ret[i],
-                self.eager_desire[i],
-                rtol=atol,
-                atol=rtol,
-                err_msg=(
-                    'Check eager comp grad out failed. Mismatch between eager comp '
-                    'and eager on %s, when enable_rev_comp is %s,the eager comp grad out tensor\'s index is : %d \n'
-                    'eager comp grad out tensor:\n%s\n eager grad out tensor:\n%s\n'
-                    % (
+        with dygraph_guard():
+            if type(self.place) is paddle.base.libpaddle.CPUPlace:
+                paddle.device.set_device("cpu")
+            if type(self.place) is paddle.base.libpaddle.CUDAPlace:
+                paddle.device.set_device("gpu:0")
+            atol = self.rev_comp_atol
+            rtol = self.rev_comp_rtol
+            core.set_prim_eager_enabled(self.enable_rev_comp)
+            actual_ret = self.get_eager_desire()
+            # check static forward
+            if len(actual_ret) != len(self.eager_desire):
+                msg = (
+                    "The eager comp grad out tensor nums is different with eager grad out tensor nums on {}."
+                    'when enable_rev_comp is {}, eager comp grad api out tensor nums = {}, eager grad out tensor nums = {}. \n'.format(
                         str(self.place),
                         self.enable_rev_comp,
-                        i,
-                        actual_ret[i],
-                        self.eager_desire[i],
+                        len(actual_ret),
+                        len(self.eager_desire),
                     )
-                ),
-            )
-        core.set_prim_eager_enabled(False)
+                )
+                raise RuntimeError(msg)
+            for i in range(len(actual_ret)):
+                np.testing.assert_allclose(
+                    actual_ret[i],
+                    self.eager_desire[i],
+                    rtol=atol,
+                    atol=rtol,
+                    err_msg=(
+                        'Check eager comp grad out failed. Mismatch between eager comp '
+                        'and eager on %s, when enable_rev_comp is %s,the eager comp grad out tensor\'s index is : %d \n'
+                        'eager comp grad out tensor:\n%s\n eager grad out tensor:\n%s\n'
+                        % (
+                            str(self.place),
+                            self.enable_rev_comp,
+                            i,
+                            actual_ret[i],
+                            self.eager_desire[i],
+                        )
+                    ),
+                )
+            core.set_prim_eager_enabled(False)
 
     def check_static_comp(self):
         if self.prim_op_type == "prim":
@@ -1027,7 +1038,7 @@ class PrimGradChecker(PrimForwardChecker):
             core._set_prim_backward_enabled(self.enable_rev_comp)
         atol = self.rev_comp_atol if self.enable_rev_comp else self.fw_comp_atol
         rtol = self.rev_comp_rtol if self.enable_rev_comp else self.fw_comp_rtol
-        with paddle.fluid.framework._static_guard():
+        with static_guard():
             startup_program, main_program = (
                 paddle.static.Program(),
                 paddle.static.Program(),
@@ -1054,10 +1065,13 @@ class PrimGradChecker(PrimForwardChecker):
                     args, len(inputs_sig)
                 )
                 fw_outs = _as_list(self.public_python_api(*args))
+                if not in_pir_mode():
+                    primapi.to_prim(main_program.blocks)
+                else:
+                    fw_outs = decompose(main_program, fw_outs)
                 outputs_dict = self.get_output_dict(
                     self.outputs, fw_outs, outputs_sig
                 )
-                primapi.to_prim(main_program.blocks)
                 ys = []
                 if isinstance(self.output_names, list):
                     for output_name in self.output_names:
@@ -1075,22 +1089,26 @@ class PrimGradChecker(PrimForwardChecker):
                 no_grad_vars = self.gen_no_grad_set(
                     var_dict={**inputs_dict, **outputs_dict}
                 )
-                ret = paddle.static.gradients(
-                    ys, xs, vs, no_grad_set=no_grad_vars
-                )
-            # check the backward operator not in program when check_prim is True
-            ops = [op.type for op in main_program.blocks[0].ops]
-            backward_op_type = self.op_type + "_grad"
-            assert backward_op_type not in ops, (
-                "%s shouldn't appear in program when check_prim is True"
-            ) % (backward_op_type)
-            exe = paddle.static.Executor(self.place)
-            exe.run(startup_program)
-            actual_ret = exe.run(main_program, feed=feed, fetch_list=ret)
-            if OpTestUtils.is_bfloat16_type(self.dtype):
-                actual_ret = paddle.utils.map_structure(
-                    lambda x: convert_uint16_to_float(x), actual_ret
-                )
+                if not in_pir_mode():
+                    ret = paddle.static.gradients(
+                        ys, xs, vs, no_grad_set=no_grad_vars
+                    )
+                else:
+                    ret = ir_grad(ys, xs, vs, no_grad_vars=no_grad_vars)
+                # check the backward operator not in program when check_prim is True
+                if not in_pir_mode():
+                    ops = [op.type for op in main_program.blocks[0].ops]
+                    backward_op_type = self.op_type + "_grad"
+                    assert backward_op_type not in ops, (
+                        "%s shouldn't appear in program when check_prim is True"
+                    ) % (backward_op_type)
+                exe = paddle.static.Executor(self.place)
+                exe.run(startup_program)
+                actual_ret = exe.run(main_program, feed=feed, fetch_list=ret)
+                if OpTestUtils.is_bfloat16_type(self.dtype):
+                    actual_ret = paddle.utils.map_structure(
+                        lambda x: convert_uint16_to_float(x), actual_ret
+                    )
         # check static grad out
         if len(actual_ret) != len(self.eager_desire):
             msg = (
@@ -1126,146 +1144,18 @@ class PrimGradChecker(PrimForwardChecker):
             )
         core._set_prim_forward_enabled(False)
         core._set_prim_backward_enabled(False)
-        paddle.disable_static()
 
     def check_jit_comp(self):
-        paddle.disable_static()
-        if type(self.place) is paddle.fluid.libpaddle.CPUPlace:
-            paddle.device.set_device("cpu")
-        if type(self.place) is paddle.fluid.libpaddle.CUDAPlace:
-            paddle.device.set_device("gpu:0")
-        if self.prim_op_type == "prim":
-            core._set_prim_backward_enabled(self.enable_rev_comp)
-        else:
-            core._set_prim_forward_enabled(self.enable_fw_comp)
-            core._set_prim_backward_enabled(self.enable_rev_comp)
-        atol = (
-            self.fw_comp_atol
-            if self.enable_fw_comp and not self.enable_rev_comp
-            else self.jit_comp_atol
-        )
-        rtol = (
-            self.fw_comp_rtol
-            if self.enable_fw_comp and not self.enable_rev_comp
-            else self.jit_comp_rtol
-        )
-        atol = self.rev_comp_atol if self.enable_rev_comp else atol
-        rtol = self.rev_comp_rtol if self.enable_rev_comp else rtol
-        (
-            eager_tensor_inputs,
-            attrs_outputs,
-            inputs_dict,
-        ) = self.get_eager_input_attr_and_inputdict(stop_gradient=False)
-        args = OpTestUtils.prepare_python_api_arguments(
-            self.public_python_api,
-            eager_tensor_inputs,
-            attrs_outputs,
-            self.kernel_sig,
-        )
-        inputs_sig, _, outputs_sig = self.kernel_sig
-        args = OpTestUtils.assumption_assert_and_transform(
-            args, len(inputs_sig)
-        )
-        net = PrimNet(self.public_python_api)
-        net = apply_to_static(net, False)
-        # check the backward operator not in program when check_prim is True
-        ops = [
-            op.type
-            for op in net.forward.get_concrete_program(args)[1]
-            .backward_program.block(0)
-            .ops
-        ]
-        backward_op_type = self.op_type + "_grad"
-        assert backward_op_type not in ops, (
-            "%s shouldn't appear in program when check_prim is True"
-        ) % (backward_op_type)
-        out = _as_list(net(args))
-        if hasattr(self.op_test, "python_out_sig"):
-            outputs_sig = self.op_test.python_out_sig
-        outputs_dict = self.get_output_dict(self.outputs, out, outputs_sig)
-        ys = []
-        if isinstance(self.output_names, list):
-            for output_name in self.output_names:
-                ys.append(outputs_dict[output_name])
-        else:
-            ys.append(outputs_dict[self.output_names])
-        xs = []
-        if isinstance(self.inputs_to_check, list):
-            for input_name in self.inputs_to_check:
-                xs.append(inputs_dict[input_name])
-        else:
-            xs.append(inputs_dict[self.inputs_to_check])
-        vs = self.gen_eager_grad_outputs()
-        no_grad_vars = self.gen_no_grad_set(
-            var_dict={**inputs_dict, **outputs_dict}
-        )
-        ret = paddle.grad(
-            ys, xs, vs, allow_unused=True, no_grad_vars=no_grad_vars
-        )
-        ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
-        if OpTestUtils.is_bfloat16_type(self.dtype):
-            ret = paddle.utils.map_structure(
-                lambda x: convert_uint16_to_float(x), ret
-            )
-        # check jit comp grad out
-        if len(ret) != len(self.eager_desire):
-            msg = (
-                "The jit comp grad out tensor nums is different with eager grad out tensor nums on {}."
-                'when enable_fw_comp is {}, enable_rev_comp is {}, jit comp grad out tensor nums = {}, eager grad out tensor nums = {}. \n'.format(
-                    str(self.place),
-                    self.enable_fw_comp,
-                    self.enable_rev_comp,
-                    len(ret),
-                    len(self.eager_desire),
-                )
-            )
-            raise RuntimeError(msg)
-        for i in range(len(ret)):
-            np.testing.assert_allclose(
-                ret[i],
-                self.eager_desire[i],
-                rtol=rtol,
-                atol=atol,
-                err_msg=(
-                    'Check jit comp grad out failed. Mismatch between jit comp '
-                    'and eager on %s, when enable_fw_comp is %s, enable_rev_comp is %s,the grad out tensor\'s index is : %d \n'
-                    'jit comp grad out tensor:\n%s\n eager grad out out tensor:\n%s\n'
-                    % (
-                        str(self.place),
-                        self.enable_fw_comp,
-                        self.enable_rev_comp,
-                        i,
-                        ret[i],
-                        self.eager_desire[i],
-                    )
-                ),
-            )
-        core._set_prim_forward_enabled(False)
-        core._set_prim_backward_enabled(False)
-        net.forward.program_cache.clear()
-
-    def check_jit_comp_with_cinn(self):
-        # cinn doesn't support cpu place
-        if (
-            type(self.place) is paddle.fluid.libpaddle.CPUPlace
-            and self.enable_cinn
-            and core.is_compiled_with_cinn()
-        ):
-            return
-        paddle.disable_static()
-        if type(self.place) is paddle.fluid.libpaddle.CPUPlace:
-            paddle.device.set_device("cpu")
-        if type(self.place) is paddle.fluid.libpaddle.CUDAPlace:
-            paddle.device.set_device("gpu:0")
-        if self.prim_op_type == "prim":
-            core._set_prim_backward_enabled(self.enable_rev_comp)
-        else:
-            core._set_prim_forward_enabled(self.enable_fw_comp)
-            core._set_prim_backward_enabled(self.enable_rev_comp)
-        if self.enable_cinn and core.is_compiled_with_cinn():
-            atol = self.cinn_atol
-            rtol = self.cinn_rtol
-        else:
+        with dygraph_guard():
+            if type(self.place) is paddle.base.libpaddle.CPUPlace:
+                paddle.device.set_device("cpu")
+            if type(self.place) is paddle.base.libpaddle.CUDAPlace:
+                paddle.device.set_device("gpu:0")
+            if self.prim_op_type == "prim":
+                core._set_prim_backward_enabled(self.enable_rev_comp)
+            else:
+                core._set_prim_forward_enabled(self.enable_fw_comp)
+                core._set_prim_backward_enabled(self.enable_rev_comp)
             atol = (
                 self.fw_comp_atol
                 if self.enable_fw_comp and not self.enable_rev_comp
@@ -1278,101 +1168,228 @@ class PrimGradChecker(PrimForwardChecker):
             )
             atol = self.rev_comp_atol if self.enable_rev_comp else atol
             rtol = self.rev_comp_rtol if self.enable_rev_comp else rtol
-        (
-            eager_tensor_inputs,
-            attrs_outputs,
-            inputs_dict,
-        ) = self.get_eager_input_attr_and_inputdict(stop_gradient=False)
-        args = OpTestUtils.prepare_python_api_arguments(
-            self.public_python_api,
-            eager_tensor_inputs,
-            attrs_outputs,
-            self.kernel_sig,
-        )
-        inputs_sig, _, outputs_sig = self.kernel_sig
-        args = OpTestUtils.assumption_assert_and_transform(
-            args, len(inputs_sig)
-        )
-        net = PrimNet(self.public_python_api)
-        net = apply_to_static(
-            net, core.is_compiled_with_cinn() and self.enable_cinn
-        )
-        # check the backward operator not in program when check_prim is True
-        ops = [
-            op.type
-            for op in net.forward.get_concrete_program(args)[1]
-            .backward_program.block(0)
-            .ops
-        ]
-        backward_op_type = self.op_type + "_grad"
-        assert backward_op_type not in ops, (
-            "%s shouldn't appear in program when check_prim is True"
-        ) % (backward_op_type)
-
-        out = _as_list(net(args))
-        if hasattr(self.op_test, "python_out_sig"):
-            outputs_sig = self.op_test.python_out_sig
-        outputs_dict = self.get_output_dict(self.outputs, out, outputs_sig)
-        ys = []
-        if isinstance(self.output_names, list):
-            for output_name in self.output_names:
-                ys.append(outputs_dict[output_name])
-        else:
-            ys.append(outputs_dict[self.output_names])
-        xs = []
-        if isinstance(self.inputs_to_check, list):
-            for input_name in self.inputs_to_check:
-                xs.append(inputs_dict[input_name])
-        else:
-            xs.append(inputs_dict[self.inputs_to_check])
-        vs = self.gen_eager_grad_outputs()
-        no_grad_vars = self.gen_no_grad_set(
-            var_dict={**inputs_dict, **outputs_dict}
-        )
-        ret = paddle.grad(
-            ys, xs, vs, allow_unused=True, no_grad_vars=no_grad_vars
-        )
-        ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
-        if OpTestUtils.is_bfloat16_type(self.dtype):
-            ret = paddle.utils.map_structure(
-                lambda x: convert_uint16_to_float(x), ret
+            (
+                eager_tensor_inputs,
+                attrs_outputs,
+                inputs_dict,
+            ) = self.get_eager_input_attr_and_inputdict(stop_gradient=False)
+            args = OpTestUtils.prepare_python_api_arguments(
+                self.public_python_api,
+                eager_tensor_inputs,
+                attrs_outputs,
+                self.kernel_sig,
             )
-        # check jit comp grad out
-        if len(ret) != len(self.eager_desire):
-            msg = (
-                "The jit comp with cinn grad out tensor nums is different with eager grad out tensor nums on {}."
-                'when enable_fw_comp is {}, enable_rev_comp is {}, enable_cinn is {}, jit comp grad out tensor nums = {}, eager grad out tensor nums = {}. \n'.format(
-                    str(self.place),
-                    self.enable_fw_comp,
-                    self.enable_rev_comp,
-                    self.enable_cinn and core.is_compiled_with_cinn(),
-                    len(ret),
-                    len(self.eager_desire),
+            inputs_sig, _, outputs_sig = self.kernel_sig
+            args = OpTestUtils.assumption_assert_and_transform(
+                args, len(inputs_sig)
+            )
+            net = PrimNet(self.public_python_api)
+            net = apply_to_static(net, False)
+            # check the backward operator not in program when check_prim is True
+            ops = [
+                op.type
+                for op in net.forward.get_concrete_program(args)[1]
+                .backward_program.block(0)
+                .ops
+            ]
+            backward_op_type = self.op_type + "_grad"
+            assert backward_op_type not in ops, (
+                "%s shouldn't appear in program when check_prim is True"
+            ) % (backward_op_type)
+            out = _as_list(net(args))
+            if hasattr(self.op_test, "python_out_sig"):
+                outputs_sig = self.op_test.python_out_sig
+            outputs_dict = self.get_output_dict(self.outputs, out, outputs_sig)
+            ys = []
+            if isinstance(self.output_names, list):
+                for output_name in self.output_names:
+                    ys.append(outputs_dict[output_name])
+            else:
+                ys.append(outputs_dict[self.output_names])
+            xs = []
+            if isinstance(self.inputs_to_check, list):
+                for input_name in self.inputs_to_check:
+                    xs.append(inputs_dict[input_name])
+            else:
+                xs.append(inputs_dict[self.inputs_to_check])
+            vs = self.gen_eager_grad_outputs()
+            no_grad_vars = self.gen_no_grad_set(
+                var_dict={**inputs_dict, **outputs_dict}
+            )
+            ret = paddle.grad(
+                ys, xs, vs, allow_unused=True, no_grad_vars=no_grad_vars
+            )
+            ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
+            if OpTestUtils.is_bfloat16_type(self.dtype):
+                ret = paddle.utils.map_structure(
+                    lambda x: convert_uint16_to_float(x), ret
                 )
+            # check jit comp grad out
+            if len(ret) != len(self.eager_desire):
+                msg = (
+                    "The jit comp grad out tensor nums is different with eager grad out tensor nums on {}."
+                    'when enable_fw_comp is {}, enable_rev_comp is {}, jit comp grad out tensor nums = {}, eager grad out tensor nums = {}. \n'.format(
+                        str(self.place),
+                        self.enable_fw_comp,
+                        self.enable_rev_comp,
+                        len(ret),
+                        len(self.eager_desire),
+                    )
+                )
+                raise RuntimeError(msg)
+            for i in range(len(ret)):
+                np.testing.assert_allclose(
+                    ret[i],
+                    self.eager_desire[i],
+                    rtol=rtol,
+                    atol=atol,
+                    err_msg=(
+                        'Check jit comp grad out failed. Mismatch between jit comp '
+                        'and eager on %s, when enable_fw_comp is %s, enable_rev_comp is %s,the grad out tensor\'s index is : %d \n'
+                        'jit comp grad out tensor:\n%s\n eager grad out out tensor:\n%s\n'
+                        % (
+                            str(self.place),
+                            self.enable_fw_comp,
+                            self.enable_rev_comp,
+                            i,
+                            ret[i],
+                            self.eager_desire[i],
+                        )
+                    ),
+                )
+            core._set_prim_forward_enabled(False)
+            core._set_prim_backward_enabled(False)
+            net.forward.program_cache.clear()
+
+    def check_jit_comp_with_cinn(self):
+        # cinn doesn't support cpu place
+        if (
+            type(self.place) is paddle.base.libpaddle.CPUPlace
+            and self.enable_cinn
+            and core.is_compiled_with_cinn()
+        ):
+            return
+        with dygraph_guard():
+            if type(self.place) is paddle.base.libpaddle.CPUPlace:
+                paddle.device.set_device("cpu")
+            if type(self.place) is paddle.base.libpaddle.CUDAPlace:
+                paddle.device.set_device("gpu:0")
+            if self.prim_op_type == "prim":
+                core._set_prim_backward_enabled(self.enable_rev_comp)
+            else:
+                core._set_prim_forward_enabled(self.enable_fw_comp)
+                core._set_prim_backward_enabled(self.enable_rev_comp)
+            if self.enable_cinn and core.is_compiled_with_cinn():
+                atol = self.cinn_atol
+                rtol = self.cinn_rtol
+            else:
+                atol = (
+                    self.fw_comp_atol
+                    if self.enable_fw_comp and not self.enable_rev_comp
+                    else self.jit_comp_atol
+                )
+                rtol = (
+                    self.fw_comp_rtol
+                    if self.enable_fw_comp and not self.enable_rev_comp
+                    else self.jit_comp_rtol
+                )
+                atol = self.rev_comp_atol if self.enable_rev_comp else atol
+                rtol = self.rev_comp_rtol if self.enable_rev_comp else rtol
+            (
+                eager_tensor_inputs,
+                attrs_outputs,
+                inputs_dict,
+            ) = self.get_eager_input_attr_and_inputdict(stop_gradient=False)
+            args = OpTestUtils.prepare_python_api_arguments(
+                self.public_python_api,
+                eager_tensor_inputs,
+                attrs_outputs,
+                self.kernel_sig,
             )
-            raise RuntimeError(msg)
-        for i in range(len(ret)):
-            np.testing.assert_allclose(
-                ret[i],
-                self.eager_desire[i],
-                rtol=rtol,
-                atol=atol,
-                err_msg=(
-                    'Check jit comp with cinn grad out failed. Mismatch between jit comp with cinn '
-                    'and eager on %s, when enable_fw_comp is %s, enable_rev_comp is %s, enable_cinn is %s,'
-                    'the grad out tensor\'s index is : %d ,jit comp with cinn grad out tensor:\n%s\n eager grad out out tensor:\n%s\n'
-                    % (
+            inputs_sig, _, outputs_sig = self.kernel_sig
+            args = OpTestUtils.assumption_assert_and_transform(
+                args, len(inputs_sig)
+            )
+            net = PrimNet(self.public_python_api)
+            net = apply_to_static(
+                net, core.is_compiled_with_cinn() and self.enable_cinn
+            )
+            # check the backward operator not in program when check_prim is True
+            ops = [
+                op.type
+                for op in net.forward.get_concrete_program(args)[1]
+                .backward_program.block(0)
+                .ops
+            ]
+            backward_op_type = self.op_type + "_grad"
+            assert backward_op_type not in ops, (
+                "%s shouldn't appear in program when check_prim is True"
+            ) % (backward_op_type)
+
+            out = _as_list(net(args))
+            if hasattr(self.op_test, "python_out_sig"):
+                outputs_sig = self.op_test.python_out_sig
+            outputs_dict = self.get_output_dict(self.outputs, out, outputs_sig)
+            ys = []
+            if isinstance(self.output_names, list):
+                for output_name in self.output_names:
+                    ys.append(outputs_dict[output_name])
+            else:
+                ys.append(outputs_dict[self.output_names])
+            xs = []
+            if isinstance(self.inputs_to_check, list):
+                for input_name in self.inputs_to_check:
+                    xs.append(inputs_dict[input_name])
+            else:
+                xs.append(inputs_dict[self.inputs_to_check])
+            vs = self.gen_eager_grad_outputs()
+            no_grad_vars = self.gen_no_grad_set(
+                var_dict={**inputs_dict, **outputs_dict}
+            )
+            ret = paddle.grad(
+                ys, xs, vs, allow_unused=True, no_grad_vars=no_grad_vars
+            )
+            ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
+            if OpTestUtils.is_bfloat16_type(self.dtype):
+                ret = paddle.utils.map_structure(
+                    lambda x: convert_uint16_to_float(x), ret
+                )
+            # check jit comp grad out
+            if len(ret) != len(self.eager_desire):
+                msg = (
+                    "The jit comp with cinn grad out tensor nums is different with eager grad out tensor nums on {}."
+                    'when enable_fw_comp is {}, enable_rev_comp is {}, enable_cinn is {}, jit comp grad out tensor nums = {}, eager grad out tensor nums = {}. \n'.format(
                         str(self.place),
                         self.enable_fw_comp,
                         self.enable_rev_comp,
                         self.enable_cinn and core.is_compiled_with_cinn(),
-                        i,
-                        ret[i],
-                        self.eager_desire[i],
+                        len(ret),
+                        len(self.eager_desire),
                     )
-                ),
-            )
+                )
+                raise RuntimeError(msg)
+            for i in range(len(ret)):
+                np.testing.assert_allclose(
+                    ret[i],
+                    self.eager_desire[i],
+                    rtol=rtol,
+                    atol=atol,
+                    err_msg=(
+                        'Check jit comp with cinn grad out failed. Mismatch between jit comp with cinn '
+                        'and eager on %s, when enable_fw_comp is %s, enable_rev_comp is %s, enable_cinn is %s,'
+                        'the grad out tensor\'s index is : %d ,jit comp with cinn grad out tensor:\n%s\n eager grad out out tensor:\n%s\n'
+                        % (
+                            str(self.place),
+                            self.enable_fw_comp,
+                            self.enable_rev_comp,
+                            self.enable_cinn and core.is_compiled_with_cinn(),
+                            i,
+                            ret[i],
+                            self.eager_desire[i],
+                        )
+                    ),
+                )
 
-        core._set_prim_forward_enabled(False)
-        core._set_prim_backward_enabled(False)
-        net.forward.program_cache.clear()
+            core._set_prim_forward_enabled(False)
+            core._set_prim_backward_enabled(False)
+            net.forward.program_cache.clear()

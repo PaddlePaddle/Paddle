@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.jit.dy2static import NodeVarType, StaticAnalysisVisitor
 from paddle.utils import gast
 
@@ -77,10 +77,10 @@ result_var_type3 = {
 
 
 def func_to_test4():
-    with fluid.dygraph.guard():
+    with base.dygraph.guard():
         a = np.random.uniform(0.1, 1, [1, 2])
         b = 1 + a
-        c = fluid.dygraph.to_variable(b)
+        c = base.dygraph.to_variable(b)
         d = (c + 1) * 0.3
 
 
@@ -123,7 +123,7 @@ result_var_type5 = {
 
 
 def func_to_test6(x, y=1):
-    i = fluid.dygraph.to_variable(x)
+    i = base.dygraph.to_variable(x)
 
     def add(x, y):
         return x + y

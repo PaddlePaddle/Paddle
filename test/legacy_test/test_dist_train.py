@@ -22,9 +22,9 @@ import numpy as np
 from dist_test_utils import remove_ps_flag
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.layers import ops
+from paddle import base
+from paddle.base import core
+from paddle.base.layers import ops
 from paddle.incubate.nn.layer.io import ListenAndServ, Recv, Send
 
 RPC_OP_ROLE_ATTR_NAME = (
@@ -37,7 +37,7 @@ class TestSendOp(unittest.TestCase):
     def test_send(self):
         remove_ps_flag(os.getpid())
         # Run init_serv in a thread
-        place = fluid.CPUPlace()
+        place = base.CPUPlace()
         # NOTE: python thread will not work here due to GIL.
         p = Process(target=self.init_serv, args=(place,))
         p.daemon = True
@@ -71,9 +71,9 @@ class TestSendOp(unittest.TestCase):
                 start_left_time -= sleep_time
 
     def init_serv(self, place):
-        main = fluid.Program()
+        main = base.Program()
 
-        with fluid.program_guard(main):
+        with base.program_guard(main):
             serv = ListenAndServ("127.0.0.1:0", ["X"], optimizer_mode=False)
             with serv.do():
                 out_var = main.global_block().create_var(
@@ -92,12 +92,12 @@ class TestSendOp(unittest.TestCase):
                 )
                 ops._scale(x=x, scale=10.0, out=out_var)
 
-        self.server_exe = fluid.Executor(place)
+        self.server_exe = base.Executor(place)
         self.server_exe.run(main)
 
     def init_client(self, place, port):
-        main = fluid.Program()
-        with fluid.program_guard(main):
+        main = base.Program()
+        with base.program_guard(main):
             main.global_block().append_op(
                 type="fetch_barrier",
                 inputs={},
@@ -132,16 +132,16 @@ class TestSendOp(unittest.TestCase):
             Send("127.0.0.1:%d" % port, [x])
             o = Recv("127.0.0.1:%d" % port, [get_var])
 
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         self.dist_out = exe.run(main, fetch_list=o)  # o is a list
 
     def run_local(self, place):
-        main = fluid.Program()
-        with fluid.program_guard(main):
+        main = base.Program()
+        with base.program_guard(main):
             x = paddle.static.data(shape=[32, 32], dtype='float32', name='X')
             paddle.nn.initializer.Constant(value=2.3)(x, main.global_block())
             o = paddle.scale(x=x, scale=10.0)
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         self.local_out = exe.run(main, fetch_list=[o])
 
 

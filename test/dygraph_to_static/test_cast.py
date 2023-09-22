@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 from dygraph_to_static_util import ast_only_test, test_and_compare_with_new_ir
 
-from paddle import fluid
+from paddle import base
 from paddle.jit.api import to_static
 
 SEED = 2020
@@ -26,20 +26,20 @@ np.random.seed(SEED)
 
 @to_static
 def test_bool_cast(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     x = bool(x)
     return x
 
 
 @to_static
 def test_int_cast(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     x = int(x)
     return x
 
 
 def test_float_cast(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     x = float(x)
     return x
 
@@ -52,7 +52,7 @@ def test_not_var_cast(x):
 
 @to_static
 def test_mix_cast(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     x = int(x)
     x = float(x)
     x = bool(x)
@@ -63,9 +63,9 @@ def test_mix_cast(x):
 class TestCastBase(unittest.TestCase):
     def setUp(self):
         self.place = (
-            fluid.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
         self.prepare()
         self.set_func()
@@ -74,7 +74,7 @@ class TestCastBase(unittest.TestCase):
         self.input_shape = (16, 32)
         self.input_dtype = 'float32'
         self.input = (
-            np.random.binomial(4, 0.3, size=np.product(self.input_shape))
+            np.random.binomial(4, 0.3, size=np.prod(self.input_shape))
             .reshape(self.input_shape)
             .astype(self.input_dtype)
         )
@@ -84,7 +84,7 @@ class TestCastBase(unittest.TestCase):
         self.func = test_bool_cast
 
     def do_test(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             res = self.func(self.input)
             return res
 
@@ -103,9 +103,7 @@ class TestCastBase(unittest.TestCase):
             res,
             ref_val,
             rtol=1e-05,
-            err_msg='The casted value is {}.\nThe correct value is {}.'.format(
-                res, ref_val
-            ),
+            err_msg=f'The casted value is {res}.\nThe correct value is {ref_val}.',
         )
 
 
@@ -114,7 +112,7 @@ class TestIntCast(TestCastBase):
         self.input_shape = (1,)
         self.input_dtype = 'float32'
         self.input = (
-            np.random.normal(loc=6, scale=10, size=np.product(self.input_shape))
+            np.random.normal(loc=6, scale=10, size=np.prod(self.input_shape))
             .reshape(self.input_shape)
             .astype(self.input_dtype)
         )
@@ -129,7 +127,7 @@ class TestFloatCast(TestCastBase):
         self.input_shape = (8, 16)
         self.input_dtype = 'bool'
         self.input = (
-            np.random.binomial(2, 0.5, size=np.product(self.input_shape))
+            np.random.binomial(2, 0.5, size=np.prod(self.input_shape))
             .reshape(self.input_shape)
             .astype(self.input_dtype)
         )
@@ -144,7 +142,7 @@ class TestMixCast(TestCastBase):
         self.input_shape = (8, 32)
         self.input_dtype = 'float32'
         self.input = (
-            np.random.normal(loc=6, scale=10, size=np.product(self.input_shape))
+            np.random.normal(loc=6, scale=10, size=np.prod(self.input_shape))
             .reshape(self.input_shape)
             .astype(self.input_dtype)
         )
@@ -176,9 +174,7 @@ class TestMixCast(TestCastBase):
             res,
             ref_val,
             rtol=1e-05,
-            err_msg='The casted value is {}.\nThe correct value is {}.'.format(
-                res, ref_val
-            ),
+            err_msg=f'The casted value is {res}.\nThe correct value is {ref_val}.',
         )
 
 
@@ -198,9 +194,7 @@ class TestNotVarCast(TestCastBase):
         ref_val = int(self.input)
         self.assertTrue(
             res == ref_val,
-            msg='The casted value is {}.\nThe correct value is {}.'.format(
-                res, ref_val
-            ),
+            msg=f'The casted value is {res}.\nThe correct value is {ref_val}.',
         )
 
 

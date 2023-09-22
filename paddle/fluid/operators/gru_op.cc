@@ -47,8 +47,8 @@ class GRUOp : public framework::OperatorWithKernel {
     }
     auto input_dims = ctx->GetInputDim("Input");
     auto weight_dims = ctx->GetInputDim("Weight");
-    int input_size = input_dims[1];
-    int frame_size = weight_dims[0];
+    int input_size = static_cast<int>(input_dims[1]);
+    int frame_size = static_cast<int>(weight_dims[0]);
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(input_size,
                         frame_size * 3,
@@ -82,8 +82,8 @@ class GRUOp : public framework::OperatorWithKernel {
     }
     if (ctx->HasInput("Bias")) {
       auto bias_dims = ctx->GetInputDim("Bias");
-      int bias_height = bias_dims[0];
-      int bias_width = bias_dims[1];
+      int bias_height = static_cast<int>(bias_dims[0]);
+      int bias_width = static_cast<int>(bias_dims[1]);
       PADDLE_ENFORCE_EQ(
           bias_height,
           1,
@@ -226,10 +226,10 @@ class GRUGradOp : public framework::OperatorWithKernel {
 
     auto input_dims = ctx->GetInputDim("Input");
     auto weight_dims = ctx->GetInputDim("Weight");
-    int input_size = input_dims[1];
-    int frame_size = weight_dims[0];
-    int weight_height = weight_dims[0];
-    int weight_width = weight_dims[1];
+    int input_size = static_cast<int>(input_dims[1]);
+    int frame_size = static_cast<int>(weight_dims[0]);
+    int weight_height = static_cast<int>(weight_dims[0]);
+    int weight_width = static_cast<int>(weight_dims[1]);
     PADDLE_ENFORCE_EQ(
         input_size,
         frame_size * 3,
@@ -274,8 +274,8 @@ class GRUGradOp : public framework::OperatorWithKernel {
     }
     if (ctx->HasInput("Bias")) {
       auto bias_dims = ctx->GetInputDim("Bias");
-      int bias_height = bias_dims[0];
-      int bias_width = bias_dims[1];
+      int bias_height = static_cast<int>(bias_dims[0]);
+      int bias_width = static_cast<int>(bias_dims[1]);
       PADDLE_ENFORCE_EQ(
           bias_height,
           1,
@@ -365,7 +365,7 @@ class GRUCPUKernel : public framework::OpKernel<T> {
       add_bias(dev_ctx, *batch_gate, *bias, batch_gate);
     }
 
-    int frame_size = hidden_dims[1];
+    int frame_size = static_cast<int>(hidden_dims[1]);
     phi::funcs::GRUMetaValue<T> gru_value;
     gru_value.gate_weight = const_cast<T*>(weight_data);
     gru_value.state_weight =
@@ -513,13 +513,14 @@ class GRUCPUKernel : public framework::OpKernel<T> {
         gru_value.gate_value = gate_t.data<T>();
         gru_value.reset_output_value = reset_hidden_prev_t.data<T>();
 
-        phi::funcs::GRUUnitFunctor<DeviceContext, T>::compute(dev_ctx,
-                                                              gru_value,
-                                                              frame_size,
-                                                              cur_batch_size,
-                                                              active_node,
-                                                              active_gate,
-                                                              origin_mode);
+        phi::funcs::GRUUnitFunctor<DeviceContext, T>::compute(
+            dev_ctx,  // NOLINT
+            gru_value,
+            frame_size,
+            cur_batch_size,
+            active_node,
+            active_gate,
+            origin_mode);
 
         gru_value.prev_out_value = gru_value.output_value;
       }

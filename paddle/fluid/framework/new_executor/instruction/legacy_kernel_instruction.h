@@ -16,10 +16,10 @@
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 
-namespace ir {
+namespace pir {
 class Operation;
 class Value;
-}  // namespace ir
+}  // namespace pir
 
 namespace paddle {
 namespace framework {
@@ -30,10 +30,10 @@ class LegacyKernelInstruction : public InstructionBase {
   LegacyKernelInstruction(
       size_t id,
       const platform::Place& place,
-      ::ir::Operation* op,
+      ::pir::Operation* op,
       Scope* scope,
       Scope* local_scope,
-      const std::unordered_map<::ir::Value, std::string>& value_2_var_name,
+      const std::unordered_map<::pir::Value, std::string>& value_2_var_name,
       const std::map<std::string, int>& var_name_2_id,
       const std::unordered_map<const paddle::framework::Variable*, std::string>&
           variable_2_var_name);
@@ -53,6 +53,8 @@ class LegacyKernelInstruction : public InstructionBase {
 
   const std::string& Name() const override { return legacy_op_name_; }
 
+  ::pir::Operation* Operation() const override { return op_; }
+
  private:
   std::string legacy_op_name_;
 
@@ -66,6 +68,8 @@ class LegacyKernelInstruction : public InstructionBase {
   std::shared_ptr<paddle::framework::OperatorBase> operator_base_;
 
   phi::Kernel* phi_kernel_{nullptr};  // not owned
+
+  ::pir::Operation* op_{nullptr};  // not owned
 };
 
 }  // namespace framework

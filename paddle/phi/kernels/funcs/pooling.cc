@@ -41,12 +41,12 @@ class Pool2dFunctor<CPUContext, PoolProcess, T> {
                   bool adaptive,
                   DenseTensor* output,
                   PoolProcess pool_process) {
-    const int batch_size = input.dims()[0];
-    const int input_height = input.dims()[2];
-    const int input_width = input.dims()[3];
-    const int output_channels = output->dims()[1];
-    const int output_height = output->dims()[2];
-    const int output_width = output->dims()[3];
+    const int batch_size = static_cast<int>(input.dims()[0]);
+    const int input_height = static_cast<int>(input.dims()[2]);
+    const int input_width = static_cast<int>(input.dims()[3]);
+    const int output_channels = static_cast<int>(output->dims()[1]);
+    const int output_height = static_cast<int>(output->dims()[2]);
+    const int output_width = static_cast<int>(output->dims()[3]);
     const int ksize_height = ksize[0];
     const int ksize_width = ksize[1];
     const int stride_height = strides[0];
@@ -121,17 +121,20 @@ class Pool2dFunctor<CPUContext, PoolProcess, T> {
                   PoolProcess pool_process) {
     bool channel_last = (data_format == "NHWC");
 
-    const int batch_size = input.dims()[0];
-    const int input_channels = channel_last ? input.dims()[3] : input.dims()[1];
-    const int input_height = channel_last ? input.dims()[1] : input.dims()[2];
-    const int input_width = channel_last ? input.dims()[2] : input.dims()[3];
+    const int batch_size = static_cast<int>(input.dims()[0]);
+    const int input_channels =
+        static_cast<int>(channel_last ? input.dims()[3] : input.dims()[1]);
+    const int input_height =
+        static_cast<int>(channel_last ? input.dims()[1] : input.dims()[2]);
+    const int input_width =
+        static_cast<int>(channel_last ? input.dims()[2] : input.dims()[3]);
 
     const int output_channels =
-        channel_last ? output->dims()[3] : output->dims()[1];
+        static_cast<int>(channel_last ? output->dims()[3] : output->dims()[1]);
     const int output_height =
-        channel_last ? output->dims()[1] : output->dims()[2];
+        static_cast<int>(channel_last ? output->dims()[1] : output->dims()[2]);
     const int output_width =
-        channel_last ? output->dims()[2] : output->dims()[3];
+        static_cast<int>(channel_last ? output->dims()[2] : output->dims()[3]);
 
     const int ksize_height = ksize[0];
     const int ksize_width = ksize[1];
@@ -269,12 +272,12 @@ class Pool2dGradFunctor<CPUContext, PoolProcess, T> {
                   bool adaptive,
                   DenseTensor* input_grad,
                   PoolProcess pool_grad_process) {
-    const int batch_size = input.dims()[0];
-    const int input_height = input.dims()[2];
-    const int input_width = input.dims()[3];
-    const int output_channels = output.dims()[1];
-    const int output_height = output.dims()[2];
-    const int output_width = output.dims()[3];
+    const int batch_size = static_cast<int>(input.dims()[0]);
+    const int input_height = static_cast<int>(input.dims()[2]);
+    const int input_width = static_cast<int>(input.dims()[3]);
+    const int output_channels = static_cast<int>(output.dims()[1]);
+    const int output_height = static_cast<int>(output.dims()[2]);
+    const int output_width = static_cast<int>(output.dims()[3]);
     const int ksize_height = ksize[0];
     const int ksize_width = ksize[1];
     const int stride_height = strides[0];
@@ -320,7 +323,7 @@ class Pool2dGradFunctor<CPUContext, PoolProcess, T> {
             if (exclusive || adaptive) {
               pool_size = (hend - hstart) * (wend - wstart);
             }
-            float scale = 1.0 / pool_size;
+            float scale = 1.0f / static_cast<float>(pool_size);
             for (int h = hstart; h < hend; ++h) {
               for (int w = wstart; w < wend; ++w) {
                 pool_grad_process.compute(
@@ -355,17 +358,21 @@ class Pool2dGradFunctor<CPUContext, PoolProcess, T> {
                   PoolProcess pool_grad_process) {
     bool channel_last = (data_format == "NHWC");
 
-    const int batch_size = input.dims()[0];
+    const int batch_size = static_cast<int>(input.dims()[0]);
 
-    const int input_channels = channel_last ? input.dims()[3] : input.dims()[1];
-    const int input_height = channel_last ? input.dims()[1] : input.dims()[2];
-    const int input_width = channel_last ? input.dims()[2] : input.dims()[3];
+    const int input_channels =
+        static_cast<int>(channel_last ? input.dims()[3] : input.dims()[1]);
+    const int input_height =
+        static_cast<int>(channel_last ? input.dims()[1] : input.dims()[2]);
+    const int input_width =
+        static_cast<int>(channel_last ? input.dims()[2] : input.dims()[3]);
 
     const int output_channels =
-        channel_last ? output.dims()[3] : output.dims()[1];
+        static_cast<int>(channel_last ? output.dims()[3] : output.dims()[1]);
     const int output_height =
-        channel_last ? output.dims()[1] : output.dims()[2];
-    const int output_width = channel_last ? output.dims()[2] : output.dims()[3];
+        static_cast<int>(channel_last ? output.dims()[1] : output.dims()[2]);
+    const int output_width =
+        static_cast<int>(channel_last ? output.dims()[2] : output.dims()[3]);
 
     const int ksize_height = ksize[0];
     const int ksize_width = ksize[1];
@@ -415,7 +422,7 @@ class Pool2dGradFunctor<CPUContext, PoolProcess, T> {
               if (exclusive || adaptive) {
                 pool_size = (hend - hstart) * (wend - wstart);
               }
-              float scale = 1.0 / pool_size;
+              float scale = 1.0f / static_cast<float>(pool_size);
               for (int h = hstart; h < hend; ++h) {
                 for (int w = wstart; w < wend; ++w) {
                   pool_grad_process.compute(
@@ -466,7 +473,7 @@ class Pool2dGradFunctor<CPUContext, PoolProcess, T> {
               if (exclusive || adaptive) {
                 pool_size = (hend - hstart) * (wend - wstart);
               }
-              float scale = 1.0 / pool_size;
+              float scale = 1.0f / static_cast<float>(pool_size);
               for (int h = hstart; h < hend; ++h) {
                 for (int w = wstart; w < wend; ++w) {
                   auto input_idx =
@@ -510,12 +517,12 @@ class MaxPool2dGradFunctor<CPUContext, T> {
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   DenseTensor* input_grad) {
-    const int batch_size = input.dims()[0];
-    const int input_height = input.dims()[2];
-    const int input_width = input.dims()[3];
-    const int output_channels = output.dims()[1];
-    const int output_height = output.dims()[2];
-    const int output_width = output.dims()[3];
+    const int batch_size = static_cast<int>(input.dims()[0]);
+    const int input_height = static_cast<int>(input.dims()[2]);
+    const int input_width = static_cast<int>(input.dims()[3]);
+    const int output_channels = static_cast<int>(output.dims()[1]);
+    const int output_height = static_cast<int>(output.dims()[2]);
+    const int output_width = static_cast<int>(output.dims()[3]);
     const int ksize_height = ksize[0];
     const int ksize_width = ksize[1];
     const int stride_height = strides[0];
@@ -573,17 +580,21 @@ class MaxPool2dGradFunctor<CPUContext, T> {
                   DenseTensor* input_grad) {
     bool channel_last = (data_format == "NHWC");
 
-    const int batch_size = input.dims()[0];
+    const int batch_size = static_cast<int>(input.dims()[0]);
 
-    const int input_channels = channel_last ? input.dims()[3] : input.dims()[1];
-    const int input_height = channel_last ? input.dims()[1] : input.dims()[2];
-    const int input_width = channel_last ? input.dims()[2] : input.dims()[3];
+    const int input_channels =
+        static_cast<int>(channel_last ? input.dims()[3] : input.dims()[1]);
+    const int input_height =
+        static_cast<int>(channel_last ? input.dims()[1] : input.dims()[2]);
+    const int input_width =
+        static_cast<int>(channel_last ? input.dims()[2] : input.dims()[3]);
 
     const int output_channels =
-        channel_last ? output.dims()[3] : output.dims()[1];
+        static_cast<int>(channel_last ? output.dims()[3] : output.dims()[1]);
     const int output_height =
-        channel_last ? output.dims()[1] : output.dims()[2];
-    const int output_width = channel_last ? output.dims()[2] : output.dims()[3];
+        static_cast<int>(channel_last ? output.dims()[1] : output.dims()[2]);
+    const int output_width =
+        static_cast<int>(channel_last ? output.dims()[2] : output.dims()[3]);
 
     const int ksize_height = ksize[0];
     const int ksize_width = ksize[1];
@@ -702,14 +713,14 @@ class Pool3dFunctor<CPUContext, PoolProcess, T> {
                   bool adaptive,
                   DenseTensor* output,
                   PoolProcess pool_process) {
-    const int batch_size = input.dims()[0];
-    const int input_depth = input.dims()[2];
-    const int input_height = input.dims()[3];
-    const int input_width = input.dims()[4];
-    const int output_channels = output->dims()[1];
-    const int output_depth = output->dims()[2];
-    const int output_height = output->dims()[3];
-    const int output_width = output->dims()[4];
+    const int batch_size = static_cast<int>(input.dims()[0]);
+    const int input_depth = static_cast<int>(input.dims()[2]);
+    const int input_height = static_cast<int>(input.dims()[3]);
+    const int input_width = static_cast<int>(input.dims()[4]);
+    const int output_channels = static_cast<int>(output->dims()[1]);
+    const int output_depth = static_cast<int>(output->dims()[2]);
+    const int output_height = static_cast<int>(output->dims()[3]);
+    const int output_width = static_cast<int>(output->dims()[4]);
     const int ksize_depth = ksize[0];
     const int ksize_height = ksize[1];
     const int ksize_width = ksize[2];
@@ -802,21 +813,25 @@ class Pool3dFunctor<CPUContext, PoolProcess, T> {
                   DenseTensor* output,
                   PoolProcess pool_process) {
     bool channel_last = (data_format == "NDHWC");
-    const int batch_size = input.dims()[0];
+    const int batch_size = static_cast<int>(input.dims()[0]);
 
-    const int input_channels = channel_last ? input.dims()[4] : input.dims()[1];
-    const int input_depth = channel_last ? input.dims()[1] : input.dims()[2];
-    const int input_height = channel_last ? input.dims()[2] : input.dims()[3];
-    const int input_width = channel_last ? input.dims()[3] : input.dims()[4];
+    const int input_channels =
+        static_cast<int>(channel_last ? input.dims()[4] : input.dims()[1]);
+    const int input_depth =
+        static_cast<int>(channel_last ? input.dims()[1] : input.dims()[2]);
+    const int input_height =
+        static_cast<int>(channel_last ? input.dims()[2] : input.dims()[3]);
+    const int input_width =
+        static_cast<int>(channel_last ? input.dims()[3] : input.dims()[4]);
 
     const int output_channels =
-        channel_last ? output->dims()[4] : output->dims()[1];
+        static_cast<int>(channel_last ? output->dims()[4] : output->dims()[1]);
     const int output_depth =
-        channel_last ? output->dims()[1] : output->dims()[2];
+        static_cast<int>(channel_last ? output->dims()[1] : output->dims()[2]);
     const int output_height =
-        channel_last ? output->dims()[2] : output->dims()[3];
+        static_cast<int>(channel_last ? output->dims()[2] : output->dims()[3]);
     const int output_width =
-        channel_last ? output->dims()[3] : output->dims()[4];
+        static_cast<int>(channel_last ? output->dims()[3] : output->dims()[4]);
 
     const int ksize_depth = ksize[0];
     const int ksize_height = ksize[1];
@@ -1003,14 +1018,14 @@ class Pool3dGradFunctor<CPUContext, PoolProcess, T> {
                   bool adaptive,
                   DenseTensor* input_grad,
                   PoolProcess pool_grad_process) {
-    const int batch_size = input.dims()[0];
-    const int input_depth = input.dims()[2];
-    const int input_height = input.dims()[3];
-    const int input_width = input.dims()[4];
-    const int output_channels = output.dims()[1];
-    const int output_depth = output.dims()[2];
-    const int output_height = output.dims()[3];
-    const int output_width = output.dims()[4];
+    const int batch_size = static_cast<int>(input.dims()[0]);
+    const int input_depth = static_cast<int>(input.dims()[2]);
+    const int input_height = static_cast<int>(input.dims()[3]);
+    const int input_width = static_cast<int>(input.dims()[4]);
+    const int output_channels = static_cast<int>(output.dims()[1]);
+    const int output_depth = static_cast<int>(output.dims()[2]);
+    const int output_height = static_cast<int>(output.dims()[3]);
+    const int output_width = static_cast<int>(output.dims()[4]);
     const int ksize_depth = ksize[0];
     const int ksize_height = ksize[1];
     const int ksize_width = ksize[2];
@@ -1073,7 +1088,7 @@ class Pool3dGradFunctor<CPUContext, PoolProcess, T> {
               if (exclusive || adaptive) {
                 pool_size = (dend - dstart) * (hend - hstart) * (wend - wstart);
               }
-              float scale = 1.0 / pool_size;
+              float scale = 1.0f / static_cast<float>(pool_size);
               for (int d = dstart; d < dend; ++d) {
                 for (int h = hstart; h < hend; ++h) {
                   for (int w = wstart; w < wend; ++w) {
@@ -1112,18 +1127,24 @@ class Pool3dGradFunctor<CPUContext, PoolProcess, T> {
                   PoolProcess pool_grad_process) {
     bool channel_last = (data_format == "NDHWC");
 
-    const int batch_size = input.dims()[0];
-    const int input_channels = channel_last ? input.dims()[4] : input.dims()[1];
-    const int input_depth = channel_last ? input.dims()[1] : input.dims()[2];
-    const int input_height = channel_last ? input.dims()[2] : input.dims()[3];
-    const int input_width = channel_last ? input.dims()[3] : input.dims()[4];
+    const int batch_size = static_cast<int>(input.dims()[0]);
+    const int input_channels =
+        static_cast<int>(channel_last ? input.dims()[4] : input.dims()[1]);
+    const int input_depth =
+        static_cast<int>(channel_last ? input.dims()[1] : input.dims()[2]);
+    const int input_height =
+        static_cast<int>(channel_last ? input.dims()[2] : input.dims()[3]);
+    const int input_width =
+        static_cast<int>(channel_last ? input.dims()[3] : input.dims()[4]);
 
     const int output_channels =
-        channel_last ? output.dims()[4] : output.dims()[1];
-    const int output_depth = channel_last ? output.dims()[1] : output.dims()[2];
+        static_cast<int>(channel_last ? output.dims()[4] : output.dims()[1]);
+    const int output_depth =
+        static_cast<int>(channel_last ? output.dims()[1] : output.dims()[2]);
     const int output_height =
-        channel_last ? output.dims()[2] : output.dims()[3];
-    const int output_width = channel_last ? output.dims()[3] : output.dims()[4];
+        static_cast<int>(channel_last ? output.dims()[2] : output.dims()[3]);
+    const int output_width =
+        static_cast<int>(channel_last ? output.dims()[3] : output.dims()[4]);
 
     const int ksize_depth = ksize[0];
     const int ksize_height = ksize[1];
@@ -1192,7 +1213,7 @@ class Pool3dGradFunctor<CPUContext, PoolProcess, T> {
                   pool_size =
                       (dend - dstart) * (hend - hstart) * (wend - wstart);
                 }
-                float scale = 1.0 / pool_size;
+                float scale = 1.0f / static_cast<float>(pool_size);
                 for (int d = dstart; d < dend; ++d) {
                   for (int h = hstart; h < hend; ++h) {
                     for (int w = wstart; w < wend; ++w) {
@@ -1265,7 +1286,7 @@ class Pool3dGradFunctor<CPUContext, PoolProcess, T> {
                   pool_size =
                       (dend - dstart) * (hend - hstart) * (wend - wstart);
                 }
-                float scale = 1.0 / pool_size;
+                float scale = 1.0f / static_cast<float>(pool_size);
                 for (int d = dstart; d < dend; ++d) {
                   for (int h = hstart; h < hend; ++h) {
                     for (int w = wstart; w < wend; ++w) {
@@ -1317,14 +1338,14 @@ class MaxPool3dGradFunctor<CPUContext, T> {
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   DenseTensor* input_grad) {
-    const int batch_size = input.dims()[0];
-    const int input_depth = input.dims()[2];
-    const int input_height = input.dims()[3];
-    const int input_width = input.dims()[4];
-    const int output_channels = output.dims()[1];
-    const int output_depth = output.dims()[2];
-    const int output_height = output.dims()[3];
-    const int output_width = output.dims()[4];
+    const int batch_size = static_cast<int>(input.dims()[0]);
+    const int input_depth = static_cast<int>(input.dims()[2]);
+    const int input_height = static_cast<int>(input.dims()[3]);
+    const int input_width = static_cast<int>(input.dims()[4]);
+    const int output_channels = static_cast<int>(output.dims()[1]);
+    const int output_depth = static_cast<int>(output.dims()[2]);
+    const int output_height = static_cast<int>(output.dims()[3]);
+    const int output_width = static_cast<int>(output.dims()[4]);
     const int ksize_depth = ksize[0];
     const int ksize_height = ksize[1];
     const int ksize_width = ksize[2];
@@ -1392,19 +1413,25 @@ class MaxPool3dGradFunctor<CPUContext, T> {
                   const std::string data_format,
                   DenseTensor* input_grad) {
     bool channel_last = (data_format == "NDHWC");
-    const int batch_size = input.dims()[0];
+    const int batch_size = static_cast<int>(input.dims()[0]);
 
-    const int input_channels = channel_last ? input.dims()[4] : input.dims()[1];
-    const int input_depth = channel_last ? input.dims()[1] : input.dims()[2];
-    const int input_height = channel_last ? input.dims()[2] : input.dims()[3];
-    const int input_width = channel_last ? input.dims()[3] : input.dims()[4];
+    const int input_channels =
+        static_cast<int>(channel_last ? input.dims()[4] : input.dims()[1]);
+    const int input_depth =
+        static_cast<int>(channel_last ? input.dims()[1] : input.dims()[2]);
+    const int input_height =
+        static_cast<int>(channel_last ? input.dims()[2] : input.dims()[3]);
+    const int input_width =
+        static_cast<int>(channel_last ? input.dims()[3] : input.dims()[4]);
 
     const int output_channels =
-        channel_last ? output.dims()[4] : output.dims()[1];
-    const int output_depth = channel_last ? output.dims()[1] : output.dims()[2];
+        static_cast<int>(channel_last ? output.dims()[4] : output.dims()[1]);
+    const int output_depth =
+        static_cast<int>(channel_last ? output.dims()[1] : output.dims()[2]);
     const int output_height =
-        channel_last ? output.dims()[2] : output.dims()[3];
-    const int output_width = channel_last ? output.dims()[3] : output.dims()[4];
+        static_cast<int>(channel_last ? output.dims()[2] : output.dims()[3]);
+    const int output_width =
+        static_cast<int>(channel_last ? output.dims()[3] : output.dims()[4]);
 
     const int ksize_depth = ksize[0];
     const int ksize_height = ksize[1];
@@ -1546,12 +1573,12 @@ class MaxPool2dWithIndexFunctor<CPUContext, T1, T2> {
                   bool adaptive,
                   DenseTensor* output,
                   DenseTensor* mask) {
-    const int batch_size = input.dims()[0];
-    const int input_height = input.dims()[2];
-    const int input_width = input.dims()[3];
-    const int output_channels = output->dims()[1];
-    const int output_height = output->dims()[2];
-    const int output_width = output->dims()[3];
+    const int batch_size = static_cast<int>(input.dims()[0]);
+    const int input_height = static_cast<int>(input.dims()[2]);
+    const int input_width = static_cast<int>(input.dims()[3]);
+    const int output_channels = static_cast<int>(output->dims()[1]);
+    const int output_height = static_cast<int>(output->dims()[2]);
+    const int output_width = static_cast<int>(output->dims()[3]);
     const int ksize_height = ksize[0];
     const int ksize_width = ksize[1];
     const int stride_height = strides[0];
@@ -1627,12 +1654,12 @@ class MaxPool2dWithIndexGradFunctor<CPUContext, T1, T2> {
                   const std::vector<int>& paddings UNUSED,
                   bool adaptive UNUSED,
                   DenseTensor* input_grad) {
-    const int batch_size = input_grad->dims()[0];
-    const int input_height = input_grad->dims()[2];
-    const int input_width = input_grad->dims()[3];
-    const int output_channels = output_grad.dims()[1];
-    const int output_height = output_grad.dims()[2];
-    const int output_width = output_grad.dims()[3];
+    const int batch_size = static_cast<int>(input_grad->dims()[0]);
+    const int input_height = static_cast<int>(input_grad->dims()[2]);
+    const int input_width = static_cast<int>(input_grad->dims()[3]);
+    const int output_channels = static_cast<int>(output_grad.dims()[1]);
+    const int output_height = static_cast<int>(output_grad.dims()[2]);
+    const int output_width = static_cast<int>(output_grad.dims()[3]);
     const int input_stride = input_height * input_width;
     const int output_stride = output_height * output_width;
 
@@ -1679,14 +1706,14 @@ class MaxPool3dWithIndexFunctor<CPUContext, T1, T2> {
                   bool adaptive,
                   DenseTensor* output,
                   DenseTensor* mask) {
-    const int batch_size = input.dims()[0];
-    const int input_depth = input.dims()[2];
-    const int input_height = input.dims()[3];
-    const int input_width = input.dims()[4];
-    const int output_channels = output->dims()[1];
-    const int output_depth = output->dims()[2];
-    const int output_height = output->dims()[3];
-    const int output_width = output->dims()[4];
+    const int batch_size = static_cast<int>(input.dims()[0]);
+    const int input_depth = static_cast<int>(input.dims()[2]);
+    const int input_height = static_cast<int>(input.dims()[3]);
+    const int input_width = static_cast<int>(input.dims()[4]);
+    const int output_channels = static_cast<int>(output->dims()[1]);
+    const int output_depth = static_cast<int>(output->dims()[2]);
+    const int output_height = static_cast<int>(output->dims()[3]);
+    const int output_width = static_cast<int>(output->dims()[4]);
     const int ksize_depth = ksize[0];
     const int ksize_height = ksize[1];
     const int ksize_width = ksize[2];
@@ -1780,14 +1807,14 @@ class MaxPool3dWithIndexGradFunctor<CPUContext, T1, T2> {
                   const std::vector<int>& paddings UNUSED,
                   bool adaptive UNUSED,
                   DenseTensor* input_grad) {
-    const int batch_size = input_grad->dims()[0];
-    const int input_depth = input_grad->dims()[2];
-    const int input_height = input_grad->dims()[3];
-    const int input_width = input_grad->dims()[4];
-    const int output_channels = output_grad.dims()[1];
-    const int output_depth = output_grad.dims()[2];
-    const int output_height = output_grad.dims()[3];
-    const int output_width = output_grad.dims()[4];
+    const int batch_size = static_cast<int>(input_grad->dims()[0]);
+    const int input_depth = static_cast<int>(input_grad->dims()[2]);
+    const int input_height = static_cast<int>(input_grad->dims()[3]);
+    const int input_width = static_cast<int>(input_grad->dims()[4]);
+    const int output_channels = static_cast<int>(output_grad.dims()[1]);
+    const int output_depth = static_cast<int>(output_grad.dims()[2]);
+    const int output_height = static_cast<int>(output_grad.dims()[3]);
+    const int output_width = static_cast<int>(output_grad.dims()[4]);
     const int input_stride = input_depth * input_height * input_width;
     const int output_stride = output_depth * output_height * output_width;
 

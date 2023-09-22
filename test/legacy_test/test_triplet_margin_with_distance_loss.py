@@ -155,7 +155,10 @@ def test_dygraph(
             swap=swap,
             reduction=reduction,
         )
-    dy_result = dy_res.numpy()
+    if reduction != 'none':
+        dy_result = float(dy_res)
+    else:
+        dy_result = dy_res.numpy()
     paddle.enable_static()
     return dy_result
 
@@ -188,9 +191,10 @@ def calc_triplet_margin_distance_loss(
     return expected
 
 
-class TestTripletMarginWithDistanceLoss(unittest.TestCase):
+class TestTripletMarginWithDistanceLossnew(unittest.TestCase):
     def test_TripletMarginDistanceLoss(self):
         shape = (5, 5)
+        np.random.seed(1234)
         input = np.random.uniform(0.1, 0.8, size=shape).astype(np.float64)
         positive = np.random.uniform(0, 2, size=shape).astype(np.float64)
         negative = np.random.uniform(0, 2, size=shape).astype(np.float64)
@@ -258,6 +262,8 @@ class TestTripletMarginWithDistanceLoss(unittest.TestCase):
                     dy_functional, expected, rtol=1e-5, atol=1e-8
                 )
 
+
+class TestTripletMarginWithDistanceLossError(unittest.TestCase):
     def test_TripletMarginDistanceLoss_error(self):
         paddle.disable_static()
         self.assertRaises(
@@ -278,6 +284,8 @@ class TestTripletMarginWithDistanceLoss(unittest.TestCase):
         )
         paddle.enable_static()
 
+
+class TestTripletMarginWithDistanceLossDF(unittest.TestCase):
     def test_TripletMarginDistanceLoss_distance_function(self):
         def distance_function_1(x1, x2):
             return 1.0 - paddle.nn.functional.cosine_similarity(x1, x2)
@@ -287,6 +295,7 @@ class TestTripletMarginWithDistanceLoss(unittest.TestCase):
 
         distance_function_list = [distance_function_1, distance_function_2]
         shape = (5, 5)
+        np.random.seed(1234)
         input = np.random.uniform(0.1, 0.8, size=shape).astype(np.float64)
         positive = np.random.uniform(0, 2, size=shape).astype(np.float64)
         negative = np.random.uniform(0, 2, size=shape).astype(np.float64)
@@ -336,6 +345,8 @@ class TestTripletMarginWithDistanceLoss(unittest.TestCase):
                 static_functional, dy_functional, rtol=1e-5, atol=1e-8
             )
 
+
+class TestTripletMarginWithDistanceLossDFE(unittest.TestCase):
     def test_TripletMarginWithDistanceLoss_distance_funtion_error(self):
         paddle.disable_static()
 
@@ -344,6 +355,7 @@ class TestTripletMarginWithDistanceLoss(unittest.TestCase):
 
         func = distance_function
         shape = (5, 5)
+        np.random.seed(1234)
         input = np.random.uniform(0.1, 0.8, size=shape).astype(np.float64)
         positive = np.random.uniform(0, 2, size=shape).astype(np.float64)
         negative = np.random.uniform(0, 2, size=shape).astype(np.float64)
@@ -358,6 +370,8 @@ class TestTripletMarginWithDistanceLoss(unittest.TestCase):
         )
         paddle.enable_static()
 
+
+class TestTripletMarginWithDistanceLossDim(unittest.TestCase):
     def test_TripletMarginDistanceLoss_dimension(self):
         paddle.disable_static()
 
@@ -383,10 +397,13 @@ class TestTripletMarginWithDistanceLoss(unittest.TestCase):
         )
         paddle.enable_static()
 
+
+class TestTripletMarginWithDistanceLossSwap(unittest.TestCase):
     def test_TripletMarginWithDistanceLoss_swap(self):
         reduction = 'mean'
         place = paddle.CPUPlace()
         shape = (5, 5)
+        np.random.seed(1234)
         input = np.random.uniform(0.1, 0.8, size=shape).astype(np.float64)
         positive = np.random.uniform(0, 2, size=shape).astype(np.float64)
         negative = np.random.uniform(0, 2, size=shape).astype(np.float64)
@@ -450,6 +467,8 @@ class TestTripletMarginWithDistanceLoss(unittest.TestCase):
             dy_functional, expected, rtol=1e-5, atol=1e-8
         )
 
+
+class TestTripletMarginWithDistanceLossMargin(unittest.TestCase):
     def test_TripletMarginWithDistanceLoss_margin(self):
         paddle.disable_static()
 

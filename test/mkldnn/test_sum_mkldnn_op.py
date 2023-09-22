@@ -18,7 +18,7 @@ import numpy as np
 from op import Operator
 from test_sum_op import TestSumOp
 
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestSumMKLDNN(TestSumOp):

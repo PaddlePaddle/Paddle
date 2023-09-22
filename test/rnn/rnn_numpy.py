@@ -298,8 +298,7 @@ def flatten(nested):
 def _flatten(nested):
     for item in nested:
         if isinstance(item, (list, tuple)):
-            for subitem in _flatten(item):
-                yield subitem
+            yield from _flatten(item)
         else:
             yield item
 
@@ -483,7 +482,7 @@ class SimpleRNN(RNNMixin):
         else:
             raise ValueError(
                 "direction should be forward, backward or bidirectional, "
-                "received direction = {}".format(direction)
+                f"received direction = {direction}"
             )
 
         self.input_size = input_size
@@ -527,7 +526,7 @@ class LSTM(RNNMixin):
         else:
             raise ValueError(
                 "direction should be forward, backward or bidirectional, "
-                "received direction = {}".format(direction)
+                f"received direction = {direction}"
             )
 
         self.input_size = input_size
@@ -571,7 +570,7 @@ class GRU(RNNMixin):
         else:
             raise ValueError(
                 "direction should be forward, backward or bidirectional, "
-                "received direction = {}".format(direction)
+                f"received direction = {direction}"
             )
 
         self.input_size = input_size

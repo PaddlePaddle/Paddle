@@ -13,10 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/collective/alltoall_op.h"
+#include "paddle/fluid/distributed/collective/utils.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/flags.h"
+PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 namespace paddle {
@@ -41,15 +46,44 @@ class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument(
             "The ring_id (%d) for alltoall op must be non-negative.", ring_id));
     auto place = ctx.GetPlace();
-    auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
-    int nranks = comm->nranks();
 
     gpuStream_t stream = nullptr;
+    platform::NCCLComm* comm = nullptr;
+    phi::distributed::NCCLCommContext* comm_ctx = nullptr;
+    int nranks = 0;
+
+    const auto& comm_context_manager =
+        phi::distributed::CommContextManager::GetInstance();
+    if (FLAGS_dynamic_static_unified_comm) {
+      PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
+                        true,
+                        platform::errors::InvalidArgument(
+                            "You choose to use new communication library by "
+                            "setting environment "
+                            "variable FLAGS_dynamic_static_unified_comm True. "
+                            "But ring_id(%d) is "
+                            "not found in comm_context_manager.",
+                            std::to_string(ring_id)));
+      comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
+          comm_context_manager.Get(std::to_string(ring_id)));
+      PADDLE_ENFORCE_NE(comm_ctx,
+                        nullptr,
+                        platform::errors::Unavailable(
+                            "NCCLCommContext is nullptr, collective op should "
+                            "has ring_id attr."));
+      stream = comm_ctx->GetStream();
+      nranks = comm_ctx->GetSize();
+      VLOG(3) << "new comm_context_manager has rid " << ring_id;
+    } else {
+      comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
+      stream = comm->stream();
+      nranks = comm->nranks();
+      VLOG(3) << "old NCCLCommContext has rid " << ring_id;
+    }
+
     if (ctx.Attr<bool>("use_calc_stream")) {
       // should ExecutionContext for calc stream.
       stream = ctx.cuda_device_context().stream();
-    } else {
-      stream = comm->stream();
     }
 
     framework::DDim x_dims = x->dims();
@@ -66,15 +100,29 @@ class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
     auto recv_buf = out->mutable_data<T>(out_dims, place);
     size_t offset = 0;
     send_numel /= nranks;
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
-    for (auto i = 0; i < nranks; ++i) {
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
-          send_buf + offset, send_numel, dtype, i, comm->comm(), stream));
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
-          recv_buf + offset, send_numel, dtype, i, comm->comm(), stream));
-      offset += send_numel;
+    if (comm_ctx) {
+      comm_ctx->GroupStart();
+      for (auto i = 0; i < nranks; ++i) {
+        auto send_buf = distributed::GetPartialTensor(*x, offset, send_numel);
+        comm_ctx->Send(send_buf, send_numel, i, stream);
+        auto recv_buf = distributed::GetPartialTensor(*out, offset, send_numel);
+        comm_ctx->Recv(&recv_buf, send_numel, i, stream);
+        offset += send_numel;
+      }
+      comm_ctx->GroupEnd();
+      VLOG(3) << "new comm_context_manager has rid " << ring_id;
+    } else {
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
+      for (auto i = 0; i < nranks; ++i) {
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
+            send_buf + offset, send_numel, dtype, i, comm->comm(), stream));
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
+            recv_buf + offset, send_numel, dtype, i, comm->comm(), stream));
+        offset += send_numel;
+      }
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
+      VLOG(3) << "old NCCLCommContext has rid " << ring_id;
     }
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
 #else
     PADDLE_THROW(
         platform::errors::Unavailable("NCCL version >= 2.7.3 is needed."));

@@ -371,7 +371,7 @@ def fused_parameters(
     :param scale_after_comm: if enable comm overlap, specify the location of grad scale
     :return: param storage if fused, comm buffers is comm overlap
     """
-    g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 0))
+    g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 1))
     act = (
         HOOK_ACTION.ALL_REDUCE if not g_shard_use_reduce else HOOK_ACTION.REDUCE
     )

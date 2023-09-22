@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 from paddle import static
-from paddle.fluid.core import AnalysisConfig, create_paddle_predictor
+from paddle.base.core import AnalysisConfig, create_paddle_predictor
 
 
 def set_config(op_name, input_shapes, enable_gpu=False):

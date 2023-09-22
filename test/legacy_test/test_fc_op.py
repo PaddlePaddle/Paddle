@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, paddle_static_guard
+from op_test import OpTest, paddle_static_guard
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 SEED = 2020
 
@@ -158,11 +158,11 @@ class TestFcOp_NumFlattenDims_NegOne(unittest.TestCase):
                     )
 
                 place = (
-                    fluid.CPUPlace()
+                    base.CPUPlace()
                     if not core.is_compiled_with_cuda()
-                    else fluid.CUDAPlace(0)
+                    else base.CUDAPlace(0)
                 )
-                exe = fluid.Executor(place=place)
+                exe = base.Executor(place=place)
                 exe.run(startup_program)
                 out = exe.run(main_program, feed={"x": input}, fetch_list=[out])
                 return out
