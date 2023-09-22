@@ -52,13 +52,7 @@ class ValueExecutionInfo;
 namespace pir {
 void BuildScope(
     const pir::Block& block,
-    paddle::framework::Scope* inner_scope,
     const std::string& var_name_prefix,
-    std::unordered_map<pir::Value, std::string>* value_2_var_name,
-    std::unordered_map<const paddle::framework::Variable*, std::string>*
-        variable_2_var_name,
-    std::map<std::string, int>* var_name_2_id,
-    std::vector<paddle::framework::Variable*>* variable_list,
     std::map<pir::Block*, paddle::framework::Scope*>* sub_blocks,
     paddle::framework::ValueExecutionInfo* value_exe_info = nullptr);
 

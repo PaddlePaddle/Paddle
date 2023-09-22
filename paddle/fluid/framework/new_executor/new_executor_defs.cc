@@ -288,14 +288,12 @@ void Instruction::ClearInplace() { vec_inplace_in_to_out_.clear(); }
 
 std::shared_ptr<ValueExecutionInfo> ValueExecutionInfo::NewChild(
     Scope* scope) const {
-  kids_.push_back(std::make_shared<ValueExecutionInfo>(scope));
-  kids_.back()->parent_ = this;
-  return kids_.back();
+  return std::make_shared<ValueExecutionInfo>(this, scope);
 }
 
-std::unique_ptr<ValueExecutionInfo> ValueExecutionInfo::NewTmp(
+std::shared_ptr<ValueExecutionInfo> ValueExecutionInfo::NewTmp(
     Scope* scope) const {
-  return std::make_unique<ValueExecutionInfo>(scope);
+  return std::make_shared<ValueExecutionInfo>(scope);
 }
 
 void ValueExecutionInfo::Add(::pir::Value value, std::string var_name) {

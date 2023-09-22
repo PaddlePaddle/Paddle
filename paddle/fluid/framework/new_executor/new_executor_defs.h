@@ -141,11 +141,18 @@ class VariableScope {
 class NewIRInterpreter;
 class ValueExecutionInfo {
  public:
+  ValueExecutionInfo(ValueExecutionInfo* parent, Scope* scope)
+      : parent_(parent), scope_(scope) {}
+
   explicit ValueExecutionInfo(Scope* scope) : scope_(scope) {}
 
   std::shared_ptr<ValueExecutionInfo> NewChild(Scope* scope) const;
 
-  std::unique_ptr<ValueExecutionInfo> NewTmp(Scope* scope) const;
+  std::shared_ptr<ValueExecutionInfo> NewTmp(Scope* scope) const;
+
+  const ValueExecutionInfo* Parent() const { return parent_; }
+
+  Scope* GetScope() { return scope_; }
 
   void Add(::pir::Value value, std::string var_name);
 
@@ -158,6 +165,10 @@ class ValueExecutionInfo {
   const std::unordered_map<::pir::Value, std::string>& GetValue2VarName()
       const {
     return value_2_var_name_;
+  }
+
+  void AddValue2VarName(::pir::Value value, const std::string& var_name) {
+    value_2_var_name_.emplace(value, var_name);
   }
 
   const std::unordered_map<const paddle::framework::Variable*, std::string>&
@@ -173,12 +184,14 @@ class ValueExecutionInfo {
     return id_2_var_name_;
   }
 
+  const std::vector<Variable*>& GetVarList() const { return var_list_; }
+
+  void ResetVarList(int id, Variable* var) { var_list_[id] = var; }
+
  private:
-  mutable std::list<std::shared_ptr<ValueExecutionInfo>> kids_;
+  const ValueExecutionInfo* parent_{nullptr};  // not owned
 
-  const ValueExecutionInfo* parent_{nullptr};
-
-  Scope* scope_{nullptr};
+  Scope* scope_{nullptr};  // not owned
 
   std::unordered_map<::pir::Value, std::string> value_2_var_name_;
 
