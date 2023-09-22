@@ -151,11 +151,6 @@ def _update_op_dims_mapping_and_distoperatorimpl(
     dist_op, original_op_dist_attr, changed
 ):
     dist_op_container = find_distributed_operator_impl_container(dist_op)
-    _logger.debug(
-        "dist op: {} container: {}".format(
-            dist_op.serial_op.type, dist_op_container.type
-        )
-    )
     updated = dist_op_container.update_dims_mapping(dist_op)
     changed = updated or changed
     # TODO(ljz) remove the below code once we introduce general reshard to replace specifc distopimpls
