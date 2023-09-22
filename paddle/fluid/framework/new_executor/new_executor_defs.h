@@ -146,9 +146,9 @@ class ValueExecutionInfo {
 
   explicit ValueExecutionInfo(Scope* scope) : scope_(scope) {}
 
-  std::shared_ptr<ValueExecutionInfo> NewChild(Scope* scope) const;
+  std::shared_ptr<ValueExecutionInfo> NewChild(Scope* scope);
 
-  std::shared_ptr<ValueExecutionInfo> NewTmp(Scope* scope) const;
+  std::shared_ptr<ValueExecutionInfo> NewTmp(Scope* scope);
 
   const ValueExecutionInfo* Parent() const { return parent_; }
 

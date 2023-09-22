@@ -286,13 +286,11 @@ void Instruction::AddInplace(Variable* in, Variable* out) {
 
 void Instruction::ClearInplace() { vec_inplace_in_to_out_.clear(); }
 
-std::shared_ptr<ValueExecutionInfo> ValueExecutionInfo::NewChild(
-    Scope* scope) const {
+std::shared_ptr<ValueExecutionInfo> ValueExecutionInfo::NewChild(Scope* scope) {
   return std::make_shared<ValueExecutionInfo>(this, scope);
 }
 
-std::shared_ptr<ValueExecutionInfo> ValueExecutionInfo::NewTmp(
-    Scope* scope) const {
+std::shared_ptr<ValueExecutionInfo> ValueExecutionInfo::NewTmp(Scope* scope) {
   return std::make_shared<ValueExecutionInfo>(scope);
 }
 
