@@ -274,6 +274,20 @@ def normalize_program(program, feed_vars, fetch_vars, **kwargs):
         op.desc.set_is_target(False)
         if op.type == "feed" or op.type == "fetch":
             remove_op_idx.append(i)
+
+        if op.type == "pylayer":
+            sub_blocks_ids = op._blocks_attr_ids("blocks")
+            if len(sub_blocks_ids) > 1:
+                # pylayer op ``blocks`` attr contains forward block id and backward block id
+                backward_block_id = sub_blocks_ids[-1]
+                # remove backward block
+                copy_program.blocks.pop(backward_block_id)
+                # update attrs ``blocks``
+                reserverd_blocks = []
+                for block_id in sub_blocks_ids[:-1]:
+                    reserverd_blocks.append(copy_program.block(block_id))
+                op._update_desc_attr("blocks", reserverd_blocks)
+
     for idx in remove_op_idx[::-1]:
         global_block._remove_op(idx)
     copy_program.desc.flush()
