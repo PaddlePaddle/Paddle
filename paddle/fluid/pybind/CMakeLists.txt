@@ -116,7 +116,7 @@ set(PYBIND_SRCS
     inference_api.cc
     ops_api.cc
     static_op_function.cc
-    ir.cc
+    pir.cc
     graph.cc
     bind_fleet_executor.cc
     reader_py.cc

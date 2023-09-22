@@ -939,6 +939,17 @@
   composite : gather_nd_grad(x, index, out_grad, x_grad)
   no_need_buffer : x
 
+- backward_op : gaussian_inplace_grad
+  forward : gaussian_inplace(Tensor x, float mean=0, float std=1.0, int seed=0) -> Tensor(out)
+  args : (Tensor out_grad, float mean=0, float std=1.0, int seed=0)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_grad]
+  kernel :
+    func : gaussian_inplace_grad
+  inplace : (out_grad -> x_grad)
+
 - backward_op : gelu_grad
   forward : gelu(Tensor x,  bool approximate) -> Tensor(out)
   args : (Tensor x, Tensor out_grad,  bool approximate)
@@ -1645,6 +1656,15 @@
     func : PixelShuffleGradInferMeta
   kernel :
     func : pixel_shuffle_grad
+
+- backward_op : pixel_unshuffle_grad
+  forward : pixel_unshuffle (Tensor x, int downscale_factor=1, str data_format="NCHW") -> Tensor(out)
+  args : (Tensor out_grad, int downscale_factor, str data_format)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : PixelUnshuffleGradInferMeta
+  kernel :
+    func : pixel_unshuffle_grad
 
 - backward_op : poisson_grad
   forward : poisson (Tensor x) -> Tensor(out)

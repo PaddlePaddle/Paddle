@@ -1,4 +1,4 @@
-// Copyright (c) 2021 CINN Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,15 +13,22 @@
 // limitations under the License.
 
 #pragma once
-#include <string>
 
-#include "paddle/cinn/ir/ir.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
 
-namespace cinn {
-namespace optim {
+namespace phi {
+namespace distributed {
 
-//! Replace the variable \p v to expression \p e in expression \p expr.
-void IrReplace(ir::Expr* expr, ir::Expr from, ir::Expr to);
+class SameStatusReshardFunction final : public ReshardFunction {
+ public:
+  bool IsSuitable(const DistTensor& in,
+                  const TensorDistAttr& out_dist_attr) override;
 
-}  // namespace optim
-}  // namespace cinn
+  void Eval(DeviceContext* dev_ctx,
+            const DistTensor& in,
+            const TensorDistAttr& out_dist_attr,
+            DistTensor* out) override;
+};
+
+}  // namespace distributed
+}  // namespace phi

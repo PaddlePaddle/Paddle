@@ -256,10 +256,8 @@ def summary(net, input_size=None, dtypes=None, input=None):
                 item = (item,)
             assert isinstance(
                 item, (tuple, InputSpec)
-            ), 'When input_size is list, \
-            expect item in input_size is a tuple or InputSpec, but got {}'.format(
-                type(item)
-            )
+            ), f'When input_size is list, \
+            expect item in input_size is a tuple or InputSpec, but got {type(item)}'
 
             if isinstance(item, InputSpec):
                 _input_size.append(tuple(item.shape))

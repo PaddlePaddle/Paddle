@@ -144,6 +144,17 @@ class TestUnfoldOp(OpTest):
     def test_check_grad(self):
         self.check_grad(['X'], 'Y')
 
+    def test_support_tuple(self):
+        paddle.disable_static()
+        x = paddle.randn((10, 3, 64, 64))
+        paddle.nn.functional.unfold(x, 3, (1, 1), 1, 1)
+        paddle.nn.functional.unfold(x, 3, 1, (1, 1), 1)
+        paddle.nn.functional.unfold(x, 3, 1, 1, (1, 1))
+        out1 = paddle.nn.functional.unfold(x, 3, (1, 1), (1, 1), (1, 1))
+        out2 = paddle.nn.functional.unfold(x, (3, 3), (1, 1), (1, 1), (1, 1))
+        self.assertTrue(np.allclose(out1.numpy(), out2.numpy()))
+        paddle.enable_static()
+
 
 class TestUnfoldFP16Op(TestUnfoldOp):
     def init_dtype(self):

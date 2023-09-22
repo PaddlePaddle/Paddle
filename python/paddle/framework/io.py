@@ -181,9 +181,9 @@ def _build_load_path_and_config(path, config):
     directory_format_exist = os.path.isdir(path)
     if prefix_format_exist and directory_format_exist:
         raise ValueError(
-            "The {}.pdmodel and {} directory exist at the same time, "
+            f"The {path}.pdmodel and {path} directory exist at the same time, "
             "don't know which one to load, please make sure that the specified target "
-            "of ``path`` is unique.".format(path, path)
+            "of ``path`` is unique."
         )
     elif not prefix_format_exist and not directory_format_exist:
         error_msg = "The ``path`` (%s) to load model not exists."
@@ -281,9 +281,7 @@ def _pickle_save(obj, f, protocol):
     # TODO(weixin):add support for BytesIO.
     if not isinstance(protocol, int):
         raise ValueError(
-            "The 'protocol' MUST be `int`, but received {}".format(
-                type(protocol)
-            )
+            f"The 'protocol' MUST be `int`, but received {type(protocol)}"
         )
 
     if protocol < 2 or protocol > 4:
@@ -429,9 +427,7 @@ def _transformed_from_lodtensor(obj):
 def _to_LodTensor(ndarray):
     if not isinstance(ndarray, np.ndarray):
         raise TypeError(
-            'Type of `ndarray` should be numpy.ndarray, but received {}.'.format(
-                type(ndarray)
-            )
+            f'Type of `ndarray` should be numpy.ndarray, but received {type(ndarray)}.'
         )
     t = core.LoDTensor()
     place = _current_expected_place()
@@ -794,9 +790,7 @@ def save(obj, path, protocol=4, **configs):
             os.makedirs(dirname, exist_ok=True)
     elif not _is_memory_buffer(path):
         raise ValueError(
-            "only supports saving objects to file and `BytesIO`, but got {}".format(
-                type(path)
-            )
+            f"only supports saving objects to file and `BytesIO`, but got {type(path)}"
         )
 
     config = _parse_save_config(configs)
@@ -846,9 +840,7 @@ def _legacy_save(obj, path, protocol=2):
 
     if not isinstance(protocol, int):
         raise ValueError(
-            "The 'protocol' MUST be `int`, but received {}".format(
-                type(protocol)
-            )
+            f"The 'protocol' MUST be `int`, but received {type(protocol)}"
         )
 
     if protocol < 2 or protocol > 4:
@@ -1129,9 +1121,7 @@ def load(path, **configs):
                             return program
                     except:
                         raise ValueError(
-                            "`paddle.load` can not parse the file:{}.".format(
-                                path
-                            )
+                            f"`paddle.load` can not parse the file:{path}."
                         )
 
     else:

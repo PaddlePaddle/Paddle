@@ -15,7 +15,7 @@
 import unittest
 
 import paddle
-from paddle import ir
+from paddle import pir
 from paddle.decomposition import decompose
 from paddle.framework import core
 
@@ -36,7 +36,7 @@ def get_ir_program():
         y_s = paddle.add(x_s, y_s)
         y_s = paddle.mean(y_s)
         y_s = paddle.tanh(y_s)
-    newir_program = ir.translate_to_new_ir(main_program.desc)
+    newir_program = pir.translate_to_new_ir(main_program.desc)
     return newir_program
 
 

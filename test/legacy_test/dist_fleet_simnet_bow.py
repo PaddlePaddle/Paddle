@@ -263,9 +263,7 @@ class TestDistSimnetBow2x2(FleetDistRunnerBase):
                         fetch_list=[self.avg_cost.name],
                     )
                     loss_val = np.mean(loss_val)
-                    message = "TRAIN ---> pass: {} loss: {}\n".format(
-                        epoch_id, loss_val
-                    )
+                    message = f"TRAIN ---> pass: {epoch_id} loss: {loss_val}\n"
                     fleet.util.print_on_rank(message, 0)
 
                 pass_time = time.time() - pass_start

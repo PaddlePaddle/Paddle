@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .data_feeder import check_type
 import paddle
 
-__all__ = ['set_global_initializer']
+from .data_feeder import check_type
+
+__all__ = []
 
 _global_weight_initializer_ = None
 _global_bias_initializer_ = None

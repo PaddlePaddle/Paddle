@@ -54,6 +54,7 @@ VJPS = [
     'erf_grad',
     'expand_grad',
     'exp_grad',
+    'expm1_grad',
     'elementwise_pow_grad',
     'fused_softmax_mask_upper_triangle_grad',
     'matmul_grad',
@@ -69,11 +70,25 @@ VJPS = [
     'layer_norm_grad',
     'embedding_grad',
     'scale_grad',
+    'poisson_grad',
+    'gumbel_softmax_grad',
 ]
 
 
-PRIM_VJP = ['divide_grad', 'sum_grad']  # vjp list of primitive op
-CUSTOM_VJP = ['gelu_grad']  # custom vjp list of composite op
+PRIM_VJP = [
+    'divide_grad',
+    'sum_grad',
+    'cast_grad',
+    'add_grad',
+    'multiply_grad',
+    'elementwise_pow_grad',
+    'reshape_grad',
+    'split_grad',
+    'tanh_grad',
+    'transpose_grad',
+    'concat_grad',
+]  # vjp list of primitive op
+CUSTOM_VJP = ['gelu_grad', 'layer_norm_grad']  # custom vjp list of composite op
 VJP_COMPS = PRIM_VJP + CUSTOM_VJP
 
 BACKENDS = [
@@ -107,6 +122,7 @@ BACKENDS = [
     'erf_grad',
     'expand_grad',
     'exp_grad',
+    'expm1_grad',
     'multiply',
     'exp',
     'erf',
@@ -149,6 +165,10 @@ BACKENDS = [
     'embedding_grad',
     'sqrt',
     'uniform',
+    'poisson_grad',
+    'gumbel_softmax_grad',
+    'split',
+    'transpose',
 ]
 
 
