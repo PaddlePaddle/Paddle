@@ -968,7 +968,7 @@ class PartialProgramLayer:
 
             # TODO(xiongkun): more elegent way to do it.
             out = core.eager.Tensor(
-                ir_static.ir_dtype_2_tensor_dtype[var.dtype],
+                framework.paddle_type_to_proto_type[var.dtype],
                 var.shape,
                 "",
                 tensor_type,
