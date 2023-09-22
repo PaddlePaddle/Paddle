@@ -1295,7 +1295,7 @@ class OpTest(unittest.TestCase):
             return True
         for _, value in self.outputs.items():
             if not isinstance(value, (tuple, list)):
-                return False
+                continue
             for var_name, _ in value:
                 if sig_name == var_name:
                     return True
