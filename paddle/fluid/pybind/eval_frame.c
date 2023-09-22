@@ -244,7 +244,11 @@ int Internal_PyFrame_FastToLocalsWithError(_PyInterpreterFrame *frame) {
 typedef PyFrameObject FrameObject;
 #endif
 
+#ifdef _WIN32
+#define unlikely(x) (x)
+#else
 #define unlikely(x) __builtin_expect((x), 0)
+#endif
 
 // Use static variable to save customed eval hook.
 static Py_tss_t eval_frame_callback_key = {0, 0};
@@ -298,6 +302,8 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
   // Create a new function object from code object. Refer to MAKE_FUNCTION.
   PyFunctionObject *func =
       (PyFunctionObject *)PyFunction_New((PyObject *)code, frame->f_globals);
+  Py_XINCREF(frame->f_func->func_closure);
+  func->func_closure = frame->f_func->func_closure;
   _PyFrame_InitializeSpecials(shadow, func, NULL, nlocalsplus_new);
 
   PyObject **fastlocals_old = frame->localsplus;
