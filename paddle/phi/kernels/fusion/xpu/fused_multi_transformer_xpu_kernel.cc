@@ -101,7 +101,7 @@ void FusedMultiTransformerXpuKernel(
   if (ring_id >= 0) {
 #if defined(PADDLE_WITH_XPU_BKCL)
     bkcl_context =
-        phi::distributed::BKCLCommContext::Instance().Get(ring_id)->comm();
+        paddle::platform::BKCLCommContext::Instance().Get(ring_id)->comm();
 #else
     VLOG(3) << "ring id : " << ring_id
             << ", but no built with PADDLE_WITH_XPU_BKCL.\n";
