@@ -345,7 +345,7 @@ def in_dynamic_or_pir_mode():
             True
 
     """
-    return in_dygraph_mode() or in_pir_mode()
+    return global_var._dygraph_tracer_ is not None or global_var._use_pir_api_
 
 
 global_ipu_index = -1
