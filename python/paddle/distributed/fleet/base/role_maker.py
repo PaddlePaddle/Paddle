@@ -58,8 +58,8 @@ class Gloo:
             "gloo is not initialized, will not communicator with other nodes"
         )
         self._err_type = "gloo initialized error, please check arguments"
-        self._err_world = "argument error, comm_world must in {}".format(
-            self._comm_world
+        self._err_world = (
+            f"argument error, comm_world must in {self._comm_world}"
         )
 
         self._is_initialized = False
@@ -1173,9 +1173,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         else:
             type = "FILE"
         print(
-            "Gloo init with {}: need_init_all: {}, args: {}".format(
-                type, need_init_all, kwargs
-            )
+            f"Gloo init with {type}: need_init_all: {need_init_all}, args: {kwargs}"
         )
 
         self._gloo.init(

@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,10 +14,16 @@
 
 #pragma once
 
-#include <pybind11/pybind11.h>
+#include "paddle/phi/core/dense_tensor.h"
 
-namespace paddle {
-namespace pybind {
-void BindNewIR(pybind11::module *m);
-}  // namespace pybind
-}  // namespace paddle
+namespace phi {
+
+template <typename T, typename Context>
+void GaussianInplaceGradKernel(const Context& ctx,
+                               const DenseTensor& out_grad,
+                               float mean,
+                               float std,
+                               int seed,
+                               DenseTensor* x_grad);
+
+}  // namespace phi

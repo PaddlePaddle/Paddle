@@ -515,7 +515,7 @@ void Stage::EditTempTensor(Stage *other, int level) {
 
   std::vector<Expr> new_shape;
   for (auto &i : this->tensor()->new_indices) {
-    new_shape.push_back(optim::IRCopy(i));
+    new_shape.push_back(ir::ir_utils::IRCopy(i));
   }
   for (auto &i : new_shape) {
     for (auto &j : dim_to_range) {
