@@ -23,23 +23,12 @@ namespace phi {
 const char kForward[] = "FORWARD";
 const char kBackward[] = "BACKWARD";
 
-static bool is_zero_size_tensor(const phi::DDim& dims) {
-  bool has_zero = false;
-  for (int i = 0; i < dims.size(); ++i) {
-    if (dims[i] == 0) {
-      has_zero = true;
-      break;
-    }
-  }
-  return has_zero;
-}
-
 template <typename T, typename Context>
 void ShadowFeedKernel(const Context& ctx,
                       const DenseTensor& x,
                       DenseTensor* out) {
   ctx.template Alloc<T>(out);
-  if (is_zero_size_tensor(x.dims())) {
+  if (!x.initialized()) {
     return;
   }
   if (x.place() == out->place()) {

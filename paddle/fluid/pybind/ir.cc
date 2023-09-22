@@ -751,6 +751,44 @@ bool IsFakeOpResult(const pir::OpResult &result) {
   return result.Value::impl() == nullptr;
 }
 
+static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
+                                 std::vector<int> range) {
+  // filter no need buffer values.
+  std::unordered_set<::pir::Value> need_buffer_values;
+  std::unordered_set<::pir::Value> no_need_buffer_values;
+  range_block_do(
+      whole_block, range, [&need_buffer_values](::pir::Operation *op) {
+        if (op->HasInterface<paddle::dialect::OpYamlInfoInterface>() == false) {
+          // not a OpYamlInfoInterface, can't have no_need_buffer.
+          for (const auto &operand : op->operands_source()) {
+            need_buffer_values.insert(operand);
+          }
+        } else {
+          auto opinfo =
+              op->dyn_cast<paddle::dialect::OpYamlInfoInterface>().GetOpInfo();
+          int counter = 0;
+          for (const auto &op_input_info : std::get<0>(opinfo)) {
+            if (!op_input_info.no_need_buffer) {
+              need_buffer_values.insert(op->operand_source(counter));
+            }
+            counter += 1;
+          }
+        }
+      });
+  range_block_do(whole_block,
+                 range,
+                 [&need_buffer_values,
+                  &no_need_buffer_values](const ::pir::Operation *op) {
+                   for (const auto &operand : op->operands_source()) {
+                     if (need_buffer_values.count(operand) == 0) {
+                       no_need_buffer_values.insert(operand);
+                     }
+                   }
+                 });
+  return std::vector<::pir::Value>(no_need_buffer_values.begin(),
+                                   no_need_buffer_values.end());
+}
+
 SplitedResult ForwardBackwardSplit(
     const Program &program,
     const std::vector<pir::OpResult> &op_result_forward_inputs,
@@ -803,6 +841,7 @@ SplitedResult ForwardBackwardSplit(
   }
 
   std::vector<pir::Value> fx, fp, fm, fo, bx, bp, bm, bo_g, bx_g, bp_g, bo;
+  std::vector<pir::Value> no_need_buffer_values;
   pir::IrContext *ctx = pir::IrContext::Instance();
   auto forward_program = std::make_shared<Program>(ctx);
   auto backward_program = std::make_shared<Program>(ctx);
@@ -954,18 +993,23 @@ SplitedResult ForwardBackwardSplit(
   mapping_value(
       forward_outputs_grads, backward_value_map, bo_g);    // write 'bo_g'
   mapping_value(forward_outputs, backward_value_map, bo);  // write 'bo'
+  mapping_value(GetNoNeedBufferValue(program.block(), backward_range),
+                forward_value_map,
+                no_need_buffer_values);  // write 'no_need_buffers'
 
-  std::map<std::string, std::vector<pir::Value>> attr = {{"fx", fx},
-                                                         {"fp", fp},
-                                                         {"fm", fm},
-                                                         {"fo", fo},
-                                                         {"bx", bx},
-                                                         {"bp", bp},
-                                                         {"bm", bm},
-                                                         {"bo_g", bo_g},
-                                                         {"bx_g", bx_g},
-                                                         {"bp_g", bp_g},
-                                                         {"bo", bo}};
+  std::map<std::string, std::vector<pir::Value>> attr = {
+      {"fx", fx},
+      {"fp", fp},
+      {"fm", fm},
+      {"fo", fo},
+      {"bx", bx},
+      {"bp", bp},
+      {"bm", bm},
+      {"bo_g", bo_g},
+      {"bx_g", bx_g},
+      {"bp_g", bp_g},
+      {"no_need_buffers", no_need_buffer_values},
+      {"bo", bo}};
   std::vector<std::shared_ptr<Program>> programs = {forward_program,
                                                     backward_program};
   return std::make_pair(programs, attr);

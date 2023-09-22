@@ -286,10 +286,6 @@ inline void newir_run_program_ad_func(
     // Set Attributes
     grad_node->SetAttrMap(attrs);
 
-    // auto* forward_global_block = PADDLE_GET_CONST(
-    // paddle::framework::BlockDesc*, attrs.at("forward_global_block"));
-    // auto* backward_global_block = PADDLE_GET_CONST(
-    // paddle::framework::BlockDesc*, attrs.at("backward_global_block"));
     // Clear unused x vars
     auto filter_x = newir_filter_unused_input_var_in_backward(x, "bx", attrs);
     // Set TensorWrappers
@@ -305,7 +301,6 @@ inline void newir_run_program_ad_func(
     // NOTE(@xiongkun): Not every tensor in x(list of tensor) is required
     // gradient. for example: x[1] is not used for output, the x[1] is ignored.
 
-    // TODO(@xiongkun): rewrite by new ir representation.
     std::vector<const paddle::Tensor*> x_require_grad;
     for (size_t i = 0; i < x.size(); ++i) {
       x_require_grad.push_back(&x[i]);

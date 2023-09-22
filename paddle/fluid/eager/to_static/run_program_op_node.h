@@ -100,18 +100,6 @@ static void CheckInputVarStatus(const Tensor &tensor) {
                         "RunProgram(Grad)Op holds "
                         "wrong type. Expect type is DenseTensor.",
                         tensor.name()));
-
-  if (is_zero_size_tensor(tensor.dims())) {
-    return;
-  }
-  PADDLE_ENFORCE_EQ(
-      static_cast<phi::DenseTensor *>(tensor.impl().get())->IsInitialized(),
-      true,
-      paddle::platform::errors::InvalidArgument(
-          "The tensor in input tensor %s of "
-          "RunProgram(Grad)Op "
-          "is not initialized.",
-          tensor.name()));
 }
 
 static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
@@ -124,22 +112,12 @@ static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
 
   if (dst_tensor.is_dense_tensor()) {
     auto &src_tensor = src_var.Get<phi::DenseTensor>();
-    if (is_zero_size_tensor(src_tensor.dims())) {
-      return;
-    }
     PADDLE_ENFORCE_EQ(phi::DenseTensor::classof(&src_tensor),
                       true,
                       paddle::platform::errors::InvalidArgument(
                           "The output tensor %s get from "
                           "RunProgram(Grad)Op's internal scope holds "
                           "wrong type. Expect type is DenseTensor",
-                          name));
-    PADDLE_ENFORCE_EQ(src_tensor.IsInitialized(),
-                      true,
-                      paddle::platform::errors::InvalidArgument(
-                          "The tensor in output tensor %s get from "
-                          "RunProgram(Grad)Op's internal "
-                          "scope is not initialized.",
                           name));
   } else if (dst_tensor.is_selected_rows()) {
     auto &src_tensor = src_var.Get<phi::SelectedRows>();
@@ -153,14 +131,6 @@ static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
                           "RunProgram(Grad)Op's internal scope holds "
                           "wrong type. Expect type is SelectedRows",
                           name));
-    PADDLE_ENFORCE_EQ(src_tensor.initialized(),
-                      true,
-                      paddle::platform::errors::InvalidArgument(
-                          "The tensor in output tensor %s get from "
-                          "RunProgram(Grad)Op's "
-                          "internal scope is not initialized.",
-                          name));
-
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "The RunProgram(Grad)Op only support output "
@@ -495,8 +465,6 @@ inline void NewIRRunProgramAPI(
       PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fm"));
   auto param_values =
       PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fp"));
-  // auto dout_names =
-  // PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fp"));
 
   auto *forward_global_block =
       PADDLE_GET_CONST(::pir::Block *, attrs.at("forward_global_block"));
@@ -557,6 +525,15 @@ inline void NewIRRunProgramAPI(
         std::set<std::string>(skip_names.begin(), skip_names.end());
     skip_names = details::GetNameFromValue(forward_global_block, output_values);
     skip_names_set.insert(skip_names.begin(), skip_names.end());
+    auto no_need_buffer_values = PADDLE_GET_CONST(std::vector<::pir::Value>,
+                                                  attrs.at("no_need_buffers"));
+    auto no_need_buffer_names =
+        details::GetNameFromValue(forward_global_block, no_need_buffer_values);
+    VLOG(4) << "start skip no need buffer vars with name:";
+    for (auto &name : no_need_buffer_names) {
+      VLOG(4) << "Skip no need buffer vars with name:" << name;
+      skip_names_set.erase(name);
+    }
     details::print_collection(skip_names_set);
     interpreter_core->SetSkipGcVars(skip_names_set);
 
@@ -1323,7 +1300,7 @@ class NewIRGradNodeRunProgram : public egr::GradNodeBase {
   ~NewIRGradNodeRunProgram() override {
     if (!executed_) {
       auto *out_scope_vec = &step_scope_;
-      VLOG(4) << "~GradNodeRunProgram";
+      VLOG(4) << "~NewIRGradNodeRunProgram";
       // Normally out_scope_vec.size() == 1. for safty, we add for-loop here.
       for (size_t i = 0; i < out_scope_vec->size(); ++i) {
         paddle::framework::Scope *global_inner_scope = out_scope_vec->at(i);
@@ -1342,7 +1319,7 @@ class NewIRGradNodeRunProgram : public egr::GradNodeBase {
                                   egr::kSlotSmallVectorSize> &grads,  // NOLINT
              bool create_graph UNUSED,
              bool is_new_grad UNUSED) override {
-    VLOG(3) << "Running Eager Backward Node: GradNodeRunProgram";
+    VLOG(3) << "Running Eager Backward Node: NewIRGradNodeRunProgram";
     paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
         hooked_grads = NewIRGradNodeRunProgram::ApplyGradientHooks(grads);
     PADDLE_ENFORCE_EQ(hooked_grads.size(),
@@ -1393,7 +1370,7 @@ class NewIRGradNodeRunProgram : public egr::GradNodeBase {
                            attrs_,
                            x_grad_ptr,
                            params_grad_ptr);
-    VLOG(3) << "End Eager Backward Node: GradNodeRunProgram";
+    VLOG(3) << "End Eager Backward Node: NewIRGradNodeRunProgram";
 
     executed_ = true;
     return {x_grad, params_grad};
