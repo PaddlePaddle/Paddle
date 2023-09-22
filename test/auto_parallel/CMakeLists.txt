@@ -106,6 +106,11 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_reshard_nd_mesh MODULES test_reshard_nd_mesh)
   set_tests_properties(test_reshard_nd_mesh
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
+
+  py_test_modules(test_reshard_same_status MODULES test_reshard_same_status)
+  set_tests_properties(test_reshard_same_status
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
+
   py_test_modules(test_semi_auto_parallel_basic MODULES
                   test_semi_auto_parallel_basic)
   set_tests_properties(test_semi_auto_parallel_basic
