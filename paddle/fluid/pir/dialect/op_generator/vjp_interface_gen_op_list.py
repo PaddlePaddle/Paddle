@@ -54,7 +54,9 @@ vjp_interface_declare_gen_op_list = [
     'fused_softmax_mask_upper_triangle',
     'slice',
     'transpose',
-    'slice_double',
+    'slice_grad',
+    'gather_nd',
+    'stack',
 ]
 vjp_interface_implementation_gen_op_list = [
     "tanh",
@@ -87,5 +89,7 @@ vjp_interface_implementation_gen_op_list = [
     'fused_softmax_mask_upper_triangle',
     'slice',
     'transpose',
-    'slice_double',
+    'slice_grad',
+    'gather_nd',
+    'stack',
 ]
