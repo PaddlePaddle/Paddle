@@ -45,7 +45,7 @@ class TestBuildOp(unittest.TestCase):
         newir_program = get_ir_program()
         y = newir_program.global_block().ops[-2].results()
         orig_shape = y[0].shape
-        with paddle.new_ir_utils.IrGuard():
+        with paddle.pir_utils.IrGuard():
             core._set_prim_forward_enabled(True)
             y_new = decompose(newir_program, y)
             core._set_prim_forward_enabled(False)
