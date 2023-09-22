@@ -63,6 +63,10 @@ PD_REGISTER_SPMD_RULE(
     unsqueeze,
     PD_INFER_SPMD(phi::distributed::DefaultDataParallelInferSpmd),
     PD_INFER_SPMD(phi::distributed::DefaultDataParallelInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(
+    default_,
+    PD_INFER_SPMD(phi::distributed::DefaultDataParallelInferSpmd),
+    PD_INFER_SPMD(phi::distributed::DefaultDataParallelInferSpmdReverse));
 
 // replicated rule /* for unittest */
 PD_REGISTER_SPMD_RULE(
