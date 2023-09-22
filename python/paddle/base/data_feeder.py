@@ -28,7 +28,7 @@ from .framework import (
     in_pir_mode,
 )
 
-__all__ = ['DataFeeder']
+__all__ = []
 
 _PADDLE_DTYPE_2_NUMPY_DTYPE = {
     core.VarDesc.VarType.BOOL: 'bool',

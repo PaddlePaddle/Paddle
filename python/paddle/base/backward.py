@@ -27,10 +27,7 @@ from . import core, log_helper, unique_name
 from .data_feeder import check_type
 from .proto import framework_pb2
 
-__all__ = [
-    'append_backward',
-    'gradients',
-]
+__all__ = []
 
 _logger = log_helper.get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
