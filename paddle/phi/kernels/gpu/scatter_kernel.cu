@@ -26,6 +26,13 @@
 #include "paddle/phi/kernels/funcs/scatter.cu.h"
 #include "paddle/utils/flags.h"
 
+#include "paddle/phi/kernels/compare_kernel.h"
+#include "paddle/phi/kernels/elementwise_divide_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/index_add_kernel.h"
+#include "paddle/phi/kernels/where_kernel.h"
+
 PD_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
@@ -35,7 +42,8 @@ using phi::PADDLE_CUDA_NUM_THREADS;
 template <typename T, typename IndexT>
 __global__ void index_reduce_cuda_kernel(const T* input,
                                          const IndexT* index,
-                                         const T* add_value,
+                                         const T* source,
+                                         int reduce,
                                          int64_t N,
                                          int64_t stride,
                                          int64_t size,
@@ -47,7 +55,38 @@ __global__ void index_reduce_cuda_kernel(const T* input,
     IndexT src_dim_idx = index[dim_idx];
     int64_t input_idx =
         idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
-    phi::CudaAtomicAdd(&output[input_idx], add_value[idx]);
+    if (reduce == 0 || reduce == 1) {
+      phi::CudaAtomicAdd(&output[input_idx], source[idx]);
+    } else if (reduce == 2) {
+      phi::CudaAtomicMul(&output[input_idx], source[idx]);
+    } else if (reduce == 3) {
+      phi::CudaAtomicMin(&output[input_idx], source[idx]);
+    } else if (reduce == 4) {
+      phi::CudaAtomicMax(&output[input_idx], source[idx]);
+    } else if (reduce == 5) {
+      output[input_idx] = source[idx];
+    }
+  }
+}
+
+template <typename T, typename IndexT>
+__global__ void index_fill_cuda_kernel(const T* input,
+                                       const IndexT* index,
+                                       const T* source,
+                                       T init_val,
+                                       int64_t N,
+                                       int64_t stride,
+                                       int64_t size,
+                                       int64_t delta,
+                                       T* output) {
+  CUDA_KERNEL_LOOP_TYPE(idx, N, int64_t) {
+    int64_t pre_idx = idx / (stride * size);
+    int64_t dim_idx = idx % (stride * size) / stride;
+    IndexT src_dim_idx = index[dim_idx];
+    int64_t input_idx =
+        idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
+
+    output[input_idx] = init_val;
   }
 }
 
@@ -55,14 +94,14 @@ template <typename T, typename Context>
 void IndexReduceKernel(const Context& ctx,
                        const DenseTensor& x,
                        const DenseTensor& index,
-                       const DenseTensor& add_value,
+                       const DenseTensor& source,
                        int axis,
                        const std::string& reduce,
                        bool include_self,
                        DenseTensor* output) {
   auto input_dim = x.dims();
   auto output_dim = output->dims();
-  auto add_value_dim = add_value.dims();
+  auto source_dim = source.dims();
 
   const auto& index_type = index.dtype();
 
@@ -71,14 +110,14 @@ void IndexReduceKernel(const Context& ctx,
 
   auto stride_dim = phi::stride(input_dim);
   int64_t stride = stride_dim[dim];
-  int64_t size = add_value_dim[dim];
+  int64_t size = source_dim[dim];
   int64_t delta = input_dim[dim] - size;
 
   auto* in_data = x.data<T>();
   T* out_data = ctx.template Alloc<T>(output);
-  auto* add_value_data = add_value.data<T>();
+  auto* source_data = source.data<T>();
 
-  int64_t numel = add_value.numel();
+  int64_t numel = source.numel();
   if (numel == 0) {
     return;
   }
@@ -89,14 +128,69 @@ void IndexReduceKernel(const Context& ctx,
   dim3 grid_dim = dim3((numel + block_dim - 1) / block_dim);
   phi::backends::gpu::LimitGridDim(ctx, &grid_dim);
 
-  // copy input to output.
-  // todo(@limin29): inplace do not need copy.
-  phi::Copy(ctx, x, ctx.GetPlace(), false, output);
-
   if (FLAGS_cudnn_deterministic) {
     VLOG(2) << "Run grad kernel of index_add with single thread.";
     block_dim = 1;
     grid_dim.x = 1;
+  }
+
+  phi::Copy(ctx, x, ctx.GetPlace(), false, output);
+  if (!include_self) {
+    T init_val;
+    if (reduce == "mul" || reduce == "multiply") {
+      init_val = static_cast<T>(1);
+    } else if (reduce == "amin") {
+      init_val = std::numeric_limits<T>::has_infinity
+                     ? std::numeric_limits<T>::infinity()
+                     : std::numeric_limits<T>::max();
+    } else if (reduce == "amax") {
+      init_val = std::numeric_limits<T>::has_infinity
+                     ? -std::numeric_limits<T>::infinity()
+                     : std::numeric_limits<T>::lowest();
+    } else {
+      init_val = static_cast<T>(0);
+    }
+
+    if (index_type == phi::DataType::INT64) {
+      const int64_t* index_data = index.data<int64_t>();
+      index_fill_cuda_kernel<T, int64_t>
+          <<<grid_dim, block_dim, 0, stream>>>(in_data,
+                                               index_data,
+                                               source_data,
+                                               init_val,
+                                               numel,
+                                               stride,
+                                               size,
+                                               delta,
+                                               out_data);
+    } else {
+      const int* index_data = index.data<int>();
+      index_fill_cuda_kernel<T, int>
+          <<<grid_dim, block_dim, 0, stream>>>(in_data,
+                                               index_data,
+                                               source_data,
+                                               init_val,
+                                               numel,
+                                               stride,
+                                               size,
+                                               delta,
+                                               out_data);
+    }
+  }
+
+  int reduce_type = 0;
+  if (reduce == "add") {
+    reduce_type = 0;
+  } else if (reduce == "mean") {
+    reduce_type = 1;
+  } else if (reduce == "mul" || reduce == "multiply") {
+    reduce_type = 2;
+  } else if (reduce == "amin") {
+    reduce_type = 3;
+  } else if (reduce == "amax") {
+    reduce_type = 4;
+  } else if (reduce == "assign") {
+    reduce_type = 5;
   }
 
   if (index_type == phi::DataType::INT64) {
@@ -104,7 +198,8 @@ void IndexReduceKernel(const Context& ctx,
     index_reduce_cuda_kernel<T, int64_t>
         <<<grid_dim, block_dim, 0, stream>>>(in_data,
                                              index_data,
-                                             add_value_data,
+                                             source_data,
+                                             reduce_type,
                                              numel,
                                              stride,
                                              size,
@@ -115,12 +210,25 @@ void IndexReduceKernel(const Context& ctx,
     index_reduce_cuda_kernel<T, int>
         <<<grid_dim, block_dim, 0, stream>>>(in_data,
                                              index_data,
-                                             add_value_data,
+                                             source_data,
+                                             reduce_type,
                                              numel,
                                              stride,
                                              size,
                                              delta,
                                              out_data);
+  }
+
+  if (reduce == "mean") {
+    auto zeros = Full<T, Context>(ctx, vectorize(input_dim), 0);
+    auto ones = Full<T, Context>(ctx, vectorize(input_dim), 1);
+    auto counts = include_self ? ones : zeros;
+    auto src_ones = Full<T, Context>(ctx, vectorize(source.dims()), 1);
+    auto src_cnts = IndexAdd<T, Context>(ctx, counts, index, src_ones, dim);
+    auto mask = Equal<T, Context>(ctx, src_cnts, zeros);
+
+    auto src_cnts_wo_zeros = Where<T, Context>(ctx, mask, ones, src_cnts);
+    *output = Divide<T, Context>(ctx, *output, src_cnts_wo_zeros);
   }
 }
 
@@ -161,16 +269,6 @@ void ScatterKernel(const Context& ctx,
 
   IndexReduceKernel<T, Context>(
       ctx, x, index, updates, axis, reducer, include_self, out);
-
-  // phi::Copy(ctx, x, ctx.GetPlace(), false, out);
-  // int reduce_type = reduce == "sum" ? 0 : 1;
-  // if (index_type == phi::DataType::INT32) {
-  //   phi::funcs::GPUScatterAssign<T, int32_t>(
-  //       ctx, updates, index, out, overwrite, reduce_type);
-  // } else {
-  //   phi::funcs::GPUScatterAssign<T, int64_t>(
-  //       ctx, updates, index, out, overwrite, reduce_type);
-  // }
 }
 
 }  // namespace phi
