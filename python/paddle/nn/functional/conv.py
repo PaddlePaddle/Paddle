@@ -1555,7 +1555,7 @@ def conv3d_transpose(
     If bias attribution and activation type are provided, bias is added to
     the output of the convolution, and the corresponding activation function
     is applied to the final result.
-    See more detail in :ref:`api_paddle_nn_functional_conv3d_transpose` .
+    See more detail in :ref:`api_paddle_nn_Conv3DTranspose` .
 
     For each input :math:`X`, the equation is:
 
