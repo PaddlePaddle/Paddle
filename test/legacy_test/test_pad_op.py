@@ -60,7 +60,7 @@ class TestPadOp(OpTest):
         self.check_output(check_new_ir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_new_ir=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
     def initTestCase(self):
         self.shape = (16, 16)
@@ -257,7 +257,7 @@ class TestPadBP16Op(OpTest):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', check_new_ir=True)
+        self.check_grad_with_place(place, ['X'], 'Out', check_prim=True, check_new_ir=True)
 
 
 if __name__ == '__main__':
