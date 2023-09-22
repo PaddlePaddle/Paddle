@@ -3798,7 +3798,7 @@ def gather_nd(x, index, name=None):
             output = paddle.gather_nd(x, index) #[[3, 4]]
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.gather_nd(x, index)
     else:
         check_variable_and_dtype(
