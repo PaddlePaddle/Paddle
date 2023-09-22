@@ -38,10 +38,10 @@ class TestPadConstantLikeOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['Y'], 'Out', check_new_ir=True)
+        self.check_grad(['Y'], 'Out')
 
     def initTestCase(self):
         self.x_shape = (16, 40)

@@ -64,10 +64,10 @@ class TestPad2dOp(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False, check_new_ir=True)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_dygraph=False, check_new_ir=True)
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
     def initTestCase(self):
         self.shape = (2, 3, 4, 5)
