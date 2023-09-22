@@ -125,6 +125,14 @@ class CodeGen:
                 op_compat_item = op_compat_parser.get_compat(
                     op['forward']['name']
                 )
+
+            if (
+                op_compat_item is not None
+                and op_compat_item['op'] == "pow"
+                and 'scalar' in op_compat_item
+            ):
+                op_compat_item = op_compat_item.pop('scalar')
+
             op_info_items.append(OpInfoParser(op, op_compat_item))
         return op_info_items
 
@@ -142,7 +150,7 @@ class CodeGen:
         assert len(name_list) == len(type_list)
         ret = []
         for name, type in zip(name_list, type_list):
-            ret.append(f'{self._type_map[type]} {name}')
+            ret.append(f'const {self._type_map[type]}& {name}')
         return ', '.join(ret)
 
     def _gen_api_attrs(

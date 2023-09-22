@@ -341,7 +341,7 @@ class EagerUtils {
     }
     if (VLOG_IS_ON(11)) {
       const char* TENSOR_PRINT_TEMPLATE =
-          "{Name: %s, Initialized: %d, Ptr: %d "
+          "{Name: %s, Initialized: %d, Ptr: %d, "
           "TensorInfo: [ %s ], Value:[ %s ], ADInfo:[ %s ]}";
       auto* ad_meta = nullable_autograd_meta(t);
       if (ad_meta && (ad_meta->WeakGrad().lock().get())) {
@@ -392,7 +392,7 @@ class EagerUtils {
       }
     } else if (VLOG_IS_ON(6)) {
       const char* TENSOR_PRINT_TEMPLATE =
-          "{Name: %s, Initialized: %d, Ptr: %d "
+          "{Name: %s, Initialized: %d, Ptr: %d,"
           "TensorInfo: [ %s ], ADInfo:[ %s ]}";
       auto* ad_meta = nullable_autograd_meta(t);
       if (ad_meta && (ad_meta->WeakGrad().lock().get())) {
@@ -419,7 +419,7 @@ class EagerUtils {
       }
     } else if (VLOG_IS_ON(5)) {
       const char* TENSOR_PRINT_TEMPLATE =
-          "{Name: %s, Initialized: %d , Ptr: %d "
+          "{Name: %s, Initialized: %d , Ptr: %d, "
           "TensorInfo: [ %s ]}";
       return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
                                      tensor_name_str,

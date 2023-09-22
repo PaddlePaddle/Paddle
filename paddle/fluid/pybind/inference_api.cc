@@ -239,7 +239,7 @@ void PaddleInferTensorCreate(paddle_infer::Tensor &tensor,  // NOLINT
 
 paddle_infer::PlaceType ToPaddleInferPlace(
     phi::AllocationType allocation_type) {
-  if (allocation_type == phi::AllocationType::CPU) {
+  if (allocation_type == phi::AllocationType::CPU) {  // NOLINT
     return paddle_infer::PlaceType::kCPU;
   } else if (allocation_type == phi::AllocationType::GPU) {
     return paddle_infer::PlaceType::kGPU;
