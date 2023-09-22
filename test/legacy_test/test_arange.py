@@ -139,6 +139,7 @@ class TestArangeOpError(unittest.TestCase):
 
 class TestArangeAPI(unittest.TestCase):
     def test_out(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             x1 = paddle.arange(0, 5, 1, 'float32')
 
@@ -153,6 +154,7 @@ class TestArangeAPI(unittest.TestCase):
         expected_data = np.arange(0, 5, 1).astype(np.float32)
         self.assertEqual((out == expected_data).all(), True)
         self.assertListEqual(list(x1.shape), [5])
+        paddle.disable_static(place)
 
 
 class TestArangeImperative(unittest.TestCase):

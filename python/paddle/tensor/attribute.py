@@ -238,13 +238,13 @@ def is_integer(x):
             True
     """
     if not isinstance(
-        x, (paddle.Tensor, paddle.static.Variable, paddle.ir.OpResult)
+        x, (paddle.Tensor, paddle.static.Variable, paddle.pir.OpResult)
     ):
         raise TypeError(f"Expected Tensor, but received type of x: {type(x)}")
     dtype = x.dtype
 
     is_int_dtype = False
-    if in_dygraph_mode():
+    if not in_pir_mode():
         is_int_dtype = (
             dtype == core.VarDesc.VarType.UINT8
             or dtype == core.VarDesc.VarType.INT8
@@ -252,7 +252,7 @@ def is_integer(x):
             or dtype == core.VarDesc.VarType.INT32
             or dtype == core.VarDesc.VarType.INT64
         )
-    elif in_pir_mode():
+    else:
         is_int_dtype = (
             dtype == core.DataType.INT8
             or dtype == core.DataType.INT8
