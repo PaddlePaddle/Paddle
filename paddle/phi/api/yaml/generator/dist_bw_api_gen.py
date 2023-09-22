@@ -27,7 +27,7 @@ MAIN_DIST_BRANCH_TEMPLATE = """
   if ({}) {{
     // 1. InferSpmd (Infer DistAttr of Inputs&Outputs){}
     // 2. Create Temporary Output & Prepare Dist and Dense Output{}
-    // 3. Infer DistTensor's Global Shape{}
+    // 3. Infer DistTensor's Global Shape{}\n
     // 4. Select Kernel{}
     // 5. Reshard Input{}\n
     // 6. PrepareData (DataTransform & Prepare Dense Input){}
@@ -44,9 +44,15 @@ SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD = """
     auto dist_out = SetKernelDistOutput({});
     auto dense_out = dist_out->unsafe_mutable_value();
 """
+SINGLE_OUT_CREATION_TEMPLATE_WITH_SPMD = """
+    std::shared_ptr<phi::distributed::DistTensor> shared_dist_out =
+        CreateKernelDistOutput({}, spmd_info.second[0]);
+    phi::distributed::DistTensor* dist_out = shared_dist_out.get();
+    phi::DenseTensor* dense_out = dist_out->unsafe_mutable_value();
+"""
 SINGLE_OUT_CREATION_TEMPLATE = """
     std::shared_ptr<phi::distributed::DistTensor> shared_dist_out =
-        CreateKernelDistOutput(spmd_info.second[0]);
+        CreateKernelDistOutput({});
     phi::distributed::DistTensor* dist_out = shared_dist_out.get();
     phi::DenseTensor* dense_out = dist_out->unsafe_mutable_value();
 """
@@ -71,17 +77,17 @@ MULTI_SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD = """
     auto dist_out_{idx} = SetKernelDistOutput({name});
     auto dense_out_{idx} = dist_out_{idx}->unsafe_mutable_value();
 """
+MULTI_SINGLE_OUT_CREATION_TEMPLATE_WITH_SPMD = """
+    std::shared_ptr<phi::distributed::DistTensor> shared_dist_out_{idx} =
+        CreateKernelDistOutput({name}, spmd_info.second[{idx}]);
+    phi::distributed::DistTensor* dist_out_{idx} = shared_dist_out_{idx}.get();
+    phi::DenseTensor* dense_out_{idx} = dist_out_{idx} ? dist_out_{idx}->unsafe_mutable_value() : nullptr;
+"""
 MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
     std::shared_ptr<phi::distributed::DistTensor> shared_dist_out_{idx} =
-        CreateKernelDistOutput(spmd_info.second[{idx}]);
+        CreateKernelDistOutput({name});
     phi::distributed::DistTensor* dist_out_{idx} = shared_dist_out_{idx}.get();
-    phi::DenseTensor* dense_out_{idx} = dist_out_{idx}->unsafe_mutable_value();
-"""
-
-# 4. PrepareData (DataTransform & Prepare Dist and Dense Input)
-SINGLE_PREPARE_DATA_TEMPLATE = """
-    auto dist_input_{arg} = PrepareDataForDistTensor({arg}, GetKernelInputArgDef(kernel.InputAt({idx}), kernel_backend), {flag}, kernel_result.is_stride_kernel);
-    auto input_{arg} = &dist_input_{}->value();
+    phi::DenseTensor* dense_out_{idx} = dist_out_{idx} ? dist_out_{idx}->unsafe_mutable_value() : nullptr;
 """
 MULTI_VECTOR_OUT_CREATION_TEMPLATE = """
     auto dist_out_{i} = SetKernelDistOutput({name});
@@ -113,6 +119,12 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
             self.dense_output_args.append('dense_out')
             if self.outputs['types'][0] == 'Tensor':
                 if self.infer_meta['spmd_rule'] is not None:
+                    output_creation_code += (
+                        SINGLE_OUT_CREATION_TEMPLATE_WITH_SPMD.format(
+                            self.outputs['names'][0]
+                        )
+                    )
+                elif self.generate_general_infer_spmd is True:
                     output_creation_code += SINGLE_OUT_CREATION_TEMPLATE.format(
                         self.outputs['names'][0]
                     )
@@ -134,6 +146,12 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
                 self.dense_output_args.append(f'dense_out_{i}')
                 if out_type == 'Tensor':
                     if self.infer_meta['spmd_rule'] is not None:
+                        output_creation_code += (
+                            MULTI_SINGLE_OUT_CREATION_TEMPLATE_WITH_SPMD.format(
+                                name=self.outputs['names'][i], idx=i
+                            )
+                        )
+                    elif self.generate_general_infer_spmd is True:
                         output_creation_code += (
                             MULTI_SINGLE_OUT_CREATION_TEMPLATE.format(
                                 name=self.outputs['names'][i], idx=i
@@ -208,7 +226,7 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
 
     def generate_reshard_output_code(self):
         reshard_output_code = ""
-        if self.infer_meta['spmd_rule'] is not None:
+        if self.generate_infer_spmd is True:
             output_num = len(self.outputs['types'])
             if output_num == 1:
                 if self.outputs['types'][0] == 'Tensor':

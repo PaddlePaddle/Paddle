@@ -17,32 +17,21 @@ import unittest
 import collective.test_communication_api_base as test_base
 
 
-class TestSemiAutoParallelBasic(test_base.CommunicationTestDistBase):
+class TestSemiAutoParallelSingleStrategy(test_base.CommunicationTestDistBase):
     def setUp(self):
-        super().setUp(
-            num_of_devices=2,
-            timeout=120,
-        )
-        self._default_envs = {"dtype": "float32"}
+        super().setUp(num_of_devices=2, timeout=120)
+        self._default_envs = {
+            "dtype": "float32",
+        }
         self._changeable_envs = {"backend": ["cpu", "gpu"]}
 
-    def test_matmul_api(self):
+    def test_simple_net_single_strategy(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
         )
         for envs in envs_list:
             self.run_test_case(
-                "semi_auto_parallel_for_matmul.py",
-                user_defined_envs=envs,
-            )
-
-    def test_several_replicated_spmd_api(self):
-        envs_list = test_base.gen_product_envs_list(
-            self._default_envs, self._changeable_envs
-        )
-        for envs in envs_list:
-            self.run_test_case(
-                "semi_auto_parallel_for_replicated_spmd.py",
+                "semi_auto_parallel_simple_net.py",
                 user_defined_envs=envs,
             )
 
