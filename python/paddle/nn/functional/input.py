@@ -219,9 +219,7 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
 
     if padding_idx >= weight.shape[0] or padding_idx < -weight.shape[0]:
         raise ValueError(
-            "padding_idx must be within [-{}, {})".format(
-                weight.shape[0], weight.shape[0]
-            )
+            f"padding_idx must be within [-{weight.shape[0]}, {weight.shape[0]})"
         )
 
     if in_dynamic_or_pir_mode():

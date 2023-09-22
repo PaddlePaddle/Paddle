@@ -185,7 +185,7 @@ class RestructureVarNodes : public ir::IRMutator<> {
   void Visit(const ir::Load *load, Expr *op) override {
     std::vector<ir::Expr> indices_copied;
     for (const ir::Expr &indice : load->indices) {
-      indices_copied.push_back(IRCopy(indice));
+      indices_copied.push_back(ir::ir_utils::IRCopy(indice));
     }
     op->As<ir::Load>()->indices = indices_copied;
 
@@ -195,7 +195,7 @@ class RestructureVarNodes : public ir::IRMutator<> {
   void Visit(const ir::Store *store, Expr *op) override {
     std::vector<ir::Expr> indices_copied;
     for (const ir::Expr &indice : store->indices) {
-      indices_copied.push_back(IRCopy(indice));
+      indices_copied.push_back(ir::ir_utils::IRCopy(indice));
     }
     op->As<ir::Store>()->indices = indices_copied;
 
@@ -585,7 +585,7 @@ class ResizeBufferSizeVisitor : public ir::IRMutator<> {
   }
 
   int BufferSize(ir::Expr indice) {
-    auto copy = IRCopy(indice);
+    auto copy = ir::ir_utils::IRCopy(indice);
     auto vars = ir::ir_utils::CollectIRNodesInOrder(
         copy, [](const ir::Expr *expr) { return expr->As<ir::_Var_>(); });
 
@@ -598,7 +598,7 @@ class ResizeBufferSizeVisitor : public ir::IRMutator<> {
       auto extent = loop_2_extent_.find(var->name)->second;
 
       for (int idx = 0; idx < extent; ++idx) {
-        auto tmp = IRCopy(index);
+        auto tmp = ir::ir_utils::IRCopy(index);
         ReplaceVarWithExpr(&tmp, var, Expr(idx));
 
         if (deep == vars.size() - 1) {

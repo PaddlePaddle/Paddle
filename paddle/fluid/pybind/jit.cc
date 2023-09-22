@@ -57,6 +57,12 @@ namespace pybind {
 typedef _PyInterpreterFrame FrameObject;
 #define CALL_STAT_INC(name) ((void)0)
 
+int Internal_PyInterpreterFrame_GetLine(_PyInterpreterFrame *frame);
+static int Internal_PyFrame_OpAlreadyRan(_PyInterpreterFrame *frame,
+                                         int opcode,
+                                         int oparg);
+int Internal_PyFrame_FastToLocalsWithError(_PyInterpreterFrame *frame);
+
 // clang-format off
 // Define a proxy PyObject to access _PyInterpreterFrame's properties.
 // It will be passed as an argument to the eval frame's callback.
@@ -86,6 +92,20 @@ DECLARE_PROXY_PROPERTY(f_locals)
 DECLARE_PROXY_PROPERTY(f_globals)
 DECLARE_PROXY_PROPERTY(f_builtins)
 
+// Refer to
+// https://github.com/python/cpython/blob/9414ddf91898892f3f6a672ae946931ee4b3ceb7/Objects/frameobject.c#L953-L961
+static PyObject *PyInterpreterFrameProxy_method_repr(
+    PyInterpreterFrameProxy *self) {
+  int lineno = Internal_PyInterpreterFrame_GetLine(self->frame);
+  PyCodeObject *code = self->frame->f_code;
+  return PyUnicode_FromFormat(
+      "<PyInterpreterFrameProxy at %p, file %R, line %d, code %S>",
+      self,
+      code->co_filename,
+      lineno,
+      code->co_name);
+}
+
 static PyGetSetDef PyInterpreterFrameProxy_properties[] = {
     REGISTER_PROXY_PROPERTY(f_code),
     REGISTER_PROXY_PROPERTY(f_locals),
@@ -100,6 +120,7 @@ static PyTypeObject PyInterpreterFrameProxyType = {
     .tp_name = "paddle.framework.core.PyInterpreterFrameProxy",
     .tp_doc = PyDoc_STR("A proxy object for _PyInterpreterFrame, "
                         "it's only define all properties we need."),
+    .tp_repr = reinterpret_cast<reprfunc>(PyInterpreterFrameProxy_method_repr),
     .tp_basicsize = sizeof(PyInterpreterFrameProxy),
     .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT,
@@ -122,6 +143,11 @@ PyInterpreterFrameProxy *PyInterpreterFrameProxy_New(
 
 // We copy some cpython internal API from cpython project.
 // To avoid name conflict, we use "Internal_" prefix to mark them.
+int Internal_PyInterpreterFrame_GetLine(_PyInterpreterFrame *frame) {
+  int addr = _PyInterpreterFrame_LASTI(frame) * sizeof(_Py_CODEUNIT);
+  return PyCode_Addr2Line(frame->f_code, addr);
+}
+
 static int Internal_PyFrame_OpAlreadyRan(_PyInterpreterFrame *frame,
                                          int opcode,
                                          int oparg) {

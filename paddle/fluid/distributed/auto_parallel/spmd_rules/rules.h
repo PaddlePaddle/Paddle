@@ -17,7 +17,6 @@
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/cross_entropy_with_softmax_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/embedding_spmd_rule.h"
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/layer_norm_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/replicated_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/reshape_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/softmax_spmd_rule.h"
@@ -28,9 +27,6 @@
 namespace paddle {
 namespace distributed {
 namespace auto_parallel {
-
-// layer_norm rule
-REGISTER_SPMD_RULE(layer_norm, LayerNormSPMDRule);
 
 // replicated rule
 REGISTER_SPMD_RULE(replicated, ReplicatedSPMDRule);
