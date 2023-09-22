@@ -242,7 +242,7 @@ TEST(StandaloneExecutor, if_op) {
 
   auto full_op_1 = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{2}, true, phi::DataType::BOOL);
-  builder.Build<pir::YieldOp>(std::vector<pir::OpResult>{full_op_1.out()});
+  builder.Build<pir::YieldOp>(std::vector<pir::Value>{full_op_1.out()});
 
   pir::Block* false_block = if_op.false_block();
 
@@ -250,7 +250,7 @@ TEST(StandaloneExecutor, if_op) {
 
   auto full_op_2 = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{3}, true, phi::DataType::BOOL);
-  builder.Build<pir::YieldOp>(std::vector<pir::OpResult>{full_op_2.out()});
+  builder.Build<pir::YieldOp>(std::vector<pir::Value>{full_op_2.out()});
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
