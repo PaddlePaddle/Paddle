@@ -68,7 +68,6 @@ extern void *mublas_dso_handle;
   __macro(mublasDgemm);                   \
   __macro(mublasCgemm);                   \
   __macro(mublasZgemm);                   \
-  __macro(mublasHgemm);                   \
   __macro(mublasSgeam);                   \
   __macro(mublasDgeam);                   \
   __macro(mublasDtrsm);                   \
