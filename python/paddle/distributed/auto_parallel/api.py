@@ -304,10 +304,10 @@ def shard_layer(
             >>> def shard_fn(layer_name, layer, process_mesh):
             ...     dist_attr = dist.DistAttr(mesh=process_mesh, sharding_specs=['x', 'y'])
             ...     if layer_name == 'fc1':
-            ...         layer.weight = dist.shard_tensor(model.weight, dist_attr)
+            ...         layer.weight = dist.shard_tensor(model.weight, dist_attr=dist_attr)
 
             >>> layer = MLP()
-            >>> layer = dist.shard_layer(model, shard_params_func)
+            >>> layer = dist.shard_layer(layer, shard_fn)
             >>> print(layer)
     """
     # Ensure that process_mesh is not an empty object
