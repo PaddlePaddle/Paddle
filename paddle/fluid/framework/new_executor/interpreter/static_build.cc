@@ -18,16 +18,14 @@
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/framework/reader.h"
-#include "paddle/fluid/operators/reader/buffered_reader.h"
-
 #include "paddle/fluid/operators/controlflow/control_flow_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
+#include "paddle/fluid/operators/reader/buffered_reader.h"
+#include "paddle/fluid/platform/flags.h"
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
-
-#include "paddle/fluid/platform/flags.h"
 
 PHI_DECLARE_bool(cache_inference_while_scope);
 
@@ -668,13 +666,11 @@ void FakeInitializeOutputsForOperatorBase(
     const std::vector<VarMetaInfo> out_var_info_before_build =
         GetVarsInfo(scope, op.Outputs(), op);
 
-    VLOG(3) << "debug1: " << op.DebugStringEx(scope);
     if (op_type == "conditional_block") {
       RunConditionalBlockPreStaticBuild(*scope, place, op);
     } else {
       RunWhileBlockPreStaticBuild(*scope, place, op);
     }
-    VLOG(3) << "debug2: " << op.DebugStringEx(scope);
 
     const std::vector<VarMetaInfo> out_var_info_after_build =
         GetVarsInfo(scope, op.Outputs(), op);
