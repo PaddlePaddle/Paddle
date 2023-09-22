@@ -142,7 +142,7 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
             loss.backward()
             adam.minimize(loss)
             layer.clear_gradients()
-        # test for saving model in dygraph.guard
+
         infer_model_prefix = os.path.join(
             self.temp_dir.name, "test_dy2stat_inference_in_guard/model_pylayer"
         )
