@@ -396,9 +396,7 @@ class Optimizer:
                     load_para_np = load_para
                 else:
                     raise RuntimeError(
-                        "State dict type {} not supprt".format(
-                            str(type(load_para))
-                        )
+                        f"State dict type {str(type(load_para))} not supprt"
                     )
 
                 assert (
@@ -844,9 +842,7 @@ class Optimizer:
             if framework.in_dygraph_mode():
                 return self._accumulators[name][param.name]
             raise Exception(
-                "Accumulator {} already exists for parameter {}".format(
-                    name, param.name
-                )
+                f"Accumulator {name} already exists for parameter {param.name}"
             )
         if shape is None:
             shape = param.shape
@@ -892,9 +888,7 @@ class Optimizer:
             if len(self._accumulators_holder) > 0:
                 assert (
                     var_name in self._accumulators_holder
-                ), "Optimizer set error, {} should in state dict".format(
-                    var_name
-                )
+                ), f"Optimizer set error, {var_name} should in state dict"
                 var.set_value(self._accumulators_holder.pop(var_name))
 
         self._accumulators[name][param.name] = var
@@ -917,9 +911,7 @@ class Optimizer:
             or param.name not in self._accumulators[name]
         ):
             raise Exception(
-                "Accumulator {} does not exist for parameter {}".format(
-                    name, param.name
-                )
+                f"Accumulator {name} does not exist for parameter {param.name}"
             )
         return self._accumulators[name][param.name]
 
@@ -945,9 +937,7 @@ class Optimizer:
             or target_name not in self._accumulators[name]
         ):
             raise Exception(
-                "Accumulator {} does not exist for parameter {}".format(
-                    name, target_name
-                )
+                f"Accumulator {name} does not exist for parameter {target_name}"
             )
         return self._accumulators[name][target_name]
 
