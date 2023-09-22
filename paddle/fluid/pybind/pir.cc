@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pybind/ir.h"
+#include "paddle/fluid/pybind/pir.h"
 #include <Python.h>
 #include <algorithm>
 #include <memory>
@@ -469,6 +469,10 @@ void BindOpResult(py::module *m) {
            [](OpResult &self, OpResult &other) {
              return paddle::dialect::add(self, other);
            })
+      .def("__add__",
+           [](OpResult &self, float &bias) {
+             return paddle::dialect::scale(self, 1.0, bias, false);
+           })
       .def("__sub__",
            [](OpResult &self, OpResult &other) {
              return paddle::dialect::subtract(self, other);
@@ -647,7 +651,7 @@ Operation *BuildOpFrom(
                  std::back_inserter(to_create_argument.inputs),
                  [&value_map](const pir::OpOperand &operand) {
                    // Operand -> OpResult
-                   return OpResult::dyn_cast_from(value_map[operand.source()]);
+                   return value_map[operand.source()];
                  });
   auto *cloned_op = Operation::Create(std::move(to_create_argument));
 
@@ -843,11 +847,8 @@ SplitedResult ForwardBackwardSplit(
          pir::StrAttribute::get(
              ctx, std::string("output_") + std::to_string(counter))},
     };
-    pir::Operation *operation =
-        pir::Operation::Create({OpResult::dyn_cast_from(forward_value_map[v])},
-                               attribute_map,
-                               {},
-                               op_info);
+    pir::Operation *operation = pir::Operation::Create(
+        {forward_value_map[v]}, attribute_map, {}, op_info);
     forward_program->block()->push_back(operation);
     counter += 1;
   };
@@ -866,10 +867,7 @@ SplitedResult ForwardBackwardSplit(
              ctx, std::string("output_") + std::to_string(counter))},
     };
     pir::Operation *operation = pir::Operation::Create(
-        {OpResult::dyn_cast_from(backward_value_map.at(v))},
-        attribute_map,
-        {},
-        op_info);
+        {backward_value_map.at(v)}, attribute_map, {}, op_info);
     backward_program->block()->push_back(operation);
     counter += 1;
   };
@@ -982,7 +980,7 @@ void BindUtils(pybind11::module *m) {
             .. code-block:: python
 
                 import paddle
-                from paddle import ir
+                from paddle import pir
                 paddle.enable_static()
 
                 x = paddle.randn([4, 4])
@@ -1064,8 +1062,8 @@ void BindPassManager(pybind11::module *m) {
       .def("empty", &PassManager::Empty);
 }
 
-void BindNewIR(pybind11::module *module) {
-  auto ir_module = module->def_submodule("ir");
+void BindPIR(pybind11::module *module) {
+  auto ir_module = module->def_submodule("pir");
   BindProgram(&ir_module);
   BindBlock(&ir_module);
   BindOperation(&ir_module);

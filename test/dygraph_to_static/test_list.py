@@ -261,9 +261,7 @@ class TestListWithoutControlFlow(unittest.TestCase):
                     stat_res,
                     dy_res,
                     rtol=1e-05,
-                    err_msg='dygraph_res is {}\nstatic_res is {}'.format(
-                        dy_res, stat_res
-                    ),
+                    err_msg=f'dygraph_res is {dy_res}\nstatic_res is {stat_res}',
                 )
 
 

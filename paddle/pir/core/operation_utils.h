@@ -84,6 +84,12 @@ struct OperationArgument {
   /// Add an array of named attributes.
   template <class InputIt>
   void AddAttributes(InputIt first, InputIt last);
+
+  template <class AttrContainer>
+  void AddAttributes(const AttrContainer& attr_container) {
+    AddAttributes(std::begin(attr_container), std::end(attr_container));
+  }
+
   /// Get the context held by this operation state.
   IrContext* getContext() const { return info.ir_context(); }
 

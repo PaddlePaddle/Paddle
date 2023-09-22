@@ -1181,6 +1181,41 @@
       data_type : float
       support_tensor : true
 
+- op : fused_attention
+  inputs:
+    x: X
+    ln_scale: LnScale
+    ln_bias: LnBias
+    qkv_weight: QKVW
+    qkv_bias: QKVBias
+    cache_kv: CacheKV
+    src_mask: SrcMask
+    out_linear_weight: OutLinearW
+    out_linear_bias: OutLinearBias
+    ln_scale_2: Ln2Scale
+    ln_bias_2: Ln2Bias
+  outputs:
+    ln_mean: LnMean
+    ln_var: LnVariance
+    ln_out: LnOut
+    qkv_out: QKVOut
+    qkv_bias_out: QKVBiasOut
+    transpose_out_2: TransposeOut2
+    qk_out: QKOut
+    qktv_out: QKTVOut
+    softmax_out: SoftmaxOut
+    attn_dropout_mask_out: AttnDropoutMaskOut
+    attn_dropout_out: AttnDropoutOut
+    src_mask_out: SrcMaskOut
+    fmha_out: FMHAOut
+    out_linear_out: OutLinearOut
+    dropout_mask_out: DropoutMaskOut
+    ln_mean_2: Ln2Mean
+    ln_var_2: Ln2Variance
+    bias_dropout_residual_out: BiasDropoutResidualOut
+    cache_kv_out: CacheKVOut
+    out: Y
+
 - op : fused_batch_norm_act
   backward : fused_batch_norm_act_grad
   inputs:
@@ -3123,6 +3158,12 @@
   outputs:
     {out: Out}
 
+- op: get_tensor_from_selected_rows
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op: logspace
   inputs:
     {start: Start, stop: Stop, num: Num, base: Base}
@@ -3222,5 +3263,11 @@
   backward: temporal_shift_grad
   inputs :
     x : X
+  outputs :
+    out : Out
+
+- op: write_to_array
+  inputs :
+    {x: X, i: I}
   outputs :
     out : Out

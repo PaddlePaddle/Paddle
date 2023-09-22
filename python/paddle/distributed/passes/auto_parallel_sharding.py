@@ -804,10 +804,7 @@ class ShardingPass(PassBase):
                 )
             )
             _logger.debug(
-                "Bucket[{}] parameters: {}.".format(
-                    i,
-                    [p.name for p in param_group.vars],
-                )
+                f"Bucket[{i}] parameters: {[p.name for p in param_group.vars]}."
             )
 
             broadcast_var_to_group_map[
@@ -1647,9 +1644,7 @@ def partition_by_greedy_even(params, group_size):
         numel = reduce(lambda x, y: x * y, param.shape, 1)
         assert (
             numel > 0
-        ), "param [{}] should larger than 0, but it is [{}]".format(
-            param.name, numel
-        )
+        ), f"param [{param.name}] should larger than 0, but it is [{numel}]"
         sizes[rank] += numel
 
     return mapping
@@ -1664,9 +1659,7 @@ def partition_parameters(params, group_size, algor="greedy_even"):
     _logger.info("Sharding Parameter Partition:")
     for k, v in rank_to_params.items():
         _logger.info(
-            "Rank:{}, Parameter Size:{} MB.".format(
-                k, sum([get_var_size(var) for var in v])
-            )
+            f"Rank:{k}, Parameter Size:{sum([get_var_size(var) for var in v])} MB."
         )
         _logger.info(f"Params in this rank: {[var.name for var in v]}.")
 

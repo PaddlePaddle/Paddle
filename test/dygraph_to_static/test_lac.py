@@ -624,9 +624,7 @@ class TestLACModel(unittest.TestCase):
             dy_out,
             st_out,
             rtol=1e-05,
-            err_msg='dygraph output:\n{},\nstatic output:\n {}.'.format(
-                dy_out, st_out
-            ),
+            err_msg=f'dygraph output:\n{dy_out},\nstatic output:\n {st_out}.',
         )
         # Prediction needs trained models, so put `test_predict` at last of `test_train`
         # self.verify_predict()

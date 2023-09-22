@@ -262,10 +262,8 @@ def base_softmax_with_cross_entropy(
     label_dims = len(list(label.shape))
     if input_dims - 1 != label_dims and input_dims != label_dims:
         raise ValueError(
-            'Expected input_dims - 1 = label_dims or input_dims == label_dims\
-             (got input_dims{}, label_dims{})'.format(
-                input_dims, label_dims
-            )
+            f'Expected input_dims - 1 = label_dims or input_dims == label_dims\
+             (got input_dims{input_dims}, label_dims{label_dims})'
         )
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=axis)
@@ -1424,10 +1422,8 @@ def nll_loss(
 
     if input_dims - 1 != label_dims and input_dims != label_dims:
         raise ValueError(
-            "Expected input_dims - 1 = label_dims or input_dims == label_dims\
-             (got input_dims{}, label_dims{})".format(
-                input_dims, label_dims
-            )
+            f"Expected input_dims - 1 = label_dims or input_dims == label_dims\
+             (got input_dims{input_dims}, label_dims{label_dims})"
         )
 
     if input_dims < 2:
@@ -1435,9 +1431,7 @@ def nll_loss(
 
     if input_shape[1] < 1:
         raise ValueError(
-            "Expected 1 or more classess (got num classes{})".format(
-                input_shape[1]
-            )
+            f"Expected 1 or more classess (got num classes{input_shape[1]})"
         )
 
     n = input_shape[0]
@@ -1781,7 +1775,7 @@ def mse_loss(input, label, reduction='mean', name=None):
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
             "'reduction' in 'mse_loss' should be 'sum', 'mean' or 'none', "
-            "but received {}.".format(reduction)
+            f"but received {reduction}."
         )
 
     if not in_dynamic_mode():
@@ -2309,10 +2303,8 @@ def margin_cross_entropy(
     label_dims = len(list(label.shape))
     if input_dims - 1 != label_dims and input_dims != label_dims:
         raise ValueError(
-            'Expected input_dims - 1 = label_dims or input_dims == label_dims\
-             (got input_dims{}, label_dims{})'.format(
-                input_dims, label_dims
-            )
+            f'Expected input_dims - 1 = label_dims or input_dims == label_dims\
+             (got input_dims{input_dims}, label_dims{label_dims})'
         )
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=-1)
@@ -2795,10 +2787,8 @@ def cross_entropy(
 
     if input_dims - 1 != label_dims and input_dims != label_dims:
         raise ValueError(
-            'Expected nput_dims - 1 = label_dims or input_dims == label_dims\
-             (got nput_dims{}, label_dims{})'.format(
-                input_dims, label_dims
-            )
+            f'Expected nput_dims - 1 = label_dims or input_dims == label_dims\
+             (got nput_dims{input_dims}, label_dims{label_dims})'
         )
 
     if label_smoothing > 0.0:
@@ -2846,11 +2836,9 @@ def cross_entropy(
             else:
                 if input.shape[axis] != weight.shape[-1]:
                     raise ValueError(
-                        "input's class_dimension({}) must equal to "
-                        "weight's class_dimension({}) "
-                        "when weight is provided".format(
-                            input.shape[axis], weight.shape[-1]
-                        )
+                        f"input's class_dimension({input.shape[axis]}) must equal to "
+                        f"weight's class_dimension({weight.shape[-1]}) "
+                        "when weight is provided"
                     )
 
                 ignore_weight_mask = paddle.cast(
@@ -2993,11 +2981,9 @@ def cross_entropy(
             else:
                 if input.shape[axis] != weight.shape[-1]:
                     raise ValueError(
-                        "input's class_dimension({}) must equal to "
-                        "weight's class_dimension({}) "
-                        "when weight is provided".format(
-                            input.shape[axis], weight.shape[-1]
-                        )
+                        f"input's class_dimension({input.shape[axis]}) must equal to "
+                        f"weight's class_dimension({weight.shape[-1]}) "
+                        "when weight is provided"
                     )
 
                 valid_label = paddle.multiply(
@@ -3321,7 +3307,7 @@ def multi_label_soft_margin_loss(
     if not (input.shape == label.shape):
         raise ValueError(
             "The input and label should have same dimension,"
-            "but received {}!={}".format(input.shape, label.shape)
+            f"but received {input.shape}!={label.shape}"
         )
 
     if not in_dynamic_mode():
@@ -3442,7 +3428,7 @@ def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
             "'reduction' in 'hinge_embedding_loss' should be 'sum', 'mean' or 'none', "
-            "but received {}.".format(reduction)
+            f"but received {reduction}."
         )
 
     if not in_dynamic_mode():
@@ -3669,7 +3655,7 @@ def triplet_margin_with_distance_loss(
         raise ValueError(
             "'reduction' in 'triplet_margin_with_distance_loss' "
             "should be 'sum', 'mean' or 'none', "
-            "but received {}.".format(reduction)
+            f"but received {reduction}."
         )
     if margin < 0:
         raise ValueError(
@@ -3819,7 +3805,7 @@ def triplet_margin_loss(
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
             "'reduction' in 'triplet_margin_loss' should be 'sum', 'mean' or 'none', "
-            "but received {}.".format(reduction)
+            f"but received {reduction}."
         )
     if margin < 0:
         raise ValueError(
@@ -3934,7 +3920,7 @@ def multi_margin_loss(
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
             "'reduction' in 'multi_margin_loss' should be 'sum', 'mean' or 'none', "
-            "but received {}.".format(reduction)
+            f"but received {reduction}."
         )
 
     if not in_dynamic_mode():

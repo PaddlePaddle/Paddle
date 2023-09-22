@@ -357,9 +357,15 @@ phi::DataType GetKernelDataTypeByYamlInfo(
                 vec_data[0]
                     .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
                     .dtype());
+          } else if (vec_data[0]
+                         .isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+            kernel_data_type = TransToPhiDataType(
+                vec_data[0]
+                    .dyn_cast<paddle::dialect::AllocatedSelectedRowsType>()
+                    .dtype());
           } else {
             PADDLE_THROW(phi::errors::Unimplemented(
-                "Only support DenseTensorType in vector"));
+                "Only support DenseTensorType and SelectedRowsType in vector"));
           }
         }
       } else if (type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
@@ -880,12 +886,14 @@ std::vector<pir::Type> BuildOpOutputType(pir::Operation* op_item,
       auto base_types = result_type.dyn_cast<pir::VectorType>().data();
       for (auto& base_type : base_types) {
         if (base_type) {
-          if (base_type.isa<dialect::DenseTensorType>()) {
+          if (base_type.isa<dialect::DenseTensorType>() ||
+              base_type.isa<dialect::SelectedRowsType>()) {
             vec_inner_types.push_back(
                 BuildOutputType(base_type, out_place, out_phi_dtype, ctx));
           } else {
             PADDLE_THROW(phi::errors::Unimplemented(
-                "only support dense tensor in vector type for now"));
+                "only support dense tensor and selected rows in vector type "
+                "for now"));
           }
         } else {
           // NOTE(phlrain), kernel not support a nullptr in output
@@ -1075,9 +1083,43 @@ std::vector<pir::Value> BuildOpInputList(
             block->push_back(operation);
           }
         }
-
       } else if (new_in_type.isa<dialect::AllocatedSelectedRowsType>()) {
-        // do nothing here
+        // allocated type
+        auto in_place =
+            new_in_type.dyn_cast<dialect::AllocatedSelectedRowsType>().place();
+
+        // get input args def type
+        auto args_def = kernel.args_def();
+        auto input_defs = args_def.input_defs();
+
+        auto dst_backend = GetDstBackend(op_item->name(),
+                                         place,
+                                         op_info_parser,
+                                         kernel.InputAt(i).backend,
+                                         i);
+
+        bool need_trans =
+            (in_place.GetType() != phi::AllocationType::UNDEFINED) &&
+            (paddle::experimental::NeedTransformPlace(
+                in_place, dst_backend, {}));
+        if (need_trans) {
+          VLOG(6) << "need trans from " << in_place << " to "
+                  << kernel_key.backend();
+          // build memcopy op
+          auto out_place = phi::TransToPhiPlace(dst_backend);
+          auto new_in_alloc_type =
+              new_in_type.dyn_cast<dialect::AllocatedSelectedRowsType>();
+          auto out_type = dialect::AllocatedSelectedRowsType::get(
+              ctx,
+              out_place,
+              new_in_alloc_type.dtype(),
+              new_in_alloc_type.dims(),
+              new_in_alloc_type.data_layout(),
+              new_in_alloc_type.lod(),
+              new_in_alloc_type.offset());
+          new_in = AddPlaceTransferOp(
+              new_in, out_type, in_place, out_place, kernel_key, block);
+        }
       } else {
         PADDLE_THROW(phi::errors::Unimplemented(
             "only support allocated dense tensor type for now"));
@@ -1157,7 +1199,7 @@ std::string GetKernelFnStr(const OpYamlInfoParser* op_info_parser,
                            pir::Operation* op_item) {
   std::string kernel_fn_str;
   if (op_info_parser != nullptr) {
-    kernel_fn_str = op_info_parser->OpRuntimeInfo().kernel_func[0];
+    kernel_fn_str = op_info_parser->OpRuntimeInfo().kernel_func;
   }
 
   if (op_item->isa<paddle::dialect::AddN_Op>() ||

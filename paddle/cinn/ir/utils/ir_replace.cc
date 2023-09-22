@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/optim/ir_replace.h"
+#include "paddle/cinn/ir/utils/ir_replace.h"
 
 #include <set>
 
@@ -22,7 +22,8 @@
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {
-namespace optim {
+namespace ir {
+namespace ir_utils {
 using utils::GetStreamCnt;
 
 namespace {
@@ -42,14 +43,14 @@ struct IrReplaceMutator : ir::IRMutator<Expr*> {
   void Visit(const ir::_Var_* op, Expr* expr) override {
     if (op->node_type() == from_->node_type() &&
         from_repr_ == GetStreamCnt(*expr)) {
-      *expr = optim::IRCopy(to_);
+      *expr = ir::ir_utils::IRCopy(to_);
     }
   }
 
   void Visit(const ir::Broadcast* op, Expr* expr) override {
     if (op->node_type() == from_->node_type() &&
         from_repr_ == GetStreamCnt(*expr)) {
-      *expr = optim::IRCopy(to_);
+      *expr = ir::ir_utils::IRCopy(to_);
     }
   }
 
@@ -65,5 +66,6 @@ void IrReplace(ir::Expr* expr, ir::Expr from, ir::Expr to) {
   IrReplaceMutator(from, to)(expr);
 }
 
-}  // namespace optim
+}  // namespace ir_utils
+}  // namespace ir
 }  // namespace cinn

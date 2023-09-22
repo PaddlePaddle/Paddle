@@ -124,8 +124,8 @@ class DistributedOperator:
             annotated_str = "annotated"
         else:
             annotated_str = "non-annotated"
-        str += ", process_mesh ({}): {}".format(
-            annotated_str, self.dist_attr.process_mesh
+        str += (
+            f", process_mesh ({annotated_str}): {self.dist_attr.process_mesh}"
         )
 
         for arg_name in self.serial_op.desc.input_arg_names():

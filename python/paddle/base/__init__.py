@@ -128,40 +128,7 @@ Tensor = LoDTensor
 enable_imperative = enable_dygraph
 disable_imperative = disable_dygraph
 
-__all__ = (
-    framework.__all__
-    + executor.__all__
-    + trainer_desc.__all__
-    + lod_tensor.__all__
-    + data_feed_desc.__all__
-    + compiler.__all__
-    + backward.__all__
-    + [
-        'io',
-        'initializer',
-        'layers',
-        'dygraph',
-        'enable_dygraph',
-        'disable_dygraph',
-        'enable_imperative',
-        'disable_imperative',
-        'backward',
-        'LoDTensor',
-        'LoDTensorArray',
-        'CPUPlace',
-        'XPUPlace',
-        'CUDAPlace',
-        'CUDAPinnedPlace',
-        'IPUPlace',
-        'Tensor',
-        'ParamAttr',
-        'WeightNormParamAttr',
-        'DataFeeder',
-        'unique_name',
-        'Scope',
-        '_cuda_synchronize',
-    ]
-)
+__all__ = []
 
 
 def __bootstrap__():
@@ -188,10 +155,10 @@ def __bootstrap__():
 
     if num_threads > 1:
         print(
-            'WARNING: OMP_NUM_THREADS set to {0}, not 1. The computation '
+            f'WARNING: OMP_NUM_THREADS set to {num_threads}, not 1. The computation '
             'speed will not be optimized if you use data parallel. It will '
             'fail if this PaddlePaddle binary is compiled with OpenBlas since'
-            ' OpenBlas does not support multi-threads.'.format(num_threads),
+            ' OpenBlas does not support multi-threads.',
             file=sys.stderr,
         )
         print('PLEASE USE OMP_NUM_THREADS WISELY.', file=sys.stderr)

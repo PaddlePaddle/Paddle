@@ -54,7 +54,7 @@ from .unique_name import UniqueNameGenerator
 # NOTE: [ avoid hanging & failed quickly ] These value is used in getting data from another process
 QUEUE_GET_TIMEOUT = 60
 
-__all__ = ['PyReader', 'DataLoader']
+__all__ = []
 
 data_loader_unique_name_generator = UniqueNameGenerator()
 
@@ -1623,9 +1623,7 @@ class DatasetLoader(DataLoaderBase):
 
         if dataset.thread_num != 0 and dataset.thread_num != thread_num:
             logging.warn(
-                'thread_num {} which is set in Dataset is ignored'.format(
-                    dataset.thread_num
-                )
+                f'thread_num {dataset.thread_num} which is set in Dataset is ignored'
             )
 
         dataset._set_thread(thread_num)
@@ -1637,9 +1635,7 @@ class DatasetLoader(DataLoaderBase):
             and dataset.queue_num > thread_num
         ):
             logging.warn(
-                "queue_num {} which is set in Dataset is ignored".format(
-                    dataset.queue_num
-                )
+                f"queue_num {dataset.queue_num} which is set in Dataset is ignored"
             )
             dataset._set_queue_num(thread_num)
 
