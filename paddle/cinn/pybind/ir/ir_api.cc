@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/ir/ir.h"
-
 #include <llvm/Support/FormatVariadic.h>
 #include <pybind11/functional.h>
 #include <pybind11/operators.h>
@@ -22,20 +20,28 @@
 #include <string>
 #include <type_traits>
 
+#include "paddle/cinn/common/shared.h"
+#include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/operation.h"
 #include "paddle/cinn/ir/registry.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/ir/utils/ir_compare.h"
 #include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/lang/packed_func.h"
 #include "paddle/cinn/poly/stage.h"
 #include "paddle/cinn/pybind/bind.h"
 #include "paddle/cinn/pybind/bind_utils.h"
+#include "paddle/cinn/pybind/ir/ir.h"
+#include "paddle/cinn/pybind/ir/ir_context.h"
 
 namespace py = pybind11;
+
+PYBIND11_DECLARE_HOLDER_TYPE(T, cinn::common::Shared<T>);
 
 namespace cinn::pybind {
 using ir::IrNode;
@@ -62,7 +68,8 @@ void BindLoweredFunc(py::module *m) {
 
   py::enum_<Argument::IO> io(argument, "IO");
   io.value("kInput", Argument::IO::kInput)
-      .value("kOutput", Argument::IO::kOutput);
+      .value("kOutput", Argument::IO::kOutput)
+      .value("kUnknown", Argument::IO::kUnknown);
 
   argument
       .def(py::init<const ir::Buffer &, Argument::IO>(),
@@ -93,10 +100,12 @@ void BindLoweredFunc(py::module *m) {
            [](const ir::LoweredFunc &self) -> std::string {
              return utils::GetStreamCnt(Expr(self));
            })
-      .def("__repr__", [](const ir::LoweredFunc &self) -> std::string {
-        return llvm::formatv(
-            "<LoweredFunc {0}>", self.get(), self->name.c_str());
-      });
+      .def("__repr__",
+           [](const ir::LoweredFunc &self) -> std::string {
+             return llvm::formatv(
+                 "<LoweredFunc {0}>", self.get(), self->name.c_str());
+           })
+      .def("body", [](const ir::LoweredFunc &self) { return self->body; });
 }
 
 void BindNode(py::module *m) {
@@ -258,6 +267,13 @@ void BindNode(py::module *m) {
 
 // empty visitor
 void BindIrVisitor(py::module *m) {
+  py::class_<ir::ir_utils::IrEqualVisitor> ir_compare(*m, "IrCompare");
+  ir_compare.def(py::init<bool, bool>())
+      .def("compare",
+           [](ir::ir_utils::IrEqualVisitor &self,
+              const cinn::ir::Expr &lhs,
+              const cinn::ir::Expr &rhs) { return self.Compare(lhs, rhs); });
+
   py::class_<ir::IRVisitor> ir_visitor(*m, "IRVisitor");
   ir_visitor.def(py::init<>())
       .def("visit", py::overload_cast<const ir::Expr *>(&ir::IRVisitor::Visit));
@@ -466,6 +482,7 @@ void BindIrIr(py::module *m) {
       .def(py::init<Expr, Expr, const std::string &>())
       .def(py::init<int, const std::string &>())
       .def(py::init<Expr, const std::string &>())
+      .def("rename", [](Var &self, std::string &name) { self->name = name; })
       .def("get_mutable",
            py::overload_cast<>(&Var::get),
            py::return_value_policy::reference)
@@ -537,6 +554,31 @@ void BindIrIr(py::module *m) {
       .def_readwrite("buffers", &ir::_Module_::buffers)
       .def_readwrite("functions", &ir::_Module_::functions)
       .def_readwrite("submodules", &ir::_Module_::submodules);
+
+  DefineExprNode<ir::_Buffer_>(m, "_Buffer_");
+  py::class_<ir::_Buffer_, ir::ExprNode<ir::_Buffer_>> _buffer_(*m, "_Buffer_");
+  _buffer_
+      .def_static(
+          "make",
+          py::overload_cast<const std::string &, Type>(&ir::_Buffer_::Make))
+      .def_static(
+          "make",
+          py::overload_cast<const std::string &, const std::vector<Expr> &>(
+              &ir::_Buffer_::Make));
+  py::class_<ir::Buffer> buffer(*m, "Buffer");
+  buffer.def(py::init<>());
+
+  py::class_<ir::ModuleExpr> module_expr(*m, "ModuleExpr");
+  module_expr.def(py::init<const std::vector<Expr> &>());
+
+  DefineExprNode<ir::IfThenElse>(m, "IfThenElse");
+  py::class_<ir::IfThenElse> if_then_else(*m, "IfThenElse");
+  if_then_else.def_static(
+      "make",
+      py::overload_cast<Expr, Expr, Expr>(&ir::IfThenElse::Make),
+      py::arg("condition"),
+      py::arg("true_case"),
+      py::arg("false_case") = ir::Expr());
 }
 
 void BindOperation(py::module *m) {
@@ -586,9 +628,24 @@ void BindIrTensor(py::module *m) {
            [](ir::Tensor &self, Expr a, Expr b, Expr c) {
              return self(a, b, c);
            })
-      .def("__call__", [](ir::Tensor &self, Expr a, Expr b, Expr c, Expr d) {
-        return self(a, b, c, d);
-      });
+      .def("__call__",
+           [](ir::Tensor &self, Expr a, Expr b, Expr c, Expr d) {
+             return self(a, b, c, d);
+           })
+      .def("__getitem__", [](ir::Tensor &self, Expr a) { return self(a); })
+      .def("__getitem__",
+           [](ir::Tensor &self, Expr a, Expr b) { return self(a, b); })
+      .def("__getitem__",
+           [](ir::Tensor &self, Expr a, Expr b, Expr c) {
+             return self(a, b, c);
+           })
+      .def("__getitem__",
+           [](ir::Tensor &self, Expr a, Expr b, Expr c, Expr d) {
+             return self(a, b, c, d);
+           })
+      .def("__getitem__",
+           [](ir::Tensor &self, std::vector<Expr> idx) { return self(idx); })
+      .def("Expr", [](ir::Tensor &self) { return self.operator Expr(); });
 
   DefineExprNode<ir::_Tensor_>(m, "_Tensor_");
   py::class_<ir::_Tensor_, ir::ExprNode<ir::_Tensor_>> _tensor_(*m, "_Tensor_");
@@ -600,7 +657,18 @@ void BindIrTensor(py::module *m) {
       .def("domain_with_reduce_axis", &ir::_Tensor_::domain_without_reduce_axis)
       .def("domain_without_reduce_axis",
            &ir::_Tensor_::domain_without_reduce_axis)
-      .def_static("make", &ir::_Tensor_::Make)
+      .def_static(
+          "make",
+          py::overload_cast<const std::string &,
+                            Type,
+                            const std::vector<Expr> &,
+                            const std::vector<Expr> &,
+                            const std::vector<Var> &>(&ir::_Tensor_::Make),
+          py::arg("name"),
+          py::arg("dtype"),
+          py::arg("shape"),
+          py::arg("domain"),
+          py::arg("reduce_axis") = std::vector<Var>({}))
       .def("is_tuple", &ir::_Tensor_::is_tuple)
       .def("is_tuple_get", &ir::_Tensor_::is_tuple_get)
       .def("tuple_get", &ir::_Tensor_::TupleGet)
@@ -741,6 +809,54 @@ void BindRegistry(py::module *m) {
       });
 #endif
 }
+
+void BindIrContext(py::module *m) {
+  using ir::Expr;
+  using ir::IrNode;
+  using ir::IrNodeRef;
+  using ir::Var;
+  using py::arg;
+
+  py::class_<IRContext> ir_ctx(*m, "IRContext");
+  ir_ctx.def(py::init<>())
+      .def(py::init<IRContextNode *>())
+      .def("EnterWithContext",
+           [](IRContext &self) { self.data_->EnterWithContext(); })
+      .def("ExitWithContext",
+           [](IRContext &self) { self.data_->ExitWithContext(); })
+      .def("get_for_loop_var",
+           [](IRContext &self) {
+             return self.data_->safe_as<ForContextNode>()->loop_var;
+           })
+      .def_static("MakeLowerFunctionContext",
+                  [](std::string &name) {
+                    return IRContext(new LowerFuncContextNode(name));
+                  })
+      .def_static("MakeScheduleBlockContext",
+                  [](std::string &name) {
+                    return IRContext(new ScheduleBlockContextNode(name));
+                  })
+      .def_static("MakeIfContext",
+                  [](Expr expr) { return IRContext(new IfContextNode(expr)); })
+      .def_static("MakeElseContext",
+                  []() { return IRContext(new ElseContextNode()); })
+      .def_static("MakeThenContext",
+                  []() { return IRContext(new ThenContextNode()); });
+
+  py::class_<IRBuilder> ir_builder(*m, "IRBuilder");
+  ir_builder.def(py::init<>())
+      .def("EnterWithContext", &IRBuilder::EnterWithContext)
+      .def("ExitWithContext", &IRBuilder::ExitWithContext)
+      .def("get_result", [](IRBuilder &self) {
+        return self.data_->GetResult().as_lowered_func_ref();
+      });
+
+  m->def("AxisMap", &AxisMap);
+  m->def("TensorStore", &TensorStore);
+  m->def("Arg", py::overload_cast<const std::string &, Var>(&Arg));
+  m->def("Arg", py::overload_cast<const std::string &, ir::Buffer>(&Arg));
+  m->def("Sequential", py::overload_cast<Expr, Expr>(&Sequential));
+}
 }  // namespace
 
 void BindIr(py::module *m) {
@@ -750,6 +866,7 @@ void BindIr(py::module *m) {
   BindIrVisitor(m);
   BindIrIr(m);
   BindIrTensor(m);
+  BindIrContext(m);
   BindPackedFunc(m);
   BindRegistry(m);
 }
