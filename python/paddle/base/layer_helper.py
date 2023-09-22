@@ -56,7 +56,7 @@ class LayerHelper(LayerHelperBase):
     def input(self, input_param_name='input'):
         inputs = self.multiple_input(input_param_name)
         if len(inputs) != 1:
-            raise "{0} layer only takes one input".format(self.layer_type)
+            raise f"{self.layer_type} layer only takes one input"
         return inputs[0]
 
     @property

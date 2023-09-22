@@ -45,11 +45,13 @@ class StaticPyLayerBlockGuard(BlockGuard):
 
 class StaticPyLayerBlock:
     def __init__(self, inputs, name=None, pylayer_context=None):
-        for each_input in inputs:
-            check_type(each_input, "input", Variable, "StaticPyLayerBlock")
+        # used to specify the Variable type `Input` to `pylayer` op
+        self.fwd_inputs = [
+            each_input
+            for each_input in inputs
+            if isinstance(each_input, Variable)
+        ]  # filter non-Variable inputs
 
-        # used to specify the `Input` to `pylayer` op
-        self.fwd_inputs = inputs
         # used to specify the `Out` to `pylayer` op
         self.fwd_outputs = []
 
@@ -105,7 +107,7 @@ class StaticPyLayerBlock:
         parent_block = self.helper.main_program.block(inside_block.parent_idx)
 
         self._backward_block_id = inside_block.idx
-        # set OpRole to `backward`
+        # Set OpRole to `backward`. The operators marked as `backward` are expected to be pruned in PruneBackward.
         for op in inside_block.ops:
             op_role_attr_name = (
                 core.op_proto_and_checker_maker.kOpRoleAttrName()
@@ -234,8 +236,6 @@ def copy_var_from_parent_block(parent_block_var, layer_helper):
     return current_block_var
 
 
-# TODO(MarioLulab):
-# Need to support non-Variable in ``inputs``
 def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
     """
     This API returns ``forward_fn(inputs)``, and two sub-block are created based on
@@ -344,7 +344,9 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
         origin_output = forward_fn(*inputs)
         if origin_output is not None:
             output = map_structure(copy_to_parent_func, origin_output)
-            mgr.fwd_outputs = flatten(output)
+            mgr.fwd_outputs = [
+                x for x in flatten(output) if isinstance(x, Variable)
+            ]
         else:
             mgr.fwd_outputs = []
 
@@ -358,7 +360,7 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
         # **Create the backward input** from the output of the op to build the
         # backward block, and then delete it.
         grad_var_ins = []
-        for fwd_var in flatten(output):
+        for fwd_var in pylayer_block_manager.fwd_outputs:
             fwd_var_name = fwd_var.name
             bwd_var_name = _append_grad_suffix_(fwd_var_name)
             if not current_block.desc.has_var_recursive(fwd_var_name.encode()):
@@ -405,7 +407,7 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
                     but got {len(forward_input_names)} and {len(flat_grad_origin)}"
 
                 # Step4. Rename var name with suffix of "@GRAD"
-                for bwd_output_name, fwd_input_name in zip(
+                for bwd_output, fwd_input_name in zip(
                     flat_grad_origin, forward_input_names
                 ):
                     # NOTE(MarioLulab): Because `flat_grad_origin` are the Variables inside the backward block, which one by one corresponds
@@ -428,12 +430,13 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
                     # TODO(MarioLulab): We will validate the assumption above is whether a strong hypothesis or not.
 
                     # attach old var name into new
-                    bwd_out_new = _append_grad_suffix_(
-                        fwd_input_name
-                    )  # "X" => "X@GRAD"
-                    mgr.var_old_to_new[
-                        bwd_output_name.name
-                    ] = bwd_out_new  # e.g. "tmp_0.mean_0": "X@GRAD"
+                    if isinstance(bwd_output, Variable):
+                        bwd_out_new = _append_grad_suffix_(
+                            fwd_input_name
+                        )  # "X" => "X@GRAD"
+                        mgr.var_old_to_new[
+                            bwd_output.name
+                        ] = bwd_out_new  # e.g. "tmp_0.mean_0": "X@GRAD"
 
         # **Delete the backward input**
         for bwd_var in grad_var_ins:
