@@ -1989,16 +1989,9 @@ def split(x, num_or_sections, axis=0, name=None):
         else:
             return _C_ops.split(input, num_or_sections, dim)
     elif in_pir_mode():
-        if isinstance(dim, paddle.ir.OpResult):
-            dim.stop_gradient = True
-        elif isinstance(dim, int):
+        if isinstance(dim, int):
             assert len(input.shape) + dim >= 0, "(rank(x) + axis) must >= 0"
             dim = (len(input.shape) + dim) if dim < 0 else dim
-        else:
-            raise TypeError(
-                "The type of 'dim' in split must be int, paddle.ir.OpResult in pir mode, but "
-                "received %s." % (type(dim))
-            )
 
         if isinstance(num_or_sections, int):
             return _C_ops.split_with_num(input, num_or_sections, dim)
