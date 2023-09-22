@@ -32,7 +32,7 @@ from .proto import data_feed_pb2  # noqa: F401
 
 from . import core
 from . import unique_name
-from .. import ir
+from .. import pir
 from paddle.base.libpaddle import DataType
 import paddle.version as fluid_version
 import warnings
@@ -294,10 +294,10 @@ def in_dygraph_mode():
 def in_pir_mode():
     """
 
-    This API checks whether paddle runs in static graph mode and use new ir api.
+    This API checks whether paddle runs in static graph mode and use pir api.
 
     Returns:
-        bool: Whether paddle runs in static graph mode and use new ir api.
+        bool: Whether paddle runs in static graph mode and use pir api.
 
     Examples:
         .. code-block:: python
@@ -323,10 +323,10 @@ def use_pir_api():
 def in_dynamic_or_pir_mode():
     """
 
-    This API checks whether paddle runs in dynamic graph or new ir mode.
+    This API checks whether paddle runs in dynamic graph or pir mode.
 
     Returns:
-        bool: Whether paddle runs in static graph mode and use new ir api.
+        bool: Whether paddle runs in static graph mode and use pir api.
 
     Examples:
         .. code-block:: python
@@ -1162,7 +1162,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
 
     """
     if in_pir_mode():
-        return ir.core.convert_np_dtype_to_dtype_(np_dtype)
+        return pir.core.convert_np_dtype_to_dtype_(np_dtype)
 
     # Convert the data type string to numpy data type.
     if isinstance(np_dtype, str) and np_dtype == "bfloat16":

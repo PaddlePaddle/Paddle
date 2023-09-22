@@ -468,19 +468,19 @@ class Optimizer:
                 # only create global lr_var once
                 lr = self._global_learning_rate()
                 if in_pir_mode():
-                    if isinstance(lr, paddle.ir.OpResult):
+                    if isinstance(lr, paddle.pir.OpResult):
                         return
                     else:
                         place = _current_expected_place()
                         if not isinstance(_lr_dtype, paddle.base.core.DataType):
                             lr_dtype = (
-                                paddle.ir.core.convert_np_dtype_to_dtype_(
+                                paddle.pir.core.convert_np_dtype_to_dtype_(
                                     _lr_dtype
                                 )
                             )
                         self._learning_rate_map[
                             framework.default_main_program()
-                        ] = paddle._ir_ops.full(
+                        ] = paddle._pir_ops.full(
                             [],
                             self._learning_rate,
                             _lr_dtype,
@@ -1640,7 +1640,7 @@ class Optimizer:
 
         """
         assert isinstance(
-            loss, (Variable, paddle.ir.OpResult)
+            loss, (Variable, paddle.pir.OpResult)
         ), "The loss should be an Tensor."
 
         parameter_list = parameters if parameters else self._parameter_list
