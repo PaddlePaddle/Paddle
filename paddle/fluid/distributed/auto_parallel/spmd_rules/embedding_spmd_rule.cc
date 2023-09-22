@@ -124,7 +124,7 @@ EmbeddingSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
   output_dist_attr_dst.set_dims_mapping(out_dims_mapping);
 
   // step3.1: Handle Partial
-  // (TODO) support case where embedding table is partial at very beginning.
+  // (TODO) support case where embedding table is partial from input
   std::vector<int64_t> partial_on_dims;
   if (weight_row_axis_mapping > -1) {
     partial_on_dims.push_back(weight_row_axis_mapping);

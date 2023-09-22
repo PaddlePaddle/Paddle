@@ -14,6 +14,7 @@
 
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
+from ..completion import get_phi_spmd_rule
 from ..cost import (
     Reshape2GradOpCost,
     Reshape2OpCost,
@@ -23,6 +24,7 @@ from ..cost import (
 )
 from ..utils import (
     compute_compatible_and_update_dim_mapping,
+    get_dist_tensor_spec,
     is_dim_shard,
     set_dist_op_desc_original_id,
 )
@@ -30,8 +32,10 @@ from .common import (
     DistributedOperatorImpl,
     DistributedOperatorImplContainer,
     is_parameter_related,
+    merge_forward_backward_dims_mapping,
     register_distributed_operator_impl,
     register_distributed_operator_impl_container,
+    update_op_dims_mapping,
 )
 from .dist_default import DistributedDefaultImpl0
 
@@ -39,6 +43,62 @@ from .dist_default import DistributedDefaultImpl0
 class DistributedReshape2(DistributedOperatorImplContainer):
     def __init__(self, op_type):
         super().__init__(op_type)
+
+    @staticmethod
+    def update_dims_mapping(dist_op):
+        # step1: prepare inputs need for rule (order args as PHI definition and filter out unnecessary args)
+        op_desc = dist_op.serial_op.desc
+        assert (
+            dist_op.serial_op.type == "reshape2"
+        ), f"{dist_op.serial_op.type} is not supported by dist reshape yet."
+
+        x_name = op_desc.input('X')[0]
+        out_name = op_desc.output('Out')[0]
+        xshape_name = op_desc.output('XShape')[0]
+        shape = op_desc.attr('shape')
+
+        x_spec = get_dist_tensor_spec(dist_op, x_name)
+        output_spec = get_dist_tensor_spec(dist_op, out_name, False)
+
+        # step2: infer spmd
+        rule = get_phi_spmd_rule("reshape")
+        # tensor order following order in PHI defition
+        fw_results = rule.infer_forward(x_spec, shape)
+        bw_results = rule.infer_backward(x_spec, output_spec, shape)
+
+        # step3: merge fw & bw results
+        (
+            infered_input_dims_mappings,
+            infered_output_dims_mappings,
+        ) = merge_forward_backward_dims_mapping(fw_results, bw_results)
+
+        # step4: update dist_attr
+        # tensor order following order in PHI defition
+        changed = update_op_dims_mapping(
+            dist_op,
+            [x_name],
+            infered_input_dims_mappings,
+            [out_name],
+            infered_output_dims_mappings,
+        )
+
+        # step5: update xshape
+        dist_op.dist_attr.set_output_dims_mapping(
+            xshape_name, [-1] + infered_input_dims_mappings[0]
+        )
+
+        return changed
+
+    @staticmethod
+    def mapping_to_dist_operator_impl(dist_op, original_op_dist_attr):
+        reverted = False
+        op_dist_attr = dist_op.dist_attr
+
+        # all reshape mapping to impl0
+        op_dist_attr.impl_type = "reshape2"
+        op_dist_attr.impl_idx = 0
+
+        return reverted
 
 
 register_distributed_operator_impl_container(DistributedReshape2("reshape2"))

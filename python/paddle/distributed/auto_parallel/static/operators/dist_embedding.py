@@ -21,6 +21,7 @@ from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 from paddle.framework import core
 from paddle.utils import unique_name
 
+from ..completion import get_phi_spmd_rule
 from ..cost import (
     EmbeddingGradOpCost,
     EmbeddingOpCost,
@@ -37,6 +38,7 @@ from ..utils import (
     _get_corresponding_rank,
     _get_idx_in_axis,
     compute_compatible_and_update_dim_mapping,
+    get_dist_tensor_spec,
     is_dim_replicate,
     is_dim_shard,
     set_var_dist_attr,
@@ -44,17 +46,84 @@ from ..utils import (
 from .common import (
     DistributedOperatorImpl,
     DistributedOperatorImplContainer,
+    get_default_distributed_operator_impl,
     gradient_synchronization,
     infer_shape,
+    merge_forward_backward_dims_mapping,
     naive_copy_op_dist_attr_for_program,
     register_distributed_operator_impl,
     register_distributed_operator_impl_container,
+    update_op_dims_mapping,
 )
 
 
 class DistributedEmbedding(DistributedOperatorImplContainer):
     def __init__(self, op_type):
         super().__init__(op_type)
+
+    @staticmethod
+    def update_dims_mapping(dist_op):
+        # step1: prepare inputs need for rule (order args as PHI definition and filter out unnecessary args)
+        op_desc = dist_op.serial_op.desc
+        assert (
+            dist_op.serial_op.type == "lookup_table_v2"
+        ), f"{dist_op.serial_op.type} is not supported by dist embedding yet."
+
+        x_name = op_desc.input('Ids')[0]
+        w_name = op_desc.input('W')[0]
+        out_name = op_desc.output('Out')[0]
+        padding_idx = op_desc.attr('padding_idx')
+        is_sparse = op_desc.attr('is_sparse')
+
+        x_spec = get_dist_tensor_spec(dist_op, x_name)
+        w_spec = get_dist_tensor_spec(dist_op, w_name)
+        output_spec = get_dist_tensor_spec(dist_op, out_name, False)
+
+        # step2: infer spmd
+        rule = get_phi_spmd_rule("embedding")
+        # tensor order following order in PHI defition
+        fw_results = rule.infer_forward(x_spec, w_spec, padding_idx, is_sparse)
+        bw_results = rule.infer_backward(
+            x_spec, w_spec, output_spec, padding_idx, is_sparse
+        )
+
+        # step3: merge fw & bw results
+        (
+            infered_input_dims_mappings,
+            infered_output_dims_mappings,
+        ) = merge_forward_backward_dims_mapping(fw_results, bw_results)
+
+        # step4: update dist_attr
+        # tensor order following order in PHI defition
+        changed = update_op_dims_mapping(
+            dist_op,
+            [x_name, w_name],
+            infered_input_dims_mappings,
+            [out_name],
+            infered_output_dims_mappings,
+        )
+
+        return changed
+
+    @staticmethod
+    def mapping_to_dist_operator_impl(dist_op, original_op_dist_attr):
+        reverted = False
+        op_dist_attr = dist_op.dist_attr
+        op_desc = dist_op.serial_op.desc
+        out_name = op_desc.output('Out')[0]
+        out_dist_attr = op_dist_attr.get_output_dist_attr(out_name)
+
+        # vocab parallel embedding
+        if out_dist_attr._is_partial():
+            op_dist_attr.impl_type = op_desc.type()
+            op_dist_attr.impl_idx = 0
+        # data parallel or col parallel of weight
+        else:
+            default_impl = get_default_distributed_operator_impl()
+            op_dist_attr.impl_type = default_impl.type
+            op_dist_attr.impl_idx = default_impl.idx
+
+        return reverted
 
 
 register_distributed_operator_impl_container(
