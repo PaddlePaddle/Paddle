@@ -55,7 +55,7 @@ class TestGatherNdOpWithEmptyIndex(OpTest):
     def test_check_output(self):
         self.check_output(check_new_ir=True)
 
-    def test_x(self):
+    def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
 
