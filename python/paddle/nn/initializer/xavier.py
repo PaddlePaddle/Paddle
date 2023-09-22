@@ -87,8 +87,8 @@ class XavierInitializer(Initializer):
         import paddle
 
         block = self._check_block(block)
-        assert isinstance(block, (framework.Block, paddle.ir.Block))
-        if not isinstance(var, paddle.ir.core.ParameterMeta):
+        assert isinstance(block, (framework.Block, paddle.pir.Block))
+        if not isinstance(var, paddle.pir.core.ParameterMeta):
             check_variable_and_dtype(
                 var,
                 "Out",
@@ -153,7 +153,7 @@ class XavierInitializer(Initializer):
         elif in_pir_mode():
             if self._uniform:
                 limit = math.sqrt(6.0 / float(fan_in + fan_out))
-                return paddle._ir_ops.uniform(
+                return paddle._pir_ops.uniform(
                     var.shape,
                     var.dtype,
                     -limit,
