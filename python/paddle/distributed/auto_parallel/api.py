@@ -337,7 +337,7 @@ def shard_layer(
                 # do nothing, the dist parameters has already been shard by shard_fn
                 pass
         for key, buffer in layer._buffers.items():
-            if param is not None and not param.is_dist():
+            if buffer is not None and not buffer.is_dist():
                 replicated_dist_attr = dist.DistAttr(
                     mesh=mesh,
                     sharding_specs=[None for _ in range(len(buffer.shape))],
