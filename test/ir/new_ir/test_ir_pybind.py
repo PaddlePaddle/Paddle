@@ -132,7 +132,7 @@ class TestPybind(unittest.TestCase):
 
         self.assertEqual(add_op.result(0).initialized(), True)
 
-        uninit_op_result = paddle.ir.OpResult()
+        uninit_op_result = paddle.pir.OpResult()
         self.assertEqual(uninit_op_result.initialized(), False)
 
     def test_type(self):
