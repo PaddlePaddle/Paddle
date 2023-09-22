@@ -316,7 +316,7 @@ if(WIN32)
   set(CMAKE_CUDA_FLAGS
       "${CMAKE_CUDA_FLAGS} -Xcompiler \"/wd4244 /wd4267 /wd4819 \"")
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler /bigobj")
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -std=c++17")
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} /std:c++17")
   if(MSVC_STATIC_CRT)
     foreach(flag_var
             CMAKE_CUDA_FLAGS CMAKE_CUDA_FLAGS_DEBUG CMAKE_CUDA_FLAGS_RELEASE
