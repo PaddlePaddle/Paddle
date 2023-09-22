@@ -394,6 +394,40 @@ def gaussian(shape, mean=0.0, std=1.0, seed=0, dtype=None, name=None):
         return out
 
 
+@dygraph_only
+def gaussian_(x, mean=0.0, std=1.0, seed=0, name=None):
+    """
+    This is the inplace version of OP ``gaussian``, which returns a Tensor filled
+    with random values sampled from a gaussian distribution. The output Tensor will
+    be inplaced with input ``x``. Please refer to :ref:`api_tensor_gaussian`.
+
+    Args:
+        x(Tensor): The input tensor to be filled with random values.
+        mean (float|int, optional): Mean of the output tensor, default is 0.0.
+        std (float|int, optional): Standard deviation of the output tensor, default
+            is 1.0.
+        seed (int, optional): Random seed of generator.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+    Returns:
+        Tensor: The input tensor x filled with random values sampled from a gaussian
+        distribution.
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.randn([3, 4])
+            >>> paddle.tensor.random.gaussian_(x)
+            >>> print(x)
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [[ 0.86384124,  0.67328387,  0.21874231, -0.12615913],
+                [ 0.69844258,  0.42084831, -0.42476156, -0.00072985],
+                [ 1.72819555,  1.87785017,  0.48915744,  0.09235018]])
+    """
+    return _C_ops.gaussian_inplace_(x, float(mean), float(std), int(seed))
+
+
 def standard_normal(shape, dtype=None, name=None):
     """
     Returns a Tensor filled with random values sampled from a standard
@@ -625,6 +659,45 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
     if not in_dynamic_mode():
         out.stop_grediant = True
     return out
+
+
+@dygraph_only
+def normal_(x, mean=0.0, std=1.0, name=None):
+    """
+    This is the inplace version of api ``normal``, which returns a Tensor filled
+    with random values sampled from a normal distribution. The output Tensor will
+    be inplaced with input ``x``. Please refer to :ref:`api_tensor_noraml`.
+
+    Args:
+        x(Tensor): The input tensor to be filled with random values.
+        mean (float|Tensor, optional): The mean of the output Tensor's normal distribution.
+            If ``mean`` is float, all elements of the output Tensor shared the same mean.
+            If ``mean`` is a Tensor(data type supports float32, float64), it has per-element means.
+            Default is 0.0
+        std (float|Tensor, optional): The  standard deviation of the output Tensor's normal distribution.
+            If ``std`` is float, all elements of the output Tensor shared the same standard deviation.
+            If ``std`` is a Tensor(data type supports float32, float64), it has per-element standard deviations.
+            Defaule is 1.0
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+    Returns:
+        A Tensor filled with random values sampled from a normal distribution with ``mean`` and ``std`` .
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.randn([3, 4])
+            >>> x.normal_()
+            >>> # doctest: +SKIP('random check')
+            >>> print(x)
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[ 0.06132207,  1.11349595,  0.41906244, -0.24858207],
+             [-1.85169315, -1.50370061,  1.73954511,  0.13331604],
+             [ 1.66359663, -0.55764782, -0.59911072, -0.57773495]])
+
+    """
+    return gaussian_(x, mean=mean, std=std)
 
 
 def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
