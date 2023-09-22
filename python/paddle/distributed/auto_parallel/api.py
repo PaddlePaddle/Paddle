@@ -290,25 +290,29 @@ def shard_layer(
             >>> import paddle
             >>> import paddle.distributed as dist
 
-            >>> mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
+            >>> mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
 
             >>> class MLP(paddle.nn.Layer):
             ...     def __init__(self):
-            ...         super.__init__()
-            ...         self.fc1 = nn.Linear(8, 8)
-            ...         self.fc2 = nn.Linear(8, 8)
+            ...         super().__init__()
+            ...         self.fc1 = paddle.nn.Linear(8, 8)
+            ...         self.fc2 = paddle.nn.Linear(8, 8)
             ...
             ...     def forward(self, input):
             ...         return self.fc2(self.fc1(input))
 
             >>> def shard_fn(layer_name, layer, process_mesh):
-            ...     dist_attr = dist.DistAttr(mesh=process_mesh, sharding_specs=['x', 'y'])
+            ...     dist_attr = dist.DistAttr(mesh=process_mesh, sharding_specs=['x', None])
             ...     if layer_name == 'fc1':
-            ...         layer.weight = dist.shard_tensor(model.weight, dist_attr=dist_attr)
+            ...         layer.weight = dist.shard_tensor(layer.weight, dist_attr=dist_attr)
 
             >>> layer = MLP()
-            >>> layer = dist.shard_layer(layer, shard_fn)
+            >>> layer = dist.shard_layer(layer, mesh, shard_fn)
             >>> print(layer)
+
+            >>> # This case need to be excuted in multi-card environment
+            >>> # export CUDA_VISIBLE_DEVICES=0,1
+            >>> # python -m paddle.distributed.launch {test_case}.py
     """
     # Ensure that process_mesh is not an empty object
     if process_mesh is None:
