@@ -32,20 +32,6 @@ cc_test_old(
   gtest)
 
 cc_test_old(
-  ir_exe_test
-  SRCS
-  ir_exe_test.cc
-  DEPS
-  pd_op_to_kernel_pass
-  program_translator
-  pd_op_dialect
-  pd_kernel_dialect
-  phi_kernel_adaptor
-  pir
-  phi
-  gtest)
-
-cc_test_old(
   scalar_attribute_test
   SRCS
   scalar_attribute_test.cc

@@ -44,7 +44,70 @@
 
 namespace paddle {
 namespace framework {
-class ValueExecutionInfo;
+
+class CondInstruction;
+class ValueExecutionInfo {
+ public:
+  explicit ValueExecutionInfo(Scope* scope) : scope_(scope) {}
+
+  const ValueExecutionInfo* Parent() const { return parent_; }
+
+  Scope* GetScope() { return scope_; }
+
+  void Add(::pir::Value value, std::string var_name);
+
+  void Rename(pir::Value value, std::string new_name, std::string orig_name);
+
+  int GetIdByName(const std::string& name) const;
+
+  std::string GetNameById(int id) const;
+
+  const std::unordered_map<::pir::Value, std::string>& GetValue2VarName()
+      const {
+    return value_2_var_name_;
+  }
+
+  void AddValue2VarName(::pir::Value value, const std::string& var_name) {
+    value_2_var_name_.emplace(value, var_name);
+  }
+
+  const std::unordered_map<const paddle::framework::Variable*, std::string>&
+  GetVar2VarName() const {
+    return var_2_var_name_;
+  }
+
+  const std::map<std::string, int>& GetVarName2Id() const {
+    return var_name_2_id_;
+  }
+
+  const std::unordered_map<int, std::string>& GetId2VarName() const {
+    return id_2_var_name_;
+  }
+
+  const std::vector<Variable*>& GetVarList() const { return var_list_; }
+
+  void ResetVarList(int id, Variable* var) { var_list_[id] = var; }
+
+  friend class CondInstruction;
+
+ private:
+  std::shared_ptr<ValueExecutionInfo> NewChild(Scope* scope);
+
+  ValueExecutionInfo* parent_{nullptr};  // not owned
+
+  Scope* scope_{nullptr};  // not owned
+
+  std::unordered_map<::pir::Value, std::string> value_2_var_name_;
+
+  std::unordered_map<const paddle::framework::Variable*, std::string>
+      var_2_var_name_;
+
+  std::map<std::string, int> var_name_2_id_;
+
+  std::unordered_map<int, std::string> id_2_var_name_;
+
+  std::vector<Variable*> var_list_;
+};
 
 }  // namespace framework
 }  // namespace paddle

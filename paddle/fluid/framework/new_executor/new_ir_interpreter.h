@@ -84,10 +84,6 @@ class NewIRInterpreter : public InterpreterBaseImpl {
     hookfuncs_ = hookfuncs;
   }
 
-  std::string GetNameById(int id) const;
-
-  int GetIdByName(const std::string& name) const;
-
   std::string GetNameByValue(::pir::Value value) const;
 
  private:

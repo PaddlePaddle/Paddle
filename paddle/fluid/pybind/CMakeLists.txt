@@ -38,7 +38,7 @@ set(PYBIND_DEPS
     global_utils
     phi_utils
     phi
-    phi_kernel_adaptor
+    pir_adaptor
     pd_op_dialect
     program_translator
     pd_inplace_pass
