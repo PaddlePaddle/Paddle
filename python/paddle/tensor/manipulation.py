@@ -1630,7 +1630,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
 def flatten_(x, start_axis=0, stop_axis=-1, name=None):
     """
     Inplace version of ``flatten`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_Tensor_flatten_`.
+    Please refer to :ref:`api_paddle_flatten`.
     """
     if not (isinstance(x, Variable)):
         raise ValueError("The input x should be a Tensor")
