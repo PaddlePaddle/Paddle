@@ -21,7 +21,7 @@ from paddle.common_ops_import import Variable, default_main_program
 from paddle.framework import (
     core,
     in_dynamic_mode,
-    in_dynamic_or_new_ir_mode,
+    in_dynamic_or_pir_mode,
     in_pir_mode,
 )
 from paddle.tensor.creation import full
@@ -1658,7 +1658,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
         paddings = pad
         pad_value = value
 
-        if in_dynamic_or_new_ir_mode():
+        if in_dynamic_or_pir_mode():
             out = _C_ops.pad(x, paddings, float(pad_value))
             return out
 
@@ -1756,8 +1756,8 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
                 unsqueezed_dim = [1]
                 x = unsqueeze(x, axis=unsqueezed_dim)
 
-    if in_dynamic_mode():
-        if isinstance(pad, Variable):
+    if in_dynamic_or_pir_mode():
+        if isinstance(pad, (Variable, pir.OpResult)):
             pad = pad.tolist()
         out = _C_ops.pad3d(x, pad, mode, value, data_format)
     else:
