@@ -17,9 +17,9 @@ import numpy as np
 
 from paddle.base.core import VarDesc
 from paddle.base.libpaddle import DataType
-from paddle.base.libpaddle.ir import Program, set_global_program
+from paddle.base.libpaddle.pir import Program, set_global_program
 
-from .._ir_ops import get_parameter, set_parameter
+from .._pir_ops import get_parameter, set_parameter
 from ..base import unique_name
 from ..base.wrapped_decorator import signature_safe_contextmanager
 

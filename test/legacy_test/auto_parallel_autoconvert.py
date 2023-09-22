@@ -151,14 +151,10 @@ class TestMLPAutoConvert(unittest.TestCase):
 
     def tearDown(self):
         os.remove(
-            "./model_state_rank{}.pdmodel".format(
-                str(paddle.distributed.get_rank())
-            )
+            f"./model_state_rank{str(paddle.distributed.get_rank())}.pdmodel"
         )
         os.remove(
-            "./dist_attr_rank{}.pdattr".format(
-                str(paddle.distributed.get_rank())
-            )
+            f"./dist_attr_rank{str(paddle.distributed.get_rank())}.pdattr"
         )
 
     def test_mlp_mp2pp(self):
@@ -250,14 +246,10 @@ class TestMLPAutoConvert2(unittest.TestCase):
 
     def tearDown(self):
         os.remove(
-            "./model_state_rank{}.pdmodel".format(
-                str(paddle.distributed.get_rank())
-            )
+            f"./model_state_rank{str(paddle.distributed.get_rank())}.pdmodel"
         )
         os.remove(
-            "./dist_attr_rank{}.pdattr".format(
-                str(paddle.distributed.get_rank())
-            )
+            f"./dist_attr_rank{str(paddle.distributed.get_rank())}.pdattr"
         )
 
     def test_mlp_pp2mp(self):

@@ -19,7 +19,7 @@ from copy import deepcopy
 import numpy as np
 
 import paddle
-import paddle.ir.core as ir_static
+import paddle.pir.core as ir_static
 from paddle import _legacy_C_ops
 from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 from paddle.autograd.ir_backward import grad
@@ -829,7 +829,7 @@ class PartialProgramLayer:
         (
             forward_program,
             backward_program,
-        ), program_attr = paddle.base.libpaddle.ir.program_split(
+        ), program_attr = paddle.base.libpaddle.pir.program_split(
             whole_program,
             forward_inputs,
             forward_parameters,

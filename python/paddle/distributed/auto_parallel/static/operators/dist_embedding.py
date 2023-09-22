@@ -498,17 +498,13 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         embedding_op_dist_attr.impl_idx = op_dist_attr.impl_idx
         for input_varname in c_embedding_op.desc.input_arg_names():
             input_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
-            assert input_dist_attr is not None, "dist_attr is {}".format(
-                op_dist_attr
-            )
+            assert input_dist_attr is not None, f"dist_attr is {op_dist_attr}"
             embedding_op_dist_attr.set_input_dist_attr(
                 input_varname, input_dist_attr
             )
         output_varname = c_embedding_op.desc.output_arg_names()[0]
         output_dist_attr = op_dist_attr.get_output_dist_attr(Out_var.name)
-        assert output_dist_attr is not None, "dist_attr is {}".format(
-            op_dist_attr
-        )
+        assert output_dist_attr is not None, f"dist_attr is {op_dist_attr}"
         embedding_op_dist_attr.set_output_dist_attr(
             output_varname, output_dist_attr
         )
@@ -528,9 +524,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             )
         for output_varname in c_allreduce_sum_op.desc.output_arg_names():
             output_dist_attr = op_dist_attr.get_output_dist_attr(output_varname)
-            assert output_dist_attr is not None, "dist_attr is {}".format(
-                op_dist_attr
-            )
+            assert output_dist_attr is not None, f"dist_attr is {op_dist_attr}"
             allreduce_op_dist_attr.set_output_dist_attr(
                 output_varname, output_dist_attr
             )
@@ -583,9 +577,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         dist_attr = ctx.get_op_dist_attr_for_program(backward_op)
         assert (
             dist_attr is not None
-        ), "backward op [{}] don't have dist attribute !".format(
-            str(backward_op)
-        )
+        ), f"backward op [{str(backward_op)}] don't have dist attribute !"
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
         if rank_id not in dist_attr.process_mesh.process_ids:
