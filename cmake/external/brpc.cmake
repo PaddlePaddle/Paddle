@@ -13,6 +13,7 @@
 # limitations under the License.
 
 include(ExternalProject)
+add_definitions(-fPIC)
 set(OPENSSL_USE_STATIC_LIBS ON)
 find_package(OpenSSL REQUIRED)
 
@@ -42,7 +43,6 @@ set(prefix_path
     "${THIRD_PARTY_PATH}/install/gflags|${THIRD_PARTY_PATH}/install/leveldb|${THIRD_PARTY_PATH}/install/snappy|${THIRD_PARTY_PATH}/install/gtest|${THIRD_PARTY_PATH}/install/protobuf|${THIRD_PARTY_PATH}/install/zlib|${THIRD_PARTY_PATH}/install/glog"
 )
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
 # If minimal .a is need, you can set  WITH_DEBUG_SYMBOLS=OFF
 ExternalProject_Add(
   extern_brpc
