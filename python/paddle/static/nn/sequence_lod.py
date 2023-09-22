@@ -372,7 +372,7 @@ def sequence_concat(input, name=None):
     """
 
     Note:
-        Only receives Tensor as input. If your input is Tensor, please use concat Op.(static.nn.** :ref:`api_paddle_static_nn_sequence_concat` ).
+        Only receives Tensor as input. If your input is Tensor, please use concat Op.(static.nn.** :ref:`api_paddle_concat` ).
 
     This operator only supports Tensor as input. It concatenates the multiple Tensor from input by the LoD information,
     and outputs the concatenated Tensor.
