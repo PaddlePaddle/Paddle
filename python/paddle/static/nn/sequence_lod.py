@@ -167,7 +167,7 @@ def sequence_softmax(input, use_cudnn=False, name=None):
     r"""
 
     Note:
-        The input type of the OP must be Tensor. For Tensor, use:** :ref:`api_paddle_static_nn_sequence_softmax`
+        The input type of the OP must be Tensor. For Tensor, use:** :ref:`api_paddle_nn_functional_softmax`
 
     A LoD-tensor can be regarded as several sequences, and this op apply softmax algo on each sequence.
     The shape of input Tensor can be :math:`[N, 1]` or :math:`[N]`, where :math:`N`
