@@ -30,7 +30,7 @@ from .framework import (
 from .initializer import _global_bias_initializer, _global_weight_initializer
 from .param_attr import ParamAttr, WeightNormParamAttr
 
-__all__ = ['LayerHelperBase']
+__all__ = []
 
 
 class LayerHelperBase:

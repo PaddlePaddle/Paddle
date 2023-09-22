@@ -30,13 +30,7 @@ from ..framework import (
 from ..layer_helper import LayerHelper
 from ..proto import framework_pb2
 
-__all__ = [
-    'generate_layer_fn',
-    'generate_activation_fn',
-    'generate_inplace_fn',
-    'autodoc',
-    'templatedoc',
-]
+__all__ = []
 
 
 def _convert_(name):

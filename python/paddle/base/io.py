@@ -16,13 +16,10 @@ import logging
 
 from paddle.base.log_helper import get_logger
 
-from . import reader
-from .reader import (  # noqa: F401
-    PyReader,
-    DataLoader,
-)
+from . import reader  # noqa: F401
+from .reader import DataLoader, PyReader  # noqa: F401
 
-__all__ = reader.__all__
+__all__ = []
 
 
 _logger = get_logger(

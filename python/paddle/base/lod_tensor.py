@@ -17,7 +17,7 @@ import numpy as np
 from . import core
 from .data_feeder import DataToLoDTensorConverter
 
-__all__ = ['create_lod_tensor', 'create_random_int_lodtensor']
+__all__ = []
 
 
 def create_lod_tensor(data, recursive_seq_lens, place):
