@@ -846,6 +846,5 @@ void ElementwiseKernel(const KPDevice &ctx,
 }
 
 #endif
-
 }  // namespace funcs
 }  // namespace phi
