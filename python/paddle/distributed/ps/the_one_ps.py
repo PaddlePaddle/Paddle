@@ -73,11 +73,7 @@ def check_embedding_dim(accessor_proto, varname, program_id, context):
     for var in main_program.list_vars():
         if var.name == varname:
             embedding_dim = var.shape[1]
-            print(
-                'new var: {}, {}, {}'.format(
-                    var, embedding_dim, accessor_proto.fea_dim
-                )
-            )
+            print(f'new var: {var}, {embedding_dim}, {accessor_proto.fea_dim}')
             break
 
     fea_dim = accessor_proto.fea_dim

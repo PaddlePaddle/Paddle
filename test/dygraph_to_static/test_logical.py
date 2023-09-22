@@ -206,9 +206,7 @@ class TestLogicalNot(TestLogicalBase):
             dygraph_res,
             static_res,
             rtol=1e-05,
-            err_msg='dygraph result is {}\nstatic_result is {}'.format(
-                dygraph_res, static_res
-            ),
+            err_msg=f'dygraph result is {dygraph_res}\nstatic_result is {static_res}',
         )
 
 
@@ -223,9 +221,7 @@ class TestLogicalNot2(TestLogicalBase):
             dygraph_res,
             static_res,
             rtol=1e-05,
-            err_msg='dygraph result is {}\nstatic_result is {}'.format(
-                dygraph_res, static_res
-            ),
+            err_msg=f'dygraph result is {dygraph_res}\nstatic_result is {static_res}',
         )
 
 

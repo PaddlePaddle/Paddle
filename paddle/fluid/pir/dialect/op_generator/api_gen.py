@@ -150,7 +150,7 @@ class CodeGen:
         assert len(name_list) == len(type_list)
         ret = []
         for name, type in zip(name_list, type_list):
-            ret.append(f'{self._type_map[type]} {name}')
+            ret.append(f'const {self._type_map[type]}& {name}')
         return ', '.join(ret)
 
     def _gen_api_attrs(

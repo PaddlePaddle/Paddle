@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _ir_ops
+from paddle import _pir_ops
 
 from .primitives import *  # noqa: F403
 from .register import register_decomp
@@ -60,7 +60,7 @@ def gelu_composite(x, approximate):
     else:
         # gelu(x) = 0.5 * x *  (1 + erf(x / sqrt(2)))
 
-        cdf = half * (one + _ir_ops.erf(x * full(x.shape, M_SQRT1_2, x.dtype)))
+        cdf = half * (one + _pir_ops.erf(x * full(x.shape, M_SQRT1_2, x.dtype)))
         out = x * cdf
         return out
 

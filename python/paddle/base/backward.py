@@ -27,10 +27,7 @@ from . import core, log_helper, unique_name
 from .data_feeder import check_type
 from .proto import framework_pb2
 
-__all__ = [
-    'append_backward',
-    'gradients',
-]
+__all__ = []
 
 _logger = log_helper.get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
@@ -995,9 +992,7 @@ def _append_backward_ops_with_checkpoints_(
                 segments.append([min_idx, max_idx + 1])
             else:
                 _logger.info(
-                    "Could not recompute op range [{}] - [{}] ".format(
-                        min_idx, max_idx + 1
-                    )
+                    f"Could not recompute op range [{min_idx}] - [{max_idx + 1}] "
                 )
 
             start_idx += 1
@@ -1008,7 +1003,7 @@ def _append_backward_ops_with_checkpoints_(
         recompute_segments = segments
 
     for i, (idx1, idx2) in enumerate(recompute_segments):
-        _logger.info("recompute segment[{}]".format(i))
+        _logger.info(f"recompute segment[{i}]")
         _logger.info(
             "segment start op: [{}]: [{}]".format(
                 ops[idx1].desc.type(), ops[idx1].desc.input_arg_names()
@@ -1019,7 +1014,7 @@ def _append_backward_ops_with_checkpoints_(
                 ops[idx2 - 1].desc.type(), ops[idx2 - 1].desc.input_arg_names()
             )
         )
-        _logger.info("recompute segment[{}]".format(i))
+        _logger.info(f"recompute segment[{i}]")
         _logger.info(
             "segment start op: [{}]: [{}]".format(
                 ops[idx1].desc.type(), ops[idx1].desc.input_arg_names()
@@ -2193,9 +2188,7 @@ def append_backward(
         grad_block = grad_info[1]
         if not grad_block.has_var(grad_info[0]):
             raise ValueError(
-                "grad block[{0}] did not have grad var {1}".format(
-                    grad_info[1], grad_info[0]
-                )
+                f"grad block[{grad_info[1]}] did not have grad var {grad_info[0]}"
             )
         # Get the param var from the global block
         param_var = program.global_block().var(param)

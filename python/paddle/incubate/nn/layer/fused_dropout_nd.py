@@ -137,6 +137,4 @@ class FusedDropout(paddle.nn.Layer):
 
     def extra_repr(self):
         name_str = f', name={self.name}' if self.name else ''
-        return 'p={}, axis={}, mode={}{}'.format(
-            self.p, self.axis, self.mode, name_str
-        )
+        return f'p={self.p}, axis={self.axis}, mode={self.mode}{name_str}'

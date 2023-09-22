@@ -16,7 +16,7 @@ import paddle
 
 from .data_feeder import check_type
 
-__all__ = ['set_global_initializer']
+__all__ = []
 
 _global_weight_initializer_ = None
 _global_bias_initializer_ = None
