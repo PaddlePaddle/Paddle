@@ -348,8 +348,8 @@ IterRange GetAccessedRange(const Expr& index,
     var_maxs.emplace_back(range.min + range.extent - 1);
   }
 
-  Expr indice_min = optim::IRCopy(index);
-  Expr indice_max = optim::IRCopy(index);
+  Expr indice_min = ir::ir_utils::IRCopy(index);
+  Expr indice_max = ir::ir_utils::IRCopy(index);
   // replace the var by the corresponding iter_value
   ReplaceExpr(&indice_min, iter_vars, var_mins);
   ReplaceExpr(&indice_max, iter_vars, var_maxs);
@@ -408,7 +408,7 @@ std::vector<IterRange> CalculateTensorRegions(
 
   std::vector<IterRange> result;
   for (int i = 0; i < tensor_indices.size(); ++i) {
-    Expr binded_index = optim::IRCopy(tensor_indices[i]);
+    Expr binded_index = ir::ir_utils::IRCopy(tensor_indices[i]);
     ReplaceExpr(&binded_index, iter_vars, iter_values);
     auto range = GetAccessedRange(binded_index, loop_vars, loop_ranges);
 
@@ -656,7 +656,7 @@ Expr ConstructOtherStmtChain(const std::vector<Expr>& stmts,
                              const std::vector<int> reordered_indices) {
   Expr new_loop;
   for (int i = reordered_indices.size() - 1; i >= 0; --i) {
-    Expr temp = optim::IRCopy(loops[reordered_indices[i]]);
+    Expr temp = ir::ir_utils::IRCopy(loops[reordered_indices[i]]);
     CHECK(temp.defined());
     CHECK(temp.As<ir::For>());
     if (new_loop.defined()) {
@@ -695,10 +695,10 @@ Expr ConstructNewLoopChain(const std::vector<Expr>& chain,
     Expr temp;
     if (loop_set.count(loop_in_chain)) {
       CHECK_GE(index, 0);
-      temp = optim::IRCopy(ordered_loops[index]);
+      temp = ir::ir_utils::IRCopy(ordered_loops[index]);
       --index;
     } else {
-      temp = optim::IRCopy(loop_in_chain);
+      temp = ir::ir_utils::IRCopy(loop_in_chain);
     }
     CHECK(temp.defined());
     CHECK(temp.As<ir::For>());
@@ -1029,9 +1029,9 @@ std::vector<IterRange> CalculateRequiredRegions(
     for (const Expr& req_block : required_blocks) {
       CHECK(req_block.As<ir::ScheduleBlockRealize>());
       Expr block_body =
-          optim::IRCopy(req_block.As<ir::ScheduleBlockRealize>()
-                            ->schedule_block.As<ir::ScheduleBlock>()
-                            ->body);
+          ir::ir_utils::IRCopy(req_block.As<ir::ScheduleBlockRealize>()
+                                   ->schedule_block.As<ir::ScheduleBlock>()
+                                   ->body);
       auto iter_vars = req_block.As<ir::ScheduleBlockRealize>()
                            ->schedule_block.As<ir::ScheduleBlock>()
                            ->iter_vars;
