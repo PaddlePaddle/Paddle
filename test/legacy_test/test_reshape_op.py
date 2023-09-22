@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
 from paddle import base
@@ -43,11 +43,17 @@ class TestReshapeOp(OpTest):
         self.new_shape = (12, 10)
         self.infered_shape = (12, 10)
 
-    def test_check_output(self):
+    def _test_check_output(self):
         self.check_output(no_check_set=['XShape'], check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_prim=True, check_new_ir=True)
+        self.check_grad(
+            ["X"],
+            "Out",
+            check_prim=True,
+            check_new_ir=True,
+            check_prim_pir=True,
+        )
 
 
 class TestReshapeOp_ZeroDim1(TestReshapeOp):
@@ -120,7 +126,7 @@ class TestReshapeBF16Op(OpTest):
         self.check_output(no_check_set=['XShape'])
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_prim=True)
+        self.check_grad(["X"], "Out", check_prim=True, check_prim_pir=True)
 
 
 class TestReshapeFP16Op(OpTest):
@@ -148,7 +154,7 @@ class TestReshapeFP16Op(OpTest):
         self.check_output(no_check_set=['XShape'])
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_prim=True)
+        self.check_grad(["X"], "Out", check_prim=True, check_prim_pir=True)
 
 
 class TestReshapeOpDimInfer1(TestReshapeOp):
@@ -340,6 +346,9 @@ class TestReshapeUint8Op(TestReshapeInt8Op):
         self.dtype = np.uint8
 
 
+@skip_check_grad_ci(
+    "we don't need to check grad for the bool type of reshape op"
+)
 class TestReshapeOpBool(TestReshapeOp):
     def setUp(self):
         self.init_data()

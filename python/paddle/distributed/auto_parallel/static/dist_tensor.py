@@ -399,8 +399,8 @@ class DistributedTensor:
             annotated_str = "annotated"
         else:
             annotated_str = "non-annotated"
-        str += ", process_mesh ({}): {}".format(
-            annotated_str, self.dist_attr.process_mesh
+        str += (
+            f", process_mesh ({annotated_str}): {self.dist_attr.process_mesh}"
         )
 
         str += f", is_parameter: {self.serial_tensor.is_parameter}"
@@ -409,9 +409,7 @@ class DistributedTensor:
             annotated_str = "annotated"
         else:
             annotated_str = "non-annotated"
-        str += ", dims_mapping ({}): {} }}".format(
-            annotated_str, self.dist_attr.dims_mapping
-        )
+        str += f", dims_mapping ({annotated_str}): {self.dist_attr.dims_mapping} }}"
 
         # if self.dist_attr.is_annotated("shard_mask"):
         #     annotated_str = "annotated"

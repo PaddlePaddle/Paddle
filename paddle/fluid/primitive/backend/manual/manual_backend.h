@@ -28,6 +28,10 @@ using Scalar = paddle::experimental::Scalar;
 using IntArray = paddle::experimental::IntArray;
 using DataType = phi::DataType;
 
+template <typename T>
+std::vector<Tensor> add_n_grad(const std::vector<Tensor>& x,
+                               const Tensor& out_grad);
+
 }  // namespace backend
 }  // namespace primitive
 }  // namespace paddle

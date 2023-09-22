@@ -31,9 +31,7 @@ from paddle.utils.cpp_extension.extension_utils import run_cmd
 
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
-file = '{}\\custom_relu_module_jit\\custom_relu_module_jit.pyd'.format(
-    get_build_directory()
-)
+file = f'{get_build_directory()}\\custom_relu_module_jit\\custom_relu_module_jit.pyd'
 if os.name == 'nt' and os.path.isfile(file):
     cmd = f'del {file}'
     run_cmd(cmd, True)
@@ -86,9 +84,7 @@ class TestJITLoad(unittest.TestCase):
                     np.testing.assert_array_equal(
                         out,
                         pd_out,
-                        err_msg='custom op out: {},\n paddle api out: {}'.format(
-                            out, pd_out
-                        ),
+                        err_msg=f'custom op out: {out},\n paddle api out: {pd_out}',
                     )
 
     def test_dynamic(self):
@@ -107,9 +103,7 @@ class TestJITLoad(unittest.TestCase):
                     np.testing.assert_array_equal(
                         out,
                         pd_out,
-                        err_msg='custom op out: {},\n paddle api out: {}'.format(
-                            out, pd_out
-                        ),
+                        err_msg=f'custom op out: {out},\n paddle api out: {pd_out}',
                     )
                     np.testing.assert_array_equal(
                         x_grad,

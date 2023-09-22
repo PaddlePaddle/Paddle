@@ -13,21 +13,22 @@
 # limitations under the License.
 
 import re
-import warnings
 import string
-
+import warnings
 from io import StringIO
-from ..proto import framework_pb2
+
+from paddle import _C_ops, _legacy_C_ops
+
+from ..data_feeder import check_variable_and_dtype
 from ..framework import (
     OpProtoHolder,
     Variable,
-    core,
     convert_np_dtype_to_dtype_,
+    core,
     in_dygraph_mode,
 )
 from ..layer_helper import LayerHelper
-from ..data_feeder import check_variable_and_dtype
-from paddle import _C_ops, _legacy_C_ops
+from ..proto import framework_pb2
 
 __all__ = [
     'generate_layer_fn',
@@ -86,7 +87,7 @@ def _generate_doc_string_(
     buf.write(escape_math(op_proto.comment))
     buf.write('\nArgs:\n')
     for each_input in op_proto.inputs:
-        line_begin = '    {0}'.format(_convert_(each_input.name))
+        line_begin = f'    {_convert_(each_input.name)}'
         buf.write(line_begin)
         buf.write(" (Tensor): ")
         buf.write(escape_math(each_input.comment))
@@ -155,7 +156,7 @@ def generate_layer_fn(op_type):
     if len(not_intermediate_outputs) != 1:
         raise ValueError(
             "Only one non intermediate output operator can be",
-            "automatically generated. {0}".format(op_type),
+            f"automatically generated. {op_type}",
         )
 
     if not_intermediate_outputs[0].duplicable:
@@ -192,9 +193,7 @@ def generate_layer_fn(op_type):
 
             for each in val:
                 if not isinstance(each, Variable):
-                    raise ValueError(
-                        "input of {0} must be variable".format(op_type)
-                    )
+                    raise ValueError(f"input of {op_type} must be variable")
 
                 if dtype is None:
                     dtype = each.dtype
@@ -401,23 +400,17 @@ def templatedoc(op_type=None):
         args = {"comment": trim_ending_dot(comment)}
         for each_input in op_proto.inputs:
             input_name = _convert_(each_input.name)
-            args["{0}_comment".format(input_name)] = trim_ending_dot(
-                each_input.comment
-            )
-            args["{0}_type".format(input_name)] = "Variable"
+            args[f"{input_name}_comment"] = trim_ending_dot(each_input.comment)
+            args[f"{input_name}_type"] = "Variable"
         for each_attr in op_proto.attrs:
             input_name = _convert_(each_attr.name)
-            args["{0}_comment".format(input_name)] = trim_ending_dot(
-                each_attr.comment
-            )
-            args["{0}_type".format(input_name)] = _type_to_str_(each_attr.type)
+            args[f"{input_name}_comment"] = trim_ending_dot(each_attr.comment)
+            args[f"{input_name}_type"] = _type_to_str_(each_attr.type)
 
         for each_opt in op_proto.outputs:
             output_name = _convert_(each_opt.name)
-            args["{0}_comment".format(output_name)] = trim_ending_dot(
-                each_opt.comment
-            )
-            args["{0}_type".format(output_name)] = "Variable"
+            args[f"{output_name}_comment"] = trim_ending_dot(each_opt.comment)
+            args[f"{output_name}_type"] = "Variable"
         func.__doc__ = tmpl.substitute(args)
         return func
 

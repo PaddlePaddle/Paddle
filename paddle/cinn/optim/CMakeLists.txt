@@ -4,7 +4,6 @@ gather_srcs(
   cinnapi_src
   SRCS
   replace_call_with_expr.cc
-  ir_replace.cc
   replace_var_with_expr.cc
   ir_simplify.cc
   optimize.cc

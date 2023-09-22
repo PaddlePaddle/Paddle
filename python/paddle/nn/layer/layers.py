@@ -1517,9 +1517,7 @@ class Layer:
 
         if not isinstance(attrs, dict):
             raise TypeError(
-                "attrs should be type(dict), but received {}".format(
-                    type(attrs).__name__
-                )
+                f"attrs should be type(dict), but received {type(attrs).__name__}"
             )
 
         # NOTE: Overwrite behavior for same key.
@@ -1587,9 +1585,7 @@ class Layer:
             if len(self._loaddict_holder) > 0:
                 assert (
                     value.name in self._loaddict_holder
-                ), "Parameter not found, Can't not find [ {} ] in state_dict".format(
-                    value.name
-                )
+                ), f"Parameter not found, Can't not find [ {value.name} ] in state_dict"
 
                 value.set_value(self._loaddict_holder[value.name])
 
@@ -1964,10 +1960,8 @@ class Layer:
                 if len(state) != len(param):
                     missing_keys.append(key)
                     raise ValueError(
-                        "{} receieves the length of {}, "
-                        "but the expected shape is {}".format(
-                            key, len(state), len(param)
-                        )
+                        f"{key} receieves the length of {len(state)}, "
+                        f"but the expected shape is {len(param)}"
                     )
                 else:
                     match_keys.add(key)
@@ -2275,7 +2269,7 @@ class Layer:
         Casts all floating point parameters and buffers to ``float`` data type.
 
         Parameters:
-            excluded_layers(nn.Layer|list|None, optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers. Default: None.
+            excluded_layers(nn.Layer|list|tuple|None, optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers. Default: None.
 
         Returns:
             Layer: self
@@ -2308,8 +2302,8 @@ class Layer:
 
         if isinstance(excluded_layers, type):
             excluded_layers = [excluded_layers]
-        elif isinstance(excluded_layers, list):
-            pass
+        elif isinstance(excluded_layers, (list, tuple)):
+            excluded_layers = list(excluded_layers)
         else:
             raise TypeError(
                 "excluded_layers should be type nn.Layer or list, but got %s.",
@@ -2331,7 +2325,7 @@ class Layer:
 
 
         Parameters:
-           excluded_layers(nn.Layer|list|None, optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers except ``nn.BatchNorm``. Default: None.
+           excluded_layers(nn.Layer|list|tuple|None, optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers except ``nn.BatchNorm``. Default: None.
 
         Returns:
             Layer: self
@@ -2373,8 +2367,8 @@ class Layer:
 
         if isinstance(excluded_layers, type):
             excluded_layers = [excluded_layers]
-        elif isinstance(excluded_layers, list):
-            pass
+        elif isinstance(excluded_layers, (list, tuple)):
+            excluded_layers = list(excluded_layers)
         else:
             raise TypeError(
                 "excluded_layers should be type nn.Layer or list, but got %s.",
@@ -2396,7 +2390,7 @@ class Layer:
 
 
         Parameters:
-            excluded_layers(nn.Layer|list|None, optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers except ``nn.BatchNorm``. Default: None.
+            excluded_layers(nn.Layer|list|tuple|None, optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers except ``nn.BatchNorm``. Default: None.
 
         Returns:
             Layer: self
@@ -2439,8 +2433,8 @@ class Layer:
 
         if isinstance(excluded_layers, type):
             excluded_layers = [excluded_layers]
-        elif isinstance(excluded_layers, list):
-            pass
+        elif isinstance(excluded_layers, (list, tuple)):
+            excluded_layers = list(excluded_layers)
         else:
             raise TypeError(
                 "excluded_layers should be type nn.Layer or list, but got %s.",

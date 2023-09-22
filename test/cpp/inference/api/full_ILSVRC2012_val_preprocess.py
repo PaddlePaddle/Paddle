@@ -174,9 +174,7 @@ def run_convert():
             retry = retry + 1
         else:
             raise RuntimeError(
-                "Can not convert the dataset to binary file with try limit {}".format(
-                    try_limit
-                )
+                f"Can not convert the dataset to binary file with try limit {try_limit}"
             )
         download_concat(cache_folder, zip_path)
         convert_Imagenet_tar2bin(zip_path, output_file)

@@ -11,20 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
-import decorator
 import inspect
 import sys
+import warnings
+
+import decorator
 import numpy as np
-from paddle.base import core
-from paddle.base import framework
+
+import paddle
+from paddle.base import core, framework
 from paddle.base.framework import global_var
 from paddle.base.multiprocess_utils import CleanupFuncRegistrar
-from .tracer import Tracer
+
 from ..data_feeder import convert_dtype
-import warnings
 from ..framework import _get_paddle_place
-import paddle
+from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
+from .tracer import Tracer
 
 __all__ = [
     'no_grad',
@@ -745,19 +747,19 @@ def grad(
         return gradients(outputs, inputs, grad_outputs, no_grad_vars)
 
     def check_in_out(in_out_list, name):
-        assert in_out_list is not None, "{} should not be None".format(name)
+        assert in_out_list is not None, f"{name} should not be None"
 
         if isinstance(in_out_list, (list, tuple)):
-            assert len(in_out_list) > 0, "{} cannot be empty".format(name)
+            assert len(in_out_list) > 0, f"{name} cannot be empty"
             for each_var in in_out_list:
                 assert isinstance(
                     each_var, core.eager.Tensor
-                ), "Elements of {} must be Tensor".format(name)
+                ), f"Elements of {name} must be Tensor"
             return in_out_list
         else:
             assert isinstance(
                 in_out_list, core.eager.Tensor
-            ), "{} must be Tensor or list of Tensor".format(name)
+            ), f"{name} must be Tensor or list of Tensor"
             return [in_out_list]
 
     outputs = check_in_out(outputs, 'outputs')

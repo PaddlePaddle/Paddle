@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import paddle
-from paddle.regularizer import WeightDecayRegularizer
 from paddle.base.data_feeder import check_type
+from paddle.regularizer import WeightDecayRegularizer
 
 __all__ = [
     'ParamAttr',
@@ -187,7 +187,7 @@ class ParamAttr:
         elif isinstance(arg, bool):
             return ParamAttr._to_attr(None) if arg else False
         else:
-            raise TypeError("{0} cast to ParamAttr".format(type(arg)))
+            raise TypeError(f"{type(arg)} cast to ParamAttr")
 
     def _to_kwargs(self, with_initializer=False):
         """

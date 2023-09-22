@@ -248,9 +248,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             self.scale_gradient = gradient_scale_configs['scale_gradient']
         if gm_acc_step > 1:
             logger.info(
-                "Gradient merge in [{}], acc step = [{}]".format(
-                    gm_mode, gm_acc_step
-                )
+                f"Gradient merge in [{gm_mode}], acc step = [{gm_acc_step}]"
             )
 
         optimizer_sharding = False
@@ -716,7 +714,9 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._recreate_not_persist_param_as_var()
 
         self._dump_program_for_debug()
-        self._wait()
+        use_new_comm = os.getenv("FLAGS_dynamic_static_unified_comm", "0")
+        if use_new_comm not in ["1", "True", "true"]:
+            self._wait()
         return optimize_ops, params_grads
 
     def _init_pair_comm(self, pair, ring_id):
@@ -863,9 +863,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                             )
                             assert (
                                 input_name not in self._forward_remain_anchors
-                            ), "segment anchor [{}] met twice !".format(
-                                input_name
-                            )
+                            ), f"segment anchor [{input_name}] met twice !"
                             self._backward_remain_anchors.remove(input_name)
                             self._forward_remain_anchors.append(input_name)
                 elif int(op.attr('op_role')) == int(OpRole.Forward):
@@ -1764,9 +1762,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         for grad_name in grad_names:
             assert (
                 get_grad_device(grad_name, shard) == shard.worker_idx
-            ), "try to merge gradient not belong to current shard: [{}]".format(
-                grad_name
-            )
+            ), f"try to merge gradient not belong to current shard: [{grad_name}]"
             persistable_grad_name = grad_name + '@GradiantMerge'
             assert (
                 grad_name not in self._grad2merged_grad
