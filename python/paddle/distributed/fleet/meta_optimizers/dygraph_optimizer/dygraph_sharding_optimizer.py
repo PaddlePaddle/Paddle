@@ -568,7 +568,6 @@ class DygraphShardingOptimizerV2:
         """
         sync parameter across sharding group
         """
-        # TODO speed up this functional
 
         logger.debug("sharding start sync parameters")
         with framework.no_grad():
@@ -578,8 +577,8 @@ class DygraphShardingOptimizerV2:
                 assert full.name in self._padded_param_buffer
                 padded_param_buffer = self._padded_param_buffer[full.name]
                 group.process_group.all_gather(
-                    padded_param_buffer, shard_slice, sync_op=True
-                )
+                    shard_slice, padded_param_buffer
+                ).wait()
                 padded_param_buffer._slice(0, full._numel())._share_buffer_to(
                     full
                 )
