@@ -406,7 +406,7 @@ TEST(shape_op, dim) {
   EXPECT_EQ(dimOp.getName(), "S0");
   dimOp.setName("S1");
   EXPECT_EQ(dimOp.getName(), "S1");
-  EXPECT_EQ(res.GetDefiningOp(), dimOp.operation());
+  EXPECT_EQ(res.owner(), dimOp.operation());
   EXPECT_EQ(res.type(), pir::IndexType::get(ctx));
 }
 
@@ -429,8 +429,8 @@ TEST(shape_op, tie_product_equal) {
           3,
           std::vector<pir::Value>{dimOp0, dimOp1, dimOp2, dimOp3, dimOp4});
 
-  std::vector<pir::Value> lhs = tie_product_equal.getLhs();
-  std::vector<pir::Value> rhs = tie_product_equal.getRhs();
+  std::vector<pir::Value> lhs = tie_product_equal.lhs();
+  std::vector<pir::Value> rhs = tie_product_equal.rhs();
 
   std::vector<pir::Value> lhs_ref{dimOp0, dimOp1};
   std::vector<pir::Value> rhs_ref{dimOp2, dimOp3, dimOp4};
@@ -461,7 +461,7 @@ TEST(shape_op, tie_shape) {
 
   pir::dialect::TieShapeOp tieShapeOp =
       builder.Build<pir::dialect::TieShapeOp>(res);
-  pir::Value tieShapeOpValue = tieShapeOp.getValue();
+  pir::Value tieShapeOpValue = tieShapeOp.value();
 
   pir::Attribute attrS0 = pir::StrAttribute::get(ctx, "S0");
   pir::Attribute attrS1 = pir::StrAttribute::get(ctx, "S1");
@@ -613,7 +613,7 @@ TEST(shape_op, tensor_dim) {
 
   EXPECT_EQ(res0.type(), pir::IndexType::get(ctx));
   EXPECT_EQ(res1.type(), pir::IndexType::get(ctx));
-  EXPECT_EQ(tensorDimOp0.getSource(), resDenseTensorValue);
-  EXPECT_EQ(tensorDimOp1.getSource(), resDenseTensorValue);
-  EXPECT_EQ(tensorDimOp1.getIndex(), indexValue);
+  EXPECT_EQ(tensorDimOp0.source(), resDenseTensorValue);
+  EXPECT_EQ(tensorDimOp1.source(), resDenseTensorValue);
+  EXPECT_EQ(tensorDimOp1.index(), indexValue);
 }

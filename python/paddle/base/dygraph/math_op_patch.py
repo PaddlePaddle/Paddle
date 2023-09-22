@@ -12,20 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .. import core
-from ..framework import (
-    Variable,
-    convert_np_dtype_to_dtype_,
-    in_dygraph_mode,
-)
-from ..framework import _create_tensor as framework_create_tensor
-from ..layers.layer_function_generator import OpProtoHolder
-from . import no_grad
-from .. import framework
-
 import numpy as np
-import warnings
+
 from paddle import _C_ops, _legacy_C_ops
+
+from .. import core, framework
+from ..framework import convert_np_dtype_to_dtype_
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.UINT8,

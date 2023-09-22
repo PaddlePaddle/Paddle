@@ -35,13 +35,8 @@ static PyObject *static_api_get_parameter(PyObject *self,
     // Parse Attributes
     PyObject *name_obj = PyTuple_GET_ITEM(args, 0);
     std::string name = CastPyArg2String(name_obj, "name", 0);
-    PyObject *dtype_obj = PyTuple_GET_ITEM(args, 1);
-    phi::DataType dtype = CastPyArg2DataTypeDirectly(dtype_obj, "dtype", 1);
-    PyObject *shape_obj = PyTuple_GET_ITEM(args, 2);
-    phi::IntArray shape = CastPyArg2IntArray(shape_obj, "shape", 2);
     // Call ir static api
-    auto static_api_out =
-        paddle::dialect::get_parameter(name, dtype, shape.GetData());
+    auto static_api_out = paddle::dialect::get_parameter(name);
 
     return ToPyObject(static_api_out);
   } catch (...) {
@@ -96,14 +91,13 @@ PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs) {
       auto static_api_out = paddle::dialect::full(shape, value, dtype, place);
       return ToPyObject(static_api_out);
     } else {
-      pir::OpResult shape;
-      pir::OpResult value;
+      pir::Value shape, value;
 
       if (PyObject_CheckIROpResult(shape_obj)) {
         shape = CastPyArg2OpResult(shape_obj, "full", 0);
       } else if (PyObject_CheckIRVectorOfOpResult(shape_obj)) {
-        std::vector<pir::OpResult> shape_tmp =
-            CastPyArg2VectorOfOpResult(shape_obj, "full", 0);
+        std::vector<pir::Value> shape_tmp =
+            CastPyArg2VectorOfValue(shape_obj, "full", 0);
         shape = paddle::dialect::stack(shape_tmp, 0);
       } else {
         std::vector<int64_t> shape_tmp = CastPyArg2Longs(shape_obj, "full", 0);

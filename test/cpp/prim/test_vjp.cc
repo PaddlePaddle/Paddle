@@ -59,7 +59,7 @@ TEST(VJP, TanhBackwardTest) {
       std::vector<int64_t>{1}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
   std::vector<std::vector<bool>> stop_gradients{{false}};
-  std::vector<std::vector<pir::OpResult>> out_grads{{op3.out()}};
+  std::vector<std::vector<pir::Value>> out_grads{{op3.out()}};
 
   pir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd_op.tanh");
   auto tanh_vjp_interface_impl =
@@ -114,7 +114,7 @@ TEST(VJP, Tanh_BackwardTest) {
       std::vector<int64_t>{1}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
   std::vector<std::vector<bool>> stop_gradients{{false}};
-  std::vector<std::vector<pir::OpResult>> out_grads{{op3.out()}};
+  std::vector<std::vector<pir::Value>> out_grads{{op3.out()}};
 
   pir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd_op.tanh_");
   auto tanh_vjp_interface_impl =
@@ -169,7 +169,7 @@ TEST(VJP, MeanBackwardTest) {
       std::vector<int64_t>{}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
   std::vector<std::vector<bool>> stop_gradients{{false}};
-  std::vector<std::vector<pir::OpResult>> out_grads{{op3.out()}};
+  std::vector<std::vector<pir::Value>> out_grads{{op3.out()}};
 
   pir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd_op.mean");
   auto mean_vjp_interface_impl =
@@ -219,7 +219,7 @@ TEST(VJP, ConcatBackwardTest) {
       paddle::dialect::APIBuilder::Instance().GetBuilder();
   paddle::dialect::FullOp op1 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1, 2}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
-  std::vector<pir::OpResult> combine_input{{op1.out(), op1.out()}};
+  std::vector<pir::Value> combine_input{{op1.out(), op1.out()}};
   pir::CombineOp op2 = builder->Build<pir::CombineOp>(combine_input);
   paddle::dialect::ConcatOp op3 =
       builder->Build<paddle::dialect::ConcatOp>(op2.out(), 0);
@@ -227,7 +227,7 @@ TEST(VJP, ConcatBackwardTest) {
   paddle::dialect::FullOp op4 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{2, 2}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
   std::vector<std::vector<bool>> stop_gradients{{false, false}};
-  std::vector<std::vector<pir::OpResult>> out_grads{{op4.out()}};
+  std::vector<std::vector<pir::Value>> out_grads{{op4.out()}};
   pir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd_op.concat");
   auto concat_vjp_interface_impl =
       op2_info.GetInterfaceImpl<paddle::dialect::VjpInterface>();
@@ -291,7 +291,7 @@ TEST(VJP, AddBackwardTest) {
       std::vector<int64_t>{1}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
   std::vector<std::vector<bool>> stop_gradients{{false}, {false}};
-  std::vector<std::vector<pir::OpResult>> out_grads{{op4.out()}};
+  std::vector<std::vector<pir::Value>> out_grads{{op4.out()}};
 
   pir::OpInfo op3_info = ctx->GetRegisteredOpInfo("pd_op.add");
   auto add_vjp_interface_impl =
@@ -356,7 +356,7 @@ TEST(VJP, Add_BackwardTest) {
       std::vector<int64_t>{1}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
   std::vector<std::vector<bool>> stop_gradients{{false}, {false}};
-  std::vector<std::vector<pir::OpResult>> out_grads{{op4.out()}};
+  std::vector<std::vector<pir::Value>> out_grads{{op4.out()}};
 
   pir::OpInfo op3_info = ctx->GetRegisteredOpInfo("pd_op.add_");
   auto add_inplace_vjp_interface_impl =
@@ -422,7 +422,7 @@ TEST(VJP, SplitBackwardTest) {
       std::vector<int64_t>{1, 2}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
   std::vector<std::vector<bool>> stop_gradients{{false}};
-  std::vector<std::vector<pir::OpResult>> out_grads{{op3.result(0), op4.out()}};
+  std::vector<std::vector<pir::Value>> out_grads{{op3.result(0), op4.out()}};
   pir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd_op.split");
 
   auto concat_vjp_interface_impl =

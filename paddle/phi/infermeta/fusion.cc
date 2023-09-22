@@ -1109,6 +1109,20 @@ void AddCMulXPUInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
+void LayerNormActXPUInferMeta(const MetaTensor& x,
+                              const MetaTensor& scale,
+                              const MetaTensor& bias,
+                              int begin_norm_axis,
+                              float epsilon,
+                              int act_type,
+                              float act_param,
+                              MetaTensor* y) {
+  y->set_dims(x.dims());
+  //   y->share_lod(x);
+  y->set_dtype(x.dtype());
+  y->set_layout(x.layout());
+}
+
 void FusedScaleBiasReluConvBnstatsInferMeta(
     const MetaTensor& x,
     const MetaTensor& w,

@@ -552,6 +552,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "squeeze_excitation_fuse_pass",
       "add_activation_xpu_fuse_pass",
       "add_layernorm_xpu_fuse_pass",
+      "layer_norm_act_xpu_fuse_pass",
       "fast_layernorm_xpu_fuse_pass",
       "bn_act_xpu_fuse_pass",
       "yolo_box_xpu_fuse_pass",

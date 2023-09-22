@@ -31,7 +31,7 @@ void *AbstractType::GetInterfaceImpl(TypeId interface_id) const {
     return nullptr;
   }
   // TODO(zhangbo63): Add LookUp method like:
-  // return ir::details::LookUp<AbstractType>(
+  // return ir::detail::LookUp<AbstractType>(
   //     interface_id, num_interfaces_, num_traits_, this);
 }
 
