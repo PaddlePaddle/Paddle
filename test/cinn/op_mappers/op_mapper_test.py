@@ -166,16 +166,12 @@ class OpMapperTest(OpTest):
             self.assertEqual(
                 var.shape,
                 self.feed_data[name].shape,
-                msg="The shape of input {} in feed_data is error".format(
-                    var.name
-                ),
+                msg=f"The shape of input {var.name} in feed_data is error",
             )
             self.assertEqual(
                 self.paddleddtype2nptype(var.dtype),
                 str(self.feed_data[name].dtype),
-                msg="The dtype of input {} in feed_data is error".format(
-                    var.name
-                ),
+                msg=f"The dtype of input {var.name} in feed_data is error",
             )
 
         for out_name, in_name in self.inplace_outputs.items():

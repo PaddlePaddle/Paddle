@@ -94,9 +94,7 @@ class TestPool2D(unittest.TestCase):
             dygraph_res,
             static_res,
             rtol=1e-05,
-            err_msg='dygraph_res is {}\n static_res is \n{}'.format(
-                dygraph_res, static_res
-            ),
+            err_msg=f'dygraph_res is {dygraph_res}\n static_res is \n{static_res}',
         )
 
 

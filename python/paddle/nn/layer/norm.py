@@ -109,9 +109,7 @@ class _InstanceNormBase(Layer):
         )
 
     def extra_repr(self):
-        return 'num_features={}, epsilon={}'.format(
-            self._num_features, self._epsilon
-        )
+        return f'num_features={self._num_features}, epsilon={self._epsilon}'
 
 
 class InstanceNorm1D(_InstanceNormBase):
@@ -202,9 +200,7 @@ class InstanceNorm1D(_InstanceNormBase):
     def _check_input_dim(self, input):
         if len(input.shape) != 2 and len(input.shape) != 3:
             raise ValueError(
-                'expected 2D or 3D input (got {}D input)'.format(
-                    len(input.shape)
-                )
+                f'expected 2D or 3D input (got {len(input.shape)}D input)'
             )
 
 
@@ -692,9 +688,7 @@ class LayerNorm(Layer):
         )
 
     def extra_repr(self):
-        return 'normalized_shape={}, epsilon={}'.format(
-            self._normalized_shape, self._epsilon
-        )
+        return f'normalized_shape={self._normalized_shape}, epsilon={self._epsilon}'
 
 
 class _BatchNormBase(Layer):
@@ -1279,9 +1273,7 @@ class BatchNorm1D(_BatchNormBase):
     def _check_input_dim(self, input):
         if len(input.shape) != 2 and len(input.shape) != 3:
             raise ValueError(
-                'expected 2D or 3D input (got {}D input)'.format(
-                    len(input.shape)
-                )
+                f'expected 2D or 3D input (got {len(input.shape)}D input)'
             )
 
 
@@ -1833,9 +1825,7 @@ class LocalResponseNorm(Layer):
         return out
 
     def extra_repr(self):
-        main_str = 'size={}, alpha={}, beta={}, k={}'.format(
-            self.size, self.alpha, self.beta, self.k
-        )
+        main_str = f'size={self.size}, alpha={self.alpha}, beta={self.beta}, k={self.k}'
         if self.data_format != 'NCHW':
             main_str += f', data_format={self.data_format}'
         if self.name is not None:
@@ -1922,7 +1912,7 @@ class SpectralNorm(Layer):
         assert dim < len(self._weight_shape), (
             "The input `dim` should be less than the "
             "length of `weight_shape`, but received dim="
-            "{}".format(dim)
+            f"{dim}"
         )
         h = self._weight_shape[self._dim]
         w = np.prod(self._weight_shape) // h
