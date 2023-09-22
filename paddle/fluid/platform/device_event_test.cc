@@ -37,7 +37,7 @@ TEST(DeviceEvent, CUDA) {
 
   ASSERT_NE(context, nullptr);
   // case 1. test for event_creator
-  DeviceEvent event(place);
+  DeviceEvent event(place, platform::GenerateDeviceEventFlag());
   ASSERT_NE(event.GetEvent().get(), nullptr);
   bool status = event.Query();
   ASSERT_EQ(status, true);
