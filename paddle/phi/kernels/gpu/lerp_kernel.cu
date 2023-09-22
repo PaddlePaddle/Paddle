@@ -22,11 +22,6 @@
 namespace phi {
 
 template <typename T>
-struct BroadcastMinElementWiseDirectCUDAFunctor {
-  HOSTDEVICE inline T operator()(const T min) const { return min; }
-};
-
-template <typename T>
 struct LerpElementWiseDirectCUDAFunctor {
   HOSTDEVICE inline T operator()(const T x, const T y, const T weight) const {
     return x + weight * (y - x);
