@@ -66,7 +66,6 @@ if(WITH_MUSA)
     "gpu/fft_grad_kernel.cu"
     "gpu/fft_kernel.cu"
     "gpu/fused_softmax_mask_grad_kernel.cu"
-    "gpu/gaussian_kernel.cu"
     "gpu/gelu_grad_kernel.cu"
     "gpu/gelu_kernel.cu"
     "gpu/histogram_kernel.cu"

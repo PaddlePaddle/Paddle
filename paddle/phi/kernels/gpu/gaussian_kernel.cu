@@ -78,6 +78,15 @@ void GaussianKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+#ifdef PADDLE_WITH_MUSA
+PD_REGISTER_KERNEL(gaussian,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::GaussianKernel,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   float) {}
+#else
 PD_REGISTER_KERNEL(gaussian,
                    GPU,
                    ALL_LAYOUT,
@@ -86,3 +95,4 @@ PD_REGISTER_KERNEL(gaussian,
                    phi::dtype::bfloat16,
                    float,
                    double) {}
+#endif
