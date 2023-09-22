@@ -33,7 +33,7 @@ class TestOperatorBase(unittest.TestCase):
 
             exe = paddle.static.Executor(paddle.CPUPlace())
             res = exe.run(main_program, fetch_list=[out])
-            np.testing.assert_almost_equal(res[0].numpy(), expected_out)
+            np.testing.assert_almost_equal(res[0], expected_out)
 
 
 class TestOperator(TestOperatorBase):
