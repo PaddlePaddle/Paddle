@@ -71,7 +71,7 @@ class PADDLE_API DeviceContextPool {
 
   phi::DeviceContext* GetMutable(const Place& place);
 
-  void Update(const Place& place);
+  void SyncDeviceContext(const Place& place);
 
   template <AllocationType T>
   const typename DefaultDeviceContextType<T>::TYPE* Get(const Place& place) {

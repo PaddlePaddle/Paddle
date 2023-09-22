@@ -2221,7 +2221,7 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
           return std::unique_ptr<phi::DeviceContext>(gpu_context);
         }));
     auto &pool = paddle::experimental::DeviceContextPool::Instance();
-    pool.Update(place_);
+    pool.SyncDeviceContext(place_);
   }
 
   return ZeroCopyRun();

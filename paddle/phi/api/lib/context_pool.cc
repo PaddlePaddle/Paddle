@@ -26,7 +26,7 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-void DeviceContextPool::Update(const Place& place) {
+void DeviceContextPool::SyncDeviceContext(const Place& place) {
   if (!phi::DeviceContextPool::IsInitialized()) {
     phi::memory_utils::InitDevices();
   }
