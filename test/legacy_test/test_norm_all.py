@@ -438,6 +438,9 @@ class TestPnormComplex64Op(TestPnormOp):
             self.x, self.axis, self.porder, self.keepdim, self.asvector
         )
 
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
+
 
 class TestPnormComplex128Op(TestPnormComplex64Op):
     def init_dtype(self):
