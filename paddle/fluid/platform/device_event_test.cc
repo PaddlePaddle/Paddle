@@ -85,8 +85,9 @@ TEST(DeviceEvent, CUDA) {
   auto* context = static_cast<phi::GPUContext*>(pool.Get(place));
 
   ASSERT_NE(context, nullptr);
+
   // case 1. test for event_creator
-  DeviceEvent event(place, paddle:platform::GenerateDeviceEventFlag());
+  DeviceEvent event(place, paddle::platform::GenerateDeviceEventFlag());
   ASSERT_NE(event.GetEvent().get(), nullptr);
   bool status = event.Query();
   ASSERT_EQ(status, true);
