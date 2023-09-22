@@ -36,6 +36,12 @@ TEST(dist_tensor, constructor) {
 
   auto dist_attr = TensorDistAttr(phi::vectorize(dims));
 
+  std::vector<int64_t> mesh_shape = {1};
+  std::vector<int64_t> process_ids = {0};
+  std::vector<std::string> dim_names = {"x"};
+  ProcessMesh mesh(mesh_shape, process_ids, dim_names);
+  dist_attr.set_process_mesh(mesh);
+
   // copy construct
   DenseTensor x1(alloc, meta);
   DistTensor dist_x1(x1, dist_attr);

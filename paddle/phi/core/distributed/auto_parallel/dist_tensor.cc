@@ -18,6 +18,7 @@
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+#include "paddle/phi/core/distributed/store/store_utils.h"
 
 namespace phi {
 namespace distributed {
@@ -35,20 +36,27 @@ inline void check_defined(const DistTensor& dist_tensor,
 DistTensor::DistTensor(const phi::DenseTensor& global_value,
                        const TensorDistAttr& dist_attr)
     : dims_(global_value.dims()), dist_attr_(dist_attr), value_(global_value) {
-  if (value_.initialized() && !dist_attr.is_replicated()) {
-    // 1. create replicated global tensor
-    int64_t dims_size = global_value.dims().size();
-    std::vector<int64_t> dims_mapping(dims_size, -1);
-    dist_attr_.set_dims_mapping(dims_mapping);
-    if (dist_attr_.is_partial()) {
-      dist_attr_.clean_partial_status();
-    }
-    dist_attr_.set_dims_mapping(dims_mapping);
+  // TODO(liyurui): This is a temporary solution. We need to support only infer
+  // meta when the input dense_tensor is empty.
+  // Support the value in DistTensor only has DenseTensor meta
+  // but without actual data. So we can visit its meta attr even if it is
+  // undefined.
+  if (IsCurRankInMesh(dist_attr.process_mesh())) {
+    if (value_.initialized() && !dist_attr.is_replicated()) {
+      // 1. create replicated global tensor
+      int64_t dims_size = global_value.dims().size();
+      std::vector<int64_t> dims_mapping(dims_size, -1);
+      dist_attr_.set_dims_mapping(dims_mapping);
+      if (dist_attr_.is_partial()) {
+        dist_attr_.clean_partial_status();
+      }
+      dist_attr_.set_dims_mapping(dims_mapping);
 
-    // 2. reshard from replicated to other state
-    auto* func = ChooseProperReshardFunction(*this, dist_attr);
-    auto* dev_ctx = DeviceContextPool::Instance().Get(global_value.place());
-    func->Eval(dev_ctx, *this, dist_attr, this);
+      // 2. reshard from replicated to other state
+      auto* func = ChooseProperReshardFunction(*this, dist_attr);
+      auto* dev_ctx = DeviceContextPool::Instance().Get(global_value.place());
+      func->Eval(dev_ctx, *this, dist_attr, this);
+    }
   }
 }
 
