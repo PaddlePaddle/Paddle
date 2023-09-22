@@ -466,6 +466,8 @@ class DygraphShardingOptimizerV2:
         self._sharding_world_size = self._hcg.get_sharding_parallel_world_size()
         self._sharding_rank = self._hcg.get_sharding_parallel_rank()
 
+        self._parameter_list = optimizer._parameter_list
+
         # slice parameter list
         self._local_parameter_list = [
             self._create_slice_param(p) for p in optimizer._parameter_list
@@ -526,6 +528,11 @@ class DygraphShardingOptimizerV2:
             if hasattr(p, "shard_slice"):
                 clear_grad_func(p.shard_slice)
 
+        if not set_to_zero:
+            for k, v in self._padded_grad_buffer.items():
+                v._clear_data()
+            self._padded_grad_buffer = {}
+
     def reduce_gradients(self, parameter_list, hcg):
         # TODO merge grad / nrank with dp
         logger.debug("sharding start gradients sync")
@@ -576,7 +583,6 @@ class DygraphShardingOptimizerV2:
                 )
                 padded_full = paddle.concat(gather_list, axis=0)
                 self._assign_param(full, padded_full)
-                # TODO(liuzhenhai): release shard slice
 
     def _update_trainable(self):
         """
@@ -626,22 +632,34 @@ class DygraphShardingOptimizerV2:
 
     def _create_slice_param(self, param):
         # partition param to slice
-        size = param._numel()
-        shard_size = (
-            size + self._sharding_world_size - 1
-        ) // self._sharding_world_size
+        padded_size = self._get_padded_size(param)
+        shard_size = padded_size // self._sharding_world_size
         param_slice = EagerParamBase(shape=[shard_size], dtype=param.dtype)
         param_slice.name = f"shard@{param.name}"
         param.shard_slice = param_slice
         return param_slice
 
-    def _create_padded_buffer(self, t):
+    def _get_padded_size(self, t, align_dtype=None):
+        if align_dtype is None:
+            align_dtype = t.dtype
+        device_alignment = 256
+        type_align = {
+            paddle.float16.value: 2,
+            paddle.bfloat16.value: 2,
+            paddle.float32.value: 4,
+        }
+        align_size = device_alignment // type_align[align_dtype]
+        align_size = align_size * self._sharding_world_size
+        size = t._numel()
+        padded_size = ((size + align_size - 1) // align_size) * align_size
+        return padded_size
+
+    def _create_padded_buffer(self, t, align_dtype=None):
+        if align_dtype is None:
+            align_dtype = t.dtype
         # extend grad to padded buffer
         size = t._numel()
-        padded_size = (
-            (size + self._sharding_world_size - 1) // self._sharding_world_size
-        ) * self._sharding_world_size
-
+        padded_size = self._get_padded_size(t, align_dtype)
         with framework.no_grad():
             # no need padding
             if size == padded_size:
@@ -666,7 +684,7 @@ class DygraphShardingOptimizerV2:
 
     def _get_padded_grad(self, param, g_var):
         if param.name not in self._padded_grad_buffer:
-            padded_grad = self._create_padded_buffer(param, g_var)
+            padded_grad = self._create_padded_buffer(g_var, param.dtype)
             self._padded_grad_buffer[param.name] = padded_grad
             return padded_grad
         padded_grad = self._padded_grad_buffer[param.name]
