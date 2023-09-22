@@ -770,10 +770,6 @@ void DepthwiseConvCudnnGradKernel(const Context& dev_ctx,
                                   int groups,
                                   const std::vector<int>& dilations,
                                   const std::string& data_format,
-                                  bool use_addto,
-                                  int workspace_size_MB,
-                                  bool exhaustive_search,
-                                  bool fuse_relu,
                                   DenseTensor* input_grad,
                                   DenseTensor* filter_grad) {
   ConvCudnnGradKernel<T>(dev_ctx,
@@ -1532,6 +1528,14 @@ PD_REGISTER_KERNEL(conv3d_double_grad,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 
+PD_REGISTER_KERNEL(depthwise_conv2d_grad,
+                   GPUDNN,
+                   ALL_LAYOUT,
+                   phi::DepthwiseConvCudnnGradKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
 PD_REGISTER_KERNEL(depthwise_conv2d_double_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -1571,6 +1575,13 @@ PD_REGISTER_KERNEL(conv3d_double_grad,
                    phi::Conv3DCudnnDoubleGradKernel,
                    float,
                    double,
+                   phi::dtype::float16) {}
+
+PD_REGISTER_KERNEL(depthwise_conv2d_grad,
+                   GPUDNN,
+                   ALL_LAYOUT,
+                   phi::DepthwiseConvCudnnGradKernel,
+                   float,
                    phi::dtype::float16) {}
 
 PD_REGISTER_KERNEL(depthwise_conv2d_double_grad,
