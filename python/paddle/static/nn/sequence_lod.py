@@ -371,53 +371,49 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
 def sequence_concat(input, name=None):
     """
 
-        Note:
-    <<<<<<< HEAD
-            Only receives Tensor as input. If your input is Tensor, please use concat Op.(static.nn.** :ref:`api_paddle_concat` ).
-    =======
-            Only receives Tensor as input. If your input is Tensor, please use concat Op.(static.nn.** :ref:`api_paddle_concat` ).
-    >>>>>>> 104af5ce75dbeca98b8997f034c2c0ce404b0030
+    Note:
+        Only receives Tensor as input. If your input is Tensor, please use concat Op.(static.nn.** :ref:`api_paddle_concat` ).
 
-        This operator only supports Tensor as input. It concatenates the multiple Tensor from input by the LoD information,
-        and outputs the concatenated Tensor.
+    This operator only supports Tensor as input. It concatenates the multiple Tensor from input by the LoD information,
+    and outputs the concatenated Tensor.
 
-        .. code-block:: text
+    .. code-block:: text
 
-            input is a list of Tensor:
-                input = [x1, x2]
-            where:
-                x1.lod = [[0, 3, 5]]
-                x1.data = [[1], [2], [3], [4], [5]]
-                x1.shape = [5, 1]
+        input is a list of Tensor:
+            input = [x1, x2]
+        where:
+            x1.lod = [[0, 3, 5]]
+            x1.data = [[1], [2], [3], [4], [5]]
+            x1.shape = [5, 1]
 
-                x2.lod = [[0, 2, 4]]
-                x2.data = [[6], [7], [8], [9]]
-                x2.shape = [4, 1]
-            and should satisfy: len(x1.lod[0]) == len(x2.lod[0])
+            x2.lod = [[0, 2, 4]]
+            x2.data = [[6], [7], [8], [9]]
+            x2.shape = [4, 1]
+        and should satisfy: len(x1.lod[0]) == len(x2.lod[0])
 
-            output is Tensor:
-                out.lod = [[0, 3+2, 5+4]]
-                out.data = [[1], [2], [3], [6], [7], [4], [5], [8], [9]]
-                out.shape = [9, 1]
+        output is Tensor:
+            out.lod = [[0, 3+2, 5+4]]
+            out.data = [[1], [2], [3], [6], [7], [4], [5], [8], [9]]
+            out.shape = [9, 1]
 
-        Args:
-            input(list of Tensor): List of Tensor to be concatenated. The length of each Tensor should be same.
-                The data type can be float32, float64 or int64.
-            name(str, optional): The default value is None.  Normally there is no need for user to set this property.
-                For more information, please refer to :ref:`api_guide_Name` .
+    Args:
+        input(list of Tensor): List of Tensor to be concatenated. The length of each Tensor should be same.
+            The data type can be float32, float64 or int64.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
 
-        Returns:
-            Tensor: Output the concatenated Tensor. The data type is same as input.
+    Returns:
+        Tensor: Output the concatenated Tensor. The data type is same as input.
 
-        Examples:
-            .. code-block:: python
+    Examples:
+        .. code-block:: python
 
-                >>> import paddle
-                >>> paddle.enable_static()
+            >>> import paddle
+            >>> paddle.enable_static()
 
-                >>> x = paddle.static.data(name='x', shape=[-1, 10], dtype='float32', lod_level=1)
-                >>> y = paddle.static.data(name='y', shape=[-1, 10], dtype='float32', lod_level=1)
-                >>> out = paddle.static.nn.sequence_concat(input=[x, y])
+            >>> x = paddle.static.data(name='x', shape=[-1, 10], dtype='float32', lod_level=1)
+            >>> y = paddle.static.data(name='y', shape=[-1, 10], dtype='float32', lod_level=1)
+            >>> out = paddle.static.nn.sequence_concat(input=[x, y])
     """
     assert (
         not in_dygraph_mode()
@@ -1126,55 +1122,51 @@ def sequence_unpad(x, length, name=None):
 def sequence_reshape(input, new_dim):
     """
 
-        Note:
-    <<<<<<< HEAD
-            Only receives Tensor as input. If your input is Tensor, please use reshape Op.(paddle.filp.** :ref:`api_paddle_reshape` ).
-    =======
-            Only receives Tensor as input. If your input is Tensor, please use reshape Op.(static.nn.** :ref:`api_paddle_reshape` ).
-    >>>>>>> 104af5ce75dbeca98b8997f034c2c0ce404b0030
+    Note:
+        Only receives Tensor as input. If your input is Tensor, please use reshape Op.(static.nn.** :ref:`api_paddle_reshape` ).
 
-        Only supports Tensor as input. Given :attr:`new_dim` ,
-        it will compute new shape according to original length of each sequence,
-        original dimensions and :attr:`new_dim` . Then it will output a new Tensor
-        containing :attr:`new_dim` . Currently it only supports 1-level Tensor.
-        Please make sure that (original length * original dimensions) can be divided
-        by the :attr:`new_dim` with no remainder for each sequence.
+    Only supports Tensor as input. Given :attr:`new_dim` ,
+    it will compute new shape according to original length of each sequence,
+    original dimensions and :attr:`new_dim` . Then it will output a new Tensor
+    containing :attr:`new_dim` . Currently it only supports 1-level Tensor.
+    Please make sure that (original length * original dimensions) can be divided
+    by the :attr:`new_dim` with no remainder for each sequence.
 
-        .. code-block:: text
+    .. code-block:: text
 
-            input is a Tensor:
-                input.lod  = [[0, 2, 6]]
-                input.data = [[1,  2], [3,  4],
-                              [5,  6], [7,  8],
-                              [9, 10], [11, 12]]
-                input.shape = [6, 2]
+        input is a Tensor:
+            input.lod  = [[0, 2, 6]]
+            input.data = [[1,  2], [3,  4],
+                          [5,  6], [7,  8],
+                          [9, 10], [11, 12]]
+            input.shape = [6, 2]
 
-            set new_dim = 4
-            out is a Tensor:
-                out.lod  = [[0, 1, 3]]
-                out.data = [[1,  2,  3,  4],
-                            [5,  6,  7,  8],
-                            [9, 10, 11, 12]]
-                out.shape = [3, 4]
+        set new_dim = 4
+        out is a Tensor:
+            out.lod  = [[0, 1, 3]]
+            out.data = [[1,  2,  3,  4],
+                        [5,  6,  7,  8],
+                        [9, 10, 11, 12]]
+            out.shape = [3, 4]
 
 
-        Args:
+    Args:
 
-           input (Tensor): 1-level Tensor with shape :math:`[M, K]` . The data type should
-                be int32, int64, float32 or float64.
-           new_dim (int): New dimension that the input Tensor is reshaped to.
+       input (Tensor): 1-level Tensor with shape :math:`[M, K]` . The data type should
+            be int32, int64, float32 or float64.
+       new_dim (int): New dimension that the input Tensor is reshaped to.
 
-        Returns:
-            Tensor: Reshaped Tensor according to new dimension. The data type is same as input.
+    Returns:
+        Tensor: Reshaped Tensor according to new dimension. The data type is same as input.
 
-        Examples:
-            .. code-block:: python
+    Examples:
+        .. code-block:: python
 
-                >>> import paddle
-                >>> paddle.enable_static()
+            >>> import paddle
+            >>> paddle.enable_static()
 
-                >>> x = paddle.static.data(name='x', shape=[None, 16], dtype='float32', lod_level=1)
-                >>> x_reshaped = paddle.static.nn.sequence_reshape(input=x, new_dim=4)
+            >>> x = paddle.static.data(name='x', shape=[None, 16], dtype='float32', lod_level=1)
+            >>> x_reshaped = paddle.static.nn.sequence_reshape(input=x, new_dim=4)
     """
     assert (
         not in_dygraph_mode()
