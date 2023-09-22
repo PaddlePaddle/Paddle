@@ -18,7 +18,11 @@ import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.base.framework import _current_expected_place
 from paddle.common_ops_import import Variable
-from paddle.framework import in_dynamic_mode, in_dynamic_or_pir_mode
+from paddle.framework import (
+    in_dynamic_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+)
 
 from ..base.data_feeder import (
     check_dtype,
@@ -131,7 +135,7 @@ def poisson(x, name=None):
              [5., 1., 3.]])
             >>> # doctest: -SKIP
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.poisson(x)
     else:
         check_variable_and_dtype(x, "x", ["float32", "float64"], "poisson")
@@ -201,7 +205,7 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
 
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.multinomial(x, num_samples, replacement)
     else:
         check_variable_and_dtype(
@@ -360,7 +364,7 @@ def gaussian(shape, mean=0.0, std=1.0, seed=0, dtype=None, name=None):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         shape = paddle.utils.convert_shape_to_list(shape)
         place = _current_expected_place()
         return _C_ops.gaussian(
@@ -618,7 +622,7 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
             [0.48646951, 0.00815189, 3.74022293])
             >>> # doctest: -SKIP
     """
-    if not in_dynamic_mode():
+    if not in_dynamic_or_pir_mode():
         check_type(mean, 'mean', (int, float, Variable), 'normal')
         check_type(std, 'std', (int, float, Variable), 'normal')
         if isinstance(mean, Variable):
@@ -656,7 +660,7 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
         return gaussian(shape=shape, mean=mean, std=std, name=name)
 
     out = out * std + mean
-    if not in_dynamic_mode():
+    if not in_dynamic_or_pir_mode():
         out.stop_grediant = True
     return out
 
@@ -961,10 +965,14 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
         low = 0
     if dtype is None:
         dtype = core.VarDesc.VarType.INT64
+        if in_pir_mode():
+            from paddle.base.libpaddle import DataType
+
+            dtype = DataType.INT64
     elif not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         shape = paddle.utils.convert_shape_to_list(shape)
         place = _current_expected_place()
         return _C_ops.randint(low, high, shape, dtype, place)
@@ -1241,7 +1249,7 @@ def randperm(n, dtype="int64", name=None):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.randperm(n, dtype, _current_expected_place())
     else:
         if n < 1:
@@ -1360,7 +1368,7 @@ def exponential_(x, lam=1.0, name=None):
             >>> # doctest: -SKIP
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.exponential_(x, lam)
     else:
         check_variable_and_dtype(
