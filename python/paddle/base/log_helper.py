@@ -14,7 +14,7 @@
 
 import logging
 
-__all__ = ['get_logger']
+__all__ = []
 
 
 def get_logger(name, level, fmt=None):

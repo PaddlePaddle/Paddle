@@ -1069,6 +1069,7 @@
   kernel :
     func : transpose
   view: (x -> out)
+  inplace : (x -> out)
   backward : transpose_grad
 
 - op : tril

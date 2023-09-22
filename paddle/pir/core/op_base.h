@@ -103,6 +103,18 @@ class OpInterfaceBase : public OpBase {
   }
 };
 
+template <typename, typename = void>
+struct VerifyTraitOrInterface {
+  static void call(Operation *) {}
+};
+
+template <typename T>
+struct VerifyTraitOrInterface<T,
+                              decltype(T::Verify(
+                                  std::declval<Operation *>()))> {
+  static void call(Operation *op) { T::Verify(op); }
+};
+
 template <typename ConcreteOp, class... TraitOrInterface>
 class Op : public OpBase {
  public:
@@ -139,12 +151,13 @@ class Op : public OpBase {
     class EmptyOp : public Op<EmptyOp, TraitOrInterface...> {};
     return sizeof(ConcreteOp) == sizeof(EmptyOp);
   }
-
   // Implementation of `VerifyInvariantsFn` OperationName hook.
   static void VerifyInvariants(Operation *op) {
     static_assert(HasNoDataMembers(),
                   "Op class shouldn't define new data members");
     op->dyn_cast<ConcreteOp>().Verify();
+    (void)std::initializer_list<int>{
+        0, (VerifyTraitOrInterface<TraitOrInterface>::call(op), 0)...};
   }
 };
 

@@ -105,8 +105,6 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
         InferShapeSqueezeOp(ctx, x_dims, out_dims);
         break;
       case ReshapeKernelOpName::flatten:
-        InferShapeFlattenOp(ctx, x_dims, out_dims);
-        break;
       case ReshapeKernelOpName::flatten2:
         InferShapeFlattenOp(ctx, x_dims, out_dims);
         break;

@@ -1,4 +1,4 @@
-// Copyright (c) 2021 CINN Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,15 +13,17 @@
 // limitations under the License.
 
 #pragma once
-#include <string>
 
-#include "paddle/cinn/ir/ir.h"
+#include "paddle/phi/core/dense_tensor.h"
 
-namespace cinn {
-namespace optim {
+namespace phi {
 
-//! Replace the variable \p v to expression \p e in expression \p expr.
-void IrReplace(ir::Expr* expr, ir::Expr from, ir::Expr to);
+template <typename T, typename Context>
+void GaussianInplaceGradKernel(const Context& ctx,
+                               const DenseTensor& out_grad,
+                               float mean,
+                               float std,
+                               int seed,
+                               DenseTensor* x_grad);
 
-}  // namespace optim
-}  // namespace cinn
+}  // namespace phi

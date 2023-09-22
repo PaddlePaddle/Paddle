@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 CINN Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,11 +13,16 @@
 // limitations under the License.
 
 #pragma once
+#include <string>
 
-#include <pybind11/pybind11.h>
+#include "paddle/cinn/ir/ir.h"
 
-namespace paddle {
-namespace pybind {
-void BindNewIR(pybind11::module *m);
-}  // namespace pybind
-}  // namespace paddle
+namespace cinn {
+namespace ir {
+namespace ir_utils {
+
+//! Replace the variable \p v to expression \p e in expression \p expr.
+void IrReplace(ir::Expr* expr, ir::Expr from, ir::Expr to);
+}  // namespace ir_utils
+}  // namespace ir
+}  // namespace cinn
