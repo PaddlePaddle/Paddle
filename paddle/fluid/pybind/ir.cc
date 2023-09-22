@@ -446,10 +446,10 @@ void SetOpResultBoolAttr(const OpResult &self,
 phi::DataType GetOpResultDtype(const OpResult &result) {
   if (result.type().isa<DenseTensorType>()) {
     return paddle::dialect::TransToPhiDataType(
-        result.type().dyn_cast<DenseTensorType>());
+        result.type().dyn_cast<DenseTensorType>().dtype());
   } else if (result.type().isa<SelectedRowsType>()) {
     return paddle::dialect::TransToPhiDataType(
-        result.type().dyn_cast<SelectedRowsType>());
+        result.type().dyn_cast<SelectedRowsType>().dtype());
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Currently, we can only get phi::DataType from DenseTensorType and "
