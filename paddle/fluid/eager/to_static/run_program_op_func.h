@@ -140,8 +140,11 @@ inline void run_program_ad_func(
   RunProgramAPI(
       x_tmp, params_tmp, out, step_scope, dout, require_any_grad, attrs);
   VLOG(2) << "start run run_program grad";
-
-  if (require_any_grad) {
+  auto is_test = false;
+  if (attrs.count("is_test")) {
+    is_test = PADDLE_GET_CONST(bool, attrs.at("is_test"));
+  }
+  if (!is_test && require_any_grad) {
     auto x_names =
         PADDLE_GET_CONST(std::vector<std::string>, attrs.at("x_names"));
 

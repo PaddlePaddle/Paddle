@@ -18,7 +18,6 @@
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/cross_entropy_with_softmax_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/embedding_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/layer_norm_spmd_rule.h"
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/reduction_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/replicated_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/reshape_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/softmax_spmd_rule.h"
@@ -29,18 +28,6 @@
 namespace paddle {
 namespace distributed {
 namespace auto_parallel {
-
-// reduction rules
-REGISTER_SPMD_RULE(all, ReductionSPMDRule);
-REGISTER_SPMD_RULE(amax, ReductionSPMDRule);
-REGISTER_SPMD_RULE(amin, ReductionSPMDRule);
-REGISTER_SPMD_RULE(any, ReductionSPMDRule);
-REGISTER_SPMD_RULE(frobenius_norm, ReductionSPMDRule);
-REGISTER_SPMD_RULE(max, ReductionSPMDRule);
-REGISTER_SPMD_RULE(mean, ReductionSPMDRule);
-REGISTER_SPMD_RULE(min, ReductionSPMDRule);
-REGISTER_SPMD_RULE(prod, ReductionSPMDRule);
-REGISTER_SPMD_RULE(sum, ReductionSPMDRule);
 
 // layer_norm rule
 REGISTER_SPMD_RULE(layer_norm, LayerNormSPMDRule);
