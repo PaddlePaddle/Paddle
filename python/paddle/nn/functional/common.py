@@ -592,8 +592,8 @@ def interpolate(
         elif isinstance(scale, (list, tuple)):
             if len(scale) != len(x.shape) - 2:
                 raise ValueError(
-                    "scale_shape length should be {} for "
-                    "input {}-D tensor.".format(len(x.shape) - 2, len(x.shape))
+                    f"scale_shape length should be {len(x.shape) - 2} for "
+                    f"input {len(x.shape)}-D tensor."
                 )
             for value in scale:
                 if value <= 0:
@@ -1366,9 +1366,7 @@ def dropout2d(x, p=0.5, training=True, data_format='NCHW', name=None):
     input_shape = x.shape
     if len(input_shape) != 4:
         raise ValueError(
-            "dimensions of x should be 4, but received {} != 4".format(
-                len(input_shape)
-            )
+            f"dimensions of x should be 4, but received {len(input_shape)} != 4"
         )
 
     if data_format not in ["NCHW", "NHWC"]:
@@ -1424,9 +1422,7 @@ def dropout3d(x, p=0.5, training=True, data_format='NCDHW', name=None):
     input_shape = x.shape
     if len(input_shape) != 5:
         raise ValueError(
-            "dimensions of x should be 5, but received {} != 5".format(
-                len(input_shape)
-            )
+            f"dimensions of x should be 5, but received {len(input_shape)} != 5"
         )
 
     if data_format not in ["NCDHW", "NDHWC"]:
@@ -1644,14 +1640,12 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
         'replicate',
         'constant',
         'circular',
-    ], "mode should be one of constant, reflect, replicate, circular, but got {}.".format(
-        mode
-    )
+    ], f"mode should be one of constant, reflect, replicate, circular, but got {mode}."
 
     data_format = data_format.upper()
     assert data_format in ["NCL", "NCHW", "NCDHW", "NLC", "NHWC", "NDHWC"], (
         "data_format should be in one of [NCL, NCHW, NCDHW, NLC, NHWC, NDHWC], "
-        "but got {}".format(data_format)
+        f"but got {data_format}"
     )
 
     x_dim = len(x.shape)
@@ -2213,19 +2207,15 @@ def class_center_sample(label, num_classes, num_samples, group=None):
         label_size *= dim
     if label_size != -1 and label_size < 1:
         raise ValueError(
-            'Expected label_size > 0 \
-             (got label_size: {})'.format(
-                label_size
-            )
+            f'Expected label_size > 0 \
+             (got label_size: {label_size})'
         )
 
     label_dims = len(list(label.shape))
     if label_dims != 1:
         raise ValueError(
-            'Expected label_dims == 1 \
-             (got label_dims: {})'.format(
-                label_dims
-            )
+            f'Expected label_dims == 1 \
+             (got label_dims: {label_dims})'
         )
 
     seed = None

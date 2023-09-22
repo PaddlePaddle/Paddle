@@ -5770,9 +5770,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
     """
     if n < 1:
         raise ValueError(
-            "Diff expects input to be at least one-dimensional but got {}".format(
-                n
-            )
+            f"Diff expects input to be at least one-dimensional but got {n}"
         )
 
     def _diff_handler(x, n=1, axis=-1, prepend=None, append=None, name=None):
@@ -6224,17 +6222,13 @@ def take(x, index, mode='raise', name=None):
     """
     if mode not in ['raise', 'wrap', 'clip']:
         raise ValueError(
-            "'mode' in 'take' should be 'raise', 'wrap', 'clip', but received {}.".format(
-                mode
-            )
+            f"'mode' in 'take' should be 'raise', 'wrap', 'clip', but received {mode}."
         )
 
     if in_dynamic_mode():
         if not isinstance(index, (paddle.Tensor, Variable)):
             raise TypeError(
-                "The type of 'index' must be Tensor, but got {}".format(
-                    type(index)
-                )
+                f"The type of 'index' must be Tensor, but got {type(index)}"
             )
         if index.dtype not in [paddle.int32, paddle.int64]:
             raise TypeError(

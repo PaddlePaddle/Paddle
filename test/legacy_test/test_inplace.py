@@ -56,9 +56,7 @@ class TestInplace(unittest.TestCase):
             loss = paddle.nn.functional.relu(var_c + var_d)
             with self.assertRaisesRegex(
                 RuntimeError,
-                "received tensor_version:{} != wrapper_version_snapshot:{}".format(
-                    1, 0
-                ),
+                f"received tensor_version:{1} != wrapper_version_snapshot:{0}",
             ):
                 loss.backward()
 
@@ -173,9 +171,7 @@ class TestDygraphInplace(unittest.TestCase):
             loss = paddle.nn.functional.relu(var_c)
             with self.assertRaisesRegex(
                 RuntimeError,
-                "received tensor_version:{} != wrapper_version_snapshot:{}".format(
-                    1, 0
-                ),
+                f"received tensor_version:{1} != wrapper_version_snapshot:{0}",
             ):
                 loss.backward()
 
@@ -890,9 +886,7 @@ class TestDygraphInplaceNanToNum(TestDygraphInplace):
             loss = paddle.nn.functional.relu(var_c)
             with self.assertRaisesRegex(
                 RuntimeError,
-                "received tensor_version:{} != wrapper_version_snapshot:{}".format(
-                    3, 0
-                ),
+                f"received tensor_version:{3} != wrapper_version_snapshot:{0}",
             ):
                 loss.backward()
 
@@ -981,9 +975,7 @@ class TestDygraphInplaceLdexp(TestDygraphInplaceWithContinuous):
             loss = paddle.nn.functional.relu(var_c)
             with self.assertRaisesRegex(
                 RuntimeError,
-                "received tensor_version:{} != wrapper_version_snapshot:{}".format(
-                    2, 0
-                ),
+                f"received tensor_version:{2} != wrapper_version_snapshot:{0}",
             ):
                 loss.backward()
 
@@ -1059,9 +1051,7 @@ class TestDygraphInplaceWhereBroadcast(TestDygraphInplaceWithContinuous):
             loss = paddle.nn.functional.relu(var_c)
             with self.assertRaisesRegex(
                 RuntimeError,
-                "received tensor_version:{} != wrapper_version_snapshot:{}".format(
-                    2, 0
-                ),
+                f"received tensor_version:{2} != wrapper_version_snapshot:{0}",
             ):
                 loss.backward()
 
@@ -1357,9 +1347,7 @@ class TestDygraphInplaceCumsum(TestDygraphInplaceWithContinuous):
             loss = paddle.nn.functional.relu(var_c)
             with self.assertRaisesRegex(
                 RuntimeError,
-                "received tensor_version:{} != wrapper_version_snapshot:{}".format(
-                    2, 0
-                ),
+                f"received tensor_version:{2} != wrapper_version_snapshot:{0}",
             ):
                 loss.backward()
 
@@ -1401,9 +1389,7 @@ class TestDygraphInplaceCumprod(TestDygraphInplace):
             loss = paddle.nn.functional.relu(var_c)
             with self.assertRaisesRegex(
                 RuntimeError,
-                "received tensor_version:{} != wrapper_version_snapshot:{}".format(
-                    2, 0
-                ),
+                f"received tensor_version:{2} != wrapper_version_snapshot:{0}",
             ):
                 loss.backward()
 

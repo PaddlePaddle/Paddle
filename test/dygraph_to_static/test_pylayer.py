@@ -32,9 +32,7 @@ def compare_result(dygraph_res, static_res, rtol=1e-5, atol=0):
         static_res.detach().numpy(),
         rtol=rtol,
         atol=atol,
-        err_msg='dygraph result is {}\nstatic_result is {}'.format(
-            dygraph_res, static_res
-        ),
+        err_msg=f'dygraph result is {dygraph_res}\nstatic_result is {static_res}',
     )
 
 

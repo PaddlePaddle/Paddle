@@ -482,7 +482,7 @@ class SimpleRNN(RNNMixin):
         else:
             raise ValueError(
                 "direction should be forward, backward or bidirectional, "
-                "received direction = {}".format(direction)
+                f"received direction = {direction}"
             )
 
         self.input_size = input_size
@@ -526,7 +526,7 @@ class LSTM(RNNMixin):
         else:
             raise ValueError(
                 "direction should be forward, backward or bidirectional, "
-                "received direction = {}".format(direction)
+                f"received direction = {direction}"
             )
 
         self.input_size = input_size
@@ -570,7 +570,7 @@ class GRU(RNNMixin):
         else:
             raise ValueError(
                 "direction should be forward, backward or bidirectional, "
-                "received direction = {}".format(direction)
+                f"received direction = {direction}"
             )
 
         self.input_size = input_size
