@@ -181,9 +181,7 @@ class FetchHandlerMonitor:
             if isinstance(fetch_instance.var_dict[key], Variable):
                 var_name_to_key[fetch_instance.var_dict[key].name] = key
             else:
-                local_logger.warning(
-                    "the value of {} is not a Variable".format(key)
-                )
+                local_logger.warning(f"the value of {key} is not a Variable")
                 var_name_to_key["None.var"] = key
         elapsed_secs = 0
         while True:
@@ -202,9 +200,7 @@ class FetchHandlerMonitor:
                     fetch_dict[key] = var
                     if var is None:
                         local_logger.warning(
-                            "{} value currently not available".format(
-                                var_name_to_key[key]
-                            )
+                            f"{var_name_to_key[key]} value currently not available"
                         )
                 res_dict = {}
                 for key in fetch_dict:
