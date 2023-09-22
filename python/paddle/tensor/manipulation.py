@@ -3649,7 +3649,7 @@ def reshape(x, shape, name=None):
         else:
             raise ValueError(
                 "shape must be an instance of `list`, `tuple` `Variable`,"
-                " got '{}.'".format(type(shape))
+                f" got '{type(shape)}.'"
             )
         return out
     elif in_pir_mode():
@@ -3665,7 +3665,7 @@ def reshape(x, shape, name=None):
         else:
             raise ValueError(
                 "shape must be an instance of `list`, `tuple` `OpResult(in pir mode)`,"
-                " got '{}.'".format(type(shape))
+                f" got '{type(shape)}.'"
             )
 
         return out
