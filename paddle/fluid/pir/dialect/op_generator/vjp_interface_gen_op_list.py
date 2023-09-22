@@ -96,7 +96,6 @@ vjp_interface_implementation_gen_op_list = [
     'slice_grad',
     'gather_nd',
     'stack',
-    'slice_double',
     'poisson',
     'gumbel_softmax',
 ]
