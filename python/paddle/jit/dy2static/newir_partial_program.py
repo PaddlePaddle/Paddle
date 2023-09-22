@@ -958,8 +958,6 @@ class PartialProgramLayer:
             else:
                 tensor_type = paddle.dtype(8)  # SELECT ROW TENSOR
 
-            # TODO(xiongkun): more elegent way to do it.
-
             out = core.eager.Tensor(
                 framework.paddle_type_to_proto_type[var.dtype],
                 var.shape,

@@ -1500,17 +1500,18 @@ class PirPrimHooker(PirPartialProgramLayerHook):
 
     def after_append_backward(self, whole_program, src_vars, forward_end_idx):
         with backend_guard(self.backend):
-            dst_vars = src_vars
-            backward_length = (
-                len(whole_program.global_block().ops) - forward_end_idx
-            )
             if core._is_fwd_prim_enabled() and len(self.custom_vjps) != 0:
-                # only process backward part of block
-                dst_vars = decomposition.decompose(whole_program, src_vars)
-            new_start_index = (
-                len(whole_program.global_block().ops) - backward_length
-            )
-            return whole_program, new_start_index, dst_vars
+                backward_length = (
+                    len(whole_program.global_block().ops) - forward_end_idx
+                )
+                dst_vars = decomposition.decompose(
+                    whole_program, src_vars, whitelist=self.custom_vjps
+                )
+                new_start_index = (
+                    len(whole_program.global_block().ops) - backward_length
+                )
+                return whole_program, new_start_index, dst_vars
+            return whole_program, forward_end_idx, src_vars
 
     def after_infer(self, infer_program, src_vars):
         with backend_guard(self.backend):
