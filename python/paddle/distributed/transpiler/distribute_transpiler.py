@@ -157,8 +157,8 @@ class DistributeTranspilerConfig:
     .. py:attribute:: split_method (PSDispatcher)
 
           Methods of dispatching parameters for server,
-          :ref:`api_base_transpiler_RoundRobin` or
-          :ref:`api_base_transpiler_HashName` can be used and default is RoundRobin.
+          :ref:`api_fluid_transpiler_RoundRobin` or
+          :ref:`api_fluid_transpiler_HashName` can be used and default is RoundRobin.
           Try to choose the best method to balance loads for parameter servers.
 
     .. py:attribute:: min_block_size (int)

@@ -1404,7 +1404,7 @@ class Embedding(Layer):
             default weight parameter property is used. See usage for details in :ref:`api_ParamAttr` . In addition,
             user-defined or pre-trained word vectors can be loaded with the :attr:`param_attr` parameter.
             The local word vector needs to be transformed into numpy format, and the shape of local word
-            vector should be consistent with :attr:`num_embeddings` . Then :ref:`api_initializer_NumpyArrayInitializer`
+            vector should be consistent with :attr:`num_embeddings` . Then :ref:`api_fluid_initializer_NumpyArrayInitializer`
             is used to load custom or pre-trained word vectors. See code example for details.
         name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and
             None by default.

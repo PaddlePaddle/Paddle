@@ -274,7 +274,7 @@ def logical_xor(x, y, out=None, name=None):
 def logical_xor_(x, y, name=None):
     r"""
     Inplace version of ``logical_xor`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_logical_xor`.
+    Please refer to :ref:`api_paddle_logical_xor`.
     """
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
