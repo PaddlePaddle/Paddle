@@ -1686,6 +1686,22 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 #endif
         delete prog;
       });
+#ifdef PADDLE_WITH_TENSORRT
+  auto &inference_block = inference_program_->Block(0);
+  for (auto &op_desc : inference_block.AllOps()) {
+    if (op_desc->Type() == "tensorrt_engine") {
+      if (op_desc->HasAttr("shape_range_info_path") &&
+          argument_->Has("tensorrt_shape_range_info_path")) {
+        op_desc->SetAttr("shape_range_info_path",
+                         {argument_->tensorrt_shape_range_info_path()});
+      }
+      if (op_desc->HasAttr("model_opt_cache_dir") &&
+          argument_->Has("optim_cache_dir")) {
+        op_desc->SetAttr("model_opt_cache_dir", {argument_->optim_cache_dir()});
+      }
+    }
+  }
+#endif
   // The config and argument take a lot of storage,
   // when the predictor settings are complete, we release these stores.
   config_.PartiallyRelease();
@@ -2819,6 +2835,7 @@ USE_TRT_CONVERTER(batch_norm);
 USE_TRT_CONVERTER(concat);
 USE_TRT_CONVERTER(dropout);
 USE_TRT_CONVERTER(pad);
+USE_TRT_CONVERTER(bitwise_and);
 #if IS_TRT_VERSION_GE(8200)
 USE_TRT_CONVERTER(pad3d);
 USE_TRT_CONVERTER(einsum)
@@ -2951,6 +2968,7 @@ USE_TRT_CONVERTER(cumsum)
 USE_TRT_CONVERTER(assign)
 USE_TRT_CONVERTER(unbind)
 USE_TRT_CONVERTER(flip)
+USE_TRT_CONVERTER(share_data)
 #if IS_TRT_VERSION_GE(8522)
 USE_TRT_CONVERTER(flash_multihead_matmul)
 USE_TRT_CONVERTER(cross_multihead_matmul)

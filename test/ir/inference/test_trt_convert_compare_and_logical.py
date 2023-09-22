@@ -32,7 +32,12 @@ class TrtConvertLogicalTest(TrtLayerAutoScanTest):
             return np.random.random(shape).astype(np.float32)
 
         for shape in [[2, 16], [2, 16, 32], [1, 32, 16, 32]]:
-            for op_type in ["logical_and", "logical_or", "logical_xor"]:
+            for op_type in [
+                "logical_and",
+                "logical_or",
+                "logical_xor",
+                "bitwise_and",
+            ]:
                 for axis in [-1]:
                     self.dims = len(shape)
                     dics = [

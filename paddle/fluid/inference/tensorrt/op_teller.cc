@@ -1402,7 +1402,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     if (op_type == "less_than" || op_type == "greater_than" ||
         op_type == "logical_or" || op_type == "logical_xor" ||
         op_type == "logical_and" || op_type == "less_equal" ||
-        op_type == "greater_equal") {
+        op_type == "greater_equal" || op_type == "bitwise_and") {
 #if IS_TRT_VERSION_GE(8400)
       // TRT does not support kEQUAL/kGREATER/kLESS work with implicit batch
       if (!with_dynamic_shape) {
@@ -1415,7 +1415,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto x_dtype = x_var_desc->GetDataType();
       auto y_dtype = y_var_desc->GetDataType();
       if (op_type == "logical_or" || op_type == "logical_xor" ||
-          op_type == "logical_and") {
+          op_type == "logical_and" || op_type == "bitwise_and") {
         if (x_dtype != framework::proto::VarType::BOOL ||
             y_dtype != framework::proto::VarType::BOOL) {
           VLOG(3) << "the op (" << op_type << ") only support input of BOOL.";
@@ -2917,7 +2917,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "assign",
       "flip",
       "quantize_linear",
-      "dequantize_linear"};
+      "dequantize_linear",
+      "bitwise_and",
+      "share_data"};
 
   std::unordered_set<std::string> teller_set{
       "matrix_multiply",
@@ -3085,7 +3087,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "assign",
       "flip",
       "quantize_linear",
-      "dequantize_linear"};
+      "dequantize_linear",
+      "bitwise_and",
+      "share_data"};
 };
 
 struct GenericPluginTeller : public Teller {

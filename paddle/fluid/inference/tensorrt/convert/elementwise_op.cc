@@ -77,7 +77,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
     int axis = -1;
     // axis here is relative to explicit batch
     if (op_type_ != "logical_or" && op_type_ != "logical_xor" &&
-        op_type_ != "logical_and") {
+        op_type_ != "logical_and" && op_type_ != "bitwise_and") {
       axis = PADDLE_GET_CONST(int, op_desc.GetAttr("axis"));
     }
     int real_x_rank = dims_x.nbDims;
@@ -240,6 +240,7 @@ const std::unordered_map<std::string, nvinfer1::ElementWiseOperation>
         {"logical_or", nvinfer1::ElementWiseOperation::kOR},
         {"logical_xor", nvinfer1::ElementWiseOperation::kXOR},
         {"logical_and", nvinfer1::ElementWiseOperation::kAND},
+        {"bitwise_and", nvinfer1::ElementWiseOperation::kAND},
 };
 
 class ElementwiseTensorAddOpConverter : public ElementwiseTensorOpConverter {
@@ -320,7 +321,11 @@ class ElementwiseTensorModOpConverter : public ElementwiseTensorOpConverter {
  public:
   ElementwiseTensorModOpConverter() { op_type_ = "mod"; }
 };
-
+class ElementwiseTensorBitwiseAndOpConverter
+    : public ElementwiseTensorOpConverter {
+ public:
+  ElementwiseTensorBitwiseAndOpConverter() { op_type_ = "bitwise_and"; }
+};
 // The diff between `pow` and `elementwise_pow` is in:
 // https://github.com/PaddlePaddle/Paddle/blob/release/2.4/python/paddle/tensor/math.py#L420
 class PowOpConverter : public OpConverter {
@@ -403,3 +408,4 @@ REGISTER_TRT_OP_CONVERTER(greater_equal,
                           ElementwiseTensorGreaterEqualOpConverter);
 
 REGISTER_TRT_OP_CONVERTER(pow, PowOpConverter);
+REGISTER_TRT_OP_CONVERTER(bitwise_and, ElementwiseTensorBitwiseAndOpConverter);
