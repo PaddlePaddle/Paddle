@@ -572,17 +572,18 @@ class DygraphShardingOptimizerV2:
 
         logger.debug("sharding start sync parameters")
         with framework.no_grad():
-            params = zip(self._parameter_list, self._local_parameter_list)
-            for full, slice in params:
-                gather_list = []
-                paddle.distributed.all_gather(
-                    gather_list,
-                    slice,
-                    group=self._hcg.get_sharding_parallel_group(),
-                    sync_op=True,
+            for full in self._parameter_list:
+                shard_slice = full.shard_slice
+                group = self._hcg.get_sharding_parallel_group()
+                assert full.name in self._padded_param_buffer
+                padded_param_buffer = self._padded_param_buffer[full.name]
+                group.process_group.all_gather(
+                    padded_param_buffer, shard_slice, sync_op=True
                 )
-                padded_full = paddle.concat(gather_list, axis=0)
-                self._assign_param(full, padded_full)
+                padded_param_buffer._slice(0, full._numel())._share_buffer_to(
+                    full
+                )
+                full.shard_slice._clear_data()
 
     def _update_trainable(self):
         """
@@ -621,7 +622,9 @@ class DygraphShardingOptimizerV2:
         end = begin + shard_slice._numel()
         if p.name not in self._padded_param_buffer:
             padded_buffer = self._create_padded_buffer(p)
+            p._clear_data()
             padded_buffer._slice(0, p._numel())._share_buffer_to(p)
+            paddle.device.cuda.empty_cache()
             self._padded_param_buffer[p.name] = padded_buffer
         padded_buffer = self._padded_param_buffer[p.name]
         if not padded_buffer._is_shared_buffer_with(p):
@@ -671,16 +674,6 @@ class DygraphShardingOptimizerV2:
             t_padded[0:size] = t
             t.get_tensor()._set_dims(t_shape)
             return t_padded
-
-    def _assign_param(self, param, padded_buffer):
-        # recover param from padded buffer
-        size = param._numel()
-        padded_size = padded_buffer._numel()
-        assert padded_size >= size
-        with framework.no_grad():
-            padded_buffer._share_buffer_to(param)
-            self._padded_param_buffer[param.name] = padded_buffer
-            param.shard_slice._clear_data()
 
     def _get_padded_grad(self, param, g_var):
         if param.name not in self._padded_grad_buffer:
