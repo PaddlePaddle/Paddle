@@ -948,10 +948,20 @@ void RoiAlignInferMeta(const MetaTensor& x,
                         spatial_scale));
 
   auto out_dims = input_dims;
-  out_dims[0] = boxes_dims[0];
-  out_dims[1] = input_dims[1];
-  out_dims[2] = pooled_height;
-  out_dims[3] = pooled_width;
+  if (data_format == "NCHW") {
+    out_dims[0] = boxes_dims[0];
+    out_dims[1] = input_dims[1];
+    out_dims[2] = pooled_height;
+    out_dims[3] = pooled_width;
+  } else if (data_format == "NHWC") {
+    out_dims[0] = boxes_dims[0];
+    out_dims[1] = pooled_height;
+    out_dims[2] = pooled_width;
+    out_dims[3] = input_dims[3];
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Unsupported data format %s for RoiAlignOp.", data_format));
+  }
 
   out->set_dims(out_dims);
   out->set_dtype(x.dtype());
