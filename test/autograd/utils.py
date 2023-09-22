@@ -26,7 +26,7 @@ from paddle.incubate.autograd.utils import as_tensors
 # Finite Difference Utils
 ##########################################################
 def _product(t):
-    return int(np.product(t))
+    return int(np.prod(t))
 
 
 def _get_item(t, idx):

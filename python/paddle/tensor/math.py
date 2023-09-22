@@ -270,7 +270,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     elif in_pir_mode():
         if act is None:
             return _C_ops.scale(x, scale, float(bias), bias_after_scale)
-        raise ValueError("act is not implement in new ir of scale api.")
+        raise ValueError("act is not implement in pir of scale api.")
     else:
         check_variable_and_dtype(
             x,
@@ -498,15 +498,17 @@ def pow(x, y, name=None):
             [1., 4., 9.])
 
     """
+
     # in dynamic graph mode
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if isinstance(y, (int, float)):
             return _C_ops.pow(x, y)
-        elif isinstance(y, (paddle.Tensor, Variable)):
+        elif isinstance(y, (paddle.Tensor, Variable, paddle.pir.OpResult)):
             return _C_ops.elementwise_pow(x, y)
         else:
             raise TypeError(
-                'y must be scalar or tensor type, but received: %s ' % (y.dtype)
+                'y must be scalar , Tensor(in dygraph mode), OpResult(in pir mode) but received: %s '
+                % (y.dtype)
             )
     else:
         # in static graph mode
@@ -688,6 +690,8 @@ def add(x, y, name=None):
     if in_dynamic_or_pir_mode():
         return _C_ops.add(x, y)
     else:
+        if in_pir_mode():
+            return paddle._pir_ops.add(x, y)
         return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 
 
@@ -1522,7 +1526,8 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         return _C_ops.sum(x, axis, dtype, keepdim)
     else:
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
-        attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all}
+
+        attrs = {'dim': axis, 'keep_dim': keepdim}
 
         if dtype_flag:
             attrs.update({'in_dtype': x.dtype, 'out_dtype': dtype})
@@ -4624,7 +4629,7 @@ def tanh(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.37994900, -0.19737528,  0.09966799,  0.29131261])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.tanh(x)
     else:
         check_variable_and_dtype(
@@ -5765,9 +5770,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
     """
     if n < 1:
         raise ValueError(
-            "Diff expects input to be at least one-dimensional but got {}".format(
-                n
-            )
+            f"Diff expects input to be at least one-dimensional but got {n}"
         )
 
     def _diff_handler(x, n=1, axis=-1, prepend=None, append=None, name=None):
@@ -6219,17 +6222,13 @@ def take(x, index, mode='raise', name=None):
     """
     if mode not in ['raise', 'wrap', 'clip']:
         raise ValueError(
-            "'mode' in 'take' should be 'raise', 'wrap', 'clip', but received {}.".format(
-                mode
-            )
+            f"'mode' in 'take' should be 'raise', 'wrap', 'clip', but received {mode}."
         )
 
     if in_dynamic_mode():
         if not isinstance(index, (paddle.Tensor, Variable)):
             raise TypeError(
-                "The type of 'index' must be Tensor, but got {}".format(
-                    type(index)
-                )
+                f"The type of 'index' must be Tensor, but got {type(index)}"
             )
         if index.dtype not in [paddle.int32, paddle.int64]:
             raise TypeError(

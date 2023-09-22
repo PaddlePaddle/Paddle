@@ -8,7 +8,14 @@ cc_test_old(
   pd_op_dialect)
 cc_test_old(ir_attribute_test SRCS ir_attribute_test.cc DEPS pir gtest)
 cc_test_old(ir_value_test SRCS ir_value_test.cc DEPS pir gtest)
-cc_test_old(ir_op_test SRCS ir_op_test.cc DEPS pir gtest)
+cc_test_old(
+  ir_op_test
+  SRCS
+  ir_op_test.cc
+  DEPS
+  pir
+  gtest
+  test_dialect)
 cc_test_old(ir_region_test SRCS ir_region_test.cc DEPS pir gtest)
 cc_test_old(ir_builder_test SRCS ir_builder_test.cc DEPS pir gtest)
 cc_test_old(
@@ -64,6 +71,12 @@ file(
   https://paddle-ci.gz.bcebos.com/ir_translator_test/resnet50_startup.prog
   ${CMAKE_CURRENT_BINARY_DIR}/resnet50_startup.prog
   EXPECTED_MD5 6affc5f40f0f0bb84d956919b95eaf50)
+
+file(
+  DOWNLOAD
+  https://paddle-ci.gz.bcebos.com/ir_translator_test/conditional_block_test.prog
+  ${CMAKE_CURRENT_BINARY_DIR}/conditional_block_test.prog
+  EXPECTED_MD5 cf9dc869ca7f69e2d57b38dbf8427134)
 
 copy_if_different(${CMAKE_CURRENT_SOURCE_DIR}/TestParserText.txt
                   ${CMAKE_CURRENT_BINARY_DIR}/TestParserText.txt)

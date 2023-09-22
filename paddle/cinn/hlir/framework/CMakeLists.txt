@@ -21,7 +21,8 @@ gather_srcs(
   op_lowering_util.cc
   op_lowering_impl.cc
   accuracy_checker.cc
-  visualize_helper.cc)
+  visualize_helper.cc
+  compile_error.cc)
 
 # TODO(Aurelius84): new_ir_compiler depends on pd_op_dialect and could
 # not found under CINN_ONLY mode

@@ -122,9 +122,9 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/io.h"
-#include "paddle/fluid/pybind/ir.h"
 #include "paddle/fluid/pybind/jit.h"
 #include "paddle/fluid/pybind/metrics_py.h"
+#include "paddle/fluid/pybind/pir.h"
 #include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/fluid/pybind/xpu_streams_py.h"
@@ -697,16 +697,14 @@ void BindVjp(pybind11::module *m) {
          const std::vector<std::vector<pir::OpResult>> &out_grads,
          const std::vector<std::vector<bool>> &stop_gradients) {
         py::list res;
-        pir::IrContext *ctx = pir::IrContext::Instance();
-        pir::OpInfo fwd_op_info = ctx->GetRegisteredOpInfo(fwd_op.name());
-        auto vjp_interface_impl =
-            fwd_op_info.GetInterfaceImpl<paddle::dialect::VjpInterface>();
-        if (vjp_interface_impl == nullptr) {
-          PADDLE_THROW(phi::errors::InvalidArgument(
-              "The vjp function is not registered in %s op ", fwd_op.name()));
-        }
+        paddle::dialect::VjpInterface vjp_interface =
+            fwd_op.dyn_cast<paddle::dialect::VjpInterface>();
+        PADDLE_ENFORCE(
+            vjp_interface,
+            phi::errors::InvalidArgument(
+                "The vjp function is not registered in %s op ", fwd_op.name()));
         std::vector<std::vector<pir::OpResult>> vjp_res =
-            vjp_interface_impl->vjp_(&fwd_op, out_grads, stop_gradients);
+            vjp_interface.Vjp(&fwd_op, out_grads, stop_gradients);
         PADDLE_ENFORCE_EQ(
             stop_gradients.size(),
             vjp_res.size(),
@@ -870,6 +868,8 @@ PYBIND11_MODULE(libpaddle, m) {
           [](const std::shared_ptr<egr::GradNodeBase> &self) {
             return self->NextFunctions();
           })
+
+      .def("node_this_ptr", &egr::GradNodeBase::GetThisPtr)
       .def("input_meta",
            [](const std::shared_ptr<egr::GradNodeBase> &self) {
              return self->InputMeta();
@@ -2939,7 +2939,7 @@ All parameter, weight, gradient are variables in Paddle.
   GetAllWorkerInfos(&m);
 #endif
 
-  BindNewIR(&m);
+  BindPIR(&m);
   BindVjp(&m);
 }
 }  // namespace pybind

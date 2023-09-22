@@ -45,7 +45,7 @@ class LarsMomentumOptimizer(Optimizer):
             The default value is None in static graph mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
              :ref:`api_base_regularizer_L1Decay` , :ref:`api_base_regularizer_L2Decay` . If a parameter has set \
-            regularizer using :ref:`api_base_ParamAttr` already, the regularization setting here in optimizer will be \
+            regularizer using :ref:`api_paddle_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of

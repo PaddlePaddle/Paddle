@@ -262,6 +262,7 @@ function cmake_base() {
         -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF}
         -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}"
         -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
+        -DWITH_NVCC_LAZY=${WITH_NVCC_LAZY:-ON}
         -DWITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
     ========================================
 EOF
@@ -313,6 +314,7 @@ EOF
         -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}  \
         -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}  \
+        -DWITH_NVCC_LAZY=${WITH_NVCC_LAZY:-ON} \
         -DWITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF};build_error=$?
 
     if [ "$build_error" != 0 ];then
@@ -987,10 +989,10 @@ function check_whl_size() {
     fi
 
     set +x
-    pr_whl_size=`du -m ${PADDLE_ROOT}/build/pr_whl/*.whl|awk '{print $1}'`
+    pr_whl_size=`du -m ${PADDLE_ROOT}/build/pr_whl/paddle*.whl|awk '{print $1}'`
     echo "pr_whl_size: ${pr_whl_size}"
 
-    dev_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
+    dev_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/paddle*.whl|awk '{print $1}'`
     echo "dev_whl_size: ${dev_whl_size}"
 
     whldiffSize=`echo $(($pr_whl_size - $dev_whl_size))`
@@ -2370,7 +2372,7 @@ set -x
         export FLAGS_trt_ibuilder_cache=1
         precison_cases=""
         bash $PADDLE_ROOT/tools/check_added_ut.sh
-        #check change of pr_unnitests and dev_unnitests
+        #check change of pr_unittests and dev_unittests
         check_approvals_of_unittest 2
         ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > ${PADDLE_ROOT}/build/all_ut_list
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then

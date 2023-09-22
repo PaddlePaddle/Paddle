@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
+from utils import static_guard
 
 import paddle
 import paddle.nn.functional as F
@@ -83,9 +84,9 @@ class TestSoftmaxOp(OpTest):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.use_cudnn:
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+            self.check_output_with_place(place, atol=1e-5, check_new_ir=True)
         else:
-            self.check_output(check_prim=True)
+            self.check_output(check_prim=True, check_new_ir=True)
 
     def test_check_grad(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
@@ -98,6 +99,7 @@ class TestSoftmaxOp(OpTest):
                     "Out",
                     max_relative_error=0.01,
                     check_dygraph=(not self.use_mkldnn),
+                    check_new_ir=True,
                 )
         else:
             self.check_grad(
@@ -106,6 +108,7 @@ class TestSoftmaxOp(OpTest):
                 max_relative_error=0.01,
                 check_dygraph=(not self.use_mkldnn),
                 check_prim=True,
+                check_new_ir=True,
             )
 
 
@@ -143,9 +146,9 @@ class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.use_cudnn:
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+            self.check_output_with_place(place, atol=1e-5, check_new_ir=True)
         else:
-            self.check_output(check_prim=True)
+            self.check_output(check_prim=True, check_new_ir=True)
 
 
 @unittest.skipIf(
@@ -177,9 +180,9 @@ class TestSoftmaxOp_ZeroDim2(TestSoftmaxOp):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.use_cudnn:
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+            self.check_output_with_place(place, atol=1e-5, check_new_ir=True)
         else:
-            self.check_output(check_prim=True)
+            self.check_output(check_prim=True, check_new_ir=True)
 
 
 class TestSoftmaxOp2(TestSoftmaxOp):
@@ -468,7 +471,7 @@ class TestSoftmaxAPI(unittest.TestCase):
         self.softmax = F.softmax
 
     def test_static_check(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', self.x_np.shape, 'float32')
                 out1 = self.softmax(x)
@@ -512,7 +515,7 @@ class TestSoftmaxAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_error(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 # The input type must be Variable.
                 self.assertRaises(TypeError, self.softmax, 1)
@@ -546,7 +549,7 @@ class TestSoftmaxAPI_ZeroDim(unittest.TestCase):
         paddle.enable_static()
 
     def test_static(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             main_prog = base.Program()
             with base.program_guard(main_prog, base.Program()):
                 x = paddle.rand([])
