@@ -54,6 +54,7 @@ VJPS = [
     'erf_grad',
     'expand_grad',
     'exp_grad',
+    'expm1_grad',
     'elementwise_pow_grad',
     'fused_softmax_mask_upper_triangle_grad',
     'matmul_grad',
@@ -73,6 +74,8 @@ VJPS = [
     'stack_grad',
     'squeeze_grad',
     'unsqueeze_grad',
+    'poisson_grad',
+    'gumbel_softmax_grad',
 ]
 
 
@@ -123,6 +126,7 @@ BACKENDS = [
     'erf_grad',
     'expand_grad',
     'exp_grad',
+    'expm1_grad',
     'multiply',
     'exp',
     'erf',
@@ -165,6 +169,8 @@ BACKENDS = [
     'embedding_grad',
     'sqrt',
     'uniform',
+    'poisson_grad',
+    'gumbel_softmax_grad',
     'split',
     'transpose',
     'gather_nd_grad',

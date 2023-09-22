@@ -18,7 +18,11 @@ import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.base.framework import _current_expected_place
 from paddle.common_ops_import import Variable
-from paddle.framework import in_dynamic_mode, in_dynamic_or_pir_mode
+from paddle.framework import (
+    in_dynamic_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+)
 
 from ..base.data_feeder import (
     check_dtype,
@@ -131,7 +135,7 @@ def poisson(x, name=None):
              [5., 1., 3.]])
             >>> # doctest: -SKIP
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.poisson(x)
     else:
         check_variable_and_dtype(x, "x", ["float32", "float64"], "poisson")
@@ -201,7 +205,7 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
 
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.multinomial(x, num_samples, replacement)
     else:
         check_variable_and_dtype(
@@ -360,7 +364,7 @@ def gaussian(shape, mean=0.0, std=1.0, seed=0, dtype=None, name=None):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         shape = paddle.utils.convert_shape_to_list(shape)
         place = _current_expected_place()
         return _C_ops.gaussian(
@@ -392,6 +396,40 @@ def gaussian(shape, mean=0.0, std=1.0, seed=0, dtype=None, name=None):
         )
         out.stop_gradient = True
         return out
+
+
+@dygraph_only
+def gaussian_(x, mean=0.0, std=1.0, seed=0, name=None):
+    """
+    This is the inplace version of OP ``gaussian``, which returns a Tensor filled
+    with random values sampled from a gaussian distribution. The output Tensor will
+    be inplaced with input ``x``. Please refer to :ref:`api_tensor_gaussian`.
+
+    Args:
+        x(Tensor): The input tensor to be filled with random values.
+        mean (float|int, optional): Mean of the output tensor, default is 0.0.
+        std (float|int, optional): Standard deviation of the output tensor, default
+            is 1.0.
+        seed (int, optional): Random seed of generator.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+    Returns:
+        Tensor: The input tensor x filled with random values sampled from a gaussian
+        distribution.
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.randn([3, 4])
+            >>> paddle.tensor.random.gaussian_(x)
+            >>> print(x)
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [[ 0.86384124,  0.67328387,  0.21874231, -0.12615913],
+                [ 0.69844258,  0.42084831, -0.42476156, -0.00072985],
+                [ 1.72819555,  1.87785017,  0.48915744,  0.09235018]])
+    """
+    return _C_ops.gaussian_inplace_(x, float(mean), float(std), int(seed))
 
 
 def standard_normal(shape, dtype=None, name=None):
@@ -584,7 +622,7 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
             [0.48646951, 0.00815189, 3.74022293])
             >>> # doctest: -SKIP
     """
-    if not in_dynamic_mode():
+    if not in_dynamic_or_pir_mode():
         check_type(mean, 'mean', (int, float, Variable), 'normal')
         check_type(std, 'std', (int, float, Variable), 'normal')
         if isinstance(mean, Variable):
@@ -622,9 +660,48 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
         return gaussian(shape=shape, mean=mean, std=std, name=name)
 
     out = out * std + mean
-    if not in_dynamic_mode():
+    if not in_dynamic_or_pir_mode():
         out.stop_grediant = True
     return out
+
+
+@dygraph_only
+def normal_(x, mean=0.0, std=1.0, name=None):
+    """
+    This is the inplace version of api ``normal``, which returns a Tensor filled
+    with random values sampled from a normal distribution. The output Tensor will
+    be inplaced with input ``x``. Please refer to :ref:`api_tensor_noraml`.
+
+    Args:
+        x(Tensor): The input tensor to be filled with random values.
+        mean (float|Tensor, optional): The mean of the output Tensor's normal distribution.
+            If ``mean`` is float, all elements of the output Tensor shared the same mean.
+            If ``mean`` is a Tensor(data type supports float32, float64), it has per-element means.
+            Default is 0.0
+        std (float|Tensor, optional): The  standard deviation of the output Tensor's normal distribution.
+            If ``std`` is float, all elements of the output Tensor shared the same standard deviation.
+            If ``std`` is a Tensor(data type supports float32, float64), it has per-element standard deviations.
+            Defaule is 1.0
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+    Returns:
+        A Tensor filled with random values sampled from a normal distribution with ``mean`` and ``std`` .
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.randn([3, 4])
+            >>> x.normal_()
+            >>> # doctest: +SKIP('random check')
+            >>> print(x)
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[ 0.06132207,  1.11349595,  0.41906244, -0.24858207],
+             [-1.85169315, -1.50370061,  1.73954511,  0.13331604],
+             [ 1.66359663, -0.55764782, -0.59911072, -0.57773495]])
+
+    """
+    return gaussian_(x, mean=mean, std=std)
 
 
 def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
@@ -888,10 +965,14 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
         low = 0
     if dtype is None:
         dtype = core.VarDesc.VarType.INT64
+        if in_pir_mode():
+            from paddle.base.libpaddle import DataType
+
+            dtype = DataType.INT64
     elif not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         shape = paddle.utils.convert_shape_to_list(shape)
         place = _current_expected_place()
         return _C_ops.randint(low, high, shape, dtype, place)
@@ -1168,7 +1249,7 @@ def randperm(n, dtype="int64", name=None):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.randperm(n, dtype, _current_expected_place())
     else:
         if n < 1:
@@ -1287,7 +1368,7 @@ def exponential_(x, lam=1.0, name=None):
             >>> # doctest: -SKIP
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.exponential_(x, lam)
     else:
         check_variable_and_dtype(

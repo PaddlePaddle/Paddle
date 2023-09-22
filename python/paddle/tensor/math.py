@@ -270,7 +270,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     elif in_pir_mode():
         if act is None:
             return _C_ops.scale(x, scale, float(bias), bias_after_scale)
-        raise ValueError("act is not implement in new ir of scale api.")
+        raise ValueError("act is not implement in pir of scale api.")
     else:
         check_variable_and_dtype(
             x,
@@ -503,7 +503,7 @@ def pow(x, y, name=None):
     if in_dynamic_or_pir_mode():
         if isinstance(y, (int, float)):
             return _C_ops.pow(x, y)
-        elif isinstance(y, (paddle.Tensor, Variable, paddle.ir.OpResult)):
+        elif isinstance(y, (paddle.Tensor, Variable, paddle.pir.OpResult)):
             return _C_ops.elementwise_pow(x, y)
         else:
             raise TypeError(
@@ -691,7 +691,7 @@ def add(x, y, name=None):
         return _C_ops.add(x, y)
     else:
         if in_pir_mode():
-            return paddle._ir_ops.add(x, y)
+            return paddle._pir_ops.add(x, y)
         return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 
 

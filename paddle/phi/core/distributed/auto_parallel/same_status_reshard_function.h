@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,10 +14,21 @@
 
 #pragma once
 
-#include <pybind11/pybind11.h>
+#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
 
-namespace paddle {
-namespace pybind {
-void BindNewIR(pybind11::module *m);
-}  // namespace pybind
-}  // namespace paddle
+namespace phi {
+namespace distributed {
+
+class SameStatusReshardFunction final : public ReshardFunction {
+ public:
+  bool IsSuitable(const DistTensor& in,
+                  const TensorDistAttr& out_dist_attr) override;
+
+  void Eval(DeviceContext* dev_ctx,
+            const DistTensor& in,
+            const TensorDistAttr& out_dist_attr,
+            DistTensor* out) override;
+};
+
+}  // namespace distributed
+}  // namespace phi
