@@ -105,9 +105,7 @@ class PipelineOptimizer:
             raise ValueError(
                 "The 'optimizer' parameter for "
                 "PipelineOptimizer must be an instance of "
-                "{}, but the given type is {}.".format(
-                    valid_optimizers, type(optimizer)
-                )
+                f"{valid_optimizers}, but the given type is {type(optimizer)}."
             )
         self._optimizer = optimizer
 
@@ -511,9 +509,7 @@ class PipelineOptimizer:
             post_op = self._find_post_op(idx, out_name)
             assert post_op.has_attr(
                 'op_device'
-            ), "{} has no op_device attr for var {}".format(
-                post_op.type, out_name
-            )
+            ), f"{post_op.type} has no op_device attr for var {out_name}"
             device = post_op.attr(self._op_device_key)
             assert device, "The post op must have op_device set."
             op._set_attr(self._op_device_key, device)
@@ -605,8 +601,8 @@ class PipelineOptimizer:
             ]
             assert op.type in other_known_ops, (
                 "For other ops without "
-                "op_device set, they must be one of {}, but it "
-                "is {}".format(other_known_ops, op.type)
+                f"op_device set, they must be one of {other_known_ops}, but it "
+                f"is {op.type}"
             )
             assert self._is_optimize_op(op)
             op._set_attr(self._op_device_key, f"{self._device}:all")
@@ -670,15 +666,11 @@ class PipelineOptimizer:
 
             assert op.has_attr(
                 self._op_device_key
-            ), "op ({}) has no {} attribute.".format(
-                op.type, self._op_device_key
-            )
+            ), f"op ({op.type}) has no {self._op_device_key} attribute."
 
             device = op.attr(self._op_device_key)
-            assert (
-                device
-            ), "op_device attribute for op " "{} has not been set.".format(
-                op.type
+            assert device, (
+                "op_device attribute for op " f"{op.type} has not been set."
             )
             if device == f"{self._device}:all":
                 continue
@@ -982,7 +974,7 @@ class PipelineOptimizer:
                     else:
                         raise ValueError(
                             "Now only 'F-then-B' and '1F1B' are supported."
-                            "The given value is {}.".format(self.schedule_mode)
+                            f"The given value is {self.schedule_mode}."
                         )
 
                 _insert_send_recv(
@@ -1001,7 +993,7 @@ class PipelineOptimizer:
             if self._is_loss_grad_op(op):
                 assert op.type == 'fill_constant', (
                     "loss_grad_op must be fill_constant op, "
-                    "but this op is {}".format(op.type)
+                    f"but this op is {op.type}"
                 )
                 assert op.has_attr('value')
                 loss_scale = float(op.attr('value'))
@@ -1580,8 +1572,8 @@ class PipelineOptimizer:
                         continue
                     if var_name in op.desc.output_arg_names():
                         assert var_name not in write_info, (
-                            "two sections write the same var({}): second "
-                            "op {}.".format(var_name, op)
+                            f"two sections write the same var({var_name}): second "
+                            f"op {op}."
                         )
                         write_info[var_name] = prog
                         break
@@ -1820,7 +1812,7 @@ class PipelineOptimizer:
             "However, some backward op don't need this var(NoNeedBufferVars), "
             "there will be no error at this time.\n"
             "So please check these persistable vars which changed in "
-            "forward and used in backward:\n{}".format(used_in_backward)
+            f"forward and used in backward:\n{used_in_backward}"
         )
 
     def minimize(

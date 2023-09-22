@@ -196,9 +196,8 @@ void BuildValue(pir::Value value,
                     variable_list);
   }
   // Only support DenseTensor or Vector<DenseTensor>
-  if (!value.type()) {
-    var->GetMutable<phi::DenseTensor>();
-  } else if (value.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+  if (!value.type() ||
+      value.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
     var->GetMutable<phi::DenseTensor>();
   } else if (value.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
     var->GetMutable<phi::SelectedRows>();

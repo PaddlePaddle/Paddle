@@ -35,7 +35,7 @@ inline void check_defined(const DistTensor& dist_tensor,
 DistTensor::DistTensor(const phi::DenseTensor& global_value,
                        const TensorDistAttr& dist_attr)
     : dims_(global_value.dims()), dist_attr_(dist_attr), value_(global_value) {
-  if (!dist_attr.is_replicated()) {
+  if (value_.initialized() && !dist_attr.is_replicated()) {
     // 1. create replicated global tensor
     int64_t dims_size = global_value.dims().size();
     std::vector<int64_t> dims_mapping(dims_size, -1);
@@ -61,6 +61,14 @@ void DistTensor::unsafe_set_dims(const DDim& dims) {
                "Make sure you are aware of where you change its dims.";
   }
   dims_ = dims;
+}
+
+void DistTensor::unsafe_set_dist_attr(const TensorDistAttr& dist_attr) {
+  if (this->initialized()) {
+    VLOG(3) << "You try to set an initialized DistTensor's dist attr. "
+               "Make sure you are aware of where you change its dist attr.";
+  }
+  dist_attr_ = dist_attr;
 }
 
 int64_t DistTensor::numel() const {

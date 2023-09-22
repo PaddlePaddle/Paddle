@@ -24,9 +24,7 @@ from paddle.utils.cpp_extension.extension_utils import run_cmd
 
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
-file = '{}\\context_pool_jit\\context_pool_jit.pyd'.format(
-    get_build_directory()
-)
+file = f'{get_build_directory()}\\context_pool_jit\\context_pool_jit.pyd'
 if os.name == 'nt' and os.path.isfile(file):
     cmd = f'del {file}'
     run_cmd(cmd, True)

@@ -18,13 +18,7 @@ import warnings
 from . import core, framework
 from .framework import cpu_places, cuda_places, xpu_places
 
-__all__ = [
-    'CompiledProgram',
-    'ExecutionStrategy',
-    'BuildStrategy',
-    'IpuCompiledProgram',
-    'IpuStrategy',
-]
+__all__ = []
 
 ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
 BuildStrategy = core.ParallelExecutor.BuildStrategy
