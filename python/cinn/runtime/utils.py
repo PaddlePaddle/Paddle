@@ -1,4 +1,4 @@
-# Copyright (c) 2021 CINN Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,13 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core_api.framework import (  # noqa: F401
-    Instruction,
-    NodeAttr,
-    Operator,
-    OpValueType,
-    OpValueType1,
-    Scope,
-    SharedTensor,
-    Tensor,
-)
+import inspect
+
+
+def get_func_global_vars(func):
+    if inspect.ismethod(func):
+        func = func.__func__
+
+    code = func.__code__
+    global_vars = {}
+    if func.__closure__ is not None:
+        for k, v in zip(code.co_freevars, func.__closure__):
+            global_vars[k] = v.cell_contents
+    return global_vars
+
+
+def inspect_function_scope(func):
+    scope = {
+        **func.__globals__,
+        **get_func_global_vars(func),
+    }
+    return scope
