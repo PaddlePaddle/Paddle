@@ -110,7 +110,6 @@ struct _is {
 
 #endif
 
-static PyTypeObject PyInterpreterFrameProxyType;
 PyObject *set_eval_frame_py(PyObject *callback);
 PyMODINIT_FUNC PyInit__eval_frame();
 

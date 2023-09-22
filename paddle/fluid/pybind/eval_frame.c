@@ -508,7 +508,7 @@ static PyObject *set_eval_frame(PyObject *new_callback, PyThreadState *tstate) {
   PyObject *old_callback = eval_frame_callback_get();
 
 #if PY_VERSION_HEX >= 0x03090000
-  _PyFrameEvalFunction *old_eval_frame =
+  _PyFrameEvalFunction old_eval_frame =
       _PyInterpreterState_GetEvalFrameFunc(tstate->interp);
 #else
   // Function pointer.
@@ -554,7 +554,7 @@ PyObject *set_eval_frame_py(PyObject *callback) {
 }
 
 PyMODINIT_FUNC PyInit__eval_frame() {
-  int result = PyThread_tss_create(&eval_frame_callback_key);
+  PyThread_tss_create(&eval_frame_callback_key);
   // VLOG(7) << "Set PyThread_tss_create return: " << result;
 
   Py_INCREF(Py_None);
