@@ -60,6 +60,8 @@ vjp_interface_declare_gen_op_list = [
     'gumbel_softmax',
     'pad',
     'pad3d',
+    'tril',
+    'triu',
 ]
 vjp_interface_implementation_gen_op_list = [
     "tanh",
@@ -98,4 +100,6 @@ vjp_interface_implementation_gen_op_list = [
     'gumbel_softmax',
     'pad',
     'pad3d',
+    'tril',
+    'triu',
 ]
