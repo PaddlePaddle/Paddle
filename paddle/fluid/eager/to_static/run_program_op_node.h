@@ -81,6 +81,17 @@ static std::vector<std::string> GetTensorsName(
   return in_names;
 }
 
+static bool is_zero_size_tensor(const phi::DDim &dims) {
+  bool has_zero = false;
+  for (int i = 0; i < dims.size(); ++i) {
+    if (dims[i] == 0) {
+      has_zero = true;
+      break;
+    }
+  }
+  return has_zero;
+}
+
 static void CheckInputVarStatus(const Tensor &tensor) {
   PADDLE_ENFORCE_EQ(tensor.defined() && tensor.is_dense_tensor(),
                     true,
@@ -89,6 +100,9 @@ static void CheckInputVarStatus(const Tensor &tensor) {
                         "RunProgram(Grad)Op holds "
                         "wrong type. Expect type is DenseTensor.",
                         tensor.name()));
+  if (is_zero_size_tensor(tensor.dims())) {
+    return;
+  }
 
   PADDLE_ENFORCE_EQ(
       static_cast<phi::DenseTensor *>(tensor.impl().get())->IsInitialized(),
@@ -110,6 +124,9 @@ static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
 
   if (dst_tensor.is_dense_tensor()) {
     auto &src_tensor = src_var.Get<phi::DenseTensor>();
+    if (is_zero_size_tensor(src_tensor.dims())) {
+      return;
+    }
     PADDLE_ENFORCE_EQ(phi::DenseTensor::classof(&src_tensor),
                       true,
                       paddle::platform::errors::InvalidArgument(
@@ -126,6 +143,9 @@ static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
                           name));
   } else if (dst_tensor.is_selected_rows()) {
     auto &src_tensor = src_var.Get<phi::SelectedRows>();
+    if (is_zero_size_tensor(src_tensor.dims())) {
+      return;
+    }
     PADDLE_ENFORCE_EQ(phi::SelectedRows::classof(&src_tensor),
                       true,
                       paddle::platform::errors::InvalidArgument(
