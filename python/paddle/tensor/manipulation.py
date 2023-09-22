@@ -35,6 +35,7 @@ from ..framework import (
     dygraph_only,
     in_dynamic_mode,
     in_dynamic_or_pir_mode,
+    in_pir_mode,
 )
 from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
 
@@ -1966,11 +1967,11 @@ def split(x, num_or_sections, axis=0, name=None):
     """
     input = x
     dim = axis
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         if isinstance(dim, Variable):
             dim = dim.item(0)
-        assert len(input.shape) + dim >= 0, "(rank(x) + axis) must >= 0"
-        dim = (len(input.shape) + dim) if dim < 0 else dim
+        assert dim + len(input.shape) >= 0, "(rank(x) + axis) must >= 0"
+        dim = (dim + len(input.shape)) if dim < 0 else dim
 
         if isinstance(num_or_sections, (list, tuple)):
             if paddle.utils._contain_var(num_or_sections):
@@ -1987,6 +1988,23 @@ def split(x, num_or_sections, axis=0, name=None):
             return _C_ops.split_with_num(input, num_or_sections, dim)
         else:
             return _C_ops.split(input, num_or_sections, dim)
+    elif in_pir_mode():
+        if isinstance(dim, paddle.ir.OpResult):
+            dim.stop_gradient = True
+        elif isinstance(dim, int):
+            assert len(input.shape) + dim >= 0, "(rank(x) + axis) must >= 0"
+            dim = (len(input.shape) + dim) if dim < 0 else dim
+        else:
+            raise TypeError(
+                "The type of 'dim' in split must be int, paddle.ir.OpResult in pir mode, but "
+                "received %s." % (type(dim))
+            )
+
+        if isinstance(num_or_sections, int):
+            return _C_ops.split_with_num(input, num_or_sections, dim)
+        else:
+            return _C_ops.split(input, num_or_sections, dim)
+
     else:
         check_variable_and_dtype(
             input,
