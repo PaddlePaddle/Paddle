@@ -340,9 +340,7 @@ def has_feed_operators(block, feed_targets, feed_holder_name):
             feed_target_name = op.desc.output('Out')[0]
             if feed_target_name not in feed_targets:
                 raise Exception(
-                    "'feed_targets' does not have {} variable".format(
-                        feed_target_name
-                    )
+                    f"'feed_targets' does not have {feed_target_name} variable"
                 )
         else:
             break
@@ -387,9 +385,7 @@ def has_fetch_operators(
                 var.desc.name() for var in fetch_targets
             ]:
                 raise Exception(
-                    "'fetch_targets' does not have {} variable".format(
-                        fetch_target_name
-                    )
+                    f"'fetch_targets' does not have {fetch_target_name} variable"
                 )
             idx = op.desc.attr('col')
             assert fetch_target_name == fetch_targets[idx].desc.name()
@@ -710,9 +706,7 @@ def _as_lodtensor(data, place, dtype=None):
             data = data.astype(dtype)
         else:
             raise TypeError(
-                "Convert data of type {} to Tensor is not supported".format(
-                    type(data)
-                )
+                f"Convert data of type {type(data)} to Tensor is not supported"
             )
 
     # convert numpy.ndarray to tensor
@@ -752,7 +746,7 @@ class FetchHandler:
     def handler(self, res_dict):
         for key in res_dict:
             if type(res_dict[key]) is np.ndarray:
-                sys.stdout.write("{}[0]: {} ".format(key, res_dict[key][0]))
+                sys.stdout.write(f"{key}[0]: {res_dict[key][0]} ")
         sys.stdout.write("\n")
 
     @staticmethod
