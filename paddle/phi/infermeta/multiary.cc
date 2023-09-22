@@ -1510,7 +1510,7 @@ void FusedBiasActInferMeta(const MetaTensor& x,
             "The seconde dimension of x must be even, but receive %d", dim));
     dim /= 2;
     out->set_dims(phi::make_ddim({token_num, dim}));
-  } else if (act_method == "gelu") {
+  } else if (act_method == "gelu" || act_method == "relu") {
     out->set_dims(phi::make_ddim({token_num, dim}));
   } else {
     PADDLE_THROW(
