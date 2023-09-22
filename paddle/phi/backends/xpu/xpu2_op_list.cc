@@ -410,6 +410,12 @@ XPUOpMap& get_kl2_ops() {
                      phi::DataType::INT32,
                      phi::DataType::INT64,
                      phi::DataType::BOOL})},
+      {"gather_inplace",
+       XPUKernelSet({phi::DataType::FLOAT32,
+                     phi::DataType::FLOAT16,
+                     phi::DataType::INT32,
+                     phi::DataType::INT64,
+                     phi::DataType::BOOL})},
       {"gaussian_random",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"gelu_grad",
@@ -1021,6 +1027,12 @@ XPUOpMap& get_kl2_ops() {
                      phi::DataType::FLOAT64,
                      phi::DataType::INT32,
                      phi::DataType::INT64})},
+      {"mp_allreduce_sum",
+       XPUKernelSet({phi::DataType::FLOAT16,
+                     phi::DataType::FLOAT32,
+                     phi::DataType::INT32})},
+      {"c_embedding",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
   };
 
   return s_xpu2_kernels;
