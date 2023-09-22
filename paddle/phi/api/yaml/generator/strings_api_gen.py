@@ -107,9 +107,7 @@ class StringsAPI(ForwardAPI):
 
         else:
             raise ValueError(
-                "{} : Output error: the output should not be empty.".format(
-                    self.api
-                )
+                f"{self.api} : Output error: the output should not be empty."
             )
 
         return kernel_output, output_names, output_create
@@ -329,8 +327,8 @@ def source_include(header_file_path):
     return f"""
 #include "{header_file_path}"
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
+#include "paddle/utils/flags.h"
 
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/core/kernel_context.h"
@@ -340,7 +338,7 @@ def source_include(header_file_path):
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-DECLARE_int32(low_precision_op_list);
+PD_DECLARE_int32(low_precision_op_list);
 """
 
 

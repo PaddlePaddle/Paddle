@@ -190,7 +190,7 @@ void FleetExecutor::Init(
       framework::GetUnusedVars(program_desc.Block(0), ops, {});
 
   for (auto& unique_op : ops) {
-    unique_op.release();
+    [[maybe_unused]] auto released_op = unique_op.release();
   }
 
   // NOTE: For inference, the vars in inference_root_scope_vars

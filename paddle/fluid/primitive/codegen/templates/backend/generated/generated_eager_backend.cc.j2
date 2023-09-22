@@ -18,7 +18,7 @@ namespace backend {
 
 {%- macro sig(name, inputs, attrs, outputs) -%}
 template <>
-{{common.ret(outputs)}} {{name}}<Tensor>({{common.params(inputs, attrs)}})
+{{common.ret(outputs)}} {{name}}<Tensor>({{common.params(inputs, attrs, False)}})
 {%- endmacro -%}
 
 {% macro body(name, inputs, attrs, outputs) %}
@@ -34,10 +34,9 @@ return ::{{name}}_ad_func({{common.args(input_names, attr_names)}});
 
 
 {% for api in apis %}
-  {#- TODO(cxxly): codegen for reshape -#}
-  {%- if api.is_prim and api.name in backend_white_list and api.name != 'reshape' -%}
-{{sig(api.name, api.inputs, api.attrs, api.outputs)}} {
-{{body(api.name, api.inputs, api.attrs, api.outputs)}} 
+  {%- if api.is_prim and api.name in backend_white_list -%}
+{{sig(api.name, api.inputs, api.attrs, api.outputs | trip_intermediate)}} {
+{{body(api.name, api.inputs, api.attrs, api.outputs | trip_intermediate)}} 
 }
 
   {% endif %}

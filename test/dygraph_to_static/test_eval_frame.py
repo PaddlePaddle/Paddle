@@ -57,9 +57,9 @@ class TestEvalFrame(unittest.TestCase):
         x = 1
         y = 2
 
-        paddle.fluid.core.set_eval_frame(callback)
+        paddle.base.core.set_eval_frame(callback)
         assert add(x, y) == 2, "should be 2"
-        paddle.fluid.core.set_eval_frame(None)
+        paddle.base.core.set_eval_frame(None)
         assert add(x, y) == 3, "should be 3"
 
 

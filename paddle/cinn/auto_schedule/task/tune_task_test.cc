@@ -75,7 +75,8 @@ TEST(TuneTask, GraphToUnoptLoweredFunc_NoPass) {
   const auto& dtype_dict =
       graph->GetAttrs<absl::flat_hash_map<std::string, common::Type>>(
           "inferdtype");
-  OpLowerer op_lowerer(dtype_dict, shape_dict, target);
+  auto op_lowerer =
+      hlir::framework::CreateOpLowerer(dtype_dict, shape_dict, target);
 
   std::stringstream ss;
   for (TuneTask& task : tasks) {
@@ -187,7 +188,8 @@ TEST(TuneTask, GraphToUnoptLoweredFunc_ApplyPass) {
       graph->GetAttrs<absl::flat_hash_map<std::string, common::Type>>(
           "inferdtype");
 
-  OpLowerer op_lowerer(dtype_dict, shape_dict, target);
+  OpLowerer op_lowerer(
+      new hlir::framework::OpLowererImpl(dtype_dict, shape_dict, target));
 
   std::stringstream ss;
   for (TuneTask& task : tasks) {
@@ -291,7 +293,8 @@ TEST(TuneTask, SerializeToString) {
   const auto& dtype_dict =
       graph->GetAttrs<absl::flat_hash_map<std::string, common::Type>>(
           "inferdtype");
-  OpLowerer op_lowerer(dtype_dict, shape_dict, target);
+  OpLowerer op_lowerer(
+      new hlir::framework::OpLowererImpl(dtype_dict, shape_dict, target));
   ASSERT_EQ(single_tasks.size(), 2UL);
   for (auto&& task : single_tasks) {
     task.Initialize(shape_dict, dtype_dict, &op_lowerer);

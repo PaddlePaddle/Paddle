@@ -21,7 +21,7 @@ import shutil
 import time
 
 # (TODO: GhostScreaming) It will be removed later.
-from paddle.fluid import core
+from paddle.base import core
 
 from .log_util import logger
 
@@ -171,9 +171,7 @@ class LocalFS(FS):
                 client.mkdirs("test_mkdirs")
                 client.delete("test_mkdirs")
         """
-        assert not os.path.isfile(fs_path), "{} is already a file".format(
-            fs_path
-        )
+        assert not os.path.isfile(fs_path), f"{fs_path} is already a file"
         os.makedirs(fs_path, exist_ok=True)
 
     def rename(self, fs_src_path, fs_dst_path):
@@ -401,9 +399,7 @@ def _handle_errors(max_time_out=None):
                 except ExecuteError as e:
                     if time.time() - start >= time_out:
                         raise FSTimeOut(
-                            "args:{} timeout:{}".format(
-                                args, time.time() - start
-                            )
+                            f"args:{args} timeout:{time.time() - start}"
                         )
 
                     time.sleep(inter)

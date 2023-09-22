@@ -32,6 +32,12 @@ TensorDistAttr GetInferedDistAttr(
     const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
     const bool trans_axis);
 
+void FillMatmulOperandNotation(const int x_ndim,
+                               const int y_ndim,
+                               std::string* x_axes,
+                               std::string* y_axes,
+                               std::string* out_axes);
+
 class MatmulSPMDRule : public SPMDRuleBase {
  public:
   std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
@@ -39,7 +45,8 @@ class MatmulSPMDRule : public SPMDRuleBase {
                const paddle::framework::AttributeMap& attrs) override;
 
   std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
-  InferBackward(const std::vector<DistTensorSpec>& output_specs,
+  InferBackward(const std::vector<DistTensorSpec>& input_specs,
+                const std::vector<DistTensorSpec>& output_specs,
                 const paddle::framework::AttributeMap& attrs) override;
 };
 }  // namespace auto_parallel

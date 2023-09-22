@@ -16,7 +16,7 @@ import os
 import unittest
 
 import paddle
-from paddle import fluid, static
+from paddle import base, static
 from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
 
@@ -75,7 +75,7 @@ class TestFleetMetaOptimizer(unittest.TestCase):
 
         train_prog, startup_prog = static.Program(), static.Program()
         with static.program_guard(train_prog, startup_prog):
-            with fluid.unique_name.guard():
+            with base.unique_name.guard():
                 avg_cost = self.net()
 
                 optimizer = paddle.optimizer.Adam(0.01)
@@ -99,7 +99,7 @@ class TestFleetMetaOptimizer(unittest.TestCase):
 
         train_prog, startup_prog = static.Program(), static.Program()
         with static.program_guard(train_prog, startup_prog):
-            with fluid.unique_name.guard():
+            with base.unique_name.guard():
                 avg_cost = self.net()
 
                 optimizer = paddle.optimizer.Adam(0.01)

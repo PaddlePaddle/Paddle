@@ -26,10 +26,12 @@ void MaxOutFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
                                                  phi::DenseTensor* output,
                                                  const int groups,
                                                  const int axis) {
-  const int batch_size = input.dims()[0];
-  const int input_height = (axis == 1 ? input.dims()[2] : input.dims()[1]);
-  const int input_width = (axis == 1 ? input.dims()[3] : input.dims()[2]);
-  const int output_channels = output->dims()[axis];
+  const int batch_size = static_cast<int>(input.dims()[0]);
+  const int input_height =
+      static_cast<int>(axis == 1 ? input.dims()[2] : input.dims()[1]);
+  const int input_width =
+      static_cast<int>(axis == 1 ? input.dims()[3] : input.dims()[2]);
+  const int output_channels = static_cast<int>(output->dims()[axis]);
   int fea_size = input_height * input_width;
   // c_size means the output size of each sample
   int c_size = fea_size * output_channels;
@@ -71,10 +73,12 @@ void MaxOutGradFunctor<DeviceContext, T>::operator()(
     const phi::DenseTensor& output_grad,
     const int groups,
     const int axis) {
-  const int batch_size = input.dims()[0];
-  const int input_height = (axis == 1 ? input.dims()[2] : input.dims()[1]);
-  const int input_width = (axis == 1 ? input.dims()[3] : input.dims()[2]);
-  const int output_channels = output.dims()[axis];
+  const int batch_size = static_cast<int>(input.dims()[0]);
+  const int input_height =
+      static_cast<int>(axis == 1 ? input.dims()[2] : input.dims()[1]);
+  const int input_width =
+      static_cast<int>(axis == 1 ? input.dims()[3] : input.dims()[2]);
+  const int output_channels = static_cast<int>(output.dims()[axis]);
   int fea_size = input_height * input_width;
   const T* input_data = input.data<T>();
   const T* output_data = output.data<T>();

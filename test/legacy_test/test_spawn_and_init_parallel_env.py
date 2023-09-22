@@ -18,12 +18,12 @@ import unittest
 
 import paddle
 import paddle.distributed as dist
+from paddle.base import core
 from paddle.distributed.spawn import (
     _get_default_nprocs,
     _get_subprocess_env_list,
     _options_valid_check,
 )
-from paddle.fluid import core
 
 # NOTE(chenweihang): Coverage CI is currently not able to count python3
 # unittest, so the unittests here covers some cases that will only be

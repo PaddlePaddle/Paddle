@@ -132,8 +132,8 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
     egr::EagerUtils::PassStopGradient(false, out_autograd_meta);
 
     // Node Construction
-    auto grad_node =
-        std::shared_ptr<MultiplyGradNode>(new MultiplyGradNode(1, 2));
+    auto grad_node = std::shared_ptr<MultiplyGradNode>(  // NOLINT
+        new MultiplyGradNode(1, 2));
     // Set for forward trace
     if (FLAGS_check_nan_inf) {
       grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
@@ -262,6 +262,33 @@ paddle::Tensor& multiply__ad_func(paddle::Tensor& x,  // NOLINT
     VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
   }
 
+  bool trace_backward = egr::Controller::Instance().HasGrad();
+  bool require_any_grad = egr::EagerUtils::ComputeRequireGrad(
+      trace_backward, x_autograd_meta, y_autograd_meta);
+
+  // Node Declaration
+  std::shared_ptr<MultiplyGradNode> grad_node;
+  // Set grad_node before API Call
+  if (require_any_grad) {
+    paddle::platform::RecordEvent node_creation_record_event(
+        "multiply node_creation",
+        paddle::platform::TracerEventType::OperatorInner,
+        1);
+
+    grad_node = std::shared_ptr<MultiplyGradNode>(  // NOLINT
+        new MultiplyGradNode(1, 2));
+    // Set for forward trace
+    if (FLAGS_check_nan_inf) {
+      grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
+    }
+    // SetAttributes if needed
+    grad_node->SetAttributeaxis(-1);
+    // Set TensorWrappers for Forward Inputs if needed
+    auto x_clone = paddle::experimental::assign(x);
+    grad_node->SetTensorWrapperx(x_clone);
+    grad_node->SetTensorWrappery(y);
+  }
+
   // Forward API Call
   auto& api_result = paddle::experimental::multiply_(x, y);
   // Check NaN and Inf if needed
@@ -275,10 +302,6 @@ paddle::Tensor& multiply__ad_func(paddle::Tensor& x,  // NOLINT
 
   // Get Output AutoGradMeta
   egr::AutogradMeta* out_autograd_meta = egr::EagerUtils::autograd_meta(&out);
-  bool trace_backward = egr::Controller::Instance().HasGrad();
-  bool require_any_grad = egr::EagerUtils::ComputeRequireGrad(
-      trace_backward, x_autograd_meta, y_autograd_meta);
-
   // Check Inplace if needed
 
   egr::EagerUtils::CheckInplace(x, x_autograd_meta, require_any_grad);
@@ -289,25 +312,7 @@ paddle::Tensor& multiply__ad_func(paddle::Tensor& x,  // NOLINT
 
   // Node Creation
   if (require_any_grad) {
-    paddle::platform::RecordEvent node_creation_record_event(
-        "multiply node_creation",
-        paddle::platform::TracerEventType::OperatorInner,
-        1);
-
     egr::EagerUtils::PassStopGradient(false, out_autograd_meta);
-
-    // Node Construction
-    auto grad_node =
-        std::shared_ptr<MultiplyGradNode>(new MultiplyGradNode(1, 2));
-    // Set for forward trace
-    if (FLAGS_check_nan_inf) {
-      grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
-    }
-    // SetAttributes if needed
-    grad_node->SetAttributeaxis(-1);
-    // Set TensorWrappers for Forward Inputs if needed
-    grad_node->SetTensorWrapperx(x);
-    grad_node->SetTensorWrappery(y);
     // SetGradOutMeta & SetEdges
     grad_node->SetGradOutMeta(x, 0);
     grad_node->SetGradOutMeta(y, 1);
@@ -429,7 +434,6 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
     input_str += input_y_str;
     VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
   }
-
   // Forward API Call
   auto api_result = paddle::experimental::sparse::multiply(x, y);
   // Check NaN and Inf if needed
@@ -459,8 +463,8 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
     egr::EagerUtils::PassStopGradient(false, out_autograd_meta);
 
     // Node Construction
-    auto grad_node =
-        std::shared_ptr<MultiplyGradNode>(new MultiplyGradNode(1, 2));
+    auto grad_node = std::shared_ptr<MultiplyGradNode>(  // NOLINT
+        new MultiplyGradNode(1, 2));
     // Set for forward trace
     if (FLAGS_check_nan_inf) {
       grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());

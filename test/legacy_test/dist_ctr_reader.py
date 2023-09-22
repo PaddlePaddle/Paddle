@@ -16,7 +16,7 @@ import logging
 import tarfile
 
 import paddle
-from paddle.fluid.log_helper import get_logger
+from paddle.base.log_helper import get_logger
 
 logger = get_logger("paddle", logging.INFO)
 

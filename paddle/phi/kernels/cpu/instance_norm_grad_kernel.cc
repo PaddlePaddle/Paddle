@@ -55,10 +55,10 @@ void InstanceNormGradKernel(const Context& dev_ctx,
 
   const auto& x_dims = x.dims();
 
-  const int N = x_dims[0];
-  const int C = x_dims[1];
+  const int N = static_cast<int>(x_dims[0]);
+  const int C = static_cast<int>(x_dims[1]);
   const int NxC = N * C;
-  const int sample_size = x.numel() / N / C;
+  const int sample_size = static_cast<int>(x.numel() / N / C);
 
   dev_ctx.template Alloc<T>(d_x);
   auto* place = dev_ctx.eigen_device();
@@ -172,7 +172,7 @@ void InstanceNormDoubleGradKernel(const Context& dev_ctx,
   const auto& x_dims = x.dims();
   int N, C, H, W, D;
   funcs::ExtractNCWHD(x_dims, DataLayout::kNCHW, &N, &C, &H, &W, &D);
-  const int sample_size = x.numel() / N / C;
+  const int sample_size = static_cast<int>(x.numel() / N / C);
   const int NxC = N * C;
 
   const T* mean_data = saved_mean.data<T>();

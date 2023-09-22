@@ -17,21 +17,21 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class TestExponentialMovingAverage(unittest.TestCase):
     def setUp(self):
-        self._places = [fluid.CPUPlace()]
-        if fluid.core.is_compiled_with_cuda():
-            self._places.append(fluid.CUDAPlace(0))
+        self._places = [base.CPUPlace()]
+        if base.core.is_compiled_with_cuda():
+            self._places.append(base.CUDAPlace(0))
         self._ema_decay = 0.999
         self._param_name = "fc.weight"
 
-        self._train_program = fluid.Program()
-        self._startup_prog = fluid.Program()
-        with fluid.program_guard(self._train_program, self._startup_prog):
-            with fluid.unique_name.guard():
+        self._train_program = base.Program()
+        self._startup_prog = base.Program()
+        with base.program_guard(self._train_program, self._startup_prog):
+            with base.unique_name.guard():
                 data = paddle.static.data(
                     name='x', shape=[-1, 5], dtype='float32'
                 )
@@ -40,7 +40,7 @@ class TestExponentialMovingAverage(unittest.TestCase):
                 )
                 cost = paddle.mean(hidden)
 
-                self._test_program = fluid.default_main_program().clone(
+                self._test_program = base.default_main_program().clone(
                     for_test=True
                 )
 
@@ -53,7 +53,7 @@ class TestExponentialMovingAverage(unittest.TestCase):
                 self._ema.update()
 
     def train(self, place):
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         exe.run(self._startup_prog)
 
         params = []
@@ -61,17 +61,17 @@ class TestExponentialMovingAverage(unittest.TestCase):
             for batch_id in range(3):
                 data = np.random.random(size=(10, 5)).astype('float32')
                 tmp_param = np.array(
-                    fluid.global_scope().find_var(self._param_name).get_tensor()
+                    base.global_scope().find_var(self._param_name).get_tensor()
                 )
                 exe.run(program=self._train_program, feed={'x': data})
                 tmp_param = np.array(
-                    fluid.global_scope().find_var(self._param_name).get_tensor()
+                    base.global_scope().find_var(self._param_name).get_tensor()
                 )
                 params.append(tmp_param)
 
         with self._ema.apply(exe):
             final_ema = np.array(
-                fluid.global_scope().find_var(self._param_name).get_tensor()
+                base.global_scope().find_var(self._param_name).get_tensor()
             )
             data = np.random.random(size=(10, 5)).astype('float32')
             exe.run(program=self._test_program, feed={'x': data})

@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -32,16 +32,16 @@ class TestLookupTableFuseOp(unittest.TestCase):
             self.check_with_place(place)
 
     def check_with_place(self, place):
-        scope = fluid.global_scope()
+        scope = base.global_scope()
         scope.var("LearningRate").get_tensor().set([0.01], place)
         scope.var("Ids").get_tensor().set(list(range(100)), place)
 
-        init_program = fluid.Program()
+        init_program = base.Program()
 
         lr = init_program.global_block().create_var(
             name="LearningRate",
             persistable=True,
-            type=fluid.core.VarDesc.VarType.LOD_TENSOR,
+            type=base.core.VarDesc.VarType.LOD_TENSOR,
             shape=[1],
             dtype="float32",
         )
@@ -49,14 +49,14 @@ class TestLookupTableFuseOp(unittest.TestCase):
         ids = init_program.global_block().create_var(
             name="Ids",
             persistable=True,
-            type=fluid.core.VarDesc.VarType.LOD_TENSOR,
+            type=base.core.VarDesc.VarType.LOD_TENSOR,
             shape=[100],
             dtype="int64",
         )
 
         output = init_program.global_block().create_var(
             name="output",
-            type=fluid.core.VarDesc.VarType.LOD_TENSOR,
+            type=base.core.VarDesc.VarType.LOD_TENSOR,
             shape=[100, 8],
             dtype="float32",
         )
@@ -98,10 +98,10 @@ class TestLookupTableFuseOp(unittest.TestCase):
             },
         )
 
-        executor = fluid.Executor(place)
+        executor = base.Executor(place)
         executor.run(init_program)
 
-        training_program = fluid.Program()
+        training_program = base.Program()
 
         scope.var('Beta1Pow').get_tensor().set(
             np.array([0]).astype("float32"), place
@@ -124,7 +124,7 @@ class TestLookupTableFuseOp(unittest.TestCase):
         lr = training_program.global_block().create_var(
             name="LearningRate",
             persistable=True,
-            type=fluid.core.VarDesc.VarType.LOD_TENSOR,
+            type=base.core.VarDesc.VarType.LOD_TENSOR,
             shape=[1],
             dtype="float32",
         )
@@ -132,7 +132,7 @@ class TestLookupTableFuseOp(unittest.TestCase):
         grads = training_program.global_block().create_var(
             name="Grad",
             persistable=True,
-            type=fluid.core.VarDesc.VarType.SELECTED_ROWS,
+            type=base.core.VarDesc.VarType.SELECTED_ROWS,
             shape=[100, 8],
             dtype="float32",
         )
@@ -140,7 +140,7 @@ class TestLookupTableFuseOp(unittest.TestCase):
         beta1 = training_program.global_block().create_var(
             name="Beta1Pow",
             persistable=True,
-            type=fluid.core.VarDesc.VarType.LOD_TENSOR,
+            type=base.core.VarDesc.VarType.LOD_TENSOR,
             shape=[1],
             dtype="float32",
         )
@@ -148,7 +148,7 @@ class TestLookupTableFuseOp(unittest.TestCase):
         beta2 = training_program.global_block().create_var(
             name="Beta2Pow",
             persistable=True,
-            type=fluid.core.VarDesc.VarType.LOD_TENSOR,
+            type=base.core.VarDesc.VarType.LOD_TENSOR,
             shape=[1],
             dtype="float32",
         )

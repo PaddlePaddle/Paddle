@@ -15,14 +15,14 @@
 import unittest
 
 import paddle
-from paddle import fluid, static
+from paddle import base, static
 
 paddle.enable_static()
 
 
 def program_to_IRGraph(program):
-    graph = fluid.core.Graph(program.desc)
-    ir_graph = fluid.framework.IrGraph(graph, for_test=False)
+    graph = base.core.Graph(program.desc)
+    ir_graph = base.framework.IrGraph(graph, for_test=False)
     return ir_graph
 
 
@@ -152,7 +152,7 @@ class MultiBlockGraphToProgramPass(GraphToProgramPassTest):
         b = static.data(name='b', shape=[10, 1], dtype='int64')
 
         cond = paddle.greater_than(a, b)
-        ie = fluid.layers.IfElse(cond)
+        ie = base.layers.IfElse(cond)
         with ie.true_block():
             hidden = paddle.nn.functional.relu(data)
             ie.output(hidden)

@@ -235,8 +235,8 @@ class XPUTestConv3DOp(XPUOpTestWrapper):
             ).astype(self.dtype)
 
             self.inputs = {
-                'Input': XPUOpTest.np_dtype_to_fluid_dtype(input),
-                'Filter': XPUOpTest.np_dtype_to_fluid_dtype(filter),
+                'Input': XPUOpTest.np_dtype_to_base_dtype(input),
+                'Filter': XPUOpTest.np_dtype_to_base_dtype(filter),
             }
             self.attrs = {
                 'strides': self.stride,
@@ -409,8 +409,8 @@ class XPUTestConv3DOp_v2(XPUOpTestWrapper):
             ).astype(self.dtype)
 
             self.inputs = {
-                'Input': XPUOpTest.np_dtype_to_fluid_dtype(input),
-                'Filter': XPUOpTest.np_dtype_to_fluid_dtype(filter),
+                'Input': XPUOpTest.np_dtype_to_base_dtype(input),
+                'Filter': XPUOpTest.np_dtype_to_base_dtype(filter),
             }
             self.attrs = {
                 'strides': self.stride,

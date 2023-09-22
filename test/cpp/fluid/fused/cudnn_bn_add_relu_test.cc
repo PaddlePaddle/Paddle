@@ -256,16 +256,21 @@ void ComputeFusedBNAddReluForward(const phi::GPUContext &ctx,
 
   framework::AttributeMap attrs;
 
-  auto op = framework::OpRegistry::CreateOp(
-      "fused_bn_add_activation",
-      {{"X", {"X"}}, {"Z", {"Z"}}, {"Scale", {"Scale"}}, {"Bias", {"Bias"}}},
-      {{"Y", {"Y"}},
-       {"MeanOut", {"Mean"}},
-       {"VarianceOut", {"Variance"}},
-       {"SavedMean", {"SavedMean"}},
-       {"SavedVariance", {"SavedVariance"}},
-       {"ReserveSpace", {"ReserveSpace"}}},
-      attrs);
+  auto op =
+      framework::OpRegistry::CreateOp("fused_bn_add_activation",
+                                      {{"X", {"X"}},
+                                       {"Z", {"Z"}},
+                                       {"Scale", {"Scale"}},
+                                       {"Bias", {"Bias"}},
+                                       {"Mean", {"Mean"}},
+                                       {"Variance", {"Variance"}}},
+                                      {{"Y", {"Y"}},
+                                       {"MeanOut", {"Mean"}},
+                                       {"VarianceOut", {"Variance"}},
+                                       {"SavedMean", {"SavedMean"}},
+                                       {"SavedVariance", {"SavedVariance"}},
+                                       {"ReserveSpace", {"ReserveSpace"}}},
+                                      attrs);
   op->Run(scope, ctx.GetPlace());
 
   paddle::framework::TensorCopySync(*y, platform::CPUPlace(), cpu_y);

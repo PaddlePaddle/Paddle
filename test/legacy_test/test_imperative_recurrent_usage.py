@@ -18,9 +18,9 @@ import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.dygraph.base import to_variable
+from paddle import base
+from paddle.base import core
+from paddle.base.dygraph.base import to_variable
 
 
 class RecurrentTest(paddle.nn.Layer):
@@ -38,9 +38,9 @@ class TestRecurrentFeed(unittest.TestCase):
         seed = 90
         original_np1 = np.arange(1, 5).reshape(2, 2).astype("float32")
         original_np2 = np.arange(5, 9).reshape(2, 2).astype("float32")
-        with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+        with base.dygraph.guard():
+            base.default_startup_program().random_seed = seed
+            base.default_main_program().random_seed = seed
             original_in1 = to_variable(original_np1)
             original_in2 = to_variable(original_np2)
             original_in1.stop_gradient = False
@@ -57,9 +57,9 @@ class TestRecurrentFeed(unittest.TestCase):
                 original_in1.stop_gradient = True
                 rt.clear_gradients()
 
-        with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+        with base.dygraph.guard():
+            base.default_startup_program().random_seed = seed
+            base.default_main_program().random_seed = seed
             original_in1 = to_variable(original_np1)
             original_in2 = to_variable(original_np2)
             original_in1.stop_gradient = False
@@ -77,30 +77,30 @@ class TestRecurrentFeed(unittest.TestCase):
                 rt.clear_gradients()
 
         with new_program_scope():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            base.default_startup_program().random_seed = seed
+            base.default_main_program().random_seed = seed
             in1 = paddle.static.data(name="inp1", shape=[2, 2])
             in1.stop_gradient = False
             in2 = paddle.static.data(name="inp2", shape=[2, 2])
             in2.stop_gradient = False
             rt1 = RecurrentTest("RecurrentTest")
             static_sum_out, static_out = rt1(in1, in2)
-            fluid.backward.append_backward(static_sum_out)
-            exe = fluid.Executor(
-                fluid.CPUPlace()
+            base.backward.append_backward(static_sum_out)
+            exe = base.Executor(
+                base.CPUPlace()
                 if not core.is_compiled_with_cuda()
-                else fluid.CUDAPlace(0)
+                else base.CUDAPlace(0)
             )
 
             static_dout = (
-                fluid.default_main_program()
+                base.default_main_program()
                 .block(0)
                 ._find_var_recursive(static_out.name + "@GRAD")
             )
             fetch_list = [static_sum_out, static_out, static_dout]
             for i in range(3):
                 out = exe.run(
-                    fluid.default_main_program(),
+                    base.default_main_program(),
                     feed={"inp1": original_np1, "inp2": original_np2},
                     fetch_list=fetch_list,
                 )

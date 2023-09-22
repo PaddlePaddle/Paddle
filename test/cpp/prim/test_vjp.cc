@@ -16,19 +16,19 @@
 
 #include "paddle/fluid/framework/new_executor/new_ir_interpreter.h"
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/api_builder.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_op.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
-#include "paddle/fluid/ir/transforms/pd_op_to_kernel_pass.h"
+#include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/platform/init_phi.h"
-#include "paddle/ir/core/block.h"
-#include "paddle/ir/core/builtin_attribute.h"
-#include "paddle/ir/core/builtin_op.h"
-#include "paddle/ir/core/ir_context.h"
-#include "paddle/ir/core/program.h"
-#include "paddle/ir/core/utils.h"
+#include "paddle/pir/core/block.h"
+#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/builtin_op.h"
+#include "paddle/pir/core/ir_context.h"
+#include "paddle/pir/core/program.h"
+#include "paddle/pir/core/utils.h"
 
 DECLARE_FILE_SYMBOLS(kernel_dialect);
 
@@ -43,12 +43,12 @@ namespace paddle {
 namespace framework {
 
 TEST(VJP, TanhBackwardTest) {
-  ir::IrContext* ctx = ir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
-  ir::Program program((ctx));
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  pir::Program program((ctx));
   paddle::dialect::APIBuilder::Instance().SetProgram(&program);
 
-  std::shared_ptr<ir::Builder> builder =
+  std::shared_ptr<pir::Builder> builder =
       paddle::dialect::APIBuilder::Instance().GetBuilder();
   paddle::dialect::FullOp op1 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
@@ -59,9 +59,9 @@ TEST(VJP, TanhBackwardTest) {
       std::vector<int64_t>{1}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
   std::vector<std::vector<bool>> stop_gradients{{false}};
-  std::vector<std::vector<ir::OpResult>> out_grads{{op3.out()}};
+  std::vector<std::vector<pir::Value>> out_grads{{op3.out()}};
 
-  ir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd.tanh");
+  pir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd_op.tanh");
   auto tanh_vjp_interface_impl =
       op2_info.GetInterfaceImpl<paddle::dialect::VjpInterface>();
   tanh_vjp_interface_impl->vjp_(op2.operation(), out_grads, stop_gradients);
@@ -72,7 +72,7 @@ TEST(VJP, TanhBackwardTest) {
   Scope scope;
 
   ProgramDesc prog_desc;
-  InterpreterCore test_core(place, {}, std::move(kernel_program), &scope);
+  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
   std::stringstream os;
   os << reinterpret_cast<NewIRInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
@@ -98,12 +98,12 @@ TEST(VJP, TanhBackwardTest) {
 }
 
 TEST(VJP, Tanh_BackwardTest) {
-  ir::IrContext* ctx = ir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
-  ir::Program program((ctx));
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  pir::Program program((ctx));
   paddle::dialect::APIBuilder::Instance().SetProgram(&program);
 
-  std::shared_ptr<ir::Builder> builder =
+  std::shared_ptr<pir::Builder> builder =
       paddle::dialect::APIBuilder::Instance().GetBuilder();
   paddle::dialect::FullOp op1 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
@@ -114,9 +114,9 @@ TEST(VJP, Tanh_BackwardTest) {
       std::vector<int64_t>{1}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
   std::vector<std::vector<bool>> stop_gradients{{false}};
-  std::vector<std::vector<ir::OpResult>> out_grads{{op3.out()}};
+  std::vector<std::vector<pir::Value>> out_grads{{op3.out()}};
 
-  ir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd.tanh_");
+  pir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd_op.tanh_");
   auto tanh_vjp_interface_impl =
       op2_info.GetInterfaceImpl<paddle::dialect::VjpInterface>();
   tanh_vjp_interface_impl->vjp_(op2.operation(), out_grads, stop_gradients);
@@ -127,7 +127,7 @@ TEST(VJP, Tanh_BackwardTest) {
   Scope scope;
 
   ProgramDesc prog_desc;
-  InterpreterCore test_core(place, {}, std::move(kernel_program), &scope);
+  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
   std::stringstream os;
   os << reinterpret_cast<NewIRInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
@@ -153,12 +153,12 @@ TEST(VJP, Tanh_BackwardTest) {
 }
 
 TEST(VJP, MeanBackwardTest) {
-  ir::IrContext* ctx = ir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
-  ir::Program program((ctx));
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  pir::Program program((ctx));
   paddle::dialect::APIBuilder::Instance().SetProgram(&program);
 
-  std::shared_ptr<ir::Builder> builder =
+  std::shared_ptr<pir::Builder> builder =
       paddle::dialect::APIBuilder::Instance().GetBuilder();
   paddle::dialect::FullOp op1 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{2, 2}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
@@ -169,9 +169,9 @@ TEST(VJP, MeanBackwardTest) {
       std::vector<int64_t>{}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
   std::vector<std::vector<bool>> stop_gradients{{false}};
-  std::vector<std::vector<ir::OpResult>> out_grads{{op3.out()}};
+  std::vector<std::vector<pir::Value>> out_grads{{op3.out()}};
 
-  ir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd.mean");
+  pir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd_op.mean");
   auto mean_vjp_interface_impl =
       op2_info.GetInterfaceImpl<paddle::dialect::VjpInterface>();
   mean_vjp_interface_impl->vjp_(op2.operation(), out_grads, stop_gradients);
@@ -182,7 +182,7 @@ TEST(VJP, MeanBackwardTest) {
   Scope scope;
 
   ProgramDesc prog_desc;
-  InterpreterCore test_core(place, {}, std::move(kernel_program), &scope);
+  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
   std::stringstream os;
   os << reinterpret_cast<NewIRInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
@@ -210,25 +210,25 @@ TEST(VJP, MeanBackwardTest) {
 }
 
 TEST(VJP, ConcatBackwardTest) {
-  ir::IrContext* ctx = ir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
-  ir::Program program((ctx));
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  pir::Program program((ctx));
   paddle::dialect::APIBuilder::Instance().SetProgram(&program);
 
-  std::shared_ptr<ir::Builder> builder =
+  std::shared_ptr<pir::Builder> builder =
       paddle::dialect::APIBuilder::Instance().GetBuilder();
   paddle::dialect::FullOp op1 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1, 2}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
-  std::vector<ir::OpResult> combine_input{{op1.out(), op1.out()}};
-  ir::CombineOp op2 = builder->Build<ir::CombineOp>(combine_input);
+  std::vector<pir::Value> combine_input{{op1.out(), op1.out()}};
+  pir::CombineOp op2 = builder->Build<pir::CombineOp>(combine_input);
   paddle::dialect::ConcatOp op3 =
       builder->Build<paddle::dialect::ConcatOp>(op2.out(), 0);
 
   paddle::dialect::FullOp op4 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{2, 2}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
   std::vector<std::vector<bool>> stop_gradients{{false, false}};
-  std::vector<std::vector<ir::OpResult>> out_grads{{op4.out()}};
-  ir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd.concat");
+  std::vector<std::vector<pir::Value>> out_grads{{op4.out()}};
+  pir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd_op.concat");
   auto concat_vjp_interface_impl =
       op2_info.GetInterfaceImpl<paddle::dialect::VjpInterface>();
   concat_vjp_interface_impl->vjp_(op3.operation(), out_grads, stop_gradients);
@@ -238,7 +238,7 @@ TEST(VJP, ConcatBackwardTest) {
   Scope scope;
 
   ProgramDesc prog_desc;
-  InterpreterCore test_core(place, {}, std::move(kernel_program), &scope);
+  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
   std::stringstream os;
   os << reinterpret_cast<NewIRInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
@@ -273,12 +273,12 @@ TEST(VJP, ConcatBackwardTest) {
 }
 
 TEST(VJP, AddBackwardTest) {
-  ir::IrContext* ctx = ir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
-  ir::Program program((ctx));
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  pir::Program program((ctx));
   paddle::dialect::APIBuilder::Instance().SetProgram(&program);
 
-  std::shared_ptr<ir::Builder> builder =
+  std::shared_ptr<pir::Builder> builder =
       paddle::dialect::APIBuilder::Instance().GetBuilder();
   paddle::dialect::FullOp op1 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
@@ -291,9 +291,9 @@ TEST(VJP, AddBackwardTest) {
       std::vector<int64_t>{1}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
   std::vector<std::vector<bool>> stop_gradients{{false}, {false}};
-  std::vector<std::vector<ir::OpResult>> out_grads{{op4.out()}};
+  std::vector<std::vector<pir::Value>> out_grads{{op4.out()}};
 
-  ir::OpInfo op3_info = ctx->GetRegisteredOpInfo("pd.add");
+  pir::OpInfo op3_info = ctx->GetRegisteredOpInfo("pd_op.add");
   auto add_vjp_interface_impl =
       op3_info.GetInterfaceImpl<paddle::dialect::VjpInterface>();
   add_vjp_interface_impl->vjp_(op3.operation(), out_grads, stop_gradients);
@@ -304,7 +304,7 @@ TEST(VJP, AddBackwardTest) {
   Scope scope;
 
   ProgramDesc prog_desc;
-  InterpreterCore test_core(place, {}, std::move(kernel_program), &scope);
+  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
   std::stringstream os;
   os << reinterpret_cast<NewIRInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
@@ -338,12 +338,12 @@ TEST(VJP, AddBackwardTest) {
 }
 
 TEST(VJP, Add_BackwardTest) {
-  ir::IrContext* ctx = ir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
-  ir::Program program((ctx));
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  pir::Program program((ctx));
   paddle::dialect::APIBuilder::Instance().SetProgram(&program);
 
-  std::shared_ptr<ir::Builder> builder =
+  std::shared_ptr<pir::Builder> builder =
       paddle::dialect::APIBuilder::Instance().GetBuilder();
   paddle::dialect::FullOp op1 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
@@ -356,9 +356,9 @@ TEST(VJP, Add_BackwardTest) {
       std::vector<int64_t>{1}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
   std::vector<std::vector<bool>> stop_gradients{{false}, {false}};
-  std::vector<std::vector<ir::OpResult>> out_grads{{op4.out()}};
+  std::vector<std::vector<pir::Value>> out_grads{{op4.out()}};
 
-  ir::OpInfo op3_info = ctx->GetRegisteredOpInfo("pd.add_");
+  pir::OpInfo op3_info = ctx->GetRegisteredOpInfo("pd_op.add_");
   auto add_inplace_vjp_interface_impl =
       op3_info.GetInterfaceImpl<paddle::dialect::VjpInterface>();
   add_inplace_vjp_interface_impl->vjp_(
@@ -370,7 +370,7 @@ TEST(VJP, Add_BackwardTest) {
   Scope scope;
 
   ProgramDesc prog_desc;
-  InterpreterCore test_core(place, {}, std::move(kernel_program), &scope);
+  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
   std::stringstream os;
   os << reinterpret_cast<NewIRInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
@@ -402,5 +402,74 @@ TEST(VJP, Add_BackwardTest) {
   ASSERT_EQ(dx.data<float>()[0], 1.0);
   ASSERT_EQ(dy.data<float>()[0], 1.0);
 }
+
+TEST(VJP, SplitBackwardTest) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  pir::Program program((ctx));
+  paddle::dialect::APIBuilder::Instance().SetProgram(&program);
+
+  std::shared_ptr<pir::Builder> builder =
+      paddle::dialect::APIBuilder::Instance().GetBuilder();
+  paddle::dialect::FullOp op1 = builder->Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{2, 2}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
+
+  paddle::dialect::SplitOp op2 = builder->Build<paddle::dialect::SplitOp>(
+      op1.out(), std::vector<int64_t>{1, 1}, 0);
+
+  pir::SplitOp op3 = builder->Build<pir::SplitOp>(op2.out());
+
+  paddle::dialect::FullOp op4 = builder->Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{1, 2}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
+
+  std::vector<std::vector<bool>> stop_gradients{{false}};
+  std::vector<std::vector<pir::Value>> out_grads{{op3.result(0), op4.out()}};
+  pir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd_op.split");
+
+  auto concat_vjp_interface_impl =
+      op2_info.GetInterfaceImpl<paddle::dialect::VjpInterface>();
+
+  concat_vjp_interface_impl->vjp_(op2.operation(), out_grads, stop_gradients);
+  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
+
+  auto place = platform::CPUPlace();
+  Scope scope;
+  ProgramDesc prog_desc;
+  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
+  std::stringstream os;
+  os << reinterpret_cast<NewIRInterpreter*>(
+      const_cast<InterpreterBaseImpl*>(test_core.Impl()));
+  std::string prefix_str = os.str();
+  test_core.SetSkipGcVars({prefix_str + "_inner_var_4",
+                           prefix_str + "_inner_var_5",
+                           prefix_str + "_inner_var_8"});
+  test_core.Run({});
+  auto out_tensor_0 =
+      test_core.local_scope() == nullptr
+          ? scope.FindVar(prefix_str + "_inner_var_4")->Get<phi::DenseTensor>()
+          : test_core.local_scope()
+                ->FindVar(prefix_str + "_inner_var_4")
+                ->Get<phi::DenseTensor>();
+  auto out_tensor_1 =
+      test_core.local_scope() == nullptr
+          ? scope.FindVar(prefix_str + "_inner_var_5")->Get<phi::DenseTensor>()
+          : test_core.local_scope()
+                ->FindVar(prefix_str + "_inner_var_5")
+                ->Get<phi::DenseTensor>();
+  auto grad_out_tensor_0 =
+      test_core.local_scope() == nullptr
+          ? scope.FindVar(prefix_str + "_inner_var_8")->Get<phi::DenseTensor>()
+          : test_core.local_scope()
+                ->FindVar(prefix_str + "_inner_var_8")
+                ->Get<phi::DenseTensor>();
+  ASSERT_EQ(out_tensor_0.data<float>()[0], 2.0);
+  ASSERT_EQ(out_tensor_0.data<float>()[1], 2.0);
+  ASSERT_EQ(out_tensor_1.data<float>()[0], 2.0);
+  ASSERT_EQ(out_tensor_1.data<float>()[1], 2.0);
+  ASSERT_EQ(grad_out_tensor_0.data<float>()[0], 2.0);
+  ASSERT_EQ(grad_out_tensor_0.data<float>()[1], 2.0);
+  ASSERT_EQ(grad_out_tensor_0.data<float>()[2], 1.0);
+  ASSERT_EQ(grad_out_tensor_0.data<float>()[3], 1.0);
+}
+
 }  // namespace framework
 }  // namespace paddle

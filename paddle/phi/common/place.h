@@ -54,7 +54,8 @@ const char* AllocationTypeStr(AllocationType type);
 /// \brief The place is used to specify where the data is stored.
 class PADDLE_API Place {
  public:
-  Place() : device(0), alloc_type_(AllocationType::UNDEFINED) {}
+  Place()
+      : device(0), alloc_type_(AllocationType::UNDEFINED), device_type_id_(0) {}
 
   explicit Place(AllocationType type,
                  int8_t id,

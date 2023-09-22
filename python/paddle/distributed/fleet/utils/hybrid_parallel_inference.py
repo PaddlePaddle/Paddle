@@ -16,10 +16,9 @@ from collections import defaultdict
 
 import numpy as np
 
-from paddle.distributed import fleet
-
 # (TODO: GhostScreaming) It will be removed later.
-from paddle.fluid import core
+from paddle.base import core
+from paddle.distributed import fleet
 from paddle.framework import Block, Program, in_dynamic_mode
 
 
@@ -47,7 +46,7 @@ class HybridParallelInferenceHelper:
         :name: bash-example1
 
         # while op pattern
-        with paddle.fluid.device_guard(f'{device}:all'):
+        with paddle.base.device_guard(f'{device}:all'):
             # init global cond
             max_len = paddle.full(shape=[1], dtype="int64", fill_value=10)
             step_idx = paddle.full(shape=[1], dtype="int64", fill_value=0)
@@ -59,7 +58,7 @@ class HybridParallelInferenceHelper:
             arr = paddle.tensor.array_write(data, step_idx)
 
         with while_op.block():
-            with paddle.fluid.device_guard(f'{device}:all'):
+            with paddle.base.device_guard(f'{device}:all'):
                 # read data from global lod_tensor_array
                 element_in_arr = paddle.tensor.array_read(array=arr, i=step_idx)
                 # write placehold data to global lod_tensor_array,
@@ -67,13 +66,13 @@ class HybridParallelInferenceHelper:
                 paddle.increment(x=step_idx, value=1.0)
                 paddle.tensor.array_write(element_in_arr, i=step_idx, array=arr)
 
-            with paddle.fluid.device_guard(f'{device}:0'):
+            with paddle.base.device_guard(f'{device}:0'):
                 ... some code
 
-            with paddle.fluid.device_guard(f'{device}:1'):
+            with paddle.base.device_guard(f'{device}:1'):
                 ... some code
 
-            with paddle.fluid.device_guard(f'{device}:{num_pp-1}'):
+            with paddle.base.device_guard(f'{device}:{num_pp-1}'):
                 # generate some data in while block and write to global lod_tensor_array
                 # that they are read in next while step.
                 # we will using send_v2 to send global lod_tensor_array to other pipeline and sync
@@ -82,11 +81,11 @@ class HybridParallelInferenceHelper:
                 # update cond and assign to cond_int, we will sync cond_int
                 layers.assign(layers.cast(cond, dtype="int32"), cond_int)
 
-            with paddle.fluid.device_guard(f'{model._device}:all'):
+            with paddle.base.device_guard(f'{model._device}:all'):
                 # the code below must at end of while block and exists in device:all
                 layers.assign(layers.cast(cond_int, dtype='bool'), cond)
 
-        with paddle.fluid.device_guard(f'{model._device}:all'):
+        with paddle.base.device_guard(f'{model._device}:all'):
             # use a empty lod_tensor_array to clear lod_tensor_array
             layers.assign(layers.create_array(data.dtype), arr)
 
@@ -100,7 +99,7 @@ class HybridParallelInferenceHelper:
         import os
         import numpy as np
         import paddle
-        import paddle.fluid.layers as layers
+        import paddle.base.layers as layers
         import paddle.distributed.fleet as fleet
         paddle.enable_static()
 
@@ -119,10 +118,10 @@ class HybridParallelInferenceHelper:
         device = "gpu"
 
         with paddle.static.program_guard(main_program, startup_program):
-            with paddle.fluid.device_guard(f'{device}:0'):
+            with paddle.base.device_guard(f'{device}:0'):
                 X = paddle.static.data(name='X', shape=[None, 2], dtype='float32')
 
-            with paddle.fluid.device_guard(f'{device}:all'):
+            with paddle.base.device_guard(f'{device}:all'):
                 max_len = paddle.full(
                     shape=[1], dtype="int64", fill_value=5, name="n")
                 step_idx = paddle.full(
@@ -135,18 +134,18 @@ class HybridParallelInferenceHelper:
                 while_op = layers.While(cond, is_test=True)
 
             with while_op.block():
-                with paddle.fluid.device_guard(f'{device}:all'):
+                with paddle.base.device_guard(f'{device}:all'):
                     input = paddle.tensor.array_read(array=data, i=step_idx)
                     paddle.increment(x=step_idx, value=1.0)
                     paddle.tensor.array_write(input, i=step_idx, array=data)
 
-                with paddle.fluid.device_guard(f'{device}:0'):
+                with paddle.base.device_guard(f'{device}:0'):
                     param_attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(1.0))
                     weight1 = paddle.static.create_parameter(
                         shape=[2, 5], dtype='float32', attr=param_attr, is_bias=False)
                     hidden1 = paddle.matmul(input, weight1)
 
-                with paddle.fluid.device_guard(f'{device}:1'):
+                with paddle.base.device_guard(f'{device}:1'):
                     param_attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(2.0))
                     weight2 = paddle.static.create_parameter(
                         shape=[5, 2], dtype='float32', attr=param_attr, is_bias=False)
@@ -158,15 +157,15 @@ class HybridParallelInferenceHelper:
                     paddle.assign(paddle.less_than(x=step_idx, y=max_len), cond)
                     layers.assign(layers.cast(cond, dtype="int32"), cond_int)
 
-                with paddle.fluid.device_guard(f'{device}:all'):
+                with paddle.base.device_guard(f'{device}:all'):
                     # the code below must at end of while block and exists in device:all
                     layers.assign(layers.cast(cond_int, dtype='bool'), cond)
 
-            with paddle.fluid.device_guard(f'{device}:all'):
+            with paddle.base.device_guard(f'{device}:all'):
                 out = layers.create_array(data.dtype)
                 layers.assign(data, out)
 
-            with paddle.fluid.device_guard(f'{device}:all'):
+            with paddle.base.device_guard(f'{device}:all'):
                 # use a empty lod_tensor_array to clear lod_tensor_array
                 layers.assign(layers.create_array(data.dtype), data)
 
@@ -273,9 +272,9 @@ class HybridParallelInferenceHelper:
                 dev_ids.append(cur_id)
         num_pp = len(dev_ids)
         num_pp = max(1, num_pp)
-        assert num_pp == self.num_pp, 'num_pp: {}, self.num_pp: {}'.format(
-            num_pp, self.num_pp
-        )
+        assert (
+            num_pp == self.num_pp
+        ), f'num_pp: {num_pp}, self.num_pp: {self.num_pp}'
 
         collective_helper = fleet.meta_optimizers.common.CollectiveHelper(
             self.role_maker, wait_port=False
@@ -534,9 +533,7 @@ class HybridParallelInferenceHelper:
             )
 
             device = op.attr(self._op_device_key)
-            assert device, "{} has no {} set.".format(
-                op.type, self._op_device_key
-            )
+            assert device, f"{op.type} has no {self._op_device_key} set."
             if device.split(':')[1] == "all":
                 continue
 

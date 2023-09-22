@@ -19,7 +19,7 @@ import warnings
 import numpy as np
 
 import paddle
-from paddle import fluid, nn, optimizer, static
+from paddle import base, nn, optimizer, static
 from paddle.distributed.auto_parallel.static.auto_align_tool import (
     AutoAlignTool,
 )
@@ -29,8 +29,8 @@ warnings.filterwarnings("ignore")
 paddle.enable_static()
 paddle.set_device("gpu")
 
-startup_program = fluid.default_startup_program()
-main_program = fluid.default_main_program()
+startup_program = base.default_startup_program()
+main_program = base.default_main_program()
 
 
 class MnistDataset(MNIST):
@@ -50,7 +50,7 @@ class MnistDataset(MNIST):
 
 dataset = MnistDataset("train")
 place = paddle.CUDAPlace(0)
-with fluid.program_guard(main_program, startup_program):
+with base.program_guard(main_program, startup_program):
     inputs = static.data(name="image", shape=[-1, 1, 28, 28], dtype="float32")
     labels = static.data(name="label", shape=[-1, 1], dtype="int64")
     z = nn.Conv2D(1, 6, 3, 1, 1).forward(inputs)
@@ -71,7 +71,7 @@ with fluid.program_guard(main_program, startup_program):
 
 class TestAlignTool(unittest.TestCase):
     def test_align_tool(self):
-        executor = fluid.Executor()
+        executor = base.Executor()
         executor.run(startup_program)
         align_tool = AutoAlignTool(main_program, 1, [losses.name])
 

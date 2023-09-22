@@ -15,11 +15,18 @@
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
+#include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/operators/reader/buffered_reader.h"
 
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+
 // These Ops is OperatorBase, but we have been handle them in static build
-std::set<std::string> OperatorBasesHandledInStaticBuild = {"read"};
+std::set<std::string> OperatorBasesHandledInStaticBuild = {"read",
+                                                           "conditional_block"};
 
 std::set<std::string> OperatorBasesMustRunInStaticBuild = {
     "create_double_buffer_reader", "create_py_reader"};
@@ -46,36 +53,79 @@ std::set<std::string> StaticBuildBlackList = {
     "cinn_instruction_run" /*: to handle subgraph infermeta*/,
     "cinn_launch" /*: to handle subgraph infermeta*/,
     "run_program" /*: to handle scope output*/,
-    "sparse_sparse_coo_tensor" /*: to handle sparse output*/};
+    "sparse_sparse_coo_tensor" /*: to handle sparse output*/,
+    "distributed_fused_lamb_init"};
 
-// TODO(lizhiyu): This operator list is only for pipeline strategy temporarily.
-std::set<std::string> SkipCheckForPipelineTempList = {"c_broadcast",
-                                                      "c_allreduce_sum",
-                                                      "c_allgather",
-                                                      "layer_norm",
-                                                      "recv_v2",
-                                                      "reshape2_grad",
-                                                      "c_identity"};
 namespace paddle {
 namespace framework {
 namespace interpreter {
 
+using InterpreterCore = framework::InterpreterCore;
+
+static VarMetaInfo GetVarMetaInfo(const Scope& scope, const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  phi::DataType dtype = phi::DataType::UNDEFINED;
+  phi::Place place = phi::Place();
+  if (var == nullptr) {
+    return VarMetaInfo(name, dtype, place);
+  }
+
+  if (var->IsType<phi::DenseTensor>()) {
+    const phi::DenseTensor& tensor = var->Get<phi::DenseTensor>();
+    if (!UNLIKELY(!tensor.IsInitialized())) {
+      dtype = tensor.dtype();
+      place = tensor.place();
+    }
+  } else if (var->IsType<phi::SelectedRows>()) {
+    auto tensor = var->Get<phi::SelectedRows>().value();
+    if (!UNLIKELY(!tensor.IsInitialized())) {
+      dtype = tensor.dtype();
+      place = tensor.place();
+    }
+  }
+  return VarMetaInfo(name, dtype, place);
+}
+
+std::vector<VarMetaInfo> GetVarsInfo(const Scope* scope,
+                                     VariableNameMap var_map,
+                                     const OperatorBase& op) {
+  std::vector<VarMetaInfo> var_info;
+
+  const std::unordered_set<std::string>* no_need_buffer_vars = nullptr;
+  if (op.Info().NoNeedBufferVarsInferer()) {
+    no_need_buffer_vars = &(op.Info().NoNeedBufferVarsInferer()(
+        op.Inputs(), op.Outputs(), op.Attrs()));
+    if (no_need_buffer_vars->empty()) no_need_buffer_vars = nullptr;
+  }
+  for (auto it = var_map.begin(); it != var_map.end();) {
+    auto& var = *it;
+    bool is_no_need_buffer_var =
+        (no_need_buffer_vars && no_need_buffer_vars->count(var.first) > 0);
+    std::string var_name;
+    var_info.reserve(var_info.size() + var.second.size());
+    for (size_t i = 0; i < var.second.size(); ++i) {
+      auto var_name = var.second[i];
+      if (scope && is_no_need_buffer_var) {
+        var_info.emplace_back(GetVarMetaInfo(*scope, var_name));
+      } else {
+        var_info.emplace_back(var_name);
+      }
+    }
+    ++it;
+  }
+  return var_info;
+}
+
 bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
-  // in_black_list = (kernelCode >> 7) & 1
-  // is_operator_base = (kernelCode >> 6) & 1
-  // is_custom_op = (kernelCode >> 5) & 1
-  // use_mkldnn = (kernelCode >> 4) & 1
-  // has_fluid_kernel = (kernelCode >> 3) & 1
-  // has_structed_kernel = (kernelCode >> 2) & 1
-  // need_move_to_phi = (kernelCode >> 1) & 1
+  // in_black_list = (kernelCode >> 5) & 1
+  // is_operator_base = (kernelCode >> 4) & 1
+  // is_custom_op = (kernelCode >> 3) & 1
+  // use_mkldnn = (kernelCode >> 2) & 1
+  // sub_block_can_not_static_build = (kernelCode >> 1) & 1
   using KernelCode = int8_t;
   std::set<std::pair<std::string, KernelCode>> invalid_ops;
   for (auto& op : block.AllOps()) {
     auto op_type = op->Type();
-    if (SkipCheckForPipelineTempList.find(op_type) !=
-        SkipCheckForPipelineTempList.end()) {
-      continue;
-    }
     const framework::OpInfo& info = OpInfoMap::Instance().Get(op_type);
     auto op_base =
         info.Creator()(op_type, op->Inputs(), op->Outputs(), op->GetAttrMap());
@@ -91,20 +141,22 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
       use_mkldnn = attr.index() == 1 ? PADDLE_GET_CONST(int, attr)
                                      : PADDLE_GET_CONST(bool, attr);
     }
-    bool has_fluid_kernel = OperatorWithKernel::AllOpKernels().count(op_type);
-    bool has_structured_kernel =
-        phi::KernelFactory::Instance().HasStructuredKernel(op_type);
-    bool need_move_to_phi = (has_fluid_kernel || has_structured_kernel);
 
-    KernelCode kernel_code =
-        (in_black_list << 7) + (is_operator_base << 6) + (is_custom_op << 5) +
-        (use_mkldnn << 4) + (has_fluid_kernel << 3) +
-        (has_structured_kernel << 2) + (need_move_to_phi << 1);
+    bool sub_block_can_not_static_build = false;
+    if (op->HasAttr("sub_block")) {
+      auto* sub_block =
+          PADDLE_GET_CONST(framework::BlockDesc*, op->GetAttr("sub_block"));
+      sub_block_can_not_static_build = !BlockCanBeStaticBuilt(*sub_block);
+    }
+
+    KernelCode kernel_code = static_cast<KernelCode>(
+        (in_black_list << 5) + (is_operator_base << 4) + (is_custom_op << 3) +
+        (use_mkldnn << 2) + (sub_block_can_not_static_build << 1));
     if (!OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
       if (in_black_list ||
           (is_operator_base &&
            !OperatorBasesHandledInStaticBuild.count(op_type)) ||
-          is_custom_op || use_mkldnn || need_move_to_phi) {
+          is_custom_op || use_mkldnn || sub_block_can_not_static_build) {
         invalid_ops.insert(std::make_pair(op_type, kernel_code));
       }
     }
@@ -114,13 +166,12 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
     std::stringstream ss;
     ss << "The following OPs are unable to static build:\n";
     for (auto& item : invalid_ops) {
-      ss << item.first << " [in_black_list = " << (item.second >> 7 & 1)
-         << ", is_operator_base = " << (item.second >> 6 & 1)
-         << ", is_custom_op = " << (item.second >> 5 & 1)
-         << ", use_mkldnn = " << (item.second >> 4 & 1)
-         << ", has_fluid_kernel = " << (item.second >> 3 & 1)
-         << ", has_structed_kerenl = " << (item.second >> 2 & 1)
-         << ", need_move_to_phi = " << (item.second >> 1 & 1) << "]\n";
+      ss << item.first << " [in_black_list = " << (item.second >> 6 & 1)
+         << ", is_operator_base = " << (item.second >> 5 & 1)
+         << ", is_custom_op = " << (item.second >> 4 & 1)
+         << ", use_mkldnn = " << (item.second >> 3 & 1)
+         << ", sub_block_can_not_static_build = " << (item.second >> 1 & 1)
+         << "]\n";
     }
     VLOG(1) << ss.str();
   }
@@ -165,6 +216,27 @@ bool TensorShouldBeFakeInitialized(const OperatorBase& op,
     return false;
   }
 
+  if (op_type == "fused_bias_residual_layernorm" &&
+      parameter_name == "residual_out") {
+    if (op.HasInputs("residual")) {
+      bool is_residual_empty = op.Input("residual") == kEmptyVarName;
+      bool is_norm_weight_empty = op.Input("norm_weight") == kEmptyVarName;
+      bool is_norm_bias_empty = op.Input("norm_bias") == kEmptyVarName;
+      if (!is_residual_empty) {
+        if (is_norm_weight_empty && is_norm_bias_empty) {
+          VLOG(2) << "Skip fake initialization for: " << parameter_name;
+          return false;
+        }
+      } else {
+        VLOG(2) << "Skip fake initialization for: " << parameter_name;
+        return false;
+      }
+    } else {
+      VLOG(2) << "Skip fake initialization for: " << parameter_name;
+      return false;
+    }
+  }
+
   if (op_type == "fake_quantize_range_abs_max") {
     if (op.Attr<bool>("is_test") &&
         (parameter_name == "OutScale" || parameter_name == "OutScales")) {
@@ -195,10 +267,8 @@ phi::TensorBase* GetTensorFormVar(framework::Variable* var) {
       return var->template GetMutable<phi::TensorArray>();
     } else if (var->template IsType<framework::Strings>()) {
       return var->template GetMutable<framework::Strings>();
-    } else if (var->template IsType<paddle::framework::RawTensor>()) {
-      return var->template GetMutable<paddle::framework::RawTensor>();
-    } else if (!var->IsInitialized()) {
-      // The following is for RAW type of var
+    } else if (var->template IsType<paddle::framework::RawTensor>() ||
+               !var->IsInitialized()) {
       return var->template GetMutable<paddle::framework::RawTensor>();
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
@@ -316,9 +386,59 @@ void FakeInitializeTensorBase(const platform::DeviceContext& dev_ctx,
   }
 }
 
-void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
-                                          const phi::Place& place,
-                                          Scope* scope) {
+void RunPreStaticBuild(const framework::Scope& scope,
+                       const platform::Place& dev_place,
+                       const OperatorBase& op) {
+  auto* scope_var = scope.FindVar(op.Output("Scope"));
+  PADDLE_ENFORCE_NOT_NULL(
+      scope_var,
+      platform::errors::PreconditionNotMet(
+          "Expect Scope variable to be set in conditional_block_op, but "
+          "got a null Scope variable. Please set the Scope variable."));
+
+  auto* scopes = scope_var->GetMutable<std::vector<framework::Scope*>>();
+  scopes->resize(1);
+  scopes->front() = &scope.NewScope();
+
+  auto& cur_scope = *scopes->front();
+#ifdef PADDLE_WITH_DNNL
+  // Executor on being destroyed clears oneDNN cache and resets
+  // registered model data layout. This is unwanted for nested
+  // Executors (executors declared inside control ops)
+  platform::DontClearMKLDNNCache(dev_place);
+#endif
+  auto* block = op.Attr<framework::BlockDesc*>("sub_block");
+  VLOG(3) << "Conditional block.idx = " << block->ID()
+          << ", scope = " << &cur_scope;
+
+  auto& skip_vars =
+      op.Attr<std::vector<std::string>>("skip_eager_deletion_vars");
+
+  std::unique_ptr<InterpreterCore> core;
+  LOG_FIRST_N(INFO, 1)
+      << "[ControlFlow][ConditionalBlock] New Executor is Running.";
+
+  VLOG(10) << "[interpreterCore cache]" << core.get();
+  VLOG_IF(10, core) << platform::is_same_place(core->GetPlace(), dev_place);
+
+  framework::interpreter::ExecutionConfig execution_config;
+  execution_config.create_local_scope = false;
+  execution_config.used_for_control_flow_op = true;
+  execution_config.skip_gc_vars =
+      std::set<std::string>(skip_vars.begin(), skip_vars.end());
+
+  core.reset(
+      new InterpreterCore(dev_place, *block, &cur_scope, execution_config));
+
+  std::vector<paddle::framework::OpFuncNode> op_func_nodes;
+  core->Build({}, &op_func_nodes);
+}
+
+void FakeInitializeOutputsForOperatorBase(
+    const OperatorBase& op,
+    const phi::Place& place,
+    Scope* scope,
+    std::vector<std::shared_ptr<OperatorBase>> following_ops) {
   const std::string& op_type = op.Type();
   if (OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
     return;
@@ -327,7 +447,59 @@ void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
   phi::DeviceContext* dev_ctx =
       platform::DeviceContextPool::Instance().Get(place);
 
-  if (op_type == "read") {
+  if (op_type == "conditional_block") {
+    // Note(sonder): skip fake init for conditional_block when there is no
+    // op with kernel after it.
+    bool skip_fake_init = true;
+    std::unordered_set<std::string> following_input_vars;
+
+    for (size_t i = 0; i < following_ops.size(); ++i) {
+      if (dynamic_cast<framework::OperatorWithKernel*>(
+              following_ops[i].get()) != nullptr) {
+        VLOG(4) << "Find op with kernel after conditional_block : "
+                << following_ops[i]->Type();
+        skip_fake_init = false;
+        auto input_vars_info = GetVarsInfo(
+            scope, following_ops[i]->Inputs(), *following_ops[i].get());
+        for (auto& input_var_info : input_vars_info) {
+          following_input_vars.insert(input_var_info.name_);
+        }
+      }
+    }
+
+    if (skip_fake_init) {
+      return;
+    }
+
+    const std::vector<VarMetaInfo> out_var_info_before_build =
+        GetVarsInfo(scope, op.Outputs(), op);
+
+    RunPreStaticBuild(*scope, place, op);
+    const std::vector<VarMetaInfo> out_var_info_after_build =
+        GetVarsInfo(scope, op.Outputs(), op);
+
+    // Note(sonder): static_build is not supported if the output of
+    // conditional_block is changed after static build.
+    for (size_t i = 0; i < out_var_info_before_build.size(); ++i) {
+      // static build is supported in case of the output's dtype/place
+      // is changed but the following op is not use this output
+      if (out_var_info_before_build[i] != out_var_info_after_build[i]) {
+        auto var_name = out_var_info_before_build[i].name_;
+        if (following_input_vars.count(var_name)) {
+          PADDLE_THROW(phi::errors::PreconditionNotMet(
+              "The output %s s' dtype/place of conditional_block is "
+              "changed after static build. Befer static build, the "
+              "dtype is %s, place is %s. After static "
+              "build, the dtype is %s, place is %s.",
+              var_name,
+              out_var_info_before_build[i].dtype_,
+              out_var_info_before_build[i].place_,
+              out_var_info_after_build[i].dtype_,
+              out_var_info_after_build[i].place_));
+        }
+      }
+    }
+  } else if (op_type == "read") {
     const std::string& reader_name = op.Input("Reader");
     framework::ReaderHolder* reader =
         GET_DATA_SAFELY(scope->FindVar(reader_name), "Input", "Reader", "Read")
@@ -370,6 +542,15 @@ phi::DataType GetInputDType(const RuntimeContext& runtime_ctx,
   phi::TensorBase* in_tensor =
       GetTensorFormVar(runtime_ctx.inputs.find(parameter_name)->second.at(0));
   return in_tensor->dtype();
+}
+
+bool InputExisted(const RuntimeContext& runtime_ctx,
+                  const std::string& parameter_name) {
+  auto it = runtime_ctx.inputs.find(parameter_name);
+  if (it == runtime_ctx.inputs.end() || it->second.empty()) {
+    return false;
+  }
+  return true;
 }
 
 phi::DataType InferDTypeFromAttr(const framework::OperatorBase& op,
@@ -437,6 +618,18 @@ void FakeInitializeOutputsForFunctionKernel(
             if (beta1_pow->place() == beta2_pow->place()) {
               backend = phi::TransToPhiBackend(beta1_pow->place());
             }
+          } else if (op_type == "lamb") {
+            phi::TensorBase* beta1_pow = GetTensorFormVar(
+                runtime_ctx.inputs.find("Beta1Pow")->second.at(0));
+            phi::TensorBase* beta2_pow = GetTensorFormVar(
+                runtime_ctx.inputs.find("Beta2Pow")->second.at(0));
+            if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU &&
+                beta1_pow->place().GetType() == AllocationType::CPU &&
+                beta2_pow->place().GetType() == AllocationType::CPU) {
+              backend = phi::Backend::CPU;
+            } else {
+              backend = phi::TransToPhiBackend(dev_ctx.GetPlace());
+            }
           } else if (op_type == "reshape2") {
             phi::TensorBase* x =
                 GetTensorFormVar(runtime_ctx.inputs.find("X")->second.at(0));
@@ -493,6 +686,20 @@ void FakeInitializeOutputsForFunctionKernel(
               dtype = DataType::INT32;
             } else {
               dtype = DataType::INT64;
+            }
+          } else if (op_type == "fused_bias_residual_layernorm") {
+            auto in_dtype = GetInputDType(runtime_ctx, "x");
+            float quant_scale = op.Attr<float>("quant_scale");
+            if (InputExisted(runtime_ctx, "residual") &&
+                !InputExisted(runtime_ctx, "norm_weight") &&
+                !InputExisted(runtime_ctx, "norm_bias")) {
+              dtype = in_dtype;
+            } else {
+              if (quant_scale > 0.0f) {
+                dtype = DataType::INT8;
+              } else {
+                dtype = in_dtype;
+              }
             }
           } else {
             VLOG(4) << "Get dtype result from InferMeta";

@@ -43,8 +43,6 @@ limitations under the License. */
 namespace paddle {
 namespace pybind {
 
-namespace py = ::pybind11;
-
 PyTypeObject* p_pylayer_type;
 extern PyTypeObject* p_tensor_type;
 
@@ -163,7 +161,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
     args_size = PyTuple_GET_SIZE(args);
   }
   inputs_size = kwargs_size + args_size;
-  forward_args = PyTuple_New(args_size + 1);
+  forward_args = PyTuple_New(args_size + 1);  // NOLINT
   Py_INCREF(ctx);
   PyTuple_SET_ITEM(forward_args, 0, reinterpret_cast<PyObject*>(ctx));
 
@@ -177,7 +175,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
   for (size_t i = 0; i < inputs_size; i++) {
     PyObject* obj = nullptr;
     if (i >= args_size) {
-      obj = PyList_GetItem(kwargs_value_list, i - args_size);
+      obj = PyList_GetItem(kwargs_value_list, i - args_size);  // NOLINT
     } else {
       obj = PyTuple_GET_ITEM(args, i);
     }

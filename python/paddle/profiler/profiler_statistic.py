@@ -15,7 +15,7 @@ import collections
 import re
 from enum import Enum
 
-from paddle.fluid.core import TracerEventType, TracerMemEventType
+from paddle.base.core import TracerEventType, TracerMemEventType
 from paddle.utils.flops import flops
 
 from .statistic_helper import (
@@ -276,9 +276,7 @@ def _gen_layer_flops(node, repeat=1):
             flops_n = _format_large_number(node.flops)
             flops_s = _format_large_number(node.flops * 1e9 / node.cpu_time)
             ret.append(
-                "{}{} latency: {}, FLOPs: {}, FLOPS: {}\n".format(
-                    align, name, tm, flops_n, flops_s
-                )
+                f"{align}{name} latency: {tm}, FLOPs: {flops_n}, FLOPS: {flops_s}\n"
             )
 
     for n in node[1:]:

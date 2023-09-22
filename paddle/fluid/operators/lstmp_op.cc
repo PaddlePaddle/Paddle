@@ -50,7 +50,7 @@ class LSTMPOp : public framework::OperatorWithKernel {
             "Input(X)'s rank of LSTMP operator must be 2, but received %d.",
             in_dims.size()));
 
-    int frame_size = in_dims[1] / 4;
+    int frame_size = static_cast<int>(in_dims[1] / 4);
     auto w_dims = ctx->GetInputDim("Weight");
     auto proj_dims = ctx->GetInputDim("ProjWeight");
     PADDLE_ENFORCE_EQ(

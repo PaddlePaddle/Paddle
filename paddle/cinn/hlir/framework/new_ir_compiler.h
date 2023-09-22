@@ -17,27 +17,20 @@
 #include <memory>
 #include <unordered_map>
 #include "paddle/cinn/common/macros.h"
-#include "paddle/ir/core/program.h"
+#include "paddle/pir/core/program.h"
 
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/op_lowering.h"
 
 namespace cinn {
 namespace hlir {
 namespace framework {
 
-struct CompatibleInfo {
-  static constexpr char* kInputPrefix = "input_";
-  static constexpr char* kOutputPrefix = "output_";
-  // TODO(Aurelius): Need add name mapping logic in REGISTER_CINN_OP
-  // macros or attempt to unify Op name with Paddle and CINN.
-  static const std::unordered_map<std::string, std::string> OP_NAMES;
-};
-
 // TODO(Aurelius84): Need abstract this logic to implement Proxy for
 // the co-existance with GraphCompiler.
 class NewIRCompiler final {
  public:
-  NewIRCompiler(const ::ir::Program& prog,
+  NewIRCompiler(const ::pir::Program& prog,
                 const Target& target,
                 const std::shared_ptr<Scope>& scope)
       : program_(prog),
@@ -46,23 +39,20 @@ class NewIRCompiler final {
         scope_(scope) {}
 
   std::unique_ptr<Program> Build();
-  std::vector<ir::LoweredFunc> GetOpFunc(const ::ir::Operation& op, int idx);
-  void ProcessFunction(const std::vector<ir::LoweredFunc>& lowered_funcs);
 
-  std::vector<std::unique_ptr<Instruction>> BuildInstructions(
-      const std::vector<std::vector<::ir::Operation*>>& groups);
-
- protected:
-  const std::string& GenOpFuncName(const ::ir::Operation& op, int idx);
-
-  std::vector<std::string> OpGetInputNames(const ::ir::Operation& op);
-
-  std::vector<std::string> OpGetOutputNames(const ::ir::Operation& op);
+  std::unique_ptr<Program> Build(const std::vector<newir::GroupPtr>& groups);
 
  private:
   CINN_DISALLOW_COPY_AND_ASSIGN(NewIRCompiler);
 
-  const ::ir::Program& program_;
+  std::vector<ir::LoweredFunc> GetOpFunc(const ::pir::Operation& op, int idx);
+
+  void ProcessFunction(const std::vector<ir::LoweredFunc>& lowered_funcs);
+
+  std::vector<std::unique_ptr<Instruction>> BuildInstructions(
+      const std::vector<newir::GroupPtr>& groups);
+
+  const ::pir::Program& program_;
   ir::Module::Builder m_builder_;
   std::unique_ptr<backends::Compiler> compiler_{nullptr};
   Target target_;
@@ -70,7 +60,7 @@ class NewIRCompiler final {
   std::unordered_map<std::string, std::string> func_names_;
 };
 
-std::shared_ptr<Scope> BuildScope(const Target&, const ::ir::Program&);
+std::shared_ptr<Scope> BuildScope(const Target&, const ::pir::Program&);
 
 }  // namespace framework
 }  // namespace hlir

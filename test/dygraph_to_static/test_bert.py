@@ -24,13 +24,11 @@ from dygraph_to_static_util import ast_only_test, test_with_new_ir
 from predictor_utils import PredictorTools
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
-place = (
-    fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
-)
+place = base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
 SEED = 2020
 STEP_NUM = 10
 PRINT_STEP = 2
@@ -93,9 +91,9 @@ class TestBert(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def train(self, bert_config, data_reader, to_static):
-        with fluid.dygraph.guard(place):
-            fluid.default_main_program().random_seed = SEED
-            fluid.default_startup_program().random_seed = SEED
+        with base.dygraph.guard(place):
+            base.default_main_program().random_seed = SEED
+            base.default_startup_program().random_seed = SEED
 
             fake_dataset = FakeBertDataset(data_reader, STEP_NUM)
             data_loader = paddle.io.DataLoader(
@@ -175,7 +173,7 @@ class TestBert(unittest.TestCase):
 
     def predict_static(self, data):
         paddle.enable_static()
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         # load inference model
         [
             inference_program,
@@ -197,7 +195,7 @@ class TestBert(unittest.TestCase):
 
     def predict_dygraph(self, bert_config, data):
         paddle.jit.enable_to_static(False)
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             bert = PretrainModelLayer(
                 config=bert_config, weight_sharing=False, use_fp16=False
             )
@@ -206,7 +204,7 @@ class TestBert(unittest.TestCase):
             bert.set_dict(model_dict)
             bert.eval()
 
-            input_vars = [fluid.dygraph.to_variable(x) for x in data]
+            input_vars = [base.dygraph.to_variable(x) for x in data]
             (
                 src_ids,
                 pos_ids,
@@ -230,7 +228,7 @@ class TestBert(unittest.TestCase):
             return pred_res
 
     def predict_dygraph_jit(self, data):
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             bert = paddle.jit.load(self.model_save_prefix)
             bert.eval()
 

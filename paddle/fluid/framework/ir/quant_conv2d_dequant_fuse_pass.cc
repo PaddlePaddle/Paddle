@@ -419,13 +419,15 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
               "Channel scale tensor's place should be CPU."));
       const float* channel_scale_data = channel_scale_tensor.data<float>();
       for (int i = 0; i < channel_scale_tensor.numel(); i++) {
-        weight_scale.push_back(channel_scale_data[i] / range);
+        weight_scale.push_back(channel_scale_data[i] /
+                               static_cast<float>(range));
       }
       nodes2rm.insert(dequant_channel_scale_node);
     } else {
       float max_range =
           PADDLE_GET_CONST(float, dequant_op_node->Op()->GetAttr("max_range"));
-      weight_scale.push_back((range * range) / max_range / range);
+      weight_scale.push_back(static_cast<float>(range * range) / max_range /
+                             static_cast<float>(range));
     }
 
     // Convert weight to fp32 range
@@ -522,7 +524,7 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
                 static_cast<size_t>(w_dims[0]),
                 weight_scale.size()));
         for (int j = 0; j < weight_tensor->numel(); j++) {
-          int inner_size = w_dims[1] * w_dims[2] * w_dims[3];
+          int inner_size = static_cast<int>(w_dims[1] * w_dims[2] * w_dims[3]);
           quantized_weight_data[j] *= weight_scale[j / inner_size];
         }
       } else if (quantized_op_type == "conv2d_transpose") {
@@ -553,7 +555,7 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
                 static_cast<size_t>(w_dims[1]),
                 weight_scale.size()));
         for (int j = 0; j < weight_tensor->numel(); j++) {
-          int inner_size = w_dims[2] * w_dims[3];
+          int inner_size = static_cast<int>(w_dims[2] * w_dims[3]);
           quantized_weight_data[j] *=
               weight_scale[(j / inner_size) % w_dims[1]];
         }

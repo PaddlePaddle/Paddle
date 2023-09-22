@@ -21,8 +21,8 @@ import unittest
 from fake_reader import fake_imdb_reader
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def train(network, use_cuda, batch_size=32, pass_num=2):
@@ -45,16 +45,16 @@ def train(network, use_cuda, batch_size=32, pass_num=2):
     optimizer = paddle.optimizer.Adagrad(learning_rate=0.2)
     optimizer.minimize(cost)
 
-    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    feeder = fluid.DataFeeder(feed_list=[data, label], place=place)
+    place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+    feeder = base.DataFeeder(feed_list=[data, label], place=place)
     reader = feeder.feed(train_reader())
 
-    exe = fluid.Executor(place)
-    fluid.default_startup_program().random_seed = 1
-    fluid.default_main_program().random_seed = 1
-    exe.run(fluid.default_startup_program())
+    exe = base.Executor(place)
+    base.default_startup_program().random_seed = 1
+    base.default_main_program().random_seed = 1
+    exe.run(base.default_startup_program())
 
-    train_cp = fluid.default_main_program()
+    train_cp = base.default_main_program()
     fetch_list = [cost]
 
     for pass_id in range(pass_num):
@@ -80,6 +80,6 @@ class TestBase(unittest.TestCase):
 
         for use_cuda in [True, False]:
             print(f'network: {self.net.__name__}, use_cuda: {use_cuda}')
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
-                with fluid.scope_guard(core.Scope()):
+            with base.program_guard(base.Program(), base.Program()):
+                with base.scope_guard(core.Scope()):
                     train(self.net, use_cuda)

@@ -111,7 +111,6 @@ class AddPositionEncodingGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plt = paddle::platform;
 
 REGISTER_OPERATOR(
     add_position_encoding,

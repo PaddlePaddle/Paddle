@@ -15,25 +15,34 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
 from op import Operator
+from op_test import OpTest, convert_float_to_uint16
 
-from paddle.fluid import core
+import paddle
+from paddle import base
+from paddle.base import core
 
 
 class TestFillOp1(OpTest):
     def setUp(self):
         self.op_type = "fill"
         self.init_dtype()
-        val = np.random.random(size=[100, 200])
+        self.init_shape()
+        self.init_value()
         self.inputs = {}
         self.attrs = {
-            'value': val.flatten().tolist(),
-            'shape': [100, 200],
+            'value': self.val.flatten().tolist(),
+            'shape': self.shape,
             'dtype': int(core.VarDesc.VarType.FP64),
             'force_cpu': False,
         }
-        self.outputs = {'Out': val.astype('float64')}
+        self.outputs = {'Out': self.val.astype('float64')}
+
+    def init_shape(self):
+        self.shape = [100, 200]
+
+    def init_value(self):
+        self.val = np.random.random(size=self.shape)
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -45,15 +54,15 @@ class TestFillOp1(OpTest):
 class TestFillOp2(OpTest):
     def setUp(self):
         self.op_type = "fill"
-        val = np.random.random(size=[100, 200])
+        self.val = np.random.random(size=[100, 200])
         self.inputs = {}
         self.attrs = {
-            'value': val.flatten().tolist(),
+            'value': self.val.flatten().tolist(),
             'shape': [100, 200],
             'dtype': int(core.VarDesc.VarType.FP64),
             'force_cpu': True,
         }
-        self.outputs = {'Out': val.astype('float64')}
+        self.outputs = {'Out': self.val.astype('float64')}
 
     def test_check_output(self):
         self.check_output()
@@ -96,6 +105,22 @@ class TestFillOp3(unittest.TestCase):
 class TestFillFP16OP(TestFillOp1):
     def init_dtype(self):
         self.dtype = np.float16
+
+
+class TestFillInf(TestFillOp1):
+    def init_value(self):
+        self.val = np.full(fill_value=np.inf, shape=self.shape)
+
+
+class TestFillOpError(unittest.TestCase):
+    def test_errors(self):
+        with base.dygraph.base.guard():
+
+            def test_nan_fill_value():
+                tensor = paddle.zeros(shape=[100, 200])
+                tensor.fill_(np.nan)
+
+            self.assertRaises(ValueError, test_nan_fill_value)
 
 
 @unittest.skipIf(

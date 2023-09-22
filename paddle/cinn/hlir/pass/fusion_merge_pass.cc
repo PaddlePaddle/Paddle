@@ -14,7 +14,7 @@
 
 #include "paddle/cinn/hlir/pass/fusion_merge_pass_util.h"
 
-DECLARE_bool(enhance_vertical_fusion_with_recompute);
+PD_DECLARE_bool(enhance_vertical_fusion_with_recompute);
 
 namespace cinn {
 namespace hlir {

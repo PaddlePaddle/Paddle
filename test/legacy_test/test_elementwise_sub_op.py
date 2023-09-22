@@ -17,12 +17,12 @@ import unittest
 import warnings
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.layer_helper import LayerHelper
+from paddle import base
+from paddle.base import core
+from paddle.base.layer_helper import LayerHelper
 
 
 class TestElementwiseOp(OpTest):
@@ -44,10 +44,12 @@ class TestElementwiseOp(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', check_prim=self.check_prim)
+        self.check_grad(
+            ['X', 'Y'], 'Out', check_prim=self.check_prim, check_new_ir=True
+        )
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
@@ -56,6 +58,7 @@ class TestElementwiseOp(OpTest):
             max_relative_error=0.005,
             no_grad_set=set("X"),
             check_prim=self.check_prim,
+            check_new_ir=True,
         )
 
     def test_check_grad_ingore_y(self):
@@ -65,6 +68,7 @@ class TestElementwiseOp(OpTest):
             max_relative_error=0.005,
             no_grad_set=set('Y'),
             check_prim=self.check_prim,
+            check_new_ir=True,
         )
 
     def if_check_prim(self):
@@ -116,7 +120,12 @@ class TestElementwiseBF16OP(TestElementwiseOp):
     def test_check_grad_ingore_x(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['Y'], 'Out', no_grad_set=set("X"), max_relative_error=0.1
+            place,
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            max_relative_error=0.1,
+            check_new_ir=True,
         )
 
     def test_check_grad_ingore_y(self):
@@ -128,6 +137,7 @@ class TestElementwiseBF16OP(TestElementwiseOp):
             no_grad_set=set('Y'),
             max_relative_error=0.1,
             check_prim=True,
+            check_new_ir=True,
         )
 
 
@@ -372,10 +382,12 @@ class TestElementwiseSubOp_broadcast_0(TestElementwiseOp):
         }
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output(check_dygraph=False, check_new_ir=False)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
+        self.check_grad(
+            ['X', 'Y'], 'Out', check_dygraph=False, check_new_ir=False
+        )
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
@@ -384,6 +396,7 @@ class TestElementwiseSubOp_broadcast_0(TestElementwiseOp):
             max_relative_error=0.005,
             no_grad_set=set("X"),
             check_dygraph=False,
+            check_new_ir=False,
         )
 
     def test_check_grad_ingore_y(self):
@@ -393,6 +406,7 @@ class TestElementwiseSubOp_broadcast_0(TestElementwiseOp):
             max_relative_error=0.005,
             no_grad_set=set('Y'),
             check_dygraph=False,
+            check_new_ir=False,
         )
 
 
@@ -427,24 +441,36 @@ class TestElementwiseBF16OP_broadcast_0(TestElementwiseBF16OP):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_dygraph=False)
+        self.check_output_with_place(
+            place, check_dygraph=False, check_new_ir=False
+        )
 
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X', 'Y'], 'Out', check_dygraph=False
+            place, ['X', 'Y'], 'Out', check_dygraph=False, check_new_ir=False
         )
 
     def test_check_grad_ingore_x(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['Y'], 'Out', no_grad_set=set("X"), check_dygraph=False
+            place,
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            check_dygraph=False,
+            check_new_ir=False,
         )
 
     def test_check_grad_ingore_y(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X'], 'Out', no_grad_set=set('Y'), check_dygraph=False
+            place,
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+            check_dygraph=False,
+            check_new_ir=False,
         )
 
 
@@ -789,8 +815,8 @@ class TestComplexElementwiseSubOp(OpTest):
         self.init_input_output()
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.attrs = {'axis': -1, 'use_mkldnn': False}
         self.outputs = {'Out': self.out}
@@ -810,13 +836,11 @@ class TestComplexElementwiseSubOp(OpTest):
         self.out = self.x - self.y
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=False)
 
     def test_check_grad_normal(self):
         self.check_grad(
-            ['X', 'Y'],
-            'Out',
-            check_prim=self.check_prim,
+            ['X', 'Y'], 'Out', check_prim=self.check_prim, check_new_ir=False
         )
 
     def test_check_grad_ingore_x(self):
@@ -825,6 +849,7 @@ class TestComplexElementwiseSubOp(OpTest):
             'Out',
             no_grad_set=set("X"),
             check_prim=self.check_prim,
+            check_new_ir=False,
         )
 
     def test_check_grad_ingore_y(self):
@@ -833,6 +858,7 @@ class TestComplexElementwiseSubOp(OpTest):
             'Out',
             no_grad_set=set('Y'),
             check_prim=self.check_prim,
+            check_new_ir=False,
         )
 
     def if_enable_cinn(self):
@@ -862,7 +888,7 @@ class TestSubtractApi(unittest.TestCase):
         return paddle.subtract(x, y, name)
 
     def test_name(self):
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
             x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
             y = paddle.static.data(name='y', shape=[2, 3], dtype=np.float32)
 
@@ -870,7 +896,7 @@ class TestSubtractApi(unittest.TestCase):
             self.assertEqual(('subtract_res' in y_1.name), True)
 
     def test_declarative(self):
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
 
             def gen_data():
                 return {
@@ -881,18 +907,18 @@ class TestSubtractApi(unittest.TestCase):
             x = paddle.static.data(name="x", shape=[3], dtype=np.float32)
             y = paddle.static.data(name="y", shape=[3], dtype=np.float32)
             z = self._executed_api(x, y)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
+            place = base.CPUPlace()
+            exe = base.Executor(place)
             z_value = exe.run(feed=gen_data(), fetch_list=[z.name])
             z_expected = np.array([1.0, -2.0, 2.0])
             self.assertEqual((z_value == z_expected).all(), True)
 
     def test_dygraph(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             np_x = np.array([2, 3, 4]).astype('float64')
             np_y = np.array([1, 5, 2]).astype('float64')
-            x = fluid.dygraph.to_variable(np_x)
-            y = fluid.dygraph.to_variable(np_y)
+            x = base.dygraph.to_variable(np_x)
+            y = base.dygraph.to_variable(np_y)
             z = self._executed_api(x, y)
             np_z = z.numpy(False)
             z_expected = np.array([1.0, -2.0, 2.0])

@@ -27,6 +27,10 @@ class IdentityOpCleanPass : public FusePassBase {
   void ApplyImpl(ir::Graph* graph) const override;
 
  private:
+  int CleanUselessOp(ir::Graph* graph) const;
+
+  int CleanTwoCastOp(ir::Graph* graph) const;
+
   const std::string name_scope_{"identity_op_clean_pass"};
 };
 

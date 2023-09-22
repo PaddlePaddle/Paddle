@@ -109,9 +109,10 @@ def weight_only_linear(
         inputs = {
             'x': [x],
             'weight': [weight],
-            'bias': [bias],
             'weight_scale': [weight_scale],
         }
+        if bias:
+            inputs["bias"] = [bias]
         attrs = {'weight_dtype': weight_dtype}
 
         out = helper.create_variable_for_type_inference(dtype)
@@ -173,9 +174,10 @@ def llm_int8_linear(
         inputs = {
             'x': [x],
             'weight': [weight],
-            'bias': [bias],
             'weight_scale': [weight_scale],
         }
+        if bias:
+            inputs["bias"] = [bias]
         attrs = {'threshold': threshold}
 
         out = helper.create_variable_for_type_inference(dtype)

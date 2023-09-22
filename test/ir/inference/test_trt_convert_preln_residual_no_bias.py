@@ -155,7 +155,7 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
-        # for static_shape, fall back to fluid fused op
+        # for static_shape, fall back to base fused op
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)

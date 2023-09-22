@@ -23,7 +23,7 @@ void ViewShapeKernel(const Context& dev_ctx,
                      const DenseTensor& input,
                      const std::vector<int64_t>& dims,
                      DenseTensor* out) {
-  DDim new_dims = DDim(dims.data(), dims.size());
+  DDim new_dims = DDim(dims.data(), static_cast<int>(dims.size()));
   DDim stride;
   if (ReshapeStride(input.dims(), input.strides(), new_dims, stride)) {
     auto meta = input.meta();
@@ -67,11 +67,11 @@ void ViewDtypeKernel(const Context& dev_ctx,
 
     DDim output_dims = input.dims();
     output_dims[output_dims.size() - 1] =
-        output_dims[output_dims.size() - 1] * times;
+        output_dims[output_dims.size() - 1] * times;  // NOLINT
 
     DDim output_stride = input.strides();
     for (int i = 0; i < output_stride.size(); i++) {
-      output_stride[i] = output_stride[i] * times;
+      output_stride[i] = output_stride[i] * times;  // NOLINT
     }
     output_stride[output_stride.size() - 1] = 1;
 
@@ -115,7 +115,7 @@ void ViewDtypeKernel(const Context& dev_ctx,
 
     DDim output_dims = input.dims();
     output_dims[output_dims.size() - 1] =
-        output_dims[output_dims.size() - 1] / times;
+        output_dims[output_dims.size() - 1] / times;  // NOLINT
 
     DDim output_stride = input.strides();
     for (int i = 0; i < output_stride.size(); i++) {
@@ -129,7 +129,7 @@ void ViewDtypeKernel(const Context& dev_ctx,
                                        times,
                                        input.dtype(),
                                        dtype));
-      output_stride[i] = output_stride[i] / times;
+      output_stride[i] = output_stride[i] / times;  // NOLINT
     }
     output_stride[output_stride.size() - 1] = 1;
 

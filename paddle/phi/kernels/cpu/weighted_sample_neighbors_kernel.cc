@@ -35,10 +35,16 @@ struct GraphWeightedNode {
   }
   GraphWeightedNode(T node_id, float weight_key, T eid = 0)
       : node_id(node_id), weight_key(weight_key), eid(eid) {}
-  void operator=(const GraphWeightedNode<T>& other) {
-    node_id = other.node_id;
-    weight_key = other.weight_key;
-    eid = other.eid;
+
+  GraphWeightedNode& operator=(const GraphWeightedNode<T>& other) {
+    if (this != &other) {
+      this->node_id = other.node_id;
+      this->weight_key = other.weight_key;
+      this->eid = other.eid;
+      return *this;
+    }
+
+    return *this;
   }
   friend bool operator>(const GraphWeightedNode<T>& n1,
                         const GraphWeightedNode<T>& n2) {
@@ -57,7 +63,7 @@ void SampleWeightedNeighbors(
     bool return_eids) {
   std::priority_queue<phi::GraphWeightedNode<T>,
                       std::vector<phi::GraphWeightedNode<T>>,
-                      std::greater<phi::GraphWeightedNode<T>>>
+                      std::greater<phi::GraphWeightedNode<T>>>  // NOLINT
       min_heap;
   for (size_t i = 0; i < out_src.size(); i++) {
     float weight_key = log2(dice_distribution(rng)) * (1 / out_weight[i]);
@@ -213,7 +219,7 @@ void WeightedSampleNeighborsKernel(const Context& dev_ctx,
   const T* x_data = x.data<T>();
   const T* eids_data =
       (eids.get_ptr() == nullptr ? nullptr : eids.get_ptr()->data<T>());
-  int bs = x.dims()[0];
+  int bs = static_cast<int>(x.dims()[0]);
 
   std::vector<T> output;
   std::vector<int> output_count;

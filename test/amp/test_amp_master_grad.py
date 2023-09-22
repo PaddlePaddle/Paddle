@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 class SimpleNet(paddle.nn.Layer):
@@ -80,7 +80,7 @@ class TestMasterGrad(unittest.TestCase):
                 scaler.update()
                 opt.clear_grad()
         paddle.amp.debugging.disable_operator_stats_collection()
-        op_list = paddle.fluid.core.get_low_precision_op_list()
+        op_list = paddle.base.core.get_low_precision_op_list()
         return fp32_grads, op_list
 
     def test_adam_master_grad(self):

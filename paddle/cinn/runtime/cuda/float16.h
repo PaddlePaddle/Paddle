@@ -597,9 +597,9 @@ __host__ __device__ inline bool(isfinite)(const float16& a) {
 
 __host__ __device__ inline float16(abs)(const float16& a) {
 #if defined(CINN_CUDA_FP16) && (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530)
-  return float16(__habs(a.to_half()));
+  return static_cast<float16>(__habs(a.to_half()));
 #else
-  return float16(fabsf(static_cast<float>(a)));
+  return static_cast<float16>(fabsf(static_cast<float>(a)));
 #endif
 }
 

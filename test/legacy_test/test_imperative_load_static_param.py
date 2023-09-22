@@ -19,8 +19,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import framework
+from paddle import base
+from paddle.base import framework
 from paddle.nn import BatchNorm, Linear
 
 paddle.enable_static()
@@ -147,12 +147,12 @@ class TestDygraphLoadStatic(unittest.TestCase):
             [20, 200], 'float32', name="weight_test_2"
         )
 
-        para_list = fluid.default_main_program().list_vars()
+        para_list = base.default_main_program().list_vars()
 
-        exe = fluid.Executor(
-            fluid.CPUPlace()
-            if not fluid.is_compiled_with_cuda()
-            else fluid.CUDAPlace(0)
+        exe = base.Executor(
+            base.CPUPlace()
+            if not base.is_compiled_with_cuda()
+            else base.CUDAPlace(0)
         )
         out = exe.run(framework.default_startup_program())
 
@@ -174,7 +174,7 @@ class TestDygraphLoadStatic(unittest.TestCase):
             else:
                 new_dict[k] = v
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
 
             class MyTest(paddle.nn.Layer):
                 def __init__(self):

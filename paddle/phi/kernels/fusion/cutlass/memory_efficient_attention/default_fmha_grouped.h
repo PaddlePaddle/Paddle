@@ -77,8 +77,7 @@ template <
     int KeysPerBlock_,
     bool SingleValueIteration_,
     GroupScheduleMode GroupScheduleMode_,
-    bool AddMask,
-    bool MaskBroadcastRow>
+    bool AddMask>
 struct DefaultFMHAGrouped {
   using scalar_t = scalar_t_;
   using accum_t = float;
@@ -92,7 +91,6 @@ struct DefaultFMHAGrouped {
   using ArchTag = ArchTag_;
   static bool const kIsAligned = isAligned_;
   static bool const kAddMask = AddMask;
-  static bool const kMaskBroadcastRow = MaskBroadcastRow;
   static bool const kSingleValueIteration = SingleValueIteration_;
   static int const kKeysPerBlock = KeysPerBlock_;
   static bool const kMaskIsAligned = maskIsAligned_;
@@ -288,7 +286,6 @@ struct DefaultFMHAGrouped {
                                          SingleValueIteration_,
                                          GroupScheduleMode_,
                                          AddMask,
-                                         MaskBroadcastRow,
                                          maskIsAligned_>;
 };
 

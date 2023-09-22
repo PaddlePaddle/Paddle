@@ -457,6 +457,7 @@ SyncBatchNormGradNode::operator()(
     std::string output_bias_grad_str = paddle::string::Sprintf(
         TENSOR_BIAS_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(bias_grad));
     output_str += output_bias_grad_str;
+    VLOG(6) << "gradnode_ptr = " << this;
     VLOG(4) << paddle::string::Sprintf(
         INPUT_PRINT_TEMPLATE, input_str, output_str);
   }

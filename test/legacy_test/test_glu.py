@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.dygraph as dg
-from paddle import fluid
+import paddle.base.dygraph as dg
+from paddle import base
 from paddle.nn import functional as F
 
 
@@ -47,9 +47,9 @@ class TestGLUV2(unittest.TestCase):
         np.testing.assert_allclose(y_np, self.out)
 
     def test_case(self):
-        self.check_identity(fluid.CPUPlace())
-        if fluid.is_compiled_with_cuda():
-            self.check_identity(fluid.CUDAPlace(0))
+        self.check_identity(base.CPUPlace())
+        if base.is_compiled_with_cuda():
+            self.check_identity(base.CUDAPlace(0))
 
 
 class TestGlu(unittest.TestCase):

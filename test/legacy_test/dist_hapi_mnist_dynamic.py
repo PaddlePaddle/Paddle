@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import Model, fluid, set_device
+from paddle import Model, base, set_device
 from paddle.metric import Accuracy
 from paddle.nn.layer.loss import CrossEntropyLoss
 from paddle.static import InputSpec as Input
@@ -50,7 +50,7 @@ def compute_accuracy(pred, gt):
 
 
 @unittest.skipIf(
-    not fluid.is_compiled_with_cuda(), 'CPU testing is not supported'
+    not base.is_compiled_with_cuda(), 'CPU testing is not supported'
 )
 class TestDistTraining(unittest.TestCase):
     def test_dynamic_multiple_gpus(self):

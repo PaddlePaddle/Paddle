@@ -1574,6 +1574,7 @@ void AllocatorFacade::SetDefaultStream(const platform::CustomPlace& place,
     m_->SetDefaultStream(place, stream);
   }
 }
+
 #endif
 
 UNUSED static std::shared_ptr<NaiveBestFitAllocator> unused_obj =

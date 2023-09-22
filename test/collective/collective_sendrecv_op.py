@@ -18,7 +18,7 @@ from legacy_test.test_collective_base import (
 )
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 
@@ -29,7 +29,7 @@ class TestCollectiveSendRecv(TestCollectiveRunnerBase):
 
     def get_model(self, main_prog, startup_program):
         ring_id = self.global_ring_id
-        with fluid.program_guard(main_prog, startup_program):
+        with base.program_guard(main_prog, startup_program):
             tindata = paddle.static.data(
                 name="tindata",
                 shape=[10, 1000],

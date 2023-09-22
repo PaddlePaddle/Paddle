@@ -47,6 +47,11 @@ std::string AlgorithmTypeString(int64_t algo_type) {
   } else if (algo_type ==
              static_cast<int64_t>(AlgorithmType::kConvBackwardFilterV8)) {
     return "conv_backward_filter_v8";
+  } else if (algo_type ==
+             static_cast<int64_t>(AlgorithmType::kScaleBiasReluConvBNstats)) {
+    return "scale_bias_relu_conv_bnstats";
+  } else if (algo_type == static_cast<int64_t>(AlgorithmType::kBNFinalize)) {
+    return "bn_finalize";
   }
 #endif
   return std::to_string(algo_type);

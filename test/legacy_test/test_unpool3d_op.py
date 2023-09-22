@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
+from paddle.base import core
 
 paddle.enable_static()
 paddle.seed(2022)
@@ -284,7 +284,7 @@ class TestUnpool3DOpException(unittest.TestCase):
 class TestUnpool3DOpAPI_dygraph(unittest.TestCase):
     def test_case(self):
         places = [paddle.CPUPlace()]
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for place in places:
             paddle.disable_static()
@@ -314,7 +314,7 @@ class TestUnpool3DOpAPI_dygraph(unittest.TestCase):
 class TestUnpool3DOpAPI_dygraph2(unittest.TestCase):
     def test_case(self):
         places = [paddle.CPUPlace()]
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for place in places:
             paddle.disable_static()
@@ -344,7 +344,7 @@ class TestUnpool3DOpAPI_dygraph2(unittest.TestCase):
 class TestUnpool3DOpAPI_dygraph3(unittest.TestCase):
     def test_case(self):
         places = [paddle.CPUPlace()]
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for place in places:
             paddle.disable_static()
@@ -376,7 +376,7 @@ class TestUnpool3DOpAPI_static(unittest.TestCase):
     def test_case(self):
         paddle.enable_static()
         places = [paddle.CPUPlace()]
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for place in places:
             with paddle.static.program_guard(
@@ -412,9 +412,9 @@ class TestUnpool3DOpAPI_static(unittest.TestCase):
                     output, indices, kernel_size=2, stride=None
                 )
 
-                exe = paddle.fluid.Executor(place)
+                exe = paddle.base.Executor(place)
                 fetches = exe.run(
-                    paddle.fluid.default_main_program(),
+                    paddle.base.default_main_program(),
                     feed={"x": input_data},
                     fetch_list=[output_unpool],
                     return_numpy=True,

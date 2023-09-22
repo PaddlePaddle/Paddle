@@ -16,15 +16,15 @@
 
 #include <random>
 
-#include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/utils/flags.h"
 
-DECLARE_bool(use_system_allocator);
+PD_DECLARE_bool(use_system_allocator);
 
 namespace paddle {
 namespace framework {

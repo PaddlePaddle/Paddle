@@ -101,6 +101,7 @@ class AllocatorFacade {
                                                  phi::stream::stream_t stream);
   void RecordStream(std::shared_ptr<phi::Allocation> allocation,
                     phi::stream::stream_t stream);
+
   void SetDefaultStream(const platform::CustomPlace& place,
                         phi::stream::stream_t stream);
 #endif

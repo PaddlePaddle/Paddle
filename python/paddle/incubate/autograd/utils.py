@@ -16,7 +16,7 @@ import typing
 
 import paddle
 import paddle.framework.dtype as dtypes
-from paddle.fluid import framework
+from paddle.base import framework
 
 from .phi_ops_map import op_info, op_map
 
@@ -51,17 +51,20 @@ def prim_enabled():
 
         .. code-block:: python
 
-            import paddle
-            from paddle.incubate.autograd import enable_prim, disable_prim, prim_enabled
+            >>> import paddle
+            >>> from paddle.incubate.autograd import enable_prim, disable_prim, prim_enabled
 
-            paddle.enable_static()
-            enable_prim()
+            >>> paddle.enable_static()
+            >>> enable_prim()
 
-            print(prim_enabled()) # True
+            >>> print(prim_enabled())
+            True
 
-            disable_prim()
+            >>> disable_prim()
 
-            print(prim_enabled()) # False
+            >>> print(prim_enabled())
+            False
+
     """
     return prim_option.get_status()
 
@@ -79,13 +82,15 @@ def enable_prim():
 
         .. code-block:: python
 
-            import paddle
-            from paddle.incubate.autograd import enable_prim, prim_enabled
+            >>> import paddle
+            >>> from paddle.incubate.autograd import enable_prim, prim_enabled
 
-            paddle.enable_static()
-            enable_prim()
+            >>> paddle.enable_static()
+            >>> enable_prim()
 
-            print(prim_enabled()) # True
+            >>> print(prim_enabled())
+            True
+
     """
     prim_option.set_status(True)
 
@@ -103,33 +108,36 @@ def disable_prim():
 
         .. code-block:: python
 
-            import paddle
-            from paddle.incubate.autograd import enable_prim, disable_prim, prim_enabled
+            >>> import paddle
+            >>> from paddle.incubate.autograd import enable_prim, disable_prim, prim_enabled
 
-            paddle.enable_static()
-            enable_prim()
+            >>> paddle.enable_static()
+            >>> enable_prim()
 
-            print(prim_enabled()) # True
+            >>> print(prim_enabled())
+            True
 
-            disable_prim()
+            >>> disable_prim()
 
-            print(prim_enabled()) # False
+            >>> print(prim_enabled())
+            False
+
     """
     prim_option.set_status(False)
 
 
 INT_DTYPE_2_STRING = {
-    int(0): 'bool',
-    int(1): 'int16',
-    int(2): 'int32',
-    int(3): 'int64',
-    int(4): 'float16',
-    int(5): 'float32',
-    int(6): 'float64',
-    int(20): 'uint8',
-    int(21): 'int8',
-    int(23): 'complex64',
-    int(24): 'complex128',
+    0: 'bool',
+    1: 'int16',
+    2: 'int32',
+    3: 'int64',
+    4: 'float16',
+    5: 'float32',
+    6: 'float64',
+    20: 'uint8',
+    21: 'int8',
+    23: 'complex64',
+    24: 'complex128',
 }
 
 
@@ -301,7 +309,7 @@ def map_output_for_composite(op):
 
 
 def flatten(inp):
-    if inp is None or isinstance(inp, paddle.fluid.framework.Variable):
+    if inp is None or isinstance(inp, paddle.base.framework.Variable):
         return [inp]
     flattened = []
     for part in inp:

@@ -97,13 +97,13 @@ class MaxSeqPoolFunctor {
       }
       for (int64_t k = 0; k < dim; ++k) {
         out_data[i * dim + k] = in_data[starts[i] * dim + k];
-        max_index[i * dim + k] = starts[i];
+        max_index[i * dim + k] = static_cast<int>(starts[i]);
       }
       for (size_t j = starts[i] + 1; j < starts[i + 1]; ++j) {
         for (int64_t k = 0; k < dim; ++k) {
           if (in_data[j * dim + k] > out_data[i * dim + k]) {
             out_data[i * dim + k] = in_data[j * dim + k];
-            max_index[i * dim + k] = j;
+            max_index[i * dim + k] = static_cast<int>(j);
           }
         }
       }
@@ -330,7 +330,7 @@ class SumSeqPoolGradFunctor {
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
       int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
       if (h == 0) continue;
-      int64_t in_offset = lod[i] * in_w;
+      int64_t in_offset = static_cast<int64_t>(lod[i] * in_w);
       const T* out_pos = out_g_data + i * out_w;
       T* in_pos = in_g_data + in_offset;
       for (int r = 0; r != h; ++r) {
@@ -472,7 +472,7 @@ class SequencePoolGradFunctor<phi::CPUContext, T> {
       auto in_g_e = EigenMatrix<T>::From(in_g_t, {h, w});
       auto out_g_e = EigenMatrix<T>::From(out_g_t, {1, w});
       auto out_g_e_v = EigenVector<T>::Flatten(out_g_t);
-      Eigen::DSizes<int, 2> bcast(h, 1);
+      Eigen::DSizes<int, 2> bcast(static_cast<int>(h), 1);
 
       if (pooltype == "AVERAGE") {
         in_g_e.device(place) = (out_g_e / static_cast<T>(h)).broadcast(bcast);

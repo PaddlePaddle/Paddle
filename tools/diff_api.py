@@ -44,7 +44,7 @@ please follow these steps in order to pass the CI:
 
   1. cd ${paddle_path}, compile paddle;
   2. pip install build/python/dist/(build whl package);
-  3. run "python tools/print_signatures.py paddle.fluid> paddle/fluid/API.spec"
+  3. run "python tools/print_signatures.py paddle.base> paddle/fluid/API.spec"
 '''
 if error:
     print('API Difference is: ')

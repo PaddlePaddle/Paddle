@@ -24,13 +24,10 @@ limitations under the License. */
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
-
-#ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-#endif
 
 // TODO(chenweihang): split Key, Kernel, Factory into diff files
 #include "paddle/phi/core/kernel_factory.h"
@@ -99,8 +96,6 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   // data_promote
   DataTypeSet dtype_set{DataType::UNDEFINED};
 
-  // TODO(chenweihang): deal with multiple diff input Tensors
-  // TODO(chenweihang): add global device guard method to set backend
   inline void AssignKernelKeySet(const phi::TensorBase& tensor) {
     // assign Backend
     BackendSet tensor_backend_set = detail::GetTensorBackendSet(tensor);
@@ -173,7 +168,6 @@ struct KernelTypeParser : ArgsIterator<KernelTypeParser> {
   }
 };
 
-#ifdef PADDLE_WITH_DISTRIBUTE
 /* ------------------ for auto parallel ----------------------- */
 
 struct DistTensorTypeParser : ArgsIterator<DistTensorTypeParser> {
@@ -195,13 +189,22 @@ struct DistTensorTypeParser : ArgsIterator<DistTensorTypeParser> {
     }
   }
 
+  void operator()(const paddle::optional<std::vector<Tensor>>& x) {
+    if (x) {
+      if (!(x.get_ptr()->empty())) {
+        for (auto& t : *(x.get_ptr())) {
+          result &= t.is_dist_tensor();
+        }
+      }
+    }
+  }
+
   // skip other type args, these args don't used in kernel selection
   template <typename T>
   void operator()(const T& x) {
     // do nothing
   }
 };
-#endif
 
 }  // namespace detail
 
@@ -235,12 +238,10 @@ DataLayout ParseLayout(DataLayout layout);
 DataLayout ParseLayout(const Tensor& tensor);
 DataLayout ParseLayoutWithInputOrder(DataLayout layout, const Tensor& tensor);
 
-#ifdef PADDLE_WITH_DISTRIBUTE
 template <typename... Args>
 bool AllInputsAreDistTensor(const Args&... args) {
   return detail::DistTensorTypeParser().apply(args...).result;
 }
-#endif
 
 }  // namespace experimental
 }  // namespace paddle

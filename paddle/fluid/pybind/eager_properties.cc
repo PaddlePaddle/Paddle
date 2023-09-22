@@ -92,13 +92,11 @@ Examples:
 
 PyObject* tensor_properties_get_type(TensorObject* self, void* closure) {
   EAGER_TRY
-  if (!self->tensor.defined()) {
+  if (!self->tensor.defined() || self->tensor.is_dense_tensor()) {
     // be same to old dygraph
     return ToPyObject(paddle::framework::proto::VarType::LOD_TENSOR);
   }
-  if (self->tensor.is_dense_tensor()) {
-    return ToPyObject(paddle::framework::proto::VarType::LOD_TENSOR);
-  } else if (self->tensor.is_selected_rows()) {
+  if (self->tensor.is_selected_rows()) {
     return ToPyObject(paddle::framework::proto::VarType::SELECTED_ROWS);
   } else if (egr::IsVariableCompatTensor(self->tensor)) {
     return ToPyObject(static_cast<paddle::framework::proto::VarType::Type>(
@@ -380,7 +378,31 @@ PyObject* tensor_properties_get_dist_attr(TensorObject* self, void* closure) {
         static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
     return ToPyObject(&dist_tensor->dist_attr());
 #else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "The `dist_attr()` property of (Dist)Tensor is not supported in the "
+        "current PaddlePaddle, please recompile and installPaddlePaddle with "
+        "the "
+        "option of `WITH_DISTRIBUTE=ON`."));
+#endif
+  } else {
     RETURN_PY_NONE
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+PyObject* tensor_properties_get_local_shape(TensorObject* self, void* closure) {
+  EAGER_TRY
+  if (self->tensor.is_dist_tensor()) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+    phi::distributed::DistTensor* dist_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
+    return ToPyObject(phi::vectorize<int64_t>(dist_tensor->local_dims()));
+#else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "The `_local_shape` property of (Dist)Tensor is not supported "
+        "in the current PaddlePaddle, please recompile and install "
+        "PaddlePaddle "
+        "with the option of `WITH_DISTRIBUTE=ON`."));
 #endif
   } else {
     RETURN_PY_NONE
@@ -503,7 +525,7 @@ PyObject* tensor_properties_get_strides(TensorObject* self, void* closure) {
   size_t rank = static_cast<size_t>(stride.size());
   value.resize(rank);
 
-  for (size_t i = 0; i < rank; i++) {
+  for (int i = 0; i < static_cast<int>(rank); i++) {
     value[i] = stride[i];
   }
 
@@ -715,6 +737,11 @@ struct PyGetSetDef variable_properties[] = {  // NOLINT
      (getter)tensor_properties_get_persistable,
      (setter)tensor_properties_set_persistable,
      tensor_persistable__doc__,
+     nullptr},
+    {"_local_shape",
+     (getter)tensor_properties_get_local_shape,
+     nullptr,
+     nullptr,
      nullptr},
     {"shape",
      (getter)tensor_properties_get_shape,

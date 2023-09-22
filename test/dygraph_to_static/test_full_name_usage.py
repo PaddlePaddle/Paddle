@@ -18,12 +18,12 @@ import numpy as np
 from dygraph_to_static_util import ast_only_test
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 @paddle.jit.to_static
 def dygraph_decorated_func(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     if paddle.mean(x) > 0:
         x_v = x - 1
     else:
@@ -33,7 +33,7 @@ def dygraph_decorated_func(x):
 
 @paddle.jit.to_static
 def jit_decorated_func(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     if paddle.mean(x) > 0:
         x_v = x - 1
     else:
@@ -63,7 +63,7 @@ class TestFullNameDecorator(unittest.TestCase):
     def test_run_success(self):
         x = np.ones([1, 2]).astype("float32")
         answer = np.zeros([1, 2]).astype("float32")
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             np.testing.assert_allclose(
                 dygraph_decorated_func(x).numpy(), answer, rtol=1e-05
             )

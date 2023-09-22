@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid.layer_helper import LayerHelper
+from paddle import base
+from paddle.base.layer_helper import LayerHelper
 
 
 def inplace_add(x, bias):
@@ -40,18 +40,18 @@ class TestAddReaderDependency(unittest.TestCase):
         self.use_double_buffer = True
 
     def test_main(self):
-        self.run_main(fluid.CPUPlace())
+        self.run_main(base.CPUPlace())
 
-        if fluid.is_compiled_with_cuda():
-            self.run_main(fluid.CUDAPlace(0))
+        if base.is_compiled_with_cuda():
+            self.run_main(base.CUDAPlace(0))
 
     def run_main(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            with fluid.scope_guard(fluid.Scope()):
+        with base.program_guard(base.Program(), base.Program()):
+            with base.scope_guard(base.Scope()):
                 tmp_in = paddle.static.data(
                     name='tmp_in', dtype='float32', shape=[1]
                 )
-                loader = fluid.io.DataLoader.from_generator(
+                loader = base.io.DataLoader.from_generator(
                     feed_list=[tmp_in],
                     capacity=16,
                     iterable=False,
@@ -71,9 +71,9 @@ class TestAddReaderDependency(unittest.TestCase):
                 persistable_in.persistable = True
 
                 persistable_in = inplace_add(persistable_in, bias=1)
-                prog = fluid.CompiledProgram(fluid.default_main_program())
+                prog = base.CompiledProgram(base.default_main_program())
 
-                exe = fluid.Executor(place)
+                exe = base.Executor(place)
 
                 loader.set_batch_generator(data_source)
                 loader.start()
@@ -95,12 +95,12 @@ class TestAddReaderDependency(unittest.TestCase):
                         self.assertEqual(ret.shape, (1,))
                         self.assertEqual(ret[0], batch_id)
                         batch_id += 1
-                except fluid.core.EOFException:
+                except base.core.EOFException:
                     loader.reset()
 
                     self.assertEqual(batch_id, self.batch_num)
                     t = (
-                        fluid.global_scope()
+                        base.global_scope()
                         .find_var(persistable_in.name)
                         .get_tensor()
                     )

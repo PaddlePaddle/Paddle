@@ -15,15 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import (
-    OpTest,
-    convert_float_to_uint16,
-    convert_uint16_to_float,
-)
+from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def _mode1D(a):
@@ -226,7 +222,7 @@ class TestModeOpKernels(unittest.TestCase):
 
         paddle.disable_static()
         test_cpu_kernel()
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             test_gpu_kernel()
 
 
@@ -267,7 +263,7 @@ class TestModeOpInStatic(unittest.TestCase):
 
 class TestModeZeroError(unittest.TestCase):
     def test_errors(self):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
 
             def test_0_size():
                 array = np.array([], dtype=np.float32)

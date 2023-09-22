@@ -23,8 +23,8 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import framework
+from paddle import base
+from paddle.base import framework
 
 paddle.enable_static()
 
@@ -82,18 +82,18 @@ class TestAssignApi(unittest.TestCase):
         self.value = (-100 + 200 * np.random.random(size=(2, 5))).astype(
             self.dtype
         )
-        self.place = fluid.XPUPlace(0)
+        self.place = base.XPUPlace(0)
 
     def init_dtype(self):
         self.dtype = "float32"
 
     def test_assign(self):
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
+        main_program = base.Program()
+        with base.program_guard(main_program):
             x = paddle.tensor.create_tensor(dtype=self.dtype)
             paddle.assign(self.value, output=x)
 
-        exe = fluid.Executor(self.place)
+        exe = base.Executor(self.place)
         [fetched_x] = exe.run(main_program, feed={}, fetch_list=[x])
         np.testing.assert_allclose(fetched_x, self.value)
         self.assertEqual(fetched_x.dtype, self.value.dtype)
@@ -115,7 +115,7 @@ class TestAssignApi4(TestAssignApi):
         self.value = np.random.choice(a=[False, True], size=(2, 5)).astype(
             np.bool_
         )
-        self.place = fluid.XPUPlace(0)
+        self.place = base.XPUPlace(0)
 
     def init_dtype(self):
         self.dtype = "bool"

@@ -21,10 +21,10 @@ import warnings
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, Variable, core
-from paddle.fluid.core import AnalysisConfig, create_paddle_predictor
-from paddle.fluid.framework import IrGraph
+from paddle import base
+from paddle.base import Program, Variable, core
+from paddle.base.core import AnalysisConfig, create_paddle_predictor
+from paddle.base.framework import IrGraph
 from paddle.static.io import append_fetch_ops, prepend_feed_ops
 from paddle.static.quantization import (
     AddQuantDequantPass,
@@ -39,10 +39,10 @@ class QuantDequantTest(unittest.TestCase):
     def __init__(self, methodName='runTest'):
         super().__init__(methodName)
         paddle.enable_static()
-        self.main_program = fluid.Program()
-        self.startup_program = fluid.Program()
-        self.test_main_program = fluid.Program()
-        self.test_startup_program = fluid.Program()
+        self.main_program = base.Program()
+        self.startup_program = base.Program()
+        self.test_main_program = base.Program()
+        self.test_startup_program = base.Program()
         self.feeds = None
         self.fetch_list = None
         self.enable_mkldnn = False
@@ -64,7 +64,7 @@ class QuantDequantTest(unittest.TestCase):
     def _normalize_program(self, program, feed_vars, fetch_vars):
         if not isinstance(program, Program):
             raise TypeError(
-                "program type must be `fluid.Program`, but received `%s`"
+                "program type must be `base.Program`, but received `%s`"
                 % type(program)
             )
         if not isinstance(feed_vars, list):
@@ -127,7 +127,7 @@ class QuantDequantTest(unittest.TestCase):
             if var.name in feeded_var_names:
                 feeded_vars.append(var)
 
-        with fluid.scope_guard(scope):
+        with base.scope_guard(scope):
             paddle.static.io.save_inference_model(
                 dirname,
                 feeded_vars,
@@ -155,7 +155,7 @@ class QuantDequantTest(unittest.TestCase):
         '''
         Return PaddlePaddle outputs.
         '''
-        with fluid.scope_guard(scope):
+        with base.scope_guard(scope):
             outs = executor.run(
                 program=program,
                 feed=feed,
@@ -177,7 +177,7 @@ class QuantDequantTest(unittest.TestCase):
             tensor = predictor.get_input_tensor(name)
             feed_data = list(self.feeds.values())[i]
             tensor.copy_from_cpu(np.array(feed_data))
-            if type(feed_data) == fluid.LoDTensor:
+            if type(feed_data) == base.LoDTensor:
                 tensor.set_lod(feed_data.lod())
 
         predictor.zero_copy_run()
@@ -244,12 +244,12 @@ class QuantDequantTest(unittest.TestCase):
         or disable TensorRT, enable MKLDNN or disable MKLDNN
         are all the same.
         '''
-        place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
-        executor = fluid.Executor(place)
-        scope = fluid.Scope()
+        place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+        executor = base.Executor(place)
+        scope = base.Scope()
         device = "GPU" if use_gpu else "CPU"
 
-        with fluid.scope_guard(scope):
+        with base.scope_guard(scope):
             executor.run(self.startup_program)
             executor.run(self.test_startup_program)
         main_graph = IrGraph(core.Graph(self.main_program.desc), for_test=False)
@@ -273,11 +273,11 @@ class QuantDequantTest(unittest.TestCase):
         scale_training_pass = OutScaleForTrainingPass(scope=scope, place=place)
         scale_training_pass.apply(main_graph)
 
-        build_strategy = fluid.BuildStrategy()
+        build_strategy = base.BuildStrategy()
         build_strategy.memory_optimize = False
         build_strategy.enable_inplace = False
         build_strategy.fuse_all_reduce_ops = False
-        binary = fluid.CompiledProgram(main_graph.graph)
+        binary = base.CompiledProgram(main_graph.graph)
 
         iters = 10
         batch_size = 1
@@ -285,10 +285,8 @@ class QuantDequantTest(unittest.TestCase):
             paddle.reader.shuffle(paddle.dataset.mnist.train(), buf_size=500),
             batch_size=batch_size,
         )
-        feeder = fluid.DataFeeder(
-            feed_list=[self.data, self.label], place=place
-        )
-        with fluid.scope_guard(scope):
+        feeder = base.DataFeeder(feed_list=[self.data, self.label], place=place)
+        with base.scope_guard(scope):
             for _ in range(iters):
                 data = next(train_reader())
                 loss_v = executor.run(
@@ -308,7 +306,7 @@ class QuantDequantTest(unittest.TestCase):
 
         self.main_program = test_graph.to_program()
 
-        with fluid.scope_guard(scope):
+        with base.scope_guard(scope):
             self.main_program = self._normalize_program(
                 self.main_program, self.data, self.fetch_list
             )
@@ -455,6 +453,6 @@ class QuantDequantTest(unittest.TestCase):
             self.disable_trt_plugin_fp16 = disable_trt_plugin_fp16
 
     def quant_dequant(self):
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        scope = fluid.Scope()
+        place = base.CPUPlace()
+        exe = base.Executor(place)
+        scope = base.Scope()

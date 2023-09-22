@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/flatten_op.h"
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(flatten,
                         ops::FlattenKernel<phi::GPUContext, float>,

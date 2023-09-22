@@ -28,7 +28,7 @@ using phi::distributed::auto_parallel::str_join;
 std::vector<int64_t> InferTargetShape(const std::vector<int64_t>& shape,
                                       int64_t len) {
   int64_t infer_idx = -1;
-  for (int64_t i = 0, n = shape.size(); i < n; i++) {
+  for (int64_t i = 0, n = static_cast<int64_t>(shape.size()); i < n; i++) {
     if (shape[i] == -1) {
       PADDLE_ENFORCE_EQ(
           infer_idx,
@@ -74,8 +74,8 @@ std::vector<DimTrans*> MakeReshapeDimTrans(
   int64_t src_idx = 0, tgt_idx = 0;
   int64_t s, t;
   int64_t src_len, tgt_len;
-  src_len = src_shape.size();
-  tgt_len = inferred_tgt_shape.size();
+  src_len = static_cast<int64_t>(src_shape.size());
+  tgt_len = static_cast<int64_t>(inferred_tgt_shape.size());
   while (src_idx < src_len || tgt_idx < tgt_len) {
     std::vector<int64_t> src_dims, tgt_splitted_shape;
     if (src_idx >= src_len) {
@@ -88,7 +88,7 @@ std::vector<DimTrans*> MakeReshapeDimTrans(
     if (tgt_idx >= tgt_len) {
       t = 1;
     } else {
-      t = tgt_shape[tgt_idx];
+      t = inferred_tgt_shape[tgt_idx];
       tgt_splitted_shape.emplace_back(t);
       tgt_idx++;
     }
@@ -117,7 +117,7 @@ std::vector<DimTrans*> MakeReshapeDimTrans(
 
     if (tgt_splitted_shape.size() > 0) {
       std::vector<DimTrans*> input_dims;
-      for (int64_t i = 0, n = src_dims.size(); i < n; i++) {
+      for (int i = 0, n = static_cast<int>(src_dims.size()); i < n; i++) {
         int64_t in_dim = src_dims[i];
         if (src_shape[in_dim] > 1) {
           input_dims.emplace_back(new InputDim(in_dim));
@@ -125,7 +125,9 @@ std::vector<DimTrans*> MakeReshapeDimTrans(
       }
       DimTrans* flatten = make_flatten(input_dims);
 
-      for (int64_t i = 0, n = tgt_splitted_shape.size(); i < n; i++) {
+      for (int64_t i = 0, n = static_cast<int64_t>(tgt_splitted_shape.size());
+           i < n;
+           i++) {
         ret.emplace_back(make_split(flatten, tgt_splitted_shape, i));
       }
     }
@@ -133,12 +135,13 @@ std::vector<DimTrans*> MakeReshapeDimTrans(
   return ret;
 }
 
+//
 std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
 paddle::distributed::auto_parallel::ReshapeSPMDRule::InferForward(
     const std::vector<DistTensorSpec>& input_specs,
     const paddle::framework::AttributeMap& attrs) {
   // step0: Verify Input Args Based on Reshape Logic
-  int64_t ninputs = input_specs.size();
+  int64_t ninputs = static_cast<int64_t>(input_specs.size());
   PADDLE_ENFORCE_EQ(
       ninputs,
       1,
@@ -155,7 +158,7 @@ paddle::distributed::auto_parallel::ReshapeSPMDRule::InferForward(
 
   // handle the '0' values in target shape, '0' indicates
   // that the target shape is equal to the source shape
-  for (int64_t i = 0, n = tgt_shape.size(); i < n; i++) {
+  for (int64_t i = 0, n = static_cast<int64_t>(tgt_shape.size()); i < n; i++) {
     if (tgt_shape[i] == 0) {
       tgt_shape[i] = src_shape[i];
     }
@@ -178,7 +181,7 @@ paddle::distributed::auto_parallel::ReshapeSPMDRule::InferForward(
   VLOG(4) << "Reshape: input_shape: [" << str_join(src_shape)
           << "] output_shape: [" << str_join(tgt_shape) << "]";
   VLOG(4) << "Transformation from input to output:";
-  for (int64_t i = 0, n = trans.size(); i < n; i++) {
+  for (int64_t i = 0, n = static_cast<int64_t>(trans.size()); i < n; i++) {
     DimTrans* t = trans[i];
     VLOG(4) << "\tOutput axis " << i << ": " << t->to_string();
   }
@@ -193,12 +196,64 @@ paddle::distributed::auto_parallel::ReshapeSPMDRule::InferForward(
 
 std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
 paddle::distributed::auto_parallel::ReshapeSPMDRule::InferBackward(
+    const std::vector<DistTensorSpec>& input_specs,
     const std::vector<DistTensorSpec>& output_specs,
     const paddle::framework::AttributeMap& attrs) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      "InferBackward of ReductionSPMDRule is NOT implemented yet."));
+  // step0: Verify Input Args Based on Reshape Logic
+  int64_t ninputs = input_specs.size();
+  int64_t noutputs = output_specs.size();
+  PADDLE_ENFORCE_EQ(
+      ninputs,
+      1,
+      phi::errors::InvalidArgument("The size of InputSpec in reshape must "
+                                   "be equal to 1, but got [%d].",
+                                   ninputs));
+  PADDLE_ENFORCE_EQ(
+      noutputs,
+      1,
+      phi::errors::InvalidArgument("The size of OutputSpec in reshape must "
+                                   "be equal to 1, but got [%d].",
+                                   noutputs));
+  VerifySpecs(output_specs, "reshape");
 
-  return {};
+  // step1: build the transformation from the output shape
+  // to original shape. Inferbackward infers the dims mapping
+  // from output to input, we first get the transformation
+  // from output to input so that we can infer the dims mapping
+  // with the map from output axes to input axes.
+  // Shapes in Inferbackward don't contain -1 or 0, so they will
+  // not be modified and we can use ref here.
+  const std::vector<int64_t>& output_shape = output_specs[0].shape();
+  const std::vector<int64_t>& input_shape = input_specs[0].shape();
+
+  std::vector<DimTrans*> trans = MakeReshapeDimTrans(output_shape, input_shape);
+
+  // step2: infer the dims mapping of input with
+  // output's dims_mapping and the transformation.
+  std::vector<std::vector<int64_t>> dims_mapping_vec =
+      InferFromDimTrans(output_specs[0], trans);
+
+  // step3: update the dist attributes of input
+  // and output with the inferred dims mapping
+  TensorDistAttr new_output_dist_attr(output_specs[0].dist_attr());
+  new_output_dist_attr.set_dims_mapping(dims_mapping_vec[0]);
+  TensorDistAttr input_dist_attr(input_specs[0].dist_attr());
+  input_dist_attr.set_dims_mapping(dims_mapping_vec[1]);
+
+  VLOG(4) << "Reshape Inferbackward: output_shape: [" << str_join(output_shape)
+          << "] input_shape: [" << str_join(input_shape) << "]";
+  VLOG(4) << "Transformation from output to input:";
+  for (int64_t i = 0, n = trans.size(); i < n; i++) {
+    DimTrans* t = trans[i];
+    VLOG(4) << "\tInput axis " << i << ": " << t->to_string();
+  }
+  VLOG(4) << "input_dims_mapping: [" << str_join(dims_mapping_vec[1])
+          << "] output_dims_mapping: [" << str_join(dims_mapping_vec[0])
+          << "]\n\n";
+
+  CleanUp();
+
+  return {{input_dist_attr}, {new_output_dist_attr}};
 }
 
 }  // namespace auto_parallel

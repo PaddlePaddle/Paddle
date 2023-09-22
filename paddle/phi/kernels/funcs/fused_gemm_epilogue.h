@@ -26,7 +26,6 @@ limitations under the License. */
 
 #if CUDA_VERSION >= 11060
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/backends/dynload/cublasLt.h"
@@ -38,9 +37,10 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/scope_guard.h"
 #include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
+#include "paddle/utils/flags.h"
 #include "paddle/utils/optional.h"
 
-DECLARE_int64(cublaslt_exhaustive_search_times);
+PD_DECLARE_int64(cublaslt_exhaustive_search_times);
 
 namespace phi {
 namespace funcs {
