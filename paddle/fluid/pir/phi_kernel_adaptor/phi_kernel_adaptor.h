@@ -53,7 +53,8 @@
 class PhiKernelAdaptor {
  public:
   explicit PhiKernelAdaptor(paddle::framework::Scope* scope) : scope_(scope) {
-    value_exe_info_ = std::make_shared<ValueExecutionInfo>(scope_);
+    value_exe_info_ =
+        std::make_shared<paddle::framework::ValueExecutionInfo>(scope_);
   }
 
   void run_kernel_prog(pir::Program* program) {
@@ -137,5 +138,5 @@ class PhiKernelAdaptor {
 
  private:
   paddle::framework::Scope* scope_;
-  std::shared_ptr<ValueExecutionInfo> value_exe_info_;
+  std::shared_ptr<paddle::framework::ValueExecutionInfo> value_exe_info_;
 };
