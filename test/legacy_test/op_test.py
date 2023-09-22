@@ -1232,7 +1232,6 @@ class OpTest(unittest.TestCase):
                 for attrs_name in self.attrs:
                     if self.attrs[attrs_name] is not None:
                         attrs_outputs[attrs_name] = self.attrs[attrs_name]
-
             kernel_sig = OpTestUtils._get_kernel_signature(
                 self.op_type,
                 dygraph_tensor_inputs,
@@ -2700,13 +2699,21 @@ class OpTest(unittest.TestCase):
                     outs_p = self._calc_new_ir_output(place)
                     outs_p = [outs_p[out] for out in outs_p]
                     outs_p.sort(key=len)
-                    checker(outs_p)
+                    checker(outs_p[0])
 
-    def check_output_with_place_customized(self, checker, place):
+    def check_output_with_place_customized(
+        self, checker, place, check_new_ir=False
+    ):
         outs = self.calc_output(place)
         outs = [np.array(out) for out in outs]
         outs.sort(key=len)
         checker(outs)
+        if check_new_ir:
+            with paddle.pir_utils.IrGuard():
+                outs_p = self._calc_new_ir_output(place)
+                outs_p = [outs_p[out] for out in outs_p]
+                outs_p.sort(key=len)
+                checker(outs_p[0])
 
     def _assert_is_close(
         self,
