@@ -1125,7 +1125,7 @@ def concat(x, axis=0, name=None):
     if in_dynamic_or_pir_mode():
         if isinstance(axis, Variable):
             axis = axis.item(0)
-        if not isinstance(input, (Variable, paddle.ir.Value)):
+        if not isinstance(input, (Variable, paddle.pir.Value)):
             input = [t for t in input if t.shape.count(0) == 0]
         return _C_ops.concat(input, axis)
     else:
@@ -3586,7 +3586,7 @@ def reshape(x, shape, name=None):
             for ele in shape:
                 if isinstance(ele, core.eager.Tensor):
                     new_shape.append(ele.item())
-                elif isinstance(ele, paddle.ir.OpResult):
+                elif isinstance(ele, paddle.pir.OpResult):
                     new_shape.append(-1)
                 else:
                     new_shape.append(ele)
@@ -3595,7 +3595,7 @@ def reshape(x, shape, name=None):
                 out = x
             else:
                 out = _C_ops.reshape(x, new_shape)
-        elif isinstance(shape, (core.eager.Tensor, paddle.ir.OpResult)):
+        elif isinstance(shape, (core.eager.Tensor, paddle.pir.OpResult)):
             shape.stop_gradient = True
             out = _C_ops.reshape(x, shape)
         else:

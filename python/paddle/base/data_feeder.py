@@ -17,7 +17,7 @@ import warnings
 
 import numpy as np
 
-from ..ir import OpResult
+from ..pir import OpResult
 from . import core
 from .framework import (
     Variable,
