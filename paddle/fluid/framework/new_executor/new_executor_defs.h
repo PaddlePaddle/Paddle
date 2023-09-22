@@ -141,14 +141,7 @@ class VariableScope {
 class NewIRInterpreter;
 class ValueExecutionInfo {
  public:
-  ValueExecutionInfo(ValueExecutionInfo* parent, Scope* scope)
-      : parent_(parent), scope_(scope) {}
-
   explicit ValueExecutionInfo(Scope* scope) : scope_(scope) {}
-
-  std::shared_ptr<ValueExecutionInfo> NewChild(Scope* scope);
-
-  std::shared_ptr<ValueExecutionInfo> NewTmp(Scope* scope);
 
   const ValueExecutionInfo* Parent() const { return parent_; }
 
@@ -188,8 +181,12 @@ class ValueExecutionInfo {
 
   void ResetVarList(int id, Variable* var) { var_list_[id] = var; }
 
+  friend class NewIRInterpreter;
+
  private:
-  const ValueExecutionInfo* parent_{nullptr};  // not owned
+  std::shared_ptr<ValueExecutionInfo> NewChild(Scope* scope);
+
+  ValueExecutionInfo* parent_{nullptr};  // not owned
 
   Scope* scope_{nullptr};  // not owned
 

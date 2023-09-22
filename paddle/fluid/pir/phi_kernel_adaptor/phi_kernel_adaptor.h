@@ -130,7 +130,7 @@ class PhiKernelAdaptor {
       kernel_fn(&kernel_ctx);
 
       auto out_value = (*it)->result(0);
-      out_name = value_exe_info_->GetValue2VarName()[out_value];
+      out_name = value_exe_info_->GetValue2VarName().at(out_value);
     }
   }
 

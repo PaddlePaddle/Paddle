@@ -535,6 +535,9 @@ void NewIRInterpreter::BuildInstruction() {
                                             value_exe_info_->GetVarName2Id(),
                                             value_exe_info_->GetVar2VarName(),
                                             sub_blocks_));
+      std::shared_ptr<ValueExecutionInfo> child =
+          value_exe_info_->NewChild(local_scope_);
+      (void)child;
     } else if (op->dialect()->name() == "pd_kernel") {
       auto op_name = op->attributes()
                          .at("op_name")
