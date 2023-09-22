@@ -16,6 +16,7 @@
 
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/activation_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/p_norm_utils.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
@@ -87,11 +88,8 @@ void PNormKernel(const Context& dev_ctx,
     phi::funcs::ReduceKernel<T, T, kps::AddFunctor, UnsignedPowFunctor<T>>(
         dev_ctx, *in_x, out_norm, UnsignedPowFunctor<T>(porder), reduce_axis);
 
-    const DenseTensor* tmp_norm = out_norm;
-    std::vector<const DenseTensor*> ins = {tmp_norm};
-    std::vector<DenseTensor*> outs = {out_norm};
-    phi::funcs::ElementwiseKernel<T>(
-        dev_ctx, ins, &outs, UnsignedPowFunctor<T>(1. / porder));
+    const Scalar scalar_(1.0 / porder);
+    phi::PowKernel<T>(dev_ctx, *out_norm, scalar_, out_norm);
   }
 }
 }  // namespace phi

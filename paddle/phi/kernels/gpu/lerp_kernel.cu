@@ -90,8 +90,7 @@ void LerpKernel(const Context &ctx,
       std::vector<const DenseTensor *> broadcast_min_inputs;
       broadcast_min_inputs.reserve(1);
       std::vector<DenseTensor *> broadcast_min_outputs = {&b_min};
-      auto broadcast_min_functor =
-          BroadcastMinElementWiseDirectCUDAFunctor<T>();
+      auto broadcast_min_functor = kps::IdentityFunctor<T>();
       if (x.dims().size() < y.dims().size() &&
           x.dims().size() < weight.dims().size()) {
         broadcast_min_inputs.emplace_back(&x);
