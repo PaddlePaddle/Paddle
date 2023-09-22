@@ -750,14 +750,8 @@ def _deal_with_undefined_var(output_vars, loop_vars):
 
 def _error_message(what, arg_name, op_name, right_value, error_value):
     error_message = (
-        "{what} of '{arg_name}' in {op_name} must be "
-        "{right_value}, but received: {error_value}.".format(
-            what=what,
-            arg_name=arg_name,
-            op_name=op_name,
-            right_value=right_value,
-            error_value=error_value,
-        )
+        f"{what} of '{arg_name}' in {op_name} must be "
+        f"{right_value}, but received: {error_value}."
     )
 
     return error_message
@@ -871,8 +865,8 @@ def case(pred_fn_pairs, default=None, name=None):
 
             if not callable(fn):
                 raise TypeError(
-                    "The fn for {} of pred_fn_pairs in Op(case) must"
-                    " be callable.".format(pred.name)
+                    f"The fn for {pred.name} of pred_fn_pairs in Op(case) must"
+                    " be callable."
                 )
 
         if default is None:

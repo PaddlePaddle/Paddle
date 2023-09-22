@@ -688,7 +688,7 @@ class MultiGRUMKLDNNKernel : public framework::OpKernel<T> {
     const bool force_fp32_output =
         ctx.HasAttr("force_fp32_output") && ctx.Attr<bool>("force_fp32_output");
 
-    if (force_fp32_output) {
+    if (force_fp32_output) {  // NOLINT
       RunKernel<float>(ctx);
     } else {
       RunKernel<T>(ctx);
@@ -706,7 +706,7 @@ class MultiGRUMKLDNNKernel : public framework::OpKernel<T> {
       auto gru_out_L2R = handler.executeSingleGru(input_mem, layer, L2R);
       handler.reorderInputL2RtoR2L(input_mem, layer);
       auto gru_out_R2L = handler.executeSingleGru(input_mem, layer, R2L);
-      if (layer < layers - 1)
+      if (layer < layers - 1)  // NOLINT
         handler.template reorderOutputR2LtoL2R<T>(gru_out_R2L, layer);
       else
         handler.template reorderOutputR2LtoL2R<Tout>(gru_out_R2L, layer);

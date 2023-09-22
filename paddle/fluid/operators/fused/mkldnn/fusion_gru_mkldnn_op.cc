@@ -248,7 +248,7 @@ class FusionGRUMKLDNNKernel : public framework::OpKernel<T> {
     const bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
 
     // BF16 does not support force output
-    if (!is_bf16 && force_fp32_output) {
+    if (!is_bf16 && force_fp32_output) {  // NOLINT
       RunKernel<float>(ctx);
     } else {
       RunKernel<T>(ctx);

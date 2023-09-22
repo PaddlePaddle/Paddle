@@ -97,9 +97,9 @@ class Builder {
   IR_API Operation *Build(const OperationArgument &argument);
 
   /// Creates an operation with the given fields.
-  IR_API Operation *Build(const std::vector<pir::OpResult> &inputs,
+  IR_API Operation *Build(const std::vector<Value> &inputs,
                           const AttributeMap &attribute,
-                          const std::vector<pir::Type> &output_types,
+                          const std::vector<Type> &output_types,
                           pir::OpInfo op_info);
 
   /// Create an operation of specific op type at the current insertion point.

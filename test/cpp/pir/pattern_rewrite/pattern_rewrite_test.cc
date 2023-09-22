@@ -19,8 +19,8 @@
 #include <numeric>
 #include <sstream>
 #include <vector>
-
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
+
 #include "paddle/fluid/pir/transforms/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -493,7 +493,7 @@ OpInfoTuple Conv2dFusionOpTest::GetOpInfo() {
                      "exhaustive_search",
                      "channels",
                      "user_workspace_size"},
-                    {"ConvFusionKernel"},
+                    "ConvFusionKernel",
                     {"input",
                      "filter",
                      "bias",
@@ -1044,7 +1044,7 @@ class TestPass : public pir::Pass {
   }
 
   bool CanApplyOn(pir::Operation *op) const override {
-    return op->name() == "builtin.module" && op->num_regions() > 0;
+    return op->isa<::pir::ModuleOp>() && op->num_regions() > 0;
   }
 
  private:

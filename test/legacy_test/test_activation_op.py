@@ -20,6 +20,7 @@ from contextlib import contextmanager
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
 from scipy.special import erf, expit
+from utils import static_guard
 
 import paddle
 import paddle.nn.functional as F
@@ -39,7 +40,7 @@ def dynamic_guad():
 
 class TestSqrtOpError(unittest.TestCase):
     def test_errors(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with program_guard(Program(), Program()):
                 # The input type of sqrt op must be Variable or numpy.ndarray.
                 in1 = 1
@@ -126,10 +127,10 @@ class TestExpFp32_Prim(OpTest):
         self.convert_input_output()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -173,10 +174,12 @@ class TestExp_Complex64(OpTest):
         self.convert_input_output()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', max_relative_error=0.006)
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=0.006, check_new_ir=False
+        )
 
     def init_dtype(self):
         self.dtype = np.complex64
@@ -198,7 +201,7 @@ class TestExp_Complex128(TestExp_Complex64):
 
 class Test_Exp_Op_Fp16(unittest.TestCase):
     def test_api_fp16(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
@@ -246,18 +249,24 @@ class TestExpm1(TestActivation):
         self.convert_input_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_new_ir=True)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestExpm1_Complex64(TestExpm1):
     def init_dtype(self):
         self.dtype = np.complex64
 
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_new_ir=False)
 
-class TestExpm1_Complex128(TestExpm1):
+    def test_check_output(self):
+        self.check_output(check_new_ir=False)
+
+
+class TestExpm1_Complex128(TestExpm1_Complex64):
     def init_dtype(self):
         self.dtype = np.complex128
 
@@ -283,7 +292,7 @@ class TestExpm1API(unittest.TestCase):
 
     def test_static_api(self):
         def run(place):
-            with paddle.base.framework._static_guard():
+            with static_guard():
                 with paddle.static.program_guard(paddle.static.Program()):
                     X = paddle.static.data('X', self.shape, dtype=self.dtype)
                     out = paddle.expm1(X)
@@ -323,7 +332,7 @@ class Test_Expm1_Op_Int(unittest.TestCase):
 
 class TestParameter:
     def test_out_name(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with base.program_guard(base.Program()):
                 np_x = np.array([0.1]).astype('float32').reshape((-1, 1))
                 data = paddle.static.data(
@@ -356,6 +365,11 @@ class TestSigmoid(TestActivation):
         self.if_enable_cinn()
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(-1, 1, self.shape)
+                + 1j * np.random.uniform(-1, 1, self.shape)
+            ).astype(self.dtype)
         out = 1 / (1 + np.exp(-x))
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -373,6 +387,34 @@ class TestSigmoid(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.01, check_prim=True)
+
+
+class TestSigmoid_Complex64(TestSigmoid):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+    def test_check_output(self):
+        self.check_output(check_prim=False)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            max_relative_error=0.006,
+            check_prim=False,
+        )
+
+
+class TestSigmoid_Complex128(TestSigmoid_Complex64):
+    def init_dtype(self):
+        self.dtype = np.complex128
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=False,
+        )
 
 
 class TestSigmoid_ZeroDim(TestSigmoid):
@@ -495,7 +537,7 @@ class TestSiluAPI(unittest.TestCase):
         )
 
     def test_static_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', [11, 17])
                 out1 = F.silu(x)
@@ -519,7 +561,7 @@ class TestSiluAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_errors(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 # The input type must be Variable.
                 self.assertRaises(TypeError, F.silu, 1)
@@ -589,7 +631,7 @@ class TestLogSigmoidAPI(unittest.TestCase):
         )
 
     def test_static_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', [11, 17])
                 out1 = F.log_sigmoid(x)
@@ -613,7 +655,7 @@ class TestLogSigmoidAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_errors(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 # The input type must be Variable.
                 self.assertRaises(TypeError, F.log_sigmoid, 1)
@@ -651,14 +693,29 @@ class TestTanh(TestActivation, TestParameter):
         self.outputs = {'Out': out}
         self.convert_input_output()
 
+    def test_check_output(self):
+        self.check_output(check_new_ir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         # TODO(ScottWong98): set `check_prim=False` when `fill_any_like` supports `complex` dtype
         if self.dtype == np.complex64 or self.dtype == np.complex128:
-            self.check_grad(['X'], 'Out', check_prim=False)
+            self.check_grad(
+                ['X'],
+                'Out',
+                check_prim=False,
+                check_prim_pir=False,
+                check_new_ir=False,
+            )
         else:
-            self.check_grad(['X'], 'Out', check_prim=True)
+            self.check_grad(
+                ['X'],
+                'Out',
+                check_prim=True,
+                check_new_ir=True,
+                check_prim_pir=True,
+            )
 
     def init_dtype(self):
         # TODO If dtype is float64, the output (Out) has diff at CPUPlace
@@ -702,7 +759,7 @@ class TestTanhAPI(unittest.TestCase):
         self.tanh = F.tanh
 
     def test_static_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', [10, 12], self.dtype)
                 out1 = self.tanh(x)
@@ -726,7 +783,7 @@ class TestTanhAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 # The input type must be Variable.
                 self.assertRaises(TypeError, self.tanh, 1)
@@ -774,7 +831,7 @@ class TestAtan(TestActivation, TestParameter):
         self.check_grad(['X'], 'Out')
 
     def test_out_name(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with base.program_guard(base.Program()):
                 np_x = np.array([0.1]).astype('float32').reshape((-1, 1))
                 data = paddle.static.data(
@@ -862,7 +919,7 @@ class TestSinhAPI(unittest.TestCase):
             np.testing.assert_allclose(z, z_expected, rtol=1e-05)
 
     def test_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             test_data_shape = [11, 17]
             with base.program_guard(base.Program(), base.Program()):
                 input_x = np.random.uniform(0.1, 1, test_data_shape).astype(
@@ -902,7 +959,7 @@ class TestSinhAPI(unittest.TestCase):
 
 class TestSinhOpError(unittest.TestCase):
     def test_errors(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with program_guard(Program()):
                 # The input type must be Variable.
                 self.assertRaises(TypeError, paddle.sinh, 1)
@@ -973,7 +1030,7 @@ class TestCoshAPI(unittest.TestCase):
             np.testing.assert_allclose(z, z_expected, rtol=1e-05)
 
     def test_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             test_data_shape = [11, 17]
             with base.program_guard(base.Program(), base.Program()):
                 input_x = np.random.uniform(0.1, 1, test_data_shape).astype(
@@ -1013,7 +1070,7 @@ class TestCoshAPI(unittest.TestCase):
 
 class TestCoshOpError(unittest.TestCase):
     def test_errors(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with program_guard(Program()):
                 # The input type must be Variable.
                 self.assertRaises(TypeError, paddle.cosh, 1)
@@ -1072,7 +1129,7 @@ class TestTanhshrinkAPI(unittest.TestCase):
         )
 
     def test_static_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
                 out1 = F.tanhshrink(x)
@@ -1095,7 +1152,7 @@ class TestTanhshrinkAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 # The input type must be Variable.
                 self.assertRaises(TypeError, F.tanhshrink, 1)
@@ -1173,7 +1230,7 @@ class TestHardShrinkAPI(unittest.TestCase):
         )
 
     def test_static_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', [10, 12], dtype="float32")
                 out1 = F.hardshrink(x)
@@ -1203,7 +1260,7 @@ class TestHardShrinkAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 # The input type must be Variable.
                 self.assertRaises(TypeError, F.hardshrink, 1)
@@ -1239,7 +1296,7 @@ class TestHardtanhAPI(unittest.TestCase):
         )
 
     def test_static_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', [10, 12], dtype="float32")
                 out1 = F.hardtanh(x)
@@ -1269,7 +1326,7 @@ class TestHardtanhAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 # The input type must be Variable.
                 self.assertRaises(TypeError, F.hardtanh, 1)
@@ -1335,7 +1392,7 @@ class TestSoftshrinkAPI(unittest.TestCase):
         )
 
     def test_static_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
                 out1 = F.softshrink(x, self.threshold)
@@ -1358,7 +1415,7 @@ class TestSoftshrinkAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 # The input type must be Variable.
                 self.assertRaises(TypeError, F.softshrink, 1)
@@ -1578,7 +1635,9 @@ class TestRsqrt(TestActivation):
         pass
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_new_ir=True)
+        self.check_output(
+            check_prim=True, check_new_ir=True, check_prim_pir=True
+        )
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -1589,6 +1648,7 @@ class TestRsqrt(TestActivation):
             max_relative_error=0.0005,
             check_prim=True,
             check_new_ir=True,
+            check_prim_pir=True,
         )
 
 
@@ -1848,7 +1908,7 @@ class TestTanAPI(unittest.TestCase):
             np.testing.assert_allclose(out_ref, out_test.numpy(), rtol=1e-05)
 
     def test_static_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', [11, 17], self.dtype)
                 out = paddle.tan(x)
@@ -2232,7 +2292,7 @@ class TestReluAPI(unittest.TestCase):
         self.relu = F.relu
 
     def test_static_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', [10, 12], dtype="float32")
                 out1 = self.relu(x)
@@ -2255,8 +2315,8 @@ class TestReluAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
-        with paddle.base.framework._static_guard():
-            with paddle.base.framework._static_guard():
+        with static_guard():
+            with static_guard():
                 with paddle.static.program_guard(paddle.static.Program()):
                     # The input type must be Variable.
                     self.assertRaises(TypeError, self.relu, 1)
@@ -2356,7 +2416,7 @@ class TestLeakyReluAPI(unittest.TestCase):
         )
 
     def test_static_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', [10, 12], dtype="float32")
                 out1 = F.leaky_relu(x)
@@ -2386,7 +2446,7 @@ class TestLeakyReluAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 # The input type must be Variable.
                 self.assertRaises(TypeError, F.leaky_relu, 1)
@@ -2443,12 +2503,22 @@ class TestGeluApproximate(TestActivation):
         self.cinn_atol = 1e-8
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_new_ir=True)
+        self.check_output(
+            check_prim=True,
+            check_new_ir=True,
+            check_prim_pir=False,
+        )
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_new_ir=True,
+            check_prim_pir=True,
+        )
 
 
 class TestGelu(TestActivation):
@@ -2481,12 +2551,20 @@ class TestGelu(TestActivation):
         pass
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_new_ir=True)
+        self.check_output(
+            check_prim=True, check_new_ir=True, check_prim_pir=False
+        )
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_new_ir=True,
+            check_prim_pir=True,
+        )
 
 
 class TestGelu_ZeroDim(TestGelu):
@@ -2512,7 +2590,7 @@ class TestGELUAPI(unittest.TestCase):
         self.rev_comp_atol = 1e-8
 
     def test_static_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', [11, 17], dtype="float32")
                 out1 = F.gelu(x)
@@ -2542,7 +2620,7 @@ class TestGELUAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 # The input type must be Variable.
                 self.assertRaises(TypeError, F.gelu, 1)
@@ -2638,7 +2716,7 @@ class TestRelu6API(unittest.TestCase):
         )
 
     def test_static_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
                 out1 = F.relu6(x)
@@ -2661,7 +2739,7 @@ class TestRelu6API(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_base_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with base.program_guard(base.Program()):
                 x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
                 out = paddle.nn.functional.relu6(x)
@@ -2671,7 +2749,7 @@ class TestRelu6API(unittest.TestCase):
             np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_errors(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 # The input type must be Variable.
                 self.assertRaises(TypeError, F.relu6, 1)
@@ -2689,7 +2767,7 @@ class TestRelu6API(unittest.TestCase):
 
 class TestRelu6APIWarnings(unittest.TestCase):
     def test_warnings(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with warnings.catch_warnings(record=True) as context:
                 warnings.simplefilter("always")
 
@@ -2782,7 +2860,7 @@ class TestHardswishAPI(unittest.TestCase):
         )
 
     def test_static_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
                 out1 = F.hardswish(x)
@@ -2805,7 +2883,7 @@ class TestHardswishAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_base_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with base.program_guard(base.Program()):
                 x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
                 out = paddle.nn.functional.hardswish(x)
@@ -2820,7 +2898,7 @@ class TestHardswishAPI(unittest.TestCase):
             np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
     def test_errors(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 # The input type must be Variable.
                 self.assertRaises(TypeError, F.hardswish, 1)
@@ -2930,7 +3008,7 @@ class TestELUAPI(unittest.TestCase):
         self.elu = F.elu
 
     def test_static_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', [10, 12], dtype="float32")
                 out1 = self.elu(x)
@@ -2962,7 +3040,7 @@ class TestELUAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 # The input type must be Variable.
                 self.assertRaises(TypeError, self.elu, 1)
@@ -3041,7 +3119,7 @@ class TestCELUAPI(unittest.TestCase):
         self.celu = F.celu
 
     def test_static_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', [10, 12], dtype="float32")
                 out1 = self.celu(x, 1.5)
@@ -3073,7 +3151,7 @@ class TestCELUAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 # The input type must be Variable.
                 self.assertRaises(TypeError, self.celu, 1)
@@ -3152,7 +3230,7 @@ class TestLog(TestActivation):
 
 class Test_Log_Op_Fp16(unittest.TestCase):
     def test_api_fp16(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
@@ -3165,7 +3243,7 @@ class Test_Log_Op_Fp16(unittest.TestCase):
                     (res,) = exe.run(fetch_list=[out])
 
     def test_api_bf16(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
@@ -3215,7 +3293,7 @@ class TestLog2(TestActivation):
         self.check_grad(['X'], 'Out')
 
     def test_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
@@ -3262,7 +3340,7 @@ class TestLog2_Op_Int(unittest.TestCase):
         paddle.enable_static()
 
     def test_api_bf16(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
@@ -3312,7 +3390,7 @@ class TestLog10_Op_Int(unittest.TestCase):
         paddle.enable_static()
 
     def test_api_bf16(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
@@ -3327,7 +3405,7 @@ class TestLog10_Op_Int(unittest.TestCase):
 
 class TestLog10API(unittest.TestCase):
     def test_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
@@ -3380,7 +3458,7 @@ class TestLog1p(TestActivation):
 
 class Test_Log1p_Op_Fp16(unittest.TestCase):
     def test_api_fp16(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
@@ -3405,7 +3483,7 @@ class TestLog1p_Op_Int(unittest.TestCase):
         paddle.enable_static()
 
     def test_api_bf16(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
@@ -3425,7 +3503,7 @@ class TestLog1p_ZeroDim(TestLog1p):
 
 class TestLog1pAPI(unittest.TestCase):
     def test_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with base.program_guard(base.Program(), base.Program()):
                 input_x = np.random.uniform(0.1, 1, [11, 17]).astype("float64")
                 data_x = paddle.static.data(
@@ -3544,22 +3622,29 @@ class TestPow(TestActivation):
         pass
 
     def test_check_output(self):
-        self.check_output(
-            check_prim=True
-            if self.dtype not in [np.complex64, np.complex128]
-            else False
-        )
+        if self.dtype not in [np.complex64, np.complex128]:
+            self.check_output(
+                check_prim=True, check_prim_pir=True, check_new_ir=True
+            )
+        else:
+            self.check_output()
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(
-            ['X'],
-            'Out',
-            check_prim=True
-            if self.dtype not in [np.complex64, np.complex128]
-            else False,
-        )
+        if self.dtype not in [np.complex64, np.complex128]:
+            self.check_grad(
+                ['X'],
+                'Out',
+                check_prim=True,
+                check_prim_pir=True,
+                check_new_ir=True,
+            )
+        else:
+            self.check_grad(
+                ['X'],
+                'Out',
+            )
 
 
 class TestPow_ZeroDim(TestPow):
@@ -3577,35 +3662,9 @@ class TestPowComplex128(TestPow):
         self.dtype = np.complex128
 
 
-class TestPow_factor_tensor(TestActivation):
-    def setUp(self):
-        self.op_type = "pow"
-        self.python_api = paddle.pow
-        self.enable_cinn = False
-        self.init_dtype()
-
-        np.random.seed(1024)
-        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
-        out = np.power(x, 3)
-
-        self.inputs = {
-            'X': OpTest.np_dtype_to_base_dtype(x),
-            'FactorTensor': np.array([3.0]).astype(self.dtype),
-        }
-
-        self.attrs = {}
-        self.outputs = {'Out': out}
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-        self.check_grad(['X'], 'Out')
-
+class TestPow_API(TestActivation):
     def test_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             input = np.random.uniform(1, 2, [11, 17]).astype("float32")
             x = paddle.static.data(name="x", shape=[11, 17], dtype="float32")
             res = paddle.static.data(
@@ -3710,7 +3769,7 @@ class TestSTanhAPI(unittest.TestCase):
         )
 
     def test_static_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', [10, 12])
                 out = paddle.stanh(x, self.scale_a, self.scale_b)
@@ -3729,7 +3788,7 @@ class TestSTanhAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_base_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with base.program_guard(base.Program()):
                 x = paddle.static.data('X', [10, 12], dtype="float32")
                 out = paddle.stanh(x, self.scale_a, self.scale_b)
@@ -3739,7 +3798,7 @@ class TestSTanhAPI(unittest.TestCase):
             np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_errors(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 # The input type must be Variable.
                 self.assertRaises(TypeError, paddle.stanh, 1)
@@ -3851,7 +3910,7 @@ class TestSoftplusAPI(unittest.TestCase):
         )
 
     def test_static_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
                 out1 = F.softplus(x, self.beta, self.threshold)
@@ -3874,7 +3933,7 @@ class TestSoftplusAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 # The input type must be Variable.
                 self.assertRaises(TypeError, F.softplus, 1)
@@ -3937,7 +3996,7 @@ class TestSoftsignAPI(unittest.TestCase):
         )
 
     def test_static_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
                 out1 = F.softsign(x)
@@ -3960,7 +4019,7 @@ class TestSoftsignAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 # The input type must be Variable.
                 self.assertRaises(TypeError, F.softsign, 1)
@@ -4028,7 +4087,7 @@ class TestThresholdedReluAPI(unittest.TestCase):
         )
 
     def test_static_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
                 out1 = F.thresholded_relu(x, self.threshold)
@@ -4051,7 +4110,7 @@ class TestThresholdedReluAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 # The input type must be Variable.
                 self.assertRaises(TypeError, F.thresholded_relu, 1)
@@ -4132,7 +4191,7 @@ class TestHardsigmoidAPI(unittest.TestCase):
         )
 
     def test_static_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
                 out1 = F.hardsigmoid(x)
@@ -4155,7 +4214,7 @@ class TestHardsigmoidAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_base_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with base.program_guard(base.Program()):
                 x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
                 out = paddle.nn.functional.hardsigmoid(x, slope=0.2)
@@ -4170,7 +4229,7 @@ class TestHardsigmoidAPI(unittest.TestCase):
         np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
     def test_errors(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 # The input type must be Variable.
                 self.assertRaises(TypeError, F.hardsigmoid, 1)
@@ -4236,7 +4295,7 @@ class TestSwishAPI(unittest.TestCase):
         )
 
     def test_static_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
                 out1 = F.swish(x)
@@ -4259,7 +4318,7 @@ class TestSwishAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_base_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with base.program_guard(base.Program()):
                 x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
                 out = paddle.nn.functional.swish(x)
@@ -4269,7 +4328,7 @@ class TestSwishAPI(unittest.TestCase):
             np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_errors(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 # The input type must be Variable.
                 self.assertRaises(TypeError, F.swish, 1)
@@ -4336,7 +4395,7 @@ class TestMishAPI(unittest.TestCase):
         )
 
     def test_static_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
                 out1 = F.mish(x)
@@ -4359,7 +4418,7 @@ class TestMishAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_base_api(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with base.program_guard(base.Program()):
                 x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
                 out = paddle.nn.functional.mish(x)
@@ -4369,7 +4428,7 @@ class TestMishAPI(unittest.TestCase):
             np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_errors(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 # The input type must be Variable.
                 self.assertRaises(TypeError, F.mish, 1)
@@ -4412,6 +4471,7 @@ def create_test_act_fp16_class(
     grad_check=True,
     check_dygraph=True,
     check_prim=False,
+    check_prim_pir=False,
     enable_cinn=False,
     grad_atol=1e-2,
     **kwargs
@@ -4440,6 +4500,7 @@ def create_test_act_fp16_class(
                     atol=atol,
                     check_dygraph=check_dygraph,
                     check_prim=check_prim,
+                    check_prim_pir=check_prim_pir,
                 )
 
         def test_check_grad(self):
@@ -4452,6 +4513,7 @@ def create_test_act_fp16_class(
                     'Out',
                     check_dygraph=check_dygraph,
                     check_prim=check_prim,
+                    check_prim_pir=check_prim_pir,
                     max_relative_error=grad_atol,
                 )
 
@@ -4466,7 +4528,9 @@ create_test_act_fp16_class(TestExpm1)
 create_test_act_fp16_class(TestSigmoid, check_prim=True, enable_cinn=True)
 create_test_act_fp16_class(TestSilu, check_prim=True, enable_cinn=True)
 create_test_act_fp16_class(TestLogSigmoid)
-create_test_act_fp16_class(TestTanh, check_prim=True, enable_cinn=True)
+create_test_act_fp16_class(
+    TestTanh, check_prim=True, check_prim_pir=True, enable_cinn=True
+)
 create_test_act_fp16_class(TestTanhshrink)
 create_test_act_fp16_class(TestHardShrink)
 create_test_act_fp16_class(TestSoftshrink)
@@ -4493,6 +4557,7 @@ create_test_act_fp16_class(TestRelu, check_prim=True, enable_cinn=True)
 create_test_act_fp16_class(
     TestGelu,
     check_prim=True,
+    check_prim_pir=True,
     check_new_ir=True,
     enable_cinn=True,
     rev_comp_rtol=1e-3,
@@ -4514,8 +4579,8 @@ else:
 create_test_act_fp16_class(TestLog10)
 create_test_act_fp16_class(TestLog1p)
 create_test_act_fp16_class(TestSquare)
-create_test_act_fp16_class(TestPow, check_prim=True)
-create_test_act_fp16_class(TestPow_factor_tensor)
+create_test_act_fp16_class(TestPow, check_prim=True, check_prim_pir=True)
+create_test_act_fp16_class(TestPow_API)
 create_test_act_fp16_class(TestSTanh)
 create_test_act_fp16_class(TestSoftplus)
 create_test_act_fp16_class(TestSoftsign)
@@ -4536,7 +4601,11 @@ create_test_act_fp16_class(
 )
 create_test_act_fp16_class(TestLeakyRelu_ZeroDim, check_prim=True)
 create_test_act_fp16_class(
-    TestRsqrt, check_prim=True, enable_cinn=True, check_new_ir=True
+    TestRsqrt,
+    check_prim=True,
+    enable_cinn=True,
+    check_new_ir=True,
+    check_prim_pir=True,
 )
 
 
@@ -4646,7 +4715,7 @@ create_test_act_bf16_class(TestLog10)
 create_test_act_bf16_class(TestLog1p)
 create_test_act_bf16_class(TestSquare)
 create_test_act_bf16_class(TestPow, check_prim=True)
-create_test_act_bf16_class(TestPow_factor_tensor)
+create_test_act_bf16_class(TestPow_API)
 create_test_act_bf16_class(TestSTanh)
 create_test_act_bf16_class(TestSoftplus)
 create_test_act_bf16_class(TestSoftsign)
@@ -4660,7 +4729,9 @@ create_test_act_bf16_class(TestLeakyReluAlpha1, check_prim=True)
 create_test_act_bf16_class(TestLeakyReluAlpha2, check_prim=True)
 create_test_act_bf16_class(TestLeakyReluAlpha3, check_prim=True)
 create_test_act_bf16_class(TestLeakyRelu_ZeroDim, check_prim=True)
-create_test_act_bf16_class(TestRsqrt, check_prim=True, check_new_ir=True)
+create_test_act_bf16_class(
+    TestRsqrt, check_prim=True, check_new_ir=True, check_prim_pir=True
+)
 
 if __name__ == "__main__":
     unittest.main()

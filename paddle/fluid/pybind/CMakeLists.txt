@@ -116,7 +116,7 @@ set(PYBIND_SRCS
     inference_api.cc
     ops_api.cc
     static_op_function.cc
-    ir.cc
+    pir.cc
     graph.cc
     bind_fleet_executor.cc
     reader_py.cc
@@ -274,8 +274,10 @@ if(WITH_PYTHON)
 
   add_executable(eager_legacy_op_function_generator
                  eager_legacy_op_function_generator.cc)
-  target_link_libraries(eager_legacy_op_function_generator
-                        ${OP_FUNCTION_GENERETOR_DEPS})
+  set(GENERATOR_DEPS ${PYBIND_DEPS})
+  list(REMOVE_DUPLICATES GENERATOR_DEPS)
+  list(REMOVE_ITEM GENERATOR_DEPS python)
+  target_link_libraries(eager_legacy_op_function_generator ${GENERATOR_DEPS})
   if(NOT WIN32)
     add_executable(kernel_signature_generator kernel_signature_generator.cc)
     target_link_libraries(kernel_signature_generator

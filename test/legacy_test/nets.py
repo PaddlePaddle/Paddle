@@ -222,9 +222,7 @@ def img_conv_group(
                                                   pool_stride=2)
     """
     tmp = input
-    assert isinstance(conv_num_filter, list) or isinstance(
-        conv_num_filter, tuple
-    )
+    assert isinstance(conv_num_filter, (list, tuple))
 
     def __extend_list__(obj):
         if not hasattr(obj, '__len__'):

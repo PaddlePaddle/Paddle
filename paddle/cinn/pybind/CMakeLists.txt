@@ -2,7 +2,9 @@ set(srcs
     runtime.cc
     common.cc
     lang.cc
-    ir.cc
+    ir/ir.cc
+    ir/ir_api.cc
+    ir/ir_context.cc
     poly.cc
     backends.cc
     bind.cc
