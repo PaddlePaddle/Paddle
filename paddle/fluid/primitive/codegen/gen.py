@@ -69,6 +69,8 @@ VJPS = [
     'layer_norm_grad',
     'embedding_grad',
     'scale_grad',
+    'poisson_grad',
+    'gumbel_softmax_grad',
 ]
 
 
@@ -161,6 +163,8 @@ BACKENDS = [
     'embedding_grad',
     'sqrt',
     'uniform',
+    'poisson_grad',
+    'gumbel_softmax_grad',
     'split',
     'transpose',
 ]

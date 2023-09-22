@@ -705,35 +705,23 @@ def compare_accuracy(
     )
 
     for filename in sorted(workerlog_filenames):
-        print(
-            "-- [Step 1/4] Parsing FP32 logs under {}/{}".format(
-                dump_path, filename
-            )
-        )
+        print(f"-- [Step 1/4] Parsing FP32 logs under {dump_path}/{filename}")
         fp32_tensor_info_list, fp32_has_tensor_name = parse_log(
             dump_path, filename, None
         )
         print(
-            "-- [Step 2/4] Parsing FP16 logs under {}/{}".format(
-                another_dump_path, filename
-            )
+            f"-- [Step 2/4] Parsing FP16 logs under {another_dump_path}/{filename}"
         )
         fp16_tensor_info_list, fp16_has_tensor_name = parse_log(
             another_dump_path, filename, None
         )
 
-        print(
-            "-- [Step 3/4] Merge FP32 and FP16 tensor info for {}".format(
-                filename
-            )
-        )
+        print(f"-- [Step 3/4] Merge FP32 and FP16 tensor info for {filename}")
         mp_tensor_info_list = merge_tensor_info_list(
             fp32_tensor_info_list, fp16_tensor_info_list, grad_scale
         )
         print(
-            "-- [Step 4/4] Add worksheet for mixed precision tensor info of {}".format(
-                filename
-            )
+            f"-- [Step 4/4] Add worksheet for mixed precision tensor info of {filename}"
         )
         excel_writer.add_worksheet(
             mp_tensor_info_list,

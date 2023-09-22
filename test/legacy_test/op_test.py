@@ -1232,7 +1232,6 @@ class OpTest(unittest.TestCase):
                 for attrs_name in self.attrs:
                     if self.attrs[attrs_name] is not None:
                         attrs_outputs[attrs_name] = self.attrs[attrs_name]
-
             kernel_sig = OpTestUtils._get_kernel_signature(
                 self.op_type,
                 dygraph_tensor_inputs,
@@ -1349,7 +1348,7 @@ class OpTest(unittest.TestCase):
                             else:
                                 fetch_list.append(var)
                     elif isinstance(
-                        ret_tuple, paddle.base.libpaddle.ir.OpResult
+                        ret_tuple, paddle.base.libpaddle.pir.OpResult
                     ):
                         fetch_list.append(ret_tuple)
                     else:
@@ -1412,7 +1411,7 @@ class OpTest(unittest.TestCase):
             )
             assert len(outs) == len(
                 ir_outs
-            ), "Fetch result should have same length when executed in new ir"
+            ), "Fetch result should have same length when executed in pir"
 
             check_method = np.testing.assert_array_equal
             if os.getenv("FLAGS_NEW_IR_OPTEST_RELAX_CHECK", None):
@@ -2308,7 +2307,7 @@ class OpTest(unittest.TestCase):
 
         class NewIRChecker(Checker):
             def init(self):
-                self.checker_name = "new ir checker"
+                self.checker_name = "pir checker"
 
             def calculate_output(self):
                 self.is_python_api_test = True
@@ -2407,8 +2406,8 @@ class OpTest(unittest.TestCase):
                 )
 
             def find_actual_value(self, target_name):
-                with paddle.ir.core.program_guard(
-                    paddle.ir.core.default_main_program()
+                with paddle.pir.core.program_guard(
+                    paddle.pir.core.default_main_program()
                 ):
                     actual = find_imperative_actual(
                         target_name, self.outputs, place
@@ -2417,8 +2416,8 @@ class OpTest(unittest.TestCase):
                     return actual, actual_t
 
             def find_expect_value(self, target_name):
-                with paddle.ir.core.program_guard(
-                    paddle.ir.core.default_main_program()
+                with paddle.pir.core.program_guard(
+                    paddle.pir.core.default_main_program()
                 ):
                     expect = find_imperative_expect(
                         target_name, self.ref_outputs, place
@@ -2428,7 +2427,7 @@ class OpTest(unittest.TestCase):
 
             def _compare_list(self, name, actual, expect):
                 """if expect is a tuple, we need to compare list."""
-                with paddle.ir.core.program_guard(place=place):
+                with paddle.pir.core.program_guard(place=place):
                     self.op_test.assertListEqual(
                         actual.value()
                         .get_tensor()
@@ -2700,13 +2699,21 @@ class OpTest(unittest.TestCase):
                     outs_p = self._calc_new_ir_output(place)
                     outs_p = [outs_p[out] for out in outs_p]
                     outs_p.sort(key=len)
-                    checker(outs_p)
+                    checker(outs_p[0])
 
-    def check_output_with_place_customized(self, checker, place):
+    def check_output_with_place_customized(
+        self, checker, place, check_new_ir=False
+    ):
         outs = self.calc_output(place)
         outs = [np.array(out) for out in outs]
         outs.sort(key=len)
         checker(outs)
+        if check_new_ir:
+            with paddle.pir_utils.IrGuard():
+                outs_p = self._calc_new_ir_output(place)
+                outs_p = [outs_p[out] for out in outs_p]
+                outs_p.sort(key=len)
+                checker(outs_p[0])
 
     def _assert_is_close(
         self,
@@ -3101,7 +3108,7 @@ class OpTest(unittest.TestCase):
                     atol=atol,
                 )
 
-        # get new ir gradient
+        # get pir gradient
         if check_new_ir:
             if (
                 type(place) is paddle.base.libpaddle.CPUPlace
@@ -3586,7 +3593,7 @@ class OpTest(unittest.TestCase):
                     cast_outputs = []
                     for cast_input in cast_inputs:
                         if isinstance(
-                            cast_input, paddle.base.libpaddle.ir.OpResult
+                            cast_input, paddle.base.libpaddle.pir.OpResult
                         ):
                             cast_outputs.append(
                                 paddle.cast(

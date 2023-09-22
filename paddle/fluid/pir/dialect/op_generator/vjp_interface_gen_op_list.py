@@ -55,7 +55,8 @@ vjp_interface_declare_gen_op_list = [
     'slice',
     'transpose',
     'slice_double',
-    'scale',
+    'poisson',
+    'gumbel_softmax',
     'tril',
     'triu',
 ]
@@ -91,7 +92,8 @@ vjp_interface_implementation_gen_op_list = [
     'slice',
     'transpose',
     'slice_double',
-    'scale',
+    'poisson',
+    'gumbel_softmax',
     'tril',
     'triu',
 ]
