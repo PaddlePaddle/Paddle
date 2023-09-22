@@ -32,7 +32,7 @@ from .proto import data_feed_pb2  # noqa: F401
 
 from . import core
 from . import unique_name
-from .. import ir
+from .. import pir
 from paddle.base.libpaddle import DataType
 import paddle.version as fluid_version
 import warnings
@@ -40,32 +40,7 @@ import functools
 from .variable_index import _getitem_static, _setitem_static, _setitem_impl_
 import threading
 
-__all__ = [
-    'Program',
-    'default_startup_program',
-    'default_main_program',
-    'program_guard',
-    'name_scope',
-    'ipu_shard_guard',
-    'set_ipu_shard',
-    'cuda_places',
-    'cpu_places',
-    'xpu_places',
-    'cuda_pinned_places',
-    'in_dygraph_mode',
-    'in_pir_mode',
-    'in_dynamic_or_pir_mode',
-    'is_compiled_with_cinn',
-    'is_compiled_with_cuda',
-    'is_compiled_with_rocm',
-    'is_compiled_with_xpu',
-    'Variable',
-    'require_version',
-    'device_guard',
-    'set_flags',
-    'get_flags',
-    '_stride_in_no_check_dy2st_diff',
-]
+__all__ = []
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
 TEMP_VAR_NAME = core.kTempVarName()
@@ -294,10 +269,10 @@ def in_dygraph_mode():
 def in_pir_mode():
     """
 
-    This API checks whether paddle runs in static graph mode and use new ir api.
+    This API checks whether paddle runs in static graph mode and use pir api.
 
     Returns:
-        bool: Whether paddle runs in static graph mode and use new ir api.
+        bool: Whether paddle runs in static graph mode and use pir api.
 
     Examples:
         .. code-block:: python
@@ -323,10 +298,10 @@ def use_pir_api():
 def in_dynamic_or_pir_mode():
     """
 
-    This API checks whether paddle runs in dynamic graph or new ir mode.
+    This API checks whether paddle runs in dynamic graph or pir mode.
 
     Returns:
-        bool: Whether paddle runs in static graph mode and use new ir api.
+        bool: Whether paddle runs in static graph mode and use pir api.
 
     Examples:
         .. code-block:: python
@@ -1162,7 +1137,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
 
     """
     if in_pir_mode():
-        return ir.core.convert_np_dtype_to_dtype_(np_dtype)
+        return pir.core.convert_np_dtype_to_dtype_(np_dtype)
 
     # Convert the data type string to numpy data type.
     if isinstance(np_dtype, str) and np_dtype == "bfloat16":
