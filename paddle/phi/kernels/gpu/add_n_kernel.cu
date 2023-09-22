@@ -58,32 +58,33 @@ void AddNKernel(const Context &dev_ctx,
                 const std::vector<const TensorBase *> &x,
                 DenseTensor *out) {
   const size_t in_num = x.size();
-  // do not support bostcast
-  for (int i = 0; i < in_num; ++i) {
-    PADDLE_ENFORCE_EQ(x[i]->dims(),
-                      x[0]->dims(),
-                      phi::errors::InvalidArgument(
-                          "The input tensor X of SumOp must"
-                          " have same shape. But received X[0]'s shape = "
-                          "[%s], X[%d]'s shape = [%s].",
-                          x[i],
-                          i,
-                          x[0]));
-  }
-  bool in_place = false;
-  auto *out_ptr = dev_ctx.template Alloc<T>(out);
+  bool get_0_size = false;
   for (int i = 0; i < in_num; ++i) {
     // judge 0-size tensor
     if (!x[i]->initialized() && x[i]->dims().size() > 0 &&
         DenseTensor::classof(x[i])) {
-      return;
+      get_0_size = true;
+    } else {
+      PADDLE_ENFORCE_EQ(
+          x[i]->initialized(),
+          true,
+          phi::errors::InvalidArgument(
+              "This argument is invalid, %d-th tensor is uninitialized.", i));
     }
-
-    PADDLE_ENFORCE_EQ(
-        x[i]->initialized(),
-        true,
-        phi::errors::InvalidArgument(
-            "This argument is invalid, %d-th tensor is uninitialized.", i));
+    if (get_0_size) {
+      PADDLE_ENFORCE_EQ(x[i]->dims(),
+                        x[0]->dims(),
+                        phi::errors::InvalidArgument(
+                            "The input tensor X of SumOp must"
+                            " have same shape. But received X[0]'s shape = "
+                            "[%s], X[%d]'s shape = [%s].",
+                            x[i],
+                            i,
+                            x[0]));
+    }
+  }
+  if (get_0_size) {
+    return;
   }
   constexpr size_t theory_sm_threads = 1024;
   auto stream = dev_ctx.stream();
@@ -104,6 +105,8 @@ void AddNKernel(const Context &dev_ctx,
     grids = dim3(CEIL_DIV(length, tile_size), 1, 1);
     blocks = dim3(tile_size, 1, 1);
   };
+  bool in_place = false;
+  auto *out_ptr = dev_ctx.template Alloc<T>(out);
   if (x.size() > 0 && x[0]->initialized() && DenseTensor::classof(x[0])) {
     if ((static_cast<const DenseTensor *>(x[0]))->data() == out->data()) {
       in_place = true;
