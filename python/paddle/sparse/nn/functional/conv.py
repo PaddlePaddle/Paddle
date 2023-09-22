@@ -43,28 +43,24 @@ def _conv3d(
     if data_format not in ["NDHWC"]:
         raise ValueError(
             "Attr(data_format) should be 'NDHWC'. Received "
-            "Attr(data_format): {}.".format(data_format)
+            f"Attr(data_format): {data_format}."
         )
     if len(x.shape) != 5:
         raise ValueError(
-            "Input x should be 5D tensor, but received x with the shape of {}".format(
-                x.shape
-            )
+            f"Input x should be 5D tensor, but received x with the shape of {x.shape}"
         )
 
     channel_last = data_format == "NDHWC"
     channel_dim = -1 if channel_last else 1
     if len(x.shape) != 5:
         raise ValueError(
-            "Input x should be 5D tensor, but received x with the shape of {}".format(
-                x.shape
-            )
+            f"Input x should be 5D tensor, but received x with the shape of {x.shape}"
         )
     num_channels = x.shape[channel_dim]
     if num_channels < 0:
         raise ValueError(
-            "The channel dimension of the input({}) should be defined. "
-            "Received: {}.".format(x.shape, num_channels)
+            f"The channel dimension of the input({x.shape}) should be defined. "
+            f"Received: {num_channels}."
         )
 
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, dims)
@@ -136,28 +132,24 @@ def _conv2d(
     if data_format not in ["NHWC"]:
         raise ValueError(
             "Attr(data_format) should be 'NHWC'. Received "
-            "Attr(data_format): {}.".format(data_format)
+            f"Attr(data_format): {data_format}."
         )
     if len(x.shape) != 4:
         raise ValueError(
-            "Input x should be 4D tensor, but received x with the shape of {}".format(
-                x.shape
-            )
+            f"Input x should be 4D tensor, but received x with the shape of {x.shape}"
         )
 
     channel_last = data_format == "NHWC"
     channel_dim = -1 if channel_last else 1
     if len(x.shape) != 4:
         raise ValueError(
-            "Input x should be 4D tensor, but received x with the shape of {}".format(
-                x.shape
-            )
+            f"Input x should be 4D tensor, but received x with the shape of {x.shape}"
         )
     num_channels = x.shape[channel_dim]
     if num_channels < 0:
         raise ValueError(
-            "The channel dimension of the input({}) should be defined. "
-            "Received: {}.".format(x.shape, num_channels)
+            f"The channel dimension of the input({x.shape}) should be defined. "
+            f"Received: {num_channels}."
         )
 
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, dims)

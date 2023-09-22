@@ -120,9 +120,7 @@ class SegmentLayers:
                     assert part >= 0, f"part[{part}] should be greater than 0"
                     assert (
                         part <= self.num_items
-                    ), "part[{}] should be less than num_items[{}]".format(
-                        part, self.num_items
-                    )
+                    ), f"part[{part}] should be less than num_items[{self.num_items}]"
 
             check_sanity()
 
@@ -391,10 +389,8 @@ class PipelineLayer(nn.Layer):
             # construct default topology
             if world_size % num_stages != 0:
                 raise ValueError(
-                    "should provide correct num_stages({}) "
-                    "which can be divided by world_size({})".format(
-                        num_stages, world_size
-                    )
+                    f"should provide correct num_stages({num_stages}) "
+                    f"which can be divided by world_size({world_size})"
                 )
             dp_num = world_size // num_stages
             self._topo = fleet.CommunicateTopology(
@@ -754,10 +750,8 @@ class PipelineLayer(nn.Layer):
                 self._num_virtual_pipeline_stages > 1
             ), "chunk_id is only valid when using virtual pipeline stage"
             assert chunk_id < len(self._model_chunks), (
-                "The virtual pipeline only has {} chunks, "
-                "but received chunk_id {}.".format(
-                    len(self._model_chunks), chunk_id
-                )
+                f"The virtual pipeline only has {len(self._model_chunks)} chunks, "
+                f"but received chunk_id {chunk_id}."
             )
             # Get the target model chunk.
             model_chunk = self._model_chunks[chunk_id]
