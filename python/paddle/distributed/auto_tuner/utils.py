@@ -572,7 +572,16 @@ def read_metric_log(
                 re_out_of_memory_pattern, line, re.IGNORECASE
             )
             if metric:
-                metric_list.append(float(metric[0][0]))
+                value = None
+                for item in metric[0]:
+                    try:
+                        value = float(item)
+                        metric_list.append(value)
+                        break
+                    except:
+                        continue
+                assert value is not None
+
             if out_of_memory:
                 out_of_memory_flag = 1
 
