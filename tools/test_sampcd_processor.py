@@ -2320,6 +2320,16 @@ class TestGetTestResults(unittest.TestCase):
                     >>> # import paddle.fluid
                     >>> import os
             """,
+            'oneline_skip': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> import os # doctest: +SKIP
+                    >>> import sys
+            """,
         }
 
         _clear_environ()
@@ -2329,7 +2339,7 @@ class TestGetTestResults(unittest.TestCase):
         doctester.prepare(test_capacity)
 
         test_results = get_test_results(doctester, docstrings_to_test)
-        self.assertEqual(len(test_results), 10)
+        self.assertEqual(len(test_results), 11)
 
         (
             tr_0,
@@ -2342,6 +2352,7 @@ class TestGetTestResults(unittest.TestCase):
             tr_7,
             tr_8,
             tr_9,
+            tr_10,
         ) = test_results
 
         self.assertIn('bad_fluid', tr_0.name)
@@ -2384,6 +2395,140 @@ class TestGetTestResults(unittest.TestCase):
         self.assertIn('comment_fluid', tr_9.name)
         self.assertFalse(tr_9.badstatement)
         self.assertTrue(tr_9.passed)
+
+        self.assertIn('oneline_skip', tr_10.name)
+        self.assertTrue(tr_10.badstatement)
+        self.assertFalse(tr_10.passed)
+
+    def test_bad_statements_req(self):
+        docstrings_to_test = {
+            'bad_required': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> import sys
+                    >>> # required: GPU
+                    >>> import os
+            """,
+            'bad_requires': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> import sys
+                    >>> # requires: GPU
+                    >>> import os
+            """,
+            'bad_require': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> import sys
+                    >>> # require   :   GPU
+                    >>> import os
+            """,
+            'bad_require_2': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> import sys
+                    >>> # require: GPU, xpu
+                    >>> import os
+            """,
+            'bad_req': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> import sys
+                    >>> #require:gpu
+                    >>> import os
+            """,
+            'ignore_req': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> import sys
+                    >>> #require:
+                    >>> import os
+            """,
+            'ignore_req_bad_req': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> import sys
+                    >>> #require: xpu
+                    >>> import os
+                    >>> #require:
+                    >>> import os
+            """,
+        }
+
+        _clear_environ()
+
+        test_capacity = {'cpu'}
+        doctester = Xdoctester()
+        doctester.prepare(test_capacity)
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 7)
+
+        (
+            tr_0,
+            tr_1,
+            tr_2,
+            tr_3,
+            tr_4,
+            tr_5,
+            tr_6,
+        ) = test_results
+
+        self.assertIn('bad_required', tr_0.name)
+        self.assertTrue(tr_0.badstatement)
+        self.assertFalse(tr_0.passed)
+
+        self.assertIn('bad_requires', tr_1.name)
+        self.assertTrue(tr_1.badstatement)
+        self.assertFalse(tr_1.passed)
+
+        self.assertIn('bad_require', tr_2.name)
+        self.assertTrue(tr_1.badstatement)
+        self.assertFalse(tr_1.passed)
+
+        self.assertIn('bad_require_2', tr_3.name)
+        self.assertTrue(tr_3.badstatement)
+        self.assertFalse(tr_3.passed)
+
+        self.assertIn('bad_req', tr_4.name)
+        self.assertTrue(tr_4.badstatement)
+        self.assertFalse(tr_4.passed)
+
+        self.assertIn('ignore_req', tr_5.name)
+        self.assertFalse(tr_5.badstatement)
+        self.assertTrue(tr_5.passed)
+
+        self.assertIn('ignore_req_bad_req', tr_6.name)
+        self.assertTrue(tr_6.badstatement)
+        self.assertFalse(tr_6.passed)
 
 
 if __name__ == '__main__':
