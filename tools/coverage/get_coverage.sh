@@ -38,30 +38,17 @@ function generate_cpp_covinfo(){
     python ${PADDLE_ROOT}/tools/coverage/gcda_clean.py ${GIT_PR_ID} || exit 101
     lcov --capture -d ./ -o coverage.info --rc lcov_branch_coverage=0
     if [ ${RUN_SINGLE_CARD_TEST1:-OFF} == "ON" ]; then
-       mv coverage.info coverage1.info
+       mv coverage.info cpp-coverage1.info
     fi
     if [ ${RUN_SINGLE_CARD_TEST2:-OFF} == "ON" ]; then
-        mv coverage.info coverage2.info
+        mv coverage.info cpp-coverage2.info
     fi
     if [ ${RUN_MULI_AND_EXECLUSVIE_AND_OTHER_TEST:-OFF} == "ON" ]; then
-        mv coverage.info coverage3.info
+        mv coverage.info cpp-coverage3.info
     fi
 }
 
-
-function get_cpp_python_covinfo(){
-    if [ ${RUN_SINGLE_CARD_TEST1:-OFF} == "ON" ]; then
-       tar -zcvf cpp-python-coverage1.tar.gz $(ls python-coverage.data.* coverage1.info)
-    fi
-    if [ ${RUN_SINGLE_CARD_TEST2:-OFF} == "ON" ]; then
-        tar -zcvf cpp-python-coverage2.tar.gz $(ls python-coverage.data.* coverage2.info)
-    fi
-    if [ ${RUN_MULI_AND_EXECLUSVIE_AND_OTHER_TEST:-OFF} == "ON" ]; then
-        tar -zcvf cpp-python-coverage3.tar.gz $(ls python-coverage.data.* coverage3.info)
-    fi
-}
-
-function generate_py_covinfo(){
+function generate_python_covinfo(){
     # python coverage
 
     export COVERAGE_FILE=/paddle/build/python-coverage.data
@@ -69,12 +56,21 @@ function generate_py_covinfo(){
     $(coverage xml -i -o python-coverage.xml) || [[ "${NO_PYTHON_COVERAGE_DATA}" == "1" ]]
     sed -i 's/mnt\/paddle/paddle/g' python-coverage.xml
     $(python ${PADDLE_ROOT}/tools/coverage/python_coverage.py > python-coverage.info) || [[ "${NO_PYTHON_COVERAGE_DATA}" == "1" ]]
+    if [ ${RUN_SINGLE_CARD_TEST1:-OFF} == "ON" ]; then
+       mv python-coverage.info python-coverage1.info
+    fi
+    if [ ${RUN_SINGLE_CARD_TEST2:-OFF} == "ON" ]; then
+       mv python-coverage.info python-coverage2.info
+    fi
+    if [ ${RUN_MULI_AND_EXECLUSVIE_AND_OTHER_TEST:-OFF} == "ON" ]; then
+       mv python-coverage.info python-coverage3.info
+    fi
 }
 
 # full html report
 
 function gen_full_html_report() {
-    lcov --extract coverage.info \
+    lcov --extract cpp-coverage.info \
         '/paddle/paddle/fluid/framework/*' \
         '/paddle/paddle/fluid/imperative/*' \
         '/paddle/paddle/fluid/inference/*' \
@@ -227,7 +223,8 @@ function gen_python_diff_html_report() {
 # assert coverage lines
 
 function covinfo_combine_full(){
-    lcov -a coverage1.info -a coverage2.info -a coverage3.info -o coverage.info
+    lcov -a cpp-coverage1.info -a cpp-coverage2.info -a cpp-coverage3.info -o cpp-coverage.info
+    lcov -a python-coverage1.info -a python-coverage2.info -a python-coverage3.info -o python-coverage.info
     gen_full_html_report || true
     gen_python_full_html_report || true    
 }
@@ -267,10 +264,9 @@ function main () {
     case $CMD in
       get_cov_info)
         generate_cpp_covinfo
-        get_cpp_python_covinfo
+        generate_python_covinfo
         ;;
       combine_cov_info)
-        generate_py_covinfo
         covinfo_combine_full
         gen_diff_html_report || true
         gen_python_diff_html_report || true
