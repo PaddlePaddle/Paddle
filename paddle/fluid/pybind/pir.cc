@@ -793,11 +793,6 @@ pir::OpResult FakeOpResult() {
   return pir::OpResult(nullptr);
 }
 
-bool IsFakeOpResult(const pir::OpResult &result) {
-  // create a fake opresults to simplify `ForwardBackwardSplit`.
-  return result.Value::impl() == nullptr;
-}
-
 SplitedResult ForwardBackwardSplit(
     const Program &program,
     const std::vector<pir::OpResult> &op_result_forward_inputs,
@@ -921,7 +916,6 @@ SplitedResult ForwardBackwardSplit(
     counter += 1;
   };
 
-  // counter = 0;
   std::for_each(forward_outputs.begin(), forward_outputs.end(), create_data_fn);
   std::for_each(forward_inputs.begin(), forward_inputs.end(), create_data_fn);
   std::for_each(middle_values.begin(), middle_values.end(), create_data_fn);
@@ -930,7 +924,6 @@ SplitedResult ForwardBackwardSplit(
                 create_data_fn);
   VLOG(1) << "After create pd.data for backward program.";
 
-  // counter = 0;
   std::for_each(
       middle_values.begin(), middle_values.end(), create_output_fn_forward);
   std::for_each(
@@ -945,7 +938,6 @@ SplitedResult ForwardBackwardSplit(
                    backward_program->block()->push_back(cloned_op);
                  });
   VLOG(1) << "After call backward copy";
-  // counter = 0;
   std::for_each(forward_inputs_grads.begin(),
                 forward_inputs_grads.end(),
                 create_output_fn_backward);
@@ -995,7 +987,6 @@ void BindUtils(pybind11::module *m) {
   m->def("program_clone", ProgramClone);
   m->def("program_split", ForwardBackwardSplit);
   m->def("fake_op_result", FakeOpResult);
-  m->def("is_fake_op_result", IsFakeOpResult);
   m->def("set_global_program",
          [](Program *program) { APIBuilder::Instance().SetProgram(program); });
   m->def("set_insertion_point",

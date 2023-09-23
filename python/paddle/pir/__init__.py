@@ -20,7 +20,6 @@ from paddle.base.libpaddle.pir import (
     OpOperand,
     OpResult,
     fake_op_result,
-    is_fake_op_result,
     Type,
 )  # noqa: F401
 from paddle.base.libpaddle.pir import (
