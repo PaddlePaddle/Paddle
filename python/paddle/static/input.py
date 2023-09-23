@@ -162,7 +162,7 @@ class InputSpec:
             uint8. Default: float32.
         name (str): The name/alias of the variable, see :ref:`api_guide_Name`
             for more details.
-        stop_gradient ():留空，坐等孙师傅指导。
+        stop_gradient (bool, optional): A boolean that mentions whether gradient should flow. Default is False, means don't stop calculate gradients.
 
     Examples:
         .. code-block:: python
