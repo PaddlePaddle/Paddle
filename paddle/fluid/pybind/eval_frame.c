@@ -17,6 +17,11 @@ limitations under the License. */
 #include <Python.h>
 #include <frameobject.h>
 
+#if PY_VERSION_HEX >= 0x03080000 && PY_VERSION_HEX < 0x3090000
+#define Py_BUILD_CORE  // internal/pycore_pymem.h need this macro
+#include <internal/pycore_pystate.h>
+#undef Py_BUILD_CORE
+#endif
 #if PY_VERSION_HEX < 0x030b0000
 #include <code.h>
 #endif
