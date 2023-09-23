@@ -865,7 +865,7 @@ SplitedResult ForwardBackwardSplit(
     counter += 1;
   };
 
-  counter = 0;
+  // counter = 0;
   std::for_each(forward_outputs.begin(), forward_outputs.end(), create_data_fn);
   std::for_each(forward_inputs.begin(), forward_inputs.end(), create_data_fn);
   std::for_each(middle_values.begin(), middle_values.end(), create_data_fn);
@@ -874,7 +874,7 @@ SplitedResult ForwardBackwardSplit(
                 create_data_fn);
   VLOG(1) << "After create pd.data for backward program.";
 
-  counter = 0;
+  // counter = 0;
   std::for_each(
       middle_values.begin(), middle_values.end(), create_output_fn_forward);
   std::for_each(
@@ -889,7 +889,7 @@ SplitedResult ForwardBackwardSplit(
                    backward_program->block()->push_back(cloned_op);
                  });
   VLOG(1) << "After call backward copy";
-  counter = 0;
+  // counter = 0;
   std::for_each(forward_inputs_grads.begin(),
                 forward_inputs_grads.end(),
                 create_output_fn_backward);
