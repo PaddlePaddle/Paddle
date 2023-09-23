@@ -436,8 +436,25 @@ def get_cuda_arch_flags(cflags):
     For an added "+PTX", an additional
     ``-gencode=arch=compute_xx,code=compute_xx`` is added.
     """
-    # TODO(Aurelius84):
-    return []
+    import ctypes
+    cuda_lib_names = ('libcuda.so', 'libcuda.dylib', 'nvcuda.dll', 'cuda.dll')
+    for libname in cuda_lib_names:
+        try:
+            cuda = ctypes.CDLL(libname)
+        except OSError:
+            continue
+        else:
+            break
+    else:
+        raise OSError("[get_cuda_arch_flags] could not load any cuda libs of: " + ' '.join(libnames))
+    cc_major = ctypes.c_int()
+    cc_minor = ctypes.c_int()
+    device = ctypes.c_int()
+    if cuda.cuDeviceComputeCapability(ctypes.byref(cc_major), ctypes.byref(cc_minor), device) == 0:
+        print("[get_cuda_arch_flags] Compile extensions with cuda Compute Capability: %d.%d" % (cc_major.value, cc_minor.value))
+    cuda_arch=cc_major.value*10+cc_minor.value
+    arch_flags = [f"-gencode=arch=compute_{cuda_arch},code=sm_{cuda_arch}"]
+    return arch_flags
 
 
 def get_rocm_arch_flags(cflags):
