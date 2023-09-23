@@ -47,11 +47,10 @@ except ImportError as e:
     if os.name == 'nt':
         executable_path = os.path.abspath(os.path.dirname(sys.executable))
         raise ImportError(
-            """NOTE: You may need to run \"set PATH=%s;%%PATH%%\"
+            """NOTE: You may need to run \"set PATH={};%PATH%\"
         if you encounters \"DLL load failed\" errors. If you have python
-        installed in other directory, replace \"%s\" with your own
-        directory. The original error is: \n %s"""
-            % (executable_path, executable_path, str(e))
+        installed in other directory, replace \"{}\" with your own
+        directory. The original error is: \n {}""".format(executable_path, executable_path, str(e))
         )
     else:
         raise ImportError(
@@ -197,7 +196,7 @@ def run_shell_command(cmd):
 def get_dso_path(core_so, dso_name):
     if core_so and dso_name:
         return run_shell_command(
-            "ldd %s|grep %s|awk '{print $3}'" % (core_so, dso_name)
+            "ldd {}|grep {}|awk '{{print $3}}'".format(core_so, dso_name)
         )
     else:
         return None

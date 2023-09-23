@@ -548,10 +548,9 @@ def monkey_patch_variable():
                 file_name = stack[1]
                 line_num = stack[2]
                 warnings.warn(
-                    "%s:%s\nThe behavior of expression %s has been unified with %s(X, Y, axis=-1) from Paddle 2.0. "
+                    "{}:{}\nThe behavior of expression {} has been unified with {}(X, Y, axis=-1) from Paddle 2.0. "
                     "If your code works well in the older versions but crashes in this version, try to use "
-                    "%s(X, Y, axis=0) instead of %s. This transitional warning will be dropped in the future."
-                    % (
+                    "{}(X, Y, axis=0) instead of {}. This transitional warning will be dropped in the future.".format(
                         file_name,
                         line_num,
                         EXPRESSION_MAP[method_name],
