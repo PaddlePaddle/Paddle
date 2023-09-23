@@ -144,7 +144,8 @@ set(PYBIND_SRCS
     custom_device_py.cc
     xpu_streams_py.cc
     jit.cc
-    auto_parallel_py.cc)
+    auto_parallel_py.cc
+    eval_frame.c)
 
 if(WITH_CUSTOM_DEVICE)
   set(PYBIND_DEPS ${PYBIND_DEPS} custom_device_common_op_registry)
