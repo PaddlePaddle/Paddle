@@ -793,6 +793,11 @@ pir::OpResult FakeOpResult() {
   return pir::OpResult(nullptr);
 }
 
+bool IsFakeOpResult(const pir::OpResult &result) {
+  // create a fake opresults to simplify `ForwardBackwardSplit`.
+  return result.Value::impl() == nullptr;
+}
+
 SplitedResult ForwardBackwardSplit(
     const Program &program,
     const std::vector<pir::OpResult> &op_result_forward_inputs,
@@ -990,6 +995,7 @@ void BindUtils(pybind11::module *m) {
   m->def("program_clone", ProgramClone);
   m->def("program_split", ForwardBackwardSplit);
   m->def("fake_op_result", FakeOpResult);
+  m->def("is_fake_op_result", IsFakeOpResult);
   m->def("set_global_program",
          [](Program *program) { APIBuilder::Instance().SetProgram(program); });
   m->def("set_insertion_point",
