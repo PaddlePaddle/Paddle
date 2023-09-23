@@ -20,7 +20,7 @@ import threading
 import warnings
 import weakref
 
-import paddle.ir.core as ir_static
+import paddle.pir.core as ir_static
 from paddle import decomposition
 from paddle.base import core, framework
 from paddle.base.data_feeder import check_type

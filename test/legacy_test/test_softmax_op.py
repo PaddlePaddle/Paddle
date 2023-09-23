@@ -84,9 +84,9 @@ class TestSoftmaxOp(OpTest):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.use_cudnn:
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+            self.check_output_with_place(place, atol=1e-5, check_new_ir=True)
         else:
-            self.check_output(check_prim=True)
+            self.check_output(check_prim=True, check_new_ir=True)
 
     def test_check_grad(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
@@ -99,6 +99,7 @@ class TestSoftmaxOp(OpTest):
                     "Out",
                     max_relative_error=0.01,
                     check_dygraph=(not self.use_mkldnn),
+                    check_new_ir=True,
                 )
         else:
             self.check_grad(
@@ -107,6 +108,7 @@ class TestSoftmaxOp(OpTest):
                 max_relative_error=0.01,
                 check_dygraph=(not self.use_mkldnn),
                 check_prim=True,
+                check_new_ir=True,
             )
 
 
@@ -144,9 +146,9 @@ class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.use_cudnn:
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+            self.check_output_with_place(place, atol=1e-5, check_new_ir=True)
         else:
-            self.check_output(check_prim=True)
+            self.check_output(check_prim=True, check_new_ir=True)
 
 
 @unittest.skipIf(
@@ -178,9 +180,9 @@ class TestSoftmaxOp_ZeroDim2(TestSoftmaxOp):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.use_cudnn:
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+            self.check_output_with_place(place, atol=1e-5, check_new_ir=True)
         else:
-            self.check_output(check_prim=True)
+            self.check_output(check_prim=True, check_new_ir=True)
 
 
 class TestSoftmaxOp2(TestSoftmaxOp):

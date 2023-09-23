@@ -846,9 +846,7 @@ class CommOpCost(OpCost):
                 process_group = get_process_group(ring_id)
                 if process_group is None:
                     raise ValueError(
-                        "There not exists process group whose ring_id is {}.".format(
-                            ring_id
-                        )
+                        f"There not exists process group whose ring_id is {ring_id}."
                     )
                 self._group_ranks = process_group.ranks
         return self._group_ranks
@@ -858,9 +856,7 @@ class CommOpCost(OpCost):
         if cls.OP_TYPE != "COMM":
             if cls.OP_TYPE not in COMM_OP_TYPE:
                 raise TypeError(
-                    "Please Check op type in {}, but got {}.".format(
-                        COMM_OP_TYPE, cls.OP_TYPE
-                    )
+                    f"Please Check op type in {COMM_OP_TYPE}, but got {cls.OP_TYPE}."
                 )
 
 
@@ -931,9 +927,7 @@ def calc_time_by_cost_model(op, cluster=None):
     """Calc op time by cost model and the unit is microsecond."""
     if not isinstance(op, paddle.base.framework.Operator):
         raise TypeError(
-            "OP must be paddle.base.framework.Operator, but got {}.".format(
-                type(op)
-            )
+            f"OP must be paddle.base.framework.Operator, but got {type(op)}."
         )
     if not cluster:
         cluster = get_default_cluster()

@@ -168,9 +168,7 @@ class TestMNISTWithToStatic(TestMNIST):
             dygraph_loss,
             static_loss,
             rtol=1e-05,
-            err_msg='dygraph is {}\n static_res is \n{}'.format(
-                dygraph_loss, static_loss
-            ),
+            err_msg=f'dygraph is {dygraph_loss}\n static_res is \n{static_loss}',
         )
 
     def test_mnist_declarative_cpu_vs_mkldnn(self):
