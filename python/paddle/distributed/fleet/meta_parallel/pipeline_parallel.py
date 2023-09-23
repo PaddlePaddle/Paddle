@@ -48,6 +48,15 @@ from paddle.distributed.fleet.utils.tensor_fusion_helper import (
 __all__ = []
 
 g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 1))
+g_shard_split_param = int(os.environ.get("FLAGS_shard_split_param", 0))
+
+
+def get_action(is_dp):
+    if is_dp or not g_shard_use_reduce:
+        return HOOK_ACTION.ALL_REDUCE
+    if g_shard_split_param:
+        return HOOK_ACTION.REDUCE_SCATTER
+    return HOOK_ACTION.REDUCE
 
 
 # assume only the first stage and last stage need data, and data consumption is ordred
@@ -305,6 +314,13 @@ class PipelineParallel(MetaParallelBase):
 
         return fused_allreduce
 
+    def grad_hook_func(self, buffer, param):
+        @paddle.autograd.no_grad()
+        def grad_hook(tmp_grad):
+            pass
+
+        return grad_hook
+
     def register_allreduce_overlap_hook(
         self, model, comm_group, acc_steps, dp, group_size=128 * 1024 * 1024
     ):
@@ -313,16 +329,14 @@ class PipelineParallel(MetaParallelBase):
         else:
             models = [model]
 
-        if not dp:
+        act = get_action(dp)
+
+        if act == HOOK_ACTION.REDUCE:
             assert hasattr(self, "optimizer")
             assert hasattr(self.optimizer, "_param2rank")
             _param2rank = self.optimizer._param2rank
+
         # Note: after sharding change to reduce operation, here need to be cleared
-        act = (
-            HOOK_ACTION.ALL_REDUCE
-            if (dp or not g_shard_use_reduce)
-            else HOOK_ACTION.REDUCE
-        )
 
         for chunk_idx, model in enumerate(models):
             # For virtual pipeline. Will separate parameters in different chunk into
@@ -335,9 +349,7 @@ class PipelineParallel(MetaParallelBase):
             if len(parameter_list) < 1:
                 return
 
-            if dp:
-                fused_parameter_group[-1] = parameter_list
-            else:
+            if act == HOOK_ACTION.REDUCE:
                 # Sort parameters for sharding, since they have different dst rank
                 for p in parameter_list:
                     assert p.name in _param2rank
@@ -346,10 +358,12 @@ class PipelineParallel(MetaParallelBase):
                         fused_parameter_group[dst_rank].append(p)
                     else:
                         fused_parameter_group[dst_rank] = [p]
+            else:
+                fused_parameter_group[-1] = parameter_list
 
             for dst in fused_parameter_group:
                 parameter_list = fused_parameter_group[dst]
-                if act != HOOK_ACTION.ALL_REDUCE:
+                if act == HOOK_ACTION.REDUCE:
                     # parse the relative dst rank to absolute dst rank for sharding
                     dst = comm_group.ranks[dst]
                 else:
@@ -364,6 +378,10 @@ class PipelineParallel(MetaParallelBase):
                         param._register_backward_hook(
                             self.bw_hook_func(buffer, param)
                         )
+                        if act == HOOK_ACTION.REDUCE_SCATTER:
+                            param._register_grad_hook(
+                                self.grad_hook_func(buffer, param)
+                            )
 
     def timer_printer(self):
         if not self._enable_timer:
@@ -1014,6 +1032,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
     def bw_hook_func(self, buffer, param):
         # For pipeline with interleave, we need to add grad to buffer without communication.
         # Use communication where appropriate to avoid dp communication and pp scheduling conflicts.
+        # all reduce hook
         @paddle.autograd.no_grad()
         def fused_allreduce(*_):
             buffer.add_grad(param, use_comm=False)

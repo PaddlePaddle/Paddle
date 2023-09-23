@@ -25,6 +25,7 @@ from paddle.framework import core
 class HOOK_ACTION:
     ALL_REDUCE = 0
     REDUCE = 1
+    REDUCE_SCATTER = 2
 
 
 alignment = {
