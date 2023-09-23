@@ -89,15 +89,6 @@ static void CheckInputVarStatus(const Tensor &tensor) {
                         "RunProgram(Grad)Op holds "
                         "wrong type. Expect type is DenseTensor.",
                         tensor.name()));
-
-  PADDLE_ENFORCE_EQ(
-      static_cast<phi::DenseTensor *>(tensor.impl().get())->IsInitialized(),
-      true,
-      paddle::platform::errors::InvalidArgument(
-          "The tensor in input tensor %s of "
-          "RunProgram(Grad)Op "
-          "is not initialized.",
-          tensor.name()));
 }
 
 static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
@@ -117,13 +108,6 @@ static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
                           "RunProgram(Grad)Op's internal scope holds "
                           "wrong type. Expect type is DenseTensor",
                           name));
-    PADDLE_ENFORCE_EQ(src_tensor.IsInitialized(),
-                      true,
-                      paddle::platform::errors::InvalidArgument(
-                          "The tensor in output tensor %s get from "
-                          "RunProgram(Grad)Op's internal "
-                          "scope is not initialized.",
-                          name));
   } else if (dst_tensor.is_selected_rows()) {
     auto &src_tensor = src_var.Get<phi::SelectedRows>();
     PADDLE_ENFORCE_EQ(phi::SelectedRows::classof(&src_tensor),
@@ -132,13 +116,6 @@ static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
                           "The output tensodfr %s get from "
                           "RunProgram(Grad)Op's internal scope holds "
                           "wrong type. Expect type is SelectedRows",
-                          name));
-    PADDLE_ENFORCE_EQ(src_tensor.initialized(),
-                      true,
-                      paddle::platform::errors::InvalidArgument(
-                          "The tensor in output tensor %s get from "
-                          "RunProgram(Grad)Op's "
-                          "internal scope is not initialized.",
                           name));
 
   } else {
