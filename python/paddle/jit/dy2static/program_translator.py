@@ -1491,12 +1491,12 @@ class PirPrimHooker(PirPartialProgramLayerHook):
 
     def before_append_backward(self, forward_program, src_vars):
         with backend_guard(self.backend):
-            dst_vars = src_vars
             if core._is_fwd_prim_enabled():
                 dst_vars = decomposition.decompose(
                     forward_program, src_vars, blacklist=self.custom_vjps
                 )
-            return forward_program, dst_vars
+                return forward_program, dst_vars
+            return forward_program, src_vars
 
     def after_append_backward(self, whole_program, src_vars, forward_end_idx):
         with backend_guard(self.backend):
@@ -1515,10 +1515,10 @@ class PirPrimHooker(PirPartialProgramLayerHook):
 
     def after_infer(self, infer_program, src_vars):
         with backend_guard(self.backend):
-            dst_vars = src_vars
             if core._is_fwd_prim_enabled():
                 dst_vars = decomposition.decompose(infer_program, src_vars)
-            return infer_program, dst_vars
+                return infer_program, dst_vars
+            return infer_program, src_vars
 
 
 class ProgramCache:
