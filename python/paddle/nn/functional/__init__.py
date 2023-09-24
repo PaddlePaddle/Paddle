@@ -148,6 +148,7 @@ __all__ = [  # noqa
     'conv2d_transpose',
     'conv3d',
     'conv3d_transpose',
+    'group_norm',
     'pairwise_distance',
     'elu',
     'elu_',
