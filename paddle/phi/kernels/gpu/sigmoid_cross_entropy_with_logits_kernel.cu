@@ -147,7 +147,7 @@ void SigmoidCrossEntropyWithLogitsKernel(
     auto eps = static_cast<T>(1e-5);
     *norm_cpu_ptr = *norm_cpu_ptr > eps ? *norm_cpu_ptr : eps;
 
-    phi::ScaleKernel<T>(dev_ctx, *out, *norm_cpu_ptr, 0.0f, false, out);
+    phi::ScaleKernel<T>(dev_ctx, *out, 1.0 / (*norm_cpu_ptr), 0.0f, false, out);
 
     delete norm_tensor;
   }
