@@ -109,6 +109,8 @@ from .norm import instance_norm  # noqa: F401
 from .norm import layer_norm  # noqa: F401
 from .norm import local_response_norm  # noqa: F401
 from .norm import normalize  # noqa: F401
+from .norm import group_norm  # noqa: F401
+
 from .pooling import avg_pool1d  # noqa: F401
 from .pooling import avg_pool2d  # noqa: F401
 from .pooling import avg_pool3d  # noqa: F401
@@ -148,7 +150,6 @@ __all__ = [  # noqa
     'conv2d_transpose',
     'conv3d',
     'conv3d_transpose',
-    'group_norm',
     'pairwise_distance',
     'elu',
     'elu_',
@@ -250,6 +251,7 @@ __all__ = [  # noqa
     'batch_norm',
     'layer_norm',
     'instance_norm',
+    'group_norm',
     'class_center_sample',
     'sparse_attention',
     'fold',
