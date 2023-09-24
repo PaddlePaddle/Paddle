@@ -34,30 +34,33 @@ from .framework import monkey_patch_math_tensor
 monkey_patch_variable()
 monkey_patch_math_tensor()
 
-from .framework import disable_signal_handler  # noqa: F401
-from .framework import get_flags  # noqa: F401
-from .framework import set_flags  # noqa: F401
-
-from .framework import disable_static  # noqa: F401
-from .framework import enable_static  # noqa: F401
-from .framework import in_dynamic_mode  # noqa: F401
+from .framework import (  # noqa: F401
+    disable_signal_handler,
+    get_flags,
+    set_flags,
+    disable_static,
+    enable_static,
+    in_dynamic_mode,
+)
 from .base.dataset import *  # noqa: F401, F403
 
-from .framework.dtype import iinfo  # noqa: F401
-from .framework.dtype import finfo  # noqa: F401
-from .framework.dtype import dtype  # noqa: F401
-from .framework.dtype import uint8  # noqa: F401
-from .framework.dtype import int8  # noqa: F401
-from .framework.dtype import int16  # noqa: F401
-from .framework.dtype import int32  # noqa: F401
-from .framework.dtype import int64  # noqa: F401
-from .framework.dtype import float16  # noqa: F401
-from .framework.dtype import float32  # noqa: F401
-from .framework.dtype import float64  # noqa: F401
-from .framework.dtype import bfloat16  # noqa: F401
-from .framework.dtype import bool  # noqa: F401
-from .framework.dtype import complex64  # noqa: F401
-from .framework.dtype import complex128  # noqa: F401
+from .framework.dtype import (  # noqa: F401
+    iinfo,
+    finfo,
+    dtype,
+    uint8,
+    int8,
+    int16,
+    int32,
+    int64,
+    float16,
+    float32,
+    float64,
+    bfloat16,
+    bool,
+    complex64,
+    complex128,
+)
 
 Tensor = framework.core.eager.Tensor  # noqa: F401
 Tensor.__qualname__ = 'Tensor'  # noqa: F401
@@ -392,79 +395,99 @@ from .tensor.random import rand  # noqa: F401
 from .tensor.random import randint  # noqa: F401
 from .tensor.random import randint_like  # noqa: F401
 from .tensor.random import randperm  # noqa: F401
-from .tensor.search import argmax  # noqa: F401
-from .tensor.search import argmin  # noqa: F401
-from .tensor.search import argsort  # noqa: F401
-from .tensor.search import searchsorted  # noqa: F401
-from .tensor.search import bucketize  # noqa: F401
-from .tensor.search import masked_select  # noqa: F401
-from .tensor.search import topk  # noqa: F401
-from .tensor.search import where  # noqa: F401
-from .tensor.search import where_  # noqa: F401
-from .tensor.search import index_select  # noqa: F401
-from .tensor.search import nonzero  # noqa: F401
-from .tensor.search import sort  # noqa: F401
-from .tensor.search import kthvalue  # noqa: F401
-from .tensor.search import mode  # noqa: F401
+from .tensor.search import (  # noqa: F401
+    argmax,
+    argmin,
+    argsort,
+    searchsorted,
+    bucketize,
+    masked_select,
+    topk,
+    where,
+    where_,
+    index_select,
+    nonzero,
+    sort,
+    kthvalue,
+    mode,
+)
 
 from .tensor.to_string import set_printoptions  # noqa: F401
 
 from .tensor.einsum import einsum  # noqa: F401
 
-from .framework.random import seed  # noqa: F401
-from .framework.random import get_cuda_rng_state  # noqa: F401
-from .framework.random import set_cuda_rng_state  # noqa: F401
-from .framework.random import get_rng_state  # noqa: F401
-from .framework.random import set_rng_state  # noqa: F401
-from .framework import ParamAttr  # noqa: F401
-from .framework import CPUPlace  # noqa: F401
-from .framework import IPUPlace  # noqa: F401
-from .framework import CUDAPlace  # noqa: F401
-from .framework import CUDAPinnedPlace  # noqa: F401
-from .framework import CustomPlace  # noqa: F401
-from .framework import XPUPlace  # noqa: F401
+from .framework.random import (  # noqa: F401
+    seed,
+    get_cuda_rng_state,
+    set_cuda_rng_state,
+    get_rng_state,
+    set_rng_state,
+)
+from .framework import (  # noqa: F401
+    ParamAttr,
+    CPUPlace,
+    IPUPlace,
+    CUDAPlace,
+    CUDAPinnedPlace,
+    CustomPlace,
+    XPUPlace,
+)
 
-from .autograd import grad  # noqa: F401
-from .autograd import no_grad  # noqa: F401
-from .autograd import enable_grad  # noqa:F401
-from .autograd import set_grad_enabled  # noqa: F401
-from .autograd import is_grad_enabled  # noqa: F401
-from .framework import save  # noqa: F401
-from .framework import load  # noqa: F401
+from .autograd import (  # noqa: F401
+    grad,
+    no_grad,
+    enable_grad,
+    set_grad_enabled,
+    is_grad_enabled,
+)
+from .framework import (  # noqa: F401
+    save,
+    load,
+)
 from .distributed import DataParallel  # noqa: F401
 
-from .framework import set_default_dtype  # noqa: F401
-from .framework import get_default_dtype  # noqa: F401
+from .framework import (  # noqa: F401
+    set_default_dtype,
+    get_default_dtype,
+)
 
 from .tensor.search import index_sample  # noqa: F401
-from .tensor.stat import mean  # noqa: F401
-from .tensor.stat import std  # noqa: F401
-from .tensor.stat import var  # noqa: F401
-from .tensor.stat import numel  # noqa: F401
-from .tensor.stat import median  # noqa: F401
-from .tensor.stat import nanmedian  # noqa: F401
-from .tensor.stat import quantile  # noqa: F401
-from .tensor.stat import nanquantile  # noqa: F401
-from .device import get_cudnn_version  # noqa: F401
-from .device import set_device  # noqa: F401
-from .device import get_device  # noqa: F401
-from .device import is_compiled_with_xpu  # noqa: F401
-from .device import is_compiled_with_ipu  # noqa: F401
-from .device import is_compiled_with_cinn  # noqa: F401
-from .device import is_compiled_with_cuda  # noqa: F401
-from .device import is_compiled_with_rocm  # noqa: F401
-from .device import is_compiled_with_custom_device  # noqa: F401
+from .tensor.stat import (  # noqa: F401
+    mean,
+    std,
+    var,
+    numel,
+    median,
+    nanmedian,
+    quantile,
+    nanquantile,
+)
+from .device import (  # noqa: F401
+    get_cudnn_version,
+    set_device,
+    get_device,
+    is_compiled_with_xpu,
+    is_compiled_with_ipu,
+    is_compiled_with_cinn,
+    is_compiled_with_cuda,
+    is_compiled_with_rocm,
+    is_compiled_with_custom_device,
+)
 
 # high-level api
-from .hapi import Model  # noqa: F401
-from . import callbacks  # noqa: F401
-from .hapi import summary  # noqa: F401
-from .hapi import flops  # noqa: F401
-from . import hub  # noqa: F401
-from . import linalg  # noqa: F401
-from . import fft  # noqa: F401
-from . import signal  # noqa: F401
-from . import _pir_ops  # noqa: F401
+from .hapi import (  # noqa: F401
+    Model,
+    summary,
+    flops,
+)
+from . import (  # noqa: F401
+    callbacks,
+    hub,
+    linalg,
+    fft,
+    signal,
+    _pir_ops,
+)
 
 import paddle.text  # noqa: F401
 import paddle.vision  # noqa: F401
@@ -484,12 +507,12 @@ if is_compiled_with_cinn():
 
 disable_static()
 
-from .pir_utils import IrGuard  # noqa: F401
+from .pir_utils import IrGuard
 
 ir_change = IrGuard()
 ir_change._switch_to_pir()
 
-__all__ = [  # noqa
+__all__ = [
     'iinfo',
     'finfo',
     'dtype',
