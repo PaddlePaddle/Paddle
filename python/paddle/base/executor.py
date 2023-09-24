@@ -485,7 +485,7 @@ def _add_feed_fetch_ops(
         for i, var in enumerate(fetch_list):
             assert isinstance(
                 var, (Variable, str)
-            ), "Wrong type for fetch_list[{}]: {}".format(i, type(var))
+            ), f"Wrong type for fetch_list[{i}]: {type(var)}"
             global_block.append_op(
                 type=fetch_op,
                 inputs={'X': [var]},
@@ -508,7 +508,7 @@ def _add_pir_fetch_ops(program, fetch_list, fetch_var_name):
             for i, fetch_input in enumerate(fetch_list):
                 assert isinstance(
                     fetch_input, OpResult
-                ), "Wrong type for fetch_list[{}]: {}".format(i, type(fetch_input))
+                ), f"Wrong type for fetch_list[{i}]: {type(fetch_input)}"
                 paddle._pir_ops.fetch(fetch_input, fetch_var_name + str(i), i)
 
 
@@ -2790,7 +2790,7 @@ class Executor:
             for i, var in enumerate(fetch_list):
                 assert isinstance(
                     var, (Variable, str)
-                ), "Wrong type for fetch_list[{}]: {}".format(i, type(var))
+                ), f"Wrong type for fetch_list[{i}]: {type(var)}"
                 global_block.append_op(
                     type=fetch_op,
                     inputs={'X': [var]},

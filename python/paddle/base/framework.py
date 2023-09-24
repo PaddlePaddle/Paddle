@@ -1876,7 +1876,7 @@ class Variable(metaclass=VariableMetaClass):
         if with_details:
             additional_attr = ("error_clip",)
             for attr_name in additional_attr:
-                res_str += "{}: {}\n".format(attr_name, getattr(self, attr_name))
+                res_str += f"{attr_name}: {getattr(self, attr_name)}\n"
 
         return res_str
 
@@ -3042,18 +3042,18 @@ class Operator:
                             or m.intermediate
                         ):
                             raise ValueError(
-                                (
+                                
                                     "Incorrect setting for output(s) of "
-                                    "operator \"{}\", should set: [{}]."
-                                ).format(type, m.name)
+                                    f"operator \"{type}\", should set: [{m.name}]."
+                                
                             )
                     else:
                         if not ((m.name in outputs) or m.dispensable):
                             raise ValueError(
-                                (
+                                
                                     "Incorrect setting for output(s) of "
-                                    "operator \"{}\", should set: [{}]."
-                                ).format(type, m.name)
+                                    f"operator \"{type}\", should set: [{m.name}]."
+                                
                             )
 
                 for out_proto in proto.outputs:
@@ -3096,7 +3096,7 @@ class Operator:
                 for attr_name in extra_attrs_map.keys():
                     if os.environ.get('FLAGS_print_extra_attrs', '0') == '1':
                         warnings.warn(
-                            "op {} use extra_attr: {}".format(type, attr_name)
+                            f"op {type} use extra_attr: {attr_name}"
                         )
 
                     if (attr_name not in op_attrs) or (
@@ -3114,7 +3114,7 @@ class Operator:
                         for attr in attrs:
                             if attr in op_attrs.keys():
                                 warnings.warn(
-                                    "op {} use extra_attr: {}".format(type, attr)
+                                    f"op {type} use extra_attr: {attr}"
                                 )
 
                     if type in special_op_attrs:
@@ -7289,7 +7289,7 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
                 "need_clip",
             )
             for attr_name in additional_attr:
-                res_str += "{}: {}\n".format(attr_name, getattr(self, attr_name))
+                res_str += f"{attr_name}: {getattr(self, attr_name)}\n"
         else:
             res_str = Variable.to_string(self, throw_on_error, False)
         return res_str
