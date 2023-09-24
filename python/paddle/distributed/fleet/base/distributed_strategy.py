@@ -195,6 +195,11 @@ class DistributedStrategy:
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
+                >>> strategy.dgc = True
+                >>> strategy.recompute = True
+                >>> strategy.recompute_configs = {"checkpoints": ["x"]}
+                >>> strategy.save_to_prototxt("dist_strategy.prototxt")
+
                 >>> strategy.load_from_prototxt("dist_strategy.prototxt")
 
         """
