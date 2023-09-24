@@ -654,7 +654,7 @@ def exp(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.67032003, 0.81873077, 1.10517097, 1.34985888])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.exp(x)
     else:
         check_variable_and_dtype(
@@ -704,7 +704,7 @@ def expm1(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.32967997, -0.18126924,  0.10517092,  0.34985882])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.expm1(x)
     else:
         check_variable_and_dtype(
@@ -898,7 +898,7 @@ def sigmoid(x, name=None):
        out = \\frac{1}{1 + e^{-x}}
 
     Args:
-        x (Tensor): Input of Sigmoid operator, an N-D Tensor, with data type float32, float64 or float16.
+        x (Tensor): Input of Sigmoid operator, an N-D Tensor, with data type float16, float32, float64, complex64 or complex128.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -920,7 +920,17 @@ def sigmoid(x, name=None):
         return _C_ops.sigmoid(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'sigmoid'
+            x,
+            'x',
+            [
+                'float16',
+                'float32',
+                'float64',
+                'uint16',
+                'complex64',
+                'complex128',
+            ],
+            'sigmoid',
         )
         helper = LayerHelper('sigmoid', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -1163,7 +1173,7 @@ _erf_ = generate_layer_fn('erf')
 
 
 def erf(x, name=None):
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.erf(x)
 
     locals_var = locals().copy()

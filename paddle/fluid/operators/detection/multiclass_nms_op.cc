@@ -101,11 +101,7 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
     }
     // Here the box_dims[0] is not the real dimension of output.
     // It will be rewritten in the computing kernel.
-    if (score_size == 3) {
-      ctx->SetOutputDim("Out", {-1, box_dims[2] + 2});
-    } else {
-      ctx->SetOutputDim("Out", {-1, box_dims[2] + 2});
-    }
+    ctx->SetOutputDim("Out", {-1, box_dims[2] + 2});
     if (!ctx->IsRuntime()) {
       ctx->SetLoDLevel("Out", std::max(ctx->GetLoDLevel("BBoxes"), 1));
     }
@@ -584,14 +580,7 @@ class MultiClassNMS2Op : public MultiClassNMSOp {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     MultiClassNMSOp::InferShape(ctx);
-
-    auto score_dims = ctx->GetInputDim("Scores");
-    auto score_size = score_dims.size();
-    if (score_size == 3) {
-      ctx->SetOutputDim("Index", {-1, 1});
-    } else {
-      ctx->SetOutputDim("Index", {-1, 1});
-    }
+    ctx->SetOutputDim("Index", {-1, 1});
     if (!ctx->IsRuntime()) {
       ctx->SetLoDLevel("Index", std::max(ctx->GetLoDLevel("BBoxes"), 1));
     }

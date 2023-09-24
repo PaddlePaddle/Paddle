@@ -80,9 +80,7 @@ class TestDistGpuPsCTR2x2(TestDistCTR2x2):
                     )
                     loss_all_trainer = fleet.util.all_gather(float(loss_val))
                     loss_val = float(reduce_output) / len(loss_all_trainer)
-                    message = "TRAIN ---> pass: {} loss: {}\n".format(
-                        epoch_id, loss_val
-                    )
+                    message = f"TRAIN ---> pass: {epoch_id} loss: {loss_val}\n"
                     fleet.util.print_on_rank(message, 0)
 
                 pass_time = time.time() - pass_start

@@ -18,7 +18,6 @@
 
 namespace pir {
 
-namespace details {
 class IR_API InterfaceValue {
  public:
   template <typename ConcreteT, typename T>
@@ -63,5 +62,4 @@ class IR_API InterfaceValue {
   void *model_{nullptr};
 };
 
-}  // namespace details
 }  // namespace pir
