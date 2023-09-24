@@ -371,6 +371,18 @@ class OpConverter {
     engine->ClearWeights();
   }
 
+  void SupportFP32MixPercision(const std::string& output_name,
+                               const std::string& op_type,
+                               nvinfer1::ILayer* layer) {
+    if (engine_->OpIsRunFloat(output_name) ||
+        engine_->LayerIsRunFloat(op_type)) {
+      VLOG(3) << op_type << "(output: " << output_name << ")"
+              << " is forced to run on Float32.";
+      layer->resetPrecision();
+      layer->setPrecision(nvinfer1::DataType::kFLOAT);
+    }
+  }
+
   nvinfer1::ITensor* Cast(nvinfer1::ITensor* input, nvinfer1::DataType dtype) {
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *input);
     layer->setOutputType(0, dtype);

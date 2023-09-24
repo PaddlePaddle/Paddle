@@ -318,6 +318,20 @@ class TensorRTEngine {
     return quant_dynamic_range_.count(tensor);
   }
 
+  void SetRunFloat(const std::unordered_set<std::string>& ops,
+                   const std::unordered_set<std::string>& layers) {
+    ops_run_float_ = ops;
+    layers_run_float_ = layers;
+  }
+
+  bool OpIsRunFloat(const std::string& op_type) const {
+    return ops_run_float_.count(op_type) > 0;
+  }
+
+  bool LayerIsRunFloat(const std::string& layer_type) const {
+    return layers_run_float_.count(layer_type) > 0;
+  }
+
   // A pointer to CPU memory is needed of the TRT weight.
   // Before TRT runs, fluid loads weight into GPU storage.
   // so we need to copy the weights from GPU to CPU in our op converter.
@@ -587,6 +601,10 @@ class TensorRTEngine {
 
   // Used for convert weight into Itensor
   const framework::Scope* scope_{nullptr};
+
+  // specify run on float to avoid overflow
+  std::unordered_set<std::string> ops_run_float_;
+  std::unordered_set<std::string> layers_run_float_;
 
 #if IS_TRT_VERSION_GE(6000)
   int binding_num_;
