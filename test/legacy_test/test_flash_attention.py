@@ -299,7 +299,7 @@ class TestFlashAttentionAPITest2(TestFlashAttentionAPI):
         self.dtype = paddle.float16
         self.dropout = 0.0
         self.causal = False
-        self.return_softmax = True
+        self.return_softmax = False
         self.use_sdp_kernel = False
 
 
@@ -337,6 +337,15 @@ class TestMathAttentionAPITest(TestFlashAttentionAPI):
         self.enable_math = True
         self.enable_flash = False
         self.enable_mem_efficient = False
+
+
+class TestFlashAttenionWithMaskAPITest(TestFlashAttentionWithMaskAPI):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (8, 1024, 16, 128)
+        self.dtype = paddle.float16
+        self.dropout = 0.0
+        self.causal = False
 
 
 if __name__ == '__main__':
