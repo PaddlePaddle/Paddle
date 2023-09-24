@@ -55,7 +55,7 @@ enum EventStatus {
 
 class DeviceEvent {
  public:
-  explicit DeviceEvent(const platform::Place& place, unsigned int flag = 0)
+  explicit DeviceEvent(const platform::Place& place, unsigned int flag)
       : event_(), place_(place), flag_(flag) {
     type_id_ = DeviceTypeToId(platform::Place2DeviceType(place));
     PADDLE_ENFORCE_LT(type_id_,

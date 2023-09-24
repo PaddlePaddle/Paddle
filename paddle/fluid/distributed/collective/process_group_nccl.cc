@@ -57,7 +57,7 @@ ProcessGroupNCCL::NCCLTask::NCCLTask(const Place& place,
                                      bool sync_op,
                                      bool use_calc_stream)
     : TaskStream(rank, comm_type, sync_op, use_calc_stream),
-      comm_event_(place),
+      comm_event_(place, platform::GenerateDeviceEventFlag()),
       task_place_(place) {}
 
 ProcessGroupNCCL::NCCLTask::~NCCLTask() {}
@@ -844,7 +844,9 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
 
   auto* calc_ctx = static_cast<phi::GPUContext*>(
       platform::DeviceContextPool::Instance().Get(place));
-  place_to_calc_event_.emplace(place_key, place);
+  place_to_calc_event_.emplace(
+      place_key,
+      platform::DeviceEvent(place, platform::GenerateDeviceEventFlag()));
   place_to_calc_ctx_.emplace(place_key, calc_ctx);
   place_to_comm_ctx_.emplace(place_key, std::move(comm_ctx));
 
