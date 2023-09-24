@@ -420,14 +420,14 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   tol_tensor.Resize(dim_out);
   dev_ctx.template Alloc<T>(&tol_tensor);
 
-  phi::GreaterThanKernel<T, Context>(
-      dev_ctx, atol_tensor, rtol_tensor, &tol_tensor);
-  //   funcs::ElementwiseCompute<GreaterElementFunctor<T>, T>(
-  //       dev_ctx,
-  //       atol_tensor,
-  //       rtol_tensor,
-  //       GreaterElementFunctor<T>(),
-  //       &tol_tensor);
+  //   phi::GreaterThanKernel<T, Context>(
+  //       dev_ctx, atol_tensor, rtol_tensor, &tol_tensor);
+  funcs::ElementwiseCompute<GreaterElementFunctor<T>, T>(
+      dev_ctx,
+      atol_tensor,
+      rtol_tensor,
+      GreaterElementFunctor<T>(),
+      &tol_tensor);
 
   tol_tensor.Resize(detail::NewAxisDim(tol_tensor.dims(), 1));
 
@@ -435,16 +435,15 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   compare_result.Resize(detail::NewAxisDim(dim_out, k));
   dev_ctx.template Alloc<int64_t>(&compare_result);
 
-  //   funcs::ElementwiseCompute<funcs::GreaterThanFunctor<T, int64_t>, T,
-  //   int64_t>(
-  //       dev_ctx,
-  //       eigenvalue_tensor,
-  //       tol_tensor,
-  //       funcs::GreaterThanFunctor<T, int64_t>(),
-  //       &compare_result);
+  funcs::ElementwiseCompute<funcs::GreaterThanFunctor<T, int64_t>, T, int64_t>(
+      dev_ctx,
+      eigenvalue_tensor,
+      tol_tensor,
+      funcs::GreaterThanFunctor<T, int64_t>(),
+      &compare_result);
 
-  phi::GreaterThanKernel<T, Context>(
-      dev_ctx, eigenvalue_tensor, tol_tensor, &compare_result);
+  //   phi::GreaterThanKernel<T, Context>(
+  //       dev_ctx, eigenvalue_tensor, tol_tensor, &compare_result);
   phi::SumKernel<int64_t>(dev_ctx,
                           compare_result,
                           std::vector<int64_t>{-1},
