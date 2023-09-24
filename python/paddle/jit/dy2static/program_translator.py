@@ -559,7 +559,7 @@ class StaticFunction:
         Example::
             .. code-block:: python
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
                 >>> import paddle
 
                 >>> class Net(paddle.nn.Layer):
@@ -906,7 +906,7 @@ class ASTStaticFunction(StaticFunction):
         Examples:
             .. code-block:: python
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
                 >>> import paddle
                 >>> from paddle.jit import to_static
                 >>> from paddle.static import InputSpec
@@ -1778,7 +1778,7 @@ class ProgramTranslator:
         Examples:
             .. code-block:: python
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
                 >>> import paddle
                 >>> def func(x):
                 ...     if paddle.mean(x) > 0:
@@ -1821,7 +1821,7 @@ class ProgramTranslator:
         Examples:
             .. code-block:: python
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
                 >>> import paddle
                 >>> def func(x):
                 ...     if paddle.mean(x) > 0:
@@ -1904,7 +1904,7 @@ class ProgramTranslator:
         Examples:
             .. code-block:: python
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
                 >>> import paddle
                 >>> def func(x):
                 ...     if paddle.mean(x) > 0:
@@ -1953,7 +1953,7 @@ class ProgramTranslator:
         Examples:
             .. code-block:: python
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
                 >>> import paddle
                 >>> def func(x):
                 ...     if paddle.mean(x) > 0:
@@ -2020,7 +2020,7 @@ class ProgramTranslator:
         Examples:
             .. code-block:: python
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
                 >>> import paddle
                 >>> def func(x):
                 ...     if paddle.mean(x) > 0:

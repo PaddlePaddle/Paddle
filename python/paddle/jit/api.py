@@ -264,7 +264,7 @@ def to_static(
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP
+            >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
             >>> import paddle
             >>> from paddle.jit import to_static
 
@@ -361,7 +361,7 @@ def not_to_static(func=None):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP
+            >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
             >>> import paddle
 
             >>> @paddle.jit.not_to_static
@@ -876,7 +876,7 @@ def save(layer, path, input_spec=None, **configs):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP
+            >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
             >>> # example 1: save layer
             >>> import numpy as np
             >>> import paddle
@@ -1368,7 +1368,7 @@ def load(path, **configs):
             .. code-block:: python
                 :name: code-example1
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
                 >>> import numpy as np
                 >>> import paddle
                 >>> import paddle.nn as nn
