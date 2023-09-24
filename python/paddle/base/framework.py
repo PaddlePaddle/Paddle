@@ -2850,9 +2850,9 @@ class Operator:
         .. code-block:: python
 
             >>> import paddle
+
             >>> paddle.enable_static()
-            >>> import paddle.base as base
-            >>> cur_program = base.Program()
+            >>> cur_program = paddle.static.Program()
             >>> cur_block = cur_program.current_block()
             >>> var1 = cur_block.create_var(name="var1", shape=[-1, 23, 48], dtype='float32')
             >>> var2 = cur_block.create_var(name="var2", shape=[-1, 23, 48], dtype='float32')
@@ -3206,10 +3206,9 @@ class Operator:
             .. code-block:: python
 
                 >>> import paddle
-                >>> paddle.enable_static()
-                >>> import paddle.base as base
 
-                >>> cur_program = base.Program()
+                >>> paddle.enable_static()
+                >>> cur_program = paddle.static.Program()
                 >>> cur_block = cur_program.current_block()
                 >>> var = cur_block.create_var(name="X",
                 ...                            shape=[-1, 23, 48],
@@ -3939,10 +3938,9 @@ class Block:
         .. code-block:: python
 
             >>> import paddle
-            >>> paddle.enable_static()
-            >>> import paddle.base as base
 
-            >>> cur_program = base.Program()
+            >>> paddle.enable_static()
+            >>> cur_program = paddle.static.Program()
             >>> cur_block = cur_program.current_block()
             >>> var = cur_block.create_var(name="X",
             ...                            shape=[-1, 23, 48],
@@ -3980,10 +3978,9 @@ class Block:
             .. code-block:: python
 
                 >>> import paddle
-                >>> paddle.enable_static()
-                >>> import paddle.base as base
 
-                >>> cur_program = base.Program()
+                >>> paddle.enable_static()
+                >>> cur_program = paddle.static.Program()
                 >>> cur_block = cur_program.current_block()
                 >>> new_var = cur_block.create_var(name="X",
                 ...                                shape=[-1, 23, 48],
@@ -7293,9 +7290,8 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
             .. code-block:: python
 
                 >>> import paddle
-                >>> import paddle.base as base
                 >>> paddle.enable_static()
-                >>> prog = base.default_main_program()
+                >>> prog = paddle.static.default_main_program()
                 >>> rlt = paddle.static.data("fake_data", shape=[-1,1,1], dtype='float32')
                 >>> debug_str = prog.to_string(throw_on_error=True, with_details=False)
                 >>> print(debug_str)
