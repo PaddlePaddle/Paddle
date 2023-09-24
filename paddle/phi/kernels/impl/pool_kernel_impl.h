@@ -118,8 +118,6 @@ void PoolRawKernel(const Context& ctx,
 #if defined(__HIPCC__) || defined(__NVCC__)
           auto stream = ctx.stream();
           phi::MeanKernel<T, Context>(ctx, x, {reduce_dim}, false, out);
-          // funcs::ReduceKernel<T, T, kps::AddFunctor, kps::DivideFunctor<T>>(
-          //     ctx, x, out, kps::DivideFunctor<T>(reduce_num), reduce_dim);
 #else  // for cpu
           funcs::Pool2dFunctor<Context, funcs::AvgPool<T>, T> pool2d_forward;
           funcs::AvgPool<T> pool_process;
