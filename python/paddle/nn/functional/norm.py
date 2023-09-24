@@ -614,3 +614,74 @@ def local_response_norm(
     div = paddle.pow(div, beta)
     res = paddle.divide(x, div, name=name)
     return res
+
+
+def group_norm(
+    x,
+    num_groups,
+    epsilon=1e-05,
+    weight_attr=None,
+    bias_attr=None,
+    data_format='NCHW',
+    name=None,
+):
+    r"""
+    TODO: Need to complete.
+    """
+
+    if data_format not in ['NCHW', 'NHWC']:
+        raise ValueError("unsupported data layout:" + data_format)
+
+    check_variable_and_dtype(
+        x, 'input', ['uint16', 'float16', 'float32', 'float64'], 'GroupNorm'
+    )
+
+    if in_dynamic_mode():
+        return _C_ops.group_norm(
+            x,
+            weight_attr,
+            bias_attr,
+            epsilon,
+            num_groups,
+            data_format,
+        )
+    else:
+        # create output
+        helper = LayerHelper('group_norm', **locals())
+
+        mean_out = helper.create_variable_for_type_inference(
+            dtype=x.dtype, stop_gradient=True
+        )
+
+        variance_out = helper.create_variable_for_type_inference(
+            dtype=x.dtype, stop_gradient=True
+        )
+
+        inputs = {'X': x}
+
+        if bias_attr is not None:
+            inputs['Bias'] = bias_attr
+        if weight_attr:
+            inputs['Scale'] = [weight_attr]
+
+        # create output
+        group_norm_out = helper.create_variable_for_type_inference(
+            dtype=x.dtype
+        )
+
+        helper.append_op(
+            type="group_norm",
+            inputs=inputs,
+            outputs={
+                "Y": group_norm_out,
+                "Mean": mean_out,
+                "Variance": variance_out,
+            },
+            attrs={
+                "epsilon": epsilon,
+                "groups": num_groups,
+                "data_layout": data_format,
+            },
+        )
+
+        return helper.append_activation(group_norm_out)
