@@ -562,15 +562,18 @@ void BuildRuntimeContext(
     auto index = op_yaml_info.InputName2Id().at(name);
     pir::Value ptr = op->operand_source(index);
 
-    auto in_var_name = name_map.at(ptr);
-    VLOG(6) << "ctx->EmplaceBackInput: " << name << "\t" << in_var_name;
-
-    PADDLE_ENFORCE_NOT_NULL(inner_scope->FindVar(in_var_name),
-                            phi::errors::PreconditionNotMet(
-                                "can not find var[%s] in scope", in_var_name));
-    auto var = inner_scope->FindVar(in_var_name);
-    std::vector<paddle::framework::Variable*> vec_tmp = {var};
+    Variable* var = nullptr;
     auto legacy_attr_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
+
+    if (ptr && ptr.type()) {
+      auto in_var_name = name_map.at(ptr);
+      VLOG(6) << "ctx->EmplaceBackInput: " << name << "\t" << in_var_name;
+      PADDLE_ENFORCE_NOT_NULL(
+          inner_scope->FindVar(in_var_name),
+          phi::errors::PreconditionNotMet("can not find var[%s] in scope",
+                                          in_var_name));
+      var = inner_scope->FindVar(in_var_name);
+    }
 
     runtime_ctx->inputs[legacy_attr_name].push_back(var);
   }
@@ -579,6 +582,12 @@ void BuildRuntimeContext(
   for (size_t i = 0; i < output_name_list.size(); ++i) {
     auto name = output_name_list[i];
     pir::Value ptr = op->result(i);
+    auto legacy_arg_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
+
+    if ((!ptr) || (!ptr.type())) {
+      runtime_ctx->outputs[legacy_arg_name] = {nullptr};
+      continue;
+    }
 
     auto in_var_name = name_map.at(ptr);
     VLOG(6) << "ctx->EmplaceBackOutput: " << name << "\t" << in_var_name;
@@ -590,7 +599,6 @@ void BuildRuntimeContext(
     auto var = inner_scope->FindVar(in_var_name);
 
     auto type = ptr.type();
-    auto legacy_arg_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
     if (type.isa<paddle::dialect::AllocatedDenseTensorType>() ||
         type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
       runtime_ctx->outputs[legacy_arg_name] = {var};
