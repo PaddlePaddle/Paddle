@@ -3168,7 +3168,7 @@ def tile(x, repeat_times, name=None):
             # Tensor(shape=[1, 6], dtype=int32, place=Place(gpu:0), stop_gradient=True,
             #        [[1, 2, 3, 1, 2, 3]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if isinstance(repeat_times, core.eager.Tensor):
             assert (
                 repeat_times.ndim == 1
