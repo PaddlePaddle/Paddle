@@ -54,95 +54,98 @@ LowerTensorGroup::LowerTensorGroup(
 std::vector<ir::LoweredFunc> LowerTensorGroup::operator()() {
   std::vector<ir::LoweredFunc> result;
   int num_func = 0;
+  // TODO(zhhsplendid): only one tensor_group;
   for (ast_gen_ius::TensorGroup* tensor_group : tensor_groups_) {
     // 1. Generate function body
-    ir::Expr func_body = GenerateFunctionBody(tensor_group);
-    func_body = ir::ScheduleBlockRealize::Make(
-        {},
-        ir::ScheduleBlock::Make(
-            {}, {}, {}, common::UniqName("root"), func_body));
-    // 2. Assign buffer to tensors
-    auto tensor_map = tensor_group->AllocateBuffers();
-    // copy the tensor(with buffer assigned) back to func's args.
-    for (auto& arg : tensor_args_) {
-      if (arg->is_placeholder_node() || arg->buffer.defined()) {
-        continue;
-      }
-      if (arg->body().As<ir::Call>() && arg->body().type().is_void()) {
-        continue;  // extern call
-      }
-
-      if (tensor_map.find(arg->name) == tensor_map.end()) {
-        LOG(INFO) << "Didn't find arg tensor " << arg->name
-                  << "in tensor_map.\n"
-                  << "The function is " << fn_name_
-                  << "\nAnd all the arg tensors are:\n";
-        for (auto& i : tensor_args_) {
-          LOG(INFO) << i->name;
+    std::vector<ir::Expr> func_bodies = GenerateFunctionBody(tensor_group);
+    for (ir::Expr& func_body : func_bodies) {
+      func_body = ir::ScheduleBlockRealize::Make(
+          {},
+          ir::ScheduleBlock::Make(
+              {}, {}, {}, common::UniqName("root"), func_body));
+      // 2. Assign buffer to tensors
+      auto tensor_map = tensor_group->AllocateBuffers();
+      // copy the tensor(with buffer assigned) back to func's args.
+      for (auto& arg : tensor_args_) {
+        if (arg->is_placeholder_node() || arg->buffer.defined()) {
+          continue;
         }
-        LOG(FATAL) << "Fatal Error!";
+        if (arg->body().As<ir::Call>() && arg->body().type().is_void()) {
+          continue;  // extern call
+        }
+
+        if (tensor_map.find(arg->name) == tensor_map.end()) {
+          LOG(INFO) << "Didn't find arg tensor " << arg->name
+                    << "in tensor_map.\n"
+                    << "The function is " << fn_name_
+                    << "\nAnd all the arg tensors are:\n";
+          for (auto& i : tensor_args_) {
+            LOG(INFO) << i->name;
+          }
+          LOG(FATAL) << "Fatal Error!";
+        }
+        Reference(&arg)->buffer = tensor_map.at(arg->name)->buffer;
       }
-      Reference(&arg)->buffer = tensor_map.at(arg->name)->buffer;
-    }
 
-    // 3. Collect temp tensor buffers
-    std::set<std::string> temp_tensor_names;
-    for (auto& t : temp_tensor_args_) {
-      temp_tensor_names.insert(t->name);
-    }
-
-    // Some store tensors are also temp tensors;
-    auto store_exprs = ir::CollectIRNodes(
-        func_body, [](const Expr* x) { return x->As<ir::Store>(); });
-    for (auto& expr : store_exprs) {
-      auto* store_node = expr.As<ir::Store>();
-      CHECK(store_node);
-      auto* tensor = store_node->tensor.As<ir::_Tensor_>();
-      CHECK(tensor);
-      VLOG(3) << "In store_exprs, its name is : " << tensor->name;
-      CHECK(tensor->buffer.defined());
-      if (tensor->buffer->memory_type != ir::MemoryType::Heap) {
-        temp_tensor_names.insert(store_node->tensor.as_tensor_ref()->name);
+      // 3. Collect temp tensor buffers
+      std::set<std::string> temp_tensor_names;
+      for (auto& t : temp_tensor_args_) {
+        temp_tensor_names.insert(t->name);
       }
-    }
 
-    std::vector<ir::Buffer> temp_buffers;
-    std::unordered_set<std::string> buffer_name_set;
-    for (const std::string& name : temp_tensor_names) {
-      if (!tensor_map.count(name)) {
-        continue;
+      // Some store tensors are also temp tensors;
+      auto store_exprs = ir::CollectIRNodes(
+          func_body, [](const Expr* x) { return x->As<ir::Store>(); });
+      for (auto& expr : store_exprs) {
+        auto* store_node = expr.As<ir::Store>();
+        CHECK(store_node);
+        auto* tensor = store_node->tensor.As<ir::_Tensor_>();
+        CHECK(tensor);
+        VLOG(3) << "In store_exprs, its name is : " << tensor->name;
+        CHECK(tensor->buffer.defined());
+        if (tensor->buffer->memory_type != ir::MemoryType::Heap) {
+          temp_tensor_names.insert(store_node->tensor.as_tensor_ref()->name);
+        }
       }
-      ir::Tensor& t = tensor_map[name];
-      if (t->buffer.defined() && !buffer_name_set.count(t->buffer->name)) {
-        temp_buffers.push_back(t->buffer);
-        buffer_name_set.insert(t->buffer->name);
+
+      std::vector<ir::Buffer> temp_buffers;
+      std::unordered_set<std::string> buffer_name_set;
+      for (const std::string& name : temp_tensor_names) {
+        if (!tensor_map.count(name)) {
+          continue;
+        }
+        ir::Tensor& t = tensor_map[name];
+        if (t->buffer.defined() && !buffer_name_set.count(t->buffer->name)) {
+          temp_buffers.push_back(t->buffer);
+          buffer_name_set.insert(t->buffer->name);
+        }
       }
-    }
 
-    // 4. Handle function args
-    std::vector<ir::Argument> func_args =
-        GenerateFunctionArgumentList(func_body);
+      // 4. Handle function args
+      std::vector<ir::Argument> func_args =
+          GenerateFunctionArgumentList(func_body);
 
-    // 5. Actual function make
-    std::string actual_fn_name = fn_name_;
-    if (num_func > 0) {
-      actual_fn_name += "_" + std::to_string(num_func);
-      VLOG(3) << "Making func :" << actual_fn_name;
-    }
-    for (auto& i : func_args) {
-      VLOG(3) << "func_args is : " << i.name();
-    }
-    for (auto& i : temp_buffers) {
-      VLOG(3) << "temp_buffers is : " << i->name;
-    }
-    ir::LoweredFunc func = ir::_LoweredFunc_::Make(
-        actual_fn_name, func_args, func_body, temp_buffers);
+      // 5. Actual function make
+      std::string actual_fn_name = fn_name_;
+      if (num_func > 0) {
+        actual_fn_name += "_" + std::to_string(num_func);
+        VLOG(3) << "Making func :" << actual_fn_name;
+      }
+      for (auto& i : func_args) {
+        VLOG(3) << "func_args is : " << i.name();
+      }
+      for (auto& i : temp_buffers) {
+        VLOG(3) << "temp_buffers is : " << i->name;
+      }
+      ir::LoweredFunc func = ir::_LoweredFunc_::Make(
+          actual_fn_name, func_args, func_body, temp_buffers);
 
-    // 6. Final clean up
-    optim::SimplifyBlocks(&func->body);
-    func->body = ir::Block::Make({func->body});
-    result.push_back(ir::LoweredFunc(func.get()));
-    num_func++;
+      // 6. Final clean up
+      optim::SimplifyBlocks(&func->body);
+      func->body = ir::Block::Make({func->body});
+      result.push_back(ir::LoweredFunc(func.get()));
+      num_func++;
+    }
   }
   return result;
 }
@@ -199,22 +202,35 @@ std::vector<ir::Argument> LowerTensorGroup::GenerateFunctionArgumentList(
   return args;
 }
 
-ir::Expr LowerTensorGroup::GenerateFunctionBody(
+std::vector<ir::Expr> LowerTensorGroup::GenerateFunctionBody(
     ast_gen_ius::TensorGroup* tensor_group) {
-  std::vector<ir::Tensor> ordered_tensors =
-      tensor_group->GetGenFuncTopoOrder(tensor_args_);
+  // TODO(zhhsplendid): GetGenFuncTopoOrder() may remove args
+  std::vector<ir::Tensor> ordered_tensors = tensor_group->GetGenFuncTopoOrder();
+
+  std::vector<ir::Expr> result;
   std::vector<ir::Expr> bodies;
   for (const ir::Tensor& tensor : ordered_tensors) {
-    if (!tensor->is_placeholder_node()) {
+    if (!tensor->is_placeholder_node() && tensor->has_expression()) {
       VLOG(6) << "ast_gen_ius::AstGen::Build for Tensor " << tensor;
       bodies.emplace_back(ast_gen_ius::AstGen::Build(tensor, tensor_group));
+
+      bool gpu_local =
+          tensor->buffer.defined() &&
+          (tensor->buffer->memory_type == ir::MemoryType::GPUShared ||
+           tensor->buffer->memory_type == ir::MemoryType::GPULocal);
+      if (target_ == common::DefaultNVGPUTarget() && !gpu_local) {
+        result.push_back(bodies.size() == 1 ? bodies[0]
+                                            : ir::Block::Make(bodies));
+        bodies.clear();
+      }
     }
   }
-  if (bodies.size() == 1) {
-    return bodies[0];
-  }
 
-  return ir::Block::Make(bodies);
+  if (!bodies.empty()) {
+    result.push_back(bodies.size() == 1 ? bodies[0] : ir::Block::Make(bodies));
+    bodies.clear();
+  }
+  return result;
 }
 
 }  // namespace detail

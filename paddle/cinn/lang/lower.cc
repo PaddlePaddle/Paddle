@@ -307,11 +307,25 @@ std::vector<ir::LoweredFunc> LowerToAstVec(
     const std::vector<Tensor>& tensor_args,
     std::vector<ast_gen_ius::TensorGroup*> tensor_groups,
     const Target& target) {
-  std::vector<ir::LoweredFunc> ret;
-  for (ast_gen_ius::TensorGroup* tg : tensor_groups) {
-    ret.push_back(LowerToAst(name, tensor_args, tg, target));
+  // TODO(zhhsplendid): we use only one tensor_group only;
+  ast_gen_ius::TensorGroup* tensor_group = tensor_groups[0];
+  std::set<ir::Tensor> ctrl_deps =
+      CollectTempTensorsFromCtrlDepends(tensor_group, tensor_args);
+  std::vector<ast_gen_ius::TensorGroup*> group_vec = {tensor_group};
+  auto lower_instance = detail::LowerTensorGroup(
+      name,
+      tensor_args,
+      {},
+      group_vec,
+      std::vector<Tensor>(ctrl_deps.begin(), ctrl_deps.end()),
+      target);
+  std::vector<ir::LoweredFunc> result = lower_instance();
+  for (auto& res : result) {
+    if (target == common::DefaultNVGPUTarget()) {
+      res->device_api = ir::DeviceAPI::GPU;
+    }
   }
-  return ret;
+  return result;
 }
 
 ir::LoweredFunc Lower(const std::string& name,

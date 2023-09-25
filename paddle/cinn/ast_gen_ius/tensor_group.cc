@@ -41,6 +41,7 @@ TensorGroup::TensorGroup(const std::vector<ir::Tensor>& tensors) {
   }
 
   for (const ir::Tensor& t : all_tensors) {
+    VLOG(6) << "TensorGroup insert " << t->name;
     name_to_tensor_.insert({t->name, t});
   }
 }

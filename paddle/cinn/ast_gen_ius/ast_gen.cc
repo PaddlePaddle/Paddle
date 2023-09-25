@@ -101,14 +101,6 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     const std::vector<ir::Var>& reduce_axis = tensor->reduce_axis;
     ir::Expr reduce_body =
         ConvertReduceBody(tensor->body(), tensor, axis_exprs);
-    for (int i = static_cast<int>(reduce_axis.size()) - 1; i >= 0; --i) {
-      reduce_body = ir::For::Make(reduce_axis[i],
-                                  reduce_axis[i]->lower_bound,
-                                  reduce_axis[i]->upper_bound,
-                                  ir::ForType::Serial,
-                                  ir::DeviceAPI::Host,
-                                  ir::Block::Make({reduce_body}));
-    }
     // create schedule block itervars, i0,i1...
     std::vector<ir::Var> reduce_block_vars(block_vars);
     std::vector<ir::Expr> reduce_block_exprs(axis_exprs);
@@ -133,6 +125,14 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
         reduce_block_exprs,
         ir::ScheduleBlock::Make(
             reduce_block_vars, {}, {}, tensor->name, reduce_body));
+    for (int i = static_cast<int>(reduce_axis.size()) - 1; i >= 0; --i) {
+      reduce_body = ir::For::Make(reduce_axis[i],
+                                  reduce_axis[i]->lower_bound,
+                                  reduce_axis[i]->upper_bound,
+                                  ir::ForType::Serial,
+                                  ir::DeviceAPI::Host,
+                                  ir::Block::Make({reduce_body}));
+    }
 
     // Put the two parts together
     ir::Expr body = ir::Block::Make({init_body, reduce_body});
