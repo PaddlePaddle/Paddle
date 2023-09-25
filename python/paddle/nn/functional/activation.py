@@ -319,7 +319,7 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
 def hardtanh_(x, min=-1.0, max=1.0, name=None):
     r"""
     Inplace version of ``hardtanh`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`paddle_nn_functional_hardtanh`.
+    Please refer to :ref:`api_paddle_nn_functional_hardtanh`.
     """
     if in_dynamic_mode():
         return _C_ops.hardtanh_(x, min, max)
@@ -495,7 +495,7 @@ def leaky_relu(x, negative_slope=0.01, name=None):
 def leaky_relu_(x, negative_slope=0.01, name=None):
     r"""
     Inplace version of ``leaky_relu`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`paddle_nn_functional_leaky_relu`.
+    Please refer to :ref:`api_paddle_nn_functional_leaky_relu`.
     """
     if in_dynamic_mode():
         return _C_ops.leaky_relu_(x, negative_slope)
@@ -1594,7 +1594,7 @@ def thresholded_relu(x, threshold=1.0, name=None):
 def thresholded_relu_(x, threshold=1.0, name=None):
     r"""
     Inplace version of ``thresholded_relu`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`paddle_nn_functional_thresholded_relu`.
+    Please refer to :ref:`api_paddle_nn_functional_thresholded_relu`.
     """
     if in_dynamic_mode():
         return _C_ops.thresholded_relu_(x, threshold)
