@@ -1274,6 +1274,9 @@ PD_REGISTER_KERNEL(batch_norm,
     kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
   }
+#if CUDNN_VERSION_MIN(7, 4, 1)
+  kernel->OutputAt(5).SetDataType(phi::DataType::UINT8);
+#endif
 }
 #endif
 
