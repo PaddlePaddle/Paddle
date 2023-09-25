@@ -224,6 +224,7 @@ class BadStatement:
     msg: str = ''
 
     def check(self, docstring: str) -> bool:
+        """Return `True` for bad statement detected."""
         raise NotImplementedError
 
 
@@ -276,6 +277,36 @@ class SkipNoReason(BadStatement):
         return False
 
 
+class DeprecatedRequired(BadStatement):
+    msg = 'Please use `# doctest: +REQUIRES({})` instead of `# {} {}`.'
+
+    _pattern = re.compile(
+        r"""
+        \#
+        \s*
+        (?P<directive>require[sd]?\s*:)
+        (?P<env>.+)
+        """,
+        re.X,
+    )
+
+    def check(self, docstring):
+        for match_obj in self._pattern.finditer(docstring):
+            dep_directive = match_obj.group('directive').strip()
+            dep_env = match_obj.group('env').strip()
+
+            if dep_env:
+                env = 'env:' + ', env:'.join(
+                    [e.strip().upper() for e in dep_env.split(',') if e.strip()]
+                )
+                self.msg = self.__class__.msg.format(
+                    env, dep_directive, dep_env
+                )
+                return True
+
+        return False
+
+
 class Xdoctester(DocTester):
     """A Xdoctest doctester."""
 
@@ -288,6 +319,7 @@ class Xdoctester(DocTester):
     ] = {
         'fluid': (Fluid,),
         'skip': (SkipNoReason,),
+        'require': (DeprecatedRequired,),
     }
 
     def __init__(
@@ -394,11 +426,12 @@ class Xdoctester(DocTester):
 
         self._test_capacity = test_capacity
 
-    def _check_bad_statements(self, docstring: str) -> typing.Set[str]:
+    def _check_bad_statements(self, docstring: str) -> typing.Set[BadStatement]:
         bad_results = set()
-        for name, statement_cls in self.bad_statements.items():
-            if statement_cls[0](*statement_cls[1:]).check(docstring):
-                bad_results.add(name)
+        for _, statement_cls in self.bad_statements.items():
+            bad_statement = statement_cls[0](*statement_cls[1:])
+            if bad_statement.check(docstring):
+                bad_results.add(bad_statement)
 
         return bad_results
 
@@ -407,10 +440,8 @@ class Xdoctester(DocTester):
         # check bad statements
         bad_results = self._check_bad_statements(docstring)
         if bad_results:
-            for name in bad_results:
-                logger.warning(
-                    "%s >>> %s", api_name, str(self.bad_statements[name][0].msg)
-                )
+            for bad_statement in bad_results:
+                logger.warning("%s >>> %s", api_name, bad_statement.msg)
 
             return [
                 TestResult(

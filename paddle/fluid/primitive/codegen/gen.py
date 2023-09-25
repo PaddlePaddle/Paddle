@@ -38,6 +38,8 @@ sys.path.append(
 
 
 VJPS = [
+    'tril_grad',
+    'triu_grad',
     'tanh_grad',
     'mean_grad',
     'add_grad',
@@ -70,6 +72,10 @@ VJPS = [
     'layer_norm_grad',
     'embedding_grad',
     'scale_grad',
+    'gather_nd_grad',
+    'stack_grad',
+    'squeeze_grad',
+    'unsqueeze_grad',
     'poisson_grad',
     'gumbel_softmax_grad',
 ]
@@ -96,6 +102,8 @@ CUSTOM_VJP = [
 VJP_COMPS = PRIM_VJP + CUSTOM_VJP
 
 BACKENDS = [
+    'tril_grad',
+    'triu_grad',
     'add_n',
     'mean',
     'sum',
@@ -173,6 +181,10 @@ BACKENDS = [
     'gumbel_softmax_grad',
     'split',
     'transpose',
+    'gather_nd_grad',
+    'stack_grad',
+    'squeeze_grad',
+    'unsqueeze_grad',
 ]
 
 
