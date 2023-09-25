@@ -13,18 +13,19 @@
 # limitations under the License.
 
 import copy
+
 import paddle
+
+from . import unique_name
+from .dygraph_utils import _append_activation_in_dygraph
 from .framework import (
     Parameter,
+    _global_flags,
     dtype_is_floating,
     in_dygraph_mode,
-    _global_flags,
 )
-from . import unique_name
-from .param_attr import ParamAttr
-
 from .layer_helper_base import LayerHelperBase
-from .dygraph_utils import _append_activation_in_dygraph
+from .param_attr import ParamAttr
 
 
 class LayerHelper(LayerHelperBase):
@@ -55,7 +56,7 @@ class LayerHelper(LayerHelperBase):
     def input(self, input_param_name='input'):
         inputs = self.multiple_input(input_param_name)
         if len(inputs) != 1:
-            raise "{0} layer only takes one input".format(self.layer_type)
+            raise f"{self.layer_type} layer only takes one input"
         return inputs[0]
 
     @property

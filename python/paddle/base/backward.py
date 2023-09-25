@@ -12,28 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .proto import framework_pb2
-
-from paddle.base import framework as framework
-from paddle.base import program_guard
-from . import core
 import collections
 import copy
 import logging
-from . import unique_name
-from . import log_helper
-import paddle.base
-from .data_feeder import check_type
+import re
 import warnings
-
 from collections.abc import Sequence
 
-import re
+import paddle.base
+from paddle.base import framework as framework
+from paddle.base import program_guard
 
-__all__ = [
-    'append_backward',
-    'gradients',
-]
+from . import core, log_helper, unique_name
+from .data_feeder import check_type
+from .proto import framework_pb2
+
+__all__ = []
 
 _logger = log_helper.get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
@@ -351,22 +345,12 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
     for para, args in inputs.items():
         op_desc.set_input(
             para,
-            list(
-                map(
-                    lambda arg: arg.decode() if isinstance(arg, bytes) else arg,
-                    args,
-                )
-            ),
+            [arg.decode() if isinstance(arg, bytes) else arg for arg in args],
         )
     for para, args in outputs.items():
         op_desc.set_output(
             para,
-            list(
-                map(
-                    lambda arg: arg.decode() if isinstance(arg, bytes) else arg,
-                    args,
-                )
-            ),
+            [arg.decode() if isinstance(arg, bytes) else arg for arg in args],
         )
     op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
     op_device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
@@ -998,9 +982,7 @@ def _append_backward_ops_with_checkpoints_(
                 segments.append([min_idx, max_idx + 1])
             else:
                 _logger.info(
-                    "Could not recompute op range [{}] - [{}] ".format(
-                        min_idx, max_idx + 1
-                    )
+                    f"Could not recompute op range [{min_idx}] - [{max_idx + 1}] "
                 )
 
             start_idx += 1
@@ -1011,7 +993,7 @@ def _append_backward_ops_with_checkpoints_(
         recompute_segments = segments
 
     for i, (idx1, idx2) in enumerate(recompute_segments):
-        _logger.info("recompute segment[{}]".format(i))
+        _logger.info(f"recompute segment[{i}]")
         _logger.info(
             "segment start op: [{}]: [{}]".format(
                 ops[idx1].desc.type(), ops[idx1].desc.input_arg_names()
@@ -1022,7 +1004,7 @@ def _append_backward_ops_with_checkpoints_(
                 ops[idx2 - 1].desc.type(), ops[idx2 - 1].desc.input_arg_names()
             )
         )
-        _logger.info("recompute segment[{}]".format(i))
+        _logger.info(f"recompute segment[{i}]")
         _logger.info(
             "segment start op: [{}]: [{}]".format(
                 ops[idx1].desc.type(), ops[idx1].desc.input_arg_names()
@@ -2196,9 +2178,7 @@ def append_backward(
         grad_block = grad_info[1]
         if not grad_block.has_var(grad_info[0]):
             raise ValueError(
-                "grad block[{0}] did not have grad var {1}".format(
-                    grad_info[1], grad_info[0]
-                )
+                f"grad block[{grad_info[1]}] did not have grad var {grad_info[0]}"
             )
         # Get the param var from the global block
         param_var = program.global_block().var(param)

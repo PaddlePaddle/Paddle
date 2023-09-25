@@ -20,7 +20,8 @@ import threading
 import warnings
 import weakref
 
-import paddle.ir.core as ir_static
+import paddle.pir.core as ir_static
+from paddle import decomposition
 from paddle.base import core, framework
 from paddle.base.data_feeder import check_type
 from paddle.base.dygraph.base import (
@@ -41,6 +42,9 @@ from .function_spec import (
     _hash_spec_names,
     get_buffers,
     get_parameters,
+)
+from .newir_partial_program import (
+    PartialProgramLayerHook as PirPartialProgramLayerHook,
 )
 from .origin_info import (
     attach_origin_info,
@@ -1473,6 +1477,50 @@ class FallbackProgramLayer:
         return super().__setattr__(key, value)
 
 
+class PirPrimHooker(PirPartialProgramLayerHook):
+    def __init__(self, original_program, backend):
+        self.backend = backend
+        self.custom_vjps = set()
+        with backend_guard(self.backend):
+            if core._is_all_prim_enabled():
+                self.custom_vjps = {
+                    op.name()
+                    for op in original_program.global_block().ops
+                    if core.has_custom_vjp(op)
+                }
+
+    def before_append_backward(self, forward_program, src_vars):
+        with backend_guard(self.backend):
+            if core._is_fwd_prim_enabled():
+                dst_vars = decomposition.decompose(
+                    forward_program, src_vars, blacklist=self.custom_vjps
+                )
+                return forward_program, dst_vars
+            return forward_program, src_vars
+
+    def after_append_backward(self, whole_program, src_vars, forward_end_idx):
+        with backend_guard(self.backend):
+            if core._is_fwd_prim_enabled() and len(self.custom_vjps) != 0:
+                backward_length = (
+                    len(whole_program.global_block().ops) - forward_end_idx
+                )
+                dst_vars = decomposition.decompose(
+                    whole_program, src_vars, whitelist=self.custom_vjps
+                )
+                new_start_index = (
+                    len(whole_program.global_block().ops) - backward_length
+                )
+                return whole_program, new_start_index, dst_vars
+            return whole_program, forward_end_idx, src_vars
+
+    def after_infer(self, infer_program, src_vars):
+        with backend_guard(self.backend):
+            if core._is_fwd_prim_enabled():
+                dst_vars = decomposition.decompose(infer_program, src_vars)
+                return infer_program, dst_vars
+            return infer_program, src_vars
+
+
 class ProgramCache:
     """
     Wrapper class for the program functions defined by dygraph function.
@@ -1530,7 +1578,10 @@ class ProgramCache:
                 raise
 
         backend = cache_key.kwargs['backend']
-        if prim_or_cinn_is_enabled(cache_key.kwargs['build_strategy'], backend):
+        if (
+            prim_or_cinn_is_enabled(cache_key.kwargs['build_strategy'], backend)
+            and not use_pir_api()
+        ):
             for var in concrete_program.main_program.list_vars():
                 if var.type not in NO_SHAPE_VAR_TYPE and -1 in var.shape:
                     warnings.warn(
@@ -1553,9 +1604,14 @@ class ProgramCache:
             )
         with backend_guard(backend):
             if core._is_fwd_prim_enabled():
-                partial_program.set_hooker(
-                    PrimHooker(concrete_program.main_program, backend)
-                )
+                if use_pir_api():
+                    partial_program.set_hooker(
+                        PirPrimHooker(concrete_program.main_program, backend)
+                    )
+                else:
+                    partial_program.set_hooker(
+                        PrimHooker(concrete_program.main_program, backend)
+                    )
         return concrete_program, partial_program
 
     def __getitem__(self, item):

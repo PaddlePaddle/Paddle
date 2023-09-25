@@ -32,7 +32,7 @@ from .proto import data_feed_pb2  # noqa: F401
 
 from . import core
 from . import unique_name
-from .. import ir
+from .. import pir
 from paddle.base.libpaddle import DataType
 import paddle.version as fluid_version
 import warnings
@@ -40,32 +40,7 @@ import functools
 from .variable_index import _getitem_static, _setitem_static, _setitem_impl_
 import threading
 
-__all__ = [
-    'Program',
-    'default_startup_program',
-    'default_main_program',
-    'program_guard',
-    'name_scope',
-    'ipu_shard_guard',
-    'set_ipu_shard',
-    'cuda_places',
-    'cpu_places',
-    'xpu_places',
-    'cuda_pinned_places',
-    'in_dygraph_mode',
-    'in_pir_mode',
-    'in_dynamic_or_pir_mode',
-    'is_compiled_with_cinn',
-    'is_compiled_with_cuda',
-    'is_compiled_with_rocm',
-    'is_compiled_with_xpu',
-    'Variable',
-    'require_version',
-    'device_guard',
-    'set_flags',
-    'get_flags',
-    '_stride_in_no_check_dy2st_diff',
-]
+__all__ = []
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
 TEMP_VAR_NAME = core.kTempVarName()
@@ -162,8 +137,8 @@ class GlobalThreadLocal(threading.local):
         self._in_to_static_mode_ = False
         self._functional_dygraph_context_manager = None
         self._dygraph_tracer_ = _dygraph_tracer_
-        self._use_pir_api_ = get_flags("FLAGS_enable_new_ir_api")[
-            'FLAGS_enable_new_ir_api'
+        self._use_pir_api_ = get_flags("FLAGS_enable_pir_api")[
+            'FLAGS_enable_pir_api'
         ]
 
     def __str__(self):
@@ -294,10 +269,10 @@ def in_dygraph_mode():
 def in_pir_mode():
     """
 
-    This API checks whether paddle runs in static graph mode and use new ir api.
+    This API checks whether paddle runs in static graph mode and use pir api.
 
     Returns:
-        bool: Whether paddle runs in static graph mode and use new ir api.
+        bool: Whether paddle runs in static graph mode and use pir api.
 
     Examples:
         .. code-block:: python
@@ -323,10 +298,10 @@ def use_pir_api():
 def in_dynamic_or_pir_mode():
     """
 
-    This API checks whether paddle runs in dynamic graph or new ir mode.
+    This API checks whether paddle runs in dynamic graph or pir mode.
 
     Returns:
-        bool: Whether paddle runs in static graph mode and use new ir api.
+        bool: Whether paddle runs in static graph mode and use pir api.
 
     Examples:
         .. code-block:: python
@@ -340,12 +315,12 @@ def in_dynamic_or_pir_mode():
             >>> print(paddle.framework.in_dynamic_or_pir_mode())
             False
 
-            >>> paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
-            >>> print(paddle.framework.in_dynamic_or_pir_mode())
+            >>> with paddle.pir_utils.IrGuard():
+            ...     print(paddle.framework.in_dynamic_or_pir_mode())
             True
 
     """
-    return in_dygraph_mode() or in_pir_mode()
+    return global_var._dygraph_tracer_ is not None or global_var._use_pir_api_
 
 
 global_ipu_index = -1
@@ -1022,10 +997,11 @@ def cuda_pinned_places(device_count=None):
     Examples:
         .. code-block:: python
 
-            import paddle.base as base
-            cuda_pinned_places_cpu_num = base.cuda_pinned_places()
-            # or
-            cuda_pinned_places = base.cuda_pinned_places(1)
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle.base as base
+            >>> cuda_pinned_places_cpu_num = base.cuda_pinned_places()
+            >>> # or
+            >>> cuda_pinned_places = base.cuda_pinned_places(1)
 
     """
     assert core.is_compiled_with_cuda(), "Not compiled with CUDA"
@@ -1162,7 +1138,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
 
     """
     if in_pir_mode():
-        return ir.core.convert_np_dtype_to_dtype_(np_dtype)
+        return pir.core.convert_np_dtype_to_dtype_(np_dtype)
 
     # Convert the data type string to numpy data type.
     if isinstance(np_dtype, str) and np_dtype == "bfloat16":
@@ -1235,9 +1211,7 @@ def _debug_string_(proto, throw_on_error=True):
     error_fields = list()
     if not proto.IsInitialized(error_fields) and throw_on_error:
         raise ValueError(
-            "{0} are not initialized.\nThe message is {1}:\n".format(
-                error_fields, proto
-            )
+            f"{error_fields} are not initialized.\nThe message is {proto}:\n"
         )
     return proto.__str__()
 
@@ -1296,7 +1270,7 @@ def wrap_as_scalar(number):
         # it is a numpy scalar
         return core.Scalar(number.item())
     else:
-        raise TypeError("Cannot wrap {} as core.Scalar".format(number))
+        raise TypeError(f"Cannot wrap {number} as core.Scalar")
 
 
 def wrap_as_scalars(array):
@@ -1486,9 +1460,9 @@ class Variable(metaclass=VariableMetaClass):
             self.desc.set_type(type)
         elif self.desc.type() != type:
             raise ValueError(
-                "Variable '{0}' has been created before. The "
-                "previous type is {1}, the new type is {2}. They"
-                " are not matched".format(self.name, self.desc.type(), type)
+                f"Variable '{self.name}' has been created before. The "
+                f"previous type is {self.desc.type()}, the new type is {type}. They"
+                " are not matched"
             )
 
         if shape is not None:
@@ -1499,9 +1473,9 @@ class Variable(metaclass=VariableMetaClass):
                 shape = tuple(shape)
                 if shape != old_shape:
                     raise ValueError(
-                        "Variable '{0}' has been created before. The previous "
-                        "shape is {1}, the new shape is {2}. They are not "
-                        "matched.".format(self.name, old_shape, shape)
+                        f"Variable '{self.name}' has been created before. The previous "
+                        f"shape is {old_shape}, the new shape is {shape}. They are not "
+                        "matched."
                     )
         if dtype is not None:
             if is_new_var:
@@ -1510,10 +1484,10 @@ class Variable(metaclass=VariableMetaClass):
                 old_dtype = self.dtype
                 if dtype != old_dtype:
                     raise ValueError(
-                        "Variable '{0}' has been created before. "
-                        "The previous data type is {1}, the new "
-                        "data type is {2}. They are not "
-                        "matched.".format(self.name, old_dtype, dtype)
+                        f"Variable '{self.name}' has been created before. "
+                        f"The previous data type is {old_dtype}, the new "
+                        f"data type is {dtype}. They are not "
+                        "matched."
                     )
 
         if lod_level is not None:
@@ -1522,10 +1496,10 @@ class Variable(metaclass=VariableMetaClass):
             else:
                 if lod_level != self.lod_level:
                     raise ValueError(
-                        "Variable '{0}' has been created before. "
-                        "The previous lod_level is {1}, the new "
-                        "lod_level is {2}. They are not "
-                        "matched".format(self.name, self.lod_level, lod_level)
+                        f"Variable '{self.name}' has been created before. "
+                        f"The previous lod_level is {self.lod_level}, the new "
+                        f"lod_level is {lod_level}. They are not "
+                        "matched"
                     )
         if persistable is not None:
             if is_new_var:
@@ -1533,11 +1507,9 @@ class Variable(metaclass=VariableMetaClass):
             else:
                 if persistable != self.persistable:
                     raise ValueError(
-                        "Variable '{0}' has been created before."
-                        "The previous persistable is {1}, the new "
-                        "persistable is {2}. They are not matched".format(
-                            self.name, self.persistable, persistable
-                        )
+                        f"Variable '{self.name}' has been created before."
+                        f"The previous persistable is {self.persistable}, the new "
+                        f"persistable is {persistable}. They are not matched"
                     )
 
         if need_check_feed and is_new_var:
@@ -1832,7 +1804,7 @@ class Variable(metaclass=VariableMetaClass):
                 stop_gradient=self.stop_gradient,
             )
         else:
-            var_str = "{name} : {type})".format(name=self.name, type=type_str)
+            var_str = f"{self.name} : {type_str})"
 
         if self.is_parameter:
             if self.trainable:
@@ -1958,6 +1930,7 @@ class Variable(metaclass=VariableMetaClass):
         Examples:
             .. code-block:: python
 
+                >>> import paddle
                 >>> import paddle.base as base
                 >>> import numpy as np
 
@@ -1965,18 +1938,18 @@ class Variable(metaclass=VariableMetaClass):
                 ...     value0 = np.arange(26).reshape(2, 13).astype("float32")
                 ...     value1 = np.arange(6).reshape(2, 3).astype("float32")
                 ...     value2 = np.arange(10).reshape(2, 5).astype("float32")
-                ...     linear = base.Linear(13, 5, dtype="float32")
-                ...     linear2 = base.Linear(3, 3, dtype="float32")
+                ...     linear = paddle.nn.Linear(13, 5)
+                ...     linear2 = paddle.nn.Linear(3, 3)
                 ...     a = base.dygraph.to_variable(value0)
                 ...     b = base.dygraph.to_variable(value1)
                 ...     c = base.dygraph.to_variable(value2)
                 ...     out1 = linear(a)
                 ...     out2 = linear2(b)
                 ...     out1.stop_gradient = True
-                ...     out = base.layers.concat(input=[out1, out2, c], axis=1)
+                ...     out = paddle.concat(x=[out1, out2, c], axis=1)
                 ...     out.backward()
                 ...     assert linear.weight.gradient() is None
-                ...     assert (out1.gradient() == 0).all()
+                ...     assert out1.gradient() is None
         """
         return self.desc.stop_gradient()
 
@@ -2023,6 +1996,7 @@ class Variable(metaclass=VariableMetaClass):
             .. code-block:: python
 
                 >>> import paddle
+                >>> paddle.enable_static()
                 >>> new_parameter = paddle.static.create_parameter(name="X",
                 ...                                     shape=[10, 23, 48],
                 ...                                     dtype='float32')
@@ -2549,7 +2523,7 @@ class Variable(metaclass=VariableMetaClass):
         var_temp = scope.find_var(self.name)
         if var_temp is None:
             raise ValueError(
-                "Can not find Variable '{}' in the Scope.".format(self.name)
+                f"Can not find Variable '{self.name}' in the Scope."
             )
         t = var_temp.get_tensor()
         return t
@@ -2624,7 +2598,7 @@ class Variable(metaclass=VariableMetaClass):
         var_temp = scope.find_var(self.name)
         if var_temp is None:
             raise ValueError(
-                "Can not find Variable '{}' in the Scope.".format(self.name)
+                f"Can not find Variable '{self.name}' in the Scope."
             )
 
         t = var_temp.get_tensor()
@@ -2875,10 +2849,15 @@ class Operator:
     Examples:
         .. code-block:: python
 
-            >>> import paddle.base as base
-            >>> cur_program = base.Program()
+            >>> import paddle
+
+            >>> paddle.enable_static()
+            >>> cur_program = paddle.static.Program()
             >>> cur_block = cur_program.current_block()
-            >>> # var1 += var2 + var3
+            >>> var1 = cur_block.create_var(name="var1", shape=[-1, 23, 48], dtype='float32')
+            >>> var2 = cur_block.create_var(name="var2", shape=[-1, 23, 48], dtype='float32')
+            >>> var3 = cur_block.create_var(name="var3", shape=[-1, 23, 48], dtype='float32')
+            >>> var1 += var2 + var3
             >>> cur_block.append_op(type="sum",
             ...                     inputs={"X": [var1, var2, var3]},
             ...                     outputs={"Out": [var1]})
@@ -2982,13 +2961,9 @@ class Operator:
                 op_attrs[callstack_var_name] = []
                 for frame in traceback.extract_stack():
                     op_attrs[callstack_var_name].append(
-                        '  File "{}", line {}, in {}'.format(
-                            frame[0], frame[1], frame[2]
-                        )
+                        f'  File "{frame[0]}", line {frame[1]}, in {frame[2]}'
                     )
-                    op_attrs[callstack_var_name].append(
-                        '    {}'.format(frame[3])
-                    )
+                    op_attrs[callstack_var_name].append(f'    {frame[3]}')
 
             self.desc.set_type(type)
             proto = OpProtoHolder.instance().get_op_proto(type)
@@ -3036,7 +3011,7 @@ class Operator:
                     found = find_name(inputs, in_proto.name)
                     assert (
                         found or in_proto.dispensable
-                    ), "Input {} not found".format(in_proto.name)
+                    ), f"Input {in_proto.name} not found"
                     if found:
                         in_args = inputs[in_proto.name]
                         if not isinstance(in_args, (list, tuple)):
@@ -3230,9 +3205,10 @@ class Operator:
         Examples:
             .. code-block:: python
 
-                >>> import paddle.base as base
+                >>> import paddle
 
-                >>> cur_program = base.Program()
+                >>> paddle.enable_static()
+                >>> cur_program = paddle.static.Program()
                 >>> cur_block = cur_program.current_block()
                 >>> var = cur_block.create_var(name="X",
                 ...                            shape=[-1, 23, 48],
@@ -3249,18 +3225,18 @@ class Operator:
         )
         outputs_str = "{"
         for i in range(0, len(self.output_names)):
-            outputs_str += "{name}=".format(name=self.output_names[i])
+            outputs_str += f"{self.output_names[i]}="
             o = self.output(self.output_names[i])
-            outputs_str += "{value}".format(value=o)
+            outputs_str += f"{o}"
             if i != len(self.output_names) - 1:
                 outputs_str += ", "
         outputs_str += "}"
 
         inputs_str = "{"
         for i in range(0, len(self.input_names)):
-            inputs_str += "{name}=".format(name=self.input_names[i])
+            inputs_str += f"{self.input_names[i]}="
             o = self.input(self.input_names[i])
-            inputs_str += "{value}".format(value=o)
+            inputs_str += f"{o}"
 
             if i != len(self.input_names) - 1:
                 inputs_str += ", "
@@ -3276,9 +3252,7 @@ class Operator:
             attr_type = self.desc.attr_type(name, True)
             if attr_type == core.AttrType.VAR:
                 attr_var_name = self.desc.attr(name, True).name()
-                a = "{name} = Var['{value}']".format(
-                    name=name, value=attr_var_name
-                )
+                a = f"{name} = Var['{attr_var_name}']"
                 attrs_str += a
                 if i != len(attr_names) - 1:
                     attrs_str += ", "
@@ -3297,18 +3271,14 @@ class Operator:
                 continue
 
             if attr_type == core.AttrType.BLOCK:
-                a = "{name} = block[{value}]".format(
-                    name=name, value=self._block_attr_id(name)
-                )
+                a = f"{name} = block[{self._block_attr_id(name)}]"
                 attrs_str += a
                 if i != len(attr_names) - 1:
                     attrs_str += ", "
                 continue
 
             if attr_type == core.AttrType.BLOCKS:
-                a = "{name} = blocks{value}".format(
-                    name=name, value=self._blocks_attr_ids(name)
-                )
+                a = f"{name} = blocks{self._blocks_attr_ids(name)}"
                 attrs_str += a
                 if i != len(attr_names) - 1:
                     attrs_str += ", "
@@ -3331,7 +3301,7 @@ class Operator:
             else:
                 value = self.desc.attr(name)
 
-            a = "{name} = {value}".format(name=name, value=value)
+            a = f"{name} = {value}"
 
             attrs_str += a
             if i != len(attr_names) - 1:
@@ -3349,16 +3319,11 @@ class Operator:
             )
 
         if outputs_str != "{}":
-            op_str = "{outputs} = {op_type}(inputs={inputs}, {attrs})".format(
-                outputs=outputs_str,
-                op_type=self.type,
-                inputs=inputs_str,
-                attrs=attrs_str,
+            op_str = (
+                f"{outputs_str} = {self.type}(inputs={inputs_str}, {attrs_str})"
             )
         else:
-            op_str = "{op_type}(inputs={inputs}, {attrs})".format(
-                op_type=self.type, inputs=inputs_str, attrs=attrs_str
-            )
+            op_str = f"{self.type}(inputs={inputs_str}, {attrs_str})"
         return op_str
 
     def __str__(self):
@@ -3641,9 +3606,7 @@ class Operator:
         attr_type = self.desc.attr_type(name, True)
         assert (
             attr_type == core.AttrType.VAR
-        ), "Required type attr({}) is Variable, but received {}".format(
-            name, attr_type
-        )
+        ), f"Required type attr({name}) is Variable, but received {attr_type}"
         attr_var_name = self.desc.attr(name, True).name()
         return self.block._var_recursive(attr_var_name)
 
@@ -3660,9 +3623,7 @@ class Operator:
         attr_type = self.desc.attr_type(name, True)
         assert (
             attr_type == core.AttrType.VARS
-        ), "Required type attr({}) is list[Variable], but received {}".format(
-            name, attr_type
-        )
+        ), f"Required type attr({name}) is list[Variable], but received {attr_type}"
         attr_vars = [
             self.block._var_recursive(var.name())
             for var in self.desc.attr(name, True)
@@ -3976,9 +3937,10 @@ class Block:
     Examples:
         .. code-block:: python
 
-            >>> import paddle.base as base
+            >>> import paddle
 
-            >>> cur_program = base.Program()
+            >>> paddle.enable_static()
+            >>> cur_program = paddle.static.Program()
             >>> cur_block = cur_program.current_block()
             >>> var = cur_block.create_var(name="X",
             ...                            shape=[-1, 23, 48],
@@ -4015,9 +3977,10 @@ class Block:
         Examples:
             .. code-block:: python
 
-                >>> import paddle.base as base
+                >>> import paddle
 
-                >>> cur_program = base.Program()
+                >>> paddle.enable_static()
+                >>> cur_program = paddle.static.Program()
                 >>> cur_block = cur_program.current_block()
                 >>> new_var = cur_block.create_var(name="X",
                 ...                                shape=[-1, 23, 48],
@@ -4033,14 +3996,12 @@ class Block:
             type(skip_op_callstack)
         )
         block_str = "{ // block "
-        block_str += "{}\n".format(self.idx)
+        block_str += f"{self.idx}\n"
         for var in list(self.vars.values()):
-            block_str += "    {}\n".format(var._to_readable_code())
+            block_str += f"    {var._to_readable_code()}\n"
         block_str += "\n"
         for op in self.ops:
-            block_str += "    {}\n".format(
-                op._to_readable_code(skip_op_callstack)
-            )
+            block_str += f"    {op._to_readable_code(skip_op_callstack)}\n"
         block_str += "}"
         return block_str
 
@@ -4194,7 +4155,7 @@ class Block:
         if var:
             return var
         else:
-            raise ValueError("Var {0} is not found recursively".format(name))
+            raise ValueError(f"Var {name} is not found recursively")
 
     def all_parameters(self):
         return list(self.iter_parameters())
@@ -5547,9 +5508,7 @@ class IrGraph:
             )
             if exited_code != 0:
                 print('The dot command is needed for creating pdf files.')
-                print(
-                    'The {} is saved as the dot filetype.'.format(dot_file_path)
-                )
+                print(f'The {dot_file_path} is saved as the dot filetype.')
 
         remove_ctr_vars = set()
         if remove_ctr_var:
@@ -5557,7 +5516,7 @@ class IrGraph:
                 if node.is_ctrl_var():
                     remove_ctr_vars.add(node)
             self.safe_remove_nodes(remove_ctr_vars)
-        print('Total ops num = {}.'.format(len(self.all_op_nodes())))
+        print(f'Total ops num = {len(self.all_op_nodes())}.')
 
         if marked_nodes is not None:
             if not isinstance(marked_nodes, set):
@@ -7124,9 +7083,7 @@ class Program:
 
         if not isinstance(mode, str):
             raise TypeError(
-                "Type of `mode` should be string, but received {}.".format(
-                    type(mode)
-                )
+                f"Type of `mode` should be string, but received {type(mode)}."
             )
 
         def is_parameter(var):
@@ -7219,9 +7176,7 @@ class Program:
 
         if not isinstance(state_dict, dict):
             raise TypeError(
-                "Type of `state_dict` should be dict, but received {}.".format(
-                    type(state_dict)
-                )
+                f"Type of `state_dict` should be dict, but received {type(state_dict)}."
             )
 
         vars_dict = {var.name: var for var in self.list_vars()}
@@ -7238,18 +7193,12 @@ class Program:
                 try:
                     vars_dict[name].set_value(value, scope)
                 except ValueError as err:
-                    warnings.warn(
-                        "Skip loading for '{}'. ".format(name) + str(err)
-                    )
+                    warnings.warn(f"Skip loading for '{name}'. " + str(err))
                 except TypeError as err:
-                    warnings.warn(
-                        "Skip loading for '{}'. ".format(name) + str(err)
-                    )
+                    warnings.warn(f"Skip loading for '{name}'. " + str(err))
             else:
                 warnings.warn(
-                    "Skip loading for '{0}'. Because '{0}' not in the program.".format(
-                        name
-                    )
+                    f"Skip loading for '{name}'. Because '{name}' not in the program."
                 )
 
 
@@ -7340,10 +7289,9 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
         Examples:
             .. code-block:: python
 
-                >>> import paddle.base as base
                 >>> import paddle
-
-                >>> prog = base.default_main_program()
+                >>> paddle.enable_static()
+                >>> prog = paddle.static.default_main_program()
                 >>> rlt = paddle.static.data("fake_data", shape=[-1,1,1], dtype='float32')
                 >>> debug_str = prog.to_string(throw_on_error=True, with_details=False)
                 >>> print(debug_str)
@@ -7512,9 +7460,7 @@ class EagerParamBase(core.eager.Tensor):
                  [-0.70368278,  0.52986908, -0.68742192],
                  [-0.54217887,  0.48439729,  0.34082305]])
         """
-        return "Parameter containing:\n{tensor}".format(
-            tensor=super().__str__()
-        )
+        return f"Parameter containing:\n{super().__str__()}"
 
     def __deepcopy__(self, memo):
         """

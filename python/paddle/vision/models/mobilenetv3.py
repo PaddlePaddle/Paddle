@@ -102,9 +102,7 @@ class InvertedResidualConfig:
             self.activation_layer = nn.Hardswish
         else:
             raise RuntimeError(
-                "The activation function is not supported: {}".format(
-                    activation
-                )
+                f"The activation function is not supported: {activation}"
             )
         self.stride = stride
 
