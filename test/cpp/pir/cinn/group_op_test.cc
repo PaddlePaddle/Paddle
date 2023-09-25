@@ -55,7 +55,7 @@ std::shared_ptr<::pir::Program> BuildGroupProgram() {
   builder.SetInsertionPointToEnd(block1);
   auto full_op_x = builder.Build<paddle::dialect::FullOp>(
       shape, value_one, phi::DataType::FLOAT32, phi::GPUPlace());
-  builder.Build<::pir::YieldOp>(std::vector<::pir::OpResult>{full_op_x.out()});
+  builder.Build<::pir::YieldOp>(std::vector<::pir::Value>{full_op_x.out()});
 
   builder.SetInsertionPointToEnd(program->block());
   auto group_op2 = builder.Build<cinn::dialect::GroupOp>(
@@ -67,7 +67,7 @@ std::shared_ptr<::pir::Program> BuildGroupProgram() {
   auto relu_op_x = builder.Build<paddle::dialect::ReluOp>(tan_op_x->result(0));
   auto tan_op_y = builder.Build<paddle::dialect::TanOp>(relu_op_x->result(0));
   auto relu_op_y = builder.Build<paddle::dialect::ReluOp>(tan_op_y->result(0));
-  builder.Build<::pir::YieldOp>(std::vector<::pir::OpResult>{relu_op_y.out()});
+  builder.Build<::pir::YieldOp>(std::vector<::pir::Value>{relu_op_y.out()});
   return program;
 }
 

@@ -153,7 +153,7 @@ std::vector<ir::LoweredFunc> LowerTensorGroup::operator()() {
 std::vector<ir::Argument> LowerTensorGroup::GenerateFunctionArgumentList(
     Expr fn_body) {
   std::vector<ir::Argument> args;
-  auto teller = ir::CollectTensorNeedsWrite(&fn_body);
+  auto teller = ir::ir_utils::CollectTensorNeedsWrite(&fn_body);
 
   std::set<std::string> arg_names;
 

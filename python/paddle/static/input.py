@@ -104,13 +104,13 @@ def data(name, shape, dtype=None, lod_level=0):
     """
 
     def _reset_data_op_insertion_point():
-        default_main_program = paddle.ir.core.default_main_program()
+        default_main_program = paddle.pir.core.default_main_program()
         ops = default_main_program.global_block().ops
         if len(ops) == 0:
             return
         for op in ops:
             if op.name() != 'pd_op.data':
-                paddle.ir.set_insertion_point(op)
+                paddle.pir.set_insertion_point(op)
                 return
 
     helper = LayerHelper('data', **locals())
@@ -126,11 +126,11 @@ def data(name, shape, dtype=None, lod_level=0):
         dtype = paddle.get_default_dtype()
 
     if in_pir_mode():
-        ir_dtype = paddle.ir.core.convert_np_dtype_to_dtype_(dtype)
+        ir_dtype = paddle.pir.core.convert_np_dtype_to_dtype_(dtype)
         _reset_data_op_insertion_point()
-        data_op = paddle._ir_ops.data(name, shape, ir_dtype, core.Place())
-        paddle.ir.reset_insertion_point_to_end()
-        return data_op
+        out = paddle._pir_ops.data(name, shape, ir_dtype, core.Place())
+        paddle.pir.reset_insertion_point_to_end()
+        return out
 
     out = helper.create_global_variable(
         name=name,

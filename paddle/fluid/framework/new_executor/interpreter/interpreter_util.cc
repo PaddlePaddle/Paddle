@@ -23,6 +23,7 @@
 #include "paddle/fluid/framework/new_executor/interpreter/data_transfer.h"
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
+#include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/pylayer_op_helper.h"
@@ -32,7 +33,6 @@
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
-#include "paddle/fluid/pir/phi_kernel_adaptor/phi_kernel_util.h"
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/kernel_context.h"
@@ -527,11 +527,13 @@ platform::DeviceContext* ConstructDeviceContext(const OperatorBase* op,
   return default_dev_ctx;
 }
 
-void HandleOperatorBase(const platform::Place& place,
-                        std::shared_ptr<OperatorBase> op,
-                        OpFuncNode* op_func_node,
-                        Scope* scope,
-                        bool static_build) {
+void HandleOperatorBase(
+    const platform::Place& place,
+    std::shared_ptr<OperatorBase> op,
+    OpFuncNode* op_func_node,
+    Scope* scope,
+    bool static_build,
+    std::vector<std::shared_ptr<OperatorBase>> following_ops) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
   // input, output is prepared. set the other attributes.
@@ -542,7 +544,8 @@ void HandleOperatorBase(const platform::Place& place,
     if (OperatorBasesMustRunInStaticBuild.count(op->Type())) {
       op->Run(*scope, place);
     }
-    FakeInitializeOutputsForOperatorBase(*op, place, scope);
+
+    FakeInitializeOutputsForOperatorBase(*op, place, scope, following_ops);
   } else {
     op->Run(*scope, place);  // Run without data transformer.
   }
@@ -690,8 +693,15 @@ void BuildOpFuncList(const platform::Place& place,
       if (dynamic_cast<framework::OperatorWithKernel*>(op) == nullptr) {
         VLOG(4) << "HandleOperatorBase";
         // op is not a operatorwithkernel, so direcly run OperatorBase::Run()
-        HandleOperatorBase(
-            place, ops[i], &op_func_node, local_scope, static_build);
+
+        std::vector<std::shared_ptr<OperatorBase>> following_ops(
+            ops.begin() + i + 1, ops.end());
+        HandleOperatorBase(place,
+                           ops[i],
+                           &op_func_node,
+                           local_scope,
+                           static_build,
+                           following_ops);
         vec_func_list->emplace_back(op_func_node);
       } else {
         VLOG(4) << "OP is not null";
@@ -1248,8 +1258,8 @@ const paddle::framework::Variable* GetVariableByName(
 
 void PrintValuesAndVariables(
     const pir::Block& block,
-    const std::unordered_map<pir::Value, std::string>* value_2_var_name,
-    const std::unordered_map<const paddle::framework::Variable*, std::string>*
+    const std::unordered_map<pir::Value, std::string>& value_2_var_name,
+    const std::unordered_map<const paddle::framework::Variable*, std::string>&
         variable_2_var_name) {
   std::stringstream ss;
   for (const auto& op : block) {
@@ -1262,24 +1272,30 @@ void PrintValuesAndVariables(
     std::string ret_variable_str = "Variable: (";
     if (!op->results().empty()) {
       for (auto& out_value : op->results()) {
-        PADDLE_ENFORCE(
-            (*value_2_var_name).count(out_value) > 0,
-            platform::errors::PreconditionNotMet(
-                "var(%s) should exist in var_name_2_id_", out_value.impl()));
-        auto& var_name = (*value_2_var_name).at(out_value);
-        const paddle::framework::Variable* out_variable =
-            GetVariableByName(var_name, *variable_2_var_name);
-        ss.str("");
-        ss << out_value.impl();
-        ret_value_str +=
-            (std::string(var_name.length(), ' ') + "[" + ss.str() + "], ");
-        ss.str("");
-        ss << out_variable;
-        ret_variable_str += (var_name + "[" + ss.str() + "], ");
+        if (value_2_var_name.count(out_value)) {
+          auto& var_name = value_2_var_name.at(out_value);
+          const paddle::framework::Variable* out_variable =
+              GetVariableByName(var_name, variable_2_var_name);
+          ss.str("");
+          ss << out_value.impl();
+          ret_value_str +=
+              (std::string(var_name.length(), ' ') + "[" + ss.str() + "]");
+          ss.str("");
+          if (out_variable) {
+            ss << out_variable;
+            ret_variable_str += (var_name + "[" + ss.str() + "]");
+          } else {
+            ret_variable_str += (var_name + "[NULL]");
+          }
+        } else {
+          ret_value_str += "NULL";
+        }
+        ret_value_str += ", ";
+        ret_variable_str += ", ";
       }
-      ret_value_str = ret_value_str.substr(0, ret_value_str.size() - 2);
+      ret_value_str = ret_value_str.substr(0, ret_value_str.length() - 2);
       ret_variable_str =
-          ret_variable_str.substr(0, ret_variable_str.size() - 2);
+          ret_variable_str.substr(0, ret_variable_str.length() - 2);
     }
     ret_value_str += ") = ";
     ret_variable_str += ") = ";
@@ -1303,24 +1319,30 @@ void PrintValuesAndVariables(
     if (!op->operands().empty()) {
       for (auto& input : op->operands()) {
         ::pir::Value in_value = input.source();
-        PADDLE_ENFORCE(
-            (*value_2_var_name).count(in_value) > 0,
-            platform::errors::PreconditionNotMet(
-                "var(%s) should exist in var_name_2_id_", in_value.impl()));
-        auto& var_name = (*value_2_var_name).at(in_value);
-        const paddle::framework::Variable* in_variable =
-            GetVariableByName(var_name, *variable_2_var_name);
-        ss.str("");
-        ss << in_value.impl();
-        ret_value_str +=
-            (std::string(var_name.length(), ' ') + "[" + ss.str() + "], ");
-        ss.str("");
-        ss << in_variable;
-        ret_variable_str += (var_name + "[" + ss.str() + "], ");
+        if (value_2_var_name.count(in_value)) {
+          auto& var_name = value_2_var_name.at(in_value);
+          const paddle::framework::Variable* in_variable =
+              GetVariableByName(var_name, variable_2_var_name);
+          ss.str("");
+          ss << in_value.impl();
+          ret_value_str +=
+              (std::string(var_name.length(), ' ') + "[" + ss.str() + "]");
+          ss.str("");
+          if (in_variable) {
+            ss << in_variable;
+            ret_variable_str += (var_name + "[" + ss.str() + "]");
+          } else {
+            ret_variable_str += (var_name + "[NULL]");
+          }
+        } else {
+          ret_value_str += "NULL";
+        }
+        ret_value_str += ", ";
+        ret_variable_str += ", ";
       }
-      ret_value_str = ret_value_str.substr(0, ret_value_str.size() - 2);
+      ret_value_str = ret_value_str.substr(0, ret_value_str.length() - 2);
       ret_variable_str =
-          ret_variable_str.substr(0, ret_variable_str.size() - 2);
+          ret_variable_str.substr(0, ret_variable_str.length() - 2);
     }
     ret_value_str += ")";
     ret_variable_str += ")";

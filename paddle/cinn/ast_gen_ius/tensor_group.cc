@@ -31,7 +31,7 @@ TensorGroup::TensorGroup(const std::vector<ir::Tensor>& tensors) {
 
   for (auto& tensor : tensors) {
     output_tensor_names_.insert(tensor->name);
-    std::set<ir::Expr> used_tensors = ir::CollectIRNodes(
+    std::set<ir::Expr> used_tensors = ir::ir_utils::CollectIRNodes(
         tensor->body(), [](const Expr* x) { return x->as_tensor(); });
     for (const Expr& x : used_tensors) {
       const ir::Tensor to_dep = x.as_tensor_ref();
