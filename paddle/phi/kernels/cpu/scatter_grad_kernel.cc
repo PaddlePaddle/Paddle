@@ -21,33 +21,18 @@
 #include "paddle/phi/kernels/bitwise_kernel.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/compare_kernel.h"
-#include "paddle/phi/kernels/cpu/index_select_impl.h"
 #include "paddle/phi/kernels/elementwise_divide_kernel.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/funcs/gather.h"
 #include "paddle/phi/kernels/funcs/scatter.h"
 #include "paddle/phi/kernels/index_add_kernel.h"
+#include "paddle/phi/kernels/index_select_kernel.h"
 #include "paddle/phi/kernels/put_along_axis_kernel.h"
 #include "paddle/phi/kernels/reduce_any_kernel.h"
 #include "paddle/phi/kernels/scatter_kernel.h"
 #include "paddle/phi/kernels/where_kernel.h"
 
 namespace phi {
-
-template <typename Context, typename T>
-void IndexSelectHelper(const Context &ctx,
-                       DenseTensor *input,
-                       const DenseTensor &index,
-                       DenseTensor *output,
-                       int dim) {
-  const auto &index_type = index.dtype();
-  // get updates_grad by using index_select(out_grad, index, axis)
-  if (index_type == phi::DataType::INT32) {
-    IndexSelectInner<Context, T, int>(ctx, input, index, output, dim);
-  } else if (index_type == phi::DataType::INT64) {
-    IndexSelectInner<Context, T, int64_t>(ctx, input, index, output, dim);
-  }
-}
 
 template <typename T, typename Context>
 void ScatterGradKernel(const Context &ctx,
@@ -91,10 +76,15 @@ void ScatterGradKernel(const Context &ctx,
     reducer = "assign";
   }
 
-  ctx.template Alloc<T>(x_grad);
-  ctx.template Alloc<T>(updates_grad);
+  if (x_grad) {
+    ctx.template Alloc<T>(x_grad);
+  }
 
-  if (reduce == "add") {
+  if (updates_grad) {
+    ctx.template Alloc<T>(updates_grad);
+  }
+
+  if (reducer == "add") {
     if (x_grad) {
       if (include_self) {
         phi::Copy(ctx, out_grad, ctx.GetPlace(), false, x_grad);
@@ -105,10 +95,9 @@ void ScatterGradKernel(const Context &ctx,
 
     if (updates_grad) {
       // get updates_grad by using index_select(out_grad, index, axis)
-      IndexSelectHelper<Context, T>(
-          ctx, &const_cast<DenseTensor &>(out_grad), index, updates_grad, axis);
+      *updates_grad = IndexSelect<T, Context>(ctx, out_grad, index, axis);
     }
-  } else if (reduce == "mean") {
+  } else if (reducer == "mean") {
     // Tensor N = include_self ? ones_like(out_grad) : zeros_like(out_grad);
     auto zeros = Full<T, Context>(ctx, vectorize(out_grad.dims()), 0);
     auto ones = Full<T, Context>(ctx, vectorize(out_grad.dims()), 1);
@@ -130,19 +119,14 @@ void ScatterGradKernel(const Context &ctx,
 
     if (updates_grad) {
       // Tensor N_src = N.index_select(dim, index);
-      DenseTensor N_src;
-      N_src.Resize(source.dims());
-      IndexSelectHelper<Context, T>(ctx, &N, index, &N_src, axis);
+      auto N_src = IndexSelect<T, Context>(ctx, N, index, axis);
 
       // grad_src = grad.index_select(dim, index) / N_src;
-      DenseTensor grad_src;
-      grad_src.Resize(source.dims());
-      IndexSelectHelper<Context, T>(
-          ctx, &const_cast<DenseTensor &>(out_grad), index, &grad_src, axis);
+      auto grad_src = IndexSelect<T, Context>(ctx, out_grad, index, axis);
 
       *updates_grad = Divide<T, Context>(ctx, grad_src, N_src);
     }
-  } else if (reduce == "mul" || reduce == "muliply") {
+  } else if (reducer == "mul" || reducer == "muliply") {
     auto zeros = Full<T, Context>(ctx, vectorize(out_grad.dims()), 0);
     auto ones = Full<T, Context>(ctx, vectorize(out_grad.dims()), 1);
     if (x_grad) {
@@ -151,9 +135,9 @@ void ScatterGradKernel(const Context &ctx,
       auto masked_self = Where<T, Context>(ctx, mask, ones, x);
 
       // Tensor masked_self_result = masked_self.index_reduce(dim, index,
-      // source, reduce, include_self);
+      // source, reducer, include_self);
       auto masked_self_result = Scatter<T, Context>(
-          ctx, x, index, source, false, axis, reduce, include_self);
+          ctx, x, index, source, false, axis, reducer, include_self);
 
       // grad_self = grad * masked_self_result / masked_self;
       auto grad_mul_masked_self_result =
@@ -174,10 +158,8 @@ void ScatterGradKernel(const Context &ctx,
       auto src_num_zeros_inner =
           IndexAdd<T, Context>(ctx, zeros, index, src_zero_t, axis);
 
-      DenseTensor src_num_zeros;
-      src_num_zeros.Resize(source.dims());
-      IndexSelectHelper<Context, T>(
-          ctx, &src_num_zeros_inner, index, &src_num_zeros, axis);
+      auto src_num_zeros =
+          IndexSelect<T, Context>(ctx, src_num_zeros_inner, index, axis);
 
       // src_single_zero = bitwise_and(src_zero, src_num_zeros == 1);
       auto src_num_zeros_equal_one =
@@ -186,9 +168,6 @@ void ScatterGradKernel(const Context &ctx,
       auto src_single_zero_bool =
           BitwiseAnd<bool, Context>(ctx, src_zero, src_num_zeros_equal_one);
 
-      // auto src_single_zero =
-      //     Cast<bool, Context>(ctx, src_single_zero_bool, x.dtype());
-      // VLOG(3) << "mul update_grad BitWiseAdd3." << src_single_zero.dtype();
       // // For src positions with src_single_zero, (grad *
       // result).index_select(dim,index) / source.masked_fill(src_zero, 1)
       // // would incorrectly propagate zeros as the gradient
@@ -197,9 +176,9 @@ void ScatterGradKernel(const Context &ctx,
           Where<T, Context>(ctx, src_single_zero_bool, src_ones, source);
 
       // Tensor masked_src_result = x.index_reduce(dim, index, masked_src,
-      // reduce, include_self);
+      // reducer, include_self);
       auto masked_src_result = Scatter<T, Context>(
-          ctx, x, index, masked_src, false, axis, reduce, include_self);
+          ctx, x, index, masked_src, false, axis, reducer, include_self);
 
       // Tensor grad_src1 = where(src_single_zero,
       //                          (grad * masked_src_result).index_select(dim,
@@ -207,19 +186,13 @@ void ScatterGradKernel(const Context &ctx,
       //                          index) / source.masked_fill(src_zero, 1));
       auto grad_mul_masked_src_result =
           Multiply<T, Context>(ctx, out_grad, masked_src_result);
-      DenseTensor grad_mul_masked_src_result_index_select;
-      grad_mul_masked_src_result_index_select.Resize(source.dims());
-      IndexSelectHelper<Context, T>(ctx,
-                                    &grad_mul_masked_src_result,
-                                    index,
-                                    &grad_mul_masked_src_result_index_select,
-                                    axis);
+      auto grad_mul_masked_src_result_index_select =
+          IndexSelect<T, Context>(ctx, grad_mul_masked_src_result, index, axis);
 
       auto grad_mul_out = Multiply<T, Context>(ctx, out_grad, out);
-      DenseTensor grad_mul_out_index_select;
-      grad_mul_out_index_select.Resize(source.dims());
-      IndexSelectHelper<Context, T>(
-          ctx, &grad_mul_out, index, &grad_mul_out_index_select, axis);
+
+      auto grad_mul_out_index_select =
+          IndexSelect<T, Context>(ctx, grad_mul_out, index, axis);
 
       auto src_masked_fill_one =
           Where<T, Context>(ctx, src_zero, src_ones, source);
@@ -249,9 +222,10 @@ void ScatterGradKernel(const Context &ctx,
       auto src_num_zeros_greater_one_any =
           Any<bool, Context>(ctx, src_num_zeros_greater_one, {}, false);
 
-      bool *out_data =
-          reinterpret_cast<bool *>(src_num_zeros_greater_one_any.data());
-      if (*out_data) {
+      // bool *out_data =
+      // reinterpret_cast<bool*>(src_num_zeros_greater_one_any.data());
+      bool out_data = src_num_zeros_greater_one_any.template data<bool>()[0];
+      if (out_data) {
         VLOG(3)
             << "index_reduce(): Double backward is unsupported for source when "
                ">1  zeros in source are scattered to the same position in x";
@@ -260,12 +234,10 @@ void ScatterGradKernel(const Context &ctx,
         *updates_grad = grad_src1;
       }
     }
-  } else if (reduce == "amin" || reduce == "amax") {
+
+  } else if (reducer == "amin" || reducer == "amax") {
     // Tensor value = out.index_select(axis, index);
-    DenseTensor value;
-    value.Resize(source.dims());
-    IndexSelectHelper<Context, T>(
-        ctx, &const_cast<DenseTensor &>(out), index, &value, axis);
+    auto value = IndexSelect<T, Context>(ctx, out, index, axis);
 
     // Tensor self_is_result = (x == out).to(x.scalar_type());
     auto self_is_result = Equal<T, Context>(ctx, x, out);
@@ -292,23 +264,20 @@ void ScatterGradKernel(const Context &ctx,
     if (updates_grad) {
       // grad_src = source_is_result * grad_distributed.index_select(axis,
       // index);
-      DenseTensor src_grad_dist;
-      src_grad_dist.Resize(source.dims());
-      IndexSelectHelper<Context, T>(
-          ctx, &grad_distributed, index, &src_grad_dist, axis);
+      auto src_grad_dist =
+          IndexSelect<T, Context>(ctx, grad_distributed, index, axis);
 
       *updates_grad =
           Multiply<T, Context>(ctx, source_is_result_t, src_grad_dist);
     }
-  } else if (reduce == "assign") {
+  } else if (reducer == "assign") {
     if (x_grad) {
       include_self = false;
     }
 
     if (updates_grad) {
       // get updates_grad by using index_select(out_grad, index, axis)
-      IndexSelectHelper<Context, T>(
-          ctx, &const_cast<DenseTensor &>(out_grad), index, updates_grad, axis);
+      *updates_grad = IndexSelect<T, Context>(ctx, out_grad, index, axis);
     }
   }
 
