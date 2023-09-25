@@ -967,11 +967,11 @@ def monkey_patch_tensor():
             return res
 
     @framework.dygraph_only
-    def pin_memory(self):
+    def pin_memory(self, blocking=True):
         if self.place.is_cuda_pinned_place():
             return self
         else:
-            res = self._copy_to(core.CUDAPinnedPlace(), True)
+            res = self._copy_to(core.CUDAPinnedPlace(), blocking)
             res.stop_gradient = self.stop_gradient
             res.persistable = self.persistable
             return res
