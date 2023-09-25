@@ -21,8 +21,8 @@
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
-#include "paddle/phi/kernels/p_norm_kernel.h"
 #include "paddle/phi/kernels/legacy/reduce_max_kernel.h"
+#include "paddle/phi/kernels/p_norm_kernel.h"
 #include "paddle/phi/kernels/reduce_min_kernel.h"
 
 namespace phi {
