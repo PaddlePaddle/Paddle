@@ -38,6 +38,7 @@ sys.path.append(
 
 
 VJPS = [
+    'where_grad',
     'tril_grad',
     'triu_grad',
     'tanh_grad',
@@ -152,6 +153,7 @@ CUSTOM_VJP = ['gelu_grad', 'layer_norm_grad']  # custom vjp list of composite op
 VJP_COMPS = PRIM_VJP + CUSTOM_VJP
 
 BACKENDS = [
+    'where_grad',
     'tril_grad',
     'triu_grad',
     'add_n',
