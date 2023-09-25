@@ -997,10 +997,11 @@ def cuda_pinned_places(device_count=None):
     Examples:
         .. code-block:: python
 
-            import paddle.base as base
-            cuda_pinned_places_cpu_num = base.cuda_pinned_places()
-            # or
-            cuda_pinned_places = base.cuda_pinned_places(1)
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle.base as base
+            >>> cuda_pinned_places_cpu_num = base.cuda_pinned_places()
+            >>> # or
+            >>> cuda_pinned_places = base.cuda_pinned_places(1)
 
     """
     assert core.is_compiled_with_cuda(), "Not compiled with CUDA"
@@ -1929,6 +1930,7 @@ class Variable(metaclass=VariableMetaClass):
         Examples:
             .. code-block:: python
 
+                >>> import paddle
                 >>> import paddle.base as base
                 >>> import numpy as np
 
@@ -1936,18 +1938,18 @@ class Variable(metaclass=VariableMetaClass):
                 ...     value0 = np.arange(26).reshape(2, 13).astype("float32")
                 ...     value1 = np.arange(6).reshape(2, 3).astype("float32")
                 ...     value2 = np.arange(10).reshape(2, 5).astype("float32")
-                ...     linear = base.Linear(13, 5, dtype="float32")
-                ...     linear2 = base.Linear(3, 3, dtype="float32")
+                ...     linear = paddle.nn.Linear(13, 5)
+                ...     linear2 = paddle.nn.Linear(3, 3)
                 ...     a = base.dygraph.to_variable(value0)
                 ...     b = base.dygraph.to_variable(value1)
                 ...     c = base.dygraph.to_variable(value2)
                 ...     out1 = linear(a)
                 ...     out2 = linear2(b)
                 ...     out1.stop_gradient = True
-                ...     out = base.layers.concat(input=[out1, out2, c], axis=1)
+                ...     out = paddle.concat(x=[out1, out2, c], axis=1)
                 ...     out.backward()
                 ...     assert linear.weight.gradient() is None
-                ...     assert (out1.gradient() == 0).all()
+                ...     assert out1.gradient() is None
         """
         return self.desc.stop_gradient()
 
@@ -1994,6 +1996,7 @@ class Variable(metaclass=VariableMetaClass):
             .. code-block:: python
 
                 >>> import paddle
+                >>> paddle.enable_static()
                 >>> new_parameter = paddle.static.create_parameter(name="X",
                 ...                                     shape=[10, 23, 48],
                 ...                                     dtype='float32')
@@ -2846,10 +2849,15 @@ class Operator:
     Examples:
         .. code-block:: python
 
-            >>> import paddle.base as base
-            >>> cur_program = base.Program()
+            >>> import paddle
+
+            >>> paddle.enable_static()
+            >>> cur_program = paddle.static.Program()
             >>> cur_block = cur_program.current_block()
-            >>> # var1 += var2 + var3
+            >>> var1 = cur_block.create_var(name="var1", shape=[-1, 23, 48], dtype='float32')
+            >>> var2 = cur_block.create_var(name="var2", shape=[-1, 23, 48], dtype='float32')
+            >>> var3 = cur_block.create_var(name="var3", shape=[-1, 23, 48], dtype='float32')
+            >>> var1 += var2 + var3
             >>> cur_block.append_op(type="sum",
             ...                     inputs={"X": [var1, var2, var3]},
             ...                     outputs={"Out": [var1]})
@@ -3197,9 +3205,10 @@ class Operator:
         Examples:
             .. code-block:: python
 
-                >>> import paddle.base as base
+                >>> import paddle
 
-                >>> cur_program = base.Program()
+                >>> paddle.enable_static()
+                >>> cur_program = paddle.static.Program()
                 >>> cur_block = cur_program.current_block()
                 >>> var = cur_block.create_var(name="X",
                 ...                            shape=[-1, 23, 48],
@@ -3928,9 +3937,10 @@ class Block:
     Examples:
         .. code-block:: python
 
-            >>> import paddle.base as base
+            >>> import paddle
 
-            >>> cur_program = base.Program()
+            >>> paddle.enable_static()
+            >>> cur_program = paddle.static.Program()
             >>> cur_block = cur_program.current_block()
             >>> var = cur_block.create_var(name="X",
             ...                            shape=[-1, 23, 48],
@@ -3967,9 +3977,10 @@ class Block:
         Examples:
             .. code-block:: python
 
-                >>> import paddle.base as base
+                >>> import paddle
 
-                >>> cur_program = base.Program()
+                >>> paddle.enable_static()
+                >>> cur_program = paddle.static.Program()
                 >>> cur_block = cur_program.current_block()
                 >>> new_var = cur_block.create_var(name="X",
                 ...                                shape=[-1, 23, 48],
@@ -7278,10 +7289,9 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
         Examples:
             .. code-block:: python
 
-                >>> import paddle.base as base
                 >>> import paddle
-
-                >>> prog = base.default_main_program()
+                >>> paddle.enable_static()
+                >>> prog = paddle.static.default_main_program()
                 >>> rlt = paddle.static.data("fake_data", shape=[-1,1,1], dtype='float32')
                 >>> debug_str = prog.to_string(throw_on_error=True, with_details=False)
                 >>> print(debug_str)

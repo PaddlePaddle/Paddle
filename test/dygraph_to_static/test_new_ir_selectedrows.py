@@ -15,7 +15,10 @@
 import random
 import unittest
 
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_util import (
+    enable_fallback_guard,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 from paddle.jit.api import to_static
@@ -53,7 +56,6 @@ class IRSelectedRowsTestNet(paddle.nn.Layer):
         return x
 
 
-@to_static
 def train(net, adam, x):
     loss_data = []
     for i in range(10):
@@ -75,7 +77,6 @@ def train_dygraph():
         parameters=net.parameters(), learning_rate=0.01, grad_clip=clip
     )
 
-    paddle.jit.enable_to_static(False)
     return train(net, adam, x)
 
 
@@ -89,8 +90,7 @@ def train_static():
         parameters=net.parameters(), learning_rate=0.01, grad_clip=clip
     )
 
-    paddle.jit.enable_to_static(True)
-    return train(net, adam, x)
+    return to_static(train)(net, adam, x)
 
 
 class TestSimnet(unittest.TestCase):
@@ -104,4 +104,5 @@ class TestSimnet(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    with enable_fallback_guard("False"):
+        unittest.main()

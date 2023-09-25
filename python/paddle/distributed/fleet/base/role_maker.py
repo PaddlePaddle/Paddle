@@ -551,20 +551,20 @@ class PaddleCloudRoleMaker(RoleMakerBase):
     Examples:
         .. code-block:: python
 
-            import os
-            import paddle.distributed.fleet as fleet
+            >>> import os
+            >>> import paddle.distributed.fleet as fleet
 
-            os.environ["PADDLE_PSERVER_NUMS"] = "2"
-            os.environ["PADDLE_TRAINERS_NUM"] = "2"
+            >>> os.environ["PADDLE_PSERVER_NUMS"] = "2"
+            >>> os.environ["PADDLE_TRAINERS_NUM"] = "2"
 
-            os.environ["POD_IP"] = "127.0.0.1"
-            os.environ["PADDLE_PORT"] = "36001"
-            os.environ["TRAINING_ROLE"] = "PSERVER"
-            os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36001,127.0.0.2:36001"
+            >>> os.environ["POD_IP"] = "127.0.0.1"
+            >>> os.environ["PADDLE_PORT"] = "36001"
+            >>> os.environ["TRAINING_ROLE"] = "PSERVER"
+            >>> os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36001,127.0.0.2:36001"
 
-            os.environ["PADDLE_TRAINER_ID"] = "0"
+            >>> os.environ["PADDLE_TRAINER_ID"] = "0"
 
-            fleet.PaddleCloudRoleMaker(is_collective=False)
+            >>> fleet.PaddleCloudRoleMaker(is_collective=False)
 
     """
 
@@ -1211,14 +1211,14 @@ class UserDefinedRoleMaker(PaddleCloudRoleMaker):
     Examples:
         .. code-block:: python
 
-            import paddle.distributed.fleet as fleet
-            from paddle.distributed.fleet.base.role_maker import Role
+            >>> import paddle.distributed.fleet as fleet
+            >>> from paddle.distributed.fleet.base.role_maker import Role
 
-            fleet.UserDefinedRoleMaker(
-                current_id=0,
-                role=Role.SERVER,
-                worker_num=2,
-                server_endpoints=["127.0.0.1:36011", "127.0.0.1:36012"])
+            >>> fleet.UserDefinedRoleMaker(
+            ...     current_id=0,
+            ...     role=Role.SERVER,
+            ...     worker_num=2,
+            ...     server_endpoints=["127.0.0.1:36011", "127.0.0.1:36012"])
     """
 
     def __init__(self, is_collective=False, init_gloo=False, **kwargs):

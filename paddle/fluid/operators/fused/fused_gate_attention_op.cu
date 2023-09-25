@@ -14,10 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/fused/attn_gemm.h"
 #include "paddle/fluid/operators/fused/fused_gate_attention.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/fusion/gpu/attn_gemm.h"
 
 namespace paddle {
 namespace operators {
@@ -73,8 +73,8 @@ void ComputeMergedQKVMatmulForward(const framework::ExecutionContext &ctx,
   int m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int n = 3 * config.num_heads * config.head_dim;
   int k = config.q_dim;
-  auto qkv_compute =
-      AttnMatMul<T>(ctx.cuda_device_context(), false, true, m, n, k, false);
+  auto qkv_compute = phi::fusion::AttnMatMul<T>(
+      ctx.cuda_device_context(), false, true, m, n, k, false);
   qkv_compute.ComputeForward(qkv_weight, query, nullptr, qkv_out, nullptr);
 }
 
@@ -95,8 +95,8 @@ void ComputeMergedQKVMatmulBackward(const framework::ExecutionContext &ctx,
   int m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int n = 3 * config.num_heads * config.head_dim;
   int k = config.q_dim;
-  auto qkv_compute =
-      AttnMatMul<T>(ctx.cuda_device_context(), false, true, m, n, k, false);
+  auto qkv_compute = phi::fusion::AttnMatMul<T>(
+      ctx.cuda_device_context(), false, true, m, n, k, false);
   qkv_compute.ComputeBackward(query,
                               qkv_weight,
                               qkv_out_grad,
@@ -125,7 +125,7 @@ void ComputeSeparatedQKVMatmulForward(const framework::ExecutionContext &ctx,
   int q_m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int q_n = config.num_heads * config.head_dim;
   int q_k = config.q_dim;
-  auto q_compute = AttnMatMul<T>(
+  auto q_compute = phi::fusion::AttnMatMul<T>(
       ctx.cuda_device_context(), false, false, q_m, q_n, q_k, false);
   q_compute.ComputeForward(query_weight, query, nullptr, query_out, nullptr);
 
@@ -136,7 +136,7 @@ void ComputeSeparatedQKVMatmulForward(const framework::ExecutionContext &ctx,
   int kv_m = config.batch_size * config.seq_len_m * config.m_size;
   int kv_n = config.num_heads * config.head_dim;
   int kv_k = config.kv_dim;
-  auto kv_compute = AttnMatMul<T>(
+  auto kv_compute = phi::fusion::AttnMatMul<T>(
       ctx.cuda_device_context(), false, false, kv_m, kv_n, kv_k, false);
   kv_compute.ComputeForward(key_weight, key, nullptr, key_out, nullptr);
 
@@ -165,7 +165,7 @@ void ComputeSeparatedQKVMatmulBackward(const framework::ExecutionContext &ctx,
   int kv_m = config.batch_size * config.seq_len_m * config.m_size;
   int kv_n = config.num_heads * config.head_dim;
   int kv_k = config.kv_dim;
-  auto kv_compute = AttnMatMul<T>(
+  auto kv_compute = phi::fusion::AttnMatMul<T>(
       ctx.cuda_device_context(), false, false, kv_m, kv_n, kv_k, false);
   kv_compute.ComputeBackward(
       key, key_weight, key_out_grad, key_grad, key_weight_grad, nullptr, false);
@@ -193,7 +193,7 @@ void ComputeSeparatedQKVMatmulBackward(const framework::ExecutionContext &ctx,
   int q_m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int q_n = config.num_heads * config.head_dim;
   int q_k = config.q_dim;
-  auto q_compute = AttnMatMul<T>(
+  auto q_compute = phi::fusion::AttnMatMul<T>(
       ctx.cuda_device_context(), false, false, q_m, q_n, q_k, false);
   q_compute.ComputeBackward(query,
                             query_weight,
@@ -221,8 +221,8 @@ void ComputeGatingLinearForward(const framework::ExecutionContext &ctx,
   int m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int n = config.num_heads * config.head_dim;
   int k = config.q_dim;
-  auto gate_linear =
-      AttnMatMul<T>(ctx.cuda_device_context(), false, false, m, n, k, true);
+  auto gate_linear = phi::fusion::AttnMatMul<T>(
+      ctx.cuda_device_context(), false, false, m, n, k, true);
   gate_linear.ComputeForward(gate_weight,
                              query,
                              gate_bias,
@@ -258,8 +258,8 @@ void ComputeGatingLinearBackward(const framework::ExecutionContext &ctx,
   int m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int n = config.num_heads * config.head_dim;
   int k = config.q_dim;
-  auto gate_linear =
-      AttnMatMul<T>(ctx.cuda_device_context(), false, false, m, n, k, true);
+  auto gate_linear = phi::fusion::AttnMatMul<T>(
+      ctx.cuda_device_context(), false, false, m, n, k, true);
   gate_linear.ComputeForward(gate_weight,
                              query,
                              gate_bias,
@@ -307,8 +307,8 @@ void ComputeOutputLinearForward(const framework::ExecutionContext &ctx,
   int m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int n = config.q_dim;
   int k = config.num_heads * config.head_dim;
-  auto out_linear =
-      AttnMatMul<T>(ctx.cuda_device_context(), false, false, m, n, k, true);
+  auto out_linear = phi::fusion::AttnMatMul<T>(
+      ctx.cuda_device_context(), false, false, m, n, k, true);
   out_linear.ComputeForward(out_linear_weight,
                             fmha_or_gate_out,
                             out_linear_bias,
@@ -342,8 +342,8 @@ void ComputeOutputLinearBackward(const framework::ExecutionContext &ctx,
   int m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int n = config.q_dim;
   int k = config.num_heads * config.head_dim;
-  auto out_linear =
-      AttnMatMul<T>(ctx.cuda_device_context(), false, false, m, n, k, true);
+  auto out_linear = phi::fusion::AttnMatMul<T>(
+      ctx.cuda_device_context(), false, false, m, n, k, true);
   out_linear.ComputeBackward(input,
                              out_linear_weight,
                              out_grad,

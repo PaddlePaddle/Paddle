@@ -72,6 +72,10 @@ VJPS = [
     'layer_norm_grad',
     'embedding_grad',
     'scale_grad',
+    'gather_nd_grad',
+    'stack_grad',
+    'squeeze_grad',
+    'unsqueeze_grad',
     'poisson_grad',
     'gumbel_softmax_grad',
     'pad_grad',
@@ -177,6 +181,10 @@ BACKENDS = [
     'transpose',
     'pad_grad',
     'pad3d_grad',
+    'gather_nd_grad',
+    'stack_grad',
+    'squeeze_grad',
+    'unsqueeze_grad',
 ]
 
 
