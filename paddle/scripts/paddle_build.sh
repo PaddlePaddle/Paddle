@@ -2740,7 +2740,7 @@ function enable_unused_var_check() {
     export FLAGS_enable_unused_var_check=1
 }
 function check_coverage_added_ut() {
-    # NOTE(risemeup1):The steps of checkinge added test can be placed on the cpu machine to save gpu resources
+    # NOTE(risemeup1):The step of checking added test can be placed on the cpu machine to save gpu resources
     bash $PADDLE_ROOT/tools/check_added_ut.sh
 }
 function gen_doc_lib() {
