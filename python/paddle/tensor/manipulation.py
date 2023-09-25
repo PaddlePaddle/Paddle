@@ -4562,7 +4562,7 @@ def masked_fill(x, mask, value, name=None):
         Tensor, same dimention and dtype with x.
     Examples:
         .. code-block:: python
-            >>> # required: gpu
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> x = paddle.ones((3, 3), dtype="float32")
             >>> mask = paddle.to_tensor([[True, True, False]])
@@ -4592,7 +4592,7 @@ def masked_fill_(x, mask, value, name=None):
 
     Examples:
         .. code-block:: python
-            >>> # required: gpu
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> x = paddle.ones((3, 3), dtype="float32")
             >>> mask = paddle.to_tensor([[True, False, False]])
