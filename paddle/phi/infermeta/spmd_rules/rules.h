@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/matmul.h"
 #include "paddle/phi/infermeta/spmd_rules/reduction.h"
 #include "paddle/phi/infermeta/spmd_rules/replicated.h"
+#include "paddle/phi/infermeta/spmd_rules/reshape.h"
 
 /**
  * Design Notes:
@@ -463,6 +464,11 @@ PD_REGISTER_SPMD_RULE(
     layer_norm,
     PD_INFER_SPMD(phi::distributed::LayerNormInferSpmd),
     PD_INFER_SPMD(phi::distributed::LayerNormInferSpmdReverse));
+
+// reshape rule
+PD_REGISTER_SPMD_RULE(reshape,
+                      PD_INFER_SPMD(phi::distributed::ReshapeInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::ReshapeInferSpmdReverse));
 
 }  // namespace distributed
 }  // namespace phi

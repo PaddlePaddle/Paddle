@@ -135,7 +135,7 @@ class TestDropoutOpInput1d(OpTest):
 
     def test_check_grad_normal(self):
         # Now in dy2st mode x_grad = [], so set check_prim=False
-        self.check_grad(['X'], 'Out', check_prim=False)
+        self.check_grad(['X'], 'Out', check_prim=False, check_new_ir=True)
 
 
 class TestDropoutOp2(TestDropoutOp):
@@ -336,7 +336,13 @@ class TestDropoutOpWithSeed(OpTest):
 
     def test_check_grad_normal(self):
         # Now in dy2st mode x_grad = [], so set check_prim=False
-        self.check_grad(['X'], 'Out', max_relative_error=0.05, check_prim=False)
+        self.check_grad(
+            ['X'],
+            'Out',
+            max_relative_error=0.05,
+            check_prim=False,
+            check_new_ir=True,
+        )
 
 
 @unittest.skipIf(
@@ -377,7 +383,7 @@ class TestFP16DropoutOp(OpTest):
         )
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_new_ir=True)
 
 
 @unittest.skipIf(
