@@ -62,6 +62,7 @@ class TestSumOp(OpTest):
             check_prim=True,
             check_cinn=True,
             check_new_ir=True,
+            check_prim_pir=True,
         )
 
     def test_check_grad(self):
@@ -70,8 +71,8 @@ class TestSumOp(OpTest):
             'Out',
             check_prim=True,
             check_cinn=True,
-            check_prim_pir=True,
             check_new_ir=True,
+            check_prim_pir=True,
         )
 
 
