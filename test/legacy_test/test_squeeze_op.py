@@ -38,10 +38,10 @@ class TestSqueezeOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_new_ir=True)
 
     def init_test_case(self):
         self.ori_shape = (1, 3, 1, 40)
@@ -63,10 +63,10 @@ class TestSqueezeFP16Op(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_new_ir=True)
 
     def init_test_case(self):
         self.ori_shape = (1, 3, 1, 40)
@@ -89,10 +89,10 @@ class TestSqueezeBF16Op(OpTest):
         self.outputs = {"Out": convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_new_ir=True)
 
     def init_test_case(self):
         self.ori_shape = (1, 3, 1, 40)
