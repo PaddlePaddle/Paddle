@@ -235,8 +235,9 @@ def gen_op_vjp_str(
             )
             build_attr_str += op_attribute_list[idx] + ", "
     build_args_str += build_attr_str
+    op_phi_name_format = op_info.op_yaml_item['name']
     call_vjp_code = OP_VJP_CALL_VJP_TEMPLATE.format(
-        op_phi_name=op_phi_name,
+        op_phi_name=op_phi_name_format,
         inputs_list=build_args_str,
     )
     stop_gradient_input_grad_code = OP_VJP_STOPGRADIENT_TEMPLATE
