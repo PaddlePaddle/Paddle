@@ -2301,15 +2301,33 @@ class LinearLR(LRScheduler):
             ...         scheduler.step()
     """
 
-    def __init__(self, learning_rate, total_steps, start_factor=1./3, end_factor=1.0, last_epoch=-1, verbose=False):
-        if  start_factor > 1.0 or start_factor <= 0:
-            raise ValueError("`start_factor` must be greater than 0 and less or equal to 1, but got {}".format(start_factor))
+    def __init__(
+        self,
+        learning_rate,
+        total_steps,
+        start_factor=1.0 / 3,
+        end_factor=1.0,
+        last_epoch=-1,
+        verbose=False,
+    ):
+        if start_factor > 1.0 or start_factor <= 0:
+            raise ValueError(
+                "`start_factor` must be greater than 0 and less or equal to 1, but got {}".format(
+                    start_factor
+                )
+            )
 
-        if  end_factor > 1.0 or end_factor < 0:
-            raise ValueError("`end_factor` must be greater than 0 and less than 1, but got {}".format(end_factor))
+        if end_factor > 1.0 or end_factor < 0:
+            raise ValueError(
+                "`end_factor` must be greater than 0 and less than 1, but got {}".format(
+                    end_factor
+                )
+            )
 
         if total_steps <= 0:
-            raise ValueError("`total_steps` must be greater than 0, but got {}".format(total_steps))
+            raise ValueError(
+                f"`total_steps` must be greater than 0, but got {total_steps}"
+            )
 
         self.start_factor = start_factor
         self.end_factor = end_factor
@@ -2325,9 +2343,11 @@ class LinearLR(LRScheduler):
         else:
             base_lr = self.total_steps * self.start_factor
             cur_factor = self.end_factor - self.start_factor
-            factor = 1. + cur_factor / (base_lr + (self.last_epoch - 1) * cur_factor)
-
+            factor = 1.0 + cur_factor / (
+                base_lr + (self.last_epoch - 1) * cur_factor
+            )
             return self.last_lr * factor
+
 
 def autoincreased_step_counter(counter_name=None, begin=1, step=1):
     """

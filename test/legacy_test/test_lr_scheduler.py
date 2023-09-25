@@ -463,13 +463,15 @@ def cyclic_lr(
 
     return base_learning_rate + base_height * scale_fn(eval(scale_mode))
 
+
 linear_last_lr = None
+
 
 def linear_lr(
     epoch_num,
     learning_rate,
     total_steps,
-    start_factor=1.0/3,
+    start_factor=1.0 / 3,
     end_factor=1.0,
     verbose=False,
 ):
@@ -482,7 +484,7 @@ def linear_lr(
     else:
         base_lr = total_steps * start_factor
         cur_factor = end_factor - start_factor
-        factor = 1. + cur_factor / (base_lr + (epoch_num - 1) * cur_factor)
+        factor = 1.0 + cur_factor / (base_lr + (epoch_num - 1) * cur_factor)
 
         linear_last_lr *= factor
         return linear_last_lr
@@ -737,19 +739,13 @@ class TestLRScheduler(unittest.TestCase):
             )
         # check minus total_steps
         with self.assertRaises(ValueError):
-            paddle.optimizer.lr.LinearLR(
-                total_steps=-1
-            )
+            paddle.optimizer.lr.LinearLR(total_steps=-1)
         # check start_factor
         with self.assertRaises(ValueError):
-            paddle.optimizer.lr.LinearLR(
-                total_steps=5, start_factor=2
-            )
+            paddle.optimizer.lr.LinearLR(total_steps=5, start_factor=2)
         # check end_factor
         with self.assertRaises(ValueError):
-            paddle.optimizer.lr.LinearLR(
-                total_steps=5, end_factor=2
-            )
+            paddle.optimizer.lr.LinearLR(total_steps=5, end_factor=2)
 
         func_api_kwargs = [
             (
@@ -999,10 +995,10 @@ class TestLRScheduler(unittest.TestCase):
                 {
                     "total_steps:": 5,
                     "start_factor": 0.2,
-                    "end_factor": 3,
+                    "end_factor": 0.5,
                     "verbose": False,
                 },
-            )
+            ),
         ]
 
         for python_func, paddle_api, kwarg in func_api_kwargs:
