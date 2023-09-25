@@ -34,7 +34,6 @@ struct InnerProductCache {
   dnnl::memory bias_mem;
   dnnl::memory dst_mem;
   dnnl::memory residual_mem;
-  phi::DenseTensor residual_data;
   dnnl::memory src_scales_mem;
   dnnl::memory wei_scales_mem;
   dnnl::memory dst_scales_mem;
@@ -349,23 +348,6 @@ class FCMKLDNNHandler
 
   std::shared_ptr<dnnl::memory> AcquireCustomDstMemory(
       const ExecutionContext& ctx, phi::DenseTensor* out) {
-    if (!phi::funcs::is_int8<T_in>() &&
-        ctx.HasAttr("fuse_residual_connection") &&
-        ctx.Attr<bool>("fuse_residual_connection")) {
-      auto* residual_param = ctx.Input<phi::DenseTensor>("ResidualData");
-
-      PADDLE_ENFORCE_EQ(
-          out->dims(),
-          residual_param->dims(),
-          phi::errors::InvalidArgument(
-              "Output and elementwise parameter need to have the "
-              "same dimension sizes, but got output's dimension = %d"
-              " and residual param's dimension =%d .",
-              out->dims().size(),
-              residual_param->dims().size()));
-
-      out->ShareDataWith(*residual_param);
-    }
     return this->template AcquireDstMemory<T_out>(out);
   }  // namespace operators
 
@@ -481,14 +463,6 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
       dst_memory_p =
           std::make_shared<dnnl::memory>(inner_product_cache->dst_mem);
 
-      if (!phi::funcs::is_int8<T_in>() &&
-          ctx.HasAttr("fuse_residual_connection") &&
-          ctx.Attr<bool>("fuse_residual_connection")) {
-        residual_data_cache = std::make_shared<phi::DenseTensor>(
-            inner_product_cache->residual_data);
-        out->ShareDataWith(*residual_data_cache);
-      }
-
       auto out_ptr = out->mutable_data<T_out>(
           ctx.GetPlace(), dst_memory_p->get_desc().get_size());
       dst_memory_p->set_data_handle(out_ptr);
@@ -502,7 +476,8 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
             std::make_shared<dnnl::memory>(inner_product_cache->bias_mem);
         fc_args.insert({DNNL_ARG_BIAS, *bias_memory_p});
       }
-      if (residual_data && inner_product_cache->residual_mem) {
+      if (!phi::funcs::is_int8<T_in>() && residual_data &&
+          inner_product_cache->residual_mem) {
         residual_data_memory_p =
             std::make_shared<dnnl::memory>(inner_product_cache->residual_mem);
         fc_args.insert({DNNL_ARG_ATTR_MULTIPLE_POST_OP(0) | DNNL_ARG_SRC_1,
@@ -567,8 +542,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
       ip_cache->src_mem = *src_memory_p;
       ip_cache->weights_mem = *weights_memory_p;
       ip_cache->dst_mem = *dst_memory_p;
-      if (residual_data && residual_data_memory_p) {
-        ip_cache->residual_data = *residual_data;
+      if (residual_data_memory_p) {
         ip_cache->residual_mem = *residual_data_memory_p;
       }
       if (bias) {
