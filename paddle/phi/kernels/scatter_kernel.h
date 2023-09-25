@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/infermeta/ternary.h"
 
 namespace phi {
 
@@ -28,5 +29,39 @@ void ScatterKernel(const Context &ctx,
                    const std::string &reduce,
                    bool include_self,
                    DenseTensor *out);
+
+template <typename T, typename Context>
+DenseTensor Scatter(const Context &ctx,
+                    const DenseTensor &x,
+                    const DenseTensor &index,
+                    const DenseTensor &updates,
+                    bool overwrite,
+                    int axis,
+                    const std::string &reduce,
+                    bool include_self) {
+  DenseTensor dense_out;
+  MetaTensor meta_out(&dense_out);
+  MetaTensor meta_x(&x);
+  MetaTensor meta_index(&index);
+  MetaTensor meta_source(&updates);
+  ScatterInferMeta(meta_x,
+                   meta_index,
+                   meta_source,
+                   overwrite,
+                   axis,
+                   reduce,
+                   include_self,
+                   &meta_out);
+  ScatterKernel<T, Context>(ctx,
+                            x,
+                            index,
+                            updates,
+                            overwrite,
+                            axis,
+                            reduce,
+                            include_self,
+                            &dense_out);
+  return dense_out;
+}
 
 }  // namespace phi

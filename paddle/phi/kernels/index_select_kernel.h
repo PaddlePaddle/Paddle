@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace phi {
 
@@ -31,5 +32,19 @@ void IndexSelectStridedKernel(const Context& ctx,
                               int64_t index,
                               int dim,
                               DenseTensor* output);
+
+template <typename T, typename Context>
+DenseTensor IndexSelect(const Context& ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& index,
+                        int dim) {
+  DenseTensor dense_out;
+  MetaTensor meta_out(&dense_out);
+  MetaTensor meta_x(&x);
+  MetaTensor meta_index(&index);
+  IndexSelectInferMeta(meta_x, meta_index, dim, &meta_out);
+  IndexSelectKernel<T, Context>(ctx, x, index, dim, &dense_out);
+  return dense_out;
+}
 
 }  // namespace phi
