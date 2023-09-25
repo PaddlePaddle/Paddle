@@ -202,3 +202,11 @@ def bernoulli(shape, dtype, p, seed=0):
         ),
         dtype,
     )
+
+
+@register_decomp('pd_op.add_n')
+def sum_composite(x):
+    ans = x[0]
+    for xi in x[1:]:
+        ans = xi + ans
+    return ans
