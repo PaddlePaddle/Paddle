@@ -80,6 +80,8 @@ VJPS = [
     'gumbel_softmax_grad',
     'pad_grad',
     'pad3d_grad',
+    'squeeze_grad',
+    'unsqueeze_grad',
 ]
 
 
