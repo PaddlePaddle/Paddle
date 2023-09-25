@@ -523,13 +523,17 @@ def require_version(min_version, max_version=None):
             warnings.warn(
                 "PaddlePaddle version in [{}, {}] required, but {} installed. "
                 "Maybe you are using a develop version, "
-                "please make sure the version is good with your code.".format(min_version, max_version, fluid_version.full_version)
+                "please make sure the version is good with your code.".format(
+                    min_version, max_version, fluid_version.full_version
+                )
             )
         else:
             warnings.warn(
                 "PaddlePaddle version {} or higher is required, but {} installed, "
                 "Maybe you are using a develop version, "
-                "please make sure the version is good with your code.".format(min_version, fluid_version.full_version)
+                "please make sure the version is good with your code.".format(
+                    min_version, fluid_version.full_version
+                )
             )
         return
 
@@ -549,13 +553,17 @@ def require_version(min_version, max_version=None):
             or version_cmp(version_installed, min_version_to_check) < 0
         ):
             raise Exception(
-                "VersionError: PaddlePaddle version in [{}, {}] required, but {} installed.".format(min_version, max_version, fluid_version.full_version)
+                "VersionError: PaddlePaddle version in [{}, {}] required, but {} installed.".format(
+                    min_version, max_version, fluid_version.full_version
+                )
             )
     else:
         if version_cmp(version_installed, min_version_to_check) < 0:
             raise Exception(
                 "VersionError: PaddlePaddle version {} or higher is required, but {} installed, "
-                "please upgrade your PaddlePaddle to {} or other higher version.".format(min_version, fluid_version.full_version, min_version)
+                "please upgrade your PaddlePaddle to {} or other higher version.".format(
+                    min_version, fluid_version.full_version, min_version
+                )
             )
 
 
@@ -622,7 +630,9 @@ def _fake_interface_only_(func):
             "'{}' only can be called by `paddle.Tensor` in dynamic graph mode. Suggestions:\n"
             "  1. If you are in static graph mode, you can switch to dynamic graph mode by turning off `paddle.enable_static()` or calling `paddle.disable_static()`.\n"
             "  2. If you are using `@paddle.jit.to_static`, you can call `paddle.jit.enable_to_static(False)`. "
-            "If you have to translate dynamic graph to static graph, please use other API to replace '{}'.".format(func.__name__, func.__name__)
+            "If you have to translate dynamic graph to static graph, please use other API to replace '{}'.".format(
+                func.__name__, func.__name__
+            )
         )
 
     return __impl__
@@ -3042,18 +3052,14 @@ class Operator:
                             or m.intermediate
                         ):
                             raise ValueError(
-                                
-                                    "Incorrect setting for output(s) of "
-                                    f"operator \"{type}\", should set: [{m.name}]."
-                                
+                                "Incorrect setting for output(s) of "
+                                f"operator \"{type}\", should set: [{m.name}]."
                             )
                     else:
                         if not ((m.name in outputs) or m.dispensable):
                             raise ValueError(
-                                
-                                    "Incorrect setting for output(s) of "
-                                    f"operator \"{type}\", should set: [{m.name}]."
-                                
+                                "Incorrect setting for output(s) of "
+                                f"operator \"{type}\", should set: [{m.name}]."
                             )
 
                 for out_proto in proto.outputs:
@@ -3095,9 +3101,7 @@ class Operator:
                     self._update_desc_attr(attr_name, attr_val)
                 for attr_name in extra_attrs_map.keys():
                     if os.environ.get('FLAGS_print_extra_attrs', '0') == '1':
-                        warnings.warn(
-                            f"op {type} use extra_attr: {attr_name}"
-                        )
+                        warnings.warn(f"op {type} use extra_attr: {attr_name}")
 
                     if (attr_name not in op_attrs) or (
                         op_attrs[attr_name] is None
@@ -3701,7 +3705,9 @@ def check_if_to_static_diff_with_dygraph(op_type, inplace_map, outputs):
                     and inplace_map.get("Input", None) == "Out"
                 ):
                     raise ValueError(
-                        'Sorry about what\'s happend. In to_static mode, {}\'s output variable {} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.base.framework._stride_in_no_check_dy2st_diff() in your safe code block.'.format(op_type, k)
+                        'Sorry about what\'s happend. In to_static mode, {}\'s output variable {} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.base.framework._stride_in_no_check_dy2st_diff() in your safe code block.'.format(
+                            op_type, k
+                        )
                     )
             elif isinstance(v, list):
                 for var in v:
@@ -3711,7 +3717,9 @@ def check_if_to_static_diff_with_dygraph(op_type, inplace_map, outputs):
                             and inplace_map.get("Input", None) == "Out"
                         ):
                             raise ValueError(
-                                'Sorry about what\'s happend. In to_static mode, {}\'s output variable {} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.base.framework._stride_in_no_check_dy2st_diff() in your safe code block.'.format(op_type, k)
+                                'Sorry about what\'s happend. In to_static mode, {}\'s output variable {} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.base.framework._stride_in_no_check_dy2st_diff() in your safe code block.'.format(
+                                    op_type, k
+                                )
                             )
 
 

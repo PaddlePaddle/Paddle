@@ -256,7 +256,9 @@ def check_feed_shape_type(var, feed, num_places=1):
                 else feed._dtype()
             )
             raise ValueError(
-                'The data type of fed Variable {!r} must be {!r}, but received {!r}'.format(var.name, var_dtype_format, feed_dtype_format)
+                'The data type of fed Variable {!r} must be {!r}, but received {!r}'.format(
+                    var.name, var_dtype_format, feed_dtype_format
+                )
             )
     return True
 
@@ -304,7 +306,9 @@ def pir_check_feed_shape_type(feed, name, target_shape, dtype, num_places=1):
             else feed._dtype()
         )
         raise ValueError(
-            'The data type of fed Variable {!r} must be {!r}, but received {!r}'.format(name, var_dtype_format, feed_dtype_format)
+            'The data type of fed Variable {!r} must be {!r}, but received {!r}'.format(
+                name, var_dtype_format, feed_dtype_format
+            )
         )
     return True
 

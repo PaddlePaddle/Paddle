@@ -884,7 +884,9 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
     )
     if not isinstance(value, support_type):
         raise TypeError(
-            "The type of 'value' in base.dygraph.to_variable must be {}, but received {}.".format(support_type, type(value))
+            "The type of 'value' in base.dygraph.to_variable must be {}, but received {}.".format(
+                support_type, type(value)
+            )
         )
     if isinstance(value, (core.eager.Tensor, framework.Variable)):
         return value

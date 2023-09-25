@@ -2451,7 +2451,9 @@ def calc_gradient_helper(
                 raise ValueError("all targets must be in the same block")
             if target.shape != grad.shape:
                 raise ValueError(
-                    "The shapes of target and grad are different: {} {}".format(target.name, grad.name)
+                    "The shapes of target and grad are different: {} {}".format(
+                        target.name, grad.name
+                    )
                 )
             target_grad_map[_append_grad_suffix_(target.name)] = grad.name
             input_grad_names_set.add(grad.name)
