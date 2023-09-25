@@ -71,8 +71,8 @@ class TestExplicitQuantizationLayer:
 
 
 @unittest.skipIf(
-    paddle.inference.get_trt_compile_version() < (8, 0, 0),
-    "TensorRt supports explicit quantization with version >= 8.0.0",
+    paddle.inference.get_trt_compile_version() < (8, 5, 1),
+    "Quantization axis is consistent with Paddle after TRT 8.5.2.",
 )
 class TestExplicitQuantizationConv2d(
     TestExplicitQuantizationLayer, unittest.TestCase
@@ -136,8 +136,8 @@ class TestExplicitQuantizationConv2d(
 
 
 @unittest.skipIf(
-    paddle.inference.get_trt_compile_version() < (8, 0, 0),
-    "TensorRt supports explicit quantization with version >= 8.0.0",
+    paddle.inference.get_trt_compile_version() < (8, 5, 1),
+    "Quantization axis is consistent with Paddle after TRT 8.5.2.",
 )
 class TestExplicitQuantizationMatmul(
     TestExplicitQuantizationLayer, unittest.TestCase
