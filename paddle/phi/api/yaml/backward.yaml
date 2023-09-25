@@ -2494,15 +2494,15 @@
   inplace : (out_grad -> x_grad)
 
 - backward_op : unsqueeze_double_grad
-  forward : unsqueeze_grad(Tensor xshape, Tensor grad_out, IntArray axes) -> Tensor(grad_x)
-  args : (Tensor grad_x_grad, IntArray axes)
+  forward : unsqueeze_grad(Tensor xshape, Tensor grad_out, IntArray axis) -> Tensor(grad_x)
+  args : (Tensor grad_x_grad, IntArray axis)
   output : Tensor(grad_out_grad), Tensor(xshape)
-  invoke : unsqueeze(grad_x_grad, axes)
+  invoke : unsqueeze(grad_x_grad, axis)
   intermediate : xshape
 
 - backward_op : unsqueeze_grad
-  forward : unsqueeze(Tensor x, IntArray axes) -> Tensor(out), Tensor(xshape)
-  args : (Tensor xshape, Tensor out_grad, IntArray axes)
+  forward : unsqueeze(Tensor x, IntArray axis) -> Tensor(out), Tensor(xshape)
+  args : (Tensor xshape, Tensor out_grad, IntArray axis)
   output : Tensor(x_grad)
   infer_meta :
     func : KernelWithXShapeInferMeta

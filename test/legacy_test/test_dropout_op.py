@@ -129,11 +129,11 @@ class TestDropoutOpInput1d(OpTest):
         self.enable_check_static_comp = False
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_new_ir=True)
 
     def test_check_grad_normal(self):
         # Now in dy2st mode x_grad = [], so set check_prim=False
-        self.check_grad(['X'], 'Out', check_prim=False)
+        self.check_grad(['X'], 'Out', check_prim=False, check_new_ir=True)
 
 
 class TestDropoutOp2(TestDropoutOp):
@@ -196,7 +196,7 @@ class TestDropoutOp4(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_new_ir=True)
 
 
 @skip_check_grad_ci(reason="For inference, check_grad is not required.")
@@ -213,7 +213,7 @@ class TestDropoutOp5(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_new_ir=True)
 
 
 class TestDropoutOp6(TestDropoutOp):
@@ -275,7 +275,7 @@ class TestDropoutOp8(OpTest):
         self.outputs = {'Out': self.inputs['X']}
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_new_ir=True)
 
 
 @skip_check_grad_ci(reason="For inference, check_grad is not required.")
@@ -294,7 +294,7 @@ class TestDropoutOp9(OpTest):
         self.outputs = {'Out': self.inputs['X']}
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_new_ir=True)
 
 
 class TestDropoutOpWithSeed(OpTest):
@@ -320,11 +320,17 @@ class TestDropoutOpWithSeed(OpTest):
         self.enable_check_static_comp = False
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_new_ir=True)
 
     def test_check_grad_normal(self):
         # Now in dy2st mode x_grad = [], so set check_prim=False
-        self.check_grad(['X'], 'Out', max_relative_error=0.05, check_prim=False)
+        self.check_grad(
+            ['X'],
+            'Out',
+            max_relative_error=0.05,
+            check_prim=False,
+            check_new_ir=True,
+        )
 
 
 @unittest.skipIf(
@@ -357,11 +363,11 @@ class TestFP16DropoutOp(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(
-            core.CUDAPlace(0), atol=1e-3, check_prim=True
+            core.CUDAPlace(0), atol=1e-3, check_prim=True, check_new_ir=True
         )
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_new_ir=True)
 
 
 @unittest.skipIf(
@@ -396,10 +402,10 @@ class TestBF16DropoutOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_new_ir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
 
 class TestDropoutOpWithSeedOnCPUPlace(unittest.TestCase):

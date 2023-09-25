@@ -78,6 +78,8 @@ VJPS = [
     'unsqueeze_grad',
     'poisson_grad',
     'gumbel_softmax_grad',
+    'squeeze_grad',
+    'unsqueeze_grad',
 ]
 
 
