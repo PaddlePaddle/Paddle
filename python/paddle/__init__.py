@@ -65,6 +65,35 @@ from .framework.dtype import (
 Tensor = framework.core.eager.Tensor
 Tensor.__qualname__ = 'Tensor'
 
+import paddle.distributed.fleet  # noqa: F401
+
+from paddle import (  # noqa: F401
+    distributed,
+    sysconfig,
+    distribution,
+    nn,
+    optimizer,
+    metric,
+    regularizer,
+    incubate,
+    autograd,
+    device,
+    decomposition,
+    jit,
+    amp,
+    dataset,
+    inference,
+    io,
+    onnx,
+    reader,
+    static,
+    vision,
+    audio,
+    geometric,
+    sparse,
+    quantization,
+)
+
 from .tensor.attribute import (
     is_complex,
     is_integer,
@@ -74,6 +103,7 @@ from .tensor.attribute import (
     imag,
     is_floating_point,
 )
+
 from .tensor.creation import (
     create_parameter,
     to_tensor,
@@ -105,9 +135,11 @@ from .tensor.creation import (
     geometric_,
     cauchy_,
 )
-from .tensor.linalg import (
+
+from .tensor.linalg import (  # noqa: F401
     matmul,
     dot,
+    norm,
     transpose,
     transpose_,
     dist,
@@ -115,18 +147,17 @@ from .tensor.linalg import (
     t_,
     cdist,
     cross,
+    cholesky,
     bmm,
     histogram,
     bincount,
     mv,
+    eigvalsh,
 )
-from .tensor.logic import (
+
+from .tensor.logic import (  # noqa: F401
     equal,
     equal_,
-)
-
-
-from .tensor.logic import (
     greater_equal,
     greater_equal_,
     greater_than,
@@ -143,6 +174,7 @@ from .tensor.logic import (
     logical_or,
     logical_or_,
     logical_xor,
+    logical_xor_,
     bitwise_and,
     bitwise_and_,
     bitwise_not,
@@ -152,12 +184,15 @@ from .tensor.logic import (
     bitwise_xor,
     bitwise_xor_,
     not_equal,
+    not_equal_,
     allclose,
     isclose,
     equal_all,
     is_tensor,
 )
-from .tensor.manipulation import (
+
+
+from .tensor.manipulation import (  # noqa: F401
     cast,
     cast_,
     concat,
@@ -213,12 +248,14 @@ from .tensor.manipulation import (
     view_as,
     unfold,
 )
-from .tensor.math import (
+
+from .tensor.math import (  # noqa: F401
     abs,
     abs_,
     acos,
     acos_,
     asin,
+    asin_,
     atan,
     atan_,
     atan2,
@@ -228,6 +265,7 @@ from .tensor.math import (
     tan,
     tan_,
     cosh,
+    cosh_,
     cumsum,
     cumsum_,
     cummax,
@@ -300,7 +338,9 @@ from .tensor.math import (
     subtract,
     logsumexp,
     logaddexp,
+    inverse,
     log1p,
+    log1p_,
     erf,
     erf_,
     addmm,
@@ -324,8 +364,11 @@ from .tensor.math import (
     lgamma,
     lgamma_,
     acosh,
+    acosh_,
     asinh,
+    asinh_,
     atanh,
+    atanh_,
     lerp,
     erfinv,
     rad2deg,
@@ -403,11 +446,14 @@ from .framework.random import (
     get_rng_state,
     set_rng_state,
 )
-from .framework import (
+from .framework import (  # noqa: F401
     ParamAttr,
     CPUPlace,
+    IPUPlace,
     CUDAPlace,
     CUDAPinnedPlace,
+    CustomPlace,
+    XPUPlace,
 )
 
 from .autograd import (
@@ -439,17 +485,34 @@ from .tensor.stat import (
     quantile,
     nanquantile,
 )
-from .device import (
+from .device import (  # noqa: F401
+    get_cudnn_version,
+    set_device,
+    get_device,
+    is_compiled_with_xpu,
+    is_compiled_with_ipu,
     is_compiled_with_cinn,
+    is_compiled_with_cuda,
+    is_compiled_with_rocm,
+    is_compiled_with_custom_device,
 )
 
 # high-level api
+from . import (  # noqa: F401
+    hub,
+    linalg,
+    fft,
+    signal,
+    _pir_ops,
+)
 from .hapi import (
     Model,
     summary,
     flops,
 )
 
+import paddle.text  # noqa: F401
+import paddle.vision  # noqa: F401
 
 from .tensor.random import check_shape
 from .nn.initializer.lazy_init import LazyGuard
