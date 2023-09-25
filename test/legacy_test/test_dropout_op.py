@@ -2030,8 +2030,10 @@ class TestPirCompositeDropout(unittest.TestCase):
         fwd_actual = []
         rev_actual = []
         mps = []
-        with paddle.pir_utils.IrGuard(), static_guard(), scope_guard(Scope()):
-            for place in self.places:
+        for place in self.places:
+            with paddle.pir_utils.IrGuard(), static_guard(), scope_guard(
+                Scope()
+            ):
                 core._set_prim_backward_enabled(True)
                 core._set_prim_forward_enabled(False)
 
@@ -2075,7 +2077,7 @@ class TestPirCompositeDropout(unittest.TestCase):
                         output = paddle.cast(output, "float32")
                         gradient = paddle.cast(gradient, "float32")
 
-                exe = paddle.static.Executor(paddle.base.CPUPlace())
+                exe = paddle.static.Executor(place)
                 exe.run(sp)
                 fwd, rev = exe.run(
                     mp, feed={'x': self.x}, fetch_list=[output, gradient]
