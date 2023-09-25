@@ -50,7 +50,7 @@ class TestTileOpRank1(OpTest):
         self.check_output(check_cinn=self.check_cinn, check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=False)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
 
 class TestTileOpRank_ZeroDim1(TestTileOpRank1):
