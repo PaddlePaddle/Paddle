@@ -183,8 +183,6 @@ __global__ void int8_weight_only_dequant(const uint8_t* weight,
       // The index remapping here is to counteracts the effect of
       // cutlass::permute_B_rows_for_mixed_gemm input 0 1 2 3 4 5 6 7 8 9 10 11
       // 12 13 14 15 weight 0 1 8 9 2 3 10 11 4 5 12 13 6 7 14 15
-      // printf("vec_weight_f16%d:  %f", p, static_cast<float>(vec_weight_f16[4
-      // * ((p % 8) / 2) + p % 2 + 2 * (p / 8)]));
       vec_out[p] = vec_weight_f16[4 * ((p % 8) / 2) + p % 2 + 2 * (p / 8)];
     }
     Store<T, 16>(vec_out, &output[i / 128 * 64 + (i % 64)]);
