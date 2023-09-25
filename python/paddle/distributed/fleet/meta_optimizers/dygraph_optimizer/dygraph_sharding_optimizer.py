@@ -689,8 +689,6 @@ class DygraphShardingOptimizerV2:
         # assign slice grad to parameter
         with framework.no_grad():
             assert hasattr(param, "shard_slice")
-            self._fill_slice_param(param)
-            param._clear_data()
             shard_slice = param.shard_slice
             if hasattr(param, "main_grad"):
                 # TODO(liuzhnehai): share buffer to if not None
@@ -717,6 +715,8 @@ class DygraphShardingOptimizerV2:
                     continue
                 # update on slice
                 assert hasattr(param, "shard_slice")
+                self._fill_slice_param(param)
+                param._clear_data()
                 param = param.shard_slice
                 grad_var = param._grad_ivar()
                 if hasattr(param, "main_grad") and param.main_grad is not None:

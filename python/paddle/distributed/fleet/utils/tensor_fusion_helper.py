@@ -118,6 +118,66 @@ def bw_hook_func(buffer, param):
     return fused_comm
 
 
+class ShardingGradView:
+    def __init__(self, buffer, index, padded_size, sharding_degree):
+        self._buffer = buffer
+        self._index = index
+        self._padded_size = padded_size
+        self._sharding_degree = sharding_degree
+
+    def add_tmp_grad(self, param, tmp_grad):
+        # tmp_grad is hijacked by amp hook
+        if hasattr(param, "main_grad"):
+            assert param.main_grad is not None
+            assert not tmp_grad._is_initialized()
+            # hack main grad
+            (tmp_grad, param.main_grad) = (param.main_grad, self)
+
+        if tmp_grad._is_initialized():
+            self._add(tmp_grad)
+            tmp_grad._clear_data()
+
+    def _add(self, tmp_grad):
+        # hack main grad
+        print("_add grad")
+
+
+def build_reduce_scatter_buffer(
+    parameters, sharding_degree, use_main_grad=False
+):
+    total_buffer_size = 0
+    param2index = {}
+    dtype = parameters[0].dtype
+
+    def get_padded_size(param):
+        size = np.prod(param.shape)
+        align_size = alignment["gpu"] // align[dtype]
+        align_size = align_size * sharding_degree
+        padded_size = ((size + align_size - 1) // align_size) * align_size
+        return padded_size
+
+    for param in parameters:
+        assert param.trainable, "param must be trainable..."
+        param2index[param.name] = total_buffer_size // sharding_degree
+        total_buffer_size += get_padded_size(param)
+
+    grad_dtype = paddle.float32 if use_main_grad else dtype
+
+    buffer = paddle.zeros(shape=[total_buffer_size], dtype=grad_dtype)
+
+    sharding_grad_view = {}
+    for param in parameters:
+        padded_size = get_padded_size(param)
+        grad_view = ShardingGradView(
+            buffer, param2index[param.name], padded_size, sharding_degree
+        )
+
+        # hack main_grad
+        sharding_grad_view[param.name] = grad_view
+
+    return sharding_grad_view, buffer
+
+
 class FusedCommBuffer:
     def __init__(
         self,
@@ -152,6 +212,8 @@ class FusedCommBuffer:
         self._act = act
         if self._act == HOOK_ACTION.ALL_REDUCE:
             assert dst == -1
+        elif self._act == HOOK_ACTION.REDUCE_SCATTER:
+            assert dst == -1
         elif self._act == HOOK_ACTION.REDUCE:
             assert dst != -1
         else:
@@ -161,26 +223,36 @@ class FusedCommBuffer:
         self._dst = dst
 
         self._init_step_dict()
-
-        if self._fuse_param:
-            self.param_storage, self.grad_storage = flatten_dense_tensors(
-                self._params,
-                use_main_grad=use_main_grad,
-                fuse_param=True,
-                warp_buffer=True,
-            )
-            self.param_storage = self.param_storage.buffer
-            self.grad_storage = self.grad_storage.buffer
+        if self._act != HOOK_ACTION.REDUCE_SCATTER:
+            if self._fuse_param:
+                self.param_storage, self.grad_storage = flatten_dense_tensors(
+                    self._params,
+                    use_main_grad=use_main_grad,
+                    fuse_param=True,
+                    warp_buffer=True,
+                )
+                self.param_storage = self.param_storage.buffer
+                self.grad_storage = self.grad_storage.buffer
+            else:
+                self.param_storage = None
+                self.grad_storage = flatten_dense_tensors(
+                    self._params,
+                    use_main_grad=self.use_main_grad,
+                    fuse_param=False,
+                    warp_buffer=False,
+                ).buffer
+            self._record_addr()
         else:
+            assert not self._fuse_param, "not supported"
             self.param_storage = None
-            self.grad_storage = flatten_dense_tensors(
+            (
+                self._sharding_param_grad_view,
+                self.grad_storage,
+            ) = build_reduce_scatter_buffer(
                 self._params,
+                self._comm_group.nranks,
                 use_main_grad=self.use_main_grad,
-                fuse_param=False,
-                warp_buffer=False,
-            ).buffer
-
-        self._record_addr()
+            )
 
     def _record_addr(self):
         for param in self._params:
@@ -209,18 +281,19 @@ class FusedCommBuffer:
 
     def add_grad(self, param, use_comm=True):
         assert param.name in self._params_step_dict
-        current_ptr = (
-            param.main_grad.data_ptr()
-            if self.use_main_grad
-            else param.grad.data_ptr()
-        )
-        if self._grads_to_addr[param.name] != current_ptr:
-            raise ValueError(
-                "The address of the grad/main_grad of the param has been changed during training, "
-                "which is not allowed for dp/sharding overlap with pp. "
-                "This may be caused by some non-inplace operations on the grad/main_grad. "
-                "Please use the inplace version of the operations or disable the overlapping."
+        if self._act != HOOK_ACTION.REDUCE_SCATTER:
+            current_ptr = (
+                param.main_grad.data_ptr()
+                if self.use_main_grad
+                else param.grad.data_ptr()
             )
+            if self._grads_to_addr[param.name] != current_ptr:
+                raise ValueError(
+                    "The address of the grad/main_grad of the param has been changed during training, "
+                    "which is not allowed for dp/sharding overlap with pp. "
+                    "This may be caused by some non-inplace operations on the grad/main_grad. "
+                    "Please use the inplace version of the operations or disable the overlapping."
+                )
 
         self._params_step_dict[param.name] += 1
 
@@ -230,6 +303,13 @@ class FusedCommBuffer:
 
         if self._all_params_checked_in and use_comm:
             self.comm_grads()
+
+    def add_tmp_grad(self, param, tmp_grad):
+        """called through bw grad hook"""
+        assert self._act == HOOK_ACTION.REDUCE_SCATTER
+        assert param.name in self._sharding_param_grad_view
+        grad_view = self._sharding_param_grad_view[param.name]
+        grad_view.add_tmp_grad(param, tmp_grad)
 
     @imperative_base.no_grad
     def comm_grads(self):
@@ -256,6 +336,18 @@ class FusedCommBuffer:
                 group=self._comm_group,
                 sync_op=False,
             )
+
+        elif self._act == HOOK_ACTION.REDUCE_SCATTER:
+            shard_size = self.grad_storage._numel() // self._comm_group.nranks
+            reduce_scattered = self.grad_storage._slice(0, shard_size)
+            task = paddle.distributed.reduce_scatter(
+                reduce_scattered,
+                self.grad_storage,
+                group=self._comm_group,
+                sync_op=False,
+            )
+            # self._hcg.get_sharding_parallel_group(),
+            # self._assign_slice_grad(param, reduce_scattered)
 
         self._task = task
 
