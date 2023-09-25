@@ -485,7 +485,6 @@ def linear_lr(
         base_lr = total_steps * start_factor
         cur_factor = end_factor - start_factor
         factor = 1.0 + cur_factor / (base_lr + (epoch_num - 1) * cur_factor)
-
         linear_last_lr *= factor
         return linear_last_lr
 
@@ -983,6 +982,7 @@ class TestLRScheduler(unittest.TestCase):
                 linear_lr,
                 paddle.optimizer.lr.LinearLR,
                 {
+                    "learning_rate": 0.2,
                     "total_steps:": 40,
                     "start_factor": 0.5,
                     "end_factor": 1,
@@ -993,6 +993,7 @@ class TestLRScheduler(unittest.TestCase):
                 linear_lr,
                 paddle.optimizer.lr.LinearLR,
                 {
+                    "learning_rate": 0.2,
                     "total_steps:": 5,
                     "start_factor": 0.2,
                     "end_factor": 0.5,
