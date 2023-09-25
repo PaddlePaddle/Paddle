@@ -939,6 +939,17 @@
   composite : gather_nd_grad(x, index, out_grad, x_grad)
   no_need_buffer : x
 
+- backward_op : gaussian_inplace_grad
+  forward : gaussian_inplace(Tensor x, float mean=0, float std=1.0, int seed=0) -> Tensor(out)
+  args : (Tensor out_grad, float mean=0, float std=1.0, int seed=0)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_grad]
+  kernel :
+    func : gaussian_inplace_grad
+  inplace : (out_grad -> x_grad)
+
 - backward_op : gelu_grad
   forward : gelu(Tensor x,  bool approximate) -> Tensor(out)
   args : (Tensor x, Tensor out_grad,  bool approximate)
@@ -2483,15 +2494,15 @@
   inplace : (out_grad -> x_grad)
 
 - backward_op : unsqueeze_double_grad
-  forward : unsqueeze_grad(Tensor xshape, Tensor grad_out, IntArray axes) -> Tensor(grad_x)
-  args : (Tensor grad_x_grad, IntArray axes)
+  forward : unsqueeze_grad(Tensor xshape, Tensor grad_out, IntArray axis) -> Tensor(grad_x)
+  args : (Tensor grad_x_grad, IntArray axis)
   output : Tensor(grad_out_grad), Tensor(xshape)
-  invoke : unsqueeze(grad_x_grad, axes)
+  invoke : unsqueeze(grad_x_grad, axis)
   intermediate : xshape
 
 - backward_op : unsqueeze_grad
-  forward : unsqueeze(Tensor x, IntArray axes) -> Tensor(out), Tensor(xshape)
-  args : (Tensor xshape, Tensor out_grad, IntArray axes)
+  forward : unsqueeze(Tensor x, IntArray axis) -> Tensor(out), Tensor(xshape)
+  args : (Tensor xshape, Tensor out_grad, IntArray axis)
   output : Tensor(x_grad)
   infer_meta :
     func : KernelWithXShapeInferMeta

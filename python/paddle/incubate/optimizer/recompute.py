@@ -291,9 +291,7 @@ class RecomputeOptimizer(Optimizer):
     def _insert_fetch_op(self, idx, varname):
         assert (
             varname in self.checkpoint_name2pinned_name
-        ), "Try to fetch {} from Pinned Memory, but it is NOT a checkpoint".format(
-            varname
-        )
+        ), f"Try to fetch {varname} from Pinned Memory, but it is NOT a checkpoint"
 
         pinned_varname = self.checkpoint_name2pinned_name[varname]
         fetch_varname = self.checkpoint_name2fetch_name[varname]
@@ -302,9 +300,7 @@ class RecomputeOptimizer(Optimizer):
     def _insert_offload_op(self, idx, varname):
         assert (
             varname in self.checkpoint_name2pinned_name
-        ), "Try to offload {} to Pinned Memory, but it is NOT a checkpoint".format(
-            varname
-        )
+        ), f"Try to offload {varname} to Pinned Memory, but it is NOT a checkpoint"
         pinned_varname = self.checkpoint_name2pinned_name[varname]
         self._insert_async_memcpy_op(idx, varname, pinned_varname, 0, 2)
 
@@ -399,16 +395,12 @@ class RecomputeOptimizer(Optimizer):
                         self.checkpoint_usage_count[input_var] += 1
                     else:
                         raise ValueError(
-                            "use checkpoint [{}] before fetch in BW".format(
-                                input_var
-                            )
+                            f"use checkpoint [{input_var}] before fetch in BW"
                         )
 
         assert (
             len(self.un_fetch_checkpoint_names) == 0
-        ), "{} checkpoints have NOT been Recorded".format(
-            self.un_fetch_checkpoint_names
-        )
+        ), f"{self.un_fetch_checkpoint_names} checkpoints have NOT been Recorded"
 
     def _update_backward(self):
         if len(self.idx2insertions) == 0:
@@ -551,9 +543,7 @@ class RecomputeOptimizer(Optimizer):
 
         assert (
             len(self.un_offload_checkpoint_names) == 0
-        ), "{} checkpoints have NOT been Recorded".format(
-            self.un_fetch_checkpoint_names
-        )
+        ), f"{self.un_fetch_checkpoint_names} checkpoints have NOT been Recorded"
         assert len(self.synced_checkpoints) == len(
             need_offload_checkpoint_names
         ), "{} checkpoints have NOT been Recorded".format(
