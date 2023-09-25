@@ -161,8 +161,8 @@ class InferencePassTest(unittest.TestCase):
                     or len(self.trt_parameters.fp32_layers) > 0
                 ):
                     config.exp_disable_tensorrt_half_ops(
-                        self.trt_parameters.fp32_ops,
-                        self.trt_parameters.fp32_layers,
+                        set(self.trt_parameters.fp32_ops),
+                        set(self.trt_parameters.fp32_layers),
                     )
                 if self.trt_parameters.use_inspector:
                     config.enable_tensorrt_inspector(
@@ -330,8 +330,8 @@ class InferencePassTest(unittest.TestCase):
             use_calib_mode,
             use_inspector=False,
             inspector_serialize=False,
-            fp32_ops=set(),
-            fp32_layers=set(),
+            fp32_ops=[],
+            fp32_layers=[],
         ):
             self.workspace_size = workspace_size
             self.max_batch_size = max_batch_size
