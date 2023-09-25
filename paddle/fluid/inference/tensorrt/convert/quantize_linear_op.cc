@@ -46,7 +46,9 @@ class QuantizeLinearOpConverter : public OpConverter {
 
     // Add quantize layer
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Quantize, *x, *scale);
-    layer->setAxis(axis);
+    if (axis >= 0) {
+      layer->setAxis(axis);
+    }
     auto output_name = op_desc.Output("Y")[0];
     RreplenishLayerAndOutput(
         layer, "quantize_linear", {output_name}, test_model);
