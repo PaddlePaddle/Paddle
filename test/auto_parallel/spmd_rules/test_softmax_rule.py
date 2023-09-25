@@ -23,7 +23,7 @@ from paddle.distributed.fleet import auto
 from paddle.framework import core
 
 
-class TestEmbeddingSPMDRule(unittest.TestCase):
+class TestSoftmaxSPMDRule(unittest.TestCase):
     def setUp(self):
         self.rule1 = core.get_phi_spmd_rule("softmax")
         self.rule2 = core.get_phi_spmd_rule("log_softmax")
@@ -42,7 +42,7 @@ class TestEmbeddingSPMDRule(unittest.TestCase):
         # sharding on batch axis I
         self.x_dist_tensor_spec.set_dims_mapping([1, -1, -1])
         result_dist_attrs = self.rule1.infer_forward(
-            [self.x_dist_tensor_spec], list(self.attrs.values())
+            self.x_dist_tensor_spec, self.attrs['axis']
         )
         self.assertEqual(len(result_dist_attrs), 2)
         infered_input_dist_attrs = result_dist_attrs[0]
@@ -57,7 +57,7 @@ class TestEmbeddingSPMDRule(unittest.TestCase):
         # sharding on batch axis II
         self.x_dist_tensor_spec.set_dims_mapping([-1, 1, -1])
         result_dist_attrs = self.rule1.infer_forward(
-            [self.x_dist_tensor_spec], list(self.attrs.values())
+            self.x_dist_tensor_spec, self.attrs['axis']
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -67,7 +67,7 @@ class TestEmbeddingSPMDRule(unittest.TestCase):
         # sharding on softmax_axis
         self.x_dist_tensor_spec.set_dims_mapping([1, -1, 0])
         result_dist_attrs = self.rule1.infer_forward(
-            [self.x_dist_tensor_spec], list(self.attrs.values())
+            self.x_dist_tensor_spec, self.attrs['axis']
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -80,7 +80,7 @@ class TestEmbeddingSPMDRule(unittest.TestCase):
         }
         self.x_dist_tensor_spec.set_dims_mapping([-1, 1, 0])
         result_dist_attrs = self.rule1.infer_forward(
-            [self.x_dist_tensor_spec], list(self.attrs.values())
+            self.x_dist_tensor_spec, self.attrs['axis']
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -93,7 +93,7 @@ class TestEmbeddingSPMDRule(unittest.TestCase):
         }
         self.x_dist_tensor_spec.set_dims_mapping([-1, 1, 0])
         result_dist_attrs = self.rule1.infer_forward(
-            [self.x_dist_tensor_spec], list(self.attrs.values())
+            self.x_dist_tensor_spec, self.attrs['axis']
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -104,9 +104,9 @@ class TestEmbeddingSPMDRule(unittest.TestCase):
         # sharding on batch axis I
         self.out_dist_tensor_spec.set_dims_mapping([1, -1, -1])
         result_dist_attrs = self.rule1.infer_backward(
-            [self.x_dist_tensor_spec],
-            [self.out_dist_tensor_spec],
-            list(self.attrs.values()),
+            self.x_dist_tensor_spec,
+            self.out_dist_tensor_spec,
+            self.attrs['axis'],
         )
         self.assertEqual(len(result_dist_attrs), 2)
         infered_input_dist_attrs = result_dist_attrs[0]
@@ -121,9 +121,9 @@ class TestEmbeddingSPMDRule(unittest.TestCase):
         # sharding on batch axis II
         self.out_dist_tensor_spec.set_dims_mapping([-1, 1, -1])
         result_dist_attrs = self.rule1.infer_backward(
-            [self.x_dist_tensor_spec],
-            [self.out_dist_tensor_spec],
-            list(self.attrs.values()),
+            self.x_dist_tensor_spec,
+            self.out_dist_tensor_spec,
+            self.attrs['axis'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -133,9 +133,9 @@ class TestEmbeddingSPMDRule(unittest.TestCase):
         # sharding on softmax_axis
         self.out_dist_tensor_spec.set_dims_mapping([1, -1, 0])
         result_dist_attrs = self.rule1.infer_backward(
-            [self.x_dist_tensor_spec],
-            [self.out_dist_tensor_spec],
-            list(self.attrs.values()),
+            self.x_dist_tensor_spec,
+            self.out_dist_tensor_spec,
+            self.attrs['axis'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -148,9 +148,9 @@ class TestEmbeddingSPMDRule(unittest.TestCase):
         }
         self.out_dist_tensor_spec.set_dims_mapping([-1, 1, 0])
         result_dist_attrs = self.rule1.infer_backward(
-            [self.x_dist_tensor_spec],
-            [self.out_dist_tensor_spec],
-            list(self.attrs.values()),
+            self.x_dist_tensor_spec,
+            self.out_dist_tensor_spec,
+            self.attrs['axis'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -163,9 +163,9 @@ class TestEmbeddingSPMDRule(unittest.TestCase):
         }
         self.out_dist_tensor_spec.set_dims_mapping([-1, 1, 0])
         result_dist_attrs = self.rule1.infer_backward(
-            [self.x_dist_tensor_spec],
-            [self.out_dist_tensor_spec],
-            list(self.attrs.values()),
+            self.x_dist_tensor_spec,
+            self.out_dist_tensor_spec,
+            self.attrs['axis'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
