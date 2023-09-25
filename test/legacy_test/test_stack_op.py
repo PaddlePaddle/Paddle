@@ -186,11 +186,11 @@ class TestStackBF16Op(OpTest):
         self.outputs = {'Y': convert_float_to_uint16(out)}
         self.attrs = {'axis': self.axis}
 
-    def test_check_output(self):
+    def test_check_output(self, check_new_ir=True):
         self.check_output(check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(self.get_x_names(), 'Y', check_prim=True)
+        self.check_grad(self.get_x_names(), 'Y', check_prim=True, check_new_ir=True)
 
 
 class TestStackAPIWithLoDTensorArray(unittest.TestCase):
