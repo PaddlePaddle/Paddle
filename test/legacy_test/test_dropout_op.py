@@ -2075,7 +2075,7 @@ class TestPirCompositeDropout(unittest.TestCase):
                         output = paddle.cast(output, "float32")
                         gradient = paddle.cast(gradient, "float32")
 
-                exe = paddle.static.Executor(paddle.base.CUDAPlace(0))
+                exe = paddle.static.Executor(paddle.base.CPUPlace())
                 exe.run(sp)
                 fwd, rev = exe.run(
                     mp, feed={'x': self.x}, fetch_list=[output, gradient]
