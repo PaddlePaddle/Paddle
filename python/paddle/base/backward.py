@@ -1320,7 +1320,7 @@ def _append_backward_ops_(
     if callbacks is not None:
         assert isinstance(callbacks, (list, tuple))
         for cb in callbacks:
-            if not hasattr(cb, '__call__'):
+            if not callable(cb):
                 raise ValueError("'callback' must be a callable object.")
 
     # grad_op_descs holds created grad_op, and will be appended to target_block
