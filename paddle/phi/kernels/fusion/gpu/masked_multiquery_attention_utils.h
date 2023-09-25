@@ -50,7 +50,7 @@
 #pragma once
 
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
-#include "paddle/phi/kernels/funcs/mmha_util.cu.h"
+#include "paddle/phi/kernels/fusion/gpu/mmha_util.cu.h"
 
 namespace phi {
 namespace fusion {
