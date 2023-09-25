@@ -19,8 +19,13 @@ namespace phi {
 namespace backends {
 namespace xpu {
 
+<<<<<<< HEAD
 XPUOpMap& get_kl2_ops() {
   // KL2支持的op，通过op_name, data_type, place来索引
+=======
+XPUOpMap& get_kl3_ops() {
+  // KL3支持的op，通过op_name, data_type, place来索引
+>>>>>>> add xpu3_op_list
   static XPUOpMap s_xpu2_kernels{
       {"add_act_xpu",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
