@@ -34,7 +34,7 @@ class TestNumelOp(OpTest):
         self.outputs = {'Out': np.array(np.size(x))}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def init(self):
         self.shape = (6, 56, 8, 55)
@@ -89,31 +89,31 @@ class TestNumelOpComplex(TestNumelOp):
         self.shape = (6, 56, 8, 55)
 
 
-class Test1NumelOpComplex64(TestNumelOpComplex):
+class TestNumelOp1Complex64(TestNumelOpComplex):
     def init(self):
         self.dtype = np.complex64
         self.shape = (11, 66)
 
 
-class Test2NumelOpComplex64(TestNumelOpComplex):
+class TestNumelOp2Complex64(TestNumelOpComplex):
     def init(self):
         self.dtype = np.complex64
         self.shape = (0,)
 
 
-class Test0NumelOpComplex128(TestNumelOpComplex):
+class TestNumelOp0Complex128(TestNumelOpComplex):
     def init(self):
         self.dtype = np.complex128
         self.shape = (6, 56, 8, 55)
 
 
-class Test1NumelOpComplex128(TestNumelOpComplex):
+class TestNumelOp1Complex128(TestNumelOpComplex):
     def init(self):
         self.dtype = np.complex128
         self.shape = (11, 66)
 
 
-class Test2NumelOpComple128(TestNumelOpComplex):
+class TestNumelOp2Complex128(TestNumelOpComplex):
     def init(self):
         self.dtype = np.complex128
         self.shape = (0,)
@@ -136,7 +136,7 @@ class TestNumelOpBF16(OpTest):
 
     def test_check_output(self):
         place = paddle.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_new_ir=True)
 
     def init(self):
         self.shape = (6, 56, 8, 55)

@@ -46,7 +46,6 @@ class HistoryRecorder:
                 else float('inf'),
                 reverse=False,
             )
-        return
 
     def get_best(self, metric, direction) -> Tuple[dict, bool]:
         self.sort_metric(direction=direction, metric_name=metric)

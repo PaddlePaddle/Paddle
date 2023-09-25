@@ -29,6 +29,15 @@ limitations under the License. */
 #include "paddle/fluid/platform/collective_helper.h"
 #endif
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+#endif
+
+#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/store/store_utils.h"
+#include "paddle/phi/core/distributed/store/tcp_store.h"
+
 namespace paddle {
 namespace framework {
 class Scope;
@@ -95,8 +104,6 @@ class CCommInitOp : public framework::OperatorBase {
       PADDLE_ENFORCE_NOT_NULL(
           var, platform::errors::InvalidArgument("Input con not be empty."));
 
-      UniqueId* comm_id = var->GetMutable<UniqueId>();
-
       int nranks = Attr<int>("nranks");
       int rid = Attr<int>("ring_id");
 
@@ -105,6 +112,25 @@ class CCommInitOp : public framework::OperatorBase {
         device_id = Attr<int>("device_id");
       }
       int rank_id = Attr<int>("rank");
+#endif
+#if defined(PADDLE_WITH_NCCL)
+      const char* dynamic_static_unified_comm =
+          getenv("FLAGS_dynamic_static_unified_comm");
+      if (dynamic_static_unified_comm &&
+          std::string(dynamic_static_unified_comm) == "1") {
+        VLOG(3) << "#### use new comm lab ####";
+        auto store = phi::distributed::CreateOrGetGlobalTCPStore();
+        phi::distributed::CommContextManager::SetDeviceId(device_id);
+        std::string endpoints = Attr<std::string>("endpoints");
+        phi::distributed::CommContextManager::CreateNCCLCommContext(
+            store, std::to_string(rid), rank_id, nranks, endpoints);
+        return;
+      }
+#endif
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_XPU_BKCL)
+      VLOG(3) << "#### use old comm lab ####";
+      UniqueId* comm_id = var->GetMutable<UniqueId>();
       CommContext::Instance().CreateComm(
           comm_id, nranks, rank_id, device_id, rid);
 #endif
@@ -131,6 +157,10 @@ Initialize collective communication context within this trainer
         .SetDefault(-1);
     AddAttr<int>("ring_id", "(int default 0) user specified ring id")
         .SetDefault(0);
+    AddAttr<std::string>("endpoints",
+                         "['trainer1_ip:port', 'trainer2_ip:port', ...] "
+                         "list of other trainer endpoints")
+        .SetDefault("");
   }
 };
 

@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.base.proto import data_feed_pb2
 from google.protobuf import text_format
 
-__all__ = ['DataFeedDesc']
+from paddle.base.proto import data_feed_pb2
+
+__all__ = []
 
 
 class DataFeedDesc:

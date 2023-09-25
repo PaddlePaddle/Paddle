@@ -90,6 +90,26 @@ static std::vector<paddle::Tensor> filter_unused_input_var_in_backward(
   return filter_x;
 }
 
+static std::vector<paddle::Tensor> Trans2ContiguousTensors(
+    const std::vector<paddle::Tensor>& tensors) {
+  std::vector<paddle::Tensor> res;
+  for (const auto& t : tensors) {
+    if (t.is_initialized() && t.is_dense_tensor() &&
+        !std::dynamic_pointer_cast<phi::DenseTensor>(t.impl())
+             ->meta()
+             .is_contiguous()) {
+      res.emplace_back(
+          std::make_shared<phi::DenseTensor>(
+              std::move(paddle::experimental::Trans2Contiguous(
+                  *(std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()))))),
+          t.mutable_autograd_meta());
+    } else {
+      res.emplace_back(t);
+    }
+  }
+  return res;
+}
+
 inline void run_program_ad_func(
     const std::vector<paddle::Tensor>& x,
     const std::vector<paddle::Tensor>& params,
@@ -113,12 +133,18 @@ inline void run_program_ad_func(
 
   VLOG(2) << "start run run_program with require_any_grad = "
           << require_any_grad;
+  auto x_tmp = Trans2ContiguousTensors(x);
+  auto params_tmp = Trans2ContiguousTensors(params);
   // Call forward function
   // if require_any_grad is False, don't save any middle vars.
-  RunProgramAPI(x, params, out, step_scope, dout, require_any_grad, attrs);
+  RunProgramAPI(
+      x_tmp, params_tmp, out, step_scope, dout, require_any_grad, attrs);
   VLOG(2) << "start run run_program grad";
-
-  if (require_any_grad) {
+  auto is_test = false;
+  if (attrs.count("is_test")) {
+    is_test = PADDLE_GET_CONST(bool, attrs.at("is_test"));
+  }
+  if (!is_test && require_any_grad) {
     auto x_names =
         PADDLE_GET_CONST(std::vector<std::string>, attrs.at("x_names"));
 
@@ -134,14 +160,14 @@ inline void run_program_ad_func(
     auto* backward_global_block = PADDLE_GET_CONST(
         paddle::framework::BlockDesc*, attrs.at("backward_global_block"));
     // Clear unused x vars
-    auto filter_x =
-        filter_unused_input_var_in_backward(x, x_names, backward_global_block);
+    auto filter_x = filter_unused_input_var_in_backward(
+        x_tmp, x_names, backward_global_block);
     // Set TensorWrappers
     grad_node->SetFwdX(filter_x);
     // Clear unused out vars
     clear_unused_out_var_in_backward(out, backward_global_block, step_scope[0]);
 
-    grad_node->SetFwdParams(params);
+    grad_node->SetFwdParams(params_tmp);
     grad_node->SetStepScope(step_scope);
 
     // Set Grad out rank as same as fwd input and set stop gradient to bwd

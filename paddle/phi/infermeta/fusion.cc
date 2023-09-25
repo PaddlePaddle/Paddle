@@ -1005,6 +1005,101 @@ void FastLayernormXPUInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
+void BNActXPUInferMeta(const MetaTensor& x,
+                       const MetaTensor& mean,
+                       const MetaTensor& variance,
+                       const MetaTensor& scale,
+                       const MetaTensor& bias,
+                       float momentum,
+                       float epsilon,
+                       const std::string& data_layout,
+                       int act_type,
+                       MetaTensor* y,
+                       MetaConfig config) {
+  const auto x_dims = x.dims();
+  for (int i = 0; i < x_dims.size(); i++) {
+    PADDLE_ENFORCE_EQ(
+        (x_dims[i] == -1) || (x_dims[i] > 0),
+        true,
+        phi::errors::InvalidArgument(
+            "Each dimension of input tensor is expected to be -1 or a "
+            "positive number, but received %d. Input's shape is [%s].",
+            x_dims[i],
+            x_dims));
+  }
+
+  const DataLayout data_layout_str = phi::StringToDataLayout(data_layout);
+
+  PADDLE_ENFORCE_GE(
+      x_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "ShapeError: the dimension of input "
+          "X must greater than or equal to 2. But received: the shape of input "
+          "X = [%s], the dimension of input X =[%d]",
+          x_dims,
+          x_dims.size()));
+  PADDLE_ENFORCE_LE(
+      x_dims.size(),
+      5,
+      phi::errors::InvalidArgument(
+          "ShapeError: the dimension of input X "
+          "must smaller than or equal to 5. But received: the shape of input X "
+          "= [%s], the dimension of input X = [%d]",
+          x_dims,
+          x_dims.size()));
+
+  const int64_t C = ((config.is_run_mkldnn_kernel == true) ||
+                             (data_layout_str == DataLayout::kNCHW)
+                         ? x_dims[1]
+                         : x_dims[x_dims.size() - 1]);
+  auto scale_dim = scale.dims();
+  auto bias_dim = bias.dims();
+
+  PADDLE_ENFORCE_EQ(
+      scale_dim.size(),
+      1UL,
+      phi::errors::InvalidArgument(
+          "ShapeError: the dimension of scale must equal to 1."
+          "But received: the shape of scale is [%s], the dimension "
+          "of scale is [%d]",
+          scale_dim,
+          scale_dim.size()));
+  PADDLE_ENFORCE_EQ(bias_dim.size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "ShapeError: the dimension of bias must equal to 1."
+                        "But received: the shape of bias is [%s],the dimension "
+                        "of bias is [%d]",
+                        bias_dim,
+                        bias_dim.size()));
+
+  bool check = true;
+  if ((!config.is_runtime) &&
+      (phi::product(scale_dim) <= 0 || phi::product(bias_dim) <= 0)) {
+    check = false;
+  }
+
+  if (check) {
+    PADDLE_ENFORCE_EQ(scale_dim[0],
+                      C,
+                      phi::errors::InvalidArgument(
+                          "ShapeError: the shape of scale must equal to [%d]"
+                          "But received: the shape of scale is [%d]",
+                          C,
+                          scale_dim[0]));
+    PADDLE_ENFORCE_EQ(bias_dim[0],
+                      C,
+                      phi::errors::InvalidArgument(
+                          "ShapeError: the shape of bias must equal to [%d]"
+                          "But received: the shape of bias is [%d]",
+                          C,
+                          bias_dim[0]));
+  }
+  y->set_dims(x_dims);
+  y->share_lod(x);
+  y->set_dtype(x.dtype());
+}
 void AddCMulXPUInferMeta(const MetaTensor& x,
                          const MetaTensor& y,
                          const MetaTensor& w,
@@ -1012,6 +1107,20 @@ void AddCMulXPUInferMeta(const MetaTensor& x,
   out->set_dims(x.dims());
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
+}
+
+void LayerNormActXPUInferMeta(const MetaTensor& x,
+                              const MetaTensor& scale,
+                              const MetaTensor& bias,
+                              int begin_norm_axis,
+                              float epsilon,
+                              int act_type,
+                              float act_param,
+                              MetaTensor* y) {
+  y->set_dims(x.dims());
+  //   y->share_lod(x);
+  y->set_dtype(x.dtype());
+  y->set_layout(x.layout());
 }
 
 void FusedScaleBiasReluConvBnstatsInferMeta(
@@ -1170,7 +1279,7 @@ void SqueezeExcitationInferMeta(const MetaTensor& x,
   std::vector<int64_t> out_shape(
       {in_dims[0], filter_dims[1], in_dims[2], in_dims[3]});
   // set output dims
-  out->set_dims(DDim(out_shape.data(), out_shape.size()));
+  out->set_dims(DDim(out_shape.data(), static_cast<int>(out_shape.size())));
 }
 
 }  // namespace phi

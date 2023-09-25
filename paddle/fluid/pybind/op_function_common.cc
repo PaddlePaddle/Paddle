@@ -121,13 +121,11 @@ bool PyObject_CheckString(PyObject* obj) { return PyUnicode_Check(obj); }
 bool CastPyArg2Boolean(PyObject* obj,
                        const std::string& op_type,
                        ssize_t arg_pos) {
-  if (obj == Py_None) {
+  if (obj == Py_None || obj == Py_False) {
     return false;  // To be compatible with QA integration testing. Some
                    // test case pass in None.
   } else if (obj == Py_True) {
     return true;
-  } else if (obj == Py_False) {
-    return false;
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
@@ -247,7 +245,7 @@ phi::dtype::complex<float> CastPyArg2Complex(PyObject* obj,
   if (PyComplex_Check(obj)) {
     double real = PyComplex_RealAsDouble(obj);
     double imag = PyComplex_ImagAsDouble(obj);
-    return phi::dtype::complex<float>(real, imag);
+    return phi::dtype::complex<float>(real, imag);  // NOLINT
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "

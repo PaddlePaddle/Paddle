@@ -74,6 +74,11 @@ std::shared_ptr<::pir::Program> Plan::IrProgram(
   return type_to_ir_program_.at(job_type);
 }
 
+void Plan::UpdateIrProgram(const std::string& job_type,
+                           std::shared_ptr<::pir::Program> ir_prog) {
+  type_to_ir_program_[job_type] = ir_prog;
+}
+
 int64_t Plan::MicroBatchNum() const { return micro_batch_num_; }
 
 }  // namespace interpreter

@@ -310,6 +310,9 @@ option(WITH_CUDNN_FRONTEND
 option(WITH_CUDNN_DSO "Compile PaddlePaddle with cuDNN dynamic-link libraries"
        OFF)
 option(WITH_SHARED_IR "Compile PaddlePaddle with SHARED LIB of IR" ON)
+option(WITH_NVCC_LAZY
+       "Compile PaddlePaddle with nvcc lazy mode, used for CI-Inference only."
+       ON)
 
 if(WITH_RECORD_BUILDTIME)
   set_property(

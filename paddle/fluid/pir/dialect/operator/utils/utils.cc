@@ -34,7 +34,8 @@ const std::unordered_set<std::string> LegacyOpList = {
     "pd_op.c_reduce_sum_",
     "pd_op.c_allreduce_max_",
     "pd_op.c_allgather",
-    "pd_op.seed"};
+    "pd_op.seed",
+    "pd_op.share_data"};
 
 enum class AttrType {
   UNDEFINED = 0,
@@ -195,6 +196,10 @@ VariantType GetAttributeData(const pir::Attribute& attr) {
 }
 
 bool IsLegacyOp(const std::string& name) { return LegacyOpList.count(name); }
+
+bool IsEmptyOpResult(const pir::OpResult& op_result) {
+  return !op_result.impl() || op_result.type().isa<pir::Type>();
+}
 
 }  // namespace dialect
 }  // namespace paddle
