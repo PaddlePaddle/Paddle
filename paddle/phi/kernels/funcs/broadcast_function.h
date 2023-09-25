@@ -897,13 +897,6 @@ BroadcastKernelForDifferentVecSize(const KPDevice &ctx,
   }
 }
 
-static void initDims(std::vector<int64_t> *dims, int size, int64_t value) {
-  dims->resize(size);
-  for (int i = 0; i < size; i++) {
-    (*dims)[i] = value;
-  }
-}
-
 static void updateStridesDims(std::vector<int64_t> *strides,
                               std::vector<int64_t> *dims) {
   for (int i = 1; i < strides->size(); i++) {
@@ -914,10 +907,10 @@ static void updateStridesDims(std::vector<int64_t> *strides,
   std::reverse(dims->begin(), dims->end());
 }
 
-static void UpdateTensor(DenseTensor *x,
-                         const DenseTensor *share,
-                         const std::vector<int64_t> &out_compute_dims,
-                         int64_t offset) {
+static void SliceTensor(DenseTensor *x,
+                        const DenseTensor *share,
+                        const std::vector<int64_t> &out_compute_dims,
+                        int64_t offset) {
   auto new_dim = make_ddim(out_compute_dims);
   DenseTensorMeta meta(share->dtype(),
                        new_dim,
@@ -942,26 +935,19 @@ void BroadcastKernelSplit(const KPDevice &ctx,
         ins, outs, dims_simplifier, "GPU Broadcast");
   }
 
-  std::vector<int64_t> origin_out_strides;
   int all_rank = dims_simplifier.rank;
+  std::vector<int64_t> origin_out_strides(all_rank, 1);
   auto origin_in_dims = dims_simplifier.in_dims;
   auto origin_out_dims = dims_simplifier.out_dims;
   auto origin_in_strides = dims_simplifier.in_dims;
 
-  origin_out_strides.resize(all_rank);
-  origin_out_strides[0] = 1;
   // for split
-  std::vector<int64_t> loop_num_out;
-  std::vector<int64_t> loop_num_out_stride;
-  initDims(&loop_num_out, all_rank, 1);
-  initDims(&loop_num_out_stride, all_rank, 1);
+  std::vector<int64_t> loop_num_out(all_rank, 1);
+  std::vector<int64_t> loop_num_out_stride(all_rank, 1);
 
   // for input's offset
-  std::vector<int64_t> ins_offset;
-  std::vector<int64_t> ins_scale_for_dim;
-  initDims(&origin_out_strides, all_rank, 1);
-  initDims(&ins_offset, kArity, 0);
-  initDims(&ins_scale_for_dim, kArity, 0);
+  std::vector<int64_t> ins_offset(kArity, 0);
+  std::vector<int64_t> ins_scale_for_dim(kArity, 0);
 
   // init offset and check in's dim
   for (int k = 0; k < kArity; k++) {
@@ -1014,13 +1000,12 @@ void BroadcastKernelSplit(const KPDevice &ctx,
   }
 
   // compute
-  DenseTensor tmp_in[kArity];
-  DenseTensor tmp_out[NumOuts];
 
   for (int iter = 0; iter < loop_num; iter++) {
     std::vector<const DenseTensor *> new_ins = {};
     std::vector<DenseTensor *> new_outs = {};
     phi::DenseTensor tmp_in[kArity];
+    DenseTensor tmp_out[NumOuts];
 
     int64_t tmp_size = iter;
     int64_t out_offset = 0;
@@ -1060,23 +1045,22 @@ void BroadcastKernelSplit(const KPDevice &ctx,
         in_compute_dims[k][split_idx] =
             std::min(in_split_dims[k][split_idx], out_compute_dims[split_idx]);
       }
-      UpdateTensor(&tmp_in[k],
-                   ins[k],
-                   in_compute_dims[k],
-                   ins_scale_for_dim[k] * ins_offset[k]);
+      SliceTensor(&tmp_in[k],
+                  ins[k],
+                  in_compute_dims[k],
+                  ins_scale_for_dim[k] * ins_offset[k]);
       new_ins.emplace_back(&tmp_in[k]);
       ins_offset[k] = 0;
     }
 
     for (int n = 0; n < NumOuts; n++) {
-      UpdateTensor(&tmp_out[n], (*outs)[n], out_compute_dims, out_offset);
+      SliceTensor(&tmp_out[n], (*outs)[n], out_compute_dims, out_offset);
       new_outs.emplace_back(&tmp_out[n]);
     }
 
     BroadcastKernelForDifferentVecSize<OutT, Functor, kArity, NumOuts>(
         ctx, new_ins, &new_outs, axis, func);
   }
-  return;
 }
 
 template <typename OutT, typename Functor, int kArity, int NumOuts = 1>
@@ -1085,9 +1069,8 @@ void BroadcastKernelApply(const KPDevice &ctx,
                           std::vector<DenseTensor *> *outs,
                           int axis,
                           Functor func) {
-  phi::Array<_ptr_ OutT *, NumOuts> outs_data;
   for (int i = 0; i < NumOuts; ++i) {
-    outs_data[i] = (_ptr_ OutT *)(ctx.Alloc<OutT>((*outs)[i]));
+    ctx.Alloc<OutT>((*outs)[i]);
   }
 #ifndef PADDLE_WITH_XPU_KP
   constexpr bool kEnabledInt64IndexKernel = (NumOuts == 1 && kArity <= 3);
