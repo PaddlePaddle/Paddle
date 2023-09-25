@@ -5073,9 +5073,9 @@ def multigammaln(x, p, name=None):
             >>> p = 2
             >>> out = paddle.multigammaln(x, p)
             >>> out
-            Tensor(shape=[7], dtype=float64, place=Place(cpu), stop_gradient=True,
-               [0.85704780  , 2.46648574  , 3.56509781  , 11.02241898 , 15.84497738 ,
-                    26.09257938 , 170.68316451])
+            Tensor(shape=[7], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.85704780  , 2.46648574  , 3.56509781  , 11.02241898 , 15.84497833 ,
+                    26.09257698 , 170.68318176])
     """
 
     c = 0.25 * p * (p - 1) * np.log(np.pi)
@@ -5089,7 +5089,8 @@ def multigammaln_(x, p, name=None):
     Inplace version of ``multigammaln`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_multigammaln`.
     """
-    return x.multigammaln_(p, name=name)
+    x[:] = multigammaln(x, p, name=name)
+    return x
 
 
 def neg(x, name=None):
