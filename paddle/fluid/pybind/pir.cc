@@ -686,7 +686,9 @@ Operation *BuildOpFrom(
   pir::OperationArgument to_create_argument(to_copy_op->info());
   to_create_argument.attributes = to_copy_op->attributes();
 
+  VLOG(6) << "start copy op: " << to_copy_op->name();
   auto origin_results = to_copy_op->results();
+  VLOG(6) << "start translate origin results into op type.";
   std::transform(origin_results.begin(),
                  origin_results.end(),
                  std::back_inserter(to_create_argument.output_types),
@@ -696,6 +698,7 @@ Operation *BuildOpFrom(
                  });
 
   // transform by value_map dict.
+  VLOG(6) << "start create op.";
   auto origin_operands = to_copy_op->operands();
   std::transform(origin_operands.begin(),
                  origin_operands.end(),
@@ -706,8 +709,6 @@ Operation *BuildOpFrom(
                  });
   auto *cloned_op = Operation::Create(std::move(to_create_argument));
 
-  // update the mapping of value_map. std::transform is a map(func,
-  // zip()).
   std::vector<int> tmp;
   std::transform(origin_results.begin(),
                  origin_results.end(),
@@ -983,6 +984,7 @@ SplitedResult ForwardBackwardSplit(
   };
 
   // counter = 0;
+  VLOG(4) << "start create backward inputs, inserting pd.data ops.";
   VLOG(4) << "Create pd.data for backward program: fo, start with input_"
           << counter;
   std::for_each(forward_outputs.begin(), forward_outputs.end(), create_data_fn);
@@ -1000,14 +1002,17 @@ SplitedResult ForwardBackwardSplit(
   std::for_each(forward_outputs_grads.begin(),
                 forward_outputs_grads.end(),
                 create_data_fn);
+  VLOG(4) << "Create pd.data for backward program end. input_" << counter;
 
   // counter = 0;
+  VLOG(4) << "start create forward outputs, inserting set_parameter ops.";
   std::for_each(
       middle_values.begin(), middle_values.end(), create_output_fn_forward);
   std::for_each(
       forward_outputs.begin(), forward_outputs.end(), create_output_fn_forward);
 
   // Step2. copy backward ops .
+  VLOG(4) << "start copy backward ops";
   range_block_do(program.block(),
                  backward_range,
                  [&backward_value_map, &backward_program](Operation *op) {
@@ -1015,6 +1020,7 @@ SplitedResult ForwardBackwardSplit(
                    backward_program->block()->push_back(cloned_op);
                  });
   // counter = 0;
+  VLOG(4) << "start create backward outputs, inserting set_parameter ops.";
   std::for_each(forward_inputs_grads.begin(),
                 forward_inputs_grads.end(),
                 create_output_fn_backward);

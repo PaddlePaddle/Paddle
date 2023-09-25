@@ -716,7 +716,7 @@ class PartialProgramLayer:
             map(mapping_op_result, grad_info_map[inputs_size:])
         )
         extra_info['forward_outputs_grads'] = list(
-            map(mapping_op_result, forward_outputs_grads[0:inputs_size])
+            map(mapping_op_result, forward_outputs_grads)
         )
         self._program_extra_info[hash_id] = extra_info
 
