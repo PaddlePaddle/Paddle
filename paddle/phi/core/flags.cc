@@ -1392,3 +1392,8 @@ PHI_DEFINE_EXPORTED_bool(enable_async_trace,
                          "enable collective async trace");
 
 PHI_DEFINE_EXPORTED_int32(async_trace_count, 5, "collective async trace count");
+
+PHI_DEFINE_EXPORTED_bool(
+    use_auto_growth_pinned_allocator,
+    false,
+    "Whether to use the auto_growth CUDA pinned allocator.");
