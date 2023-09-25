@@ -1281,7 +1281,7 @@ def rand(shape, dtype=None, name=None):
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         dtype (str|np.dtype, optional): The data type of the output Tensor.
             Supported data types: float32, float64.
-            Default is None, use global default dtype (see ``get_default_dtype``
+            Default is None, use global default dtype (see :ref:`get_default_dtype`
             for details).
         name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
