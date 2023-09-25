@@ -677,6 +677,13 @@ PADDLE_DEFINE_EXPORTED_int32(
     "If FLAGS_call_stack_level == 2, the python stack, c++ stack, and "
     "error message summary will be shown.");
 
+PADDLE_DEFINE_EXPORTED_int64(
+    embedding_deterministic,
+    0,
+    "Whether allow using an deterministic algorithm for embedding "
+    "operator. The deterministic algorithm may be slower. If "
+    "it is larger than 0, the algorithm is deterministic.");
+
 /**
  * Debug related FLAG
  * Name: sort_sum_gradient
