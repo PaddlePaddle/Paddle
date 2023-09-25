@@ -19,6 +19,7 @@ _INFERMETA_NEED_META_CONFIG = {
     'SplitWithNumInferMeta',
     'ConcatInferMeta',
     'ReduceIntArrayAxisInferMeta',
+    'ReshapeWithXShapeInferMeta',
     'SliceRawInferMeta',
 }
 
