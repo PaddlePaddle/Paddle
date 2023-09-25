@@ -738,13 +738,17 @@ class TestLRScheduler(unittest.TestCase):
             )
         # check minus total_steps
         with self.assertRaises(ValueError):
-            paddle.optimizer.lr.LinearLR(total_steps=-1)
+            paddle.optimizer.lr.LinearLR(learning_rate=1, total_steps=-1)
         # check start_factor
         with self.assertRaises(ValueError):
-            paddle.optimizer.lr.LinearLR(total_steps=5, start_factor=2)
+            paddle.optimizer.lr.LinearLR(
+                learning_rate=1, total_steps=5, start_factor=2
+            )
         # check end_factor
         with self.assertRaises(ValueError):
-            paddle.optimizer.lr.LinearLR(total_steps=5, end_factor=2)
+            paddle.optimizer.lr.LinearLR(
+                learning_rate=1, total_steps=5, end_factor=2
+            )
 
         func_api_kwargs = [
             (
