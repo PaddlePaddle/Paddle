@@ -54,9 +54,8 @@ InterpreterCore::InterpreterCore(
     framework::Scope* scope,
     const ExecutionConfig& execution_config) {
   VLOG(4) << "InterpreterCore(): " << this << " on " << place;
-  std::unordered_map<::pir::Value, std::string> temp{};
   impl_ = std::make_unique<NewIRInterpreter>(
-      place, fetch_var_names, ir_block, scope, temp, execution_config);
+      place, fetch_var_names, ir_block, scope, execution_config);
 }
 
 InterpreterCore::~InterpreterCore() {

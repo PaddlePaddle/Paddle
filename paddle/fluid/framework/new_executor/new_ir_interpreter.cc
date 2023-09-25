@@ -68,7 +68,6 @@ NewIRInterpreter::NewIRInterpreter(
       var_scope_(scope),
       scope_(scope),
       ir_block_(ir_block),
-      value_2_var_name_(parent_value_2_names),
       ir_stream_analyzer_(place),
       fetch_var_names_(fetch_var_names) {
   VLOG(4) << "NewIRInterpreter(): " << this << " on " << place_;

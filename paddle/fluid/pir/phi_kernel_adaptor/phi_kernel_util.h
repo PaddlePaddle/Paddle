@@ -78,13 +78,10 @@ template <typename Context,
           typename InListType,
           typename OutListType,
           bool is_kernel>
-void BuildPhiContext(
-    pir::Operation* op,
-    const std::unordered_map<pir::Value, std::string>& name_map,
-    paddle::framework::Scope* scope,
-    paddle::framework::Scope* local_scope,
-    const paddle::dialect::OpYamlInfoParser& op_yaml_info,
-    Context* ctx) {
+void BuildPhiContext(pir::Operation* op,
+                     const ValueExecutionInfo& value_exec_info,
+                     const paddle::dialect::OpYamlInfoParser& op_yaml_info,
+                     Context* ctx) {
   paddle::framework::Scope* inner_scope =
       local_scope != nullptr ? local_scope : scope;
   VLOG(6) << "Build " << get_type_name<Context>() << " in scope[" << scope

@@ -160,6 +160,18 @@ class ValueExecutionInfo {
     return value_2_var_name_;
   }
 
+  bool CountInternal(::pir::Value value) const {
+    return value_2_var_name_.count(value);
+  }
+
+  bool Count(::pir::Value value) const {
+    if (CountInternal(value)) {
+      return true;
+    }
+
+    return parent_ == nullptr ? false : parent_->Count(value);
+  }
+
   void AddValue2VarName(::pir::Value value, const std::string& var_name) {
     value_2_var_name_.emplace(value, var_name);
   }

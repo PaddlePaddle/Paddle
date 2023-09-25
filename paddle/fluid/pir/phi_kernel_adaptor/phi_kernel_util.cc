@@ -156,18 +156,17 @@ paddle::framework::Variable* CreateVar(
   return var;
 }
 
-void CheckInputVars(
-    pir::Operation* op,
-    const std::string& op_name,
-    const std::unordered_map<pir::Value, std::string>& value_2_var_name) {
+void CheckInputVars(pir::Operation* op,
+                    const std::string& op_name,
+                    paddle::framework::ValueExecutionInfo* execution_info) {
   size_t input_num = op->num_operands();
   if (input_num > 0) {
     for (size_t i = 0; i < input_num; ++i) {
       auto value = op->operand_source(i);
       if (value) {
-        PADDLE_ENFORCE_NE(
-            value_2_var_name.find(value),
-            value_2_var_name.end(),
+        PADDLE_ENFORCE_EQ(
+            execution_info->Count(value),
+            true,
             phi::errors::PreconditionNotMet(
                 "input should in name map, [%d] 'th input of [%s] op",
                 i,
@@ -524,7 +523,7 @@ void BuildScope(const pir::Block& block,
       continue;
     }
 
-    CheckInputVars(op, op_name, value_exe_info->GetValue2VarName());
+    CheckInputVars(op, op_name, value_exe_info);
 
     if (op->num_results() < 1) continue;
     if (op->attributes().count("is_inplace") != 0 &&
