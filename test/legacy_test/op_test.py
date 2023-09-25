@@ -1289,6 +1289,17 @@ class OpTest(unittest.TestCase):
                 input_dict.update({name: x})
         return static_inputs, attrs_outputs, input_dict, feed
 
+    def _need_fetch(self, sig_name):
+        if sig_name in self.outputs.keys():
+            return True
+        for _, value in self.outputs.items():
+            if not isinstance(value, (tuple, list)):
+                continue
+            for var_name, _ in value:
+                if sig_name == var_name:
+                    return True
+        return False
+
     def _calc_new_ir_output(
         self, place, no_check_set=None, inps=None, oups=None
     ):
@@ -1329,6 +1340,8 @@ class OpTest(unittest.TestCase):
                     kernel_sig,
                 )
                 inputs_sig, attrs_sig, outputs_sig = kernel_sig
+                if hasattr(self, "python_out_sig"):
+                    outputs_sig = self.python_out_sig
                 args = OpTestUtils.assumption_assert_and_transform(
                     args, len(inputs_sig)
                 )
@@ -1339,8 +1352,11 @@ class OpTest(unittest.TestCase):
 
                 if len(fetch_list) == 0:
                     if isinstance(ret_tuple, (tuple, list)):
-                        for var in ret_tuple:
+                        assert len(ret_tuple) == len(outputs_sig)
+                        for var, sig_name in zip(ret_tuple, outputs_sig):
                             if no_check_set is not None and var in no_check_set:
+                                continue
+                            if not self._need_fetch(sig_name):
                                 continue
                             if isinstance(var, list):
                                 for v in var:
@@ -1348,7 +1364,7 @@ class OpTest(unittest.TestCase):
                             else:
                                 fetch_list.append(var)
                     elif isinstance(
-                        ret_tuple, paddle.base.libpaddle.ir.OpResult
+                        ret_tuple, paddle.base.libpaddle.pir.OpResult
                     ):
                         fetch_list.append(ret_tuple)
                     else:
@@ -1362,6 +1378,11 @@ class OpTest(unittest.TestCase):
                     ir_program, feed=feed, fetch_list=[fetch_list]
                 )
 
+                outputs_sig = [
+                    sig_name
+                    for sig_name in outputs_sig
+                    if self._need_fetch(sig_name)
+                ]
                 result = construct_output_dict_by_kernel_sig(outs, outputs_sig)
                 if hasattr(self, "python_out_sig_sub_name"):
                     for key in self.python_out_sig_sub_name.keys():
@@ -1411,7 +1432,7 @@ class OpTest(unittest.TestCase):
             )
             assert len(outs) == len(
                 ir_outs
-            ), "Fetch result should have same length when executed in new ir"
+            ), "Fetch result should have same length when executed in pir"
 
             check_method = np.testing.assert_array_equal
             if os.getenv("FLAGS_NEW_IR_OPTEST_RELAX_CHECK", None):
@@ -2307,7 +2328,7 @@ class OpTest(unittest.TestCase):
 
         class NewIRChecker(Checker):
             def init(self):
-                self.checker_name = "new ir checker"
+                self.checker_name = "pir checker"
 
             def calculate_output(self):
                 self.is_python_api_test = True
@@ -2392,22 +2413,18 @@ class OpTest(unittest.TestCase):
                         f"Found failed {new_ir_outs.keys()} {target_name}",
                     )
 
-            def find_imperative_expect(target_name, new_ir_outs, place):
+            def find_imperative_expect(self, target_name, new_ir_outs, place):
                 for name in new_ir_outs:
                     if name == target_name:
                         return new_ir_outs[name][0]
-                    var_list = new_ir_outs[name]
-                    for i, var in enumerate(var_list):
-                        if var.name == target_name:
-                            return new_ir_outs[name][i]
                 self.assertTrue(
                     False,
                     f"Found failed {new_ir_outs.keys()} {target_name}",
                 )
 
             def find_actual_value(self, target_name):
-                with paddle.ir.core.program_guard(
-                    paddle.ir.core.default_main_program()
+                with paddle.pir.core.program_guard(
+                    paddle.pir.core.default_main_program()
                 ):
                     actual = find_imperative_actual(
                         target_name, self.outputs, place
@@ -2416,10 +2433,10 @@ class OpTest(unittest.TestCase):
                     return actual, actual_t
 
             def find_expect_value(self, target_name):
-                with paddle.ir.core.program_guard(
-                    paddle.ir.core.default_main_program()
+                with paddle.pir.core.program_guard(
+                    paddle.pir.core.default_main_program()
                 ):
-                    expect = find_imperative_expect(
+                    expect = self.find_imperative_expect(
                         target_name, self.ref_outputs, place
                     )
                     expect_t = np.array(expect)
@@ -2427,7 +2444,7 @@ class OpTest(unittest.TestCase):
 
             def _compare_list(self, name, actual, expect):
                 """if expect is a tuple, we need to compare list."""
-                with paddle.ir.core.program_guard(place=place):
+                with paddle.pir.core.program_guard(place=place):
                     self.op_test.assertListEqual(
                         actual.value()
                         .get_tensor()
@@ -3108,7 +3125,7 @@ class OpTest(unittest.TestCase):
                     atol=atol,
                 )
 
-        # get new ir gradient
+        # get pir gradient
         if check_new_ir:
             if (
                 type(place) is paddle.base.libpaddle.CPUPlace
@@ -3593,7 +3610,7 @@ class OpTest(unittest.TestCase):
                     cast_outputs = []
                     for cast_input in cast_inputs:
                         if isinstance(
-                            cast_input, paddle.base.libpaddle.ir.OpResult
+                            cast_input, paddle.base.libpaddle.pir.OpResult
                         ):
                             cast_outputs.append(
                                 paddle.cast(
