@@ -1252,7 +1252,7 @@ struct MulOpTranscriber : public OpTranscriber {
     }
     return op_info;
   }
-  std::vector<pir::OpResult> GenerateOperationInput(
+  std::vector<pir::Value> GenerateOperationInput(
       pir::IrContext* ctx,
       TranslationContext* param_map,
       const OpDesc& op_desc,
