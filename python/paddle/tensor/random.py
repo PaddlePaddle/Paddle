@@ -796,13 +796,18 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
 
     if in_dynamic_or_pir_mode():
         shape = paddle.utils.convert_shape_to_list(shape)
+        place = (
+            _current_expected_place()
+            if not in_pir_mode()
+            else paddle.base.core.Place()
+        )
         return _C_ops.uniform(
             shape,
             dtype,
             float(min),
             float(max),
             seed,
-            _current_expected_place(),
+            place,
         )
     else:
         check_type(shape, 'shape', (list, tuple, Variable), 'uniform/rand')
