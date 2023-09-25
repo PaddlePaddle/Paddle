@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,19 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-#include "pybind11/pybind11.h"
-#include "pybind11/stl.h"
+#include <Python.h>
 
-namespace paddle {
-namespace pybind {
+PyObject *set_eval_frame_py(PyObject *callback);
+PyMODINIT_FUNC PyInit__eval_frame();
 
-void BindJit(pybind11::module *m);
-void BindEvalFrame(pybind11::module *m);
-
-}  // namespace pybind
-}  // namespace paddle
+#ifdef __cplusplus
+}
+#endif

@@ -345,22 +345,12 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
     for para, args in inputs.items():
         op_desc.set_input(
             para,
-            list(
-                map(
-                    lambda arg: arg.decode() if isinstance(arg, bytes) else arg,
-                    args,
-                )
-            ),
+            [arg.decode() if isinstance(arg, bytes) else arg for arg in args],
         )
     for para, args in outputs.items():
         op_desc.set_output(
             para,
-            list(
-                map(
-                    lambda arg: arg.decode() if isinstance(arg, bytes) else arg,
-                    args,
-                )
-            ),
+            [arg.decode() if isinstance(arg, bytes) else arg for arg in args],
         )
     op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
     op_device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
