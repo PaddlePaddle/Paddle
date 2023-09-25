@@ -12,17 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/dim_trans.h"
+#include "paddle/phi/infermeta/spmd_rules/dim_trans.h"
 #include <assert.h>
 #include <cstdio>
 #include <numeric>
 #include <set>
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
 #include "paddle/phi/core/enforce.h"
 
-namespace paddle {
+namespace phi {
 namespace distributed {
-namespace auto_parallel {
 
 static std::vector<DimTrans*> all_dim_trans;
 
@@ -289,10 +288,11 @@ void GetUsedInputDim(DimTrans* dim_trans, std::set<int64_t>* seen_dims) {
 }
 
 std::vector<std::vector<int64_t>> InferFromDimTrans(
-    const DistTensorSpec& input_spec, const std::vector<DimTrans*>& dim_trans) {
-  const std::vector<int64_t>& input_shape = input_spec.shape();
-  const std::vector<int64_t>& input_dims_mapping = input_spec.dims_mapping();
-  const ProcessMesh& mesh = input_spec.dist_attr().process_mesh();
+    const DistMetaTensor& input, const std::vector<DimTrans*>& dim_trans) {
+  std::vector<int64_t> input_shape = phi::vectorize(input.dims());
+  const std::vector<int64_t>& input_dims_mapping =
+      input.dist_attr().dims_mapping();
+  const ProcessMesh& mesh = input.dist_attr().process_mesh();
   const std::vector<int64_t>& mesh_shape = mesh.shape();
 
   std::set<int64_t> sharded_input_dims;
@@ -354,6 +354,5 @@ std::vector<std::vector<int64_t>> InferFromDimTrans(
   return {new_input_dims_mapping, out_dims_mapping};
 }
 
-}  // namespace auto_parallel
 }  // namespace distributed
-}  // namespace paddle
+}  // namespace phi
