@@ -405,10 +405,10 @@ def GenBuildOutputs(
     {name}.SetFromTensor(true);
   }}\n"""
 
-    CREATE_OUTPUT_METATENSOR_TEMPLATE = """  phi::DenseTensor dense_{name};
+    CREATE_OUTPUT_METATENSOR_TEMPLATE = """  paddle::dialect::IrMetaTensor dense_{name};
   phi::MetaTensor meta_{name}(&dense_{name});
 """
-    CREATE_OUTPUT_VEC_METATENSOR_TEMPLATE = """  std::vector<phi::DenseTensor> vec_dense_{name}(({output_size}), phi::DenseTensor());
+    CREATE_OUTPUT_VEC_METATENSOR_TEMPLATE = """  std::vector<paddle::dialect::IrMetaTensor> vec_dense_{name}(({output_size}), paddle::dialect::IrMetaTensor());
   std::vector<phi::MetaTensor> vec_meta_{name};
   for (size_t i=0; i < static_cast<size_t>({output_size}); i++) {{
     vec_meta_{name}.push_back(phi::MetaTensor(&vec_dense_{name}[i]));
