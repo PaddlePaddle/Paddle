@@ -253,7 +253,7 @@ class GradNodeBase {
 
   std::vector<std::shared_ptr<egr::GradNodeBase>> NextFunctions();
 
-  uintptr_t GetThisPtr() const;
+  uintptr_t GetPtr() const;
 
   /**
    * Apply GradientHook
