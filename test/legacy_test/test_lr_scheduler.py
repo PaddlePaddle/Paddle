@@ -987,7 +987,7 @@ class TestLRScheduler(unittest.TestCase):
                 paddle.optimizer.lr.LinearLR,
                 {
                     "learning_rate": 0.2,
-                    "total_steps:": 40,
+                    "total_steps": 40,
                     "start_factor": 0.5,
                     "end_factor": 1,
                     "verbose": False,
@@ -998,7 +998,7 @@ class TestLRScheduler(unittest.TestCase):
                 paddle.optimizer.lr.LinearLR,
                 {
                     "learning_rate": 0.2,
-                    "total_steps:": 5,
+                    "total_steps": 5,
                     "start_factor": 0.2,
                     "end_factor": 0.5,
                     "verbose": False,
