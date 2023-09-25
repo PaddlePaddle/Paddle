@@ -141,60 +141,6 @@ const std::unordered_set<std::string> SpecialOps = {"pd_op.feed",
                                                     "pd_op.shadow_output",
                                                     "pd_op.if"};
 
-void AddNewData(pir::Value value,
-                std::string name,
-                paddle::framework::Variable* var,
-                std::unordered_map<pir::Value, std::string>* value_2_var_name,
-                std::unordered_map<const paddle::framework::Variable*,
-                                   std::string>* variable_2_var_name,
-                std::map<std::string, int>* var_name_2_id,
-                std::vector<paddle::framework::Variable*>* variable_list) {
-  if (value_2_var_name->count(value) == 0) {
-    value_2_var_name->emplace(value, name);
-  }
-
-  variable_2_var_name->emplace(var, name);
-  if (var_name_2_id->count(name) == 0) {
-    auto id = var_name_2_id->size();
-    var_name_2_id->emplace(name, id);
-    variable_list->push_back(var);
-  }
-  PADDLE_ENFORCE_EQ(
-      variable_list->size(),
-      var_name_2_id->size(),
-      paddle::platform::errors::InvalidArgument(
-          "The size of variable_list and var_name_2_id map should be equal"));
-}
-
-void RenameData(pir::Value value,
-                std::string new_name,
-                std::string orig_name,
-                std::unordered_map<pir::Value, std::string>* value_2_var_name,
-                std::unordered_map<const paddle::framework::Variable*,
-                                   std::string>* variable_2_var_name,
-                std::map<std::string, int>* var_name_2_id) {
-  (*value_2_var_name)[value] = new_name;
-
-  for (auto kv : (*value_2_var_name)) {
-    if (kv.second == orig_name) {
-      (*value_2_var_name)[kv.first] = new_name;
-    }
-  }
-
-  for (auto kv : (*variable_2_var_name)) {
-    if (kv.second == orig_name) {
-      (*variable_2_var_name)[kv.first] = new_name;
-    }
-  }
-
-  for (auto kv : *(var_name_2_id)) {
-    if (kv.first == orig_name) {
-      var_name_2_id->emplace(new_name, kv.second);
-    }
-  }
-  var_name_2_id->erase(orig_name);
-}
-
 using VariableNameMap =
     std::unordered_map<const paddle::framework::Variable*, std::string>;
 
@@ -225,13 +171,6 @@ paddle::framework::Variable* CreateVar(
             << value_exe_info->GetScope();
     var = value_exe_info->GetScope()->Var(name);
   }
-  // AddNewData(value,
-  //            name,
-  //            var,
-  //            value_2_var_name,
-  //            variable_2_var_name,
-  //            var_name_2_id,
-  //            variable_list);
 
   value_exe_info->Add(value, name);
 
@@ -319,13 +258,6 @@ void HandleForSpecialOp(
     var->GetMutable<phi::DenseTensor>();
     auto value = op->result(0);
 
-    // AddNewData(value,
-    //            fetch_var_name,
-    //            var,
-    //            value_2_var_name,
-    //            variable_2_var_name,
-    //            var_name_2_id,
-    //            variable_list);
     value_exe_info->Add(value, fetch_var_name);
   }
 
@@ -342,13 +274,6 @@ void HandleForSpecialOp(
                    paddle::platform::errors::InvalidArgument(
                        "The variable %s shoud exist", name));
 
-    // AddNewData(value,
-    //            name,
-    //            var,
-    //            value_2_var_name,
-    //            variable_2_var_name,
-    //            var_name_2_id,
-    //            variable_list);
     value_exe_info->Add(value, name);
   }
 
@@ -402,12 +327,6 @@ void HandleForSpecialOp(
               << param_name;
     }
 
-    // RenameData(value,
-    //            param_name,
-    //            orig_name,
-    //            value_2_var_name,
-    //            variable_2_var_name,
-    //            var_name_2_id);
     value_exe_info->Rename(value, param_name, orig_name);
   }
 
@@ -424,12 +343,7 @@ void HandleForSpecialOp(
       const_cast<paddle::framework::Scope*>(value_exe_info->GetScope()->root())
           ->Rename(orig_name, var_name);
     }
-    // RenameData(value,
-    //            var_name,
-    //            orig_name,
-    //            value_2_var_name,
-    //            variable_2_var_name,
-    //            var_name_2_id);
+
     value_exe_info->Rename(value, var_name, orig_name);
   }
 
@@ -441,14 +355,6 @@ void HandleForSpecialOp(
                           .AsString();
     auto value = op->result(0);
 
-    // paddle::framework::Variable* var =
-    // value_exe_info->GetScope()->FindVar(param_name); AddNewData(value,
-    //            param_name,
-    //            var,
-    //            value_2_var_name,
-    //            variable_2_var_name,
-    //            var_name_2_id,
-    //            variable_list);
     value_exe_info->Add(value, param_name);
   }
 
