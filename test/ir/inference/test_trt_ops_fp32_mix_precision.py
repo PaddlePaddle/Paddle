@@ -68,8 +68,15 @@ class TensorRTConv2dFp32MixPrecisionTest(InferencePassTest):
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
-            use_gpu = True
-            self.check_output_with_option(use_gpu)
+            trt_compile_version = paddle.inference.get_trt_compile_version()
+            trt_runtime_version = paddle.inference.get_trt_runtime_version()
+            valid_version = (8, 2, 1)
+            if (
+                trt_compile_version >= valid_version
+                and trt_runtime_version >= valid_version
+            ):
+                use_gpu = True
+                self.check_output_with_option(use_gpu)
 
 
 if __name__ == "__main__":
