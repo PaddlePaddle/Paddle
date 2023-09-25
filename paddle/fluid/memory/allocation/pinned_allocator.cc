@@ -26,6 +26,7 @@ void CPUPinnedAllocator::FreeImpl(phi::Allocation *allocation) {
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(cudaFreeHost(allocation->ptr()));
 #endif
+  VLOG(10) << "cudaFreeHost " << allocation->ptr();
   HOST_MEMORY_STAT_UPDATE(Reserved, 0, -allocation->size());
   platform::RecordMemEvent(allocation->ptr(),
                            allocation->place(),
@@ -40,6 +41,7 @@ phi::Allocation *CPUPinnedAllocator::AllocateImpl(size_t size) {
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(cudaHostAlloc(&ptr, size, cudaHostAllocPortable));
 #endif
+  VLOG(10) << "cudaHostAlloc " << size << " " << ptr;
   HOST_MEMORY_STAT_UPDATE(Reserved, 0, size);
   platform::RecordMemEvent(ptr,
                            platform::CUDAPinnedPlace(),

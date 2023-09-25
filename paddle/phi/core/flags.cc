@@ -1267,6 +1267,7 @@ PHI_DEFINE_EXPORTED_bool(use_shm_cache,
  *       - phi mode: tensor operants with only phi forward API;
  *       - static mode: tensor operants within static graph.
  */
+
 PHI_DEFINE_EXPORTED_string(tensor_operants_mode,
                            "eager",
                            "Tensor operants mode");
@@ -1376,4 +1377,7 @@ PHI_DEFINE_EXPORTED_bool(enable_async_trace,
                          false,
                          "enable collective async trace");
 
-PHI_DEFINE_EXPORTED_int32(async_trace_count, 5, "collective async trace count");
+PHI_DEFINE_EXPORTED_bool(
+    use_auto_growth_pinned_allocator,
+    false,
+    "Whether to use the auto_growth CUDA pinned allocator.");
