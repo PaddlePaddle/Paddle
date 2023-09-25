@@ -110,7 +110,7 @@ class FCMKLDNNHandler
                                    dnnl::memory::format_tag::a);
     }
 
-    const auto attrs = CreateFCAttrs(ctx, dst_md);
+    const auto attrs = CreateFCAttrs(ctx, MB, OC);
 
     this->AcquireForwardPrimitiveDescriptor(attrs,
                                             dnnl::prop_kind::forward_inference,
@@ -122,7 +122,8 @@ class FCMKLDNNHandler
 
  private:
   dnnl::primitive_attr CreateFCAttrs(const ExecutionContext& ctx,
-                                     const dnnl::memory::desc& dst_md) {
+                                     int MB,
+                                     int OC) {
     dnnl::primitive_attr attributes;
     dnnl::post_ops post_operations;
 
@@ -173,15 +174,10 @@ class FCMKLDNNHandler
         ctx.Attr<bool>("fuse_residual_connection")) {
       auto* residual_data = ctx.Input<phi::DenseTensor>("ResidualData");
       if (residual_data) {
-        auto residual_data_tz = vectorize(residual_data->dims());
         auto residual_data_md =
-            dnnl::memory::desc(residual_data_tz,
+            dnnl::memory::desc({MB, OC},
                                phi::funcs::OneDNNGetDataType<T_out>(),
                                dnnl::memory::format_tag::any);
-        if (residual_data->dims().size() > 2) {
-          // inner_product primitive, the destination tensor always N * C (2D)
-          residual_data_md = residual_data_md.reshape(dst_md.get_dims());
-        }
         post_operations.append_binary(dnnl::algorithm::binary_add,
                                       residual_data_md);
       }
