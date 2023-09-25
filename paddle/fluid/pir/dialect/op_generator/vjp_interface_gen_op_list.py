@@ -60,6 +60,8 @@ vjp_interface_declare_gen_op_list = [
     'stack',
     'poisson',
     'gumbel_softmax',
+    'squeeze',
+    'unsqueeze',
     'tril',
     'triu',
 ]
@@ -100,6 +102,8 @@ vjp_interface_implementation_gen_op_list = [
     'stack',
     'poisson',
     'gumbel_softmax',
+    'squeeze',
+    'unsqueeze',
     'tril',
     'triu',
 ]
