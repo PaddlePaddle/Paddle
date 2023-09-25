@@ -217,7 +217,7 @@ class Conv2dOpConverter : public OpConverter {
                                              ksize,
                                              weight.get(),
                                              bias.get());
-          SupportFP32MixPercision(output_name, op_desc.Type(), layer);
+          SupportFP32MixPrecision(output_name, op_desc.Type(), layer);
           return layer;
         },
         [](nvinfer1::IConvolutionLayer* layer, nvinfer1::DimsHW& dilations) {
@@ -251,7 +251,7 @@ class Deconv2dOpConverter : public OpConverter {
                                              ksize,
                                              weight.get(),
                                              bias.get());
-          SupportFP32MixPercision(output_name, op_desc.Type(), layer);
+          SupportFP32MixPrecision(output_name, op_desc.Type(), layer);
           return layer;
         },
         [](nvinfer1::IDeconvolutionLayer* layer, nvinfer1::DimsHW& dilations) {

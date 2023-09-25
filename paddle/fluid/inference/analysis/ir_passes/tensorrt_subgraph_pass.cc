@@ -797,7 +797,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
       inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
           .Create(engine_key + std::to_string(predictor_id), params);
 
-  // support set layer percision as float32
+  // support set layer precision as float32
   trt_engine->SetRunFloat(
       trt_ops_run_float,
       Get<std::unordered_set<std::string>>("trt_layers_run_float"));

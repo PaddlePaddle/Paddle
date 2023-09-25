@@ -370,10 +370,12 @@ void TensorRTEngine::FreezeNetwork() {
       params_.optimization_level);
 #endif
 
+#if IS_TRT_VERSION_GE(8210)
   if (!ops_run_float_.empty() || !layers_run_float_.empty()) {
     infer_builder_config_->setFlag(
         nvinfer1::BuilderFlag::kPREFER_PRECISION_CONSTRAINTS);
   }
+#endif
 
 #if IS_TRT_VERSION_LT(8000)
   infer_engine_.reset(infer_builder_->buildEngineWithConfig(
