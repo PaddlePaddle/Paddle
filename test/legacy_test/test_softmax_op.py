@@ -437,7 +437,7 @@ class TestSoftmaxBF16Op(OpTest):
             place,
             check_dygraph=(not self.use_mkldnn),
             check_prim=True,
-            check_new_ir=True,
+            check_new_ir=(not self.use_mkldnn),
         )
 
     def test_check_grad(self):
@@ -449,7 +449,7 @@ class TestSoftmaxBF16Op(OpTest):
             numeric_grad_delta=0.05,
             check_dygraph=(not self.use_mkldnn),
             check_prim=True,
-            check_new_ir=True,
+            check_new_ir=(not self.use_mkldnn),
         )
 
 
