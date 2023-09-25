@@ -233,8 +233,6 @@ BACKENDS = [
     'gumbel_softmax_grad',
     'split',
     'transpose',
-    'pad_grad',
-    'pad3d_grad',
     'gather_nd_grad',
     'stack_grad',
     'squeeze_grad',
