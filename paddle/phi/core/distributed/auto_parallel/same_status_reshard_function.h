@@ -14,22 +14,21 @@
 
 #pragma once
 
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/op_base.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
 
-namespace pir {
-class IR_API YieldOp : public Op<YieldOp> {
+namespace phi {
+namespace distributed {
+
+class SameStatusReshardFunction final : public ReshardFunction {
  public:
-  using Op::Op;
-  static const char *name() { return "cf.yield"; }
-  static constexpr uint32_t attributes_num = 0;
-  static constexpr const char **attributes_name = nullptr;
+  bool IsSuitable(const DistTensor& in,
+                  const TensorDistAttr& out_dist_attr) override;
 
-  static void Build(Builder &builder,             // NOLINT
-                    OperationArgument &argument,  // NOLINT
-                    const std::vector<Value> &Value);
-  void Verify() {}
+  void Eval(DeviceContext* dev_ctx,
+            const DistTensor& in,
+            const TensorDistAttr& out_dist_attr,
+            DistTensor* out) override;
 };
-}  // namespace pir
 
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::YieldOp);
+}  // namespace distributed
+}  // namespace phi

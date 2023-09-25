@@ -38,6 +38,8 @@ sys.path.append(
 
 
 VJPS = [
+    'tril_grad',
+    'triu_grad',
     'tanh_grad',
     'mean_grad',
     'add_grad',
@@ -54,6 +56,7 @@ VJPS = [
     'erf_grad',
     'expand_grad',
     'exp_grad',
+    'expm1_grad',
     'elementwise_pow_grad',
     'fused_softmax_mask_upper_triangle_grad',
     'matmul_grad',
@@ -69,6 +72,10 @@ VJPS = [
     'layer_norm_grad',
     'embedding_grad',
     'scale_grad',
+    'gather_nd_grad',
+    'stack_grad',
+    'squeeze_grad',
+    'unsqueeze_grad',
     'poisson_grad',
     'gumbel_softmax_grad',
 ]
@@ -91,6 +98,8 @@ CUSTOM_VJP = ['gelu_grad', 'layer_norm_grad']  # custom vjp list of composite op
 VJP_COMPS = PRIM_VJP + CUSTOM_VJP
 
 BACKENDS = [
+    'tril_grad',
+    'triu_grad',
     'add_n',
     'mean',
     'sum',
@@ -121,6 +130,7 @@ BACKENDS = [
     'erf_grad',
     'expand_grad',
     'exp_grad',
+    'expm1_grad',
     'multiply',
     'exp',
     'erf',
@@ -167,6 +177,10 @@ BACKENDS = [
     'gumbel_softmax_grad',
     'split',
     'transpose',
+    'gather_nd_grad',
+    'stack_grad',
+    'squeeze_grad',
+    'unsqueeze_grad',
 ]
 
 
