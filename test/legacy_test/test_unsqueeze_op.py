@@ -30,17 +30,16 @@ paddle.enable_static()
 class TestUnsqueezeOp(OpTest):
     def setUp(self):
         self.init_test_case()
-        self.python_api = paddle.unsqueeze
         self.op_type = "unsqueeze"
         self.inputs = {"X": np.random.random(self.ori_shape).astype("float64")}
         self.init_attrs()
         self.outputs = {"Out": self.inputs["X"].reshape(self.new_shape)}
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_new_ir=False)
+        self.check_grad(["X"], "Out")
 
     def init_test_case(self):
         self.ori_shape = (3, 40)
@@ -55,16 +54,15 @@ class TestUnsqueezeFP16Op(OpTest):
     def setUp(self):
         self.init_test_case()
         self.op_type = "unsqueeze"
-        self.python_api = paddle.unsqueeze
         self.inputs = {"X": np.random.random(self.ori_shape).astype("float16")}
         self.init_attrs()
         self.outputs = {"Out": self.inputs["X"].reshape(self.new_shape)}
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_new_ir=False)
+        self.check_grad(["X"], "Out")
 
     def init_test_case(self):
         self.ori_shape = (3, 40)
@@ -79,7 +77,6 @@ class TestUnsqueezeBF16Op(OpTest):
     def setUp(self):
         self.init_test_case()
         self.op_type = "unsqueeze"
-        self.python_api = paddle.unsqueeze
         self.dtype = np.uint16
         x = np.random.random(self.ori_shape).astype("float32")
         out = x.reshape(self.new_shape)
@@ -88,10 +85,10 @@ class TestUnsqueezeBF16Op(OpTest):
         self.outputs = {"Out": convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_new_ir=False)
+        self.check_grad(["X"], "Out")
 
     def init_test_case(self):
         self.ori_shape = (3, 40)
