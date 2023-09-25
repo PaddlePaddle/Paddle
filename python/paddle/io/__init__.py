@@ -29,6 +29,7 @@ from .dataloader import ChainDataset  # noqa: F401
 from .dataloader import WeightedRandomSampler  # noqa: F401
 from .dataloader import Subset  # noqa: F401
 from .dataloader import random_split  # noqa: F401
+from .dataloader import ConcatDataset  # noqa: F401
 
 __all__ = [  # noqa
     'Dataset',
@@ -46,4 +47,5 @@ __all__ = [  # noqa
     'WeightedRandomSampler',
     'random_split',
     'Subset',
+    'ConcatDataset',
 ]
