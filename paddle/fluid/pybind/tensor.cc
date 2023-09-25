@@ -642,7 +642,8 @@ void BindTensor(pybind11::module &m) {  // NOLINT
           [](phi::DenseTensor &self) -> bool {
             // Check that the lod info is valid and match the outermost
             // dimension of the Tensor data
-            return CheckLoD(self.lod(), vectorize(self.dims()).front());
+            return CheckLoD(self.lod(),
+                            static_cast<int>(vectorize(self.dims()).front()));
           },
           R"DOC(
            Check whether the LoD of the Tensor is valid.

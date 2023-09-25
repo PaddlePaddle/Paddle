@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import warnings
 import inspect
+import warnings
+
+from paddle.base.dygraph.base import in_to_static_mode
 
 from .. import core
-from ..framework import Variable, unique_name, static_only
+from ..framework import Variable, static_only, unique_name
 from .layer_function_generator import OpProtoHolder
-from paddle.base.dygraph.base import in_to_static_mode
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.BOOL,
@@ -236,12 +237,11 @@ def monkey_patch_variable():
         warnings.warn(
             "Variable do not have 'place' interface for static graph mode, try not to use it. None will be returned."
         )
-        return None
 
     def astype(self, dtype):
         """
         **Notes**:
-            **The variable must be a** :ref:`api_base_Tensor`
+            **The variable must be a** :ref:`api_paddle_Tensor`
 
         Cast a variable to a specified data type.
 
@@ -314,9 +314,7 @@ def monkey_patch_variable():
                 var = to_tensor(var)
             else:
                 raise TypeError(
-                    "Required input var should be Variable, but received {}".format(
-                        type(var)
-                    )
+                    f"Required input var should be Variable, but received {type(var)}"
                 )
         if self.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
             raise TypeError(
@@ -336,9 +334,7 @@ def monkey_patch_variable():
         """
         if len(self.shape) > 1:
             raise TypeError(
-                "Required input var should be 1-D Variable, but received {}".format(
-                    self.shape
-                )
+                f"Required input var should be 1-D Variable, but received {self.shape}"
             )
         return self
 
@@ -355,9 +351,7 @@ def monkey_patch_variable():
         Returns:
             Variable: self[index]
         """
-        from paddle.jit.dy2static.convert_operators import (
-            _run_paddle_pop,
-        )
+        from paddle.jit.dy2static.convert_operators import _run_paddle_pop
 
         if self.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
             raise TypeError(
@@ -577,17 +571,15 @@ def monkey_patch_variable():
 
         comment = OpProtoHolder.instance().get_op_proto(op_type).comment
 
-        __impl__.__doc__ = """
-        {0}
+        __impl__.__doc__ = f"""
+        {comment}
         Args:
             self(Variable): left hand variable
             other_var(Variable|float|int): right hand variable
 
         Returns:
             Variable
-        """.format(
-            comment
-        )
+        """
         __impl__.__name__ = method_name
         return __impl__
 

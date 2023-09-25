@@ -35,7 +35,7 @@ std::vector<int64_t> GetDefaultDataParallelDimsmapping(
 
 ////////////////// InferMeta(Contains SPMD) Functions //////////////////
 
-SpmdInfo DefaultDataParallelSpmdInferForward(
+SpmdInfo DefaultDataParallelInferSpmd(
     const std::vector<const DistMetaTensor*>& ins,
     const std::vector<const DistMetaTensor*>& outs) {
   // step1: Build Einsum Notation for input tensor's batch axis
@@ -97,7 +97,7 @@ SpmdInfo DefaultDataParallelSpmdInferForward(
 
   return {dst_input_dist_attrs, output_dist_attrs};
 }
-SpmdInfo DefaultDataParallelSpmdInferBackward(
+SpmdInfo DefaultDataParallelInferSpmdReverse(
     const std::vector<const DistMetaTensor*>& ins,
     const std::vector<const DistMetaTensor*>& outs) {
   // step1: Build Einsum Notation for input tensor's batch axis

@@ -62,10 +62,10 @@ def nce(
             sample is 1.0.
         param_attr (ParamAttr|None): To specify the weight parameter attribute.
             Default: None, which means the default weight parameter property is
-            used. See usage for details in :ref:`api_base_ParamAttr` .
+            used. See usage for details in :ref:`api_paddle_ParamAttr` .
         bias_attr (ParamAttr|None): To specify the bias parameter attribute.
             Default: None, which means the default bias parameter property is
-            used. See usage for details in :ref:`api_base_ParamAttr` .
+            used. See usage for details in :ref:`api_paddle_ParamAttr` .
         num_neg_samples (int): ${num_neg_samples_comment}.
         name(str|None): For detailed information, please refer to
             :ref:`api_guide_Name` . Usually name is no need to set and None by default.

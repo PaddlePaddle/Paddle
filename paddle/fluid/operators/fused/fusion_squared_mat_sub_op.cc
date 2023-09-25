@@ -100,9 +100,9 @@ class FusionSquaredMatSubKernel : public framework::OpKernel<T> {
     auto x_dims = x->dims();
     auto y_dims = y->dims();
     phi::jit::matmul_attr_t attr;
-    attr.m = x_dims[0];
-    attr.k = x_dims[1];
-    attr.n = y_dims[1];
+    attr.m = static_cast<int>(x_dims[0]);
+    attr.k = static_cast<int>(x_dims[1]);
+    attr.n = static_cast<int>(y_dims[1]);
     int o_numel = attr.m * attr.n;
 
     auto vsquare_x = phi::jit::KernelFuncs<phi::jit::VSquareTuple<T>,

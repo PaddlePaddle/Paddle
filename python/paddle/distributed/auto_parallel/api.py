@@ -14,6 +14,7 @@
 
 
 import paddle
+from paddle.base.framework import EagerParamBase
 from paddle.distributed.auto_parallel.interface import (
     shard_tensor as shard_tensor_static,
 )
@@ -33,16 +34,16 @@ class DistAttr(core.TensorDistAttr):
         sharding_specs(list[str|None]): The specification describing how to shard the Tensor.
 
     Examples:
+        .. code-block:: python
 
-    .. code-block:: python
+            >>> import paddle
+            >>> import paddle.distributed as dist
 
-        import paddle
-        import paddle.distributed as dist
+            >>> mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=['x', 'y'])
+            >>> dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x', 'y'])
 
-        mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
-        dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x', 'y'])
+            >>> print(dist_attr)
 
-        print(dist_attr)
     """
 
     def __init__(self, mesh, sharding_specs):
@@ -108,38 +109,48 @@ def shard_tensor(
         Tensor: A Tensor constructed from ``data`` with distributed attributes.
 
     Examples:
+        .. code-block:: python
 
-    .. code-block:: python
+            >>> import paddle
+            >>> import paddle.distributed as dist
 
-        import paddle
-        import paddle.distributed as dist
+            >>> mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=['x', 'y'])
+            >>> dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x', 'y'])
 
-        mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
-        dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x', 'y'])
+            >>> # dense tensor
+            >>> a = paddle.to_tensor([[1,2,3],
+            ...                       [5,6,7]])
 
-        # dense tensor
-        a = paddle.to_tensor([[1,2,3],
-                              [5,6,7]])
-        # distributed tensor
-        d_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> # distributed tensor
+            >>> d_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
 
-        print(d_tensor)
+            >>> print(d_tensor)
+
     """
     # 1. create dense tensor
     # `paddle.to_tensor` supports both dynamic and static mode
-    data = paddle.to_tensor(data)
+    tensor = paddle.to_tensor(
+        data, dtype=dtype, place=place, stop_gradient=stop_gradient
+    )
 
     # 2. create dist tensor
     assert len(dist_attr.dims_mapping) == len(
-        list(data.shape)
+        list(tensor.shape)
     ), "The length of sharding_specs must be same as the shape of the input tensor."
 
     if paddle.in_dynamic_mode():
-        return paddle.Tensor(data, dist_attr=dist_attr)
+        # here the dist tensor is deep copy constructed
+        if isinstance(data, EagerParamBase):
+            return EagerParamBase.from_tensor(
+                tensor, dist_attr=dist_attr, **tensor.__dict__
+            )
+        else:
+            return paddle.Tensor(tensor, dist_attr=dist_attr)
     else:
         # TODO(zhiqiu): we need to refine the static shard_tensor
         return shard_tensor_static(
-            data, dist_attr.process_mesh, dist_attr.sharding_specs
+            tensor, dist_attr.process_mesh, dist_attr.sharding_specs
         )
 
 
@@ -157,7 +168,6 @@ def dtensor_from_fn(fn, dist_attr, *args, **kwargs):
         Tensor: A Tensor constructed from ``fn`` with distributed attributes.
 
     Examples:
-
         .. code-block:: python
 
             >>> import paddle
@@ -168,6 +178,54 @@ def dtensor_from_fn(fn, dist_attr, *args, **kwargs):
             >>> # Call the function dtensor_from_fn with dist_attr parameter
             >>> d_tensor = dist.dtensor_from_fn(paddle.ones, dist_attr=dist_attr, shape=[1])
             >>> print(d_tensor)
+
     """
     tensor = fn(*args, **kwargs)
     return shard_tensor(tensor, dist_attr=dist_attr)
+
+
+def reshard(dist_tensor, dist_attr):
+    """
+    Reshard a distributed ``paddle.Tensor`` with given distributed attributes.
+
+    Args:
+        dist_tensor(Tensor): the distributed tensor to be resharded.
+        dist_attr(paddle.distributed.DistAttr): Specify how tensors are distributed or sliced on ProcessMesh.
+
+    Returns:
+        Tensor: A Distributed Tensor reshared with distributed attributes.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.distributed as dist
+
+            >>> mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=['x', 'y'])
+            >>> dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x', 'y'])
+
+            >>> out_mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=['x', 'y'])
+            >>> out_dist_attr = dist.DistAttr(mesh=out_mesh, sharding_specs=[None, None])
+
+            >>> # dense tensor
+            >>> a = paddle.to_tensor([[1,2,3],
+            ...                       [5,6,7]])
+
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> # distributed tensor
+            >>> d_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
+
+            >>> out_d_tensor = dist.reshard(d_tensor, out_dist_attr)
+
+            >>> print(d_tensor)
+            >>> print(out_d_tensor)
+
+    """
+
+    if paddle.framework.in_dynamic_mode():
+        return paddle.base.core.reshard(dist_tensor, dist_attr)
+    else:
+        # TODO(GhostScreaming): Support static DistTensor later.
+        raise RuntimeError(
+            "paddle.dist.reshard only support dynamic graph now. It will be supported for static graph later."
+        )

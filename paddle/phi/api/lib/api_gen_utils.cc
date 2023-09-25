@@ -550,6 +550,15 @@ phi::distributed::DistTensor* SetKernelDistOutput(
   return nullptr;
 }
 
+std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
+    Tensor* out, const phi::distributed::TensorDistAttr& dist_attr) {
+  if (out) {
+    return std::make_shared<phi::distributed::DistTensor>(phi::DDim(),
+                                                          dist_attr);
+  }
+  return nullptr;
+}
+
 std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
     std::vector<Tensor*> out) {
   std::vector<phi::distributed::DistTensor*> result;
@@ -611,6 +620,16 @@ std::vector<phi::distributed::DistTensor*> SetKernelDistInplaceOptionalOutput(
     }
   }
   return results;
+}
+void SetReplicatedDistAttrForOutput(
+    phi::distributed::DistTensor* out,
+    const phi::distributed::ProcessMesh& process_mesh) {
+  if (out) {
+    auto dist_attr =
+        phi::distributed::TensorDistAttr(phi::vectorize(out->dims()));
+    dist_attr.set_process_mesh(process_mesh);
+    out->unsafe_set_dist_attr(dist_attr);
+  }
 }
 
 }  // namespace experimental

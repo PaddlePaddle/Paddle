@@ -353,9 +353,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
 
     assert not is_parameter_related(
         X_var.name, main_block
-    ), "left operand(X) [{}] of dist matmul should not be parameter".format(
-        X_var.name
-    )
+    ), f"left operand(X) [{X_var.name}] of dist matmul should not be parameter"
 
     X_var_dims_mapping = dist_attr.get_input_dims_mapping(X_var.name)
     Y_var_dim_mapping = dist_attr.get_input_dims_mapping(Y_var.name)
@@ -397,58 +395,8 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
                 '_c_identity',
             )
 
-            intermediate_var_0 = main_block.create_var(
-                name=unique_name.generate_with_ignorable_key(
-                    ".".join(["c_identity", 'tmp'])
-                )
-                + "@GRAD",
-                dtype=Out_grad.dtype,
-                shape=Out_grad.shape,
-                type=core.VarDesc.VarType.LOD_TENSOR,
-                persistable=False,
-                stop_gradient=Out_grad.stop_gradient,
-            )
-
-            # copy X_var's dist_attr to intermediate_var_0's dist_attr
-            out_grad_dist_attr = dist_attr.get_input_dist_attr(Out_grad.name)
-            assert out_grad_dist_attr is not None
-            ctx.set_tensor_dist_attr_for_program(
-                intermediate_var_0, out_grad_dist_attr
-            )
-
-            group_ranks = _get_comm_group(
-                process_mesh_group, process_mesh_shape, parallel_axis, rank_id
-            )
-            group = new_process_group(group_ranks)
-            c_identity_op = main_block.append_op(
-                type='c_identity',
-                inputs={'X': [Out_grad]},
-                outputs={'Out': intermediate_var_0},
-                attrs={
-                    'ring_id': group.id,
-                    'use_calc_stream': True,
-                    'use_model_parallel': True,
-                    OP_ROLE_KEY: OpRole.Backward,
-                },
-            )
-            check_variable_and_dtype(
-                intermediate_var_0,
-                'x',
-                ['float16', 'float32', 'float64', 'uint16'],
-                'linear',
-            )
-            check_dtype(
-                intermediate_var_0.dtype,
-                'dtype',
-                ['float16', 'float32', 'float64', 'uint16'],
-                'linear',
-            )
-            set_comm_op_dist_attr_for_program(
-                c_identity_op, dist_attr.process_mesh, out_grad_dist_attr, ctx
-            )
-
             new_kwargs = copy.deepcopy(kwargs)
-            new_kwargs['Out@GRAD'] = [intermediate_var_0.name]
+            new_kwargs['Out@GRAD'] = [Out_grad.name]
             matmul_op_desc = copy_op_with_new_input_output(
                 ctx, main_block, backward_op, **new_kwargs
             )
@@ -772,21 +720,15 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
 
         # check validation of inputs / outputs
         for input_name in src_op.desc.input_names():
-            assert input_name in kwargs, "input [{}] is not given".format(
-                input_name
-            )
+            assert input_name in kwargs, f"input [{input_name}] is not given"
             assert len(kwargs[input_name]) == len(
                 src_op.desc.input(input_name)
             ), f"number of tensor for input [{input_name}] is not match"
         for output_name in src_op.desc.output_names():
-            assert output_name in kwargs, "input [{}] is not given".format(
-                output_name
-            )
+            assert output_name in kwargs, f"input [{output_name}] is not given"
             assert len(kwargs[output_name]) == len(
                 src_op.desc.output(output_name)
-            ), "number of tensor for input [{}] is not match".format(
-                output_name
-            )
+            ), f"number of tensor for input [{output_name}] is not match"
 
         X_var = main_block._var_recursive(kwargs['X'][0])
         Weight_var = main_block._var_recursive(kwargs['Y'][0])
@@ -833,21 +775,6 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
             main_block, Out_var, out_tensor_dist_attr, out_var_dist_attr
         )
 
-        intermediate_var_0 = main_block.create_var(
-            name=unique_name.generate_with_ignorable_key(
-                ".".join(["c_identity", 'tmp'])
-            ),
-            dtype=X_var.dtype,
-            shape=X_var.shape,
-            type=core.VarDesc.VarType.LOD_TENSOR,
-            persistable=False,
-            stop_gradient=X_var.stop_gradient,
-        )
-        # set intermediate_var_0's dist_attr with X_var's dist_attr
-        ctx.set_tensor_dist_attr_for_program(
-            intermediate_var_0, identity_var_dist_attr
-        )
-
         check_variable_and_dtype(
             X_var,
             'tensor',
@@ -855,67 +782,18 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
             '_c_identity',
         )
 
-        c_identity_op = main_block.append_op(
-            type='c_identity',
-            inputs={'X': [X_var]},
-            outputs={'Out': intermediate_var_0},
-            attrs={
-                'ring_id': group.id,
-                'use_calc_stream': True,
-                'use_model_parallel': True,
-                OP_ROLE_KEY: src_op.attr('op_role'),
-            },
-        )
-        if intermediate_var_0.shape != ref_shape_x:
-            intermediate_var_0.desc.set_shape(ref_shape_x)
-
-        check_variable_and_dtype(
-            intermediate_var_0,
-            'x',
-            ['float16', 'float32', 'float64', 'uint16'],
-            'linear',
-        )
-        check_dtype(
-            intermediate_var_0.dtype,
-            'dtype',
-            ['float16', 'float32', 'float64', 'uint16'],
-            'linear',
-        )
         attrs = {
             'transpose_X': trans_x,
             'transpose_Y': trans_y,
             'alpha': 1,
             OP_ROLE_KEY: src_op.attr('op_role'),
         }
-        inputs = {'X': [intermediate_var_0], 'Y': [Weight_var]}
+        inputs = {'X': [X_var], 'Y': [Weight_var]}
         matmul_op = main_block.append_op(
             type='matmul', inputs=inputs, outputs={'Out': Out_var}, attrs=attrs
         )
         if Out_var.shape != ref_shape_out:
             Out_var.desc.set_shape(ref_shape_out)
-
-        # set dist op's dist_attr with serial op's dist_attr
-        # c_identity
-        identity_op_dist_attr = OperatorDistAttr()
-        identity_op_dist_attr.process_mesh = op_dist_attr.process_mesh
-        identity_op_dist_attr.impl_type = op_dist_attr.impl_type
-        identity_op_dist_attr.impl_idx = op_dist_attr.impl_idx
-        # input
-        input_varname = c_identity_op.desc.input_arg_names()[0]
-        input_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
-        assert input_dist_attr is not None, "dist_attr is {}".format(
-            op_dist_attr
-        )
-        identity_op_dist_attr.set_input_dist_attr(
-            input_varname, input_dist_attr
-        )
-        # output
-        output_varname = c_identity_op.desc.output_arg_names()[0]
-        identity_op_dist_attr.set_output_dist_attr(
-            output_varname, input_dist_attr
-        )
-        # set op dist attr
-        ctx.set_op_dist_attr_for_program(c_identity_op, identity_op_dist_attr)
 
         # matmul
         matmul_op_dist_attr = OperatorDistAttr()
@@ -928,9 +806,9 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
                 input_dist_attr = op_dist_attr.get_input_dist_attr(
                     input_varname
                 )
-                assert input_dist_attr is not None, "dist_attr is {}".format(
-                    op_dist_attr
-                )
+                assert (
+                    input_dist_attr is not None
+                ), f"dist_attr is {op_dist_attr}"
                 matmul_op_dist_attr.set_input_dist_attr(
                     input_varname, input_dist_attr
                 )
@@ -945,9 +823,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         # output
         output_varname = matmul_op.desc.output_arg_names()[0]
         output_dist_attr = op_dist_attr.get_output_dist_attr(output_varname)
-        assert output_dist_attr is not None, "dist_attr is {}".format(
-            op_dist_attr
-        )
+        assert output_dist_attr is not None, f"dist_attr is {op_dist_attr}"
         matmul_op_dist_attr.set_output_dist_attr(
             output_varname, output_dist_attr
         )
@@ -1157,21 +1033,15 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
 
         # check validation of inputs / outputs
         for input_name in src_op.desc.input_names():
-            assert input_name in kwargs, "input [{}] is not given".format(
-                input_name
-            )
+            assert input_name in kwargs, f"input [{input_name}] is not given"
             assert len(kwargs[input_name]) == len(
                 src_op.desc.input(input_name)
             ), f"number of tensor for input [{input_name}] is not match"
         for output_name in src_op.desc.output_names():
-            assert output_name in kwargs, "input [{}] is not given".format(
-                output_name
-            )
+            assert output_name in kwargs, f"input [{output_name}] is not given"
             assert len(kwargs[output_name]) == len(
                 src_op.desc.output(output_name)
-            ), "number of tensor for input [{}] is not match".format(
-                output_name
-            )
+            ), f"number of tensor for input [{output_name}] is not match"
 
         X_var = main_block._var_recursive(kwargs['X'][0])
         Weight_var = main_block._var_recursive(kwargs['Y'][0])
@@ -1275,17 +1145,13 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         matmul_op_dist_attr.impl_idx = op_dist_attr.impl_idx
         for input_varname in matmul_op.desc.input_arg_names():
             input_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
-            assert input_dist_attr is not None, "dist_attr is {}".format(
-                op_dist_attr
-            )
+            assert input_dist_attr is not None, f"dist_attr is {op_dist_attr}"
             matmul_op_dist_attr.set_input_dist_attr(
                 input_varname, input_dist_attr
             )
         output_varname = matmul_op.desc.output_arg_names()[0]
         output_dist_attr = op_dist_attr.get_output_dist_attr(Out_var.name)
-        assert output_dist_attr is not None, "dist_attr is {}".format(
-            op_dist_attr
-        )
+        assert output_dist_attr is not None, f"dist_attr is {op_dist_attr}"
         matmul_op_dist_attr.set_output_dist_attr(
             output_varname, output_dist_attr
         )
@@ -1305,9 +1171,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
             )
         for output_varname in c_allreduce_sum_op.desc.output_arg_names():
             output_dist_attr = op_dist_attr.get_output_dist_attr(output_varname)
-            assert output_dist_attr is not None, "dist_attr is {}".format(
-                op_dist_attr
-            )
+            assert output_dist_attr is not None, f"dist_attr is {op_dist_attr}"
             allreduce_op_dist_attr.set_output_dist_attr(
                 output_varname, output_dist_attr
             )
@@ -1674,21 +1538,15 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
 
         # check validation of inputs / outputs
         for input_name in src_op.desc.input_names():
-            assert input_name in kwargs, "input [{}] is not given".format(
-                input_name
-            )
+            assert input_name in kwargs, f"input [{input_name}] is not given"
             assert len(kwargs[input_name]) == len(
                 src_op.desc.input(input_name)
             ), f"number of tensor for input [{input_name}] is not match"
         for output_name in src_op.desc.output_names():
-            assert output_name in kwargs, "input [{}] is not given".format(
-                output_name
-            )
+            assert output_name in kwargs, f"input [{output_name}] is not given"
             assert len(kwargs[output_name]) == len(
                 src_op.desc.output(output_name)
-            ), "number of tensor for input [{}] is not match".format(
-                output_name
-            )
+            ), f"number of tensor for input [{output_name}] is not match"
 
         X_var = main_block._var_recursive(kwargs['X'][0])
         Weight_var = main_block._var_recursive(kwargs['Y'][0])
@@ -1735,59 +1593,19 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
             main_block, Out_var, out_tensor_dist_attr, out_var_dist_attr
         )
 
-        intermediate_var_0 = main_block.create_var(
-            name=unique_name.generate_with_ignorable_key(
-                ".".join(["c_identity", 'tmp'])
-            ),
-            dtype=X_var.dtype,
-            shape=X_var.shape,
-            type=core.VarDesc.VarType.LOD_TENSOR,
-            persistable=False,
-            stop_gradient=X_var.stop_gradient,
-        )
-        # set intermediate_var_0's dist_attr with X_var's dist_attr
-        ctx.set_tensor_dist_attr_for_program(
-            intermediate_var_0, identity_var_dist_attr
-        )
-
         check_variable_and_dtype(
             X_var,
             'tensor',
             ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             '_c_identity',
         )
-        c_identity_op = main_block.append_op(
-            type='c_identity',
-            inputs={'X': [X_var]},
-            outputs={'Out': intermediate_var_0},
-            attrs={
-                'ring_id': group.id,
-                'use_calc_stream': True,
-                'use_model_parallel': True,
-                OP_ROLE_KEY: src_op.attr('op_role'),
-            },
-        )
-        if intermediate_var_0.shape != ref_shape_x:
-            intermediate_var_0.desc.set_shape(ref_shape_x)
 
-        check_variable_and_dtype(
-            intermediate_var_0,
-            'x',
-            ['float16', 'float32', 'float64', 'uint16'],
-            'linear',
-        )
-        check_dtype(
-            intermediate_var_0.dtype,
-            'dtype',
-            ['float16', 'float32', 'float64', 'uint16'],
-            'linear',
-        )
         attrs = {
             'trans_x': trans_x,
             'trans_y': trans_y,
             OP_ROLE_KEY: src_op.attr('op_role'),
         }
-        inputs = {'X': [intermediate_var_0], 'Y': [Weight_var]}
+        inputs = {'X': [X_var], 'Y': [Weight_var]}
         matmul_v2_op = main_block.append_op(
             type='matmul_v2',
             inputs=inputs,
@@ -1796,28 +1614,6 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         )
         if Out_var.shape != ref_shape_out:
             Out_var.desc.set_shape(ref_shape_out)
-
-        # set dist op's dist_attr with serial op's dist_attr
-        # c_identity
-        identity_op_dist_attr = OperatorDistAttr()
-        identity_op_dist_attr.process_mesh = op_dist_attr.process_mesh
-        identity_op_dist_attr.impl_type = op_dist_attr.impl_type
-        identity_op_dist_attr.impl_idx = op_dist_attr.impl_idx
-        # input
-        input_varname = c_identity_op.desc.input_arg_names()[0]
-        input_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
-        assert input_dist_attr is not None, "dist_attr is {}".format(
-            op_dist_attr
-        )
-        identity_op_dist_attr.set_input_dist_attr(
-            input_varname, input_dist_attr
-        )
-        # output
-        output_varname = c_identity_op.desc.output_arg_names()[0]
-        identity_op_dist_attr.set_output_dist_attr(
-            output_varname, input_dist_attr
-        )
-        ctx.set_op_dist_attr_for_program(c_identity_op, identity_op_dist_attr)
 
         # matmulv2
         matmulv2_op_dist_attr = OperatorDistAttr()
@@ -1829,9 +1625,9 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
                 input_dist_attr = op_dist_attr.get_input_dist_attr(
                     input_varname
                 )
-                assert input_dist_attr is not None, "dist_attr is {}".format(
-                    op_dist_attr
-                )
+                assert (
+                    input_dist_attr is not None
+                ), f"dist_attr is {op_dist_attr}"
                 matmulv2_op_dist_attr.set_input_dist_attr(
                     input_varname, input_dist_attr
                 )
@@ -1845,9 +1641,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
                 )
         for output_varname in matmul_v2_op.desc.output_arg_names():
             output_dist_attr = op_dist_attr.get_output_dist_attr(output_varname)
-            assert output_dist_attr is not None, "dist_attr is {}".format(
-                op_dist_attr
-            )
+            assert output_dist_attr is not None, f"dist_attr is {op_dist_attr}"
             matmulv2_op_dist_attr.set_output_dist_attr(
                 output_varname, output_dist_attr
             )
@@ -2057,21 +1851,15 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
 
         # check validation of inputs / outputs
         for input_name in src_op.desc.input_names():
-            assert input_name in kwargs, "input [{}] is not given".format(
-                input_name
-            )
+            assert input_name in kwargs, f"input [{input_name}] is not given"
             assert len(kwargs[input_name]) == len(
                 src_op.desc.input(input_name)
             ), f"number of tensor for input [{input_name}] is not match"
         for output_name in src_op.desc.output_names():
-            assert output_name in kwargs, "input [{}] is not given".format(
-                output_name
-            )
+            assert output_name in kwargs, f"input [{output_name}] is not given"
             assert len(kwargs[output_name]) == len(
                 src_op.desc.output(output_name)
-            ), "number of tensor for input [{}] is not match".format(
-                output_name
-            )
+            ), f"number of tensor for input [{output_name}] is not match"
 
         X_var = main_block._var_recursive(kwargs['X'][0])
         Weight_var = main_block._var_recursive(kwargs['Y'][0])
@@ -2174,17 +1962,13 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         matmulv2_op_dist_attr.impl_idx = op_dist_attr.impl_idx
         for input_varname in matmul_v2_op.desc.input_arg_names():
             input_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
-            assert input_dist_attr is not None, "dist_attr is {}".format(
-                op_dist_attr
-            )
+            assert input_dist_attr is not None, f"dist_attr is {op_dist_attr}"
             matmulv2_op_dist_attr.set_input_dist_attr(
                 input_varname, input_dist_attr
             )
         output_varname = matmul_v2_op.desc.output_arg_names()[0]
         output_dist_attr = op_dist_attr.get_output_dist_attr(Out_var.name)
-        assert output_dist_attr is not None, "dist_attr is {}".format(
-            op_dist_attr
-        )
+        assert output_dist_attr is not None, f"dist_attr is {op_dist_attr}"
         matmulv2_op_dist_attr.set_output_dist_attr(
             output_varname, output_dist_attr
         )
@@ -2204,9 +1988,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
             )
         for output_varname in c_allreduce_sum_op.desc.output_arg_names():
             output_dist_attr = op_dist_attr.get_output_dist_attr(output_varname)
-            assert output_dist_attr is not None, "dist_attr is {}".format(
-                op_dist_attr
-            )
+            assert output_dist_attr is not None, f"dist_attr is {op_dist_attr}"
             allreduce_op_dist_attr.set_output_dist_attr(
                 output_varname, output_dist_attr
             )
@@ -2565,21 +2347,15 @@ class DistributedMulImpl0(DistributedOperatorImpl):
 
         # check validation of inputs / outputs
         for input_name in src_op.desc.input_names():
-            assert input_name in kwargs, "input [{}] is not given".format(
-                input_name
-            )
+            assert input_name in kwargs, f"input [{input_name}] is not given"
             assert len(kwargs[input_name]) == len(
                 src_op.desc.input(input_name)
             ), f"number of tensor for input [{input_name}] is not match"
         for output_name in src_op.desc.output_names():
-            assert output_name in kwargs, "input [{}] is not given".format(
-                output_name
-            )
+            assert output_name in kwargs, f"input [{output_name}] is not given"
             assert len(kwargs[output_name]) == len(
                 src_op.desc.output(output_name)
-            ), "number of tensor for input [{}] is not match".format(
-                output_name
-            )
+            ), f"number of tensor for input [{output_name}] is not match"
 
         X_var = main_block._var_recursive(kwargs['X'][0])
         Weight_var = main_block._var_recursive(kwargs['Y'][0])
@@ -2620,60 +2396,19 @@ class DistributedMulImpl0(DistributedOperatorImpl):
             main_block, Out_var, out_tensor_dist_attr, out_var_dist_attr
         )
 
-        intermediate_var_0 = main_block.create_var(
-            name=unique_name.generate_with_ignorable_key(
-                ".".join(["c_identity", 'tmp'])
-            ),
-            dtype=X_var.dtype,
-            shape=X_var.shape,
-            type=core.VarDesc.VarType.LOD_TENSOR,
-            persistable=False,
-            stop_gradient=X_var.stop_gradient,
-        )
-        # set intermediate_var_0's dist_attr with X_var's dist_attr
-        ctx.set_tensor_dist_attr_for_program(
-            intermediate_var_0, identity_var_dist_attr
-        )
-
         check_variable_and_dtype(
             X_var,
             'tensor',
             ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             '_c_identity',
         )
-        c_identity_op = main_block.append_op(
-            type='c_identity',
-            inputs={'X': [X_var]},
-            outputs={'Out': intermediate_var_0},
-            attrs={
-                'ring_id': group.id,
-                'use_calc_stream': True,
-                'use_model_parallel': True,
-                OP_ROLE_KEY: src_op.attr('op_role'),
-            },
-        )
-        if intermediate_var_0.shape != ref_shape_x:
-            intermediate_var_0.desc.set_shape(ref_shape_x)
 
-        check_variable_and_dtype(
-            intermediate_var_0,
-            'x',
-            ['float16', 'float32', 'float64', 'uint16'],
-            'linear',
-        )
-        check_dtype(
-            intermediate_var_0.dtype,
-            'dtype',
-            ['float16', 'float32', 'float64', 'uint16'],
-            'linear',
-        )
-        # attrs = {'trans_x': False, 'trans_y': False}
         attrs = {
             "x_num_col_dims": src_op.desc.attr("x_num_col_dims"),
             "y_num_col_dims": src_op.desc.attr("y_num_col_dims"),
             OP_ROLE_KEY: src_op.attr('op_role'),
         }
-        inputs = {'X': intermediate_var_0, 'Y': Weight_var}
+        inputs = {'X': X_var, 'Y': Weight_var}
 
         inputs_ref_shape = {}
         inputs_original_shape = {}
@@ -2702,28 +2437,6 @@ class DistributedMulImpl0(DistributedOperatorImpl):
             original_shape = inputs_original_shape[var_name]
             var.desc.set_shape(original_shape)
 
-        # set dist op's dist_attr with serial op's dist_attr
-        # c_identity
-        identity_op_dist_attr = OperatorDistAttr()
-        identity_op_dist_attr.process_mesh = op_dist_attr.process_mesh
-        identity_op_dist_attr.impl_type = op_dist_attr.impl_type
-        identity_op_dist_attr.impl_idx = op_dist_attr.impl_idx
-        # input
-        input_varname = c_identity_op.desc.input_arg_names()[0]
-        input_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
-        assert input_dist_attr is not None, "dist_attr is {}".format(
-            op_dist_attr
-        )
-        identity_op_dist_attr.set_input_dist_attr(
-            input_varname, input_dist_attr
-        )
-        # output
-        output_varname = c_identity_op.desc.output_arg_names()[0]
-        identity_op_dist_attr.set_output_dist_attr(
-            output_varname, input_dist_attr
-        )
-        ctx.set_op_dist_attr_for_program(c_identity_op, identity_op_dist_attr)
-
         # matmulv2
         matmulv2_op_dist_attr = OperatorDistAttr()
         matmulv2_op_dist_attr.process_mesh = op_dist_attr.process_mesh
@@ -2734,9 +2447,9 @@ class DistributedMulImpl0(DistributedOperatorImpl):
                 input_dist_attr = op_dist_attr.get_input_dist_attr(
                     input_varname
                 )
-                assert input_dist_attr is not None, "dist_attr is {}".format(
-                    op_dist_attr
-                )
+                assert (
+                    input_dist_attr is not None
+                ), f"dist_attr is {op_dist_attr}"
                 matmulv2_op_dist_attr.set_input_dist_attr(
                     input_varname, input_dist_attr
                 )
@@ -2750,9 +2463,7 @@ class DistributedMulImpl0(DistributedOperatorImpl):
                 )
         for output_varname in mul_op.desc.output_arg_names():
             output_dist_attr = op_dist_attr.get_output_dist_attr(output_varname)
-            assert output_dist_attr is not None, "dist_attr is {}".format(
-                op_dist_attr
-            )
+            assert output_dist_attr is not None, f"dist_attr is {op_dist_attr}"
             matmulv2_op_dist_attr.set_output_dist_attr(
                 output_varname, output_dist_attr
             )
@@ -2956,21 +2667,15 @@ class DistributedMulImpl1(DistributedOperatorImpl):
 
         # check validation of inputs / outputs
         for input_name in src_op.desc.input_names():
-            assert input_name in kwargs, "input [{}] is not given".format(
-                input_name
-            )
+            assert input_name in kwargs, f"input [{input_name}] is not given"
             assert len(kwargs[input_name]) == len(
                 src_op.desc.input(input_name)
             ), f"number of tensor for input [{input_name}] is not match"
         for output_name in src_op.desc.output_names():
-            assert output_name in kwargs, "input [{}] is not given".format(
-                output_name
-            )
+            assert output_name in kwargs, f"input [{output_name}] is not given"
             assert len(kwargs[output_name]) == len(
                 src_op.desc.output(output_name)
-            ), "number of tensor for input [{}] is not match".format(
-                output_name
-            )
+            ), f"number of tensor for input [{output_name}] is not match"
 
         X_var = main_block._var_recursive(kwargs['X'][0])
         Weight_var = main_block._var_recursive(kwargs['Y'][0])
@@ -3088,17 +2793,13 @@ class DistributedMulImpl1(DistributedOperatorImpl):
         matmulv2_op_dist_attr.impl_idx = op_dist_attr.impl_idx
         for input_varname in mul_op.desc.input_arg_names():
             input_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
-            assert input_dist_attr is not None, "dist_attr is {}".format(
-                op_dist_attr
-            )
+            assert input_dist_attr is not None, f"dist_attr is {op_dist_attr}"
             matmulv2_op_dist_attr.set_input_dist_attr(
                 input_varname, input_dist_attr
             )
         output_varname = mul_op.desc.output_arg_names()[0]
         output_dist_attr = op_dist_attr.get_output_dist_attr(Out_var.name)
-        assert output_dist_attr is not None, "dist_attr is {}".format(
-            op_dist_attr
-        )
+        assert output_dist_attr is not None, f"dist_attr is {op_dist_attr}"
         matmulv2_op_dist_attr.set_output_dist_attr(
             output_varname, output_dist_attr
         )
@@ -3118,9 +2819,7 @@ class DistributedMulImpl1(DistributedOperatorImpl):
             )
         for output_varname in c_allreduce_sum_op.desc.output_arg_names():
             output_dist_attr = op_dist_attr.get_output_dist_attr(output_varname)
-            assert output_dist_attr is not None, "dist_attr is {}".format(
-                op_dist_attr
-            )
+            assert output_dist_attr is not None, f"dist_attr is {op_dist_attr}"
             allreduce_op_dist_attr.set_output_dist_attr(
                 output_varname, output_dist_attr
             )

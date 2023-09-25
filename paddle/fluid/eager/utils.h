@@ -18,6 +18,7 @@
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/phi/api/all.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 
 namespace egr {
 
@@ -33,8 +34,12 @@ template <typename ElementType>
 class IterHelper {
   virtual void visit(ElementType element) = 0;
 
-  void visit(std::vector<ElementType>* elements) {
+  virtual void visit(std::vector<ElementType>* elements) {
     for (auto element : *elements) visit(element);
+  }
+
+  virtual void visit(const std::vector<ElementType>& elements) {
+    for (auto element : elements) visit(element);
   }
 
   template <typename... Args>
@@ -80,6 +85,58 @@ class PassStopGradientIter : public IterHelper<AutogradMeta*> {
   }
 
   bool stop_gradient_ = true;
+};
+
+class SetGradOutputDistAttrIter : public IterHelper<paddle::Tensor*> {
+ public:
+  explicit SetGradOutputDistAttrIter(
+      const paddle::small_vector<std::vector<GradSlotMeta>,
+                                 kSlotSmallVectorSize>& out_meta,
+      const paddle::small_vector<size_t, kSlotSmallVectorSize>& out_indexes)
+      : out_meta_(out_meta), out_indexes_{out_indexes} {}
+
+ private:
+  void visit_element(paddle::Tensor* element, const GradSlotMeta& meta) {
+    if (element == nullptr) {
+      return;
+    }
+    if (meta.DistAttr().empty()) {
+      return;
+    }
+    if (element->defined()) {
+      if (element->is_dist_tensor()) {
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "Unsupport set defined dist tensor now."));
+      } else {
+        // Only deal with dist tensor here
+        return;
+      }
+    } else {
+      element->set_impl(std::make_shared<phi::distributed::DistTensor>(
+          phi::DDim(), meta.DistAttr()));
+    }
+  }
+  void visit(paddle::Tensor* element) override {
+    if (!out_meta_[out_indexes_[cur_pos_]].empty()) {
+      visit_element(element, out_meta_[out_indexes_[cur_pos_]][0]);
+    }
+    cur_pos_++;
+  }
+
+  void visit(const std::vector<paddle::Tensor*>& elements) override {
+    if (!out_meta_[out_indexes_[cur_pos_]].empty()) {
+      for (size_t i = 0; i < elements.size(); ++i) {
+        visit_element(elements.at(i), out_meta_[out_indexes_[cur_pos_]][i]);
+      }
+    }
+    cur_pos_++;
+  }
+
+  const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+      out_meta_;
+  const paddle::small_vector<size_t, kSlotSmallVectorSize>& out_indexes_;
+
+  int cur_pos_{0};
 };
 
 class EagerUtils {
@@ -223,6 +280,20 @@ class EagerUtils {
   static void FillZeroForEmptyGradInput(
       std::vector<paddle::Tensor>* in_grads,
       const std::vector<GradSlotMeta>& grad_in_metas);
+
+  /**
+   * Set DistAttr
+   */
+  template <typename... Args>
+  static void SetGradOutputDistAttr(
+      const paddle::small_vector<std::vector<GradSlotMeta>,
+                                 kSlotSmallVectorSize>& out_metas,
+      const paddle::small_vector<size_t, kSlotSmallVectorSize>& out_indexes,
+      Args&&... args) {
+    SetGradOutputDistAttrIter(out_metas, out_indexes)
+        .apply(std::forward<Args>(args)...);
+  }
+
   /**
    * Print Input Output (level 0 means least info, level 2 means most info)
    * **/
@@ -234,28 +305,55 @@ class EagerUtils {
       tensor_name_str = t.name();
     }
     const char* TENSOR_INFO_TEMPLATE =
-        "Type: %s, Dtype: %s, Place: %s, Shape: %s";
+        "Type: %s, Dtype: %s, Place: %s, Shape: %s, DistAttr: %s";
     std::string tensor_info_str = "";
     if (t.defined()) {
-      if (t.initialized()) {
-        tensor_info_str += paddle::string::Sprintf(TENSOR_INFO_TEMPLATE,
-                                                   t.impl()->type_info().name(),
-                                                   t.dtype(),
-                                                   t.place().DebugString(),
-                                                   t.dims());
+      if (t.is_dist_tensor()) {
+        auto dist_t =
+            std::static_pointer_cast<phi::distributed::DistTensor>(t.impl());
+        if (t.initialized()) {
+          tensor_info_str += paddle::string::Sprintf(
+              TENSOR_INFO_TEMPLATE,
+              t.impl()->type_info().name(),
+              t.dtype(),
+              t.place().DebugString(),
+              paddle::string::Sprintf(
+                  "%s, Local Shape: %s", t.dims(), dist_t->local_dims()),
+              dist_t->dist_attr());
+        } else {
+          tensor_info_str +=
+              paddle::string::Sprintf(TENSOR_INFO_TEMPLATE,
+                                      t.impl()->type_info().name(),
+                                      "Unknown",
+                                      "Unknown",
+                                      t.dims(),
+                                      dist_t->dist_attr());
+        }
       } else {
-        tensor_info_str += paddle::string::Sprintf(TENSOR_INFO_TEMPLATE,
-                                                   t.impl()->type_info().name(),
-                                                   "Unknown",
-                                                   "Unknown",
-                                                   "Unknown");
+        if (t.initialized()) {
+          tensor_info_str +=
+              paddle::string::Sprintf(TENSOR_INFO_TEMPLATE,
+                                      t.impl()->type_info().name(),
+                                      t.dtype(),
+                                      t.place().DebugString(),
+                                      t.dims(),
+                                      "Unknown");
+        } else {
+          tensor_info_str +=
+              paddle::string::Sprintf(TENSOR_INFO_TEMPLATE,
+                                      t.impl()->type_info().name(),
+                                      "Unknown",
+                                      "Unknown",
+                                      "Unknown",
+                                      "Unknown");
+        }
       }
     } else {
       tensor_info_str += "Unknown";
     }
     if (VLOG_IS_ON(11)) {
       const char* TENSOR_PRINT_TEMPLATE =
-          "{Name: %s, Initialized: %d, Ptr: %d "
+          "{Name: %s, Initialized: %d, Ptr: %d, "
           "TensorInfo: [ %s ], Value:[ %s ], ADInfo:[ %s ]}";
       auto* ad_meta = nullable_autograd_meta(t);
       if (ad_meta && (ad_meta->WeakGrad().lock().get())) {
@@ -306,7 +404,7 @@ class EagerUtils {
       }
     } else if (VLOG_IS_ON(6)) {
       const char* TENSOR_PRINT_TEMPLATE =
-          "{Name: %s, Initialized: %d, Ptr: %d "
+          "{Name: %s, Initialized: %d, Ptr: %d,"
           "TensorInfo: [ %s ], ADInfo:[ %s ]}";
       auto* ad_meta = nullable_autograd_meta(t);
       if (ad_meta && (ad_meta->WeakGrad().lock().get())) {
@@ -333,7 +431,7 @@ class EagerUtils {
       }
     } else if (VLOG_IS_ON(5)) {
       const char* TENSOR_PRINT_TEMPLATE =
-          "{Name: %s, Initialized: %d , Ptr: %d "
+          "{Name: %s, Initialized: %d , Ptr: %d, "
           "TensorInfo: [ %s ]}";
       return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
                                      tensor_name_str,
