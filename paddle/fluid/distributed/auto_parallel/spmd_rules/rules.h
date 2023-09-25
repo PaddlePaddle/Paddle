@@ -16,9 +16,7 @@
 
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/cross_entropy_with_softmax_spmd_rule.h"
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/embedding_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/replicated_spmd_rule.h"
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/reshape_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/softmax_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/split_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/transpose_spmd_rule.h"
@@ -30,10 +28,6 @@ namespace auto_parallel {
 
 // replicated rule
 REGISTER_SPMD_RULE(replicated, ReplicatedSPMDRule);
-
-// embedding rule
-REGISTER_SPMD_RULE(embedding, EmbeddingSPMDRule);
-REGISTER_SPMD_RULE(lookup_table_v2, EmbeddingSPMDRule);
 
 // softmax rule
 REGISTER_SPMD_RULE(softmax, SoftmaxSPMDRule);
@@ -49,9 +43,6 @@ REGISTER_SPMD_RULE(split_with_num, SplitSPMDRule);
 
 // transpose rule
 REGISTER_SPMD_RULE(transpose, TransposeSPMDRule);
-
-// reshape rule
-REGISTER_SPMD_RULE(reshape, ReshapeSPMDRule);
 
 }  // namespace auto_parallel
 }  // namespace distributed

@@ -17,11 +17,11 @@ limitations under the License. */
 #include <iostream>
 #include <vector>
 
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
+#include "paddle/phi/core/distributed/type_defs.h"
 
-namespace paddle {
+namespace phi {
 namespace distributed {
-namespace auto_parallel {
 
 // This is a base class to describe how each dimension in output tensor
 // is transformed from input tensor's axes. The transformation includes
@@ -153,8 +153,7 @@ DimTrans* make_split(DimTrans* dim,
 // leftmost output split axis can be sharded when its shape can be divisible
 // by the mesh dimension.
 std::vector<std::vector<int64_t>> InferFromDimTrans(
-    const DistTensorSpec& input_spec, const std::vector<DimTrans*>& dim_trans);
+    const DistMetaTensor& input_spec, const std::vector<DimTrans*>& dim_trans);
 
-}  // namespace auto_parallel
 }  // namespace distributed
-}  // namespace paddle
+}  // namespace phi
