@@ -26,7 +26,12 @@
 #include "paddle/pir/core/utils.h"
 
 namespace pir {
-Operation *Operation::Create(OperationArgument &&argument) {
+using detail::OpInlineResultImpl;
+using detail::OpOperandImpl;
+using detail::OpOutlineResultImpl;
+using detail::OpResultImpl;
+
+Operation *Operation::Create(const OperationArgument &argument) {
   return Create(argument.inputs,
                 argument.attributes,
                 argument.output_types,
@@ -38,7 +43,7 @@ Operation *Operation::Create(OperationArgument &&argument) {
 // Allocate the required memory based on the size and number of inputs, outputs,
 // and operators, and construct it in the order of: OpOutlineResult,
 // OpInlineResult, Operation, operand.
-Operation *Operation::Create(const std::vector<pir::OpResult> &inputs,
+Operation *Operation::Create(const std::vector<Value> &inputs,
                              const AttributeMap &attributes,
                              const std::vector<Type> &output_types,
                              pir::OpInfo op_info,
@@ -49,8 +54,7 @@ Operation *Operation::Create(const std::vector<pir::OpResult> &inputs,
   uint32_t num_results = output_types.size();
   uint32_t num_operands = inputs.size();
   uint32_t num_successors = successors.size();
-  uint32_t max_inline_result_num =
-      detail::OpResultImpl::GetMaxInlineResultIndex() + 1;
+  uint32_t max_inline_result_num = MAX_INLINE_RESULT_IDX + 1;
   size_t result_mem_size =
       num_results > max_inline_result_num
           ? sizeof(detail::OpOutlineResultImpl) *
@@ -89,7 +93,7 @@ Operation *Operation::Create(const std::vector<pir::OpResult> &inputs,
     IR_THROW("The address of OpOperandImpl must be divisible by 8.");
   }
   for (size_t idx = 0; idx < num_operands; idx++) {
-    new (base_ptr) detail::OpOperandImpl(inputs[idx].impl_, op);
+    new (base_ptr) detail::OpOperandImpl(inputs[idx], op);
     base_ptr += sizeof(detail::OpOperandImpl);
   }
   // 3.4. Construct BlockOperands.
@@ -131,7 +135,7 @@ void Operation::Destroy() {
 
   // 2. Deconstruct Result.
   for (size_t idx = 0; idx < num_results_; ++idx) {
-    detail::OpResultImpl *impl = result(idx).impl();
+    detail::ValueImpl *impl = result(idx).impl();
     if (detail::OpOutlineResultImpl::classof(*impl)) {
       static_cast<detail::OpOutlineResultImpl *>(impl)->~OpOutlineResultImpl();
     } else {
@@ -159,13 +163,11 @@ void Operation::Destroy() {
   }
 
   // 5. Free memory.
-  uint32_t max_inline_result_num =
-      detail::OpResultImpl::GetMaxInlineResultIndex() + 1;
   size_t result_mem_size =
-      num_results_ > max_inline_result_num
+      num_results_ > OUTLINE_RESULT_IDX
           ? sizeof(detail::OpOutlineResultImpl) *
-                    (num_results_ - max_inline_result_num) +
-                sizeof(detail::OpInlineResultImpl) * max_inline_result_num
+                    (num_results_ - OUTLINE_RESULT_IDX) +
+                sizeof(detail::OpInlineResultImpl) * OUTLINE_RESULT_IDX
           : sizeof(detail::OpInlineResultImpl) * num_results_;
   void *aligned_ptr = reinterpret_cast<char *>(this) - result_mem_size;
 
@@ -191,67 +193,43 @@ Operation::Operation(const AttributeMap &attributes,
       num_regions_(num_regions),
       num_successors_(num_successors) {}
 
-pir::OpResult Operation::result(uint32_t index) const {
-  if (index >= num_results_) {
-    IR_THROW("index exceeds OP output range.");
+///
+/// \brief op ouput related public interfaces implementation
+///
+std::vector<OpResult> Operation::results() {
+  std::vector<OpResult> res;
+  for (uint32_t i = 0; i < num_results(); ++i) {
+    res.push_back(result(i));
   }
-  uint32_t max_inline_idx = detail::OpResultImpl::GetMaxInlineResultIndex();
-  const char *ptr =
-      (index > max_inline_idx)
-          ? reinterpret_cast<const char *>(this) -
-                (max_inline_idx + 1) * sizeof(detail::OpInlineResultImpl) -
-                (index - max_inline_idx) * sizeof(detail::OpOutlineResultImpl)
-          : reinterpret_cast<const char *>(this) -
-                (index + 1) * sizeof(detail::OpInlineResultImpl);
-  if (index > max_inline_idx) {
-    return pir::OpResult(
-        reinterpret_cast<const detail::OpOutlineResultImpl *>(ptr));
-  } else {
-    return pir::OpResult(
-        reinterpret_cast<const detail::OpInlineResultImpl *>(ptr));
-  }
+  return res;
 }
 
-OpOperand Operation::operand(uint32_t index) const {
-  if (index >= num_operands_) {
-    IR_THROW("index exceeds OP input range.");
+///
+/// \brief op input related public interfaces
+///
+std::vector<OpOperand> Operation::operands() {
+  std::vector<OpOperand> res;
+  for (uint32_t i = 0; i < num_operands(); ++i) {
+    res.push_back(operand(i));
   }
-  const char *ptr = reinterpret_cast<const char *>(this) + sizeof(Operation) +
-                    (index) * sizeof(detail::OpOperandImpl);
-  return OpOperand(reinterpret_cast<const detail::OpOperandImpl *>(ptr));
+  return res;
 }
-
 Value Operation::operand_source(uint32_t index) const {
-  OpOperand val = operand(index);
-  return val ? val.source() : Value();
+  auto val = op_operand_impl(index);
+  return val ? val->source() : nullptr;
 }
 
-std::string Operation::name() const {
-  auto p_name = info_.name();
-  return p_name ? p_name : "";
-}
-
-Attribute Operation::attribute(const std::string &key) const {
-  IR_ENFORCE(HasAttribute(key), "operation(%s): no attribute %s", name(), key);
-  return attributes_.at(key);
-}
-
-Region *Operation::GetParentRegion() {
-  return parent_ ? parent_->GetParent() : nullptr;
-}
-
-Operation *Operation::GetParentOp() const {
-  return parent_ ? parent_->GetParentOp() : nullptr;
-}
-
-const Program *Operation::GetParentProgram() const {
-  Operation *op = const_cast<Operation *>(this);
-  while (Operation *parent_op = op->GetParentOp()) {
-    op = parent_op;
+std::vector<Value> Operation::operands_source() const {
+  std::vector<Value> res;
+  for (uint32_t i = 0; i < num_operands(); ++i) {
+    res.push_back(operand_source(i));
   }
-  ModuleOp module_op = op->dyn_cast<ModuleOp>();
-  return module_op ? module_op.program() : nullptr;
+  return res;
 }
+
+///
+/// \brief op successor related public interfaces
+///
 BlockOperand Operation::block_operand(uint32_t index) const {
   IR_ENFORCE(index < num_successors_, "Invalid block_operand index");
   return block_operands_ + index;
@@ -259,27 +237,49 @@ BlockOperand Operation::block_operand(uint32_t index) const {
 Block *Operation::successor(uint32_t index) const {
   return block_operand(index).source();
 }
-
 void Operation::set_successor(Block *block, unsigned index) {
   IR_ENFORCE(index < num_operands_, "Invalid block_operand index");
   (block_operands_ + index)->set_source(block);
 }
 
+///
+/// \brief region related public interfaces implementation
+///
 Region &Operation::region(unsigned index) {
   IR_ENFORCE(index < num_regions_, "invalid region index");
   return regions_[index];
 }
-
 const Region &Operation::region(unsigned index) const {
   IR_ENFORCE(index < num_regions_, "invalid region index");
   return regions_[index];
 }
 
-void Operation::SetParent(Block *parent, const Block::iterator &position) {
+///
+/// \brief parent related public interfaces implementation
+///
+Region *Operation::GetParentRegion() const {
+  return parent_ ? parent_->GetParent() : nullptr;
+}
+Operation *Operation::GetParentOp() const {
+  return parent_ ? parent_->GetParentOp() : nullptr;
+}
+Program *Operation::GetParentProgram() {
+  auto op = this;
+  while (Operation *parent_op = op->GetParentOp()) {
+    op = parent_op;
+  }
+  ModuleOp module_op = op->dyn_cast<ModuleOp>();
+  return module_op ? module_op.program() : nullptr;
+}
+void Operation::SetParent(Block *parent, const Block::Iterator &position) {
   parent_ = parent;
   position_ = position;
 }
 
+std::string Operation::name() const {
+  auto p_name = info_.name();
+  return p_name ? p_name : "";
+}
 void Operation::ReplaceAllUsesWith(const std::vector<Value> &values) {
   IR_ENFORCE(num_results_ == values.size(),
              "the num of result should be the same.");
@@ -302,20 +302,39 @@ void Operation::Verify() {
   }
 }
 
-std::vector<OpOperand> Operation::operands() const {
-  std::vector<OpOperand> res;
-  for (uint32_t i = 0; i < num_operands(); ++i) {
-    res.push_back(operand(i));
+int32_t Operation::ComputeOpResultOffset(uint32_t index) const {
+  if (index >= num_results_) {
+    LOG(FATAL) << "index exceeds OP op result range.";
   }
-  return res;
+  if (index < OUTLINE_RESULT_IDX) {
+    return -static_cast<int32_t>((index + 1u) * sizeof(OpInlineResultImpl));
+  }
+  constexpr uint32_t anchor = OUTLINE_RESULT_IDX * sizeof(OpInlineResultImpl);
+  index = index - MAX_INLINE_RESULT_IDX;
+  return -static_cast<int32_t>(index * sizeof(OpOutlineResultImpl) + anchor);
 }
 
-std::vector<OpResult> Operation::results() const {
-  std::vector<OpResult> res;
-  for (uint32_t i = 0; i < num_results(); ++i) {
-    res.push_back(result(i));
+int32_t Operation::ComputeOpOperandOffset(uint32_t index) const {
+  if (index >= num_operands_) {
+    LOG(FATAL) << "index exceeds OP op operand range.";
   }
-  return res;
+  return static_cast<int32_t>(index * sizeof(OpOperandImpl) +
+                              sizeof(Operation));
 }
 
+#define COMPONENT_IMPL(component_lower, componnent_upper)                     \
+  componnent_upper##Impl *Operation::component_lower##_impl(uint32_t index) { \
+    int32_t offset = Compute##componnent_upper##Offset(index);                \
+    return reinterpret_cast<componnent_upper##Impl *>(                        \
+        reinterpret_cast<char *>(this) + offset);                             \
+  }                                                                           \
+  const componnent_upper##Impl *Operation::component_lower##_impl(            \
+      uint32_t index) const {                                                 \
+    int32_t offset = Compute##componnent_upper##Offset(index);                \
+    return reinterpret_cast<const componnent_upper##Impl *>(                  \
+        reinterpret_cast<const char *>(this) + offset);                       \
+  }
+
+COMPONENT_IMPL(op_result, OpResult)
+COMPONENT_IMPL(op_operand, OpOperand)
 }  // namespace pir

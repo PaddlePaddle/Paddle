@@ -223,6 +223,11 @@ void RecvV2InferMeta(const int ring_id,
   out->set_dtype(dtype);
 }
 
+void SeedInferMeta(int seed, MetaTensor* out) {
+  out->set_dims(phi::make_ddim({1}));
+  out->set_dtype(DataType::INT32);
+}
+
 void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,
                                       float mean,
                                       float std,

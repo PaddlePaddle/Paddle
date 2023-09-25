@@ -57,6 +57,7 @@ bool PyObject_CheckLongOrConvertToLong(PyObject** obj);
 bool PyObject_CheckFloatOrConvertToFloat(PyObject** obj);
 bool PyObject_CheckStr(PyObject* obj);
 bool PyObject_CheckIROpResult(PyObject* obj);
+bool PyObject_CheckIRVectorOfOpResult(PyObject* obj);
 bool CastPyArg2AttrBoolean(PyObject* obj, ssize_t arg_pos);
 int CastPyArg2AttrInt(PyObject* obj, ssize_t arg_pos);
 int64_t CastPyArg2AttrLong(PyObject* obj, ssize_t arg_pos);
@@ -75,10 +76,16 @@ std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos);
 std::vector<int64_t> CastPyArg2VectorOfInt64(PyObject* obj, size_t arg_pos);
 std::vector<size_t> CastPyArg2VectorOfSize_t(PyObject* obj, size_t arg_pos);
 std::vector<float> CastPyArg2VectorOfFloat(PyObject* obj, size_t arg_pos);
-pir::OpResult CastPyArg2OpResult(PyObject* obj,
-                                 const std::string& op_type,
-                                 size_t arg_pos);
-std::vector<pir::OpResult> CastPyArg2VectorOfOpResult(
+pir::Value CastPyArg2Value(PyObject* obj,
+                           const std::string& op_type,
+                           size_t arg_pos);
+paddle::optional<pir::Value> CastPyArg2OptionalValue(PyObject* obj,
+                                                     const std::string& op_type,
+                                                     size_t arg_pos);
+std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
+                                                const std::string& op_type,
+                                                size_t arg_pos);
+paddle::optional<std::vector<pir::Value>> CastPyArg2OptionalVectorOfValue(
     PyObject* obj, const std::string& op_type, size_t arg_pos);
 std::vector<std::vector<size_t>> CastPyArg2VectorOfVectorOfSize_t(
     PyObject* obj, size_t arg_pos);
@@ -129,7 +136,6 @@ PyObject* ToPyObject(
 PyObject* ToPyObject(const paddle::framework::Vocab& value);
 
 PyObject* ToPyObject(std::shared_ptr<egr::GradNodeBase> grad_node);
-
 PyObject* ToPyObject(const pir::OpResult& value);
 PyObject* ToPyObject(const std::vector<pir::OpResult>& value);
 

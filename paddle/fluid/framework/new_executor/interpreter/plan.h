@@ -43,12 +43,15 @@ class Plan final {
   const ProgramDesc* Program(const std::string& job_type) const;
   std::shared_ptr<::pir::Program> IrProgram(const std::string& job_type) const;
 
+  void UpdateIrProgram(const std::string& job_type,
+                       std::shared_ptr<::pir::Program> ir_prog);
+
   int64_t MicroBatchNum() const;
 
  private:
   const std::vector<std::shared_ptr<Job>> job_list_;
   const std::unordered_map<std::string, ProgramDesc*> type_to_program_;
-  const std::unordered_map<std::string, std::shared_ptr<::pir::Program>>
+  std::unordered_map<std::string, std::shared_ptr<::pir::Program>>
       type_to_ir_program_;
   int64_t micro_batch_num_;
 };

@@ -142,7 +142,8 @@ void RenameAndGetOutputs(
   };
 
   for (size_t index = 0; index < block_desc->OpSize(); ++index) {
-    framework::proto::OpDesc *op = block_desc->Op(index)->Proto();
+    framework::proto::OpDesc *op =
+        block_desc->Op(static_cast<int>(index))->Proto();
     framework::OpDesc op_desc(*op, nullptr);
     auto correspond_node = subgraph_nodes[index];
     PADDLE_ENFORCE_EQ(

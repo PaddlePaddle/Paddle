@@ -62,11 +62,7 @@ bool is_same_place(const Place &p1, const Place &p2) {
   if (places_are_same_class(p1, p2)) {
     if (is_cpu_place(p1) || is_cuda_pinned_place(p1)) {
       return true;
-    } else if (is_xpu_place(p1)) {
-      return p1 == p2;
-    } else if (is_ipu_place(p1)) {
-      return p1 == p2;
-    } else if (is_custom_place(p1)) {
+    } else if (is_xpu_place(p1) || is_ipu_place(p1) || is_custom_place(p1)) {
       return p1 == p2;
     } else {
       return p1 == p2;

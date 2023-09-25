@@ -23,7 +23,20 @@ ShapeDialect::ShapeDialect(IrContext *context)
 }
 
 void ShapeDialect::initialize() {
-  RegisterOps<SymbolicDim, DimOp, TieProductEqualOp>();
+  RegisterOps<SymbolicDim,
+              DimOp,
+              TieProductEqualOp,
+              TieShapeOp,
+              FuncOp,
+              TensorDimOp>();
+}
+
+void ShapeDialect::PrintOperation(Operation *op, IrPrinter &printer) const {
+  if (auto func_op = op->dyn_cast<FuncOp>()) {
+    func_op.Print(printer);
+  } else {
+    printer.PrintGeneralOperation(op);
+  }
 }
 
 }  // namespace dialect

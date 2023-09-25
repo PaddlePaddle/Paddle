@@ -88,6 +88,9 @@ static phi::DDim get_reduce_dims(const phi::DDim& x_dims,
   return get_reduce_dims_from_out(out_dims, x_dims);
 }
 
+void SetEmptyGrad(const std::vector<std::vector<Tensor>>& outputs,
+                  const std::vector<std::vector<bool>>& stop_gradients);
+
 std::vector<std::vector<Tensor>> ConstructVjpResultByStopGradients(
     const std::vector<std::vector<Tensor>>& outputs,
     const std::vector<std::vector<bool>>& stop_gradients);

@@ -901,8 +901,7 @@ def conv2d(
     )
     if len(input.shape) != 4:
         raise ValueError(
-            "Input size should be 4, "
-            "but received {}".format(len(input.shape))
+            "Input size should be 4, " f"but received {len(input.shape)}"
         )
     num_channels = input.shape[1]
     if not isinstance(use_cudnn, bool):
@@ -931,7 +930,7 @@ def conv2d(
     elif groups <= 0:
         raise ValueError(
             "the groups of input must be greater than 0, "
-            "but received the groups of input is {}".format(groups)
+            f"but received the groups of input is {groups}"
         )
     else:
         if num_channels % groups != 0:
@@ -1020,8 +1019,8 @@ def conv2d(
         if filter_elem_num <= 0:
             raise ValueError(
                 "Invalid filter number, excepted number is larger than 0, but"
-                " received {}, please check the input shape and "
-                "filter size.".format(filter_elem_num)
+                f" received {filter_elem_num}, please check the input shape and "
+                "filter size."
             )
         std = (2.0 / filter_elem_num) ** 0.5
         return Normal(0.0, std)
@@ -1246,9 +1245,7 @@ def conv3d(
         num_filter_channels = num_channels
     elif groups <= 0:
         raise ValueError(
-            "the groups of conv3d should be greater than 0. Received groups: {}".format(
-                groups
-            )
+            f"the groups of conv3d should be greater than 0. Received groups: {groups}"
         )
     else:
         if num_channels % groups != 0:
@@ -1325,8 +1322,8 @@ def conv3d(
         if filter_elem_num <= 0:
             raise ValueError(
                 "Invalid filter number, excepted number is larger than 0, but"
-                " received {}, please check the input shape and "
-                "filter size.".format(filter_elem_num)
+                f" received {filter_elem_num}, please check the input shape and "
+                "filter size."
             )
 
         std = (2.0 / filter_elem_num) ** 0.5
@@ -1554,8 +1551,7 @@ def conv2d_transpose(
     ), "param_attr should not be False in conv2d_transpose."
     if len(input.shape) != 4:
         raise ValueError(
-            "Input size should be 4, "
-            "but received {}".format(len(input.shape))
+            "Input size should be 4, " f"but received {len(input.shape)}"
         )
 
     if num_filters == 0:
@@ -1712,7 +1708,7 @@ def conv2d_transpose(
     elif groups <= 0:
         raise ValueError(
             "the groups of input must be greater than 0, "
-            "but received the groups of input is {}".format(groups)
+            f"but received the groups of input is {groups}"
         )
 
     filter_shape = [input_channel, num_filters // groups] + filter_size
@@ -2075,9 +2071,7 @@ def conv3d_transpose(
     if num_filters % groups != 0:
         raise ValueError(
             "Attr(num_filters) must be divisible by groups,"
-            "Received: Attr(num_filters) is {}, the groups is {}".format(
-                num_filters, groups
-            )
+            f"Received: Attr(num_filters) is {num_filters}, the groups is {groups}"
         )
 
     filter_shape = [input_channel, num_filters // groups] + filter_size
@@ -2303,8 +2297,8 @@ def deformable_conv(
         if filter_elem_num <= 0:
             raise ValueError(
                 "Invalid filter number, excepted number is larger than 0, but"
-                " received {}, please check the input shape and "
-                "filter size.".format(filter_elem_num)
+                f" received {filter_elem_num}, please check the input shape and "
+                "filter size."
             )
         std = (2.0 / filter_elem_num) ** 0.5
         return paddle.nn.initializer.normal.Normal(0.0, std)
@@ -2566,10 +2560,10 @@ def bilinear_tensor_product(
             :ref:`api_guide_Name` . Usually name is no need to set and None by default.
         param_attr (ParamAttr|None): To specify the weight parameter attribute.
             Default: None, which means the default weight parameter property is
-            used. See usage for details in :ref:`api_base_ParamAttr` .
+            used. See usage for details in :ref:`api_paddle_ParamAttr` .
         bias_attr (ParamAttr|None): To specify the bias parameter attribute.
             Default: None, which means the default bias parameter property is
-            used. See usage for details in :ref:`api_base_ParamAttr` .
+            used. See usage for details in :ref:`api_paddle_ParamAttr` .
 
     Returns:
         Tensor, A 2-D Tensor of shape [batch_size, size]. Data type is the same as input **x**.
@@ -3010,7 +3004,7 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
         if data_format not in true_data_format:
             raise ValueError(
                 "data_format must be one of 'NC', 'NCL', 'NCHW', 'NCDHW', "
-                "'NLC', 'NHWC', 'NDHWC' but receive {}".format(data_format)
+                f"'NLC', 'NHWC', 'NDHWC' but receive {data_format}"
             )
 
         data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
@@ -3324,9 +3318,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
         for v in skip_vars_in_backward_input:
             if v.name not in fwd_in_out:
                 raise ValueError(
-                    'Tensor {} is not found in forward inputs and outputs'.format(
-                        v.name
-                    )
+                    f'Tensor {v.name} is not found in forward inputs and outputs'
                 )
             backward_skip_vars.add(v.name)
 

@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 
 import paddle
 
@@ -44,6 +45,7 @@ class TestInplaceAssign(unittest.TestCase):
         y.mean().backward()
         np.testing.assert_array_equal(x.grad.numpy(), np.array([2.0]))
 
+    @test_and_compare_with_new_ir(False)
     def test_case2(self):
         @paddle.jit.to_static
         def func(a, x):

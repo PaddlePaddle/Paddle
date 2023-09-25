@@ -158,8 +158,7 @@ def _yield_value(iterable):
 def _yield_flat_nest(nest):
     for n in _yield_value(nest):
         if is_sequence(n):
-            for ni in _yield_flat_nest(n):
-                yield ni
+            yield from _yield_flat_nest(n)
         else:
             yield n
 
@@ -290,7 +289,7 @@ def _recursive_assert_same_structure(nest1, nest2, check_types):
     if is_sequence_nest1 != is_sequence(nest2):
         raise ValueError(
             "The two structures don't have the same nested structure.\n\n"
-            "First structure: {}\n\nSecond structure: {}.".format(nest1, nest2)
+            f"First structure: {nest1}\n\nSecond structure: {nest2}."
         )
     if not is_sequence_nest1:
         return  # finished checking
@@ -407,7 +406,7 @@ def get_shape_tensor_inputs(inputs, attrs, shape, op_type):
                     dim = paddle.cast(x=dim, dtype='int32')
                 shape_tensor_list.append(dim)
             else:
-                temp_out = fill_constant([1], 'int32', dim, force_cpu=True)
+                temp_out = fill_constant([], 'int32', dim, force_cpu=True)
                 shape_tensor_list.append(temp_out)
         return shape_tensor_list
 
@@ -456,7 +455,8 @@ def convert_shape_to_list(shape):
     if isinstance(shape, (list, tuple)):
         shape = [x.item(0) if isinstance(x, Variable) else x for x in shape]
     else:
-        shape = shape.astype(int).tolist()
+        if in_dygraph_mode():
+            shape = shape.astype(int).tolist()
     return shape
 
 

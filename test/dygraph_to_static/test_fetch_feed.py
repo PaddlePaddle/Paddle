@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 
 import paddle
 from paddle import base
@@ -78,6 +79,7 @@ class TestPool2D(unittest.TestCase):
 
             return prediction.numpy()
 
+    @test_and_compare_with_new_ir(True)
     def train_static(self):
         return self.train(to_static=True)
 
@@ -92,9 +94,7 @@ class TestPool2D(unittest.TestCase):
             dygraph_res,
             static_res,
             rtol=1e-05,
-            err_msg='dygraph_res is {}\n static_res is \n{}'.format(
-                dygraph_res, static_res
-            ),
+            err_msg=f'dygraph_res is {dygraph_res}\n static_res is \n{static_res}',
         )
 
 
