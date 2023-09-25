@@ -1350,3 +1350,8 @@ PHI_DEFINE_EXPORTED_bool(dynamic_static_unified_comm,
                          "Whether to use new communication library in auto "
                          "parallel and static mode.");
 #endif  // FLAGS_dynamic_static_unified_comm
+
+PHI_DEFINE_EXPORTED_bool(
+    use_auto_growth_pinned_allocator,
+    false,
+    "Whether to use the auto_growth CUDA pinned allocator.");
