@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "paddle/phi/infermeta/spmd_rules/default_data_parallel.h"
 #include "paddle/phi/infermeta/spmd_rules/elementwise.h"
+#include "paddle/phi/infermeta/spmd_rules/embedding.h"
 #include "paddle/phi/infermeta/spmd_rules/layer_norm.h"
 #include "paddle/phi/infermeta/spmd_rules/matmul.h"
 #include "paddle/phi/infermeta/spmd_rules/reduction.h"
@@ -469,6 +470,16 @@ PD_REGISTER_SPMD_RULE(
 PD_REGISTER_SPMD_RULE(reshape,
                       PD_INFER_SPMD(phi::distributed::ReshapeInferSpmd),
                       PD_INFER_SPMD(phi::distributed::ReshapeInferSpmdReverse));
+
+// embedding rule
+PD_REGISTER_SPMD_RULE(
+    embedding,
+    PD_INFER_SPMD(phi::distributed::EmbeddingInferSpmd),
+    PD_INFER_SPMD(phi::distributed::EmbeddingInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(
+    lookup_table_v2,
+    PD_INFER_SPMD(phi::distributed::EmbeddingInferSpmd),
+    PD_INFER_SPMD(phi::distributed::EmbeddingInferSpmdReverse));
 
 }  // namespace distributed
 }  // namespace phi

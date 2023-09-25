@@ -24,6 +24,7 @@
 
 
 vjp_interface_declare_gen_op_list = [
+    'where',
     "tanh",
     "mean",
     "divide",
@@ -68,6 +69,7 @@ vjp_interface_declare_gen_op_list = [
     'triu',
 ]
 vjp_interface_implementation_gen_op_list = [
+    'where',
     "tanh",
     "mean",
     "divide",
