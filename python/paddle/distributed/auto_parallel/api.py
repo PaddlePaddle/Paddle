@@ -285,7 +285,7 @@ def shard_layer(
             that are all `paddle.Tensor` with DistTensor
 
     Examples:
-        ..code-block:: python
+        .. code-block:: python
 
             >>> import paddle
             >>> import paddle.distributed as dist
