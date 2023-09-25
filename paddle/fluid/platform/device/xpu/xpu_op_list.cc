@@ -109,9 +109,7 @@ std::vector<vartype::Type> get_xpu_op_support_type(
   } else {
     ops = phi::backends::xpu::get_kl3_ops();
   }
-  // auto& ops = version == phi::backends::xpu::XPUVersion::XPU1
-  //                 ? phi::backends::xpu::get_kl1_ops()
-  //                 : phi::backends::xpu::get_kl2_ops();
+
   std::vector<vartype::Type> res;
   if (ops.find(op_name) != ops.end()) {
     auto& dtypes = ops[op_name];
@@ -131,9 +129,7 @@ XPUOpListMap get_xpu_op_list(phi::backends::xpu::XPUVersion version) {
   } else {
     ops = phi::backends::xpu::get_kl3_ops();
   }
-  // auto& ops = version == phi::backends::xpu::XPUVersion::XPU1
-  //                 ? phi::backends::xpu::get_kl1_ops()
-  //                 : phi::backends::xpu::get_kl2_ops();
+
   XPUOpListMap res;
   for (auto& op : ops) {
     std::vector<vartype::Type> op_types;
