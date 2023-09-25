@@ -331,6 +331,10 @@ PD_REGISTER_SPMD_RULE(
     trunc,
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(
+    dropout,
+    PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmdReverse));
 
 // elementwise binary rule
 PD_REGISTER_SPMD_RULE(
