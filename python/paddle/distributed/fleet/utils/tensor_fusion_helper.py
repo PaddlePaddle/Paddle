@@ -119,31 +119,60 @@ def bw_hook_func(buffer, param):
 
 
 class ShardingGradView:
-    def __init__(self, buffer, index, padded_size, sharding_degree):
+    def __init__(
+        self, param, buffer, index, padded_size, sharding_degree, rank
+    ):
+        self._param = param
         self._buffer = buffer
         self._index = index
         self._padded_size = padded_size
         self._sharding_degree = sharding_degree
+        self._rank = rank
+        self._slice_grad = []
 
-    def add_tmp_grad(self, param, tmp_grad):
+        for shard_id in range(sharding_degree):
+            begin = (
+                self._index
+                + shard_id * self.buffer._numel() // self._sharding_degree
+            )
+            end = begin + self._padded_size // self._sharding_degree
+            slice_grad = buffer._slice(begin, end)
+
+    def add_tmp_grad(self, tmp_grad):
         # tmp_grad is hijacked by amp hook
-        if hasattr(param, "main_grad"):
-            assert param.main_grad is not None
+        if hasattr(self._param, "main_grad"):
+            assert self._param.main_grad is not None
             assert not tmp_grad._is_initialized()
             # hack main grad
-            (tmp_grad, param.main_grad) = (param.main_grad, self)
+            (tmp_grad, self._param.main_grad) = (self._param.main_grad, self)
 
         if tmp_grad._is_initialized():
             self._add(tmp_grad)
             tmp_grad._clear_data()
 
+    def assign_slice_grad(self):
+        slice_grad = self._slice_grad[self._rank]
+        assert hasattr(self._param, "shard_slice")
+        self._param.shard_slice._copy_gradient_from(slice_grad)
+
     def _add(self, tmp_grad):
         # hack main grad
         print("_add grad")
+        tmp_grad_shape = tmp_grad.shape
+        tmp_grad.flatten_()
+        for shard_id in range(self._sharding_degree):
+            begin = shard_id * self._padded_size // self._sharding_degree
+            end = begin + self._padded_size // self._sharding_degree
+            end = min(end, self.tmp_grad._numel())
+            if begin < end:
+                self._slice_grad[shard_id]._slice(0, begin - end)._add(
+                    tmp_grad._slice(begin, end)
+                )
+        tmp_grad.get_tensor()._set_dims(tmp_grad_shape)
 
 
 def build_reduce_scatter_buffer(
-    parameters, sharding_degree, use_main_grad=False
+    parameters, sharding_degree, rank, use_main_grad=False
 ):
     total_buffer_size = 0
     param2index = {}
@@ -169,9 +198,13 @@ def build_reduce_scatter_buffer(
     for param in parameters:
         padded_size = get_padded_size(param)
         grad_view = ShardingGradView(
-            buffer, param2index[param.name], padded_size, sharding_degree
+            param,
+            buffer,
+            param2index[param.name],
+            padded_size,
+            sharding_degree,
+            rank,
         )
-
         # hack main_grad
         sharding_grad_view[param.name] = grad_view
 
@@ -251,6 +284,7 @@ class FusedCommBuffer:
             ) = build_reduce_scatter_buffer(
                 self._params,
                 self._comm_group.nranks,
+                self._comm_group.rank,
                 use_main_grad=self.use_main_grad,
             )
 
@@ -309,7 +343,7 @@ class FusedCommBuffer:
         assert self._act == HOOK_ACTION.REDUCE_SCATTER
         assert param.name in self._sharding_param_grad_view
         grad_view = self._sharding_param_grad_view[param.name]
-        grad_view.add_tmp_grad(param, tmp_grad)
+        grad_view.add_tmp_grad(tmp_grad)
 
     @imperative_base.no_grad
     def comm_grads(self):
@@ -339,15 +373,19 @@ class FusedCommBuffer:
 
         elif self._act == HOOK_ACTION.REDUCE_SCATTER:
             shard_size = self.grad_storage._numel() // self._comm_group.nranks
-            reduce_scattered = self.grad_storage._slice(0, shard_size)
+            begin = self._shard_size * self._comm_group.rank
+            end = begin + shard_size
+            reduce_scattered = self.grad_storage._slice(begin, end)
             task = paddle.distributed.reduce_scatter(
                 reduce_scattered,
                 self.grad_storage,
                 group=self._comm_group,
                 sync_op=False,
             )
-            # self._hcg.get_sharding_parallel_group(),
-            # self._assign_slice_grad(param, reduce_scattered)
+            # assign slice grad
+            for k, v in self._sharding_param_grad_view.items():
+                grad_view = v
+                grad_view.assign_slice_grad()
 
         self._task = task
 
