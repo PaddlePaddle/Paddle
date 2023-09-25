@@ -28,6 +28,10 @@ def masked_multihead_attention(
     qkv_out_scale=None,
     out_shift=None,
     out_smooth=None,
+    cache_k_quant_scales=None,
+    cache_v_quant_scales=None,
+    cache_k_dequant_scales=None,
+    cache_v_dequant_scales=None,
     seq_len=1,
     rotary_emb_dims=0,
     use_neox_rotary_style=False,
@@ -36,6 +40,7 @@ def masked_multihead_attention(
     quant_round_type=1,
     quant_max_bound=127.0,
     quant_min_bound=-127.0,
+    cache_scale_group_num=1,
 ):
     r"""
     Masked Multi-head attention for text summarization.
@@ -53,6 +58,10 @@ def masked_multihead_attention(
         qkv_out_scale (Tensor, optional): The qkv_out_scale tensor, used in quant. Its shape is [3, num_head, head_dim].
         out_shift (Tensor, optional): The out_shift tensor, used in quant.
         out_smooth (Tensor, optional): The out_smooth tensor, used in quant.
+        cache_k_quant_scales (Tensor, optinal): The quant scales used to quantize cache k.
+        cache_v_quant_scales (Tensor, optinal): The quant scales used to quantize cache v.
+        cache_k_dequant_scales (Tensor, optinal): The dequant scales used to dequantize cache k.
+        cache_v_dequant_scales (Tensor, optinal): The dequant scales used to dequantize cache v.
         seq_len (int, optional): The seq_len, used to get input length. Default 1.
         rotary_emb_dims (int, optional): The rotary_emb_dims. Default 1.
         use_neox_rotary_style (bool, optional): A flag indicating whether neox_rotary_style is needed or not. Default False.
@@ -61,6 +70,7 @@ def masked_multihead_attention(
         quant_round_type (int, optional): The quant_round_type, used in quant. Default 1.
         quant_max_bound (float, optional): The quant_max_bound, used in quant. Default 127.0.
         quant_min_bound (float, optional): The quant_min_bound, used in quant. Default -127.0.
+        cache_scale_group_num (int, optional): The number of cache scale groups, which is used in cache kv quantization.
 
     Returns:
         Tensor|tuple: If "beam_cache_offset_out" is not none, return the
@@ -102,6 +112,10 @@ def masked_multihead_attention(
             qkv_out_scale,
             out_shift,
             out_smooth,
+            cache_k_quant_scales,
+            cache_v_quant_scales,
+            cache_k_dequant_scales,
+            cache_v_dequant_scales,
             seq_len,
             rotary_emb_dims,
             use_neox_rotary_style,
@@ -110,6 +124,7 @@ def masked_multihead_attention(
             quant_round_type,
             quant_max_bound,
             quant_min_bound,
+            cache_scale_group_num,
         )
 
     helper = LayerHelper('masked_multihead_attention', **locals())
@@ -151,6 +166,14 @@ def masked_multihead_attention(
         inputs['out_shift'] = out_shift
     if out_smooth is not None:
         inputs['out_smooth'] = out_smooth
+    if cache_k_quant_scales is not None:
+        inputs["cache_k_quant_scales"] = cache_k_quant_scales
+    if cache_v_quant_scales is not None:
+        inputs["cache_v_quant_scales"] = cache_v_quant_scales
+    if cache_k_dequant_scales is not None:
+        inputs["cache_k_dequant_scales"] = cache_k_dequant_scales
+    if cache_k_dequant_scales is not None:
+        inputs["cache_k_dequant_scales"] = cache_k_dequant_scales
 
     outputs = {
         'out': out,
@@ -170,6 +193,7 @@ def masked_multihead_attention(
             'quant_round_type': quant_round_type,
             'quant_max_bound': quant_max_bound,
             'quant_min_bound': quant_min_bound,
+            'cache_scale_group_num': cache_scale_group_num,
         },
     )
     return (

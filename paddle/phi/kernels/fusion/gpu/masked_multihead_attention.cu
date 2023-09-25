@@ -77,6 +77,8 @@ struct Masked_multihead_attention_params {
   // k [B, num_head, dim_head/x, max_seq_len, x], that is `seq_len` first
   // v [B, num_head, max_seq_len, dim_head]
   T *cache_kv;
+
+  uint8_t *cache_kv_I;
   // [B, max_seq_len]
   const int *beam_cache_offset = nullptr;
 
@@ -101,6 +103,12 @@ struct Masked_multihead_attention_params {
 
   bool add_qkv_bias;
   bool neox_rotary_style;
+
+  const float *cache_k_quant_scales = nullptr;
+  const float *cache_v_quant_scales = nullptr;
+  const float *cache_k_dequant_scales = nullptr;
+  const float *cache_v_dequant_scales = nullptr;
+  int cache_scale_group_num = 0;
 };
 
 #ifdef MMHA_USE_FP32_ACUM_FOR_FMA
@@ -362,11 +370,13 @@ template <typename T,
           int THREADS_PER_VALUE,
           int THREADS_PER_BLOCK,
           typename LoadFunc,
-          typename StoreFunc>
-__global__ void masked_multihead_attention_kernel(
-    Masked_multihead_attention_params<T> params,
-    LoadFunc load_func,
-    StoreFunc store_func) {
+          typename StoreFunc,
+          bool USE_CACHE_INT8>
+__global__ void __launch_bounds__(THREADS_PER_BLOCK)
+    masked_multihead_attention_kernel(
+        Masked_multihead_attention_params<T> params,
+        LoadFunc load_func,
+        StoreFunc store_func) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const int bi = blockIdx.y;
   if (params.sequence_lengths && params.sequence_lengths[bi] == 0) {
@@ -395,6 +405,8 @@ __global__ void masked_multihead_attention_kernel(
   __shared__ float red_smem[WARPS_PER_BLOCK * 2];
   using Qk_vec = typename Qk_vec_<T, Dh_MAX>::Type;
   using Qk_vec_RoPE = typename Qk_vec_RoPE_<T, float, Dh_MAX>::Type;
+  using QK_Packed_Int8_t =
+      typename packed_type<uint8_t, num_elems<Qk_vec>::value>::type;
   __shared__ __align__(sizeof(Qk_vec)) T q_smem[Dh_MAX];
 
   // beam id
@@ -402,6 +414,21 @@ __global__ void masked_multihead_attention_kernel(
   // real batch id
   const int bbi = bi / params.beam_width;
   const int hi = blockIdx.x;
+
+  float k_quant_scale;
+  float v_quant_scale;
+  float k_dequant_scale;
+  float v_dequant_scale;
+
+  if (USE_CACHE_INT8) {
+    const int cache_id =
+        params.cache_scale_group_num == 1 ? 0 : bi * params.num_head + hi;
+    k_quant_scale = params.cache_k_quant_scales[cache_id];
+    v_quant_scale = params.cache_v_quant_scales[cache_id];
+    k_dequant_scale = params.cache_k_dequant_scales[cache_id];
+    v_dequant_scale = params.cache_v_dequant_scales[cache_id];
+  }
+
   const int bhi = bi * params.num_head + hi;
   const int bbhi = bbi * params.beam_width * params.num_head + hi;
   const int ti =
@@ -586,7 +613,14 @@ __global__ void masked_multihead_attention_kernel(
                  co * params.max_seq_length * QK_ELTS_IN_16B +
                  act_time_step * QK_ELTS_IN_16B + ci;
     if (Dh == Dh_MAX || co < Dh / QK_ELTS_IN_16B) {
-      *reinterpret_cast<Qk_vec *>(&params.cache_kv[offset]) = k;
+      if (USE_CACHE_INT8) {
+        QK_Packed_Int8_t k_tmp = round_tmp<QK_Packed_Int8_t, Qk_vec>(
+            mul<Qk_vec, float, Qk_vec>(k_quant_scale, k));
+        *reinterpret_cast<QK_Packed_Int8_t *>(&(params.cache_kv_I[offset])) =
+            k_tmp;
+      } else {
+        *reinterpret_cast<Qk_vec *>(&params.cache_kv[offset]) = k;
+      }
     }
 
     qk = dot<Qk_vec, Qk_vec>(q, k);
@@ -615,6 +649,8 @@ __global__ void masked_multihead_attention_kernel(
   __syncthreads();
 
   using K_vec = typename K_vec_<T, THREADS_PER_KEY>::Type;
+  using K_vec_I = typename K_vec_I_<T, THREADS_PER_KEY>::Type;
+
   constexpr int K_VEC_SIZE = sizeof(K_vec) / sizeof(T);
   static_assert(Dh_MAX % K_VEC_SIZE == 0, "");
   constexpr int K_ELTS_PER_THREAD = Dh_MAX / THREADS_PER_KEY;
@@ -637,6 +673,12 @@ __global__ void masked_multihead_attention_kernel(
 
   T *k_cache = &params.cache_kv[bhi * params.max_seq_length * Dh + ki];
   T *k_cache_batch = &params.cache_kv[bbhi * params.max_seq_length * Dh + ki];
+
+  uint8_t *k_cache_I =
+      &params.cache_kv_I[bhi * params.max_seq_length * Dh + ki];
+  uint8_t *k_cache_batch_I =
+      &params.cache_kv_I[bbhi * params.max_seq_length * Dh + ki];
+
   int ti_end = div_up(act_time_step, K_PER_WARP) * K_PER_WARP;
 
   const int *beam_offsets = params.beam_cache_offset
@@ -660,11 +702,21 @@ __global__ void masked_multihead_attention_kernel(
                         &k_cache_batch[beam_offset + jj * QK_ELTS_IN_16B])
                   : k_vec_zero;
         } else {
-          k[ii] =
-              (Dh == Dh_MAX || jj * QK_ELTS_IN_16B < Dh * params.max_seq_length)
-                  ? *reinterpret_cast<const K_vec *>(
-                        &k_cache[jj * QK_ELTS_IN_16B])
-                  : k_vec_zero;
+          if (USE_CACHE_INT8 &&
+              (Dh == Dh_MAX ||
+               jj * QK_ELTS_IN_16B < Dh * params.max_seq_length)) {
+            mul_pointer_v2<K_vec>(
+                &k[ii],
+                k_dequant_scale,
+                reinterpret_cast<K_vec_I *>(k_cache_I + jj * QK_ELTS_IN_16B));
+
+          } else {
+            k[ii] = (Dh == Dh_MAX ||
+                     jj * QK_ELTS_IN_16B < Dh * params.max_seq_length)
+                        ? *reinterpret_cast<const K_vec *>(
+                              &k_cache[jj * QK_ELTS_IN_16B])
+                        : k_vec_zero;
+          }
         }
       }
     }
@@ -731,6 +783,8 @@ __global__ void masked_multihead_attention_kernel(
 
   constexpr int V_VEC_SIZE = Dh_MAX / THREADS_PER_VALUE;
   using V_vec = typename V_vec_<T, V_VEC_SIZE>::Type;
+  using V_Packed_Int8_t =
+      typename packed_type<uint8_t, num_elems<V_vec>::value>::type;
 
   int vo = tid / THREADS_PER_VALUE;
   int vi = (tid % THREADS_PER_VALUE) * V_VEC_SIZE;
@@ -741,6 +795,14 @@ __global__ void masked_multihead_attention_kernel(
   T *v_cache_batch = &params.cache_kv[params.batch_size * params.num_head *
                                           params.max_seq_length * Dh +
                                       bbhi * params.max_seq_length * Dh + vi];
+  uint8_t *v_cache_I =
+      &params.cache_kv_I[params.cache_batch_size * params.num_head *
+                             params.max_seq_length * Dh +
+                         bhi * params.max_seq_length * Dh + vi];
+  uint8_t *v_cache_batch_I =
+      &params.cache_kv_I[params.batch_size * params.num_head *
+                             params.max_seq_length * Dh +
+                         bbhi * params.max_seq_length * Dh + vi];
 
 #ifdef MMHA_USE_FP32_ACUM_FOR_OUT
   using V_vec_acum = typename V_vec_acum_fp32_<V_vec>::Type;
@@ -763,7 +825,15 @@ __global__ void masked_multihead_attention_kernel(
         v = *reinterpret_cast<const V_vec *>(
             &v_cache_batch[beam_offset + ti * Dh]);
       } else {
-        v = *reinterpret_cast<const V_vec *>(&v_cache[ti * Dh]);
+        if (USE_CACHE_INT8) {
+          mul_pointer_v2<V_vec>(
+              &v,
+              v_dequant_scale,
+              reinterpret_cast<V_Packed_Int8_t *>(v_cache_I + ti * Dh));
+
+        } else {
+          v = *reinterpret_cast<const V_vec *>(&v_cache[ti * Dh]);
+        }
       }
 #if defined(MMHA_USE_FP32_ACUM_FOR_LOGITS)
       float logit = logits_smem[ti];
@@ -789,8 +859,14 @@ __global__ void masked_multihead_attention_kernel(
           &params.qkv_bias[2 * params.num_head * Dh + hi * Dh + vi]);
       v = add(v, v_bias);
     }
-
-    *reinterpret_cast<V_vec *>(&v_cache[act_time_step * Dh]) = v;
+    if (USE_CACHE_INT8) {
+      auto test_tmp = mul<V_vec, float, V_vec>(v_quant_scale, v);
+      V_Packed_Int8_t v_tmp = round_tmp<V_Packed_Int8_t, V_vec>(test_tmp);
+      *reinterpret_cast<V_Packed_Int8_t *>(v_cache_I + act_time_step * Dh) =
+          v_tmp;
+    } else {
+      *reinterpret_cast<V_vec *>(&v_cache[act_time_step * Dh]) = v;
+    }
 
 #if defined(MMHA_USE_FP32_ACUM_FOR_LOGITS)
     out = fma(logits_smem[act_time_step], cast_to_float(v), out);
@@ -868,6 +944,35 @@ inline size_t smem_size_in_bytes(
   return max(softmax_sz, red_sz);
 }
 
+#define MMHA_LAUNCH_KERNEL_INT8(T,                                        \
+                                Dh,                                       \
+                                Dh_MAX,                                   \
+                                THDS_PER_KEY,                             \
+                                THDS_PER_VALUE,                           \
+                                THDS_PER_BLOCK,                           \
+                                stream,                                   \
+                                load_func,                                \
+                                store_func)                               \
+  size_t smem_sz =                                                        \
+      smem_size_in_bytes<T>(params, Dh, THDS_PER_VALUE, THDS_PER_BLOCK);  \
+  dim3 grid(params.num_head, params.batch_size);                          \
+  constexpr auto kernel_fn =                                              \
+      masked_multihead_attention_kernel<T,                                \
+                                        Dh,                               \
+                                        Dh_MAX,                           \
+                                        THDS_PER_KEY,                     \
+                                        THDS_PER_VALUE,                   \
+                                        THDS_PER_BLOCK,                   \
+                                        decltype(load_func),              \
+                                        decltype(store_func),             \
+                                        true>;                            \
+  if (smem_sz > 0xc000) {                                                 \
+    cudaFuncSetAttribute(                                                 \
+        kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_sz); \
+  }                                                                       \
+  kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                   \
+      params, load_func, store_func);
+
 #define MMHA_LAUNCH_KERNEL(T,                                             \
                            Dh,                                            \
                            Dh_MAX,                                        \
@@ -887,7 +992,8 @@ inline size_t smem_size_in_bytes(
                                         THDS_PER_VALUE,                   \
                                         THDS_PER_BLOCK,                   \
                                         decltype(load_func),              \
-                                        decltype(store_func)>;            \
+                                        decltype(store_func),             \
+                                        false>;                           \
   if (smem_sz > 0xc000) {                                                 \
     cudaFuncSetAttribute(                                                 \
         kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_sz); \
@@ -897,10 +1003,10 @@ inline size_t smem_size_in_bytes(
       params, load_func, store_func)
 
 template <typename T, int Dh, int Dh_MAX, typename LoadFunc, typename StoreFunc>
-void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
-                        const cudaStream_t &stream,
-                        LoadFunc load_func,
-                        StoreFunc store_func) {
+void fmha_launch_kernel_impl(const Masked_multihead_attention_params<T> &params,
+                             const cudaStream_t &stream,
+                             LoadFunc load_func,
+                             StoreFunc store_func) {
   constexpr int THREADS_PER_VALUE = Dh_MAX * sizeof(T) / 16;
   if (params.timestep < 32) {
     MMHA_LAUNCH_KERNEL(
@@ -941,7 +1047,94 @@ void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
   }
 }
 
-template <typename T, typename LoadFunc, typename StoreFunc>
+template <typename T,
+          int Dh,
+          int Dh_MAX,
+          typename LoadFunc,
+          typename StoreFunc,
+          int BlockSizeMax,
+          int BlockSizeMiddle = BlockSizeMax>
+void fmha_launch_kernel_impl_int8(
+    const Masked_multihead_attention_params<T> &params,
+    const cudaStream_t &stream,
+    LoadFunc load_func,
+    StoreFunc store_func) {
+  constexpr int THREADS_PER_VALUE = Dh_MAX * sizeof(T) / 16;
+  if (params.timestep < 32) {
+    MMHA_LAUNCH_KERNEL_INT8(T,
+                            Dh,
+                            Dh_MAX,
+                            4,
+                            THREADS_PER_VALUE,
+                            256,
+                            stream,
+                            load_func,
+                            store_func);
+  } else if (params.timestep < 2048) {
+#if defined(MMHA_USE_HMMA_FOR_REDUCTION) && defined(__CUDA_ARCH__) && \
+    __CUDA_ARCH__ >= 750
+    MMHA_LAUNCH_KERNEL_INT8(T,
+                            Dh,
+                            Dh_MAX,
+                            4,
+                            THREADS_PER_VALUE,
+                            BlockSizeMiddle,
+                            stream,
+                            load_func,
+                            store_func);
+#else
+    MMHA_LAUNCH_KERNEL_INT8(T,
+                            Dh,
+                            Dh_MAX,
+                            4,
+                            THREADS_PER_VALUE,
+                            BlockSizeMiddle,
+                            stream,
+                            load_func,
+                            store_func);
+#endif
+  } else {
+    MMHA_LAUNCH_KERNEL_INT8(T,
+                            Dh,
+                            Dh_MAX,
+                            4,
+                            THREADS_PER_VALUE,
+                            BlockSizeMax,
+                            stream,
+                            load_func,
+                            store_func);
+  }
+}
+
+template <typename T,
+          int Dh,
+          int Dh_MAX,
+          typename LoadFunc,
+          typename StoreFunc,
+          bool WITH_INT8 = false>
+void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
+                        const cudaStream_t &stream,
+                        LoadFunc load_func,
+                        StoreFunc store_func) {
+  if (WITH_INT8) {
+    int dev = 0;
+    int sm_count = 0;
+    cudaGetDevice(&dev);
+    cudaDeviceGetAttribute(&sm_count, cudaDevAttrMultiProcessorCount, dev);
+    if (params.num_head * params.batch_size <= sm_count) {
+      fmha_launch_kernel_impl_int8<T, Dh, Dh_MAX, LoadFunc, StoreFunc, 1024>(
+          params, stream, load_func, store_func);
+    } else if (params.batch_size) {
+      fmha_launch_kernel_impl_int8<T, Dh, Dh_MAX, LoadFunc, StoreFunc, 256>(
+          params, stream, load_func, store_func);
+    }
+  } else {
+    fmha_launch_kernel_impl<T, Dh, Dh_MAX, LoadFunc, StoreFunc>(
+        params, stream, load_func, store_func);
+  }
+}
+
+template <typename T, typename LoadFunc, typename StoreFunc, bool WITH_INT8>
 void fmha_impl(const phi::GPUContext &dev_ctx,
                const Masked_multihead_attention_params<T> &params,
                int dim_head,
@@ -949,31 +1142,31 @@ void fmha_impl(const phi::GPUContext &dev_ctx,
                StoreFunc store_func) {
   switch (dim_head) {
     case 10:
-      fmha_launch_kernel<T, 10, 32>(
+      fmha_launch_kernel<T, 10, 32, LoadFunc, StoreFunc, WITH_INT8>(
           params, dev_ctx.stream(), load_func, store_func);
       break;
     case 26:
-      fmha_launch_kernel<T, 26, 32>(
+      fmha_launch_kernel<T, 26, 32, LoadFunc, StoreFunc, WITH_INT8>(
           params, dev_ctx.stream(), load_func, store_func);
       break;
     case 32:
-      fmha_launch_kernel<T, 32, 32>(
+      fmha_launch_kernel<T, 32, 32, LoadFunc, StoreFunc, WITH_INT8>(
           params, dev_ctx.stream(), load_func, store_func);
       break;
     case 64:
-      fmha_launch_kernel<T, 64, 64>(
+      fmha_launch_kernel<T, 64, 64, LoadFunc, StoreFunc, WITH_INT8>(
           params, dev_ctx.stream(), load_func, store_func);
       break;
     case 96:
-      fmha_launch_kernel<T, 96, 128>(
+      fmha_launch_kernel<T, 96, 128, LoadFunc, StoreFunc, WITH_INT8>(
           params, dev_ctx.stream(), load_func, store_func);
       break;
     case 128:
-      fmha_launch_kernel<T, 128, 128>(
+      fmha_launch_kernel<T, 128, 128, LoadFunc, StoreFunc, WITH_INT8>(
           params, dev_ctx.stream(), load_func, store_func);
       break;
     case 192:
-      fmha_launch_kernel<T, 192, 256>(
+      fmha_launch_kernel<T, 192, 256, LoadFunc, StoreFunc, WITH_INT8>(
           params, dev_ctx.stream(), load_func, store_func);
       break;
     default:
@@ -1169,7 +1362,7 @@ struct MMHAStore<T, int8_t, true> {
   const float quant_min_bound_;
 };
 
-template <typename T>
+template <typename T, bool CACHE_KV_INT8 = false>
 void DispatchFMHA(const phi::GPUContext &dev_ctx,
                   const phi::DenseTensor &qkv_tensor,
                   const Masked_multihead_attention_params<T> &params,
@@ -1181,6 +1374,8 @@ void DispatchFMHA(const phi::GPUContext &dev_ctx,
                   const int quant_round_type = 1,
                   const float quant_max_bound = 127.0f,
                   const float quant_min_bound = -127.0f) {
+  VLOG(1) << dequant_qkv_scales << " "
+          << "quant_fmha_out_scale " << quant_fmha_out_scale;
   if (dequant_qkv_scales != nullptr && quant_fmha_out_scale > 0) {
     MMHALoad<T, int32_t> load_func(qkv_tensor.data<int32_t>(),
                                    dequant_qkv_scales->data<float>(),
@@ -1190,7 +1385,8 @@ void DispatchFMHA(const phi::GPUContext &dev_ctx,
                                     quant_fmha_out_scale,
                                     quant_max_bound,
                                     quant_min_bound);
-    fmha_impl(dev_ctx, params, dim_head, load_func, store_func);
+    fmha_impl<T, decltype(load_func), decltype(store_func), CACHE_KV_INT8>(
+        dev_ctx, params, dim_head, load_func, store_func);
   } else if (dequant_qkv_scales == nullptr && quant_fmha_out_scale > 0) {
     MMHALoad<T> load_func(qkv_tensor.data<T>());
     MMHAStore<T, int8_t> store_func(out_tensor->data<int8_t>(),
@@ -1198,21 +1394,24 @@ void DispatchFMHA(const phi::GPUContext &dev_ctx,
                                     quant_fmha_out_scale,
                                     quant_max_bound,
                                     quant_min_bound);
-    fmha_impl(dev_ctx, params, dim_head, load_func, store_func);
+    fmha_impl<T, decltype(load_func), decltype(store_func), CACHE_KV_INT8>(
+        dev_ctx, params, dim_head, load_func, store_func);
   } else if (dequant_qkv_scales != nullptr && quant_fmha_out_scale <= 0) {
     MMHALoad<T, int32_t> load_func(qkv_tensor.data<int32_t>(),
                                    dequant_qkv_scales->data<float>(),
                                    3 * num_head * dim_head);
     MMHAStore<T> store_func(out_tensor->data<T>());
-    fmha_impl(dev_ctx, params, dim_head, load_func, store_func);
+    fmha_impl<T, decltype(load_func), decltype(store_func), CACHE_KV_INT8>(
+        dev_ctx, params, dim_head, load_func, store_func);
   } else {
     MMHALoad<T> load_func(qkv_tensor.data<T>());
     MMHAStore<T> store_func(out_tensor->data<T>());
-    fmha_impl(dev_ctx, params, dim_head, load_func, store_func);
+    fmha_impl<T, decltype(load_func), decltype(store_func), CACHE_KV_INT8>(
+        dev_ctx, params, dim_head, load_func, store_func);
   }
 }
 
-template <typename T>
+template <typename T, bool CACHE_KV_INT8 = false>
 void DispatchFMHA(const phi::GPUContext &dev_ctx,
                   const phi::DenseTensor &qkv_tensor,
                   const phi::DenseTensor &shift,
@@ -1238,7 +1437,8 @@ void DispatchFMHA(const phi::GPUContext &dev_ctx,
                                           quant_fmha_out_scale,
                                           quant_max_bound,
                                           quant_min_bound);
-    fmha_impl(dev_ctx, params, dim_head, load_func, store_func);
+    fmha_impl<T, decltype(load_func), decltype(store_func), CACHE_KV_INT8>(
+        dev_ctx, params, dim_head, load_func, store_func);
   } else if (dequant_qkv_scales == nullptr && quant_fmha_out_scale > 0) {
     MMHALoad<T> load_func(qkv_tensor.data<T>());
     MMHAStore<T, int8_t, true> store_func(out_tensor->data<int8_t>(),
@@ -1249,7 +1449,8 @@ void DispatchFMHA(const phi::GPUContext &dev_ctx,
                                           quant_fmha_out_scale,
                                           quant_max_bound,
                                           quant_min_bound);
-    fmha_impl(dev_ctx, params, dim_head, load_func, store_func);
+    fmha_impl<T, decltype(load_func), decltype(store_func), CACHE_KV_INT8>(
+        dev_ctx, params, dim_head, load_func, store_func);
   } else if (dequant_qkv_scales != nullptr && quant_fmha_out_scale <= 0) {
     MMHALoad<T, int32_t> load_func(qkv_tensor.data<int32_t>(),
                                    dequant_qkv_scales->data<float>(),
@@ -1258,14 +1459,16 @@ void DispatchFMHA(const phi::GPUContext &dev_ctx,
                                      shift.data<T>(),
                                      smooth.data<T>(),
                                      num_head * dim_head);
-    fmha_impl(dev_ctx, params, dim_head, load_func, store_func);
+    fmha_impl<T, decltype(load_func), decltype(store_func), CACHE_KV_INT8>(
+        dev_ctx, params, dim_head, load_func, store_func);
   } else {
     MMHALoad<T> load_func(qkv_tensor.data<T>());
     MMHAStore<T, T, true> store_func(out_tensor->data<T>(),
                                      shift.data<T>(),
                                      smooth.data<T>(),
                                      num_head * dim_head);
-    fmha_impl(dev_ctx, params, dim_head, load_func, store_func);
+    fmha_impl<T, decltype(load_func), decltype(store_func), CACHE_KV_INT8>(
+        dev_ctx, params, dim_head, load_func, store_func);
   }
 }
 
@@ -1283,29 +1486,35 @@ struct DispatchDtypeTrait<int32_t> {
 };
 
 template <typename T, typename Context>
-void DispatchWithDtype(const Context &dev_ctx,
-                       const DenseTensor &x,
-                       const DenseTensor &cache_kv,
-                       const paddle::optional<DenseTensor> &bias,
-                       const paddle::optional<DenseTensor> &src_mask,
-                       const paddle::optional<DenseTensor> &cum_offsets,
-                       const paddle::optional<DenseTensor> &sequence_lengths,
-                       const paddle::optional<DenseTensor> &rotary_tensor,
-                       const paddle::optional<DenseTensor> &beam_cache_offset,
-                       const paddle::optional<DenseTensor> &qkv_out_scale,
-                       const paddle::optional<DenseTensor> &out_shift,
-                       const paddle::optional<DenseTensor> &out_smooth,
-                       int seq_len,
-                       int rotary_emb_dims,
-                       const bool use_neox_rotary_style,
-                       const float out_scale,
-                       const int quant_round_type,
-                       const float quant_max_bound,
-                       const float quant_min_bound,
-                       DenseTensor *out,
-                       DenseTensor *cache_kv_out,
-                       DenseTensor *beam_cache_offset_out,
-                       NormalVersion) {
+void DispatchWithDtype(
+    const Context &dev_ctx,
+    const DenseTensor &x,
+    const DenseTensor &cache_kv,
+    const paddle::optional<DenseTensor> &bias,
+    const paddle::optional<DenseTensor> &src_mask,
+    const paddle::optional<DenseTensor> &cum_offsets,
+    const paddle::optional<DenseTensor> &sequence_lengths,
+    const paddle::optional<DenseTensor> &rotary_tensor,
+    const paddle::optional<DenseTensor> &beam_cache_offset,
+    const paddle::optional<DenseTensor> &qkv_out_scale,
+    const paddle::optional<DenseTensor> &out_shift,
+    const paddle::optional<DenseTensor> &out_smooth,
+    const paddle::optional<DenseTensor> &cache_k_quant_scales,
+    const paddle::optional<DenseTensor> &cache_v_quant_scales,
+    const paddle::optional<DenseTensor> &cache_k_dequant_scales,
+    const paddle::optional<DenseTensor> &cache_v_dequant_scales,
+    int seq_len,
+    int rotary_emb_dims,
+    const bool use_neox_rotary_style,
+    const float out_scale,
+    const int quant_round_type,
+    const float quant_max_bound,
+    const float quant_min_bound,
+    const int cache_scale_group_num,
+    DenseTensor *out,
+    DenseTensor *cache_kv_out,
+    DenseTensor *beam_cache_offset_out,
+    NormalVersion) {
   const auto &x_dims = x.dims();
   int bsz = x_dims[0];
   int cache_bsz = cache_kv.dims()[1];
@@ -1370,7 +1579,19 @@ void DispatchWithDtype(const Context &dev_ctx,
   }
 
   params.mask_broadcast_num_heads = mask_broadcast_num_heads;
-  params.cache_kv = const_cast<T *>(cache_kv_out->data<T>());
+  if (cache_k_quant_scales) {
+    VLOG(1) << "cache_scale_group_num" << cache_scale_group_num;
+    params.cache_kv_I = const_cast<uint8_t *>(cache_kv_out->data<uint8_t>());
+    params.cache_k_quant_scales = cache_k_quant_scales.get_ptr()->data<float>();
+    params.cache_v_quant_scales = cache_v_quant_scales.get_ptr()->data<float>();
+    params.cache_k_dequant_scales =
+        cache_k_dequant_scales.get_ptr()->data<float>();
+    params.cache_v_dequant_scales =
+        cache_v_dequant_scales.get_ptr()->data<float>();
+    params.cache_scale_group_num = cache_scale_group_num;
+  } else {
+    params.cache_kv = const_cast<T *>(cache_kv_out->data<T>());
+  }
   params.neox_rotary_style = use_neox_rotary_style;
   params.batch_size = bsz;
   params.cache_batch_size = cache_bsz;
@@ -1381,59 +1602,95 @@ void DispatchWithDtype(const Context &dev_ctx,
   params.inv_sqrt_dh = inv_sqrt_dh;
   params.rotary_emb_dims = rotary_emb_dims;
 
-  if (out_shift) {
-    DispatchFMHA<T>(dev_ctx,
-                    x,
-                    *(out_shift.get_ptr()),
-                    *(out_smooth.get_ptr()),
-                    params,
-                    num_head,
-                    dim_head,
-                    out,
-                    qkv_out_scale.get_ptr(),
-                    out_scale,
-                    quant_round_type,
-                    quant_max_bound,
-                    quant_min_bound);
+  if (cache_k_quant_scales) {
+    if (out_shift) {
+      DispatchFMHA<T, true>(dev_ctx,
+                            x,
+                            *(out_shift.get_ptr()),
+                            *(out_smooth.get_ptr()),
+                            params,
+                            num_head,
+                            dim_head,
+                            out,
+                            qkv_out_scale.get_ptr(),
+                            out_scale,
+                            quant_round_type,
+                            quant_max_bound,
+                            quant_min_bound);
+    } else {
+      DispatchFMHA<T, true>(dev_ctx,
+                            x,
+                            params,
+                            num_head,
+                            dim_head,
+                            out,
+                            qkv_out_scale.get_ptr(),
+                            out_scale,
+                            quant_round_type,
+                            quant_max_bound,
+                            quant_min_bound);
+    }
   } else {
-    DispatchFMHA<T>(dev_ctx,
-                    x,
-                    params,
-                    num_head,
-                    dim_head,
-                    out,
-                    qkv_out_scale.get_ptr(),
-                    out_scale,
-                    quant_round_type,
-                    quant_max_bound,
-                    quant_min_bound);
+    if (out_shift) {
+      DispatchFMHA<T>(dev_ctx,
+                      x,
+                      *(out_shift.get_ptr()),
+                      *(out_smooth.get_ptr()),
+                      params,
+                      num_head,
+                      dim_head,
+                      out,
+                      qkv_out_scale.get_ptr(),
+                      out_scale,
+                      quant_round_type,
+                      quant_max_bound,
+                      quant_min_bound);
+    } else {
+      DispatchFMHA<T>(dev_ctx,
+                      x,
+                      params,
+                      num_head,
+                      dim_head,
+                      out,
+                      qkv_out_scale.get_ptr(),
+                      out_scale,
+                      quant_round_type,
+                      quant_max_bound,
+                      quant_min_bound);
+    }
   }
 }
 
 template <typename T, typename Context>
-void DispatchWithDtype(const Context &dev_ctx,
-                       const DenseTensor &x,
-                       const DenseTensor &cache_kv,
-                       const paddle::optional<DenseTensor> &bias,
-                       const paddle::optional<DenseTensor> &src_mask,
-                       const paddle::optional<DenseTensor> &cum_offsets,
-                       const paddle::optional<DenseTensor> &sequence_lengths,
-                       const paddle::optional<DenseTensor> &rotary_tensor,
-                       const paddle::optional<DenseTensor> &beam_cache_offset,
-                       const paddle::optional<DenseTensor> &qkv_out_scale,
-                       const paddle::optional<DenseTensor> &out_shift,
-                       const paddle::optional<DenseTensor> &out_smooth,
-                       int seq_len,
-                       int rotary_emb_dims,
-                       const bool use_neox_rotary_style,
-                       const float out_scale,
-                       const int quant_round_type,
-                       const float quant_max_bound,
-                       const float quant_min_bound,
-                       DenseTensor *out,
-                       DenseTensor *cache_kv_out,
-                       DenseTensor *beam_cache_offset_out,
-                       UnusedVersion) {}
+void DispatchWithDtype(
+    const Context &dev_ctx,
+    const DenseTensor &x,
+    const DenseTensor &cache_kv,
+    const paddle::optional<DenseTensor> &bias,
+    const paddle::optional<DenseTensor> &src_mask,
+    const paddle::optional<DenseTensor> &cum_offsets,
+    const paddle::optional<DenseTensor> &sequence_lengths,
+    const paddle::optional<DenseTensor> &rotary_tensor,
+    const paddle::optional<DenseTensor> &beam_cache_offset,
+    const paddle::optional<DenseTensor> &qkv_out_scale,
+    const paddle::optional<DenseTensor> &out_shift,
+    const paddle::optional<DenseTensor> &out_smooth,
+    const paddle::optional<DenseTensor> &cache_k_quant_scales,
+    const paddle::optional<DenseTensor> &cache_v_quant_scales,
+    const paddle::optional<DenseTensor> &cache_k_dequant_scales,
+    const paddle::optional<DenseTensor> &cache_v_dequant_scales,
+    int seq_len,
+    int rotary_emb_dims,
+    const bool use_neox_rotary_style,
+    const float out_scale,
+    const int quant_round_type,
+    const float quant_max_bound,
+    const float quant_min_bound,
+    const int cache_scale_group_num,
+    DenseTensor *out,
+    DenseTensor *cache_kv_out,
+    DenseTensor *beam_cache_offset_out,
+    UnusedVersion) {}
 
 #endif  // PADDLE_WITH_HIP
 
@@ -1450,6 +1707,10 @@ void MMHAKernel(const Context &dev_ctx,
                 const paddle::optional<DenseTensor> &qkv_out_scale,
                 const paddle::optional<DenseTensor> &out_shift,
                 const paddle::optional<DenseTensor> &out_smooth,
+                const paddle::optional<DenseTensor> &cache_k_quant_scales,
+                const paddle::optional<DenseTensor> &cache_v_quant_scales,
+                const paddle::optional<DenseTensor> &cache_k_dequant_scales,
+                const paddle::optional<DenseTensor> &cache_v_dequant_scales,
                 int seq_len,
                 int rotary_emb_dims,
                 const bool use_neox_rotary_style,
@@ -1458,6 +1719,7 @@ void MMHAKernel(const Context &dev_ctx,
                 const int quant_round_type,
                 const float quant_max_bound,
                 const float quant_min_bound,
+                const int cache_scale_group_num,
                 DenseTensor *out,
                 DenseTensor *cache_kv_out,
                 DenseTensor *beam_cache_offset_out) {
@@ -1478,6 +1740,10 @@ void MMHAKernel(const Context &dev_ctx,
             qkv_out_scale,
             out_shift,
             out_smooth,
+            cache_k_quant_scales,
+            cache_v_quant_scales,
+            cache_k_dequant_scales,
+            cache_v_dequant_scales,
             seq_len,
             rotary_emb_dims,
             use_neox_rotary_style,
@@ -1485,6 +1751,7 @@ void MMHAKernel(const Context &dev_ctx,
             quant_round_type,
             quant_max_bound,
             quant_min_bound,
+            cache_scale_group_num,
             out,
             cache_kv_out,
             beam_cache_offset_out,
@@ -1505,6 +1772,10 @@ void MMHAKernel(const Context &dev_ctx,
             qkv_out_scale,
             out_shift,
             out_smooth,
+            cache_k_quant_scales,
+            cache_v_quant_scales,
+            cache_k_dequant_scales,
+            cache_v_dequant_scales,
             seq_len,
             rotary_emb_dims,
             use_neox_rotary_style,
@@ -1512,6 +1783,7 @@ void MMHAKernel(const Context &dev_ctx,
             quant_round_type,
             quant_max_bound,
             quant_min_bound,
+            cache_scale_group_num,
             out,
             cache_kv_out,
             beam_cache_offset_out,
@@ -1532,6 +1804,10 @@ void MMHAKernel(const Context &dev_ctx,
             qkv_out_scale,
             out_shift,
             out_smooth,
+            cache_k_quant_scales,
+            cache_v_quant_scales,
+            cache_k_dequant_scales,
+            cache_v_dequant_scales,
             seq_len,
             rotary_emb_dims,
             use_neox_rotary_style,
@@ -1539,6 +1815,7 @@ void MMHAKernel(const Context &dev_ctx,
             quant_round_type,
             quant_max_bound,
             quant_min_bound,
+            cache_scale_group_num,
             out,
             cache_kv_out,
             beam_cache_offset_out,
@@ -1565,6 +1842,10 @@ void MMHAKernel(const Context &dev_ctx,
         qkv_out_scale,
         out_shift,
         out_smooth,
+        cache_k_quant_scales,
+        cache_v_quant_scales,
+        cache_k_dequant_scales,
+        cache_v_dequant_scales,
         seq_len,
         rotary_emb_dims,
         use_neox_rotary_style,
@@ -1572,6 +1853,7 @@ void MMHAKernel(const Context &dev_ctx,
         quant_round_type,
         quant_max_bound,
         quant_min_bound,
+        cache_scale_group_num,
         out,
         cache_kv_out,
         beam_cache_offset_out,
