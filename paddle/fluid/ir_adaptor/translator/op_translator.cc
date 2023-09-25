@@ -1258,7 +1258,7 @@ struct MulOpTranscriber : public OpTranscriber {
       const OpDesc& op_desc,
       const std::string& normalized_op_name,
       const OpInputInfoList& input_infos,
-      pir::Program* program) override {
+      pir::Block* block) override {
     int x_num_col_dims = paddle::get<int>(op_desc.GetAttr("x_num_col_dims"));
     int y_num_col_dims = paddle::get<int>(op_desc.GetAttr("y_num_col_dims"));
 
@@ -1275,7 +1275,7 @@ struct MulOpTranscriber : public OpTranscriber {
     auto x_defining_info = param_map->at(x_name);
     if (x_defining_info.generated_by_vector) {
       InsertSliceOperationForTarget(
-          ctx, param_map, program, x_defining_info, x_name);
+          ctx, param_map, block, x_defining_info, x_name);
       x_defining_info = param_map->at(x_name);
     }
     pir::OpResult x_value = x_defining_info.value;
@@ -1312,7 +1312,7 @@ struct MulOpTranscriber : public OpTranscriber {
     auto y_defining_info = param_map->at(y_name);
     if (y_defining_info.generated_by_vector) {
       InsertSliceOperationForTarget(
-          ctx, param_map, program, y_defining_info, y_name);
+          ctx, param_map, block, y_defining_info, y_name);
       y_defining_info = param_map->at(y_name);
     }
     pir::OpResult y_value = y_defining_info.value;
@@ -1336,7 +1336,7 @@ struct MulOpTranscriber : public OpTranscriber {
                y_shape.size(),
                y_num_col_dims);
 
-    pir::Builder builder(ctx, program->block());
+    pir::Builder builder(ctx, block);
     pir::OpResult x_new, y_new;
 
     std::vector<int64_t> x_new_shape({
