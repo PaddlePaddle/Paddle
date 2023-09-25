@@ -600,6 +600,32 @@ struct STanhGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct STanhGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  float scale_a;
+  float scale_b;
+  typename BaseActivationFunctor<ComplexType<T>>::AttrPair GetAttrs() {
+    return {{"scale_a", &scale_a}, {"scale_b", &scale_b}};
+  }
+
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
+    auto a = static_cast<ComplexType<T>>(scale_a);  // NOLINT
+    auto b = static_cast<ComplexType<T>>(scale_b);
+    auto temp = (a * x).tanh() * (a * x).tanh();
+    dx.device(d) =
+        dout *
+        (a * b * (static_cast<ComplexType<T>>(1) - temp)).unaryExpr(Conj<T>());
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
 struct Tangent {
   HOSTDEVICE T operator()(const T& val) const { return tan(val); }
 };
@@ -3573,6 +3599,32 @@ struct CudaSTanhGradFunctor : public BaseActivationFunctor<T> {
     MPType b = static_cast<MPType>(scale_b);
     MPType temp = tanh(a * x);
     return static_cast<T>(dout * a * b * (one - temp * temp));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaSTanhGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  ComplexType<T> one = static_cast<ComplexType<T>>(1.0f);
+  float scale_a;
+  float scale_b;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"scale_a", &scale_a}, {"scale_b", &scale_b}};
+  }
+
+  // dx = dout * a * b * (1 - tanh(a * x) * tanh(a * x))
+  __device__ __forceinline__ ComplexType<T> operator()(
+      const ComplexType<T> arg_dout, const ComplexType<T> arg_x) const {
+    ComplexType<T> dout = static_cast<ComplexType<T>>(arg_dout);
+    ComplexType<T> x = static_cast<ComplexType<T>>(arg_x);
+    ComplexType<T> a = static_cast<ComplexType<T>>(scale_a);
+    ComplexType<T> b = static_cast<ComplexType<T>>(scale_b);
+    ComplexType<T> temp = tanh(a * x);
+    return static_cast<ComplexType<T>>(dout *
+                                       conj(a * b * (one - temp * temp)));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }

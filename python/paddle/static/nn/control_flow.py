@@ -1422,9 +1422,7 @@ def _select_input_infer_shape(first_shape, second_shape):
             f"the input shapes of select_input should have the same rank, but get {first_shape}, {second_shape}"
         )
         return second_shape
-    out_shape = list(
-        map(lambda a, b: a if a == b else -1, first_shape, second_shape)
-    )
+    out_shape = [a if a == b else -1 for a, b in zip(first_shape, second_shape)]
     return out_shape
 
 
