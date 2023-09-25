@@ -21,7 +21,7 @@ namespace xpu {
 
 XPUOpMap& get_kl3_ops() {
   // KL3支持的op，通过op_name, data_type, place来索引
-  static XPUOpMap s_xpu2_kernels{
+  static XPUOpMap s_xpu3_kernels{
       {"add_act_xpu",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"add_layernorm_xpu",
@@ -1032,7 +1032,7 @@ XPUOpMap& get_kl3_ops() {
                      phi::DataType::INT64})},
   };
 
-  return s_xpu2_kernels;
+  return s_xpu3_kernels;
 }
 
 }  // namespace xpu
