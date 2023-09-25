@@ -685,6 +685,13 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             out = x @ y
             np.testing.assert_allclose(out.numpy(), except_out, atol=1e-03)
 
+    def test_coalesce(self):
+        indices = [[0, 0, 1], [1, 1, 2]]
+        values = [1.0, 2.0, 3.0]
+        sp_x = paddle.sparse.sparse_coo_tensor(indices, values)
+        sp_x = sp_x.coalesce(sp_x)
+        self.assertTrue(isinstance(sp_x, paddle.Tensor))
+
 
 if __name__ == '__main__':
     unittest.main()
