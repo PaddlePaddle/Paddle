@@ -1345,6 +1345,11 @@ def set_grad_var_shape(program, dist_context):
             )
 
             if list(grad_var.shape) != ref_shape:
+                raise RuntimeError(
+                    "HACKFIX: function being called: grad_var shape {}, ref_shape {}, dist_op {}".format(
+                        grad_var.shape, ref_shape, str(op_dist_attr)
+                    )
+                )
                 grad_var.desc.set_shape(ref_shape)
 
 
