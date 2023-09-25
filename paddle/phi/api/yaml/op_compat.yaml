@@ -3179,6 +3179,14 @@
   attrs:
     pivot : pivots
 
+- op: memcpy
+  inputs:
+    x: X
+  outputs:
+    out: Out
+  attrs:
+    dst_place_type: dst_place_type
+
 - op: memcpy_d2h
   inputs :
     x : X
