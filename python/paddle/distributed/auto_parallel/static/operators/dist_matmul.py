@@ -793,6 +793,11 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
             type='matmul', inputs=inputs, outputs={'Out': Out_var}, attrs=attrs
         )
         if Out_var.shape != ref_shape_out:
+            print(
+                "matmul out shape mismatch, out_name: {}, cur_shape: {}, ref_shape: {}, op: {}.".format(
+                    Out_var.name, Out_var.shape, ref_shape_out, str(matmul_op)
+                )
+            )
             Out_var.desc.set_shape(ref_shape_out)
 
         # matmul
