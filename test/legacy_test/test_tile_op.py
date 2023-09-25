@@ -293,7 +293,9 @@ class TestTileBF16OP(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_cinn=self.check_cinn, check_new_ir=True)
+        self.check_output_with_place(
+            place, check_cinn=self.check_cinn, check_new_ir=True
+        )
 
     def init_data(self):
         self.dtype = np.uint16
@@ -302,7 +304,9 @@ class TestTileBF16OP(OpTest):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', check_prim=True, check_new_ir=True)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', check_prim=True, check_new_ir=True
+        )
 
 
 # Situation 5: input x is Bool
