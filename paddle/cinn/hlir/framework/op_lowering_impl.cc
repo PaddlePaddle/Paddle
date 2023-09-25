@@ -351,15 +351,80 @@ ast_gen_ius::TensorGroup ConvertStageMapToTensorGroup(
     const poly::StageMap& stage_map,
     const std::unordered_map<std::string, ir::Tensor>& tensor_map) {
   std::vector<ir::Tensor> stage_tensors;
+  std::set<ir::Tensor> reshape_tensors;
   for (auto iter = stage_map.begin(); iter != stage_map.end(); ++iter) {
+    VLOG(6) << "Checking StageMap Tensor " << iter->first
+            << " has expression = " << iter->second->has_expression();
+    if (tensor_map.count(iter->first)) {
+      bool is_call = (tensor_map.at(iter->first)->is_call_node() ||
+                      tensor_map.at(iter->first)->is_extern_call_node());
+      VLOG(6) << "The tensor is " << is_call;
+    }
+
     if (iter->second->has_expression()) {
       const std::string& tensor_name = iter->first;
       if (tensor_map.count(tensor_name)) {
         stage_tensors.push_back(tensor_map.at(tensor_name));
+        if (utils::Endswith(tensor_name, "_reshape")) {
+          reshape_tensors.insert(tensor_map.at(tensor_name));
+        }
+      } else {
+        stage_tensors.push_back(ir::Tensor(iter->second->tensor()));
+        if (utils::Endswith(tensor_name, "_reshape")) {
+          reshape_tensors.insert(ir::Tensor(iter->second->tensor()));
+        }
       }
     }
   }
-  return ast_gen_ius::TensorGroup(stage_tensors);
+  ast_gen_ius::TensorGroup tensor_group(stage_tensors);
+  tensor_group.ShowLog();
+
+  for (auto& stage : stage_map) {
+    if (!stage.second->tensor()->buffer.defined() &&
+        !stage.second->meta.tensors_to_share_buffer_with.empty()) {
+      for (auto& str : stage.second->meta.tensors_to_share_buffer_with) {
+        if (tensor_map.count(str)) {
+          ir::Tensor origin_tensor = tensor_map.at(str);
+          ir::Tensor share_tensor = ir::Tensor(stage.second->tensor());
+          tensor_group.Insert(origin_tensor);
+          tensor_group.Insert(share_tensor);
+          tensor_group.MarkShareMemBuffer(origin_tensor, share_tensor);
+        }
+        /*
+              if (tensor_map.count(str) && tensor_map.at(str)->buffer.defined())
+           { auto edited_shape = tensor_map.at(str)->buffer->shape;
+                stage.second->tensor()->Bind(tensor_map.at(str)->buffer);
+                tensor_map.at(str)->buffer->shape = edited_shape;
+                VLOG(3) << "Tensor " << stage.second->tensor()->name
+                        << " bind buffer to " << tensor_map.at(str)->name << " ,
+           "
+                        << tensor_map.at(str)->buffer->name;
+              }
+        */
+      }
+    }
+  }
+  /*
+  for (const ir::Tensor& t: reshape_tensors) {
+    VLOG(6) << "Huihuang debug, handling reshape tensor " << t->name << ",
+  has_expression = " << t->has_expression(); if (t->has_expression()) {
+      continue;
+    }
+    // Some reshape tensors not having expression, they just share memory with
+  non reshape tensors const std::string& reshape_name = t->name; const
+  std::string reshape_suffix = "_reshape"; const int suffix_size =
+  reshape_suffix.size(); std::string non_reshape_name = reshape_name.substr(0,
+  reshape_name.size() - suffix_size); if
+  (tensor_group.Contain(non_reshape_name)) { ir::Tensor non_reshape_tensor =
+  tensor_group.Get(non_reshape_name);
+      tensor_group.MarkShareMemBuffer(non_reshape_tensor, t);
+      tensor_group.CtrlDepend(t, non_reshape_tensor);
+    }
+  }
+
+  tensor_group.ShowLog();
+  */
+  return tensor_group;
 }
 
 std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(

@@ -54,6 +54,8 @@ class TensorGroup {
    */
   ~TensorGroup();
 
+  void ShowLog() const;
+
   /**
    * Returns true if TensorGroup collection contains a tensor with input name.
    */

@@ -26,31 +26,20 @@ namespace cinn {
 namespace ast_gen_ius {
 
 TensorGroup::TensorGroup(const std::vector<ir::Tensor>& tensors) {
-  // Using set to de-duplicate
-  std::set<ir::Tensor> all_tensors(tensors.begin(), tensors.end());
-
-  for (auto& tensor : tensors) {
+  for (const ir::Tensor& tensor : tensors) {
     output_tensor_names_.insert(tensor->name);
-    std::set<ir::Expr> used_tensors = ir::ir_utils::CollectIRNodes(
-        tensor->body(), [](const Expr* x) { return x->as_tensor(); });
-    for (const Expr& x : used_tensors) {
-      const ir::Tensor to_dep = x.as_tensor_ref();
-      all_tensors.insert(to_dep);
-      this->CtrlDepend(tensor, to_dep);
-    }
+    this->Insert(tensor);
   }
+}
 
-  for (const ir::Tensor& t : all_tensors) {
-    name_to_tensor_.insert({t->name, t});
-  }
-
-  // DEBUG, TO delete
-  VLOG(6) << "Huihuang debug TensorGroup data struct";
+void TensorGroup::ShowLog() const {
+  VLOG(6) << "Showing log for TensorGroup";
   for (auto& p : name_to_tensor_) {
     VLOG(6) << "Tensor name = " << p.first << " depends on {";
-
-    for (auto& dep_name : ctrl_dep_[p.first]) {
-      VLOG(6) << dep_name;
+    if (ctrl_dep_.count(p.first)) {
+      for (auto& dep_name : ctrl_dep_.at(p.first)) {
+        VLOG(6) << dep_name;
+      }
     }
     VLOG(6) << "}";
   }
@@ -58,24 +47,10 @@ TensorGroup::TensorGroup(const std::vector<ir::Tensor>& tensors) {
 
 TensorGroup::TensorGroup(
     const std::unordered_map<std::string, ir::Tensor>& tensor_map) {
-  // Using set to de-duplicate
-  std::set<ir::Tensor> all_tensors;
-
   for (const auto& map_pair : tensor_map) {
     const ir::Tensor& tensor = map_pair.second;
     output_tensor_names_.insert(tensor->name);
-    all_tensors.insert(tensor);
-    std::set<ir::Expr> used_tensors = ir::ir_utils::CollectIRNodes(
-        tensor->body(), [](const Expr* x) { return x->as_tensor(); });
-    for (const Expr& x : used_tensors) {
-      const ir::Tensor to_dep = x.as_tensor_ref();
-      all_tensors.insert(to_dep);
-      this->CtrlDepend(tensor, to_dep);
-    }
-  }
-
-  for (const ir::Tensor& t : all_tensors) {
-    name_to_tensor_.insert({t->name, t});
+    this->Insert(tensor);
   }
 }
 
@@ -86,7 +61,23 @@ bool TensorGroup::Contain(const std::string& name) const {
 }
 
 void TensorGroup::Insert(const ir::Tensor& tensor) {
-  name_to_tensor_.insert({tensor->name, tensor});
+  if (!name_to_tensor_.count(tensor->name)) {
+    name_to_tensor_.insert({tensor->name, tensor});
+  }
+
+  // Using set to de-duplicate
+  std::set<ir::Tensor> dep_tensors;
+  std::set<ir::Expr> used_tensors = ir::ir_utils::CollectIRNodes(
+      tensor->body(), [](const Expr* x) { return x->as_tensor(); });
+  for (const Expr& x : used_tensors) {
+    const ir::Tensor to_dep = x.as_tensor_ref();
+    dep_tensors.insert(to_dep);
+    this->CtrlDepend(tensor, to_dep);
+  }
+
+  for (const ir::Tensor& t : dep_tensors) {
+    this->Insert(t);
+  }
 }
 
 ir::Tensor TensorGroup::Get(const std::string& name) {
@@ -107,6 +98,8 @@ std::vector<ir::Tensor> TensorGroup::GetGenFuncTopoOrder(
   for (const auto& dep_pair : ctrl_dep_) {
     const std::unordered_set<std::string>& dep_tensor_names = dep_pair.second;
     in_degree[dep_pair.first] = dep_tensor_names.size();
+    VLOG(6) << "indegree[" << dep_pair.first
+            << "] = " << dep_tensor_names.size();
   }
 
   std::vector<ir::Tensor> ret;
@@ -130,8 +123,9 @@ std::vector<ir::Tensor> TensorGroup::GetGenFuncTopoOrder(
   while (!node_set.empty()) {
     const std::string cur = *(node_set.begin());
     node_set.erase(node_set.begin());
-
+    VLOG(6) << "cur = " << cur;
     if (!input_arg_names.count(cur)) {
+      VLOG(6) << "push_back " << cur;
       ret.push_back(name_to_tensor_[cur]);
     }
 

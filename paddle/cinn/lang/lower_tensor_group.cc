@@ -203,11 +203,13 @@ std::vector<ir::Argument> LowerTensorGroup::GenerateFunctionArgumentList(
 std::vector<ir::Expr> LowerTensorGroup::GenerateFunctionBody(
     ast_gen_ius::TensorGroup* tensor_group) {
   // TODO(zhhsplendid): GetGenFuncTopoOrder() may remove args
+  VLOG(6) << "In GenerateFunctionBody";
   std::vector<ir::Tensor> ordered_tensors = tensor_group->GetGenFuncTopoOrder();
 
   std::vector<ir::Expr> result;
   std::vector<ir::Expr> bodies;
   for (const ir::Tensor& tensor : ordered_tensors) {
+    VLOG(6) << "tensor_name = " << tensor->name;
     if (!tensor->is_placeholder_node() && tensor->has_expression()) {
       VLOG(6) << "ast_gen_ius::AstGen::Build for Tensor " << tensor;
       bodies.emplace_back(ast_gen_ius::AstGen::Build(tensor, tensor_group));
