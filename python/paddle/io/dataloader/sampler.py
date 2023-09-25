@@ -15,6 +15,7 @@
 import numpy as np
 
 from ...framework import core
+from ...tensor import randperm
 
 
 class Sampler:
@@ -340,3 +341,52 @@ class WeightedRandomSampler(Sampler):
     def __len__(self):
         mul = np.prod(self.weights.shape) // self.weights.shape[-1]
         return self.num_samples * mul
+
+
+class SubsetRandomSampler(Sampler):
+    r"""
+    Randomly sample elements from a given list of indices, without replacement.
+
+    Args:
+        indices (sequence): a sequence of indices
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> from paddle.io import Dataset, SubsetRandomSampler
+
+            >>> class RandomDataset(Dataset):
+            ...     def __init__(self, num_samples):
+            ...         self.num_samples = num_samples
+            ...
+            ...     def __getitem__(self, idx):
+            ...         image = np.random.random([784]).astype('float32')
+            ...         label = np.random.randint(0, 9, (1, )).astype('int64')
+            ...         return image, label
+            ...
+            ...     def __len__(self):
+            ...         return self.num_samples
+            ...
+            >>> sampler = SubsetRandomSampler(indices=[1, 3, 5, 7, 9])
+
+            >>> for index in sampler:
+            ...     print(index)
+            5
+            3
+            1
+            7
+            9
+
+    see `paddle.io.Sampler`
+    """
+
+    def __init__(self, indices):
+        self.indices = indices
+
+    def __iter__(self):
+        for i in randperm(len(self.indices)):
+            yield self.indices[i]
+
+    def __len__(self) -> int:
+        return len(self.indices)
