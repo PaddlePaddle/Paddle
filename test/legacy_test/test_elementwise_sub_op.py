@@ -110,6 +110,7 @@ class TestTensorAddSplit(unittest.TestCase):
             return
         self._split_compute("float16")
 
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
