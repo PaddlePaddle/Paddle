@@ -58,7 +58,7 @@ class DistributedOperator:
     def get_serial_input(self, name):
         if self._serial_op.type == "create_py_reader":
             tensor = None
-        elif self._serial_op.block.has_var(name):
+        elif self._serial_op.block._find_var_recursive(name) is not None:
             tensor = self._serial_op.block._var_recursive(name)
         else:
             tensor = None
