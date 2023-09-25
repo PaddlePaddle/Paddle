@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
+
 from . import core
 from .data_feeder import DataToLoDTensorConverter
-import numpy as np
 
 __all__ = ['create_lod_tensor', 'create_random_int_lodtensor']
 
@@ -62,10 +63,10 @@ def create_lod_tensor(data, recursive_seq_lens, place):
 
         .. code-block:: python
 
-            import paddle.base as base
-            import numpy as np
+            >>> import paddle.base as base
+            >>> import numpy as np
 
-            t = base.create_lod_tensor(np.ndarray([5, 30]), [[2, 3]], base.CPUPlace())
+            >>> t = base.create_lod_tensor(np.ndarray([5, 30]), [[2, 3]], base.CPUPlace())
     """
     if isinstance(data, core.LoDTensor):
         return create_lod_tensor(np.array(data), recursive_seq_lens, place)
@@ -154,13 +155,15 @@ def create_random_int_lodtensor(
         is inside [low, high].
 
     Examples:
+
         .. code-block:: python
 
-          import paddle.base as base
+            >>> import paddle.base as base
 
-          t = base.create_random_int_lodtensor(recursive_seq_lens=[[2, 3]],
-                    base_shape=[30], place=base.CPUPlace(), low=0, high=10)
-          print(t.shape()) # [5, 30]
+            >>> t = base.create_random_int_lodtensor(recursive_seq_lens=[[2, 3]],
+            ...         base_shape=[30], place=base.CPUPlace(), low=0, high=10)
+            >>> print(t.shape())
+            [5, 30]
     """
     assert isinstance(base_shape, list), "base_shape should be a list"
     # append the total number of basic elements to the front of its shape

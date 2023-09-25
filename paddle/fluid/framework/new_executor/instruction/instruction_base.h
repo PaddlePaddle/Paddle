@@ -137,6 +137,8 @@ class InstructionBase {
 
   virtual const std::string& Name() const = 0;
 
+  virtual ::pir::Operation* Operation() const = 0;
+
   void InitInputsOutputsIds(
       ::pir::Operation* op,
       Scope* inner_scope,
@@ -144,6 +146,12 @@ class InstructionBase {
       const std::map<std::string, int>& var_name_2_id,
       const std::unordered_map<const paddle::framework::Variable*, std::string>&
           variable_2_var_name);
+
+  // if scope is not null, also show dimensions of arguments
+  virtual std::string DebugStringEx(
+      const paddle::framework::Scope* scope,
+      const std::unordered_map<::pir::Value, std::string>& value_2_var_name)
+      const;
 
  protected:
   size_t id_;

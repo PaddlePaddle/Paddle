@@ -23,6 +23,7 @@ from .backward_mode import backward  # noqa: F401
 from .py_layer import PyLayer  # noqa: F401
 from .py_layer import PyLayerContext  # noqa: F401
 from .saved_tensors_hooks import saved_tensors_hooks
+from . import ir_backward
 
 __all__ = [  # noqa
     'jacobian',

@@ -16,16 +16,19 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/type_storage.h"
 #include "paddle/pir/core/builtin_type.h"
+#include "paddle/pir/core/builtin_type_interfaces.h"
 #include "paddle/pir/core/type.h"
 
 namespace paddle {
 namespace dialect {
-using DenseTensorType = pir::DenseTensorType;
-class SelectedRowsType : public pir::Type {
- public:
-  using Type::Type;
 
-  DECLARE_TYPE_UTILITY_FUNCTOR(SelectedRowsType, SelectedRowsTypeStorage);
+using DenseTensorType = pir::DenseTensorType;
+class SelectedRowsType : public pir::Type::TypeBase<SelectedRowsType,
+                                                    pir::Type,
+                                                    SelectedRowsTypeStorage,
+                                                    pir::ShapedTypeInterface> {
+ public:
+  using Base::Base;
 
   const pir::Type &dtype() const;
 

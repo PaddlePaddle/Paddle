@@ -28,11 +28,11 @@ class AbstractAttribute;
 class TypeId;
 class Dialect;
 class OpInfo;
-class InterfaceValue;
 class Type;
 class OpResult;
 class Attribute;
 class Operation;
+class InterfaceValue;
 
 using OpInfoMap = std::unordered_map<std::string, OpInfo>;
 

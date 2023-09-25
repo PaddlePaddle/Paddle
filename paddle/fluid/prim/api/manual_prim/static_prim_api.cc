@@ -50,8 +50,6 @@ Tensor full<DescTensor>(const IntArray& shape,
   op->SetAttr("shape", shape.GetData());
   switch (dtype) {
     case phi::DataType::FLOAT16:
-      op->SetAttr("str_value", std::to_string(value.to<float>()));
-      break;
     case phi::DataType::BFLOAT16:
       op->SetAttr("str_value", std::to_string(value.to<float>()));
       break;

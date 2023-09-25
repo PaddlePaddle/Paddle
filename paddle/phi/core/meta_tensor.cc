@@ -87,7 +87,7 @@ void MetaTensor::set_dims(const DDim& dims) {
     DenseTensorUtils::GetMutableMeta(static_cast<SparseCsrTensor*>(tensor_))
         ->dims = dims;
   } else if (phi::distributed::DistTensor::classof(tensor_)) {
-    static_cast<distributed::DistTensor*>(tensor_)->set_dims(dims);
+    static_cast<distributed::DistTensor*>(tensor_)->unsafe_set_dims(dims);
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported setting dims for `%s`.", tensor_->type_info().name()));

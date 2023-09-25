@@ -40,8 +40,7 @@ PD_SPECIALIZE_CppTypeToIrAttribute(std::string, StrAttribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(phi::DataType,
                                    paddle::dialect::DataTypeAttribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(phi::Place, paddle::dialect::PlaceAttribute);
-PD_SPECIALIZE_CppTypeToIrAttribute(std::vector<int32_t>,
-                                   paddle::dialect::IntArrayAttribute);
+PD_SPECIALIZE_CppTypeToIrAttribute(std::vector<int32_t>, pir::ArrayAttribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(std::vector<int64_t>,
                                    paddle::dialect::IntArrayAttribute);
 
@@ -50,6 +49,18 @@ struct IrAttrbuteCreator {
   typename CppTypeToIrAttribute<T>::type operator()(T obj) const {
     return CppTypeToIrAttribute<T>::type::template get(
         pir::IrContext::Instance(), obj);
+  }
+};
+
+template <>
+struct IrAttrbuteCreator<std::vector<int32_t>> {
+  pir::ArrayAttribute operator()(std::vector<int32_t> obj) const {
+    std::vector<pir::Attribute> attr_vec;
+    attr_vec.reserve(obj.size());
+    for (int32_t x : obj) {
+      attr_vec.push_back(Int32Attribute::get(pir::IrContext::Instance(), x));
+    }
+    return pir::ArrayAttribute::get(pir::IrContext::Instance(), attr_vec);
   }
 };
 

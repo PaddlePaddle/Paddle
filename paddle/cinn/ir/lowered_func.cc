@@ -27,7 +27,6 @@
 #include "paddle/cinn/ir/buffer.h"
 #include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_visitor.h"
-#include "paddle/cinn/optim/tensor_write_tell.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/cinn/utils/string.h"
 
@@ -83,7 +82,7 @@ std::vector<const Expr*> _LoweredFunc_::expr_fields() const { return {&body}; }
 
 void _LoweredFunc_::PrepareCudaAxisInfoFromBody() {
   std::set<Expr> bound_for_exprs =
-      ir::CollectIRNodes(body, [](const Expr* expr) {
+      ir::ir_utils::CollectIRNodes(body, [](const Expr* expr) {
         const ir::For* for_expr = expr->As<ir::For>();
         return for_expr != nullptr && for_expr->is_binded();
       });
@@ -209,8 +208,7 @@ void _LoweredFunc_::AllocTempBuffer() {}
 void _LoweredFunc_::PrepareBufferCastExprs(bool with_expr_gen_tensor) {
   buffer_data_cast_exprs.clear();
   // collect write.
-  optim::TensorWriteTeller write_teller;
-  write_teller.Collect(&body);
+  auto write_teller = ir::ir_utils::CollectTensorNeedsWrite(&body);
 
   auto tensors = CollectAllTensorReference(with_expr_gen_tensor);
   std::sort(tensors.begin(),
@@ -224,7 +222,7 @@ void _LoweredFunc_::PrepareBufferCastExprs(bool with_expr_gen_tensor) {
     if (!tensor->buffer.defined()) continue;
 
     Type value_type = tensor->type().ElementOf();
-    bool is_const = !write_teller.IsWrite(tensor->name);
+    bool is_const = !write_teller.count(tensor->name);
     value_type.set_cpp_handle();
     value_type.set_cpp_const(is_const);
     Var variable = _Var_::Make(tensor->name, value_type);
@@ -250,8 +248,7 @@ std::vector<Expr> _LoweredFunc_::CudaAliasVarExprs() const {
   }
   // collect write.
   std::vector<Expr> res;
-  optim::TensorWriteTeller write_teller;
-  write_teller.Collect(&body);
+  auto write_teller = ir::ir_utils::CollectTensorNeedsWrite(&body);
 
   auto tensors = CollectAllTensorReference();
   std::sort(tensors.begin(),
@@ -269,7 +266,7 @@ std::vector<Expr> _LoweredFunc_::CudaAliasVarExprs() const {
       continue;
     }
     Type value_type = tensor->type().ElementOf();
-    bool is_const = !write_teller.IsWrite(tensor->name);
+    bool is_const = !write_teller.count(tensor->name);
     value_type.set_cpp_handle();
     value_type.set_cpp_const(is_const);
     Var variable = _Var_::Make(tensor->name, value_type);
@@ -406,11 +403,11 @@ std::vector<Tensor> _LoweredFunc_::CollectAllTensorReference(
     bool with_expr_gen_tensor) const {
   std::set<Expr> tensor_exprs =
       with_expr_gen_tensor
-          ? ir::CollectIRNodes(
+          ? ir::ir_utils::CollectIRNodes(
                 body, [](const Expr* expr) { return expr->As<ir::_Tensor_>(); })
-          : ir::CollectIRNodesWithoutTensor(body, [](const Expr* expr) {
-              return expr->As<ir::_Tensor_>();
-            });
+          : ir::ir_utils::CollectIRNodesWithoutTensor(
+                body,
+                [](const Expr* expr) { return expr->As<ir::_Tensor_>(); });
 
   std::vector<Tensor> tensors;
   // remove the duplicate tensor by their name.

@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
-
 #include "paddle/fluid/framework/new_executor/feed_fetch_utils.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/program_interpreter.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/flags.h"
 
@@ -28,7 +28,7 @@
 #include "paddle/pir/pass/pass_manager.h"
 
 PHI_DECLARE_bool(enable_new_ir_in_executor);
-PHI_DECLARE_bool(enable_new_ir_api);
+PHI_DECLARE_bool(enable_pir_api);
 PHI_DECLARE_bool(new_ir_apply_inplace_pass);
 
 namespace paddle {
@@ -55,7 +55,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     const std::string& job_type = job->Type();
     std::shared_ptr<ProgramDesc> program = nullptr;
     std::shared_ptr<::pir::Program> ir_program = nullptr;
-    if (FLAGS_enable_new_ir_api) {
+    if (FLAGS_enable_pir_api) {
       ir_program = plan_.IrProgram(job_type);
     } else {
       program = std::make_shared<ProgramDesc>(*(plan_.Program(job_type)));
@@ -69,7 +69,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                  micro_batch_id,
                                  micro_batch_num));
 
-    if (micro_batch_num > 1 && !FLAGS_enable_new_ir_api) {
+    if (micro_batch_num > 1 && !FLAGS_enable_pir_api) {
       SetColAttrForFeedFetchOps(program, micro_batch_num, micro_batch_id);
     }
 
@@ -80,13 +80,13 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     // TODO(phlrain) we only support cpu for now
     if (FLAGS_enable_new_ir_in_executor) {
       std::shared_ptr<::pir::Program> base_program = ir_program;
-      if (!FLAGS_enable_new_ir_api) {
+      if (!FLAGS_enable_pir_api) {
         VLOG(6) << "begin to translate" << std::endl;
         base_program = paddle::TranslateLegacyProgramToProgram(*program);
       }
       auto block = base_program->block();
       for (auto it = block->begin(); it != block->end(); ++it) {
-        if ((*it)->name() == "pd_op.fetch") {
+        if ((*it)->isa<paddle::dialect::FetchOp>()) {
           size_t index = (*it)
                              ->attributes()
                              .at("col")
@@ -107,17 +107,19 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       }
       auto kernel_program =
           paddle::dialect::PdOpLowerToKernelPass(base_program.get(), place);
+      std::shared_ptr<pir::Program> shared_program = std::move(kernel_program);
+      plan_.UpdateIrProgram("base", shared_program);
 
       if (FLAGS_new_ir_apply_inplace_pass) {
         pir::PassManager pm(pir::IrContext::Instance(), 3);
         pm.AddPass(pir::CreateInplacePass());
-        pm.Run(kernel_program.get());
+        pm.Run(shared_program.get());
       }
 
       interpretercores_.emplace_back(
           std::make_shared<InterpreterCore>(place_,
                                             fetch_var_names_,
-                                            std::move(kernel_program),
+                                            shared_program->block(),
                                             scope_,
                                             execution_config));
     } else {

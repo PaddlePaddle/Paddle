@@ -101,6 +101,7 @@ CinnJitInstruction::CinnJitInstruction(size_t id,
   // responsible to construct hlir::framework::Instruction.
   auto jit_kernel_op = op->dyn_cast<cinn::dialect::JitKernelOp>();
   impl_ = std::make_shared<Impl>(jit_kernel_op.instruction());
+  op_ = op;
 }
 
 void CinnJitInstruction::Run() {

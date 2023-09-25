@@ -58,12 +58,11 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
         src_op = dist_op_context.cur_src_op
         rank_id = dist_op_context.rank_id
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
+        assert (
+            op_dist_attr is not None
+        ), f"forward op [{str(src_op)}] don't have dist attribute !"
 
         if is_enable_auto_rand_ctrl() and not op_dist_attr.is_recompute:
-            assert (
-                op_dist_attr is not None
-            ), f"forward op [{str(src_op)}] don't have dist attribute !"
-
             # check validation of inputs / outputs
             assert 'X' in kwargs, "input [{}] is not given".format('X')
             assert (
@@ -164,8 +163,8 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
 
                 # modify dropout op
                 src_op.desc.set_input("Seed", [seed_var.name])
-                src_op._remove_attr("fix_seed")
-                src_op._remove_attr("seed")
+                src_op.desc._set_attr("fix_seed", False)
+                src_op.desc._set_attr("seed", 0)
                 op_dist_attr.set_input_dist_attr(
                     seed_var.name, seed_var_dist_attr
                 )

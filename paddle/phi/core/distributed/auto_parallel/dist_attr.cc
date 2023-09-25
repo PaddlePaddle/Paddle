@@ -102,6 +102,10 @@ void TensorDistAttr::set_partial_status(const std::vector<int64_t>& dims,
           "Trying to Set dim %d as Partial which is already a Partial dim.",
           dim));
     }
+    if (std::count(dims_mapping_.begin(), dims_mapping_.end(), dim)) {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Trying to Set dim %d as Partial which is a Sharding dim.", dim));
+    }
     partial_status_.emplace(dim, type);
   }
 }

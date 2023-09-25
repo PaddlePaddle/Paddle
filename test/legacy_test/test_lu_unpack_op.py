@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 import scipy
 import scipy.linalg
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 from paddle import base
@@ -32,7 +32,7 @@ def scipy_lu_unpack(A):
         return scipy.linalg.lu(A)
     else:
         preshape = shape[:-2]
-        batchsize = np.product(shape) // (shape[-2] * shape[-1])
+        batchsize = np.prod(shape) // (shape[-2] * shape[-1])
         Plst = []
         Llst = []
         Ulst = []
@@ -62,7 +62,7 @@ def Pmat_to_perm(Pmat_org, cut):
     shape = Pmat.shape
     rows = shape[-2]
     cols = shape[-1]
-    batchsize = max(1, np.product(shape[:-2]))
+    batchsize = max(1, np.prod(shape[:-2]))
     P = Pmat.reshape(batchsize, rows, cols)
     permmat = []
     for b in range(batchsize):
@@ -91,7 +91,7 @@ def Pmat_to_perm(Pmat_org, cut):
 
 def perm_to_Pmat(perm, dim):
     pshape = perm.shape
-    bs = int(np.product(perm.shape[:-1]).item())
+    bs = int(np.prod(perm.shape[:-1]).item())
     perm = perm.reshape((bs, pshape[-1]))
     oneslst = []
     for i in range(bs):

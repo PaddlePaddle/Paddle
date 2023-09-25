@@ -749,9 +749,9 @@ PHI_DEFINE_EXPORTED_int32(
  * [false]: not set 0D Tensor to 1D Numpy, close the hack
  *
  * Now, just set true by default in 2.5 transition time
- * which will be removed in future (2.6 or 2.7) .
+ * which will be removed in future (2.6) .
  */
-PHI_DEFINE_EXPORTED_bool(set_to_1d, true, "set 0D Tensor to 1D numpy");
+PHI_DEFINE_EXPORTED_bool(set_to_1d, false, "set 0D Tensor to 1D numpy");
 
 /**
  * Debug related FLAG
@@ -1278,15 +1278,13 @@ PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor,
 
 /**
  * Using new IR API in Python
- * Name: enable_new_ir_api
+ * Name: enable_pir_api
  * Since Version: 2.6.0
  * Value Range: bool, default=false
  * Example:
  * Note: If Ture, New IR API will be used in Python
  */
-PHI_DEFINE_EXPORTED_bool(enable_new_ir_api,
-                         false,
-                         "Enable new IR API in Python");
+PHI_DEFINE_EXPORTED_bool(enable_pir_api, false, "Enable new IR API in Python");
 
 /**
  * Using new IR in executor FLAG
@@ -1328,6 +1326,12 @@ PHI_DEFINE_EXPORTED_int64(host_trace_level,
                           1,
                           "RecordEvent will works "
                           "if host_trace_level >= level.");
+
+PHI_DEFINE_EXPORTED_int32(
+    multiple_of_cupti_buffer_size,
+    1,
+    "Multiple of the CUPTI device buffer size. If the timestamps have "
+    "been dropped when you are profiling, try increasing this value.");
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 /**

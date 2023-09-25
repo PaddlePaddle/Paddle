@@ -23,7 +23,7 @@
 #include "paddle/fluid/pir/drr/api/drr_pattern_context.h"
 #include "paddle/fluid/pir/drr/api/match_context.h"
 #include "paddle/fluid/pir/drr/ir_operation.h"
-#include "paddle/fluid/pir/drr/ir_operation_creator.h"
+#include "paddle/fluid/pir/drr/ir_operation_factory.h"
 #include "paddle/fluid/pir/drr/match_context_impl.h"
 #include "paddle/fluid/pir/drr/pattern_graph.h"
 #include "paddle/pir/core/enforce.h"
@@ -179,7 +179,7 @@ class DrrRewritePattern : public pir::RewritePattern {
 
         // check ancestor op
         auto* drr_ancestor_op = drr_input_tensors[i]->producer();
-        auto* ir_ancestor_op = ir_input_value.GetDefiningOp();
+        auto* ir_ancestor_op = ir_input_value.dyn_cast<pir::OpResult>().owner();
         if (drr_ancestor_op->name() != ir_ancestor_op->name()) {
           VLOG(6) << " --- match false: ancestor op not same";
           matched = false;
@@ -367,7 +367,7 @@ class DrrRewritePattern : public pir::RewritePattern {
           ir_operand_value.use_count()) {
         return;
       }
-      auto* ir_producer_op = ir_operand_value.GetDefiningOp();
+      auto* ir_producer_op = ir_operand_value.dyn_cast<pir::OpResult>().owner();
       drr_visited_ops->insert(drr_producer_op);
       DfsVisitor(drr_producer_op,
                  ir_producer_op,
@@ -457,10 +457,11 @@ class DrrRewritePattern : public pir::RewritePattern {
             drr_input_tensors[i]->name(),
             std::make_shared<IrValue>(ir_node->operand(i).source()));
         auto* drr_producer_op = drr_input_tensors[i]->producer();
-        auto* ir_producer_op = ir_node->operand(i).source().GetDefiningOp();
         if (drr_producer_op == nullptr) {
           continue;
         }
+        auto* ir_producer_op =
+            ir_node->operand(i).source().dyn_cast<pir::OpResult>().owner();
         if (drr_input_tensors[i]->consumers().size() !=
             ir_node->operand(i).source().use_count()) {
           matched = false;
@@ -598,7 +599,8 @@ class DrrRewritePattern : public pir::RewritePattern {
       if (source_pattern_graph.id2owend_tensor().count(output)) {
         auto ir_value = src_match_ctx.GetIrValue(output);
         if (ir_value.get()) {
-          rewriter.SetInsertionPointAfter(ir_value.get().GetDefiningOp());
+          rewriter.SetInsertionPointAfter(
+              ir_value.get().dyn_cast<pir::OpResult>().owner());
           break;
         }
       }

@@ -12,50 +12,44 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import core
+import logging
+import multiprocessing
+import queue
 import sys
-import numpy as np
 import threading
-import paddle
-import time
-import copy
+import warnings
 
+import numpy as np
+
+import paddle
+from paddle.base.framework import _set_expected_place
+
+from . import core
+from .data_feeder import BatchedTensorProvider, DataFeeder
+from .executor import global_scope
 from .framework import (
     Program,
-    Variable,
-    program_guard,
+    _current_expected_place,
+    _get_paddle_place,
+    _get_paddle_place_list,
     default_main_program,
     default_startup_program,
     in_dygraph_mode,
-    cpu_places,
-    _current_expected_place,
-)
-from .executor import global_scope
-from .data_feeder import DataFeeder, BatchedTensorProvider
-from .multiprocess_utils import (
-    multiprocess_queue_set,
-    CleanupFuncRegistrar,
-    _cleanup_mmap,
-    _cleanup,
-    _set_SIGCHLD_handler,
+    program_guard,
 )
 from .layers.io import (
-    monkey_patch_reader_methods,
-    _copy_reader_var_,
     __create_unshared_decorated_reader__,
+    _copy_reader_var_,
+    monkey_patch_reader_methods,
+)
+from .multiprocess_utils import _cleanup  # noqa: F401
+from .multiprocess_utils import multiprocess_queue_set  # noqa: F401
+from .multiprocess_utils import (
+    CleanupFuncRegistrar,
+    _cleanup_mmap,
+    _set_SIGCHLD_handler,
 )
 from .unique_name import UniqueNameGenerator
-from .framework import _get_paddle_place, _get_paddle_place_list
-from paddle.base.framework import _set_expected_place, _current_expected_place
-import logging
-import warnings
-
-### Dygraph DataLoader configs ###
-import os
-import multiprocessing
-import signal
-
-import queue
 
 # NOTE: [ avoid hanging & failed quickly ] These value is used in getting data from another process
 QUEUE_GET_TIMEOUT = 60
@@ -463,22 +457,22 @@ class DataLoader:
 
             .. code-block:: python
 
-                import paddle
-                import paddle.static as static
+                >>> import paddle
+                >>> import paddle.static as static
 
-                paddle.enable_static()
+                >>> paddle.enable_static()
 
-                image = static.data(name='image', shape=[None, 784], dtype='float32')
-                label = static.data(name='label', shape=[None, 1], dtype='int64')
+                >>> image = static.data(name='image', shape=[None, 784], dtype='float32')
+                >>> label = static.data(name='label', shape=[None, 1], dtype='int64')
 
-                dataset = paddle.distributed.QueueDataset()
-                dataset.init(
-                    batch_size=32,
-                    pipe_command='cat',
-                    use_var=[image, label])
-                dataset.set_filelist(['a.txt', 'b.txt', 'c.txt'])
+                >>> dataset = paddle.distributed.QueueDataset()
+                >>> dataset.init(
+                ...     batch_size=32,
+                ...     pipe_command='cat',
+                ...     use_var=[image, label])
+                >>> dataset.set_filelist(['a.txt', 'b.txt', 'c.txt'])
 
-                loader = paddle.base.io.DataLoader.from_dataset(dataset, static.cpu_places())
+                >>> loader = paddle.base.io.DataLoader.from_dataset(dataset, static.cpu_places())
         """
         return DatasetLoader(dataset, places, drop_last)
 
@@ -1150,6 +1144,7 @@ class PyReader(DataLoaderBase):
         reader(Reader)
 
     Examples:
+
         1. If iterable = False, the created PyReader object is almost the
            same as :code:`base.layers.py_reader()`. Operators would be
            inserted into the program. User should call :code:`start()`
@@ -1160,56 +1155,56 @@ class PyReader(DataLoaderBase):
 
         .. code-block:: python
 
-           import paddle
-           import paddle.base as base
-           import numpy as np
+            >>> import paddle
+            >>> import paddle.base as base
+            >>> import numpy as np
 
-           paddle.enable_static()
+            >>> paddle.enable_static()
 
-           EPOCH_NUM = 3
-           ITER_NUM = 5
-           BATCH_SIZE = 3
+            >>> EPOCH_NUM = 3
+            >>> ITER_NUM = 5
+            >>> BATCH_SIZE = 3
 
-           def network(image, label):
-               # User-defined network, here is an example of softmax regression.
-               predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
-               return paddle.nn.functional.cross_entropy(
-                    input=predict, label=label,
-                    reduction='none', use_softmax=False
-               )
+            >>> def network(image, label):
+            ...     # User-defined network, here is an example of softmax regression.
+            ...     predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
+            ...     return paddle.nn.functional.cross_entropy(
+            ...         input=predict, label=label,
+            ...         reduction='none', use_softmax=False
+            ...     )
+            ...
+            >>> def reader_creator_random_image_and_label(height, width):
+            ...     def reader():
+            ...         for i in range(ITER_NUM):
+            ...             fake_image = np.random.uniform(low=0,
+            ...                                             high=255,
+            ...                                             size=[height, width])
+            ...             fake_label = np.ones([1])
+            ...             yield fake_image, fake_label
+            ...     return reader
+            ...
+            >>> image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
+            >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
 
-           def reader_creator_random_image_and_label(height, width):
-               def reader():
-                   for i in range(ITER_NUM):
-                       fake_image = np.random.uniform(low=0,
-                                                      high=255,
-                                                      size=[height, width])
-                       fake_label = np.ones([1])
-                       yield fake_image, fake_label
-               return reader
-
-           image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
-           label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
-
-           reader = base.io.PyReader(feed_list=[image, label],
-                                      capacity=4,
-                                      iterable=False)
-
-           user_defined_reader = reader_creator_random_image_and_label(784, 784)
-           reader.decorate_sample_list_generator(
-               paddle.batch(user_defined_reader, batch_size=BATCH_SIZE))
-           loss = network(image, label)
-           executor = base.Executor(base.CPUPlace())
-           executor.run(base.default_startup_program())
-           for i in range(EPOCH_NUM):
-               reader.start()
-               while True:
-                   try:
-                       executor.run(feed=None)
-                   except base.core.EOFException:
-                       reader.reset()
-                       break
-
+            >>> reader = base.io.PyReader(feed_list=[image, label],
+            ...                             capacity=4,
+            ...                             iterable=False)
+            ...
+            >>> user_defined_reader = reader_creator_random_image_and_label(784, 784)
+            >>> reader.decorate_sample_list_generator(
+            ...     paddle.batch(user_defined_reader, batch_size=BATCH_SIZE))
+            >>> loss = network(image, label)
+            >>> executor = base.Executor(base.CPUPlace())
+            >>> executor.run(base.default_startup_program())
+            >>> for i in range(EPOCH_NUM):
+            ...     reader.start()
+            ...     while True:
+            ...         try:
+            ...             executor.run(feed=None)
+            ...         except base.core.EOFException:
+            ...             reader.reset()
+            ...             break
+            ...
 
         2. If iterable=True, the created PyReader object is decoupled with
            the program. No operator would be inserted into the program.
@@ -1219,78 +1214,78 @@ class PyReader(DataLoaderBase):
 
         .. code-block:: python
 
-           import paddle
-           import paddle.base as base
-           import numpy as np
+            >>> import paddle
+            >>> import paddle.base as base
+            >>> import numpy as np
 
-           paddle.enable_static()
+            >>> paddle.enable_static()
 
-           EPOCH_NUM = 3
-           ITER_NUM = 5
-           BATCH_SIZE = 10
+            >>> EPOCH_NUM = 3
+            >>> ITER_NUM = 5
+            >>> BATCH_SIZE = 10
 
-           def network(image, label):
-               # User-defined network, here is an example of softmax regression.
-               predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
-               return paddle.nn.functional.cross_entropy(
-                   input=predict, label=label,
-                   reduction='none', use_softmax=False
-               )
+            >>> def network(image, label):
+            ...     # User-defined network, here is an example of softmax regression.
+            ...     predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
+            ...     return paddle.nn.functional.cross_entropy(
+            ...         input=predict, label=label,
+            ...         reduction='none', use_softmax=False
+            ...     )
+            ...
+            >>> def reader_creator_random_image(height, width):
+            ...     def reader():
+            ...         for i in range(ITER_NUM):
+            ...             fake_image = np.random.uniform(low=0, high=255, size=[height, width])
+            ...             fake_label = np.ones([1])
+            ...             yield fake_image, fake_label
+            ...     return reader
+            ...
+            >>> image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
+            >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
+            >>> reader = base.io.PyReader(feed_list=[image, label], capacity=4, iterable=True, return_list=False)
 
-           def reader_creator_random_image(height, width):
-               def reader():
-                   for i in range(ITER_NUM):
-                       fake_image = np.random.uniform(low=0, high=255, size=[height, width])
-                       fake_label = np.ones([1])
-                       yield fake_image, fake_label
-               return reader
+            >>> user_defined_reader = reader_creator_random_image(784, 784)
+            >>> reader.decorate_sample_list_generator(
+            ...     paddle.batch(user_defined_reader, batch_size=BATCH_SIZE),
+            ...         base.core.CPUPlace())
+            ...
+            >>> loss = network(image, label)
+            >>> executor = base.Executor(base.CPUPlace())
+            >>> executor.run(base.default_startup_program())
 
-           image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
-           label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
-           reader = base.io.PyReader(feed_list=[image, label], capacity=4, iterable=True, return_list=False)
-
-           user_defined_reader = reader_creator_random_image(784, 784)
-           reader.decorate_sample_list_generator(
-               paddle.batch(user_defined_reader, batch_size=BATCH_SIZE),
-                   base.core.CPUPlace())
-
-           loss = network(image, label)
-           executor = base.Executor(base.CPUPlace())
-           executor.run(base.default_startup_program())
-
-           for _ in range(EPOCH_NUM):
-               for data in reader():
-                   executor.run(feed=data, fetch_list=[loss])
-
+            >>> for _ in range(EPOCH_NUM):
+            ...     for data in reader():
+            ...         executor.run(feed=data, fetch_list=[loss])
+            ...
 
         3. If return_list=True, the return values would be presented as list instead of dict.
            This is usually used in dygraph mode.
 
         .. code-block:: python
 
-           import paddle
-           import paddle.base as base
-           import numpy as np
+            >>> import paddle
+            >>> import paddle.base as base
+            >>> import numpy as np
 
-           ITER_NUM = 5
-           BATCH_SIZE = 10
+            >>> ITER_NUM = 5
+            >>> BATCH_SIZE = 10
 
-           def reader_creator_random_image(height, width):
-               def reader():
-                   for i in range(ITER_NUM):
-                       yield np.random.uniform(low=0, high=255, size=[height, width]), \
-                           np.random.random_integers(low=0, high=9, size=[1])
-               return reader
-
-           place = base.CPUPlace()
-           with base.dygraph.guard(place):
-               py_reader = base.io.PyReader(capacity=2, return_list=True)
-               user_defined_reader = reader_creator_random_image(784, 784)
-               py_reader.decorate_sample_list_generator(
-                   paddle.batch(user_defined_reader, batch_size=BATCH_SIZE),
-                   place)
-               for image, label in py_reader():
-                   relu = paddle.nn.functional.relu(image)
+            >>> def reader_creator_random_image(height, width):
+            ...     def reader():
+            ...         for i in range(ITER_NUM):
+            ...             yield np.random.uniform(low=0, high=255, size=[height, width]), \
+            ...                 np.random.random_integers(low=0, high=9, size=[1])
+            ...     return reader
+            ...
+            >>> place = base.CPUPlace()
+            >>> with base.dygraph.guard(place):
+            ...     py_reader = base.io.PyReader(capacity=2, return_list=True)
+            ...     user_defined_reader = reader_creator_random_image(784, 784)
+            ...     py_reader.decorate_sample_list_generator(
+            ...         paddle.batch(user_defined_reader, batch_size=BATCH_SIZE),
+            ...         place)
+            ...     for image, label in py_reader():
+            ...         relu = paddle.nn.functional.relu(image)
     """
 
     def __init__(
@@ -1327,32 +1322,34 @@ class PyReader(DataLoaderBase):
         Example:
             .. code-block:: python
 
-                import paddle
-                import paddle.base as base
-                import numpy as np
+                >>> import paddle
+                >>> import paddle.base as base
+                >>> import numpy as np
 
-                BATCH_SIZE = 10
+                >>> paddle.enable_static()
 
-                def generator():
-                    for i in range(5):
-                        yield np.random.uniform(low=0, high=255, size=[784, 784]),
+                >>> BATCH_SIZE = 10
 
-                image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
-                reader = base.io.PyReader(feed_list=[image], capacity=4, iterable=False)
-                reader.decorate_sample_list_generator(
-                    paddle.batch(generator, batch_size=BATCH_SIZE))
-
-                executor = base.Executor(base.CPUPlace())
-                executor.run(base.default_startup_program())
-                for i in range(3):
-                    reader.start()
-                    while True:
-                        try:
-                            executor.run(feed=None)
-                        except base.core.EOFException:
-                            reader.reset()
-                            break
-
+                >>> def generator():
+                ...     for i in range(5):
+                ...         yield np.random.uniform(low=0, high=255, size=[784, 784]),
+                ...
+                >>> image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
+                >>> reader = base.io.PyReader(feed_list=[image], capacity=4, iterable=False)
+                >>> reader.decorate_sample_list_generator(
+                ...     paddle.batch(generator, batch_size=BATCH_SIZE))
+                ...
+                >>> executor = base.Executor(base.CPUPlace())
+                >>> executor.run(base.default_startup_program())
+                >>> for i in range(3):
+                ...     reader.start()
+                ...     while True:
+                ...         try:
+                ...             executor.run(feed=None)
+                ...         except base.core.EOFException:
+                ...             reader.reset()
+                ...             break
+                ...
         '''
         self._loader.start()
 
@@ -1364,32 +1361,34 @@ class PyReader(DataLoaderBase):
         Example:
             .. code-block:: python
 
-                import paddle
-                import paddle.base as base
-                import numpy as np
+                >>> import paddle
+                >>> import paddle.base as base
+                >>> import numpy as np
 
-                BATCH_SIZE = 10
+                >>> paddle.enable_static()
 
-                def generator():
-                    for i in range(5):
-                        yield np.random.uniform(low=0, high=255, size=[784, 784]),
+                >>> BATCH_SIZE = 10
 
-                image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
-                reader = base.io.PyReader(feed_list=[image], capacity=4, iterable=False)
-                reader.decorate_sample_list_generator(
-                    paddle.batch(generator, batch_size=BATCH_SIZE))
-
-                executor = base.Executor(base.CPUPlace())
-                executor.run(base.default_startup_program())
-                for i in range(3):
-                    reader.start()
-                    while True:
-                        try:
-                            executor.run(feed=None)
-                        except base.core.EOFException:
-                            reader.reset()
-                            break
-
+                >>> def generator():
+                ...     for i in range(5):
+                ...         yield np.random.uniform(low=0, high=255, size=[784, 784]),
+                ...
+                >>> image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
+                >>> reader = base.io.PyReader(feed_list=[image], capacity=4, iterable=False)
+                >>> reader.decorate_sample_list_generator(
+                ...     paddle.batch(generator, batch_size=BATCH_SIZE))
+                ...
+                >>> executor = base.Executor(base.CPUPlace())
+                >>> executor.run(base.default_startup_program())
+                >>> for i in range(3):
+                ...     reader.start()
+                ...     while True:
+                ...         try:
+                ...             executor.run(feed=None)
+                ...         except base.core.EOFException:
+                ...             reader.reset()
+                ...             break
+                ...
         '''
         self._loader.reset()
 
@@ -1419,48 +1418,50 @@ class PyReader(DataLoaderBase):
         Example:
             .. code-block:: python
 
-                import paddle
-                import paddle.base as base
-                import numpy as np
+                >>> import paddle
+                >>> import paddle.base as base
+                >>> import numpy as np
 
-                EPOCH_NUM = 3
-                ITER_NUM = 15
-                BATCH_SIZE = 3
+                >>> paddle.enable_static()
 
-                def network(image, label):
-                    # User-defined network, here is an example of softmax regression.
-                    predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
-                    return paddle.nn.functional.cross_entropy(
-                        input=predict, label=label,
-                        reduction='none', use_softmax=False
-                    )
+                >>> EPOCH_NUM = 3
+                >>> ITER_NUM = 15
+                >>> BATCH_SIZE = 3
 
-                def random_image_and_label_generator(height, width):
-                    def generator():
-                        for i in range(ITER_NUM):
-                            fake_image = np.random.uniform(low=0,
-                                                           high=255,
-                                                           size=[height, width])
-                            fake_label = np.array([1])
-                            yield fake_image, fake_label
-                    return generator
+                >>> def network(image, label):
+                ...     # User-defined network, here is an example of softmax regression.
+                ...     predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
+                ...     return paddle.nn.functional.cross_entropy(
+                ...         input=predict, label=label,
+                ...         reduction='none', use_softmax=False
+                ...     )
+                ...
+                >>> def random_image_and_label_generator(height, width):
+                ...     def generator():
+                ...         for i in range(ITER_NUM):
+                ...             fake_image = np.random.uniform(low=0,
+                ...                                             high=255,
+                ...                                             size=[height, width])
+                ...             fake_label = np.array([1])
+                ...             yield fake_image, fake_label
+                ...     return generator
+                ...
+                >>> image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
+                >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
+                >>> reader = base.io.PyReader(feed_list=[image, label], capacity=4, iterable=True)
 
-                image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
-                label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
-                reader = base.io.PyReader(feed_list=[image, label], capacity=4, iterable=True)
+                >>> user_defined_generator = random_image_and_label_generator(784, 784)
+                >>> reader.decorate_sample_generator(user_defined_generator,
+                ...                                     batch_size=BATCH_SIZE,
+                ...                                     places=[base.CPUPlace()])
+                >>> loss = network(image, label)
+                >>> executor = base.Executor(base.CPUPlace())
+                >>> executor.run(base.default_startup_program())
 
-                user_defined_generator = random_image_and_label_generator(784, 784)
-                reader.decorate_sample_generator(user_defined_generator,
-                                                 batch_size=BATCH_SIZE,
-                                                 places=[base.CPUPlace()])
-                loss = network(image, label)
-                executor = base.Executor(base.CPUPlace())
-                executor.run(base.default_startup_program())
-
-                for _ in range(EPOCH_NUM):
-                    for data in reader():
-                        executor.run(feed=data, fetch_list=[loss])
-
+                >>> for _ in range(EPOCH_NUM):
+                ...     for data in reader():
+                ...         executor.run(feed=data, fetch_list=[loss])
+                ...
         '''
         self._loader.set_sample_generator(
             sample_generator, batch_size, drop_last, places
@@ -1484,51 +1485,51 @@ class PyReader(DataLoaderBase):
         Example:
             .. code-block:: python
 
-                import paddle
-                import paddle.base as base
-                import numpy as np
+                >>> import paddle
+                >>> import paddle.base as base
+                >>> import numpy as np
 
-                paddle.enable_static()
+                >>> paddle.enable_static()
 
-                EPOCH_NUM = 3
-                ITER_NUM = 15
-                BATCH_SIZE = 3
+                >>> EPOCH_NUM = 3
+                >>> ITER_NUM = 15
+                >>> BATCH_SIZE = 3
 
-                def network(image, label):
-                    # User-defined network, here is an example of softmax regression.
-                    predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
-                    return paddle.nn.functional.cross_entropy(
-                        input=predict, label=label,
-                        reduction='none', use_softmax=False
-                    )
+                >>> def network(image, label):
+                ...     # User-defined network, here is an example of softmax regression.
+                ...     predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
+                ...     return paddle.nn.functional.cross_entropy(
+                ...         input=predict, label=label,
+                ...         reduction='none', use_softmax=False
+                ...     )
+                ...
+                >>> def random_image_and_label_generator(height, width):
+                ...     def generator():
+                ...         for i in range(ITER_NUM):
+                ...             fake_image = np.random.uniform(low=0,
+                ...                                             high=255,
+                ...                                             size=[height, width])
+                ...             fake_label = np.ones([1])
+                ...             yield fake_image, fake_label
+                ...     return generator
+                ...
+                >>> image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
+                >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
+                >>> reader = base.io.PyReader(feed_list=[image, label], capacity=4, iterable=True)
 
-                def random_image_and_label_generator(height, width):
-                    def generator():
-                        for i in range(ITER_NUM):
-                            fake_image = np.random.uniform(low=0,
-                                                           high=255,
-                                                           size=[height, width])
-                            fake_label = np.ones([1])
-                            yield fake_image, fake_label
-                    return generator
+                >>> user_defined_generator = random_image_and_label_generator(784, 784)
+                >>> reader.decorate_sample_list_generator(
+                ...     paddle.batch(user_defined_generator, batch_size=BATCH_SIZE),
+                ...     base.core.CPUPlace())
+                ...
+                >>> loss = network(image, label)
+                >>> executor = base.Executor(base.core.CPUPlace())
+                >>> executor.run(base.default_startup_program())
 
-                image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
-                label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
-                reader = base.io.PyReader(feed_list=[image, label], capacity=4, iterable=True)
-
-                user_defined_generator = random_image_and_label_generator(784, 784)
-                reader.decorate_sample_list_generator(
-                    paddle.batch(user_defined_generator, batch_size=BATCH_SIZE),
-                    base.core.CPUPlace())
-
-                loss = network(image, label)
-                executor = base.Executor(base.core.CPUPlace())
-                executor.run(base.default_startup_program())
-
-                for _ in range(EPOCH_NUM):
-                    for data in reader():
-                        executor.run(feed=data, fetch_list=[loss])
-
+                >>> for _ in range(EPOCH_NUM):
+                ...     for data in reader():
+                ...         executor.run(feed=data, fetch_list=[loss])
+                ...
         '''
         self._loader.set_sample_list_generator(reader, places)
 
@@ -1550,51 +1551,51 @@ class PyReader(DataLoaderBase):
         Example:
             .. code-block:: python
 
-                import paddle
-                import paddle.base as base
-                import numpy as np
+                >>> import paddle
+                >>> import paddle.base as base
+                >>> import numpy as np
 
-                paddle.enable_static()
+                >>> paddle.enable_static()
 
-                EPOCH_NUM = 3
-                ITER_NUM = 15
-                BATCH_SIZE = 3
+                >>> EPOCH_NUM = 3
+                >>> ITER_NUM = 15
+                >>> BATCH_SIZE = 3
 
-                def network(image, label):
-                    # User-defined network, here is an example of softmax regression.
-                    predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
-                    return paddle.nn.functional.cross_entropy(
-                        input=predict, label=label,
-                        reduction='none', use_softmax=False
-                    )
+                >>> def network(image, label):
+                ...     # User-defined network, here is an example of softmax regression.
+                ...     predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
+                ...     return paddle.nn.functional.cross_entropy(
+                ...         input=predict, label=label,
+                ...         reduction='none', use_softmax=False
+                ...     )
+                ...
+                >>> def random_image_and_label_generator(height, width):
+                ...     def generator():
+                ...         for i in range(ITER_NUM):
+                ...             batch_image = np.random.uniform(low=0,
+                ...                                             high=255,
+                ...                                             size=[BATCH_SIZE, height, width])
+                ...             batch_label = np.ones([BATCH_SIZE, 1])
+                ...             batch_image = batch_image.astype('float32')
+                ...             batch_label = batch_label.astype('int64')
+                ...             yield batch_image, batch_label
+                ...     return generator
+                ...
+                >>> image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
+                >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
+                >>> reader = base.io.PyReader(feed_list=[image, label], capacity=4, iterable=True)
 
-                def random_image_and_label_generator(height, width):
-                    def generator():
-                        for i in range(ITER_NUM):
-                            batch_image = np.random.uniform(low=0,
-                                                            high=255,
-                                                            size=[BATCH_SIZE, height, width])
-                            batch_label = np.ones([BATCH_SIZE, 1])
-                            batch_image = batch_image.astype('float32')
-                            batch_label = batch_label.astype('int64')
-                            yield batch_image, batch_label
-                    return generator
+                >>> user_defined_generator = random_image_and_label_generator(784, 784)
+                >>> reader.decorate_batch_generator(user_defined_generator, base.CPUPlace())
 
-                image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
-                label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
-                reader = base.io.PyReader(feed_list=[image, label], capacity=4, iterable=True)
+                >>> loss = network(image, label)
+                >>> executor = base.Executor(base.CPUPlace())
+                >>> executor.run(base.default_startup_program())
 
-                user_defined_generator = random_image_and_label_generator(784, 784)
-                reader.decorate_batch_generator(user_defined_generator, base.CPUPlace())
-
-                loss = network(image, label)
-                executor = base.Executor(base.CPUPlace())
-                executor.run(base.default_startup_program())
-
-                for _ in range(EPOCH_NUM):
-                    for data in reader():
-                        executor.run(feed=data, fetch_list=[loss])
-
+                >>> for _ in range(EPOCH_NUM):
+                ...     for data in reader():
+                ...         executor.run(feed=data, fetch_list=[loss])
+                ...
         '''
         self._loader.set_batch_generator(reader, places)
 

@@ -13,20 +13,22 @@
 # limitations under the License.
 
 import copy
+
 import numpy as np
+
 import paddle
 
+from . import core, unique_name
 from .framework import (
     Variable,
+    _current_expected_place,
     default_main_program,
     default_startup_program,
     in_dygraph_mode,
-    _current_expected_place,
+    in_pir_mode,
 )
-from . import unique_name
+from .initializer import _global_bias_initializer, _global_weight_initializer
 from .param_attr import ParamAttr, WeightNormParamAttr
-from . import core
-from .initializer import _global_weight_initializer, _global_bias_initializer
 
 __all__ = ['LayerHelperBase']
 
@@ -76,15 +78,15 @@ class LayerHelperBase:
 
         Examples:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import numpy as np
-            import paddle.base as base
+                >>> import numpy as np
+                >>> import paddle.base as base
 
-            with base.dygraph.guard():
-                x = np.ones([2, 2], np.float32)
-                y = base.dygraph.to_variable(x)
-
+                >>> with base.dygraph.guard():
+                ...     x = np.ones([2, 2], np.float32)
+                ...     y = base.dygraph.to_variable(x)
+                ...
         """
         if isinstance(value, np.ndarray):
             return core.eager.Tensor(
@@ -431,6 +433,12 @@ class LayerHelperBase:
                 **attr._to_kwargs(with_initializer=True)
             )
         else:
+            if in_pir_mode():
+                return paddle.ir.core.create_parameter(
+                    dtype=dtype,
+                    shape=shape,
+                    **attr._to_kwargs(with_initializer=True)
+                )
             self.startup_program.global_block().create_parameter(
                 dtype=dtype,
                 shape=shape,

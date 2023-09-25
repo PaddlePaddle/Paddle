@@ -272,7 +272,7 @@ void MasterDaemon::run() {
       }
       VLOG(0)
           << "receive shutdown event and so quit from MasterDaemon run loop";
-      finished = true;
+      finished = true;  // NOLINT
       break;
     }
 #endif

@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/pir/core/interface_value.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/storage_manager.h"
 #include "paddle/pir/core/type_id.h"
@@ -36,8 +37,10 @@ class IR_API AbstractType {
   /// \param type_id The type id of the AbstractType.
   /// \param dialect The Dialect which the type registered to.
   ///
-  static AbstractType get(TypeId type_id, const Dialect &dialect) {
-    return AbstractType(type_id, dialect);
+  static AbstractType get(TypeId type_id,
+                          const Dialect &dialect,
+                          std::vector<InterfaceValue> &&interface_map) {
+    return AbstractType(type_id, dialect, std::move(interface_map));
   }
 
   ///
@@ -47,7 +50,7 @@ class IR_API AbstractType {
   ///
   template <typename T>
   static AbstractType get(const Dialect &dialect) {
-    return AbstractType(TypeId::get<T>(), dialect);
+    return AbstractType(TypeId::get<T>(), dialect, T::interface_map());
   }
 
   ///
@@ -74,6 +77,22 @@ class IR_API AbstractType {
   ///
   static const AbstractType &lookup(TypeId type_id, IrContext *ctx);
 
+  ///
+  /// \brief Returns an instance of the concept object for the given interface
+  /// if it was registered to this type, null otherwise. This should not be used
+  /// directly.
+  ///
+  template <typename InterfaceT>
+  typename InterfaceT::Concept *GetInterfaceImpl() const;
+
+  ///
+  /// \brief Returns true if the type has the interface with the given ID.
+  /// \param interface_id The interface ID of the type.
+  ///
+  bool HasInterface(TypeId interface_id) const {
+    return GetInterfaceImpl(interface_id);
+  }
+
  private:
   ///
   /// \brief The constructor is set to private and provides the user with the
@@ -82,13 +101,36 @@ class IR_API AbstractType {
   /// \param type_id The type id of the AbstractType.
   /// \param dialect The Dialect which the type registered to.
   ///
-  explicit AbstractType(TypeId type_id, const Dialect &dialect)
-      : type_id_(type_id), dialect_(dialect) {}
+  explicit AbstractType(TypeId type_id,
+                        const Dialect &dialect,
+                        std::vector<InterfaceValue> &&interface_map)
+      : type_id_(type_id),
+        dialect_(dialect),
+        interface_map_(std::move(interface_map)) {}
 
-  TypeId type_id_;
+  void *GetInterfaceImpl(TypeId interface_id) const;
 
+  /// A unique identifier of the derived Type class.
+  const TypeId type_id_;
+
+  /// Dialect to which this type was registered
   const Dialect &dialect_;
+
+  /// A collection of the interfaces registered to this type.
+  std::vector<InterfaceValue> interface_map_;
+
+  /// Interface will be recorded by std::pair<TypeId, void*> currently.
+  uint32_t num_interfaces_ = 0;
+
+  /// Trait will be recorded by TypeId.
+  uint32_t num_traits_ = 0;
 };
+
+template <typename InterfaceT>
+typename InterfaceT::Concept *AbstractType::GetInterfaceImpl() const {
+  void *model = GetInterfaceImpl(TypeId::get<InterfaceT>());
+  return reinterpret_cast<typename InterfaceT::Concept *>(model);
+}
 
 struct TypeManager;
 
@@ -237,26 +279,4 @@ struct IR_API TypeManager {
   }
 };
 
-///
-/// \brief This macro definition is used to add some necessary functions to the
-/// custom Type class.
-///
-#define DECLARE_TYPE_UTILITY_FUNCTOR(concrete_type, storage_type)            \
-  using Storage = storage_type;                                              \
-                                                                             \
-  const Storage *storage() const {                                           \
-    return static_cast<const Storage *>(this->storage_);                     \
-  }                                                                          \
-                                                                             \
-  static pir::TypeId type_id() { return pir::TypeId::get<concrete_type>(); } \
-                                                                             \
-  template <typename T>                                                      \
-  static bool classof(T val) {                                               \
-    return val.type_id() == type_id();                                       \
-  }                                                                          \
-                                                                             \
-  template <typename... Args>                                                \
-  static concrete_type get(pir::IrContext *ctx, Args... args) {              \
-    return pir::TypeManager::template get<concrete_type>(ctx, args...);      \
-  }
 }  // namespace pir

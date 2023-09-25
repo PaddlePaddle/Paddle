@@ -298,8 +298,7 @@ def flatten(nested):
 def _flatten(nested):
     for item in nested:
         if isinstance(item, (list, tuple)):
-            for subitem in _flatten(item):
-                yield subitem
+            yield from _flatten(item)
         else:
             yield item
 

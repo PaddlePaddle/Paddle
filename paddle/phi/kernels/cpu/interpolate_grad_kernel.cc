@@ -360,17 +360,20 @@ static void NearestNeighbor3DInterpolateGrad(const DenseTensor& output_grad,
 
   for (int d = 0; d < out_d; d++) {
     int in_d = static_cast<int>(
-        align_corners ? std::lround(ratio_d * static_cast<float>(d))
-                      : (ratio_d * static_cast<float>(d)));
+        align_corners
+            ? static_cast<float>(std::lround(ratio_d * static_cast<float>(d)))
+            : (ratio_d * static_cast<float>(d)));
     for (int k = 0; k < out_h; k++) {  // loop for images
       int in_k = static_cast<int>(
-          align_corners ? std::lround(ratio_h * static_cast<float>(k))
-                        : (ratio_h * static_cast<float>(k)));
+          align_corners
+              ? static_cast<float>(std::lround(ratio_h * static_cast<float>(k)))
+              : (ratio_h * static_cast<float>(k)));
 
       for (int l = 0; l < out_w; l++) {
-        int in_l = static_cast<int>(
-            align_corners ? std::lround(ratio_w * static_cast<float>(l))
-                          : (ratio_w * static_cast<float>(l)));
+        int in_l = static_cast<int>(align_corners
+                                        ? static_cast<float>(std::lround(
+                                              ratio_w * static_cast<float>(l)))
+                                        : (ratio_w * static_cast<float>(l)));
 
         for (int i = 0; i < n; i++) {    // loop for batches
           for (int j = 0; j < c; j++) {  // loop for channels

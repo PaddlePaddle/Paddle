@@ -20,8 +20,8 @@ import numpy as np
 import paddle
 
 sys.path.append("..")
-from eager_op_test import OpTest, convert_float_to_uint16
 from numpy.random import random as rand
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle.base.dygraph as dg
 from paddle import static

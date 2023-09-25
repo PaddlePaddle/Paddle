@@ -16,7 +16,7 @@ import copy
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 from paddle import _C_ops

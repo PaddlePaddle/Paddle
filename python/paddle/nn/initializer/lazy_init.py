@@ -98,16 +98,16 @@ class LazyGuard:
 
         .. code-block:: python
 
-            from paddle import LazyGuard
-            from paddle.nn import Linear
+            >>> from paddle import LazyGuard
+            >>> from paddle.nn import Linear
 
-            with LazyGuard():
-                # w and b are initialized lazily and have no memory.
-                net = Linear(10, 10)
-
-            for param in net.parameters():
-                # Initialize param and allocate memory explicitly.
-                param.initialize()
+            >>> with LazyGuard():
+            ...     # w and b are initialized lazily and have no memory.
+            ...     net = Linear(10, 10)
+            ...
+            >>> for param in net.parameters():
+            ...     # Initialize param and allocate memory explicitly.
+            ...     param.initialize()
     """
 
     def __enter__(self):
@@ -118,14 +118,14 @@ class LazyGuard:
 
             .. code-block:: python
 
-                from paddle import LazyGuard
-                from paddle.nn import Linear
+                >>> from paddle import LazyGuard
+                >>> from paddle.nn import Linear
 
-                with LazyGuard():
-                    fc = LazyInit(Linear)(10, 10)
-
-                for param in fc.parameters():
-                    param.initialize()
+                >>> with LazyGuard():
+                ...     fc = LazyInit(Linear)(10, 10)
+                ...
+                >>> for param in fc.parameters():
+                ...     param.initialize()
         """
         lazy_init_helper().enable()
 

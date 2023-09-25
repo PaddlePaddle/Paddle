@@ -16,6 +16,7 @@
 
 #include <cstring>
 
+#include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/common/arithmatic.h"
 #include "paddle/cinn/common/axis.h"
@@ -59,7 +60,7 @@ std::set<std::string> _Tensor_::GetDependTensorNames() const {
   std::set<std::string> names;
 
   auto add_depend_tensors_from_expr = [&](Expr expr) {
-    auto tensors = CollectIRNodes(expr, [&](const Expr *x) {
+    auto tensors = ir::ir_utils::CollectIRNodes(expr, [&](const Expr *x) {
       return x->as_tensor() && x->as_tensor()->name != this->name;
     });
     for (auto &e : tensors) {
@@ -514,7 +515,7 @@ bool _Tensor_::IsDependOnStatement(absl::string_view statement) {
 std::set<std::string> _Tensor_::DependingTensorNames() {
   std::set<std::string> res;
   if (body().defined()) {
-    auto depend_tensors = ir::CollectIRNodes(
+    auto depend_tensors = ir::ir_utils::CollectIRNodes(
         body(), [](const Expr *x) -> bool { return x->as_tensor(); });
     for (const auto &x : depend_tensors) {
       if (x.get() != this) {
@@ -537,7 +538,7 @@ std::vector<Var> _Tensor_::axis_with_reduce() const {
 }
 
 bool _Tensor_::Uses(const Tensor &other) const {
-  auto loads = ir::CollectIRNodes(body(), [&](const Expr *x) {
+  auto loads = ir::ir_utils::CollectIRNodes(body(), [&](const Expr *x) {
     auto *loadn = x->As<ir::Load>();
     if (!loadn) return false;
     return loadn->tensor.as_tensor()->name == other->name;

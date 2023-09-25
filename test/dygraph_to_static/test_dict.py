@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 
 import paddle
 from paddle import base
@@ -125,6 +126,7 @@ class TestNetWithDict(unittest.TestCase):
         self.x = np.random.random([10, 16]).astype('float32')
         self.batch_size = self.x.shape[0]
 
+    @test_and_compare_with_new_ir(True)
     def _run_static(self):
         return self.train(to_static=True)
 
@@ -180,6 +182,7 @@ class TestDictPop(unittest.TestCase):
     def _set_test_func(self):
         self.dygraph_func = test_dic_pop
 
+    @test_and_compare_with_new_ir(True)
     def _run_static(self):
         return self._run(to_static=True)
 

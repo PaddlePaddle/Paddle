@@ -15,13 +15,14 @@
 import argparse
 import os
 
-from api_gen import NAMESPACE_TEMPLATE, PD_MANUAL_OP_LIST, CodeGen
+from api_gen import NAMESPACE_TEMPLATE, CodeGen
 
 CPP_FILE_TEMPLATE = """
 #include <pybind11/pybind11.h>
 
 #include "paddle/fluid/pybind/static_op_function.h"
 #include "paddle/fluid/pybind/eager_op_function.h"
+#include "paddle/fluid/pybind/manual_static_op_function.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 
@@ -41,6 +42,9 @@ void BindOpsAPI(pybind11::module *module) {{
   if (PyModule_AddFunctions(module->ptr(), OpsAPI) < 0) {{
     PADDLE_THROW(phi::errors::Fatal("Add C++ api to core.ops failed!"));
   }}
+  if (PyModule_AddFunctions(module->ptr(), ManualOpsAPI) < 0) {{
+    PADDLE_THROW(phi::errors::Fatal("Add C++ api to core.ops failed!"));
+  }}
 }}
 """
 
@@ -55,7 +59,7 @@ static PyObject *{name}(PyObject *self, PyObject *args, PyObject *kwargs) {{
   }}
 }}"""
 
-NO_DY_FUNCTION_IMPL_TEMPLATE = """
+STATIC_ONLY_FUNCTION_IMPL_TEMPLATE = """
 static PyObject *{name}(PyObject *self, PyObject *args, PyObject *kwargs) {{
   VLOG(6) << "Call static_api_{name}";
   return static_api_{name}(self, args, kwargs);
@@ -64,8 +68,9 @@ static PyObject *{name}(PyObject *self, PyObject *args, PyObject *kwargs) {{
 OPS_API_TEMPLATE = """
 {{"{name}", (PyCFunction)(void (*)(void)){name}, METH_VARARGS | METH_KEYWORDS, "C++ interface function for {name}."}},"""
 
-SPECIAL_STATIC_ONLY_APIS = [
-    'fetch',
+NEED_GEN_STATIC_ONLY_APIS = ['fetch']
+
+NO_NEED_GEN_STATIC_ONLY_APIS = [
     'set_value_with_tensor',
     'set_value_with_tensor_',
     'fused_bn_add_activation_',
@@ -86,6 +91,11 @@ SPECIAL_STATIC_ONLY_APIS = [
     'c_allreduce_sum',
     'c_embedding',
     'c_identity',
+    'c_reduce_sum',
+    'c_allreduce_max',
+    'c_allgather',
+    'seed',
+    "fused_attention",
 ]
 
 
@@ -93,14 +103,16 @@ class OpsAPIGen(CodeGen):
     def __init__(self) -> None:
         super().__init__()
 
+    def _need_skip(self, op_info, op_name):
+        return (
+            super()._need_skip(op_info, op_name)
+            or op_name.endswith(('_grad', '_grad_', 'xpu'))
+            or op_name in NO_NEED_GEN_STATIC_ONLY_APIS
+        )
+
     def _gen_one_function_impl(self, name):
-        if (
-            name.endswith('_grad')
-            or name.endswith('_grad_')
-            or name.endswith('xpu')
-            or name in SPECIAL_STATIC_ONLY_APIS
-        ):
-            return NO_DY_FUNCTION_IMPL_TEMPLATE.format(name=name)
+        if name in NEED_GEN_STATIC_ONLY_APIS:
+            return STATIC_ONLY_FUNCTION_IMPL_TEMPLATE.format(name=name)
         else:
             return FUNCTION_IMPL_TEMPLATE.format(name=name)
 
@@ -117,10 +129,7 @@ class OpsAPIGen(CodeGen):
         ops_api_str = ''
         for op_info in op_info_items:
             for op_name in op_info.op_phi_name:
-                if (
-                    op_info.infer_meta_func is None
-                    and op_name not in PD_MANUAL_OP_LIST
-                ):
+                if self._need_skip(op_info, op_name):
                     continue
                 function_impl_str += self._gen_one_function_impl(op_name)
                 ops_api_str += self._gen_one_ops_api(op_name)

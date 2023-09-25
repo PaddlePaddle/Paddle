@@ -64,7 +64,7 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
           wx_dims[0],
           x_mat_dims[1]));
 
-  int frame_size = wx_dims[1] / 3;
+  int frame_size = static_cast<int>(wx_dims[1] / 3);
   auto wh_dims = ctx->GetInputDim("WeightH");
 
   PADDLE_ENFORCE_EQ(wh_dims.size(),
@@ -131,9 +131,10 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
   ctx->ShareLoD("X", "Hidden");
   int xx_width;
   if (ctx->Attrs().Get<bool>("use_seq")) {
-    xx_width = wx_dims[1];
+    xx_width = static_cast<int>(wx_dims[1]);
   } else {
-    xx_width = x_mat_dims[1] > wx_dims[1] ? wx_dims[1] : x_mat_dims[1];
+    xx_width = static_cast<int>(x_mat_dims[1] > wx_dims[1] ? wx_dims[1]
+                                                           : x_mat_dims[1]);
     OP_INOUT_CHECK(
         ctx->HasOutput("ReorderedH0"), "Output", "ReorderedH0", "fusion_gru");
     OP_INOUT_CHECK(
@@ -305,7 +306,7 @@ class FusionGRUKernel : public framework::OpKernel<T> {
   void SeqCompute(const framework::ExecutionContext& ctx) const {
     INIT_BASE_DEFINES;
     INIT_OTHER_DEFINES;
-    const int N = x_lod[0].size() - 1;
+    const int N = static_cast<int>(x_lod[0].size() - 1);
     const T* h0_data = h0 ? h0->data<T>() : nullptr;
     const T* wh_state_data = wh_data + D * D2;
     T* hidden_out_data = hidden_out->mutable_data<T>(place);
@@ -338,7 +339,7 @@ class FusionGRUKernel : public framework::OpKernel<T> {
     };
     for (int i = 0; i < N; ++i) {
       int bid = is_reverse ? N - 1 - i : i;
-      int seq_len = x_lod[0][bid + 1] - x_lod[0][bid];
+      int seq_len = static_cast<int>(x_lod[0][bid + 1] - x_lod[0][bid]);
       const T* prev_hidden_data = nullptr;
       int tstart = 0;
       if (h0_data) {
@@ -436,7 +437,7 @@ class FusionGRUKernel : public framework::OpKernel<T> {
 
     auto batched_lod = batched_input->lod();
     const auto& seq_order = batched_lod[2];
-    const int max_bs = seq_order.size();
+    const int max_bs = static_cast<int>(seq_order.size());
     reordered_h0->Resize({max_bs, D});
 
     int tstart = 0;
@@ -470,11 +471,12 @@ class FusionGRUKernel : public framework::OpKernel<T> {
     // Then start from next
     const T* wh_state_data = wh_data + D * D2;
     const auto& batch_starts = batched_lod[0];
-    const int max_seq_len = batch_starts.size() - 1;
+    const int max_seq_len = static_cast<int>(batch_starts.size() - 1);
     batched_input_data = batched_input_data + tstart * max_bs * D3;
     batched_out_data = batched_out_data + tstart * max_bs * D;
     for (int step = tstart; step < max_seq_len; ++step) {
-      const int cur_bs = batch_starts[step + 1] - batch_starts[step];
+      const int cur_bs =
+          static_cast<int>(batch_starts[step + 1] - batch_starts[step]);
       // gemm prev * (Wu + Wr)
       blas.GEMM(CblasNoTrans,
                 CblasNoTrans,
