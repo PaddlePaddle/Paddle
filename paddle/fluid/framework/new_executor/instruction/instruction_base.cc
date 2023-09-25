@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
+#include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
@@ -214,12 +215,7 @@ void InstructionBase::SetOutputs(
 }
 
 void InstructionBase::InitInputsOutputsIds(
-    ::pir::Operation* op,
-    Scope* inner_scope,
-    const std::unordered_map<pir::Value, std::string>& value_2_var_name,
-    const std::map<std::string, int>& var_name_2_id,
-    const std::unordered_map<const paddle::framework::Variable*, std::string>&
-        variable_2_var_name) {
+    ::pir::Operation* op, const ValueExecutionInfo& value_exec_info) {
   auto op_attributes = op->attributes();
   auto op_name =
       op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
@@ -227,18 +223,14 @@ void InstructionBase::InitInputsOutputsIds(
   for (size_t i = 0; i < op->num_operands(); i++) {
     pir::Value value = op->operand_source(i);
     if (value) {
-      PADDLE_ENFORCE_NE(
-          value_2_var_name.find(value),
-          value_2_var_name.end(),
+      PADDLE_ENFORCE_EQ(
+          value_exec_info.Count(value),
+          true,
           phi::errors::PreconditionNotMet(
               "input should in name map, [%d] 'th input of [%s] op",
               i,
               op_name));
-      std::vector<int> inputs_id = GetValueIds(value,
-                                               inner_scope,
-                                               value_2_var_name,
-                                               var_name_2_id,
-                                               variable_2_var_name);
+      std::vector<int> inputs_id = GetValueIds(value, value_exec_info);
       inputs.emplace(value, inputs_id);
     }
   }
@@ -248,18 +240,14 @@ void InstructionBase::InitInputsOutputsIds(
   for (size_t i = 0; i < op->num_results(); i++) {
     pir::Value value = op->result(i);
     if (value && value.type()) {
-      PADDLE_ENFORCE_NE(
-          value_2_var_name.find(value),
-          value_2_var_name.end(),
+      PADDLE_ENFORCE_EQ(
+          value_exec_info.Count(value),
+          true,
           phi::errors::PreconditionNotMet(
               "input should in name map, [%d] 'th input of [%s] op",
               i,
               op_name));
-      std::vector<int> outputs_id = GetValueIds(value,
-                                                inner_scope,
-                                                value_2_var_name,
-                                                var_name_2_id,
-                                                variable_2_var_name);
+      std::vector<int> outputs_id = GetValueIds(value, value_exec_info);
       outputs.emplace(value, outputs_id);
     }
   }

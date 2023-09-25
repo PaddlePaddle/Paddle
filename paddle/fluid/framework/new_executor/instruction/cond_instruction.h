@@ -35,7 +35,7 @@ class CondInstruction : public InstructionBase {
       ::pir::Operation* op,
       Scope* scope,
       Scope* local_scope,
-      ValueExecutionInfo* parent_exe_info,
+      ValueExecutionInfo* value_exe_info,
       const std::map<pir::Block*, paddle::framework::Scope*>& sub_blocks);
 
   void Run() override;

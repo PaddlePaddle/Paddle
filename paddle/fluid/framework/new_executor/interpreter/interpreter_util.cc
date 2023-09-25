@@ -1029,95 +1029,93 @@ void BuildOpFuncList(const platform::Place& place,
   delete garbages;
 }
 
-void BuildOpFuncList(
-    const platform::Place& place,
-    pir::Block* block,
-    std::vector<OpFuncNode>* vec_func_list,
-    framework::Scope* scope,
-    framework::Scope* local_scope,
-    const std::unordered_map<pir::Value, std::string>& value_2_name_map,
-    const ExecutionConfig& execution_config) {
-  vec_func_list->reserve(block->size());
-  pir::IrContext* ctx = pir::IrContext::Instance();
+// void BuildOpFuncList(
+//     const platform::Place& place,
+//     pir::Block* block,
+//     std::vector<OpFuncNode>* vec_func_list,
+//     framework::Scope* scope,
+//     framework::Scope* local_scope,
+//     const std::unordered_map<pir::Value, std::string>& value_2_name_map,
+//     const ExecutionConfig& execution_config) {
+//   vec_func_list->reserve(block->size());
+//   pir::IrContext* ctx = pir::IrContext::Instance();
 
-  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
-  for (auto op : *block) {
-    OpFuncNode op_func_node;
-    auto attr_map = op->attributes();
+//   for (auto op : *block) {
+//     OpFuncNode op_func_node;
+//     auto attr_map = op->attributes();
 
-    auto op_name =
-        attr_map.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
-    op_func_node.phi_op_name_ = op_name;
+//     auto op_name =
+//         attr_map.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
+//     op_func_node.phi_op_name_ = op_name;
 
-    if (GetSpecialOpNames().count(op_name)) {
-      VLOG(6) << "skip process " << op_name;
-      continue;
-    }
+//     if (GetSpecialOpNames().count(op_name)) {
+//       VLOG(6) << "skip process " << op_name;
+//       continue;
+//     }
 
-    pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
+//     pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
 
-    auto impl =
-        op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
+//     auto impl =
+//         op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
 
-    op_func_node.infer_meta_interface_ =
-        op_info.GetInterfaceImpl<paddle::dialect::InferMetaInterface>();
+//     op_func_node.infer_meta_interface_ =
+//         op_info.GetInterfaceImpl<paddle::dialect::InferMetaInterface>();
 
-    VLOG(6) << "op name" << op_func_node.phi_op_name_;
-    dialect::OpYamlInfoParser op_yaml_info_parser(impl->get_op_info_());
-    if (op_func_node.infer_meta_interface_) {
-      pir::BuildPhiContext<
-          phi::InferMetaContext,
-          phi::MetaTensor,
-          phi::MetaTensor,
-          paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-          paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-          false>(op,
-                 value_2_name_map,
-                 scope,
-                 local_scope,
-                 op_yaml_info_parser,
-                 &(op_func_node.infer_meta_context_));
-    }
+//     VLOG(6) << "op name" << op_func_node.phi_op_name_;
+//     dialect::OpYamlInfoParser op_yaml_info_parser(impl->get_op_info_());
+//     if (op_func_node.infer_meta_interface_) {
+//       pir::BuildPhiContext<
+//           phi::InferMetaContext,
+//           phi::MetaTensor,
+//           phi::MetaTensor,
+//           paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
+//           paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
+//           false>(op,
+//                  value_exec_info,
+//                  op_yaml_info_parser,
+//                  &(op_func_node.infer_meta_context_));
+//     }
 
-    auto kernel_name =
-        attr_map.at("kernel_name").dyn_cast<pir::StrAttribute>().AsString();
-    auto kernel_key = attr_map.at("kernel_key")
-                          .dyn_cast<paddle::dialect::KernelAttribute>()
-                          .data();
+//     auto kernel_name =
+//         attr_map.at("kernel_name").dyn_cast<pir::StrAttribute>().AsString();
+//     auto kernel_key = attr_map.at("kernel_key")
+//                           .dyn_cast<paddle::dialect::KernelAttribute>()
+//                           .data();
 
-    VLOG(6) << "finish process infer meta context";
-    auto t1 = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-        kernel_name, kernel_key);
-    op_func_node.phi_kernel_ = new phi::Kernel(t1.kernel);
+//     VLOG(6) << "finish process infer meta context";
+//     auto t1 = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+//         kernel_name, kernel_key);
+//     op_func_node.phi_kernel_ = new phi::Kernel(t1.kernel);
 
-    PADDLE_ENFORCE_EQ(op_func_node.phi_kernel_->IsValid(),
-                      true,
-                      "not found kernel for [%s]",
-                      kernel_name);
+//     PADDLE_ENFORCE_EQ(op_func_node.phi_kernel_->IsValid(),
+//                       true,
+//                       "not found kernel for [%s]",
+//                       kernel_name);
 
-    pir::BuildPhiContext<phi::KernelContext,
-                         const phi::TensorBase*,
-                         phi::TensorBase*,
-                         paddle::small_vector<const phi::TensorBase*>,
-                         paddle::small_vector<phi::TensorBase*>,
-                         true>(op,
-                               value_2_name_map,
-                               scope,
-                               local_scope,
-                               op_yaml_info_parser,
-                               &(op_func_node.kernel_context_));
+//     pir::BuildPhiContext<phi::KernelContext,
+//                          const phi::TensorBase*,
+//                          phi::TensorBase*,
+//                          paddle::small_vector<const phi::TensorBase*>,
+//                          paddle::small_vector<phi::TensorBase*>,
+//                          true>(op,
+//                                value_2_name_map,
+//                                scope,
+//                                local_scope,
+//                                op_yaml_info_parser,
+//                                &(op_func_node.kernel_context_));
 
-    VLOG(6) << "finish process kernel context";
-    op_func_node.kernel_context_.SetDeviceContext(
-        phi::DeviceContextPool::Instance().Get(
-            phi::TransToPhiPlace(kernel_key.backend())));
-    op_func_node.dev_ctx_ = phi::DeviceContextPool::Instance().Get(
-        phi::TransToPhiPlace(kernel_key.backend()));
+//     VLOG(6) << "finish process kernel context";
+//     op_func_node.kernel_context_.SetDeviceContext(
+//         phi::DeviceContextPool::Instance().Get(
+//             phi::TransToPhiPlace(kernel_key.backend())));
+//     op_func_node.dev_ctx_ = phi::DeviceContextPool::Instance().Get(
+//         phi::TransToPhiPlace(kernel_key.backend()));
 
-    vec_func_list->emplace_back(op_func_node);
-  }
-}
+//     vec_func_list->emplace_back(op_func_node);
+//   }
+// }
 
 void BuildVariableScope(const framework::BlockDesc& block,
                         const ExecutionConfig& execution_config,

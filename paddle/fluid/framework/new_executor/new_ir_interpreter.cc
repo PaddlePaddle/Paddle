@@ -384,7 +384,7 @@ Scope* NewIRInterpreter::InnerScope() {
 }
 
 std::string NewIRInterpreter::GetNameByValue(::pir::Value value) const {
-  return value_exe_info_->GetValue2VarName().at(value);
+  return value_exe_info_->GetValueVarName(value);
 }
 
 void NewIRInterpreter::UpdateSyncOpNum() {
@@ -564,7 +564,6 @@ void NewIRInterpreter::BuildInstruction() {
     } else if (op->dialect()->name() == "cf") {
       continue;
     } else if (op->dialect()->name() == "pd_op") {
-      std::cerr << "build cond instruct" << std::endl;
       vec_instruction_base_.emplace_back(
           std::make_unique<CondInstruction>(op_idx++,
                                             place_,
@@ -587,25 +586,11 @@ void NewIRInterpreter::BuildInstruction() {
       if (op->name().compare(paddle::dialect::LegacyKernelOp::name()) == 0) {
         vec_instruction_base_.emplace_back(
             std::make_unique<LegacyKernelInstruction>(
-                op_idx++,
-                place_,
-                op,
-                scope_,
-                local_scope_,
-                value_exe_info_->GetValue2VarName(),
-                value_exe_info_->GetVarName2Id(),
-                value_exe_info_->GetVar2VarName()));
+                op_idx++, place_, op, *(value_exe_info_.get())));
       } else {
         vec_instruction_base_.emplace_back(
             std::make_unique<PhiKernelInstruction>(
-                op_idx++,
-                place_,
-                op,
-                scope_,
-                local_scope_,
-                value_exe_info_->GetValue2VarName(),
-                value_exe_info_->GetVarName2Id(),
-                value_exe_info_->GetVar2VarName()));
+                op_idx++, place_, op, *(value_exe_info_.get())));
       }
 #ifdef PADDLE_WITH_CINN
     } else if (op->dialect()->name() == "cinn_runtime") {
@@ -860,8 +845,13 @@ void NewIRInterpreter::CalculateLastLiveOps() {
         instr->Inputs();
     const std::unordered_map<::pir::Value, std::vector<int>>& outs =
         instr->Outputs();
-    std::unordered_multimap<::pir::Value, std::vector<int>> ins_and_outs{
-        ins.begin(), ins.end()};
+
+    std::unordered_multimap<::pir::Value, std::vector<int>> ins_and_outs;
+    for (auto& in : ins) {
+      if (value_exe_info_->CountInternal(in.first)) {
+        ins_and_outs.emplace(in.first, in.second);
+      }
+    }
 
     if (instr->Name() != "pd_op.fetch") {
       ins_and_outs.insert(outs.begin(), outs.end());
@@ -1393,7 +1383,6 @@ void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
   SetDeviceId(instr_node->DeviceContext().GetPlace());
 
   try {
-    std::cerr << "run instr " << instr_node->Name() << std::endl;
     instr_node->WaitEvent(place_);
     VLOG(4) << "begin to run op " << instr_node->Name();
     if (!instr_node->IsArtificial()) {
