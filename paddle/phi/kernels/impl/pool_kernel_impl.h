@@ -117,7 +117,7 @@ void PoolRawKernel(const Context& ctx,
             adaptive) {  // for adaptive_avg_pool2d && output_size == 1
 #if defined(__HIPCC__) || defined(__NVCC__)
           auto stream = ctx.stream();
-          phi::MeanKernel<T, Context>(ctx, x, reduce_dim, false, out);
+          phi::MeanKernel<T, Context>(ctx, x, {reduce_dim}, false, out);
 #else  // for cpu
           funcs::Pool2dFunctor<Context, funcs::AvgPool<T>, T> pool2d_forward;
           funcs::AvgPool<T> pool_process;
