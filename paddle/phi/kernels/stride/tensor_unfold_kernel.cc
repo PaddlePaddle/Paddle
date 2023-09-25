@@ -30,7 +30,8 @@ void TensorUnfoldKernel(const Context& dev_ctx,
 
   const DDim& input_dims = input.dims();
   const DDim& input_stride = input.strides();
-  int64_t max_size = input_dims.size() == 0 ? 1 : input_dims[axis];
+  int64_t max_size =
+      input_dims.size() == 0 ? 1 : input_dims[static_cast<int>(axis)];
 
   PADDLE_ENFORCE_LE(
       size,
@@ -48,7 +49,8 @@ void TensorUnfoldKernel(const Context& dev_ctx,
   std::vector<int64_t> stride(input_dims.size() + 1);
 
   shape[input_dims.size()] = size;
-  stride[input_dims.size()] = input_dims.size() == 0 ? 1 : input_stride[axis];
+  stride[input_dims.size()] =
+      input_dims.size() == 0 ? 1 : input_stride[static_cast<int>(axis)];
   for (int i = 0; i < input_dims.size(); ++i) {
     if (i == axis) {
       shape[i] = (input_dims[i] - size) / step + 1;
@@ -59,8 +61,8 @@ void TensorUnfoldKernel(const Context& dev_ctx,
     }
   }
 
-  out->Resize(DDim(shape.data(), shape.size()));
-  out->set_strides(DDim(stride.data(), stride.size()));
+  out->Resize(DDim(shape.data(), static_cast<int>(shape.size())));
+  out->set_strides(DDim(stride.data(), static_cast<int>(stride.size())));
   out->set_offset(input.offset());
   out->ResetHolder(input.Holder());
 }

@@ -29,15 +29,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using std::bad_cast;
-using std::codecvt_utf8;
-using std::endl;
-using std::exception;
 using std::ifstream;
 using std::int64_t;
-using std::min;
-using std::runtime_error;
-using std::shared_ptr;
 using std::size_t;
 using std::string;
 using std::unordered_map;
@@ -157,7 +150,7 @@ void WordPieceTokenizer::Tokenize(const wstring& text,
     while (start < end) {
       std::wstring sub = text.substr(start, end - start);
       if (start > 0) {
-        sub = L"##" + sub;
+        sub.insert(0, L"##");
       }
       auto it = vocab_->find(sub);
       if (it != vocab_->end()) {
@@ -390,7 +383,7 @@ int BertTokenizer::Encode(
   }
 
   if (needs_to_be_padded) {
-    int64_t difference = max_seq_len - seq_len;
+    int64_t difference = static_cast<int64_t>(max_seq_len - seq_len);
     size_t pad_start = max_seq_len - 1 - difference;
     encoded_inputs->at("token_type_ids").resize(max_seq_len);
     for (size_t i = max_seq_len - 1; i > pad_start; i--) {

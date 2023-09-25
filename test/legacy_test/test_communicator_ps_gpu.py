@@ -21,7 +21,7 @@ import paddle
 
 paddle.enable_static()
 
-from paddle import fluid
+from paddle import base
 from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
 
@@ -80,7 +80,7 @@ class TestCommunicator(unittest.TestCase):
         dataset.load_into_memory(is_shuffle=True)
 
         os.environ["TEST_MODE"] = "1"
-        exe = fluid.Executor(fluid.CPUPlace())
+        exe = base.Executor(base.CPUPlace())
         exe.run(startup_program)
         main_program._fleet_opt = {"stat_var_names": [x.name]}
         fleet.init_worker()

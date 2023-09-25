@@ -20,10 +20,10 @@ from multiprocessing import Manager, Process
 import numpy as np
 
 import paddle
+from paddle.base import core
 from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
-from paddle.fluid import core
 
 from ...backup_env import getenv_or_backup
 
@@ -58,8 +58,8 @@ class Gloo:
             "gloo is not initialized, will not communicator with other nodes"
         )
         self._err_type = "gloo initialized error, please check arguments"
-        self._err_world = "argument error, comm_world must in {}".format(
-            self._comm_world
+        self._err_world = (
+            f"argument error, comm_world must in {self._comm_world}"
         )
 
         self._is_initialized = False
@@ -497,7 +497,6 @@ class RoleMakerBase:
 
     def _all_gather(self, input, comm_world="worker"):
         print("warning: RoleMakerBase does not have all gather worker.")
-        return None
 
     def _all_reduce(self, input, mode="sum", comm_world="worker"):
         """
@@ -507,7 +506,6 @@ class RoleMakerBase:
             mode(str): "sum" or "min" or "max"
         """
         print("warning: RoleMakerBase does not have all reduce worker.")
-        return None
 
     def _barrier(self, comm_world):
         """
@@ -553,20 +551,20 @@ class PaddleCloudRoleMaker(RoleMakerBase):
     Examples:
         .. code-block:: python
 
-            import os
-            import paddle.distributed.fleet as fleet
+            >>> import os
+            >>> import paddle.distributed.fleet as fleet
 
-            os.environ["PADDLE_PSERVER_NUMS"] = "2"
-            os.environ["PADDLE_TRAINERS_NUM"] = "2"
+            >>> os.environ["PADDLE_PSERVER_NUMS"] = "2"
+            >>> os.environ["PADDLE_TRAINERS_NUM"] = "2"
 
-            os.environ["POD_IP"] = "127.0.0.1"
-            os.environ["PADDLE_PORT"] = "36001"
-            os.environ["TRAINING_ROLE"] = "PSERVER"
-            os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36001,127.0.0.2:36001"
+            >>> os.environ["POD_IP"] = "127.0.0.1"
+            >>> os.environ["PADDLE_PORT"] = "36001"
+            >>> os.environ["TRAINING_ROLE"] = "PSERVER"
+            >>> os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36001,127.0.0.2:36001"
 
-            os.environ["PADDLE_TRAINER_ID"] = "0"
+            >>> os.environ["PADDLE_TRAINER_ID"] = "0"
 
-            fleet.PaddleCloudRoleMaker(is_collective=False)
+            >>> fleet.PaddleCloudRoleMaker(is_collective=False)
 
     """
 
@@ -1175,9 +1173,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         else:
             type = "FILE"
         print(
-            "Gloo init with {}: need_init_all: {}, args: {}".format(
-                type, need_init_all, kwargs
-            )
+            f"Gloo init with {type}: need_init_all: {need_init_all}, args: {kwargs}"
         )
 
         self._gloo.init(
@@ -1215,14 +1211,14 @@ class UserDefinedRoleMaker(PaddleCloudRoleMaker):
     Examples:
         .. code-block:: python
 
-            import paddle.distributed.fleet as fleet
-            from paddle.distributed.fleet.base.role_maker import Role
+            >>> import paddle.distributed.fleet as fleet
+            >>> from paddle.distributed.fleet.base.role_maker import Role
 
-            fleet.UserDefinedRoleMaker(
-                current_id=0,
-                role=Role.SERVER,
-                worker_num=2,
-                server_endpoints=["127.0.0.1:36011", "127.0.0.1:36012"])
+            >>> fleet.UserDefinedRoleMaker(
+            ...     current_id=0,
+            ...     role=Role.SERVER,
+            ...     worker_num=2,
+            ...     server_endpoints=["127.0.0.1:36011", "127.0.0.1:36012"])
     """
 
     def __init__(self, is_collective=False, init_gloo=False, **kwargs):

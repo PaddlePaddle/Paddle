@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import unittest
 
 import numpy as np
@@ -42,6 +41,10 @@ class TestMMHAOp(unittest.TestCase):
         self.x_int = np.random.randint(
             2, 10, size=(self.bsz, 3, self.num_head, self.dim_head)
         ).astype("int")
+
+        self.bias = np.random.uniform(
+            -0.05, 0.05, [3, self.num_head, self.dim_head]
+        )
 
         self.src_mask = np.zeros([self.bsz, 1, 1, self.sequence_length + 1])
 
@@ -77,7 +80,7 @@ class TestMMHAOp(unittest.TestCase):
         self.seq_len = 1
         self.rotary_emb_dims = 0
         self.use_neox_rotary_style = False
-
+        self.compute_dtype = "default"
         self.out_scale = 10
         self.quant_round_type = 1
         self.quant_max_bound = 126
@@ -100,6 +103,7 @@ class TestMMHAOp(unittest.TestCase):
         self,
         x,
         cache_kv_out,
+        bias,
         src_mask,
         qkv_out_scale,
         seq_len,
@@ -110,9 +114,9 @@ class TestMMHAOp(unittest.TestCase):
         bsz,
     ):
         if qkv_out_scale is not None:
-            x = x.cast(cache_kv_out.dtype) * qkv_out_scale
+            x = x.cast(cache_kv_out.dtype) * qkv_out_scale + bias
         else:
-            x = x
+            x = x + bias
 
         x = paddle.transpose(
             x, [0, 2, 1, 3]
@@ -145,6 +149,7 @@ class TestMMHAOp(unittest.TestCase):
         x,
         cache_kv_out,
         cache_kv_mmha_out,
+        bias,
         src_mask,
         qkv_out_scale,
         out_scale,
@@ -157,12 +162,14 @@ class TestMMHAOp(unittest.TestCase):
         else:
             x = paddle.to_tensor(x).cast(dtype)
         src_mask = paddle.to_tensor(src_mask).cast(dtype)
+        bias = paddle.to_tensor(bias).cast(dtype)
         cache_kv_out = paddle.to_tensor(cache_kv_out).cast(dtype)
         cache_kv_mmha_out = paddle.to_tensor(cache_kv_mmha_out).cast(dtype)
         paddle_naive_mmha_out = 0
         paddle_naive_mmha_out = self.mmha_naive(
             x,
             cache_kv_out,
+            bias,
             src_mask,
             qkv_out_scale,
             self.seq_len,
@@ -174,9 +181,14 @@ class TestMMHAOp(unittest.TestCase):
         )
 
         x = x.reshape([self.bsz, -1])
+        if x.dtype == paddle.float16:
+            dtype = self.compute_dtype
+        else:
+            dtype = "fp16"
         paddle_mmha_out = masked_multihead_attention(
             x,
             cache_kv_mmha_out,
+            bias,
             src_mask,
             None,
             None,
@@ -188,6 +200,7 @@ class TestMMHAOp(unittest.TestCase):
             self.seq_len,
             self.rotary_emb_dims,
             self.use_neox_rotary_style,
+            dtype,
             out_scale,
             self.quant_round_type,
             self.quant_max_bound,
@@ -204,6 +217,7 @@ class TestMMHAOp(unittest.TestCase):
             self.x,
             self.cache_kv_out,
             self.cache_kv_mmha_out,
+            self.bias,
             self.src_mask,
             None,
             -1,
@@ -224,6 +238,7 @@ class TestMMHAOp(unittest.TestCase):
             self.x_int,
             self.cache_kv_out,
             self.cache_kv_mmha_out,
+            self.bias,
             self.src_mask,
             self.qkv_out_scale,
             -1,
@@ -244,6 +259,7 @@ class TestMMHAOp(unittest.TestCase):
             self.x,
             self.cache_kv_out,
             self.cache_kv_mmha_out,
+            self.bias,
             self.src_mask,
             None,
             self.out_scale,
@@ -273,6 +289,9 @@ class TestLayerNormStaticInt8Op(unittest.TestCase):
 
         self.x = np.random.uniform(
             -0.05, 0.05, [self.bsz, 3, self.num_head, self.dim_head]
+        )
+        self.bias = np.random.uniform(
+            -0.05, 0.05, [3, self.num_head, self.dim_head]
         )
         self.src_mask = np.zeros([self.bsz, 1, 1, self.sequence_length + 1])
 
@@ -317,6 +336,7 @@ class TestLayerNormStaticInt8Op(unittest.TestCase):
         self,
         x,
         cache_kv_out,
+        bias,
         src_mask,
         qkv_out_scale,
         seq_len,
@@ -327,7 +347,9 @@ class TestLayerNormStaticInt8Op(unittest.TestCase):
         bsz,
     ):
         if qkv_out_scale is not None:
-            x = x.cast(cache_kv_out.dtype) * qkv_out_scale
+            x = x.cast(cache_kv_out.dtype) * qkv_out_scale + bias
+        else:
+            x = x + bias
 
         x = paddle.transpose(
             x, [0, 2, 1, 3]
@@ -351,6 +373,7 @@ class TestLayerNormStaticInt8Op(unittest.TestCase):
     def check_main(
         self,
         x,
+        bias,
         src_mask,
         cache_kv_out,
         cache_kv_mmha_out,
@@ -361,11 +384,13 @@ class TestLayerNormStaticInt8Op(unittest.TestCase):
         paddle.disable_static()
         x_tensor = paddle.to_tensor(x).cast(dtype)
         src_mask_tensor = paddle.to_tensor(src_mask).cast(dtype)
+        bias_tensor = paddle.to_tensor(bias).cast(dtype)
         cache_kv_out = paddle.to_tensor(cache_kv_out).cast(dtype)
 
         paddle_naive_mmha_out = self.mmha_naive(
             x_tensor,
             cache_kv_out,
+            bias_tensor,
             src_mask_tensor,
             None,
             self.seq_len,
@@ -381,6 +406,11 @@ class TestLayerNormStaticInt8Op(unittest.TestCase):
             x_static = paddle.static.data(
                 name="x_static",
                 shape=[self.bsz, 3 * self.num_head * self.dim_head],
+                dtype=dtype,
+            )
+            bias_static = paddle.static.data(
+                name="bias_static",
+                shape=[3, self.num_head, self.dim_head],
                 dtype=dtype,
             )
             src_mask_static = paddle.static.data(
@@ -403,6 +433,7 @@ class TestLayerNormStaticInt8Op(unittest.TestCase):
             outs = masked_multihead_attention(
                 x_static,
                 cache_kv_mmha_out_static,
+                bias_static,
                 src_mask_static,
                 None,
                 None,
@@ -414,6 +445,7 @@ class TestLayerNormStaticInt8Op(unittest.TestCase):
                 32,
                 0,
                 False,
+                "fp16",
                 -1,
                 1,
                 127.0,
@@ -424,6 +456,7 @@ class TestLayerNormStaticInt8Op(unittest.TestCase):
                 feed={
                     "x_static": x.reshape(self.bsz, -1).astype(dtype),
                     "cache_kv_mmha_out_static": cache_kv_mmha_out.astype(dtype),
+                    "bias_static": bias.astype(dtype),
                     "src_mask_static": src_mask.astype(dtype),
                 },
                 fetch_list=[outs],
@@ -437,6 +470,7 @@ class TestLayerNormStaticInt8Op(unittest.TestCase):
 
         paddle_naive_mmha_out, paddle_mmha_out = self.check_main(
             self.x,
+            self.bias,
             self.src_mask,
             self.cache_kv_out,
             self.cache_kv_mmha_out,

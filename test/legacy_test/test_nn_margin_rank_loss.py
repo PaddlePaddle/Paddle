@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.static import Program, program_guard
 
 
@@ -42,7 +42,7 @@ def create_test_case(margin, reduction):
                 "float64"
             )
             self.places = []
-            self.places.append(fluid.CPUPlace())
+            self.places.append(base.CPUPlace())
             if core.is_compiled_with_cuda():
                 self.places.append(paddle.CUDAPlace(0))
 

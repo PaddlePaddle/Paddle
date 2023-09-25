@@ -20,7 +20,7 @@ import os
 
 import paddle
 
-from ...fluid.framework import IrGraph, core
+from ...base.framework import IrGraph, core
 from ..log_helper import get_logger
 from .quantization_pass import (
     AddQuantDequantPass,

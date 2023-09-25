@@ -30,13 +30,6 @@ void SelfDPAttenOp::InferShape(framework::InferShapeContext* ctx) const {
                         "[batchsize, tokensize, 3, nhead, headsize] "
                         ", but now Input X dim is:[%s] ",
                         dim_input));
-  PADDLE_ENFORCE_EQ(dim_input[4] % 16,
-                    0,
-                    platform::errors::InvalidArgument(
-                        "The last dim of input X should be a multiple of 16, "
-                        ", but now the dim is:[%d] "
-                        "Please remove self_attention_fuse_pass from the lists",
-                        dim_input[4]));
   framework::DDim out_dims(
       {dim_input[0], dim_input[1], dim_input[3], dim_input[4]});
   ctx->SetOutputDim("Out", out_dims);

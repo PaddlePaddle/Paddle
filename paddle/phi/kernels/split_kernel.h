@@ -85,7 +85,7 @@ std::vector<DenseTensor> Split(const Context& dev_ctx,
   size_t out_number = sections.GetData().size();
   std::vector<DenseTensor> result(out_number);
 
-  Split(dev_ctx, x, sections, axis, &result);
+  Split<T, Context>(dev_ctx, x, sections, axis, &result);
 
   return result;
 }

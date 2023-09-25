@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/custom_device_common_op_registry.h"
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/operators/collective/c_concat_op.h"
-#include "paddle/fluid/operators/collective/c_identity_op.h"
 #include "paddle/fluid/operators/load_combine_op.h"
 #include "paddle/fluid/operators/run_program_op.h"
 #include "paddle/fluid/operators/save_combine_op.h"
@@ -144,6 +143,25 @@ class CConcatOpCustomDeviceKernel : public framework::OpKernel<T> {
     auto output = paddle::experimental::concat(inputs_t, axis);
     out->ShareDataWith(
         *reinterpret_cast<phi::DenseTensor*>(output.impl().get()));
+  }
+};
+
+template <typename DeviceContext, typename T>
+class CIdentityOpCustomDeviceKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto x = ctx.Input<phi::DenseTensor>("X");
+    auto out = ctx.Output<phi::DenseTensor>("Out");
+
+    int rid = ctx.Attr<int>("ring_id");
+    PADDLE_ENFORCE_GE(
+        rid,
+        0,
+        platform::errors::InvalidArgument(
+            "The ring_id (%d) for c_identity op must be non-negative.", rid));
+    ctx.device_context().Alloc<T>(out);
+
+    paddle::framework::TensorCopy(*x, out->place(), out);
   }
 };
 
@@ -517,6 +535,23 @@ template <typename DeviceContext, typename T, phi::ccl::CCLReduceOp red_type>
 class CAllReduceOpCustomDeviceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    if (ctx.HasInput("Cond")) {
+      auto cond = ctx.Input<phi::DenseTensor>("Cond");
+      auto place = cond->place();
+      PADDLE_ENFORCE_EQ(platform::is_cpu_place(place),
+                        true,
+                        platform::errors::PreconditionNotMet(
+                            "The input `cond` tensor should be on cpu place"));
+      PADDLE_ENFORCE_EQ(cond->numel(),
+                        1,
+                        platform::errors::PreconditionNotMet(
+                            "The input `cond` should be shape [1]"));
+      if (!cond->data<bool>()[0]) {
+        VLOG(4) << "Skip all reduce Op since cond is 0";
+        return;
+      }
+    }
+
     auto in = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
     int rid = ctx.Attr<int>("ring_id");
@@ -1363,17 +1398,22 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_identity,
       device_type,
-      paddle::operators::
-          CIdentityOpKernel<float, paddle::platform::CustomDeviceContext>,
-      paddle::operators::
-          CIdentityOpKernel<double, paddle::platform::CustomDeviceContext>,
-      paddle::operators::
-          CIdentityOpKernel<int, paddle::platform::CustomDeviceContext>,
-      paddle::operators::
-          CIdentityOpKernel<int64_t, paddle::platform::CustomDeviceContext>,
-      paddle::operators::CIdentityOpKernel<
-          paddle::platform::float16,
-          paddle::platform::CustomDeviceContext>) {}
+      paddle::operators::CIdentityOpCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          float>,
+      paddle::operators::CIdentityOpCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          double>,
+      paddle::operators::CIdentityOpCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          int>,
+      paddle::operators::CIdentityOpCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          int64_t>,
+      paddle::operators::CIdentityOpCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          paddle::platform::float16>) {}
+
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_sync_calc_stream,
       device_type,
@@ -1397,6 +1437,29 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
           paddle::platform::float16>) {}
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_allreduce_sum,
+      device_type,
+      paddle::operators::CAllReduceOpCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          float,
+          phi::ccl::CCLReduceOp::SUM>,
+      paddle::operators::CAllReduceOpCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          double,
+          phi::ccl::CCLReduceOp::SUM>,
+      paddle::operators::CAllReduceOpCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          paddle::platform::float16,
+          phi::ccl::CCLReduceOp::SUM>,
+      paddle::operators::CAllReduceOpCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          int32_t,
+          phi::ccl::CCLReduceOp::SUM>,
+      paddle::operators::CAllReduceOpCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          int64_t,
+          phi::ccl::CCLReduceOp::SUM>) {}
+  REGISTER_OP_CUSTOM_DEVICE_KERNEL(
+      mp_allreduce_sum,
       device_type,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
           paddle::platform::CustomDeviceContext,

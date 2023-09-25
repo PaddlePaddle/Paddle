@@ -10,7 +10,6 @@ register_operators(
   fusion_transpose_flatten_concat_op
   fusion_conv_inception_op
   fused_fc_elementwise_layernorm_op
-  multihead_matmul_op
   self_dp_attention_op
   skip_layernorm_op
   yolo_box_head_op
@@ -74,8 +73,6 @@ if(WITH_GPU OR WITH_ROCM)
   endif()
   # fused_fc_elementwise_layernorm_op
   op_library(fused_fc_elementwise_layernorm_op)
-  # multihead_matmul_op
-  op_library(multihead_matmul_op)
   op_library(skip_layernorm_op)
   op_library(yolo_box_head_op)
   op_library(yolo_box_post_op)

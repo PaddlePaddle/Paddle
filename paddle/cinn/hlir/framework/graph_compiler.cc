@@ -29,6 +29,7 @@
 #include "paddle/cinn/lang/lower.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/cinn/poly/stage.h"
+#include "paddle/cinn/utils/enum_string.h"
 #include "paddle/cinn/utils/profiler.h"
 
 namespace cinn {
@@ -44,7 +45,7 @@ std::unique_ptr<Program> GraphCompiler::Build(const std::string& code) {
   compilation_context_.with_instantiate_variables = true;
 
   auto&& result = Build(&compilation_context_);
-  return std::move(result.runtime_program);
+  return result.RuntimeProgram();
 }
 
 CompilationResult GraphCompiler::Build(CompilationContext* context) {
@@ -64,25 +65,22 @@ CompilationResult GraphCompiler::Build(CompilationContext* context) {
   parallel_compiler_ = std::make_shared<ParallelCompiler>(context);
   CompilationResult result = (*parallel_compiler_.get())();
 
-  // Dump compilation result
-  backends::CompilationInfoDumper dumper(result);
-
-  if (context->stage != CompilationStage::DEFAULT) {
+  if (context->stage != CompilationStage::DEFAULT || !result.IsSuccess()) {
     return result;
   }
 
   if (context->remove_unused_variables) {
-    RemoveInvalidVariables(context, result.instructions);
+    RemoveInvalidVariables(context, result.RuntimeInstructions());
   }
 
   if (context->with_buffer_handle_instruction_inserted) {
     VLOG(3) << "option.with_buffer_handle_instruction_inserted enable";
-    InsertBufferHandlers(context, &result.instructions);
+    InsertBufferHandlers(context, &result.instructions_);
   }
   VLOG(2) << "Compile With Parallel Compiler Done!";
 
-  result.runtime_program =
-      std::make_unique<Program>(context->scope, std::move(result.instructions));
+  result.SetRuntimeProgram(std::make_unique<Program>(
+      context->scope, std::move(result.instructions_)));
   return result;
 }
 

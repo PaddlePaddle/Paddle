@@ -15,9 +15,10 @@
 import unittest
 
 import numpy
+from dygraph_to_static_util import test_and_compare_with_new_ir
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.jit import to_static
 
 
@@ -99,12 +100,13 @@ class TestPrintBase(unittest.TestCase):
     def _run(self, to_static):
         paddle.jit.enable_to_static(to_static)
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             self.dygraph_func(self.input)
 
     def get_dygraph_output(self):
         self._run(to_static=False)
 
+    @test_and_compare_with_new_ir(True)
     def get_static_output(self):
         self._run(to_static=True)
 

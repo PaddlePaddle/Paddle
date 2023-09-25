@@ -849,7 +849,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \return bool Whether to show TensorRT inspector information.
   ///
-  void EnableTensorRtInspector();
+  void EnableTensorRtInspector(bool inspector_serialize = false);
   bool tensorrt_inspector_enabled() { return trt_use_inspector_; }
 
   ///
@@ -862,6 +862,23 @@ struct PD_INFER_DECL AnalysisConfig {
   bool tensorrt_explicit_quantization_enabled() {
     return trt_use_explicit_quantization_;
   }
+
+  ///
+  /// \brief Set the optimization level of TensorRT
+  /// \param level The optimization level
+  /// The API accepts level in range [0, 5].
+  /// Higher optimization level allows the optimizer to spend more time
+  /// searching for optimization opportunities. The API supports TRT version
+  /// >= 8.6, and takes no effect instead.
+  ///
+  void SetTensorRtOptimizationLevel(int level);
+
+  ///
+  /// \brief An integer telling the TRT optimization level.
+  ///
+  /// \return integer The TRT optimization level.
+  ///
+  int tensorrt_optimization_level() { return trt_optimization_level_; }
 
   void EnableDlnne(
       int min_subgraph_size = 3,
@@ -1147,6 +1164,14 @@ struct PD_INFER_DECL AnalysisConfig {
   void Exp_DisableMixedPrecisionOps(
       const std::unordered_set<std::string>& black_list);
 
+  ///
+  /// \brief Set a list of operators that do support mixed precision. This
+  /// interface is in the experimental stage and may change in the future. Note
+  /// that the whitelist must be the same as the model conversion whitelist.
+  ///
+  void Exp_EnableMixedPrecisionOps(
+      const std::unordered_set<std::string>& white_list);
+
   void SetApplyOptim(bool value) { apply_optim_ = value; }
 
   void SetSkipLoadParams(bool value) { skip_load_params_ = value; }
@@ -1179,6 +1204,7 @@ struct PD_INFER_DECL AnalysisConfig {
   // Mixed precision related.
   Precision mixed_precision_mode_{Precision::kFloat32};
   std::unordered_set<std::string> mixed_black_list_;
+  std::unordered_set<std::string> mixed_white_list_;
   bool enable_low_precision_io_{false};
 
   // GPU related.
@@ -1242,7 +1268,9 @@ struct PD_INFER_DECL AnalysisConfig {
   // tune to get dynamic_shape info.
   bool trt_tuned_dynamic_shape_{false};
   bool trt_use_inspector_{false};
+  bool trt_inspector_serialize_{false};
   bool trt_use_explicit_quantization_{false};
+  int trt_optimization_level_{3};
 
   // In CollectShapeInfo mode, we will collect the shape information of
   // all intermediate tensors in the compute graph and calculate the

@@ -40,83 +40,87 @@
 #include "test/cpp/inference/api/config_printer.h"
 #include "test/cpp/inference/test_helper.h"
 
-DEFINE_string(model_name, "", "model name");
-DEFINE_string(infer_model, "", "model path");
-DEFINE_string(fp32_model, "", "FP32 model path");
-DEFINE_string(int8_model, "", "INT8 model path");
-DEFINE_string(infer_data, "", "data file");
-DEFINE_string(refer_result, "", "reference result for comparison");
-DEFINE_int32(batch_size, 1, "batch size");
-DEFINE_bool(ernie_large, false, "Test ernie large");
-DEFINE_bool(with_accuracy_layer,
-            true,
-            "Calculate the accuracy while label is in the input");
-DEFINE_bool(enable_fp32, true, "Enable FP32 type prediction");
-DEFINE_bool(enable_bf16, false, "Enable BF16 type prediction");
-DEFINE_bool(enable_int8_ptq,
-            false,
-            "Enable INT8 post-training quantization prediction");
-DEFINE_bool(enable_int8_qat,
-            false,
-            "Enable INT8 quant-aware training prediction");
-DEFINE_int32(warmup_batch_size, 100, "batch size for quantization warmup");
+PD_DEFINE_string(model_name, "", "model name");
+PD_DEFINE_string(infer_model, "", "model path");
+PD_DEFINE_string(fp32_model, "", "FP32 model path");
+PD_DEFINE_string(int8_model, "", "INT8 model path");
+PD_DEFINE_string(infer_data, "", "data file");
+PD_DEFINE_string(refer_result, "", "reference result for comparison");
+PD_DEFINE_int32(batch_size, 1, "batch size");
+PD_DEFINE_bool(ernie_large, false, "Test ernie large");
+PD_DEFINE_bool(with_accuracy_layer,
+               true,
+               "Calculate the accuracy while label is in the input");
+PD_DEFINE_bool(enable_fp32, true, "Enable FP32 type prediction");
+PD_DEFINE_bool(enable_bf16, false, "Enable BF16 type prediction");
+PD_DEFINE_bool(enable_int8_ptq,
+               false,
+               "Enable INT8 post-training quantization prediction");
+PD_DEFINE_bool(enable_int8_qat,
+               false,
+               "Enable INT8 quant-aware training prediction");
+PD_DEFINE_int32(warmup_batch_size, 100, "batch size for quantization warmup");
 // setting iterations to 0 means processing the whole dataset
-DEFINE_int32(iterations, 0, "number of batches to process");
-DEFINE_int32(repeat, 1, "Running the inference program repeat times.");
-DEFINE_bool(test_all_data, false, "Test the all dataset in data file.");
-DEFINE_int32(num_threads, 1, "Running the inference program in multi-threads.");
-DEFINE_bool(use_analysis,
-            true,
-            "Running the inference program in analysis mode.");
-DEFINE_bool(record_benchmark,
-            false,
-            "Record benchmark after profiling the model");
-DEFINE_double(accuracy, 1e-3, "Result Accuracy.");
-DEFINE_double(quantized_accuracy, 1e-2, "Result Quantized Accuracy.");
-DEFINE_bool(zero_copy, false, "Use ZeroCopy to speedup Feed/Fetch.");
-DEFINE_bool(warmup,
-            false,
-            "Use warmup to calculate elapsed_time more accurately. "
-            "To reduce CI time, it sets false in default.");
-DEFINE_int32(warmup_iters, 1, "Number of batches to process during warmup.");
+PD_DEFINE_int32(iterations, 0, "number of batches to process");
+PD_DEFINE_int32(repeat, 1, "Running the inference program repeat times.");
+PD_DEFINE_bool(test_all_data, false, "Test the all dataset in data file.");
+PD_DEFINE_int32(num_threads,
+                1,
+                "Running the inference program in multi-threads.");
+PD_DEFINE_bool(use_analysis,
+               true,
+               "Running the inference program in analysis mode.");
+PD_DEFINE_bool(record_benchmark,
+               false,
+               "Record benchmark after profiling the model");
+PD_DEFINE_double(accuracy, 1e-3, "Result Accuracy.");
+PD_DEFINE_double(quantized_accuracy, 1e-2, "Result Quantized Accuracy.");
+PD_DEFINE_bool(zero_copy, false, "Use ZeroCopy to speedup Feed/Fetch.");
+PD_DEFINE_bool(warmup,
+               false,
+               "Use warmup to calculate elapsed_time more accurately. "
+               "To reduce CI time, it sets false in default.");
+PD_DEFINE_int32(warmup_iters, 1, "Number of batches to process during warmup.");
 
-DEFINE_bool(enable_profile, false, "Turn on profiler for fluid");
-DEFINE_int32(cpu_num_threads, 1, "Number of threads for each paddle instance.");
-DEFINE_bool(fuse_multi_gru,
-            false,
-            "Running the inference program with multi_gru_fuse_pass");
+PD_DEFINE_bool(enable_profile, false, "Turn on profiler for fluid");
+PD_DEFINE_int32(cpu_num_threads,
+                1,
+                "Number of threads for each paddle instance.");
+PD_DEFINE_bool(fuse_multi_gru,
+               false,
+               "Running the inference program with multi_gru_fuse_pass");
 
 // ipu related
-DEFINE_int32(ipu_micro_batch_size, 1, "micro batch size");
-DEFINE_int32(ipu_device_num, 1, "device num");
-DEFINE_bool(ipu_enable_pipelining, false, "enable pipelining");
-DEFINE_int32(ipu_batches_per_step,
-             1,
-             "the number of batches per run in pipelining");
-DEFINE_bool(ipu_enable_fp16, false, "enable fp16");
-DEFINE_int32(ipu_replica_num, 1, "replica num");
-DEFINE_double(ipu_available_memory_proportion,
-              1.0,
-              "available memory proportion");
-DEFINE_bool(ipu_enable_half_partial, false, "enable half partial");
+PD_DEFINE_int32(ipu_micro_batch_size, 1, "micro batch size");
+PD_DEFINE_int32(ipu_device_num, 1, "device num");
+PD_DEFINE_bool(ipu_enable_pipelining, false, "enable pipelining");
+PD_DEFINE_int32(ipu_batches_per_step,
+                1,
+                "the number of batches per run in pipelining");
+PD_DEFINE_bool(ipu_enable_fp16, false, "enable fp16");
+PD_DEFINE_int32(ipu_replica_num, 1, "replica num");
+PD_DEFINE_double(ipu_available_memory_proportion,
+                 1.0,
+                 "available memory proportion");
+PD_DEFINE_bool(ipu_enable_half_partial, false, "enable half partial");
 
 namespace paddle {
 namespace inference {
 
-using paddle::framework::proto::VarType;
-using float16 = paddle::platform::float16;
+using ::paddle::framework::proto::VarType;
+using float16 = ::paddle::platform::float16;
 
 template <typename T>
-constexpr paddle::PaddleDType GetPaddleDType();
+constexpr ::paddle::PaddleDType GetPaddleDType();
 
 template <>
-constexpr paddle::PaddleDType GetPaddleDType<int64_t>() {
-  return paddle::PaddleDType::INT64;
+constexpr ::paddle::PaddleDType GetPaddleDType<int64_t>() {
+  return ::paddle::PaddleDType::INT64;
 }
 
 template <>
-constexpr paddle::PaddleDType GetPaddleDType<float>() {
-  return paddle::PaddleDType::FLOAT32;
+constexpr ::paddle::PaddleDType GetPaddleDType<float>() {
+  return ::paddle::PaddleDType::FLOAT32;
 }
 
 void PrintConfig(const PaddlePredictor::Config *config, bool use_analysis) {
@@ -521,7 +525,7 @@ void PredictionWarmUp(PaddlePredictor *predictor,
   PrintTime(
       batch_size, 1, num_threads, tid, batch_latency, iterations, data_type);
   if (FLAGS_enable_profile) {
-    paddle::platform::ResetProfiler();
+    ::paddle::platform::ResetProfiler();
   }
 }
 
@@ -749,7 +753,7 @@ float CompareAccuracyOne(
     if (output_slots[i][compared_idx].lod.size() > 0)
       throw std::invalid_argument("CompareAccuracy: output has nonempty LoD.");
 
-    if (output_slots[i][compared_idx].dtype != paddle::PaddleDType::FLOAT32)
+    if (output_slots[i][compared_idx].dtype != ::paddle::PaddleDType::FLOAT32)
       throw std::invalid_argument(
           "CompareAccuracy: output is of a wrong type.");
 
@@ -1156,7 +1160,7 @@ static bool CompareTensor(const phi::DenseTensor &a,
   return true;
 }
 
-void ConvertFP32toFP16(paddle::PaddleTensor &tensor  // NOLINT
+void ConvertFP32toFP16(::paddle::PaddleTensor &tensor  // NOLINT
 ) {
   int num = 1;
   for (auto dim : tensor.shape) {
@@ -1177,7 +1181,7 @@ void ConvertFP32toFP16(paddle::PaddleTensor &tensor  // NOLINT
   tensor.dtype = PaddleDType::FLOAT16;
 }
 
-void ConvertFP16toFP32(paddle::PaddleTensor &tensor  // NOLINT
+void ConvertFP16toFP32(::paddle::PaddleTensor &tensor  // NOLINT
 ) {
   int num = 1;
   for (auto dim : tensor.shape) {

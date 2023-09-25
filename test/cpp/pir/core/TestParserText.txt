@@ -1,0 +1,70 @@
+
+//CHECK attribute
+(Array)["  File \"train.py\", line 225, in <module>",
+"    main(args)",
+"  File \"train.py\", line 197, in main",
+"    lr_scheduler, args.profiler_options)",
+"  File \"/home/PaddleClas/ppcls/static/program.py\", line 397, in run",
+"    fetch_list=fetch_list)",
+"  File \"/home/dy2stUpgrade/Paddle/build/python/paddle/fluid/executor.py\", line 1440, in run",
+"    use_prune=use_prune,",
+"  File \"/home/dy2stUpgrade/Paddle/build/python/paddle/fluid/executor.py\", line 1635, in _run_impl",
+"    scope,",
+"  File \"/home/dy2stUpgrade/Paddle/build/python/paddle/fluid/executor.py\", line 801, in get_program_and_executor",
+"    scope,",
+"  File \"/home/dy2stUpgrade/Paddle/build/python/paddle/fluid/executor.py\", line 866, in _get_program_and_executor",
+"    use_fetch_v2=True,",
+"  File \"/home/dy2stUpgrade/Paddle/build/python/paddle/fluid/executor.py\", line 411, in _add_feed_fetch_ops",
+"    attrs={'col': i},",
+"  File \"/home/dy2stUpgrade/Paddle/build/python/paddle/fluid/framework.py\", line 4056, in append_op",
+"    attrs=kwargs.get(\"attrs\", None),",
+"  File \"/home/dy2stUpgrade/Paddle/build/python/paddle/fluid/framework.py\", line 2818, in __init__",
+"    for frame in traceback.extract_stack():"]
+//END
+
+//CHECK type
+f32
+//END
+
+//CHECK type
+pd_op.tensor<256xf32>
+//END
+
+//CHECK program
+{
+ (%0) = "builtin.get_parameter" () {parameter_name:"conv2d_0.w_0"} : () -> pd_op.tensor<64x3x7x7xf32>
+ (%1) = "pd_op.feed" () {col:(Int32)0,is_persisable:(Array)[false],name:"data",stop_gradient:(Array)[true]} : () -> pd_op.tensor<-1x3x224x224xf32>
+ (%2) = "pd_op.conv2d" (%1, %0) {data_format:"NCHW",dilations:(Array)[(Int32)1,(Int32)1],groups:(Int32)1,is_persisable:(Array)[false],padding_algorithm:"EXPLICIT",paddings:(Array)[(Int32)3,(Int32)3],stop_gradient:(Array)[false],strides:(Array)[(Int32)2,(Int32)2]} : (pd_op.tensor<-1x3x224x224xf32>, pd_op.tensor<64x3x7x7xf32>) -> pd_op.tensor<-1x64x112x112xf32>
+}
+//END
+
+//CHECK attribute
+(Array)[(pd_op.DataType)bool,(pd_op.DataType)float32,(pd_op.DataType)float64,
+(pd_op.DataType)complex64,(pd_op.DataType)complex128,(pd_op.DataType)Undefined,
+(pd_op.DataType)Undefined,(pd_op.DataType)Undefined,(pd_op.DataType)Undefined,
+(pd_op.DataType)bfloat16,(pd_op.DataType)uint8,(pd_op.DataType)uint32,(pd_op.DataType)int8,
+(pd_op.DataType)uint16,(pd_op.DataType)int16,(pd_op.DataType)int32,(pd_op.DataType)uint64,(pd_op.DataType)int64]
+//END
+
+//CHECK attribute
+(Array)[(pd_op.Place)Place(gpu:0),(pd_op.Place)Place(gpu_pinned),(pd_op.Place)Place(gpu_pinned),
+(pd_op.Place)Place(xpu:0),(pd_op.Place)Place(ipu:0),(pd_op.Place)Place(:0),(pd_op.Place)Place(cpu)]
+//END
+
+//CHECK attribute
+(Array)[(pd_op.DataLayout)NHWC,(pd_op.DataLayout)STRIDED,(pd_op.DataLayout)NCHW,(pd_op.DataLayout)Undefined(AnyLayout),
+(pd_op.DataLayout)ONEDNN,(pd_op.DataLayout)SPARSE_COO,(pd_op.DataLayout)SPARSE_CSR,(pd_op.DataLayout)NDHWC,(pd_op.DataLayout)NCDHW,
+(pd_op.DataLayout)PSTRING_UNION]
+//END
+
+//CHECK attribute
+(Array)[(Double)1,(Int64)0,"1"]
+//END
+
+//CHECK type
+vec[bf16,f64,b,i8,u8,i16,c64,c128]
+//END
+
+//CHECK attribute
+(Array)["\"","\\"","\\\"","\t\n\r",""]
+//END

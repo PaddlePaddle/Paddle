@@ -63,8 +63,8 @@ void AutoTuner::Initialize(const Config& config,
   const auto& shape_dict = graph_->GetAttrs<
       absl::flat_hash_map<std::string, hlir::framework::shape_t>>("infershape");
 
-  op_lowerer_ = std::make_unique<hlir::framework::OpLowerer>(
-      dtype_dict, shape_dict, target_);
+  op_lowerer_ = std::make_unique<hlir::framework::OpLowerer<GroupPtr>>(
+      new hlir::framework::OpLowererImpl(dtype_dict, shape_dict, target_));
   InitialTaskRegistry* task_registry = InitialTaskRegistry::Global();
   for (auto i = 0; i < tasks_.size(); ++i) {
     auto&& task = tasks_[i];

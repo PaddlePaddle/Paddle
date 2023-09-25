@@ -14,8 +14,8 @@
 
 import paddle
 from paddle.autograd import PyLayer
+from paddle.base import core
 from paddle.distributed import fleet
-from paddle.fluid import core
 from paddle.nn import functional as F
 
 from ....communication.reduce import ReduceOp, _get_reduce_op
@@ -61,36 +61,34 @@ class VocabParallelEmbedding(paddle.nn.Layer):
 
     Examples:
         .. code-block:: python
-        import paddle
-        from paddle.distributed import fleet
 
-        class SimpleMPNet(paddle.nn.Layer):
-           def __init__(self, vocab_size, hidden_size, inner_size, output_size):
-              super().__init__()
-              self.linear1 = fleet.meta_parallel.ColumnParallelLinear(
-                    hidden_size,
-                    inner_size,
-                    gather_output=False,
-                    has_bias=True)
+            >>> import paddle
+            >>> from paddle.distributed import fleet
 
-              self.linear2 = fleet.meta_parallel.RowParallelLinear(
-                    inner_size,
-                    hidden_size,
-                    input_is_parallel=True,
-                    has_bias=True)
+            >>> class SimpleMPNet(paddle.nn.Layer):
+            ...     def __init__(self, vocab_size, hidden_size, inner_size, output_size):
+            ...         super().__init__()
+            ...         self.linear1 = fleet.meta_parallel.ColumnParallelLinear(
+            ...             hidden_size,
+            ...             inner_size,
+            ...             gather_output=False,
+            ...             has_bias=True)
+            ...         self.linear2 = fleet.meta_parallel.RowParallelLinear(
+            ...             inner_size,
+            ...             hidden_size,
+            ...             input_is_parallel=True,
+            ...             has_bias=True)
+            ...         self.linear3 = paddle.nn.Linear(hidden_size, output_size)
+            ...         self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
+            ...                         vocab_size,
+            ...                         hidden_size)
+            ...     def forward(self, x):
+            ...         x = self.embedding(x)
+            ...         x = self.linear1(x)
+            ...         x = self.linear2(x)
+            ...         x = self.linear3(x)
+            ...         return x
 
-              self.linear3 = paddle.nn.Linear(hidden_size, output_size)
-
-              self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
-                                vocab_size,
-                                hidden_size)
-
-           def forward(self, x):
-              x = self.embedding(x)
-              x = self.linear1(x)
-              x = self.linear2(x)
-              x = self.linear3(x)
-              return x
     """
 
     def __init__(
@@ -179,6 +177,136 @@ class VocabParallelEmbedding(paddle.nn.Layer):
         return output
 
 
+class InnerOverlapLinear(paddle.autograd.PyLayer):
+    @staticmethod
+    def forward(
+        ctx,
+        x,
+        weight,
+        bias,
+        fuse_matmul_bias,
+        mp_async_allreduce,
+        mp_skip_c_identity,
+        mp_fused_linear_param_grad_add,
+        model_parallel_group,
+    ):
+        ctx.save_for_backward(x, weight, bias)
+        ctx.model_parallel_group = model_parallel_group
+        ctx.mp_fused_linear_param_grad_add = mp_fused_linear_param_grad_add
+        if mp_skip_c_identity is False:
+            x = paddle._legacy_C_ops.c_identity(
+                x,
+                'use_calc_stream',
+                True,
+                'ring_id',
+                model_parallel_group.id,
+                'use_model_parallel',
+                True,
+            )
+        if not fuse_matmul_bias:
+            return paddle._C_ops.linear(x, weight, bias)
+        else:
+            return paddle._legacy_C_ops.fused_gemm_epilogue(x, weight, bias)
+
+    @staticmethod
+    def backward(ctx, dy):
+        x, weight, bias = ctx.saved_tensor()
+        dx = paddle.matmul(dy, weight, transpose_y=True)
+        op_type = _get_reduce_op(ReduceOp.SUM, "_c_identity")
+        task = ctx.model_parallel_group.process_group.all_reduce(
+            dx, op_type, sync_op=False
+        )
+        # TODO(GhostScreaming): remove it in future.
+        tmp = paddle.ones([512])
+
+        if ctx.mp_fused_linear_param_grad_add:
+            if not is_fused_linear_param_grad_add_supported():
+                raise NotImplementedError(
+                    "You set mp_fused_linear_param_grad_add=True, "
+                    "however, the paddle you are using not support this operation. "
+                    "Please unset fused_linear_param_grad_add or use paddle compiled "
+                    "with cuda 11.6 or higher."
+                )
+
+            if bias is None:
+                if hasattr(weight, "main_grad"):
+                    (
+                        weight.main_grad,
+                        _,
+                    ) = paddle._C_ops.fused_linear_param_grad_add(
+                        x, dy, weight.main_grad, None, True, False
+                    )
+                    task.wait()
+                    return dx, None
+                else:
+                    if weight.grad is not None:
+                        (
+                            weight.grad,
+                            _,
+                        ) = paddle._C_ops.fused_linear_param_grad_add(
+                            x, dy, weight.grad, None, False, False
+                        )
+                        task.wait()
+                        return dx, None
+                    else:
+                        (
+                            dw,
+                            _,
+                        ) = paddle._C_ops.fused_linear_param_grad_add(
+                            x, dy, None, None, False, False
+                        )
+                        task.wait()
+                        return dx, dw
+
+            if hasattr(weight, "main_grad") and hasattr(bias, "main_grad"):
+                (
+                    weight.main_grad,
+                    bias.main_grad,
+                ) = paddle._C_ops.fused_linear_param_grad_add(
+                    input,
+                    dy,
+                    weight.main_grad,
+                    bias.main_grad,
+                    True,
+                    True,
+                )
+                task.wait()
+                return dx, None, None
+            else:
+                if weight.grad is not None:
+                    assert bias.grad is not None
+                    (
+                        weight.grad,
+                        bias.grad,
+                    ) = paddle._C_ops.fused_linear_param_grad_add(
+                        x, dy, weight.grad, bias.grad, False, True
+                    )
+                    task.wait()
+                    return dx, None, None
+                else:
+                    (
+                        dw,
+                        dbias,
+                    ) = paddle._C_ops.fused_linear_param_grad_add(
+                        x, dy, None, None, False, True
+                    )
+                    task.wait()
+                    return dx, dw, dbias
+        else:
+            dw = paddle.matmul(
+                x.reshape([-1, x.shape[-1]]),
+                dy.reshape([-1, dy.shape[-1]]),
+                transpose_x=True,
+            )
+            if bias is None:
+                task.wait()
+                return dx, dw
+            else:
+                dbias = paddle.sum(dy, axis=0)
+                task.wait()
+                return dx, dw, dbias
+
+
 class ColumnParallelLinear(paddle.nn.Layer):
     """Linear layer with mp parallelized(column).
     this class is used for splitting Linear Layer in mp group, column split the weight of the Linear layer.
@@ -197,36 +325,33 @@ class ColumnParallelLinear(paddle.nn.Layer):
 
     Examples:
         .. code-block:: python
-        import paddle
-        from paddle.distributed import fleet
 
-        class SimpleMPNet(paddle.nn.Layer):
-           def __init__(self, vocab_size, hidden_size, inner_size, output_size):
-              super().__init__()
-              self.linear1 = fleet.meta_parallel.ColumnParallelLinear(
-                    hidden_size,
-                    inner_size,
-                    gather_output=False,
-                    has_bias=True)
+            >>> import paddle
+            >>> from paddle.distributed import fleet
 
-              self.linear2 = fleet.meta_parallel.RowParallelLinear(
-                    inner_size,
-                    hidden_size,
-                    input_is_parallel=True,
-                    has_bias=True)
-
-              self.linear3 = paddle.nn.Linear(hidden_size, output_size)
-
-              self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
-                                vocab_size,
-                                hidden_size)
-
-           def forward(self, x):
-              x = self.embedding(x)
-              x = self.linear1(x)
-              x = self.linear2(x)
-              x = self.linear3(x)
-              return x
+            >>> class SimpleMPNet(paddle.nn.Layer):
+            ...     def __init__(self, vocab_size, hidden_size, inner_size, output_size):
+            ...         super().__init__()
+            ...         self.linear1 = fleet.meta_parallel.ColumnParallelLinear(
+            ...             hidden_size,
+            ...             inner_size,
+            ...             gather_output=False,
+            ...             has_bias=True)
+            ...         self.linear2 = fleet.meta_parallel.RowParallelLinear(
+            ...             inner_size,
+            ...             hidden_size,
+            ...             input_is_parallel=True,
+            ...             has_bias=True)
+            ...         self.linear3 = paddle.nn.Linear(hidden_size, output_size)
+            ...         self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
+            ...                         vocab_size,
+            ...                         hidden_size)
+            ...     def forward(self, x):
+            ...         x = self.embedding(x)
+            ...         x = self.linear1(x)
+            ...         x = self.linear2(x)
+            ...         x = self.linear3(x)
+            ...         return x
     """
 
     def __init__(
@@ -257,10 +382,8 @@ class ColumnParallelLinear(paddle.nn.Layer):
 
         self.gather_output = gather_output
         assert out_features % self.world_size == 0, (
-            "Number of column of the weight for linear ({}) must be"
-            " divisible by model parallel size ({})".format(
-                out_features, self.world_size
-            )
+            f"Number of column of the weight for linear ({out_features}) must be"
+            f" divisible by model parallel size ({self.world_size})"
         )
         self.output_size_per_partition = out_features // self.world_size
 
@@ -320,6 +443,14 @@ class ColumnParallelLinear(paddle.nn.Layer):
             and mp_configs.mp_async_allreduce
             and mp_configs.mp_fused_linear_param_grad_add
         )
+        if (
+            self.mp_async_allreduce
+            or self.mp_skip_c_identity
+            or self.mp_fused_linear_param_grad_add
+        ):
+            assert (
+                paddle.in_dynamic_mode()
+            ), "mp_async_allreduce, mp_skip_c_identity and mp_fused_linear_param_grad_add are only available under dygraph mode"
         if self.fuse_matmul_bias:
             if not is_fused_matmul_bias_supported():
                 raise NotImplementedError(
@@ -336,133 +467,16 @@ class ColumnParallelLinear(paddle.nn.Layer):
         # use inner api to process identity
 
         def _overlap_linear():
-            fuse_matmul_bias = self.fuse_matmul_bias
-            mp_async_allreduce = self.mp_async_allreduce
-            mp_skip_c_identity = self.mp_skip_c_identity
-            mp_fused_linear_param_grad_add = self.mp_fused_linear_param_grad_add
-
-            class InnerOverlapLinear(paddle.autograd.PyLayer):
-                @staticmethod
-                def forward(ctx, x, weight, bias):
-                    ctx.save_for_backward(x, weight, bias)
-                    if mp_skip_c_identity is False:
-                        x = paddle._legacy_C_ops.c_identity(
-                            x,
-                            'use_calc_stream',
-                            True,
-                            'ring_id',
-                            self.model_parallel_group.id,
-                            'use_model_parallel',
-                            True,
-                        )
-                    if not fuse_matmul_bias:
-                        return paddle._C_ops.linear(x, weight, bias)
-                    else:
-                        return paddle._legacy_C_ops.fused_gemm_epilogue(
-                            x, weight, bias
-                        )
-
-                @staticmethod
-                def backward(ctx, dy):
-                    x, weight, bias = ctx.saved_tensor()
-                    dx = paddle.matmul(dy, weight, transpose_y=True)
-                    op_type = _get_reduce_op(ReduceOp.SUM, "_c_identity")
-                    task = self.model_parallel_group.process_group.all_reduce(
-                        dx, op_type, sync_op=False
-                    )
-                    # TODO(GhostScreaming): remove it in future.
-                    tmp = paddle.ones([512])
-
-                    if mp_fused_linear_param_grad_add:
-                        if not is_fused_linear_param_grad_add_supported():
-                            raise NotImplementedError(
-                                "You set mp_fused_linear_param_grad_add=True, "
-                                "however, the paddle you are using not support this operation. "
-                                "Please unset fused_linear_param_grad_add or use paddle compiled "
-                                "with cuda 11.6 or higher."
-                            )
-
-                        if bias is None:
-                            if hasattr(weight, "main_grad"):
-                                (
-                                    weight.main_grad,
-                                    _,
-                                ) = paddle._C_ops.fused_linear_param_grad_add(
-                                    x, dy, weight.main_grad, None, True, False
-                                )
-                                task.wait()
-                                return dx, None
-                            else:
-                                if weight.grad is not None:
-                                    (
-                                        weight.grad,
-                                        _,
-                                    ) = paddle._C_ops.fused_linear_param_grad_add(
-                                        x, dy, weight.grad, None, False, False
-                                    )
-                                    task.wait()
-                                    return dx, None
-                                else:
-                                    (
-                                        dw,
-                                        _,
-                                    ) = paddle._C_ops.fused_linear_param_grad_add(
-                                        x, dy, None, None, False, False
-                                    )
-                                    task.wait()
-                                    return dx, dw
-
-                        if hasattr(weight, "main_grad") and hasattr(
-                            bias, "main_grad"
-                        ):
-                            (
-                                weight.main_grad,
-                                bias.main_grad,
-                            ) = paddle._C_ops.fused_linear_param_grad_add(
-                                input,
-                                dy,
-                                weight.main_grad,
-                                bias.main_grad,
-                                True,
-                                True,
-                            )
-                            task.wait()
-                            return dx, None, None
-                        else:
-                            if weight.grad is not None:
-                                assert bias.grad is not None
-                                (
-                                    weight.grad,
-                                    bias.grad,
-                                ) = paddle._C_ops.fused_linear_param_grad_add(
-                                    x, dy, weight.grad, bias.grad, False, True
-                                )
-                                task.wait()
-                                return dx, None, None
-                            else:
-                                (
-                                    dw,
-                                    dbias,
-                                ) = paddle._C_ops.fused_linear_param_grad_add(
-                                    x, dy, None, None, False, True
-                                )
-                                task.wait()
-                                return dx, dw, dbias
-                    else:
-                        dw = paddle.matmul(
-                            x.reshape([-1, x.shape[-1]]),
-                            dy.reshape([-1, dy.shape[-1]]),
-                            transpose_x=True,
-                        )
-                        if bias is None:
-                            task.wait()
-                            return dx, dw
-                        else:
-                            dbias = paddle.sum(dy, axis=0)
-                            task.wait()
-                            return dx, dw, dbias
-
-            return InnerOverlapLinear.apply(x, self.weight, self.bias)
+            return InnerOverlapLinear.apply(
+                x,
+                self.weight,
+                self.bias,
+                self.fuse_matmul_bias,
+                self.mp_async_allreduce,
+                self.mp_skip_c_identity,
+                self.mp_fused_linear_param_grad_add,
+                self.model_parallel_group,
+            )
 
         if self.mp_async_allreduce:
             output_parallel = _overlap_linear()
@@ -518,36 +532,34 @@ class RowParallelLinear(paddle.nn.Layer):
 
     Examples:
         .. code-block:: python
-        import paddle
-        from paddle.distributed import fleet
 
-        class SimpleMPNet(paddle.nn.Layer):
-           def __init__(self, vocab_size, hidden_size, inner_size, output_size):
-              super().__init__()
-              self.linear1 = fleet.meta_parallel.ColumnParallelLinear(
-                    hidden_size,
-                    inner_size,
-                    gather_output=False,
-                    has_bias=True)
+            >>> import paddle
+            >>> from paddle.distributed import fleet
 
-              self.linear2 = fleet.meta_parallel.RowParallelLinear(
-                    inner_size,
-                    hidden_size,
-                    input_is_parallel=True,
-                    has_bias=True)
+            >>> class SimpleMPNet(paddle.nn.Layer):
+            ...     def __init__(self, vocab_size, hidden_size, inner_size, output_size):
+            ...         super().__init__()
+            ...         self.linear1 = fleet.meta_parallel.ColumnParallelLinear(
+            ...             hidden_size,
+            ...             inner_size,
+            ...             gather_output=False,
+            ...             has_bias=True)
+            ...         self.linear2 = fleet.meta_parallel.RowParallelLinear(
+            ...             inner_size,
+            ...             hidden_size,
+            ...             input_is_parallel=True,
+            ...             has_bias=True)
+            ...         self.linear3 = paddle.nn.Linear(hidden_size, output_size)
+            ...         self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
+            ...                         vocab_size,
+            ...                         hidden_size)
+            ...     def forward(self, x):
+            ...         x = self.embedding(x)
+            ...         x = self.linear1(x)
+            ...         x = self.linear2(x)
+            ...         x = self.linear3(x)
+            ...         return x
 
-              self.linear3 = paddle.nn.Linear(hidden_size, output_size)
-
-              self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
-                                vocab_size,
-                                hidden_size)
-
-           def forward(self, x):
-              x = self.embedding(x)
-              x = self.linear1(x)
-              x = self.linear2(x)
-              x = self.linear3(x)
-              return x
     """
 
     def __init__(
@@ -601,11 +613,17 @@ class RowParallelLinear(paddle.nn.Layer):
             and mp_configs.mp_async_allreduce
             and mp_configs.mp_fused_linear_param_grad_add
         )
+        if (
+            self.mp_async_allreduce
+            or self.mp_skip_c_identity
+            or self.mp_fused_linear_param_grad_add
+        ):
+            assert (
+                paddle.in_dynamic_mode()
+            ), "mp_async_allreduce, mp_skip_c_identity and mp_fused_linear_param_grad_add are only available under dygraph mode"
         assert in_features % self.world_size == 0, (
-            "Number of row of the weight for linear ({}) must be"
-            " divisible by model parallel size ({})".format(
-                in_features, self.world_size
-            )
+            f"Number of row of the weight for linear ({in_features}) must be"
+            f" divisible by model parallel size ({self.world_size})"
         )
 
         self.input_size_per_partition = in_features // self.world_size
@@ -711,8 +729,12 @@ class ParallelCrossEntropy(paddle.nn.Layer):
 
     Examples:
         .. code-block:: python
-        loss_func = ParallelCrossEntropy()
-        loss = loss_func(img, lable)
+
+            >>> # doctest: +SKIP('No img to demonstrate')
+            >>> from paddle.distributed.fleet.layers.mpu import ParallelCrossEntropy
+            >>> loss_func = ParallelCrossEntropy
+            >>> loss = loss_func(img, lable)
+
     """
 
     def __init__(self, mp_group=None, name=None, ignore_index=-100):

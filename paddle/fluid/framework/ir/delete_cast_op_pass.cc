@@ -180,7 +180,7 @@ int DeleteCastOpPass::ApplyCastWriteReadPass(ir::Graph* graph) const {
 
     std::string cast_out_name = write_to_array_0_x_name + "_fp16";
     VarDesc cast_out_desc(cast_out_name);
-    cast_out_desc.SetShape(write_to_array_0_x->Var()->GetShape());
+    cast_out_desc.SetShape(write_to_array_0_x->Var()->GetShape());  // NOLINT
     cast_out_desc.SetDataType(proto::VarType::Type::VarType_Type_FP16);
     auto* cast_out = graph0->CreateVarNode(&cast_out_desc);
 

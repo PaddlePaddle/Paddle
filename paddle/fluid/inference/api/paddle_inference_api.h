@@ -235,7 +235,7 @@ PD_INFER_DECL int GetNumBytesOfDataType(DataType dtype);
 PD_INFER_DECL std::string GetVersion();
 PD_INFER_DECL std::tuple<int, int, int> GetTrtCompileVersion();
 PD_INFER_DECL std::tuple<int, int, int> GetTrtRuntimeVersion();
-PD_INFER_DECL std::string UpdateDllFlag(const char* name, const char* value);
+PD_INFER_DECL void UpdateDllFlag(const char* name, const char* value);
 
 PD_INFER_DECL void ConvertToMixedPrecision(
     const std::string& model_file,
@@ -245,7 +245,8 @@ PD_INFER_DECL void ConvertToMixedPrecision(
     PrecisionType mixed_precision,
     PlaceType backend,
     bool keep_io_types = true,
-    std::unordered_set<std::string> black_list = {});
+    std::unordered_set<std::string> black_list = {},
+    std::unordered_set<std::string> white_list = {});
 
 namespace services {
 ///

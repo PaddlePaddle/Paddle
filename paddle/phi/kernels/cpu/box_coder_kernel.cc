@@ -78,7 +78,7 @@ void EncodeCenterSize(const DenseTensor *target_box,
       for (int64_t j = 0; j < col; ++j) {
         for (int k = 0; k < 4; ++k) {
           size_t offset = i * col * len + j * len;
-          int prior_var_offset = j * len;
+          int prior_var_offset = static_cast<int>(j * len);
           output[offset + k] /= prior_box_var_data[prior_var_offset + k];
         }
       }

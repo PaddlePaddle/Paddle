@@ -32,7 +32,7 @@ void RReluKernel(const Context& dev_ctx,
   T* o_ptr = dev_ctx.template Alloc<T>(out);
   T* n_ptr = dev_ctx.template Alloc<T>(noise);
   T zero = static_cast<T>(0);
-  int numel = x.numel();
+  int numel = static_cast<int>(x.numel());
   int i = 0;
 
   if (is_test) {

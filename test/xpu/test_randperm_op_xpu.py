@@ -23,7 +23,7 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 from paddle.static import Program, program_guard
 
 paddle.enable_static()

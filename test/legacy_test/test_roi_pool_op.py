@@ -18,7 +18,7 @@ import unittest
 from decimal import ROUND_HALF_UP, Decimal
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 

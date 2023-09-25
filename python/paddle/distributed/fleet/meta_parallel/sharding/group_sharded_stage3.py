@@ -22,8 +22,8 @@ import paddle
 import paddle.distributed as dist
 from paddle import framework, nn
 from paddle.autograd import PyLayer
+from paddle.base.framework import EagerParamBase
 from paddle.distributed import collective
-from paddle.fluid.framework import EagerParamBase
 from paddle.framework import core
 from paddle.nn import ClipGradByGlobalNorm
 
@@ -959,7 +959,6 @@ def _release_param(
 
                 if offload:
                     param.fw_storage = _device2cpu(param.fw_storage)
-    return
 
 
 def _wait_layer(

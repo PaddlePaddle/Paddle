@@ -39,7 +39,7 @@ class TestVarAPI(unittest.TestCase):
         self.x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         self.place = (
             paddle.CUDAPlace(0)
-            if paddle.fluid.core.is_compiled_with_cuda()
+            if paddle.base.core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
 

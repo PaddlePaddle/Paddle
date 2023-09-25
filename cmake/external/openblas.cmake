@@ -19,16 +19,12 @@ set(CBLAS_INSTALL_DIR ${THIRD_PARTY_PATH}/install/openblas)
 set(CBLAS_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/openblas)
 set(CBLAS_TAG v0.3.7)
 
-# Why use v0.3.18?  The IDG business line encountered a random openblas error,
-# which can be resolved after upgrading openblas.
-# And why compile when gcc>8.2? Please refer to
-# https://github.com/spack/spack/issues/19932#issuecomment-733452619
-# v0.3.18 only support gcc>=8.3 or gcc>=7.4
-if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-   AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 8.2
+# OpenBLAS support Raptor Lake from v0.3.22
+if(UNIX
+   AND NOT APPLE
+   AND NOT WITH_ROCM
    AND NOT WITH_XPU)
-  # We only compile with openblas 0.3.18 when gcc >= 8.3
-  set(CBLAS_TAG v0.3.18)
+  set(CBLAS_TAG v0.3.23)
 endif()
 
 if(APPLE AND WITH_ARM)
@@ -93,7 +89,7 @@ if(NOT WIN32)
     PREFIX ${CBLAS_PREFIX_DIR}
     INSTALL_DIR ${CBLAS_INSTALL_DIR}
     BUILD_IN_SOURCE 1
-    BUILD_COMMAND make ${ARM_ARGS} -j${NPROC} ${COMMON_ARGS} ${OPTIONAL_ARGS}
+    BUILD_COMMAND make ${ARM_ARGS} -s -j${NPROC} ${COMMON_ARGS} ${OPTIONAL_ARGS}
     INSTALL_COMMAND make install NO_SHARED=1 NO_LAPACK=1 PREFIX=<INSTALL_DIR>
     UPDATE_COMMAND ""
     CONFIGURE_COMMAND ""
@@ -121,6 +117,7 @@ else()
                -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
                -DBUILD_SHARED_LIBS=ON
+               -DCMAKE_VERBOSE_MAKEFILE=OFF
                -DMSVC_STATIC_CRT=${MSVC_STATIC_CRT}
                ${EXTERNAL_OPTIONAL_ARGS}
     CMAKE_CACHE_ARGS

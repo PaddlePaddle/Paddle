@@ -58,6 +58,23 @@ inline void CompareKernelImpl(const Context& ctx,
   funcs::BroadcastKernel<bool>(ctx, ins, &outs, Functor(), axis);
 }
 
+template <typename T,
+          typename Context,
+          typename Functor,
+          typename InverseFunctor>
+inline void InplaceCompareKernelImpl(const Context& ctx,
+                                     const DenseTensor& x,
+                                     const DenseTensor& y,
+                                     int axis,
+                                     DenseTensor* out) {
+  auto x_origin = x;
+  ctx.template Alloc<bool>(out);
+  out->set_type(phi::DataType::BOOL);
+  std::vector<const DenseTensor*> ins{&x_origin, &y};
+  std::vector<DenseTensor*> outs{out};
+  funcs::BroadcastKernel<bool>(ctx, ins, &outs, Functor(), axis);
+}
+
 #ifndef PADDLE_WITH_XPU_KP
 template <typename T, typename Context, typename Functor>
 inline void CompareAllKernelImpl(const Context& ctx,

@@ -16,7 +16,7 @@
 
 #include <unordered_set>
 
-#include "gflags/gflags.h"
+#include "paddle/utils/flags.h"
 
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
@@ -39,14 +39,18 @@
 #ifdef PADDLE_WITH_CINN
 #include "paddle/fluid/framework/new_executor/instruction/cinn_jit_instruction.h"
 #endif
+#include "paddle/fluid/framework/new_executor/instruction/cond_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
-#include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
-#include "paddle/ir/core/builtin_attribute.h"
+#include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/pir/core/builtin_attribute.h"
 
 PHI_DECLARE_bool(enable_new_ir_in_executor);
-
 PHI_DECLARE_bool(enable_new_ir_in_executor_trace_run);
 
 namespace paddle {
@@ -55,17 +59,18 @@ namespace framework {
 NewIRInterpreter::NewIRInterpreter(
     const platform::Place& place,
     const std::vector<std::string>& fetch_var_names,
-    std::unique_ptr<::ir::Program> ir_prog,
+    const ::pir::Block* ir_block,
     framework::Scope* scope,
     const ExecutionConfig& execution_config)
     : place_(place),
       execution_config_(execution_config),
       var_scope_(scope),
       scope_(scope),
-      ir_program_(std::move(ir_prog)),
+      ir_block_(ir_block),
       ir_stream_analyzer_(place),
       fetch_var_names_(fetch_var_names) {
   VLOG(4) << "NewIRInterpreter(): " << this << " on " << place_;
+
   static_build_ = FLAGS_new_executor_static_build &&
                   !FLAGS_new_executor_use_cuda_graph &&
                   !execution_config.used_for_control_flow_op;
@@ -89,8 +94,7 @@ NewIRInterpreter::NewIRInterpreter(
   // TODO(zhangbo): delete var_scope
   var_scope_.SetLocalScope(local_scope_);
 
-  execution_config_.AnalyzeThreadPoolConfig(place,
-                                            ir_program_->block()->size());
+  execution_config_.AnalyzeThreadPoolConfig(place, 1);
   execution_config_.Log(/*log_level=*/8);
 
   ir_instruction_scheduling_priority_less = [this](size_t lhs, size_t rhs) {
@@ -105,6 +109,74 @@ NewIRInterpreter::NewIRInterpreter(
   };
 
   PrepareForCUDAGraphCapture();
+
+  value_exe_info_ = std::make_shared<ValueExecutionInfo>(InnerScope());
+
+  std::stringstream ss;
+  ss << this;
+  ::pir::BuildScope(*ir_block_, ss.str(), &sub_blocks_, value_exe_info_.get());
+}
+
+NewIRInterpreter::NewIRInterpreter(
+    const platform::Place& place,
+    const std::vector<std::string>& fetch_var_names,
+    const ::pir::Block* ir_block,
+    framework::Scope* scope,
+    std::shared_ptr<ValueExecutionInfo> value_exe_info,
+    const ExecutionConfig& execution_config)
+    : place_(place),
+      execution_config_(execution_config),
+      var_scope_(scope),
+      scope_(scope),
+      ir_block_(ir_block),
+      ir_stream_analyzer_(place),
+      fetch_var_names_(fetch_var_names) {
+  VLOG(4) << "NewIRInterpreter(): " << this << " on " << place_;
+
+  static_build_ = FLAGS_new_executor_static_build &&
+                  !FLAGS_new_executor_use_cuda_graph &&
+                  !execution_config.used_for_control_flow_op;
+  //    &&interpreter::BlockCanBeStaticBuilt(block);
+  static_build_ = true;
+
+  exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
+  completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
+
+  dependecy_count_ = std::make_shared<std::vector<size_t>>();
+
+  if (!FLAGS_new_executor_use_local_scope) {
+    execution_config_.create_local_scope = false;
+  }
+  if (execution_config_.create_local_scope) {
+    auto local_scope = &scope_->NewScope();
+    local_scope_ = local_scope;
+    VLOG(6) << "new ir interpretercore scope: " << scope_ << "\t"
+            << "; local scope: " << local_scope_;
+  }
+  // TODO(zhangbo): delete var_scope
+  var_scope_.SetLocalScope(local_scope_);
+
+  execution_config_.AnalyzeThreadPoolConfig(place, 1);
+  execution_config_.Log(/*log_level=*/8);
+
+  ir_instruction_scheduling_priority_less = [this](size_t lhs, size_t rhs) {
+    SchedulingPriority lhs_scheduling_priority =
+        vec_instruction_base_[lhs]->GetSchedulingPriority();
+    SchedulingPriority rhs_scheduling_priority =
+        vec_instruction_base_[rhs]->GetSchedulingPriority();
+    if (lhs_scheduling_priority == rhs_scheduling_priority) {
+      return lhs < rhs;
+    }
+    return lhs_scheduling_priority > rhs_scheduling_priority;
+  };
+
+  PrepareForCUDAGraphCapture();
+
+  value_exe_info_ = value_exe_info;
+
+  std::stringstream ss;
+  ss << this;
+  ::pir::BuildScope(*ir_block_, ss.str(), &sub_blocks_, value_exe_info_.get());
 }
 
 NewIRInterpreter::~NewIRInterpreter() {
@@ -118,14 +190,6 @@ NewIRInterpreter::~NewIRInterpreter() {
   // this is needed to have mkl-dnn unit tests working
   platform::ClearMKLDNNCache(place_, this);
 #endif
-}
-
-int NewIRInterpreter::GetIdByName(const std::string& name) const {
-  auto it = var_name_2_id_.find(name);
-  if (it != var_name_2_id_.end()) {
-    return it->second;
-  }
-  return -1;
 }
 
 void NewIRInterpreter::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
@@ -168,35 +232,22 @@ const VariableScope* NewIRInterpreter::GetVariableScope() const {
 void NewIRInterpreter::reset_scope(Scope* new_scope) {
   var_scope_.SetScope(new_scope);
   scope_ = new_scope;
-  for (size_t i = 0; i < variable_list_.size(); i++) {
-    const auto& var_name = GetNameById(i);
-    variable_list_[i] = new_scope->FindVar(var_name);
+  for (size_t i = 0; i < value_exe_info_->GetVarList().size(); i++) {
+    const auto& var_name = value_exe_info_->GetNameById(static_cast<int>(i));
+    value_exe_info_->ResetVarList(i, new_scope->FindVar(var_name));
   }
   // The index should be assured valid, cause the InterpreterCore may not be
   // fully built, but was still cached and used. For example, see unit test
   // `test_assert.py`, it may exit before `NewIRInterpreter::Convert`,
   // but still was cached and used by later tests.
-  for (size_t i = 0; i < std::min(refs_.size(), variable_list_.size()); i++) {
-    refs_[i]->ResetVariable(variable_list_[i]);
+  for (size_t i = 0;
+       i < std::min(refs_.size(), value_exe_info_->GetVarList().size());
+       i++) {
+    refs_[i]->ResetVariable(value_exe_info_->GetVarList()[i]);
   }
 }
 
 const Scope* NewIRInterpreter::local_scope() const { return local_scope_; }
-
-std::string NewIRInterpreter::GetNameById(int id) const {
-  // NOTE(zhiqiu): do not use vec_meta_info_[id].vardesc_->Name() since
-  // vec_meta_info_[id] may be nullptr,
-  // typically when the target variable is not existed in the original program
-  // desc, but created by interpretercore.
-  // For example, created and used by d2h_copy or h2d_copy operator.
-  auto it = std::find_if(var_name_2_id_.begin(),
-                         var_name_2_id_.end(),
-                         [id](const auto& pair) { return pair.second == id; });
-  if (it != var_name_2_id_.end()) {
-    return it->first;
-  }
-  return "";
-}
 
 void NewIRInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
   async_work_queue_ = reinterpret_cast<NewIRInterpreter*>(src)->GetWorkQueue();
@@ -332,6 +383,10 @@ Scope* NewIRInterpreter::InnerScope() {
   return local_scope_ != nullptr ? local_scope_ : scope_;
 }
 
+std::string NewIRInterpreter::GetNameByValue(::pir::Value value) const {
+  return value_exe_info_->GetValue2VarName().at(value);
+}
+
 void NewIRInterpreter::UpdateSyncOpNum() {
   int64_t sync_op_num = 0;
   for (auto& ins : vec_instruction_base_) {
@@ -346,79 +401,79 @@ void NewIRInterpreter::UpdateSyncOpNum() {
 
 void NewIRInterpreter::UpdateNcclOpNum() {
   static std::set<std::string> nccl_op_set = {
-      "pd.c_softmax_with_cross_entropy",
-      "pd.c_allgather",
-      "pd.c_allreduce_max",
-      "pd.c_allreduce_min",
-      "pd.c_allreduce_sum",
-      "pd.c_allreduce_prod",
-      "pd.c_reduce_max",
-      "pd.c_reduce_min",
-      "pd.c_reduce_prod",
-      "pd.c_reducescatter",
-      "pd.c_broadcast",
-      "pd.c_broadcast_",
-      "pd.c_scatter",
-      "pd.partial_send",
-      "pd.partial_recv",
-      "pd.partial_allgather",
-      "pd.recv_v2",
-      "pd.send_v2",
-      "pd.mp_allreduce_sum",
-      "pd.barrier",
-      "pd.alltoall",
-      "pd.global_gather",
-      "pd.distributed_fused_lamb",
-      "pd.margin_cross_entropy",
-      "pd.sync_batch_norm",
-      "pd.sync_batch_norm_",
-      "pd.data_norm",
-      "pd.class_center_sample",
-      "pd.all_to_all",
-      "pd.dist_concat",
-      "pd.all_gather",
-      "pd.broadcast",
-      "pd.p_recv",
-      "pd.p_send",
-      "pd.reduce_scatter",
-      "pd.all_reduce",
-      "pd.reduce",
-      "pd.c_softmax_with_cross_entropy_grad",
-      "pd.c_allgather_grad",
-      "pd.c_allreduce_max_grad",
-      "pd.c_allreduce_min_grad",
-      "pd.c_allreduce_sum_grad",
-      "pd.c_allreduce_prod_grad",
-      "pd.c_reduce_max_grad",
-      "pd.c_reduce_min_grad",
-      "pd.c_reduce_prod_grad",
-      "pd.c_reducescatter_grad",
-      "pd.c_broadcast_grad",
-      "pd.c_scatter_grad",
-      "pd.partial_send_grad",
-      "pd.partial_recv_grad",
-      "pd.partial_allgather_grad",
-      "pd.recv_v2_grad",
-      "pd.send_v2_grad",
-      "pd.mp_allreduce_sum_grad",
-      "pd.barrier_grad",
-      "pd.alltoall_grad",
-      "pd.global_gather_grad",
-      "pd.distributed_fused_lamb_grad",
-      "pd.margin_cross_entropy_grad",
-      "pd.margin_cross_entropy_grad_"
-      "pd.sync_batch_norm_grad",
-      "pd.data_norm_grad",
-      "pd.class_center_sample_grad",
-      "pd.all_to_all_grad",
-      "pd.dist_concat_grad",
-      "pd.all_gather_grad",
-      "pd.broadcast_grad",
-      "pd.p_recv_grad",
-      "pd.p_send_grad",
-      "pd.reduce_scatter_grad",
-      "pd.all_reduce_grad",
-      "pd.reduce_grad"};
+      "pd_op.c_softmax_with_cross_entropy",
+      "pd_op.c_allgather",
+      "pd_op.c_allreduce_max",
+      "pd_op.c_allreduce_min",
+      "pd_op.c_allreduce_sum",
+      "pd_op.c_allreduce_prod",
+      "pd_op.c_reduce_max",
+      "pd_op.c_reduce_min",
+      "pd_op.c_reduce_prod",
+      "pd_op.c_reducescatter",
+      "pd_op.c_broadcast",
+      "pd_op.c_broadcast_",
+      "pd_op.c_scatter",
+      "pd_op.partial_send",
+      "pd_op.partial_recv",
+      "pd_op.partial_allgather",
+      "pd_op.recv_v2",
+      "pd_op.send_v2",
+      "pd_op.mp_allreduce_sum",
+      "pd_op.barrier",
+      "pd_op.alltoall",
+      "pd_op.global_gather",
+      "pd_op.distributed_fused_lamb",
+      "pd_op.margin_cross_entropy",
+      "pd_op.sync_batch_norm",
+      "pd_op.sync_batch_norm_",
+      "pd_op.data_norm",
+      "pd_op.class_center_sample",
+      "pd_op.all_to_all",
+      "pd_op.dist_concat",
+      "pd_op.all_gather",
+      "pd_op.broadcast",
+      "pd_op.p_recv",
+      "pd_op.p_send",
+      "pd_op.reduce_scatter",
+      "pd_op.all_reduce",
+      "pd_op.reduce",
+      "pd_op.c_softmax_with_cross_entropy_grad",
+      "pd_op.c_allgather_grad",
+      "pd_op.c_allreduce_max_grad",
+      "pd_op.c_allreduce_min_grad",
+      "pd_op.c_allreduce_sum_grad",
+      "pd_op.c_allreduce_prod_grad",
+      "pd_op.c_reduce_max_grad",
+      "pd_op.c_reduce_min_grad",
+      "pd_op.c_reduce_prod_grad",
+      "pd_op.c_reducescatter_grad",
+      "pd_op.c_broadcast_grad",
+      "pd_op.c_scatter_grad",
+      "pd_op.partial_send_grad",
+      "pd_op.partial_recv_grad",
+      "pd_op.partial_allgather_grad",
+      "pd_op.recv_v2_grad",
+      "pd_op.send_v2_grad",
+      "pd_op.mp_allreduce_sum_grad",
+      "pd_op.barrier_grad",
+      "pd_op.alltoall_grad",
+      "pd_op.global_gather_grad",
+      "pd_op.distributed_fused_lamb_grad",
+      "pd_op.margin_cross_entropy_grad",
+      "pd_op.margin_cross_entropy_grad_"
+      "pd_op.sync_batch_norm_grad",
+      "pd_op.data_norm_grad",
+      "pd_op.class_center_sample_grad",
+      "pd_op.all_to_all_grad",
+      "pd_op.dist_concat_grad",
+      "pd_op.all_gather_grad",
+      "pd_op.broadcast_grad",
+      "pd_op.p_recv_grad",
+      "pd_op.p_send_grad",
+      "pd_op.reduce_scatter_grad",
+      "pd_op.all_reduce_grad",
+      "pd_op.reduce_grad"};
   int64_t nccl_op_num = 0;
   for (auto& ins : vec_instruction_base_) {
     if (nccl_op_set.count(ins->Name())) {
@@ -499,17 +554,28 @@ void NewIRInterpreter::BuildInstruction() {
   VLOG(6) << "Build Instructions for new ir ... ";
   vec_instruction_base_.clear();
   size_t op_idx = 0;
-  for (auto& op : *ir_program_->block()) {
+  for (auto& op : *ir_block_) {
     VLOG(6) << "Build Instruction for op: " << op_idx;
     if (op->dialect()->name() == "builtin") {
       if (interpreter::GetSpecialOpNames().count(op->name())) {
         VLOG(6) << "skip process " << op->name();
         continue;
       }
+    } else if (op->dialect()->name() == "cf") {
+      continue;
+    } else if (op->dialect()->name() == "pd_op") {
+      vec_instruction_base_.emplace_back(
+          std::make_unique<CondInstruction>(op_idx++,
+                                            place_,
+                                            op,
+                                            scope_,
+                                            local_scope_,
+                                            value_exe_info_.get(),
+                                            sub_blocks_));
     } else if (op->dialect()->name() == "pd_kernel") {
       auto op_name = op->attributes()
                          .at("op_name")
-                         .dyn_cast<::ir::StrAttribute>()
+                         .dyn_cast<::pir::StrAttribute>()
                          .AsString();
       if (interpreter::GetSpecialOpNames().count(op_name)) {
         VLOG(6) << "skip process " << op_name;
@@ -517,29 +583,31 @@ void NewIRInterpreter::BuildInstruction() {
       }
       VLOG(6) << "process " << op_name;
 
-      if (dialect::IsLegacyOp(op_name)) {
+      if (op->name().compare(paddle::dialect::LegacyKernelOp::name()) == 0) {
         vec_instruction_base_.emplace_back(
-            std::make_unique<LegacyKernelInstruction>(op_idx++,
-                                                      place_,
-                                                      op,
-                                                      scope_,
-                                                      local_scope_,
-                                                      value_2_var_name_,
-                                                      var_name_2_id_,
-                                                      variable_2_var_name_));
+            std::make_unique<LegacyKernelInstruction>(
+                op_idx++,
+                place_,
+                op,
+                scope_,
+                local_scope_,
+                value_exe_info_->GetValue2VarName(),
+                value_exe_info_->GetVarName2Id(),
+                value_exe_info_->GetVar2VarName()));
       } else {
         vec_instruction_base_.emplace_back(
-            std::make_unique<PhiKernelInstruction>(op_idx++,
-                                                   place_,
-                                                   op,
-                                                   scope_,
-                                                   local_scope_,
-                                                   value_2_var_name_,
-                                                   var_name_2_id_,
-                                                   variable_2_var_name_));
+            std::make_unique<PhiKernelInstruction>(
+                op_idx++,
+                place_,
+                op,
+                scope_,
+                local_scope_,
+                value_exe_info_->GetValue2VarName(),
+                value_exe_info_->GetVarName2Id(),
+                value_exe_info_->GetVar2VarName()));
       }
 #ifdef PADDLE_WITH_CINN
-    } else if (op->dialect()->name() == "cinn") {
+    } else if (op->dialect()->name() == "cinn_runtime") {
       vec_instruction_base_.emplace_back(
           std::make_unique<CinnJitInstruction>(op_idx++, place_, op, scope_));
 #endif
@@ -555,11 +623,16 @@ std::string NewIRInterpreter::DebugValueInfo() {
   os << "value info of interpretercore " << this << "\n"
      << "value -> var_name -> id -> variable*"
      << "\n";
-  for (auto kv : value_2_var_name_) {
+
+  interpreter::PrintValuesAndVariables(*ir_block_,
+                                       value_exe_info_->GetValue2VarName(),
+                                       value_exe_info_->GetVar2VarName());
+
+  for (auto kv : value_exe_info_->GetValue2VarName()) {
     PADDLE_ENFORCE((bool)kv.first,
                    platform::errors::PreconditionNotMet(
                        "vlaue(%s) should not be nullptr", kv.second));
-    PADDLE_ENFORCE(var_name_2_id_.count(kv.second) > 0,
+    PADDLE_ENFORCE(value_exe_info_->GetVarName2Id().count(kv.second) > 0,
                    platform::errors::PreconditionNotMet(
                        "var(%s) should exist in var_name_2_id_", kv.second));
     auto* var = InnerScope()->FindVar(kv.second);
@@ -568,7 +641,8 @@ std::string NewIRInterpreter::DebugValueInfo() {
         platform::errors::PreconditionNotMet(
             "var(%s) should exist in scope (%p)", kv.second, InnerScope()));
     os << kv.first.impl() << " -> " << kv.second << " -> "
-       << var_name_2_id_.at(kv.second) << " -> " << var << "\n";
+       << value_exe_info_->GetVarName2Id().at(kv.second) << " -> " << var
+       << "\n";
   }
   return os.str();
 }
@@ -631,7 +705,7 @@ void NewIRInterpreter::BuildInstructionDependences() {
 
 void NewIRInterpreter::RecordMemcpyD2H(InstructionBase* instr_node) {
   // NOTE(zhiqiu): hot fix for jit input var
-  if (instr_node->Name() == "pd.memcpy_d2h") {
+  if (instr_node->Name() == "pd_op.memcpy_d2h") {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto* default_dev_ctx = pool.Get(place_);
     for (auto& event : instr_node->EventsToWait()) {
@@ -707,24 +781,26 @@ void NewIRInterpreter::RecordStreamForGC(InstructionBase* instr) {
    * supported later.
    */
   for (int var_id : instr->GCCheckVars()) {
-    VLOG(4) << "GC sync " << GetNameById(var_id);
+    VLOG(4) << "GC sync " << value_exe_info_->GetNameById(var_id);
 
     // persistable var will be ignore while GC
-    if (parameter_var_names_.count(GetNameById(var_id))) {
-      VLOG(4) << GetNameById(var_id) << " is a parameter, skip gc";
+    if (parameter_var_names_.count(value_exe_info_->GetNameById(var_id))) {
+      VLOG(4) << value_exe_info_->GetNameById(var_id)
+              << " is a parameter, skip gc";
       continue;
     }
 
-    paddle::framework::Variable* var = variable_list_[var_id];
+    paddle::framework::Variable* var = value_exe_info_->GetVarList()[var_id];
     if (var == nullptr) {
       continue;
     }
 
     if (var->IsType<phi::DenseTensor>()) {
       TensorRecordStream(*(var->GetMutable<phi::DenseTensor>()));
-    } else if (var->IsType<
-                   operators::reader::
-                       OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {
+    } else if (
+        var->IsType<
+            operators::reader::
+                OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {  // NOLINT
       // do nothing
     } else if (var->IsType<phi::SelectedRows>()) {
       TensorRecordStream(
@@ -754,17 +830,20 @@ void NewIRInterpreter::CheckGC(InstructionBase* instr) {
 #endif
 
   for (auto var_id : instr->GCCheckVars()) {
-    VLOG(4) << "GC:" << GetNameById(var_id) << ", id:" << var_id
-            << ", ref:" << refs_[var_id]->DynamicRef();
+    VLOG(4) << "GC:" << value_exe_info_->GetNameById(static_cast<int>(var_id))
+            << ", id:" << var_id << ", ref:" << refs_[var_id]->DynamicRef();
     bool is_ready = refs_[var_id]->CheckAndDecrease();
     // ignore all persistable var while GCphi
-    if (parameter_var_names_.count(GetNameById(var_id))) {
-      VLOG(4) << GetNameById(var_id) << " is a parameter, skip gc";
+    if (parameter_var_names_.count(
+            value_exe_info_->GetNameById(static_cast<int>(var_id)))) {
+      VLOG(4) << value_exe_info_->GetNameById(static_cast<int>(var_id))
+              << " is a parameter, skip gc";
       continue;
     }
 
     if (is_ready) {
-      VLOG(6) << "Async delete variable with name : " << GetNameById(var_id);
+      VLOG(6) << "Async delete variable with name : "
+              << value_exe_info_->GetNameById(static_cast<int>(var_id));
       gc_->Add(refs_[var_id]->Var(), instr);
     }
   }
@@ -776,14 +855,14 @@ void NewIRInterpreter::CalculateLastLiveOps() {
     InstructionBase* instr = vec_instruction_base_[op_idx].get();
     std::set<size_t> gc_check_vars;
 
-    const std::unordered_map<::ir::Value, std::vector<int>>& ins =
+    const std::unordered_map<::pir::Value, std::vector<int>>& ins =
         instr->Inputs();
-    const std::unordered_map<::ir::Value, std::vector<int>>& outs =
+    const std::unordered_map<::pir::Value, std::vector<int>>& outs =
         instr->Outputs();
-    std::unordered_multimap<::ir::Value, std::vector<int>> ins_and_outs{
+    std::unordered_multimap<::pir::Value, std::vector<int>> ins_and_outs{
         ins.begin(), ins.end()};
 
-    if (instr->Name() != "pd.fetch") {
+    if (instr->Name() != "pd_op.fetch") {
       ins_and_outs.insert(outs.begin(), outs.end());
     }
 
@@ -799,21 +878,22 @@ void NewIRInterpreter::CalculateLastLiveOps() {
 
     for (auto var_id : gc_check_vars) {
       Scope* inner_scope = InnerScope();
-      paddle::framework::Variable* var =
-          inner_scope->FindVar(GetNameById(var_id));
+      paddle::framework::Variable* var = inner_scope->FindVar(
+          value_exe_info_->GetNameById(static_cast<int>(var_id)));
       if (var->IsType<phi::DenseTensor>() || var->IsType<phi::SelectedRows>() ||
           var->IsType<LoDTensorArray>()) {
         last_live_ops_[var_id].insert(op_idx);
       } else {
-        VLOG(4) << "not clear " << GetNameById(var_id) << " after "
-                << instr->Name() << " because its type is "
+        VLOG(4) << "not clear "
+                << value_exe_info_->GetNameById(static_cast<int>(var_id))
+                << " after " << instr->Name() << " because its type is "
                 << framework::ToTypeName(var->Type());
       }
     }
   }
   // clear the last_live_ops list for all vars in skip_gc_vars
   for (const std::string& skip_gc_var : execution_config_.skip_gc_vars) {
-    int var_id = GetIdByName(skip_gc_var);
+    int var_id = value_exe_info_->GetIdByName(skip_gc_var);
     if (var_id != -1) {
       last_live_ops_[var_id].clear();
       VLOG(8) << "Skip gc for var: " << skip_gc_var;
@@ -828,7 +908,7 @@ void NewIRInterpreter::CalculateLastLiveOps() {
   // c = op2(a, b)
   // in this case, a is the input of op1 and op2, we only need to check
   // a after op2, because op2 always uses a after op1.
-  var_ref_count_.resize(variable_list_.size());
+  var_ref_count_.resize(value_exe_info_->GetVarList().size());
   VLOG(4) << "last_live_ops_.size() : " << last_live_ops_.size();
   for (auto kv : last_live_ops_) {
     for (auto val : kv.second) {
@@ -850,22 +930,23 @@ void NewIRInterpreter::CalculateLastLiveOps() {
         }
       }
       if (not_before_any) {
-        VLOG(6) << "last live op of var " << i << " " << GetNameById(i) << " : "
+        VLOG(6) << "last live op of var " << i << " "
+                << value_exe_info_->GetNameById(static_cast<int>(i)) << " : "
                 << item << " " << vec_instruction_base_[item]->Name();
         minumum_last_live_ops.insert(item);
         vec_instruction_base_[item]->AddGCCheckVar(i);
       }
     }
     last_live_ops_[i] = minumum_last_live_ops;
-    var_ref_count_[i] = last_live_ops_[i].size();
+    var_ref_count_[i] = static_cast<int>(last_live_ops_[i].size());
   }
 
   for (auto& dep : *dependecy_count_) {
     deps_.emplace_back(std::make_shared<interpreter::OpDepInfo>(dep));
   }
-  for (size_t i = 0; i < variable_list_.size(); ++i) {
+  for (size_t i = 0; i < value_exe_info_->GetVarList().size(); ++i) {
     refs_.emplace_back(std::make_shared<interpreter::VarRefInfo>(
-        var_ref_count_[i], variable_list_[i]));
+        var_ref_count_[i], value_exe_info_->GetVarList()[i]));
   }
 }
 
@@ -873,10 +954,11 @@ void NewIRInterpreter::ConstructEventForJitInput() {
   for (size_t i = 0; i < dependecy_count_->size(); ++i) {
     if ((*dependecy_count_)[i] == 0) {
       InstructionBase* inst = vec_instruction_base_[i].get();
-      if (inst->Name() == "pd.memcpy_d2h" && platform::is_gpu_place(place_)) {
+      if (inst->Name() == "pd_op.memcpy_d2h" &&
+          platform::is_gpu_place(place_)) {
         for (auto& item : inst->Inputs()) {
           for (auto var_id : item.second) {
-            auto name = GetNameById(var_id);
+            auto name = value_exe_info_->GetNameById(var_id);
             if (JitInputVars().count(name)) {
               auto device_event = std::make_shared<platform::DeviceEvent>(
                   place_, platform::GenerateDeviceEventFlag());
@@ -895,12 +977,21 @@ void NewIRInterpreter::ConstructEventForJitInput() {
 paddle::framework::FetchList NewIRInterpreter::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<phi::DenseTensor>& feed_tensors) {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "Run with feed_tensors is not implemented in NewIRInterpreter."));
-}
+  auto FeedInput = [&] {
+    VLOG(4) << "Feed inputs";
+    for (size_t i = 0; i < feed_names.size(); ++i) {
+      auto* feed_var = InnerScope()->FindVar(feed_names[i]);
+      PADDLE_ENFORCE_NOT_NULL(
+          feed_var,
+          platform::errors::NotFound("Variable %s should not be nullptr.",
+                                     feed_names[i]));
 
-FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
-                                bool need_fetch) {
+      auto feed_tensor = feed_var->GetMutable<phi::DenseTensor>();
+      feed_tensor->ShareDataWith(feed_tensors[i]);
+      feed_tensor->set_lod(feed_tensors[i].lod());
+    }
+  };
+
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
 
@@ -908,18 +999,11 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
 
+  FeedInput();
+
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is BetaRunning.";
     // Build
-    std::stringstream ss;
-    ss << this;
-    ::ir::BuildScope(*ir_program_->block(),
-                     InnerScope(),
-                     ss.str(),
-                     &value_2_var_name_,
-                     &variable_2_var_name_,
-                     &var_name_2_id_,
-                     &variable_list_);
     VLOG(4) << "Done BuildScope";
     VLOG(4) << DebugValueInfo();
 
@@ -964,7 +1048,95 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
   if (HasLocalScope()) {
     ClearLoDTensorArrayInLocalScope();
   }
+  // return Fetch Tensors
+  Scope* inner_scope = InnerScope();
+  if (FLAGS_enable_new_ir_in_executor) {
+    framework::FetchList fetch_res;
 
+    for (auto& var_name : fetch_var_names_) {
+      auto* var = inner_scope->FindVar(var_name);
+      VLOG(0) << "fetch " << var_name << "[" << var << "]";
+      fetch_res.push_back(var->Get<phi::DenseTensor>());
+    }
+
+    VLOG(4) << "get fetch list size: " << fetch_res.size();
+    return fetch_res;
+  } else {
+    auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
+    if (fetch_var) {
+      auto fetch_list =
+          std::move(*fetch_var->GetMutable<framework::FetchList>());
+#ifdef PADDLE_WITH_CUDA
+      if (platform::IsCUDAGraphCapturing()) {
+        PADDLE_ENFORCE_EQ(fetch_list.empty(),
+                          true,
+                          platform::errors::InvalidArgument(
+                              "Cannot fetch data when using CUDA Graph."));
+      }
+#endif
+      return fetch_list;
+    } else {
+      return {};
+    }
+  }
+}
+
+FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
+                                bool need_fetch) {
+  SetDeviceId(place_);
+  CheckCUDAGraphBeforeRun(feed_names);
+
+#ifdef PADDLE_WITH_DNNL
+  platform::AttachPointerHashToMKLDNNKey(this, place_);
+#endif
+
+  if (!is_build_) {
+    LOG_FIRST_N(INFO, 1) << "New Executor is BetaRunning.";
+    // Build
+    VLOG(4) << "Done BuildScope";
+    VLOG(4) << DebugValueInfo();
+
+    SolvePersisableVarNames();
+
+    VLOG(4) << "Parameter value include: ";
+    for (auto parameter : parameter_var_names_) {
+      VLOG(4) << "Parameter value: " << parameter;
+    }
+
+    BuildInstruction();
+    VLOG(4) << "Done BuildInstruction";
+
+    PreAnalysis();
+    VLOG(4) << "Done PreAnalysis";
+
+    // Run
+    if (FLAGS_enable_new_ir_in_executor_trace_run || nccl_op_num_ > 1 ||
+        ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
+         (sync_op_num_ == 0))) {
+      LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode "
+                              "with trace version.";
+      TraceRunImpl();
+    } else {
+      LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode "
+                              "with multi thread version.";
+      MultiThreadRunImpl();
+    }
+
+    is_build_ = true;
+    is_shared_results_build_ = true;
+  } else {
+    if (FLAGS_enable_new_ir_in_executor_trace_run || nccl_op_num_ > 1 ||
+        ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
+         (sync_op_num_ == 0))) {
+      TraceRunImpl();
+    } else {
+      MultiThreadRunImpl();
+    }
+  }
+
+  if (HasLocalScope()) {
+    ClearLoDTensorArrayInLocalScope();
+  }
   // return Fetch Tensors
   Scope* inner_scope = InnerScope();
   if (FLAGS_enable_new_ir_in_executor) {
@@ -1219,18 +1391,43 @@ void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
 
   try {
     instr_node->WaitEvent(place_);
-
-    VLOG(5) << "begin to run op " << instr_node->Name();
+    VLOG(4) << "begin to run op " << instr_node->Name();
     if (!instr_node->IsArtificial()) {
       instr_node->Run();
+
+      if (FLAGS_benchmark) {
+        instr_node->DeviceContext().Wait();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
+        VLOG(4) << "Operator(" << instr_node->Name()  // NOLINT
+                << "): context wait and get last error";
+#endif
+      }
+
+      VLOG(4) << __func__ << " OP id:" << instr_node->Id()
+              << " name:" << instr_node->Name() << " type:"
+              << (instr_node->KernelType() == OpFuncType::kCpuSync
+                      ? "kCpuSync"
+                      : (instr_node->KernelType() == OpFuncType::kGpuSync
+                             ? "kGpuSync"
+                             : "kGpuAsync"))
+              << " runs on " << platform::GetCurrentThreadName();
+
       VLOG(4) << "done instruction node run";
       CheckGC(instr_node);
       VLOG(4) << "done CheckGC";
       interpreter::LogDeviceMemoryStats(place_);
     }
+    VLOG(4) << place_ << " "
+            << instr_node->DebugStringEx(scope_,
+                                         value_exe_info_->GetValue2VarName());
     VLOG(5) << "after run kernel";
     instr_node->RecordEvent(place_);
   } catch (platform::EnforceNotMet& ex) {
+    auto* op = instr_node->Operation();
+    const std::vector<std::string> op_callstack_attr =
+        interpreter::GetInstructionCallStack(op->name(), op->attributes());
+    framework::InsertCallStackInfo(op->name(), op_callstack_attr, &ex);
     LOG(WARNING) << instr_node->Name() << " raises an EnforceNotMet exception "
                  << platform::demangle(typeid(ex).name()) << ", " << ex.what();
     exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
@@ -1272,8 +1469,15 @@ void NewIRInterpreter::PreAnalysis() {
   VLOG(4) << "Done UpdateNcclOpNum";
 }
 
-::ir::Value NewIRInterpreter::GetValueByName(const std::string& var_name) {
-  for (auto kv : value_2_var_name_) {
+void NewIRInterpreter::Build(
+    const std::vector<std::string>& feed_names,
+    std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "Build is not implemented in NewIRInterpreter."));
+}
+
+::pir::Value NewIRInterpreter::GetValueByName(const std::string& var_name) {
+  for (auto kv : value_exe_info_->GetValue2VarName()) {
     if (kv.second == var_name) {
       return kv.first;
     }
@@ -1283,17 +1487,17 @@ void NewIRInterpreter::PreAnalysis() {
 
 void NewIRInterpreter::SolvePersisableVarNames() {
   VLOG(6) << "SolvePersisableVarNames";
-  for (auto kv : value_2_var_name_) {
-    ::ir::Value value = kv.first;
+  for (auto kv : value_exe_info_->GetValue2VarName()) {
+    ::pir::Value value = kv.first;
     const std::string& var_name = kv.second;
-    ::ir::OpResult result = value.dyn_cast<::ir::OpResult>();
-    auto* defining_op = value.GetDefiningOp();
+    ::pir::OpResult result = value.dyn_cast<::pir::OpResult>();
+    auto* defining_op = result.owner();
     if (defining_op->HasAttribute(kAttrIsPersisable)) {
-      auto is_persisables = defining_op->attribute(kAttrIsPersisable)
-                                .dyn_cast<::ir::ArrayAttribute>()
-                                .AsVector();
-      if (is_persisables[result.GetResultIndex()]
-              .dyn_cast<::ir::BoolAttribute>()
+      auto is_persisables =
+          defining_op->attribute<::pir::ArrayAttribute>(kAttrIsPersisable)
+              .AsVector();
+      if (is_persisables[result.index()]
+              .dyn_cast<::pir::BoolAttribute>()
               .data()) {
         VLOG(6) << "parameter_var_names_ include: " << var_name;
         parameter_var_names_.insert(var_name);

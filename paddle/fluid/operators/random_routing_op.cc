@@ -88,7 +88,6 @@ DECLARE_INPLACE_OP_INFERER(RandomRoutingInplaceInferer, {"TopK_Idx", "Out"});
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OPERATOR(
     random_routing,

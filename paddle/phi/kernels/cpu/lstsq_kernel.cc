@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <math.h>
 #include <algorithm>
+#include <cmath>
 #include <complex>
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
@@ -63,9 +63,9 @@ void LstsqKernel(const Context& dev_ctx,
   // lapack is a column-major storge, transpose make the input to
   // have a continuous memory layout
   int info = 0;
-  int m = x_dims[dim_size - 2];
-  int n = x_dims[dim_size - 1];
-  int nrhs = y_dims[dim_size - 1];
+  int m = static_cast<int>(x_dims[dim_size - 2]);
+  int n = static_cast<int>(x_dims[dim_size - 1]);
+  int nrhs = static_cast<int>(y_dims[dim_size - 1]);
   int lda = std::max<int>(m, 1);
   int ldb = std::max<int>(1, std::max(m, n));
 
@@ -115,7 +115,7 @@ void LstsqKernel(const Context& dev_ctx,
     s_data = dev_ctx.template Alloc<T>(singular_values);
     s_working_ptr = s_data;
     auto s_dims = singular_values->dims();
-    s_stride = s_dims[s_dims.size() - 1];
+    s_stride = static_cast<int>(s_dims[s_dims.size() - 1]);
   }
 
   // "jpvt" is only used for "gelsy" driver

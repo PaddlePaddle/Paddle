@@ -18,7 +18,7 @@ import numpy as np
 from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 def _feed_data_helper():

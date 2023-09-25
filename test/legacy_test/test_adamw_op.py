@@ -17,10 +17,10 @@ import unittest
 from functools import partial
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.framework import core
 
 
@@ -245,13 +245,13 @@ class TestAdamWOp(unittest.TestCase):
 
     def test_adamw_op(self):
         paddle.enable_static()
-        place = fluid.CPUPlace()
+        place = base.CPUPlace()
         shape = [2, 3, 8, 8]
-        exe = fluid.Executor(place)
-        train_prog = fluid.Program()
-        startup = fluid.Program()
-        with fluid.program_guard(train_prog, startup):
-            with fluid.unique_name.guard():
+        exe = base.Executor(place)
+        train_prog = base.Program()
+        startup = base.Program()
+        with base.program_guard(train_prog, startup):
+            with base.unique_name.guard():
                 data = paddle.static.data(name="data", shape=shape)
                 conv = paddle.static.nn.conv2d(data, 8, 3)
                 loss = paddle.mean(conv)
@@ -755,7 +755,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
 
     def test_adamw_op(self):
         paddle.enable_static()
-        place = fluid.CUDAPlace(0)
+        place = base.CUDAPlace(0)
 
         learning_rate = 0.0001
         beta1 = 0.85
@@ -763,10 +763,10 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
         weight_decay = 0.01
         epsilon = 1e-8
 
-        train_prog = fluid.Program()
-        startup = fluid.Program()
-        with fluid.program_guard(train_prog, startup):
-            with fluid.unique_name.guard():
+        train_prog = base.Program()
+        startup = base.Program()
+        with base.program_guard(train_prog, startup):
+            with base.unique_name.guard():
                 x = paddle.static.data(
                     name='x', shape=[None, 10], dtype='float32'
                 )
@@ -863,7 +863,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
             "linear_1.b_0@GRAD",
         ]
 
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         exe.run(startup)
         test_prog = train_prog.clone(for_test=True)
 

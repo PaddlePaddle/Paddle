@@ -78,7 +78,8 @@ void TensorCopyImpl(const TENSOR& src,
   auto size = src.numel() * phi::SizeOf(src.dtype());
 #endif
 
-  if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
+  if (platform::is_cpu_place(src_place) &&
+      platform::is_cpu_place(dst_place)) {  // NOLINT
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -327,7 +328,8 @@ void TensorCopySync(const phi::DenseTensor& src,
     return;
   }
   auto size = src.numel() * phi::SizeOf(src.dtype());
-  if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
+  if (platform::is_cpu_place(src_place) &&
+      platform::is_cpu_place(dst_place)) {  // NOLINT
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -608,7 +610,7 @@ void TensorFromStream(std::istream& is,
   {  // read tensor
     tensor->Resize(phi::make_ddim(shape));
     size_t seekg = seek * framework::SizeOfType(desc.data_type());
-    is.seekg(seekg, is.cur);
+    is.seekg(seekg, is.cur);  // NOLINT
 
     void* buf;
     phi::CPUContext ctx;
@@ -642,7 +644,7 @@ void TensorFromStream(std::istream& is,
       framework::VisitDataType(
           desc.data_type(),
           DeserializedDataFunctor(&buf, tensor, ctx.GetPlace()));
-      is.read(static_cast<char*>(buf), size);
+      is.read(static_cast<char*>(buf), size);  // NOLINT
     }
   }
 }
@@ -718,7 +720,7 @@ void TensorFromStream(std::istream& is,
       framework::VisitDataType(
           desc.data_type(),
           DeserializedDataFunctor(&buf, tensor, ctx.GetPlace()));
-      is.read(static_cast<char*>(buf), size);
+      is.read(static_cast<char*>(buf), size);  // NOLINT
     }
   }
 }

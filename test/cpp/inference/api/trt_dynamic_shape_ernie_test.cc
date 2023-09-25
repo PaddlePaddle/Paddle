@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include "gflags/gflags.h"
+#include "paddle/utils/flags.h"
 
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "test/cpp/inference/api/trt_test_helper.h"

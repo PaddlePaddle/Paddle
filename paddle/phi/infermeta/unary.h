@@ -102,6 +102,12 @@ void ClassCenterSampleInferMeta(const MetaTensor& label,
 
 void ClipByNormInferMeta(const MetaTensor& x, float max_norm, MetaTensor* out);
 
+void CIdentityInferMeta(const MetaTensor& x,
+                        int ring_id,
+                        bool use_calc_stream,
+                        bool use_model_parallel,
+                        MetaTensor* out);
+
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out);
 
 void CropInferMeta(const MetaTensor& x,
@@ -285,6 +291,8 @@ void KthvalueInferMeta(const MetaTensor& x,
                        MetaTensor* indices,
                        MetaConfig = MetaConfig());
 
+void LogicalNotInfermeta(const MetaTensor& x, MetaTensor* out);
+
 void LogsumexpInferMeta(const MetaTensor& input,
                         const std::vector<int64_t>& axis,
                         bool keepdim,
@@ -432,6 +440,8 @@ void Pool2DInferMeta(const MetaTensor& x,
 void PSendInferMeta(const MetaTensor& x, int peer);
 
 void PSendArrayInferMeta(const MetaTensor& x, int peer);
+
+void SendV2InferMeta(const int peer, const int ring_id);
 
 void QrInferMeta(const MetaTensor& x,
                  const std::string& mode,

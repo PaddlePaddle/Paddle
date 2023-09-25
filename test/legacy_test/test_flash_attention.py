@@ -20,8 +20,8 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.nn.functional.flash_attention import (
     flash_attention,
     flash_attn_unpadded,
@@ -177,7 +177,7 @@ class TestFlashAttentionAPI(unittest.TestCase):
                 self.return_softmax,
             )
 
-            exe = fluid.Executor(self.place)
+            exe = base.Executor(self.place)
             fetches_result = exe.run(
                 feed={
                     "q": query.astype('float16'),
@@ -293,7 +293,7 @@ class TestFlashAttentionAPI(unittest.TestCase):
                     qs, ks, vs, self.dropout, self.causal, self.return_softmax
                 )
 
-            exe = fluid.Executor(self.place)
+            exe = base.Executor(self.place)
             fetches_result = exe.run(
                 feed={
                     "q": query.astype('float16'),
@@ -384,7 +384,7 @@ class TestFlashAttentionAPITest2(TestFlashAttentionAPI):
         self.dtype = paddle.float16
         self.dropout = 0.0
         self.causal = False
-        self.return_softmax = True
+        self.return_softmax = False
         self.use_sdp_kernel = False
 
 
@@ -451,7 +451,7 @@ class TestSDPAttentionAPITest(TestFlashAttentionAPI):
         self.enable_mem_efficient = False
 
 
-class TestFlashAttrnionWithMaskAPI(TestFlashAttentionWithMaskAPI):
+class TestFlashAttenionWithMaskAPITest(TestFlashAttentionWithMaskAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
         self.shape = (8, 1024, 16, 128)

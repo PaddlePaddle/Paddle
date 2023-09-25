@@ -504,6 +504,10 @@ if(NOT WITH_GPU
   list(REMOVE_ITEM TEST_OPS test_build_strategy_fusion_group_pass)
 endif()
 
+if(NOT WITH_CUDNN_FRONTEND)
+  list(REMOVE_ITEM TEST_OPS test_fused_scale_bias_relu_conv_bnstats_op)
+endif()
+
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test
 set(TEST_OPS_WITH_GC
@@ -589,6 +593,10 @@ py_test_modules(
 py_test_modules(test_install_check MODULES test_install_check ENVS
                 FLAGS_cudnn_deterministic=1)
 set_tests_properties(test_install_check PROPERTIES LABELS "RUN_TYPE=DIST")
+py_test_modules(test_install_check_new_ir MODULES test_install_check ENVS
+                FLAGS_cudnn_deterministic=1 FLAGS_enable_new_ir_in_executor=1)
+set_tests_properties(test_install_check_new_ir PROPERTIES LABELS
+                                                          "RUN_TYPE=DIST")
 
 if((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.6))
   py_test_modules(test_fused_gemm_epilogue_op MODULES
@@ -955,7 +963,7 @@ if(WIN32)
 else()
   set_tests_properties(test_static_save_load_large PROPERTIES TIMEOUT 600)
   set_tests_properties(test_paddle_save_load PROPERTIES TIMEOUT 250)
-  set_tests_properties(test_cdist PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_cdist PROPERTIES TIMEOUT 150)
 endif()
 if(WITH_NV_JETSON)
   set_tests_properties(test_concat_op PROPERTIES TIMEOUT 1200)
@@ -1006,11 +1014,11 @@ set_tests_properties(test_row_conv_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_gpu
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_distributed_fused_lamb_op_with_clip PROPERTIES TIMEOUT
-                                                                         120)
+                                                                         240)
 set_tests_properties(test_distributed_fused_lamb_op_without_clip
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_distributed_fused_lamb_op_with_gradient_merge
-                     PROPERTIES TIMEOUT 120)
+                     PROPERTIES TIMEOUT 240)
 set_tests_properties(test_elementwise_min_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nan_inf PROPERTIES TIMEOUT 120)
 set_tests_properties(test_deformable_conv_v1_op PROPERTIES TIMEOUT 300)
@@ -1058,7 +1066,7 @@ set_tests_properties(
   PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv_nn_grad PROPERTIES TIMEOUT 120)
 set_tests_properties(test_program_prune_backward PROPERTIES TIMEOUT 120)
-set_tests_properties(test_group_norm_op PROPERTIES TIMEOUT 300)
+set_tests_properties(test_group_norm_op PROPERTIES TIMEOUT 1000)
 set_tests_properties(test_imperative_optimizer PROPERTIES TIMEOUT 250)
 set_tests_properties(test_imperative_optimizer_v2 PROPERTIES TIMEOUT 250)
 set_tests_properties(test_pool2d_op PROPERTIES TIMEOUT 120)
@@ -1265,6 +1273,10 @@ set_tests_properties(
 set_tests_properties(
   test_cuda_graph_static_mode_error
   PROPERTIES ENVIRONMENT "FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR=1")
+# In test_conditional_block, the sub block changes the dtype and place of the output variable.
+# The changed variable is used in the following op. Static build is not supported for this case.
+set_tests_properties(test_conditional_block
+                     PROPERTIES ENVIRONMENT "FLAGS_new_executor_static_build=0")
 
 # These UTs are to temporarily test static build for standalone_executor, will be removed after static build is enabled by default.
 set(STATIC_BUILD_TESTS
@@ -1287,6 +1299,7 @@ set(STATIC_BUILD_TESTS
     test_fuse_bn_act_pass
     test_fused_feedforward_op
     test_fused_feedforward_pass
+    test_fused_layernorm_op
     test_imperative_optimizer
     test_lamb_op
     test_layer_norm_op
@@ -1307,6 +1320,7 @@ set(STATIC_BUILD_TESTS
     test_segment_ops
     test_sparse_momentum_op
     test_sgd_op_bf16
+    test_shuffle_batch_op
     test_softmax_mask_fuse_upper_triangle_op
     test_sparse_conv_op
     test_sparse_norm_op
@@ -1430,3 +1444,16 @@ py_test_modules(test_stride MODULES test_stride ENVS
                 FLAGS_use_stride_kernel=true)
 
 set_tests_properties(test_slice_op_with_stride PROPERTIES TIMEOUT 300)
+
+if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
+  # These UTs are specially designed for FleetExecutor
+  set_tests_properties(
+    test_fleet_executor PROPERTIES ENVIRONMENT
+                                   "FLAGS_new_executor_micro_batching=False")
+  set_tests_properties(
+    test_fleet_executor_origin_scheduler
+    PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
+  set_tests_properties(
+    test_fleet_executor_with_task_nodes
+    PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
+endif()

@@ -15,7 +15,7 @@
 import json
 import sys
 
-from paddle.fluid.core import OpUpdateType
+from paddle.base.core import OpUpdateType
 from paddle.utils import OpLastCheckpointChecker
 
 INPUTS = "Inputs"
@@ -343,16 +343,12 @@ def print_desc_error_message(error_message):
 
         for name in Inputs_error.get(QUANT, {}):
             print(
-                " * The added Input '{}' is `quant`, need slim to review.".format(
-                    name
-                )
+                f" * The added Input '{name}' is `quant`, need slim to review."
             )
 
         for name in Inputs_error.get(DEF, {}):
             print(
-                " * The added Input '{}' is `def`, need inference to review.".format(
-                    name
-                )
+                f" * The added Input '{name}' is `def`, need inference to review."
             )
 
         # 2. print outputs error message
@@ -375,16 +371,12 @@ def print_desc_error_message(error_message):
 
         for name in Outputs_error.get(QUANT, {}):
             print(
-                " * The added Output '{}' is `quant`, need slim to review.".format(
-                    name
-                )
+                f" * The added Output '{name}' is `quant`, need slim to review."
             )
 
         for name in Outputs_error.get(DEF, {}):
             print(
-                " * The added Output '{}' is `def`, need inference to review.".format(
-                    name
-                )
+                f" * The added Output '{name}' is `def`, need inference to review."
             )
 
         # 3. print attrs error message
@@ -408,17 +400,13 @@ def print_desc_error_message(error_message):
         for name in attrs_error.get(QUANT, {}):
             # TODO(Wilber):
             print(
-                " * The added attr '{}' is `quant`, need slim to review.".format(
-                    name
-                )
+                f" * The added attr '{name}' is `quant`, need slim to review."
             )
 
         for name in attrs_error.get(DEF, {}):
             # TODO(Wilber):
             print(
-                " * The added attr '{}' is `def`, need inference to review.".format(
-                    name
-                )
+                f" * The added attr '{name}' is `def`, need inference to review."
             )
 
 
@@ -435,22 +423,14 @@ def print_version_error_message(error_message):
         error_list = inputs_error.get(ADD, [])
         if error_list:
             for tup in error_list:
-                print(
-                    " * The added input '{}' is not yet registered.".format(
-                        tup[1]
-                    )
-                )
+                print(f" * The added input '{tup[1]}' is not yet registered.")
 
         # 2. print outputs error message
         outputs_error = error_message.get(op_name, {}).get(OUTPUTS, {})
         error_list = outputs_error.get(ADD, [])
         if error_list:
             for tup in error_list:
-                print(
-                    " * The added output '{}' is not yet registered.".format(
-                        tup[1]
-                    )
-                )
+                print(f" * The added output '{tup[1]}' is not yet registered.")
 
         # 3. print attrs error message
         attrs_error = error_message.get(op_name, {}).get(ATTRS, {})
@@ -458,19 +438,13 @@ def print_version_error_message(error_message):
         if error_list:
             for tup in error_list:
                 print(
-                    " * The added attribute '{}' is not yet registered.".format(
-                        tup[1]
-                    )
+                    f" * The added attribute '{tup[1]}' is not yet registered."
                 )
         error_dic = (
             error_message.get(op_name, {}).get(ATTRS, {}).get(CHANGE, {})
         )
         for key, val in error_dic.items():
-            print(
-                " * The change of attribute '{}' is not yet registered.".format(
-                    key
-                )
-            )
+            print(f" * The change of attribute '{key}' is not yet registered.")
 
 
 def print_repeat_process():

@@ -662,7 +662,8 @@ inline void QKVWeightsProcess(phi::DenseTensor* wq_tensor,
       tmp_combined_w_tensor.mutable_data<T>(platform::CPUPlace());
 
   std::vector<T*> w_vec = {wq_data, wk_data, wv_data};
-  int dims_h = combined_w_dims[0], dims_w = combined_w_dims[2];
+  int dims_h = static_cast<int>(combined_w_dims[0]),
+      dims_w = static_cast<int>(combined_w_dims[2]);
   // Combine the three fc weights together.
   for (int i = 0; i < dims_h; i++) {
     for (int j = 0; j < 3; j++) {
@@ -1379,7 +1380,8 @@ int MultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
         tmp_combined_w_tensor.mutable_data<float>(platform::CPUPlace());
 
     std::vector<float*> w_vec = {wq_data, wk_data, wv_data};
-    int dims_h = combined_w_dims[0], dims_w = combined_w_dims[2];
+    int dims_h = static_cast<int>(combined_w_dims[0]),
+        dims_w = static_cast<int>(combined_w_dims[2]);
     // Combine the three fc weights together.
     for (int i = 0; i < dims_h; i++) {
       for (int j = 0; j < 3; j++) {

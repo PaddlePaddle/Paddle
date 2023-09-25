@@ -13,7 +13,7 @@
 # limitations under the License.
 
 include(ExternalProject)
-
+set(OPENSSL_USE_STATIC_LIBS ON)
 find_package(OpenSSL REQUIRED)
 
 message(STATUS "ssl:" ${OPENSSL_SSL_LIBRARY})
@@ -91,3 +91,16 @@ add_dependencies(brpc extern_brpc)
 add_definitions(-DBRPC_WITH_GLOG)
 
 list(APPEND external_project_dependencies brpc)
+
+set(EXTERNAL_BRPC_DEPS
+    brpc
+    protobuf
+    ssl
+    crypto
+    leveldb
+    glog
+    snappy)
+
+if(NOT WITH_GFLAGS)
+  set(EXTERNAL_BRPC_DEPS ${EXTERNAL_BRPC_DEPS} gflags)
+endif()

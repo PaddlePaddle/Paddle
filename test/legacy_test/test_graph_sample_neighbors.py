@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class TestGraphSampleNeighbors(unittest.TestCase):
@@ -81,7 +81,7 @@ class TestGraphSampleNeighbors(unittest.TestCase):
 
     def test_sample_result_fisher_yates_sampling(self):
         paddle.disable_static()
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             row = paddle.to_tensor(self.row)
             colptr = paddle.to_tensor(self.colptr)
             nodes = paddle.to_tensor(self.nodes)
@@ -322,7 +322,7 @@ class TestGeometricGraphSampleNeighbors(unittest.TestCase):
 
     def test_sample_result_fisher_yates_sampling(self):
         paddle.disable_static()
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             row = paddle.to_tensor(self.row)
             colptr = paddle.to_tensor(self.colptr)
             nodes = paddle.to_tensor(self.nodes)

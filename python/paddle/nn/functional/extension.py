@@ -18,13 +18,13 @@ import numpy as np
 
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
 
-from ...common_ops_import import Variable
-from ...fluid.data_feeder import (
+from ...base.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
 )
-from ...fluid.layer_helper import LayerHelper
+from ...base.layer_helper import LayerHelper
+from ...common_ops_import import Variable
 from ...framework import convert_np_dtype_to_dtype_, core
 from ...tensor.creation import assign
 
@@ -55,48 +55,46 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-            diag_embed_input = paddle.arange(6)
+            >>> diag_embed_input = paddle.arange(6)
 
-            diag_embed_output1 = F.diag_embed(diag_embed_input)
-            print(diag_embed_output1)
-            # Tensor(shape=[6, 6], dtype=int64, place=Place(cpu), stop_gradient=True,
-            #        [[0, 0, 0, 0, 0, 0],
-            #         [0, 1, 0, 0, 0, 0],
-            #         [0, 0, 2, 0, 0, 0],
-            #         [0, 0, 0, 3, 0, 0],
-            #         [0, 0, 0, 0, 4, 0],
-            #         [0, 0, 0, 0, 0, 5]])
+            >>> diag_embed_output1 = F.diag_embed(diag_embed_input)
+            >>> print(diag_embed_output1)
+            Tensor(shape=[6, 6], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 0, 0, 0, 0, 0],
+             [0, 1, 0, 0, 0, 0],
+             [0, 0, 2, 0, 0, 0],
+             [0, 0, 0, 3, 0, 0],
+             [0, 0, 0, 0, 4, 0],
+             [0, 0, 0, 0, 0, 5]])
 
-            diag_embed_output2 = F.diag_embed(diag_embed_input, offset=-1, dim1=0,dim2=1 )
-            print(diag_embed_output2)
-            # Tensor(shape=[7, 7], dtype=int64, place=Place(cpu), stop_gradient=True,
-            #        [[0, 0, 0, 0, 0, 0, 0],
-            #         [0, 0, 0, 0, 0, 0, 0],
-            #         [0, 1, 0, 0, 0, 0, 0],
-            #         [0, 0, 2, 0, 0, 0, 0],
-            #         [0, 0, 0, 3, 0, 0, 0],
-            #         [0, 0, 0, 0, 4, 0, 0],
-            #         [0, 0, 0, 0, 0, 5, 0]])
+            >>> diag_embed_output2 = F.diag_embed(diag_embed_input, offset=-1, dim1=0,dim2=1 )
+            >>> print(diag_embed_output2)
+            Tensor(shape=[7, 7], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 0, 0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 0, 0, 0],
+             [0, 1, 0, 0, 0, 0, 0],
+             [0, 0, 2, 0, 0, 0, 0],
+             [0, 0, 0, 3, 0, 0, 0],
+             [0, 0, 0, 0, 4, 0, 0],
+             [0, 0, 0, 0, 0, 5, 0]])
 
-            diag_embed_input_2dim = paddle.reshape(diag_embed_input,[2,3])
-            print(diag_embed_input_2dim)
-            # Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
-            #        [[0, 1, 2],
-            #         [3, 4, 5]])
-            diag_embed_output3 = F.diag_embed(diag_embed_input_2dim,offset= 0, dim1=0, dim2=2 )
-            print(diag_embed_output3)
-            # Tensor(shape=[3, 2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
-            #        [[[0, 0, 0],
-            #          [3, 0, 0]],
-
-            #         [[0, 1, 0],
-            #          [0, 4, 0]],
-
-            #         [[0, 0, 2],
-            #          [0, 0, 5]]])
+            >>> diag_embed_input_2dim = paddle.reshape(diag_embed_input,[2,3])
+            >>> print(diag_embed_input_2dim)
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 1, 2],
+            [3, 4, 5]])
+            >>> diag_embed_output3 = F.diag_embed(diag_embed_input_2dim,offset= 0, dim1=0, dim2=2 )
+            >>> print(diag_embed_output3)
+            Tensor(shape=[3, 2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[[0, 0, 0],
+              [3, 0, 0]],
+             [[0, 1, 0],
+              [0, 4, 0]],
+             [[0, 0, 2],
+              [0, 0, 5]]])
     """
     if not isinstance(input, Variable):
         input = assign(input)
@@ -200,16 +198,16 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            lengths = paddle.to_tensor([10, 9, 8])
-            mask = paddle.nn.functional.sequence_mask(lengths)
+            >>> lengths = paddle.to_tensor([10, 9, 8])
+            >>> mask = paddle.nn.functional.sequence_mask(lengths)
 
-            print(mask)
-            # Tensor(shape=[3, 10], dtype=int64, place=Place(gpu:0), stop_gradient=True,
-            #        [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            #         [1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-            #         [1, 1, 1, 1, 1, 1, 1, 1, 0, 0]])
+            >>> print(mask)
+            Tensor(shape=[3, 10], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+             [1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+             [1, 1, 1, 1, 1, 1, 1, 1, 0, 0]])
 
     """
 
@@ -296,14 +294,24 @@ def gather_tree(ids, parents):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            ids = paddle.to_tensor([[[2, 2], [6, 1]], [[3, 9], [6, 1]], [[0, 1], [9, 0]]])
+            >>> ids = paddle.to_tensor([[[2, 2], [6, 1]], [[3, 9], [6, 1]], [[0, 1], [9, 0]]])
 
-            parents = paddle.to_tensor([[[0, 0], [1, 1]], [[1, 0], [1, 0]], [[0, 0], [0, 1]]])
+            >>> parents = paddle.to_tensor([[[0, 0], [1, 1]], [[1, 0], [1, 0]], [[0, 0], [0, 1]]])
 
-            final_sequences = paddle.nn.functional.gather_tree(ids, parents)
-            # [[[2, 2], [1, 6]], [[3, 3], [6, 1]], [[0, 1], [9, 0]]]
+            >>> final_sequences = paddle.nn.functional.gather_tree(ids, parents)
+            >>> [[[2, 2], [1, 6]], [[3, 3], [6, 1]], [[0, 1], [9, 0]]]
+            >>> final_sequences = paddle.nn.functional.gather_tree(ids, parents)
+            >>> print(final_sequences)
+            Tensor(shape=[3, 2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[[2, 2],
+              [1, 6]],
+             [[3, 3],
+              [6, 1]],
+             [[0, 1],
+              [9, 0]]])
+
 
     """
     if ids.ndim != 3:
@@ -388,16 +396,16 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None, data_format="NCHW"):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-            input = paddle.randn([6, 4, 2, 2])
-            out = F.temporal_shift(x=input, seg_num=2, shift_ratio=0.2)
+            >>> input = paddle.randn([6, 4, 2, 2])
+            >>> out = F.temporal_shift(x=input, seg_num=2, shift_ratio=0.2)
     """
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError(
             "Attr(data_format) should be 'NCHW' or 'NHWC'. "
-            "Received Attr(data_format): {}.".format(data_format)
+            f"Received Attr(data_format): {data_format}."
         )
     if in_dynamic_mode():
         return _C_ops.temporal_shift(x, seg_num, shift_ratio, data_format)

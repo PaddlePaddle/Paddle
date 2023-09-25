@@ -206,9 +206,8 @@ class AllocatorFacadePrivate {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
         auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
         for (const auto& dev_type : device_types) {
-          for (size_t dev_id = 0;
-               dev_id < phi::DeviceManager::GetDeviceCount(dev_type);
-               ++dev_id) {
+          for (auto& dev_id :
+               phi::DeviceManager::GetSelectedDeviceList(dev_type)) {
             InitNaiveBestFitCustomDeviceAllocator(
                 platform::CustomPlace(dev_type, dev_id));
           }
@@ -272,9 +271,8 @@ class AllocatorFacadePrivate {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
         auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
         for (const auto& dev_type : device_types) {
-          for (size_t dev_id = 0;
-               dev_id < phi::DeviceManager::GetDeviceCount(dev_type);
-               ++dev_id) {
+          for (auto& dev_id :
+               phi::DeviceManager::GetSelectedDeviceList(dev_type)) {
             InitAutoGrowthCustomDeviceAllocator(
                 platform::CustomPlace(dev_type, dev_id), allow_free_idle_chunk);
           }
@@ -1212,9 +1210,7 @@ class AllocatorFacadePrivate {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
     for (const auto& dev_type : device_types) {
-      for (size_t dev_id = 0;
-           dev_id < phi::DeviceManager::GetDeviceCount(dev_type);
-           dev_id++) {
+      for (auto& dev_id : phi::DeviceManager::GetSelectedDeviceList(dev_type)) {
         platform::CustomPlace p(dev_type, dev_id);
         system_allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
       }
@@ -1248,9 +1244,7 @@ class AllocatorFacadePrivate {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
     for (const auto& dev_type : device_types) {
-      for (size_t dev_id = 0;
-           dev_id < phi::DeviceManager::GetDeviceCount(dev_type);
-           dev_id++) {
+      for (auto& dev_id : phi::DeviceManager::GetSelectedDeviceList(dev_type)) {
         places.emplace_back(platform::CustomPlace(dev_type, dev_id));
       }
     }
@@ -1580,6 +1574,7 @@ void AllocatorFacade::SetDefaultStream(const platform::CustomPlace& place,
     m_->SetDefaultStream(place, stream);
   }
 }
+
 #endif
 
 UNUSED static std::shared_ptr<NaiveBestFitAllocator> unused_obj =

@@ -46,21 +46,21 @@ class VGG(nn.Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.models import VGG
-            from paddle.vision.models.vgg import make_layers
+            >>> import paddle
+            >>> from paddle.vision.models import VGG
+            >>> from paddle.vision.models.vgg import make_layers
 
-            vgg11_cfg = [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M']
+            >>> vgg11_cfg = [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M']
 
-            features = make_layers(vgg11_cfg)
+            >>> features = make_layers(vgg11_cfg)
 
-            vgg11 = VGG(features)
+            >>> vgg11 = VGG(features)
 
-            x = paddle.rand([1, 3, 224, 224])
-            out = vgg11(x)
+            >>> x = paddle.rand([1, 3, 224, 224])
+            >>> out = vgg11(x)
 
-            print(out.shape)
-            # [1, 1000]
+            >>> print(out.shape)
+            [1, 1000]
     """
 
     def __init__(self, features, num_classes=1000, with_pool=True):
@@ -212,20 +212,20 @@ def vgg11(pretrained=False, batch_norm=False, **kwargs):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.models import vgg11
+            >>> import paddle
+            >>> from paddle.vision.models import vgg11
 
-            # build model
-            model = vgg11()
+            >>> # build model
+            >>> model = vgg11()
 
-            # build vgg11 model with batch_norm
-            model = vgg11(batch_norm=True)
+            >>> # build vgg11 model with batch_norm
+            >>> model = vgg11(batch_norm=True)
 
-            x = paddle.rand([1, 3, 224, 224])
-            out = model(x)
+            >>> x = paddle.rand([1, 3, 224, 224])
+            >>> out = model(x)
 
-            print(out.shape)
-            # [1, 1000]
+            >>> print(out.shape)
+            [1, 1000]
     """
     model_name = 'vgg11'
     if batch_norm:
@@ -249,20 +249,20 @@ def vgg13(pretrained=False, batch_norm=False, **kwargs):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.models import vgg13
+            >>> import paddle
+            >>> from paddle.vision.models import vgg13
 
-            # build model
-            model = vgg13()
+            >>> # build model
+            >>> model = vgg13()
 
-            # build vgg13 model with batch_norm
-            model = vgg13(batch_norm=True)
+            >>> # build vgg13 model with batch_norm
+            >>> model = vgg13(batch_norm=True)
 
-            x = paddle.rand([1, 3, 224, 224])
-            out = model(x)
+            >>> x = paddle.rand([1, 3, 224, 224])
+            >>> out = model(x)
 
-            print(out.shape)
-            # [1, 1000]
+            >>> print(out.shape)
+            [1, 1000]
     """
     model_name = 'vgg13'
     if batch_norm:
@@ -286,20 +286,20 @@ def vgg16(pretrained=False, batch_norm=False, **kwargs):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.models import vgg16
+            >>> import paddle
+            >>> from paddle.vision.models import vgg16
 
-            # build model
-            model = vgg16()
+            >>> # build model
+            >>> model = vgg16()
 
-            # build vgg16 model with batch_norm
-            model = vgg16(batch_norm=True)
+            >>> # build vgg16 model with batch_norm
+            >>> model = vgg16(batch_norm=True)
 
-            x = paddle.rand([1, 3, 224, 224])
-            out = model(x)
+            >>> x = paddle.rand([1, 3, 224, 224])
+            >>> out = model(x)
 
-            print(out.shape)
-            # [1, 1000]
+            >>> print(out.shape)
+            [1, 1000]
     """
     model_name = 'vgg16'
     if batch_norm:
@@ -323,20 +323,20 @@ def vgg19(pretrained=False, batch_norm=False, **kwargs):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.models import vgg19
+            >>> import paddle
+            >>> from paddle.vision.models import vgg19
 
-            # build model
-            model = vgg19()
+            >>> # build model
+            >>> model = vgg19()
 
-            # build vgg19 model with batch_norm
-            model = vgg19(batch_norm=True)
+            >>> # build vgg19 model with batch_norm
+            >>> model = vgg19(batch_norm=True)
 
-            x = paddle.rand([1, 3, 224, 224])
-            out = model(x)
+            >>> x = paddle.rand([1, 3, 224, 224])
+            >>> out = model(x)
 
-            print(out.shape)
-            # [1, 1000]
+            >>> print(out.shape)
+            [1, 1000]
     """
     model_name = 'vgg19'
     if batch_norm:

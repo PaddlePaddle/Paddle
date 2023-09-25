@@ -15,7 +15,7 @@
 import unittest
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 @unittest.skipIf(
@@ -23,7 +23,7 @@ from paddle.fluid import core
 )
 class TestCompareAccuracyApi(unittest.TestCase):
     def calc(self, path, dtype):
-        paddle.fluid.core.set_nan_inf_debug_path(path)
+        paddle.base.core.set_nan_inf_debug_path(path)
         x = paddle.to_tensor(
             [2000, 3000, 4, 0], place=core.CUDAPlace(0), dtype=dtype
         )

@@ -155,7 +155,6 @@ void CastCooKernel(const Context& dev_ctx,
   } else {
     phi::MetaTensor meta(out_values);
     meta.set_dims(x_values.dims());
-    meta.set_dtype(value_dtype);
     phi::CastKernel<T, Context>(dev_ctx, x_values, value_dtype, out_values);
   }
   out->SetIndicesDict(x.GetIndicesDict());
@@ -201,7 +200,6 @@ void CastCsrKernel(const Context& dev_ctx,
   } else {
     phi::MetaTensor meta(out_values);
     meta.set_dims(x_values.dims());
-    meta.set_dtype(value_dtype);
     phi::CastKernel<T, Context>(dev_ctx, x_values, value_dtype, out_values);
   }
 }

@@ -15,9 +15,9 @@
 import logging
 
 import paddle
-from paddle.fluid import core, framework, unique_name
-from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import Variable, in_dygraph_mode, program_guard
+from paddle.base import core, framework, unique_name
+from paddle.base.backward import append_backward
+from paddle.base.framework import Variable, in_dygraph_mode, program_guard
 from paddle.optimizer import Optimizer
 
 
@@ -50,7 +50,7 @@ class RecomputeOptimizer(Optimizer):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
+            import paddle.base as base
             import numpy as np
 
             paddle.enable_static()
@@ -78,14 +78,14 @@ class RecomputeOptimizer(Optimizer):
             sgd.minimize(cost)
 
             print("Finished optimize")
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
+            place = base.CPUPlace()
+            exe = base.Executor(place)
+            exe.run(base.default_startup_program())
             step = 10
 
             for i in range(step):
                 cost_val = exe.run(feed=gen_data(),
-                       program=fluid.default_main_program(),
+                       program=base.default_main_program(),
                        fetch_list=[cost.name])
                 print("step=%d cost=%f" % (i, cost_val[0]))
 
@@ -109,8 +109,8 @@ class RecomputeOptimizer(Optimizer):
             checkpoints, list
         ), "_checkpoints should be a list of Variable or a list of String"
         for ckpt in checkpoints:
-            assert isinstance(ckpt, str) or isinstance(
-                ckpt, Variable
+            assert isinstance(
+                ckpt, (Variable, str)
             ), "_checkpoints should be a list of Variable or a list of String"
         self._checkpoints = checkpoints
 
@@ -133,7 +133,7 @@ class RecomputeOptimizer(Optimizer):
             .. code-block:: python
 
                 import paddle
-                import paddle.fluid as fluid
+                import paddle.base as base
 
                 paddle.enable_static()
                 def mlp(input_x, input_y, hid_dim=128, label_dim=2):
@@ -178,8 +178,8 @@ class RecomputeOptimizer(Optimizer):
             .. code-block:: python
 
                 import paddle
-                import paddle.fluid as fluid
-                import paddle.fluid.framework as framework
+                import paddle.base as base
+                import paddle.base.framework as framework
 
                 paddle.enable_static()
 
@@ -274,8 +274,6 @@ class RecomputeOptimizer(Optimizer):
                 },
             )
 
-        return
-
     def _insert_async_memcpy_op(
         self, insert_idx, src_varname, dst_varname, op_role, dst_place_type
     ):
@@ -293,9 +291,7 @@ class RecomputeOptimizer(Optimizer):
     def _insert_fetch_op(self, idx, varname):
         assert (
             varname in self.checkpoint_name2pinned_name
-        ), "Try to fetch {} from Pinned Memory, but it is NOT a checkpoint".format(
-            varname
-        )
+        ), f"Try to fetch {varname} from Pinned Memory, but it is NOT a checkpoint"
 
         pinned_varname = self.checkpoint_name2pinned_name[varname]
         fetch_varname = self.checkpoint_name2fetch_name[varname]
@@ -304,9 +300,7 @@ class RecomputeOptimizer(Optimizer):
     def _insert_offload_op(self, idx, varname):
         assert (
             varname in self.checkpoint_name2pinned_name
-        ), "Try to offload {} to Pinned Memory, but it is NOT a checkpoint".format(
-            varname
-        )
+        ), f"Try to offload {varname} to Pinned Memory, but it is NOT a checkpoint"
         pinned_varname = self.checkpoint_name2pinned_name[varname]
         self._insert_async_memcpy_op(idx, varname, pinned_varname, 0, 2)
 
@@ -401,16 +395,12 @@ class RecomputeOptimizer(Optimizer):
                         self.checkpoint_usage_count[input_var] += 1
                     else:
                         raise ValueError(
-                            "use checkpoint [{}] before fetch in BW".format(
-                                input_var
-                            )
+                            f"use checkpoint [{input_var}] before fetch in BW"
                         )
 
         assert (
             len(self.un_fetch_checkpoint_names) == 0
-        ), "{} checkpoints have NOT been Recorded".format(
-            self.un_fetch_checkpoint_names
-        )
+        ), f"{self.un_fetch_checkpoint_names} checkpoints have NOT been Recorded"
 
     def _update_backward(self):
         if len(self.idx2insertions) == 0:
@@ -553,9 +543,7 @@ class RecomputeOptimizer(Optimizer):
 
         assert (
             len(self.un_offload_checkpoint_names) == 0
-        ), "{} checkpoints have NOT been Recorded".format(
-            self.un_fetch_checkpoint_names
-        )
+        ), f"{self.un_fetch_checkpoint_names} checkpoints have NOT been Recorded"
         assert len(self.synced_checkpoints) == len(
             need_offload_checkpoint_names
         ), "{} checkpoints have NOT been Recorded".format(
@@ -639,8 +627,6 @@ class RecomputeOptimizer(Optimizer):
             # step 4. verify the correctness
             self._check_offload_fetch()
 
-        return
-
     def backward(
         self,
         loss,
@@ -666,7 +652,7 @@ class RecomputeOptimizer(Optimizer):
             .. code-block:: python
 
                 import paddle
-                import paddle.fluid as fluid
+                import paddle.base as base
 
                 paddle.enable_static()
 
@@ -748,7 +734,7 @@ class RecomputeOptimizer(Optimizer):
         Examples:
             .. code-block:: python
                 import paddle
-                import paddle.fluid as fluid
+                import paddle.base as base
 
                 paddle.enable_static()
 

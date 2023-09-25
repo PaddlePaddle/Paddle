@@ -23,8 +23,8 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, program_guard
+from paddle import base
+from paddle.base import Program, program_guard
 
 paddle.enable_static()
 
@@ -100,10 +100,10 @@ class TestWhereOpError(unittest.TestCase):
             cond = paddle.static.data(name='cond', shape=[-1, 4], dtype='bool')
             result = paddle.nonzero(cond)
 
-            exe = fluid.Executor(paddle.XPUPlace(0))
-            exe.run(fluid.default_startup_program())
+            exe = base.Executor(paddle.XPUPlace(0))
+            exe.run(base.default_startup_program())
             cond_i = np.array([True, False, False, False]).astype("bool")
-            out = exe.run(fluid.default_main_program(), feed={'cond': cond_i})
+            out = exe.run(base.default_main_program(), feed={'cond': cond_i})
 
 
 class TestWhereRaiseError(unittest.TestCase):

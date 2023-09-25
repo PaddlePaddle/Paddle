@@ -15,9 +15,9 @@
 import numpy as np
 
 import paddle
-from paddle import _legacy_C_ops, fluid
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.param_attr import ParamAttr
+from paddle import _legacy_C_ops, base
+from paddle.base.layer_helper import LayerHelper
+from paddle.base.param_attr import ParamAttr
 from paddle.nn import Layer
 from paddle.nn import initializer as I
 
@@ -60,7 +60,7 @@ def resnet_basic_block(
     trainable_statistics=False,
     find_conv_max=True,
 ):
-    if fluid.framework.in_dygraph_mode():
+    if base.framework.in_dygraph_mode():
         attrs = (
             'stride1',
             stride1,
@@ -153,8 +153,8 @@ def resnet_basic_block(
         )
         return out
     helper = LayerHelper('resnet_basic_block', **locals())
-    bn_param_dtype = fluid.core.VarDesc.VarType.FP32
-    max_dtype = fluid.core.VarDesc.VarType.FP32
+    bn_param_dtype = base.core.VarDesc.VarType.FP32
+    max_dtype = base.core.VarDesc.VarType.FP32
 
     out = helper.create_variable_for_type_inference(
         dtype=x.dtype, stop_gradient=True
@@ -398,33 +398,34 @@ class ResNetBasicBlock(Layer):
     Examples:
         .. code-block:: python
 
-            # required: xpu
-            import paddle
-            from paddle.incubate.xpu.resnet_block import ResNetBasicBlock
+            >>> # doctest: +REQUIRES(env: XPU)
+            >>> import paddle
+            >>> from paddle.incubate.xpu.resnet_block import ResNetBasicBlock
 
-            ch_in = 4
-            ch_out = 8
-            x = paddle.uniform((2, ch_in, 16, 16), dtype='float32', min=-1., max=1.)
-            resnet_basic_block = ResNetBasicBlock(num_channels1=ch_in,
-                                                num_filter1=ch_out,
-                                                filter1_size=3,
-                                                num_channels2=ch_out,
-                                                num_filter2=ch_out,
-                                                filter2_size=3,
-                                                num_channels3=ch_in,
-                                                num_filter3=ch_out,
-                                                filter3_size=1,
-                                                stride1=1,
-                                                stride2=1,
-                                                stride3=1,
-                                                act='relu',
-                                                padding1=1,
-                                                padding2=1,
-                                                padding3=0,
-                                                has_shortcut=True)
-            out = resnet_basic_block.forward(x)
+            >>> ch_in = 4
+            >>> ch_out = 8
+            >>> x = paddle.uniform((2, ch_in, 16, 16), dtype='float32', min=-1., max=1.)
+            >>> resnet_basic_block = ResNetBasicBlock(num_channels1=ch_in,
+            ...                                     num_filter1=ch_out,
+            ...                                     filter1_size=3,
+            ...                                     num_channels2=ch_out,
+            ...                                     num_filter2=ch_out,
+            ...                                     filter2_size=3,
+            ...                                     num_channels3=ch_in,
+            ...                                     num_filter3=ch_out,
+            ...                                     filter3_size=1,
+            ...                                     stride1=1,
+            ...                                     stride2=1,
+            ...                                     stride3=1,
+            ...                                     act='relu',
+            ...                                     padding1=1,
+            ...                                     padding2=1,
+            ...                                     padding3=0,
+            ...                                     has_shortcut=True)
+            >>> out = resnet_basic_block.forward(x)
 
-            print(out.shape) # [2, 8, 16, 16]
+            >>> print(out.shape)
+            [2, 8, 16, 16]
 
     """
 
@@ -525,7 +526,7 @@ class ResNetBasicBlock(Layer):
             return I.Normal(0.0, std)
 
         # init filter
-        bn_param_dtype = fluid.core.VarDesc.VarType.FP32
+        bn_param_dtype = base.core.VarDesc.VarType.FP32
         bn1_param_shape = [1, 1, num_filter1]
         bn2_param_shape = [1, 1, num_filter2]
         filter1_shape = [num_filter1, num_channels1, filter1_size, filter1_size]

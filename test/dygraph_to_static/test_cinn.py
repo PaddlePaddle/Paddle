@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 
 import paddle
 
@@ -78,6 +79,7 @@ class TestCINN(unittest.TestCase):
 
         return res
 
+    @test_and_compare_with_new_ir(False)
     def test_cinn(self):
         dy_res = self.train(use_cinn=False)
         cinn_res = self.train(use_cinn=True)

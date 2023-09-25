@@ -128,6 +128,9 @@ FcXPUPattern::FcXPUPattern(PDPattern* pattern,
     add_out = pattern->NewNode(add_out_repr())
                   ->assert_is_op_output("elementwise_add", "Out")
                   ->assert_var_not_persistable();
+    if (with_bn_ || !act_type_.empty()) {
+      add_out->assert_has_n_outputs(1);
+    }
     add->LinksFrom({mul_out, bias}).LinksTo({add_out});
   } else {
     add_out = mul_out;

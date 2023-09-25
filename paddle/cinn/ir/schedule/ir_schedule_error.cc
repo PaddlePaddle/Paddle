@@ -23,14 +23,14 @@ std::string IRScheduleErrorHandler::GeneralErrorMessage() const {
   std::ostringstream os;
   os << "[IRScheduleError] An error occurred in the scheduel primitive < "
      << this->primitive_ << " >. " << std::endl;
-  os << this->err_msg_;
+  os << indent_str_ << "[Error info] " << this->err_msg_;
   return os.str();
 }
 
 std::string IRScheduleErrorHandler::DetailedErrorMessage() const {
   std::ostringstream os;
   os << GeneralErrorMessage();
-  os << "[Expr info] The Expr of current schedule is: "
+  os << indent_str_ << "[Expr info] The Expr of current schedule is:\n"
      << this->module_expr_.GetExprs() << std::endl;
   return os.str();
 }

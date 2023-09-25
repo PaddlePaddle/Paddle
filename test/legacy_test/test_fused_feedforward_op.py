@@ -14,12 +14,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 import paddle.incubate.nn.functional as incubate_f
 import paddle.nn.functional as F
-from paddle.fluid.framework import default_main_program
+from paddle.base.framework import default_main_program
 from paddle.nn.layer import transformer
 from paddle.nn.layer.common import Dropout, Linear
 from paddle.nn.layer.norm import LayerNorm

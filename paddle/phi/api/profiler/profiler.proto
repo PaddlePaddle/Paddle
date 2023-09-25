@@ -29,7 +29,7 @@ message Event {
   optional uint64 end_ns = 3;
   // When positive, it represents gpu id. When -1, it represents CPU.
   optional int64 device_id = 5;
-  optional int64 sub_device_id = 6;
+  optional uint64 sub_device_id = 6;
 
   optional MemCopy memcopy = 7;
   optional string detail_info = 9;

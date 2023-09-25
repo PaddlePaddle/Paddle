@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <list>
+#include <mutex>
 
 #include "paddle/phi/backends/event.h"
 
@@ -25,8 +26,10 @@ namespace phi {
 namespace event {
 
 std::list<Event*> g_events;
+std::mutex g_events_mutex;
 
 void Event::ReleaseAll() {
+  std::unique_lock lock(g_events_mutex);
   for (auto* event : g_events) {
     event->Destroy();
   }
@@ -43,8 +46,9 @@ Event::Event(const Place& place, event_t event)
       own_data_(false) {}
 
 Event::~Event() {
-  g_events.remove(this);
   Destroy();
+  std::unique_lock lock(g_events_mutex);
+  g_events.remove(this);
 }
 
 bool Event::Init(const Place& place, Flag flags) {
@@ -58,13 +62,15 @@ bool Event::Init(const Place& place, Flag flags) {
   VLOG(3) << "Init Event: " << event_ << ", place: " << place_
           << ", flag:" << static_cast<int>(flags);
   own_data_ = true;
+  std::unique_lock lock(g_events_mutex);
   g_events.push_back(this);
   return true;
 }
 
 void Event::Destroy() {
   if (device_) {
-    if (own_data_) {
+    if (own_data_ &&
+        phi::DeviceManager::HasDeviceType(place_.GetDeviceType())) {
       phi::DeviceManager::SetDevice(place_);
       device_->DestroyEvent(this);
     }

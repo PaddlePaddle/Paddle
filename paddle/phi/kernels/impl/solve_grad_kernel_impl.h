@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/funcs/reduce_functor.h"
 #include "paddle/phi/kernels/impl/solve_kernel_impl.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include "paddle/phi/kernels/squeeze_kernel.h"
 #include "paddle/phi/kernels/unsqueeze_kernel.h"
 
@@ -63,8 +64,8 @@ struct ReduceSumForSolvelGrad<GPUContext, T> {
                   DenseTensor* output,
                   const std::vector<int>& reduce_dims,
                   bool keep_dims) {
-    phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-        dev_ctx, input, output, kps::IdentityFunctor<T>(), reduce_dims);
+    phi::SumKernel<T, GPUContext>(
+        dev_ctx, input, reduce_dims, output->dtype(), keep_dims, output);
   }
 };
 #endif

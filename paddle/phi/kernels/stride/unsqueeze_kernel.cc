@@ -34,7 +34,8 @@ void UnsqueezeInferStridedKernel(const Context& dev_ctx,
   if (input.Holder() == out->Holder() && input.meta() == out->meta()) {
     input_dims = phi::vectorize<int64_t>(out->dims());
     for (int64_t i = static_cast<int64_t>(axes.size() - 1); i >= 0; --i) {
-      axes[i] = axes[i] < 0 ? axes[i] + input_dims.size() : axes[i];
+      axes[i] = static_cast<int64_t>(axes[i] < 0 ? axes[i] + input_dims.size()
+                                                 : axes[i]);
       axes[i] = axes[i] < 0 ? 0 : axes[i];
       input_dims.erase(input_dims.begin() + axes[i]);
     }
@@ -43,8 +44,9 @@ void UnsqueezeInferStridedKernel(const Context& dev_ctx,
   std::vector<int64_t> output_dims = input_dims;
   std::vector<int64_t> output_stride = input_stride;
 
-  for (auto item : axes) {
-    item = item < 0 ? item + output_dims.size() + 1 : item;
+  for (int64_t item : axes) {
+    item =
+        static_cast<int64_t>(item < 0 ? item + output_dims.size() + 1 : item);
     item = item < 0 ? 0 : item;
     int64_t stride = static_cast<size_t>(item) >= output_dims.size()
                          ? 1
@@ -54,7 +56,7 @@ void UnsqueezeInferStridedKernel(const Context& dev_ctx,
   }
 
   auto meta = out->meta();
-  auto tmp_dim = DDim(output_dims.data(), output_dims.size());
+  auto tmp_dim = DDim(output_dims.data(), static_cast<int>(output_dims.size()));
   // if (product(meta.dims) > 0 && meta.dims != tmp_dim) {
   //   PADDLE_THROW(
   //       phi::errors::Fatal("Unsqueeze kernel stride compute diff, infer
@@ -64,7 +66,8 @@ void UnsqueezeInferStridedKernel(const Context& dev_ctx,
   //                          tmp_dim));
   // }
   meta.dims = tmp_dim;
-  meta.strides = DDim(output_stride.data(), output_stride.size());
+  meta.strides =
+      DDim(output_stride.data(), static_cast<int>(output_stride.size()));
   meta.offset = input.offset();
   out->set_meta(meta);
   out->ResetHolder(input.Holder());

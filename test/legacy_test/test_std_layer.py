@@ -39,7 +39,7 @@ class TestStdAPI(unittest.TestCase):
         self.x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         self.place = (
             paddle.CUDAPlace(0)
-            if paddle.fluid.core.is_compiled_with_cuda()
+            if paddle.base.core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
 
@@ -122,7 +122,7 @@ class TestStdError(unittest.TestCase):
 class Testfp16Std(unittest.TestCase):
     def test_fp16_with_gpu(self):
         paddle.enable_static()
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()

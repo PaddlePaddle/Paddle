@@ -80,35 +80,6 @@ class EmbEltwiseLayerNormFunctor {
 // This functor involves a fusion calculation in Ernie or Bert.
 // The fusion mode is as follows:
 //
-//         |    |
-//         matmul
-//           |
-//       eltwise_add
-//           |
-//        softmax    /
-//           \      /
-//             matmul
-//               |
-
-template <typename T>
-class MultiHeadGPUComputeFunctor {
- public:
-  void operator()(const phi::GPUContext &dev_ctx,
-                  int batch,
-                  int seq_len,
-                  int head_num,
-                  int head_size,
-                  T *qkptr,
-                  const T *bias_qk_ptr,
-                  bool bias_is_mask,
-                  T *tptr,
-                  T alpha,
-                  T beta);
-};
-
-// This functor involves a fusion calculation in Ernie or Bert.
-// The fusion mode is as follows:
-//
 // |           |
 // other_op1   other_op2
 //      |           |

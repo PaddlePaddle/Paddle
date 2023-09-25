@@ -43,25 +43,42 @@ namespace backends {
  */
 class CompilationInfoDumper {
  public:
-  explicit CompilationInfoDumper(const hlir::framework::CompilationResult& info)
-      : info_(info) {
+  explicit CompilationInfoDumper(const hlir::framework::CompilationResult& info,
+                                 const int device_id)
+      : info_(info), device_id_(device_id) {
     DumpLoweredFunc();
     DumpSourceCode();
     DumpPtxCode();
     DumpInstruction();
   }
 
+  static void DumpLoweredFuncByGroupIndex(const ir::LoweredFunc& lowered_func,
+                                          const int gidx,
+                                          const int device_id);
+  static void DumpSourceCodeByGroupIndex(const std::string& source_code,
+                                         const int gidx,
+                                         const int device_id);
+  static void DumpPtxCodeByGroupIndex(const std::string& source_ptx,
+                                      const int gidx,
+                                      const int device_id);
+  static void DumpInstructionByGroupIndex(
+      const std::unique_ptr<cinn::hlir::framework::Instruction>& instr,
+      const int gidx,
+      const int device_id);
+
  private:
   void DumpLoweredFunc();
   void DumpSourceCode();
   void DumpPtxCode();
   void DumpInstruction();
-  void Dump(const std::string& base_path,
-            const int idx,
-            const std::string& file_name,
-            const std::string& content);
+  static void Dump(const std::string& base_path,
+                   const int idx,
+                   const int device_id,
+                   const std::string& file_name,
+                   const std::string& content);
 
   const hlir::framework::CompilationResult& info_;
+  const int device_id_;
 };
 
 class SourceCodePrint {

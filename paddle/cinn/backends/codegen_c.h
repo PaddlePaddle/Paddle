@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include <gflags/gflags.h>
-
 #include <string>
 #include <vector>
 
@@ -27,6 +25,7 @@
 #include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/lang/packed_func.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
+#include "paddle/utils/flags.h"
 
 namespace cinn {
 

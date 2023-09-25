@@ -118,5 +118,57 @@ class TestTensorChecker(unittest.TestCase):
                 _assert_flag(False)
 
 
+class TestCheckLayerNumerics(unittest.TestCase):
+    def test_layer_checker(self):
+        class MyLayer(paddle.nn.Layer):
+            def __init__(self, dtype):
+                super().__init__()
+                self._w = self.create_parameter([2, 3], dtype=dtype)
+                self._b = self.create_parameter([2, 3], dtype=dtype)
+
+            @paddle.amp.debugging.check_layer_numerics
+            def forward(self, x):
+                return x * self._w + self._b
+
+        dtype = 'float32'
+        x = paddle.rand([10, 2, 3], dtype=dtype)
+        model = MyLayer(dtype)
+        loss = model(x)
+        adam = paddle.optimizer.Adam(parameters=model.parameters())
+        loss.backward()
+        adam.step()
+
+    def test_error_no_element(self):
+        class MyLayer(paddle.nn.Layer):
+            def __init__(self, dtype):
+                super().__init__()
+                self._w = self.create_parameter([2, 3], dtype=dtype)
+
+            @paddle.amp.debugging.check_layer_numerics
+            def forward(self):
+                return self._w
+
+        with self.assertRaises(RuntimeError):
+            dtype = 'float32'
+            model = MyLayer(dtype)
+            data = model()
+
+    def test_error_type_error(self):
+        class MyLayer(paddle.nn.Layer):
+            def __init__(self, dtype):
+                super().__init__()
+                self._w = self.create_parameter([2, 3], dtype=dtype)
+
+            @paddle.amp.debugging.check_layer_numerics
+            def forward(self, x):
+                return self._w * x
+
+        x = 1
+        with self.assertRaises(RuntimeError):
+            dtype = 'float32'
+            model = MyLayer(dtype)
+            data = model(x)
+
+
 if __name__ == '__main__':
     unittest.main()

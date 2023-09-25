@@ -16,7 +16,7 @@ import os
 import unittest
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
 
@@ -31,8 +31,8 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
         ] = "127.0.0.1:36001,127.0.0.1:36002"
 
     def net(self, main_prog, startup_prog):
-        with fluid.program_guard(main_prog, startup_prog):
-            with fluid.unique_name.guard():
+        with base.program_guard(main_prog, startup_prog):
+            with base.unique_name.guard():
                 input_x = paddle.static.data(
                     name="x", shape=[-1, 32], dtype='float32'
                 )
@@ -69,8 +69,8 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
     def test_lars_optimizer(self):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
-        startup_prog = fluid.Program()
-        train_prog = fluid.Program()
+        startup_prog = base.Program()
+        train_prog = base.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
         optimizer = paddle.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
@@ -82,8 +82,8 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
     def test_lars_not_apply_with_adam(self):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
-        startup_prog = fluid.Program()
-        train_prog = fluid.Program()
+        startup_prog = base.Program()
+        train_prog = base.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
         optimizer = paddle.optimizer.Adam(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
@@ -95,8 +95,8 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
     def test_lars_exclude_fn(self):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
-        startup_prog = fluid.Program()
-        train_prog = fluid.Program()
+        startup_prog = base.Program()
+        train_prog = base.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
         optimizer = paddle.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
 
