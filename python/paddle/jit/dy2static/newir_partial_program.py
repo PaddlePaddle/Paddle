@@ -18,7 +18,7 @@ from copy import deepcopy
 import numpy as np
 
 import paddle
-import paddle.ir.core as ir_static
+import paddle.pir.core as ir_static
 from paddle import _legacy_C_ops
 from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 from paddle.autograd.ir_backward import grad
@@ -27,7 +27,7 @@ from paddle.base.compiler import BuildStrategy
 from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.base.framework import _apply_pass
-from paddle.base.libpaddle.ir import OpResult, fake_op_result
+from paddle.base.libpaddle.pir import OpResult, fake_op_result
 from paddle.framework import use_pir_api
 from paddle.optimizer.lr import LRScheduler
 
@@ -823,7 +823,7 @@ class PartialProgramLayer:
         (
             forward_program,
             backward_program,
-        ), program_attr = paddle.base.libpaddle.ir.program_split(
+        ), program_attr = paddle.base.libpaddle.pir.program_split(
             whole_program,
             forward_inputs,
             forward_outputs,
@@ -958,14 +958,8 @@ class PartialProgramLayer:
             else:
                 tensor_type = paddle.dtype(8)  # SELECT ROW TENSOR
 
-            # TODO(xiongkun): more elegent way to do it.
-
-            ir_dtype_2_tensor_dtype = {
-                10: paddle.dtype(5),
-            }
-
             out = core.eager.Tensor(
-                ir_dtype_2_tensor_dtype[int(var.dtype)],
+                framework.paddle_type_to_proto_type[var.dtype],
                 var.shape,
                 "",
                 tensor_type,
@@ -1140,7 +1134,7 @@ def partial_program_from(concrete_program, from_method=False):
 def add_build_strategy_for(
     program, start_op_index, end_op_index, build_strategy=None, skip_vars=None
 ):
-    paddle.base.libpaddle.ir.program_split(
+    paddle.base.libpaddle.pir.program_split(
         program,
     )
     if start_op_index < end_op_index:

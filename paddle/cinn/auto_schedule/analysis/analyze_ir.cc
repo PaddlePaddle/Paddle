@@ -41,7 +41,7 @@ std::vector<ir::Var> IndicesToVars(const std::vector<ir::Expr>& indices) {
   for (const ir::Expr& e : indices) {
     // Whether we have to convert other types, like const numbers to Var?
     if (e.As<ir::_Var_>() != nullptr) {
-      ir::Expr copy_e = optim::IRCopy(e);
+      ir::Expr copy_e = ir::ir_utils::IRCopy(e);
       ir::_Var_* var_ref = copy_e.As<ir::_Var_>();
       result.emplace_back(ir::Var(var_ref));
     }
