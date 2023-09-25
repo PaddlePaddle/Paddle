@@ -31,6 +31,7 @@ class TestSqueezeOp(OpTest):
     def setUp(self):
         self.op_type = "squeeze"
         self.init_test_case()
+        self.python_api = paddle.squeeze
         self.inputs = {"X": np.random.random(self.ori_shape).astype("float64")}
         self.init_attrs()
         self.outputs = {
@@ -56,6 +57,7 @@ class TestSqueezeFP16Op(OpTest):
     def setUp(self):
         self.op_type = "squeeze"
         self.init_test_case()
+        self.python_api = paddle.squeeze
         self.inputs = {"X": np.random.random(self.ori_shape).astype("float16")}
         self.init_attrs()
         self.outputs = {
@@ -82,6 +84,7 @@ class TestSqueezeBF16Op(OpTest):
         self.op_type = "squeeze"
         self.dtype = np.uint16
         self.init_test_case()
+        self.python_api = paddle.squeeze
         x = np.random.random(self.ori_shape).astype("float32")
         out = x.reshape(self.new_shape)
         self.inputs = {"X": convert_float_to_uint16(x)}
