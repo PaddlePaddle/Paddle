@@ -114,6 +114,47 @@ class TestMaskedFillAPI2(TestMaskedFillAPI):
         self.dtype = "float32"
 
 
+class TestMaskedFillGrad(unittest.TestCase):
+    def setUp(self):
+        self.typelist = ['float32', 'float64', 'int32', 'int64']
+        self.places = [base.CPUPlace()]
+        if base.core.is_compiled_with_cuda():
+            self.places.append(base.CUDAPlace(0))
+        self.dtype = "float32"
+
+    def test_backward(self):
+        expected_np = np.array(
+            [[2, 1, 1], [2, 1, 1], [2, 1, 1], [2, 1, 1]]
+        ).astype('float32')
+        expected_grad = np.array(
+            [[1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0]]
+        ).astype('float32')
+
+        for idx, p in enumerate(self.places):
+            if idx == 0:
+                paddle.set_device('cpu')
+            else:
+                paddle.set_device('gpu')
+            for dtype in self.typelist:
+                v = paddle.to_tensor(np.array(1).astype(self.dtype))
+                x = paddle.ones((4, 3), dtype=self.dtype)
+                mask = paddle.to_tensor(np.array([0, 1, 1]).astype("bool"))
+                x.stop_gradient = False
+                y = x * 2
+                y.retain_grads()
+                ny = y.masked_fill(mask=mask, value=v)
+                loss = ny.sum()
+                loss.backward()
+
+                self.assertEqual(
+                    (ny.numpy().astype('float32') == expected_np).all(), True
+                )
+                self.assertEqual(
+                    (y.grad.numpy().astype('float32') == expected_grad).all(),
+                    True,
+                )
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
