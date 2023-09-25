@@ -2590,17 +2590,21 @@ struct HardSwishGradFunctor<ComplexType<T>>
             typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
-    auto tmp = ((x + static_cast<ComplexType<T>>(offset)) <
-                static_cast<ComplexType<T>>(threshold))  // NOLINT
-                   .template cast<ComplexType<T>>();
-    dx.device(d) = dout * (((x + static_cast<ComplexType<T>>(offset)) >
-                            static_cast<ComplexType<T>>(0))
-                                   .template cast<ComplexType<T>>() *
-                               (static_cast<ComplexType<T>>(2) * x +
-                                static_cast<ComplexType<T>>(offset)) /
-                               static_cast<ComplexType<T>>(scale) * tmp +
-                           static_cast<ComplexType<T>>(1) *
-                               (static_cast<ComplexType<T>>(1) - tmp))
+    auto offset_t = static_cast<ComplexType<T>>(offset);
+    auto threshold_t = static_cast<ComplexType<T>>(threshold);
+    auto one = static_cast<ComplexType<T>>(1);
+    auto zero = static_cast<ComplexType<T>>(0);
+    auto two = static_cast<ComplexType<T>>(2);
+    auto scale_t = static_cast<ComplexType<T>>(scale);
+    auto tmp1 = ((x + offset_t) < threshold_t)  // NOLINT
+                    .template cast<ComplexType<T>>();
+    auto tmp2 = ((x + offset_t) > zero).template cast<ComplexType<T>>();
+    // dx = 0, when x <= -offset
+    // dout , when x >= threshold - offset
+    // dout * (2 * x / scale + offset / scale), otherwise
+    // threshold = scale = 6, offset = 3 by default
+    dx.device(d) = dout * (tmp2 * (two * x + offset_t) / scale_t * tmp1 +
+                           one * (one - tmp1))
                               .unaryExpr(Conj<T>());
   }
 
