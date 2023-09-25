@@ -1037,7 +1037,6 @@ struct CubTensorReduce<Tx, Ty, ReduceOp, TransformOp, true> {
         x_data, y_data, Div(reduce_num), reduce_num, dev_ctx, stream);
   }
 };
-#endif  // PADDLE_WITH_XPU_KP
 
 template <typename Tx,
           typename Ty,
