@@ -284,41 +284,25 @@ ir::LoweredFunc LowerToAst(const std::string& name,
                            const std::vector<Tensor>& tensor_args,
                            ast_gen_ius::TensorGroup* tensor_group,
                            const Target& target) {
-  // Merge the ctrl_deps with the given temp_tensors ang get a new temp_tensors
-  std::set<ir::Tensor> ctrl_deps =
-      CollectTempTensorsFromCtrlDepends(tensor_group, tensor_args);
-  std::vector<ast_gen_ius::TensorGroup*> group_vec = {tensor_group};
-  auto lower_instance = detail::LowerTensorGroup(
-      name,
-      tensor_args,
-      {},
-      group_vec,
-      std::vector<Tensor>(ctrl_deps.begin(), ctrl_deps.end()),
-      target);
-  std::vector<ir::LoweredFunc> result = lower_instance();
-  for (auto& res : result) {
-    if (target == common::DefaultNVGPUTarget()) {
-      res->device_api = ir::DeviceAPI::GPU;
-    }
-  }
+  std::vector<ir::LoweredFunc> result =
+      LowerToAstVec(name, tensor_args, tensor_group, target);
+  CHECK_EQ(result.size(), 1UL) << "LowerToAst contains not only 1 LoweredFunc, "
+                                  "use LowerToAstVec instead.";
   return result[0];
 }
 
 std::vector<ir::LoweredFunc> LowerToAstVec(
     const std::string& name,
     const std::vector<Tensor>& tensor_args,
-    std::vector<ast_gen_ius::TensorGroup*> tensor_groups,
+    ast_gen_ius::TensorGroup* tensor_group,
     const Target& target) {
-  // TODO(zhhsplendid): we use only one tensor_group only;
-  ast_gen_ius::TensorGroup* tensor_group = tensor_groups[0];
   std::set<ir::Tensor> ctrl_deps =
       CollectTempTensorsFromCtrlDepends(tensor_group, tensor_args);
-  std::vector<ast_gen_ius::TensorGroup*> group_vec = {tensor_group};
   auto lower_instance = detail::LowerTensorGroup(
       name,
       tensor_args,
       {},
-      group_vec,
+      tensor_group,
       std::vector<Tensor>(ctrl_deps.begin(), ctrl_deps.end()),
       target);
   std::vector<ir::LoweredFunc> result = lower_instance();

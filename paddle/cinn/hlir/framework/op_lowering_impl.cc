@@ -354,11 +354,7 @@ ast_gen_ius::TensorGroup ConvertStageMapToTensorGroup(
   for (auto iter = stage_map.begin(); iter != stage_map.end(); ++iter) {
     if (iter->second->has_expression()) {
       const std::string& tensor_name = iter->first;
-      VLOG(6) << "Huihuang debug ConvertStageMapToTensorGroup tensor_name = "
-              << tensor_name;
       if (tensor_map.count(tensor_name)) {
-        VLOG(6) << "Huihuang debug ConvertStageMapToTensorGroup push_back "
-                << tensor_name;
         stage_tensors.push_back(tensor_map.at(tensor_name));
       }
     }
@@ -412,10 +408,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
     }
   }
 
-  for (auto t : *op_func_arg_tensors) {
-    VLOG(6) << "op_func_arg_tensors contains " << t->name;
-  }
-
   // 2.Do lower
   /*
   std::vector<ir::LoweredFunc> funcs = lang::LowerVec("fn_" + node->id(),
@@ -427,8 +419,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
                                                        this->target_,
                                                        true);
 
-  */
 
+  */
   ast_gen_ius::TensorGroup tensor_group =
       ConvertStageMapToTensorGroup(tmp_stages, *tensor_map);
   std::vector<ir::LoweredFunc> funcs = lang::LowerToAstVec(

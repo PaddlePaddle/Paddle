@@ -716,19 +716,13 @@ std::vector<Expr> LowerImpl::GenerateFunctionBody(
   std::unordered_map<std::string, std::vector<Expr>> resized_buffer_cache;
 
   for (auto& group : schedule->groups) {
-    VLOG(6) << "Huihuang debug schedule->groups.size() = "
-            << schedule->groups.size()
-            << ", group.nodes.size() = " << group.nodes.size();
     CHECK_GT(group.nodes.size(), 0) << "group is empty";
     bool all_temp_tensor = true;
     for (auto& node : group.nodes) {
       if (!tensor_map.count(node->id())) {
         VLOG(2) << "tensor_map doesn't count " << node->id();
-        VLOG(6) << "Huihuang debug " << node->id()
-                << "skip generating func body";
         continue;
       }
-      VLOG(6) << "Huihuang debug generating func body for " << node->id();
       auto& tensor = tensor_map[node->id()];
       if (!tensor->has_expression()) continue;
       all_temp_tensor =

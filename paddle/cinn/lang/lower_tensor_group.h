@@ -47,7 +47,7 @@ class LowerTensorGroup {
   LowerTensorGroup(const std::string& fn_name,
                    const std::vector<ir::Tensor>& tensor_args,
                    const std::vector<ir::Var>& scalar_args,
-                   const std::vector<ast_gen_ius::TensorGroup*>& tensor_groups,
+                   ast_gen_ius::TensorGroup* tensor_group,
                    const std::vector<ir::Tensor>& temp_tensor_args = {},
                    const Target& target = common::DefaultHostTarget());
 
@@ -63,11 +63,8 @@ class LowerTensorGroup {
   const std::vector<ir::Tensor>& tensor_args_;
   const std::vector<Var>& scalar_args_;
   std::vector<ir::Tensor> temp_tensor_args_;
-  std::vector<ast_gen_ius::TensorGroup*> tensor_groups_;
+  ast_gen_ius::TensorGroup* tensor_group_;
   Target target_;
-
-  //! CUDA axis info for this function.
-  std::vector<ir::CudaAxisInfo> cuda_axis_info_;
 };
 
 }  // namespace detail

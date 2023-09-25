@@ -41,8 +41,18 @@ TensorGroup::TensorGroup(const std::vector<ir::Tensor>& tensors) {
   }
 
   for (const ir::Tensor& t : all_tensors) {
-    VLOG(6) << "TensorGroup insert " << t->name;
     name_to_tensor_.insert({t->name, t});
+  }
+
+  // DEBUG, TO delete
+  VLOG(6) << "Huihuang debug TensorGroup data struct";
+  for (auto& p : name_to_tensor_) {
+    VLOG(6) << "Tensor name = " << p.first << " depends on {";
+
+    for (auto& dep_name : ctrl_dep_[p.first]) {
+      VLOG(6) << dep_name;
+    }
+    VLOG(6) << "}";
   }
 }
 
@@ -55,7 +65,7 @@ TensorGroup::TensorGroup(
     const ir::Tensor& tensor = map_pair.second;
     output_tensor_names_.insert(tensor->name);
     all_tensors.insert(tensor);
-    std::set<ir::Expr> used_tensors = ir::CollectIRNodes(
+    std::set<ir::Expr> used_tensors = ir::ir_utils::CollectIRNodes(
         tensor->body(), [](const Expr* x) { return x->as_tensor(); });
     for (const Expr& x : used_tensors) {
       const ir::Tensor to_dep = x.as_tensor_ref();
