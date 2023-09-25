@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import _ir_ops, nn
+from paddle import _pir_ops, nn
 from paddle.autograd.ir_backward import grad
 from paddle.decomposition import decompose
 from paddle.framework import core
@@ -30,9 +30,9 @@ class SimpNet(nn.Layer):
         super().__init__()
 
     def forward(self, x, linear1_weight, linear2_weight):
-        x2 = _ir_ops.matmul(x, linear1_weight, False, False)
-        x3 = _ir_ops.gelu(x2, False)
-        res = _ir_ops.matmul(x3, linear2_weight, False, False)
+        x2 = _pir_ops.matmul(x, linear1_weight, False, False)
+        x3 = _pir_ops.gelu(x2, False)
+        res = _pir_ops.matmul(x3, linear2_weight, False, False)
         return res
 
 

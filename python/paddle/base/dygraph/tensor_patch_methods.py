@@ -19,14 +19,13 @@ import warnings
 import numpy as np
 
 import paddle
-import paddle.profiler as profiler
-import paddle.utils.deprecated as deprecated
-from paddle import _C_ops
+from paddle import _C_ops, profiler
 from paddle.base.data_feeder import (
     _PADDLE_DTYPE_2_NUMPY_DTYPE,
     convert_uint16_to_float,
 )
 from paddle.profiler.utils import in_profiler_mode
+from paddle.utils import deprecated
 
 from .. import core, framework, unique_name
 from ..framework import (

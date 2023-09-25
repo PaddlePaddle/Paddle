@@ -35,6 +35,7 @@ from ..framework import (
     dygraph_only,
     in_dynamic_mode,
     in_dynamic_or_pir_mode,
+    in_pir_mode,
 )
 from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
 
@@ -330,9 +331,7 @@ def slice(input, axes, starts, ends):
 
         else:
             raise ValueError(
-                "Input axes must be a python list or tuple, but reveived {}".format(
-                    type(axes)
-                )
+                f"Input axes must be a python list or tuple, but reveived {type(axes)}"
             )
 
         infer_flags = [1 for i in range(len(axes))]
@@ -502,10 +501,8 @@ def transpose(x, perm, name=None):
             raise ValueError(
                 "Input(perm) is the permutation of dimensions of Input(x), "
                 "its length should be equal to dimensions of Input(x), "
-                "but received dimension of Input(x) is {}, "
-                "the length of Input(perm) is {}.".format(
-                    len(x.shape), len(perm)
-                )
+                f"but received dimension of Input(x) is {len(x.shape)}, "
+                f"the length of Input(perm) is {len(perm)}."
             )
         for idx, dim in enumerate(perm):
             if dim >= len(x.shape):
@@ -553,9 +550,7 @@ def unstack(x, axis=0, num=None):
 
     """
     if not (-x.ndim <= axis < x.ndim):
-        raise ValueError(
-            '`axis` must be in the range [-{0}, {0})'.format(x.ndim)
-        )
+        raise ValueError(f'`axis` must be in the range [-{x.ndim}, {x.ndim})')
     if num is not None and (num < 0 or num > x.shape[axis]):
         raise ValueError(f'`num` must be in the range [0, {x.shape[axis]})')
     if in_dynamic_mode():
@@ -1131,7 +1126,7 @@ def concat(x, axis=0, name=None):
     if in_dynamic_or_pir_mode():
         if isinstance(axis, Variable):
             axis = axis.item(0)
-        if not isinstance(input, (Variable, paddle.ir.Value)):
+        if not isinstance(input, (Variable, paddle.pir.Value)):
             input = [t for t in input if t.shape.count(0) == 0]
         return _C_ops.concat(input, axis)
     else:
@@ -1451,15 +1446,11 @@ def rot90(x, k=1, axes=[0, 1], name=None):
     total_rot_dims = len(axes)
     if total_rot_dims != 2:
         raise ValueError(
-            "expected total rotation axes == 2, but got axes = {}".format(
-                total_rot_dims
-            )
+            f"expected total rotation axes == 2, but got axes = {total_rot_dims}"
         )
     if input_total_dims < 2:
         raise ValueError(
-            "expected total dims >= 2, but got total dims = {}".format(
-                input_total_dims
-            )
+            f"expected total dims >= 2, but got total dims = {input_total_dims}"
         )
 
     if not (axes[0] != axes[1] and abs(axes[0] - axes[1]) != input_total_dims):
@@ -1966,30 +1957,37 @@ def split(x, num_or_sections, axis=0, name=None):
     """
     input = x
     dim = axis
-    if in_dynamic_or_pir_mode():
-        if in_dynamic_mode():
-            if isinstance(dim, Variable):
-                dim = dim.item(0)
-            assert len(input.shape) + dim >= 0, "(rank(x) + axis) must >= 0"
-            dim = (len(input.shape) + dim) if dim < 0 else dim
+    if in_dynamic_mode():
+        if isinstance(dim, Variable):
+            dim = dim.item(0)
+        assert dim + len(input.shape) >= 0, "(rank(x) + axis) must >= 0"
+        dim = (dim + len(input.shape)) if dim < 0 else dim
 
-            if isinstance(num_or_sections, (list, tuple)):
-                if paddle.utils._contain_var(num_or_sections):
-                    for index, item in enumerate(num_or_sections):
-                        if isinstance(item, Variable):
-                            num_or_sections[index] = num_or_sections[
-                                index
-                            ].item()
-            elif not isinstance(num_or_sections, int):
-                raise TypeError(
-                    "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
-                    "received %s." % (type(num_or_sections))
-                )
+        if isinstance(num_or_sections, (list, tuple)):
+            if paddle.utils._contain_var(num_or_sections):
+                for index, item in enumerate(num_or_sections):
+                    if isinstance(item, Variable):
+                        num_or_sections[index] = num_or_sections[index].item()
+        elif not isinstance(num_or_sections, int):
+            raise TypeError(
+                "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
+                "received %s." % (type(num_or_sections))
+            )
 
         if isinstance(num_or_sections, int):
             return _C_ops.split_with_num(input, num_or_sections, dim)
         else:
             return _C_ops.split(input, num_or_sections, dim)
+    elif in_pir_mode():
+        if isinstance(dim, int):
+            assert len(input.shape) + dim >= 0, "(rank(x) + axis) must >= 0"
+            dim = (len(input.shape) + dim) if dim < 0 else dim
+
+        if isinstance(num_or_sections, int):
+            return _C_ops.split_with_num(input, num_or_sections, dim)
+        else:
+            return _C_ops.split(input, num_or_sections, dim)
+
     else:
         check_variable_and_dtype(
             input,
@@ -2130,9 +2128,7 @@ def vsplit(x, num_or_sections, name=None):
     """
     if x.ndim < 2:
         raise ValueError(
-            "The input tensor's dimension must be greater than 1, but got {}".format(
-                x.ndim
-            )
+            f"The input tensor's dimension must be greater than 1, but got {x.ndim}"
         )
     return split(x, num_or_sections, axis=0, name=name)
 
@@ -3598,7 +3594,7 @@ def reshape(x, shape, name=None):
             for ele in shape:
                 if isinstance(ele, core.eager.Tensor):
                     new_shape.append(ele.item())
-                elif isinstance(ele, paddle.ir.OpResult):
+                elif isinstance(ele, paddle.pir.OpResult):
                     new_shape.append(-1)
                 else:
                     new_shape.append(ele)
@@ -3607,7 +3603,7 @@ def reshape(x, shape, name=None):
                 out = x
             else:
                 out = _C_ops.reshape(x, new_shape)
-        elif isinstance(shape, (core.eager.Tensor, paddle.ir.OpResult)):
+        elif isinstance(shape, (core.eager.Tensor, paddle.pir.OpResult)):
             shape.stop_gradient = True
             out = _C_ops.reshape(x, shape)
         else:
@@ -3720,7 +3716,7 @@ def reshape_(x, shape, name=None):
         else:
             raise ValueError(
                 "shape must be an instance of `list`, `tuple` or `Variable`,"
-                " got '{}.'".format(type(shape))
+                f" got '{type(shape)}.'"
             )
 
         return out
@@ -3798,7 +3794,7 @@ def gather_nd(x, index, name=None):
             output = paddle.gather_nd(x, index) #[[3, 4]]
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.gather_nd(x, index)
     else:
         check_variable_and_dtype(
@@ -4480,12 +4476,12 @@ def moveaxis(x, source, destination, name=None):
         if axis[0] < 0:
             assert (
                 axis[0] >= -ndim
-            ), "'source' must be in the range of [-{0}, {0})".format(ndim)
+            ), f"'source' must be in the range of [-{ndim}, {ndim})"
             src[i] += ndim
         else:
             assert (
                 axis[0] < ndim
-            ), "'source' must be in the range of [-{0}, {0})".format(ndim)
+            ), f"'source' must be in the range of [-{ndim}, {ndim})"
 
         assert isinstance(
             axis[1], int
@@ -4493,12 +4489,12 @@ def moveaxis(x, source, destination, name=None):
         if axis[1] < 0:
             assert (
                 axis[1] >= -ndim
-            ), "'source' must be in the range of [-{0}, {0})".format(ndim)
+            ), f"'source' must be in the range of [-{ndim}, {ndim})"
             dst[i] += ndim
         else:
             assert (
                 axis[1] < ndim
-            ), "'source' must be in the range of [-{0}, {0})".format(ndim)
+            ), f"'source' must be in the range of [-{ndim}, {ndim})"
         perm[dst[i]] = src[i]
         src_dims.remove(src[i])
         dst_dims.remove(dst[i])
@@ -4541,13 +4537,11 @@ def moveaxis(x, source, destination, name=None):
 def non_negative_axis(arr, axis):
     ndim = len(arr.shape)
     if axis >= 0:
-        assert (
-            axis < ndim
-        ), "'axis'  must be in the range of [-{0}, {0})".format(ndim)
+        assert axis < ndim, f"'axis'  must be in the range of [-{ndim}, {ndim})"
     else:
         assert (
             axis >= -ndim
-        ), "'axis'  must be in the range of [-{0}, {0})".format(ndim)
+        ), f"'axis'  must be in the range of [-{ndim}, {ndim})"
         axis += ndim
 
     return axis
