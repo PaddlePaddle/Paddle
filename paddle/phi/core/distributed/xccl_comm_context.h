@@ -17,10 +17,7 @@
 #include "paddle/phi/core/macros.h"
 
 #include "paddle/phi/backends/device_manager.h"
-#if defined(PADDLE_WITH_XPU_BKCL)
-#include "paddle/phi/backends/xpu/xpu_context.h"
-#include "xpu/bkcl.h"
-#endif
+
 namespace phi {
 class DenseTensor;
 namespace distributed {
