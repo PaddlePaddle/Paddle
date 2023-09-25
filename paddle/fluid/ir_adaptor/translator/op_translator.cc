@@ -1241,9 +1241,9 @@ struct TrilAndTriuOpTranscriber : public OpTranscriber {
 };
 
 struct MulOpTranscriber : public OpTranscriber {
-  ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
-    const std::string& target_op_name =
-        "pd.matmul";  // <----------- 这个名字从哪里看 op_compat.yaml
+  pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
+                            const OpDesc& op_desc) override {
+    const std::string& target_op_name = "pd.matmul";
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
       IR_THROW("Op %d should have corresponding OpInfo %d",
@@ -1252,22 +1252,16 @@ struct MulOpTranscriber : public OpTranscriber {
     }
     return op_info;
   }
-  std::vector<ir::OpResult> GenerateOperationInput(
-      ir::IrContext* ctx,
+  std::vector<pir::OpResult> GenerateOperationInput(
+      pir::IrContext* ctx,
       TranslationContext* param_map,
       const OpDesc& op_desc,
       const std::string& normalized_op_name,
       const OpInputInfoList& input_infos,
-      ir::Program* program) override {
+      pir::Program* program) override {
     int x_num_col_dims = paddle::get<int>(op_desc.GetAttr("x_num_col_dims"));
     int y_num_col_dims = paddle::get<int>(op_desc.GetAttr("y_num_col_dims"));
 
-    // if (1 == x_num_col_dims && 1 == y_num_col_dims) {
-    //   return OpTranscriber::GenerateOperationInput(
-    //       ctx, param_map, op_desc, normalized_op_name, input_infos, program);
-    // }
-
-    // ---------- 进行 X shape 的检查 ----------
     auto x_names = op_desc.Input("X", true);
     IR_ENFORCE(x_names.size() == 1,
                "Expected op[%s]'s input X has only 1 variable, but got %d",
@@ -1284,12 +1278,12 @@ struct MulOpTranscriber : public OpTranscriber {
           ctx, param_map, program, x_defining_info, x_name);
       x_defining_info = param_map->at(x_name);
     }
-    ir::OpResult x_value = x_defining_info.value;
+    pir::OpResult x_value = x_defining_info.value;
     IR_ENFORCE(x_value,
                "Expected op[%s]'s input %s is not null",
                op_desc.Type(),
                x_name);
-    ir::Type x_type = x_value.type();
+    pir::Type x_type = x_value.type();
     IR_ENFORCE(x_type.isa<dialect::DenseTensorType>(),
                "Expected op[%s]'s input %s is DenseTensor but got %s",
                op_desc.Type(),
@@ -1305,7 +1299,6 @@ struct MulOpTranscriber : public OpTranscriber {
                x_shape.size(),
                x_num_col_dims);
 
-    // ---------- 进行 Y shape 的检查 ----------
     auto y_names = op_desc.Input("Y", true);
     IR_ENFORCE(y_names.size() == 1,
                "Expected op[%s]'s input Y has only 1 variable, but got %d",
@@ -1322,12 +1315,12 @@ struct MulOpTranscriber : public OpTranscriber {
           ctx, param_map, program, y_defining_info, y_name);
       y_defining_info = param_map->at(y_name);
     }
-    ir::OpResult y_value = y_defining_info.value;
+    pir::OpResult y_value = y_defining_info.value;
     IR_ENFORCE(y_value,
                "Expected op[%s]'s input %s is not null",
                op_desc.Type(),
                y_name);
-    ir::Type y_type = y_value.type();
+    pir::Type y_type = y_value.type();
     IR_ENFORCE(y_type.isa<dialect::DenseTensorType>(),
                "Expected op[%s]'s input %s is DenseTensor but got %s",
                op_desc.Type(),
@@ -1343,8 +1336,8 @@ struct MulOpTranscriber : public OpTranscriber {
                y_shape.size(),
                y_num_col_dims);
 
-    ir::Builder builder(ctx, program->block());
-    ir::OpResult x_new, y_new;
+    pir::Builder builder(ctx, program->block());
+    pir::OpResult x_new, y_new;
 
     std::vector<int64_t> x_new_shape({
         std::max(std::accumulate(x_shape.begin(),
@@ -1387,7 +1380,8 @@ struct MulOpTranscriber : public OpTranscriber {
 };
 
 struct MulGradOpTranscriber : public OpTranscriber {
-  ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
+  pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
+                            const OpDesc& op_desc) override {
     const std::string& target_op_name = "pd.matmul_grad";
     VLOG(6) << "[op name normalizing: " << op_desc.Type() << " to "
             << target_op_name;
@@ -1400,10 +1394,10 @@ struct MulGradOpTranscriber : public OpTranscriber {
     return op_info;
   }
 
-  void RecordOpResultMapping(ir::IrContext* ctx,
+  void RecordOpResultMapping(pir::IrContext* ctx,
                              TranslationContext* param_map,
                              const OpDesc& op_desc,
-                             ir::Operation* operation,
+                             pir::Operation* operation,
                              const OpOutputMapping& arg_to_idx) override {
     OpTranscriber::RecordOpResultMapping(
         ctx, param_map, op_desc, operation, arg_to_idx);
@@ -1435,12 +1429,12 @@ struct MulGradOpTranscriber : public OpTranscriber {
                op_desc.Type(),
                x_name);
     auto x_defining_info = param_map->at(x_name);
-    ir::OpResult x_value = x_defining_info.value;
+    pir::OpResult x_value = x_defining_info.value;
     IR_ENFORCE(x_value,
                "Expected op[%s]'s input %s is not null",
                op_desc.Type(),
                x_name);
-    ir::Type x_type = x_value.type();
+    pir::Type x_type = x_value.type();
     IR_ENFORCE(x_type.isa<dialect::DenseTensorType>(),
                "Expected op[%s]'s input %s is DenseTensor but got %s",
                op_desc.Type(),
@@ -1451,8 +1445,8 @@ struct MulGradOpTranscriber : public OpTranscriber {
         x_type.dyn_cast<dialect::DenseTensorType>();
     std::vector<int64_t> x_shape = phi::vectorize(x_tensor_type.dims());
 
-    ir::OpResult x_value_res = operation->result(idx_in_op_x);
-    ir::Builder builder(ctx, operation->GetParent());
+    pir::OpResult x_value_res = operation->result(idx_in_op_x);
+    pir::Builder builder(ctx, operation->GetParent());
     auto reshape_op_x = builder.Build<dialect::ReshapeOp>(x_value_res, x_shape);
     (*param_map)[x_grad_var_name] =
         VariableDefiningInfo(reshape_op_x.out(), false, -1);
@@ -1484,12 +1478,12 @@ struct MulGradOpTranscriber : public OpTranscriber {
                op_desc.Type(),
                y_name);
     auto y_defining_info = param_map->at(y_name);
-    ir::OpResult y_value = y_defining_info.value;
+    pir::OpResult y_value = y_defining_info.value;
     IR_ENFORCE(y_value,
                "Expected op[%s]'s input %s is not null",
                op_desc.Type(),
                y_name);
-    ir::Type y_type = y_value.type();
+    pir::Type y_type = y_value.type();
     IR_ENFORCE(y_type.isa<dialect::DenseTensorType>(),
                "Expected op[%s]'s input %s is DenseTensor but got %s",
                op_desc.Type(),
@@ -1500,7 +1494,7 @@ struct MulGradOpTranscriber : public OpTranscriber {
         y_type.dyn_cast<dialect::DenseTensorType>();
     std::vector<int64_t> y_shape = phi::vectorize(y_tensor_type.dims());
 
-    ir::OpResult y_value_res = operation->result(idx_in_op_y);
+    pir::OpResult y_value_res = operation->result(idx_in_op_y);
     auto reshape_op_y = builder.Build<dialect::ReshapeOp>(y_value_res, y_shape);
     (*param_map)[y_grad_var_name] =
         VariableDefiningInfo(reshape_op_y.out(), false, -1);
