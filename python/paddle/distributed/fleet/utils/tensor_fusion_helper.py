@@ -518,7 +518,6 @@ def fused_parameters(
             dst=dst,
             acc_step=acc_step,
             scale_after_comm=scale_after_comm,
-            group_params=group_params,
         )
 
         return decay_fused, all_fused, all_buffers
