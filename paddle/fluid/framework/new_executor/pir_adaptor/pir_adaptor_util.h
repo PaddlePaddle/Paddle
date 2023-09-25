@@ -172,7 +172,8 @@ void BuildPhiContext(
         InListType optional_inputs;
         ctx->EmplaceBackInputs(optional_inputs);
       } else {
-        InType optional_input = nullptr;
+        phi::DenseTensor* temp = nullptr;
+        InType optional_input(temp);
         ctx->EmplaceBackInput(optional_input);
       }
       VLOG(6) << "ctx->EmplaceBackInput : an optioanl input " << t;
@@ -385,7 +386,8 @@ void BuildPhiContext(
         OutListType optional_outputs;
         ctx->EmplaceBackOutputs(optional_outputs);
       } else {
-        OutType optional_input = nullptr;
+        phi::DenseTensor* temp = nullptr;
+        OutType optional_input(temp);
         ctx->EmplaceBackOutput(optional_input);
       }
       VLOG(6) << "ctx->EmplaceBackOutput : an optioanl output";
