@@ -90,7 +90,6 @@ void ReduceCudaAMaxAMinGrad(const Context& dev_ctx,
                              equal_out_tensor.dtype(),
                              false,
                              equal_count);
-
   // 3. dx = dout * 1
   phi::MultiplyKernel<T, Context>(
       dev_ctx, new_dout, equal_out_tensor, &equal_out_tensor);
