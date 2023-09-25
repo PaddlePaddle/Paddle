@@ -405,9 +405,7 @@ def apply_pass(main_program, startup_program, pass_name, pass_attr={}):
     assert pass_name in [
         "FThenB",
         "1F1B",
-    ], "pipeline scheduler only support FThenB and 1F1B, but recieve {}".format(
-        pass_name
-    )
+    ], f"pipeline scheduler only support FThenB and 1F1B, but recieve {pass_name}"
 
     if pass_name == "1F1B":
         # TODO(Ruibiao): Move FLAGS_1f1b_backward_forward_overlap and
