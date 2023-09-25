@@ -495,7 +495,6 @@ class DygraphShardingOptimizerV2:
         pp_overlap = strategy.hybrid_configs['pp_configs'].sharding_comm_overlap
 
         assert not self.comm_overlap, "not supported yet"
-        assert not pp_overlap, "not supported yet"
 
         self._set_inner_opt_attr('_parameter_list', self._local_parameter_list)
         self._set_inner_opt_attr('_param_groups', self._local_parameter_list)

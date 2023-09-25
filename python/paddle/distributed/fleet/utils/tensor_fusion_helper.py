@@ -120,7 +120,14 @@ def bw_hook_func(buffer, param):
 
 class ShardingGradView:
     def __init__(
-        self, param, buffer, index, padded_size, sharding_degree, rank
+        self,
+        param,
+        buffer,
+        index,
+        padded_size,
+        sharding_degree,
+        rank,
+        use_main_grad=False,
     ):
         self._param = param
         self._buffer = buffer
@@ -128,47 +135,22 @@ class ShardingGradView:
         self._padded_size = padded_size
         self._sharding_degree = sharding_degree
         self._rank = rank
-        self._slice_grad = []
+        padded_grad = self._buffer._slice(self._index, self._padded_size)
+        shard_size = self._padded_size // self._sharding_degree
+        begin = rank * shard_size
+        end = begin + shard_size
+        self._slice_grad = padded_grad._slice(begin, end)
 
-        for shard_id in range(sharding_degree):
-            begin = (
-                self._index
-                + shard_id * self.buffer._numel() // self._sharding_degree
-            )
-            end = begin + self._padded_size // self._sharding_degree
-            slice_grad = buffer._slice(begin, end)
-
-    def add_tmp_grad(self, tmp_grad):
-        # tmp_grad is hijacked by amp hook
-        if hasattr(self._param, "main_grad"):
-            assert self._param.main_grad is not None
-            assert not tmp_grad._is_initialized()
-            # hack main grad
-            (tmp_grad, self._param.main_grad) = (self._param.main_grad, self)
-
-        if tmp_grad._is_initialized():
-            self._add(tmp_grad)
-            tmp_grad._clear_data()
+        # share buffer to param grad
+        padded_grad.get_tensor()._set_dims(param.shape)
+        if not use_main_grad:
+            param._copy_gradient_from(padded_grad)
+        else:
+            param.main_grad = padded_grad
 
     def assign_slice_grad(self):
-        slice_grad = self._slice_grad[self._rank]
         assert hasattr(self._param, "shard_slice")
-        self._param.shard_slice._copy_gradient_from(slice_grad)
-
-    def _add(self, tmp_grad):
-        # hack main grad
-        print("_add grad")
-        tmp_grad_shape = tmp_grad.shape
-        tmp_grad.flatten_()
-        for shard_id in range(self._sharding_degree):
-            begin = shard_id * self._padded_size // self._sharding_degree
-            end = begin + self._padded_size // self._sharding_degree
-            end = min(end, self.tmp_grad._numel())
-            if begin < end:
-                self._slice_grad[shard_id]._slice(0, begin - end)._add(
-                    tmp_grad._slice(begin, end)
-                )
-        tmp_grad.get_tensor()._set_dims(tmp_grad_shape)
+        self._param.shard_slice._copy_gradient_from(self._slice_grad)
 
 
 def build_reduce_scatter_buffer(
@@ -187,7 +169,7 @@ def build_reduce_scatter_buffer(
 
     for param in parameters:
         assert param.trainable, "param must be trainable..."
-        param2index[param.name] = total_buffer_size // sharding_degree
+        param2index[param.name] = total_buffer_size
         total_buffer_size += get_padded_size(param)
 
     grad_dtype = paddle.float32 if use_main_grad else dtype
@@ -204,6 +186,7 @@ def build_reduce_scatter_buffer(
             padded_size,
             sharding_degree,
             rank,
+            use_main_grad,
         )
         # hack main_grad
         sharding_grad_view[param.name] = grad_view
@@ -274,7 +257,6 @@ class FusedCommBuffer:
                     fuse_param=False,
                     warp_buffer=False,
                 ).buffer
-            self._record_addr()
         else:
             assert not self._fuse_param, "not supported"
             self.param_storage = None
@@ -287,6 +269,7 @@ class FusedCommBuffer:
                 self._comm_group.rank,
                 use_main_grad=self.use_main_grad,
             )
+        self._record_addr()
 
     def _record_addr(self):
         for param in self._params:
@@ -315,19 +298,18 @@ class FusedCommBuffer:
 
     def add_grad(self, param, use_comm=True):
         assert param.name in self._params_step_dict
-        if self._act != HOOK_ACTION.REDUCE_SCATTER:
-            current_ptr = (
-                param.main_grad.data_ptr()
-                if self.use_main_grad
-                else param.grad.data_ptr()
+        current_ptr = (
+            param.main_grad.data_ptr()
+            if self.use_main_grad
+            else param.grad.data_ptr()
+        )
+        if self._grads_to_addr[param.name] != current_ptr:
+            raise ValueError(
+                "The address of the grad/main_grad of the param has been changed during training, "
+                "which is not allowed for dp/sharding overlap with pp. "
+                "This may be caused by some non-inplace operations on the grad/main_grad. "
+                "Please use the inplace version of the operations or disable the overlapping."
             )
-            if self._grads_to_addr[param.name] != current_ptr:
-                raise ValueError(
-                    "The address of the grad/main_grad of the param has been changed during training, "
-                    "which is not allowed for dp/sharding overlap with pp. "
-                    "This may be caused by some non-inplace operations on the grad/main_grad. "
-                    "Please use the inplace version of the operations or disable the overlapping."
-                )
 
         self._params_step_dict[param.name] += 1
 
@@ -372,15 +354,9 @@ class FusedCommBuffer:
             )
 
         elif self._act == HOOK_ACTION.REDUCE_SCATTER:
-            shard_size = self.grad_storage._numel() // self._comm_group.nranks
-            begin = self._shard_size * self._comm_group.rank
-            end = begin + shard_size
-            reduce_scattered = self.grad_storage._slice(begin, end)
-            task = paddle.distributed.reduce_scatter(
-                reduce_scattered,
-                self.grad_storage,
-                group=self._comm_group,
-                sync_op=False,
+            # use all reduce for now
+            task = paddle.distributed.all_reduce(
+                self.grad_storage, group=self._comm_group, sync_op=False
             )
             # assign slice grad
             for k, v in self._sharding_param_grad_view.items():

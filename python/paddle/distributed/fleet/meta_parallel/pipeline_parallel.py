@@ -314,13 +314,6 @@ class PipelineParallel(MetaParallelBase):
 
         return fused_allreduce
 
-    def grad_hook_func(self, buffer, param):
-        @paddle.autograd.no_grad()
-        def grad_hook(tmp_grad):
-            pass
-
-        return grad_hook
-
     def register_allreduce_overlap_hook(
         self, model, comm_group, acc_steps, dp, group_size=128 * 1024 * 1024
     ):
@@ -378,10 +371,6 @@ class PipelineParallel(MetaParallelBase):
                         param._register_backward_hook(
                             self.bw_hook_func(buffer, param)
                         )
-                        if act == HOOK_ACTION.REDUCE_SCATTER:
-                            param._register_grad_hook(
-                                self.grad_hook_func(buffer, param)
-                            )
 
     def timer_printer(self):
         if not self._enable_timer:
