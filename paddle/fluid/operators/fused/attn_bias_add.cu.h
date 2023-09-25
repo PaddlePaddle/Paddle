@@ -33,7 +33,6 @@ namespace cub = hipcub;
 #include "paddle/fluid/operators/elementwise/elementwise_functor.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/phi/kernels/funcs/fast_divmod.h"
 
 namespace paddle {
