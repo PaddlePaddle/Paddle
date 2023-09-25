@@ -43,32 +43,40 @@ PADDLE_THROW(phi::errors::Unimplemented(
 # TODO(chenweihang): add view support later
 MAIN_DIST_BRANCH_TEMPLATE = """
   // Auto Parallel condition
+  const phi::distributed::ProcessMesh* mesh = nullptr;
   if ({}) {{
-    // 1. InferSpmd (Infer DistAttr of Inputs&Outputs){}
-    // 2. Create API Output & Prepare Dist and Dense Output{}
-    // 3. Infer DistTensor's Global Shape{}
-    // 4. Select Kernel{}
-    // 5. Reshard Input{}\n
-    // 6. PrepareData (DataTransform & Prepare Dense Input){}
-    // 7. Infer Local DenseTensor Meta{}
-    // 8. DenseTensor Kernel Call{}
-    // 9. Reshard Partial Output to Replicated (Temporary){}\n
-    // 10. Return
+    // 1. Convert all inputs to DistTensor (Only support DenseTensor input now){}
+    // 2. InferSpmd (Infer DistAttr of Inputs&Outputs){}
+    // 3. Create API Output & Prepare Dist and Dense Output{}
+    // 4. Infer DistTensor's Global Shape{}
+    // 5. Select Kernel{}
+    // 6. Reshard Input{}\n
+    // 7. PrepareData (DataTransform & Prepare Dense Input){}
+    // 8. Infer Local DenseTensor Meta{}
+    // 9. DenseTensor Kernel Call{}
+    // 10. Reshard Partial Output to Replicated (Temporary){}\n
+    // 11. Return
     {}
   }}
 """
 
 # Auto Parallel condition
-AUTO_PARALLEL_COND_TEMPLATE = """AllInputsAreDistTensor({})"""
+AUTO_PARALLEL_COND_TEMPLATE = """mesh = InputsContainDistTensor({})"""
 
-# 1. InferSPMD
+# 1. Convert Inputs to DistTensor
+# TODO(GhostScreaming): support other type of Tensor, like phi::SelectedRows
+CONVERT_INPUTS_TO_DIST_TENSOR_TEMPLATE = """
+    ConvertAllInputsToDistTensor(mesh, {});
+"""
+
+# 2. InferSPMD
 SINGLE_DIST_META_IN_TEMPLATE = """
     auto meta_dist_{} = MakeDistMetaTensor(*{}.impl());"""
 INFER_SPMD_TEMPLATE = """
     auto spmd_info = phi::distributed::{}({});
 """
 
-# 2. Create API Outputs
+# 3. Create API Outputs
 API_OUT_CREATION_TEMPLATE = """
     {} api_output{};
 """
@@ -113,7 +121,7 @@ MULTI_VECTOR_INPLACE_AND_OPTIONAL_OUT_CREATION_TEMPLATE = """
     }}
 """
 
-# 3. Infer Global Shape
+# 4. Infer Global Shape
 # TODO(chenweihang): the input MetaTensor created by Inferspmd can be reused
 # for InferGlobalShape to avoid creating repeated inputs.
 SINGLE_GLOBAL_META_IN_TEMPLATE = """MakeMetaTensor(*{}.impl()), """
@@ -163,7 +171,7 @@ INFER_GLOBAL_SHAPE_TEMPLATE = """
     phi::{}({}{});
 """
 
-# 4. Select Kernel
+# 5. Select Kernel
 KERNEL_SELECTION_TEMPLATE = """
     VLOG(6) << "{} API dist branch: kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
     auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
@@ -173,11 +181,11 @@ KERNEL_SELECTION_TEMPLATE = """
     auto* dev_ctx = GetDeviceContextByBackend(kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
 """
 
-# 5. Reshard Input
+# 6. Reshard Input
 SINGLE_INPUT_RESHARD_TEMPLATE = """
     auto dist_input_{arg} = ReshardApiInputToKernelInput(dev_ctx, {arg}, spmd_info.first[{idx}]);"""
 
-# 6. PrepareData
+# 7. PrepareData
 SINGLE_PREPARE_DATA_TEMPLATE = """
     dist_input_{arg} = PrepareDataForDistTensor(dist_input_{arg}, GetKernelInputArgDef(kernel.InputAt({idx}), kernel_backend), {flag}, kernel_result.is_stride_kernel);
     auto input_{arg} = &dist_input_{arg}->value();
@@ -231,7 +239,7 @@ INFER_META_VECTOR_INPUT_TEMPLATE = """
     const auto& input_{} = *input_{}_uq_ptr;
 """
 
-# 7. Infer Local DenseTensor Meta
+# 8. Infer Local DenseTensor Meta
 SINGLE_META_IN_TEMPLATE = """MakeMetaTensor(*input_{}), """
 VECTOR_META_IN_TEMPLATE = """dense_input_{}_meta_ptr_vec, """
 OPTIONAL_SINGLE_META_IN_TEMPLATE = """MakeMetaTensor(input_{}), """
@@ -249,7 +257,7 @@ INFER_META_TEMPLATE = """
     phi::{}({}{});
 """
 
-# 8. DenseTensor Kernel Call
+# 9. DenseTensor Kernel Call
 # TODO(chenweihang): support kernel fallback later
 SINGLE_OUTPUT_NAME = """dense_out"""
 # TODO(chenweihang): support vector and tuple output later
@@ -281,7 +289,7 @@ VECTOR_SET_DIST_OUT_DIMS = """
 PREFIX_VECTOR_TENSOR_NAME = "dense_input_"
 SUFFIX_VECTOR_TENSOR_NAME = "_vec"
 
-# 9. Reshard Partial Output to Replicated
+# 10. Reshard Partial Output to Replicated
 RESHARD_P2R_SINGLE_OUTPUT_TEMPLATE = """
     ReshardOutputPartialAxisToReplicated(dev_ctx, dist_out);"""
 RESHARD_P2R_MULTI_SINGLE_OUTPUT_TEMPLATE = """
@@ -381,6 +389,14 @@ class DistForwardAPI(ForwardAPI):
         if len(input_args) > 2:
             input_args = input_args[:-2]
         return AUTO_PARALLEL_COND_TEMPLATE.format(input_args)
+
+    def generate_convert_input_code(self) -> str:
+        input_args = ""
+        for input_name in self.inputs['names']:
+            input_args = input_args + input_name + ", "
+        if len(input_args) > 2:
+            input_args = input_args[:-2]
+        return CONVERT_INPUTS_TO_DIST_TENSOR_TEMPLATE.format(input_args)
 
     def generate_infer_spmd_code(self) -> str:
         if self.infer_meta['spmd_rule'] is not None:
@@ -1003,6 +1019,7 @@ class DistForwardAPI(ForwardAPI):
             return ""
         return MAIN_DIST_BRANCH_TEMPLATE.format(
             self.generate_if_condition_code(),
+            self.generate_convert_input_code(),
             self.generate_infer_spmd_code(),
             self.generate_output_creation_code(),
             self.generate_infer_global_shape_code(),

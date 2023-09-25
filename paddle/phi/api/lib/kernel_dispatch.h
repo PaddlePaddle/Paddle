@@ -18,6 +18,7 @@ limitations under the License. */
 #include <string>
 #include <utility>
 
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/api/lib/backend_set.h"
 #include "paddle/phi/api/lib/data_type_set.h"
@@ -171,33 +172,37 @@ struct KernelTypeParser : ArgsIterator<KernelTypeParser> {
 /* ------------------ for auto parallel ----------------------- */
 
 struct DistTensorTypeParser : ArgsIterator<DistTensorTypeParser> {
-  bool result = true;
+  // TODO(GhostScreaming): Should we judge all input DistTensors have same mesh?
+  const phi::distributed::ProcessMesh* mesh = nullptr;
 
-  void operator()(const Tensor& x) { result &= x.is_dist_tensor(); }
+  void operator()(const Tensor& x);
+  void operator()(const paddle::optional<Tensor>& x);
+  void operator()(const std::vector<Tensor>& x);
+  void operator()(const paddle::optional<std::vector<Tensor>>& x);
 
-  void operator()(const paddle::optional<Tensor>& x) {
-    if (x) {
-      result &= x.get_ptr()->is_dist_tensor();
-    }
+  // skip other type args, these args don't used in kernel selection
+  template <typename T>
+  void operator()(const T& x) {
+    // do nothing
+  }
+};
+
+struct DistTensorConverter : ArgsIterator<DistTensorConverter> {
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+
+  explicit DistTensorConverter(const phi::distributed::ProcessMesh* m) {
+    PADDLE_ENFORCE_NE(
+        m,
+        nullptr,
+        platform::errors::InvalidArgument(
+            "Input mesh of DistTensorConverter() shouldn't be nullptr."));
+    mesh = m;
   }
 
-  void operator()(const std::vector<Tensor>& x) {
-    if (!x.empty()) {
-      for (auto& t : x) {
-        result &= t.is_dist_tensor();
-      }
-    }
-  }
-
-  void operator()(const paddle::optional<std::vector<Tensor>>& x) {
-    if (x) {
-      if (!(x.get_ptr()->empty())) {
-        for (auto& t : *(x.get_ptr())) {
-          result &= t.is_dist_tensor();
-        }
-      }
-    }
-  }
+  void operator()(Tensor* x);
+  void operator()(paddle::optional<Tensor>* x);
+  void operator()(std::vector<Tensor>* x);
+  void operator()(paddle::optional<std::vector<Tensor>>* x);
 
   // skip other type args, these args don't used in kernel selection
   template <typename T>
@@ -239,8 +244,15 @@ DataLayout ParseLayout(const Tensor& tensor);
 DataLayout ParseLayoutWithInputOrder(DataLayout layout, const Tensor& tensor);
 
 template <typename... Args>
-bool AllInputsAreDistTensor(const Args&... args) {
-  return detail::DistTensorTypeParser().apply(args...).result;
+const phi::distributed::ProcessMesh* InputsContainDistTensor(
+    const Args&... args) {
+  return detail::DistTensorTypeParser().apply(args...).mesh;
+}
+
+template <typename... Args>
+void ConvertAllInputsToDistTensor(const phi::distributed::ProcessMesh* mesh,
+                                  Args&... args) {
+  detail::DistTensorConverter(mesh).apply(&args...);
 }
 
 }  // namespace experimental

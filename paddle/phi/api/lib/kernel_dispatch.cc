@@ -102,6 +102,156 @@ std::size_t CountLeadingZeros(uint32_t val) {
 #endif
 }
 
+/* ------------------ for auto parallel ----------------------- */
+
+void DistTensorTypeParser::operator()(const Tensor& x) {
+  if (mesh) {
+    return;
+  }
+  if (x.is_dist_tensor()) {
+    mesh = &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(x.impl())
+                 ->dist_attr()
+                 .process_mesh());
+  }
+}
+
+void DistTensorTypeParser::operator()(const paddle::optional<Tensor>& x) {
+  if (mesh) {
+    return;
+  }
+  if (x) {
+    if (x.get_ptr()->is_dist_tensor()) {
+      mesh = &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                   x.get_ptr()->impl())
+                   ->dist_attr()
+                   .process_mesh());
+    }
+  }
+}
+
+void DistTensorTypeParser::operator()(const std::vector<Tensor>& x) {
+  if (mesh) {
+    return;
+  }
+  if (!x.empty()) {
+    for (auto& t : x) {
+      if (t.is_dist_tensor()) {
+        mesh =
+            &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(t.impl())
+                  ->dist_attr()
+                  .process_mesh());
+      }
+    }
+  }
+}
+
+void DistTensorTypeParser::operator()(
+    const paddle::optional<std::vector<Tensor>>& x) {
+  if (mesh) {
+    return;
+  }
+  if (x) {
+    if (!(x.get_ptr()->empty())) {
+      for (auto& t : *(x.get_ptr())) {
+        if (t.is_dist_tensor()) {
+          mesh = &(
+              std::dynamic_pointer_cast<phi::distributed::DistTensor>(t.impl())
+                  ->dist_attr()
+                  .process_mesh());
+        }
+      }
+    }
+  }
+}
+
+void DistTensorConverter::operator()(Tensor* x) {
+  if (x->is_dist_tensor()) {
+    return;
+  } else {
+    PADDLE_ENFORCE_EQ(
+        phi::DenseTensor::classof(x->impl().get()),
+        true,
+        platform::errors::InvalidArgument(
+            "Failed to convert input %s impl to phi::distributed::DistTensor "
+            "as it's not phi::DenseTensor.",
+            x->name()));
+    phi::distributed::TensorDistAttr dist_attr(
+        phi::vectorize(x->impl()->dims()));
+    dist_attr.set_process_mesh(*mesh);
+    auto dense_t = static_cast<phi::DenseTensor*>(x->impl().get());
+    x->set_impl(
+        std::make_shared<phi::distributed::DistTensor>(*dense_t, dist_attr));
+  }
+}
+
+void DistTensorConverter::operator()(paddle::optional<Tensor>* x) {
+  if (*x) {
+    if (x->get_ptr()->is_dist_tensor()) {
+      return;
+    } else {
+      PADDLE_ENFORCE_EQ(
+          phi::DenseTensor::classof(x->get_ptr()->impl().get()),
+          true,
+          platform::errors::InvalidArgument(
+              "Failed to convert input %s impl to phi::distributed::DistTensor "
+              "as it's not phi::DenseTensor.",
+              x->get_ptr()->name()));
+      phi::distributed::TensorDistAttr dist_attr(
+          phi::vectorize(x->get_ptr()->impl()->dims()));
+      dist_attr.set_process_mesh(*mesh);
+      auto dense_t = static_cast<phi::DenseTensor*>(x->get_ptr()->impl().get());
+      x->get_ptr()->set_impl(
+          std::make_shared<phi::distributed::DistTensor>(*dense_t, dist_attr));
+    }
+  }
+}
+
+void DistTensorConverter::operator()(std::vector<Tensor>* x) {
+  if (!x->empty()) {
+    for (auto& t : *x) {
+      if (!t.is_dist_tensor()) {
+        PADDLE_ENFORCE_EQ(
+            phi::DenseTensor::classof(t.impl().get()),
+            true,
+            platform::errors::InvalidArgument(
+                "Failed to convert input %s impl to "
+                "phi::distributed::DistTensor as it's not phi::DenseTensor.",
+                t.name()));
+        phi::distributed::TensorDistAttr dist_attr(
+            phi::vectorize(t.impl()->dims()));
+        dist_attr.set_process_mesh(*mesh);
+        auto dense_t = static_cast<phi::DenseTensor*>(t.impl().get());
+        t.set_impl(std::make_shared<phi::distributed::DistTensor>(*dense_t,
+                                                                  dist_attr));
+      }
+    }
+  }
+}
+
+void DistTensorConverter::operator()(paddle::optional<std::vector<Tensor>>* x) {
+  if (*x) {
+    if (!(x->get_ptr()->empty())) {
+      for (auto& t : *(x->get_ptr())) {
+        if (!t.is_dist_tensor()) {
+          PADDLE_ENFORCE_EQ(
+              phi::DenseTensor::classof(t.impl().get()),
+              true,
+              platform::errors::InvalidArgument(
+                  "Failed to convert input %s impl to "
+                  "phi::distributed::DistTensor as it's not phi::DenseTensor.",
+                  t.name()));
+          phi::distributed::TensorDistAttr dist_attr(
+              phi::vectorize(t.impl()->dims()));
+          dist_attr.set_process_mesh(*mesh);
+          auto dense_t = static_cast<phi::DenseTensor*>(t.impl().get());
+          t.set_impl(std::make_shared<phi::distributed::DistTensor>(*dense_t,
+                                                                    dist_attr));
+        }
+      }
+    }
+  }
+}
+
 }  // namespace detail
 
 phi::DeviceContext* GetDeviceContextByBackend(phi::Backend backend) {

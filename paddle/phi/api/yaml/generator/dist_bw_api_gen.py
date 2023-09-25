@@ -24,22 +24,24 @@ from dist_api_gen import DistForwardAPI
 
 MAIN_DIST_BRANCH_TEMPLATE = """
   // Auto Parallel condition
+  const phi::distributed::ProcessMesh* mesh = nullptr;
   if ({}) {{
-    // 1. InferSpmd (Infer DistAttr of Inputs&Outputs){}
-    // 2. Create Temporary Output & Prepare Dist and Dense Output{}
-    // 3. Infer DistTensor's Global Shape{}
-    // 4. Select Kernel{}
-    // 5. Reshard Input{}\n
-    // 6. PrepareData (DataTransform & Prepare Dense Input){}
-    // 7. Infer Local DenseTensor Meta{}
-    // 8. DenseTensor Kernel Call{}
-    // 9. Reshard Output{}\n
-    // 10. Return
+    // 1. Convert all inputs to DistTensor (Only support DenseTensor input now){}
+    // 2. InferSpmd (Infer DistAttr of Inputs&Outputs){}
+    // 3. Create Temporary Output & Prepare Dist and Dense Output{}
+    // 4. Infer DistTensor's Global Shape{}
+    // 5. Select Kernel{}
+    // 6. Reshard Input{}\n
+    // 7. PrepareData (DataTransform & Prepare Dense Input){}
+    // 8. Infer Local DenseTensor Meta{}
+    // 9. DenseTensor Kernel Call{}
+    // 10. Reshard Output{}\n
+    // 11. Return
     {}
   }}
 """
 
-# 1. Create API Outputs
+# 2. Create API Outputs
 SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD = """
     auto dist_out = SetKernelDistOutput({});
     auto dense_out = dist_out->unsafe_mutable_value();
@@ -78,7 +80,7 @@ MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
     phi::DenseTensor* dense_out_{idx} = dist_out_{idx}->unsafe_mutable_value();
 """
 
-# 4. PrepareData (DataTransform & Prepare Dist and Dense Input)
+# 5. PrepareData (DataTransform & Prepare Dist and Dense Input)
 SINGLE_PREPARE_DATA_TEMPLATE = """
     auto dist_input_{arg} = PrepareDataForDistTensor({arg}, GetKernelInputArgDef(kernel.InputAt({idx}), kernel_backend), {flag}, kernel_result.is_stride_kernel);
     auto input_{arg} = &dist_input_{}->value();
@@ -91,7 +93,7 @@ MULTI_VECTOR_OUT_CREATION_TEMPLATE = """
     }}
 """
 
-# 9. Reshard Output
+# 10. Reshard Output
 RESHARD_SINGLE_OUTPUT_TEMPLATE = """
     ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out, {});"""
 RESHARD_MULTI_SINGLE_OUTPUT_TEMPLATE = """
@@ -247,6 +249,7 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
             return ""
         return MAIN_DIST_BRANCH_TEMPLATE.format(
             self.generate_if_condition_code(),
+            self.generate_convert_input_code(),
             self.generate_infer_spmd_code(),
             self.generate_output_creation_code(),
             self.generate_infer_global_shape_code(),
