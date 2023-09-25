@@ -135,7 +135,9 @@ class ShardingGradView:
         self._padded_size = padded_size
         self._sharding_degree = sharding_degree
         self._rank = rank
-        padded_grad = self._buffer._slice(self._index, self._padded_size)
+        padded_grad = self._buffer._slice(
+            self._index, self._index + self._padded_size
+        )
         shard_size = self._padded_size // self._sharding_degree
         begin = rank * shard_size
         end = begin + shard_size
@@ -319,13 +321,6 @@ class FusedCommBuffer:
 
         if self._all_params_checked_in and use_comm:
             self.comm_grads()
-
-    def add_tmp_grad(self, param, tmp_grad):
-        """called through bw grad hook"""
-        assert self._act == HOOK_ACTION.REDUCE_SCATTER
-        assert param.name in self._sharding_param_grad_view
-        grad_view = self._sharding_param_grad_view[param.name]
-        grad_view.add_tmp_grad(tmp_grad)
 
     @imperative_base.no_grad
     def comm_grads(self):
