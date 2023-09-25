@@ -155,8 +155,8 @@ void BuildPhiContext(
 
   auto attr_map = op->attributes();
 
+  // EmplaceBackInput
   auto& vec_kernel_fn_tensor_params = op_yaml_info.TensorParams(is_kernel);
-
   auto& name2id = op_yaml_info.InputName2Id();
   for (auto& t : vec_kernel_fn_tensor_params) {
     PADDLE_ENFORCE_EQ(

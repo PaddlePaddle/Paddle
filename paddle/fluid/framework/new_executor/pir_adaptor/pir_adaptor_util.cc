@@ -202,7 +202,7 @@ void BuildValue(pir::Value value,
                 const std::string& var_name_prefix,
                 paddle::framework::ValueExecutionInfo* value_exe_info) {
   if ((!value) || (!value.type())) {
-    continue;
+    return;
   }
 
   paddle::framework::Variable* var = nullptr;
