@@ -1504,7 +1504,7 @@ def get_setup_parameters():
         'paddle.geometric',
         'paddle.geometric.message_passing',
         'paddle.geometric.sampling',
-        'paddle.ir',
+        'paddle.pir',
         'paddle.decomposition',
     ]
 
