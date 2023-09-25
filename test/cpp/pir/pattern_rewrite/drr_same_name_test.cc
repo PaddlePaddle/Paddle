@@ -29,27 +29,22 @@ class SameNameTestPattern
     : public pir::drr::DrrPatternBase<SameNameTestPattern> {
  public:
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    // Source patterns：待匹配的子图
+    // Source re sterns：待匹配的子图
     pir::drr::SourcePattern src = ctx->SourcePattern();
-    // const auto &full_input1 = src.Op("pd_op.full",
-    //                                   {{"shape", src.Attr("shape_intput1")},
-    //                                   {"value", src.Attr("value_intput1")},
-    //                                   {"dtype", src.Attr("dtype_intput1")},
-    //                                   {"place", src.Attr("place_intput1")}});
-    // src.Tensor("input_1") = full_input1();
 
     // path 2
-    const auto &transpose_1 = src.Op("pd_op.transpose");
+    const auto &transpose_1 =
+        src.Op("pd_op.transpose", {{"perm", src.Attr("perm_1")}});
     src.Tensor("transpose_1_out") = transpose_1(src.Tensor("input_1"));
     const auto &softmax_2 =
         src.Op("pd_op.softmax", {{"axis", src.Attr("softmax_2_axis")}});
-    src.Tensor("soft_2_out") = softmax_2(src.Tensor("transpose_1_out"));
+    src.Tensor("softmax_2_out") = softmax_2(src.Tensor("transpose_1_out"));
     const auto &matmul_2 =
         src.Op("pd_op.matmul",
                {{"transpose_x", src.Attr("matmul_2_transpose_x")},
                 {"transpose_y", src.Attr("matmul_2_transpose_y")}});
     src.Tensor("matmul_2_out") =
-        matmul_2(src.Tensor("soft_2_out"), src.Tensor("input_1"));
+        matmul_2(src.Tensor("softmax_2_out"), src.Tensor("input_1"));
 
     // path 1
     const auto &full_1 = src.Op("pd_op.full",
@@ -61,23 +56,22 @@ class SameNameTestPattern
     const auto &softmax_1 =
         src.Op("pd_op.softmax", {{"axis", src.Attr("softmax_1_axis")}});
     src.Tensor("softmax_1_out") = softmax_1(src.Tensor("full_1_out"));
-    const auto &layernorm_1 = src.Op(
-        "pd_op.layernorm",
-        {{"epsilon", src.Attr("layernorm_epsilon")},
-         {"begin_norm_axis",
-          src.Attr(
-              "layernorm_begin_norm_axis")}});  // TODO(gst):
-                                                // layernorm的attribute 添加
-    layernorm_1({&src.Tensor("softmax_1_out"),
+    const auto &layernorm_1 =
+        src.Op("pd_op.layer_norm",
+               {{"epsilon", src.Attr("layernorm_epsilon")},
+                {"begin_norm_axis", src.Attr("layernorm_begin_norm_axis")}});
+    layernorm_1({&src.Tensor("transpose_1_out"),
                  &src.Tensor("full_1_out"),
-                 &src.Tensor("transpose_1_out")},
+                 &src.Tensor("softmax_1_out")},
                 {&src.Tensor("output0"),
                  &src.Tensor("output1"),
                  &src.Tensor("output2")});
 
     // path 3
-    const auto &transpose_2 = src.Op("pd_op.transpose");
-    const auto &transpose_3 = src.Op("pd_op.transpose");
+    const auto &transpose_2 =
+        src.Op("pd_op.transpose", {{"perm", src.Attr("perm_2")}});
+    const auto &transpose_3 =
+        src.Op("pd_op.transpose", {{"perm", src.Attr("perm_3")}});
     const auto &matmul_1 =
         src.Op("pd_op.matmul",
                {{"transpose_x", src.Attr("matmul_1_transpose_x")},
@@ -90,9 +84,12 @@ class SameNameTestPattern
                 {"transpose_y", src.Attr("matmul_3_transpose_y")}});
     src.Tensor("matmul_3_out") =
         matmul_3(src.Tensor("matmul_2_out"), src.Tensor("matmul_1_out"));
-    const auto &transpose_4 = src.Op("pd_op.transpose");
-    const auto &transpose_5 = src.Op("pd_op.transpose");
-    const auto &transpose_6 = src.Op("pd_op.transpose");
+    const auto &transpose_4 =
+        src.Op("pd_op.transpose", {{"perm", src.Attr("perm_4")}});
+    const auto &transpose_5 =
+        src.Op("pd_op.transpose", {{"perm", src.Attr("perm_5")}});
+    const auto &transpose_6 =
+        src.Op("pd_op.transpose", {{"perm", src.Attr("perm_6")}});
     const auto &relu_1 = src.Op("pd_op.relu");
     const auto &softmax_3 =
         src.Op("pd_op.softmax", {{"axis", src.Attr("softmax_3_axis")}});
@@ -114,41 +111,43 @@ class SameNameTestPattern
         add_1(src.Tensor("input_1"), src.Tensor("full_tmp_out"));
     const auto &add_2 = src.Op("pd_op.add");
     src.Tensor("add_2_out") =
-        add_2(src.Tensor("full_tmp_out"), src.Tensor("add_1_out"));
+        add_2(src.Tensor("add_1_out"), src.Tensor("full_tmp_out"));
     const auto &relu_2 = src.Op("pd_op.relu");
-    src.Tensor("outpu6") = relu_2(src.Tensor("add_2_out"));
+    src.Tensor("output6") = relu_2(src.Tensor("add_2_out"));
 
     // Result patterns：要替换为的子图
     pir::drr::ResultPattern res = src.ResultPattern();
-    const auto &transpose_7 = res.Op("pd_op.transpose");
+    const auto &transpose_7 =
+        res.Op("pd_op.transpose", {{"perm", src.Attr("perm_4")}});
     res.Tensor("output0") = transpose_7(res.Tensor("input_1"));
-    const auto &transpose_8 = res.Op("pd_op.transpose");
+    const auto &transpose_8 =
+        res.Op("pd_op.transpose", {{"perm", src.Attr("perm_5")}});
     res.Tensor("output1") = transpose_8(res.Tensor("input_1"));
     const auto &full_2 = res.Op("pd_op.full",
-                                {{"shape", res.Attr("shape_2")},
-                                 {"value", res.Attr("value_2")},
-                                 {"dtype", res.Attr("dtype_2")},
-                                 {"place", res.Attr("place_2")}});
+                                {{"shape", src.Attr("shape_tmp")},
+                                 {"value", src.Attr("value_tmp")},
+                                 {"dtype", src.Attr("dtype_tmp")},
+                                 {"place", src.Attr("place_tmp")}});
     const auto &full_3 = res.Op("pd_op.full",
-                                {{"shape", res.Attr("shape_3")},
-                                 {"value", res.Attr("value_3")},
-                                 {"dtype", res.Attr("dtype_3")},
-                                 {"place", res.Attr("place_3")}});
+                                {{"shape", src.Attr("shape_tmp")},
+                                 {"value", src.Attr("value_tmp")},
+                                 {"dtype", src.Attr("dtype_tmp")},
+                                 {"place", src.Attr("place_tmp")}});
     const auto &full_4 = res.Op("pd_op.full",
-                                {{"shape", res.Attr("shape_4")},
-                                 {"value", res.Attr("value_4")},
-                                 {"dtype", res.Attr("dtype_4")},
-                                 {"place", res.Attr("place_4")}});
+                                {{"shape", src.Attr("shape_tmp")},
+                                 {"value", src.Attr("value_tmp")},
+                                 {"dtype", src.Attr("dtype_tmp")},
+                                 {"place", src.Attr("place_tmp")}});
     const auto &full_5 = res.Op("pd_op.full",
-                                {{"shape", res.Attr("shape_5")},
-                                 {"value", res.Attr("value_5")},
-                                 {"dtype", res.Attr("dtype_5")},
-                                 {"place", res.Attr("place_5")}});
+                                {{"shape", src.Attr("shape_tmp")},
+                                 {"value", src.Attr("value_tmp")},
+                                 {"dtype", src.Attr("dtype_tmp")},
+                                 {"place", src.Attr("place_tmp")}});
     const auto &full_6 = res.Op("pd_op.full",
-                                {{"shape", res.Attr("shape_6")},
-                                 {"value", res.Attr("value_6")},
-                                 {"dtype", res.Attr("dtype_6")},
-                                 {"place", res.Attr("place_6")}});
+                                {{"shape", src.Attr("shape_tmp")},
+                                 {"value", src.Attr("value_tmp")},
+                                 {"dtype", src.Attr("dtype_tmp")},
+                                 {"place", src.Attr("place_tmp")}});
     res.Tensor("output2") = full_2();
     res.Tensor("output3") = full_3();
     res.Tensor("output4") = full_4();
@@ -177,13 +176,16 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
                                                full_input_op1.out());
 
   // path 1
-  paddle::dialect::FullOp full_op_bias = builder.Build<paddle::dialect::FullOp>(
-      std::vector<int64_t>{48}, 1.5, phi::DataType::FLOAT32, phi::CPUPlace());
-  paddle::dialect::SoftmaxOp softmax_op_scale =
-      builder.Build<paddle::dialect::SoftmaxOp>(full_op_bias.out(), -1);
+  paddle::dialect::FullOp full_op_scale =
+      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{48},
+                                             1.5,
+                                             phi::DataType::FLOAT32,
+                                             phi::CPUPlace());
+  paddle::dialect::SoftmaxOp softmax_op_bias =
+      builder.Build<paddle::dialect::SoftmaxOp>(full_op_scale.out(), -1);
   paddle::dialect::LayerNormOp layernorm_op1 =
       builder.Build<paddle::dialect::LayerNormOp>(
-          transpose_op1.out(), softmax_op_scale.out(), full_op_bias.out());
+          transpose_op1.out(), full_op_scale.out(), softmax_op_bias.out());
 
   // path 3
   paddle::dialect::TransposeOp transpose_op2 =
@@ -301,5 +303,5 @@ TEST(DrrTest, drr_demo) {
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);
-  EXPECT_EQ(program.block()->size(), 7u);
+  EXPECT_EQ(program.block()->size(), 13u);
 }
