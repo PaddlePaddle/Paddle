@@ -25,7 +25,7 @@ class ParametersRecorder:
 
     @synchronized
     def get(self, program, tensor):
-        from paddle.ir.core import create_parameter, vartype_to_datatype
+        from paddle.pir.core import create_parameter, vartype_to_datatype
 
         """use the default_program as key, append tensor the parameter list."""
         key = _program_hash(program)

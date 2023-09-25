@@ -311,7 +311,7 @@ def _convert_into_opresult(tensor):
         elif isinstance(tensor, framework.EagerParamBase):
             # Convert EagerParamBase into Parameter with same attributes in dy2stat.
             new_var = _global_parameter_recorder.get(
-                paddle.ir.core.default_main_program(), tensor
+                paddle.pir.core.default_main_program(), tensor
             )
         else:
             # TODO(xiongkun): add this logic, we should call paddle.data() to create a non-parameter variable.
