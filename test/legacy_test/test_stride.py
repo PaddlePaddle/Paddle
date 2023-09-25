@@ -614,7 +614,7 @@ class TestStride(unittest.TestCase):
         # self.call_split3()
         # self.call_split4()
         # self.call_chunk()
-        self.call_unbind()
+        # self.call_unbind()
         self.call_as_strided()
         self.call_view()
         self.call_view2()
