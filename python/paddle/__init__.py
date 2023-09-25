@@ -499,6 +499,7 @@ from .device import (  # noqa: F401
 
 # high-level api
 from . import (  # noqa: F401
+    callbacks,
     hub,
     linalg,
     fft,
