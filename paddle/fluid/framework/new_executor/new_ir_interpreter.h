@@ -24,7 +24,7 @@ class Block;
 
 namespace paddle {
 namespace framework {
-
+class ValueExecutionInfo;
 class NewIRInterpreter : public InterpreterBaseImpl {
   using ExecutionConfig = interpreter::ExecutionConfig;
   using InstructionSchedulingPriorityLess = std::function<bool(size_t, size_t)>;
@@ -83,10 +83,6 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) override {
     hookfuncs_ = hookfuncs;
   }
-
-  std::string GetNameById(int id) const;
-
-  int GetIdByName(const std::string& name) const;
 
   std::string GetNameByValue(::pir::Value value) const;
 

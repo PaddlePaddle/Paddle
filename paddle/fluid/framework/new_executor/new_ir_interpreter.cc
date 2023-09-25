@@ -32,7 +32,6 @@
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
-#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/device_manager.h"
@@ -43,12 +42,12 @@
 #include "paddle/fluid/framework/new_executor/instruction/cond_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
+#include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/fluid/pir/phi_kernel_adaptor/phi_kernel_util.h"
 #include "paddle/pir/core/builtin_attribute.h"
 
 PHI_DECLARE_bool(enable_new_ir_in_executor);
@@ -193,14 +192,6 @@ NewIRInterpreter::~NewIRInterpreter() {
 #endif
 }
 
-int NewIRInterpreter::GetIdByName(const std::string& name) const {
-  auto it = value_exe_info_->GetVarName2Id().find(name);
-  if (it != value_exe_info_->GetVarName2Id().end()) {
-    return it->second;
-  }
-  return -1;
-}
-
 void NewIRInterpreter::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
   PADDLE_THROW(platform::errors::Unimplemented(
       "SetCopyProgram is not implemented in NewIRInterpreter."));
@@ -242,7 +233,7 @@ void NewIRInterpreter::reset_scope(Scope* new_scope) {
   var_scope_.SetScope(new_scope);
   scope_ = new_scope;
   for (size_t i = 0; i < value_exe_info_->GetVarList().size(); i++) {
-    const auto& var_name = GetNameById(static_cast<int>(i));
+    const auto& var_name = value_exe_info_->GetNameById(static_cast<int>(i));
     value_exe_info_->ResetVarList(i, new_scope->FindVar(var_name));
   }
   // The index should be assured valid, cause the InterpreterCore may not be
@@ -257,20 +248,6 @@ void NewIRInterpreter::reset_scope(Scope* new_scope) {
 }
 
 const Scope* NewIRInterpreter::local_scope() const { return local_scope_; }
-
-std::string NewIRInterpreter::GetNameById(int id) const {
-  // NOTE(zhiqiu): do not use vec_meta_info_[id].vardesc_->Name() since
-  // vec_meta_info_[id] may be nullptr,
-  // typically when the target variable is not existed in the original program
-  // desc, but created by interpretercore.
-  // For example, created and used by d2h_copy or h2d_copy operator.
-
-  auto it = value_exe_info_->GetId2VarName().find(id);
-  if (it != value_exe_info_->GetId2VarName().end()) {
-    return it->second;
-  }
-  return "";
-}
 
 void NewIRInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
   async_work_queue_ = reinterpret_cast<NewIRInterpreter*>(src)->GetWorkQueue();
@@ -805,11 +782,12 @@ void NewIRInterpreter::RecordStreamForGC(InstructionBase* instr) {
    * supported later.
    */
   for (int var_id : instr->GCCheckVars()) {
-    VLOG(4) << "GC sync " << GetNameById(var_id);
+    VLOG(4) << "GC sync " << value_exe_info_->GetNameById(var_id);
 
     // persistable var will be ignore while GC
-    if (parameter_var_names_.count(GetNameById(var_id))) {
-      VLOG(4) << GetNameById(var_id) << " is a parameter, skip gc";
+    if (parameter_var_names_.count(value_exe_info_->GetNameById(var_id))) {
+      VLOG(4) << value_exe_info_->GetNameById(var_id)
+              << " is a parameter, skip gc";
       continue;
     }
 
@@ -853,19 +831,20 @@ void NewIRInterpreter::CheckGC(InstructionBase* instr) {
 #endif
 
   for (auto var_id : instr->GCCheckVars()) {
-    VLOG(4) << "GC:" << GetNameById(static_cast<int>(var_id))
+    VLOG(4) << "GC:" << value_exe_info_->GetNameById(static_cast<int>(var_id))
             << ", id:" << var_id << ", ref:" << refs_[var_id]->DynamicRef();
     bool is_ready = refs_[var_id]->CheckAndDecrease();
     // ignore all persistable var while GCphi
-    if (parameter_var_names_.count(GetNameById(static_cast<int>(var_id)))) {
-      VLOG(4) << GetNameById(static_cast<int>(var_id))
+    if (parameter_var_names_.count(
+            value_exe_info_->GetNameById(static_cast<int>(var_id)))) {
+      VLOG(4) << value_exe_info_->GetNameById(static_cast<int>(var_id))
               << " is a parameter, skip gc";
       continue;
     }
 
     if (is_ready) {
       VLOG(6) << "Async delete variable with name : "
-              << GetNameById(static_cast<int>(var_id));
+              << value_exe_info_->GetNameById(static_cast<int>(var_id));
       gc_->Add(refs_[var_id]->Var(), instr);
     }
   }
@@ -900,13 +879,14 @@ void NewIRInterpreter::CalculateLastLiveOps() {
 
     for (auto var_id : gc_check_vars) {
       Scope* inner_scope = InnerScope();
-      paddle::framework::Variable* var =
-          inner_scope->FindVar(GetNameById(static_cast<int>(var_id)));
+      paddle::framework::Variable* var = inner_scope->FindVar(
+          value_exe_info_->GetNameById(static_cast<int>(var_id)));
       if (var->IsType<phi::DenseTensor>() || var->IsType<phi::SelectedRows>() ||
           var->IsType<LoDTensorArray>()) {
         last_live_ops_[var_id].insert(op_idx);
       } else {
-        VLOG(4) << "not clear " << GetNameById(static_cast<int>(var_id))
+        VLOG(4) << "not clear "
+                << value_exe_info_->GetNameById(static_cast<int>(var_id))
                 << " after " << instr->Name() << " because its type is "
                 << framework::ToTypeName(var->Type());
       }
@@ -914,7 +894,7 @@ void NewIRInterpreter::CalculateLastLiveOps() {
   }
   // clear the last_live_ops list for all vars in skip_gc_vars
   for (const std::string& skip_gc_var : execution_config_.skip_gc_vars) {
-    int var_id = GetIdByName(skip_gc_var);
+    int var_id = value_exe_info_->GetIdByName(skip_gc_var);
     if (var_id != -1) {
       last_live_ops_[var_id].clear();
       VLOG(8) << "Skip gc for var: " << skip_gc_var;
@@ -954,8 +934,8 @@ void NewIRInterpreter::CalculateLastLiveOps() {
       }
       if (not_before_any) {
         VLOG(6) << "last live op of var " << i << " "
-                << GetNameById(static_cast<int>(i)) << " : " << item << " "
-                << vec_instruction_base_[item]->Name();
+                << value_exe_info_->GetNameById(static_cast<int>(i)) << " : "
+                << item << " " << vec_instruction_base_[item]->Name();
         minumum_last_live_ops.insert(item);
         vec_instruction_base_[item]->AddGCCheckVar(i);
       }
@@ -981,7 +961,7 @@ void NewIRInterpreter::ConstructEventForJitInput() {
           platform::is_gpu_place(place_)) {
         for (auto& item : inst->Inputs()) {
           for (auto var_id : item.second) {
-            auto name = GetNameById(var_id);
+            auto name = value_exe_info_->GetNameById(var_id);
             if (JitInputVars().count(name)) {
               auto device_event = std::make_shared<platform::DeviceEvent>(
                   place_, platform::GenerateDeviceEventFlag());

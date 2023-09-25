@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/phi_kernel_adaptor/phi_kernel_util.h"
+#include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
@@ -41,10 +41,92 @@
 #include "paddle/phi/core/enforce.h"
 
 #include "glog/logging.h"
-#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
+
+namespace paddle {
+namespace framework {
+std::shared_ptr<ValueExecutionInfo> ValueExecutionInfo::NewChild(Scope* scope) {
+  std::shared_ptr<ValueExecutionInfo> info =
+      std::make_shared<ValueExecutionInfo>(scope);
+  info->parent_ = this;
+  return info;
+}
+
+void ValueExecutionInfo::Add(::pir::Value value, std::string var_name) {
+  auto* var = scope_->FindVar(var_name);
+  PADDLE_ENFORCE_NOT_NULL(
+      var, platform::errors::NotFound("Cannot find %s in scope.", var_name));
+
+  if (value_2_var_name_.count(value) == 0) {
+    value_2_var_name_.emplace(value, var_name);
+  }
+
+  var_2_var_name_.emplace(var, var_name);
+
+  if (var_name_2_id_.count(var_name) == 0) {
+    auto id = var_name_2_id_.size();
+    var_name_2_id_.emplace(var_name, id);
+    id_2_var_name_.emplace(id, var_name);
+    var_list_.push_back(var);
+  }
+
+  PADDLE_ENFORCE_EQ(
+      var_list_.size(),
+      var_name_2_id_.size(),
+      paddle::platform::errors::InvalidArgument(
+          "The size of variable_list and var_name_2_id map should be equal"));
+}
+
+void ValueExecutionInfo::Rename(pir::Value value,
+                                std::string new_name,
+                                std::string orig_name) {
+  value_2_var_name_[value] = new_name;
+
+  for (auto kv : value_2_var_name_) {
+    if (kv.second == orig_name) {
+      value_2_var_name_[kv.first] = new_name;
+    }
+  }
+
+  for (auto kv : var_2_var_name_) {
+    if (kv.second == orig_name) {
+      var_2_var_name_[kv.first] = new_name;
+    }
+  }
+
+  for (auto kv : var_name_2_id_) {
+    if (kv.first == orig_name) {
+      var_name_2_id_.emplace(new_name, kv.second);
+      id_2_var_name_[kv.second] = new_name;
+    }
+  }
+  var_name_2_id_.erase(orig_name);
+}
+
+int ValueExecutionInfo::GetIdByName(const std::string& name) const {
+  auto it = var_name_2_id_.find(name);
+  if (it != var_name_2_id_.end()) {
+    return it->second;
+  }
+  return -1;
+}
+
+std::string ValueExecutionInfo::GetNameById(int id) const {
+  // NOTE(zhiqiu): do not use vec_meta_info_[id].vardesc_->Name() since
+  // vec_meta_info_[id] may be nullptr,
+  // typically when the target variable is not existed in the original program
+  // desc, but created by interpretercore.
+  // For example, created and used by d2h_copy or h2d_copy operator.
+  auto it = id_2_var_name_.find(id);
+  if (it != id_2_var_name_.end()) {
+    return it->second;
+  }
+  return "";
+}
+}  // namespace framework
+}  // namespace paddle
 
 namespace pir {
 
