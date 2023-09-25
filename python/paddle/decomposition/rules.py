@@ -178,7 +178,9 @@ def dropout_composite(x, seed_tensor, p, is_test, mode, seed, fix_seed):
                     shape=x.shape, value=(1.0 - p), dtype=x.dtype
                 ), cast(mask, uint8_type)
         else:
-            return x, cast(mask, uint8_type)
+            return x, cast(
+                mask, uint8_type
+            )  # assign(x), cast(mask, mask, core.VarDesc.VarType.UINT8)
     else:
         if not is_test:
             return x * mask, cast(mask, uint8_type)

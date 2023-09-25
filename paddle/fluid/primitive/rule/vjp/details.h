@@ -288,7 +288,7 @@ void add_grad(const Tensor& x,
       // Maybe need reduce here
       phi::DDim reduce_dim = get_reduce_dims(y.dims(), x.dims());
       if (!reduce_dim.size()) {
-        set_output<T>(out_grad, dy);
+        by_pass<T>(out_grad, dy);
       } else {
         auto dy_reduce_res =
             out_grad.sum(phi::vectorize(reduce_dim), y.dtype(), false);
@@ -297,7 +297,7 @@ void add_grad(const Tensor& x,
       }
 
     } else {
-      set_output<T>(out_grad, dy);
+      by_pass<T>(out_grad, dy);
     }
   }
   if (dx) {
@@ -305,7 +305,7 @@ void add_grad(const Tensor& x,
       // Maybe need reduce here
       auto reduce_dim = get_reduce_dims(x.dims(), y.dims());
       if (!reduce_dim.size()) {
-        set_output<T>(out_grad, dx);
+        by_pass<T>(out_grad, dx);
       } else {
         auto dx_reduce_res =
             out_grad.sum(phi::vectorize(reduce_dim), x.dtype(), false);
@@ -313,7 +313,7 @@ void add_grad(const Tensor& x,
         set_output<T>(dx_tmp, dx);
       }
     } else {
-      set_output<T>(out_grad, dx);
+      by_pass<T>(out_grad, dx);
     }
   }
 }
@@ -512,7 +512,7 @@ void dropout_grad(const Tensor& mask,
   if (!x_grad) return;
   if (is_test) {
     if (mode == "upscale_in_train") {
-      set_output<T>(out_grad, x_grad);
+      bypass<T>(out_grad, x_grad);
     } else {
       set_output<T>(out_grad * (1.0 - p.to<float>()), x_grad);
     }
