@@ -20,23 +20,23 @@ template <>
 {%- macro prepare_ir_api_inputs(inputs)-%}
   {%- for input in inputs -%}
     {% if input.typename=='Tensor[]' and not input.optional %}
-std::vector<pir::OpResult> {{input.name}}_res({{input.name}}.size());
+std::vector<pir::Value> {{input.name}}_res({{input.name}}.size());
 std::transform({{input.name}}.begin(), {{input.name}}.end(), {{input.name}}_res.begin(), [](const Tensor& t) {
-  return std::static_pointer_cast<LazyTensor>(t.impl())->value().dyn_cast<pir::OpResult>();
+  return std::static_pointer_cast<LazyTensor>(t.impl())->value();
 });
     {% elif input.typename=='Tensor[]' and input.optional %}
-std::vector<pir::OpResult> {{input.name}}_res({{input.name}}.size());
+std::vector<pir::Value> {{input.name}}_res({{input.name}}.size());
 if({{input.name}}) {
   std::transform({{input.name}}.get().begin(), {{input.name}}.get().end(), {{input.name}}_res.begin(), [](const Tensor& t) {
-    return std::static_pointer_cast<LazyTensor>(t.impl())->value().dyn_cast<pir::OpResult>();
+    return std::static_pointer_cast<LazyTensor>(t.impl())->value();
   });
 }
     {% elif input.typename=='Tensor' and not input.optional %}
-pir::OpResult {{input.name}}_res = std::static_pointer_cast<LazyTensor>({{input.name}}.impl())->value().dyn_cast<pir::OpResult>();
+pir::Value {{input.name}}_res = std::static_pointer_cast<LazyTensor>({{input.name}}.impl())->value();
     {% else %}
-pir::OpResult {{input.name}}_res;
+pir::Value {{input.name}}_res;
 if({{input.name}}) {
-  {{input.name}}_res = std::static_pointer_cast<LazyTensor>({{input.name}}.get().impl())->value().dyn_cast<pir::OpResult>();
+  {{input.name}}_res = std::static_pointer_cast<LazyTensor>({{input.name}}.get().impl())->value();
 }
     {% endif %}
   {% endfor %}

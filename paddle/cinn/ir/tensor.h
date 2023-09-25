@@ -149,6 +149,13 @@ class _Tensor_ : public ExprNode<_Tensor_> {
                      FunctionRef fn,
                      const std::vector<Var>& reduce_axis = {});
 
+  // Manual tensor construction, no FunctionRef information
+  static Tensor Make(const std::string& name,
+                     Type dtype,
+                     const std::vector<Expr>& shape,
+                     const std::vector<Expr>& domain,
+                     const std::vector<Var>& reduce_axis = {});
+
   void Verify() const override;
 
   bool IsReduceInited(poly::StageMap stages) const;
@@ -273,8 +280,6 @@ class _Tensor_ : public ExprNode<_Tensor_> {
   Tensor GetInitTensor(
       poly::StageMap stages,
       const Target& target = common::DefaultHostTarget()) const;
-
-  ir::Tensor InitReduction(ast_gen_ius::TensorGroup* tensor_group) const;
 
   /**
    * Create the initialization tensor.

@@ -13,17 +13,10 @@
 # limitations under the License.
 """Definition of trainers."""
 
-import sys
 import os
+import sys
 
-__all__ = [
-    'TrainerDesc',
-    'MultiTrainer',
-    'DistMultiTrainer',
-    'PipelineTrainer',
-    'HeterXpuTrainer',
-    'HeterPipelineTrainer',
-]
+__all__ = []
 
 
 class TrainerDesc:
@@ -305,8 +298,6 @@ class TrainerDesc:
         )
 
     def _desc(self):
-        from google.protobuf import text_format
-
         return self.proto_desc.SerializeToString()
 
     def __str__(self):

@@ -17,6 +17,7 @@ import tempfile
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 from test_basic_api_transformation import dyfunc_to_variable
 
 import paddle
@@ -113,6 +114,7 @@ class TestInputSpec(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @test_and_compare_with_new_ir(False)
     def test_with_input_spec(self):
         with base.dygraph.guard(base.CPUPlace()):
             x = to_variable(np.ones([4, 10]).astype('float32'))
@@ -212,6 +214,7 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
     def setUp(self):
         paddle.jit.enable_to_static(True)
 
+    @test_and_compare_with_new_ir(False)
     def test_with_different_input(self):
         with base.dygraph.guard(base.CPUPlace()):
             x_data = np.ones([16, 10]).astype('float32')
@@ -297,6 +300,7 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
                 InputSpec([10]), InputSpec([10]), e=4
             )
 
+    @test_and_compare_with_new_ir(False)
     def test_concrete_program(self):
         with base.dygraph.guard(base.CPUPlace()):
             # usage 1
@@ -368,6 +372,7 @@ class TestDecorateModelDirectly(unittest.TestCase):
         paddle.jit.enable_to_static(True)
         self.x = to_variable(np.ones([4, 10]).astype('float32'))
 
+    @test_and_compare_with_new_ir(False)
     def test_fake_input(self):
         net = SimpleNet()
         net = to_static(net)
@@ -431,6 +436,7 @@ class CallNonForwardFuncSubNet(paddle.nn.Layer):
 
 
 class TestCallNonForwardFunc(unittest.TestCase):
+    @test_and_compare_with_new_ir(False)
     def test_call_non_forward(self):
         paddle.disable_static()
         net = CallNonForwardFuncNet()
@@ -470,6 +476,7 @@ class TestSetBuffers(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @test_and_compare_with_new_ir(False)
     def test_set_buffers1(self):
         paddle.disable_static()
         net = SetBuffersNet1()

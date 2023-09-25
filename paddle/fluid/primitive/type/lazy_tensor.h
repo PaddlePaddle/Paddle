@@ -47,7 +47,7 @@ class LazyTensor : public phi::ExtendedTensor,
 
   bool initialized() const override { return value_.impl() != nullptr; }
 
-  void set_empty_type() { value_.set_type(pir::Type()); }
+  void set_empty() { value_.set_type(pir::Type()); }
 
  private:
   pir::Value value_;

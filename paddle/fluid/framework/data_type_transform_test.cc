@@ -49,13 +49,13 @@ TEST(DataTypeTransform, CPUTransform) {
     int data_number = 2 * 3;
 
     for (int i = 0; i < data_number; ++i) {
-      ptr[i] = i / 3;
+      ptr[i] = i / 3;  // NOLINT
     }
 
     paddle::framework::TransDataType(kernel_fp32, kernel_fp64, in, &out);
     double* out_data_double = out.data<double>();
     for (int i = 0; i < data_number; ++i) {
-      EXPECT_EQ(out_data_double[i], static_cast<double>(i / 3));
+      EXPECT_EQ(out_data_double[i], static_cast<double>(i / 3));  // NOLINT
     }
 
     paddle::framework::TransDataType(kernel_fp32, kernel_int32, in, &out);
@@ -113,7 +113,7 @@ TEST(DataTypeTransform, CPUTransform) {
     float* in_data_float =
         in.mutable_data<float>(phi::make_ddim({2, 3}), place);
     for (int i = 0; i < data_number; ++i) {
-      in_data_float[i] = i;
+      in_data_float[i] = static_cast<float>(i);
     }
 
     paddle::framework::TransDataType(kernel_fp32, kernel_fp16, in, &out);
@@ -227,7 +227,7 @@ TEST(DataTypeTransform, CPUTransform) {
     float* in_data_float =
         in.mutable_data<float>(phi::make_ddim({2, 3}), place);
     for (int i = 0; i < data_number; ++i) {
-      in_data_float[i] = i;
+      in_data_float[i] = static_cast<float>(i);
     }
 
     paddle::framework::TransDataType(kernel_fp32, kernel_bf16, in, &out);
@@ -341,7 +341,7 @@ TEST(DataTypeTransform, CPUTransform) {
     float* in_data_float =
         in.mutable_data<float>(phi::make_ddim({2, 3}), place);
     for (int i = 0; i < data_number; ++i) {
-      in_data_float[i] = i;
+      in_data_float[i] = static_cast<float>(i);
     }
 
     paddle::framework::TransDataType(kernel_fp32, kernel_int32, in, &out);

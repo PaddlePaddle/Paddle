@@ -54,7 +54,6 @@ def send_new(tensor, dst, group=None, sync_op=True):
             'dynamic_shape': True,
         },
     )
-    return None
 
 
 def recv_new(tensor, src, group=None, sync_op=True, dtype='float32'):
@@ -88,7 +87,6 @@ def recv_new(tensor, src, group=None, sync_op=True, dtype='float32'):
             'dtype': base.framework.convert_np_dtype_to_dtype_(dtype),
         },
     )
-    return None
 
 
 class TestCollectiveSendRecvAPI(TestCollectiveAPIRunnerBase):

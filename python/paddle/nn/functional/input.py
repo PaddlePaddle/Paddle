@@ -17,7 +17,7 @@ from paddle import _C_ops
 from ...base.data_feeder import check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
 from ...common_ops_import import Variable
-from ...framework import in_dynamic_mode
+from ...framework import in_dynamic_mode, in_dynamic_or_pir_mode
 
 __all__ = []
 
@@ -219,12 +219,10 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
 
     if padding_idx >= weight.shape[0] or padding_idx < -weight.shape[0]:
         raise ValueError(
-            "padding_idx must be within [-{}, {})".format(
-                weight.shape[0], weight.shape[0]
-            )
+            f"padding_idx must be within [-{weight.shape[0]}, {weight.shape[0]})"
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.embedding(x, weight, padding_idx, sparse)
     else:
         helper = LayerHelper('embedding', **locals())

@@ -18,7 +18,7 @@
 PD_DECLARE_bool(new_executor_use_local_scope);
 
 namespace pir {
-class Program;
+class Block;
 }  // namespace pir
 
 namespace paddle {
@@ -38,7 +38,7 @@ class InterpreterCore {
   // This constructor is for New IR.
   InterpreterCore(const platform::Place& place,
                   const std::vector<std::string>& fetch_var_names,
-                  std::unique_ptr<::pir::Program> ir_prog,
+                  const ::pir::Block* ir_prog,
                   Scope* scope,
                   const ExecutionConfig& execution_config = ExecutionConfig());
   ~InterpreterCore();
@@ -73,6 +73,11 @@ class InterpreterCore {
   const platform::Place& GetPlace() const;
 
   void SetOutputHooks(const std::vector<HookFunc>& hookfuncs);
+
+  void Build(const std::vector<std::string>& feed_names,
+             std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
+
+  bool IsStaticBuild() const;
 
  private:
   DISABLE_COPY_AND_ASSIGN(InterpreterCore);

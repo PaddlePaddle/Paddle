@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
-
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
@@ -38,13 +37,14 @@ static bool CanBeDeleted(pir::Value value) {
       !value.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
     return false;
   }
-  if (value.GetDefiningOp()->HasAttribute(kAttrIsPersisable)) {
-    return !(value.GetDefiningOp()
-                 ->attribute(kAttrIsPersisable)
-                 .dyn_cast<pir::ArrayAttribute>()
-                 .AsVector()[value.dyn_cast<pir::OpResult>().GetResultIndex()]
-                 .dyn_cast<pir::BoolAttribute>()
-                 .data());
+  if (auto op_result = value.dyn_cast<pir::OpResult>()) {
+    auto def_op = op_result.owner();
+    if (def_op->HasAttribute(kAttrIsPersisable)) {
+      return !(def_op->attribute<pir::ArrayAttribute>(kAttrIsPersisable)
+                   .AsVector()[op_result.index()]
+                   .dyn_cast<pir::BoolAttribute>()
+                   .data());
+    }
   }
   return true;
 }
@@ -204,7 +204,8 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
     // NOTE(zhangbo): add_grad cpu kernel can't do inplace, for the reason shown
     // in the function: CommonElementwiseBroadcastBackward
     // (paddle/phi/kernels/funcs/elementwise_grad_base.h)
-    if ((upper_op_name == "pd_op.add_grad") &&
+    if ((upper_op_name == "pd_op.add_grad" ||
+         upper_op_name == "pd_op.subtract_grad") &&
         (upper_op_attrs.at("kernel_key")
              .dyn_cast<paddle::dialect::KernelAttribute>()
              .data()
@@ -336,7 +337,7 @@ class InplacePass : public pir::Pass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    return op->name() == "builtin.module" && op->num_regions() > 0;
+    return op->isa<::pir::ModuleOp>() && op->num_regions() > 0;
   }
 };
 

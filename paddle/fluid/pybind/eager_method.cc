@@ -201,20 +201,20 @@ static PyObject* tensor_method_numpy(TensorObject* self,
              "otherwise 'Tensor.numpy()[0]' will raise error in release 2.6.";
       py_rank = 1;
       py_dims[0] = 1;
-      py_strides[0] = sizeof_dtype * numel;
+      py_strides[0] = static_cast<Py_intptr_t>(sizeof_dtype * numel);
     }
   } else if (self->tensor.is_dense_tensor()) {
     auto tensor_stride = self->tensor.strides();
 
-    for (int i = tensor_dims.size() - 1; i >= 0; --i) {
-      py_dims[i] = static_cast<size_t>(tensor_dims[i]);
-      py_strides[i] = sizeof_dtype * tensor_stride[i];
+    for (int i = static_cast<int>(tensor_dims.size()) - 1; i >= 0; --i) {
+      py_dims[i] = static_cast<Py_intptr_t>(tensor_dims[i]);
+      py_strides[i] = static_cast<Py_intptr_t>(sizeof_dtype * tensor_stride[i]);
       numel *= py_dims[i];
     }
   } else {
-    for (int i = tensor_dims.size() - 1; i >= 0; --i) {
-      py_dims[i] = static_cast<size_t>(tensor_dims[i]);
-      py_strides[i] = sizeof_dtype * numel;
+    for (int i = static_cast<int>(tensor_dims.size()) - 1; i >= 0; --i) {
+      py_dims[i] = static_cast<Py_intptr_t>(tensor_dims[i]);
+      py_strides[i] = static_cast<Py_intptr_t>(sizeof_dtype * numel);
       numel *= py_dims[i];
     }
   }
@@ -223,7 +223,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
     PyObject* array = api.PyArray_NewFromDescr_(
         api.PyArray_Type_,
         api.PyArray_DescrFromType_(numpy_dtype),
-        py_rank,
+        static_cast<int>(py_rank),
         py_dims,
         py_strides,
         nullptr,
@@ -471,7 +471,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   PyObject* array = api.PyArray_NewFromDescr_(
       api.PyArray_Type_,
       api.PyArray_DescrFromType_(numpy_dtype),
-      py_rank,
+      static_cast<int>(py_rank),
       py_dims,
       py_strides,
       reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(array_buffer) +
@@ -1118,7 +1118,7 @@ static PyObject* tensor_method_detach_(TensorObject* self,
   autograd_meta->SetPersistable(
       egr::EagerUtils::autograd_meta(&(self->tensor))->Persistable());
   self->tensor.set_autograd_meta(autograd_meta);
-
+  Py_INCREF(reinterpret_cast<PyObject*>(self));
   return reinterpret_cast<PyObject*>(self);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -1617,7 +1617,8 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
           py::isinstance<py::int_>(value_obj_tmp) ||
           py::isinstance<py::bool_>(value_obj_tmp) ||
           PyComplex_Check(value_obj)) {
-        if (self->tensor.dtype() == phi::DataType::FLOAT32) {
+        if (self->tensor.dtype() == phi::DataType::FLOAT32 ||
+            self->tensor.dtype() == phi::DataType::FLOAT16) {
           attrs["values"] = std::vector<paddle::experimental::Scalar>{
               value_obj_tmp.cast<float>()};
         } else if (self->tensor.dtype() == phi::DataType::FLOAT64) {
@@ -1632,9 +1633,6 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
         } else if (self->tensor.dtype() == phi::DataType::BOOL) {
           attrs["values"] = std::vector<paddle::experimental::Scalar>{
               value_obj_tmp.cast<bool>()};
-        } else if (self->tensor.dtype() == phi::DataType::FLOAT16) {
-          attrs["values"] = std::vector<paddle::experimental::Scalar>{
-              value_obj_tmp.cast<float>()};
         } else if (self->tensor.dtype() == phi::DataType::COMPLEX64) {
           attrs["values"] = std::vector<paddle::experimental::Scalar>{
               value_obj_tmp.cast<std::complex<float>>()};
@@ -2820,9 +2818,9 @@ static PyObject* tensor_method_strides(TensorObject* self,
     return ToPyObject(value);
   }
   auto stride = self->tensor.strides();
-  size_t rank = static_cast<size_t>(stride.size());
+  int rank = static_cast<int>(stride.size());
   value.resize(rank);
-  for (size_t i = 0; i < rank; i++) {
+  for (int i = 0; i < rank; i++) {
     value[i] = stride[i];
   }
   return ToPyObject(value);
@@ -2904,6 +2902,18 @@ static PyObject* tensor_is_contiguous(TensorObject* self,
   } else {
     return ToPyObject(true);
   }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_method__set_impl(TensorObject* self,
+                                         PyObject* args,
+                                         PyObject* kwargs) {
+  EAGER_TRY
+  VLOG(4) << "Running in tensor_method__set_impl: set Tensor impl form the "
+             "other Tensor.";
+  auto tensor = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
+  self->tensor.set_impl(tensor.impl());
+  RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -3202,6 +3212,10 @@ PyMethodDef variable_methods[] = {  // NOLINT
      (PyCFunction)(void (*)(void))tensor_method_strides,
      METH_VARARGS | METH_KEYWORDS,
      tensor_get_strides__doc__},
+    {"_set_impl",
+     (PyCFunction)(void (*)(void))tensor_method__set_impl,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
 #if defined(PADDLE_WITH_CUDA)
     {"_tensor_uva",
      (PyCFunction)(void (*)())tensor_method__uva,

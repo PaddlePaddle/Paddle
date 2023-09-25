@@ -24,20 +24,11 @@
   CHECK_NULL_IMPL(OpOpernad, func_name)
 
 namespace pir {
-
-OpOperand::OpOperand(const detail::OpOperandImpl *impl)
-    : impl_(const_cast<detail::OpOperandImpl *>(impl)) {}
-
 OpOperand &OpOperand::operator=(const OpOperand &rhs) {
   impl_ = rhs.impl_;
   return *this;
 }
 
-OpOperand &OpOperand::operator=(const detail::OpOperandImpl *impl) {
-  if (this->impl_ == impl) return *this;
-  impl_ = const_cast<detail::OpOperandImpl *>(impl);
-  return *this;
-}
 OpOperand::operator bool() const { return impl_ && impl_->source(); }
 
 OpOperand OpOperand::next_use() const {

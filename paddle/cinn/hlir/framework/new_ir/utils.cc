@@ -74,8 +74,7 @@ std::vector<std::string> CompatibleInfo::InputNames(const ::pir::Operation& op,
   return names;
 }
 
-std::vector<std::string> CompatibleInfo::OutputNames(
-    const ::pir::Operation& op) {
+std::vector<std::string> CompatibleInfo::OutputNames(::pir::Operation& op) {
   std::vector<std::string> names;
   for (int i = 0; i < op.num_results(); ++i) {
     auto value = op.result(i);

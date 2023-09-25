@@ -265,9 +265,9 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
       meta.SetTensorMeta(dense_tensor->meta());
       meta.SetPlace(fwd_in.place());
     } else if (phi::distributed::DistTensor::classof(fwd_in.impl().get())) {
-      const phi::DenseTensor& dense_tensor =
-          static_cast<phi::distributed::DistTensor*>(fwd_in.impl().get())
-              ->value();
+      const phi::distributed::DistTensor* dist_tensor =
+          static_cast<phi::distributed::DistTensor*>(fwd_in.impl().get());
+      const phi::DenseTensor& dense_tensor = dist_tensor->value();
       PADDLE_ENFORCE_NE(
           dense_tensor.meta().dtype,
           phi::DataType::UNDEFINED,
@@ -276,6 +276,9 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
                                           "which is illegal."));
       meta.SetTensorMeta(dense_tensor.meta());
       meta.SetPlace(fwd_in.place());
+      // Set DistAttr
+      meta.SetDistAttr(dist_tensor->dist_attr());
+      SetIsRunAutoParallel(true);
     } else {
       VLOG(7)
           << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
@@ -601,7 +604,10 @@ std::vector<std::shared_ptr<GradNodeBase>> GradNodeBase::NextFunctions() {
   return next_nodes;
 }
 
+
 uintptr_t GradNodeBase::GetPtr() const {
+
+
   return reinterpret_cast<uintptr_t>(this);
 }
 

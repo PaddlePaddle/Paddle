@@ -41,9 +41,9 @@ std::string ValueImpl::PrintUdChain() {
   return result.str();
 }
 ValueImpl::ValueImpl(Type type, uint32_t kind) {
-  if (kind > BLOCK_ARGUMENT_INDEX) {
+  if (kind > BLOCK_ARG_IDX) {
     LOG(FATAL) << "The kind of value_impl(" << kind
-               << "), is bigger than BLOCK_ARGUMENT_INDEX(7)";
+               << "), is bigger than BLOCK_ARG_IDX(7)";
   }
   type_ = type;
   first_use_offseted_by_kind_ = reinterpret_cast<OpOperandImpl *>(
