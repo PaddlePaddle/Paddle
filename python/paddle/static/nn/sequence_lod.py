@@ -38,7 +38,7 @@ def sequence_conv(
     r"""
 
     Note:
-        Only receives Tensor as input. If your input is Tensor, please use conv2d Op.(base.layers.** :ref:`api_paddle_nn_Conv2D` ).
+        Only receives Tensor as input. If your input is Tensor, please use conv2d Op.(base.layers.** :ref:`api_paddle_nn_functional_conv2d` ).
 
     This operator receives input sequences with variable length and other convolutional
     configuration parameters(num_filters, filter_size) to apply the convolution operation.
