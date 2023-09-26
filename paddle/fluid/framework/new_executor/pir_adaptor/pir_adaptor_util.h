@@ -113,6 +113,18 @@ class ValueExecutionInfo {
 }  // namespace paddle
 
 namespace pir {
+
+// NOTE(zhangbo): Some operators of Paddle support optional inputs or outputs,
+// representing whether the input or output exists. In the Pir, whether the
+// value itself is empty or the type it holds is empty is used to indicate
+// whether the input or output exists.
+inline bool IsInvalid(pir::Value value) {
+  if ((!value) || (!value.type())) {
+    return false;
+  }
+  return true;
+}
+
 void BuildScope(
     const pir::Block& block,
     const std::string& var_name_prefix,
@@ -166,7 +178,7 @@ void BuildPhiContext(
 
     pir::Value ptr = op->operand_source(op_yaml_info.InputName2Id().at(t));
 
-    if ((!ptr) || (!ptr.type())) {
+    if (!IsInvalid(ptr)) {
       if (op_yaml_info.GetInputType(op_yaml_info.InputName2Id().at(t)) ==
           "pir::VectorType<paddle::dialect::DenseTensorType>") {
         InListType optional_inputs;
@@ -379,8 +391,7 @@ void BuildPhiContext(
   // EmplaceBackOutputs
   for (size_t i = 0; i < op->num_results(); ++i) {
     pir::Value out_ptr = op->result(i);
-
-    if ((!out_ptr) || (!out_ptr.type())) {
+    if (!IsInvalid(out_ptr)) {
       if (op_yaml_info.GetOutputType(i) ==
           "pir::VectorType<paddle::dialect::DenseTensorType>") {
         OutListType optional_outputs;

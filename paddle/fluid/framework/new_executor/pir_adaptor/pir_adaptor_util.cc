@@ -185,7 +185,7 @@ void CheckInputVars(
   if (input_num > 0) {
     for (size_t i = 0; i < input_num; ++i) {
       auto value = op->operand_source(i);
-      if (value && value.type()) {
+      if (IsInvalid(value)) {
         PADDLE_ENFORCE_NE(
             value_2_var_name.find(value),
             value_2_var_name.end(),
@@ -201,7 +201,7 @@ void CheckInputVars(
 void BuildValue(pir::Value value,
                 const std::string& var_name_prefix,
                 paddle::framework::ValueExecutionInfo* value_exe_info) {
-  if ((!value) || (!value.type())) {
+  if (!IsInvalid(value)) {
     return;
   }
 
@@ -455,7 +455,7 @@ void HandleForInplaceOp(pir::Operation* op,
 
   for (size_t i = 0; i < op->num_results(); ++i) {
     pir::Value value = op->result(i);
-    if ((!value) || !(value.type())) {
+    if (!IsInvalid(value)) {
       continue;
     }
     std::string value_name = yaml_parser.OutputNames()[i];
@@ -562,7 +562,7 @@ void BuildRuntimeContext(
     auto index = op_yaml_info.InputName2Id().at(name);
     pir::Value ptr = op->operand_source(index);
 
-    if ((!ptr) || (!ptr.type())) {
+    if (!IsInvalid(ptr)) {
       continue;
     }
 
@@ -582,7 +582,7 @@ void BuildRuntimeContext(
     pir::Value ptr = op->result(i);
     auto legacy_arg_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
 
-    if ((!ptr) || (!ptr.type())) {
+    if (!IsInvalid(ptr)) {
       continue;
     }
 
@@ -643,7 +643,7 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
     pir::Value ptr = op->operand_source(index);
     auto legacy_attr_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
 
-    if ((!ptr) || (!ptr.type())) {
+    if (!IsInvalid(ptr)) {
       continue;
     }
 
@@ -730,7 +730,7 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
     auto legacy_arg_name =
         op_normalizer.GetLegacyArgName(fluid_op_name, output_name_list[i]);
 
-    if ((!ptr) || (!ptr.type())) {
+    if (!IsInvalid(ptr)) {
       continue;
     }
 
