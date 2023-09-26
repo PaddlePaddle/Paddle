@@ -428,25 +428,33 @@ def slice(input, axes, starts, ends):
 def transpose(x, perm, name=None):
     """
     Permute the data dimensions of `input` according to `perm`.
+
     The `i`-th dimension  of the returned tensor will correspond to the
     perm[i]-th dimension of `input`.
+
     Args:
         x (Tensor): The input Tensor. It is a N-D Tensor of data types bool, float32, float64, int32.
         perm (list|tuple): Permute the input according to the data of perm.
         name (str): The name of this layer. It is optional.
+
     Returns:
         Tensor, A transposed n-D Tensor, with data type being bool, float32, float64, int32, int64.
+
     For Example:
+
         .. code-block:: text
+
          x = [[[ 1  2  3  4] [ 5  6  7  8] [ 9 10 11 12]]
              [[13 14 15 16] [17 18 19 20] [21 22 23 24]]]
          shape(x) =  [2,3,4]
+
          # Example 1
          perm0 = [1,0,2]
          y_perm0 = [[[ 1  2  3  4] [13 14 15 16]]
                    [[ 5  6  7  8]  [17 18 19 20]]
                    [[ 9 10 11 12]  [21 22 23 24]]]
          shape(y_perm0) = [3,2,4]
+
          # Example 2
          perm1 = [2,1,0]
          y_perm1 = [[[ 1 13] [ 5 17] [ 9 21]]
@@ -454,13 +462,18 @@ def transpose(x, perm, name=None):
                    [[ 3 15]  [ 7 19]  [11 23]]
                    [[ 4 16]  [ 8 20]  [12 24]]]
          shape(y_perm1) = [4,3,2]
+
     Examples:
+
         .. code-block:: python
+
             import paddle
+
             x = paddle.randn([2, 3, 4])
             x_transposed = paddle.transpose(x, perm=[1, 0, 2])
             print(x_transposed.shape)
             # [3L, 2L, 4L]
+
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.transpose(x, perm)
