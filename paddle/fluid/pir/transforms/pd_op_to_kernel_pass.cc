@@ -1120,8 +1120,9 @@ std::vector<pir::Value> BuildOpInputList(
               new_in, out_type, in_place, out_place, kernel_key, block);
         }
       } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
-            "only support allocated dense tensor type for now"));
+        PADDLE_THROW(
+            phi::errors::Unimplemented("only support allocated dense tensor "
+                                       "type and selected rows type for now"));
       }
     }
     vec_inputs.push_back(new_in);
@@ -1150,7 +1151,7 @@ void AddShadowFeed(
            .GetType() == phi::AllocationType::UNDEFINED);
   bool add_shadow_feed = feed_op_add_shadow_feed || data_op_add_shadow_feed;
   if (add_shadow_feed) {
-    // if shadow data op place not gpu,add shadow feed op
+    // if shadow data op place not gpu, add shadow feed op
     phi::KernelKey shadow_key{
         phi::Backend::GPU,
         phi::DataLayout::ANY,
