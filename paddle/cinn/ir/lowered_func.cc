@@ -25,8 +25,8 @@
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/buffer.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/cinn/utils/string.h"
 
@@ -61,6 +61,16 @@ LoweredFunc _LoweredFunc_::Make(const std::string& name,
   n->PrepareArgumentExprs();
   n->PrepareDeallocTempBufferExprs();
   n->PrepareDeallocOutputBufferExprs();
+  return LoweredFunc(n);
+}
+
+LoweredFunc _LoweredFunc_::Make(const std::string& name,
+                                const std::vector<Argument>& args,
+                                const Expr& body) {
+  auto* n = make_shared<_LoweredFunc_>();
+  n->name = name;
+  n->args = args;
+  n->body = body;
   return LoweredFunc(n);
 }
 

@@ -22,7 +22,7 @@
 #include <utility>
 
 #include "paddle/cinn/ir/buffer.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/lang/lower_impl.h"
 #include "paddle/cinn/lang/lower_tensor_group.h"
 #include "paddle/cinn/optim/optimize.h"

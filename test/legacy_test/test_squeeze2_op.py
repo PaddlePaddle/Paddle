@@ -55,10 +55,12 @@ class TestSqueezeOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'], check_prim=True)
+        self.check_output(
+            no_check_set=['XShape'], check_prim=True, check_new_ir=True
+        )
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_prim=True)
+        self.check_grad(["X"], "Out", check_prim=True, check_new_ir=True)
 
     def init_dtype(self):
         self.dtype = np.float64

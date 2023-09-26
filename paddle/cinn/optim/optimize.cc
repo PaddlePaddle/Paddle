@@ -14,9 +14,9 @@
 
 #include "paddle/cinn/optim/optimize.h"
 
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/optim/call_arg_list_to_pod_value.h"
 #include "paddle/cinn/optim/cast_bool_to_int8.h"
 #include "paddle/cinn/optim/eliminate_broadcast_in_forloop.h"
@@ -42,7 +42,7 @@ Expr Optimize(Expr e,
               bool runtime_debug_info,
               bool remove_gpu_for_loops) {
   CHECK(e.defined());
-  auto copied = IRCopy(e);
+  auto copied = ir::ir_utils::IRCopy(e);
 
   FoldCINNCallArguments(&copied);
   TransformPolyForToFor(&copied);
@@ -84,7 +84,7 @@ Expr Optimize(Expr e,
 }
 
 ir::Module Optimize(const ir::Module& module, const Target& target) {
-  auto copied = IRCopy(Expr(module));
+  auto copied = ir::ir_utils::IRCopy(Expr(module));
   UnrollLoop(&copied);
   VectorizeLoops(&copied, Target());
   VLOG(10) << "After VectorizeLoops:" << copied.as_module_ref();

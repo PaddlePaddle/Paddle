@@ -15,7 +15,7 @@
 import collections
 from collections.abc import Sequence
 
-import paddle.ir
+import paddle.pir
 from paddle.autograd.backward_utils import State
 
 """
@@ -158,7 +158,7 @@ def some_in_set(value_list, value_set):
     def operand2value(values):
         value_set = set()
         for item in values:
-            if isinstance(item, paddle.ir.OpOperand):
+            if isinstance(item, paddle.pir.OpOperand):
                 value_set.add(item.source())
             else:
                 value_set.add(item)
@@ -288,7 +288,7 @@ def inverse_sort_op(ops):
     sorted_list = []
     for op in ops:
         for x in op.operands():
-            if x.source().get_defining_op() in ops_set:
+            if x.source() and x.source().get_defining_op() in ops_set:
                 pending_count[x.source().get_defining_op()] += 1
 
     queue = collections.deque()
@@ -747,26 +747,26 @@ def grad(
     check_type(
         outputs,
         'outputs',
-        ((paddle.ir.Value, paddle.ir.OpResult), list, tuple),
+        ((paddle.pir.Value, paddle.pir.OpResult), list, tuple),
         'paddle.autograd.ir_backward.grad',
     )
     check_type(
         inputs,
         'inputs',
-        ((paddle.ir.Value, paddle.ir.OpResult), list, tuple),
+        ((paddle.pir.Value, paddle.pir.OpResult), list, tuple),
         'paddle.autograd.ir_backward.grad',
     )
     check_type(
         grad_outputs,
         'grad_outputs',
-        ((paddle.ir.Value, paddle.ir.OpResult), list, tuple, type(None)),
+        ((paddle.pir.Value, paddle.pir.OpResult), list, tuple, type(None)),
         'paddle.autograd.ir_backward.grad',
     )
 
     check_type(
         no_grad_vars,
         'no_grad_vars',
-        ((paddle.ir.Value, paddle.ir.OpResult), list, tuple, set, type(None)),
+        ((paddle.pir.Value, paddle.pir.OpResult), list, tuple, set, type(None)),
         'paddle.autograd.ir_backward.grad',
     )
     outputs = _as_list(outputs)

@@ -170,5 +170,7 @@ VariantType GetAttributeData(const pir::Attribute& attr);
 
 bool IsLegacyOp(const std::string& name);
 
+bool IsEmptyOpResult(const pir::OpResult& op_result);
+
 }  // namespace dialect
 }  // namespace paddle

@@ -95,6 +95,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'c_allreduce_max',
     'c_allgather',
     'seed',
+    "fused_attention",
 ]
 
 
