@@ -188,7 +188,6 @@ OP_DECL(popart_globalmaxpool, aiOnnxOpset.globalmaxpool, NONE) // NOLINT
 OP_DECL(popart_hardsigmoid, aiOnnxOpset.hardsigmoid, ARG(FLOAT,alpha) ARG(FLOAT,beta) ) // NOLINT
 OP_DECL(popart_identity, aiOnnxOpset.identity, NONE) // NOLINT
 OP_DECL(popart_instancenormalization, aiOnnxOpset.instancenormalization, ARG(FLOAT,epsilon) ) // NOLINT
-OP_DECL(popart_lrn, aiOnnxOpset.lrn, ARG(INT,size) ARG(FLOAT,alpha) ARG(FLOAT,beta) ARG(FLOAT,bias) ) // NOLINT
 OP_DECL(popart_leakyrelu, aiOnnxOpset.leakyrelu, ARG(FLOAT,alpha) ) // NOLINT
 OP_DECL(popart_log, aiOnnxOpset.log, NONE) // NOLINT
 OP_DECL(popart_lpnormalization, aiOnnxOpset.lpnormalization, ARG(INT,axis) ARG(INT,p) ) // NOLINT
