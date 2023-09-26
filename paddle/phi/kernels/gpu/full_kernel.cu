@@ -62,6 +62,14 @@ void FullLikeKernel(const Context& dev_ctx,
                     const Scalar& val,
                     DataType dtype,
                     DenseTensor* out) {
+  std::vector<const DenseTensor*> inputs = {};
+  std::vector<DenseTensor*> outputs = {out};
+  dev_ctx.template Alloc<T>(out);
+  // This function has no input, so the inputs.size() == 0. Use kUnary, but the
+  // data will not be loaded in the kernel because the number of parameters in
+  // the operator is 0
+  int numel = out->numel();
+
   if (!std::is_same<T, phi::dtype::complex<float>>::value &&
       !std::is_same<T, phi::dtype::complex<double>>::value) {
     auto value = val.to<double>();
@@ -98,17 +106,16 @@ void FullLikeKernel(const Context& dev_ctx,
             static_cast<CommonType>(std::numeric_limits<T>::lowest()),
             static_cast<CommonType>(std::numeric_limits<T>::max()),
             static_cast<float>(value)));
-  }
-  std::vector<const DenseTensor*> inputs = {};
-  std::vector<DenseTensor*> outputs = {out};
-  dev_ctx.template Alloc<T>(out);
-  // This function has no input, so the inputs.size() == 0. Use kUnary, but the
-  // data will not be loaded in the kernel because the number of parameters in
-  // the operator is 0
-  int numel = out->numel();
-  if (numel > 0) {
-    phi::funcs::ElementwiseKernel<T>(
-        dev_ctx, inputs, &outputs, FullFunctor<T>(value));
+
+    if (numel > 0) {
+      phi::funcs::ElementwiseKernel<T>(
+          dev_ctx, inputs, &outputs, FullFunctor<T>(value));
+    }
+  } else {
+    if (numel > 0) {
+      phi::funcs::ElementwiseKernel<T>(
+          dev_ctx, inputs, &outputs, FullFunctor<T>(val.to<T>()));
+    }
   }
 }
 
