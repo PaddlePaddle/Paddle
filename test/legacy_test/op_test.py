@@ -1710,8 +1710,10 @@ class OpTest(unittest.TestCase):
             visited_ops.append(op_desc.type())
             has_infer_inplace = base.core.has_infer_inplace(op_desc.type())
             has_grad_op_maker = base.core.has_grad_op_maker(op_desc.type())
+            # the OP test doesn't support higher order grad
+            is_grad_op_desc = op_desc.type().endswith('_grad')
             has_infer_inplace_in_grad_descendants = False
-            if not has_grad_op_maker:
+            if not has_grad_op_maker or is_grad_op_desc:
                 has_infer_inplace_in_descendants = False
             else:
                 # get grad_op_desc
