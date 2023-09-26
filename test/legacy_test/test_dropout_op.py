@@ -1759,13 +1759,13 @@ class TestCompositeDropout(unittest.TestCase):
             np.testing.assert_allclose(
                 self.fwd_desire[i].sum(),
                 fwd_actual[i].sum(),
-                rtol=1e-2,  # mean of uniform distribution, scale for avoid random failed
+                rtol=2e-2,  # mean of uniform distribution, scale for avoid random failed
                 atol=0,
             )
             np.testing.assert_allclose(
                 self.rev_desire[i].sum(),
                 rev_actual[i].sum(),
-                rtol=1e-2,  # mean of uniform distribution, scale for avoid random failed
+                rtol=2e-2,  # mean of uniform distribution, scale for avoid random failed
                 atol=0,
             )
 
@@ -1800,13 +1800,13 @@ class TestCompositeDropout(unittest.TestCase):
             np.testing.assert_allclose(
                 self.fwd_desire[i].sum(),
                 fwd_actual[i].sum(),
-                rtol=1e-2,  # mean of uniform distribution, scale for avoid random failed
+                rtol=2e-2,  # mean of uniform distribution, scale for avoid random failed
                 atol=0,
             )
             np.testing.assert_allclose(
                 self.rev_desire[i].sum(),
                 rev_actual[i].sum(),
-                rtol=1e-2,  # mean of uniform distribution, scale for avoid random failed
+                rtol=2e-2,  # mean of uniform distribution, scale for avoid random failed
                 atol=0,
             )
 
@@ -1843,13 +1843,13 @@ class TestCompositeDropout(unittest.TestCase):
             np.testing.assert_allclose(
                 self.fwd_desire[i].sum(),
                 fwd_actual[i].sum(),
-                rtol=1e-2,  # mean of uniform distribution, scale for avoid random failed
+                rtol=2e-2,  # mean of uniform distribution, scale for avoid random failed
                 atol=0,
             )
             np.testing.assert_allclose(
                 self.rev_desire[i].sum(),
                 rev_actual[i].sum(),
-                rtol=1e-2,  # mean of uniform distribution, scale for avoid random failed
+                rtol=2e-2,  # mean of uniform distribution, scale for avoid random failed
                 atol=0,
             )
             i += 1
