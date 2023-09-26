@@ -486,10 +486,11 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::EmbeddingInferSpmd),
     PD_INFER_SPMD(phi::distributed::EmbeddingInferSpmdReverse));
 `
-// split rule
-PD_REGISTER_SPMD_RULE(split,
-                      PD_INFER_SPMD(phi::distributed::SplitInferSpmd),
-                      PD_INFER_SPMD(phi::distributed::SplitInferSpmdReverse));
+    // split rule
+    PD_REGISTER_SPMD_RULE(
+        split,
+        PD_INFER_SPMD(phi::distributed::SplitInferSpmd),
+        PD_INFER_SPMD(phi::distributed::SplitInferSpmdReverse));
 
 PD_REGISTER_SPMD_RULE(
     split_with_num,
