@@ -36,7 +36,7 @@ from .tensor.linalg import slogdet  # noqa: F401
 from .tensor.linalg import solve  # noqa: F401
 from .tensor.linalg import svd  # noqa: F401
 from .tensor.linalg import triangular_solve  # noqa: F401
-from .tensor.linalg import lstsq
+from .tensor.linalg import lstsq, vdot
 
 __all__ = [
     'cholesky',  # noqa
@@ -64,4 +64,5 @@ __all__ = [
     'cholesky_solve',
     'triangular_solve',
     'lstsq',
+    'vdot',
 ]

@@ -3730,3 +3730,72 @@ def cdist(
     return paddle.linalg.norm(
         x[..., None, :] - y[..., None, :, :], p=p, axis=-1
     )
+
+
+def vdot(x, y, name=None):
+    r"""
+    Compute the dot product of two 1-D vectors along a dimension.
+    If the first argument is complex, the complex conjugate of the first argument is used for the calculation of the dot product.
+    .. math::
+        out = \sum_{i=0}^{N} \overline{x_{i}}y_{i}
+
+    Where:
+    - :math:`\overline{x_{i}}`: the conjugate for the :math:`i`-th complex tensor
+    - :math:`N`: the size of 1-D Tensor
+
+    Args:
+        x (Tensor): the input 1-D tensor, its data type should be float32, float64, complex64, complex128.
+        y (Tensor): the input 1-D tensor, its data type should be float32, float64, complex64, complex128.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor: the calculated result Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            np_x = np.array([1+2j, 3-1j])
+            np_y = np.array([2+1j, 4-0j])
+            x = paddle.to_tensor(np_x)
+            y = paddle.to_tensor(np_y)
+
+            z = paddle.vdot(x, y)
+            np_z = z.numpy()
+            # [16.+1.j]
+
+            z = paddle.vdot(y, x)
+            np_z = z.numpy()
+            # [16.-1.j]
+    """
+    check_variable_and_dtype(
+        x, 'x', ('float32', 'float64', 'complex64', 'complex128'), 'vdot'
+    )
+    check_variable_and_dtype(
+        y, 'y', ('float32', 'float64', 'complex64', 'complex128'), 'vdot'
+    )
+
+    if len(x.shape) != 1:
+        raise ValueError(
+            "Input(x) only support 1-D tensor in vdot, but received "
+            "length of Input(input) is %s." % len(x.shape)
+        )
+
+    if len(y.shape) != 1:
+        raise ValueError(
+            "Input(y) only support 1-D tesnor in vdot, but received "
+            "length of Input(input) is %s." % len(y.shape)
+        )
+
+    assert x.shape[0] == y.shape[0], (
+        "The x and y must have same dimension, "
+        f"But received Input x's dimension is {x.shape[0]}, "
+        f"Input y's dimension is {y.shape[0]}.\n"
+    )
+
+    if paddle.is_complex(x):
+        return paddle.sum(paddle.conj(x), y)
+    else:
+        return paddle.sum(x, y)
