@@ -495,7 +495,7 @@ def leaky_relu(x, negative_slope=0.01, name=None):
 def leaky_relu_(x, negative_slope=0.01, name=None):
     r"""
     Inplace version of ``leaky_relu`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`paddle_nn_functional_leaky_relu`.
+    Please refer to :ref:`api_paddle_nn_functional_leaky_relu`.
     """
     if in_dynamic_mode():
         return _C_ops.leaky_relu_(x, negative_slope)
