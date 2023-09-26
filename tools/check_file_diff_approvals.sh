@@ -89,6 +89,7 @@ API_FILES=("CMakeLists.txt"
            "python/paddle/incubate/autograd/primitives.py"
            "python/paddle/autograd/ir_backward.py"
            "python/paddle/autograd/backward_utils.py"
+           "paddle/scripts/paddle_build.sh"
            )
 
 approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
@@ -223,6 +224,9 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "python/paddle/autograd/ir_backward.py" ] || [ "${API_FILE}" == "python/paddle/autograd/backward_utils.py" ]; then
             echo_line="You must be approved by Aurelius84(zhangliujie) or cxxly(chenxiaoxu) or xiaoguoguo626807(wangruting) or changeyoung98(chenzhiyang) for python/paddle/autograd/ir_backward.py or python/paddle/autograd/backward_utils.py changes.\n"
             check_approval 1 Aurelius84 cxxly xiaoguoguo626807 changeyoung98
+      elif [ "${API_FILE}" == "paddle/scripts/paddle_build.sh" ]; then 
+	      echo_line="You must have one RD (tianshuo78520a or risemeup1 or zhangbo9674 or XieYunshen) for ${API_FILE} changes, which manages the Paddle CI on Linux.\n " 
+            check_approval 1 tianshuo78520a risemeup1 zhangbo9674 XieYunshen 
       else
           echo_line="You must have one RD (XiaoguangHu01,chenwhql,zhiqiu,Xreki,luotao1,qili93,Aurelius84) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
           check_approval 1 XiaoguangHu01 chenwhql zhiqiu Xreki luotao1 qili93 Aurelius84
