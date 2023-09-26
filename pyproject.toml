@@ -105,7 +105,6 @@ ignore = [
 
 # Temporarily ignored
 "python/paddle/base/**" = [
-    "UP031",
     "C408",
     "UP030",
     "C405",
