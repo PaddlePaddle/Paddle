@@ -1309,8 +1309,8 @@ class BatchNorm2D(_BatchNormBase):
         moving\_mean = moving\_mean * momentum + \mu_{\beta} * (1. - momentum) \quad &// global \ mean \\
         moving\_variance = moving\_variance * momentum + \sigma_{\beta}^{2} * (1. - momentum) \quad &// global \ variance \\
 
-    - :math:`\x` : batch input data
-    - :math:`\m` : size of the current batch
+    - :math:`x` : mini-batch data
+    - :math:`m` : the size of the mini-batch data
 
     The normalization function formula is as follows:
 
@@ -1343,8 +1343,6 @@ class BatchNorm2D(_BatchNormBase):
         - x: 4-D tensor with shape: (batch, num_features, height, weight) when data_format is "NCHW",
             or (batch, height, weight, num_features) when data_format is "NHWC".
         - output: 4-D tensor with same shape as input x.
-
-        Note: the current training set track_running_stats to False is invalid, the actual or according to the True solution to save the global mean and variance. This will be fixed in a later version.
 
     Returns:
         None
