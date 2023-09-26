@@ -82,71 +82,92 @@ def flash_attention(
     Examples:
         .. code-block:: python
 
-            # required: skiptest
-            import paddle
+            >>> import paddle
 
-            q = paddle.rand((1, 128, 2, 16), dtype=paddle.float16)
+            >>> paddle.seed(1)
+            >>> q = paddle.rand((1, 128, 2, 16))
 
-            output = paddle.nn.functional.flash_attention(q, q, q, 0.9, False, False)
-            print(output)
+            >>> output = paddle.nn.functional.flash_attention.flash_attention(q, q, q, 0.9, False, False)
     """
-    if in_dynamic_mode():
-        if g_use_flash_attn_v1:
-            (result_attention, result_softmax, _, _) = _C_ops.flash_attn_v1(
-                query,
-                key,
-                value,
-                dropout,
-                causal,
-                return_softmax,
-                not training,
-            )
+    head_dim = query.shape[3]
+    sdp_func_name = _select_sdp(head_dim)
 
-        else:
-            (result_attention, result_softmax, _, _) = _C_ops.flash_attn(
+    if sdp_func_name == "flash_attn":
+        if in_dynamic_mode():
+            (
+                result_attention,
+                result_softmax,
+            ) = _C_ops.flash_attn(
                 query,
                 key,
                 value,
                 fixed_seed_offset,
+                None,
                 dropout,
                 causal,
                 return_softmax,
                 not training,
                 rng_name,
             )
-        return result_attention, result_softmax if return_softmax else None
+            return result_attention, result_softmax if return_softmax else None
 
-    helper = LayerHelper('flash_attn', **locals())
-    dtype = helper.input_dtype(input_param_name='q')
-    out = helper.create_variable_for_type_inference(dtype)
-    softmax = helper.create_variable_for_type_inference(dtype)
-    softmax_lse = helper.create_variable_for_type_inference(paddle.float32)
-    seed_offset = helper.create_variable_for_type_inference(paddle.int64)
-    inputs = {
-        'q': query,
-        'k': key,
-        'v': value,
-        'fixed_seed_offset': fixed_seed_offset,
-    }
-    outputs = {
-        'out': out,
-        'softmax': softmax,
-        'softmax_lse': softmax_lse,
-        'seed_offset': seed_offset,
-    }
-    helper.append_op(
-        type='flash_attn',
-        inputs=inputs,
-        outputs=outputs,
-        attrs={
-            'dropout': dropout,
-            'causal': causal,
-            'return_softmax': return_softmax,
-            'is_test': not training,
-            'rng_name': rng_name,
-        },
-    )
-    return out, softmax if return_softmax else None
+        helper = LayerHelper('flash_attn', **locals())
+        dtype = helper.input_dtype(input_param_name='q')
+        out = helper.create_variable_for_type_inference(dtype)
+        softmax = helper.create_variable_for_type_inference(dtype)
+        softmax_lse = helper.create_variable_for_type_inference(paddle.float32)
+        seed_offset = helper.create_variable_for_type_inference(paddle.int64)
+        inputs = {
+            'q': query,
+            'k': key,
+            'v': value,
+            'fixed_seed_offset': fixed_seed_offset,
+        }
+        outputs = {
+            'out': out,
+            'softmax': softmax,
+            'softmax_lse': softmax_lse,
+            'seed_offset': seed_offset,
+        }
+        helper.append_op(
+            type='flash_attn',
+            inputs=inputs,
+            outputs=outputs,
+            attrs={
+                'dropout': dropout,
+                'causal': causal,
+                'return_softmax': return_softmax,
+                'is_test': not training,
+                'rng_name': rng_name,
+            },
+        )
+        return out, softmax if return_softmax else None
+    else:
+        if sdp_func_name == "mem_efficient":
+            from paddle.incubate.nn.memory_efficient_attention import (
+                memory_efficient_attention,
+            )
+
+            output = memory_efficient_attention(
+                query,
+                key,
+                value,
+                attn_bias=None,
+                p=dropout,
+                scale=None,
+                training=training,
+            )
+            return output, None
+        else:
+            return _math_attention(
+                query,
+                key,
+                value,
+                dropout_rate=dropout,
+                causal=causal,
+                return_softmax=return_softmax,
+                training=training,
+            )
 
 
 def flash_attn_unpadded(
@@ -221,7 +242,6 @@ def flash_attn_unpadded(
 
             # required: skiptest
             import paddle
-
             q = paddle.rand((1, 128, 2, 16), dtype=paddle.float16)
 
             output = paddle.nn.functional.flash_attn_unpadded(q, q, q, 0.9, False, False)
@@ -244,13 +264,17 @@ def flash_attn_unpadded(
                 not training,
             )
         else:
-            (result_attention, result_softmax,) = _C_ops.flash_attn_unpadded(
+            (
+                result_attention,
+                result_softmax,
+            ) = _C_ops.flash_attn_unpadded(
                 query,
                 key,
                 value,
                 cu_seqlens_q,
                 cu_seqlens_k,
                 fixed_seed_offset,
+                None,
                 max_seqlen_q,
                 max_seqlen_k,
                 scale,
