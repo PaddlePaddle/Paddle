@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import convert_float_to_uint16
 
 import paddle
 from paddle import base
@@ -233,6 +234,21 @@ class TestMaskedFillBF16(TestMaskedFillAPI):
         self.x_shape = (300, 1)
         self.mask_shape = (300, 1)
         self.dtype = "uint16"
+
+    def setUp(self):
+        self.init()
+
+        self.x_np = convert_float_to_uint16(
+            np.random.random(self.x_shape).astype("float32")
+        )
+        self.mask_np = np.array(
+            np.random.randint(2, size=self.mask_shape), dtype="bool"
+        )
+
+        self.value_np = convert_float_to_uint16(
+            np.random.randn(1).astype("float32")
+        )
+        self.out_np = np_masked_fill(self.x_np, self.mask_np, self.value_np)
 
 
 @unittest.skipIf(
