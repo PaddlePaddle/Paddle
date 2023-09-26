@@ -56,9 +56,7 @@ class TestInplace(unittest.TestCase):
             loss = paddle.nn.functional.relu(var_c + var_d)
             with self.assertRaisesRegex(
                 RuntimeError,
-                "received tensor_version:{} != wrapper_version_snapshot:{}".format(
-                    1, 0
-                ),
+                f"received tensor_version:{1} != wrapper_version_snapshot:{0}",
             ):
                 loss.backward()
 
@@ -173,9 +171,7 @@ class TestDygraphInplace(unittest.TestCase):
             loss = paddle.nn.functional.relu(var_c)
             with self.assertRaisesRegex(
                 RuntimeError,
-                "received tensor_version:{} != wrapper_version_snapshot:{}".format(
-                    1, 0
-                ),
+                f"received tensor_version:{1} != wrapper_version_snapshot:{0}",
             ):
                 loss.backward()
 
@@ -922,9 +918,7 @@ class TestDygraphInplaceNanToNum(TestDygraphInplace):
             loss = paddle.nn.functional.relu(var_c)
             with self.assertRaisesRegex(
                 RuntimeError,
-                "received tensor_version:{} != wrapper_version_snapshot:{}".format(
-                    3, 0
-                ),
+                f"received tensor_version:{3} != wrapper_version_snapshot:{0}",
             ):
                 loss.backward()
 
@@ -1013,9 +1007,7 @@ class TestDygraphInplaceLdexp(TestDygraphInplaceWithContinuous):
             loss = paddle.nn.functional.relu(var_c)
             with self.assertRaisesRegex(
                 RuntimeError,
-                "received tensor_version:{} != wrapper_version_snapshot:{}".format(
-                    2, 0
-                ),
+                f"received tensor_version:{2} != wrapper_version_snapshot:{0}",
             ):
                 loss.backward()
 
@@ -1091,9 +1083,7 @@ class TestDygraphInplaceWhereBroadcast(TestDygraphInplaceWithContinuous):
             loss = paddle.nn.functional.relu(var_c)
             with self.assertRaisesRegex(
                 RuntimeError,
-                "received tensor_version:{} != wrapper_version_snapshot:{}".format(
-                    2, 0
-                ),
+                f"received tensor_version:{2} != wrapper_version_snapshot:{0}",
             ):
                 loss.backward()
 
@@ -1389,9 +1379,7 @@ class TestDygraphInplaceCumsum(TestDygraphInplaceWithContinuous):
             loss = paddle.nn.functional.relu(var_c)
             with self.assertRaisesRegex(
                 RuntimeError,
-                "received tensor_version:{} != wrapper_version_snapshot:{}".format(
-                    2, 0
-                ),
+                f"received tensor_version:{2} != wrapper_version_snapshot:{0}",
             ):
                 loss.backward()
 
@@ -1433,9 +1421,7 @@ class TestDygraphInplaceCumprod(TestDygraphInplace):
             loss = paddle.nn.functional.relu(var_c)
             with self.assertRaisesRegex(
                 RuntimeError,
-                "received tensor_version:{} != wrapper_version_snapshot:{}".format(
-                    2, 0
-                ),
+                f"received tensor_version:{2} != wrapper_version_snapshot:{0}",
             ):
                 loss.backward()
 
@@ -1478,6 +1464,54 @@ class TestDygrapInplaceMultiply(TestDygraphInplaceWithContinuous):
 
     def non_inplace_api_processing(self, var):
         return paddle.multiply(var, self.y)
+
+
+class TestDygrapInplaceT(TestDygraphInplaceWithContinuous):
+    def init_data(self):
+        self.input_var_numpy = np.random.uniform(-5, 5, [10, 20])
+        self.dtype = "float32"
+
+    def inplace_api_processing(self, var):
+        return paddle.t_(var)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.t(var)
+
+    def test_forward_version(self):
+        with paddle.base.dygraph.guard():
+            var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            self.assertEqual(var.inplace_version, 0)
+
+            inplace_var = self.inplace_api_processing(var)
+            self.assertEqual(var.inplace_version, 1)
+
+            inplace_var[0] = 2
+            self.assertEqual(var.inplace_version, 1)
+
+            inplace_var = self.inplace_api_processing(inplace_var)
+            self.assertEqual(var.inplace_version, 2)
+
+
+class TestDygrapInplaceTranspose(TestDygraphInplaceWithContinuous):
+    def inplace_api_processing(self, var):
+        return paddle.transpose_(var, [1, 0, 2])
+
+    def non_inplace_api_processing(self, var):
+        return paddle.transpose(var, [1, 0, 2])
+
+    def test_forward_version(self):
+        with paddle.base.dygraph.guard():
+            var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            self.assertEqual(var.inplace_version, 0)
+
+            inplace_var = self.inplace_api_processing(var)
+            self.assertEqual(var.inplace_version, 1)
+
+            inplace_var[0] = 2
+            self.assertEqual(var.inplace_version, 1)
+
+            inplace_var = self.inplace_api_processing(inplace_var)
+            self.assertEqual(var.inplace_version, 2)
 
 
 if __name__ == '__main__':

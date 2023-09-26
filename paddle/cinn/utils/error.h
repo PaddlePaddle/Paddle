@@ -165,6 +165,9 @@ class ErrorHandler {
    * \brief Format the error message.
    */
   std::string FormatErrorMessage(const ErrorMessageLevel& err_msg_level) const;
+
+ protected:
+  const std::string indent_str_{"  "};
 };
 
 }  // namespace utils

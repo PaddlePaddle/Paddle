@@ -11,32 +11,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
-import decorator
 import inspect
 import sys
-import numpy as np
-from paddle.base import core
-from paddle.base import framework
-from paddle.base.framework import global_var
-from paddle.base.multiprocess_utils import CleanupFuncRegistrar
-from .tracer import Tracer
-from ..data_feeder import convert_dtype
-import warnings
-from ..framework import _get_paddle_place
-import paddle
 import warnings
 
-__all__ = [
-    'no_grad',
-    'no_grad_',
-    'grad',
-    'guard',
-    'enable_dygraph',
-    'disable_dygraph',
-    'enabled',
-    'to_variable',
-]
+import decorator
+import numpy as np
+
+import paddle
+from paddle.base import core, framework
+from paddle.base.framework import global_var
+from paddle.base.multiprocess_utils import CleanupFuncRegistrar
+
+from ..data_feeder import convert_dtype
+from ..framework import _get_paddle_place
+from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
+from .tracer import Tracer
+
+__all__ = []
 
 NON_PERSISTABLE_VAR_NAME_SUFFIX = "__non_persistable"
 
@@ -352,8 +344,7 @@ class _DecoratorContextManager:
         def _decorate_generator(func, *args, **kwargs):
             gen = func(*args, **kwargs)
             with self:
-                for x in gen:
-                    yield x
+                yield from gen
 
         if inspect.isgeneratorfunction(func):
             return _decorate_generator(func)
@@ -747,19 +738,19 @@ def grad(
         return gradients(outputs, inputs, grad_outputs, no_grad_vars)
 
     def check_in_out(in_out_list, name):
-        assert in_out_list is not None, "{} should not be None".format(name)
+        assert in_out_list is not None, f"{name} should not be None"
 
         if isinstance(in_out_list, (list, tuple)):
-            assert len(in_out_list) > 0, "{} cannot be empty".format(name)
+            assert len(in_out_list) > 0, f"{name} cannot be empty"
             for each_var in in_out_list:
                 assert isinstance(
                     each_var, core.eager.Tensor
-                ), "Elements of {} must be Tensor".format(name)
+                ), f"Elements of {name} must be Tensor"
             return in_out_list
         else:
             assert isinstance(
                 in_out_list, core.eager.Tensor
-            ), "{} must be Tensor or list of Tensor".format(name)
+            ), f"{name} must be Tensor or list of Tensor"
             return [in_out_list]
 
     outputs = check_in_out(outputs, 'outputs')
@@ -893,8 +884,9 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
     )
     if not isinstance(value, support_type):
         raise TypeError(
-            "The type of 'value' in base.dygraph.to_variable must be %s, but received %s."
-            % (support_type, type(value))
+            "The type of 'value' in base.dygraph.to_variable must be {}, but received {}.".format(
+                support_type, type(value)
+            )
         )
     if isinstance(value, (core.eager.Tensor, framework.Variable)):
         return value

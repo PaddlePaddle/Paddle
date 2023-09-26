@@ -26,6 +26,8 @@ using LoD = std::vector<std::vector<size_t>>;
 class IrMetaTensor : public phi::TensorBase,
                      public phi::TypeInfoTraits<phi::TensorBase, IrMetaTensor> {
  public:
+  IrMetaTensor() = default;
+
   IrMetaTensor(phi::DataType dtype,
                const phi::DDim& dims,
                phi::DataLayout layout,
@@ -49,13 +51,21 @@ class IrMetaTensor : public phi::TensorBase,
 
   const phi::DDim& dims() const noexcept override { return dims_; }
 
+  void SetDims(const phi::DDim& dims) { dims_ = dims; }
+
   const phi::Place& place() const override;
 
   phi::DataType dtype() const noexcept override { return dtype_; }
 
+  void SetDtype(phi::DataType dtype) { dtype_ = dtype; }
+
   phi::DataLayout layout() const noexcept override { return layout_; }
 
+  void SetLayout(phi::DataLayout layout) { layout_ = layout; }
+
   const LoD& lod() const noexcept { return lod_; }
+
+  void SetLod(LoD lod) { lod_ = lod; }
 
   size_t offset() const noexcept { return offset_; }
 
@@ -70,8 +80,8 @@ class IrMetaTensor : public phi::TensorBase,
 
  private:
   phi::DDim dims_;
-  phi::DataType dtype_{phi::DataType::UNDEFINED};
-  phi::DataLayout layout_{phi::DataLayout::NCHW};
+  phi::DataType dtype_{phi::DataType::FLOAT32};
+  phi::DataLayout layout_{phi::DataLayout::ANY};
   LoD lod_;
   size_t offset_{0};
 };

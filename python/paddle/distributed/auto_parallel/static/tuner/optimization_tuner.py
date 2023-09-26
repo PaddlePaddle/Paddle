@@ -538,9 +538,7 @@ class OptimizationTuner:
             )
 
         self._logger.info(
-            "Trial {} evaluation finish with {}.".format(
-                trial.name, parse_results(results)
-            )
+            f"Trial {trial.name} evaluation finish with {parse_results(results)}."
         )
         return results
 

@@ -280,9 +280,7 @@ class ClipHelper:
                 numel = reduce(lambda x, y: x * y, param.shape, 1)
                 assert (
                     numel > 0
-                ), "param [{}] should larger than 0, but it is [{}]".format(
-                    param.name, numel
-                )
+                ), f"param [{param.name}] should larger than 0, but it is [{numel}]"
                 sizes[rank] += numel
         return mapping
 

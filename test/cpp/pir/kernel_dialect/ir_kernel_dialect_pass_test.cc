@@ -15,10 +15,12 @@
 #include <gtest/gtest.h>
 #include <sstream>
 
+#include "build/paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/framework/variable_helper.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
@@ -26,7 +28,6 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/fluid/pir/phi_kernel_adaptor/phi_kernel_adaptor.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/phi/common/data_type.h"
@@ -52,61 +53,6 @@ PD_DECLARE_KERNEL(uniform, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 
 bool simple_cmp(float a, float b) { return std::abs((a - b) / a) < 1e-5; }
-
-TEST(program_test, program) {
-  // (1) Init environment.
-  pir::IrContext* ctx = pir::IrContext::Instance();
-  pir::Program program((ctx));
-
-  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-
-  pir::Builder builder = pir::Builder(ctx, program.block());
-
-  paddle::dialect::FullOp op1 = builder.Build<paddle::dialect::FullOp>(
-      std::vector<int64_t>{2, 2}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
-
-  paddle::dialect::FullOp op2 = builder.Build<paddle::dialect::FullOp>(
-      std::vector<int64_t>{2, 2}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
-
-  builder.Build<paddle::dialect::AddOp>(op1->result(0), op2->result(0));
-
-  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
-
-  paddle::framework::Scope scope;
-  PhiKernelAdaptor phi_kernel_adaptor(&scope);
-  phi_kernel_adaptor.run_kernel_prog(kernel_program.get());
-
-  auto out_tensor =
-      scope.Var(phi_kernel_adaptor.out_name)->Get<phi::DenseTensor>();
-
-  bool res0 = simple_cmp(out_tensor.data<float>()[0], 2.0);
-  bool res1 = simple_cmp(out_tensor.data<float>()[1], 2.0);
-  bool res2 = simple_cmp(out_tensor.data<float>()[2], 2.0);
-  bool res3 = simple_cmp(out_tensor.data<float>()[3], 2.0);
-
-  EXPECT_EQ(res0, true);
-  EXPECT_EQ(res1, true);
-  EXPECT_EQ(res2, true);
-  EXPECT_EQ(res3, true);
-
-  EXPECT_EQ(kernel_program->block()->size(), 3u);
-  EXPECT_EQ(kernel_program->block()
-                ->front()
-                ->dyn_cast<paddle::dialect::PhiKernelOp>()
-                .op_name(),
-            "pd_op.full");
-  EXPECT_EQ(kernel_program->block()
-                ->front()
-                ->dyn_cast<paddle::dialect::PhiKernelOp>()
-                .kernel_name(),
-            "full");
-  EXPECT_EQ(kernel_program->block()
-                ->front()
-                ->dyn_cast<paddle::dialect::PhiKernelOp>()
-                .kernel_key()
-                .dtype(),
-            phi::DataType::FLOAT32);
-}
 
 TEST(dialect_attr, attr) {
   // (1) Init environment.
@@ -164,7 +110,7 @@ TEST(kernel_dialect, legacy_op_test) {
                                            "kernel_key",
                                            kernel_key);
 
-  pir::Operation* op = pir::Operation::Create(std::move(argument));
+  pir::Operation* op = pir::Operation::Create(argument);
   EXPECT_EQ("pd_op.kernel_op",
             op->dyn_cast<paddle::dialect::LegacyKernelOp>().op_name());
   EXPECT_EQ("kernel_op",
@@ -195,7 +141,7 @@ TEST(kernel_dialect, cond_op_test) {
 
   auto full_op_1 = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{2}, true, phi::DataType::BOOL);
-  builder.Build<pir::YieldOp>(std::vector<pir::OpResult>{full_op_1.out()});
+  builder.Build<pir::YieldOp>(std::vector<pir::Value>{full_op_1.out()});
 
   pir::Block* false_block = if_op.false_block();
 
@@ -203,7 +149,7 @@ TEST(kernel_dialect, cond_op_test) {
 
   auto full_op_2 = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{3}, true, phi::DataType::BOOL);
-  builder.Build<pir::YieldOp>(std::vector<pir::OpResult>{full_op_2.out()});
+  builder.Build<pir::YieldOp>(std::vector<pir::Value>{full_op_2.out()});
 
   program.Print(std::cout);
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);

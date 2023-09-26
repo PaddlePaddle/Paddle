@@ -34,7 +34,7 @@ using AttributeMap = std::unordered_map<std::string, Attribute>;
 // This represents an operation arguments in an combined form, suitable for use
 // with the builder APIs.
 struct OperationArgument {
-  std::vector<OpResult> inputs;
+  std::vector<Value> inputs;
   AttributeMap attributes;
   std::vector<Type> output_types;
   OpInfo info;
@@ -44,29 +44,20 @@ struct OperationArgument {
  public:
   OperationArgument(IrContext* ir_context, const std::string& name);
   explicit OperationArgument(OpInfo info) : info(info) {}
-  OperationArgument(const std::vector<OpResult>& operands,
+  OperationArgument(const std::vector<Value>& inputs,
                     const AttributeMap& attributes,
                     const std::vector<Type>& types,
                     OpInfo info,
                     size_t num_regions = 0,
                     const std::vector<Block*> successors = {})
-      : inputs(operands),
+      : inputs(inputs),
         attributes(attributes),
         output_types(types),
         info(info),
         num_regions(num_regions),
         successors(successors) {}
 
-  // Will be deleted in the next pr.
-  void AddOperand(OpResult operand) { inputs.emplace_back(operand); }
-
-  void AddInput(Value input) {
-    inputs.emplace_back(input.dyn_cast<OpResult>());
-  }
-
-  // Will be deleted in the next pr.
-  template <class InputIt>
-  void AddOperands(InputIt first, InputIt last);
+  void AddInput(Value input) { inputs.emplace_back(input); }
 
   template <class InputIt>
   void AddInputs(InputIt first, InputIt last);
@@ -93,18 +84,17 @@ struct OperationArgument {
   /// Add an array of named attributes.
   template <class InputIt>
   void AddAttributes(InputIt first, InputIt last);
+
+  template <class AttrContainer>
+  void AddAttributes(const AttrContainer& attr_container) {
+    AddAttributes(std::begin(attr_container), std::end(attr_container));
+  }
+
   /// Get the context held by this operation state.
   IrContext* getContext() const { return info.ir_context(); }
 
   void AddSuccessor(Block* successor) { successors.emplace_back(successor); }
 };
-
-template <class InputIt>
-void OperationArgument::AddOperands(InputIt first, InputIt last) {
-  while (first != last) {
-    inputs.emplace_back(*first++);
-  }
-}
 
 template <class InputIt>
 void OperationArgument::AddInputs(InputIt first, InputIt last) {

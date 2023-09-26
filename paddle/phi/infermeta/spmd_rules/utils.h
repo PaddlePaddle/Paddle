@@ -98,11 +98,10 @@ using SpmdFn = SpmdInfo (*)(const std::vector<const DistMetaTensor*>& ins,
 
 namespace detail {
 template <SpmdFn Fn>
-struct PhiSpmdVariadicArgumentParser
-    : public ArgsIterator<PhiSpmdVariadicArgumentParser<Fn>> {
+struct VariadicSpmdRuleArgumentParser
+    : public ArgsIterator<VariadicSpmdRuleArgumentParser<Fn>> {
   std::vector<const DistMetaTensor*> inputs;
   std::vector<const DistMetaTensor*> outputs;
-  std::vector<phi::Attribute> attrs;
 
   // deal with inputs
   void operator()(const DistMetaTensor& x) { inputs.emplace_back(&x); }
@@ -111,11 +110,6 @@ struct PhiSpmdVariadicArgumentParser
     for (auto t : x) {
       inputs.emplace_back(t);
     }
-  }
-
-  template <typename AttrType>
-  void operator()(AttrType x) {
-    attrs.emplace_back(x);
   }
 
   // deal with outputs
@@ -127,16 +121,22 @@ struct PhiSpmdVariadicArgumentParser
     }
   }
 
-  SpmdInfo InferForward() {
-    return Fn(inputs, outputs);
-    // return Fn(inputs, outputs, attrs);
-  }
+  SpmdInfo InferForward() { return Fn(inputs, outputs); }
 
-  SpmdInfo InferBackward() {
-    return Fn(inputs, outputs);
-    // return Fn(inputs, outputs, attrs);
-  }
+  SpmdInfo InferBackward() { return Fn(inputs, outputs); }
 };
 }  // namespace detail
+
+// Get dims mapping for the given axes according to sharding information of
+// the annotated axes after inferring forward or backward. The parameter axis
+// stores the axes of the tensor. "1" is a special axis, for the axis "1", set
+// its dims mapping to -1.
+// if unsharded_miss_axis, "-1" is assigend to axes that has no key in
+// axis_to_dim_map.
+std::vector<int64_t> GetDimsMappingForAxes(
+    const std::string& axes,
+    const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
+    const bool unsharded_miss_axis = false);
+
 }  // namespace distributed
 }  // namespace phi

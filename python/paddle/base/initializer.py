@@ -12,24 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import math
-import functools
-from . import framework
-from . import core
-from .framework import (
-    in_dygraph_mode,
-    default_main_program,
-    _current_expected_place,
-)
-from .framework import program_guard
-import numpy as np
-from .core import VarDesc
-from . import unique_name
-from .data_feeder import check_variable_and_dtype, check_type, check_dtype
-from paddle import _C_ops, _legacy_C_ops
 import paddle
 
-__all__ = ['set_global_initializer']
+from .data_feeder import check_type
+
+__all__ = []
 
 _global_weight_initializer_ = None
 _global_bias_initializer_ = None

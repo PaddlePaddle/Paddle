@@ -116,8 +116,8 @@ void MeanRawKernel(const Context& dev_ctx,
                    DenseTensor* out) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = x.dtype();
-  phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
-      dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out, true);
+  phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor, true>(
+      dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
 }
 
 template <typename T, typename Context>

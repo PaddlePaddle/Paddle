@@ -1252,7 +1252,7 @@ class Fleet:
 
         Args:
             loss (Tensor): A ``Tensor`` containing the value to minimize.
-            startup_program (Program, optional): :ref:`api_base_Program` for
+            startup_program (Program, optional): :ref:`api_paddle_static_Program` for
                 initializing parameters in ``parameter_list``. The default value
                 is None, at this time :ref:`api_base_default_startup_program` will be used.
             parameter_list (Iterable, optional): Iterable of ``Tensor`` or ``Tensor.name`` to update

@@ -27,7 +27,7 @@ OP_VJP_FORWARD_INPUT_OR_OUTPUT_TEMPLATE = """
 
 OP_VJP_FORWARD_MULTI_INPUT_TEMPLATE = """
     pir::CombineOp combine_op_obj =
-      op_obj.{input_name}().GetDefiningOp()->dyn_cast<pir::CombineOp>();
+      op_obj.{input_name}().dyn_cast<pir::OpResult>().owner()->dyn_cast<pir::CombineOp>();
     std::vector<Tensor> {input_name};
     for (size_t idx = 0; idx < combine_op_obj.inputs().size(); idx++) {{
         {input_name}.emplace_back(
@@ -36,7 +36,7 @@ OP_VJP_FORWARD_MULTI_INPUT_TEMPLATE = """
 
 OP_VJP_FORWARD_OPTIONAL_INPUT_TEMPLATE = """
     paddle::optional<Tensor> {input_name};
-    if (op_obj.{input_name}().type().storage()){{
+    if (op_obj.{input_name}() && op_obj.{input_name}().type().storage()){{
         {input_name} = paddle::make_optional<Tensor>(Tensor(std::make_shared<primitive::LazyTensor>(op_obj.{input_name}())));
     }}"""
 
@@ -79,7 +79,7 @@ OP_VJP_STOPGRADIENT_TEMPLATE = """
     }"""
 
 OP_VJP_DEFINE_TEMPLATE = """
-std::vector<std::vector<pir::OpResult>> {op_class_name}::Vjp(pir::Operation* op, const std::vector<std::vector<pir::OpResult>>& out_grads, const std::vector<std::vector<bool>>& stop_gradients){{
+std::vector<std::vector<pir::OpResult>> {op_class_name}::Vjp(pir::Operation* op, const std::vector<std::vector<pir::Value>>& out_grads, const std::vector<std::vector<bool>>& stop_gradients){{
     {op_class_name} op_obj = op->dyn_cast<{op_class_name}>(); (void)op_obj;
 
     VLOG(6) << "Prepare inputs of {op_grad_name}";
@@ -237,22 +237,35 @@ def gen_op_vjp_str(
     return str
 
 
-def gen_op_infer_meta_str(op_info, op_class_name):
+def gen_op_infer_meta_str(op_info, op_class_name, op_info_items):
     op_infer_meta_str = ""
     if op_info.infer_meta_func:
         op_infer_meta_str = OP_INFER_SHAPE_TEMPLATE.format(
             op_name=op_class_name,
             infer_meta_func=op_info.infer_meta_func,
         )
+    elif op_info.invoke_map and op_info.invoke_map['func'] in op_info_items:
+        if op_info_items[op_info.invoke_map['func']].infer_meta_func:
+            op_infer_meta_str = OP_INFER_SHAPE_TEMPLATE.format(
+                op_name=op_class_name,
+                infer_meta_func=op_info_items[
+                    op_info.invoke_map['func']
+                ].infer_meta_func,
+            )
     return op_infer_meta_str
 
 
-def gen_exclusive_interface_str(op_info):
+def gen_exclusive_interface_str(op_info, op_info_items):
     exclusive_interface_str = ""
     if op_info.infer_meta_func:
         exclusive_interface_str += (
             "  static void InferMeta( phi::InferMetaContext *infer_meta );"
         )
+    elif op_info.invoke_map and op_info.invoke_map['func'] in op_info_items:
+        if op_info_items[op_info.invoke_map['func']].infer_meta_func:
+            exclusive_interface_str += (
+                "  static void InferMeta( phi::InferMetaContext *infer_meta );"
+            )
     if op_info.op_phi_name[0] in vjp_interface_declare_gen_op_list:
-        exclusive_interface_str += "\n  static std::vector<std::vector<pir::OpResult>> Vjp(pir::Operation* op, const std::vector<std::vector<pir::OpResult>>& out_grads, const std::vector<std::vector<bool>>& stop_gradients);"
+        exclusive_interface_str += "\n  static std::vector<std::vector<pir::OpResult>> Vjp(pir::Operation* op, const std::vector<std::vector<pir::Value>>& out_grads, const std::vector<std::vector<bool>>& stop_gradients);"
     return exclusive_interface_str

@@ -24,23 +24,14 @@ IrParser::IrParser(IrContext* ctx, std::istream& is) {
   builder.reset(new Builder{ctx});
 }
 
-Token IrParser::ConsumeToken() {
-  auto token = lexer->ConsumeToken();
-  return token;
-}
+Token IrParser::ConsumeToken() { return lexer->ConsumeToken(); }
 
 std::string IrParser::GetErrorLocationInfo() {
   return "The error occurred in line " + std::to_string(lexer->GetLine()) +
          ", column " + std::to_string(lexer->GetColumn());
 }
 
-Token IrParser::PeekToken() {
-  auto token = lexer->ConsumeToken();
-  if (token.token_type_ != EOF_) {
-    lexer->Unget(token.val_.size());
-  }
-  return token;
-}
+Token IrParser::PeekToken() { return lexer->PeekToken(); }
 
 void IrParser::ConsumeAToken(std::string expect_token_val) {
   std::string token_val = ConsumeToken().val_;
@@ -128,14 +119,13 @@ Attribute IrParser::ParseAttribute() {
   auto parenthesis_token = ConsumeToken();
   if (parenthesis_token.val_ == "true" || parenthesis_token.val_ == "false") {
     return builder->bool_attr(parenthesis_token.val_ == "true");
+  } else if (parenthesis_token.token_type_ == STRING) {
+    std::string val = parenthesis_token.val_;
+    val = val.substr(1, val.size() - 2);
+    return builder->str_attr(val);
   }
   std::string attribute_type = PeekToken().val_;
-  if (attribute_type == "String") {
-    ConsumeAToken("String");
-    ConsumeAToken(")");
-    std::string val = ConsumeToken().val_;
-    return builder->str_attr(val);
-  } else if (attribute_type == "Float") {
+  if (attribute_type == "Float") {
     ConsumeAToken("Float");
     ConsumeAToken(")");
     std::string val = ConsumeToken().val_;
@@ -207,16 +197,16 @@ void IrParser::ParseBlock(Block& block) {  // NOLINT
   ConsumeAToken("}");
 }
 
-// Operation := OpResultList ":=" Opname "(" OprandList ? ")" AttributeMap ":"
+// Operation := ValueList ":=" Opname "(" OprandList ? ")" AttributeMap ":"
 // FunctionType
 // FunctionType := "(" TypeList ")"  "->" TypeList
 Operation* IrParser::ParseOperation() {
-  std::vector<std::string> opresultindex = ParseOpResultList();
+  std::vector<std::string> value_index = ParseValueList();
   ConsumeAToken("=");
 
   OpInfo opinfo = ParseOpInfo();
 
-  std::vector<Value> inputs = ParseOprandList();
+  std::vector<Value> inputs = ParseOperandList();
 
   pir::AttributeMap attributeMap = ParseAttributeMap();
 
@@ -232,31 +222,30 @@ Operation* IrParser::ParseOperation() {
       Operation::Create(inputs, attributeMap, type_vector, opinfo, 0);
 
   for (uint32_t i = 0; i < op->num_results(); i++) {
-    std::string key_t = opresultindex[i];
-    opresultmap[key_t] = op->result(i);
+    std::string key_t = value_index[i];
+    value_map[key_t] = op->result(i);
   }
 
   return op;
 }
 
-// OpResultList := ValueList
 // ValueList := ValueId(,ValueId)*
-std::vector<std::string> IrParser::ParseOpResultList() {
-  std::vector<std::string> opresultindex{};
+std::vector<std::string> IrParser::ParseValueList() {
+  std::vector<std::string> value_index{};
   ConsumeAToken("(");
   Token index_token = ConsumeToken();
   while (index_token.val_ != ")") {
     if (index_token.token_type_ == NULL_) {
-      opresultindex.push_back("null");
+      value_index.push_back("null");
     } else {
       std::string str = index_token.val_;
-      opresultindex.push_back(str);
+      value_index.push_back(str);
     }
     if (ConsumeToken().val_ == ")") break;
     index_token = ConsumeToken();
   }
 
-  return opresultindex;
+  return value_index;
 }
 
 // OpName := "\"" StringIdentifer "." StringIdentifer "\""
@@ -269,7 +258,7 @@ OpInfo IrParser::ParseOpInfo() {
 
 // OprandList := ValueList
 // ValueList := ValueId(,ValueId)*
-std::vector<Value> IrParser::ParseOprandList() {
+std::vector<Value> IrParser::ParseOperandList() {
   ConsumeAToken("(");
   std::vector<Value> inputs{};
   Token ind_token = ConsumeToken();
@@ -279,7 +268,7 @@ std::vector<Value> IrParser::ParseOprandList() {
       inputs.emplace_back();
     } else {
       t = ind_token.val_;
-      inputs.push_back(opresultmap[t]);
+      inputs.push_back(value_map[t]);
     }
     Token token = ConsumeToken();
     if (token.val_ == ")") {
