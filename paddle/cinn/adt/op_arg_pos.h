@@ -18,6 +18,18 @@
 
 namespace cinn::adt {
 
-DEFINE_ADT_UNION(OpArgPos, Undefined, tIn<std::size_t>, tOut<std::size_t>);
+struct ArgDimPosDescriptor {
+  ArgDimPosDescriptor(std::size_t t_idx, std::size_t d_idx)
+      : tensor_idx(t_idx), dim_idx(d_idx) {}
 
-}
+  std::size_t tensor_idx;
+  std::size_t dim_idx;
+};
+
+DEFINE_ADT_UNION(OpArgPos, Undefined, tIn<std::size_t>, tOut<std::size_t>);
+DEFINE_ADT_UNION(OpArgDimPos,
+                 Undefined,
+                 tIn<ArgDimPosDescriptor>,
+                 tOut<ArgDimPosDescriptor>);
+
+}  // namespace cinn::adt

@@ -121,6 +121,13 @@ std::unordered_map<Variable, Value> InferValuesImpl(
   return ret;
 }
 
+std::unordered_map<Variable, Value> InferValuesImpl(
+    const ConstantFunction<tOut<Iterator>, tIn<Index>>& constant_function,
+    IndexExprInferContext* ctx) {
+  const auto& [out_iter, in_index, constant] = constant_function.tuple();
+  return std::unordered_map<Variable, Value>{{out_iter.value(), constant}};
+}
+
 std::unordered_map<Variable, Value> InferValues(const Function* function,
                                                 IndexExprInferContext* ctx) {
   return std::visit(

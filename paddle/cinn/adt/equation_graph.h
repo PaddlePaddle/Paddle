@@ -194,7 +194,14 @@ class Graph final : public std::enable_shared_from_this<Graph> {
         for (const auto& index : *in_box_out_indexes.value()) {
           in_variables.emplace(Variable{index});
         }
-      }
+      },
+      [&](const ConstantFunction<
+                  tOut<Iterator>, tIn<Index>>& constant_function) {
+        const auto& [out_iterator, in_index, constant] =
+            constant_function.tuple();
+        out_variables.emplace(Variable{out_iterator.value()});
+        in_variables.emplace(Variable{in_index.value()});
+      },
     };
     // clang-format on
 

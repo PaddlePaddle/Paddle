@@ -67,6 +67,8 @@ std::string DebugStringImpl(const Iterator& iterator) {
   return std::string("i_") + std::to_string(iterator.value().unique_id());
 }
 
+std::string DebugStringImpl(const Constant& c) { return DebugString(c); }
+
 std::string DebugStringImpl(const List<Value>& values) {
   std::string ret = "[";
   std::size_t count = 0;

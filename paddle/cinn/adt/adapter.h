@@ -38,6 +38,15 @@ struct Tensor final {
     return shape_dict.at(node_data->id()).size();
   }
 
+  const std::vector<int32_t>& GetShape() const {
+    const auto& shape_dict =
+        graph->GetAttrs<absl::flat_hash_map<std::string, utils::ShapeType>>(
+            "infershape");
+    CHECK(shape_dict.count(node_data->id()))
+        << "Can't find " << node_data->id() << " 's shape!";
+    return shape_dict.at(node_data->id());
+  }
+
   std::size_t GetNumel() const {
     const auto& shape_dict =
         graph->GetAttrs<absl::flat_hash_map<std::string, utils::ShapeType>>(

@@ -26,23 +26,6 @@ class NodeData;
 namespace cinn::adt {
 
 DEFINE_ADT_TAG(tPointer);
-DEFINE_ADT_TAG(tIterVar);
-
-DEFINE_ADT_UNION(Constant,
-                 std::int64_t,
-                 tStride<UniqueId>,
-                 tDim<UniqueId>,
-                 List<Constant>,
-                 Neg<Constant>,
-                 Add<Constant, Constant>,
-                 Mul<Constant, Constant>);
-
-OVERLOAD_OPERATOR_EQ_NE(Constant, UnionEqual);
-OVERLOAD_OPERATOR_EQ_NE(Neg<Constant>, TupleEqual);
-using AddConstant = Add<Constant, Constant>;
-using MulConstant = Mul<Constant, Constant>;
-OVERLOAD_OPERATOR_EQ_NE(AddConstant, TupleEqual);
-OVERLOAD_OPERATOR_EQ_NE(MulConstant, TupleEqual);
 
 template <typename IteratorsT>
 struct IndexDot : public Tuple<IteratorsT, Constant> {
@@ -104,6 +87,7 @@ DEFINE_ADT_UNION(Value,
                  Undefined,
                  Ok,
                  Iterator,
+                 Constant,
                  List<Value>,
                  IndexDot<Value>,
                  IndexUnDot<Value>,

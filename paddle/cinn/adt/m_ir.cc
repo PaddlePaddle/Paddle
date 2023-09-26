@@ -50,6 +50,11 @@ void CollectTensorIndexIteratorsImpl(const Iterator& iterator,
   ret->emplace(iterator);
 }
 
+void CollectTensorIndexIteratorsImpl(const Constant& constant,
+                                     std::unordered_set<Iterator>* ret) {
+  // Do nothing
+}
+
 void CollectTensorIndexIteratorsImpl(const List<Value>& tensor_index_expr,
                                      std::unordered_set<Iterator>* ret) {
   for (const auto& value : *tensor_index_expr) {
