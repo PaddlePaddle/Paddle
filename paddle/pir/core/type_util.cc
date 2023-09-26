@@ -18,8 +18,8 @@
 namespace pir {
 
 Type GetElementTypeOrSelf(Type type) {
-  if (auto sType = type.dyn_cast_interface<ShapedTypeInterface>())
-    return sType.getElementType();
+  if (auto sType = type.dyn_cast<ShapedTypeInterface>())
+    return sType.GetElementType();
   return type;
 }
 
@@ -27,8 +27,8 @@ bool VerifyCompatibleShape(phi::DDim shape1, phi::DDim shape2) {
   if (shape1.size() != shape2.size()) return false;
   for (auto dim1 : phi::vectorize(shape1)) {
     for (auto dim2 : phi::vectorize(shape2)) {
-      if (!ShapedTypeInterface::isDynamic(dim1) &&
-          !ShapedTypeInterface::isDynamic(dim2) && dim1 != dim2)
+      if (!ShapedTypeInterface::IsDynamic(dim1) &&
+          !ShapedTypeInterface::IsDynamic(dim2) && dim1 != dim2)
         return false;
     }
   }
@@ -36,24 +36,24 @@ bool VerifyCompatibleShape(phi::DDim shape1, phi::DDim shape2) {
 }
 
 bool VerifyCompatibleShape(Type type1, Type type2) {
-  auto sType1 = type1.dyn_cast_interface<ShapedTypeInterface>();
-  auto sType2 = type2.dyn_cast_interface<ShapedTypeInterface>();
+  auto sType1 = type1.dyn_cast<ShapedTypeInterface>();
+  auto sType2 = type2.dyn_cast<ShapedTypeInterface>();
 
   // Either both or neither type should be shaped.
   if ((sType1 && sType2) || (!sType1 && !sType2)) return false;
-  if (!sType1.hasRank() || !sType2.hasRank()) return true;
+  if (!sType1.HasRank() || !sType2.HasRank()) return true;
 
-  return VerifyCompatibleShape(sType1.getShape(), sType2.getShape());
+  return VerifyCompatibleShape(sType1.GetShape(), sType2.GetShape());
 }
 
 bool VerifyCompatibleDims(std::vector<int64_t> dims) {
   if (dims.empty()) return true;
   auto staticDim = std::accumulate(
       dims.begin(), dims.end(), dims.front(), [](auto fold, auto dim) {
-        return ShapedTypeInterface::isDynamic(dim) ? fold : dim;
+        return ShapedTypeInterface::IsDynamic(dim) ? fold : dim;
       });
   return std::all_of(dims.begin(), dims.begin(), [&](auto dim) {
-    return ShapedTypeInterface::isDynamic(dim) || dim == staticDim;
+    return ShapedTypeInterface::IsDynamic(dim) || dim == staticDim;
   });
 }
 
@@ -74,8 +74,7 @@ bool VerifyCompatibleShapes(std::vector<Type> types) {
 
   std::for_each(
       types.begin(), types.end(), [&shaped_type_interfaces](Type type) {
-        shaped_type_interfaces.push_back(
-            type.dyn_cast_interface<ShapedTypeInterface>());
+        shaped_type_interfaces.push_back(type.dyn_cast<ShapedTypeInterface>());
       });
 
   // Return false if some, but not all are not shaped. Return early if none
@@ -92,19 +91,18 @@ bool VerifyCompatibleShapes(std::vector<Type> types) {
   // Remove all unranked shapes
   std::vector<ShapedTypeInterface> shapes;
 
-  std::for_each(
-      shaped_type_interfaces.begin(),
-      shaped_type_interfaces.end(),
-      [&shapes](ShapedTypeInterface type) {
-        if (type.hasRank())
-          shapes.push_back(type.dyn_cast_interface<ShapedTypeInterface>());
-      });
+  std::for_each(shaped_type_interfaces.begin(),
+                shaped_type_interfaces.end(),
+                [&shapes](ShapedTypeInterface type) {
+                  if (type.HasRank())
+                    shapes.push_back(type.dyn_cast<ShapedTypeInterface>());
+                });
   if (shapes.empty()) return true;
 
   // All ranks should be equal
-  auto firstRank = shapes.front().getRank();
+  auto firstRank = shapes.front().GetRank();
   if (std::any_of(shapes.begin(), shapes.end(), [&](auto shape) {
-        return firstRank != shape.getRank();
+        return firstRank != shape.GetRank();
       }))
     return false;
 
@@ -112,7 +110,7 @@ bool VerifyCompatibleShapes(std::vector<Type> types) {
     // For all ranked dimensions
     std::vector<int64_t> dims;
     std::for_each(shapes.begin(), shapes.end(), [&](ShapedTypeInterface shape) {
-      dims.push_back(shape.getDimSize(i));
+      dims.push_back(shape.GetDimSize(i));
     });
 
     return VerifyCompatibleDims(dims);

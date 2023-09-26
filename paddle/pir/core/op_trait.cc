@@ -13,14 +13,19 @@
 // limitations under the License.
 
 #include "paddle/pir/core/op_trait.h"
+#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/type_util.h"
 
-namespace pir {
-namespace op_trait {
-namespace impl {
+namespace pir::op_trait::impl {
 
-bool VerifySameOperandsShapeTrait(Operation *op) {
-  if (op->num_operands() < 1) return false;
+void VerifySameOperandsShapeTrait(Operation *op) {
+  VLOG(4) << "Verify SameOperandsShapeTrait for : " << op->name();
+
+  IR_ENFORCE(op->num_operands() > 0,
+             "Op %s with SameOperandsShapeTrait requires at least 1 operands, "
+             "but got %u operands.",
+             op->name(),
+             op->num_operands());
 
   std::vector<pir::OpOperand> operands = op->operands();
   std::vector<pir::Type> types;
@@ -28,16 +33,26 @@ bool VerifySameOperandsShapeTrait(Operation *op) {
     types.push_back(op.type());
   });
 
-  if (VerifyCompatibleShapes(types)) {
-    return true;
-  } else {
-    VLOG(3) << op->name() << "requires the same shape for all operands";
-    return false;
-  }
+  IR_ENFORCE(VerifyCompatibleShapes(types),
+             "Op %s with SameOperandsShapeTrait requires the same shape for "
+             "all operands.",
+             op->name());
 }
 
-bool VerifySameOperandsAndResultShapeTrait(Operation *op) {
-  if (op->num_operands() < 1 || op->num_results() < 1) return false;
+void VerifySameOperandsAndResultShapeTrait(Operation *op) {
+  VLOG(4) << "Verify SameOperandsAndResultShapeTrait for : " << op->name();
+
+  IR_ENFORCE(op->num_operands() > 0,
+             "Op %s with SameOperandsAndResultShapeTrait requires at least 1 "
+             "operands, but got %u operands.",
+             op->name(),
+             op->num_operands());
+
+  IR_ENFORCE(op->num_results() > 0,
+             "Op %s with SameOperandsAndResultShapeTrait requires at least 1 "
+             "results, but got %u results.",
+             op->name(),
+             op->num_results());
 
   std::vector<pir::OpOperand> operands = op->operands();
   std::vector<pir::OpResult> results = op->results();
@@ -51,93 +66,126 @@ bool VerifySameOperandsAndResultShapeTrait(Operation *op) {
   std::for_each(results.begin(), results.end(), [&types](pir::OpResult op) {
     types.push_back(op.type());
   });
-  return VerifyCompatibleShapes(types);
+
+  IR_ENFORCE(VerifyCompatibleShapes(types),
+             "Op %s with SameOperandsAndResultShapeTrait requires compatible "
+             "shapes for operands and results.");
 }
 
-bool VerifySameOperandsElementTypeTrait(Operation *op) {
-  if (op->num_operands() < 1) return false;
+void VerifySameOperandsElementTypeTrait(Operation *op) {
+  VLOG(4) << "Verify SameOperandsElementTypeTrait for : " << op->name();
+
+  IR_ENFORCE(op->num_operands() > 0,
+             "Op %s with SameOperandsElementTypeTrait requires at least 1 "
+             "operands, but got %u operands.",
+             op->name(),
+             op->num_operands());
 
   auto elementType = GetElementTypeOrSelf(op->result(0).type());
   for (auto operand : op->operands()) {
-    if (GetElementTypeOrSelf(operand.type()) != elementType) {
-      VLOG(3) << op->name()
-              << "requires the same element type for all operands";
-      return false;
-    }
+    IR_ENFORCE(GetElementTypeOrSelf(operand.type()) == elementType,
+               "Op %s with SameOperandsElementTypeTrait requires the same "
+               "element type for all operands.",
+               op->name());
   }
-  return true;
 }
 
-bool VerifySameOperandsAndResultElementTypeTrait(Operation *op) {
-  if (op->num_operands() < 1 || op->num_results() < 1) return false;
+void VerifySameOperandsAndResultElementTypeTrait(Operation *op) {
+  VLOG(4) << "Verify SameOperandsAndResultElementTypeTrait for : "
+          << op->name();
+
+  IR_ENFORCE(op->num_operands() > 0,
+             "Op %s with SameOperandsAndResultElementTypeTrait requires at "
+             "least 1 operands, but got %u operands.",
+             op->name(),
+             op->num_operands());
+
+  IR_ENFORCE(op->num_results() > 0,
+             "Op %s with SameOperandsAndResultElementTypeTrait requires at "
+             "least 1 results, but got %u results.",
+             op->name(),
+             op->num_results());
 
   auto elementType = GetElementTypeOrSelf(op->result(0).type());
 
   // Verify result element type matches first result's element type.
   for (auto result : op->results()) {
-    if (GetElementTypeOrSelf(result.type()) != elementType) {
-      VLOG(3) << op->name()
-              << "requires the same element type for all operands and results";
-      return false;
-    }
+    IR_ENFORCE(GetElementTypeOrSelf(result.type()) == elementType,
+               "Op %s with SameOperandsAndResultElementTypeTrait requires the "
+               "same element type for all operands and results.",
+               op->name());
   }
 
   // Verify operand's element type matches first result's element type.
   for (auto operand : op->operands()) {
-    if (GetElementTypeOrSelf(operand.type()) != elementType) {
-      VLOG(3) << op->name()
-              << "requires the same element type for all operands and results";
-      return false;
-    }
+    IR_ENFORCE(GetElementTypeOrSelf(operand.type()) == elementType,
+               "Op %s with SameOperandsAndResultElementTypeTrait requires the "
+               "same element type for all operands and results.",
+               op->name());
   }
-
-  return true;
 }
 
-bool VerifySameOperandsAndResultTypeTrait(Operation *op) {
-  if (op->num_operands() < 1 || op->num_results() < 1) return false;
+void VerifySameOperandsAndResultTypeTrait(Operation *op) {
+  VLOG(4) << "Verify SameOperandsAndResultTypeTrait for : " << op->name();
+
+  IR_ENFORCE(op->num_operands() > 0,
+             "Op %s with SameOperandsAndResultTypeTrait requires at least 1 "
+             "operands, but got %u operands.",
+             op->name(),
+             op->num_operands());
+
+  IR_ENFORCE(op->num_results() > 0,
+             "Op %s with SameOperandsAndResultTypeTrait requires at least 1 "
+             "results, but got %u results.",
+             op->name(),
+             op->num_results());
 
   auto type = op->result(0).type();
   auto elementType = GetElementTypeOrSelf(type);
 
   for (auto result : op->results()) {
-    if (GetElementTypeOrSelf(result.type()) != elementType ||
-        VerifyCompatibleShape(result.type(), type)) {
-      VLOG(3) << op->name()
-              << "requires the same type for all operands and results";
-      return false;
-    }
+    IR_ENFORCE(GetElementTypeOrSelf(result.type()) == elementType,
+               "Op %s with SameOperandsAndResultTypeTrait requires the same "
+               "type for all operands and results.",
+               op->name());
+
+    IR_ENFORCE(VerifyCompatibleShape(result.type(), type),
+               "Op %s with SameOperandsAndResultTypeTrait requires the same "
+               "type for all operands and results.",
+               op->name());
   }
 
   for (auto operand : op->operands()) {
-    if (GetElementTypeOrSelf(operand.type()) != elementType ||
-        VerifyCompatibleShape(operand.type(), type)) {
-      VLOG(3) << op->name()
-              << "requires the same type for all operands and results";
-      return false;
-    }
+    IR_ENFORCE(GetElementTypeOrSelf(operand.type()) == elementType,
+               "Op %s with SameOperandsAndResultTypeTrait requires the same "
+               "type for all operands and results.",
+               op->name());
+
+    IR_ENFORCE(VerifyCompatibleShape(operand.type(), type),
+               "Op %s with SameOperandsAndResultTypeTrait requires the same "
+               "type for all operands and results.",
+               op->name());
   }
-  return true;
 }
 
-bool VerifySameTypeOperandsTrait(Operation *op) {
+void VerifySameTypeOperandsTrait(Operation *op) {
+  VLOG(4) << "Verify SameTypeOperandsTrait for : " << op->name();
+
   // For zero or only one operand.
   unsigned operand_nums = op->num_operands();
-  if (operand_nums < 2) return true;
+  if (operand_nums < 2) return;
 
   auto type = op->operand(0).type();
 
-  for (auto operand : op->operands())
-    if (operand.type() != type) {
-      VLOG(3) << op->name() << "requires all operands to have the same type";
-      return false;
-    }
-  return true;
+  for (auto operand : op->operands()) {
+    IR_ENFORCE(operand.type() == type,
+               "Op %s with SameTypeOperandsTrait requires all operands to have "
+               "the same type.",
+               op->name());
+  }
 }
 
-}  // namespace impl
-}  // namespace op_trait
-}  // namespace pir
+}  // namespace  pir::op_trait::impl
 
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::op_trait::SameOperandsShapeTrait)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::op_trait::SameOperandsAndResultShapeTrait)

@@ -20,12 +20,12 @@ namespace pir {
 namespace op_trait {
 
 namespace impl {
-bool VerifySameOperandsShapeTrait(Operation *op);
-bool VerifySameOperandsAndResultShapeTrait(Operation *op);
-bool VerifySameOperandsElementTypeTrait(Operation *op);
-bool VerifySameOperandsAndResultElementTypeTrait(Operation *op);
-bool VerifySameOperandsAndResultTypeTrait(Operation *op);
-bool VerifySameTypeOperandsTrait(Operation *op);
+void VerifySameOperandsShapeTrait(Operation *op);
+void VerifySameOperandsAndResultShapeTrait(Operation *op);
+void VerifySameOperandsElementTypeTrait(Operation *op);
+void VerifySameOperandsAndResultElementTypeTrait(Operation *op);
+void VerifySameOperandsAndResultTypeTrait(Operation *op);
+void VerifySameTypeOperandsTrait(Operation *op);
 }  // namespace impl
 
 ///
@@ -36,7 +36,7 @@ class SameOperandsShapeTrait : public pir::OpTraitBase<SameOperandsShapeTrait> {
  public:
   explicit SameOperandsShapeTrait(pir::Operation *op)
       : pir::OpTraitBase<SameOperandsShapeTrait>(op) {}
-  static bool VerifyTrait(Operation *op) {
+  static void Verify(Operation *op) {
     return impl::VerifySameOperandsShapeTrait(op);
   }
 };
@@ -50,7 +50,7 @@ class SameOperandsAndResultShapeTrait
  public:
   explicit SameOperandsAndResultShapeTrait(pir::Operation *op)
       : pir::OpTraitBase<SameOperandsAndResultShapeTrait>(op) {}
-  static bool VerifyTrait(Operation *op) {
+  static void Verify(Operation *op) {
     return impl::VerifySameOperandsAndResultShapeTrait(op);
   }
 };
@@ -64,7 +64,7 @@ class SameOperandsElementTypeTrait
  public:
   explicit SameOperandsElementTypeTrait(pir::Operation *op)
       : pir::OpTraitBase<SameOperandsElementTypeTrait>(op) {}
-  static bool VerifyTrait(Operation *op) {
+  static void Verify(Operation *op) {
     return impl::VerifySameOperandsElementTypeTrait(op);
   }
 };
@@ -78,7 +78,7 @@ class SameOperandsAndResultElementTypeTrait
  public:
   explicit SameOperandsAndResultElementTypeTrait(pir::Operation *op)
       : pir::OpTraitBase<SameOperandsAndResultElementTypeTrait>(op) {}
-  static bool VerifyTrait(Operation *op) {
+  static void Verify(Operation *op) {
     return impl::VerifySameOperandsAndResultElementTypeTrait(op);
   }
 };
@@ -94,7 +94,7 @@ class SameOperandsAndResultTypeTrait
   explicit SameOperandsAndResultTypeTrait(pir::Operation *op)
       : pir::OpTraitBase<SameOperandsAndResultTypeTrait>(op) {}
 
-  static bool VerifyTrait(Operation *op) {
+  static void Verify(Operation *op) {
     return impl::VerifySameOperandsAndResultTypeTrait(op);
   }
 };
@@ -107,7 +107,7 @@ class SameTypeOperandsTrait : public pir::OpTraitBase<SameTypeOperandsTrait> {
  public:
   explicit SameTypeOperandsTrait(pir::Operation *op)
       : pir::OpTraitBase<SameTypeOperandsTrait>(op) {}
-  static bool VerifyTrait(Operation *op) {
+  static void Verify(Operation *op) {
     return impl::VerifySameTypeOperandsTrait(op);
   }
 };
