@@ -906,7 +906,8 @@ SplitedResult ForwardBackwardSplit(
   pir::IrContext *ctx = pir::IrContext::Instance();
   auto forward_program = std::make_shared<Program>(ctx);
   auto backward_program = std::make_shared<Program>(ctx);
-  auto [middle_values, backward_inputs] = AnalysisMiddleVariable(
+  std::vector<pir::Value> middle_values, backward_inputs;
+  std::tie(middle_values, backward_inputs) = AnalysisMiddleVariable(
       program, forward_in_out_values, forward_range, backward_range);
   std::unordered_map<pir::Value, pir::Value> forward_value_map;
   std::unordered_map<pir::Value, pir::Value> backward_value_map;
