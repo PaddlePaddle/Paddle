@@ -41,6 +41,7 @@ VJPS = [
     'where_grad',
     'tril_grad',
     'triu_grad',
+    'tile_grad',
     'tanh_grad',
     'mean_grad',
     'add_grad',
