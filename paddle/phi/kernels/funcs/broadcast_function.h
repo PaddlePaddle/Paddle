@@ -1069,9 +1069,6 @@ void BroadcastKernelApply(const KPDevice &ctx,
                           std::vector<DenseTensor *> *outs,
                           int axis,
                           Functor func) {
-  for (int i = 0; i < NumOuts; ++i) {
-    ctx.Alloc<OutT>((*outs)[i]);
-  }
 #ifndef PADDLE_WITH_XPU_KP
   constexpr bool kEnabledInt64IndexKernel = (NumOuts == 1 && kArity <= 3);
   // check whether need broadcast
