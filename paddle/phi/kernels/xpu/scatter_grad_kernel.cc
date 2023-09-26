@@ -21,12 +21,17 @@ namespace phi {
 
 template <typename T, typename Context>
 void ScatterGradKernel(const Context &ctx,
+                       const DenseTensor &x,
                        const DenseTensor &index,
                        const DenseTensor &updates,
+                       const DenseTensor &out,
                        const DenseTensor &out_grad,
                        bool overwrite,
+                       int axis,
+                       const std::string &reduce,
+                       bool include_self,
                        DenseTensor *x_grad,
-                       DenseTensor *updates_grad) {
+                       DenseTensor *updates_grad)) {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   const auto &index_type = index.dtype();

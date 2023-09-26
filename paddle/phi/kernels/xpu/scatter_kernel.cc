@@ -26,6 +26,9 @@ void ScatterKernel(const Context &ctx,
                    const DenseTensor &index,
                    const DenseTensor &updates,
                    bool overwrite,
+                   int axis,
+                   const std::string &reduce,
+                   bool include_self,
                    DenseTensor *out) {
   using XPUTypeT = typename XPUTypeTrait<T>::Type;
   out->Resize(x.dims());

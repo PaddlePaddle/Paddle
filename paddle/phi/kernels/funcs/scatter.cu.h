@@ -154,8 +154,8 @@ struct AtomicOp<int64_t> {
 
 // Atomic multiplication implementation.
 
-inline __device__ phi::dtype::float16 gpuAtomicMul(
-    phi::dtype::float16* address,  // NOLINT
+inline __device__ phi::dtype::float16 gpuAtomicMul(  // NOLINT
+    phi::dtype::float16* address,
     phi::dtype::float16 val) {
   return AtomicOp<phi::dtype::float16>()(
       address, val, [](phi::dtype::float16 bsum, phi::dtype::float16 val) {
