@@ -83,6 +83,11 @@ class TestElementwiseFP16OP(TestElementwiseOp):
         self.dtype = np.float16
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and do not support bfloat16",
+)
 class TestTensorAddSplit(unittest.TestCase):
     def _split_compute(self, dtype):
         paddle.disable_static()
@@ -106,20 +111,11 @@ class TestTensorAddSplit(unittest.TestCase):
         np.testing.assert_equal(result2.numpy(), True)
 
     def test_float16_add(self):
-        if not core.is_compiled_with_cuda():
-            return
         self._split_compute("float16")
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
-)
 class TestTensorAddSplit1(TestTensorAddSplit):
     def test_bfloat16_add(self):
-        if not core.is_compiled_with_cuda():
-            return
         self._split_compute("bfloat16")
 
 
