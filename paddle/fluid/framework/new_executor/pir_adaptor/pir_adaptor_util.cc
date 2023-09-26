@@ -562,7 +562,7 @@ void BuildRuntimeContext(
     auto index = op_yaml_info.InputName2Id().at(name);
     pir::Value ptr = op->operand_source(index);
 
-    Variable* var = nullptr;
+    paddle::framework::Variable* var = nullptr;
     auto legacy_attr_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
 
     if (ptr && ptr.type()) {
@@ -636,6 +636,7 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
 
   auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
 
+  // build inputs
   for (auto& name : vec_kernel_fn_tensor_params) {
     PADDLE_ENFORCE_EQ(
         name2id.count(name),
@@ -643,11 +644,14 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
         phi::errors::NotFound("param [%s] MUST in name2id map", name));
     auto index = op_yaml_info.InputName2Id().at(name);
     pir::Value ptr = op->operand_source(index);
-
-    auto in_var_name = name_map.at(ptr);
-
     auto legacy_attr_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
-    in_name_map[legacy_attr_name].push_back(in_var_name);
+
+    if ((!ptr) || (!ptr.type())) {
+      in_name_map[legacy_attr_name].push_back("@EMPTY@");
+      continue;
+    }
+
+    in_name_map[legacy_attr_name].push_back(name_map.at(ptr));
   }
 
   // build attribute
@@ -723,20 +727,23 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
     }
   }
 
+  // build outputs
   auto& output_name_list = op_yaml_info.OutputNames();
   for (size_t i = 0; i < output_name_list.size(); ++i) {
-    auto name = output_name_list[i];
     pir::Value ptr = op->result(i);
+    auto legacy_arg_name =
+        op_normalizer.GetLegacyArgName(fluid_op_name, output_name_list[i]);
 
-    auto out_var_name = name_map.at(ptr);
+    if ((!ptr) || (!ptr.type())) {
+      in_name_map[legacy_arg_name].push_back("@EMPTY@");
+      continue;
+    }
 
-    auto type = ptr.type();
-    auto legacy_arg_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
-    if (type.isa<paddle::dialect::AllocatedDenseTensorType>() ||
-        type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
-      out_name_map[legacy_arg_name].push_back(out_var_name);
-    } else if (type.isa<pir::VectorType>()) {
-      auto var = scope->FindVar(out_var_name);
+    if (ptr.type().isa<paddle::dialect::AllocatedDenseTensorType>() ||
+        ptr.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+      out_name_map[legacy_arg_name].push_back(name_map.at(ptr));
+    } else if (ptr.type().isa<pir::VectorType>()) {
+      auto var = scope->FindVar(name_map.at(ptr));
       auto var_ref = var->Get<paddle::framework::VariableRefArray>();
       for (size_t k = 0; k < var_ref.size(); ++k) {
         PADDLE_ENFORCE(variable_2_var_name.count(var_ref[k]),
