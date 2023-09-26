@@ -38,6 +38,7 @@ sys.path.append(
 
 
 VJPS = [
+    'where_grad',
     'tril_grad',
     'triu_grad',
     'tanh_grad',
@@ -156,6 +157,7 @@ CUSTOM_VJP = [
 VJP_COMPS = PRIM_VJP + CUSTOM_VJP
 
 BACKENDS = [
+    'where_grad',
     'tril_grad',
     'triu_grad',
     'add_n',

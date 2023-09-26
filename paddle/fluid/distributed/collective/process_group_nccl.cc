@@ -44,7 +44,7 @@ ProcessGroupNCCL::NCCLTask::NCCLTask(const Place& place,
                                      bool sync_op,
                                      bool use_calc_stream)
     : TaskStream(rank, comm_type, sync_op, use_calc_stream),
-      comm_event_(place),
+      comm_event_(place, platform::GenerateDeviceEventFlag()),
       task_place_(place) {}
 
 ProcessGroupNCCL::NCCLTask::~NCCLTask() = default;
@@ -506,7 +506,9 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
   auto nccl_comm_ctx = this->GetCommContext();
   comm_ctx->set_nccl_comm(nccl_comm_ctx->GetNcclComm());
 
-  place_to_calc_event_.emplace(place_key, place);
+  place_to_calc_event_.emplace(
+      place_key,
+      platform::DeviceEvent(place, platform::GenerateDeviceEventFlag()));
   place_to_calc_ctx_.emplace(place_key, calc_ctx);
   place_to_comm_ctx_.emplace(place_key, std::move(comm_ctx));
 
@@ -592,7 +594,7 @@ ProcessGroupNCCL::NCCLTask::NCCLTask(
     CommType CommType,
     const std::vector<phi::DenseTensor>& inputs)
     : TaskStream(rank, inputs, CommType),
-      comm_event_(places[0]),
+      comm_event_(places[0], platform::GenerateDeviceEventFlag()),
       task_place_(places[0]) {}
 
 // create NCCLManager cache for places_key
@@ -636,7 +638,9 @@ void ProcessGroupNCCL::CreateNCCLManagerCache(
   GroupEnd();
 
   // TODO(sunyilun): for compatibility, will be removed later
-  place_to_calc_event_.emplace(places_key, places[0]);
+  place_to_calc_event_.emplace(
+      places_key,
+      platform::DeviceEvent(places[0], platform::GenerateDeviceEventFlag()));
   place_to_calc_ctx_.emplace(
       places_key,
       static_cast<phi::GPUContext*>(
