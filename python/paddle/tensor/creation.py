@@ -90,11 +90,12 @@ def create_global_var(
     Examples:
         .. code-block:: python
 
-            >>> import paddle
-            >>> paddle.enable_static()
-            >>> var = paddle.static.create_global_var(shape=[2,3], value=1.0, dtype='float32',
-            ...                                persistable=True, force_cpu=True, name='new_var')
+            import paddle
+            paddle.enable_static()
+            var = paddle.static.create_global_var(shape=[2,3], value=1.0, dtype='float32',
+                                           persistable=True, force_cpu=True, name='new_var')
     """
+    # TODO
     check_type(shape, 'shape', (list, tuple, np.ndarray), 'create_global_var')
     for item in shape:
         check_type(
