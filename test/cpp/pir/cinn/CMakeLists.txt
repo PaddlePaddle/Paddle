@@ -40,7 +40,7 @@ if(WITH_TESTING AND WITH_CINN)
     SRCS
     build_cinn_pass_test.cc
     DEPS
-    _build_cinn_pass
+    pd_build_cinn_pass
     pir_pass
     gtest
     glog)

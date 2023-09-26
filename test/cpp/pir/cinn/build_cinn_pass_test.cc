@@ -18,28 +18,16 @@ limitations under the License. */
 #include <sstream>
 
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
-#include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/program.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
 
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
-
-::pir::Type CreateDenseTensorType(const phi::DDim& dims) {
-  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-  ::pir::Type fp32_dtype = ::pir::Float32Type::get(ctx);
-  phi::DataLayout data_layout = phi::DataLayout::NCHW;
-  phi::LoD lod = {};
-  size_t offset = 0;
-  return ::pir::DenseTensorType::get(
-      ctx, fp32_dtype, dims, data_layout, lod, offset);
-}
 
 std::shared_ptr<::pir::Program> BuildAllOpSupportCinnGraph() {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
