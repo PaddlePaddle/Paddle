@@ -476,9 +476,9 @@ def get_device_properties(device=None):
                 )
         else:
             raise ValueError(
-                "The device type {} is not expected. Because paddle.device.cuda."
+                f"The device type {device} is not expected. Because paddle.device.cuda."
                 "get_device_properties only support int, str or paddle.CUDAPlace. "
-                "Please input appropriate device again!".format(device)
+                "Please input appropriate device again!"
             )
     else:
         device_id = -1

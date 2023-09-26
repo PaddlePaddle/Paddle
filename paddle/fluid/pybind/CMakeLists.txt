@@ -38,7 +38,7 @@ set(PYBIND_DEPS
     global_utils
     phi_utils
     phi
-    phi_kernel_adaptor
+    pir_adaptor
     pd_op_dialect
     program_translator
     pd_inplace_pass
@@ -116,7 +116,7 @@ set(PYBIND_SRCS
     inference_api.cc
     ops_api.cc
     static_op_function.cc
-    ir.cc
+    pir.cc
     graph.cc
     bind_fleet_executor.cc
     reader_py.cc
@@ -144,7 +144,8 @@ set(PYBIND_SRCS
     custom_device_py.cc
     xpu_streams_py.cc
     jit.cc
-    auto_parallel_py.cc)
+    auto_parallel_py.cc
+    eval_frame.c)
 
 if(WITH_CUSTOM_DEVICE)
   set(PYBIND_DEPS ${PYBIND_DEPS} custom_device_common_op_registry)

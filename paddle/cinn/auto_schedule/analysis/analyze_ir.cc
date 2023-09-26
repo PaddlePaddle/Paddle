@@ -23,12 +23,12 @@
 #include "paddle/cinn/ir/buffer.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/lang/lower.h"
 #include "paddle/cinn/optim/optimize.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
@@ -41,7 +41,7 @@ std::vector<ir::Var> IndicesToVars(const std::vector<ir::Expr>& indices) {
   for (const ir::Expr& e : indices) {
     // Whether we have to convert other types, like const numbers to Var?
     if (e.As<ir::_Var_>() != nullptr) {
-      ir::Expr copy_e = optim::IRCopy(e);
+      ir::Expr copy_e = ir::ir_utils::IRCopy(e);
       ir::_Var_* var_ref = copy_e.As<ir::_Var_>();
       result.emplace_back(ir::Var(var_ref));
     }

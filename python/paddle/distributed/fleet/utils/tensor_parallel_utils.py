@@ -268,9 +268,7 @@ def insert_synchronization(
 
     assert (
         len(unsync_param_names) == 0
-    ), "The following param is unsync by some error: {}".format(
-        unsync_param_names
-    )
+    ), f"The following param is unsync by some error: {unsync_param_names}"
 
 
 def add_extra_synchronization(
@@ -308,9 +306,7 @@ def add_extra_synchronization(
 
     logger.info("Constructing Extra Parameter Synchronization.")
     logger.info(
-        "Tensor Parallel Degree: {}, Synchronization mode: {}".format(
-            tp_degree, sync_mode
-        )
+        f"Tensor Parallel Degree: {tp_degree}, Synchronization mode: {sync_mode}"
     )
 
     # adopt for pipeline opt

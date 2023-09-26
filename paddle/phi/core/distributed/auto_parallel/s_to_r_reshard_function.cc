@@ -56,6 +56,7 @@ void SToRReshardFunction::Eval(DeviceContext* dev_ctx,
                                const DistTensor& in,
                                const TensorDistAttr& out_dist_attr,
                                DistTensor* out) {
+  VLOG(3) << "Call SToRReshardFunction Eval";
   const auto& in_dist_attr = in.dist_attr();
   const auto& in_dims_mapping = in_dist_attr.dims_mapping();
   const auto& in_process_mesh = in_dist_attr.process_mesh();

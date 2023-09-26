@@ -45,6 +45,7 @@
 #include "paddle/phi/core/distributed/auto_parallel/r_to_s_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/s_to_r_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/s_to_s_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/same_status_reshard_function.h"
 #include "paddle/phi/core/enforce.h"
 
 #ifdef PADDLE_WITH_DISTRIBUTE
@@ -198,6 +199,10 @@ void BindAutoParallel(py::module *m) {
 
   py::class_<phi::distributed::SameNdMeshReshardFunction>(
       *m, "SameNdMeshReshardFunction", ReshardFunction)
+      .def(py::init<>());
+
+  py::class_<phi::distributed::SameStatusReshardFunction>(
+      *m, "SameStatusReshardFunction", ReshardFunction)
       .def(py::init<>());
 
   py::class_<ProcessMesh>(*m, "ProcessMesh")
@@ -537,6 +542,15 @@ void BindAutoParallel(py::module *m) {
           },
           py::arg("memo"))
       .def("__str__", &OperatorDistAttr::to_string);
+
+  m->def(
+      "contains_spmd_rule",
+      [](const std::string op_type) {
+        return phi::distributed::SpmdRuleFactory::Instance().ContainsSpmdRule(
+                   op_type) ||
+               SPMDRuleMap::Instance().Has(op_type);  // TODO(ljz): unify here
+      },
+      py::return_value_policy::reference);
 
   m->def(
       "get_spmd_rule",

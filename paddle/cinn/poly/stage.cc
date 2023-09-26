@@ -22,14 +22,14 @@
 #include <utility>
 
 #include "paddle/cinn/common/axis.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/operation.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_replace.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
@@ -515,7 +515,7 @@ void Stage::EditTempTensor(Stage *other, int level) {
 
   std::vector<Expr> new_shape;
   for (auto &i : this->tensor()->new_indices) {
-    new_shape.push_back(optim::IRCopy(i));
+    new_shape.push_back(ir::ir_utils::IRCopy(i));
   }
   for (auto &i : new_shape) {
     for (auto &j : dim_to_range) {
