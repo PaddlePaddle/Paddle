@@ -689,7 +689,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         indices = [[0, 0, 1], [1, 1, 2]]
         values = [1.0, 2.0, 3.0]
         sp_x = paddle.sparse.sparse_coo_tensor(indices, values)
-        sp_x = sp_x.coalesce(sp_x)
+        sp_x = sp_x.coalesce()
         self.assertTrue(isinstance(sp_x, paddle.Tensor))
 
 

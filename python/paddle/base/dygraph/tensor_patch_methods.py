@@ -966,7 +966,7 @@ def monkey_patch_tensor():
         return hash(id(self))
 
     @framework.dygraph_only
-    def coalesce(x, name=None):
+    def coalesce(self, name=None):
         r"""
         the coalesced operator include sorted and merge, after coalesced, the indices of x is sorted and unique.
 
@@ -995,7 +995,7 @@ def monkey_patch_tensor():
                 Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [3., 3.])
         """
-        return _C_ops.sparse_coalesce(x)
+        return _C_ops.sparse_coalesce(self)
 
     if not hasattr(core, "eager"):
         return
