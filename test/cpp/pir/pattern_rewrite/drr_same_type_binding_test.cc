@@ -25,14 +25,41 @@
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 #include "paddle/pir/transforms/dead_code_elimination_pass.h"
 
-class SameNameTestPattern
-    : public pir::drr::DrrPatternBase<SameNameTestPattern> {
+/* Source pattern:
+                                       input1 
+                                    /  |  \  \  \
+                                  /    |   \   \    \
+             full               /      |    |    \     \           full_tmp
+            /  |        transpos1      | trans2 trans3    \         /   |
+           /   |         /    |        |    |      |        \      /    |
+    softmax1   |        /     |        |    |      |          \   /     |
+         \     |      /    softmax2    |    |      |          add1      |
+           \   |    /             \    |     \    /             |       |
+           layernorm             matmul2     matmul1             \      |
+             / | \                   |         |                  \     | 
+           /   |   \                  \       /                     \   |                          
+         /     |     \                 matmul3                        add2                   
+        |      |      |                /  |  \                          |                
+        |      |      |              /    |    \                        |                       
+        |      |      |            /      |      \                      |                                                                                                       
+        |      |      |         trans4  trans5  trans6                  |                                
+        |      |      |           |       |        |                    |              
+        |      |      |         relu1  softmax3 softmax4              relu2
+        |      |      |           |       |        |                    |
+    output0 output1 output2    output3  output4  output5             output6     
+*/
+
+class SameTypeBindingTestPattern
+    // This class is for test cases of the same type of OP.
+    // (without considering the computational logic between OPs, 
+    // only focusing on the process of matching and replacing)
+    : public pir::drr::DrrPatternBase<SameTypeBindingTestPattern> {
  public:
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
     // Source re sterns：待匹配的子图
     pir::drr::SourcePattern src = ctx->SourcePattern();
 
-    // path 2
+    // path 1
     const auto &transpose_1 =
         src.Op("pd_op.transpose", {{"perm", src.Attr("perm_1")}});
     src.Tensor("transpose_1_out") = transpose_1(src.Tensor("input_1"));
@@ -41,12 +68,12 @@ class SameNameTestPattern
     src.Tensor("softmax_2_out") = softmax_2(src.Tensor("transpose_1_out"));
     const auto &matmul_2 =
         src.Op("pd_op.matmul",
-               {{"transpose_x", src.Attr("matmul_2_transpose_x")},
+               {{"transpose_x", src.Attr("matmul_2_tradnspose_x")},
                 {"transpose_y", src.Attr("matmul_2_transpose_y")}});
     src.Tensor("matmul_2_out") =
         matmul_2(src.Tensor("softmax_2_out"), src.Tensor("input_1"));
 
-    // path 1
+    // path 2
     const auto &full_1 = src.Op("pd_op.full",
                                 {{"shape", src.Attr("shape_1")},
                                  {"value", src.Attr("value_1")},
@@ -163,7 +190,7 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
                                              phi::DataType::FLOAT32,
                                              phi::CPUPlace());
 
-  // path 2
+  // path 1
   paddle::dialect::TransposeOp transpose_op1 =
       builder.Build<paddle::dialect::TransposeOp>(full_input_op1.out(),
                                                   std::vector<int>{0, 1, 2});
@@ -175,7 +202,7 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
       builder.Build<paddle::dialect::MatmulOp>(softmax_op2.out(),
                                                full_input_op1.out());
 
-  // path 1
+  // path 2
   paddle::dialect::FullOp full_op_scale =
       builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{48},
                                              1.5,
@@ -265,7 +292,7 @@ class DrrPatternRewritePass : public pir::Pass {
 
   bool Initialize(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(SameNameTestPattern().Build(context));
+    ps.Add(SameTypeBindingTestPattern().Build(context));
 
     patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
     return true;
