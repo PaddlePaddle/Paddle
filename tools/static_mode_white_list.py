@@ -252,7 +252,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_group_norm_op',
     'test_group_norm_op_v2',
     'test_gru_op',
-    'test_gru_unit_op',
     'test_hash_op',
     'test_hinge_loss_op',
     'test_histogram_op',
