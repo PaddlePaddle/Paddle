@@ -110,15 +110,15 @@ class Fleet:
             :name: code-example1
 
             # Example1: for collective training
-            import paddle
-            paddle.enable_static()
-            import paddle.distributed.fleet as fleet
+            >>> import paddle
+            >>> paddle.enable_static()
+            >>> import paddle.distributed.fleet as fleet
 
-            fleet.init(is_collective=True)
+            >>> fleet.init(is_collective=True)
 
-            strategy = fleet.DistributedStrategy()
-            optimizer = paddle.optimizer.SGD(learning_rate=0.001)
-            optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+            >>> strategy = fleet.DistributedStrategy()
+            >>> optimizer = paddle.optimizer.SGD(learning_rate=0.001)
+            >>> optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
 
             # do distributed training
 
@@ -1174,7 +1174,7 @@ class Fleet:
                 ...     optimizer.amp_init(place, scope=paddle.static.global_scope())
 
                 >>> if paddle.is_compiled_with_cuda() and len(paddle.static.cuda_places()) > 0:
-                    run_example_code()
+                ...     run_example_code()
         """
         amp_optimizer = self._get_amp_optimizer()
         return amp_optimizer.amp_init(place, scope, test_program, use_fp16_test)
