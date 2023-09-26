@@ -164,12 +164,13 @@ void IndexReduceBaseKernel(const Context& dev_ctx,
     axis += x.dims().size();
   }
   auto inputs = x;
+  auto src = source;
   if (index_type == phi::DataType::INT32) {
     IndexReduceInner<Context, T, int32_t>(
-        dev_ctx, &inputs, index, axis, reduce, include_self, &source, output);
+        dev_ctx, &inputs, index, axis, reduce, include_self, &src, output);
   } else if (index_type == phi::DataType::INT64) {
     IndexReduceInner<Context, T, int64_t>(
-        dev_ctx, &inputs, index, axis, reduce, include_self, &source, output);
+        dev_ctx, &inputs, index, axis, reduce, include_self, &src, output);
   }
 }
 
