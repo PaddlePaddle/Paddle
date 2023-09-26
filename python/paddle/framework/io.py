@@ -14,10 +14,10 @@
 
 import collections
 import copyreg
+import multiprocessing
 import os
 import pickle
 import sys
-import threading
 import warnings
 from collections.abc import Iterable
 
@@ -121,7 +121,7 @@ def async_save(obj, path, protocol=4, sync_other_task=False, **configs):
         )
     if sync_other_task:
         clear_async_save_task_queue()
-    t = threading.Thread(target=save, args=(obj, path, protocol))
+    t = multiprocessing.Process(target=save, args=(obj, path, protocol))
     t.start()
     async_save_queue.append(t)
 
