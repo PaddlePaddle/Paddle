@@ -53,7 +53,7 @@ class TestAllcloseOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestAllcloseOpException(TestAllcloseOp):
@@ -200,7 +200,7 @@ class TestAllcloseOpFloat16(TestAllcloseOp):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place)
+                self.check_output_with_place(place, check_new_ir=True)
 
 
 class TestAllcloseOpFloat32(TestAllcloseOp):
