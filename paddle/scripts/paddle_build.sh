@@ -936,14 +936,16 @@ function run_sot_test() {
     PADDLE_SOT_ROOT=$1
     PY_VERSION=$2
     PYTHON_WITH_SPECIFY_VERSION=python$PY_VERSION
+    PY_VERSION_NO_DOT=`echo $PY_VERSION | sed 's/\.//g'`
 
     export STRICT_MODE=1
     export COST_MODEL=False
     export MIN_GRAPH_SIZE=0
 
     # Install PaddlePaddle
-    cd $PADDLE_SOT_ROOT
+    $PYTHON_WITH_SPECIFY_VERSION -m pip install ${PADDLE_ROOT}/build/python/dist/paddlepaddle-0.0.0-cp${PY_VERSION_NO_DOT}-cp${PY_VERSION_NO_DOT}-linux_x86_64.whl
     # Install PaddleSOT
+    cd $PADDLE_SOT_ROOT
     $PYTHON_WITH_SPECIFY_VERSION -m pip install -e .
 
     # Run unittest
