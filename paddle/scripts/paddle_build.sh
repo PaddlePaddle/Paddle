@@ -933,9 +933,8 @@ set -ex
 }
 
 function run_sot_test() {
-    PY_VERSION=$1
-    PADDLE_SOT_ROOT=$2
-    PY_VERSION_NO_DOT=`echo $PY_VERSION | sed 's/\.//g'`
+    PADDLE_SOT_ROOT=$1
+    PY_VERSION=$2
     PYTHON_WITH_SPECIFY_VERSION=python$PY_VERSION
 
     export STRICT_MODE=1
