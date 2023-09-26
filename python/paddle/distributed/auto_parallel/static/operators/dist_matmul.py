@@ -1729,7 +1729,23 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
             outputs={'Out': Out_var},
             attrs=attrs,
         )
-        if Out_var.shape != ref_shape_out:
+        if list(Out_var.shape) != ref_shape_out:
+            print(
+                "col matmul out shape mismatch, out_name: {}, cur_shape: {}, ref_shape: {}, op: {}.".format(
+                    Out_var.name,
+                    Out_var.shape,
+                    ref_shape_out,
+                    str(matmul_v2_op),
+                )
+            )
+            raise RuntimeError(
+                "col matmul out shape mismatch, out_name: {}, cur_shape: {}, ref_shape: {}, op: {}.".format(
+                    Out_var.name,
+                    Out_var.shape,
+                    ref_shape_out,
+                    str(matmul_v2_op),
+                )
+            )
             Out_var.desc.set_shape(ref_shape_out)
 
         # matmulv2
@@ -2054,7 +2070,15 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
             outputs={'Out': intermediate_var_0},
             attrs=attrs,
         )
-        if intermediate_var_0.shape != ref_shape:
+        if list(intermediate_var_0.shape) != ref_shape:
+            raise RuntimeError(
+                "row matmul1 out shape mismatch, out_name: {}, cur_shape: {}, ref_shape: {}, op: {}.".format(
+                    intermediate_var_0.name,
+                    intermediate_var_0.shape,
+                    ref_shape,
+                    str(matmul_v2_op),
+                )
+            )
             intermediate_var_0.desc.set_shape(ref_shape)
 
         c_allreduce_sum_op = main_block.append_op(
@@ -2068,7 +2092,12 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
                 OP_ROLE_KEY: src_op.attr('op_role'),
             },
         )
-        if Out_var.shape != ref_shape:
+        if list(Out_var.shape) != ref_shape:
+            raise RuntimeError(
+                "row matmul2 out shape mismatch, out_name: {}, cur_shape: {}, ref_shape: {}, op: {}.".format(
+                    Out_var.name, Out_var.shape, ref_shape, str(matmul_v2_op)
+                )
+            )
             Out_var.desc.set_shape(ref_shape)
 
         # set dist op's dist_attr with serial op's dist_attr
