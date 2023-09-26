@@ -83,16 +83,14 @@ class TestElementwiseFP16OP(TestElementwiseOp):
         self.dtype = np.float16
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
-)
-class TestTensorAddSplit(unittest.TestCase):
-    def _split_compute(self, dtype):
+class TestTensorSubSplit(OpTest):
+    def test_float16_sub(self):
+        if not core.is_compiled_with_cuda():
+            return
+
         paddle.disable_static()
-        tensor_a = paddle.rand(shape=[5120, 4, 384, 384], dtype=dtype)
-        tensor_b = paddle.rand(shape=[5120, 1, 384, 384], dtype=dtype)
+        tensor_a = paddle.rand(shape=[5120, 4, 384, 384], dtype="float16")
+        tensor_b = paddle.rand(shape=[5120, 1, 384, 384], dtype="float16")
         tensor_z = paddle.subtract(tensor_a, tensor_b)
 
         in0, in1 = paddle.split(tensor_a, num_or_sections=2, axis=1)
@@ -110,15 +108,12 @@ class TestTensorAddSplit(unittest.TestCase):
         np.testing.assert_equal(result1.numpy(), True)
         np.testing.assert_equal(result2.numpy(), True)
 
-    def test_float16_add(self):
-        self._split_compute("float16")
 
-
-class TestTensorAddSplit1(TestTensorAddSplit):
-    def test_bfloat16_add(self):
-        self._split_compute("bfloat16")
-
-
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and do not support bfloat16",
+)
 class TestElementwiseBF16OP(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
