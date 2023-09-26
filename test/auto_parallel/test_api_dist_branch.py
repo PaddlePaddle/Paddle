@@ -69,10 +69,10 @@ class TestDygraphAPIForDistTensorBranch(unittest.TestCase):
             local_t_2 = paddle.to_tensor(np_array, dtype='float16')
         elif np_array.dtype == np.int32:
             local_t_1 = paddle.to_tensor(np_array, dtype='int32')
-            # local_t_2 = paddle.to_tensor(np_array, dtype='float16')
+            local_t_2 = paddle.to_tensor(np_array, dtype='int32')
         elif np_array.dtype == np.bool_:
             local_t_1 = paddle.to_tensor(np_array, dtype='bool')
-            local_t_2 = paddle.to_tensor(np_array, dtype='float16')
+            local_t_2 = paddle.to_tensor(np_array, dtype='bool')
 
         local_t_1.stop_gradient = False
         local_t_2.stop_gradient = False
@@ -84,16 +84,16 @@ class TestDygraphAPIForDistTensorBranch(unittest.TestCase):
         x = np.random.random(size=[4, 4]).astype("float32")
         y = np.random.random(size=[4, 4]).astype("float32")
         local_x, dist_x = self.create_local_and_dist_tensor_pair(x)
-        local_y, dist_y = self.create_two_local_tensor_pair(y)
-        local_out = paddle.matmul(local_x, local_y)
-        dist_out = paddle.matmul(dist_x, dist_y)
+        local_y_1, local_y_2 = self.create_two_local_tensor_pair(y)
+        local_out = paddle.matmul(local_x, local_y_1)
+        dist_out = paddle.matmul(dist_x, local_y_2)
         self.check_tensor_eq(local_out, dist_out)
 
         # test backward
         local_out.backward()
         dist_out.backward()
         self.check_tensor_eq(local_x.grad, dist_x.grad)
-        self.check_tensor_eq(local_y.grad, local_y.grad)
+        self.check_tensor_eq(local_y_1.grad, local_y_2.grad)
 
     # input: std::vector<phi::Tensor>
     # output: phi::Tensor
