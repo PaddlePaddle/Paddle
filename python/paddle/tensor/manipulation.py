@@ -1549,7 +1549,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
             img[0, 0, 0, 0] = -1
             print(out[0, 0, 0]) # [-1]
     """
-    if not (isinstance(x, Variable)):
+    if not (isinstance(x, (Variable, paddle.pir.OpResult))):
         raise ValueError("The input x should be a Tensor")
 
     x_dim = len(x.shape)
