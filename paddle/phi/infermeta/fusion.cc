@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/infermeta/fusion.h"
+#include <iostream>
 #include <vector>
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/scalar.h"
@@ -628,7 +629,7 @@ void FusedAttentionInferMeta(const MetaTensor& x,
   }
   // the same as QKOut's shape.
   attn_dropout_out->set_dims({x_dim[0], num_heads, x_dim[1], out_seq_len});
-  if (is_test) {
+  if (!is_test) {
     attn_dropout_mask_out->set_dims(
         {x_dim[0], num_heads, x_dim[1], out_seq_len});
   }
@@ -791,14 +792,14 @@ void FusedAttentionGradInferMeta(const MetaTensor& out_grad,
     attn_dropout_out_grad->set_dims(attn_dropout_out.dims());
   }
   if (src_mask_out_grad) {
-    src_mask_out_grad->set_dims(src_mask.dims());
+    src_mask_out_grad->set_dims(src_mask_out.dims());
   }
   if (qkv_out_grad) {
     qkv_out_grad->set_dims(qkv_out.dims());
   }
 
   if (qkv_bias_out_grad) {
-    qkv_bias_out_grad->set_dims(qkv_bias.dims());
+    qkv_bias_out_grad->set_dims(qkv_bias_out.dims());
   }
 
   if (out_linear_out_grad) {

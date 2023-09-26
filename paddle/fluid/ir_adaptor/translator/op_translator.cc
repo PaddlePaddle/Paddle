@@ -1808,6 +1808,44 @@ struct LegacySetValueDispatcher : public OpTranscriber {
   }
 };
 
+struct FusedFeedForwardOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "ln1_epsilon") {
+      (*attribute_map)[info.name] = pir::FloatAttribute::get(ctx, 1e-5f);
+    } else if (info.name == "ln2_epsilon") {
+      (*attribute_map)[info.name] = pir::FloatAttribute::get(ctx, 1e-5f);
+    } else if (info.name == "act_method") {
+      (*attribute_map)[info.name] = pir::StrAttribute::get(ctx, "gelu");
+    } else if (info.name == "dropout1_prob") {
+      (*attribute_map)[info.name] = pir::FloatAttribute::get(ctx, .5f);
+    } else if (info.name == "dropout2_prob") {
+      (*attribute_map)[info.name] = pir::FloatAttribute::get(ctx, .5f);
+    } else if (info.name == "dropout1_implementation") {
+      (*attribute_map)[info.name] =
+          pir::StrAttribute::get(ctx, "downgrade_in_infer");
+    } else if (info.name == "dropout2_implementation") {
+      (*attribute_map)[info.name] =
+          pir::StrAttribute::get(ctx, "downgrade_in_infer");
+    } else if (info.name == "is_test") {
+      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, false);
+    } else if (info.name == "dropout1_fix_seed") {
+      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, false);
+    } else if (info.name == "dropout2_fix_seed") {
+      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, false);
+    } else if (info.name == "dropout1_seed_val") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, false);
+    } else if (info.name == "dropout2_seed_val") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, false);
+    } else if (info.name == "add_residual") {
+      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, true);
+    } else if (info.name == "ring_id") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, -1);
+    }
+  }
+};
+
 OpTranslator::OpTranslator() {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -1821,6 +1859,7 @@ OpTranslator::OpTranslator() {
   special_handlers["fetch"] = FetchOpTranscriber();
   special_handlers["fetch_v2"] = FetchOpTranscriber();
   special_handlers["fill_constant"] = FillConstantTranscriber();
+  special_handlers["fused_feedforward"] = FusedFeedForwardOpTranscriber();
   special_handlers["grad_add"] = GradAddOpTranscriber();
   special_handlers["increment"] = IncrementOpTranscriber();
   special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();
