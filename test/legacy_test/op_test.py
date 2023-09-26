@@ -1290,7 +1290,7 @@ class OpTest(unittest.TestCase):
         return static_inputs, attrs_outputs, input_dict, feed
 
     def _need_fetch(self, sig_name):
-        if sig_name in self.outputs.keys():
+        if sig_name in self.outputs:
             return True
         for _, value in self.outputs.items():
             if not isinstance(value, (tuple, list)):

@@ -85,6 +85,11 @@
 #
 #   go_library(example SHARED)
 #
+# To build a unit test binary, which is an executable binary with libpaddle.so
+# automatically linked:
+#
+#   paddle_test(example SHARED)
+#
 
 # including binary directory for generated headers.
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
@@ -466,6 +471,7 @@ function(cc_test_build TARGET_NAME)
         list(REMOVE_ITEM cc_test_DEPS python)
         target_link_libraries(${TARGET_NAME} ${PYTHON_LIBRARIES})
       endif()
+      target_compile_definitions(${TARGET_NAME} PUBLIC STATIC_PADDLE)
     endif()
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
     target_link_libraries(${TARGET_NAME} ${cc_test_DEPS}
@@ -575,6 +581,62 @@ function(cc_test_old TARGET_NAME)
   elseif(WITH_TESTING AND NOT TEST ${TARGET_NAME})
     add_test(NAME ${TARGET_NAME} COMMAND ${CMAKE_COMMAND} -E echo CI skip
                                          ${TARGET_NAME}.)
+  endif()
+endfunction()
+
+function(paddle_test_build TARGET_NAME)
+  if(WITH_TESTING)
+    set(oneValueArgs "")
+    set(multiValueArgs SRCS DEPS)
+    cmake_parse_arguments(paddle_test "${options}" "${oneValueArgs}"
+                          "${multiValueArgs}" ${ARGN})
+    add_executable(${TARGET_NAME} ${paddle_test_SRCS})
+    get_property(paddle_lib GLOBAL PROPERTY PADDLE_LIB_NAME)
+    target_link_libraries(${TARGET_NAME} $<TARGET_LINKER_FILE:${paddle_lib}>
+                          ${paddle_test_DEPS} paddle_gtest_main_new)
+    add_dependencies(${TARGET_NAME} ${paddle_lib} ${paddle_test_DEPS}
+                     paddle_gtest_main_new)
+    if(WITH_SHARED_PHI)
+      target_link_libraries(${TARGET_NAME} $<TARGET_LINKER_FILE:phi>)
+      add_dependencies(${TARGET_NAME} phi)
+    endif()
+    if(WITH_SHARED_IR)
+      target_link_libraries(${TARGET_NAME} $<TARGET_LINKER_FILE:pir>)
+      add_dependencies(${TARGET_NAME} pir)
+    endif()
+    if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
+      target_link_libraries(${TARGET_NAME} ${PYTHON_LIBRARIES})
+    endif()
+    if(WITH_CINN AND NOT CINN_ONLY)
+      target_link_libraries(${TARGET_NAME} $<TARGET_LINKER_FILE:cinnapi>)
+      add_dependencies(${TARGET_NAME} cinnapi)
+    endif()
+    if(WITH_XPU)
+      target_link_libraries(${TARGET_NAME} xpulib)
+    endif()
+    if(WITH_ROCM)
+      target_link_libraries(${TARGET_NAME} ${ROCM_HIPRTC_LIB})
+    endif()
+    if(APPLE)
+      target_link_libraries(
+        ${TARGET_NAME}
+        "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}> -Wl,-rpath,$<TARGET_FILE_DIR:phi> -Wl,-rpath,$<TARGET_FILE_DIR:pir>"
+      )
+    endif()
+    common_link(${TARGET_NAME})
+    check_coverage_opt(${TARGET_NAME} ${paddle_test_SRCS})
+  endif()
+endfunction()
+
+function(paddle_test TARGET_NAME)
+  if(WITH_TESTING)
+    set(oneValueArgs "")
+    set(multiValueArgs SRCS DEPS ARGS)
+    cmake_parse_arguments(paddle_test "${options}" "${oneValueArgs}"
+                          "${multiValueArgs}" ${ARGN})
+    paddle_test_build(${TARGET_NAME} SRCS ${paddle_test_SRCS} DEPS
+                      ${paddle_test_DEPS})
+    cc_test_run(${TARGET_NAME} COMMAND ${TARGET_NAME} ARGS ${paddle_test_ARGS})
   endif()
 endfunction()
 
