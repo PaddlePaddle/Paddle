@@ -3989,7 +3989,7 @@ def sparse_embedding(
 
     if slot is None:
         slot = 0
-
+    paddle.squeeze(input, axis=-1)
     helper.append_op(
         type='lookup_table_v2',
         inputs={'Ids': input, 'W': w},
