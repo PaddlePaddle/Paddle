@@ -6,8 +6,7 @@ if(WITH_DISTRIBUTE)
                                 parallel_executor)
 endif()
 
-cc_test_old(pattern_rewrite_test SRCS pattern_rewrite_test.cc DEPS
-            ${PATTERN_REWRITE_TEST_DEPS})
+paddle_test(pattern_rewrite_test SRCS pattern_rewrite_test.cc)
 
 set_tests_properties(
   pattern_rewrite_test PROPERTIES ENVIRONMENT
