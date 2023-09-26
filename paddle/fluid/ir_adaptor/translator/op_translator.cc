@@ -2098,7 +2098,6 @@ OpTranslator::OpTranslator() {
   special_handlers["tril_triu"] = TrilAndTriuOpTranscriber();
   special_handlers["mul"] = MulOpTranscriber();
   special_handlers["mul_grad"] = MulGradOpTranscriber();
-  special_handlers["fill_constant"] = FillConstantTranscriber();
 
   // special handler for elementwise ops with axis != -1
   // note(lyk): maybe we should do this by a pass, which seems more reasonable
