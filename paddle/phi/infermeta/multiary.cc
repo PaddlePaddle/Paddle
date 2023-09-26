@@ -4160,6 +4160,39 @@ void FusedRopeInferMeta(const MetaTensor& q,
   }
 }
 
+void BlockMultiheadAttentionInferMeta(
+    const MetaTensor& qkv,  // [token_num, 3, num_head, head_dim]
+    const MetaTensor& key_cache,
+    const MetaTensor& value_cache,
+    const MetaTensor& seq_lens_encoder,
+    const MetaTensor& seq_lens_decoder,
+    const MetaTensor& seq_lens_this_time,
+    const MetaTensor& padding_offsets,
+    const MetaTensor& cum_offsets,
+    const MetaTensor& cu_seqlens_q,
+    const MetaTensor& cu_seqlens_k,
+    const MetaTensor& block_tables,
+    const MetaTensor& rope_emb,
+    const MetaTensor& mask,
+    int max_seq_len,
+    int block_size,
+    bool use_neox_style,
+    MetaTensor* fmha_out,
+    MetaTensor* qkv_out,
+    MetaTensor* key_cache_out,
+    MetaTensor* value_cache_out) {
+  auto input_dims = qkv.dims();
+  auto key_cache_dims = key_cache.dims();
+  fmha_out->set_dims({input_dims[0], key_cache_dims[1] * key_cache_dims[3]});
+  fmha_out->set_dtype(qkv.dtype());
+  qkv_out->set_dims(qkv.dims());
+  qkv_out->set_dtype(qkv.dtype());
+  key_cache_out->set_dims(key_cache_dims);
+  key_cache_out->set_dtype(key_cache.dtype());
+  value_cache_out->set_dims(key_cache_dims);
+  value_cache_out->set_dtype(value_cache.dtype());
+}
+
 void MoeInferMeta(const MetaTensor& x,
                   const MetaTensor& gate,
                   const MetaTensor& bmm0,
