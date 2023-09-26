@@ -620,7 +620,6 @@ void BuildOpFuncList(const platform::Place& place,
         "pylayer",
         "pylayer_grad"
         "recurrent_grad",
-        "rnn_memory_helper",
         "rnn_memory_helper_grad",
         "while",
         "while_grad"};

@@ -76,10 +76,6 @@ def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
         expect_dtypes(list[str]): expected dtype of output tensor.
         target_index(int): indicate which one from in_specs to infer the dtype of output.
         config(dict): other arguments of paddle api function
-
-    Example:
-        check_out_dtype(base.layers.pad_constant_like, [([2,3,2,3], 'float64'), ([1, 3, 1,3], )], ['float32', 'float64', 'int64'], target_index=1, pad_value=0.)
-
     """
     with paddle_static_guard():
         for i, expect_dtype in enumerate(expect_dtypes):
