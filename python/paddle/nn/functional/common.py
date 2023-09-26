@@ -1658,7 +1658,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
         paddings = pad
         pad_value = value
 
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             out = _C_ops.pad(x, paddings, float(pad_value))
             return out
 
@@ -1712,7 +1712,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
 
     unsqueezed_dim = []
 
-    if isinstance(pad, Variable):
+    if isinstance(pad, (Variable, pir.OpResult)):
         if data_format in ["NCL", "NCHW", "NCDHW"]:
             data_format = "NCDHW"
             if x_dim == 3:
@@ -1756,7 +1756,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
                 unsqueezed_dim = [1]
                 x = unsqueeze(x, axis=unsqueezed_dim)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if isinstance(pad, Variable):
             pad = pad.tolist()
         out = _C_ops.pad3d(x, pad, mode, value, data_format)

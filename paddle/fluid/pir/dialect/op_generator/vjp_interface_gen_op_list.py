@@ -24,6 +24,7 @@
 
 
 vjp_interface_declare_gen_op_list = [
+    'where',
     "tanh",
     "mean",
     "divide",
@@ -60,10 +61,15 @@ vjp_interface_declare_gen_op_list = [
     'stack',
     'poisson',
     'gumbel_softmax',
+    'pad',
+    'pad3d',
+    'squeeze',
+    'unsqueeze',
     'tril',
     'triu',
 ]
 vjp_interface_implementation_gen_op_list = [
+    'where',
     "tanh",
     "mean",
     "divide",
@@ -100,6 +106,10 @@ vjp_interface_implementation_gen_op_list = [
     'stack',
     'poisson',
     'gumbel_softmax',
+    'pad',
+    'pad3d',
+    'squeeze',
+    'unsqueeze',
     'tril',
     'triu',
 ]
