@@ -38,7 +38,7 @@ void generic_mixed_gemm_kernelLauncher_template<{T},
                                                 {Stages}>(
     const {T}* A,
     const {WeightType}* B,
-    const float* weight_scales,
+    const {T}* weight_scales,
     const {T}* biases,
     {T}* C,
     int m,

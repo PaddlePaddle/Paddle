@@ -151,8 +151,7 @@ class DqMmaMultistage : public DqMmaBase<Shape_,
                                    Operand::kB,
                                    ElementScale,
                                    LayoutScale,
-                                   32,
-                                   typename Operator::FragmentA::Element>;
+                                   32>;
 
   /// Complex transform on A operand
   static ComplexTransform const kTransformA = Operator::kTransformA;

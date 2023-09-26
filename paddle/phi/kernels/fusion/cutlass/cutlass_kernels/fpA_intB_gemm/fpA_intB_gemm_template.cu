@@ -44,7 +44,7 @@ template <typename T,
           typename WarpShape>
 void dispatch_gemm_config(const T* A,
                           const WeightType* B,
-                          const float* weight_scales,
+                          const T* weight_scales,
                           const T* biases,
                           T* C,
                           int m,
@@ -133,7 +133,7 @@ void dispatch_gemm_config(const T* A,
 template <typename T, typename WeightType, typename arch, typename EpilogueTag>
 void dispatch_gemm_to_cutlass(const T* A,
                               const WeightType* B,
-                              const float* weight_scales,
+                              const T* weight_scales,
                               const T* biases,
                               T* C,
                               int m,
@@ -292,7 +292,7 @@ template <typename EpilogueTag>
 void CutlassFpAIntBGemmRunner<T, WeightType>::dispatch_to_arch<EpilogueTag>(
     const T* A,
     const WeightType* B,
-    const float* weight_scales,
+    const T* weight_scales,
     const T* biases,
     T* C,
     int m,
@@ -379,7 +379,7 @@ template <typename EpilogueTag>
 void CutlassFpAIntBGemmRunner<T, WeightType>::run_gemm<EpilogueTag>(
     const T* A,
     const WeightType* B,
-    const float* weight_scales,
+    const T* weight_scales,
     const T* biases,
     T* C,
     int m,
@@ -443,7 +443,7 @@ template <typename T, typename WeightType>
 void CutlassFpAIntBGemmRunner<T, WeightType>::gemm_bias_act(
     const T* A,
     const WeightType* B,
-    const float* weight_scales,
+    const T* weight_scales,
     const T* biases,
     T* C,
     int m,
@@ -498,7 +498,7 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::gemm_bias_act(
 template <typename T, typename WeightType>
 void CutlassFpAIntBGemmRunner<T, WeightType>::gemm(const T* A,
                                                    const WeightType* B,
-                                                   const float* weight_scales,
+                                                   const T* weight_scales,
                                                    T* C,
                                                    int m,
                                                    int n,
