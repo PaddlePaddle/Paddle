@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/scatter_grad_kernel.h"
+#include "glog/logging.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/data_type.h"

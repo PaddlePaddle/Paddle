@@ -21,36 +21,29 @@
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
-
 
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/cpu/index_add_impl.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/index_add_kernel.h"
 
 #include "paddle/phi/kernels/compare_kernel.h"
 #include "paddle/phi/kernels/elementwise_divide_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/index_add_kernel.h"
 #include "paddle/phi/kernels/where_kernel.h"
 
-
 namespace phi {
-
 
 template <typename Context, typename T, typename IndexT = int>
 void IndexReduceInner(const Context& ctx,
-                   DenseTensor* input,
-                   const DenseTensor& index,
-                   int axis,
-                   const std::string& reduce,
-                   bool include_self,
-                   DenseTensor* source,
-                   DenseTensor* output) {
+                      DenseTensor* input,
+                      const DenseTensor& index,
+                      int axis,
+                      const std::string& reduce,
+                      bool include_self,
+                      DenseTensor* source,
+                      DenseTensor* output) {
   auto input_dim = input->dims();
   auto input_dim_size = input_dim.size();
   auto output_dim = output->dims();
@@ -69,7 +62,7 @@ void IndexReduceInner(const Context& ctx,
   auto mask = Equal<T, Context>(ctx, src_cnts, zeros);
 
   if (include_self) {
-     phi::Copy(ctx, *input, ctx.GetPlace(), false, output);
+    phi::Copy(ctx, *input, ctx.GetPlace(), false, output);
   } else {
     T init_val;
     if (reduce == "mul" || reduce == "multiply") {
@@ -135,37 +128,37 @@ void IndexReduceInner(const Context& ctx,
     IndexT index_value = index_data[j];
     auto output_t = output_tensor.chip(index_value, 1);
     auto source_t = source_tensor.chip(j, 1);
-    if (reduce == "add" || reduce =="mean") {
+    if (reduce == "add" || reduce == "mean") {
       output_t.device(place) = output_t + source_t;
-    } else if (reduce == "mul" || reduce =="muliply"){
-        output_t.device(place) = output_t * source_t;
-    } else if (reduce =="amin") {
-        output_t.device(place) = output_t.cwiseMin(source_t);
-    } else if (reduce =="amax"){
-        output_t.device(place) = output_t.cwiseMax(source_t);
+    } else if (reduce == "mul" || reduce == "muliply") {
+      output_t.device(place) = output_t * source_t;
+    } else if (reduce == "amin") {
+      output_t.device(place) = output_t.cwiseMin(source_t);
+    } else if (reduce == "amax") {
+      output_t.device(place) = output_t.cwiseMax(source_t);
     } else if (reduce == "assign") {
-        output_t.device(place) = source_t;
+      output_t.device(place) = source_t;
     }
   }
 
   output->Resize(output_dim);
   source->Resize(source_dim);
 
-  if (reduce == "mean"){
+  if (reduce == "mean") {
     auto src_cnts_wo_zeros = Where<T, Context>(ctx, mask, ones, src_cnts);
-    *output = Divide<T,Context>(ctx, *output, src_cnts_wo_zeros);
+    *output = Divide<T, Context>(ctx, *output, src_cnts_wo_zeros);
   }
 }
 
 template <typename T, typename Context>
 void IndexReduceBaseKernel(const Context& dev_ctx,
-                        const DenseTensor& x,
-                        const DenseTensor& index,
-                        DenseTensor& source,
-                        int axis,
-                        const std::string& reduce,
-                        bool include_self,
-                        DenseTensor* output) {
+                           const DenseTensor& x,
+                           const DenseTensor& index,
+                           const DenseTensor& source,
+                           int axis,
+                           const std::string& reduce,
+                           bool include_self,
+                           DenseTensor* output) {
   const auto& index_type = index.dtype();
   if (axis < 0) {
     axis += x.dims().size();

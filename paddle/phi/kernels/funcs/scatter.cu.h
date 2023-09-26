@@ -52,68 +52,69 @@ __global__ void ScatterInitCUDAKernel(const IndexT* indices,
 }
 
 template <typename T>
-struct AtomicFPOp;
+struct AtomicOp;
 
 template <>
-struct AtomicFPOp<phi::dtype::float16> {
+struct AtomicOp<phi::dtype::float16> {
   template <typename func_t>
   inline __device__ phi::dtype::float16 operator()(phi::dtype::float16* address,
                                                    phi::dtype::float16 val,
                                                    const func_t& func) {
     unsigned int* address_as_ui =
-        (unsigned int*)((char*)address - ((size_t)address & 2));
+        (unsigned int*)((char*)address - ((size_t)address & 2));  // NOLINT
     unsigned int old = *address_as_ui;
     unsigned int assumed;
 
     phi::dtype::float16 hsum;
     do {
       assumed = old;
-      hsum.x = (size_t)address & 2 ? (old >> 16) : (old & 0xffff);
+      hsum.x = (size_t)address & 2 ? (old >> 16) : (old & 0xffff);  // NOLINT
       hsum = func(hsum, val);
-      old = (size_t)address & 2 ? (old & 0xffff) | (hsum.x << 16)
+      old = (size_t)address & 2 ? (old & 0xffff) | (hsum.x << 16)  // NOLINT
                                 : (old & 0xffff0000) | hsum.x;
       old = atomicCAS(address_as_ui, assumed, old);
     } while (assumed != old);
-    hsum.x = (size_t)address & 2 ? (old >> 16) : (old & 0xffff);
+    hsum.x = (size_t)address & 2 ? (old >> 16) : (old & 0xffff);  // NOLINT
     return hsum;
   }
 };
 
 template <>
-struct AtomicFPOp<phi::dtype::bfloat16> {
+struct AtomicOp<phi::dtype::bfloat16> {
   template <typename func_t>
   inline __device__ phi::dtype::bfloat16 operator()(
       phi::dtype::bfloat16* address,
       phi::dtype::bfloat16 val,
       const func_t& func) {
     unsigned int* address_as_ui =
-        (unsigned int*)((char*)address - ((size_t)address & 2));
+        (unsigned int*)((char*)address - ((size_t)address & 2));  // NOLINT
     unsigned int old = *address_as_ui;
     unsigned int assumed;
 
     phi::dtype::bfloat16 bsum;
     do {
       assumed = old;
-      bsum.x = (size_t)address & 2 ? (old >> 16) : (old & 0xffff);
+      bsum.x = (size_t)address & 2 ? (old >> 16) : (old & 0xffff);  // NOLINT
       bsum = func(bsum, val);
-      old = (size_t)address & 2 ? (old & 0xffff) | (bsum.x << 16)
+      old = (size_t)address & 2 ? (old & 0xffff) | (bsum.x << 16)  // NOLINT
                                 : (old & 0xffff0000) | bsum.x;
       old = atomicCAS(address_as_ui, assumed, old);
     } while (assumed != old);
-    bsum.x = (size_t)address & 2 ? (old >> 16) : (old & 0xffff);
+    bsum.x = (size_t)address & 2 ? (old >> 16) : (old & 0xffff);  // NOLINT
     return bsum;
   }
 };
 
 template <>
-struct AtomicFPOp<double> {
+struct AtomicOp<double> {
   template <typename func_t>
   inline __device__ double operator()(double* address,
                                       double val,
                                       const func_t& func) {
-    unsigned long long int* address_as_ull = (unsigned long long int*)address;
-    unsigned long long int old = *address_as_ull;
-    unsigned long long int assumed;
+    unsigned long long int* address_as_ull =       // NOLINT
+        (unsigned long long int*)address;          // NOLINT
+    unsigned long long int old = *address_as_ull;  // NOLINT
+    unsigned long long int assumed;                // NOLINT
 
     do {
       assumed = old;
@@ -127,7 +128,7 @@ struct AtomicFPOp<double> {
 };
 
 template <>
-struct AtomicFPOp<int64_t> {
+struct AtomicOp<int64_t> {
   template <typename func_t>
   inline __device__ int64_t operator()(int64_t* address,
                                        int64_t val,
@@ -135,9 +136,10 @@ struct AtomicFPOp<int64_t> {
     // Here, we check long long int must be int64_t.
     static_assert(sizeof(int64_t) == sizeof(long long int),  // NOLINT
                   "long long should be int64");
-    unsigned long long int* address_as_ull = (unsigned long long int*)address;
-    unsigned long long int old = *address_as_ull;
-    unsigned long long int assumed;
+    unsigned long long int* address_as_ull =       // NOLINT
+        (unsigned long long int*)address;          // NOLINT
+    unsigned long long int old = *address_as_ull;  // NOLINT
+    unsigned long long int assumed;                // NOLINT
 
     do {
       assumed = old;
@@ -152,9 +154,10 @@ struct AtomicFPOp<int64_t> {
 
 // Atomic multiplication implementation.
 
-inline __device__ phi::dtype::float16 gpuAtomicMul(phi::dtype::float16* address,
-                                                   phi::dtype::float16 val) {
-  return AtomicFPOp<phi::dtype::float16>()(
+inline __device__ phi::dtype::float16 gpuAtomicMul(
+    phi::dtype::float16* address,  // NOLINT
+    phi::dtype::float16 val) {
+  return AtomicOp<phi::dtype::float16>()(
       address, val, [](phi::dtype::float16 bsum, phi::dtype::float16 val) {
         return bsum * val;
       });
@@ -162,23 +165,23 @@ inline __device__ phi::dtype::float16 gpuAtomicMul(phi::dtype::float16* address,
 
 inline __device__ phi::dtype::bfloat16 gpuAtomicMul(
     phi::dtype::bfloat16* address, phi::dtype::bfloat16 val) {
-  return AtomicFPOp<phi::dtype::bfloat16>()(
+  return AtomicOp<phi::dtype::bfloat16>()(
       address, val, [](phi::dtype::bfloat16 bsum, phi::dtype::bfloat16 val) {
         return bsum * val;
       });
 }
 
 inline __device__ double gpuAtomicMul(double* address, double val) {
-  return AtomicFPOp<double>()(
-      address, val, [](double val, unsigned long long int assumed) {
+  return AtomicOp<double>()(
+      address, val, [](double val, unsigned long long int assumed) {  // NOLINT
         return __double_as_longlong(val * __longlong_as_double(assumed));
       });
 }
 
 inline __device__ int64_t gpuAtomicMul(int64_t* address, int64_t val) {
-  return AtomicFPOp<int64_t>()(
-      address, val, [](int64_t val, unsigned long long int assumed) {
-        return static_cast<unsigned long long int>(
+  return AtomicOp<int64_t>()(
+      address, val, [](int64_t val, unsigned long long int assumed) {  // NOLINT
+        return static_cast<unsigned long long int>(                    // NOLINT
             val * static_cast<int64_t>(assumed));
       });
 }
