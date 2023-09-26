@@ -23,6 +23,7 @@
 #include "paddle/fluid/framework/new_executor/interpreter/data_transfer.h"
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
+#include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/pylayer_op_helper.h"
@@ -32,7 +33,6 @@
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
-#include "paddle/fluid/pir/phi_kernel_adaptor/phi_kernel_util.h"
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/kernel_context.h"
@@ -1258,8 +1258,8 @@ const paddle::framework::Variable* GetVariableByName(
 
 void PrintValuesAndVariables(
     const pir::Block& block,
-    const std::unordered_map<pir::Value, std::string>* value_2_var_name,
-    const std::unordered_map<const paddle::framework::Variable*, std::string>*
+    const std::unordered_map<pir::Value, std::string>& value_2_var_name,
+    const std::unordered_map<const paddle::framework::Variable*, std::string>&
         variable_2_var_name) {
   std::stringstream ss;
   for (const auto& op : block) {
@@ -1274,10 +1274,10 @@ void PrintValuesAndVariables(
       for (auto& out_value : op->results()) {
         // NOTE: if out_value is not in value_2_var_name, it's an optional
         // output
-        if ((*value_2_var_name).count(out_value)) {
-          auto& var_name = (*value_2_var_name).at(out_value);
+        if (value_2_var_name.count(out_value)) {
+          auto& var_name = value_2_var_name.at(out_value);
           const paddle::framework::Variable* out_variable =
-              GetVariableByName(var_name, *variable_2_var_name);
+              GetVariableByName(var_name, variable_2_var_name);
           ss.str("");
           ss << out_value.impl();
           ret_value_str +=
@@ -1322,10 +1322,10 @@ void PrintValuesAndVariables(
       for (auto& input : op->operands()) {
         ::pir::Value in_value = input.source();
         // NOTE: if in_value is not in value_2_var_name, it's an optional input
-        if ((*value_2_var_name).count(in_value)) {
-          auto& var_name = (*value_2_var_name).at(in_value);
+        if (value_2_var_name.count(in_value)) {
+          auto& var_name = value_2_var_name.at(in_value);
           const paddle::framework::Variable* in_variable =
-              GetVariableByName(var_name, *variable_2_var_name);
+              GetVariableByName(var_name, variable_2_var_name);
           ss.str("");
           ss << in_value.impl();
           ret_value_str +=
