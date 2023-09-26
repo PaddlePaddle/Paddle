@@ -681,10 +681,11 @@ def _as_lodtensor(data, place, dtype=None):
 
         .. code-block:: python
 
+            >>> import numpy as np
             >>> import paddle.base as base
             >>> place = base.CPUPlace()
-            >>> exe = base.executor(place)
-            >>> data = np.array(size=(100, 200, 300))
+            >>> exe = base.Executor(place)
+            >>> data = np.array((100, 200, 300))
             >>> np_outs = map(lambda x: base.executor._as_lodtensor(x, place), data)
 
     Args:

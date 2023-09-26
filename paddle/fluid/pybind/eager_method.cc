@@ -714,13 +714,15 @@ Examples:
 
         >>> x = paddle.to_tensor(1.0, stop_gradient=False)
         >>> clone_x = x.clone()
+        >>> clone_x.retain_grads()
         >>> y = clone_x**2
         >>> y.backward()
         >>> print(clone_x.stop_gradient)
         False
         >>> print(clone_x.grad)
-        None
+        Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False, 2.)
         >>> print(x.stop_gradient)
+        False
         >>> print(x.grad)
         Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False, 2.)
 
@@ -781,17 +783,20 @@ Examples:
         >>> loss = y.sum()
         >>> loss.backward()
 
-        >>> print(y.grad) # [1., 1., 1.]
+        >>> print(y.grad)
+        Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=False,
+        [1., 1., 1.])
 
         >>> x = paddle.to_tensor([1.0, 2.0, 3.0])
         >>> x.stop_gradient = False
         >>> y = x + x
-        >>> # y.retain_grads()
+        >>> y.retain_grads()
         >>> loss = y.sum()
         >>> loss.backward()
 
         >>> print(y.grad)
-        None
+        Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=False,
+        [1., 1., 1.])
 )DOC");
 
 static PyObject* tensor_retain_grads(TensorObject* self,
@@ -1074,7 +1079,7 @@ Examples:
         >>> print(x.grad)
         Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=False, [20.])
 
-        >>> print(detach_x.grad)
+        >>> print(detach_x.grad) # None, 'stop_gradient=True' by default
         None
 
         >>> detach_x.stop_gradient = False # Set stop_gradient to be False, supported auto-grad
@@ -1169,11 +1174,11 @@ Examples:
         >>> x = paddle.to_tensor([1.0], stop_gradient=False)
         >>> underline_x = x.get_tensor()
         >>> print(underline_x)
-         - place: Place(cpu)
-         - shape: [1]
-         - layout: NCHW
-         - dtype: 5
-         - data: [1]
+          - place: Place(cpu)
+          - shape: [1]
+          - layout: NCHW
+          - dtype: float32
+          - data: [1]
 )DOC");
 
 static PyObject* tensor_method_get_underline_tensor(TensorObject* self,
@@ -2815,6 +2820,9 @@ Examples:
         >>> import paddle
 
         >>> x = paddle.to_tensor([1, 2, 3])
+        >>> # doctest: +SKIP('return the address')
+        >>> print(x.data_ptr())
+        >>> # doctest: -SKIP
 )DOC");
 
 static PyObject* tensor_data_ptr(TensorObject* self,
@@ -2863,6 +2871,8 @@ Examples:
 
         >>> x = paddle.to_tensor([1, 2, 3])
         >>> y = x[1]
+        >>> print(y.get_strides())
+        []
 )DOC");
 
 static PyObject* tensor_method_strides(TensorObject* self,
@@ -2902,6 +2912,8 @@ Examples:
         >>> x = paddle.to_tensor([1, 2, 3])
         >>> y = x[1]
         >>> y = y.contiguous()
+        >>> print(y)
+        ensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True, 2)
 )DOC");
 
 static PyObject* tensor_contiguous(TensorObject* self,

@@ -351,7 +351,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
 
                         >>> paddle.enable_static()
 
-                        >>> use_cuda = True
+                        >>> use_cuda = paddle.device.is_compiled_with_cuda
                         >>> place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
                         >>> exe = static.Executor(place)
 
@@ -527,13 +527,11 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                       Examples:
                             .. code-block:: python
 
-                                ...     import paddle
-                                ...     import paddle.static as static
-                                ...
-                                ...     paddle.enable_static()
-                                ...
-                                ...     build_strategy = static.BuildStrategy()
-                                ...     build_strategy.build_cinn_pass = True
+                                >>> import paddle
+                                >>> import paddle.static as static
+                                >>> paddle.enable_static()
+                                >>> build_strategy = static.BuildStrategy()
+                                >>> build_strategy.build_cinn_pass = True
           )DOC")
       .def_property(
           "fuse_elewise_add_act_ops",
@@ -822,13 +820,12 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                       Examples:
                             .. code-block:: python
 
-                                ...     import paddle
-                                ...     import paddle.static as static
-                                ...
-                                ...     paddle.enable_static()
-                                ...
-                                ...     build_strategy = static.BuildStrategy()
-                                ...     build_strategy.fuse_broadcast_ops = True
+                                >>> import paddle
+                                >>> import paddle.static as static
+                                >>> paddle.enable_static()
+
+                                >>> build_strategy = static.BuildStrategy()
+                                >>> build_strategy.fuse_broadcast_ops = True
           )DOC")
       .def_property(
           "fuse_all_optimizer_ops",

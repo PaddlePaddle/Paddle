@@ -742,16 +742,16 @@ def grad(
 
             >>> # dy1 = [1], dy2 = [4]
             >>> print(test_dygraph_grad([None, grad_value]))
-            [16.]
+            16.
 
             >>> # dy1 = [4], dy2 = [1]
             >>> print(test_dygraph_grad([grad_value, None]))
-            [19.]
+            19.
 
             >>> # dy1 = [3], dy2 = [4]
             >>> grad_y1 = paddle.to_tensor(3.0)
             >>> print(test_dygraph_grad([grad_y1, grad_value]))
-            [24.]
+            24.
     '''
     if in_to_static_mode():
         # In dy2static context, we call static interface `gradients`
@@ -900,10 +900,10 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
             ...
             ...     y = base.dygraph.to_variable(((0.1, 1.2), (2.2, 3.1), (4.9, 5.2)), dtype='int32')
             ...     print(y.shape)
-            array(1, dtype=float32)
-            array(-1, dtype=float32)
-            array([2.+1.j, 2.+0.j])
-            complex128
+            1
+            -1
+            [2.+1.j, 2.+0.j]
+            paddle.complex128
             [3, 2]
             [3, 2]
     """
