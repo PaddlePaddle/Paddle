@@ -198,7 +198,7 @@ VariantType GetAttributeData(const pir::Attribute& attr) {
 bool IsLegacyOp(const std::string& name) { return LegacyOpList.count(name); }
 
 bool IsEmptyValue(const pir::Value& value) {
-  return !value.impl() || value.type().isa<pir::Type>();
+  return !value.impl() || !value.type();
 }
 
 }  // namespace dialect
