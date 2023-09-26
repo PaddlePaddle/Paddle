@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/ir/utils/ir_printer.h"
-
 #include <algorithm>
 #include <iomanip>
 #include <limits>
 #include <vector>
 
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/ir/tensor.h"
