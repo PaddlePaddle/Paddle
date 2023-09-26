@@ -86,7 +86,7 @@ void BlockMultiheadAttentionKernel(
       GetMaxLen(dev_ctx, seq_lens_encoder, &max_enc_len_tensor, bsz);
 
   phi::DenseTensor qkv_out_decoder;
-  if (max_dec_len_this_time > 0) {
+  if (max_dec_len_this_time > 0 && max_enc_len_this_time != 0) {
     qkv_out_decoder.Resize({{bsz, 3, num_head, dim_head}});
     auto* qkv_out_decoder_data = dev_ctx.template Alloc<T>(
         &qkv_out_decoder, qkv_out_decoder.numel() * sizeof(T));
@@ -173,20 +173,22 @@ void BlockMultiheadAttentionKernel(
   VLOG(1) << "encoder done";
   VLOG(1) << "max_dec_len_this_time: " << max_dec_len_this_time;
   if (max_dec_len_this_time > 0) {
-    GetDecoderTensor<T>(dev_ctx,
-                        qkv,
-                        nullptr,
-                        cum_offsets.data<int>(),
-                        &qkv_out_decoder,
-                        nullptr,
-                        token_num,
-                        bsz,
-                        num_head,
-                        max_seq_len,
-                        dim_head);
+    if (max_enc_len_this_time != 0) {
+      GetDecoderTensor<T>(dev_ctx,
+                          qkv,
+                          nullptr,
+                          cum_offsets.data<int>(),
+                          &qkv_out_decoder,
+                          nullptr,
+                          token_num,
+                          bsz,
+                          num_head,
+                          max_seq_len,
+                          dim_head);
+    }
     VLOG(1) << "qkv_out_decoder: " << qkv_out_decoder.dims();
     blha<T>(dev_ctx,
-            qkv_out_decoder,
+            max_enc_len_this_time != 0 ? qkv_out_decoder : qkv,
             nullptr,  // qkv_bias
             &block_tables,
             nullptr,  // not need mask during generation
