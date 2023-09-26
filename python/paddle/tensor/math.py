@@ -6932,3 +6932,44 @@ def ldexp_(x, y, name=None):
     y = paddle.cast(y, dtype=out_dtype)
     two = paddle.to_tensor(2, dtype=out_dtype)
     return paddle.multiply_(x, paddle.pow(two, y))
+
+
+def signbit(x, name=None):
+    """
+    Tests if each element of input has its sign bit set or not.
+
+    Args:
+        x (Tensor): The input Tensor. Must be one of the following types: float16, float32, float64, bfloat16, uint8, int8, int16, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None).For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): The output Tensor. The sign bit of the corresponding element of the input tensor, True means negative, False means positive.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # example1
+            >>> x = paddle.to_tensor([1.1, -2.1, 0., 2.5], dtype='float32')
+            >>> res = paddle.signbit(x, y)
+            >>> print(res)
+            Tensor(shape=[4], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [False , True, False, False])
+
+            >>> # example2
+            >>> x = paddle.to_tensor([-0, -2, 3], dtype='int32')
+            >>> res = paddle.signbit(x, y)
+            >>> print(res)
+            Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [True. , True , False])
+
+    """
+    if not isinstance(x, (paddle.Tensor, Variable)):
+        raise TypeError(f"x must be tensor type, but got {type(x)}")
+    
+    check_variable_and_dtype(x, "x", ['float16', 'float32', 'float64', 'bfloat16', 'int8', 'int16', 'int32', 'int64'], "signbit")
+    
+    
+    

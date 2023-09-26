@@ -402,6 +402,7 @@ from .tensor.math import (  # noqa: F401
     i1e,
     polygamma,
     polygamma_,
+    signbit,
 )
 
 from .tensor.random import (
