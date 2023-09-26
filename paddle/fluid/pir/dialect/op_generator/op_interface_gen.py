@@ -36,13 +36,13 @@ OP_VJP_FORWARD_MULTI_INPUT_TEMPLATE = """
 
 OP_VJP_FORWARD_OPTIONAL_INPUT_TEMPLATE = """
     paddle::optional<Tensor> {input_name};
-    if (op_obj.{input_name}() && op_obj.{input_name}().type().storage()){{
+    if (!IsEmptyValue(op_obj.{input_name}())){{
         {input_name} = paddle::make_optional<Tensor>(Tensor(std::make_shared<primitive::LazyTensor>(op_obj.{input_name}())));
     }}"""
 
 OP_VJP_FORWARD_OPTIONAL_VECTOR_INPUT_TEMPLATE = """
     paddle::optional<std::vector<Tensor>> {input_name};
-    if (!IsEmptyOpResult(op_obj.{input_name}())){{
+    if (!IsEmptyValue(op_obj.{input_name}())){{
         pir::CombineOp combine_op_obj =
             op_obj.{input_name}().dyn_cast<pir::OpResult>().owner()->dyn_cast<pir::CombineOp>();
         std::vector<Tensor> optional_{input_name};
