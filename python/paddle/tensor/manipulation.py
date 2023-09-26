@@ -2215,7 +2215,7 @@ def squeeze(x, axis=None, name=None):
 
     input = x
     axes = axis
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.squeeze(input, axes)
     else:
         helper = LayerHelper("squeeze", **locals())
