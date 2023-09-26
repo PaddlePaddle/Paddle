@@ -104,7 +104,6 @@ class TestTensorSubSplit(OpTest):
 
         result1 = paddle.any(paddle.equal(out0, split_add0), [0, 1, 2, 3])
         result2 = paddle.any(paddle.equal(out1, split_add1), [0, 1, 2, 3])
-        paddle.device.cuda.synchronize()
         np.testing.assert_equal(result1.numpy(), True)
         np.testing.assert_equal(result2.numpy(), True)
 
