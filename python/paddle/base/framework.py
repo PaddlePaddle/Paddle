@@ -32,7 +32,7 @@ from .proto import data_feed_pb2  # noqa: F401
 
 from . import core
 from . import unique_name
-from .. import ir
+from .. import pir
 from paddle.base.libpaddle import DataType
 import paddle.version as fluid_version
 import warnings
@@ -40,32 +40,7 @@ import functools
 from .variable_index import _getitem_static, _setitem_static, _setitem_impl_
 import threading
 
-__all__ = [
-    'Program',
-    'default_startup_program',
-    'default_main_program',
-    'program_guard',
-    'name_scope',
-    'ipu_shard_guard',
-    'set_ipu_shard',
-    'cuda_places',
-    'cpu_places',
-    'xpu_places',
-    'cuda_pinned_places',
-    'in_dygraph_mode',
-    'in_pir_mode',
-    'in_dynamic_or_pir_mode',
-    'is_compiled_with_cinn',
-    'is_compiled_with_cuda',
-    'is_compiled_with_rocm',
-    'is_compiled_with_xpu',
-    'Variable',
-    'require_version',
-    'device_guard',
-    'set_flags',
-    'get_flags',
-    '_stride_in_no_check_dy2st_diff',
-]
+__all__ = []
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
 TEMP_VAR_NAME = core.kTempVarName()
@@ -294,10 +269,10 @@ def in_dygraph_mode():
 def in_pir_mode():
     """
 
-    This API checks whether paddle runs in static graph mode and use new ir api.
+    This API checks whether paddle runs in static graph mode and use pir api.
 
     Returns:
-        bool: Whether paddle runs in static graph mode and use new ir api.
+        bool: Whether paddle runs in static graph mode and use pir api.
 
     Examples:
         .. code-block:: python
@@ -323,10 +298,10 @@ def use_pir_api():
 def in_dynamic_or_pir_mode():
     """
 
-    This API checks whether paddle runs in dynamic graph or new ir mode.
+    This API checks whether paddle runs in dynamic graph or pir mode.
 
     Returns:
-        bool: Whether paddle runs in static graph mode and use new ir api.
+        bool: Whether paddle runs in static graph mode and use pir api.
 
     Examples:
         .. code-block:: python
@@ -1022,10 +997,11 @@ def cuda_pinned_places(device_count=None):
     Examples:
         .. code-block:: python
 
-            import paddle.base as base
-            cuda_pinned_places_cpu_num = base.cuda_pinned_places()
-            # or
-            cuda_pinned_places = base.cuda_pinned_places(1)
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle.base as base
+            >>> cuda_pinned_places_cpu_num = base.cuda_pinned_places()
+            >>> # or
+            >>> cuda_pinned_places = base.cuda_pinned_places(1)
 
     """
     assert core.is_compiled_with_cuda(), "Not compiled with CUDA"
@@ -1162,7 +1138,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
 
     """
     if in_pir_mode():
-        return ir.core.convert_np_dtype_to_dtype_(np_dtype)
+        return pir.core.convert_np_dtype_to_dtype_(np_dtype)
 
     # Convert the data type string to numpy data type.
     if isinstance(np_dtype, str) and np_dtype == "bfloat16":
@@ -1954,6 +1930,7 @@ class Variable(metaclass=VariableMetaClass):
         Examples:
             .. code-block:: python
 
+                >>> import paddle
                 >>> import paddle.base as base
                 >>> import numpy as np
 
@@ -1961,18 +1938,18 @@ class Variable(metaclass=VariableMetaClass):
                 ...     value0 = np.arange(26).reshape(2, 13).astype("float32")
                 ...     value1 = np.arange(6).reshape(2, 3).astype("float32")
                 ...     value2 = np.arange(10).reshape(2, 5).astype("float32")
-                ...     linear = base.Linear(13, 5, dtype="float32")
-                ...     linear2 = base.Linear(3, 3, dtype="float32")
+                ...     linear = paddle.nn.Linear(13, 5)
+                ...     linear2 = paddle.nn.Linear(3, 3)
                 ...     a = base.dygraph.to_variable(value0)
                 ...     b = base.dygraph.to_variable(value1)
                 ...     c = base.dygraph.to_variable(value2)
                 ...     out1 = linear(a)
                 ...     out2 = linear2(b)
                 ...     out1.stop_gradient = True
-                ...     out = base.layers.concat(input=[out1, out2, c], axis=1)
+                ...     out = paddle.concat(x=[out1, out2, c], axis=1)
                 ...     out.backward()
                 ...     assert linear.weight.gradient() is None
-                ...     assert (out1.gradient() == 0).all()
+                ...     assert out1.gradient() is None
         """
         return self.desc.stop_gradient()
 
@@ -2019,6 +1996,7 @@ class Variable(metaclass=VariableMetaClass):
             .. code-block:: python
 
                 >>> import paddle
+                >>> paddle.enable_static()
                 >>> new_parameter = paddle.static.create_parameter(name="X",
                 ...                                     shape=[10, 23, 48],
                 ...                                     dtype='float32')
@@ -2871,10 +2849,15 @@ class Operator:
     Examples:
         .. code-block:: python
 
-            >>> import paddle.base as base
-            >>> cur_program = base.Program()
+            >>> import paddle
+
+            >>> paddle.enable_static()
+            >>> cur_program = paddle.static.Program()
             >>> cur_block = cur_program.current_block()
-            >>> # var1 += var2 + var3
+            >>> var1 = cur_block.create_var(name="var1", shape=[-1, 23, 48], dtype='float32')
+            >>> var2 = cur_block.create_var(name="var2", shape=[-1, 23, 48], dtype='float32')
+            >>> var3 = cur_block.create_var(name="var3", shape=[-1, 23, 48], dtype='float32')
+            >>> var1 += var2 + var3
             >>> cur_block.append_op(type="sum",
             ...                     inputs={"X": [var1, var2, var3]},
             ...                     outputs={"Out": [var1]})
@@ -3222,9 +3205,10 @@ class Operator:
         Examples:
             .. code-block:: python
 
-                >>> import paddle.base as base
+                >>> import paddle
 
-                >>> cur_program = base.Program()
+                >>> paddle.enable_static()
+                >>> cur_program = paddle.static.Program()
                 >>> cur_block = cur_program.current_block()
                 >>> var = cur_block.create_var(name="X",
                 ...                            shape=[-1, 23, 48],
@@ -3953,9 +3937,10 @@ class Block:
     Examples:
         .. code-block:: python
 
-            >>> import paddle.base as base
+            >>> import paddle
 
-            >>> cur_program = base.Program()
+            >>> paddle.enable_static()
+            >>> cur_program = paddle.static.Program()
             >>> cur_block = cur_program.current_block()
             >>> var = cur_block.create_var(name="X",
             ...                            shape=[-1, 23, 48],
@@ -3992,9 +3977,10 @@ class Block:
         Examples:
             .. code-block:: python
 
-                >>> import paddle.base as base
+                >>> import paddle
 
-                >>> cur_program = base.Program()
+                >>> paddle.enable_static()
+                >>> cur_program = paddle.static.Program()
                 >>> cur_block = cur_program.current_block()
                 >>> new_var = cur_block.create_var(name="X",
                 ...                                shape=[-1, 23, 48],
@@ -7303,10 +7289,9 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
         Examples:
             .. code-block:: python
 
-                >>> import paddle.base as base
                 >>> import paddle
-
-                >>> prog = base.default_main_program()
+                >>> paddle.enable_static()
+                >>> prog = paddle.static.default_main_program()
                 >>> rlt = paddle.static.data("fake_data", shape=[-1,1,1], dtype='float32')
                 >>> debug_str = prog.to_string(throw_on_error=True, with_details=False)
                 >>> print(debug_str)

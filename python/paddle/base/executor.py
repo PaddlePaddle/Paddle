@@ -21,7 +21,7 @@ from functools import lru_cache
 
 import numpy as np
 
-from ..ir import OpResult
+from ..pir import OpResult
 from . import compiler, core, framework, get_flags, set_flags, unique_name
 from .data_feeder import convert_dtype
 from .framework import (
@@ -38,7 +38,7 @@ from .incubate.checkpoint import auto_checkpoint as acp
 from .trainer_factory import FetchHandlerMonitor, TrainerFactory
 from .wrapped_decorator import signature_safe_contextmanager
 
-__all__ = ['Executor', 'global_scope', 'scope_guard']
+__all__ = []
 
 g_scope = core.Scope()
 InferNativeConfig = core.NativeConfig
@@ -511,7 +511,7 @@ def _add_pir_fetch_ops(program, fetch_list, fetch_var_name):
                 assert isinstance(
                     fetch_input, OpResult
                 ), "Wrong type for fetch_list[%s]: %s" % (i, type(fetch_input))
-                paddle._ir_ops.fetch(fetch_input, fetch_var_name + str(i), i)
+                paddle._pir_ops.fetch(fetch_input, fetch_var_name + str(i), i)
 
 
 def _merge_tensors(tensor, micro_batch_num):
@@ -1246,7 +1246,7 @@ class Executor:
                 pir_check_feed_shape_type(
                     cur_feed, feed_target_name, var_shape, var_type
                 )
-                # the last arg of set_feed_variable has no effect in new ir, we pass 0 by default.
+                # the last arg of set_feed_variable has no effect in pir, we pass 0 by default.
                 core.set_feed_variable(scope, cur_feed, feed_target_name, 0)
             else:
                 break
@@ -1869,8 +1869,8 @@ class Executor:
     ):
         import paddle
 
-        Program = paddle.ir.Program
-        default_main_program = paddle.ir.core.default_main_program
+        Program = paddle.pir.Program
+        default_main_program = paddle.pir.core.default_main_program
 
         if self._closed:
             raise RuntimeError("Attempted to use a closed Executor")

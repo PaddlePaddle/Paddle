@@ -16,7 +16,7 @@ from google.protobuf import text_format
 
 from paddle.base.proto import data_feed_pb2
 
-__all__ = ['DataFeedDesc']
+__all__ = []
 
 
 class DataFeedDesc:

@@ -27,10 +27,7 @@ from . import core, log_helper, unique_name
 from .data_feeder import check_type
 from .proto import framework_pb2
 
-__all__ = [
-    'append_backward',
-    'gradients',
-]
+__all__ = []
 
 _logger = log_helper.get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
@@ -348,22 +345,12 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
     for para, args in inputs.items():
         op_desc.set_input(
             para,
-            list(
-                map(
-                    lambda arg: arg.decode() if isinstance(arg, bytes) else arg,
-                    args,
-                )
-            ),
+            [arg.decode() if isinstance(arg, bytes) else arg for arg in args],
         )
     for para, args in outputs.items():
         op_desc.set_output(
             para,
-            list(
-                map(
-                    lambda arg: arg.decode() if isinstance(arg, bytes) else arg,
-                    args,
-                )
-            ),
+            [arg.decode() if isinstance(arg, bytes) else arg for arg in args],
         )
     op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
     op_device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
