@@ -17,3 +17,8 @@ cc_library(
   pd_inplace_pass
   SRCS inplace_pass.cc
   DEPS pd_op_dialect_core op_yaml_info_parser)
+
+cc_library(
+  _build_cinn_pass
+  SRCS build_cinn_pass.cc
+  DEPS pd_op_dialect cinn_op_dialect pir_control_flow cinnapi)

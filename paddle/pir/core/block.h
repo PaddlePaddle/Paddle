@@ -105,6 +105,10 @@ class IR_API Block {
   friend class Region;
   void SetParent(Region *parent, Region::iterator position);
 
+  // Take out corresponding Operation and its ownershipe.
+  friend class Operation;
+  Operation *Take(Operation *op);
+
   static bool TopoOrderCheck(const OpListType &op_list);
 
  private:

@@ -55,6 +55,12 @@ void Block::clear() {
   }
 }
 
+Operation *Block::Take(Operation *op) {
+  IR_ENFORCE(op && op->GetParent() == this, "iterator not own this block.");
+  ops_.erase(*op);
+  return op;
+}
+
 void Block::SetParent(Region *parent, Region::iterator position) {
   parent_ = parent;
   position_ = position;
