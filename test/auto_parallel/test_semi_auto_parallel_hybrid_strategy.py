@@ -23,7 +23,7 @@ class TestSemiAutoParallelHybridStrategy(test_base.CommunicationTestDistBase):
         self._default_envs = {
             "dtype": "float32",
         }
-        # this test need to run on 4-cards environment, but our CI only supports
+        # this test need to be run on 4-cards environment, but our CI only supports
         # 2-cards distribute test, so skip gpu test now
         self._changeable_envs = {"backend": ["cpu"]}
 
