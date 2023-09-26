@@ -2820,8 +2820,9 @@ Examples:
         >>> import paddle
 
         >>> x = paddle.to_tensor([1, 2, 3])
-        >>> # doctest: +SKIP('return the address')
         >>> print(x.data_ptr())
+        >>> # doctest: +SKIP('return the address')
+        93220864
         >>> # doctest: -SKIP
 )DOC");
 
