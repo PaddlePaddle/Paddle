@@ -2916,10 +2916,7 @@ def scatter(
         x (Tensor): The input N-D Tensor with ndim>=1. Data type can be float32, float64.
         index (Tensor): The index is a 1-D or 0-D Tensor. Data type can be int32, int64. The length of index cannot exceed updates's length, and the value in index cannot exceed input's length.
         updates (Tensor): Update input with updates parameter based on index. When the index is a 1-D tensor, the updates shape should be the same as input, and dim value with dim > 1 should be the same as input. When the index is a 0-D tensor, the updates should be a (N-1)-D tensor, the ith dim of the updates should be queal with the (i+1)th dim of the input.
-        overwrite (bool, optional): The mode that updating the output when there are same indices.
-
-            If True, use the overwrite mode to update the output of the same index,
-            if False, use the accumulate mode to update the output of the same index. Default value is True.
+        overwrite (bool, optional): The mode that updating the output when there are same indices.If True, use the overwrite mode to update the output of the same index,if False, use the accumulate mode to update the output of the same index. Default value is True.
         axis(int, optional): The axis along which the scatter operation is performed. The default is 0.
         reduce (str, optional): Reduction operation to apply, can be either 'add', 'mul', 'multiply', 'mean', 'amin', 'amax'. The default is 'add'.
         include_self(bool, optional): If True, the self index will be included in output. Default value is False.
