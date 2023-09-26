@@ -1586,7 +1586,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
         if start_axis > stop_axis:
             raise ValueError("The stop_axis should be larger than stat_axis")
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.flatten(x, start_axis, stop_axis)
     else:
         check_variable_and_dtype(
