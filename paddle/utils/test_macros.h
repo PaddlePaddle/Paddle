@@ -14,14 +14,11 @@
 
 #pragma once
 
-#if defined(_WIN32) && !defined(STATIC_PADDLE)
-#ifndef PADDLE_API
+#define TEST_API
+#if defined(_WIN32) && defined(PADDLE_WITH_TESTING) && !defined(STATIC_PADDLE)
 #ifdef PADDLE_DLL_EXPORT
-#define PADDLE_API __declspec(dllexport)
+#define TEST_API __declspec(dllexport)
 #else
-#define PADDLE_API __declspec(dllimport)
+#define TEST_API __declspec(dllimport)
 #endif  // PADDLE_DLL_EXPORT
-#endif  // PADDLE_API
-#else
-#define PADDLE_API
-#endif  // _WIN32
+#endif  // _WIN32 && PADDLE_WITH_TESTING &&!STATIC_PADDLE

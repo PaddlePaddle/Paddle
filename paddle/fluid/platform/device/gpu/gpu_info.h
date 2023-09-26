@@ -21,6 +21,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace platform {
@@ -31,7 +32,7 @@ int DnnVersion();
 int GetGPUDeviceCount();
 
 //! Get the compute capability of the ith GPU (format: major * 10 + minor)
-int GetGPUComputeCapability(int id);
+TEST_API int GetGPUComputeCapability(int id);
 
 //! Get the runtime version of the ith GPU
 int GetGPURuntimeVersion(int id);
@@ -52,7 +53,7 @@ int GetGPUMaxThreadsPerMultiProcessor(int id);
 int GetGPUMaxThreadsPerBlock(int id);
 
 //! Get the current GPU device id in system.
-int GetCurrentDeviceId();
+TEST_API int GetCurrentDeviceId();
 
 //! Get the maximum GridDim size for GPU buddy allocator.
 std::array<int, 3> GetGpuMaxGridDimSize(int);
@@ -64,7 +65,7 @@ std::vector<int> GetSelectedDevices();
 const gpuDeviceProp &GetDeviceProperties(int id);
 
 //! Set the GPU device id for next execution.
-void SetDeviceId(int device_id);
+TEST_API void SetDeviceId(int device_id);
 
 //! Get the memory usage of current GPU device.
 void GpuMemoryUsage(size_t *available, size_t *total);
