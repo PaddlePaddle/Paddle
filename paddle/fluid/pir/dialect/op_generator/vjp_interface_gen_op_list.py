@@ -68,6 +68,7 @@ vjp_interface_declare_gen_op_list = [
     'tril',
     'triu',
     'tile',
+    'abs',
 ]
 vjp_interface_implementation_gen_op_list = [
     'where',
@@ -114,4 +115,5 @@ vjp_interface_implementation_gen_op_list = [
     'tril',
     'triu',
     'tile',
+    'abs',
 ]
