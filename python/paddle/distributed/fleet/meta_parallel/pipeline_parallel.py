@@ -13,7 +13,7 @@
 
 import paddle
 from paddle import framework
-
+import os
 from ..meta_optimizers.dygraph_optimizer import HybridParallelOptimizer
 from ..utils import timer_helper as timer
 from ..utils.hybrid_parallel_util import (
