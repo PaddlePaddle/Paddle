@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/infermeta/fusion.h"
-#include <iostream>
 #include <vector>
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/scalar.h"
