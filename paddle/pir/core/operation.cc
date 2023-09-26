@@ -31,7 +31,7 @@ using detail::OpOperandImpl;
 using detail::OpOutlineResultImpl;
 using detail::OpResultImpl;
 
-Operation *Operation::Create(const OperationArgument &argument) {
+Operation *Operation::Create(OperationArgument &&argument) {
   Operation *op = Create(argument.inputs,
                          argument.attributes,
                          argument.output_types,

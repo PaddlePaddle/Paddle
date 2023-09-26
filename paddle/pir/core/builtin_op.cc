@@ -70,7 +70,7 @@ ModuleOp ModuleOp::Create(IrContext *context, Program *pointer) {
   OperationArgument argument(info);
   argument.AddRegion(nullptr);
   argument.AddAttribute("program", PointerAttribute::get(context, pointer));
-  Operation *op = Operation::Create(argument);
+  Operation *op = Operation::Create(std::move(argument));
   op->region(0).emplace_back();
   return ModuleOp(op);
 }
