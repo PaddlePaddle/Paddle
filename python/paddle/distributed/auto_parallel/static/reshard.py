@@ -33,7 +33,7 @@ from .cost import (
 from .dist_attribute import TensorDistAttr
 from .dist_context import DistributedContext
 from .process_group import new_process_group
-from .utils import is_gradient_clip_op
+from .utils import is_gradient_clip_op, is_optimize_op
 
 # NOTE: If op in _g_special_ops or _g_gradient_clip_ops, it will not be resharded.
 _g_special_ops = ['check_finite_and_unscale', 'update_loss_scaling']
@@ -1791,6 +1791,17 @@ class Resharder:
         source_tensor = get_var_with_recursion(
             var_name, block, self.auto_parallel_main_prog
         )
+
+        def is_grad(name):
+            return name.endswith('GRAD')
+
+        # all op that generate grad is marked as OpRole.Backward
+        op_role = (
+            OpRole.Backward
+            if is_optimize_op(reshard_op) and is_grad(var_name)
+            else reshard_op.attr('op_role')
+        )
+
         for op_desc in op_desc_list:
             if isinstance(op_desc, AllGatherOpDesc):  # noqa: F401
                 if var_name not in self.has_allgather.keys():
@@ -1804,7 +1815,7 @@ class Resharder:
                             block,
                             idx,
                             source_tensor,
-                            reshard_op.attr('op_role'),
+                            op_role,
                             paddle.int64,
                         )
                         tensor_list, idx_offset = Inserter.insert_allgather_op(
@@ -1812,7 +1823,7 @@ class Resharder:
                             idx + 1,
                             out_cast,
                             op_desc.group,
-                            reshard_op.attr('op_role'),
+                            op_role,
                         )
                         idx += idx_offset
                         tensor_name_list = []
@@ -1821,7 +1832,7 @@ class Resharder:
                                 block,
                                 idx,
                                 var,
-                                reshard_op.attr('op_role'),
+                                op_role,
                                 paddle.bool,
                             )
                             tensor_name_list.append(out_cast.name)
@@ -1835,7 +1846,7 @@ class Resharder:
                             idx,
                             source_tensor,
                             op_desc.group,
-                            reshard_op.attr('op_role'),
+                            op_role,
                         )
                         idx += idx_offset
                         tensor_name_list = [var.name for var in tensor_list]
@@ -1867,7 +1878,7 @@ class Resharder:
                             block,
                             idx,
                             source_tensor,
-                            reshard_op.attr('op_role'),
+                            op_role,
                             paddle.int64,
                         )
                         Inserter.insert_send_op(
@@ -1876,7 +1887,7 @@ class Resharder:
                             out_cast,
                             op_desc.src,
                             op_desc.dst,
-                            reshard_op.attr('op_role'),
+                            op_role,
                         )
                         idx += 2
                     else:
@@ -1886,7 +1897,7 @@ class Resharder:
                             source_tensor,
                             op_desc.src,
                             op_desc.dst,
-                            reshard_op.attr('op_role'),
+                            op_role,
                         )
                         idx += 1
                     self.has_sent[var_name].append(op_desc.dst)
@@ -1914,13 +1925,13 @@ class Resharder:
                             recv_tensor,
                             op_desc.src,
                             op_desc.dst,
-                            reshard_op.attr('op_role'),
+                            op_role,
                         )
                         out_cast = Inserter.insert_cast_op(
                             block,
                             idx + 1,
                             recv_tensor,
-                            reshard_op.attr('op_role'),
+                            op_role,
                             paddle.bool,
                         )
                         tensor_list.append(out_cast)
@@ -1940,7 +1951,7 @@ class Resharder:
                             recv_tensor,
                             op_desc.src,
                             op_desc.dst,
-                            reshard_op.attr('op_role'),
+                            op_role,
                         )
 
                         # for lod tensor, need reset lod after received
@@ -1963,7 +1974,7 @@ class Resharder:
                                                 idx + 1,
                                                 recv_tensor,
                                                 tmp_var,
-                                                reshard_op.attr('op_role'),
+                                                op_role,
                                             )
                                         )
                                         tensor_list.append(reset_lod_out)
@@ -1993,7 +2004,7 @@ class Resharder:
                         partition_index_list[index],
                         block,
                         idx_list,
-                        reshard_op.attr('op_role'),
+                        op_role,
                     )
                 idx = idx_list[0]
 
@@ -2018,7 +2029,7 @@ class Resharder:
                         ends=op_desc.ends,
                         axes=op_desc.axes,
                         new_var_name=new_name,
-                        op_role=reshard_op.attr('op_role'),
+                        op_role=op_role,
                     )
                 else:
                     target_tensor = Inserter.insert_c_concat_op(
@@ -2026,7 +2037,7 @@ class Resharder:
                         idx,
                         source_tensor,
                         op_desc.group,
-                        reshard_op.attr('op_role'),
+                        op_role,
                     )
 
                 assert target_tensor is not None

@@ -23,7 +23,7 @@ from .common import (
     register_distributed_operator_impl,
     register_distributed_operator_impl_container,
 )
-from .dist_eltwise import DistributedDefaultImpl0, DistributedElementwiseImpl0
+from .dist_eltwise import DistributedDefaultImpl0
 
 
 class DistributedFlashAttn(DistributedOperatorImplContainer):
@@ -35,7 +35,7 @@ register_distributed_operator_impl_container(DistributedFlashAttn("flash_attn"))
 
 
 # Dist FlashAttn with Random Control
-class DistributedFlashAttnImpl0(DistributedElementwiseImpl0):
+class DistributedFlashAttnImpl0(DistributedDefaultImpl0):
     def __init__(self, name):
         super().__init__(name)
         self._forward_implemented = True
