@@ -2606,7 +2606,7 @@ def unsqueeze(x, axis, name=None):
     """
     input = x
     axes = axis
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if isinstance(axes, int):
             axes = [axes]
         elif isinstance(axes, Variable):
