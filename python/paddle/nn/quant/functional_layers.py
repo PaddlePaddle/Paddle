@@ -68,7 +68,7 @@ class transpose(FloatFunctionalLayer):
         super().__init__()
 
     def forward(self, x, perm, name=None):
-        return linalg.transpose(x, perm, name)
+        return manipulation.transpose(x, perm, name)
 
 
 class concat(FloatFunctionalLayer):
