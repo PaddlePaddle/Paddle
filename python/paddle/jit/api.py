@@ -1460,6 +1460,7 @@ def load(path, **configs):
             .. code-block:: python
                 :name: code-example2
 
+                >>> # doctest: +SOLO('can not use multiprocessing testing `DataLoader`')
                 >>> import numpy as np
                 >>> import paddle
                 >>> import paddle.static as static
@@ -1516,7 +1517,7 @@ def load(path, **configs):
 
                 >>> # 1. train and save inference model
                 >>> for data in loader():
-                >>>     exe.run(
+                ...     exe.run(
                 ...         static.default_main_program(),
                 ...         feed=data,
                 ...         fetch_list=[avg_loss]

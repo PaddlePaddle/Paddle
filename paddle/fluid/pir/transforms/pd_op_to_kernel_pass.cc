@@ -39,8 +39,6 @@
 namespace paddle {
 namespace dialect {
 
-const int init_on_gpu_threashold = 1000;
-
 std::unordered_map<std::string, phi::DataType> Str2PhiDataType = {
     {"DataType::FLOAT16", phi::DataType::FLOAT16},
     {"DataType::BFLOAT16", phi::DataType::BFLOAT16},
@@ -544,14 +542,6 @@ phi::KernelKey GetKernelKey(
           auto shape = define_op->attribute<dialect::IntArrayAttribute>("value")
                            .data()
                            .GetData();
-
-          size_t numel = 1;
-          for (auto& s : shape) {
-            numel *= s;
-          }
-          if (numel > init_on_gpu_threashold) {
-            kernel_backend = phi::Backend::GPU;
-          }
         }
       }
 

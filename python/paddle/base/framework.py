@@ -521,17 +521,19 @@ def require_version(min_version, max_version=None):
     if version_cmp(version_installed, zero_version) == 0:
         if max_version is not None:
             warnings.warn(
-                "PaddlePaddle version in [%s, %s] required, but %s installed. "
+                "PaddlePaddle version in [{}, {}] required, but {} installed. "
                 "Maybe you are using a develop version, "
-                "please make sure the version is good with your code."
-                % (min_version, max_version, fluid_version.full_version)
+                "please make sure the version is good with your code.".format(
+                    min_version, max_version, fluid_version.full_version
+                )
             )
         else:
             warnings.warn(
-                "PaddlePaddle version %s or higher is required, but %s installed, "
+                "PaddlePaddle version {} or higher is required, but {} installed, "
                 "Maybe you are using a develop version, "
-                "please make sure the version is good with your code."
-                % (min_version, fluid_version.full_version)
+                "please make sure the version is good with your code.".format(
+                    min_version, fluid_version.full_version
+                )
             )
         return
 
@@ -551,15 +553,17 @@ def require_version(min_version, max_version=None):
             or version_cmp(version_installed, min_version_to_check) < 0
         ):
             raise Exception(
-                "VersionError: PaddlePaddle version in [%s, %s] required, but %s installed."
-                % (min_version, max_version, fluid_version.full_version)
+                "VersionError: PaddlePaddle version in [{}, {}] required, but {} installed.".format(
+                    min_version, max_version, fluid_version.full_version
+                )
             )
     else:
         if version_cmp(version_installed, min_version_to_check) < 0:
             raise Exception(
-                "VersionError: PaddlePaddle version %s or higher is required, but %s installed, "
-                "please upgrade your PaddlePaddle to %s or other higher version."
-                % (min_version, fluid_version.full_version, min_version)
+                "VersionError: PaddlePaddle version {} or higher is required, but {} installed, "
+                "please upgrade your PaddlePaddle to {} or other higher version.".format(
+                    min_version, fluid_version.full_version, min_version
+                )
             )
 
 
@@ -623,11 +627,12 @@ def _set_pipeline_stage(stage):
 def _fake_interface_only_(func):
     def __impl__(*args, **kwargs):
         raise AssertionError(
-            "'%s' only can be called by `paddle.Tensor` in dynamic graph mode. Suggestions:\n"
+            "'{}' only can be called by `paddle.Tensor` in dynamic graph mode. Suggestions:\n"
             "  1. If you are in static graph mode, you can switch to dynamic graph mode by turning off `paddle.enable_static()` or calling `paddle.disable_static()`.\n"
             "  2. If you are using `@paddle.jit.to_static`, you can call `paddle.jit.enable_to_static(False)`. "
-            "If you have to translate dynamic graph to static graph, please use other API to replace '%s'."
-            % (func.__name__, func.__name__)
+            "If you have to translate dynamic graph to static graph, please use other API to replace '{}'.".format(
+                func.__name__, func.__name__
+            )
         )
 
     return __impl__
@@ -997,10 +1002,11 @@ def cuda_pinned_places(device_count=None):
     Examples:
         .. code-block:: python
 
-            import paddle.base as base
-            cuda_pinned_places_cpu_num = base.cuda_pinned_places()
-            # or
-            cuda_pinned_places = base.cuda_pinned_places(1)
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle.base as base
+            >>> cuda_pinned_places_cpu_num = base.cuda_pinned_places()
+            >>> # or
+            >>> cuda_pinned_places = base.cuda_pinned_places(1)
 
     """
     assert core.is_compiled_with_cuda(), "Not compiled with CUDA"
@@ -1881,7 +1887,7 @@ class Variable(metaclass=VariableMetaClass):
         if with_details:
             additional_attr = ("error_clip",)
             for attr_name in additional_attr:
-                res_str += "%s: %s\n" % (attr_name, getattr(self, attr_name))
+                res_str += f"{attr_name}: {getattr(self, attr_name)}\n"
 
         return res_str
 
@@ -1929,6 +1935,7 @@ class Variable(metaclass=VariableMetaClass):
         Examples:
             .. code-block:: python
 
+                >>> import paddle
                 >>> import paddle.base as base
                 >>> import numpy as np
 
@@ -1936,18 +1943,18 @@ class Variable(metaclass=VariableMetaClass):
                 ...     value0 = np.arange(26).reshape(2, 13).astype("float32")
                 ...     value1 = np.arange(6).reshape(2, 3).astype("float32")
                 ...     value2 = np.arange(10).reshape(2, 5).astype("float32")
-                ...     linear = base.Linear(13, 5, dtype="float32")
-                ...     linear2 = base.Linear(3, 3, dtype="float32")
+                ...     linear = paddle.nn.Linear(13, 5)
+                ...     linear2 = paddle.nn.Linear(3, 3)
                 ...     a = base.dygraph.to_variable(value0)
                 ...     b = base.dygraph.to_variable(value1)
                 ...     c = base.dygraph.to_variable(value2)
                 ...     out1 = linear(a)
                 ...     out2 = linear2(b)
                 ...     out1.stop_gradient = True
-                ...     out = base.layers.concat(input=[out1, out2, c], axis=1)
+                ...     out = paddle.concat(x=[out1, out2, c], axis=1)
                 ...     out.backward()
                 ...     assert linear.weight.gradient() is None
-                ...     assert (out1.gradient() == 0).all()
+                ...     assert out1.gradient() is None
         """
         return self.desc.stop_gradient()
 
@@ -1994,6 +2001,7 @@ class Variable(metaclass=VariableMetaClass):
             .. code-block:: python
 
                 >>> import paddle
+                >>> paddle.enable_static()
                 >>> new_parameter = paddle.static.create_parameter(name="X",
                 ...                                     shape=[10, 23, 48],
                 ...                                     dtype='float32')
@@ -2846,10 +2854,15 @@ class Operator:
     Examples:
         .. code-block:: python
 
-            >>> import paddle.base as base
-            >>> cur_program = base.Program()
+            >>> import paddle
+
+            >>> paddle.enable_static()
+            >>> cur_program = paddle.static.Program()
             >>> cur_block = cur_program.current_block()
-            >>> # var1 += var2 + var3
+            >>> var1 = cur_block.create_var(name="var1", shape=[-1, 23, 48], dtype='float32')
+            >>> var2 = cur_block.create_var(name="var2", shape=[-1, 23, 48], dtype='float32')
+            >>> var3 = cur_block.create_var(name="var3", shape=[-1, 23, 48], dtype='float32')
+            >>> var1 += var2 + var3
             >>> cur_block.append_op(type="sum",
             ...                     inputs={"X": [var1, var2, var3]},
             ...                     outputs={"Out": [var1]})
@@ -3047,20 +3060,14 @@ class Operator:
                             or m.intermediate
                         ):
                             raise ValueError(
-                                (
-                                    "Incorrect setting for output(s) of "
-                                    "operator \"%s\", should set: [%s]."
-                                )
-                                % (type, m.name)
+                                "Incorrect setting for output(s) of "
+                                f"operator \"{type}\", should set: [{m.name}]."
                             )
                     else:
                         if not ((m.name in outputs) or m.dispensable):
                             raise ValueError(
-                                (
-                                    "Incorrect setting for output(s) of "
-                                    "operator \"%s\", should set: [%s]."
-                                )
-                                % (type, m.name)
+                                "Incorrect setting for output(s) of "
+                                f"operator \"{type}\", should set: [{m.name}]."
                             )
 
                 for out_proto in proto.outputs:
@@ -3102,9 +3109,7 @@ class Operator:
                     self._update_desc_attr(attr_name, attr_val)
                 for attr_name in extra_attrs_map.keys():
                     if os.environ.get('FLAGS_print_extra_attrs', '0') == '1':
-                        warnings.warn(
-                            "op %s use extra_attr: %s" % (type, attr_name)
-                        )
+                        warnings.warn(f"op {type} use extra_attr: {attr_name}")
 
                     if (attr_name not in op_attrs) or (
                         op_attrs[attr_name] is None
@@ -3121,7 +3126,7 @@ class Operator:
                         for attr in attrs:
                             if attr in op_attrs.keys():
                                 warnings.warn(
-                                    "op %s use extra_attr: %s" % (type, attr)
+                                    f"op {type} use extra_attr: {attr}"
                                 )
 
                     if type in special_op_attrs:
@@ -3134,8 +3139,7 @@ class Operator:
                                 and default_value != op_attrs[a_name]
                             ):
                                 warnings.warn(
-                                    "op %s's attr %s = %s is not the default value: %s"
-                                    % (
+                                    "op {}'s attr {} = {} is not the default value: {}".format(
                                         type,
                                         a_name,
                                         op_attrs[a_name],
@@ -3197,9 +3201,10 @@ class Operator:
         Examples:
             .. code-block:: python
 
-                >>> import paddle.base as base
+                >>> import paddle
 
-                >>> cur_program = base.Program()
+                >>> paddle.enable_static()
+                >>> cur_program = paddle.static.Program()
                 >>> cur_block = cur_program.current_block()
                 >>> var = cur_block.create_var(name="X",
                 ...                            shape=[-1, 23, 48],
@@ -3709,8 +3714,9 @@ def check_if_to_static_diff_with_dygraph(op_type, inplace_map, outputs):
                     and inplace_map.get("Input", None) == "Out"
                 ):
                     raise ValueError(
-                        'Sorry about what\'s happend. In to_static mode, %s\'s output variable %s is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.base.framework._stride_in_no_check_dy2st_diff() in your safe code block.'
-                        % (op_type, k)
+                        'Sorry about what\'s happend. In to_static mode, {}\'s output variable {} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.base.framework._stride_in_no_check_dy2st_diff() in your safe code block.'.format(
+                            op_type, k
+                        )
                     )
             elif isinstance(v, list):
                 for var in v:
@@ -3720,8 +3726,9 @@ def check_if_to_static_diff_with_dygraph(op_type, inplace_map, outputs):
                             and inplace_map.get("Input", None) == "Out"
                         ):
                             raise ValueError(
-                                'Sorry about what\'s happend. In to_static mode, %s\'s output variable %s is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.base.framework._stride_in_no_check_dy2st_diff() in your safe code block.'
-                                % (op_type, k)
+                                'Sorry about what\'s happend. In to_static mode, {}\'s output variable {} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.base.framework._stride_in_no_check_dy2st_diff() in your safe code block.'.format(
+                                    op_type, k
+                                )
                             )
 
 
@@ -3928,9 +3935,10 @@ class Block:
     Examples:
         .. code-block:: python
 
-            >>> import paddle.base as base
+            >>> import paddle
 
-            >>> cur_program = base.Program()
+            >>> paddle.enable_static()
+            >>> cur_program = paddle.static.Program()
             >>> cur_block = cur_program.current_block()
             >>> var = cur_block.create_var(name="X",
             ...                            shape=[-1, 23, 48],
@@ -3967,9 +3975,10 @@ class Block:
         Examples:
             .. code-block:: python
 
-                >>> import paddle.base as base
+                >>> import paddle
 
-                >>> cur_program = base.Program()
+                >>> paddle.enable_static()
+                >>> cur_program = paddle.static.Program()
                 >>> cur_block = cur_program.current_block()
                 >>> new_var = cur_block.create_var(name="X",
                 ...                                shape=[-1, 23, 48],
@@ -7278,10 +7287,9 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
         Examples:
             .. code-block:: python
 
-                >>> import paddle.base as base
                 >>> import paddle
-
-                >>> prog = base.default_main_program()
+                >>> paddle.enable_static()
+                >>> prog = paddle.static.default_main_program()
                 >>> rlt = paddle.static.data("fake_data", shape=[-1,1,1], dtype='float32')
                 >>> debug_str = prog.to_string(throw_on_error=True, with_details=False)
                 >>> print(debug_str)
@@ -7299,7 +7307,7 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
                 "need_clip",
             )
             for attr_name in additional_attr:
-                res_str += "%s: %s\n" % (attr_name, getattr(self, attr_name))
+                res_str += f"{attr_name}: {getattr(self, attr_name)}\n"
         else:
             res_str = Variable.to_string(self, throw_on_error, False)
         return res_str

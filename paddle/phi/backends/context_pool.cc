@@ -32,7 +32,7 @@ bool AllowTF32Cudnn() { return allow_tf32_cudnn; }
 
 static DeviceContextPool* pool = nullptr;
 
-DeviceContextPool& DeviceContextPool::Instance() {
+TEST_API DeviceContextPool& DeviceContextPool::Instance() {
   PADDLE_ENFORCE_NOT_NULL(pool,
                           phi::errors::PreconditionNotMet(
                               "Need to Create DeviceContextPool firstly!"));
@@ -40,7 +40,7 @@ DeviceContextPool& DeviceContextPool::Instance() {
 }
 
 /*! \brief  Create should only called by Init function */
-DeviceContextPool& DeviceContextPool::Init(
+TEST_API DeviceContextPool& DeviceContextPool::Init(
     const std::vector<phi::Place>& places) {
   if (pool == nullptr) {
     pool = new DeviceContextPool(places);
@@ -48,9 +48,9 @@ DeviceContextPool& DeviceContextPool::Init(
   return *pool;
 }
 
-bool DeviceContextPool::IsInitialized() { return pool != nullptr; }
+TEST_API bool DeviceContextPool::IsInitialized() { return pool != nullptr; }
 
-void DeviceContextPool::SetPool(DeviceContextPool* dev_pool) {
+TEST_API void DeviceContextPool::SetPool(DeviceContextPool* dev_pool) {
   pool = dev_pool;
 }
 
@@ -58,7 +58,7 @@ thread_local const std::map<Place,
                             std::shared_future<std::unique_ptr<DeviceContext>>>*
     DeviceContextPool::external_device_contexts_ = nullptr;
 
-phi::DeviceContext* DeviceContextPool::Get(const phi::Place& place) {
+TEST_API phi::DeviceContext* DeviceContextPool::Get(const phi::Place& place) {
   VLOG(6) << "DeviceContextPool Get: " << place;
   const std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
       ptr;
@@ -81,22 +81,23 @@ phi::DeviceContext* DeviceContextPool::Get(const phi::Place& place) {
   return it->second.get().get();
 }
 
-size_t DeviceContextPool::Size() const {
+TEST_API size_t DeviceContextPool::Size() const {
   if (external_device_contexts_) {
     return external_device_contexts_->size();
   }
   return device_contexts_.size();
 }
 
-const std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>&
-DeviceContextPool::device_contexts() const {
+TEST_API const
+    std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>&
+    DeviceContextPool::device_contexts() const {
   if (external_device_contexts_) {
     return *external_device_contexts_;
   }
   return device_contexts_;
 }
 
-void DeviceContextPool::SetDeviceContexts(
+TEST_API void DeviceContextPool::SetDeviceContexts(
     const std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
         dev_ctxs) {
   external_device_contexts_ = dev_ctxs;
