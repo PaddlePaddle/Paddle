@@ -1287,6 +1287,7 @@ set(STATIC_BUILD_TESTS
     test_decoupled_py_reader
     test_eig_op
     test_eigh_op
+    test_fake_dequantize_op
     test_fake_quantize_op
     test_fetch_lod_tensor_array
     test_ftrl_op
@@ -1310,6 +1311,7 @@ set(STATIC_BUILD_TESTS
     test_number_count_op
     test_paddle_save_load_binary
     test_prune_gate_by_capacity_op
+    test_quant_aware
     test_random_routing_op
     test_reduce_op
     test_searchsorted_op
