@@ -40,8 +40,8 @@ op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
 LR_SCHED_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.LRSched
 OPT_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Optimize
 
-SPARSE_OP_LIST = ["lookup_table", "lookup_table_v2"]
-SPARSE_OP_TYPE_DICT = {"lookup_table": "W", "lookup_table_v2": "W"}
+SPARSE_OP_LIST = ["lookup_table_v2"]
+SPARSE_OP_TYPE_DICT = {"lookup_table_v2": "W"}
 
 
 def _get_lr_ops(program):

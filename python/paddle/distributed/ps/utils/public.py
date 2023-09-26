@@ -43,8 +43,8 @@ OP_DEVICE_KEY = core.op_proto_and_checker_maker.kOpDeviceAttrName()
 
 DEVICE_LIST = ["cpu", "gpu", "xpu"]
 COMMUNICATE_OPS_TYPE = ["send", "recv", "fetch_barrier", "send_barrier"]
-SPARSE_OP_LIST = ["lookup_table", "lookup_table_v2"]
-SPARSE_OP_TYPE_DICT = {"lookup_table": "W", "lookup_table_v2": "W"}
+SPARSE_OP_LIST = ["lookup_table_v2"]
+SPARSE_OP_TYPE_DICT = {"lookup_table_v2": "W"}
 SPARSE_GRAD_OP_TYPE_DICT = {
     "lookup_table_grad": "W",
     "lookup_table_v2_grad": "W",

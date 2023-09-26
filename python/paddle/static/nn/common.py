@@ -3991,7 +3991,7 @@ def sparse_embedding(
         slot = 0
 
     helper.append_op(
-        type='lookup_table',
+        type='lookup_table_v2',
         inputs={'Ids': input, 'W': w},
         outputs={'Out': tmp},
         attrs={

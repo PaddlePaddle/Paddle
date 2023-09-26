@@ -91,7 +91,6 @@ EXTRA_BLACK_LIST = {
     'bilinear_interp_v2',
     'bicubic_interp_v2',
     'trilinear_interp_v2',
-    'lookup_table',
     'lookup_table_v2',
     'scatter',
 }
