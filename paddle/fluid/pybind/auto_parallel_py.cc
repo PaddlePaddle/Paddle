@@ -544,6 +544,15 @@ void BindAutoParallel(py::module *m) {
       .def("__str__", &OperatorDistAttr::to_string);
 
   m->def(
+      "contains_spmd_rule",
+      [](const std::string op_type) {
+        return phi::distributed::SpmdRuleFactory::Instance().ContainsSpmdRule(
+                   op_type) ||
+               SPMDRuleMap::Instance().Has(op_type);  // TODO(ljz): unify here
+      },
+      py::return_value_policy::reference);
+
+  m->def(
       "get_spmd_rule",
       [](const std::string op_type) {
         return SPMDRuleMap::Instance().Get(op_type);
