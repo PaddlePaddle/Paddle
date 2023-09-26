@@ -349,6 +349,22 @@ class TestDygraphInplaceScatter(TestDygraphInplace):
 
         return paddle.scatter(var, index, updates, overwrite=False)
 
+    def non_inplace_api_processing2(self, var):
+        index = paddle.to_tensor([2, 1, 0, 1], dtype='int64')
+        updates = paddle.to_tensor(
+            [[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32'
+        )
+
+        return paddle.scatter(
+            var,
+            index,
+            updates,
+            overwrite=False,
+            axis=0,
+            reduce='add',
+            include_self=True,
+        )
+
     def inplace_api_processing(self, var):
         index = paddle.to_tensor([2, 1, 0, 1], dtype='int64')
         updates = paddle.to_tensor(
@@ -356,6 +372,22 @@ class TestDygraphInplaceScatter(TestDygraphInplace):
         )
 
         return paddle.scatter_(var, index, updates, overwrite=False)
+
+    def inplace_api_processing2(self, var):
+        index = paddle.to_tensor([2, 1, 0, 1], dtype='int64')
+        updates = paddle.to_tensor(
+            [[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32'
+        )
+
+        return paddle.scatter_(
+            var,
+            index,
+            updates,
+            overwrite=False,
+            axis=0,
+            reduce='add',
+            include_self=True,
+        )
 
 
 class TestDygraphInplaceElu(TestDygraphInplace):

@@ -2969,9 +2969,9 @@ def scatter(
             'scatter',
         )
         check_type(overwrite, 'overwrite', bool, 'scatter')
-        check_type(overwrite, 'axis', int, 'scatter')
-        check_type(overwrite, 'reduce', str, 'scatter')
-        check_type(overwrite, 'include_self', bool, 'scatter')
+        check_type(axis, 'axis', int, 'scatter')
+        check_type(reduce, 'reduce', str, 'scatter')
+        check_type(include_self, 'include_self', bool, 'scatter')
         helper = LayerHelper('scatter', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
         helper.append_op(

@@ -512,7 +512,7 @@ class TestScatterOp6(OpTest):
         self._set_dtype()
         target_dtype = "float16" if self.dtype == np.float16 else "float32"
         ref_np = np.ones((3, 50)).astype(target_dtype)
-        index_np = np.array([[1], [2]]).astype("int32")
+        index_np = np.array([1, 2]).astype("int32")
         updates_np = np.random.random((2, 50)).astype(target_dtype)
         output_np = np.copy(ref_np)
         output_np[np.array([1, 2]).astype("int32")] = updates_np
@@ -580,6 +580,7 @@ class TestScatterAPI(unittest.TestCase):
         self.scatter = paddle.scatter
 
     def check_static_result(self, place):
+        paddle.enable_static()
         with base.program_guard(base.Program(), base.Program()):
             input = paddle.static.data(
                 name="input", shape=[3, 2], dtype="float64"
@@ -612,6 +613,7 @@ class TestScatterAPI(unittest.TestCase):
                 ).all(),
                 True,
             )
+        paddle.disable_static()
 
     def test_static(self):
         for place in self.places:
@@ -712,24 +714,30 @@ class TestScatterOpFp16(OpTest):
         return ref_grad_updates
 
     def test_scatter_fp16(self):
-        paddle.disable_static(place=paddle.CUDAPlace(0))
-        x_tensor = paddle.to_tensor(self.x_np, stop_gradient=False)
-        index_tensor = paddle.to_tensor(self.index_np)
-        updates_tensor = paddle.to_tensor(self.updates_np, stop_gradient=False)
-        out_tensor = paddle.scatter(x_tensor, index_tensor, updates_tensor)
-        paddle.autograd.backward(
-            [out_tensor], [paddle.to_tensor(self.dout_np)], retain_graph=True
-        )
-        ref_grad_updates = self.compute_ref_grad_updates()
-        np.testing.assert_allclose(
-            ref_grad_updates.numpy(False),
-            updates_tensor.grad.numpy(False),
-            rtol=1e-5,
-            atol=1e-5,
-        )
-        np.testing.assert_allclose(
-            self.ref_dx, x_tensor.grad.numpy(False), rtol=1e-5, atol=1e-5
-        )
+        paddle.disable_static()
+        if paddle.device.is_compiled_with_cuda():
+            paddle.set_device('gpu:0')
+            x_tensor = paddle.to_tensor(self.x_np, stop_gradient=False)
+            index_tensor = paddle.to_tensor(self.index_np)
+            updates_tensor = paddle.to_tensor(
+                self.updates_np, stop_gradient=False
+            )
+            out_tensor = paddle.scatter(x_tensor, index_tensor, updates_tensor)
+            paddle.autograd.backward(
+                [out_tensor],
+                [paddle.to_tensor(self.dout_np)],
+                retain_graph=True,
+            )
+            ref_grad_updates = self.compute_ref_grad_updates()
+            np.testing.assert_allclose(
+                ref_grad_updates.numpy(False),
+                updates_tensor.grad.numpy(False),
+                rtol=1e-5,
+                atol=1e-5,
+            )
+            np.testing.assert_allclose(
+                self.ref_dx, x_tensor.grad.numpy(False), rtol=1e-5, atol=1e-5
+            )
 
 
 class TestScatterInplaceAPI(TestScatterAPI):
@@ -761,6 +769,1397 @@ class TestScatterError(unittest.TestCase):
 
         self.assertRaises(IndexError, test_too_big_index)
         paddle.enable_static()
+
+
+class TestScatterAPIReduceAdd(unittest.TestCase):
+    def setUp(self):
+        self.places = [base.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(base.CUDAPlace(0))
+        self.executed_api()
+
+    def executed_api(self):
+        self.scatter = paddle.scatter
+
+    def check_static_result(self, place):
+        paddle.enable_static()
+        with base.program_guard(base.Program(), base.Program()):
+            input = paddle.static.data(
+                name="input", shape=[3, 2], dtype="float64"
+            )
+            index = paddle.static.data(name="index", shape=[4], dtype="int64")
+            updates = paddle.static.data(
+                name="updates", shape=[4, 2], dtype="float64"
+            )
+            result = self.scatter(
+                input,
+                index,
+                updates,
+                overwrite=False,
+                reduce='add',
+                include_self=False,
+            )
+
+            input_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)
+            index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+            updates_data = np.array([[1, 1], [2, 2], [3, 3], [4, 4]]).astype(
+                np.float64
+            )
+
+            exe = base.Executor(place)
+            fetches = exe.run(
+                base.default_main_program(),
+                feed={
+                    "input": input_data,
+                    "index": index_data,
+                    "updates": updates_data,
+                },
+                fetch_list=[result],
+            )
+            self.assertEqual(
+                (
+                    fetches[0] == np.array([[3.0, 3.0], [6.0, 6.0], [1.0, 1.0]])
+                ).all(),
+                True,
+            )
+        paddle.disable_static()
+
+    def test_static(self):
+        for place in self.places:
+            self.check_static_result(place=place)
+
+    def test_dygraph(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)
+                index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+                updates_data = np.array(
+                    [[1, 1], [2, 2], [3, 3], [4, 4]]
+                ).astype(np.float64)
+
+                x = base.dygraph.to_variable(x_data)
+                index = base.dygraph.to_variable(index_data)
+                updates = base.dygraph.to_variable(updates_data)
+
+                output1 = self.scatter(
+                    x,
+                    index,
+                    updates,
+                    overwrite=False,
+                    reduce='add',
+                    include_self=False,
+                )
+                self.assertEqual(
+                    (
+                        output1.numpy()
+                        == np.array([[3.0, 3.0], [6.0, 6.0], [1.0, 1.0]])
+                    ).all(),
+                    True,
+                )
+
+    def test_large_data(self):
+        if os.name == "nt" or not paddle.is_compiled_with_cuda():
+            return
+
+        x = np.random.rand(183826, 256).astype("float32")
+        index = np.ones(107592, dtype="int64")
+        updates = np.ones(shape=[107592, 256], dtype="float32")
+
+        def test_dygraph():
+            with base.dygraph.guard():
+                gpu_out = paddle.scatter(
+                    paddle.to_tensor(x),
+                    paddle.to_tensor(index),
+                    paddle.to_tensor(updates),
+                    overwrite=False,
+                    reduce='add',
+                    include_self=False,
+                )
+                return gpu_out.numpy()
+
+        @switch_to_static_graph
+        def test_static_graph():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x_t = paddle.static.data(name="x", dtype=x.dtype, shape=x.shape)
+                index_t = paddle.static.data(
+                    name="index", dtype=index.dtype, shape=index.shape
+                )
+                updates_t = paddle.static.data(
+                    name="updates", dtype=updates.dtype, shape=updates.shape
+                )
+                out_t = paddle.scatter(
+                    x_t,
+                    index_t,
+                    updates_t,
+                    overwrite=False,
+                    reduce='add',
+                    include_self=False,
+                )
+                feed = {
+                    x_t.name: x,
+                    index_t.name: index,
+                    updates_t.name: updates,
+                }
+                fetch = [out_t]
+
+                gpu_exe = paddle.static.Executor(paddle.CUDAPlace(0))
+                gpu_value = gpu_exe.run(feed=feed, fetch_list=fetch)[0]
+                return gpu_value
+
+        np.testing.assert_array_equal(test_dygraph(), test_static_graph())
+
+    def check_static_result2(self, place):
+        paddle.enable_static()
+        with base.program_guard(base.Program(), base.Program()):
+            input = paddle.static.data(
+                name="input", shape=[3, 2], dtype="float64"
+            )
+            index = paddle.static.data(name="index", shape=[4], dtype="int64")
+            updates = paddle.static.data(
+                name="updates", shape=[4, 2], dtype="float64"
+            )
+            result = self.scatter(
+                input,
+                index,
+                updates,
+                overwrite=False,
+                reduce='add',
+                include_self=True,
+            )
+
+            input_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)
+            index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+            updates_data = np.array([[1, 1], [2, 2], [3, 3], [4, 4]]).astype(
+                np.float64
+            )
+
+            exe = base.Executor(place)
+            fetches = exe.run(
+                base.default_main_program(),
+                feed={
+                    "input": input_data,
+                    "index": index_data,
+                    "updates": updates_data,
+                    "overwrite": False,
+                    "reduce": "add",
+                    "include_self": True,
+                },
+                fetch_list=[result],
+            )
+            self.assertEqual(
+                (
+                    fetches[0] == np.array([[4.0, 4.0], [8.0, 8.0], [4.0, 4.0]])
+                ).all(),
+                True,
+            )
+        paddle.disable_static()
+
+    def test_static2(self):
+        for place in self.places:
+            self.check_static_result2(place=place)
+
+    def test_dygraph2(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)
+                index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+                updates_data = np.array(
+                    [[1, 1], [2, 2], [3, 3], [4, 4]]
+                ).astype(np.float64)
+
+                x = base.dygraph.to_variable(x_data)
+                index = base.dygraph.to_variable(index_data)
+                updates = base.dygraph.to_variable(updates_data)
+
+                output1 = self.scatter(
+                    x,
+                    index,
+                    updates,
+                    overwrite=False,
+                    reduce='add',
+                    include_self=True,
+                )
+                self.assertEqual(
+                    (
+                        output1.numpy()
+                        == np.array([[4.0, 4.0], [8.0, 8.0], [4.0, 4.0]])
+                    ).all(),
+                    True,
+                )
+
+    def test_large_data2(self):
+        if os.name == "nt" or not paddle.is_compiled_with_cuda():
+            return
+
+        x = np.random.rand(183826, 256).astype("float32")
+        index = np.ones(107592, dtype="int64")
+        updates = np.ones(shape=[107592, 256], dtype="float32")
+
+        def test_dygraph():
+            with base.dygraph.guard():
+                gpu_out = paddle.scatter(
+                    paddle.to_tensor(x),
+                    paddle.to_tensor(index),
+                    paddle.to_tensor(updates),
+                    overwrite=False,
+                    reduce='add',
+                    include_self=True,
+                )
+                return gpu_out.numpy()
+
+        @switch_to_static_graph
+        def test_static_graph():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x_t = paddle.static.data(name="x", dtype=x.dtype, shape=x.shape)
+                index_t = paddle.static.data(
+                    name="index", dtype=index.dtype, shape=index.shape
+                )
+                updates_t = paddle.static.data(
+                    name="updates", dtype=updates.dtype, shape=updates.shape
+                )
+                out_t = paddle.scatter(
+                    x_t,
+                    index_t,
+                    updates_t,
+                    overwrite=False,
+                    reduce='add',
+                    include_self=True,
+                )
+                feed = {
+                    x_t.name: x,
+                    index_t.name: index,
+                    updates_t.name: updates,
+                    "overwrite": False,
+                    "reduce": 'add',
+                    "include_self": True,
+                }
+                fetch = [out_t]
+
+                gpu_exe = paddle.static.Executor(paddle.CUDAPlace(0))
+                gpu_value = gpu_exe.run(feed=feed, fetch_list=fetch)[0]
+                return gpu_value
+
+        np.testing.assert_array_equal(test_dygraph(), test_static_graph())
+
+
+class TestScatterAPIReduceMul(unittest.TestCase):
+    def setUp(self):
+        self.places = [base.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(base.CUDAPlace(0))
+        self.executed_api()
+
+    def executed_api(self):
+        self.scatter = paddle.scatter
+
+    def check_static_result(self, place):
+        paddle.enable_static()
+        with base.program_guard(base.Program(), base.Program()):
+            input = paddle.static.data(
+                name="input", shape=[3, 2], dtype="float64"
+            )
+            index = paddle.static.data(name="index", shape=[4], dtype="int64")
+            updates = paddle.static.data(
+                name="updates", shape=[4, 2], dtype="float64"
+            )
+            result = self.scatter(
+                input,
+                index,
+                updates,
+                overwrite=False,
+                reduce='mul',
+                include_self=False,
+            )
+
+            input_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)
+            index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+            updates_data = np.array([[1, 1], [2, 2], [3, 3], [4, 4]]).astype(
+                np.float64
+            )
+
+            exe = base.Executor(place)
+            fetches = exe.run(
+                base.default_main_program(),
+                feed={
+                    "input": input_data,
+                    "index": index_data,
+                    "updates": updates_data,
+                    "overwrite": False,
+                    "reduce": "mul",
+                    "inlcude_self": False,
+                },
+                fetch_list=[result],
+            )
+            self.assertEqual(
+                (
+                    fetches[0] == np.array([[3.0, 3.0], [8.0, 8.0], [1.0, 1.0]])
+                ).all(),
+                True,
+            )
+        paddle.disable_static()
+
+    def test_static(self):
+        for place in self.places:
+            self.check_static_result(place=place)
+
+    def test_dygraph(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)
+                index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+                updates_data = np.array(
+                    [[1, 1], [2, 2], [3, 3], [4, 4]]
+                ).astype(np.float64)
+
+                x = base.dygraph.to_variable(x_data)
+                index = base.dygraph.to_variable(index_data)
+                updates = base.dygraph.to_variable(updates_data)
+
+                output1 = self.scatter(
+                    x,
+                    index,
+                    updates,
+                    overwrite=False,
+                    reduce='mul',
+                    include_self=False,
+                )
+                self.assertEqual(
+                    (
+                        output1.numpy()
+                        == np.array([[3.0, 3.0], [8.0, 8.0], [1.0, 1.0]])
+                    ).all(),
+                    True,
+                )
+
+    def test_large_data(self):
+        if os.name == "nt" or not paddle.is_compiled_with_cuda():
+            return
+
+        x = np.random.rand(183826, 256).astype("float32")
+        index = np.ones(107592, dtype="int64")
+        updates = np.ones(shape=[107592, 256], dtype="float32")
+
+        def test_dygraph():
+            with base.dygraph.guard():
+                gpu_out = paddle.scatter(
+                    paddle.to_tensor(x),
+                    paddle.to_tensor(index),
+                    paddle.to_tensor(updates),
+                    overwrite=False,
+                    reduce='mul',
+                    include_self=False,
+                )
+                return gpu_out.numpy()
+
+        @switch_to_static_graph
+        def test_static_graph():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x_t = paddle.static.data(name="x", dtype=x.dtype, shape=x.shape)
+                index_t = paddle.static.data(
+                    name="index", dtype=index.dtype, shape=index.shape
+                )
+                updates_t = paddle.static.data(
+                    name="updates", dtype=updates.dtype, shape=updates.shape
+                )
+                out_t = paddle.scatter(
+                    x_t,
+                    index_t,
+                    updates_t,
+                    overwrite=False,
+                    reduce='mul',
+                    include_self=False,
+                )
+                feed = {
+                    x_t.name: x,
+                    index_t.name: index,
+                    updates_t.name: updates,
+                    "overwrite": False,
+                    "reduce": "mul",
+                    "inlcude_self": False,
+                }
+                fetch = [out_t]
+
+                gpu_exe = paddle.static.Executor(paddle.CUDAPlace(0))
+                gpu_value = gpu_exe.run(feed=feed, fetch_list=fetch)[0]
+                return gpu_value
+
+        np.testing.assert_array_equal(test_dygraph(), test_static_graph())
+
+    def check_static_result2(self, place):
+        paddle.enable_static()
+        with base.program_guard(base.Program(), base.Program()):
+            input = paddle.static.data(
+                name="input", shape=[3, 2], dtype="float64"
+            )
+            index = paddle.static.data(name="index", shape=[4], dtype="int64")
+            updates = paddle.static.data(
+                name="updates", shape=[4, 2], dtype="float64"
+            )
+            result = self.scatter(
+                input,
+                index,
+                updates,
+                overwrite=False,
+                reduce='mul',
+                include_self=True,
+            )
+
+            input_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)
+            index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+            updates_data = np.array([[1, 1], [2, 2], [3, 3], [4, 4]]).astype(
+                np.float64
+            )
+
+            exe = base.Executor(place)
+            fetches = exe.run(
+                base.default_main_program(),
+                feed={
+                    "input": input_data,
+                    "index": index_data,
+                    "updates": updates_data,
+                    "overwrite": False,
+                    "reduce": "mul",
+                    "include_self": True,
+                },
+                fetch_list=[result],
+            )
+            self.assertEqual(
+                (
+                    fetches[0]
+                    == np.array([[3.0, 3.0], [16.0, 16.0], [3.0, 3.0]])
+                ).all(),
+                True,
+            )
+        paddle.disable_static()
+
+    def test_static2(self):
+        for place in self.places:
+            self.check_static_result2(place=place)
+
+    def test_dygraph2(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)
+                index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+                updates_data = np.array(
+                    [[1, 1], [2, 2], [3, 3], [4, 4]]
+                ).astype(np.float64)
+
+                x = base.dygraph.to_variable(x_data)
+                index = base.dygraph.to_variable(index_data)
+                updates = base.dygraph.to_variable(updates_data)
+
+                output1 = self.scatter(
+                    x,
+                    index,
+                    updates,
+                    overwrite=False,
+                    reduce='mul',
+                    include_self=True,
+                )
+                self.assertEqual(
+                    (
+                        output1.numpy()
+                        == np.array([[3.0, 3.0], [16.0, 16.0], [3.0, 3.0]])
+                    ).all(),
+                    True,
+                )
+
+    def test_large_data2(self):
+        if os.name == "nt" or not paddle.is_compiled_with_cuda():
+            return
+
+        x = np.random.rand(183826, 256).astype("float32")
+        index = np.ones(107592, dtype="int64")
+        updates = np.ones(shape=[107592, 256], dtype="float32")
+
+        def test_dygraph():
+            with base.dygraph.guard():
+                gpu_out = paddle.scatter(
+                    paddle.to_tensor(x),
+                    paddle.to_tensor(index),
+                    paddle.to_tensor(updates),
+                    overwrite=False,
+                    reduce='mul',
+                    include_self=True,
+                )
+                return gpu_out.numpy()
+
+        @switch_to_static_graph
+        def test_static_graph():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x_t = paddle.static.data(name="x", dtype=x.dtype, shape=x.shape)
+                index_t = paddle.static.data(
+                    name="index", dtype=index.dtype, shape=index.shape
+                )
+                updates_t = paddle.static.data(
+                    name="updates", dtype=updates.dtype, shape=updates.shape
+                )
+                out_t = paddle.scatter(
+                    x_t,
+                    index_t,
+                    updates_t,
+                    overwrite=False,
+                    reduce='mul',
+                    include_self=True,
+                )
+                feed = {
+                    x_t.name: x,
+                    index_t.name: index,
+                    updates_t.name: updates,
+                    "overwrite": False,
+                    "reduce": 'mul',
+                    "include_self": True,
+                }
+                fetch = [out_t]
+
+                gpu_exe = paddle.static.Executor(paddle.CUDAPlace(0))
+                gpu_value = gpu_exe.run(feed=feed, fetch_list=fetch)[0]
+                return gpu_value
+
+        np.testing.assert_array_equal(test_dygraph(), test_static_graph())
+
+
+class TestScatterAPIReduceAmin(unittest.TestCase):
+    def setUp(self):
+        self.places = [base.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(base.CUDAPlace(0))
+        self.scatter = paddle.scatter
+        self.reduce = "amin"
+
+    def check_static_result(self, place):
+        paddle.enable_static()
+        with base.program_guard(base.Program(), base.Program()):
+            input = paddle.static.data(
+                name="input", shape=[3, 2], dtype="float64"
+            )
+            index = paddle.static.data(name="index", shape=[4], dtype="int64")
+            updates = paddle.static.data(
+                name="updates", shape=[4, 2], dtype="float64"
+            )
+            result = self.scatter(
+                input,
+                index,
+                updates,
+                overwrite=False,
+                reduce=self.reduce,
+                include_self=False,
+            )
+
+            input_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)
+            index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+            updates_data = np.array([[1, 1], [2, 2], [3, 3], [4, 4]]).astype(
+                np.float64
+            )
+
+            exe = base.Executor(place)
+            fetches = exe.run(
+                base.default_main_program(),
+                feed={
+                    "input": input_data,
+                    "index": index_data,
+                    "updates": updates_data,
+                    "overwrite": False,
+                    "reduce": self.reduce,
+                    "inlcude_self": False,
+                },
+                fetch_list=[result],
+            )
+            self.assertEqual(
+                (
+                    fetches[0] == np.array([[3.0, 3.0], [2.0, 2.0], [1.0, 1.0]])
+                ).all(),
+                True,
+            )
+        paddle.disable_static()
+
+    def test_static(self):
+        for place in self.places:
+            self.check_static_result(place=place)
+
+    def test_dygraph(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)
+                index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+                updates_data = np.array(
+                    [[1, 1], [2, 2], [3, 3], [4, 4]]
+                ).astype(np.float64)
+
+                x = base.dygraph.to_variable(x_data)
+                index = base.dygraph.to_variable(index_data)
+                updates = base.dygraph.to_variable(updates_data)
+
+                output1 = self.scatter(
+                    x,
+                    index,
+                    updates,
+                    overwrite=False,
+                    reduce=self.reduce,
+                    include_self=False,
+                )
+                self.assertEqual(
+                    (
+                        output1.numpy()
+                        == np.array([[3.0, 3.0], [2.0, 2.0], [1.0, 1.0]])
+                    ).all(),
+                    True,
+                )
+
+    def test_large_data(self):
+        if os.name == "nt" or not paddle.is_compiled_with_cuda():
+            return
+
+        x = np.random.rand(183826, 256).astype("float32")
+        index = np.ones(107592, dtype="int64")
+        updates = np.ones(shape=[107592, 256], dtype="float32")
+
+        def test_dygraph():
+            with base.dygraph.guard():
+                gpu_out = paddle.scatter(
+                    paddle.to_tensor(x),
+                    paddle.to_tensor(index),
+                    paddle.to_tensor(updates),
+                    overwrite=False,
+                    reduce=self.reduce,
+                    include_self=False,
+                )
+                return gpu_out.numpy()
+
+        @switch_to_static_graph
+        def test_static_graph():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x_t = paddle.static.data(name="x", dtype=x.dtype, shape=x.shape)
+                index_t = paddle.static.data(
+                    name="index", dtype=index.dtype, shape=index.shape
+                )
+                updates_t = paddle.static.data(
+                    name="updates", dtype=updates.dtype, shape=updates.shape
+                )
+                out_t = paddle.scatter(
+                    x_t,
+                    index_t,
+                    updates_t,
+                    overwrite=False,
+                    reduce=self.reduce,
+                    include_self=False,
+                )
+                feed = {
+                    x_t.name: x,
+                    index_t.name: index,
+                    updates_t.name: updates,
+                    "overwrite": False,
+                    "reduce": self.reduce,
+                    "inlcude_self": False,
+                }
+                fetch = [out_t]
+
+                gpu_exe = paddle.static.Executor(paddle.CUDAPlace(0))
+                gpu_value = gpu_exe.run(feed=feed, fetch_list=fetch)[0]
+                return gpu_value
+
+        np.testing.assert_array_equal(test_dygraph(), test_static_graph())
+
+    def check_static_result2(self, place):
+        paddle.enable_static()
+        with base.program_guard(base.Program(), base.Program()):
+            input = paddle.static.data(
+                name="input", shape=[3, 2], dtype="float64"
+            )
+            index = paddle.static.data(name="index", shape=[4], dtype="int64")
+            updates = paddle.static.data(
+                name="updates", shape=[4, 2], dtype="float64"
+            )
+            result = self.scatter(
+                input,
+                index,
+                updates,
+                overwrite=False,
+                reduce=self.reduce,
+                include_self=True,
+            )
+
+            input_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)
+            index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+            updates_data = np.array([[1, 1], [2, 2], [3, 3], [4, 4]]).astype(
+                np.float64
+            )
+
+            exe = base.Executor(place)
+            fetches = exe.run(
+                base.default_main_program(),
+                feed={
+                    "input": input_data,
+                    "index": index_data,
+                    "updates": updates_data,
+                    "overwrite": False,
+                    "reduce": self.reduce,
+                    "include_self": True,
+                },
+                fetch_list=[result],
+            )
+            self.assertEqual(
+                (
+                    fetches[0] == np.array([[1.0, 1.0], [2.0, 2.0], [1.0, 1.0]])
+                ).all(),
+                True,
+            )
+        paddle.disable_static()
+
+    def test_static2(self):
+        for place in self.places:
+            self.check_static_result2(place=place)
+
+    def test_dygraph2(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)
+                index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+                updates_data = np.array(
+                    [[1, 1], [2, 2], [3, 3], [4, 4]]
+                ).astype(np.float64)
+
+                x = base.dygraph.to_variable(x_data)
+                index = base.dygraph.to_variable(index_data)
+                updates = base.dygraph.to_variable(updates_data)
+
+                output1 = self.scatter(
+                    x,
+                    index,
+                    updates,
+                    overwrite=False,
+                    reduce=self.reduce,
+                    include_self=True,
+                )
+                self.assertEqual(
+                    (
+                        output1.numpy()
+                        == np.array([[1.0, 1.0], [2.0, 2.0], [1.0, 1.0]])
+                    ).all(),
+                    True,
+                )
+
+    def test_large_data2(self):
+        if os.name == "nt" or not paddle.is_compiled_with_cuda():
+            return
+
+        x = np.random.rand(183826, 256).astype("float32")
+        index = np.ones(107592, dtype="int64")
+        updates = np.ones(shape=[107592, 256], dtype="float32")
+
+        def test_dygraph():
+            with base.dygraph.guard():
+                gpu_out = paddle.scatter(
+                    paddle.to_tensor(x),
+                    paddle.to_tensor(index),
+                    paddle.to_tensor(updates),
+                    overwrite=False,
+                    reduce=self.reduce,
+                    include_self=True,
+                )
+                return gpu_out.numpy()
+
+        @switch_to_static_graph
+        def test_static_graph():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x_t = paddle.static.data(name="x", dtype=x.dtype, shape=x.shape)
+                index_t = paddle.static.data(
+                    name="index", dtype=index.dtype, shape=index.shape
+                )
+                updates_t = paddle.static.data(
+                    name="updates", dtype=updates.dtype, shape=updates.shape
+                )
+                out_t = paddle.scatter(
+                    x_t,
+                    index_t,
+                    updates_t,
+                    overwrite=False,
+                    reduce=self.reduce,
+                    include_self=True,
+                )
+                feed = {
+                    x_t.name: x,
+                    index_t.name: index,
+                    updates_t.name: updates,
+                    "overwrite": False,
+                    "reduce": self.reduce,
+                    "include_self": True,
+                }
+                fetch = [out_t]
+
+                gpu_exe = paddle.static.Executor(paddle.CUDAPlace(0))
+                gpu_value = gpu_exe.run(feed=feed, fetch_list=fetch)[0]
+                return gpu_value
+
+        np.testing.assert_array_equal(test_dygraph(), test_static_graph())
+
+
+class TestScatterAPIReduceAmax(unittest.TestCase):
+    def setUp(self):
+        self.places = [base.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(base.CUDAPlace(0))
+        self.scatter = paddle.scatter
+        self.reduce = "amax"
+
+    def check_static_result(self, place):
+        paddle.enable_static()
+        with base.program_guard(base.Program(), base.Program()):
+            input = paddle.static.data(
+                name="input", shape=[3, 2], dtype="float64"
+            )
+            index = paddle.static.data(name="index", shape=[4], dtype="int64")
+            updates = paddle.static.data(
+                name="updates", shape=[4, 2], dtype="float64"
+            )
+            result = self.scatter(
+                input,
+                index,
+                updates,
+                overwrite=False,
+                reduce=self.reduce,
+                include_self=False,
+            )
+
+            input_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)
+            index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+            updates_data = np.array([[1, 1], [2, 2], [3, 3], [4, 4]]).astype(
+                np.float64
+            )
+
+            exe = base.Executor(place)
+            fetches = exe.run(
+                base.default_main_program(),
+                feed={
+                    "input": input_data,
+                    "index": index_data,
+                    "updates": updates_data,
+                    "overwrite": False,
+                    "reduce": self.reduce,
+                    "inlcude_self": False,
+                },
+                fetch_list=[result],
+            )
+            self.assertEqual(
+                (
+                    fetches[0] == np.array([[3.0, 3.0], [4.0, 4.0], [1.0, 1.0]])
+                ).all(),
+                True,
+            )
+        paddle.disable_static()
+
+    def test_static(self):
+        for place in self.places:
+            self.check_static_result(place=place)
+
+    def test_dygraph(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)
+                index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+                updates_data = np.array(
+                    [[1, 1], [2, 2], [3, 3], [4, 4]]
+                ).astype(np.float64)
+
+                x = base.dygraph.to_variable(x_data)
+                index = base.dygraph.to_variable(index_data)
+                updates = base.dygraph.to_variable(updates_data)
+
+                output1 = self.scatter(
+                    x,
+                    index,
+                    updates,
+                    overwrite=False,
+                    reduce=self.reduce,
+                    include_self=False,
+                )
+                self.assertEqual(
+                    (
+                        output1.numpy()
+                        == np.array([[3.0, 3.0], [4.0, 4.0], [1.0, 1.0]])
+                    ).all(),
+                    True,
+                )
+
+    def test_large_data(self):
+        if os.name == "nt" or not paddle.is_compiled_with_cuda():
+            return
+
+        x = np.random.rand(183826, 256).astype("float32")
+        index = np.ones(107592, dtype="int64")
+        updates = np.ones(shape=[107592, 256], dtype="float32")
+
+        def test_dygraph():
+            with base.dygraph.guard():
+                gpu_out = paddle.scatter(
+                    paddle.to_tensor(x),
+                    paddle.to_tensor(index),
+                    paddle.to_tensor(updates),
+                    overwrite=False,
+                    reduce=self.reduce,
+                    include_self=False,
+                )
+                return gpu_out.numpy()
+
+        @switch_to_static_graph
+        def test_static_graph():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x_t = paddle.static.data(name="x", dtype=x.dtype, shape=x.shape)
+                index_t = paddle.static.data(
+                    name="index", dtype=index.dtype, shape=index.shape
+                )
+                updates_t = paddle.static.data(
+                    name="updates", dtype=updates.dtype, shape=updates.shape
+                )
+                out_t = paddle.scatter(
+                    x_t,
+                    index_t,
+                    updates_t,
+                    overwrite=False,
+                    reduce=self.reduce,
+                    include_self=False,
+                )
+                feed = {
+                    x_t.name: x,
+                    index_t.name: index,
+                    updates_t.name: updates,
+                    "overwrite": False,
+                    "reduce": self.reduce,
+                    "inlcude_self": False,
+                }
+                fetch = [out_t]
+
+                gpu_exe = paddle.static.Executor(paddle.CUDAPlace(0))
+                gpu_value = gpu_exe.run(feed=feed, fetch_list=fetch)[0]
+                return gpu_value
+
+        np.testing.assert_array_equal(test_dygraph(), test_static_graph())
+
+    def check_static_result2(self, place):
+        paddle.enable_static()
+        with base.program_guard(base.Program(), base.Program()):
+            input = paddle.static.data(
+                name="input", shape=[3, 2], dtype="float64"
+            )
+            index = paddle.static.data(name="index", shape=[4], dtype="int64")
+            updates = paddle.static.data(
+                name="updates", shape=[4, 2], dtype="float64"
+            )
+            result = self.scatter(
+                input,
+                index,
+                updates,
+                overwrite=False,
+                reduce=self.reduce,
+                include_self=True,
+            )
+
+            input_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)
+            index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+            updates_data = np.array([[1, 1], [2, 2], [3, 3], [4, 4]]).astype(
+                np.float64
+            )
+
+            exe = base.Executor(place)
+            fetches = exe.run(
+                base.default_main_program(),
+                feed={
+                    "input": input_data,
+                    "index": index_data,
+                    "updates": updates_data,
+                    "overwrite": False,
+                    "reduce": self.reduce,
+                    "include_self": True,
+                },
+                fetch_list=[result],
+            )
+            self.assertEqual(
+                (
+                    fetches[0] == np.array([[3.0, 3.0], [4.0, 4.0], [3.0, 3.0]])
+                ).all(),
+                True,
+            )
+        paddle.disable_static()
+
+    def test_static2(self):
+        for place in self.places:
+            self.check_static_result2(place=place)
+
+    def test_dygraph2(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)
+                index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+                updates_data = np.array(
+                    [[1, 1], [2, 2], [3, 3], [4, 4]]
+                ).astype(np.float64)
+
+                x = base.dygraph.to_variable(x_data)
+                index = base.dygraph.to_variable(index_data)
+                updates = base.dygraph.to_variable(updates_data)
+
+                output1 = self.scatter(
+                    x,
+                    index,
+                    updates,
+                    overwrite=False,
+                    reduce=self.reduce,
+                    include_self=True,
+                )
+                self.assertEqual(
+                    (
+                        output1.numpy()
+                        == np.array([[3.0, 3.0], [4.0, 4.0], [3.0, 3.0]])
+                    ).all(),
+                    True,
+                )
+
+    def test_large_data2(self):
+        if os.name == "nt" or not paddle.is_compiled_with_cuda():
+            return
+
+        x = np.random.rand(183826, 256).astype("float32")
+        index = np.ones(107592, dtype="int64")
+        updates = np.ones(shape=[107592, 256], dtype="float32")
+
+        def test_dygraph():
+            with base.dygraph.guard():
+                gpu_out = paddle.scatter(
+                    paddle.to_tensor(x),
+                    paddle.to_tensor(index),
+                    paddle.to_tensor(updates),
+                    overwrite=False,
+                    reduce=self.reduce,
+                    include_self=True,
+                )
+                return gpu_out.numpy()
+
+        @switch_to_static_graph
+        def test_static_graph():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x_t = paddle.static.data(name="x", dtype=x.dtype, shape=x.shape)
+                index_t = paddle.static.data(
+                    name="index", dtype=index.dtype, shape=index.shape
+                )
+                updates_t = paddle.static.data(
+                    name="updates", dtype=updates.dtype, shape=updates.shape
+                )
+                out_t = paddle.scatter(
+                    x_t,
+                    index_t,
+                    updates_t,
+                    overwrite=False,
+                    reduce=self.reduce,
+                    include_self=True,
+                )
+                feed = {
+                    x_t.name: x,
+                    index_t.name: index,
+                    updates_t.name: updates,
+                    "overwrite": False,
+                    "reduce": self.reduce,
+                    "include_self": True,
+                }
+                fetch = [out_t]
+
+                gpu_exe = paddle.static.Executor(paddle.CUDAPlace(0))
+                gpu_value = gpu_exe.run(feed=feed, fetch_list=fetch)[0]
+                return gpu_value
+
+        np.testing.assert_array_equal(test_dygraph(), test_static_graph())
+
+
+class TestScatterAPIReduceMean(unittest.TestCase):
+    def setUp(self):
+        self.places = [base.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(base.CUDAPlace(0))
+        self.scatter = paddle.scatter
+        self.reduce = "mean"
+
+    def check_static_result(self, place):
+        paddle.enable_static()
+        with base.program_guard(base.Program(), base.Program()):
+            input = paddle.static.data(
+                name="input", shape=[3, 2], dtype="float64"
+            )
+            index = paddle.static.data(name="index", shape=[4], dtype="int64")
+            updates = paddle.static.data(
+                name="updates", shape=[4, 2], dtype="float64"
+            )
+            result = self.scatter(
+                input,
+                index,
+                updates,
+                overwrite=False,
+                reduce=self.reduce,
+                include_self=False,
+            )
+
+            input_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)
+            index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+            updates_data = np.array([[1, 1], [2, 2], [3, 3], [4, 4]]).astype(
+                np.float64
+            )
+
+            exe = base.Executor(place)
+            fetches = exe.run(
+                base.default_main_program(),
+                feed={
+                    "input": input_data,
+                    "index": index_data,
+                    "updates": updates_data,
+                    "overwrite": False,
+                    "reduce": self.reduce,
+                    "inlcude_self": False,
+                },
+                fetch_list=[result],
+            )
+            self.assertEqual(
+                (
+                    fetches[0] == np.array([[3.0, 3.0], [3.0, 3.0], [1.0, 1.0]])
+                ).all(),
+                True,
+            )
+        paddle.disable_static()
+
+    def test_static(self):
+        for place in self.places:
+            self.check_static_result(place=place)
+
+    def test_dygraph(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)
+                index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+                updates_data = np.array(
+                    [[1, 1], [2, 2], [3, 3], [4, 4]]
+                ).astype(np.float64)
+
+                x = base.dygraph.to_variable(x_data)
+                index = base.dygraph.to_variable(index_data)
+                updates = base.dygraph.to_variable(updates_data)
+
+                output1 = self.scatter(
+                    x,
+                    index,
+                    updates,
+                    overwrite=False,
+                    reduce=self.reduce,
+                    include_self=False,
+                )
+                self.assertEqual(
+                    (
+                        output1.numpy()
+                        == np.array([[3.0, 3.0], [3.0, 3.0], [1.0, 1.0]])
+                    ).all(),
+                    True,
+                )
+
+    def test_large_data(self):
+        if os.name == "nt" or not paddle.is_compiled_with_cuda():
+            return
+
+        x = np.random.rand(183826, 256).astype("float32")
+        index = np.ones(107592, dtype="int64")
+        updates = np.ones(shape=[107592, 256], dtype="float32")
+
+        def test_dygraph():
+            with base.dygraph.guard():
+                gpu_out = paddle.scatter(
+                    paddle.to_tensor(x),
+                    paddle.to_tensor(index),
+                    paddle.to_tensor(updates),
+                    overwrite=False,
+                    reduce=self.reduce,
+                    include_self=False,
+                )
+                return gpu_out.numpy()
+
+        @switch_to_static_graph
+        def test_static_graph():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x_t = paddle.static.data(name="x", dtype=x.dtype, shape=x.shape)
+                index_t = paddle.static.data(
+                    name="index", dtype=index.dtype, shape=index.shape
+                )
+                updates_t = paddle.static.data(
+                    name="updates", dtype=updates.dtype, shape=updates.shape
+                )
+                out_t = paddle.scatter(
+                    x_t,
+                    index_t,
+                    updates_t,
+                    overwrite=False,
+                    reduce=self.reduce,
+                    include_self=False,
+                )
+                feed = {
+                    x_t.name: x,
+                    index_t.name: index,
+                    updates_t.name: updates,
+                    "overwrite": False,
+                    "reduce": self.reduce,
+                    "inlcude_self": False,
+                }
+                fetch = [out_t]
+
+                gpu_exe = paddle.static.Executor(paddle.CUDAPlace(0))
+                gpu_value = gpu_exe.run(feed=feed, fetch_list=fetch)[0]
+                return gpu_value
+
+        np.testing.assert_array_equal(test_dygraph(), test_static_graph())
+
+    def check_static_result2(self, place):
+        paddle.enable_static()
+        with base.program_guard(base.Program(), base.Program()):
+            input = paddle.static.data(
+                name="input", shape=[3, 2], dtype="float64"
+            )
+            index = paddle.static.data(name="index", shape=[4], dtype="int64")
+            updates = paddle.static.data(
+                name="updates", shape=[4, 2], dtype="float64"
+            )
+            result = self.scatter(
+                input,
+                index,
+                updates,
+                overwrite=False,
+                reduce=self.reduce,
+                include_self=True,
+            )
+
+            input_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)
+            index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+            updates_data = np.array([[1, 1], [2, 2], [3, 3], [4, 4]]).astype(
+                np.float64
+            )
+
+            exe = base.Executor(place)
+            fetches = exe.run(
+                base.default_main_program(),
+                feed={
+                    "input": input_data,
+                    "index": index_data,
+                    "updates": updates_data,
+                    "overwrite": False,
+                    "reduce": self.reduce,
+                    "include_self": True,
+                },
+                fetch_list=[result],
+            )
+            np.testing.assert_allclose(
+                fetches[0],
+                np.array([[2.0, 2.0], [2.66666667, 2.66666667], [2.0, 2.0]]),
+            )
+        paddle.disable_static()
+
+    def test_static2(self):
+        for place in self.places:
+            self.check_static_result2(place=place)
+
+    def test_dygraph2(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)
+                index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+                updates_data = np.array(
+                    [[1, 1], [2, 2], [3, 3], [4, 4]]
+                ).astype(np.float64)
+
+                x = base.dygraph.to_variable(x_data)
+                index = base.dygraph.to_variable(index_data)
+                updates = base.dygraph.to_variable(updates_data)
+
+                output1 = self.scatter(
+                    x,
+                    index,
+                    updates,
+                    overwrite=False,
+                    reduce=self.reduce,
+                    include_self=True,
+                )
+                np.testing.assert_allclose(
+                    output1.numpy(),
+                    np.array(
+                        [[2.0, 2.0], [2.66666667, 2.66666667], [2.0, 2.0]]
+                    ),
+                )
+
+    def test_large_data2(self):
+        if os.name == "nt" or not paddle.is_compiled_with_cuda():
+            return
+
+        x = np.random.rand(183826, 256).astype("float32")
+        index = np.ones(107592, dtype="int64")
+        updates = np.ones(shape=[107592, 256], dtype="float32")
+
+        def test_dygraph():
+            with base.dygraph.guard():
+                gpu_out = paddle.scatter(
+                    paddle.to_tensor(x),
+                    paddle.to_tensor(index),
+                    paddle.to_tensor(updates),
+                    overwrite=False,
+                    reduce=self.reduce,
+                    include_self=True,
+                )
+                return gpu_out.numpy()
+
+        @switch_to_static_graph
+        def test_static_graph():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x_t = paddle.static.data(name="x", dtype=x.dtype, shape=x.shape)
+                index_t = paddle.static.data(
+                    name="index", dtype=index.dtype, shape=index.shape
+                )
+                updates_t = paddle.static.data(
+                    name="updates", dtype=updates.dtype, shape=updates.shape
+                )
+                out_t = paddle.scatter(
+                    x_t,
+                    index_t,
+                    updates_t,
+                    overwrite=False,
+                    reduce=self.reduce,
+                    include_self=True,
+                )
+                feed = {
+                    x_t.name: x,
+                    index_t.name: index,
+                    updates_t.name: updates,
+                    "overwrite": False,
+                    "reduce": self.reduce,
+                    "include_self": True,
+                }
+                fetch = [out_t]
+
+                gpu_exe = paddle.static.Executor(paddle.CUDAPlace(0))
+                gpu_value = gpu_exe.run(feed=feed, fetch_list=fetch)[0]
+                return gpu_value
+
+        np.testing.assert_array_equal(test_dygraph(), test_static_graph())
 
 
 if __name__ == "__main__":
