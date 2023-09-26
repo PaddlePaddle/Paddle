@@ -28,6 +28,7 @@
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {
 namespace fusion {
@@ -259,23 +260,12 @@ class AttnMatMul {
 
       gpuStream_t stream = dev_ctx_.stream();
       if (support_case_1 || support_case_2) {
-        phi::funcs::
-            TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-                dev_ctx_,
-                *d_output,
-                d_bias,
-                kps::IdentityFunctor<T>(),
-                {0, 1},
-                stream);
+        phi::SumKernel<T, phi::GPUContext>(
+            dev_ctx_, *d_output, {0, 1}, d_output->dtype(), false, d_bias);
+
       } else if (support_case_3 || support_case_4) {
-        phi::funcs::
-            TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-                dev_ctx_,
-                *d_output,
-                d_bias,
-                kps::IdentityFunctor<T>(),
-                {0, 1, 2},
-                stream);
+        phi::SumKernel<T, phi::GPUContext>(
+            dev_ctx_, *d_output, {0, 1, 2}, d_output->dtype(), false, d_bias);
       } else {
         PADDLE_THROW(phi::errors::InvalidArgument(
             "Only support reduce when the input dims are [0,1,2,3,4] and "

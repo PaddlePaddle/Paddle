@@ -55,6 +55,7 @@ AttrType InferSpmdContext::AttrAt(size_t idx) const {
 
 template float InferSpmdContext::AttrAt(size_t idx) const;
 template int InferSpmdContext::AttrAt(size_t idx) const;
+template int64_t InferSpmdContext::AttrAt(size_t idx) const;
 
 template <>
 bool InferSpmdContext::AttrAt(size_t idx) const {
@@ -86,7 +87,28 @@ std::vector<int> InferSpmdContext::AttrAt(size_t idx) const {
   } catch (paddle::bad_variant_access const& e) {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Attribute cast error in InferSpmd Context, the input attr type is "
-        "`%s`, but the expected attribute type is `bool`.",
+        "`%s`, but the expected attribute type is `std::vector<int>`.",
+        attrs_.at(idx).type().name()));
+  }
+}
+
+template <>
+std::vector<int64_t> InferSpmdContext::AttrAt(size_t idx) const {
+  try {
+    auto attr = attrs_.at(idx);
+    if (attr.type() == typeid(std::vector<bool>)) {
+      std::vector<bool> val = PADDLE_GET_CONST(std::vector<bool>, attr);
+      return std::vector<int64_t>(val.begin(), val.end());
+    } else if (attr.type() == typeid(std::vector<int>)) {
+      std::vector<int> val = PADDLE_GET_CONST(std::vector<int>, attr);
+      return std::vector<int64_t>(val.begin(), val.end());
+    } else {
+      return PADDLE_GET_CONST(std::vector<int64_t>, attr);
+    }
+  } catch (paddle::bad_variant_access const& e) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Attribute cast error in InferSpmd Context, the input attr type is "
+        "`%s`, but the expected attribute type is `std::vector<int64_t>`.",
         attrs_.at(idx).type().name()));
   }
 }
