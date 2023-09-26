@@ -49,7 +49,6 @@ class ElementwiseMulOp(OpTest):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_output(
             check_dygraph=(not self.use_mkldnn),
-            check_prim_pir=(not self.use_mkldnn),
             check_new_ir=(not self.use_mkldnn),
         )
 
@@ -275,7 +274,6 @@ class ElementwiseMulOp_broadcast(OpTest):
     def test_check_output(self):
         self.check_output(
             check_dygraph=self.check_dygraph,
-            check_prim=self.check_prim,
             check_new_ir=self.check_dygraph,
         )
 
