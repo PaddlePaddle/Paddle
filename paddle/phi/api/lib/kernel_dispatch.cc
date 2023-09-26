@@ -79,6 +79,9 @@ BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
 
 std::size_t CountLeadingZeros(uint32_t val) {
 #if defined(__clang__) || defined(__GNUC__)
+  if (val == 0) {
+    return 32;
+  }
   return __builtin_clz(val);
 #elif defined(_MSC_VER)
   // windows don't have built-in clz/ctz function
