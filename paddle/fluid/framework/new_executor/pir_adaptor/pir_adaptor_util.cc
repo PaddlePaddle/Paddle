@@ -562,19 +562,17 @@ void BuildRuntimeContext(
     auto index = op_yaml_info.InputName2Id().at(name);
     pir::Value ptr = op->operand_source(index);
 
-    paddle::framework::Variable* var = nullptr;
-    auto legacy_attr_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
-
-    if (ptr && ptr.type()) {
-      auto in_var_name = name_map.at(ptr);
-      VLOG(6) << "ctx->EmplaceBackInput: " << name << "\t" << in_var_name;
-      PADDLE_ENFORCE_NOT_NULL(
-          inner_scope->FindVar(in_var_name),
-          phi::errors::PreconditionNotMet("can not find var[%s] in scope",
-                                          in_var_name));
-      var = inner_scope->FindVar(in_var_name);
+    if ((!ptr) || (!ptr.type())) {
+      continue;
     }
 
+    auto legacy_attr_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
+    auto in_var_name = name_map.at(ptr);
+    VLOG(6) << "ctx->EmplaceBackInput: " << name << "\t" << in_var_name;
+    PADDLE_ENFORCE_NOT_NULL(inner_scope->FindVar(in_var_name),
+                            phi::errors::PreconditionNotMet(
+                                "can not find var[%s] in scope", in_var_name));
+    auto var = inner_scope->FindVar(in_var_name);
     runtime_ctx->inputs[legacy_attr_name].push_back(var);
   }
 
@@ -585,7 +583,6 @@ void BuildRuntimeContext(
     auto legacy_arg_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
 
     if ((!ptr) || (!ptr.type())) {
-      runtime_ctx->outputs[legacy_arg_name] = {nullptr};
       continue;
     }
 
@@ -647,7 +644,6 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
     auto legacy_attr_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
 
     if ((!ptr) || (!ptr.type())) {
-      in_name_map[legacy_attr_name].push_back("@EMPTY@");
       continue;
     }
 
@@ -735,7 +731,6 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
         op_normalizer.GetLegacyArgName(fluid_op_name, output_name_list[i]);
 
     if ((!ptr) || (!ptr.type())) {
-      in_name_map[legacy_arg_name].push_back("@EMPTY@");
       continue;
     }
 
