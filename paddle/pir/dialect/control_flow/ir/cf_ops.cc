@@ -21,12 +21,6 @@ void YieldOp::Build(Builder &builder,
                     const std::vector<Value> &inputs) {
   argument.AddInputs(inputs);
 }
-
-void YieldOp::Build(Builder &builder,
-                    OperationArgument &argument,
-                    const std::vector<OpResult> &inputs) {
-  argument.AddInputs(inputs.begin(), inputs.end());
-}
 }  // namespace pir
 
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::YieldOp)
