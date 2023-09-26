@@ -2530,6 +2530,72 @@ class TestGetTestResults(unittest.TestCase):
         self.assertTrue(tr_6.badstatement)
         self.assertFalse(tr_6.passed)
 
+    def test_single_process_directive(self):
+        _clear_environ()
+
+        # test set_default_dtype
+        docstrings_to_test = {
+            'no_solo': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import multiprocessing
+                    >>> p = multiprocessing.Process(
+                    ...     target=lambda a, b: a + b,
+                    ...     args=(
+                    ...     1,
+                    ...     2,
+                    ...     ),
+                    ... )
+                    >>> p.start()
+                    >>> p.join()
+            """,
+            'has_solo': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> # doctest: +SOLO('can not use add in multiprocess')
+                    >>> import multiprocessing
+                    >>> p = multiprocessing.Process(
+                    ...     target=lambda a, b: a + b,
+                    ...     args=(
+                    ...     1,
+                    ...     2,
+                    ...     ),
+                    ... )
+                    >>> p.start()
+                    >>> p.join()
+            """,
+        }
+
+        # test old global_exec
+        test_capacity = {'cpu'}
+        doctester = Xdoctester()
+        doctester.prepare(test_capacity)
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 2)
+
+        (tr_0, tr_1) = test_results
+
+        self.assertIn('no_solo', tr_0.name)
+        self.assertFalse(tr_0.passed)
+
+        self.assertIn('has_solo', tr_1.name)
+        self.assertTrue(tr_1.passed)
+
 
 if __name__ == '__main__':
     unittest.main()

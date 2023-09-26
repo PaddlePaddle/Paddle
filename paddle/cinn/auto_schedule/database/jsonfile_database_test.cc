@@ -23,9 +23,9 @@
 #include "paddle/cinn/auto_schedule/search_space/search_state.h"
 #include "paddle/cinn/auto_schedule/task/task_registry.h"
 #include "paddle/cinn/cinn.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 
 namespace cinn {
 namespace auto_schedule {
