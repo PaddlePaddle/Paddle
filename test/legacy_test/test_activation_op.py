@@ -1461,10 +1461,10 @@ class TestSqrt(TestActivation, TestParameter):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestSqrtPrimFp32(TestActivation):
@@ -1486,10 +1486,10 @@ class TestSqrtPrimFp32(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -1537,11 +1537,13 @@ class TestSqrtBF16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_new_ir=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', check_prim=True, check_new_ir=True
+        )
 
 
 class TestSqrtComp(TestActivation, TestParameter):
@@ -1568,10 +1570,14 @@ class TestSqrtComp(TestActivation, TestParameter):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_dygraph=True, check_prim=True)
+        self.check_grad(
+            ['X'], 'Out', check_dygraph=True, check_prim=True, check_new_ir=True
+        )
 
     def test_check_output(self):
-        self.check_output(check_dygraph=True, check_prim=True)
+        self.check_output(
+            check_dygraph=True, check_prim=True, check_new_ir=True
+        )
 
 
 class TestSqrtCompFp32(TestActivation):
@@ -1596,10 +1602,14 @@ class TestSqrtCompFp32(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_dygraph=True, check_prim=True)
+        self.check_grad(
+            ['X'], 'Out', check_dygraph=True, check_prim=True, check_new_ir=True
+        )
 
     def test_check_output(self):
-        self.check_output(check_dygraph=True, check_prim=True)
+        self.check_output(
+            check_dygraph=True, check_prim=True, check_new_ir=True
+        )
 
     def init_dtype(self):
         self.dtype = np.float32
