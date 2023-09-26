@@ -53,7 +53,6 @@ class DygraphShardingOptimizer:
     # 3. dynamic trainable params, which is the case bewteen pretraining and finetuning
     # 4. option to choose fuse comm (more GPU MEM need) or un-fuse comm
 
-
     def __init__(self, optimizer, hcg):
         # TODO(pangengzheng): support param_groups
         if isinstance(optimizer._parameter_list[0], dict):
@@ -256,7 +255,6 @@ class DygraphShardingOptimizer:
                 if hasattr(param, "main_grad") and param.main_grad is not None:
                     grad_var = param.main_grad
                 params_grads.append((param, grad_var))
-
 
             if g_shard_norm_align_dp:
                 params_grads = self._inner_opt._grad_clip(params_grads)

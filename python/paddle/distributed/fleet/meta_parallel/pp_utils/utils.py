@@ -222,7 +222,6 @@ class FusedCommBuffer:
                 )
             self._tasks.append(task)
 
-
     @imperative_base.no_grad
     def scale_and_split_grads(self):
         for task in self._tasks:
