@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
-from paddle.tensor import fill_constant, transpose
+from paddle.tensor import fill_constant
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -1378,10 +1378,10 @@ def rot90(x, k=1, axes=[0, 1], name=None):
         axes_list[axes[0]],
     )
     if k == 1:
-        return transpose(flip(x, axes[1]), axes_list)
+        return flip(x, axes[1]).transpose(axes_list)
     else:
         # k == 3
-        return flip(transpose(x, axes_list), axes[1])
+        return flip(x.transpose(axes_list), axes[1])
 
 
 def flatten(x, start_axis=0, stop_axis=-1, name=None):
