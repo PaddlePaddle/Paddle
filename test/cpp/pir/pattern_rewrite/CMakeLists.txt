@@ -1,12 +1,4 @@
-set(PATTERN_REWRITE_TEST_DEPS
-    _constant_folding_pass transform_general_functions gtest pd_op_dialect pir)
-
-if(WITH_DISTRIBUTE)
-  set(PATTERN_REWRITE_TEST_DEPS ${PATTERN_REWRITE_TEST_DEPS} fleet_executor
-                                parallel_executor)
-endif()
-
-paddle_test(pattern_rewrite_test SRCS pattern_rewrite_test.cc)
+paddle_test(pattern_rewrite_test SRCS pattern_rewrite_test.cc DEPS pir)
 
 set_tests_properties(
   pattern_rewrite_test PROPERTIES ENVIRONMENT
