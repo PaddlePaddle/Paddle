@@ -72,6 +72,8 @@ class IR_API Value {
 
   OpOperand first_use() const;
 
+  void Print(std::ostream &os) const;
+
   bool use_empty() const;
 
   bool HasOneUse() const;

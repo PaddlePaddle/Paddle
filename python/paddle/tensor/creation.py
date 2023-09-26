@@ -303,7 +303,7 @@ def linspace(start, stop, num, dtype=None, name=None):
 
     """
     if dtype is None:
-        dtype = 'float32'
+        dtype = paddle.get_default_dtype()
     tensor_num = num
     tensor_start = start
     tensor_stop = stop
@@ -434,7 +434,7 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
             [1.]
     """
     if dtype is None:
-        dtype = 'float32'
+        dtype = paddle.get_default_dtype()
     tensor_num = num
     tensor_start = start
     tensor_stop = stop
@@ -833,8 +833,7 @@ def full_like(x, fill_value, dtype=None, name=None):
     if in_dynamic_mode():
         return _C_ops.full_like(x, fill_value, dtype, x.place)
     elif in_pir_mode():
-        place = _current_expected_place()
-        return _C_ops.full_like(x, fill_value, dtype, place)
+        return _C_ops.full_like(x, fill_value, dtype, core.Place())
     else:
         helper = LayerHelper("full_like", **locals())
         check_variable_and_dtype(
@@ -881,7 +880,11 @@ def full_like(x, fill_value, dtype=None, name=None):
 
 def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     if in_dynamic_or_pir_mode():
-        place = _current_expected_place()
+        place = (
+            _current_expected_place()
+            if not in_pir_mode()
+            else paddle.base.core.Place()
+        )
         if force_cpu:
             place = core.CPUPlace()
         if isinstance(shape, (list, tuple)):
@@ -1010,7 +1013,7 @@ def ones(shape, dtype=None, name=None):
              [1. 1.]]
     """
     if dtype is None:
-        dtype = core.VarDesc.VarType.FP32
+        dtype = paddle.get_default_dtype()
     return fill_constant(value=1.0, shape=shape, dtype=dtype, name=name)
 
 
@@ -1094,7 +1097,7 @@ def zeros(shape, dtype=None, name=None):
              [0. 0.]]
     """
     if dtype is None:
-        dtype = 'float32'
+        dtype = paddle.get_default_dtype()
     return fill_constant(value=0.0, shape=shape, dtype=dtype, name=name)
 
 
@@ -1176,8 +1179,8 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
     _check_attr(num_rows, "num_rows")
 
     if dtype is None:
-        dtype = core.VarDesc.VarType.FP32
-    elif not isinstance(dtype, core.VarDesc.VarType):
+        dtype = paddle.get_default_dtype()
+    if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
     if num_columns is not None:
         _check_attr(num_columns, "num_columns")
@@ -1270,7 +1273,7 @@ def full(shape, fill_value, dtype=None, name=None):
     """
 
     if dtype is None:
-        dtype = 'float32'
+        dtype = paddle.get_default_dtype()
 
     return fill_constant(shape=shape, dtype=dtype, value=fill_value, name=name)
 
