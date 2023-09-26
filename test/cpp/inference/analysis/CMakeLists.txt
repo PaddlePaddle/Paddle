@@ -5,15 +5,8 @@ function(inference_analysis_test_build TARGET)
     set(multiValueArgs SRCS EXTRA_DEPS)
     cmake_parse_arguments(analysis_test "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
-    inference_base_test_build(
-      ${TARGET}
-      SRCS
-      ${analysis_test_SRCS}
-      DEPS
-      ${analysis_test_EXTRA_DEPS}
-      analysis
-      pass
-      ${GLOB_PASS_LIB})
+    inference_base_test_build(${TARGET} SRCS ${analysis_test_SRCS} DEPS
+                              ${analysis_test_EXTRA_DEPS})
   endif()
 endfunction()
 
@@ -37,40 +30,21 @@ function(inference_analysis_test TARGET)
     set(multiValueArgs SRCS ARGS EXTRA_DEPS)
     cmake_parse_arguments(analysis_test "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
-    inference_base_test_build(
-      ${TARGET}
-      SRCS
-      ${analysis_test_SRCS}
-      DEPS
-      ${analysis_test_EXTRA_DEPS}
-      analysis
-      pass
-      ${GLOB_PASS_LIB})
+    inference_base_test_build(${TARGET} SRCS ${analysis_test_SRCS} DEPS
+                              ${analysis_test_EXTRA_DEPS})
     inference_base_test_run(${TARGET} COMMAND ${TARGET} ARGS
                             ${analysis_test_ARGS})
     set_tests_properties(${TARGET} PROPERTIES LABELS "RUN_TYPE=INFER")
   endif()
 endfunction()
 
-if(NOT APPLE AND NOT WIN32)
+if(NOT APPLE)
   inference_analysis_test(
     test_analyzer
     SRCS
     analyzer_tester.cc
     EXTRA_DEPS
-    reset_tensor_array
     paddle_inference_shared
-    python
-    ARGS
-    --inference_model_dir=${WORD2VEC_MODEL_DIR})
-elseif(WIN32)
-  inference_analysis_test(
-    test_analyzer
-    SRCS
-    analyzer_tester.cc
-    EXTRA_DEPS
-    reset_tensor_array
-    paddle_inference_api
     ARGS
     --inference_model_dir=${WORD2VEC_MODEL_DIR})
   if(WITH_ONNXRUNTIME AND WIN32)

@@ -36,6 +36,7 @@ limitations under the License. */
 #endif
 
 #include "paddle/phi/api/profiler/profiler.h"
+#include "paddle/utils/test_macros.h"
 
 namespace phi {
 namespace proto {
@@ -178,12 +179,12 @@ using phi::PushEvent;
 std::vector<std::vector<Event>> GetAllEvents();
 
 // Enable the profiling function.
-void EnableProfiler(ProfilerState state);
+TEST_API void EnableProfiler(ProfilerState state);
 // Clear the phi::ProfilerHelper::g_all_event_lists, which is total event lists
 // of all threads.
-void ResetProfiler();
-void DisableProfiler(EventSortingKey sorted_key,
-                     const std::string& profile_path);
+TEST_API void ResetProfiler();
+TEST_API void DisableProfiler(EventSortingKey sorted_key,
+                              const std::string& profile_path);
 // Disable profiler but return events instead of print it.
 void CompleteProfilerEvents(phi::proto::Profile* tracer_profile,
                             std::vector<std::vector<Event>>* time_events,
