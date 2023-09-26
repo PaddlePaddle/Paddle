@@ -1344,7 +1344,7 @@ PHI_DEFINE_EXPORTED_int32(
  * mode. If true, it will use unified CommContextManager for communication.
  */
 PHI_DEFINE_EXPORTED_bool(dynamic_static_unified_comm,
-                         True,
+                         true,
                          "Whether to use new communication library in auto "
                          "parallel and static mode.");
 #endif  // FLAGS_dynamic_static_unified_comm
