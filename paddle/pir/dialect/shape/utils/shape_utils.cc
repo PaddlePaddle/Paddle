@@ -813,9 +813,9 @@ bool ShapeComputationIRAnalysis::BuildShapeOnValue(Value value) {
     SymbolicDim sym = mgr_.NewSymbolicDim();
     value2SymDim_[value] = sym;
   } else if (IsCandidateShapeTensorType(ty)) {
-    auto shapedTy = ty.dyn_cast_interface<ShapedTypeInterface>();
+    auto shapedTy = ty.dyn_cast<ShapedTypeInterface>();
     std::vector<SymbolicDim> symbols;
-    for (size_t i = 0, d = shapedTy.getShape()[0]; i < d; ++i)
+    for (size_t i = 0, d = shapedTy.GetShape()[0]; i < d; ++i)
       symbols.push_back(mgr_.NewSymbolicDim());
     shapeTensor2SymDims_[value] = std::move(symbols);
   }
@@ -883,10 +883,10 @@ bool IsIntOrIndex(Type type) {
 
 bool IsCandidateShapeTensorType(Type ty) {
   if (auto tensorTy = ty.dyn_cast<paddle::dialect::DenseTensorType>()) {
-    auto shapedTy = tensorTy.dyn_cast_interface<ShapedTypeInterface>();
-    return (shapedTy.getRank() == 1 && shapedTy.hasStaticShape() &&
-            IsIntOrIndex(shapedTy.getElementType()) &&
-            shapedTy.getShape()[0] < 32);
+    auto shapedTy = tensorTy.dyn_cast<ShapedTypeInterface>();
+    return (shapedTy.GetRank() == 1 && shapedTy.HasStaticShape() &&
+            IsIntOrIndex(shapedTy.GetElementType()) &&
+            shapedTy.GetShape()[0] < 32);
   }
   return false;
 }
