@@ -2461,7 +2461,7 @@ def calc_gradient_helper(
 
     for input in inputs:
         if input.block.program != prog:
-            raise "input must be in the same program as targets"
+            raise ValueError("input must be in the same program as targets")
     block_no_grad_set = set(map(_strip_grad_suffix_, no_grad_dict[0]))
 
     op_path_dict = dict()
