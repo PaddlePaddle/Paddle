@@ -3597,6 +3597,7 @@ EOF
     export WITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
     export WITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
     export WITH_SHARED_PHI=${WITH_SHARED_PHI:-OFF}
+    export WITH_NVCC_LAZY=${WITH_NVCC_LAZY:-ON}
 
     if [ "$SYSTEM" == "Linux" ];then
       if [ `nproc` -gt 16 ];then
