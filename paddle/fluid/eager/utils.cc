@@ -28,6 +28,54 @@
 #include "paddle/fluid/framework/variable.h"
 
 namespace egr {
+
+void SetGradOutputDistAttrIter::visit_element(paddle::Tensor* element,
+                                              const GradSlotMeta& meta) {
+  if (element == nullptr) {
+    VLOG(4) << "The input element is nullptr when calling "
+               "SetGradOutputDistAttrIter.";
+    return;
+  }
+  if (meta.DistAttr().empty()) {
+    VLOG(4) << "The input element's meta doesn't contains DistAttr when "
+               "calling SetGradOutputDistAttrIter.";
+    return;
+  }
+  if (element->defined()) {
+    if (element->is_dist_tensor()) {
+      PADDLE_THROW(
+          phi::errors::Unimplemented("Unsupport set defined dist tensor now."));
+    } else {
+      // Only deal with dist tensor here
+      VLOG(4) << "The input element is DenseTensor when calling "
+                 "SetGradOutputDistAttrIter.";
+      return;
+    }
+  } else {
+    VLOG(4) << "The input element is set DistTensor impl when calling "
+               "SetGradOutputDistAttrIter.";
+    element->set_impl(std::make_shared<phi::distributed::DistTensor>(
+        phi::DDim(), meta.DistAttr()));
+  }
+}
+
+void SetGradOutputDistAttrIter::visit(paddle::Tensor* element) {
+  if (!out_meta_[out_indexes_[cur_pos_]].empty()) {
+    visit_element(element, out_meta_[out_indexes_[cur_pos_]][0]);
+  }
+  cur_pos_++;
+}
+
+void SetGradOutputDistAttrIter::visit(
+    const std::vector<paddle::Tensor*>& elements) {
+  if (!out_meta_[out_indexes_[cur_pos_]].empty()) {
+    for (size_t i = 0; i < elements.size(); ++i) {
+      visit_element(elements.at(i), out_meta_[out_indexes_[cur_pos_]][i]);
+    }
+  }
+  cur_pos_++;
+}
+
 /**
  * Implementation of Eager Utils.
  **/

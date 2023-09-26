@@ -100,7 +100,7 @@ class MPDemoNet(nn.Layer):
             mesh=mesh, sharding_specs=['x', None]
         )
         self.shard_axis1_dist_attr = dist.DistAttr(
-            mesh=mesh, sharding_specs=['x', None]
+            mesh=mesh, sharding_specs=[None, 'x']
         )
         self.w0 = dist.shard_tensor(
             self.create_parameter(
