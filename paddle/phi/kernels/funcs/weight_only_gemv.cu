@@ -221,7 +221,7 @@ Each Warp Process: 1 x k matmul 1 x k
 template <typename T, bool Bias, bool Gelu>
 __global__ void int8_weight_only_gemv(const T* input,
                                       const int8_t* weight,
-                                      const float* scale_list,
+                                      const T* scale_list,
                                       const T* bias,
                                       T* output,
                                       const int k,
@@ -238,7 +238,7 @@ __global__ void int8_weight_only_gemv(const T* input,
   const int row_id = tile_id * 2 + ((lane_id % 8) > 3 ? 1 : 0);
   weight += tile_id * k * 2;
 
-  float v = 0.f, scale = scale_list[row_id], v_bias;
+  float v = 0.f, scale = static_cast<float>(scale_list[row_id]), v_bias;
 
   if (Bias) {
     v_bias = ConvertFloatFunc<T>::apply(bias[row_id]);
@@ -282,7 +282,7 @@ __global__ void int8_weight_only_gemv(const T* input,
 template <typename T>
 void int8_weight_only_gemv_launcher(const T* input,
                                     const int8_t* weight,
-                                    const float* scale_list,
+                                    const T* scale_list,
                                     const T* bias,
                                     T* output,
                                     const int k,
@@ -330,7 +330,7 @@ void int8_weight_only_gemv_launcher(const float* input,
 template <>
 void int8_weight_only_gemv_launcher(const phi::dtype::bfloat16* input,
                                     const int8_t* weight,
-                                    const float* scale_list,
+                                    const phi::dtype::bfloat16* scale_list,
                                     const phi::dtype::bfloat16* bias,
                                     phi::dtype::bfloat16* output,
                                     const int k,
@@ -348,7 +348,7 @@ void GemvWeightonlyInt8Wrapper(const Context& ctx,
                                const T* x,
                                const int8_t* weight,
                                const T* bias,
-                               const float* weight_scale,
+                               const T* weight_scale,
                                const int n,
                                const int k,
                                const std::string& act_method,
@@ -369,7 +369,7 @@ void GemvWeightonlyInt8Wrapper(const Context& ctx,
   int8_weight_only_gemv_launcher<DataType>(
       reinterpret_cast<const DataType*>(x),
       weight,
-      weight_scale,
+      reinterpret_cast<const DataType*>(weight_scale),
       reinterpret_cast<const DataType*>(bias),
       reinterpret_cast<DataType*>(output),
       k,
@@ -391,7 +391,7 @@ void GemvWeightonlyInt8Kernel(const Context& dev_ctx,
       weight.data<int8_t>();  // Actually, we pass the weight datatype is
                               // uint8_t type.
   const T* bias_data = bias ? bias.get().data<T>() : nullptr;
-  const float* weight_scale_data = weight_scale.data<float>();
+  const T* weight_scale_data = weight_scale.data<T>();
   T* out_data = dev_ctx.template Alloc<T>(out);
 
   int k = x.dims()[1];
@@ -411,7 +411,7 @@ template void GemvWeightonlyInt8Wrapper(const phi::GPUContext& ctx,
                                         const phi::dtype::float16* x,
                                         const int8_t* weight,
                                         const phi::dtype::float16* bias,
-                                        const float* weight_scale,
+                                        const phi::dtype::float16* weight_scale,
                                         const int n,
                                         const int k,
                                         const std::string& act_method,
@@ -421,7 +421,7 @@ template void GemvWeightonlyInt8Wrapper(const phi::GPUContext& ctx,
                                         const phi::dtype::bfloat16* x,
                                         const int8_t* weight,
                                         const phi::dtype::bfloat16* bias,
-                                        const float* weight_scale,
+                                        const phi::dtype::bfloat16* weight_scale,
                                         const int n,
                                         const int k,
                                         const std::string& act_method,

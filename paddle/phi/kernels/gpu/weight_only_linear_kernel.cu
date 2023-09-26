@@ -46,7 +46,7 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
   const T* x_data = x.data<T>();
   const int8_t* weight_data = weight.data<int8_t>();
   const T* bias_data = bias ? bias.get().data<T>() : nullptr;
-  const float* weight_scale_data = weight_scale.data<float>();
+  const T* weight_scale_data = weight_scale.data<T>();
   T* out_data = out->data<T>();
   const auto x_dims = x.dims();
   const auto w_dims = weight.dims();
@@ -80,7 +80,7 @@ we havenot support sm70 weightonly gemv, because sm70 weight layout is RowMajor.
             reinterpret_cast<const typename PDDataTypeTraits<T>::DataType*>(
                 x_data),
             reinterpret_cast<const uint8_t*>(weight_data),
-            weight_scale_data,
+            reinterpret_cast<const typename PDDataTypeTraits<T>::DataType*>(weight_scale_data),
             reinterpret_cast<const typename PDDataTypeTraits<T>::DataType*>(
                 bias_data),
             reinterpret_cast<typename PDDataTypeTraits<T>::DataType*>(out_data),
@@ -96,7 +96,7 @@ we havenot support sm70 weightonly gemv, because sm70 weight layout is RowMajor.
             reinterpret_cast<const typename PDDataTypeTraits<T>::DataType*>(
                 x_data),
             reinterpret_cast<const uint8_t*>(weight_data),
-            weight_scale_data,
+            reinterpret_cast<const typename PDDataTypeTraits<T>::DataType*>(weight_scale_data),
             reinterpret_cast<typename PDDataTypeTraits<T>::DataType*>(out_data),
             m,
             n,
@@ -123,7 +123,7 @@ we havenot support sm70 weightonly gemv, because sm70 weight layout is RowMajor.
             reinterpret_cast<const typename PDDataTypeTraits<T>::DataType*>(
                 x_data),
             reinterpret_cast<const cutlass::uint4b_t*>(weight_data),
-            weight_scale_data,
+            reinterpret_cast<const typename PDDataTypeTraits<T>::DataType*>(weight_scale_data),
             reinterpret_cast<const typename PDDataTypeTraits<T>::DataType*>(
                 bias_data),
             reinterpret_cast<typename PDDataTypeTraits<T>::DataType*>(out_data),
@@ -139,7 +139,7 @@ we havenot support sm70 weightonly gemv, because sm70 weight layout is RowMajor.
             reinterpret_cast<const typename PDDataTypeTraits<T>::DataType*>(
                 x_data),
             reinterpret_cast<const cutlass::uint4b_t*>(weight_data),
-            weight_scale_data,
+            reinterpret_cast<const typename PDDataTypeTraits<T>::DataType*>(weight_scale_data),
             reinterpret_cast<typename PDDataTypeTraits<T>::DataType*>(out_data),
             m,
             n,
