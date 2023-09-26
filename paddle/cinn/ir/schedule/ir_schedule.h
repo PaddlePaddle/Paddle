@@ -381,6 +381,8 @@ class IRSchedule {
    */
   Expr Rfactor(const Expr& rf_loop, int rf_axis);
 
+  Expr FactorizeReduction(const Expr& rf_loop, int rf_axis);
+
   /*!
    * \brief Annotate a block with a key-value pair to set as its attribute
    * \param block The block to be annotated
