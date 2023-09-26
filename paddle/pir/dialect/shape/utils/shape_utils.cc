@@ -84,7 +84,7 @@ bool SymbolicDimMgr::LoadShapeConstraintGraph() {
   auto build_sym_product = [&](std::vector<Value> range,
                                SymbolicDimProduct& product) {
     for (Value v : range) {
-      auto definingOp = v.GetDefiningOp();
+      auto definingOp = v.dyn_cast<OpResult>().owner();
       if (auto constOp = definingOp->dyn_cast<ConstantOp>()) {
         product.factor *= constOp.value().dyn_cast<Int32Attribute>().data();
         continue;
@@ -101,8 +101,8 @@ bool SymbolicDimMgr::LoadShapeConstraintGraph() {
 
   for (auto op : constraint_vec) {
     SymbolicDimProduct lhs, rhs;
-    if (!build_sym_product(op.getLhs(), lhs) ||
-        !build_sym_product(op.getRhs(), rhs) ||
+    if (!build_sym_product(op.lhs(), lhs) ||
+        !build_sym_product(op.rhs(), rhs) ||
         !MapSymbolicDimProductEqual(lhs, rhs))
       return false;
   }
@@ -645,7 +645,7 @@ SymbolicDimShapeAnalysis::SymbolicDimShapeAnalysis(ModuleOp m)
   for (auto op : *(m_.block())) {
     auto tieShapeOp = op->dyn_cast<dialect::TieShapeOp>();
     if (!tieShapeOp) continue;
-    Value result = tieShapeOp.getValue();
+    Value result = tieShapeOp.value();
     auto& symbols = value2SymDims_[result];
     auto attrs =
         tieShapeOp
@@ -724,4 +724,171 @@ bool SymbolicDimShapeAnalysis::IsProductEqual(Value lhs,
 
   return mgr_.IsSymbolicDimProductEqual(lhsProd, rhsProd);
 }
+
+ShapeComputationIRAnalysis::ShapeComputationIRAnalysis(ModuleOp m,
+                                                       SymbolicDimMgr& mgr)
+    : m_(m), mgr_(mgr) {}
+
+bool ShapeComputationIRAnalysis::Run() {
+  // Make sure only run once.
+  if (initialized_) return false;
+  initialized_ = true;
+  auto buildShapeFunc =
+      std::bind(&ShapeComputationIRAnalysis::BuildShapeOnOperation,
+                this,
+                std::placeholders::_1);
+  if (!RunOnRegion(&(m_->region(0)), buildShapeFunc)) return false;
+  auto applyOpConstraintFunc =
+      std::bind(&ShapeComputationIRAnalysis::ApplyOpConstraint,
+                this,
+                std::placeholders::_1);
+  if (!RunOnRegion(&(m_->region(0)), applyOpConstraintFunc)) return false;
+  return true;
+}
+
+bool ShapeComputationIRAnalysis::RunOnRegion(Region* region, func fn) {
+  for (Block* block : *region) {
+    if (!RunOnBlock(block, fn)) return false;
+  }
+  return true;
+}
+
+bool ShapeComputationIRAnalysis::RunOnBlock(Block* block, func fn) {
+  // TODO(liujinnan): mapping block arguments
+
+  std::vector<Operation*> op_list;
+  for (Operation* op : *block) op_list.push_back(op);
+  for (Operation* op : op_list) {
+    if (!RunOnOperation(op, fn)) return false;
+  }
+  return true;
+}
+
+bool ShapeComputationIRAnalysis::RunOnOperation(Operation* op, func fn) {
+  for (size_t i = 0; i < op->num_regions(); ++i) {
+    if (!RunOnRegion(&(op->region(i)), fn)) return false;
+  }
+  return fn(op);
+}
+
+bool ShapeComputationIRAnalysis::BuildShapeOnOperation(Operation* op) {
+  if (op->isa<dialect::FuncOp>()) return true;
+  if (op->isa<dialect::TieShapeOp>()) {
+    Value value = op->operand_source(0);
+    std::vector<SymbolicDim> symbols;
+    if (op->HasAttribute(SymbolicDim::getSymbolicDimAttrName())) {
+      auto attrs =
+          op->attribute<ArrayAttribute>(SymbolicDim::getSymbolicDimAttrName())
+              .AsVector();
+      for (Attribute attr : attrs) {
+        auto sym = mgr_.symbolTable().Lookup<SymbolicDim>(
+            attr.dyn_cast<StrAttribute>().AsString());
+        assert(sym);
+        SymbolicDim root = mgr_.GetRootSymbolicDim(sym);
+        symbols.push_back(root);
+      }
+    } else {
+      symbols = mgr_.CreateSymbolicDimsForRankedValue(value);
+      std::vector<Attribute> attrs;
+      for (SymbolicDim sym : symbols) {
+        Attribute rootSymbol =
+            StrAttribute::get(m_->ir_context(), sym.getSymName());
+        attrs.push_back(rootSymbol);
+      }
+      op->set_attribute(SymbolicDim::getSymbolicDimAttrName(),
+                        ArrayAttribute::get(m_->ir_context(), attrs));
+    }
+    rankedTensor2SymDims_[value] = std::move(symbols);
+    return true;
+  }
+  for (size_t i = 0; i < op->num_results(); ++i) {
+    if (!BuildShapeOnValue(op->result(i))) return false;
+  }
+  return true;
+}
+
+bool ShapeComputationIRAnalysis::BuildShapeOnValue(Value value) {
+  Type ty = value.type();
+  if (IsIntOrIndex(ty)) {
+    SymbolicDim sym = mgr_.NewSymbolicDim();
+    value2SymDim_[value] = sym;
+  } else if (IsCandidateShapeTensorType(ty)) {
+    auto shapedTy = ty.dyn_cast_interface<ShapedTypeInterface>();
+    std::vector<SymbolicDim> symbols;
+    for (size_t i = 0, d = shapedTy.getShape()[0]; i < d; ++i)
+      symbols.push_back(mgr_.NewSymbolicDim());
+    shapeTensor2SymDims_[value] = std::move(symbols);
+  }
+  return true;
+}
+
+bool ShapeComputationIRAnalysis::ApplyOpConstraint(Operation* op) {
+  IR_ENFORCE(ApplyIndexOpConstraint(op),
+             "Fail to apply constraint for index op");
+  IR_ENFORCE(ApplyTieShapeOpConstraint(op),
+             "Fail to apply constraint for tie_shape op");
+
+  // TODO(zhangbo63): add more constraints
+  return true;
+}
+
+bool ShapeComputationIRAnalysis::ApplyIndexOpConstraint(Operation* op) {
+  if (op->num_results() == 0) return true;
+
+  Type ty = op->result(0).type();
+  if (!IsIntOrIndex(ty)) return true;
+
+  if (auto dimOp = op->dyn_cast<dialect::TensorDimOp>()) {
+    int64_t dimIndex = dimOp.index()
+                           .dyn_cast<OpResult>()
+                           .owner()
+                           ->attribute<Int64Attribute>("value")
+                           .data();
+    value2SymDim_[dimOp.out()].updateKnownNonNegative(true);
+    if (!mgr_.MapSymbolicDimEqual(
+            value2SymDim_[dimOp.out()],
+            rankedTensor2SymDims_[dimOp.source()][dimIndex])) {
+      return false;
+    }
+
+  } else if (auto constOp = op->dyn_cast<ConstantOp>()) {
+    int64_t val = constOp.value().dyn_cast<Int64Attribute>().data();
+    if (!mgr_.MapSymbolicDimEqual(value2SymDim_[op->result(0)],
+                                  mgr_.NewConstantSymbolicDim(val))) {
+      return false;
+    }
+  }
+  // TODO(zhangbo63): add support for reifyInferShape. (e.g. mul/add)
+  return true;
+}
+
+bool ShapeComputationIRAnalysis::ApplyTieShapeOpConstraint(Operation* op) {
+  if (auto tieShape = op->dyn_cast<dialect::TieShapeOp>()) {
+    auto& value = rankedTensor2SymDims_[op->operand_source(0)];
+    for (size_t idx = 0; idx < tieShape.dims().size(); ++idx) {
+      if (!mgr_.MapSymbolicDimEqual(value2SymDim_[tieShape.dims()[idx]],
+                                    value[idx]))
+        return false;
+      mgr_.GetRootSymbolicDim(value[idx]).updateKnownNonNegative(true);
+    }
+  }
+  return true;
+}
+
+bool IsIntOrIndex(Type type) {
+  return type.isa<IndexType>() || type.isa<Int8Type>() ||
+         type.isa<UInt8Type>() || type.isa<Int16Type>() ||
+         type.isa<Int32Type>() || type.isa<Int64Type>();
+}
+
+bool IsCandidateShapeTensorType(Type ty) {
+  if (auto tensorTy = ty.dyn_cast<paddle::dialect::DenseTensorType>()) {
+    auto shapedTy = tensorTy.dyn_cast_interface<ShapedTypeInterface>();
+    return (shapedTy.getRank() == 1 && shapedTy.hasStaticShape() &&
+            IsIntOrIndex(shapedTy.getElementType()) &&
+            shapedTy.getShape()[0] < 32);
+  }
+  return false;
+}
+
 }  // namespace pir

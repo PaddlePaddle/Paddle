@@ -47,11 +47,10 @@ except ImportError as e:
     if os.name == 'nt':
         executable_path = os.path.abspath(os.path.dirname(sys.executable))
         raise ImportError(
-            """NOTE: You may need to run \"set PATH=%s;%%PATH%%\"
+            f"""NOTE: You may need to run \"set PATH={executable_path};%PATH%\"
         if you encounters \"DLL load failed\" errors. If you have python
-        installed in other directory, replace \"%s\" with your own
-        directory. The original error is: \n %s"""
-            % (executable_path, executable_path, str(e))
+        installed in other directory, replace \"{executable_path}\" with your own
+        directory. The original error is: \n {str(e)}"""
         )
     else:
         raise ImportError(
@@ -197,7 +196,7 @@ def run_shell_command(cmd):
 def get_dso_path(core_so, dso_name):
     if core_so and dso_name:
         return run_shell_command(
-            "ldd %s|grep %s|awk '{print $3}'" % (core_so, dso_name)
+            f"ldd {core_so}|grep {dso_name}|awk '{{print $3}}'"
         )
     else:
         return None
@@ -210,7 +209,7 @@ def load_dso(dso_absolute_path):
 
             cdll.LoadLibrary(dso_absolute_path)
         except:
-            warnings.warn("Load {} failed".format(dso_absolute_path))
+            warnings.warn(f"Load {dso_absolute_path} failed")
 
 
 def pre_load(dso_name):
@@ -278,7 +277,7 @@ try:
     # assign tensor alias
     libpaddle.LoDTensor = libpaddle.Tensor
 
-    from .libpaddle import *
+    from .libpaddle import *  # noqa: F403
     from .libpaddle import (  # noqa: F401
         __doc__,
         __file__,
@@ -507,7 +506,6 @@ def _set_prim_forward_blacklist(*args):
             raise TypeError("ops set in forward_blacklist must belong to str")
         else:
             prim_config["forward_blacklist"].add(item)
-    return
 
 
 def _set_prim_backward_blacklist(*args):
@@ -516,7 +514,6 @@ def _set_prim_backward_blacklist(*args):
         if not isinstance(item, str):
             raise TypeError("all items in set must belong to string")
     _set_bwd_prim_blacklist(ops)
-    return
 
 
 def _set_prim_backward_enabled(value):

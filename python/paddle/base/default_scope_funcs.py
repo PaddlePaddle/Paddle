@@ -26,19 +26,13 @@ A `scoped_function` will take a `function` as input. That function will be
 invoked in a new local scope.
 """
 
-import paddle.base.core
 import threading
+
+import paddle.base.core
 
 __tl_scope__ = threading.local()
 
-__all__ = [
-    'get_cur_scope',
-    'enter_local_scope',
-    'leave_local_scope',
-    'var',
-    'find_var',
-    'scoped_function',
-]
+__all__ = []
 
 
 def get_cur_scope():

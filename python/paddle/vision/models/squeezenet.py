@@ -115,9 +115,7 @@ class SqueezeNet(nn.Layer):
         supported_versions = ['1.0', '1.1']
         assert (
             version in supported_versions
-        ), "supported versions are {} but input version is {}".format(
-            supported_versions, version
-        )
+        ), f"supported versions are {supported_versions} but input version is {version}"
 
         if self.version == "1.0":
             self._conv = Conv2D(

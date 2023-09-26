@@ -85,7 +85,7 @@ class PipelinePass(PassBase):
         else:
             raise ValueError(
                 "Now only 'F-then-B', '1F1B' and 'stream' are supported."
-                "The given value is {}.".format(self._mode)
+                f"The given value is {self._mode}."
             )
 
     def _insert_sync_ops_for_stream(self):

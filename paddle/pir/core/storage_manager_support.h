@@ -95,7 +95,7 @@ class StorageHelperBase : public BaseT {
   /// \brief Returns an interface map for the interfaces registered to this
   /// storage user.
   ///
-  static std::vector<details::InterfaceValue> interface_map() {
+  static std::vector<InterfaceValue> interface_map() {
     return pir::detail::GetInterfaceMap<ConcreteT, InterfaceList>();
   }
 

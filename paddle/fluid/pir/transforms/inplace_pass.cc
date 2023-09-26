@@ -37,13 +37,14 @@ static bool CanBeDeleted(pir::Value value) {
       !value.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
     return false;
   }
-  if (value.GetDefiningOp()->HasAttribute(kAttrIsPersisable)) {
-    return !(value.GetDefiningOp()
-                 ->attribute(kAttrIsPersisable)
-                 .dyn_cast<pir::ArrayAttribute>()
-                 .AsVector()[value.dyn_cast<pir::OpResult>().index()]
-                 .dyn_cast<pir::BoolAttribute>()
-                 .data());
+  if (auto op_result = value.dyn_cast<pir::OpResult>()) {
+    auto def_op = op_result.owner();
+    if (def_op->HasAttribute(kAttrIsPersisable)) {
+      return !(def_op->attribute<pir::ArrayAttribute>(kAttrIsPersisable)
+                   .AsVector()[op_result.index()]
+                   .dyn_cast<pir::BoolAttribute>()
+                   .data());
+    }
   }
   return true;
 }
@@ -203,7 +204,8 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
     // NOTE(zhangbo): add_grad cpu kernel can't do inplace, for the reason shown
     // in the function: CommonElementwiseBroadcastBackward
     // (paddle/phi/kernels/funcs/elementwise_grad_base.h)
-    if ((upper_op_name == "pd_op.add_grad") &&
+    if ((upper_op_name == "pd_op.add_grad" ||
+         upper_op_name == "pd_op.subtract_grad") &&
         (upper_op_attrs.at("kernel_key")
              .dyn_cast<paddle::dialect::KernelAttribute>()
              .data()

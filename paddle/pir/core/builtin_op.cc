@@ -163,16 +163,12 @@ void CombineOp::Build(Builder &builder,
                       OperationArgument &argument,
                       const std::vector<Value> &inputs) {
   argument.inputs = inputs;
-  if (inputs.size() == 0) {
-    argument.output_types.emplace_back(pir::Type());
-  } else {
-    std::vector<pir::Type> inputs_type(inputs.size());
-    for (size_t idx = 0; idx < inputs.size(); ++idx) {
-      inputs_type[idx] = inputs[idx].type();
-    }
-    argument.output_types.emplace_back(
-        pir::VectorType::get(builder.ir_context(), inputs_type));
+  std::vector<pir::Type> inputs_type(inputs.size());
+  for (size_t idx = 0; idx < inputs.size(); ++idx) {
+    inputs_type[idx] = inputs[idx].type();
   }
+  argument.output_types.emplace_back(
+      pir::VectorType::get(builder.ir_context(), inputs_type));
   PassStopGradientsDefaultly(argument);
 }
 
@@ -310,7 +306,7 @@ void SplitOp::PassStopGradients(OperationArgument &argument) {
       for (uint32_t i = 0; i < defining_op->num_operands(); ++i) {
         auto value = defining_op->operand_source(i);
         if (!value) continue;
-        auto *oprand_defining_op = value.GetDefiningOp();
+        auto *oprand_defining_op = value.dyn_cast<OpResult>().owner();
         if (oprand_defining_op->HasAttribute(kStopGradientAttrName)) {
           auto attrs = oprand_defining_op->attribute(kStopGradientAttrName)
                            .dyn_cast<pir::ArrayAttribute>()

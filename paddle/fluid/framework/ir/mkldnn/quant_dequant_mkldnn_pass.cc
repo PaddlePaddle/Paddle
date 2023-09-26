@@ -400,9 +400,8 @@ void QuantDequantMkldnnPass::RemoveFakeOps(
 
     if (fake_quantize_types.count(op_node->Name())) {
       CollectFakeQuantizeOps(graph, op_node, &nodes2rm);
-    } else if (fake_dequantize_types.count(op_node->Name())) {
-      CollectFakeDequantizeOps(graph, op_node, &nodes2rm);
-    } else if (fake_quantize_dequantize_types.count(op_node->Name())) {
+    } else if (fake_dequantize_types.count(op_node->Name()) ||
+               fake_quantize_dequantize_types.count(op_node->Name())) {
       CollectFakeDequantizeOps(graph, op_node, &nodes2rm);
     } else if (onnx_format_quantize_dequantize_types.count(op_node->Name())) {
       CollectQuantizeDequantizeOpsFromONNXFormat(graph, op_node, &nodes2rm);

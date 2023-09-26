@@ -92,8 +92,6 @@ def prim_operator_data_parallel_functor(ctx, src_op):
         op_attr.set_input_dims_mapping(grad_var.name, dims_mapping)
         ctx.set_op_dist_attr_for_program(allreduce_op, op_attr)
 
-    return
-
 
 class DistributedDefault(DistributedOperatorImplContainer):
     def __init__(self, op_type):
@@ -457,21 +455,15 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
 
         # check validation of inputs / outputs
         for input_name in src_op.desc.input_names():
-            assert input_name in kwargs, "input [{}] is not given".format(
-                input_name
-            )
+            assert input_name in kwargs, f"input [{input_name}] is not given"
             assert len(kwargs[input_name]) == len(
                 src_op.desc.input(input_name)
             ), f"number of tensor for input [{input_name}] is not match"
         for output_name in src_op.desc.output_names():
-            assert output_name in kwargs, "input [{}] is not given".format(
-                output_name
-            )
+            assert output_name in kwargs, f"input [{output_name}] is not given"
             assert len(kwargs[output_name]) == len(
                 src_op.desc.output(output_name)
-            ), "number of tensor for input [{}] is not match".format(
-                output_name
-            )
+            ), f"number of tensor for input [{output_name}] is not match"
 
         # replicate op in dist program
         dist_op = main_block.append_op(type='nop')
@@ -577,28 +569,20 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         dist_attr = ctx.get_op_dist_attr_for_program(backward_op)
         assert (
             dist_attr is not None
-        ), "backward op [{}] don't have dist attribute !".format(
-            str(backward_op)
-        )
+        ), f"backward op [{str(backward_op)}] don't have dist attribute !"
         rank_id = dist_op_context.rank_id
 
         # check validation of inputs / outputs
         for input_name in backward_op.desc.input_names():
-            assert input_name in kwargs, "input [{}] is not given".format(
-                input_name
-            )
+            assert input_name in kwargs, f"input [{input_name}] is not given"
             assert len(kwargs[input_name]) == len(
                 backward_op.desc.input(input_name)
             ), f"number of tensor for input [{input_name}] is not match"
         for output_name in backward_op.desc.output_names():
-            assert output_name in kwargs, "input [{}] is not given".format(
-                output_name
-            )
+            assert output_name in kwargs, f"input [{output_name}] is not given"
             assert len(kwargs[output_name]) == len(
                 backward_op.desc.output(output_name)
-            ), "number of tensor for input [{}] is not match".format(
-                output_name
-            )
+            ), f"number of tensor for input [{output_name}] is not match"
 
         # replicate op in dist program
         dist_op_desc = main_block.append_op(type='nop').desc

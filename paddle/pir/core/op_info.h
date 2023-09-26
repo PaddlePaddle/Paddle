@@ -71,13 +71,13 @@ class IR_API OpInfo {
   template <typename InterfaceT>
   typename InterfaceT::Concept *GetInterfaceImpl() const;
 
+  operator const void *() const { return impl_; }
   void *AsOpaquePointer() const { return impl_; }
   static OpInfo RecoverFromOpaquePointer(void *pointer) {
     return OpInfo(static_cast<OpInfoImpl *>(pointer));
   }
 
   friend class OpInfoImpl;
-  friend struct std::hash<OpInfo>;
 
  private:
   explicit OpInfo(OpInfoImpl *impl) : impl_(impl) {}
@@ -105,7 +105,7 @@ namespace std {
 template <>
 struct hash<pir::OpInfo> {
   std::size_t operator()(const pir::OpInfo &obj) const {
-    return std::hash<const pir::OpInfoImpl *>()(obj.impl_);
+    return std::hash<const void *>()(obj);
   }
 };
 }  // namespace std
