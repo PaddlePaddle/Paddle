@@ -175,7 +175,7 @@ class IR_API alignas(8) Operation final {
   template <typename T, typename Enabler = void>
   struct CastUtil {
     static T call(Operation *op) {
-      throw("Can't dyn_cast to T, T should be a Op or Trait or Interface");
+      throw("Can't dyn_cast to T, T should be an Op or Trait or Interface");
     }
   };
 

@@ -1272,6 +1272,8 @@ void PrintValuesAndVariables(
     std::string ret_variable_str = "Variable: (";
     if (!op->results().empty()) {
       for (auto& out_value : op->results()) {
+        // NOTE: if out_value is not in value_2_var_name, it's an optional
+        // output
         if ((*value_2_var_name).count(out_value)) {
           auto& var_name = (*value_2_var_name).at(out_value);
           const paddle::framework::Variable* out_variable =
@@ -1319,6 +1321,7 @@ void PrintValuesAndVariables(
     if (!op->operands().empty()) {
       for (auto& input : op->operands()) {
         ::pir::Value in_value = input.source();
+        // NOTE: if in_value is not in value_2_var_name, it's an optional input
         if ((*value_2_var_name).count(in_value)) {
           auto& var_name = (*value_2_var_name).at(in_value);
           const paddle::framework::Variable* in_variable =

@@ -381,7 +381,7 @@ phi::DataType GetKernelDataTypeByYamlInfo(
       PADDLE_ENFORCE_EQ(attr_map.count(slot_name),
                         true,
                         phi::errors::PreconditionNotMet(
-                            "[%s] MUST in attribute map", slot_name));
+                            "[%s] MUST be in attribute map", slot_name));
 
       auto attr_type = op_info_parser->AttrTypeName(slot_name);
       PADDLE_ENFORCE_EQ(attr_type,
@@ -434,9 +434,15 @@ phi::Backend GetKernelBackendByYamlInfo(
                 vec_data[0]
                     .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
                     .place());
+          } else if (vec_data[0]
+                         .isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+            kernel_backend = paddle::experimental::ParseBackend(
+                vec_data[0]
+                    .dyn_cast<paddle::dialect::AllocatedSelectedRowsType>()
+                    .place());
           } else {
             PADDLE_THROW(phi::errors::Unimplemented(
-                "Only support DenseTensorType in vector"));
+                "Only support DenseTensorType and SelectedRowsType in vector"));
           }
         }
       } else if (type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
@@ -488,14 +494,15 @@ phi::KernelKey GetKernelKey(
   if (op->isa<paddle::dialect::FeedOp>()) {
     // NOTE, for now feed op don't need a kernel, so the data type from Op
     // Result the next op use base program datatype
-    return {phi::Backend::CPU,
+    auto backend = paddle::experimental::ParseBackend(place);
+    return {backend,
             phi::DataLayout::ANY,
             TransToPhiDataType(
                 op->result(0).type().dyn_cast<DenseTensorType>().dtype())};
   }
 
   if (op->isa<paddle::dialect::DataOp>()) {
-    // NOTE, for now feed op don't need a kernel, so the data type from Op
+    // NOTE, for now data op don't need a kernel, so the data type from Op
     // Result the next op use base program datatype
     auto data_place =
         op->attributes().at("place").dyn_cast<dialect::PlaceAttribute>().data();
@@ -508,7 +515,9 @@ phi::KernelKey GetKernelKey(
                 op->result(0).type().dyn_cast<DenseTensorType>().dtype())};
   }
 
-  if (op->name() == "pd_op.seed") {
+  if (op->isa<paddle::dialect::SeedOp>()) {
+    // NOTE, for now seed op don't need a kernel, so the data type from Op
+    // Result the next op use base program datatype
     auto backend = paddle::experimental::ParseBackend(place);
     return {backend,
             phi::DataLayout::ANY,
@@ -585,8 +594,8 @@ phi::KernelKey GetKernelKey(
 
       // Because we can't make sure the place when build data op
       // and the output place of data op is undefined. It means we
-      // don't know how to select the kernel in the next of op that
-      // uses data op outout as inputs. So, we need set kernel backend
+      // don't know how to select the kernel for the next op that
+      // uses data op outouts as inputs. So we need to set kernel backend
       // manually.
       if (op->operand_source(i)
               .dyn_cast<pir::OpResult>()
@@ -681,7 +690,7 @@ void HandleForIfOp(
       map_value_pair->count(cur_in),
       true,
       phi::errors::PreconditionNotMet(
-          "[%d]'s input of [%s] op MUST in map pair", 0, op_item->name()));
+          "[%d]'s input of [%s] op MUST be in map pair", 0, op_item->name()));
   auto new_in = map_value_pair->at(cur_in);
 
   pir::Builder builder(ctx, block);
@@ -949,7 +958,7 @@ std::vector<pir::Value> BuildOpInputList(
         map_value_pair->count(cur_in),
         true,
         phi::errors::PreconditionNotMet(
-            "[%d]'s input of [%s] op MUST in map pair", i, op_item->name()));
+            "[%d]'s input of [%s] op MUST be in map pair", i, op_item->name()));
     auto new_in = map_value_pair->at(cur_in);
 
     auto new_in_type = new_in.type();
