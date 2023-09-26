@@ -932,6 +932,49 @@ set -ex
     fi
 }
 
+function run_sot_test() {
+    PY_VERSION=$1
+    PADDLE_SOT_BASE=$2
+    PY_VERSION_NO_DOT=`echo $PY_VERSION | sed 's/\.//g'`
+    PYTHON_WITH_SPECIFY_VERSION=python$PY_VERSION
+
+    export STRICT_MODE=1
+    export COST_MODEL=False
+    export MIN_GRAPH_SIZE=0
+
+    # Install PaddlePaddle
+    cd $PADDLE_SOT_BASE
+    # Install PaddleSOT
+    $PYTHON_WITH_SPECIFY_VERSION -m pip install -e .
+
+    # Run unittest
+    cd tests
+    failed_tests=()
+
+    for file in ./test_*.py; do
+        # check file is python file
+        if [ -f "$file" ]; then
+            echo Running: PYTHONPATH=$PYTHONPATH " STRICT_MODE=1 python " $file
+            # run unittests
+            python_output=$($PYTHON_WITH_SPECIFY_VERSION $file 2>&1)
+
+            if [ $? -ne 0 ]; then
+                echo "run $file failed"
+                failed_tests+=("$file")
+                echo -e "$python_output"
+            fi
+        fi
+    done
+
+    if [ ${#failed_tests[@]} -ne 0 ]; then
+        echo "failed tests file:"
+        for failed_test in "${failed_tests[@]}"; do
+            echo "$failed_test"
+        done
+        exit 1
+    fi
+}
+
 function get_precision_ut_mac() {
     on_precision=0
     UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
@@ -3289,7 +3332,7 @@ function build_pr_and_develop() {
             rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt ${PADDLE_ROOT}/build/build.ninja
             rm -rf ${PADDLE_ROOT}/build/third_party
         fi
-        
+
         git checkout -b develop_base_pr upstream/$BRANCH
         git submodule update --init
         run_setup ${PYTHON_ABI:-""} "rerun-cmake bdist_wheel" ${parallel_number}
@@ -3299,7 +3342,7 @@ function build_pr_and_develop() {
         mv ${PADDLE_ROOT}/dist/*.whl ${PADDLE_ROOT}/build/python/dist/
         mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
     fi
-    
+
     generate_api_spec "$1" "DEV"
 
 }
@@ -3554,7 +3597,7 @@ EOF
     export WITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
     export WITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
     export WITH_SHARED_PHI=${WITH_SHARED_PHI:-OFF}
-    
+
     if [ "$SYSTEM" == "Linux" ];then
       if [ `nproc` -gt 16 ];then
           parallel_number=$(expr `nproc` - 8)
@@ -3567,7 +3610,7 @@ EOF
     if [ "$3" != "" ]; then
       parallel_number=$3
     fi
-    
+
     # reset ccache zero stats for collect PR's actual hit rate
     if [ "${MAX_JOBS}" == "" ]; then
         export MAX_JOBS=${parallel_number}
@@ -3844,7 +3887,7 @@ EOF
     fi
     # ci will collect ccache hit rate
     collect_ccache_hits
-    
+
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
@@ -4075,6 +4118,18 @@ function main() {
         ;;
       test_cicheck_py37)
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
+        ;;
+      cicheck_sot)
+        export WITH_SHARED_PHI=ON
+        PADDLE_SOT_ROOT=${PADDLE_ROOT}/sot
+        git clone https://github.com/PaddlePaddle/PaddleSOT.git ${PADDLE_SOT_ROOT}
+        PYTHON_VERSIONS=(3.8 3.9 3.10 3.11)
+        for PY_VERSION in ${PYTHON_VERSIONS[@]}; do
+            PY_VERSION_NO_DOT=`echo $PY_VERSION | sed 's/\.//g'`
+            PYTHON_ABI="cp${PY_VERSION_NO_DOT}-cp${PY_VERSION_NO_DOT}"
+            run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
+            run_sot_test $PADDLE_SOT_ROOT $PY_VERSION
+        done
         ;;
       build_gpubox)
         run_setup ${PYTHON_ABI:-""} install ${parallel_number}
