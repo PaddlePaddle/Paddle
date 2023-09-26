@@ -837,7 +837,7 @@ def uniform_(x, min=-1.0, max=1.0, seed=0, name=None):
     """
     This is the inplace version of OP ``uniform``, which returns a Tensor filled
     with random values sampled from a uniform distribution. The output Tensor will
-    be inplaced with input ``x``. Please refer to :ref:`api_tensor_uniform`.
+    be inplaced with input ``x``. Please refer to :ref:`api_paddle_uniform`.
 
     Args:
         x(Tensor): The input tensor to be filled with random values.
