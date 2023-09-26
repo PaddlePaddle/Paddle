@@ -22,7 +22,6 @@ g_use_flash_attn_v1 = (
     os.getenv('FLAGS_flash_attn_version', 'v2').strip().lower() == 'v1'
 )
 
-
 def flash_attention(
     query,
     key,
