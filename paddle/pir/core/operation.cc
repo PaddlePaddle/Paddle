@@ -32,12 +32,18 @@ using detail::OpOutlineResultImpl;
 using detail::OpResultImpl;
 
 Operation *Operation::Create(const OperationArgument &argument) {
-  return Create(argument.inputs,
-                argument.attributes,
-                argument.output_types,
-                argument.info,
-                argument.num_regions,
-                argument.successors);
+  Operation *op = Create(argument.inputs,
+                         argument.attributes,
+                         argument.output_types,
+                         argument.info,
+                         argument.regions.size(),
+                         argument.successors);
+  for (size_t i = 0; i < argument.regions.size(); ++i) {
+    if (argument.regions[i]) {
+      op->region(i).TakeBody(std::move(*argument.regions[i]));
+    }
+  }
+  return op;
 }
 
 // Allocate the required memory based on the size and number of inputs, outputs,

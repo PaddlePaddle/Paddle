@@ -64,7 +64,7 @@ TEST(op_test, region_test) {
 
   pir::OperationArgument argument(op2_info);
   argument.output_types = {pir::Float32Type::get(ctx)};
-  argument.num_regions = 1;
+  argument.AddRegion(nullptr);
 
   pir::Operation *op3 = pir::Operation::Create(argument);
 
@@ -124,6 +124,5 @@ TEST(op_test, trait_and_interface) {
   EXPECT_EQ(op2->HasInterface<test::InferShapeInterface>(), true);
 
   pir::OperationArgument argument(&ctx, "test.region");
-  argument.num_regions = 2u;
   EXPECT_THROW(builder.Build(argument), pir::IrNotMetException);
 }
