@@ -934,7 +934,7 @@ set -ex
 
 function run_sot_test() {
     PY_VERSION=$1
-    PADDLE_SOT_BASE=$2
+    PADDLE_SOT_ROOT=$2
     PY_VERSION_NO_DOT=`echo $PY_VERSION | sed 's/\.//g'`
     PYTHON_WITH_SPECIFY_VERSION=python$PY_VERSION
 
@@ -943,7 +943,7 @@ function run_sot_test() {
     export MIN_GRAPH_SIZE=0
 
     # Install PaddlePaddle
-    cd $PADDLE_SOT_BASE
+    cd $PADDLE_SOT_ROOT
     # Install PaddleSOT
     $PYTHON_WITH_SPECIFY_VERSION -m pip install -e .
 
