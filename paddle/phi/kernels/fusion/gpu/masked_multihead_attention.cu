@@ -964,6 +964,11 @@ void fmha_impl(const phi::GPUContext &dev_ctx,
       fmha_launch_kernel<T, 64, 64>(
           params, dev_ctx.stream(), load_func, store_func);
       break;
+    // for opt model
+    case 80:
+      fmha_launch_kernel<T, 80, 128>(
+          params, dev_ctx.stream(), load_func, store_func);
+      break;
     case 96:
       fmha_launch_kernel<T, 96, 128>(
           params, dev_ctx.stream(), load_func, store_func);

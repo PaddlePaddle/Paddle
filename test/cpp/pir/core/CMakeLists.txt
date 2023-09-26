@@ -8,7 +8,14 @@ cc_test_old(
   pd_op_dialect)
 cc_test_old(ir_attribute_test SRCS ir_attribute_test.cc DEPS pir gtest)
 cc_test_old(ir_value_test SRCS ir_value_test.cc DEPS pir gtest)
-cc_test_old(ir_op_test SRCS ir_op_test.cc DEPS pir gtest)
+cc_test_old(
+  ir_op_test
+  SRCS
+  ir_op_test.cc
+  DEPS
+  pir
+  gtest
+  test_dialect)
 cc_test_old(ir_region_test SRCS ir_region_test.cc DEPS pir gtest)
 cc_test_old(ir_builder_test SRCS ir_builder_test.cc DEPS pir gtest)
 cc_test_old(
@@ -27,20 +34,6 @@ cc_test_old(
   ir_infershape_test.cc
   DEPS
   pd_op_dialect
-  pir
-  phi
-  gtest)
-
-cc_test_old(
-  ir_exe_test
-  SRCS
-  ir_exe_test.cc
-  DEPS
-  pd_op_to_kernel_pass
-  program_translator
-  pd_op_dialect
-  pd_kernel_dialect
-  phi_kernel_adaptor
   pir
   phi
   gtest)

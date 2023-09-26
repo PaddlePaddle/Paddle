@@ -24,6 +24,7 @@
 
 
 vjp_interface_declare_gen_op_list = [
+    'where',
     "tanh",
     "mean",
     "divide",
@@ -42,6 +43,7 @@ vjp_interface_declare_gen_op_list = [
     "square",
     "dropout",
     'exp',
+    'expm1',
     'expand',
     'layer_norm',
     'reshape',
@@ -54,9 +56,18 @@ vjp_interface_declare_gen_op_list = [
     'fused_softmax_mask_upper_triangle',
     'slice',
     'transpose',
-    'slice_double',
+    'slice_grad',
+    'gather_nd',
+    'stack',
+    'poisson',
+    'gumbel_softmax',
+    'squeeze',
+    'unsqueeze',
+    'tril',
+    'triu',
 ]
 vjp_interface_implementation_gen_op_list = [
+    'where',
     "tanh",
     "mean",
     "divide",
@@ -75,6 +86,7 @@ vjp_interface_implementation_gen_op_list = [
     "square",
     "dropout",
     'exp',
+    'expm1',
     'expand',
     'layer_norm',
     'reshape',
@@ -87,5 +99,13 @@ vjp_interface_implementation_gen_op_list = [
     'fused_softmax_mask_upper_triangle',
     'slice',
     'transpose',
-    'slice_double',
+    'slice_grad',
+    'gather_nd',
+    'stack',
+    'poisson',
+    'gumbel_softmax',
+    'squeeze',
+    'unsqueeze',
+    'tril',
+    'triu',
 ]

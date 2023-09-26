@@ -27,7 +27,9 @@ for (auto arg: stop_gradients) {
   vjp_res.push_back(std::vector<paddle::Tensor>(arg.size()));
 }
   {% if 'composite' in api and api.name in vjp_comp_white_list %}
-if (paddle::prim::StaticCompositeContext::Instance().IsBwdPrimEnabled()) {
+std::string op_name = "{{api.name}}";
+auto need_skip = paddle::prim::StaticCompositeContext::Instance().CheckSkipCompOps(op_name);
+if (paddle::prim::StaticCompositeContext::Instance().IsBwdPrimEnabled() && !need_skip) {
 {% filter indent(2, True) %}{{body_prim(api)}}{% endfilter %}
 } else {
 {% filter indent(2, True) %}{{body_unprim(api)}}{% endfilter %}
@@ -106,7 +108,7 @@ paddle::Tensor* {{api.outputs[i].name}} = !stop_gradients[{{i}}][0] ? &vjp_res[{
     {% else %}
 std::vector<paddle::Tensor*> {{api.outputs[i].name}}(stop_gradients[{{i}}].size(), nullptr);
 for (size_t i=0; i< stop_gradients[{{i}}].size(); i++ ) {
-  {{api.outputs[i].name}} =  !stop_gradients[{{i}}][i] ?  &vjp_res[{{i}}][i] : nullptr;
+  {{api.outputs[i].name}}[i] =  !stop_gradients[{{i}}][i] ?  &vjp_res[{{i}}][i] : nullptr;
 }
     {% endif %}
   {% endfor %}

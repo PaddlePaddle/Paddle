@@ -1001,28 +1001,25 @@ class Resharder:
     ):
         assert isinstance(auto_parallel_main_prog, Program), (
             "The type of auto_parallel_main_prog should be Program, "
-            "but got {}.".format(type(auto_parallel_main_prog))
+            f"but got {type(auto_parallel_main_prog)}."
         )
         if auto_parallel_startup_prog is not None:
             assert isinstance(auto_parallel_main_prog, Program), (
                 "The type of auto_parallel_startup_prog should be Program or None, "
-                "but got {}.".format(type(auto_parallel_startup_prog))
+                f"but got {type(auto_parallel_startup_prog)}."
             )
-        assert isinstance(
-            rank_id, int
-        ), "The type of rank_id should be int, " "but got {}.".format(
-            type(rank_id)
+        assert isinstance(rank_id, int), (
+            "The type of rank_id should be int, " f"but got {type(rank_id)}."
         )
         assert isinstance(dist_context, DistributedContext), (
             "The type of dist_context should be DistributedContext, "
-            "but got {}.".format(type(dist_context))
+            f"but got {type(dist_context)}."
         )
 
         if batch_size is not None:
-            assert isinstance(
-                batch_size, int
-            ), "The type of batch_size should be int, " "but got {}.".format(
-                type(batch_size)
+            assert isinstance(batch_size, int), (
+                "The type of batch_size should be int, "
+                f"but got {type(batch_size)}."
             )
 
         self._auto_parallel_main_prog = auto_parallel_main_prog
@@ -1783,9 +1780,7 @@ class Resharder:
                 break
         assert (
             idx is not None
-        ), "The op for reshard cannot be found in the rank {} program.".format(
-            self.rank_id
-        )
+        ), f"The op for reshard cannot be found in the rank {self.rank_id} program."
 
         matched_op = block.ops[idx]
         source_tensor = get_var_with_recursion(
