@@ -56,7 +56,7 @@ Type IrParser::ParseType() {
     return builder->bfloat16_type();
   } else if (type_val == "f16") {
     ConsumeToken();
-    return builder->bfloat16_type();
+    return Float16Type::get(ctx);
   } else if (type_val == "f32") {
     ConsumeToken();
     return builder->float32_type();
@@ -123,6 +123,15 @@ Attribute IrParser::ParseAttribute() {
     std::string val = parenthesis_token.val_;
     val = val.substr(1, val.size() - 2);
     return builder->str_attr(val);
+  } else if (parenthesis_token.val_ == "[") {
+    std::vector<Attribute> array_attribute;
+    while (PeekToken().val_ != "]") {
+      array_attribute.push_back(ParseAttribute());
+      if (PeekToken().val_ == "]") break;
+      ConsumeAToken(",");
+    }
+    ConsumeAToken("]");
+    return builder->array_attr(array_attribute);
   }
   std::string attribute_type = PeekToken().val_;
   if (attribute_type == "Float") {
@@ -147,18 +156,6 @@ Attribute IrParser::ParseAttribute() {
     return builder->int64_attr(atoll(val.c_str()));
   } else if (attribute_type == "Pointer") {
     IR_THROW("This attribute is not currently supported by parser");
-  } else if (attribute_type == "Array") {
-    ConsumeAToken("Array");
-    ConsumeAToken(")");
-    ConsumeAToken("[");
-    std::vector<Attribute> array_attribute;
-    while (PeekToken().val_ != "]") {
-      array_attribute.push_back(ParseAttribute());
-      if (PeekToken().val_ == "]") break;
-      ConsumeAToken(",");
-    }
-    ConsumeAToken("]");
-    return builder->array_attr(array_attribute);
   } else {
     IR_ENFORCE(attribute_type.find('.') != std::string::npos,
                "No function parsing " + attribute_type + " exists!" +
