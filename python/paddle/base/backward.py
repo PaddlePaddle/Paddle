@@ -231,7 +231,7 @@ class ProgramStats:
 
 
 def _pretty_op_desc_(op_desc, prefix):
-    out_s = "%s\tname:[%s]\n%s    \tinputs:[%s]\n%s    \toutputs:[%s]" % (
+    out_s = "{}\tname:[{}]\n{}    \tinputs:[{}]\n{}    \toutputs:[{}]".format(
         prefix + "_op",
         str(op_desc.type()),
         prefix + "_input",
@@ -2441,8 +2441,9 @@ def calc_gradient_helper(
                 raise ValueError("all targets must be in the same block")
             if target.shape != grad.shape:
                 raise ValueError(
-                    "The shapes of target and grad are different: %s %s"
-                    % (target.name, grad.name)
+                    "The shapes of target and grad are different: {} {}".format(
+                        target.name, grad.name
+                    )
                 )
             target_grad_map[_append_grad_suffix_(target.name)] = grad.name
             input_grad_names_set.add(grad.name)
