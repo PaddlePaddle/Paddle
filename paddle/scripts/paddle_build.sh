@@ -4126,8 +4126,8 @@ function main() {
         git clone https://github.com/PaddlePaddle/PaddleSOT.git ${PADDLE_SOT_ROOT}
         PYTHON_VERSIONS=(3.8 3.9 3.10 3.11)
         for PY_VERSION in ${PYTHON_VERSIONS[@]}; do
-            PY_VERSION_NO_DOT=`echo $PY_VERSION | sed 's/\.//g'`
-            PYTHON_ABI="cp${PY_VERSION_NO_DOT}-cp${PY_VERSION_NO_DOT}"
+            ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
+            ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip
             run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
             run_sot_test $PADDLE_SOT_ROOT $PY_VERSION
         done
