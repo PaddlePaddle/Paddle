@@ -212,7 +212,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
 
     Examples:
         .. code-block:: python
-            
+
             >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
             >>> import paddle
             >>> fake_cpu_place = paddle.CustomPlace("FakeCPU", 0)
@@ -396,7 +396,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
 
     Examples:
         .. code-block:: python
-            
+
             >>> # doctest: +REQUIRES(env:XPU)
             >>> import paddle.base as base
             >>> xpu_place = base.XPUPlace(0)
@@ -534,7 +534,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
 
     Examples:
         .. code-block:: python
-            
+
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> place = paddle.CUDAPinnedPlace()
@@ -572,7 +572,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
 
     Examples:
         .. code-block:: python
-        
+
             >>> # doctest: +REQUIRES(env:IPU)
             >>> import paddle
             >>> ipu_place = paddle.IPUPlace()
