@@ -1243,7 +1243,7 @@ struct TrilAndTriuOpTranscriber : public OpTranscriber {
 struct MulOpTranscriber : public OpTranscriber {
   pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
                             const OpDesc& op_desc) override {
-    const std::string& target_op_name = "pd.matmul";
+    const std::string& target_op_name = "pd_op.matmul";
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
       IR_THROW("Op %d should have corresponding OpInfo %d",
@@ -1382,7 +1382,7 @@ struct MulOpTranscriber : public OpTranscriber {
 struct MulGradOpTranscriber : public OpTranscriber {
   pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
                             const OpDesc& op_desc) override {
-    const std::string& target_op_name = "pd.matmul_grad";
+    const std::string& target_op_name = "pd_op.matmul_grad";
     VLOG(6) << "[op name normalizing: " << op_desc.Type() << " to "
             << target_op_name;
     auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
