@@ -45,6 +45,7 @@ __all__ = [  # noqa
     'MultiplicativeDecay',
     'OneCycleLR',
     'CyclicLR',
+    'CosineAnnealingWarmRestarts',
 ]
 
 
@@ -2235,6 +2236,143 @@ class CyclicLR(LRScheduler):
         lr = self.base_lr + base_height * self.scale_fn(eval(self.scale_mode))
 
         return lr
+
+
+class CosineAnnealingWarmRestarts(LRScheduler):
+    r"""
+    Set the learning rate of each parameter group using a cosine annealing
+    schedule, where :math:`\eta_{max}` is set to the initial lr, :math:`T_{cur}`
+    is the number of epochs since the last restart and :math:`T_{i}` is the number
+    of epochs between two warm restarts in SGDR:
+
+    .. math::
+        \eta_t = \eta_{min} + \frac{1}{2}(\eta_{max} - \eta_{min})\left(1 +
+        \cos\left(\frac{T_{cur}}{T_{i}}\pi\right)\right)
+
+    When :math:`T_{cur}=T_{i}`, set :math:`\eta_t = \eta_{min}`.
+    When :math:`T_{cur}=0` after restart, set :math:`\eta_t=\eta_{max}`.
+
+    It has been proposed in
+    `SGDR: Stochastic Gradient Descent with Warm Restarts`_.
+
+    Args:
+        optimizer (Optimizer): Wrapped optimizer.
+        T_0 (int): Number of iterations for the first restart.
+        T_mult (int, optional): A factor increases :math:`T_{i}` after a restart. Default: 1.
+        eta_min (float, optional): Minimum learning rate. Default: 0.
+        last_epoch (int, optional): The index of last epoch. Default: -1.
+        verbose (bool, optional): If ``True``, prints a message to stdout for
+            each update. Default: ``False``.
+
+    Returns:
+        ``CosineAnnealingWarmRestarts`` instance to schedule learning rate.
+
+    Examples:
+        .. code-block:: python
+            :name: code-example1
+
+            >>> # Example1: train on default dynamic graph mode
+            >>> import paddle
+            >>> import numpy as np
+
+            >>> # train on default dynamic graph mode
+            >>> linear = paddle.nn.Linear(10, 10)
+            >>> scheduler = paddle.optimizer.lr.CosineAnnealingWarmRestarts(learning_rate=0.5, T_0=1, verbose=True)
+            >>> sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
+            >>> for epoch in range(5):
+            ...     for batch_id in range(20):
+            ...         x = paddle.uniform([10, 10])
+            ...         out = linear(x)
+            ...         loss = paddle.mean(out)
+            ...         loss.backward()
+            ...         sgd.step()
+            ...         scheduler.step(epoch)        # You should update learning rate each step
+
+        .. code-block:: python
+            :name: code-example2
+
+            >>> # Example2: train on static graph mode
+            >>> import paddle
+            >>> import numpy as np
+            >>> paddle.enable_static()
+            >>> main_prog = paddle.static.Program()
+            >>> start_prog = paddle.static.Program()
+            >>> with paddle.static.program_guard(main_prog, start_prog):
+            ...     x = paddle.static.data(name='x', shape=[None, 4, 5])
+            ...     y = paddle.static.data(name='y', shape=[None, 4, 5])
+            ...     z = paddle.static.nn.fc(x, 100)
+            ...     loss = paddle.mean(z)
+            ...     scheduler = paddle.optimizer.lr.CosineAnnealingWarmRestarts(learning_rate=0.5, T_0=1, verbose=True)
+            ...     sgd = paddle.optimizer.SGD(learning_rate=scheduler)
+            ...     sgd.minimize(loss)
+            ...
+            >>> exe = paddle.static.Executor()
+            >>> exe.run(start_prog)
+            >>> for epoch in range(5):
+            ...     for batch_id in range(20):
+            ...         out = exe.run(
+            ...             main_prog,
+            ...             feed={
+            ...                 'x': np.random.randn(3, 4, 5).astype('float32'),
+            ...                 'y': np.random.randn(3, 4, 5).astype('float32')
+            ...             },
+            ...             fetch_list=loss.name)
+            ...         scheduler.step(epoch)    # You should update learning rate each step
+    """
+
+    def __init__(self, learning_rate, T_0, T_mult=1, eta_min=0, last_epoch=-1, verbose=False):
+        if T_0 <= 0 or not isinstance(T_0, int):
+            raise ValueError("Expected positive integer T_0, but got {}".format(T_0))
+        if T_mult < 1 or not isinstance(T_mult, int):
+            raise ValueError("Expected integer T_mult >= 1, but got {}".format(T_mult))
+        self.T_0 = T_0
+        self.T_i = T_0
+        self.T_mult = T_mult
+        self.eta_min = eta_min
+        self.T_cur = last_epoch
+        super().__init__(learning_rate, last_epoch, verbose)
+
+    def get_lr(self):
+        return self.eta_min + (self.base_lr - self.eta_min) * (1 + math.cos(math.pi * self.T_cur / self.T_i)) / 2                
+
+    def step(self, epoch=None):
+        """
+        step should be called after `optimizer.step()` . It will update the learning rate in optimizer.
+        The new learning rate will take effect on next epoch.
+
+        Args:
+            epoch (int, None): specify current epoch. Default: None. Auto-increment from last_epoch=-1.
+
+        Returns:
+            None
+
+        Examples:
+            Please refer to the example of current LRScheduler.
+        """
+
+        if epoch is None and self.last_epoch < 0:
+            epoch = 0
+
+        if epoch is None:
+            epoch = self.last_epoch + 1
+            self.T_cur = self.T_cur + 1
+            if self.T_cur >= self.T_i:
+                self.T_cur = self.T_cur - self.T_i
+                self.T_i = self.T_i * self.T_mult
+        else:
+            if epoch < 0:
+                raise ValueError("Expected non-negative epoch, but got {}".format(epoch))
+            if epoch >= self.T_0:
+                if self.T_mult == 1:
+                    self.T_cur = epoch % self.T_0
+                else:
+                    n = int(math.log((epoch / self.T_0 * (self.T_mult - 1) + 1), self.T_mult))
+                    self.T_cur = epoch - self.T_0 * (self.T_mult ** n - 1) / (self.T_mult - 1)
+                    self.T_i = self.T_0 * self.T_mult ** (n)
+            else:
+                self.T_i = self.T_0
+                self.T_cur = epoch
+        self.last_epoch = math.floor(epoch)
 
 
 def autoincreased_step_counter(counter_name=None, begin=1, step=1):
