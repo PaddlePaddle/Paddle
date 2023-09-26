@@ -80,6 +80,7 @@ VJPS = [
     'gumbel_softmax_grad',
     'squeeze_grad',
     'unsqueeze_grad',
+    'tile_grad',
 ]
 
 
@@ -102,6 +103,7 @@ VJP_COMPS = PRIM_VJP + CUSTOM_VJP
 BACKENDS = [
     'tril_grad',
     'triu_grad',
+    'tile_grad',
     'add_n',
     'mean',
     'sum',
