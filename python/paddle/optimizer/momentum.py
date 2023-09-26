@@ -66,8 +66,8 @@ class Momentum(Optimizer):
             Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three clipping strategies:
-            :ref:`paddle.nn.ClipGradByGlobalNorm <cn_api_fluid_clip_ClipGradByGlobalNorm>` , :ref:`paddle.nn.ClipGradByNorm <cn_api_fluid_clip_ClipGradByNorm>` , :ref:`paddle.nn.ClipGradByValue <cn_api_fluid_clip_ClipGradByValue>`. \
-            Default None, meaning there is no gradient clipping.
+            some derived class of ``GradientClipBase`` . There are three clipping strategies:
+            :ref:`paddle.nn.ClipGradByGlobalNorm <cn_api_fluid_clip_ClipGradByGlobalNorm>` , :ref:`paddle.nn.ClipGradByNorm <cn_api_fluid_clip_ClipGradByNorm>` , :ref:`paddle.nn.ClipGradByValue <cn_api_fluid_clip_ClipGradByValue>`.
         multi_precision (bool, optional): Whether to use multi-precision during weight updating. Default is false.
         rescale_grad (float, optional): Multiply the gradient with `rescale_grad` before updating. \
             Often choose to be ``1.0/batch_size``.
