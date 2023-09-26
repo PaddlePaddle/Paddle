@@ -23,7 +23,7 @@
 #include <unordered_set>
 
 #include "paddle/cinn/common/context.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {
