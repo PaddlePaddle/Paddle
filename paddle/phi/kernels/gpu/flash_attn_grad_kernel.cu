@@ -11,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "paddle/phi/kernels/flash_attn_grad_kernel.h"
 #include "glog/logging.h"  // For VLOG()
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -24,13 +23,14 @@
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
 
-PD_DECLARE_bool(cudnn_deterministic);
+//PD_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 
 int get_num_split() {
   // 0 for an internal heuristic, which is optimal
-  return FLAGS_cudnn_deterministic ? 1 : 0;
+  return 0;
+  //return FLAGS_cudnn_deterministic ? 1 : 0;
 }
 
 template <typename T, typename Context>

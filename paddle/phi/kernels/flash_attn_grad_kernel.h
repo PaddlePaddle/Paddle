@@ -14,6 +14,8 @@
 
 #pragma once
 
+#pragma once
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
 
@@ -29,6 +31,7 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
                                  const DenseTensor& out,
                                  const DenseTensor& softmax_lse,
                                  const DenseTensor& seed_offset,
+                                 const paddle::optional<DenseTensor>& attn_mask,
                                  const DenseTensor& dout,
                                  int64_t max_seqlen_q,
                                  int64_t max_seqlen_k,
@@ -47,6 +50,7 @@ void FlashAttnGradKernel(const Context& ctx,
                          const DenseTensor& out,
                          const DenseTensor& softmax_lse,
                          const DenseTensor& seed_offset,
+                         const paddle::optional<DenseTensor>& attn_mask,
                          const DenseTensor& dout,
                          float dropout,
                          bool causal,
