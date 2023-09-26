@@ -1592,13 +1592,14 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
             >>> img = paddle.reshape(x, image_shape)
 
             >>> out = paddle.flatten(img, start_axis=1, stop_axis=2)
-            >>> # out shape is [2, 12, 4]
+            >>> print(out.shape)
+            [2, 12, 4]
 
             >>> # out shares data with img in dygraph mode
             >>> img[0, 0, 0, 0] = -1
             >>> print(out[0, 0, 0])
-            Tensor(shape=[1], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [-1])
+            Tensor(shape=[], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            -1)
     """
     if not (isinstance(x, Variable)):
         raise ValueError("The input x should be a Tensor")
@@ -2277,7 +2278,8 @@ def squeeze(x, axis=None, name=None):
             >>> # output shares data with x in dygraph mode
             >>> x[0, 0, 0] = 10.
             >>> print(output[0, 0])
-            [10.]
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [10.])
 
     """
     if axis is None:
@@ -2678,11 +2680,14 @@ def unsqueeze(x, axis, name=None):
             >>> # out1, out2, out3 share data with x in dygraph mode
             >>> x[0, 0] = 10.
             >>> print(out1[0, 0, 0])
-            [10.]
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [10.])
             >>> print(out2[0, 0, 0, 0])
-            [10.]
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [10.])
             >>> print(out3[0, 0, 0, 0, 0])
-            [10.]
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [10.])
 
     """
     input = x
@@ -2946,9 +2951,13 @@ def scatter(x, index, updates, overwrite=True, name=None):
     **Scatter Layer**
     Output is obtained by updating the input on selected indices based on updates.
 
-    .. code-block:: python
+    .. code-block:: text
         :name: code-example1
-
+        >>> import paddle
+        >>> #input:
+        >>> x = paddle.to_tensor([[1, 1], [2, 2], [3, 3]], dtype='float32')
+        >>> index = paddle.to_tensor([2, 1, 0, 1], dtype='int64')
+        >>> # shape of updates should be the same as x
         >>> # shape of updates with dim > 1 should be the same as input
         >>> updates = paddle.to_tensor([[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32')
         >>> overwrite = False
@@ -3686,16 +3695,17 @@ def reshape(x, shape, name=None):
                [0.60508877, 0.82193440]]]])
             >>> out = paddle.reshape(x, shape=[positive_four, 12])
             >>> print(out)
-            >>> # the shape of out_2 is [4, 12].
             Tensor(shape=[4, 12], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0.16556728, 0.98233348, 0.64653695, 0.68488085, 0.26045629, 0.32933319,
-              0.29747701, 0.85176629, 0.84460896, 0.86866283, 0.46335083, 0.33930254],
-             [0.42339125, 0.14102051, 0.69832194, 0.63159829, 0.91087127, 0.31725556,
-              0.09400324, 0.25861803, 0.26968575, 0.38659596, 0.25225133, 0.26315665],
-             [0.83726203, 0.33221707, 0.98031831, 0.38393897, 0.00512545, 0.04543629,
-              0.90596122, 0.70148915, 0.26110184, 0.55263036, 0.68636090, 0.67877120],
-             [0.60491085, 0.96849394, 0.08488113, 0.48084566, 0.61894107, 0.92885363,
-              0.37273413, 0.08096626, 0.74429852, 0.85212839, 0.60244918, 0.76718718]])
+            [[0.01787627, 0.76492310, 0.67605734, 0.04620579, 0.38763246, 0.96462214,
+              0.62356627, 0.64948404, 0.53736508, 0.09874519, 0.47123933, 0.85700107],
+             [0.34647217, 0.62869102, 0.54760450, 0.18061899, 0.55075216, 0.71997911,
+              0.78576684, 0.76743823, 0.35644373, 0.63325852, 0.26549375, 0.68052763],
+             [0.40971112, 0.95848298, 0.41229674, 0.05506011, 0.18543524, 0.63480365,
+              0.81180859, 0.94548297, 0.19634065, 0.73838711, 0.42057949, 0.96017945],
+             [0.72278100, 0.93858665, 0.72018963, 0.61661047, 0.33307818, 0.86660689,
+              0.55808324, 0.12933673, 0.42916751, 0.22745337, 0.60508877, 0.82193440]])
+            >>> print(out.shape)
+            [4, 12]
             >>> shape_tensor = paddle.to_tensor([8, 6], dtype=paddle.int32)
             >>> out = paddle.reshape(x, shape=shape_tensor)
             >>> print(out.shape)
@@ -3703,8 +3713,8 @@ def reshape(x, shape, name=None):
             >>> # out shares data with x in dygraph mode
             >>> x[0, 0, 0] = 10.
             >>> print(out[0, 0])
-            Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            [10.])
+            Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            10.)
 
     """
     if in_dynamic_or_pir_mode():
@@ -4233,11 +4243,11 @@ def tensordot(x, y, axes=2, name=None):
             >>> z1 = paddle.tensordot(x, y, axes=1)
             >>> z2 = paddle.dot(x, y)
             >>> print(z1)
-            Tensor(shape=[1], dtype=float64, place=Place(cpu), stop_gradient=True,
-            [285.])
+            Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
+            285.)
             >>> print(z2)
-            Tensor(shape=[1], dtype=float64, place=Place(cpu), stop_gradient=True,
-            [285.])
+            Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
+            285.)
 
             >>> # For two 2-d tensor x and y, the case axes=1 is equivalent to matrix multiplication.
             >>> x = paddle.arange(6, dtype=data_type).reshape([2, 3])
@@ -4891,7 +4901,7 @@ def index_add(x, index, axis, value, name=None):
     Examples:
         .. code-block:: python
 
-            >>> # required: gpu
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
 
             >>> input_tensor = paddle.to_tensor(paddle.ones((3, 3)), dtype="float32")
@@ -4951,7 +4961,7 @@ def index_add_(x, index, axis, value, name=None):
     Examples:
         .. code-block:: python
 
-            >>> # required: gpu
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
 
             >>> input_tensor = paddle.to_tensor(paddle.ones((3, 3)), dtype="float32")
@@ -5219,28 +5229,28 @@ def view(x, shape_or_dtype, name=None):
 
             >>> import paddle
             >>> paddle.base.set_flags({"FLAGS_use_stride_kernel": True})
-
+            >>> paddle.seed(1)
             >>> x = paddle.rand([2, 4, 6], dtype="float32")
 
             >>> out = paddle.view(x, "uint8")
             >>> print(out)
             Tensor(shape=[2, 4, 24], dtype=uint8, place=Place(cpu), stop_gradient=True,
-            [[[71 , 109, 163, 60 , 60 , 56 , 7  , 63 , 11 , 192, 144, 61 , 203, 148,
-               77 , 63 , 132, 130, 47 , 61 , 250, 35 , 91 , 63 ],
-              [105, 99 , 158, 62 , 111, 71 , 114, 62 , 6  , 18 , 191, 62 , 236, 133,
-               12 , 63 , 77 , 90 , 39 , 62 , 59 , 179, 115, 62 ],
-              [16 , 25 , 166, 62 , 71 , 248, 177, 61 , 107, 253, 25 , 63 , 24 , 89 ,
-               226, 62 , 118, 134, 198, 61 , 86 , 130, 32 , 61 ],
-              [144, 79 , 55 , 63 , 53 , 46 , 139, 62 , 173, 73 , 91 , 63 , 107, 97 ,
-               57 , 63 , 247, 236, 72 , 63 , 44 , 100, 65 , 62 ]],
-             [[45 , 58 , 104, 63 , 201, 126, 97 , 63 , 11 , 2  , 162, 62 , 145, 2  ,
-               44 , 63 , 7  , 6  , 4  , 63 , 89 , 241, 89 , 61 ],
-              [25 , 65 , 164, 62 , 47 , 75 , 89 , 63 , 100, 232, 16 , 60 , 139, 91 ,
-               54 , 63 , 165, 227, 11 , 63 , 255, 208, 190, 62 ],
-              [36 , 167, 233, 62 , 233, 125, 5  , 63 , 100, 238, 112, 63 , 102, 204,
-               145, 62 , 217, 161, 65 , 63 , 175, 206, 226, 62 ],
-              [255, 40 , 62 , 63 , 49 , 216, 148, 62 , 50 , 206, 175, 62 , 159, 194,
-               41 , 61 , 189, 22 , 144, 62 , 57 , 199, 253, 62 ]]])
+            [[[64 , 113, 146, 60 , 0  , 210, 67 , 63 , 24 , 18 , 45 , 63 , 71 , 66 ,
+               61 , 61 , 195, 119, 198, 62 , 122, 241, 118, 63 ],
+              [10 , 162, 31 , 63 , 150, 68 , 38 , 63 , 194, 144, 9  , 63 , 235, 58 ,
+               202, 61 , 72 , 70 , 241, 62 , 108, 100, 91 , 63 ],
+              [205, 100, 177, 62 , 229, 241, 32 , 63 , 207, 47 , 12 , 63 , 47 , 244,
+               56 , 62 , 24 , 254, 12 , 63 , 141, 80 , 56 , 63 ],
+              [4  , 40 , 73 , 63 , 213, 118, 68 , 63 , 203, 127, 182, 62 , 59 , 29 ,
+               34 , 63 , 204, 238, 135, 62 , 15 , 55 , 46 , 63 ]],
+             [[168, 197, 209, 62 , 36 , 95 , 117, 63 , 143, 24 , 211, 62 , 183, 134,
+               97 , 61 , 188, 226, 61 , 62 , 126, 130, 34 , 63 ],
+              [176, 210, 79 , 63 , 44 , 11 , 114, 63 , 134, 13 , 73 , 62 , 240, 6  ,
+               61 , 63 , 50 , 86 , 215, 62 , 82 , 206, 117, 63 ],
+              [45 , 8  , 57 , 63 , 55 , 71 , 112, 63 , 89 , 94 , 56 , 63 , 47 , 218,
+               29 , 63 , 57 , 137, 170, 62 , 243, 217, 93 , 63 ],
+              [139, 222, 14 , 63 , 217, 112, 4  , 62 , 216, 187, 219, 62 , 137, 233,
+               104, 62 , 25 , 231, 26 , 63 , 75 , 106, 82 , 63 ]]])
     """
     if isinstance(shape_or_dtype, (list, tuple)):
         return _C_ops.view_shape(x, shape_or_dtype)
@@ -5280,14 +5290,14 @@ def view_as(x, other, name=None):
             >>> out = paddle.view_as(x, y)
             >>> print(out)
             Tensor(shape=[8, 6], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0.23340422, 0.62036550, 0.12185233, 0.88982582, 0.61383390, 0.22415221],
-             [0.85698199, 0.87602723, 0.00502827, 0.92127788, 0.34579527, 0.85451263],
-             [0.68906647, 0.05126054, 0.25322226, 0.43883288, 0.49656981, 0.68857300],
-             [0.21424839, 0.99576813, 0.62306029, 0.48010525, 0.31222206, 0.48758999],
-             [0.35929242, 0.12802263, 0.80540675, 0.76783085, 0.84970695, 0.00389719],
-             [0.69256896, 0.73718327, 0.97155327, 0.50271672, 0.60357946, 0.59580350],
-             [0.68182445, 0.28539398, 0.13948134, 0.66333318, 0.72601736, 0.31108484],
-             [0.58283192, 0.89317679, 0.11751470, 0.04111906, 0.04056534, 0.75454420]])
+            [[0.01787627, 0.76492310, 0.67605734, 0.04620579, 0.38763246, 0.96462214],
+             [0.62356627, 0.64948404, 0.53736508, 0.09874519, 0.47123933, 0.85700107],
+             [0.34647217, 0.62869102, 0.54760450, 0.18061899, 0.55075216, 0.71997911],
+             [0.78576684, 0.76743823, 0.35644373, 0.63325852, 0.26549375, 0.68052763],
+             [0.40971112, 0.95848298, 0.41229674, 0.05506011, 0.18543524, 0.63480365],
+             [0.81180859, 0.94548297, 0.19634065, 0.73838711, 0.42057949, 0.96017945],
+             [0.72278100, 0.93858665, 0.72018963, 0.61661047, 0.33307818, 0.86660689],
+             [0.55808324, 0.12933673, 0.42916751, 0.22745337, 0.60508877, 0.82193440]])
     """
     return _C_ops.view_shape(x, other.shape)
 
@@ -5320,8 +5330,9 @@ def unfold(x, axis, size, step, name=None):
 
             >>> out = paddle.unfold(x, 0, 2, 4)
             >>> print(out)
+            Tensor(shape=[2, 2], dtype=float64, place=Place(cpu), stop_gradient=True,
             [[0., 1.],
-             [4., 5.]]
+             [4., 5.]])
     """
     return _C_ops.tensor_unfold(x, axis, size, step)
 
