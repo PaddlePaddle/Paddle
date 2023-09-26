@@ -402,6 +402,8 @@ from .tensor.math import (  # noqa: F401
     i1e,
     polygamma,
     polygamma_,
+    copysign,
+    copysign_,
 )
 
 from .tensor.random import (
@@ -899,4 +901,6 @@ __all__ = [
     'i1e',
     'polygamma',
     'polygamma_',
+    'copysign',
+    'copysign_',
 ]
