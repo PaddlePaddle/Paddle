@@ -441,7 +441,10 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
   eval_frame_callback_set(Py_None);
 
 #if PY_VERSION_HEX >= 0x030b0000
+  // We only pass the proxy ownership to Python side, the frame will not be
+  // automatically released, so we need to call DECREF manually.
   PyObject *args = Py_BuildValue("(O)", PyInterpreterFrameProxy_New(frame));
+  Py_DECREF(frame);
 #else
   PyObject *args = Py_BuildValue("(O)", frame);
 #endif
