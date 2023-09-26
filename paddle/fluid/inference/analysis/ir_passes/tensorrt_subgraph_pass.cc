@@ -404,7 +404,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
         for (auto *x : node->outputs) {
           if (std::count(parameters.begin(), parameters.end(), x->Name()) > 0)
             continue;
-          std::string name_with_id = x->Name() + std::to_string(x->id());
+          std::string name_with_id = RenameVarBeUnique(x->Name(), std::to_string(x->id()));
           if (((!mark_output_with_id && std::count(output_tensor_name.begin(),
                                                    output_tensor_name.end(),
                                                    x->Name()) > 0) ||
