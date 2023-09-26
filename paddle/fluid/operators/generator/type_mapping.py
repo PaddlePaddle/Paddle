@@ -85,6 +85,11 @@ output_type_map = {
     'SelectedRows': 'SelectedRows',
 }
 
+optional_output_type_map = {
+    'Tensor': 'const paddle::optional<Tensor>&',
+    'Tensor[]': 'const paddle::optional<std::vector<Tensor>>&',
+}
+
 # ------------------------------ phi attr ------------------------------
 phi_attr_types_map = attr_types_map.copy()
 phi_attr_types_map.update(

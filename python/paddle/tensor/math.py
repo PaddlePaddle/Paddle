@@ -270,7 +270,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     elif in_pir_mode():
         if act is None:
             return _C_ops.scale(x, scale, float(bias), bias_after_scale)
-        raise ValueError("act is not implement in new ir of scale api.")
+        raise ValueError("act is not implement in pir of scale api.")
     else:
         check_variable_and_dtype(
             x,
@@ -503,7 +503,7 @@ def pow(x, y, name=None):
     if in_dynamic_or_pir_mode():
         if isinstance(y, (int, float)):
             return _C_ops.pow(x, y)
-        elif isinstance(y, (paddle.Tensor, Variable, paddle.ir.OpResult)):
+        elif isinstance(y, (paddle.Tensor, Variable, paddle.pir.OpResult)):
             return _C_ops.elementwise_pow(x, y)
         else:
             raise TypeError(
@@ -643,16 +643,11 @@ def add(x, y, name=None):
     $X$ the tensor of any dimension.
     $Y$ the tensor whose dimensions must be less than or equal to the dimensions of $X$.
 
-    There are two cases for this operator:
+    This operator is used in the following cases:
 
     1. The shape of $Y$ is the same with $X$.
     2. The shape of $Y$ is a continuous subsequence of $X$.
 
-    For case 2:
-
-    1. Broadcast $Y$ to match the shape of $X$, where axis is the start dimension index for broadcasting $Y$ onto $X$.
-    2. If $axis$ is -1 (default), $axis$=rank($X$)-rank($Y$).
-    3. The trailing dimensions of size 1 for $Y$ will be ignored for the consideration of subsequence, such as shape($Y$) = (2, 1) => (2).
 
         For example:
 
@@ -690,8 +685,6 @@ def add(x, y, name=None):
     if in_dynamic_or_pir_mode():
         return _C_ops.add(x, y)
     else:
-        if in_pir_mode():
-            return paddle._ir_ops.add(x, y)
         return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 
 

@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from completion import get_phi_spmd_rule
 
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 
+from ..completion import get_phi_spmd_rule
 from ..cost import (
     _g_op_cost_factory,
     build_comp_costs_from_descs,

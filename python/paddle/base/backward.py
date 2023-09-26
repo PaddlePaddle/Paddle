@@ -27,10 +27,7 @@ from . import core, log_helper, unique_name
 from .data_feeder import check_type
 from .proto import framework_pb2
 
-__all__ = [
-    'append_backward',
-    'gradients',
-]
+__all__ = []
 
 _logger = log_helper.get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
@@ -234,7 +231,7 @@ class ProgramStats:
 
 
 def _pretty_op_desc_(op_desc, prefix):
-    out_s = "%s\tname:[%s]\n%s    \tinputs:[%s]\n%s    \toutputs:[%s]" % (
+    out_s = "{}\tname:[{}]\n{}    \tinputs:[{}]\n{}    \toutputs:[{}]".format(
         prefix + "_op",
         str(op_desc.type()),
         prefix + "_input",
@@ -348,22 +345,12 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
     for para, args in inputs.items():
         op_desc.set_input(
             para,
-            list(
-                map(
-                    lambda arg: arg.decode() if isinstance(arg, bytes) else arg,
-                    args,
-                )
-            ),
+            [arg.decode() if isinstance(arg, bytes) else arg for arg in args],
         )
     for para, args in outputs.items():
         op_desc.set_output(
             para,
-            list(
-                map(
-                    lambda arg: arg.decode() if isinstance(arg, bytes) else arg,
-                    args,
-                )
-            ),
+            [arg.decode() if isinstance(arg, bytes) else arg for arg in args],
         )
     op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
     op_device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
@@ -1333,7 +1320,7 @@ def _append_backward_ops_(
     if callbacks is not None:
         assert isinstance(callbacks, (list, tuple))
         for cb in callbacks:
-            if not hasattr(cb, '__call__'):
+            if not callable(cb):
                 raise ValueError("'callback' must be a callable object.")
 
     # grad_op_descs holds created grad_op, and will be appended to target_block
@@ -2454,8 +2441,9 @@ def calc_gradient_helper(
                 raise ValueError("all targets must be in the same block")
             if target.shape != grad.shape:
                 raise ValueError(
-                    "The shapes of target and grad are different: %s %s"
-                    % (target.name, grad.name)
+                    "The shapes of target and grad are different: {} {}".format(
+                        target.name, grad.name
+                    )
                 )
             target_grad_map[_append_grad_suffix_(target.name)] = grad.name
             input_grad_names_set.add(grad.name)
@@ -2474,7 +2462,7 @@ def calc_gradient_helper(
 
     for input in inputs:
         if input.block.program != prog:
-            raise "input must be in the same program as targets"
+            raise ValueError("input must be in the same program as targets")
     block_no_grad_set = set(map(_strip_grad_suffix_, no_grad_dict[0]))
 
     op_path_dict = dict()

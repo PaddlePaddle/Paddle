@@ -34,6 +34,7 @@ _logger = get_logger(
 _g_distributed_operator_impl_containers = {}
 
 _g_elementwise_ops = [
+    "assign",
     "elementwise",
     "gelu",
     # "dropout",

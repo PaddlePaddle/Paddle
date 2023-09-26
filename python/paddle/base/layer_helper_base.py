@@ -30,7 +30,7 @@ from .framework import (
 from .initializer import _global_bias_initializer, _global_weight_initializer
 from .param_attr import ParamAttr, WeightNormParamAttr
 
-__all__ = ['LayerHelperBase']
+__all__ = []
 
 
 class LayerHelperBase:
@@ -434,7 +434,7 @@ class LayerHelperBase:
             )
         else:
             if in_pir_mode():
-                return paddle.ir.core.create_parameter(
+                return paddle.pir.core.create_parameter(
                     dtype=dtype,
                     shape=shape,
                     **attr._to_kwargs(with_initializer=True),

@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from completion import get_phi_spmd_rule
-
+from ..completion import get_phi_spmd_rule
 from ..utils import (
     compute_compatible_and_update_dim_mapping,
     get_dist_tensor_spec,

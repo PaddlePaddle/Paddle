@@ -495,7 +495,7 @@ def leaky_relu(x, negative_slope=0.01, name=None):
 def leaky_relu_(x, negative_slope=0.01, name=None):
     r"""
     Inplace version of ``leaky_relu`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`paddle_nn_functional_leaky_relu`.
+    Please refer to :ref:`api_paddle_nn_functional_leaky_relu`.
     """
     if in_dynamic_mode():
         return _C_ops.leaky_relu_(x, negative_slope)
@@ -759,7 +759,7 @@ def relu(x, name=None):
     else:
         if paddle.framework.in_dynamic_or_pir_mode():
             # Below code will be removed after we can generate IR api automatically
-            return paddle._ir_ops.relu(x)
+            return paddle._pir_ops.relu(x)
 
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'relu'
@@ -1196,9 +1196,13 @@ def softmax(x, axis=-1, dtype=None, name=None):
               [0.03205860, 0.08714432, 0.23688282, 0.64391426]]])
     """
 
-    if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
+    if (
+        (dtype is not None)
+        and (not isinstance(dtype, core.VarDesc.VarType))
+        and (not isinstance(dtype, core.DataType))
+    ):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         outs_cast = x if dtype is None else _C_ops.cast(x, dtype)
         return _C_ops.softmax(outs_cast, axis)
     else:
