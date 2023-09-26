@@ -107,7 +107,7 @@ const std::string& OpYamlInfoParser::GetOutputType(uint32_t output_id) const {
                     true,
                     phi::errors::NotFound("Exceeding maximum output id %d",
                                           output_name_list_.size()));
-  std::string output_name = input_name_list_[output_id];
+  std::string output_name = output_name_list_[output_id];
   auto it = output_info_.find(output_name);
   return it->second.type_name;
 }
