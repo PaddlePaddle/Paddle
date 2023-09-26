@@ -187,7 +187,7 @@ class IR_API alignas(8) Operation final {
   struct CastUtil<
       To,
       typename std::enable_if<std::is_base_of<OpBase, To>::value>::type> {
-    static To call(Operation *op) { return To(op); }
+    static To call(Operation *op) { return To::dyn_cast(op); }
   };
 
   AttributeMap attributes_;

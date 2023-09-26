@@ -14,51 +14,15 @@
 
 #pragma once
 
+#include <algorithm>
 #include <vector>
+
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/pir/core/cast_utils.h"
 #include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/type.h"
 
 namespace pir {
-
-namespace detail {
-
-template <typename RangeT>
-constexpr auto begin_impl(RangeT &&range)
-    -> decltype(std::begin(std::forward<RangeT>(range))) {
-  return std::begin(std::forward<RangeT>(range));
-}
-
-template <typename RangeT>
-constexpr auto end_impl(RangeT &&range)
-    -> decltype(std::end(std::forward<RangeT>(range))) {
-  return std::end(std::forward<RangeT>(range));
-}
-
-template <typename RangeT>
-constexpr auto adl_begin(RangeT &&range)
-    -> decltype(begin_impl(std::forward<RangeT>(range))) {
-  return begin_impl(std::forward<RangeT>(range));
-}
-
-template <typename RangeT>
-constexpr auto adl_end(RangeT &&range)
-    -> decltype(end_impl(std::forward<RangeT>(range))) {
-  return end_impl(std::forward<RangeT>(range));
-}
-
-template <typename R, typename UnaryPredicate>
-bool any_of(R &&Range, UnaryPredicate P) {
-  return std::any_of(adl_begin(Range), adl_end(Range), P);
-}
-
-template <typename R, typename UnaryPredicate>
-auto count_if(R &&Range, UnaryPredicate P) {
-  return std::count_if(adl_begin(Range), adl_end(Range), P);
-}
-
-}  // namespace detail
 
 class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
  public:
@@ -137,9 +101,11 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
   /// \brief Check whether the given shape has any size indicating a dynamic
   /// dimension.
   ///
-  static bool IsDynamicShape(DDim dSizes) {
-    return detail::any_of(vectorize(dSizes),
-                          [](int64_t dSize) { return IsDynamic(dSize); });
+  static bool IsDynamicShape(DDim sizes) {
+    auto size_vec = vectorize(sizes);
+    return std::any_of(size_vec.begin(), size_vec.end(), [](int64_t size_vec) {
+      return IsDynamic(size_vec);
+    });
   }
 
   ///
@@ -163,8 +129,9 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
   /// Aborts for unranked types.
   ///
   int64_t GetNumDynamicDims() const {
-    return detail::count_if(vectorize((*this).GetShape()),
-                            ShapedTypeInterface::IsDynamic);
+    auto shape_vec = vectorize((*this).GetShape());
+    return std::count_if(
+        shape_vec.begin(), shape_vec.end(), ShapedTypeInterface::IsDynamic);
   }
 
   ///

@@ -37,14 +37,6 @@ class InferMetaInterface : public pir::OpInterfaceBase<InferMetaInterface> {
   };
 
   /// Constructor
-  InferMetaInterface(std::nullptr_t)  // NOLINT
-      : pir::OpInterfaceBase<InferMetaInterface>(nullptr), impl_(nullptr) {}
-
-  explicit InferMetaInterface(pir::Operation *op = nullptr)
-      : pir::OpInterfaceBase<InferMetaInterface>(op),
-        impl_(op ? op->info().GetInterfaceImpl<InferMetaInterface>()
-                 : nullptr) {}
-
   InferMetaInterface(pir::Operation *op, Concept *impl)
       : pir::OpInterfaceBase<InferMetaInterface>(op), impl_(impl) {}
 

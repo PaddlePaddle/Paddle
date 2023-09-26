@@ -102,6 +102,14 @@ class OpInterfaceBase : public OpBase {
   static bool classof(Operation *op) {
     return op->HasInterface<ConcreteInterface>();
   }
+
+  static ConcreteInterface dyn_cast(Operation *op) {
+    if (op && op->HasInterface<ConcreteInterface>()) {
+      return ConcreteInterface(
+          op, op->info().GetInterfaceImpl<ConcreteInterface>());
+    }
+    return ConcreteInterface(nullptr, nullptr);
+  }
 };
 
 template <typename ConcreteOp, class... TraitOrInterface>

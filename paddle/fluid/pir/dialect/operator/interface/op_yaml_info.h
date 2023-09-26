@@ -41,14 +41,6 @@ class OpYamlInfoInterface : public pir::OpInterfaceBase<OpYamlInfoInterface> {
   };
 
   /// Constructor
-  OpYamlInfoInterface(std::nullptr_t)  // NOLINT
-      : pir::OpInterfaceBase<OpYamlInfoInterface>(nullptr), impl_(nullptr) {}
-
-  explicit OpYamlInfoInterface(pir::Operation *op = nullptr)
-      : pir::OpInterfaceBase<OpYamlInfoInterface>(op),
-        impl_(op ? op->info().GetInterfaceImpl<OpYamlInfoInterface>()
-                 : nullptr) {}
-
   OpYamlInfoInterface(pir::Operation *op, Concept *impl)
       : pir::OpInterfaceBase<OpYamlInfoInterface>(op), impl_(impl) {}
 
