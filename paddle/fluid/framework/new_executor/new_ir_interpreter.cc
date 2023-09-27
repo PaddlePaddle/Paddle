@@ -586,25 +586,11 @@ void NewIRInterpreter::BuildInstruction() {
       if (op->name().compare(paddle::dialect::LegacyKernelOp::name()) == 0) {
         vec_instruction_base_.emplace_back(
             std::make_unique<LegacyKernelInstruction>(
-                op_idx++,
-                place_,
-                op,
-                scope_,
-                local_scope_,
-                value_exe_info_->GetValue2VarName(),
-                value_exe_info_->GetVarName2Id(),
-                value_exe_info_->GetVar2VarName()));
+                op_idx++, place_, op, *(value_exe_info_.get())));
       } else {
         vec_instruction_base_.emplace_back(
             std::make_unique<PhiKernelInstruction>(
-                op_idx++,
-                place_,
-                op,
-                scope_,
-                local_scope_,
-                value_exe_info_->GetValue2VarName(),
-                value_exe_info_->GetVarName2Id(),
-                value_exe_info_->GetVar2VarName()));
+                op_idx++, place_, op, *(value_exe_info_.get())));
       }
 #ifdef PADDLE_WITH_CINN
     } else if (op->dialect()->name() == "cinn_runtime") {

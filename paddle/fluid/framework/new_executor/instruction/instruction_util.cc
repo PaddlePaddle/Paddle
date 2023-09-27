@@ -40,22 +40,17 @@ PHI_DECLARE_bool(dynamic_static_unified_comm);
 namespace paddle {
 namespace framework {
 
-std::vector<int> GetValueIds(
-    pir::Value value,
-    Scope* inner_scope,
-    const std::unordered_map<pir::Value, std::string>& value_2_var_name,
-    const std::map<std::string, int>& var_name_2_id,
-    const std::unordered_map<const paddle::framework::Variable*, std::string>&
-        variable_2_var_name) {
+std::vector<int> GetValueIds(pir::Value value,
+                             const ValueExecutionInfo& value_exec_info) {
   std::vector<int> ids;
-  auto& var_name = value_2_var_name.at(value);
-  ids.push_back(var_name_2_id.at(var_name));
+  ids.push_back(value_exec_info.GetVarId(value));
   // NOTE(zhangbo): Value maybe a VariableRefArray
-  auto var = inner_scope->FindVar(var_name);
+  auto var =
+      value_exec_info.GetScope()->FindVar(value_exec_info.GetVarName(value));
   if (var->IsType<paddle::framework::VariableRefArray>()) {
     auto& var_array = var->Get<paddle::framework::VariableRefArray>();
     for (auto item : var_array) {
-      ids.push_back(var_name_2_id.at(variable_2_var_name.at(item)));
+      ids.push_back(value_exec_info.GetVarId(item));
     }
   }
   return ids;
@@ -145,6 +140,10 @@ platform::DeviceContext* ParseDeviceContext(
 OpFuncType AnalyseOpFuncType(pir::Operation* op, const platform::Place& place) {
   if (platform::is_cpu_place(place)) {
     return OpFuncType::kCpuSync;
+  }
+
+  if (op->dialect()->name() == "pd_op") {
+    return OpFuncType::kGpuAsync;
   }
 
   auto kernel_key = op->attributes()

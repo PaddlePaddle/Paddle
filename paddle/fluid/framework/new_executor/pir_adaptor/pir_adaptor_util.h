@@ -164,19 +164,14 @@ void BuildScope(
 
 void BuildRuntimeContext(
     pir::Operation* op,
-    const std::unordered_map<pir::Value, std::string>& name_map,
-    paddle::framework::Scope* scope,
-    paddle::framework::Scope* local_scope,
+    const paddle::framework::ValueExecutionInfo& value_exec_info,
     const paddle::dialect::OpYamlInfoParser& op_yaml_info,
     paddle::framework::RuntimeContext* runtime_ctx);
 
 std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
     pir::Operation* op,
-    const std::unordered_map<pir::Value, std::string>& name_map,
-    const paddle::dialect::OpYamlInfoParser& op_yaml_info,
-    const std::unordered_map<const paddle::framework::Variable*, std::string>&
-        variable_2_var_name,
-    const paddle::framework::Scope* scope);
+    const paddle::framework::ValueExecutionInfo& value_exec_info,
+    const paddle::dialect::OpYamlInfoParser& op_yaml_info);
 
 template <typename Context,
           typename InType,
@@ -186,15 +181,12 @@ template <typename Context,
           bool is_kernel>
 void BuildPhiContext(
     pir::Operation* op,
-    const std::unordered_map<pir::Value, std::string>& name_map,
-    paddle::framework::Scope* scope,
-    paddle::framework::Scope* local_scope,
+    const paddle::framework::ValueExecutionInfo& value_exec_info,
     const paddle::dialect::OpYamlInfoParser& op_yaml_info,
     Context* ctx) {
-  paddle::framework::Scope* inner_scope =
-      local_scope != nullptr ? local_scope : scope;
-  VLOG(6) << "Build " << get_type_name<Context>() << " in scope[" << scope
-          << "] inner_scope[" << inner_scope << "]";
+  paddle::framework::Scope* inner_scope = value_exec_info.GetScope();
+  VLOG(6) << "Build " << get_type_name<Context>() << "] inner_scope["
+          << inner_scope << "]";
 
   auto attr_map = op->attributes();
 
@@ -223,7 +215,7 @@ void BuildPhiContext(
       continue;
     }
 
-    auto in_var_name = name_map.at(ptr);
+    auto in_var_name = value_exec_info.GetVarName(ptr);
     VLOG(6) << "ctx->EmplaceBackInput: " << t << "\t" << in_var_name;
 
     PADDLE_ENFORCE_NOT_NULL(inner_scope->FindVar(in_var_name),
@@ -264,7 +256,7 @@ void BuildPhiContext(
       // tensor attribute, get information from input
       pir::Value ptr = op->operand_source(name2id.at(t));
 
-      auto in_var_name = name_map.at(ptr);
+      auto in_var_name = value_exec_info.GetVarName(ptr);
 
       auto& tensor_attr_type = op_yaml_info.TensorAttrTypeName(t);
       VLOG(6) << "ctx->EmplaceBack mutable attr: " << t << "\t" << in_var_name;
@@ -438,17 +430,18 @@ void BuildPhiContext(
 
     if (out_ptr.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
       ctx->EmplaceBackOutput(OutType(const_cast<phi::DenseTensor*>(
-          &(inner_scope->FindVar(name_map.at(out_ptr))
+          &(inner_scope->FindVar(value_exec_info.GetVarName(out_ptr))
                 ->Get<phi::DenseTensor>()))));
     } else if (out_ptr.type()
                    .isa<paddle::dialect::AllocatedSelectedRowsType>()) {
       ctx->EmplaceBackOutput(OutType(const_cast<phi::SelectedRows*>(
-          &(inner_scope->FindVar(name_map.at(out_ptr))
+          &(inner_scope->FindVar(value_exec_info.GetVarName(out_ptr))
                 ->Get<phi::SelectedRows>()))));
     } else if (out_ptr.type().isa<pir::VectorType>()) {
       OutListType outputs;
-      auto& variable_array = inner_scope->FindVar(name_map.at(out_ptr))
-                                 ->Get<paddle::framework::VariableRefArray>();
+      auto& variable_array =
+          inner_scope->FindVar(value_exec_info.GetVarName(out_ptr))
+              ->Get<paddle::framework::VariableRefArray>();
       for (size_t i = 0; i < variable_array.size(); ++i) {
         if (variable_array[i]->IsType<phi::DenseTensor>()) {
           outputs.emplace_back(OutType(const_cast<phi::DenseTensor*>(

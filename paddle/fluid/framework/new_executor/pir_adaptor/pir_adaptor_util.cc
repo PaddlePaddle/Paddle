@@ -331,18 +331,17 @@ paddle::framework::Variable* CreateVar(
   return var;
 }
 
-void CheckInputVars(
-    pir::Operation* op,
-    const std::string& op_name,
-    const std::unordered_map<pir::Value, std::string>& value_2_var_name) {
+void CheckInputVars(pir::Operation* op,
+                    const std::string& op_name,
+                    paddle::framework::ValueExecutionInfo* execution_info) {
   size_t input_num = op->num_operands();
   if (input_num > 0) {
     for (size_t i = 0; i < input_num; ++i) {
       auto value = op->operand_source(i);
       if (IsInvalid(value)) {
         PADDLE_ENFORCE_NE(
-            value_2_var_name.find(value),
-            value_2_var_name.end(),
+            execution_info->HasValue(value),
+            true,
             phi::errors::PreconditionNotMet(
                 "input should in name map, [%d] 'th input of [%s] op",
                 i,
@@ -664,7 +663,7 @@ void BuildScope(const pir::Block& block,
       continue;
     }
 
-    CheckInputVars(op, op_name, value_exe_info->GetValue2VarName());
+    CheckInputVars(op, op_name, value_exe_info);
 
     if (op->num_results() < 1) continue;
     if (op->attributes().count("is_inplace") != 0 &&
@@ -690,15 +689,11 @@ void BuildScope(const pir::Block& block,
 
 void BuildRuntimeContext(
     pir::Operation* op,
-    const std::unordered_map<pir::Value, std::string>& name_map,
-    paddle::framework::Scope* scope,
-    paddle::framework::Scope* local_scope,
+    const paddle::framework::ValueExecutionInfo& value_exec_info,
     const paddle::dialect::OpYamlInfoParser& op_yaml_info,
     paddle::framework::RuntimeContext* runtime_ctx) {
-  paddle::framework::Scope* inner_scope =
-      local_scope != nullptr ? local_scope : scope;
-  VLOG(6) << "BuildPhiContext in scope[" << scope << "] inner_scope["
-          << inner_scope << "]";
+  const paddle::framework::Scope* inner_scope = value_exec_info.GetScope();
+  VLOG(6) << "BuildPhiContext in scope[" << inner_scope << "]";
 
   auto& vec_kernel_fn_tensor_params = op_yaml_info.TensorParams(true);
 
@@ -721,7 +716,7 @@ void BuildRuntimeContext(
     }
 
     auto legacy_attr_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
-    auto in_var_name = name_map.at(ptr);
+    auto in_var_name = value_exec_info.GetVarName(ptr);
     VLOG(6) << "ctx->EmplaceBackInput: " << name << "\t" << in_var_name;
     PADDLE_ENFORCE_NOT_NULL(inner_scope->FindVar(in_var_name),
                             phi::errors::PreconditionNotMet(
@@ -740,7 +735,7 @@ void BuildRuntimeContext(
       continue;
     }
 
-    auto in_var_name = name_map.at(ptr);
+    auto in_var_name = value_exec_info.GetVarName(ptr);
     VLOG(6) << "ctx->EmplaceBackOutput: " << name << "\t" << in_var_name;
 
     PADDLE_ENFORCE_NOT_NULL(inner_scope->FindVar(in_var_name),
@@ -771,11 +766,8 @@ void BuildRuntimeContext(
 
 std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
     pir::Operation* op,
-    const std::unordered_map<pir::Value, std::string>& name_map,
-    const paddle::dialect::OpYamlInfoParser& op_yaml_info,
-    const std::unordered_map<const paddle::framework::Variable*, std::string>&
-        variable_2_var_name,
-    const paddle::framework::Scope* scope) {
+    const paddle::framework::ValueExecutionInfo& value_exec_info,
+    const paddle::dialect::OpYamlInfoParser& op_yaml_info) {
   paddle::framework::VariableNameMap in_name_map;
   paddle::framework::VariableNameMap out_name_map;
   paddle::framework::AttributeMap attr_map;
@@ -786,6 +778,8 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
   std::string fluid_op_name = op_yaml_info.GetOriginOpName();
 
   auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
+
+  auto scope = value_exec_info.GetScope();
 
   // build inputs
   for (auto& name : vec_kernel_fn_tensor_params) {
@@ -801,7 +795,7 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
       continue;
     }
 
-    in_name_map[legacy_attr_name].push_back(name_map.at(ptr));
+    in_name_map[legacy_attr_name].push_back(value_exec_info.GetVarName(ptr));
   }
 
   // build attribute
@@ -890,15 +884,13 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
 
     if (ptr.type().isa<paddle::dialect::AllocatedDenseTensorType>() ||
         ptr.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
-      out_name_map[legacy_arg_name].push_back(name_map.at(ptr));
+      out_name_map[legacy_arg_name].push_back(value_exec_info.GetVarName(ptr));
     } else if (ptr.type().isa<pir::VectorType>()) {
-      auto var = scope->FindVar(name_map.at(ptr));
+      auto var = scope->FindVar(value_exec_info.GetVarName(ptr));
       auto var_ref = var->Get<paddle::framework::VariableRefArray>();
       for (size_t k = 0; k < var_ref.size(); ++k) {
-        PADDLE_ENFORCE(variable_2_var_name.count(var_ref[k]),
-                       "Variable MUST in variable_2_var_name map");
         out_name_map[legacy_arg_name].push_back(
-            variable_2_var_name.at(var_ref[k]));
+            value_exec_info.GetVarName(var_ref[k]));
       }
     } else {
       PADDLE_THROW(phi::errors::Unimplemented(

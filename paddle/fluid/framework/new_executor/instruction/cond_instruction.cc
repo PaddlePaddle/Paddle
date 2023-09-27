@@ -51,29 +51,20 @@ std::vector<pir::Value> GetYiedOpInputs(pir::Block* block) {
   return vec_res;
 }
 
-void GetInputIds(
-    pir::Operation* op,
-    Scope* inner_scope,
-    const std::unordered_map<::pir::Value, std::string>& value_2_var_name,
-    const std::map<std::string, int>& var_name_2_id,
-    const std::unordered_map<const paddle::framework::Variable*, std::string>&
-        variable_2_var_name,
-    std::unordered_map<pir::Value, std::vector<int>>* input_ids) {
+void GetInputIds(pir::Operation* op,
+                 const ValueExecutionInfo& value_exec_info,
+                 std::unordered_map<pir::Value, std::vector<int>>* input_ids) {
   for (size_t i = 0; i < op->num_operands(); i++) {
     pir::Value value = op->operand_source(i);
     if (value) {
-      PADDLE_ENFORCE_NE(
-          value_2_var_name.find(value),
-          value_2_var_name.end(),
+      PADDLE_ENFORCE_EQ(
+          value_exec_info.HasValue(value),
+          true,
           phi::errors::PreconditionNotMet(
               "input should in name map, [%d] 'th input of [%s] op",
               i,
               "if op"));
-      std::vector<int> inputs_id = GetValueIds(value,
-                                               inner_scope,
-                                               value_2_var_name,
-                                               var_name_2_id,
-                                               variable_2_var_name);
+      std::vector<int> inputs_id = GetValueIds(value, value_exec_info);
       input_ids->emplace(value, inputs_id);
     }
   }
@@ -81,11 +72,7 @@ void GetInputIds(
 
 void GetOutsideOpInputs(
     pir::Block* block,
-    Scope* inner_scope,
-    const std::unordered_map<::pir::Value, std::string>& value_2_var_name,
-    const std::map<std::string, int>& var_name_2_id,
-    const std::unordered_map<const paddle::framework::Variable*, std::string>&
-        variable_2_var_name,
+    const ValueExecutionInfo& value_exec_info,
     std::unordered_map<pir::Value, std::vector<int>>* input_ids) {
   std::unordered_set<pir::Value> inner_outputs;
   for (auto op : (*block)) {
@@ -98,18 +85,14 @@ void GetOutsideOpInputs(
     for (size_t i = 0; i < op->num_operands(); ++i) {
       pir::Value value = op->operand_source(i);
       if (value && (!inner_outputs.count(value))) {
-        PADDLE_ENFORCE_NE(
-            value_2_var_name.find(value),
-            value_2_var_name.end(),
+        PADDLE_ENFORCE_EQ(
+            value_exec_info.HasValue(value),
+            true,
             phi::errors::PreconditionNotMet(
                 "input should in name map, [%d] 'th input of [%s] op",
                 i,
-                "if op"));
-        std::vector<int> inputs_id = GetValueIds(value,
-                                                 inner_scope,
-                                                 value_2_var_name,
-                                                 var_name_2_id,
-                                                 variable_2_var_name);
+                op->name()));
+        std::vector<int> inputs_id = GetValueIds(value, value_exec_info);
 
         input_ids->emplace(value, inputs_id);
       }
@@ -123,7 +106,7 @@ CondInstruction::CondInstruction(
     pir::Operation* op,
     Scope* scope,
     Scope* local_scope,
-    ValueExecutionInfo* parent_exe_info,
+    ValueExecutionInfo* value_exec_info,
     const std::map<pir::Block*, paddle::framework::Scope*>& sub_blocks)
     : InstructionBase(id, place) {
   op_ = op;
@@ -144,11 +127,11 @@ CondInstruction::CondInstruction(
 
   for (size_t i = 0; i < if_op.num_results(); ++i) {
     if_op_outputs_.push_back(inner_scope->GetVar(
-        parent_exe_info->GetValue2VarName().at(if_op.result(i))));
+        value_exec_info->GetValue2VarName().at(if_op.result(i))));
   }
 
   auto cond_value = if_op.operand_source(0);
-  auto var_name = parent_exe_info->GetValue2VarName().at(cond_value);
+  auto var_name = value_exec_info->GetValue2VarName().at(cond_value);
   cond_var = inner_scope->FindVar(var_name);
 
   auto true_branch_block = if_op.true_block();
@@ -163,7 +146,7 @@ CondInstruction::CondInstruction(
                            {},
                            true_branch_block,
                            true_scope,
-                           parent_exe_info->NewChild(true_scope),
+                           value_exec_info->NewChild(true_scope),
                            {});
 
   std::set<std::string> true_skip_gc_names_set;
@@ -179,7 +162,7 @@ CondInstruction::CondInstruction(
                            {},
                            false_branch_block,
                            false_scope,
-                           parent_exe_info->NewChild(false_scope),
+                           value_exec_info->NewChild(false_scope),
                            {});
 
   std::set<std::string> false_skip_gc_names_set;
@@ -192,44 +175,25 @@ CondInstruction::CondInstruction(
   // the true branch and false branch input will be the if_op inputs
 
   std::unordered_map<pir::Value, std::vector<int>> inputs;
-  GetInputIds(op,
-              inner_scope,
-              parent_exe_info->GetValue2VarName(),
-              parent_exe_info->GetVarName2Id(),
-              parent_exe_info->GetVar2VarName(),
-              &inputs);
-  GetOutsideOpInputs(true_branch_block,
-                     inner_scope,
-                     parent_exe_info->GetValue2VarName(),
-                     parent_exe_info->GetVarName2Id(),
-                     parent_exe_info->GetVar2VarName(),
-                     &inputs);
 
-  GetOutsideOpInputs(false_branch_block,
-                     inner_scope,
-                     parent_exe_info->GetValue2VarName(),
-                     parent_exe_info->GetVarName2Id(),
-                     parent_exe_info->GetVar2VarName(),
-                     &inputs);
+  GetInputIds(op, *value_exec_info, &inputs);
+  GetOutsideOpInputs(true_branch_block, *value_exec_info, &inputs);
+  GetOutsideOpInputs(false_branch_block, *value_exec_info, &inputs);
+
   SetInputs(inputs);
 
   std::unordered_map<pir::Value, std::vector<int>> outputs;
   for (size_t i = 0; i < op->num_results(); i++) {
     pir::Value value = op->result(i);
     if (value && value.type()) {
-      PADDLE_ENFORCE_NE(
-          parent_exe_info->GetValue2VarName().find(value),
-          parent_exe_info->GetValue2VarName().end(),
+      PADDLE_ENFORCE_EQ(
+          value_exec_info->HasValue(value),
+          true,
           phi::errors::PreconditionNotMet(
               "input should in name map, [%d] 'th input of [%s] op",
               i,
               "if op"));
-      std::vector<int> outputs_id =
-          GetValueIds(value,
-                      inner_scope,
-                      parent_exe_info->GetValue2VarName(),
-                      parent_exe_info->GetVarName2Id(),
-                      parent_exe_info->GetVar2VarName());
+      std::vector<int> outputs_id = GetValueIds(value, *value_exec_info);
       outputs.emplace(value, outputs_id);
     }
   }
@@ -247,6 +211,7 @@ void CondInstruction::CopyBranchOutput(
 }
 
 void CondInstruction::Run() {
+  DeviceContext().Wait();
   if (cond_var->Get<phi::DenseTensor>().data<bool>()[0]) {
     true_branch_inter->Run({}, false);
     CopyBranchOutput(true_skip_gc_names_, true_branch_inter);
