@@ -27,160 +27,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-
-class FlattenOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Flatten");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Flatten");
-    const auto &axis = ctx->Attrs().Get<int>("axis");
-    const auto &in_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_GE(axis,
-                      0,
-                      platform::errors::InvalidArgument(
-                          "The axis should be greater than or equal to 0."));
-    if (in_dims.size() > 0) {
-      PADDLE_ENFORCE_LE(
-          axis,
-          in_dims.size(),
-          platform::errors::InvalidArgument(
-              "The axis should be less than or equal to input tensor's rank."));
-    }
-
-    const auto &out_dims = GetOutputShape(axis, in_dims);
-    ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
-    if (in_dims[0] == out_dims[0]) {
-      // Only pass LoD when the first dimension of output and Input(X)
-      // are the same.
-      ctx->ShareLoD("X", "Out");
-    }
-  }
-
-  static std::vector<int32_t> GetOutputShape(const int axis,
-                                             const framework::DDim &in_dims) {
-    if (in_dims.size() == 0) {
-      return {1};
-    }
-
-    int64_t outer = 1, inner = 1;
-    for (int i = 0; i < in_dims.size(); ++i) {
-      if (i < axis) {
-        if (in_dims[i] == -1 || outer == -1) {
-          outer = -1;
-        } else {
-          outer *= in_dims[i];
-        }
-      } else {
-        if (in_dims[i] == -1 || inner == -1) {
-          inner = -1;
-        } else {
-          inner *= in_dims[i];
-        }
-      }
-    }
-    std::vector<int32_t> out_shape(2);
-    out_shape[0] = static_cast<int32_t>(outer);
-    out_shape[1] = static_cast<int32_t>(inner);
-    return out_shape;
-  }
-
- protected:
-  phi::KernelKey GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
-    auto input_data_type =
-        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
-  }
-};
-
-class FlattenOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X", "(Tensor) A tensor of rank >= axis.");
-    AddOutput("Out",
-              "A 2D tensor is reshaped input tensor. The input dimensions"
-              "up to axis are flattened to the outer dimension of the output"
-              "and the remaining input dimensions are flattened into the inner"
-              "dimension of the output.");
-    AddAttr<int>("axis",
-                 "(int)"
-                 "Indicate up to which input dimensions (exclusive) should be"
-                 "flattened to the outer dimension of the output. The value"
-                 "for axis must be in the range [0, R], where R is the rank of"
-                 "the input tensor. When axis = 0, the shape of the output"
-                 "tensor is (1, (d_0 X d_1 ... d_n), where the shape of the"
-                 "input tensor is (d_0, d_1, ... d_n).")
-        .SetDefault(1);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "bfloat16"})
-        .AsExtra();
-    AddComment(R"DOC(
-Flatten Operator
-
-Flattens the input tensor into a 2D matrix.
-
-Examples:
-Case 1:
-  Given
-    X.shape = (3, 100, 100, 4)
-  and
-    axis = 2
-  We get:
-    Out.shape = (3 * 100, 4 * 100)
-
-Case 2:
-  Given
-    X.shape = (3, 100, 100, 4)
-  and
-    axis = 0
-  We get:
-    Out.shape = (1, 3 * 100 * 100 * 4)
-)DOC");
-  }
-};
-
-class FlattenGradOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *context) const override {
-    context->SetOutputDim(framework::GradVarName("X"),
-                          context->GetInputDim("X"));
-    context->ShareLoD("X", framework::GradVarName("X"));
-  }
-
- protected:
-  phi::KernelKey GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
-    auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
-        ctx, framework::GradVarName("Out"));
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
-  }
-};
-
-template <typename T>
-class FlattenGradOpMaker : public framework::SingleGradOpMaker<T> {
- public:
-  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
-  void Apply(GradOpPtr<T> grad_op) const override {
-    grad_op->SetType("flatten_grad");
-    grad_op->SetInput("X", this->Input("X"));
-    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
-    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    grad_op->SetAttrMap(this->Attrs());
-  }
-};
-
 // FIXME(zcd): flatten2 adds an intermediate output(XShape) based on flatten,
 // the XShape is used to carry the shape and lod of X which will be used in
 // flatten_grad, in this way, the framework can reuse the memory of X
@@ -293,17 +139,6 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(FlattenGradNoNeedBufferVarsInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(flatten,
-                  ops::FlattenOp,
-                  ops::FlattenOpMaker,
-                  ops::FlattenGradOpMaker<paddle::framework::OpDesc>,
-                  ops::FlattenGradOpMaker<paddle::imperative::OpBase>,
-                  ops::FlattenOpInplaceInferer);
-REGISTER_OPERATOR(flatten_grad,
-                  ops::FlattenGradOp,
-                  ops::FlattenGradInplaceInferer,
-                  ops::FlattenGradNoNeedBufferVarsInferer);
-
 REGISTER_OPERATOR(flatten2,
                   ops::Flatten2Op,
                   ops::Flatten2OpMaker,
@@ -314,20 +149,6 @@ REGISTER_OPERATOR(flatten2_grad,
                   ops::Flatten2GradOp,
                   ops::FlattenGradInplaceInferer);
 
-REGISTER_OP_CPU_KERNEL(flatten,
-                       ops::FlattenKernel<phi::CPUContext, float>,
-                       ops::FlattenKernel<phi::CPUContext, double>,
-                       ops::FlattenKernel<phi::CPUContext, uint8_t>,
-                       ops::FlattenKernel<phi::CPUContext, int>,
-                       ops::FlattenKernel<phi::CPUContext, int8_t>,
-                       ops::FlattenKernel<phi::CPUContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(flatten_grad,
-                       ops::FlattenGradKernel<phi::CPUContext, float>,
-                       ops::FlattenGradKernel<phi::CPUContext, double>,
-                       ops::FlattenGradKernel<phi::CPUContext, uint8_t>,
-                       ops::FlattenGradKernel<phi::CPUContext, int>,
-                       ops::FlattenGradKernel<phi::CPUContext, int8_t>,
-                       ops::FlattenGradKernel<phi::CPUContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(flatten2,
                        ops::Flatten2Kernel<phi::CPUContext, float>,
                        ops::Flatten2Kernel<phi::CPUContext, double>,

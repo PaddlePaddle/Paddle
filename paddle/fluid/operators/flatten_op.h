@@ -28,65 +28,6 @@ namespace paddle {
 namespace operators {
 
 template <typename DeviceContext, typename T>
-class FlattenKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &context) const override {
-    auto *in = context.Input<phi::DenseTensor>("X");
-    auto *out = context.Output<phi::DenseTensor>("Out");
-
-    auto &axes = context.Attr<int>("axis");
-    auto x_dims = in->dims();
-    auto out_dims = phi::make_ddim(GetOutputShape(axes, x_dims));
-
-    out->mutable_data(context.GetPlace(), in->type());
-    framework::TensorCopy(
-        *in,
-        context.GetPlace(),
-        context.template device_context<platform::DeviceContext>(),
-        out);
-    out->Resize(out_dims);
-  }
-
-  static std::vector<int32_t> GetOutputShape(const int axis,
-                                             const framework::DDim &in_dims) {
-    if (in_dims.size() == 0) {
-      return {1};
-    }
-
-    int64_t outer = 1, inner = 1;
-    for (int i = 0; i < in_dims.size(); ++i) {
-      if (i < axis) {
-        outer *= in_dims[i];
-      } else {
-        inner *= in_dims[i];
-      }
-    }
-    std::vector<int32_t> out_shape(2);
-    out_shape[0] = outer;
-    out_shape[1] = inner;
-    return out_shape;
-  }
-};
-
-template <typename DeviceContext, typename T>
-class FlattenGradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
-    auto *d_out = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto in_dims = ctx.Input<phi::DenseTensor>("X")->dims();
-
-    d_x->mutable_data(ctx.GetPlace(), d_out->type());
-    framework::TensorCopy(
-        *d_out,
-        ctx.GetPlace(),
-        ctx.template device_context<platform::DeviceContext>(),
-        d_x);
-    d_x->Resize(in_dims);
-  }
-};
-
-template <typename DeviceContext, typename T>
 class Flatten2Kernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
