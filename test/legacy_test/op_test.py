@@ -3668,7 +3668,7 @@ class OpTest(unittest.TestCase):
                     )
                 fetch_list = list(grad_inputs)
                 # executor run
-                executor = paddle.static.Executor(place)
+                executor = paddle.static.Executor()
                 outs = executor.run(
                     ir_program,
                     feed=feed,

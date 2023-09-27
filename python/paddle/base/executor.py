@@ -1085,7 +1085,7 @@ class Executor:
 
     def __init__(self, place=None):
         if place is None:
-            expected_place = framework._current_expected_place()
+            expected_place = framework._current_expected_place_()
             self.place = expected_place
         else:
             self.place = framework._get_paddle_place(place)
