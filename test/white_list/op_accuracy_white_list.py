@@ -39,6 +39,7 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'l1_norm',
     'log_loss',
     'logit',
+    'lrn',
     'margin_rank_loss',
     'match_matrix_tensor',
     'matmul',

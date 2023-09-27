@@ -1723,6 +1723,11 @@
   outputs :
     out : Out
 
+- op : lrn
+  backward : lrn_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool is_test = false]
+
 - op : lstsq
   inputs :
     {x : X, y : Y}

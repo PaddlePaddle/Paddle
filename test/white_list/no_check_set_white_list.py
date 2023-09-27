@@ -18,6 +18,7 @@ no_check_set_white_list = [
     'coalesce_tensor',
     'flatten2',
     'flatten_contiguous_range',
+    'lrn',
     'squeeze2',
     'reshape2',
     'transpose2',
