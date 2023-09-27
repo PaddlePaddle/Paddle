@@ -1926,7 +1926,6 @@
     param : [index, updates, out_grad]
   kernel :
     func : scatter_grad
-  # no_need_buffer : updates
   composite: scatter_grad(x, index, updates, out, out_grad, overwrite, axis, reduce, include_self, x_grad, updates_grad)
 
 - backward_op : scatter_nd_add_grad

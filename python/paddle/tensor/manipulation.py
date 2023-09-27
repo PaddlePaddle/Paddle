@@ -2873,31 +2873,6 @@ def scatter(
     """
     **Scatter Layer**
     Output is obtained by updating the input on selected indices based on updates.
-
-    .. code-block:: python
-        :name: code-example1
-
-        import paddle
-        #input:
-        x = paddle.to_tensor([[1, 1], [2, 2], [3, 3]], dtype='float32')
-        index = paddle.to_tensor([2, 1, 0, 1], dtype='int64')
-        # shape of updates should be the same as x
-        # shape of updates with dim > 1 should be the same as input
-        updates = paddle.to_tensor([[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32')
-        overwrite = False
-        # calculation:
-        if not overwrite:
-            for i in range(len(index)):
-                x[index[i]] = paddle.zeros([2])
-        for i in range(len(index)):
-            if (overwrite):
-                x[index[i]] = updates[i]
-            else:
-                x[index[i]] += updates[i]
-        # output:
-        out = paddle.to_tensor([[3, 3], [6, 6], [1, 1]])
-        out.shape # [3, 2]
-
     **NOTICE**: The order in which updates are applied is nondeterministic,
     so the output will be nondeterministic if index contains duplicates.
 
@@ -2917,31 +2892,23 @@ def scatter(
     Examples:
         .. code-block:: python
 
-            import paddle
-
-            x = paddle.to_tensor([[1, 1], [2, 2], [3, 3]], dtype='float32')
-            index = paddle.to_tensor([2, 1, 0, 1], dtype='int64')
-            updates = paddle.to_tensor([[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32')
-
-            output1 = paddle.scatter(x, index, updates, overwrite=False)
-            # [[3., 3.],
-            #  [6., 6.],
-            #  [1., 1.]]
-
-            output2 = paddle.scatter(x, index, updates, overwrite=True)
-            # CPU device:
-            # [[3., 3.],
-            #  [4., 4.],
-            #  [1., 1.]]
-            # GPU device maybe have two results because of the repeated numbers in index
-            # result 1:
-            # [[3., 3.],
-            #  [4., 4.],
-            #  [1., 1.]]
-            # result 2:
-            # [[3., 3.],
-            #  [2., 2.],
-            #  [1., 1.]]
+            >>> import paddle
+            >>>
+            >>> x = paddle.to_tensor([[1, 1], [2, 2], [3, 3]], dtype='float32')
+            >>> index = paddle.to_tensor([2, 1, 0, 1], dtype='int64')
+            >>> updates = paddle.to_tensor([[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32')
+            >>> output1 = paddle.scatter(x, index, updates, overwrite=False)
+            >>> print(output1)
+            Tensor(shape=[3, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                [[3., 3.],
+                [6., 6.],
+                [1., 1.]])
+            >>> output2 = paddle.scatter(x, index, updates, overwrite=True)
+            >>> print(output2)
+            Tensor(shape=[3, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                [[3., 3.],
+                [2., 2.],
+                [1., 1.]])
     """
     if in_dynamic_mode():
         return _C_ops.scatter(

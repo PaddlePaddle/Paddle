@@ -262,6 +262,32 @@ void ScatterKernel(const Context& ctx,
           "but desires to be add, mul, multiply, mean, amin, amax.",
           reduce));
 
+  PADDLE_ENFORCE_EQ(
+      index.dims().size() == 1,
+      true,
+      phi::errors::InvalidArgument("index.dims().size() should be 1 in "
+                                   "scatter_op. But received value is [%d]",
+                                   index.dims().size()));
+
+  auto src_dims = updates.dims();
+  auto dst_dims = out->dims();
+
+  if (index.dims().size() != 0) {
+    // check src shape and dst shape should match
+    for (int i = 1; i < src_dims.size(); i++)
+      PADDLE_ENFORCE_EQ(
+          src_dims[i],
+          dst_dims[i],
+          phi::errors::InvalidArgument(
+              "The dimensions of the source tensor and target tensor should"
+              " match, but received source tensor's %d-th dimension is %d,"
+              "target tensor's %d-th dimension is %d.",
+              i,
+              src_dims[i],
+              i,
+              dst_dims[i]));
+  }
+
   auto input_dim = x.dims();
   axis = axis >= 0 ? axis : axis + input_dim.size();
   int index_size = index.dims().size();
