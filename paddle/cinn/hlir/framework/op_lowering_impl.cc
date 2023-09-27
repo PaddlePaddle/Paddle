@@ -487,7 +487,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
 
   */
   ast_gen_ius::TensorGroup tensor_group =
-      ConvertStageMapToTensorGroup(tmp_stages, *tensor_map);
+      ast_gen_ius::ConvertStageMapToTensorGroup(tmp_stages);
   std::vector<ir::LoweredFunc> funcs = lang::LowerToAstVec(
       "fn_" + node->id(), *op_func_arg_tensors, {&tensor_group}, this->target_);
 

@@ -24,6 +24,7 @@
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/poly/stage.h"
 
 namespace cinn {
 namespace ast_gen_ius {
@@ -128,6 +129,8 @@ class TensorGroup {
    */
   std::unordered_map<std::string, std::string> share_memory_tensor_;
 };
+
+TensorGroup ConvertStageMapToTensorGroup(const poly::StageMap& stage_map);
 
 }  // namespace ast_gen_ius
 }  // namespace cinn

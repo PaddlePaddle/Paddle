@@ -87,13 +87,21 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     Expr init_body = ir::Store::Make(init_tensor, init_value, axis_exprs);
     // create schedule block itervars, i0,i1...
     std::vector<ir::Var> block_vars;
+    std::vector<ir::Expr> iter_values;
+    // reduce body and reduce init schedule block should have different objects
+    // for same axis so we re-create objects
+    std::vector<Var> axis_vars = common::GenDefaultAxis(axis_len);
     for (int i = 0; i < shape.size(); ++i) {
-      block_vars.push_back(Var(
-          Expr(0), shape[i], cinn::UniqName("i" + std::to_string(i)), false));
+      block_vars.push_back(Var(Expr(0),
+                               shape[i],
+                               cinn::UniqName("i" + std::to_string(i)),
+                               /*is_reduce = */ false));
       optim::ReplaceVarWithExpr(&init_body, axis[i], block_vars[i]);
+      axis_vars[i]->is_reduce_axis = false;
+      iter_values.push_back(axis_vars[i]);
     }
     init_body = ir::ScheduleBlockRealize::Make(
-        axis_exprs,
+        iter_values,
         ir::ScheduleBlock::Make(
             block_vars, {}, {}, reduce_init_name, init_body));
 
@@ -102,16 +110,30 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     ir::Expr reduce_body =
         ConvertReduceBody(tensor->body(), tensor, axis_exprs);
     // create schedule block itervars, i0,i1...
-    std::vector<ir::Var> reduce_block_vars(block_vars);
-    std::vector<ir::Expr> reduce_block_exprs(axis_exprs);
+    std::vector<ir::Var> reduce_block_vars;
+    std::vector<ir::Expr> reduce_iter_values;
+    // reduce body and reduce init schedule block should have different objects
+    // for same axis so we re-create objects
+    std::vector<Var> reduce_axis_vars =
+        common::GenDefaultAxis(axis_len + reduce_axis.size());
+    for (int i = 0; i < shape.size(); ++i) {
+      reduce_block_vars.push_back(Var(Expr(0),
+                                      shape[i],
+                                      cinn::UniqName("i" + std::to_string(i)),
+                                      /*is_reduce = */ false));
+      reduce_axis_vars[i]->is_reduce_axis = false;
+      reduce_iter_values.push_back(reduce_axis_vars[i]);
+    }
     for (int i = 0; i < reduce_axis.size(); ++i) {
-      int count = reduce_block_vars.size() + i;
+      int count = shape.size() + i;
       reduce_block_vars.push_back(
           Var(reduce_axis[i]->lower_bound,
               reduce_axis[i]->upper_bound,
               cinn::UniqName("i" + std::to_string(count)),
-              false));
-      reduce_block_exprs.push_back(reduce_axis[i]);
+              /*is_reduce = */ true));
+      ir::Var reduce_axis_var = reduce_axis[i];
+      reduce_axis_var->is_reduce_axis = true;
+      reduce_iter_values.push_back(reduce_axis_var);
     }
     for (int i = 0; i < axis.size(); ++i) {
       optim::ReplaceVarWithExpr(&reduce_body, axis[i], reduce_block_vars[i]);
@@ -122,7 +144,7 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     }
 
     reduce_body = ir::ScheduleBlockRealize::Make(
-        reduce_block_exprs,
+        reduce_iter_values,
         ir::ScheduleBlock::Make(
             reduce_block_vars, {}, {}, tensor->name, reduce_body));
     for (int i = static_cast<int>(reduce_axis.size()) - 1; i >= 0; --i) {
