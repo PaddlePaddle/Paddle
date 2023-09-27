@@ -1261,8 +1261,8 @@ void PrintValuesAndVariables(
     const std::unordered_map<pir::Value, std::string>& value_2_var_name,
     const std::unordered_map<const paddle::framework::Variable*, std::string>&
         variable_2_var_name) {
-  std::stringstream ss;
   for (const auto& op : block) {
+    std::stringstream ss;
     VLOG(6) << "-----------------------------";
     op->Print(ss);
     VLOG(6) << ss.str();
