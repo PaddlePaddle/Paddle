@@ -3796,6 +3796,6 @@ def vdot(x, y, name=None):
     )
 
     if paddle.is_complex(x):
-        return paddle.sum(paddle.conj(x), y)
+        return paddle.dot(paddle.conj(x), y)
     else:
-        return paddle.sum(x, y)
+        return paddle.dot(x, y)
