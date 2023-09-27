@@ -774,7 +774,7 @@ def relu(x, name=None):
 def relu_(x, name=None):
     """
     Inplace version of ``relu`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_nn_ReLU`.
+    Please refer to :ref:`api_paddle_nn_functional_relu`.
     """
     return _C_ops.relu_(x)
 
