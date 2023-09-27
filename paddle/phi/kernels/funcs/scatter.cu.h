@@ -30,7 +30,8 @@ __global__ void ScatterInitCUDAKernel(const IndexT* indices,
                                       T* output,
                                       size_t output_count,
                                       size_t index_size,
-                                      size_t slice_size int init_val) {
+                                      size_t slice_size,
+                                      int init_val) {
   CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size, int64_t) {
     int64_t indices_i = i / slice_size;
     int64_t slice_i = i - indices_i * slice_size;  // offset inside the slice
