@@ -32,6 +32,8 @@ VarDesc::VarDesc(const VarDesc &other)
   need_updated_ = true;
 }
 
+VarDesc::~VarDesc() = default;
+
 VarDesc::VarDesc(const proto::VarDesc &desc) : desc_(desc) {
   // Restore attrs_ for auto parallel
   for (const proto::VarDesc::Attr &attr : desc_.attrs()) {

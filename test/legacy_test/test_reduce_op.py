@@ -288,6 +288,7 @@ class TestMaxOp(OpTest):
             'Out',
             check_prim=True,
             only_check_prim=True,
+            check_new_ir=True,
         )
 
 
@@ -322,6 +323,7 @@ class TestMaxOp_ZeroDim(OpTest):
             'Out',
             check_prim=True,
             only_check_prim=True,
+            check_new_ir=True,
         )
 
 
@@ -375,6 +377,7 @@ class TestMaxFP32Op(OpTest):
             'Out',
             check_prim=True,
             only_check_prim=True,
+            check_new_ir=True,
         )
 
     def init_dtype(self):
@@ -410,6 +413,7 @@ class TestMaxBF16Op(TestMaxFP32Op):
             'Out',
             check_prim=True,
             only_check_prim=True,
+            check_new_ir=True,
         )
 
 
@@ -1308,6 +1312,7 @@ class TestReduceMaxOpMultiAxises(OpTest):
             'Out',
             check_prim=True,
             only_check_prim=True,
+            check_new_ir=True,
         )
 
 

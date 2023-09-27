@@ -2088,7 +2088,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   std::string fwd_record_event_str = paddle::string::Sprintf(
       DYGRAPH_FUNCTION_EVENT_RECORD_FUNCTION_TEMPLATE, event_name);
   const char* FWD_FUNCTION_TEMPLATE =
-      "%s %s(%s) {\n\n"
+      "TEST_API %s %s(%s) {\n\n"
       "%s\n"
       "%s\n"
       "}\n\n";
@@ -2101,7 +2101,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
                               generated_function_body);
 
   // [Generation] Generate forward functions header
-  const char* FWD_HEADER_TEMPLATE = "%s %s(%s);\n";
+  const char* FWD_HEADER_TEMPLATE = "TEST_API %s %s(%s);\n";
   std::string dygraph_function_declaration_str =
       paddle::string::Sprintf(FWD_HEADER_TEMPLATE,
                               function_proto_return_type_str,

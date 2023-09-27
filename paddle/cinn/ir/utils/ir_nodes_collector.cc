@@ -15,8 +15,8 @@
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
 #include <glog/logging.h>
 
-#include "paddle/cinn/ir/utils/ir_mutator.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
 
 namespace cinn {
 namespace ir {
