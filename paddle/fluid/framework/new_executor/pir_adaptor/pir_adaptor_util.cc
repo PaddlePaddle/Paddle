@@ -339,7 +339,7 @@ void CheckInputVars(pir::Operation* op,
     for (size_t i = 0; i < input_num; ++i) {
       auto value = op->operand_source(i);
       if (IsInvalid(value)) {
-        PADDLE_ENFORCE_NE(
+        PADDLE_ENFORCE_EQ(
             execution_info->HasValue(value),
             true,
             phi::errors::PreconditionNotMet(
