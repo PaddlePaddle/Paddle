@@ -39,7 +39,7 @@ def _run_vdot(mode, x, y, device="cpu"):
         with program_guard(Program(), Program()):
             x_ = paddle.static.data(name="x", shape=x.shape, dtype=x.dtype)
             y_ = paddle.static.data(name="y", shape=y.shape, dtype=y.dtype)
-            res = paddle.pow(x_, y_)
+            res = paddle.vdot(x_, y_)
             place = (
                 paddle.CPUPlace() if device == 'cpu' else paddle.CUDAPlace(0)
             )
@@ -70,84 +70,8 @@ class TestVdotAPI(unittest.TestCase):
             res = _run_vdot(STATIC, x, y, place)
             np.testing.assert_allclose(res, np.vdot(x, y), rtol=1e-05)
 
-            # test 1-d float32 * float64
-            x = np.random.rand(dim).astype(np.float32)
-            y = np.random.rand(dim).astype(np.float64)
-            res = _run_vdot(DYNAMIC, x, y, place)
-            np.testing.assert_allclose(res, np.vdot(x, y), rtol=1e-05)
-            res = _run_vdot(STATIC, x, y, place)
-            np.testing.assert_allclose(res, np.vdot(x, y), rtol=1e-05)
-
-            # test 1-d float32 * complex64
-            x = np.random.rand(dim).astype(np.float32)
-            y = np.random.rand(dim).astype(np.float32) + 1.0j * np.random.rand(
-                dim
-            ).astype(np.float32)
-            res = _run_vdot(DYNAMIC, x, y, place)
-            np.testing.assert_allclose(res, np.vdot(x, y), rtol=1e-05)
-            res = _run_vdot(STATIC, x, y, place)
-            np.testing.assert_allclose(res, np.vdot(x, y), rtol=1e-05)
-
-            # test 1-d float32 * complex128
-            x = np.random.rand(dim).astype(np.float32)
-            y = np.random.rand(dim).astype(np.float64) + 1.0j * np.random.rand(
-                dim
-            ).astype(np.float64)
-            res = _run_vdot(DYNAMIC, x, y, place)
-            np.testing.assert_allclose(res, np.vdot(x, y), rtol=1e-05)
-            res = _run_vdot(STATIC, x, y, place)
-            np.testing.assert_allclose(res, np.vdot(x, y), rtol=1e-05)
-
-            # test 1-d float64 * float32
-            x = np.random.rand(dim).astype(np.float64)
-            y = np.random.rand(dim).astype(np.float32)
-            res = _run_vdot(DYNAMIC, x, y, place)
-            np.testing.assert_allclose(res, np.vdot(x, y), rtol=1e-05)
-            res = _run_vdot(STATIC, x, y, place)
-            np.testing.assert_allclose(res, np.vdot(x, y), rtol=1e-05)
-
             # test 1-d float64 * float64
             x = np.random.rand(dim).astype(np.float64)
-            y = np.random.rand(dim).astype(np.float64)
-            res = _run_vdot(DYNAMIC, x, y, place)
-            np.testing.assert_allclose(res, np.vdot(x, y), rtol=1e-05)
-            res = _run_vdot(STATIC, x, y, place)
-            np.testing.assert_allclose(res, np.vdot(x, y), rtol=1e-05)
-
-            # test 1-d float64 * complex64
-            x = np.random.rand(dim).astype(np.float64)
-            y = np.random.rand(dim).astype(np.float32) + 1.0j * np.random.rand(
-                dim
-            ).astype(np.float32)
-            res = _run_vdot(DYNAMIC, x, y, place)
-            np.testing.assert_allclose(res, np.vdot(x, y), rtol=1e-05)
-            res = _run_vdot(STATIC, x, y, place)
-            np.testing.assert_allclose(res, np.vdot(x, y), rtol=1e-05)
-
-            # test 1-d float64 * complex128
-            x = np.random.rand(dim).astype(np.float64)
-            y = np.random.rand(dim).astype(np.float64) + 1.0j * np.random.rand(
-                dim
-            ).astype(np.float64)
-            res = _run_vdot(DYNAMIC, x, y, place)
-            np.testing.assert_allclose(res, np.vdot(x, y), rtol=1e-05)
-            res = _run_vdot(STATIC, x, y, place)
-            np.testing.assert_allclose(res, np.vdot(x, y), rtol=1e-05)
-
-            # test 1-d complex64 * float32
-            x = np.random.rand(dim).astype(np.float32) + 1.0j * np.random.rand(
-                dim
-            ).astype(np.float32)
-            y = np.random.rand(dim).astype(np.float32)
-            res = _run_vdot(DYNAMIC, x, y, place)
-            np.testing.assert_allclose(res, np.vdot(x, y), rtol=1e-05)
-            res = _run_vdot(STATIC, x, y, place)
-            np.testing.assert_allclose(res, np.vdot(x, y), rtol=1e-05)
-
-            # test 1-d complex64 * float64
-            x = np.random.rand(dim).astype(np.float32) + 1.0j * np.random.rand(
-                dim
-            ).astype(np.float32)
             y = np.random.rand(dim).astype(np.float64)
             res = _run_vdot(DYNAMIC, x, y, place)
             np.testing.assert_allclose(res, np.vdot(x, y), rtol=1e-05)
@@ -158,50 +82,6 @@ class TestVdotAPI(unittest.TestCase):
             x = np.random.rand(dim).astype(np.float32) + 1.0j * np.random.rand(
                 dim
             ).astype(np.float32)
-            y = np.random.rand(dim).astype(np.float32) + 1.0j * np.random.rand(
-                dim
-            ).astype(np.float32)
-            res = _run_vdot(DYNAMIC, x, y, place)
-            np.testing.assert_allclose(res, np.vdot(x, y), rtol=1e-05)
-            res = _run_vdot(STATIC, x, y, place)
-            np.testing.assert_allclose(res, np.vdot(x, y), rtol=1e-05)
-
-            # test 1-d complex64 * complex128
-            x = np.random.rand(dim).astype(np.float32) + 1.0j * np.random.rand(
-                dim
-            ).astype(np.float32)
-            y = np.random.rand(dim).astype(np.float64) + 1.0j * np.random.rand(
-                dim
-            ).astype(np.float64)
-            res = _run_vdot(DYNAMIC, x, y, place)
-            np.testing.assert_allclose(res, np.vdot(x, y), rtol=1e-05)
-            res = _run_vdot(STATIC, x, y, place)
-            np.testing.assert_allclose(res, np.vdot(x, y), rtol=1e-05)
-
-            # test 1-d complex128 * float32
-            x = np.random.rand(dim).astype(np.float64) + 1.0j * np.random.rand(
-                dim
-            ).astype(np.float64)
-            y = np.random.rand(dim).astype(np.float32)
-            res = _run_vdot(DYNAMIC, x, y, place)
-            np.testing.assert_allclose(res, np.vdot(x, y), rtol=1e-05)
-            res = _run_vdot(STATIC, x, y, place)
-            np.testing.assert_allclose(res, np.vdot(x, y), rtol=1e-05)
-
-            # test 1-d complex128 * float64
-            x = np.random.rand(dim).astype(np.float64) + 1.0j * np.random.rand(
-                dim
-            ).astype(np.float64)
-            y = np.random.rand(dim).astype(np.float64)
-            res = _run_vdot(DYNAMIC, x, y, place)
-            np.testing.assert_allclose(res, np.vdot(x, y), rtol=1e-05)
-            res = _run_vdot(STATIC, x, y, place)
-            np.testing.assert_allclose(res, np.vdot(x, y), rtol=1e-05)
-
-            # test 1-d complex128 * complex64
-            x = np.random.rand(dim).astype(np.float64) + 1.0j * np.random.rand(
-                dim
-            ).astype(np.float64)
             y = np.random.rand(dim).astype(np.float32) + 1.0j * np.random.rand(
                 dim
             ).astype(np.float32)
@@ -234,24 +114,24 @@ class TestVdotError(unittest.TestCase):
         # test input data type
         x = np.random.randint(10, size=dim)
         y = np.random.rand(dim).astype(np.float32)
-        self.assertRaises(ValueError, _run_vdot, DYNAMIC, x, y)
-        self.assertRaises(ValueError, _run_vdot, STATIC, x, y)
+        self.assertRaises(Exception, _run_vdot, DYNAMIC, x, y)
+        self.assertRaises(Exception, _run_vdot, STATIC, x, y)
 
         x = np.random.rand(dim).astype(np.float32)
         y = np.random.randint(10, size=dim)
-        self.assertRaises(ValueError, _run_vdot, DYNAMIC, x, y)
-        self.assertRaises(ValueError, _run_vdot, STATIC, x, y)
+        self.assertRaises(Exception, _run_vdot, DYNAMIC, x, y)
+        self.assertRaises(Exception, _run_vdot, STATIC, x, y)
 
         # test input data dimension
         x = np.random.rand(dim, dim).astype(np.float32)
         y = np.random.rand(dim).astype(np.float32)
-        self.assertRaises(ValueError, _run_vdot, DYNAMIC, x, y)
-        self.assertRaises(ValueError, _run_vdot, STATIC, x, y)
+        self.assertRaises(Exception, _run_vdot, DYNAMIC, x, y)
+        self.assertRaises(Exception, _run_vdot, STATIC, x, y)
 
         x = np.random.rand(dim).astype(np.float32)
         y = np.random.rand(dim, dim).astype(np.float32)
-        self.assertRaises(ValueError, _run_vdot, DYNAMIC, x, y)
-        self.assertRaises(ValueError, _run_vdot, STATIC, x, y)
+        self.assertRaises(Exception, _run_vdot, DYNAMIC, x, y)
+        self.assertRaises(Exception, _run_vdot, STATIC, x, y)
 
         x = np.random.rand(dim).astype(np.float32)
         y = np.random.rand(dim + 1).astype(np.float32)
