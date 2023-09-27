@@ -17,6 +17,7 @@
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/op_base.h"
+#include "paddle/pir/core/op_trait.h"
 #include "paddle/pir/core/operation_utils.h"
 #include "test/cpp/pir/tools/test_interface.h"
 #include "test/cpp/pir/tools/test_trait.h"
@@ -58,7 +59,7 @@ class Operation1 : public pir::Op<Operation1> {
   using Op::Op;
   static const char *name() { return "test.operation1"; }
   static constexpr uint32_t attributes_num = 2;
-  static const char *attributes_name[attributes_num];   // NOLINT
+  static const char *attributes_name[attributes_num];
   static void Build(pir::Builder &builder,              // NOLINT
                     pir::OperationArgument &argument);  // NOLINT
   void Verify() const;
@@ -71,11 +72,33 @@ class Operation2
   using Op::Op;
   static const char *name() { return "test.operation2"; }
   static constexpr uint32_t attributes_num = 0;
-  static constexpr const char **attributes_name = nullptr;  // NOLINT
-  static void Build(pir::Builder &builder,                  // NOLINT
-                    pir::OperationArgument &argument) {}    // NOLINT
+  static constexpr const char **attributes_name = nullptr;
+  static void Build(pir::Builder &builder,                // NOLINT
+                    pir::OperationArgument &argument) {}  // NOLINT
   void Verify() const {}
   static void InferShape() { VLOG(2) << "This is op2's InferShape interface."; }
+};
+
+// Define op3.
+class Operation3
+    : public pir::Op<Operation3,
+                     pir::op_trait::SameOperandsShapeTrait,
+                     pir::op_trait::SameOperandsAndResultShapeTrait,
+                     pir::op_trait::SameOperandsElementTypeTrait,
+                     pir::op_trait::SameOperandsAndResultElementTypeTrait,
+                     pir::op_trait::SameOperandsAndResultTypeTrait,
+                     pir::op_trait::SameTypeOperandsTrait> {
+ public:
+  using Op::Op;
+  static const char *name() { return "test.operation3"; }
+  static constexpr uint32_t attributes_num = 0;
+  static constexpr const char **attributes_name = nullptr;
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value l_operand,
+                    pir::Value r_operand,
+                    pir::Type out_type);
+  void Verify() const {}
 };
 
 }  // namespace test
@@ -84,3 +107,4 @@ IR_DECLARE_EXPLICIT_TYPE_ID(test::RegionOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(test::BranchOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(test::Operation1)
 IR_DECLARE_EXPLICIT_TYPE_ID(test::Operation2)
+IR_DECLARE_EXPLICIT_TYPE_ID(test::Operation3)

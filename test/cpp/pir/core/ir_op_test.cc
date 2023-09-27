@@ -15,6 +15,8 @@
 #include <gtest/gtest.h>
 #include <sstream>
 
+#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/phi/core/tensor_meta.h"
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/builtin_attribute.h"
@@ -41,6 +43,27 @@ pir::AttributeMap CreateAttributeMap(
         std::pair<std::string, pir::Attribute>(attribute_names[i], attr_value));
   }
   return attr_map;
+}
+
+pir::Operation *CreateDenseTensorOp(
+    pir::IrContext *ctx,
+    const phi::DDim &dims,
+    const std::vector<std::string> &attribute_names,
+    const std::vector<std::string> &attributes,
+    const pir::Type &dtype =
+        pir::Float32Type::get(pir::IrContext::Instance())) {
+  std::vector<pir::Value> op_inputs = {};
+  phi::DataLayout data_layout = phi::DataLayout::NCHW;
+  phi::LoD lod = {{0, 1, 2}};
+  size_t offset = 0;
+  std::vector<pir::Type> op_output_types = {
+      pir::DenseTensorType::get(ctx, dtype, dims, data_layout, lod, offset)};
+  pir::Operation *op =
+      pir::Operation::Create(op_inputs,
+                             CreateAttributeMap(attribute_names, attributes),
+                             op_output_types,
+                             pir::OpInfo());
+  return op;
 }
 
 TEST(op_test, region_test) {
@@ -126,4 +149,42 @@ TEST(op_test, trait_and_interface) {
   pir::OperationArgument argument(&ctx, "test.region");
   argument.num_regions = 2u;
   EXPECT_THROW(builder.Build(argument), pir::IrNotMetException);
+}
+
+TEST(op_test, op_traits_test) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<test::TestDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+
+  pir::Program program(ctx);
+  auto block = program.block();
+  pir::Builder builder(ctx, block);
+
+  pir::Type dtype = pir::Float32Type::get(ctx);
+  phi::DDim dims = {2, 2};
+  phi::DataLayout data_layout = phi::DataLayout::NCHW;
+  phi::LoD lod = {{0, 1, 2}};
+  size_t offset = 0;
+
+  pir::DenseTensorType dense_tensor_dtype =
+      pir::DenseTensorType::get(ctx, dtype, dims, data_layout, lod, offset);
+
+  pir::Operation *op1 =
+      CreateDenseTensorOp(ctx, dims, {"op1_temp"}, {"op1_attr"}, dtype);
+  pir::Operation *op2 =
+      CreateDenseTensorOp(ctx, dims, {"op2_temp"}, {"op2_attr"}, dtype);
+
+  auto op3 = builder.Build<test::Operation3>(
+      op1->result(0), op2->result(0), dense_tensor_dtype);
+
+  EXPECT_EQ(op3->HasTrait<pir::op_trait::SameOperandsShapeTrait>(), true);
+  EXPECT_EQ(op3->HasTrait<pir::op_trait::SameOperandsAndResultShapeTrait>(),
+            true);
+  EXPECT_EQ(op3->HasTrait<pir::op_trait::SameOperandsElementTypeTrait>(), true);
+  EXPECT_EQ(
+      op3->HasTrait<pir::op_trait::SameOperandsAndResultElementTypeTrait>(),
+      true);
+  EXPECT_EQ(op3->HasTrait<pir::op_trait::SameOperandsAndResultTypeTrait>(),
+            true);
+  EXPECT_EQ(op3->HasTrait<pir::op_trait::SameTypeOperandsTrait>(), true);
 }

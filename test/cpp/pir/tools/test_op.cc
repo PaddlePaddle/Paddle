@@ -21,8 +21,8 @@ void RegionOp::Build(pir::Builder &builder, pir::OperationArgument &argument) {
   argument.num_regions = 1;
 }
 
-void BranchOp::Build(pir::Builder &builder,  // NOLINT
-                     pir::OperationArgument &argument,
+void BranchOp::Build(pir::Builder &builder,             // NOLINT
+                     pir::OperationArgument &argument,  // NOLINT
                      const std::vector<pir::OpResult> &target_operands,
                      pir::Block *target) {
   argument.AddInputs(target_operands.begin(), target_operands.end());
@@ -35,9 +35,7 @@ void BranchOp::Verify() const {
   IR_ENFORCE((*this)->successor(0), "successor[0] can't be nullptr");
 }
 
-const char *Operation1::attributes_name[2] = {  // NOLINT
-    "op1_attr1",
-    "op1_attr2"};
+const char *Operation1::attributes_name[2] = {"op1_attr1", "op1_attr2"};
 
 void Operation1::Build(pir::Builder &builder,               // NOLINT
                        pir::OperationArgument &argument) {  // NOLINT
@@ -58,9 +56,26 @@ void Operation1::Verify() const {
     throw("Type of attribute: parameter_name is not right.");
   }
 }
+
+void Operation3::Build(pir::Builder &builder,             // NOLINT
+                       pir::OperationArgument &argument,  // NOLINT
+                       pir::Value l_operand,
+                       pir::Value r_operand,
+                       pir::Type out_type) {
+  std::unordered_map<std::string, pir::Attribute> attributes{
+      {"op3_attr1", builder.str_attr("op3_attr2")},
+      {"op3_attr2", builder.str_attr("op3_attr2")}};
+
+  argument.AddAttributes(attributes);
+  argument.AddInput(l_operand);
+  argument.AddInput(r_operand);
+  argument.AddOutput(out_type);
+}
+
 }  // namespace test
 
 IR_DEFINE_EXPLICIT_TYPE_ID(test::RegionOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(test::BranchOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(test::Operation1)
 IR_DEFINE_EXPLICIT_TYPE_ID(test::Operation2)
+IR_DEFINE_EXPLICIT_TYPE_ID(test::Operation3)

@@ -25,6 +25,7 @@ Type GetElementTypeOrSelf(Type type) {
 
 bool VerifyCompatibleShape(phi::DDim shape1, phi::DDim shape2) {
   if (shape1.size() != shape2.size()) return false;
+
   for (auto dim1 : phi::vectorize(shape1)) {
     for (auto dim2 : phi::vectorize(shape2)) {
       if (!ShapedTypeInterface::IsDynamic(dim1) &&
@@ -40,7 +41,9 @@ bool VerifyCompatibleShape(Type type1, Type type2) {
   auto sType2 = type2.dyn_cast<ShapedTypeInterface>();
 
   // Either both or neither type should be shaped.
-  if ((sType1 && sType2) || (!sType1 && !sType2)) return false;
+  if (!sType1) return !sType2;
+  if (!sType1) return false;
+
   if (!sType1.HasRank() || !sType2.HasRank()) return true;
 
   return VerifyCompatibleShape(sType1.GetShape(), sType2.GetShape());
@@ -83,9 +86,10 @@ bool VerifyCompatibleShapes(std::vector<Type> types) {
                    shaped_type_interfaces.end(),
                    [](auto t) { return t; }))
     return true;
-  if (std::all_of(shaped_type_interfaces.begin(),
-                  shaped_type_interfaces.end(),
-                  [](auto t) { return t; }))
+
+  if (!std::all_of(shaped_type_interfaces.begin(),
+                   shaped_type_interfaces.end(),
+                   [](auto t) { return t; }))
     return false;
 
   // Remove all unranked shapes
@@ -100,7 +104,8 @@ bool VerifyCompatibleShapes(std::vector<Type> types) {
   if (shapes.empty()) return true;
 
   // All ranks should be equal
-  auto firstRank = shapes.front().GetRank();
+  int64_t firstRank = shapes.front().GetRank();
+
   if (std::any_of(shapes.begin(), shapes.end(), [&](auto shape) {
         return firstRank != shape.GetRank();
       }))
@@ -113,7 +118,7 @@ bool VerifyCompatibleShapes(std::vector<Type> types) {
       dims.push_back(shape.GetDimSize(i));
     });
 
-    return VerifyCompatibleDims(dims);
+    if (!VerifyCompatibleDims(dims)) return false;
   }
 
   return true;

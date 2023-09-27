@@ -15,7 +15,8 @@ cc_test_old(
   DEPS
   pir
   gtest
-  test_dialect)
+  test_dialect
+  pd_op_dialect)
 cc_test_old(ir_region_test SRCS ir_region_test.cc DEPS pir gtest)
 cc_test_old(ir_builder_test SRCS ir_builder_test.cc DEPS pir gtest)
 cc_test_old(

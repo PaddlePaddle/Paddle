@@ -16,8 +16,7 @@
 
 #include "paddle/pir/core/op_base.h"
 
-namespace pir {
-namespace op_trait {
+namespace pir::op_trait {
 
 namespace impl {
 void VerifySameOperandsShapeTrait(Operation *op);
@@ -112,8 +111,7 @@ class SameTypeOperandsTrait : public pir::OpTraitBase<SameTypeOperandsTrait> {
   }
 };
 
-}  // namespace op_trait
-}  // namespace pir
+}  // namespace pir::op_trait
 
 IR_DECLARE_EXPLICIT_TYPE_ID(pir::op_trait::SameOperandsShapeTrait)
 IR_DECLARE_EXPLICIT_TYPE_ID(pir::op_trait::SameOperandsAndResultShapeTrait)
