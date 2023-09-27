@@ -881,11 +881,7 @@ def full_like(x, fill_value, dtype=None, name=None):
 
 def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     if in_dynamic_or_pir_mode():
-        place = (
-            _current_expected_place()
-            if not in_pir_mode()
-            else paddle.base.core.Place()
-        )
+        place = _current_expected_place()
         if force_cpu:
             place = core.CPUPlace()
         if isinstance(shape, (list, tuple)):

@@ -476,7 +476,7 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
             True)
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.allclose(x, y, rtol, atol, equal_nan)
     else:
         check_variable_and_dtype(
@@ -533,16 +533,16 @@ def equal(x, y, name=None):
             Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
             [True , False, False])
     """
-    if not isinstance(y, (int, bool, float, Variable)):
+    if not isinstance(y, (int, bool, float, Variable, paddle.pir.OpResult)):
         raise TypeError(
             "Type of input args must be float, bool, int or Tensor, but received type {}".format(
                 type(y)
             )
         )
-    if not isinstance(y, Variable):
+    if not isinstance(y, (Variable, paddle.pir.OpResult)):
         y = full(shape=[], dtype=x.dtype, fill_value=y)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.equal(x, y)
     else:
         check_variable_and_dtype(
@@ -598,7 +598,7 @@ def equal_(x, y, name=None):
                 out_shape, x.shape
             )
         )
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.equal_(x, y)
 
 
