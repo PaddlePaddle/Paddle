@@ -1894,13 +1894,7 @@ class Executor:
                     "Please ensure you create model correctly or you can pass "
                     "the Program or the CompiledProgram manually."
                 )
-            else:
-                error_info = (
-                    "There are no operators in the program to be executed. "
-                    "If you pass Program manually, please use base.program_guard "
-                    "to ensure the current Program is being used."
-                )
-            warnings.warn(error_info)
+                warnings.warn(error_info)
 
         if scope is None:
             scope = global_scope()
