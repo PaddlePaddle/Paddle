@@ -321,7 +321,7 @@ pir::Type BuildOutputType(pir::Type type,
         "BuildOutputType only support DenseTensorType and SelectedRowsType"));
   }
 }
-
+// todo(chenxi67) log:input output
 phi::DataType GetKernelDataTypeByYamlInfo(
     const pir::Operation* op,
     const std::unordered_map<pir::Value, pir::OpResult>& map_value_pair,
@@ -489,6 +489,7 @@ phi::KernelKey GetKernelKey(
     const std::string& kernel_fn_str,
     const std::unordered_map<pir::Value, pir::OpResult>& map_value_pair,
     dialect::OpYamlInfoParser* op_info_parser = nullptr) {
+  // todo 整合3个
   if (op->isa<paddle::dialect::FeedOp>()) {
     // NOTE, for now feed op don't need a kernel, so the data type from Op
     // Result the next op use base program datatype
@@ -542,6 +543,7 @@ phi::KernelKey GetKernelKey(
     if (tensor_input_number == 0 || op->isa<paddle::dialect::Full_Op>()) {
       // all the information have to get from attribute and context
 
+      // TODO(chenxi67) delete
       if (op->isa<paddle::dialect::UniformOp>()) {
         // try to process uniform, use shape to determin backend
         // TODO(phlrain): shuold support other initilize op
@@ -652,7 +654,7 @@ phi::KernelKey GetKernelKey(
   }
 
   phi::KernelKey res(kernel_backend, kernel_layout, kernel_data_type);
-
+  // LoadCombineOp选择结果？
   if (op->isa<paddle::dialect::LoadCombineOp>()) {
     res.set_dtype(phi::DataType::FLOAT32);
   }
@@ -742,6 +744,7 @@ void HandleForSpecialOp(
   }
   std::vector<pir::Value> vec_inputs;
   std::vector<pir::Type> op_output_types;
+
   if (op_item->isa<::pir::CombineOp>()) {
     // Copy op inputs
     std::vector<pir::Type> vec_inner_types;
@@ -763,7 +766,7 @@ void HandleForSpecialOp(
     op_output_types.push_back(t1);
   }
 
-  if (op_item->isa<::pir::SliceOp>()) {
+  if (op_item->isa<::pir::SliceOp>() || op_item->isa<::pir::SplitOp>()) {
     if (op_item->num_operands() > 0) {
       for (size_t i = 0; i < op_item->num_operands(); ++i) {
         auto cur_in = op_item->operand_source(i);
@@ -774,39 +777,20 @@ void HandleForSpecialOp(
         auto new_in = GetNewInput(cur_in, *map_value_pair, i, op_item->name());
         vec_inputs.push_back(new_in);
 
-        if (new_in.type().isa<pir::VectorType>()) {
-          auto vec_types = new_in.type().dyn_cast<pir::VectorType>().data();
-          auto index = op_item->attribute("index")
-                           .dyn_cast<pir::Int32Attribute>()
-                           .data();
-          op_output_types.push_back(vec_types[index]);
+        PADDLE_ENFORCE_EQ(
+            new_in.type().isa<pir::VectorType>(),
+            true,
+            phi::errors::Unimplemented("only support vector type for now"));
+        auto vec_types = new_in.type().dyn_cast<pir::VectorType>().data();
+        if (op_item->isa<::pir::SliceOp>()) {
+          op_output_types.push_back(
+              vec_types[op_item->attribute("index")
+                            .dyn_cast<pir::Int32Attribute>()
+                            .data()]);
         } else {
-          PADDLE_THROW(
-              phi::errors::Unimplemented("only support vector type for now"));
-        }
-      }
-    }
-  }
-
-  if (op_item->isa<::pir::SplitOp>()) {
-    if (op_item->num_operands() > 0) {
-      for (size_t i = 0; i < op_item->num_operands(); ++i) {
-        auto cur_in = op_item->operand_source(i);
-        if (!cur_in) {
-          vec_inputs.emplace_back();
-          continue;
-        }
-        auto new_in = GetNewInput(cur_in, *map_value_pair, i, op_item->name());
-        vec_inputs.push_back(new_in);
-
-        if (new_in.type().isa<pir::VectorType>()) {
-          auto vec_types = new_in.type().dyn_cast<pir::VectorType>().data();
           for (uint64_t idx = 0; idx < vec_types.size(); idx++) {
             op_output_types.push_back(vec_types[idx]);
           }
-        } else {
-          PADDLE_THROW(
-              phi::errors::Unimplemented("only support vector type for now"));
         }
       }
     }
@@ -1270,7 +1254,7 @@ void ProcessBlock(
     std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
     std::unordered_map<pir::Value, pir::OpResult>* map_value_pair) {
   auto skip_feed_names = GetSkipFeedNames(block);
-
+  // todo 梳理是否需要此处逻辑
   for (auto op_item : *block) {
     VLOG(6) << "op name " << op_item->name();
     if ((op_item->isa<paddle::dialect::FeedOp>()) &&
