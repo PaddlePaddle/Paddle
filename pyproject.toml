@@ -109,7 +109,6 @@ ignore = [
     "UP030",
     "C405",
     "B019", # Confirmation required
-    "C411",
     "C416",
     "F821",
     "PLC0414",
