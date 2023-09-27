@@ -2680,14 +2680,14 @@ def unsqueeze(x, axis, name=None):
             >>> # out1, out2, out3 share data with x in dygraph mode
             >>> x[0, 0] = 10.
             >>> print(out1[0, 0, 0])
-            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [10.])
+            Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            10.)
             >>> print(out2[0, 0, 0, 0])
-            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [10.])
+            Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            10.)
             >>> print(out3[0, 0, 0, 0, 0])
-            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [10.])
+            Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            10.)
 
     """
     input = x
