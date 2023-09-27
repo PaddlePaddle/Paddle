@@ -553,9 +553,8 @@ void ReplaceWithGroupOp(pir::Block* block,
   builder.SetInsertionPointAfter(laste_input_op);
   // TODO(Aurelius84): Need confirm how many YieldOps we need.
   std::vector<pir::Type> output_types;
-  std::vector<pir::OpResult> outputs;
-  for (auto& value : AnalysisOutputs(group_ops)) {
-    outputs.emplace_back(value.dyn_cast<pir::OpResult>());
+  std::vector<pir::Value> outputs = AnalysisOutputs(group_ops);
+  for (auto& value : outputs) {
     output_types.emplace_back(value.type());
   }
   // step 2: Replace the old op with GroupOp.
