@@ -213,7 +213,6 @@ HIGH_PARALLEL_JOB_NEW = [
     'test_elementwise_add_bf16_mkldnn_op',
     'test_static_save_load_bf16',
     'test_elementwise_mul_bf16_mkldnn_op',
-    'test_elementwise_tensor_split',
     'test_distributions',
     'operator_exception_test',
     'dropout_op_test',
