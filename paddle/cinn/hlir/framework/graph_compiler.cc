@@ -373,30 +373,13 @@ std::vector<ir::LoweredFunc> GetFuncFromImpl(
   }
 
   poly::StageMap stages = C.back();
-  std::unordered_map<std::string, ir::Tensor> tensor_map;
-  for (const ir::Tensor& t : all_arg_tensors) {
-    tensor_map.insert({t->name, t});
-  }
   std::string func_name_prefix = "fn_";
 
-  // ast_gen_ius::TensorGroup tensor_group =
-  // ast_gen_ius::ConvertStageMapToTensorGroup(stages, tensor_map);
-  // ast_gen_ius::TensorGroup tensor_group(all_arg_tensors);
   ast_gen_ius::TensorGroup tensor_group =
       ast_gen_ius::ConvertStageMapToTensorGroup(stages);
   auto funcs = lang::LowerToAstVec(
       func_name_prefix + node_id, all_arg_tensors, &tensor_group, target);
 
-  /*
-  auto funcs = lang::LowerVec(func_name_prefix + node_id,
-                               stages,
-                               all_arg_tensors,
-                               {},
-                               {},
-                               nullptr,
-                               target,
-                               true);
-  */
   VLOG(4) << "Lower op: " << node_id << ", get " << funcs.size()
           << " LoweredFunc:\n";
   for (auto fun : funcs) {
@@ -447,9 +430,6 @@ std::vector<ir::LoweredFunc> GetFuncFromImpl(
 #ifdef CINN_WITH_CUDA
     optim::OptimizeExprGPU(&(funcs_after_schedule[i]->body));
 #endif
-    // auto temp_buffers = lang::GetTempBuffers(
-    //     all_arg_tensors, stages, funcs_after_schedule[i]->body);
-
     auto temp_buffers = lang::GetTempBuffers(
         all_arg_tensors, tensor_group, funcs_after_schedule[i]->body);
 

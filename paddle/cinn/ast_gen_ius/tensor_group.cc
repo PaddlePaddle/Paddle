@@ -124,9 +124,7 @@ std::vector<ir::Tensor> TensorGroup::GetGenFuncTopoOrder(
   while (!node_set.empty()) {
     const std::string cur = *(node_set.begin());
     node_set.erase(node_set.begin());
-    VLOG(6) << "cur = " << cur;
     if (!input_arg_names.count(cur)) {
-      VLOG(6) << "push_back " << cur;
       ret.push_back(name_to_tensor_[cur]);
     }
 
@@ -230,7 +228,7 @@ void StageMapShareMemory(const poly::StageMap& stages) {
           auto edited_shape = tensor_map[str]->buffer->shape;
           stage.second->tensor()->Bind(tensor_map[str]->buffer);
           tensor_map[str]->buffer->shape = edited_shape;
-          VLOG(3) << "Tensor " << stage.second->tensor()->name
+          VLOG(3) << "Stage Tensor " << stage.second->tensor()->name
                   << " bind buffer to " << tensor_map[str]->name << " , "
                   << tensor_map[str]->buffer->name;
         }
