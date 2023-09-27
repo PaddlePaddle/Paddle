@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <memory>
 
+#include <glog/logging.h>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/fc_op.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
@@ -168,7 +169,10 @@ class FCMKLDNNHandler
                dst_scales.size() * sizeof(float));
       }
     }
-
+    LOG(INFO) << "Before residual:";
+    if (phi::funcs::is_int8<T_in>()) {
+      LOG(INFO) << "This is int8";
+    }
     if (!phi::funcs::is_int8<T_in>() &&
         ctx.HasAttr("fuse_residual_connection") &&
         ctx.Attr<bool>("fuse_residual_connection")) {
