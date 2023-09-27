@@ -94,7 +94,7 @@ class Builder {
   Block *block() const { return block_; }
 
   /// Creates an operation given the fields represented as an OperationState.
-  IR_API Operation *Build(const OperationArgument &argument);
+  IR_API Operation *Build(OperationArgument &&argument);
 
   /// Creates an operation with the given fields.
   IR_API Operation *Build(const std::vector<Value> &inputs,
@@ -107,7 +107,7 @@ class Builder {
   OpTy Build(Args &&...args) {
     OperationArgument argument(context_->GetRegisteredOpInfo(OpTy::name()));
     OpTy::Build(*this, argument, std::forward<Args>(args)...);
-    Operation *op = Build(argument);
+    Operation *op = Build(std::move(argument));
     return OpTy(op);
   }
 
