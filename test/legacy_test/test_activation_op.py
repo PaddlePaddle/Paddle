@@ -2822,7 +2822,13 @@ class TestHardSwish(TestActivation):
         self.public_python_api = paddle.nn.functional.hardswish
 
         np.random.seed(1024)
-        x = np.random.uniform(-6, 6, self.shape).astype(self.dtype)
+        if self.dtype is np.complex64 or self.dtype is np.complex128:
+            x = (
+                np.random.uniform(-6, 6, self.shape)
+                + 1j * np.random.uniform(-6, 6, self.shape)
+            ).astype(self.dtype)
+        else:
+            x = np.random.uniform(-6, 6, self.shape).astype(self.dtype)
         threshold = 6.0
         scale = 6.0
         offset = 3.0
@@ -2846,17 +2852,33 @@ class TestHardSwish(TestActivation):
         self.check_grad(
             ['X'],
             'Out',
-            check_prim=True,
+            check_prim=True
+            if self.dtype not in [np.complex64, np.complex128]
+            else False,
             only_check_prim=self.if_only_check_prim(),
         )
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(
+            check_prim=True
+            if self.dtype not in [np.complex64, np.complex128]
+            else False
+        )
 
 
 class TestHardSwish_ZeroDim(TestHardSwish):
     def init_shape(self):
         self.shape = []
+
+
+class TestHardSwishComplex64(TestHardSwish):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestHardSwishComplex128(TestHardSwish):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestHardswishAPI(unittest.TestCase):

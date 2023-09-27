@@ -1231,12 +1231,13 @@ class ConcreteProgram:
                         raise
 
                 # 3. Gets all ParamBases and buffered VarBases in the function
-                all_parameters_and_buffers = (
-                    ProgramTranslator.get_instance()._params_recorder.pop(
-                        main_program
-                    )
+                from ..newir_dy2static.parameter_recorder import (
+                    _global_parameter_recorder,
                 )
 
+                all_parameters_and_buffers = _global_parameter_recorder.pop(
+                    main_program
+                )
                 if outputs is not None:
                     need_wrap_into_list = (
                         not isinstance(outputs, (tuple, list))

@@ -110,7 +110,7 @@ TEST(kernel_dialect, legacy_op_test) {
                                            "kernel_key",
                                            kernel_key);
 
-  pir::Operation* op = pir::Operation::Create(argument);
+  pir::Operation* op = pir::Operation::Create(std::move(argument));
   EXPECT_EQ("pd_op.kernel_op",
             op->dyn_cast<paddle::dialect::LegacyKernelOp>().op_name());
   EXPECT_EQ("kernel_op",
