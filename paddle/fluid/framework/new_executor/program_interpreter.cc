@@ -1292,9 +1292,10 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
 
     if (var->IsType<phi::DenseTensor>()) {
       TensorRecordStream(*(var->GetMutable<phi::DenseTensor>()));
-    } else if (var->IsType<
-                   operators::reader::
-                       OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {
+    } else if (
+        var->IsType<
+            operators::reader::
+                OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {  // NOLINT
       // do nothing
     } else if (var->IsType<phi::SelectedRows>()) {
       TensorRecordStream(

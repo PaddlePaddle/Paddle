@@ -53,7 +53,11 @@ class TestElementwisePowOp(OpTest):
             )
         else:
             self.check_grad(
-                ['X', 'Y'], 'Out', check_prim=True, check_new_ir=True
+                ['X', 'Y'],
+                'Out',
+                check_prim=True,
+                check_prim_pir=True,
+                check_new_ir=True,
             )
 
 
@@ -190,6 +194,8 @@ class TestElementwisePowOpInt(OpTest):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
+        self.public_python_api = paddle.pow
+        self.prim_op_type = "prim"
 
         self.inputs = {'X': np.asarray([1, 3, 6]), 'Y': np.asarray([1, 1, 1])}
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
@@ -264,6 +270,7 @@ class TestElementwisePowOpFP16(OpTest):
                 self.inputs['X'], self.inputs['Y'], 1 / self.inputs['X'].size
             ),
             check_prim=True,
+            check_prim_pir=True,
             check_new_ir=True,
         )
 
@@ -301,7 +308,7 @@ class TestElementwisePowBF16Op(OpTest):
                 'Out',
                 check_prim=True,
                 only_check_prim=True,
-                check_new_ir=True,
+                check_prim_pir=True,
             )
 
 

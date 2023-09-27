@@ -168,6 +168,7 @@ void FusedMultiTransformerXpuInferMeta(
     const MetaTensor& seq_lengths,
     const MetaTensor& src_mask,
     const MetaTensor& gather_index,
+    const MetaTensor& max_buffer,
     bool pre_layer_norm,
     int rotary_emb_dims,
     float epsilon,

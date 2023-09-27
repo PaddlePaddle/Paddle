@@ -114,8 +114,7 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) {
     os << "(Pointer)" << p.data();
   } else if (auto arr = attr.dyn_cast<ArrayAttribute>()) {
     const auto& vec = arr.AsVector();
-    os << "(Array)"
-       << "[";
+    os << "[";
     PrintInterleave(
         vec.begin(),
         vec.end(),
@@ -315,6 +314,11 @@ void Program::Print(std::ostream& os) const {
 void Operation::Print(std::ostream& os) {
   IrPrinter printer(os);
   printer.PrintOperation(this);
+}
+
+void Value::Print(std::ostream& os) const {
+  IrPrinter printer(os);
+  printer.PrintValue(*this);
 }
 
 void Type::Print(std::ostream& os) const {
