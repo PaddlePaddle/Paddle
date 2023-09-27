@@ -18,8 +18,8 @@
 #include <string>
 
 #include "paddle/cinn/common/graph_utils.h"
+#include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 
 namespace cinn {
@@ -150,7 +150,7 @@ struct TensorInlineExpandMutator : public ir::IRMutator<> {
         }
         ir::IRMutator<>::Visit(&node->tensor, &node->tensor);
         for (int i = 0; i < node->indices.size(); i++) {
-          auto temp = optim::IRCopy(node->indices[i]);
+          auto temp = ir::ir_utils::IRCopy(node->indices[i]);
           ir::IRMutator<>::Visit(&temp, &temp);
           node->indices[i] = temp;
         }
@@ -159,7 +159,7 @@ struct TensorInlineExpandMutator : public ir::IRMutator<> {
       } else {
         ir::IRMutator<>::Visit(&node->tensor, &node->tensor);
         for (int i = 0; i < node->indices.size(); i++) {
-          auto temp = optim::IRCopy(node->indices[i]);
+          auto temp = ir::ir_utils::IRCopy(node->indices[i]);
           ir::IRMutator<>::Visit(&temp, &temp);
           node->indices[i] = temp;
         }
@@ -167,7 +167,7 @@ struct TensorInlineExpandMutator : public ir::IRMutator<> {
     } else {
       ir::IRMutator<>::Visit(&node->tensor, &node->tensor);
       for (int i = 0; i < node->indices.size(); i++) {
-        auto temp = optim::IRCopy(node->indices[i]);
+        auto temp = ir::ir_utils::IRCopy(node->indices[i]);
         ir::IRMutator<>::Visit(&temp, &temp);
         node->indices[i] = temp;
       }

@@ -289,7 +289,7 @@ def _recursive_assert_same_structure(nest1, nest2, check_types):
     if is_sequence_nest1 != is_sequence(nest2):
         raise ValueError(
             "The two structures don't have the same nested structure.\n\n"
-            "First structure: {}\n\nSecond structure: {}.".format(nest1, nest2)
+            f"First structure: {nest1}\n\nSecond structure: {nest2}."
         )
     if not is_sequence_nest1:
         return  # finished checking
@@ -370,10 +370,10 @@ def _is_symmetric_padding(padding, data_dim):
 
 def _contain_var(list_or_tuple):
     """
-    Check whether list or tuple contains variable.
+    Check whether list or tuple contains variable / OpResult.
     """
     for item in list_or_tuple:
-        if isinstance(item, Variable):
+        if isinstance(item, (Variable, paddle.pir.OpResult)):
             return True
     return False
 
@@ -432,13 +432,13 @@ def get_shape_tensor_inputs(inputs, attrs, shape, op_type):
 
 def _convert_to_tensor_list(old_list, dtype="int32"):
     """
-    Converts all elements of a list to Variable.
+    Converts all elements of a list to Variable / OpResult.
     """
     from paddle.tensor import fill_constant
 
     new_list_tensor = []
     for ele in old_list:
-        if isinstance(ele, Variable):
+        if isinstance(ele, (Variable, paddle.pir.OpResult)):
             ele.stop_gradient = True
             new_list_tensor.append(ele)
         else:
@@ -457,8 +457,6 @@ def convert_shape_to_list(shape):
     else:
         if in_dygraph_mode():
             shape = shape.astype(int).tolist()
-        else:
-            shape = [shape]
     return shape
 
 
