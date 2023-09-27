@@ -87,6 +87,7 @@ def init_rpc(name, rank=None, world_size=None, master_endpoint=None):
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle.distributed.rpc as rpc
 
             >>> rpc.init_rpc("worker0", rank=0, world_size=1,
@@ -162,7 +163,7 @@ def rpc_sync(to, fn, args=None, kwargs=None, timeout=_DEFAULT_RPC_TIMEOUT):
     Examples:
         .. code-block:: python
 
-            >>> doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle.distributed.rpc as rpc
 
             >>> def add(a, b):
@@ -204,7 +205,7 @@ def rpc_async(to, fn, args=None, kwargs=None, timeout=_DEFAULT_RPC_TIMEOUT):
     Examples:
         .. code-block:: python
 
-            >>> doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle.distributed.rpc as rpc
 
             >>> def add(a, b):
@@ -286,7 +287,7 @@ def shutdown():
     Examples:
         .. code-block:: python
 
-            >>> doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle.distributed.rpc as rpc
 
             >>> rpc.init_rpc("worker0", rank=0, world_size=1,
@@ -318,7 +319,7 @@ def get_worker_info(name):
     Examples:
         .. code-block:: python
 
-            >>> doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle.distributed.rpc as rpc
             >>> import os
 
@@ -345,7 +346,7 @@ def get_all_worker_infos():
     Examples:
         .. code-block:: python
 
-            >>> doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle.distributed.rpc as rpc
             >>> import os
 
@@ -372,7 +373,7 @@ def get_current_worker_info():
     Examples:
         .. code-block:: python
 
-            >>> doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle.distributed.rpc as rpc
             >>> import os
 
