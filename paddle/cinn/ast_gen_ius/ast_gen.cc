@@ -98,7 +98,11 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
                                /*is_reduce = */ false));
       optim::ReplaceVarWithExpr(&init_body, axis[i], block_vars[i]);
       axis_vars[i]->is_reduce_axis = false;
-      iter_values.push_back(axis_vars[i]);
+      if (shape[i] == Expr(1)) {
+        iter_values.push_back(Expr(0));
+      } else {
+        iter_values.push_back(axis_vars[i]);
+      }
     }
     init_body = ir::ScheduleBlockRealize::Make(
         iter_values,
@@ -121,7 +125,11 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
                                       cinn::UniqName("i" + std::to_string(i)),
                                       /*is_reduce = */ false));
       reduce_axis_vars[i]->is_reduce_axis = false;
-      reduce_iter_values.push_back(reduce_axis_vars[i]);
+      if (shape[i] == Expr(1)) {
+        reduce_iter_values.push_back(Expr(0));
+      } else {
+        reduce_iter_values.push_back(axis_vars[i]);
+      }
     }
     for (int i = 0; i < reduce_axis.size(); ++i) {
       int count = shape.size() + i;
@@ -173,13 +181,21 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     ir::Expr body = ir::Store::Make(tensor, tensor->body(), axis_exprs);
     // create schedule block itervars, i0,i1...
     std::vector<ir::Var> block_vars;
+    std::vector<ir::Expr> iter_values;
+    std::vector<Var> axis_vars = common::GenDefaultAxis(axis_len);
     for (int i = 0; i < shape.size(); ++i) {
       block_vars.push_back(Var(
           Expr(0), shape[i], cinn::UniqName("i" + std::to_string(i)), false));
       optim::ReplaceVarWithExpr(&body, axis[i], block_vars[i]);
+      axis_vars[i]->is_reduce_axis = false;
+      if (shape[i] == Expr(1)) {
+        iter_values.push_back(Expr(0));
+      } else {
+        iter_values.push_back(axis_vars[i]);
+      }
     }
     body = ir::ScheduleBlockRealize::Make(
-        axis_exprs,
+        iter_values,
         ir::ScheduleBlock::Make(block_vars, {}, {}, tensor->name, body));
     for (int i = static_cast<int>(axis_len) - 1; i >= 0; --i) {
       ir::Var loop_var = axis[i];
