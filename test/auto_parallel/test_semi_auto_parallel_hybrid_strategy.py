@@ -19,7 +19,7 @@ import collective.test_communication_api_base as test_base
 
 class TestSemiAutoParallelHybridStrategy(test_base.CommunicationTestDistBase):
     def setUp(self):
-        super().setUp(save_log_dir="/paddle/build", num_of_devices=2, timeout=120, nnode=2)
+        super().setUp(num_of_devices=2, timeout=120, nnode=2)
         self._default_envs = {
             "dtype": "float32",
         }
