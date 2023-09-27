@@ -184,7 +184,7 @@
     func: fused_attention
   infer_meta:
     func: FusedAttentionInferMeta
-  optional: cache_kv, ln_scale, ln_bias, qkv_bias, src_mask, out_linear_bias, ln_scale_2, ln_bias_2
+  optional: cache_kv, ln_scale, ln_bias, qkv_bias, src_mask, out_linear_bias, ln_scale_2, ln_bias_2, ln_mean_2
   backward: fused_attention_grad
 
 - op: fused_feedforward

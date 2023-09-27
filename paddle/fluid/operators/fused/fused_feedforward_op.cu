@@ -249,9 +249,6 @@ void FusedFeedForwardKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(linear1_out, linear1_out->numel() * sizeof(T));
   dev_ctx.template Alloc<T>(dropout1_out, dropout1_out->numel() * sizeof(T));
   dev_ctx.template Alloc<T>(dropout2_out, dropout2_out->numel() * sizeof(T));
-  if (pre_layer_norm && !add_residual) {
-    dropout2_out->ShareDataWith(*out);
-  }
 
   auto x_dim = x_ptr->dims();
   auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(

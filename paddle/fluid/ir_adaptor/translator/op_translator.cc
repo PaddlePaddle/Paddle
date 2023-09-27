@@ -1844,6 +1844,27 @@ struct FusedFeedForwardOpTranscriber : public OpTranscriber {
       (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, -1);
     }
   }
+
+  void RecordOpResultMapping(pir::IrContext* ctx,
+                             TranslationContext* param_map,
+                             const OpDesc& op_desc,
+                             pir::Operation* operation,
+                             const OpOutputMapping& arg_to_idx) override {
+    OpTranscriber::RecordOpResultMapping(
+        ctx, param_map, op_desc, operation, arg_to_idx);
+    if (op_desc.HasOutput("Out")) {
+      const auto& output_vars = op_desc.Output("Out");
+      IR_ENFORCE(output_vars.size() == 1,
+                 "Expected op[%s]'s Out has only 1 var but got %s",
+                 op_desc.Type(),
+                 output_vars.size());
+      auto output_var = output_vars[0];
+      auto fused_feedforward_op =
+          operation->dyn_cast<dialect::FusedFeedforwardOp>();
+      (*param_map)[output_var] =
+          VariableDefiningInfo{fused_feedforward_op.out()};
+    }
+  }
 };
 
 OpTranslator::OpTranslator() {
