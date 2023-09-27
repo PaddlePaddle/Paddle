@@ -7,4 +7,4 @@ endif()
 cc_library(
   primitive_static_utils_experimental
   SRCS static_utils.cc
-  DEPS phi common_infer_shape_functions)
+  DEPS phi common_infer_shape_functions pd_op_dialect_api)

@@ -1046,7 +1046,7 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
                  std::vector<pir::Type> &&output_types) {
   VLOG(4) << "Start build IfOp";
 
-  argument.num_regions = 2;
+  argument.AddRegions(2u);
   argument.AddInput(cond);
   argument.output_types.swap(output_types);
 }

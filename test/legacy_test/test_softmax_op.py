@@ -356,7 +356,9 @@ class TestSoftmaxFP16Op(TestSoftmaxOp):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
+                self.check_output_with_place(
+                    place, atol=1e-3, check_new_ir=True
+                )
 
     # FIXME: If the x_shape is [10, 10], gradient failed.
     def test_check_grad(self):
@@ -383,7 +385,9 @@ class TestSoftmaxFP16CUDNNOp(TestSoftmaxOp):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
+                self.check_output_with_place(
+                    place, atol=1e-3, check_new_ir=True
+                )
 
 
 @unittest.skipIf(
@@ -430,7 +434,10 @@ class TestSoftmaxBF16Op(OpTest):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place(
-            place, check_dygraph=(not self.use_mkldnn), check_prim=True
+            place,
+            check_dygraph=(not self.use_mkldnn),
+            check_prim=True,
+            check_new_ir=(not self.use_mkldnn),
         )
 
     def test_check_grad(self):
@@ -442,6 +449,7 @@ class TestSoftmaxBF16Op(OpTest):
             numeric_grad_delta=0.05,
             check_dygraph=(not self.use_mkldnn),
             check_prim=True,
+            check_new_ir=(not self.use_mkldnn),
         )
 
 

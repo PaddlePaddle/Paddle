@@ -1,4 +1,4 @@
-# Copyright (c) 2021 CINN Authors. All Rights Reserved.
+# Copyright (c) 2023 CINN Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core_api.runtime import (  # noqa: F401
+from cinn.core_api.runtime import (  # noqa: F401
     VoidPointer,
     cinn_arm_device,
     cinn_bool_t,

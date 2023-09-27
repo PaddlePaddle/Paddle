@@ -47,6 +47,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/macros.h"
 #include "paddle/utils/flat_hash_map.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace framework {
@@ -268,7 +269,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
  * should always construct a proto message OpDesc and call
  * OpRegistry::CreateOp(op_desc) to get an Operator instance.
  */
-class OperatorBase {
+class TEST_API OperatorBase {
  public:
   OperatorBase(const std::string& type,
                const VariableNameMap& inputs,
