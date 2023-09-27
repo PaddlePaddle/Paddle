@@ -48,11 +48,13 @@ namespace framework {
 class CondInstruction;
 class ValueExecutionInfo {
  public:
+  friend class CondInstruction;
+
   explicit ValueExecutionInfo(Scope* scope) : scope_(scope) {}
 
   const ValueExecutionInfo* Parent() const { return parent_; }
 
-  Scope* GetScope() { return scope_; }
+  Scope* GetScope() const { return scope_; }
 
   void Add(::pir::Value value, std::string var_name);
 
@@ -62,35 +64,64 @@ class ValueExecutionInfo {
 
   std::string GetNameById(int id) const;
 
-  const std::unordered_map<::pir::Value, std::string>& GetValue2VarName()
-      const {
-    return value_2_var_name_;
-  }
+  const std::unordered_map<::pir::Value, std::string>& GetValue2VarName() const;
 
-  void AddValue2VarName(::pir::Value value, const std::string& var_name) {
-    value_2_var_name_.emplace(value, var_name);
-  }
+  void AddValue2VarName(::pir::Value value, const std::string& var_name);
 
   const std::unordered_map<const paddle::framework::Variable*, std::string>&
-  GetVar2VarName() const {
-    return var_2_var_name_;
-  }
+  GetVar2VarName() const;
 
-  const std::map<std::string, int>& GetVarName2Id() const {
-    return var_name_2_id_;
-  }
+  const std::map<std::string, int>& GetVarName2Id() const;
 
-  const std::unordered_map<int, std::string>& GetId2VarName() const {
-    return id_2_var_name_;
-  }
+  const std::unordered_map<int, std::string>& GetId2VarName() const;
 
-  const std::vector<Variable*>& GetVarList() const { return var_list_; }
+  const std::vector<Variable*>& GetVarList() const;
 
-  void ResetVarList(int id, Variable* var) { var_list_[id] = var; }
+  void ResetVarList(int id, Variable* var);
 
-  friend class CondInstruction;
+  /// Check a value exist in the ValueExecutionInfo or any of its ancestors.
+  bool HasValue(::pir::Value value) const;
+
+  /// Check a value exist in the ValueExecutionInfo.
+  bool HasLocalValue(::pir::Value value) const;
+
+  std::string GetVarName(::pir::Value value) const;
+
+  std::string GetVarName(const Variable* var) const;
+
+  std::string GetLocalVarName(::pir::Value value) const;
+
+  std::string GetLocalVarName(const Variable* var) const;
+
+  int GetVarId(::pir::Value value) const;
+
+  int GetVarId(const Variable* var) const;
+
+  int GetLocalVarId(::pir::Value value) const;
+
+  int GetLocalVarId(const Variable* var) const;
 
  private:
+  bool HasValueInternal(::pir::Value value) const;
+
+  bool HasValueLocally(::pir::Value value) const;
+
+  std::string GetVarNameInternal(::pir::Value value) const;
+
+  std::string GetVarNameLocally(::pir::Value value) const;
+
+  std::string GetVarNameInternal(const Variable* var) const;
+
+  std::string GetVarNameLocally(const Variable* var) const;
+
+  int GetVarIdInternal(::pir::Value value) const;
+
+  int GetVarIdLocally(::pir::Value value) const;
+
+  int GetVarIdInternal(const Variable* var) const;
+
+  int GetVarIdLocally(const Variable* var) const;
+
   std::shared_ptr<ValueExecutionInfo> NewChild(Scope* scope);
 
   ValueExecutionInfo* parent_{nullptr};  // not owned

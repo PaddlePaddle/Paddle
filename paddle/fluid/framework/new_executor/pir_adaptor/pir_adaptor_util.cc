@@ -125,6 +125,160 @@ std::string ValueExecutionInfo::GetNameById(int id) const {
   }
   return "";
 }
+
+const std::unordered_map<::pir::Value, std::string>&
+ValueExecutionInfo::GetValue2VarName() const {
+  return value_2_var_name_;
+}
+
+void ValueExecutionInfo::AddValue2VarName(::pir::Value value,
+                                          const std::string& var_name) {
+  value_2_var_name_.emplace(value, var_name);
+}
+
+const std::unordered_map<const paddle::framework::Variable*, std::string>&
+ValueExecutionInfo::GetVar2VarName() const {
+  return var_2_var_name_;
+}
+
+const std::map<std::string, int>& ValueExecutionInfo::GetVarName2Id() const {
+  return var_name_2_id_;
+}
+
+const std::unordered_map<int, std::string>& ValueExecutionInfo::GetId2VarName()
+    const {
+  return id_2_var_name_;
+}
+
+const std::vector<Variable*>& ValueExecutionInfo::GetVarList() const {
+  return var_list_;
+}
+
+void ValueExecutionInfo::ResetVarList(int id, Variable* var) {
+  var_list_[id] = var;
+}
+
+bool ValueExecutionInfo::HasValue(::pir::Value value) const {
+  return HasValueInternal(value);
+}
+
+bool ValueExecutionInfo::HasLocalValue(::pir::Value value) const {
+  return HasValueLocally(value);
+}
+
+std::string ValueExecutionInfo::GetVarName(::pir::Value value) const {
+  return GetVarNameInternal(value);
+}
+
+std::string ValueExecutionInfo::GetVarName(const Variable* var) const {
+  return GetVarNameInternal(var);
+}
+
+std::string ValueExecutionInfo::GetLocalVarName(::pir::Value value) const {
+  return GetVarNameLocally(value);
+}
+
+std::string ValueExecutionInfo::GetLocalVarName(const Variable* var) const {
+  return GetVarNameLocally(var);
+}
+
+int ValueExecutionInfo::GetVarId(::pir::Value value) const {
+  return GetVarIdInternal(value);
+}
+
+int ValueExecutionInfo::GetVarId(const Variable* var) const {
+  return GetVarIdInternal(var);
+}
+
+int ValueExecutionInfo::GetLocalVarId(::pir::Value value) const {
+  return GetVarIdLocally(value);
+}
+
+int ValueExecutionInfo::GetLocalVarId(const Variable* var) const {
+  return GetVarIdLocally(var);
+}
+
+bool ValueExecutionInfo::HasValueInternal(::pir::Value value) const {
+  if (HasValueLocally(value)) {
+    return true;
+  }
+  return (parent_ == nullptr) ? false : parent_->HasValueInternal(value);
+}
+
+bool ValueExecutionInfo::HasValueLocally(::pir::Value value) const {
+  auto it = value_2_var_name_.find(value);
+  if (it != value_2_var_name_.end()) {
+    return true;
+  }
+  return false;
+}
+
+std::string ValueExecutionInfo::GetVarNameInternal(::pir::Value value) const {
+  auto name = GetVarNameLocally(value);
+  if (name != "") {
+    return name;
+  }
+  return (parent_ == nullptr) ? "" : parent_->GetVarNameInternal(value);
+}
+
+std::string ValueExecutionInfo::GetVarNameLocally(::pir::Value value) const {
+  auto it = value_2_var_name_.find(value);
+  if (it != value_2_var_name_.end()) {
+    return it->second;
+  }
+  return "";
+}
+
+std::string ValueExecutionInfo::GetVarNameInternal(const Variable* var) const {
+  auto name = GetVarNameLocally(var);
+  if (name != "") {
+    return name;
+  }
+  return (parent_ == nullptr) ? "" : parent_->GetVarNameInternal(var);
+}
+
+std::string ValueExecutionInfo::GetVarNameLocally(const Variable* var) const {
+  auto it = var_2_var_name_.find(var);
+  if (it != var_2_var_name_.end()) {
+    return it->second;
+  }
+  return "";
+}
+
+int ValueExecutionInfo::GetVarIdInternal(::pir::Value value) const {
+  auto id = GetVarIdLocally(value);
+  if (id != -1) {
+    return id;
+  }
+  return (parent_ == nullptr) ? -1 : parent_->GetVarIdInternal(value);
+}
+
+int ValueExecutionInfo::GetVarIdLocally(::pir::Value value) const {
+  auto var_name = GetVarNameLocally(value);
+  auto it = var_name_2_id_.find(var_name);
+  if (it != var_name_2_id_.end()) {
+    return it->second;
+  }
+  return -1;
+}
+
+int ValueExecutionInfo::GetVarIdInternal(const Variable* var) const {
+  auto id = GetVarIdLocally(var);
+  if (id != -1) {
+    return id;
+  }
+  return (parent_ == nullptr) ? -1 : parent_->GetVarIdInternal(var);
+}
+
+int ValueExecutionInfo::GetVarIdLocally(const Variable* var) const {
+  auto var_name = GetVarNameLocally(var);
+  auto it = var_name_2_id_.find(var_name);
+  if (it != var_name_2_id_.end()) {
+    return it->second;
+  }
+  return -1;
+}
+
 }  // namespace framework
 }  // namespace paddle
 
