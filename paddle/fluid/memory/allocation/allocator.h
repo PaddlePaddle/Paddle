@@ -151,6 +151,7 @@ static T&& FillValue(T&& allocation) {
           std::memset(
               allocation->ptr(), FLAGS_alloc_fill_value, allocation->size());
         }
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
       }
     }
   }
