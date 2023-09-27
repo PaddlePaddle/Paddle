@@ -26,12 +26,12 @@ class TestGetAllRegisteredOpKernels(unittest.TestCase):
 
     # sign kernel is removed from base and added into phi
     def test_base_kernels(self):
-        self.assertTrue(core._get_all_register_op_kernels('fluid')['reshape'])
+        self.assertTrue(core._get_all_register_op_kernels('fluid')['reshape2'])
         with self.assertRaises(KeyError):
             core._get_all_register_op_kernels('fluid')['sign']
 
     def test_all_kernels(self):
-        self.assertTrue(core._get_all_register_op_kernels('all')['reshape'])
+        self.assertTrue(core._get_all_register_op_kernels('all')['reshape2'])
         self.assertTrue(core._get_all_register_op_kernels('all')['sign'])
 
         self.assertTrue(core._get_all_register_op_kernels()['reshape'])
