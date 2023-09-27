@@ -195,7 +195,10 @@ class TestReduceMeanOp(OpTest):
         else:
             place = paddle.CUDAPlace(0)
             self.check_output_with_place(
-                place=place, check_prim=True, check_new_ir=True
+                place=place,
+                check_prim=True,
+                check_prim_pir=True,
+                check_new_ir=True,
             )
 
     def test_check_grad(self):

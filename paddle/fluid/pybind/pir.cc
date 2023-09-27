@@ -602,6 +602,14 @@ void BindOpResult(py::module *m) {
                return false;
              }
            })
+      .def("is_selected_row_type",
+           [](OpResult &self) {
+             if (self.type().isa<SelectedRowsType>()) {
+               return true;
+             } else {
+               return false;
+             }
+           })
       .def_property(
           "stop_gradient",
           [](OpResult &self) {
@@ -678,7 +686,9 @@ Operation *BuildOpFrom(
   pir::OperationArgument to_create_argument(to_copy_op->info());
   to_create_argument.attributes = to_copy_op->attributes();
 
+  VLOG(6) << "start copy op: " << to_copy_op->name();
   auto origin_results = to_copy_op->results();
+  VLOG(6) << "start translate origin results into op type.";
   std::transform(origin_results.begin(),
                  origin_results.end(),
                  std::back_inserter(to_create_argument.output_types),
@@ -688,6 +698,7 @@ Operation *BuildOpFrom(
                  });
 
   // transform by value_map dict.
+  VLOG(6) << "start create op.";
   auto origin_operands = to_copy_op->operands();
   std::transform(origin_operands.begin(),
                  origin_operands.end(),
@@ -698,8 +709,6 @@ Operation *BuildOpFrom(
                  });
   auto *cloned_op = Operation::Create(std::move(to_create_argument));
 
-  // update the mapping of value_map. std::transform is a map(func,
-  // zip()).
   std::vector<int> tmp;
   std::transform(origin_results.begin(),
                  origin_results.end(),
@@ -742,11 +751,11 @@ void range_block_do(const Block *block, std::vector<int> range, F fn) {
   }
 }
 
-std::vector<pir::Value> AnalysisMiddleVariable(
-    const Program &program,
-    const std::vector<pir::Value> &forward_inputs,
-    const std::vector<int> &forward_range,
-    const std::vector<int> &backward_range) {
+std::pair<std::vector<pir::Value>, std::unordered_set<pir::Value>>
+AnalysisMiddleVariable(const Program &program,
+                       const std::vector<pir::Value> &forward_inputs,
+                       const std::vector<int> &forward_range,
+                       const std::vector<int> &backward_range) {
   std::vector<pir::Value> middle_values;
 
   std::unordered_set<pir::Value> backward_inputs;
@@ -769,7 +778,7 @@ std::vector<pir::Value> AnalysisMiddleVariable(
             middle_values.push_back(v);
         }
       });
-  return middle_values;
+  return std::make_pair(middle_values, backward_inputs);
 }
 
 void mapping_value(const std::vector<pir::Value> &origin,
@@ -780,6 +789,11 @@ void mapping_value(const std::vector<pir::Value> &origin,
                  std::back_inserter(out),
                  [&value_map](const pir::Value &v) {
                    if (v.impl() == nullptr) return Value(nullptr);
+                   if (!value_map.count(v)) {
+                     VLOG(2) << "mapping value found v is not exist. may not "
+                                "used by backward program.";
+                     return Value(nullptr);
+                   }
                    return value_map.at(v);
                  });
 }
@@ -793,18 +807,62 @@ pir::OpResult FakeOpResult() {
   return pir::OpResult(nullptr);
 }
 
+bool IsFakeOpResult(const pir::OpResult &result) {
+  // create a fake opresults to simplify `ForwardBackwardSplit`.
+  return result.Value::impl() == nullptr;
+}
+
+static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
+                                 std::vector<int> range) {
+  // filter no need buffer values.
+  std::unordered_set<::pir::Value> need_buffer_values;
+  std::unordered_set<::pir::Value> no_need_buffer_values;
+  range_block_do(
+      whole_block, range, [&need_buffer_values](::pir::Operation *op) {
+        if (op->HasInterface<paddle::dialect::OpYamlInfoInterface>() == false) {
+          // not a OpYamlInfoInterface, can't have no_need_buffer.
+          for (const auto &operand : op->operands_source()) {
+            need_buffer_values.insert(operand);
+          }
+        } else {
+          auto opinfo =
+              op->dyn_cast<paddle::dialect::OpYamlInfoInterface>().GetOpInfo();
+          int counter = 0;
+          for (const auto &op_input_info : std::get<0>(opinfo)) {
+            if (!op_input_info.no_need_buffer) {
+              need_buffer_values.insert(op->operand_source(counter));
+            }
+            counter += 1;
+          }
+        }
+      });
+  range_block_do(whole_block,
+                 range,
+                 [&need_buffer_values,
+                  &no_need_buffer_values](const ::pir::Operation *op) {
+                   for (const auto &operand : op->operands_source()) {
+                     if (need_buffer_values.count(operand) == 0) {
+                       no_need_buffer_values.insert(operand);
+                     }
+                   }
+                 });
+  return std::vector<::pir::Value>(no_need_buffer_values.begin(),
+                                   no_need_buffer_values.end());
+}
+
 SplitedResult ForwardBackwardSplit(
     const Program &program,
     const std::vector<pir::OpResult> &op_result_forward_inputs,
+    const std::vector<pir::OpResult> &op_result_forward_params,
     const std::vector<pir::OpResult> &op_result_forward_outputs,
     const std::vector<pir::OpResult> &op_result_forward_inputs_grads,
+    const std::vector<pir::OpResult> &op_result_forward_params_grads,
     const std::vector<pir::OpResult> &op_result_forward_outputs_grads,
     const std::vector<int> &forward_range,
     const std::vector<int> &backward_range) {
   // transform opresult -> value
-  VLOG(1) << "Start Prepare data structures.";
   std::vector<pir::Value> forward_inputs, forward_outputs, forward_inputs_grads,
-      forward_outputs_grads;
+      forward_outputs_grads, forward_params, forward_params_grads;
 
   auto op_result_to_value = [](const pir::OpResult &r) {
     if (r.impl() == nullptr) return Value(nullptr);
@@ -827,56 +885,67 @@ SplitedResult ForwardBackwardSplit(
                  op_result_forward_outputs_grads.end(),
                  std::back_inserter(forward_outputs_grads),
                  op_result_to_value);
+  std::transform(op_result_forward_params.begin(),
+                 op_result_forward_params.end(),
+                 std::back_inserter(forward_params),
+                 op_result_to_value);
+  std::transform(op_result_forward_params_grads.begin(),
+                 op_result_forward_params_grads.end(),
+                 std::back_inserter(forward_params_grads),
+                 op_result_to_value);
 
   std::vector<pir::Value> forward_in_out_values;
   for (auto &v : std::vector<std::vector<pir::Value> *>(
-           {&forward_inputs, &forward_outputs})) {
+           {&forward_inputs, &forward_outputs, &forward_params})) {
     forward_in_out_values.insert(
         forward_in_out_values.end(), v->begin(), v->end());
   }
 
   std::vector<pir::Value> fx, fp, fm, fo, bx, bp, bm, bo_g, bx_g, bp_g, bo;
+  std::vector<pir::Value> no_need_buffer_values;
   pir::IrContext *ctx = pir::IrContext::Instance();
   auto forward_program = std::make_shared<Program>(ctx);
   auto backward_program = std::make_shared<Program>(ctx);
-  auto middle_values = AnalysisMiddleVariable(
+  std::vector<pir::Value> middle_values;
+  std::unordered_set<pir::Value> backward_inputs;
+  std::tie(middle_values, backward_inputs) = AnalysisMiddleVariable(
       program, forward_in_out_values, forward_range, backward_range);
   std::unordered_map<pir::Value, pir::Value> forward_value_map;
   std::unordered_map<pir::Value, pir::Value> backward_value_map;
   pir::Builder backward_builder = pir::Builder(ctx, backward_program->block());
 
   // forward program construct.
-  VLOG(1) << "Before Forward Construct.";
+  VLOG(4) << "start create forward program.";
   range_block_do(program.block(),
                  forward_range,
                  [&forward_value_map, &forward_program](Operation *op) {
                    auto *cloned_op = BuildOpFrom(op, forward_value_map);
                    forward_program->block()->push_back(cloned_op);
                  });
-  VLOG(1) << "After Forward Construct.";
-
   // backward program construc.
   // Step1. insert data op for inputs_values and middle_values
   int counter = 0;
-  auto create_data_fn =
-      [&backward_builder, &backward_value_map, &counter](const pir::Value &v) {
-        if (v.impl() == nullptr) {
-          return;
-        }
-        auto value_type = v.type().dyn_cast<DenseTensorType>();
-        auto dtype = paddle::dialect::TransToPhiDataType(value_type.dtype());
-        auto shape = phi::vectorize(value_type.dims());
-        auto place = phi::Place();
+  auto create_data_fn = [&backward_builder,
+                         &backward_inputs,
+                         &backward_value_map,
+                         &counter](const pir::Value &v) {
+    if (v.impl() == nullptr || !backward_inputs.count(v)) {
+      return;
+    }
+    auto value_type = v.type().dyn_cast<DenseTensorType>();
+    auto dtype = paddle::dialect::TransToPhiDataType(value_type.dtype());
+    auto shape = phi::vectorize(value_type.dims());
+    auto place = phi::Place();
 
-        paddle::dialect::DataOp op =
-            backward_builder.Build<paddle::dialect::DataOp>(
-                std::string("input_") + std::to_string(counter),
-                shape,
-                dtype,
-                place);
-        counter += 1;
-        backward_value_map[v] = op->results()[0].Value::impl();
-      };
+    paddle::dialect::DataOp op =
+        backward_builder.Build<paddle::dialect::DataOp>(
+            std::string("input_") + std::to_string(counter),
+            shape,
+            dtype,
+            place);
+    counter += 1;
+    backward_value_map[v] = op->results()[0].Value::impl();
+  };
 
   auto create_output_fn_forward = [&ctx,
                                    &forward_value_map,
@@ -916,44 +985,59 @@ SplitedResult ForwardBackwardSplit(
     counter += 1;
   };
 
-  counter = 0;
+  // counter = 0;
+  VLOG(4) << "start create backward inputs, inserting pd.data ops.";
+  VLOG(4) << "Create pd.data for backward program: fo, start with input_"
+          << counter;
   std::for_each(forward_outputs.begin(), forward_outputs.end(), create_data_fn);
+  VLOG(4) << "Create pd.data for backward program: fx, start with input_"
+          << counter;
   std::for_each(forward_inputs.begin(), forward_inputs.end(), create_data_fn);
+  VLOG(4) << "Create pd.data for backward program: fp, start with input_"
+          << counter;
+  std::for_each(forward_params.begin(), forward_params.end(), create_data_fn);
+  VLOG(4) << "Create pd.data for backward program: fm, start with input_"
+          << counter;
   std::for_each(middle_values.begin(), middle_values.end(), create_data_fn);
+  VLOG(4) << "Create pd.data for backward program: fo_g, start with input_"
+          << counter;
   std::for_each(forward_outputs_grads.begin(),
                 forward_outputs_grads.end(),
                 create_data_fn);
-  VLOG(1) << "After create pd.data for backward program.";
+  VLOG(4) << "Create pd.data for backward program end. input_" << counter;
 
-  counter = 0;
+  // counter = 0;
+  VLOG(4) << "start create forward outputs, inserting set_parameter ops.";
   std::for_each(
       middle_values.begin(), middle_values.end(), create_output_fn_forward);
   std::for_each(
       forward_outputs.begin(), forward_outputs.end(), create_output_fn_forward);
 
-  VLOG(1) << "After call create_output_fn";
   // Step2. copy backward ops .
+  VLOG(4) << "start copy backward ops";
   range_block_do(program.block(),
                  backward_range,
                  [&backward_value_map, &backward_program](Operation *op) {
                    auto *cloned_op = BuildOpFrom(op, backward_value_map);
                    backward_program->block()->push_back(cloned_op);
                  });
-  VLOG(1) << "After call backward copy";
-  counter = 0;
+  // counter = 0;
+  VLOG(4) << "start create backward outputs, inserting set_parameter ops.";
   std::for_each(forward_inputs_grads.begin(),
                 forward_inputs_grads.end(),
                 create_output_fn_backward);
-  // TODO(xiongkun): add forward parameter grads.
+  std::for_each(forward_params_grads.begin(),
+                forward_params_grads.end(),
+                create_output_fn_backward);
 
-  VLOG(1) << "forward_value_map.size() is " << forward_value_map.size();
-  VLOG(1) << "backward_value_map.size() is " << backward_value_map.size();
+  VLOG(4) << "forward_value_map.size() is " << forward_value_map.size();
+  VLOG(4) << "backward_value_map.size() is " << backward_value_map.size();
   std::ostringstream print_stream;
   print_stream << "ForwardProgram is :\n";
   forward_program->Print(print_stream);
   print_stream << "BackwardProgram is:\n";
   backward_program->Print(print_stream);
-  VLOG(1) << "Splited Program (fwd | bwd): \n" << print_stream.str();
+  VLOG(4) << "Splited Program (fwd | bwd): \n" << print_stream.str();
 
   // construct all attributes we needed.
 
@@ -961,26 +1045,33 @@ SplitedResult ForwardBackwardSplit(
   mapping_value(middle_values, backward_value_map, bm);   // write 'bm'
   mapping_value(forward_inputs, forward_value_map, fx);   // write 'fx'
   mapping_value(forward_inputs, backward_value_map, bx);  // write 'bx'
+  mapping_value(forward_params, forward_value_map, fp);   // write 'fp'
+  mapping_value(forward_params, backward_value_map, bp);  // write 'bp'
   mapping_value(forward_outputs, forward_value_map, fo);  // write 'fo'
-  mapping_value(forward_inputs_grads,
-                backward_value_map,
-                bx_g);  // write 'fx_g'
-  mapping_value(forward_outputs_grads,
-                backward_value_map,
-                bo_g);                                     // write 'bo_g'
+  mapping_value(
+      forward_inputs_grads, backward_value_map, bx_g);  // write 'bx_g'
+  mapping_value(
+      forward_params_grads, backward_value_map, bp_g);  // write 'bp_g'
+  mapping_value(
+      forward_outputs_grads, backward_value_map, bo_g);    // write 'bo_g'
   mapping_value(forward_outputs, backward_value_map, bo);  // write 'bo'
+  mapping_value(GetNoNeedBufferValue(program.block(), backward_range),
+                forward_value_map,
+                no_need_buffer_values);  // write 'no_need_buffers'
 
-  std::map<std::string, std::vector<pir::Value>> attr = {{"fx", fx},
-                                                         {"fp", fp},
-                                                         {"fm", fm},
-                                                         {"fo", fo},
-                                                         {"bx", bx},
-                                                         {"bp", bp},
-                                                         {"bm", bm},
-                                                         {"bo_g", bo_g},
-                                                         {"bx_g", bx_g},
-                                                         {"bp_g", bp_g},
-                                                         {"bo", bo}};
+  std::map<std::string, std::vector<pir::Value>> attr = {
+      {"fx", fx},
+      {"fp", fp},
+      {"fm", fm},
+      {"fo", fo},
+      {"bx", bx},
+      {"bp", bp},
+      {"bm", bm},
+      {"bo_g", bo_g},
+      {"bx_g", bx_g},
+      {"bp_g", bp_g},
+      {"no_need_buffers", no_need_buffer_values},
+      {"bo", bo}};
   std::vector<std::shared_ptr<Program>> programs = {forward_program,
                                                     backward_program};
   return std::make_pair(programs, attr);
@@ -990,6 +1081,7 @@ void BindUtils(pybind11::module *m) {
   m->def("program_clone", ProgramClone);
   m->def("program_split", ForwardBackwardSplit);
   m->def("fake_op_result", FakeOpResult);
+  m->def("is_fake_op_result", IsFakeOpResult);
   m->def("set_global_program",
          [](Program *program) { APIBuilder::Instance().SetProgram(program); });
   m->def("set_insertion_point",

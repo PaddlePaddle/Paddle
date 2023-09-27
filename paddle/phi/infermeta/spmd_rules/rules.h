@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/replicated.h"
 #include "paddle/phi/infermeta/spmd_rules/reshape.h"
 #include "paddle/phi/infermeta/spmd_rules/split.h"
+#include "paddle/phi/infermeta/spmd_rules/transpose.h"
 
 /**
  * Design Notes:
@@ -494,6 +495,12 @@ PD_REGISTER_SPMD_RULE(
     split_with_num,
     PD_INFER_SPMD(phi::distributed::SplitWithNumInferSpmd),
     PD_INFER_SPMD(phi::distributed::SplitWithNumInferSpmdReverse));
+
+// transpose rule
+PD_REGISTER_SPMD_RULE(
+    transpose,
+    PD_INFER_SPMD(phi::distributed::TransposeInferSpmd),
+    PD_INFER_SPMD(phi::distributed::TransposeInferSpmdReverse));
 
 }  // namespace distributed
 }  // namespace phi
