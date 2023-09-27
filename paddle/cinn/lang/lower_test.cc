@@ -276,8 +276,8 @@ function matmul (_A, _B, _C)
         {
           ScheduleBlock(C)
           {
-            i0, i1, i2 = axis.bind(i, j, k0)
-            C[i0, i1] = (C[i0, i1] + (A[i0, i2] * B[i2, i1]))
+            i0_0, i1_0, i2 = axis.bind(i, j, k0)
+            C[i0_0, i1_0] = (C[i0_0, i1_0] + (A[i0_0, i2] * B[i2, i1_0]))
           }
         }
       }
