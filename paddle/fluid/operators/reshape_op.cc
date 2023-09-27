@@ -579,14 +579,14 @@ class Reshape2CompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
   void Apply() override {
     // We prefer to use x.shape instead of using xshape, this is different from
     // PHI definition.
-    paddle::Tensor x = this->GetSingleForwardInput("X");
+    paddle::Tensor xshape = this->GetSingleForwardOutput("XShape");
     paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
     paddle::Tensor dx = this->GetSingleInputGrad("X");
 
     auto *dx_ptr = this->GetOutputPtr(&dx);
     std::string dx_name = this->GetOutputName(dx);
     VLOG(6) << "Runing reshape2_grad composite func";
-    prim::reshape_grad<prim::DescTensor>(x, out_grad, dx_ptr);
+    prim::reshape_grad<prim::DescTensor>(xshape, out_grad, dx_ptr);
     this->RecoverOutputName(dx, dx_name);
   }
 };
