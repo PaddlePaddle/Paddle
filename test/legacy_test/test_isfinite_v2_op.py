@@ -68,7 +68,7 @@ def np_data_generator(
         for i, v in enumerate(sv_list):
             x_np[i] = v
     ori_shape = x_np.shape
-    x_np = x_np.reshape((np.product(ori_shape),))
+    x_np = x_np.reshape((np.prod(ori_shape),))
     np.random.shuffle(x_np)
     x_np = x_np.reshape(ori_shape)
     result_np = getattr(np, op_str)(x_np)

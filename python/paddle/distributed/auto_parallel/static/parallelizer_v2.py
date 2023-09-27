@@ -14,6 +14,7 @@
 
 import copy
 import logging
+import os
 import time
 
 from paddle.distributed.passes import PassManager, new_pass
@@ -358,6 +359,17 @@ class Parallelizer:
                 [main_program], [startup_program], self._pass_context
             )
             params_grads = self._pass_context.get_attr("params_grads")
+
+        mp_async_allreduce_in_backward = os.getenv(
+            "FLAGS_mp_async_allreduce_in_backward"
+        ) in [1, "1", True, "True"]
+        if mp_async_allreduce_in_backward:
+            column_parallel_linear_backward_overlapping_pass = new_pass(
+                "column_parallel_linear_backward_overlapping", {}
+            )
+            column_parallel_linear_backward_overlapping_pass.apply(
+                [main_program], [startup_program], self._pass_context
+            )
 
         if self.is_train:
             # GradClip is train-only optimization

@@ -187,7 +187,7 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   } else if (platform::is_gpu_place(place)) {
     // MemcpyD2H in gpu is synchronous, see
     // https://docs.nvidia.com/cuda/cuda-runtime-api/api-sync-behavior.html#api-sync-behavior__memcpy-async
-    // for more detial.
+    // for more detail.
     new_op_func_node.type_ =
         (op_type == kMemcpyD2H ? OpFuncType::kGpuSync : OpFuncType::kGpuAsync);
   } else if (platform::is_xpu_place(place)) {

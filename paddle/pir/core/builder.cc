@@ -25,7 +25,7 @@ Operation *Builder::Build(OperationArgument &&argument) {
 }
 
 /// Creates an operation with the given fields.
-Operation *Builder::Build(const std::vector<OpResult> &inputs,
+Operation *Builder::Build(const std::vector<Value> &inputs,
                           const AttributeMap &attribute,
                           const std::vector<Type> &output_types,
                           OpInfo op_info) {

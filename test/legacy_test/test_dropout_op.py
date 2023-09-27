@@ -17,10 +17,14 @@ import unittest
 import numpy as np
 import parameterized as param
 from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from utils import static_guard
 
 import paddle
 from paddle import _C_ops, base, static
-from paddle.base import Program, core, program_guard
+from paddle.autograd.ir_backward import grad
+from paddle.base import Program, Scope, core, program_guard
+from paddle.base.executor import scope_guard
+from paddle.decomposition import decompose
 from paddle.incubate.autograd import primapi
 
 
@@ -80,11 +84,13 @@ class TestDropoutOp(OpTest):
         self.enable_check_static_comp = False
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(
+            check_prim=True, check_prim_pir=True, check_new_ir=True
+        )
 
     def test_check_grad_normal(self):
         # Now in dy2st mode x_grad = [], so set check_prim=False
-        self.check_grad(['X'], 'Out', check_prim=False)
+        self.check_grad(['X'], 'Out', check_prim=False, check_new_ir=True)
 
 
 class TestDropoutOp_ZeroDim(TestDropoutOp):
@@ -123,11 +129,13 @@ class TestDropoutOpInput1d(OpTest):
         self.enable_check_static_comp = False
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(
+            check_prim=True, check_prim_pir=True, check_new_ir=True
+        )
 
     def test_check_grad_normal(self):
         # Now in dy2st mode x_grad = [], so set check_prim=False
-        self.check_grad(['X'], 'Out', check_prim=False)
+        self.check_grad(['X'], 'Out', check_prim=False, check_new_ir=True)
 
 
 class TestDropoutOp2(TestDropoutOp):
@@ -190,7 +198,9 @@ class TestDropoutOp4(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(
+            check_prim=True, check_prim_pir=True, check_new_ir=True
+        )
 
 
 @skip_check_grad_ci(reason="For inference, check_grad is not required.")
@@ -207,7 +217,9 @@ class TestDropoutOp5(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(
+            check_prim=True, check_prim_pir=True, check_new_ir=True
+        )
 
 
 class TestDropoutOp6(TestDropoutOp):
@@ -269,7 +281,9 @@ class TestDropoutOp8(OpTest):
         self.outputs = {'Out': self.inputs['X']}
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(
+            check_prim=True, check_prim_pir=True, check_new_ir=True
+        )
 
 
 @skip_check_grad_ci(reason="For inference, check_grad is not required.")
@@ -288,7 +302,9 @@ class TestDropoutOp9(OpTest):
         self.outputs = {'Out': self.inputs['X']}
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(
+            check_prim=True, check_prim_pir=True, check_new_ir=True
+        )
 
 
 class TestDropoutOpWithSeed(OpTest):
@@ -314,11 +330,19 @@ class TestDropoutOpWithSeed(OpTest):
         self.enable_check_static_comp = False
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(
+            check_prim=True, check_prim_pir=True, check_new_ir=True
+        )
 
     def test_check_grad_normal(self):
         # Now in dy2st mode x_grad = [], so set check_prim=False
-        self.check_grad(['X'], 'Out', max_relative_error=0.05, check_prim=False)
+        self.check_grad(
+            ['X'],
+            'Out',
+            max_relative_error=0.05,
+            check_prim=False,
+            check_new_ir=True,
+        )
 
 
 @unittest.skipIf(
@@ -351,11 +375,15 @@ class TestFP16DropoutOp(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(
-            core.CUDAPlace(0), atol=1e-3, check_prim=True
+            core.CUDAPlace(0),
+            atol=1e-3,
+            check_prim=True,
+            check_prim_pir=True,
+            check_new_ir=True,
         )
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_new_ir=True)
 
 
 @unittest.skipIf(
@@ -390,10 +418,18 @@ class TestBF16DropoutOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(
+            check_prim=True, check_prim_pir=True, check_new_ir=True
+        )
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_prim_pir=True,
+            check_new_ir=True,
+        )
 
 
 class TestDropoutOpWithSeedOnCPUPlace(unittest.TestCase):
@@ -1682,7 +1718,7 @@ class TestCompositeDropout(unittest.TestCase):
         fwd_actual = []
         rev_actual = []
         mps = []
-        with paddle.base.framework._static_guard():
+        with static_guard():
             for place in self.places:
                 paddle.seed(self.seed)
                 mp, sp = paddle.static.Program(), paddle.static.Program()
@@ -1723,13 +1759,13 @@ class TestCompositeDropout(unittest.TestCase):
             np.testing.assert_allclose(
                 self.fwd_desire[i].sum(),
                 fwd_actual[i].sum(),
-                rtol=1e-2,  # mean of uniform distribution, scale for avoid random failed
+                rtol=2e-2,  # mean of uniform distribution, scale for avoid random failed
                 atol=0,
             )
             np.testing.assert_allclose(
                 self.rev_desire[i].sum(),
                 rev_actual[i].sum(),
-                rtol=1e-2,  # mean of uniform distribution, scale for avoid random failed
+                rtol=2e-2,  # mean of uniform distribution, scale for avoid random failed
                 atol=0,
             )
 
@@ -1764,13 +1800,13 @@ class TestCompositeDropout(unittest.TestCase):
             np.testing.assert_allclose(
                 self.fwd_desire[i].sum(),
                 fwd_actual[i].sum(),
-                rtol=1e-2,  # mean of uniform distribution, scale for avoid random failed
+                rtol=2e-2,  # mean of uniform distribution, scale for avoid random failed
                 atol=0,
             )
             np.testing.assert_allclose(
                 self.rev_desire[i].sum(),
                 rev_actual[i].sum(),
-                rtol=1e-2,  # mean of uniform distribution, scale for avoid random failed
+                rtol=2e-2,  # mean of uniform distribution, scale for avoid random failed
                 atol=0,
             )
 
@@ -1807,16 +1843,294 @@ class TestCompositeDropout(unittest.TestCase):
             np.testing.assert_allclose(
                 self.fwd_desire[i].sum(),
                 fwd_actual[i].sum(),
-                rtol=1e-2,  # mean of uniform distribution, scale for avoid random failed
+                rtol=2e-2,  # mean of uniform distribution, scale for avoid random failed
                 atol=0,
             )
             np.testing.assert_allclose(
                 self.rev_desire[i].sum(),
                 rev_actual[i].sum(),
-                rtol=1e-2,  # mean of uniform distribution, scale for avoid random failed
+                rtol=2e-2,  # mean of uniform distribution, scale for avoid random failed
                 atol=0,
             )
             i += 1
+
+
+@param.parameterized_class(
+    ('name', 'x', 'p', 'is_test', 'mode', 'seed', 'dtype', 'places'),
+    (
+        (
+            'fp32',
+            np.random.rand(100000),
+            0.3,
+            False,
+            'upscale_in_train',
+            1002,
+            'float32',
+            places,
+        ),
+        (
+            'bfp16',
+            np.random.rand(100000),
+            0.3,
+            False,
+            'upscale_in_train',
+            1002,
+            'bfloat16',
+            places,
+        ),
+        (
+            'fp64',
+            np.random.rand(100000),
+            0.7,
+            False,
+            'upscale_in_train',
+            9999,
+            'float64',
+            places,
+        ),
+        (
+            'is_test=True',
+            np.random.rand(100000),
+            0.5,
+            True,
+            'upscale_in_train',
+            1002,
+            'float32',
+            places,
+        ),
+        (
+            'p=1.0',
+            np.random.rand(100000),
+            1.0,
+            True,
+            'upscale_in_train',
+            1002,
+            'float32',
+            places,
+        ),
+        (
+            'p=1.0,dtype=bfp16',
+            np.random.rand(100000),
+            1.0,
+            True,
+            'upscale_in_train',
+            1002,
+            'bfloat16',
+            places,
+        ),
+        (
+            'p=1.0,test=False',
+            np.random.rand(100000),
+            1.0,
+            False,
+            'upscale_in_train',
+            1002,
+            'float32',
+            places,
+        ),
+        (
+            'p=1.0,test=False,dtype=bfp16',
+            np.random.rand(100000),
+            1.0,
+            False,
+            'upscale_in_train',
+            1002,
+            'bfloat16',
+            places,
+        ),
+        (
+            'p=0.0',
+            np.random.rand(100000),
+            0,
+            True,
+            'upscale_in_train',
+            1002,
+            'float32',
+            places,
+        ),
+        (
+            'p=0.0,dtype=bfp16',
+            np.random.rand(100000),
+            0,
+            True,
+            'upscale_in_train',
+            1002,
+            'bfloat16',
+            places,
+        ),
+        (
+            'downgrade_train',
+            np.random.rand(100000),
+            0.5,
+            False,
+            'downscale_in_infer',
+            1002,
+            'float32',
+            places,
+        ),
+        (
+            'downgrade_train,dtype=bfp16',
+            np.random.rand(100000),
+            0.5,
+            False,
+            'downscale_in_infer',
+            1002,
+            'bfloat16',
+            places,
+        ),
+        (
+            'fp32_cpu',
+            np.random.rand(100000),
+            0.6,
+            False,
+            'upscale_in_train',
+            9899,
+            'float64',
+            [paddle.CPUPlace()],
+        ),
+        (
+            'fp64_cpu',
+            np.random.rand(100000),
+            0.6,
+            False,
+            'upscale_in_train',
+            9899,
+            'float64',
+            [paddle.CPUPlace()],
+        ),
+        (
+            'downgrade_train_cpu',
+            np.random.rand(100000),
+            0.5,
+            False,
+            'downscale_in_infer',
+            1002,
+            'float32',
+            [paddle.CPUPlace()],
+        ),
+    ),
+)
+class TestPirCompositeDropout(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.x = (
+            cls.x.astype(cls.dtype)
+            if cls.dtype != "bfloat16"
+            else cls.x.astype("float32")
+        )
+        core._set_prim_all_enabled(True)
+
+    @classmethod
+    def tearDownClass(cls):
+        core._set_prim_all_enabled(False)
+
+    def setUp(self):
+        paddle.seed(self.seed)
+        self.fwd_desire = []
+        self.rev_desire = []
+        for place in self.places:
+            fwd_desire, rev_desire = self.get_eager_desire(place)
+            self.fwd_desire.append(fwd_desire.numpy())
+            self.rev_desire.append(rev_desire.numpy())
+
+    def get_eager_desire(self, place):
+        paddle.disable_static()
+        paddle.seed(self.seed)
+        if isinstance(place, base.CPUPlace):
+            paddle.set_device("cpu")
+        if isinstance(place, base.CUDAPlace):
+            paddle.set_device("gpu")
+        core.set_prim_eager_enabled(False)
+        input_ = paddle.to_tensor(
+            data=self.x,
+            dtype=self.dtype if self.dtype != "bfloat16" else "float32",
+            place=place,
+            stop_gradient=False,
+        )
+        output = paddle.nn.functional.dropout(
+            input_, self.p, training=(not self.is_test), mode=self.mode
+        )
+        grad = paddle.grad(output, input_)
+        if self.dtype == "bfloat16":
+            output = paddle.cast(output, "float32")
+            grad[0] = paddle.cast(grad[0], "float32")
+        return output, grad[0]
+
+    def test_static_comp(self):
+        fwd_actual = []
+        rev_actual = []
+        mps = []
+        for place in self.places:
+            with paddle.pir_utils.IrGuard(), static_guard(), scope_guard(
+                Scope()
+            ):
+                core._set_prim_backward_enabled(True)
+                core._set_prim_forward_enabled(False)
+
+                paddle.seed(self.seed)
+                sp, mp = (
+                    paddle.static.Program(),
+                    paddle.static.Program(),
+                )
+                with paddle.static.program_guard(mp, sp):
+                    input_ = paddle.static.data(
+                        'x',
+                        shape=self.x.shape,
+                        dtype=self.x.dtype
+                        if self.dtype != "bfloat16"
+                        else "float32",
+                    )
+                    input_.stop_gradient = False
+                    output = paddle.nn.functional.dropout(
+                        input_,
+                        self.p,
+                        training=(not self.is_test),
+                        mode=self.mode,
+                    )
+                    [output] = decompose(
+                        mp, [output]
+                    )  # decompose backward, custom vjp
+                    gradient = grad(output, input_)[0]
+                    self.assertTrue(
+                        'pd_op.dropout_grad'
+                        not in [op.name() for op in mp.global_block().ops]
+                    )
+
+                    core._set_prim_forward_enabled(True)
+                    [output] = decompose(mp, [output])  # decompose forward
+                    self.assertTrue(
+                        'pd_op.dropout'
+                        not in [op.name() for op in mp.global_block().ops]
+                    )
+
+                    if self.dtype == "bfloat16":
+                        output = paddle.cast(output, "float32")
+                        gradient = paddle.cast(gradient, "float32")
+
+                exe = paddle.static.Executor(place)
+                exe.run(sp)
+                fwd, rev = exe.run(
+                    mp, feed={'x': self.x}, fetch_list=[output, gradient]
+                )
+                fwd_actual.append(fwd)
+                rev_actual.append(rev)
+                mps.append(mp)
+                core._set_prim_backward_enabled(False)
+                core._set_prim_forward_enabled(False)
+
+        for i in range(len(self.places)):
+            np.testing.assert_allclose(
+                self.fwd_desire[i].sum(),
+                fwd_actual[i].sum(),
+                rtol=2e-2,  # mean of uniform distribution, scale for avoid random failed
+                atol=0,
+            )
+            np.testing.assert_allclose(
+                self.rev_desire[i].sum(),
+                rev_actual[i].sum(),
+                rtol=2e-2,  # mean of uniform distribution, scale for avoid random failed
+                atol=0,
+            )
 
 
 if __name__ == '__main__':

@@ -85,6 +85,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_pass_quantization MODULES test_pass_quantization)
   set_tests_properties(test_pass_quantization
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 60)
+  py_test_modules(test_reshard_api MODULES test_reshard_api)
+  set_tests_properties(test_reshard_api PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
+                                                   TIMEOUT 150)
   py_test_modules(test_reshard_s_to_r MODULES test_reshard_s_to_r)
   set_tests_properties(test_reshard_s_to_r
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
@@ -100,10 +103,22 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_reshard_p_to_r MODULES test_reshard_p_to_r)
   set_tests_properties(test_reshard_p_to_r
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
+  py_test_modules(test_reshard_nd_mesh MODULES test_reshard_nd_mesh)
+  set_tests_properties(test_reshard_nd_mesh
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
+
+  py_test_modules(test_reshard_same_status MODULES test_reshard_same_status)
+  set_tests_properties(test_reshard_same_status
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
+
   py_test_modules(test_semi_auto_parallel_basic MODULES
                   test_semi_auto_parallel_basic)
   set_tests_properties(test_semi_auto_parallel_basic
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
+  py_test_modules(test_semi_auto_parallel_single_strategy MODULES
+                  test_semi_auto_parallel_single_strategy)
+  set_tests_properties(test_semi_auto_parallel_single_strategy
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
   py_test_modules(test_gpt_with_newir MODULES test_gpt_with_newir)
   set_tests_properties(test_gpt_with_newir
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
@@ -186,7 +201,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_engine_save_load MODULES test_engine_save_load)
   py_test_modules(test_rule_based_tuner MODULES test_rule_based_tuner)
   py_test_modules(test_dist_tensor MODULES test_dist_tensor)
+  py_test_modules(test_api_dist_branch MODULES test_api_dist_branch)
   py_test_modules(test_shard_tensor_api MODULES test_shard_tensor_api)
+  py_test_modules(test_shard_layer_api MODULES test_shard_layer_api)
   py_test_modules(test_cost_interface MODULES test_cost_interface)
   # End of unittests WITH single card WITHOUT timeout
 

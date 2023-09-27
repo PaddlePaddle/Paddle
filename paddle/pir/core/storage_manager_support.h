@@ -27,8 +27,10 @@ class TypeInterfaceBase;
 namespace detail {
 
 namespace storage_helper_base_impl {
-/// Returns true if this given Trait ID matches the IDs of any of the provided
-/// trait types `Traits`.
+///
+/// \brief Returns true if this given trait id matches the ids of any of the
+/// provided trait.
+///
 template <template <typename T> class... Traits>
 bool hasTrait(TypeId traitID) {
   TypeId traitIDs[] = {TypeId::get<Traits>()...};
@@ -37,22 +39,16 @@ bool hasTrait(TypeId traitID) {
   return false;
 }
 
-// We specialize for the empty case to not define an empty array.
-template <>
-inline bool hasTrait(TypeId traitID) {
-  return false;
-}
+// Specialize for the empty case.
+inline bool hasTrait(TypeId traitID) { return false; }
 }  // namespace storage_helper_base_impl
 
-///
-/// \brief Implementing users of storage classes uniqued by StorageManager.
-///
-
+// Implementing users of storage classes uniqued by StorageManager.
 template <typename ConcreteT,
           typename BaseT,
           typename StorageT,
           typename ManagerT,
-          class... TraitOrInterface>  // Traits or Interface
+          class... TraitOrInterface>
 class StorageHelperBase : public BaseT {
  public:
   using BaseT::BaseT;
@@ -67,35 +63,54 @@ class StorageHelperBase : public BaseT {
   using InterfaceList =
       typename Filter<TypeInterfaceBase, std::tuple<TraitOrInterface...>>::Type;
 
-  /// Utility for easy access to the storage instance.
+  static ConcreteT dyn_cast_impl(BaseT type) {
+    if (type && type.abstract_type().type_id() == TypeId::get<ConcreteT>()) {
+      return ConcreteT(type.storage());
+    }
+    return ConcreteT(nullptr);
+  }
+
+  ///
+  /// \brief Access to the storage instance.
+  ///
   const Storage *storage() const {
     return static_cast<const Storage *>(this->storage_);
   }
 
-  /// Get the identifier for the concrete type.
+  ///
+  /// \brief Get the identifier for the concrete type.
+  ///
   static pir::TypeId type_id() { return pir::TypeId::get<ConcreteT>(); }
 
-  /// Provide an implementation of 'classof' that compares the type id of the
-  /// provided value with that of the concrete type.
+  ///
+  /// \brief Implementation of 'classof' that compares the type id of
+  /// the provided value with the concrete type id.
+  ///
   template <typename T>
   static bool classof(T val) {
     return val.type_id() == type_id();
   }
 
-  /// Returns an interface map for the interfaces registered to this storage
-  /// user.
-  static std::vector<details::InterfaceValue> interface_map() {
-    return pir::details::GetInterfaceMap<ConcreteT, InterfaceList>();
+  ///
+  /// \brief Returns an interface map for the interfaces registered to this
+  /// storage user.
+  ///
+  static std::vector<InterfaceValue> interface_map() {
+    return pir::detail::GetInterfaceMap<ConcreteT, InterfaceList>();
   }
 
-  /// Get or create a new ConcreteT instance within the ctx.
+  ///
+  /// \brief Get or create a new ConcreteT instance within the ctx.
+  ///
   template <typename... Args>
   static ConcreteT get(pir::IrContext *ctx, Args... args) {
     return ManagerT::template get<ConcreteT>(ctx, args...);
   }
 
-  /// Returns the function that returns true if the given Trait ID matches the
-  /// IDs of any of the traits defined by the storage user.
+  ///
+  /// \brief Returns the function that returns true if the given trait id
+  /// matches the ids of any of the traits defined by the storage user.
+  ///
   static HasTraitFn getHasTraitFn() {
     return [](TypeId id) {
       return storage_helper_base_impl::hasTrait<TraitOrInterface...>(id);

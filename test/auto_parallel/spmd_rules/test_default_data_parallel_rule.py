@@ -61,11 +61,8 @@ class TestDefaultDataParallelSPMDRule(unittest.TestCase):
         # 2 inputs 2 outputs, sharded batch axis
         in_vec = [self.x_dist_tensor_spec, self.y_dist_tensor_spec]
         out_vec = [self.out1_dist_tensor_spec, self.out2_dist_tensor_spec]
-        result_dist_attrs = self.rule.infer_forward(
-            [(0, len(in_vec)), (len(in_vec), len(in_vec) + len(out_vec))],
-            in_vec + out_vec,
-            [],
-        )
+        result_dist_attrs = self.rule.infer_forward(in_vec, out_vec)
+
         self.assertEqual(len(result_dist_attrs), 2)
         self.assertEqual(len(result_dist_attrs[0]), 2)
         self.assertEqual(len(result_dist_attrs[1]), 2)
@@ -82,11 +79,9 @@ class TestDefaultDataParallelSPMDRule(unittest.TestCase):
             self.out1_dist_tensor_spec,
             self.out2_dist_tensor_spec,
         ]
-        result_dist_attrs = self.rule.infer_forward(
-            [(0, len(in_vec)), (len(in_vec), len(in_vec) + len(out_vec))],
-            in_vec + out_vec,
-            [],
-        )
+
+        result_dist_attrs = self.rule.infer_forward(in_vec, out_vec)
+
         self.assertEqual(len(result_dist_attrs), 2)
         self.assertEqual(len(result_dist_attrs[0]), 1)
         self.assertEqual(len(result_dist_attrs[1]), 3)
@@ -103,11 +98,7 @@ class TestDefaultDataParallelSPMDRule(unittest.TestCase):
         in_vec = [self.x_dist_tensor_spec, self.y_dist_tensor_spec]
         out_vec = [self.out1_dist_tensor_spec, self.out2_dist_tensor_spec]
         with self.assertRaises(NotImplementedError):
-            result_dist_attrs = self.rule.infer_forward(
-                [(0, len(in_vec)), (len(in_vec), len(in_vec) + len(out_vec))],
-                in_vec + out_vec,
-                [],
-            )
+            result_dist_attrs = self.rule.infer_forward(in_vec, out_vec)
 
     def test_default_dp_infer_backward(self):
         # replicated out1 from [-1, 0, 1, -1]  to [0, -1, -1, -1]
@@ -117,11 +108,9 @@ class TestDefaultDataParallelSPMDRule(unittest.TestCase):
 
         in_vec = [self.x_dist_tensor_spec, self.y_dist_tensor_spec]
         out_vec = [self.out1_dist_tensor_spec, self.out2_dist_tensor_spec]
-        result_dist_attrs = self.rule.infer_backward(
-            [(0, len(in_vec)), (len(in_vec), len(in_vec) + len(out_vec))],
-            in_vec + out_vec,
-            [],
-        )
+
+        result_dist_attrs = self.rule.infer_backward(in_vec, out_vec)
+
         self.assertEqual(len(result_dist_attrs), 2)
         self.assertEqual(len(result_dist_attrs[0]), 2)
         self.assertEqual(len(result_dist_attrs[1]), 2)
@@ -137,11 +126,9 @@ class TestDefaultDataParallelSPMDRule(unittest.TestCase):
 
         in_vec = [self.x_dist_tensor_spec, self.y_dist_tensor_spec]
         out_vec = [self.out1_dist_tensor_spec, self.out2_dist_tensor_spec]
-        result_dist_attrs = self.rule.infer_backward(
-            [(0, len(in_vec)), (len(in_vec), len(in_vec) + len(out_vec))],
-            in_vec + out_vec,
-            [],
-        )
+
+        result_dist_attrs = self.rule.infer_backward(in_vec, out_vec)
+
         self.assertEqual(len(result_dist_attrs), 2)
         self.assertEqual(len(result_dist_attrs[0]), 2)
         self.assertEqual(len(result_dist_attrs[1]), 2)

@@ -20,6 +20,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/type_storage.h"
 #include "paddle/fluid/pir/dialect/operator/transforms/param_to_variable.h"
+#include "paddle/pir/core/builtin_type_interfaces.h"
 #include "paddle/pir/core/ir_printer.h"
 #include "paddle/pir/core/utils.h"
 
@@ -66,7 +67,7 @@ void OperatorDialect::PrintType(pir::Type type, std::ostream &os) const {
   if (auto tensor_type = type.dyn_cast<DenseTensorType>()) {
     os << "tensor<";
     for (auto d : phi::vectorize(tensor_type.dims())) {
-      os << d;
+      pir::ShapedTypeInterface::IsDynamic(d) ? os << "?" : os << d;
       os << "x";
     }
     tensor_type.dtype().Print(os);

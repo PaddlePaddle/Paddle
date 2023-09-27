@@ -17,9 +17,11 @@
 #include <string>
 #include <unordered_set>
 
+#include "paddle/utils/test_macros.h"
+
 namespace paddle {
 namespace prim {
-class PrimCommonUtils {
+class TEST_API PrimCommonUtils {
  public:
   static bool IsBwdPrimEnabled();
   static void SetBwdPrimEnabled(bool enabled);

@@ -655,6 +655,7 @@ void FusedMultiTransformerXpuInferMeta(
     const MetaTensor& seq_lengths,
     const MetaTensor& src_mask,
     const MetaTensor& gather_index,
+    const MetaTensor& max_buffer,
     bool pre_layer_norm,
     int rotary_emb_dims,
     float epsilon,
@@ -1107,6 +1108,20 @@ void AddCMulXPUInferMeta(const MetaTensor& x,
   out->set_dims(x.dims());
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
+}
+
+void LayerNormActXPUInferMeta(const MetaTensor& x,
+                              const MetaTensor& scale,
+                              const MetaTensor& bias,
+                              int begin_norm_axis,
+                              float epsilon,
+                              int act_type,
+                              float act_param,
+                              MetaTensor* y) {
+  y->set_dims(x.dims());
+  //   y->share_lod(x);
+  y->set_dtype(x.dtype());
+  y->set_layout(x.layout());
 }
 
 void FusedScaleBiasReluConvBnstatsInferMeta(
