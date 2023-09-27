@@ -38,8 +38,7 @@ class Flatten2Kernel : public framework::OpKernel<T> {
 
     auto *out = context.Output<phi::DenseTensor>("Out");
 
-    auto out_dims = phi::make_ddim(
-        FlattenKernel<DeviceContext, T>::GetOutputShape(axes, x_dims));
+    auto out_dims = phi::make_ddim(GetOutputShape(axes, x_dims));
 
     out->mutable_data(context.GetPlace(), in->type());
     framework::TensorCopy(
@@ -48,6 +47,26 @@ class Flatten2Kernel : public framework::OpKernel<T> {
         context.template device_context<platform::DeviceContext>(),
         out);
     out->Resize(out_dims);
+  }
+
+  static std::vector<int32_t> GetOutputShape(const int axis,
+                                             const framework::DDim &in_dims) {
+    if (in_dims.size() == 0) {
+      return {1};
+    }
+
+    int64_t outer = 1, inner = 1;
+    for (int i = 0; i < in_dims.size(); ++i) {
+      if (i < axis) {
+        outer *= in_dims[i];
+      } else {
+        inner *= in_dims[i];
+      }
+    }
+    std::vector<int32_t> out_shape(2);
+    out_shape[0] = outer;
+    out_shape[1] = inner;
+    return out_shape;
   }
 };
 
