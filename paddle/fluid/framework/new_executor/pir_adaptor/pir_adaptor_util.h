@@ -14,31 +14,29 @@
 
 #pragma once
 
-#include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
-#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
-#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_util.h"
-#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/phi/core/meta_tensor.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/utils.h"
-
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/phi/core/kernel_context.h"
-
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
+#include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
+#include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_util.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/core/kernel_context.h"
+#include "paddle/phi/core/meta_tensor.h"
+#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/ir_context.h"
+#include "paddle/pir/core/program.h"
 #include "paddle/pir/core/type_name.h"
+#include "paddle/pir/core/utils.h"
 
 #include "glog/logging.h"
 
@@ -130,8 +128,7 @@ class ValueExecutionInfo {
 
   std::unordered_map<::pir::Value, std::string> value_2_var_name_;
 
-  std::unordered_map<const paddle::framework::Variable*, std::string>
-      var_2_var_name_;
+  std::unordered_map<const Variable*, std::string> var_2_var_name_;
 
   std::map<std::string, int> var_name_2_id_;
 
@@ -153,7 +150,6 @@ inline bool IsInvalid(pir::Value value) {
 
 void BuildScope(const pir::Block& block,
                 const std::string& var_name_prefix,
-                std::map<pir::Block*, Scope*>* sub_blocks,
                 ValueExecutionInfo* value_exe_info = nullptr);
 
 void BuildRuntimeContext(pir::Operation* op,

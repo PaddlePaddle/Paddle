@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 
-#include "glog/logging.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
@@ -298,7 +297,6 @@ Variable* CreateVar(pir::Value value,
   }
 
   Variable* var = nullptr;
-
   std::string name = var_name_prefix + "_inner_var_" +
                      std::to_string(value_exe_info->GetVar2VarName().size());
 
@@ -329,7 +327,7 @@ void CheckInputVars(pir::Operation* op,
             execution_info->HasValue(value),
             true,
             phi::errors::PreconditionNotMet(
-                "input should in name map, [%d] 'th input of [%s] op",
+                "input should in execution_info, [%d] 'th input of [%s] op",
                 i,
                 op_name));
       }
@@ -374,14 +372,14 @@ void BuildValue(pir::Value value,
       tensor_array->emplace_back(var_i);
     }
   } else {
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
-        "Output only support DenseTensorType or VectorType"));
+    PADDLE_THROW(
+        phi::errors::PreconditionNotMet("Output only support DenseTensorType "
+                                        "or SelectedRowsType or VectorType"));
   }
 }
 
 void HandleForSpecialOp(pir::Operation* op,
                         const std::string& var_name_prefix,
-                        std::map<pir::Block*, Scope*>* sub_blocks,
                         ValueExecutionInfo* value_exe_info) {
   std::string op_name = op->name();
   if (op->attributes().count("op_name")) {
@@ -555,20 +553,8 @@ void HandleForSpecialOp(pir::Operation* op,
 
   if (op_name == "pd_op.if") {
     auto if_op = op->dyn_cast<paddle::dialect::IfOp>();
-
-    auto true_block = if_op.true_block();
-
-    auto false_block = if_op.false_block();
-
-    auto& true_branch_scope = value_exe_info->GetScope()->NewScope();
-    sub_blocks->emplace(true_block, &true_branch_scope);
-
-    auto& false_branch_scope = value_exe_info->GetScope()->NewScope();
-    sub_blocks->emplace(false_block, &false_branch_scope);
-
     for (size_t i = 0; i < if_op->num_results(); ++i) {
       // auto true_value = true_yeid_op->operand_source(i);
-
       auto if_op_out_value = if_op->result(i);
       BuildValue(if_op_out_value, var_name_prefix, value_exe_info);
     }
@@ -628,7 +614,6 @@ void HandleForInplaceOp(pir::Operation* op,
 // is created in inner_scope.
 void BuildScope(const pir::Block& block,
                 const std::string& var_name_prefix,
-                std::map<pir::Block*, Scope*>* sub_blocks,
                 ValueExecutionInfo* value_exe_info) {
   VLOG(4) << "***** [before build] scope"
           << "(" << value_exe_info->GetScope() << ") ******\n"
@@ -645,7 +630,7 @@ void BuildScope(const pir::Block& block,
     }
     VLOG(4) << "build op:" << op_name;
     if (SpecialOps.count(op_name)) {
-      HandleForSpecialOp(op, var_name_prefix, sub_blocks, value_exe_info);
+      HandleForSpecialOp(op, var_name_prefix, value_exe_info);
       continue;
     }
 

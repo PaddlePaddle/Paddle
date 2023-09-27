@@ -114,7 +114,7 @@ NewIRInterpreter::NewIRInterpreter(
 
   std::stringstream ss;
   ss << this;
-  BuildScope(*ir_block_, ss.str(), &sub_blocks_, value_exe_info_.get());
+  BuildScope(*ir_block_, ss.str(), value_exe_info_.get());
 }
 
 NewIRInterpreter::NewIRInterpreter(
@@ -176,7 +176,7 @@ NewIRInterpreter::NewIRInterpreter(
 
   std::stringstream ss;
   ss << this;
-  BuildScope(*ir_block_, ss.str(), &sub_blocks_, value_exe_info_.get());
+  BuildScope(*ir_block_, ss.str(), value_exe_info_.get());
 }
 
 NewIRInterpreter::~NewIRInterpreter() {
@@ -564,14 +564,8 @@ void NewIRInterpreter::BuildInstruction() {
     } else if (op->dialect()->name() == "cf") {
       continue;
     } else if (op->dialect()->name() == "pd_op") {
-      vec_instruction_base_.emplace_back(
-          std::make_unique<CondInstruction>(op_idx++,
-                                            place_,
-                                            op,
-                                            scope_,
-                                            local_scope_,
-                                            value_exe_info_.get(),
-                                            sub_blocks_));
+      vec_instruction_base_.emplace_back(std::make_unique<CondInstruction>(
+          op_idx++, place_, op, value_exe_info_.get()));
     } else if (op->dialect()->name() == "pd_kernel") {
       auto op_name = op->attributes()
                          .at("op_name")

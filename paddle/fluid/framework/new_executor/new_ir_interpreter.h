@@ -216,8 +216,6 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   // value execution info
   std::shared_ptr<ValueExecutionInfo> value_exe_info_;
 
-  std::map<pir::Block*, paddle::framework::Scope*> sub_blocks_;
-
   std::vector<int> var_ref_count_;
 
   interpreter::NewIrDependencyBuilder ir_dependency_builder_;

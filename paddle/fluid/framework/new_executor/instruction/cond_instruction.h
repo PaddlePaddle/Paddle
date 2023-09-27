@@ -29,14 +29,10 @@ class ValueExecutionInfo;
 
 class CondInstruction : public InstructionBase {
  public:
-  CondInstruction(
-      size_t id,
-      const platform::Place& place,
-      ::pir::Operation* op,
-      Scope* scope,
-      Scope* local_scope,
-      ValueExecutionInfo* value_exe_info,
-      const std::map<pir::Block*, paddle::framework::Scope*>& sub_blocks);
+  CondInstruction(size_t id,
+                  const platform::Place& place,
+                  ::pir::Operation* op,
+                  ValueExecutionInfo* value_exe_info);
 
   void Run() override;
 

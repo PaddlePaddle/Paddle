@@ -100,14 +100,10 @@ void GetOutsideOpInputs(
   }
 }
 
-CondInstruction::CondInstruction(
-    size_t id,
-    const platform::Place& place,
-    pir::Operation* op,
-    Scope* scope,
-    Scope* local_scope,
-    ValueExecutionInfo* value_exec_info,
-    const std::map<pir::Block*, paddle::framework::Scope*>& sub_blocks)
+CondInstruction::CondInstruction(size_t id,
+                                 const platform::Place& place,
+                                 pir::Operation* op,
+                                 ValueExecutionInfo* value_exec_info)
     : InstructionBase(id, place) {
   op_ = op;
   VLOG(6) << "finish process dist attributes";
@@ -115,7 +111,7 @@ CondInstruction::CondInstruction(
   SetKernelType(AnalyseOpFuncType(op, place));
   VLOG(6) << "finish process analyse kernel type";
 
-  Scope* inner_scope = local_scope == nullptr ? scope : local_scope;
+  Scope* inner_scope = value_exec_info->GetScope();
 
   VLOG(6) << "finish process inputs outputs index";
 
@@ -140,7 +136,7 @@ CondInstruction::CondInstruction(
   auto true_branch_yied_inputs = GetYiedOpInputs(true_branch_block);
   auto false_branch_yied_inputs = GetYiedOpInputs(false_branch_block);
 
-  auto true_scope = sub_blocks.at(true_branch_block);
+  Scope* true_scope = &(value_exec_info->GetScope()->NewScope());
   true_branch_inter =
       new NewIRInterpreter(place,
                            {},
@@ -156,7 +152,7 @@ CondInstruction::CondInstruction(
   }
   true_branch_inter->SetSkipGcVars(true_skip_gc_names_set);
 
-  auto false_scope = sub_blocks.at(false_branch_block);
+  Scope* false_scope = &(value_exec_info->GetScope()->NewScope());
   false_branch_inter =
       new NewIRInterpreter(place,
                            {},
