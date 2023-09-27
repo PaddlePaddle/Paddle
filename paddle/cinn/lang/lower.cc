@@ -104,7 +104,7 @@ std::vector<ir::Buffer> GetTempBuffers(const std::vector<Tensor>& tensor_args,
   auto all_temp_tensors =
       ir::ir_utils::CollectIRNodesWithoutTensor(body, [&](const Expr* x) {
         return x->as_tensor() && x->as_tensor()->buffer.defined() &&
-               (!tensor_group.Contain(x->as_tensor()->name) &&
+               (!tensor_group.Contain(x->as_tensor()->name) ||
                 ((!buffer_arg_names.count(x->as_tensor()->buffer->name) &&
                   !tensor_arg_names.count(x->as_tensor()->name)) ||
                  utils::Endswith(x->as_tensor()->buffer->name, "temp_buffer")));

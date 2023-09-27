@@ -447,12 +447,12 @@ std::vector<ir::LoweredFunc> GetFuncFromImpl(
 #ifdef CINN_WITH_CUDA
     optim::OptimizeExprGPU(&(funcs_after_schedule[i]->body));
 #endif
-    auto temp_buffers = lang::GetTempBuffers(
-        all_arg_tensors, stages, funcs_after_schedule[i]->body);
-    /*
+    // auto temp_buffers = lang::GetTempBuffers(
+    //     all_arg_tensors, stages, funcs_after_schedule[i]->body);
+
     auto temp_buffers = lang::GetTempBuffers(
         all_arg_tensors, tensor_group, funcs_after_schedule[i]->body);
-    */
+
     funcs_after_schedule[i]->temp_bufs = temp_buffers;
     funcs_after_schedule[i] =
         ir::_LoweredFunc_::Make(funcs_after_schedule[i]->name,

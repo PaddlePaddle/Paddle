@@ -114,8 +114,7 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     std::vector<ir::Expr> reduce_iter_values;
     // reduce body and reduce init schedule block should have different objects
     // for same axis so we re-create objects
-    std::vector<Var> reduce_axis_vars =
-        common::GenDefaultAxis(axis_len + reduce_axis.size());
+    std::vector<Var> reduce_axis_vars = common::GenDefaultAxis(axis_len);
     for (int i = 0; i < shape.size(); ++i) {
       reduce_block_vars.push_back(Var(Expr(0),
                                       shape[i],
