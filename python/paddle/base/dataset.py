@@ -145,9 +145,9 @@ class DatasetBase:
         Examples:
             .. code-block:: python
 
-            import paddle.base as base
-            dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-            dataset.set_fea_eval(1000000, True)
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> dataset.set_fea_eval(1000000, True)
 
         """
         if fea_eval:
@@ -1089,7 +1089,6 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-                >>> # doctest: +SKIP
                 >>> import paddle.base as base
                 >>> from paddle.incubate.distributed.fleet.parameter_server.pslib import fleet
                 >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
@@ -1441,7 +1440,7 @@ class BoxPSDataset(InMemoryDataset):
             .. code-block:: python
 
                 >>> import paddle.base as base
-                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> dataset = base.DatasetFactory().create_dataset("BoxPSDataset")
                 >>> dataset.set_merge_by_lineid()
                 >>> #suppose there is a slot 0
                 >>> dataset.slots_shuffle(['0'])

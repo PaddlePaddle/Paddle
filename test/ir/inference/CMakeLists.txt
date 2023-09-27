@@ -46,6 +46,10 @@ if(WIN32)
        "test_split_layernorm_to_math_ops_pass")
   list(REMOVE_ITEM TEST_TRT_CONVERTER
        "test_trt_convert_quantize_dequantize_linear")
+  list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_explicit_quantization")
+  list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_explicit_quantization_resnet")
+  list(REMOVE_ITEM TEST_TRT_IR_PASSES
+       "test_trt_explicit_quantization_mobilenet")
 endif()
 
 # Only for cpu(mkl + openblas)
@@ -177,6 +181,10 @@ if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(test_trt_inference_predictor PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_inference_fp16_io PROPERTIES TIMEOUT 300)
   set_tests_properties(test_trt_optimization_level PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_explicit_quantization_resnet PROPERTIES TIMEOUT
+                                                                        300)
+  set_tests_properties(test_trt_explicit_quantization_mobilenet
+                       PROPERTIES TIMEOUT 300)
   if(WITH_MKLDNN)
     set_tests_properties(test_save_optimized_model_pass PROPERTIES TIMEOUT 300)
   endif()

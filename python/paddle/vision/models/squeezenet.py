@@ -223,7 +223,7 @@ def squeezenet1_0(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`SqueezeNet <api_paddle_vision_SqueezeNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`SqueezeNet <api_paddle_vision_models_SqueezeNet>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of SqueezeNet v1.0 model.
@@ -257,7 +257,7 @@ def squeezenet1_1(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`SqueezeNet <api_paddle_vision_SqueezeNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`SqueezeNet <api_paddle_vision_models_SqueezeNet>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of SqueezeNet v1.1 model.

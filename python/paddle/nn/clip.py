@@ -950,16 +950,16 @@ def set_gradient_clip(clip, param_list=None, program=None):
         and it may be removed in future releases, so it is not recommended.
         It is recommended to set ``grad_clip`` when initializing the ``optimizer`` ,
         this is a better method to clip gradient. There are three clipping strategies:
-         :ref:`api_base_clip_GradientClipByGlobalNorm` , :ref:`api_base_clip_GradientClipByNorm` ,
-         :ref:`api_base_clip_GradientClipByValue` .
+         :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
+         :ref:`api_paddle_nn_ClipGradByValue` .
 
     To specify parameters that require gradient clip.
 
     Args:
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three cliping strategies
-            ( :ref:`api_base_clip_GradientClipByGlobalNorm` , :ref:`api_base_clip_GradientClipByNorm` ,
-            :ref:`api_base_clip_GradientClipByValue` ). Default value: None, and there is no
+            ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
+            :ref:`api_paddle_nn_ClipGradByValue` ). Default value: None, and there is no
             gradient clipping.
         param_list (list(Variable), optional): Parameters that require gradient clip.
                 It can be a list of parameter or a list of parameter's name.

@@ -65,7 +65,7 @@ struct ReduceSumForSolvelGrad<GPUContext, T> {
                   const std::vector<int>& reduce_dims,
                   bool keep_dims) {
     phi::SumKernel<T, GPUContext>(
-        dev_ctx, input, reduce_dims, input.dtype(), false, output);
+        dev_ctx, input, reduce_dims, output->dtype(), keep_dims, output);
   }
 };
 #endif
