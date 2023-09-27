@@ -49,7 +49,6 @@ from .common import (
     get_default_distributed_operator_impl,
     gradient_synchronization,
     infer_shape,
-    merge_forward_backward_dims_mapping,
     naive_copy_op_dist_attr_for_program,
     register_distributed_operator_impl,
     register_distributed_operator_impl_container,
@@ -87,20 +86,10 @@ class DistributedEmbedding(DistributedOperatorImplContainer):
             x_spec, w_spec, output_spec, padding_idx, is_sparse
         )
 
-        # step3: merge fw & bw results
-        (
-            infered_input_dims_mappings,
-            infered_output_dims_mappings,
-        ) = merge_forward_backward_dims_mapping(fw_results, bw_results)
-
-        # step4: update dist_attr
+        # step3: update dist_attr
         # tensor order following order in PHI defition
         changed = update_op_dims_mapping(
-            dist_op,
-            [x_name, w_name],
-            infered_input_dims_mappings,
-            [out_name],
-            infered_output_dims_mappings,
+            dist_op, [x_name, w_name], [out_name], fw_results, bw_results
         )
 
         return changed

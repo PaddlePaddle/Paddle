@@ -38,7 +38,6 @@ from .common import (
     get_default_distributed_operator_impl,
     gradient_synchronization,
     is_parameter_related,
-    merge_forward_backward_dims_mapping,
     register_distributed_operator_impl,
     register_distributed_operator_impl_container,
     update_op_dims_mapping,
@@ -140,20 +139,10 @@ class DistributedDefault(DistributedOperatorImplContainer):
         fw_results = rule.infer_forward(input_specs, output_specs)
         bw_results = rule.infer_backward(input_specs, output_specs)
 
-        # step3: merge fw & bw results
-        (
-            infered_input_dims_mappings,
-            infered_output_dims_mappings,
-        ) = merge_forward_backward_dims_mapping(fw_results, bw_results)
-
-        # step4: update dist_attr
+        # step3: update dist_attr
         # tensor order following order in PHI defition
         changed = update_op_dims_mapping(
-            dist_op,
-            input_arg_names,
-            infered_input_dims_mappings,
-            output_arg_names,
-            infered_output_dims_mappings,
+            dist_op, input_arg_names, output_arg_names, fw_results, bw_results
         )
 
         return changed

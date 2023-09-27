@@ -22,7 +22,6 @@ from .common import (
     DistributedOperatorImpl,
     DistributedOperatorImplContainer,
     get_default_distributed_operator_impl,
-    merge_forward_backward_dims_mapping,
     register_distributed_operator_impl,
     register_distributed_operator_impl_container,
     update_op_dims_mapping,
@@ -78,20 +77,10 @@ class DistributedSplit(DistributedOperatorImplContainer):
         fw_results = rule.infer_forward(x_spec, first_attr, axis)
         bw_results = rule.infer_backward(x_spec, output_specs, first_attr, axis)
 
-        # step3: merge fw & bw results
-        (
-            infered_input_dims_mappings,
-            infered_output_dims_mappings,
-        ) = merge_forward_backward_dims_mapping(fw_results, bw_results)
-
-        # step4: update dist_attr
+        # step3: update dist_attr
         # tensor order following order in PHI defition
         changed = update_op_dims_mapping(
-            dist_op,
-            [x_name],
-            infered_input_dims_mappings,
-            output_arg_names,
-            infered_output_dims_mappings,
+            dist_op, [x_name], output_arg_names, fw_results, bw_results
         )
 
         return changed
