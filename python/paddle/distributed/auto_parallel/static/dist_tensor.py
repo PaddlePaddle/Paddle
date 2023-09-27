@@ -409,7 +409,11 @@ class DistributedTensor:
             annotated_str = "annotated"
         else:
             annotated_str = "non-annotated"
-        str += f", dims_mapping ({annotated_str}): {self.dist_attr.dims_mapping} }}"
+        str += (
+            f", dims_mapping ({annotated_str}): {self.dist_attr.dims_mapping}"
+        )
+
+        str += f", partial on dims: {sorted(self.dist_attr._partial_dims())} }}"
 
         # if self.dist_attr.is_annotated("shard_mask"):
         #     annotated_str = "annotated"
