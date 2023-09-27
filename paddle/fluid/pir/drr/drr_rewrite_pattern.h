@@ -586,21 +586,72 @@ class DrrRewritePattern : public pir::RewritePattern {
             std::make_shared<IrValue>(src_match_ctx.GetIrValue(in_tensor)));
       }
     }
-    // set insert point
-    for (const auto& output : result_pattern_graph.output_tensors()) {
-      if (source_pattern_graph.id2owend_tensor().count(output)) {
-        auto ir_value = src_match_ctx.GetIrValue(output);
-        if (ir_value.get()) {
-          rewriter.SetInsertionPointAfter(
-              ir_value.get().dyn_cast<pir::OpResult>().owner());
-          break;
-        }
-      }
+
+    if (result_pattern_graph.CountOfOpCalls() == 1) {
+      CreateOperation(*result_pattern_graph.owned_op_call()[0],
+                      src_match_ctx,
+                      rewriter,
+                      &res_match_ctx);
+      return res_match_ctx;
     }
+
+    std::vector<std::vector<Operation*>> temp_program;
+    std::unordered_map<Operation*, size_t> op_2_temp_program_index;
+    for (Operation* op : *rewriter.block()) {
+      op_2_temp_program_index[op] = temp_program.size();
+      temp_program.push_back({op});
+    }
+
     // topo order visit result_pattern_graph
     GraphTopo graph_topo_visit(&result_pattern_graph);
     graph_topo_visit.WalkGraphNodesTopoOrder([&](const OpCall& op_call) {
-      CreateOperation(op_call, src_match_ctx, rewriter, &res_match_ctx);
+      // set insert point
+      size_t max_input_op_index = 0;
+      Operation* max_index_op = nullptr;
+      for (const Tensor* input : op_call.inputs()) {
+        if (input->is_none()) {
+          continue;
+        }
+        Value ir_val = res_match_ctx.GetIrValue(input->name()).get();
+        if (ir_val) {
+          Operation* ir_input_op = ir_val.dyn_cast<pir::OpResult>().owner();
+          if (max_input_op_index < op_2_temp_program_index[ir_input_op]) {
+            max_input_op_index = op_2_temp_program_index[ir_input_op];
+            max_index_op = ir_input_op;
+          } else if (max_input_op_index ==
+                     op_2_temp_program_index[ir_input_op]) {
+            const auto& ops_vec = temp_program[max_input_op_index];
+            for (auto it = ops_vec.rbegin(); it != ops_vec.rend(); it++) {
+              if (*it == max_index_op) {
+                break;
+              } else if (*it == ir_input_op) {
+                max_index_op = ir_input_op;
+                break;
+              } else {
+                // do nothing
+              }
+            }
+          } else {
+            // do nothing
+          }
+        }
+      }
+      if (max_input_op_index == -1UL) {
+        VLOG(6) << "Not found producer op for (" << op_call.name() << ")";
+        Operation* source_patter_first_op =
+            src_match_ctx
+                .Operation(source_pattern_graph.owned_op_call()[0].get())
+                .get();
+        max_input_op_index = op_2_temp_program_index[source_patter_first_op];
+        rewriter.SetInsertionPoint(source_patter_first_op);
+      } else {
+        rewriter.SetInsertionPointAfter(max_index_op);
+      }
+
+      Operation* new_op =
+          CreateOperation(op_call, src_match_ctx, rewriter, &res_match_ctx);
+      op_2_temp_program_index[new_op] = max_input_op_index + 1;
+      temp_program[max_input_op_index + 1].push_back(new_op);
     });
 
     return res_match_ctx;
