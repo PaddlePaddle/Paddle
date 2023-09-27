@@ -84,8 +84,10 @@ void Block::ClearArguments() {
   }
   arguments_.clear();
 }
-void Block::AddArgument(Type type) {
-  arguments_.emplace_back(BlockArgument::Create(type, this, arguments_.size()));
+BlockArgument Block::AddArgument(Type type) {
+  auto argument = BlockArgument::Create(type, this, arguments_.size());
+  arguments_.emplace_back(argument);
+  return argument;
 }
 
 bool Block::TopoOrderCheck(const OpListType &op_list) {
