@@ -699,22 +699,14 @@ class SymbolicStaticFunction(StaticFunction):
         self.last_call_input_spec = None
 
     def _perform_call(self, *args, **kwargs):
+        from ..sot import symbolic_translate
+
         args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
         (
             input_args_with_spec,
             input_kwargs_with_spec,
         ) = self._function_spec.args_to_input_spec(args, kwargs)
         self.last_call_input_spec = input_args_with_spec
-
-        try:
-            from sot import symbolic_translate
-        except:
-            import os
-
-            os.system(
-                "pip install git+https://github.com/PaddlePaddle/PaddleSOT@develop"
-            )
-            from sot import symbolic_translate
 
         build_strategy = self._kwargs.get("build_strategy", None)
         backend = self._kwargs.get("backend", None)

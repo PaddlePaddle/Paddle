@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from . import sot
 from .api import save
 from .api import load
 from .api import to_static
