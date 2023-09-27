@@ -44,6 +44,8 @@ class CondInstruction : public InstructionBase {
   void CopyBranchOutput(const std::vector<std::string>& var_names,
                         const NewIRInterpreter* inter);
 
+  ::pir::Operation* op_;
+
   std::string cond_name_{"cond_instruction"};
 
   Variable* cond_var;
@@ -51,12 +53,12 @@ class CondInstruction : public InstructionBase {
   std::vector<Variable*> if_op_outputs_;
 
   NewIRInterpreter* true_branch_inter;
+
   NewIRInterpreter* false_branch_inter;
 
   std::vector<std::string> true_skip_gc_names_;
-  std::vector<std::string> false_skip_gc_names_;
 
-  ::pir::Operation* op_;
+  std::vector<std::string> false_skip_gc_names_;
 };
 
 }  // namespace framework

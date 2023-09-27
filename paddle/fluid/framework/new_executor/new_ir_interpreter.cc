@@ -47,6 +47,7 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/pir/core/builtin_attribute.h"
 
@@ -558,12 +559,13 @@ void NewIRInterpreter::BuildInstruction() {
     VLOG(6) << "Build Instruction for op: " << op_idx;
     if (op->dialect()->name() == "builtin") {
       if (interpreter::GetSpecialOpNames().count(op->name())) {
-        VLOG(6) << "skip process " << op->name();
+        VLOG(6) << "skip process builtin dialect op: " << op->name();
         continue;
       }
     } else if (op->dialect()->name() == "cf") {
+      VLOG(6) << "skip process cf dialect op: " << op->name();
       continue;
-    } else if (op->dialect()->name() == "pd_op") {
+    } else if (op->isa<paddle::dialect::IfOp>()) {
       vec_instruction_base_.emplace_back(std::make_unique<CondInstruction>(
           op_idx++, place_, op, value_exe_info_.get()));
     } else if (op->dialect()->name() == "pd_kernel") {
@@ -577,7 +579,7 @@ void NewIRInterpreter::BuildInstruction() {
       }
       VLOG(6) << "process " << op_name;
 
-      if (op->name().compare(paddle::dialect::LegacyKernelOp::name()) == 0) {
+      if (op->isa<paddle::dialect::LegacyKernelOp>()) {
         vec_instruction_base_.emplace_back(
             std::make_unique<LegacyKernelInstruction>(
                 op_idx++, place_, op, *(value_exe_info_.get())));
