@@ -21,6 +21,8 @@
 #include "paddle/fluid/eager/to_static/run_program_op_node.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
+#include "paddle/pir/core/block.h"
+#include "paddle/pir/core/value.h"
 
 // Filter params without grads in global block. In this case, we will
 // tag its AutogradMeta with stop_gradient = True to avoid fault from
@@ -82,6 +84,23 @@ static std::vector<paddle::Tensor> filter_unused_input_var_in_backward(
   auto filter_x = std::vector<paddle::Tensor>(x);
   for (size_t i = 0; i < x.size(); i++) {
     if (!backward_block->HasVar(x_names[i])) {
+      auto fake = paddle::Tensor(std::make_shared<phi::DenseTensor>());
+      fake.set_name(paddle::framework::kFakeVarName);
+      filter_x[i] = fake;
+    }
+  }
+  return filter_x;
+}
+
+static std::vector<paddle::Tensor> newir_filter_unused_input_var_in_backward(
+    const std::vector<paddle::Tensor>& x,
+    const std::string x_key_name,
+    const paddle::framework::AttributeMap& attrs) {
+  auto values =
+      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at(x_key_name));
+  auto filter_x = std::vector<paddle::Tensor>(x);
+  for (size_t i = 0; i < x.size(); i++) {
+    if (values[i].impl() == nullptr) {
       auto fake = paddle::Tensor(std::make_shared<phi::DenseTensor>());
       fake.set_name(paddle::framework::kFakeVarName);
       filter_x[i] = fake;
@@ -243,8 +262,17 @@ inline void newir_run_program_ad_func(
           paddle::Tensor(std::make_shared<phi::DenseTensor>());
       middles.push_back(&grad_node->GetMiddle()[i]);
     }
+
+    auto backward_outs =
+        PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bo"));
     for (size_t i = 0; i < output_size; ++i) {
-      grad_node->GetOutputs()[i] = *out[i];
+      if (backward_outs[i] != nullptr) {
+        grad_node->GetOutputs()[i] = *out[i];
+      } else {  // not used by backward program
+        auto fake = paddle::Tensor(std::make_shared<phi::DenseTensor>());
+        fake.set_name(paddle::framework::kFakeVarName);
+        grad_node->GetOutputs()[i] = fake;
+      }
     }
   }
 
@@ -253,35 +281,26 @@ inline void newir_run_program_ad_func(
   NewIRRunProgramAPI(
       x, params, out, middles, step_scope, dout, require_any_grad, attrs);
   if (require_any_grad) {
-    // auto x_names =
-    // PADDLE_GET_CONST(std::vector<std::string>, attrs.at("x_names"));
-
     egr::EagerUtils::PassStopGradient(false, &p_autograd_outs);
 
     // Set Attributes
     grad_node->SetAttrMap(attrs);
 
-    // auto* forward_global_block = PADDLE_GET_CONST(
-    // paddle::framework::BlockDesc*, attrs.at("forward_global_block"));
-    // auto* backward_global_block = PADDLE_GET_CONST(
-    // paddle::framework::BlockDesc*, attrs.at("backward_global_block"));
     // Clear unused x vars
-    // auto filter_x =
-    // filter_unused_input_var_in_backward(x, x_names, backward_global_block);
+    auto filter_x = newir_filter_unused_input_var_in_backward(x, "bx", attrs);
     // Set TensorWrappers
-    grad_node->SetFwdX(x);
-    // Clear unused out vars
-    // clear_unused_out_var_in_backward(out, backward_global_block,
-    // step_scope[0]);
+    grad_node->SetFwdX(filter_x);
 
-    grad_node->SetFwdParams(params);
+    auto filter_params =
+        newir_filter_unused_input_var_in_backward(params, "bp", attrs);
+    grad_node->SetFwdParams(filter_params);
+
     grad_node->SetStepScope(step_scope);  // just for set useable.
 
     // Set Grad out rank as same as fwd input and set stop gradient to bwd
     // NOTE(@xiongkun): Not every tensor in x(list of tensor) is required
     // gradient. for example: x[1] is not used for output, the x[1] is ignored.
 
-    // TODO(@xiongkun): rewrite by new ir representation.
     std::vector<const paddle::Tensor*> x_require_grad;
     for (size_t i = 0; i < x.size(); ++i) {
       x_require_grad.push_back(&x[i]);
@@ -290,6 +309,7 @@ inline void newir_run_program_ad_func(
     grad_node->SetGradOutMeta(x_require_grad, /*slot id*/ 0);
     grad_node->SetGradOutMeta(params, /*slot id*/ 1);
 
+    // TODO(@xiongkun): rewrite by new ir representation.
     // VLOG(2) << "clear_no_grad_edges.";
     // clear_no_grad_edges_with_partial_block(params,
     // forward_global_block,

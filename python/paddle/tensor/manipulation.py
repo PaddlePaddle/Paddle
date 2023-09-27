@@ -475,7 +475,7 @@ def transpose(x, perm, name=None):
             # [3L, 2L, 4L]
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.transpose(x, perm)
     else:
         check_variable_and_dtype(
@@ -1984,8 +1984,10 @@ def split(x, num_or_sections, axis=0, name=None):
             dim = (len(input.shape) + dim) if dim < 0 else dim
 
         if isinstance(num_or_sections, int):
+            dim = dim if dim >= 0 else dim + len(input.shape)
             return _C_ops.split_with_num(input, num_or_sections, dim)
         else:
+            dim = dim if dim >= 0 else dim + len(input.shape)
             return _C_ops.split(input, num_or_sections, dim)
 
     else:
