@@ -1890,9 +1890,7 @@ class OneCycleLR(LRScheduler):
         # Check type and value of total_steps
         if not isinstance(total_steps, int):
             raise TypeError(
-                "'total_step' must be 'int', but received {}".format(
-                    type(total_steps)
-                )
+                f"'total_step' must be 'int', but received {type(total_steps)}"
             )
         if total_steps <= 0:
             raise ValueError("'total_step' must be a positive integer.")
@@ -1901,15 +1899,11 @@ class OneCycleLR(LRScheduler):
         # Check type and value of pac_start
         if not isinstance(phase_pct, float):
             raise TypeError(
-                "'phase_pct' must be 'float', but received {}".format(
-                    type(phase_pct)
-                )
+                f"'phase_pct' must be 'float', but received {type(phase_pct)}"
             )
         if phase_pct < 0 or phase_pct > 1:
             raise ValueError(
-                "'phase_pct' must be between 0 and 1, but received {}".format(
-                    phase_pct
-                )
+                f"'phase_pct' must be between 0 and 1, but received {phase_pct}"
             )
 
         # Check type and value of divide_factor
@@ -2164,9 +2158,7 @@ class CyclicLR(LRScheduler):
         # check type of exp_gamma
         if not isinstance(exp_gamma, float):
             raise TypeError(
-                "The type of 'exp_gamma' must be float, but received {}".format(
-                    type(exp_gamma)
-                )
+                f"The type of 'exp_gamma' must be float, but received {type(exp_gamma)}"
             )
 
         step_size_up = float(step_size_up)

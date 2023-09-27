@@ -239,7 +239,7 @@ void PaddleInferTensorCreate(paddle_infer::Tensor &tensor,  // NOLINT
 
 paddle_infer::PlaceType ToPaddleInferPlace(
     phi::AllocationType allocation_type) {
-  if (allocation_type == phi::AllocationType::CPU) {
+  if (allocation_type == phi::AllocationType::CPU) {  // NOLINT
     return paddle_infer::PlaceType::kCPU;
   } else if (allocation_type == phi::AllocationType::GPU) {
     return paddle_infer::PlaceType::kGPU;
@@ -898,8 +898,7 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::tensorrt_dynamic_shape_enabled)
       .def("mark_trt_engine_outputs",
            &AnalysisConfig::MarkTrtEngineOutputs,
-           py::arg("output_tensor_names") = std::vector<std::string>({}),
-           py::arg("mark_output_with_id") = false)
+           py::arg("output_tensor_names") = std::vector<std::string>({}))
       .def("enable_tensorrt_varseqlen", &AnalysisConfig::EnableVarseqlen)
       .def("tensorrt_varseqlen_enabled",
            &AnalysisConfig::tensorrt_varseqlen_enabled)
@@ -921,7 +920,8 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("dla_core") = 0)
       .def("tensorrt_dla_enabled", &AnalysisConfig::tensorrt_dla_enabled)
       .def("enable_tensorrt_inspector",
-           &AnalysisConfig::EnableTensorRtInspector)
+           &AnalysisConfig::EnableTensorRtInspector,
+           py::arg("inspector_serialize") = false)
       .def("tensorrt_inspector_enabled",
            &AnalysisConfig::tensorrt_inspector_enabled)
       .def("enable_tensorrt_explicit_quantization",
@@ -929,6 +929,10 @@ void BindAnalysisConfig(py::module *m) {
       .def("tensorrt_explicit_quantization_enabled",
            &AnalysisConfig::tensorrt_explicit_quantization_enabled)
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
+      .def("set_tensorrt_optimization_level",
+           &AnalysisConfig::SetTensorRtOptimizationLevel)
+      .def("tensorrt_optimization_level",
+           &AnalysisConfig::tensorrt_optimization_level)
       .def("enable_dlnne",
            &AnalysisConfig::EnableDlnne,
            py::arg("min_subgraph_size") = 3,

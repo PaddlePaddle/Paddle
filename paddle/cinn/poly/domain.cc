@@ -23,7 +23,7 @@
 #include <unordered_set>
 
 #include "paddle/cinn/common/context.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {
@@ -70,8 +70,8 @@ void Domain::ExtractParams() {
   std::unordered_set<std::string> var_names;
   auto collect_param_fn = [&](Expr& e) {
     if (!e.is_constant()) {
-      auto vars =
-          ir::CollectIRNodes(e, [](const Expr* e) { return e->is_var(); });
+      auto vars = ir::ir_utils::CollectIRNodes(
+          e, [](const Expr* e) { return e->is_var(); });
       for (auto& var : vars) var_names.insert(var.As<ir::_Var_>()->name);
     }
   };
