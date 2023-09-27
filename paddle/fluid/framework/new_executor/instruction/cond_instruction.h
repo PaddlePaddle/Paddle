@@ -48,14 +48,16 @@ class CondInstruction : public InstructionBase {
 
   std::string cond_name_{"cond_instruction"};
 
-  Variable* cond_var;
+  Variable* cond_var_;
 
-  std::vector<Variable*> if_op_outputs_;
+  std::vector<Variable*> output_vars_;
 
-  NewIRInterpreter* true_branch_inter;
+  NewIRInterpreter* true_branch_inter_;
 
-  NewIRInterpreter* false_branch_inter;
+  NewIRInterpreter* false_branch_inter_;
 
+  // TODO(zhangbo): Currently, only the output of IfOp is included. In the
+  // future, need to consider how to support IfGradOp using IfOp value.
   std::vector<std::string> true_skip_gc_names_;
 
   std::vector<std::string> false_skip_gc_names_;

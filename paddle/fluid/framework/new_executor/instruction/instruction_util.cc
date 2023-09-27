@@ -142,46 +142,48 @@ OpFuncType AnalyseOpFuncType(pir::Operation* op, const platform::Place& place) {
     return OpFuncType::kCpuSync;
   }
 
-  if (op->dialect()->name() == "pd_op") {
-    return OpFuncType::kGpuAsync;
-  }
-
-  auto kernel_key = op->attributes()
-                        .at("kernel_key")
-                        .dyn_cast<dialect::KernelAttribute>()
-                        .data();
-  if (phi::TransToPhiPlace(kernel_key.backend()).GetType() ==
-      phi::AllocationType::CPU) {
-    return OpFuncType::kCpuSync;
-  }
-
   PADDLE_ENFORCE_EQ(interpreter::IsSupportedHeterPlace(place),
                     true,
                     phi::errors::Fatal("Unsupported current place %s", place));
+
+  auto& op_attributes = op->attributes();
+
+  if ((op->dialect()->name() == "pd_kernel") &&
+      (op_attributes.count("kernel_key") > 0)) {
+    auto kernel_key = op_attributes.at("kernel_key")
+                          .dyn_cast<dialect::KernelAttribute>()
+                          .data();
+    if (phi::TransToPhiPlace(kernel_key.backend()).GetType() ==
+        phi::AllocationType::CPU) {
+      return OpFuncType::kCpuSync;
+    }
+  }
 
   // Some GPU OPs do not launch CUDA Kernel, but spend a lot of time on CPU
   // computing. They execute serially in device thread and block CUDA kernel
   // launching in other GPU OPs. To improve performance, set them as kGpuSync
   // and so that they would be dispatched to host thread.
-  auto& op_attributes = op->attributes();
-  auto op_name =
-      op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
-  if (op_name == "pd_op.coalesce_tensor" &&
-      (!platform::is_xpu_place(place) ||
-       op->attribute<pir::BoolAttribute>("persist_output").data() == false) &&
-      op->attribute<pir::BoolAttribute>("set_constant").data() == false &&
-      op->attribute<pir::BoolAttribute>("copy_data").data() == false) {
-    return OpFuncType::kGpuSync;
+  if ((op->dialect()->name() == "pd_kernel") &&
+      (op_attributes.count("op_name") > 0)) {
+    auto op_name =
+        op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
+    if (op_name == "pd_op.coalesce_tensor" &&
+        (!platform::is_xpu_place(place) ||
+         op->attribute<pir::BoolAttribute>("persist_output").data() == false) &&
+        op->attribute<pir::BoolAttribute>("set_constant").data() == false &&
+        op->attribute<pir::BoolAttribute>("copy_data").data() == false) {
+      return OpFuncType::kGpuSync;
+    }
+
+    if (platform::is_gpu_place(place) && op_name == "pd_op.memcpy_d2h") {
+      return OpFuncType::kGpuSync;
+    }
+
+    if (op_name == "pd_op.shape") {
+      return OpFuncType::kGpuSync;
+    }
   }
 
-  // for memcpy explicitly called by user
-  if (platform::is_gpu_place(place) && op_name == "pd_op.memcpy_d2h") {
-    return OpFuncType::kGpuSync;
-  }
-
-  if (op_name == "pd_op.shape") {
-    return OpFuncType::kGpuSync;
-  }
   return OpFuncType::kGpuAsync;
 }
 

@@ -380,7 +380,7 @@ std::string NewIRInterpreter::GetDepsString() const {
 
 bool NewIRInterpreter::HasLocalScope() const { return local_scope_ != nullptr; }
 
-Scope* NewIRInterpreter::InnerScope() {
+Scope* NewIRInterpreter::InnerScope() const {
   return local_scope_ != nullptr ? local_scope_ : scope_;
 }
 
