@@ -68,6 +68,7 @@ from .auto_parallel import shard_op  # noqa: F401
 from .auto_parallel.api import shard_tensor  # noqa: F401
 from .auto_parallel.api import dtensor_from_fn  # noqa: F401
 from .auto_parallel.api import reshard  # noqa: F401
+from .auto_parallel.api import shard_layer  # noqa: F401
 
 from .fleet import BoxPSDataset  # noqa: F401
 
@@ -130,4 +131,5 @@ __all__ = [  # noqa
     "shard_tensor",
     "dtensor_from_fn",
     "reshard",
+    "shard_layer",
 ]
