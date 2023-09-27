@@ -426,7 +426,6 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
     std::shared_ptr<dnnl::memory> bias_memory_p;
     std::shared_ptr<dnnl::memory> dst_memory_p;
     std::shared_ptr<dnnl::memory> residual_data_memory_p;
-    std::shared_ptr<phi::DenseTensor> residual_data_cache;
     auto* residual_data = ctx.Input<phi::DenseTensor>("ResidualData");
 
     std::string cache_key;
