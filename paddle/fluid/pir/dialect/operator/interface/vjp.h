@@ -43,6 +43,7 @@ class VjpInterface : public pir::OpInterfaceBase<VjpInterface> {
     Model() : Concept(Vjp) {}
   };
 
+  /// Constructor
   VjpInterface(pir::Operation* op, Concept* impl)
       : pir::OpInterfaceBase<VjpInterface>(op), impl_(impl) {}
 
