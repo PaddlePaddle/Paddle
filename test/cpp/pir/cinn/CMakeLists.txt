@@ -44,5 +44,6 @@ if(WITH_TESTING AND WITH_CINN)
     pir_pass
     gtest
     glog)
-  set_tests_properties(test_group_op PROPERTIES LABELS "RUN_TYPE=CINN")
+  set_tests_properties(test_pir_build_cinn_pass PROPERTIES LABELS
+                                                           "RUN_TYPE=CINN")
 endif()
