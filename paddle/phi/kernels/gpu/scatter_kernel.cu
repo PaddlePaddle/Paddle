@@ -262,6 +262,60 @@ void ScatterKernel(const Context& ctx,
           "but desires to be add, mul, multiply, mean, amin, amax.",
           reduce));
 
+  auto input_dim = x->dims();
+  axis = axis >= 0 ? axis : axis + input_dim.size();
+  int index_size = index.dims().size();
+
+  DenseTensor index_cpu;
+  phi::Copy(ctx, index, phi::CPUPlace(), false, &index_cpu);
+
+  for (int i = 0; i < index_size; i++) {
+    if (index_type == phi::DataType::INT32) {
+      const int* index_data = index_cpu.data<int>();
+
+      PADDLE_ENFORCE_GE(
+          index_data[i],
+          0,
+          phi::errors::InvalidArgument(
+              "Variable value (index) of OP(index_add) "
+              "expected >= 0 and < %ld, but got %ld. Please check input "
+              "value.",
+              input_dim[axis],
+              index_data[i]));
+      PADDLE_ENFORCE_LT(
+          index_data[i],
+          input_dim[axis],
+          phi::errors::InvalidArgument(
+              "Variable value (index) of OP(index_add) "
+              "expected >= 0 and < %ld, but got %ld. Please check input "
+              "value.",
+              input_dim[axis],
+              index_data[i]));
+
+    } else if (index_type == phi::DataType::INT64) {
+      const int64_t index_data = index_cpu.data<int64_t>();
+
+      PADDLE_ENFORCE_GE(
+          index_data[i],
+          0,
+          phi::errors::InvalidArgument(
+              "Variable value (index) of OP(index_add) "
+              "expected >= 0 and < %ld, but got %ld. Please check input "
+              "value.",
+              input_dim[axis],
+              index_data[i]));
+      PADDLE_ENFORCE_LT(
+          index_data[i],
+          input_dim[axis],
+          phi::errors::InvalidArgument(
+              "Variable value (index) of OP(index_add) "
+              "expected >= 0 and < %ld, but got %ld. Please check input "
+              "value.",
+              input_dim[axis],
+              index_data[i]));
+    }
+  }
+
   std::string reducer = reduce;
   if (overwrite) {
     reducer = "assign";
