@@ -94,7 +94,7 @@ LegacyKernelInstruction::LegacyKernelInstruction(
   VLOG(6) << "finish process yaml_info_parser";
 
   if (infer_meta_interface_) {
-    pir::BuildPhiContext<
+    BuildPhiContext<
         phi::InferMetaContext,
         phi::MetaTensor,
         phi::MetaTensor,
@@ -118,8 +118,7 @@ LegacyKernelInstruction::LegacyKernelInstruction(
 
   const Scope* inner_scope = value_exec_info_.GetScope();
 
-  operator_base_ =
-      pir::BuildOperatorBase(op, value_exec_info_, yaml_info_parser);
+  operator_base_ = BuildOperatorBase(op, value_exec_info_, yaml_info_parser);
 
   paddle::framework::VariableValueMap in_map;
   paddle::framework::VariableValueMap out_map;
@@ -128,7 +127,7 @@ LegacyKernelInstruction::LegacyKernelInstruction(
 
   runtime_context_ = std::make_shared<paddle::framework::RuntimeContext>(
       paddle::framework::RuntimeContext(in_map, out_map));
-  pir::BuildRuntimeContext(
+  BuildRuntimeContext(
       op, value_exec_info, yaml_info_parser, runtime_context_.get());
 
   kernel_context_ = new paddle::framework::ExecutionContext(

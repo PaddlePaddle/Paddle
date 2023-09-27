@@ -98,7 +98,7 @@ PhiKernelInstruction::PhiKernelInstruction(
   VLOG(6) << "finish process yaml_info_parser";
 
   if (infer_meta_interface_) {
-    pir::BuildPhiContext<
+    BuildPhiContext<
         phi::InferMetaContext,
         phi::MetaTensor,
         phi::MetaTensor,
@@ -120,12 +120,12 @@ PhiKernelInstruction::PhiKernelInstruction(
       phi_kernel_->IsValid(), true, "not found kernel for [%s]", kernel_name);
   VLOG(6) << "finish process select kernel";
 
-  pir::BuildPhiContext<phi::KernelContext,
-                       const phi::TensorBase*,
-                       phi::TensorBase*,
-                       paddle::small_vector<const phi::TensorBase*>,
-                       paddle::small_vector<phi::TensorBase*>,
-                       true>(
+  BuildPhiContext<phi::KernelContext,
+                  const phi::TensorBase*,
+                  phi::TensorBase*,
+                  paddle::small_vector<const phi::TensorBase*>,
+                  paddle::small_vector<phi::TensorBase*>,
+                  true>(
       op, value_exec_info_, yaml_info_parser, &kernel_context_);
 
   kernel_context_.SetDeviceContext(phi::DeviceContextPool::Instance().Get(

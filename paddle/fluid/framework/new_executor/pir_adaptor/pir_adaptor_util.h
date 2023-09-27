@@ -140,11 +140,6 @@ class ValueExecutionInfo {
   std::vector<Variable*> var_list_;
 };
 
-}  // namespace framework
-}  // namespace paddle
-
-namespace pir {
-
 // NOTE(zhangbo): Some operators of Paddle support optional inputs or outputs,
 // representing whether the input or output exists. In the Pir, whether the
 // value itself is empty or the type it holds is empty is used to indicate
@@ -156,21 +151,19 @@ inline bool IsInvalid(pir::Value value) {
   return true;
 }
 
-void BuildScope(
-    const pir::Block& block,
-    const std::string& var_name_prefix,
-    std::map<pir::Block*, paddle::framework::Scope*>* sub_blocks,
-    paddle::framework::ValueExecutionInfo* value_exe_info = nullptr);
+void BuildScope(const pir::Block& block,
+                const std::string& var_name_prefix,
+                std::map<pir::Block*, Scope*>* sub_blocks,
+                ValueExecutionInfo* value_exe_info = nullptr);
 
-void BuildRuntimeContext(
-    pir::Operation* op,
-    const paddle::framework::ValueExecutionInfo& value_exec_info,
-    const paddle::dialect::OpYamlInfoParser& op_yaml_info,
-    paddle::framework::RuntimeContext* runtime_ctx);
+void BuildRuntimeContext(pir::Operation* op,
+                         const ValueExecutionInfo& value_exec_info,
+                         const paddle::dialect::OpYamlInfoParser& op_yaml_info,
+                         RuntimeContext* runtime_ctx);
 
-std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
+std::shared_ptr<OperatorBase> BuildOperatorBase(
     pir::Operation* op,
-    const paddle::framework::ValueExecutionInfo& value_exec_info,
+    const ValueExecutionInfo& value_exec_info,
     const paddle::dialect::OpYamlInfoParser& op_yaml_info);
 
 template <typename Context,
@@ -179,13 +172,12 @@ template <typename Context,
           typename InListType,
           typename OutListType,
           bool is_kernel>
-void BuildPhiContext(
-    pir::Operation* op,
-    const paddle::framework::ValueExecutionInfo& value_exec_info,
-    const paddle::dialect::OpYamlInfoParser& op_yaml_info,
-    Context* ctx) {
-  paddle::framework::Scope* inner_scope = value_exec_info.GetScope();
-  VLOG(6) << "Build " << get_type_name<Context>() << "] inner_scope["
+void BuildPhiContext(pir::Operation* op,
+                     const ValueExecutionInfo& value_exec_info,
+                     const paddle::dialect::OpYamlInfoParser& op_yaml_info,
+                     Context* ctx) {
+  Scope* inner_scope = value_exec_info.GetScope();
+  VLOG(6) << "Build " << pir::get_type_name<Context>() << "] inner_scope["
           << inner_scope << "]";
 
   auto attr_map = op->attributes();
@@ -225,9 +217,9 @@ void BuildPhiContext(
     if (var->IsType<phi::DenseTensor>()) {
       const phi::TensorBase* tensor_in = &(var->Get<phi::DenseTensor>());
       ctx->EmplaceBackInput(InType(tensor_in));
-    } else if (var->IsType<paddle::framework::VariableRefArray>()) {
+    } else if (var->IsType<VariableRefArray>()) {
       InListType inputs;
-      auto& variable_array = var->Get<paddle::framework::VariableRefArray>();
+      auto& variable_array = var->Get<VariableRefArray>();
       for (size_t i = 0; i < variable_array.size(); ++i) {
         if (variable_array[i]->IsType<phi::DenseTensor>()) {
           inputs.emplace_back(InType(const_cast<phi::DenseTensor*>(
@@ -266,8 +258,8 @@ void BuildPhiContext(
               &(inner_scope->FindVar(in_var_name)->Get<phi::DenseTensor>()));
           ctx->EmplaceBackAttr(attr);
         } else if (ptr.type().isa<pir::VectorType>()) {
-          auto& tensor_array = inner_scope->FindVar(in_var_name)
-                                   ->Get<paddle::framework::VariableRefArray>();
+          auto& tensor_array =
+              inner_scope->FindVar(in_var_name)->Get<VariableRefArray>();
           if (tensor_array.size() == 1) {
             phi::Attribute attr =
                 phi::TensorRef(&(tensor_array[0]->Get<phi::DenseTensor>()));
@@ -441,7 +433,7 @@ void BuildPhiContext(
       OutListType outputs;
       auto& variable_array =
           inner_scope->FindVar(value_exec_info.GetVarName(out_ptr))
-              ->Get<paddle::framework::VariableRefArray>();
+              ->Get<VariableRefArray>();
       for (size_t i = 0; i < variable_array.size(); ++i) {
         if (variable_array[i]->IsType<phi::DenseTensor>()) {
           outputs.emplace_back(OutType(const_cast<phi::DenseTensor*>(
@@ -466,4 +458,5 @@ void BuildPhiContext(
   VLOG(6) << "Done build phi context";
 }
 
-}  // namespace pir
+}  // namespace framework
+}  // namespace paddle

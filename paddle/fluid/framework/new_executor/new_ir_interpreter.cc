@@ -114,7 +114,7 @@ NewIRInterpreter::NewIRInterpreter(
 
   std::stringstream ss;
   ss << this;
-  ::pir::BuildScope(*ir_block_, ss.str(), &sub_blocks_, value_exe_info_.get());
+  BuildScope(*ir_block_, ss.str(), &sub_blocks_, value_exe_info_.get());
 }
 
 NewIRInterpreter::NewIRInterpreter(
@@ -176,7 +176,7 @@ NewIRInterpreter::NewIRInterpreter(
 
   std::stringstream ss;
   ss << this;
-  ::pir::BuildScope(*ir_block_, ss.str(), &sub_blocks_, value_exe_info_.get());
+  BuildScope(*ir_block_, ss.str(), &sub_blocks_, value_exe_info_.get());
 }
 
 NewIRInterpreter::~NewIRInterpreter() {
