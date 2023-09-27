@@ -83,8 +83,7 @@ WORKDIR pip-20.0.1
 RUN python3.9 setup.py install && \
   python3.8 setup.py install && \
   python3.7 setup.py install && \
-  python3.10 setup.py install && \
-  python3.11 setup.py install
+  python3.10 setup.py install
 
 WORKDIR /home
 RUN rm setuptools-50.3.2.zip pip-20.0.1.tar.gz && \
@@ -118,8 +117,7 @@ RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 RUN python3.7 -m pip --no-cache-dir install --upgrade pip && \
     python3.8 -m pip --no-cache-dir install --upgrade pip && \
     python3.9 -m pip --no-cache-dir install --upgrade pip && \
-    python3.10 -m pip --no-cache-dir install --upgrade pip && \
-    python3.11 -m pip --no-cache-dir install --upgrade pip
+    python3.10 -m pip --no-cache-dir install --upgrade pip
 
 RUN rm -f /usr/local/bin/pip && ln -s /usr/local/bin/pip3.9 /usr/local/bin/pip && \
     rm -f /usr/local/bin/pip3 && ln -s /usr/local/bin/pip3.9 /usr/local/bin/pip3
