@@ -207,7 +207,7 @@ void reshape_grad(const Tensor& xshape,
     // xshape: [0] + x.shape
     auto xshape_dims = xshape.dims();
     auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
-    auto grad_x_tmp = reshape<T>(grad_out, phi::vectorize(x_dims););
+    auto grad_x_tmp = reshape<T>(grad_out, phi::vectorize(x_dims));
     set_output<T>(grad_x_tmp, grad_x);
   }
 }
