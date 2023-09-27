@@ -44,5 +44,11 @@ Tensor slice<Tensor>(const Tensor& input,
   return ::slice_ad_func(input, axes, starts, ends, infer_flags, decrease_axis);
 }
 
+template <>
+Tensor reshape<Tensor>(const Tensor& x, const IntArray& shape) {
+  VLOG(4) << "Eager Prim API reshape_ad_func call";
+  return ::reshape_ad_func(x, shape);
+}
+
 }  // namespace prim
 }  // namespace paddle

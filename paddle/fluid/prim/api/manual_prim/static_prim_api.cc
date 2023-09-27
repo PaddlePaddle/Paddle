@@ -152,5 +152,27 @@ Tensor slice<DescTensor>(const Tensor& input,
   return out;
 }
 
+template <>
+Tensor reshape<DescTensor>(const Tensor& x, const IntArray& shape) {
+  framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
+  framework::OpDesc* op = block->AppendOp();
+  op->SetType("reshape2");
+  op->SetInput("X",
+               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
+  auto out = empty<DescTensor>({}, x.dtype(), paddle::Place());
+  op->SetOutput(
+      "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
+  auto xshape = empty<DescTensor>({}, x.dtype(), paddle::Place());
+  op->SetOutput(
+      "XShape",
+      {std::static_pointer_cast<prim::DescTensor>(xshape.impl())->Name()});
+
+  op->SetAttr("shape", unsafe_vector_cast<int64_t, int>(shape.GetData()));
+  op->CheckAttrs();
+  op->InferVarType(block);
+  op->InferShape(*block);
+  return out;
+}
+
 }  // namespace prim
 }  // namespace paddle

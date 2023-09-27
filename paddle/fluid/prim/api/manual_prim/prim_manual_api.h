@@ -46,5 +46,8 @@ Tensor slice(const Tensor& input,
              const std::vector<int64_t>& infer_flags,
              const std::vector<int64_t>& decrease_axis);
 
+template <typename T>
+Tensor reshape(const Tensor& x, const IntArray& shape);
+
 }  // namespace prim
 }  // namespace paddle
