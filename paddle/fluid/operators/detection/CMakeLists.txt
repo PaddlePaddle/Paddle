@@ -79,9 +79,6 @@ else()
   detection_library(collect_fpn_proposals_op SRCS collect_fpn_proposals_op.cc)
 endif()
 
-detection_library(
-  roi_perspective_transform_op SRCS roi_perspective_transform_op.cc
-  roi_perspective_transform_op.cu)
 #Export local libraries to parent
 # set(DETECTION_LIBRARY ${LOCAL_DETECTION_LIBS} PARENT_SCOPE)
 
