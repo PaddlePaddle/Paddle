@@ -30,13 +30,25 @@ class TestExpandV2OpRank1(OpTest):
         self.op_type = "expand_v2"
         self.prim_op_type = "prim"
         self.init_data()
+        self.init_dtype()
         self.python_api = paddle.expand
         self.public_python_api = paddle.expand
-        self.inputs = {'X': np.random.random(self.ori_shape).astype("float64")}
+
+        x = np.random.random(self.ori_shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(-1, 1, self.ori_shape)
+                + 1j * np.random.uniform(-1, 1, self.ori_shape)
+            ).astype(self.dtype)
+
+        self.inputs = {'X': x}
         self.attrs = {'shape': self.shape}
         output = np.tile(self.inputs['X'], self.expand_times)
         self.outputs = {'Out': output}
         self.if_enable_cinn()
+
+    def init_dtype(self):
+        self.dtype = np.float64
 
     def init_data(self):
         self.ori_shape = [100]
@@ -50,7 +62,10 @@ class TestExpandV2OpRank1(OpTest):
         self.check_output(check_cinn=True, check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            self.check_grad(['X'], 'Out', check_prim=False, check_new_ir=False)
+        else:
+            self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
 
 class TestExpandV2OpRank1_ZeroDim1(TestExpandV2OpRank1):
@@ -519,6 +534,16 @@ class TestExpandV2CompOpInt64_t(OpTest):
 
     def test_check_output(self):
         self.check_output(check_prim=True)
+
+
+class TestExpandOpV2_Complex64(TestExpandV2OpRank1):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestExpandOpV2_Complex128(TestExpandV2OpRank1):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 if __name__ == "__main__":

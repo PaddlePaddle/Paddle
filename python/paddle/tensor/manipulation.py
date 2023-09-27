@@ -3478,6 +3478,8 @@ def expand(x, shape, name=None):
                 'int32',
                 'int64',
                 'uint16',
+                'complex64',
+                'complex128',
             ],
             'expand',
         )

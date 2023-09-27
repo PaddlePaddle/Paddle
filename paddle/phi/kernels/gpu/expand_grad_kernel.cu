@@ -49,4 +49,6 @@ PD_REGISTER_KERNEL(expand_grad,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

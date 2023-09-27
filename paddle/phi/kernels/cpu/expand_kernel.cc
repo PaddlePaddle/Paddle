@@ -28,4 +28,6 @@ PD_REGISTER_KERNEL(expand,
                    double,
                    int,
                    int64_t,
-                   bool) {}
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
