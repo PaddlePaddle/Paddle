@@ -31,18 +31,16 @@ def weight_quantize(x, algo="weight_only_int8"):
     Examples:
         .. code-block:: python
 
-            >>> import paddle
-            >>> import numpy as np
-            >>> from paddle.nn.quant import weight_quantize
+            import paddle
+            import numpy as np
+            from paddle.nn.quant import weight_quantize
 
-            >>> paddle.device.set_device("cpu")
-            >>> x = np.random.randn(64, 32).astype('float16')
-            >>> x = paddle.to_tensor(x, dtype=paddle.float16, place=paddle.CPUPlace())
-            >>> out, scale = weight_quantize(x, algo='weight_only_int8')
-            >>> print(out.shape)
-            [32, 64]
-            >>> print(scale.shape)
-            [32]
+            paddle.device.set_device("cpu")
+            x = np.random.randn(64, 32).astype('float16')
+            x = paddle.to_tensor(x, dtype=paddle.float16, place=paddle.CPUPlace())
+            out, scale = weight_quantize(x, algo='weight_only_int8')
+            print(out.shape) # [32, 64]
+            print(scale.shape) # [32]
     """
 
     if in_dynamic_mode():
@@ -86,18 +84,17 @@ def weight_only_linear(
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:GPU)
-            >>> import paddle
-            >>> from paddle.nn.quant import weight_only_linear
+            # required: gpu
+            import paddle
+            from paddle.nn.quant import weight_only_linear
 
-            >>> x = paddle.cast(paddle.randn([1, 2, 64]), dtype='float16')
-            >>> weight = paddle.cast(paddle.randint(0, 127, [32, 64]), dtype='int8')
-            >>> scale = paddle.randn([32], dtype='float32')
-            >>> bias = paddle.cast(paddle.randn([32]), dtype='float16')
-            >>> if paddle.device.cuda.get_device_capability()[0] >= 8:
-            ...     out = weight_only_linear(x, weight, bias=bias, weight_scale=scale, weight_dtype='int8')
-            ...     print(out.shape)
-            [1, 2, 32]
+            x = paddle.cast(paddle.randn([1, 2, 64]), dtype='float16')
+            weight = paddle.cast(paddle.randint(0, 127, [32, 64]), dtype='int8')
+            scale = paddle.randn([32], dtype='float32')
+            bias = paddle.cast(paddle.randn([32]), dtype='float16')
+            if paddle.device.cuda.get_device_capability()[0] >= 8:
+                out = weight_only_linear(x, weight, bias=bias, weight_scale=scale, weight_dtype='int8')
+                print(out.shape) # [1, 2, 32]
     """
     if in_dynamic_mode():
         out = _C_ops.weight_only_linear(
@@ -154,18 +151,17 @@ def llm_int8_linear(
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:GPU)
-            >>> import paddle
-            >>> from paddle.nn.quant import llm_int8_linear
+            # required: gpu
+            import paddle
+            from paddle.nn.quant import llm_int8_linear
 
-            >>> x = paddle.cast(paddle.randn([1, 2, 64]), dtype='float16')
-            >>> weight = paddle.cast(paddle.randint(0, 127, [32, 64]), dtype='int8')
-            >>> scale = paddle.randn([32], dtype='float32')
-            >>> bias = paddle.cast(paddle.randn([32]), dtype='float16')
-            >>> if paddle.device.cuda.get_device_capability()[0] >= 8:
-            ...     out = llm_int8_linear(x, weight, bias=bias, weight_scale=scale, threshold=6.0)
-            ...     print(out.shape)
-            [1, 2, 32]
+            x = paddle.cast(paddle.randn([1, 2, 64]), dtype='float16')
+            weight = paddle.cast(paddle.randint(0, 127, [32, 64]), dtype='int8')
+            scale = paddle.randn([32], dtype='float32')
+            bias = paddle.cast(paddle.randn([32]), dtype='float16')
+            if paddle.device.cuda.get_device_capability()[0] >= 8:
+                out = llm_int8_linear(x, weight, bias=bias, weight_scale=scale, threshold=6.0)
+                print(out.shape) # [1, 2, 32]
     """
     if in_dynamic_mode():
         out = _C_ops.llm_int8_linear(x, weight, bias, weight_scale, threshold)
