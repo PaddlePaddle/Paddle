@@ -2914,7 +2914,7 @@ Examples:
         >>> y = x[1]
         >>> y = y.contiguous()
         >>> print(y)
-        ensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True, 2)
+        Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True, 2)
 )DOC");
 
 static PyObject* tensor_contiguous(TensorObject* self,
