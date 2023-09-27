@@ -1097,7 +1097,7 @@ endif()
 cc_library(
   prune
   SRCS prune.cc
-  DEPS framework_proto auto_parallel_proto)
+  DEPS framework_proto auto_parallel_proto proto_desc)
 cc_test(
   prune_test
   SRCS prune_test.cc

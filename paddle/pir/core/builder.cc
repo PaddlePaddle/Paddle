@@ -20,8 +20,8 @@
 
 namespace pir {
 /// Create an operation given the fields represented as an OperationState.
-Operation *Builder::Build(const OperationArgument &argument) {
-  return Insert(Operation::Create(argument));
+Operation *Builder::Build(OperationArgument &&argument) {
+  return Insert(Operation::Create(std::move(argument)));
 }
 
 /// Creates an operation with the given fields.
