@@ -372,9 +372,12 @@ if(WITH_ONNXRUNTIME)
 endif()
 
 if(WITH_GPU)
-  if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
+  if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.1)
     include(external/cub) # download cub
     list(APPEND third_party_deps extern_cub)
+  else()
+    include(external/cccl)
+    list(APPEND third_party_deps CCCL::CCCL)
   endif()
   set(URL
       "https://paddlepaddledeps.bj.bcebos.com/externalErrorMsg_20210928.tar.gz"
