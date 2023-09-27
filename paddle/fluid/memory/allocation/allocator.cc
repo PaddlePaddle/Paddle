@@ -14,6 +14,9 @@
 
 #include "paddle/fluid/memory/allocation/allocator.h"
 
+PADDLE_DEFINE_EXPORTED_bool(sync_after_alloc, false, "");
+PADDLE_DEFINE_EXPORTED_int64(alloc_fill_value, -1, "");
+
 namespace paddle {
 namespace memory {
 namespace allocation {
