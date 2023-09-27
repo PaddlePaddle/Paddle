@@ -15,7 +15,6 @@
 #pragma once
 
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/cross_entropy_with_softmax_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/replicated_spmd_rule.h"
 
 // TODO(ljz) Automatic this process in cmake file.
@@ -25,10 +24,6 @@ namespace auto_parallel {
 
 // replicated rule
 REGISTER_SPMD_RULE(replicated, ReplicatedSPMDRule);
-
-// cross_entropy_with_softmax
-REGISTER_SPMD_RULE(cross_entropy_with_softmax, CrossEntropyWithSoftmaxSPMDRule);
-REGISTER_SPMD_RULE(softmax_with_cross_entropy, CrossEntropyWithSoftmaxSPMDRule);
 
 }  // namespace auto_parallel
 }  // namespace distributed
