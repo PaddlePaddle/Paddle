@@ -2568,6 +2568,18 @@
     func : warprnnt_grad
   no_need_buffer : input
 
+- backward_op : weight_only_linear_grad
+  forward : weight_only_linear(Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, str weight_dtype) -> Tensor(out)
+  args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, Tensor out_grad, str weight_dtype)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : WeightOnlyLinearGradInferMeta
+  kernel :
+    func : weight_only_linear_grad
+    data_type : out_grad
+  optional: bias
+  no_need_buffer: x
+
 - backward_op : where_grad
   forward : where (Tensor condition, Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor condition, Tensor x, Tensor y, Tensor out_grad)

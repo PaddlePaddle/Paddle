@@ -760,7 +760,7 @@ def _remove_no_grad_branch_(
                         ] = grad_op_id_to_fwd_op[op_desc.original_id()]
                     to_insert.append((new_op_desc, idx))
 
-    list([op_descs.insert(p[1], p[0]) for p in reversed(to_insert)])
+    [op_descs.insert(p[1], p[0]) for p in reversed(to_insert)]
 
     return op_descs
 

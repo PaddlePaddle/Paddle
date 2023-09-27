@@ -52,6 +52,15 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
   };
 
   /// Constructor
+  ShapedTypeInterface(std::nullptr_t)  // NOLINT
+      : TypeInterfaceBase<ShapedTypeInterface>(Type()), impl_(nullptr) {}
+
+  explicit ShapedTypeInterface(Type type = Type())
+      : TypeInterfaceBase<ShapedTypeInterface>(type),
+        impl_(type
+                  ? type.abstract_type().GetInterfaceImpl<ShapedTypeInterface>()
+                  : nullptr) {}
+
   ShapedTypeInterface(Type type, Concept *impl)
       : TypeInterfaceBase<ShapedTypeInterface>(type), impl_(impl) {}
 

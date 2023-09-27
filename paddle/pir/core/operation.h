@@ -48,7 +48,7 @@ class IR_API alignas(8) Operation final {
                            pir::OpInfo op_info,
                            size_t num_regions = 0,
                            const std::vector<Block *> &successors = {});
-  static Operation *Create(const OperationArgument &op_argument);
+  static Operation *Create(OperationArgument &&op_argument);
   ///
   /// \brief Destroy the operation objects and free memory by create().
   ///
@@ -119,6 +119,7 @@ class IR_API alignas(8) Operation final {
   Program *GetParentProgram();
   operator Block::Iterator() { return position_; }
   operator Block::ConstIterator() const { return position_; }
+  void MoveTo(Block *block, Block::Iterator position);
 
   void Print(std::ostream &os);
   pir::OpInfo info() const { return info_; }
