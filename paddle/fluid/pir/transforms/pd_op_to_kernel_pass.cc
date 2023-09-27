@@ -67,6 +67,8 @@ const std::unordered_set<std::string> SpecialLowerOps = {"builtin.combine",
                                                          "builtin.split",
                                                          "pd_op.if",
                                                          "cf.yield"};
+const std::unordered_set<std::string> SpecialKernelKeyOps = {
+    "pd_op.feed", "pd_op.seed", "pd_op.data"};
 
 bool NeedFallBackCpu(const pir::Operation* op,
                      const std::string& kernel_fn_name,
@@ -286,10 +288,9 @@ pir::Type BuildOutputType(pir::Type type,
     auto dense_tensor_type = type.dyn_cast<dialect::DenseTensorType>();
     auto out_dtype = dense_tensor_type.dtype();
 
-    // TODO(phlrain): open this after fix pr(55509) confict
-    // if (data_type != phi::DataType::UNDEFINED) {
-    //   out_dtype = TransToIrDataType(data_type, ctx);
-    // }
+    if (data_type != phi::DataType::UNDEFINED) {
+      out_dtype = TransToIrDataType(data_type, ctx);
+    }
 
     return dialect::AllocatedDenseTensorType::get(
         ctx,
@@ -304,10 +305,10 @@ pir::Type BuildOutputType(pir::Type type,
     auto selected_rows_type = type.dyn_cast<dialect::SelectedRowsType>();
     auto out_dtype = selected_rows_type.dtype();
 
-    // TODO(phlrain): open this after fix pr(55509) confict
-    // if (data_type != phi::DataType::UNDEFINED) {
-    //   out_dtype = TransToIrDataType(data_type, ctx);
-    // }
+    if (data_type != phi::DataType::UNDEFINED) {
+      out_dtype = TransToIrDataType(data_type, ctx);
+    }
+
     return dialect::AllocatedSelectedRowsType::get(
         ctx,
         place,
@@ -321,7 +322,7 @@ pir::Type BuildOutputType(pir::Type type,
         "BuildOutputType only support DenseTensorType and SelectedRowsType"));
   }
 }
-// todo(chenxi67) log:input output
+// TODO(chenxi67) log:input output
 phi::DataType GetKernelDataTypeByYamlInfo(
     const pir::Operation* op,
     const std::unordered_map<pir::Value, pir::OpResult>& map_value_pair,
@@ -489,35 +490,16 @@ phi::KernelKey GetKernelKey(
     const std::string& kernel_fn_str,
     const std::unordered_map<pir::Value, pir::OpResult>& map_value_pair,
     dialect::OpYamlInfoParser* op_info_parser = nullptr) {
-  // todo 整合3个
-  if (op->isa<paddle::dialect::FeedOp>()) {
-    // NOTE, for now feed op don't need a kernel, so the data type from Op
-    // Result the next op use base program datatype
+  // HandleKernelKeySpecialOp
+  if (SpecialKernelKeyOps.count(op->name())) {
     auto backend = paddle::experimental::ParseBackend(place);
-    return {backend,
-            phi::DataLayout::ANY,
-            TransToPhiDataType(
-                op->result(0).type().dyn_cast<DenseTensorType>().dtype())};
-  }
-
-  if (op->isa<paddle::dialect::DataOp>()) {
-    // NOTE, for now data op don't need a kernel, so the data type from Op
-    // Result the next op use base program datatype
-    auto data_place =
-        op->attributes().at("place").dyn_cast<dialect::PlaceAttribute>().data();
-
-    auto backend = paddle::experimental::ParseBackend(data_place);
-
-    return {backend,
-            phi::DataLayout::ANY,
-            TransToPhiDataType(
-                op->result(0).type().dyn_cast<DenseTensorType>().dtype())};
-  }
-
-  if (op->isa<paddle::dialect::SeedOp>()) {
-    // NOTE, for now seed op don't need a kernel, so the data type from Op
-    // Result the next op use base program datatype
-    auto backend = paddle::experimental::ParseBackend(place);
+    if (op->attributes().count("place")) {
+      auto data_place = op->attributes()
+                            .at("place")
+                            .dyn_cast<dialect::PlaceAttribute>()
+                            .data();
+      backend = paddle::experimental::ParseBackend(data_place);
+    }
     return {backend,
             phi::DataLayout::ANY,
             TransToPhiDataType(
@@ -527,40 +509,6 @@ phi::KernelKey GetKernelKey(
   phi::Backend kernel_backend = phi::Backend::UNDEFINED;
   phi::DataLayout kernel_layout = phi::DataLayout::UNDEFINED;
   phi::DataType kernel_data_type = phi::DataType::UNDEFINED;
-
-  if (op_info_parser != nullptr) {
-    // only suppurt non vector input for now
-    int tensor_input_number =
-        static_cast<int>(op_info_parser->InputTensorNumber());
-
-    // get datatype info
-    kernel_data_type =
-        GetKernelDataTypeByYamlInfo(op, map_value_pair, op_info_parser);
-    kernel_backend =
-        GetKernelBackendByYamlInfo(op, map_value_pair, op_info_parser, place);
-
-    // parse all the input tensor
-    if (tensor_input_number == 0 || op->isa<paddle::dialect::Full_Op>()) {
-      // all the information have to get from attribute and context
-
-      // TODO(chenxi67) delete
-      if (op->isa<paddle::dialect::UniformOp>()) {
-        // try to process uniform, use shape to determin backend
-        // TODO(phlrain): shuold support other initilize op
-        auto define_op =
-            op->operand_source(0).dyn_cast<pir::OpResult>().owner();
-        if (define_op->isa<paddle::dialect::FullIntArrayOp>()) {
-          auto shape = define_op->attribute<dialect::IntArrayAttribute>("value")
-                           .data()
-                           .GetData();
-        }
-      }
-
-      if (kernel_backend == phi::Backend::UNDEFINED) {
-        kernel_backend = paddle::experimental::ParseBackend(place);
-      }
-    }
-  }
 
   if ((kernel_backend == phi::Backend::UNDEFINED ||
        kernel_data_type == phi::DataType::UNDEFINED) &&
