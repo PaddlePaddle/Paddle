@@ -29,6 +29,7 @@ current_path = os.path.abspath(os.path.dirname(__file__))
 if os.path.exists(current_path + os.sep + dy_lib_name + '.' + dy_lib_suffix):
     has_paddle_dy_lib = True
 
+
 try:
     if os.name == 'nt':
         third_lib_path = current_path + os.sep + '..' + os.sep + 'libs'
@@ -316,8 +317,10 @@ try:
         _xpu_device_synchronize,
     )
 
+    # isort: off
+
     # custom devivce
-    from .libpaddle import (  # noqa: F401 isort: skip
+    from .libpaddle import (  # noqa: F401
         CustomDeviceEvent,
         CustomDeviceStream,
         _get_current_custom_device_stream,
@@ -326,7 +329,7 @@ try:
     )
 
     # prim controller flags
-    from .libpaddle import (  # noqa: F401 isort: skip
+    from .libpaddle import (  # noqa: F401
         __set_all_prim_enabled,
         __set_bwd_prim_enabled,
         __set_eager_prim_enabled,
@@ -340,6 +343,7 @@ try:
         _set_prim_target_grad_name,
     )
 
+    # isort: on
     if sys.platform != 'win32':
         from .libpaddle import (  # noqa: F401
             _array_to_share_memory_tensor,
