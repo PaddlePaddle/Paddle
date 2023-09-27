@@ -51,7 +51,7 @@ class Flatten2Op : public framework::OperatorWithKernel {
         platform::errors::InvalidArgument(
             "The axis should be less than or equal to input tensor's rank"));
 
-    const auto &out_dims = FlattenOp::GetOutputShape(axis, in_dims);
+    const auto &out_dims = GetOutputShape(axis, in_dims);
     ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
     if (in_dims[0] == out_dims[0]) {
       // Only pass LoD when the first dimension of output and Input(X)
@@ -77,10 +77,56 @@ class Flatten2Op : public framework::OperatorWithKernel {
   }
 };
 
-class Flatten2OpMaker : public FlattenOpMaker {
+class Flatten2OpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    FlattenOpMaker::Make();
+    AddInput("X", "(Tensor) A tensor of rank >= axis.");
+    AddOutput("Out",
+              "A 2D tensor is reshaped input tensor. The input dimensions"
+              "up to axis are flattened to the outer dimension of the output"
+              "and the remaining input dimensions are flattened into the inner"
+              "dimension of the output.");
+    AddAttr<int>("axis",
+                 "(int)"
+                 "Indicate up to which input dimensions (exclusive) should be"
+                 "flattened to the outer dimension of the output. The value"
+                 "for axis must be in the range [0, R], where R is the rank of"
+                 "the input tensor. When axis = 0, the shape of the output"
+                 "tensor is (1, (d_0 X d_1 ... d_n), where the shape of the"
+                 "input tensor is (d_0, d_1, ... d_n).")
+        .SetDefault(1);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false)
+        .AsExtra();
+    AddAttr<std::string>(
+        "mkldnn_data_type",
+        "(string, default \"float32\"). Data type of mkldnn kernel")
+        .SetDefault("float32")
+        .InEnum({"float32", "bfloat16"})
+        .AsExtra();
+    AddComment(R"DOC(
+Flatten Operator
+
+Flattens the input tensor into a 2D matrix.
+
+Examples:
+Case 1:
+  Given
+    X.shape = (3, 100, 100, 4)
+  and
+    axis = 2
+  We get:
+    Out.shape = (3 * 100, 4 * 100)
+
+Case 2:
+  Given
+    X.shape = (3, 100, 100, 4)
+  and
+    axis = 0
+  We get:
+    Out.shape = (1, 3 * 100 * 100 * 4)
+)DOC");
     AddOutput("XShape",
               "XShape is just used to store the shape and lod of X, which will "
               "be used in FlattenGradOp.")
