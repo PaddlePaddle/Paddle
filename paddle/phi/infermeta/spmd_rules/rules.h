@@ -24,9 +24,9 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/reduction.h"
 #include "paddle/phi/infermeta/spmd_rules/replicated.h"
 #include "paddle/phi/infermeta/spmd_rules/reshape.h"
+#include "paddle/phi/infermeta/spmd_rules/softmax.h"
 #include "paddle/phi/infermeta/spmd_rules/split.h"
 #include "paddle/phi/infermeta/spmd_rules/transpose.h"
-#include "paddle/phi/infermeta/spmd_rules/softmax.h"
 
 /**
  * Design Notes:
