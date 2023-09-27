@@ -278,22 +278,13 @@ try:
     # assign tensor alias
     libpaddle.LoDTensor = libpaddle.Tensor
 
-    # custom devivce
-    # prim controller flags
     from .libpaddle import *  # noqa: F403
     from .libpaddle import (  # noqa: F401
-        CustomDeviceEvent,
-        CustomDeviceStream,
         __doc__,
         __file__,
         __name__,
         __package__,
-        __set_all_prim_enabled,
-        __set_bwd_prim_enabled,
-        __set_eager_prim_enabled,
-        __set_fwd_prim_enabled,
         __unittest_throw_exception__,
-        _add_skip_comp_ops,
         _append_python_callable_object_and_return_id,
         _cleanup,
         _create_loaded_parameter,
@@ -301,37 +292,52 @@ try:
         _device_synchronize,
         _dygraph_debug_level,
         _get_all_register_op_kernels,
-        _get_current_custom_device_stream,
         _get_current_stream,
         _get_eager_deletion_vars,
         _get_phi_kernel_name,
         _get_registered_phi_kernels,
         _get_use_default_grad_op_desc_maker_ops,
-        _is_bwd_prim_enabled,
         _is_compiled_with_heterps,
         _is_dygraph_debug_enabled,
-        _is_eager_prim_enabled,
-        _is_fwd_prim_enabled,
         _is_program_version_supported,
         _Profiler,
         _ProfilerResult,
         _promote_types_if_complex_exists,
         _RecordEvent,
-        _remove_skip_comp_ops,
         _Scope,
-        _set_bwd_prim_blacklist,
         _set_cached_executor_build_strategy,
-        _set_current_custom_device_stream,
         _set_current_stream,
         _set_eager_deletion_mode,
         _set_fuse_parameter_group_size,
         _set_fuse_parameter_memory_size,
         _set_paddle_lib_path,
-        _set_prim_target_grad_name,
         _switch_tracer,
-        _synchronize_custom_device,
         _test_enforce_gpu_success,
         _xpu_device_synchronize,
+    )
+
+    # custom devivce
+    from .libpaddle import (  # noqa: F401 isort: skip
+        CustomDeviceEvent,
+        CustomDeviceStream,
+        _get_current_custom_device_stream,
+        _set_current_custom_device_stream,
+        _synchronize_custom_device,
+    )
+
+    # prim controller flags
+    from .libpaddle import (  # noqa: F401 isort: skip
+        __set_all_prim_enabled,
+        __set_bwd_prim_enabled,
+        __set_eager_prim_enabled,
+        __set_fwd_prim_enabled,
+        _add_skip_comp_ops,
+        _is_bwd_prim_enabled,
+        _is_eager_prim_enabled,
+        _is_fwd_prim_enabled,
+        _remove_skip_comp_ops,
+        _set_bwd_prim_blacklist,
+        _set_prim_target_grad_name,
     )
 
     if sys.platform != 'win32':
