@@ -338,7 +338,7 @@ def grid_sample(
 def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
     """
     This API implements pixel shuffle operation.
-    See more details in :ref:`PixelSuffle <api_paddle_nn_PixelSuffle>` .
+    See more details in :ref:`PixelSuffle <api_paddle_nn_PixelShuffle>` .
 
 
     Parameters:
@@ -392,7 +392,7 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
 def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
     """
     This API implements pixel unshuffle operation.
-    See more details in :ref:`PixelUnSuffle <api_paddle_nn_PixelUnSuffle>` .
+    See more details in :ref:`PixelUnSuffle <api_paddle_nn_PixelUnshuffle>` .
 
     Parameters:
         x (Tensor): 4-D tensor, the data type should be float32 or float64.
