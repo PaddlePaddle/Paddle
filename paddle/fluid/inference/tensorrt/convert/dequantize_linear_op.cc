@@ -20,7 +20,7 @@ class DequantizeLinearOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_model) override {
-#if IS_TRT_VERSION_GE(8000)
+#if IS_TRT_VERSION_GE(8510)
     VLOG(4) << "convert a dequantize_linear op to tensorrt IDequantizeLayer";
 
     // Declare inputs and attributes
@@ -54,7 +54,7 @@ class DequantizeLinearOpConverter : public OpConverter {
 #else
     PADDLE_THROW(
         platform::errors::Fatal("Paddle-TRT explicit quantization does not "
-                                "support Paddle compiled with TRT < 8.0"));
+                                "support Paddle compiled with TRT < 8.5"));
 #endif
   }
 };
