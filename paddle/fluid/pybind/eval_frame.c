@@ -483,10 +483,10 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
   }
 
   PyObject *result = eval_frame_default(tstate, shadow, throw_flag);
+  Internal_PyFrame_Clear(shadow);
   free(shadow);
   Py_DECREF(func);
   Py_DECREF(namemap);
-  Internal_PyFrame_Clear(shadow);
   return result;
 }
 
