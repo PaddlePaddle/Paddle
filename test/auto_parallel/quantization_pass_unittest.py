@@ -33,7 +33,7 @@ def apply_pass():
     amp.enable = True
     amp.dtype = "float16"
     amp.level = "o2"
-    amp.custom_white_list = ["lookup_table_v2"]
+    amp.custom_white_list = ["lookup_table", "lookup_table_v2"]
     amp.custom_black_list = [
         "reduce_sum",
         "c_softmax_with_cross_entropy",

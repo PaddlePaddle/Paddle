@@ -1500,7 +1500,7 @@ def conv2d_transpose(
             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|bool, optional): Specifies the object for the bias parameter attribute.
             The default value is None, which means that the default bias parameter attribute is used.
-            For detailed information, please refer to :ref:`paramattr`.
+            For detailed information, please refer to :ref:`api_paddle_ParamAttr`.
             The default bias initialisation for the conv2d_transpose operator is 0.0.
         use_cudnn(bool, optional): Use cudnn kernel or not, it is valid only when the cudnn
             library is installed. Default: True.
@@ -3989,9 +3989,9 @@ def sparse_embedding(
 
     if slot is None:
         slot = 0
-    paddle.squeeze(input, axis=-1)
+
     helper.append_op(
-        type='lookup_table_v2',
+        type='lookup_table',
         inputs={'Ids': input, 'W': w},
         outputs={'Out': tmp},
         attrs={

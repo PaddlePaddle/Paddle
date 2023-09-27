@@ -519,6 +519,7 @@ set(TEST_OPS_WITH_GC
     test_gather_nd_op
     test_linear_chain_crf_op
     test_lod_reset_op
+    test_lookup_table_op
     test_mean_op
     test_pad2d_op
     test_scatter_op
@@ -1302,6 +1303,7 @@ set(STATIC_BUILD_TESTS
     test_lamb_op
     test_layer_norm_op
     test_limit_by_capacity_op
+    test_lookup_table_bf16_op
     test_lookup_table_v2_op
     test_matmul_op
     test_matmul_v2_op

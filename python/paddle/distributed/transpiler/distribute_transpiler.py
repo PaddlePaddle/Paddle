@@ -52,8 +52,8 @@ from paddle.static import (
 )
 from paddle.utils import unique_name
 
-LOOKUP_TABLE_TYPE = ["lookup_table_v2"]
-LOOKUP_TABLE_GRAD_TYPE = ["lookup_table_v2_grad"]
+LOOKUP_TABLE_TYPE = ["lookup_table", "lookup_table_v2"]
+LOOKUP_TABLE_GRAD_TYPE = ["lookup_table_grad", "lookup_table_v2_grad"]
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "@CLIP"
 OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()

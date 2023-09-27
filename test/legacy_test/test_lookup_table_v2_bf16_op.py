@@ -15,88 +15,29 @@
 import unittest
 
 import numpy as np
-from op import Operator
-from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
+from op_test import convert_uint16_to_float
+from test_lookup_table_bf16_op import (
+    TestLookupTableBF16Op,
+    TestLookupTableBF16OpIds4D,
+    TestLookupTableBF16OpWIsSelectedRows,
+    TestLookupTableBF16OpWIsSelectedRows4DIds,
+    _lookup,
+)
 
 import paddle
 from paddle import base
 from paddle.base import core
 
 
-def _lookup(weights, ids, flat_ids, op_version="lookup_table"):
-    w_shape = weights.shape
-    out_shape = (
-        list(ids.shape[:-1])
-        if op_version == "lookup_table"
-        else list(ids.shape)
-    )
-    out_shape.append(w_shape[-1])
-    out = weights[flat_ids].reshape(out_shape)
-    return out
-
-
-def _get_grad(weights, ids, flat_ids, op_version="lookup_table"):
-    w_shape = weights.shape
-    w_grad = np.zeros((w_shape), dtype=weights.dtype)
-    out_shape = (
-        list(ids.shape[:-1])
-        if op_version == "lookup_table"
-        else list(ids.shape)
-    )
-    out_grad_shape = (np.prod(out_shape), w_shape[-1])
-    out_grad = weights[flat_ids].reshape(out_grad_shape)
-    for i, idx in enumerate(flat_ids):
-        w_grad[idx, :] += out_grad[i]
-    return w_grad
-
-
-@unittest.skipIf(
-    not core.supports_bfloat16(), "place does not support BF16 evaluation"
-)
-class TestLookupTableV2BF16Op(OpTest):
+class TestLookupTableV2BF16Op(TestLookupTableBF16Op):
     def init_test(self):
         self.op_type = "lookup_table_v2"
         self.python_api = paddle.nn.functional.embedding
         self.ids_shape = 4
         self.mkldnn_data_type = "bfloat16"
 
-    def setUp(self):
-        self.init_test()
-        self.dtype = np.uint16
 
-        table = np.random.random((17, 31)).astype("float32")
-        self.ids = np.random.randint(0, 17, self.ids_shape).astype("int64")
-        self.flat_ids = self.ids.flatten()
-
-        self.w_bf16 = convert_float_to_uint16(table)
-        self.out_bf16 = _lookup(
-            self.w_bf16, self.ids, self.flat_ids, self.op_type
-        )
-        self.out_fp32 = _lookup(table, self.ids, self.flat_ids, self.op_type)
-        self.w_grad_fp32 = _get_grad(
-            table, self.ids, self.flat_ids, self.op_type
-        )
-
-        self.inputs = {'W': self.w_bf16, 'Ids': self.ids}
-        self.outputs = {'Out': self.out_fp32}
-
-    def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace(), check_dygraph=False)
-
-    def test_check_grad(self):
-        self.check_grad_with_place(
-            core.CPUPlace(),
-            ['W'],
-            'Out',
-            no_grad_set=set('Ids'),
-            check_dygraph=False,
-            max_relative_error=1.5e-2,
-            user_defined_grads=[self.w_grad_fp32],
-            user_defined_grad_outputs=[self.out_bf16],
-        )
-
-
-class TestLookupTableV2BF16OpIds4D(TestLookupTableV2BF16Op):
+class TestLookupTableV2BF16OpIds4D(TestLookupTableBF16OpIds4D):
     def init_test(self):
         self.op_type = "lookup_table_v2"
         self.python_api = paddle.nn.functional.embedding
@@ -104,66 +45,18 @@ class TestLookupTableV2BF16OpIds4D(TestLookupTableV2BF16Op):
         self.mkldnn_data_type = "bfloat16"
 
 
-@unittest.skipIf(
-    not core.supports_bfloat16(), "place does not support BF16 evaluation"
-)
-class TestLookupTableV2BF16OpWIsSelectedRows(unittest.TestCase):
+class TestLookupTableV2BF16OpWIsSelectedRows(
+    TestLookupTableBF16OpWIsSelectedRows
+):
     def init_test(self):
         self.op_type = "lookup_table_v2"
         self.python_api = paddle.nn.functional.embedding
         self.ids_shape = 10
 
-    def setUp(self):
-        self.init_test()
-        self.ids = np.random.randint(
-            low=0, high=15, size=self.ids_shape
-        ).astype("int64")
-        self.flat_ids = self.ids.flatten()
-        self.w_fp32 = np.random.random((15, 32)).astype("float32")
-        self.w_bf16 = convert_float_to_uint16(self.w_fp32)
-        self.scope = core.Scope()
-        self.place = core.CPUPlace()
-
-    def prepare_w(self):
-        rows = list(range(self.w_bf16.shape[0]))
-        row_numel = self.w_bf16.shape[1]
-
-        w_selected_rows = self.scope.var('W').get_selected_rows()
-        w_selected_rows.set_height(len(rows))
-        w_selected_rows.set_rows(rows)
-        w_tensor = w_selected_rows.get_tensor()
-        w_tensor.set(self.w_bf16, self.place)
-
-    def prepare_ids(self):
-        ids_tensor = self.scope.var('Ids').get_tensor()
-        ids_tensor.set(self.ids, self.place)
-
-    def _check_output(self, reference, result_array):
-        result_array_fp32 = convert_uint16_to_float(result_array)
-        np.testing.assert_allclose(result_array_fp32, reference, rtol=1.5e-2)
-
-    def test_check_output(self):
-        self.prepare_ids()
-        self.prepare_w()
-        out_tensor = self.scope.var('Out').get_tensor()
-
-        # create and run lookup_table operator
-        lookup_table = Operator(self.op_type, W='W', Ids='Ids', Out='Out')
-        lookup_table.run(self.scope, self.place)
-
-        # get result from Out
-        result_array = np.array(out_tensor)
-        ref = _lookup(self.w_fp32, self.ids, self.flat_ids, self.op_type)
-        self._check_output(ref, result_array)
-
 
 class TestLookupTableV2BF16OpWIsSelectedRows4DIds(
-    TestLookupTableV2BF16OpWIsSelectedRows
+    TestLookupTableBF16OpWIsSelectedRows4DIds
 ):
-    def setUp(self):
-        super().setUp()
-        self.flat_ids = self.ids.flatten()
-
     def init_test(self):
         self.op_type = "lookup_table_v2"
         self.python_api = paddle.nn.functional.embedding
