@@ -161,9 +161,8 @@ def _convert_into_variable(tensor):
 def enabled():
     """
     This function checks whether the program runs in dynamic graph mode or not.
-    You can enter dynamic graph mode with :ref:`api_paddle_guard` api,
-    or enable and disable dynamic graph mode with :ref:`api_paddle_disable_static`
-    and :ref:`api_paddle_enable_static` api .
+    You can enable dynamic graph mode with :ref:`api_paddle_disable_static` api,
+    or disable dynamic graph mode with :ref:`api_paddle_enable_static` .
 
     **Note**:
         ``base.dygraph.enabled`` is the alias of ``base.in_dygraph_mode``, and
