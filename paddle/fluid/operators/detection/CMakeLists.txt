@@ -43,7 +43,6 @@ detection_library(bipartite_match_op SRCS bipartite_match_op.cc)
 detection_library(mine_hard_examples_op SRCS mine_hard_examples_op.cc)
 detection_library(anchor_generator_op SRCS anchor_generator_op.cc
                   anchor_generator_op.cu)
-detection_library(target_assign_op SRCS target_assign_op.cc target_assign_op.cu)
 detection_library(polygon_box_transform_op SRCS polygon_box_transform_op.cc
                   polygon_box_transform_op.cu)
 detection_library(rpn_target_assign_op SRCS rpn_target_assign_op.cc)
@@ -54,8 +53,6 @@ detection_library(locality_aware_nms_op SRCS locality_aware_nms_op.cc DEPS phi)
 detection_library(box_clip_op SRCS box_clip_op.cc box_clip_op.cu)
 detection_library(box_decoder_and_assign_op SRCS box_decoder_and_assign_op.cc
                   box_decoder_and_assign_op.cu)
-detection_library(sigmoid_focal_loss_op SRCS sigmoid_focal_loss_op.cc
-                  sigmoid_focal_loss_op.cu)
 detection_library(retinanet_detection_output_op SRCS
                   retinanet_detection_output_op.cc)
 

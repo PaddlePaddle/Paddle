@@ -178,7 +178,6 @@ register_unity_group(
   matmul_v2_op.cc)
 register_unity_group(
   cc
-  mean_iou_op.cc
   mean_op.cc
   minus_op.cc
   mish_op.cc
@@ -231,7 +230,6 @@ register_unity_group(
   roi_align_op.cc
   roll_op.cc
   run_program_op.cc
-  sample_logits_op.cc
   sampling_id_op.cc
   save_combine_op.cc
   save_op.cc
@@ -455,7 +453,6 @@ register_unity_group(
   softmax_with_cross_entropy_op.cu)
 register_unity_group(
   cu
-  mean_iou_op.cu
   mean_op.cu
   minus_op.cu
   mish_op.cu
@@ -490,7 +487,6 @@ register_unity_group(
   cu
   roi_align_op.cu
   roll_op.cu
-  sample_logits_op.cu
   sampling_id_op.cu
   save_combine_op.cu
   save_op.cu
