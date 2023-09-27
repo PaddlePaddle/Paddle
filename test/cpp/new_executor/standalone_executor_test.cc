@@ -26,7 +26,6 @@
 
 USE_OP_ITSELF(fill_constant);
 USE_OP_ITSELF(uniform_random);
-USE_OP(lookup_table);
 USE_OP_ITSELF(transpose2);
 USE_OP_ITSELF(reshape2);
 USE_OP_ITSELF(split);
@@ -54,7 +53,6 @@ USE_OP_ITSELF(sigmoid_grad);
 USE_OP_ITSELF(tanh_grad);
 USE_OP_ITSELF(sum);
 USE_OP_ITSELF(slice_grad);
-USE_OP_ITSELF(lookup_table_grad);
 USE_OP_ITSELF(sqrt);
 USE_OP_ITSELF(elementwise_max);
 USE_OP_ITSELF(elementwise_div);
