@@ -4131,8 +4131,7 @@ function main() {
             ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip
             run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
             run_sot_test $PADDLE_SOT_ROOT $PY_VERSION
-            cd ${PADDLE_ROOT}/build
-            make clean
+            rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt ${PADDLE_ROOT}/build/build.ninja
         done
         ;;
       build_gpubox)
