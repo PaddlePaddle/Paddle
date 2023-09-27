@@ -136,7 +136,7 @@ def elu(x, alpha=1.0, name=None):
 def elu_(x, alpha=1.0, name=None):
     r"""
     Inplace version of ``elu`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_nn_ELU`.
+    Please refer to :ref:`api_paddle_nn_functional_elu`.
     """
     assert alpha >= 0.0, "elu_ only support alpha >= 0, please use elu instead."
     if in_dynamic_mode():
