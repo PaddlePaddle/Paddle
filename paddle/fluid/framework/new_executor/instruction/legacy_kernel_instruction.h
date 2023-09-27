@@ -18,7 +18,6 @@
 
 namespace pir {
 class Operation;
-class Value;
 }  // namespace pir
 
 namespace paddle {

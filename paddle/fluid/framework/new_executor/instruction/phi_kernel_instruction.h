@@ -23,7 +23,7 @@ class Operation;
 namespace paddle {
 namespace framework {
 class Scope;
-class Value;
+class ValueExecutionInfo;
 
 class PhiKernelInstruction : public InstructionBase {
  public:
