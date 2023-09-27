@@ -22,6 +22,11 @@ from paddle.base import core
 
 
 class TestElementwiseOp(OpTest):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
+        self.prim_op_type = "prim"
     def test_float16_sub(self):
         if not core.is_compiled_with_cuda():
             return
