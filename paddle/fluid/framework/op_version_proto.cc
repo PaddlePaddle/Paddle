@@ -69,6 +69,7 @@ const std::unordered_map<std::string, uint32_t>& GetLegacyOpVersions() {
       {"unique_consecutive", 1},
       {"conv3d", 1},
       {"pixel_shuffle", 1},
+      {"collect_fpn_proposals", 1},
       {"coalesce_tensor", 2},
       {"arg_max", 1},
       {"allclose", 2},
