@@ -359,7 +359,7 @@ def densenet121(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`DenseNet <api_paddle_vision_DenseNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`DenseNet <api_paddle_vision_models_DenseNet>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of DenseNet 121-layer model.
@@ -392,7 +392,7 @@ def densenet161(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`DenseNet <api_paddle_vision_DenseNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`DenseNet <api_paddle_vision_models_DenseNet>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of DenseNet 161-layer model.
@@ -425,7 +425,7 @@ def densenet169(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`DenseNet <api_paddle_vision_DenseNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`DenseNet <api_paddle_vision_models_DenseNet>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of DenseNet 169-layer model.
@@ -458,7 +458,7 @@ def densenet201(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`DenseNet <api_paddle_vision_DenseNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`DenseNet <api_paddle_vision_models_DenseNet>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of DenseNet 201-layer model.
@@ -490,7 +490,7 @@ def densenet264(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`DenseNet <api_paddle_vision_DenseNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`DenseNet <api_paddle_vision_models_DenseNet>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of DenseNet 264-layer model.
