@@ -1392,6 +1392,9 @@ void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
   try {
     instr_node->WaitEvent(place_);
     VLOG(4) << "begin to run op " << instr_node->Name();
+    VLOG(4) << place_ << " "
+            << instr_node->DebugStringEx(scope_,
+                                         value_exe_info_->GetValue2VarName());
     if (!instr_node->IsArtificial()) {
       instr_node->Run();
 
