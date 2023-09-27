@@ -68,9 +68,9 @@ Block *ModuleOp::block() {
 ModuleOp ModuleOp::Create(IrContext *context, Program *pointer) {
   pir::OpInfo info = context->GetRegisteredOpInfo(name());
   OperationArgument argument(info);
-  argument.num_regions = 1;
+  argument.AddRegion(nullptr);
   argument.AddAttribute("program", PointerAttribute::get(context, pointer));
-  Operation *op = Operation::Create(argument);
+  Operation *op = Operation::Create(std::move(argument));
   op->region(0).emplace_back();
   return ModuleOp(op);
 }
