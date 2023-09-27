@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/kernels/impl/kron_kernel_impl.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {
 
@@ -234,12 +235,14 @@ struct KronGradOpFunctor {
 #if defined(__NVCC__) || defined(__HIPCC__)
     auto stream = dev_ctx.stream();  // it is a cuda device_context
     if (dx) {
-      funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          dev_ctx, dout_x, dx, kps::IdentityFunctor<T>(), {1});
+      std::vector<int> reduce_dims{1};
+      phi::SumKernel<T, Context>(
+          dev_ctx, dout_x, reduce_dims, dout_x.dtype(), false, dx);
     }
     if (dy) {
-      funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          dev_ctx, dout_y, dy, kps::IdentityFunctor<T>(), {1});
+      std::vector<int> reduce_dims{1};
+      phi::SumKernel<T, Context>(
+          dev_ctx, dout_y, reduce_dims, dout_y.dtype(), false, dy);
     }
 #else
     auto *place = dev_ctx.eigen_device();
