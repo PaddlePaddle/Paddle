@@ -217,7 +217,6 @@ long_time_test="^test_gru_op$|\
 ^test_gather_op$|\
 ^test_gather_nd_op$|\
 ^test_sequence_conv$|\
-^test_space_to_depth_op$|\
 ^test_activation_nn_grad$|\
 ^test_activation_op$|\
 ^test_bicubic_interp_v2_op$|\
