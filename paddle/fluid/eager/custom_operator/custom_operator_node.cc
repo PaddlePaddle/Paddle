@@ -190,12 +190,12 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
     }
   }
 
-  for (auto it : fwd_outs) {
+  for (auto const& it : fwd_outs) {
     VLOG(7) << "Insert fwd_outs to grad_inputs: " << it.first;
     tmp_ins[it.first] = RunCustomOpNode::Recover(&(it.second));
   }
 
-  for (auto it : fwd_ins) {
+  for (auto const& it : fwd_ins) {
     // NOTE(HongyuJia): returned tensor maybe un-defined tensor when inputs
     // optional<Tensor>
     VLOG(7) << "Insert fwd_ins to grad_inputs: " << it.first;
@@ -406,12 +406,12 @@ RunCustomOpDoubleGradNode::operator()(
     }
   }
 
-  for (auto it : fwd_outs) {
+  for (auto const& it : fwd_outs) {
     VLOG(7) << "Insert fwd_outs to grad_inputs: " << it.first;
     tmp_ins[it.first] = RunCustomOpDoubleGradNode::Recover(&(it.second));
   }
 
-  for (auto it : fwd_ins) {
+  for (auto const& it : fwd_ins) {
     VLOG(7) << "Insert fwd_ins to grad_inputs: " << it.first;
     tmp_ins[it.first] = RunCustomOpDoubleGradNode::Recover(&(it.second));
   }

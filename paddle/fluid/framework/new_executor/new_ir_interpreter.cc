@@ -1445,7 +1445,7 @@ void NewIRInterpreter::Build(
 
 void NewIRInterpreter::SolvePersisableVarNames() {
   VLOG(6) << "SolvePersisableVarNames";
-  for (auto kv : value_2_var_name_) {
+  for (auto const& kv : value_2_var_name_) {
     ::pir::Value value = kv.first;
     const std::string& var_name = kv.second;
     ::pir::OpResult result = value.dyn_cast<::pir::OpResult>();

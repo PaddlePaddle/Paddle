@@ -1262,7 +1262,7 @@ void BindPaddlePassBuilder(py::module *m) {
       .def("set_passes",
            [](PaddlePassBuilder &self, const std::vector<std::string> &passes) {
              self.ClearPasses();
-             for (auto pass : passes) {
+             for (auto const &pass : passes) {
                self.AppendPass(std::move(pass));
              }
            })

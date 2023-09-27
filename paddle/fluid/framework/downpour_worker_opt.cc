@@ -262,7 +262,7 @@ void DownpourWorkerOpt::CreateThreadOperatorsWithRerank(
     uint64_t tid =
         static_cast<uint64_t>(param_.program_config(0).pull_sparse_table_id(i));
     TableParameter table;
-    for (auto j : param_.sparse_table()) {
+    for (auto const& j : param_.sparse_table()) {
       if (j.table_id() == tid) {
         table = j;
         break;
@@ -315,7 +315,7 @@ void DownpourWorkerOpt::TrainFiles() {
     uint64_t tid =
         static_cast<uint64_t>(param_.program_config(0).pull_sparse_table_id(i));
     TableParameter table;
-    for (auto j : param_.sparse_table()) {
+    for (auto const& j : param_.sparse_table()) {
       if (j.table_id() == tid) {
         table = j;
         break;
@@ -344,7 +344,7 @@ void DownpourWorkerOpt::TrainFiles() {
       uint64_t tid = static_cast<uint64_t>(
           param_.program_config(0).pull_sparse_table_id(i));
       TableParameter table;
-      for (auto j : param_.sparse_table()) {
+      for (auto const& j : param_.sparse_table()) {
         if (j.table_id() == tid) {
           table = j;
           break;
@@ -455,7 +455,7 @@ void DownpourWorkerOpt::TrainFiles() {
         uint64_t tid = static_cast<uint64_t>(
             param_.program_config(0).push_sparse_table_id(i));
         TableParameter table;
-        for (auto i : param_.sparse_table()) {
+        for (auto const& i : param_.sparse_table()) {
           if (i.table_id() == tid) {
             table = i;
             break;
