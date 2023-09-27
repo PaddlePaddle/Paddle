@@ -922,6 +922,7 @@ FOURTH_HIGH_PARALLEL_JOB_NEW = [
     'test_label_smooth_op',
     'test_cast',
     'test_parallel_dygraph_sync_batch_norm',
+    'test_collect_fpn_proposals_op',
     'test_expand_as_v2_op',
     'test_device',
     'test_code_generator',

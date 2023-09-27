@@ -96,6 +96,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_chunk_op',
     'test_clip_by_norm_op',
     'test_clip_op',
+    'test_collect_fpn_proposals_op',
     'test_compare_reduce_op',
     'test_compiled_program',
     'test_cond',
