@@ -4131,6 +4131,7 @@ function main() {
             ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip
             run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
             run_sot_test $PADDLE_SOT_ROOT $PY_VERSION
+            make clean
         done
         ;;
       build_gpubox)
