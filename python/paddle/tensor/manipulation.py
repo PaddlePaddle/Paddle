@@ -1621,7 +1621,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
 def flatten_(x, start_axis=0, stop_axis=-1, name=None):
     """
     Inplace version of ``flatten`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_tensor_flatten`.
+    Please refer to :ref:`api_paddle_flatten`.
     """
     if not (isinstance(x, Variable)):
         raise ValueError("The input x should be a Tensor")
@@ -1984,8 +1984,10 @@ def split(x, num_or_sections, axis=0, name=None):
             dim = (len(input.shape) + dim) if dim < 0 else dim
 
         if isinstance(num_or_sections, int):
+            dim = dim if dim >= 0 else dim + len(input.shape)
             return _C_ops.split_with_num(input, num_or_sections, dim)
         else:
+            dim = dim if dim >= 0 else dim + len(input.shape)
             return _C_ops.split(input, num_or_sections, dim)
 
     else:
@@ -2215,7 +2217,7 @@ def squeeze(x, axis=None, name=None):
 
     input = x
     axes = axis
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.squeeze(input, axes)
     else:
         helper = LayerHelper("squeeze", **locals())
@@ -2606,7 +2608,7 @@ def unsqueeze(x, axis, name=None):
     """
     input = x
     axes = axis
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if isinstance(axes, int):
             axes = [axes]
         elif isinstance(axes, Variable):
@@ -3168,7 +3170,7 @@ def tile(x, repeat_times, name=None):
             # Tensor(shape=[1, 6], dtype=int32, place=Place(gpu:0), stop_gradient=True,
             #        [[1, 2, 3, 1, 2, 3]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if isinstance(repeat_times, core.eager.Tensor):
             assert (
                 repeat_times.ndim == 1
@@ -4727,7 +4729,7 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
 def put_along_axis_(arr, indices, values, axis, reduce='assign'):
     r"""
     Inplace version of ``put_along_axis`` API, the output Tensor will be inplaced with input ``arr``.
-    Please refer to :ref:`api_tensor_put_along_axis`.
+    Please refer to :ref:`api_paddle_put_along_axis`.
     """
     if len(arr.shape) != len(indices.shape):
         raise ValueError(

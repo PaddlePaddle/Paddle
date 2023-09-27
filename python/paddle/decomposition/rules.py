@@ -145,6 +145,67 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
     return out, mean_, variance
 
 
+@register_decomp('pd_op.dropout')
+def dropout_composite(x, seed_tensor, p, is_test, mode, seed, fix_seed):
+    """define composite rule of op dropout.
+    upscale_in_train:
+        train: out = input * mask / ( 1.0 - p )
+        inference: out = input
+    downscale_in_infer
+        train: out = input * mask
+        inference: out = input * (1.0 - p)
+    """
+    from paddle.base import core
+    from paddle.base.data_feeder import convert_dtype
+
+    fix_seed = True if fix_seed is None else fix_seed
+    seed = seed if fix_seed else 0
+    upscale_in_train = mode == "upscale_in_train"
+
+    x_dtype = convert_dtype(x.dtype)
+    mask = bernoulli(shape=x.shape, dtype=x_dtype, p=p, seed=seed)
+
+    uint8_type = convert_dtype(core.VarDesc.VarType.UINT8)
+    if upscale_in_train:
+        if not is_test:
+            # Process p=1.0 for avoid devide zero error (x*mask/(1.0-p))
+            if p == 1.0:
+                return fill_constant(
+                    shape=x.shape, value=0.0, dtype=x.dtype
+                ) * x, zeros(x.shape, uint8_type)
+            else:
+                return x * mask / fill_constant(
+                    shape=x.shape, value=(1.0 - p), dtype=x.dtype
+                ), cast(mask, uint8_type)
+        else:
+            return x, cast(
+                mask, uint8_type
+            )  # assign(x), cast(mask, mask, core.VarDesc.VarType.UINT8)
+    else:
+        if not is_test:
+            return x * mask, cast(mask, uint8_type)
+        else:
+            return x * fill_constant(
+                shape=x.shape, value=(1.0 - p), dtype=x.dtype
+            ), cast(mask, uint8_type)
+
+
+def bernoulli(shape, dtype, p, seed=0):
+    from paddle.base.data_feeder import convert_dtype
+
+    # TODO(jiabin) Fix uniform doesn't support float16 error in CINN
+    new_dtype = (
+        "float32" if convert_dtype(dtype) in ["float16", "uint16"] else dtype
+    )
+    return cast(
+        greater_equal(
+            uniform(shape, new_dtype, min=0.0, max=1.0, seed=seed),
+            fill_constant(shape if len(shape) == 0 else [1], new_dtype, p),
+        ),
+        dtype,
+    )
+
+
 @register_decomp('pd_op.add_n')
 def sum_composite(x):
     ans = x[0]

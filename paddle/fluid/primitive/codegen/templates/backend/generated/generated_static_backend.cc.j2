@@ -12,9 +12,9 @@ namespace backend {
 
 using LazyTensor = paddle::primitive::LazyTensor;
 
-{%- macro sig(name, inputs, outputs, attrs, mutable_attribute_as_inputs=False) -%}
+{%- macro sig(name, inputs, outputs, attrs, inplace_map, mutable_attribute_as_inputs=False) -%}
 template <>
-{{common.ret(outputs)}} {{name}}<LazyTensor>({{common.params(inputs, attrs, mutable_attribute_as_inputs, False)}})
+{{common.ret(outputs, inplace_map)}} {{name}}<LazyTensor>({{common.params(inputs, attrs, mutable_attribute_as_inputs, False)}})
 {%- endmacro -%}
 
 {%- macro prepare_ir_api_inputs(inputs)-%}
@@ -25,18 +25,22 @@ std::transform({{input.name}}.begin(), {{input.name}}.end(), {{input.name}}_res.
   return std::static_pointer_cast<LazyTensor>(t.impl())->value();
 });
     {% elif input.typename=='Tensor[]' and input.optional %}
-std::vector<pir::Value> {{input.name}}_res({{input.name}}.size());
+paddle::optional<std::vector<pir::Value>> {{input.name}}_res;
 if({{input.name}}) {
-  std::transform({{input.name}}.get().begin(), {{input.name}}.get().end(), {{input.name}}_res.begin(), [](const Tensor& t) {
+  std::vector<pir::Value> {{input.name}}_res_inner({{input.name}}.get().size());
+  std::transform({{input.name}}.get().begin(), {{input.name}}.get().end(), {{input.name}}_res_inner.begin(), [](const Tensor& t) {
     return std::static_pointer_cast<LazyTensor>(t.impl())->value();
   });
+  {{input.name}}_res = paddle::make_optional<std::vector<pir::Value>>({{input.name}}_res_inner);
 }
     {% elif input.typename=='Tensor' and not input.optional %}
 pir::Value {{input.name}}_res = std::static_pointer_cast<LazyTensor>({{input.name}}.impl())->value();
     {% else %}
-pir::Value {{input.name}}_res;
+paddle::optional<pir::Value> {{input.name}}_res;
 if({{input.name}}) {
-  {{input.name}}_res = std::static_pointer_cast<LazyTensor>({{input.name}}.get().impl())->value();
+  pir::Value {{input.name}}_res_inner;
+  {{input.name}}_res_inner = std::static_pointer_cast<LazyTensor>({{input.name}}.get().impl())->value();
+  {{input.name}}_res = paddle::make_optional<pir::Value>({{input.name}}_res_inner);
 }
     {% endif %}
   {% endfor %}
@@ -44,27 +48,57 @@ if({{input.name}}) {
 
 {%- macro get_static_backend_outputs(outputs)-%}
   {%- if outputs|length == 1 -%}
-    {%- if outputs[0].typename == 'Tensor' -%}
+    {%- if outputs[0].typename == 'Tensor' and not outputs[0].optional-%}
 Tensor {{outputs[0].name}}(std::make_shared<LazyTensor>(op_res));
 return {{outputs[0].name}};
-    {%- elif outputs[0].typename == 'Tensor[]' -%}
+    {%- elif outputs[0].typename == 'Tensor' and outputs[0].optional -%}
+paddle::optional<Tensor> {{outputs[0].name}};
+if(op_res){
+  {{outputs[0].name}} = paddle::make_optional<Tensor>(Tensor(std::make_shared<LazyTensor>(op_res.get()));
+}
+return {{outputs[0].name}};
+    {%- elif outputs[0].typename == 'Tensor[]' and not outputs[0].optional -%}
 std::vector<Tensor> {{outputs[0].name}}(op_res.size());
 std::transform(op_res.begin(), op_res.end(), {{outputs[0].name}}.begin(), [](const pir::OpResult& res) {
 return Tensor(std::make_shared<LazyTensor>(res));
   });
+return {{outputs[0].name}};
+    {%- elif outputs[0].typename == 'Tensor[]' and outputs[0].optional -%}
+paddle::optional<std::vector<Tensor>> {{outputs[0].name}};
+if({{op_res}}) {
+  std::vector<pir::Value> {{outputs[0].name}}_inner(op_res.get().size());
+  std::transform(op_res.get().begin(), op_res.get().end(), {{outputs[0].name}}_inner.begin(), [](const pir::OpResult& res) {
+    return Tensor(std::make_shared<LazyTensor>(res));
+  });
+  {{outputs[0].name}} = paddle::make_optional<std::vector<Tensor>>({{outputs[0].name}}_inner);
+}
 return {{outputs[0].name}};
     {%- else -%} {#- render nothing -#}
     {%- endif -%}
   {%- elif outputs|length > 1 -%}
     {%- for i in range(outputs|length) %}
 auto op_res_{{i}} = std::get<{{i}}>(op_res);
-      {% if outputs[i].typename == 'Tensor' %}
+      {% if outputs[i].typename == 'Tensor' and not outputs[i].optional %}
 Tensor {{outputs[i].name}}(std::make_shared<LazyTensor>(op_res_{{i}}));
-      {% elif outputs[i].typename == 'Tensor[]' %}
+      {% elif outputs[i].typename == 'Tensor' and  outputs[i].optional %}
+paddle::optional<Tensor> {{outputs[i].name}};
+if(op_res_{{i}}){
+  {{outputs[i].name}} = paddle::make_optional<Tensor>(Tensor(std::make_shared<LazyTensor>(op_res_{{i}}.get())));
+}
+      {% elif outputs[i].typename == 'Tensor[]' and not outputs[i].optional %}
 std::vector<Tensor> {{outputs[i].name}}(op_res_{{i}}.size());
 std::transform(op_res_{{i}}.begin(), op_res_{{i}}.end(), {{outputs[i].name}}.begin(), [](const pir::OpResult& res) {
 return Tensor(std::make_shared<LazyTensor>(res));
   });
+      {% elif outputs[i].typename == 'Tensor[]' and outputs[i].optional %}
+paddle::optional<std::vector<Tensor>> {{outputs[i].name}};
+if(op_res_{{i}}){
+  std::vector<Tensor> {{outputs[i].name}}_inner(op_res_{{i}}.get().size());
+  std::transform(op_res_{{i}}.get().begin(), op_res_{{i}}.get().end(), {{outputs[i].name}}_inner.begin(), [](const pir::OpResult& res) {
+    return Tensor(std::make_shared<LazyTensor>(res));
+  });
+  {{outputs[i].name}} = paddle::make_optional<std::vector<Tensor>>({{outputs[i].name}}_inner);
+}
       {% else %} {#- render nothing -#}
       {% endif %}
     {% endfor -%}
@@ -107,14 +141,20 @@ auto op_res = paddle::dialect::{{name}}({{common.args(input_names, attr_names)}}
 {% for api in apis %}
 {% if api.name in backend_white_list %}
   {% set api_outputs = api.outputs | trip_intermediate %}
-{{sig(api.name, api.inputs, api_outputs, api.attrs)}} {
+  {% set inplace_map = {} %}
+  {% if 'inplace' in api and api.inplace != None %}
+    {% for source, target in api.inplace.items() %}
+      {% do inplace_map.update({source: target}) %}
+    {% endfor %}
+  {% endif %}
+{{sig(api.name, api.inputs, api_outputs, api.attrs, inplace_map)}} {
   {% filter indent(2, True) %}
 {{body(api.name, api.inputs, api_outputs, api.attrs)}} 
   {% endfilter %}
 }
 
   {% if api.attrs is exist_mutable_attribute %}
-{{sig(api.name, api.inputs, api_outputs, api.attrs, True)}} {
+{{sig(api.name, api.inputs, api_outputs, api.attrs, inplace_map, True)}} {
   {% filter indent(2, True) %}
 {{body(api.name, api.inputs, api_outputs, api.attrs, True)}} 
   {% endfilter %}
