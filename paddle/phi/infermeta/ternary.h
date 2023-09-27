@@ -210,4 +210,13 @@ void ViterbiDecodeInferMeta(const MetaTensor& input,
                             MetaTensor* path,
                             MetaConfig config = MetaConfig());
 
+void DpsgdInferMeta(const MetaTensor& param,
+                    const MetaTensor& grad,
+                    const MetaTensor& learning_rate,
+                    float clip,
+                    float batch_size,
+                    float sigma,
+                    int size,
+                    MetaTensor* param_out);
+
 }  // namespace phi
