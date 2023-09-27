@@ -31,7 +31,7 @@ void ScatterGradKernel(const Context &ctx,
                        const std::string &reduce,
                        bool include_self,
                        DenseTensor *x_grad,
-                       DenseTensor *updates_grad)) {
+                       DenseTensor *updates_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   const auto &index_type = index.dtype();
@@ -91,6 +91,7 @@ void ScatterGradKernel(const Context &ctx,
   }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "scatter grad");
 }
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(scatter_grad,

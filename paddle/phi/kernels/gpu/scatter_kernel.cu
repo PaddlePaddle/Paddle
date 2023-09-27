@@ -262,7 +262,7 @@ void ScatterKernel(const Context& ctx,
           "but desires to be add, mul, multiply, mean, amin, amax.",
           reduce));
 
-  auto input_dim = x->dims();
+  auto input_dim = x.dims();
   axis = axis >= 0 ? axis : axis + input_dim.size();
   int index_size = index.dims().size();
 
@@ -293,7 +293,7 @@ void ScatterKernel(const Context& ctx,
               index_data[i]));
 
     } else if (index_type == phi::DataType::INT64) {
-      const int64_t index_data = index_cpu.data<int64_t>();
+      const int64_t* index_data = index_cpu.data<int64_t>();
 
       PADDLE_ENFORCE_GE(
           index_data[i],
