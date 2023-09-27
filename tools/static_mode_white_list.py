@@ -279,7 +279,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_infer_no_need_buffer_slots',
     'test_inference_model_io',
     'test_initializer',
-    'test_inplace_abn_op',
     'test_inplace_addto_strategy',
     'test_inplace_softmax_with_cross_entropy',
     'test_input_spec',
