@@ -14,11 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
+#include "paddle/phi/core/distributed/type_defs.h"
 
-namespace paddle {
+namespace phi {
 namespace distributed {
-namespace auto_parallel {
 
 // (TODO) Support 3 parallel cases for embedding:
 // 1. Batch dimensions of input ids is sharded on mesh.
@@ -26,17 +26,16 @@ namespace auto_parallel {
 // change the embedding kernel for miss ids.)
 // 3. Column-wise Parallel of embedding table.
 // 4. Hybrid Parallelism of above 3 cases.
-class EmbeddingSPMDRule : public SPMDRuleBase {
- public:
-  std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
-  InferForward(const std::vector<DistTensorSpec>& input_specs,
-               const paddle::framework::AttributeMap& attrs) override;
+SpmdInfo EmbeddingInferSpmd(const DistMetaTensor& x,
+                            const DistMetaTensor& weight,
+                            int padding_idx,
+                            bool sparse);
 
-  std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
-  InferBackward(const std::vector<DistTensorSpec>& input_specs,
-                const std::vector<DistTensorSpec>& output_specs,
-                const paddle::framework::AttributeMap& attrs) override;
-};
-}  // namespace auto_parallel
+SpmdInfo EmbeddingInferSpmdReverse(const DistMetaTensor& x,
+                                   const DistMetaTensor& weight,
+                                   const DistMetaTensor& out,
+                                   int padding_idx,
+                                   bool sparse);
+
 }  // namespace distributed
-}  // namespace paddle
+}  // namespace phi

@@ -104,12 +104,7 @@ class IR_API Type {
 
   template <typename U>
   U dyn_cast() const {
-    return pir::dyn_cast<U>(*this);
-  }
-
-  template <typename U>
-  U dyn_cast_interface() const {
-    return CastInfo<U>::call(*this);
+    return CastUtil<U>::call(*this);
   }
 
   void Print(std::ostream &os) const;
@@ -125,18 +120,18 @@ class IR_API Type {
   const Storage *storage_{nullptr};
 
  private:
-  template <typename T, typename Enabler = void>
-  struct CastInfo {
-    static T call(Type type) {
-      throw("Can't dyn_cast to T, T should be a Type or Interface");
+  template <typename To, typename Enabler = void>
+  struct CastUtil {
+    static To call(Type type) {
+      throw("Can't dyn_cast to To, To should be a Type or Interface or Trait");
     }
   };
 
-  template <typename T>
-  struct CastInfo<
-      T,
-      typename std::enable_if<std::is_base_of<pir::Type, T>::value>::type> {
-    static inline T call(pir::Type type) { return T::dyn_cast(type); }
+  template <typename To>
+  struct CastUtil<
+      To,
+      typename std::enable_if<std::is_base_of<Type, To>::value>::type> {
+    static inline To call(Type type) { return To::dyn_cast_impl(type); }
   };
 };
 
@@ -150,25 +145,26 @@ class TypeInterfaceBase : public pir::Type {
  public:
   explicit TypeInterfaceBase(Type type) : Type(type) {}
 
-  // Accessor for the ID of this interface.
+  ///
+  /// \brief Accessor for the ID of this interface.
+  ///
   static TypeId GetInterfaceId() { return TypeId::get<ConcreteInterface>(); }
 
-  static ConcreteInterface dyn_cast(Type type) {
+  ///
+  /// \brief Checking if the given object defines the concrete interface.
+  ///
+  static bool classof(Type type) {
+    return type.abstract_type().HasInterface(TypeId::get<ConcreteInterface>());
+  }
+
+  static ConcreteInterface dyn_cast_impl(Type type) {
     if (type &&
         type.abstract_type().HasInterface(TypeId::get<ConcreteInterface>())) {
       return ConcreteInterface(
           type, type.abstract_type().GetInterfaceImpl<ConcreteInterface>());
     }
-    return ConcreteInterface(Type(), nullptr);
+    return ConcreteInterface(nullptr, nullptr);
   }
-};
-
-template <typename To, typename From>
-struct cast_impl<
-    To,
-    From,
-    typename std::enable_if<std::is_base_of<pir::Type, From>::value>::type> {
-  static inline To call(const pir::Type type) { return To(type.storage()); }
 };
 
 }  // namespace pir

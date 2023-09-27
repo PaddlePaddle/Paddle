@@ -64,6 +64,27 @@ class TestDy2staticNewIR(unittest.TestCase):
         )
 
 
+class TestDy2staticNewIR2(unittest.TestCase):
+    def test_basic_layer(self):
+        class SimpleNet(paddle.nn.Layer):
+            def __init__(self):
+                super().__init__()
+                self.linear = paddle.nn.Linear(10, 10)
+
+            def forward(self, x):
+                return self.linear(x)
+
+        net = SimpleNet()
+        x = paddle.randn((10, 10))
+        x.stop_gradient = False
+        ans = net(x)
+        net = paddle.jit.to_static(net)
+        out = net(x)
+        np.testing.assert_allclose(
+            out.numpy(), ans.numpy(), rtol=1e-05, atol=1e-8
+        )
+
+
 class TestDy2staticNewIR3(unittest.TestCase):
     def test_complex_layer(self):
         def output_pure_func(x, y):
@@ -73,11 +94,7 @@ class TestDy2staticNewIR3(unittest.TestCase):
             return paddle.add(outx, outy), outy
 
         def run_function(to_static=True):
-            import paddle
-
-            # 设置随机种子
             paddle.seed(2023)
-            # 生成随机数
             x = paddle.randn((10, 10))
             y = paddle.randn((10, 10))
             x.stop_gradient = False
@@ -94,6 +111,88 @@ class TestDy2staticNewIR3(unittest.TestCase):
             np.testing.assert_allclose(
                 dy.numpy(), st.numpy(), rtol=1e-05, atol=1e-8
             )
+
+
+class TestLossFor10Steps(unittest.TestCase):
+    def test_loss_for_10_steps(self):
+        # Dy2static RunProgramOp support nn.Layer's forward and backward training.
+        class SimpleNet(paddle.nn.Layer):
+            def __init__(self):
+                super().__init__()
+                self.linear = paddle.nn.Linear(10, 10)
+
+            def forward(self, x):
+                return self.linear(x)
+
+        def train_step(to_static=True):
+            paddle.seed(2023)
+            x = paddle.randn((10, 10), dtype='float32')
+            y = paddle.randn((10, 10), dtype='float32')
+            loss_fn = paddle.nn.loss.MSELoss()
+            net = SimpleNet()
+            optimizer = paddle.optimizer.SGD(
+                learning_rate=0.1, parameters=net.parameters()
+            )
+            if to_static:
+                net = paddle.jit.to_static(net)
+            losses = []
+            for step in range(100):
+                y_pred = net(x)
+                loss = loss_fn(y_pred, y)
+                loss.backward()
+                optimizer.step()
+                optimizer.clear_grad()
+                losses.append(loss.numpy())
+            return losses
+
+        expected_losses = train_step(True)
+        losses = train_step(False)
+        np.testing.assert_allclose(
+            losses, expected_losses, rtol=1e-05, atol=1e-8
+        )
+
+
+class TestDy2staticNewIR5(unittest.TestCase):
+    def test_run(self):
+        # Dy2static RunProgramOp support nn.Layer's forward and backward training.
+        class SimpleNet(paddle.nn.Layer):
+            def __init__(self):
+                super().__init__()
+                self.linear = paddle.nn.Linear(10, 10)
+
+            def forward(self, x, y):
+                if y is True:
+                    return self.linear(x)
+                else:
+                    m = self.linear(x)
+                    return m * m
+
+        def train_step(to_static=True):
+            paddle.seed(2023)
+            x = paddle.randn((10, 10), dtype='float32')
+            y = paddle.randn((10, 10), dtype='float32')
+            loss_fn = paddle.nn.loss.MSELoss()
+            net = SimpleNet()
+            optimizer = paddle.optimizer.SGD(
+                learning_rate=0.1, parameters=net.parameters()
+            )
+            if to_static:
+                net = paddle.jit.to_static(net)
+            losses = []
+            for step in range(100):
+                y_pred = net(x, step % 2 == 1)
+                loss = loss_fn(y_pred, y)
+                loss.backward()
+                optimizer.step()
+                optimizer.clear_grad()
+                losses.append(loss.numpy())
+            return losses
+
+        expected_losses = train_step(True)
+        losses = train_step(False)
+        np.testing.assert_allclose(
+            losses, expected_losses, rtol=1e-05, atol=1e-8
+        )
 
 
 if __name__ == "__main__":
