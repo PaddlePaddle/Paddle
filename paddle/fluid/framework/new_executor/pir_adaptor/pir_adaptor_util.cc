@@ -355,6 +355,7 @@ void BuildValue(pir::Value value,
                 const std::string& var_name_prefix,
                 paddle::framework::ValueExecutionInfo* value_exe_info) {
   if (!IsInvalid(value)) {
+    VLOG(8) << "Value is not invalid, so skip build a variable.";
     return;
   }
 
@@ -609,6 +610,8 @@ void HandleForInplaceOp(pir::Operation* op,
   for (size_t i = 0; i < op->num_results(); ++i) {
     pir::Value value = op->result(i);
     if (!IsInvalid(value)) {
+      VLOG(8) << "Number " << i << " result of " << op_name
+              << " is not invalid, so skip build a variable.";
       continue;
     }
     std::string value_name = yaml_parser.OutputNames()[i];
@@ -712,6 +715,7 @@ void BuildRuntimeContext(
     pir::Value ptr = op->operand_source(index);
 
     if (!IsInvalid(ptr)) {
+      VLOG(8) << "ctx->EmplaceBackInput : an optioanl input " << name;
       continue;
     }
 
@@ -732,6 +736,7 @@ void BuildRuntimeContext(
     auto legacy_arg_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
 
     if (!IsInvalid(ptr)) {
+      VLOG(8) << "ctx->EmplaceBackOutput : an optioanl output " << name;
       continue;
     }
 
@@ -792,9 +797,12 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
     auto legacy_attr_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
 
     if (!IsInvalid(ptr)) {
+      VLOG(8) << "Push back inputs to VariableNameMap : an optioanl input "
+              << name;
       continue;
     }
-
+    VLOG(6) << "Push back inputs to VariableNameMap : "
+            << value_exec_info.GetVarName(ptr);
     in_name_map[legacy_attr_name].push_back(value_exec_info.GetVarName(ptr));
   }
 
@@ -879,18 +887,24 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
         op_normalizer.GetLegacyArgName(fluid_op_name, output_name_list[i]);
 
     if (!IsInvalid(ptr)) {
+      VLOG(8) << "Push back outputs to VariableNameMap : an optioanl output "
+              << legacy_arg_name;
       continue;
     }
 
     if (ptr.type().isa<paddle::dialect::AllocatedDenseTensorType>() ||
         ptr.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
       out_name_map[legacy_arg_name].push_back(value_exec_info.GetVarName(ptr));
+      VLOG(6) << "Push back outputs to VariableNameMap : "
+              << value_exec_info.GetVarName(ptr);
     } else if (ptr.type().isa<pir::VectorType>()) {
       auto var = scope->FindVar(value_exec_info.GetVarName(ptr));
       auto var_ref = var->Get<paddle::framework::VariableRefArray>();
       for (size_t k = 0; k < var_ref.size(); ++k) {
         out_name_map[legacy_arg_name].push_back(
             value_exec_info.GetVarName(var_ref[k]));
+        VLOG(6) << "Push back outputs to VariableNameMap : "
+                << value_exec_info.GetVarName(var_ref[k]);
       }
     } else {
       PADDLE_THROW(phi::errors::Unimplemented(

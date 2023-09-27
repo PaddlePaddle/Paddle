@@ -475,7 +475,7 @@ def transpose(x, perm, name=None):
             # [3L, 2L, 4L]
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.transpose(x, perm)
     else:
         check_variable_and_dtype(
