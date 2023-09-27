@@ -1248,7 +1248,7 @@ def softmax(x, axis=-1, dtype=None, name=None):
 def softmax_(x, axis=-1, dtype=None, name=None):
     r"""
     Inplace version of ``softmax`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_nn_Softmax`.
+    Please refer to :ref:`api_paddle_nn_functional_softmax`.
     """
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
