@@ -23,7 +23,6 @@
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
-#include "paddle/pir/transforms/reorder_block_ops_pass.h"
 
 class FusedLinearPattern : public pir::drr::DrrPatternBase<FusedLinearPattern> {
  public:
@@ -349,7 +348,6 @@ TEST(DrrTest, FusedLinear) {
 
   pir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<FusedLinearPass>());
-  pm.AddPass(pir::CreateReorderBlockOpsPass());
   // pm.AddPass(pir::CreateDeadCodeEliminationPass());
   // pm.EnablePassTiming();
   pm.EnableIRPrinting();
