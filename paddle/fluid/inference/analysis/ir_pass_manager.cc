@@ -226,6 +226,8 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("use_inspector", new bool(argument->tensorrt_use_inspector()));
       pass->Set("inspector_serialize",
                 new bool(argument->tensorrt_inspector_serialize()));
+      pass->Set("use_explicit_quantization",
+                new bool(argument->tensorrt_use_explicit_quantization()));
 
       // tuned trt dynamic_shape
       pass->Set("trt_shape_range_info_path",

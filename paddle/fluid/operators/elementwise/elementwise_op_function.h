@@ -41,9 +41,9 @@ limitations under the License. */
 #include <thrust/iterator/iterator_adaptor.h>
 
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/gpu/elementwise_grad.h"
 
 #endif

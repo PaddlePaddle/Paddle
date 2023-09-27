@@ -600,6 +600,32 @@ struct STanhGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct STanhGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  float scale_a;
+  float scale_b;
+  typename BaseActivationFunctor<ComplexType<T>>::AttrPair GetAttrs() {
+    return {{"scale_a", &scale_a}, {"scale_b", &scale_b}};
+  }
+
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
+    auto a = static_cast<ComplexType<T>>(scale_a);  // NOLINT
+    auto b = static_cast<ComplexType<T>>(scale_b);
+    auto temp = (a * x).tanh() * (a * x).tanh();
+    dx.device(d) =
+        dout *
+        (a * b * (static_cast<ComplexType<T>>(1) - temp)).unaryExpr(Conj<T>());
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
 struct Tangent {
   HOSTDEVICE T operator()(const T& val) const { return tan(val); }
 };
@@ -2592,7 +2618,42 @@ struct HardSwishGradFunctor : public BaseActivationFunctor<T> {
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
+template <typename T>
+struct HardSwishGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  float threshold;
+  float scale;
+  float offset;
 
+  typename BaseActivationFunctor<ComplexType<T>>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}, {"scale", &scale}, {"offset", &offset}};
+  }
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
+    auto offset_t = static_cast<ComplexType<T>>(offset);
+    auto threshold_t = static_cast<ComplexType<T>>(threshold);
+    auto one = static_cast<ComplexType<T>>(1);
+    auto zero = static_cast<ComplexType<T>>(0);
+    auto two = static_cast<ComplexType<T>>(2);
+    auto scale_t = static_cast<ComplexType<T>>(scale);
+    auto tmp1 = ((x + offset_t) < threshold_t)  // NOLINT
+                    .template cast<ComplexType<T>>();
+    auto tmp2 = ((x + offset_t) > zero).template cast<ComplexType<T>>();
+    // dx = 0, when x <= -offset
+    // dout , when x >= threshold - offset
+    // dout * (2 * x / scale + offset / scale), otherwise
+    // threshold = scale = 6, offset = 3 by default
+    dx.device(d) = dout * (tmp2 * (two * x + offset_t) / scale_t * tmp1 +
+                           one * (one - tmp1))
+                              .unaryExpr(Conj<T>());
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
 template <typename T>
 struct SwishFunctor : public BaseActivationFunctor<T> {
   float beta;
@@ -3600,6 +3661,32 @@ struct CudaSTanhGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct CudaSTanhGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  ComplexType<T> one = static_cast<ComplexType<T>>(1.0f);
+  float scale_a;
+  float scale_b;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"scale_a", &scale_a}, {"scale_b", &scale_b}};
+  }
+
+  // dx = dout * a * b * (1 - tanh(a * x) * tanh(a * x))
+  __device__ __forceinline__ ComplexType<T> operator()(
+      const ComplexType<T> arg_dout, const ComplexType<T> arg_x) const {
+    ComplexType<T> dout = static_cast<ComplexType<T>>(arg_dout);
+    ComplexType<T> x = static_cast<ComplexType<T>>(arg_x);
+    ComplexType<T> a = static_cast<ComplexType<T>>(scale_a);
+    ComplexType<T> b = static_cast<ComplexType<T>>(scale_b);
+    ComplexType<T> temp = tanh(a * x);
+    return static_cast<ComplexType<T>>(dout *
+                                       conj(a * b * (one - temp * temp)));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
 struct CudaSoftplusFunctor : public BaseActivationFunctor<T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   MPType one = static_cast<MPType>(1.0f);
@@ -4596,8 +4683,10 @@ struct CudaHardSwishFunctor : public BaseActivationFunctor<T> {
   // threshold = scale = 6, offset = 3 by default
   __device__ __forceinline__ T operator()(const T x) const {
     const MPType x_t = static_cast<MPType>(x);
-    const MPType temp_max = std::max(x_t + static_cast<MPType>(offset), zero);
-    const MPType temp_min = std::min(temp_max, static_cast<MPType>(threshold));
+    const MPType x_offset_t = x_t + static_cast<MPType>(offset);
+    const MPType temp_max = (x_offset_t >= zero) ? x_offset_t : zero;
+    const MPType threshold_t = static_cast<MPType>(threshold);
+    const MPType temp_min = (temp_max < threshold_t) ? temp_max : threshold_t;
     return static_cast<T>(temp_min * x_t / static_cast<MPType>(scale));
   }
 };
@@ -4632,6 +4721,43 @@ struct CudaHardSwishGradFunctor : public BaseActivationFunctor<T> {
     return static_cast<T>(
         dout_t *
         (temp1 * temp2 * (two * x_t + offset_t) / scale_t + one - temp2));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaHardSwishGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  const ComplexType<T> zero = static_cast<ComplexType<T>>(0.0f);
+  const ComplexType<T> one = static_cast<ComplexType<T>>(1.0f);
+  const ComplexType<T> two = static_cast<ComplexType<T>>(2.0f);
+  float threshold;
+  float scale;
+  float offset;
+
+  typename BaseActivationFunctor<ComplexType<T>>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}, {"scale", &scale}, {"offset", &offset}};
+  }
+
+  // dx = 0, when x <= -offset
+  //      dout , when x >= threshold - offset
+  //      dout * (2 * x / scale + offset / scale), otherwise
+  // threshold = scale = 6, offset = 3 by default
+  __device__ __forceinline__ ComplexType<T> operator()(
+      const ComplexType<T> dout, const ComplexType<T> x) const {
+    const ComplexType<T> dout_t = static_cast<ComplexType<T>>(dout);
+    const ComplexType<T> x_t = static_cast<ComplexType<T>>(x);
+    const ComplexType<T> offset_t = static_cast<ComplexType<T>>(offset);
+    const ComplexType<T> scale_t = static_cast<ComplexType<T>>(scale);
+    const ComplexType<T> temp1 =
+        static_cast<ComplexType<T>>(x_t + offset_t > zero);
+    const ComplexType<T> temp2 = static_cast<ComplexType<T>>(
+        x_t + offset_t < static_cast<ComplexType<T>>(threshold));
+
+    return static_cast<ComplexType<T>>(
+        dout_t *
+        conj(temp1 * temp2 * (two * x_t + offset_t) / scale_t + one - temp2));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }

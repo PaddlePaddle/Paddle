@@ -288,6 +288,7 @@ class TestMaxOp(OpTest):
             'Out',
             check_prim=True,
             only_check_prim=True,
+            check_new_ir=True,
         )
 
 
@@ -322,6 +323,7 @@ class TestMaxOp_ZeroDim(OpTest):
             'Out',
             check_prim=True,
             only_check_prim=True,
+            check_new_ir=True,
         )
 
 
@@ -375,6 +377,7 @@ class TestMaxFP32Op(OpTest):
             'Out',
             check_prim=True,
             only_check_prim=True,
+            check_new_ir=True,
         )
 
     def init_dtype(self):
@@ -410,6 +413,7 @@ class TestMaxBF16Op(TestMaxFP32Op):
             'Out',
             check_prim=True,
             only_check_prim=True,
+            check_new_ir=True,
         )
 
 
@@ -822,7 +826,7 @@ class TestAllOp(OpTest):
         self.attrs = {'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestAllFloatOp(OpTest):
@@ -834,7 +838,7 @@ class TestAllFloatOp(OpTest):
         self.attrs = {'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestAllIntOp(OpTest):
@@ -846,7 +850,7 @@ class TestAllIntOp(OpTest):
         self.attrs = {'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestAllOp_ZeroDim(OpTest):
@@ -858,7 +862,7 @@ class TestAllOp_ZeroDim(OpTest):
         self.attrs = {'dim': []}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestAll8DOp(OpTest):
@@ -874,7 +878,7 @@ class TestAll8DOp(OpTest):
         self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestAllOpWithDim(OpTest):
@@ -886,7 +890,7 @@ class TestAllOpWithDim(OpTest):
         self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestAll8DOpWithDim(OpTest):
@@ -902,7 +906,7 @@ class TestAll8DOpWithDim(OpTest):
         self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestAllOpWithKeepDim(OpTest):
@@ -916,7 +920,7 @@ class TestAllOpWithKeepDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestAll8DOpWithKeepDim(OpTest):
@@ -936,7 +940,7 @@ class TestAll8DOpWithKeepDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestAllOpError(unittest.TestCase):
@@ -1308,6 +1312,7 @@ class TestReduceMaxOpMultiAxises(OpTest):
             'Out',
             check_prim=True,
             only_check_prim=True,
+            check_new_ir=True,
         )
 
 
