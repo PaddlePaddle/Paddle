@@ -815,9 +815,9 @@ class ReduceBlockCreater {
         has_add_init_block = true;
       }
       // Add loops
-      Var loop_var = optim::IRCopy(original_loops_[i].As<For>()->loop_var);
-      Expr min = optim::IRCopy(original_loops_[i].As<For>()->min);
-      Expr extent = optim::IRCopy(original_loops_[i].As<For>()->extent);
+      Var loop_var = ir_utils::IRCopy(original_loops_[i].As<For>()->loop_var);
+      Expr min = ir_utils::IRCopy(original_loops_[i].As<For>()->min);
+      Expr extent = ir_utils::IRCopy(original_loops_[i].As<For>()->extent);
       body = For::Make(loop_var,
                        min,
                        extent,
@@ -959,7 +959,7 @@ class RFBlockCreater : public ReduceBlockCreater {
     // Substitute the original iter values with new iter vars,
     // and store the new iter values in original_indice2new_expr_,
     // it will be used in Load/Store indices.
-    Expr new_iters = optim::IRCopy(original_iter_value);
+    Expr new_iters = ir_utils::IRCopy(original_iter_value);
     ReplaceExpr(&new_iters, loop_var2block_iters_);
     original_indice2new_expr_[original_iter_var] = new_iters;
     VLOG(4) << "original_indice2new_expr_[" << original_iter_var
@@ -971,7 +971,7 @@ class RFBlockCreater : public ReduceBlockCreater {
     rf_tensor_access_indices_.insert(
         rf_tensor_access_indices_.begin() + rf_axis_, rf_var_);
     Expr original_store_body = original_update_stmt_.As<ir::Store>()->value;
-    Expr new_store_body = optim::IRCopy(original_store_body);
+    Expr new_store_body = ir_utils::IRCopy(original_store_body);
 #define REPLACE_RF_TENSOR(Op)                                    \
   if (new_store_body.As<Op>()) {                                 \
     auto* node = new_store_body.As<Op>();                        \
@@ -1058,7 +1058,7 @@ class RBBlockCreater : public ReduceBlockCreater {
 
   void CreateUpdateStmt() override {
     Expr original_store_body = original_update_stmt_.As<ir::Store>()->value;
-    Expr new_store_body = optim::IRCopy(original_store_body);
+    Expr new_store_body = ir_utils::IRCopy(original_store_body);
 #define REPLACE_RF_TENSOR(Op)                                    \
   if (new_store_body.As<Op>()) {                                 \
     auto* node = new_store_body.As<Op>();                        \
