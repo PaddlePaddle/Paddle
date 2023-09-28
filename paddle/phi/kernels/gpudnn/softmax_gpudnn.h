@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "glog/logging.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/bfloat16.h"
@@ -30,24 +31,11 @@ limitations under the License. */
 #define MATRIX_SOFTMAX_ALIGN_BYTES 16
 #define MATRIX_SOFTMAX_THREAHOLD 100000
 
-#define FIXED_BLOCK_DIM_BASE(dim, ...) \
-  case (dim): {                        \
-    constexpr auto kBlockDim = (dim);  \
-    __VA_ARGS__;                       \
-  } break
-
 #define FIXED_VEC_SIZE_BASE(vec_size, ...) \
   case (vec_size): {                       \
     constexpr auto VecSize = (vec_size);   \
     __VA_ARGS__;                           \
   } break
-
-#define FIXED_BLOCK_DIM(...)                \
-  FIXED_BLOCK_DIM_BASE(512, ##__VA_ARGS__); \
-  FIXED_BLOCK_DIM_BASE(256, ##__VA_ARGS__); \
-  FIXED_BLOCK_DIM_BASE(128, ##__VA_ARGS__); \
-  FIXED_BLOCK_DIM_BASE(64, ##__VA_ARGS__);  \
-  FIXED_BLOCK_DIM_BASE(32, ##__VA_ARGS__)
 
 #define FIXED_VEC_SIZE(...)              \
   FIXED_VEC_SIZE_BASE(8, ##__VA_ARGS__); \
@@ -112,7 +100,7 @@ static inline int Log2Ceil(int value) {
   return log2_value;
 }
 
-inline int getBlockSize(int vec_size, uint64_t dim_size) {
+inline int CalcBlockSize(int vec_size, uint64_t dim_size) {
   uint64_t block_size = 1;
   uint64_t max_block_size =
       std::min(dim_size / vec_size, static_cast<uint64_t>(1024));
@@ -346,117 +334,80 @@ template <template <typename, typename> class Reduction,
           typename AccT,
           int VecSize>
 __device__ __forceinline__ AccT
-ThreadVecReduce(T* data,
-                int dim_size,
+ThreadVecReduce(const T* block_ptr,
+                const int dim_size,
                 const int shift,
                 const Reduction<T, AccT>& functor,
                 AccT default_value) {
-  using VecT = phi::AlignedVector<T, VecSize>;
   AccT thread_val = default_value;
 
-  // for memory align, handle the unaligned data in first block.
-  int offset = threadIdx.x;
-  if (shift > 0) {
-    data -= shift;
-    dim_size += shift;
-    if (offset >= shift) {
-      thread_val = functor(thread_val, data[offset]);
-    }
-    dim_size -= blockDim.x;
-    data += blockDim.x;
+  // for memory align, handle the unaligned data.
+  if ((shift > 0) && (threadIdx.x < VecSize - shift)) {
+    thread_val = functor(thread_val, block_ptr[threadIdx.x]);
   }
 
-  const int last = dim_size % (VecSize * blockDim.x);
-
-  T v[VecSize];
-  VecT* value = reinterpret_cast<VecT*>(&v);
-
-  for (; offset * VecSize < dim_size - last; offset += blockDim.x) {
-    *value = reinterpret_cast<VecT*>(data)[offset];
+  phi::AlignedVector<T, VecSize> value;
+  int offset = (VecSize - shift) + threadIdx.x * VecSize;
+  for (; offset < dim_size; offset += blockDim.x * VecSize) {
+    phi::Load<T, VecSize>(block_ptr + offset, &value);
 #pragma unroll
     for (int i = 0; i < VecSize; i++) {
-      thread_val = functor(thread_val, v[i]);
+      thread_val = functor(thread_val, value[i]);
     }
   }
 
-  offset = dim_size - last + threadIdx.x;
-  for (; offset < dim_size; offset += blockDim.x) {
-    thread_val = functor(thread_val, data[offset]);
+  const int tail = (dim_size + shift) % VecSize;
+  if ((tail > 0) && (threadIdx.x < tail)) {
+    const T* block_tail_ptr = block_ptr + dim_size - tail;
+    thread_val = functor(thread_val, block_tail_ptr[threadIdx.x]);
   }
   return thread_val;
 }
 
-template <template <typename, typename> class Reduction,
+template <template <typename, typename> class Functor,
           typename T,
           typename AccT,
           int VecSize>
-__device__ __forceinline__ void ThreadVecWriteVec(T* out,
-                                                  T* input,
-                                                  int dim_size,
-                                                  const int shift,
-                                                  Reduction<AccT, T> functor) {
-  using VecT = phi::AlignedVector<T, VecSize>;
-
+__device__ __forceinline__ void ThreadVecReadWrite(T* out,
+                                                   const T* input,
+                                                   const int dim_size,
+                                                   const int shift,
+                                                   Functor<AccT, T> functor) {
   // for memory align, handle the unaligned data in first block.
-  int offset = threadIdx.x;
-  if (shift > 0) {
-    input -= shift;
-    out -= shift;
-    dim_size += shift;
-    if (offset >= shift) {
-      out[offset] = functor(static_cast<AccT>(input[offset]));
-    }
-    dim_size -= blockDim.x;
-    input += blockDim.x;
-    out += blockDim.x;
+  if ((shift > 0) && (threadIdx.x < VecSize - shift)) {
+    out[threadIdx.x] = functor(static_cast<AccT>(input[threadIdx.x]));
   }
 
-  const int last = dim_size % (VecSize * blockDim.x);
+  phi::AlignedVector<T, VecSize> in_value;
+  phi::AlignedVector<T, VecSize> out_value;
 
-  T in_v[VecSize];
-  VecT* in_value = reinterpret_cast<VecT*>(&in_v);
-
-  T out_v[VecSize];
-  VecT* out_value = reinterpret_cast<VecT*>(&out_v);
-
-  for (; offset * VecSize < dim_size - last; offset += blockDim.x) {
-    *in_value = reinterpret_cast<VecT*>(input)[offset];
+  int offset = (VecSize - shift) + threadIdx.x * VecSize;
+  for (; offset < dim_size; offset += blockDim.x * VecSize) {
+    phi::Load<T, VecSize>(input + offset, &in_value);
 #pragma unroll
     for (int i = 0; i < VecSize; i++) {
-      out_v[i] = functor(static_cast<AccT>(in_v[i]));
+      out_value[i] = functor(static_cast<AccT>(in_value[i]));
     }
-    reinterpret_cast<VecT*>(out)[offset] = *out_value;
+    phi::Store<T, VecSize>(out_value, out + offset);
   }
 
-  offset = dim_size - last + threadIdx.x;
-  // the tail
-  for (; offset < dim_size; offset += blockDim.x) {
-    out[offset] = functor(static_cast<AccT>(input[offset]));
+  const int tail = (dim_size + shift) % VecSize;
+  if ((tail > 0) && (threadIdx.x < tail)) {
+    const T* block_tail_inptr = input + dim_size - tail;
+    T* block_tail_outptr = out + dim_size - tail;
+    block_tail_outptr[threadIdx.x] =
+        functor(static_cast<AccT>(block_tail_inptr[threadIdx.x]));
   }
 }
 
-template <template <typename, typename> class Reduction,
+template <template <typename, typename> class Functor,
           typename T,
-          typename AccT,
-          int VecSize>
-__device__ __forceinline__ void ThreadVecWrite(T* out,
-                                               T* input,
-                                               int dim_size,
-                                               Reduction<AccT, T> functor) {
-  const int last = dim_size % (VecSize * blockDim.x);
-
-  for (int offset = threadIdx.x; offset < dim_size - last;
-       offset += blockDim.x * VecSize) {
-#pragma unroll
-    for (int i = 0; i < VecSize; i++) {
-      out[offset + i * blockDim.x] =
-          functor(static_cast<AccT>(input[offset + i * blockDim.x]));
-    }
-  }
-
-  // the tail
-  for (int offset = dim_size - last + threadIdx.x; offset < dim_size;
-       offset += blockDim.x) {
+          typename AccT>
+__device__ __forceinline__ void ThreadReadWrite(T* out,
+                                                const T* input,
+                                                int dim_size,
+                                                Functor<AccT, T> functor) {
+  for (int offset = threadIdx.x; offset < dim_size; offset += blockDim.x) {
     out[offset] = functor(static_cast<AccT>(input[offset]));
   }
 }
@@ -464,14 +415,13 @@ __device__ __forceinline__ void ThreadVecWrite(T* out,
 template <typename T,
           typename AccT,
           typename IndexType,
-          int BatchSize,
           int VecSize,
           bool LogMode = false>
 __global__ void KeMatrixSoftmaxForward(T* softmax, const T* src, int dim_size) {
   using VecT = phi::AlignedVector<T, VecSize>;
 
   int bid = blockIdx.x;
-  T* batch_input = const_cast<T*>(src) + bid * dim_size;
+  const T* batch_input = const_cast<T*>(src) + bid * dim_size;
   T* batch_output = softmax + bid * dim_size;
 
   const int input_align_shift =
@@ -499,22 +449,22 @@ __global__ void KeMatrixSoftmaxForward(T* softmax, const T* src, int dim_size) {
 
   // write data to softmax_output according to the LogMode
   if (LogMode) {
-    LogSoftmaxForwardFunctor<AccT, T> reduction(thread_max, thread_exp);
+    LogSoftmaxForwardFunctor<AccT, T> softmax(thread_max, thread_exp);
     if (input_align_shift == output_align_shift) {
-      ThreadVecWriteVec<LogSoftmaxForwardFunctor, T, AccT, VecSize>(
-          batch_output, batch_input, dim_size, input_align_shift, reduction);
+      ThreadVecReadWrite<LogSoftmaxForwardFunctor, T, AccT, VecSize>(
+          batch_output, batch_input, dim_size, input_align_shift, softmax);
     } else {
-      ThreadVecWrite<LogSoftmaxForwardFunctor, T, AccT, VecSize>(
-          batch_output, batch_input, dim_size, reduction);
+      ThreadReadWrite<LogSoftmaxForwardFunctor, T, AccT>(
+          batch_output, batch_input, dim_size, softmax);
     }
   } else {
-    SoftmaxForwardFunctor<AccT, T> reduction(thread_max, thread_exp);
+    SoftmaxForwardFunctor<AccT, T> softmax(thread_max, thread_exp);
     if (input_align_shift == output_align_shift) {
-      ThreadVecWriteVec<SoftmaxForwardFunctor, T, AccT, VecSize>(
-          batch_output, batch_input, dim_size, input_align_shift, reduction);
+      ThreadVecReadWrite<SoftmaxForwardFunctor, T, AccT, VecSize>(
+          batch_output, batch_input, dim_size, input_align_shift, softmax);
     } else {
-      ThreadVecWrite<SoftmaxForwardFunctor, T, AccT, VecSize>(
-          batch_output, batch_input, dim_size, reduction);
+      ThreadReadWrite<SoftmaxForwardFunctor, T, AccT>(
+          batch_output, batch_input, dim_size, softmax);
     }
   }
 }
@@ -785,9 +735,9 @@ void SwitchWarpSoftmaxForward(const IndexType blocks,
                               const IndexType batch_size,
                               const IndexType stride,
                               const IndexType element_count,
-                              IndexType Log2Elements) {
+                              IndexType log2_element_count) {
   using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
-  switch (Log2Elements) {
+  switch (log2_element_count) {
     SOFTMAX_WARP_FORWARD_CASE(0, AccT);
     SOFTMAX_WARP_FORWARD_CASE(1, AccT);
     SOFTMAX_WARP_FORWARD_CASE(2, AccT);
@@ -800,6 +750,10 @@ void SwitchWarpSoftmaxForward(const IndexType blocks,
     SOFTMAX_WARP_FORWARD_CASE(9, AccT);
     SOFTMAX_WARP_FORWARD_CASE(10, AccT);
     default:
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Unsupported softmax dim: element_count=%d, log2_element_count=%d!",
+          element_count,
+          log2_element_count));
       break;
   }
 }
@@ -824,9 +778,9 @@ void SwitchWarpSoftmaxBackward(const int blocks,
                                const int batch_size,
                                const int stride,
                                const int element_count,
-                               int Log2Elements) {
+                               int log2_element_count) {
   using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
-  switch (Log2Elements) {
+  switch (log2_element_count) {
     SOFTMAX_WARP_BACKWARD_CASE(0, AccT);
     SOFTMAX_WARP_BACKWARD_CASE(1, AccT);
     SOFTMAX_WARP_BACKWARD_CASE(2, AccT);
@@ -839,6 +793,10 @@ void SwitchWarpSoftmaxBackward(const int blocks,
     SOFTMAX_WARP_BACKWARD_CASE(9, AccT);
     SOFTMAX_WARP_BACKWARD_CASE(10, AccT);
     default:
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Unsupported softmax dim: element_count=%d, log2_element_count=%d!",
+          element_count,
+          log2_element_count));
       break;
   }
 }
@@ -1198,27 +1156,30 @@ void LaunchSoftmaxBackwardCudnnKernel(const GPUContext& dev_ctx,
   }
 }
 
-template <typename T, typename IndexType, bool LogMode>
-void LaunchKeMatrixSoftmaxForwardKernel(
+template <typename T, typename IndexType, int VecSize, bool LogMode>
+void LaunchKeMatrixSoftmaxForward(
     const GPUContext& dev_ctx, T* out, const T* input, int N, int dim_size) {
   using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
-  const int vec_size = MATRIX_SOFTMAX_ALIGN_BYTES / sizeof(T);
-  switch (getBlockSize(vec_size, dim_size)) {
-    FIXED_BLOCK_DIM(switch (vec_size) {
-      FIXED_VEC_SIZE(
-          KeMatrixSoftmaxForward<T,
-                                 AccT,
-                                 IndexType,
-                                 kBlockDim,
-                                 VecSize,
-                                 LogMode>
-          <<<N, kBlockDim, 0, dev_ctx.stream()>>>(out, input, dim_size));
-      default:
-        break;
-    });
+  int block_dim = CalcBlockSize(VecSize, dim_size);
+  VLOG(10) << "Softmax Forward for extra long dim: N=" << N
+           << ", dim_size=" << dim_size << ", block_dim=" << block_dim
+           << ", vec_size=" << VecSize;
+  // Use a block to calculate the softmax of a row along the lowest dimension.
+  KeMatrixSoftmaxForward<T, AccT, IndexType, VecSize, LogMode>
+      <<<N, block_dim, 0, dev_ctx.stream()>>>(out, input, dim_size);
+}
+
+template <typename T, typename IndexType, bool LogMode>
+void SoftmaxForwardForExtraLongDim(
+    const GPUContext& dev_ctx, T* out, const T* input, int N, int dim_size) {
+  int vec_size = MATRIX_SOFTMAX_ALIGN_BYTES / sizeof(T);
+  switch (vec_size) {
+    FIXED_VEC_SIZE(LaunchKeMatrixSoftmaxForward<T, IndexType, VecSize, LogMode>(
+                       dev_ctx, out, input, N, dim_size););
     default:
-      PADDLE_THROW(
-          errors::Fatal("the input dim has error in the softmax cuda kernel."));
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Unsupported vectorized size: %d!", vec_size));
+      break;
   }
 }
 
@@ -1288,7 +1249,7 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
   if (D == 1) {
     if (!UseCudnnSoftmax<T>(dev_ctx, dim, true)) {
       if (dim >= MATRIX_SOFTMAX_THREAHOLD) {
-        LaunchKeMatrixSoftmaxForwardKernel<T, IndexType, LogMode>(
+        SoftmaxForwardForExtraLongDim<T, IndexType, LogMode>(
             dev_ctx, out_data, x.data<T>(), N, dim);
         return;
       }
@@ -1450,8 +1411,6 @@ void SoftmaxBackwardCUDAKernelDriver(const GPUContext& dev_ctx,
         dev_ctx, dx_data, dout.data<T>(), out.data<T>(), N, dim, D);
   }
 }
-#undef FIXED_BLOCK_DIM_BASE
-#undef FIXED_BLOCK_DIM
 #undef FIXED_VEC_SIZE_BASE
 #undef FIXED_VEC_SIZE
 
