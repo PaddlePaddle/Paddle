@@ -43,10 +43,6 @@ std::vector<AnchorGroup> PartitionOpStmts(
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,
     const List<OpStmt>& op_stmts);
 
-std::vector<AnchorGroup> PartitionOpStmtsV2(
-    const EquationCtx4OpStmtT& EquationCtx4OpStmt,
-    const List<OpStmt>& op_stmts);
-
 void CheckEquationSolvable(
     const AnchorGroup& igroup_spec,
     const std::shared_ptr<const EquationFunctionConstantsProvider>&

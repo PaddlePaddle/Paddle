@@ -368,49 +368,6 @@ void AnchorGroup::PrintEquations() const {
   ctx->Print();
 }
 
-std::unordered_map<AnchorIndex, AnchorGroup> PartitionOpStmtsIntoAnchorGroupsV2(
-    std::unordered_set<AnchorIndex>* candidate_anchor_indexes,
-    const EquationCtx4OpStmtT& EquationCtx4OpStmt,
-    const List<OpStmt>& op_stmts) {
-  // PrintOpStmtsEquations(op_stmts, EquationCtx4OpStmt);
-
-  std::unordered_map<AnchorIndex, AnchorGroup> anchor_index2igroup_spec{};
-
-  const auto& OpStmt4OpPlaceHolder =
-      MakeGetterOpStmt4OpPlaceHolder(EquationCtx4OpStmt, op_stmts);
-
-  const auto& equation_graph_view =
-      MakeGlobalEquationGraphViewForPartition(EquationCtx4OpStmt, op_stmts);
-
-  std::unordered_set<OpStmt> all_visited_op_stmts{};
-  while (!candidate_anchor_indexes->empty()) {
-    AnchorIndex anchor_tensor =
-        PickThenEraseAnchorIndex(candidate_anchor_indexes);
-
-    const auto& [opt_anchor_op_stmt, visited_op_stmts] =
-        FindVisitedOpStmts(anchor_tensor,
-                           equation_graph_view,
-                           OpStmt4OpPlaceHolder,
-                           EquationCtx4OpStmt);
-    if (visited_op_stmts->empty()) {
-      continue;
-    }
-    CHECK(opt_anchor_op_stmt.has_value());
-    all_visited_op_stmts.insert(visited_op_stmts->begin(),
-                                visited_op_stmts->end());
-
-    AnchorGroup igroup_spec{anchor_tensor,
-                            opt_anchor_op_stmt.value(),
-                            visited_op_stmts,
-                            EquationCtx4OpStmt};
-    UpdataAnchorIndex2AnchorGroup(igroup_spec, &anchor_index2igroup_spec);
-    EraseCandidateAnchorIndexes(igroup_spec, candidate_anchor_indexes);
-  }
-  CHECK_EQ(all_visited_op_stmts.size(), op_stmts->size())
-      << "Some fake_op_placeholders are not visited";
-  return anchor_index2igroup_spec;
-}
-
 std::unordered_map<Variable, const Value> MakeAnchorIndex2Ok(
     const AnchorGroup& igroup_spec) {
   return {{igroup_spec.anchor_index, Ok{}}};
@@ -533,19 +490,6 @@ std::vector<AnchorGroup> PartitionOpStmts(
 
   std::unordered_map<AnchorIndex, AnchorGroup> anchor_index2igroup_spec =
       PartitionOpStmtsIntoAnchorGroups(
-          &candidate_anchor_indexes, EquationCtx4OpStmt, op_stmts);
-
-  return SortedAnchorGroups(&anchor_index2igroup_spec, op_stmts);
-}
-
-std::vector<AnchorGroup> PartitionOpStmtsV2(
-    const EquationCtx4OpStmtT& EquationCtx4OpStmt,
-    const List<OpStmt>& op_stmts) {
-  std::unordered_set<AnchorIndex> candidate_anchor_indexes =
-      InitCandidateAnchorIndex(EquationCtx4OpStmt, op_stmts);
-
-  std::unordered_map<AnchorIndex, AnchorGroup> anchor_index2igroup_spec =
-      PartitionOpStmtsIntoAnchorGroupsV2(
           &candidate_anchor_indexes, EquationCtx4OpStmt, op_stmts);
 
   return SortedAnchorGroups(&anchor_index2igroup_spec, op_stmts);

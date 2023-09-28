@@ -151,7 +151,6 @@ LoopIterators GetTensorLoopIterators(
     const std::function<LoopDescriptor(const Iterator&)>& GetLoopDescriptor,
     const std::function<TensorIndexExpr(const Tensor&)>&
         TensorIndexExpr4Tensor) {
-  Value tensor_value = TensorIndexExpr4Tensor(tensor);
   const auto& tensor_index_loop_iters =
       GetTensorIndexIterators(TensorIndexExpr4Tensor(tensor));
 
@@ -178,8 +177,7 @@ bool LocalEquationsSolvable(
   IndexExprInferContext ctx{init_var2value, constants_provider};
   bool has_no_conflict_value =
       TrySolveEquations(graph_view, anchor_index, &ctx).value();
-  bool ret = has_no_conflict_value && ctx.HasValue(fake_op_placeholder);
-  return ret;
+  return has_no_conflict_value && ctx.HasValue(fake_op_placeholder);
 }
 
 std::vector<Index> GenerateWriteBroadcastTensorIndexs(
@@ -300,7 +298,7 @@ MapIrList GenerateMapIrListForLoopFuse(
       config::GenerateContext4LocalOpStmt(op_stmts);
   EraseWriteBroadcastOutMsgBoxes(op_stmts, EquationCtx4OpStmt);
   const auto& partitioned_anchor_groups =
-      PartitionOpStmtsV2(EquationCtx4OpStmt, op_stmts);
+      PartitionOpStmts(EquationCtx4OpStmt, op_stmts);
   return ConvertAnchorGroups2MapIrList(partitioned_anchor_groups,
                                        TensorIndexExpr4Tensor,
                                        loop_iters,
