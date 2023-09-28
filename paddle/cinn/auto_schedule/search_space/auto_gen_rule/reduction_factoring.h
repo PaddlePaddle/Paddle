@@ -51,7 +51,8 @@ class ReductionFactoring : public AutoGenRule {
   void Apply(const std::string& block_name, ir::IRSchedule* ir_schedule);
 
  private:
-  bool CanApply(const std::string& block_name, ir::IRSchedule* ir_schedule);
+  bool CanApply(const std::string& block_name,
+                ir::IRSchedule* ir_schedule) const;
 };
 
 }  // namespace auto_schedule

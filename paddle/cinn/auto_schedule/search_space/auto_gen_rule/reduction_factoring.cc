@@ -17,18 +17,18 @@
 #include <glog/logging.h>
 
 #include "paddle/cinn/auto_schedule/analysis/analyze_ir.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 
 namespace cinn {
 namespace auto_schedule {
 
 bool ReductionFactoring::CanApply(const std::string& block_name,
-                                  ir::IRSchedule* ir_schedule) {
+                                  ir::IRSchedule* ir_schedule) const {
   ir::Expr block_expr = ir_schedule->GetBlock(block_name);
   ir::ScheduleBlockRealize* block_realize =
       block_expr.As<ir::ScheduleBlockRealize>();
@@ -95,7 +95,7 @@ bool ReductionFactoring::CanApply(const std::string& block_name,
 
 RuleApplyType ReductionFactoring::AnalyseApplyType(
     SearchState state, const std::string& block_name) const {
-  return CanApply(block_name, &state->ir_schedule)
+  return this->CanApply(block_name, &(state->ir_schedule))
              ? RuleApplyType::kApply
              : RuleApplyType::kCannotApply;
 }
