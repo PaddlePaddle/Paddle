@@ -1844,7 +1844,7 @@ def stack(x, axis=0, name=None):
     """
     axis = 0 if axis is None else axis
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.stack(x, axis)
     else:
         if not isinstance(x, list) and not isinstance(x, tuple):

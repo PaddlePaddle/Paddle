@@ -669,7 +669,7 @@ def _dygraph_tracer():
     return global_var._dygraph_tracer_
 
 
-def _current_expected_place():
+def _current_expected_place_():
     global _global_expected_place_
     if _global_expected_place_ is None:
         if core.is_compiled_with_cuda():
@@ -715,6 +715,12 @@ def _current_expected_place():
             _global_expected_place_ = core.CPUPlace()
 
     return _global_expected_place_
+
+
+def _current_expected_place():
+    if in_pir_mode():
+        return core.Place()
+    return _current_expected_place_()
 
 
 def _set_dygraph_tracer_expected_place(place):
