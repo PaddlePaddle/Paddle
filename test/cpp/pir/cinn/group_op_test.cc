@@ -51,7 +51,7 @@ std::shared_ptr<::pir::Program> BuildGroupProgram() {
   const std::vector<int64_t> shape = {64, 128};
   auto group_op1 = builder.Build<cinn::dialect::GroupOp>(
       CreateDenseTensorTypes(phi::make_ddim(shape)));
-  pir::Block* block1 = group_op1.Block();
+  pir::Block* block1 = group_op1.block();
   builder.SetInsertionPointToEnd(block1);
   auto full_op_x = builder.Build<paddle::dialect::FullOp>(
       shape, value_one, phi::DataType::FLOAT32, phi::GPUPlace());
@@ -60,7 +60,7 @@ std::shared_ptr<::pir::Program> BuildGroupProgram() {
   builder.SetInsertionPointToEnd(program->block());
   auto group_op2 = builder.Build<cinn::dialect::GroupOp>(
       CreateDenseTensorTypes(phi::make_ddim(shape)));
-  pir::Block* block2 = group_op2.Block();
+  pir::Block* block2 = group_op2.block();
   builder.SetInsertionPointToEnd(block2);
 
   auto tan_op_x = builder.Build<paddle::dialect::TanOp>(group_op1->result(0));
@@ -84,7 +84,7 @@ TEST(GroupOp, TestBuild) {
   int i = 0;
   for (auto* sub_op : *(program->block())) {
     EXPECT_TRUE(sub_op->isa<cinn::dialect::GroupOp>());
-    EXPECT_EQ(sub_op->dyn_cast<cinn::dialect::GroupOp>().Ops().size(),
+    EXPECT_EQ(sub_op->dyn_cast<cinn::dialect::GroupOp>().ops().size(),
               op_num[i]);
     ++i;
   }
