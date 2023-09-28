@@ -288,7 +288,7 @@ void add_grad(const Tensor& x,
       // Maybe need reduce here
       phi::DDim reduce_dim = get_reduce_dims(y.dims(), x.dims());
       if (!reduce_dim.size()) {
-        set_output<T>(out_grad, dy);
+        by_pass<T>(out_grad, dy);
       } else {
         auto dy_reduce_res =
             out_grad.sum(phi::vectorize(reduce_dim), y.dtype(), false);
@@ -297,7 +297,7 @@ void add_grad(const Tensor& x,
       }
 
     } else {
-      set_output<T>(out_grad, dy);
+      by_pass<T>(out_grad, dy);
     }
   }
   if (dx) {
@@ -305,7 +305,7 @@ void add_grad(const Tensor& x,
       // Maybe need reduce here
       auto reduce_dim = get_reduce_dims(x.dims(), y.dims());
       if (!reduce_dim.size()) {
-        set_output<T>(out_grad, dx);
+        by_pass<T>(out_grad, dx);
       } else {
         auto dx_reduce_res =
             out_grad.sum(phi::vectorize(reduce_dim), x.dtype(), false);
@@ -313,7 +313,7 @@ void add_grad(const Tensor& x,
         set_output<T>(dx_tmp, dx);
       }
     } else {
-      set_output<T>(out_grad, dx);
+      by_pass<T>(out_grad, dx);
     }
   }
 }
@@ -498,6 +498,35 @@ void layer_norm_grad(const Tensor& x,
       set_output<T>(bias_grad_tmp, bias_grad);
     } else {
       bias_grad = nullptr;
+    }
+  }
+}
+
+template <typename T>
+void dropout_grad(const Tensor& mask,
+                  const Tensor& out_grad,
+                  const Scalar& p,
+                  bool is_test,
+                  const std::string& mode,
+                  Tensor* x_grad) {
+  if (!x_grad) return;
+  if (is_test) {
+    if (mode == "upscale_in_train") {
+      by_pass<T>(out_grad, x_grad);
+    } else {
+      set_output<T>(out_grad * (1.0 - p.to<float>()), x_grad);
+    }
+  } else {
+    if (mode == "upscale_in_train") {
+      if (p.to<float>() == 1.0f) {
+        set_output<T>(scale<T>(out_grad, 0.0), x_grad);
+      } else {
+        set_output<T>(scale<T>(out_grad * cast<T>(mask, out_grad.dtype()),
+                               1.0 / (1.0 - p.to<float>())),
+                      x_grad);
+      }
+    } else {
+      set_output<T>(out_grad * cast<T>(mask, out_grad.dtype()), x_grad);
     }
   }
 }

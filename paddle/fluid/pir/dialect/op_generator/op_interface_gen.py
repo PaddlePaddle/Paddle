@@ -36,8 +36,21 @@ OP_VJP_FORWARD_MULTI_INPUT_TEMPLATE = """
 
 OP_VJP_FORWARD_OPTIONAL_INPUT_TEMPLATE = """
     paddle::optional<Tensor> {input_name};
-    if (op_obj.{input_name}() && op_obj.{input_name}().type().storage()){{
+    if (!IsEmptyValue(op_obj.{input_name}())){{
         {input_name} = paddle::make_optional<Tensor>(Tensor(std::make_shared<primitive::LazyTensor>(op_obj.{input_name}())));
+    }}"""
+
+OP_VJP_FORWARD_OPTIONAL_VECTOR_INPUT_TEMPLATE = """
+    paddle::optional<std::vector<Tensor>> {input_name};
+    if (!IsEmptyValue(op_obj.{input_name}())){{
+        pir::CombineOp combine_op_obj =
+            op_obj.{input_name}().dyn_cast<pir::OpResult>().owner()->dyn_cast<pir::CombineOp>();
+        std::vector<Tensor> optional_{input_name};
+        for (size_t idx = 0; idx < combine_op_obj.inputs().size(); idx++) {{
+            optional_{input_name}.emplace_back(
+                std::make_shared<primitive::LazyTensor>(combine_op_obj.inputs()[idx]));
+        }}
+        {input_name} = paddle::make_optional<std::vector<Tensor>>(optional_{input_name});
     }}"""
 
 OP_VJP_FORWARD_OUTPUT_GRAD_TEMPLATE = """
@@ -119,11 +132,19 @@ def gen_op_vjp_str(
     for idx in range(len(bw_input_list)):
         build_args_str += bw_input_list[idx] + ", "
         if op_grad_info.input_optional_list[idx] == 'true':
-            forward_input_output_code += (
-                OP_VJP_FORWARD_OPTIONAL_INPUT_TEMPLATE.format(
-                    input_name=bw_input_list[idx],
+            input_type = input_types_map[op_grad_info.input_type_list[idx]]
+            if input_type == 'Tensor':
+                forward_input_output_code += (
+                    OP_VJP_FORWARD_OPTIONAL_INPUT_TEMPLATE.format(
+                        input_name=bw_input_list[idx],
+                    )
                 )
-            )
+            else:
+                forward_input_output_code += (
+                    OP_VJP_FORWARD_OPTIONAL_VECTOR_INPUT_TEMPLATE.format(
+                        input_name=bw_input_list[idx],
+                    )
+                )
         else:
             if (
                 bw_input_list[idx] in op_info.input_name_list
@@ -214,9 +235,7 @@ def gen_op_vjp_str(
             )
             build_attr_str += op_attribute_list[idx] + ", "
     build_args_str += build_attr_str
-    op_phi_name_format = op_phi_name
-    if op_phi_name[-1] == '_':
-        op_phi_name_format = op_phi_name[:-1]
+    op_phi_name_format = op_info.op_yaml_item['name']
     call_vjp_code = OP_VJP_CALL_VJP_TEMPLATE.format(
         op_phi_name=op_phi_name_format,
         inputs_list=build_args_str,

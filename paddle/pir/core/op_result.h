@@ -32,7 +32,6 @@ class IR_API OpResult : public Value {
   Operation *owner() const;
   uint32_t index() const;
   bool operator==(const OpResult &other) const;
-  static OpResult dyn_cast_from(Value value);
 
  private:
   friend Operation;
@@ -40,6 +39,7 @@ class IR_API OpResult : public Value {
   // Access classof annd dyn_cast_from.
   friend Value;
   static bool classof(Value value);
+  static OpResult dyn_cast_from(Value value);
 };
 
 }  // namespace pir

@@ -517,9 +517,7 @@ class UpsamplingNearest2D(Layer):
         else:
             main_str = f'size={self.size}'
         name_str = f', name={self.name}' if self.name else ''
-        return '{}, data_format={}{}'.format(
-            main_str, self.data_format, name_str
-        )
+        return f'{main_str}, data_format={self.data_format}{name_str}'
 
 
 class UpsamplingBilinear2D(Layer):
@@ -606,9 +604,7 @@ class UpsamplingBilinear2D(Layer):
         else:
             main_str = f'size={self.size}'
         name_str = f', name={self.name}' if self.name else ''
-        return '{}, data_format={}{}'.format(
-            main_str, self.data_format, name_str
-        )
+        return f'{main_str}, data_format={self.data_format}{name_str}'
 
 
 class Bilinear(Layer):
@@ -798,9 +794,7 @@ class Dropout(Layer):
 
     def extra_repr(self):
         name_str = f', name={self.name}' if self.name else ''
-        return 'p={}, axis={}, mode={}{}'.format(
-            self.p, self.axis, self.mode, name_str
-        )
+        return f'p={self.p}, axis={self.axis}, mode={self.mode}{name_str}'
 
 
 class Dropout2D(Layer):
@@ -876,9 +870,7 @@ class Dropout2D(Layer):
 
     def extra_repr(self):
         name_str = f', name={self.name}' if self.name else ''
-        return 'p={}, data_format={}{}'.format(
-            self.p, self.data_format, name_str
-        )
+        return f'p={self.p}, data_format={self.data_format}{name_str}'
 
 
 class Dropout3D(Layer):
@@ -956,9 +948,7 @@ class Dropout3D(Layer):
 
     def extra_repr(self):
         name_str = f', name={self.name}' if self.name else ''
-        return 'p={}, data_format={}{}'.format(
-            self.p, self.data_format, name_str
-        )
+        return f'p={self.p}, data_format={self.data_format}{name_str}'
 
 
 class AlphaDropout(Layer):
@@ -1224,9 +1214,7 @@ class ZeroPad2D(Layer):
 
     def extra_repr(self):
         name_str = f', name={self._name}' if self._name else ''
-        return 'padding={}, data_format={}{}'.format(
-            self._pad, self._data_format, name_str
-        )
+        return f'padding={self._pad}, data_format={self._data_format}{name_str}'
 
 
 class Pad3D(Layer):
@@ -1416,7 +1404,7 @@ class Embedding(Layer):
             default weight parameter property is used. See usage for details in :ref:`api_ParamAttr` . In addition,
             user-defined or pre-trained word vectors can be loaded with the :attr:`param_attr` parameter.
             The local word vector needs to be transformed into numpy format, and the shape of local word
-            vector should be consistent with :attr:`num_embeddings` . Then :ref:`api_initializer_NumpyArrayInitializer`
+            vector should be consistent with :attr:`num_embeddings` . Then :ref:`api_paddle_nn_initializer_Assign`
             is used to load custom or pre-trained word vectors. See code example for details.
         name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and
             None by default.
@@ -1496,9 +1484,7 @@ class Embedding(Layer):
 
         if padding_idx >= num_embeddings or padding_idx < -num_embeddings:
             raise ValueError(
-                "padding_idx must be within [-{}, {})".format(
-                    num_embeddings, num_embeddings
-                )
+                f"padding_idx must be within [-{num_embeddings}, {num_embeddings})"
             )
 
         self._dtype = self._helper.get_default_dtype()

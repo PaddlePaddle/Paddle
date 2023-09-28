@@ -36,8 +36,8 @@ class ReductionFactoring : public AutoGenRule {
   }
   // In the future, we will no longer use this interface.
   void Apply(int index) override {
-    LOG(FATAL)
-        << "This is a deprecated interface, please do not use it." return;
+    LOG(FATAL) << "This is a deprecated interface, please do not use it.";
+    return;
   }
 
   RuleApplyType AnalyseApplyType(SearchState state,

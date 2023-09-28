@@ -58,8 +58,10 @@ class DistributedOperator:
     def get_serial_input(self, name):
         if self._serial_op.type == "create_py_reader":
             tensor = None
-        else:
+        elif self._serial_op.block._find_var_recursive(name) is not None:
             tensor = self._serial_op.block._var_recursive(name)
+        else:
+            tensor = None
         return tensor
 
     def get_serial_output(self, name):
@@ -124,8 +126,8 @@ class DistributedOperator:
             annotated_str = "annotated"
         else:
             annotated_str = "non-annotated"
-        str += ", process_mesh ({}): {}".format(
-            annotated_str, self.dist_attr.process_mesh
+        str += (
+            f", process_mesh ({annotated_str}): {self.dist_attr.process_mesh}"
         )
 
         for arg_name in self.serial_op.desc.input_arg_names():

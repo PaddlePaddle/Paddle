@@ -16,9 +16,9 @@ namespace backend {
   {{common.sequence('', '', ', ', attrs)}}
 {%- endmacro -%}
 
-{%- macro sig(name, inputs, attrs, outputs) -%}
+{%- macro sig(name, inputs, attrs, outputs, inplace_map) -%}
 template <>
-{{common.ret(outputs)}} {{name}}<Tensor>({{common.params(inputs, attrs, False)}})
+{{common.ret(outputs, inplace_map)}} {{name}}<Tensor>({{common.params(inputs, attrs, False)}})
 {%- endmacro -%}
 
 {% macro body(name, inputs, attrs, outputs) %}
@@ -35,7 +35,13 @@ return ::{{name}}_ad_func({{common.args(input_names, attr_names)}});
 
 {% for api in apis %}
   {%- if api.is_prim and api.name in backend_white_list -%}
-{{sig(api.name, api.inputs, api.attrs, api.outputs | trip_intermediate)}} {
+  {% set inplace_map = {} %}
+  {% if 'inplace' in api and api.inplace != None %}
+    {% for source, target in api.inplace.items() %}
+      {% do inplace_map.update({source: target}) %}
+    {% endfor %}
+  {% endif %}
+{{sig(api.name, api.inputs, api.attrs, api.outputs | trip_intermediate, inplace_map)}} {
 {{body(api.name, api.inputs, api.attrs, api.outputs | trip_intermediate)}} 
 }
 

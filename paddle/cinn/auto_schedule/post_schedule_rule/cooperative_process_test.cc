@@ -17,7 +17,7 @@
 #include <gtest/gtest.h>
 
 #include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/test_helper.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "test/cpp/cinn/program_builder.h"
 
 namespace cinn {

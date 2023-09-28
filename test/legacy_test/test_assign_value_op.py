@@ -25,7 +25,12 @@ from paddle.base import framework
 def assign_value_wrapper(
     shape=[], dtype=base.core.VarDesc.VarType.FP32, values=0.0
 ):
-    tensor = paddle.Tensor()
+    if paddle.framework.in_dynamic_mode():
+        tensor = paddle.Tensor()
+    else:
+        np_type = paddle.base.data_feeder._PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
+        tensor = paddle.zeros(list(shape), np_type)
+        dtype = paddle.pir.core.convert_np_dtype_to_dtype_(np_type)
     return paddle._C_ops.assign_value_(
         tensor, shape, dtype, values, framework._current_expected_place()
     )
@@ -49,7 +54,7 @@ class TestAssignValueOp(op_test.OpTest):
         self.attrs["fp32_values"] = [float(v) for v in self.value.flat]
 
     def test_forward(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_new_ir=True)
 
 
 class TestAssignValueOp2(TestAssignValueOp):

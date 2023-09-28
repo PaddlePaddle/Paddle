@@ -153,6 +153,9 @@ struct InferSpmdFnImpl<Return (*)(Args...), infer_spmd_fn> {
 
   // TODO(chenweihang): support other attr type later as needed
   PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_ATTRIBUTE(bool);
+  PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_ATTRIBUTE(int);
+  PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_ATTRIBUTE(float);
+  PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_ATTRIBUTE(int64_t);
   PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_CONST_ATTRIBUTE_REF(std::vector<int>);
   PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_CONST_ATTRIBUTE_REF(
       std::vector<int64_t>);
