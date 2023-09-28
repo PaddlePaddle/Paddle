@@ -18,6 +18,7 @@ set(STANDALONE_EXECUTOR_DEPS
     program_translator
     instruction_base
     pd_inplace_pass
+    fused_gemm_epilogue_pass
     pir
     plan)
 

@@ -19,10 +19,10 @@
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/flags.h"
 
-#include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
-
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
+#include "paddle/fluid/pir/transforms/fused_gemm_epilogue_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
+#include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
@@ -83,6 +83,12 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       if (!FLAGS_enable_pir_api) {
         VLOG(6) << "begin to translate" << std::endl;
         base_program = paddle::TranslateLegacyProgramToProgram(*program);
+      }
+      {
+        pir::PassManager pm(pir::IrContext::Instance(), 3);
+        pm.AddPass(pir::CreateFusedGemmEpiloguePass());
+        // pm.EnableIRPrinting();
+        pm.Run(base_program.get());
       }
       auto block = base_program->block();
       for (auto it = block->begin(); it != block->end(); ++it) {
@@ -164,6 +170,8 @@ paddle::framework::FetchList StandaloneExecutor::Run(
 
   const auto& jobs = plan_.JobList();
 
+  VLOG(1) << "############# StandaloneExecutor::Run ";
+
   std::map<std::string, size_t> type_to_first_id;
   if (!is_interpretercore_build_result_shared_) {
     type_to_first_id[jobs[0]->Type()] = 0;
@@ -187,7 +195,7 @@ paddle::framework::FetchList StandaloneExecutor::Run(
         platform::TracerEventType::UserDefined,
         1);
 
-    VLOG(6) << "Run job (" << job_idx << "), type = " << job_type
+    VLOG(1) << "Run job (" << job_idx << "), type = " << job_type
             << ", micro_batch_id =" << job->MicroBatchId();
 
     // Note(sonder): Share build results don't work for new IR now.
@@ -212,6 +220,7 @@ paddle::framework::FetchList StandaloneExecutor::Run(
       auto* var = scope_->FindVar(var_name);
       fetch_res.push_back(var->Get<phi::DenseTensor>());
     }
+    VLOG(1) << "########### StandaloneExecutor Run Finish ";
 
     return fetch_res;
   } else {

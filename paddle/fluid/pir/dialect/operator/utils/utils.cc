@@ -24,6 +24,8 @@ const std::unordered_set<std::string> LegacyOpList = {
     "pd_op.c_broadcast_",
     "pd_op.fused_bn_add_activation_",
     "pd_op.fused_bn_add_activation_grad",
+    "pd_op.fused_gemm_epilogue",
+    "pd_op.fused_gemm_epilogue_grad",
     "pd_op.c_sync_calc_stream_",
     "pd_op.c_sync_comm_stream_",
     "pd_op.send_v2",

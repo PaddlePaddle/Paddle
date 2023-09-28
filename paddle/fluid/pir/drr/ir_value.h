@@ -39,14 +39,12 @@ class IrShape {
 
 class IrDtype {
  public:
-  explicit IrDtype(const pir::Type* dtype) : dtype_(dtype) {}
+  explicit IrDtype(const pir::Type& dtype) : dtype_(dtype) {}
 
-  bool operator==(const IrDtype& other) const {
-    return *dtype_ == *other.dtype_;
-  }
+  bool operator==(const IrDtype& other) const { return dtype_ == other.dtype_; }
 
  private:
-  const pir::Type* dtype_;
+  const pir::Type dtype_;
 };
 
 class IrValue : public TensorInterface {
@@ -59,10 +57,10 @@ class IrValue : public TensorInterface {
                           .dims()
                    : nullptr),
         dtype_((value && value.type())
-                   ? &value.type()
-                          .dyn_cast<paddle::dialect::DenseTensorType>()
-                          .dtype()
-                   : nullptr) {}
+                   ? value.type()
+                         .dyn_cast<paddle::dialect::DenseTensorType>()
+                         .dtype()
+                   : Type{}) {}
 
   ShapeInterface Shape() const override { return ShapeInterface(&shape_); }
   DtypeInterface Dtype() const override { return DtypeInterface(&dtype_); }

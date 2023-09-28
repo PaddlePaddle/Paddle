@@ -79,9 +79,14 @@ class OpCreatorCodeGen:
                 op_yaml_items = op_yaml_items + ops
         op_info_items = []
         for op in op_yaml_items:
-            op_info_items.append(
-                OpInfoParser(op, op_compat_parser.get_compat(op['name']))
-            )
+            op_compat_item = op_compat_parser.get_compat(op['name'])
+            if (
+                op_compat_item is not None
+                and op_compat_item['op'] == "pow"
+                and 'scalar' in op_compat_item
+            ):
+                op_compat_item = op_compat_item.pop('scalar')
+            op_info_items.append(OpInfoParser(op, op_compat_item))
         return op_info_items
 
     def gen_cpp_file_code(self, cpp_file_path):

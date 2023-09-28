@@ -546,7 +546,7 @@ void BuildRuntimeContext(
     paddle::framework::RuntimeContext* runtime_ctx) {
   paddle::framework::Scope* inner_scope =
       local_scope != nullptr ? local_scope : scope;
-  VLOG(6) << "BuildPhiContext in scope[" << scope << "] inner_scope["
+  VLOG(1) << "BuildPhiContext in scope[" << scope << "] inner_scope["
           << inner_scope << "]";
 
   auto& vec_kernel_fn_tensor_params = op_yaml_info.TensorParams(true);
@@ -585,7 +585,6 @@ void BuildRuntimeContext(
     auto name = output_name_list[i];
     pir::Value ptr = op->result(i);
     auto legacy_arg_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
-
     if (!IsInvalid(ptr)) {
       VLOG(8) << "ctx->EmplaceBackOutput : an optioanl output " << name;
       continue;
@@ -646,6 +645,8 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
         phi::errors::NotFound("param [%s] MUST in name2id map", name));
     auto index = op_yaml_info.InputName2Id().at(name);
     pir::Value ptr = op->operand_source(index);
+
+    auto in_var_name = name_map.at(ptr);
     auto legacy_attr_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
 
     if (!IsInvalid(ptr)) {
