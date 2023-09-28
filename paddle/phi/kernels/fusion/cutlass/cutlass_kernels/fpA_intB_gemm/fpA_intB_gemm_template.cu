@@ -122,6 +122,28 @@ void dispatch_gemm_config(const T* A,
                                   stream,
                                   occupancy);
       break;
+    case 5:
+      using DispatcherStages5 = dispatch_stages<T,
+                                                WeightType,
+                                                arch,
+                                                EpilogueTag,
+                                                ThreadblockShape,
+                                                WarpShape,
+                                                5>;
+      DispatcherStages5::dispatch(A,
+                                  B,
+                                  weight_scales,
+                                  biases,
+                                  C,
+                                  m,
+                                  n,
+                                  k,
+                                  gemm_config,
+                                  workspace,
+                                  workspace_bytes,
+                                  stream,
+                                  occupancy);
+      break;
     default:
       std::string err_msg = "dispatch_gemm_config does not support stages " +
                             std::to_string(gemm_config.stages);
