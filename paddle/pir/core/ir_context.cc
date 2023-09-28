@@ -225,8 +225,9 @@ AbstractType *IrContext::GetRegisteredAbstractType(TypeId id) {
 void IrContext::RegisterAbstractAttribute(
     pir::TypeId type_id, AbstractAttribute &&abstract_attribute) {
   if (GetRegisteredAbstractAttribute(type_id) == nullptr) {
-    impl().RegisterAbstractAttribute(type_id,
-                                     new AbstractAttribute(abstract_attribute));
+    impl().RegisterAbstractAttribute(
+        type_id,
+        new AbstractAttribute(std::move(abstract_attribute)));  // NOLINT
   } else {
     LOG(WARNING) << " Attribute already registered.";
   }
@@ -277,7 +278,8 @@ Dialect *IrContext::GetRegisteredDialect(const std::string &dialect_name) {
 void IrContext::RegisterAbstractType(pir::TypeId type_id,
                                      AbstractType &&abstract_type) {
   if (GetRegisteredAbstractType(type_id) == nullptr) {
-    impl().RegisterAbstractType(type_id, new AbstractType(abstract_type));
+    impl().RegisterAbstractType(
+        type_id, new AbstractType(std::move(abstract_type)));  // NOLINT
   } else {
     LOG(WARNING) << " type already registered.";
   }
