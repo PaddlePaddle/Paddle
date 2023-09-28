@@ -494,7 +494,7 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:distributed)
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle
             >>> import paddle.nn as nn
             >>> import paddle.optimizer as opt
