@@ -665,18 +665,18 @@ class ParallelEnv:
             ...     parallel_env = dist.ParallelEnv()
             ...     print("rank: ", parallel_env.rank)
             ...     print("world_size: ", parallel_env.world_size)
-            ...     # print result in process 1:
-            ...     # rank: 1
-            ...     # world_size: 2
-            ...     # print result in process 2:
-            ...     # rank: 2
-            ...     # world_size: 2
 
             >>> if __name__ == '__main__':
             ...     # 1. start by ``paddle.distributed.spawn`` (default)
             ...     dist.spawn(train, nprocs=2)
             ...     # 2. start by ``paddle.distributed.launch``
-            ...     # train()
+            ...     train()
+            print result in process 1:
+            rank: 1
+            world_size: 2
+            print result in process 2:
+            rank: 2
+            world_size: 2
 
     """
 
@@ -730,7 +730,7 @@ class ParallelEnv:
 
                 >>> env = dist.ParallelEnv()
                 >>> print("The rank is %d" % env.rank)
-                >>> # The rank is 0
+                The rank is 0
 
         """
         return self._rank
@@ -751,7 +751,7 @@ class ParallelEnv:
 
                 >>> env = dist.ParallelEnv()
                 >>> print("The world_size is %d" % env.world_size)
-                >>> # The world_size is 4
+                The world_size is 4
 
         """
         return self._world_size
@@ -772,7 +772,7 @@ class ParallelEnv:
 
                 >>> env = dist.ParallelEnv()
                 >>> print("The device id are %d" % env.device_id)
-                >>> # The device id are 1
+                The device id are 1
         """
         return self._device_id
 
@@ -802,7 +802,7 @@ class ParallelEnv:
 
                 >>> env = dist.ParallelEnv()
                 >>> print("The current endpoint are %s" % env.current_endpoint)
-                >>> # The current endpoint are 127.0.0.1:6170
+                The current endpoint are 127.0.0.1:6170
         """
         return self._current_endpoint
 
@@ -823,7 +823,7 @@ class ParallelEnv:
 
                 >>> env = dist.ParallelEnv()
                 >>> print("The trainer endpoints are %s" % env.trainer_endpoints)
-                >>> # The trainer endpoints are ['127.0.0.1:6170', '127.0.0.1:6171']
+                The trainer endpoints are ['127.0.0.1:6170', '127.0.0.1:6171']
 
         """
         return self._trainer_endpoints
@@ -844,7 +844,7 @@ class ParallelEnv:
 
                 >>> env = dist.ParallelEnv()
                 >>> print("The nrings is %d" % env.nrings)
-                >>> # the number of ring is 1
+                The nrings is 1
         """
         return self._nrings
 
@@ -937,7 +937,7 @@ def init_parallel_env():
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:GPU, DISTRIBUTED)
+            >>> # doctest: +REQUIRES(env:GPU, env:DISTRIBUTED)
             >>> import paddle
             >>> import paddle.nn as nn
             >>> import paddle.optimizer as opt
@@ -1211,7 +1211,7 @@ def get_rank(group=None):
 
             >>> dist.init_parallel_env()
             >>> print("The rank is %d" % dist.get_rank())
-            >>> # The rank is 0
+            The rank is 0
 
     """
     if in_dynamic_mode() and group:
@@ -1245,7 +1245,7 @@ def get_world_size(group=None):
 
             >>> dist.init_parallel_env()
             >>> print("The world_size is %d" % dist.get_world_size())
-            >>> # The world_size is 1
+            The world_size is 1
 
     """
     if in_dynamic_mode() and (group is None):

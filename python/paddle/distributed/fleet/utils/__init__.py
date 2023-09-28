@@ -51,11 +51,11 @@ def recompute(function, *args, **kwargs):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED, env:GPU)
             >>> import paddle
             >>> from paddle.distributed.fleet.utils import recompute
             >>> import random
-            >>> # required: gpu
+            >>> paddle.seed(2023)
             >>> def get_fc_block(block_idx, input_size, is_last=False):
             ...     block_name = "block_" + str(block_idx)
             ...     block = paddle.nn.Sequential(
@@ -78,6 +78,7 @@ def recompute(function, *args, **kwargs):
             ...             paddle.nn.Linear(input_size, input_size, bias_attr=False)
             ...         )
             ...     return block
+
             >>> class Naive_fc_net(paddle.nn.Layer):
             ...     def __init__(self, input_size=10,
             ...                 recompute_blocks=[1, 3],
@@ -99,6 +100,7 @@ def recompute(function, *args, **kwargs):
             ...             else:
             ...                 inputs = self.total_func[i](inputs)
             ...         return inputs
+
             >>> def run_model(cuda_state, recompute_block=[], recompute_kwargs={}):
             ...     gen = paddle.seed(10)
             ...     gen.manual_seed(10)
@@ -125,14 +127,17 @@ def recompute(function, *args, **kwargs):
             ...         grad_.append(model.parameters()[3]._grad_ivar())
             ...         optimizer.clear_grad()
             ...     return loss_, param_, grad_
+
             >>> cuda_state = paddle.get_cuda_rng_state()
             >>> # without recompute
             >>> loss_ref, param_ref, grad_ref = run_model(
             ...     cuda_state, recompute_block=[]
-            >>> )
+            ... )
+
             >>> loss, param, grad = run_model(cuda_state, recompute_block=[1, 2])
             >>> print("normal_loss: {}, recompute_loss: {}".format(loss_ref, loss))
             >>> # The result of the recompute_loss should be the same as the normal_loss.
+            normal_loss: [0.0018744759727269411, 0.0, 0.035971127450466156, 0.0, 0.0], recompute_loss: [0.0018744759727269411, 0.0, 0.035971127450466156, 0.0, 0.0]
 
     """
 

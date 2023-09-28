@@ -196,10 +196,13 @@ class LocalFS(FS):
 
                 >>> client = LocalFS()
                 >>> client.touch("test_rename_src")
-                >>> print(client.is_exists("test_rename_src")) # True
+                >>> print(client.is_exist("test_rename_src"))
+                True
                 >>> client.rename("test_rename_src", "test_rename_dst")
-                >>> print(client.is_exists("test_rename_src")) # False
-                >>> print(client.is_exists("test_rename_dst")) # True
+                >>> print(client.is_exist("test_rename_src"))
+                False
+                >>> print(client.is_exist("test_rename_dst"))
+                True
                 >>> client.delete("test_rename_dst")
 
         """
@@ -258,7 +261,8 @@ class LocalFS(FS):
 
                 >>> client = LocalFS()
                 >>> client.touch("test_is_file")
-                >>> print(client.is_file("test_is_file")) # True
+                >>> print(client.is_file("test_is_file"))
+                True
                 >>> client.delete("test_is_file")
 
         """
@@ -282,7 +286,8 @@ class LocalFS(FS):
 
                 >>> client = LocalFS()
                 >>> client.mkdirs("test_is_dir")
-                >>> print(client.is_dir("test_is_file")) # True
+                >>> print(client.is_dir("test_is_dir"))
+                True
                 >>> client.delete("test_is_dir")
 
         """
@@ -305,7 +310,7 @@ class LocalFS(FS):
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.distributed.fleet.utils import LocalFS
 
-                >>> client = LocalFS()
+                >>> local_fs = LocalFS()
                 >>> ret = local_fs.is_exist("test_is_exist")
 
         """
@@ -459,7 +464,7 @@ class HDFSClient(FS):
             >>> configs = {
             ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
             ...     "hadoop.job.ugi": "hello,hello123"
-            >>> }
+            ... }
 
             >>> client = HDFSClient(hadoop_home, configs)
             >>> client.ls_dir("hdfs:/test_hdfs_client")
@@ -529,7 +534,7 @@ class HDFSClient(FS):
                 >>> configs = {
                 ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
                 ...     "hadoop.job.ugi": "hello,hello123"
-                >>> }
+                ... }
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> subdirs = client.list_dirs("hdfs:/test_hdfs_client")
@@ -564,7 +569,7 @@ class HDFSClient(FS):
                 >>> configs = {
                 ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
                 ...     "hadoop.job.ugi": "hello,hello123"
-                >>> }
+                ... }
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> subdirs, files = client.ls_dir("hdfs:/test_hdfs_client")
@@ -627,7 +632,7 @@ class HDFSClient(FS):
                 >>> configs = {
                 ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
                 ...     "hadoop.job.ugi": "hello,hello123"
-                >>> }
+                ... }
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> ret = client.is_file("hdfs:/test_hdfs_client")
@@ -673,7 +678,7 @@ class HDFSClient(FS):
                 >>> configs = {
                 ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
                 ...     "hadoop.job.ugi": "hello,hello123"
-                >>> }
+                ... }
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> ret = client.is_file("hdfs:/test_hdfs_client")
@@ -700,14 +705,14 @@ class HDFSClient(FS):
 
             .. code-block:: python
 
-                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> # doctest: +SKIP('depend on external file')
                 >>> from paddle.distributed.fleet.utils import HDFSClient
 
                 >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
                 >>> configs = {
                 ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
                 ...     "hadoop.job.ugi": "hello,hello123"
-                >>> }
+                ... }
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> ret = client.is_exist("hdfs:/test_hdfs_client")
@@ -761,7 +766,7 @@ class HDFSClient(FS):
                 >>> configs = {
                 ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
                 ...     "hadoop.job.ugi": "hello,hello123"
-                >>> }
+                ... }
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> client.upload("test_hdfs_client", "hdfs:/test_hdfs_client")
@@ -853,7 +858,7 @@ class HDFSClient(FS):
                 >>> configs = {
                 ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
                 ...     "hadoop.job.ugi": "hello,hello123"
-                >>> }
+                ... }
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> client.download("hdfs:/test_hdfs_client", "./")
@@ -917,14 +922,14 @@ class HDFSClient(FS):
 
             .. code-block:: python
 
-                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> # doctest: +SKIP('depend on external file')
                 >>> from paddle.distributed.fleet.utils import HDFSClient
 
                 >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
                 >>> configs = {
                 ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
                 ...     "hadoop.job.ugi": "hello,hello123"
-                >>> }
+                ... }
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> client.mkdirs("hdfs:/test_hdfs_client")
@@ -965,14 +970,14 @@ class HDFSClient(FS):
 
             .. code-block:: python
 
-                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> # doctest: +SKIP('depend on external file')
                 >>> from paddle.distributed.fleet.utils import HDFSClient
 
                 >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
                 >>> configs = {
                 ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
                 ...     "hadoop.job.ugi": "hello,hello123"
-                >>> }
+                ... }
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> client.mv("hdfs:/test_hdfs_client", "hdfs:/test_hdfs_client2")
@@ -1034,7 +1039,7 @@ class HDFSClient(FS):
                 >>> configs = {
                 ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
                 ...     "hadoop.job.ugi": "hello,hello123"
-                >>> }
+                ... }
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> client.delete("hdfs:/test_hdfs_client")
@@ -1069,7 +1074,7 @@ class HDFSClient(FS):
                 >>> configs = {
                 ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
                 ...     "hadoop.job.ugi": "hello,hello123"
-                >>> }
+                ... }
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> client.touch("hdfs:/test_hdfs_client")
@@ -1113,7 +1118,7 @@ class HDFSClient(FS):
                 >>> configs = {
                 ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
                 ...     "hadoop.job.ugi": "hello,hello123"
-                >>> }
+                ... }
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> client.cat("hdfs:/test_hdfs_client")
@@ -1202,7 +1207,7 @@ class AFSClient(FS):
         .. code-block:: python
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
-            >>> from paddle.distributed.fleet.utils import AFSClient
+            >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
             >>> client = AFSClient()
             >>> client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
@@ -1232,7 +1237,7 @@ class AFSClient(FS):
             .. code-block:: python
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
-                >>> from paddle.distributed.fleet.utils import AFSClient
+                >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
                 >>> client = AFSClient()
                 >>> client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
@@ -1261,7 +1266,7 @@ class AFSClient(FS):
             .. code-block:: python
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
-                >>> from paddle.distributed.fleet.utils import AFSClient
+                >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
                 >>> client = AFSClient()
                 >>> client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
@@ -1293,7 +1298,7 @@ class AFSClient(FS):
             .. code-block:: python
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
-                >>> from paddle.distributed.fleet.utils import AFSClient
+                >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
                 >>> client = AFSClient()
                 >>> client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
@@ -1327,7 +1332,7 @@ class AFSClient(FS):
             .. code-block:: python
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
-                >>> from paddle.distributed.fleet.utils import AFSClient
+                >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
                 >>> client = AFSClient()
                 >>> client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
@@ -1355,7 +1360,7 @@ class AFSClient(FS):
             .. code-block:: python
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
-                >>> from paddle.distributed.fleet.utils import AFSClient
+                >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
                 >>> client = AFSClient()
                 >>> client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
@@ -1399,7 +1404,7 @@ class AFSClient(FS):
             .. code-block:: python
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
-                >>> from paddle.distributed.fleet.utils import AFSClient
+                >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
                 >>> client = AFSClient()
                 >>> client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
@@ -1428,7 +1433,7 @@ class AFSClient(FS):
             .. code-block:: python
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
-                >>> from paddle.distributed.fleet.utils import AFSClient
+                >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
                 >>> client = AFSClient()
                 >>> client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
@@ -1479,7 +1484,7 @@ class AFSClient(FS):
             .. code-block:: python
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
-                >>> from paddle.distributed.fleet.utils import AFSClient
+                >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
                 >>> client = AFSClient()
                 >>> client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
@@ -1504,7 +1509,7 @@ class AFSClient(FS):
 
             .. code-block:: python
 
-                >>> from paddle.distributed.fleet.utils import AFSClient
+                >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
                 >>> client = AFSClient()
                 >>> client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
@@ -1534,9 +1539,8 @@ class AFSClient(FS):
 
             .. code-block:: python
 
-                >>> from paddle.distributed.fleet.utils import HDFSClient
 
-                >>> from paddle.distributed.fleet.utils import AFSClient
+                >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
                 >>> client = AFSClient()
                 >>> client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
@@ -1561,7 +1565,7 @@ class AFSClient(FS):
             .. code-block:: python
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
-                >>> from paddle.distributed.fleet.utils import AFSClient
+                >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
                 >>> client = AFSClient()
                 >>> client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
@@ -1593,7 +1597,7 @@ class AFSClient(FS):
             .. code-block:: python
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
-                >>> from paddle.distributed.fleet.utils import AFSClient
+                >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
                 >>> client = AFSClient()
                 >>> client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")

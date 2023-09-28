@@ -42,10 +42,10 @@ class HybridParallelInferenceHelper:
 
     Write Paradigm:
 
-    .. code-block:: python
-        :name: code-example1
+    .. code-block:: text
+        :name: text-example1
 
-        >>> # doctest: +REQUIRES(env:DISTRIBUTED, GPU)
+        >>> # doctest: +REQUIRES(env:DISTRIBUTED, env:GPU)
         >>> import paddle
         >>> # while op pattern
         >>> with paddle.base.device_guard(f'{device}:all'):
@@ -91,7 +91,7 @@ class HybridParallelInferenceHelper:
     .. code-block:: python
         :name: code-example1
 
-            >>> # doctest: +REQUIRES(env:DISTRIBUTED, GPU)
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED, env:GPU)
             >>> import os
             >>> import numpy as np
             >>> import paddle
