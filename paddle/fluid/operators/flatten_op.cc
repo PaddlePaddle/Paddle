@@ -51,7 +51,7 @@ class Flatten2Op : public framework::OperatorWithKernel {
         platform::errors::InvalidArgument(
             "The axis should be less than or equal to input tensor's rank"));
 
-    const auto &out_dims = GetOutputShape(axis, in_dims);
+    const auto &out_dims = FlattenOp::GetOutputShape(axis, in_dims);
     ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
     if (in_dims[0] == out_dims[0]) {
       // Only pass LoD when the first dimension of output and Input(X)
