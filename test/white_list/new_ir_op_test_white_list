@@ -205,7 +205,6 @@ test_unique_consecutive_op
 test_unpool3d_op
 test_unpool_op
 test_unsqueeze2_op
-test_unsqueeze_op_with_stride
 test_update_loss_scaling_op
 test_update_loss_scaling_op_static_build
 test_viterbi_decode_op

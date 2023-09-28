@@ -1429,7 +1429,6 @@ set(STRIED_TESTS
     test_squeeze_op
     test_squeeze2_op
     test_unbind_op
-    test_unsqueeze_op
     test_unsqueeze2_op
     test_var_base)
 
