@@ -2365,6 +2365,13 @@ class CosineAnnealingWarmRestarts(LRScheduler):
                 self.T_i = self.T_0
                 self.T_cur = epoch
         self.last_epoch = math.floor(epoch)
+        self.last_lr = self.get_lr()
+        if self.verbose:
+            print(
+                'Epoch {}: {} set learning rate to {}.'.format(
+                    self.last_epoch, self.__class__.__name__, self.last_lr
+                )
+            )
 
 
 def autoincreased_step_counter(counter_name=None, begin=1, step=1):

@@ -217,11 +217,14 @@ class TestReduceOnPlateauDecay:
 def cosine_annealing_warm_restarts_lr(
         epoch_num, v_l
 ):
-    cur_lr = v_l['eta_min'] + (v_l['base_lr'] - v_l['eta_min']) * (
-                1 + math.cos(math.pi * v_l['T_cur'] / v_l['T_i'])) / 2
-
     if epoch_num is None and v_l['last_epoch'] < 0:
         epoch_num = 0
+
+    cur_lr = v_l['eta_min'] + (v_l['base_lr'] - v_l['eta_min']) * (
+            1 + math.cos(math.pi * v_l['T_cur'] / v_l['T_i'])) / 2
+
+    if v_l['last_epoch'] == -1:
+        cur_lr = v_l['base_lr']
 
     if epoch_num is None:
         epoch_num = v_l['last_epoch'] + 1
@@ -292,7 +295,7 @@ class TestCosineAnnealingWarmRestarts(unittest.TestCase):
                 'verbose': False,
             }
             paddle.enable_static()
-            # self._test_static(place, kwargs)
+            self._test_static(place, kwargs)
             paddle.disable_static(place)
             self._test_dygraph(place, kwargs)
             paddle.enable_static()
@@ -309,9 +312,8 @@ class TestCosineAnnealingWarmRestarts(unittest.TestCase):
         with paddle.static.program_guard(main_prog, start_prog):
             x = paddle.static.data(name='x', shape=[3, 4, 5])
             loss = paddle.mean(x)
-
             adam.minimize(loss)
-            lr_var = adam._learning_rate()
+            lr_var = adam._global_learning_rate()
             test_prog = main_prog.clone()
 
         exe = paddle.static.Executor(place)
@@ -324,7 +326,7 @@ class TestCosineAnnealingWarmRestarts(unittest.TestCase):
                     feed={'x': np.random.randn(3, 4, 5).astype('float32')},
                     fetch_list=lr_var.name,
                 )
-            expected_lr = np.array(cosine_annealing_warm_restarts_lr(epoch, v_l))
+            expected_lr = np.array(cosine_annealing_warm_restarts_lr(epoch, v_l)).astype(out[0].dtype)
             self.assertEqual(out[0], expected_lr)
             scheduler.step(epoch)
 
@@ -335,7 +337,7 @@ class TestCosineAnnealingWarmRestarts(unittest.TestCase):
                     feed={'x': np.random.randn(3, 4, 5).astype('float32')},
                     fetch_list=lr_var.name,
                 )
-            expected_lr = cosine_annealing_warm_restarts_lr(epoch_num=None, v_l=v_l)
+            expected_lr = np.array(cosine_annealing_warm_restarts_lr(epoch_num=None, v_l=v_l)).astype(out[0].dtype)
             self.assertEqual(out[0], expected_lr)
             scheduler.step()
 
@@ -359,7 +361,7 @@ class TestCosineAnnealingWarmRestarts(unittest.TestCase):
                 loss.backward()
                 adam.step()
                 adam.clear_grad()
-            current_lr = scheduler.get_lr()
+            current_lr = adam.get_lr()
             expected_lr = cosine_annealing_warm_restarts_lr(epoch, v_l)
             self.assertEqual(current_lr, expected_lr)
             scheduler.step(epoch)
