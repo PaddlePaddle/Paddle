@@ -22,25 +22,71 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, size_t N>
-__global__ void ContiguousFunc(
+__global__ void ContiguousFuncNLe6(
     const T* input_data,
     T* out_data,
     phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_stride,
     phi::Array<int64_t, phi::DDim::kMaxRank + 1> dims,
     const int64_t numel) {
-  int64_t gid = blockIdx.x * blockDim.x + threadIdx.x;
-#pragma unroll
-  for (int64_t i = gid; i < numel; i += blockDim.x * gridDim.x) {
-    int64_t input_offset = 0;
-    int64_t index_tmp = i;
-#pragma unroll
-    for (int dim = N - 1; dim >= 0; --dim) {
-      input_offset += index_tmp % dims[dim] * input_stride[dim];
-      index_tmp = index_tmp / dims[dim];
-    }
+  int64_t input_offset = 0;
+  int64_t output_offset = (blockIdx.z * gridDim.y * gridDim.x +
+                           blockIdx.y * gridDim.x + blockIdx.x) *
+                              blockDim.z * blockDim.y * blockDim.x +
+                          threadIdx.z * blockDim.y * blockDim.x +
+                          threadIdx.y * blockDim.x + threadIdx.x;
+  float coordinate[6] = {threadIdx.x,
+                         threadIdx.y,
+                         threadIdx.z,
+                         blockIdx.x,
+                         blockIdx.y,
+                         blockIdx.z};
 
-    out_data[i] = input_data[input_offset];
+#pragma unroll
+  for (int dim = N - 1; dim >= 0; --dim) {
+    input_offset += coordinate[N - 1 - dim] * input_stride[dim];
   }
+
+  out_data[output_offset] = input_data[input_offset];
+}
+
+template <typename T, size_t N>
+__global__ void ContiguousFuncNGt6(
+    const T* input_data,
+    T* out_data,
+    phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_stride,
+    phi::Array<int64_t, phi::DDim::kMaxRank + 1> dims,
+    const int64_t numel) {
+  int64_t input_offset = 0;
+  int64_t output_offset = (blockIdx.z * gridDim.y * gridDim.x +
+                           blockIdx.y * gridDim.x + blockIdx.x) *
+                              blockDim.z * blockDim.y * blockDim.x +
+                          threadIdx.z * blockDim.y * blockDim.x +
+                          threadIdx.y * blockDim.x + threadIdx.x;
+  float coordinate[phi::DDim::kMaxRank] = {threadIdx.x,
+                                           threadIdx.y,
+                                           threadIdx.z,
+                                           blockIdx.x % dims[N - 4],
+                                           blockIdx.x / dims[N - 4],
+                                           blockIdx.y % dims[N - 6]};
+
+  if (N >= 7) {
+    coordinate[6] = blockIdx.y / dims[N - 6];
+  }
+
+  if (N >= 8) {
+    coordinate[7] = blockIdx.z % dims[N - 8];
+  }
+
+  if (N >= 9) {
+    coordinate[8] = blockIdx.z / dims[N - 8];
+  }
+
+#pragma unroll
+  for (int dim = N - 1; dim >= 0; --dim) {
+    input_offset += coordinate[N - 1 - dim] * input_stride[dim];
+  }
+
+  out_data[output_offset] = input_data[input_offset];
 }
 
 bool is_only_transposed(const DDim& shape,
@@ -135,44 +181,69 @@ void ContiguousKernel(const Context& dev_ctx,
     input_stride[0] = 1;
   }
 
-  int64_t block = 512;
-  int64_t grid = (numel + block - 1) / block;
+  dim3 grid(1, 1, 1), block(1, 1, 1);
+
+  if (rank >= 1) {
+    block.x = input_dims[rank - 1];
+  }
+
+  if (rank >= 2) {
+    block.y = input_dims[rank - 2];
+  }
+
+  if (rank >= 3) {
+    block.z = input_dims[rank - 3];
+  }
 
   switch (rank) {
     case 1:
-      ContiguousFunc<T, 1><<<grid, block, 0, dev_ctx.stream()>>>(
+      ContiguousFuncNLe6<T, 1><<<grid, block, 0, dev_ctx.stream()>>>(
           input_data, output_data, input_stride, input_dims, numel);
       break;
     case 2:
-      ContiguousFunc<T, 2><<<grid, block, 0, dev_ctx.stream()>>>(
+      ContiguousFuncNLe6<T, 2><<<grid, block, 0, dev_ctx.stream()>>>(
           input_data, output_data, input_stride, input_dims, numel);
       break;
     case 3:
-      ContiguousFunc<T, 3><<<grid, block, 0, dev_ctx.stream()>>>(
+      ContiguousFuncNLe6<T, 3><<<grid, block, 0, dev_ctx.stream()>>>(
           input_data, output_data, input_stride, input_dims, numel);
       break;
     case 4:
-      ContiguousFunc<T, 4><<<grid, block, 0, dev_ctx.stream()>>>(
+      grid.x = input_dims[rank - 4];
+      ContiguousFuncNLe6<T, 4><<<grid, block, 0, dev_ctx.stream()>>>(
           input_data, output_data, input_stride, input_dims, numel);
       break;
     case 5:
-      ContiguousFunc<T, 5><<<grid, block, 0, dev_ctx.stream()>>>(
+      grid.x = input_dims[rank - 4];
+      grid.y = input_dims[rank - 5];
+      ContiguousFuncNLe6<T, 5><<<grid, block, 0, dev_ctx.stream()>>>(
           input_data, output_data, input_stride, input_dims, numel);
       break;
     case 6:
-      ContiguousFunc<T, 6><<<grid, block, 0, dev_ctx.stream()>>>(
+      grid.x = input_dims[rank - 4];
+      grid.y = input_dims[rank - 5];
+      grid.z = input_dims[rank - 6];
+      ContiguousFuncNLe6<T, 6><<<grid, block, 0, dev_ctx.stream()>>>(
           input_data, output_data, input_stride, input_dims, numel);
       break;
     case 7:
-      ContiguousFunc<T, 7><<<grid, block, 0, dev_ctx.stream()>>>(
+      grid.x = input_dims[rank - 4] * input_dims[rank - 5];
+      grid.y = input_dims[rank - 6] * input_dims[rank - 7];
+      ContiguousFuncNGt6<T, 7><<<grid, block, 0, dev_ctx.stream()>>>(
           input_data, output_data, input_stride, input_dims, numel);
       break;
     case 8:
-      ContiguousFunc<T, 8><<<grid, block, 0, dev_ctx.stream()>>>(
+      grid.x = input_dims[rank - 4] * input_dims[rank - 5];
+      grid.y = input_dims[rank - 6] * input_dims[rank - 7];
+      grid.z = input_dims[rank - 8];
+      ContiguousFuncNGt6<T, 8><<<grid, block, 0, dev_ctx.stream()>>>(
           input_data, output_data, input_stride, input_dims, numel);
       break;
     case 9:
-      ContiguousFunc<T, 9><<<grid, block, 0, dev_ctx.stream()>>>(
+      grid.x = input_dims[rank - 4] * input_dims[rank - 5];
+      grid.y = input_dims[rank - 6] * input_dims[rank - 7];
+      grid.z = input_dims[rank - 8] * input_dims[rank - 9];
+      ContiguousFuncNGt6<T, 9><<<grid, block, 0, dev_ctx.stream()>>>(
           input_data, output_data, input_stride, input_dims, numel);
       break;
     default:
