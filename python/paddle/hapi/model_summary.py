@@ -60,7 +60,7 @@ def summary(net, input_size=None, dtypes=None, input=None):
             ...             nn.Conv2D(6, 16, 5, stride=1, padding=0),
             ...             nn.ReLU(),
             ...             nn.MaxPool2D(2, 2))
-            ...
+
             ...         if num_classes > 0:
             ...             self.fc = nn.Sequential(
             ...                 nn.Linear(400, 120),

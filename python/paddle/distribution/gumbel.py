@@ -46,13 +46,14 @@ class Gumbel(TransformedDistribution):
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle
             >>> from paddle.distribution.gumbel import Gumbel
 
             >>> # Gumbel distributed with loc=0, scale=1
             >>> dist = Gumbel(paddle.full([1], 0.0), paddle.full([1], 1.0))
 
-            >>> # doctest: +SKIP
+            >>> # doctest: +SKIP('`paddle.distribution` can not run in xdoctest')
             >>> print(dist.sample([2]))
             Tensor(shape=[2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0.40484068],
@@ -63,7 +64,7 @@ class Gumbel(TransformedDistribution):
             [[-0.95093185],
             [ 0.32422572]])
 
-            >>> # doctest: -SKIP
+            >>> # doctest: -SKIP('`paddle.distribution` can not run in xdoctest')
             >>> value = paddle.full([1], 0.5)
             >>> print(dist.prob(value))
             Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,

@@ -72,6 +72,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
 
         .. code-block:: python
 
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle
             >>> from paddle.distribution import Bernoulli
 
@@ -156,6 +157,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
 
             .. code-block:: python
 
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import paddle
                 >>> from paddle.distribution import Bernoulli
 
@@ -211,6 +213,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
 
             .. code-block:: python
 
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import paddle
                 >>> from paddle.distribution import Bernoulli
 
@@ -308,6 +311,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
 
             .. code-block:: python
 
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import paddle
                 >>> from paddle.distribution import Bernoulli
 
@@ -346,6 +350,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
 
             .. code-block:: python
 
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import paddle
                 >>> from paddle.distribution import Bernoulli
 
@@ -385,6 +390,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
 
             .. code-block:: python
 
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import paddle
                 >>> from paddle.distribution import Bernoulli
 
@@ -415,6 +421,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
 
             .. code-block:: python
 
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import paddle
                 >>> from paddle.distribution import Bernoulli
 
@@ -448,6 +455,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
 
             .. code-block:: python
 
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import paddle
                 >>> from paddle.distribution import Bernoulli
 

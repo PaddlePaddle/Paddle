@@ -59,7 +59,7 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
             ...             nn.Conv2D(6, 16, 5, stride=1, padding=0),
             ...             nn.ReLU(),
             ...             nn.MaxPool2D(2, 2))
-            ...
+
             ...         if num_classes > 0:
             ...             self.fc = nn.Sequential(
             ...                 nn.Linear(400, 120),
@@ -73,14 +73,14 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
             ...             x = paddle.flatten(x, 1)
             ...             x = self.fc(x)
             ...         return x
-            ...
+
             >>> lenet = LeNet()
             >>> # m is the instance of nn.Layer, x is the intput of layer, y is the output of layer.
             >>> def count_leaky_relu(m, x, y):
             ...     x = x[0]
             ...     nelements = x.numel()
             ...     m.total_ops += int(nelements)
-            ...
+
             >>> FLOPs = paddle.flops(lenet,
             ...                      [1, 1, 28, 28],
             ...                      custom_ops= {nn.LeakyReLU: count_leaky_relu},

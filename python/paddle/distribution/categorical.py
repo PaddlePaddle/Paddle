@@ -46,6 +46,7 @@ class Categorical(distribution.Distribution):
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle
             >>> from paddle.distribution import Categorical
 
@@ -64,7 +65,7 @@ class Categorical(distribution.Distribution):
             >>> cat = Categorical(x)
             >>> cat2 = Categorical(y)
 
-            >>> # doctest: +SKIP
+            >>> # doctest: +SKIP('`paddle.distribution` can not run in xdoctest')
             >>> paddle.seed(1000) # on CPU device
             >>> print(cat.sample([2,3]))
             Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
@@ -134,6 +135,7 @@ class Categorical(distribution.Distribution):
         Examples:
             .. code-block:: python
 
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import paddle
                 >>> from paddle.distribution import Categorical
 
@@ -191,6 +193,7 @@ class Categorical(distribution.Distribution):
         Examples:
             .. code-block:: python
 
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import paddle
                 >>> from paddle.distribution import Categorical
 
@@ -245,6 +248,7 @@ class Categorical(distribution.Distribution):
         Examples:
             .. code-block:: python
 
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import paddle
                 >>> from paddle.distribution import Categorical
 
@@ -289,6 +293,7 @@ class Categorical(distribution.Distribution):
         Examples:
             .. code-block:: python
 
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import paddle
                 >>> from paddle.distribution import Categorical
 
@@ -336,6 +341,7 @@ class Categorical(distribution.Distribution):
         Examples:
             .. code-block:: python
 
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import paddle
                 >>> from paddle.distribution import Categorical
 
