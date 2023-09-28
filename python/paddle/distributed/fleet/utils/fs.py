@@ -851,7 +851,7 @@ class HDFSClient(FS):
 
             .. code-block:: python
 
-                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> # doctest: +SKIP('depend on external file')
                 >>> from paddle.distributed.fleet.utils import HDFSClient
 
                 >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
