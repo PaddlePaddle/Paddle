@@ -1130,7 +1130,7 @@ void ExpandInferMeta(const MetaTensor& x,
       std::max(static_cast<size_t>(x_dims.size()), expand_shape.size());
   std::vector<int64_t> out_shape(out_rank);
   for (int i = 0; i < static_cast<int>(expand_shape.size()); ++i) {
-    if (x_dims[i] == -1) {
+    if (x_dims[i] == -1) {  // NOLINT
       out_shape[i] = -1;
     } else if (expand_shape[i] == -1) {
       if (static_cast<int>(x_dims.size()) > i) {
@@ -3219,7 +3219,8 @@ DDim ReduceInferDim(const MetaTensor& x,
       break;
     }
   }
-  reduce_all = reduce_all || full_dim;
+  bool empty_dim = axis.size() == 0;
+  reduce_all = reduce_all || full_dim || empty_dim;
 
   std::vector<int64_t> out_dim_vector;
   for (int i = 0; i < x_rank; ++i) {
