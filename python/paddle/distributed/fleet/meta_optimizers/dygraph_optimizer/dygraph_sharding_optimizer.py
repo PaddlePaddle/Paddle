@@ -21,10 +21,8 @@ from paddle import framework
 
 from ...utils.log_util import logger
 
-g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 0))
-logger.info(f"g_shard_use_reduce {g_shard_use_reduce}")
-g_shard_norm_align_dp = int(os.environ.get("FLAGS_shard_norm_align_dp", 1))
-logger.info(f"g_shard_norm_align_dp {g_shard_norm_align_dp}")
+g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 1))
+g_shard_norm_align_dp = int(os.environ.get("FLAGS_shard_norm_align_dp", 0))
 
 if g_shard_norm_align_dp:
     assert (
@@ -118,9 +116,7 @@ class DygraphShardingOptimizer:
             numel = reduce(lambda x, y: x * y, param.shape, 1)
             assert (
                 numel > 0
-            ), "param [{}] should larger than 0, but it is [{}]".format(
-                param.name, numel
-            )
+            ), f"param [{param.name}] should larger than 0, but it is [{numel}]"
             sizes[rank] += numel
 
         return mapping
@@ -245,9 +241,7 @@ class DygraphShardingOptimizer:
                     and param.regularizer is not None
                 ):
                     raise ValueError(
-                        "param {} should not has the regularizer attribute".format(
-                            param.name
-                        )
+                        f"param {param.name} should not has the regularizer attribute"
                     )
                 if param.stop_gradient:
                     continue
@@ -306,9 +300,7 @@ class DygraphShardingOptimizer:
         inner_opt_name = '_inner_opt'
         if not isinstance(attr_name, str):
             raise TypeError(
-                "attr_name should be str type, but is {}".format(
-                    type(attr_name)
-                )
+                f"attr_name should be str type, but is {type(attr_name)}"
             )
         while hasattr(inner_opt, attr_name):
             setattr(inner_opt, attr_name, value)
