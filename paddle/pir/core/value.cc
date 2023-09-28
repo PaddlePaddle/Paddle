@@ -40,7 +40,7 @@ bool Value::operator!=(const Value &other) const {
 
 bool Value::operator!() const { return impl_ == nullptr; }
 
-bool Value::operator<(const Value &other) const { return this < &other; }
+bool Value::operator<(const Value &other) const { return impl_ < other.impl_; }
 
 Value::operator bool() const { return impl_; }
 
