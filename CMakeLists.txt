@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+# Change nothing
+
 if(APPLE AND WITH_ARM)
   # cmake 3.19.2 version starts to support M1
   cmake_minimum_required(VERSION 3.19.2)
