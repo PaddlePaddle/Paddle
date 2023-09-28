@@ -70,7 +70,7 @@ we havenot support sm70 weightonly gemv, because sm70 weight layout is RowMajor.
       DenseTensor mixgemm_workspace;
       int64_t mixgemm_workspace_size_bytes = mixed_gemm_runner.getWorkspaceSize(
           m, mixgemm_max_size, mixgemm_max_size);
-
+      mixgemm_workspace_size_bytes = 100*1024*1024;
       mixgemm_workspace.Resize({mixgemm_workspace_size_bytes});
       dev_ctx.template Alloc<uint8_t>(&mixgemm_workspace);
       char* mixgemm_workspace_data =
@@ -113,7 +113,7 @@ we havenot support sm70 weightonly gemv, because sm70 weight layout is RowMajor.
       DenseTensor mixgemm_workspace;
       int64_t mixgemm_workspace_size_bytes = mixed_gemm_runner.getWorkspaceSize(
           m, mixgemm_max_size, mixgemm_max_size);
-
+      mixgemm_workspace_size_bytes = 100*1024*1024;
       mixgemm_workspace.Resize({mixgemm_workspace_size_bytes});
       dev_ctx.template Alloc<uint8_t>(&mixgemm_workspace);
       char* mixgemm_workspace_data =
