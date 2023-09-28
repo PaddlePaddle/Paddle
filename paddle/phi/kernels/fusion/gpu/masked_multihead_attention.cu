@@ -394,11 +394,13 @@ __global__ void masked_multihead_attention_kernel(
 
   __shared__ float red_smem[WARPS_PER_BLOCK * 2];
   using Qk_vec = typename Qk_vec_<T, Dh_MAX>::Type;
+  // uint2
   using Qk_vec_RoPE = typename Qk_vec_RoPE_<T, float, Dh_MAX>::Type;
+  // float4.
   __shared__ __align__(sizeof(Qk_vec)) T q_smem[Dh_MAX];
 
   // beam id
-  const int beami = bi % params.beam_width;
+  // const int beami = bi % params.beam_width;
   // real batch id
   const int bbi = bi / params.beam_width;
   const int hi = blockIdx.x;
@@ -486,10 +488,11 @@ __global__ void masked_multihead_attention_kernel(
     }
 
     if (!params.neox_rotary_style) {
-      if (params.rotary_emb_dims != 0) {
+      if (params.rotary_emb_dims != 0 && tid * QK_VEC_SIZE < Dh / 2) {
         int rotary_offset = bi * Dh + tid * QK_VEC_SIZE;
+        // Dh的意思就是dim head！
         const float *cos_base = params.rotary_emb;
-        const float *sin_base = params.rotary_emb + params.batch_size * Dh;
+        const float *sin_base = params.rotary_emb + params.batch_size * Dh / 2;
         Qk_vec_RoPE cos_emb, sin_emb;
         zero(cos_emb);
         zero(sin_emb);
@@ -577,6 +580,25 @@ __global__ void masked_multihead_attention_kernel(
             k, k_right, cos_emb, sin_emb, alpha);
       }
     }
+
+        if(blockIdx.x == 0 && blockIdx.y == 0 && threadIdx.x >= 0 && 0) {
+        // printf("cos %f \n", *cos_base);
+        // printf("sin %f \n", *(sin_base+0));
+
+        // seq,batch=1
+        int head_i = blockIdx.x;
+        int j = threadIdx.x;
+        int global = head_i * 128 + j*4;
+
+        if (std::is_same<Qk_vec, uint2>::value) {
+          half * tmp = (half*)(&q);
+          printf("q %d %f \n",global, (float)(*(tmp + 0)));
+          printf("q %d %f \n",global+1, (float)(*(tmp + 1)));
+          printf("q %d %f \n",global+2, (float)(*(tmp + 2)));
+          printf("q %d %f \n",global+3, (float)(*(tmp + 3)));
+        }
+        }
+
 
     *reinterpret_cast<Qk_vec *>(&q_smem[tid * QK_VEC_SIZE]) = q;
 
