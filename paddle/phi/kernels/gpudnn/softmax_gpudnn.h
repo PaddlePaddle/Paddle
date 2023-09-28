@@ -435,7 +435,7 @@ __global__ void KeMatrixSoftmaxForward(T* softmax, const T* src, int dim_size) {
       dim_size,
       input_align_shift,
       MaxFunctor<T, AccT>(),
-      std::numeric_limits<AccT>::min());
+      -std::numeric_limits<AccT>::infinity());
   BlockReduceMax<AccT>(&thread_max);
 
   // get exp value and sum all
