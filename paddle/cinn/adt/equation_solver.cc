@@ -20,6 +20,7 @@
 #include "paddle/cinn/adt/equation_solver.h"
 #include "paddle/cinn/adt/equation_value.h"
 #include "paddle/cinn/adt/index_expr_infer_context.h"
+#include "paddle/cinn/adt/print_value.h"
 #include "paddle/cinn/adt/simplify_value.h"
 #include "paddle/cinn/adt/tags.h"
 #include "paddle/cinn/common/equation_graph_topo_walker.h"
@@ -69,7 +70,7 @@ std::unordered_map<Variable, Value> InferValuesImpl(
   for (const auto& stride : *strides) {
     stride_constants->emplace_back(stride);
   }
-  IndexDot<Value> index_dot{in_values, stride_constants};
+  IndexDot<Value, Constant> index_dot{in_values, stride_constants};
   return {{out_index.value(), index_dot}};
 }
 
@@ -82,8 +83,8 @@ std::unordered_map<Variable, Value> InferValuesImpl(
   for (const auto& stride : *strides) {
     stride_constants->emplace_back(stride);
   }
-  IndexUnDot<Value> index_undot{ctx->GetValue(in_index.value()),
-                                stride_constants};
+  IndexUnDot<Value, Constant> index_undot{ctx->GetValue(in_index.value()),
+                                          stride_constants};
 
   std::unordered_map<Variable, Value> ret{};
   for (std::size_t idx = 0; idx < out_iters.value()->size(); ++idx) {
@@ -95,16 +96,15 @@ std::unordered_map<Variable, Value> InferValuesImpl(
 
 std::unordered_map<Variable, Value> InferValuesImpl(
     const InMsgBox2OutMsgBox<tOut<FakeOpPlaceHolder>,
-                             tOut<tOutMsgBox<OpArgIndexes>>,
-                             tIn<tInMsgBox<OpArgIndexes>>>&
-        in_msg_box2out_msg_box,
+                             tOut<OpArgIndexes<std::optional<Index>>>,
+                             tIn<OpArgIndexes<Index>>>& in_msg_box2out_msg_box,
     IndexExprInferContext* ctx) {
   const auto& [op_placeholder, out_box_indexes, in_box_indexes] =
       in_msg_box2out_msg_box.tuple();
   const auto& [out_box_in_indexes, out_box_out_indexes] =
-      out_box_indexes.value().value().tuple();
+      out_box_indexes.value().tuple();
   const auto& [in_box_in_indexes, in_box_out_indexes] =
-      in_box_indexes.value().value().tuple();
+      in_box_indexes.value().tuple();
   std::unordered_map<Variable, Value> ret{{op_placeholder.value(), Ok{}}};
   CHECK_EQ(out_box_in_indexes.value()->size(),
            in_box_in_indexes.value()->size());
@@ -116,7 +116,10 @@ std::unordered_map<Variable, Value> InferValuesImpl(
   }
   for (std::size_t i = 0; i < out_box_out_indexes.value()->size(); ++i) {
     const auto& value = ctx->GetValue(in_box_out_indexes.value()->at(i));
-    CHECK(ret.emplace(out_box_out_indexes.value()->at(i), value).second);
+    const auto& out_index = out_box_out_indexes.value()->at(i);
+    if (out_index.has_value()) {
+      CHECK(ret.emplace(out_index.value(), value).second);
+    }
   }
   return ret;
 }
@@ -143,7 +146,7 @@ tValueInferSuccess<bool> MergeInferedValuesIntoCtx(const Function* function,
                                                    const OnFailT& OnFail) {
   auto output_variable2value = InferValues(function, ctx);
   for (const auto& [variable, unsimplified_value] : output_variable2value) {
-    Value simplified_value({SimplifyValue(unsimplified_value)});
+    Value simplified_value({SimplifyValue(unsimplified_value, *ctx)});
     if (simplified_value.Has<Undefined>()) {
       return OnFail(std::optional<Value>{std::nullopt}, simplified_value);
     }

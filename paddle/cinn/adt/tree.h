@@ -50,30 +50,37 @@ DEFINE_ADT_TAG(tRhsRemainder);
 
 template <typename TreeT>
 struct TreeMerger {
+  using tree_type = TreeT;
   using inner_type = typename TreeTrait<TreeT>::inner_type;
   using leaf_type = typename TreeTrait<TreeT>::leaf_type;
 
   using inner_data_type = typename inner_type::value_type;
-  static inner_data_type GetInnerDataForLeaf(const leaf_type& leaf);
+  inner_data_type GetInnerDataForLeaf(const leaf_type& leaf) const;
 
-  static inner_type MakeInnerNode(const inner_data_type& inner_data,
-                                  const List<TreeT>& children);
+  inner_type MakeInnerNode(const inner_data_type& inner_data,
+                           const List<TreeT>& children) const;
 
   using MergeResult = std::tuple<tCommon<inner_data_type>,
                                  tLhsRemainder<inner_data_type>,
                                  tRhsRemainder<inner_data_type>>;
 
-  static MergeResult MergeInnerValue(const inner_data_type& lhs,
-                                     const inner_data_type& rhs);
+  MergeResult MergeInnerValue(const inner_data_type& lhs,
+                              const inner_data_type& rhs) const;
 };
 
-template <typename TreeT>
-List<TreeT> MergeTwoInnerTree(const TreeT& lhs, const TreeT& rhs);
+template <typename TreeMergerT>
+List<typename TreeMergerT::tree_type> MergeTwoInnerTree(
+    const TreeMergerT& tree_merger,
+    const typename TreeMergerT::tree_type& lhs,
+    const typename TreeMergerT::tree_type& rhs);
 
-template <typename TreeT>
-List<TreeT> MergeTwoInnerTreeImpl(
-    const typename TreeTrait<TreeT>::inner_type& lhs,
-    const typename TreeTrait<TreeT>::inner_type& rhs) {
+template <typename TreeMergerT>
+List<typename TreeMergerT::tree_type> MergeTwoInnerTreeImpl(
+    const TreeMergerT& tree_merger,
+    const typename TreeTrait<typename TreeMergerT::tree_type>::inner_type& lhs,
+    const typename TreeTrait<typename TreeMergerT::tree_type>::inner_type&
+        rhs) {
+  using TreeT = typename TreeMergerT::tree_type;
   using leaf_type = typename TreeTrait<TreeT>::leaf_type;
   using inner_type = typename TreeTrait<TreeT>::inner_type;
   using inner_data_type = typename inner_type::value_type;
@@ -81,7 +88,7 @@ List<TreeT> MergeTwoInnerTreeImpl(
   const auto& [lhs_inner_data, lhs_children] = lhs.tuple();
   const auto& [rhs_inner_data, rhs_children] = rhs.tuple();
   const auto& [common, lhs_remainder, rhs_remainder] =
-      TreeMerger<TreeT>::MergeInnerValue(lhs_inner_data, rhs_inner_data);
+      tree_merger.MergeInnerValue(lhs_inner_data, rhs_inner_data);
 
   bool is_common_empty = (lhs_remainder.value() == lhs_inner_data &&
                           rhs_remainder.value() == rhs_inner_data);
@@ -94,16 +101,15 @@ List<TreeT> MergeTwoInnerTreeImpl(
         merged_children->end(), lhs_children->begin(), lhs_children->end());
     merged_children->insert(
         merged_children->end(), rhs_children->begin(), rhs_children->end());
-    const auto ret =
-        TreeMerger<TreeT>::MakeInnerNode(common.value(), merged_children);
+    const auto ret = tree_merger.MakeInnerNode(common.value(), merged_children);
     return List<TreeT>{ret};
   } else if (common.value() == lhs_inner_data &&
              common.value() != rhs_inner_data) {
     const auto new_rhs =
-        TreeMerger<TreeT>::MakeInnerNode(rhs_remainder.value(), rhs_children);
+        tree_merger.MakeInnerNode(rhs_remainder.value(), rhs_children);
     const TreeT last_lhs_child = lhs_children->back();
     const auto merged_last_children =
-        MergeTwoInnerTree<TreeT>(last_lhs_child, new_rhs);
+        MergeTwoInnerTree(tree_merger, last_lhs_child, new_rhs);
     List<TreeT> new_lhs_children{};
     new_lhs_children->insert(new_lhs_children->end(),
                              lhs_children->begin(),
@@ -112,45 +118,49 @@ List<TreeT> MergeTwoInnerTreeImpl(
                              merged_last_children->begin(),
                              merged_last_children->end());
     const auto ret =
-        TreeMerger<TreeT>::MakeInnerNode(common.value(), new_lhs_children);
+        tree_merger.MakeInnerNode(common.value(), new_lhs_children);
     return List<TreeT>{ret};
   } else if (common.value() != lhs_inner_data &&
              common.value() == rhs_inner_data) {
     const auto new_lhs =
-        TreeMerger<TreeT>::MakeInnerNode(lhs_remainder.value(), lhs_children);
+        tree_merger.MakeInnerNode(lhs_remainder.value(), lhs_children);
     const TreeT first_rhs_child = *rhs_children->begin();
     const auto merged_first_children =
-        MergeTwoInnerTree<TreeT>(new_lhs, first_rhs_child);
+        MergeTwoInnerTree(tree_merger, new_lhs, first_rhs_child);
     List<TreeT> new_rhs_children = merged_first_children;
     new_rhs_children->insert(new_rhs_children->end(),
                              std::next(rhs_children->begin()),
                              rhs_children->end());
     const auto ret =
-        TreeMerger<TreeT>::MakeInnerNode(common.value(), new_rhs_children);
+        tree_merger.MakeInnerNode(common.value(), new_rhs_children);
     return List<TreeT>{ret};
   } else if (common.value() != lhs_inner_data &&
              common.value() != rhs_inner_data) {
     const auto new_lhs =
-        TreeMerger<TreeT>::MakeInnerNode(lhs_remainder.value(), lhs_children);
+        tree_merger.MakeInnerNode(lhs_remainder.value(), lhs_children);
     const auto new_rhs =
-        TreeMerger<TreeT>::MakeInnerNode(rhs_remainder.value(), rhs_children);
-    const auto ret = TreeMerger<TreeT>::MakeInnerNode(
-        common.value(), List<TreeT>{new_lhs, new_rhs});
+        tree_merger.MakeInnerNode(rhs_remainder.value(), rhs_children);
+    const auto ret = tree_merger.MakeInnerNode(common.value(),
+                                               List<TreeT>{new_lhs, new_rhs});
     return List<TreeT>{ret};
   } else {
     LOG(FATAL) << "Dead code";
   }
 }
 
-template <typename TreeT>
-List<TreeT> MergeTwoInnerTree(const TreeT& lhs, const TreeT& rhs) {
+template <typename TreeMergerT>
+List<typename TreeMergerT::tree_type> MergeTwoInnerTree(
+    const TreeMergerT& tree_merger,
+    const typename TreeMergerT::tree_type& lhs,
+    const typename TreeMergerT::tree_type& rhs) {
+  using TreeT = typename TreeMergerT::tree_type;
   using inner_type = typename TreeTrait<TreeT>::inner_type;
 
   return std::visit(
       [&](const auto& lhs, const auto& rhs) -> List<TreeT> {
         if constexpr (std::is_same_v<std::decay_t<decltype(lhs)>, inner_type> &&
                       std::is_same_v<std::decay_t<decltype(rhs)>, inner_type>) {
-          return MergeTwoInnerTreeImpl<TreeT>(lhs, rhs);
+          return MergeTwoInnerTreeImpl(tree_merger, lhs, rhs);
         } else {
           return List<TreeT>{lhs, rhs};
         }
@@ -159,36 +169,52 @@ List<TreeT> MergeTwoInnerTree(const TreeT& lhs, const TreeT& rhs) {
       rhs.variant());
 }
 
-template <typename TreeT>
-List<TreeT> MakeTreeByMerger(
-    const List<typename TreeTrait<TreeT>::leaf_type>& leaves) {
+template <typename TreeMergerT>
+void MergeTrees(
+    const TreeMergerT& tree_merger,
+    List<typename TreeMergerT::tree_type>* acc,
+    const List<typename TreeTrait<typename TreeMergerT::tree_type>::leaf_type>&
+        leaves) {
+  using TreeT = typename TreeMergerT::tree_type;
   if (leaves->empty()) {
-    return List<TreeT>{};
+    return;
   }
   using leaf_type = typename TreeTrait<TreeT>::leaf_type;
   using inner_type = typename TreeTrait<TreeT>::inner_type;
   using inner_data_type = typename inner_type::value_type;
 
   const auto& MakeTreeFromLeaf = [&](const leaf_type& leaf) -> TreeT {
-    const inner_data_type inner_data =
-        TreeMerger<TreeT>::GetInnerDataForLeaf(leaf);
+    const inner_data_type inner_data = tree_merger.GetInnerDataForLeaf(leaf);
     const auto ret =
-        TreeMerger<TreeT>::MakeInnerNode(inner_data, List<TreeT>{TreeT{leaf}});
+        tree_merger.MakeInnerNode(inner_data, List<TreeT>{TreeT{leaf}});
     return ret;
   };
 
-  const auto& Aggregate = [&](const TreeT& init,
-                              const auto& Merge) -> List<TreeT> {
-    List<TreeT> acc{init};
-    for (std::size_t i = 1; i < leaves->size(); ++i) {
-      const auto merged = Merge(acc->back(), MakeTreeFromLeaf(leaves->at(i)));
-      acc->erase(std::prev(acc->end()));
-      acc->insert(acc->end(), merged->begin(), merged->end());
-    }
-    return acc;
-  };
+  // Handle init
+  std::size_t leaf_start = 0;
+  if ((*acc)->empty()) {
+    (*acc)->emplace_back(MakeTreeFromLeaf(leaves->at(0)));
+    leaf_start = 1;
+  }
 
-  return Aggregate(MakeTreeFromLeaf(leaves->at(0)), MergeTwoInnerTree<TreeT>);
+  for (std::size_t i = leaf_start; i < leaves->size(); ++i) {
+    const auto merged = MergeTwoInnerTree(
+        tree_merger, (*acc)->back(), MakeTreeFromLeaf(leaves->at(i)));
+    (*acc)->erase(std::prev((*acc)->end()));
+    (*acc)->insert((*acc)->end(), merged->begin(), merged->end());
+  }
+}
+
+template <typename TreeMergerT>
+List<typename TreeMergerT::tree_type> MakeMergedTrees(
+    const TreeMergerT& tree_merger,
+    const List<typename TreeTrait<typename TreeMergerT::tree_type>::leaf_type>&
+        leaves) {
+  using TreeT = typename TreeMergerT::tree_type;
+
+  List<TreeT> acc{};
+  MergeTrees(tree_merger, &acc, leaves);
+  return acc;
 }
 
 }  // namespace cinn::adt

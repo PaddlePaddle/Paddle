@@ -19,6 +19,6 @@
 
 namespace cinn::adt {
 
-Value SimplifyValue(Value value);
+Value SimplifyValue(Value value, const IndexExprInferContext& ctx);
 
 }

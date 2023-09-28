@@ -11,16 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #pragma once
+
+#include "paddle/cinn/adt/equation_value.h"
 
 namespace cinn::adt {
 
-class Kernel;
-using MapExpr = Kernel;
+std::string ToTxtString(const Value& value);
 
-void ToTextStringImpl(const Op& op, std::string* string);
-
-void PrintMapExpr(const MapExpr& map_expr, const std::string& group_id);
-
-}  // namespace cinn::adt
+}

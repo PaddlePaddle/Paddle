@@ -65,8 +65,10 @@ struct UnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>
 };
 
 // OpArgIndexes = (tIn [Index], tOut [Index])
-struct OpArgIndexes final : public Tuple<tIn<List<Index>>, tOut<List<Index>>> {
-  using Tuple<tIn<List<Index>>, tOut<List<Index>>>::Tuple;
+template <typename OutIndexT>
+struct OpArgIndexes final
+    : public Tuple<tIn<List<Index>>, tOut<List<OutIndexT>>> {
+  using Tuple<tIn<List<Index>>, tOut<List<OutIndexT>>>::Tuple;
 };
 
 template <typename FakeOpT, typename OutT, typename InT>
@@ -76,14 +78,14 @@ struct InMsgBox2OutMsgBox;
 // (tIn (tInMsgBox OpArgIndexes))
 template <>
 struct InMsgBox2OutMsgBox<tOut<FakeOpPlaceHolder>,
-                          tOut<tOutMsgBox<OpArgIndexes>>,
-                          tIn<tInMsgBox<OpArgIndexes>>>
+                          tOut<OpArgIndexes<std::optional<Index>>>,
+                          tIn<OpArgIndexes<Index>>>
     : public Tuple<tOut<FakeOpPlaceHolder>,
-                   tOut<tOutMsgBox<OpArgIndexes>>,
-                   tIn<tInMsgBox<OpArgIndexes>>> {
+                   tOut<OpArgIndexes<std::optional<Index>>>,
+                   tIn<OpArgIndexes<Index>>> {
   using Tuple<tOut<FakeOpPlaceHolder>,
-              tOut<tOutMsgBox<OpArgIndexes>>,
-              tIn<tInMsgBox<OpArgIndexes>>>::Tuple;
+              tOut<OpArgIndexes<std::optional<Index>>>,
+              tIn<OpArgIndexes<Index>>>::Tuple;
 };
 
 template <typename T0, typename T1>
@@ -102,8 +104,8 @@ DEFINE_ADT_UNION(Equation,
                  Dot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>,
                  UnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>,
                  InMsgBox2OutMsgBox<tOut<FakeOpPlaceHolder>,
-                                    tOut<tOutMsgBox<OpArgIndexes>>,
-                                    tIn<tInMsgBox<OpArgIndexes>>>,
+                                    tOut<OpArgIndexes<std::optional<Index>>>,
+                                    tIn<OpArgIndexes<Index>>>,
                  ConstantFunction<tOut<Iterator>, tIn<Index>>);
 // clang-format on
 

@@ -14,13 +14,10 @@
 
 #pragma once
 
+#include "paddle/cinn/adt/equation_constant.h"
+
 namespace cinn::adt {
 
-class Kernel;
-using MapExpr = Kernel;
+std::string ToTxtString(const Constant& constant);
 
-void ToTextStringImpl(const Op& op, std::string* string);
-
-void PrintMapExpr(const MapExpr& map_expr, const std::string& group_id);
-
-}  // namespace cinn::adt
+}

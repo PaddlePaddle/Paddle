@@ -18,16 +18,19 @@
 #include "paddle/cinn/adt/m_expr.h"
 #include "paddle/cinn/adt/naive_op_equation_context.h"
 #include "paddle/cinn/adt/op_arg_pos.h"
+#include "paddle/cinn/adt/print_equations.h"
 
 #include "glog/logging.h"
+
 
 namespace cinn::adt::config {
 
 namespace {
 
-using InBox2OutBox = InMsgBox2OutMsgBox<tOut<FakeOpPlaceHolder>,
-                                        tOut<tOutMsgBox<OpArgIndexes>>,
-                                        tIn<tInMsgBox<OpArgIndexes>>>;
+using InBox2OutBox =
+    InMsgBox2OutMsgBox<tOut<FakeOpPlaceHolder>,
+                       tOut<OpArgIndexes<std::optional<Index>>>,
+                       tIn<OpArgIndexes<Index>>>;
 
 template <typename HandleInMsgBox2OutMsgBoxT, typename HandleOtherT>
 Equations TransformEquations(
@@ -45,34 +48,52 @@ Equations TransformEquations(
   return equations;
 }
 
-List<Index> GetNonErasedIndexes(const List<Index>& origin_indexes,
-                                const std::vector<Index>& erased_indexes) {
-  List<Index> indexes{};
-  for (const auto& index : *origin_indexes) {
-    if (std::find(erased_indexes.begin(), erased_indexes.end(), index) ==
-        erased_indexes.end()) {
-      indexes->emplace_back(index);
+List<std::optional<Index>> GetMaskedOutIndexes(
+    const List<Index>& in_box_out_indexes,
+    const List<std::optional<Index>>& out_box_out_indexes,
+    const std::vector<Index>& erased_in_msg_box_out_tensor_indexes) {
+  List<std::optional<Index>> ret{};
+  const auto& erased = erased_in_msg_box_out_tensor_indexes;
+  CHECK_EQ(in_box_out_indexes->size(), out_box_out_indexes->size());
+  for (std::size_t i = 0; i < in_box_out_indexes->size(); ++i) {
+    const auto& in_box_index = in_box_out_indexes->at(i);
+    if (std::find(erased.begin(), erased.end(), in_box_index) == erased.end()) {
+      ret->emplace_back(out_box_out_indexes->at(i));
+    } else {
+      ret->emplace_back(std::nullopt);
     }
   }
-  return indexes;
+  return ret;
 }
 
-Equation EraseIndexes(const Equation& equation,
-                      const std::vector<Index>& erased_output_tensor_indexes) {
+Equation EraseIndexes(
+    const Equation& equation,
+    const std::vector<Index>& erased_in_msg_box_out_tensor_indexes) {
   const auto& in_msg_box2out_msg_box = equation.Get<InBox2OutBox>();
   const auto& [op_placeholder, out_box_indexes, in_box_indexes] =
       in_msg_box2out_msg_box.tuple();
+
+  const auto& [_, in_box_out_indexes] = in_box_indexes.value().tuple();
   const auto& [out_box_in_indexes, out_box_out_indexes] =
-      out_box_indexes.value().value().tuple();
-  const auto& non_erased_out_box_out_indexes = GetNonErasedIndexes(
-      out_box_out_indexes.value(), erased_output_tensor_indexes);
-  return InBox2OutBox{op_placeholder,
-                      tOut<tOutMsgBox<OpArgIndexes>>{OpArgIndexes{
-                          out_box_in_indexes, non_erased_out_box_out_indexes}},
-                      in_box_indexes};
+      out_box_indexes.value().tuple();
+  const auto& masked_out_indexes =
+      GetMaskedOutIndexes(in_box_out_indexes.value(),
+                          out_box_out_indexes.value(),
+                          erased_in_msg_box_out_tensor_indexes);
+
+  OpArgIndexes<std::optional<Index>> out_box{out_box_in_indexes,
+                                             masked_out_indexes};
+
+  Equation ret_equation = InBox2OutBox{op_placeholder, out_box, in_box_indexes};
+
+  return ret_equation;
 }
 
 }  // namespace
+
+void NaiveOpEquationContext::Print() {
+  VLOG(3) << "equations : \n" << ToTxtString(equations(), "\n");
+}
 
 void NaiveOpEquationContext::EraseOutMsgBoxIndexes(
     const std::vector<Index>& erased_output_tensor_indexes) {
@@ -92,11 +113,10 @@ std::vector<std::uint64_t> MakeTensorRanks(const List<Arg>& arg_lists) {
   return ret;
 }
 
-void GenerateOpEquations(const OpStmt& op_stmt,
-                         config::NaiveOpEquationContext* ctx) {
-  const auto& [op, inputs, outputs] = op_stmt.tuple();
-  CHECK(op.Has<const hlir::framework::Node*>());
-  const hlir::framework::Node* op_node = op.Get<const hlir::framework::Node*>();
+void GenerateOpEquationsImpl(const hlir::framework::Node* op_node,
+                             const OpStmt& op_stmt,
+                             config::NaiveOpEquationContext* ctx) {
+  const auto& [_, inputs, outputs] = op_stmt.tuple();
 
   using GenerateEquationFunc =
       std::function<void(config::OpEquationContext * ctx)>;
@@ -127,6 +147,56 @@ GetArgStaticDimT MakeGetArgStaticDimT(const List<Tensor>& tensors) {
   };
 }
 
+void GenerateOpEquationsImpl(
+    const tReduceAcc<const hlir::framework::Node*>& op_node,
+    const OpStmt& op_stmt,
+    config::NaiveOpEquationContext* ctx) {
+  GenerateOpEquationsImpl(op_node.value(), op_stmt, ctx);
+}
+
+void GenerateOpEquationsImpl(
+    const tReduceInit<const hlir::framework::Node*>& op_node,
+    const OpStmt& op_stmt,
+    config::NaiveOpEquationContext* ctx) {
+  // Do nothing
+}
+
+void GenerateOpEquations(const OpStmt& op_stmt,
+                         config::NaiveOpEquationContext* ctx) {
+  const auto& [op, inputs, outputs] = op_stmt.tuple();
+
+  return std::visit(
+      [&](const auto& impl) {
+        return GenerateOpEquationsImpl(impl, op_stmt, ctx);
+      },
+      op.variant());
+}
+
+const hlir::framework::AttrMapType* GetOpAttrImpl(
+    const hlir::framework::Node* op_node) {
+  return &op_node->attrs.attr_store;
+}
+
+const hlir::framework::AttrMapType* GetOpAttrImpl(
+    const tReduceInit<const hlir::framework::Node*>&) {
+  static hlir::framework::AttrMapType empty{};
+  return &empty;
+}
+
+const hlir::framework::AttrMapType* GetOpAttrImpl(
+    const tReduceAcc<const hlir::framework::Node*>& op_node) {
+  return GetOpAttrImpl(op_node.value());
+}
+
+const hlir::framework::AttrMapType* GetOpAttr(const OpStmt& op_stmt) {
+  const auto& [op_node, inputs, outputs] = op_stmt.tuple();
+
+  const auto* attr = std::visit(
+      [&](const auto& impl) { return GetOpAttrImpl(impl); }, op_node.variant());
+
+  return attr;
+}
+
 std::shared_ptr<config::NaiveOpEquationContext> MakeContextAndGenerateEquations(
     const OpStmt& op_stmt) {
   const auto& [op, inputs, outputs] = op_stmt.tuple();
@@ -134,7 +204,8 @@ std::shared_ptr<config::NaiveOpEquationContext> MakeContextAndGenerateEquations(
       MakeTensorRanks(inputs.value()),
       MakeTensorRanks(outputs.value()),
       MakeGetArgStaticDimT(inputs.value()),
-      MakeGetArgStaticDimT(outputs.value()));
+      MakeGetArgStaticDimT(outputs.value()),
+      GetOpAttr(op_stmt));
 
   GenerateOpEquations(op_stmt, ctx.get());
 

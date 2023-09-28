@@ -21,6 +21,7 @@
 #include "paddle/cinn/adt/equation_value.h"
 #include "paddle/cinn/adt/schedule_descriptor.h"
 #include "paddle/cinn/adt/tags.h"
+#include "paddle/cinn/adt/tree.h"
 
 namespace cinn {
 namespace hlir {
@@ -101,7 +102,10 @@ OVERRIDE_UNION_GET_HASH_VALUE(Tensor);
 OVERLOAD_OPERATOR_EQ_NE(Tensor, UnionEqual);
 
 // Op = const Node*
-DEFINE_ADT_UNION(Op, const hlir::framework::Node*);
+DEFINE_ADT_UNION(Op,
+                 const hlir::framework::Node*,
+                 tReduceInit<const hlir::framework::Node*>,
+                 tReduceAcc<const hlir::framework::Node*>);
 
 using Arg = Tensor;
 
@@ -119,25 +123,34 @@ inline std::size_t GetHashValue(const OpStmt& op_stmt_node) {
   return reinterpret_cast<std::size_t>(&op_stmt_node.tuple());
 }
 
-// MapStmt T = (ScheduleDescriptor, [T])
+using LoopIterators = List<Iterator>;
+// MapStmt T = ([Iterator], [T])
 template <typename T>
-class MapStmt final : public Tuple<ScheduleDescriptor, List<T>> {
+class MapStmt final : public Tuple<LoopIterators, List<T>> {
  public:
-  using Tuple<ScheduleDescriptor, List<T>>::Tuple;
+  using value_type = LoopIterators;
+  using Tuple<LoopIterators, List<T>>::Tuple;
 };
 
 // Stmt = OpStmt | MapStmt Stmt
-DEFINE_ADT_UNION(Stmt, OpStmt, MapStmt<Stmt>);
+using Stmt = Tree<MapStmt, OpStmt>;
 
 using TensorIndexExpr = Value;
-using TensorIndexExpr4TensorT =
-    std::function<const TensorIndexExpr*(const Tensor&)>;
+using TensorIndexExpr4TensorT = std::function<TensorIndexExpr(const Tensor&)>;
+using LoopDescriptor4LoopIteratorT =
+    std::function<LoopDescriptor(const Iterator&)>;
 
-// AnchoredMapStmt = (MapStmt Stmt, tAnchor Tensor, TensorIndexExpr4TensorT)
-class AnchoredMapStmt final
-    : public Tuple<MapStmt<Stmt>, tAnchor<Tensor>, TensorIndexExpr4TensorT> {
+// AnchoredMapStmt = (MapStmt Stmt, tAnchor Tensor, TensorIndexExpr4TensorT,
+// LoopDescriptor4LoopIteratorT)
+class AnchoredMapStmt final : public Tuple<MapStmt<Stmt>,
+                                           tAnchor<Tensor>,
+                                           TensorIndexExpr4TensorT,
+                                           LoopDescriptor4LoopIteratorT> {
  public:
-  using Tuple<MapStmt<Stmt>, tAnchor<Tensor>, TensorIndexExpr4TensorT>::Tuple;
+  using Tuple<MapStmt<Stmt>,
+              tAnchor<Tensor>,
+              TensorIndexExpr4TensorT,
+              LoopDescriptor4LoopIteratorT>::Tuple;
 };
 
 // Kernel = ([AnchoredMapStmt], In [Tensor], Out [Tensor])

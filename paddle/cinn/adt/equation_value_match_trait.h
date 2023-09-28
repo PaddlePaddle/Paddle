@@ -133,6 +133,8 @@ struct MatchTrait<Value, List<T>> final {
   };
 
 DEFINE_MATCH_TRAIT_VALUE_UNION_ARGSIZE_2(ListGetItem, Value, Constant);
+DEFINE_MATCH_TRAIT_VALUE_UNION_ARGSIZE_2(IndexDot, Value, Constant);
+DEFINE_MATCH_TRAIT_VALUE_UNION_ARGSIZE_2(IndexUnDot, Value, Constant);
 
 #define DEFINE_ADT_MATCH_TRAIT_EQUATION(name)                              \
   template <typename T>                                                    \
@@ -147,8 +149,6 @@ DEFINE_MATCH_TRAIT_VALUE_UNION_ARGSIZE_2(ListGetItem, Value, Constant);
     }                                                                      \
   };
 
-DEFINE_ADT_MATCH_TRAIT_EQUATION(IndexDot);
-DEFINE_ADT_MATCH_TRAIT_EQUATION(IndexUnDot);
 DEFINE_ADT_MATCH_TRAIT_EQUATION(ConstantAdd);
 DEFINE_ADT_MATCH_TRAIT_EQUATION(ConstantDiv);
 DEFINE_ADT_MATCH_TRAIT_EQUATION(ConstantMod);

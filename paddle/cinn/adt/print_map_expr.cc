@@ -15,6 +15,7 @@
 #include <string>
 
 #include "paddle/cinn/adt/m_expr.h"
+#include "paddle/cinn/adt/print_equations.h"
 #include "paddle/cinn/adt/print_map_expr.h"
 #include "paddle/cinn/adt/schedule_descriptor.h"
 
@@ -73,13 +74,37 @@ void ToTxtString(const List<Arg>& out_args,
   }
 }
 
+void ToTextStringImplOpImpl(const hlir::framework::Node* op,
+                            std::string* string) {
+  *string += op->op()->name;
+}
+
+void ToTextStringImplOpImpl(const tReduceInit<const hlir::framework::Node*>& op,
+                            std::string* string) {
+  *string += op.value()->op()->name;
+  *string += "_init";
+}
+
+void ToTextStringImplOpImpl(const tReduceAcc<const hlir::framework::Node*>& op,
+                            std::string* string) {
+  *string += op.value()->op()->name;
+  *string += "_acc";
+}
+
+void ToTextStringImpl(const Op& op, std::string* string) {
+  std::visit(
+      [&](const auto& impl) { return ToTextStringImplOpImpl(impl, string); },
+      op.variant());
+}
+
 void ToTextStringImpl(const OpStmt& op_stmt,
                       std::size_t indent_size,
                       std::string* string) {
   const auto& [op, in_args, out_args] = op_stmt.tuple();
-  CHECK(op.Has<const hlir::framework::Node*>());
+
   *string += GetIndentString(indent_size * kIndentSpaceSize);
-  *string += op.Get<const hlir::framework::Node*>()->op()->name;
+
+  ToTextStringImpl(op, string);
   ToTxtString(out_args.value(), in_args.value(), string, true);
 }
 
@@ -116,9 +141,9 @@ void ToTextString(const Stmt& stmt,
 void ToTextStringImpl(const MapStmt<Stmt>& map_stmt,
                       std::size_t indent_size,
                       std::string* string) {
-  const auto& [schedule_descriptor, stmts] = map_stmt.tuple();
+  const auto& [loop_iterators, stmts] = map_stmt.tuple();
   *string += GetIndentString(indent_size * kIndentSpaceSize) + "MapStmt(";
-  ToTextString(schedule_descriptor, indent_size, string);
+  *string += ToTxtString(loop_iterators);
   *string += ") {\n";
   for (const auto& stmt : *stmts) {
     ToTextString(stmt, indent_size + 1, string);
@@ -129,7 +154,7 @@ void ToTextStringImpl(const MapStmt<Stmt>& map_stmt,
 void ToTextString(const AnchoredMapStmt& anchored_map_stmt,
                   std::size_t indent_size,
                   std::string* string) {
-  const auto& [map_stmt, anchor_tensor, _] = anchored_map_stmt.tuple();
+  const auto& [map_stmt, anchor_tensor, _0, _1] = anchored_map_stmt.tuple();
   *string +=
       GetIndentString(indent_size * kIndentSpaceSize) + "AnchoredMapStmt(";
   ToTensorTxtString(anchor_tensor.value(), string);

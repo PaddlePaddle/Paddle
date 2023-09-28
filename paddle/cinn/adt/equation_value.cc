@@ -82,13 +82,13 @@ std::string DebugStringImpl(const List<Value>& values) {
   return ret;
 }
 
-std::string DebugStringImpl(const IndexDot<Value>& index_dot) {
+std::string DebugStringImpl(const IndexDot<Value, Constant>& index_dot) {
   const auto& [iters, constant] = index_dot.tuple();
   return std::string() + "IndexDot(" + DebugString(iters) + ", " +
          DebugString(constant) + ")";
 }
 
-std::string DebugStringImpl(const IndexUnDot<Value>& index_undot) {
+std::string DebugStringImpl(const IndexUnDot<Value, Constant>& index_undot) {
   const auto& [index, constant] = index_undot.tuple();
   return std::string() + "IndexUnDot(" + DebugString(index) + ", " +
          DebugString(constant) + ")";

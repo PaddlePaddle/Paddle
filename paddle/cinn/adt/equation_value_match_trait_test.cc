@@ -20,16 +20,18 @@
 namespace cinn::adt::test {
 
 TEST(Match, index_undot) {
-  Value expr = IndexUnDot<Value>{Value{Ok()}, Constant{std::int64_t(1)}};
+  Value expr =
+      IndexUnDot<Value, Constant>{Value{Ok()}, Constant{std::int64_t(1)}};
 
-  bool ret = cinn::adt::Match<IndexUnDot<Value>>(expr);
+  bool ret = cinn::adt::Match<IndexUnDot<Value, Constant>>(expr);
   ASSERT_TRUE(ret);
 }
 
 TEST(Match, index_dot) {
-  Value expr = IndexDot<Value>{Value{Ok()}, Constant{std::int64_t(1)}};
+  Value expr =
+      IndexDot<Value, Constant>{Value{Ok()}, Constant{std::int64_t(1)}};
 
-  bool ret = cinn::adt::Match<IndexDot<Value>>(expr);
+  bool ret = cinn::adt::Match<IndexDot<Value, Constant>>(expr);
   ASSERT_TRUE(ret);
 }
 
@@ -49,48 +51,57 @@ TEST(Match, list_get_item) {
 }
 
 TEST(Match, list_get_item_index_undot) {
-  Value undot1 = IndexUnDot<Value>{Value{Ok()}, Constant{std::int64_t(1)}};
-  ASSERT_TRUE((cinn::adt::Match<IndexUnDot<Value>>(undot1)));
+  Value undot1 =
+      IndexUnDot<Value, Constant>{Value{Ok()}, Constant{std::int64_t(1)}};
+  ASSERT_TRUE((cinn::adt::Match<IndexUnDot<Value, Constant>>(undot1)));
 
   Value expr = ListGetItem<Value, Constant>{undot1, Constant{std::int64_t(1)}};
   ASSERT_TRUE(
-      (cinn::adt::Match<ListGetItem<IndexUnDot<Value>, std::int64_t>>(expr)));
+      (cinn::adt::Match<ListGetItem<IndexUnDot<Value, Constant>, std::int64_t>>(
+          expr)));
 }
 
 // List<ListGetItem<IndexUnDot<Value>, std::int64_t>>
 TEST(Match, list_list_get_item_index_undot) {
-  Value undot = IndexUnDot<Value>{Value{Ok()}, Constant{std::int64_t(1)}};
-  ASSERT_TRUE((cinn::adt::Match<IndexUnDot<Value>>(undot)));
+  Value undot =
+      IndexUnDot<Value, Constant>{Value{Ok()}, Constant{std::int64_t(1)}};
+  ASSERT_TRUE((cinn::adt::Match<IndexUnDot<Value, Constant>>(undot)));
   Value expr1 = ListGetItem<Value, Constant>{undot, Constant{std::int64_t(0)}};
   ASSERT_TRUE(
-      (cinn::adt::Match<ListGetItem<IndexUnDot<Value>, std::int64_t>>(expr1)));
+      (cinn::adt::Match<ListGetItem<IndexUnDot<Value, Constant>, std::int64_t>>(
+          expr1)));
   Value expr2 = ListGetItem<Value, Constant>{undot, Constant{std::int64_t(1)}};
   ASSERT_TRUE(
-      (cinn::adt::Match<ListGetItem<IndexUnDot<Value>, std::int64_t>>(expr2)));
+      (cinn::adt::Match<ListGetItem<IndexUnDot<Value, Constant>, std::int64_t>>(
+          expr2)));
   Value list = List<Value>{expr1, expr2};
   ASSERT_TRUE(
-      (cinn::adt::Match<List<ListGetItem<IndexUnDot<Value>, std::int64_t>>>(
-          list)));
+      (cinn::adt::Match<
+          List<ListGetItem<IndexUnDot<Value, Constant>, std::int64_t>>>(list)));
 }
 
 // IndexDot<List<ListGetItem<IndexUnDot<Value>, std::int64_t>>>
 TEST(Match, index_dot_list_list_get_item_index_undot) {
-  Value undot1 = IndexUnDot<Value>{Value{Ok()}, Constant{std::int64_t(1)}};
-  ASSERT_TRUE((cinn::adt::Match<IndexUnDot<Value>>(undot1)));
+  Value undot1 =
+      IndexUnDot<Value, Constant>{Value{Ok()}, Constant{std::int64_t(1)}};
+  ASSERT_TRUE((cinn::adt::Match<IndexUnDot<Value, Constant>>(undot1)));
   Value expr1 = ListGetItem<Value, Constant>{undot1, Constant{std::int64_t(0)}};
   ASSERT_TRUE(
-      (cinn::adt::Match<ListGetItem<IndexUnDot<Value>, std::int64_t>>(expr1)));
+      (cinn::adt::Match<ListGetItem<IndexUnDot<Value, Constant>, std::int64_t>>(
+          expr1)));
   Value expr2 = ListGetItem<Value, Constant>{undot1, Constant{std::int64_t(1)}};
   ASSERT_TRUE(
-      (cinn::adt::Match<ListGetItem<IndexUnDot<Value>, std::int64_t>>(expr2)));
+      (cinn::adt::Match<ListGetItem<IndexUnDot<Value, Constant>, std::int64_t>>(
+          expr2)));
   Value list = List<Value>{expr1, expr2};
   ASSERT_TRUE(
-      (cinn::adt::Match<List<ListGetItem<IndexUnDot<Value>, std::int64_t>>>(
-          list)));
-  Value dot = IndexDot<Value>{list, Constant{std::int64_t(1)}};
+      (cinn::adt::Match<
+          List<ListGetItem<IndexUnDot<Value, Constant>, std::int64_t>>>(list)));
+  Value dot = IndexDot<Value, Constant>{list, Constant{std::int64_t(1)}};
   ASSERT_TRUE(
       (cinn::adt::Match<
-          IndexDot<List<ListGetItem<IndexUnDot<Value>, std::int64_t>>>>(dot)));
+          IndexDot<List<ListGetItem<IndexUnDot<Value, Constant>, std::int64_t>>,
+                   Constant>>(dot)));
 }
 
 }  // namespace cinn::adt::test

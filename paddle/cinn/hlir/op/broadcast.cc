@@ -284,13 +284,14 @@ void GenerateEquationsForBroadcastTo(
       << "The output is " << ctx->GetOutTensorsRanks().size()
       << "! Please check again.";
   std::size_t out_tensor_rank = ctx->GetOutTensorsRanks().at(0);
-  for (std::size_t i = 0; i < out_tensor_rank; ++i) {
-    ctx->ConditionalEqual(ctx->GetInIteratorTuple(0)->at(i),
+  int start_axis = out_tensor_rank - ctx->GetInTensorsRanks().at(0);
+  for (std::size_t i = start_axis; i < out_tensor_rank; ++i) {
+    ctx->ConditionalEqual(ctx->GetInIteratorTuple(0)->at(i - start_axis),
                           ctx->GetOutIteratorTuple(0)->at(i))
-        ->Where(ctx->EQ(ctx->GetInDimTuple(0)->at(i),
+        ->Where(ctx->EQ(ctx->GetInDimTuple(0)->at(i - start_axis),
                         ctx->GetOutDimTuple(0)->at(i)));
-    ctx->ConditionalEqual(ctx->GetInIteratorTuple(0)->at(i), 0)
-        ->Where(ctx->NE(ctx->GetInDimTuple(0)->at(i),
+    ctx->ConditionalEqual(ctx->GetInIteratorTuple(0)->at(i - start_axis), 0)
+        ->Where(ctx->NE(ctx->GetInDimTuple(0)->at(i - start_axis),
                         ctx->GetOutDimTuple(0)->at(i)));
   }
 }

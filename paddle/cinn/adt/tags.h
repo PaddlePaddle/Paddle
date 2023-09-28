@@ -37,4 +37,7 @@ DEFINE_ADT_TAG(tBreak);
 
 DEFINE_ADT_TAG(tHasNoConflictValue);
 
+DEFINE_ADT_TAG(tReduceInit);
+DEFINE_ADT_TAG(tReduceAcc);
+
 }  // namespace cinn::adt

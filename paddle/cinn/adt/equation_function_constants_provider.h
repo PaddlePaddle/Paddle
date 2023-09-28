@@ -14,13 +14,22 @@
 
 #pragma once
 
+#include <optional>
+
+#include "paddle/cinn/adt/equation_constant.h"
+
 namespace cinn::adt {
 
-class Kernel;
-using MapExpr = Kernel;
+class EquationFunctionConstantsProvider {
+ public:
+  virtual ~EquationFunctionConstantsProvider() = default;
 
-void ToTextStringImpl(const Op& op, std::string* string);
+  virtual Constant GetStrideSize(const Stride& stride) const = 0;
 
-void PrintMapExpr(const MapExpr& map_expr, const std::string& group_id);
+  virtual bool AddStride(const Stride& stride, std::int64_t stride_value) = 0;
+
+ protected:
+  EquationFunctionConstantsProvider() = default;
+};
 
 }  // namespace cinn::adt

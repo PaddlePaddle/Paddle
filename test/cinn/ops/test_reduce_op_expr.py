@@ -19,22 +19,17 @@ from cinn.common import DefaultNVGPUTarget, Float
 from cinn.frontend import NetBuilder
 from op_test import OpTest
 
-inputs = {
-    "x1": OpTest.random([4, 16], "float32", -1.0, 1.0),
-    "x2": OpTest.random([16], "float32", -1.0, 1.0),
-}
+inputs = {"x": OpTest.random([8, 8], "float32", -1.0, 1.0)}
 
-builder = NetBuilder("MapExprTest")
-x1 = builder.create_input(Float(32), inputs["x1"].shape, "x1")
-x2 = builder.create_input(Float(32), inputs["x2"].shape, "x2")
-z = builder.elementwise_add(x1, x2)
-out = builder.relu(z)
+builder = NetBuilder("ReduceMapExprTest")
+x = builder.create_input(Float(32), inputs["x"].shape, "x")
+
+out = builder.reduce_sum(x, [1], False)
+
 prog = builder.build()
 
 target = DefaultNVGPUTarget()
 
 result = prog.build_and_get_output(
-    target, [x1, x2], [inputs["x1"], inputs["x2"]], [out], passes=[], scope=None
+    target, [x], [inputs["x"]], [out], passes=[], scope=None
 )
-
-print("Finish TestReluExpr")

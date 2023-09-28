@@ -22,29 +22,37 @@
 
 namespace cinn::adt {
 
+class EquationFunctionConstantsProvider;
+
 class IndexExprInferContext final {
  public:
   IndexExprInferContext(const IndexExprInferContext&) = delete;
   IndexExprInferContext(IndexExprInferContext&&) = delete;
 
   explicit IndexExprInferContext(
-      const std::unordered_map<Variable, const Value>& init_map)
-      : map_(init_map) {}
+      const std::unordered_map<Variable, const Value>& init_variable2value,
+      const std::shared_ptr<const EquationFunctionConstantsProvider>&
+          constants_provider)
+      : variable2value_(init_variable2value),
+        constants_provider_(constants_provider) {}
 
   const Value& GetValue(const Variable& variable) const {
-    return map_.at(variable);
+    return variable2value_.at(variable);
   }
 
   auto SetValue(const Variable& variable, const Value& value) {
-    return map_.emplace(variable, value);
+    return variable2value_.emplace(variable, value);
   }
 
   bool HasValue(const Variable& variable) const {
-    return map_.count(variable) > 0;
+    return variable2value_.count(variable) > 0;
   }
 
+  Constant GetStrideSize(const Stride& stride) const;
+
  private:
-  std::unordered_map<Variable, const Value> map_;
+  std::unordered_map<Variable, const Value> variable2value_;
+  std::shared_ptr<const EquationFunctionConstantsProvider> constants_provider_;
 };
 
 }  // namespace cinn::adt

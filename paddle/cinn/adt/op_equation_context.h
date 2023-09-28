@@ -88,8 +88,16 @@ class OpEquationContext {
 
   virtual const DimTuple& GetOutDimTuple(std::size_t output_idx) const = 0;
 
+  template <typename T>
+  const T& Attr(const std::string& name) const {
+    return absl::get<T>(GetAttribute(name));
+  }
+
  protected:
   OpEquationContext() = default;
+
+  virtual const utils::Attribute& GetAttribute(
+      const std::string& name) const = 0;
 };
 
 }  // namespace cinn::adt::config

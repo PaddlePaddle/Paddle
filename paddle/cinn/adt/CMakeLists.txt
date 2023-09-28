@@ -6,13 +6,17 @@ gather_srcs(
   equation_solver.cc
   equation_value.cc
   generate_map_expr.cc
+  index_expr_infer_context.cc
   kgroup.cc
   m_ir.cc
   naive_op_equation_context.cc
   partition_op_stmts.cc
   print_map_expr.cc
   schedule_descriptor.cc
-  simplify_value.cc)
+  simplify_value.cc
+  print_equations.cc
+  print_constant.cc
+  print_value.cc)
 
 cinn_cc_test(equation_value_match_trait_test SRCS
              equation_value_match_trait_test.cc DEPS gtest glog)

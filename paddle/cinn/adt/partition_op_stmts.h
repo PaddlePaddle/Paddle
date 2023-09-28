@@ -15,12 +15,15 @@
 #pragma once
 
 #include "paddle/cinn/adt/adt.h"
+#include "paddle/cinn/adt/equation_function_constants_provider.h"
 #include "paddle/cinn/adt/equation_graph.h"
 #include "paddle/cinn/adt/m_expr.h"
 #include "paddle/cinn/adt/naive_op_equation_context.h"
 #include "paddle/cinn/hlir/framework/graph.h"
 
 namespace cinn::adt {
+
+class EquationFunctionConstantsProvider;
 
 using EquationCtx4OpStmtT =
     std::function<std::shared_ptr<config::NaiveOpEquationContext>(
@@ -32,13 +35,22 @@ struct AnchorGroup {
   OpStmt op_stmt;
   List<OpStmt> op_stmts;
   EquationCtx4OpStmtT EquationCtx4OpStmt;
+
+  void PrintEquations() const;
 };
 
 std::vector<AnchorGroup> PartitionOpStmts(
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,
     const List<OpStmt>& op_stmts);
 
-void CheckEquationSolvable(const AnchorGroup& igroup_spec);
+std::vector<AnchorGroup> PartitionOpStmtsV2(
+    const EquationCtx4OpStmtT& EquationCtx4OpStmt,
+    const List<OpStmt>& op_stmts);
+
+void CheckEquationSolvable(
+    const AnchorGroup& igroup_spec,
+    const std::shared_ptr<const EquationFunctionConstantsProvider>&
+        constant_provider);
 
 GraphView MakeGlobalEquationGraphViewForPartition(
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,

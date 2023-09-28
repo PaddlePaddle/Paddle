@@ -21,19 +21,30 @@ namespace cinn::adt {
 
 using AnchorTensor = Variable;
 
+namespace {
+
 std::size_t GetTensorNumel(const Tensor& tensor) {
   CHECK(tensor.Has<adapter::Tensor>());
   return tensor.Get<adapter::Tensor>().GetNumel();
 }
 
+const std::vector<int32_t>& GetTensorShape(const Tensor& tensor) {
+  CHECK(tensor.Has<adapter::Tensor>());
+  return tensor.Get<adapter::Tensor>().GetShape();
+}
+
+}  // namespace
+
 ScheduleDescriptor KGroup::GetDefaultScheduleDescriptor(
     const std::shared_ptr<IGroup>& igroup) const {
   const Tensor& tensor = igroup->anchor_tensor();
 
-  CHECK_EQ(GetTensorNumel(tensor) % 64, 0);
-  return List<LoopDescriptor>{
-      LoopDescriptor{S0x{}, GetTensorNumel(tensor) / 64},
-      LoopDescriptor{S1x{}, 64}};
+  List<LoopDescriptor> ret{};
+  const auto tensor_shape = GetTensorShape(tensor);
+  for (int32_t dim : tensor_shape) {
+    ret->emplace_back(LoopDescriptor{Temporal{}, dim});
+  }
+  return ret;
 }
 
 }  // namespace cinn::adt

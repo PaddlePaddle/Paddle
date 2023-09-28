@@ -29,16 +29,17 @@ using IntTreeInnerT = TreeInner<IntTreeInnerDataT>::template Node<IntVecTree>;
 
 template <>
 struct TreeMerger<test::IntVecTree> {
+  using tree_type = test::IntVecTree;
   using inner_type = typename TreeTrait<test::IntVecTree>::inner_type;
   using leaf_type = typename TreeTrait<test::IntVecTree>::leaf_type;
   using inner_data_type = typename inner_type::value_type;
 
-  static inner_data_type GetInnerDataForLeaf(const leaf_type& leaf) {
+  inner_data_type GetInnerDataForLeaf(const leaf_type& leaf) const {
     return leaf;
   }
 
-  static inner_type MakeInnerNode(const inner_data_type& inner_data,
-                                  const List<test::IntVecTree>& children) {
+  inner_type MakeInnerNode(const inner_data_type& inner_data,
+                           const List<test::IntVecTree>& children) const {
     return inner_type{inner_data, children};
   }
 
@@ -46,8 +47,8 @@ struct TreeMerger<test::IntVecTree> {
                                  tLhsRemainder<inner_data_type>,
                                  tRhsRemainder<inner_data_type>>;
 
-  static MergeResult MergeInnerValue(const inner_data_type& lhs,
-                                     const inner_data_type& rhs) {
+  MergeResult MergeInnerValue(const inner_data_type& lhs,
+                              const inner_data_type& rhs) const {
     inner_data_type common{};
     inner_data_type lhs_remainder{};
     inner_data_type rhs_remainder{};
@@ -74,7 +75,8 @@ namespace test {
 
 TEST(IntVecTree, naive) {
   List<IntTreeLeafT> leaves{IntTreeLeafT{1, 2, 3}, IntTreeLeafT{4, 5, 6}};
-  List<IntVecTree> ret = MakeTreeByMerger<IntVecTree>(leaves);
+  TreeMerger<test::IntVecTree> tree_merger{};
+  List<IntVecTree> ret = MakeMergedTrees(tree_merger, leaves);
   ASSERT_EQ(ret->size(), 2);
 
   ASSERT_TRUE(ret->at(0).Has<IntTreeInnerT>());
@@ -96,7 +98,8 @@ TEST(IntVecTree, naive) {
 
 TEST(IntVecTree, left_equal_right) {
   List<IntTreeLeafT> leaves{IntTreeLeafT{1, 2, 3}, IntTreeLeafT{1, 2, 3}};
-  List<IntVecTree> ret = MakeTreeByMerger<IntVecTree>(leaves);
+  List<IntVecTree> ret =
+      MakeMergedTrees(TreeMerger<test::IntVecTree>{}, leaves);
   ASSERT_EQ(ret->size(), 1);
 
   ASSERT_TRUE(ret->at(0).Has<IntTreeInnerT>());
@@ -112,7 +115,8 @@ TEST(IntVecTree, left_equal_right) {
 
 TEST(IntVecTree, left_gt_right) {
   List<IntTreeLeafT> leaves{IntTreeLeafT{1, 2, 3, 4, 5}, IntTreeLeafT{1, 2, 3}};
-  List<IntVecTree> ret = MakeTreeByMerger<IntVecTree>(leaves);
+  List<IntVecTree> ret =
+      MakeMergedTrees(TreeMerger<test::IntVecTree>{}, leaves);
   ASSERT_EQ(ret->size(), 1);
 
   ASSERT_TRUE(ret->at(0).Has<IntTreeInnerT>());
@@ -136,7 +140,8 @@ TEST(IntVecTree, left_gt_right) {
 
 TEST(IntVecTree, left_lt_right) {
   List<IntTreeLeafT> leaves{IntTreeLeafT{1, 2, 3}, IntTreeLeafT{1, 2, 3, 4, 5}};
-  List<IntVecTree> ret = MakeTreeByMerger<IntVecTree>(leaves);
+  List<IntVecTree> ret =
+      MakeMergedTrees(TreeMerger<test::IntVecTree>{}, leaves);
   ASSERT_EQ(ret->size(), 1);
 
   ASSERT_TRUE(ret->at(0).Has<IntTreeInnerT>());
@@ -161,7 +166,8 @@ TEST(IntVecTree, left_lt_right) {
 TEST(IntVecTree, left_ne_right) {
   List<IntTreeLeafT> leaves{IntTreeLeafT{1, 2, 3, 4, 5},
                             IntTreeLeafT{1, 2, 3, 6, 7}};
-  List<IntVecTree> ret = MakeTreeByMerger<IntVecTree>(leaves);
+  List<IntVecTree> ret =
+      MakeMergedTrees(TreeMerger<test::IntVecTree>{}, leaves);
   ASSERT_EQ(ret->size(), 1);
 
   ASSERT_TRUE(ret->at(0).Has<IntTreeInnerT>());
