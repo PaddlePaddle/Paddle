@@ -34,18 +34,18 @@ from .library import (
 )
 
 MATMUL_EPILOGUE_MAP = {
-    "cutlass.matmul": (EpilogueFunctor.LinearCombination, False),
-    "cutlass.matmul_bias": (EpilogueFunctor.LinearCombinationBias, True),
-    "cutlass.matmul_bias_relu": (EpilogueFunctor.LinearCombinationRelu, True),
-    "cutlass.matmul_bias_gelu_fp16": (
+    "cutlass_matmul": (EpilogueFunctor.LinearCombination, False),
+    "cutlass_matmul_bias": (EpilogueFunctor.LinearCombinationBias, True),
+    "cutlass_matmul_bias_relu": (EpilogueFunctor.LinearCombinationRelu, True),
+    "cutlass_matmul_bias_gelu_fp16": (
         EpilogueFunctor.LinearCombinationGelu,
         False,
     ),
-    "cutlass.matmul_bias_gelu_fp32": (
+    "cutlass_matmul_bias_gelu_fp32": (
         EpilogueFunctor.LinearCombinationGelu,
         False,
     ),
-    "cutlass.batch_matmul": (EpilogueFunctor.LinearCombination, False),
+    "cutlass_batch_matmul": (EpilogueFunctor.LinearCombination, False),
 }
 
 

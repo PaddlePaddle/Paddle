@@ -112,6 +112,8 @@ void cinn_call_cuda_kernel(void* kernel_fn,
                            int block_z,
                            void* stream);
 
+void cinn_call_cutlass_kernel(void* kernel_fn, void* v_args);
+
 void cinn_call_cublas(void* v_args,
                       int num_args,
                       bool trans_a,

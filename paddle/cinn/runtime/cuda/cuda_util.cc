@@ -126,6 +126,16 @@ void cinn_call_cuda_kernel(void *kernel_fn,
   }
 }
 
+void cinn_call_cutlass_kernel(void *kernel_fn, void *v_args) {
+  cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
+  void *A = args[0].operator cinn_buffer_t *()->memory;
+  void *B = args[1].operator cinn_buffer_t *()->memory;
+  void *C = args[2].operator cinn_buffer_t *()->memory;
+  // cutlass_tensorop_h1688gemm_256x128_32x2_tn_align8_kernel(A, B, C);
+  // auto tmp =
+  //     static_cast<std::function<void(void *, void *, void *)>>(kernel_fn);
+}
+
 void cinn_call_cublas(void *v_args,
                       int num_args,
                       bool trans_a,

@@ -442,6 +442,14 @@ CINN_REGISTER_HELPER(cinn_cuda_host_api) {
       .AddInputType<void *>()  // stream
       .End();
 
+  using cinn::runtime::cuda::cinn_call_cutlass_kernel;
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cutlass_kernel,
+                              cinn::common::DefaultHostTarget())
+      .SetRetType<void>()
+      .AddInputType<void *>()  // kernel_fn
+      .AddInputType<void *>()  // args
+      .End();
+
   using cinn::runtime::cuda::cinn_call_cublas;
   REGISTER_EXTERN_FUNC_HELPER(cinn_call_cublas,
                               cinn::common::DefaultHostTarget())

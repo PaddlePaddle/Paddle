@@ -12,7 +12,6 @@ gather_srcs(
   reduction.cc
   op_util.cc
   custom_call.cc
-  cutlass.cc
   external_api_registry.cc)
 
 cinn_cc_test(test_cinn_op_broadcast SRCS op_broadcast_test.cc DEPS cinncore)

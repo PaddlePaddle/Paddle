@@ -106,13 +106,13 @@ def generate_tensor_op_common(
 
 
 def generate_sm50_simt(
-    out_dtype, arg0_dtype, arg1_dtype, op_creator, accumulator_dtype="float32"
+    out_dtype, in0_dtype, in1_dtype, op_creator, accumulator_dtype="float32"
 ):
     """Gemerate GEMM or Conv2D SIMT kernels"""
     # pylint: disable=unused-argument
     min_cc = 50
     max_cc = 1024
-    if arg0_dtype == "float32" and arg1_dtype == "float32":
+    if in0_dtype == "float32" and in1_dtype == "float32":
         assert out_dtype == "float32" and accumulator_dtype == "float32"
         math_instructions = [
             MathInstruction(
@@ -158,9 +158,9 @@ def generate_sm50_simt(
 
 
 def generate_sm75_tensor_op_1688(
+    in0_dtype,
+    in1_dtype,
     out_dtype,
-    arg0_dtype,
-    arg1_dtype,
     op_creator,
     check_align,
     _,
@@ -172,7 +172,7 @@ def generate_sm75_tensor_op_1688(
     min_cc = 75
     max_cc = 1024
 
-    if arg0_dtype == "float16" and arg1_dtype == "float16":
+    if in0_dtype == "float16" and in1_dtype == "float16":
         math_instructions = [
             MathInstruction(
                 [16, 8, 8],
@@ -195,13 +195,13 @@ def generate_sm75_tensor_op_1688(
             ([64, 128, 64], 2, [1, 2, 2], min_cc, max_cc),
         ]
 
-    elif "int8" in arg0_dtype and "int8" in arg1_dtype:
+    elif "int8" in in0_dtype and "int8" in in1_dtype:
         assert out_dtype == "int32"
         math_instructions = [
             MathInstruction(
                 [8, 8, 16],
-                dtype_map[arg0_dtype],
-                dtype_map[arg1_dtype],
+                dtype_map[in0_dtype],
+                dtype_map[in1_dtype],
                 DataType.s32,
                 DataType.s32,
                 OpcodeClass.TensorOp,
@@ -220,12 +220,12 @@ def generate_sm75_tensor_op_1688(
             ([64, 64, 64], 2, [2, 2, 1], min_cc, max_cc),
         ]
     elif (
-        arg0_dtype == "float32"
-        and arg1_dtype == "float32"
+        in0_dtype == "float32"
+        and in1_dtype == "float32"
         and out_dtype == "float32"
     ):
         return generate_sm50_simt(
-            out_dtype, arg0_dtype, arg1_dtype, op_creator, accumlator_dtype
+            out_dtype, in0_dtype, in1_dtype, op_creator, accumlator_dtype
         )
     else:
         raise NotImplementedError()
@@ -255,9 +255,9 @@ def generate_sm75_tensor_op_1688(
 
 
 def generate_sm80_tensor_op_16816(
+    in0_dtype,
+    in1_dtype,
     out_dtype,
-    arg0_dtype,
-    arg1_dtype,
     op_creator,
     check_align,
     use_3xtf32=True,
@@ -351,7 +351,7 @@ def generate_sm80_tensor_op_16816(
             ([64, 64, int(64 * block_k_factor)], 5, [2, 2, 1], min_cc, max_cc),
         ]
 
-    if arg0_dtype == "float16" and arg1_dtype == "float16":
+    if in0_dtype == "float16" and in1_dtype == "float16":
         math_instructions = [
             MathInstruction(
                 [16, 8, 16],
@@ -365,7 +365,7 @@ def generate_sm80_tensor_op_16816(
         ]
         alignment_constraints = [8, 4, 2]
         tile_descriptions = get_default_tile_descriptions(1)
-    elif arg0_dtype == "float32" and arg1_dtype == "float32":
+    elif in0_dtype == "float32" and in1_dtype == "float32":
         math_instructions = [
             MathInstruction(
                 [16, 8, 8],
@@ -405,8 +405,8 @@ def generate_sm80_tensor_op_16816(
         math_instructions = [
             MathInstruction(
                 [16, 8, 32],
-                dtype_map[arg0_dtype],
-                dtype_map[arg1_dtype],
+                dtype_map[in0_dtype],
+                dtype_map[in1_dtype],
                 DataType.s32,
                 DataType.s32,
                 OpcodeClass.TensorOp,
@@ -431,11 +431,11 @@ def generate_sm80_tensor_op_16816(
     if len(alignment_constraints) > 0 and not profile_all_alignments:
         alignment_constraints = [alignment_constraints[0]]
 
-    if arg0_dtype != "float32" and arg1_dtype != "float32":
+    if in0_dtype != "float32" and in1_dtype != "float32":
         sm75_kernels = generate_sm75_tensor_op_1688(
+            in0_dtype,
+            in1_dtype,
             out_dtype,
-            arg0_dtype,
-            arg1_dtype,
             op_creator,
             check_align,
             False,
@@ -569,10 +569,10 @@ def instantiate_template(func_name, annotations, func_args):
         if k in annotations:
             attrs[k] = annotations[k]
 
-    arg0_shape = annotations["arg0_shape"]
-    arg1_shape = annotations["arg1_shape"]
-    attrs["ElementInputA"] = DataTypeTag[dtype_map[annotations["arg0_dtype"]]]
-    attrs["ElementInputB"] = DataTypeTag[dtype_map[annotations["arg1_dtype"]]]
+    in0_shape = annotations["in0_shape"]
+    in1_shape = annotations["in1_shape"]
+    attrs["ElementInputA"] = DataTypeTag[dtype_map[annotations["in0_dtype"]]]
+    attrs["ElementInputB"] = DataTypeTag[dtype_map[annotations["in1_dtype"]]]
     attrs["ElementOutput"] = DataTypeTag[dtype_map[annotations["ret_dtype"]]]
 
     headers = []
@@ -601,34 +601,34 @@ def instantiate_template(func_name, annotations, func_args):
         return f"{var_name}->shape[{batched_offset + axis_idx}]"
 
     def get_batch_stride(
-        stride_annot, arg0_idx, arg1_idx, arg0_axis_idx, arg1_axis_idx
+        stride_annot, in0_idx, in1_idx, in0_axis_idx, in1_axis_idx
     ):
         if isinstance(stride_annot, IntImm):
             return str(int(stride_annot))
-        dim1 = func_args[arg0_idx] + f"->shape[{arg0_axis_idx}]"
-        dim2 = func_args[arg1_idx] + f"->shape[{arg1_axis_idx}]"
+        dim1 = func_args[in0_idx] + f"->shape[{in0_axis_idx}]"
+        dim2 = func_args[in1_idx] + f"->shape[{in1_axis_idx}]"
         return dim1 + " * " + dim2
 
     if "dense" in func_name or "matmul" in func_name:
         batched = "batch_matmul" in func_name
         batched_offset = 1 if batched else 0
-        attrs["K"] = str(int(arg0_shape[batched_offset + 1]))
+        attrs["K"] = str(int(in0_shape[batched_offset + 1]))
         attrs["M"] = get_dim(
-            arg0_shape[batched_offset], func_args[0], 0, batched_offset
+            in0_shape[batched_offset], func_args[0], 0, batched_offset
         )
 
         if annotations["ldb"] == "N":
             attrs["N"] = get_dim(
-                arg1_shape[batched_offset + 1], func_args[1], 1, batched_offset
+                in1_shape[batched_offset + 1], func_args[1], 1, batched_offset
             )
         else:
             attrs["N"] = get_dim(
-                arg1_shape[batched_offset], func_args[1], 0, batched_offset
+                in1_shape[batched_offset], func_args[1], 0, batched_offset
             )
 
         if batched:
             headers.append("cutlass/gemm/device/gemm_batched.h")
-            attrs["batch"] = get_dim(arg0_shape[0], func_args[0], 0)
+            attrs["batch"] = get_dim(in0_shape[0], func_args[0], 0)
             attrs["batch_stride_A"] = get_batch_stride(
                 annotations["batch_stride_A"], 0, 0, 1, 2
             )

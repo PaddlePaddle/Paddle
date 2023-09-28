@@ -25,9 +25,9 @@ def select_gemm_kernel(
     MM,
     KK,
     NN,
+    in0_dtype,
+    in1_dtype,
     out_dtype,
-    arg0_dtype,
-    arg1_dtype,
     use_3xtf32,
     batched,
     find_first_valid,
@@ -39,9 +39,9 @@ def select_gemm_kernel(
         MM,
         NN,
         KK,
+        in0_dtype,
+        in1_dtype,
         out_dtype,
-        arg0_dtype,
-        arg1_dtype,
         use_3xtf32,
         batched=batched,
         find_first_valid=find_first_valid,
@@ -58,19 +58,20 @@ def select_gemm_kernel(
 def handle_batch_matmul(
     cutlass_profiler,
     op_type,
-    arg0_shape,
-    arg1_shape,
+    M,
+    N,
+    K,
+    in0_dtype,
+    in1_dtype,
     out_dtype,
-    arg0_dtype,
-    arg1_dtype,
     use_3xtf32,
     find_first_valid,
     use_multiprocessing,
 ):
     """Profile and select a kernel for batch_matmul op workload."""
-    MM = arg0_shape[1]
-    KK = arg0_shape[2]
-    NN = arg1_shape[1]
+    MM = M
+    KK = K
+    NN = N
 
     name, cutlass_op_def = select_gemm_kernel(
         cutlass_profiler,
@@ -79,8 +80,8 @@ def handle_batch_matmul(
         KK,
         NN,
         out_dtype,
-        arg0_dtype,
-        arg1_dtype,
+        in0_dtype,
+        in1_dtype,
         use_3xtf32,
         True,
         find_first_valid,
@@ -88,10 +89,6 @@ def handle_batch_matmul(
     )
 
     return {
-        "batch": arg0_shape[0],
-        "batch_stride_A": arg0_shape[1] * arg0_shape[2],
-        "batch_stride_B": arg1_shape[1] * arg1_shape[2],
-        "batch_stride_C": arg0_shape[1] * arg1_shape[1],
         "cutlass_op_def": cutlass_op_def,
         "cutlass_op_name": name,
         "lda": "K",
@@ -103,19 +100,20 @@ def handle_batch_matmul(
 def handle_matmul(
     cutlass_profiler,
     op_type,
-    arg0_shape,
-    arg1_shape,
+    M,
+    N,
+    K,
+    in0_dtype,
+    in1_dtype,
     out_dtype,
-    arg0_dtype,
-    arg1_dtype,
     use_3xtf32,
     find_first_valid,
     use_multiprocessing,
 ):
     """Profile and select a kernel for dense op workload."""
-    MM = arg0_shape[0]
-    KK = arg0_shape[1]
-    NN = arg1_shape[0]
+    MM = M
+    KK = K
+    NN = N
 
     name, cutlass_op_def = select_gemm_kernel(
         cutlass_profiler,
@@ -123,9 +121,9 @@ def handle_matmul(
         MM,
         KK,
         NN,
+        in0_dtype,
+        in1_dtype,
         out_dtype,
-        arg0_dtype,
-        arg1_dtype,
         use_3xtf32,
         False,
         find_first_valid,
@@ -147,12 +145,19 @@ def handle_matmul(
 
 def gen_gemm_kernel(
     sm,
-    # use_3xtf32=True,
-    # split_k_slices=[1],
-    # profile_all_alignments=False,
-    # find_first_valid=True,
-    # use_multiprocessing=False,
-    # tmp_dir="./tmp",
+    op_type='cutlass_matmul',
+    M=128,
+    N=128,
+    K=128,
+    in0_dtype='float16',
+    in1_dtype='float16',
+    out_dtype='float16',
+    find_first_valid=True,
+    use_3xtf32=True,
+    split_k_slices=[1],
+    profile_all_alignments=False,
+    use_multiprocessing=False,
+    tmp_dir="./tmp",
 ):
     """(TODO)Given a module partitioned for CUTLASS offloading, profile each workload to select which
     kernels to emit.
@@ -194,33 +199,21 @@ def gen_gemm_kernel(
         The updated module annotated with cutlass profiling information.
     """
     # Profiler for dense operators. May cache results between tuned functions.
-    use_3xtf32 = True
-    split_k_slices = ([1],)
-    profile_all_alignments = False
-    find_first_valid = True
-    use_multiprocessing = False
-    tmp_dir = "./tmp"
     gemm_profiler = GemmProfiler(sm, get_cutlass_path(), tmp_dir)
-    out_shape = [128, 128]
-    out_dtype = 'float16'
-    op_type = 'cutlass.matmul'
 
     new_attrs = {"op_type": op_type}
-    arg0_shape = [128, 128]
-    arg1_shape = [128, 128]
-    arg0_dtype = 'float16'
-    arg1_dtype = 'float16'
 
     if "batch_matmul" in op_type:
         new_attrs.update(
             handle_batch_matmul(
                 gemm_profiler,
                 op_type,
-                arg0_shape,
-                arg1_shape,
+                M,
+                N,
+                K,
+                in0_dtype,
+                in1_dtype,
                 out_dtype,
-                arg0_dtype,
-                arg1_dtype,
                 use_3xtf32,
                 find_first_valid,
                 use_multiprocessing,
@@ -231,11 +224,12 @@ def gen_gemm_kernel(
             handle_matmul(
                 gemm_profiler,
                 op_type,
-                arg0_shape,
-                arg1_shape,
+                M,
+                N,
+                K,
+                in0_dtype,
+                in1_dtype,
                 out_dtype,
-                arg0_dtype,
-                arg1_dtype,
                 use_3xtf32,
                 find_first_valid,
                 use_multiprocessing,
@@ -243,5 +237,6 @@ def gen_gemm_kernel(
         )
     else:
         raise ValueError(f"{op_type} unsupported composite")
+    print(new_attrs['cutlass_op_name'])
 
-    return new_attrs
+    return new_attrs['cutlass_op_name'], new_attrs['cutlass_op_def']

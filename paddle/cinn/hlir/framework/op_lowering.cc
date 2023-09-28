@@ -218,9 +218,9 @@ std::vector<ir::LoweredFunc> OpLowerer::LowerCutlassCall(
   auto& cinn_strategy = Operator::GetAttrs<StrategyFunction>("CINNStrategy");
   auto impl = OpStrategy::SelectImpl(cinn_strategy[node->op()](
       node->attrs, op_func_arg_tensors, out_types, out_shapes, target_));
-  std::string cutlass_func;
+  std::string op_name = node->op()->name;
   std::vector<common::CINNValue> compute_args = {
-      common::CINNValue(group->GetFuncName()), common::CINNValue(cutlass_func)};
+      common::CINNValue(group->GetFuncName()), common::CINNValue(op_name)};
   common::CINNValuePack pack =
       impl->fcompute(common::CINNValuePack{compute_args});
   CHECK_EQ(pack.size(), 1UL);

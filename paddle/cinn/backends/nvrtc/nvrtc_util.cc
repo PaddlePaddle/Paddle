@@ -203,6 +203,11 @@ void Compiler::CompileToPtx() {
   std::string options = std::string("export PATH=") + FLAGS_cinn_nvcc_cmd_path +
                         std::string(":$PATH && nvcc -std=c++14 --ptx -O3 -I ") +
                         include_dir_str;
+  options += " -I /work/workspace/Paddle/third_party/cutlass/include";
+  options +=
+      " -I /work/workspace/Paddle/third_party/cutlass/tools/util/include";
+  options += " -DCUTLASS_ENABLE_TENSOR_CORE_MMA=1";
+  options += " -Xcompiler=-fPIC";
   options += " -arch=" + GetDeviceArch();
   options += " -o " + prefix_name_ + ".ptx";
   options += " " + prefix_name_ + ".cu";
