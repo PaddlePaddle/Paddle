@@ -158,7 +158,6 @@ bool HogwildWorker::CheckBatchNum(int flag) {
   }
   g_barrier.wait();
   float *stat_ptr = sync_stat_.data<float>();
-  int nranks = 0;
   int ring_id = 0;
   platform::NCCLComm *comm = nullptr;
   const auto &comm_context_manager =
@@ -181,11 +180,9 @@ bool HogwildWorker::CheckBatchNum(int flag) {
                       platform::errors::Unavailable(
                           "NCCLCommContext is nullptr, collective op should "
                           "has ring_id attr."));
-    nranks = comm_ctx->GetSize();
   } else {
     comm = platform::NCCLCommContext::Instance().Get(ring_id,
                                                      place_.GetDeviceId());
-    nranks = comm->nranks();
   }
 
   auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
