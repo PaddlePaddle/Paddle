@@ -57,11 +57,11 @@ void Operation1::Verify() const {
   }
 }
 
-void Operation3::Build(pir::Builder &builder,             // NOLINT
-                       pir::OperationArgument &argument,  // NOLINT
-                       pir::Value l_operand,
-                       pir::Value r_operand,
-                       pir::Type out_type) {
+void TraitExampleOp::Build(pir::Builder &builder,             // NOLINT
+                           pir::OperationArgument &argument,  // NOLINT
+                           pir::Value l_operand,
+                           pir::Value r_operand,
+                           pir::Type out_type) {
   std::unordered_map<std::string, pir::Attribute> attributes{
       {"op3_attr1", builder.str_attr("op3_attr2")},
       {"op3_attr2", builder.str_attr("op3_attr2")}};
@@ -78,4 +78,4 @@ IR_DEFINE_EXPLICIT_TYPE_ID(test::RegionOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(test::BranchOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(test::Operation1)
 IR_DEFINE_EXPLICIT_TYPE_ID(test::Operation2)
-IR_DEFINE_EXPLICIT_TYPE_ID(test::Operation3)
+IR_DEFINE_EXPLICIT_TYPE_ID(test::TraitExampleOp)

@@ -21,7 +21,7 @@ TestDialect::TestDialect(pir::IrContext *context)
   initialize();
 }
 void TestDialect::initialize() {
-  RegisterOps<RegionOp, BranchOp, Operation1, Operation2, Operation3>();
+  RegisterOps<RegionOp, BranchOp, Operation1, Operation2, TraitExampleOp>();
 }
 
 void TestDialect::PrintOperation(pir::Operation *op,

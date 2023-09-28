@@ -31,7 +31,8 @@ Type GetElementTypeOrSelf(Type type);
 /// have the same size and each pair of the elements are equal or one of them is
 /// dynamic.
 ///
-bool VerifyCompatibleShape(phi::DDim shape1, phi::DDim shape2);
+bool VerifyCompatibleShape(const phi::DDim& lhs_shape,
+                           const phi::DDim& rhs_shape);
 
 ///
 /// \brief Returns true if the given two types have compatible shape. That
@@ -40,18 +41,19 @@ bool VerifyCompatibleShape(phi::DDim shape1, phi::DDim shape2);
 /// compatible if at least one is dynamic or both are equal. The element type
 /// does not matter.
 ///
-bool VerifyCompatibleShape(Type type1, Type type2);
+bool VerifyCompatibleShape(Type lhs_type, Type rhs_type);
 
 ///
 /// \brief Dimensions are compatible if all non-dynamic dims are equal.
 ///
-bool VerifyCompatibleDims(std::vector<int64_t> dims);
+bool VerifyCompatibleDims(const std::vector<int64_t>& dims);
 
 ///
 /// \brief Returns true if the given two arrays have the same number of elements
 /// and each pair wise entries have compatible shape.
 ///
-bool VerifyCompatibleShapes(std::vector<Type> types1, std::vector<Type> types2);
+bool VerifyCompatibleShapes(const std::vector<Type>& lhs_types,
+                            const std::vector<Type>& rhs_types);
 
 ///
 /// \brief Returns true if all given types have compatible shapes. That is,
@@ -59,5 +61,5 @@ bool VerifyCompatibleShapes(std::vector<Type> types1, std::vector<Type> types2);
 /// ranked shapes have compatible dimensions. Dimensions are compatible if all
 /// non-dynamic dims are equal. The element type does not matter.
 ///
-bool VerifyCompatibleShapes(std::vector<Type> types);
+bool VerifyCompatibleShapes(const std::vector<Type>& types);
 }  // namespace pir

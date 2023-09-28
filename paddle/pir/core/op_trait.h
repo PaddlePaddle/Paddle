@@ -16,16 +16,16 @@
 
 #include "paddle/pir/core/op_base.h"
 
-namespace pir::op_trait {
+namespace pir {
 
-namespace impl {
+namespace detail {
 void VerifySameOperandsShapeTrait(Operation *op);
 void VerifySameOperandsAndResultShapeTrait(Operation *op);
 void VerifySameOperandsElementTypeTrait(Operation *op);
 void VerifySameOperandsAndResultElementTypeTrait(Operation *op);
 void VerifySameOperandsAndResultTypeTrait(Operation *op);
 void VerifySameTypeOperandsTrait(Operation *op);
-}  // namespace impl
+}  // namespace detail
 
 ///
 /// \brief Provides verification for ops that are known to have the
@@ -36,7 +36,7 @@ class SameOperandsShapeTrait : public pir::OpTraitBase<SameOperandsShapeTrait> {
   explicit SameOperandsShapeTrait(pir::Operation *op)
       : pir::OpTraitBase<SameOperandsShapeTrait>(op) {}
   static void Verify(Operation *op) {
-    return impl::VerifySameOperandsShapeTrait(op);
+    return detail::VerifySameOperandsShapeTrait(op);
   }
 };
 
@@ -50,7 +50,7 @@ class SameOperandsAndResultShapeTrait
   explicit SameOperandsAndResultShapeTrait(pir::Operation *op)
       : pir::OpTraitBase<SameOperandsAndResultShapeTrait>(op) {}
   static void Verify(Operation *op) {
-    return impl::VerifySameOperandsAndResultShapeTrait(op);
+    return detail::VerifySameOperandsAndResultShapeTrait(op);
   }
 };
 
@@ -64,7 +64,7 @@ class SameOperandsElementTypeTrait
   explicit SameOperandsElementTypeTrait(pir::Operation *op)
       : pir::OpTraitBase<SameOperandsElementTypeTrait>(op) {}
   static void Verify(Operation *op) {
-    return impl::VerifySameOperandsElementTypeTrait(op);
+    return detail::VerifySameOperandsElementTypeTrait(op);
   }
 };
 
@@ -78,7 +78,7 @@ class SameOperandsAndResultElementTypeTrait
   explicit SameOperandsAndResultElementTypeTrait(pir::Operation *op)
       : pir::OpTraitBase<SameOperandsAndResultElementTypeTrait>(op) {}
   static void Verify(Operation *op) {
-    return impl::VerifySameOperandsAndResultElementTypeTrait(op);
+    return detail::VerifySameOperandsAndResultElementTypeTrait(op);
   }
 };
 
@@ -94,7 +94,7 @@ class SameOperandsAndResultTypeTrait
       : pir::OpTraitBase<SameOperandsAndResultTypeTrait>(op) {}
 
   static void Verify(Operation *op) {
-    return impl::VerifySameOperandsAndResultTypeTrait(op);
+    return detail::VerifySameOperandsAndResultTypeTrait(op);
   }
 };
 
@@ -107,16 +107,15 @@ class SameTypeOperandsTrait : public pir::OpTraitBase<SameTypeOperandsTrait> {
   explicit SameTypeOperandsTrait(pir::Operation *op)
       : pir::OpTraitBase<SameTypeOperandsTrait>(op) {}
   static void Verify(Operation *op) {
-    return impl::VerifySameTypeOperandsTrait(op);
+    return detail::VerifySameTypeOperandsTrait(op);
   }
 };
 
-}  // namespace pir::op_trait
+}  // namespace pir
 
-IR_DECLARE_EXPLICIT_TYPE_ID(pir::op_trait::SameOperandsShapeTrait)
-IR_DECLARE_EXPLICIT_TYPE_ID(pir::op_trait::SameOperandsAndResultShapeTrait)
-IR_DECLARE_EXPLICIT_TYPE_ID(pir::op_trait::SameOperandsElementTypeTrait)
-IR_DECLARE_EXPLICIT_TYPE_ID(
-    pir::op_trait::SameOperandsAndResultElementTypeTrait)
-IR_DECLARE_EXPLICIT_TYPE_ID(pir::op_trait::SameOperandsAndResultTypeTrait)
-IR_DECLARE_EXPLICIT_TYPE_ID(pir::op_trait::SameTypeOperandsTrait)
+IR_DECLARE_EXPLICIT_TYPE_ID(pir::SameOperandsShapeTrait)
+IR_DECLARE_EXPLICIT_TYPE_ID(pir::SameOperandsAndResultShapeTrait)
+IR_DECLARE_EXPLICIT_TYPE_ID(pir::SameOperandsElementTypeTrait)
+IR_DECLARE_EXPLICIT_TYPE_ID(pir::SameOperandsAndResultElementTypeTrait)
+IR_DECLARE_EXPLICIT_TYPE_ID(pir::SameOperandsAndResultTypeTrait)
+IR_DECLARE_EXPLICIT_TYPE_ID(pir::SameTypeOperandsTrait)

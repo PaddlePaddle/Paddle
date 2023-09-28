@@ -80,14 +80,14 @@ class Operation2
 };
 
 // Define op3.
-class Operation3
-    : public pir::Op<Operation3,
-                     pir::op_trait::SameOperandsShapeTrait,
-                     pir::op_trait::SameOperandsAndResultShapeTrait,
-                     pir::op_trait::SameOperandsElementTypeTrait,
-                     pir::op_trait::SameOperandsAndResultElementTypeTrait,
-                     pir::op_trait::SameOperandsAndResultTypeTrait,
-                     pir::op_trait::SameTypeOperandsTrait> {
+class TraitExampleOp
+    : public pir::Op<TraitExampleOp,
+                     pir::SameOperandsShapeTrait,
+                     pir::SameOperandsAndResultShapeTrait,
+                     pir::SameOperandsElementTypeTrait,
+                     pir::SameOperandsAndResultElementTypeTrait,
+                     pir::SameOperandsAndResultTypeTrait,
+                     pir::SameTypeOperandsTrait> {
  public:
   using Op::Op;
   static const char *name() { return "test.operation3"; }
@@ -107,4 +107,4 @@ IR_DECLARE_EXPLICIT_TYPE_ID(test::RegionOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(test::BranchOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(test::Operation1)
 IR_DECLARE_EXPLICIT_TYPE_ID(test::Operation2)
-IR_DECLARE_EXPLICIT_TYPE_ID(test::Operation3)
+IR_DECLARE_EXPLICIT_TYPE_ID(test::TraitExampleOp)

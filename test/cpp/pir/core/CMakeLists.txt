@@ -8,7 +8,7 @@ cc_test_old(
   pd_op_dialect)
 cc_test_old(ir_attribute_test SRCS ir_attribute_test.cc DEPS pir gtest)
 cc_test_old(ir_value_test SRCS ir_value_test.cc DEPS pir gtest)
-cc_test_old(
+paddle_test(
   ir_op_test
   SRCS
   ir_op_test.cc

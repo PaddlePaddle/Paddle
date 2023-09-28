@@ -173,17 +173,13 @@ TEST(op_test, op_traits_test) {
   pir::Operation *op2 =
       CreateDenseTensorOp(ctx, dims, {"op2_temp"}, {"op2_attr"}, dtype);
 
-  auto op3 = builder.Build<test::Operation3>(
+  auto op3 = builder.Build<test::TraitExampleOp>(
       op1->result(0), op2->result(0), dense_tensor_dtype);
 
-  EXPECT_EQ(op3->HasTrait<pir::op_trait::SameOperandsShapeTrait>(), true);
-  EXPECT_EQ(op3->HasTrait<pir::op_trait::SameOperandsAndResultShapeTrait>(),
-            true);
-  EXPECT_EQ(op3->HasTrait<pir::op_trait::SameOperandsElementTypeTrait>(), true);
-  EXPECT_EQ(
-      op3->HasTrait<pir::op_trait::SameOperandsAndResultElementTypeTrait>(),
-      true);
-  EXPECT_EQ(op3->HasTrait<pir::op_trait::SameOperandsAndResultTypeTrait>(),
-            true);
-  EXPECT_EQ(op3->HasTrait<pir::op_trait::SameTypeOperandsTrait>(), true);
+  EXPECT_EQ(op3->HasTrait<pir::SameOperandsShapeTrait>(), true);
+  EXPECT_EQ(op3->HasTrait<pir::SameOperandsAndResultShapeTrait>(), true);
+  EXPECT_EQ(op3->HasTrait<pir::SameOperandsElementTypeTrait>(), true);
+  EXPECT_EQ(op3->HasTrait<pir::SameOperandsAndResultElementTypeTrait>(), true);
+  EXPECT_EQ(op3->HasTrait<pir::SameOperandsAndResultTypeTrait>(), true);
+  EXPECT_EQ(op3->HasTrait<pir::SameTypeOperandsTrait>(), true);
 }

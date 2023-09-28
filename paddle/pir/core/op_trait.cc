@@ -16,7 +16,7 @@
 #include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/type_util.h"
 
-namespace pir::op_trait::impl {
+namespace pir::detail {
 
 void VerifySameOperandsShapeTrait(Operation *op) {
   VLOG(4) << "Verify SameOperandsShapeTrait for : " << op->name();
@@ -185,11 +185,11 @@ void VerifySameTypeOperandsTrait(Operation *op) {
   }
 }
 
-}  // namespace  pir::op_trait::impl
+}  // namespace  pir::detail
 
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::op_trait::SameOperandsShapeTrait)
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::op_trait::SameOperandsAndResultShapeTrait)
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::op_trait::SameOperandsElementTypeTrait)
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::op_trait::SameOperandsAndResultElementTypeTrait)
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::op_trait::SameOperandsAndResultTypeTrait)
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::op_trait::SameTypeOperandsTrait)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::SameOperandsShapeTrait)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::SameOperandsAndResultShapeTrait)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::SameOperandsElementTypeTrait)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::SameOperandsAndResultElementTypeTrait)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::SameOperandsAndResultTypeTrait)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::SameTypeOperandsTrait)
