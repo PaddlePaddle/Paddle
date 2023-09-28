@@ -2628,7 +2628,6 @@ struct SwishGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
-// FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5198
 template <typename T>
 struct PowFunctor : public BaseActivationFunctor<T> {
   float factor;
@@ -2739,44 +2738,6 @@ struct SqrtGradGradFunctor : public BaseActivationFunctor<T> {
       auto ddout = EigenVector<T>::Flatten(
           GET_DATA_SAFELY(ddOut, "Output", "DDOut", "SqrtGradGrad"));
       ddout.device(*d) = ddx * static_cast<T>(0.5) / out;
-    }
-  }
-  static constexpr ActBwdOpFwdDeps FwdDeps() {
-    return ActBwdOpFwdDeps::kDepOut;
-  }
-};
-
-template <typename T>
-struct SqrtGradGradFunctor<ComplexType<T>>
-    : public BaseActivationFunctor<ComplexType<T>> {
-  template <typename Device>
-  void operator()(const Device& dev,
-                  const DenseTensor* Out,
-                  const DenseTensor* dX,
-                  const DenseTensor* ddX,
-                  DenseTensor* dOut,
-                  DenseTensor* ddOut) const {
-    auto* d = dev.eigen_device();
-    auto ddx = EigenVector<ComplexType<T>>::Flatten(
-        GET_DATA_SAFELY(ddX, "Input", "DDX", "SqrtGradGrad"));
-    auto out = EigenVector<ComplexType<T>>::Flatten(
-        GET_DATA_SAFELY(Out, "Output", "Out", "SqrtGradGrad"));
-    // sqrt GradGrad: ddy = 0.5 * ddx / y, dy = -1 * dx * ddx
-    // calculate dy first, so ddy can inplace ddx
-    if (dOut) {
-      auto dx = EigenVector<ComplexType<T>>::Flatten(
-          GET_DATA_SAFELY(dX, "Output", "DX", "SqrtGradGrad"));
-      auto dout = EigenVector<ComplexType<T>>::Flatten(
-          GET_DATA_SAFELY(dOut, "Output", "DOut", "SqrtGradGrad"));
-      dout.device(*d) =
-          dx * ddx *
-          (static_cast<ComplexType<T>>(-1) / out).unaryExpr(Conj<T>());
-    }
-    if (ddOut) {
-      auto ddout = EigenVector<ComplexType<T>>::Flatten(
-          GET_DATA_SAFELY(ddOut, "Output", "DDOut", "SqrtGradGrad"));
-      ddout.device(*d) =
-          ddx * (static_cast<ComplexType<T>>(0.5) / out).unaryExpr(Conj<T>());
     }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() {
@@ -3723,7 +3684,7 @@ struct CudaSqrtGradFunctor<ComplexType<T>>
   // dx = dout * 0.5 / out
   __device__ __forceinline__ ComplexType<T> operator()(
       const ComplexType<T> dout, const ComplexType<T> out) const {
-    return one_half * dout / out;
+    return dout * conj(one_half / out);
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {
