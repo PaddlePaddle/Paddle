@@ -38,7 +38,7 @@ def _get_softmax(x, mask):
 
 
 class XPUTestFusedSoftmaxMaskOp(XPUOpTestWrapper):
-    """Test sigmoid_cross_entropy_with_logit_op with binary label"""
+    """Test fused_softmax_mask op"""
 
     def __init__(self):
         self.op_name = "fused_softmax_mask"
@@ -49,11 +49,16 @@ class XPUTestFusedSoftmaxMaskOp(XPUOpTestWrapper):
             self.set_xpu()
             self.op_type = "fused_softmax_mask"
             self.init_dtype()
+            self.set_input()
             self.set_output()
 
+        def set_input(self):
+            self.x_shape = (1, 4, 4096, 4096)
+            self.mask_shape = (1, 1, 4096, 4096)
+
         def set_output(self):
-            x = np.random.random((1, 4, 4096, 4096)).astype("float32")
-            mask_input = np.random.random((1, 1, 4096, 4096)).astype("float32")
+            x = np.random.random(self.x_shape).astype("float32")
+            mask_input = np.random.random(self.mask_shape).astype("float32")
             self.inputs = {'X': x, 'Mask': mask_input}
             rst = _get_softmax(x, mask_input)
             self.outputs = {'Out': rst}
@@ -70,6 +75,16 @@ class XPUTestFusedSoftmaxMaskOp(XPUOpTestWrapper):
 
         def init_dtype(self):
             self.dtype = self.in_type
+
+    class TestFusedSoftmaxMaskOp_1(TestFusedSoftmaxMaskOp):
+        def set_input(self):
+            self.x_shape = (2, 4, 1024, 1024)
+            self.mask_shape = (2, 1, 1024, 1024)
+
+    class TestFusedSoftmaxMaskOp_2(TestFusedSoftmaxMaskOp):
+        def set_input(self):
+            self.x_shape = (1, 4, 8192, 8192)
+            self.mask_shape = (1, 1, 8192, 8192)
 
 
 support_types = get_xpu_op_support_types('fused_softmax_mask')

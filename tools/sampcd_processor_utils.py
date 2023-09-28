@@ -659,17 +659,19 @@ def check_old_style(docstrings_to_test: typing.Dict[str, str]):
                 old_style_apis.append(docstring_name)
 
     if old_style_apis:
-        logger.info(
+        logger.warning(
             ">>> %d apis use plain sample code style.",
             len(old_style_apis),
         )
-        logger.info('=======================')
-        logger.info('\n'.join(old_style_apis))
-        logger.info('=======================')
-        logger.info("Check Failed!")
-        logger.info("DEPRECATION: Please do not use plain sample code style.")
-        logger.info(
-            "For more information: https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/dev_guides/style_guide_and_references/code_example_writing_specification_cn.html "
+        logger.warning('=======================')
+        logger.warning('\n'.join(old_style_apis))
+        logger.warning('=======================')
+        logger.warning(">>> Check Failed!")
+        logger.warning(
+            ">>> DEPRECATION: Please do not use plain sample code style."
+        )
+        logger.warning(
+            ">>> For more information: https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/dev_guides/style_guide_and_references/code_example_writing_specification_cn.html "
         )
         log_exit(1)
 

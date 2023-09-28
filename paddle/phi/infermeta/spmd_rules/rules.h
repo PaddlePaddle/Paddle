@@ -24,6 +24,8 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/reduction.h"
 #include "paddle/phi/infermeta/spmd_rules/replicated.h"
 #include "paddle/phi/infermeta/spmd_rules/reshape.h"
+#include "paddle/phi/infermeta/spmd_rules/split.h"
+#include "paddle/phi/infermeta/spmd_rules/transpose.h"
 
 /**
  * Design Notes:
@@ -333,6 +335,10 @@ PD_REGISTER_SPMD_RULE(
     trunc,
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(
+    dropout,
+    PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmdReverse));
 
 // elementwise binary rule
 PD_REGISTER_SPMD_RULE(
@@ -480,6 +486,21 @@ PD_REGISTER_SPMD_RULE(
     lookup_table_v2,
     PD_INFER_SPMD(phi::distributed::EmbeddingInferSpmd),
     PD_INFER_SPMD(phi::distributed::EmbeddingInferSpmdReverse));
+
+// split rule
+PD_REGISTER_SPMD_RULE(split,
+                      PD_INFER_SPMD(phi::distributed::SplitInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::SplitInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(
+    split_with_num,
+    PD_INFER_SPMD(phi::distributed::SplitWithNumInferSpmd),
+    PD_INFER_SPMD(phi::distributed::SplitWithNumInferSpmdReverse));
+
+// transpose rule
+PD_REGISTER_SPMD_RULE(
+    transpose,
+    PD_INFER_SPMD(phi::distributed::TransposeInferSpmd),
+    PD_INFER_SPMD(phi::distributed::TransposeInferSpmdReverse));
 
 }  // namespace distributed
 }  // namespace phi
