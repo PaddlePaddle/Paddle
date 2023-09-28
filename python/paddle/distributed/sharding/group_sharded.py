@@ -77,7 +77,7 @@ def group_sharded_parallel(
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:distributed)
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle
             >>> from paddle.nn import Linear
             >>> from paddle.distributed import fleet
@@ -196,7 +196,7 @@ def save_group_sharded_model(model, output, optimizer=None):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:distributed)
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle
             >>> from paddle.nn import Linear
             >>> from paddle.distributed import fleet

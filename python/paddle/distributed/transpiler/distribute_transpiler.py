@@ -316,7 +316,7 @@ class DistributeTranspiler:
             ...         pserver_program = t.get_pserver_program(current_endpoint)
             ...         pserver_startup_program = t.get_startup_program(current_endpoint,
             ...                                                     pserver_program)
-            >>> elif role == "TRAINER":
+            ... elif role == "TRAINER":
             ...         trainer_program = t.get_trainer_program()
 
             >>> # for nccl2 mode
