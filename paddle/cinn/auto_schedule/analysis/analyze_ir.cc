@@ -190,7 +190,7 @@ ir::LoweredFunc UpdateFuncWithNewBody(const common::Target& target,
   return new_func;
 }
 
-std::unordered_set<std::string> GetReduceLoopVarName(const ir::Expr block) {
+std::unordered_set<std::string> GetReduceLoopVarNames(const ir::Expr block) {
   const ir::ScheduleBlockRealize* block_realize =
       block.As<ir::ScheduleBlockRealize>();
   CHECK_NOTNULL(block_realize);

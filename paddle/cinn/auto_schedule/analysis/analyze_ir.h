@@ -51,7 +51,7 @@ ir::LoweredFunc UpdateFuncWithNewBody(const common::Target& target,
 /**
  * Get loop var names of reduce axis
  */
-std::unordered_set<std::string> GetReduceLoopVarName(const ir::Expr block);
+std::unordered_set<std::string> GetReduceLoopVarNames(const ir::Expr block);
 
 /**
  * Get name of a ScheduleBlock

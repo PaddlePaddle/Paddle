@@ -35,7 +35,10 @@ class ReductionFactoring : public AutoGenRule {
     return RuleApplyType::kCannotApply;
   }
   // In the future, we will no longer use this interface.
-  void Apply(int index) override { return; }
+  void Apply(int index) override {
+    LOG(FATAL)
+        << "This is a deprecated interface, please do not use it." return;
+  }
 
   RuleApplyType AnalyseApplyType(SearchState state,
                                  const std::string& block_name) const override;
@@ -46,6 +49,9 @@ class ReductionFactoring : public AutoGenRule {
                                         const std::string& block_name) override;
 
   void Apply(const std::string& block_name, ir::IRSchedule* ir_schedule);
+
+ private:
+  bool CanApply(const std::string& block_name, ir::IRSchedule* ir_schedule);
 };
 
 }  // namespace auto_schedule

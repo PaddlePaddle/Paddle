@@ -27,7 +27,8 @@
 namespace cinn {
 namespace auto_schedule {
 
-bool CanApply(const std::string& block_name, ir::IRSchedule* ir_schedule) {
+bool ReductionFactoring::CanApply(const std::string& block_name,
+                                  ir::IRSchedule* ir_schedule) {
   ir::Expr block_expr = ir_schedule->GetBlock(block_name);
   ir::ScheduleBlockRealize* block_realize =
       block_expr.As<ir::ScheduleBlockRealize>();
@@ -48,6 +49,7 @@ bool CanApply(const std::string& block_name, ir::IRSchedule* ir_schedule) {
   for (int i = 0; i < iter_vars.size(); ++i) {
     if (iter_vars[i]->is_reduce_axis) {
       find_reduce_axis = true;
+      break;
     }
   }
   if (!find_reduce_axis) {
@@ -101,7 +103,7 @@ RuleApplyType ReductionFactoring::AnalyseApplyType(
 std::vector<SearchState> ReductionFactoring::ApplyOnBlock(
     SearchState state, const std::string& block_name) {
   SearchState new_state = state.Copy();
-  Apply(block_name, &new_state->ir_schedule);
+  Apply(block_name, &(new_state->ir_schedule));
   return {new_state};
 }
 
@@ -115,7 +117,7 @@ void ReductionFactoring::Apply(const std::string& block_name,
   size_t num_reduction_loops = 0;
   // 1. Add all spatial loops
   std::unordered_set<std::string> reduce_loop_var_names =
-      GetReduceLoopVarName(block);
+      GetReduceLoopVarNames(block);
   for (const ir::Expr& expr : all_loops) {
     if (reduce_loop_var_names.count(expr.As<ir::For>()->loop_var->name) == 0) {
       new_loop_order.push_back(expr);
