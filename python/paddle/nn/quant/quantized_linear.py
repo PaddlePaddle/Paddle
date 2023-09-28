@@ -13,6 +13,8 @@
 # limitations under the License.
 
 from paddle import _C_ops
+from paddle.base.data_feeder import check_dtype
+from paddle.base.framework import convert_np_dtype_to_dtype_
 from paddle.framework import LayerHelper, in_dynamic_mode
 
 
@@ -22,11 +24,11 @@ def weight_quantize(x, algo="weight_only_int8"):
 
     Args:
         x (Tensor): The input Tensor to be quantized, the data type is float16 or bfloat16.
-        algo (str|None): The algo that is x will be apply, must be one of 'weight_only_int8',
+        algo (str): The algo that is x will be apply, must be one of 'weight_only_int8',
             'weight_only_int4' and 'llm.int8', default: 'weight_only_int8'.
 
     Returns:
-        out (Tensor): The Tensor which is the quantitative results, the data type is the same as that of x.
+        out (Tensor): The Tensor which is the quantitative results, the data type is int8, the shape is transposition of x.
         scale (Tensor): The scale Tensor which is the scale of pre-channel, the data type is float32.
     Examples:
         .. code-block:: python
@@ -58,6 +60,56 @@ def weight_quantize(x, algo="weight_only_int8"):
             attrs={"algo": algo},
         )
         return (out, scale)
+
+
+def weight_dequantize(x, scale, algo="weight_only_int8", out_dtype='float16'):
+    """
+    Dequantization function for weight_only and llm.int8's weight.
+
+    Args:
+        x (Tensor): The input Tensor to be dequantized, the data type is int8.
+        scale (Tensor): The scale Tensor which is the output of weight_quantize, the data type is float32.
+        algo (str): The algo that is x will be apply, must be one of 'weight_only_int8',
+            'weight_only_int4' and 'llm.int8', default: 'weight_only_int8'.
+        out_dtype (str|np.dtype): The output Tensor's data type, must be one of 'float16' and 'bfloat16', default: 'float16'.
+
+    Returns:
+        out (Tensor): The Tensor which is the dequantitative results, the data type is float16 or bfloat16, the shape is transposition of x.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+            from paddle.nn.quant import weight_quantize, weight_dequantize
+
+            x = np.random.randn(64, 32).astype('float16')
+            x = paddle.to_tensor(x, dtype=paddle.float16)
+            out, scale = weight_quantize(x, algo='weight_only_int8')
+            print(out.shape) # [32, 64]
+            print(scale.shape) # [32]
+
+            x_dequant = weight_dequantize(out, scale)
+            print(paddle.sum(paddle.mean(paddle.abs(x-x_dequant))))
+    """
+    check_dtype(
+        out_dtype, 'out_dtype', ['float16', 'bfloat16'], 'weight_dequantize'
+    )
+    out_dtype = convert_np_dtype_to_dtype_(out_dtype)
+    if in_dynamic_mode():
+        return _C_ops.weight_dequantize(x, scale, algo, out_dtype)
+    else:
+        type = "weight_dequantize"
+        helper = LayerHelper(type, **locals())
+        out = helper.create_variable_for_type_inference(out_dtype)
+
+        helper.append_op(
+            type=type,
+            inputs={"x": x, "scale": scale},
+            outputs={'out': out},
+            attrs={"algo": algo, "out_dtype": out_dtype},
+        )
+        return out
 
 
 def weight_only_linear(
@@ -102,6 +154,9 @@ def weight_only_linear(
         )
         return out
     else:
+        check_dtype(
+            weight_dtype, 'weight_dtype', ['int8', 'int4'], 'weight_only_linear'
+        )
         type = "weight_only_linear"
         helper = LayerHelper(type, **locals())
         dtype = x.dtype
