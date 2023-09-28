@@ -1984,10 +1984,8 @@ def split(x, num_or_sections, axis=0, name=None):
             dim = (len(input.shape) + dim) if dim < 0 else dim
 
         if isinstance(num_or_sections, int):
-            dim = dim if dim >= 0 else dim + len(input.shape)
             return _C_ops.split_with_num(input, num_or_sections, dim)
         else:
-            dim = dim if dim >= 0 else dim + len(input.shape)
             return _C_ops.split(input, num_or_sections, dim)
 
     else:
@@ -3170,7 +3168,7 @@ def tile(x, repeat_times, name=None):
             # Tensor(shape=[1, 6], dtype=int32, place=Place(gpu:0), stop_gradient=True,
             #        [[1, 2, 3, 1, 2, 3]])
     """
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         if isinstance(repeat_times, core.eager.Tensor):
             assert (
                 repeat_times.ndim == 1
@@ -5154,6 +5152,27 @@ def unfold(x, axis, size, step, name=None):
     """
     return _C_ops.tensor_unfold(x, axis, size, step)
 
+def _check_diagonal_scatter_shape(diag_shape, src_shape):
+    if diag_shape != src_shape:
+        raise ValueError(f"For diagonal_scatter, the shape of src should equal to the shape of input diagonal,"
+                         f"but got src.shape {src_shape} and diagonal shape {diag_shape}.")
+
+def diagonal_scatter(x, src, offset=0, dim1=0, dim2=1):
+    op_type = 'diagonal_scatter'
+    # input_dtype = ['int32', 'int64', 'float32', 'float64']
+   
+    # check_variable_and_dtype(x, 'x', input_dtype, op_type)
+    # check_variable_and_dtype(src, 'src', input_dtype, op_type)
+    check_type(offset, 'offset', (int), op_type)
+    check_type(dim1, 'dim1', (int), op_type)
+    check_type(dim2, 'dim2', (int), op_type)
+    input_diag = paddle.diagonal(x, offset, dim1, dim2)
+    _check_diagonal_scatter_shape(input_diag.shape, src.shape)
+    embed = paddle.ones_like(src)
+    embed = paddle.nn.functional.diag_embed(embed, offset, dim1, dim2)
+    embed = x * embed
+    src = paddle.nn.functional.diag_embed(src, offset, dim1, dim2)
+    return x + src - embed
 
 # TODO(dev): We need avoid implementing it by this way.
 __METHODS = {

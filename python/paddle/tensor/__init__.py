@@ -130,6 +130,7 @@ from .manipulation import scatter  # noqa: F401
 from .manipulation import scatter_  # noqa: F401
 from .manipulation import scatter_nd_add  # noqa: F401
 from .manipulation import scatter_nd  # noqa: F401
+from .manipulation import diagonal_scatter  # noqa: F401
 from .manipulation import shard_index  # noqa: F401
 from .manipulation import slice  # noqa: F401
 from .manipulation import split  # noqa: F401
@@ -327,8 +328,6 @@ from .math import i1  # noqa: F401
 from .math import i1e  # noqa: F401
 from .math import polygamma  # noqa: F401
 from .math import polygamma_  # noqa: F401
-from .math import renorm  # noqa: F401
-from .math import renorm_  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
@@ -377,9 +376,6 @@ from .array import create_array  # noqa: F401
 
 from .einsum import einsum  # noqa: F401
 
-from ..signal import istft  # noqa: F401
-from ..signal import stft  # noqa: F401
-
 # this list used in math_op_patch.py for _binary_creator_
 tensor_method_func = [  # noqa
     'create_parameter',
@@ -413,7 +409,6 @@ tensor_method_func = [  # noqa
     'all',
     'any',
     'asin',
-    'asin_',
     'atan',
     'ceil',
     'ceil_',
@@ -497,6 +492,8 @@ tensor_method_func = [  # noqa
     'add_',
     'subtract',
     'subtract_',
+    'atan',
+    'logsumexp',
     'inverse',
     'log1p',
     'log1p_',
@@ -558,6 +555,7 @@ tensor_method_func = [  # noqa
     'scatter',
     'scatter_',
     'scatter_nd_add',
+    'diagonal_scatter',
     'scatter_nd',
     'shard_index',
     'slice',
@@ -634,7 +632,6 @@ tensor_method_func = [  # noqa
     'triangular_solve',
     'asinh',
     'atanh',
-    'atanh_',
     'acosh',
     'lu',
     'lu_unpack',
@@ -690,61 +687,6 @@ tensor_method_func = [  # noqa
     'i1e',
     'polygamma',
     'polygamma_',
-    'atan2',
-    'diagflat',
-    'multinomial',
-    'pinv',
-    'renorm',
-    'renorm_',
-    'tan',
-    'tan_',
-    'tril',
-    'tril_',
-    'triu',
-    'triu_',
-    'stft',
-    'istft',
-    'abs_',
-    'acos_',
-    'atan_',
-    'cos_',
-    'cosh_',
-    'sin_',
-    'sinh_',
-    'acosh_',
-    'asinh_',
-    'diag',
-    'eye',
-    'linspace',
-    'fill_constant',
-    'ones',
-    'ones_like',
-    'zeros',
-    'zeros_like',
-    'arange',
-    'full',
-    'full_like',
-    'meshgrid',
-    'empty',
-    'empty_like',
-    'complex',
-    'eigh',
-    'standard_normal',
-    'normal',
-    'uniform',
-    'randn',
-    'rand',
-    'randint',
-    'randint_like',
-    'randperm',
-    'poisson',
-    'searchsorted',
-    'set_printoptions',
-    'array_length',
-    'array_read',
-    'array_write',
-    'create_array',
-    'einsum',
     'normal_',
 ]
 
