@@ -16,11 +16,12 @@ import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from utils import static_guard
 
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
-from paddle.base.framework import convert_np_dtype_to_dtype_
+from paddle.base.framework import convert_np_dtype_to_dtype_, in_pir_mode
 
 
 class TestSumOp(OpTest):
@@ -287,6 +288,7 @@ class TestMaxOp(OpTest):
             'Out',
             check_prim=True,
             only_check_prim=True,
+            check_new_ir=True,
         )
 
 
@@ -321,6 +323,7 @@ class TestMaxOp_ZeroDim(OpTest):
             'Out',
             check_prim=True,
             only_check_prim=True,
+            check_new_ir=True,
         )
 
 
@@ -374,6 +377,7 @@ class TestMaxFP32Op(OpTest):
             'Out',
             check_prim=True,
             only_check_prim=True,
+            check_new_ir=True,
         )
 
     def init_dtype(self):
@@ -409,6 +413,7 @@ class TestMaxBF16Op(TestMaxFP32Op):
             'Out',
             check_prim=True,
             only_check_prim=True,
+            check_new_ir=True,
         )
 
 
@@ -821,7 +826,7 @@ class TestAllOp(OpTest):
         self.attrs = {'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestAllFloatOp(OpTest):
@@ -833,7 +838,7 @@ class TestAllFloatOp(OpTest):
         self.attrs = {'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestAllIntOp(OpTest):
@@ -845,7 +850,7 @@ class TestAllIntOp(OpTest):
         self.attrs = {'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestAllOp_ZeroDim(OpTest):
@@ -857,7 +862,7 @@ class TestAllOp_ZeroDim(OpTest):
         self.attrs = {'dim': []}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestAll8DOp(OpTest):
@@ -873,7 +878,7 @@ class TestAll8DOp(OpTest):
         self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestAllOpWithDim(OpTest):
@@ -885,7 +890,7 @@ class TestAllOpWithDim(OpTest):
         self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestAll8DOpWithDim(OpTest):
@@ -901,7 +906,7 @@ class TestAll8DOpWithDim(OpTest):
         self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestAllOpWithKeepDim(OpTest):
@@ -915,7 +920,7 @@ class TestAllOpWithKeepDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestAll8DOpWithKeepDim(OpTest):
@@ -935,7 +940,7 @@ class TestAll8DOpWithKeepDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestAllOpError(unittest.TestCase):
@@ -1203,8 +1208,8 @@ def reduce_sum_wrapper2(x, axis=[0], dtype=None, keepdim=False):
     if paddle.in_dynamic_mode():
         return paddle._C_ops.sum(x, axis, dtype, keepdim)
     else:
-        if paddle.ir.core._use_new_ir_api():
-            return paddle._ir_ops.sum(x, axis, dtype, keepdim)
+        if in_pir_mode():
+            return paddle._pir_ops.sum(x, axis, dtype, keepdim)
 
 
 class Test8DReduce0(Test1DReduce):
@@ -1307,6 +1312,7 @@ class TestReduceMaxOpMultiAxises(OpTest):
             'Out',
             check_prim=True,
             only_check_prim=True,
+            check_new_ir=True,
         )
 
 
@@ -1598,7 +1604,7 @@ class TestReduceWithDtype2(TestReduceWithDtype):
 
 class TestReduceSumOpError(unittest.TestCase):
     def test_errors(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with program_guard(Program(), Program()):
                 # The input type of reduce_sum_op must be Variable.
                 x1 = base.create_lod_tensor(

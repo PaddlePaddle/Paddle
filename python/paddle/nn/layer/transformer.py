@@ -171,11 +171,11 @@ class MultiHeadAttention(Layer):
 
         assert embed_dim > 0, (
             "Expected embed_dim to be greater than 0, "
-            "but received {}".format(embed_dim)
+            f"but received {embed_dim}"
         )
         assert num_heads > 0, (
             "Expected num_heads to be greater than 0, "
-            "but received {}".format(num_heads)
+            f"but received {num_heads}"
         )
 
         self.embed_dim = embed_dim
@@ -524,19 +524,15 @@ class TransformerEncoderLayer(Layer):
 
         super().__init__()
 
-        assert (
-            d_model > 0
-        ), "Expected d_model to be greater than 0, " "but received {}".format(
-            d_model
+        assert d_model > 0, (
+            "Expected d_model to be greater than 0, " f"but received {d_model}"
         )
-        assert (
-            nhead > 0
-        ), "Expected nhead to be greater than 0, " "but received {}".format(
-            nhead
+        assert nhead > 0, (
+            "Expected nhead to be greater than 0, " f"but received {nhead}"
         )
         assert dim_feedforward > 0, (
             "Expected dim_feedforward to be greater than 0, "
-            "but received {}".format(dim_feedforward)
+            f"but received {dim_feedforward}"
         )
 
         attn_dropout = dropout if attn_dropout is None else attn_dropout
@@ -854,19 +850,15 @@ class TransformerDecoderLayer(Layer):
 
         super().__init__()
 
-        assert (
-            d_model > 0
-        ), "Expected d_model to be greater than 0, " "but received {}".format(
-            d_model
+        assert d_model > 0, (
+            "Expected d_model to be greater than 0, " f"but received {d_model}"
         )
-        assert (
-            nhead > 0
-        ), "Expected nhead to be greater than 0, " "but received {}".format(
-            nhead
+        assert nhead > 0, (
+            "Expected nhead to be greater than 0, " f"but received {nhead}"
         )
         assert dim_feedforward > 0, (
             "Expected dim_feedforward to be greater than 0, "
-            "but received {}".format(dim_feedforward)
+            f"but received {dim_feedforward}"
         )
 
         attn_dropout = dropout if attn_dropout is None else attn_dropout
@@ -1294,19 +1286,15 @@ class Transformer(Layer):
     ):
         super().__init__()
 
-        assert (
-            d_model > 0
-        ), "Expected d_model to be greater than 0, " "but received {}".format(
-            d_model
+        assert d_model > 0, (
+            "Expected d_model to be greater than 0, " f"but received {d_model}"
         )
-        assert (
-            nhead > 0
-        ), "Expected nhead to be greater than 0, " "but received {}".format(
-            nhead
+        assert nhead > 0, (
+            "Expected nhead to be greater than 0, " f"but received {nhead}"
         )
         assert dim_feedforward > 0, (
             "Expected dim_feedforward to be greater than 0, "
-            "but received {}".format(dim_feedforward)
+            f"but received {dim_feedforward}"
         )
 
         if isinstance(bias_attr, (list, tuple)):
@@ -1461,7 +1449,7 @@ class Transformer(Layer):
             length (int|Tensor): The length of sequence.
 
         Returns:
-            Tensor: Generated square mask according to the given length.
+            Tensor, generated square mask according to the given length. The shape is [length, length].
 
         Examples:
             .. code-block:: python

@@ -1052,6 +1052,19 @@
     func : gather_tree
     data_type : ids
 
+- op : gaussian_inplace
+  args: (Tensor x, float mean=0, float std=1.0, int seed=0)
+  output: Tensor(out)
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: gaussian_inplace
+    data_type: x
+    backend : x
+  inplace: (x -> out)
+  backward: gaussian_inplace_grad
+
 - op : gelu
   args : (Tensor x,  bool approximate = false)
   output : Tensor(out)
@@ -1934,6 +1947,15 @@
     func : pixel_shuffle
   backward : pixel_shuffle_grad
 
+- op : pixel_unshuffle
+  args : (Tensor x, int downscale_factor=1, str data_format="NCHW")
+  output : Tensor
+  infer_meta :
+    func : PixelUnshuffleInferMeta
+  kernel :
+    func : pixel_unshuffle
+  backward : pixel_unshuffle_grad
+
 - op : poisson
   args : (Tensor x)
   output : Tensor
@@ -2773,6 +2795,7 @@
     func : weight_only_linear
     data_type : x
   optional: bias
+  backward: weight_only_linear_grad
 
 - op : weight_quantize
   args : (Tensor x, str algo = "weight_only_int8")

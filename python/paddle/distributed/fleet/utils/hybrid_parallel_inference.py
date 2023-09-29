@@ -272,9 +272,9 @@ class HybridParallelInferenceHelper:
                 dev_ids.append(cur_id)
         num_pp = len(dev_ids)
         num_pp = max(1, num_pp)
-        assert num_pp == self.num_pp, 'num_pp: {}, self.num_pp: {}'.format(
-            num_pp, self.num_pp
-        )
+        assert (
+            num_pp == self.num_pp
+        ), f'num_pp: {num_pp}, self.num_pp: {self.num_pp}'
 
         collective_helper = fleet.meta_optimizers.common.CollectiveHelper(
             self.role_maker, wait_port=False
@@ -533,9 +533,7 @@ class HybridParallelInferenceHelper:
             )
 
             device = op.attr(self._op_device_key)
-            assert device, "{} has no {} set.".format(
-                op.type, self._op_device_key
-            )
+            assert device, f"{op.type} has no {self._op_device_key} set."
             if device.split(':')[1] == "all":
                 continue
 

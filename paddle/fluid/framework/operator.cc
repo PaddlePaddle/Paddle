@@ -2777,8 +2777,6 @@ void OperatorWithKernel::ParseInputDataType(
     const phi::DenseTensor* t = nullptr;
     if (var->IsType<phi::DenseTensor>()) {
       t = &var->Get<phi::DenseTensor>();
-    } else if (var->IsType<phi::DenseTensor>()) {
-      t = &var->Get<phi::DenseTensor>();
     } else if (var->IsType<phi::SelectedRows>()) {
       t = &(var->Get<phi::SelectedRows>().value());
     } else if (var->IsType<phi::SparseCooTensor>()) {
@@ -3221,11 +3219,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
         } else if (var->template IsType<framework::Strings>()) {
           tensor_out = var->template GetMutable<framework::Strings>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
-        } else if (var->template IsType<paddle::framework::RawTensor>()) {
-          tensor_out = var->template GetMutable<paddle::framework::RawTensor>();
-          phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
-        } else if (!var->IsInitialized()) {
-          // The following is for RAW type of var
+        } else if (var->template IsType<paddle::framework::RawTensor>() ||
+                   !var->IsInitialized()) {
           tensor_out = var->template GetMutable<paddle::framework::RawTensor>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else {

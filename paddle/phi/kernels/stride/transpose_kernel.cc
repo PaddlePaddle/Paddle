@@ -33,11 +33,9 @@ void TransposeStridedKernel(const Context& ctx,
 
   auto meta = out->meta();
   auto in_stride = x.strides();
-  auto in_dims = x.dims();
   meta.strides = in_stride;
   for (int i = 0; i < static_cast<int>(formated_axis.size()); i++) {
     meta.strides[i] = in_stride[formated_axis[i]];
-    meta.dims[i] = in_dims[formated_axis[i]];
   }
   meta.offset = x.offset();
 

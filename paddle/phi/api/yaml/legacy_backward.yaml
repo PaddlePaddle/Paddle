@@ -206,6 +206,7 @@
     param : [out_grad]
   kernel :
     func : dropout_grad
+  composite : dropout_grad(mask, out_grad, p, is_test, mode, x_grad)
 
 - backward_op : einsum_grad
   forward : einsum (Tensor[] x, str equation) -> Tensor(out), Tensor[](inner_cache), Tensor[](x_shape)
@@ -224,7 +225,7 @@
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param: [x, y]
-  composite : elementwise_pow_grad(x, y, out_grad, axis, x_grad, y_grad)
+  composite : elementwise_pow_grad(x, y, out_grad, x_grad, y_grad)
   kernel :
     func : elementwise_pow_grad
 
