@@ -22,6 +22,28 @@
 namespace phi {
 namespace fusion {
 
+template <typename T>
+static void PrintMatrix(const T *mat_d, int num, std::string name) {
+  // if (FLAGS_cublaslt_exhaustive_search_times != 114514) return;
+
+  std::vector<T> tmp(num);
+  cudaMemcpy(tmp.data(), mat_d, sizeof(T) * num, cudaMemcpyDeviceToHost);
+
+  std::ofstream outfile;
+  outfile.open(name + ".txt", std::ios::out);
+  std::stringstream ss;
+
+  for (int i = 0; i < num; ++i) {
+    if (std::is_same<T, int8_t>::value) {
+      ss << static_cast<int>(tmp[i]) << std::endl;
+    } else {
+      ss << std::setprecision(8) << (float)(tmp[i]) << std::endl;  // NOLINT
+    }
+  }
+  outfile << ss.str();
+  outfile.close();
+}
+
 constexpr int VEC_16B = 16;
 
 template <typename T>
@@ -1153,7 +1175,7 @@ __global__ void NeoxVariableLengthRotaryKernel(
     const int token_idx = linear_index / offset;
     const int ori_token_idx = token_idx + padding_offsets[token_idx];
     const int ori_bi = ori_token_idx / seq_len;
-    if (seq_lens[ori_bi] == 0) continue;
+    if (seq_lens && seq_lens[ori_bi] == 0) continue;
     const int bias = linear_index % offset;
     const int qkv_id = bias / hidden_size;
     const int qkv_bias = bias % hidden_size;
@@ -1217,7 +1239,7 @@ __global__ void VariableLengthRotaryKernel(
     const int token_idx = linear_index / offset;
     const int ori_token_idx = token_idx + padding_offsets[token_idx];
     const int ori_bi = ori_token_idx / seq_len;
-    if (seq_lens[ori_bi] == 0) continue;
+    if (seq_lens && seq_lens[ori_bi] == 0) continue;
     const int bias = linear_index % offset;
     const int qkv_id = bias / hidden_size;
     const int qkv_bias = bias % hidden_size;
@@ -1339,7 +1361,7 @@ __global__ void NeoxVariableLengthRotaryKernel(
     const int token_idx = linear_index / offset;
     const int ori_token_idx = token_idx + padding_offsets[token_idx];
     const int ori_bi = ori_token_idx / seq_len;
-    if (seq_lens[ori_bi] == 0) continue;
+    if (seq_lens && seq_lens[ori_bi] == 0) continue;
     const int bias = linear_index % offset;
     const int qkv_id = bias / hidden_size;
     const int qkv_bias = bias % hidden_size;
@@ -1427,7 +1449,7 @@ __global__ void VariableLengthRotaryKernel(
     const int token_idx = linear_index / offset;
     const int ori_token_idx = token_idx + padding_offsets[token_idx];
     const int ori_bi = ori_token_idx / seq_len;
-    if (seq_lens[ori_bi] == 0) continue;
+    if (seq_lens && seq_lens[ori_bi] == 0) continue;
     const int bias = linear_index % offset;
     const int qkv_id = bias / hidden_size;
     const int qkv_bias = bias % hidden_size;
@@ -1564,7 +1586,7 @@ __global__ void NeoxVariableLengthRotaryKernel(
     const int token_idx = linear_index / offset;
     const int ori_token_idx = token_idx + padding_offsets[token_idx];
     const int ori_bi = ori_token_idx / seq_len;
-    if (seq_lens[ori_bi] == 0) continue;
+    if (seq_lens && seq_lens[ori_bi] == 0) continue;
     const int bias = linear_index % offset;
     const int qkv_id = bias / hidden_size;
     const int qkv_bias = bias % hidden_size;
@@ -1640,7 +1662,7 @@ __global__ void VariableLengthRotaryKernel(
     const int token_idx = linear_index / offset;
     const int ori_token_idx = token_idx + padding_offsets[token_idx];
     const int ori_bi = ori_token_idx / seq_len;
-    if (seq_lens[ori_bi] == 0) continue;
+    if (seq_lens && seq_lens[ori_bi] == 0) continue;
     const int bias = linear_index % offset;
     const int qkv_id = bias / hidden_size;
     const int qkv_bias = bias % hidden_size;
@@ -2133,6 +2155,44 @@ int GetMaxLen(const phi::GPUContext &dev_ctx,
                      sizeof(int),
                      dev_ctx.stream());
   return max_len_cpu;
+}
+
+template <typename T, int VecSize>
+__global__ void InitOutValueKernel(T *output_data,
+                                   const int64_t numel,
+                                   const T init_value) {
+  const int tid = threadIdx.x;
+  const int bid = blockIdx.x;
+  int64_t global_thread_idx = bid * blockDim.x + tid;
+
+  for (int linear_index = global_thread_idx * VecSize,
+           step = gridDim.x * blockDim.x * VecSize;
+       linear_index < numel;
+       linear_index += step) {
+    for (int i = 0; i < VecSize; i++) {
+      output_data[linear_index + i] = init_value;
+    }
+  }
+}
+
+template <typename T>
+void InitValue(const phi::GPUContext &dev_ctx,
+               T *output_data,
+               const int64_t numel,
+               const T init_value) {
+  constexpr int PackSize = VEC_16B / sizeof(T);
+  PADDLE_ENFORCE_EQ(
+      numel % PackSize,
+      0,
+      phi::errors::PreconditionNotMet(
+          "numel=%d must be divisible by vec_size=%d", numel, PackSize));
+  const int pack_num = numel / PackSize;
+  const int blocksize = 128;
+  int grid_size = 1;
+  GetNumBlocks(pack_num, &grid_size);
+  InitOutValueKernel<T, PackSize>
+      <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(
+          output_data, numel, init_value);
 }
 
 }  // namespace fusion
