@@ -97,6 +97,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'seed',
     "fused_attention",
     "dpsgd",
+    "fused_feedforward",
 ]
 
 
