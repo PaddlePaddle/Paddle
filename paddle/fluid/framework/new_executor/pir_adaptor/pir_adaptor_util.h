@@ -365,6 +365,25 @@ void BuildPhiContext(pir::Operation* op,
         }
       }
       ctx->EmplaceBackAttr(vec_res);
+
+    } else if (attr_type_name == "pir::ArrayAttribute<pir::StrAttribute>") {
+      auto array_list = attr_map[t].dyn_cast<pir::ArrayAttribute>().AsVector();
+
+      std::vector<std::string> vec_res;
+      if (array_list.size() > 0) {
+        PADDLE_ENFORCE_EQ(
+            array_list[0].isa<pir::StrAttribute>(),
+            true,
+            phi::errors::PreconditionNotMet(
+                "Element in array list MUST be pir::StrAttribute "));
+
+        for (size_t i = 0; i < array_list.size(); ++i) {
+          vec_res.push_back(
+              array_list[i].dyn_cast<pir::StrAttribute>().AsString());
+        }
+      }
+      ctx->EmplaceBackAttr(vec_res);
+
     } else if (attr_type_name == "paddle::dialect::PlaceAttribute") {
       ctx->EmplaceBackAttr(
           attr_map[t].dyn_cast<paddle::dialect::PlaceAttribute>().data());

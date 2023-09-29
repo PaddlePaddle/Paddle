@@ -214,3 +214,14 @@
     func: FusedFeedForwardInferMeta
   optional: dropout1_seed, dropout2_seed, linear1_bias, linear2_bias, ln1_scale, ln1_bias, ln2_scale, ln2_bias, ln2_mean, ln2_variance, ln1_mean, ln1_variance, ln1_out
   backward: fused_feedforward_grad
+  optional: cache_kv, ln_scale, ln_bias, qkv_bias, src_mask, out_linear_bias, ln_scale_2, ln_bias_2
+
+- op: fused_elemwise_add_activation
+  args: (Tensor x, Tensor y, str[] functor_list, int axis=-1, bool save_intermediate_out=false)
+  output: Tensor(out), Tensor(intermediate_out)
+  kernel:
+    func: fused_elemwise_add_activation
+  infer_meta:
+    func : FusedElemwiseAddActivationInferMeta
+  backward: fused_elemwise_add_activation_grad
+  intermediate: intermediate_out

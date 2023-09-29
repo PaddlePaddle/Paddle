@@ -808,7 +808,7 @@ std::shared_ptr<OperatorBase> BuildOperatorBase(
     if (!IsInvalid(ptr)) {
       VLOG(8) << "Push back outputs to VariableNameMap : an optioanl output "
               << legacy_arg_name;
-      continue;
+      continue;git s
     }
 
     if (ptr.type().isa<paddle::dialect::AllocatedDenseTensorType>() ||

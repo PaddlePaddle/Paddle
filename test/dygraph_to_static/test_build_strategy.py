@@ -15,7 +15,11 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase, test_ast_only
+from dygraph_to_static_util import (
+    ast_only_test,
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 from test_resnet import ResNetHelper
 
 import paddle
@@ -61,7 +65,8 @@ class TestResnetWithPass(Dy2StTestBase):
             err_msg=f'predictor_pre:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
         )
 
-    @test_ast_only
+    @ast_only_test
+    @test_and_compare_with_new_ir(False)
     def test_resnet(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
@@ -73,7 +78,8 @@ class TestResnetWithPass(Dy2StTestBase):
         )
         self.verify_predict()
 
-    @test_ast_only
+    @ast_only_test
+    @test_and_compare_with_new_ir(False)
     def test_in_static_mode_mkldnn(self):
         paddle.base.set_flags({'FLAGS_use_mkldnn': True})
         try:

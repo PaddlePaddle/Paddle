@@ -3283,6 +3283,18 @@
   outputs:
     {out: Out}
 
+- op: fused_elemwise_add_activation
+  backward: fused_elemwise_add_activation_grad
+  inputs :
+    {x: X, y: Y}
+  outputs :
+    {out : Out, intermediate_out : IntermediateOut}
+  attrs :
+    functor_list: functor_list
+  extra :
+    attrs : [int axis=-1, bool save_intermediate_out=false]
+    outputs : [intermediate_out]
+
 - op: get_tensor_from_selected_rows
   inputs :
     x : X
