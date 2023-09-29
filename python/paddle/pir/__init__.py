@@ -36,4 +36,6 @@ from paddle.base.libpaddle.pir import (
 
 from . import core
 
+from .math_op_patch import monkey_patch_opResult
+
 __all__ = []
