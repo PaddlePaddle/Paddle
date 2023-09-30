@@ -23,8 +23,8 @@ except ImportError:
      import paddle from the source directory; please install paddlepaddle*.whl firstly.'''
     )
 
-# NOTE(SigureMo): We should place the import of core before other modules,
-# because there are some initialization codes in core/__init__.py.
+# NOTE(SigureMo): We should place the import of base.core before other modules,
+# because there are some initialization codes in base/core/__init__.py.
 from .base import core  # noqa: F401
 from .batch import batch
 
