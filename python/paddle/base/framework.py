@@ -30,10 +30,10 @@ from types import FunctionType, MethodType
 import numpy as np
 
 import paddle.version as fluid_version
-from paddle.base.libpaddle import DataType
 
 from .. import pir
 from . import core, unique_name
+from .libpaddle import DataType
 from .proto import data_feed_pb2  # noqa: F401
 from .proto import framework_pb2
 from .variable_index import _getitem_static, _setitem_impl_, _setitem_static
