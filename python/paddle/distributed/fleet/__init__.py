@@ -13,30 +13,34 @@
 # limitations under the License.
 
 # TODO: define distributed api under this directory,
-from .base.role_maker import Role  # noqa: F401
-from .base.role_maker import UserDefinedRoleMaker  # noqa: F401
-from .base.role_maker import PaddleCloudRoleMaker  # noqa: F401
-from .base.distributed_strategy import DistributedStrategy  # noqa: F401
-from .base.util_factory import UtilBase  # noqa: F401
-from .dataset import DatasetBase  # noqa: F401
-from .dataset import InMemoryDataset  # noqa: F401
-from .dataset import QueueDataset  # noqa: F401
-from .dataset import FileInstantDataset  # noqa: F401
-from .dataset import BoxPSDataset  # noqa: F401
-from .data_generator.data_generator import MultiSlotDataGenerator  # noqa: F401
+from .base.role_maker import (
+    Role,
+    UserDefinedRoleMaker,
+    PaddleCloudRoleMaker,
+)
+from .base.distributed_strategy import DistributedStrategy
+from .base.util_factory import UtilBase
+from .dataset import (  # noqa: F401
+    DatasetBase,
+    InMemoryDataset,
+    QueueDataset,
+    FileInstantDataset,
+    BoxPSDataset,
+)
+from .data_generator.data_generator import MultiSlotDataGenerator
 from .data_generator.data_generator import (
     MultiSlotStringDataGenerator,
-)  # noqa: F401
+)
 from . import metrics  # noqa: F401
 from .base.topology import CommunicateTopology
-from .base.topology import HybridCommunicateGroup  # noqa: F401
+from .base.topology import HybridCommunicateGroup
 from .fleet import Fleet
 from .model import distributed_model
 from .optimizer import distributed_optimizer
 from .scaler import distributed_scaler
 from .utils import log_util
 
-__all__ = [  # noqa
+__all__ = [
     "CommunicateTopology",
     "UtilBase",
     "HybridCommunicateGroup",
