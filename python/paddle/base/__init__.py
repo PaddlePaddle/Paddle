@@ -34,6 +34,9 @@ if os.path.exists(legacy_core):
         raise e
 
 from . import core
+from .layers.math_op_patch import monkey_patch_variable
+from .dygraph.math_op_patch import monkey_patch_math_tensor
+from .dygraph.tensor_patch_methods import monkey_patch_tensor
 
 # import all class inside framework into base module
 from . import framework
@@ -202,6 +205,9 @@ def __bootstrap__():
 # TODO(panyx0718): Avoid doing complex initialization logic in __init__.py.
 # Consider paddle.init(args) or paddle.main(args)
 __bootstrap__()
+monkey_patch_variable()
+monkey_patch_tensor()
+monkey_patch_math_tensor()
 
 # NOTE(Aurelius84): clean up ExecutorCacheInfo in advance manually.
 atexit.register(core.clear_executor_cache)
