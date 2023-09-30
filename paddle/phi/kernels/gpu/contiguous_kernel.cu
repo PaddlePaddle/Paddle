@@ -22,12 +22,10 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, size_t N>
-__global__ void ContiguousFuncNLe6(
+__global__ void ContiguousCaseZeroFunc(
     const T* input_data,
     T* out_data,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_stride,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> dims,
-    const int64_t numel) {
+    phi::Array<int64_t, phi::DDim::kMaxRank> input_stride) {
   int64_t input_offset = 0;
   int64_t output_offset = (blockIdx.z * gridDim.y * gridDim.x +
                            blockIdx.y * gridDim.x + blockIdx.x) *
@@ -50,43 +48,94 @@ __global__ void ContiguousFuncNLe6(
 }
 
 template <typename T, size_t N>
-__global__ void ContiguousFuncNGt6(
+__global__ void ContiguousCaseOneFunc(
     const T* input_data,
     T* out_data,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_stride,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> dims,
-    const int64_t numel) {
-  int64_t input_offset = 0;
-  int64_t output_offset = (blockIdx.z * gridDim.y * gridDim.x +
-                           blockIdx.y * gridDim.x + blockIdx.x) *
-                              blockDim.z * blockDim.y * blockDim.x +
-                          threadIdx.z * blockDim.y * blockDim.x +
-                          threadIdx.y * blockDim.x + threadIdx.x;
-  float coordinate[phi::DDim::kMaxRank] = {threadIdx.x,
-                                           threadIdx.y,
-                                           threadIdx.z,
-                                           blockIdx.x % dims[N - 4],
-                                           blockIdx.x / dims[N - 4],
-                                           blockIdx.y % dims[N - 6]};
+    phi::Array<int64_t, phi::DDim::kMaxRank> input_stride,
+    phi::Array<int64_t, 6> dims,
+    const int64_t x_max) {
+  int64_t x = blockIdx.x * blockDim.x + threadIdx.x;
+  if (x < x_max) {
+    int64_t input_offset = 0;
+    int64_t output_offset = (blockIdx.z * gridDim.y + blockIdx.y) * x_max + x;
 
-  if (N >= 7) {
-    coordinate[6] = blockIdx.y / dims[N - 6];
-  }
+    int64_t reg_dims[6] = {
+        dims[0], dims[1], dims[2], dims[3], dims[4], dims[5]};
+    int64_t coordinate[phi::DDim::kMaxRank];
 
-  if (N >= 8) {
-    coordinate[7] = blockIdx.z % dims[N - 8];
-  }
-
-  if (N >= 9) {
-    coordinate[8] = blockIdx.z / dims[N - 8];
-  }
+    switch (N) {
+      case 1:
+        coordinate[0] = x % reg_dims[0];
+        break;
+      case 2:
+        coordinate[0] = x % reg_dims[0];
+        coordinate[1] = x / reg_dims[0] % reg_dims[1];
+        break;
+      case 3:
+        coordinate[0] = x % reg_dims[0];
+        coordinate[1] = x / reg_dims[0] % reg_dims[1];
+        coordinate[2] = x / (reg_dims[0] * reg_dims[1]);
+        break;
+      case 4:
+        coordinate[0] = x % reg_dims[0];
+        coordinate[1] = x / reg_dims[0] % reg_dims[1];
+        coordinate[2] = x / (reg_dims[0] * reg_dims[1]);
+        coordinate[3] = blockIdx.y % reg_dims[2];
+        break;
+      case 5:
+        coordinate[0] = x % reg_dims[0];
+        coordinate[1] = x / reg_dims[0] % reg_dims[1];
+        coordinate[2] = x / (reg_dims[0] * reg_dims[1]);
+        coordinate[3] = blockIdx.y % reg_dims[2];
+        coordinate[4] = blockIdx.y / reg_dims[2] % reg_dims[3];
+        break;
+      case 6:
+        coordinate[0] = x % reg_dims[0];
+        coordinate[1] = x / reg_dims[0] % reg_dims[1];
+        coordinate[2] = x / (reg_dims[0] * reg_dims[1]);
+        coordinate[3] = blockIdx.y % reg_dims[2];
+        coordinate[4] = blockIdx.y / reg_dims[2] % reg_dims[3];
+        coordinate[5] = blockIdx.y / (reg_dims[2] * reg_dims[3]);
+        break;
+      case 7:
+        coordinate[0] = x % reg_dims[0];
+        coordinate[1] = x / reg_dims[0] % reg_dims[1];
+        coordinate[2] = x / (reg_dims[0] * reg_dims[1]);
+        coordinate[3] = blockIdx.y % reg_dims[2];
+        coordinate[4] = blockIdx.y / reg_dims[2] % reg_dims[3];
+        coordinate[5] = blockIdx.y / (reg_dims[2] * reg_dims[3]);
+        coordinate[6] = blockIdx.z % reg_dims[4];
+        break;
+      case 8:
+        coordinate[0] = x % reg_dims[0];
+        coordinate[1] = x / reg_dims[0] % reg_dims[1];
+        coordinate[2] = x / (reg_dims[0] * reg_dims[1]);
+        coordinate[3] = blockIdx.y % reg_dims[2];
+        coordinate[4] = blockIdx.y / reg_dims[2] % reg_dims[3];
+        coordinate[5] = blockIdx.y / (reg_dims[2] * reg_dims[3]);
+        coordinate[6] = blockIdx.z % reg_dims[4];
+        coordinate[7] = blockIdx.z / reg_dims[4] % reg_dims[5];
+        break;
+      case 9:
+        coordinate[0] = x % reg_dims[0];
+        coordinate[1] = x / reg_dims[0] % reg_dims[1];
+        coordinate[2] = x / (reg_dims[0] * reg_dims[1]);
+        coordinate[3] = blockIdx.y % reg_dims[2];
+        coordinate[4] = blockIdx.y / reg_dims[2] % reg_dims[3];
+        coordinate[5] = blockIdx.y / (reg_dims[2] * reg_dims[3]);
+        coordinate[6] = blockIdx.z % reg_dims[4];
+        coordinate[7] = blockIdx.z / reg_dims[4] % reg_dims[5];
+        coordinate[8] = blockIdx.z / (reg_dims[4] * reg_dims[5]);
+        break;
+    }
 
 #pragma unroll
-  for (int dim = N - 1; dim >= 0; --dim) {
-    input_offset += coordinate[N - 1 - dim] * input_stride[dim];
-  }
+    for (int dim = N - 1; dim >= 0; --dim) {
+      input_offset += coordinate[N - 1 - dim] * input_stride[dim];
+    }
 
-  out_data[output_offset] = input_data[input_offset];
+    out_data[output_offset] = input_data[input_offset];
+  }
 }
 
 bool is_only_transposed(const DDim& shape,
@@ -168,8 +217,8 @@ void ContiguousKernel(const Context& dev_ctx,
     return;
   }
 
-  phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_stride;
-  phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_dims;
+  phi::Array<int64_t, phi::DDim::kMaxRank> input_stride;
+  phi::Array<int64_t, phi::DDim::kMaxRank> input_dims;
   for (int i = 0; i < input.dims().size(); i++) {
     input_dims[i] = input.dims()[i];
     input_stride[i] = input.strides()[i];
@@ -183,72 +232,219 @@ void ContiguousKernel(const Context& dev_ctx,
 
   dim3 grid(1, 1, 1), block(1, 1, 1);
 
-  if (rank >= 1) {
-    block.x = input_dims[rank - 1];
+  int tmp = 1;
+
+  for (int i = 0; i < 3 && i < input_dims.size(); i++) {
+    tmp *= input_dims[rank - 1 - i];
   }
 
-  if (rank >= 2) {
-    block.y = input_dims[rank - 2];
-  }
+  if (rank <= 6 && tmp <= 1024 &&
+      (input_dims.size() < 3 || input_dims[rank - 3] <= 64)) {
+    if (rank >= 1) {
+      block.x = input_dims[rank - 1];
+    }
 
-  if (rank >= 3) {
-    block.z = input_dims[rank - 3];
-  }
+    if (rank >= 2) {
+      block.y = input_dims[rank - 2];
+    }
 
-  switch (rank) {
-    case 1:
-      ContiguousFuncNLe6<T, 1><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, output_data, input_stride, input_dims, numel);
-      break;
-    case 2:
-      ContiguousFuncNLe6<T, 2><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, output_data, input_stride, input_dims, numel);
-      break;
-    case 3:
-      ContiguousFuncNLe6<T, 3><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, output_data, input_stride, input_dims, numel);
-      break;
-    case 4:
-      grid.x = input_dims[rank - 4];
-      ContiguousFuncNLe6<T, 4><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, output_data, input_stride, input_dims, numel);
-      break;
-    case 5:
-      grid.x = input_dims[rank - 4];
-      grid.y = input_dims[rank - 5];
-      ContiguousFuncNLe6<T, 5><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, output_data, input_stride, input_dims, numel);
-      break;
-    case 6:
-      grid.x = input_dims[rank - 4];
-      grid.y = input_dims[rank - 5];
-      grid.z = input_dims[rank - 6];
-      ContiguousFuncNLe6<T, 6><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, output_data, input_stride, input_dims, numel);
-      break;
-    case 7:
-      grid.x = input_dims[rank - 4] * input_dims[rank - 5];
-      grid.y = input_dims[rank - 6] * input_dims[rank - 7];
-      ContiguousFuncNGt6<T, 7><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, output_data, input_stride, input_dims, numel);
-      break;
-    case 8:
-      grid.x = input_dims[rank - 4] * input_dims[rank - 5];
-      grid.y = input_dims[rank - 6] * input_dims[rank - 7];
-      grid.z = input_dims[rank - 8];
-      ContiguousFuncNGt6<T, 8><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, output_data, input_stride, input_dims, numel);
-      break;
-    case 9:
-      grid.x = input_dims[rank - 4] * input_dims[rank - 5];
-      grid.y = input_dims[rank - 6] * input_dims[rank - 7];
-      grid.z = input_dims[rank - 8] * input_dims[rank - 9];
-      ContiguousFuncNGt6<T, 9><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, output_data, input_stride, input_dims, numel);
-      break;
-    default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "The rank of input should be less than 9, but received %d.", rank));
+    if (rank >= 3) {
+      block.z = input_dims[rank - 3];
+    }
+
+    phi::Array<int64_t, 3> cur_input_dims;
+
+    switch (rank) {
+      case 1:
+        ContiguousCaseZeroFunc<T, 1><<<grid, block, 0, dev_ctx.stream()>>>(
+            input_data, output_data, input_stride);
+        break;
+      case 2:
+        ContiguousCaseZeroFunc<T, 2><<<grid, block, 0, dev_ctx.stream()>>>(
+            input_data, output_data, input_stride);
+        break;
+      case 3:
+        ContiguousCaseZeroFunc<T, 3><<<grid, block, 0, dev_ctx.stream()>>>(
+            input_data, output_data, input_stride);
+        break;
+      case 4:
+        grid.x = input_dims[rank - 4];
+        ContiguousCaseZeroFunc<T, 4><<<grid, block, 0, dev_ctx.stream()>>>(
+            input_data, output_data, input_stride);
+        break;
+      case 5:
+        grid.x = input_dims[rank - 4];
+        grid.y = input_dims[rank - 5];
+        ContiguousCaseZeroFunc<T, 5><<<grid, block, 0, dev_ctx.stream()>>>(
+            input_data, output_data, input_stride);
+        break;
+      case 6:
+        grid.x = input_dims[rank - 4];
+        grid.y = input_dims[rank - 5];
+        grid.z = input_dims[rank - 6];
+        ContiguousCaseZeroFunc<T, 6><<<grid, block, 0, dev_ctx.stream()>>>(
+            input_data, output_data, input_stride);
+        break;
+    }
+  } else {
+    phi::Array<int64_t, 6> cur_input_dims;
+    block.x = 512;
+
+    switch (rank) {
+      case 1:
+        grid.x = (input_dims[rank - 1] + block.x - 1) / block.x;
+        cur_input_dims[0] = input_dims[rank - 1];
+        ContiguousCaseOneFunc<T, 1>
+            <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                   output_data,
+                                                   input_stride,
+                                                   cur_input_dims,
+                                                   input_dims[rank - 1]);
+        break;
+      case 2:
+        grid.x = (input_dims[rank - 1] * input_dims[rank - 2] + block.x - 1) /
+                 block.x;
+        cur_input_dims[0] = input_dims[rank - 1];
+        cur_input_dims[1] = input_dims[rank - 2];
+        ContiguousCaseOneFunc<T, 2><<<grid, block, 0, dev_ctx.stream()>>>(
+            input_data,
+            output_data,
+            input_stride,
+            cur_input_dims,
+            input_dims[rank - 1] * input_dims[rank - 2]);
+        break;
+      case 3:
+        grid.x = (input_dims[rank - 1] * input_dims[rank - 2] *
+                      input_dims[rank - 3] +
+                  block.x - 1) /
+                 block.x;
+        cur_input_dims[0] = input_dims[rank - 1];
+        cur_input_dims[1] = input_dims[rank - 2];
+        ContiguousCaseOneFunc<T, 3><<<grid, block, 0, dev_ctx.stream()>>>(
+            input_data,
+            output_data,
+            input_stride,
+            cur_input_dims,
+            input_dims[rank - 1] * input_dims[rank - 2] * input_dims[rank - 3]);
+        break;
+      case 4:
+        grid.x = (input_dims[rank - 1] * input_dims[rank - 2] *
+                      input_dims[rank - 3] +
+                  block.x - 1) /
+                 block.x;
+        grid.y = input_dims[rank - 4];
+        cur_input_dims[0] = input_dims[rank - 1];
+        cur_input_dims[1] = input_dims[rank - 2];
+        cur_input_dims[2] = input_dims[rank - 4];
+        ContiguousCaseOneFunc<T, 4><<<grid, block, 0, dev_ctx.stream()>>>(
+            input_data,
+            output_data,
+            input_stride,
+            cur_input_dims,
+            input_dims[rank - 1] * input_dims[rank - 2] * input_dims[rank - 3]);
+        break;
+      case 5:
+        grid.x = (input_dims[rank - 1] * input_dims[rank - 2] *
+                      input_dims[rank - 3] +
+                  block.x - 1) /
+                 block.x;
+        grid.y = input_dims[rank - 4] * input_dims[rank - 5];
+        cur_input_dims[0] = input_dims[rank - 1];
+        cur_input_dims[1] = input_dims[rank - 2];
+        cur_input_dims[2] = input_dims[rank - 4];
+        cur_input_dims[3] = input_dims[rank - 5];
+        ContiguousCaseOneFunc<T, 5><<<grid, block, 0, dev_ctx.stream()>>>(
+            input_data,
+            output_data,
+            input_stride,
+            cur_input_dims,
+            input_dims[rank - 1] * input_dims[rank - 2] * input_dims[rank - 3]);
+        break;
+      case 6:
+        grid.x = (input_dims[rank - 1] * input_dims[rank - 2] *
+                      input_dims[rank - 3] +
+                  block.x - 1) /
+                 block.x;
+        grid.y =
+            input_dims[rank - 4] * input_dims[rank - 5] * input_dims[rank - 6];
+        cur_input_dims[0] = input_dims[rank - 1];
+        cur_input_dims[1] = input_dims[rank - 2];
+        cur_input_dims[2] = input_dims[rank - 4];
+        cur_input_dims[3] = input_dims[rank - 5];
+        ContiguousCaseOneFunc<T, 6><<<grid, block, 0, dev_ctx.stream()>>>(
+            input_data,
+            output_data,
+            input_stride,
+            cur_input_dims,
+            input_dims[rank - 1] * input_dims[rank - 2] * input_dims[rank - 3]);
+        break;
+      case 7:
+        grid.x = (input_dims[rank - 1] * input_dims[rank - 2] *
+                      input_dims[rank - 3] +
+                  block.x - 1) /
+                 block.x;
+        grid.y =
+            input_dims[rank - 4] * input_dims[rank - 5] * input_dims[rank - 6];
+        grid.z = input_dims[rank - 7];
+        cur_input_dims[0] = input_dims[rank - 1];
+        cur_input_dims[1] = input_dims[rank - 2];
+        cur_input_dims[2] = input_dims[rank - 4];
+        cur_input_dims[3] = input_dims[rank - 5];
+        cur_input_dims[4] = input_dims[rank - 7];
+        ContiguousCaseOneFunc<T, 7><<<grid, block, 0, dev_ctx.stream()>>>(
+            input_data,
+            output_data,
+            input_stride,
+            cur_input_dims,
+            input_dims[rank - 1] * input_dims[rank - 2] * input_dims[rank - 3]);
+        break;
+      case 8:
+        grid.x = (input_dims[rank - 1] * input_dims[rank - 2] *
+                      input_dims[rank - 3] +
+                  block.x - 1) /
+                 block.x;
+        grid.y =
+            input_dims[rank - 4] * input_dims[rank - 5] * input_dims[rank - 6];
+        grid.z = input_dims[rank - 7] * input_dims[rank - 8];
+        cur_input_dims[0] = input_dims[rank - 1];
+        cur_input_dims[1] = input_dims[rank - 2];
+        cur_input_dims[2] = input_dims[rank - 4];
+        cur_input_dims[3] = input_dims[rank - 5];
+        cur_input_dims[4] = input_dims[rank - 7];
+        cur_input_dims[5] = input_dims[rank - 8];
+        ContiguousCaseOneFunc<T, 8><<<grid, block, 0, dev_ctx.stream()>>>(
+            input_data,
+            output_data,
+            input_stride,
+            cur_input_dims,
+            input_dims[rank - 1] * input_dims[rank - 2] * input_dims[rank - 3]);
+        break;
+      case 9:
+        grid.x = (input_dims[rank - 1] * input_dims[rank - 2] *
+                      input_dims[rank - 3] +
+                  block.x - 1) /
+                 block.x;
+        grid.y =
+            input_dims[rank - 4] * input_dims[rank - 5] * input_dims[rank - 6];
+        grid.z =
+            input_dims[rank - 7] * input_dims[rank - 8] * input_dims[rank - 9];
+        cur_input_dims[0] = input_dims[rank - 1];
+        cur_input_dims[1] = input_dims[rank - 2];
+        cur_input_dims[2] = input_dims[rank - 4];
+        cur_input_dims[3] = input_dims[rank - 5];
+        cur_input_dims[4] = input_dims[rank - 7];
+        cur_input_dims[5] = input_dims[rank - 8];
+        ContiguousCaseOneFunc<T, 9><<<grid, block, 0, dev_ctx.stream()>>>(
+            input_data,
+            output_data,
+            input_stride,
+            cur_input_dims,
+            input_dims[rank - 1] * input_dims[rank - 2] * input_dims[rank - 3]);
+        break;
+      default:
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "The rank of input should be less than 9, but received %d.", rank));
+    }
   }
 }
 
