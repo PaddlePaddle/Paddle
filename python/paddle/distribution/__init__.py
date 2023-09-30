@@ -20,6 +20,7 @@ from paddle.distribution.cauchy import Cauchy
 from paddle.distribution.dirichlet import Dirichlet
 from paddle.distribution.distribution import Distribution
 from paddle.distribution.gumbel import Gumbel
+from paddle.distribution.exponential import Exponential
 from paddle.distribution.exponential_family import ExponentialFamily
 from paddle.distribution.independent import Independent
 from paddle.distribution.kl import kl_divergence, register_kl
@@ -32,6 +33,7 @@ from paddle.distribution.uniform import Uniform
 from paddle.distribution.laplace import Laplace
 from paddle.distribution.geometric import Geometric
 
+
 __all__ = [  # noqa
     'Bernoulli',
     'Beta',
@@ -39,6 +41,7 @@ __all__ = [  # noqa
     'Cauchy',
     'Dirichlet',
     'Distribution',
+    'Exponential',
     'ExponentialFamily',
     'Multinomial',
     'Normal',
