@@ -80,7 +80,7 @@ class TestGeometric(unittest.TestCase):
         with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 self._paddle_geom.stddev,
-                scipy.stats.geom.std(self.probs),
+                scipy.stats.geom.std(self.probs, loc=-1),
                 rtol=RTOL.get(str(self._paddle_geom.probs.numpy().dtype)),
                 atol=ATOL.get(str(self._paddle_geom.probs.numpy().dtype)),
             )
@@ -89,7 +89,7 @@ class TestGeometric(unittest.TestCase):
         with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 self._paddle_geom.entropy(),
-                scipy.stats.geom.entropy(self.probs),
+                scipy.stats.geom.entropy(self.probs, loc=-1),
                 rtol=RTOL.get(str(self._paddle_geom.probs.numpy().dtype)),
                 atol=ATOL.get(str(self._paddle_geom.probs.numpy().dtype)),
             )
