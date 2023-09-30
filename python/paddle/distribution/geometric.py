@@ -281,7 +281,7 @@ class Geometric(distribution.Distribution):
 
         .. math::
 
-            F(X \leq k) = 1 - (1-p)^k, \quad k=0,1,2,\ldots
+            F(X \leq k) = 1 - (1-p)^(k+1), \quad k=0,1,2,\ldots
 
         Args:
             k: The number of trials performed.
