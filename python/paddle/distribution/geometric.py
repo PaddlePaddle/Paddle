@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 from paddle.base import framework
-from paddle.distribution import distribution, uniform
+from paddle.distribution import distribution
 
 
 class Geometric(distribution.Distribution):
@@ -108,7 +108,7 @@ class Geometric(distribution.Distribution):
     @property
     def mean(self):
         """Mean of geometric distribution."""
-        return 1.0 / self.probs
+        return 1.0 / self.probs - 1.0
 
     @property
     def variance(self):
@@ -128,7 +128,7 @@ class Geometric(distribution.Distribution):
 
         .. math::
 
-            P(X=k) = (1-p)^{k-1} p, \quad k=1,2,3,\ldots
+            P(X=k) = (1-p)^{k} p, \quad k=0,1,2,3,\ldots
 
         Args:
             k (int): Value to be evaluated.
@@ -149,7 +149,7 @@ class Geometric(distribution.Distribution):
                 0.25000000)
         """
         if isinstance(k, (numbers.Integral, framework.Variable)):
-            return paddle.pow((1.0 - self.probs), k - 1.0) * self.probs
+            return paddle.pow((1.0 - self.probs), k) * self.probs
         else:
             raise TypeError(
                 f"Expected type of k is number.Real|framework.Variable, but got {type(k)}"
@@ -239,12 +239,15 @@ class Geometric(distribution.Distribution):
         shape = distribution.Distribution._extend_shape(
             self, sample_shape=shape
         )
-        tiny = np.finfo(dtype='float32').tiny
 
-        sample_uniform = uniform.Uniform(low=float(tiny), high=float(1))
+        uniform = paddle.uniform(
+            shape=shape,
+            min=float(np.finfo(dtype='float32').tiny),
+            max=1.0,
+            dtype=self.probs.dtype,
+        )
 
-        new_t = sample_uniform.sample(list(shape))
-        return paddle.log(new_t) / paddle.log1p(-(self.probs))
+        return paddle.floor(paddle.log(uniform) / paddle.log1p(-(self.probs)))
 
     def entropy(self):
         r"""Entropy of dirichlet distribution.
@@ -299,7 +302,7 @@ class Geometric(distribution.Distribution):
                 0.93750000)
         """
         if isinstance(k, (numbers.Integral, framework.Variable)):
-            return 1.0 - paddle.pow((1.0 - self.probs), k)
+            return 1.0 - paddle.pow((1.0 - self.probs), k + 1)
         else:
             raise TypeError(
                 f"Expected type of k is number.Real|framework.Variable, but got {type(k)}"
