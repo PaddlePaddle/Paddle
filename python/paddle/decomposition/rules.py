@@ -39,7 +39,7 @@ def mean(x, axis, keepdim):
 
 
 @register_decomp('pd_op.gelu')
-def gelu_composite(x, approximate):
+def gelu(x, approximate):
     """define composite rule of op gelu"""
     M_SQRT1_2 = (
         0.70710678118654752440  # /* 1/sqrt(2) */ copy from gelu-kernel.cc
@@ -66,7 +66,7 @@ def gelu_composite(x, approximate):
 
 
 @register_decomp('pd_op.rsqrt')
-def rsqrt_composite(x):
+def rsqrt(x):
     """define composite rule of op rsqrt."""
     # rsqrt(x) = x^(-0.5)
     is_amp = False
@@ -77,7 +77,7 @@ def rsqrt_composite(x):
         is_amp = True
         x = cast(x, "float32")
     y = full(x.shape if len(x.shape) == 0 else [1], -0.5, x.dtype)
-    res = pow(x, y)
+    res = pow_composite(x, y)
     return res if not is_amp else cast(res, dtype)
 
 
@@ -104,7 +104,7 @@ def pow_composite(x, y):
 
 
 @register_decomp('pd_op.layer_norm')
-def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
+def layernorm(x, scale, bias, epsilon, begin_norm_axis):
     """
     define composite rule of op layer_norm
     out = (x - mean(x)) / sqrt(var + epsilon))
@@ -146,7 +146,7 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
 
 
 @register_decomp('pd_op.dropout')
-def dropout_composite(x, seed_tensor, p, is_test, mode, seed, fix_seed):
+def dropout(x, seed_tensor, p, is_test, mode, seed, fix_seed):
     """define composite rule of op dropout.
     upscale_in_train:
         train: out = input * mask / ( 1.0 - p )
@@ -155,6 +155,7 @@ def dropout_composite(x, seed_tensor, p, is_test, mode, seed, fix_seed):
         train: out = input * mask
         inference: out = input * (1.0 - p)
     """
+    from paddle import scale as pd_scale
     from paddle.base import core
     from paddle.base.data_feeder import convert_dtype
 
@@ -178,7 +179,7 @@ def dropout_composite(x, seed_tensor, p, is_test, mode, seed, fix_seed):
                     shape=x.shape, value=(1.0 - p), dtype=x.dtype
                 ), cast(mask, uint8_type)
         else:
-            return x, cast(
+            return pd_scale(x, 1.0), cast(
                 mask, uint8_type
             )  # assign(x), cast(mask, mask, core.VarDesc.VarType.UINT8)
     else:
@@ -207,7 +208,7 @@ def bernoulli(shape, dtype, p, seed=0):
 
 
 @register_decomp('pd_op.add_n')
-def sum_composite(x):
+def add_n(x):
     ans = x[0]
     for xi in x[1:]:
         ans = xi + ans

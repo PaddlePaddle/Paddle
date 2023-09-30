@@ -12,23 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/core/attribute.h"
-#include "paddle/pir/core/attribute_base.h"
-#include "paddle/pir/core/dialect.h"
+#pragma once
+
+#include <memory>
+#include "paddle/pir/core/dll_decl.h"
 
 namespace pir {
-IrContext *Attribute::ir_context() const { return dialect().ir_context(); }
 
-TypeId Attribute::type_id() {
-  return storage_ ? storage_->abstract_attribute().type_id() : TypeId();
-}
+class Pass;
 
-const AbstractAttribute &Attribute::abstract_attribute() {
-  return storage_->abstract_attribute();
-}
-
-const Dialect &Attribute::dialect() const {
-  return storage_->abstract_attribute().dialect();
-}
+IR_API std::unique_ptr<Pass> CreateBuildCinnPass();
 
 }  // namespace pir
