@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.base.libpaddle.pir import (
+from paddle.base.libpaddle.pir import (  # noqa: F401
     Program,
     Block,
     Operation,
@@ -22,8 +22,8 @@ from paddle.base.libpaddle.pir import (
     fake_op_result,
     is_fake_op_result,
     Type,
-)  # noqa: F401
-from paddle.base.libpaddle.pir import (
+)
+from paddle.base.libpaddle.pir import (  # noqa: F401
     translate_to_new_ir,
     set_global_program,
     set_insertion_point,
@@ -32,7 +32,7 @@ from paddle.base.libpaddle.pir import (
     check_unregistered_ops,
     register_paddle_dialect,
     PassManager,
-)  # noqa: F401
+)
 
 from . import core
 
