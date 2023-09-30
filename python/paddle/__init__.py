@@ -535,8 +535,8 @@ disable_static()
 
 from .pir_utils import IrGuard
 
-ir_change = IrGuard()
-ir_change._switch_to_pir()
+ir_guard = IrGuard()
+ir_guard._switch_to_pir()
 
 __all__ = [
     'iinfo',
