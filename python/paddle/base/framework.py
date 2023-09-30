@@ -29,7 +29,7 @@ from types import FunctionType, MethodType
 
 import numpy as np
 
-import paddle.version as fluid_version
+import paddle.version as paddle_version
 
 from .. import pir
 from . import core, unique_name
@@ -502,10 +502,10 @@ def require_version(min_version, max_version=None):
             )
 
     version_installed = [
-        fluid_version.major,
-        fluid_version.minor,
-        fluid_version.patch,
-        fluid_version.rc,
+        paddle_version.major,
+        paddle_version.minor,
+        paddle_version.patch,
+        paddle_version.rc,
     ]
     zero_version = ['0', '0', '0', '0']
 
@@ -523,7 +523,7 @@ def require_version(min_version, max_version=None):
                 "PaddlePaddle version in [{}, {}] required, but {} installed. "
                 "Maybe you are using a develop version, "
                 "please make sure the version is good with your code.".format(
-                    min_version, max_version, fluid_version.full_version
+                    min_version, max_version, paddle_version.full_version
                 )
             )
         else:
@@ -531,7 +531,7 @@ def require_version(min_version, max_version=None):
                 "PaddlePaddle version {} or higher is required, but {} installed, "
                 "Maybe you are using a develop version, "
                 "please make sure the version is good with your code.".format(
-                    min_version, fluid_version.full_version
+                    min_version, paddle_version.full_version
                 )
             )
         return
@@ -553,7 +553,7 @@ def require_version(min_version, max_version=None):
         ):
             raise Exception(
                 "VersionError: PaddlePaddle version in [{}, {}] required, but {} installed.".format(
-                    min_version, max_version, fluid_version.full_version
+                    min_version, max_version, paddle_version.full_version
                 )
             )
     else:
@@ -561,7 +561,7 @@ def require_version(min_version, max_version=None):
             raise Exception(
                 "VersionError: PaddlePaddle version {} or higher is required, but {} installed, "
                 "please upgrade your PaddlePaddle to {} or other higher version.".format(
-                    min_version, fluid_version.full_version, min_version
+                    min_version, paddle_version.full_version, min_version
                 )
             )
 
