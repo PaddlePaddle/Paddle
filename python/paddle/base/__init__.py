@@ -203,9 +203,9 @@ def __bootstrap__():
 
 # TODO(panyx0718): Avoid doing complex initialization logic in __init__.py.
 # Consider paddle.init(args) or paddle.main(args)
+__bootstrap__()
 monkey_patch_variable()
 monkey_patch_tensor()
-__bootstrap__()
 
 # NOTE(Aurelius84): clean up ExecutorCacheInfo in advance manually.
 atexit.register(core.clear_executor_cache)
