@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import atexit
+import atexit  # noqa: F401
 from . import io
 from .spawn import spawn
 from .launch.main import launch
