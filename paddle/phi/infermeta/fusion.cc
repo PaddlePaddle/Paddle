@@ -485,10 +485,10 @@ void FusedAttentionInferMeta(const MetaTensor& x,
                                        "(dim_embed, 3 * dim_embed)."));
     } else {
       // compute the mp nranks
-      nranks = (y_dim[0] * 3) / y_dim[1];
+      nranks = static_cast<int>((y_dim[0] * 3) / y_dim[1]);
     }
-    dim_head = y_dim[0] / (num_heads * nranks);
-    hidden_size = y_dim[0];
+    dim_head = static_cast<int>(y_dim[0] / (num_heads * nranks));
+    hidden_size = static_cast<int>(y_dim[0]);
   } else {
     PADDLE_ENFORCE_EQ(y_dim.size(),
                       4,
@@ -512,9 +512,9 @@ void FusedAttentionInferMeta(const MetaTensor& x,
                                        "and must satisfy the limitations: "
                                        "(num_head * dim_head == dim_embed)"));
     }
-    num_heads = y_dim[1];
-    dim_head = y_dim[2];
-    hidden_size = y_dim[3];
+    num_heads = static_cast<int>(y_dim[1]);
+    dim_head = static_cast<int>(y_dim[2]);
+    hidden_size = static_cast<int>(y_dim[3]);
   }
 
   PADDLE_ENFORCE_EQ(
@@ -1050,8 +1050,8 @@ void FusedGemmEpilogueInferMeta(const MetaTensor& x,
 
   auto x_mat_dims = phi::flatten_to_2d(x_dims, trans_x ? 1 : x_dims.size() - 1);
 
-  int K_from_x = trans_x ? x_mat_dims[0] : x_mat_dims[1];
-  int K_from_y = trans_y ? y_dims[1] : y_dims[0];
+  int K_from_x = static_cast<int>(trans_x ? x_mat_dims[0] : x_mat_dims[1]);
+  int K_from_y = static_cast<int>(trans_y ? y_dims[1] : y_dims[0]);
 
   PADDLE_ENFORCE_EQ(
       K_from_x,
@@ -1086,7 +1086,7 @@ void FusedGemmEpilogueInferMeta(const MetaTensor& x,
           "The ReserveSpace would not be used when activation = \"none\""));
     } else {
       int min_size_of_n = activation == "relu" ? 128 : 8;
-      int N_size = trans_y ? y_dims[0] : y_dims[1];
+      int N_size = static_cast<int>(trans_y ? y_dims[0] : y_dims[1]);
       PADDLE_ENFORCE_EQ(N_size % min_size_of_n,
                         0,
                         phi::errors::InvalidArgument(

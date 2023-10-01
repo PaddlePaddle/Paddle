@@ -273,7 +273,7 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
     auto lod = rois->lod().back();
     for (size_t i = 0; i < lod.size() - 1; ++i) {
       for (size_t j = lod[i]; j < lod[i + 1]; ++j) {
-        roi2image_data[j] = static_cast<int64_t>(i);
+        roi2image_data[j] = static_cast<int>(i);
       }
     }
 

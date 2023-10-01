@@ -743,7 +743,8 @@ void HandleForSpecialOp(
           vec_inputs.emplace_back();
           continue;
         }
-        auto new_in = GetNewInput(cur_in, *map_value_pair, i, op_item->name());
+        auto new_in = GetNewInput(
+            cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
         vec_inputs.push_back(new_in);
         vec_inner_types.push_back(new_in.type());
       }
@@ -762,7 +763,8 @@ void HandleForSpecialOp(
           vec_inputs.emplace_back();
           continue;
         }
-        auto new_in = GetNewInput(cur_in, *map_value_pair, i, op_item->name());
+        auto new_in = GetNewInput(
+            cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
         vec_inputs.push_back(new_in);
 
         if (new_in.type().isa<pir::VectorType>()) {
@@ -787,7 +789,8 @@ void HandleForSpecialOp(
           vec_inputs.emplace_back();
           continue;
         }
-        auto new_in = GetNewInput(cur_in, *map_value_pair, i, op_item->name());
+        auto new_in = GetNewInput(
+            cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
         vec_inputs.push_back(new_in);
 
         if (new_in.type().isa<pir::VectorType>()) {
@@ -811,7 +814,8 @@ void HandleForSpecialOp(
           vec_inputs.emplace_back();
           continue;
         }
-        auto new_in = GetNewInput(cur_in, *map_value_pair, i, op_item->name());
+        auto new_in = GetNewInput(
+            cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
         vec_inputs.push_back(new_in);
       }
     }

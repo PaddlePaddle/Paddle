@@ -53,7 +53,7 @@ void SToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   const auto& in_process_ids = in_process_mesh.process_ids();
   auto dtype = in.dtype();
   const auto& logical_ddim = in.dims();
-  int64_t nranks = in_process_ids.size();
+  int64_t nranks = static_cast<int64_t>(in_process_ids.size());
   int in_split_axis =
       GetSplitAxisWithDimsMapping(in.dist_attr().dims_mapping()).begin()->first;
   int out_split_axis =

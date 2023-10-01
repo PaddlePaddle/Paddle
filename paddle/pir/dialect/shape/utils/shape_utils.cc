@@ -625,7 +625,12 @@ bool ShapeAnalysis::IsSameNumElements(Value lhs, Value rhs) {
 
   if (!lhsTy || !rhsTy || !lhsTy.HasRank() || !rhsTy.HasRank()) return false;
 
-  return IsProductEqual(lhs, 0, lhsTy.GetRank(), rhs, 0, rhsTy.GetRank());
+  return IsProductEqual(lhs,
+                        0,
+                        static_cast<int>(lhsTy.GetRank()),
+                        rhs,
+                        0,
+                        static_cast<int>(rhsTy.GetRank()));
 }
 
 bool ShapeAnalysis::IsProductEqual(
