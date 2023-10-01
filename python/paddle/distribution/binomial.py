@@ -16,9 +16,11 @@ import math
 from collections.abc import Iterable
 
 import numpy as np
+from scipy.special import loggamma
 
 import paddle
 from paddle.distribution import distribution
+from paddle.framework import in_dynamic_mode
 
 
 class Binomial(distribution.Distribution):
@@ -72,8 +74,11 @@ class Binomial(distribution.Distribution):
             raise ValueError(
                 'Every element of input parameter `total_count` should be grater than or equal to one, and `probability` should be grater than or equal to zero and less than or equal to one.'
             )
-
-        super().__init__(self.total_count.shape)
+        if self.total_count.shape == []:
+            batch_shape = (1,)
+        else:
+            batch_shape = self.total_count.shape
+        super().__init__(batch_shape)
 
     def _to_tensor(self, total_count, probability):
         """Convert the input parameters into tensors and broadcast them
@@ -83,9 +88,9 @@ class Binomial(distribution.Distribution):
         """
         # convert type
         if isinstance(total_count, int):
-            total_count = paddle.to_tensor(total_count, dtype=self.dtype)
+            total_count = paddle.to_tensor([total_count], dtype=self.dtype)
         if isinstance(probability, float):
-            probability = paddle.to_tensor(probability, dtype=self.dtype)
+            probability = paddle.to_tensor([probability], dtype=self.dtype)
         total_count = paddle.cast(total_count, dtype=self.dtype)
         probability = paddle.cast(probability, dtype=self.dtype)
 
@@ -104,7 +109,7 @@ class Binomial(distribution.Distribution):
         """
         total_count_check = (total_count >= 1).all()
         probability_check = (probability >= 0).all() * (probability <= 1).all()
-        return total_count_check.numpy()[0] and probability_check.numpy()[0]
+        return total_count_check and probability_check
 
     @property
     def mean(self):
@@ -137,202 +142,34 @@ class Binomial(distribution.Distribution):
             raise TypeError('sample shape must be Iterable object.')
 
         with paddle.set_grad_enabled(False):
-            shape = list(shape)
-            batch_shape = list(self.batch_shape)
-            output_shape = list(shape + batch_shape)
+            shape = tuple(shape)
+            batch_shape = tuple(self.batch_shape)
+            output_shape = tuple(shape + batch_shape)
             output_size = paddle.broadcast_to(
                 self.total_count, shape=output_shape
-            ).numpy()
+            )
             output_prob = paddle.broadcast_to(
                 self.probability, shape=output_shape
-            ).numpy()
-            broadcast_func = np.frompyfunc(self._binomial_sample, nin=2, nout=1)
-            return paddle.to_tensor(
-                broadcast_func(output_size, output_prob).astype('float32')
             )
-
-    # small n*p -> n*p < 30
-    def _small_binomial_sample(self, f, p_q, g, n, p):
-        """Binomial r.v. sampling algorithm when size*probability < 30.
-
-        Returns:
-            int, one binomial sample.
-        """
-        while True:
-            y = 0
-            u = np.random.uniform(0, 1)
-            while True:
-                if u < f:
-                    return n - y if p > 0.5 else y
-                if y > 110:
-                    break
-                u -= f
-                y += 1
-                f *= g / y - p_q
-
-    def _binomial_sample(self, n, p):
-        """BTPE algorithm, a Binomial r.v. sampling algorithm.
-
-        Args:
-            n (float): size
-            p (float): probability
-
-        Returns:
-            int, one binomial sample.
-
-        ### References
-
-        [1]: Kachitvichyanukul, V. and Schmeiser, B. W. (1988) Binomial random variate generation.
-             Communications of the ACM, 31, 216–222.
-        """
-        if p == 1:
-            return n
-        if n == 0 or p == 0:
-            return 0
-
-        r = min(p, 1 - p)
-        q = 1 - r
-        p_q = p / q
-        g = p_q * (n + 1)
-
-        # small n*p
-        if n * p < 30:
-            f = np.power(q, n)
-            return self._small_binomial_sample(f, p_q, g, n, p)
-        else:
-            # step 0
-            f_M = n * r + r
-            M = int(f_M)
-            p_1 = int(2.195 * math.sqrt(n * r * q) - 4.6 * q) + 0.5
-            x_M = M + 0.5
-            x_L = x_M - p_1
-            x_R = x_M + p_1
-            c = 0.134 + 20.5 / (15.3 + M)
-            a = (f_M - x_L) / (f_M - x_L * r)
-            l_L = a * (1 + a / 2)
-            a = (x_R - f_M) / (x_R * q)
-            l_R = a * (1 + a / 2)
-            p_2 = p_1 * (1 + 2 * c)
-            p_3 = p_2 + c / l_L
-            p_4 = p_3 + c / l_R
-
-        # large n*p
-        while True:
-            # step 1
-            u = np.random.uniform(0, 1) * p_4
-            v = np.random.uniform(0, 1)
-            if u <= p_1:
-                y = int(x_M - p_1 * v + u)
-                return n - y if p > 0.5 else y
-
-            # step 2
-            if u <= p_2:
-                x = x_L + (u - p_1) / c
-                v = v * c + 1 - abs(x_M - x) / p_1
-                if v > 1 or v <= 0:
-                    continue
-                y = int(x)
-            else:
-                # step 3
-                if u > p_3:
-                    # step 4
-                    y = int(x_R - math.log(v) / l_R)
-                    if y > n:
-                        continue
-                    v = v * (u - p_3) * l_R
-                else:
-                    y = int(x_L + math.log(v) / l_L)
-                    if y < 0:
-                        continue
-                    v = v * (u - p_2) * l_L
-
-            # step 5
-            k = abs(y - M)
-            if k <= 20 or k >= (n * r * q) / 2 - 1:
-                s = r / q
-                a = s * (n + 1)
-                F = 1.0
-                if M < y:
-                    for i in range(M + 1, y + 1):
-                        F = F * (a / i - s)
-                else:
-                    for i in range(y + 1, M + 1):
-                        F = F * (a / i - s)
-                if v <= F:
-                    return n - y if p > 0.5 else y
-            else:
-                rho = (k / (n * r * q)) * (
-                    (k * (k / 3 + 0.625) + 1 / 6) / (n * r * q) + 0.5
+            if in_dynamic_mode():
+                broadcast_func = np.frompyfunc(binomial_sample, nin=2, nout=1)
+                return paddle.to_tensor(
+                    broadcast_func(
+                        output_size.numpy(), output_prob.numpy()
+                    ).astype('float32')
                 )
-                t = -(k**2) / (2 * (n * r * q))
-                A = math.log(v)
-                if A < t - rho:
-                    return n - y if p > 0.5 else y
-                if A <= t + rho:
-                    # 5.3
-                    x_1 = y + 1
-                    f_1 = M + 1
-                    z = n + 1 - M
-                    w = n - y + 1
-                    x_2 = x_1**2
-                    f_2 = f_1**2
-                    z_2 = z**2
-                    w_2 = w**2
-                    tmp = (
-                        x_M * math.log(f_1 / x_1)
-                        + (n - M + 0.5) * math.log(z / w)
-                        + (y - M) * math.log(w * r / (x_1 * q))
-                    )
-                    tmp += (
-                        (
-                            13860.0
-                            - (
-                                462.0
-                                - (132.0 - (99.0 - 140.0 / f_2) / f_2) / f_2
-                            )
-                            / f_2
-                        )
-                        / f_1
-                        / 166320.0
-                    )
-                    tmp += (
-                        (
-                            13860.0
-                            - (
-                                462.0
-                                - (132.0 - (99.0 - 140.0 / z_2) / z_2) / z_2
-                            )
-                            / z_2
-                        )
-                        / z
-                        / 166320.0
-                    )
-                    tmp += (
-                        (
-                            13860.0
-                            - (
-                                462.0
-                                - (132.0 - (99.0 - 140.0 / x_2) / x_2) / x_2
-                            )
-                            / x_2
-                        )
-                        / x_1
-                        / 166320.0
-                    )
-                    tmp += (
-                        (
-                            13860.0
-                            - (
-                                462.0
-                                - (132.0 - (99.0 - 140.0 / w_2) / w_2) / w_2
-                            )
-                            / w_2
-                        )
-                        / w
-                        / 166320.0
-                    )
-                    if A <= tmp:
-                        return n - y if p > 0.5 else y
+            else:
+                output = (
+                    paddle.static.default_main_program()
+                    .current_block()
+                    .create_var(dtype=self.dtype, shape=output_shape)
+                )
+                paddle.static.py_func(
+                    func=binomial_sample_vectorized,
+                    x=[output_size, output_prob],
+                    out=output,
+                )
+                return output
 
     def entropy(self):
         r"""Shannon entropy in nats.
@@ -350,13 +187,25 @@ class Binomial(distribution.Distribution):
         Returns:
             Tensor: Shannon entropy of binomial distribution. The data type is float32.
         """
-        n_max = int(self.total_count.max())
-        if not self.total_count.min() == n_max:
-            raise NotImplementedError(
-                "Heterogeneous `total_count` not supported by `entropy`."
+        if in_dynamic_mode():
+            broadcast_func = np.frompyfunc(binomial_entropy, nin=2, nout=1)
+            return paddle.to_tensor(
+                broadcast_func(
+                    self.total_count.numpy(), self.probability.numpy()
+                ).astype('float32')
             )
-        log_prob = self.log_prob(self._enumerate_support())
-        return -(paddle.exp(log_prob) * log_prob).sum(0)
+        else:
+            output = (
+                paddle.static.default_main_program()
+                .current_block()
+                .create_var(dtype=self.dtype, shape=self.batch_shape)
+            )
+            paddle.static.py_func(
+                func=binomial_entropy_vectorized,
+                x=[self.total_count, self.probability],
+                out=output,
+            )
+            return output
 
     def _enumerate_support(self):
         """Return the support of binomial distribution [0, 1, ... ,n]
@@ -364,9 +213,7 @@ class Binomial(distribution.Distribution):
         Returns:
             Tensor: the support of binomial distribution
         """
-        values = paddle.arange(
-            1 + int(self.total_count.max()), dtype=self.dtype
-        )
+        values = paddle.arange(1 + self.total_count.max(), dtype=self.dtype)
         values = values.reshape((-1,) + (1,) * len(self.batch_shape))
         return values
 
@@ -392,10 +239,13 @@ class Binomial(distribution.Distribution):
             - paddle.lgamma(value + 1.0)
         )
         # log_p
-        return (
-            log_comb
-            + value * paddle.log(self.probability)
-            + (self.total_count - value) * paddle.log(1 - self.probability)
+        return paddle.nan_to_num(
+            (
+                log_comb
+                + value * paddle.log(self.probability)
+                + (self.total_count - value) * paddle.log(1 - self.probability)
+            ),
+            neginf=0,
         )
 
     def prob(self, value):
@@ -433,24 +283,245 @@ class Binomial(distribution.Distribution):
             Tensor: kl-divergence between two binomial distributions. The data type is float32.
 
         """
-        n_max_1 = int(self.total_count.max())
-        n_max_2 = int(other.total_count.max())
-        if not (
-            self.total_count.min() == n_max_1
-            or other.total_count.min() == n_max_2
-        ):
-            raise NotImplementedError(
-                "Heterogeneous `total_count` not supported by `kl_divergence`."
-            )
-        if n_max_1 != n_max_2:
+        if not (paddle.equal(self.total_count, other.total_count)).all():
             raise ValueError(
-                "KL divergence of two binomial distributions should share the same size of `total_count`."
-            )
-        if self.batch_shape != other.batch_shape:
-            raise ValueError(
-                "KL divergence of two binomial distributions should share the same `batch_shape`."
+                "KL divergence of two binomial distributions should share the same `total_count` and `batch_shape`."
             )
         support = self._enumerate_support()
         log_prob_1 = self.log_prob(support)
         log_prob_2 = other.log_prob(support)
-        return (paddle.exp(log_prob_1) * (log_prob_1 - log_prob_2)).sum(0)
+        return (
+            paddle.multiply(
+                paddle.exp(log_prob_1),
+                (paddle.subtract(log_prob_1, log_prob_2)),
+            )
+        ).sum(0)
+
+
+def small_binomial_sample(f, p_q, g, n, p):
+    """Binomial r.v. sampling algorithm when size*probability < 30. By inverse cdf method.
+
+    Returns:
+        int, one binomial sample.
+    """
+    while True:
+        y = 0
+        u = np.random.uniform(0, 1)
+        while True:
+            if u < f:
+                return n - y if p > 0.5 else y
+            if y > 110:
+                break
+            u -= f
+            y += 1
+            f *= g / y - p_q
+
+
+def binomial_sample(n, p):
+    """BTPE algorithm, a Binomial r.v. sampling algorithm.
+
+    Args:
+        n (float): size
+        p (float): probability
+
+    Returns:
+        int, one binomial sample.
+
+    ### References
+
+    [1]: Kachitvichyanukul, V. and Schmeiser, B. W. (1988) Binomial random variate generation.
+            Communications of the ACM, 31, 216–222.
+    """
+
+    if not in_dynamic_mode():
+        n = np.array(n)
+        p = np.array(p)
+    if p == 1:
+        return n
+    if n == 0 or p == 0:
+        return 0
+    r = min(p, 1 - p)
+    q = 1 - r
+    p_q = r / q
+    g = p_q * (n + 1)
+
+    # small n*r
+    if n * r < 30:
+        f = math.pow(q, n)
+        return small_binomial_sample(f, p_q, g, n, p)
+    else:
+        # step 0
+        f_M = n * r + r
+        M = int(f_M)
+        p_1 = int(2.195 * math.sqrt(n * r * q) - 4.6 * q) + 0.5
+        x_M = M + 0.5
+        x_L = x_M - p_1
+        x_R = x_M + p_1
+        c = 0.134 + 20.5 / (15.3 + M)
+        a = (f_M - x_L) / (f_M - x_L * r)
+        l_L = a * (1 + a / 2)
+        try:
+            a = (x_R - f_M) / (x_R * q)
+        except:
+            a = math.inf
+        l_R = a * (1 + a / 2)
+        p_2 = p_1 * (1 + 2 * c)
+        p_3 = p_2 + c / l_L
+        p_4 = p_3 + c / l_R
+    while True:
+        # step 1
+        u = np.random.uniform(0, 1) * p_4
+        v = np.random.uniform(0, 1)
+        if u <= p_1:
+            y = int(x_M - p_1 * v + u)
+            return n - y if p > 0.5 else y
+        # step 2
+        if u <= p_2:
+            x = x_L + (u - p_1) / c
+            v = v * c + 1 - abs(x_M - x) / p_1
+            if v > 1 or v <= 0:
+                continue
+            y = int(x)
+        else:
+            # step 3
+            if u > p_3:
+                # step 4
+                y = int(x_R - math.log(v) / l_R)
+                if y > n:
+                    continue
+                v = v * (u - p_3) * l_R
+            else:
+                y = int(x_L + math.log(v) / l_L)
+                if y < 0:
+                    continue
+                v = v * (u - p_2) * l_L
+
+        # step 5
+        k = abs(y - M)
+        if k <= 20 or k >= (n * r * q) / 2 - 1:
+            s = r / q
+            a = s * (n + 1)
+            F = 1.0
+            if M < y:
+                for i in range(M + 1, y + 1):
+                    F = F * (a / i - s)
+            elif M > y:
+                for i in range(y + 1, M + 1):
+                    try:
+                        F = F / (a / i - s)
+                    except:
+                        F = math.inf
+            if v <= F:
+                return n - y if p > 0.5 else y
+            else:
+                continue
+        else:
+            rho = (k / (n * r * q)) * (
+                (k * (k / 3 + 0.625) + 1 / 6) / (n * r * q) + 0.5
+            )
+            t = -(k**2) / (2 * (n * r * q))
+            A = math.log(v)
+            if A < t - rho:
+                return n - y if p > 0.5 else y
+            if A <= t + rho:
+                # 5.3
+                x_1 = y + 1
+                f_1 = M + 1
+                z = n + 1 - M
+                w = n - y + 1
+                x_2 = x_1**2
+                f_2 = f_1**2
+                z_2 = z**2
+                w_2 = w**2
+                tmp = (
+                    x_M * math.log(f_1 / x_1)
+                    + (n - M + 0.5) * math.log(z / w)
+                    + (y - M) * math.log(w * r / (x_1 * q))
+                )
+                tmp += (
+                    (
+                        13860.0
+                        - (462.0 - (132.0 - (99.0 - 140.0 / f_2) / f_2) / f_2)
+                        / f_2
+                    )
+                    / f_1
+                    / 166320.0
+                )
+                tmp += (
+                    (
+                        13860.0
+                        - (462.0 - (132.0 - (99.0 - 140.0 / z_2) / z_2) / z_2)
+                        / z_2
+                    )
+                    / z
+                    / 166320.0
+                )
+                tmp += (
+                    (
+                        13860.0
+                        - (462.0 - (132.0 - (99.0 - 140.0 / x_2) / x_2) / x_2)
+                        / x_2
+                    )
+                    / x_1
+                    / 166320.0
+                )
+                tmp += (
+                    (
+                        13860.0
+                        - (462.0 - (132.0 - (99.0 - 140.0 / w_2) / w_2) / w_2)
+                        / w_2
+                    )
+                    / w
+                    / 166320.0
+                )
+                if A <= tmp:
+                    return n - y if p > 0.5 else y
+
+
+def binomial_sample_vectorized(nn, pp):
+    """Vectorized binomial sampling function
+
+    Args:
+        nn (Tensor): size
+        pp (Tensor): probability
+
+    Returns:
+        np.ndarray, binomial samples.
+    """
+    broadcast_func = np.frompyfunc(binomial_sample, nin=2, nout=1)
+    return np.array(broadcast_func(nn, pp), dtype='float32')
+
+
+def binomial_entropy(n, p):
+    """Evaluated the entropy of one binomial r.v..
+
+    Args:
+        n (float): size of the binomial r.v.
+        p (float): probability of the binomial r.v.
+
+    Returns:
+        numpy.ndarray: the entropy for the binomial r.v.
+    """
+    n = np.array(n)
+    p = np.array(p)
+    v = np.arange(1 + n, dtype="float32")
+    log_comb = loggamma(n + 1.0) - loggamma(n - v + 1.0) - loggamma(v + 1.0)
+    log_prob = np.nan_to_num(
+        (log_comb + v * np.log(p) + (n - v) * np.log(1 - p)), neginf=0
+    )
+    # return paddle.nan_to_num(-(paddle.exp(log_prob) * log_prob), posinf = 0).numpy().sum()
+    return np.nan_to_num(-(np.exp(log_prob) * log_prob), posinf=0).sum()
+
+
+def binomial_entropy_vectorized(nn, pp):
+    """Vectorized binomial entropy function
+
+    Args:
+        nn (Tensor): size
+        pp (Tensor): probability
+
+    Returns:
+        np.ndarray, binomial entropies.
+    """
+    broadcast_func = np.frompyfunc(binomial_entropy, nin=2, nout=1)
+    return np.array(broadcast_func(nn, pp), dtype='float32')

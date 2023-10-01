@@ -73,8 +73,11 @@ class Poisson(distribution.Distribution):
             raise ValueError(
                 'Every element of input parameter `rate` should be nonnegative.'
             )
-
-        super().__init__(self.rate.shape)
+        if self.total_count.shape == []:
+            batch_shape = (1,)
+        else:
+            batch_shape = self.rate.shape
+        super().__init__(batch_shape)
 
     def _to_tensor(self, rate):
         """Convert the input parameters into tensors with dtype = float32
@@ -84,7 +87,7 @@ class Poisson(distribution.Distribution):
         """
         # convert type
         if isinstance(rate, (float, int)):
-            rate = paddle.to_tensor(rate, dtype=self.dtype)
+            rate = paddle.to_tensor([rate], dtype=self.dtype)
         rate = paddle.cast(rate, dtype=self.dtype)
         return rate
 
@@ -337,10 +340,10 @@ class Poisson(distribution.Distribution):
         """Evaluated the entropy of one poisson r.v. based on bounded approximation of the support.
 
         Args:
-            rate (float): rate of one poisson r.v.
+            rate (float): rate of the poisson r.v.
 
         Returns:
-            float: entropy of one poisson r.v. with :attr:`rate`.
+            float: entropy of the poisson r.v. with :attr:`rate`.
         """
         values = self._enumerate_bounded_support(rate)
         log_prob = (
@@ -365,10 +368,13 @@ class Poisson(distribution.Distribution):
                 'Every element of input parameter `value` should be nonnegative.'
             )
 
-        return (
-            -self.rate
-            + value * paddle.log(self.rate)
-            - paddle.lgamma(value + 1)
+        return paddle.nan_to_num(
+            (
+                -self.rate
+                + value * paddle.log(self.rate)
+                - paddle.lgamma(value + 1)
+            ),
+            neginf=0,
         )
 
     def prob(self, value):
