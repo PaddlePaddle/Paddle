@@ -16,15 +16,15 @@
 #include <memory>
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/interpreter_base_impl.h"
-#include "paddle/ir/core/value.h"
+#include "paddle/pir/core/value.h"
 
 namespace ir {
-class Program;
+class Block;
 }  // namespace ir
 
 namespace paddle {
 namespace framework {
-
+class ValueExecutionInfo;
 class NewIRInterpreter : public InterpreterBaseImpl {
   using ExecutionConfig = interpreter::ExecutionConfig;
   using InstructionSchedulingPriorityLess = std::function<bool(size_t, size_t)>;
@@ -36,8 +36,15 @@ class NewIRInterpreter : public InterpreterBaseImpl {
  public:
   NewIRInterpreter(const platform::Place& place,
                    const std::vector<std::string>& fetch_var_names,
-                   std::unique_ptr<::ir::Program> ir_prog,
+                   const ::pir::Block* ir_block,
                    Scope* scope,
+                   const ExecutionConfig& execution_config = ExecutionConfig());
+
+  NewIRInterpreter(const platform::Place& place,
+                   const std::vector<std::string>& fetch_var_names,
+                   const ::pir::Block* ir_block,
+                   Scope* scope,
+                   std::shared_ptr<ValueExecutionInfo> value_exe_info,
                    const ExecutionConfig& execution_config = ExecutionConfig());
 
   ~NewIRInterpreter();
@@ -77,9 +84,7 @@ class NewIRInterpreter : public InterpreterBaseImpl {
     hookfuncs_ = hookfuncs;
   }
 
-  std::string GetNameById(int id) const;
-
-  int GetIdByName(const std::string& name) const;
+  std::string GetNameByValue(::pir::Value value) const;
 
  private:
   // build graph
@@ -97,6 +102,12 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   // cuda graph
   void CheckCUDAGraphBeforeRun(const std::vector<std::string>& feed_names);
   void PrepareForCUDAGraphCapture();
+
+  void Build(
+      const std::vector<std::string>& feed_names,
+      std::vector<paddle::framework::OpFuncNode>* op_func_nodes) override;
+
+  bool IsStaticBuild() const override { return static_build_; }
 
   // workqueue
   std::shared_ptr<interpreter::AsyncWorkQueue> GetWorkQueue();
@@ -184,7 +195,7 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   void RecordMemcpyD2H(InstructionBase* instr_node);
 
-  ::ir::Value GetValueByName(const std::string& var_name);
+  ::pir::Value GetValueByName(const std::string& var_name);
 
   void CheckGC(InstructionBase* instr);
 
@@ -198,19 +209,14 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   InstructionSchedulingPriorityLess ir_instruction_scheduling_priority_less;
 
-  std::unique_ptr<::ir::Program> ir_program_{nullptr};
+  const ::pir::Block* ir_block_{nullptr};
 
   std::vector<std::unique_ptr<InstructionBase>> vec_instruction_base_;
 
-  std::unordered_map<::ir::Value, std::string> value_2_var_name_;
+  // value execution info
+  std::shared_ptr<ValueExecutionInfo> value_exe_info_;
 
-  std::unordered_map<const paddle::framework::Variable*, std::string>
-      variable_2_var_name_;
-
-  std::map<std::string, int> var_name_2_id_;
-  std::unordered_map<int, std::string> id_2_var_name_;
-
-  std::vector<Variable*> variable_list_;
+  std::map<pir::Block*, paddle::framework::Scope*> sub_blocks_;
 
   std::vector<int> var_ref_count_;
 

@@ -1,0 +1,187 @@
+- op : add_n_
+  args : (Tensor[] inputs)
+  output : Tensor(out)
+  infer_meta:
+    func: AddNInferMeta
+    param: [inputs]
+  kernel:
+    func: add_n
+    param: [inputs]
+  backward: add_n_grad
+
+- op : add_n_with_kernel
+  args : (Tensor[] inputs)
+  output : Tensor(out)
+  infer_meta:
+    func: AddNInferMeta
+    param: [inputs]
+  kernel:
+    func: add_n
+    param: [inputs]
+  backward: add_n_grad
+
+- op : assert
+  args : (Tensor cond, Tensor[] data, int64_t summarize = -1)
+  output :
+  kernel :
+    func : assert
+    param : [cond, data, summarize]
+    data_type : cond
+
+- op : assign_value
+  args : (int[] shape, DataType dtype, Scalar[] values, Place place = {})
+  output : Tensor(out)
+  infer_meta :
+    func : AssignValueInferMeta
+    param: [shape, dtype]
+  kernel :
+    func : assign_value
+    param : [shape, dtype, values]
+    backend: place>
+    data_type : dtype
+
+- op : embedding_grad_sparse
+  args : (Tensor x, Tensor weight, Tensor out_grad, int64_t padding_idx = -1, bool sparse = false)
+  output : SelectedRows(weight_grad)
+  infer_meta:
+    func: EmbeddingGradSparseInferMeta
+    param: [weight]
+  kernel:
+    func: embedding_sparse_grad
+    param: [x, weight, out_grad, padding_idx, sparse]
+    data_type : weight
+
+- op : feed
+  args : (str name, int col)
+  output : Tensor(out)
+
+- op : fetch
+  args : (Tensor x, str name, int col)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : fetch
+    param : [x]
+
+- op : get_tensor_from_selected_rows
+  args : (Tensor x)
+  output : Tensor(out)
+  kernel:
+    func: get_tensor_from_selected_rows {selected_rows -> dense}
+
+- op : load_combine
+  args : (str file_path, bool load_as_fp16, bool model_from_memory)
+  output : Tensor[](Out)
+  kernel:
+    func: load_combine
+    param: [file_path, load_as_fp16, model_from_memory]
+  optional : Out
+
+- op : lod_array_length
+  args : (Tensor[] x)
+  output : Tensor(out)
+
+- op : print
+  args : (Tensor in, int first_n, str message, int summarize, bool print_tensor_name = true, bool print_tensor_type = true, bool print_tensor_shape = true, bool print_tensor_layout = true, bool print_tensor_lod = true, str print_phase = "BOTH", bool is_forward = true)
+  output : Tensor(out)
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [in]
+  kernel :
+    func : print_kernel
+    param: [in, first_n, message, summarize, print_tensor_name, print_tensor_type, print_tensor_shape, print_tensor_layout, print_tensor_lod, print_phase, is_forward]
+
+- op : recv_v2
+  args : (int[] out_shape = {}, DataType dtype = DataType::FLOAT32, int peer = 0, int ring_id = 0, bool use_calc_stream = false, bool dynamic_shape = false)
+  output : Tensor(out)
+  infer_meta:
+    func: RecvV2InferMeta
+    param: [ring_id, dynamic_shape, peer, out_shape, dtype]
+  kernel :
+    func : recv_v2
+    param : [ring_id, dynamic_shape, peer, out_shape, dtype, use_calc_stream]
+    data_type : dtype
+
+- op : save_combine
+  args : (Tensor[] x, str file_path, bool overwrite, bool save_as_fp16, bool save_to_memory)
+  output : Tensor(out)
+  kernel:
+    func: save_combine_tensor
+    param: [x, file_path, overwrite, save_as_fp16, save_to_memory]
+  optional : out
+
+- op : seed
+  args : (int seed, bool deterministic, str rng_name, bool force_cpu)
+  output : Tensor(out)
+  infer_meta:
+    func: SeedInferMeta
+    param: [seed]
+  kernel:
+    func: seed
+
+- op : send_v2
+  args : (Tensor x, int ring_id = 0, int peer = 0, bool use_calc_stream = false, bool dynamic_shape = false)
+  output :
+  infer_meta:
+    func: SendV2InferMeta
+    param: [peer, ring_id]
+  kernel :
+    func : send_v2
+    param : [x, ring_id, dynamic_shape, peer, use_calc_stream]
+
+- op : set_value
+  args : (Tensor x, int64_t[] starts, int64_t[] ends, int64_t[] steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes, int64_t[] shape, Scalar[] values)
+  output : Tensor(out)
+  infer_meta:
+    func: SetValueInferMeta
+    param: [x]
+  kernel:
+    func: set_value
+    param: [x, starts, ends, steps, axes, decrease_axes, none_axes, shape, values]
+  inplace: (x -> out)
+  backward: set_value_grad
+
+- op : set_value_with_tensor
+  args : (Tensor x, Tensor values, int64_t[] starts, int64_t[] ends, int64_t[] steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes)
+  output : Tensor(out)
+  infer_meta:
+    func: SetValueInferMeta
+    param: [x]
+  kernel:
+    func: set_value_with_tensor
+    param: [x, values, starts, ends, steps, axes, decrease_axes, none_axes]
+  inplace: (x -> out)
+  backward: set_value_grad
+
+- op : shadow_feed
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: shadow_feed
+    param: [x]
+
+- op : share_data
+  args : (Tensor x)
+  output : Tensor(out)
+  kernel:
+    func: share_data
+    param: [x]
+
+- op : write_to_array
+  args : (Tensor i, Tensor x)
+  output : Tensor[](out)
+  backward: write_to_array_grad
+
+- op: fused_attention
+  args: (Tensor x, Tensor ln_scale, Tensor ln_bias, Tensor qkv_weight, Tensor qkv_bias, Tensor cache_kv, Tensor src_mask, Tensor out_linear_weight, Tensor out_linear_bias, Tensor ln_scale_2, Tensor ln_bias_2, int num_heads, bool transpose_qkv_wb, bool pre_layer_norm, float epsilon, float attn_dropout_rate, bool is_test, bool attn_dropout_fix_seed, int attn_dropout_seed, str attn_dropout_implementation, float dropout_rate, bool dropout_fix_seed, int dropout_seed, str dropout_implementation, float ln_epsilon, bool add_residual, int ring_id)
+  output: Tensor(ln_mean), Tensor(ln_var), Tensor(ln_out), Tensor(qkv_out), Tensor(qkv_bias_out), Tensor(transpose_out_2), Tensor(qk_out), Tensor(qktv_out), Tensor(softmax_out), Tensor(attn_dropout_mask_out), Tensor(attn_dropout_out), Tensor(src_mask_out), Tensor(fmha_out), Tensor(out_linear_out), Tensor(dropout_mask_out), Tensor(ln_mean_2), Tensor(ln_var_2), Tensor(bias_dropout_residual_out), Tensor(cache_kv_out), Tensor(out)
+  kernel:
+    func: fused_attention
+  infer_meta:
+    func: FusedAttentionInferMeta
+  optional: cache_kv, ln_scale, ln_bias, qkv_bias, src_mask, out_linear_bias, ln_scale_2, ln_bias_2

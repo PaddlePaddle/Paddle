@@ -20,6 +20,7 @@ import unittest
 
 import xdoctest
 from sampcd_processor import Xdoctester
+from sampcd_processor_utils import TestResult as _TestResult  # for pytest
 from sampcd_processor_utils import (
     get_api_md5,
     get_incrementapi,
@@ -31,6 +32,51 @@ def _clear_environ():
     for k in {'CPU', 'GPU', 'XPU', 'DISTRIBUTED'}:
         if k in os.environ:
             del os.environ[k]
+
+
+class Test_TestResult(unittest.TestCase):
+    def test_good_result(self):
+        r = _TestResult(name='good', passed=True)
+        self.assertTrue(r.passed)
+        self.assertFalse(r.failed)
+
+        r = _TestResult(name='good', passed=True, failed=False)
+        self.assertTrue(r.passed)
+        self.assertFalse(r.failed)
+
+        r = _TestResult(name='good', passed=False, failed=True)
+        self.assertFalse(r.passed)
+        self.assertTrue(r.failed)
+
+        r = _TestResult(name='good', passed=True, nocode=False, time=10)
+        self.assertTrue(r.passed)
+        self.assertFalse(r.nocode)
+
+        r = _TestResult(
+            name='good',
+            passed=True,
+            timeout=False,
+            time=10,
+            test_msg='ok',
+            extra_info=None,
+        )
+        self.assertTrue(r.passed)
+        self.assertFalse(r.timeout)
+
+    def test_bad_result(self):
+        # more than one True result
+        r = _TestResult(name='bad', passed=True, failed=True)
+        self.assertTrue(r.passed)
+        self.assertTrue(r.failed)
+
+        # default result is Fail for True
+        r = _TestResult(name='bad')
+        self.assertFalse(r.passed)
+        self.assertTrue(r.failed)
+
+        # bad arg
+        with self.assertRaises(KeyError):
+            r = _TestResult(name='good', passed=True, bad=True)
 
 
 class Test_get_api_md5(unittest.TestCase):
@@ -157,7 +203,7 @@ class TestXdoctester(unittest.TestCase):
 
                 this is some blabla...
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('skip')
                 >>> print(1+1)
                 2
 
@@ -190,7 +236,7 @@ class TestXdoctester(unittest.TestCase):
 
                 this is some blabla...
 
-                >>> # xdoctest: +SKIP
+                >>> # xdoctest: +SKIP('skip')
                 >>> print(1+1)
                 2
 
@@ -1125,7 +1171,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 this is some blabla...
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('skip')
                 >>> print(1+1)
                 2
 
@@ -1389,7 +1435,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 this is some blabla...
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('skip')
                 >>> print(1+1)
                 2
 
@@ -1484,7 +1530,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 this is some blabla...
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('skip')
                 >>> print(1+1)
                 2
 
@@ -1580,7 +1626,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 this is some blabla...
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('skip')
                 >>> print(1+1)
                 2
 
@@ -1661,7 +1707,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 this is some blabla...
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('skip')
                 >>> print(1+1)
                 2
 
@@ -1766,7 +1812,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 this is some blabla...
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('skip')
                 >>> print(1+1)
                 2
             """,
@@ -1812,7 +1858,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 this is some blabla...
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('skip')
                 >>> print(1+1)
                 2
             """,
@@ -1842,7 +1888,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 this is some blabla...
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('skip')
                 >>> print(1+1)
                 2
             """,
@@ -1888,7 +1934,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 this is some blabla...
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('skip')
                 >>> print(1+1)
                 2
             """,
@@ -2008,7 +2054,7 @@ class TestGetTestResults(unittest.TestCase):
                 .. code-block:: python
 
                     >>> # doctest: +TIMEOUT(2)
-                    >>> # doctest: +SKIP
+                    >>> # doctest: +SKIP('skip')
                     >>> import time
                     >>> time.sleep(0.1)
             """,
@@ -2019,7 +2065,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 .. code-block:: python
 
-                    >>> # doctest: +SKIP
+                    >>> # doctest: +SKIP('skip')
                     >>> # doctest: +TIMEOUT(2)
                     >>> import time
                     >>> time.sleep(0.1)
@@ -2032,7 +2078,7 @@ class TestGetTestResults(unittest.TestCase):
                 .. code-block:: python
 
                     >>> # doctest: +TIMEOUT(2)
-                    >>> # doctest: +SKIP
+                    >>> # doctest: +SKIP('skip')
                     >>> import time
                     >>> time.sleep(3)
             """,
@@ -2043,7 +2089,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 .. code-block:: python
 
-                    >>> # doctest: +SKIP
+                    >>> # doctest: +SKIP('skip')
                     >>> # doctest: +TIMEOUT(2)
                     >>> import time
                     >>> time.sleep(3)
@@ -2161,6 +2207,394 @@ class TestGetTestResults(unittest.TestCase):
         self.assertIn('timeout_more_codes', tr_7.name)
         self.assertFalse(tr_7.passed)
         self.assertTrue(tr_7.timeout)
+
+    def test_bad_statements(self):
+        docstrings_to_test = {
+            'bad_fluid': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> import paddle.fluid
+            """,
+            'bad_fluid_from': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> import paddle
+                    >>> from paddle import fluid
+            """,
+            'no_bad': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> # doctest: +SKIP('reason')
+                    >>> import os
+            """,
+            'bad_fluid_good_skip': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> # doctest: +SKIP('reason')
+                    >>> import os
+                    >>> from paddle import fluid
+            """,
+            'bad_fluid_bad_skip': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> # doctest: +SKIP('reason')
+                    >>> import os
+                    >>> from paddle import fluid
+                    >>> # doctest: +SKIP
+                    >>> import sys
+            """,
+            'bad_skip_mix': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> # doctest: +SKIP('reason')
+                    >>> import os
+                    >>> # doctest: +SKIP
+                    >>> import sys
+            """,
+            'bad_skip': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> # doctest: +SKIP
+                    >>> import os
+
+            """,
+            'bad_skip_empty': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> import os
+                    >>> # doctest: +SKIP()
+                    >>> import sys
+            """,
+            'good_skip': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> import os
+                    >>> # doctest: +SKIP('reason')
+                    >>> import sys
+                    >>> # doctest: -SKIP
+                    >>> import math
+            """,
+            'comment_fluid': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> # import paddle.fluid
+                    >>> import os
+            """,
+            'oneline_skip': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> import os # doctest: +SKIP
+                    >>> import sys
+            """,
+        }
+
+        _clear_environ()
+
+        test_capacity = {'cpu'}
+        doctester = Xdoctester()
+        doctester.prepare(test_capacity)
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 11)
+
+        (
+            tr_0,
+            tr_1,
+            tr_2,
+            tr_3,
+            tr_4,
+            tr_5,
+            tr_6,
+            tr_7,
+            tr_8,
+            tr_9,
+            tr_10,
+        ) = test_results
+
+        self.assertIn('bad_fluid', tr_0.name)
+        self.assertTrue(tr_0.badstatement)
+        self.assertFalse(tr_0.passed)
+
+        self.assertIn('bad_fluid_from', tr_1.name)
+        self.assertTrue(tr_1.badstatement)
+        self.assertFalse(tr_1.passed)
+
+        self.assertIn('no_bad', tr_2.name)
+        self.assertFalse(tr_2.badstatement)
+        self.assertFalse(tr_2.passed)
+        self.assertTrue(tr_2.skipped)
+
+        self.assertIn('bad_fluid_good_skip', tr_3.name)
+        self.assertTrue(tr_3.badstatement)
+        self.assertFalse(tr_3.passed)
+
+        self.assertIn('bad_fluid_bad_skip', tr_4.name)
+        self.assertTrue(tr_4.badstatement)
+        self.assertFalse(tr_4.passed)
+
+        self.assertIn('bad_skip_mix', tr_5.name)
+        self.assertTrue(tr_5.badstatement)
+        self.assertFalse(tr_5.passed)
+
+        self.assertIn('bad_skip', tr_6.name)
+        self.assertTrue(tr_6.badstatement)
+        self.assertFalse(tr_6.passed)
+
+        self.assertIn('bad_skip_empty', tr_7.name)
+        self.assertTrue(tr_7.badstatement)
+        self.assertFalse(tr_7.passed)
+
+        self.assertIn('good_skip', tr_8.name)
+        self.assertFalse(tr_8.badstatement)
+        self.assertTrue(tr_8.passed)
+
+        self.assertIn('comment_fluid', tr_9.name)
+        self.assertFalse(tr_9.badstatement)
+        self.assertTrue(tr_9.passed)
+
+        self.assertIn('oneline_skip', tr_10.name)
+        self.assertTrue(tr_10.badstatement)
+        self.assertFalse(tr_10.passed)
+
+    def test_bad_statements_req(self):
+        docstrings_to_test = {
+            'bad_required': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> import sys
+                    >>> # required: GPU
+                    >>> import os
+            """,
+            'bad_requires': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> import sys
+                    >>> # requires: GPU
+                    >>> import os
+            """,
+            'bad_require': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> import sys
+                    >>> # require   :   GPU
+                    >>> import os
+            """,
+            'bad_require_2': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> import sys
+                    >>> # require: GPU, xpu
+                    >>> import os
+            """,
+            'bad_req': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> import sys
+                    >>> #require:gpu
+                    >>> import os
+            """,
+            'ignore_req': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> import sys
+                    >>> #require:
+                    >>> import os
+            """,
+            'ignore_req_bad_req': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> import sys
+                    >>> #require: xpu
+                    >>> import os
+                    >>> #require:
+                    >>> import os
+            """,
+        }
+
+        _clear_environ()
+
+        test_capacity = {'cpu'}
+        doctester = Xdoctester()
+        doctester.prepare(test_capacity)
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 7)
+
+        (
+            tr_0,
+            tr_1,
+            tr_2,
+            tr_3,
+            tr_4,
+            tr_5,
+            tr_6,
+        ) = test_results
+
+        self.assertIn('bad_required', tr_0.name)
+        self.assertTrue(tr_0.badstatement)
+        self.assertFalse(tr_0.passed)
+
+        self.assertIn('bad_requires', tr_1.name)
+        self.assertTrue(tr_1.badstatement)
+        self.assertFalse(tr_1.passed)
+
+        self.assertIn('bad_require', tr_2.name)
+        self.assertTrue(tr_1.badstatement)
+        self.assertFalse(tr_1.passed)
+
+        self.assertIn('bad_require_2', tr_3.name)
+        self.assertTrue(tr_3.badstatement)
+        self.assertFalse(tr_3.passed)
+
+        self.assertIn('bad_req', tr_4.name)
+        self.assertTrue(tr_4.badstatement)
+        self.assertFalse(tr_4.passed)
+
+        self.assertIn('ignore_req', tr_5.name)
+        self.assertFalse(tr_5.badstatement)
+        self.assertTrue(tr_5.passed)
+
+        self.assertIn('ignore_req_bad_req', tr_6.name)
+        self.assertTrue(tr_6.badstatement)
+        self.assertFalse(tr_6.passed)
+
+    def test_single_process_directive(self):
+        _clear_environ()
+
+        # test set_default_dtype
+        docstrings_to_test = {
+            'no_solo': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import multiprocessing
+                    >>> p = multiprocessing.Process(
+                    ...     target=lambda a, b: a + b,
+                    ...     args=(
+                    ...     1,
+                    ...     2,
+                    ...     ),
+                    ... )
+                    >>> p.start()
+                    >>> p.join()
+            """,
+            'has_solo': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> # doctest: +SOLO('can not use add in multiprocess')
+                    >>> import multiprocessing
+                    >>> p = multiprocessing.Process(
+                    ...     target=lambda a, b: a + b,
+                    ...     args=(
+                    ...     1,
+                    ...     2,
+                    ...     ),
+                    ... )
+                    >>> p.start()
+                    >>> p.join()
+            """,
+        }
+
+        # test old global_exec
+        test_capacity = {'cpu'}
+        doctester = Xdoctester()
+        doctester.prepare(test_capacity)
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 2)
+
+        (tr_0, tr_1) = test_results
+
+        self.assertIn('no_solo', tr_0.name)
+        self.assertFalse(tr_0.passed)
+
+        self.assertIn('has_solo', tr_1.name)
+        self.assertTrue(tr_1.passed)
 
 
 if __name__ == '__main__':

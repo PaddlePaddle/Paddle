@@ -15,8 +15,8 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
 from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
+from op_test import OpTest
 from test_softmax_op import (
     TestSoftmaxOp,
     TestSoftmaxOp2,
@@ -27,7 +27,10 @@ from test_softmax_op import (
     TestSoftmaxOp_ZeroDim1,
 )
 
+import paddle
 from paddle.base import core
+
+paddle.enable_static()
 
 
 def stable_softmax(x):

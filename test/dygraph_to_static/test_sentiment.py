@@ -15,6 +15,7 @@ import time
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 from test_lac import DynamicGRU
 
 import paddle
@@ -372,6 +373,7 @@ class TestSentiment(unittest.TestCase):
     def setUp(self):
         self.args = Args()
 
+    @test_and_compare_with_new_ir(False)
     def train_model(self, model_type='cnn_net'):
         self.args.model_type = model_type
         st_out = train(self.args, True)

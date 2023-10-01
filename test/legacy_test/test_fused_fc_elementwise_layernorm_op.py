@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 from test_fc_op import MatrixGenerate, fc_refer
 from test_layer_norm_op import _reference_layer_norm_naive
 

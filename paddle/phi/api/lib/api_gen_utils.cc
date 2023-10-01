@@ -550,6 +550,15 @@ phi::distributed::DistTensor* SetKernelDistOutput(
   return nullptr;
 }
 
+std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
+    Tensor* out, const phi::distributed::TensorDistAttr& dist_attr) {
+  if (out) {
+    return std::make_shared<phi::distributed::DistTensor>(phi::DDim(),
+                                                          dist_attr);
+  }
+  return nullptr;
+}
+
 std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
     std::vector<Tensor*> out) {
   std::vector<phi::distributed::DistTensor*> result;
@@ -588,6 +597,39 @@ std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
     out->back().set_impl(dist_t);
   }
   return results;
+}
+
+std::vector<phi::distributed::DistTensor*> SetKernelDistInplaceOutput(
+    size_t out_size, std::vector<Tensor>* out) {
+  std::vector<phi::distributed::DistTensor*> results(out->size(), nullptr);
+  for (size_t i = 0; i < out->size(); ++i) {
+    results[i] =
+        static_cast<phi::distributed::DistTensor*>(out->at(i).impl().get());
+  }
+  return results;
+}
+
+std::vector<phi::distributed::DistTensor*> SetKernelDistInplaceOptionalOutput(
+    size_t out_size, paddle::optional<std::vector<Tensor>> out) {
+  std::vector<phi::distributed::DistTensor*> results;
+  if (out) {
+    results = std::vector<phi::distributed::DistTensor*>(out->size(), nullptr);
+    for (size_t i = 0; i < out->size(); ++i) {
+      results[i] =
+          static_cast<phi::distributed::DistTensor*>(out->at(i).impl().get());
+    }
+  }
+  return results;
+}
+void SetReplicatedDistAttrForOutput(
+    phi::distributed::DistTensor* out,
+    const phi::distributed::ProcessMesh& process_mesh) {
+  if (out) {
+    auto dist_attr =
+        phi::distributed::TensorDistAttr(phi::vectorize(out->dims()));
+    dist_attr.set_process_mesh(process_mesh);
+    out->unsafe_set_dist_attr(dist_attr);
+  }
 }
 
 }  // namespace experimental

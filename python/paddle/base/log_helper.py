@@ -14,7 +14,7 @@
 
 import logging
 
-__all__ = ['get_logger']
+__all__ = []
 
 
 def get_logger(name, level, fmt=None):
@@ -32,10 +32,15 @@ def get_logger(name, level, fmt=None):
         logging.Logger: logging logger with given settings
 
     Examples:
+
         .. code-block:: python
 
-            logger = log_helper.get_logger(__name__, logging.INFO,
-                            fmt='%(asctime)s-%(levelname)s: %(message)s')
+            >>> import paddle
+            >>> import logging
+            >>> from paddle.base import log_helper
+
+            >>> logger = log_helper.get_logger(__name__, logging.INFO,
+            ...                 fmt='%(asctime)s-%(levelname)s: %(message)s')
     """
 
     logger = logging.getLogger(name)

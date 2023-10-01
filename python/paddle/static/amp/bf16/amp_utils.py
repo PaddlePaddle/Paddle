@@ -341,16 +341,12 @@ def cast_model_to_bf16(
                         in_var = block.var(in_var_name)
                     except ValueError as e:
                         _logger.debug(
-                            "-- {}, try to get it in the global block --".format(
-                                e
-                            )
+                            f"-- {e}, try to get it in the global block --"
                         )
                         in_var = global_block.var(in_var_name)
                         if in_var is not None:
                             _logger.debug(
-                                "-- var {} is got in the global block --".format(
-                                    in_var_name
-                                )
+                                f"-- var {in_var_name} is got in the global block --"
                             )
 
                     if in_var is None or in_var.type not in _valid_types:
@@ -379,16 +375,12 @@ def cast_model_to_bf16(
                         out_var = block.var(out_var_name)
                     except ValueError as e:
                         _logger.debug(
-                            "-- {}, try to get it in the global block --".format(
-                                e
-                            )
+                            f"-- {e}, try to get it in the global block --"
                         )
                         out_var = global_block.var(out_var_name)
                         if out_var is not None:
                             _logger.debug(
-                                "-- var {} is got in the global block --".format(
-                                    out_var_name
-                                )
+                                f"-- var {out_var_name} is got in the global block --"
                             )
 
                     if out_var is None or out_var.type not in _valid_types:

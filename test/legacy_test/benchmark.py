@@ -15,8 +15,8 @@
 import time
 
 import numpy as np
-from eager_op_test import OpTest
 from op import Operator
+from op_test import OpTest
 
 
 class BenchmarkSuite(OpTest):
@@ -86,9 +86,7 @@ class BenchmarkSuite(OpTest):
             elapses.append(self.timeit_output_with_place(place, iters))
         for place, elapse in zip(places, elapses):
             print(
-                "One pass of ({}_op) at {} cost {}".format(
-                    self.op_type, str(place), elapse
-                )
+                f"One pass of ({self.op_type}_op) at {str(place)} cost {elapse}"
             )
 
     def timeit_grad_with_place(self, place, iters=100):
@@ -110,7 +108,5 @@ class BenchmarkSuite(OpTest):
             elapses.append(self.timeit_grad_with_place(place, iters))
         for place, elapse in zip(places, elapses):
             print(
-                "One pass of ({}_grad_op) at {} cost {}".format(
-                    self.op_type, str(place), elapse
-                )
+                f"One pass of ({self.op_type}_grad_op) at {str(place)} cost {elapse}"
             )

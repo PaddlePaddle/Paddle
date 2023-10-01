@@ -433,6 +433,67 @@ class TestGetitemInStatic(unittest.TestCase):
         np.testing.assert_allclose(res[1], np_res)
 
 
+class TestGetitemBasicIndexOutputView(unittest.TestCase):
+    def setUp(self):
+        # Stride now only supports in dygraph mode
+        paddle.disable_static()
+
+    def test_index_is_int(self):
+        np_data = np.ones((5, 5, 5), dtype='float32')
+        np_tmp = np_data[3, 2]
+        np_tmp[2] = 20
+
+        x = paddle.ones((5, 5, 5), dtype='float32')
+        x_tmp = x[3, 2]
+        x_tmp[2] = 20
+
+        np.testing.assert_allclose(x.numpy(), np_data)
+
+    def test_index_is_0dTensor(self):
+        np_data = np.ones((5, 5, 5), dtype='float32')
+        np_tmp = np_data[3, 2]
+        np_tmp[2] = 20
+
+        x = paddle.ones((5, 5, 5), dtype='float32')
+        x_tmp = x[paddle.to_tensor(3), paddle.to_tensor(2)]
+        x_tmp[2] = 20
+
+        np.testing.assert_allclose(x.numpy(), np_data)
+
+    def test_index_is_slice(self):
+        np_data = np.ones((5, 5, 5), dtype='float32')
+        np_tmp = np_data[::2, :, 0:4]
+        np_tmp[2] = 20
+
+        x = paddle.ones((5, 5, 5), dtype='float32')
+        x_tmp = x[::2, :, 0:4]
+        x_tmp[2] = 20
+
+        np.testing.assert_allclose(x.numpy(), np_data)
+
+    def test_index_is_None(self):
+        np_data = np.ones((5, 5, 5), dtype='float32')
+        np_tmp = np_data[None]
+        np_tmp[:, 2] = 20
+
+        x = paddle.ones((5, 5, 5), dtype='float32')
+        x_tmp = x[None]
+        x_tmp[:, 2] = 20
+
+        np.testing.assert_allclose(x.numpy(), np_data)
+
+    def test_index_is_ellipsis(self):
+        np_data = np.ones((5, 5, 5), dtype='float32')
+        np_tmp = np_data[...]
+        np_tmp[2] = 20
+
+        x = paddle.ones((5, 5, 5), dtype='float32')
+        x_tmp = x[...]
+        x_tmp[2] = 20
+
+        np.testing.assert_allclose(x.numpy(), np_data)
+
+
 class TestGetItemErrorCase(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()

@@ -18,7 +18,11 @@ from paddle import _C_ops
 
 from ...base import core, framework, unique_name
 from ...base.data_feeder import check_variable_and_dtype
-from ...base.framework import _current_expected_place, in_dygraph_mode
+from ...base.framework import (
+    _current_expected_place,
+    in_dygraph_mode,
+    in_pir_mode,
+)
 from .initializer import Initializer
 
 __all__ = []
@@ -80,15 +84,17 @@ class XavierInitializer(Initializer):
         Returns:
             The initialization op
         """
-        block = self._check_block(block)
+        import paddle
 
-        assert isinstance(block, framework.Block)
-        check_variable_and_dtype(
-            var,
-            "Out",
-            ["uint16", "float16", "float32", "float64"],
-            "xavier_init",
-        )
+        block = self._check_block(block)
+        assert isinstance(block, (framework.Block, paddle.pir.Block))
+        if not isinstance(var, paddle.pir.core.ParameterMeta):
+            check_variable_and_dtype(
+                var,
+                "Out",
+                ["uint16", "float16", "float32", "float64"],
+                "xavier_init",
+            )
 
         f_in, f_out = self._compute_fans(var)
 
@@ -144,6 +150,17 @@ class XavierInitializer(Initializer):
             else:
                 out_var._share_underline_tensor_to(var)
             return None
+        elif in_pir_mode():
+            if self._uniform:
+                limit = math.sqrt(6.0 / float(fan_in + fan_out))
+                return paddle._pir_ops.uniform(
+                    var.shape,
+                    var.dtype,
+                    -limit,
+                    limit,
+                    self._seed,
+                    _current_expected_place(),
+                )
         else:
             if self._uniform:
                 limit = math.sqrt(6.0 / float(fan_in + fan_out))

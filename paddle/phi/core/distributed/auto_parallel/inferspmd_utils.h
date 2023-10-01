@@ -45,8 +45,14 @@ class InferSpmdContext {
 
   void EmplaceBackInput(DistMetaTensor input);
   void EmplaceBackAttr(Attribute attr);
+  void EmplaceBackInputs(
+      paddle::small_vector<DistMetaTensor, phi::kInputSmallVectorSize> inputs);
 
   const DistMetaTensor& InputAt(size_t idx) const;
+
+  const std::pair<int, int>& InputRangeAt(size_t idx) const;
+  const std::vector<const DistMetaTensor*> InputsBetween(size_t start,
+                                                         size_t end) const;
 
   template <typename AttrType>
   AttrType AttrAt(size_t idx) const;
@@ -59,6 +65,9 @@ class InferSpmdContext {
   // Because the attribute arguments of dygraph do not have `attr name`,
   // so we use vector instead of map
   paddle::small_vector<Attribute, phi::kAttrSmallVectorSize> attrs_;
+  // for vector arguments
+  paddle::small_vector<std::pair<int, int>, phi::kInputSmallVectorSize>
+      input_range_;
 };
 
 using InferSpmdFn = SpmdInfo (*)(const InferSpmdContext&);
@@ -98,6 +107,24 @@ struct InferSpmdFnImpl<Return (*)(Args...), infer_spmd_fn> {
     }
   };
 
+  // for vecotr slot
+  template <typename... Tail>
+  struct InferSpmdFnCallHelper<const std::vector<const DistMetaTensor*>&,
+                               Tail...> {
+    template <int in_idx, int attr_idx, typename... PreviousArgs>
+    static SpmdInfo Call(const InferSpmdContext& ctx, PreviousArgs&... pargs) {
+      static_assert(attr_idx == 0,
+                    "InferSpmd's Input should appear before Attributes.");
+
+      const std::pair<int, int> range = ctx.InputRangeAt(in_idx);
+      std::vector<const DistMetaTensor*> arg =
+          ctx.InputsBetween(range.first, range.second);
+      return InferSpmdFnCallHelper<Tail...>::template Call<in_idx + 1,
+                                                           attr_idx>(
+          ctx, pargs..., arg);
+    }
+  };
+
 #define PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_ATTRIBUTE(attr_type)      \
   template <typename... Tail>                                             \
   struct InferSpmdFnCallHelper<attr_type, Tail...> {                      \
@@ -111,8 +138,27 @@ struct InferSpmdFnImpl<Return (*)(Args...), infer_spmd_fn> {
     }                                                                     \
   }
 
+#define PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_CONST_ATTRIBUTE_REF(attr_type) \
+  template <typename... Tail>                                                  \
+  struct InferSpmdFnCallHelper<const attr_type&, Tail...> {                    \
+    template <int in_idx, int attr_idx, typename... PreviousArgs>              \
+    static SpmdInfo Call(const InferSpmdContext& ctx,                          \
+                         PreviousArgs&... pargs) {                             \
+      attr_type arg = ctx.AttrAt<attr_type>(attr_idx);                         \
+      return InferSpmdFnCallHelper<Tail...>::template Call<in_idx,             \
+                                                           attr_idx + 1>(      \
+          ctx, pargs..., arg);                                                 \
+    }                                                                          \
+  }
+
   // TODO(chenweihang): support other attr type later as needed
   PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_ATTRIBUTE(bool);
+  PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_ATTRIBUTE(int);
+  PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_ATTRIBUTE(float);
+  PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_ATTRIBUTE(int64_t);
+  PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_CONST_ATTRIBUTE_REF(std::vector<int>);
+  PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_CONST_ATTRIBUTE_REF(
+      std::vector<int64_t>);
 
   /* End case */
   template <typename T>

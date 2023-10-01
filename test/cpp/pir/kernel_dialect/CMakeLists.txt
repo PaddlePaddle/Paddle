@@ -1,0 +1,13 @@
+cc_test_old(
+  ir_kernel_dialect_pass_test
+  SRCS
+  ir_kernel_dialect_pass_test.cc
+  DEPS
+  pd_op_to_kernel_pass
+  program_translator
+  pd_kernel_dialect
+  pd_trait
+  pir
+  phi
+  standalone_executor
+  gtest)

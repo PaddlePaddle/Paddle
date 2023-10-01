@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import base
@@ -33,10 +33,12 @@ class TestWhereOp(OpTest):
         self.outputs = {'Out': np.where(self.cond, self.x, self.y)}
 
     def test_check_output(self):
-        self.check_output(check_cinn=self.check_cinn)
+        self.check_output(check_cinn=self.check_cinn, check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out', check_cinn=self.check_cinn)
+        self.check_grad(
+            ['X', 'Y'], 'Out', check_cinn=self.check_cinn, check_new_ir=True
+        )
 
     def init_config(self):
         self.x = np.random.uniform((-3), 5, 100).astype('float64')
@@ -82,7 +84,9 @@ class TestWhereBF16OP(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_cinn=self.check_cinn)
+        self.check_output_with_place(
+            place, check_cinn=self.check_cinn, check_new_ir=True
+        )
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
@@ -92,6 +96,7 @@ class TestWhereBF16OP(OpTest):
             'Out',
             numeric_grad_delta=0.05,
             check_cinn=self.check_cinn,
+            check_new_ir=True,
         )
 
     def init_config(self):

@@ -383,7 +383,7 @@ int BertTokenizer::Encode(
   }
 
   if (needs_to_be_padded) {
-    int64_t difference = max_seq_len - seq_len;
+    int64_t difference = static_cast<int64_t>(max_seq_len - seq_len);
     size_t pad_start = max_seq_len - 1 - difference;
     encoded_inputs->at("token_type_ids").resize(max_seq_len);
     for (size_t i = max_seq_len - 1; i > pad_start; i--) {

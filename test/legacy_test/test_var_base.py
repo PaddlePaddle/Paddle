@@ -512,9 +512,6 @@ class TestVarBase(unittest.TestCase):
             with self.assertRaises(ValueError):
                 x_copy[:] = 5.0
 
-            with self.assertRaises(RuntimeError):
-                copy.deepcopy(z)
-
             x_copy2 = copy.deepcopy(x, memo)
             y_copy2 = copy.deepcopy(y, memo)
             self.assertEqual(id(x_copy), id(x_copy2))
@@ -1577,7 +1574,7 @@ class TestVarBaseNumel(unittest.TestCase):
         np_x = np.random.random((3, 8, 8))
         x = paddle.to_tensor(np_x, dtype="float64")
         x_actual_numel = x._numel()
-        x_expected_numel = np.product((3, 8, 8))
+        x_expected_numel = np.prod((3, 8, 8))
         self.assertEqual(x_actual_numel, x_expected_numel)
 
     def test_numel_without_holder(self):

@@ -87,7 +87,6 @@ class TestDistPNorm(unittest.TestCase):
                 'reduce_mean',
                 'fill_constant',
                 'reduce_mean_grad',
-                'c_identity',
                 'c_embedding_grad',
                 'c_allreduce_sum',
                 'scale',

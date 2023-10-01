@@ -14,17 +14,17 @@
 
 import unittest
 
-import eager_op_test
 import numpy
 import numpy as np
+import op_test
 
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
 
 
-def create_test_class(op_type, typename, callback):
-    class Cls(eager_op_test.OpTest):
+def create_test_class(op_type, typename, callback, check_new_ir=False):
+    class Cls(op_test.OpTest):
         def setUp(self):
             a = numpy.random.random(size=(10, 7)).astype(typename)
             b = numpy.random.random(size=(10, 7)).astype(typename)
@@ -35,7 +35,7 @@ def create_test_class(op_type, typename, callback):
             self.op_type = op_type
 
         def test_output(self):
-            self.check_output(check_cinn=True)
+            self.check_output(check_cinn=True, check_new_ir=check_new_ir)
 
         def test_errors(self):
             paddle.enable_static()
@@ -61,8 +61,10 @@ for _type_name in {'float32', 'float64', 'int32', 'int64', 'float16'}:
     create_test_class('less_than', _type_name, lambda _a, _b: _a < _b)
     create_test_class('less_equal', _type_name, lambda _a, _b: _a <= _b)
     create_test_class('greater_than', _type_name, lambda _a, _b: _a > _b)
-    create_test_class('greater_equal', _type_name, lambda _a, _b: _a >= _b)
-    create_test_class('equal', _type_name, lambda _a, _b: _a == _b)
+    create_test_class(
+        'greater_equal', _type_name, lambda _a, _b: _a >= _b, True
+    )
+    create_test_class('equal', _type_name, lambda _a, _b: _a == _b, True)
     create_test_class('not_equal', _type_name, lambda _a, _b: _a != _b)
 
 
@@ -443,8 +445,8 @@ create_paddle_case('not_equal', lambda _a, _b: _a != _b)
 
 
 # add bf16 tests
-def create_bf16_case(op_type, callback):
-    class TestCompareOpBF16Op(eager_op_test.OpTest):
+def create_bf16_case(op_type, callback, check_new_ir=False):
+    class TestCompareOpBF16Op(op_test.OpTest):
         def setUp(self):
             self.op_type = op_type
             self.dtype = np.uint16
@@ -454,13 +456,13 @@ def create_bf16_case(op_type, callback):
             y = np.random.uniform(0, 1, [5, 5]).astype(np.float32)
             real_result = callback(x, y)
             self.inputs = {
-                'X': eager_op_test.convert_float_to_uint16(x),
-                'Y': eager_op_test.convert_float_to_uint16(y),
+                'X': op_test.convert_float_to_uint16(x),
+                'Y': op_test.convert_float_to_uint16(y),
             }
             self.outputs = {'Out': real_result}
 
         def test_check_output(self):
-            self.check_output(check_cinn=True)
+            self.check_output(check_cinn=True, check_new_ir=check_new_ir)
 
     cls_name = f"BF16TestCase_{op_type}"
     TestCompareOpBF16Op.__name__ = cls_name
@@ -470,8 +472,8 @@ def create_bf16_case(op_type, callback):
 create_bf16_case('less_than', lambda _a, _b: _a < _b)
 create_bf16_case('less_equal', lambda _a, _b: _a <= _b)
 create_bf16_case('greater_than', lambda _a, _b: _a > _b)
-create_bf16_case('greater_equal', lambda _a, _b: _a >= _b)
-create_bf16_case('equal', lambda _a, _b: _a == _b)
+create_bf16_case('greater_equal', lambda _a, _b: _a >= _b, True)
+create_bf16_case('equal', lambda _a, _b: _a == _b, True)
 create_bf16_case('not_equal', lambda _a, _b: _a != _b)
 
 
