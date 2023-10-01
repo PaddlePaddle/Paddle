@@ -44,9 +44,11 @@ from .io_utils import _pack_loaded_dict
 from .io_utils import _unpack_saved_dict
 from .io_utils import _load_program_scope
 
+# Do the *DUPLICATED* monkey-patch for the tensor object.
+# We need remove the duplicated code here once we fix
+# the illogical implement in the monkey-patch methods later.
 from ..base.layers.math_op_patch import monkey_patch_variable
 from ..base.dygraph.math_op_patch import monkey_patch_math_tensor
-from ..base.dygraph.tensor_patch_methods import monkey_patch_tensor
 from ..base.framework import disable_signal_handler  # noqa: F401
 from ..base.framework import get_flags  # noqa: F401
 from ..base.framework import set_flags  # noqa: F401
@@ -56,17 +58,17 @@ from ..base.dygraph.base import disable_dygraph as enable_static  # noqa: F401
 from ..base.framework import in_dygraph_mode as in_dynamic_mode  # noqa: F401
 from ..base.framework import in_pir_mode, use_pir_api  # noqa: F401
 from ..base.framework import in_dynamic_or_pir_mode  # noqa: F401
-from ..base.framework import (  # noqa: F401
+from ..base.framework import (
     _current_expected_place,
     _get_paddle_place,
-)
+)  # noqa: F401
 from ..base.framework import dygraph_only  # noqa: F401
 from ..base.framework import dygraph_not_support  # noqa: F401
-from ..base.framework import (  # noqa: F401
+from ..base.framework import (
     convert_np_dtype_to_dtype_,
     _create_tensor,
     OpProtoHolder,
-)
+)  # noqa: F401
 from ..base.framework import _dygraph_tracer  # noqa: F401
 from ..base.framework import generate_control_dev_var_name  # noqa: F401
 
@@ -79,8 +81,8 @@ from ..base.framework import _set_expected_place  # noqa: F401
 from ..base.framework import Block, Program  # noqa: F401
 from ..base.framework import IrGraph  # noqa: F401
 from ..base.framework import deprecate_stat_dict
-from ..base.framework import (  # noqa: F401
+from ..base.framework import (
     _stride_in_no_check_dy2st_diff as _no_check_dy2st_diff,
-)
+)  # noqa: F401
 
 __all__ = []
