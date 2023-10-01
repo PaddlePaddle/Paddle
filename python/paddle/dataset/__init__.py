@@ -15,7 +15,7 @@
 Dataset package.
 """
 
-import paddle.dataset.mnist  # noqa: F401
+import paddle.dataset.mnist
 import paddle.dataset.imikolov
 import paddle.dataset.imdb
 import paddle.dataset.cifar
@@ -26,7 +26,7 @@ import paddle.dataset.wmt14
 import paddle.dataset.wmt16
 import paddle.dataset.flowers
 import paddle.dataset.voc2012
-import paddle.dataset.image
+import paddle.dataset.image  # noqa: F401
 
 # set __all__ as empty for not showing APIs under paddle.dataset
 __all__ = []
