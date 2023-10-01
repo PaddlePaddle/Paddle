@@ -29,6 +29,16 @@ from .base import core  # noqa: F401
 from .batch import batch
 
 from .framework import (
+    monkey_patch_variable,
+    monkey_patch_tensor,
+    monkey_patch_math_tensor,
+)
+
+monkey_patch_variable()
+monkey_patch_tensor()
+monkey_patch_math_tensor()
+
+from .framework import (
     disable_signal_handler,
     get_flags,
     set_flags,

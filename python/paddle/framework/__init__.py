@@ -44,6 +44,9 @@ from .io_utils import _pack_loaded_dict
 from .io_utils import _unpack_saved_dict
 from .io_utils import _load_program_scope
 
+from ..base.layers.math_op_patch import monkey_patch_variable
+from ..base.dygraph.math_op_patch import monkey_patch_math_tensor
+from ..base.dygraph.tensor_patch_methods import monkey_patch_tensor
 from ..base.framework import disable_signal_handler  # noqa: F401
 from ..base.framework import get_flags  # noqa: F401
 from ..base.framework import set_flags  # noqa: F401
