@@ -94,8 +94,14 @@ extern void *cublas_dso_handle;
   __macro(cublasSgetriBatched);           \
   __macro(cublasDgetrfBatched);           \
   __macro(cublasDgetriBatched);           \
+  __macro(cublasCgetrfBatched);           \
+  __macro(cublasCgetriBatched);           \
+  __macro(cublasZgetrfBatched);           \
+  __macro(cublasZgetriBatched);           \
   __macro(cublasSmatinvBatched);          \
   __macro(cublasDmatinvBatched);          \
+  __macro(cublasCmatinvBatched);          \
+  __macro(cublasZmatinvBatched);          \
   __macro(cublasSgetrsBatched);           \
   __macro(cublasDgetrsBatched);
 

@@ -34,6 +34,11 @@ class TestInverseOp(OpTest):
 
         np.random.seed(123)
         mat = np.random.random(self.matrix_shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            mat = (
+                np.random.random(self.matrix_shape)
+                + 1j * np.random.random(self.matrix_shape)
+            ).astype(self.dtype)
         inverse = np.linalg.inv(mat)
 
         self.inputs = {'Input': mat}
@@ -44,6 +49,38 @@ class TestInverseOp(OpTest):
 
     def test_grad(self):
         self.check_grad(['Input'], 'Output')
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not complied with CUDA"
+)
+class TestInverseOp_Complex64(TestInverseOp):
+    def config(self):
+        self.matrix_shape = [10, 10]
+        self.dtype = np.complex64
+        self.python_api = paddle.tensor.math.inverse
+
+    def test_check_output(self):
+        self.check_output_with_place(paddle.CUDAPlace())
+
+    def test_grad(self):
+        self.check_grad_with_place(paddle.CUDAPlace(), ['Input'], 'Output')
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not complied with CUDA"
+)
+class TestInverseOp_Complex128(TestInverseOp):
+    def config(self):
+        self.matrix_shape = [10, 10]
+        self.dtype = np.complex128
+        self.python_api = paddle.tensor.math.inverse
+
+    def test_check_output(self):
+        self.check_output_with_place(paddle.CUDAPlace())
+
+    def test_grad(self):
+        self.check_grad_with_place(paddle.CUDAPlace(), ['Input'], 'Output')
 
 
 class TestInverseOpBatched(TestInverseOp):
