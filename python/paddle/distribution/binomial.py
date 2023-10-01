@@ -16,7 +16,6 @@ import math
 from collections.abc import Iterable
 
 import numpy as np
-from scipy.special import loggamma
 
 import paddle
 from paddle.distribution import distribution
@@ -502,10 +501,11 @@ def binomial_entropy(n, p):
     Returns:
         numpy.ndarray: the entropy for the binomial r.v.
     """
+    lgamma = np.vectorize(math.lgamma)
     n = np.array(n)
     p = np.array(p)
     v = np.arange(1 + n, dtype="float32")
-    log_comb = loggamma(n + 1.0) - loggamma(n - v + 1.0) - loggamma(v + 1.0)
+    log_comb = lgamma(n + 1.0) - lgamma(n - v + 1.0) - lgamma(v + 1.0)
     log_prob = np.nan_to_num(
         (log_comb + v * np.log(p) + (n - v) * np.log(1 - p)), neginf=0
     )
