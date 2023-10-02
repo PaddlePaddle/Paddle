@@ -165,49 +165,6 @@ class TestFCOp(OpTest):
         place = core.CUDAPlace(0)
         self.check_output_with_place(place, check_dygraph=False)
 
-
-class TestFCOpQuantNoBias1(TestFCOp):
-    def config(self):
-        self.with_bias = False
-        self.with_relu = False
-        self.is_quant = True
-        self.quant_round_type = 1
-        self.quant_max_bound = 127
-        self.quant_min_bound = -127
-        self.matrix = MatrixGenerate(16, 10, 16, 4, 4, 2)
-        self.scale_in = get_scale_in(self.matrix.input)
-        self.scale_weights = get_scale_weights(self.matrix.weights)
-        self.matrix.weights = quant_weights(self.matrix.weights, self.scale_weights, self.quant_round_type, self.quant_max_bound, self.quant_min_bound)
-
-
-class TestFCOpQuantBias2(TestFCOp):
-    def config(self):
-        self.with_bias = True
-        self.with_relu = True
-        self.is_quant = True
-        self.quant_round_type = 1
-        self.quant_max_bound = 127
-        self.quant_min_bound = -127
-        self.matrix = MatrixGenerate(1, 64, 32, 3, 3, 1)
-        self.scale_in = get_scale_in(self.matrix.input)
-        self.scale_weights = get_scale_weights(self.matrix.weights)
-        self.matrix.weights = quant_weights(self.matrix.weights, self.scale_weights, self.quant_round_type, self.quant_max_bound, self.quant_min_bound)
-
-
-class TestFCOpQuantWithPadding(TestFCOp):
-    def config(self):
-        self.with_bias = True
-        self.with_relu = True
-        self.is_quant = True
-        self.quant_round_type = 1
-        self.quant_max_bound = 127
-        self.quant_min_bound = -127
-        self.matrix = MatrixGenerate(1, 4, 4, 128, 128, 2)
-        self.scale_in = get_scale_in(self.matrix.input)
-        self.scale_weights = get_scale_weights(self.matrix.weights)
-        self.matrix.weights = quant_weights(self.matrix.weights, self.scale_weights, self.quant_round_type, self.quant_max_bound, self.quant_min_bound)
-
-
 class TestFCOpNoBias1(TestFCOp):
     def config(self):
         self.with_bias = False
@@ -291,6 +248,50 @@ class TestFcOp_NumFlattenDims_NegOne(unittest.TestCase):
         res_1 = run_program(-1)
         res_2 = run_program(2)
         np.testing.assert_array_equal(res_1, res_2)
+
+
+
+class TestFCOpQuantNoBias1(TestFCOp):
+    def config(self):
+        self.with_bias = False
+        self.with_relu = False
+        self.is_quant = True
+        self.quant_round_type = 1
+        self.quant_max_bound = 127
+        self.quant_min_bound = -127
+        self.matrix = MatrixGenerate(16, 10, 16, 4, 4, 2)
+        self.scale_in = get_scale_in(self.matrix.input)
+        self.scale_weights = get_scale_weights(self.matrix.weights)
+        self.matrix.weights = quant_weights(self.matrix.weights, self.scale_weights, self.quant_round_type, self.quant_max_bound, self.quant_min_bound)
+
+
+class TestFCOpQuantWithBias1(TestFCOp):
+    def config(self):
+        self.with_bias = True
+        self.with_relu = True
+        self.is_quant = True
+        self.quant_round_type = 1
+        self.quant_max_bound = 127
+        self.quant_min_bound = -127
+        self.matrix = MatrixGenerate(1, 64, 32, 3, 3, 1)
+        self.scale_in = get_scale_in(self.matrix.input)
+        self.scale_weights = get_scale_weights(self.matrix.weights)
+        self.matrix.weights = quant_weights(self.matrix.weights, self.scale_weights, self.quant_round_type, self.quant_max_bound, self.quant_min_bound)
+
+
+class TestFCOpQuantWithPadding(TestFCOp):
+    def config(self):
+        self.with_bias = True
+        self.with_relu = True
+        self.is_quant = True
+        self.quant_round_type = 1
+        self.quant_max_bound = 127
+        self.quant_min_bound = -127
+        self.matrix = MatrixGenerate(1, 4, 4, 128, 128, 2)
+        self.scale_in = get_scale_in(self.matrix.input)
+        self.scale_weights = get_scale_weights(self.matrix.weights)
+        self.matrix.weights = quant_weights(self.matrix.weights, self.scale_weights, self.quant_round_type, self.quant_max_bound, self.quant_min_bound)
+
 
 
 class TestFCOpError(unittest.TestCase):
