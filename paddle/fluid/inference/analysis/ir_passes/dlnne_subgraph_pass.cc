@@ -572,9 +572,9 @@ void DlnneSubgraphPass::CreateDlnneOp(
   // is unique.
   auto engine_key = GenerateEngineKey(
       input_names_with_id, output_names_with_id, std::to_string(0));
-  auto precision_mode = Get<AnalysisConfig::Precision>("precision_mode");
+  auto precision_mode = Get<int>("dlnne_precision_mode");
   bool enable_int8 = false;
-  if (precision_mode == AnalysisConfig::Precision::kInt8) {
+  if (precision_mode == static_cast<int>(phi::DataType::INT8)) {
     enable_int8 = true;
   }
   auto use_calib_mode = Get<bool>("use_calib_mode");

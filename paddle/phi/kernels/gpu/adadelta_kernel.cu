@@ -18,5 +18,16 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/adadelta_kernel_impl.h"
 
-PD_REGISTER_KERNEL(
-    adadelta, GPU, ALL_LAYOUT, phi::AdadeltaKernel, float, double) {}
+PD_REGISTER_KERNEL(adadelta,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::AdadeltaKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
+  }
+}

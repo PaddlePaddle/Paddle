@@ -82,6 +82,9 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(sampling_id,
-                       paddle::operators::SamplingIdKernel<float>,
-                       paddle::operators::SamplingIdKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(sampling_id,
+                          CPU,
+                          ALL_LAYOUT,
+                          paddle::operators::SamplingIdKernel,
+                          float,
+                          double) {}

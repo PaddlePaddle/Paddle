@@ -162,14 +162,20 @@ REGISTER_OPERATOR(filter_by_instag,
 
 REGISTER_OPERATOR(filter_by_instag_grad, ops::FilterByInstagOpGrad);
 
-REGISTER_OP_CPU_KERNEL(filter_by_instag,
-                       ops::FilterByInstagKernel<float>,
-                       ops::FilterByInstagKernel<double>,
-                       ops::FilterByInstagKernel<int32_t>,
-                       ops::FilterByInstagKernel<int64_t>);
+PD_REGISTER_STRUCT_KERNEL(filter_by_instag,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::FilterByInstagKernel,
+                          float,
+                          double,
+                          int32_t,
+                          int64_t) {}
 
-REGISTER_OP_CPU_KERNEL(filter_by_instag_grad,
-                       ops::FilterByInstagGradKernel<float>,
-                       ops::FilterByInstagGradKernel<double>,
-                       ops::FilterByInstagGradKernel<int32_t>,
-                       ops::FilterByInstagGradKernel<int64_t>);
+PD_REGISTER_STRUCT_KERNEL(filter_by_instag_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::FilterByInstagGradKernel,
+                          float,
+                          double,
+                          int32_t,
+                          int64_t) {}

@@ -24,9 +24,9 @@
 #include "paddle/fluid/inference/tensorrt/plugin/common/common.cuh"
 #include "paddle/fluid/inference/tensorrt/plugin/qkv_to_context_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_utils.h"
-#include "paddle/fluid/operators/math/bert_encoder_functor.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/multihead_matmul_functor.h"
 
 namespace paddle {
 namespace inference {
@@ -41,7 +41,7 @@ inline int round_up(int seq_len, int multiple = 32) {
       multiple,
       0,
       platform::errors::InvalidArgument(
-          "multiple should be a positive number，but it's (%d)", multiple));
+          "multiple should be a positive number, but it's (%d)", multiple));
   return ((seq_len + multiple - 1) / multiple) * multiple;
 }
 
@@ -396,7 +396,7 @@ int QkvToContextPluginDynamic::enqueue(
             platform::CUDAPlace(device_id)));
 
     const phi::GPUContext &dev_ctx = *device_ctx;
-    operators::math::MultiHeadGPUComputeFunctor<float> multihead_compute_func;
+    phi::funcs::MultiheadGPUComputeFunctor<float> multihead_compute_func;
     multihead_compute_func(dev_ctx,
                            batch,
                            seq_len,
@@ -479,6 +479,8 @@ int QkvToContextPluginDynamic::enqueue(
     const half *input1_data = static_cast<const half *>(qk_bias);
     // BxSx3xNxH => tptr: 3xBxNxSxH.
     if (need_padding) {
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          cudaMemsetAsync(tptr, 0, sizeof(half) * input_num, stream));
       TransposePadding(input0_data,
                        tptr,
                        batch,
@@ -504,7 +506,7 @@ int QkvToContextPluginDynamic::enqueue(
         tptr, static_cast<half>(scale_), n_q);
 
     const phi::GPUContext &dev_ctx = *device_ctx;
-    operators::math::MultiHeadGPUComputeFunctor<half> multihead_compute_func;
+    phi::funcs::MultiheadGPUComputeFunctor<half> multihead_compute_func;
     multihead_compute_func(dev_ctx,
                            batch,
                            seq_len,

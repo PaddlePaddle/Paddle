@@ -63,6 +63,8 @@ set_field_default_config(RECOMPUTE, "enable_tuning", False)
 #########################################
 AMP = "amp"
 set_field_default_config(AMP, "enable", False)
+set_field_default_config(AMP, "dtype", "float16")
+set_field_default_config(AMP, "level", "o1")
 set_field_default_config(AMP, "init_loss_scaling", 32768.0)
 set_field_default_config(AMP, "incr_every_n_steps", 1000)
 set_field_default_config(AMP, "decr_every_n_nan_or_inf", 2)
@@ -72,15 +74,7 @@ set_field_default_config(AMP, "use_dynamic_loss_scaling", True)
 set_field_default_config(AMP, "custom_white_list", [])
 set_field_default_config(AMP, "custom_black_list", [])
 set_field_default_config(AMP, "custom_black_varnames", [])
-set_field_default_config(AMP, "use_pure_fp16", False)
-set_field_default_config(AMP, "use_fp16_guard", True)
-set_field_default_config(AMP, "use_optimizer_fp16", False)
-
-set_field_default_config(AMP, "enable_bf16", False)
-set_field_default_config(AMP, "custom_bf16_list", [])
-set_field_default_config(AMP, "custom_fp32_list", [])
-set_field_default_config(AMP, "custom_fp32_varnames", [])
-set_field_default_config(AMP, "use_pure_bf16", False)
+set_field_default_config(AMP, "use_fp16_guard", False)
 set_field_default_config(AMP, "use_bf16_guard", False)
 
 #########################################
@@ -109,6 +103,17 @@ set_field_default_config(GRADIENT_MERGE, "k_steps", 1)
 set_field_default_config(GRADIENT_MERGE, "avg", True)
 
 #########################################
+# pipeline configuration
+#########################################
+PIPELINE = "pipeline"
+set_field_default_config(PIPELINE, "enable", False)
+set_field_default_config(PIPELINE, "schedule_mode", "1F1B")
+set_field_default_config(PIPELINE, "micro_batch_size", 1)
+set_field_default_config(PIPELINE, "accumulate_steps", 1)
+set_field_default_config(PIPELINE, "generation_batch_size", 1)
+set_field_default_config(PIPELINE, "enable_send_recv_overlap", False)
+
+#########################################
 # quantization configuration
 #########################################
 QAT = "qat"
@@ -120,9 +125,9 @@ set_field_default_config(QAT, "not_quant_pattern", ['skip_quant'])
 set_field_default_config(QAT, "algo", None)
 set_field_default_config(QAT, "onnx_format", True)
 
-# #########################################
+#########################################
 # auto tuning configuration
-# #########################################
+#########################################
 TUNING = "tuning"
 set_field_default_config(TUNING, "enable", False)
 set_field_default_config(TUNING, "profile_start_step", 1)
@@ -143,3 +148,12 @@ set_field_default_config(DATASET, "num_shards", 1)
 FUSED_PASSES = "fused_passes"
 set_field_default_config(FUSED_PASSES, "enable", False)
 set_field_default_config(FUSED_PASSES, "fused_passes_list", [])
+
+#########################################
+# data parallel configuration
+#########################################
+DP_OPTIMIZATION = "dp_optimization"
+set_field_default_config(DP_OPTIMIZATION, "enable", False)
+set_field_default_config(DP_OPTIMIZATION, "fuse_all_reduce_ops", True)
+set_field_default_config(DP_OPTIMIZATION, "fuse_grad_size_in_MB", 32)
+set_field_default_config(DP_OPTIMIZATION, "overlap_comm_cacl", True)

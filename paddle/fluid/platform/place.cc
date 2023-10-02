@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/place.h"
-
+#include "paddle/fluid/platform/flags.h"
 PADDLE_DEFINE_EXPORTED_bool(
     benchmark,
     false,
@@ -25,7 +25,7 @@ PADDLE_DEFINE_EXPORTED_bool(
 namespace paddle {
 namespace platform {
 
-bool is_gpu_place(const Place &p) {
+TEST_API bool is_gpu_place(const Place &p) {
   return p.GetType() == phi::AllocationType::GPU;
 }
 
@@ -33,28 +33,16 @@ bool is_xpu_place(const Place &p) {
   return p.GetType() == phi::AllocationType::XPU;
 }
 
-bool is_mlu_place(const Place &p) {
-  return p.GetType() == phi::AllocationType::MLU;
-}
-
-bool is_npu_place(const Place &p) {
-  return p.GetType() == phi::AllocationType::NPU;
-}
-
 bool is_ipu_place(const Place &p) {
   return p.GetType() == phi::AllocationType::IPU;
 }
 
-bool is_cpu_place(const Place &p) {
+TEST_API bool is_cpu_place(const Place &p) {
   return p.GetType() == phi::AllocationType::CPU;
 }
 
 bool is_cuda_pinned_place(const Place &p) {
   return p.GetType() == phi::AllocationType::GPUPINNED;
-}
-
-bool is_npu_pinned_place(const Place &p) {
-  return p.GetType() == phi::AllocationType::NPUPINNED;
 }
 
 bool is_custom_place(const Place &p) {
@@ -72,18 +60,9 @@ bool places_are_same_class(const Place &p1, const Place &p2) {
 
 bool is_same_place(const Place &p1, const Place &p2) {
   if (places_are_same_class(p1, p2)) {
-    if (is_cpu_place(p1) || is_cuda_pinned_place(p1) ||
-        is_npu_pinned_place(p1)) {
+    if (is_cpu_place(p1) || is_cuda_pinned_place(p1)) {
       return true;
-    } else if (is_xpu_place(p1)) {
-      return p1 == p2;
-    } else if (is_mlu_place(p1)) {
-      return p1 == p2;
-    } else if (is_npu_place(p1)) {
-      return p1 == p2;
-    } else if (is_ipu_place(p1)) {
-      return p1 == p2;
-    } else if (is_custom_place(p1)) {
+    } else if (is_xpu_place(p1) || is_ipu_place(p1) || is_custom_place(p1)) {
       return p1 == p2;
     } else {
       return p1 == p2;
@@ -99,8 +78,6 @@ std::string PlaceHelper::GetDeviceType(const Place &place) {
     return "cpu";
   } else if (is_gpu_place(place)) {
     return "gpu";
-  } else if (is_npu_place(place)) {
-    return "npu";
   } else if (is_xpu_place(place)) {
     return "xpu";
   } else if (is_custom_place(place)) {
@@ -121,8 +98,6 @@ Place PlaceHelper::CreatePlace(const std::string &dev_type, size_t dev_id) {
     return platform::CPUPlace();
   } else if (dev_type == "gpu") {
     return platform::CUDAPlace(dev_id);
-  } else if (dev_type == "npu") {
-    return platform::NPUPlace(dev_id);
   } else if (dev_type == "xpu") {
     return platform::XPUPlace(dev_id);
   } else {

@@ -19,7 +19,7 @@ import os
 import numpy as np
 
 import paddle
-import paddle.nn.quant.quant_layers as quant_layers
+from paddle.nn.quant import quant_layers
 
 from ...static.log_helper import get_logger
 from ...static.quantization.utils import (
@@ -92,7 +92,6 @@ class ImperativePTQ:
                 and utils.is_leaf_layer(layer)
                 and not self._is_skip_layer(layer)
             ):
-
                 # Add quant config
                 quant_config = copy.deepcopy(self._quant_config)
                 if PTQRegistry.is_simulated_quant_layer(layer):
@@ -250,9 +249,7 @@ class ImperativePTQ:
             if self._is_quant_layer(sub_layer):
                 cur_num += 1
                 if cur_num % 5 == 0:
-                    _logger.info(
-                        "Process the %s / %s layer" % (cur_num, total_num)
-                    )
+                    _logger.info(f"Process the {cur_num} / {total_num} layer")
 
                 quant_config = sub_layer._quant_config
 
@@ -312,7 +309,6 @@ class ImperativePTQ:
             if self._is_quant_layer(
                 sub_layer
             ) and PTQRegistry.is_simulated_quant_layer(sub_layer):
-
                 quant_config = sub_layer._quant_config
                 assert quant_config.enable_in_act_quantizer is True
                 wt_quantizer = quant_config.wt_quantizer

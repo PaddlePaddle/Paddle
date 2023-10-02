@@ -21,9 +21,11 @@ from .activation import elu_  # noqa: F401
 from .activation import gelu  # noqa: F401
 from .activation import hardshrink  # noqa: F401
 from .activation import hardtanh  # noqa: F401
+from .activation import hardtanh_  # noqa: F401
 from .activation import hardsigmoid  # noqa: F401
 from .activation import hardswish  # noqa: F401
 from .activation import leaky_relu  # noqa: F401
+from .activation import leaky_relu_  # noqa: F401
 from .activation import log_sigmoid  # noqa: F401
 from .activation import maxout  # noqa: F401
 from .activation import prelu  # noqa: F401
@@ -44,6 +46,7 @@ from .activation import tanh  # noqa: F401
 from .activation import tanh_  # noqa: F401
 from .activation import tanhshrink  # noqa: F401
 from .activation import thresholded_relu  # noqa: F401
+from .activation import thresholded_relu_  # noqa: F401
 from .activation import log_softmax  # noqa: F401
 from .activation import glu  # noqa: F401
 from .activation import gumbel_softmax  # noqa: F401
@@ -83,6 +86,7 @@ from .loss import log_loss  # noqa: F401
 from .loss import margin_ranking_loss  # noqa: F401
 from .loss import mse_loss  # noqa: F401
 from .loss import nll_loss  # noqa: F401
+from .loss import poisson_nll_loss  # noqa: F401
 from .loss import npair_loss  # noqa: F401
 from .loss import sigmoid_focal_loss  # noqa: F401
 from .loss import smooth_l1_loss  # noqa: F401
@@ -98,6 +102,8 @@ from .loss import multi_label_soft_margin_loss
 from .loss import triplet_margin_with_distance_loss
 from .loss import triplet_margin_loss
 from .loss import soft_margin_loss
+from .loss import gaussian_nll_loss
+
 from .norm import batch_norm  # noqa: F401
 from .norm import instance_norm  # noqa: F401
 from .norm import layer_norm  # noqa: F401
@@ -132,6 +138,8 @@ from .extension import gather_tree  # noqa: F401
 from .extension import temporal_shift  # noqa: F401
 
 from .sparse_attention import sparse_attention
+from .flash_attention import scaled_dot_product_attention
+from .flash_attention import sdp_kernel
 
 __all__ = [  # noqa
     'celu',
@@ -147,9 +155,11 @@ __all__ = [  # noqa
     'gelu',
     'hardshrink',
     'hardtanh',
+    'hardtanh_',
     'hardsigmoid',
     'hardswish',
     'leaky_relu',
+    'leaky_relu_',
     'log_sigmoid',
     'maxout',
     'prelu',
@@ -170,6 +180,7 @@ __all__ = [  # noqa
     'tanh_',
     'tanhshrink',
     'thresholded_relu',
+    'thresholded_relu_',
     'log_softmax',
     'glu',
     'gumbel_softmax',
@@ -215,6 +226,7 @@ __all__ = [  # noqa
     'margin_ranking_loss',
     'multi_label_soft_margin_loss',
     'nll_loss',
+    'poisson_nll_loss',
     'npair_loss',
     'sigmoid_focal_loss',
     'smooth_l1_loss',
@@ -248,4 +260,6 @@ __all__ = [  # noqa
     'triplet_margin_loss',
     'multi_margin_loss',
     'soft_margin_loss',
+    'gaussian_nll_loss',
+    'scaled_dot_product_attention',
 ]

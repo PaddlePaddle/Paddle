@@ -16,7 +16,8 @@
 
 namespace phi {
 
-KernelSignature ConvFusionOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature ConvFusionOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("conv2d_fusion",
                          {"Input", "Filter", "Bias", "ResidualData"},
                          {

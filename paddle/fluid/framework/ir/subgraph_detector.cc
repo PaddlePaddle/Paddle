@@ -45,7 +45,9 @@ ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph) {  // NOLINT
       }
     }
     for (auto *out : node->outputs) {
-      if (!nodes.count(out) && out->IsVar()) {
+      // we forbid out is a persistable var, for case when weight is shared
+      // between within and outside this tensorrt_engine op.
+      if (!nodes.count(out) && out->IsVar() && !out->Var()->Persistable()) {
         outputs.insert(out);
       }
     }
@@ -120,7 +122,7 @@ void SubgraphDetector::MarkNodesInsideSubGraph() {
 using node_map_t = std::map<int, Node *>;
 // Find the ancestor id of a node.
 int UnionFindGetAncestor(const node_map_t &node_map, size_t id) {
-  int tmp = id;
+  int tmp = static_cast<int>(id);
   do {
     tmp = Agent(node_map.at(tmp)).union_find_parent();
   } while (Agent(node_map.at(tmp)).union_find_parent() != tmp);
@@ -132,8 +134,8 @@ void UnionFindCombine(const node_map_t &node_map, size_t a, size_t b) {
   int a_ancestor = UnionFindGetAncestor(node_map, a);
   int b_ancestor = UnionFindGetAncestor(node_map, b);
   Agent(node_map.at(b_ancestor)).set_union_find_parent(a_ancestor);
-  Agent(node_map.at(a)).set_union_find_parent(a_ancestor);
-  Agent(node_map.at(b)).set_union_find_parent(a_ancestor);
+  Agent(node_map.at(a)).set_union_find_parent(a_ancestor);  // NOLINT
+  Agent(node_map.at(b)).set_union_find_parent(a_ancestor);  // NOLINT
 }
 
 // This is a simple representation of a graph.
@@ -416,7 +418,7 @@ void DetachDeletedNodes(framework::ir::Graph *graph) {
 void SubGraphFuser::ReplaceNodesWithSubGraphs() {
   auto subgraphs = SubgraphDetector(graph_, node_inside_subgraph_teller_)();
   for (auto &subgraph : subgraphs) {
-    if (subgraph.size() <= (size_t)min_subgraph_size_) continue;
+    if (subgraph.size() <= static_cast<size_t>(min_subgraph_size_)) continue;
     std::unordered_set<Node *> subgraph_uniq(subgraph.begin(), subgraph.end());
     // replace this sub-graph with the first node. Two steps: 1. Create a Block
     // Node that contains this subgraph 2. Mark the nodes inside the sub-graph

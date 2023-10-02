@@ -140,13 +140,25 @@ void TopkKernel(const Context& dev_ctx,
   const auto* input = &x;
   // Get the top k elements of each row of input tensor
   const auto& in_dims = input->dims();
-
+  // 0d input x
+  if (in_dims.size() == 0) {
+    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    dev_ctx.template Alloc<int64_t>(indices);
+    phi::funcs::set_constant(dev_ctx, indices, 0.0);
+    return;
+  }
   // axis < 0, cacluate the real axis
   if (axis < 0) {
     axis += in_dims.size();
   }
 
   int k = k_scalar.to<int>();
+  PADDLE_ENFORCE_GE(
+      x.numel(),
+      k,
+      errors::InvalidArgument(
+          "x has only %d element, can not find %d top values.", x.numel(), k));
+
   if (k_scalar.FromTensor()) {
     auto out_dims = out->dims();
     // accroding to axis to set K value in the dim
@@ -186,17 +198,17 @@ void TopkKernel(const Context& dev_ctx,
     // get the trans input_dims, out_dims
     phi::DDim trans_dims(in_dims);
     phi::DDim trans_out_dims(out->dims());
-    for (size_t i = 0; i < trans.size(); i++) {
+    for (int i = 0; i < static_cast<int>(trans.size()); i++) {
       trans_dims[i] = in_dims[trans[i]];
     }
-    for (size_t i = 0; i < trans.size(); i++) {
+    for (int i = 0; i < static_cast<int>(trans.size()); i++) {
       trans_out_dims[i] = out_dims[trans[i]];
     }
 
     DenseTensor trans_inp;
     trans_inp.Resize(trans_dims);
     dev_ctx.template Alloc<T>(&trans_inp);
-    int ndims = trans.size();
+    int ndims = static_cast<int>(trans.size());
 
     // transpose the input value
     funcs::TransCompute<phi::CPUContext, T>(
@@ -235,4 +247,6 @@ void TopkKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    topk, CPU, ALL_LAYOUT, phi::TopkKernel, float, double, int32_t, int64_t) {}
+    topk, CPU, ALL_LAYOUT, phi::TopkKernel, float, double, int32_t, int64_t) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
+}

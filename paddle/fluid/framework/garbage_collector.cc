@@ -16,13 +16,14 @@
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
-#include "gflags/gflags.h"
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/phi/core/flags.h"
+#include "paddle/utils/flags.h"
 
-DECLARE_double(eager_delete_tensor_gb);
-DECLARE_double(memory_fraction_of_eager_deletion);
-DECLARE_bool(fast_eager_deletion_mode);
+PHI_DECLARE_double(eager_delete_tensor_gb);
+PHI_DECLARE_double(memory_fraction_of_eager_deletion);
+PHI_DECLARE_bool(fast_eager_deletion_mode);
 
 namespace paddle {
 namespace framework {
@@ -30,10 +31,10 @@ namespace framework {
 GarbageCollector::GarbageCollector(const platform::Place &place,
                                    size_t max_memory_size)
     : max_memory_size_((std::max)(max_memory_size, static_cast<size_t>(1))) {
-  garbages_.reset(new GarbageQueue());
+  garbages_ = std::make_unique<GarbageQueue>();
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place);
   if (max_memory_size_ > 1) {
-    mutex_.reset(new std::mutex());
+    mutex_ = std::make_unique<std::mutex>();
   }
 }
 
@@ -94,8 +95,8 @@ StreamGarbageCollector::StreamGarbageCollector(const platform::CUDAPlace &place,
   PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&stream_));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&stream_));
-  callback_manager_.reset(
-      new platform::StreamCallbackManager<gpuStream_t>(stream_));
+  callback_manager_ =
+      std::make_unique<platform::StreamCallbackManager<gpuStream_t>>(stream_);
 #endif
 }
 
@@ -122,82 +123,6 @@ CUDAPinnedGarbageCollector::CUDAPinnedGarbageCollector(
 void CUDAPinnedGarbageCollector::ClearCallback(
     const std::function<void()> &callback) {
   callback();
-}
-#endif
-
-#ifdef PADDLE_WITH_ASCEND_CL
-NPUDefaultStreamGarbageCollector::NPUDefaultStreamGarbageCollector(
-    const platform::NPUPlace &place, size_t max_memory_size)
-    : GarbageCollector(place, max_memory_size) {}
-
-void NPUDefaultStreamGarbageCollector::Wait() const {
-  static_cast<platform::NPUDeviceContext *>(this->dev_ctx_)
-      ->WaitStreamCallback();
-}
-
-void NPUDefaultStreamGarbageCollector::ClearCallback(
-    const std::function<void()> &callback) {
-  static_cast<platform::NPUDeviceContext *>(this->dev_ctx_)
-      ->AddStreamCallback(callback);
-}
-NPUUnsafeFastGarbageCollector::NPUUnsafeFastGarbageCollector(
-    const platform::NPUPlace &place, size_t max_memory_size)
-    : GarbageCollector(place, max_memory_size) {}
-
-void NPUUnsafeFastGarbageCollector::ClearCallback(
-    const std::function<void()> &callback) {
-  callback();
-}
-
-#endif
-
-#ifdef PADDLE_WITH_MLU
-MLUDefaultStreamGarbageCollector::MLUDefaultStreamGarbageCollector(
-    const platform::MLUPlace &place, size_t max_memory_size)
-    : GarbageCollector(place, max_memory_size) {}
-
-void MLUDefaultStreamGarbageCollector::Wait() const {
-  static_cast<platform::MLUDeviceContext *>(this->dev_ctx_)
-      ->WaitStreamCallback();
-}
-
-void MLUDefaultStreamGarbageCollector::ClearCallback(
-    const std::function<void()> &callback) {
-  static_cast<platform::MLUDeviceContext *>(this->dev_ctx_)
-      ->AddStreamCallback(callback);
-}
-MLUUnsafeFastGarbageCollector::MLUUnsafeFastGarbageCollector(
-    const platform::MLUPlace &place, size_t max_memory_size)
-    : GarbageCollector(place, max_memory_size) {}
-
-void MLUUnsafeFastGarbageCollector::ClearCallback(
-    const std::function<void()> &callback) {
-  callback();
-}
-
-MLUStreamGarbageCollector::MLUStreamGarbageCollector(
-    const platform::MLUPlace &place, size_t max_memory_size)
-    : GarbageCollector(place, max_memory_size) {
-  platform::MLUDeviceGuard guard(place.device);
-  PADDLE_ENFORCE_MLU_SUCCESS(cnrtQueueCreate(&stream_));
-  callback_manager_.reset(
-      new platform::StreamCallbackManager<mluStream>(stream_));
-}
-
-MLUStreamGarbageCollector::~MLUStreamGarbageCollector() {
-  auto place = this->dev_ctx_->GetPlace();
-  platform::MLUDeviceGuard guard(place.device);
-  PADDLE_ENFORCE_MLU_SUCCESS(cnrtQueueSync(stream_));
-  PADDLE_ENFORCE_MLU_SUCCESS(cnrtQueueDestroy(stream_));
-}
-
-mluStream MLUStreamGarbageCollector::stream() const { return stream_; }
-
-void MLUStreamGarbageCollector::Wait() const { callback_manager_->Wait(); }
-
-void MLUStreamGarbageCollector::ClearCallback(
-    const std::function<void()> &callback) {
-  callback_manager_->AddCallback(callback);
 }
 #endif
 
@@ -230,9 +155,9 @@ CustomStreamGarbageCollector::CustomStreamGarbageCollector(
     const platform::CustomPlace &place, size_t max_memory_size)
     : GarbageCollector(place, max_memory_size) {
   phi::DeviceGuard guard(place);
-  stream_.reset(new phi::stream::Stream);
+  stream_ = std::make_unique<phi::stream::Stream>();
   stream_->Init(place);
-  callback_manager_.reset(new phi::CallbackManager(stream_.get()));
+  callback_manager_ = std::make_unique<phi::CallbackManager>(stream_.get());
 }
 
 CustomStreamGarbageCollector::~CustomStreamGarbageCollector() {

@@ -22,7 +22,7 @@ namespace framework {
 namespace ir {
 
 ///
-/// Fuse quant + conv2d/depthwise_conv2d/mul/fc + dequant
+/// Fuse quant + conv2d/depthwise_conv2d/matrix_multiply + dequant
 ///
 class QuantDequantFusePass : public FusePassBase {
  public:

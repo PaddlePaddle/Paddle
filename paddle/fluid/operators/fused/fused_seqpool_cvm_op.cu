@@ -420,7 +420,7 @@ void FusedSeqpoolCVMGrad(const framework::ExecutionContext &ctx,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusedSeqpoolCVMCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -505,7 +505,7 @@ class FusedSeqpoolCVMCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusedSeqpoolCVMGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -588,8 +588,11 @@ class FusedSeqpoolCVMGradCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(fused_seqpool_cvm,
-                        ops::FusedSeqpoolCVMCUDAKernel<float>);
-
-REGISTER_OP_CUDA_KERNEL(fused_seqpool_cvm_grad,
-                        ops::FusedSeqpoolCVMGradCUDAKernel<float>);
+PD_REGISTER_STRUCT_KERNEL(
+    fused_seqpool_cvm, GPU, ALL_LAYOUT, ops::FusedSeqpoolCVMCUDAKernel, float) {
+}
+PD_REGISTER_STRUCT_KERNEL(fused_seqpool_cvm_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FusedSeqpoolCVMGradCUDAKernel,
+                          float) {}

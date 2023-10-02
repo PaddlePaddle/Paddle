@@ -15,7 +15,7 @@
 import typing
 
 import paddle
-from paddle.fluid import framework
+from paddle.base import framework
 from paddle.incubate.autograd import primapi, utils
 
 
@@ -46,30 +46,30 @@ def vjp(func, xs, v=None):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            def func(x):
-                return paddle.matmul(x, x)
+            >>> def func(x):
+            ...     return paddle.matmul(x, x)
+            ...
+            >>> x = paddle.ones(shape=[2, 2], dtype='float32')
+            >>> _, vjp_result = paddle.incubate.autograd.vjp(func, x)
+            >>> print(vjp_result)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+                   [[4., 4.],
+                    [4., 4.]])
 
-            x = paddle.ones(shape=[2, 2], dtype='float32')
-            _, vjp_result = paddle.incubate.autograd.vjp(func, x)
-            print(vjp_result)
-            # Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-            #        [[4., 4.],
-            #         [4., 4.]])
-
-            v = paddle.to_tensor([[1.0, 0.0], [0.0, 0.0]])
-            _, vjp_result = paddle.incubate.autograd.vjp(func, x, v)
-            print(vjp_result)
-            # Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-            #        [[2., 1.],
-            #         [1., 0.]])
+            >>> v = paddle.to_tensor([[1.0, 0.0], [0.0, 0.0]])
+            >>> _, vjp_result = paddle.incubate.autograd.vjp(func, x, v)
+            >>> print(vjp_result)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+                   [[2., 1.],
+                    [1., 0.]])
     """
     _check_inputs(func, xs, v)
 
     # ``_seprate`` breaks the dependencies between ``xs`` and other
     # variables. See more ``_seprate`` .
-    if paddle.fluid._non_static_mode() or not utils.prim_enabled():
+    if framework.in_dygraph_mode() or not utils.prim_enabled():
         xs, v = _separate(xs), _separate(v)
     ys = func(*xs) if isinstance(xs, typing.Sequence) else func(xs)
     _check_v_shape(v, ys)
@@ -106,36 +106,35 @@ def jvp(func, xs, v=None):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
+            >>> def func(x):
+            ...     return paddle.matmul(x, x)
+            ...
+            >>> x = paddle.ones(shape=[2, 2], dtype='float32')
+            >>> _, jvp_result = paddle.incubate.autograd.jvp(func, x)
+            >>> print(jvp_result)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
+                   [[4., 4.],
+                    [4., 4.]])
 
-            def func(x):
-                return paddle.matmul(x, x)
-
-
-            x = paddle.ones(shape=[2, 2], dtype='float32')
-            _, jvp_result = paddle.incubate.autograd.jvp(func, x)
-            print(jvp_result)
-            # Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-            #        [[4., 4.],
-            #         [4., 4.]])
-            v = paddle.to_tensor([[1.0, 0.0], [0.0, 0.0]])
-            _, jvp_result = paddle.incubate.autograd.jvp(func, x, v)
-            print(jvp_result)
-            # Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-            #        [[2., 1.],
-            #         [1., 0.]])
+            >>> v = paddle.to_tensor([[1.0, 0.0], [0.0, 0.0]])
+            >>> _, jvp_result = paddle.incubate.autograd.jvp(func, x, v)
+            >>> print(jvp_result)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
+                   [[2., 1.],
+                    [1., 0.]])
 
     """
     _check_inputs(func, xs, v)
     # ``_seprate`` breaks the dependencies between ``xs`` and other
     # variables. See more ``_seprate`` .
-    if paddle.fluid._non_static_mode() or not utils.prim_enabled():
+    if framework.in_dygraph_mode() or not utils.prim_enabled():
         xs, v = _separate(xs), _separate(v)
     ys = func(*xs) if isinstance(xs, typing.Sequence) else func(xs)
     _check_v_shape(v, xs)
 
-    if not paddle.fluid._non_static_mode() and utils.prim_enabled():
+    if not framework.in_dygraph_mode() and utils.prim_enabled():
         return ys, primapi.forward_grad(ys, xs, v)
     else:
         return ys, _double_backward_trick(ys, xs, v)
@@ -217,28 +216,26 @@ class Jacobian:
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
+            >>> def func(x, y):
+            ...     return paddle.matmul(x, y)
+            ...
+            >>> x = paddle.to_tensor([[1., 2.], [3., 4.]])
+            >>> J = paddle.incubate.autograd.Jacobian(func, [x, x])
+            >>> print(J[:, :])
+            Tensor(shape=[4, 8], dtype=float32, place=Place(cpu), stop_gradient=False,
+                   [[1., 3., 0., 0., 1., 0., 2., 0.],
+                    [2., 4., 0., 0., 0., 1., 0., 2.],
+                    [0., 0., 1., 3., 3., 0., 4., 0.],
+                    [0., 0., 2., 4., 0., 3., 0., 4.]])
 
-            def func(x, y):
-                return paddle.matmul(x, y)
-
-
-            x = paddle.to_tensor([[1., 2.], [3., 4.]])
-            J = paddle.incubate.autograd.Jacobian(func, [x, x])
-            print(J[:, :])
-            # Tensor(shape=[4, 8], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-            #        [[1., 3., 0., 0., 1., 0., 2., 0.],
-            #         [2., 4., 0., 0., 0., 1., 0., 2.],
-            #         [0., 0., 1., 3., 3., 0., 4., 0.],
-            #         [0., 0., 2., 4., 0., 3., 0., 4.]])
-
-            print(J[0, :])
-            # Tensor(shape=[8], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-            #        [1., 3., 0., 0., 1., 0., 2., 0.])
-            print(J[:, 0])
-            # Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-            #        [1., 2., 0., 0.])
+            >>> print(J[0, :])
+            Tensor(shape=[8], dtype=float32, place=Place(cpu), stop_gradient=False,
+                   [1., 3., 0., 0., 1., 0., 2., 0.])
+            >>> print(J[:, 0])
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=False,
+                   [1., 2., 0., 0.])
 
     """
 
@@ -287,23 +284,22 @@ class Hessian:
 
     Examples:
 
-    .. code-block:: python
+        .. code-block:: python
 
-        import paddle
+            >>> import paddle
 
+            >>> def reducer(x):
+            ...     return paddle.sum(x * x)
+            ...
+            >>> x = paddle.rand([2, 2])
+            >>> h = paddle.incubate.autograd.Hessian(reducer, x)
+            >>> print(h[:])
+            Tensor(shape=[4, 4], dtype=float32, place=CPUPlace(), stop_gradient=False,
+                [[2., 0., 0., 0.],
+                 [0., 2., 0., 0.],
+                 [0., 0., 2., 0.],
+                 [0., 0., 0., 2.]])
 
-        def reducer(x):
-            return paddle.sum(x * x)
-
-
-        x = paddle.rand([2, 2])
-        h = paddle.incubate.autograd.Hessian(reducer, x)
-        print(h[:])
-        # Tensor(shape=[4, 4], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-        #        [[2., 0., 0., 0.],
-        #         [0., 2., 0., 0.],
-        #         [0., 0., 2., 0.],
-        #         [0., 0., 0., 2.]])
     """
 
     def __init__(self, func, xs, is_batched=False):
@@ -352,7 +348,7 @@ class _Jacobian:
     def __init__(self, func, xs):
         # Skip separating in prim mode temporarily, as detach and clone are not
         # primitive operators.
-        if not paddle.fluid._non_static_mode() and utils.prim_enabled():
+        if not framework.in_dygraph_mode() and utils.prim_enabled():
             self._xs = xs
         else:
             self._xs = _separate(xs)
@@ -580,13 +576,13 @@ def _grad(ys, xs, v=None):
             Tensor is the sum of gradients of outputs with respect to the i-th
             inputs.
     """
-    if paddle.fluid._non_static_mode():
+    if framework.in_dygraph_mode():
         # paddle.grad returns a list though the inputs is a signle Tensor. The
         # follow code snippet fixes the problem by return the first element of
         # xs_grad when the xs is a signle Tensor.
         xs_grad = paddle.grad(ys, xs, v, create_graph=True, allow_unused=True)
         if (
-            isinstance(xs, paddle.fluid.framework.Variable)
+            isinstance(xs, paddle.base.framework.Variable)
             and isinstance(xs_grad, typing.Sequence)
             and len(xs_grad) > 0
         ):
@@ -619,27 +615,25 @@ def _separate(xs):
 
         .. code-block:: python
 
-            import paddle
-            from paddle.autograd.functional import _separate
+            >>> import paddle
+            >>> from paddle.incubate.autograd.functional import _separate
 
+            >>> def func(x, y):
+            ...     return x * y
+            ...
+            >>> x = paddle.ones((1,))
+            >>> x.stop_gradient = False
 
-            def func(x, y):
-                return x * y
+            >>> y = func(x, x)
+            >>> print(paddle.grad(y, x))
+            [Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [2.])]
 
-
-            x = paddle.ones((1,))
-            x.stop_gradient = False
-
-            y = func(x, x)
-            print(paddle.grad(y, x))
-            # [Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [2.])]
-
-            x1, x2 = _separate((x, x))
-            y = func(x1, x2)
-            print(paddle.grad(y, x1))
-            # [Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [1.])]
+            >>> x1, x2 = _separate((x, x))
+            >>> y = func(x1, x2)
+            >>> print(paddle.grad(y, x1))
+            [Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [1.])]
 
     """
     if isinstance(xs, typing.Sequence):

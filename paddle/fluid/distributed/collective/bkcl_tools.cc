@@ -21,13 +21,16 @@ namespace distributed {
 
 BKCLOp ToBKCLRedType(ReduceOp reduction) {
   static const std::map<ReduceOp, BKCLOp> red_type = {
+      {ReduceOp::MIN, BKCL_MIN},
+      {ReduceOp::MAX, BKCL_MAX},
       {ReduceOp::SUM, BKCL_ADD},
   };
   auto it = red_type.find(reduction);
   PADDLE_ENFORCE_EQ(it != red_type.end(),
                     true,
                     platform::errors::InvalidArgument(
-                        "Invalid bkcl reduction. Must be BKCL_ADD"));
+                        "Invalid bkcl reduction. Must be BKCL_MIN | BKCL_MAX | "
+                        "BKCL_ADD"));
   return it->second;
 }
 

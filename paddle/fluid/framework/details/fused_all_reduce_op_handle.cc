@@ -19,9 +19,10 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/backends/device_memory_aligment.h"
+#include "paddle/phi/core/flags.h"
 
-DEFINE_bool(skip_fused_all_reduce_check, false, "");
-DECLARE_bool(allreduce_record_one_event);
+PD_DEFINE_bool(skip_fused_all_reduce_check, false, "");  // NOLINT
+PHI_DECLARE_bool(allreduce_record_one_event);
 
 namespace paddle {
 namespace framework {
@@ -400,7 +401,8 @@ void FusedAllReduceOpHandle::GetDTypeAndNumel(
             "The size of grad tensors of fused_all_reduce_op_handle  "
             "must be > 0, but got %d.",
             len));
-    *numel += phi::Alignment(len * size_of_dtype, places_[0]) / size_of_dtype;
+    *numel += static_cast<int64_t>(
+        phi::Alignment(len * size_of_dtype, places_[0]) / size_of_dtype);
   }
 }
 

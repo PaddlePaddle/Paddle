@@ -14,6 +14,10 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/gather_scatter_functor.h"
 
+#include "glog/logging.h"
+
+#include "paddle/phi/core/macros.h"
+
 namespace phi {
 namespace funcs {
 
@@ -51,11 +55,11 @@ struct cpu_gather_scatter_functor {
   template <typename func_t>
   void operator()(phi::DenseTensor self,
                   int dim,
-                  const phi::DenseTensor& index,
+                  const phi::DenseTensor& index UNUSED,
                   const phi::DenseTensor& src,
-                  const std::string& method_name,
+                  const std::string& method_name UNUSED,
                   const func_t& reduce_op,
-                  const phi::DeviceContext& ctx) {
+                  const phi::DeviceContext& ctx UNUSED) {
     if (index.numel() == 0) {
       return;
     }
@@ -74,13 +78,13 @@ struct cpu_gather_scatter_functor {
           "self_size, src_size, index_size cannot be 0");
       return;
     }
-    int select_dim_size = index_dims[dim];
+    int64_t select_dim_size = index_dims[dim];
     // index matrix has different shape with self matrix or src matrix.
     int replaced_select_dim_size =
         is_scatter_like ? self_dims[dim] : src_dims[dim];
     int64_t inner_dim_size = 1;
     int64_t outer_dim_size = 1;
-    for (int64_t i = 0; i < dim; ++i) {
+    for (int i = 0; i < dim; ++i) {
       inner_dim_size *= index_dims[i];
     }
 
@@ -118,7 +122,6 @@ struct cpu_gather_scatter_functor {
 
           self_idx = is_scatter_like ? replace_index : index_idx;
           src_idx = is_scatter_like ? index_idx : replace_index;
-
           reduce_op((tensor_t*)(self_data + self_idx),  // NOLINT
                     (tensor_t*)(src_data + src_idx));   // NOLINT
           index_idx++;
@@ -177,11 +180,11 @@ void cpu_scatter_mul_kernel(phi::DenseTensor self,
 }
 
 template <typename tensor_t, typename index_t>
-void cpu_scatter_input_grad_kernel(phi::DenseTensor self,
+void cpu_scatter_input_grad_kernel(phi::DenseTensor self UNUSED,
                                    int dim,
                                    const phi::DenseTensor& index,
                                    phi::DenseTensor output,
-                                   const phi::DeviceContext& ctx) {
+                                   const phi::DeviceContext& ctx UNUSED) {
   auto* index_data = index.data<index_t>();
   auto* output_data = output.data<tensor_t>();
 
@@ -190,9 +193,9 @@ void cpu_scatter_input_grad_kernel(phi::DenseTensor self,
 
   int64_t inner_dim_size = 1;
   int64_t outer_dim_size = 1;
-  int select_dim_size = index_dims[dim];
-  int output_select_dim_size = output_dims[dim];
-  for (int64_t i = 0; i < dim; ++i) {
+  int64_t select_dim_size = index_dims[dim];
+  int64_t output_select_dim_size = output_dims[dim];
+  for (int i = 0; i < dim; ++i) {
     inner_dim_size *= index_dims[i];
   }
 

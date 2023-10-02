@@ -15,16 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -36,7 +26,7 @@ class WhereOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a fluid where op to tensorrt where layer";
+    VLOG(3) << "convert a where op to tensorrt where layer";
 
     framework::OpDesc op_desc(op, nullptr);
     std::string input_x_name = op_desc.Input("X").front();

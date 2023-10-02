@@ -25,15 +25,15 @@ namespace phi {
 
 template <typename T, typename Context>
 void PutAlongAxisGradKernel(const Context& dev_ctx,
-                            const DenseTensor& x,
+                            const DenseTensor& x UNUSED,
                             const DenseTensor& index,
                             const DenseTensor& out_grad,
                             int axis,
-                            const std::string& reduce,
+                            const std::string& reduce UNUSED,
                             DenseTensor* x_grad,
                             DenseTensor* value_grad) {
   PADDLE_ENFORCE_EQ(
-      paddle::platform::is_cpu_place(dev_ctx.GetPlace()),
+      dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU,
       true,
       errors::PreconditionNotMet("PutAlongAxisGradOpKernel only runs on CPU."));
 

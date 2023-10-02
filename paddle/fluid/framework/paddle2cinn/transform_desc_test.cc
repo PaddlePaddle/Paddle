@@ -232,6 +232,16 @@ TEST(TransformProgramDesc, pb2cpp) {
   ASSERT_EQ(cpp_prog.BlocksSize(), correct_prog.BlocksSize());
 }
 
+TEST(HelperFunction, VarDataTypeToString) {
+  const auto &pd_fp32_var = CreatePbVarDesc();
+  const auto &debug_fp32_string =
+      VarDataTypeToString(pd_fp32_var.GetDataType());
+  ASSERT_EQ(debug_fp32_string, std::string("FP32"));
+
+  ASSERT_EQ(VarDataTypeToString(::paddle::framework::proto::VarType::INT32),
+            std::string("INT32"));
+}
+
 }  // namespace paddle2cinn
 }  // namespace framework
 }  // namespace paddle

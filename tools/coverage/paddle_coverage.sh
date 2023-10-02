@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,7 +20,7 @@ PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
 
 # install lcov
 if [ ! -f "/root/.cache/lcov-1.14.tar.gz" ];then
-    wget -P /home https://paddle-ci.gz.bcebos.com/coverage/lcov-1.14.tar.gz --no-proxy --no-check-certificate || exit 101 
+    wget -P /home https://paddle-ci.gz.bcebos.com/coverage/lcov-1.14.tar.gz --no-proxy --no-check-certificate || exit 101
     cp /home/lcov-1.14.tar.gz /root/.cache/lcov-1.14.tar.gz
 else
     cp /root/.cache/lcov-1.14.tar.gz /home/lcov-1.14.tar.gz
@@ -33,7 +33,7 @@ make install
 
 cd /paddle/build
 
-python3.7 ${PADDLE_ROOT}/tools/coverage/gcda_clean.py ${GIT_PR_ID} || exit 101
+python ${PADDLE_ROOT}/tools/coverage/gcda_clean.py ${GIT_PR_ID} || exit 101
 
 lcov --capture -d ./ -o coverage.info --rc lcov_branch_coverage=0
 
@@ -49,7 +49,10 @@ function gen_full_html_report() {
         '/paddle/paddle/fluid/recordio/*' \
         '/paddle/paddle/fluid/string/*' \
         '/paddle/paddle/fluid/eager/*' \
+        '/paddle/paddle/fluid/pir/*' \
+        '/paddle/paddle/fluid/ir_adaptor/*' \
         '/paddle/paddle/phi/*' \
+        '/paddle/paddle/pir/*' \
         '/paddle/paddle/utils/*' \
         -o coverage-full.tmp \
         --rc lcov_branch_coverage=0
@@ -113,8 +116,6 @@ function gen_full_html_report_npu() {
 
 if [ ${WITH_XPU:-OFF} == "ON" ]; then
     gen_full_html_report_xpu || true
-elif [ ${WITH_ASCEND_CL:-OFF} == "ON" ]; then
-    gen_full_html_report_npu || true
 else
     gen_full_html_report || true
 fi
@@ -124,9 +125,9 @@ fi
 function gen_diff_html_report() {
     if [ "${GIT_PR_ID}" != "" ]; then
 
-        COVERAGE_DIFF_PATTERN="`python3.7 ${PADDLE_ROOT}/tools/coverage/pull_request.py files ${GIT_PR_ID}`"
+        COVERAGE_DIFF_PATTERN="`python ${PADDLE_ROOT}/tools/coverage/pull_request.py files ${GIT_PR_ID}`"
 
-        python3.7 ${PADDLE_ROOT}/tools/coverage/pull_request.py diff ${GIT_PR_ID} > git-diff.out
+        python ${PADDLE_ROOT}/tools/coverage/pull_request.py diff ${GIT_PR_ID} > git-diff.out
     fi
 
     lcov --extract coverage-full.info \
@@ -134,7 +135,7 @@ function gen_diff_html_report() {
         -o coverage-diff.info \
         --rc lcov_branch_coverage=0
 
-    python3.7 ${PADDLE_ROOT}/tools/coverage/coverage_diff.py coverage-diff.info git-diff.out > coverage-diff.tmp
+    python ${PADDLE_ROOT}/tools/coverage/coverage_diff.py coverage-diff.info git-diff.out > coverage-diff.tmp
 
     mv -f coverage-diff.tmp coverage-diff.info
 
@@ -153,7 +154,7 @@ coverage combine `$(ls python-coverage.data.*)` || NO_PYTHON_COVERAGE_DATA=1
 
 sed -i 's/mnt\/paddle/paddle/g' python-coverage.xml
 
-`$(python3.7 ${PADDLE_ROOT}/tools/coverage/python_coverage.py > python-coverage.info)` || [[ "${NO_PYTHON_COVERAGE_DATA}" == "1" ]]
+`$(python ${PADDLE_ROOT}/tools/coverage/python_coverage.py > python-coverage.info)` || [[ "${NO_PYTHON_COVERAGE_DATA}" == "1" ]]
 
 # python full html report
 #
@@ -179,9 +180,9 @@ gen_python_full_html_report || true
 
 function gen_python_diff_html_report() {
     if [ "${GIT_PR_ID}" != "" ]; then
-        COVERAGE_DIFF_PATTERN="`python3.7 ${PADDLE_ROOT}/tools/coverage/pull_request.py files ${GIT_PR_ID}`"
+        COVERAGE_DIFF_PATTERN="`python ${PADDLE_ROOT}/tools/coverage/pull_request.py files ${GIT_PR_ID}`"
 
-        python3.7 ${PADDLE_ROOT}/tools/coverage/pull_request.py diff ${GIT_PR_ID} > python-git-diff.out
+        python ${PADDLE_ROOT}/tools/coverage/pull_request.py diff ${GIT_PR_ID} > python-git-diff.out
     fi
 
     lcov --extract python-coverage-full.info \
@@ -189,7 +190,7 @@ function gen_python_diff_html_report() {
         -o python-coverage-diff.info \
         --rc lcov_branch_coverage=0
 
-    python3.7 ${PADDLE_ROOT}/tools/coverage/coverage_diff.py python-coverage-diff.info python-git-diff.out > python-coverage-diff.tmp
+    python ${PADDLE_ROOT}/tools/coverage/coverage_diff.py python-coverage-diff.info python-git-diff.out > python-coverage-diff.tmp
 
     mv -f python-coverage-diff.tmp python-coverage-diff.info
 
@@ -207,17 +208,15 @@ gen_python_diff_html_report || true
 
 echo "Assert Diff Coverage"
 
-python3.7 ${PADDLE_ROOT}/tools/coverage/coverage_lines.py coverage-diff.info 0.9 || COVERAGE_LINES_ASSERT=1
+python ${PADDLE_ROOT}/tools/coverage/coverage_lines.py coverage-diff.info 0.9 || COVERAGE_LINES_ASSERT=1
 
 echo "Assert Python Diff Coverage"
 
 if [ ${WITH_XPU:-OFF} == "ON" ]; then
     echo "XPU has no python coverage!"
-elif [ ${WITH_ASCEND_CL:-OFF} == "ON" ]; then
-    echo "NPU has no python coverage!"
 else
     if [[ "${NO_PYTHON_COVERAGE_DATA}" != "1" ]];then
-        python3.7 ${PADDLE_ROOT}/tools/coverage/coverage_lines.py python-coverage-diff.info 0.9 || PYTHON_COVERAGE_LINES_ASSERT=1
+        python ${PADDLE_ROOT}/tools/coverage/coverage_lines.py python-coverage-diff.info 0.9 || PYTHON_COVERAGE_LINES_ASSERT=1
     fi
 fi
 

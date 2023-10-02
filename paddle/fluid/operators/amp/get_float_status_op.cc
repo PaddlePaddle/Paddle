@@ -53,7 +53,7 @@ class GetFloatStatusMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class GetFloatStatusKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -75,4 +75,5 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(get_float_status, ops::GetFloatStatusKernel<CPU, float>);
+PD_REGISTER_STRUCT_KERNEL(
+    get_float_status, CPU, ALL_LAYOUT, ops::GetFloatStatusKernel, float) {}

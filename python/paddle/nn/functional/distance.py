@@ -14,10 +14,10 @@
 
 import paddle
 from paddle import _C_ops
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.framework import in_dynamic_mode
 
-from ...fluid.data_feeder import check_type, check_variable_and_dtype
-from ...fluid.layer_helper import LayerHelper
+from ...base.data_feeder import check_type, check_variable_and_dtype
+from ...base.layer_helper import LayerHelper
 
 __all__ = []
 
@@ -35,10 +35,10 @@ def pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False, name=None):
     Parameters:
         x (Tensor): Tensor, shape is :math:`[N, D]` or :math:`[D]`, where :math:`N`
             is batch size, :math:`D` is the dimension of vector. Available dtype is
-            float32, float64.
+            float16, float32, float64.
         y (Tensor): Tensor, shape is :math:`[N, D]` or :math:`[D]`, where :math:`N`
             is batch size, :math:`D` is the dimension of vector. Available dtype is
-            float32, float64.
+            float16, float32, float64.
         p (float, optional): The order of norm. Default: :math:`2.0`.
         epsilon (float, optional): Add small value to avoid division by zero.
             Default: :math:`1e-6`.
@@ -59,20 +59,19 @@ def pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            x = paddle.to_tensor([[1., 3.], [3., 5.]], dtype=paddle.float64)
-            y = paddle.to_tensor([[5., 6.], [7., 8.]], dtype=paddle.float64)
-            distance = paddle.nn.functional.pairwise_distance(x, y)
-            print(distance)
-    #       Tensor(shape=[2], dtype=float64, place=Place(gpu:0), stop_gradient=True,
-    #              [4.99999860, 4.99999860])
-
+            >>> import paddle
+            >>> x = paddle.to_tensor([[1., 3.], [3., 5.]], dtype=paddle.float64)
+            >>> y = paddle.to_tensor([[5., 6.], [7., 8.]], dtype=paddle.float64)
+            >>> distance = paddle.nn.functional.pairwise_distance(x, y)
+            >>> print(distance)
+            Tensor(shape=[2], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [4.99999860, 4.99999860])
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         sub = _C_ops.subtract(x, y)
-        # p_norm op has not uesd epsilon, so change it to the following.
+        # p_norm op has not used epsilon, so change it to the following.
         if epsilon != 0.0:
-            epsilon = paddle.fluid.dygraph.base.to_variable(
+            epsilon = paddle.base.dygraph.base.to_variable(
                 [epsilon], dtype=sub.dtype
             )
             sub = _C_ops.add(sub, epsilon)
@@ -84,10 +83,10 @@ def pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False, name=None):
         check_type(keepdim, 'keepdim', (bool), 'PairwiseDistance')
 
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64'], 'PairwiseDistance'
+            x, 'x', ['float16', 'float32', 'float64'], 'PairwiseDistance'
         )
         check_variable_and_dtype(
-            y, 'y', ['float32', 'float64'], 'PairwiseDistance'
+            y, 'y', ['float16', 'float32', 'float64'], 'PairwiseDistance'
         )
         sub = paddle.subtract(x, y)
         if epsilon != 0.0:

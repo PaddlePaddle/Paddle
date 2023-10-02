@@ -17,9 +17,8 @@ include(ExternalProject)
 set(UTF8PROC_PREFIX_DIR ${THIRD_PARTY_PATH}/utf8proc)
 set(UTF8PROC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/utf8proc)
 # As we add extra features for utf8proc, we use the non-official repo
-set(UTF8PROC_REPOSITORY ${GIT_URL}/JuliaStrings/utf8proc.git)
 set(UTF8PROC_TAG v2.6.1)
-
+set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/utf8proc)
 if(WIN32)
   set(UTF8PROC_LIBRARIES "${UTF8PROC_INSTALL_DIR}/lib/utf8proc_static.lib")
   add_definitions(-DUTF8PROC_STATIC)
@@ -31,9 +30,8 @@ include_directories(${UTF8PROC_INSTALL_DIR}/include)
 
 ExternalProject_Add(
   extern_utf8proc
-  ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
-  GIT_REPOSITORY ${UTF8PROC_REPOSITORY}
-  GIT_TAG ${UTF8PROC_TAG}
+  ${EXTERNAL_PROJECT_LOG_ARGS}
+  SOURCE_DIR ${SOURCE_DIR}
   PREFIX ${UTF8PROC_PREFIX_DIR}
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}

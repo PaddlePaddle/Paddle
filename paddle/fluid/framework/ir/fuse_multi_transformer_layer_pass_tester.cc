@@ -75,7 +75,7 @@ TEST(FuseMultiTransformerLayerPass, encoder_fp) {
         1,
         {2, -1, 16, 1024, 64},
         0);
-    auto* out = layers.fused_multi_transformer(x,
+    auto outs = layers.fused_multi_transformer(x,
                                                cache_kv,
                                                src_mask,
                                                qkv_w,
@@ -93,7 +93,7 @@ TEST(FuseMultiTransformerLayerPass, encoder_fp) {
                                                0.1,
                                                1e-12);
 
-    x = out;
+    x = outs[0];
   }
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   graph->Set("__param_scope__", CreateParamScope());
@@ -126,7 +126,7 @@ TEST(FuseMultiTransformerLayerPass, decoder_fp) {
   for (int i = 0; i < num_layers; ++i) {
     auto* shape_out = layers.shape(src_mask);
     auto* time_stamp = layers.slice(shape_out, {0}, {3}, {4});
-    auto* out = layers.fused_multi_transformer(x,
+    auto outs = layers.fused_multi_transformer(x,
                                                cache_kv,
                                                src_mask,
                                                qkv_w,
@@ -145,7 +145,7 @@ TEST(FuseMultiTransformerLayerPass, decoder_fp) {
                                                1e-12,
                                                time_stamp);
 
-    x = out;
+    x = outs[0];
   }
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   auto param_scope = CreateParamScope();

@@ -23,8 +23,16 @@ PD_REGISTER_KERNEL(lamb,
                    ALL_LAYOUT,
                    phi::LambKernel,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    float,
                    double) {
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(3).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(4).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(5).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(3).SetBackend(phi::Backend::UNDEFINED);
+  kernel->OutputAt(4).SetBackend(phi::Backend::UNDEFINED);
 }

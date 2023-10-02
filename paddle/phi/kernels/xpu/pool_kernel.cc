@@ -44,11 +44,12 @@ void Pool2dKernel(const Context& ctx,
                     phi::errors::InvalidArgument(
                         "The Pool2d XPU OP only support 2 dimension pooling!"));
 
-  PADDLE_ENFORCE_EQ(
+  // old model's data_format maybe AnyLayout
+  PADDLE_ENFORCE_NE(
       data_format,
-      "NCHW",
-      phi::errors::InvalidArgument("The Pool2d XPU OP only support "
-                                   "data_format is 'NCHW', but received %s",
+      "NHWC",
+      phi::errors::InvalidArgument("The Pool2d XPU OP does not support "
+                                   "data_format is 'NHWC', but received %s",
                                    data_format));
 
   if (global_pooling) {
@@ -89,6 +90,12 @@ void Pool2dKernel(const Context& ctx,
   int* index_data = nullptr;
   int r = xpu::Error_t::SUCCESS;
   if (!adaptive) {
+    if (kernel_size[0] > (in_h + paddings[0] + paddings[1])) {
+      kernel_size[0] = in_h + paddings[0] + paddings[1];
+    }
+    if (kernel_size[1] > (in_w + paddings[2] + paddings[3])) {
+      kernel_size[1] = in_w + paddings[2] + paddings[3];
+    }
     if (pooling_type == "max") {
       r = xpu::max_pool2d<XPUType>(
           ctx.x_context(),
@@ -362,4 +369,6 @@ PD_REGISTER_KERNEL(max_pool2d_with_index,
                    ALL_LAYOUT,
                    phi::MaxPool2dWithIndexKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
+}

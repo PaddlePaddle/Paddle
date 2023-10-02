@@ -5,29 +5,31 @@ pass_library(
   cinn_subgraph_detector
   subgraph_detector
   cinn_compiler
-  errors
+  phi
   enforce)
 
+pass_library(cinn_zero_tensor_trick_pass base)
+
+cc_library(
+  transform_desc
+  SRCS transform_desc.cc
+  DEPS proto_desc cinnapi)
+cc_library(
+  transform_type
+  SRCS transform_type.cc
+  DEPS phi enforce cinnapi)
 cc_library(
   cinn_cache_key
   SRCS cinn_cache_key.cc
-  DEPS graph graph_helper lod_tensor proto_desc)
+  DEPS graph graph_helper lod_tensor proto_desc transform_type)
 cc_library(
   cinn_subgraph_detector
   SRCS cinn_subgraph_detector.cc
   DEPS graph graph_helper subgraph_detector lod_tensor proto_desc)
 cc_library(
-  transform_desc
-  SRCS transform_desc.cc
-  DEPS proto_desc cinn)
-cc_library(
-  transform_type
-  SRCS transform_type.cc
-  DEPS errors enforce cinn)
-cc_library(
   cinn_graph_symbolization
   SRCS cinn_graph_symbolization.cc
-  DEPS lod_tensor graph transform_desc cinn)
+  DEPS lod_tensor graph transform_desc cinnapi)
 cc_library(
   cinn_compiler
   SRCS cinn_compiler.cc
@@ -36,11 +38,14 @@ cc_library(
        lod_tensor
        cinn_cache_key
        cinn_graph_symbolization
-       cinn
-       cinn_launch_context)
+       cinnapi
+       cinn_launch_context
+       parallel_executor
+       python
+       pybind)
 
 if(WITH_TESTING)
-  # cc_test_old(cinn_lib_test SRCS cinn_lib_test.cc DEPS cinn)
+  # cc_test_old(cinn_lib_test SRCS cinn_lib_test.cc DEPS cinnapi)
   # set_tests_properties(cinn_lib_test PROPERTIES LABELS "RUN_TYPE=CINN")
 
   cc_test_old(cinn_cache_key_test SRCS cinn_cache_key_test.cc DEPS
@@ -52,15 +57,32 @@ if(WITH_TESTING)
     SRCS
     build_cinn_pass_test.cc
     DEPS
+    fleet_executor
     build_cinn_pass
     cinn_compiler
     op_registry
     mul_op
     activation_op
     elementwise_add_op
-    generated_op)
+    generated_op
+    generated_static_op)
   set_tests_properties(build_cinn_pass_test PROPERTIES LABELS "RUN_TYPE=CINN")
   target_link_libraries(build_cinn_pass_test ${PYTHON_LIBRARIES})
+
+  cc_test_old(
+    cinn_zero_tensor_trick_pass_test
+    SRCS
+    cinn_zero_tensor_trick_pass_test.cc
+    DEPS
+    fleet_executor
+    build_cinn_pass
+    cinn_compiler
+    op_registry
+    elementwise_add_op
+    generated_op)
+  set_tests_properties(cinn_zero_tensor_trick_pass_test
+                       PROPERTIES LABELS "RUN_TYPE=CINN")
+  target_link_libraries(cinn_zero_tensor_trick_pass_test ${PYTHON_LIBRARIES})
 
   cc_test_old(transform_desc_test SRCS transform_desc_test.cc DEPS
               transform_desc)
@@ -85,7 +107,7 @@ if(WITH_TESTING)
   #   proto_desc
   #   graph_viz_pass
   #   build_cinn_pass
-  #   cinn
+  #   cinnapi
   #   mul_op
   #   activation_op
   #   elementwise_add_op

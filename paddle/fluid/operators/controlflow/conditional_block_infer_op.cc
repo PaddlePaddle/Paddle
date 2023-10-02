@@ -14,11 +14,12 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/controlflow/conditional_block_op.h"
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+#include "paddle/phi/core/flags.h"
 
-DECLARE_bool(use_mkldnn);
+PHI_DECLARE_bool(use_mkldnn);
 namespace paddle {
 namespace framework {
 class OpDesc;
@@ -85,12 +86,12 @@ class ConditionalBlockInferOp : public ConditionalOp {
       if (!exec_ || !platform::is_same_place(exec_->GetPlace(), dev_place)) {
         auto &pdesc = *block->Program();
         exec_.reset(new framework::Executor(dev_place));
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
         if (FLAGS_use_mkldnn) exec_->EnableMKLDNN(pdesc);
 #endif
         ctx_ = exec_->Prepare(
             pdesc, block->ID(), std::vector<std::string>(), false);
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
         if (FLAGS_use_mkldnn) {
           platform::AttachPointerHashToMKLDNNKey(exec_.get(), dev_place);
           platform::RegisterModelLayout(ctx_->ops_, dev_place);

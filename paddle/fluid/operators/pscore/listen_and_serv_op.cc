@@ -52,7 +52,7 @@ class ListenAndServOp : public framework::OperatorBase {
 
 class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "(Tensor) Variables that server recv.").AsDuplicable();
     AddComment(R"DOC(" + "ListenAndServ operator" + "\n" + "This operator" +
 " will start a RPC server which can receive variables from send_op and send" +

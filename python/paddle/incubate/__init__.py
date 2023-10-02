@@ -16,7 +16,7 @@ from .optimizer import LookAhead  # noqa: F401
 from .optimizer import ModelAverage  # noqa: F401
 from .optimizer import DistributedFusedLamb  # noqa: F401
 from .checkpoint import auto_checkpoint  # noqa: F401
-from ..fluid.layer_helper import LayerHelper  # noqa: F401
+from ..base.layer_helper import LayerHelper  # noqa: F401
 from .operators import softmax_mask_fuse_upper_triangle  # noqa: F401
 from .operators import softmax_mask_fuse  # noqa: F401
 from .operators import graph_send_recv
@@ -35,10 +35,11 @@ from . import autotune  # noqa: F401
 from . import nn  # noqa: F401
 from . import asp  # noqa: F401
 from . import multiprocessing  # noqa: F401
+from . import layers
 
 from .nn.loss import identity_loss
 
-from ..fluid.incubate import fleet
+from ..distributed import fleet
 from . import xpu
 
 __all__ = [

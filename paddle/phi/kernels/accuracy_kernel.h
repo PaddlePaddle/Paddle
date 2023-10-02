@@ -20,11 +20,11 @@
 namespace phi {
 
 template <typename T, typename Context>
-void AccuracyRawKernel(const Context& dev_ctx,
-                       const DenseTensor& out,
-                       const DenseTensor& indices,
-                       const DenseTensor& label,
-                       DenseTensor* accuracy,
-                       DenseTensor* correct,
-                       DenseTensor* total);
+void AccuracyKernel(const Context& dev_ctx,
+                    const DenseTensor& out,
+                    const DenseTensor& indices,
+                    const DenseTensor& label,
+                    DenseTensor* accuracy,
+                    DenseTensor* correct,
+                    DenseTensor* total);
 }  // namespace phi

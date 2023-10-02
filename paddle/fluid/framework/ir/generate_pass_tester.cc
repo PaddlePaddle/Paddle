@@ -113,12 +113,12 @@ TEST(GeneratePass, generate_fc_fuse) {
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   auto pass = PassRegistry::Instance().Get("generate_fc_fuse");
-  int num_nodes_before = graph->Nodes().size();
+  int num_nodes_before = static_cast<int>(graph->Nodes().size());
   int num_mul_nodes_before = GetNumOpNodes(graph, "mul");
   VLOG(3) << DebugString(graph);
 
   graph.reset(pass->Apply(graph.release()));
-  int num_nodes_after = graph->Nodes().size();
+  int num_nodes_after = static_cast<int>(graph->Nodes().size());
   int num_fc_nodes_after = GetNumOpNodes(graph, "fc");
   VLOG(3) << DebugString(graph);
 
@@ -154,12 +154,12 @@ TEST(GeneratePass, generate_multi_add_to_addn) {
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   auto pass = PassRegistry::Instance().Get("generate_multi_add_to_addn");
-  int num_nodes_before = graph->Nodes().size();
+  int num_nodes_before = static_cast<int>(graph->Nodes().size());
   int num_add_nodes_before = GetNumOpNodes(graph, "elementwise_add");
   VLOG(3) << DebugString(graph);
 
   graph.reset(pass->Apply(graph.release()));
-  int num_nodes_after = graph->Nodes().size();
+  int num_nodes_after = static_cast<int>(graph->Nodes().size());
   int num_addn_nodes_after = GetNumOpNodes(graph, "sum");
   VLOG(3) << DebugString(graph);
 
@@ -195,12 +195,12 @@ TEST(GeneratePass, generate_combine_matmul) {
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   auto pass = PassRegistry::Instance().Get("generate_combine_matmul");
-  int num_nodes_before = graph->Nodes().size();
+  int num_nodes_before = static_cast<int>(graph->Nodes().size());
   int num_matmul_nodes_before = GetNumOpNodes(graph, "matmul");
   VLOG(3) << DebugString(graph);
 
   graph.reset(pass->Apply(graph.release()));
-  int num_nodes_after = graph->Nodes().size();
+  int num_nodes_after = static_cast<int>(graph->Nodes().size());
   int num_matmul_nodes_after = GetNumOpNodes(graph, "matmul");
   VLOG(3) << DebugString(graph);
 

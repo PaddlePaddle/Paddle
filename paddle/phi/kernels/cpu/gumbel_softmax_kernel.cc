@@ -66,7 +66,7 @@ struct OneHotGenerator<CPUContext, T> {
     const int size_out_axis = funcs::SizeOutAxis(axis, x.dims());
 
     for (int i = 0; i < x.dims().size(); i++) {
-      if (i != axis) index_dim.push_back(x.dims().Get()[i]);
+      if (i != axis) index_dim.push_back(static_cast<int>(x.dims().Get()[i]));
     }
     DDim index_ddim(index_dim.data(), rank - 1);
     index.Resize(index_ddim);

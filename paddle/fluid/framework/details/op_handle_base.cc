@@ -30,7 +30,7 @@ std::string OpHandleBase::DebugString() const {
   return ss.str();
 }
 
-OpHandleBase::~OpHandleBase() PADDLE_MAY_THROW {
+OpHandleBase::~OpHandleBase() PADDLE_MAY_THROW {  // NOLINT
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   for (auto &ev : events_) {
     if (ev.second) {
@@ -47,7 +47,7 @@ OpHandleBase::~OpHandleBase() PADDLE_MAY_THROW {
 void OpHandleBase::InitCUDA() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   for (auto &p : dev_ctxes_) {
-    int dev_id = p.first.device;
+    int dev_id = p.first.device;  // NOLINT
     platform::SetDeviceId(dev_id);
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(
@@ -57,11 +57,11 @@ void OpHandleBase::InitCUDA() {
         cudaEventCreateWithFlags(&events_[dev_id], cudaEventDisableTiming));
 #endif
   }
-  if (IsMultiDeviceTransfer() && dev_ctxes_.size() > 0) {
+  if (IsMultiDeviceTransfer() && !dev_ctxes_.empty()) {
     for (auto &out_var : outputs_) {
       auto *out_var_handle = dynamic_cast<VarHandle *>(out_var);
       if (out_var_handle) {
-        int dev_id = out_var_handle->place().device;
+        int dev_id = out_var_handle->place().device;  // NOLINT
         out_var_handle->SetGenerateEvent(events_.at(dev_id));
       }
     }
@@ -74,7 +74,7 @@ void OpHandleBase::InitCUDA() {
             Name(),
             dev_ctxes_.size()));
     auto &place = dev_ctxes_.begin()->first;
-    int dev_id = place.device;
+    int dev_id = place.device;  // NOLINT
     for (auto &out_var : outputs_) {
       auto *out_var_handle = dynamic_cast<VarHandle *>(out_var);
       if (out_var_handle) {
@@ -137,7 +137,7 @@ void OpHandleBase::InitXPU() {
 
 void OpHandleBase::Run(DeviceType use_device) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (events_.empty() && use_device == p::kCUDA && dev_ctxes_.size() > 0) {
+  if (events_.empty() && use_device == p::kCUDA && !dev_ctxes_.empty()) {
     InitCUDA();
   }
 #else
@@ -149,7 +149,7 @@ void OpHandleBase::Run(DeviceType use_device) {
           "compiled with CUDA."));
 #endif
 
-  if (use_device == p::kXPU && dev_ctxes_.size() > 0) {
+  if (use_device == p::kXPU && !dev_ctxes_.empty()) {
 #ifdef PADDLE_WITH_XPU
     InitXPU();
 #else

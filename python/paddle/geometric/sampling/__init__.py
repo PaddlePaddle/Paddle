@@ -13,5 +13,6 @@
 # limitations under the License.
 
 from .neighbors import sample_neighbors  # noqa: F401
+from .neighbors import weighted_sample_neighbors  # noqa: F401
 
 __all__ = []

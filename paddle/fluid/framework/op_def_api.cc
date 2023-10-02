@@ -61,9 +61,9 @@ const proto::OpDef& GetOpDef(const std::string& op_name) {
       }
       if (op_def.type() != op_name) {
         LOG(WARNING) << op_name << ".pbtxt has error type :" << op_def.type();
-        ops_definition.emplace(std::make_pair(op_name, proto::OpDef()));
+        ops_definition.emplace(op_name, proto::OpDef());
       } else {
-        ops_definition.emplace(std::make_pair(op_name, std::move(op_def)));
+        ops_definition.emplace(op_name, std::move(op_def));
       }
     }
   }

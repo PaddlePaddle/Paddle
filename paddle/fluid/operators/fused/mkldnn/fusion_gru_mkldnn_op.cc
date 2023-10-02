@@ -33,7 +33,7 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
   GRUMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
                    const OneDNNContext& dev_ctx,
                    const dnnl::engine onednn_engine,
-                   platform::Place cpu_place,
+                   platform::Place cpu_place UNUSED,
                    const phi::DenseTensor* input,
                    const phi::DenseTensor* weight_h,
                    const phi::DenseTensor* h0,
@@ -42,7 +42,7 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
                    const int64_t Ti,
                    const int64_t IC,
                    const int64_t OC,
-                   const std::string& unique_name)
+                   const std::string& unique_name UNUSED)
       : RNNMKLDNNHandler<T, dnnl::gru_forward, T_out>(
             ctx,
             dev_ctx,
@@ -248,7 +248,7 @@ class FusionGRUMKLDNNKernel : public framework::OpKernel<T> {
     const bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
 
     // BF16 does not support force output
-    if (!is_bf16 && force_fp32_output) {
+    if (!is_bf16 && force_fp32_output) {  // NOLINT
       RunKernel<float>(ctx);
     } else {
       RunKernel<T>(ctx);

@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/conv2d_fusion_layout_transfer_pass.h"
-
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include "paddle/fluid/framework/ir/cutlass_teller.h"
 
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
@@ -112,17 +112,6 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
           phi::DataType::FLOAT16 ||
       Get<bool>("enable_gpu_mixed");
   bool cutlass_enable = Get<bool>("use_cutlass");
-
-#ifdef PADDLE_WITH_CUTLASS
-  const auto &prop = platform::GetDeviceProperties(Get<int>("gpu_device_id"));
-  int sm_version = prop.major * 10 + prop.minor;
-  // Now we only implement cutlass kernel on SM75.
-  if (sm_version == 75) {
-  } else {
-    cutlass_enable = false;
-  }
-#endif
-
   if (!is_fp16_precision) return;
 
   PADDLE_ENFORCE_EQ(graph->IsMainGraph(),
@@ -142,29 +131,32 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
   auto iter = op_nodes.cbegin();
   auto *block_desc = (*iter)->Op()->Block();
 
+  // Process multiple conv2d_fusion shares weight.
+  std::unordered_set<std::string> weights_shape_nhwc;
+
+  // Used to control the insertion of transfer_layout op.
   std::unordered_set<ir::Node *> vars_shape_nhwc;
 
   // Only support conv2d_fusion now.
   std::string target_op_type = "conv2d_fusion";
   std::unordered_set<ir::Node *> valid_ops;
 
+  // Determine if this conv2d_fusion can run in cuDNN's NHWC mode,
+  // will not set or change any attribute in op_desc
   auto cuDNNIsValid = [&](ir::Node *op_node) -> bool {
-    if (op_node->Op()->Type() != target_op_type) return false;
-    auto data_format =
-        op_node->Op()->GetAttrIfExists<std::string>("data_format");
-    if (data_format != "NCHW") return false;
     auto filter_names = op_node->Op()->Input("Filter");
-    constexpr int NHWC_ALIGNMENT = 8;
-    // If filter's channel is not multiple of 8, conv2d_fusion not run at nhwc.
+    constexpr int CUDNN_ALIGNMENT = 8;
+    // If filter's channel is not multiple of CUDNN_ALIGNMENT, conv2d_fusion not
+    // run at nhwc.
     for (const auto &filter_name : filter_names) {
       auto *filter_var = scope->FindLocalVar(filter_name);
       const auto &filter_tensor = filter_var->Get<phi::DenseTensor>();
       CHECK_EQ(filter_tensor.dims().size() == 4UL, true);
-      int oc = filter_tensor.dims()[0];
-      int ic = filter_tensor.dims()[1];
-      bool cutlass_can_support =
-          oc % NHWC_ALIGNMENT == 0 && ic % NHWC_ALIGNMENT == 0;
-      if (!cutlass_can_support) {
+      int oc = static_cast<int>(filter_tensor.dims()[0]);
+      int ic = static_cast<int>(filter_tensor.dims()[1]);
+      bool cudnn_can_support =
+          oc % CUDNN_ALIGNMENT == 0 && ic % CUDNN_ALIGNMENT == 0;
+      if (!cudnn_can_support) {
         return false;
       }
     }
@@ -172,61 +164,71 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
   };
 
   auto CutlassIsValid = [&](ir::Node *op_node) -> bool {
-    auto act_type = op_node->Op()->GetAttrIfExists<std::string>("activation");
-    // conv2d_fusion has two forms: conv + bias + act, conv + bias +
-    // elmentwise_add + act.
-    std::unordered_set<std::string> cutlass_cba_act_set = {
-        "relu", "swish", "identity", "leaky_relu"};
-    std::unordered_set<std::string> cutlass_cbaa_act_set = {"relu"};
-    bool is_residual = op_node->Op()->Input("ResidualData").size() >= 1UL;
-
-    if (is_residual) {
-      if (!cutlass_cbaa_act_set.count(act_type)) {
-        return false;
-      }
-    } else {
-      if (!cutlass_cba_act_set.count(act_type)) {
-        return false;
-      }
+    auto op_desc = op_node->Op();
+    bool use_cutlass = false;
+    if (op_desc->HasAttr("use_cutlass")) {
+      use_cutlass = op_desc->GetAttrIfExists<bool>("use_cutlass");
     }
-    return true;
+
+    return use_cutlass && cutlass_enable;
   };
 
   for (auto *op_node : op_nodes) {
     CHECK_EQ(op_node->IsOp(), true);
-    if (cuDNNIsValid(op_node)) {
+    // some common check.
+    if (op_node->Op()->Type() != target_op_type) {
+      continue;
+    }
+    auto filter_name = op_node->Op()->Input("Filter").front();
+    if (weights_shape_nhwc.count(filter_name)) {
+      continue;
+    }
+    auto data_format =
+        op_node->Op()->GetAttrIfExists<std::string>("data_format");
+
+    if (data_format != "NCHW") {
+      continue;
+    }
+
+    if (cuDNNIsValid(op_node) || CutlassIsValid(op_node)) {
       valid_ops.insert(op_node);
       auto *op_desc = op_node->Op();
-      op_desc->SetAttr("data_format", std::string{"NHWC"});
-      if (cutlass_enable && CutlassIsValid(op_node)) {
+
+      if (CutlassIsValid(op_node)) {
         op_desc->SetType("conv2d_fusion_cutlass");
+        // conv2d_fusion_cutlass must have this attribute because of signature.
+        if (!op_desc->HasAttr("fuse_alpha")) {
+          op_desc->SetAttr("fuse_alpha", 0.f);
+        }
       }
+      op_desc->SetAttr("data_format", std::string{"NHWC"});
       op_desc->Flush();
 
       // transfer weights
       auto filter_names = op_desc->Input("Filter");
       for (const auto &filter_name : filter_names) {
-        auto *filter_var = scope->FindLocalVar(filter_name);
-        auto *filter_tensor = filter_var->GetMutable<phi::DenseTensor>();
-        phi::DenseTensor temp_tensor = *filter_tensor;
-        filter_tensor->clear();
+        if (weights_shape_nhwc.count(filter_name) == 0) {
+          weights_shape_nhwc.insert(filter_name);
+          auto *filter_var = scope->FindLocalVar(filter_name);
+          auto *filter_tensor = filter_var->GetMutable<phi::DenseTensor>();
+          phi::DenseTensor temp_tensor;
 
-        framework::TransDataLayout(phi::DataLayout::kNCHW,
-                                   phi::DataLayout::kNHWC,
-                                   phi::CPUPlace{},
-                                   temp_tensor,
-                                   filter_tensor);
-      }
-      auto op_inputs = op_node->inputs;
-      for (auto *in_var_node : op_inputs) {
-        CHECK_EQ(in_var_node->IsVar(), true);
-        if (in_var_node->Var()->Persistable()) {
-          if (std::find(filter_names.cbegin(),
-                        filter_names.cend(),
-                        in_var_node->Var()->Name()) != filter_names.cend()) {
-            auto from_shape = in_var_node->Var()->GetShape();
-            in_var_node->Var()->SetShape(
-                {from_shape[0], from_shape[2], from_shape[3], from_shape[1]});
+          framework::TransDataLayout(phi::DataLayout::kNCHW,
+                                     phi::DataLayout::kNHWC,
+                                     phi::CPUPlace{},
+                                     *filter_tensor,
+                                     &temp_tensor);
+          *filter_tensor = temp_tensor;
+
+          auto op_inputs = op_node->inputs;
+          for (auto *in_var_node : op_inputs) {
+            CHECK_EQ(in_var_node->IsVar(), true);
+            if (in_var_node->Var()->Persistable() &&
+                in_var_node->Var()->Name() == filter_name) {
+              auto from_shape = in_var_node->Var()->GetShape();
+              in_var_node->Var()->SetShape(
+                  {from_shape[0], from_shape[2], from_shape[3], from_shape[1]});
+            }
           }
         }
       }

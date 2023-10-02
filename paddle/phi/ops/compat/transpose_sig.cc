@@ -16,12 +16,13 @@
 
 namespace phi {
 
-KernelSignature TransposeOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature TransposeOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("transpose", {"X"}, {"axis"}, {"Out"});
 }
 
 KernelSignature TransposeGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("transpose_grad", {"Out@GRAD"}, {"axis"}, {"X@GRAD"});
 }
 

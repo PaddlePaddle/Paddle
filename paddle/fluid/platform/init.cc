@@ -16,11 +16,11 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/platform/cpu_helper.h"
-#include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/fluid/string/split.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cupti.h"
@@ -34,10 +34,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
-#endif
-
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/device/mlu/mlu_info.h"
 #endif
 
 #ifdef WITH_WIN_DUMP_DBG
@@ -55,24 +51,19 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
 #endif
 
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
+#include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/platform/flags.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/custom_kernel.h"
 
-DECLARE_int32(paddle_num_threads);
-PADDLE_DEFINE_EXPORTED_int32(
-    multiple_of_cupti_buffer_size,
-    1,
-    "Multiple of the CUPTI device buffer size. If the timestamps have "
-    "been dropped when you are profiling, try increasing this value.");
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
+#include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
+#endif
 
-namespace paddle {
-namespace platform {
-
-void ParseCommandLineFlags(int argc, char **argv, bool remove) {
-  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, remove);
-}
-
-}  // namespace platform
-}  // namespace paddle
+PHI_DECLARE_int32(paddle_num_threads);
+PHI_DECLARE_int32(multiple_of_cupti_buffer_size);
 
 namespace paddle {
 namespace framework {
@@ -83,7 +74,7 @@ namespace framework {
 
 std::once_flag gflags_init_flag;
 std::once_flag glog_init_flag;
-std::once_flag npu_init_flag;
+std::once_flag memory_method_init_flag;
 
 bool InitGflags(std::vector<std::string> args) {
   bool successed = false;
@@ -97,7 +88,7 @@ bool InitGflags(std::vector<std::string> args) {
     args.insert(args.begin(), "dummy");
     std::vector<char *> argv;
     std::string line;
-    int argc = args.size();
+    int argc = static_cast<int>(args.size());
     for (auto &arg : args) {
       argv.push_back(const_cast<char *>(arg.data()));
       line += arg;
@@ -107,7 +98,8 @@ bool InitGflags(std::vector<std::string> args) {
             << ", Init commandline: " << line;
 
     char **arr = argv.data();
-    ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &arr, true);
+    paddle::flags::AllowUndefinedFlags();
+    paddle::flags::ParseCommandLineFlags(&argc, &arr);
     successed = true;
 
     VLOG(1) << "After Parse: argc is " << argc;
@@ -150,7 +142,7 @@ void LoadCustomDevice(const std::string &library_dir) {
   LOG(INFO) << "Try loading custom device libs from: [" << library_dir << "]";
   std::vector<std::string> libs = phi::ListAllLibraries(library_dir);
   for (const auto &lib_path : libs) {
-    auto dso_handle = dlopen(lib_path.c_str(), RTLD_NOW);
+    auto dso_handle = dlopen(lib_path.c_str(), RTLD_LAZY);
     PADDLE_ENFORCE_NOT_NULL(
         dso_handle,
         platform::errors::InvalidArgument(
@@ -193,17 +185,6 @@ void InitDevices() {
       LOG(WARNING) << "Compiled with WITH_XPU, but no XPU found in runtime.";
     }
 #endif
-#ifdef PADDLE_WITH_ASCEND_CL
-    // NOTE(zhiqiu): use singleton to explicitly init and finalize ACL
-    platform::AclInstance::Instance();  // NOLINT
-    try {
-      // use user specified XPUs in single-node multi-process mode.
-      devices = platform::GetSelectedNPUDevices();
-    } catch (const std::exception &exp) {
-      LOG(WARNING) << "Compiled with PADDLE_WITH_ASCEND_CL, but no NPU found "
-                      "in runtime.";
-    }
-#endif
 #ifdef PADDLE_WITH_IPU
     try {
       // use user specified IPUs.
@@ -213,14 +194,6 @@ void InitDevices() {
           << "Compiled with PADDLE_WITH_IPU, but no IPU found in runtime.";
     }
 #endif
-#ifdef PADDLE_WITH_MLU
-    try {
-      // use user specified MLUs in single-node multi-process mode.
-      devices = platform::GetMLUSelectedDevices();
-    } catch (const std::exception &exp) {
-      LOG(WARNING) << "Compiled with WITH_MLU, but no MLU found in runtime.";
-    }
-#endif
     InitDevices(devices);
   });
 }
@@ -228,28 +201,22 @@ void InitDevices() {
 void InitDevices(const std::vector<int> devices) {
   std::vector<platform::Place> places;
 
-  for (size_t i = 0; i < devices.size(); ++i) {
+  for (auto device : devices) {
     // In multi process multi gpu mode, we may have gpuid = 7
     // but count = 1.
-    if (devices[i] < 0) {
+    if (device < 0) {
       LOG(WARNING) << "Invalid devices id.";
       continue;
     }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    places.emplace_back(platform::CUDAPlace(devices[i]));
+    places.emplace_back(platform::CUDAPlace(device));
 #endif
 #ifdef PADDLE_WITH_XPU
-    places.emplace_back(platform::XPUPlace(devices[i]));
+    places.emplace_back(platform::XPUPlace(device));
 #endif
 #ifdef PADDLE_WITH_IPU
-    places.emplace_back(platform::IPUPlace(devices[i]));
-#endif
-#ifdef PADDLE_WITH_ASCEND_CL
-    places.emplace_back(platform::NPUPlace(devices[i]));
-#endif
-#ifdef PADDLE_WITH_MLU
-    places.emplace_back(platform::MLUPlace(devices[i]));
+    places.emplace_back(platform::IPUPlace(device));
 #endif
   }
   places.emplace_back(platform::CPUPlace());
@@ -282,7 +249,7 @@ void InitDevices(const std::vector<int> devices) {
 #endif
   platform::DeviceContextPool::Init(places);
 
-#ifndef PADDLE_WITH_MKLDNN
+#ifndef PADDLE_WITH_DNNL
   platform::SetNumThreads(FLAGS_paddle_num_threads);
 #endif
 }
@@ -290,7 +257,7 @@ void InitDevices(const std::vector<int> devices) {
 #ifndef _WIN32
 // Description Quoted from
 // https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/signal.h.html
-const struct {
+const struct {  // NOLINT
   int signal_number;
   const char *name;
   const char *error_string;
@@ -310,11 +277,9 @@ bool StartsWith(const char *str, const char *prefix) {
 }
 
 const char *ParseSignalErrorString(const std::string &str) {
-  for (size_t i = 0;
-       i < (sizeof(SignalErrorStrings) / sizeof(*(SignalErrorStrings)));
-       ++i) {
-    if (std::string::npos != str.find(SignalErrorStrings[i].name)) {
-      return SignalErrorStrings[i].error_string;
+  for (const auto &SignalErrorString : SignalErrorStrings) {
+    if (std::string::npos != str.find(SignalErrorString.name)) {
+      return SignalErrorString.error_string;
     }
   }
   return "Unknown signal";
@@ -338,9 +303,9 @@ void SignalHandle(const char *data, int size) {
       signal_info.replace(start_pos, useless_substr.length(), "");
       *signal_msg_dunmer_ptr << "  [SignalInfo: " << signal_info << "]\n";
 
-      // NOTE3: Final singal error message print.
+      // NOTE3: Final signal error message print.
       // Here does not throw an exception,
-      // otherwise it will casue "terminate called recursively"
+      // otherwise it will cause "terminate called recursively"
       std::ostringstream sout;
       sout << "\n\n--------------------------------------\n";
       sout << "C++ Traceback (most recent call last):";
@@ -371,15 +336,13 @@ void SignalHandle(const char *data, int size) {
 
 void DisableSignalHandler() {
 #ifndef _WIN32
-  for (size_t i = 0;
-       i < (sizeof(SignalErrorStrings) / sizeof(*(SignalErrorStrings)));
-       ++i) {
-    int signal_number = SignalErrorStrings[i].signal_number;
+  for (const auto &SignalErrorString : SignalErrorStrings) {
+    int signal_number = SignalErrorString.signal_number;
     struct sigaction sig_action;
     memset(&sig_action, 0, sizeof(sig_action));
     sigemptyset(&sig_action.sa_mask);
     sig_action.sa_handler = SIG_DFL;
-    sigaction(signal_number, &sig_action, NULL);
+    sigaction(signal_number, &sig_action, nullptr);
   }
 #endif
 }
@@ -398,10 +361,10 @@ void CreateDumpFile(LPCSTR lpstrDumpFilePathName,
   HANDLE hDumpFile = CreateFile(lpstrDumpFilePathName,
                                 GENERIC_WRITE,
                                 0,
-                                NULL,
+                                nullptr,
                                 CREATE_ALWAYS,
                                 FILE_ATTRIBUTE_NORMAL,
-                                NULL);
+                                nullptr);
   MINIDUMP_EXCEPTION_INFORMATION dumpInfo;
   dumpInfo.ExceptionPointers = pException;
   dumpInfo.ThreadId = GetCurrentThreadId();
@@ -415,8 +378,8 @@ void CreateDumpFile(LPCSTR lpstrDumpFilePathName,
                      hDumpFile,
                      MiniDumpWithPrivateReadWriteMemory,
                      &dumpInfo,
-                     NULL,
-                     NULL);
+                     nullptr,
+                     nullptr);
   CloseHandle(hDumpFile);
 }
 
@@ -453,6 +416,70 @@ void InitGLOG(const std::string &prog_name) {
     google::InstallFailureSignalHandler();
     google::InstallFailureWriter(&SignalHandle);
 #endif
+  });
+}
+
+void InitMemoryMethod() {
+  std::call_once(memory_method_init_flag, [&]() {
+    auto &memory_utils = phi::MemoryUtils::Instance();
+    auto memory_method = std::make_unique<phi::MemoryInterface>();
+    memory_method->alloc = paddle::memory::Alloc;
+    memory_method->alloc_with_stream = paddle::memory::Alloc;
+    memory_method->alloc_shared = paddle::memory::AllocShared;
+    memory_method->alloc_shared_with_stream = paddle::memory::AllocShared;
+    memory_method->in_same_stream = paddle::memory::InSameStream;
+    memory_method->allocation_deleter =
+        paddle::memory::allocation::Allocator::AllocationDeleter;
+#if defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_CUDA) || \
+    defined(PADDLE_WITH_HIP)
+    memory_method->copy_with_stream =
+        paddle::memory::Copy<phi::Place, phi::Place>;
+#endif
+    memory_method->copy = paddle::memory::Copy<phi::Place, phi::Place>;
+    memory_method->device_memory_stat_current_value =
+        paddle::memory::DeviceMemoryStatCurrentValue;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    memory_method->gpu_memory_usage = paddle::platform::GpuMemoryUsage;
+#endif
+
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
+    // TODO(GhostScreaming): Use phi methods later.
+    memory_method->get_allocator =
+        [](int device_id, phi::gpuStream_t stream) -> phi::Allocator * {
+      return paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(phi::GPUPlace(device_id), stream)
+          .get();
+    };
+    memory_method->get_host_allocator = []() -> phi::Allocator * {
+      return paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(phi::CPUPlace())
+          .get();
+    };
+    memory_method->get_zero_allocator = [](int device_id) -> phi::Allocator * {
+      return paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetZeroAllocator(phi::GPUPlace(device_id))
+          .get();
+    };
+    memory_method->get_host_zero_allocator = []() -> phi::Allocator * {
+      return paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetZeroAllocator(phi::CPUPlace())
+          .get();
+    };
+    memory_method->get_pinned_allocator = []() -> phi::Allocator * {
+      return paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(phi::GPUPinnedPlace())
+          .get();
+    };
+    memory_method->get_new_cuda_event = [](int device_id) {
+      return paddle::platform::CudaEventResourcePool::Instance().New(device_id);
+    };
+#endif
+
+    memory_method->emplace_device_contexts =
+        paddle::platform::EmplaceDeviceContexts;
+    memory_method->init_devices = InitDevices;
+    memory_utils.Init(std::move(memory_method));
   });
 }
 

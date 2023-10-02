@@ -40,7 +40,7 @@
 // },
 // ...
 // }
-int main(int argc, char **argv) {
+int main(int argc, char **argv) {  // NOLINT
   paddle::framework::InitDefaultKernelSignatureMap();
   auto &kernel_signature_map = phi::DefaultKernelSignatureMap::Instance();
   auto &kernel_factory = phi::KernelFactory::Instance();
@@ -56,33 +56,31 @@ int main(int argc, char **argv) {
       }
     }
     if (kernel_signature_map.Has(op_name)) {
-      kernel_signature_map_str =
-          kernel_signature_map_str + "\"" + op_kernel_pair.first + "\":{";
+      kernel_signature_map_str.append("\"")
+          .append(op_kernel_pair.first)
+          .append("\":{");
       const auto &args = kernel_signature_map.Get(op_name);
 
       kernel_signature_map_str += "\"inputs\":[";
       auto inputs_ = args.input_names;
       for (size_t i = 0; i < inputs_.size(); i++) {
-        kernel_signature_map_str =
-            kernel_signature_map_str + "\"" + inputs_[i] + "\",";
+        kernel_signature_map_str.append("\"").append(inputs_[i]).append("\",");
       }
-      if (inputs_.size()) kernel_signature_map_str.pop_back();
+      if (!inputs_.empty()) kernel_signature_map_str.pop_back();
 
       kernel_signature_map_str += "],\"attrs\":[";
       auto attrs_ = args.attr_names;
       for (size_t i = 0; i < attrs_.size(); i++) {
-        kernel_signature_map_str =
-            kernel_signature_map_str + "\"" + attrs_[i] + "\",";
+        kernel_signature_map_str.append("\"").append(attrs_[i]).append("\",");
       }
-      if (attrs_.size()) kernel_signature_map_str.pop_back();
+      if (!attrs_.empty()) kernel_signature_map_str.pop_back();
       kernel_signature_map_str += "],\"outputs\":[";
       auto outputs_ = args.output_names;
       for (size_t i = 0; i < outputs_.size(); i++) {
-        kernel_signature_map_str =
-            kernel_signature_map_str + "\"" + outputs_[i] + "\",";
+        kernel_signature_map_str.append("\"").append(outputs_[i]).append("\",");
       }
 
-      if (outputs_.size()) kernel_signature_map_str.pop_back();
+      if (!outputs_.empty()) kernel_signature_map_str.pop_back();
       kernel_signature_map_str += "]},";
     }
   }

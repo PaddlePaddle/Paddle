@@ -42,7 +42,7 @@ def get_paddle_info():
         import paddle
 
         envs['paddle_version'] = paddle.__version__
-        envs['paddle_with_cuda'] = paddle.fluid.core.is_compiled_with_cuda()
+        envs['paddle_with_cuda'] = paddle.base.core.is_compiled_with_cuda()
     except:
         envs['paddle_version'] = 'N/A'
         envs['paddle_with_cuda'] = 'N/A'
@@ -61,7 +61,7 @@ def get_os_info():
     else:
         plat = 'N/A'
         ver = 'N/A'
-    envs['os_info'] = "{0} {1}".format(plat, ver)
+    envs['os_info'] = f"{plat} {ver}"
 
 
 def get_gcc_version():
@@ -164,7 +164,7 @@ def get_cudnn_info():
     )
 
     if major != 'N/A':
-        envs['cudnn_version'] = "{0}.{1}.{2}".format(major, minor, patch_level)
+        envs['cudnn_version'] = f"{major}.{minor}.{patch_level}"
     else:
         envs['cudnn_version'] = 'N/A'
 

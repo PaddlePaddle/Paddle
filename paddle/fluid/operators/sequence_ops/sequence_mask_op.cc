@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/sequence_ops/sequence_mask_op.h"
-
-#include <string>
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -22,21 +23,6 @@ namespace operators {
 class SequenceMaskOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SequenceMask");
-    OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "SequenceMask");
-
-    int maxlen = ctx->Attrs().Get<int>("maxlen");
-    auto dim = phi::vectorize<int>(ctx->GetInputDim("X"));
-
-    if (ctx->HasInputs("MaxLenTensor")) {
-      dim.push_back(-1);
-    } else {
-      dim.push_back(maxlen > 0 ? maxlen : -1);
-    }
-    ctx->SetOutputDim("Y", phi::make_ddim(dim));
-  }
 
  protected:
   phi::KernelKey GetExpectedKernelType(
@@ -95,16 +81,14 @@ If maxlen < 0, maxlen = max(X)
 }  // namespace operators
 }  // namespace paddle
 
+DECLARE_INFER_SHAPE_FUNCTOR(sequence_mask,
+                            SequenceMaskInferShapeFunctor,
+                            PD_INFER_META(phi::SequenceMaskInferMeta));
+
 REGISTER_OPERATOR(
     sequence_mask,
     paddle::operators::SequenceMaskOp,
     paddle::operators::SequenceMaskOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-REGISTER_OP_CPU_KERNEL(
-    sequence_mask,
-    paddle::operators::SequenceMaskKernel<phi::CPUContext, int>,
-    paddle::operators::SequenceMaskKernel<phi::CPUContext, int64_t>,
-    paddle::operators::SequenceMaskKernel<phi::CPUContext, float>,
-    paddle::operators::SequenceMaskKernel<phi::CPUContext, double>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    SequenceMaskInferShapeFunctor);

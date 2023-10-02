@@ -86,7 +86,7 @@ std::unordered_map<std::string, std::shared_ptr<Variable>> Property::Values() {
     if (entry.has_name()) {
       auto &n = entry.name();
       // remove Class Name suffix
-      auto key = n.substr(n.find_first_of(".") + 1);
+      auto key = n.substr(n.find_first_of('.') + 1);
       std::shared_ptr<Variable> var(new Variable());
       auto type = entry.type();
       switch (type) {

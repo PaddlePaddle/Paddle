@@ -18,6 +18,7 @@
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/inference/tensorrt/dynamic_shape_infermeta_registry.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
@@ -26,6 +27,42 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
+
+GeneratePluginDataType ProtoTypeToGeneratePluginDataType(
+    framework::proto::VarType_Type proto_type) {
+  using framework::proto::VarType_Type;
+  switch (proto_type) {
+    case VarType_Type::VarType_Type_BOOL:
+      return GeneratePluginDataType::PLUGIN_BOOL;
+    case VarType_Type::VarType_Type_UINT8:
+      return GeneratePluginDataType::PLUGIN_UINT8;
+    case VarType_Type::VarType_Type_INT8:
+      return GeneratePluginDataType::PLUGIN_INT8;
+    case VarType_Type::VarType_Type_INT16:
+      return GeneratePluginDataType::PLUGIN_INT16;
+    case VarType_Type::VarType_Type_INT32:
+      return GeneratePluginDataType::PLUGIN_INT32;
+    case VarType_Type::VarType_Type_INT64:
+      return GeneratePluginDataType::PLUGIN_INT64;
+    case VarType_Type::VarType_Type_FP16:
+      return GeneratePluginDataType::PLUGIN_FP16;
+    case VarType_Type::VarType_Type_FP32:
+      return GeneratePluginDataType::PLUGIN_FP32;
+    case VarType_Type::VarType_Type_FP64:
+      return GeneratePluginDataType::PLUGIN_FP64;
+    case VarType_Type::VarType_Type_SIZE_T:
+      return GeneratePluginDataType::PLUGIN_SIZE_T;
+    case VarType_Type::VarType_Type_BF16:
+      return GeneratePluginDataType::PLUGIN_BF16;
+    case VarType_Type::VarType_Type_COMPLEX64:
+      return GeneratePluginDataType::PLUGIN_COMPLEX64;
+    case VarType_Type::VarType_Type_COMPLEX128:
+      return GeneratePluginDataType::PLUGIN_COMPLEX128;
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "This data type is currently not supported"));
+  }
+}
 
 void BuildPhiKernelContextAttr(const framework::OpDesc& op_desc,
                                phi::KernelContext* kernel_context,
@@ -55,16 +92,28 @@ void BuildPhiKernelContextAttr(const framework::OpDesc& op_desc,
           auto& attr = *attr_ptr;
           switch (AttrTypeID(attr)) {
             case framework::proto::AttrType::FLOAT:
-              return kernel_context->EmplaceBackAttr(
+              kernel_context->EmplaceBackAttr(
                   phi::Scalar(PADDLE_GET_CONST(float, attr)));
               break;
+            case framework::proto::AttrType::FLOAT64:
+              kernel_context->EmplaceBackAttr(
+                  phi::Scalar(PADDLE_GET_CONST(double, attr)));
+              break;
             case framework::proto::AttrType::INT:
-              return kernel_context->EmplaceBackAttr(
+              kernel_context->EmplaceBackAttr(
                   phi::Scalar(PADDLE_GET_CONST(int, attr)));
               break;
+            case framework::proto::AttrType::LONG:
+              kernel_context->EmplaceBackAttr(
+                  phi::Scalar(PADDLE_GET_CONST(int64_t, attr)));
+              break;
             case framework::proto::AttrType::STRING:
-              return kernel_context->EmplaceBackAttr(
+              kernel_context->EmplaceBackAttr(
                   phi::Scalar(PADDLE_GET_CONST(std::string, attr)));
+              break;
+            case framework::proto::AttrType::SCALAR:
+              kernel_context->EmplaceBackAttr(phi::Scalar(
+                  PADDLE_GET_CONST(paddle::experimental::Scalar, attr)));
               break;
             default:
               PADDLE_THROW(platform::errors::Unimplemented(
@@ -136,6 +185,16 @@ void BuildPhiKernelContextAttr(const framework::OpDesc& op_desc,
               }
               kernel_context->EmplaceBackAttr(std::move(scalar_list));
             } break;
+            case framework::proto::AttrType::SCALARS: {
+              const auto& vec = PADDLE_GET_CONST(
+                  std::vector<paddle::experimental::Scalar>, attr);
+              std::vector<phi::Scalar> scalar_list;
+              scalar_list.reserve(vec.size());
+              for (const auto& val : vec) {
+                scalar_list.emplace_back(val);
+              }
+              kernel_context->EmplaceBackAttr(std::move(scalar_list));
+            } break;
             default:
               PADDLE_THROW(platform::errors::Unimplemented(
                   "Unsupported cast op attribute `%s` to vector<Scalar> when "
@@ -149,6 +208,9 @@ void BuildPhiKernelContextAttr(const framework::OpDesc& op_desc,
           switch (attr_defs[k].type_index) {
             case phi::AttributeType::FLOAT32:
               kernel_context->EmplaceBackAttr(PADDLE_GET_CONST(float, attr));
+              break;
+            case phi::AttributeType::FLOAT64:
+              kernel_context->EmplaceBackAttr(PADDLE_GET_CONST(double, attr));
               break;
             case phi::AttributeType::INT32:
               kernel_context->EmplaceBackAttr(PADDLE_GET_CONST(int, attr));
@@ -236,8 +298,8 @@ GenericPlugin::GenericPlugin(
 
 GenericPlugin::GenericPlugin(
     const paddle::framework::proto::OpDesc& proto_op_desc,
-    const std::vector<int>& inputs_data_type,
-    const std::vector<int>& outputs_data_type,
+    const std::vector<GeneratePluginDataType>& inputs_data_type,
+    const std::vector<GeneratePluginDataType>& outputs_data_type,
     bool with_fp16) {
   proto_op_desc_ = proto_op_desc;
   op_desc_ = std::move(framework::OpDesc(proto_op_desc_, nullptr));
@@ -332,6 +394,19 @@ bool GenericPlugin::supportsFormatCombination(
     if (pos == 3)
       return in_out[0].type == in_out[pos].type &&
              in_out[0].format == in_out[pos].format;
+  } else if (op_desc_.Type() == "lookup_table_v2") {
+    if (pos == 0)
+      return (in_out[pos].type == nvinfer1::DataType::kINT32 &&
+              (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR));
+    if (pos == 1)
+      return (in_out[pos].type == nvinfer1::DataType::kFLOAT) ||
+             ((isFp16Supported() &&
+               in_out[pos].type == nvinfer1::DataType::kHALF)) &&
+                 (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+    // output
+    if (pos == 2)
+      return in_out[1].type == in_out[pos].type &&
+             in_out[1].format == in_out[pos].format;
   } else {
     return (in_out[pos].type == nvinfer1::DataType::kFLOAT ||
             (isFp16Supported() &&
@@ -345,6 +420,9 @@ nvinfer1::DataType GenericPlugin::getOutputDataType(
     int index,
     const nvinfer1::DataType* input_types,
     int nb_inputs) const TRT_NOEXCEPT {
+  if (op_desc_.Type() == "lookup_table_v2") {
+    return input_types[1];
+  }
   return input_types[0];
 }
 
@@ -380,13 +458,14 @@ int GenericPlugin::initialize() TRT_NOEXCEPT {
         phi::Backend::GPU, phi::DataLayout::ANY, precision_type);
 
     auto nv_dtype = PhiType2NvType(precision_type);
-    phi_kernels_[nv_dtype].reset(
-        new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
-            phi_kernel_signature.name, phi_kernel_key)));
+    phi_kernels_[nv_dtype] = std::make_unique<phi::Kernel>(
+        phi::KernelFactory::Instance().SelectKernel(phi_kernel_signature.name,
+                                                    phi_kernel_key));
 
     if (phi_kernel_contexts_.find(nv_dtype) == phi_kernel_contexts_.end() ||
         !phi_kernel_contexts_[nv_dtype]) {
-      phi_kernel_contexts_[nv_dtype].reset(new phi::KernelContext(dev_ctx));
+      phi_kernel_contexts_[nv_dtype] =
+          std::make_unique<phi::KernelContext>(dev_ctx);
       BuildPhiKernelContextAttr(op_desc_,
                                 phi_kernel_contexts_[nv_dtype].get(),
                                 phi_kernel_signature,
@@ -449,46 +528,46 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                            void* workspace,
                            cudaStream_t stream) TRT_NOEXCEPT {
   platform::CUDAPlace place(platform::GetCurrentDeviceId());
-
-  // [TODO]now generic plugin do not support FP16 and INT8 precision
+  // TODO(inference): generic plugin do not support INT8 precision now.
   auto protoType2PhiType =
-      [&](int proto_type,
+      [&](GeneratePluginDataType proto_type,
           nvinfer1::DataType nv_dtype) -> std::pair<phi::DataType, int> {
-    if (proto_type ==
-        static_cast<int>(framework::proto::VarType_Type::VarType_Type_FP16)) {
+    if (proto_type == GeneratePluginDataType::PLUGIN_FP16) {
       return {phi::DataType::FLOAT16, sizeof(half)};
-    } else if (proto_type ==
-               static_cast<int>(
-                   framework::proto::VarType_Type::VarType_Type_FP32)) {
+    } else if (proto_type == GeneratePluginDataType::PLUGIN_FP32) {
       if (isFp16Supported() && nv_dtype == nvinfer1::DataType::kHALF) {
         return {phi::DataType::FLOAT16, sizeof(half)};
       } else {
         return {phi::DataType::FLOAT32, sizeof(float)};
       }
-    } else if (proto_type ==
-                   static_cast<int>(
-                       framework::proto::VarType_Type::VarType_Type_INT64) ||
-               proto_type ==
-                   static_cast<int>(
-                       framework::proto::VarType_Type::VarType_Type_INT32)) {
+    } else if (proto_type == GeneratePluginDataType::PLUGIN_INT64) {
+      return {phi::DataType::INT64, sizeof(int64_t)};
+    } else if (proto_type == GeneratePluginDataType::PLUGIN_INT32) {
       return {phi::DataType::INT32, sizeof(int32_t)};
-    } else if (proto_type ==
-               static_cast<int>(
-                   framework::proto::VarType_Type::VarType_Type_BOOL)) {
+    } else if (proto_type == GeneratePluginDataType::PLUGIN_BOOL) {
       return {phi::DataType::BOOL, sizeof(bool)};
     } else {
       CHECK(false) << "precision is not supported";
     }
   };
 
+  nvinfer1::DataType data_type;
   // input
-  auto data_type = input_desc[0].type;
+  if (op_desc_.Type() == "lookup_table_v2") {
+    data_type = input_desc[1].type;
+  } else {
+    data_type = input_desc[0].type;
+  }
   CHECK((data_type == nvinfer1::DataType::kFLOAT) ||
         (data_type == nvinfer1::DataType::kHALF));
 
   phi_kernel_contexts_[data_type]->ClearInputOutput();
 
   for (int i = 0; i < getNbInputs(); i++) {
+    if (inputs_data_type_[i] == GeneratePluginDataType::PLUGIN_OPTIONAL) {
+      phi_kernel_contexts_[data_type]->EmplaceBackInput(nullptr);
+      continue;
+    }
     auto const& input_dims = input_desc[i].dims;
 
     std::vector<int> input_shape;
@@ -525,15 +604,13 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
       output_numel *= output_shape[k];
 
     auto data_type_and_size =
-        protoType2PhiType(inputs_data_type_[i], data_type);
+        protoType2PhiType(outputs_data_type_[i], data_type);
     phi::DenseTensorMeta output_meta(data_type_and_size.first,
                                      phi::make_ddim(output_shape));
     std::shared_ptr<phi::Allocation> output_alloc(
         new phi::Allocation(reinterpret_cast<void*>(outputs[i]),
                             output_numel * data_type_and_size.second,
                             place));
-
-    phi::DenseTensor output_densetonsor(output_alloc, output_meta);
 
     (*dense_tensor_outputs_)[i] =
         std::move(phi::DenseTensor(output_alloc, output_meta));

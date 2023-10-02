@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
@@ -153,12 +154,8 @@ void SetValueCompute(const Context& dev_ctx,
   slice_tensor.Resize(slice_dims_for_assign);
   if (value_tensor != nullptr) {
     CheckIsDimsMatch(slice_dims_for_assign, value_tensor->dims());
-    phi::funcs::ElementwiseCompute<SubFunctor<T>, T, T>(dev_ctx,
-                                                        slice_tensor,
-                                                        *value_tensor,
-                                                        -1,
-                                                        SubFunctor<T>(),
-                                                        &slice_tensor);
+    phi::funcs::ElementwiseCompute<SubFunctor<T>, T>(
+        dev_ctx, slice_tensor, *value_tensor, SubFunctor<T>(), &slice_tensor);
   } else {
     DenseTensor value_t(dtype);
     auto value_dims = phi::make_ddim(shape);
@@ -166,8 +163,8 @@ void SetValueCompute(const Context& dev_ctx,
 
     value_t.Resize(value_dims);
     dev_ctx.template Alloc<T>(&value_t);
-    phi::funcs::ElementwiseCompute<SubFunctor<T>, T, T>(
-        dev_ctx, slice_tensor, value_t, -1, SubFunctor<T>(), &slice_tensor);
+    phi::funcs::ElementwiseCompute<SubFunctor<T>, T>(
+        dev_ctx, slice_tensor, value_t, SubFunctor<T>(), &slice_tensor);
   }
   slice_tensor.Resize(slice_dims);
 
@@ -241,7 +238,7 @@ void Tensor_Add(const Context& dev_ctx,
   out->Resize(src1.dims());
   dev_ctx.template Alloc<T>(out);
 
-  phi::AddRawKernel<T, Context>(dev_ctx, src1, src2, -1, out);
+  phi::AddKernel<T, Context>(dev_ctx, src1, src2, out);
 }
 
 template <typename Context, typename T>
@@ -252,7 +249,7 @@ void Tensor_Sub(const Context& dev_ctx,
   out->Resize(src1.dims());
   dev_ctx.template Alloc<T>(out);
 
-  phi::SubtractRawKernel<T, Context>(dev_ctx, src1, src2, -1, out);
+  phi::SubtractKernel<T, Context>(dev_ctx, src1, src2, out);
 }
 
 template <typename Context, typename T, size_t D>
@@ -478,7 +475,7 @@ void Unpack_Pivot(const Context& dev_ctx,
                   const DenseTensor& Pivot,
                   DenseTensor* P,
                   int h,
-                  int w) {
+                  int w UNUSED) {
   auto dims = Pivot.dims();
   auto Pdimvec = vectorize(dims);
   auto prank = Pdimvec.size();
@@ -504,6 +501,16 @@ void Unpack_Pivot(const Context& dev_ctx,
     arange<Context>(dev_ctx, &idt, h);
     auto idlst = idt.data<int32_t>();
     for (int j = 0; j < Pnum; j++) {
+      PADDLE_ENFORCE_EQ(
+          (pdataptr[i * Pnum + j] > 0) && (pdataptr[i * Pnum + j] <= h),
+          true,
+          phi::errors::InvalidArgument(
+              "The data in Pivot must be between (1, x.shape[-2]],"
+              "but got %d in Pivot while the x.shape[-2] is %d."
+              "Please make sure that the inputs(x and Pivot) is the output of "
+              "paddle.linalg.lu.",
+              pdataptr[i * Pnum + j],
+              h));
       if (idlst[pdataptr[i * Pnum + j] - 1] == idlst[j]) continue;
       auto temp = idlst[j];
       idlst[j] = idlst[pdataptr[i * Pnum + j] - 1];

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import paddle
-import paddle.nn as nn
+from paddle import nn
 from . import models  # noqa: F401
 from . import transforms  # noqa: F401
 from . import datasets  # noqa: F401

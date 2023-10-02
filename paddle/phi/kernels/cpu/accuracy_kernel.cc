@@ -21,13 +21,13 @@
 
 namespace phi {
 template <typename T, typename Context>
-void AccuracyRawKernel(const Context& dev_ctx,
-                       const DenseTensor& inference,
-                       const DenseTensor& indices,
-                       const DenseTensor& label,
-                       DenseTensor* accuracy,
-                       DenseTensor* correct,
-                       DenseTensor* total) {
+void AccuracyKernel(const Context& dev_ctx,
+                    const DenseTensor& inference,
+                    const DenseTensor& indices,
+                    const DenseTensor& label,
+                    DenseTensor* accuracy,
+                    DenseTensor* correct,
+                    DenseTensor* total) {
   int* correct_data = dev_ctx.template Alloc<int>(correct);
   int* total_data = dev_ctx.template Alloc<int>(total);
   float* accuracy_data = dev_ctx.template Alloc<float>(accuracy);
@@ -85,7 +85,7 @@ void AccuracyRawKernel(const Context& dev_ctx,
   }
 
   *correct_data = num_correct;
-  *total_data = num_samples;
+  *total_data = static_cast<int>(num_samples);
   *accuracy_data =
       static_cast<float>(num_correct) / static_cast<float>(num_samples);
 }
@@ -93,7 +93,10 @@ void AccuracyRawKernel(const Context& dev_ctx,
 
 // TODO(add supported dtype.)
 PD_REGISTER_KERNEL(
-    accuracy, CPU, ALL_LAYOUT, phi::AccuracyRawKernel, float, double) {
+    accuracy, CPU, ALL_LAYOUT, phi::AccuracyKernel, float, double) {
   kernel->InputAt(1).SetDataType(phi::DataType::INT64);
   kernel->InputAt(2).SetDataType(phi::DataType::INT64);
+  kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
+  kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
 }

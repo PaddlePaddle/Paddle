@@ -19,9 +19,9 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/fc_functor.h"
+#include "paddle/phi/kernels/funcs/jit/kernels.h"
 #include "paddle/phi/kernels/funcs/sequence2batch.h"
 
 namespace paddle {
@@ -64,7 +64,7 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
           wx_dims[0],
           x_mat_dims[1]));
 
-  int frame_size = wx_dims[1] / 3;
+  int frame_size = static_cast<int>(wx_dims[1] / 3);
   auto wh_dims = ctx->GetInputDim("WeightH");
 
   PADDLE_ENFORCE_EQ(wh_dims.size(),
@@ -131,9 +131,10 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
   ctx->ShareLoD("X", "Hidden");
   int xx_width;
   if (ctx->Attrs().Get<bool>("use_seq")) {
-    xx_width = wx_dims[1];
+    xx_width = static_cast<int>(wx_dims[1]);
   } else {
-    xx_width = x_mat_dims[1] > wx_dims[1] ? wx_dims[1] : x_mat_dims[1];
+    xx_width = static_cast<int>(x_mat_dims[1] > wx_dims[1] ? wx_dims[1]
+                                                           : x_mat_dims[1]);
     OP_INOUT_CHECK(
         ctx->HasOutput("ReorderedH0"), "Output", "ReorderedH0", "fusion_gru");
     OP_INOUT_CHECK(
@@ -249,7 +250,7 @@ more details can refer to GRU op.
 )DOC");
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusionGRUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -273,46 +274,46 @@ class FusionGRUKernel : public framework::OpKernel<T> {
   const int total_T = x_mat_dims[0];                       \
   const int D3 = wh_dims[1]
 
-#define INIT_OTHER_DEFINES                                                   \
-  auto* h0 = ctx.Input<phi::DenseTensor>("H0");                              \
-  auto* wx = ctx.Input<phi::DenseTensor>("WeightX");                         \
-  auto* bias = ctx.Input<phi::DenseTensor>("Bias");                          \
-  auto* hidden_out = ctx.Output<phi::DenseTensor>("Hidden");                 \
-  bool is_reverse = ctx.Attr<bool>("is_reverse");                            \
-  const int M = x_mat_dims[1];                                               \
-  const int D = wh_dims[0];                                                  \
-  const int D2 = D * 2;                                                      \
-  const jit::gru_attr_t attr(                                                \
-      D,                                                                     \
-      jit::to_kerneltype(ctx.Attr<std::string>("gate_activation")),          \
-      jit::to_kerneltype(ctx.Attr<std::string>("activation")));              \
-  jit::gru_t one_step;                                                       \
-  auto ComputeH1 =                                                           \
-      jit::KernelFuncs<jit::GRUH1Tuple<T>, platform::CPUPlace>::Cache().At(  \
-          attr);                                                             \
-  auto ComputeHtPart1 =                                                      \
-      jit::KernelFuncs<jit::GRUHtPart1Tuple<T>, platform::CPUPlace>::Cache() \
-          .At(attr);                                                         \
-  auto ComputeHtPart2 =                                                      \
-      jit::KernelFuncs<jit::GRUHtPart2Tuple<T>, platform::CPUPlace>::Cache() \
-          .At(attr);                                                         \
-  const T* x_data = x->data<T>();                                            \
-  const T* wx_data = wx->data<T>();                                          \
-  const T* wh_data = wh->data<T>();                                          \
-  auto place = ctx.GetPlace();                                               \
+#define INIT_OTHER_DEFINES                                                  \
+  auto* h0 = ctx.Input<phi::DenseTensor>("H0");                             \
+  auto* wx = ctx.Input<phi::DenseTensor>("WeightX");                        \
+  auto* bias = ctx.Input<phi::DenseTensor>("Bias");                         \
+  auto* hidden_out = ctx.Output<phi::DenseTensor>("Hidden");                \
+  bool is_reverse = ctx.Attr<bool>("is_reverse");                           \
+  const int M = x_mat_dims[1];                                              \
+  const int D = wh_dims[0];                                                 \
+  const int D2 = D * 2;                                                     \
+  const phi::jit::gru_attr_t attr(                                          \
+      D,                                                                    \
+      phi::jit::to_kerneltype(ctx.Attr<std::string>("gate_activation")),    \
+      phi::jit::to_kerneltype(ctx.Attr<std::string>("activation")));        \
+  phi::jit::gru_t one_step;                                                 \
+  auto ComputeH1 = phi::jit::KernelFuncs<phi::jit::GRUH1Tuple<T>,           \
+                                         platform::CPUPlace>::Cache()       \
+                       .At(attr);                                           \
+  auto ComputeHtPart1 = phi::jit::KernelFuncs<phi::jit::GRUHtPart1Tuple<T>, \
+                                              platform::CPUPlace>::Cache()  \
+                            .At(attr);                                      \
+  auto ComputeHtPart2 = phi::jit::KernelFuncs<phi::jit::GRUHtPart2Tuple<T>, \
+                                              platform::CPUPlace>::Cache()  \
+                            .At(attr);                                      \
+  const T* x_data = x->data<T>();                                           \
+  const T* wx_data = wx->data<T>();                                         \
+  const T* wh_data = wh->data<T>();                                         \
+  auto place = ctx.GetPlace();                                              \
   T* xx_data = xx->mutable_data<T>(place)
 
   void SeqCompute(const framework::ExecutionContext& ctx) const {
-    using DeviceContext = phi::CPUContext;
     INIT_BASE_DEFINES;
     INIT_OTHER_DEFINES;
-    const int N = x_lod[0].size() - 1;
+    const int N = static_cast<int>(x_lod[0].size() - 1);
     const T* h0_data = h0 ? h0->data<T>() : nullptr;
     const T* wh_state_data = wh_data + D * D2;
     T* hidden_out_data = hidden_out->mutable_data<T>(place);
-    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
+
     phi::funcs::FCFunctor<DeviceContext, T> fc;
     fc(dev_ctx,
        total_T,
@@ -338,7 +339,7 @@ class FusionGRUKernel : public framework::OpKernel<T> {
     };
     for (int i = 0; i < N; ++i) {
       int bid = is_reverse ? N - 1 - i : i;
-      int seq_len = x_lod[0][bid + 1] - x_lod[0][bid];
+      int seq_len = static_cast<int>(x_lod[0][bid + 1] - x_lod[0][bid]);
       const T* prev_hidden_data = nullptr;
       int tstart = 0;
       if (h0_data) {
@@ -393,7 +394,6 @@ class FusionGRUKernel : public framework::OpKernel<T> {
   }
 
   void BatchCompute(const framework::ExecutionContext& ctx) const {
-    using DeviceContext = phi::CPUContext;
     INIT_BASE_DEFINES;
     if (x_lod[0].size() == 2) {
       xx->Resize({total_T, D3});
@@ -437,7 +437,7 @@ class FusionGRUKernel : public framework::OpKernel<T> {
 
     auto batched_lod = batched_input->lod();
     const auto& seq_order = batched_lod[2];
-    const int max_bs = seq_order.size();
+    const int max_bs = static_cast<int>(seq_order.size());
     reordered_h0->Resize({max_bs, D});
 
     int tstart = 0;
@@ -471,11 +471,12 @@ class FusionGRUKernel : public framework::OpKernel<T> {
     // Then start from next
     const T* wh_state_data = wh_data + D * D2;
     const auto& batch_starts = batched_lod[0];
-    const int max_seq_len = batch_starts.size() - 1;
+    const int max_seq_len = static_cast<int>(batch_starts.size() - 1);
     batched_input_data = batched_input_data + tstart * max_bs * D3;
     batched_out_data = batched_out_data + tstart * max_bs * D;
     for (int step = tstart; step < max_seq_len; ++step) {
-      const int cur_bs = batch_starts[step + 1] - batch_starts[step];
+      const int cur_bs =
+          static_cast<int>(batch_starts[step + 1] - batch_starts[step]);
       // gemm prev * (Wu + Wr)
       blas.GEMM(CblasNoTrans,
                 CblasNoTrans,
@@ -550,9 +551,8 @@ class FusionGRUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(fusion_gru, ops::FusionGRUOp, ops::FusionGRUOpMaker);
 
-REGISTER_OP_CPU_KERNEL(fusion_gru,
-                       ops::FusionGRUKernel<float>,
-                       ops::FusionGRUKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(
+    fusion_gru, CPU, ALL_LAYOUT, ops::FusionGRUKernel, float, double) {}
 
 /* ==========================  register checkpoint ===========================*/
 REGISTER_OP_VERSION(fusion_gru)

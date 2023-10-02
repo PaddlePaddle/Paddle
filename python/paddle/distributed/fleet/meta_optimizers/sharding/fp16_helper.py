@@ -103,7 +103,7 @@ class FP16Utils:
             if param_name not in shard.global_params:
                 raise ValueError(
                     "Output 'X' of cast_op must be a grad of"
-                    "model param, but {} is not a grad".format(output_name)
+                    f"model param, but {output_name} is not a grad"
                 )
             if output_name in reduced_grads_to_param:
                 continue
@@ -131,7 +131,7 @@ class FP16Utils:
                     if param_name not in shard.global_params:
                         raise ValueError(
                             "Input 'X' of check_finite_and_unscale must"
-                            "be grads, but {} is not a grad".format(input_name)
+                            f"be grads, but {input_name} is not a grad"
                         )
                     if shard.has_param(param_name):
                         reversed_x.append(input_name)
@@ -142,13 +142,11 @@ class FP16Utils:
                 # the grad checking should take the all and only param in the current shard
                 to_check_param = set(reversed_x_paramname)
                 should_check_param = set(shard.global_params).intersection(
-                    set(
-                        [
-                            param
-                            for param, worker_idx in shard.global_param2device.items()
-                            if worker_idx == shard.worker_idx
-                        ]
-                    )
+                    {
+                        param
+                        for param, worker_idx in shard.global_param2device.items()
+                        if worker_idx == shard.worker_idx
+                    }
                 )
                 assert (
                     to_check_param == should_check_param

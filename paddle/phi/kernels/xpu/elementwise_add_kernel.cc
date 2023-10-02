@@ -29,6 +29,25 @@
 namespace phi {
 
 template <typename T, typename Context>
+void AddKernel(const Context& dev_ctx,
+               const DenseTensor& x,
+               const DenseTensor& y,
+               DenseTensor* out) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
+  auto f = [](xpu::Context* ctx,
+              const XPUType* x,
+              const XPUType* y,
+              XPUType* z,
+              const std::vector<int>& xshape,
+              const std::vector<int>& yshape) {
+    return xpu::broadcast_add<XPUType>(ctx, x, y, z, xshape, yshape);
+  };
+
+  XPUElementwise<T, XPUType>(dev_ctx, x, y, -1, out, f);
+}
+
+template <typename T, typename Context>
 void GradAddXPUKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& y,
@@ -47,26 +66,6 @@ void GradAddXPUKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
 }
 
-template <typename T, typename Context>
-void AddRawKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const DenseTensor& y,
-                  int axis,
-                  DenseTensor* out) {
-  using XPUType = typename XPUTypeTrait<T>::Type;
-
-  auto f = [](xpu::Context* ctx,
-              const XPUType* x,
-              const XPUType* y,
-              XPUType* z,
-              const std::vector<int>& xshape,
-              const std::vector<int>& yshape) {
-    return xpu::broadcast_add<XPUType>(ctx, x, y, z, xshape, yshape);
-  };
-
-  XPUElementwise<T, XPUType>(dev_ctx, x, y, axis, out, f);
-}
-
 }  // namespace phi
 
 PD_REGISTER_KERNEL(grad_add,
@@ -75,10 +74,11 @@ PD_REGISTER_KERNEL(grad_add,
                    phi::GradAddXPUKernel,
                    phi::dtype::float16,
                    float) {}
-PD_REGISTER_KERNEL(add_raw,
+
+PD_REGISTER_KERNEL(add,
                    XPU,
                    ALL_LAYOUT,
-                   phi::AddRawKernel,
+                   phi::AddKernel,
                    phi::dtype::float16,
                    float,
                    int,

@@ -14,13 +14,13 @@
 
 include(ExternalProject)
 
-set(GFLAGS_PREFIX_DIR ${THIRD_PARTY_PATH}/gflags)
 set(GFLAGS_INSTALL_DIR ${THIRD_PARTY_PATH}/install/gflags)
+set(GFLAGS_PREFIX_DIR ${THIRD_PARTY_PATH}/gflags)
 set(GFLAGS_INCLUDE_DIR
     "${GFLAGS_INSTALL_DIR}/include"
     CACHE PATH "gflags include directory." FORCE)
-set(GFLAGS_REPOSITORY ${GIT_URL}/gflags/gflags.git)
 set(GFLAGS_TAG "v2.2.2")
+set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/gflags)
 if(WIN32)
   set(GFLAGS_LIBRARIES
       "${GFLAGS_INSTALL_DIR}/lib/gflags_static.lib"
@@ -63,10 +63,9 @@ if(WITH_ARM_BRPC)
 else()
   ExternalProject_Add(
     extern_gflags
-    ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
-    GIT_REPOSITORY ${GFLAGS_REPOSITORY}
-    GIT_TAG ${GFLAGS_TAG}
+    ${EXTERNAL_PROJECT_LOG_ARGS}
     PREFIX ${GFLAGS_PREFIX_DIR}
+    SOURCE_DIR ${SOURCE_DIR}
     UPDATE_COMMAND ""
     BUILD_COMMAND ${BUILD_COMMAND}
     INSTALL_COMMAND ${INSTALL_COMMAND}
@@ -102,4 +101,16 @@ if(WIN32)
   if(HAVE_SHLWAPI)
     set_property(GLOBAL PROPERTY OS_DEPENDENCY_MODULES shlwapi.lib)
   endif()
+endif()
+
+# We have implemented a custom flags tool paddle_flags to replace gflags.
+# User can also choose to use gflags by setting WITH_GFLAGS=ON. But when
+# using paddle_flags, gflags is also needed for other third party libraries
+# including glog and brpc. So we can not remove gflags completely.
+set(flags_dep)
+if(WITH_GFLAGS)
+  list(APPEND flags_dep gflags)
+  add_definitions(-DPADDLE_WITH_GFLAGS)
+else()
+  list(APPEND flags_dep paddle_flags)
 endif()

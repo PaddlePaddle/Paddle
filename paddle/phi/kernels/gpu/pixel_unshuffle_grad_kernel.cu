@@ -23,4 +23,6 @@ PD_REGISTER_KERNEL(pixel_unshuffle_grad,
                    ALL_LAYOUT,
                    phi::PixelUnshuffleGradKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

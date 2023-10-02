@@ -18,12 +18,11 @@
 #include <thread>
 
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
-#include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
 
-DECLARE_bool(new_executor_serial_run);
+PD_DECLARE_bool(new_executor_serial_run);
 
 namespace paddle {
 namespace framework {
@@ -51,7 +50,7 @@ inline std::tuple<int, int> GetThreadPoolConfig(const phi::Place& place,
     num_device_threads = 0;
     num_host_threads = 4;
   } else {
-    processor_count = std::thread::hardware_concurrency();
+    processor_count = static_cast<int>(std::thread::hardware_concurrency());
     if (processor_count) {
       if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -61,11 +60,6 @@ inline std::tuple<int, int> GetThreadPoolConfig(const phi::Place& place,
       if (platform::is_xpu_place(place)) {
 #if defined(PADDLE_WITH_XPU)
         device_count = phi::backends::xpu::GetXPUDeviceCount();
-#endif
-      }
-      if (platform::is_npu_place(place)) {
-#if defined(PADDLE_WITH_ASCEND_CL)
-        device_count = platform::GetNPUDeviceCount();
 #endif
       }
       if (platform::is_ipu_place(place)) {
@@ -97,8 +91,8 @@ inline std::tuple<int, int> GetThreadPoolConfig(const phi::Place& place,
       if (device_count) {
         auto num = processor_count / device_count / 2 -
                    (kNumGcThreads + num_device_threads);
-        num_host_threads =
-            num > 0 ? (num > kHostNumThreads ? kHostNumThreads : num) : 1;
+        num_host_threads = static_cast<int>(
+            num > 0 ? (num > kHostNumThreads ? kHostNumThreads : num) : 1);
       }
     }
   }
@@ -118,21 +112,43 @@ inline std::tuple<int, int> GetThreadPoolConfig(const phi::Place& place,
   return std::make_tuple(num_host_threads, num_device_threads);
 }
 
-ExecutionConfig::ExecutionConfig(const phi::Place& place, size_t op_num) {
-  std::tie(host_num_threads, deivce_num_threads) =
-      GetThreadPoolConfig(place, op_num);
+void ExecutionConfig::AnalyzeThreadPoolConfig(const phi::Place& place,
+                                              size_t op_num) {
+  if (host_num_threads == 0 || device_num_threads == 0) {
+    std::tie(host_num_threads, device_num_threads) =
+        GetThreadPoolConfig(place, op_num);
+  }
 }
 
 void ExecutionConfig::Log(int log_level) {
-  VLOG(log_level) << "ExecutionConfig:";
-  VLOG(log_level) << "used_for_jit = " << used_for_jit;
-  VLOG(log_level) << "create_local_scope = " << create_local_scope;
-  VLOG(log_level) << "host_num_threads = " << host_num_threads;
-  VLOG(log_level) << "deivce_num_threads = " << deivce_num_threads;
-  VLOG(log_level) << "skip_gc_vars = ";
-  for (const std::string& var : skip_gc_vars) {
-    VLOG(log_level) << var;
+  std::stringstream log_str;
+  log_str << "ExecutionConfig:\n"
+          << "create_local_scope = " << create_local_scope << "\n"
+          << "used_for_cinn = " << used_for_cinn << "\n"
+          << "used_for_control_flow_op = " << used_for_control_flow_op << "\n"
+          << "used_for_jit = " << used_for_jit << "\n"
+          << "deivce_num_threads = " << device_num_threads << "\n"
+          << "host_num_threads = " << host_num_threads << "\n";
+
+  log_str << "force_root_scope_vars = [";
+  for (const std::string& var : force_root_scope_vars) {
+    log_str << var << " ";
   }
+  log_str << "]\n";
+
+  log_str << "jit_input_vars = [";
+  for (const std::string& var : jit_input_vars) {
+    log_str << var << " ";
+  }
+  log_str << "]\n";
+
+  log_str << "skip_gc_vars = [";
+  for (const std::string& var : skip_gc_vars) {
+    log_str << var << " ";
+  }
+  log_str << "]\n";
+
+  VLOG(log_level) << log_str.str();
 }
 
 }  // namespace interpreter

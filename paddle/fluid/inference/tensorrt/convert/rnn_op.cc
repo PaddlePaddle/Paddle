@@ -24,7 +24,7 @@ class RnnNativeOpConverter : public OpConverter {
                   const framework::Scope& scope,
                   bool test_mode) override {
 #if IS_TRT_VERSION_GE(7000)
-    VLOG(4) << "convert a fluid rnn op to tensorrt rnn layer";
+    VLOG(4) << "convert a rnn op to tensorrt rnn layer";
 
     framework::OpDesc op_desc(op, nullptr);
     // [seq_len, batch ,in_size],
@@ -306,8 +306,7 @@ class RnnNativeOpConverter : public OpConverter {
     RreplenishLayerAndOutput(finally_layer, "rnn", {output_name}, test_mode);
     // free
     if (is_bidirec) {
-      for (size_t i = 0; i < weight_bias_vec.size(); i++)
-        delete[] weight_bias_vec[i];
+      for (auto& weight_bias : weight_bias_vec) delete[] weight_bias;
     }
 #endif
   }

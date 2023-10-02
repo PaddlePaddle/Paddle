@@ -26,8 +26,9 @@
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_bool(sync_nccl_allreduce);
+PHI_DECLARE_bool(sync_nccl_allreduce);
 
 namespace paddle {
 namespace framework {
@@ -57,8 +58,7 @@ SparseAllReduceOpHandle::SparseAllReduceOpHandle(
                         "The number of local scope should be > 0, but got %zu.",
                         local_scopes_.size()));
   auto nranks_name = g_dgc_nranks;
-  for (size_t i = 0; i < local_scopes_.size(); ++i) {
-    auto *local_scope = local_scopes_[i];
+  for (auto local_scope : local_scopes_) {
     auto nranks_var = local_scope->FindVar(nranks_name);
 
     PADDLE_ENFORCE_NOT_NULL(

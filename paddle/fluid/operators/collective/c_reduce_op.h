@@ -19,19 +19,24 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_ASCEND_CL)
+    defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #endif
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/flags.h"
+PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 #if defined(PADDLE_WITH_XPU_BKCL)
@@ -42,14 +47,6 @@ limitations under the License. */
 #include <gloo/reduce.h>
 
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
-#endif
-
-#if defined(PADDLE_WITH_ASCEND_CL)
-#include "paddle/fluid/platform/device/npu/hccl_helper.h"
-#endif
-
-#if defined(PADDLE_WITH_CNCL)
-#include "paddle/fluid/platform/device/mlu/cncl_helper.h"
 #endif
 
 namespace paddle {
@@ -131,92 +128,9 @@ class CReduceOpCPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <ReduceType red_type, typename T>
-class CReduceOpASCENDKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-#if defined(PADDLE_WITH_ASCEND_CL)
-    auto in = ctx.Input<phi::DenseTensor>("X");
-    auto out = ctx.Output<phi::DenseTensor>("Out");
-    auto place = ctx.GetPlace();
-    HcclDataType dtype =
-        platform::ToHCCLDataType(framework::TransToProtoVarType(in->dtype()));
-    int64_t numel = in->numel();
-
-    void* sendbuff = reinterpret_cast<void*>(const_cast<T*>(in->data<T>()));
-    void* recvbuff = reinterpret_cast<void*>(out->data<T>());
-
-    int ring_id = ctx.Attr<int>("ring_id");
-    int root_id = ctx.Attr<int>("root_id");
-    std::string group =
-        std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
-    auto comm =
-        paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
-
-    aclrtStream stream = nullptr;
-    auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-    if (ctx.Attr<bool>("use_calc_stream")) {
-      stream = static_cast<platform::NPUDeviceContext*>(dev_ctx)->stream();
-    } else {
-      stream = comm->stream();
-    }
-
-    int rank_id = comm->rank();
-
-    HcclReduceOp hccl_red_type = HCCL_REDUCE_SUM;
-    switch (red_type) {
-      case kRedSum:
-        hccl_red_type = HCCL_REDUCE_SUM;
-        break;
-
-      case kRedMax:
-        hccl_red_type = HCCL_REDUCE_MAX;
-        break;
-
-      case kRedMin:
-        hccl_red_type = HCCL_REDUCE_MIN;
-        break;
-
-      case kRedProd:
-        hccl_red_type = HCCL_REDUCE_PROD;
-        break;
-
-      default:
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "Invalid reduce type: %d", red_type));
-    }
-
-    VLOG(3) << "begin hccl reduce, parameter is: "
-            << "input num: " << numel << "root_id: " << root_id
-            << "dtype: " << dtype << "hccl_red_type: " << hccl_red_type
-            << ", group is: " << group;
-
-    PADDLE_ENFORCE_NPU_SUCCESS(
-        platform::dynload::HcclAllReduce(sendbuff,
-                                         recvbuff,
-                                         numel,
-                                         dtype,
-                                         hccl_red_type,
-                                         comm->comm(),
-                                         reinterpret_cast<void*>(stream)));
-
-    if (rank_id != root_id) {
-      auto npu_place = place;
-      memory::Copy(npu_place,
-                   reinterpret_cast<void*>(out->data<T>()),
-                   npu_place,
-                   reinterpret_cast<void*>(const_cast<T*>(in->data<T>())),
-                   numel * sizeof(T),
-                   stream);
-    }
-
-    out->Resize(in->dims());
-#else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "PaddlePaddle should compile with NPU."));
-#endif
-  }
-};
+#define DEFINE_C_REDUCE_CPU_KERNEL(op_name, red_type) \
+  template <typename T, typename DeviceContext>       \
+  class op_name##CPUKernel : public CReduceOpCPUKernel<red_type, T> {};
 
 template <ReduceType red_type, typename T>
 class CReduceOpXPUKernel : public framework::OpKernel<T> {
@@ -289,6 +203,10 @@ class CReduceOpXPUKernel : public framework::OpKernel<T> {
   }
 };
 
+#define DEFINE_C_REDUCE_XPU_KERNEL(op_name, red_type) \
+  template <typename T, typename DeviceContext>       \
+  class op_name##XPUKernel : public CReduceOpXPUKernel<red_type, T> {};
+
 template <ReduceType red_type, typename T>
 class CReduceOpCUDAKernel : public framework::OpKernel<T> {
  public:
@@ -307,14 +225,40 @@ class CReduceOpCUDAKernel : public framework::OpKernel<T> {
 
     int rid = ctx.Attr<int>("ring_id");
     int root = ctx.Attr<int>("root_id");
-    auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
 
     gpuStream_t stream = nullptr;
+    platform::NCCLComm* comm = nullptr;
+    phi::distributed::NCCLCommContext* comm_ctx = nullptr;
+
+    const auto& comm_context_manager =
+        phi::distributed::CommContextManager::GetInstance();
+    if (FLAGS_dynamic_static_unified_comm) {
+      PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
+                        true,
+                        platform::errors::InvalidArgument(
+                            "You choose to use new communication library by "
+                            "setting environment "
+                            "variable FLAGS_dynamic_static_unified_comm True. "
+                            "But ring_id(%d) is "
+                            "not found in comm_context_manager.",
+                            std::to_string(rid)));
+      comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
+          comm_context_manager.Get(std::to_string(rid)));
+      PADDLE_ENFORCE_NE(comm_ctx,
+                        nullptr,
+                        platform::errors::Unavailable(
+                            "NCCLCommContext is nullptr, collective op should "
+                            "has ring_id attr."));
+      stream = comm_ctx->GetStream();
+      VLOG(3) << "new comm_context_manager has rid " << rid;
+    } else {  // old comm_context
+      comm = platform::NCCLCommContext::Instance().Get(rid, place);
+      stream = comm->stream();
+      VLOG(3) << "old NCCLCommContext has rid " << rid;
+    }
     if (ctx.Attr<bool>("use_calc_stream")) {
       // should ExecutionContext for calc stream.
       stream = ctx.cuda_device_context().stream();
-    } else {
-      stream = comm->stream();
     }
 
     ncclRedOp_t nccl_red_type = ncclSum;
@@ -343,14 +287,18 @@ class CReduceOpCUDAKernel : public framework::OpKernel<T> {
                               "kRedMax, kRedMin, kRedProd."));
     }
 
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduce(sendbuff,
-                                                             recvbuff,
-                                                             numel,
-                                                             dtype,
-                                                             nccl_red_type,
-                                                             root,
-                                                             comm->comm(),
-                                                             stream));
+    if (comm_ctx) {
+      comm_ctx->Reduce(out, *in, nccl_red_type, root, stream);
+    } else {
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduce(sendbuff,
+                                                               recvbuff,
+                                                               numel,
+                                                               dtype,
+                                                               nccl_red_type,
+                                                               root,
+                                                               comm->comm(),
+                                                               stream));
+    }
 #else
     PADDLE_ENFORCE_EQ(true,
                       false,
@@ -360,72 +308,9 @@ class CReduceOpCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
-template <ReduceType red_type, typename T>
-class CReduceOpMLUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-#if defined(PADDLE_WITH_CNCL)
-    auto in = ctx.Input<phi::DenseTensor>("X");
-    auto out = ctx.Output<phi::DenseTensor>("Out");
-    auto place = ctx.GetPlace();
-    cnclDataType_t dtype =
-        platform::ToCNCLDataType(framework::TransToProtoVarType(in->dtype()));
-    int64_t numel = in->numel();
-
-    const void* sendbuff = in->data();
-    out->Resize(in->dims());
-    void* recvbuff = out->mutable_data<T>(place);
-
-    int rid = ctx.Attr<int>("ring_id");
-    int root = ctx.Attr<int>("root_id");
-    auto comm = paddle::platform::CNCLCommContext::Instance().Get(rid, place);
-
-    mluStream stream = nullptr;
-    if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<platform::MLUDeviceContext*>(dev_ctx)->stream();
-    } else {
-      stream = comm->stream();
-    }
-
-    cnclReduceOp_t cncl_red_type = cnclSum;
-    switch (red_type) {
-      case kRedSum:
-        cncl_red_type = cnclSum;
-        break;
-
-      case kRedMax:
-        cncl_red_type = cnclMax;
-        break;
-
-      case kRedMin:
-        cncl_red_type = cnclMin;
-        break;
-
-      case kRedProd:
-        cncl_red_type = cnclProd;
-        break;
-
-      default:
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "Invalid reduce type: %d", red_type));
-    }
-
-    PADDLE_ENFORCE_MLU_SUCCESS(cnclReduce(sendbuff,
-                                          recvbuff,
-                                          numel,
-                                          dtype,
-                                          cncl_red_type,
-                                          root,
-                                          comm->comm(),
-                                          stream));
-
-#else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "PaddlePaddle should compile with MLU."));
-#endif
-  }
-};
+#define DEFINE_C_REDUCE_CUDA_KERNEL(op_name, red_type) \
+  template <typename T, typename DeviceContext>        \
+  class op_name##CUDAKernel : public CReduceOpCUDAKernel<red_type, T> {};
 
 class CReduceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -434,10 +319,7 @@ class CReduceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor) the reduced result.");
     AddAttr<int>("ring_id", "(int default 0) communication ring id.")
         .SetDefault(0);
-#if defined(PADDLE_WITH_ASCEND_CL)
-    AddAttr<std::string>("tag", "(string default tag) tag for reduce.")
-        .SetDefault("tag");
-#endif
+
     AddAttr<int>("root_id", "(int default 0) root id.").SetDefault(0);
     AddAttr<bool>(
         "use_calc_stream",

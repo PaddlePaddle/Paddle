@@ -16,7 +16,7 @@ import sys
 
 import numpy as np
 
-from ...fluid.framework import IrNode, Operator
+from ...base.framework import IrNode, Operator
 from .quant_config import SUPPORT_QUANTIZATION_OP_DICT
 
 _channelwise_quant_axis1_ops = [
@@ -279,9 +279,7 @@ class tqdm:
         a = "=" * round((self.n / self.total) * self.ncols)
         b = " " * (self.ncols - len(a))
         prefix = self.bar_format.split('|')[0]
-        sys.stderr.write(
-            "\r{}|{}=>{}| {}/{}".format(prefix, a, b, self.n, self.total)
-        )
+        sys.stderr.write(f"\r{prefix}|{a}=>{b}| {self.n}/{self.total}")
         sys.stderr.flush()
 
     def __enter__(self):

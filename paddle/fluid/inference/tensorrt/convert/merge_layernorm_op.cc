@@ -23,7 +23,7 @@ class MergeLayernormOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(4) << "convert a fluid merge_layernorm op to tensorrt merge_layernorm "
+    VLOG(4) << "convert a merge_layernorm op to tensorrt merge_layernorm "
                "plugin";
     framework::OpDesc op_desc(op, nullptr);
     auto* X = engine_->GetITensor(op_desc.Input("X").front());

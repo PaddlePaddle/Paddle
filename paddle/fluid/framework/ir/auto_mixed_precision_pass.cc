@@ -22,6 +22,9 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/device_manager.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -44,22 +47,40 @@ bool PhiKernelSupportPrecision(
   return phi::KernelFactory::Instance().HasKernel(op_type, kernel_key);
 }
 
-bool GpuKernelSupportPrecision(
+static phi::Backend ConvertPlaceToBackend(const phi::Place& place) {
+  switch (place.GetType()) {
+    case phi::AllocationType::CPU:
+      return phi::Backend::CPU;
+    case phi::AllocationType::GPU:
+      return phi::Backend::GPU;
+    case phi::AllocationType::XPU:
+      return phi::Backend::XPU;
+    default:
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Cannot convert place(%d).", static_cast<int>(place.GetType())));
+  }
+  return phi::Backend::UNDEFINED;
+}
+
+bool KernelSupportPrecision(
     const std::string& op_type,
+    phi::Backend backend,
     phi::DataType precision,
     phi::DataLayout layout = phi::DataLayout::ALL_LAYOUT) {
   auto phi_op_type = phi::TransToPhiKernelName(op_type);
-  bool support = PhiKernelSupportPrecision(
-      phi_op_type, phi::Backend::GPU, precision, layout);
-  support |= PhiKernelSupportPrecision(
-      phi_op_type, phi::Backend::GPUDNN, precision, layout);
 
+  bool support =
+      PhiKernelSupportPrecision(phi_op_type, backend, precision, layout);
+  if (backend == phi::Backend::GPU) {
+    support |= PhiKernelSupportPrecision(
+        phi_op_type, phi::Backend::GPUDNN, precision, layout);
+  }
   if (!support) {
     const auto& all_kernels = framework::OperatorWithKernel::AllOpKernels();
     auto it = all_kernels.find(op_type);
     if (it != all_kernels.end()) {
       for (const auto& kern_pair : it->second) {
-        if (platform::is_gpu_place(kern_pair.first.place_) &&
+        if (ConvertPlaceToBackend(kern_pair.first.place_) == backend &&
             kern_pair.first.data_type_ ==
                 framework::TransToProtoVarType(precision)) {
           support = true;
@@ -116,8 +137,9 @@ void DoInsertCastOp(Graph* graph,
   if (cache->count(var_node) == 0) {
     // insert cast op between var_node and op_node
     std::string cast_input_name = var_node->Var()->Name();
-    std::string cast_output_name =
-        var_node->Var()->Name() + "_cast.tmp_" + std::to_string((*suffix)++);
+    std::string cast_output_name = var_node->Var()->Name() +
+                                   "_cast_auto_mixed.tmp_" +
+                                   std::to_string((*suffix)++);
     framework::OpDesc cast_op_desc(block_desc);
     update_cast_desc(cast_op_desc,
                      cast_input_name,
@@ -143,23 +165,17 @@ void DoInsertCastOp(Graph* graph,
 bool OpSupportPrecision(const std::string& op_type,
                         phi::Backend backend,
                         phi::DataType precision,
-                        const std::unordered_set<std::string>& black_list) {
-  bool support = false;
-  if (black_list.count(op_type) == 0) {
-    if (backend == phi::Backend::GPU) {
-      support = GpuKernelSupportPrecision(op_type, precision);
-    } else {
-      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-          "Now, only support backend of GPU."));
-    }
-  }
-  return support;
+                        const std::unordered_set<std::string>& black_list,
+                        const std::unordered_set<std::string>& white_list) {
+  if (white_list.count(op_type)) return true;
+  return black_list.count(op_type) == 0 &&
+         KernelSupportPrecision(op_type, backend, precision);
 }
 
 // The set of ops that support fp16 calculation and are considered
 // numerically-dangerous, slower and whose effects may also be observed in
 // downstream ops.
-// ref to python/paddle/fluid/contrib/mixed_precision/fp16_lists.py
+// ref to python/paddle/base/contrib/mixed_precision/fp16_lists.py
 void AutoMixedPrecisionPass::SetDefaultBlacklist() const {
   black_list_.insert({
       // numerically-dangerous
@@ -174,33 +190,61 @@ void AutoMixedPrecisionPass::SetDefaultBlacklist() const {
       "c_softmax_with_cross_entropy",
       "cross_entropy",
       "cross_entropy2",
+#ifndef PADDLE_WITH_XPU
       // slower than fp32
       "conv2d_transpose",
+#endif
       // default fp32 can avoid return inf when the sum value large than 65504
       "reduce_sum",
   });
 }
 
 void AutoMixedPrecisionPass::Init(Graph* graph) const {
-  bool enable_gpu_mixed = Get<bool>("enable_gpu_mixed");
-  if (enable_gpu_mixed) {
+  if (Has("enable_gpu_mixed") && Get<bool>("enable_gpu_mixed")) {
     backend_ = phi::Backend::GPU;
+  } else if (Has("enable_xpu_mixed") && Get<bool>("enable_xpu_mixed")) {
+    backend_ = phi::Backend::XPU;
+  } else if (Has("enable_custom_device_mixed") &&
+             Get<bool>("enable_custom_device_mixed")) {
+    // transform Backend::CUSTOM to actual backend.
+// Here, we only consider one custom backend.
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    auto device_type = phi::DeviceManager::GetAllCustomDeviceTypes()[0];
+    backend_ = static_cast<phi::Backend>(
+        static_cast<size_t>(phi::Backend::NUM_BACKENDS) +
+        phi::CustomRegisteredDeviceMap::Instance()
+            .GetOrRegisterGlobalDeviceTypeId(device_type));
+#else
+    PADDLE_THROW(paddle::platform::errors::Unavailable(
+        "Paddle is not compiled with CustomDevice. "
+        "Cannot enable custom_device_mixed."));
+#endif
   }
 
-  skip_pass_ = !enable_gpu_mixed;
+  if (Has("mixed_precision_mode")) {
+    low_precision_ =
+        static_cast<phi::DataType>(Get<int>("mixed_precision_mode"));
+  }
 
-  low_precision_ = static_cast<phi::DataType>(Get<int>("mixed_precision_mode"));
+  skip_pass_ = (backend_ == phi::Backend::UNDEFINED) ||
+               (low_precision_ == phi::DataType::UNDEFINED);
+
+  if (skip_pass_) return;
 
   black_list_ = Get<std::unordered_set<std::string>>("mixed_black_list");
+  white_list_ = Get<std::unordered_set<std::string>>("mixed_white_list");
   SetDefaultBlacklist();
   VLOG(4) << "black_list has ";
   for (const auto& name : black_list_) {
     VLOG(4) << " - " << name;
   }
+  VLOG(4) << "white_list has ";
+  for (const auto& name : white_list_) {
+    VLOG(4) << " - " << name;
+  }
 
-  keep_io_types_ = true;
-  if (Has("keep_io_types")) {
-    keep_io_types_ = Get<bool>("keep_io_types");
+  if (Has("enable_low_precision_io")) {
+    enable_low_precision_io_ = Get<bool>("enable_low_precision_io");
   }
 
   auto graph_size = graph->SubGraphsSize();
@@ -212,7 +256,7 @@ void AutoMixedPrecisionPass::Init(Graph* graph) const {
     subgraphes_[i] = graph->GetSubGraph(i);
     all_op_nodes_[i] = TopologySortOperations(*subgraphes_[i]);
     VLOG(4) << "subgraph " << i << " has " << all_op_nodes_[i].size()
-            << "op nodes";
+            << " op nodes";
     for (auto* var_node : subgraphes_[i]->Nodes()) {
       if (!var_node->IsVar()) continue;
 
@@ -256,15 +300,15 @@ void AutoMixedPrecisionPass::ApplyImpl(Graph* graph) const {
   VLOG(4) << "SetVarPrecision done";
   ConvertWeightsData();
   VLOG(4) << "ConvertWeightsData done";
-  ProcessOpWithDtypeAttr();
-  VLOG(4) << "ProcessOpWithDtypeAttr done";
   InsertCastOp();
   VLOG(4) << "InsertCastOp done";
+  ProcessOpWithDtypeAttr();
+  VLOG(4) << "ProcessOpWithDtypeAttr done";
   RestoreOpOriginType();
   VLOG(4) << "RestoreOpOriginType done";
   LOG(INFO) << "The number of ops run at low precision ["
-            << op_run_low_precision_.size() << "/" << op_original_type_.size()
-            << "]";
+            << op_run_low_precision_.size() << "/"
+            << op_original_type_.size() + 2 << "]";
 }
 
 void AutoMixedPrecisionPass::SetOpUniqueType() const {
@@ -311,7 +355,9 @@ void AutoMixedPrecisionPass::ProcessOpWithDtypeAttr() const {
 
       if (op_node->Op()->HasAttr("in_dtype")) {
         auto* var_node = op_node->inputs[0];
-        auto* real_var_node = real_vars_[var_node->Var()->Name()];
+        auto* real_var_node = real_vars_.count(var_node->Var()->Name())
+                                  ? real_vars_.at(var_node->Var()->Name())
+                                  : var_node;
         if (IsFP16AndBFP16(real_var_node->Var()->GetDataType())) {
           op_node->Op()->SetAttr(
               "in_dtype",
@@ -358,61 +404,75 @@ void AutoMixedPrecisionPass::GetOpPrecision() const {
       bool support_low_precision = true;
       if (GetOpOriginalType(op_type) == "feed" ||
           GetOpOriginalType(op_type) == "fetch") {
-        support_low_precision = !keep_io_types_;
+        support_low_precision = enable_low_precision_io_;
+      } else if (GetOpOriginalType(op_type) == "tensorrt_engine") {
+        auto enable_fp16 = op_node->Op()->GetAttrIfExists<bool>("enable_fp16");
+        auto enable_int8 = op_node->Op()->GetAttrIfExists<bool>("enable_int8");
+        auto low_precision_io =
+            op_node->Op()->GetAttrIfExists<bool>("enable_low_precision_io");
+        support_low_precision = enable_fp16 && !enable_int8 && low_precision_io;
       } else {
-        support_low_precision = OpSupportPrecision(
-            GetOpOriginalType(op_type), backend_, low_precision_, black_list_);
-      }
+        support_low_precision = OpSupportPrecision(GetOpOriginalType(op_type),
+                                                   backend_,
+                                                   low_precision_,
+                                                   black_list_,
+                                                   white_list_);
 
-      if (op_node->Op()->HasAttr("dtype")) {
-        auto dtype = op_node->Op()->GetAttrIfExists<int>("dtype");
-        support_low_precision =
-            support_low_precision &&
-            IsFP32AndFP64(static_cast<VarType::Type>(dtype));
-      } else if (op_node->Op()->HasAttr("out_dtype")) {
-        auto out_dtype = op_node->Op()->GetAttrIfExists<int>("out_dtype");
-        support_low_precision =
-            support_low_precision &&
-            IsFP32AndFP64(static_cast<VarType::Type>(out_dtype));
-      }
-
-      // If scale op's "scale" and "bias" attr value exceed the range of fp16
-      // and bf16, it cannot run at low precision.
-      if (GetOpOriginalType(op_node->Op()->Type()) == "scale") {
-        auto scale = op_node->Op()->GetAttrIfExists<float>("scale");
-        auto bias = op_node->Op()->GetAttrIfExists<float>("bias");
-        if (low_precision_ == phi::DataType::FLOAT16) {
+        std::unordered_set<std::string> check_dtype_op_blacklist(
+            {"arg_max", "arg_min"});
+        if (op_node->Op()->HasAttr("dtype") &&
+            !check_dtype_op_blacklist.count(GetOpOriginalType(op_type))) {
+          auto dtype = op_node->Op()->GetAttrIfExists<int>("dtype");
           support_low_precision =
               support_low_precision &&
-              phi::dtype::isfinite(static_cast<phi::dtype::float16>(scale)) &&
-              phi::dtype::isfinite(static_cast<phi::dtype::float16>(bias));
-        } else if (low_precision_ == phi::DataType::BFLOAT16) {
+              IsFP32AndFP64(static_cast<VarType::Type>(dtype));
+        } else if (op_node->Op()->HasAttr("out_dtype")) {
+          auto out_dtype = op_node->Op()->GetAttrIfExists<int>("out_dtype");
           support_low_precision =
               support_low_precision &&
-              phi::dtype::isfinite(static_cast<phi::dtype::bfloat16>(scale)) &&
-              phi::dtype::isfinite(static_cast<phi::dtype::bfloat16>(bias));
+              (IsFP32AndFP64(static_cast<VarType::Type>(out_dtype)) ||
+               out_dtype == -1);
         }
-      }
 
-      // if op's input var and output var is not dense tensor, the op should
-      // not run at low precision.
-      for (auto* in_var_node : op_node->inputs) {
-        CHECK_EQ(in_var_node->IsVar(), true);
-        auto* real_in_var_node = real_vars_[in_var_node->Var()->Name()];
-        if (real_in_var_node->Var()->Persistable()) continue;
+        // If scale op's "scale" and "bias" attr value exceed the range of
+        // fp16 and bf16, it cannot run at low precision.
+        if (GetOpOriginalType(op_node->Op()->Type()) == "scale") {
+          auto scale = op_node->Op()->GetAttrIfExists<float>("scale");
+          auto bias = op_node->Op()->GetAttrIfExists<float>("bias");
+          if (low_precision_ == phi::DataType::FLOAT16) {
+            support_low_precision =
+                support_low_precision &&
+                phi::dtype::isfinite(static_cast<phi::dtype::float16>(scale)) &&
+                phi::dtype::isfinite(static_cast<phi::dtype::float16>(bias));
+          } else if (low_precision_ == phi::DataType::BFLOAT16) {
+            support_low_precision =
+                support_low_precision &&
+                phi::dtype::isfinite(
+                    static_cast<phi::dtype::bfloat16>(scale)) &&
+                phi::dtype::isfinite(static_cast<phi::dtype::bfloat16>(bias));
+          }
+        }
 
-        support_low_precision =
-            support_low_precision &&
-            (real_in_var_node->Var()->GetType() == VarType::LOD_TENSOR);
-      }
-      for (auto* out_var_node : op_node->outputs) {
-        CHECK_EQ(out_var_node->IsVar(), true);
-        auto* real_out_var_node = real_vars_[out_var_node->Var()->Name()];
-        if (real_out_var_node->Var()->Persistable()) continue;
+        // if op's input var and output var is not dense tensor, the op should
+        // not run at low precision.
+        for (auto* in_var_node : op_node->inputs) {
+          CHECK_EQ(in_var_node->IsVar(), true);
+          auto* real_in_var_node = real_vars_.at(in_var_node->Var()->Name());
+          if (real_in_var_node->Var()->Persistable()) continue;
 
-        support_low_precision =
-            support_low_precision &&
-            (real_out_var_node->Var()->GetType() == VarType::LOD_TENSOR);
+          support_low_precision =
+              support_low_precision &&
+              (real_in_var_node->Var()->GetType() == VarType::LOD_TENSOR);
+        }
+        for (auto* out_var_node : op_node->outputs) {
+          CHECK_EQ(out_var_node->IsVar(), true);
+          auto* real_out_var_node = real_vars_.at(out_var_node->Var()->Name());
+          if (real_out_var_node->Var()->Persistable()) continue;
+
+          support_low_precision =
+              support_low_precision &&
+              (real_out_var_node->Var()->GetType() == VarType::LOD_TENSOR);
+        }
       }
 
       if (support_low_precision) {
@@ -438,7 +498,9 @@ void AutoMixedPrecisionPass::UpdateOpPrecision() const {
         auto op_type = op_node->Op()->Type();
 
         if (GetOpOriginalType(op_type) == "fetch") continue;
-        if (op_node->Op()->HasAttr("sub_block")) continue;
+        if (op_node->Op()->HasAttr("sub_block") &&
+            GetOpOriginalType(op_type) != "tensorrt_engine")
+          continue;
 
         for (auto* var_node : op_node->outputs) {
           CHECK_EQ(var_node->IsVar(), true);
@@ -450,9 +512,9 @@ void AutoMixedPrecisionPass::UpdateOpPrecision() const {
                   << " is output of " << op_type;
         }
 
-        // the select_input op's input var should not convert to low precision.
-        // when op's output var is select_input op's input var, the op should
-        // not run at low precision.
+        // the select_input op's input var should not convert to low
+        // precision. when op's output var is select_input op's input var, the
+        // op should not run at low precision.
         if (GetOpOriginalType(op_node->Op()->Type()) == "select_input") {
           for (auto* in_var_node : op_node->inputs) {
             CHECK_EQ(in_var_node->IsVar(), true);
@@ -466,8 +528,10 @@ void AutoMixedPrecisionPass::UpdateOpPrecision() const {
         // when op_1 only support cpu kernel. if op_2's intput var is op_1's
         // output var, then op_2 should not run at low precision.
         if (GetOpOriginalType(op_type) != "feed" &&
-            !GpuKernelSupportPrecision(GetOpOriginalType(op_type),
-                                       phi::DataType::FLOAT32)) {
+            GetOpOriginalType(op_type) != "tensorrt_engine" &&
+            white_list_.count(GetOpOriginalType(op_type)) == 0 &&
+            !KernelSupportPrecision(
+                GetOpOriginalType(op_type), backend_, phi::DataType::FLOAT32)) {
           for (auto* out_var_node : op_node->outputs) {
             CHECK_EQ(out_var_node->IsVar(), true);
             if (out_var_node->Var()->Persistable()) continue;
@@ -492,7 +556,7 @@ void AutoMixedPrecisionPass::UpdateOpPrecision() const {
           CHECK_EQ(in_var_node->IsVar(), true);
           if (!VarNodeHasDtype(in_var_node)) continue;
 
-          auto* real_in_var_node = real_vars_[in_var_node->Var()->Name()];
+          auto* real_in_var_node = real_vars_.at(in_var_node->Var()->Name());
           if (real_in_var_node->Var()->Persistable()) continue;
 
           if (vars_should_not_low_precision.count(
@@ -511,7 +575,7 @@ void AutoMixedPrecisionPass::UpdateOpPrecision() const {
           CHECK_EQ(out_var_node->IsVar(), true);
           if (!VarNodeHasDtype(out_var_node)) continue;
 
-          auto* real_out_var_node = real_vars_[out_var_node->Var()->Name()];
+          auto* real_out_var_node = real_vars_.at(out_var_node->Var()->Name());
           if (real_out_var_node->Var()->Persistable()) continue;
 
           bool not_run_low_precision = false;
@@ -545,7 +609,12 @@ void AutoMixedPrecisionPass::UpdateOpPrecision() const {
 bool AutoMixedPrecisionPass::InputVarsNotConvert(
     Node* op_node, const std::string& var_name) const {
   auto* op_desc = op_node->Op();
-  if (GetOpOriginalType(op_desc->Type()) == "batch_norm") {
+  if (GetOpOriginalType(op_desc->Type()) == "tensorrt_engine") {
+    auto vecs = op_desc->Input("Xs");
+    if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+      return true;
+    }
+  } else if (GetOpOriginalType(op_desc->Type()) == "batch_norm") {
     auto vecs = op_desc->Input("Bias");
     if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
       return true;
@@ -559,6 +628,15 @@ bool AutoMixedPrecisionPass::InputVarsNotConvert(
       return true;
     }
     vecs = op_desc->Input("Variance");
+    if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+      return true;
+    }
+  } else if (GetOpOriginalType(op_desc->Type()) == "instance_norm") {
+    auto vecs = op_desc->Input("Bias");
+    if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+      return true;
+    }
+    vecs = op_desc->Input("Scale");
     if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
       return true;
     }
@@ -579,7 +657,40 @@ bool AutoMixedPrecisionPass::InputVarsNotConvert(
     if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
       return true;
     }
+  } else if (GetOpOriginalType(op_desc->Type()) ==
+             "fused_bias_dropout_residual_layer_norm") {
+    auto vecs = op_desc->Input("LnScale");
+    if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+      return true;
+    }
+    vecs = op_desc->Input("LnBias");
+    if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+      return true;
+    }
   }
+
+  if (backend_ == phi::Backend::XPU) {
+    if (GetOpOriginalType(op_desc->Type()) == "layer_norm") {
+      auto vecs = op_desc->Input("Bias");
+      if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+        return true;
+      }
+      vecs = op_desc->Input("Scale");
+      if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+        return true;
+      }
+    } else if (GetOpOriginalType(op_desc->Type()) == "instance_norm") {
+      auto vecs = op_desc->Input("Bias");
+      if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+        return true;
+      }
+      vecs = op_desc->Input("Scale");
+      if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+        return true;
+      }
+    }
+  }
+
   return false;
 }
 
@@ -605,6 +716,20 @@ bool AutoMixedPrecisionPass::OutputVarsNotConvert(
       return true;
     }
   }
+
+  if (backend_ == phi::Backend::XPU) {
+    if (GetOpOriginalType(op_desc->Type()) == "layer_norm") {
+      auto vecs = op_desc->Output("Mean");
+      if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+        return true;
+      }
+      vecs = op_desc->Output("Variance");
+      if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+        return true;
+      }
+    }
+  }
+
   return false;
 }
 
@@ -619,7 +744,7 @@ void AutoMixedPrecisionPass::SetVarPrecision() const {
         for (auto* in_var_node : op_node->inputs) {
           CHECK_EQ(in_var_node->IsVar(), true);
 
-          auto* real_in_var_node = real_vars_[in_var_node->Var()->Name()];
+          auto* real_in_var_node = real_vars_.at(in_var_node->Var()->Name());
           auto in_var_name = real_in_var_node->Var()->Name();
 
           if (!IsFP32AndFP64(real_in_var_node->Var()->GetDataType())) continue;
@@ -638,7 +763,7 @@ void AutoMixedPrecisionPass::SetVarPrecision() const {
         for (auto* out_var_node : op_node->outputs) {
           CHECK_EQ(out_var_node->IsVar(), true);
 
-          auto* real_out_var_node = real_vars_[out_var_node->Var()->Name()];
+          auto* real_out_var_node = real_vars_.at(out_var_node->Var()->Name());
           auto out_var_name = real_out_var_node->Var()->Name();
 
           if (!IsFP32AndFP64(real_out_var_node->Var()->GetDataType())) continue;
@@ -741,7 +866,9 @@ void AutoMixedPrecisionPass::InsertCastOp() const {
       auto op_type = op_node->Op()->Type();
 
       if (GetOpOriginalType(op_type) == "feed") continue;
-      if (op_node->Op()->HasAttr("sub_block")) continue;
+      if (op_node->Op()->HasAttr("sub_block") &&
+          GetOpOriginalType(op_type) != "tensorrt_engine")
+        continue;
 
       VLOG(4) << "process op: " << op_type
               << " run low precision: " << op_run_low_precision_.count(op_type);
@@ -752,7 +879,7 @@ void AutoMixedPrecisionPass::InsertCastOp() const {
         if (!VarNodeHasDtype(in_var_node)) continue;
         if (in_var_node->Var()->Persistable()) continue;
 
-        auto* real_in_var_node = real_vars_[in_var_node->Var()->Name()];
+        auto* real_in_var_node = real_vars_.at(in_var_node->Var()->Name());
 
         auto in_var_type = real_in_var_node->Var()->GetDataType();
 

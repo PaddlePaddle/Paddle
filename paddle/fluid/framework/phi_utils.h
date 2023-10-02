@@ -23,17 +23,21 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
+#include "paddle/utils/test_macros.h"
 
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/custom/custom_device_op_list.h"
 #endif
 
 namespace paddle {
@@ -56,7 +60,7 @@ class KernelArgsNameMaker {
   virtual const paddle::small_vector<const char*>& GetAttrsArgsNames() = 0;
 };
 
-void InitDefaultKernelSignatureMap();
+TEST_API void InitDefaultKernelSignatureMap();
 
 // TODO(Wilber): support others device context.
 template <typename T>
@@ -82,6 +86,16 @@ struct ConvertToPhiContext<platform::XPUDeviceContext> {
   using TYPE = phi::XPUContext;
 };
 #endif
+
+/* Make Phi Tensor from framework::Variable */
+
+phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable);
+
+phi::IntArray MakePhiIntArrayFromVar(const framework::Variable& variable);
+
+// TODO(chentianyu03): Inplace with IntArray constructor
+phi::IntArray MakePhiIntArrayFromVarList(
+    const std::vector<framework::Variable*>& variable_list);
 
 }  // namespace framework
 }  // namespace paddle

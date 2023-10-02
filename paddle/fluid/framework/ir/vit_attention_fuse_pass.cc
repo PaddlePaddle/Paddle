@@ -62,7 +62,7 @@ bool HasScale(OpDesc* const op_ptr,
   name->clear();
   std::unordered_map<std::string, Attribute> attr_map = op_ptr->GetAttrMap();
   std::unordered_map<std::string, Attribute>::iterator iter;
-  int len = regexp.size();
+  int len = static_cast<int>(regexp.size());
   for (iter = attr_map.begin(); iter != attr_map.end(); iter++) {
     if (regexp == iter->first.substr(0, len)) {
       *name = iter->first;
@@ -79,7 +79,7 @@ void VitAttentionFusePass::ApplyImpl(ir::Graph* graph) const {
   auto* scope = param_scope();
 
   // pattern
-  std::unordered_set<std::string> matmul_ops{"matmul", "matmul_v2"};
+  std::unordered_set<std::string> matmul_ops{"matrix_multiply"};
   PDNode* x = gpd.mutable_pattern()
                   ->NewNode("x")
                   ->assert_is_ops_input(matmul_ops, "X")
@@ -173,5 +173,4 @@ REGISTER_PASS_CAPABILITY(vit_attention_fuse_pass)
             .EQ("transpose2", 0)
             .EQ("slice", 0)
             .EQ("scale", 0)
-            .EQ("softmax", 0)
-            .EQ("matmul_v2", 0));
+            .EQ("softmax", 0));

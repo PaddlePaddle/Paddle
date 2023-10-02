@@ -51,29 +51,31 @@ OpSupportedInfos(const std::string& place,
       {"GPU", &platform::is_gpu_place},
       {"CPU", &platform::is_cpu_place},
       {"XPU", &platform::is_xpu_place},
-      {"NPU", &platform::is_npu_place},
-      {"MLU", &platform::is_mlu_place},
+      {"CUSTOM_DEVICE", &platform::is_custom_place},
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      {query_place, &platform::is_custom_place},
+#endif
   };
   PADDLE_ENFORCE_NE(is_target_place.count(query_place),
                     0,
                     platform::errors::InvalidArgument(
-                        "The argument `place` should be 'GPU', 'CPU', 'XPU', "
-                        "'NPU', 'MLU', but got '%s'.",
+                        "The argument `place` should be 'GPU', 'CPU', 'XPU' or "
+                        "other Custom Device, but got '%s'.",
                         place));
 
   std::unordered_set<std::string> all_ops;
   const auto& op_info = framework::OpInfoMap::Instance().map();
-  for (auto it = op_info.begin(); it != op_info.end(); it++) {
-    all_ops.emplace(it->first);
+  for (const auto& item : op_info) {
+    all_ops.emplace(item.first);
   }
 
   std::unordered_set<std::string> supported_ops;
   auto& all_kernels = framework::OperatorWithKernel::AllOpKernels();
-  for (auto it = all_kernels.begin(); it != all_kernels.end(); it++) {
-    for (auto& kernel_type : it->second) {
+  for (auto& all_kernel : all_kernels) {
+    for (auto& kernel_type : all_kernel.second) {
       if (is_target_place[query_place](kernel_type.first.place_) &&
           kernel_type.first.data_type_ == dtype) {
-        supported_ops.emplace(it->first);
+        supported_ops.emplace(all_kernel.first);
       }
     }
   }
@@ -82,11 +84,13 @@ OpSupportedInfos(const std::string& place,
   for (auto& kernel_pair : phi_kernels) {
     auto op_type = phi::TransToFluidOpName(kernel_pair.first);
     for (auto& info_pair : kernel_pair.second) {
-      framework::OpKernelType kernel_type =
-          framework::TransPhiKernelKeyToOpKernelType(info_pair.first);
-      if (is_target_place[query_place](kernel_type.place_) &&
-          kernel_type.data_type_ == dtype && all_ops.count(op_type)) {
-        VLOG(4) << op_type << " " << supported_ops.size();
+      if (dtype != framework::TransToProtoVarType(info_pair.first.dtype()) ||
+          all_ops.count(op_type) == 0) {
+        continue;
+      }
+      if (is_target_place[query_place](
+              phi::TransToPhiPlace(info_pair.first.backend(), false))) {
+        VLOG(8) << op_type << " " << supported_ops.size();
         supported_ops.emplace(op_type);
       }
     }
@@ -116,7 +120,9 @@ AutoCastGuard::AutoCastGuard(std::shared_ptr<Tracer> tracer, AmpLevel level)
   }
 }
 
-AutoCastGuard::~AutoCastGuard() { tracer_->SetAmpLevel(pre_amp_level_); }
+AutoCastGuard::~AutoCastGuard() {  // NOLINT
+  tracer_->SetAmpLevel(pre_amp_level_);
+}
 
 AmpOperators::AmpOperators()
     : allow_ops_(new std::unordered_set<std::string>()),
@@ -132,16 +138,7 @@ AmpOperators::AmpOperators()
       OpSupportedInfos("GPU", paddle::framework::proto::VarType::BF16));
   unsupported_bf16_ops_->insert(unsupported_ops_gpu_bf16.begin(),
                                 unsupported_ops_gpu_bf16.end());
-// NOTE: GPU/NPU/XPU/MLU is compiled seperatly.
-#elif defined(PADDLE_WITH_ASCEND_CL)
-  auto unsupported_ops_npu_fp16 = std::get<2>(
-      OpSupportedInfos("NPU", paddle::framework::proto::VarType::FP16));
-  unsupported_fp16_ops_->insert(unsupported_ops_npu_fp16.begin(),
-                                unsupported_ops_npu_fp16.end());
-  auto unsupported_ops_npu_bf16 = std::get<2>(
-      OpSupportedInfos("NPU", paddle::framework::proto::VarType::BF16));
-  unsupported_bf16_ops_->insert(unsupported_ops_npu_bf16.begin(),
-                                unsupported_ops_npu_bf16.end());
+// NOTE: GPU/XPU is compiled separately.
 #elif defined(PADDLE_WITH_XPU)
   auto unsupported_ops_xpu_fp16 = std::get<2>(
       OpSupportedInfos("XPU", paddle::framework::proto::VarType::FP16));
@@ -151,22 +148,13 @@ AmpOperators::AmpOperators()
       OpSupportedInfos("XPU", paddle::framework::proto::VarType::BF16));
   unsupported_bf16_ops_->insert(unsupported_ops_xpu_bf16.begin(),
                                 unsupported_ops_xpu_bf16.end());
-#elif defined(PADDLE_WITH_MLU)
-  auto unsupported_ops_mlu_fp16 = std::get<2>(
-      OpSupportedInfos("MLU", paddle::framework::proto::VarType::FP16));
-  unsupported_fp16_ops_->insert(unsupported_ops_mlu_fp16.begin(),
-                                unsupported_ops_mlu_fp16.end());
-  auto unsupported_ops_mlu_bf16 = std::get<2>(
-      OpSupportedInfos("MLU", paddle::framework::proto::VarType::BF16));
-  unsupported_bf16_ops_->insert(unsupported_ops_mlu_bf16.begin(),
-                                unsupported_ops_mlu_bf16.end());
 #endif
   VLOG(4) << allow_ops_->size() << " " << block_ops_->size() << " "
           << unsupported_fp16_ops_->size() << " "
           << unsupported_bf16_ops_->size();
 }
 
-AmpOperators::~AmpOperators() {}
+AmpOperators::~AmpOperators() = default;
 
 AmpOperators& AmpOperators::Instance() {
   static AmpOperators instance;
@@ -181,6 +169,21 @@ AmpOperators::GetMutableAllowOps() {
 std::shared_ptr<std::unordered_set<std::string>>
 AmpOperators::GetMutableBlockOps() {
   return block_ops_;
+}
+
+std::shared_ptr<std::unordered_set<std::string>>
+AmpOperators::GetMutableUnsupportedOps(const phi::DataType& data_type) {
+  PADDLE_ENFORCE_EQ(
+      data_type == phi::DataType::FLOAT16 ||
+          data_type == phi::DataType::BFLOAT16,
+      true,
+      phi::errors::InvalidArgument(
+          "The data_type mismatch. It should be FLOAT16 or BFLOAT16."));
+  if (data_type == phi::DataType::FLOAT16) {
+    return unsupported_fp16_ops_;
+  } else {
+    return unsupported_bf16_ops_;
+  }
 }
 
 std::shared_ptr<std::unordered_set<std::string>>
@@ -231,11 +234,8 @@ inline bool NeedCast(const std::shared_ptr<VarType>& var) {
   if (paddle::platform::is_gpu_place(place) ||
       paddle::platform::is_cuda_pinned_place(place) ||
       paddle::platform::is_xpu_place(place) ||
-      paddle::platform::is_mlu_place(place) ||
-      paddle::platform::is_custom_place(place) ||
-      paddle::platform::is_npu_place(place) ||
-      paddle::platform::is_npu_pinned_place(place)) {
-    // CudaPinndePlace is added for varbase created by dataloader
+      paddle::platform::is_custom_place(place)) {
+    // CudaPinnedPlace is added for varbase created by dataloader
     if (data_type == paddle::framework::proto::VarType::FP32 ||
         data_type == paddle::framework::proto::VarType::FP16 ||
         data_type == paddle::framework::proto::VarType::BF16) {

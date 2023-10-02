@@ -34,10 +34,10 @@
 namespace paddle {
 namespace distributed {
 
-DECLARE_int32(pserver_timeout_ms);
-DECLARE_int32(pserver_connect_timeout_ms);
-DECLARE_uint64(total_fl_client_size);
-DECLARE_uint32(coordinator_wait_all_clients_max_time);
+PD_DECLARE_int32(pserver_timeout_ms);
+PD_DECLARE_int32(pserver_connect_timeout_ms);
+PD_DECLARE_uint64(total_fl_client_size);
+PD_DECLARE_uint32(coordinator_wait_all_clients_max_time);
 
 using CoordinatorServiceFunc =
     std::function<int32_t(const CoordinatorReqMessage& request,
@@ -91,10 +91,9 @@ class CoordinatorServiceHandle {
     timeline.Start();
     auto f = [&]() -> bool {
       while (query_wait_time <
-             paddle::distributed::
-                 FLAGS_coordinator_wait_all_clients_max_time) {  // in case that
-                                                                 // some
-                                                                 // clients down
+             FLAGS_coordinator_wait_all_clients_max_time) {  // in case that
+                                                             // some
+                                                             // clients down
         if (_is_all_clients_info_collected == true) {
           // LOG(INFO) << "fl-ps > _is_all_clients_info_collected";
           return true;
@@ -151,8 +150,8 @@ class CoordinatorService : public PsService {
                          ::google::protobuf::Closure* done);
 
   int32_t SaveFLClientInfo(const CoordinatorReqMessage& request,
-                           CoordinatorResMessage* response,
-                           brpc::Controller* cntl) {
+                           CoordinatorResMessage* response UNUSED,
+                           brpc::Controller* cntl UNUSED) {
     _coordinator_service_handle->SaveFLClientInfo(request);
     return 0;
   }

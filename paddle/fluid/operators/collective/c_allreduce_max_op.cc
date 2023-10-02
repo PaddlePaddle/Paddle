@@ -35,6 +35,8 @@ class CAllReduceMaxOpMaker : public CAllReduceOpMaker {
 
 DECLARE_INPLACE_OP_INFERER(AllreduceMaxInplaceInferer, {"X", "Out"});
 
+DEFINE_C_ALLREDUCE_CPU_KERNEL(CAllReduceMax, kRedMax)
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -45,10 +47,12 @@ REGISTER_OP_WITHOUT_GRADIENT(c_allreduce_max,
                              ops::CAllReduceOp,
                              ops::CAllReduceMaxOpMaker,
                              ops::AllreduceMaxInplaceInferer)
-
-REGISTER_OP_CPU_KERNEL(c_allreduce_max,
-                       ops::CAllReduceOpCPUKernel<ops::kRedMax, float>,
-                       ops::CAllReduceOpCPUKernel<ops::kRedMax, double>,
-                       ops::CAllReduceOpCPUKernel<ops::kRedMax, int>,
-                       ops::CAllReduceOpCPUKernel<ops::kRedMax, int64_t>,
-                       ops::CAllReduceOpCPUKernel<ops::kRedMax, plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(c_allreduce_max,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CAllReduceMaxCPUKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

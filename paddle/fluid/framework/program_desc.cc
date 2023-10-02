@@ -20,6 +20,9 @@ extern "C" {
 
 #include <algorithm>
 #include "paddle/fluid/framework/feed_fetch_type.h"
+#include "paddle/fluid/framework/op_version_proto.h"
+#include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/framework/program_converter.h"
 #include "paddle/fluid/framework/version.h"
 
 namespace paddle {
@@ -48,7 +51,11 @@ proto::OpVersionMap *ProgramDesc::OpVersionMap() {
   return desc_.mutable_op_version_map();
 }
 
+bool ProgramDesc::HasOpVersionMap() const { return desc_.has_op_version_map(); }
+
 int64_t ProgramDesc::Version() const { return desc_.version().version(); }
+
+bool ProgramDesc::HasVersion() const { return desc_.has_version(); }
 
 void ProgramDesc::SetVersion(const int64_t version) {
   desc_.mutable_version()->set_version(version);
@@ -85,8 +92,9 @@ ProgramDesc::ProgramDesc(const ProgramDesc &o) {
                         block_desc) != old_block_desc.end()) {
             // The block is owned by the origin program. Just use id to get
             // the corresponding block.
-            int sub_block_id =
-                o.Block(block_id).Op(op_id)->GetBlockAttrId(attr_name);
+            int sub_block_id = o.Block(block_id)
+                                   .Op(static_cast<int>(op_id))
+                                   ->GetBlockAttrId(attr_name);
             op->SetBlockAttr(attr_name, MutableBlock(sub_block_id));
           } else {
             // The block is not owned by the origin program. Should copy
@@ -95,8 +103,9 @@ ProgramDesc::ProgramDesc(const ProgramDesc &o) {
             op->SetBlockAttr(attr_name, block_desc);
           }
         } else if (op->GetAttrType(attr_name) == proto::AttrType::BLOCKS) {
-          std::vector<int> sub_block_ids =
-              o.Block(block_id).Op(op_id)->GetBlocksAttrIds(attr_name);
+          std::vector<int> sub_block_ids = o.Block(block_id)
+                                               .Op(static_cast<int>(op_id))
+                                               ->GetBlocksAttrIds(attr_name);
           std::vector<BlockDesc *> block_descs;
           for (int block_id : sub_block_ids) {
             block_descs.push_back(MutableBlock(block_id));
@@ -142,6 +151,7 @@ ProgramDesc::ProgramDesc(const std::string &binary_str) {
                     platform::errors::InvalidArgument(
                         "Failed to parse program_desc from binary string."));
   InitFromProto();
+  scalar::ConvertProgram(this);
 }
 
 void ProgramDesc::InitFromProto() {
@@ -255,7 +265,7 @@ void ProgramDesc::SetFetchHolderName(const std::string &fetch_holder_name) {
 
 std::string ProgramDesc::CachedHashString() {
   std::string serialize_str;
-  if (cached_hash_str_.size() == 0 || NeedUpdate()) {
+  if (cached_hash_str_.empty() || NeedUpdate()) {
     Flush();
     desc_.SerializePartialToString(&serialize_str);
     // non-cryptographic is enough

@@ -148,11 +148,10 @@ void CPUQuantizePass::QuantizeInputs(Graph* g,
   auto inputs = op->inputs;
   auto var_names = op->Op()->Inputs().at(input_name);
   std::vector<std::string> unique_var_names;
-  for (unsigned i = 0; i < var_names.size(); i++)
-    if (std::find(unique_var_names.begin(),
-                  unique_var_names.end(),
-                  var_names[i]) == unique_var_names.end())
-      unique_var_names.push_back(var_names[i]);
+  for (auto& var_name : var_names)
+    if (std::find(unique_var_names.begin(), unique_var_names.end(), var_name) ==
+        unique_var_names.end())
+      unique_var_names.push_back(var_name);
 
   auto output = op->outputs[0];
   PADDLE_ENFORCE_GE(inputs.size(),
@@ -435,7 +434,7 @@ bool CPUQuantizePass::IsOpQuantized(const Node* node) const {
 }
 
 void CPUQuantizePass::GetQuantInfo(Graph* graph) const {
-  GetInfoFromTheFirstOp(
+  GetInfoFromTheTmpOp(
       graph, "has_quant_info", "var_quant_scales", var_quant_scales_);
 }
 
@@ -453,7 +452,7 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
     VLOG(4) << "Quantize conv2d op";
     GET_IR_NODE_FROM_SUBGRAPH(conv_op, conv_op, conv_pattern);
     if (conv_op->Op()->Type() == "conv2d") {
-      conv_op->Op()->SetType("fused_conv2d");
+      ConvertToFusedOp(conv_op->Op());
     }
 
     // skip if should not be quantized
@@ -547,16 +546,6 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
                        "Scale_out");
     } else {
       conv_op->Op()->SetAttr("force_fp32_output", true);
-    }
-
-    // change threshold in bounded ReLu
-    if (conv_op->Op()->GetAttrIfExists<std::string>("fuse_activation") ==
-        "relu6") {
-      float scale_out =
-          PADDLE_GET_CONST(float, conv_op->Op()->GetAttr("Scale_out"));
-      float threshold =
-          PADDLE_GET_CONST(float, conv_op->Op()->GetAttr("fuse_alpha"));
-      conv_op->Op()->SetAttr("fuse_alpha", scale_out * threshold);
     }
 
     ++quantize_conv_count;
@@ -725,9 +714,9 @@ void CPUQuantizePass::QuantizeConcat(Graph* graph) const {
     // if all inputs were unsigned, then the output was set to unsigned
     // during the scale calculation step
     auto inputs = concat_op->inputs;
-    for (size_t i = 0; i < inputs.size(); i++) {
-      if (AreScalesPresentForVarNames({inputs[i]->Name()})) {
-        auto scale_data = GetScaleDataByName(inputs[i]->Name());
+    for (auto& input : inputs) {
+      if (AreScalesPresentForVarNames({input->Name()})) {
+        auto scale_data = GetScaleDataByName(input->Name());
         if (scale_data.first == false) {
           are_all_inputs_unsigned = false;
           break;
@@ -880,7 +869,7 @@ void CPUQuantizePass::QuantizeImmutable(Graph* graph,
 void CPUQuantizePass::QuantizeMatmul(Graph* graph, bool with_residual) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
-  patterns::MatmulWithInputOps matmul_pattern{pattern, name_scope_};
+  patterns::FusedMatmul matmul_pattern{pattern, name_scope_};
   matmul_pattern(with_residual);
 
   int quantize_matmul_count = 0;
@@ -894,15 +883,7 @@ void CPUQuantizePass::QuantizeMatmul(Graph* graph, bool with_residual) const {
       LogQuantizationDisabled(matmul_op);
       return;
     }
-    GET_IR_NODE_FROM_SUBGRAPH(prev_op_x, prev_op_x, matmul_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(prev_op_y, prev_op_y, matmul_pattern);
 
-    // skip if prev ops are not quantized
-    if (!IsOpDequantized(prev_op_x) && !IsOpDequantized(prev_op_y)) {
-      MarkAndLogCannotQuantizeOp(matmul_op,
-                                 "No other quantizable operators nearby");
-      return;
-    }
     GET_IR_NODE_FROM_SUBGRAPH(matmul_in_x, matmul_in_x, matmul_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_in_y, matmul_in_y, matmul_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_out, matmul_out, matmul_pattern);
@@ -1041,7 +1022,6 @@ void CPUQuantizePass::QuantizeElementwise(
     auto input_x_scale = GetScaleValueForNode(elementwise_x, &is_x_unsigned);
     auto input_y_scale = GetScaleValueForNode(elementwise_y, &is_y_unsigned);
 
-    // TODO(sfraczek): add support for different signness
     if (is_x_unsigned != is_y_unsigned) {
       MarkAndLogCannotQuantizeOp(
           elementwise_op, "Elementwise inputs must be of the same type.");
@@ -1054,14 +1034,14 @@ void CPUQuantizePass::QuantizeElementwise(
                   "X",
                   input_x_scale,
                   is_x_unsigned,
-                  "Scale_x");
+                  "scale_x");
     QuantizeInput(g,
                   elementwise_op,
                   elementwise_y,
                   "Y",
                   input_y_scale,
                   is_y_unsigned,
-                  "Scale_y");
+                  "scale_y");
 
     bool is_output_unsigned{false};
     auto output_scale =
@@ -1073,7 +1053,7 @@ void CPUQuantizePass::QuantizeElementwise(
                      "Out",
                      output_scale,
                      is_output_unsigned,
-                     "Scale_out");
+                     "scale_out");
 
     ++quantize_elementwise_count;
   };
@@ -1259,6 +1239,10 @@ void CPUQuantizePass::QuantizeFusionLSTM(Graph* graph) const {
     bool is_x_unsigned{false};
     auto input_x_scale = GetScaleValueForNode(x, &is_x_unsigned);
 
+    // In the QAT process scales are prepared for only int8 data type,
+    // lstm scales should behave as input is int8 to get correct accuracy
+    is_x_unsigned = false;
+
     double input_x_shift{128.};
     if (is_x_unsigned) input_x_shift = 0.;
 
@@ -1314,14 +1298,14 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizeMatmul(graph, false /* with_residual_data */);
   QuantizeMatmul(graph, true /* with_residual_data */);
   QuantizeImmutable(graph, "reshape2", "X");
-  QuantizeImmutable(graph, "transpose2", "X");
+  QuantizeImmutable(graph, "fused_transpose", "X");
   QuantizeImmutable(graph, "slice", "Input");
   QuantizeImmutable(graph, "nearest_interp", "X");
   QuantizeImmutable(graph, "nearest_interp_v2", "X");
   QuantizeImmutable(graph, "split", "X");
-  QuantizeElementwise(graph, "elementwise_add");
-  QuantizeElementwise(graph, "elementwise_mul");
-  QuantizeElementwise(graph, "elementwise_sub");
+  QuantizeElementwise(graph, "fused_elementwise_add");
+  QuantizeElementwise(graph, "fused_elementwise_mul");
+  QuantizeElementwise(graph, "fused_elementwise_sub");
   QuantizeFusionGru(graph);
   QuantizeMultiGru(graph);
   QuantizeFusionLSTM(graph);

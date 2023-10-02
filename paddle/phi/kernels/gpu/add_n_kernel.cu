@@ -14,42 +14,27 @@
 
 #include "paddle/phi/kernels/add_n_kernel.h"
 
-#include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/impl/add_n_kernel_impl.h"
 namespace phi {
 
 #define CEIL_DIV(x, y) (((x) + (y)-1) / (y))
 
 template <class T>
-__global__ void Sum2CUDAKernel(const T *in_0,
-                               const T *in_1,
-                               T *out,
-                               int64_t N) {
-  int id = blockIdx.x * blockDim.x + threadIdx.x;
-  while (id < N) {
-    out[id] = in_0[id] + in_1[id];
-    id += blockDim.x * gridDim.x;
-  }
-}
-
-template <class T>
 __global__ void SumArrayCUDAKernel(
     T **in, T *out, int64_t N, size_t in_size, bool read_dst) {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  int id = blockIdx.x * blockDim.x + threadIdx.x;
-  while (id < N) {
-    MPType total(read_dst ? static_cast<MPType>(out[id])
+  CUDA_KERNEL_LOOP_TYPE(idx, N, int64_t) {
+    MPType total(read_dst ? static_cast<MPType>(out[idx])
                           : static_cast<MPType>(0));
     for (int i = 0; i < in_size; ++i) {
       const T *tmp = in[i];
       if (tmp) {
-        total += static_cast<MPType>(tmp[id]);
+        total += static_cast<MPType>(tmp[idx]);
       }
     }
-    out[id] = static_cast<T>(total);
-    id += blockDim.x * gridDim.x;
+    out[idx] = static_cast<T>(total);
   }
 }
 
@@ -57,16 +42,14 @@ template <class T>
 __global__ void SumSelectedRowsCUDAKernel(T **sr_in_out,
                                           int64_t N,
                                           size_t rows) {
-  int id = blockIdx.x * blockDim.x + threadIdx.x;
-  while (id < N) {
+  CUDA_KERNEL_LOOP_TYPE(idx, N, int64_t) {
     for (int i = 0; i < 2 * rows; i += 2) {
       const T *tmp = sr_in_out[i];
       T *tmp_out = sr_in_out[i + 1];
       if (tmp && tmp_out) {
-        tmp_out[id] += tmp[id];
+        tmp_out[idx] += tmp[idx];
       }
     }
-    id += blockDim.x * gridDim.x;
   }
 }
 
@@ -75,6 +58,13 @@ void AddNKernel(const Context &dev_ctx,
                 const std::vector<const TensorBase *> &x,
                 DenseTensor *out) {
   const size_t in_num = x.size();
+  for (int i = 0; i < in_num; ++i) {
+    PADDLE_ENFORCE_EQ(
+        x[i]->initialized(),
+        true,
+        phi::errors::InvalidArgument(
+            "This argument is invalid, %d-th tensor is uninitialized.", i));
+  }
 
   constexpr size_t theory_sm_threads = 1024;
   auto stream = dev_ctx.stream();
@@ -198,15 +188,15 @@ void AddNKernel(const Context &dev_ctx,
       }
     }
     if (!sr_in_out_data.empty()) {
-      auto tmp_sr_in_out_array = paddle::memory::Alloc(
+      auto tmp_sr_in_out_array = phi::memory_utils::Alloc(
           dev_ctx.GetPlace(), sr_in_out_data.size() * sizeof(T *));
 
-      paddle::memory::Copy(dev_ctx.GetPlace(),
-                           tmp_sr_in_out_array->ptr(),
-                           phi::CPUPlace(),
-                           reinterpret_cast<void *>(sr_in_out_data.data()),
-                           sr_in_out_data.size() * sizeof(T *),
-                           dev_ctx.stream());
+      memory_utils::Copy(dev_ctx.GetPlace(),
+                         tmp_sr_in_out_array->ptr(),
+                         phi::CPUPlace(),
+                         reinterpret_cast<void *>(sr_in_out_data.data()),
+                         sr_in_out_data.size() * sizeof(T *),
+                         dev_ctx.stream());
 
       T **sr_in_out_array_data =
           reinterpret_cast<T **>(tmp_sr_in_out_array->ptr());
@@ -219,15 +209,15 @@ void AddNKernel(const Context &dev_ctx,
   }
   // if indata not null, merge into one kernel call.
   if (!in_data.empty()) {
-    auto tmp_in_array =
-        paddle::memory::Alloc(dev_ctx.GetPlace(), in_data.size() * sizeof(T *));
+    auto tmp_in_array = phi::memory_utils::Alloc(dev_ctx.GetPlace(),
+                                                 in_data.size() * sizeof(T *));
 
-    paddle::memory::Copy(dev_ctx.GetPlace(),
-                         tmp_in_array->ptr(),
-                         phi::CPUPlace(),
-                         reinterpret_cast<void *>(in_data.data()),
-                         in_data.size() * sizeof(T *),
-                         dev_ctx.stream());
+    memory_utils::Copy(dev_ctx.GetPlace(),
+                       tmp_in_array->ptr(),
+                       phi::CPUPlace(),
+                       reinterpret_cast<void *>(in_data.data()),
+                       in_data.size() * sizeof(T *),
+                       dev_ctx.stream());
 
     T **in_array_data = reinterpret_cast<T **>(tmp_in_array->ptr());
     ComputeKernelParameter(lod_length);

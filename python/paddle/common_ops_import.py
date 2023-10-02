@@ -11,30 +11,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import paddle.fluid as fluid  # noqa: F401
-from paddle.fluid import core, dygraph_utils  # noqa: F401
-from paddle.fluid.core import VarDesc  # noqa: F401
-from paddle.fluid.data_feeder import (  # noqa: F401
+from paddle import base  # noqa: F401
+from paddle.base import core, dygraph_utils  # noqa: F401
+from paddle.base.core import VarDesc  # noqa: F401
+from paddle.base.data_feeder import (  # noqa: F401
     check_dtype,
     check_type,
     check_variable_and_dtype,
     convert_dtype,
 )
-from paddle.fluid.framework import (  # noqa: F401
+from paddle.base.framework import (  # noqa: F401
     OpProtoHolder,
     Variable,
+    _create_tensor,
     _dygraph_tracer,
-    _non_static_mode,
-    _varbase_creator,
     convert_np_dtype_to_dtype_,
     default_main_program,
     device_guard,
     dygraph_only,
     in_dygraph_mode,
 )
-from paddle.fluid.layer_helper import LayerHelper  # noqa: F401
-from paddle.fluid.layers import fill_constant, utils  # noqa: F401
-from paddle.fluid.layers.layer_function_generator import (  # noqa: F401
+from paddle.base.layer_helper import LayerHelper  # noqa: F401
+from paddle.base.layers.layer_function_generator import (  # noqa: F401
     templatedoc,
 )
-from paddle.fluid.param_attr import ParamAttr  # noqa: F401
+from paddle.base.param_attr import ParamAttr  # noqa: F401

@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/batch_norm_kernel.h"
 
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -73,10 +72,10 @@ void BatchNormKernel(const Context& ctx,
           "The size of input X's dimensions should be less than 6."
           "But received: the size of input X's dimensionss is [%d]",
           x_dims.size()));
-  const int N = x_dims[0];
-  const int C = (data_layout == DataLayout::kNCHW ? x_dims[1]
-                                                  : x_dims[x_dims.size() - 1]);
-  const int sample_size = x.numel() / N / C;
+  const int N = static_cast<int>(x_dims[0]);
+  const int C = static_cast<int>(
+      data_layout == DataLayout::kNCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
+  const int sample_size = static_cast<int>(x.numel() / N / C);
 
   // alloc memory
   ctx.template Alloc<T>(y);
@@ -106,7 +105,7 @@ void BatchNormKernel(const Context& ctx,
     if ((N * sample_size) == 1) {
       // Only 1 element in normalization dimension,
       // we skip the batch norm calculation, let y = x.
-      paddle::framework::TensorCopy(x, ctx.GetPlace(), y);
+      phi::Copy(ctx, x, ctx.GetPlace(), false, y);
       return;
     }
 

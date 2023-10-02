@@ -146,6 +146,18 @@ class TopkGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+class TopkInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext* ctx) const override {
+    ctx->SyncTypeAndDataType("X", "Out");
+    if (ctx->HasInput("K")) {
+      ctx->SyncTypeAndDataType("K", "Indices");
+    } else {
+      ctx->SetOutputDataType("Indices", framework::proto::VarType::INT32);
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -153,6 +165,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(top_k,
                   ops::TopkOp,
                   ops::TopkOpMaker,
+                  ops::TopkInferVarType,
                   ops::TopkGradOpMaker<paddle::framework::OpDesc>,
                   ops::TopkGradOpMaker<paddle::imperative::OpBase>);
 

@@ -24,16 +24,21 @@ namespace phi {
 
 template <typename T>
 class LogSoftmaxOneDNNHandler
-    : public funcs::OneDNNHandlerNoCachingT<T, dnnl::logsoftmax_forward> {
+    : public funcs::OneDNNHandlerNoCachingT<T, dnnl::softmax_forward> {
  public:
   LogSoftmaxOneDNNHandler(const dnnl::engine onednn_engine,
                           Place cpu_place,
                           const DenseTensor& x,
                           const int axis)
-      : funcs::OneDNNHandlerNoCachingT<T, dnnl::logsoftmax_forward>(
-            onednn_engine, cpu_place) {
-    this->AcquireForwardPrimitiveDescriptor(
-        dnnl::prop_kind::forward_inference, x.mem_desc(), axis);
+      : funcs::OneDNNHandlerNoCachingT<T, dnnl::softmax_forward>(onednn_engine,
+                                                                 cpu_place) {
+    const int rank = x.dims().size() != 0 ? x.dims().size() : 1;
+    const int canonical_axis = funcs::CanonicalAxis(axis, rank);
+    this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_inference,
+                                            dnnl::algorithm::softmax_log,
+                                            x.mem_desc(),
+                                            x.mem_desc(),
+                                            canonical_axis);
   }
 };
 
@@ -43,7 +48,6 @@ void LogSoftmaxKernel(const Context& dev_ctx,
                       int axis,
                       DenseTensor* out) {
   const auto& onednn_engine = dev_ctx.GetEngine();
-  axis = axis >= 0 ? axis : x.dims().size() + axis;
 
   LogSoftmaxOneDNNHandler<T> handler(
       onednn_engine, dev_ctx.GetPlace(), x, axis);

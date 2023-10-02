@@ -35,21 +35,20 @@ def batch(reader, batch_size, drop_last=False):
     Examples:
         .. code-block:: python
 
-            import paddle
-            def reader():
-                for i in range(10):
-                    yield i
-            batch_reader = paddle.batch(reader, batch_size=2)
+            >>> import paddle
+            >>> def reader():
+            ...     for i in range(10):
+            ...         yield i
+            >>> batch_reader = paddle.batch(reader, batch_size=2)
 
-            for data in batch_reader():
-                print(data)
-
-            # Output is
-            # [0, 1]
-            # [2, 3]
-            # [4, 5]
-            # [6, 7]
-            # [8, 9]
+            >>> for data in batch_reader():
+            ...     print(data)
+            ...
+            [0, 1]
+            [2, 3]
+            [4, 5]
+            [6, 7]
+            [8, 9]
     """
 
     def batch_reader():
@@ -67,8 +66,8 @@ def batch(reader, batch_size, drop_last=False):
     batch_size = int(batch_size)
     if batch_size <= 0:
         raise ValueError(
-            "batch_size should be a positive integeral value, "
-            "but got batch_size={}".format(batch_size)
+            "batch_size should be a positive integer value, "
+            f"but got batch_size={batch_size}"
         )
 
     return batch_reader

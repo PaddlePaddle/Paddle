@@ -14,9 +14,9 @@
 
 #pragma once
 
+#include "paddle/phi/core/macros.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
-
 namespace phi {
 namespace funcs {
 
@@ -41,7 +41,7 @@ struct FrobeniusNormGradFunctor {
                   DX* dx,
                   DY* dy,
                   const Dim& dim,
-                  int size) {
+                  int size UNUSED) {
     dx->device(place) = y->broadcast(dim);
     dx->device(place) = *dx + dx->constant(1e-12f);
     dx->device(place) = (*x / *dx) * (dy->broadcast(dim));
@@ -112,8 +112,8 @@ struct MeanGradFunctor {
             typename DY,
             typename Dim>
   void operator()(const DeviceContext& place,
-                  X* x,
-                  Y* y,
+                  X* x UNUSED,
+                  Y* y UNUSED,
                   DX* dx,
                   DY* dy,
                   const Dim& dim,
@@ -130,12 +130,12 @@ struct SumGradFunctor {
             typename DY,
             typename Dim>
   void operator()(const DeviceContext& place,
-                  X* x,
-                  Y* y,
+                  X* x UNUSED,
+                  Y* y UNUSED,
                   DX* dx,
                   DY* dy,
                   const Dim& dim,
-                  int size) {
+                  int size UNUSED) {
     dx->device(place) = dy->broadcast(dim);
   }
 };
@@ -153,7 +153,7 @@ struct ProdGradFunctor {
                   DX* dx,
                   DY* dy,
                   const Dim& dim,
-                  int size) {
+                  int size UNUSED) {
     dx->device(place) = dy->broadcast(dim) * y->broadcast(dim) * x->inverse();
   }
 };
@@ -171,7 +171,7 @@ struct MaxOrMinGradFunctor {
                   DX* dx,
                   DY* dy,
                   const Dim& dim,
-                  int size) {
+                  int size UNUSED) {
     auto equals = (*x) == y->broadcast(dim);
     auto ones = dx->constant(1);
     auto zeros = dx->constant(0);
@@ -258,7 +258,7 @@ struct AMaxOrAMinGradFunctor {
     // reduce_all
     if (size == static_cast<int>(x_numel)) {
       auto equal_number = mask.sum()
-                              .reshape(Eigen::array<int, 1>({1}))
+                              .reshape(Eigen::array<int, 1>({{1}}))
                               .broadcast(Eigen::array<int, 1>({size}));
       dx->device(place) =
           dy->broadcast(dim).reshape(x->dimensions()) * mask / equal_number;

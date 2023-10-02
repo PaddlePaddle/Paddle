@@ -19,7 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/phi_utils.h"
 
 // only can include the headers in paddle/phi/api dirs
-#include "paddle/phi/api/lib/utils/tensor_utils.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -27,7 +28,6 @@ limitations under the License. */
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/reshape_grad_kernel.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
-
 namespace paddle {
 namespace framework {
 class InferShapeContext;
@@ -96,7 +96,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
                   i,
                   in_dims.size(),
                   in_dims));
-          infer_shape[i] = in_dims[i];
+          infer_shape[i] = static_cast<int>(in_dims[static_cast<int>(i)]);
         }
       }
       auto infer_out_dims = phi::make_ddim(infer_shape);
@@ -109,7 +109,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
       auto shape_dims = ctx->GetInputDim("Shape");
       int num_ele = 1;
       for (int i = 0; i < shape_dims.size(); ++i) {
-        num_ele *= shape_dims[i];
+        num_ele *= static_cast<int>(shape_dims[i]);
       }
       auto vec_dims = std::vector<int>(num_ele, -1);
       auto out_dims = phi::make_ddim(vec_dims);
@@ -160,7 +160,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
                 "be -1. But received shape = [%s], shape[%d] is also -1.",
                 phi::make_ddim(shape),
                 i));
-        unk_dim_idx = i;
+        unk_dim_idx = static_cast<int>(i);
       } else if (shape[i] == copy_dim_val) {
         PADDLE_ENFORCE_LT(
             static_cast<int>(i),
@@ -189,9 +189,9 @@ class ReshapeOp : public framework::OperatorWithKernel {
 
       // NOTE all non-zero values will be converted to True (include negative
       // value)
-      capacity *= (shape[i] ? shape[i] : in_dims[i]);
-      output_shape[i] =
-          (shape[i] ? static_cast<int64_t>(shape[i]) : in_dims[i]);
+      capacity *= (shape[i] ? shape[i] : in_dims[static_cast<int>(i)]);
+      output_shape[i] = (shape[i] ? static_cast<int64_t>(shape[i])
+                                  : in_dims[static_cast<int>(i)]);
     }
 
     if (unk_dim_idx != -1) {
@@ -391,7 +391,7 @@ class ReshapeKernel {
     auto *shape_tensor =
         ctx.HasInput("Shape") ? ctx.Input<phi::DenseTensor>("Shape") : nullptr;
     phi::IntArray pt_scalar_shape;
-    if (list_new_shape_tensor.size() > 0) {
+    if (!list_new_shape_tensor.empty()) {
       // have shape tensor
       std::vector<phi::DenseTensor> pt_vec_shape;
       for (auto &tensor : list_new_shape_tensor) {
@@ -572,6 +572,25 @@ class Reshape2GradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+class Reshape2CompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    // We prefer to use x.shape instead of using xshape, this is different from
+    // PHI definition.
+    paddle::Tensor x = this->GetSingleForwardInput("X");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::Tensor dx = this->GetSingleInputGrad("X");
+
+    auto *dx_ptr = this->GetOutputPtr(&dx);
+    std::string dx_name = this->GetOutputName(dx);
+    VLOG(6) << "Runing reshape2_grad composite func";
+    prim::reshape_grad<prim::DescTensor>(x, out_grad, dx_ptr);
+    this->RecoverOutputName(dx, dx_name);
+  }
+};
+
 template <typename T>
 class Reshape2DoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
@@ -664,6 +683,13 @@ class Reshape2DoubleGradOp : public framework::OperatorWithKernel {
   }
 };
 
+class Reshape2InferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    ctx->SyncTypeAndDataType("X", "Out");
+  }
+};
+
 DECLARE_INPLACE_OP_INFERER(ReshapeOpInplaceInferer, {"X", "Out"});
 DECLARE_INPLACE_OP_INFERER(ReshapeGradInplaceInferer,
                            {framework::GradVarName("Out"),
@@ -716,6 +742,8 @@ REGISTER_OPERATOR(reshape2,
                   ops::Reshape2OpMaker,
                   ops::Reshape2GradMaker<paddle::framework::OpDesc>,
                   ops::Reshape2GradMaker<paddle::imperative::OpBase>,
+                  ops::Reshape2InferVarType,
+                  ops::Reshape2CompositeGradOpMaker,
                   ops::ReshapeOpInplaceInferer);
 REGISTER_OPERATOR(reshape2_grad,
                   ops::Reshape2GradOp,

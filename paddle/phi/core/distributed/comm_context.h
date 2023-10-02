@@ -24,6 +24,9 @@ class CommContext {
   CommContext(int rank, int size) : rank_(rank), size_(size) {}
   virtual ~CommContext() = default;
 
+  int GetRank() const { return rank_; }
+  int GetSize() const { return size_; }
+
  protected:
   int rank_;
   int size_;

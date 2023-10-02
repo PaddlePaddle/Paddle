@@ -28,6 +28,8 @@ class InterpreterCoreNoEventGarbageCollector
   ~InterpreterCoreNoEventGarbageCollector();
   void Add(Variable* var, const Instruction& instr) override;
 
+  void Add(Variable* var, const InstructionBase* instr) override;
+
  private:
   void Add(Variable* var, const platform::DeviceContext* ctx);
   void Add(Garbage garbage, const platform::DeviceContext* ctx);

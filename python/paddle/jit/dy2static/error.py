@@ -203,9 +203,7 @@ class ErrorData:
         func_str = None
         for frame in tb:
             searched_name = re.search(
-                r'({module})*{name}'.format(
-                    module=RE_PYMODULE, name=frame.name
-                ),
+                fr'({RE_PYMODULE})*{frame.name}',
                 error_line,
             )
             if searched_name:
@@ -245,12 +243,18 @@ class ErrorData:
 
         # Simplify error value to improve readability if error is raised in runtime
         if self.in_runtime:
-            if int(
-                os.getenv(SIMPLIFY_ERROR_ENV_NAME, DEFAULT_SIMPLIFY_NEW_ERROR)
-            ):
-                self._simplify_error_value()
-            message_lines.append(str(self.error_value))
-            return '\n'.join(message_lines)
+            try:
+                if int(
+                    os.getenv(
+                        SIMPLIFY_ERROR_ENV_NAME, DEFAULT_SIMPLIFY_NEW_ERROR
+                    )
+                ):
+                    self._simplify_error_value()
+            except:
+                pass
+            else:
+                message_lines.append(str(self.error_value))
+                return '\n'.join(message_lines)
 
         # Step2: Optimizes stack information with source code information of dygraph from user.
         user_code_traceback_index = []
@@ -333,9 +337,7 @@ class ErrorData:
                 for suggestion in self.suggestion_dict[keywords]:
                     suggestion_msg = (
                         ' ' * BLANK_COUNT_BEFORE_FILE_STR * 2
-                        + '{}. {}'.format(
-                            str(len(revise_suggestions) - 1), suggestion
-                        )
+                        + f'{str(len(revise_suggestions) - 1)}. {suggestion}'
                     )
                     revise_suggestions.append(suggestion_msg)
         return revise_suggestions if len(revise_suggestions) > 2 else []

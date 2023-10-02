@@ -24,7 +24,7 @@ class LayerNormShiftPartitionOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(4) << "convert a fluid layernorm_shift_partition op to tensorrt "
+    VLOG(4) << "convert a layernorm_shift_partition op to tensorrt "
                "layernorm_shift_partition plugin";
     framework::OpDesc op_desc(op, nullptr);
 

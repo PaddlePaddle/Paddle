@@ -21,6 +21,8 @@
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/pir/core/program.h"
+#include "paddle/pir/core/value.h"
 
 namespace paddle {
 namespace jit {
@@ -49,7 +51,7 @@ void InterpreterEngine::CreateInterpreterCore() {
   auto pass =
       framework::ir::PassRegistry::Instance().Get("delete_dropout_op_x_pass");
   pass->Apply(&graph);
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   auto mkldnn_pass =
       framework::ir::PassRegistry::Instance().Get("mkldnn_placement_pass");
   mkldnn_pass->Set("mkldnn_enabled_op_types",
@@ -59,18 +61,17 @@ void InterpreterEngine::CreateInterpreterCore() {
 
   GraphToProgram(graph, &converted_prog_, nullptr);
 
+  framework::interpreter::ExecutionConfig execution_config;
+  execution_config.create_local_scope = false;
+  execution_config.used_for_jit = true;
+
   auto in_names = info_->InputArgNames();
   auto out_names = info_->OutputArgNames();
-  std::set<std::string> skip_gc_vars;
-  skip_gc_vars.insert(in_names.begin(), in_names.end());
-  skip_gc_vars.insert(out_names.begin(), out_names.end());
+  execution_config.skip_gc_vars.insert(in_names.begin(), in_names.end());
+  execution_config.skip_gc_vars.insert(out_names.begin(), out_names.end());
 
-  inner_interpreter_ =
-      std::make_shared<InterpreterCore>(place_,
-                                        converted_prog_.Block(0),
-                                        /*skip_gc_vars=*/skip_gc_vars,
-                                        &scope_,
-                                        /*used_for_jit=*/true);
+  inner_interpreter_ = std::make_shared<InterpreterCore>(
+      place_, converted_prog_.Block(0), &scope_, execution_config);
 }
 
 std::vector<Tensor> InterpreterEngine::operator()(

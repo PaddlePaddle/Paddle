@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/operators/py_func_op.h"
 
+#include <array>
 #include <memory>
 #include <set>
 #include <string>
@@ -30,9 +31,9 @@ namespace py = ::pybind11;
 
 static std::vector<py::object> g_py_callables;
 
-const char kForwardPythonCallableId[] = "forward_callable_id";
-const char kBackwardPythonCallableId[] = "backward_callable_id";
-const char kPyFuncBackwardSkipVars[] = "backward_skip_vars";
+std::array<const char, 20> kForwardPythonCallableId = {"forward_callable_id"};
+std::array<const char, 21> kBackwardPythonCallableId = {"backward_callable_id"};
+std::array<const char, 19> kPyFuncBackwardSkipVars = {"backward_skip_vars"};
 
 size_t AppendPythonCallableObjectAndReturnId(const py::object &py_obj) {
   g_py_callables.emplace_back(py_obj);
@@ -144,11 +145,12 @@ class PyFuncOpVarTypeInference : public framework::StaticGraphVarTypeInference {
                                           has_out));
 
     PADDLE_ENFORCE_GE(
-        PADDLE_GET_CONST(int, ctx->GetAttr(kForwardPythonCallableId)),
+        PADDLE_GET_CONST(int, ctx->GetAttr(kForwardPythonCallableId.data())),
         0,
         platform::errors::InvalidArgument(
             "Function id cannot be less than 0, but received value is %d.",
-            PADDLE_GET_CONST(int, ctx->GetAttr(kForwardPythonCallableId))));
+            PADDLE_GET_CONST(int,
+                             ctx->GetAttr(kForwardPythonCallableId.data()))));
 
     if (!has_out) return;
 
@@ -200,13 +202,13 @@ class PyFuncOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "Inputs of py_func op.").AsDuplicable();
     AddOutput("Out", "Outputs of py_func op").AsDuplicable();
-    AddAttr<int>(kForwardPythonCallableId,
+    AddAttr<int>(kForwardPythonCallableId.data(),
                  "Index of registered forward Python function.")
         .SetDefault(0);
-    AddAttr<int>(kBackwardPythonCallableId,
+    AddAttr<int>(kBackwardPythonCallableId.data(),
                  "Index of registered backward Python function.")
         .SetDefault(-1);
-    AddAttr<std::vector<std::string>>(kPyFuncBackwardSkipVars,
+    AddAttr<std::vector<std::string>>(kPyFuncBackwardSkipVars.data(),
                                       "Unused forward in/out in backward op")
         .SetDefault(std::vector<std::string>());
     AddComment(R"DOC("PyFunc Op")DOC");
@@ -241,7 +243,8 @@ class PyFuncOpGradDescMaker : public framework::GradOpDescMakerBase {
   std::vector<std::unique_ptr<framework::OpDesc>> operator()() const override {
     auto &fwd_attrs = Attrs();
     // no backward op when backward_id is less than 0
-    if (PADDLE_GET_CONST(int, fwd_attrs.at(kBackwardPythonCallableId)) < 0) {
+    if (PADDLE_GET_CONST(int, fwd_attrs.at(kBackwardPythonCallableId.data())) <
+        0) {
       return {};
     }
 
@@ -249,9 +252,9 @@ class PyFuncOpGradDescMaker : public framework::GradOpDescMakerBase {
     grad_op->SetType("py_func");
 
     framework::AttributeMap bwd_attrs;
-    bwd_attrs[kForwardPythonCallableId] =
-        fwd_attrs.at(kBackwardPythonCallableId);
-    bwd_attrs[kBackwardPythonCallableId] = -1;
+    bwd_attrs[kForwardPythonCallableId.data()] =
+        fwd_attrs.at(kBackwardPythonCallableId.data());
+    bwd_attrs[kBackwardPythonCallableId.data()] = -1;
     grad_op->SetAttrMap(bwd_attrs);
 
     // All forward inputs
@@ -262,7 +265,7 @@ class PyFuncOpGradDescMaker : public framework::GradOpDescMakerBase {
     // For memory reused, some inputs/output in forward part may be not needed
     // in backward part. Skipping these vars helps to save memory
     auto &backward_skip_var_list = PADDLE_GET_CONST(
-        std::vector<std::string>, fwd_attrs.at(kPyFuncBackwardSkipVars));
+        std::vector<std::string>, fwd_attrs.at(kPyFuncBackwardSkipVars.data()));
     std::unordered_set<std::string> backward_skip_var_set(
         backward_skip_var_list.begin(), backward_skip_var_list.end());
     std::vector<std::string> bwd_ins;
@@ -336,7 +339,8 @@ class PyFuncOp : public framework::OperatorBase {
       outputs[i] = out_var ? out_var->GetMutable<phi::DenseTensor>() : nullptr;
     }
 
-    auto callable_id = static_cast<size_t>(Attr<int>(kForwardPythonCallableId));
+    auto callable_id =
+        static_cast<size_t>(Attr<int>(kForwardPythonCallableId.data()));
     auto *py_callable = GetPythonCallableObject(callable_id);
     VLOG(10) << "Call Python function with id " << callable_id << ": "
              << PythonFuncDebugString(*py_callable);

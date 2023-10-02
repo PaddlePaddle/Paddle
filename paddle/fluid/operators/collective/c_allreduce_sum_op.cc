@@ -56,6 +56,8 @@ class CAllReduceSumOpMaker : public CAllReduceOpMaker {
 
 DECLARE_INPLACE_OP_INFERER(AllreduceSumInplaceInferer, {"X", "Out"});
 
+DEFINE_C_ALLREDUCE_CPU_KERNEL(CAllReduceSum, kRedSum)
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -67,9 +69,12 @@ REGISTER_OP_WITHOUT_GRADIENT(c_allreduce_sum,
                              ops::CAllReduceSumOpMaker,
                              ops::AllreduceSumInplaceInferer)
 
-REGISTER_OP_CPU_KERNEL(c_allreduce_sum,
-                       ops::CAllReduceOpCPUKernel<ops::kRedSum, float>,
-                       ops::CAllReduceOpCPUKernel<ops::kRedSum, double>,
-                       ops::CAllReduceOpCPUKernel<ops::kRedSum, int>,
-                       ops::CAllReduceOpCPUKernel<ops::kRedSum, int64_t>,
-                       ops::CAllReduceOpCPUKernel<ops::kRedSum, plat::float16>)
+PD_REGISTER_STRUCT_KERNEL(c_allreduce_sum,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CAllReduceSumCPUKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

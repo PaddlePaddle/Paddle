@@ -206,6 +206,6 @@ REGISTER_OPERATOR(
     ops::FCOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(fc,
-                       ops::FCOpKernel<phi::CPUContext, float>,
-                       ops::FCOpKernel<phi::CPUContext, double>);
+
+PD_REGISTER_STRUCT_KERNEL(fc, CPU, ALL_LAYOUT, ops::FCOpKernel, float, double) {
+}

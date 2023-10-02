@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
-#include "paddle/fluid/platform/transform.h"
+#include "paddle/phi/common/transform.h"
 
 #if defined(PADDLE_WITH_XPU)
 #include "paddle/fluid/platform/device/device_wrapper.h"
@@ -94,7 +94,7 @@ struct CastDataType {
     auto* out_begin = out_->mutable_data<OutType>(in_.place());
 
     if (platform::is_cpu_place(in_.place())) {
-      platform::Transform<phi::CPUContext> trans;
+      phi::Transform<phi::CPUContext> trans;
       auto* context = static_cast<const phi::CPUContext*>(ctx_);
       trans(*context,
             in_begin,
@@ -103,7 +103,7 @@ struct CastDataType {
             CastDataTypeFunctor<InType, OutType>());
 #if defined(__NVCC__) || defined(__HIPCC__)
     } else if (platform::is_gpu_place(in_.place())) {
-      platform::Transform<phi::GPUContext> trans;
+      phi::Transform<phi::GPUContext> trans;
       auto* context = static_cast<const phi::GPUContext*>(ctx_);
       trans(*context,
             in_begin,
@@ -114,7 +114,7 @@ struct CastDataType {
 #endif
 #if defined(PADDLE_WITH_IPU)
     } else if (platform::is_ipu_place(in_.place())) {
-      platform::Transform<phi::CPUContext> trans;
+      phi::Transform<phi::CPUContext> trans;
       auto* context = static_cast<const phi::CPUContext*>(ctx_);
       trans(*context,
             in_begin,

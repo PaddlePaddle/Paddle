@@ -361,7 +361,7 @@ static inline void GetPaddings(int* paddings,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class Pad2dCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -489,7 +489,7 @@ class Pad2dCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class Pad2dGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -618,13 +618,19 @@ class Pad2dGradCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(pad2d,
-                        ops::Pad2dCUDAKernel<plat::float16>,
-                        ops::Pad2dCUDAKernel<float>,
-                        ops::Pad2dCUDAKernel<double>,
-                        ops::Pad2dCUDAKernel<int>,
-                        ops::Pad2dCUDAKernel<int64_t>);
-REGISTER_OP_CUDA_KERNEL(pad2d_grad,
-                        ops::Pad2dGradCUDAKernel<plat::float16>,
-                        ops::Pad2dGradCUDAKernel<float>,
-                        ops::Pad2dGradCUDAKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(pad2d,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::Pad2dCUDAKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}
+PD_REGISTER_STRUCT_KERNEL(pad2d_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::Pad2dGradCUDAKernel,
+                          float,
+                          double,
+                          plat::float16) {}

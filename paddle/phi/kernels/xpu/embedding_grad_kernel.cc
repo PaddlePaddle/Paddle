@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/embedding_grad_kernel.h"
 
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/embedding_util.h"
 
@@ -99,11 +99,11 @@ void EmbeddingSparseGradKernel(const Context& ctx,
     int r = xpu::cast<int32_t, int64_t>(
         ctx.x_context(), input.data<int>(), id_t, input.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
-    paddle::memory::Copy(CPUPlace(),
-                         ids_cpu.data(),
-                         input.place(),
-                         id_t,
-                         sizeof(int64_t) * input.numel());
+    memory_utils::Copy(CPUPlace(),
+                       ids_cpu.data(),
+                       input.place(),
+                       id_t,
+                       sizeof(int64_t) * input.numel());
     ids = CopyIdsToVector<int, int64_t>(ids_cpu);
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
@@ -140,11 +140,11 @@ void EmbeddingSparseGradKernel(const Context& ctx,
                         d_table_value->dims(),
                         d_output_dims_2d));
 
-  paddle::memory::Copy(CPUPlace(),
-                       d_table_data,
-                       xpu_place,
-                       d_output_data,
-                       d_output->numel() * sizeof(T));
+  memory_utils::Copy(CPUPlace(),
+                     d_table_data,
+                     xpu_place,
+                     d_output_data,
+                     d_output->numel() * sizeof(T));
 }
 }  // namespace phi
 

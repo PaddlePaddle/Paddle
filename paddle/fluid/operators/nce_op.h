@@ -47,7 +47,7 @@ void PrepareSamples(const framework::ExecutionContext &context,
   auto label = context.Input<phi::DenseTensor>("Label");
   const int64_t *label_data = label->data<int64_t>();
   auto label_dims = label->dims();
-  // for unitest
+  // for unittest
   std::vector<int> custom_neg_classes =
       context.Attr<std::vector<int>>("custom_neg_classes");
 
@@ -75,7 +75,7 @@ void PrepareSamples(const framework::ExecutionContext &context,
   }
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class NCEKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -245,7 +245,7 @@ class NCEKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class NCEGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {

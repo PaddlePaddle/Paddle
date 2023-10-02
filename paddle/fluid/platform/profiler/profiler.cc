@@ -25,16 +25,14 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/profiler/cuda_tracer.h"
 #include "paddle/fluid/platform/profiler/custom_device/custom_tracer.h"
 #include "paddle/fluid/platform/profiler/extra_info.h"
 #include "paddle/fluid/platform/profiler/host_tracer.h"
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/device/mlu/enforce.h"
-#include "paddle/fluid/platform/profiler/mlu/mlu_tracer.h"
-#endif
 #include "paddle/fluid/platform/profiler/trace_event_collector.h"
 #include "paddle/fluid/platform/profiler/utils.h"
+#include "paddle/fluid/platform/profiler/xpu_tracer.h"
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/device_manager.h"
 #endif
@@ -49,9 +47,6 @@ void SynchronizeDevice() {
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
 #endif
-#ifdef PADDLE_WITH_MLU
-  PADDLE_ENFORCE_MLU_SUCCESS(cnrtSyncDevice());
-#endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
   for (const auto& dev_type : dev_types) {
@@ -59,6 +54,10 @@ void SynchronizeDevice() {
     auto place = paddle::platform::CustomPlace(dev_type, i);
     phi::DeviceManager::SynchronizeDevice(place);
   }
+#endif
+#ifdef PADDLE_WITH_XPU
+  // TODO(zhangxiaoci) xpu do not support device sync yet
+  // KL3 might do
 #endif
 }
 
@@ -86,7 +85,12 @@ bool Profiler::IsCuptiSupported() {
 
 bool Profiler::IsCnpapiSupported() {
   bool supported = false;
-#ifdef PADDLE_WITH_MLU
+  return supported;
+}
+
+bool Profiler::IsXPTISupported() {
+  bool supported = false;
+#ifdef PADDLE_WITH_XPTI
   supported = true;
 #endif
   return supported;
@@ -104,15 +108,13 @@ Profiler::Profiler(const ProfilerOptions& options,
   if (trace_switch.test(kProfileGPUOptionBit)) {
     tracers_.emplace_back(&CudaTracer::GetInstance(), false);
   }
-#ifdef PADDLE_WITH_MLU
-  if (trace_switch.test(kProfileMLUOptionBit)) {
-    tracers_.emplace_back(&MluTracer::GetInstance(), false);
-  }
-#endif
   if (trace_switch.test(kProfileCustomDeviceOptionBit)) {
     for (const auto& dev_type : custom_device_types) {
       tracers_.emplace_back(&CustomTracer::GetInstance(dev_type), false);
     }
+  }
+  if (trace_switch.test(kProfileXPUOptionBit)) {
+    tracers_.emplace_back(&XPUTracer::GetInstance(), false);
   }
 }
 
@@ -163,10 +165,9 @@ std::unique_ptr<ProfilerResult> Profiler::Stop() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::map<uint32_t, gpuDeviceProp> device_property_map;
   std::vector<int32_t> device_ids = GetSelectedDevices();
-  for (auto index = 0u; index < device_ids.size(); index++) {
-    const gpuDeviceProp& device_property =
-        GetDeviceProperties(device_ids[index]);
-    device_property_map[device_ids[index]] = device_property;
+  for (auto device_id : device_ids) {
+    const gpuDeviceProp& device_property = GetDeviceProperties(device_id);
+    device_property_map[device_id] = device_property;
   }
   ProfilerResult* profiler_result_ptr = new platform::ProfilerResult(
       std::move(tree), extrainfo, device_property_map);

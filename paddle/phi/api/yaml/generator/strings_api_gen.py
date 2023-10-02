@@ -107,9 +107,7 @@ class StringsAPI(ForwardAPI):
 
         else:
             raise ValueError(
-                "{} : Output error: the output should not be empty.".format(
-                    self.api
-                )
+                f"{self.api} : Output error: the output should not be empty."
             )
 
         return kernel_output, output_names, output_create
@@ -127,7 +125,7 @@ class StringsAPI(ForwardAPI):
         }
         input_names = self.inputs['names']
         input_infos = self.inputs['input_info']
-        kernel_args_type_list = ['const platform::DeviceContext&']
+        kernel_args_type_list = ['const phi::DeviceContext&']
 
         attr_names = self.attrs['names']
         kernel_param = self.kernel['param']
@@ -329,22 +327,18 @@ def source_include(header_file_path):
     return f"""
 #include "{header_file_path}"
 
+#include "glog/logging.h"
+#include "paddle/utils/flags.h"
+
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/infermeta/strings/nullary.h"
 #include "paddle/phi/infermeta/strings/unary.h"
-#include "paddle/phi/api/lib/api_registry.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-DECLARE_int32(low_precision_op_list);
-"""
-
-
-def api_register():
-    return """
-PD_REGISTER_API(StringsApi);
+PD_DECLARE_int32(low_precision_op_list);
 """
 
 
@@ -366,7 +360,6 @@ namespace strings {
 
 
 def generate_api(api_yaml_path, header_file_path, source_file_path):
-
     with open(api_yaml_path, 'r') as f:
         apis = yaml.load(f, Loader=yaml.FullLoader)
     header_file = open(header_file_path, 'w')
@@ -389,8 +382,6 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])
-
-    # source_file.write(api_register())
 
     header_file.close()
     source_file.close()

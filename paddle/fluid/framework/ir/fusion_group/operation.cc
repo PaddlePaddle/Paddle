@@ -55,7 +55,7 @@ void OperationMap::Insert(int type,
                         op_type));
   operations_[op_type] = op;
 
-  if (grad_exprs.size() > 0U) {
+  if (!grad_exprs.empty()) {
     std::string grad_op_type = op_type + "_grad";
     // grad_inputs = inputs + outputs + grad of outputs
     std::vector<std::string> grad_input_names = input_names;
@@ -134,7 +134,7 @@ void OperationMap::InsertUnaryElementwiseOperations() {
 
   // cast:
   //  out = static_cast<T>(x)
-  // TODO(wangchaochaohu): This is not the compelete definition of
+  // TODO(wangchaochaohu): This is not the complete definition of
   //  cast Op, We need refine it later.
   insert_handler("cast", "${0}", {});
 

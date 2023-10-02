@@ -152,7 +152,7 @@ However, the output only shares the LoD information with input X.
 };
 
 template <typename T>
-class ConvShiftKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
+class ConvShiftKernel<T, phi::CPUContext> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *X = context.Input<phi::DenseTensor>("X");
@@ -173,7 +173,8 @@ class ConvShiftKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
     for (size_t k = 0; k < batch_size; ++k) {
       for (size_t i = 0; i < x_width; ++i) {
         for (size_t j = 0; j < y_width; ++j) {
-          int index = (i + j - y_half_width + x_width) % x_width;
+          int index =
+              static_cast<int>((i + j - y_half_width + x_width) % x_width);
           out(k, i) += x(k, index) * y(k, j);
         }
       }
@@ -182,8 +183,7 @@ class ConvShiftKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class ConvShiftGradKernel<platform::CPUPlace, T>
-    : public framework::OpKernel<T> {
+class ConvShiftGradKernel<T, phi::CPUContext> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *X = context.Input<phi::DenseTensor>("X");
@@ -212,7 +212,8 @@ class ConvShiftGradKernel<platform::CPUPlace, T>
       for (size_t k = 0; k < batch_size; ++k) {
         for (size_t i = 0; i < x_width; ++i) {
           for (size_t j = 0; j < y_width; ++j) {
-            int index = (i + j - y_half_width + x_width) % x_width;
+            int index =
+                static_cast<int>((i + j - y_half_width + x_width) % x_width);
             dx(k, index) += dout(k, i) * y(k, j);
           }
         }
@@ -226,7 +227,8 @@ class ConvShiftGradKernel<platform::CPUPlace, T>
       for (size_t k = 0; k < batch_size; ++k) {
         for (size_t i = 0; i < x_width; ++i) {
           for (size_t j = 0; j < y_width; ++j) {
-            int index = (i + j - y_half_width + x_width) % x_width;
+            int index =
+                static_cast<int>((i + j - y_half_width + x_width) % x_width);
             dy(k, j) += x(k, index) * dout(k, i);
           }
         }
@@ -262,8 +264,7 @@ REGISTER_OPERATOR(conv_shift,
                   ops::ConvShiftGradOpMaker<paddle::framework::OpDesc>,
                   ops::ConvShiftGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(conv_shift_grad, ops::ConvShiftGradOp);
-REGISTER_OP_CPU_KERNEL(conv_shift,
-                       ops::ConvShiftKernel<paddle::platform::CPUPlace, float>);
-REGISTER_OP_CPU_KERNEL(
-    conv_shift_grad,
-    ops::ConvShiftGradKernel<paddle::platform::CPUPlace, float>);
+PD_REGISTER_STRUCT_KERNEL(
+    conv_shift, CPU, ALL_LAYOUT, ops::ConvShiftKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    conv_shift_grad, CPU, ALL_LAYOUT, ops::ConvShiftGradKernel, float) {}

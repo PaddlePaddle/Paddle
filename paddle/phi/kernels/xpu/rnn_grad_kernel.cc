@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/rnn_grad_kernel.h"
-#include "paddle/fluid/operators/utils.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/xpu/rnn_util.h"
 
@@ -165,8 +165,7 @@ void RnnGradKernel(const Context& dev_ctx,
   bool has_seq_length = sequence_length.is_initialized();
   std::vector<int> seq_len_tensor(batch_size, seq_len);
   if (has_seq_length) {
-    seq_len_tensor =
-        paddle::operators::GetDataFromTensor<int>(sequence_length.get_ptr());
+    seq_len_tensor = phi::GetVectorFromTensor<int>(sequence_length.get_ptr());
   }
 
   for (int i = num_layers - 1; i >= 0; --i) {

@@ -14,9 +14,9 @@
 
 from paddle import _C_ops
 
-from ...fluid import core, framework, unique_name
-from ...fluid.data_feeder import check_variable_and_dtype
-from ...fluid.framework import _current_expected_place, in_dygraph_mode
+from ...base import core, framework, unique_name
+from ...base.data_feeder import check_variable_and_dtype
+from ...base.framework import _current_expected_place, in_dygraph_mode
 from .initializer import Initializer
 
 __all__ = []
@@ -50,7 +50,7 @@ class NormalInitializer(Initializer):
                    should be added. Used in static graph only, default None.
 
         Returns:
-            The initialization op
+            The initialization op.
         """
         block = self._check_block(block)
 
@@ -112,24 +112,32 @@ class Normal(NormalInitializer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            data = paddle.ones(shape=[3, 1, 2], dtype='float32')
-            weight_attr = paddle.framework.ParamAttr(
-                name="linear_weight",
-                initializer=paddle.nn.initializer.Normal(mean=0.0, std=2.0))
-            bias_attr = paddle.framework.ParamAttr(
-                name="linear_bias",
-                initializer=paddle.nn.initializer.Normal(mean=0.0, std=2.0))
-            linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr)
-            # linear.weight:  [[ 2.1973135 -2.2697184]
-            #                  [-1.9104223 -1.0541488]]
-            # linear.bias:  [ 0.7885926  -0.74719954]
-
-            res = linear(data)
-            # res:  [[[ 1.0754838 -4.071067 ]]
-            #        [[ 1.0754838 -4.071067 ]]
-            #        [[ 1.0754838 -4.071067 ]]]
+            >>> data = paddle.ones(shape=[3, 1, 2], dtype='float32')
+            >>> weight_attr = paddle.framework.ParamAttr(
+            ...     name="linear_weight",
+            ...     initializer=paddle.nn.initializer.Normal(mean=0.0, std=2.0))
+            >>> bias_attr = paddle.framework.ParamAttr(
+            ...     name="linear_bias",
+            ...     initializer=paddle.nn.initializer.Normal(mean=0.0, std=2.0))
+            >>> # doctest: +SKIP('name has been used')
+            >>> linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr)
+            >>> print(linear.weight)
+            Parameter containing:
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[ 2.1973135 -2.2697184],
+             [-1.9104223 -1.0541488]])
+            >>> print(linear.bias)
+            Parameter containing:
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [ 0.7885926  -0.74719954])
+            >>> res = linear(data)
+            >>> print(res)
+            Tensor(shape=[3, 1, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[[ 1.0754838 -4.071067 ]],
+             [[ 1.0754838 -4.071067 ]],
+             [[ 1.0754838 -4.071067 ]]])
     """
 
     def __init__(self, mean=0.0, std=1.0, name=None):
@@ -253,24 +261,32 @@ class TruncatedNormal(TruncatedNormalInitializer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            data = paddle.ones(shape=[3, 1, 2], dtype='float32')
-            weight_attr = paddle.framework.ParamAttr(
-                name="linear_weight",
-                initializer=paddle.nn.initializer.TruncatedNormal(mean=0.0, std=2.0))
-            bias_attr = paddle.framework.ParamAttr(
-                name="linear_bias",
-                initializer=paddle.nn.initializer.TruncatedNormal(mean=0.0, std=2.0))
-            linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr)
-            # linear.weight:  [[-1.0981836  1.4140984]
-            #                  [ 3.1390522 -2.8266568]]
-            # linear.bias:  [-2.1546738 -1.6570673]
-
-            res = linear(data)
-            # res:  [[[-0.11380529 -3.0696259 ]]
-            #        [[-0.11380529 -3.0696259 ]]
-            #        [[-0.11380529 -3.0696259 ]]
+            >>> data = paddle.ones(shape=[3, 1, 2], dtype='float32')
+            >>> weight_attr = paddle.framework.ParamAttr(
+            ...     name="linear_weight",
+            ...     initializer=paddle.nn.initializer.TruncatedNormal(mean=0.0, std=2.0))
+            >>> bias_attr = paddle.framework.ParamAttr(
+            ...     name="linear_bias",
+            ...     initializer=paddle.nn.initializer.TruncatedNormal(mean=0.0, std=2.0))
+            >>> # doctest: +SKIP('name has been used')
+            >>> linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr)
+            >>> print(linear.weight)
+            Parameter containing:
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[-1.0981836  1.4140984],
+             [ 3.1390522 -2.8266568]])
+            >>> print(linear.bias)
+            Parameter containing:
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [ -2.1546738  -1.6570673])
+            >>> res = linear(data)
+            >>> print(res)
+            Tensor(shape=[3, 1, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[[-0.11380529 -3.0696259 ]],
+             [[-0.11380529 -3.0696259 ]],
+             [[-0.11380529 -3.0696259 ]]])
     """
 
     def __init__(self, mean=0.0, std=1.0, name=None):

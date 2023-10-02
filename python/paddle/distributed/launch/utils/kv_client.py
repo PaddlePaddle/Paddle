@@ -14,22 +14,20 @@
 
 import time
 
-import requests
+import httpx
 
 
 class KVClient:
     def __init__(self, endpoint='localhost:2379'):
         self.endpoint = (
-            endpoint
-            if endpoint.startswith("http://")
-            else "http://{}".format(endpoint)
+            endpoint if endpoint.startswith("http://") else f"http://{endpoint}"
         )
 
     def put(self, key, value):
-        key = key if key.startswith('/') else "/{}".format(key)
-        u = "{}{}".format(self.endpoint, key)
+        key = key if key.startswith('/') else f"/{key}"
+        u = f"{self.endpoint}{key}"
         try:
-            r = requests.post(u, data=value, timeout=3)
+            r = httpx.post(u, data=value, timeout=None, follow_redirects=True)
             if r.status_code == 200:
                 return True
             else:
@@ -38,10 +36,10 @@ class KVClient:
             return False
 
     def get(self, key):
-        key = key if key.startswith('/') else "/{}".format(key)
-        u = "{}{}".format(self.endpoint, key)
+        key = key if key.startswith('/') else f"/{key}"
+        u = f"{self.endpoint}{key}"
         try:
-            r = requests.get(u, timeout=3)
+            r = httpx.get(u, timeout=None, follow_redirects=True)
             if r.status_code == 200:
                 ret = r.json()
                 return ret.get(key, '')
@@ -51,20 +49,20 @@ class KVClient:
             return ""
 
     def get_prefix(self, key):
-        key = key if key.startswith('/') else "/{}".format(key)
-        u = "{}{}".format(self.endpoint, key)
+        key = key if key.startswith('/') else f"/{key}"
+        u = f"{self.endpoint}{key}"
         try:
-            r = requests.get(u, timeout=3)
+            r = httpx.get(u, timeout=None, follow_redirects=True)
             if r.status_code == 200:
                 return r.json()
         except:
             return ""
 
     def delete(self, key):
-        key = key if key.startswith('/') else "/{}".format(key)
-        u = "{}{}".format(self.endpoint, key)
+        key = key if key.startswith('/') else f"/{key}"
+        u = f"{self.endpoint}{key}"
         try:
-            r = requests.delete(u, timeout=3)
+            r = httpx.delete(u, timeout=None, follow_redirects=True)
             if r.status_code == 200:
                 return True
             else:

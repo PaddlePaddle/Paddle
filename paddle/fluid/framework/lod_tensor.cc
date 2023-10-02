@@ -14,11 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/lod_tensor.h"
 
-#include <stdint.h>
+#include <cstdint>
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/version.h"
-#include "paddle/phi/core/serialization.h"
 
 namespace paddle {
 namespace framework {
@@ -61,20 +60,20 @@ LoD SliceInLevel(const LoD &in,
   LoD res;
   res.resize(in.size() - level);
   // copy the first level
-  res[0].assign(in[level].begin() + elem_begin,
-                in[level].begin() + elem_end + 1);
+  res[0].assign(in[level].begin() + elem_begin,     // NOLINT
+                in[level].begin() + elem_end + 1);  // NOLINT
   for (size_t lvl = 1; lvl < res.size(); lvl++) {
     const auto &in_level = in[level + lvl];
     const auto &above_level = res[lvl - 1];
     auto &out_level = res[lvl];
-    out_level.assign(in_level.begin() + above_level.front(),
-                     in_level.begin() + above_level.back() + 1);
+    out_level.assign(in_level.begin() + above_level.front(),      // NOLINT
+                     in_level.begin() + above_level.back() + 1);  // NOLINT
   }
-  for (size_t lvl = 0; lvl < res.size(); lvl++) {
+  for (auto &item : res) {
     // to make the first offset equals 0, all the elements minus the first
     // element
-    size_t front = res[lvl].front();
-    for (auto &ele : res[lvl]) {
+    size_t front = item.front();
+    for (auto &ele : item) {
       ele -= front;
     }
   }
@@ -161,7 +160,7 @@ bool CheckAbsLoD(const LoD &in, int tensor_height) {
     // the same(the height of underlying tensor).
     if (level.front() != 0) return false;
     if (tensor_height < 0) {
-      tensor_height = level.back();
+      tensor_height = static_cast<int>(level.back());
     } else if (static_cast<size_t>(tensor_height) != level.back()) {
       return false;
     }
@@ -207,7 +206,31 @@ LoDAndOffset GetSubLoDAndAbsoluteOffset(const LoD &lod,
 void SerializeToStream(std::ostream &os,
                        const phi::DenseTensor &tensor,
                        const platform::DeviceContext &dev_ctx) {
-  phi::SerializeToStream(os, tensor, dev_ctx);
+  {  // the 1st field, uint32_t version for DenseTensor
+    os.write(
+        reinterpret_cast<const char *>(&paddle::framework::kCurTensorVersion),
+        sizeof(paddle::framework::kCurTensorVersion));
+  }
+  {
+    // the 2st field, LoD information
+    // uint64_t lod_level
+    // uint64_t lod_level_1 size in byte.
+    // int*     lod_level_1 data
+    // ...
+    auto lod = tensor.lod();
+    uint64_t size = lod.size();
+    os.write(reinterpret_cast<const char *>(&size), sizeof(size));
+
+    for (auto &each : lod) {
+      size = each.size() * sizeof(framework::LoD::value_type::value_type);
+      os.write(reinterpret_cast<const char *>(&size), sizeof(size));
+      os.write(reinterpret_cast<const char *>(each.data()),
+               static_cast<std::streamsize>(size));
+    }
+  }
+  // the 3st field, Tensor
+  paddle::framework::TensorToStream(
+      os, static_cast<phi::DenseTensor>(tensor), dev_ctx);
 }
 
 void SerializeToStream(std::ostream &os, const phi::DenseTensor &tensor) {
@@ -215,14 +238,14 @@ void SerializeToStream(std::ostream &os, const phi::DenseTensor &tensor) {
   const platform::DeviceContext *dev_ctx;
   auto place = tensor.place();
   dev_ctx = pool.Get(place);
-  phi::SerializeToStream(os, tensor, *dev_ctx);
+  SerializeToStream(os, tensor, *dev_ctx);
 }
 
 void DeserializeFromStream(std::istream &os, phi::DenseTensor *tensor) {
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   const platform::DeviceContext *dev_ctx;
   dev_ctx = pool.Get(platform::CPUPlace());
-  phi::DeserializeFromStream(os, tensor, *dev_ctx);
+  DeserializeFromStream(os, tensor, *dev_ctx);
 }
 
 void DeserializeFromStream(std::istream &is,
@@ -230,25 +253,83 @@ void DeserializeFromStream(std::istream &is,
                            const platform::DeviceContext &dev_ctx,
                            const size_t &seek,
                            const std::vector<int64_t> &shape) {
-  phi::DeserializeFromStream(is, tensor, dev_ctx, seek, shape);
+  {
+    // the 1st field, unit32_t version for DenseTensor
+    uint32_t version;
+    is.read(reinterpret_cast<char *>(&version), sizeof(version));
+    PADDLE_ENFORCE_EQ(paddle::framework::IsTensorVersionSupported(version),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Tensor version %u is not supported.", version));
+    PADDLE_ENFORCE_EQ(
+        version,
+        0U,
+        phi::errors::InvalidArgument(
+            "Deserialize to tensor failed, maybe the loaded file is "
+            "not a paddle model(expected file format: 0, but %u found).",
+            version));
+  }
+  {
+    // the 2st field, LoD information
+    uint64_t lod_level;
+    is.read(reinterpret_cast<char *>(&lod_level), sizeof(lod_level));
+    auto &lod = *tensor->mutable_lod();
+    lod.resize(lod_level);
+  }
+  // the 3st filed, Tensor
+  paddle::framework::TensorFromStream(
+      is, static_cast<phi::DenseTensor *>(tensor), dev_ctx, seek, shape);
 }
 
 void DeserializeFromStream(std::istream &is,
                            phi::DenseTensor *tensor,
                            const platform::DeviceContext &dev_ctx) {
-  phi::DeserializeFromStream(is, tensor, dev_ctx);
+  {
+    // the 1st field, unit32_t version for DenseTensor
+    uint32_t version;
+    is.read(reinterpret_cast<char *>(&version), sizeof(version));
+    PADDLE_ENFORCE_EQ(paddle::framework::IsTensorVersionSupported(version),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Tensor version %u is not supported.", version));
+    PADDLE_ENFORCE_EQ(
+        version,
+        0U,
+        phi::errors::InvalidArgument(
+            "Deserialize to tensor failed, maybe the loaded file is "
+            "not a paddle model(expected file format: 0, but %u found).",
+            version));
+  }
+  {
+    // the 2st field, LoD information
+    uint64_t lod_level;
+    is.read(reinterpret_cast<char *>(&lod_level), sizeof(lod_level));
+    auto &lod = *tensor->mutable_lod();
+    lod.resize(lod_level);
+    for (uint64_t i = 0; i < lod_level; ++i) {
+      uint64_t size;
+      is.read(reinterpret_cast<char *>(&size), sizeof(size));
+      std::vector<size_t> tmp(size / sizeof(size_t));
+      is.read(reinterpret_cast<char *>(tmp.data()),
+              static_cast<std::streamsize>(size));
+      lod[i] = tmp;
+    }
+  }
+  // the 3st filed, Tensor
+  paddle::framework::TensorFromStream(
+      is, static_cast<phi::DenseTensor *>(tensor), dev_ctx);
 }
 
 LoD ConvertToOffsetBasedLoD(const LoD &length_lod) {
   LoD offset_lod;
   offset_lod.reserve(length_lod.size());
-  for (size_t lvl = 0; lvl < length_lod.size(); ++lvl) {
+  for (const auto &item : length_lod) {
     std::vector<size_t> level;
-    level.reserve(length_lod[lvl].size() + 1);
+    level.reserve(item.size() + 1);
     size_t tmp = 0;
     level.push_back(tmp);
-    for (size_t idx = 0; idx < length_lod[lvl].size(); ++idx) {
-      tmp += length_lod[lvl][idx];
+    for (auto i : item) {
+      tmp += i;
       level.push_back(tmp);
     }
     offset_lod.push_back(level);
@@ -281,10 +362,10 @@ std::vector<phi::DenseTensor> SplitLoDTensor(
   if (batch_size == 0) {
     std::vector<phi::DenseTensor> empty_results;
     empty_results.reserve(places.size());
-    for (size_t i = 0; i < places.size(); ++i) {
+    for (auto item : places) {
       phi::DenseTensor dst;
       dst.Resize(src.dims());
-      dst.mutable_data(places[i], src.dtype());
+      dst.mutable_data(item, src.dtype());
       if (!src.lod().empty()) {
         dst.set_lod(src.lod());
       }
@@ -311,7 +392,8 @@ std::vector<phi::DenseTensor> SplitLoDTensor(
 
     phi::DenseTensor dst;
     if (src.lod().empty()) {
-      auto sliced_src = src.Slice(begin, end);
+      auto sliced_src =
+          src.Slice(static_cast<int64_t>(begin), static_cast<int64_t>(end));
       auto &dst_place = places[i];
       framework::TensorCopy(sliced_src, dst_place, &dst);
     } else {
@@ -319,7 +401,8 @@ std::vector<phi::DenseTensor> SplitLoDTensor(
           GetSubLoDAndAbsoluteOffset(src.lod(), begin, end, 0);
 
       auto &offset = lod_and_offset.second;
-      auto sliced_src = src.Slice(offset.first, offset.second);
+      auto sliced_src = src.Slice(static_cast<int64_t>(offset.first),
+                                  static_cast<int64_t>(offset.second));
       auto &dst_place = places[i];
       framework::TensorCopy(sliced_src, dst_place, &dst);
 
@@ -427,7 +510,7 @@ void MergeLoDTensor(phi::DenseTensor *target,
 
   int begin = 0;
   for (auto *src : lod_tensors) {
-    int end = begin + src->dims()[0];
+    int end = static_cast<int>(begin + src->dims()[0]);
     if (end == begin) {
       continue;
     }

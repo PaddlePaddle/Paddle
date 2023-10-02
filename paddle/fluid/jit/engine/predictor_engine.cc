@@ -22,11 +22,6 @@
 namespace paddle {
 namespace jit {
 
-static PaddleTensor DenseTensorToPaddleTensor(DenseTensor *t);
-static bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
-                                      DenseTensor *t,
-                                      const platform::Place &place);
-
 PredictorEngine::PredictorEngine(
     const std::shared_ptr<FunctionInfo> &info,
     const std::shared_ptr<VariableMap> &params_dict,
@@ -52,6 +47,7 @@ PredictorEngine::PredictorEngine(
   config.SetSkipLoadParams(true);
   config.SetApplyOptim(true);
   config.SwitchIrOptim(true);
+  config.SwitchUseFeedFetchOps(false);
 
   predictor_.reset(new AnalysisPredictor(config));
 
@@ -78,135 +74,15 @@ std::unique_ptr<BaseEngine> PredictorEngine::Clone(void *stream) {
 
 std::vector<Tensor> PredictorEngine::operator()(
     const std::vector<Tensor> &inputs) {
-  auto dense_tensors = utils::ToDenseTensors(inputs);
-  return utils::ToTensors(this->operator()(dense_tensors));
-}
-
-std::vector<DenseTensor> PredictorEngine::operator()(
-    const std::vector<DenseTensor> &inputs) {
-  std::vector<PaddleTensor> pt_inputs;
-  std::vector<PaddleTensor> pt_outputs;
-  for (auto &t : inputs) {
-    auto non_const_t = const_cast<DenseTensor *>(&t);
-    pt_inputs.emplace_back(DenseTensorToPaddleTensor(non_const_t));
-  }
-
-  predictor_->Run(pt_inputs, &pt_outputs);
-
-  std::vector<DenseTensor> outputs;
-  for (auto &pt : pt_outputs) {
-    DenseTensor t;
-    PaddleTensorToDenseTensor(pt, &t, place_);
-    outputs.emplace_back(t);
-  }
+  std::vector<Tensor> outputs;
+  predictor_->Run(inputs, &outputs);
 
   return outputs;
 }
 
-static PaddleTensor DenseTensorToPaddleTensor(DenseTensor *t) {
-  PaddleTensor pt;
-  switch (framework::TransToProtoVarType(t->dtype())) {
-    case framework::proto::VarType::INT32: {
-      pt.data.Reset(t->data(), t->numel() * sizeof(int32_t));
-      pt.dtype = PaddleDType::INT32;
-    } break;
-    case framework::proto::VarType::INT64: {
-      pt.data.Reset(t->data(), t->numel() * sizeof(int64_t));
-      pt.dtype = PaddleDType::INT64;
-    } break;
-    case framework::proto::VarType::FP32: {
-      pt.data.Reset(t->data(), t->numel() * sizeof(float));
-      pt.dtype = PaddleDType::FLOAT32;
-    } break;
-    default:
-      PADDLE_THROW(
-          platform::errors::Unimplemented("Unsupported tensor date type. Now "
-                                          "only supports INT64, FP32, INT32."));
-  }
-  pt.shape = phi::vectorize<int>(t->dims());
-  return pt;
-}
-
-static bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
-                                      DenseTensor *t,
-                                      const platform::Place &place) {
-  framework::DDim ddim = phi::make_ddim(pt.shape);
-  void *input_ptr;
-  switch (pt.dtype) {
-    case PaddleDType::INT64:
-      input_ptr = t->mutable_data<int64_t>(ddim, place);
-      break;
-    case PaddleDType::FLOAT32:
-      input_ptr = t->mutable_data<float>(ddim, place);
-      break;
-    case PaddleDType::INT32:
-      input_ptr = t->mutable_data<int32_t>(ddim, place);
-      break;
-    case PaddleDType::FLOAT16:
-      input_ptr = t->mutable_data<float16>(ddim, place);
-      break;
-    default:
-      LOG(ERROR) << "unsupported feed type " << pt.dtype;
-      return false;
-  }
-
-  PADDLE_ENFORCE_NOT_NULL(
-      input_ptr,
-      paddle::platform::errors::Fatal(
-          "Cannot convert to LoDTensor because LoDTensor creation failed."));
-  PADDLE_ENFORCE_NOT_NULL(
-      pt.data.data(),
-      paddle::platform::errors::InvalidArgument(
-          "The data contained in the input PaddleTensor is illegal."));
-
-  if (platform::is_cpu_place(place)) {
-    // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
-    std::memcpy(
-        static_cast<void *>(input_ptr), pt.data.data(), pt.data.length());
-  } else if (platform::is_ipu_place(place)) {
-#ifdef PADDLE_WITH_IPU
-    std::memcpy(
-        static_cast<void *>(input_ptr), pt.data.data(), pt.data.length());
-#else
-    PADDLE_THROW(paddle::platform::errors::Fatal(
-        "Not compile with WITH_IPU, should not reach here."));
-#endif
-  } else if (platform::is_gpu_place(place)) {
-    PADDLE_ENFORCE_EQ(platform::is_xpu_place(place),
-                      false,
-                      platform::errors::InvalidArgument(
-                          "Only one choice can be made between CPU and XPU."));
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto *dev_ctx = static_cast<const phi::GPUContext *>(pool.Get(place));
-    auto dst_gpu_place = place;
-    memory::Copy(dst_gpu_place,
-                 static_cast<void *>(input_ptr),
-                 platform::CPUPlace(),
-                 pt.data.data(),
-                 pt.data.length(),
-                 dev_ctx->stream());
-#else
-    PADDLE_THROW(paddle::platform::errors::Fatal(
-        "Not compile with CUDA, should not reach here."));
-#endif
-  } else if (platform::is_xpu_place(place)) {
-#ifdef PADDLE_WITH_XPU
-    auto dst_xpu_place = place;
-    memory::Copy(dst_xpu_place,
-                 static_cast<void *>(input_ptr),
-                 platform::CPUPlace(),
-                 pt.data.data(),
-                 pt.data.length());
-#else
-    PADDLE_THROW(paddle::platform::errors::Fatal(
-        "Not compile with XPU, should not reach here."));
-#endif
-  } else {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "The analysis predictor supports CPU, GPU and XPU now."));
-  }
-  return true;
+std::vector<DenseTensor> PredictorEngine::operator()(
+    const std::vector<DenseTensor> &inputs) {
+  return utils::ToDenseTensors(this->operator()(utils::ToTensors(inputs)));
 }
 
 }  // namespace jit

@@ -363,11 +363,6 @@ int TransLayerNormPluginDynamic::enqueue(
                                         "but got:%d",
                                         device_id));
 
-  mean_t.Resize(phi::make_ddim(mean_shape_));
-  variance_t.Resize(phi::make_ddim(variance_shape_));
-  float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
-  float *variance_d =
-      variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
   auto input_type = input_desc[0].type;
 
   paddle::platform::DeviceContextPool &pool =
@@ -375,6 +370,13 @@ int TransLayerNormPluginDynamic::enqueue(
   platform::CUDAPlace place(platform::GetCurrentDeviceId());
   auto *device_context = static_cast<phi::GPUContext *>(pool.Get(place));
   const phi::GPUContext &dev_ctx = *device_context;
+
+  mean_t.Resize(phi::make_ddim(mean_shape_));
+  variance_t.Resize(phi::make_ddim(variance_shape_));
+  float *mean_d =
+      dev_ctx.template Alloc<float>(&mean_t, mean_shape_[0] * sizeof(float));
+  float *variance_d = dev_ctx.template Alloc<float>(
+      &variance_t, variance_shape_[0] * sizeof(float));
 
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(1) << "TRT Plugin DataType selected. trans_layernorm-->fp32";

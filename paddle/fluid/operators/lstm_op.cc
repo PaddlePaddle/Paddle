@@ -66,7 +66,7 @@ class LSTMOp : public framework::OperatorWithKernel {
                             c_dims));
     }
 
-    int frame_size = in_dims[1] / 4;
+    int frame_size = static_cast<int>(in_dims[1] / 4);
     auto w_dims = ctx->GetInputDim("Weight");
     PADDLE_ENFORCE_EQ(
         w_dims.size(),
@@ -358,9 +358,8 @@ REGISTER_OPERATOR(lstm,
                   ops::LSTMGradOpMaker<paddle::framework::OpDesc>,
                   ops::LSTMGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(lstm_grad, ops::LSTMGradOp);
-REGISTER_OP_CPU_KERNEL(lstm,
-                       ops::LSTMKernel<phi::CPUContext, float>,
-                       ops::LSTMKernel<phi::CPUContext, double>);
-REGISTER_OP_CPU_KERNEL(lstm_grad,
-                       ops::LSTMGradKernel<phi::CPUContext, float>,
-                       ops::LSTMGradKernel<phi::CPUContext, double>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    lstm, CPU, ALL_LAYOUT, ops::LSTMKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(
+    lstm_grad, CPU, ALL_LAYOUT, ops::LSTMGradKernel, float, double) {}

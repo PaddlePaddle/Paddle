@@ -22,7 +22,7 @@ namespace operators {
 #define LN_NUM_COLS 1024
 
 template <typename T>
-using CudnnDataType = platform::CudnnDataType<T>;
+using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
 template <typename T>
 using LayerNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
@@ -174,8 +174,8 @@ __global__ void FusedLayernormResidualDropoutBias(
                                                   relu);
   }
 
-  mean_val = BlockReduceSum<U>(mean_val, shared_mean);
-  var_val = BlockReduceSum<U>(var_val, shared_var);
+  mean_val = phi::funcs::BlockReduceSum<U>(mean_val, shared_mean);
+  var_val = phi::funcs::BlockReduceSum<U>(var_val, shared_var);
   if (threadIdx.x == 0) {
     auto scale = static_cast<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>>(
         static_cast<float>(1.) / static_cast<float>(cols));
@@ -189,7 +189,7 @@ __global__ void FusedLayernormResidualDropoutBias(
   __syncthreads();
 
   mean_val = mean_share;
-  U invvar = rsqrt_<U>(var_share + static_cast<U>(epsilon));
+  U invvar = phi::funcs::rsqrt_<U>(var_share + static_cast<U>(epsilon));
 
   // calculate layernorm_dst
   CalcLayernormY<T, VecSize, U, ScaleBiasWithSameTypeX>(scale,
@@ -358,8 +358,8 @@ __global__ void FusedLayernormResidualDropoutBiasInfer(
                                                                   relu);
   }
 
-  mean_val = BlockReduceSum<U>(mean_val, shared_mean);
-  var_val = BlockReduceSum<U>(var_val, shared_var);
+  mean_val = phi::funcs::BlockReduceSum<U>(mean_val, shared_mean);
+  var_val = phi::funcs::BlockReduceSum<U>(var_val, shared_var);
   if (threadIdx.x == 0) {
     auto scale = static_cast<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>>(
         static_cast<float>(1.) / static_cast<float>(cols));
@@ -372,7 +372,7 @@ __global__ void FusedLayernormResidualDropoutBiasInfer(
   __syncthreads();
 
   mean_val = mean_share;
-  U invvar = rsqrt_<U>(var_share + static_cast<U>(epsilon));
+  U invvar = phi::funcs::rsqrt_<U>(var_share + static_cast<U>(epsilon));
 
   // calculate layernorm_dst
   CalcLayernormY<T, VecSize, U, ScaleBiasWithSameTypeX>(scale,
@@ -412,7 +412,7 @@ struct FusedLayernormResidualDropoutBiasFunctor {
       LayerNormParamType<T> *mean,
       LayerNormParamType<T> *var,
       cudaStream_t stream) {
-    int blockDim = GetDesiredBlockDim(cols / VecSize);
+    int blockDim = phi::funcs::GetDesiredBlockDim(cols / VecSize);
     if (mean != nullptr && var != nullptr) {
       LaunchFusedLayernormResidualDropoutBiasCUDAKernel<T,
                                                         MaskType,
@@ -859,9 +859,9 @@ void LaunchLayernormResidualDropoutBias(
           mask_data, 0, rows * cols * sizeof(MaskType), ctx.stream()));
     }
     // call layernorm forward
-    switch (GetDesiredBlockDim(cols)) {
+    switch (phi::funcs::GetDesiredBlockDim(cols)) {
       FIXED_BLOCK_DIM_CASE(
-          LayerNormForward<T, U, kBlockDim, ScaleBiasWithSameTypeX>
+          phi::funcs::LayerNormForward<T, U, kBlockDim, ScaleBiasWithSameTypeX>
           <<<rows, kBlockDim, 0, ctx.stream()>>>(
               dst,
               scale,
@@ -1005,7 +1005,7 @@ void LaunchLayernormResidualDropoutBias(
 
   const int VecSize = MAX_CACHE_BYTES / sizeof(T);
   if (cols % VecSize != 0) {
-    int blockDim = GetDesiredBlockDim(cols);
+    int blockDim = phi::funcs::GetDesiredBlockDim(cols);
     LaunchFusedLayernormResidualDropoutBiasCUDAKernel<T,
                                                       uint8_t,
                                                       1,
@@ -1043,7 +1043,7 @@ void LaunchLayernormResidualDropoutBias(
           break;
       }
     } else {
-      int blockDim = GetDesiredBlockDim(cols / VecSize);
+      int blockDim = phi::funcs::GetDesiredBlockDim(cols / VecSize);
       LaunchFusedLayernormResidualDropoutBiasCUDAKernel<T,
                                                         uint8_t,
                                                         VecSize,
@@ -1102,24 +1102,25 @@ void LaunchLayernormResidualDropoutGrad(
   if (!is_upscale_in_train) {
     factor = static_cast<T>(1.0f);
   }
-  ln_bwd_fast_kernel_driver<T,
-                            U,
-                            LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
-                            MaskType>(dev_ctx,
-                                      rows,
-                                      cols,
-                                      epsilon,
-                                      layernorm_src,
-                                      scale,
-                                      mean,
-                                      var,
-                                      d_out,
-                                      d_residual,
-                                      d_scale,
-                                      d_layernorm_bias,
-                                      mask_data,
-                                      factor,
-                                      d_dropout_src);
+  phi::funcs::ln_bwd_fast_kernel_driver<
+      T,
+      U,
+      LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
+      MaskType>(dev_ctx,
+                rows,
+                cols,
+                epsilon,
+                layernorm_src,
+                scale,
+                mean,
+                var,
+                d_out,
+                d_residual,
+                d_scale,
+                d_layernorm_bias,
+                mask_data,
+                factor,
+                d_dropout_src);
 }
 
 }  // namespace operators

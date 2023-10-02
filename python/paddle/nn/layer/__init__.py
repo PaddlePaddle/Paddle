@@ -46,7 +46,9 @@ from .common import Dropout3D  # noqa: F401
 from .common import AlphaDropout  # noqa: F401
 from .common import UpsamplingBilinear2D  # noqa: F401
 from .common import UpsamplingNearest2D  # noqa: F401
-from .common import Fold
+from .common import Fold  # noqa: F401
+from .common import Unflatten  # noqa: F401
+
 from .pooling import AvgPool1D  # noqa: F401
 from .pooling import AvgPool2D  # noqa: F401
 from .pooling import AvgPool3D  # noqa: F401
@@ -73,6 +75,7 @@ from .loss import CrossEntropyLoss  # noqa: F401
 from .loss import MSELoss  # noqa: F401
 from .loss import L1Loss  # noqa: F401
 from .loss import NLLLoss  # noqa: F401
+from .loss import PoissonNLLLoss  # noqa: F401
 from .loss import BCELoss  # noqa: F401
 from .loss import KLDivLoss  # noqa: F401
 from .loss import MarginRankingLoss  # noqa: F401
@@ -85,6 +88,8 @@ from .loss import TripletMarginWithDistanceLoss
 from .loss import TripletMarginLoss
 from .loss import SoftMarginLoss
 from .loss import MultiMarginLoss
+from .loss import GaussianNLLLoss
+
 from .norm import BatchNorm1D  # noqa: F401
 from .norm import BatchNorm2D  # noqa: F401
 from .norm import BatchNorm3D  # noqa: F401
@@ -99,5 +104,6 @@ from .vision import PixelUnshuffle  # noqa: F401
 from .vision import ChannelShuffle  # noqa: F401
 from .distance import PairwiseDistance  # noqa: F401
 from .container import LayerDict  # noqa: F401
+from .layers import Layer
 
 __all__ = []

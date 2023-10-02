@@ -203,12 +203,18 @@ void ElementwiseInferMeta(const MetaTensor& x,
 void ElementwiseRawInferMeta(const MetaTensor& x_meta,
                              const MetaTensor& y_meta,
                              int axis,
-                             MetaTensor* out);
+                             MetaTensor* out,
+                             MetaConfig config = MetaConfig());
 
 void EmbeddingInferMeta(const MetaTensor& x,
                         const MetaTensor& weight,
                         int64_t padding_idx,
                         MetaTensor* out);
+
+void CEmbeddingInferMeta(const MetaTensor& weight,
+                         const MetaTensor& x,
+                         int64_t start_index,
+                         MetaTensor* out);
 
 void ExpandAsInferMeta(const MetaTensor& x,
                        const MetaTensor& y,
@@ -221,6 +227,35 @@ void FillDiagonalTensorInferMeta(const MetaTensor& x,
                                  int dim1,
                                  int dim2,
                                  MetaTensor* out);
+
+void FusedDropoutAddInferMeta(const MetaTensor& x,
+                              const MetaTensor& y,
+                              MetaTensor* out,
+                              MetaTensor* seed_offset);
+
+void FusedMatmulInferMeta(const MetaTensor& x,
+                          const MetaTensor& y,
+                          const MetaTensor& residual_data,
+                          bool transpose_x,
+                          bool transpose_y,
+                          const float matmul_alpha,
+                          const std::string& fuse_activation,
+                          const float fuse_lapha,
+                          const float fuse_beat,
+                          const float fused_output_scale,
+                          const std::vector<int>& fused_reshape_X,
+                          const std::vector<int>& fused_transpose_X,
+                          const std::vector<int>& fused_reshape_Y,
+                          const std::vector<int>& fused_transpose_Y,
+                          const std::vector<int>& fused_reshape_Out,
+                          const std::vector<int>& fused_transpose_Out,
+                          const std::string& mkldnn_data_type,
+                          const float scale_x,
+                          const float scale_y,
+                          const float scale_scale_in_eltwise,
+                          const float scale_out,
+                          const bool force_fp32_output,
+                          MetaTensor* out);
 
 void GatherInferMeta(const MetaTensor& x,
                      const MetaTensor& index,
@@ -257,6 +292,11 @@ void IndexSelectInferMeta(const MetaTensor& x,
                           int dim,
                           MetaTensor* output);
 
+void IndexSelectStridedInferMeta(const MetaTensor& x,
+                                 int64_t index,
+                                 int dim,
+                                 MetaTensor* output);
+
 void IndexAddInferMeta(const MetaTensor& x,
                        const MetaTensor& index,
                        const MetaTensor& add_value,
@@ -264,6 +304,10 @@ void IndexAddInferMeta(const MetaTensor& x,
                        MetaTensor* output);
 
 void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
+
+void LogicalBinaryInferMeta(const MetaTensor& x,
+                            const MetaTensor& y,
+                            MetaTensor* out);
 
 void LogLossInferMeta(const MetaTensor& input,
                       const MetaTensor& label,
@@ -324,6 +368,12 @@ void MatrixNMSInferMeta(const MetaTensor& bboxes,
                         MetaTensor* roisnum,
                         MetaConfig config = MetaConfig());
 
+void MatrixRankStaticInferMeta(const MetaTensor& x,
+                               const MetaTensor& atol_tensor,
+                               bool use_default_tol,
+                               bool hermitian,
+                               MetaTensor* out);
+
 void MatrixRankTolInferMeta(const MetaTensor& x,
                             const MetaTensor& atol_tensor,
                             bool use_default_tol,
@@ -346,9 +396,9 @@ void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
 void PriorBoxInferMeta(const MetaTensor& input,
                        const MetaTensor& image,
                        const std::vector<float>& min_sizes,
+                       const std::vector<float>& max_sizes,
                        const std::vector<float>& aspect_ratios,
                        const std::vector<float>& variances,
-                       const std::vector<float>& max_sizes,
                        bool flip,
                        bool clip,
                        float step_w,
@@ -364,6 +414,12 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
                            bool right,
                            MetaTensor* out);
 
+void SequenceMaskInferMeta(const MetaTensor& x,
+                           const MetaTensor& max_len_tensor,
+                           int maxlen,
+                           int out_dtype,
+                           MetaTensor* y);
+
 void SoftmaxMaskFuseInferMeta(const MetaTensor& x,
                               const MetaTensor& mask,
                               MetaTensor* out);
@@ -374,13 +430,6 @@ void SegmentPoolInferMeta(const MetaTensor& x,
                           MetaTensor* out,
                           MetaTensor* summed_ids,
                           MetaConfig config = MetaConfig());
-
-void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
-                                            const MetaTensor& label,
-                                            bool normalize,
-                                            int ignore_index,
-                                            MetaTensor* out,
-                                            MetaConfig config = MetaConfig());
 
 void TakeAlongAxisInferMeta(const MetaTensor& x,
                             const MetaTensor& index,

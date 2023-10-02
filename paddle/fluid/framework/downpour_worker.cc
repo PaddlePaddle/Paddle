@@ -107,14 +107,14 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
     uint64_t dest_table = copy_table_config_.dest_sparse_tables(i);
     VLOG(3) << "copy_sparse_tables_ push back " << src_table << "->"
             << dest_table;
-    copy_sparse_tables_.push_back(std::make_pair(src_table, dest_table));
+    copy_sparse_tables_.emplace_back(src_table, dest_table);
   }
   for (int i = 0; i < copy_table_config_.src_dense_tables_size(); ++i) {
     uint64_t src_table = copy_table_config_.src_dense_tables(i);
     uint64_t dest_table = copy_table_config_.dest_dense_tables(i);
     VLOG(3) << "copy_dense_tables_ push back " << src_table << "->"
             << dest_table;
-    copy_dense_tables_.push_back(std::make_pair(src_table, dest_table));
+    copy_dense_tables_.emplace_back(src_table, dest_table);
   }
   for (auto& m : copy_table_config_.table_denpendency_map()) {
     if (sparse_key_names_.find(m.key()) != sparse_key_names_.end()) {
@@ -130,8 +130,9 @@ void DownpourWorker::CollectLabelInfo(size_t table_idx) {
   if (no_cvm_) {
     return;
   }
-  uint64_t table_id = static_cast<uint64_t>(
-      param_.program_config(0).pull_sparse_table_id(table_idx));
+  uint64_t table_id =
+      static_cast<uint64_t>(param_.program_config(0).pull_sparse_table_id(
+          static_cast<int>(table_idx)));
 
   TableParameter table;
   for (auto i : param_.sparse_table()) {
@@ -185,8 +186,9 @@ void DownpourWorker::CollectLabelInfo(size_t table_idx) {
 }
 
 void DownpourWorker::FillSparseValue(size_t table_idx) {
-  uint64_t table_id = static_cast<uint64_t>(
-      param_.program_config(0).pull_sparse_table_id(table_idx));
+  uint64_t table_id =
+      static_cast<uint64_t>(param_.program_config(0).pull_sparse_table_id(
+          static_cast<int>(table_idx)));
 
   TableParameter table;
   for (auto i : param_.sparse_table()) {
@@ -210,7 +212,7 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     CHECK(tensor != nullptr) << "tensor of var " << slot_name << " is null";
     int64_t* ids = tensor->data<int64_t>();
-    int len = tensor->numel();
+    int len = static_cast<int>(tensor->numel());
     Variable* var_emb = thread_scope_->FindVar(emb_slot_name);
     if (var_emb == nullptr) {
       continue;
@@ -353,16 +355,15 @@ void DownpourWorker::AdjustInsWeight() {
 }
 
 void DownpourWorker::CopySparseTable() {
-  for (size_t i = 0; i < copy_sparse_tables_.size(); ++i) {
-    int64_t src_table = copy_sparse_tables_[i].first;
-    int64_t dest_table = copy_sparse_tables_[i].second;
+  for (auto& copy_sparse_table : copy_sparse_tables_) {
+    int64_t src_table = static_cast<int64_t>(copy_sparse_table.first);
+    int64_t dest_table = static_cast<int64_t>(copy_sparse_table.second);
     int32_t feanum = 0;
     if (src_table == dest_table) {
       continue;
     } else if (!copy_table_config_.sparse_copy_by_feasign()) {
-      if (feasign_set_.find(src_table) == feasign_set_.end()) {
-        continue;
-      } else if (feasign_set_[src_table].size() == 0) {
+      if (feasign_set_.find(src_table) == feasign_set_.end() ||
+          feasign_set_[src_table].empty()) {
         continue;
       }
       feanum = fleet_ptr_->CopyTable(src_table, dest_table);
@@ -386,9 +387,9 @@ void DownpourWorker::CopyDenseTable() {
     return;
   }
   thread_local std::vector<std::future<int32_t>> pull_dense_status;
-  for (size_t i = 0; i < copy_dense_tables_.size(); ++i) {
-    uint64_t src_table = copy_dense_tables_[i].first;
-    uint64_t dest_table = copy_dense_tables_[i].second;
+  for (auto& copy_dense_table : copy_dense_tables_) {
+    uint64_t src_table = copy_dense_table.first;
+    uint64_t dest_table = copy_dense_table.second;
     if (src_table == dest_table) {
       continue;
     }
@@ -458,8 +459,8 @@ void DownpourWorker::TrainFilesWithProfiler() {
   std::vector<std::string> op_name;
   for (auto& op : ops_) {
     bool need_skip = false;
-    for (auto t = 0u; t < skip_ops_.size(); ++t) {
-      if (op->Type().find(skip_ops_[t]) != std::string::npos) {
+    for (auto& skip_op : skip_ops_) {
+      if (op->Type().find(skip_op) != std::string::npos) {
         need_skip = true;
         break;
       }
@@ -471,8 +472,8 @@ void DownpourWorker::TrainFilesWithProfiler() {
 
   VLOG(3) << "op name size: " << op_name.size();
   op_total_time.resize(op_name.size());
-  for (size_t i = 0; i < op_total_time.size(); ++i) {
-    op_total_time[i] = 0.0;
+  for (double& op_time : op_total_time) {
+    op_time = 0.0;
   }
   platform::Timer timeline;
   double total_time = 0.0;
@@ -555,8 +556,8 @@ void DownpourWorker::TrainFilesWithProfiler() {
     int run_op_idx = 0;
     for (auto& op : ops_) {
       bool need_skip = false;
-      for (auto t = 0u; t < skip_ops_.size(); ++t) {
-        if (op->Type().find(skip_ops_[t]) != std::string::npos) {
+      for (auto& skip_op : skip_ops_) {
+        if (op->Type().find(skip_op) != std::string::npos) {
           need_skip = true;
           break;
         }
@@ -768,7 +769,8 @@ void DownpourWorker::TrainFilesWithProfiler() {
         fprintf(stderr,
                 "push dense time percent: %f\n",
                 push_dense_time / total_time * 100);
-        fprintf(stderr, "%6.2f instances/s\n", total_inst / total_time);
+        fprintf(
+            stderr, "%6.2f instances/s\n", total_inst / total_time);  // NOLINT
       }
     }
     timeline.Start();
@@ -844,8 +846,8 @@ void DownpourWorker::TrainFiles() {
     // do computation here
     for (auto& op : ops_) {
       bool need_skip = false;
-      for (auto t = 0u; t < skip_ops_.size(); ++t) {
-        if (op->Type().find(skip_ops_[t]) != std::string::npos) {
+      for (auto& skip_op : skip_ops_) {
+        if (op->Type().find(skip_op) != std::string::npos) {
           need_skip = true;
           break;
         }
@@ -984,7 +986,7 @@ void DownpourWorker::TrainFiles() {
               param_.program_config(0).push_dense_table_id(i));
           if (condvalue_set_.find(tid) != condvalue_set_.end()) {
             // common dense table must push dense
-            if (cond2table_map_[cond_value_batch[0]] != tid) {
+            if (cond2table_map_[static_cast<int>(cond_value_batch[0])] != tid) {
               // can't push dense
               continue;
             }

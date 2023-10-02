@@ -46,45 +46,46 @@ def export(layer, path, input_spec=None, opset_version=9, **configs):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            class LinearNet(paddle.nn.Layer):
-                def __init__(self):
-                    super().__init__()
-                    self._linear = paddle.nn.Linear(128, 10)
+            >>> class LinearNet(paddle.nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self._linear = paddle.nn.Linear(128, 10)
+            ...
+            ...     def forward(self, x):
+            ...         return self._linear(x)
+            ...
+            >>> # Export model with 'InputSpec' to support dynamic input shape.
+            >>> def export_linear_net():
+            ...     model = LinearNet()
+            ...     x_spec = paddle.static.InputSpec(shape=[None, 128], dtype='float32')
+            ...     paddle.onnx.export(model, 'linear_net', input_spec=[x_spec])
+            ...
+            >>> # doctest: +SKIP('raise ImportError')
+            >>> export_linear_net()
 
-                def forward(self, x):
-                    return self._linear(x)
-
-            # Export model with 'InputSpec' to support dynamic input shape.
-            def export_linear_net():
-                model = LinearNet()
-                x_spec = paddle.static.InputSpec(shape=[None, 128], dtype='float32')
-                paddle.onnx.export(model, 'linear_net', input_spec=[x_spec])
-
-            export_linear_net()
-
-            class Logic(paddle.nn.Layer):
-                def __init__(self):
-                    super().__init__()
-
-                def forward(self, x, y, z):
-                    if z:
-                        return x
-                    else:
-                        return y
-
-            # Export model with 'Tensor' to support pruned model by set 'output_spec'.
-            def export_logic():
-                model = Logic()
-                x = paddle.to_tensor([1])
-                y = paddle.to_tensor([2])
-                # Static and run model.
-                paddle.jit.to_static(model)
-                out = model(x, y, z=True)
-                paddle.onnx.export(model, 'pruned', input_spec=[x], output_spec=[out])
-
-            export_logic()
+            >>> class Logic(paddle.nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...
+            ...     def forward(self, x, y, z):
+            ...         if z:
+            ...             return x
+            ...         else:
+            ...             return y
+            ...
+            >>> # Export model with 'Tensor' to support pruned model by set 'output_spec'.
+            >>> def export_logic():
+            ...     model = Logic()
+            ...     x = paddle.to_tensor([1])
+            ...     y = paddle.to_tensor([2])
+            ...     # Static and run model.
+            ...     paddle.jit.to_static(model)
+            ...     out = model(x, y, z=True)
+            ...     paddle.onnx.export(model, 'pruned', input_spec=[x, y, z], output_spec=[out], input_names_after_prune=[x])
+            ...
+            >>> export_logic()
     """
 
     p2o = try_import('paddle2onnx')
@@ -94,7 +95,7 @@ def export(layer, path, input_spec=None, opset_version=9, **configs):
         raise ValueError(
             "The input path MUST be format of dirname/file_prefix "
             "[dirname\\file_prefix in Windows system], but "
-            "the file_prefix is empty in received path: {}".format(path)
+            f"the file_prefix is empty in received path: {path}"
         )
     save_file = path + '.onnx'
 
@@ -103,5 +104,5 @@ def export(layer, path, input_spec=None, opset_version=9, **configs):
         save_file,
         input_spec=input_spec,
         opset_version=opset_version,
-        **configs
+        **configs,
     )

@@ -116,13 +116,13 @@ std::unique_ptr<ProfilerResult> DeserializationReader::Parse() {
       }
     }
     // restore parent-child relationship
-    for (auto it = child_parent_map.begin(); it != child_parent_map.end();
-         it++) {
-      if (it->second != -1) {  // not root node
-        index_node_map[it->second]->AddChild(index_node_map[it->first]);
+    for (auto& map_item : child_parent_map) {
+      if (map_item.second != -1) {  // not root node
+        index_node_map[map_item.second]->AddChild(
+            index_node_map[map_item.first]);
       } else {
         thread_event_trees_map[current_threadid] =
-            index_node_map[it->first];  // root node
+            index_node_map[map_item.first];  // root node
       }
     }
   }
@@ -150,7 +150,7 @@ std::unique_ptr<ProfilerResult> DeserializationReader::Parse() {
   return std::unique_ptr<ProfilerResult>(profiler_result_ptr);
 }
 
-DeserializationReader::~DeserializationReader() {
+DeserializationReader::~DeserializationReader() {  // NOLINT
   delete node_trees_proto_;
   input_file_stream_.close();
 }
@@ -287,7 +287,7 @@ DeserializationReader::RestoreOperatorSupplementEventNode(
       auto shape_vector_proto = shape_vectors_proto.shapes(j);
       std::vector<int64_t> shape;
       for (int k = 0; k < shape_vector_proto.size_size(); k++) {
-        shape.push_back(shape_vector_proto.size(k));
+        shape.push_back(shape_vector_proto.size(k));  // NOLINT
       }
       input_shape_vec.push_back(shape);
     }
@@ -341,13 +341,13 @@ MemcpyEventInfo DeserializationReader::HandleMemcpyEventInfoProto(
   memcpy_info.num_bytes = memcpy_info_proto.num_bytes();
   std::strncpy(memcpy_info.copy_kind,
                memcpy_info_proto.copy_kind().c_str(),
-               kMemKindMaxLen - 1);
+               phi::kMemKindMaxLen - 1);
   std::strncpy(memcpy_info.src_kind,
                memcpy_info_proto.src_kind().c_str(),
-               kMemKindMaxLen - 1);
+               phi::kMemKindMaxLen - 1);
   std::strncpy(memcpy_info.dst_kind,
                memcpy_info_proto.dst_kind().c_str(),
-               kMemKindMaxLen - 1);
+               phi::kMemKindMaxLen - 1);
   return memcpy_info;
 }
 
@@ -359,7 +359,7 @@ MemsetEventInfo DeserializationReader::HandleMemsetEventInfoProto(
   memset_info.num_bytes = memset_info_proto.num_bytes();
   std::strncpy(memset_info.memory_kind,
                memset_info_proto.memory_kind().c_str(),
-               kMemKindMaxLen - 1);
+               phi::kMemKindMaxLen - 1);
   memset_info.value = memset_info_proto.value();
   return memset_info;
 }

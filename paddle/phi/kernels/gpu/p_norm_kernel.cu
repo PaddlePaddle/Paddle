@@ -17,53 +17,14 @@
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
+#include "paddle/phi/kernels/funcs/p_norm_utils.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
 
 namespace phi {
-
-template <typename T>
-__device__ __forceinline__ int sgn(T val) {
-  return (T(0) < val) - (val < T(0));
-}
-
-__device__ __forceinline__ dtype::float16 inline_abs(dtype::float16 x) {
-  return static_cast<dtype::float16>(abs(static_cast<float>(x)));
-}
-
-__device__ __forceinline__ dtype::bfloat16 inline_abs(dtype::bfloat16 x) {
-  return static_cast<dtype::bfloat16>(abs(static_cast<float>(x)));
-}
-
-__device__ __forceinline__ float inline_abs(float x) { return abs(x); }
-__device__ __forceinline__ double inline_abs(double x) { return abs(x); }
-
-__device__ __forceinline__ int inline_sign(dtype::float16 x) {
-  return sgn<dtype::float16>(x);
-}
-__device__ __forceinline__ int inline_sign(float x) { return sgn<float>(x); }
-__device__ __forceinline__ int inline_sign(double x) { return sgn<double>(x); }
-
-__device__ __forceinline__ dtype::float16 inline_pow(dtype::float16 base,
-                                                     dtype::float16 exponent) {
-  return static_cast<dtype::float16>(
-      pow(static_cast<float>(base), static_cast<float>(exponent)));
-}
-__device__ __forceinline__ dtype::bfloat16 inline_pow(
-    dtype::bfloat16 base, dtype::bfloat16 exponent) {
-  return static_cast<dtype::bfloat16>(
-      pow(static_cast<float>(base), static_cast<float>(exponent)));
-}
-__device__ __forceinline__ float inline_pow(float base, float exponent) {
-  return pow(base, exponent);
-}
-__device__ __forceinline__ double inline_pow(double base, double exponent) {
-  return pow(base, exponent);
-}
-
 template <typename T>
 struct NonzeroFunctor {
-  HOSTDEVICE explicit inline NonzeroFunctor() {}
+  HOSTDEVICE explicit inline NonzeroFunctor() = default;
   HOSTDEVICE inline T operator()(const T x) const {
     return static_cast<T>(static_cast<double>(x) != 0);
   }
@@ -71,7 +32,7 @@ struct NonzeroFunctor {
 
 template <typename T>
 struct AbsFunctor {
-  HOSTDEVICE explicit inline AbsFunctor() {}
+  HOSTDEVICE explicit inline AbsFunctor() = default;
   HOSTDEVICE inline T operator()(const T x) const {
     return static_cast<T>(inline_abs(x));
   }

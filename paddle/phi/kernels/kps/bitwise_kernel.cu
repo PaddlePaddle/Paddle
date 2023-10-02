@@ -25,18 +25,17 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 namespace phi {
 
-#define DEFINE_BITWISE_KERNEL(op_type)                      \
-  template <typename T, typename Context>                   \
-  void Bitwise##op_type##Kernel(const Context& dev_ctx,     \
-                                const DenseTensor& x,       \
-                                const DenseTensor& y,       \
-                                DenseTensor* out) {         \
-    dev_ctx.template Alloc<T>(out);                         \
-    funcs::Bitwise##op_type##Functor<T> func;               \
-    std::vector<const DenseTensor*> ins = {&x, &y};         \
-    std::vector<DenseTensor*> outs = {out};                 \
-    funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>( \
-        dev_ctx, ins, &outs, -1, func);                     \
+#define DEFINE_BITWISE_KERNEL(op_type)                    \
+  template <typename T, typename Context>                 \
+  void Bitwise##op_type##Kernel(const Context& dev_ctx,   \
+                                const DenseTensor& x,     \
+                                const DenseTensor& y,     \
+                                DenseTensor* out) {       \
+    dev_ctx.template Alloc<T>(out);                       \
+    funcs::Bitwise##op_type##Functor<T> func;             \
+    std::vector<const DenseTensor*> ins = {&x, &y};       \
+    std::vector<DenseTensor*> outs = {out};               \
+    funcs::BroadcastKernel<T>(dev_ctx, ins, &outs, func); \
   }
 
 DEFINE_BITWISE_KERNEL(And)

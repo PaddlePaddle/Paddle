@@ -36,11 +36,15 @@ ProcessGroupIdMap& ProcessGroupIdMap::GetInstance() {
   return instance;
 }
 
-void ProcessGroupIdMap::DestroyProcessGroup(int gid) {
-  int use_count = ProcessGroupIdMap::GetInstance()[gid].use_count();
-  for (int i = 0; i < use_count; ++i) {
-    ProcessGroupIdMap::GetInstance()[gid].reset();
+void ProcessGroupIdMap::DestroyProcessGroup() {
+  auto& id_map = ProcessGroupIdMap::GetInstance();
+  for (auto& item : id_map) {
+    auto use_count = item.second.use_count();
+    for (int i = 0; i < use_count; ++i) {
+      item.second.reset();
+    }
   }
+  id_map.clear();
 }
 
 }  //  namespace distributed

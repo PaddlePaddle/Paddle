@@ -31,10 +31,11 @@
 #include "paddle/fluid/imperative/var_helper.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/selected_rows.h"
 
-DECLARE_bool(use_mkldnn);
+PHI_DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace imperative {
@@ -426,6 +427,10 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
               kernel_ctx->EmplaceBackAttr(
                   std::move(phi::Scalar(PADDLE_GET_CONST(bool, attr))));
               break;
+            case framework::proto::AttrType::SCALAR:
+              kernel_ctx->EmplaceBackAttr(std::move(phi::Scalar(
+                  PADDLE_GET_CONST(paddle::experimental::Scalar, attr))));
+              break;
             default:
               PADDLE_THROW(platform::errors::Unimplemented(
                   "Unsupported cast op attribute `%s` to Scalar when construct "
@@ -434,8 +439,8 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
           }
         } else {  // scalar is in the input
           auto& ins_vector = ins.at(attr_names[i]);
-          kernel_ctx->EmplaceBackAttr(std::move(
-              experimental::MakePhiScalarFromVar(ins_vector[0]->Var())));
+          kernel_ctx->EmplaceBackAttr(
+              std::move(framework::MakePhiScalarFromVar(ins_vector[0]->Var())));
         }
         break;
       case phi::AttributeType::INT_ARRAY:
@@ -468,7 +473,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
           auto& ins_vector = ins.at(attr_names[i]);
           if (ins_vector.size() == 1) {  // ShapeTensor
             kernel_ctx->EmplaceBackAttr(std::move(
-                experimental::MakePhiIntArrayFromVar(ins_vector[0]->Var())));
+                framework::MakePhiIntArrayFromVar(ins_vector[0]->Var())));
           } else {  // ShapeTensorList
             std::vector<framework::Variable*> variables;
             variables.reserve(ins_vector.size());
@@ -476,7 +481,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
               variables.push_back(var_base->MutableVar());
             }
             kernel_ctx->EmplaceBackAttr(
-                std::move(experimental::MakePhiIntArrayFromVarList(variables)));
+                std::move(framework::MakePhiIntArrayFromVarList(variables)));
           }
         }
         break;
@@ -526,6 +531,16 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
           } break;
           case framework::proto::AttrType::BOOLEANS: {
             const auto& vec = PADDLE_GET_CONST(std::vector<bool>, attr);
+            std::vector<phi::Scalar> scalar_list;
+            scalar_list.reserve(vec.size());
+            for (const auto& val : vec) {
+              scalar_list.emplace_back(val);
+            }
+            kernel_ctx->EmplaceBackAttr(std::move(scalar_list));
+          } break;
+          case framework::proto::AttrType::SCALARS: {
+            const auto& vec = PADDLE_GET_CONST(
+                std::vector<paddle::experimental::Scalar>, attr);
             std::vector<phi::Scalar> scalar_list;
             scalar_list.reserve(vec.size());
             for (const auto& val : vec) {

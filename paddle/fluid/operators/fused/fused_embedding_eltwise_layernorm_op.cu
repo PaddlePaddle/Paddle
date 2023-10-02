@@ -29,7 +29,7 @@
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class EmbeddingEltWiseLayerNormKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -145,14 +145,18 @@ class EmbeddingEltWiseLayerNormKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10000
-REGISTER_OP_CUDA_KERNEL(
-    fused_embedding_eltwise_layernorm,
-    ops::EmbeddingEltWiseLayerNormKernel<phi::GPUContext, float>,
-    ops::EmbeddingEltWiseLayerNormKernel<phi::GPUContext,
-                                         paddle::platform::float16>);
+PD_REGISTER_STRUCT_KERNEL(fused_embedding_eltwise_layernorm,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::EmbeddingEltWiseLayerNormKernel,
+                          float,
+                          plat::float16) {}
 #else
-REGISTER_OP_CUDA_KERNEL(
-    fused_embedding_eltwise_layernorm,
-    ops::EmbeddingEltWiseLayerNormKernel<phi::GPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(fused_embedding_eltwise_layernorm,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::EmbeddingEltWiseLayerNormKernel,
+                          float) {}
 #endif

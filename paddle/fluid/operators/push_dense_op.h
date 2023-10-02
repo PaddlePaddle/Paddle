@@ -60,7 +60,7 @@ void PushDenseFunctor(const framework::ExecutionContext& ctx) {
 #endif
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class PushDenseCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

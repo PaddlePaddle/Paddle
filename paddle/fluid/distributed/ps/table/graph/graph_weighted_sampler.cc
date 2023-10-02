@@ -18,7 +18,7 @@
 #include <memory>
 #include <unordered_map>
 
-#include "paddle/fluid/framework/generator.h"
+#include "paddle/phi/core/generator.h"
 namespace paddle {
 namespace distributed {
 

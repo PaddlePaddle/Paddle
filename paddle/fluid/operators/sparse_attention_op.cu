@@ -653,7 +653,7 @@ std::vector<phi::DenseTensor> GetSplitTensor(phi::DenseTensor* input) {
   return input->Split(1, 0);
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class SparseAttentionCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -773,7 +773,7 @@ class SparseAttentionCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class SparseAttentionGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -890,12 +890,17 @@ class SparseAttentionGradCUDAKernel : public framework::OpKernel<T> {
 
 }  // namespace operators
 }  // namespace paddle
-REGISTER_OP_CUDA_KERNEL(
-    sparse_attention,
-    ops::SparseAttentionCUDAKernel<phi::GPUContext, float>,
-    ops::SparseAttentionCUDAKernel<phi::GPUContext, double>);
 
-REGISTER_OP_CUDA_KERNEL(
-    sparse_attention_grad,
-    ops::SparseAttentionGradCUDAKernel<phi::GPUContext, float>,
-    ops::SparseAttentionGradCUDAKernel<phi::GPUContext, double>);
+namespace ops = paddle::operators;
+PD_REGISTER_STRUCT_KERNEL(sparse_attention,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SparseAttentionCUDAKernel,
+                          float,
+                          double) {}
+PD_REGISTER_STRUCT_KERNEL(sparse_attention_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SparseAttentionGradCUDAKernel,
+                          float,
+                          double) {}

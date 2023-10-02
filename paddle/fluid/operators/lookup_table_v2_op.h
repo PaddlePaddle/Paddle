@@ -130,7 +130,8 @@ struct LookupTableV2CPUFunctor {
                    table + id_index * row_width,
                    row_width * sizeof(T));
           } else {
-            auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(context_);
+            auto &dev_ctx = context_.template device_context<phi::CPUContext>();
+            auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
             blas.VCOPY(row_width,
                        table + id_index * row_width,
                        output + i * row_width);

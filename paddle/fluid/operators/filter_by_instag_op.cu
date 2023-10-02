@@ -325,7 +325,7 @@ __global__ void copy_grad_kernel(const size_t N,
 
 #endif
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FilterByInstagGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -553,7 +553,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FilterByInstagGradGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -620,14 +620,20 @@ class FilterByInstagGradGPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_CUDA_KERNEL(filter_by_instag,
-                        ops::FilterByInstagGPUKernel<float>,
-                        ops::FilterByInstagGPUKernel<double>,
-                        ops::FilterByInstagGPUKernel<int32_t>,
-                        ops::FilterByInstagGPUKernel<int64_t>);
+PD_REGISTER_STRUCT_KERNEL(filter_by_instag,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FilterByInstagGPUKernel,
+                          float,
+                          double,
+                          int32_t,
+                          int64_t) {}
 
-REGISTER_OP_CUDA_KERNEL(filter_by_instag_grad,
-                        ops::FilterByInstagGradGPUKernel<float>,
-                        ops::FilterByInstagGradGPUKernel<double>,
-                        ops::FilterByInstagGradGPUKernel<int32_t>,
-                        ops::FilterByInstagGradGPUKernel<int64_t>);
+PD_REGISTER_STRUCT_KERNEL(filter_by_instag_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FilterByInstagGradGPUKernel,
+                          float,
+                          double,
+                          int32_t,
+                          int64_t) {}

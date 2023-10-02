@@ -148,11 +148,10 @@ Fusion Sequence Conv and ElementwiseAdd Operator.
 )DOC");
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    using DeviceContext = phi::CPUContext;
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* w = ctx.Input<phi::DenseTensor>("Filter");
     auto* b = ctx.Input<phi::DenseTensor>("Bias");
@@ -160,8 +159,8 @@ class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
     auto* col = ctx.Output<phi::DenseTensor>("ColMat");
 
     auto x_lod = x->lod();
-    auto x_dims = x->dims();
-    auto w_dims = w->dims();
+    auto x_dims = phi::vectorize<int64_t>(x->dims());
+    auto w_dims = phi::vectorize<int64_t>(w->dims());
     PADDLE_ENFORCE_EQ(
         b->numel(),
         w_dims[1],
@@ -193,8 +192,8 @@ class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
     int col_mat_w = static_cast<int>(w_dims[0]);
     int col_mat_w_sz = col_mat_w * sizeof(T);
     for (int i = 0; i < static_cast<int>(x_lod[0].size()) - 1; ++i) {
-      int st = x_lod[0][i];
-      int ed = x_lod[0][i + 1];
+      int st = static_cast<int>(x_lod[0][i]);
+      int ed = static_cast<int>(x_lod[0][i + 1]);
       const T* src_data = x_data + st * src_mat_w;
       T* dst_data = col_data + st * col_mat_w;
       int seq_len = ed - st;
@@ -283,6 +282,9 @@ REGISTER_OPERATOR(fusion_seqconv_eltadd_relu,
                   ops::FusionSeqConvEltAddReluOp,
                   ops::FusionSeqConvEltAddReluOpMaker);
 
-REGISTER_OP_CPU_KERNEL(fusion_seqconv_eltadd_relu,
-                       ops::FusionSeqConvEltAddReluKernel<float>,
-                       ops::FusionSeqConvEltAddReluKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(fusion_seqconv_eltadd_relu,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::FusionSeqConvEltAddReluKernel,
+                          float,
+                          double) {}

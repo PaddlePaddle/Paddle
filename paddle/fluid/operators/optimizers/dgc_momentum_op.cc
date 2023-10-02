@@ -12,29 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/optimizers/dgc_momentum_op.h"
-
 #include <string>
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
 
-class DGCMomentumOp : public MomentumOp {
+class DGCMomentumOp : public framework::OperatorWithKernel {
  public:
-  using MomentumOp::MomentumOp;
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("current_step"),
-                   "Input",
-                   "current_step",
-                   "DGCMomentumOp");
-    OP_INOUT_CHECK(ctx->HasInput("nranks"), "Input", "nranks", "DGCMomentumOp");
-    OP_INOUT_CHECK(
-        ctx->HasOutput("Grad_out"), "Output", "Grad_out", "DGCMomentumOp");
-    return MomentumOp::InferShape(ctx);
-  }
-
   phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
@@ -49,32 +40,87 @@ class DGCMomentumOp : public MomentumOp {
     return framework::OperatorWithKernel::GetKernelTypeForVar(
         var_name, tensor, expected_kernel_type);
   }
+
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input_data_type =
+        OperatorWithKernel::IndicateVarDataType(ctx, "Param");
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
+  }
 };
 
-class DGCMomentumOpMaker : public MomentumOpMaker {
+class DGCMomentumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+    AddInput("Param",
+             "(phi::DenseTensor, default phi::DenseTensor<float>) "
+             "Input parameter that has to be updated");
+    AddInput("Grad",
+             "(phi::DenseTensor, default phi::DenseTensor<float>) "
+             "Input gradient of the parameter");
+    AddInput("Velocity",
+             "(phi::DenseTensor, default phi::DenseTensor<float>) "
+             "Input velocity (corresponding to the parameter) "
+             "that has to be updated");
+    AddInput("LearningRate",
+             "(phi::DenseTensor, default phi::DenseTensor<float>) "
+             "Input learning rate");
+    AddInput("MasterParam", "FP32 master weight for AMP.").AsDispensable();
     AddInput("current_step", "(Tensor) Current step.");
     AddInput("nranks", "(Tensor) The number of trainers.");
 
+    AddOutput("ParamOut",
+              "(phi::DenseTensor) This output is updated parameter. "
+              "It shared memory with Input(Param).");
+    AddOutput("VelocityOut",
+              "(phi::DenseTensor) This output is updated velocity. "
+              "It shared memory with Input(Velocity).");
+    AddOutput("MasterParamOut",
+              "The updated FP32 master weight for AMP. "
+              "It shared memory with Input(MasterParam).")
+        .AsDispensable();
     AddOutput("Grad_out", "(Tensor) Output grad gradient");
 
+    AddAttr<float>("mu", "(float) Momentum coefficient");
+    AddAttr<bool>("use_nesterov",
+                  "(bool, default false) "
+                  "Use Nesterov Momentum")
+        .SetDefault(false);
+    AddAttr<std::string>("regularization_method",
+                         "(string) regularization_method, right now only "
+                         "support l2decay or none")
+        .SetDefault("");
+    AddAttr<float>("regularization_coeff", "(float) regularization_coeff")
+        .SetDefault(0.0f);
+    AddAttr<bool>("multi_precision",
+                  "(bool, default false) "
+                  "Whether to use multi-precision during weight updating.")
+        .SetDefault(false);
+    AddAttr<float>(
+        "rescale_grad",
+        "(float, default 1.0) Multiply the gradient with `rescale_grad`"
+        "before updating. Often choose to be `1.0/batch_size`.")
+        .SetDefault(1.0f);
     AddAttr<float>("rampup_begin_step",
                    "(float, -1.0)"
                    "The period when begin DGC.")
         .SetDefault(-1.0);
 
-    return MomentumOpMaker::Make();
+    AddComment(R"DOC(
+DGC Momentum Operator.
+)DOC");
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
 
+DECLARE_INFER_SHAPE_FUNCTOR(dgc_momentum,
+                            DGCMomentumInferShapeFunctor,
+                            PD_INFER_META(phi::DGCMomentumInferMeta));
+
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(dgc_momentum,
                              ops::DGCMomentumOp,
-                             ops::DGCMomentumOpMaker);
-
-REGISTER_OP_CPU_KERNEL(dgc_momentum,
-                       ops::DGCMomentumKernel<phi::CPUContext, float>);
+                             ops::DGCMomentumOpMaker,
+                             DGCMomentumInferShapeFunctor);

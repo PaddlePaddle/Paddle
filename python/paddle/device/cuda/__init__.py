@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+from paddle.base import core
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.utils import deprecated
 
 from .streams import Stream  # noqa: F401
@@ -48,24 +48,25 @@ def current_stream(device=None):
     '''
     Return the current CUDA stream by the device.
 
-    Parameters:
+    Args:
         device(paddle.CUDAPlace()|int, optional): The device or the ID of the device which want to get stream from.
-        If device is None, the device is the current device. Default: None.
+                If device is None, the device is the current device. Default: None.
 
     Returns:
-        CUDAStream: the stream to the device.
+            CUDAStream: the stream to the device.
 
     Examples:
         .. code-block:: python
 
-            # required: gpu
-            import paddle
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
 
-            s1 = paddle.device.cuda.current_stream()
+            >>> s1 = paddle.device.cuda.current_stream()
 
-            s2 = paddle.device.cuda.current_stream(0)
+            >>> s2 = paddle.device.cuda.current_stream(0)
 
-            s3 = paddle.device.cuda.current_stream(paddle.CUDAPlace(0))
+            >>> s3 = paddle.device.cuda.current_stream(paddle.CUDAPlace(0))
 
     '''
 
@@ -92,19 +93,19 @@ def synchronize(device=None):
     '''
     Wait for the compute on the given CUDA device to finish.
 
-    Parameters:
+    Args:
         device(paddle.CUDAPlace()|int, optional): The device or the ID of the device.
-        If device is None, the device is the current device. Default: None.
+                If device is None, the device is the current device. Default: None.
 
     Examples:
         .. code-block:: python
 
-            # required: gpu
-            import paddle
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
 
-            paddle.device.cuda.synchronize()
-            paddle.device.cuda.synchronize(0)
-            paddle.device.cuda.synchronize(paddle.CUDAPlace(0))
+            >>> paddle.device.cuda.synchronize()
+            >>> paddle.device.cuda.synchronize(0)
+            >>> paddle.device.cuda.synchronize(paddle.CUDAPlace(0))
 
     '''
 
@@ -131,9 +132,9 @@ def device_count():
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.device.cuda.device_count()
+            >>> paddle.device.cuda.device_count()
 
     '''
 
@@ -156,13 +157,13 @@ def empty_cache():
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
 
-            # required: gpu
-            paddle.set_device("gpu")
-            tensor = paddle.randn([512, 512, 512], "float")
-            del tensor
-            paddle.device.cuda.empty_cache()
+            >>> tensor = paddle.randn([512, 512, 512], "float")
+            >>> del tensor
+            >>> paddle.device.cuda.empty_cache()
     '''
 
     if core.is_compiled_with_cuda():
@@ -231,12 +232,13 @@ def max_memory_allocated(device=None):
     Examples:
         .. code-block:: python
 
-            # required: gpu
-            import paddle
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
 
-            max_memory_allocated_size = paddle.device.cuda.max_memory_allocated(paddle.CUDAPlace(0))
-            max_memory_allocated_size = paddle.device.cuda.max_memory_allocated(0)
-            max_memory_allocated_size = paddle.device.cuda.max_memory_allocated("gpu:0")
+            >>> max_memory_allocated_size = paddle.device.cuda.max_memory_allocated(paddle.CUDAPlace(0))
+            >>> max_memory_allocated_size = paddle.device.cuda.max_memory_allocated(0)
+            >>> max_memory_allocated_size = paddle.device.cuda.max_memory_allocated("gpu:0")
     '''
     name = "paddle.device.cuda.max_memory_allocated"
     if not core.is_compiled_with_cuda():
@@ -262,12 +264,13 @@ def max_memory_reserved(device=None):
     Examples:
         .. code-block:: python
 
-            # required: gpu
-            import paddle
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
 
-            max_memory_reserved_size = paddle.device.cuda.max_memory_reserved(paddle.CUDAPlace(0))
-            max_memory_reserved_size = paddle.device.cuda.max_memory_reserved(0)
-            max_memory_reserved_size = paddle.device.cuda.max_memory_reserved("gpu:0")
+            >>> max_memory_reserved_size = paddle.device.cuda.max_memory_reserved(paddle.CUDAPlace(0))
+            >>> max_memory_reserved_size = paddle.device.cuda.max_memory_reserved(0)
+            >>> max_memory_reserved_size = paddle.device.cuda.max_memory_reserved("gpu:0")
     '''
     name = "paddle.device.cuda.max_memory_reserved"
     if not core.is_compiled_with_cuda():
@@ -287,7 +290,7 @@ def memory_allocated(device=None):
         For instance, a float32 tensor with shape [1] in GPU will take up 256 bytes memory, even though storing a float32 data requires only 4 bytes.
 
     Args:
-        device(paddle.CUDAPlace or int or str): The device, the id of the device or
+        device(paddle.CUDAPlace or int or str, optional): The device, the id of the device or
             the string name of device like 'gpu:x'. If device is None, the device is the current device.
             Default: None.
 
@@ -297,12 +300,13 @@ def memory_allocated(device=None):
     Examples:
         .. code-block:: python
 
-            # required: gpu
-            import paddle
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
 
-            memory_allocated_size = paddle.device.cuda.memory_allocated(paddle.CUDAPlace(0))
-            memory_allocated_size = paddle.device.cuda.memory_allocated(0)
-            memory_allocated_size = paddle.device.cuda.memory_allocated("gpu:0")
+            >>> memory_allocated_size = paddle.device.cuda.memory_allocated(paddle.CUDAPlace(0))
+            >>> memory_allocated_size = paddle.device.cuda.memory_allocated(0)
+            >>> memory_allocated_size = paddle.device.cuda.memory_allocated("gpu:0")
     '''
     name = "paddle.device.cuda.memory_allocated"
     if not core.is_compiled_with_cuda():
@@ -318,7 +322,7 @@ def memory_reserved(device=None):
     Return the current size of GPU memory that is held by the allocator of the given device.
 
     Args:
-        device(paddle.CUDAPlace or int or str): The device, the id of the device or
+        device(paddle.CUDAPlace or int or str, optional): The device, the id of the device or
             the string name of device like 'gpu:x'. If device is None, the device is the current device.
             Default: None.
 
@@ -328,12 +332,13 @@ def memory_reserved(device=None):
     Examples:
         .. code-block:: python
 
-            # required: gpu
-            import paddle
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
 
-            memory_reserved_size = paddle.device.cuda.memory_reserved(paddle.CUDAPlace(0))
-            memory_reserved_size = paddle.device.cuda.memory_reserved(0)
-            memory_reserved_size = paddle.device.cuda.memory_reserved("gpu:0")
+            >>> memory_reserved_size = paddle.device.cuda.memory_reserved(paddle.CUDAPlace(0))
+            >>> memory_reserved_size = paddle.device.cuda.memory_reserved(0)
+            >>> memory_reserved_size = paddle.device.cuda.memory_reserved("gpu:0")
     '''
     name = "paddle.device.cuda.memory_reserved"
     if not core.is_compiled_with_cuda():
@@ -385,14 +390,15 @@ def stream_guard(stream):
     Examples:
         .. code-block:: python
 
-            # required: gpu
-            import paddle
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
 
-            s = paddle.device.cuda.Stream()
-            data1 = paddle.ones(shape=[20])
-            data2 = paddle.ones(shape=[20])
-            with paddle.device.cuda.stream_guard(s):
-                data3 = data1 + data2
+            >>> s = paddle.device.cuda.Stream()
+            >>> data1 = paddle.ones(shape=[20])
+            >>> data2 = paddle.ones(shape=[20])
+            >>> with paddle.device.cuda.stream_guard(s):
+            ...     data3 = data1 + data2
 
     '''
 
@@ -429,20 +435,21 @@ def get_device_properties(device=None):
 
         .. code-block:: python
 
-            # required: gpu
+            >>> # doctest: +REQUIRES(env:GPU)
 
-            import paddle
-            paddle.device.cuda.get_device_properties()
-            # _gpuDeviceProperties(name='A100-SXM4-40GB', major=8, minor=0, total_memory=40536MB, multi_processor_count=108)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+            >>> paddle.device.cuda.get_device_properties()
+            >>> # _gpuDeviceProperties(name='A100-SXM4-40GB', major=8, minor=0, total_memory=40536MB, multi_processor_count=108)
 
-            paddle.device.cuda.get_device_properties(0)
-            # _gpuDeviceProperties(name='A100-SXM4-40GB', major=8, minor=0, total_memory=40536MB, multi_processor_count=108)
+            >>> paddle.device.cuda.get_device_properties(0)
+            >>> # _gpuDeviceProperties(name='A100-SXM4-40GB', major=8, minor=0, total_memory=40536MB, multi_processor_count=108)
 
-            paddle.device.cuda.get_device_properties('gpu:0')
-            # _gpuDeviceProperties(name='A100-SXM4-40GB', major=8, minor=0, total_memory=40536MB, multi_processor_count=108)
+            >>> paddle.device.cuda.get_device_properties('gpu:0')
+            >>> # _gpuDeviceProperties(name='A100-SXM4-40GB', major=8, minor=0, total_memory=40536MB, multi_processor_count=108)
 
-            paddle.device.cuda.get_device_properties(paddle.CUDAPlace(0))
-            # _gpuDeviceProperties(name='A100-SXM4-40GB', major=8, minor=0, total_memory=40536MB, multi_processor_count=108)
+            >>> paddle.device.cuda.get_device_properties(paddle.CUDAPlace(0))
+            >>> # _gpuDeviceProperties(name='A100-SXM4-40GB', major=8, minor=0, total_memory=40536MB, multi_processor_count=108)
 
     '''
 
@@ -469,9 +476,9 @@ def get_device_properties(device=None):
                 )
         else:
             raise ValueError(
-                "The device type {} is not expected. Because paddle.device.cuda."
+                f"The device type {device} is not expected. Because paddle.device.cuda."
                 "get_device_properties only support int, str or paddle.CUDAPlace. "
-                "Please input appropriate device again!".format(device)
+                "Please input appropriate device again!"
             )
     else:
         device_id = -1
@@ -493,15 +500,15 @@ def get_device_name(device=None):
 
         .. code-block:: python
 
-            # required: gpu
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
 
-            import paddle
+            >>> paddle.device.cuda.get_device_name()
 
-            paddle.device.cuda.get_device_name()
+            >>> paddle.device.cuda.get_device_name(0)
 
-            paddle.device.cuda.get_device_name(0)
-
-            paddle.device.cuda.get_device_name(paddle.CUDAPlace(0))
+            >>> paddle.device.cuda.get_device_name(paddle.CUDAPlace(0))
 
     '''
 
@@ -509,7 +516,7 @@ def get_device_name(device=None):
 
 
 def get_device_capability(device=None):
-    '''
+    """
     Return the major and minor revision numbers defining the device's compute capability which are got from CUDA function `cudaDeviceProp <https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1g1bf9d625a931d657e08db2b4391170f0>`_.
 
     Parameters:
@@ -522,16 +529,16 @@ def get_device_capability(device=None):
 
         .. code-block:: python
 
-            # required: gpu
+            >>> # doctest: +REQUIRES(env:GPU)
 
-            import paddle
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+            >>> paddle.device.cuda.get_device_capability()
 
-            paddle.device.cuda.get_device_capability()
+            >>> paddle.device.cuda.get_device_capability(0)
 
-            paddle.device.cuda.get_device_capability(0)
+            >>> paddle.device.cuda.get_device_capability(paddle.CUDAPlace(0))
 
-            paddle.device.cuda.get_device_capability(paddle.CUDAPlace(0))
-
-    '''
+    """
     prop = get_device_properties(device)
     return prop.major, prop.minor

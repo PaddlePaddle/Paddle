@@ -73,27 +73,27 @@ class EmbeddingEltWiseLayerNormOp : public framework::OperatorWithKernel {
     int batch = ids_dims[0][0];
     int seq_len = ids_dims[0][1];
     int hidden = embs_dims[0][1];
-    for (size_t i = 0; i < embs_dims.size(); ++i) {
-      PADDLE_ENFORCE_EQ(embs_dims[i].size(),
+    for (auto& embs_dim : embs_dims) {
+      PADDLE_ENFORCE_EQ(embs_dim.size(),
                         2,
                         platform::errors::InvalidArgument(
                             "The Emb dim's size shoule be 2, but found %d.",
-                            embs_dims[i].size()));
+                            embs_dim.size()));
       PADDLE_ENFORCE_EQ(
-          embs_dims[i][1],
+          embs_dim[1],
           dims_bias[0],
           platform::errors::InvalidArgument(
               "The second dims (%d) of the Embedding should be equal "
               "to the Bias's size(%d).",
-              embs_dims[i][1],
+              embs_dim[1],
               dims_bias[0]));
       PADDLE_ENFORCE_EQ(
-          embs_dims[i][1],
+          embs_dim[1],
           hidden,
           platform::errors::InvalidArgument(
               "The second dimension size(%d) of the Embedding should be "
               "equal to the hidden's size(%d)",
-              embs_dims[i][1],
+              embs_dim[1],
               hidden));
     }
 
@@ -107,11 +107,11 @@ class EmbeddingEltWiseLayerNormOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto inputs = ctx.MultiInput<phi::DenseTensor>("Embs");
     auto input_data_type = framework::proto::VarType::Type(0);
-    bool flag = 0;
+    bool flag = false;
     for (auto* input : inputs) {
       if (input->IsInitialized() && input->numel() > 0) {
         input_data_type = framework::TransToProtoVarType(input->dtype());
-        flag = 1;
+        flag = true;
         break;
       }
     }

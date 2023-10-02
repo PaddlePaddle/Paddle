@@ -19,15 +19,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin/deformable_conv_op_plugin.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -86,33 +77,63 @@ class DeformableConvOpConverter : public OpConverter {
     } else {
       weights = engine_->GetFp32TrtWeight(filter_name, *filter_tensor).get();
     }
-    auto* deformable_conv_plugin = new plugin::DeformableConvPlugin(
-        with_fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
-        weights,
-        kernel_dims,
-        strides,
-        paddings,
-        dilations,
-        groups,
-        deformable_groups,
-        im2col_step,
-        with_fp16);
+    if (!engine_->with_dynamic_shape()) {
+      auto* deformable_conv_plugin = new plugin::DeformableConvPlugin(
+          with_fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
+          weights,
+          kernel_dims,
+          strides,
+          paddings,
+          dilations,
+          groups,
+          deformable_groups,
+          im2col_step,
+          with_fp16);
 
-    std::vector<nvinfer1::ITensor*> deformable_conv_inputs;
-    deformable_conv_inputs.push_back(input_tensor);
-    deformable_conv_inputs.push_back(offset_tensor);
-    deformable_conv_inputs.push_back(mask_tensor);
+      std::vector<nvinfer1::ITensor*> deformable_conv_inputs;
+      deformable_conv_inputs.push_back(input_tensor);
+      deformable_conv_inputs.push_back(offset_tensor);
+      deformable_conv_inputs.push_back(mask_tensor);
 
-    auto* deformable_conv_layer =
-        engine_->network()->addPluginV2(deformable_conv_inputs.data(),
-                                        deformable_conv_inputs.size(),
-                                        *deformable_conv_plugin);
+      auto* deformable_conv_layer =
+          engine_->network()->addPluginV2(deformable_conv_inputs.data(),
+                                          deformable_conv_inputs.size(),
+                                          *deformable_conv_plugin);
 
-    std::vector<std::string> output_names;
-    output_names.push_back(op_desc.Output("Output").front());
+      std::vector<std::string> output_names;
+      output_names.push_back(op_desc.Output("Output").front());
 
-    RreplenishLayerAndOutput(
-        deformable_conv_layer, "deformable_conv", output_names, test_mode);
+      RreplenishLayerAndOutput(
+          deformable_conv_layer, "deformable_conv", output_names, test_mode);
+    } else {
+      auto* deformable_conv_plugin = new plugin::DeformableConvPluginDynamic(
+          with_fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
+          weights,
+          kernel_dims,
+          strides,
+          paddings,
+          dilations,
+          groups,
+          deformable_groups,
+          im2col_step,
+          with_fp16);
+
+      std::vector<nvinfer1::ITensor*> deformable_conv_inputs;
+      deformable_conv_inputs.push_back(input_tensor);
+      deformable_conv_inputs.push_back(offset_tensor);
+      deformable_conv_inputs.push_back(mask_tensor);
+
+      auto* deformable_conv_layer =
+          engine_->network()->addPluginV2(deformable_conv_inputs.data(),
+                                          deformable_conv_inputs.size(),
+                                          *deformable_conv_plugin);
+
+      std::vector<std::string> output_names;
+      output_names.push_back(op_desc.Output("Output").front());
+
+      RreplenishLayerAndOutput(
+          deformable_conv_layer, "deformable_conv", output_names, test_mode);
+    }
   }
 };
 

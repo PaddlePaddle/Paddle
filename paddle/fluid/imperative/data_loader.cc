@@ -16,9 +16,9 @@
 
 #include "paddle/fluid/imperative/data_loader.h"
 
-#include <stdlib.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <cstdlib>
 
 #include <csignal>
 
@@ -73,7 +73,8 @@ void EraseLoadProcessPIDs(int64_t key) {
   } while (0)
 
 #define REGISTER_SIGNAL_HANDLER(SIGNAL, HANDLER_NAME, ERROR_MSG)           \
-  static void HANDLER_NAME(int sig, siginfo_t *info, void *ctx) {          \
+  static void HANDLER_NAME(                                                \
+      int sig UNUSED, siginfo_t *info UNUSED, void *ctx UNUSED) {          \
     auto _w =                                                              \
         write(STDERR_FILENO, ERROR_MSG, sizeof(ERROR_MSG) / sizeof(char)); \
     (void)_w;                                                              \

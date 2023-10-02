@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/trainer_factory.h"
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include <memory>
 #include <string>
@@ -82,8 +82,7 @@ REGISTER_TRAINER_CLASS(HeterXpuTrainer);
     (defined PADDLE_WITH_PSLIB)
 REGISTER_TRAINER_CLASS(PSGPUTrainer);
 #endif
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 REGISTER_TRAINER_CLASS(PipelineTrainer);
 #endif
 }  // namespace framework

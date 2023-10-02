@@ -23,7 +23,7 @@ class SumOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(4) << "convert a fluid sum op to tensorrt sum layer";
+    VLOG(4) << "convert a sum op to tensorrt sum layer";
 
     framework::OpDesc op_desc(op, nullptr);
     nvinfer1::ILayer* layer = nullptr;

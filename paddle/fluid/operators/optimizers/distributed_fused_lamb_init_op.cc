@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/optimizers/distributed_fused_lamb_init_op.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
 namespace operators {
@@ -112,12 +113,7 @@ class DistributedFusedLambInitOpMaker
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(distributed_fused_lamb_init,
                              ops::DistributedFusedLambInitOp,
                              ops::DistributedFusedLambInitOpMaker);
-
-REGISTER_OP_CPU_KERNEL(
-    distributed_fused_lamb_init,
-    ops::DistributedFusedLambInitOpKernel<phi::CPUContext, float>);

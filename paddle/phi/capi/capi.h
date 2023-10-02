@@ -13,7 +13,7 @@
 // limitations under the License.
 #pragma once
 
-#if !defined(_WIN32) && !defined(__APPLE__)
+#if !defined(_WIN32)
 
 #include "paddle/phi/capi/include/common.h"
 
@@ -23,6 +23,8 @@ PD_DECLARE_CAPI(int_array);
 PD_DECLARE_CAPI(kernel_context);
 PD_DECLARE_CAPI(kernel_factory);
 PD_DECLARE_CAPI(kernel_registry);
+PD_DECLARE_CAPI(infer_meta_context);
+PD_DECLARE_CAPI(meta_tensor);
 PD_DECLARE_CAPI(place);
 PD_DECLARE_CAPI(scalar);
 PD_DECLARE_CAPI(tensor);

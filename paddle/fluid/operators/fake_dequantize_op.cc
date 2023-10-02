@@ -115,8 +115,8 @@ struct ChannelDequantizeFunctor<phi::CPUContext, T> {
           }
         }
       } else {
-        int batch_size = in->dims()[0];
-        int channel = in->dims()[1];
+        int batch_size = static_cast<int>(in->dims()[0]);
+        int channel = static_cast<int>(in->dims()[1]);
         const T* scale_one = scales[0]->data<T>();
         const T* scale_two = scales[1]->data<T>();
         for (int i = 0; i < batch_size; i++) {
@@ -277,9 +277,12 @@ REGISTER_OPERATOR(
     ops::FakeDequantizeMaxAbsOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(fake_dequantize_max_abs,
-                       ops::FakeDequantizeMaxAbsKernel<CPU, float>,
-                       ops::FakeDequantizeMaxAbsKernel<CPU, double>);
+PD_REGISTER_STRUCT_KERNEL(fake_dequantize_max_abs,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::FakeDequantizeMaxAbsKernel,
+                          float,
+                          double) {}
 
 REGISTER_OPERATOR(
     fake_channel_wise_dequantize_max_abs,
@@ -287,9 +290,12 @@ REGISTER_OPERATOR(
     ops::FakeChannelWiseDequantizeMaxAbsOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(fake_channel_wise_dequantize_max_abs,
-                       ops::FakeChannelWiseDequantizeMaxAbsKernel<CPU, float>,
-                       ops::FakeChannelWiseDequantizeMaxAbsKernel<CPU, double>);
+PD_REGISTER_STRUCT_KERNEL(fake_channel_wise_dequantize_max_abs,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::FakeChannelWiseDequantizeMaxAbsKernel,
+                          float,
+                          double) {}
 
 REGISTER_OP_VERSION(fake_channel_wise_dequantize_max_abs)
     .AddCheckpoint(

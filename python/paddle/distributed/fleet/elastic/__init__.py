@@ -47,7 +47,6 @@ def enable_elastic(args, distribute_mode):
 
 
 def launch_elastic(args, distribute_mode):
-
     server = args.elastic_server or os.getenv('PADDLE_ELASTIC_SERVER')
     srv, port = server.split(':')
     import etcd3
@@ -60,7 +59,6 @@ def launch_elastic(args, distribute_mode):
     signal.signal(signal.SIGINT, elastic.signal_handler)
 
     while True:
-
         # wait for all nodes ready to run
         elastic.wait()
 

@@ -84,6 +84,19 @@ class FusedAttentionPass(CPPPassWrapper):
         return PassType.FUSION_OPT
 
 
+@register_pass("fused_feedforward")
+class FusedFeedforwardPass(CPPPassWrapper):
+    def __init__(self):
+        super().__init__()
+
+    @property
+    def cpp_name(self):
+        return "fused_feedforward_pass"
+
+    def _type(self):
+        return PassType.FUSION_OPT
+
+
 @register_pass("fuse_gemm_epilogue")
 class FuseGemmEpiloguePass(CPPPassWrapper):
     def __init__(self):
@@ -92,6 +105,19 @@ class FuseGemmEpiloguePass(CPPPassWrapper):
     @property
     def cpp_name(self):
         return "fuse_gemm_epilogue_pass"
+
+    def _type(self):
+        return PassType.FUSION_OPT
+
+
+@register_pass("fuse_adamw")
+class FuseAdamWPass(CPPPassWrapper):
+    def __init__(self):
+        super().__init__()
+
+    @property
+    def cpp_name(self):
+        return "fuse_adamw_op_pass"
 
     def _type(self):
         return PassType.FUSION_OPT
@@ -149,7 +175,6 @@ class BuildCINNPass(CPPPassWrapper):
         return PassType.CALC_OPT
 
     def _apply_single_impl(self, main_program, startup_program, context):
-
         assert (
             'FLAGS_allow_cinn_ops' in core.globals()
         ), "PaddlePaddle is not compiled with CINN support"
@@ -175,7 +200,6 @@ class BuildCINNPass(CPPPassWrapper):
                 )
 
             else:
-
                 tmp_main_program = Executor._add_fetch_ops(
                     main_program, fetch_list, 'fetch'
                 )

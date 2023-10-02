@@ -22,7 +22,9 @@ PD_REGISTER_KERNEL(meshgrid,
                    GPU,
                    ALL_LAYOUT,
                    phi::MeshgridKernel,
+                   phi::dtype::float16,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::bfloat16) {}

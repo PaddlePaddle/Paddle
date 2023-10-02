@@ -28,6 +28,8 @@ using gpuStream_t = cudaStream_t;
 using gpuStream_t = hipStream_t;
 #endif
 
+#include "glog/logging.h"
+
 #include "paddle/phi/core/enforce.h"
 
 namespace phi {

@@ -28,8 +28,9 @@
 namespace cub = hipcub;
 #endif
 
-#include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gpu/graph_reindex_funcs.h"
 
@@ -57,11 +58,7 @@ std::shared_ptr<phi::Allocation> FillHashTable(const Context& dev_ctx,
                                                int* final_nodes_len) {
   const auto place = dev_ctx.GetPlace();
 
-#ifdef PADDLE_WITH_HIP
-  int block = 256;
-#else
   int block = 1024;
-#endif
   int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int grid_tmp = (num_input + block - 1) / block;
   int grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
@@ -70,7 +67,8 @@ std::shared_ptr<phi::Allocation> FillHashTable(const Context& dev_ctx,
       input, num_input, len_hashtable, keys, key_index);
 
   // Get item index count.
-  auto item_count = paddle::memory::Alloc(place, (num_input + 1) * sizeof(int));
+  auto item_count =
+      phi::memory_utils::Alloc(place, (num_input + 1) * sizeof(int));
   int* item_count_ptr = reinterpret_cast<int*>(item_count->ptr());
 #ifdef PADDLE_WITH_HIP
   hipMemset(item_count_ptr, 0, sizeof(int) * (num_input + 1));
@@ -83,7 +81,7 @@ std::shared_ptr<phi::Allocation> FillHashTable(const Context& dev_ctx,
   size_t temp_storage_bytes = 0;
   cub::DeviceScan::ExclusiveSum(
       NULL, temp_storage_bytes, item_count_ptr, item_count_ptr, num_input + 1);
-  auto d_temp_storage = paddle::memory::Alloc(place, temp_storage_bytes);
+  auto d_temp_storage = phi::memory_utils::Alloc(place, temp_storage_bytes);
   cub::DeviceScan::ExclusiveSum(d_temp_storage->ptr(),
                                 temp_storage_bytes,
                                 item_count_ptr,
@@ -103,7 +101,7 @@ std::shared_ptr<phi::Allocation> FillHashTable(const Context& dev_ctx,
 #endif
 
   auto unique_items =
-      paddle::memory::AllocShared(place, total_unique_items * sizeof(T));
+      phi::memory_utils::AllocShared(place, total_unique_items * sizeof(T));
   T* unique_items_data = reinterpret_cast<T*>(unique_items->ptr());
   *final_nodes_len = total_unique_items;
 
@@ -126,11 +124,7 @@ void FillBufferHashTable(const Context& dev_ctx,
                          thrust::device_vector<T>* unique_items,
                          int* values,
                          int* key_index) {
-#ifdef PADDLE_WITH_HIP
-  int block = 256;
-#else
   int block = 1024;
-#endif
   int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int grid_tmp = (num_input + block - 1) / block;
   int grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
@@ -165,11 +159,7 @@ void ResetBufferHashTable(const Context& dev_ctx,
                           thrust::device_vector<T>* unique_items,
                           int* values,
                           int* key_index) {
-#ifdef PADDLE_WITH_HIP
-  int block = 256;
-#else
   int block = 1024;
-#endif
   int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int grid_tmp = (unique_items->size() + block - 1) / block;
   int grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
@@ -187,12 +177,8 @@ void ReindexSrc(const Context& dev_ctx,
                 int* values,
                 int64_t num_edges,
                 int64_t table_size) {
-// Fill outputs with reindex result.
-#ifdef PADDLE_WITH_HIP
-  int block = 256;
-#else
+  // Fill outputs with reindex result.
   int block = 1024;
-#endif
   int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int grid_tmp = (num_edges + block - 1) / block;
   int grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
@@ -217,11 +203,12 @@ void Reindex(const Context& dev_ctx,
   int64_t log_num = 1 << static_cast<size_t>(1 + std::log2(num >> 1));
   int64_t table_size = log_num << 1;
 
-  auto keys = paddle::memory::Alloc(dev_ctx.GetPlace(), table_size * sizeof(T));
+  auto keys =
+      phi::memory_utils::Alloc(dev_ctx.GetPlace(), table_size * sizeof(T));
   auto values =
-      paddle::memory::Alloc(dev_ctx.GetPlace(), table_size * sizeof(int));
+      phi::memory_utils::Alloc(dev_ctx.GetPlace(), table_size * sizeof(int));
   auto key_index =
-      paddle::memory::Alloc(dev_ctx.GetPlace(), table_size * sizeof(int));
+      phi::memory_utils::Alloc(dev_ctx.GetPlace(), table_size * sizeof(int));
   T* keys_ptr = reinterpret_cast<T*>(keys->ptr());
   int* values_ptr = reinterpret_cast<int*>(values->ptr());
   int* key_index_ptr = reinterpret_cast<int*>(key_index->ptr());
@@ -286,12 +273,8 @@ void BufferReindex(const Context& dev_ctx,
   out_nodes->resize(unique_nodes.size());
   thrust::copy(unique_nodes.begin(), unique_nodes.end(), out_nodes->begin());
 
-// Fill outputs with reindex result.
-#ifdef PADDLE_WITH_HIP
-  int block = 256;
-#else
+  // Fill outputs with reindex result.
   int block = 1024;
-#endif
   int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int grid_tmp = (num_edges + block - 1) / block;
   int grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
@@ -378,14 +361,19 @@ void GraphReindexKernel(const Context& dev_ctx,
                         const DenseTensor& count,
                         const paddle::optional<DenseTensor>& hashtable_value,
                         const paddle::optional<DenseTensor>& hashtable_index,
-                        bool flag_buffer_hashtable,
                         DenseTensor* reindex_src,
                         DenseTensor* reindex_dst,
                         DenseTensor* out_nodes) {
+  bool flag_buffer_hashtable =
+      hashtable_value.is_initialized() && hashtable_index.is_initialized();
   const T* x_data = x.data<T>();
   const T* neighbors_data = neighbors.data<T>();
   const int* count_data = count.data<int>();
   const int bs = x.dims()[0];
+  PADDLE_ENFORCE_NE(
+      0,
+      bs,
+      errors::InvalidArgument("The first of dims should not be equal to 0."));
   const int num_edges = neighbors.dims()[0];
   reindex_src->Resize({num_edges});
 

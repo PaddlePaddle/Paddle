@@ -26,7 +26,8 @@ void CastGradKernel(const Context& dev_ctx,
                     const DenseTensor& out_grad,
                     DenseTensor* x_grad) {
   PD_VISIT_ALL_TYPES(x.dtype(), "CastKernelImpl", ([&] {
-                       CastKernelImpl<T, data_t>(dev_ctx, out_grad, x_grad);
+                       CastKernelImpl<T, data_t>(
+                           dev_ctx, out_grad, x_grad->dtype(), x_grad);
                      }));
 }
 
@@ -47,5 +48,5 @@ PD_REGISTER_KERNEL(cast_grad,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {
-  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }

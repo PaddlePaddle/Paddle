@@ -26,8 +26,7 @@ namespace egr {
 class TensorHook {
  public:
   virtual ~TensorHook() = default;
-  virtual paddle::experimental::Tensor operator()(
-      const paddle::experimental::Tensor& var) = 0;
+  virtual paddle::Tensor operator()(const paddle::Tensor& var) = 0;
 };
 
 class VoidHook {
@@ -38,19 +37,16 @@ class VoidHook {
 
 class CppTensorHook : public TensorHook {
  public:
-  explicit CppTensorHook(const std::function<paddle::experimental::Tensor(
-                             const paddle::experimental::Tensor&)>& fn)
+  explicit CppTensorHook(
+      const std::function<paddle::Tensor(const paddle::Tensor&)>& fn)
       : fn_(std::move(fn)) {}
 
-  paddle::experimental::Tensor operator()(
-      const paddle::experimental::Tensor& var) override {
+  paddle::Tensor operator()(const paddle::Tensor& var) override {
     return fn_(var);
   }
 
  private:
-  std::function<paddle::experimental::Tensor(
-      const paddle::experimental::Tensor&)>
-      fn_;
+  std::function<paddle::Tensor(const paddle::Tensor&)> fn_;
 };
 
 class CppVoidHook : public VoidHook {
@@ -76,14 +72,14 @@ class PackHookBase {
  public:
   virtual ~PackHookBase() = default;
   virtual std::shared_ptr<PyObjectHolderBase> operator()(
-      const paddle::experimental::Tensor& tensor) = 0;
+      const paddle::Tensor& tensor) = 0;
   virtual void* operator()(void* py_tensor) = 0;
 };
 
 class UnPackHookBase {
  public:
   virtual ~UnPackHookBase() = default;
-  virtual paddle::experimental::Tensor operator()(
+  virtual paddle::Tensor operator()(
       std::shared_ptr<PyObjectHolderBase> packed_value) = 0;
   virtual void* operator()(void* packed_value, void* other) = 0;
 };

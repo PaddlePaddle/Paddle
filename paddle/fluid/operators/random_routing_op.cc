@@ -88,7 +88,6 @@ DECLARE_INPLACE_OP_INFERER(RandomRoutingInplaceInferer, {"TopK_Idx", "Out"});
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OPERATOR(
     random_routing,
@@ -97,7 +96,3 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::RandomRoutingInplaceInferer)
-
-REGISTER_OP_CPU_KERNEL(random_routing,
-                       ops::RandomRoutingOpCPUKernel<float>,
-                       ops::RandomRoutingOpCPUKernel<double>);

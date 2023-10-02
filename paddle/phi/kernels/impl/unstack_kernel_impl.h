@@ -26,7 +26,7 @@ template <typename T, typename Context>
 void UnStackKernel(const Context &dev_ctx,
                    const DenseTensor &x,
                    int axis,
-                   int num,
+                   int num UNUSED,
                    std::vector<DenseTensor *> outs) {
   auto *dy = &x;
   auto dx = outs;

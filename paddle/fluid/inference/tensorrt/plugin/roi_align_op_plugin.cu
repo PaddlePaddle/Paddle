@@ -405,7 +405,7 @@ void RoiAlignPluginDynamic::serialize(void* buffer) const TRT_NOEXCEPT {
 
 void RoiAlignPluginDynamic::destroy() TRT_NOEXCEPT {}
 
-RoiAlignPluginDynamicCreator::RoiAlignPluginDynamicCreator() {}
+RoiAlignPluginDynamicCreator::RoiAlignPluginDynamicCreator() = default;
 
 void RoiAlignPluginDynamicCreator::setPluginNamespace(const char* lib_namespace)
     TRT_NOEXCEPT {

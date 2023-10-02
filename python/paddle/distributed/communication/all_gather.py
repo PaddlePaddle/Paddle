@@ -15,8 +15,8 @@
 import numpy as np
 
 import paddle
-import paddle.distributed.communication.stream as stream
-import paddle.framework as framework
+from paddle import framework
+from paddle.distributed.communication import stream
 
 from .serialization_utils import (
     convert_object_to_tensor,
@@ -51,19 +51,19 @@ def all_gather(tensor_list, tensor, group=None, sync_op=True):
     Examples:
         .. code-block:: python
 
-            # required: distributed
-            import paddle
-            import paddle.distributed as dist
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.distributed as dist
 
-            dist.init_parallel_env()
-            tensor_list = []
-            if dist.get_rank() == 0:
-                data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
-            else:
-                data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
-            dist.all_gather(tensor_list, data)
-            print(tensor_list)
-            # [[[4, 5, 6], [4, 5, 6]], [[1, 2, 3], [1, 2, 3]]] (2 GPUs)
+            >>> dist.init_parallel_env()
+            >>> tensor_list = []
+            >>> if dist.get_rank() == 0:
+            ...     data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
+            >>> else:
+            ...     data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
+            >>> dist.all_gather(tensor_list, data)
+            >>> print(tensor_list)
+            >>> # [[[4, 5, 6], [4, 5, 6]], [[1, 2, 3], [1, 2, 3]]] (2 GPUs)
     """
     return stream.all_gather(tensor_list, tensor, group, sync_op)
 
@@ -87,22 +87,22 @@ def all_gather_object(object_list, obj, group=None):
     Examples:
         .. code-block:: python
 
-            # required: distributed
-            import paddle
-            import paddle.distributed as dist
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.distributed as dist
 
-            dist.init_parallel_env()
-            object_list = []
-            if dist.get_rank() == 0:
-                obj = {"foo": [1, 2, 3]}
-            else:
-                obj = {"bar": [4, 5, 6]}
-            dist.all_gather_object(object_list, obj)
-            print(object_list)
-            # [{'foo': [1, 2, 3]}, {'bar': [4, 5, 6]}] (2 GPUs)
+            >>> dist.init_parallel_env()
+            >>> object_list = []
+            >>> if dist.get_rank() == 0:
+            ...     obj = {"foo": [1, 2, 3]}
+            >>> else:
+            ...     obj = {"bar": [4, 5, 6]}
+            >>> dist.all_gather_object(object_list, obj)
+            >>> print(object_list)
+            >>> # [{'foo': [1, 2, 3]}, {'bar': [4, 5, 6]}] (2 GPUs)
     """
     assert (
-        framework.in_dygraph_mode()
+        framework.in_dynamic_mode()
     ), "all_gather_object doesn't support static graph mode."
 
     tensor, len_of_tensor = convert_object_to_tensor(obj)

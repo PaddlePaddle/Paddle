@@ -13,21 +13,20 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
-#include "paddle/fluid/inference/tensorrt/plugin/prelu_op_plugin.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 
 /*
- * PRelu converter from fluid to tensorRT.
+ * PRelu converter from paddle to tensorRT.
  */
 class PReluOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(4) << "convert fluid prelu op to tensorrt prelu layer";
+    VLOG(4) << "convert prelu op to tensorrt prelu layer";
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
@@ -87,7 +86,6 @@ class PReluOpConverter : public OpConverter {
           if (hw_tensor != nullptr) {
             shape_tensor = Concat(
                 std::vector<nvinfer1::ITensor*>{n_tensor, c_tensor, hw_tensor});
-
           } else {
             shape_tensor =
                 Concat(std::vector<nvinfer1::ITensor*>{n_tensor, c_tensor});

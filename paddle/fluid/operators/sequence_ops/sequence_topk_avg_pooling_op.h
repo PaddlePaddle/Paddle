@@ -67,7 +67,7 @@ static void get_topk_pos(const T* data, int length, int k, int* pos) {
 }
 }  // namespace details
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class SequenceTopkAvgPoolingKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -178,7 +178,7 @@ class SequenceTopkAvgPoolingKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class SequenceTopkAvgPoolingGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {

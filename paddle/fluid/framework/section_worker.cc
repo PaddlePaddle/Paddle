@@ -9,9 +9,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_ASCEND_CL)
-#include <float.h>
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include <cfloat>
 
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
@@ -26,8 +25,8 @@ uint64_t SectionWorker::batch_id_(0);
 
 void SectionWorker::Initialize(const TrainerDesc &desc) {
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
-  program_.reset(
-      new ProgramDesc(desc.section_param().section_config().program_desc()));
+  program_ = std::make_unique<ProgramDesc>(
+      desc.section_param().section_config().program_desc());
   for (auto &op_desc : program_->Block(0).AllOps()) {
     ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
@@ -232,20 +231,9 @@ void SectionWorker::TrainFiles() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(place_)) {
       if (IsFastEagerDeletionModeEnabled()) {
-        gc.reset(new UnsafeFastGPUGarbageCollector(place_, max_memory_size));
+        gc = std::make_unique<UnsafeFastGPUGarbageCollector>(place_,
+                                                             max_memory_size);
       }
-    }
-#elif defined(PADDLE_WITH_ASCEND_CL)
-    if (IsFastEagerDeletionModeEnabled()) {
-      VLOG(4) << "Use unsafe fast gc for NPU.";
-      gc.reset(new NPUUnsafeFastGarbageCollector(place_, max_memory_size));
-    } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Please set FLAGS_fast_eager_deletion_mode=true to use "
-          "GarbageCollector on NPU."));
-      // TODO(zhiqiu): fix bugs and enable NPUDefaultStreamGarbageCollector.
-      VLOG(4) << "Use default stream gc for NPU.";
-      gc.reset(new NPUDefaultStreamGarbageCollector(place_, max_memory_size));
     }
 #endif
   }  // max_memory_size >= 0

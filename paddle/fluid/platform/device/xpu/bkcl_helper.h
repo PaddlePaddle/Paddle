@@ -25,6 +25,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "glog/logging.h"
+
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/collective_helper.h"
@@ -51,11 +53,25 @@ inline BKCLDataType ToBKCLDataType(framework::proto::VarType::Type type) {
     return BKCL_FLOAT64;
   } else if (type == framework::proto::VarType::FP16) {
     return BKCL_FLOAT16;
+  } else if (type == framework::proto::VarType::UINT8) {
+    return BKCL_UINT8;
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "BKCL currently only support FP32, INT64, INT32, FP64 and FP16, other "
-        "data types are not supported."));
+        "BKCL currently only support FP32, INT64, INT32, FP64, FP16 and UINT8, "
+        "other data types are not supported."));
   }
+}
+
+inline int GetBKCLRankID(BKCLContext_t comm) {
+  return reinterpret_cast<int *>(comm)[0];
+}
+
+inline int GetBKCLDevID(BKCLContext_t comm) {
+  return reinterpret_cast<int *>(comm)[1];
+}
+
+inline int GetBKCLNRanks(BKCLContext_t comm) {
+  return reinterpret_cast<int *>(comm)[2];
 }
 
 class BKCLGroupGuard {

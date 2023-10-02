@@ -29,12 +29,15 @@ class StrategyGroupBase:
     Examples:
         .. code-block:: python
 
-            import paddle.distributed as dist
-            from paddle.distributed.fleet.base.strategy_group import StrategyGroupBase
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle.distributed as dist
+            >>> from paddle.distributed.fleet.base.strategy_group import StrategyGroupBase
 
-            dist.init_parallel_env()
-            strategy_group = dist.fleet.base.strategy_group.StrategyGroupBase([[0, 1], [2, 3]])
-            print(strategy_group.world_size)  # 2
+            >>> dist.init_parallel_env()
+            >>> strategy_group = dist.fleet.base.strategy_group.StrategyGroupBase([[0, 1], [2, 3]])
+            >>> print(strategy_group.world_size)
+            2
+
 
     """
 
@@ -103,7 +106,7 @@ class DPGroup(StrategyGroupBase):
         super().__init__(list_of_ranks)
         assert not isinstance(
             self.group, list
-        ), "Rank {} belongs to multi dp groups".format(self._rank)
+        ), f"Rank {self._rank} belongs to multi dp groups"
 
 
 class MPGroup(StrategyGroupBase):
@@ -122,7 +125,7 @@ class MPGroup(StrategyGroupBase):
         super().__init__(list_of_ranks)
         assert not isinstance(
             self.group, list
-        ), "Rank {} belongs to multi mp groups".format(self._rank)
+        ), f"Rank {self._rank} belongs to multi mp groups"
 
 
 class ShardingGroup(StrategyGroupBase):
@@ -141,7 +144,7 @@ class ShardingGroup(StrategyGroupBase):
         super().__init__(list_of_ranks)
         assert not isinstance(
             self.group, list
-        ), "Rank {} belongs to multi sharding groups".format(self._rank)
+        ), f"Rank {self._rank} belongs to multi sharding groups"
 
 
 class PPGroup(StrategyGroupBase):
@@ -160,7 +163,7 @@ class PPGroup(StrategyGroupBase):
         super().__init__(list_of_ranks)
         assert not isinstance(
             self.group, list
-        ), "Rank {} belongs to multi pp groups".format(self._rank)
+        ), f"Rank {self._rank} belongs to multi pp groups"
 
         self._send_next_group = None
         self._send_prev_group = None
@@ -236,6 +239,4 @@ class PPGroup(StrategyGroupBase):
             and self._send_prev_group
             and self._recv_next_group
             and self._recv_prev_group
-        ), "Error occurs while creating p2p group for rank {}.".format(
-            self._rank
-        )
+        ), f"Error occurs while creating p2p group for rank {self._rank}."

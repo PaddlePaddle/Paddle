@@ -25,7 +25,7 @@
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 #endif
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_op_list.h"
 #endif
 #include "paddle/fluid/framework/library_type.h"
@@ -33,10 +33,11 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_bool(check_nan_inf);
-DECLARE_bool(benchmark);
-DECLARE_bool(run_kp_kernel);
+PHI_DECLARE_bool(check_nan_inf);
+PD_DECLARE_bool(benchmark);
+PHI_DECLARE_bool(run_kp_kernel);
 
 namespace paddle {
 namespace imperative {
@@ -150,48 +151,6 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
       kernel_signature_(std::move(kernel_signature)),
       phi_kernel_(phi_kernel) {}
 
-#ifdef PADDLE_WITH_MLU
-
-static void tokenize(const std::string& ops,
-                     char delim,
-                     std::unordered_set<std::string>* op_set) {
-  std::string::size_type beg = 0;
-  for (uint64_t end = 0; (end = ops.find(delim, end)) != std::string::npos;
-       ++end) {
-    op_set->insert(ops.substr(beg, end - beg));
-    beg = end + 1;
-  }
-
-  op_set->insert(ops.substr(beg));
-}
-
-static bool is_in_mlu_black_list(const std::string& op_name) {
-  static bool inited = false;
-  static std::unordered_set<std::string> mlu_black_list;
-  static std::mutex s_mtx;
-  if (!inited) {
-    std::lock_guard<std::mutex> guard(s_mtx);
-    if (!inited) {
-      if (std::getenv("MLU_BLACK_LIST") != nullptr) {
-        std::string ops(std::getenv("MLU_BLACK_LIST"));
-        tokenize(ops, ',', &mlu_black_list);
-      }
-      inited = true;
-      VLOG(3) << "MLU Black List: ";
-      for (auto iter = mlu_black_list.begin(); iter != mlu_black_list.end();
-           ++iter) {
-        VLOG(3) << *iter << " ";
-      }
-    }
-  }
-  if (mlu_black_list.find(op_name) != mlu_black_list.end()) {
-    return true;
-  }
-  return false;
-}
-
-#endif
-
 template <typename VarType>
 PreparedOp PrepareImpl(
     const NameVarMap<VarType>& ins,
@@ -206,7 +165,7 @@ PreparedOp PrepareImpl(
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   // MKLDNN variant of code reads attributes in some of GetKernelTypeForVar and
   // GetKernelType functions, so we need to copy the attributes there.
   // Const qualifier of Attrs had to be discarded to overwrite it.
@@ -238,7 +197,7 @@ PreparedOp PrepareImpl(
 // 1. Whether mkldnn kernel fallbacks to plain kernel;
 // 2. Whether this op has specific implementation;
 // 3. Whether mkldnn kernel can be used.
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (!op.DnnFallback() && !paddle::platform::in_mkldnn_white_list(op.Type()) &&
       op.CanMKLDNNBeUsed(dygraph_exe_ctx, expected_kernel_key.dtype())) {
     expected_kernel_key.set_backend(phi::Backend::ONEDNN);
@@ -256,12 +215,6 @@ PreparedOp PrepareImpl(
   bool is_xpu_unsupport = expected_kernel_key.backend() == phi::Backend::XPU &&
                           !paddle::platform::is_xpu_support_op(
                               op.Type(), expected_kernel_key.dtype());
-#endif
-
-#ifdef PADDLE_WITH_MLU
-  if (is_in_mlu_black_list(op.Type())) {
-    expected_kernel_key.set_backend(phi::Backend::CPU);
-  }
 #endif
 
   bool has_phi_kernel = false;
@@ -296,7 +249,7 @@ PreparedOp PrepareImpl(
 #ifdef PADDLE_WITH_XPU_KP
     if (expected_kernel_key.backend() == phi::Backend::XPU) {
       bool use_xpu_kp_kernel_rt =
-          FLAGS_run_kp_kernel && paddle::platform::is_xpu_support_op(
+          FLAGS_run_kp_kernel && paddle::platform::is_xpu_kp_support_op(
                                      op.Type(), expected_kernel_key.dtype());
       bool use_xpu_kp_kernel_debug =
           paddle::platform::is_in_xpu_kpwhite_list(op.Type());
@@ -369,8 +322,8 @@ PreparedOp PrepareImpl(
   bool use_xpu_kp_kernel_rt =
       expected_kernel_key.backend() == phi::Backend::XPU &&
       FLAGS_run_kp_kernel &&
-      paddle::platform::is_xpu_support_op(op.Type(),
-                                          expected_kernel_key.dtype());
+      paddle::platform::is_xpu_kp_support_op(op.Type(),
+                                             expected_kernel_key.dtype());
   bool use_xpu_kp_kernel_debug =
       expected_kernel_key.backend() == phi::Backend::XPU &&
       paddle::platform::is_in_xpu_kpwhite_list(op.Type());
@@ -458,31 +411,10 @@ PreparedOp PrepareImpl(
     }
   }
 #endif
-
-#ifdef PADDLE_WITH_ASCEND_CL
-  if (kernel_iter == kernels.end() &&
-      paddle::platform::is_npu_place(fluid_kernel_type.place_)) {
-    VLOG(3) << "missing NPU kernel: " << op.Type()
-            << ", expected_kernel_key:" << fluid_kernel_type
-            << ", fallbacking to CPU one!";
-    fluid_kernel_type.place_ = platform::CPUPlace();
-    kernel_iter = kernels.find(fluid_kernel_type);
-  }
-#endif
 #ifdef PADDLE_WITH_IPU
   if (kernel_iter == kernels.end() &&
       paddle::platform::is_ipu_place(fluid_kernel_type.place_)) {
     VLOG(3) << "missing IPU kernel: " << op.Type()
-            << ", expected_kernel_key:" << fluid_kernel_type
-            << ", fallbacking to CPU one!";
-    fluid_kernel_type.place_ = platform::CPUPlace();
-    kernel_iter = kernels.find(fluid_kernel_type);
-  }
-#endif
-#ifdef PADDLE_WITH_MLU
-  if (kernel_iter == kernels.end() &&
-      paddle::platform::is_mlu_place(fluid_kernel_type.place_)) {
-    VLOG(3) << "missing MLU kernel: " << op.Type()
             << ", expected_kernel_key:" << fluid_kernel_type
             << ", fallbacking to CPU one!";
     fluid_kernel_type.place_ = platform::CPUPlace();

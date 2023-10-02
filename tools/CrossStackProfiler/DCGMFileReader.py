@@ -136,7 +136,7 @@ class dcgmFileReader(FileReader):
                 ) and not line.strip().startswith("# Entity"):
                     continue
 
-                # skip non-needed headers (only the header in 1th line was needed)
+                # skip non-needed headers (only the header in 1st line was needed)
                 if line.strip().startswith("# Entity"):
                     line = line.strip()[2:]
 
@@ -176,7 +176,7 @@ class dcgmFileReader(FileReader):
         gpuDcgmData = dcgm_data[dcgm_data['Entity'].isin([gpuId])]
 
         traceEventList = []
-        for metric, parameteList in dcgmMetricParameterMap.items():
+        for metric, parameterList in dcgmMetricParameterMap.items():
             metaInfo = {}
             metaInfo['name'] = 'process_name'
             metaInfo['ph'] = 'M'
@@ -185,7 +185,7 @@ class dcgmFileReader(FileReader):
             traceEventList.append(metaInfo)
 
         for index, row in gpuDcgmData.iterrows():
-            for metric, parameteList in dcgmMetricParameterMap.items():
+            for metric, parameterList in dcgmMetricParameterMap.items():
                 trainerId = int(row['trainerId']) % self._groupSize
                 if trainerId >= self._displaySize:
                     continue
@@ -203,7 +203,7 @@ class dcgmFileReader(FileReader):
                 di['id'] = trainerId
 
                 args = {}
-                for p in parameteList:
+                for p in parameterList:
                     args[p[0]] = row[p[1]]
                 di['args'] = args
 

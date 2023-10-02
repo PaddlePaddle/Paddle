@@ -39,7 +39,7 @@ void MessageBus::Init(
   rank_to_addr_ = rank_to_addr;
   addr_ = addr;
 
-  if (addr_ != "") {
+  if (!addr_.empty()) {
     const auto& addr = GetAddr(rank_);
     PADDLE_ENFORCE_EQ(addr,
                       addr_,
@@ -52,10 +52,10 @@ void MessageBus::Init(
   }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_ASCEND_CL)
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CUSTOM_DEVICE)
   // NOTE: To make the brpc is compatible with collective,
   // need release the handler holding the ip address.
-  if (addr_ != "") {
+  if (!addr_.empty()) {
     VLOG(3) << "Message bus is releasing the fd held by gen_comm_id.";
     paddle::platform::SocketServer& socket_server =
         paddle::platform::SocketServer::GetInstance(addr_);
@@ -111,8 +111,7 @@ bool MessageBus::Send(int64_t dst_rank,
 #else
   PADDLE_THROW(platform::errors::Unavailable(
       "Fleet executor does not support sending message between different "
-      "ranks when Paddle is compiled with npu or "
-      "isn't compiled with distributed for now."));
+      "ranks when Paddle isn't compiled with distributed for now."));
 #endif
   return true;
 }
@@ -175,7 +174,7 @@ bool MessageBus::DispatchMsgToCarrier(
 }
 
 void MessageBus::ListenPort() {
-  if (addr_ == "") {
+  if (addr_.empty()) {
     LOG(INFO) << "No need listen to port since training on single card.";
     return;
   }
@@ -202,10 +201,9 @@ void MessageBus::ListenPort() {
   }
   LOG(INFO) << "Message bus's listen port thread starts successful.";
 #else
-  LOG(WARNING)
-      << "Fleet executor's ListenPort() is a fake function when Paddle is "
-         "compiled with npu or Paddle isn't compiled "
-         "with distributed for now.";
+  LOG(WARNING) << "Fleet executor's ListenPort() is a fake function when "
+                  "Paddle isn't compiled "
+                  "with distributed for now.";
 #endif
 }
 
@@ -218,8 +216,8 @@ bool MessageBus::SendInterRank(int64_t dst_rank,
   brpc::Channel channel;
   brpc::ChannelOptions options;
   options.protocol = "baidu_std";
-  options.connect_timeout_ms = 1000;
-  options.timeout_ms = 1000;
+  options.connect_timeout_ms = 100000;
+  options.timeout_ms = 100000;
   options.max_retry = 5;
   PADDLE_ENFORCE_EQ(
       channel.Init(dst_addr_for_brpc, &options),

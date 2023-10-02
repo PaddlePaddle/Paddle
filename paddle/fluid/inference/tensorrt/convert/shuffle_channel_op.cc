@@ -15,16 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -36,6 +26,7 @@ class ShuffleChannelOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
+    VLOG(3) << "convert a shuffle_channel op to tensorrt layer";
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);

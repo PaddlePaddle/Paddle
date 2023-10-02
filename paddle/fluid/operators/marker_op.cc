@@ -38,7 +38,7 @@ class MarkerOp : public framework::OperatorWithKernel {
 
 class MarkerOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddAttr<std::string>("marker_role",
                          "(string, default forward)forward or backward,"
                          " mark different stages of porcess.")
@@ -54,7 +54,7 @@ class MarkerOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class MarkerOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -75,4 +75,5 @@ class MarkerOpCPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_WITHOUT_GRADIENT(marker, ops::MarkerOp, ops::MarkerOpMaker);
-REGISTER_OP_CPU_KERNEL(marker, ops::MarkerOpCPUKernel<float>);
+PD_REGISTER_STRUCT_KERNEL(
+    marker, CPU, ALL_LAYOUT, ops::MarkerOpCPUKernel, float) {}

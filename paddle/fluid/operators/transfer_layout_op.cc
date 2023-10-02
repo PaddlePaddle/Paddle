@@ -57,9 +57,9 @@ class TransferLayoutOp : public framework::OperatorWithKernel {
     }
     auto place =
         in_tensor->IsInitialized() ? in_tensor->place() : platform::CPUPlace();
-
-    // dtype is not important
-    return phi::KernelKey(framework::proto::VarType::FP32, place);
+    phi::DataType dtype = in_tensor->IsInitialized() ? in_tensor->dtype()
+                                                     : phi::DataType::FLOAT32;
+    return phi::KernelKey(phi::TransToProtoVarType(dtype), place);
   }
 
   phi::KernelKey GetKernelTypeForVar(
@@ -118,7 +118,6 @@ class TransferLayoutOpProtoMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 DECLARE_INFER_SHAPE_FUNCTOR(transfer_layout,
                             TransferLayoutInferShapeFunctor,
                             PD_INFER_META(phi::TransferLayoutInferMeta));

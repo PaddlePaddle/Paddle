@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/huber_loss_kernel.h"
@@ -25,7 +26,7 @@ struct HuberLossForward {
   HOSTDEVICE HuberLossForward(const T& delta) : delta(delta) {}
 
   HOSTDEVICE T operator()(const T& val) const {
-    T abs_val = std::abs(val);
+    T abs_val = abs(val);
     if (abs_val <= delta) {
       return static_cast<T>(0.5) * val * val;
     } else {

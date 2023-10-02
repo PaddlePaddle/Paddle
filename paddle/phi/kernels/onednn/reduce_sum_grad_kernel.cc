@@ -42,4 +42,5 @@ void SumGradKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(
     sum_grad, OneDNN, ONEDNN, phi::SumGradKernel, float, phi::dtype::bfloat16) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }

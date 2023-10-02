@@ -16,22 +16,23 @@
 #include <memory>
 
 #include "paddle/fluid/memory/allocation/allocator.h"
-#ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/memory/allocation/npu_pinned_allocator.h"
-#endif
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#endif
+#ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #endif
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/stream.h"
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/fluid/memory/allocation/custom_allocator.h"
+#include "paddle/phi/backends/device_manager.h"
+#endif
+
 namespace paddle {
 namespace memory {
 namespace allocation {
-
-#ifdef PADDLE_WITH_ASCEND_CL
-using NPUPinnedAllocator = paddle::memory::allocation::NPUPinnedAllocator;
-#endif
 
 // Allocator Facade is the interface exposed to other modules.
 // All the configuration or dirty code under development should
@@ -95,6 +96,15 @@ class AllocatorFacade {
   void RemoveMemoryPoolOfCUDAGraph(int64_t id);
 #endif
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  const std::shared_ptr<Allocator>& GetAllocator(const platform::Place& place,
+                                                 phi::stream::stream_t stream);
+  void RecordStream(std::shared_ptr<phi::Allocation> allocation,
+                    phi::stream::stream_t stream);
+
+  void SetDefaultStream(const platform::CustomPlace& place,
+                        phi::stream::stream_t stream);
+#endif
   // TODO(yy): Allocate a Copy-On-Write allocation?
  private:
   AllocatorFacade();

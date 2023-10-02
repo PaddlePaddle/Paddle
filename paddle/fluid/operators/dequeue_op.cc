@@ -52,17 +52,16 @@ class DequeueOp : public framework::OperatorBase {
                       0,
                       platform::errors::InvalidArgument(
                           "The output for Op(dequeue) must be set."));
-    for (size_t i = 0; i < out_names.size(); ++i) {
-      auto out_var = scope.FindVar(out_names[i]);
-      PADDLE_ENFORCE_NOT_NULL(
-          out_var,
-          platform::errors::NotFound("No variable with name %s found",
-                                     out_names[i]));
+    for (const auto& out_name : out_names) {
+      auto out_var = scope.FindVar(out_name);
+      PADDLE_ENFORCE_NOT_NULL(out_var,
+                              platform::errors::NotFound(
+                                  "No variable with name %s found", out_name));
       auto* out_tensor = out_var->GetMutable<phi::DenseTensor>();
       PADDLE_ENFORCE_NOT_NULL(
           out_tensor,
           platform::errors::InvalidArgument(
-              "Variable with name %s has not been initialized.", out_names[i]));
+              "Variable with name %s has not been initialized.", out_name));
 
       paddle::framework::LoDTensorArray lod_tensor_vec;
       bool success = false;
@@ -73,9 +72,8 @@ class DequeueOp : public framework::OperatorBase {
                             "Expected to pop only one element per Pop call for "
                             "Op(dequeue), but poped %d element.",
                             lod_tensor_vec.size()));
-      for (size_t j = 0; j < lod_tensor_vec.size(); ++j) {
-        paddle::framework::TensorCopySync(
-            lod_tensor_vec[j], dev_place, out_tensor);
+      for (auto& lod_tensor : lod_tensor_vec) {
+        paddle::framework::TensorCopySync(lod_tensor, dev_place, out_tensor);
       }
     }
   }

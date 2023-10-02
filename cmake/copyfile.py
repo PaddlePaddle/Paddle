@@ -26,18 +26,18 @@ def main():
         dst = os.path.join(dst, pathList[-1])
         if not os.path.exists(dst):
             shutil.copytree(src, dst)
-            print("first copy directory: {0} --->>> {1}".format(src, dst))
+            print(f"first copy directory: {src} --->>> {dst}")
         else:
             shutil.rmtree(dst)
             shutil.copytree(src, dst)
-            print("overwritten copy directory: {0} --->>> {1}".format(src, dst))
+            print(f"overwritten copy directory: {src} --->>> {dst}")
     else:  # copy file, wildcard
         if not os.path.exists(dst):
             os.makedirs(dst)
         srcFiles = glob.glob(src)
         for srcFile in srcFiles:
             shutil.copy(srcFile, dst)
-            print("copy file: {0} --->>> {1}".format(srcFile, dst))
+            print(f"copy file: {srcFile} --->>> {dst}")
 
 
 if __name__ == "__main__":

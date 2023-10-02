@@ -20,6 +20,7 @@ limitations under the License. */
 
 #include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/string_tensor_utils.h"
 #include "paddle/phi/core/tensor_utils.h"
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -50,6 +51,8 @@ bool HasAllocation(const phi::TensorBase& t) {
   } else if (phi::StringTensor::classof(&t)) {
     return phi::StringTensorUtils::GetHolder(
                static_cast<const phi::StringTensor&>(t)) != nullptr;
+  } else if (phi::distributed::DistTensor::classof(&t)) {
+    return static_cast<const phi::distributed::DistTensor&>(t).defined();
   } else {
     return false;
   }
@@ -58,6 +61,7 @@ bool HasAllocation(const phi::TensorBase& t) {
 BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
   if (HasAllocation(t) && t.place().GetType() != AllocationType::UNDEFINED) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
+    // See Note [ Why `SetDevice` when parsing custom place? ]
     if (t.place().GetType() == AllocationType::CUSTOM) {
       phi::DeviceManager::SetDevice(t.place());
     }
@@ -75,9 +79,15 @@ BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
 
 std::size_t CountLeadingZeros(uint32_t val) {
 #if defined(__clang__) || defined(__GNUC__)
+  if (val == 0) {
+    return 32;
+  }
   return __builtin_clz(val);
 #elif defined(_MSC_VER)
-  return __lzcnt(val);
+  // windows don't have built-in clz/ctz function
+  DWORD Index;
+  _BitScanReverse(&Index, val);
+  return (uint32_t)Index ^ 31;
 #else
   if (val == 0) {
     return 32;
@@ -112,7 +122,7 @@ DataType ParseDataType(const std::vector<Tensor>& tensors) {
   auto n = tensors.size();
   for (size_t i = 1; i < n; ++i) {
     if (tensors[i].type() != dtype) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "The data_type of input tensor in list isn't consistent, "
           "the first tensor is %s, but %dth tensor is %s.",
           dtype,
@@ -128,6 +138,20 @@ DataType ParseDataTypeWithInputOrder(DataType dtype, const Tensor& tensor) {
 }
 
 Backend ParseBackend(const Place& place) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  /**
+   * [ Why `SetDevice` when parsing custom place? ]
+   * Users are able to call C++ APIs under customOP + customDevice scenario. To
+   * make sure `GetDevice` function outputs the accurate place when executing
+   * `GetDeviceContextByBackend` function in C++ API, we need to call
+   * `SetDevice` first. However, in dygraph mode, `SetDevice` is called at
+   * CPython level and calling C++ API directly in customOP cannot reach
+   * CPython. Hence, we need to manually set the device here.
+   */
+  if (place.GetType() == AllocationType::CUSTOM) {
+    phi::DeviceManager::SetDevice(place);
+  }
+#endif
   return phi::TransToPhiBackend(place);
 }
 Backend ParseBackend(const Tensor& tensor) {

@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid import core, framework
-from paddle.fluid.backward import gradients_with_optimizer  # noqa: F401
+from paddle.base import core, framework
+from paddle.base.backward import gradients_with_optimizer  # noqa: F401
 
 __all__ = []
 
@@ -34,7 +34,7 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
 
         retain_graph(bool, optional): If False, the graph used to compute grads will be freed. If you would
             like to add more ops to the built graph after calling this method( :code:`backward` ), set the parameter
-            :code:`retain_graph` to True, then the grads will be retained. Thus, seting it to False is much more memory-efficient.
+            :code:`retain_graph` to True, then the grads will be retained. Thus, setting it to False is much more memory-efficient.
             Defaults to False.
 
     Returns:
@@ -44,51 +44,56 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
     Examples:
         .. code-block:: python
 
-            import paddle
-            x = paddle.to_tensor([[1, 2], [3, 4]], dtype='float32', stop_gradient=False)
-            y = paddle.to_tensor([[3, 2], [3, 4]], dtype='float32')
+            >>> import paddle
+            >>> x = paddle.to_tensor([[1, 2], [3, 4]], dtype='float32', stop_gradient=False)
+            >>> y = paddle.to_tensor([[3, 2], [3, 4]], dtype='float32')
 
-            grad_tensor1 = paddle.to_tensor([[1,2], [2, 3]], dtype='float32')
-            grad_tensor2 = paddle.to_tensor([[1,1], [1, 1]], dtype='float32')
+            >>> grad_tensor1 = paddle.to_tensor([[1,2], [2, 3]], dtype='float32')
+            >>> grad_tensor2 = paddle.to_tensor([[1,1], [1, 1]], dtype='float32')
 
-            z1 = paddle.matmul(x, y)
-            z2 = paddle.matmul(x, y)
+            >>> z1 = paddle.matmul(x, y)
+            >>> z2 = paddle.matmul(x, y)
 
-            paddle.autograd.backward([z1, z2], [grad_tensor1, grad_tensor2], True)
-            print(x.grad)
-            #[[12. 18.]
-            # [17. 25.]]
+            >>> paddle.autograd.backward([z1, z2], [grad_tensor1, grad_tensor2], True)
+            >>> print(x.grad)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[12., 18.],
+             [17., 25.]])
 
-            x.clear_grad()
 
-            paddle.autograd.backward([z1, z2], [grad_tensor1, None], True)
-            print(x.grad)
-            #[[12. 18.]
-            # [17. 25.]]
+            >>> x.clear_grad()
 
-            x.clear_grad()
+            >>> paddle.autograd.backward([z1, z2], [grad_tensor1, None], True)
+            >>> print(x.grad)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[12., 18.],
+             [17., 25.]])
 
-            paddle.autograd.backward([z1, z2])
-            print(x.grad)
-            #[[10. 14.]
-            # [10. 14.]]
+            >>> x.clear_grad()
+
+            >>> paddle.autograd.backward([z1, z2])
+            >>> print(x.grad)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[10., 14.],
+             [10., 14.]])
+
 
     """
 
     def check_tensors(in_out_list, name):
-        assert in_out_list is not None, "{} should not be None".format(name)
+        assert in_out_list is not None, f"{name} should not be None"
 
         if isinstance(in_out_list, (list, tuple)):
-            assert len(in_out_list) > 0, "{} connot be empyt".format(name)
+            assert len(in_out_list) > 0, f"{name} connot be empty"
             for each_var in in_out_list:
                 assert isinstance(
                     each_var, (paddle.Tensor, core.eager.Tensor)
-                ), "Elements of {} must be paddle.Tensor".format(name)
+                ), f"Elements of {name} must be paddle.Tensor"
             return in_out_list
         else:
             assert isinstance(
                 in_out_list, (paddle.Tensor, core.eager.Tensor)
-            ), "{} must be Tensor or list of Tensor".format(name)
+            ), f"{name} must be Tensor or list of Tensor"
             return [in_out_list]
 
     tensors = check_tensors(tensors, "tensors")
@@ -107,10 +112,7 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
                     each_tensor, (paddle.Tensor, core.eager.Tensor)
                 ), "The argument 'grad_tensors' of paddle.autograd.backward is invalid, it can be 'None', 'paddle.Tensor' or 'list[None/paddle.Tensor]'."
     else:
-        if framework.global_var._in_eager_mode_:
-            grad_tensors = []
-        else:
-            grad_tensors = [None] * len(tensors)
+        grad_tensors = []
 
     if len(grad_tensors) > 0:
         assert len(tensors) == len(
@@ -119,9 +121,4 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
 
     assert isinstance(retain_graph, bool), "retain_graph must be True or False"
 
-    if framework.global_var._in_eager_mode_:
-        core.eager.run_backward(tensors, grad_tensors, retain_graph)
-    else:
-        core.dygraph_run_backward(
-            tensors, grad_tensors, retain_graph, framework._dygraph_tracer()
-        )
+    core.eager.run_backward(tensors, grad_tensors, retain_graph)

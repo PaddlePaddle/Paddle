@@ -59,7 +59,7 @@ class FuseAllReduceOpPass : public ir::Pass {
         GetAllReduceOps(result, places, grads);
 
     VLOG(6) << "Find all_reduce_ops: " << all_reduce_ops.size();
-    if (all_reduce_ops.size() == 0) {
+    if (all_reduce_ops.empty()) {
       return;
     }
 
@@ -291,7 +291,7 @@ class FuseAllReduceOpPass : public ir::Pass {
       const platform::BKCLCommunicator *multi_bkcl_ctxs,
 #endif
       ir::Graph *result) const {
-    details::FusedAllReduceOpHandle *op_handle = NULL;
+    details::FusedAllReduceOpHandle *op_handle = nullptr;
     if (is_grad_merge) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       op_handle = new details::FusedGradMergeAllReduceOpHandle(
@@ -371,9 +371,9 @@ class FuseAllReduceOpPass : public ir::Pass {
   void SetCommunicationContext(
       const std::vector<platform::Place> &places,
       details::FusedAllReduceOpHandle *op_handle) const {
-    for (size_t i = 0; i < places.size(); ++i) {
+    for (auto place : places) {
       op_handle->SetDeviceContext(
-          places[i], platform::DeviceContextPool::Instance().Get(places[i]));
+          place, platform::DeviceContextPool::Instance().Get(place));
     }
   }
 };

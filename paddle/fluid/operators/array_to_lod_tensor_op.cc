@@ -43,7 +43,9 @@ struct ArrayToLoDFunctorImpl {
   void apply();
 };
 
-struct ArrayToLoDFunctor : public std::unary_function<platform::Place, void> {
+struct ArrayToLoDFunctor {
+  using argument_type = platform::Place;
+  using result_type = void;
   std::vector<phi::DenseTensor> in;
   mutable phi::DenseTensor *out;
 
@@ -201,7 +203,9 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
         if (len == 0) {
           continue;
         }
-        functor.in.emplace_back(x[x_idx].Slice(start_offset, end_offset));
+        functor.in.emplace_back(
+            x[x_idx].Slice(static_cast<int64_t>(start_offset),
+                           static_cast<int64_t>(end_offset)));
       }
     }
     functor.out = out;

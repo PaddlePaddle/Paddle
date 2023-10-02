@@ -34,20 +34,26 @@ void PReluKernel(const Context& dev_ctx,
 
   auto x_dim = x.dims();
   auto x_rank = x_dim.size();
-
   std::vector<int> x_shape(x_rank);
 
-  for (int i = 0; i < x_rank; i++) {
-    x_shape[i] = x_dim[i];
+  if (x_rank == 0) {
+    x_shape = std::vector<int>({1});
+  } else {
+    for (int i = 0; i < x_rank; i++) {
+      x_shape[i] = x_dim[i];
+    }
   }
 
   auto alpha_dim = alpha.dims();
   auto alpha_rank = alpha_dim.size();
-
   std::vector<int> alpha_shape(x_rank, 1);  // same size with x_shape
 
-  for (int i = 0; i < alpha_rank; i++) {
-    alpha_shape[i] = alpha_dim[i];
+  if (x_rank == 0) {
+    alpha_shape = std::vector<int>({1});
+  } else {
+    for (int i = 0; i < alpha_rank; i++) {
+      alpha_shape[i] = alpha_dim[i];
+    }
   }
 
   int r = xpu::prelu(dev_ctx.x_context(),

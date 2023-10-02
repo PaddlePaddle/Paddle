@@ -47,8 +47,10 @@ void ExecuteSqueeze(const Context& dev_ctx,
   astream.wait();
 
   out->Resize(out_dims);
-  out->set_mem_desc(
-      reorder_dst_memory_p->get_desc().reshape(vectorize(out_dims)));
+
+  auto reshape_dims =
+      out_dims.size() != 0 ? vectorize(out_dims) : std::vector<int64_t>{1};
+  out->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(reshape_dims));
 }
 
 template <typename T, typename Context>

@@ -59,7 +59,7 @@ from .extension_utils import (
 )
 from .extension_utils import CLANG_COMPILE_FLAGS, CLANG_LINK_FLAGS
 
-from ...fluid import core
+from ...base import core
 
 # Note(zhouwei): On windows, it will export function 'PyInit_[name]' by default,
 # The solution is: 1.User add function PyInit_[name] 2. set not to export
@@ -505,7 +505,6 @@ class BuildExtension(build_ext):
             extra_postargs=None,
             depends=None,
         ):
-
             self.cflags = copy.deepcopy(extra_postargs)
             extra_postargs = None
 
@@ -651,9 +650,7 @@ class BuildExtension(build_ext):
         if self.no_python_abi_suffix:
             assert (
                 len(name_items) > 2
-            ), "Expected len(name_items) > 2, but received {}".format(
-                len(name_items)
-            )
+            ), f"Expected len(name_items) > 2, but received {len(name_items)}"
             name_items.pop(-2)
             ext_name = split_str.join(name_items)
 
@@ -716,7 +713,7 @@ class BuildExtension(build_ext):
         for i, extension in enumerate(self.extensions):
             sources = [os.path.abspath(s) for s in extension.sources]
             if not self.contain_cuda_file:
-                self.contain_cuda_file = any([is_cuda_file(s) for s in sources])
+                self.contain_cuda_file = any(is_cuda_file(s) for s in sources)
             op_names = parse_op_name_from(sources)
 
             for op_name in op_names:
@@ -804,6 +801,7 @@ def load(
     extra_cuda_cflags=None,
     extra_ldflags=None,
     extra_include_paths=None,
+    extra_library_paths=None,
     build_directory=None,
     verbose=False,
 ):
@@ -879,10 +877,13 @@ def load(
         extra_include_paths(list[str], optional): Specify additional include path used to search header files. By default
                                 all basic headers are included implicitly from ``site-package/paddle/include`` .
                                 Default is None.
+        extra_library_paths(list[str], optional): Specify additional library path used to search library files. By default
+                                all basic libraries are included implicitly from ``site-packages/paddle/libs`` .
+                                Default is None.
         build_directory(str, optional): Specify root directory path to put shared library file. If set None,
                             it will use ``PADDLE_EXTENSION_DIR`` from os.environ. Use
                             ``paddle.utils.cpp_extension.get_build_directory()`` to see the location. Default is None.
-        verbose(bool, optional): whether to verbose compiled log information. Default is False
+        verbose(bool, optional): whether to verbose compiled log information. Default is False.
 
     Returns:
         Module: A callable python module contains all CustomOp Layer APIs.
@@ -895,9 +896,9 @@ def load(
     # ensure to use abs path
     build_directory = os.path.abspath(build_directory)
 
-    log_v("build_directory: {}".format(build_directory), verbose)
+    log_v(f"build_directory: {build_directory}", verbose)
 
-    file_path = os.path.join(build_directory, "{}_setup.py".format(name))
+    file_path = os.path.join(build_directory, f"{name}_setup.py")
     sources = [os.path.abspath(source) for source in sources]
 
     if extra_cxx_cflags is None:
@@ -906,9 +907,7 @@ def load(
         extra_cuda_cflags = []
     assert isinstance(
         extra_cxx_cflags, list
-    ), "Required type(extra_cxx_cflags) == list[str], but received {}".format(
-        extra_cxx_cflags
-    )
+    ), f"Required type(extra_cxx_cflags) == list[str], but received {extra_cxx_cflags}"
     assert isinstance(
         extra_cuda_cflags, list
     ), "Required type(extra_cuda_cflags) == list[str], but received {}".format(
@@ -931,6 +930,7 @@ def load(
         file_path,
         build_base_dir,
         extra_include_paths,
+        extra_library_paths,
         extra_cxx_cflags,
         extra_cuda_cflags,
         extra_ldflags,

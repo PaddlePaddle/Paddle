@@ -11,7 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include <time.h>
+#include <ctime>
 
 #include "paddle/fluid/framework/device_worker.h"
 
@@ -88,8 +88,7 @@ void PullDenseWorker::CreatePinVar() {
        ++i) {
     uint64_t tid = static_cast<uint64_t>(
         dwp_param_.program_config(0).pull_dense_table_id(i));
-    for (size_t j = 0; j < dense_value_names_[tid].size(); j++) {
-      auto& name = dense_value_names_[tid][j];
+    for (auto& name : dense_value_names_[tid]) {
       Variable* var = root_scope_->FindVar(name);
 
       phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
@@ -135,9 +134,7 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
          ++x) {
       uint64_t tid = static_cast<uint64_t>(
           dwp_param_.program_config(0).pull_dense_table_id(x));
-      for (size_t j = 0; j < dense_value_names_[tid].size(); j++) {
-        auto& name = dense_value_names_[tid][j];
-
+      for (auto& name : dense_value_names_[tid]) {
         Variable* pin_var = root_scope_->FindVar(name + "pin");
         phi::DenseTensor* pin_tensor = pin_var->GetMutable<phi::DenseTensor>();
         float* pin_w = pin_tensor->data<float>();
@@ -203,7 +200,7 @@ void PullDenseWorker::PullDense(bool force_update) {
       ResetThreadVersion(tid);
     }
   }
-  if (pull_dense_status_.size() != 0) {
+  if (!pull_dense_status_.empty()) {
     Wait(&pull_dense_status_);
   }
 }
@@ -263,9 +260,7 @@ void PullDenseWorker::MergeDenseParam() {
        ++x) {
     uint64_t tid = static_cast<uint64_t>(
         dwp_param_.program_config(0).pull_dense_table_id(x));
-    for (size_t j = 0; j < dense_value_names_[tid].size(); j++) {
-      auto& name = dense_value_names_[tid][j];
-
+    for (auto& name : dense_value_names_[tid]) {
       Variable* root_var = root_scope_->FindVar(name);
       phi::DenseTensor* root_tensor = root_var->GetMutable<phi::DenseTensor>();
       Variable* var = thread_scopes_[0]->FindVar(name);

@@ -29,12 +29,6 @@ class DeviceGuard {
     }
   }
 
-  inline ~DeviceGuard() {
-    if (cur_id != prev_id) {
-      DeviceManager::SetDevice(dev_type_, prev_id);
-    }
-  }
-
   DeviceGuard(const DeviceGuard& o) = delete;
   DeviceGuard& operator=(const DeviceGuard& o) = delete;
 

@@ -33,6 +33,8 @@ struct Layers {
  public:
   const ProgramDesc& main_program() { return program_; }
 
+  BlockDesc* Block() { return program_.MutableBlock(0); }
+
   VarDesc* data(std::string name,
                 std::vector<int64_t> shape = {},
                 bool is_persistable = false,
@@ -132,7 +134,23 @@ struct Layers {
     return out;
   }
 
-  VarDesc* unsqueeze2(VarDesc* x, const std::vector<int> axes) {
+  VarDesc* squeeze2(VarDesc* x,
+                    const std::vector<int> axes = {-1},
+                    bool with_xshape = false) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("squeeze2");
+    op->SetInput("X", {x->Name()});
+    op->SetOutput("Out", {out->Name()});
+    op->SetAttr("axes", axes);
+    if (with_xshape) {
+      VarDesc* xshape = lod_tensor(unique_name());
+      op->SetOutput("XShape", {xshape->Name()});
+    }
+    return out;
+  }
+
+  VarDesc* unsqueeze2(VarDesc* x, const std::vector<int> axes = {-1}) {
     VarDesc* out = lod_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("unsqueeze2");
@@ -294,6 +312,13 @@ struct Layers {
     return binary_op("elementwise_mul", x, y, out, attrs);
   }
 
+  VarDesc* elementwise_div(VarDesc* x,
+                           VarDesc* y,
+                           VarDesc* out = nullptr,
+                           const AttributeMap* attrs = nullptr) {
+    return binary_op("elementwise_div", x, y, out, attrs);
+  }
+
   VarDesc* dropout(VarDesc* x,
                    float dropout_prob,
                    std::string dropout_implementation) {
@@ -352,20 +377,31 @@ struct Layers {
     return outs;
   }
 
-  std::vector<VarDesc*> split(VarDesc* x, int num_or_section, int axis = 0) {
-    std::vector<VarDesc*> outs(num_or_section);
-    for (int i = 0; i < num_or_section; i++) {
+  std::vector<VarDesc*> split(VarDesc* x,
+                              int num_or_section = 0,
+                              int axis = 0,
+                              std::vector<int> sections = {-1}) {
+    int out_num = num_or_section;
+    if (num_or_section == 0) {
+      out_num = sections.size();
+    }
+    std::vector<VarDesc*> outs(out_num);
+    for (int i = 0; i < out_num; i++) {
       outs[i] = lod_tensor(unique_name());
     }
-    std::vector<std::string> out_names(num_or_section);
-    for (int i = 0; i < num_or_section; i++) {
+    std::vector<std::string> out_names(out_num);
+    for (int i = 0; i < out_num; i++) {
       out_names[i] = outs[i]->Name();
     }
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("split");
     op->SetInput("X", {x->Name()});
     op->SetOutput("Out", out_names);
-    op->SetAttr("num_or_section", num_or_section);
+    if (num_or_section == 0) {
+      op->SetAttr("sections", sections);
+    } else {
+      op->SetAttr("num_or_section", num_or_section);
+    }
     op->SetAttr("axis", axis);
     op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                 static_cast<int>(OpRole::kForward));
@@ -397,6 +433,17 @@ struct Layers {
     op->SetAttr("transpose_X", transpose_x);
     op->SetAttr("transpose_Y", transpose_y);
     op->SetAttr("alpha", 1.0f);
+    return out;
+  }
+
+  VarDesc* clip(VarDesc* x, VarDesc* min, VarDesc* max) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("clip");
+    op->SetInput("X", {x->Name()});
+    op->SetInput("Min", {min->Name()});
+    op->SetInput("Max", {max->Name()});
+    op->SetOutput("Out", {out->Name()});
     return out;
   }
 
@@ -458,7 +505,10 @@ struct Layers {
     return out;
   }
 
-  VarDesc* scale(VarDesc* x, float scale, float bias, bool bias_after) {
+  VarDesc* scale(VarDesc* x,
+                 float scale = 1.,
+                 float bias = 0.,
+                 bool bias_after = true) {
     VarDesc* out = lod_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("scale");
@@ -571,33 +621,35 @@ struct Layers {
     return out;
   }
 
-  VarDesc* fused_multi_transformer(VarDesc* x,
-                                   VarDesc* cache_kv,
-                                   VarDesc* src_mask,
-                                   VarDesc* qkv_w,
-                                   VarDesc* qkv_bias,
-                                   VarDesc* out_linear_w,
-                                   VarDesc* out_linear_bias,
-                                   VarDesc* ffn1_w,
-                                   VarDesc* ffn1_bias,
-                                   VarDesc* ffn2_w,
-                                   VarDesc* ffn2_bias,
-                                   VarDesc* ln_scale,
-                                   VarDesc* ln_bias,
-                                   VarDesc* ffn_ln_scale,
-                                   VarDesc* ffn_ln_bias,
-                                   float epsilon,
-                                   float dropout_rate,
-                                   VarDesc* time_stamp = nullptr,
-                                   VarDesc* qkv_out_scale = nullptr,
-                                   VarDesc* out_linear_out_scale = nullptr,
-                                   VarDesc* ffn1_out_scale = nullptr,
-                                   VarDesc* ffn2_out_scale = nullptr,
-                                   std::vector<float> qkv_in_scale = {},
-                                   std::vector<float> out_linear_in_scale = {},
-                                   std::vector<float> ffn1_in_scale = {},
-                                   std::vector<float> ffn2_in_scale = {}) {
+  std::vector<VarDesc*> fused_multi_transformer(
+      VarDesc* x,
+      VarDesc* cache_kv,
+      VarDesc* src_mask,
+      VarDesc* qkv_w,
+      VarDesc* qkv_bias,
+      VarDesc* out_linear_w,
+      VarDesc* out_linear_bias,
+      VarDesc* ffn1_w,
+      VarDesc* ffn1_bias,
+      VarDesc* ffn2_w,
+      VarDesc* ffn2_bias,
+      VarDesc* ln_scale,
+      VarDesc* ln_bias,
+      VarDesc* ffn_ln_scale,
+      VarDesc* ffn_ln_bias,
+      float epsilon,
+      float dropout_rate,
+      VarDesc* time_stamp = nullptr,
+      VarDesc* qkv_out_scale = nullptr,
+      VarDesc* out_linear_out_scale = nullptr,
+      VarDesc* ffn1_out_scale = nullptr,
+      VarDesc* ffn2_out_scale = nullptr,
+      std::vector<float> qkv_in_scale = {},
+      std::vector<float> out_linear_in_scale = {},
+      std::vector<float> ffn1_in_scale = {},
+      std::vector<float> ffn2_in_scale = {}) {
     VarDesc* out = lod_tensor(unique_name());
+    VarDesc* cache_kv_out = lod_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     std::string op_type = qkv_out_scale ? "fused_multi_transformer_int8"
                                         : "fused_multi_transformer";
@@ -623,6 +675,7 @@ struct Layers {
     op->SetAttr("dropout_rate", dropout_rate);
     op->SetAttr("epsilon", epsilon);
     op->SetOutput("Out", {out->Name()});
+    op->SetOutput("CacheKVOut", {cache_kv_out->Name()});
 
     if (time_stamp) {
       op->SetInput("TimeStep", {time_stamp->Name()});
@@ -638,7 +691,8 @@ struct Layers {
       op->SetAttr("ffn1_in_scale", ffn1_in_scale);
       op->SetAttr("ffn2_in_scale", ffn2_in_scale);
     }
-    return out;
+    std::vector<VarDesc*> outs = {out, cache_kv_out};
+    return outs;
   }
 
   VarDesc* dequantize_linear(VarDesc* x,
@@ -707,6 +761,140 @@ struct Layers {
       }
       // TODO(liuyiqun): attrs
     }
+  }
+
+  VarDesc* cast(VarDesc* input, int in_dtype = 5, int out_dtype = 5) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("cast");
+    op->SetInput("X", {input->Name()});
+    op->SetOutput("Out", {out->Name()});
+    op->SetAttr("in_dtype", in_dtype);
+    op->SetAttr("out_dtype", out_dtype);
+    return out;
+  }
+
+  VarDesc* range(VarDesc* start, VarDesc* end, VarDesc* step) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("range");
+    op->SetInput("Start", {start->Name()});
+    op->SetInput("End", {end->Name()});
+    op->SetInput("Step", {step->Name()});
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
+  VarDesc* flatten_contiguous_range(VarDesc* input) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("flatten_contiguous_range");
+    op->SetInput("X", {input->Name()});
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
+  std::vector<VarDesc*> beam_search(VarDesc* ids,
+                                    VarDesc* scores,
+                                    VarDesc* pre_ids,
+                                    VarDesc* pre_scores,
+                                    int beam_size = 1) {
+    VarDesc* parent_idx = lod_tensor(unique_name());
+    VarDesc* selected_ids = lod_tensor(unique_name());
+    VarDesc* selected_scores = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("beam_search");
+    op->SetInput("ids", {ids->Name()});
+    op->SetInput("scores", {scores->Name()});
+    op->SetInput("pre_ids", {pre_ids->Name()});
+    op->SetInput("pre_scores", {pre_scores->Name()});
+    op->SetOutput("parent_idx", {parent_idx->Name()});
+    op->SetOutput("selected_ids", {selected_ids->Name()});
+    op->SetOutput("selected_scores", {selected_scores->Name()});
+    op->SetAttr("beam_size", 1);
+    return {parent_idx, selected_ids, selected_scores};
+  }
+
+  VarDesc* lod_reset(VarDesc* x, VarDesc* y) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("lod_reset");
+    op->SetInput("X", {x->Name()});
+    op->SetInput("Y", {y->Name()});
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
+  VarDesc* write_to_array(VarDesc* x, VarDesc* i) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("write_to_array");
+    op->SetInput("X", {x->Name()});
+    op->SetInput("I", {i->Name()});
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
+  VarDesc* read_from_array(VarDesc* x, VarDesc* i) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("read_from_array");
+    op->SetInput("X", {x->Name()});
+    op->SetInput("I", {i->Name()});
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
+  VarDesc* gather(VarDesc* x, VarDesc* index, int axis) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("gather");
+    op->SetInput("X", {x->Name()});
+    op->SetInput("Index", {index->Name()});
+    op->SetAttr("axis", axis);
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
+  VarDesc* is_empty(VarDesc* input) { return unary_op("is_empty", input); }
+
+  VarDesc* logical_not(VarDesc* input) {
+    return unary_op("logical_not", input);
+  }
+
+  VarDesc* not_equal(VarDesc* x, VarDesc* y, int axis = -1) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("not_equal");
+    op->SetInput("X", {x->Name()});
+    op->SetInput("Y", {y->Name()});
+    op->SetAttr("axis", axis);
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
+  VarDesc* stack(std::vector<VarDesc*> inputs, int axis = -1) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("stack");
+    std::vector<std::string> input_names;
+    for (auto* input : inputs) {
+      input_names.push_back(input->Name());
+    }
+    op->SetInput("X", input_names);
+    op->SetAttr("axis", axis);
+    op->SetOutput("Y", {out->Name()});
+    return out;
+  }
+
+  VarDesc* tile(VarDesc* x, const std::vector<int>& repeat_times = {2}) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("tile");
+    op->SetInput("X", {x->Name()});
+    op->SetAttr("repeat_times", repeat_times);
+    op->SetOutput("Out", {out->Name()});
+    return out;
   }
 
  private:
@@ -923,10 +1111,11 @@ static std::vector<ir::Node*> GetOpNodes(const std::unique_ptr<Graph>& graph,
 }
 
 static int GetNumOpNodes(const std::unique_ptr<Graph>& graph,
-                         std::string op_type) {
+                         std::string op_type = "") {
   int num_nodes = 0;
   for (auto* node : graph->Nodes()) {
-    if (node->IsOp() && node->Op() && node->Op()->Type() == op_type) {
+    if (node->IsOp() && node->Op() &&
+        (node->Op()->Type() == op_type || op_type.empty())) {
       num_nodes++;
     }
   }

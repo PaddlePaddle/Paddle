@@ -22,9 +22,9 @@
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/tensorrt/plugin/common/common.cuh"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_utils.h"
-#include "paddle/fluid/operators/math/bert_encoder_functor.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/multihead_matmul_functor.h"
 
 namespace paddle {
 namespace inference {
@@ -155,7 +155,7 @@ inline int round_up(int seq_len, int multiple = 32) {
       multiple,
       0,
       platform::errors::InvalidArgument(
-          "multiple should be a positive number，but it's (%d)", multiple));
+          "multiple should be a positive number, but it's (%d)", multiple));
   return ((seq_len + multiple - 1) / multiple) * multiple;
 }
 
@@ -254,7 +254,7 @@ int MultiheadMatmulRoformerPlugin::enqueue(
             platform::CUDAPlace(device_id)));
 
     const phi::GPUContext &dev_ctx = *device_ctx;
-    operators::math::MultiHeadGPUComputeFunctor<float> multihead_compute_func;
+    phi::funcs::MultiheadGPUComputeFunctor<float> multihead_compute_func;
     multihead_compute_func(dev_ctx,
                            batch,
                            seq_len,
@@ -341,7 +341,7 @@ int MultiheadMatmulRoformerPlugin::enqueue(
         tptr, static_cast<half>(scale_), n_q);
 
     const phi::GPUContext &dev_ctx = *device_ctx;
-    operators::math::MultiHeadGPUComputeFunctor<half> multihead_compute_func;
+    phi::funcs::MultiheadGPUComputeFunctor<half> multihead_compute_func;
     multihead_compute_func(dev_ctx,
                            batch,
                            seq_len,

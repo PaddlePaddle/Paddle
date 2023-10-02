@@ -11,15 +11,17 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/phi/backends/onednn/onednn_context.h"
 
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/flat_hash_map.h"
 
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/expect.h"
+
+#include "glog/logging.h"
 
 namespace phi {
 
@@ -42,8 +44,7 @@ OneDNNContextThreadLocals::Body::~Body() {
   auto cpu_place = phi::CPUPlace();
   // TODO(YuanRisheng): we need remove the dependency on fluid device context
   // here
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   OneDNNContext* dev_ctx = static_cast<OneDNNContext*>(pool.Get(cpu_place));
   dev_ctx->ResetBlobMap(exec_ptr_);
 }
@@ -51,7 +52,7 @@ OneDNNContextThreadLocals::Body::~Body() {
 void OneDNNContextThreadLocals::Body::set_cur_mkldnn_session_id(size_t sid) {
   cur_mkldnn_session_id = sid;
 }
-size_t OneDNNContextThreadLocals::Body::get_cur_mkldnn_session_id(void) {
+size_t OneDNNContextThreadLocals::Body::get_cur_mkldnn_session_id() {
   return cur_mkldnn_session_id;
 }
 
@@ -69,17 +70,22 @@ void OneDNNContextThreadLocals::Body::set_cur_paddle_data_layout(
   cur_paddle_data_layout = dl;
 }
 
-DataLayout OneDNNContextThreadLocals::Body::get_cur_paddle_data_layout(void) {
+DataLayout OneDNNContextThreadLocals::Body::get_cur_paddle_data_layout() {
   return cur_paddle_data_layout;
 }
 
-void OneDNNContextThreadLocals::Body::log_lib_version(void) {
+void OneDNNContextThreadLocals::Body::log_lib_version() {
   if (!said_once) {
     said_once = true;
     auto dv = dnnl::version();
     LOG(INFO) << "oneDNN v" << dv->major << "." << dv->minor << "."
               << dv->patch;
   }
+}
+
+OneDNNContextThreadLocals::Body& OneDNNContextThreadLocals::fetch() {
+  thread_local Body b;
+  return b;
 }
 
 struct OneDNNContext::Impl {
@@ -89,7 +95,7 @@ struct OneDNNContext::Impl {
     p_mutex_.reset(new std::mutex());
   }
 
-  ~Impl() {}
+  ~Impl() = default;
 
   void ResetBlobMap(void* ptr) {
     VLOG(4) << OneDNNContext::tls().get_curr_exec() << " " << ptr;
@@ -202,7 +208,7 @@ struct OneDNNContext::Impl {
       // max pblob capacity
       if ((static_cast<size_t>(sid) ==
            OneDNNContextThreadLocals::kMKLDNNSessionID_CacheClearing) &&
-          sBlob->size() &&
+          !sBlob->empty() &&
           (sBlob->size() >=
            static_cast<size_t>(
                OneDNNContext::tls().cur_input_shape_cache_capacity))) {
@@ -233,7 +239,7 @@ struct OneDNNContext::Impl {
     return;
   }
 
-  unsigned int GetCachedObjectsNumber(void) const {
+  unsigned int GetCachedObjectsNumber() const {
     unsigned int num_entries = 0;
     for (auto const& l3 : *p_blobmap_) {
       for (auto const& l2 : *(l3.second)) {
@@ -406,7 +412,7 @@ void OneDNNContext::SetBlob(const std::string& name,
   impl_->SetBlob(name, data);
 }
 
-unsigned int OneDNNContext::GetCachedObjectsNumber(void) const {
+unsigned int OneDNNContext::GetCachedObjectsNumber() const {
   return impl_->GetCachedObjectsNumber();
 }
 
@@ -460,6 +466,8 @@ const std::vector<std::string>& OneDNNContext::GetOutputsName(
     const std::string& output) const {
   return impl_->GetOutputsName(output);
 }
+
+const char* OneDNNContext::name() { return "OneDNNContext"; }
 
 }  // namespace phi
 #endif

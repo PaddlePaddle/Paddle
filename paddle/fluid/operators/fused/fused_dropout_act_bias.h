@@ -26,7 +26,7 @@ namespace operators {
 template <typename T>
 struct GeluFunctor {
   inline __host__ __device__ T operator()(const T x) const {
-    using U = LayerNormParamType<T>;
+    using U = phi::funcs::LayerNormParamType<T>;
     const U casted_x = static_cast<U>(x);
     const U temp = erf(casted_x * static_cast<U>(M_SQRT1_2));
     const U out = (casted_x * static_cast<U>(0.5) * (static_cast<U>(1) + temp));
@@ -47,7 +47,7 @@ struct FastGeluFunctor {
 template <typename T>
 struct GeluGradFunctor {
   inline __host__ __device__ T UseOut(const T x) const {
-    using U = LayerNormParamType<T>;
+    using U = phi::funcs::LayerNormParamType<T>;
     auto casted_x = static_cast<U>(x);
 
     auto first =

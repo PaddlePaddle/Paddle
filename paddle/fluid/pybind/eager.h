@@ -19,17 +19,12 @@ limitations under the License. */
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/eager/pylayer/py_layer_node.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/utils/pybind.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 
 namespace paddle {
 namespace pybind {
-
-typedef struct {
-  PyObject_HEAD paddle::experimental::Tensor tensor;
-  // Weak references
-  PyObject* weakrefs;
-} TensorObject;
 
 typedef struct {
   PyObject_HEAD PyObject* container;

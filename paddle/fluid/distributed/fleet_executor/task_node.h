@@ -116,6 +116,15 @@ class TaskNode final {
                          int64_t buff_size = 1,
                          DependType type = DependType::NORMAL);
   std::string DebugString() const;
+  void SetVarsToDtype(const std::map<std::string, std::string>& vars_to_dtype);
+  const std::map<std::string, std::vector<int64_t>>& vars_to_shape() const {
+    return vars_to_shape_;
+  }
+  const std::map<std::string, std::string>& vars_to_dtype() const {
+    return vars_to_dtype_;
+  }
+  void SetVarsToShape(
+      const std::map<std::string, std::vector<int64_t>>& vars_to_shape);
 
  private:
   DISABLE_COPY_AND_ASSIGN(TaskNode);
@@ -128,7 +137,7 @@ class TaskNode final {
   // task_id-->type
   std::unordered_map<int64_t, DependType> id_to_dep_type_;
 
-  framework::ProgramDesc* program_;
+  framework::ProgramDesc* program_{nullptr};
   std::string cond_var_;
   std::vector<std::unique_ptr<OperatorBase>> ops_vec_;
   std::unordered_map<const OperatorBase*, std::vector<std::string>>
@@ -148,6 +157,8 @@ class TaskNode final {
   int64_t send_down_per_steps_{1};
 
   std::string type_;
+  std::map<std::string, std::string> vars_to_dtype_;
+  std::map<std::string, std::vector<int64_t>> vars_to_shape_;
 };
 
 }  // namespace distributed

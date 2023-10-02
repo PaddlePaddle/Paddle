@@ -29,10 +29,12 @@ limitations under the License. */
 // phi
 #include "paddle/phi/kernels/declarations.h"
 
-DEFINE_string(devices, "", "The devices to be used which is joined by comma.");
-DEFINE_int32(math_num_threads,
-             1,
-             "Number of threads used to run math functions.");
+PD_DEFINE_string(devices,  // NOLINT
+                 "",
+                 "The devices to be used which is joined by comma.");
+PD_DEFINE_int32(math_num_threads,
+                1,
+                "Number of threads used to run math functions.");
 
 namespace paddle {
 namespace inference {
@@ -60,7 +62,7 @@ void ReadBinaryFile(const std::string& filename, std::string* contents) {
   contents->clear();
   contents->resize(fin.tellg());
   fin.seekg(0, std::ios::beg);
-  fin.read(&(contents->at(0)), contents->size());
+  fin.read(&(contents->at(0)), contents->size());  // NOLINT
   fin.close();
 }
 

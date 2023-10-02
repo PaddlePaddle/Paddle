@@ -17,7 +17,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_MKLML
 #include <omp.h>
 
-#include "paddle/fluid/platform/dynload/mklml.h"
+#include "paddle/phi/backends/dynload/mklml.h"
 #endif
 
 #ifdef PADDLE_USE_OPENBLAS
@@ -40,7 +40,7 @@ void SetNumThreads(int num_threads) {
   openblas_set_num_threads(real_num_threads);
 #elif defined(PADDLE_WITH_MKLML)
   int real_num_threads = num_threads > 1 ? num_threads : 1;
-  platform::dynload::MKL_Set_Num_Threads(real_num_threads);
+  phi::dynload::MKL_Set_Num_Threads(real_num_threads);
   omp_set_num_threads(real_num_threads);
 #elif defined(PADDLE_USE_REFERENCE_CBLAS)
   // cblas not support multi-thread

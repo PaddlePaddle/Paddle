@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.nn as nn
+from paddle import nn
 
 __all__ = []
 

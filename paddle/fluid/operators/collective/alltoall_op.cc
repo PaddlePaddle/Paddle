@@ -17,7 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class AllToAllOp : public framework::OperatorWithKernel {
+class AllToAllBaseOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -43,9 +43,9 @@ class AllToAllOp : public framework::OperatorWithKernel {
   }
 };
 
-class AllToAllOpMaker : public framework::OpProtoAndCheckerMaker {
+class AllToAllBaseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "(Tensor) tensor send.");
     AddOutput("Out", "(Tensor) the result of alltoall.");
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
@@ -67,11 +67,16 @@ Scatter tensors from all participators to all participators.
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(alltoall, ops::AllToAllOp, ops::AllToAllOpMaker)
+REGISTER_OP_WITHOUT_GRADIENT(alltoall,
+                             ops::AllToAllBaseOp,
+                             ops::AllToAllBaseOpMaker)
 
-REGISTER_OP_CPU_KERNEL(alltoall,
-                       ops::AllToAllOpCPUKernel<float>,
-                       ops::AllToAllOpCPUKernel<double>,
-                       ops::AllToAllOpCPUKernel<int>,
-                       ops::AllToAllOpCPUKernel<int64_t>,
-                       ops::AllToAllOpCPUKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(alltoall,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::AllToAllOpCPUKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

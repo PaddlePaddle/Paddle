@@ -35,7 +35,7 @@ void IndexSampleGradInner(const Context& context,
 
   auto value_length = x_grad_dims[1];
   auto index_length = index_dims[1];
-  int index_ids_num = index.numel();
+  int index_ids_num = static_cast<int>(index.numel());
 
   std::vector<T> x_grad_vec(x_grad->numel(), 0);
 
@@ -69,7 +69,7 @@ void IndexSampleGradInner(const Context& context,
 
 template <typename T, typename Context>
 void IndexSampleGradKernel(const Context& ctx,
-                           const DenseTensor& x,
+                           const DenseTensor& x UNUSED,
                            const DenseTensor& index,
                            const DenseTensor& out_grad,
                            DenseTensor* x_grad) {
@@ -81,9 +81,9 @@ void IndexSampleGradKernel(const Context& ctx,
                     errors::InvalidArgument(
                         "Input(Index) holds the wrong type, it holds %s, but "
                         "desires to be %s or %s",
-                        phi::DataTypeToString(index_type),
-                        phi::DataTypeToString(DataType::INT32),
-                        phi::DataTypeToString(DataType::INT64)));
+                        DataTypeToString(index_type),
+                        DataTypeToString(DataType::INT32),
+                        DataTypeToString(DataType::INT64)));
   if (index_type == DataType::INT32) {
     IndexSampleGradInner<T, Context, int>(ctx, out_grad, index, x_grad);
   } else if (index_type == DataType::INT64) {
@@ -100,4 +100,6 @@ PD_REGISTER_KERNEL(index_sample_grad,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

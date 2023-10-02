@@ -80,6 +80,8 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(FillZerosLikeOp2NoNeedBufferVarsInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
+
 REGISTER_OP_WITHOUT_GRADIENT(fill_zeros_like,
                              ops::FillZerosLikeOp,
                              ops::FillZerosLikeOpMaker);
@@ -92,24 +94,26 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(
-    fill_zeros_like,
-    ops::FillZerosLikeKernel<phi::CPUContext, int>,
-    ops::FillZerosLikeKernel<phi::CPUContext, int64_t>,
-    ops::FillZerosLikeKernel<phi::CPUContext, float>,
-    ops::FillZerosLikeKernel<phi::CPUContext, double>,
-    ops::FillZerosLikeKernel<phi::CPUContext, bool>,
-    ops::FillZerosLikeKernel<phi::CPUContext, paddle::platform::complex<float>>,
-    ops::FillZerosLikeKernel<phi::CPUContext,
-                             paddle::platform::complex<double>>);
+PD_REGISTER_STRUCT_KERNEL(fill_zeros_like,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::FillZerosLikeKernel,
+                          int,
+                          int64_t,
+                          float,
+                          double,
+                          bool,
+                          plat::complex<float>,
+                          plat::complex<double>) {}
 
-REGISTER_OP_CPU_KERNEL(
-    fill_zeros_like2,
-    ops::FillZerosLikeKernel<phi::CPUContext, int>,
-    ops::FillZerosLikeKernel<phi::CPUContext, int64_t>,
-    ops::FillZerosLikeKernel<phi::CPUContext, float>,
-    ops::FillZerosLikeKernel<phi::CPUContext, double>,
-    ops::FillZerosLikeKernel<phi::CPUContext, bool>,
-    ops::FillZerosLikeKernel<phi::CPUContext, paddle::platform::complex<float>>,
-    ops::FillZerosLikeKernel<phi::CPUContext,
-                             paddle::platform::complex<double>>);
+PD_REGISTER_STRUCT_KERNEL(fill_zeros_like2,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::FillZerosLikeKernel2,
+                          int,
+                          int64_t,
+                          float,
+                          double,
+                          bool,
+                          plat::complex<float>,
+                          plat::complex<double>) {}

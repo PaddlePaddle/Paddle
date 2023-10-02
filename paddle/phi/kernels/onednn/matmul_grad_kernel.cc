@@ -14,7 +14,7 @@
 
 #include "paddle/phi/kernels/matmul_grad_kernel.h"
 
-#include "paddle/phi/backends/onednn/onednn_reuse.h"
+#include "paddle/phi/backends/onednn/matmul_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -84,7 +84,7 @@ template <typename T>
 void ReduceSumForMatmulGradOutput(const OneDNNContext &dev_ctx,
                                   const DenseTensor *dx_tmp,
                                   DenseTensor *dx,
-                                  const std::vector<int64_t> &dx_dims,
+                                  const std::vector<int64_t> &dx_dims UNUSED,
                                   const std::vector<int64_t> &x_dims) {
   funcs::ReductionOneDNNHandler<T> handler(dnnl::algorithm::reduction_sum,
                                            0.0f,

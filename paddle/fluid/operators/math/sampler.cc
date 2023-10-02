@@ -16,17 +16,17 @@ limitations under the License. */
 
 #include <glog/logging.h>
 
-#include "paddle/fluid/framework/generator.h"
+#include "paddle/phi/core/generator.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
 
-Sampler::~Sampler() {}
+Sampler::~Sampler() = default;
 
 UniformSampler::UniformSampler(int64_t range, unsigned int seed)
-    : Sampler(range, seed), inv_range_(1.0 / (range + 1)) {
-  random_engine_ = framework::GetCPURandomEngine(seed_);
+    : Sampler(range, seed), inv_range_(1.0f / (range + 1)) {  // NOLINT
+  random_engine_ = phi::GetCPURandomEngine(seed_);
   dist_ = std::make_shared<std::uniform_int_distribution<>>(0, range);
 }
 
@@ -35,8 +35,8 @@ int64_t UniformSampler::Sample() const { return (*dist_)(*random_engine_); }
 float UniformSampler::Probability(int64_t value) const { return inv_range_; }
 
 LogUniformSampler::LogUniformSampler(int64_t range, unsigned int seed)
-    : Sampler(range, seed), log_range_(log(range + 1)) {
-  random_engine_ = framework::GetCPURandomEngine(seed_);
+    : Sampler(range, seed), log_range_(log(range + 1)) {  // NOLINT
+  random_engine_ = phi::GetCPURandomEngine(seed_);
   dist_ = std::make_shared<std::uniform_real_distribution<>>(0, 1);
 }
 
@@ -57,7 +57,7 @@ float LogUniformSampler::Probability(int64_t value) const {
   // The value's  probability  is integral of f(x) from value to (value + 1)
   // More details:
   // https://wanghaoshuang.github.io/2017/11/Log-uniform-distribution-sampler
-  return (log((value + 2.0) / (value + 1.0))) / log_range_;
+  return (log((value + 2.0) / (value + 1.0))) / log_range_;  // NOLINT
 }
 
 CustomSampler::CustomSampler(int64_t range,
@@ -66,7 +66,7 @@ CustomSampler::CustomSampler(int64_t range,
                              const float *alias_probabilities,
                              unsigned int seed)
     : Sampler(range, seed) {
-  random_engine_ = framework::GetCPURandomEngine(seed_);
+  random_engine_ = phi::GetCPURandomEngine(seed_);
   real_dist_ = std::make_shared<std::uniform_real_distribution<>>(0, 1);
   int_dist_ = std::make_shared<std::uniform_int_distribution<>>(0, range);
 

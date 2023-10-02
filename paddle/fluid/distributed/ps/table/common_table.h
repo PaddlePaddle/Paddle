@@ -70,18 +70,20 @@ class BarrierTable : public Table {
   BarrierTable() {}
   virtual ~BarrierTable() {}
 
-  virtual void *GetShard(size_t shard_idx) { return 0; }
+  virtual void *GetShard(size_t shard_idx UNUSED) { return 0; }
 
-  virtual int32_t Pull(TableContext &context) { return 0; }  // NOLINT
-  virtual int32_t Push(TableContext &context) { return 0; }  // NOLINT
+  virtual int32_t Pull(TableContext &context UNUSED) { return 0; }  // NOLINT
+  virtual int32_t Push(TableContext &context UNUSED) { return 0; }  // NOLINT
 
-  int32_t Shrink(const std::string &param) override { return 0; }
+  int32_t Shrink(const std::string &param UNUSED) override { return 0; }
   virtual void Clear() {}
   virtual int32_t Flush() { return 0; }
-  virtual int32_t Load(const std::string &path, const std::string &param) {
+  virtual int32_t Load(const std::string &path UNUSED,
+                       const std::string &param UNUSED) {
     return 0;
   }
-  virtual int32_t Save(const std::string &path, const std::string &param) {
+  virtual int32_t Save(const std::string &path UNUSED,
+                       const std::string &param UNUSED) {
     return 0;
   }
   virtual int32_t InitializeShard() { return 0; }

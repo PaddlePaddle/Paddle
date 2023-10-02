@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include "glog/logging.h"
+
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -52,7 +54,7 @@ void SetValueGradImpl(const Context& dev_ctx,
                       const IntArray& steps,
                       const std::vector<int64_t>& axes,
                       const std::vector<int64_t>& decrease_axes,
-                      const std::vector<int64_t>& none_axes,
+                      const std::vector<int64_t>& none_axes UNUSED,
                       DenseTensor* x_grad,
                       DenseTensor* value_grad) {
   PADDLE_ENFORCE_EQ(
@@ -188,21 +190,21 @@ void SetValueGradImpl(const Context& dev_ctx,
                    (value_grad_dims_size + decrease_axis_size - num_decrease));
           fake_value_grad_dims[i] = value_grad_dims[index_grad];
 
-          PADDLE_ENFORCE_EQ((out_dims[i] == value_grad_dims[index_grad]) ||
-                                (value_grad_dims[index_grad] == 1),
-                            true,
-                            errors::InvalidArgument(
-                                "An error occurred while calculating %s: "
-                                "[%s] can not be accumulated into [%s].",
-                                paddle::framework::GradVarName("ValueTensor"),
-                                out_dims,
-                                value_grad_dims));
+          PADDLE_ENFORCE_EQ(
+              (out_dims[i] == value_grad_dims[index_grad]) ||
+                  (value_grad_dims[index_grad] == 1),
+              true,
+              errors::InvalidArgument("An error occurred while calculating %s: "
+                                      "[%s] can not be accumulated into [%s].",
+                                      "ValueTensor@GRAD",
+                                      out_dims,
+                                      value_grad_dims));
         }
       }
 
       VLOG(3) << "Dimensions of "
-              << paddle::framework::GradVarName("ValueTensor") << "(["
-              << value_grad_dims << "])is broadcasted into ["
+              << "ValueTensor@GRAD"
+              << "([" << value_grad_dims << "])is broadcasted into ["
               << fake_value_grad_dims << "].";
 
       auto extent = Eigen::DSizes<Eigen::DenseIndex, RANK>();

@@ -20,17 +20,19 @@
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/common/memory_utils.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void SigmoidCrossEntropyWithLogitsKernel(const Context& dev_ctx,
-                                         const DenseTensor& x,
-                                         const DenseTensor& label,
-                                         bool normalize,
-                                         int ignore_index,
-                                         DenseTensor* out) {
+void SigmoidCrossEntropyWithLogitsKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const DenseTensor& label,
+    const paddle::optional<DenseTensor>& pos_weight,
+    bool normalize,
+    int ignore_index,
+    DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   PADDLE_ENFORCE_EQ(x.place().GetType() == phi::AllocationType::XPU,
                     true,
@@ -41,7 +43,12 @@ void SigmoidCrossEntropyWithLogitsKernel(const Context& dev_ctx,
   int* hit = RAII_GUARD.alloc_l3_or_gm<int>(x.numel());
   PADDLE_ENFORCE_NOT_NULL(
       hit, errors::External("XPU alloc_l3_or_gm returns nullptr"));
-
+  auto pos_weight_data =
+      (pos_weight.get_ptr() == nullptr ? nullptr
+                                       : pos_weight.get_ptr()->data<T>());
+  // int sigmoid_cross_entropy_with_logits(Context* ctx, const T* x, const T*
+  // label, T* y, int64_t m, int64_t n, TH* hit = nullptr, int64_t ignore_index
+  // = -100, const T* pos_weight = nullptr);
   int r = xpu::sigmoid_cross_entropy_with_logits(
       dev_ctx.x_context(),
       reinterpret_cast<const XPUType*>(x.data<T>()),
@@ -50,7 +57,8 @@ void SigmoidCrossEntropyWithLogitsKernel(const Context& dev_ctx,
       1,
       x.numel(),
       hit,
-      ignore_index);
+      ignore_index,
+      reinterpret_cast<const XPUType*>(pos_weight_data));
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "sigmoid_cross_entropy_with_logits");
   if (normalize) {
     int* non_zero = RAII_GUARD.alloc_l3_or_gm<int>(1);
@@ -62,11 +70,11 @@ void SigmoidCrossEntropyWithLogitsKernel(const Context& dev_ctx,
                                x.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "nonzero_count");
     int non_zero_cpu = 0;
-    paddle::memory::Copy(CPUPlace(),
-                         static_cast<void*>(&non_zero_cpu),
-                         dev_ctx.GetPlace(),
-                         static_cast<void*>(non_zero),
-                         sizeof(int));
+    memory_utils::Copy(CPUPlace(),
+                       static_cast<void*>(&non_zero_cpu),
+                       dev_ctx.GetPlace(),
+                       static_cast<void*>(non_zero),
+                       sizeof(int));
 
     r = xpu::scale(dev_ctx.x_context(),
                    reinterpret_cast<const XPUType*>(out->data<T>()),

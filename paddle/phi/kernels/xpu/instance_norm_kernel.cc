@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/instance_norm_kernel.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
@@ -38,8 +39,54 @@ void InstanceNormKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<float>(saved_mean);
   dev_ctx.template Alloc<float>(saved_var);
 
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+
+  // scale
   const auto scale_ptr = scale.get_ptr();
-  const auto bias_ptr = bias.get_ptr();
+  const float* scale_data_fp32 = nullptr;
+  if (scale_ptr == nullptr) {
+    float* scale_data_temp = RAII_GUARD.alloc_l3_or_gm<float>(c);
+    int r = xpu::constant<float>(dev_ctx.x_context(), scale_data_temp, c, 1.f);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+    scale_data_fp32 = scale_data_temp;
+  } else if (scale_ptr->dtype() ==
+             phi::CppTypeToDataType<phi::dtype::float16>::Type()) {
+    float* scale_data_temp =
+        RAII_GUARD.alloc_l3_or_gm<float>(scale_ptr->numel());
+    int r = xpu::cast<XPUType, float>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(scale_ptr->data<T>()),
+        scale_data_temp,
+        scale_ptr->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    scale_data_fp32 = scale_data_temp;
+  } else {
+    // no need to cast
+    scale_data_fp32 = scale_ptr->data<float>();
+  }
+
+  // bias
+  const float* bias_data_fp32 = nullptr;
+  const auto* bias_ptr = bias.get_ptr();
+  if (bias_ptr == nullptr) {
+    float* bias_data_temp = RAII_GUARD.alloc_l3_or_gm<float>(c);
+    int r = xpu::constant<float>(dev_ctx.x_context(), bias_data_temp, c, 1.f);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+    bias_data_fp32 = bias_data_temp;
+  } else if (bias_ptr->dtype() ==
+             phi::CppTypeToDataType<phi::dtype::float16>::Type()) {
+    float* bias_data_temp = RAII_GUARD.alloc_l3_or_gm<float>(bias_ptr->numel());
+    int r = xpu::cast<XPUType, float>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(bias_ptr->data<T>()),
+        bias_data_temp,
+        bias_ptr->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    bias_data_fp32 = bias_data_temp;
+  } else {
+    // no need to cast
+    bias_data_fp32 = bias_ptr->data<float>();
+  }
 
   int r = xpu::instance_norm(dev_ctx.x_context(),
                              reinterpret_cast<const XPUType*>(x.data<T>()),
@@ -49,8 +96,8 @@ void InstanceNormKernel(const Context& dev_ctx,
                              h,
                              w,
                              epsilon,
-                             scale_ptr->data<float>(),
-                             bias_ptr->data<float>(),
+                             scale_data_fp32,
+                             bias_data_fp32,
                              saved_mean->data<float>(),
                              saved_var->data<float>(),
                              true);
@@ -60,5 +107,9 @@ void InstanceNormKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    instance_norm, XPU, ALL_LAYOUT, phi::InstanceNormKernel, float) {}
+PD_REGISTER_KERNEL(instance_norm,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::InstanceNormKernel,
+                   float,
+                   phi::dtype::float16) {}

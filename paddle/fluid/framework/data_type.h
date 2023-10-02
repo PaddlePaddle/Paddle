@@ -23,11 +23,12 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace framework {
 
-extern std::string DataTypeToString(const proto::VarType::Type type);
+TEST_API std::string DataTypeToString(const proto::VarType::Type type);
 extern size_t SizeOfType(proto::VarType::Type type);
 
 template <typename T>
@@ -83,12 +84,13 @@ struct DataTypeTrait<void> {
   _ForEachDataTypeHelper_(                                      \
       callback, ::paddle::platform::complex<double>, COMPLEX128);
 
-#define _ForEachDataTypeNormal_(callback)            \
-  _ForEachDataTypeHelper_(callback, float, FP32);    \
-  _ForEachDataTypeHelper_(callback, double, FP64);   \
-  _ForEachDataTypeHelper_(callback, int, INT32);     \
-  _ForEachDataTypeHelper_(callback, int64_t, INT64); \
-  _ForEachDataTypeHelper_(callback, ::paddle::platform::float16, FP16);
+#define _ForEachDataTypeNormal_(callback)                               \
+  _ForEachDataTypeHelper_(callback, float, FP32);                       \
+  _ForEachDataTypeHelper_(callback, double, FP64);                      \
+  _ForEachDataTypeHelper_(callback, int, INT32);                        \
+  _ForEachDataTypeHelper_(callback, int64_t, INT64);                    \
+  _ForEachDataTypeHelper_(callback, ::paddle::platform::float16, FP16); \
+  _ForEachDataTypeHelper_(callback, ::paddle::platform::bfloat16, BF16);
 
 // For the use of thrust, as index-type elements can be only integers.
 #define _ForEachDataTypeTiny_(callback)          \

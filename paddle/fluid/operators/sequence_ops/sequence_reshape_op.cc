@@ -144,13 +144,19 @@ REGISTER_OPERATOR(sequence_reshape,
                   ops::SequenceReshapeGradOpMaker<paddle::framework::OpDesc>,
                   ops::SequenceReshapeGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(sequence_reshape_grad, ops::SequenceReshapeGradOp);
-REGISTER_OP_CPU_KERNEL(sequence_reshape,
-                       ops::SequenceReshapeKernel<phi::CPUContext, float>,
-                       ops::SequenceReshapeKernel<phi::CPUContext, double>,
-                       ops::SequenceReshapeKernel<phi::CPUContext, int>,
-                       ops::SequenceReshapeKernel<phi::CPUContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(sequence_reshape_grad,
-                       ops::SequenceReshapeGradKernel<phi::CPUContext, float>,
-                       ops::SequenceReshapeGradKernel<phi::CPUContext, double>,
-                       ops::SequenceReshapeGradKernel<phi::CPUContext, int64_t>,
-                       ops::SequenceReshapeGradKernel<phi::CPUContext, int>);
+PD_REGISTER_STRUCT_KERNEL(sequence_reshape,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::SequenceReshapeKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
+PD_REGISTER_STRUCT_KERNEL(sequence_reshape_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::SequenceReshapeGradKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}

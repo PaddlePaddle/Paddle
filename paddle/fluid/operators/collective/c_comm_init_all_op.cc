@@ -38,7 +38,7 @@ namespace operators {
 
 class CCommInitAllInferShape : public framework::InferShapeBase {
  public:
-  ~CCommInitAllInferShape() {}
+  ~CCommInitAllInferShape() override = default;
   void operator()(framework::InferShapeContext* ctx) const override{};
 };
 
@@ -124,7 +124,7 @@ class CCommInitAllOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 CCommInitAll operator
 
-Initialize all collective communicatoin context
+Initialize all collective communication context
 )DOC");
     AddAttr<std::vector<int>>(
         "devices",

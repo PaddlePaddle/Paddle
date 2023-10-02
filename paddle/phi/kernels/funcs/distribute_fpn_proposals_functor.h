@@ -35,7 +35,8 @@ inline std::vector<size_t> GetLodFromRoisNum(const Context& dev_ctx,
   std::vector<size_t> rois_lod;
   auto* rois_num_data = rois_num->data<int>();
   DenseTensor cpu_tensor;
-  if (paddle::platform::is_gpu_place(rois_num->place())) {
+  if (rois_num->place().GetType() == phi::AllocationType::GPU ||
+      rois_num->place().GetType() == phi::AllocationType::XPU) {
     Copy<Context>(dev_ctx, *rois_num, phi::CPUPlace(), true, &cpu_tensor);
     rois_num_data = cpu_tensor.data<int>();
   }

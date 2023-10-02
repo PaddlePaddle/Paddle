@@ -167,14 +167,14 @@ void StringUpperKernel(const ContextT& dev_ctx,
 }  // namespace strings
 }  // namespace phi
 
-PD_REGISTER_GENERAL_KERNEL(strings_lower,
-                           GPU,
-                           ALL_LAYOUT,
-                           phi::strings::StringLowerKernel<phi::GPUContext>,
-                           pstring) {}
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
+    strings_lower,
+    GPU,
+    ALL_LAYOUT,
+    phi::strings::StringLowerKernel<phi::GPUContext>) {}
 
-PD_REGISTER_GENERAL_KERNEL(strings_upper,
-                           GPU,
-                           ALL_LAYOUT,
-                           phi::strings::StringUpperKernel<phi::GPUContext>,
-                           pstring) {}
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
+    strings_upper,
+    GPU,
+    ALL_LAYOUT,
+    phi::strings::StringUpperKernel<phi::GPUContext>) {}

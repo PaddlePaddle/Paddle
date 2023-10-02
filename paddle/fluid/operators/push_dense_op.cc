@@ -70,4 +70,5 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::PushDenseNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(push_dense, ops::PushDenseCPUKernel<float>)
+PD_REGISTER_STRUCT_KERNEL(
+    push_dense, CPU, ALL_LAYOUT, ops::PushDenseCPUKernel, float) {}

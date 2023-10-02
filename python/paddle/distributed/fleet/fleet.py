@@ -16,12 +16,10 @@ import copy
 import os
 
 import paddle
-from paddle.fluid import compiler
-from paddle.fluid.dygraph import parallel_helper
-from paddle.fluid.framework import in_dygraph_mode
-from paddle.fluid.ir import apply_build_strategy
-from paddle.fluid.wrapped_decorator import wrap_decorator
-from paddle.framework import _global_flags
+from paddle.base import compiler
+from paddle.base.wrapped_decorator import wrap_decorator
+from paddle.framework import _global_flags, in_dynamic_mode
+from paddle.framework.ir import apply_build_strategy
 
 from .base import topology as tp
 from .base.distributed_strategy import DistributedStrategy
@@ -107,10 +105,11 @@ class Fleet:
     Returns:
         Fleet: A Fleet instance
 
-    Example for collective training:
 
         .. code-block:: python
+            :name: code-example1
 
+            # Example1: for collective training
             import paddle
             paddle.enable_static()
             import paddle.distributed.fleet as fleet
@@ -124,10 +123,11 @@ class Fleet:
             # do distributed training
 
 
-    Example for parameter server training:
 
         .. code-block:: python
+            :name: code-example2
 
+            # Example2: for parameter server training
             import paddle
             paddle.enable_static()
             import paddle.distributed.fleet as fleet
@@ -197,45 +197,45 @@ class Fleet:
         Returns:
             None
 
-        Examples1:
+        Examples:
 
             .. code-block:: python
+                :name: code-example1
 
                 import paddle.distributed.fleet as fleet
                 fleet.init()
 
-        Examples2:
+
 
             .. code-block:: python
+                :name: code-example2
 
                 import paddle.distributed.fleet as fleet
                 fleet.init(is_collective=True)
 
-        Examples3:
 
             .. code-block:: python
-
+                :name: code-example3
                 import paddle.distributed.fleet as fleet
                 role = fleet.PaddleCloudRoleMaker()
                 fleet.init(role)
 
-        Examples4:
 
             .. code-block:: python
-
+                :name: code-example4
                 import paddle.distributed.fleet as fleet
                 strategy = fleet.DistributedStrategy()
                 fleet.init(strategy=strategy)
 
-        Examples5:
 
             .. code-block:: python
-
+                :name: code-example5
                 import paddle.distributed.fleet as fleet
                 strategy = fleet.DistributedStrategy()
                 fleet.init(log_level = "DEBUG")
 
         """
+        from paddle.distributed import parallel_helper
 
         set_log_level(log_level)
 
@@ -267,26 +267,13 @@ class Fleet:
                 )
         self._role_maker._generate_role()
 
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         fleet.util._set_role_maker(self._role_maker)
 
         self.strategy_compiler = StrategyCompiler()
 
-        if self._role_maker._is_non_distributed() and self._is_collective:
-            if paddle.framework.core.is_compiled_with_cuda():
-                gpus_num = paddle.framework.core.get_cuda_device_count()
-                if gpus_num != 1:
-                    raise ValueError(
-                        "CUDA_VISIBLE_DEVICES shoule be set only 1 card if you use `python` to launch fleet program."
-                    )
-
-        if in_dygraph_mode():
-            if self.worker_num() == 1:
-                # if worker_num is 1, should construct default topology & hcg
-                self._topology = tp.CommunicateTopology()
-                self._hcg = tp.HybridCommunicateGroup(self._topology)
-                return
+        if in_dynamic_mode():
             if parallel_helper._is_parallel_ctx_initialized():
                 logger.warning(
                     "The dygraph parallel environment has been initialized."
@@ -383,21 +370,26 @@ class Fleet:
         return self
 
     def _init_hybrid_parallel_env(self):
-        """initialize the hybrid environment"""
+        """initialize the hybrid environment."""
         self.hybrid_configs = self._user_defined_strategy.hybrid_configs
         self.dp_degree = self.hybrid_configs["dp_degree"]
         self.mp_degree = self.hybrid_configs["mp_degree"]
         self.pp_degree = self.hybrid_configs["pp_degree"]
+        self.sep_degree = self.hybrid_configs["sep_degree"]
         self.sharding_degree = self.hybrid_configs["sharding_degree"]
 
         assert self.mp_degree >= 0, "mp_degree should be greater or equal to 0"
         assert self.pp_degree >= 0, "pp_degree should be greater or equal to 0"
+        assert (
+            self.sep_degree >= 0
+        ), "sep_degree should be greater or equal to 0"
         assert (
             self.sharding_degree >= 0
         ), "sharding_degree should be greater or equal to 0"
 
         self.mp_degree = max(self.mp_degree, 1)
         self.pp_degree = max(self.pp_degree, 1)
+        self.sep_degree = max(self.sep_degree, 1)
 
         if self.dp_degree < 0:
             nranks = paddle.distributed.get_world_size()
@@ -405,14 +397,29 @@ class Fleet:
 
         self.dp_degree = max(self.dp_degree, 1)
 
+        d_hybrid_degree = {
+            "dp": ["data", self.dp_degree],
+            "pp": ['pipe', self.pp_degree],
+            "sharding": ['sharding', self.sharding_degree],
+            "mp": ['model', self.mp_degree],
+            "sep": ["sep", self.sep_degree],
+        }
+
+        order = self._user_defined_strategy.hybrid_parallel_order
+        if order[:].sort() != list(d_hybrid_degree.keys())[:].sort():
+            raise AssertionError(
+                'The order of hybrid_config setting is incorrect.'
+            )
+
+        hybrid_group_names = []
+        dims = []
+        for h_name in order:
+            name, degree = d_hybrid_degree[h_name]
+            hybrid_group_names.append(name)
+            dims.append(degree)
+
         self._topology = tp.CommunicateTopology(
-            hybrid_group_names=["data", "pipe", "sharding", "model"],
-            dims=[
-                self.dp_degree,
-                self.pp_degree,
-                self.sharding_degree,
-                self.mp_degree,
-            ],
+            hybrid_group_names=hybrid_group_names, dims=dims
         )
 
         self._hcg = tp.HybridCommunicateGroup(self._topology)
@@ -627,6 +634,14 @@ class Fleet:
 
         Returns:
             None
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+                fleet.barrier_worker()
         """
         self._role_maker._barrier("worker")
 
@@ -1170,6 +1185,38 @@ class Fleet:
         amp_optimizer = self._get_amp_optimizer()
         return amp_optimizer.amp_init(place, scope, test_program, use_fp16_test)
 
+    def _get_qat_optimizer(self):
+        # imitate target optimizer retrieval
+        qat_optimizer = None
+        for optimizer in self.strategy_compiler._get_applied_meta_optimizer():
+            if hasattr(optimizer, 'qat_init'):
+                qat_optimizer = optimizer
+                break
+
+        if qat_optimizer is None:
+            if hasattr(self.user_defined_optimizer, 'qat_init'):
+                qat_optimizer = self.user_defined_optimizer
+
+        assert (
+            qat_optimizer is not None
+        ), "qat_init can only be used when the qat(quantization aware training) strategy is turned on."
+        return qat_optimizer
+
+    def qat_init(self, place, scope=None, test_program=None):
+        """
+        Init the qat training, such as insert qdq ops and scale variables.
+
+        Args:
+            place(CUDAPlace): place is used to initialize
+                scale parameters.
+            scope(Scope): The scope is used to find parameters and variables.
+            test_program(Program): The program is used for testing.
+        """
+        qat_optimizer = self._get_qat_optimizer()
+        return qat_optimizer.qat_init(
+            place, scope=scope, test_program=test_program
+        )
+
     def _final_strategy(self):
         if "valid_strategy" not in self._context:
             print(
@@ -1205,9 +1252,9 @@ class Fleet:
 
         Args:
             loss (Tensor): A ``Tensor`` containing the value to minimize.
-            startup_program (Program, optional): :ref:`api_fluid_Program` for
+            startup_program (Program, optional): :ref:`api_paddle_static_Program` for
                 initializing parameters in ``parameter_list``. The default value
-                is None, at this time :ref:`api_fluid_default_startup_program` will be used.
+                is None, at this time :ref:`api_base_default_startup_program` will be used.
             parameter_list (Iterable, optional): Iterable of ``Tensor`` or ``Tensor.name`` to update
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.
@@ -1256,7 +1303,7 @@ class Fleet:
             )
         else:
             if (
-                in_dygraph_mode()
+                in_dynamic_mode()
                 or self._role_maker._is_non_distributed()
                 or self._is_collective
             ):
@@ -1272,7 +1319,7 @@ class Fleet:
         context["user_defined_strategy"] = copy.deepcopy(
             self._user_defined_strategy
         )
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             # imitate target optimizer retrieval
             target_opt = self.user_defined_optimizer
             self._context = context
@@ -1282,7 +1329,7 @@ class Fleet:
             self.origin_main_program = loss.block.program
             # add distributed attr
             if not hasattr(self.origin_main_program, "distributed_info_"):
-                setattr(self.origin_main_program, "distributed_info_", dict())
+                self.origin_main_program.distributed_info_ = {}
                 self.origin_main_program.distributed_info_[
                     "dp_degree"
                 ] = self._user_defined_strategy.sharding_configs["dp_degree"]
@@ -1322,7 +1369,7 @@ class Fleet:
                 self._user_defined_strategy.semi_auto
                 or self._user_defined_strategy.auto_search
             ):
-                from ..auto_parallel.parallelizer import AutoParallelizer
+                from ..auto_parallel.static.parallelizer import AutoParallelizer
 
                 auto_parallelizer = AutoParallelizer(self)
                 (
@@ -1367,18 +1414,10 @@ class Fleet:
                     copy_user_defined_strategy,
                 )
                 can_not_apply_optimizer_list.append(meta_optimizer)
-                from .meta_optimizers import ParameterServerGraphOptimizer
 
-                graph_optimizer = ParameterServerGraphOptimizer(
-                    self.user_defined_optimizer
-                )
-                graph_optimizer._set_basic_info(
-                    loss,
-                    self._role_maker,
-                    self.user_defined_optimizer,
-                    copy_user_defined_strategy,
-                )
-                can_not_apply_optimizer_list.append(graph_optimizer)
+                # meaningless, just for compatibility with other code
+                graph_optimizer = None
+
             else:
                 # compile time
                 distributed_optimizer_list = (
@@ -1465,7 +1504,7 @@ class Fleet:
 
                 compiled_program = compiler.CompiledProgram(
                     self.origin_main_program
-                ).with_data_parallel(loss_name=loss.name, share_vars_from=None)
+                )
                 loss.block.program._graph = compiled_program
                 return self.user_defined_optimizer.minimize(
                     loss,
@@ -1528,7 +1567,7 @@ class Fleet:
                 # i.e. users can not modify current computation graph anymore
                 context["graph_optimize_ops"] = optimize_ops
                 context["graph_optimize_grads"] = params_grads
-            else:
+            elif loss.block.program._pass_applied is None:
                 apply_ir_passes(loss.block.program, startup_program, self)
 
             if not self._role_maker._is_heter_parameter_server_mode:
@@ -1549,7 +1588,7 @@ class Fleet:
             if self._runtime_handle is None:
                 self._runtime_handle = RuntimeFactory()._create_runtime(context)
 
-            import paddle.distributed.fleet as fleet
+            from paddle.distributed import fleet
 
             fleet.util._set_strategy(context["valid_strategy"])
 
@@ -1643,7 +1682,7 @@ class Fleet:
         if self._runtime_handle is None:
             self._runtime_handle = RuntimeFactory()._create_runtime(context)
 
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         fleet.util._set_strategy(context["valid_strategy"])
 

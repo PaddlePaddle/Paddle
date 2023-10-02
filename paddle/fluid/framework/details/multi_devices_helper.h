@@ -44,8 +44,8 @@ namespace details {
 // all variable in each devices.
 // The outside vector is the device vector. Each element of this vector is a
 // map from variable name to variables. The variables, who have the same name,
-// will have a differsent version. The offset in the
-// `std::vector<VarHandle*>` is the version of varaibles.
+// will have a different version. The offset in the
+// `std::vector<VarHandle*>` is the version of variables.
 typedef std::vector<std::unordered_map<std::string, std::vector<VarHandle *>>>
     GraphVars;
 constexpr char kGraphVars[] = "vars";

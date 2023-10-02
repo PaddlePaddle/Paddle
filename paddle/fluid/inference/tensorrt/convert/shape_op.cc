@@ -23,7 +23,7 @@ class ShapeOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(4) << "convert a fluid shape op to tensorrt shape layer";
+    VLOG(3) << "convert a shape op to tensorrt shape layer";
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs

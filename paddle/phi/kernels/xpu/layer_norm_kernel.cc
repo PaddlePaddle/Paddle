@@ -35,24 +35,65 @@ void LayerNormKernel(const Context& ctx,
   int left = static_cast<int>(matrix_dim[0]);
   int right = static_cast<int>(matrix_dim[1]);
   const auto* x_data = x.data<T>();
-  const auto* scale_data =
-      (scale.get_ptr() == nullptr ? nullptr : scale.get_ptr()->data<float>());
-  const auto* bias_data =
-      (bias.get_ptr() == nullptr ? nullptr : bias.get_ptr()->data<float>());
+
+  xpu::ctx_guard RAII_GUARD(ctx.x_context());
+
+  // scale
+  const float* scale_data_fp32 = nullptr;
+  const auto* scale_ptr = scale.get_ptr();
+  if (scale_ptr == nullptr) {
+    // no scale, do nothing
+  } else if (scale_ptr->dtype() ==
+             phi::CppTypeToDataType<phi::dtype::float16>::Type()) {
+    float* scale_data_temp =
+        RAII_GUARD.alloc_l3_or_gm<float>(scale_ptr->numel());
+    int r = xpu::cast<XPUType, float>(
+        ctx.x_context(),
+        reinterpret_cast<const XPUType*>(scale_ptr->data<T>()),
+        scale_data_temp,
+        scale_ptr->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    scale_data_fp32 = scale_data_temp;
+  } else {
+    // no need to cast
+    scale_data_fp32 = scale_ptr->data<float>();
+  }
+
+  // bias
+  const float* bias_data_fp32 = nullptr;
+  const auto* bias_ptr = bias.get_ptr();
+  if (bias_ptr == nullptr) {
+    // no bias, do nothing
+  } else if (bias_ptr->dtype() ==
+             phi::CppTypeToDataType<phi::dtype::float16>::Type()) {
+    float* bias_data_temp = RAII_GUARD.alloc_l3_or_gm<float>(bias_ptr->numel());
+    int r = xpu::cast<XPUType, float>(
+        ctx.x_context(),
+        reinterpret_cast<const XPUType*>(bias_ptr->data<T>()),
+        bias_data_temp,
+        bias_ptr->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    bias_data_fp32 = bias_data_temp;
+  } else {
+    // no need to cast
+    bias_data_fp32 = bias_ptr->data<float>();
+  }
+
   auto* out_data = ctx.template Alloc<T>(out);
   auto* mean_data = ctx.template Alloc<float>(mean);
   auto* variance_data = ctx.template Alloc<float>(variance);
 
-  // int layer_norm(Context* ctx, const T* x, T* y, int m, int n, float eps,
-  // const float* scale, const float* bias, float* mean, float* var);
+  // int layer_norm(Context* ctx, const T* x, T* y, int64_t m, int64_t n, float
+  // eps, const float* scale, const float* bias, float* mean, float* var, bool
+  // is_rstd = false);
   int r = xpu::layer_norm(ctx.x_context(),
                           reinterpret_cast<const XPUType*>(x_data),
                           reinterpret_cast<XPUType*>(out_data),
                           left,
                           right,
                           epsilon,
-                          scale_data,
-                          bias_data,
+                          scale_data_fp32,
+                          bias_data_fp32,
                           mean_data,
                           variance_data);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "layer_norm");

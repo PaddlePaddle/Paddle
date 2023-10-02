@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,20 +17,65 @@
 
 include(ExternalProject)
 
+if((NOT DEFINED DIRENT_NAME) OR (NOT DEFINED DIRENT_URL))
+  set(DIRENT_VER
+      "1.23.2"
+      CACHE STRING "" FORCE)
+  set(DIRENT_NAME
+      "dirent"
+      CACHE STRING "" FORCE)
+  set(DIRENT_URL
+      "https://github.com/tronkko/dirent/archive/refs/tags/1.23.2.tar.gz"
+      CACHE STRING "" FORCE)
+  set(DIRENT_CACHE_FILENAME "1.23.2.tar.gz")
+endif()
+
+message(STATUS "DIRENT_NAME: ${DIRENT_NAME}, DIRENT_URL: ${DIRENT_URL}")
+set(DIRENT_DOWNLOAD_DIR "${PADDLE_SOURCE_DIR}/third_party/dirent")
 set(DIRENT_PREFIX_DIR ${THIRD_PARTY_PATH}/dirent)
 set(DIRENT_INCLUDE_DIR ${THIRD_PARTY_PATH}/dirent/src/extern_dirent/include)
+set(DIRENT_URL_MD5 "6bf6319ae71432ed6a4d90dc61e80131")
 
 include_directories(${DIRENT_INCLUDE_DIR})
 
-set(DIRENT_REPOSITORY ${GIT_URL}/tronkko/dirent)
-set(DIRENT_TAG 1.23.2)
+function(download_dirent)
+  message(
+    STATUS
+      "Downloading ${DIRENT_URL} to ${DIRENT_DOWNLOAD_DIR}/${DIRENT_CACHE_FILENAME}"
+  )
+  # NOTE: If the version is updated, consider emptying the folder; maybe add timeout
+  file(
+    DOWNLOAD ${DIRENT_URL} ${DIRENT_DOWNLOAD_DIR}/${DIRENT_CACHE_FILENAME}
+    EXPECTED_MD5 ${DIRENT_URL_MD5}
+    STATUS ERR)
+  if(ERR EQUAL 0)
+    message(STATUS "Download ${DIRENT_CACHE_FILENAME} success")
+  else()
+    message(
+      FATAL_ERROR
+        "Download failed, error: ${ERR}\n You can try downloading ${DIRENT_CACHE_FILENAME} again"
+    )
+  endif()
+endfunction()
+
+if(EXISTS ${DIRENT_DOWNLOAD_DIR}/${DIRENT_CACHE_FILENAME})
+  file(MD5 ${DIRENT_DOWNLOAD_DIR}/${DIRENT_CACHE_FILENAME} DIRENT_MD5)
+  if(NOT DIRENT_MD5 STREQUAL DIRENT_URL_MD5)
+    # clean build file
+    file(REMOVE_RECURSE ${DIRENT_PREFIX_DIR})
+    download_dirent()
+  endif()
+else()
+  download_dirent()
+endif()
 
 ExternalProject_Add(
   extern_dirent
-  ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
-  GIT_REPOSITORY ${DIRENT_REPOSITORY}
-  GIT_TAG ${DIRENT_TAG}
+  ${EXTERNAL_PROJECT_LOG_ARGS}
+  URL ${DIRENT_DOWNLOAD_DIR}/${DIRENT_CACHE_FILENAME}
   PREFIX ${DIRENT_PREFIX_DIR}
+  DOWNLOAD_DIR ${DIRENT_DOWNLOAD_DIR}
+  DOWNLOAD_NO_PROGRESS 1
   UPDATE_COMMAND ""
   CONFIGURE_COMMAND ""
   BUILD_COMMAND ""

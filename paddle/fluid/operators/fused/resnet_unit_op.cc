@@ -21,10 +21,11 @@ namespace operators {
 // Shape of bitmask
 static framework::DDim GetBitmaskDims(std::vector<int> out_shape) {
   int c = out_shape.back();
-  int64_t nhw =
-      std::accumulate(
-          out_shape.begin(), out_shape.end(), 1, std::multiplies<int>()) /
-      c;
+  int64_t nhw = std::accumulate(out_shape.begin(),
+                                out_shape.end(),
+                                1,
+                                std::multiplies<int>()) /  // NOLINT
+                c;
   int32_t c_int32_elems = ((c + 63) & ~63) / 32;
   int32_t nhw_int32_elems = ((nhw + 31) & ~31);
   std::vector<int> bitmask_shape = {nhw_int32_elems, c_int32_elems, 1};
@@ -35,7 +36,7 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     // Check input
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ResNetUnitOp");
     OP_INOUT_CHECK(
@@ -201,7 +202,7 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
 
  protected:
   phi::KernelKey GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const {
+      const framework::ExecutionContext& ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     // By default, the type of the scale, bias, mean,
     // and var tensors should be float when input tensor's dtype is float16.
@@ -223,7 +224,7 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
 
 class ResNetUnitOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "The input 1 tensor");
     AddInput("FilterX", "Filter tensor of input 1");
     AddInput("ScaleX", "Scale tensor of input 1 used in batchnorm");
@@ -283,7 +284,7 @@ class ResNetUnitGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     // check input
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ResNetUnitGradOp");
     OP_INOUT_CHECK(
@@ -390,7 +391,7 @@ class ResNetUnitGradOp : public framework::OperatorWithKernel {
 
  protected:
   phi::KernelKey GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const {
+      const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_NOT_NULL(
         ctx.InputVar(framework::GradVarName("Y")),
         platform::errors::NotFound(

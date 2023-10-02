@@ -33,9 +33,10 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-DECLARE_bool(sort_sum_gradient);
+PHI_DECLARE_bool(sort_sum_gradient);
 
 namespace paddle {
 namespace imperative {
@@ -366,11 +367,11 @@ class GradientAccumulationInfo {
         grad_var_ = std::make_shared<VarBase>(true, mapped_grad_var_->Name());
         grad_var_->SetOverridedStopGradient(false);
         if (sort_gradient_) {
-          accumulator_.reset(
-              new SortedGradientAccumulator(grad_var_->SharedVar().get()));
+          accumulator_ = std::make_unique<SortedGradientAccumulator>(
+              grad_var_->SharedVar().get());
         } else {
-          accumulator_.reset(
-              new EagerGradientAccumulator(grad_var_->SharedVar().get()));
+          accumulator_ = std::make_unique<EagerGradientAccumulator>(
+              grad_var_->SharedVar().get());
         }
         accumulator_->IncreaseRefCnt();
       }
@@ -1079,8 +1080,8 @@ void PartialGradTask::PrepareInitialGradientAccumulators(const OpBase *op) {
       auto &accumulator = grad_accumulators_[var.get()];
 
       if (!accumulator) {
-        accumulator.reset(new GradientAccumulationInfo(
-            var, FLAGS_sort_sum_gradient, create_graph_));
+        accumulator = std::make_unique<GradientAccumulationInfo>(
+            var, FLAGS_sort_sum_gradient, create_graph_);
       }
 
       accumulator->IncreaseTotalRefCnt();

@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/strings/strings_copy_kernel.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/backends/gpu/gpu_helper.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
@@ -118,8 +120,7 @@ void Copy(const Context& dev_ctx,
 }  // namespace strings
 }  // namespace phi
 
-PD_REGISTER_GENERAL_KERNEL(strings_copy,
-                           GPU,
-                           ALL_LAYOUT,
-                           phi::strings::Copy<phi::GPUContext>,
-                           pstring) {}
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(strings_copy,
+                                 GPU,
+                                 ALL_LAYOUT,
+                                 phi::strings::Copy<phi::GPUContext>) {}

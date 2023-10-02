@@ -28,6 +28,7 @@ from .unary import square
 from .unary import log1p
 from .unary import abs
 from .unary import pow
+from .unary import pca_lowrank
 from .unary import cast
 from .unary import neg
 from .unary import coalesce
@@ -35,7 +36,10 @@ from .unary import deg2rad
 from .unary import rad2deg
 from .unary import expm1
 from .unary import transpose
+from .unary import sum
 from .unary import reshape
+from .unary import isnan
+from .unary import slice
 
 from .binary import mv
 from .binary import matmul
@@ -66,6 +70,7 @@ __all__ = [
     'log1p',
     'abs',
     'pow',
+    'pca_lowrank',
     'cast',
     'neg',
     'deg2rad',
@@ -78,9 +83,12 @@ __all__ = [
     'add',
     'subtract',
     'transpose',
+    'sum',
     'multiply',
     'divide',
     'coalesce',
     'is_same_shape',
     'reshape',
+    'isnan',
+    'slice',
 ]

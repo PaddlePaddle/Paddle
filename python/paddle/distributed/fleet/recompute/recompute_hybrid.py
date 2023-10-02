@@ -29,7 +29,6 @@ __all__ = []
 
 
 def _split_activation(tensor, mp_group):
-
     mp_degree = mp_group.nranks
     mp_rank = mp_group.rank
     if mp_degree < 2:
@@ -85,19 +84,16 @@ class _HPRecomputeFunction(PyLayer):
         offload,
         partition,
         *args,
-        **kwargs
+        **kwargs,
     ):
-
         # store for recomputing
         ctx.run_function = run_function
 
         ctx.kwargs = kwargs
 
         # store the rng states
-        ctx.fwd_cuda_rng_state = paddle.get_cuda_rng_state()
-        ctx.fwd_cuda_rng_state_tracker = (
-            get_rng_state_tracker().get_states_tracker()
-        )
+        ctx.fwd_rng_state = paddle.get_rng_state()
+        ctx.fwd_rng_state_tracker = get_rng_state_tracker().get_states_tracker()
 
         # save config info
         ctx.mp_group = mp_group
@@ -113,9 +109,10 @@ class _HPRecomputeFunction(PyLayer):
         cur_device = paddle.get_device()
         assert (
             'gpu:' in paddle.get_device()
-        ), "Recompute with RNG is not support current device: {}.".format(
-            cur_device
-        )
+            or 'xpu:' in paddle.get_device()
+            or cur_device.split(':')[0]
+            in paddle.device.get_all_custom_device_type()
+        ), f"Recompute with RNG is not support current device: {cur_device}."
 
         # TODO support AMP
         tracer = framework._dygraph_tracer()
@@ -127,9 +124,8 @@ class _HPRecomputeFunction(PyLayer):
         elif tracer._amp_level in (core.AmpLevel.O1, core.AmpLevel.O0):
             ctx.amp_level = 'O1'
         else:
-            raise ValueError(
-                "unsupported amp level: {}".format(tracer._amp_level)
-            )
+            raise ValueError(f"unsupported amp level: {tracer._amp_level}")
+        ctx.amp_dtype = tracer._amp_dtype
         ctx.amp_white_list, ctx.amp_black_list = tracer._get_amp_op_list()
 
         with paddle.no_grad():
@@ -161,7 +157,7 @@ class _HPRecomputeFunction(PyLayer):
                 #  If not marked non_differentiable, all output tensors' attr `stop gradient`
                 #  will be reset to `False` in c++ backend.
                 #  See https://github.com/PaddlePaddle/Paddle/blob/9d62efb0e6e5373823039d9eda96cd5905426c0a/paddle/fluid/pybind/eager_py_layer.cc#L388
-                if framework.in_dygraph_mode() and state:
+                if framework.in_dynamic_mode() and state:
                     ctx.mark_non_differentiable(arg)
             else:
                 ctx.inputs.append(arg)
@@ -177,7 +173,7 @@ class _HPRecomputeFunction(PyLayer):
 
     @staticmethod
     def backward(ctx, *args):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             # Restore inputs
             inputs = list(ctx.inputs)
             tensor_indices = ctx.tensor_indices
@@ -203,18 +199,25 @@ class _HPRecomputeFunction(PyLayer):
 
             # need restore auto_cast state as well as w/b list
             with swith_rng_state_tracker(
-                ctx.fwd_cuda_rng_state, ctx.fwd_cuda_rng_state_tracker
+                ctx.fwd_rng_state, ctx.fwd_rng_state_tracker
             ):
-                with paddle.amp.auto_cast(
-                    enable=ctx.is_fw_autocast,
-                    custom_white_list=ctx.amp_white_list,
-                    custom_black_list=ctx.amp_black_list,
-                    level=ctx.amp_level,
-                ):
+                if ctx.is_fw_autocast:
+                    with paddle.amp.auto_cast(
+                        enable=ctx.is_fw_autocast,
+                        custom_white_list=ctx.amp_white_list,
+                        custom_black_list=ctx.amp_black_list,
+                        level=ctx.amp_level,
+                        dtype=ctx.amp_dtype,
+                    ):
+                        detached_inputs = detach_variable(tuple(inputs))
+                        outputs = ctx.run_function(
+                            *detached_inputs, **ctx.kwargs
+                        )
+                else:
                     detached_inputs = detach_variable(tuple(inputs))
                     outputs = ctx.run_function(*detached_inputs, **ctx.kwargs)
 
-            if isinstance(outputs, (core.VarBase, core.eager.Tensor)):
+            if isinstance(outputs, core.eager.Tensor):
                 outputs = (outputs,)
             assert len(outputs) == len(args)
 
@@ -223,7 +226,7 @@ class _HPRecomputeFunction(PyLayer):
 
             for i in range(len(outputs)):
                 if (
-                    isinstance(outputs[i], (core.VarBase, core.eager.Tensor))
+                    isinstance(outputs[i], core.eager.Tensor)
                     and not outputs[i].stop_gradient
                 ):
                     forward_outputs_with_grad.append(outputs[i])
@@ -239,7 +242,7 @@ class _HPRecomputeFunction(PyLayer):
             grads = tuple(
                 inp._grad_ivar()
                 for inp in detached_inputs
-                if isinstance(inp, (core.VarBase, core.eager.Tensor))
+                if isinstance(inp, core.eager.Tensor)
             )
             return grads
 

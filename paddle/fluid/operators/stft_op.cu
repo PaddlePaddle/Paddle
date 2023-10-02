@@ -16,10 +16,6 @@
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_CUDA_KERNEL(stft,
-                        ops::StftKernel<phi::GPUContext, float>,
-                        ops::StftKernel<phi::GPUContext, double>);
-
 REGISTER_OP_CUDA_KERNEL(stft_grad,
                         ops::StftGradKernel<phi::GPUContext, float>,
                         ops::StftGradKernel<phi::GPUContext, double>);

@@ -15,16 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -37,7 +27,7 @@ class HardSigmoidOpConverter : public OpConverter {
                   const framework::Scope& scope,
                   bool test_mode) override {
 #if IS_TRT_VERSION_GE(5130)
-    VLOG(3) << "convert a fluid HardSigmoid op to tensorrt IActivationLayer "
+    VLOG(3) << "convert a HardSigmoid op to tensorrt IActivationLayer "
                "layer without bias";
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs

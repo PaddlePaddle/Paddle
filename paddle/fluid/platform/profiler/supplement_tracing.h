@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/profiler/trace_event.h"
+#include "paddle/phi/api/profiler/supplement_tracing.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 
 namespace paddle {
@@ -30,10 +31,8 @@ class RuntimeContext;
 }
 namespace platform {
 
-class RecordOpInfoSupplement {
+class RecordOpInfoSupplement : public phi::RecordOpInfoSupplement {
  public:
-  static bool IsEnabled();
-
   /**
    * @param type:  Operator type name.
    * @param attrs: Attribute map of op.
@@ -55,15 +54,6 @@ class RecordOpInfoSupplement {
                                   const framework::AttributeMap& attrs,
                                   const framework::InferShapeContext& shape_ctx,
                                   const phi::KernelSignature& kernel_signature);
-
-  /**
-   *
-   */
-  explicit RecordOpInfoSupplement(
-      const std::string& type,
-      const std::vector<std::pair<const char*, std::vector<framework::DDim>>>&
-          input_shapes,
-      const framework::AttributeMap& attrs);
 };
 
 }  // namespace platform

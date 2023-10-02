@@ -20,7 +20,7 @@ import time
 from multiprocessing import Lock
 
 """ Some terms to clarify the code
-    in most case, one or more paremeters may be set as input args for a class or a function
+    in most case, one or more parameters may be set as input args for a class or a function
     in form of single variable or k-v dict
 
     1.  trainerId
@@ -112,11 +112,10 @@ class FileReader:
 
         if not isinstance(self._args[key], type):
             raise TypeError(
-                "Invalid type of key [%s] in args dict, it should be a %s!"
-                % (key, type)
+                f"Invalid type of key [{key}] in args dict, it should be a {type}!"
             )
 
-        exec("self._%s = self._args[\"%s\"]" % (key, key))
+        exec(f"self._{key} = self._args[\"{key}\"]")
 
     def _align_ts(self, ts):
         return ts - self._minTimeStamp
@@ -139,7 +138,7 @@ class FileReader:
 
         self._checkArgsKey("dataPath", str)
         if not os.path.exists(self._dataPath):
-            raise IOError(
+            raise OSError(
                 "input data path [%s] not existed!" % (self._dataPath)
             )
 
@@ -192,7 +191,7 @@ class FileReader:
             if (
                 self._getId(self._fileList[-1]) - self._getId(self._fileList[0])
             ) != len(self._fileList) - 1:
-                raise Exception("The file id should be countious!")
+                raise Exception("The file id should be continuous!")
 
         # sort
         def _sortBySuffix(elem):
@@ -206,8 +205,9 @@ class FileReader:
             )
         else:
             self._logger.info(
-                "file list in dir [%s] is : %s !"
-                % (self._dataPath, ',  '.join(self._fileList))
+                "file list in dir [{}] is : {} !".format(
+                    self._dataPath, ',  '.join(self._fileList)
+                )
             )
 
         return self._fileList
@@ -220,7 +220,7 @@ class FileReader:
             )
 
         if not os.path.isfile(fileName):
-            raise IOError("[%s] is not a valid file!" % (fileName))
+            raise OSError("[%s] is not a valid file!" % (fileName))
 
         try:
             prefix_str = fileName.split(sed)[-1]
@@ -298,7 +298,7 @@ class FileReader:
     def getDict(self, name, groupId, gpuId, tmpPath="./tmp"):
         fileName = self.getFileName(name, groupId, gpuId, tmpPath)
         if not os.path.isfile(fileName):
-            raise IOError("[%s] is not existed!" % fileName)
+            raise OSError("[%s] is not existed!" % fileName)
 
         data = {}
         with open(fileName, "r") as rf:
@@ -344,7 +344,7 @@ class FileReader:
         fileObject = open(fileName, 'w')
         fileObject.write(jsObj)
         fileObject.close()
-        self._logger.info("dump [%s] sucessfully!" % fileName)
+        self._logger.info("dump [%s] successfully!" % fileName)
 
 
 def getLogger():

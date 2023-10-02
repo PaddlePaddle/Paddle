@@ -178,7 +178,7 @@ __global__ void DeformablePSROIPoolForwardKernel(const int count,
   }
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class DeformablePSROIPoolCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -479,7 +479,7 @@ __global__ void DeformablePSROIPoolBackwardAccKernel(
   }
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class DeformablePSROIPoolGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -626,10 +626,16 @@ class DeformablePSROIPoolGradCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CUDA = phi::GPUContext;
-REGISTER_OP_CUDA_KERNEL(deformable_psroi_pooling,
-                        ops::DeformablePSROIPoolCUDAKernel<CUDA, float>,
-                        ops::DeformablePSROIPoolCUDAKernel<CUDA, double>);
-REGISTER_OP_CUDA_KERNEL(deformable_psroi_pooling_grad,
-                        ops::DeformablePSROIPoolGradCUDAKernel<CUDA, float>,
-                        ops::DeformablePSROIPoolGradCUDAKernel<CUDA, double>);
+
+PD_REGISTER_STRUCT_KERNEL(deformable_psroi_pooling,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::DeformablePSROIPoolCUDAKernel,
+                          float,
+                          double) {}
+PD_REGISTER_STRUCT_KERNEL(deformable_psroi_pooling_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::DeformablePSROIPoolGradCUDAKernel,
+                          float,
+                          double) {}

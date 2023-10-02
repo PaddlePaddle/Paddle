@@ -53,7 +53,10 @@ template struct DequantizeFunctor<phi::GPUContext, int16_t>;
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CUDA = phi::GPUContext;
-REGISTER_OP_CUDA_KERNEL(dequantize_abs_max,
-                        ops::DequantizeMaxAbsKernel<CUDA, int8_t>,
-                        ops::DequantizeMaxAbsKernel<CUDA, int16_t>);
+
+PD_REGISTER_STRUCT_KERNEL(dequantize_abs_max,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::DequantizeMaxAbsKernel,
+                          int8_t,
+                          int16_t) {}

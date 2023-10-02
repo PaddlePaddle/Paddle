@@ -54,7 +54,7 @@ class ClearFloatStatusMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class ClearFloatStatusKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -67,7 +67,6 @@ class ClearFloatStatusKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = phi::CPUContext;
 
 REGISTER_OPERATOR(
     clear_float_status,
@@ -76,5 +75,5 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(clear_float_status,
-                       ops::ClearFloatStatusKernel<CPU, float>);
+PD_REGISTER_STRUCT_KERNEL(
+    clear_float_status, CPU, ALL_LAYOUT, ops::ClearFloatStatusKernel, float) {}

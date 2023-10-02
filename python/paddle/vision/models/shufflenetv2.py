@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-import paddle.nn as nn
+from paddle import nn
 from paddle.nn import AdaptiveAvgPool2D, Linear, MaxPool2D
 from paddle.utils.download import get_weights_path_from_url
 
@@ -61,9 +61,7 @@ def create_activation_layer(act):
     elif act is None:
         return None
     else:
-        raise RuntimeError(
-            "The activation function is not supported: {}".format(act)
-        )
+        raise RuntimeError(f"The activation function is not supported: {act}")
 
 
 def channel_shuffle(x, groups):
@@ -211,14 +209,14 @@ class ShuffleNetV2(nn.Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.models import ShuffleNetV2
+            >>> import paddle
+            >>> from paddle.vision.models import ShuffleNetV2
 
-            shufflenet_v2_swish = ShuffleNetV2(scale=1.0, act="swish")
-            x = paddle.rand([1, 3, 224, 224])
-            out = shufflenet_v2_swish(x)
-            print(out.shape)
-            # [1, 1000]
+            >>> shufflenet_v2_swish = ShuffleNetV2(scale=1.0, act="swish")
+            >>> x = paddle.rand([1, 3, 224, 224])
+            >>> out = shufflenet_v2_swish(x)
+            >>> print(out.shape)
+            [1, 1000]
     """
 
     def __init__(self, scale=1.0, act="relu", num_classes=1000, with_pool=True):
@@ -339,7 +337,7 @@ def shufflenet_v2_x0_25(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ShuffleNetV2 <api_paddle_vision_ShuffleNetV2>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ShuffleNetV2 <api_paddle_vision_models_ShuffleNetV2>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of ShuffleNetV2 with 0.25x output channels.
@@ -347,20 +345,20 @@ def shufflenet_v2_x0_25(pretrained=False, **kwargs):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.models import shufflenet_v2_x0_25
+            >>> import paddle
+            >>> from paddle.vision.models import shufflenet_v2_x0_25
 
-            # build model
-            model = shufflenet_v2_x0_25()
+            >>> # build model
+            >>> model = shufflenet_v2_x0_25()
 
-            # build model and load imagenet pretrained weight
-            # model = shufflenet_v2_x0_25(pretrained=True)
+            >>> # build model and load imagenet pretrained weight
+            >>> # model = shufflenet_v2_x0_25(pretrained=True)
 
-            x = paddle.rand([1, 3, 224, 224])
-            out = model(x)
+            >>> x = paddle.rand([1, 3, 224, 224])
+            >>> out = model(x)
 
-            print(out.shape)
-            # [1, 1000]
+            >>> print(out.shape)
+            [1, 1000]
     """
     return _shufflenet_v2(
         "shufflenet_v2_x0_25", scale=0.25, pretrained=pretrained, **kwargs
@@ -374,7 +372,7 @@ def shufflenet_v2_x0_33(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ShuffleNetV2 <api_paddle_vision_ShuffleNetV2>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ShuffleNetV2 <api_paddle_vision_models_ShuffleNetV2>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of ShuffleNetV2 with 0.33x output channels.
@@ -382,20 +380,20 @@ def shufflenet_v2_x0_33(pretrained=False, **kwargs):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.models import shufflenet_v2_x0_33
+            >>> import paddle
+            >>> from paddle.vision.models import shufflenet_v2_x0_33
 
-            # build model
-            model = shufflenet_v2_x0_33()
+            >>> # build model
+            >>> model = shufflenet_v2_x0_33()
 
-            # build model and load imagenet pretrained weight
-            # model = shufflenet_v2_x0_33(pretrained=True)
+            >>> # build model and load imagenet pretrained weight
+            >>> # model = shufflenet_v2_x0_33(pretrained=True)
 
-            x = paddle.rand([1, 3, 224, 224])
-            out = model(x)
+            >>> x = paddle.rand([1, 3, 224, 224])
+            >>> out = model(x)
 
-            print(out.shape)
-            # [1, 1000]
+            >>> print(out.shape)
+            [1, 1000]
     """
     return _shufflenet_v2(
         "shufflenet_v2_x0_33", scale=0.33, pretrained=pretrained, **kwargs
@@ -409,7 +407,7 @@ def shufflenet_v2_x0_5(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ShuffleNetV2 <api_paddle_vision_ShuffleNetV2>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ShuffleNetV2 <api_paddle_vision_models_ShuffleNetV2>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of ShuffleNetV2 with 0.5x output channels.
@@ -417,20 +415,20 @@ def shufflenet_v2_x0_5(pretrained=False, **kwargs):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.models import shufflenet_v2_x0_5
+            >>> import paddle
+            >>> from paddle.vision.models import shufflenet_v2_x0_5
 
-            # build model
-            model = shufflenet_v2_x0_5()
+            >>> # build model
+            >>> model = shufflenet_v2_x0_5()
 
-            # build model and load imagenet pretrained weight
-            # model = shufflenet_v2_x0_5(pretrained=True)
+            >>> # build model and load imagenet pretrained weight
+            >>> # model = shufflenet_v2_x0_5(pretrained=True)
 
-            x = paddle.rand([1, 3, 224, 224])
-            out = model(x)
+            >>> x = paddle.rand([1, 3, 224, 224])
+            >>> out = model(x)
 
-            print(out.shape)
-            # [1, 1000]
+            >>> print(out.shape)
+            [1, 1000]
     """
     return _shufflenet_v2(
         "shufflenet_v2_x0_5", scale=0.5, pretrained=pretrained, **kwargs
@@ -444,7 +442,7 @@ def shufflenet_v2_x1_0(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ShuffleNetV2 <api_paddle_vision_ShuffleNetV2>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ShuffleNetV2 <api_paddle_vision_models_ShuffleNetV2>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of ShuffleNetV2 with 1.0x output channels.
@@ -452,20 +450,20 @@ def shufflenet_v2_x1_0(pretrained=False, **kwargs):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.models import shufflenet_v2_x1_0
+            >>> import paddle
+            >>> from paddle.vision.models import shufflenet_v2_x1_0
 
-            # build model
-            model = shufflenet_v2_x1_0()
+            >>> # build model
+            >>> model = shufflenet_v2_x1_0()
 
-            # build model and load imagenet pretrained weight
-            # model = shufflenet_v2_x1_0(pretrained=True)
+            >>> # build model and load imagenet pretrained weight
+            >>> # model = shufflenet_v2_x1_0(pretrained=True)
 
-            x = paddle.rand([1, 3, 224, 224])
-            out = model(x)
+            >>> x = paddle.rand([1, 3, 224, 224])
+            >>> out = model(x)
 
-            print(out.shape)
-            # [1, 1000]
+            >>> print(out.shape)
+            [1, 1000]
     """
     return _shufflenet_v2(
         "shufflenet_v2_x1_0", scale=1.0, pretrained=pretrained, **kwargs
@@ -479,7 +477,7 @@ def shufflenet_v2_x1_5(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ShuffleNetV2 <api_paddle_vision_ShuffleNetV2>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ShuffleNetV2 <api_paddle_vision_models_ShuffleNetV2>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of ShuffleNetV2 with 1.5x output channels.
@@ -487,20 +485,20 @@ def shufflenet_v2_x1_5(pretrained=False, **kwargs):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.models import shufflenet_v2_x1_5
+            >>> import paddle
+            >>> from paddle.vision.models import shufflenet_v2_x1_5
 
-            # build model
-            model = shufflenet_v2_x1_5()
+            >>> # build model
+            >>> model = shufflenet_v2_x1_5()
 
-            # build model and load imagenet pretrained weight
-            # model = shufflenet_v2_x1_5(pretrained=True)
+            >>> # build model and load imagenet pretrained weight
+            >>> # model = shufflenet_v2_x1_5(pretrained=True)
 
-            x = paddle.rand([1, 3, 224, 224])
-            out = model(x)
+            >>> x = paddle.rand([1, 3, 224, 224])
+            >>> out = model(x)
 
-            print(out.shape)
-            # [1, 1000]
+            >>> print(out.shape)
+            [1, 1000]
     """
     return _shufflenet_v2(
         "shufflenet_v2_x1_5", scale=1.5, pretrained=pretrained, **kwargs
@@ -514,7 +512,7 @@ def shufflenet_v2_x2_0(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ShuffleNetV2 <api_paddle_vision_ShuffleNetV2>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ShuffleNetV2 <api_paddle_vision_models_ShuffleNetV2>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of ShuffleNetV2 with 2.0x output channels.
@@ -522,20 +520,20 @@ def shufflenet_v2_x2_0(pretrained=False, **kwargs):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.models import shufflenet_v2_x2_0
+            >>> import paddle
+            >>> from paddle.vision.models import shufflenet_v2_x2_0
 
-            # build model
-            model = shufflenet_v2_x2_0()
+            >>> # build model
+            >>> model = shufflenet_v2_x2_0()
 
-            # build model and load imagenet pretrained weight
-            # model = shufflenet_v2_x2_0(pretrained=True)
+            >>> # build model and load imagenet pretrained weight
+            >>> # model = shufflenet_v2_x2_0(pretrained=True)
 
-            x = paddle.rand([1, 3, 224, 224])
-            out = model(x)
+            >>> x = paddle.rand([1, 3, 224, 224])
+            >>> out = model(x)
 
-            print(out.shape)
-            # [1, 1000]
+            >>> print(out.shape)
+            [1, 1000]
     """
     return _shufflenet_v2(
         "shufflenet_v2_x2_0", scale=2.0, pretrained=pretrained, **kwargs
@@ -549,7 +547,7 @@ def shufflenet_v2_swish(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ShuffleNetV2 <api_paddle_vision_ShuffleNetV2>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ShuffleNetV2 <api_paddle_vision_models_ShuffleNetV2>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of ShuffleNetV2 with swish activation function.
@@ -557,25 +555,25 @@ def shufflenet_v2_swish(pretrained=False, **kwargs):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.models import shufflenet_v2_swish
+            >>> import paddle
+            >>> from paddle.vision.models import shufflenet_v2_swish
 
-            # build model
-            model = shufflenet_v2_swish()
+            >>> # build model
+            >>> model = shufflenet_v2_swish()
 
-            # build model and load imagenet pretrained weight
-            # model = shufflenet_v2_swish(pretrained=True)
+            >>> # build model and load imagenet pretrained weight
+            >>> # model = shufflenet_v2_swish(pretrained=True)
 
-            x = paddle.rand([1, 3, 224, 224])
-            out = model(x)
+            >>> x = paddle.rand([1, 3, 224, 224])
+            >>> out = model(x)
 
-            print(out.shape)
-            # [1, 1000]
+            >>> print(out.shape)
+            [1, 1000]
     """
     return _shufflenet_v2(
         "shufflenet_v2_swish",
         scale=1.0,
         act="swish",
         pretrained=pretrained,
-        **kwargs
+        **kwargs,
     )

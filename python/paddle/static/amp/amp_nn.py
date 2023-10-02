@@ -13,10 +13,10 @@
 # limitations under the License.
 
 from paddle import _C_ops
-from paddle.fluid import core
-from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
-from paddle.fluid.framework import Variable, in_dygraph_mode
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base import core
+from paddle.base.data_feeder import check_type, check_variable_and_dtype
+from paddle.base.framework import Variable, in_dygraph_mode
+from paddle.base.layer_helper import LayerHelper
 
 
 def check_finite_and_unscale(x, scale, name=None, float_status=None):
@@ -41,7 +41,7 @@ def check_finite_and_unscale(x, scale, name=None, float_status=None):
     found_inf = helper.create_variable_for_type_inference(dtype='bool')
 
     if in_dygraph_mode():
-        _C_ops.check_finite_and_unscale_(x, scale, found_inf)
+        x, found_inf = _C_ops.check_finite_and_unscale_(x, scale)
         return x, found_inf
 
     check_type(x, 'x', (tuple, list), 'check_finite_and_unscale')
@@ -49,19 +49,11 @@ def check_finite_and_unscale(x, scale, name=None, float_status=None):
         check_variable_and_dtype(
             e,
             "x",
-            ['float16', 'float32', 'float64'],
+            ['float16', 'float32', 'float64', 'uint16'],
             'check_finite_and_unscale',
         )
 
     inputs = {'X': x, 'Scale': scale}
-    if core.is_compiled_with_npu():
-        check_variable_and_dtype(
-            float_status,
-            "float_status",
-            ['float16', 'float32'],
-            'check_finite_and_unscale',
-        )
-        inputs['FloatStatus'] = float_status
     outputs = {'Out': x, 'FoundInfinite': found_inf}
     helper.append_op(
         type='check_finite_and_unscale', inputs=inputs, outputs=outputs
@@ -133,12 +125,15 @@ def update_loss_scaling(
     check_type(x, 'x', (tuple, list), 'update_loss_scaling')
     for e in x:
         check_variable_and_dtype(
-            e, "x", ['float16', 'float32', 'float64'], 'update_loss_scaling'
+            e,
+            "x",
+            ['float16', 'float32', 'float64', 'uint16'],
+            'update_loss_scaling',
         )
-        if e.dtype == core.VarDesc.VarType.FP16:
+        if e.dtype in [core.VarDesc.VarType.FP16, core.VarDesc.VarType.BF16]:
             assert (
                 prev_loss_scaling.dtype == core.VarDesc.VarType.FP32
-            ), "The dtype of prev_loss_scaling should be float32 when the dtype of x is float16."
+            ), "The dtype of prev_loss_scaling should be float32 when the dtype of x is float16 or bfloat16."
         else:
             assert (
                 prev_loss_scaling.dtype == e.dtype

@@ -68,13 +68,14 @@ class AutoMixedPrecisionPass : public FusePassBase {
  private:
   mutable bool skip_pass_{false};
 
-  mutable bool keep_io_types_{false};
+  mutable bool enable_low_precision_io_{false};
   // float16 or bfloat16 now
-  mutable phi::DataType low_precision_{phi::DataType::FLOAT16};
+  mutable phi::DataType low_precision_{phi::DataType::UNDEFINED};
 
-  mutable phi::Backend backend_{phi::Backend::GPU};
+  mutable phi::Backend backend_{phi::Backend::UNDEFINED};
 
   mutable std::unordered_set<std::string> black_list_;
+  mutable std::unordered_set<std::string> white_list_;
 
   // subgraph id -> pointer to subgraph
   mutable std::vector<Graph*> subgraphes_;
@@ -93,7 +94,8 @@ class AutoMixedPrecisionPass : public FusePassBase {
 bool OpSupportPrecision(const std::string& op_type,
                         phi::Backend backend,
                         phi::DataType precision,
-                        const std::unordered_set<std::string>& black_list);
+                        const std::unordered_set<std::string>& black_list,
+                        const std::unordered_set<std::string>& white_list);
 
 void DoInsertCastOp(Graph* graph,
                     Node* var_node,

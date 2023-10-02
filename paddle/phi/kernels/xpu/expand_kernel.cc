@@ -78,7 +78,7 @@ void ExpandKernel(const Context& ctx,
   auto rank = x.dims().size();
   PADDLE_ENFORCE_GE(
       rank,
-      1,
+      0,
       phi::errors::InvalidArgument(
           "The rank of the input 'X' for expand_v2_npu op must be positive, "
           "but the value received is %d.",
@@ -99,9 +99,12 @@ void ExpandKernel(const Context& ctx,
   ctx.template Alloc<T>(out);
   auto& x_shape = vec_in_dims;
   auto out_shape = phi::vectorize<int>(out_dims);
+  if (shape_size == 0) {
+    x_shape = {1};
+    out_shape = {1};
+  }
 
   int r = XPU_SUCCESS;
-
   if (std::is_same<T, bool>::value) {
     auto x_data = reinterpret_cast<const int8_t*>(x.data<T>());
     auto out_data = reinterpret_cast<int8_t*>(out->data<T>());

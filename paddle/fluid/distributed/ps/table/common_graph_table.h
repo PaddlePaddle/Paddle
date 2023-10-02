@@ -511,7 +511,7 @@ class GraphTable : public Table {
   }
   virtual ~GraphTable();
 
-  virtual void *GetShard(size_t shard_idx) { return 0; }
+  virtual void *GetShard(size_t shard_idx UNUSED) { return 0; }
 
   static int32_t sparse_local_shard_num(uint32_t shard_num,
                                         uint32_t server_num) {
@@ -624,15 +624,16 @@ class GraphTable : public Table {
   Node *find_node(GraphTableType table_type, int idx, uint64_t id);
   Node *find_node(GraphTableType table_type, uint64_t id);
 
-  virtual int32_t Pull(TableContext &context) { return 0; }  // NOLINT
-  virtual int32_t Push(TableContext &context) { return 0; }  // NOLINT
+  virtual int32_t Pull(TableContext &context UNUSED) { return 0; }  // NOLINT
+  virtual int32_t Push(TableContext &context UNUSED) { return 0; }  // NOLINT
 
   virtual int32_t clear_nodes(GraphTableType table_type, int idx);
   virtual void Clear() {}
   virtual int32_t Flush() { return 0; }
-  virtual int32_t Shrink(const std::string &param) { return 0; }
+  virtual int32_t Shrink(const std::string &param UNUSED) { return 0; }
   // 指定保存路径
-  virtual int32_t Save(const std::string &path, const std::string &converter) {
+  virtual int32_t Save(const std::string &path UNUSED,
+                       const std::string &converter UNUSED) {
     return 0;
   }
   virtual int32_t InitializeShard() { return 0; }
@@ -711,9 +712,9 @@ class GraphTable : public Table {
       int &actual_size);  // NOLINT
   virtual int32_t add_node_to_ssd(
       int type_id, int idx, uint64_t src_id, char *data, int len);
-  virtual paddle::framework::GpuPsCommGraph make_gpu_ps_graph(
+  virtual ::paddle::framework::GpuPsCommGraph make_gpu_ps_graph(
       int idx, const std::vector<uint64_t> &ids);
-  virtual paddle::framework::GpuPsCommGraphFea make_gpu_ps_graph_fea(
+  virtual ::paddle::framework::GpuPsCommGraphFea make_gpu_ps_graph_fea(
       int gpu_id, std::vector<uint64_t> &node_ids, int slot_num);  // NOLINT
   int32_t Load_to_ssd(const std::string &path, const std::string &param);
   int64_t load_graph_to_memory_from_ssd(int idx,
@@ -785,7 +786,7 @@ class GraphTable : public Table {
   std::shared_ptr<pthread_rwlock_t> rw_lock;
 #ifdef PADDLE_WITH_HETERPS
   // paddle::framework::GpuPsGraphTable gpu_graph_table;
-  paddle::distributed::RocksDBHandler *_db;
+  ::paddle::distributed::RocksDBHandler *_db;
   // std::shared_ptr<::ThreadPool> graph_sample_pool;
   // std::shared_ptr<GraphSampler> graph_sampler;
   // REGISTER_GRAPH_FRIEND_CLASS(2, CompleteGraphSampler, BasicBfsGraphSampler)
@@ -846,8 +847,8 @@ class BasicBfsGraphSampler : public GraphSampler {
 namespace std {
 
 template <>
-struct hash<paddle::distributed::SampleKey> {
-  size_t operator()(const paddle::distributed::SampleKey &s) const {
+struct hash<::paddle::distributed::SampleKey> {
+  size_t operator()(const ::paddle::distributed::SampleKey &s) const {
     return s.idx ^ s.node_key ^ s.sample_size;
   }
 };

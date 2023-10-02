@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/common/layout.h"
@@ -32,7 +34,7 @@
 #define LAUNCH_BOUNDS(BlockDim)
 #endif
 
-DECLARE_bool(cudnn_batchnorm_spatial_persistent);
+PD_DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 namespace phi {
 
 template <typename T>
@@ -483,26 +485,26 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNBackwardData(
 }
 
 template <typename T, typename Context>
-void BatchNormGradRawKernel(const Context &ctx,
-                            const DenseTensor &x,
-                            const DenseTensor &scale,
-                            const DenseTensor &bias,
-                            const paddle::optional<DenseTensor> &mean,
-                            const paddle::optional<DenseTensor> &variance,
-                            const DenseTensor &saved_mean,
-                            const DenseTensor &saved_variance,
-                            const paddle::optional<DenseTensor> &reserve_space,
-                            const DenseTensor &y_grad,
-                            float momentum,
-                            float epsilon_f,
-                            const std::string &data_layout_str,
-                            bool is_test,
-                            bool use_global_stats,
-                            bool trainable_statistics,
-                            bool is_inplace,
-                            DenseTensor *x_grad,
-                            DenseTensor *scale_grad,
-                            DenseTensor *bias_grad) {
+void BatchNormGradFunctor(const Context &ctx,
+                          const DenseTensor &x,
+                          const DenseTensor &scale,
+                          const DenseTensor &bias,
+                          const paddle::optional<DenseTensor> &mean,
+                          const paddle::optional<DenseTensor> &variance,
+                          const DenseTensor &saved_mean,
+                          const DenseTensor &saved_variance,
+                          const paddle::optional<DenseTensor> &reserve_space,
+                          const DenseTensor &y_grad,
+                          float momentum,
+                          float epsilon_f,
+                          const std::string &data_layout_str,
+                          bool is_test,
+                          bool use_global_stats,
+                          bool trainable_statistics,
+                          bool is_inplace,
+                          DenseTensor *x_grad,
+                          DenseTensor *scale_grad,
+                          DenseTensor *bias_grad) {
   double epsilon = static_cast<double>(epsilon_f);
 
   const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
@@ -1016,32 +1018,62 @@ void BatchNormGradRawKernel(const Context &ctx,
     } else {
       // This branch call CUDA kernels
       if (compute_format == DataLayout::kNCHW) {
-        if (d_x) {
-          BNBackwardData<T, block, phi::DataLayout::kNCHW>
-              <<<grid2, block, 0, ctx.stream()>>>(
-                  d_y->data<T>(),
-                  scale.data<BatchNormParamType<T>>(),
-                  saved_mean_data,
-                  x.data<T>(),
-                  saved_var_data,
-                  C,
-                  N,
-                  H * W * D,
-                  d_x->data<T>());
-        }
-        if (d_scale && d_bias) {
-          KeBNBackwardScaleBias<T, block, phi::DataLayout::kNCHW>
-              <<<grid2, block, 0, stream>>>(
-                  d_y->data<T>(),
-                  x.data<T>(),
-                  saved_mean_data,
-                  saved_var_data,
-                  epsilon,
-                  N,
-                  C,
-                  H * W * D,
-                  d_scale->data<BatchNormParamType<T>>(),
-                  d_bias->data<BatchNormParamType<T>>());
+        if (data_layout == DataLayout::kNHWC) {
+          if (d_x) {
+            BNBackwardData<T, block, phi::DataLayout::kNHWC>
+                <<<grid2, block, 0, ctx.stream()>>>(
+                    d_y->data<T>(),
+                    scale.data<BatchNormParamType<T>>(),
+                    saved_mean_data,
+                    x.data<T>(),
+                    saved_var_data,
+                    C,
+                    N,
+                    H * W * D,
+                    d_x->data<T>());
+          }
+          if (d_scale && d_bias) {
+            KeBNBackwardScaleBias<T, block, phi::DataLayout::kNHWC>
+                <<<grid2, block, 0, stream>>>(
+                    d_y->data<T>(),
+                    x.data<T>(),
+                    saved_mean_data,
+                    saved_var_data,
+                    epsilon,
+                    N,
+                    C,
+                    H * W * D,
+                    d_scale->data<BatchNormParamType<T>>(),
+                    d_bias->data<BatchNormParamType<T>>());
+          }
+        } else {
+          if (d_x) {
+            BNBackwardData<T, block, phi::DataLayout::kNCHW>
+                <<<grid2, block, 0, ctx.stream()>>>(
+                    d_y->data<T>(),
+                    scale.data<BatchNormParamType<T>>(),
+                    saved_mean_data,
+                    x.data<T>(),
+                    saved_var_data,
+                    C,
+                    N,
+                    H * W * D,
+                    d_x->data<T>());
+          }
+          if (d_scale && d_bias) {
+            KeBNBackwardScaleBias<T, block, phi::DataLayout::kNCHW>
+                <<<grid2, block, 0, stream>>>(
+                    d_y->data<T>(),
+                    x.data<T>(),
+                    saved_mean_data,
+                    saved_var_data,
+                    epsilon,
+                    N,
+                    C,
+                    H * W * D,
+                    d_scale->data<BatchNormParamType<T>>(),
+                    d_bias->data<BatchNormParamType<T>>());
+          }
         }
       } else {
         if (d_x) {
@@ -1117,30 +1149,58 @@ void BatchNormGradRawKernel(const Context &ctx,
     }
 
     if (compute_format == DataLayout::kNCHW) {
-      if (d_x) {
-        KeBNBackwardData<T, phi::DataLayout::kNCHW>
-            <<<grid1, block, 0, stream>>>(d_y->data<T>(),
-                                          scale.data<BatchNormParamType<T>>(),
-                                          running_var_data,
-                                          epsilon,
-                                          C,
-                                          H * W,
-                                          num,
-                                          d_x->data<T>());
-      }
-      if (d_scale && d_bias) {
-        KeBNBackwardScaleBias<T, block, phi::DataLayout::kNCHW>
-            <<<grid2, block, 0, stream>>>(
-                d_y->data<T>(),
-                x.data<T>(),
-                running_mean_data,
-                running_var_data,
-                epsilon,
-                N,
-                C,
-                H * W * D,
-                d_scale->data<BatchNormParamType<T>>(),
-                d_bias->data<BatchNormParamType<T>>());
+      if (data_layout == DataLayout::kNHWC) {
+        if (d_x) {
+          KeBNBackwardData<T, phi::DataLayout::kNHWC>
+              <<<grid1, block, 0, stream>>>(d_y->data<T>(),
+                                            scale.data<BatchNormParamType<T>>(),
+                                            running_var_data,
+                                            epsilon,
+                                            C,
+                                            H * W,
+                                            num,
+                                            d_x->data<T>());
+        }
+        if (d_scale && d_bias) {
+          KeBNBackwardScaleBias<T, block, phi::DataLayout::kNHWC>
+              <<<grid2, block, 0, stream>>>(
+                  d_y->data<T>(),
+                  x.data<T>(),
+                  running_mean_data,
+                  running_var_data,
+                  epsilon,
+                  N,
+                  C,
+                  H * W * D,
+                  d_scale->data<BatchNormParamType<T>>(),
+                  d_bias->data<BatchNormParamType<T>>());
+        }
+      } else {
+        if (d_x) {
+          KeBNBackwardData<T, phi::DataLayout::kNCHW>
+              <<<grid1, block, 0, stream>>>(d_y->data<T>(),
+                                            scale.data<BatchNormParamType<T>>(),
+                                            running_var_data,
+                                            epsilon,
+                                            C,
+                                            H * W,
+                                            num,
+                                            d_x->data<T>());
+        }
+        if (d_scale && d_bias) {
+          KeBNBackwardScaleBias<T, block, phi::DataLayout::kNCHW>
+              <<<grid2, block, 0, stream>>>(
+                  d_y->data<T>(),
+                  x.data<T>(),
+                  running_mean_data,
+                  running_var_data,
+                  epsilon,
+                  N,
+                  C,
+                  H * W * D,
+                  d_scale->data<BatchNormParamType<T>>(),
+                  d_bias->data<BatchNormParamType<T>>());
+        }
       }
     } else {
       if (d_x) {
@@ -1219,26 +1279,26 @@ void BatchNormGradKernel(const Context &dev_ctx,
                          DenseTensor *x_grad,
                          DenseTensor *scale_grad,
                          DenseTensor *bias_grad) {
-  BatchNormGradRawKernel<T, Context>(dev_ctx,
-                                     x,
-                                     scale,
-                                     bias,
-                                     mean,
-                                     variance,
-                                     saved_mean,
-                                     saved_variance,
-                                     reserve_space,
-                                     y_grad,
-                                     momentum,
-                                     epsilon,
-                                     data_layout,
-                                     is_test,
-                                     use_global_stats,
-                                     trainable_statistics,
-                                     false,
-                                     x_grad,
-                                     scale_grad,
-                                     bias_grad);
+  BatchNormGradFunctor<T, Context>(dev_ctx,
+                                   x,
+                                   scale,
+                                   bias,
+                                   mean,
+                                   variance,
+                                   saved_mean,
+                                   saved_variance,
+                                   reserve_space,
+                                   y_grad,
+                                   momentum,
+                                   epsilon,
+                                   data_layout,
+                                   is_test,
+                                   use_global_stats,
+                                   trainable_statistics,
+                                   false,
+                                   x_grad,
+                                   scale_grad,
+                                   bias_grad);
 }
 
 template <typename T, typename Context>
@@ -1300,20 +1360,42 @@ void BatchNormDoubleGradKernel(
 }  // namespace phi
 
 #ifdef PADDLE_WITH_HIP
+PD_DECLARE_BN_GRAD_FUNCTOR(float, GPU);
+PD_DECLARE_BN_GRAD_FUNCTOR(phi::dtype::float16, GPU);
+
 PD_REGISTER_KERNEL(batch_norm_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::BatchNormGradKernel,
-                   float,
-                   phi::dtype::float16) {}
-
-PD_REGISTER_KERNEL(batch_norm_grad_raw,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::BatchNormGradRawKernel,
                    float,
                    phi::dtype::float16) {}
 #else
+#if CUDNN_VERSION_MIN(8, 1, 0)
+
+PD_DECLARE_BN_GRAD_FUNCTOR(float, GPU);
+PD_DECLARE_BN_GRAD_FUNCTOR(double, GPU);
+PD_DECLARE_BN_GRAD_FUNCTOR(phi::dtype::bfloat16, GPU);
+PD_DECLARE_BN_GRAD_FUNCTOR(phi::dtype::float16, GPU);
+
+PD_REGISTER_KERNEL(batch_norm_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::BatchNormGradKernel,
+                   float,
+                   double,
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
+      kernel_key.dtype() == phi::DataType::BFLOAT16) {
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);  // scale_grad
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);  // bias_grad
+  }
+}
+#else
+PD_DECLARE_BN_GRAD_FUNCTOR(float, GPU);
+PD_DECLARE_BN_GRAD_FUNCTOR(double, GPU);
+PD_DECLARE_BN_GRAD_FUNCTOR(phi::dtype::float16, GPU);
+
 PD_REGISTER_KERNEL(batch_norm_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -1322,37 +1404,22 @@ PD_REGISTER_KERNEL(batch_norm_grad,
                    double,
                    phi::dtype::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
-    kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT32);  // x_grad
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);  // scale_grad
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);  // bias_grad
   }
 }
-
-PD_REGISTER_KERNEL(batch_norm_grad_raw,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::BatchNormGradRawKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {
-  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
-    kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT32);  // x_grad
-    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);  // scale_grad
-    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);  // bias_grad
-  }
-}
-
+#endif
 #endif
 
 #ifdef PADDLE_WITH_HIP
-PD_REGISTER_KERNEL(batch_norm_grad_grad,
+PD_REGISTER_KERNEL(batch_norm_double_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::BatchNormDoubleGradKernel,
                    float,
                    double) {}
 #else
-PD_REGISTER_KERNEL(batch_norm_grad_grad,
+PD_REGISTER_KERNEL(batch_norm_double_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::BatchNormDoubleGradKernel,

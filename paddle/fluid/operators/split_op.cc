@@ -17,6 +17,10 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/phi_utils.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
@@ -61,7 +65,7 @@ class SplitOp : public framework::OperatorWithKernel {
     if (ctx->IsRuntime() && ctx->HasInput("AxisTensor")) {
       Variable *var =
           PADDLE_GET_CONST(Variable *, ctx->GetInputVarPtrs("AxisTensor")[0]);
-      axis_final = std::move(experimental::MakePhiScalarFromVar(*var));
+      axis_final = std::move(framework::MakePhiScalarFromVar(*var));
     } else if (!ctx->IsRuntime() && ctx->HasInput("AxisTensor")) {
       axis_final = std::move(phi::Scalar(-1));
       axis_final.SetFromTensor(true);
@@ -72,7 +76,7 @@ class SplitOp : public framework::OperatorWithKernel {
     // Construct sections_final
     if (ctx->IsRuntime() && ctx->HasInputs("SectionsTensorList")) {
       int sections_tensor_list_size =
-          ctx->GetInputVarPtrs("SectionsTensorList").size();
+          static_cast<int>(ctx->GetInputVarPtrs("SectionsTensorList").size());
       const paddle::small_vector<framework::InferShapeVarPtr,
                                  phi::kInputSmallVectorSize>
           &sections_varptr_list = ctx->GetInputVarPtrs("SectionsTensorList");
@@ -90,7 +94,7 @@ class SplitOp : public framework::OperatorWithKernel {
     } else {
       sections_final = std::move(phi::IntArray(sections));
     }
-    if (sections.size() > 0) {
+    if (!sections.empty()) {
       if (ctx->IsRuntime()) {
         phi::SplitInferMeta(
             x, sections_final, axis_final, out_ptr, {true, false});
@@ -113,14 +117,14 @@ class SplitOp : public framework::OperatorWithKernel {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       // OneDNN uses blocking format, which cannot be always supported with
       // reorders, because if blocked dimension is not divisible by 8 or
       // 16(depending on which blocking format is used) submemory cannot be
       // created, so in that scenario a fallback is needed
       const auto x_md = ctx.Input<phi::DenseTensor>("X")->mem_desc();
-      if (x_md.data.format_desc.blocking.inner_nblks == 0) {
+      if (x_md.get_inner_nblks() == 0) {
         return phi::KernelKey(phi::Backend::ONEDNN,
                               phi::DataLayout::ONEDNN,
                               phi::TransToPhiDataType(input_data_type));
@@ -203,6 +207,43 @@ Example:
   }
 };
 
+class SplitCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    paddle::optional<std::vector<paddle::Tensor>> tensor_sections =
+        this->GetOptionalMultiForwardInput("SectionsTensorList");
+    paddle::optional<paddle::Tensor> tensor_axis =
+        this->GetOptionalSingleForwardInput("AxisTensor");
+    int axis = static_cast<int>(this->Attr<int>("axis"));
+    std::vector<int> sections =
+        static_cast<std::vector<int>>(this->Attr<std::vector<int>>("sections"));
+
+    paddle::Tensor input_grad = this->GetSingleInputGrad("X");
+    auto dx_ptr = this->GetOutputPtr(&input_grad);
+    std::string dx_name = this->GetOutputName(input_grad);
+    std::vector<paddle::Tensor> out_grad = this->GetMultiOutputGrad("Out");
+
+    if (tensor_axis.is_initialized() || tensor_sections.is_initialized()) {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "We don't support dynamic index or sections from tensor for split "
+          "composite grad for now. "));
+    } else {
+      VLOG(6) << "Runing split_grad composite func";
+      prim::split_grad<prim::DescTensor>(out_grad, axis, dx_ptr);
+      this->RecoverOutputName(input_grad, dx_name);
+    }
+  }
+};
+
+class SplitInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    ctx->SyncTypeAndDataType("X", "Out");
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -211,5 +252,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(split,
                   ops::SplitOp,
                   ops::SplitOpMaker,
+                  ops::SplitCompositeGradOpMaker,
+                  ops::SplitInferVarType,
                   ops::SplitGradMaker<paddle::framework::OpDesc>,
                   ops::SplitGradMaker<paddle::imperative::OpBase>);

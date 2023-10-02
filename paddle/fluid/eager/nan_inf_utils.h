@@ -20,11 +20,12 @@
 
 #include "paddle/fluid/eager/type_defs.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/utils/optional.h"
 #include "paddle/utils/small_vector.h"
 
 namespace egr {
 
-using paddle::experimental::Tensor;
+using paddle::Tensor;
 using TupleOfTwoTensors = std::tuple<Tensor, Tensor>;
 using TupleOfThreeTensors = std::tuple<Tensor, Tensor, Tensor>;
 using TupleOfFourTensors = std::tuple<Tensor, Tensor, Tensor, Tensor>;
@@ -35,6 +36,9 @@ using TupleOfTensorAndVector =
     std::tuple<Tensor, std::vector<Tensor>, std::vector<Tensor>>;
 
 void CheckTensorHasNanOrInf(const std::string& api_name, const Tensor& tensor);
+
+void CheckTensorHasNanOrInf(const std::string& api_name,
+                            const paddle::optional<Tensor>& tensor);
 
 void CheckTensorHasNanOrInf(const std::string& api_name,
                             const TupleOfTwoTensors& tensors);
@@ -54,12 +58,20 @@ void CheckTensorHasNanOrInf(const std::string& api_name,
 void CheckTensorHasNanOrInf(const std::string& api_name,
                             const std::vector<Tensor>& tensors);
 
+void CheckTensorHasNanOrInf(
+    const std::string& api_name,
+    const paddle::optional<std::vector<Tensor>>& tensors);
+
 void CheckTensorHasNanOrInf(const std::string& api_name,
                             const TupleOfTensorAndVector& tensors);
 
+void SetCheckOpList(const std::string& check_op_list);
+
+void SetSkipOpList(const std::string& skip_op_list);
+
 void CheckTensorHasNanOrInf(
     const std::string& api_name,
-    const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+    const paddle::small_vector<std::vector<paddle::Tensor>,
                                egr::kSlotSmallVectorSize>& tensors);
 
 template <typename TupleT, size_t N, size_t Last>

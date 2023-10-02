@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "gflags/gflags.h"
 #include "paddle/fluid/distributed/ps/table/depends/rocksdb_warpper.h"
 #include "paddle/fluid/distributed/ps/table/memory_sparse_table.h"
+#include "paddle/utils/flags.h"
 
 namespace paddle {
 namespace distributed {

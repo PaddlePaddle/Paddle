@@ -13,8 +13,8 @@
 # limitations under the License.
 
 from paddle import _C_ops, in_dynamic_mode
-from paddle.fluid.layers import utils
 from paddle.nn.functional.pooling import _update_padding_nd
+from paddle.utils import convert_to_list
 
 __all__ = []
 
@@ -30,7 +30,7 @@ def max_pool3d(
 ):
     """
     Implements sparse max pooling 3d operation.
-    See more details in :ref:`api_sparse_pooling_MaxPool3d` .
+    See more details in :ref:`api_paddle_sparse_nn_MaxPool3D` .
 
     Args:
         x (Tensor): The input SparseCooTensor of pooling operator, which is a 5-D tensor with
@@ -63,15 +63,16 @@ def max_pool3d(
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            dense_x = paddle.randn((1, 4, 4, 4, 3))
-            sparse_x = dense_x.to_sparse_coo(4)
-            kernel_sizes = [3, 3, 3]
-            paddings = [0, 0, 0]
-            strides = [1, 1, 1]
-            out = paddle.sparse.nn.functional.max_pool3d(sparse_x, kernel_sizes, stride=strides, padding=paddings)
-            #[1, 2, 2, 2, 3]
+            >>> dense_x = paddle.randn((1, 4, 4, 4, 3))
+            >>> sparse_x = dense_x.to_sparse_coo(4)
+            >>> kernel_sizes = [3, 3, 3]
+            >>> paddings = [0, 0, 0]
+            >>> strides = [1, 1, 1]
+            >>> out = paddle.sparse.nn.functional.max_pool3d(sparse_x, kernel_sizes, stride=strides, padding=paddings)
+            >>> print(out.shape)
+            [1, 2, 2, 2, 3]
     """
 
     assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
@@ -82,11 +83,11 @@ def max_pool3d(
         data_format == 'NDHWC'
     ), "Currently, sparse.max_pool3d only support data format of 'NDHWC'"
 
-    kernel_size = utils.convert_to_list(kernel_size, 3, 'pool_size')
+    kernel_size = convert_to_list(kernel_size, 3, 'pool_size')
     if stride is None:
         stride = kernel_size
     else:
-        stride = utils.convert_to_list(stride, 3, 'pool_stride')
+        stride = convert_to_list(stride, 3, 'pool_stride')
 
     channel_last = True
 

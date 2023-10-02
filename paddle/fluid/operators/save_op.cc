@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/save_op.h"
 
-#include <stdint.h>
+#include <cstdint>
 
 #include <fstream>
 #include <numeric>
@@ -88,3 +88,69 @@ REGISTER_OPERATOR(save,
                   ops::SaveOp,
                   ops::SaveOpProtoMaker,
                   ops::SaveOpVarTypeInference);
+
+PD_REGISTER_KERNEL(save,
+                   CPU,
+                   ALL_LAYOUT,
+                   ops::SaveKernel,
+                   float,
+                   double,
+                   int,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
+
+PD_REGISTER_KERNEL(save_sr,
+                   CPU,
+                   ALL_LAYOUT,
+                   ops::SaveSelectedRowsKernel,
+                   float,
+                   double,
+                   int,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(save,
+                   GPU,
+                   ALL_LAYOUT,
+                   ops::SaveKernel,
+                   float,
+                   double,
+                   int,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
+
+PD_REGISTER_KERNEL(save_sr,
+                   GPU,
+                   ALL_LAYOUT,
+                   ops::SaveSelectedRowsKernel,
+                   float,
+                   double,
+                   int,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
+#endif

@@ -31,11 +31,16 @@ void RoiPoolKernel(const Context& dev_ctx,
                    DenseTensor* out,
                    DenseTensor* arg_max) {
   auto x_dims = x.dims();
-  int batch_size = x_dims[0];
-  int channels = x_dims[1];
-  int height = x_dims[2];
-  int width = x_dims[3];
-  int rois_num = boxes.dims()[0];
+  int batch_size = static_cast<int>(x_dims[0]);
+  int channels = static_cast<int>(x_dims[1]);
+  int height = static_cast<int>(x_dims[2]);
+  int width = static_cast<int>(x_dims[3]);
+  int rois_num = static_cast<int>(boxes.dims()[0]);
+
+  if (rois_num == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
 
   auto in_stride = phi::stride(x_dims);
   auto arg_max_stride = phi::stride(arg_max->dims());
@@ -49,7 +54,7 @@ void RoiPoolKernel(const Context& dev_ctx,
 
   int boxes_batch_size;
   if (boxes_num) {
-    boxes_batch_size = boxes_num->numel();
+    boxes_batch_size = static_cast<int>(boxes_num->numel());
     PADDLE_ENFORCE_EQ(
         boxes_batch_size,
         batch_size,
@@ -65,13 +70,13 @@ void RoiPoolKernel(const Context& dev_ctx,
     }
   } else {
     auto boxes_lod = boxes.lod().back();
-    boxes_batch_size = boxes_lod.size() - 1;
+    boxes_batch_size = static_cast<int>(boxes_lod.size() - 1);
     PADDLE_ENFORCE_EQ(
         boxes_batch_size,
         batch_size,
         phi::errors::InvalidArgument("The boxes_batch_size and imgs "
                                      "batch_size must be the same."));
-    int rois_num_with_lod = boxes_lod[boxes_batch_size];
+    int rois_num_with_lod = static_cast<int>(boxes_lod[boxes_batch_size]);
     PADDLE_ENFORCE_EQ(
         rois_num,
         rois_num_with_lod,

@@ -25,7 +25,7 @@ namespace operators {
 
 class TDMSamplerOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X",
              "X(Tensor), Input variable which"
              "mapping the leaf node idx of tdm tree,"
@@ -136,9 +136,12 @@ REGISTER_OPERATOR(
     ops::TDMSamplerOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    tdm_sampler,
-    ops::TDMSamplerKernel<paddle::platform::CPUPlace, float>,
-    ops::TDMSamplerKernel<paddle::platform::CPUPlace, double>,
-    ops::TDMSamplerKernel<paddle::platform::CPUPlace, int>,
-    ops::TDMSamplerKernel<paddle::platform::CPUPlace, int64_t>);
+
+PD_REGISTER_STRUCT_KERNEL(tdm_sampler,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::TDMSamplerKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}

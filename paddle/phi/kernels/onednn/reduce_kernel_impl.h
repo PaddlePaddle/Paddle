@@ -77,8 +77,10 @@ void ReduceKernel(const Context& dev_ctx,
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
     astream.wait();
 
-    out->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(
-        vectorize<int64_t>(out->dims())));
+    const auto reshape_dims = out->dims().size() != 0
+                                  ? vectorize<int64_t>(out->dims())
+                                  : std::vector<int64_t>{1};
+    out->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(reshape_dims));
   } else {
     funcs::ReductionOneDNNHandler<T> handler(reduction_type,
                                              0.0f,
@@ -100,8 +102,10 @@ void ReduceKernel(const Context& dev_ctx,
     reduction_p->execute(astream, reduction_args);
     astream.wait();
 
-    out->set_mem_desc(
-        dst_memory_p->get_desc().reshape(vectorize<int64_t>(out->dims())));
+    const auto reshape_dims = out->dims().size() != 0
+                                  ? vectorize<int64_t>(out->dims())
+                                  : std::vector<int64_t>{1};
+    out->set_mem_desc(dst_memory_p->get_desc().reshape(reshape_dims));
   }
 }
 
@@ -114,7 +118,7 @@ void ReduceGradKernel(const Context& dev_ctx,
                       bool reduce_all,
                       DenseTensor* x_grad,
                       dnnl::algorithm binary_type,
-                      dnnl::algorithm reduction_type,
+                      dnnl::algorithm reduction_type UNUSED,
                       float scale_x,
                       float scale_y) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
@@ -139,7 +143,11 @@ void ReduceGradKernel(const Context& dev_ctx,
   const std::unordered_map<int, dnnl::memory> args = {
       {DNNL_ARG_SRC_0, *dst_memory_p},
       {DNNL_ARG_SRC_1, *src_memory_p},
-      {DNNL_ARG_DST, *dst_memory_p}};
+      {DNNL_ARG_DST, *dst_memory_p},
+      {DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_0,
+       handler.Get_Scale_Memory(scale_x)},
+      {DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_1,
+       handler.Get_Scale_Memory(scale_y)}};
 
   auto& astream = OneDNNContext::tls().get_stream();
   binary_prim->execute(astream, args);

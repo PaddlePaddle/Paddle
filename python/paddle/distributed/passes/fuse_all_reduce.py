@@ -50,7 +50,7 @@ def insert_fuse_all_reduce_ops(
     block, reversed_op_indices, input_var_names, output_var_names, dtype, attrs
 ):
     fused_var = block.create_var(
-        name=unique_name.generate("FusedOutput_{}".format(input_var_names[0])),
+        name=unique_name.generate(f"FusedOutput_{input_var_names[0]}"),
         dtype=dtype,
     )
 
@@ -177,7 +177,7 @@ def find_all_fuse_all_reduce_groups(block):
         if in_var.type != core.VarDesc.VarType.LOD_TENSOR:
             return False
         shape = in_var.shape
-        if any([s <= 0 for s in shape]):
+        if any(s <= 0 for s in shape):
             return False
         return True
 

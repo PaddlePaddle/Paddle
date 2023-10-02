@@ -22,7 +22,7 @@ template <typename T, typename Context>
 void PadGradKernel(const Context& dev_ctx,
                    const DenseTensor& d_out,
                    const std::vector<int>& paddings,
-                   const Scalar& pad_value,
+                   const Scalar& pad_value UNUSED,
                    DenseTensor* d_x) {
   if (d_x == nullptr) {
     return;

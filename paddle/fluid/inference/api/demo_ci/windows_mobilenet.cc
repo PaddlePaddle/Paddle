@@ -22,7 +22,7 @@
 #include <vector>
 
 #include "gflags/gflags.h"
-#include "paddle/include/paddle_inference_api.h"
+#include "paddle_inference_api.h"  // NOLINT
 
 DEFINE_string(modeldir, "", "Directory of the inference model.");
 DEFINE_bool(use_gpu, false, "Whether use gpu.");
@@ -85,7 +85,7 @@ void RunAnalysis() {
 }  // namespace paddle
 
 int main(int argc, char** argv) {
-  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   paddle::demo::RunAnalysis();
   std::cout << "=========================Runs successfully===================="
             << std::endl;

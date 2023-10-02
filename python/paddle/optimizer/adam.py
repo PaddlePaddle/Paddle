@@ -18,10 +18,9 @@ from collections import defaultdict
 import paddle
 from paddle import _C_ops
 
-from ..fluid import core, framework, unique_name
-from ..fluid.dygraph import base as imperative_base
-from ..fluid.framework import Variable, in_dygraph_mode
-from ..fluid.layer_helper import LayerHelper
+from ..base import core, framework
+from ..base.dygraph import base as imperative_base
+from ..base.framework import Variable, in_dygraph_mode
 from .optimizer import Optimizer
 
 __all__ = []
@@ -73,15 +72,15 @@ class Adam(Optimizer):
             The default value is None in static graph mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization.
             It canbe a float value as coeff of L2 regularization or
-            :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
-            If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already,
+            :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
+            If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already,
             the regularization setting here in optimizer will be ignored for this parameter.
             Otherwise, the regularization setting here in optimizer will take effect.
             Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three cliping strategies
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
-            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
+            ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
+            :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
         lazy_mode (bool, optional): The official Adam algorithm has two moving-average accumulators.
             The accumulators are updated at every step. Every element of the two moving-average
             is updated in both dense mode and sparse mode. If the size of parameter is very large,
@@ -97,63 +96,63 @@ class Adam(Optimizer):
 
     Examples:
         .. code-block:: python
+            :name: code-example1
 
-            import paddle
+            >>> import paddle
 
-            linear = paddle.nn.Linear(10, 10)
-            inp = paddle.rand([10,10], dtype="float32")
-            out = linear(inp)
-            loss = paddle.mean(out)
-            adam = paddle.optimizer.Adam(learning_rate=0.1,
-                    parameters=linear.parameters())
-            out.backward()
-            adam.step()
-            adam.clear_grad()
+            >>> linear = paddle.nn.Linear(10, 10)
+            >>> inp = paddle.rand([10,10], dtype="float32")
+            >>> out = linear(inp)
+            >>> loss = paddle.mean(out)
+            >>> adam = paddle.optimizer.Adam(learning_rate=0.1,
+            ...         parameters=linear.parameters())
+            >>> loss.backward()
+            >>> adam.step()
+            >>> adam.clear_grad()
 
         .. code-block:: python
+            :name: code-example2
 
-            # Adam with beta1/beta2 as Tensor and weight_decay as float
-            import paddle
+            >>> # Adam with beta1/beta2 as Tensor and weight_decay as float
+            >>> import paddle
 
-            linear = paddle.nn.Linear(10, 10)
-            inp = paddle.rand([10,10], dtype="float32")
-            out = linear(inp)
-            loss = paddle.mean(out)
+            >>> linear = paddle.nn.Linear(10, 10)
+            >>> inp = paddle.rand([10,10], dtype="float32")
+            >>> out = linear(inp)
+            >>> loss = paddle.mean(out)
+            >>> beta1 = paddle.to_tensor([0.9], dtype="float32")
+            >>> beta2 = paddle.to_tensor([0.99], dtype="float32")
+            >>> adam = paddle.optimizer.Adam(learning_rate=0.1,
+            ...         parameters=linear.parameters(),
+            ...         beta1=beta1,
+            ...         beta2=beta2,
+            ...         weight_decay=0.01)
+            >>> loss.backward()
+            >>> adam.step()
+            >>> adam.clear_grad()
 
-            beta1 = paddle.to_tensor([0.9], dtype="float32")
-            beta2 = paddle.to_tensor([0.99], dtype="float32")
-
-            adam = paddle.optimizer.Adam(learning_rate=0.1,
-                    parameters=linear.parameters(),
-                    beta1=beta1,
-                    beta2=beta2,
-                    weight_decay=0.01)
-            out.backward()
-            adam.step()
-            adam.clear_grad()
-
-            #Note that the learning_rate of linear_2 is 0.01.
-            linear_1 = paddle.nn.Linear(10, 10)
-            linear_2 = paddle.nn.Linear(10, 10)
-            inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
-            out = linear_1(inp)
-            out = linear_2(out)
-            loss = paddle.mean(out)
-            adam = paddle.optimizer.Adam(
-                learning_rate=0.1,
-                parameters=[{
-                    'params': linear_1.parameters()
-                }, {
-                    'params': linear_2.parameters(),
-                    'weight_decay': 0.001,
-                    'learning_rate': 0.1,
-                    'beta1': 0.8
-                }],
-                weight_decay=0.01,
-                beta1=0.9)
-            out.backward()
-            adam.step()
-            adam.clear_grad()
+            >>> # Note that the learning_rate of linear_2 is 0.01.
+            >>> linear_1 = paddle.nn.Linear(10, 10)
+            >>> linear_2 = paddle.nn.Linear(10, 10)
+            >>> inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
+            >>> out = linear_1(inp)
+            >>> out = linear_2(out)
+            >>> loss = paddle.mean(out)
+            >>> adam = paddle.optimizer.Adam(
+            ...     learning_rate=0.1,
+            ...     parameters=[{
+            ...         'params': linear_1.parameters()
+            ...     }, {
+            ...         'params': linear_2.parameters(),
+            ...         'weight_decay': 0.001,
+            ...         'learning_rate': 0.1,
+            ...         'beta1': 0.8
+            ...     }],
+            ...     weight_decay=0.01,
+            ...     beta1=0.9)
+            >>> loss.backward()
+            >>> adam.step()
+            >>> adam.clear_grad()
 
     """
     _moment1_acc_str = "moment1"
@@ -225,62 +224,6 @@ class Adam(Optimizer):
             self._master_weight_dict = self._create_multi_tensor_dict()
             self._master_weight_dict['FP32_LODTensor'] = None
 
-    def _create_master_weight(self, param):
-        if param.name in self._master_weights:
-            var = self._master_weights[param.name]
-        else:
-            assert isinstance(self.helper, LayerHelper)
-
-            var_name = param.name + "_fp32_master"
-            var_name = unique_name.generate(var_name)
-            var = paddle.static.create_global_var(
-                name=var_name,
-                shape=param.shape,
-                value=0,
-                dtype='float32',
-                persistable=True,
-            )
-            block = self.helper.startup_program.global_block()
-            block.append_op(
-                type="cast",
-                inputs={"X": [param]},
-                outputs={"Out": [var]},
-                attrs={
-                    "in_dtype": param.dtype,
-                    "out_dtype": core.VarDesc.VarType.FP32,
-                },
-            )
-            self._master_weights[param.name] = var
-        return var
-
-    def _get_accumulator(self, name, param):
-        """Utility function to fetch an accumulator for a parameter
-        Args:
-            name: name of the accumulator
-            param: parameter variable for which accumulator is to be fetched
-        Returns:
-            accumulator variable for the parameter
-        """
-        if self._name is not None:
-            name = self._name + "_" + name
-        find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
-            param.dtype
-        )
-        target_param = (
-            self._master_weights[param.name] if find_master else param
-        )
-        target_name = target_param.name
-        if (
-            name not in self._accumulators
-            or target_name not in self._accumulators[name]
-        ):
-            raise Exception(
-                "Accumulator {} does not exist for parameter {}".format(
-                    name, target_name
-                )
-            )
-        return self._accumulators[name][target_name]
-
     def _add_moments_pows(self, p):
         acc_dtype = p.dtype
         if self._is_dtype_fp16_or_bf16(acc_dtype):
@@ -340,16 +283,16 @@ class Adam(Optimizer):
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
 
-        moment1 = self._get_accumulator(
+        moment1 = self._get_accumulator_master(
             self._moment1_acc_str, param_and_grad[0]
         )
-        moment2 = self._get_accumulator(
+        moment2 = self._get_accumulator_master(
             self._moment2_acc_str, param_and_grad[0]
         )
-        beta1_pow_acc = self._get_accumulator(
+        beta1_pow_acc = self._get_accumulator_master(
             self._beta1_pow_acc_str, param_and_grad[0]
         )
-        beta2_pow_acc = self._get_accumulator(
+        beta2_pow_acc = self._get_accumulator_master(
             self._beta2_pow_acc_str, param_and_grad[0]
         )
         find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
@@ -367,12 +310,12 @@ class Adam(Optimizer):
             _beta1 = (
                 self._beta1
                 if not isinstance(self._beta1, Variable)
-                else self._beta1.numpy().item(0)
+                else self._beta1.item(0)
             )
             _beta2 = (
                 self._beta2
                 if not isinstance(self._beta2, Variable)
-                else self._beta2.numpy().item(0)
+                else self._beta2.item(0)
             )
 
             _, _, _, _, _, _ = _C_ops.adam_(
@@ -405,6 +348,13 @@ class Adam(Optimizer):
                 "Beta1Pow": [beta1_pow_acc],
                 "Beta2Pow": [beta2_pow_acc],
             }
+
+            # Pass found_inf to adam, to skip update for not only param, but also momentum and beta_pow
+            found_inf = self._get_auxiliary_var('found_inf')
+
+            if found_inf:
+                inputs['SkipUpdate'] = found_inf
+
             outputs = {
                 "ParamOut": [param_and_grad[0]],
                 "Moment1Out": [moment1],
@@ -446,7 +396,7 @@ class Adam(Optimizer):
             return adam_op
 
     @imperative_base.no_grad
-    @framework.dygraph_only
+    @framework.non_static_only
     def step(self):
         """
         Execute the optimizer and update parameters once.
@@ -457,18 +407,22 @@ class Adam(Optimizer):
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                a = paddle.rand([2,13], dtype="float32")
-                linear = paddle.nn.Linear(13, 5)
-                # This can be any optimizer supported by dygraph.
-                adam = paddle.optimizer.Adam(learning_rate = 0.01,
-                                            parameters = linear.parameters())
-                out = linear(a)
-                out.backward()
-                adam.step()
-                adam.clear_grad()
+                >>> a = paddle.rand([2,13], dtype="float32")
+                >>> linear = paddle.nn.Linear(13, 5)
+                >>> # This can be any optimizer supported by dygraph.
+                >>> adam = paddle.optimizer.Adam(learning_rate = 0.01,
+                ...                             parameters = linear.parameters())
+                >>> out = linear(a)
+                >>> out.backward()
+                >>> adam.step()
+                >>> adam.clear_grad()
         """
+        if paddle.base.dygraph.base.in_to_static_mode():
+            self._declarative_step()
+            return
+
         if not isinstance(self._parameter_list[0], dict):
             params_grads = []
             for param in self._parameter_list:
@@ -505,7 +459,7 @@ class Adam(Optimizer):
         else:
             # optimize parameters in groups
             for idx, param_group in enumerate(self._param_groups):
-                params_grads = defaultdict(lambda: list())
+                params_grads = defaultdict(lambda: [])
                 for param in param_group['params']:
                     if param.stop_gradient:
                         continue
@@ -532,12 +486,12 @@ class Adam(Optimizer):
         """
         self._create_accumulators(target_block, parameters)
         for param in parameters:
-            moment1 = self._get_accumulator(self._moment1_acc_str, param)
-            moment2 = self._get_accumulator(self._moment2_acc_str, param)
-            beta1_pow_acc = self._get_accumulator(
+            moment1 = self._get_accumulator_master(self._moment1_acc_str, param)
+            moment2 = self._get_accumulator_master(self._moment2_acc_str, param)
+            beta1_pow_acc = self._get_accumulator_master(
                 self._beta1_pow_acc_str, param
             )
-            beta2_pow_acc = self._get_accumulator(
+            beta2_pow_acc = self._get_accumulator_master(
                 self._beta2_pow_acc_str, param
             )
 
@@ -645,7 +599,7 @@ class Adam(Optimizer):
                 if param_and_grad[1] is None:
                     continue
                 if param_and_grad[0].stop_gradient is False:
-                    param_grad_dict = dict()
+                    param_grad_dict = {}
                     param_grad_dict['params'] = param_and_grad
                     param_grad_dict.update(
                         {
@@ -680,12 +634,12 @@ class Adam(Optimizer):
                 _beta1 = (
                     self._beta1
                     if not isinstance(self._beta1, Variable)
-                    else self._beta1.numpy().item(0)
+                    else self._beta1.item(0)
                 )
                 _beta2 = (
                     self._beta2
                     if not isinstance(self._beta2, Variable)
-                    else self._beta2.numpy().item(0)
+                    else self._beta2.item(0)
                 )
 
                 if framework.in_dygraph_mode():
@@ -762,7 +716,6 @@ class Adam(Optimizer):
                         attrs=attrs,
                         stop_gradient=True,
                     )
-        return None
 
     def _update_param_group(self, parameters):
         self._beta1 = parameters.get('beta1', self._default_dict['beta1'])

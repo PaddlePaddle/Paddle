@@ -26,16 +26,14 @@ class BaseConfig:
                 self._config_dict = config_dict
             else:
                 raise ValueError(
-                    "Expected a dictionary. But received: {}".format(
-                        config_dict
-                    )
+                    f"Expected a dictionary. But received: {config_dict}"
                 )
         # Initialize attributes by the default config
         config = constants.get_category_default_config(self._category)
         for field, default_value in config.items():
             setattr(self, field, default_value)
 
-        # Overide attributes by the config_dict
+        # Override attributes by the config_dict
         if self._config_dict:
             self.from_dict(self._config_dict)
 
@@ -62,7 +60,7 @@ class BaseConfig:
         result_dict = self.to_dict()
         string = "{"
         for k, v in result_dict.items():
-            string += "\"%s\":\"%s\"," % (k, v)
+            string += f"\"{k}\":\"{v}\","
         return string + "}"
 
     def __deepcopy__(self, memo):
@@ -102,6 +100,12 @@ class GradientMergeConfig(BaseConfig):
         super().__init__(category, config_dict)
 
 
+class PipelineConfig(BaseConfig):
+    def __init__(self, config_dict=None):
+        category = constants.PIPELINE
+        super().__init__(category, config_dict)
+
+
 class QATConfig(BaseConfig):
     def __init__(self, config_dict=None):
         category = constants.QAT
@@ -126,9 +130,15 @@ class FusedPassesConfig(BaseConfig):
         super().__init__(category, config_dict)
 
 
+class DPOptimizationConfig(BaseConfig):
+    def __init__(self, config_dict=None):
+        category = constants.DP_OPTIMIZATION
+        super().__init__(category, config_dict)
+
+
 class Strategy(BaseConfig):
     """
-    The `Strategy` object is used to configure the paralleization and optimization beheviors.
+    The `Strategy` object is used to configure the parallelization and optimization behaviors.
 
     Args:
         config (dict|string, optional): If this is None, the default configurations will used.
@@ -140,20 +150,21 @@ class Strategy(BaseConfig):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.distributed.fleet import auto
+            >>> import paddle
+            >>> from paddle.distributed.fleet import auto
 
-            strategy = auto.Strategy()
-            sharding = strategy.sharding
-            self.assertEqual(sharding.enabled, False)
-            self.assertEqual(sharding.stage, 1)
-            self.assertEqual(sharding.degree, 8)
-            sharding.enabled = True
-            sharding.stage = 2
-            sharding.degree = 2
-            self.assertEqual(sharding.enabled, True)
-            self.assertEqual(sharding.stage, 2)
-            self.assertEqual(sharding.degree, 2)
+            >>> strategy = auto.Strategy()
+            >>> sharding = strategy.sharding
+            >>> assert sharding.enable == False
+            >>> assert sharding.stage == 1
+            >>> assert sharding.degree == 8
+
+            >>> sharding.enable = True
+            >>> sharding.stage = 2
+            >>> sharding.degree = 2
+            >>> assert sharding.enable == True
+            >>> assert sharding.stage == 2
+            >>> assert sharding.degree == 2
 
     """
 
@@ -166,7 +177,7 @@ class Strategy(BaseConfig):
             #         self._config_dict = yaml.load(yaml_file, Loader=yaml.Loader)
             else:
                 raise ValueError(
-                    "Expected a dictionary. But received: {}".format(config)
+                    f"Expected a dictionary. But received: {config}"
                 )
         else:
             self._config_dict = {}
@@ -186,6 +197,9 @@ class Strategy(BaseConfig):
         config_dict = self._config_dict.get(constants.GRADIENT_MERGE, None)
         self.gradient_merge = GradientMergeConfig(config_dict)
 
+        config_dict = self._config_dict.get(constants.PIPELINE, None)
+        self.pipeline = PipelineConfig(config_dict)
+
         config_dict = self._config_dict.get(constants.QAT, None)
         self.qat = QATConfig(config_dict)
 
@@ -197,3 +211,6 @@ class Strategy(BaseConfig):
 
         config_dict = self._config_dict.get(constants.FUSED_PASSES, None)
         self.fused_passes = FusedPassesConfig(config_dict)
+
+        config_dict = self._config_dict.get(constants.DP_OPTIMIZATION, None)
+        self.dp_optimization = DPOptimizationConfig(config_dict)

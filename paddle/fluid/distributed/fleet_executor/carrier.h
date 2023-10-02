@@ -94,7 +94,8 @@ class Carrier final {
   Carrier() = delete;
 
   // create each Interceptor
-  void CreateInterceptors();
+  void CreateInterceptors(
+      const std::vector<std::string>& inference_root_scope_vars = {});
 
   int64_t GetRank(int64_t interceptor_id) const;
 

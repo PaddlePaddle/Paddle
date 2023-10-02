@@ -34,7 +34,7 @@ using SelectedRows = phi::SelectedRows;
 template <typename T>
 using Vector = phi::Vector<T>;
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FilterByInstagKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -191,7 +191,7 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FilterByInstagGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {

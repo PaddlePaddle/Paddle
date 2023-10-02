@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/int8_scale_calculation_mkldnn_pass.h"
 
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/phi/core/enforce.h"
@@ -22,7 +23,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-Int8ScaleCalculationMkldnnPass::Int8ScaleCalculationMkldnnPass() {
+Int8ScaleCalculationMkldnnPass::Int8ScaleCalculationMkldnnPass() {  // NOLINT
   AddOpCompat(OpCompat("conv2d"))
       .AddInput("Input")
       .IsTensor()
@@ -124,7 +125,7 @@ void Int8ScaleCalculationMkldnnPass::Int8ScaleImpl(
     }
     GET_IR_NODE_FROM_SUBGRAPH(conv_op, conv_op, conv_pattern);
     if (conv_op->Op()->Type() == "conv2d") {
-      conv_op->Op()->SetType("fused_conv2d");
+      ConvertToFusedOp(conv_op->Op());
     }
 
     if (!platform::HasOpINT8DataType(conv_op->Op()) ||
@@ -158,7 +159,7 @@ void Int8ScaleCalculationMkldnnPass::Int8ScaleImpl(
       }
     }
 
-    if (has_bias && conv_op->Op()->Input("Bias").size() > 0) {
+    if (has_bias && !conv_op->Op()->Input("Bias").empty()) {
       auto bias_scales = std::vector<float>(count);
       for (int i = 0; i < count; i++) {
         bias_scales[i] = scale_in_data * scale_weights_data[i];

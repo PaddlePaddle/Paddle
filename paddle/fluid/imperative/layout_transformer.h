@@ -31,8 +31,9 @@ void SetOutDataLayout(std::shared_ptr<VarType> var,
     if (var->MutableVar()->IsInitialized()) {
       paddle::framework::Variable* tmp_var = var->MutableVar();
       auto* out = tmp_var->GetMutable<phi::DenseTensor>();
-      phi::DenseTensorUtils::GetMutableMeta(static_cast<phi::DenseTensor*>(out))
-          ->layout = layout;
+      auto meta = phi::DenseTensorUtils::GetMutableMeta(
+          static_cast<phi::DenseTensor*>(out));
+      meta->layout = layout;
     }
   }
 }
@@ -402,10 +403,12 @@ class ArgmaxOpTransformer
           case paddle::framework::proto::AttrType::INT: {
             auto axis = PADDLE_GET_CONST(int, (*attrs)["axis"]);
             (*attrs)["axis"] = static_cast<int>(perm[axis]);
+            break;
           }
           case paddle::framework::proto::AttrType::LONG: {
             auto axis = PADDLE_GET_CONST(int64_t, (*attrs)["axis"]);
             (*attrs)["axis"] = static_cast<int64_t>(perm[axis]);
+            break;
           }
           default:
             VLOG(4) << "The data_type of axis is Error, axis must be int or "

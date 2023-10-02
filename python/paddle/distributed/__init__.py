@@ -20,7 +20,7 @@ from .parallel import init_parallel_env  # noqa: F401
 from .parallel import get_rank  # noqa: F401
 from .parallel import get_world_size  # noqa: F401
 from .parallel import ParallelEnv  # noqa: F401
-
+from .parallel import DataParallel
 from .parallel_with_gloo import gloo_init_parallel_env
 from .parallel_with_gloo import gloo_barrier
 from .parallel_with_gloo import gloo_release
@@ -32,7 +32,6 @@ from paddle.distributed.fleet.base.topology import ParallelMode  # noqa: F401
 from .collective import split  # noqa: F401
 from .collective import new_group  # noqa: F401
 from .collective import is_available
-from .collective import _destroy_process_group_id_map
 from .communication import (
     stream,
     ReduceOp,
@@ -46,6 +45,7 @@ from .communication import (
     reduce,
     send,
     scatter,
+    gather,
     scatter_object_list,
     isend,
     recv,
@@ -61,8 +61,14 @@ from .communication import (
     get_backend,
 )  # noqa: F401
 
+from .auto_parallel.process_mesh import ProcessMesh  # noqa: F401
+from .auto_parallel.api import DistAttr  # noqa: F401
+
 from .auto_parallel import shard_op  # noqa: F401
-from .auto_parallel import shard_tensor  # noqa: F401
+from .auto_parallel.api import shard_tensor  # noqa: F401
+from .auto_parallel.api import dtensor_from_fn  # noqa: F401
+from .auto_parallel.api import reshard  # noqa: F401
+from .auto_parallel.api import shard_layer  # noqa: F401
 
 from .fleet import BoxPSDataset  # noqa: F401
 
@@ -82,6 +88,7 @@ __all__ = [  # noqa
     "spawn",
     "launch",
     "scatter",
+    "gather",
     "scatter_object_list",
     "broadcast",
     "broadcast_object_list",
@@ -119,6 +126,10 @@ __all__ = [  # noqa
     "reduce_scatter",
     "is_available",
     "get_backend",
+    "ProcessMesh",
+    "DistAttr",
+    "shard_tensor",
+    "dtensor_from_fn",
+    "reshard",
+    "shard_layer",
 ]
-
-atexit.register(_destroy_process_group_id_map)

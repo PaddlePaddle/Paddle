@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/grid_sample_kernel.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"

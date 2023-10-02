@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature FusedMatmulOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("fused_matmul",
                          {"X", "Y", "ResidualData"},
                          {"trans_x",

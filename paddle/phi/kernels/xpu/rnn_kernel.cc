@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/rnn_kernel.h"
-#include "paddle/fluid/operators/utils.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/xpu/rnn_util.h"
 
@@ -44,7 +44,7 @@ void RnnKernel(const Context& dev_ctx,
   }
 
   dropout_state->Resize(out->dims());
-  dev_ctx.template Alloc<T>(dropout_state);
+  dev_ctx.template Alloc<uint8_t>(dropout_state);
 
   phi::funcs::SetConstant<phi::XPUContext, uint8_t> ones;
   ones(dev_ctx, dropout_state, static_cast<uint8_t>(1));
@@ -97,7 +97,7 @@ void RnnKernel(const Context& dev_ctx,
 
   int gate_num = 4;
   int hidden_data_idx = (num_layers - 1);
-  hidden_data_idx += (gate_num + 1) * num_layers;
+  hidden_data_idx += (gate_num + 2) * num_layers;
   const int& block_size = direction_num * seq_len * batch_size * hidden_size;
   reserve->Resize({hidden_data_idx, block_size});
   dev_ctx.template Alloc<T>(reserve);
@@ -119,8 +119,7 @@ void RnnKernel(const Context& dev_ctx,
   bool has_seq_length = sequence_length.is_initialized();
 
   if (has_seq_length) {
-    seq_len_tensor =
-        paddle::operators::GetDataFromTensor<int>(sequence_length.get_ptr());
+    seq_len_tensor = phi::GetVectorFromTensor<int>(sequence_length.get_ptr());
   }
 
   int state_offset = pre_state[0]->dims()[1] * pre_state[0]->dims()[2];
@@ -225,4 +224,6 @@ void RnnKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(rnn, XPU, ALL_LAYOUT, phi::RnnKernel, float) {}
+PD_REGISTER_KERNEL(rnn, XPU, ALL_LAYOUT, phi::RnnKernel, float) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
+}

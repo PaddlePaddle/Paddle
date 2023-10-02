@@ -17,6 +17,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -47,7 +48,7 @@ struct SequenceExpandGradFunctor {
 
 template <typename T>
 struct SequenceExpandFunctor<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext& context,
+  void operator()(const phi::CPUContext& context UNUSED,
                   const phi::DenseTensor& x,
                   const phi::Vector<size_t>& x_lod,   /*expand source lod*/
                   const phi::Vector<size_t>& ref_lod, /*expand referenced lod*/
@@ -80,7 +81,7 @@ struct SequenceExpandFunctor<phi::CPUContext, T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class SequenceExpandKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -184,7 +185,7 @@ struct SequenceExpandGradFunctor<phi::CPUContext, T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class SequenceExpandGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {

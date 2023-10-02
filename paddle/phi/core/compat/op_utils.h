@@ -31,7 +31,7 @@ const static std::string deprecated_kernel_name = "deprecated";  // NOLINT
 
 const std::unordered_set<std::string> standard_kernel_suffixs({
     "sr",  // SelectedRows kernel
-    "raw"  // fallback kernel of origfinal fluid op
+    "raw"  // fallback kernel of original fluid op
 });
 
 /**
@@ -115,7 +115,7 @@ class DefaultKernelSignatureMap {
         Has(op_type),
         true,
         phi::errors::AlreadyExists(
-            "Operator (%s)'s Kernel Siginature has been registered.", op_type));
+            "Operator (%s)'s Kernel Signature has been registered.", op_type));
     map_.insert({std::move(op_type), std::move(signature)});
   }
 
@@ -160,7 +160,7 @@ class OpUtilsMap {
         arg_mapping_fn_map_.count(op_type),
         0UL,
         phi::errors::AlreadyExists(
-            "Operator (%s)'s argu,emt mapping function has been registered.",
+            "Operator (%s)'s argument mapping function has been registered.",
             op_type));
     arg_mapping_fn_map_.insert({std::move(op_type), std::move(fn)});
   }
@@ -210,18 +210,12 @@ class OpUtilsMap {
 };
 
 struct BaseKernelNameRegistrar {
-  BaseKernelNameRegistrar(const char* op_type, const char* base_kernel_name) {
-    OpUtilsMap::Instance().InsertBaseKernelName(op_type, base_kernel_name);
-    OpUtilsMap::Instance().InsertFluidOplName(op_type, base_kernel_name);
-  }
+  BaseKernelNameRegistrar(const char* op_type, const char* base_kernel_name);
 };
 
 struct ArgumentMappingFnRegistrar {
   ArgumentMappingFnRegistrar(const char* op_type,
-                             ArgumentMappingFn arg_mapping_fn) {
-    OpUtilsMap::Instance().InsertArgumentMappingFn(op_type,
-                                                   std::move(arg_mapping_fn));
-  }
+                             ArgumentMappingFn arg_mapping_fn);
 };
 
 #define PD_REGISTER_BASE_KERNEL_NAME(op_type, base_kernel_name)               \

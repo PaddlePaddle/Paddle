@@ -36,14 +36,14 @@ class OrthogonalStrategy:
     Examples:
         .. code-block:: python
 
-        # required: distributed
-        import paddle
-        import paddle.distributed as dist
-        from paddle.distributed.fleet.base.strategy_group import DPGroup, MPGroup, PPGroup
-        from paddle.distributed.fleet.base.orthogonal_strategy import OrthogonalStrategy
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.distributed as dist
+            >>> from paddle.distributed.fleet.base.strategy_group import DPGroup, MPGroup, PPGroup
+            >>> from paddle.distributed.fleet.base.orthogonal_strategy import OrthogonalStrategy
 
-        dist.init_parallel_env()
-        strategy = OrthogonalStrategy([("dp", 2, DPGroup), ("mp", 2, MPGroup), ("pp", 2, PPGroup)], fused_strategy_dict={"check": ["mp", "pp"]})
+            >>> dist.init_parallel_env()
+            >>> strategy = OrthogonalStrategy([("dp", 2, DPGroup), ("mp", 2, MPGroup), ("pp", 2, PPGroup)], fused_strategy_dict={"check": ["mp", "pp"]})
 
     """
 
@@ -94,7 +94,7 @@ class OrthogonalStrategy:
         """
         assert (
             name in self._list_of_strategy_name
-        ), "Strategy group {} is not created.".format(name)
+        ), f"Strategy group {name} is not created."
         return self._name_to_group_dict[name]
 
     def fused_strategy_group(self, name):
@@ -109,7 +109,7 @@ class OrthogonalStrategy:
         """
         assert (
             name in self._name_to_fused_group_dict
-        ), "Fused strategy group {} is not created.".format(name)
+        ), f"Fused strategy group {name} is not created."
         return self._name_to_fused_group_dict[name]
 
     def rank_in_strategy(self, name):
@@ -124,15 +124,13 @@ class OrthogonalStrategy:
         """
         assert (
             name in self._list_of_strategy_name
-        ), "Strategy group {} is not created.".format(name)
+        ), f"Strategy group {name} is not created."
         return self._name_to_group_dict[name].group.rank
 
     def _check_valid_strategy(self):
         assert len(self._list_of_strategy_name) == len(
             set(self._list_of_strategy_name)
-        ), "Defined duplicated strategies: {}".format(
-            self._list_of_strategy_name
-        )
+        ), f"Defined duplicated strategies: {self._list_of_strategy_name}"
         num_of_ranks = functools.reduce(
             lambda x, y: x * y, self._list_of_degree
         )
@@ -145,9 +143,7 @@ class OrthogonalStrategy:
             for strategy in fused_strategy:
                 assert (
                     strategy in self._list_of_strategy_name
-                ), "Can not fuse strategy {} without defined previous.".format(
-                    strategy
-                )
+                ), f"Can not fuse strategy {strategy} without defined previous."
 
     def _create_fused_group(self):
         for name in self._fused_strategy_dict:

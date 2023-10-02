@@ -24,6 +24,10 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
 
+namespace Eigen {
+struct DefaultDevice;
+}  // namespace Eigen
+
 namespace xpu = baidu::xpu::api;
 
 namespace phi {
@@ -48,6 +52,9 @@ class XPUContext : public DeviceContext,
   void SetBkclContext(xpu::BKCLContext_t context);
   void CreateStream();
 
+  // For share external stream.
+  void SetStream(void* stream);
+
   // Wait for all operations completion in the stream.
   void Wait() const override;
 
@@ -64,6 +71,14 @@ class XPUContext : public DeviceContext,
   void SetXContext(xpu::Context*);
 
   void SetL3Cache(int l3_size = 14155776);
+
+  void SetXpuVersion(int version);
+
+  void SetRuntimeVersion(int runtime_version);
+
+  void SetDriverVersion(int driver_version);
+
+  Eigen::DefaultDevice* eigen_device() const { return nullptr; }
 
   XPUStream stream() const;
 

@@ -15,8 +15,8 @@
 import inspect
 from collections.abc import Sequence
 
-from paddle.fluid import core
-from paddle.fluid.framework import Program
+from paddle.base import core
+from paddle.base.framework import Program
 from paddle.utils import gast
 
 from .utils import ORIGI_INFO, unwrap
@@ -41,9 +41,7 @@ class Location:
         self.col_offset = col_offset
 
     def __str__(self):
-        return "location: {}:{}:{}".format(
-            self.filepath, self.lineno, self.col_offset
-        )
+        return f"location: {self.filepath}:{self.lineno}:{self.col_offset}"
 
     @property
     def line_location(self):
@@ -286,7 +284,7 @@ def update_op_callstack_with_origin_info(program):
         An example of callstack:
 
             File "path1/to/file.py", line 10, in func_1
-                y = fluid.layers.fill_constant(x, shape=[1], dtype="int32")
+                y = paddle.tensor.fill_constant(x, shape=[1], dtype="int32")
             File "path2/to/file.py", line 740, in fill_constant
                 stop_gradient=True)
             File "path3/to/file.py", line 43, in append_op
@@ -299,7 +297,6 @@ def update_op_callstack_with_origin_info(program):
 
         assert len(callstack) % 2 == 0
         for i in range(0, len(callstack), 2):
-
             file_line = callstack[i].lstrip(" ").split(",")
 
             filepath = file_line[0][6:-1]
@@ -312,10 +309,8 @@ def update_op_callstack_with_origin_info(program):
             if dygraph_func_info:
                 filepath, lineno, funcname, code = dygraph_func_info.as_frame()
 
-            callstack[i] = '  File "{}", line {}, in {}'.format(
-                filepath, lineno, funcname
-            )
-            callstack[i + 1] = '    {}'.format(code)
+            callstack[i] = f'  File "{filepath}", line {lineno}, in {funcname}'
+            callstack[i + 1] = f'    {code}'
 
         return callstack
 

@@ -18,6 +18,7 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/broadcast_tensors_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
@@ -48,9 +49,9 @@ void ApplyBroadcast(const Context& ctx,
   // expanded dims: "new_input_dims_vec"
   Eigen::DSizes<Eigen::DenseIndex, OutRank> bcast_dims;
   std::vector<int64_t> new_input_dims_vec(out_rank);
-  for (int j = 0; j < out_rank; j++) {
-    int out_axis = out_rank - j - 1;
-    int in_axis = in_rank - j - 1;
+  for (int i = 0; i < out_rank; i++) {
+    int in_axis = in_rank - i - 1;
+    int out_axis = out_rank - i - 1;
 
     bcast_dims[out_axis] = output_dims[out_axis];
     new_input_dims_vec[out_axis] = 1;
@@ -101,12 +102,18 @@ void BroadcastTensorsKernel(const Context& ctx,
   for (size_t i = 0; i < num_ins; i++) {
     int out_rank = out_tensors[i]->dims().size();
     switch (out_rank) {
-      SWITCH_OUT_RANK_CASE(1)
-      SWITCH_OUT_RANK_CASE(2)
-      SWITCH_OUT_RANK_CASE(3)
-      SWITCH_OUT_RANK_CASE(4)
-      SWITCH_OUT_RANK_CASE(5)
-      SWITCH_OUT_RANK_CASE(6)
+      case 0: {
+        const DenseTensor* src = in_tensors[i];
+        DenseTensor* dst = out_tensors[i];
+        phi::Copy(ctx, *src, src->place(), false, dst);
+        break;
+      }
+        SWITCH_OUT_RANK_CASE(1)
+        SWITCH_OUT_RANK_CASE(2)
+        SWITCH_OUT_RANK_CASE(3)
+        SWITCH_OUT_RANK_CASE(4)
+        SWITCH_OUT_RANK_CASE(5)
+        SWITCH_OUT_RANK_CASE(6)
       default: {
         PADDLE_THROW(phi::errors::InvalidArgument(
             "Target tensor rank out of range"

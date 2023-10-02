@@ -14,12 +14,21 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_reduce_op.h"
 
+namespace paddle {
+namespace operators {
+DEFINE_C_REDUCE_CUDA_KERNEL(CReduceProd, kRedProd);
+}  // namespace operators
+}  // namespace paddle
+
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(c_reduce_prod,
-                        ops::CReduceOpCUDAKernel<ops::kRedProd, float>,
-                        ops::CReduceOpCUDAKernel<ops::kRedProd, double>,
-                        ops::CReduceOpCUDAKernel<ops::kRedProd, int>,
-                        ops::CReduceOpCUDAKernel<ops::kRedProd, int64_t>,
-                        ops::CReduceOpCUDAKernel<ops::kRedProd, plat::float16>)
+PD_REGISTER_STRUCT_KERNEL(c_reduce_prod,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::CReduceProdCUDAKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

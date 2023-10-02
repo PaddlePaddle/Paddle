@@ -16,7 +16,7 @@ import json
 import warnings
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 __all__ = ['set_config']
 
@@ -56,35 +56,35 @@ def set_config(config=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import json
+            >>> import paddle
+            >>> import json
 
-            # config is a dict.
-            config = {
-                "kernel": {
-                    "enable": True,
-                    "tuning_range": [1, 5],
-                },
-                "layout": {
-                    "enable": True,
-                },
-                "dataloader": {
-                    "enable": True,
-                }
-            }
-            paddle.incubate.autotune.set_config(config)
+            >>> # config is a dict.
+            >>> config = {
+            ...     "kernel": {
+            ...         "enable": True,
+            ...         "tuning_range": [1, 5],
+            ...     },
+            ...     "layout": {
+            ...         "enable": True,
+            ...     },
+            ...     "dataloader": {
+            ...         "enable": True,
+            ...     }
+            >>> }
+            >>> paddle.incubate.autotune.set_config(config)
 
-            # config is the path of json file.
-            config_json = json.dumps(config)
-            with open('config.json', 'w') as json_file:
-                json_file.write(config_json)
-            paddle.incubate.autotune.set_config('config.json')
+            >>> # config is the path of json file.
+            >>> config_json = json.dumps(config)
+            >>> with open('config.json', 'w') as json_file:
+            ...     json_file.write(config_json)
+            >>> paddle.incubate.autotune.set_config('config.json')
 
     """
     if config is None:
         core.enable_autotune()
         core.enable_layout_autotune()
-        paddle.fluid.reader.set_autotune_config(use_autotune=True)
+        paddle.io.reader.set_autotune_config(use_autotune=True)
         return
 
     config_dict = {}
@@ -95,7 +95,7 @@ def set_config(config=None):
             with open(config, 'r') as filehandle:
                 config_dict = json.load(filehandle)
         except Exception as e:
-            print('Load config error: {}'.format(e))
+            print(f'Load config error: {e}')
             warnings.warn("Use default configuration for auto-tuning.")
 
     if "kernel" in config_dict:
@@ -147,7 +147,7 @@ def set_config(config=None):
                 )
         if "tuning_steps" in dataloader_config:
             if isinstance(dataloader_config['tuning_steps'], int):
-                paddle.fluid.reader.set_autotune_config(
+                paddle.io.reader.set_autotune_config(
                     use_autoune, dataloader_config['tuning_steps']
                 )
             else:
@@ -155,4 +155,4 @@ def set_config(config=None):
                     "The auto-tuning configuration of the dataloader is incorrect."
                     "The `tuning_steps` should be int. Use default parameter instead."
                 )
-                paddle.fluid.reader.set_autotune_config(use_autoune)
+                paddle.io.reader.set_autotune_config(use_autoune)

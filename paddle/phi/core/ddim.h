@@ -18,8 +18,9 @@
 #include <string>
 #include <vector>
 
-#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/api/ext/exception.h"
 #include "paddle/phi/core/utils/dim.h"
+#include "paddle/utils/test_macros.h"
 
 namespace phi {
 
@@ -29,27 +30,32 @@ namespace phi {
     return (callback);                         \
   }
 
-#define PADDLE_VISIT_DDIM(rank, callback)                                  \
-  switch (rank) {                                                          \
-    PADDLE_VISIT_DDIM_BASE(0, callback);                                   \
-    PADDLE_VISIT_DDIM_BASE(1, callback);                                   \
-    PADDLE_VISIT_DDIM_BASE(2, callback);                                   \
-    PADDLE_VISIT_DDIM_BASE(3, callback);                                   \
-    PADDLE_VISIT_DDIM_BASE(4, callback);                                   \
-    PADDLE_VISIT_DDIM_BASE(5, callback);                                   \
-    PADDLE_VISIT_DDIM_BASE(6, callback);                                   \
-    PADDLE_VISIT_DDIM_BASE(7, callback);                                   \
-    PADDLE_VISIT_DDIM_BASE(8, callback);                                   \
-    PADDLE_VISIT_DDIM_BASE(9, callback);                                   \
-    default:                                                               \
-      PADDLE_THROW(phi::errors::Unimplemented(                             \
-          "Invalid dimension to be accessed. Now only supports access to " \
-          "dimension 0 to 9, but received dimension is %d.",               \
-          rank));                                                          \
+#define PADDLE_VISIT_DDIM(rank, callback)                                    \
+  switch (rank) {                                                            \
+    PADDLE_VISIT_DDIM_BASE(0, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(1, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(2, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(3, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(4, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(5, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(6, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(7, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(8, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(9, callback);                                     \
+    default:                                                                 \
+      PD_THROW(                                                              \
+          "Unimplemented error. Invalid dimension to be accessed. Now only " \
+          "supports access to "                                              \
+          "dimension 0 to 9, but received dimension is ",                    \
+          rank,                                                              \
+          ".");                                                              \
   }
 
 template <typename T1, typename T2>
 inline void dynamic_dim_assign(const T1* in, T2* out, int n) {
+  if (n == -1) {
+    return;
+  }
   PADDLE_VISIT_DDIM(n, (static_dim_assign<kRank, T1, T2>(in, out)));
 }
 
@@ -62,7 +68,7 @@ class DDim {
  public:
   constexpr static int kMaxRank = 9;
 
-  DDim() : rank_(1) { dim_[0] = 0; }
+  DDim() : rank_(-1) { dim_[0] = 0; }
 
   DDim(const DDim& ddim) : dim_() { CopyFrom(ddim); }
 
@@ -175,6 +181,10 @@ class DDim {
   }
 
   inline DDim& CopyFrom(const DDim& ddim) {
+    if (ddim.rank_ == -1) {
+      rank_ = -1;
+      return *this;
+    }
     PADDLE_VISIT_DDIM(ddim.rank_, (*this = ddim.UnsafeCast<kRank>()));
   }
 
@@ -194,9 +204,9 @@ class DDim {
  *
  * \param dims An vector of ints. Must be sized between [1, 9]
  */
-DDim make_ddim(const std::vector<int64_t>& dims);
+TEST_API DDim make_ddim(const std::vector<int64_t>& dims);
 
-DDim make_ddim(const std::vector<int>& dims);
+TEST_API DDim make_ddim(const std::vector<int>& dims);
 
 /**
  * \brief Make a DDim from an initializer list
@@ -204,10 +214,13 @@ DDim make_ddim(const std::vector<int>& dims);
  * \param dims An initializer list of ints. Must be sized between [1, 9]
  *
  */
-DDim make_ddim(std::initializer_list<int64_t> dims);
+TEST_API DDim make_ddim(std::initializer_list<int64_t> dims);
 
 template <typename T = int64_t>
 std::vector<T> vectorize(const DDim& ddim) {
+  if (ddim.size() == -1) {
+    return std::vector<T>({0});
+  }
   std::vector<T> result(DDim::kMaxRank);
   dynamic_dim_assign(ddim.Get(), result.data(), ddim.size());
   result.resize(ddim.size());
@@ -235,7 +248,7 @@ DDim slice_ddim(const DDim& dim, int begin, int end);
 
 int arity(const DDim& ddim);
 
-std::ostream& operator<<(std::ostream&, const DDim&);
+TEST_API std::ostream& operator<<(std::ostream&, const DDim&);
 
 /**
  * \brief Flatten dim to 3d

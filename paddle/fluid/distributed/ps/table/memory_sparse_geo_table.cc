@@ -86,8 +86,8 @@ int32_t MemorySparseGeoTable::PushSparseParam(const uint64_t* keys,
         });
   }
 
-  for (size_t shard_id = 0; shard_id < tasks.size(); ++shard_id) {
-    tasks[shard_id].wait();
+  for (auto& task : tasks) {
+    task.wait();
   }
   return 0;
 }
@@ -134,11 +134,11 @@ int32_t MemorySparseGeoTable::Initialize() {
 
   _dim = _config.common().dims()[0];
   _shards_task_pool.resize(_task_pool_size);
-  for (size_t i = 0; i < _shards_task_pool.size(); ++i) {
-    _shards_task_pool[i].reset(new ::ThreadPool(1));
+  for (auto& shards_task : _shards_task_pool) {
+    shards_task.reset(new ::ThreadPool(1));
   }
 
-  _local_shards.reset(new shard_type[_task_pool_size]);
+  _local_shards.reset(new shard_type[_task_pool_size]);  // NOLINT
   return 0;
 }
 
@@ -160,9 +160,9 @@ int32_t MemorySparseGeoTable::PullSparse(float* pull_values,
         [this, shard_id, &task_keys, pull_values]() -> int {
           auto& local_shard = _local_shards[shard_id];
           auto& keys = task_keys[shard_id];
-          for (size_t i = 0; i < keys.size(); i++) {
-            uint64_t key = keys[i].first;
-            auto offset = keys[i].second;
+          for (auto& item : keys) {
+            uint64_t key = item.first;
+            auto offset = item.second;
             float* select_data = pull_values + _dim * offset;
 
             auto itr = local_shard.find(key);
@@ -185,8 +185,8 @@ int32_t MemorySparseGeoTable::PullSparse(float* pull_values,
         });
   }
 
-  for (size_t shard_id = 0; shard_id < tasks.size(); ++shard_id) {
-    tasks[shard_id].wait();
+  for (auto& task : tasks) {
+    task.wait();
   }
 
   return 0;
@@ -210,9 +210,9 @@ int32_t MemorySparseGeoTable::_PushSparse(const uint64_t* keys,
           auto& local_shard = _local_shards[shard_id];
           auto blas = GetBlas<float>();
 
-          for (size_t i = 0; i < keys.size(); ++i) {
-            uint64_t key = keys[i].first;
-            uint64_t push_data_idx = keys[i].second;
+          for (auto& item : keys) {
+            uint64_t key = item.first;
+            uint64_t push_data_idx = item.second;
             const float* update_data = values + push_data_idx * _dim;
             auto itr = local_shard.find(key);
             if (itr == local_shard.end()) {
@@ -236,8 +236,8 @@ int32_t MemorySparseGeoTable::_PushSparse(const uint64_t* keys,
         });
   }
 
-  for (size_t shard_id = 0; shard_id < tasks.size(); ++shard_id) {
-    tasks[shard_id].wait();
+  for (auto& task : tasks) {
+    task.wait();
   }
   return 0;
 }

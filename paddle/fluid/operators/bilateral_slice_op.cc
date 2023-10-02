@@ -175,7 +175,7 @@ class BilateralSliceGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class BilateralSliceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -196,6 +196,10 @@ REGISTER_OPERATOR(bilateral_slice,
                   ops::BilateralSliceGradMaker<paddle::framework::OpDesc>,
                   ops::BilateralSliceGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(bilateral_slice_grad, ops::BilateralSliceOpGrad);
-REGISTER_OP_CPU_KERNEL(bilateral_slice,
-                       ops::BilateralSliceKernel<float>,
-                       ops::BilateralSliceKernel<double>);
+
+PD_REGISTER_STRUCT_KERNEL(bilateral_slice,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::BilateralSliceKernel,
+                          float,
+                          double) {}

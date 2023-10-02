@@ -64,9 +64,24 @@ void TriuGradKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    tril_grad, XPU, ALL_LAYOUT, phi::TrilGradKernel, int, float) {}
-PD_REGISTER_KERNEL(
-    triu_grad, XPU, ALL_LAYOUT, phi::TriuGradKernel, int, float) {}
-PD_REGISTER_KERNEL(
-    tril_triu_grad, XPU, ALL_LAYOUT, phi::TrilTriuGradKernel, int, float) {}
+PD_REGISTER_KERNEL(tril_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::TrilGradKernel,
+                   int,
+                   float,
+                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(triu_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::TriuGradKernel,
+                   int,
+                   float,
+                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(tril_triu_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::TrilTriuGradKernel,
+                   int,
+                   float,
+                   phi::dtype::float16) {}

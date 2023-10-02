@@ -20,7 +20,7 @@
 namespace phi {
 template <typename T, typename Context>
 void FrameGradKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
+                     const DenseTensor& x UNUSED,
                      const DenseTensor& dout,
                      int frame_length,
                      int hop_length,

@@ -115,11 +115,14 @@ bool TRTInt8Calibrator::getBatch(void** bindings,
   for (int i = 0; i < num_bindings; i++) {
     auto it = data_buffers_.find(names[i]);
     if (it == data_buffers_.end()) {
-      PADDLE_THROW(
-          platform::errors::Fatal("Calibration engine asked for unknown tensor "
-                                  "name '%s' at position %d.",
-                                  names[i],
-                                  i));
+      try {
+        PADDLE_THROW(platform::errors::Fatal(
+            "Calibration engine asked for unknown tensor "
+            "name '%s' at position %d.",
+            names[i],
+            i));
+      } catch (std::exception& e) {
+      }
     }
     bindings[i] = it->second.first;
   }

@@ -63,6 +63,10 @@ void UpdateShapeRangeInfo(
     const std::map<std::string, std::vector<int32_t>>& min_shape,
     const std::map<std::string, std::vector<int32_t>>& max_shape,
     const std::map<std::string, std::vector<int32_t>>& opt_shape,
-    const std::vector<std::string>& names);
+    const std::map<std::string, std::vector<int32_t>>& min_value,
+    const std::map<std::string, std::vector<int32_t>>& max_value,
+    const std::map<std::string, std::vector<int32_t>>& opt_value,
+    const std::vector<std::string>& names,
+    const std::vector<std::string>& tensor_names);
 }  // namespace inference
 }  // namespace paddle

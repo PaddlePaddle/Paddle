@@ -165,6 +165,5 @@ REGISTER_OPERATOR(batch_fc_grad,
                   ops::BatchFCGradOp,
                   ops::BatchFCGradOpNoNeedBufferVarsInferer);
 
-REGISTER_OP_CPU_KERNEL(batch_fc,
-                       ops::BatchFCKernel<phi::CPUContext, float>,
-                       ops::BatchFCKernel<phi::CPUContext, double>);
+PD_REGISTER_STRUCT_KERNEL(
+    batch_fc, CPU, ALL_LAYOUT, ops::BatchFCKernel, float, double) {}

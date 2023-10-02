@@ -20,6 +20,8 @@
 namespace cub = hipcub;
 #endif
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/common/layout.h"
@@ -39,7 +41,7 @@ namespace cub = hipcub;
 #define LAUNCH_BOUNDS(BlockDim)
 #endif
 
-DECLARE_bool(cudnn_batchnorm_spatial_persistent);
+PD_DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 
 namespace phi {
 
@@ -872,6 +874,7 @@ void BatchNormKernel(const Context &ctx,
     } else {
       double this_factor = 1. - momentum;
 #ifdef PADDLE_WITH_HIP
+      this_factor = momentum;
       const int num = transformed_x.numel();
       const int block = 256;
       const int max_threads = ctx.GetMaxPhysicalThreadCount();
@@ -945,6 +948,7 @@ void BatchNormKernel(const Context &ctx,
           ((x_dims.size() == 2 && N >= CUDNN_PER_ACTIVATION_THRESHOLD) ||
            (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD_TRAIN));
       if (use_native_kernel) {
+        double this_factor = momentum;
         dim3 block;
         dim3 grid;
         const int block_size = 512;
@@ -1219,6 +1223,7 @@ PD_REGISTER_KERNEL(batch_norm,
                    ALL_LAYOUT,
                    phi::BatchNormKernel,
                    float,
+                   phi::dtype::bfloat16,
                    phi::dtype::float16) {
   kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
   kernel->InputAt(2).SetDataType(phi::DataType::FLOAT32);
@@ -1228,6 +1233,28 @@ PD_REGISTER_KERNEL(batch_norm,
   kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
+}
+#else
+#if CUDNN_VERSION_MIN(8, 1, 0)
+PD_REGISTER_KERNEL(batch_norm,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::BatchNormKernel,
+                   float,
+                   double,
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
+      kernel_key.dtype() == phi::DataType::BFLOAT16) {
+    kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(2).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(3).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(4).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
+  }
 }
 #else
 PD_REGISTER_KERNEL(batch_norm,
@@ -1248,5 +1275,6 @@ PD_REGISTER_KERNEL(batch_norm,
     kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
   }
 }
+#endif
 
 #endif

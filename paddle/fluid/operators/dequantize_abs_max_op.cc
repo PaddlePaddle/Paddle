@@ -42,7 +42,7 @@ struct DequantizeFunctor<phi::CPUContext, T> {
     const float* scale_factor = scale->data<float>();
     const T* input_data = in->data<T>();
     float* output_data = out->mutable_data<float>(dev_ctx.GetPlace());
-    int ind = in->numel();
+    int ind = static_cast<int>(in->numel());
     for (size_t i = 0; i < (unsigned)ind; i++) {
       output_data[i] = scale_factor[0] * input_data[i] / max_range;
     }
@@ -101,7 +101,6 @@ $$Out = \frac{scale*X}{ max\_range }$$
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = phi::CPUContext;
 
 REGISTER_OPERATOR(
     dequantize_abs_max,
@@ -109,6 +108,10 @@ REGISTER_OPERATOR(
     ops::DequantizeMaxAbsOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(dequantize_abs_max,
-                       ops::DequantizeMaxAbsKernel<CPU, int8_t>,
-                       ops::DequantizeMaxAbsKernel<CPU, int16_t>);
+
+PD_REGISTER_STRUCT_KERNEL(dequantize_abs_max,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::DequantizeMaxAbsKernel,
+                          int8_t,
+                          int16_t) {}

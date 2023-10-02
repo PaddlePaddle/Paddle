@@ -23,4 +23,10 @@ SelectedRows::SelectedRows(const std::vector<int64_t>& rows,
 SelectedRows::SelectedRows()
     : impl_(std::make_shared<phi::SelectedRowsImpl>()) {}
 
+void SelectedRows::set_type(const DataType dtype) { impl_->set_type(dtype); }
+
+void SelectedRows::set_layout(const DataLayout layout) {
+  impl_->set_layout(layout);
+}
+
 }  // namespace phi

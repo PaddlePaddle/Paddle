@@ -475,7 +475,7 @@ inline void vec_add_bias<float, backends::cpu::avx512f>(const int n,
 }
 
 template <typename T, backends::cpu::cpu_isa_t isa = backends::cpu::isa_any>
-inline void vec_identity(const int n, const T* x, T* y) {
+inline void vec_identity(const int n UNUSED, const T* x UNUSED, T* y UNUSED) {
   // do nothing
   return;
 }

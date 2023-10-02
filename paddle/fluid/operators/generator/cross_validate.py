@@ -26,7 +26,7 @@ def main(forward_op_yaml_paths, backward_op_yaml_paths):
         with open(op_yaml_path, "rt", encoding="utf-8") as f:
             op_list = yaml.safe_load(f)
             if op_list is not None:
-                ops.update(to_named_dict((op_list)))
+                ops.update(to_named_dict(op_list))
 
     cross_validate(ops)
 

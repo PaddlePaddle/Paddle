@@ -16,16 +16,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin/roi_align_op_plugin.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -37,7 +27,7 @@ class RoiAlignOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a fluid roi align op to tensorrt plugin";
+    VLOG(3) << "convert a  roi_align op to tensorrt plugin";
 
     framework::OpDesc op_desc(op, nullptr);
     std::string input_name = op_desc.Input("X").front();

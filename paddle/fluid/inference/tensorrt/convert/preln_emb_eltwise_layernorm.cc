@@ -15,15 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin/many_emb_layernorm_varseqlen_plugin.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -33,7 +24,7 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
                   const framework::Scope& scope,
                   bool test_mode) override {
 #if IS_TRT_VERSION_GE(7000)
-    VLOG(4) << "convert fluid PrelnEmbEltwiseLayerNorm op to tensorrt layer";
+    VLOG(4) << "convert PrelnEmbEltwiseLayerNorm op to tensorrt layer";
     // get the presistable var's data
     auto GetWeight = [&](const std::string& var_name,
                          framework::DDim* dim) -> TensorRTEngine::Weight {
@@ -47,8 +38,8 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
     auto pos_id_name = engine_->tensorrt_transformer_posid();
     auto mask_id_name = engine_->tensorrt_transformer_maskid();
     bool flag_prelayernorm = engine_->with_interleaved() &&
-                             engine_->use_varseqlen() && pos_id_name != "" &&
-                             mask_id_name != "";
+                             engine_->use_varseqlen() && !pos_id_name.empty() &&
+                             !mask_id_name.empty();
 
     if (!flag_prelayernorm) {
       PADDLE_THROW(platform::errors::Fatal(

@@ -31,7 +31,6 @@ void ExpandAs(const Context& context,
   auto vec_in_dims = phi::vectorize<int>(in_dims);
   auto diff = target_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
-
   for (size_t i = 0; i < vec_in_dims.size(); ++i) {
     PADDLE_ENFORCE_NE(target_shape[i],
                       0,
@@ -49,6 +48,19 @@ void ExpandAs(const Context& context,
               target_shape[i]));
     }
   }
+  if (target_shape.size() == 0) {
+    phi::DDim out_dims = phi::make_ddim(target_shape);
+    out->Resize(out_dims);
+    context.template Alloc<T>(out);
+
+    int r = xpu::copy<XPUType>(context.x_context(),
+                               reinterpret_cast<const XPUType*>(x.data<T>()),
+                               reinterpret_cast<XPUType*>(out->data<T>()),
+                               x.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+    return;
+  }
+
   phi::DDim out_dims = phi::make_ddim(target_shape);
   out->Resize(out_dims);
   context.template Alloc<T>(out);
@@ -95,7 +107,7 @@ void ExpandAsKernel(const Context& ctx,
                         rank));
   PADDLE_ENFORCE_GE(
       rank,
-      1,
+      0,
       phi::errors::InvalidArgument("The rank (%d) of the input 'x' for "
                                    "expand_as_v2 op must be positive.",
                                    rank));

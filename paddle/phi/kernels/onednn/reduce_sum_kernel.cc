@@ -23,7 +23,7 @@ void SumRawKernel(const Context& dev_ctx,
                   const IntArray& dims,
                   bool keep_dim,
                   bool reduce_all,
-                  DataType out_dtype,
+                  DataType out_dtype UNUSED,
                   DenseTensor* out) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   ReduceKernel<T, Context>(dev_ctx,

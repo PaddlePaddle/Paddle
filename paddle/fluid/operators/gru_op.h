@@ -36,7 +36,7 @@ inline void ReorderInitState(const DeviceContext& ctx,
   row_shuffle(ctx, src, index_lod, dst, indexed_src);
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class GRUGradKernel : public framework::OpKernel<T> {
  public:
   void BatchCompute(const framework::ExecutionContext& context) const {

@@ -13,8 +13,6 @@
 # limitations under the License.
 
 
-from paddle.jit.dy2static.static_analysis import AstNodeWrapper
-
 from .base_transformer import BaseTransformer
 
 __all__ = []
@@ -26,12 +24,8 @@ class TypeHintTransformer(BaseTransformer):
     Please put it behind other transformers because other transformer may relay on typehints.
     """
 
-    def __init__(self, wrapper_root):
-        assert isinstance(
-            wrapper_root, AstNodeWrapper
-        ), "Input non-AstNodeWrapper node for the initialization of TypeHintTransformer."
-        self.wrapper_root = wrapper_root
-        self.root = wrapper_root.node
+    def __init__(self, root):
+        self.root = root
 
     def transform(self):
         self.visit(self.root)

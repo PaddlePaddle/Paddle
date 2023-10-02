@@ -36,4 +36,76 @@ void BilinearInterpGradKernel(
     int align_mode,
     DenseTensor* x_grad);
 
+template <typename T, typename Context>
+void LinearInterpGradKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const paddle::optional<DenseTensor>& out_size,
+    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
+    const paddle::optional<DenseTensor>& scale_tensor,
+    const DenseTensor& out_grad,
+    const std::string& data_layout,
+    int out_d,
+    int out_h,
+    int out_w,
+    const std::vector<float>& scale,
+    const std::string& interp_method,
+    bool align_corners,
+    int align_mode,
+    DenseTensor* x_grad);
+
+template <typename T, typename Context>
+void TrilinearInterpGradKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const paddle::optional<DenseTensor>& out_size,
+    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
+    const paddle::optional<DenseTensor>& scale_tensor,
+    const DenseTensor& out_grad,
+    const std::string& data_layout,
+    int out_d,
+    int out_h,
+    int out_w,
+    const std::vector<float>& scale,
+    const std::string& interp_method,
+    bool align_corners,
+    int align_mode,
+    DenseTensor* x_grad);
+
+template <typename T, typename Context>
+void NearestInterpGradKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const paddle::optional<DenseTensor>& out_size,
+    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
+    const paddle::optional<DenseTensor>& scale_tensor,
+    const DenseTensor& out_grad,
+    const std::string& data_layout,
+    int out_d,
+    int out_h,
+    int out_w,
+    const std::vector<float>& scale,
+    const std::string& interp_method,
+    bool align_corners,
+    int align_mode,
+    DenseTensor* x_grad);
+
+template <typename T, typename Context>
+void BicubicInterpGradKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const paddle::optional<DenseTensor>& out_size,
+    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
+    const paddle::optional<DenseTensor>& scale_tensor,
+    const DenseTensor& out_grad,
+    const std::string& data_layout,
+    int out_d,
+    int out_h,
+    int out_w,
+    const std::vector<float>& scale,
+    const std::string& interp_method,
+    bool align_corners,
+    int align_mode,
+    DenseTensor* x_grad);
+
 }  // namespace phi

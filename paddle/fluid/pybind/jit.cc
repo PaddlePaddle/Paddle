@@ -13,15 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/pybind/jit.h"
-
+#include "glog/logging.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/layer.h"
-#include "paddle/fluid/platform/place.h"
-
 #include "paddle/fluid/jit/function.h"
 #include "paddle/fluid/jit/function_schema.h"
 #include "paddle/fluid/jit/layer.h"
 #include "paddle/fluid/jit/serializer.h"
+#include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/pybind/eval_frame.h"
+#include "paddle/utils/pybind.h"
 
 namespace py = pybind11;
 
@@ -56,6 +57,19 @@ void BindJit(pybind11::module *m) {
          [](const std::string &path, const platform::CUDAPlace &cuda_place) {
            return paddle::jit::Load(path, cuda_place);
          });
+}
+
+void BindEvalFrame(pybind11::module *m) {
+  PyInit__eval_frame();
+  m->def(
+      "set_eval_frame",
+      [](const py::object &py_func) {
+        VLOG(5) << "start call set_eval_frame_py.";
+        auto ret = set_eval_frame_py(py_func.ptr());
+        auto obj = py::reinterpret_borrow<py::object>(ret);
+        return obj;
+      },
+      py::arg("callback"));
 }
 
 }  // namespace pybind

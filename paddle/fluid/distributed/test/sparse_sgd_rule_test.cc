@@ -41,19 +41,19 @@ TEST(sparse_value_naive_sgd_test, init_and_update) {
   float grad[kItemSize];
   rule.InitValue(w, w + 9, true);
 
-  for (auto i = 0u; i < kItemSize; ++i) {
-    ASSERT_FLOAT_EQ(w[i], 0);
+  for (float item : w) {
+    ASSERT_FLOAT_EQ(item, 0);
   }
 
   // check init_value for random
   rule.InitValue(w, w + 9, false);
-  for (auto i = 0u; i < kItemSize; ++i) {
-    ASSERT_TRUE(w[i] >= rule.MinBound() && w[i] <= rule.MaxBound());
+  for (float item : w) {
+    ASSERT_TRUE(item >= rule.MinBound() && item <= rule.MaxBound());
   }
 
   // check update_value for one field
-  for (auto i = 0u; i < kItemSize; ++i) {
-    w[i] = 0;
+  for (auto& item : w) {
+    item = 0;
   }
   for (auto i = 0u; i < kItemSize; ++i) {
     grad[i] = (i + 1) * 1.0;

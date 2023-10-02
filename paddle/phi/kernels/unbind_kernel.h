@@ -28,4 +28,9 @@ void UnbindKernel(const Context& ctx,
                   int axis,
                   std::vector<DenseTensor*> outs);
 
+template <typename Context>
+void UnbindStridedKernel(const Context& ctx,
+                         const DenseTensor& x,
+                         int axis,
+                         std::vector<DenseTensor*> outs);
 }  // namespace phi

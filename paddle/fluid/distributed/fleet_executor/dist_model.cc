@@ -103,9 +103,26 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
     PADDLE_THROW(paddle::platform::errors::Fatal(
         "Paddle wasn't compiled with XPU, but place is XPU."));
 #endif
+  } else if (platform::is_custom_place(place)) {
+    VLOG(3) << "Loading data for CustomDevice: " << place;
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto *dev_ctx = dynamic_cast<const phi::CustomContext *>(pool.Get(place));
+    auto custom_place = place;
+    memory::Copy(custom_place,
+                 static_cast<void *>(input_tensor_ptr),
+                 platform::CPUPlace(),
+                 input_data.data.data(),
+                 input_data.data.length(),
+                 dev_ctx->stream());
+#else
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "Paddle wasn't compiled with custom_device, but place is "
+        "CustomPlace."));
+#endif
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "DistModel only supports CPU and GPU and XPU."));
+        "DistModel only supports CPU and GPU and XPU and CustomDevice."));
   }
 
   framework::LoD dst_lod;
@@ -204,6 +221,9 @@ bool DistModel::PreparePlace() {
     place_ = paddle::platform::CPUPlace();
   } else if (config_.place == "XPU") {
     place_ = paddle::platform::XPUPlace(config_.device_id);
+  } else if (config_.place == "CUSTOM_DEVICE") {
+    place_ =
+        paddle::platform::CustomPlace(config_.device_type, config_.device_id);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place must be choosen from GPU or CPU or XPU, but got %s.",
@@ -222,7 +242,8 @@ bool DistModel::CommInit() {
   std::string var_name_base = "comm_init_";
   for (int64_t ring_id : ring_ids) {
     VLOG(3) << "Init comm for ring id: " << ring_id;
-    int64_t ranks_in_group = config_.ring_id_to_ranks_[ring_id].size();
+    int64_t ranks_in_group =
+        static_cast<int64_t>(config_.ring_id_to_ranks_[ring_id].size());
     int64_t rank_in_group = 0;
     std::vector<int64_t> &ranks = config_.ring_id_to_ranks_[ring_id];
     for (int64_t rank : ranks) {
@@ -239,11 +260,11 @@ bool DistModel::CommInit() {
       peer_endpoints.emplace_back(config_.trainer_endpoints[rank]);
     }
     InsertCommOp(var_name_base + std::to_string(order),
-                 ranks_in_group,
-                 rank_in_group,
+                 static_cast<int>(ranks_in_group),
+                 static_cast<int>(rank_in_group),
                  peer_endpoints,
                  comm_init_block,
-                 ring_id);
+                 static_cast<int>(ring_id));
     order += 1;
   }
   framework::NaiveExecutor e(place_);
@@ -278,6 +299,10 @@ void DistModel::InsertCommOp(std::string tmp_var_name,
     ss << ep << ", ";
   }
   VLOG(3) << ss.str();
+  std::string endpoints_str = config_.current_endpoint;
+  for (const auto &peer : peer_endpoints) {
+    endpoints_str += "," + peer;
+  }
   if (config_.place == "GPU") {
     framework::VarDesc *new_var = block->Var(tmp_var_name);
     new_var->SetType(framework::proto::VarType::RAW);
@@ -298,6 +323,7 @@ void DistModel::InsertCommOp(std::string tmp_var_name,
     comm_init_op->SetAttr("rank", rank);
     comm_init_op->SetAttr("nranks", nranks);
     comm_init_op->SetAttr("ring_id", ring_id);
+    comm_init_op->SetAttr("endpoints", endpoints_str);
     comm_init_op->SetAttr("op_role",
                           static_cast<int>(framework::OpRole::kForward));
     comm_init_op->CheckAttrs();
@@ -321,6 +347,31 @@ void DistModel::InsertCommOp(std::string tmp_var_name,
     comm_init_op->SetAttr("rank", rank);
     comm_init_op->SetAttr("nranks", nranks);
     comm_init_op->SetAttr("ring_id", ring_id);
+    comm_init_op->SetAttr("endpoints", endpoints_str);
+    comm_init_op->SetAttr("op_role",
+                          static_cast<int>(framework::OpRole::kForward));
+    comm_init_op->CheckAttrs();
+  } else if (config_.place == "CUSTOM_DEVICE") {
+    framework::VarDesc *new_var = block->Var(tmp_var_name);
+    new_var->SetType(framework::proto::VarType::RAW);
+    new_var->SetPersistable(true);
+    framework::OpDesc *gen_bkcl_id_op = block->AppendOp();
+    gen_bkcl_id_op->SetType("c_gen_xccl_id");
+    gen_bkcl_id_op->SetOutput("Out", {tmp_var_name});
+    gen_bkcl_id_op->SetAttr("rank", rank);
+    gen_bkcl_id_op->SetAttr("endpoint", config_.current_endpoint);
+    gen_bkcl_id_op->SetAttr("other_endpoints", peer_endpoints);
+    gen_bkcl_id_op->SetAttr("ring_id", ring_id);
+    gen_bkcl_id_op->SetAttr("op_role",
+                            static_cast<int>(framework::OpRole::kForward));
+    gen_bkcl_id_op->CheckAttrs();
+    framework::OpDesc *comm_init_op = block->AppendOp();
+    comm_init_op->SetType("c_comm_init");
+    comm_init_op->SetInput("X", {tmp_var_name});
+    comm_init_op->SetAttr("rank", rank);
+    comm_init_op->SetAttr("nranks", nranks);
+    comm_init_op->SetAttr("ring_id", ring_id);
+    comm_init_op->SetAttr("endpoints", endpoints_str);
     comm_init_op->SetAttr("op_role",
                           static_cast<int>(framework::OpRole::kForward));
     comm_init_op->CheckAttrs();
@@ -331,7 +382,7 @@ void DistModel::InsertCommOp(std::string tmp_var_name,
 }
 
 bool DistModel::PrepareScope() {
-  scope_.reset(new framework::Scope());
+  scope_ = std::make_unique<framework::Scope>();
   return true;
 }
 
@@ -365,11 +416,11 @@ bool DistModel::LoadProgram() {
   fin.seekg(0, std::ios::end);
   pb_content.resize(fin.tellg());
   fin.seekg(0, std::ios::beg);
-  fin.read(&(pb_content.at(0)), pb_content.size());
+  fin.read(&(pb_content.at(0)), pb_content.size());  // NOLINT
   fin.close();
   program_proto.ParseFromString(pb_content);
   VLOG(5) << pb_content;
-  program_.reset(new framework::ProgramDesc(program_proto));
+  program_ = std::make_unique<framework::ProgramDesc>(program_proto);
   return true;
 }
 
@@ -426,7 +477,7 @@ bool DistModel::LoadParameters() {
 }
 
 bool DistModel::PrepareFleetExe() {
-  task_node_.reset(new TaskNode(program_.get(), config_.local_rank));
+  task_node_ = std::make_unique<TaskNode>(program_.get(), config_.local_rank);
   // With auto cut, there is no concept of pp, no need to add dependency.
   task_node_->SetType("Compute");
   task_node_->Init();
@@ -444,7 +495,7 @@ bool DistModel::PrepareFleetExe() {
     }
     id_to_rank.insert({i, i});
   }
-  fleet_exe.reset(new FleetExecutor(executor_desc_));
+  fleet_exe = std::make_unique<FleetExecutor>(executor_desc_);
   fleet_exe->Init(carrier_id_,
                   *(program_.get()),
                   scope_.get(),
@@ -498,11 +549,11 @@ bool DistModel::PrepareFeedAndFetch() {
     }
   }
 
-  if (feeds_.size() == 0) {
+  if (feeds_.empty()) {
     LOG(ERROR) << "No feed ops in the inf program, please check the program.";
     return false;
   }
-  if (fetches_.size() == 0) {
+  if (fetches_.empty()) {
     LOG(ERROR) << "No fetch op in the inf program, please check the program.";
     return false;
   }
@@ -539,7 +590,7 @@ bool DistModel::FeedData(const std::vector<DistModelTensor> &input_data,
                  << DistModelDTypeToString(input_data[i].dtype) << ".";
       return false;
     }
-    int feed_idx = feed_names_[target_name];
+    int feed_idx = static_cast<int>(feed_names_[target_name]);
     framework::SetFeedVariable(scope, *input_tensor, "feed", feed_idx);
   }
   return true;

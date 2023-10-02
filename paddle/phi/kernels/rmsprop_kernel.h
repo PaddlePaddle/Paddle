@@ -27,14 +27,17 @@ void RmspropDenseKernel(const Context& dev_ctx,
                         const DenseTensor& moment,
                         const DenseTensor& learning_rate,
                         const paddle::optional<DenseTensor>& mean_grad,
+                        const paddle::optional<DenseTensor>& master_param,
                         float epsilon,
                         float decay,
                         float momentum,
                         bool centered,
+                        bool multi_precision,
                         DenseTensor* param_out,
                         DenseTensor* moment_out,
                         DenseTensor* mean_square_out,
-                        DenseTensor* mean_grad_out);
+                        DenseTensor* mean_grad_out,
+                        DenseTensor* master_param_outs);
 
 template <typename T, typename Context>
 void RmspropSparseKernel(const Context& dev_ctx,
@@ -44,13 +47,16 @@ void RmspropSparseKernel(const Context& dev_ctx,
                          const DenseTensor& moment,
                          const DenseTensor& learning_rate,
                          const paddle::optional<DenseTensor>& mean_grad,
+                         const paddle::optional<DenseTensor>& master_param,
                          float epsilon,
                          float decay,
                          float momentum,
                          bool centered,
+                         bool multi_precision,
                          DenseTensor* param_out,
                          DenseTensor* moment_out,
                          DenseTensor* mean_square_out,
-                         DenseTensor* mean_grad_out);
+                         DenseTensor* mean_grad_out,
+                         DenseTensor* master_param_outs);
 
 }  // namespace phi

@@ -20,10 +20,10 @@
 namespace phi {
 template <typename T, typename Context>
 void TriuIndicesKernel(const Context& dev_ctx,
-                       int row,
+                       int row UNUSED,
                        int col,
                        int offset,
-                       DataType dtype,
+                       DataType dtype UNUSED,
                        DenseTensor* out) {
   T* out_data = dev_ctx.template Alloc<T>(out);
   const auto& out_dims = out->dims();

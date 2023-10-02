@@ -16,12 +16,12 @@
 
 #include <vector>
 
-#include "paddle/fluid/operators/math/sequence_padding.h"
 #include "paddle/phi/backends/dynload/warpctc.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/sequence_padding.h"
 #include "paddle/phi/kernels/funcs/sequence_scale.h"
 #include "paddle/utils/optional.h"
 
@@ -29,11 +29,11 @@ namespace phi {
 
 template <typename T, typename Context>
 void WarpctcGradKernel(const Context& dev_ctx,
-                       const DenseTensor& logits,
+                       const DenseTensor& logits UNUSED,
                        const paddle::optional<DenseTensor>& logits_length,
                        const DenseTensor& warpctcgrad,
                        const DenseTensor& loss_grad,
-                       int blank,
+                       int blank UNUSED,
                        bool norm_by_times,
                        DenseTensor* logits_grad) {
   dev_ctx.template Alloc<T>(logits_grad);
@@ -69,14 +69,14 @@ void WarpctcGradKernel(const Context& dev_ctx,
       logits_grad_e.device(*place) = logits_g;
     }
   } else {
-    paddle::operators::math::UnpaddingLoDTensorFunctor<Context, T>()(
+    phi::funcs::UnpaddingLoDTensorFunctor<Context, T>()(
         dev_ctx,
         warpctcgrad,
         logits_grad,
         -1,
         0,
         norm_by_times,
-        paddle::operators::math::kLengthBatchWidth);
+        phi::funcs::kLengthBatchWidth);
 
     const T* loss_grad_data = loss_grad.data<T>();
     phi::funcs::ScaleLoDTensorFunctor<Context, T>()(

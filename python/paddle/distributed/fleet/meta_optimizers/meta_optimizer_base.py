@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.optimizer import Optimizer
+from paddle.optimizer import Optimizer
 
 __all__ = []
 
@@ -53,16 +53,12 @@ class MetaOptimizerBase(Optimizer):
 
     def _disable_strategy(self, dist_strategy):
         raise NotImplementedError(
-            "you should implement disable strategy in {}".format(
-                type(self).__name__
-            )
+            f"you should implement disable strategy in {type(self).__name__}"
         )
 
     def _enable_strategy(self, dist_strategy, context=None):
         raise NotImplementedError(
-            "you should implement enable strategy in {}".format(
-                type(self).__name__
-            )
+            f"you should implement enable strategy in {type(self).__name__}"
         )
 
     def apply_gradients(self, params_grads):
@@ -81,7 +77,7 @@ class MetaOptimizerBase(Optimizer):
         )
 
     def apply_optimize(self, loss, startup_program, params_grads):
-        return self.inner_opt.apply_optimize(
+        return self.inner_opt._apply_optimize(
             loss, startup_program=startup_program, params_grads=params_grads
         )
 

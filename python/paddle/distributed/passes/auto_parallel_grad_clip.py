@@ -18,20 +18,22 @@ import numpy as np
 
 import paddle
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-from paddle.fluid.executor import _is_enable_standalone_executor
 
-from ..auto_parallel.dist_attribute import OperatorDistAttr, TensorDistAttr
-from ..auto_parallel.operators.common import (
+from ..auto_parallel.process_mesh import ProcessMesh
+from ..auto_parallel.static.dist_attribute import (
+    OperatorDistAttr,
+    TensorDistAttr,
+)
+from ..auto_parallel.static.operators.common import (
     SyncMode,
     is_data_parallel_reduce_op,
 )
-from ..auto_parallel.process_group import (
+from ..auto_parallel.static.process_group import (
     get_all_process_groups,
     get_world_process_group,
 )
-from ..auto_parallel.process_mesh import ProcessMesh
-from ..auto_parallel.reshard import Resharder
-from ..auto_parallel.utils import (
+from ..auto_parallel.static.reshard import Resharder
+from ..auto_parallel.static.utils import (
     _get_comm_group,
     insert_dependencies_for_vars,
     is_gradient_clip_op,
@@ -76,8 +78,8 @@ def _get_dpmp_topology(origin_topology, sharding_group):
         sharding_axis = 0
         dp_sharding_topology = dp_sharding_topology[1:]
 
-    product_dp_sharding = reduce(lambda x, y: x * y, dp_sharding_topology)
-    product_topology = reduce(lambda x, y: x * y, origin_topology)
+    product_dp_sharding = reduce(lambda x, y: x * y, dp_sharding_topology, 1)
+    product_topology = reduce(lambda x, y: x * y, origin_topology, 1)
 
     if product_topology == product_dp_sharding:
         dpmp_topology = dp_sharding_topology
@@ -222,7 +224,7 @@ class ClipHelper:
             in_var = self.block.vars[in_name]
             in_dist_attr = TensorDistAttr()
             in_dist_attr.process_mesh = ProcessMesh(self.world_ranks)
-            in_dist_attr.dims_mapping = [-1]
+            in_dist_attr.dims_mapping = [-1 for i in in_var.shape]
             self.dist_context.set_tensor_dist_attr_for_program(
                 in_var, in_dist_attr
             )
@@ -231,7 +233,7 @@ class ClipHelper:
             out_var = self.block.vars[out_name]
             out_dist_attr = TensorDistAttr()
             out_dist_attr.process_mesh = ProcessMesh(self.world_ranks)
-            out_dist_attr.dims_mapping = [-1]
+            out_dist_attr.dims_mapping = [-1 for i in out_var.shape]
             self.dist_context.set_tensor_dist_attr_for_program(
                 out_var, out_dist_attr
             )
@@ -254,6 +256,8 @@ class ClipHelper:
                 "c_allreduce_sum",
             ] and not is_data_parallel_reduce_op(op):
                 return False
+            if op.type in ["send_v2", "recv_v2"]:
+                return False
 
         return True
 
@@ -273,12 +277,10 @@ class ClipHelper:
             for param in params:
                 rank = sizes.index(min(sizes))
                 mapping[rank].append(param.name)
-                numel = reduce(lambda x, y: x * y, param.shape)
+                numel = reduce(lambda x, y: x * y, param.shape, 1)
                 assert (
                     numel > 0
-                ), "param [{}] should larger than 0, but it is [{}]".format(
-                    param.name, numel
-                )
+                ), f"param [{param.name}] should larger than 0, but it is [{numel}]"
                 sizes[rank] += numel
         return mapping
 
@@ -323,7 +325,6 @@ class ClipGradByGloblNormPass(PassBase):
         self._remove_no_need_ops_vars(block)
 
     def _remove_no_need_ops_vars(self, block):
-
         removed_op_out_type = [
             'squared_l2_norm',
             'square',
@@ -454,15 +455,11 @@ class ClipGradByGloblNormPass(PassBase):
                     )
                     # TODO better regular the usage of op namescope
                     allreduce_op._set_attr(
-                        'op_namescope', str('/') + SyncMode.GlobalNormSync
+                        'op_namescope', '/' + SyncMode.GlobalNormSync
                     )
                     self.clip_helper._init_dist_attr(allreduce_op)
 
-                    if (
-                        _is_enable_standalone_executor()
-                        and insert_leaf_fill_constant_node
-                    ):
-
+                    if insert_leaf_fill_constant_node:
                         # NOTE add naive deps for global norm sync in graph exe
                         j = idx - 1
                         prior_op = None

@@ -14,7 +14,7 @@
 
 import numpy as np
 
-from ...fluid.framework import IrGraph
+from ...base.framework import IrGraph
 from ...framework import _get_paddle_place
 
 
@@ -43,19 +43,19 @@ class QuantInt8MkldnnPass:
 
 
         Examples:
-        .. code-block:: python
-            # The original graph will be rewrite.
-            import paddle.static as static
-            from paddle.static.quantization \
-                import QuantInt8MkldnnPass
-            from paddle.fluid.framework import IrGraph
-            from paddle.framework import core
+            .. code-block:: python
 
-            graph = IrGraph(core.Graph(static.Program().desc), for_test=False)
-            place = static.CPUPlace()
-            mkldnn_pass = QuantInt8MkldnnPass(static.global_scope(),
-            place)
-            mkldnn_pass.apply(graph)
+                >>> # The original graph will be rewrite.
+                >>> import paddle
+                >>> from paddle import static
+                >>> from paddle.static.quantization import QuantInt8MkldnnPass
+                >>> from paddle.framework import IrGraph
+                >>> from paddle.framework import core
+
+                >>> graph = IrGraph(core.Graph(static.Program().desc), for_test=False)
+                >>> place = paddle.CPUPlace()
+                >>> mkldnn_pass = QuantInt8MkldnnPass(static.global_scope(), place)
+                >>> mkldnn_pass.apply(graph)
         """
 
         self._scope = _scope
@@ -280,11 +280,10 @@ class QuantInt8MkldnnPass:
                 all_used_vars.add(output_node)
 
         all_used_vars = {n.node for n in all_used_vars}
-        all_unused_vars = {
-            n
-            for n in filter(
+        all_unused_vars = set(
+            filter(
                 lambda node: node.node not in all_used_vars,
                 graph.all_var_nodes(),
             )
-        }
+        )
         graph.safe_remove_nodes(all_unused_vars)

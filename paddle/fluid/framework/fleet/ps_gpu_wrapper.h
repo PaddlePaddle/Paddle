@@ -66,7 +66,9 @@ limitations under the License. */
 #include "downpour_accessor.h"  // NOLINT
 #endif
 #include "paddle/fluid/framework/fleet/heter_ps/log_patch.h"
-DECLARE_int32(gpugraph_storage_mode);
+#include "paddle/phi/core/flags.h"
+
+PHI_DECLARE_int32(gpugraph_storage_mode);
 
 namespace paddle {
 namespace framework {
@@ -439,24 +441,6 @@ class PSGPUWrapper {
     google::protobuf::TextFormat::ParseFromString(dist_desc, &ps_param);
     auto sparse_table =
         ps_param.server_param().downpour_server_param().downpour_table_param(0);
-    // set build thread_num and shard_num
-    thread_keys_thread_num_ = sparse_table.shard_num();
-    thread_keys_shard_num_ = sparse_table.shard_num();
-    VLOG(1) << "ps_gpu build phase thread_num:" << thread_keys_thread_num_
-            << " shard_num:" << thread_keys_shard_num_;
-
-    pull_thread_pool_.resize(thread_keys_shard_num_);
-    for (size_t i = 0; i < pull_thread_pool_.size(); i++) {
-      pull_thread_pool_[i].reset(new ::ThreadPool(1));
-    }
-    hbm_thread_pool_.resize(device_num_);
-    for (size_t i = 0; i < hbm_thread_pool_.size(); i++) {
-      hbm_thread_pool_[i].reset(new ::ThreadPool(1));
-    }
-    cpu_work_pool_.resize(device_num_);
-    for (size_t i = 0; i < cpu_work_pool_.size(); i++) {
-      cpu_work_pool_[i].reset(new ::ThreadPool(cpu_device_thread_num_));
-    }
 
     auto sparse_table_accessor = sparse_table.accessor();
     auto sparse_table_accessor_parameter =
@@ -480,6 +464,7 @@ class PSGPUWrapper {
       add_sparse_optimizer(
           config, sparse_table_accessor.embedx_sgd_param(), "mf_");
     }
+    config["sparse_shard_num"] = sparse_table.shard_num();
 
     fleet_config_ = config;
     GlobalAccessorFactory::GetInstance().Init(accessor_class_);
@@ -660,6 +645,28 @@ class PSGPUWrapper {
 #endif
 
   void InitializeGPUServer(std::unordered_map<std::string, float> config) {
+    // set build thread_num and shard_num
+    int sparse_shard_num = (config.find("sparse_shard_num") == config.end())
+                               ? 37
+                               : config["sparse_shard_num"];
+    thread_keys_thread_num_ = sparse_shard_num;
+    thread_keys_shard_num_ = sparse_shard_num;
+    VLOG(1) << "ps_gpu build phase thread_num:" << thread_keys_thread_num_
+            << " shard_num:" << thread_keys_shard_num_;
+
+    pull_thread_pool_.resize(thread_keys_shard_num_);
+    for (size_t i = 0; i < pull_thread_pool_.size(); i++) {
+      pull_thread_pool_[i].reset(new ::ThreadPool(1));
+    }
+    hbm_thread_pool_.resize(device_num_);
+    for (size_t i = 0; i < hbm_thread_pool_.size(); i++) {
+      hbm_thread_pool_[i].reset(new ::ThreadPool(1));
+    }
+    cpu_work_pool_.resize(device_num_);
+    for (size_t i = 0; i < cpu_work_pool_.size(); i++) {
+      cpu_work_pool_[i].reset(new ::ThreadPool(cpu_device_thread_num_));
+    }
+
     float nonclk_coeff = (config.find("nonclk_coeff") == config.end())
                              ? 1.0
                              : config["nonclk_coeff"];

@@ -14,13 +14,15 @@
 
 #include "paddle/phi/kernels/index_add_kernel.h"
 
+#include "glog/logging.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
+#include "paddle/utils/flags.h"
 
-DECLARE_bool(cudnn_deterministic);
+PD_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 
@@ -121,5 +123,6 @@ PD_REGISTER_KERNEL(index_add,
                    float,
                    double,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int,
                    int64_t) {}

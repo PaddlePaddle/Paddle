@@ -37,12 +37,10 @@ Backend TransToPhiBackend(const phi::Place& place) {
       return Backend::GPU;
     case AllocationType::XPU:
       return Backend::XPU;
-    case AllocationType::NPU:
-      return Backend::NPU;
     case AllocationType::IPU:
       return Backend::IPU;
-    case AllocationType::MLU:
-      return Backend::MLU;
+    case AllocationType::UNDEFINED:
+      return Backend::UNDEFINED;
     case AllocationType::CUSTOM:
       return static_cast<Backend>(
           static_cast<size_t>(Backend::NUM_BACKENDS) +
@@ -61,13 +59,15 @@ phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
   switch (backend) {
     case phi::Backend::CPU:
       return phi::CPUPlace();
+    case phi::Backend::UNDEFINED:
+      return phi::Place();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     case phi::Backend::GPU:
       return phi::GPUPlace(
           set_device_id ? phi::backends::gpu::GetCurrentDeviceId() : 0);
 #endif
-#ifdef PADDLE_WITH_MKLDNN
-    case phi::Backend::ONEDNN:
+#ifdef PADDLE_WITH_DNNL
+    case phi::Backend::ONEDNN:  // NOLINT
       return phi::CPUPlace();
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -99,6 +99,8 @@ phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
         return phi::CustomPlace(
             device_type,
             set_device_id ? phi::DeviceManager::GetDevice(device_type) : 0);
+      } else if (backend == Backend::CUSTOM) {
+        return phi::CustomPlace();
       }
 #endif
       PADDLE_THROW(phi::errors::Unimplemented(
@@ -122,9 +124,8 @@ const std::string& TransToFluidOpName(const std::string& phi_kernel_name) {
   return phi_kernel_name;
 }
 
-#ifdef PADDLE_WITH_MKLDNN
-dnnl::memory::data_type TransToOneDNNDataType(
-    const paddle::experimental::DataType& dtype) {
+#ifdef PADDLE_WITH_DNNL
+dnnl::memory::data_type TransToOneDNNDataType(const phi::DataType& dtype) {
   switch (dtype) {
     case DataType::FLOAT32:
       return dnnl::memory::data_type::f32;

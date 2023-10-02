@@ -16,17 +16,14 @@ import os
 import warnings
 
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid import core
+from paddle.framework import core
 from paddle.static import (
     CompiledProgram,
     Executor,
-    ParallelExecutor,
     Program,
     Variable,
     default_main_program,
     default_startup_program,
-    save_inference_model,
 )
 
 from ..base.private_helper_function import wait_server_ready
@@ -51,7 +48,7 @@ class ParameterServerRuntime(RuntimeBase):
     def _get_distributed_strategy(self):
         strategy = None
 
-        from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
+        from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
             StrategyFactory,
         )
 
@@ -73,7 +70,7 @@ class ParameterServerRuntime(RuntimeBase):
         return strategy
 
     def build_compiled_startegy(self):
-        from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
+        from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
             CompileTimeStrategy,
         )
 
@@ -102,7 +99,7 @@ class ParameterServerRuntime(RuntimeBase):
         if main_program is None:
             main_program = self.origin_main_program
 
-        from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
+        from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
             _get_varname_parts,
         )
 
@@ -110,14 +107,11 @@ class ParameterServerRuntime(RuntimeBase):
             assert isinstance(each_var, Variable)
 
             origin_varname, _, _ = _get_varname_parts(each_var.name)
-
-            new_var = fluid.io._clone_var_in_block_(load_block, each_var)
+            new_var = paddle.static.io._clone_var_in_block(load_block, each_var)
             var_path = os.path.join(dirname, origin_varname)
             if not os.path.exists(var_path):
                 raise ValueError(
-                    "SelectedRows var {} can not find at {}".format(
-                        new_var.name, var_path
-                    )
+                    f"SelectedRows var {new_var.name} can not find at {var_path}"
                 )
 
             if os.path.isfile(var_path):
@@ -138,7 +132,7 @@ class ParameterServerRuntime(RuntimeBase):
 
     def _load_distributed_params(self, dirname, varnames):
         from paddle.distributed.communicator import LargeScaleKV
-        from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
+        from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
             _get_varname_parts,
         )
 
@@ -154,7 +148,7 @@ class ParameterServerRuntime(RuntimeBase):
             if var.name in exclude_var_names:
                 return False
 
-            from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
+            from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
                 _get_varname_parts,
             )
 
@@ -185,7 +179,7 @@ class ParameterServerRuntime(RuntimeBase):
             return kwargs
 
         def geo_strategy_envs():
-            from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
+            from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
                 get_sparse_tablenames,
             )
 
@@ -239,11 +233,11 @@ class ParameterServerRuntime(RuntimeBase):
             kwargs["sparse_attrs"] = get_sparse_attrs()
             return kwargs
 
-        from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
+        from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
             GeoStrategy,
             SyncStrategy,
         )
-        from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
+        from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
             _get_lr_ops,
             _has_global_step,
         )
@@ -313,9 +307,7 @@ class ParameterServerRuntime(RuntimeBase):
             )
             if heter_worker_device_guard not in ["GPU", "XPU", "CPU"]:
                 raise ValueError(
-                    "Heter Worker Not Support Device {}".format(
-                        heter_worker_device_guard
-                    )
+                    f"Heter Worker Not Support Device {heter_worker_device_guard}"
                 )
             if self.role_maker._is_heter_worker():
                 if heter_worker_device_guard == "GPU":
@@ -475,7 +467,7 @@ class ParameterServerRuntime(RuntimeBase):
         return reshaped_names, origin_names
 
     def _get_optimizer_op(self, param_name):
-        from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
+        from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
             _get_optimize_ops,
         )
 
@@ -575,9 +567,7 @@ class ParameterServerRuntime(RuntimeBase):
                 slice_varnames = []
                 remote_varnames = []
                 for i in range(len(var_ctx.split_varnames())):
-                    slice_varnames.append(
-                        "{}.block{}".format(reshaped_varname, i)
-                    )
+                    slice_varnames.append(f"{reshaped_varname}.block{i}")
                     remote_varnames.append(reshaped_varname)
 
                 block.append_op(
@@ -699,11 +689,6 @@ class ParameterServerRuntime(RuntimeBase):
         single file, use `filename` to specify the file name.
         """
 
-        if isinstance(executor, ParallelExecutor):
-            raise TypeError(
-                "in fleet.save_persistables() function, executor must be as Executor type, ParallelExecutor is not allowed"
-            )
-
         if not isinstance(executor, Executor):
             raise TypeError(
                 "in fleet.save_persistables() function, executor must be as Executor type"
@@ -725,20 +710,16 @@ class ParameterServerRuntime(RuntimeBase):
         self,
         executor,
         dirname,
-        feeded_var_names,
+        feeded_vars,
         target_vars,
         main_program=None,
         export_for_deployment=True,
+        legacy_format=False,
     ):
         """
         Prune the given `main_program` to build a new program especially for inference,
         and then save it and all related parameters to given `dirname` by the `executor`.
         """
-
-        if isinstance(executor, ParallelExecutor):
-            raise TypeError(
-                "in fleet.save_inference_model() function, executor must be as Executor type, ParallelExecutor is not allowed"
-            )
 
         if not isinstance(executor, Executor):
             raise TypeError(
@@ -750,27 +731,22 @@ class ParameterServerRuntime(RuntimeBase):
                 raise TypeError(
                     "in fleet.save_inference_model() function, main_program must be as Program type, CompiledProgram is not allowed"
                 )
-            save_inference_model(
+            paddle.static.io.save_inference_model(
                 dirname,
-                feeded_var_names,
+                feeded_vars,
                 target_vars,
                 executor,
-                main_program,
-                None,
-                None,
-                export_for_deployment,
+                program=main_program,
+                legacy_format=legacy_format,
             )
         else:
-            save_inference_model(
+            paddle.static.save_inference_model(
                 dirname,
-                feeded_var_names,
+                feeded_vars,
                 target_vars,
                 executor,
-                self.origin_main_program,
-                None,
-                None,
-                export_for_deployment,
-                True,
+                program=self.origin_main_program,
+                legacy_format=legacy_format,
             )
 
             model_basename = "__model__"

@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/index_calculator.h"
@@ -36,9 +37,18 @@ __global__ void Cross(const T* x,
     auto pos1 = offset + 1 * stride;
     auto pos2 = offset + 2 * stride;
 
-    out[pos0] = x[pos1] * y[pos2] - x[pos2] * y[pos1];
-    out[pos1] = x[pos2] * y[pos0] - x[pos0] * y[pos2];
-    out[pos2] = x[pos0] * y[pos1] - x[pos1] * y[pos0];
+    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+    MPType x_pos0_mp = static_cast<MPType>(x[pos0]);
+    MPType x_pos1_mp = static_cast<MPType>(x[pos1]);
+    MPType x_pos2_mp = static_cast<MPType>(x[pos2]);
+    MPType y_pos0_mp = static_cast<MPType>(y[pos0]);
+    MPType y_pos1_mp = static_cast<MPType>(y[pos1]);
+    MPType y_pos2_mp = static_cast<MPType>(y[pos2]);
+
+    out[pos0] = static_cast<T>(x_pos1_mp * y_pos2_mp - x_pos2_mp * y_pos1_mp);
+    out[pos1] = static_cast<T>(x_pos2_mp * y_pos0_mp - x_pos0_mp * y_pos2_mp);
+    out[pos2] = static_cast<T>(x_pos0_mp * y_pos1_mp - x_pos1_mp * y_pos0_mp);
   }
 }
 
@@ -153,5 +163,13 @@ void CrossKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    cross, GPU, ALL_LAYOUT, phi::CrossKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(cross,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::CrossKernel,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}

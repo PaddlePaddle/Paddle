@@ -304,75 +304,110 @@ int TrtEmbeddingEltwiseLayerNormFusePass::BuildFusion(
     }
   }
 
-  for (size_t num = 0; num < fusion_ids.size(); ++num) {
-    int i = fusion_ids[num].first;
-    int k = fusion_ids[num].second.first;
-    std::vector<size_t> js = fusion_ids[num].second.second;
+  for (auto& fusion_id : fusion_ids) {
+    int i = fusion_id.first;
+    int k = fusion_id.second.first;
+    std::vector<size_t> js = fusion_id.second.second;
 
     std::vector<std::string> ids;
     std::vector<std::string> embs;
-    for (size_t iter = 0; iter < start_pattern_in_nodes[i].size(); ++iter) {
-      ids.push_back(start_pattern_in_nodes[i][iter].first->Name());
-      embs.push_back(start_pattern_in_nodes[i][iter].second->Name());
+
+    auto ids0_shape = start_pattern_in_nodes[i][0].first->Var()->GetShape();
+    bool flag = true;
+    for (auto& item : start_pattern_in_nodes[i]) {
+      auto ids_shape = item.first->Var()->GetShape();
+      if (ids_shape.size() != ids0_shape.size()) {
+        VLOG(3) << "Shape check failed, ids'rank are not all equal, stop "
+                   "trt_embedding_eltwise_layernorm_fuse_pass.";
+        flag = false;
+      } else {
+        for (size_t j = 0; j < ids_shape.size(); ++j) {
+          if (ids_shape[j] != ids0_shape[j]) {
+            VLOG(3)
+                << "Shape check failed, ids.shape[i] are not all equal, stop "
+                   "trt_embedding_eltwise_layernorm_fuse_pass.";
+            flag = false;
+          }
+        }
+      }
+      ids.push_back(item.first->Name());
+      embs.push_back(item.second->Name());
     }
-    for (size_t iter = 0; iter < js.size(); ++iter) {
-      ids.push_back(inner_pattern_ins[js[iter]].first->Name());
-      embs.push_back(inner_pattern_ins[js[iter]].second->Name());
+    for (auto item : js) {
+      auto ids_shape = inner_pattern_ins[item].first->Var()->GetShape();
+      if (ids_shape.size() != ids0_shape.size()) {
+        VLOG(3) << "Shape check failed, ids'rank are not all equal, stop "
+                   "trt_embedding_eltwise_layernorm_fuse_pass.";
+        flag = false;
+      } else {
+        for (size_t j = 0; j < ids_shape.size(); ++j) {
+          if (ids_shape[j] != ids0_shape[j]) {
+            VLOG(3)
+                << "Shape check failed, ids.shape[i] are not all equal, stop "
+                   "trt_embedding_eltwise_layernorm_fuse_pass.";
+            flag = false;
+          }
+        }
+      }
+      ids.push_back(inner_pattern_ins[item].first->Name());
+      embs.push_back(inner_pattern_ins[item].second->Name());
     }
 
-    OpDesc new_op_desc(end_patter_layernorms[0]->Op()->Block());
-    new_op_desc.SetType("fused_embedding_eltwise_layernorm");
-    new_op_desc.SetInput("Ids", ids);
-    new_op_desc.SetInput("Embs", embs);
-    if (use_varseqlen && pos_id != "" && mask_id != "") {
-      new_op_desc.SetInput("PosId", {pos_id});
-      new_op_desc.SetInput("MaskId", {mask_id});
-    }
-    new_op_desc.SetInput("Bias", {end_pattern_biases[k]->Name()});
-    new_op_desc.SetInput("Scale", {end_pattern_scales[k]->Name()});
-    new_op_desc.SetOutput("Out", {end_pattern_out[k]->Name()});
-    new_op_desc.SetAttr("epsilon",
-                        end_patter_layernorms[k]->Op()->GetAttr("epsilon"));
+    if (flag) {
+      OpDesc new_op_desc(end_patter_layernorms[0]->Op()->Block());
+      new_op_desc.SetType("fused_embedding_eltwise_layernorm");
+      new_op_desc.SetInput("Ids", ids);
+      new_op_desc.SetInput("Embs", embs);
+      if (use_varseqlen && !pos_id.empty() && !mask_id.empty()) {
+        new_op_desc.SetInput("PosId", {pos_id});
+        new_op_desc.SetInput("MaskId", {mask_id});
+      }
+      new_op_desc.SetInput("Bias", {end_pattern_biases[k]->Name()});
+      new_op_desc.SetInput("Scale", {end_pattern_scales[k]->Name()});
+      new_op_desc.SetOutput("Out", {end_pattern_out[k]->Name()});
+      new_op_desc.SetAttr("epsilon",
+                          end_patter_layernorms[k]->Op()->GetAttr("epsilon"));
 
-    if (end_patter_layernorms[k]->Op()->HasAttr("out_threshold")) {
-      new_op_desc.SetAttr("enable_int8", true);
-      new_op_desc.SetAttr(
-          "out_threshold",
-          end_patter_layernorms[k]->Op()->GetAttr("out_threshold"));
-    }
+      if (end_patter_layernorms[k]->Op()->HasAttr("out_threshold")) {
+        new_op_desc.SetAttr("enable_int8", true);
+        new_op_desc.SetAttr(
+            "out_threshold",
+            end_patter_layernorms[k]->Op()->GetAttr("out_threshold"));
+      }
 
-    auto* embedding_eltwise_layernorm = graph->CreateOpNode(&new_op_desc);
+      auto* embedding_eltwise_layernorm = graph->CreateOpNode(&new_op_desc);
 
-    for (size_t iter = 0; iter < start_pattern_in_nodes[i].size(); ++iter) {
-      IR_NODE_LINK_TO(start_pattern_in_nodes[i][iter].first,
-                      embedding_eltwise_layernorm);
-      IR_NODE_LINK_TO(start_pattern_in_nodes[i][iter].second,
-                      embedding_eltwise_layernorm);
-    }
-    for (size_t iter = 0; iter < js.size(); ++iter) {
-      IR_NODE_LINK_TO(inner_pattern_ins[js[iter]].first,
-                      embedding_eltwise_layernorm);
-      IR_NODE_LINK_TO(inner_pattern_ins[js[iter]].second,
-                      embedding_eltwise_layernorm);
-    }
-    IR_NODE_LINK_TO(end_pattern_biases[k], embedding_eltwise_layernorm);
-    IR_NODE_LINK_TO(end_pattern_scales[k], embedding_eltwise_layernorm);
-    IR_NODE_LINK_TO(embedding_eltwise_layernorm, end_pattern_out[k]);
+      for (auto& item : start_pattern_in_nodes[i]) {
+        IR_NODE_LINK_TO(item.first, embedding_eltwise_layernorm);
+        IR_NODE_LINK_TO(item.second, embedding_eltwise_layernorm);
+      }
+      for (auto item : js) {
+        IR_NODE_LINK_TO(inner_pattern_ins[item].first,
+                        embedding_eltwise_layernorm);
+        IR_NODE_LINK_TO(inner_pattern_ins[item].second,
+                        embedding_eltwise_layernorm);
+      }
+      IR_NODE_LINK_TO(end_pattern_biases[k], embedding_eltwise_layernorm);
+      IR_NODE_LINK_TO(end_pattern_scales[k], embedding_eltwise_layernorm);
+      IR_NODE_LINK_TO(embedding_eltwise_layernorm, end_pattern_out[k]);
 
-    // Remove unneeded nodes.
-    std::unordered_set<const Node*> marked_nodes;
-    marked_nodes.insert(start_pattern_remove_nodes[i].begin(),
-                        start_pattern_remove_nodes[i].end());
-    marked_nodes.insert(end_pattern_remove_nodes[k].begin(),
-                        end_pattern_remove_nodes[k].end());
-    for (size_t iter = 0; iter < js.size(); ++iter) {
-      marked_nodes.insert(inner_pattern_remove_nodes[js[iter]].begin(),
-                          inner_pattern_remove_nodes[js[iter]].end());
+      // Remove unneeded nodes.
+      std::unordered_set<const Node*> marked_nodes;
+      marked_nodes.insert(start_pattern_remove_nodes[i].begin(),
+                          start_pattern_remove_nodes[i].end());
+      marked_nodes.insert(end_pattern_remove_nodes[k].begin(),
+                          end_pattern_remove_nodes[k].end());
+      for (auto item : js) {
+        marked_nodes.insert(inner_pattern_remove_nodes[item].begin(),
+                            inner_pattern_remove_nodes[item].end());
+      }
+      GraphSafeRemoveNodes(graph, marked_nodes);
+      ++fusion_count;
+    } else {
+      VLOG(3) << "Shape check failed, stop "
+                 "trt_embedding_eltwise_layernorm_fuse_pass.";
     }
-    GraphSafeRemoveNodes(graph, marked_nodes);
-    ++fusion_count;
   }
-
   return fusion_count;
 }
 
@@ -434,8 +469,8 @@ void TrtEmbeddingEltwiseLayerNormFusePass::ApplyImpl(Graph* graph) const {
     std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
     std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
 
-    if ((use_varseqlen && pos_id != "" && mask_id != "") ||
-        (!use_varseqlen && pos_id == "")) {
+    if ((use_varseqlen && !pos_id.empty() && !mask_id.empty()) ||
+        (!use_varseqlen && pos_id.empty())) {
       VLOG(3) << "start trt_embedding_eltwise_layernorm_fuse_pass";
     } else {
       PADDLE_THROW(

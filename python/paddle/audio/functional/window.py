@@ -13,13 +13,15 @@
 import math
 from typing import List, Tuple, Union
 
+import numpy as np
+
 import paddle
 from paddle import Tensor
 
 
 class WindowFunctionRegister:
     def __init__(self):
-        self._functions_dict = dict()
+        self._functions_dict = {}
 
     def register(self, func=None):
         def add_subfunction(func):
@@ -38,7 +40,12 @@ window_function_register = WindowFunctionRegister()
 
 @window_function_register.register()
 def _cat(x: List[Tensor], data_type: str) -> Tensor:
-    l = [paddle.to_tensor(_, data_type) for _ in x]
+    l = []
+    for t in x:
+        if np.isscalar(t) and not isinstance(t, str):
+            l.append(paddle.to_tensor([t], data_type))
+        else:
+            l.append(paddle.to_tensor(t, data_type))
     return paddle.concat(l)
 
 
@@ -345,13 +352,13 @@ def get_window(
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            n_fft = 512
-            cosine_window = paddle.audio.functional.get_window('cosine', n_fft)
+            >>> n_fft = 512
+            >>> cosine_window = paddle.audio.functional.get_window('cosine', n_fft)
 
-            std = 7
-            gaussian_window = paddle.audio.functional.get_window(('gaussian',std), n_fft)
+            >>> std = 7
+            >>> gaussian_window = paddle.audio.functional.get_window(('gaussian',std), n_fft)
     """
     sym = not fftbins
 

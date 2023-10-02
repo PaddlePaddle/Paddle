@@ -17,7 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class GRUKernel : public framework::OpKernel<T> {
  public:
   void BatchCompute(const framework::ExecutionContext& context) const {
@@ -109,7 +109,7 @@ class GRUKernel : public framework::OpKernel<T> {
       gru_value.output_value = hidden_t.data<T>();
       gru_value.gate_value = gate_t.data<T>();
       gru_value.reset_output_value = reset_hidden_prev_t.data<T>();
-      phi::funcs::GRUUnitFunctor<DeviceContext, T>::compute(dev_ctx,
+      phi::funcs::GRUUnitFunctor<DeviceContext, T>::compute(dev_ctx,  // NOLINT
                                                             gru_value,
                                                             frame_size,
                                                             cur_batch_size,
@@ -133,9 +133,8 @@ class GRUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(gru,
-                        ops::GRUKernel<phi::GPUContext, float>,
-                        ops::GRUKernel<phi::GPUContext, double>);
-REGISTER_OP_CUDA_KERNEL(gru_grad,
-                        ops::GRUGradKernel<phi::GPUContext, float>,
-                        ops::GRUGradKernel<phi::GPUContext, double>);
+
+PD_REGISTER_STRUCT_KERNEL(gru, GPU, ALL_LAYOUT, ops::GRUKernel, float, double) {
+}
+PD_REGISTER_STRUCT_KERNEL(
+    gru_grad, GPU, ALL_LAYOUT, ops::GRUGradKernel, float, double) {}

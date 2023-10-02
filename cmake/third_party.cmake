@@ -29,7 +29,21 @@ set(third_party_deps)
 
 include(ProcessorCount)
 ProcessorCount(NPROC)
+if(NOT WITH_SETUP_INSTALL)
+  #NOTE(risemeup1):Initialize any submodules.
+  message(
+    STATUS
+      "Check submodules of paddle, and run 'git submodule update --init --recursive'"
+  )
+  execute_process(
+    COMMAND git submodule update --init --recursive
+    WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
+    RESULT_VARIABLE result_var)
+  if(NOT result_var EQUAL 0)
+    message(FATAL_ERROR "Failed to get submodule, please check your network !")
+  endif()
 
+endif()
 # cache funciton to avoid repeat download code of third_party.
 # This function has 4 parameters, URL / REPOSITOR / TAG / DIR:
 # 1. URL:           specify download url of 3rd party
@@ -245,10 +259,48 @@ if(${CMAKE_VERSION} VERSION_GREATER "3.5.2")
   )# adds --depth=1 arg to git clone of External_Projects
 endif()
 
-########################### include third_party according to flags ###############################
 include(external/zlib) # download, build, install zlib
 include(external/gflags) # download, build, install gflags
 include(external/glog) # download, build, install glog
+
+########################### include third_party according to flags ###############################
+if(WITH_CINN)
+  if(WITH_MKL)
+    add_definitions(-DCINN_WITH_MKL_CBLAS)
+  endif()
+  if(WITH_MKLDNN)
+    add_definitions(-DCINN_WITH_DNNL)
+  endif()
+  include(cmake/cinn/version.cmake)
+  if(NOT EXISTS ${CMAKE_BINARY_DIR}/cmake/cinn/config.cmake)
+    file(COPY ${PROJECT_SOURCE_DIR}/cmake/cinn/config.cmake
+         DESTINATION ${CMAKE_BINARY_DIR}/cmake/cinn)
+  endif()
+  include(${CMAKE_BINARY_DIR}/cmake/cinn/config.cmake)
+  include(cmake/cinn/external/absl.cmake)
+  include(cmake/cinn/external/llvm.cmake)
+  include(cmake/cinn/external/isl.cmake)
+  include(cmake/cinn/external/ginac.cmake)
+  include(cmake/cinn/external/openmp.cmake)
+  include(cmake/cinn/external/jitify.cmake)
+endif()
+
+# cinn_only includes third-party libraries separately
+if(CINN_ONLY)
+  include(external/gtest)
+  include(external/protobuf)
+  if(WITH_PYTHON)
+    include(external/pybind11)
+  endif()
+  if(WITH_MKL)
+    include(external/mklml)
+  endif()
+  if(WITH_MKLDNN)
+    include(external/mkldnn)
+  endif()
+  return()
+endif()
+
 include(external/eigen) # download eigen3
 include(external/threadpool) # download threadpool
 include(external/dlpack) # download dlpack
@@ -301,9 +353,9 @@ if(TARGET extern_protobuf)
   list(APPEND third_party_deps extern_protobuf)
 endif()
 
-if(WITH_PYTHON)
+if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
   include(external/python) # find python and python_module
-  include(external/pybind11) # download pybind11
+  include(external/pybind11) # prepare submodule pybind11
   list(APPEND third_party_deps extern_pybind)
 endif()
 
@@ -331,34 +383,27 @@ if(WITH_GPU)
     ${URL} "externalError" MD5 a712a49384e77ca216ad866712f7cafa
   )# download file externalErrorMsg.tar.gz
   if(WITH_TESTING)
-    # copy externalErrorMsg.pb, just for unittest can get error message correctly.
+    # copy externalErrorMsg.pb for UnitTest
     set(SRC_DIR ${THIRD_PARTY_PATH}/externalError/data)
-    if(WIN32 AND (NOT "${CMAKE_GENERATOR}" STREQUAL "Ninja"))
-      set(DST_DIR1
-          ${CMAKE_BINARY_DIR}/paddle/fluid/third_party/externalError/data)
-    else()
-      set(DST_DIR1 ${CMAKE_BINARY_DIR}/paddle/third_party/externalError/data)
-    endif()
-    set(DST_DIR2
+    # for python UT 'test_exception.py'
+    set(DST_DIR1
         ${CMAKE_BINARY_DIR}/python/paddle/include/third_party/externalError/data
     )
+    # for C++ UT 'enforce_test'
+    set(DST_DIR2 ${CMAKE_BINARY_DIR}/paddle/third_party/externalError/data)
     add_custom_command(
       TARGET download_externalError
       POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E copy_directory ${SRC_DIR} ${DST_DIR1}
       COMMAND ${CMAKE_COMMAND} -E copy_directory ${SRC_DIR} ${DST_DIR2}
-      COMMENT "copy_directory from ${SRC_DIR} to ${DST_DIR}")
+      COMMENT "copy_directory from ${SRC_DIR} to ${DST_DIR1}"
+      COMMENT "copy_directory from ${SRC_DIR} to ${DST_DIR2}")
   endif()
 endif()
 
 if(WITH_XPU)
   include(external/xpu) # download, build, install xpu
   list(APPEND third_party_deps extern_xpu)
-endif()
-
-if(WITH_MLU)
-  include(external/concurrentqueue) # download, build, install concurrentqueue
-  list(APPEND third_party_deps extern_concurrentqueue)
 endif()
 
 if(WITH_PSLIB)
@@ -392,16 +437,6 @@ endif()
 if(WITH_BOX_PS)
   include(external/box_ps)
   list(APPEND third_party_deps extern_box_ps)
-endif()
-
-if(WITH_ASCEND OR WITH_ASCEND_CL)
-  include(external/ascend)
-  if(WITH_ASCEND OR WITH_ASCEND_CL)
-    list(APPEND third_party_deps extern_ascend)
-  endif()
-  if(WITH_ASCEND_CL)
-    list(APPEND third_party_deps extern_ascend_cl)
-  endif()
 endif()
 
 if(WITH_PSCORE)
@@ -456,7 +491,7 @@ if(WITH_DISTRIBUTE
 endif()
 
 if(WITH_XBYAK)
-  include(external/xbyak) # download, build, install xbyak
+  include(external/xbyak) # prepare submodule xbyak
   list(APPEND third_party_deps extern_xbyak)
 endif()
 
@@ -477,20 +512,6 @@ if(WITH_LITE)
   include(external/lite)
 endif()
 
-if(WITH_CINN)
-  message(STATUS "Compile Paddle with CINN.")
-  include(external/cinn)
-  add_definitions(-DPADDLE_WITH_CINN)
-  if(WITH_GPU)
-    add_definitions(-DCINN_WITH_CUDA)
-    add_definitions(-DCINN_WITH_CUDNN)
-  endif()
-  if(WITH_MKL)
-    add_definitions(-DCINN_WITH_MKL_CBLAS)
-    add_definitions(-DCINN_WITH_MKLDNN)
-  endif()
-endif()
-
 if(WITH_CRYPTO)
   include(external/cryptopp) # download, build, install cryptopp
   list(APPEND third_party_deps extern_cryptopp)
@@ -506,11 +527,6 @@ endif()
 if(WIN32)
   include(external/dirent)
   list(APPEND third_party_deps extern_dirent)
-endif()
-
-if(WITH_INFRT)
-  include(external/llvm)
-  list(APPEND third_party_deps ${llvm_libs})
 endif()
 
 if(WITH_IPU)
@@ -531,6 +547,16 @@ if(WITH_GPU
     include(external/cutlass) # download, build, install cusparselt
     list(APPEND third_party_deps extern_cutlass)
     set(WITH_CUTLASS ON)
+  endif()
+  if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.4)
+    foreach(arch ${NVCC_ARCH_BIN})
+      if(${arch} GREATER_EQUAL 80)
+        include(external/flashattn)
+        list(APPEND third_party_deps extern_flashattn)
+        set(WITH_FLASHATTN ON)
+        break()
+      endif()
+    endforeach()
   endif()
 endif()
 

@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import astor
 
 from paddle.utils import gast
 
 from . import utils
 from .base_transformer import BaseTransformer
-from .static_analysis import AstNodeWrapper
 
 __all__ = []
 
@@ -28,13 +28,8 @@ class BasicApiTransformer(BaseTransformer):
     Class to transform basic API from dygraph to static graph.
     """
 
-    def __init__(self, wrapper_root):
-        assert isinstance(
-            wrapper_root, AstNodeWrapper
-        ), "Input non-AstNodeWrapper node for the initialization of BasicApiTransformer."
-
-        self.wrapper_root = wrapper_root
-        self.root = wrapper_root.node
+    def __init__(self, root):
+        self.root = root
         self.class_node_dict = {}
 
     def transform(self):
@@ -43,8 +38,7 @@ class BasicApiTransformer(BaseTransformer):
         attribute_transformer = AttributeJstTransformer(self.root)
         attribute_transformer.transform()
         self.visit(self.root)
-
-        return self.wrapper_root
+        return self.root
 
     def visit_Assign(self, node):
         if self._update_class_node_dict(node):
@@ -127,6 +121,59 @@ class ToTensorTransformer(BaseTransformer):
         return node
 
 
+class NameloadJstTransformer(BaseTransformer):
+    """
+    change name and attribute load to __jst.Ld(name) pattern.
+    for example:
+        a.dtype -->  __jst.Ld(__jst.Ld(a).dtype)
+
+    In paddle science and deepxde, we have to support changing tensor into variable
+    in arbitrary occasion such as global tensor.
+
+    NOTE: we only deal with ctx=Load() case.
+    """
+
+    def __init__(self, root):
+        self.root = root
+
+    def transform(self):
+        self.visit(self.root)
+        return self.root
+
+    def _surround_with_ld(self, node):
+        node = (
+            gast.parse(f"_jst.Ld({utils.ast_to_source_code(node).strip()})")
+            .body[0]
+            .value
+        )
+        return node
+
+    def visit_Call(self, node):
+        """
+        Can't convert name of function call, bacause this will affect CallTransformer.
+        """
+        node.args = [self.visit(arg) for arg in node.args]
+        node.func = self.visit(node.func)
+        return node
+
+    def visit_Attribute(self, node):
+        assert isinstance(node, gast.Attribute)
+        assert isinstance(node.attr, str)
+        if utils.ast_to_source_code(node).startswith("_jst."):  # skip _jst.xxx
+            return node
+        self.generic_visit(node)
+        if isinstance(node.ctx, gast.Load):
+            node = self._surround_with_ld(node)
+        return node
+
+    def visit_Name(self, node):
+        assert isinstance(node, gast.Name)
+        self.generic_visit(node)
+        if isinstance(node.ctx, gast.Load):
+            node = self._surround_with_ld(node)
+        return node
+
+
 class AttributeJstTransformer(BaseTransformer):
     """
     change some special attribute into __jst.XXX(obj, "attr_name") format.
@@ -141,11 +188,9 @@ class AttributeJstTransformer(BaseTransformer):
         assert isinstance(
             node, gast.AST
         ), "Input non-gast.AST node for the initialization of ToTensorTransformer."
-        self.interested_name = set(
-            [
-                'size',
-            ]
-        )
+        self.interested_name = {
+            'size',
+        }
         self.root = node
 
     def transform(self):
@@ -163,9 +208,7 @@ class AttributeJstTransformer(BaseTransformer):
             value = node.value
             node = (
                 gast.parse(
-                    "_jst.Attr({}, \"{}\")".format(
-                        utils.ast_to_source_code(value).strip(), attr
-                    )
+                    f"_jst.Attr({utils.ast_to_source_code(value).strip()}, \"{attr}\")"
                 )
                 .body[0]
                 .value
@@ -185,7 +228,7 @@ def is_to_variable(node):
 
 
 def to_assign_node(node):
-    # Transform dygraph api `fluid.dygraph.to_variable` alias `paddle.to_tensor` to static api `paddle.assign`.
+    # Transform dygraph api `base.dygraph.to_variable` alias `paddle.to_tensor` to static api `paddle.assign`.
     # NOTE:
     #   1. Api `to_variable` supports data type {float16, float32, float64, int16, int32, int64, uint8, uint16},
     #   but api `assign` only supports {float32, float64, int32, int64, bool};

@@ -168,14 +168,14 @@ void DownpourWorkerOpt::Initialize(const TrainerDesc& desc) {
     uint64_t dest_table = copy_table_config_.dest_sparse_tables(i);
     VLOG(3) << "copy_sparse_tables_ push back " << src_table << "->"
             << dest_table;
-    copy_sparse_tables_.push_back(std::make_pair(src_table, dest_table));
+    copy_sparse_tables_.emplace_back(src_table, dest_table);
   }
   for (int i = 0; i < copy_table_config_.src_dense_tables_size(); ++i) {
     uint64_t src_table = copy_table_config_.src_dense_tables(i);
     uint64_t dest_table = copy_table_config_.dest_dense_tables(i);
     VLOG(3) << "copy_dense_tables_ push back " << src_table << "->"
             << dest_table;
-    copy_dense_tables_.push_back(std::make_pair(src_table, dest_table));
+    copy_dense_tables_.emplace_back(src_table, dest_table);
   }
   for (auto& m : copy_table_config_.table_denpendency_map()) {
     if (sparse_key_names_.find(m.key()) != sparse_key_names_.end()) {
@@ -197,7 +197,7 @@ void DownpourWorkerOpt::CreateThreadOperatorsWithRerank(
   auto& block = program.Block(0);
   std::vector<OpDesc*> ops = block.AllOps();
   // check if Independent between losses if not skip for now
-  int loss_num = loss_names_.size();
+  int loss_num = static_cast<int>(loss_names_.size());
   std::unordered_map<std::string, std::unordered_set<std::string>>
       loss_input_map;
   std::unordered_map<std::string, std::unordered_set<std::string>>
@@ -236,8 +236,7 @@ void DownpourWorkerOpt::CreateThreadOperatorsWithRerank(
   }
 
   for (int i = 0; i < loss_num; i++) {
-    for (auto op_iter = ops.begin(); op_iter != ops.end(); ++op_iter) {
-      auto& op_desc = *op_iter;
+    for (auto& op_desc : ops) {
       if (HasOutput(*op_desc, loss_grad_names[i]) ||
           HasDependentInput(*op_desc, loss_output_grad_map[loss_names_[i]])) {
         AppendInputVar(*op_desc, &loss_input_grad_map[loss_names_[i]]);
@@ -247,8 +246,7 @@ void DownpourWorkerOpt::CreateThreadOperatorsWithRerank(
   }
 
   for (int i = 0; i < loss_num; i++) {
-    for (auto op_iter = ops.begin(); op_iter != ops.end(); ++op_iter) {
-      auto& op_desc = *op_iter;
+    for (auto& op_desc : ops) {
       if ((HasDependentInput(*op_desc, loss_output_map[loss_names_[i]]) &&
            OnlyHasDependentInput(*op_desc, loss_output_map[loss_names_[i]]) &&
            NotHasDependentOutput(*op_desc, loss_input_map[loss_names_[i]])) ||
@@ -280,8 +278,7 @@ void DownpourWorkerOpt::CreateThreadOperatorsWithRerank(
   loss_ops_.resize(loss_num);
   std::string async_wait_flag = "async_wait_flag";
   for (int i = 0; i < loss_num; i++) {
-    for (auto op_iter = ops.begin(); op_iter != ops.end(); ++op_iter) {
-      auto& op_desc = *op_iter;
+    for (auto& op_desc : ops) {
       if ((op_desc->Type() == "fill_constant" &&
            HasDependentOutput(*op_desc,
                               loss_output_grad_map[loss_names_[i]])) ||
@@ -329,8 +326,8 @@ void DownpourWorkerOpt::TrainFiles() {
   while ((cur_batch = device_reader_->Next()) > 0) {
     if (copy_table_config_.need_copy()) {
       if (copy_table_config_.sparse_copy_by_feasign()) {
-        for (size_t i = 0; i < copy_sparse_tables_.size(); ++i) {
-          uint64_t tid = copy_sparse_tables_[i].first;
+        for (auto& copy_sparse_table : copy_sparse_tables_) {
+          uint64_t tid = copy_sparse_table.first;
           feasign_set_[tid].insert(sparse_push_keys_[tid].begin(),
                                    sparse_push_keys_[tid].end());
         }
@@ -396,8 +393,8 @@ void DownpourWorkerOpt::TrainFiles() {
       int op_idx = 0;
       for (auto& op : loss_ops_[loss_idx]) {
         bool need_skip = false;
-        for (auto t = 0u; t < skip_ops_.size(); ++t) {
-          if (op->Type().find(skip_ops_[t]) != std::string::npos) {
+        for (auto& skip_op : skip_ops_) {
+          if (op->Type().find(skip_op) != std::string::npos) {
             need_skip = true;
             break;
           }

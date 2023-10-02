@@ -35,7 +35,7 @@ namespace jit {
 using Variable = paddle::framework::Variable;
 using VariableMap = std::unordered_map<std::string, std::shared_ptr<Variable>>;
 using DenseTensor = phi::DenseTensor;
-using Tensor = paddle::experimental::Tensor;
+using Tensor = paddle::Tensor;
 
 namespace utils {
 

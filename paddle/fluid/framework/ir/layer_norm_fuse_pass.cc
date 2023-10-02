@@ -306,7 +306,8 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
     }
 
     int begin_norm_axis = mean_dim.front();
-    if (begin_norm_axis < 0) begin_norm_axis += x_shape.size();
+    if (begin_norm_axis < 0)
+      begin_norm_axis += static_cast<int>(x_shape.size());
     const auto& gamma_shape = gamma->Var()->GetShape();
     const auto& beta_shape = beta->Var()->GetShape();
 
@@ -372,7 +373,7 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
 
     // ------------------ op creation and placement ---------------------------
 
-    OpDesc ln_op_desc;
+    OpDesc ln_op_desc(x_mean->Op()->Block());
     ln_op_desc.SetType("layer_norm");
     ln_op_desc.SetInput("X", {x->Name()});
     ln_op_desc.SetInput("Scale", {new_gamma_node->Name()});
@@ -403,12 +404,10 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
                           x_mean_out,
                           x_sub_mean,
                           x_sub_mean_out,
-                          sqr_pow,
                           x_sub_mean_sqr,
                           x_sub_mean_sqr_out,
                           std_dev,
                           std_dev_out,
-                          eps,
                           std_dev_eps,
                           std_dev_eps_out,
                           std_dev_eps_sqrt,
@@ -417,9 +416,7 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
                           division_out,
                           scale,
                           scale_out,
-                          shift,
-                          gamma,
-                          beta});
+                          shift});
     found_layer_norm_count++;
   };
 

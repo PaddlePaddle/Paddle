@@ -23,7 +23,7 @@ class SkipMergeLayernormOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(4) << "convert a fluid skip_merge_layernorm op to tensorrt "
+    VLOG(4) << "convert a skip_merge_layernorm op to tensorrt "
                "skip_merge_layernorm "
                "plugin";
     framework::OpDesc op_desc(op, nullptr);

@@ -15,6 +15,9 @@ limitations under the License. */
 
 #pragma once
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_XPU_KP)
+
 #include <array>
 #include <functional>
 #include <mutex>
@@ -35,7 +38,7 @@ class DnnWorkspaceHandle {
  public:
   inline DnnWorkspaceHandle(Allocator* allocator, gpuStream_t stream)
       : allocator_(allocator), stream_(stream) {
-    mtx_.reset(new std::mutex());
+    mtx_ = std::make_unique<std::mutex>();
   }
 
   inline void RunFunc(const std::function<void(void*)>& cudnn_func,
@@ -278,3 +281,32 @@ using KPSContext = GPUContext;
 #endif
 
 }  // namespace phi
+
+namespace Eigen {
+struct DefaultDevice;
+}  // namespace Eigen
+
+namespace phi {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+// Currently, GPUPinnedContext is only used to data copying.
+class GPUPinnedContext
+    : public DeviceContext,
+      public phi::TypeInfoTraits<DeviceContext, GPUPinnedContext> {
+ public:
+  GPUPinnedContext();
+  explicit GPUPinnedContext(GPUPinnedPlace place);
+
+  const Place& GetPlace() const override;
+
+  Eigen::DefaultDevice* eigen_device() const;
+
+  static const char* name() { return "GPUPinnedContext"; }
+
+ private:
+  GPUPinnedPlace place_;
+  std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
+};
+#endif
+}  // namespace phi
+
+#endif

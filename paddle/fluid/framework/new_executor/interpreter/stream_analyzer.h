@@ -28,54 +28,152 @@ namespace interpreter {
 
 enum DownstreamRunType { kDirectRun, kEventRun };
 
+class ContextManager {
+ public:
+  using DeviceContextMap =
+      std::map<Place,
+               std::shared_future<std::unique_ptr<platform::DeviceContext>>>;
+
+  static ContextManager& Instance() {
+    static ContextManager* ctx_manager = new ContextManager;
+    return *ctx_manager;
+  }
+
+  std::shared_future<std::unique_ptr<platform::DeviceContext>> Get(
+      const std::string& type,
+      const platform::Place& place,
+      int stream_priority) {
+    std::lock_guard<std::mutex> lk(ctx_mtx_);
+    VLOG(6) << "Get dev_ctx for " << type << " - " << place;
+
+    DeviceContextMap& ctxs = ctx_pool_[type];
+    if (ctxs.find(place) == ctxs.end()) {
+      platform::EmplaceDeviceContexts(
+          &ctxs,
+          {place},
+          /*disable_setting_default_stream_for_allocator=*/true,
+          stream_priority);
+    }
+    return ctxs[place];
+  }
+
+ private:
+  ContextManager() {}
+  DISABLE_COPY_AND_ASSIGN(ContextManager);
+
+  std::mutex ctx_mtx_;
+  std::unordered_map<std::string, DeviceContextMap> ctx_pool_;
+};
+
 class StreamAnalyzer {
  public:
   using DeviceContext = platform::DeviceContext;
   using Place = platform::Place;
 
-  explicit StreamAnalyzer(const Place& place) : place_(place) {}
+  explicit StreamAnalyzer(const Place& place) : place_(place) {
+    event_info_ = std::make_shared<
+        std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>>();
+  }
 
   ~StreamAnalyzer() {}
 
-  void ConstructEvents(std::vector<Instruction>* instructions) const;
+  void ConstructEvents(std::vector<Instruction>* instructions);
 
   platform::DeviceContext* ParseDeviceContext(
       const OpFuncNode& op_func_node) const;
 
   platform::DeviceType GetWaiterType(const Instruction& instr) const;
 
+  void ShareEventInfoFrom(const StreamAnalyzer& src);
+
+  void SetForceEventsToWaitInfo(
+      std::unordered_map<std::string, std::shared_ptr<EventInter>>*
+          program_force_events_to_wait) {
+    program_force_events_to_wait_ = program_force_events_to_wait;
+  }
+
+  std::shared_ptr<
+      std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>>
+  GetEventInfo() const;
+
  private:
-  bool HasDataDependency(const Instruction& cur_instr,
-                         const Instruction& next_instr) const;
+  bool HasDataDependency(Instruction* cur_instr, Instruction* next_instr) const;
 
   void AnalyseAllEventInfo(
-      const std::vector<Instruction>& instructions,
+      const std::vector<Instruction*>& instructions,
       const std::vector<std::vector<std::vector<size_t>>>& run_type_info,
       std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>*
           event_info) const;
 
   void AnalyseAllRunType(
-      const std::vector<Instruction>& instructions,
+      const std::vector<Instruction*>& instructions,
       const std::map<size_t, std::set<size_t>>& downstream_map,
       std::vector<std::vector<std::vector<size_t>>>* run_type_info) const;
-
-  void AnalyseEventInfoForTwoInstructions(
-      const std::vector<Instruction>& instructions,
-      const std::vector<std::vector<std::vector<size_t>>>& run_type_info,
-      const size_t cur_instr_id,
-      const size_t next_instr_id,
-      std::set<size_t>* waiter_instr_ids,
-      std::set<size_t>* visited_next_instr_id) const;
 
   void ShrinkEventInfo(
       const DependencyBuilder& dependency_builder,
       std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>*
           event_info_map) const;
 
-  DownstreamRunType AnalyseRunTypeForTwoInstructions(
-      const Instruction& cur_instr, const Instruction& next_instr) const;
+  const Place place_;
+  bool is_event_info_build_{false};
+  std::shared_ptr<
+      std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>>
+      event_info_;
+  std::unordered_map<std::string, std::shared_ptr<EventInter>>*
+      program_force_events_to_wait_;  // not owned
+};
+
+/// ======================== ///
+///        For new ir        ///
+/// ======================== ///
+class NewIrStreamAnalyzer {
+ public:
+  using DeviceContext = platform::DeviceContext;
+  using Place = platform::Place;
+
+  explicit NewIrStreamAnalyzer(const Place& place) : place_(place) {
+    event_info_ = std::make_shared<
+        std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>>();
+  }
+
+  ~NewIrStreamAnalyzer() {}
+
+  void ConstructEvents(
+      const std::vector<std::unique_ptr<paddle::framework::InstructionBase>>&
+          instructions);
+
+  platform::DeviceType GetWaiterType(
+      const paddle::framework::InstructionBase* instr) const;
+
+  void ShareEventInfoFrom(const NewIrStreamAnalyzer& src);
+
+  std::shared_ptr<
+      std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>>
+  GetEventInfo() const;
+
+ private:
+  void AnalyseAllRunType(
+      const std::vector<paddle::framework::InstructionBase*>& instructions,
+      const std::map<size_t, std::set<size_t>>& downstream_map,
+      std::vector<std::vector<std::vector<size_t>>>* run_type_info) const;
+
+  void AnalyseAllEventInfo(
+      const std::vector<paddle::framework::InstructionBase*>& instructions,
+      const std::vector<std::vector<std::vector<size_t>>>& run_type_info,
+      std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>*
+          event_info) const;
+
+  void ShrinkEventInfo(
+      const NewIrDependencyBuilder& dependency_builder,
+      std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>*
+          event_info_map) const;
 
   const Place place_;
+  bool is_event_info_build_{false};
+  std::shared_ptr<
+      std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>>
+      event_info_;
 };
 
 }  // namespace interpreter

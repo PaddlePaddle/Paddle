@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/transform.h"
+#include "paddle/phi/common/transform.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/detail/activation_functions.h"
 #include "paddle/phi/kernels/funcs/lstm_compute.h"
@@ -29,7 +29,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using platform::Transform;
+using phi::Transform;
 
 template <typename T,
           int MajorType = Eigen::RowMajor,
@@ -78,7 +78,7 @@ inline void ReorderInitState(const DeviceContext& ctx,
   row_shuffle(ctx, src, index, dst, indexed_src);
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class LSTMPKernel : public framework::OpKernel<T> {
  public:
   template <typename Device, typename X, typename Y>
@@ -279,7 +279,7 @@ class LSTMPKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class LSTMPGradKernel : public framework::OpKernel<T> {
  public:
   template <typename Device, typename X, typename Y, typename DX, typename DY>

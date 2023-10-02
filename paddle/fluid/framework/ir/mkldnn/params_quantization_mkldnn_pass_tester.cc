@@ -65,7 +65,7 @@ struct TestScope {
 };
 
 struct ProgramStrategy {
-  virtual ~ProgramStrategy() {}
+  virtual ~ProgramStrategy() = default;
 
   std::unique_ptr<Graph> CreateGraph() {
     CreateProgram();

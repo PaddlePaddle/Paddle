@@ -21,13 +21,14 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
-#include "paddle/fluid/inference/tensorrt/plugin/common/groupNormPluginCommon.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
+#include "paddle/phi/kernels/group_norm_kernel.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
+using phi::GroupNormNHWCParams;
 class PrelnGroupnormActPluginDynamic : public DynamicPluginTensorRT {
  public:
   PrelnGroupnormActPluginDynamic(const float* scale,
@@ -173,7 +174,7 @@ class PrelnGroupnormActPluginDynamic : public DynamicPluginTensorRT {
   std::vector<float> bias_;
   std::shared_ptr<void> scale_gpu_;
   std::shared_ptr<void> bias_gpu_;
-  GroupNormNHWCParams params_;
+  GroupNormNHWCParams<__half> params_;
   int groups_;
   float eps_;
   bool with_silu_;

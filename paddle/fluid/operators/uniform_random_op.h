@@ -22,7 +22,7 @@
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include <thrust/random.h>
 
-#include "paddle/fluid/framework/generator.h"
+#include "paddle/phi/core/generator.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"

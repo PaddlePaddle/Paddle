@@ -31,7 +31,7 @@ namespace ir {
   GET_IR_NODE(reshape2_op);   \
   GET_IR_NODE(reshape2_out);
 
-ShuffleChannelMKLDNNDetectPass::ShuffleChannelMKLDNNDetectPass() {
+ShuffleChannelMKLDNNDetectPass::ShuffleChannelMKLDNNDetectPass() {  // NOLINT
   AddOpCompat(OpCompat("reshape2"))
       .AddInput("X")
       .IsTensor()
@@ -141,14 +141,15 @@ void ShuffleChannelMKLDNNDetectPass::ApplyImpl(ir::Graph* graph) const {
         if ((reshape1_shape[i] == unk_dim_idx) && (i != 0)) {
           // there is no sufficient info
           if (!all_positive) return;
-          reshape1_shape[i] = std::accumulate(x_shape1.begin(),
-                                              x_shape1.end(),
-                                              static_cast<int64_t>(1),
-                                              std::multiplies<int64_t>()) /
-                              std::accumulate(reshape1_shape.begin(),
-                                              reshape1_shape.end(),
-                                              static_cast<int64_t>(-1),
-                                              std::multiplies<int64_t>());
+          reshape1_shape[i] =
+              std::accumulate(x_shape1.begin(),
+                              x_shape1.end(),
+                              static_cast<int64_t>(1),
+                              std::multiplies<int64_t>()) /  // NOLINT
+              std::accumulate(reshape1_shape.begin(),
+                              reshape1_shape.end(),
+                              static_cast<int64_t>(-1),
+                              std::multiplies<int64_t>());  // NOLINT
           break;
         }
       }
@@ -160,14 +161,15 @@ void ShuffleChannelMKLDNNDetectPass::ApplyImpl(ir::Graph* graph) const {
         if ((reshape2_shape[i] == unk_dim_idx) && (i != 0)) {
           // there is no sufficient info
           if (!all_positive) return;
-          reshape2_shape[i] = std::accumulate(x_shape2.begin(),
-                                              x_shape2.end(),
-                                              static_cast<int64_t>(1),
-                                              std::multiplies<int64_t>()) /
-                              std::accumulate(reshape2_shape.begin(),
-                                              reshape2_shape.end(),
-                                              static_cast<int64_t>(-1),
-                                              std::multiplies<int64_t>());
+          reshape2_shape[i] =
+              std::accumulate(x_shape2.begin(),
+                              x_shape2.end(),
+                              static_cast<int64_t>(1),
+                              std::multiplies<int64_t>()) /  // NOLINT
+              std::accumulate(reshape2_shape.begin(),
+                              reshape2_shape.end(),
+                              static_cast<int64_t>(-1),
+                              std::multiplies<int64_t>());  // NOLINT
           break;
         }
       }

@@ -13,9 +13,8 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid.framework import Variable
-from paddle.fluid.layers.utils import is_sequence, map_structure
-from paddle.utils import gast
+from paddle.base.framework import Variable
+from paddle.utils import gast, is_sequence, map_structure
 
 from .utils import UndefinedVar, create_undefined_variable
 
@@ -23,27 +22,21 @@ __all__ = []
 
 
 def create_undefined_var(name):
-    func_code = "{} = _jst.UndefinedVar('{}')".format(name, name)
+    func_code = f"{name} = _jst.UndefinedVar('{name}')"
     return gast.parse(func_code).body[0]
 
 
 def create_fill_constant_node(name, value=0):
-    func_code = "{} = paddle.full(shape=[1], ".format(name)
+    func_code = f"{name} = paddle.full(shape=[1], "
     if isinstance(value, bool):
-        func_code += "dtype='bool', fill_value={}, name='{}')".format(
-            value, name
-        )
+        func_code += f"dtype='bool', fill_value={value}, name='{name}')"
         return gast.parse(func_code).body[0]
     if isinstance(value, float):
-        func_code += "dtype='float64', fill_value={}, name='{}')".format(
-            value, name
-        )
+        func_code += f"dtype='float64', fill_value={value}, name='{name}')"
         return gast.parse(func_code).body[0]
 
     if isinstance(value, int):
-        func_code += "dtype='int64', fill_value={}, name='{}')".format(
-            value, name
-        )
+        func_code += f"dtype='int64', fill_value={value}, name='{name}')"
         return gast.parse(func_code).body[0]
 
 
@@ -52,11 +45,11 @@ def to_static_variable(x):
     Translate a Python Tensor to PaddlePaddle static graph Tensor
     '''
     if isinstance(x, bool):
-        return paddle.full(shape=[1], dtype='bool', fill_value=x)
+        return paddle.full(shape=[], dtype='bool', fill_value=x)
     if isinstance(x, float):
-        return paddle.full(shape=[1], dtype='float64', fill_value=x)
+        return paddle.full(shape=[], dtype='float64', fill_value=x)
     if isinstance(x, int):
-        return paddle.full(shape=[1], dtype='int64', fill_value=x)
+        return paddle.full(shape=[], dtype='int64', fill_value=x)
     if isinstance(x, UndefinedVar) or x is None:
         """
         for early return case, we need a variable to represent None, current we use data_layer_not_check.
@@ -82,5 +75,5 @@ def create_bool_node(name, value):
     Create a assign stmt for name = value .
     '''
     assert isinstance(value, bool)
-    node = "{} = {}".format(name, value)
+    node = f"{name} = {value}"
     return gast.parse(node).body[0]

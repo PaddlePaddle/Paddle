@@ -105,7 +105,7 @@ void ModeGradKernel(const Context& dev_ctx,
     trans_axis.emplace_back(axis);
     DDim trans_shape(out_dims);
     DDim trans_in_shape(in_dims);
-    for (size_t i = 0; i < trans_axis.size(); i++) {
+    for (int i = 0; i < static_cast<int>(trans_axis.size()); i++) {
       trans_shape[i] = out_dims[trans_axis[i]];
       trans_in_shape[i] = in_dims[trans_axis[i]];
     }
@@ -118,7 +118,7 @@ void ModeGradKernel(const Context& dev_ctx,
     trans_ind.Resize(trans_shape);
     dev_ctx.template Alloc<int64_t>(&trans_ind);
 
-    int ndims = trans_axis.size();
+    int ndims = static_cast<int>(trans_axis.size());
 
     if (keepdim) {
       // Do transpose

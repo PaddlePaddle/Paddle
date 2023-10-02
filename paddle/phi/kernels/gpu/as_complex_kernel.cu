@@ -15,8 +15,11 @@
 #include "paddle/phi/kernels/as_complex_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/as_complex_impl.h"
 
 PD_REGISTER_KERNEL(
-    as_complex, GPU, ALL_LAYOUT, phi::AsComplexKernel, float, double) {}
+    as_complex, GPU, ALL_LAYOUT, phi::AsComplexKernel, float, double) {
+  kernel->OutputAt(0).SetDataType(phi::dtype::ToComplex(kernel_key.dtype()));
+}

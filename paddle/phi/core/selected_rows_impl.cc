@@ -14,10 +14,10 @@ limitations under the License. */
 
 #include "paddle/phi/core/selected_rows_impl.h"
 
-#include "paddle/phi/core/utils/data_type.h"
+#include "glog/logging.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/utils/data_type.h"
 
 namespace phi {
 
@@ -136,7 +136,7 @@ int64_t SelectedRowsImpl::AutoGrownIndex(int64_t key,
     }
     auto write_iter = id_to_index_.find(key);
     if (write_iter == id_to_index_.end()) {
-      int row_num = rows_.size();
+      int row_num = static_cast<int>(rows_.size());
       if (row_num == value_->dims()[0]) {
         rwlock_->UNLock();
         PADDLE_THROW(phi::errors::InvalidArgument(
@@ -165,7 +165,7 @@ int64_t SelectedRowsImpl::AutoGrownIndex(int64_t key,
 void SelectedRowsImpl::SyncIndex() {
   rwlock_->WRLock();
   id_to_index_.clear();
-  for (size_t i = 0; i < rows_.size(); ++i) {
+  for (int i = 0; i < static_cast<int>(rows_.size()); ++i) {
     id_to_index_[rows_[i]] = i;
   }
   rwlock_->UNLock();
@@ -211,4 +211,13 @@ void SelectedRowsImpl::Get(const phi::DenseTensor& ids,
     }
   }
 }
+
+void SelectedRowsImpl::set_type(const DataType dtype) {
+  value_->set_type(dtype);
+}
+
+void SelectedRowsImpl::set_layout(const DataLayout layout) {
+  value_->set_layout(layout);
+}
+
 }  // namespace phi

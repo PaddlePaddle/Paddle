@@ -13,6 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/api/lib/api_gen_utils.h"
+#include "paddle/phi/core/flags.h"
+#include "paddle/phi/core/visit_type.h"
+#include "paddle/phi/kernels/strided_copy_kernel.h"
+
+PHI_DECLARE_bool(use_stride_kernel);
+
+#include "glog/logging.h"
+
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 
 namespace paddle {
 namespace experimental {
@@ -182,8 +193,6 @@ std::vector<phi::MetaTensor> MakeMetaTensor(
   return meta_tensors;
 }
 
-/* ------------------ for output ----------------------- */
-
 phi::DenseTensor* SetKernelOutput(Tensor* out) {
   if (out) {
     if (out->impl() == nullptr) {
@@ -287,6 +296,340 @@ phi::TensorBase* SetStringsKernelOutput(Tensor* out, TensorType type) {
     }
   }
   return out->impl().get();
+}
+
+phi::DenseTensor* ProcessStrideBackup(phi::DenseTensor** tensor) {
+  if (!FLAGS_use_stride_kernel || *tensor == nullptr ||
+      !(*tensor)->IsInitialized() || (*tensor)->meta().is_contiguous()) {
+    return nullptr;
+  } else {
+    phi::DenseTensor* backup = *tensor;
+    *tensor = new phi::DenseTensor();
+    return backup;
+  }
+}
+
+std::vector<phi::DenseTensor*> ProcessStrideBackup(
+    std::vector<phi::DenseTensor*>* tensor) {
+  std::vector<phi::DenseTensor*> backup;
+  backup.reserve(tensor->size());
+  for (auto& t : *tensor) {
+    if (!FLAGS_use_stride_kernel || t == nullptr || !t->IsInitialized() ||
+        t->meta().is_contiguous()) {
+      backup.emplace_back(nullptr);
+    } else {
+      backup.emplace_back(t);
+      t = new phi::DenseTensor();
+    }
+  }
+  return backup;
+}
+
+phi::SelectedRows* ProcessStrideBackup(phi::SelectedRows** tensor) {
+  return nullptr;
+}
+
+template <typename Context>
+void TransStride(const Context& dev_ctx,
+                 phi::DenseTensor* from,
+                 phi::DenseTensor* to) {
+  if (to) {
+    PD_VISIT_ALL_TYPES(to->dtype(), "StridedCopyKernel", ([&] {
+                         phi::StridedCopyKernel<data_t, Context>(
+                             dev_ctx,
+                             *from,
+                             phi::vectorize<int64_t>(to->dims()),
+                             phi::vectorize<int64_t>(to->strides()),
+                             to->offset(),
+                             to);
+                       }));
+    delete from;
+  }
+}
+
+template <typename Context>
+void TransStride(const Context& dev_ctx,
+                 const std::vector<phi::DenseTensor*>& from,
+                 const std::vector<phi::DenseTensor*>& to) {
+  for (size_t i = 0; i < to.size(); i++) {
+    if (to[i]) {
+      PD_VISIT_ALL_TYPES(to[i]->dtype(), "StridedCopyKernel", ([&] {
+                           phi::StridedCopyKernel<data_t, Context>(
+                               dev_ctx,
+                               *from[i],
+                               phi::vectorize<int64_t>(to[i]->dims()),
+                               phi::vectorize<int64_t>(to[i]->strides()),
+                               to[i]->offset(),
+                               to[i]);
+                         }));
+      delete from[i];
+    }
+  }
+}
+
+void TransStride(phi::DeviceContext* dev_ctx,
+                 phi::DenseTensor* from,
+                 phi::DenseTensor* to) {
+  if (to) {
+    auto* cpu_ctx = dynamic_cast<phi::CPUContext*>(dev_ctx);
+    if (cpu_ctx) {
+      PD_VISIT_ALL_TYPES(to->dtype(), "StridedCopyKernel", ([&] {
+                           phi::StridedCopyKernel<data_t, phi::CPUContext>(
+                               *cpu_ctx,
+                               *from,
+                               phi::vectorize<int64_t>(to->dims()),
+                               phi::vectorize<int64_t>(to->strides()),
+                               to->offset(),
+                               to);
+                         }));
+      delete from;
+      return;
+    }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    auto* gpu_ctx = dynamic_cast<phi::GPUContext*>(dev_ctx);
+    if (gpu_ctx) {
+      PD_VISIT_ALL_TYPES(to->dtype(), "StridedCopyKernel", ([&] {
+                           phi::StridedCopyKernel<data_t, phi::GPUContext>(
+                               *gpu_ctx,
+                               *from,
+                               phi::vectorize<int64_t>(to->dims()),
+                               phi::vectorize<int64_t>(to->strides()),
+                               to->offset(),
+                               to);
+                         }));
+      delete from;
+      return;
+    }
+#endif
+#ifdef PADDLE_WITH_XPU
+    auto* xpu_ctx = dynamic_cast<phi::XPUContext*>(dev_ctx);
+    if (xpu_ctx) {
+      PD_VISIT_ALL_TYPES(to->dtype(), "StridedCopyKernel", ([&] {
+                           phi::StridedCopyKernel<data_t, phi::XPUContext>(
+                               *xpu_ctx,
+                               *from,
+                               phi::vectorize<int64_t>(to->dims()),
+                               phi::vectorize<int64_t>(to->strides()),
+                               to->offset(),
+                               to);
+                         }));
+      delete from;
+      return;
+    }
+#endif
+  }
+}
+
+void TransStrideLegacy(phi::DeviceContext* dev_ctx,
+                       phi::DenseTensor* from,
+                       phi::DenseTensor* to) {
+  if (to) {
+    auto* cpu_ctx = dynamic_cast<phi::CPUContext*>(dev_ctx);
+    if (cpu_ctx) {
+      PD_VISIT_ALL_TYPES(to->dtype(), "StridedCopyKernel", ([&] {
+                           phi::StridedCopyKernel<data_t, phi::CPUContext>(
+                               *cpu_ctx,
+                               *from,
+                               phi::vectorize<int64_t>(to->dims()),
+                               phi::vectorize<int64_t>(to->strides()),
+                               to->offset(),
+                               to);
+                         }));
+      return;
+    }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    auto* gpu_ctx = dynamic_cast<phi::GPUContext*>(dev_ctx);
+    if (gpu_ctx) {
+      PD_VISIT_ALL_TYPES(to->dtype(), "StridedCopyKernel", ([&] {
+                           phi::StridedCopyKernel<data_t, phi::GPUContext>(
+                               *gpu_ctx,
+                               *from,
+                               phi::vectorize<int64_t>(to->dims()),
+                               phi::vectorize<int64_t>(to->strides()),
+                               to->offset(),
+                               to);
+                         }));
+      return;
+    }
+#endif
+#ifdef PADDLE_WITH_XPU
+    auto* xpu_ctx = dynamic_cast<phi::XPUContext*>(dev_ctx);
+    if (xpu_ctx) {
+      PD_VISIT_ALL_TYPES(to->dtype(), "StridedCopyKernel", ([&] {
+                           phi::StridedCopyKernel<data_t, phi::XPUContext>(
+                               *xpu_ctx,
+                               *from,
+                               phi::vectorize<int64_t>(to->dims()),
+                               phi::vectorize<int64_t>(to->strides()),
+                               to->offset(),
+                               to);
+                         }));
+      return;
+    }
+#endif
+  }
+}
+
+void TransStride(phi::DeviceContext* dev_ctx,
+                 const std::vector<phi::DenseTensor*>& from,
+                 const std::vector<phi::DenseTensor*>& to) {
+  for (size_t i = 0; i < to.size(); i++) {
+    if (to[i]) {
+      auto* cpu_ctx = dynamic_cast<phi::CPUContext*>(dev_ctx);
+      if (cpu_ctx) {
+        PD_VISIT_ALL_TYPES(to[i]->dtype(), "StridedCopyKernel", ([&] {
+                             phi::StridedCopyKernel<data_t, phi::CPUContext>(
+                                 *cpu_ctx,
+                                 *from[i],
+                                 phi::vectorize<int64_t>(to[i]->dims()),
+                                 phi::vectorize<int64_t>(to[i]->strides()),
+                                 to[i]->offset(),
+                                 to[i]);
+                           }));
+        delete from[i];
+        continue;
+      }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      auto* gpu_ctx = dynamic_cast<phi::GPUContext*>(dev_ctx);
+      if (gpu_ctx) {
+        PD_VISIT_ALL_TYPES(to[i]->dtype(), "StridedCopyKernel", ([&] {
+                             phi::StridedCopyKernel<data_t, phi::GPUContext>(
+                                 *gpu_ctx,
+                                 *from[i],
+                                 phi::vectorize<int64_t>(to[i]->dims()),
+                                 phi::vectorize<int64_t>(to[i]->strides()),
+                                 to[i]->offset(),
+                                 to[i]);
+                           }));
+        delete from[i];
+        continue;
+      }
+#endif
+#ifdef PADDLE_WITH_XPU
+      auto* xpu_ctx = dynamic_cast<phi::XPUContext*>(dev_ctx);
+      if (xpu_ctx) {
+        PD_VISIT_ALL_TYPES(to[i]->dtype(), "StridedCopyKernel", ([&] {
+                             phi::StridedCopyKernel<data_t, phi::XPUContext>(
+                                 *xpu_ctx,
+                                 *from[i],
+                                 phi::vectorize<int64_t>(to[i]->dims()),
+                                 phi::vectorize<int64_t>(to[i]->strides()),
+                                 to[i]->offset(),
+                                 to[i]);
+                           }));
+        delete from[i];
+        continue;
+      }
+#endif
+    }
+  }
+}
+
+void TransStride(phi::DeviceContext* dev_ctx,
+                 phi::SelectedRows* from,
+                 phi::SelectedRows* to) {}
+
+/* ------------------ for auto parallel ----------------------- */
+
+phi::distributed::DistMetaTensor MakeDistMetaTensor(
+    const phi::TensorBase& tensor) {
+  return phi::distributed::DistMetaTensor(tensor);
+}
+
+phi::distributed::DistTensor* SetKernelDistOutput(
+    Tensor* out, const phi::distributed::TensorDistAttr& dist_attr) {
+  if (out) {
+    // TODO(chenweihang): now all dist case are nullptr
+    if (out->impl() == nullptr) {
+      auto dist_t = std::make_shared<phi::distributed::DistTensor>(phi::DDim(),
+                                                                   dist_attr);
+      out->set_impl(dist_t);
+    }
+    return static_cast<phi::distributed::DistTensor*>(out->impl().get());
+  }
+  return nullptr;
+}
+
+std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
+    Tensor* out, const phi::distributed::TensorDistAttr& dist_attr) {
+  if (out) {
+    return std::make_shared<phi::distributed::DistTensor>(phi::DDim(),
+                                                          dist_attr);
+  }
+  return nullptr;
+}
+
+std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
+    std::vector<Tensor*> out) {
+  std::vector<phi::distributed::DistTensor*> result;
+  for (auto tmp : out) {
+    if (tmp) {
+      // TODO(GhostScreaming): now all dist case are nullptr
+      if (tmp->impl() == nullptr) {
+        phi::DenseTensor dense_t;
+        // TODO(GhostScreaming): polish code, dist_attr is null now
+        phi::distributed::TensorDistAttr dist_attr;
+        auto dist_t =
+            std::make_shared<phi::distributed::DistTensor>(dense_t, dist_attr);
+        tmp->set_impl(dist_t);
+      }
+      result.emplace_back(
+          static_cast<phi::distributed::DistTensor*>(tmp->impl().get()));
+    } else {
+      result.emplace_back(nullptr);
+    }
+  }
+  return result;
+}
+
+std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
+    size_t out_size, std::vector<Tensor>* out) {
+  out->reserve(out_size);
+  std::vector<phi::distributed::DistTensor*> results(out_size);
+  for (size_t i = 0; i < out_size; ++i) {
+    phi::DenseTensor dense_t;
+    // TODO(GhostScreaming): polish code, dist_attr is null now
+    phi::distributed::TensorDistAttr dist_attr;
+    auto dist_t =
+        std::make_shared<phi::distributed::DistTensor>(dense_t, dist_attr);
+    results[i] = dist_t.get();
+    out->emplace_back();
+    out->back().set_impl(dist_t);
+  }
+  return results;
+}
+
+std::vector<phi::distributed::DistTensor*> SetKernelDistInplaceOutput(
+    size_t out_size, std::vector<Tensor>* out) {
+  std::vector<phi::distributed::DistTensor*> results(out->size(), nullptr);
+  for (size_t i = 0; i < out->size(); ++i) {
+    results[i] =
+        static_cast<phi::distributed::DistTensor*>(out->at(i).impl().get());
+  }
+  return results;
+}
+
+std::vector<phi::distributed::DistTensor*> SetKernelDistInplaceOptionalOutput(
+    size_t out_size, paddle::optional<std::vector<Tensor>> out) {
+  std::vector<phi::distributed::DistTensor*> results;
+  if (out) {
+    results = std::vector<phi::distributed::DistTensor*>(out->size(), nullptr);
+    for (size_t i = 0; i < out->size(); ++i) {
+      results[i] =
+          static_cast<phi::distributed::DistTensor*>(out->at(i).impl().get());
+    }
+  }
+  return results;
+}
+void SetReplicatedDistAttrForOutput(
+    phi::distributed::DistTensor* out,
+    const phi::distributed::ProcessMesh& process_mesh) {
+  if (out) {
+    auto dist_attr =
+        phi::distributed::TensorDistAttr(phi::vectorize(out->dims()));
+    dist_attr.set_process_mesh(process_mesh);
+    out->unsafe_set_dist_attr(dist_attr);
+  }
 }
 
 }  // namespace experimental

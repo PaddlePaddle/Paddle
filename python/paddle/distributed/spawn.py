@@ -18,6 +18,9 @@ import signal
 import sys
 import warnings
 
+# deprecated module import
+# (TODO: GhostScreaming) It will be removed later.
+from paddle.base import core
 from paddle.device import get_device
 from paddle.distributed.cloud_utils import (
     _get_trainers_num,
@@ -35,10 +38,6 @@ from paddle.distributed.utils.launch_utils import (
     _print_arguments,
     get_host_name_ip,
 )
-
-# deprecated module import
-# (TODO: GhostScreaming) It will be removed later.
-from paddle.fluid import core
 from paddle.framework import set_flags
 
 __all__ = []
@@ -76,7 +75,6 @@ def _options_valid_check(options):
         'ips',
         'gpus',
         'xpus',
-        'mlus',
         'print_config',
         'backend',
     ]
@@ -109,10 +107,10 @@ def _get_default_nprocs():
         return core.get_cuda_device_count()
     elif 'xpu' in device:
         return core.get_xpu_device_count()
-    elif 'mlu' in device:
-        return core.get_mlu_device_count()
     elif 'cpu' in device:
         return multiprocessing.cpu_count()
+    elif device in core.get_available_custom_device():
+        return core.get_custom_device_count(device.split(":")[0])
     else:
         raise RuntimeError(
             "`paddle.distributed.spawn` does not support parallel training on device `{}` now.".format(
@@ -127,10 +125,10 @@ def _get_default_backend():
         return 'nccl'
     elif 'xpu' in device:
         return 'bkcl'
-    elif 'mlu' in device:
-        return 'cncl'
     elif 'cpu' in device:
         return 'gloo'
+    elif device in core.get_available_custom_device():
+        return 'xccl'
     else:
         raise RuntimeError(
             "`paddle.distributed.spawn` does not support parallel training on device `{}` now.".format(
@@ -216,9 +214,10 @@ def _get_subprocess_env_list(nprocs, options):
             for card_id in selected_device_list:
                 if card_id not in env_devices_list:
                     raise ValueError(
-                        "The selected gpu card %s cannot found in "
-                        "CUDA_VISIBLE_DEVICES (%s)."
-                        % (card_id, ",".join(env_devices_list))
+                        "The selected gpu card {} cannot found in "
+                        "CUDA_VISIBLE_DEVICES ({}).".format(
+                            card_id, ",".join(env_devices_list)
+                        )
                     )
 
     elif options['backend'] == 'bkcl':
@@ -256,48 +255,10 @@ def _get_subprocess_env_list(nprocs, options):
             for card_id in selected_device_list:
                 if card_id not in env_devices_list:
                     raise ValueError(
-                        "The selected xpu card %s cannot found in "
-                        "XPU_VISIBLE_DEVICES (%s)."
-                        % (card_id, ",".join(env_devices_list))
-                    )
-    elif options['backend'] == 'cncl':
-        args.selected_devices = options.get('mlus', None)
-        if args.selected_devices is None:
-            args.selected_devices = options.get('selected_devices', None)
-        env_devices = os.getenv("MLU_VISIBLE_DEVICES", None)
-        if env_devices is None or env_devices == "":
-            env_devices_list = [
-                str(x) for x in range(core.get_mlu_device_count())
-            ]
-        else:
-            env_devices_list = env_devices.split(',')
-        if args.selected_devices is None:
-            if len(env_devices_list) < nprocs:
-                raise RuntimeError(
-                    "the number of visible devices(%d) is less than the number "
-                    "of spawn processes(%d), please ensure that the correct "
-                    "`nprocs` argument is passed or the environment variable "
-                    "`MLU_VISIBLE_DEVICES` is correctly configured."
-                    % (len(env_devices_list), nprocs)
-                )
-            args.selected_devices = ",".join(
-                [str(env_devices_list[x]) for x in range(0, nprocs)]
-            )
-        else:
-            selected_device_list = args.selected_devices.split(',')
-            if len(selected_device_list) != nprocs:
-                raise ValueError(
-                    "The number of selected devices(%s) is not equal to "
-                    "the number of spawn processes(%d), please ensure that the "
-                    "correct `nprocs` and `mlus` arguments are passed."
-                    % (len(selected_device_list), nprocs)
-                )
-            for card_id in selected_device_list:
-                if card_id not in env_devices_list:
-                    raise ValueError(
-                        "The selected mlu card %s cannot found in "
-                        "MLU_VISIBLE_DEVICES (%s)."
-                        % (card_id, ",".join(env_devices_list))
+                        "The selected xpu card {} cannot found in "
+                        "XPU_VISIBLE_DEVICES ({}).".format(
+                            card_id, ",".join(env_devices_list)
+                        )
                     )
     elif options['backend'] == 'gloo':
         # TODO check gpu / xpu flag must not exist
@@ -317,6 +278,29 @@ def _get_subprocess_env_list(nprocs, options):
         assert (
             _get_trainers_num() == 1
         ), "CPUONLY spawn doesn't support multi-trainer"
+    elif options['backend'] == 'xccl':
+        args.selected_devices = None
+        custom_device_name = core.get_all_custom_device_type()[0]
+        env_devices = os.getenv(f"FLAGS_selected_{custom_device_name}s", None)
+        if env_devices is None or env_devices == "":
+            env_devices_list = [
+                str(x)
+                for x in range(core.get_custom_device_count(custom_device_name))
+            ]
+        else:
+            env_devices_list = env_devices.split(',')
+
+        if len(env_devices_list) < nprocs:
+            raise RuntimeError(
+                "the number of visible devices(%d) is less than the number "
+                "of spawn processes(%d), please ensure that the correct "
+                "`nprocs` argument is passed or the environment variable "
+                "`FLAGS_selected_%ss` is correctly configured."
+                % (len(env_devices_list), nprocs, custom_device_name)
+            )
+        args.selected_devices = ",".join(
+            [str(env_devices_list[x]) for x in range(0, nprocs)]
+        )
 
     # set other inner args
     args.node_ip = options.get('node_ip', None)
@@ -331,7 +315,7 @@ def _get_subprocess_env_list(nprocs, options):
 
     # get cluster and pod config
     if options['backend'] == 'gloo':
-        devices_per_proc = [x for x in range(0, nprocs)]
+        devices_per_proc = list(range(0, nprocs))
         cluster, pod = get_cluster_from_args(
             args, DeviceMode.CPU, devices_per_proc
         )
@@ -373,8 +357,6 @@ def _set_trainer_env(env_dict, backend):
         set_flags({'FLAGS_selected_gpus': env_dict['FLAGS_selected_gpus']})
     elif backend == 'bkcl':
         set_flags({'FLAGS_selected_xpus': env_dict['FLAGS_selected_xpus']})
-    elif backend == 'cncl':
-        set_flags({'FLAGS_selected_mlus': env_dict['FLAGS_selected_mlus']})
     else:
         # NOTE(xiongkun) why not raise Error ?
         # So far, we added support for CPU parallel, and will be applied when paddle is not
@@ -474,9 +456,9 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
     Start multiple processes with ``spawn`` method for parallel training.
 
     .. note::
-        ``spawn`` now only supports GPU or XPU or MLU collective mode. The collective mode
-        of GPU and XPU and MLU cannot be started at the same time, so the option `gpus` and
-        `xpus` and 'mlus' cannot be configured at the same time.
+        ``spawn`` now only supports GPU or XPU collective mode. The collective mode
+        of GPU and XPU cannot be started at the same time, so the option `gpus` and
+        `xpus` cannot be configured at the same time.
 
     Args:
         func (function): The target function is called by spawned process.
@@ -503,8 +485,6 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
             selected gpus, such as "0,1,2,3". Default: None;
             (3) xpus (string): The training process will run on the
             selected xpus, such as "0,1,2,3". Default: None;
-            (4) mlus (string): The training process will run on the
-            selected mlus, such as "0,1,2,3". Default: None;
             (5) ips (string): Paddle cluster nodes ips, such as
             "192.168.0.16,192.168.0.17". Default: "127.0.0.1" .
 

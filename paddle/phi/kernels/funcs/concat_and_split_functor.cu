@@ -13,8 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
-#include "paddle/fluid/memory/malloc.h"
+
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/kernels/funcs/segmented_array.h"
 
 namespace phi {
@@ -45,8 +49,12 @@ static inline void GetBlockDims(const phi::GPUContext& context,
   *grid_dims = dim3(grid_cols, grid_rows, 1);
 }
 
+#ifndef PADDLE_WITH_HIP
 #if !defined(_WIN32)
 #define PADDLE_ALIGN(x) __attribute__((aligned(x)))
+#else
+#define PADDLE_ALIGN(x)
+#endif
 #else
 #define PADDLE_ALIGN(x)
 #endif
@@ -57,7 +65,7 @@ struct PointerWrapper {
   const void* ins_addr[Size];
   __device__ inline const void* operator[](int i) const { return ins_addr[i]; }
 
-  PointerWrapper() {}
+  PointerWrapper() = default;
   PointerWrapper(const phi::GPUContext& ctx,
                  const std::vector<phi::DenseTensor>& ins,
                  const T** pre_alloced_host_ptr) {
@@ -76,7 +84,7 @@ template <typename T, int Size>
 struct PADDLE_ALIGN(256) AlignedPointerWrapper
     : public PointerWrapper<T, Size> {
  public:
-  AlignedPointerWrapper() {}
+  AlignedPointerWrapper() = default;
   AlignedPointerWrapper(const phi::GPUContext& ctx,
                         const std::vector<phi::DenseTensor>& ins,
                         const T** pre_alloced_host_ptr) {
@@ -90,27 +98,27 @@ struct PointerToPointer {
   void** ins_addr{nullptr};
   __device__ inline const void* operator[](int i) const { return ins_addr[i]; }
 
-  PointerToPointer() {}
+  PointerToPointer() = default;
   PointerToPointer(const phi::GPUContext& ctx,
                    const std::vector<phi::DenseTensor>& ins,
                    const T** pre_alloced_host_ptr,
-                   paddle::memory::AllocationPtr* dev_ins_ptr) {
+                   phi::Allocator::AllocationPtr* dev_ins_ptr) {
     auto in_num = ins.size();
     for (auto i = 0; i < in_num; ++i) {
       pre_alloced_host_ptr[i] = ins[i].data<T>();
     }
-    *dev_ins_ptr = paddle::memory::Alloc(
+    *dev_ins_ptr = phi::memory_utils::Alloc(
         ctx.GetPlace(),
         in_num * sizeof(T*),
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
     auto* restored = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
         pre_alloced_host_ptr, in_num);
-    paddle::memory::Copy(ctx.GetPlace(),
-                         (*dev_ins_ptr)->ptr(),
-                         phi::CPUPlace(),
-                         restored,
-                         in_num * sizeof(T*),
-                         ctx.stream());
+    memory_utils::Copy(ctx.GetPlace(),
+                       (*dev_ins_ptr)->ptr(),
+                       phi::CPUPlace(),
+                       restored,
+                       in_num * sizeof(T*),
+                       ctx.stream());
     ins_addr = reinterpret_cast<void**>((*dev_ins_ptr)->ptr());
   }
 };
@@ -147,20 +155,20 @@ struct PointerToPointerAndCol {
                          const IndexT inputs_col_num,
                          const T** pre_alloced_host_ptr,
                          IndexT* inputs_col,
-                         paddle::memory::AllocationPtr* dev_ins_ptr,
-                         paddle::memory::AllocationPtr* dev_col_ptr) {
-    *dev_col_ptr = paddle::memory::Alloc(
+                         phi::Allocator::AllocationPtr* dev_ins_ptr,
+                         phi::Allocator::AllocationPtr* dev_col_ptr) {
+    *dev_col_ptr = phi::memory_utils::Alloc(
         ctx.GetPlace(),
         inputs_col_num * sizeof(IndexT),
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
     auto* restored = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
         inputs_col, inputs_col_num);
-    paddle::memory::Copy(ctx.GetPlace(),
-                         (*dev_col_ptr)->ptr(),
-                         phi::CPUPlace(),
-                         restored,
-                         inputs_col_num * sizeof(IndexT),
-                         ctx.stream());
+    memory_utils::Copy(ctx.GetPlace(),
+                       (*dev_col_ptr)->ptr(),
+                       phi::CPUPlace(),
+                       restored,
+                       inputs_col_num * sizeof(IndexT),
+                       ctx.stream());
     col_length = static_cast<IndexT*>((*dev_col_ptr)->ptr());
     ins_ptr_wrapper =
         PointerToPointer<T>(ctx, ins, pre_alloced_host_ptr, dev_ins_ptr);
@@ -178,9 +186,7 @@ struct PointerToPointerAndCol {
 
 template <int MovSize>
 struct alignas(MovSize) Packed {
-  __device__ Packed() {
-    // do nothing
-  }
+  __device__ Packed() = default;
   union {
     char buf[MovSize];
   };
@@ -279,8 +285,8 @@ void DispatchConcatWithDifferentShapeKernelLimitNum(
         <<<grid_dims, block_dims, 0, ctx.stream()>>>(
             ptr_col_array, inputs_col_num, out_row, out_col, output->data()));
     default: {
-      paddle::memory::AllocationPtr dev_ins_ptr{nullptr};
-      paddle::memory::AllocationPtr dev_col_ptr{nullptr};
+      phi::Allocator::AllocationPtr dev_ins_ptr{nullptr};
+      phi::Allocator::AllocationPtr dev_col_ptr{nullptr};
       PointerToPointerAndCol<T, IndexT> ptr_col_array(ctx,
                                                       ins,
                                                       inputs_col_num,
@@ -396,7 +402,7 @@ void DispatchConcatWithSameShapeKernelLimitNum(
         <<<grid_dims, block_dims, 0, ctx.stream()>>>(
             ptr_array, in_col, out_row, out_col, output->data()));
     default: {
-      paddle::memory::AllocationPtr dev_ins_ptr{nullptr};
+      phi::Allocator::AllocationPtr dev_ins_ptr{nullptr};
       PointerToPointer<T> ptr_array(ctx, ins, inputs_data, &dev_ins_ptr);
       ConcatTensorWithSameShape<IndexT, MovSize, decltype(ptr_array)>
           <<<grid_dims, block_dims, 0, ctx.stream()>>>(
@@ -565,18 +571,12 @@ void ConcatFunctorWithIndexType(const phi::GPUContext& ctx,
 
   IndexT inputs_col_num = in_num + 1;
   std::vector<const T*> inputs_data_vec(in_num, nullptr);
+  for (size_t i = 0; i < ins.size(); ++i) {
+    inputs_data_vec[i] = ins[i].data<T>();
+  }
   std::vector<IndexT> inputs_col_vec(inputs_col_num, 0);
   const T** inputs_data = inputs_data_vec.data();
   IndexT* inputs_col = inputs_col_vec.data();
-#ifdef PADDLE_WITH_HIP
-  // TODO(chentianyu03): try to find a method to remove the Alloc function
-  paddle::memory::AllocationPtr data_alloc = paddle::memory::Alloc(
-      paddle::platform::CUDAPinnedPlace(), in_num * sizeof(T*));
-  inputs_data = reinterpret_cast<const T**>(data_alloc->ptr());
-  paddle::memory::AllocationPtr col_alloc = paddle::memory::Alloc(
-      paddle::platform::CUDAPinnedPlace(), inputs_col_num * sizeof(IndexT));
-  inputs_col = reinterpret_cast<IndexT*>(col_alloc->ptr());
-#endif
 
   bool has_same_shape = true;
   for (int i = 0; i < in_num; ++i) {
@@ -600,21 +600,6 @@ void ConcatFunctorWithIndexType(const phi::GPUContext& ctx,
                                   in_num,
                                   limit_num,
                                   has_same_shape);
-
-#ifdef PADDLE_WITH_HIP
-  // Prevent pinned memory from being covered and release the memory after
-  // kernel launch of the stream is executed (reapply pinned memory next time)
-  auto* data_alloc_released = data_alloc.release();
-  auto* col_alloc_released = col_alloc.release();
-  ctx.AddStreamCallback([data_alloc_released, col_alloc_released] {
-    VLOG(4) << "Delete cuda pinned at " << data_alloc_released;
-    VLOG(4) << "Delete cuda pinned at " << col_alloc_released;
-    paddle::memory::allocation::Allocator::AllocationDeleter(
-        data_alloc_released);
-    paddle::memory::allocation::Allocator::AllocationDeleter(
-        col_alloc_released);
-  });
-#endif
 }
 
 template <typename T>
@@ -637,7 +622,7 @@ struct PointerAndColArray
  public:
   funcs::ValueArray<IndexT, Size> val_array;
 
-  PointerAndColArray() {}
+  PointerAndColArray() = default;
   PointerAndColArray(const phi::GPUContext& ctx,
                      const int out_col_num,
                      IndexT* out_cols,
@@ -778,25 +763,6 @@ void SplitFunctorDispatchWithIndexType(
   IndexT* outs_cols = outputs_cols_vec.data();
   T** outs_data = nullptr;
 
-// There are some differences between hip runtime and NV runtime.
-// In NV, when the pageable memory data less than 64K is transferred from
-// hosttodevice, it will be automatically asynchronous.
-// However, only pinned memory in hip can copy asynchronously
-// https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#concurrent-execution-host-device
-// 3.2.6.1. Concurrent Execution between Host and Device
-// Memory copies from host to device of a memory block of 64 KB or less
-#ifdef PADDLE_WITH_HIP
-  paddle::memory::AllocationPtr data_alloc, cols_alloc;
-  // TODO(chentianyu03): try to find a method to remove the Alloc function
-  data_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
-                                     out_num * sizeof(T*));
-  outs_data = reinterpret_cast<T**>(data_alloc->ptr());
-  // TODO(chentianyu03): try to find a method to remove the Alloc function
-  cols_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
-                                     (out_cols_num) * sizeof(IndexT));
-  outs_cols = reinterpret_cast<IndexT*>(cols_alloc->ptr());
-#endif
-
   outs_cols[0] = 0;
   for (int i = 0; i < out_num; ++i) {
     IndexT t_col = ref_ins.at(i)->numel() / out_row;
@@ -833,19 +799,6 @@ void SplitFunctorDispatchWithIndexType(
               outs_data));
     }
   }
-
-#ifdef PADDLE_WITH_HIP
-  // Prevent pinned memory from being covered and release the memory after
-  // kernel launch of the stream is executed (reapply pinned memory next time)
-  auto* data_alloc_released = data_alloc.release();
-  auto* cols_alloc_released = cols_alloc.release();
-  ctx.AddStreamCallback([data_alloc_released, cols_alloc_released] {
-    paddle::memory::allocation::Allocator::AllocationDeleter(
-        data_alloc_released);
-    paddle::memory::allocation::Allocator::AllocationDeleter(
-        cols_alloc_released);
-  });
-#endif
 }
 
 template <typename T>

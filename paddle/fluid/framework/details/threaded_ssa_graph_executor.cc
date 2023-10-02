@@ -282,7 +282,7 @@ void ThreadedSSAGraphExecutor::InsertPendingVar(
 }
 
 void ThreadedSSAGraphExecutor::PrepareOpDeps() {
-  op_deps_.reset(new OpDependentData());
+  op_deps_ = std::make_unique<OpDependentData>();
   std::unordered_map<OpHandleBase *, size_t> &pending_ops =
       op_deps_->pending_ops_;
   std::unordered_set<VarHandleBase *> &pending_vars = op_deps_->pending_vars_;

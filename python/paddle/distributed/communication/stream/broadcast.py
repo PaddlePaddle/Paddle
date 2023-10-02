@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid.data_feeder as data_feeder
-import paddle.framework as framework
+from paddle import framework
+from paddle.base import data_feeder
 from paddle.distributed.communication.group import (
     _get_global_group,
     _get_or_throw_group_rank,
@@ -69,7 +69,6 @@ def _broadcast_in_static_mode(
             'ring_id': ring_id,
         },
     )
-    return None
 
 
 def broadcast(tensor, src, group=None, sync_op=True, use_calc_stream=False):
@@ -94,20 +93,21 @@ def broadcast(tensor, src, group=None, sync_op=True, use_calc_stream=False):
     Examples:
         .. code-block:: python
 
-            # required: distributed
-            import paddle
-            import paddle.distributed as dist
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.distributed as dist
 
-            dist.init_parallel_env()
-            local_rank = dist.get_rank()
-            if local_rank == 0:
-                data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
-            else:
-                data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
-            task = dist.stream.broadcast(data, src=1, sync_op=False)
-            task.wait()
-            out = data.numpy()
-            # [[1, 2, 3], [1, 2, 3]] (2 GPUs)
+            >>> dist.init_parallel_env()
+            >>> local_rank = dist.get_rank()
+            >>> if local_rank == 0:
+            ...     data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
+            >>> else:
+            ...     data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
+            >>> task = dist.stream.broadcast(data, src=1, sync_op=False)
+            >>> task.wait()
+            >>> out = data.numpy()
+            >>> print(out)
+            >>> # [[1, 2, 3], [1, 2, 3]] (2 GPUs)
     """
     if _warn_cur_rank_not_in_group(group):
         return
@@ -117,7 +117,7 @@ def broadcast(tensor, src, group=None, sync_op=True, use_calc_stream=False):
             "use_calc_stream can only be True in sync op behavior."
         )
 
-    if framework.in_dygraph_mode():
+    if framework.in_dynamic_mode():
         group = _get_global_group() if group is None else group
         src_rank_in_group = _get_or_throw_group_rank(src, group)
 

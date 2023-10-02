@@ -23,7 +23,7 @@ namespace operators {
 using Tensor = phi::DenseTensor;
 using LoDTensor = phi::DenseTensor;
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class SequenceScatterOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -86,7 +86,7 @@ class SequenceScatterOpKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class SequenceScatterGradientOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

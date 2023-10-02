@@ -14,15 +14,14 @@
 
 from .amp_optimizer import AMPOptimizer
 from .asp_optimizer import ASPOptimizer
+from .qat_optimizer import QATOptimizer
 from .recompute_optimizer import RecomputeOptimizer
 from .gradient_merge_optimizer import GradientMergeOptimizer
-from .graph_execution_optimizer import GraphExecutionOptimizer
 from .ps_optimizer import ParameterServerOptimizer
 from .pipeline_optimizer import PipelineOptimizer
 from .localsgd_optimizer import LocalSGDOptimizer
 from .localsgd_optimizer import AdaptiveLocalSGDOptimizer
 from .lars_optimizer import LarsOptimizer
-from .parameter_server_graph_optimizer import ParameterServerGraphOptimizer
 from .dgc_optimizer import DGCOptimizer
 from .dgc_optimizer import DGCMomentumOptimizer
 from .lamb_optimizer import LambOptimizer

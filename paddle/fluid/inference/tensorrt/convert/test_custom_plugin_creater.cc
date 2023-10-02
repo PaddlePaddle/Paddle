@@ -13,23 +13,25 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>  // NOLINT
+#include <memory>
 
-#include "paddle/extension.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/convert/test_custom_op_plugin.h"
+#include "paddle/phi/api/all.h"
+#include "paddle/phi/common/data_type.h"
 
 PD_BUILD_OP(custom_op)
     .Inputs({"Input"})
     .Outputs({"Output"})
     .Attrs({
-        "float_attr",
-        "int_attr",
-        "bool_attr",
-        "string_attr",
-        "ints_attr",
-        "floats_attr",
-        "bools_attr",
+        "float_attr: float",
+        "int_attr: int",
+        "bool_attr: bool",
+        "string_attr: std::string",
+        "ints_attr: std::vector<int>",
+        "floats_attr: std::vector<float>",
+        "bools_attr: std::vector<bool>",
     });
 
 namespace paddle {
@@ -94,7 +96,11 @@ TEST(CustomPluginCreater, StaticShapePlugin) {
 
   // init trt engine
   std::unique_ptr<TensorRTEngine> engine_;
-  engine_.reset(new TensorRTEngine(5, 1 << 15));
+
+  TensorRTEngine::ConstructionParams params;
+  params.max_batch_size = 5;
+  params.max_workspace_size = 1 << 15;
+  engine_ = std::make_unique<TensorRTEngine>(params);
   engine_->InitNetwork();
 
   engine_->DeclareInput(
@@ -109,7 +115,7 @@ TEST(CustomPluginCreater, StaticShapePlugin) {
   framework::OpDesc custom_op(*op_desc, nullptr);
   CHECK_EQ((*custom_plugin_tell)(custom_op, false, false), true);
 
-  OpTeller::Global().SetOpConverterType("custom_op",
+  OpTeller::Global().SetOpConverterType(&custom_op,
                                         OpConverterType::CustomPluginCreater);
 
   OpConverter converter;
@@ -172,14 +178,10 @@ TEST(CustomPluginCreater, DynamicShapePlugin) {
   std::map<std::string, std::vector<int>> optim_input_shape = {
       {"x", {1, 2, 5, 5}}};
 
-  engine_.reset(new TensorRTEngine(5,
-                                   1 << 15,
-                                   AnalysisConfig::Precision::kFloat32,
-                                   nullptr,
-                                   0,
-                                   min_input_shape,
-                                   max_input_shape,
-                                   optim_input_shape));
+  TensorRTEngine::ConstructionParams params;
+  params.max_batch_size = 5;
+  params.max_workspace_size = 1 << 15;
+  engine_ = std::make_unique<TensorRTEngine>(params);
   engine_->InitNetwork();
 
   LOG(INFO) << "with_dynamic_shape " << engine_->with_dynamic_shape();
@@ -195,7 +197,7 @@ TEST(CustomPluginCreater, DynamicShapePlugin) {
   framework::OpDesc custom_op(*op_desc, nullptr);
   CHECK_EQ((*custom_plugin_tell)(custom_op, false, true), true);
 
-  OpTeller::Global().SetOpConverterType("custom_op",
+  OpTeller::Global().SetOpConverterType(&custom_op,
                                         OpConverterType::CustomPluginCreater);
 
   OpConverter converter;

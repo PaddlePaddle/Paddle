@@ -187,7 +187,7 @@ void ProgramProcessor::AddDepToBlockOp(const BlockDesc &block) {
   }
 }
 
-ProgramProcessor::ProgramProcessor() {}
+ProgramProcessor::ProgramProcessor() = default;
 
 }  // namespace framework
 }  // namespace paddle

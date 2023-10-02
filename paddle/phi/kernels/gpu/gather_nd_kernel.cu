@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/gather_nd_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/scatter.cu.h"
@@ -58,4 +59,5 @@ PD_REGISTER_KERNEL(gather_nd,
                    int,
                    int16_t,
                    bool,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

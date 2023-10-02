@@ -23,14 +23,14 @@ import difflib
 import re
 import sys
 
-import paddle.fluid as fluid
+from paddle import base
 
-INTS = set(['int', 'int64_t'])
-FLOATS = set(['float', 'double'])
+INTS = {'int', 'int64_t'}
+FLOATS = {'float', 'double'}
 
 
 def get_all_kernels():
-    all_kernels_info = fluid.core._get_all_register_op_kernels()
+    all_kernels_info = base.core._get_all_register_op_kernels()
     # [u'data_type[double]:data_layout[ANY_LAYOUT]:place[CPUPlace]:library_type[PLAIN]'
     op_kernel_types = collections.defaultdict(list)
     for op_type, op_infos in all_kernels_info.items():
@@ -47,7 +47,7 @@ def get_all_kernels():
             register_type = infos[0].split(":")[-1]
             op_kernel_types[op_type].append(register_type.lower())
 
-    for (op_type, op_kernels) in sorted(
+    for op_type, op_kernels in sorted(
         op_kernel_types.items(), key=lambda x: x[0]
     ):
         print(op_type, " ".join(sorted(op_kernels)))

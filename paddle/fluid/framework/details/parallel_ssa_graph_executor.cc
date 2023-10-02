@@ -30,7 +30,7 @@ static std::vector<std::unique_ptr<ir::Graph>> SeparateMultiDevicesGraph(
   graphs.reserve(place_num);
   for (size_t i = 0; i < place_num; ++i) {
     ProgramDesc empty;
-    graphs.emplace_back(std::unique_ptr<ir::Graph>(new ir::Graph(empty)));
+    graphs.emplace_back(std::make_unique<ir::Graph>(empty));
     auto &g = graphs.back();
     g->Set(kGraphVars, new GraphVars(1UL));
     g->Set(kGraphDepVars, new GraphDepVars);
@@ -45,7 +45,7 @@ static std::vector<std::unique_ptr<ir::Graph>> SeparateMultiDevicesGraph(
   for (auto &op : op_handles) {
     auto &dev_ctx = op->DeviceContext();
     auto &p = dev_ctx.begin()->first;
-    int dev_id = p.device;
+    int dev_id = p.device;  // NOLINT
     auto &dev_dummys = graphs[dev_id]->Get<GraphDepVars>(kGraphDepVars);
     graphs[dev_id]->AddNode(graph->RemoveNode(op->Node()).release());
 
@@ -133,8 +133,8 @@ ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
   auto seq_allreduce_pass =
       ir::PassRegistry::Instance().Get("all_reduce_deps_pass");
   seq_allreduce_pass->Set<bool>(kUseHierarchicalAllReduce, new bool(false));
-  for (size_t i = 0; i < graphs_.size(); ++i) {
-    graphs_[i].reset(seq_allreduce_pass->Apply(graphs_[i].release()));
+  for (auto &graph : graphs_) {
+    graph.reset(seq_allreduce_pass->Apply(graph.release()));
   }
 
   // set the correct size of thread pool to each device.
@@ -288,7 +288,7 @@ FetchResultType ParallelSSAGraphExecutor::Run(
               &(PADDLE_GET_CONST(LoDTensorArray, fetch_list[fetch_idx])));
         }
       }
-      if (lodtensor_ptrs.size() != 0) {
+      if (!lodtensor_ptrs.empty()) {
         phi::DenseTensor var;
         MergeLoDTensor(&var, lodtensor_ptrs, platform::CPUPlace());
         ret.emplace_back(var);
@@ -297,8 +297,8 @@ FetchResultType ParallelSSAGraphExecutor::Run(
         for (size_t i = 0; i < lodtensorarray_ptrs[0]->size(); ++i) {
           phi::DenseTensor var;
           std::vector<const phi::DenseTensor *> ptrs;
-          for (size_t j = 0; j < lodtensorarray_ptrs.size(); ++j) {
-            ptrs.push_back(&(lodtensorarray_ptrs[j]->at(i)));
+          for (auto &lodtensorarray_ptr : lodtensorarray_ptrs) {
+            ptrs.push_back(&(lodtensorarray_ptr->at(i)));
           }
           MergeLoDTensor(&var, ptrs, platform::CPUPlace());
           var_array[i] = std::move(var);

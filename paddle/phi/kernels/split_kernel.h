@@ -35,32 +35,58 @@ void SplitWithNumKernel(const Context& dev_ctx,
                         const Scalar& axis,
                         std::vector<DenseTensor*> out);
 
-template <typename T, typename Context>
-std::vector<DenseTensor> Split(const Context& dev_ctx,
+template <typename Context>
+void SplitStridedKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const IntArray& sections,
+                        const Scalar& axis,
+                        std::vector<DenseTensor*> out);
+
+template <typename Context>
+void SplitWithNumStridedKernel(const Context& dev_ctx,
                                const DenseTensor& x,
-                               const IntArray& sections,
-                               const Scalar& axis) {
-  size_t out_number;
-  out_number = sections.GetData().size();
+                               int num,
+                               const Scalar& axis,
+                               std::vector<DenseTensor*> out);
+
+template <typename T, typename Context>
+void Split(const Context& dev_ctx,
+           const DenseTensor& x,
+           const IntArray& sections,
+           const Scalar& axis,
+           std::vector<DenseTensor>* result) {
+  size_t out_number = sections.GetData().size();
 
   std::vector<MetaTensor> out_meta;
   std::vector<MetaTensor*> out_meta_ptr;
   out_meta.reserve(out_number);
   out_meta_ptr.reserve(out_number);
-  std::vector<DenseTensor> result(out_number);
+  result->resize(out_number);
 
   for (size_t i = 0; i < out_number; ++i) {
-    out_meta.emplace_back(&result[i]);
+    out_meta.emplace_back(&result->at(i));
     out_meta_ptr.push_back(&out_meta.back());
   }
   SplitInferMeta(x, sections, axis, out_meta_ptr);
   std::vector<DenseTensor*> outs;
   outs.reserve(out_meta.size());
   for (size_t i = 0; i < out_meta.size(); ++i) {
-    outs.push_back(&result[i]);
+    outs.push_back(&result->at(i));
   }
 
   SplitKernel<T, Context>(dev_ctx, x, sections, axis, outs);
+}
+
+template <typename T, typename Context>
+std::vector<DenseTensor> Split(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               const IntArray& sections,
+                               const Scalar& axis) {
+  size_t out_number = sections.GetData().size();
+  std::vector<DenseTensor> result(out_number);
+
+  Split<T, Context>(dev_ctx, x, sections, axis, &result);
+
   return result;
 }
 

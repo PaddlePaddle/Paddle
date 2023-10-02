@@ -21,6 +21,7 @@ limitations under the License. */
 #include <type_traits>
 
 #include "paddle/utils/string/printf.h"
+#include "paddle/utils/test_macros.h"
 
 namespace phi {
 enum ErrorCode {
@@ -66,7 +67,7 @@ enum ErrorCode {
   EXECUTION_TIMEOUT = 8,
 
   // Operation is not implemented or not supported/enabled in this service.
-  // Error type string: "UnimpelmentedError"
+  // Error type string: "UnimplementedError"
   UNIMPLEMENTED = 9,
 
   // The service is currently unavailable.  This is a most likely a
@@ -111,7 +112,7 @@ class ErrorSummary {
 
   const std::string& error_message() const { return msg_; }
 
-  std::string to_string() const;
+  TEST_API std::string to_string() const;
 
  private:
   ErrorCode code_;

@@ -54,7 +54,7 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
       dataset->GetReaders();
   VLOG(3) << "readers num: " << readers.size();
   // change thread num to readers num
-  thread_num_ = readers.size();
+  thread_num_ = static_cast<int>(readers.size());
   VLOG(3) << "worker thread num: " << thread_num_;
   workers_.resize(thread_num_);
 
@@ -84,7 +84,7 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
 }
 
 std::string MultiTrainer::GetDumpPath(int tid) {
-  if (user_define_dump_filename_ != "") {
+  if (!user_define_dump_filename_.empty()) {
     return string::format_string("%s/part-%s-%05d",
                                  dump_fields_path_.c_str(),
                                  user_define_dump_filename_.c_str(),
@@ -107,8 +107,7 @@ void MultiTrainer::InitDumpEnv() {
     }
   }
   for (int i = 0; i < dump_thread_num_; i++) {
-    dump_thread_.push_back(
-        std::thread(std::bind(&TrainerBase::DumpWork, this, i)));
+    dump_thread_.emplace_back([this, i] { DumpWork(i); });
   }
 }
 

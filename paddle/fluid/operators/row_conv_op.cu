@@ -11,7 +11,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/row_conv_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -319,8 +319,8 @@ __global__ void RowConvGradFilter(const T *in,
 
 }  // namespace
 
-template <typename T>
-class RowConvKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
+template <typename T, typename DeviceContext>
+class RowConvKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *X = context.Input<phi::DenseTensor>("X");
@@ -373,8 +373,8 @@ class RowConvKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
-class RowConvGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
+template <typename T, typename DeviceContext>
+class RowConvGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *X = context.Input<phi::DenseTensor>("X");
@@ -491,6 +491,7 @@ class RowConvGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(row_conv, ops::RowConvKernel<phi::GPUContext, float>);
-REGISTER_OP_CUDA_KERNEL(row_conv_grad,
-                        ops::RowConvGradKernel<phi::GPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(
+    row_conv, GPU, ALL_LAYOUT, ops::RowConvKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    row_conv_grad, GPU, ALL_LAYOUT, ops::RowConvGradKernel, float) {}

@@ -25,7 +25,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void UnfoldGradKernel(const Context& ctx,
-                      const DenseTensor& x,
+                      const DenseTensor& x UNUSED,
                       const DenseTensor& out_grad,
                       const std::vector<int>& kernel_sizes,
                       const std::vector<int>& strides,

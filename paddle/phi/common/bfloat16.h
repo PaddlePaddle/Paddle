@@ -31,10 +31,14 @@
 #include <cuda_bf16.h>
 #endif
 
+#ifndef PADDLE_WITH_HIP
 #if !defined(_WIN32)
 #define PADDLE_ALIGN(x) __attribute__((aligned(x)))
 #else
 #define PADDLE_ALIGN(x) __declspec(align(x))
+#endif
+#else
+#define PADDLE_ALIGN(x)
 #endif
 
 namespace phi {
@@ -144,7 +148,7 @@ struct PADDLE_ALIGN(2) bfloat16 {
     return *this;
   }
 
-  // Conversion opertors
+  // Conversion operators
   HOSTDEVICE inline operator float() const {
 #ifdef PADDLE_WITH_HIP
     uint32_t res = 0;
@@ -153,7 +157,9 @@ struct PADDLE_ALIGN(2) bfloat16 {
     uint16_t temp = x;
     uint16_t* temp_ptr = reinterpret_cast<uint16_t*>(&temp);
     res = *temp_ptr;
-    return res;
+    // return res;
+    res = res << 16;
+    return *reinterpret_cast<float*>(&res);
 #else
 #ifdef PADDLE_CUDA_BF16
     return __bfloat162float(*reinterpret_cast<const __nv_bfloat16*>(&x));
@@ -373,7 +379,7 @@ struct numeric_limits<phi::dtype::bfloat16> {
   static const bool tinyness_before = false;
 
   HOSTDEVICE static phi::dtype::bfloat16(min)() {
-    return phi::dtype::raw_uint16_to_bfloat16(0x007f);
+    return phi::dtype::raw_uint16_to_bfloat16(0x0080);
   }
   HOSTDEVICE static phi::dtype::bfloat16 lowest() {
     return phi::dtype::raw_uint16_to_bfloat16(0xff7f);
@@ -382,7 +388,7 @@ struct numeric_limits<phi::dtype::bfloat16> {
     return phi::dtype::raw_uint16_to_bfloat16(0x7f7f);
   }
   HOSTDEVICE static phi::dtype::bfloat16 epsilon() {
-    return phi::dtype::raw_uint16_to_bfloat16(0x3400);
+    return phi::dtype::raw_uint16_to_bfloat16(0x3C00);
   }
   HOSTDEVICE static phi::dtype::bfloat16 round_error() {
     return phi::dtype::bfloat16(0.5);

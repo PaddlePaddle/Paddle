@@ -43,14 +43,14 @@ void StringUpperKernel(const ContextT& dev_ctx,
 }  // namespace strings
 }  // namespace phi
 
-PD_REGISTER_GENERAL_KERNEL(strings_lower,
-                           CPU,
-                           ALL_LAYOUT,
-                           phi::strings::StringLowerKernel<phi::CPUContext>,
-                           pstring) {}
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
+    strings_lower,
+    CPU,
+    ALL_LAYOUT,
+    phi::strings::StringLowerKernel<phi::CPUContext>) {}
 
-PD_REGISTER_GENERAL_KERNEL(strings_upper,
-                           CPU,
-                           ALL_LAYOUT,
-                           phi::strings::StringUpperKernel<phi::CPUContext>,
-                           pstring) {}
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
+    strings_upper,
+    CPU,
+    ALL_LAYOUT,
+    phi::strings::StringUpperKernel<phi::CPUContext>) {}

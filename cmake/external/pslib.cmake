@@ -23,9 +23,15 @@ if((NOT DEFINED PSLIB_VER) OR (NOT DEFINED PSLIB_URL))
   set(PSLIB_NAME
       "pslib"
       CACHE STRING "" FORCE)
-  set(PSLIB_URL
-      "https://pslib.bj.bcebos.com/pslib.tar.gz"
-      CACHE STRING "" FORCE)
+  if(NOT WITH_HETERPS)
+    set(PSLIB_URL
+        "https://pslib.bj.bcebos.com/pslib.tar.gz"
+        CACHE STRING "" FORCE)
+  else()
+    set(PSLIB_URL
+        "https://pslib.bj.bcebos.com/pslib_3631b2/pslib.tar.gz"
+        CACHE STRING "" FORCE)
+  endif()
 endif()
 message(STATUS "PSLIB_NAME: ${PSLIB_NAME}, PSLIB_URL: ${PSLIB_URL}")
 set(PSLIB_PREFIX_DIR "${THIRD_PARTY_PATH}/pslib")
@@ -37,6 +43,7 @@ set(PSLIB_ROOT ${PSLIB_INSTALL_DIR})
 set(PSLIB_INC_DIR ${PSLIB_ROOT}/include)
 set(PSLIB_LIB_DIR ${PSLIB_ROOT}/lib)
 set(PSLIB_LIB ${PSLIB_LIB_DIR}/libps.so)
+set(JVM_LIB ${PSLIB_LIB_DIR}/libjvm.so)
 set(PSLIB_VERSION_PY ${PSLIB_DOWNLOAD_DIR}/pslib/version.py)
 set(PSLIB_IOMP_LIB ${PSLIB_LIB_DIR}/libiomp5.so) #todo what is this
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${PSLIB_ROOT}/lib")
@@ -67,3 +74,4 @@ ExternalProject_Add(
 add_library(pslib SHARED IMPORTED GLOBAL)
 set_property(TARGET pslib PROPERTY IMPORTED_LOCATION ${PSLIB_LIB})
 add_dependencies(pslib ${PSLIB_PROJECT})
+target_link_libraries(pslib INTERFACE ${PSLIB_LIB_DIR}/libjvm.so)

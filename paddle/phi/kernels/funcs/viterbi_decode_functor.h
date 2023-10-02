@@ -53,12 +53,12 @@ template <bool is_multi_threads>
 struct GetInputIndex {
   void operator()(const std::vector<int>& lhs_dims,
                   const std::vector<int>& rhs_dims,
-                  const std::vector<int>& output_dims,
+                  const std::vector<int>& output_dims UNUSED,
                   const std::vector<int>& lhs_strides,
                   const std::vector<int>& rhs_strides,
                   const std::vector<int>& output_strides,
                   int output_idx,
-                  int* index_array,
+                  int* index_array UNUSED,
                   int* lhs_idx,
                   int* rhs_idx) {
     int out_dims_size = output_strides.size();

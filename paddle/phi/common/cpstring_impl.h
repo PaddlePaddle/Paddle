@@ -24,6 +24,8 @@ limitations under the License. */
 #include <stdlib.h>
 #include <string.h>
 
+#include "paddle/phi/core/macros.h"
+
 #if (defined(__NVCC__) || defined(__HIPCC__))
 #define HOSTDEVICE __host__ __device__
 #define DEVICE __device__
@@ -181,7 +183,9 @@ HOSTDEVICE static inline size_t PD_PString_ToInternalSizeT(
 /*
  * Need to implement in other source file.
  */
-HOSTDEVICE static inline void PD_Free(void *ptr, size_t size) { free(ptr); }
+HOSTDEVICE static inline void PD_Free(void *ptr, size_t size UNUSED) {
+  free(ptr);
+}
 
 HOSTDEVICE static inline void *PD_Memset(void *src, int ch, size_t size) {
   char *dst = (char *)src;  // NOLINT
@@ -203,7 +207,7 @@ HOSTDEVICE static inline void *PD_Memcpy(void *dst,
 HOSTDEVICE static inline void *PD_Malloc(size_t size) { return malloc(size); }
 
 HOSTDEVICE static inline void *PD_Realloc(void *ptr,
-                                          size_t old_size,
+                                          size_t old_size UNUSED,
                                           size_t new_size) {
 #if (defined(__NVCC__) || defined(__HIPCC__))
   if (old_size >= new_size) {

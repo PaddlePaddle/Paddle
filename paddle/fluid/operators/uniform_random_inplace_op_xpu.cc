@@ -14,15 +14,15 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/uniform_random_op.h"
+#include "paddle/phi/core/generator.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class XPUUniformRandomInplaceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -36,7 +36,7 @@ class XPUUniformRandomInplaceKernel : public framework::OpKernel<T> {
         static_cast<T>(ctx.Attr<float>("min")),
         static_cast<T>(ctx.Attr<float>("max")));
     unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
-    auto engine = framework::GetCPURandomEngine(seed);
+    auto engine = phi::GetCPURandomEngine(seed);
     for (int64_t i = 0; i < size; ++i) {
       data_cpu[i] = dist(*engine);
     }
@@ -71,7 +71,7 @@ class XPUUniformRandomInplaceKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class XPUUniformRandomInplaceGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext &ctx) const override {
@@ -95,10 +95,15 @@ class XPUUniformRandomInplaceGradKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_XPU_KERNEL(uniform_random_inplace,
-                       paddle::operators::XPUUniformRandomInplaceKernel<float>);
-REGISTER_OP_XPU_KERNEL(
-    uniform_random_inplace_grad,
-    paddle::operators::XPUUniformRandomInplaceGradKernel<float>);
+PD_REGISTER_STRUCT_KERNEL(uniform_random_inplace,
+                          XPU,
+                          ALL_LAYOUT,
+                          ops::XPUUniformRandomInplaceKernel,
+                          float) {}
+PD_REGISTER_STRUCT_KERNEL(uniform_random_inplace_grad,
+                          XPU,
+                          ALL_LAYOUT,
+                          ops::XPUUniformRandomInplaceGradKernel,
+                          float) {}
 
 #endif  // PADDLE_WITH_XPU

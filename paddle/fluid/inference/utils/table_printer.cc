@@ -78,7 +78,7 @@ TablePrinter::TablePrinter(const std::vector<std::string>& header) {
   }
 
   terminal_witdh = terminal_witdh - (2 * num_cols) - (num_cols + 1);
-  int avg_width = terminal_witdh / num_cols;
+  int avg_width = static_cast<int>(terminal_witdh / num_cols);
 
   for (size_t i = 0; i < num_cols; ++i) {
     shares_.emplace_back(avg_width);
@@ -92,7 +92,7 @@ void TablePrinter::InsertRow(const std::vector<std::string>& row) {
   size_t max_height = 0;
 
   for (size_t i = 0; i < row.size(); ++i) {
-    table_row.emplace_back(std::vector<std::string>());
+    table_row.emplace_back();
     std::stringstream ss(row[i]);
     std::string line;
     size_t max_width = 0;
@@ -101,7 +101,7 @@ void TablePrinter::InsertRow(const std::vector<std::string>& row) {
       if (line.length() > max_width) max_width = line.length();
     }
 
-    if (max_width > widths_[i]) widths_[i] = max_width;
+    if (max_width > widths_[i]) widths_[i] = static_cast<float>(max_width);
 
     size_t num_lines = table_row[i].size();
     if (num_lines > max_height) max_height = num_lines;
@@ -113,7 +113,7 @@ void TablePrinter::InsertRow(const std::vector<std::string>& row) {
 
 void TablePrinter::InsetDivider() {
   heights_.emplace_back(1);
-  data_.emplace_back(std::vector<std::vector<std::string>>());
+  data_.emplace_back();
 }
 
 void TablePrinter::CalcLayout() {
@@ -134,15 +134,15 @@ void TablePrinter::CalcLayout() {
       if (it == idx.end() - 1) break;
 
       auto next_it = it + 1;
-      float remain_per_column = remain / (idx.end() - next_it);
+      float remain_per_column = remain / (idx.end() - next_it);  // NOLINT
       for (; next_it != idx.end(); ++next_it) {
         shares_[*next_it] += remain_per_column;
       }
     }
   }
 
-  for (auto it = idx.begin(); it != idx.end(); ++it) {
-    shares_[*it] = static_cast<size_t>(shares_[*it]);
+  for (auto& item : idx) {
+    shares_[item] = static_cast<size_t>(shares_[item]);  // NOLINT
   }
 
   // For each record.
@@ -153,7 +153,8 @@ void TablePrinter::CalcLayout() {
       for (size_t line_index = 0; line_index < data_[i][j].size();
            ++line_index) {
         std::string line = data_[i][j][line_index];
-        size_t num_rows = (line.length() + shares_[j] - 1) / shares_[j];
+        size_t num_rows =
+            (line.length() + shares_[j] - 1) / shares_[j];  // NOLINT
 
         // If the number of rows required for this record is larger than 1, we
         // will break that line and put it in multiple lines

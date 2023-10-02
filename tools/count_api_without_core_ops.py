@@ -24,9 +24,9 @@ __all__ = [
 
 # APIs that should not be printed into API.spec
 omitted_list = [
-    "paddle.fluid.LoDTensor.set",  # Do not know why it should be omitted
-    "paddle.fluid.io.ComposeNotAligned",
-    "paddle.fluid.io.ComposeNotAligned.__init__",
+    "paddle.base.LoDTensor.set",  # Do not know why it should be omitted
+    "paddle.base.io.ComposeNotAligned",
+    "paddle.base.io.ComposeNotAligned.__init__",
 ]
 
 
@@ -38,9 +38,7 @@ def md5(doc):
     except UnicodeDecodeError as e:
         md5sum = None
         print(
-            "Error({}) occurred when `md5({})`, discard it.".format(
-                str(e), doc
-            ),
+            f"Error({str(e)}) occurred when `md5({doc})`, discard it.",
             file=sys.stderr,
         )
     return md5sum
@@ -54,7 +52,7 @@ def split_with_and_without_core_ops(member, cur_name):
         return
 
     if (
-        cur_name.find('ParamBase') != -1
+        cur_name.find('EagerParamBase') != -1
         or cur_name.find('Parameter') != -1
         or cur_name.find('Variable') != -1
         or cur_name.find('control_flow') != -1
@@ -111,9 +109,7 @@ def visit_member(parent_name, member, func):
         return
     else:
         raise RuntimeError(
-            "Unsupported generate signature of member, type {0}".format(
-                str(type(member))
-            )
+            f"Unsupported generate signature of member, type {str(type(member))}"
         )
 
 
@@ -143,7 +139,7 @@ def visit_all_module(mod, func):
     if mod_name != 'paddle' and not mod_name.startswith('paddle.'):
         return
 
-    if mod_name.startswith('paddle.fluid.core'):
+    if mod_name.startswith('paddle.base.core'):
         return
 
     if mod in visited_modules:
@@ -215,7 +211,7 @@ if __name__ == "__main__":
     else:
         print(
             """Usage:
-            1. Count and list all operator-raleated APIs that contains append_op but not _legacy_C_ops.xx.
+            1. Count and list all operator-related APIs that contains append_op but not _legacy_C_ops.xx.
                 python ./count_api_without_core_ops.py -c paddle
             2. Print api and the md5 of source code of the api.
                 python ./count_api_without_core_ops.py -p paddle

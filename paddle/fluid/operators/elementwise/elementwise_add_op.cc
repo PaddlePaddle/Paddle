@@ -46,7 +46,7 @@ class ElementwiseAddOpMaker : public ElementwiseOpMaker {
         "should be int32, int64, float32, float64.");
   }
 
-  std::string GetOpFuntionality() const override {
+  std::string GetOpFunctionality() const override {
     return "Add two tensors element-wise";
   }
 };
@@ -57,16 +57,22 @@ class ElementwiseAddCompositeGradOpMaker
 
  public:
   void Apply() override {
-    paddle::experimental::Tensor x = this->GetSingleForwardInput("X");
-    paddle::experimental::Tensor y = this->GetSingleForwardInput("Y");
-    paddle::experimental::Tensor out_grad = this->GetSingleOutputGrad("Out");
-    paddle::experimental::Tensor dx = this->GetSingleInputGrad("X");
-    auto dx_ptr = this->GetOutputPtr(&dx);
+    paddle::Tensor x = this->GetSingleForwardInput("X");
+    paddle::Tensor y = this->GetSingleForwardInput("Y");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::Tensor dx = this->GetSingleInputGrad("X");
+    auto* dx_ptr = this->GetOutputPtr(&dx);
     std::string dx_name = this->GetOutputName(dx);
-    paddle::experimental::Tensor dy = this->GetSingleInputGrad("Y");
-    auto dy_ptr = this->GetOutputPtr(&dy);
+    paddle::Tensor dy = this->GetSingleInputGrad("Y");
+    auto* dy_ptr = this->GetOutputPtr(&dy);
     std::string dy_name = this->GetOutputName(dy);
     int axis = static_cast<int>(this->Attr<int>("axis"));
+    PADDLE_ENFORCE_EQ(
+        axis,
+        -1,
+        phi::errors::InvalidArgument(
+            "We only support axis = -1 in composite add_grad but we got: ",
+            axis));
     VLOG(6) << "Runing add_grad composite func";
     prim::add_grad<prim::DescTensor>(x, y, out_grad, axis, dx_ptr, dy_ptr);
     this->RecoverOutputName(dx, dx_name);
@@ -93,6 +99,42 @@ class ElementwiseAddDoubleGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+class ElementwiseAddCompositeDoubleGradOpMaker
+    : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    // get input
+    paddle::Tensor y = this->GetSingleForwardInput("Y");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::optional<paddle::Tensor> ddx =
+        this->GetOptionalSingleOutputGrad(framework::GradVarName("X"));
+    paddle::optional<paddle::Tensor> ddy =
+        this->GetOptionalSingleOutputGrad(framework::GradVarName("Y"));
+    // get output
+    paddle::Tensor grad_out_grad_t =
+        this->GetSingleInputGrad(framework::GradVarName("Out"));
+
+    // get attr
+    int axis = static_cast<int>(this->Attr<int>("axis"));
+    PADDLE_ENFORCE_EQ(
+        axis,
+        -1,
+        phi::errors::InvalidArgument("We only support axis = -1 in composite "
+                                     "add_doubel_grad but we got: ",
+                                     axis));
+
+    paddle::Tensor* grad_out_grad = this->GetOutputPtr(&grad_out_grad_t);
+    std::string grad_out_grad_name = this->GetOutputName(grad_out_grad_t);
+
+    VLOG(6) << "Runing add_double_grad composite func";
+    prim::add_double_grad<prim::DescTensor>(
+        y, out_grad, ddx, ddy, axis, grad_out_grad);
+    this->RecoverOutputName(grad_out_grad_t, grad_out_grad_name);
+  }
+};
+
 template <typename T>
 class ElementwiseAddTripleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
@@ -109,6 +151,44 @@ class ElementwiseAddTripleGradMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetOutput("D_DDX", this->InputGrad("DDX"));
     op->SetOutput("D_DDY", this->InputGrad("DDY"));
+  }
+};
+
+class ElementwiseAddCompositeTripleGradOpMaker
+    : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    // get input
+    paddle::Tensor ddx = this->GetSingleForwardInput("DDX");
+    paddle::Tensor ddy = this->GetSingleForwardInput("DDY");
+    paddle::Tensor d_ddout = this->GetSingleOutputGrad("DDOut");
+
+    // get output
+    paddle::Tensor grad_grad_x_t =
+        this->GetSingleInputGrad(framework::GradVarName("DDX"));
+    paddle::Tensor grad_grad_y_t =
+        this->GetSingleInputGrad(framework::GradVarName("DDY"));
+    // get attr
+    int axis = static_cast<int>(this->Attr<int>("axis"));
+    PADDLE_ENFORCE_EQ(
+        axis,
+        -1,
+        phi::errors::InvalidArgument("We only support axis = -1 in composite "
+                                     "add_triple_grad but we got: ",
+                                     axis));
+
+    paddle::Tensor* grad_grad_x = this->GetOutputPtr(&grad_grad_x_t);
+    std::string grad_grad_x_name = this->GetOutputName(grad_grad_x_t);
+    paddle::Tensor* grad_grad_y = this->GetOutputPtr(&grad_grad_y_t);
+    std::string grad_grad_y_name = this->GetOutputName(grad_grad_y_t);
+
+    VLOG(6) << "Runing add_triple_grad composite func";
+    prim::add_triple_grad<prim::DescTensor>(
+        ddx, ddy, d_ddout, axis, grad_grad_x, grad_grad_y);
+    this->RecoverOutputName(grad_grad_x_t, grad_grad_x_name);
+    this->RecoverOutputName(grad_grad_y_t, grad_grad_y_name);
   }
 };
 
@@ -133,7 +213,8 @@ REGISTER_OPERATOR(
     ops::ElementwiseGradOpInplaceInferer,
     ops::ElementwiseGradNoBufVarsInferer,
     ops::ElementwiseAddDoubleGradMaker<paddle::framework::OpDesc>,
-    ops::ElementwiseAddDoubleGradMaker<paddle::imperative::OpBase>);
+    ops::ElementwiseAddDoubleGradMaker<paddle::imperative::OpBase>,
+    ops::ElementwiseAddCompositeDoubleGradOpMaker);
 
 REGISTER_OPERATOR(
     elementwise_add_grad_grad,

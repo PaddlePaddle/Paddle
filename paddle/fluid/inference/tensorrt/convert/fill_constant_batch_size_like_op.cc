@@ -24,7 +24,7 @@ class FillConstantBatchSizeLikeOpConverter : public OpConverter {
                   const framework::Scope& scope,
                   bool test_mode) override {
 #if IS_TRT_VERSION_GE(7000)
-    VLOG(4) << "convert a fluid fill_constant_batch_size_like op to tensorrt "
+    VLOG(4) << "convert a fill_constant_batch_size_like op to tensorrt "
                "fill_constant_batch_size_like layer";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -44,7 +44,7 @@ class FillConstantBatchSizeLikeOpConverter : public OpConverter {
         PADDLE_GET_CONST(std::string, op_desc.GetAttr("str_value"));
     std::vector<int32_t> shape =
         PADDLE_GET_CONST(std::vector<int32_t>, op_desc.GetAttr("shape"));
-    if (str_value == "") {
+    if (str_value.empty()) {
       float value = PADDLE_GET_CONST(float, op_desc.GetAttr("value"));
       str_value = std::to_string(value);
     }

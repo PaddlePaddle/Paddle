@@ -17,6 +17,8 @@ limitations under the License. */
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
 
+#include "glog/logging.h"
+
 namespace phi {
 namespace funcs {
 
@@ -48,7 +50,7 @@ struct BroadcastDimsSimplifier {
         in_dims[j] = phi::vectorize<int64_t>(ins[j]->dims());
       }
     }
-    ExtendInputDimensions(N, axis);
+    ExtendInputDimensions(axis);
 
     // To Merge the dimensions of input_tensors while the consequtive
     // equal-dimensions appears. Example below :
@@ -101,7 +103,7 @@ struct BroadcastDimsSimplifier {
 
  private:
   // To compensate the lackage of input_tensors' dimension with axis.
-  void ExtendInputDimensions(int N, int axis) {
+  void ExtendInputDimensions(int axis) {
     for (auto &in_dim : in_dims) {
       if (in_dim.size() < rank) {
         DimVector extended_in_dim(rank, 1);
@@ -118,7 +120,7 @@ struct BroadcastDimsSimplifier {
                 "{%s}.",
                 in_idx,
                 out_idx,
-                out_dims[axis],
+                out_dims[out_idx],
                 in_dim[in_idx],
                 phi::make_ddim(in_dim),
                 phi::make_ddim(out_dims)));

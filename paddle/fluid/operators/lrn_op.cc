@@ -20,7 +20,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
@@ -45,9 +45,9 @@ struct LRNFunctor<phi::CPUContext, T> {
                   T beta,
                   const DataLayout data_layout) {
     auto place = ctx.GetPlace();
-    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(ctx);
-    phi::funcs::Transpose<phi::CPUContext, T, 4> transpose;
     auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
+    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
+    phi::funcs::Transpose<phi::CPUContext, T, 4> transpose;
     phi::DenseTensor in_transpose, mid_transpose, out_transpose;
     // if channel_last, transpose to channel_first
     if (data_layout == DataLayout::kNHWC) {
@@ -232,7 +232,7 @@ class LRNOp : public framework::OperatorWithKernel {
       const std::string& var_name,
       const phi::DenseTensor& tensor,
       const phi::KernelKey& expected_kernel_type) const override {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
         (tensor.layout() != phi::DataLayout::ONEDNN)) {
       auto attrs = Attrs();
@@ -355,7 +355,7 @@ class LRNOpGrad : public framework::OperatorWithKernel {
       const std::string& var_name,
       const phi::DenseTensor& tensor,
       const phi::KernelKey& expected_kernel_type) const override {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
         (tensor.layout() != phi::DataLayout::ONEDNN)) {
       auto attrs = Attrs();
@@ -400,5 +400,7 @@ REGISTER_OPERATOR(lrn,
                   ops::LRNGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(lrn_grad, ops::LRNOpGrad);
-REGISTER_OP_CPU_KERNEL(lrn, ops::LRNKernel<phi::CPUContext, float>);
-REGISTER_OP_CPU_KERNEL(lrn_grad, ops::LRNGradKernel<phi::CPUContext, float>);
+
+PD_REGISTER_STRUCT_KERNEL(lrn, CPU, ALL_LAYOUT, ops::LRNKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    lrn_grad, CPU, ALL_LAYOUT, ops::LRNGradKernel, float) {}

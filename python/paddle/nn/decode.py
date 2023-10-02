@@ -20,10 +20,9 @@ import numpy as np
 
 import paddle
 from paddle.common_ops_import import default_main_program
-from paddle.framework import _non_static_mode
+from paddle.framework import in_dynamic_mode
 
-from ..fluid.data_feeder import convert_dtype
-from ..fluid.layers.utils import flatten, map_structure
+from ..base.data_feeder import convert_dtype
 
 __all__ = []
 
@@ -190,20 +189,20 @@ class BeamSearchDecoder(Decoder):
 
         .. code-block:: python
 
-            import numpy as np
-            import paddle
-            from paddle.nn import BeamSearchDecoder, dynamic_decode
-            from paddle.nn import GRUCell, Linear, Embedding
-            trg_embeder = Embedding(100, 32)
-            output_layer = Linear(32, 32)
-            decoder_cell = GRUCell(input_size=32, hidden_size=32)
-            decoder = BeamSearchDecoder(decoder_cell,
-                                        start_token=0,
-                                        end_token=1,
-                                        beam_size=4,
-                                        embedding_fn=trg_embeder,
-                                        output_fn=output_layer)
-
+            >>> import numpy as np
+            >>> import paddle
+            >>> from paddle.nn import BeamSearchDecoder, dynamic_decode
+            >>> from paddle.nn import GRUCell, Linear, Embedding
+            >>> trg_embeder = Embedding(100, 32)
+            >>> output_layer = Linear(32, 32)
+            >>> decoder_cell = GRUCell(input_size=32, hidden_size=32)
+            >>> decoder = BeamSearchDecoder(decoder_cell,
+            ...                             start_token=0,
+            ...                             end_token=1,
+            ...                             beam_size=4,
+            ...                             embedding_fn=trg_embeder,
+            ...                             output_fn=output_layer)
+            ...
     """
 
     def __init__(
@@ -434,7 +433,7 @@ class BeamSearchDecoder(Decoder):
                 `finished` is a `bool` tensor filled by False with shape `[batch_size, beam_size]`.
         """
         self.kinf = 1e9
-        state = flatten(initial_cell_states)[0]
+        state = paddle.utils.flatten(initial_cell_states)[0]
         self.batch_size = paddle.shape(state)[0]
 
         self.start_token_tensor = paddle.full(
@@ -444,7 +443,7 @@ class BeamSearchDecoder(Decoder):
             shape=[1], dtype="int64", fill_value=self.end_token
         )
 
-        init_cell_states = map_structure(
+        init_cell_states = paddle.utils.map_structure(
             self._expand_to_beam_size, initial_cell_states
         )
         init_inputs = paddle.full(
@@ -542,7 +541,7 @@ class BeamSearchDecoder(Decoder):
             topk_indices,
             self.batch_size,
         )
-        next_cell_states = map_structure(
+        next_cell_states = paddle.utils.map_structure(
             lambda x: self._gather(x, beam_indices, self.batch_size),
             next_cell_states,
         )
@@ -596,13 +595,17 @@ class BeamSearchDecoder(Decoder):
                 `[batch_size, beam_size]` with data type `float32, int64, int64`. \
                 `finished` is a `bool` tensor with shape `[batch_size, beam_size]`.
         """
-        inputs = map_structure(self._merge_batch_beams, inputs)
-        cell_states = map_structure(self._merge_batch_beams, states.cell_states)
+        inputs = paddle.utils.map_structure(self._merge_batch_beams, inputs)
+        cell_states = paddle.utils.map_structure(
+            self._merge_batch_beams, states.cell_states
+        )
         cell_outputs, next_cell_states = self.cell(
             inputs, cell_states, **kwargs
         )
-        cell_outputs = map_structure(self._split_batch_beams, cell_outputs)
-        next_cell_states = map_structure(
+        cell_outputs = paddle.utils.map_structure(
+            self._split_batch_beams, cell_outputs
+        )
+        next_cell_states = paddle.utils.map_structure(
             self._split_batch_beams, next_cell_states
         )
 
@@ -703,13 +706,13 @@ def _dynamic_decode_imperative(
         initial_states,
         initial_finished,
     )
-    cond = paddle.logical_not((paddle.all(initial_finished)))
+    cond = paddle.logical_not(paddle.all(initial_finished))
     sequence_lengths = paddle.cast(paddle.zeros_like(initial_finished), "int64")
     outputs = None
 
     step_idx = 0
     step_idx_tensor = paddle.full(shape=[1], fill_value=step_idx, dtype="int64")
-    while cond.numpy():
+    while np.array(cond).item():
         (step_outputs, next_states, next_inputs, next_finished) = decoder.step(
             step_idx_tensor, inputs, states, **kwargs
         )
@@ -729,7 +732,7 @@ def _dynamic_decode_imperative(
                 ),
             )
             if impute_finished:  # rectify the states for the finished.
-                next_states = map_structure(
+                next_states = paddle.utils.map_structure(
                     lambda x, y: _maybe_copy(x, y, finished),
                     states,
                     next_states,
@@ -743,9 +746,9 @@ def _dynamic_decode_imperative(
             )
 
         outputs = (
-            map_structure(lambda x: ArrayWrapper(x), step_outputs)
+            paddle.utils.map_structure(lambda x: ArrayWrapper(x), step_outputs)
             if step_idx == 0
-            else map_structure(
+            else paddle.utils.map_structure(
                 lambda x, x_array: x_array.append(x), step_outputs, outputs
             )
         )
@@ -763,7 +766,7 @@ def _dynamic_decode_imperative(
         if max_step_num is not None and step_idx > max_step_num:
             break
 
-    final_outputs = map_structure(
+    final_outputs = paddle.utils.map_structure(
         lambda x: paddle.stack(x.array, axis=0), outputs
     )
     final_states = states
@@ -776,7 +779,7 @@ def _dynamic_decode_imperative(
         pass
 
     if not output_time_major:
-        final_outputs = map_structure(
+        final_outputs = paddle.utils.map_structure(
             lambda x: paddle.transpose(
                 x, [1, 0] + list(range(2, len(x.shape)))
             ),
@@ -809,7 +812,7 @@ def _dynamic_decode_declarative(
     global_finished.stop_gradient = True
     step_idx = paddle.full(shape=[1], fill_value=0, dtype="int64")
 
-    cond = paddle.logical_not((paddle.all(initial_finished)))
+    cond = paddle.logical_not(paddle.all(initial_finished))
     if max_step_num is not None:
         max_step_num = paddle.full(
             shape=[1], fill_value=max_step_num, dtype="int64"
@@ -822,15 +825,15 @@ def _dynamic_decode_declarative(
 
     if is_test:
         # for test, reuse inputs and states variables to save memory
-        inputs = map_structure(lambda x: x, initial_inputs)
-        states = map_structure(lambda x: x, initial_states)
+        inputs = paddle.utils.map_structure(lambda x: x, initial_inputs)
+        states = paddle.utils.map_structure(lambda x: x, initial_states)
     else:
         # inputs and states of all steps must be saved for backward and training
-        inputs_arrays = map_structure(
+        inputs_arrays = paddle.utils.map_structure(
             lambda x: paddle.tensor.array.array_write(x, step_idx),
             initial_inputs,
         )
-        states_arrays = map_structure(
+        states_arrays = paddle.utils.map_structure(
             lambda x: paddle.tensor.array.array_write(x, step_idx),
             initial_states,
         )
@@ -869,11 +872,11 @@ def _dynamic_decode_declarative(
     # While
     with while_op.block():
         if not is_test:
-            inputs = map_structure(
+            inputs = paddle.utils.map_structure(
                 lambda array: paddle.tensor.array.array_read(array, step_idx),
                 inputs_arrays,
             )
-            states = map_structure(
+            states = paddle.utils.map_structure(
                 lambda array: paddle.tensor.array.array_read(array, step_idx),
                 states_arrays,
             )
@@ -894,7 +897,7 @@ def _dynamic_decode_declarative(
                 ),
             )
             if impute_finished:  # rectify the states for the finished.
-                next_states = map_structure(
+                next_states = paddle.utils.map_structure(
                     lambda x, y: _maybe_copy(x, y, global_finished),
                     states,
                     next_states,
@@ -908,11 +911,11 @@ def _dynamic_decode_declarative(
             )
 
         # create tensor array in global block after dtype[s] of outputs can be got
-        outputs_arrays = map_structure(
+        outputs_arrays = paddle.utils.map_structure(
             lambda x: _create_array_out_of_while(x.dtype), outputs
         )
 
-        map_structure(
+        paddle.utils.map_structure(
             lambda x, x_array: paddle.tensor.array.array_write(
                 x, i=step_idx, array=x_array
             ),
@@ -925,17 +928,21 @@ def _dynamic_decode_declarative(
         paddle.assign(next_finished, global_finished)
         paddle.assign(next_sequence_lengths, sequence_lengths)
         if is_test:
-            map_structure(paddle.assign, next_inputs, global_inputs)
-            map_structure(paddle.assign, next_states, global_states)
+            paddle.utils.map_structure(
+                paddle.assign, next_inputs, global_inputs
+            )
+            paddle.utils.map_structure(
+                paddle.assign, next_states, global_states
+            )
         else:
-            map_structure(
+            paddle.utils.map_structure(
                 lambda x, x_array: paddle.tensor.array.array_write(
                     x, i=step_idx, array=x_array
                 ),
                 next_inputs,
                 inputs_arrays,
             )
-            map_structure(
+            paddle.utils.map_structure(
                 lambda x, x_array: paddle.tensor.array.array_write(
                     x, i=step_idx, array=x_array
                 ),
@@ -951,7 +958,7 @@ def _dynamic_decode_declarative(
         else:
             paddle.logical_not(paddle.all(global_finished), cond)
 
-    final_outputs = map_structure(
+    final_outputs = paddle.utils.map_structure(
         lambda array: paddle.tensor.manipulation.tensor_array_to_tensor(
             array, axis=0, use_stack=True
         )[0],
@@ -960,7 +967,7 @@ def _dynamic_decode_declarative(
     if is_test:
         final_states = global_states
     else:
-        final_states = map_structure(
+        final_states = paddle.utils.map_structure(
             lambda array: paddle.tensor.array.array_read(array, step_idx),
             states_arrays,
         )
@@ -973,7 +980,9 @@ def _dynamic_decode_declarative(
         pass
 
     if not output_time_major:
-        final_outputs = map_structure(_transpose_batch_time, final_outputs)
+        final_outputs = paddle.utils.map_structure(
+            _transpose_batch_time, final_outputs
+        )
 
     return (
         (final_outputs, final_states, sequence_lengths)
@@ -1045,24 +1054,26 @@ def dynamic_decode(
 
         .. code-block:: python
 
-            import paddle
-            from paddle.nn import BeamSearchDecoder, dynamic_decode
-            from paddle.nn import GRUCell, Linear, Embedding
-            trg_embeder = Embedding(100, 32)
-            output_layer = Linear(32, 32)
-            decoder_cell = GRUCell(input_size=32, hidden_size=32)
-            decoder = BeamSearchDecoder(decoder_cell,
-                                        start_token=0,
-                                        end_token=1,
-                                        beam_size=4,
-                                        embedding_fn=trg_embeder,
-                                        output_fn=output_layer)
-            encoder_output = paddle.ones((4, 8, 32), dtype=paddle.get_default_dtype())
-            outputs = dynamic_decode(decoder=decoder,
-                                    inits=decoder_cell.get_initial_states(encoder_output),
-                                    max_step_num=10)
+            >>> import paddle
+            >>> from paddle.nn import BeamSearchDecoder, dynamic_decode
+            >>> from paddle.nn import GRUCell, Linear, Embedding
+            >>> trg_embeder = Embedding(100, 32)
+            >>> output_layer = Linear(32, 32)
+            >>> decoder_cell = GRUCell(input_size=32, hidden_size=32)
+            >>> decoder = BeamSearchDecoder(decoder_cell,
+            ...                             start_token=0,
+            ...                             end_token=1,
+            ...                             beam_size=4,
+            ...                             embedding_fn=trg_embeder,
+            ...                             output_fn=output_layer)
+            >>> encoder_output = paddle.ones((4, 8, 32), dtype=paddle.get_default_dtype())
+            >>> outputs = dynamic_decode(decoder=decoder,
+            ...                          inits=decoder_cell.get_initial_states(encoder_output),
+            ...                          max_step_num=10)
+            >>> print(outputs[0].shape)
+            [4, 11, 4]
     """
-    if _non_static_mode():
+    if in_dynamic_mode():
         return _dynamic_decode_imperative(
             decoder,
             inits,

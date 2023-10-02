@@ -35,18 +35,17 @@ limitations under the License. */
  * phase in the inference service.
  */
 
-#include <string>
 #include <vector>
 
-#include "gflags/gflags.h"
 #include "paddle/fluid/inference/analysis/analysis_pass.h"
-#include "paddle/fluid/inference/analysis/flags.h"
+#include "paddle/utils/flags.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-class Analyzer final {
+class TEST_API Analyzer final {
  public:
   Analyzer();
 

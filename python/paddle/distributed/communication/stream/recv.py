@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid.data_feeder as data_feeder
-import paddle.framework as framework
+from paddle import framework
+from paddle.base import data_feeder
 from paddle.distributed.communication.group import (
     _get_global_group,
     _get_or_throw_group_rank,
@@ -59,7 +59,6 @@ def _recv_in_static_mode(
             'use_calc_stream': sync_op,
         },
     )
-    return None
 
 
 def recv(tensor, src=0, group=None, sync_op=True, use_calc_stream=False):
@@ -81,21 +80,22 @@ def recv(tensor, src=0, group=None, sync_op=True, use_calc_stream=False):
     Examples:
         .. code-block:: python
 
-            # required: distributed
-            import paddle
-            import paddle.distributed as dist
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.distributed as dist
 
-            dist.init_parallel_env()
-            local_rank = dist.get_rank()
-            if local_rank == 0:
-                data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
-                task = dist.stream.send(data, dst=1, sync_op=False)
-            else:
-                data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
-                task = dist.stream.recv(data, src=0, sync_op=False)
-            task.wait()
-            out = data.numpy()
-            # [[4, 5, 6], [4, 5, 6]] (2 GPUs)
+            >>> dist.init_parallel_env()
+            >>> local_rank = dist.get_rank()
+            >>> if local_rank == 0:
+            ...     data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
+            ...     task = dist.stream.send(data, dst=1, sync_op=False)
+            >>> else:
+            ...     data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
+            ...     task = dist.stream.recv(data, src=0, sync_op=False)
+            >>> task.wait()
+            >>> out = data.numpy()
+            >>> print(out)
+            >>> # [[4, 5, 6], [4, 5, 6]] (2 GPUs)
     """
     if _warn_cur_rank_not_in_group(group):
         return
@@ -105,7 +105,7 @@ def recv(tensor, src=0, group=None, sync_op=True, use_calc_stream=False):
             "use_calc_stream can only be True in sync op behavior."
         )
 
-    if framework.in_dygraph_mode():
+    if framework.in_dynamic_mode():
         group = _get_global_group() if group is None else group
         src_rank_in_group = _get_or_throw_group_rank(src, group)
 

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#if !defined(_WIN32) && !defined(__APPLE__)
+#if !defined(_WIN32)
 #include <cstddef>
 #include <cstring>
 
@@ -40,6 +40,8 @@ typedef enum {
   FLOAT32,
   FLOAT64,
   BFLOAT16,
+  COMPLEX64,
+  COMPLEX128,
 } C_DataType;
 
 typedef enum {
@@ -635,6 +637,17 @@ struct C_DeviceInterface {
                         size_t src_rank,
                         C_CCLComm comm,
                         C_Stream stream);
+
+  C_Status (*xccl_all_to_all)(const void** send_buf,
+                              const size_t* send_count,
+                              const C_DataType* send_dtype,
+                              void** recv_buf,
+                              const size_t* recv_count,
+                              const C_DataType* recv_dtype,
+                              size_t rank,
+                              size_t nranks,
+                              C_CCLComm comm,
+                              C_Stream stream);
 
   void* reserved_ccl_api[8];
 

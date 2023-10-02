@@ -20,19 +20,19 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/transform.h"
+#include "paddle/phi/common/transform.h"
 
 namespace phi {
 
-#define DEFINE_BITWISE_KERNEL(op_type)                                    \
-  template <typename T, typename Context>                                 \
-  void Bitwise##op_type##Kernel(const Context& dev_ctx,                   \
-                                const DenseTensor& x,                     \
-                                const DenseTensor& y,                     \
-                                DenseTensor* out) {                       \
-    funcs::Bitwise##op_type##Functor<T> func;                             \
-    funcs::ElementwiseCompute<funcs::Bitwise##op_type##Functor<T>, T, T>( \
-        dev_ctx, x, y, -1, func, out);                                    \
+#define DEFINE_BITWISE_KERNEL(op_type)                                 \
+  template <typename T, typename Context>                              \
+  void Bitwise##op_type##Kernel(const Context& dev_ctx,                \
+                                const DenseTensor& x,                  \
+                                const DenseTensor& y,                  \
+                                DenseTensor* out) {                    \
+    funcs::Bitwise##op_type##Functor<T> func;                          \
+    funcs::ElementwiseCompute<funcs::Bitwise##op_type##Functor<T>, T>( \
+        dev_ctx, x, y, func, out);                                     \
   }
 
 DEFINE_BITWISE_KERNEL(And)
@@ -48,7 +48,7 @@ void BitwiseNotKernel(const Context& dev_ctx,
   T* out_data = dev_ctx.template Alloc<T>(out);
   size_t numel = x.numel();
   funcs::BitwiseNotFunctor<T> func;
-  paddle::platform::Transform<Context> trans;
+  phi::Transform<Context> trans;
   trans(dev_ctx, x_data, x_data + numel, out_data, func);
 }
 

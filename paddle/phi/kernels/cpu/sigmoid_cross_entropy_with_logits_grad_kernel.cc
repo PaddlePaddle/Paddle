@@ -20,28 +20,35 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SigmoidCrossEntropyWithLogitsGradKernel(const Context& dev_ctx,
-                                             const DenseTensor& x,
-                                             const DenseTensor& label,
-                                             const DenseTensor& out_grad,
-                                             bool normalize,
-                                             int ignore_index,
-                                             DenseTensor* in_grad) {
+void SigmoidCrossEntropyWithLogitsGradKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const DenseTensor& label,
+    const paddle::optional<DenseTensor>& pos_weight,
+    const DenseTensor& out_grad,
+    bool normalize,
+    int ignore_index,
+    DenseTensor* in_grad) {
   auto dx_data = dev_ctx.template Alloc<T>(in_grad);
 
-  int limit = in_grad->numel();
+  int limit = static_cast<int>(in_grad->numel());
   auto x_data = x.data<T>();
   auto label_data = label.data<T>();
   auto dout_data = out_grad.data<T>();
+  auto pos_weight_data =
+      (pos_weight.get_ptr() == nullptr ? nullptr
+                                       : pos_weight.get_ptr()->data<T>());
+
   for (int idx = 0; idx < limit; ++idx) {
     T x = x_data[idx];
     T label = label_data[idx];
     T dout = dout_data[idx];
+    T pos_weight_idx = pos_weight_data == nullptr ? 1 : pos_weight_data[idx];
     if (static_cast<int>(label) == ignore_index) {
       dx_data[idx] = static_cast<T>(0.);
     } else {
       T simoid_x = static_cast<T>(1) / (static_cast<T>(1) + std::exp(-x));
-      T diff = simoid_x - label;
+      T diff = simoid_x * pos_weight_idx - label;
       dx_data[idx] = dout * diff;
     }
   }

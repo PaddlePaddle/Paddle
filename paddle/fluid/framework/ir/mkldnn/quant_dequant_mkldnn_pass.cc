@@ -223,9 +223,8 @@ void QuantDequantMkldnnPass::CollectOutputScalesFromAttr(
       std::vector<float> scale_v = {scale};
 
       auto var_name_map = op_desc->Outputs();
-      for (auto iter = var_name_map.begin(); iter != var_name_map.end();
-           ++iter) {
-        for (auto var_name : iter->second) {
+      for (auto& item : var_name_map) {
+        for (auto var_name : item.second) {
           var_quant_scales->insert(std::make_pair(var_name, scale_v));
         }
       }
@@ -401,9 +400,8 @@ void QuantDequantMkldnnPass::RemoveFakeOps(
 
     if (fake_quantize_types.count(op_node->Name())) {
       CollectFakeQuantizeOps(graph, op_node, &nodes2rm);
-    } else if (fake_dequantize_types.count(op_node->Name())) {
-      CollectFakeDequantizeOps(graph, op_node, &nodes2rm);
-    } else if (fake_quantize_dequantize_types.count(op_node->Name())) {
+    } else if (fake_dequantize_types.count(op_node->Name()) ||
+               fake_quantize_dequantize_types.count(op_node->Name())) {
       CollectFakeDequantizeOps(graph, op_node, &nodes2rm);
     } else if (onnx_format_quantize_dequantize_types.count(op_node->Name())) {
       CollectQuantizeDequantizeOpsFromONNXFormat(graph, op_node, &nodes2rm);
@@ -754,9 +752,9 @@ void QuantDequantMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   UpdateActivations(graph);
   RemoveCtrlVars(graph);
 
-  // save var_quant_scales in the first op's attr
+  // save var_quant_scales in the temporary save op's attr
   // for compute_propagate_scales_mkldnn_pass
-  SaveInfoInTheFirstOp(
+  SaveInfoInTheTmpOp(
       graph, "has_quant_info", "var_quant_scales", var_quant_scales);
 }
 

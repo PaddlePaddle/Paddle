@@ -15,18 +15,18 @@
 import re
 
 import paddle
-from paddle.fluid.data_feeder import convert_dtype
-from paddle.fluid.framework import Variable, core
-from paddle.fluid.layers import Print, control_flow, fill_constant
-from paddle.fluid.layers.control_flow import while_loop
-from paddle.fluid.layers.utils import copy_mutable_vars
-from paddle.jit.dy2static.utils import (
+from paddle.autograd.py_layer import PyLayerMeta
+from paddle.base.data_feeder import convert_dtype
+from paddle.base.dygraph.base import _convert_into_variable, in_to_static_mode
+from paddle.base.framework import Variable, core, default_main_program
+
+from .py_layer import StaticPyLayer
+from .utils import (
+    RETURN_NO_VALUE_VAR_NAME,
     Dygraph2StaticException,
     GetterSetterHelper,
     UndefinedVar,
 )
-
-from .return_transformer import RETURN_NO_VALUE_VAR_NAME
 from .variable_trans_func import to_static_variable
 
 __all__ = []
@@ -39,11 +39,40 @@ def convert_attr(x, attr):
         return getattr(x, attr)
 
 
+def convert_load(x):
+    if in_to_static_mode():
+        if isinstance(x, paddle.base.core.eager.Tensor):
+            """
+            TODO:(@xiongkun) may run convert_load in dygraph mode, which should be fixed.
+            """
+            return _convert_into_variable(x)
+
+        # convert dygraph `PyLayer` into StaticPyLayer
+        if isinstance(x, PyLayerMeta):
+            return StaticPyLayer(x)
+
+        # get the new output of the var
+        if isinstance(x, Variable):
+            cur_block = default_main_program().current_block()
+
+            from paddle.jit.dy2static.program_translator import (
+                ProgramTranslator,
+            )
+
+            new_var = ProgramTranslator.get_instance()._inplace_map.get(
+                cur_block.program, x.desc.id()
+            )
+            if new_var is not None:
+                return new_var
+
+    return x
+
+
 def indexable(x, code=None):
     if isinstance(x, Variable):
         return x
     elif hasattr(x, '__iter__'):
-        return [i for i in x]
+        return list(x)
     elif hasattr(x, '__len__') and hasattr(
         x, '__getitem__'
     ):  # used for customed type and non-iterable type.
@@ -76,7 +105,7 @@ def _unpack_by_structure_paddle(target, structure):
         if isinstance(ele, list):
             ret.append(unpack_by_structure(target[idx], ele))
             continue
-        assert False, "structure element must be 1 or list"
+        raise AssertionError("structure element must be 1 or list")
     return ret
 
 
@@ -156,7 +185,9 @@ def _run_paddle_while(
         return_name_ids, loop_vars
     )  # change the non-local var to variable
     # variable maybe modified to inner var. change it into
-    loop_vars = control_flow.while_loop(new_cond_fn, new_body_fn, loop_vars)
+    from paddle.static.nn import while_loop
+
+    loop_vars = while_loop(new_cond_fn, new_body_fn, loop_vars)
     helper.set(return_name_ids, loop_vars)
     return loop_vars
 
@@ -356,26 +387,37 @@ def _run_paddle_cond(
     _convert_tensor_arrray_if_necessary(helper, push_pop_names)
     pred = cast_bool_if_necessary(pred)
     init_args = helper.get(return_name_ids)
+    from paddle.jit.dy2static.program_translator import ProgramTranslator
+
+    inplace_map = ProgramTranslator.get_instance()._inplace_map
 
     def new_true_fn():
         # init args may contain mutable python container like [var, 2], we copy then like in while_loop
-        helper.set(return_name_ids, copy_mutable_vars(init_args))
+        inplace_map_checkpoint = inplace_map.save_checkpoint()
+        helper.set(
+            return_name_ids,
+            paddle.utils.copy_mutable_vars(init_args),
+        )
         ret = true_fn()
         # IfExpr will return a non-None return value, so we just return ret.
         # We assume normal return has no return value.
         if ret is None:
-            return helper.get(return_name_ids)
-        else:
-            return ret
+            ret = helper.get(return_name_ids)
+        inplace_map.restore_checkpoint(inplace_map_checkpoint)
+        return ret
 
     def new_false_fn():
         # init args may contain mutable python container like [var, 2], we copy then like in while_loop
-        helper.set(return_name_ids, copy_mutable_vars(init_args))
+        inplace_map_checkpoint = inplace_map.save_checkpoint()
+        helper.set(
+            return_name_ids,
+            paddle.utils.copy_mutable_vars(init_args),
+        )
         ret = false_fn()
         if ret is None:
-            return helper.get(return_name_ids)
-        else:
-            return ret
+            ret = helper.get(return_name_ids)
+        inplace_map.restore_checkpoint(inplace_map_checkpoint)
+        return ret
 
     try:
         cond_outs = paddle.static.nn.cond(
@@ -499,7 +541,7 @@ def convert_len(var):
           `shape_op` in var.block.
     """
     if isinstance(var, Variable):
-        assert var.ndim > 0, "len() of a 0D tensor is wrong"
+        assert var.ndim > 0, "len() of a 0-D tensor is wrong"
         if var.type in [
             core.VarDesc.VarType.LOD_TENSOR,
             core.VarDesc.VarType.SELECTED_ROWS,
@@ -528,7 +570,7 @@ def convert_zip(*args):
         if isinstance(arg, Variable) and arg.shape[0] == -1:
             raise RuntimeError(
                 "Not support zip(tensor, ...) when tensor.shape[0] == -1, "
-                "but found args[{}].shape[0] == -1 in 'zip'".format(str(i))
+                f"but found args[{str(i)}].shape[0] == -1 in 'zip'"
             )
     return zip(*args)
 
@@ -557,14 +599,14 @@ class VariableTuple:
 
 
 def convert_enumerate(*args):
-    has_variable = any(map(lambda x: isinstance(x, Variable), args))
+    has_variable = any(isinstance(x, Variable) for x in args)
     if has_variable:
         return VariableTuple(*args)
     return enumerate(*args)
 
 
 def convert_range(*args):
-    has_variable = any(map(lambda x: isinstance(x, Variable), args))
+    has_variable = any(isinstance(x, Variable) for x in args)
     if has_variable:
         if len(args) == 1:
             return paddle.arange(0, args[0], 1, paddle.int64)
@@ -581,7 +623,7 @@ def convert_shape(x):
     """
 
     def has_negative(list_shape):
-        return any([x < 0 for x in list_shape])
+        return any(x < 0 for x in list_shape)
 
     # When `x` is Variable:
     #  (1) if x.shape contains -1, such as [2, -1, 64], returns [2, var, 64],
@@ -707,7 +749,7 @@ def convert_var_dtype(var, dtype):
         }
         return paddle.cast(var, dtype=cast_map[dtype])
     else:
-        return eval('{}(var)'.format(dtype))
+        return eval(f'{dtype}(var)')
 
 
 def convert_assert(cond, message=""):
@@ -731,7 +773,7 @@ def convert_print(*objects, sep=' ', end='\n', file=None, flush=False):
     """
     for obj in objects:
         if isinstance(obj, Variable):
-            Print(obj)
+            paddle.static.Print(obj)
     print(*objects, sep=sep, end=end, file=file, flush=flush)
 
 
@@ -781,12 +823,17 @@ def _run_paddle_pop(array, *args):
     if idx < 0:
         idx = idx + arr_len
     else:
+        from paddle.tensor import fill_constant
+
         idx = fill_constant(shape=[1], dtype="int64", value=idx)
 
     pop_item = paddle.tensor.array_read(array, idx)
 
-    new_array = _slice_tensor_array(array, 0, idx)
+    tmp = paddle.assign(array)
+    new_array = _slice_tensor_array(tmp, 0, idx)
     i = idx + 1
+    from paddle.static.nn import while_loop
+
     _, new_array = while_loop(cond, body, [i, new_array])
     paddle.assign(new_array, output=array)
 

@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include <algorithm>
 
-#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/optimizers/sgd_op.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/amp_type_traits.h"
 
 namespace paddle {
 namespace operators {
@@ -77,7 +77,7 @@ class SGDOpKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
                           ctx.InputNames("Param").front(),
                           paddle::framework::ToTypeName(param_var->Type())));
 
-    using MPDType = typename details::MPTypeTrait<T>::Type;
+    using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
 
     auto* param = ctx.Input<phi::DenseTensor>("Param");
     auto* param_out = ctx.Output<phi::DenseTensor>("ParamOut");

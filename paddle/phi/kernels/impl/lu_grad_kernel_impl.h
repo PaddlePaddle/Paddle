@@ -28,7 +28,7 @@ void LUGradKernel(const Context& dev_ctx,
                   const DenseTensor& out,
                   const DenseTensor& pivots,
                   const DenseTensor& out_grad,
-                  bool pivot,
+                  bool pivot UNUSED,
                   DenseTensor* x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
 

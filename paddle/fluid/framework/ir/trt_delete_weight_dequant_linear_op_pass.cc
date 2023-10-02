@@ -156,77 +156,6 @@ TrtDeleteWeightQuantDequantLinearOpPass::
       .AddAttr("data_format")
       .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
       .End();
-  AddOpCompat(OpCompat("mul"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddInput("Y")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("x_num_col_dims")
-      .IsNumGE(1)
-      .End()
-      .AddAttr("y_num_col_dims")
-      .IsNumEQ(1)
-      .End();
-  AddOpCompat(OpCompat("matmul_v2"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddInput("Y")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("trans_x")
-      .IsBoolEQ(false)
-      .End()
-      .AddAttr("trans_y")
-      .IsBoolEQ(false)
-      .End();
-  AddOpCompat(OpCompat("matmul"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddInput("Y")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("alpha")
-      .IsNumGE(0.99f)
-      .IsNumLE(1.01f)
-      .End()
-      .AddAttr("transpose_X")
-      .IsBoolEQ(false)
-      .End()
-      .AddAttr("transpose_Y")
-      .IsBoolEQ(false)
-      .End();
-  AddOpCompat(OpCompat("fc"))
-      .AddInput("Input")
-      .IsTensor()
-      .End()
-      .AddInput("W")
-      .IsTensor()
-      .End()
-      .AddInput("Bias")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("in_num_col_dims")
-      .IsNumGE(1)
-      .End()
-      .AddAttr("activation_type")
-      .IsStringIn({"relu", ""})
-      .End();
   AddOpCompat(OpCompat("conv2d_transpose"))
       .AddInput("Input")
       .IsTensor()
@@ -326,7 +255,7 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
 
     auto weight_scale_nums = weight_scale_tensor->numel();
     for (int i = 0; i < weight_scale_nums; i++) {
-      weight_scale.push_back(weight_scale_data[i] / range);
+      weight_scale.push_back(weight_scale_data[i] / static_cast<float>(range));
     }
 
     // dequant weight
@@ -363,7 +292,7 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
                             "conv2d_fusion)'s weight dims should be 4."));
 
       for (int i = 0; i < weight_tensor->numel(); i++) {
-        int inner_size = w_dims[1] * w_dims[2] * w_dims[3];
+        int inner_size = static_cast<int>(w_dims[1] * w_dims[2] * w_dims[3]);
         weight_data_tmp[i] = static_cast<float>(quantized_weight_data[i]) *
                              weight_scale[i / inner_size];
       }
@@ -384,7 +313,7 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
                 "When quant_axis == 1 means use per_channel quant_dequant, "
                 "only conv2d_transpose weight dims equal 4."));
         for (int i = 0; i < weight_tensor->numel(); i++) {
-          int inner_size = w_dims[2] * w_dims[3];
+          int inner_size = static_cast<int>(w_dims[2] * w_dims[3]);
           weight_data_tmp[i] = static_cast<float>(quantized_weight_data[i]) *
                                weight_scale[(i / inner_size) % w_dims[1]];
         }

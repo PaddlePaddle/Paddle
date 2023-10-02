@@ -29,7 +29,6 @@ class ASPOptimizer(MetaOptimizerBase):
             "AMPOptimizer",
             "LarsOptimizer",
             "LambOptimizer",
-            "GraphExecutionOptimizer",
             "RecomputeOptimizer",
             "GradientMergeOptimizer",
         ]
@@ -60,7 +59,6 @@ class ASPOptimizer(MetaOptimizerBase):
     def minimize_impl(
         self, loss, startup_program=None, parameter_list=None, no_grad_set=None
     ):
-
         optimize_ops, params_grads = ASPHelper._minimize(
             self.inner_opt,
             loss,

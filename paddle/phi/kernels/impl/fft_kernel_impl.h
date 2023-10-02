@@ -44,7 +44,7 @@ void FFTC2RKernel(const Context& ctx,
                   const std::vector<int64_t>& axes,
                   const std::string& normalization,
                   bool forward,
-                  int64_t last_dim_size,
+                  int64_t last_dim_size UNUSED,
                   DenseTensor* out) {
   using R = typename T::value_type;  // get real type
   ctx.template Alloc<R>(out);

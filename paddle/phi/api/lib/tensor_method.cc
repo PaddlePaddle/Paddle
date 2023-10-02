@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/phi/api/include/tensor.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/tensor_base.h"
@@ -31,6 +33,10 @@ namespace experimental {
 // declare cast api
 Tensor cast(const Tensor &x, DataType out_dtype);
 Tensor copy_to(const Tensor &x, const Place &place, bool blocking);
+}  // namespace experimental
+
+// TODO(chenweihang): Remove this namespace using-directives later
+using namespace experimental;  // NOLINT
 
 Tensor Tensor::cast(DataType target_type) const {
   return experimental::cast(*this, target_type);
@@ -122,24 +128,6 @@ void Tensor::copy_(const Tensor &src,
   auto *dev_ctx = pool.GetMutable(
       place.GetType() == target_place.GetType() ? target_place : place);
 
-  Backend kernel_backend = Backend::UNDEFINED;
-  DataLayout kernel_layout = DataLayout::UNDEFINED;
-  DataType kernel_data_type = DataType::UNDEFINED;
-
-  if (kernel_backend == Backend::UNDEFINED ||
-      kernel_layout == DataLayout::UNDEFINED ||
-      kernel_data_type == DataType::UNDEFINED) {
-    if (kernel_backend == Backend::UNDEFINED) {
-      kernel_backend = kernel_key.backend();
-    }
-    if (kernel_layout == DataLayout::UNDEFINED) {
-      kernel_layout = kernel_key.layout();
-    }
-    if (kernel_data_type == DataType::UNDEFINED) {
-      kernel_data_type = kernel_key.dtype();
-    }
-  }
-
   if (kernel_type == KernelType::DENSE_TENSOR_KENREL) {
     SetKernelOutput(this);
     phi::MetaTensor meta_out(impl_.get());
@@ -207,5 +195,4 @@ Tensor Tensor::to_dense() const {
   return experimental::sparse::to_dense(*this);
 }
 
-}  // namespace experimental
 }  // namespace paddle

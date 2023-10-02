@@ -21,6 +21,7 @@
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/common/tensor_ref.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/variant.h"
 
@@ -29,14 +30,17 @@ namespace phi {
 class Place;
 
 // NOTE: Add needed type in the future
+// Move vector<int> before vector<bool>, because when
+// vector<bool> is before vector<int>, a python integer
+// list will be converted to vector<bool> in error.
 using Attribute = paddle::variant<bool,
                                   int,
                                   int64_t,
                                   float,
                                   double,
                                   std::string,
-                                  std::vector<bool>,
                                   std::vector<int>,
+                                  std::vector<bool>,
                                   std::vector<int64_t>,
                                   std::vector<float>,
                                   std::vector<double>,
@@ -46,7 +50,9 @@ using Attribute = paddle::variant<bool,
                                   IntArray,
                                   DataType,
                                   DataLayout,
-                                  Place>;
+                                  Place,
+                                  TensorRef,
+                                  std::vector<TensorRef>>;
 
 using AttributeMap = paddle::flat_hash_map<std::string, Attribute>;
 

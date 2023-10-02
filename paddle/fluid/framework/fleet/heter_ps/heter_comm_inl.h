@@ -25,15 +25,16 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU_KP
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #endif
+#include "paddle/phi/core/flags.h"
 
-DECLARE_double(gpugraph_hbm_table_load_factor);
-DECLARE_bool(gpugraph_enable_gpu_direct_access);
-DECLARE_bool(gpugraph_enable_segment_merge_grads);
-DECLARE_uint64(gpugraph_merge_grads_segment_size);
-DECLARE_int32(gpugraph_dedup_pull_push_mode);
-DECLARE_bool(enable_tracker_all2all);
-DECLARE_bool(enable_all2all_use_fp16);
-DECLARE_bool(enable_sparse_inner_gather);
+PHI_DECLARE_double(gpugraph_hbm_table_load_factor);
+PHI_DECLARE_bool(gpugraph_enable_gpu_direct_access);
+PHI_DECLARE_bool(gpugraph_enable_segment_merge_grads);
+PHI_DECLARE_uint64(gpugraph_merge_grads_segment_size);
+PHI_DECLARE_int32(gpugraph_dedup_pull_push_mode);
+PHI_DECLARE_bool(enable_tracker_all2all);
+PHI_DECLARE_bool(enable_all2all_use_fp16);
+PHI_DECLARE_bool(enable_sparse_inner_gather);
 
 namespace paddle {
 namespace framework {

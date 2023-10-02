@@ -30,7 +30,7 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor_util.h"
-
+#include "paddle/phi/core/macros.h"
 namespace brpc {
 class Channel;
 class Controller;
@@ -63,7 +63,7 @@ class DownpourPsClientService : public PsService {
                        PsResponseMessage *response,
                        ::google::protobuf::Closure *done);
 
-  virtual void FLService(::google::protobuf::RpcController *controller,
+  virtual void FLService(::google::protobuf::RpcController *controller UNUSED,
                          const CoordinatorReqMessage *request,
                          CoordinatorResMessage *response,
                          ::google::protobuf::Closure *done) {

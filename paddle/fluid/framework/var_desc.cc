@@ -27,10 +27,12 @@ VarDesc::VarDesc(const VarDesc &other)
       attrs_(other.attrs_),
       original_id_(other.original_id_) {
   if (other.dist_attr_) {
-    dist_attr_.reset(new TensorDistAttr(*other.dist_attr_));
+    dist_attr_ = std::make_unique<TensorDistAttr>(*other.dist_attr_);
   }
   need_updated_ = true;
 }
+
+VarDesc::~VarDesc() = default;
 
 VarDesc::VarDesc(const proto::VarDesc &desc) : desc_(desc) {
   // Restore attrs_ for auto parallel
@@ -351,7 +353,7 @@ void VarDesc::SetAttr(const std::string &name, const Attribute &v) {
   // here if we meet this issue
   proto::AttrType attr_type = static_cast<proto::AttrType>(v.index() - 1);
   if (attr_type == proto::AttrType::INTS &&
-      PADDLE_GET_CONST(std::vector<int>, v).size() == 0u) {
+      PADDLE_GET_CONST(std::vector<int>, v).empty()) {
     // Find current attr via attr name and set the correct attribute value
     this->attrs_[name] = std::vector<int>();
     return;
@@ -386,11 +388,8 @@ struct SetVarAttrDescVisitor {
   template <typename T>
   void operator()(T &&v) {
     using U = std::decay_t<decltype(v)>;
-    if (std::is_same<U, int>::value) {
-      set_attr_value(v);
-    } else if (std::is_same<U, std::string>::value) {
-      set_attr_value(v);
-    } else if (std::is_same<U, std::vector<int>>::value) {
+    if (std::is_same<U, int>::value || std::is_same<U, std::string>::value ||
+        std::is_same<U, std::vector<int>>::value) {
       set_attr_value(v);
     } else {
       PADDLE_THROW(platform::errors::Unavailable(
@@ -441,7 +440,8 @@ TensorDistAttr *VarDesc::MutableDistAttr() {
   if (dist_attr_) {
     return dist_attr_.get();
   } else {
-    dist_attr_.reset(new TensorDistAttr(*this));
+    auto shape = paddle::distributed::auto_parallel::get_tensor_shape(this);
+    dist_attr_ = std::make_unique<TensorDistAttr>(shape);
     return dist_attr_.get();
   }
   need_updated_ = true;

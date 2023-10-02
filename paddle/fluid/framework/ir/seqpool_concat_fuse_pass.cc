@@ -61,7 +61,7 @@ PDNode* BuildSeqPoolConcatPattern(PDPattern* pattern,
       } else {
         satisfied_all =
             satisfied_all && is_nth_input_var_of_concat(x->outputs[1], idx) &&
-            x->outputs[0]->IsVar() && x->outputs[0]->outputs.size() == 0;
+            x->outputs[0]->IsVar() && x->outputs[0]->outputs.empty();
       }
     }
     return satisfied_all;
@@ -99,7 +99,7 @@ PDNode* BuildSeqPoolConcatPattern(PDPattern* pattern,
     seqpool_ops_output_unused_var[i] = pattern->NewNode(
         [=](Node* x) {
           return x && x->IsVar() && x->inputs.size() == 1 &&
-                 x->outputs.size() == 0 &&
+                 x->outputs.empty() &&
                  is_seqpool_op_with_pootype_of_nth_input_of_concat(
                      x->inputs[0], "SUM", i);
         },
@@ -114,7 +114,7 @@ PDNode* BuildSeqPoolConcatPattern(PDPattern* pattern,
 
     seqpool_ops_input_var[i] = pattern->NewNode(
         [=](Node* x) {
-          bool basic = x && x->IsVar() && x->outputs.size() >= 1;
+          bool basic = x && x->IsVar() && !x->outputs.empty();
           bool next_is_fine = false;
           for (auto* o : x->outputs) {
             if (is_seqpool_op_with_pootype_of_nth_input_of_concat(
@@ -186,8 +186,8 @@ static int BuildFusion(Graph* graph,
     op_desc.SetAttr("axis", concat_op->Op()->GetAttr("axis"));
     op_desc.SetOutput("Out", {concat_out_var->Name()});
     auto* op = graph->CreateOpNode(&op_desc);
-    for (size_t i = 0; i < input_vars.size(); ++i) {
-      IR_NODE_LINK_TO(input_vars[i], op);
+    for (auto& input_var : input_vars) {
+      IR_NODE_LINK_TO(input_var, op);
     }
     IR_NODE_LINK_TO(op, concat_out_var);
 
@@ -195,8 +195,8 @@ static int BuildFusion(Graph* graph,
     for (auto& item : subgraph) {
       marked_nodes.insert(item.second);
     }
-    for (size_t i = 0; i < input_vars.size(); ++i) {
-      marked_nodes.erase(input_vars[i]);
+    for (auto& input_var : input_vars) {
+      marked_nodes.erase(input_var);
     }
     marked_nodes.erase(concat_out_var);
     GraphSafeRemoveNodes(graph, marked_nodes);

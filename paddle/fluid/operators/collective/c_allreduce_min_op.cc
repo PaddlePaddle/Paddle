@@ -35,6 +35,8 @@ class CAllReduceMinOpMaker : public CAllReduceOpMaker {
 
 DECLARE_INPLACE_OP_INFERER(AllreduceMinInplaceInferer, {"X", "Out"});
 
+DEFINE_C_ALLREDUCE_CPU_KERNEL(CAllReduceMin, kRedMin)
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -46,9 +48,12 @@ REGISTER_OP_WITHOUT_GRADIENT(c_allreduce_min,
                              ops::CAllReduceMinOpMaker,
                              ops::AllreduceMinInplaceInferer)
 
-REGISTER_OP_CPU_KERNEL(c_allreduce_min,
-                       ops::CAllReduceOpCPUKernel<ops::kRedMin, float>,
-                       ops::CAllReduceOpCPUKernel<ops::kRedMin, double>,
-                       ops::CAllReduceOpCPUKernel<ops::kRedMin, int>,
-                       ops::CAllReduceOpCPUKernel<ops::kRedMin, int64_t>,
-                       ops::CAllReduceOpCPUKernel<ops::kRedMin, plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(c_allreduce_min,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CAllReduceMinCPUKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

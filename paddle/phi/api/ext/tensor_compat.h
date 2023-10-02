@@ -22,7 +22,6 @@ limitations under the License. */
 // cannot be included in paddle
 
 namespace paddle {
-using Tensor = experimental::Tensor;
 // using several Tensor initialize functions in paddle namespace
 using experimental::abs;
 using experimental::acos;
@@ -136,6 +135,7 @@ using experimental::selu;
 using experimental::send_u_recv;
 using experimental::send_ue_recv;
 using experimental::send_uv;
+using experimental::sigmoid;
 using experimental::sign;
 using experimental::silu;
 using experimental::sin;

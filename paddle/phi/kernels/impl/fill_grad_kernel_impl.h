@@ -24,8 +24,8 @@ namespace phi {
 
 template <typename T, typename Context>
 void FillGradKernel(const Context& dev_ctx,
-                    const DenseTensor& out_grad,
-                    const Scalar& value,
+                    const DenseTensor& out_grad UNUSED,
+                    const Scalar& value UNUSED,
                     DenseTensor* in_grad) {
   if (in_grad) {
     dev_ctx.template Alloc<T>(in_grad);
