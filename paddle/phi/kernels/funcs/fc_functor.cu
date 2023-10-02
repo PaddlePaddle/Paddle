@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
 #include "paddle/phi/kernels/funcs/quant_dequant.h"
+#include "paddle/phi/kernels/matmul_kernel.h"
 
 namespace phi {
 namespace funcs {
@@ -378,9 +379,9 @@ void FCInt8Functor<DeviceContext, T>::operator()(
     const int M,
     const int N,
     const int K,
-    const T* X,
-    const int8_t* W,
-    T* Y,
+    const DenseTensor* x_tensor,
+    const DenseTensor* w_tensor,
+    DenseTensor* y_tensor,
     float scale_in,
     std::vector<float> scale_weights,
     int quant_round_type,
@@ -393,6 +394,9 @@ void FCInt8Functor<DeviceContext, T>::operator()(
                     false,
                     errors::PermissionDenied(
                         "Weight padding in fc can not be used in GPU scope."));
+  const T* X = x_tensor->data<T>();
+  const int8_t* W = w_tensor->data<int8_t>();
+  T* Y = y_tensor->data<T>();
 
   DenseTensor quant_x_tensor, quant_y_tensor;
   quant_x_tensor.Resize(phi::make_ddim({M, K}));
@@ -411,31 +415,8 @@ void FCInt8Functor<DeviceContext, T>::operator()(
                     quant_min_bound,
                     context.stream());
 
-  using blaslt = phi::funcs::MatmulWithCublasLt<int8_t, int32_t>;
-  std::vector<int64_t> x_dims = {M, K};
-  std::vector<int64_t> y_dims = {K, N};
-  phi::funcs::MatmulPlanner matmul_planner(
-      x_dims,
-      y_dims,
-      false,
-      false,
-      phi::CppTypeToDataType<int8_t>::Type(),
-      funcs::MatmulFusedType::kMatmul,
-      /* bias_data */ nullptr,
-      /* reserve_data */ nullptr,
-      /* use_addto */ false,
-      /* no_exchange */ true);
-  blaslt::Run(context,
-              quant_x_tensor.data<int8_t>(),
-              W,
-              context.template Alloc<int32_t>(
-                  &quant_y_tensor, quant_y_tensor.numel() * sizeof(int32_t)),
-              M,
-              N,
-              K,
-              false,
-              false,
-              &matmul_planner);
+  MatmulKernel<int8_t, GPUContext>(
+      context, quant_x_tensor, *w_tensor, false, false, &quant_y_tensor);
 
   DenseTensor scale_weights_dev;
   scale_weights_dev.Resize(phi::make_ddim({N}));

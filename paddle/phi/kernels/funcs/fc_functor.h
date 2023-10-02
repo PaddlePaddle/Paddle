@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 namespace funcs {
@@ -43,9 +44,9 @@ class FCInt8Functor {
                   const int M,
                   const int N,
                   const int K,
-                  const T* X,
-                  const int8_t* W,
-                  T* Y,
+                  const DenseTensor* X,
+                  const DenseTensor* W,
+                  DenseTensor* Y,
                   float scale_in,
                   std::vector<float> scale_weights,
                   int quant_round_type,
