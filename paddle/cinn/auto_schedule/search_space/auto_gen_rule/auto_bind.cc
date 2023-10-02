@@ -16,10 +16,10 @@
 
 #include <glog/logging.h>
 
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 
 namespace cinn {
 namespace auto_schedule {
@@ -31,7 +31,7 @@ bool IsSpatialLoop(const ir::For* for_node) {
   const auto& loop_var = for_node->loop_var;
   // collect cases where the loop_var used in one of reduce axis in underneath
   // ScheduleBlock
-  auto used_for_reduce_axis = ir::CollectIRNodesWithoutTensor(
+  auto used_for_reduce_axis = ir::ir_utils::CollectIRNodesWithoutTensor(
       for_node->body, [&loop_var](const Expr* x) {
         const auto* block_realize = x->As<ir::ScheduleBlockRealize>();
         if (!block_realize) return false;
@@ -46,7 +46,7 @@ bool IsSpatialLoop(const ir::For* for_node) {
           const ir::Expr& binding = block_realize->iter_values[i];
           if (iter_var->is_reduce_axis ||
               iter_var->name.substr(0, 6) == "reduce") {
-            auto used_exprs = ir::CollectIRNodesWithoutTensor(
+            auto used_exprs = ir::ir_utils::CollectIRNodesWithoutTensor(
                 binding, [&loop_var](const Expr* x) {
                   const ir::_Var_* var = x->As<ir::_Var_>();
                   if (var &&

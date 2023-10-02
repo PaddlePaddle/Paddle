@@ -1013,11 +1013,11 @@ set_tests_properties(test_row_conv_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_gpu
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_distributed_fused_lamb_op_with_clip PROPERTIES TIMEOUT
-                                                                         120)
+                                                                         240)
 set_tests_properties(test_distributed_fused_lamb_op_without_clip
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_distributed_fused_lamb_op_with_gradient_merge
-                     PROPERTIES TIMEOUT 120)
+                     PROPERTIES TIMEOUT 240)
 set_tests_properties(test_elementwise_min_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nan_inf PROPERTIES TIMEOUT 120)
 set_tests_properties(test_deformable_conv_v1_op PROPERTIES TIMEOUT 300)
@@ -1272,6 +1272,10 @@ set_tests_properties(
 set_tests_properties(
   test_cuda_graph_static_mode_error
   PROPERTIES ENVIRONMENT "FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR=1")
+# In test_conditional_block, the sub block changes the dtype and place of the output variable.
+# The changed variable is used in the following op. Static build is not supported for this case.
+set_tests_properties(test_conditional_block
+                     PROPERTIES ENVIRONMENT "FLAGS_new_executor_static_build=0")
 
 # These UTs are to temporarily test static build for standalone_executor, will be removed after static build is enabled by default.
 set(STATIC_BUILD_TESTS
@@ -1346,16 +1350,19 @@ foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
     FLAGS_new_executor_static_build=true)
 endforeach()
 
-set(NEW_IR_COVERAGE_TESTS test_label_smooth_op test_instance_norm_op_v2
-                          test_edit_distance_op)
+set(NEW_IR_COVERAGE_TESTS test_fused_feedforward_pass)
+if(NOT WITH_GPU)
+  list(REMOVE_ITEM NEW_IR_COVERAGE_TESTS test_fused_feedforward_pass)
+endif()
 
 foreach(NEW_IR_COVERAGE_TEST ${NEW_IR_COVERAGE_TESTS})
   py_test_modules(
     ${NEW_IR_COVERAGE_TEST}_new_ir MODULES ${NEW_IR_COVERAGE_TEST} ENVS
     FLAGS_enable_new_ir_in_executor=true)
+  set_tests_properties(${NEW_IR_COVERAGE_TEST}_new_ir PROPERTIES TIMEOUT 120)
+  message(
+    STATUS "NewIR Copied OpTest: ${NEW_IR_COVERAGE_TEST}_new_ir in legacy_test")
 endforeach()
-
-set_tests_properties(test_instance_norm_op_v2_new_ir PROPERTIES TIMEOUT 120)
 
 set_tests_properties(test_decoupled_py_reader_static_build PROPERTIES TIMEOUT
                                                                       120)

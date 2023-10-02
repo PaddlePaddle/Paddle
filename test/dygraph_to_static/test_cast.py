@@ -103,9 +103,7 @@ class TestCastBase(unittest.TestCase):
             res,
             ref_val,
             rtol=1e-05,
-            err_msg='The casted value is {}.\nThe correct value is {}.'.format(
-                res, ref_val
-            ),
+            err_msg=f'The casted value is {res}.\nThe correct value is {ref_val}.',
         )
 
 
@@ -176,9 +174,7 @@ class TestMixCast(TestCastBase):
             res,
             ref_val,
             rtol=1e-05,
-            err_msg='The casted value is {}.\nThe correct value is {}.'.format(
-                res, ref_val
-            ),
+            err_msg=f'The casted value is {res}.\nThe correct value is {ref_val}.',
         )
 
 
@@ -198,9 +194,7 @@ class TestNotVarCast(TestCastBase):
         ref_val = int(self.input)
         self.assertTrue(
             res == ref_val,
-            msg='The casted value is {}.\nThe correct value is {}.'.format(
-                res, ref_val
-            ),
+            msg=f'The casted value is {res}.\nThe correct value is {ref_val}.',
         )
 
 

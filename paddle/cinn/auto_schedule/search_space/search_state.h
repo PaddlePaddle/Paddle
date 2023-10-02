@@ -20,9 +20,9 @@
 
 #include "paddle/cinn/common/object.h"
 #include "paddle/cinn/common/shared.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/utils/ir_compare.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
 
 namespace cinn {
 namespace auto_schedule {
@@ -70,8 +70,8 @@ struct SearchStateHash {
   size_t operator()(const SearchState& s) const;
 };
 
-// SearchStateHash equal functor, use ir::IrEqualVisitor to compare their AST
-// struct and fields
+// SearchStateHash equal functor, use ir::ir_utils::IrEqualVisitor to compare
+// their AST struct and fields
 struct SearchStateEqual {
   bool operator()(const SearchState& lhs, const SearchState& rhs) const;
 };

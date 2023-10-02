@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/meta_tensor.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -44,7 +45,7 @@ OpInfoTuple AddNOp::GetOpInfo() {
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
       OpOutputInfo("out", "paddle::dialect::DenseTensorType", false, false)};
   paddle::dialect::OpRunTimeInfo run_time_info = OpRunTimeInfo(
-      "AddNInferMeta", {"inputs"}, {"add_n"}, {"inputs"}, {}, {}, {}, {});
+      "AddNInferMeta", {"inputs"}, "add_n", {"inputs"}, {}, {}, {}, {});
 
   return std::make_tuple(inputs, attributes, outputs, run_time_info, "add_n");
 }
@@ -102,6 +103,8 @@ void AddNOp::Verify() {
 void AddNOp::Build(pir::Builder &builder,             // NOLINT
                    pir::OperationArgument &argument,  // NOLINT
                    pir::Value inputs) {
+  VLOG(4) << "Start build AddNOp";
+
   VLOG(4) << "Builder construction inputs";
   argument.AddInput(inputs);
 
@@ -109,21 +112,16 @@ void AddNOp::Build(pir::Builder &builder,             // NOLINT
 
   VLOG(4) << "Builder construction outputs";
   pir::VectorType x = inputs.type().dyn_cast<pir::VectorType>();
-  (void)x;
 
-  std::vector<phi::DenseTensor> vec_dense_x;
+  std::vector<paddle::dialect::IrMetaTensor> vec_dense_x;
   for (size_t i = 0; i < x.size(); i++) {
-    vec_dense_x.push_back(phi::DenseTensor(
-        std::make_unique<paddle::experimental::DefaultAllocator>(
-            paddle::platform::CPUPlace())
-            .get(),
-        phi::DenseTensorMeta(
-            TransToPhiDataType(
-                x[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
-            x[i].dyn_cast<paddle::dialect::DenseTensorType>().dims(),
-            x[i].dyn_cast<paddle::dialect::DenseTensorType>().data_layout(),
-            x[i].dyn_cast<paddle::dialect::DenseTensorType>().lod(),
-            x[i].dyn_cast<paddle::dialect::DenseTensorType>().offset())));
+    vec_dense_x.push_back(paddle::dialect::IrMetaTensor(
+        TransToPhiDataType(
+            x[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
+        x[i].dyn_cast<paddle::dialect::DenseTensorType>().dims(),
+        x[i].dyn_cast<paddle::dialect::DenseTensorType>().data_layout(),
+        x[i].dyn_cast<paddle::dialect::DenseTensorType>().lod(),
+        x[i].dyn_cast<paddle::dialect::DenseTensorType>().offset()));
   }
   std::vector<phi::MetaTensor> vec_meta_x;
   for (size_t i = 0; i < vec_dense_x.size(); i++) {
@@ -134,7 +132,8 @@ void AddNOp::Build(pir::Builder &builder,             // NOLINT
   for (size_t i = 0; i < static_cast<size_t>(vec_meta_x.size()); i++) {
     meta_x.push_back(&vec_meta_x[i]);
   }
-  phi::DenseTensor dense_out;
+
+  paddle::dialect::IrMetaTensor dense_out;
   phi::MetaTensor meta_out(&dense_out);
 
   phi::AddNInferMeta(meta_x, &meta_out);
@@ -171,13 +170,15 @@ OpInfoTuple AddN_Op::GetOpInfo() {
       paddle::dialect::OpOutputInfo(
           "out", "paddle::dialect::DenseTensorType", false, false)};
   paddle::dialect::OpRunTimeInfo run_time_info = paddle::dialect::OpRunTimeInfo(
-      "AddNInferMeta", {"inputs"}, {"add_n"}, {"inputs"}, {}, {}, {}, {});
+      "AddNInferMeta", {"inputs"}, "add_n", {"inputs"}, {}, {}, {}, {});
   return std::make_tuple(inputs, attributes, outputs, run_time_info, "add_n_");
 }
 
 void AddN_Op::Build(pir::Builder &builder,
                     pir::OperationArgument &argument,
                     pir::Value inputs_) {
+  VLOG(4) << "Start build AddN_Op";
+
   VLOG(4) << "Builder construction inputs";
   argument.AddInput(inputs_);
 
@@ -185,21 +186,15 @@ void AddN_Op::Build(pir::Builder &builder,
 
   VLOG(4) << "Builder construction outputs";
   pir::VectorType inputs = inputs_.type().dyn_cast<pir::VectorType>();
-  std::vector<phi::DenseTensor> vec_dense_inputs;
+  std::vector<paddle::dialect::IrMetaTensor> vec_dense_inputs;
   for (size_t i = 0; i < static_cast<size_t>(inputs.size()); i++) {
-    vec_dense_inputs.push_back(phi::DenseTensor(
-        std::make_unique<paddle::experimental::DefaultAllocator>(
-            paddle::platform::CPUPlace())
-            .get(),
-        phi::DenseTensorMeta(
-            paddle::dialect::TransToPhiDataType(
-                inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
-            inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().dims(),
-            inputs[i]
-                .dyn_cast<paddle::dialect::DenseTensorType>()
-                .data_layout(),
-            inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().lod(),
-            inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().offset())));
+    vec_dense_inputs.push_back(paddle::dialect::IrMetaTensor(
+        paddle::dialect::TransToPhiDataType(
+            inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
+        inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().dims(),
+        inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().data_layout(),
+        inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().lod(),
+        inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().offset()));
   }
   std::vector<phi::MetaTensor> vec_meta_inputs;
   for (size_t i = 0; i < vec_dense_inputs.size(); i++) {
@@ -210,7 +205,7 @@ void AddN_Op::Build(pir::Builder &builder,
   for (size_t i = 0; i < static_cast<size_t>(vec_meta_inputs.size()); i++) {
     meta_inputs.push_back(&vec_meta_inputs[i]);
   }
-  phi::DenseTensor dense_out;
+  paddle::dialect::IrMetaTensor dense_out;
   phi::MetaTensor meta_out(&dense_out);
 
   phi::AddNInferMeta(meta_inputs, &meta_out);
@@ -297,7 +292,7 @@ OpInfoTuple AddNWithKernelOp::GetOpInfo() {
       paddle::dialect::OpOutputInfo(
           "out", "paddle::dialect::DenseTensorType", false, false)};
   paddle::dialect::OpRunTimeInfo run_time_info = paddle::dialect::OpRunTimeInfo(
-      "AddNInferMeta", {"inputs"}, {"add_n"}, {"inputs"}, {}, {}, {}, {});
+      "AddNInferMeta", {"inputs"}, "add_n", {"inputs"}, {}, {}, {}, {});
   return std::make_tuple(
       inputs, attributes, outputs, run_time_info, "add_n_with_kernel");
 }
@@ -305,6 +300,8 @@ OpInfoTuple AddNWithKernelOp::GetOpInfo() {
 void AddNWithKernelOp::Build(pir::Builder &builder,
                              pir::OperationArgument &argument,
                              pir::Value inputs_) {
+  VLOG(4) << "Start build AddNWithKernelOp";
+
   VLOG(4) << "Builder construction inputs";
   argument.AddInput(inputs_);
 
@@ -312,21 +309,15 @@ void AddNWithKernelOp::Build(pir::Builder &builder,
 
   VLOG(4) << "Builder construction outputs";
   pir::VectorType inputs = inputs_.type().dyn_cast<pir::VectorType>();
-  std::vector<phi::DenseTensor> vec_dense_inputs;
+  std::vector<paddle::dialect::IrMetaTensor> vec_dense_inputs;
   for (size_t i = 0; i < static_cast<size_t>(inputs.size()); i++) {
-    vec_dense_inputs.push_back(phi::DenseTensor(
-        std::make_unique<paddle::experimental::DefaultAllocator>(
-            paddle::platform::CPUPlace())
-            .get(),
-        phi::DenseTensorMeta(
-            paddle::dialect::TransToPhiDataType(
-                inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
-            inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().dims(),
-            inputs[i]
-                .dyn_cast<paddle::dialect::DenseTensorType>()
-                .data_layout(),
-            inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().lod(),
-            inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().offset())));
+    vec_dense_inputs.push_back(paddle::dialect::IrMetaTensor(
+        paddle::dialect::TransToPhiDataType(
+            inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
+        inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().dims(),
+        inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().data_layout(),
+        inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().lod(),
+        inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().offset()));
   }
   std::vector<phi::MetaTensor> vec_meta_inputs;
   for (size_t i = 0; i < vec_dense_inputs.size(); i++) {
@@ -337,7 +328,7 @@ void AddNWithKernelOp::Build(pir::Builder &builder,
   for (size_t i = 0; i < static_cast<size_t>(vec_meta_inputs.size()); i++) {
     meta_inputs.push_back(&vec_meta_inputs[i]);
   }
-  phi::DenseTensor dense_out;
+  paddle::dialect::IrMetaTensor dense_out;
   phi::MetaTensor meta_out(&dense_out);
 
   phi::AddNInferMeta(meta_inputs, &meta_out);
@@ -438,7 +429,7 @@ OpInfoTuple FusedGemmEpilogueOp::GetOpInfo() {
   paddle::dialect::OpRunTimeInfo run_time_info(
       "FusedGemmEpilogueInferMeta",
       {"x", "y", "bias", "trans_x", "trans_y", "activation"},
-      {""},
+      "",
       {""},
       {""},
       {},
@@ -455,6 +446,8 @@ void FusedGemmEpilogueOp::Build(pir::Builder &builder,
                                 pir::Value y_,
                                 pir::Value bias_,
                                 pir::AttributeMap attributes) {
+  VLOG(4) << "Start build FusedGemmEpilogueOp";
+
   PADDLE_ENFORCE(
       attributes.find("trans_x") != attributes.end(),
       phi::errors::NotFound(
@@ -500,46 +493,37 @@ void FusedGemmEpilogueOp::Build(pir::Builder &builder,
   (void)bias;
 
   VLOG(4) << "Builder construction  dense_x";
-  phi::DenseTensor dense_x(
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace())
-          .get(),
-      phi::DenseTensorMeta(paddle::dialect::TransToPhiDataType(x.dtype()),
-                           x.dims(),
-                           x.data_layout(),
-                           x.lod(),
-                           x.offset()));
+  paddle::dialect::IrMetaTensor dense_x(
+      paddle::dialect::TransToPhiDataType(x.dtype()),
+      x.dims(),
+      x.data_layout(),
+      x.lod(),
+      x.offset());
   VLOG(4) << "Builder construction  meta_x";
   phi::MetaTensor meta_x(&dense_x);
 
   VLOG(4) << "Builder construction  dense_y";
-  phi::DenseTensor dense_y(
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace())
-          .get(),
-      phi::DenseTensorMeta(paddle::dialect::TransToPhiDataType(y.dtype()),
-                           y.dims(),
-                           y.data_layout(),
-                           y.lod(),
-                           y.offset()));
+  paddle::dialect::IrMetaTensor dense_y(
+      paddle::dialect::TransToPhiDataType(y.dtype()),
+      y.dims(),
+      y.data_layout(),
+      y.lod(),
+      y.offset());
   VLOG(4) << "Builder construction  meta_y";
   phi::MetaTensor meta_y(&dense_y);
 
   VLOG(4) << "Builder construction  dense_bias";
-  phi::DenseTensor dense_bias(
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace())
-          .get(),
-      phi::DenseTensorMeta(paddle::dialect::TransToPhiDataType(bias.dtype()),
-                           bias.dims(),
-                           bias.data_layout(),
-                           bias.lod(),
-                           bias.offset()));
+  paddle::dialect::IrMetaTensor dense_bias(
+      paddle::dialect::TransToPhiDataType(bias.dtype()),
+      bias.dims(),
+      bias.data_layout(),
+      bias.lod(),
+      bias.offset());
   VLOG(4) << "Builder construction  meta_bias";
   phi::MetaTensor meta_bias(&dense_bias);
-  phi::DenseTensor dense_out;
+  paddle::dialect::IrMetaTensor dense_out;
   phi::MetaTensor meta_out(&dense_out);
-  phi::DenseTensor dense_reserve_space;
+  paddle::dialect::IrMetaTensor dense_reserve_space;
   phi::MetaTensor meta_reserve_space(&dense_reserve_space);
 
   phi::FusedGemmEpilogueInferMeta(
@@ -690,7 +674,7 @@ OpInfoTuple FusedGemmEpilogueGradOp::GetOpInfo() {
                                                 "trans_x",
                                                 "trans_y",
                                                 "activation_grad"},
-                                               {""},
+                                               "",
                                                {""},
                                                {""},
                                                {},
@@ -708,6 +692,8 @@ void FusedGemmEpilogueGradOp::Build(pir::Builder &builder,
                                     pir::Value reserve_space_,
                                     pir::Value out_grad_,
                                     pir::AttributeMap attributes) {
+  VLOG(4) << "Start build FusedGemmEpilogueGradOp";
+
   PADDLE_ENFORCE(
       attributes.find("trans_x") != attributes.end(),
       phi::errors::NotFound(
@@ -758,66 +744,52 @@ void FusedGemmEpilogueGradOp::Build(pir::Builder &builder,
   (void)out_grad;
 
   VLOG(4) << "Builder construction  dense_x";
-  phi::DenseTensor dense_x(
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace())
-          .get(),
-      phi::DenseTensorMeta(paddle::dialect::TransToPhiDataType(x.dtype()),
-                           x.dims(),
-                           x.data_layout(),
-                           x.lod(),
-                           x.offset()));
+  paddle::dialect::IrMetaTensor dense_x(
+      paddle::dialect::TransToPhiDataType(x.dtype()),
+      x.dims(),
+      x.data_layout(),
+      x.lod(),
+      x.offset());
   VLOG(4) << "Builder construction  meta_x";
   phi::MetaTensor meta_x(&dense_x);
 
   VLOG(4) << "Builder construction  dense_y";
-  phi::DenseTensor dense_y(
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace())
-          .get(),
-      phi::DenseTensorMeta(paddle::dialect::TransToPhiDataType(y.dtype()),
-                           y.dims(),
-                           y.data_layout(),
-                           y.lod(),
-                           y.offset()));
+  paddle::dialect::IrMetaTensor dense_y(
+      paddle::dialect::TransToPhiDataType(y.dtype()),
+      y.dims(),
+      y.data_layout(),
+      y.lod(),
+      y.offset());
   VLOG(4) << "Builder construction  meta_y";
   phi::MetaTensor meta_y(&dense_y);
 
   VLOG(4) << "Builder construction  dense_reserve_space";
-  std::unique_ptr<phi::DenseTensor> dense_reserve_space =
+  std::unique_ptr<paddle::dialect::IrMetaTensor> dense_reserve_space =
       reserve_space_
-          ? std::make_unique<phi::DenseTensor>(
-                std::make_unique<paddle::experimental::DefaultAllocator>(
-                    paddle::platform::CPUPlace())
-                    .get(),
-                phi::DenseTensorMeta(
-                    paddle::dialect::TransToPhiDataType(reserve_space.dtype()),
-                    reserve_space.dims(),
-                    reserve_space.data_layout(),
-                    reserve_space.lod(),
-                    reserve_space.offset()))
+          ? std::make_unique<paddle::dialect::IrMetaTensor>(
+                paddle::dialect::TransToPhiDataType(reserve_space.dtype()),
+                reserve_space.dims(),
+                reserve_space.data_layout(),
+                reserve_space.lod(),
+                reserve_space.offset())
           : nullptr;
   VLOG(4) << "Builder construction  meta_reserve_space";
   phi::MetaTensor meta_reserve_space(dense_reserve_space.get());
 
   VLOG(4) << "Builder construction  dense_out_grad";
-  phi::DenseTensor dense_out_grad(
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace())
-          .get(),
-      phi::DenseTensorMeta(
-          paddle::dialect::TransToPhiDataType(out_grad.dtype()),
-          out_grad.dims(),
-          out_grad.data_layout(),
-          out_grad.lod(),
-          out_grad.offset()));
+  paddle::dialect::IrMetaTensor dense_out_grad(
+      paddle::dialect::TransToPhiDataType(out_grad.dtype()),
+      out_grad.dims(),
+      out_grad.data_layout(),
+      out_grad.lod(),
+      out_grad.offset());
   VLOG(4) << "Builder construction  meta_out_grad";
   phi::MetaTensor meta_out_grad(&dense_out_grad);
-  phi::DenseTensor dense_x_grad;
+  paddle::dialect::IrMetaTensor dense_x_grad;
   phi::MetaTensor meta_x_grad(&dense_x_grad);
-  phi::DenseTensor dense_y_grad;
+  paddle::dialect::IrMetaTensor dense_y_grad;
   phi::MetaTensor meta_y_grad(&dense_y_grad);
-  phi::DenseTensor dense_bias_grad;
+  paddle::dialect::IrMetaTensor dense_bias_grad;
   phi::MetaTensor meta_bias_grad(&dense_bias_grad);
 
   phi::FusedGemmEpilogueGradInferMeta(meta_x,
@@ -890,7 +862,7 @@ OpInfoTuple SplitGradOp::GetOpInfo() {
   paddle::dialect::OpRunTimeInfo run_time_info =
       OpRunTimeInfo("ConcatInferMeta",
                     {"out_grad", "axis"},
-                    {"concat"},
+                    "concat",
                     {"out_grad", "axis"},
                     {"out_grad"},
                     {},
@@ -905,6 +877,8 @@ void SplitGradOp::Build(pir::Builder &builder,
                         pir::OperationArgument &argument,
                         pir::Value out_grad_,
                         float axis) {
+  VLOG(4) << "Start build SplitGradOp";
+
   // Generate scalar mutable attribute: axis
   paddle::dialect::FullOp full_axis_op = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1}, axis, phi::DataType::FLOAT32, phi::CPUPlace());
@@ -917,25 +891,15 @@ void SplitGradOp::Build(pir::Builder &builder,
 
   VLOG(4) << "Builder construction outputs";
   pir::VectorType out_grad = out_grad_.type().dyn_cast<pir::VectorType>();
-  std::vector<phi::DenseTensor> vec_dense_out_grad;
+  std::vector<paddle::dialect::IrMetaTensor> vec_dense_out_grad;
   for (size_t i = 0; i < static_cast<size_t>(out_grad.size()); i++) {
-    vec_dense_out_grad.push_back(phi::DenseTensor(
-        std::make_unique<paddle::experimental::DefaultAllocator>(
-            paddle::platform::CPUPlace())
-            .get(),
-        phi::DenseTensorMeta(
-            paddle::dialect::TransToPhiDataType(
-                out_grad[i]
-                    .dyn_cast<paddle::dialect::DenseTensorType>()
-                    .dtype()),
-            out_grad[i].dyn_cast<paddle::dialect::DenseTensorType>().dims(),
-            out_grad[i]
-                .dyn_cast<paddle::dialect::DenseTensorType>()
-                .data_layout(),
-            out_grad[i].dyn_cast<paddle::dialect::DenseTensorType>().lod(),
-            out_grad[i]
-                .dyn_cast<paddle::dialect::DenseTensorType>()
-                .offset())));
+    vec_dense_out_grad.push_back(paddle::dialect::IrMetaTensor(
+        paddle::dialect::TransToPhiDataType(
+            out_grad[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
+        out_grad[i].dyn_cast<paddle::dialect::DenseTensorType>().dims(),
+        out_grad[i].dyn_cast<paddle::dialect::DenseTensorType>().data_layout(),
+        out_grad[i].dyn_cast<paddle::dialect::DenseTensorType>().lod(),
+        out_grad[i].dyn_cast<paddle::dialect::DenseTensorType>().offset()));
   }
   std::vector<phi::MetaTensor> vec_meta_out_grad;
   for (size_t i = 0; i < vec_dense_out_grad.size(); i++) {
@@ -946,7 +910,7 @@ void SplitGradOp::Build(pir::Builder &builder,
   for (size_t i = 0; i < static_cast<size_t>(vec_meta_out_grad.size()); i++) {
     meta_out_grad.push_back(&vec_meta_out_grad[i]);
   }
-  phi::DenseTensor dense_x_grad;
+  paddle::dialect::IrMetaTensor dense_x_grad;
   phi::MetaTensor meta_x_grad(&dense_x_grad);
 
   phi::ConcatInferMeta(meta_out_grad, axis, &meta_x_grad);
@@ -967,6 +931,8 @@ void SplitGradOp::Build(pir::Builder &builder,
                         pir::OperationArgument &argument,
                         pir::Value out_grad_,
                         pir::Value axis_) {
+  VLOG(4) << "Start build SplitGradOp";
+
   VLOG(4) << "Builder construction inputs";
   argument.AddInputs({out_grad_, axis_});
 
@@ -981,24 +947,15 @@ void SplitGradOp::Build(pir::Builder &builder,
                  .data()
                  .to<int>();
 
-  std::vector<phi::DenseTensor> vec_dense_out_grad;
+  std::vector<paddle::dialect::IrMetaTensor> vec_dense_out_grad;
   for (size_t i = 0; i < static_cast<size_t>(out_grad.size()); i++) {
-    vec_dense_out_grad.push_back(phi::DenseTensor(
-        std::make_unique<paddle::experimental::DefaultAllocator>(
-            paddle::platform::CPUPlace())
-            .get(),
-        phi::DenseTensorMeta(
-            TransToPhiDataType(out_grad[i]
-                                   .dyn_cast<paddle::dialect::DenseTensorType>()
-                                   .dtype()),
-            out_grad[i].dyn_cast<paddle::dialect::DenseTensorType>().dims(),
-            out_grad[i]
-                .dyn_cast<paddle::dialect::DenseTensorType>()
-                .data_layout(),
-            out_grad[i].dyn_cast<paddle::dialect::DenseTensorType>().lod(),
-            out_grad[i]
-                .dyn_cast<paddle::dialect::DenseTensorType>()
-                .offset())));
+    vec_dense_out_grad.push_back(paddle::dialect::IrMetaTensor(
+        TransToPhiDataType(
+            out_grad[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
+        out_grad[i].dyn_cast<paddle::dialect::DenseTensorType>().dims(),
+        out_grad[i].dyn_cast<paddle::dialect::DenseTensorType>().data_layout(),
+        out_grad[i].dyn_cast<paddle::dialect::DenseTensorType>().lod(),
+        out_grad[i].dyn_cast<paddle::dialect::DenseTensorType>().offset()));
   }
   std::vector<phi::MetaTensor> vec_meta_out_grad;
   for (size_t i = 0; i < vec_dense_out_grad.size(); i++) {
@@ -1009,7 +966,7 @@ void SplitGradOp::Build(pir::Builder &builder,
   for (size_t i = 0; i < static_cast<size_t>(vec_meta_out_grad.size()); i++) {
     meta_out_grad.push_back(&vec_meta_out_grad[i]);
   }
-  phi::DenseTensor dense_x_grad;
+  paddle::dialect::IrMetaTensor dense_x_grad;
   phi::MetaTensor meta_x_grad(&dense_x_grad);
 
   phi::ConcatInferMeta(meta_out_grad, axis, &meta_x_grad);
@@ -1087,7 +1044,9 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
                  pir::OperationArgument &argument,  // NOLINT
                  pir::Value cond,
                  std::vector<pir::Type> &&output_types) {
-  argument.num_regions = 2;
+  VLOG(4) << "Start build IfOp";
+
+  argument.AddRegions(2u);
   argument.AddInput(cond);
   argument.output_types.swap(output_types);
 }
@@ -1122,6 +1081,27 @@ void IfOp::Print(pir::IrPrinter &printer) {
   os << "\n }";
 }
 void IfOp::Verify() {}
+
+void WhileOp::Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    const std::vector<pir::Value> &inputs,
+                    const std::vector<pir::Type> &output_types) {
+  // auto insert_point = builder.insert_point();
+  argument.AddInputs(inputs);
+  argument.AddOutputs(output_types);
+  argument.AddRegion(nullptr);
+  argument.AddRegion(nullptr);
+}
+pir::Block *WhileOp::cond_block() {
+  pir::Region &cond_region = (*this)->region(0);
+  if (cond_region.empty()) cond_region.emplace_back();
+  return cond_region.front();
+}
+pir::Block *WhileOp::body_block() {
+  pir::Region &body_region = (*this)->region(1);
+  if (body_region.empty()) body_region.emplace_back();
+  return body_region.front();
+}
 }  // namespace dialect
 }  // namespace paddle
 
@@ -1132,3 +1112,4 @@ IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddNWithKernelOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueGradOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::IfOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::WhileOp)
