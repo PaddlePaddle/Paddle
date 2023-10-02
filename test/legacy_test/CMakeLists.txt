@@ -1311,7 +1311,6 @@ set(STATIC_BUILD_TESTS
     test_number_count_op
     test_paddle_save_load_binary
     test_prune_gate_by_capacity_op
-    test_quant_aware
     test_random_routing_op
     test_reduce_op
     test_searchsorted_op

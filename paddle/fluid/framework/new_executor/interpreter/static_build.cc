@@ -130,6 +130,14 @@ bool TensorShouldBeFakeInitialized(const OperatorBase& op,
     }
   }
 
+  if (op_type == "batch_norm" && parameter_name == "ReserveSpace") {
+    if (dynamic_cast<const OperatorWithKernel*>(&op)->kernel_type()->place_ ==
+        phi::CPUPlace()) {
+      VLOG(2) << "Skip fake initialization for: " << parameter_name;
+      return false;
+    }
+  }
+
   if (op_type == "coalesce_tensor" && parameter_name == "Output") {
     VLOG(2) << "Skip fake initialization for: " << parameter_name;
     return false;
@@ -172,6 +180,12 @@ bool TensorShouldBeFakeInitialized(const OperatorBase& op,
       VLOG(2) << "Skip fake initialization for: " << parameter_name;
       return false;
     }
+  }
+
+  if ((op_type == "flatten" || op_type == "flatten_contiguous_range") &&
+      parameter_name == "XShape") {
+    VLOG(2) << "Skip fake initialization for: " << parameter_name;
+    return false;
   }
 
   if (op_type == "segment_pool" && parameter_name == "SummedIds") {
