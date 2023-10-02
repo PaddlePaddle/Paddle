@@ -25,31 +25,20 @@ SEED = 2020
 
 
 def round_array(x):
-    for i in range(x.shape[0]):
-        for j in range(x.shape[1]):
-            if x[i,j] > 0:
-                x[i,j] = np.math.ceil(x[i,j])
-            else:
-                x[i,j] = np.math.floor(x[i,j])
+    x[x > 0] = np.ceil(x[x > 0])
+    x[x <= 0] = np.floor(x[x <= 0])
+
 
 def round_array_with_ties_to_even(x):
-    for i in range(x.shape[0]):
-        for j in range(x.shape[1]):
-            x = x[i,j]
-            xLower = np.math.floor(x)
-            xUpper = np.math.ceil(x)
-            dLower = x - xLower
-            dUpper = xUpper - x
-            if dLower == dUpper:
-                if xLower % 2 == 0:
-                    x[i,j] = xLower
-                else:
-                    x[i,j] = xUpper
-            else:
-                if dLower < dUpper:
-                    x[i,j] = xLower
-                else:
-                    x[i,j] = xUpper
+    xLower = np.floor(x)
+    xUpper = np.ceil(x)
+    dLower = x - xLower
+    dUpper = xUpper - x
+    x[(dLower == dUpper) & (xLower % 2 == 0)] = xLower[(dLower == dUpper) & (xLower % 2 == 0)]
+    x[(dLower == dUpper) & (xLower % 2 != 0)] = xUpper[(dLower == dUpper) & (xLower % 2 != 0)]
+    x[dLower < dUpper] = xLower[dLower < dUpper]
+    x[dLower > dUpper] = xUpper[dLower > dUpper]
+
 
 def fc_refer(matrix, with_bias, with_relu=False):
     in_n, in_c, in_h, in_w = matrix.input.shape
@@ -70,6 +59,7 @@ def fc_refer(matrix, with_bias, with_relu=False):
     else:
         return result
     
+
 def fc_quant_refer(matrix, with_bias, scale_in, scale_weights, quant_round_type = 1, quant_max_bound = 127, quant_min_bound = -127, with_relu=False):
     in_n, in_c, in_h, in_w = matrix.input.shape
     w_i, w_o = matrix.weights.shape
@@ -89,9 +79,7 @@ def fc_quant_refer(matrix, with_bias, scale_in, scale_weights, quant_round_type 
     b_data = np.reshape(matrix.bias, [1, w_o])
     result = None
     quant_result = np.matmul(quant_x_data.astype('int32'), w_data.astype('int32'))
-    scale_out = scale_weights
-    for i in range(len(scale_out)):
-        scale_out[i] *= scale_in
+    scale_out = scale_weights * scale_in
     result = quant_result / quant_max_bound / quant_max_bound / scale_out
     result = result.astype(x_data.dtype)
 
@@ -103,6 +91,7 @@ def fc_quant_refer(matrix, with_bias, scale_in, scale_weights, quant_round_type 
     else:
         return result
 
+
 class MatrixGenerate:
     def __init__(self, mb, ic, oc, h, w, bias_dims=2):
         self.input = np.random.random((mb, ic, h, w)).astype("float32")
@@ -112,6 +101,7 @@ class MatrixGenerate:
         else:
             self.bias = np.random.random(oc).astype("float32")
 
+
 def get_scale_in(input):
     max_v = np.max(np.abs(input))
     return 1 / max_v
@@ -119,6 +109,7 @@ def get_scale_in(input):
 def get_scale_weights(weights):
     max_v = np.max(np.abs(weights), axis=0)
     return 1 / max_v
+
 
 def quant_weights(weights, scale_weights, quant_round_type, quant_max_bound, quant_min_bound):
     quant_weights = weights.astype('float32')
@@ -131,6 +122,7 @@ def quant_weights(weights, scale_weights, quant_round_type, quant_max_bound, qua
     quant_weights[quant_weights < quant_min_bound] = quant_min_bound
     quant_weights = quant_weights.astype('int8')
     return quant_weights
+
 
 class TestFCOp(OpTest):
     def config(self):
@@ -187,6 +179,7 @@ class TestFCOpQuantNoBias1(TestFCOp):
         self.scale_weights = get_scale_weights(self.matrix.weights)
         self.matrix.weights = quant_weights(self.matrix.weights, self.scale_weights, self.quant_round_type, self.quant_max_bound, self.quant_min_bound)
 
+
 class TestFCOpQuantBias2(TestFCOp):
     def config(self):
         self.with_bias = True
@@ -200,6 +193,7 @@ class TestFCOpQuantBias2(TestFCOp):
         self.scale_weights = get_scale_weights(self.matrix.weights)
         self.matrix.weights = quant_weights(self.matrix.weights, self.scale_weights, self.quant_round_type, self.quant_max_bound, self.quant_min_bound)
 
+
 class TestFCOpQuantWithPadding(TestFCOp):
     def config(self):
         self.with_bias = True
@@ -212,6 +206,7 @@ class TestFCOpQuantWithPadding(TestFCOp):
         self.scale_in = get_scale_in(self.matrix.input)
         self.scale_weights = get_scale_weights(self.matrix.weights)
         self.matrix.weights = quant_weights(self.matrix.weights, self.scale_weights, self.quant_round_type, self.quant_max_bound, self.quant_min_bound)
+
 
 class TestFCOpNoBias1(TestFCOp):
     def config(self):
