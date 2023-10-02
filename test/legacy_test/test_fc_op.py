@@ -265,6 +265,20 @@ class TestFCOpQuantNoBias1(TestFCOp):
         self.matrix.weights = quant_weights(self.matrix.weights, self.scale_weights, self.quant_round_type, self.quant_max_bound, self.quant_min_bound)
 
 
+class TestFCOpQuantNoBias2(TestFCOp):
+    def config(self):
+        self.with_bias = False
+        self.with_relu = False
+        self.is_quant = True
+        self.quant_round_type = 1
+        self.quant_max_bound = 127
+        self.quant_min_bound = -127
+        self.matrix = MatrixGenerate(2, 8, 10, 1, 1, 2)
+        self.scale_in = get_scale_in(self.matrix.input)
+        self.scale_weights = get_scale_weights(self.matrix.weights)
+        self.matrix.weights = quant_weights(self.matrix.weights, self.scale_weights, self.quant_round_type, self.quant_max_bound, self.quant_min_bound)
+
+
 class TestFCOpQuantWithBias1(TestFCOp):
     def config(self):
         self.with_bias = True
@@ -274,6 +288,20 @@ class TestFCOpQuantWithBias1(TestFCOp):
         self.quant_max_bound = 127
         self.quant_min_bound = -127
         self.matrix = MatrixGenerate(1, 64, 32, 3, 3, 1)
+        self.scale_in = get_scale_in(self.matrix.input)
+        self.scale_weights = get_scale_weights(self.matrix.weights)
+        self.matrix.weights = quant_weights(self.matrix.weights, self.scale_weights, self.quant_round_type, self.quant_max_bound, self.quant_min_bound)
+
+
+class TestFCOpQuantWithBias2(TestFCOp):
+    def config(self):
+        self.with_bias = True
+        self.with_relu = True
+        self.is_quant = True
+        self.quant_round_type = 1
+        self.quant_max_bound = 127
+        self.quant_min_bound = -127
+        self.matrix = MatrixGenerate(3, 8, 10, 2, 1, 2)
         self.scale_in = get_scale_in(self.matrix.input)
         self.scale_weights = get_scale_weights(self.matrix.weights)
         self.matrix.weights = quant_weights(self.matrix.weights, self.scale_weights, self.quant_round_type, self.quant_max_bound, self.quant_min_bound)
@@ -292,6 +320,19 @@ class TestFCOpQuantWithPadding(TestFCOp):
         self.scale_weights = get_scale_weights(self.matrix.weights)
         self.matrix.weights = quant_weights(self.matrix.weights, self.scale_weights, self.quant_round_type, self.quant_max_bound, self.quant_min_bound)
 
+
+class TestFCOpQuantWithPadding(TestFCOp):
+    def config(self):
+        self.with_bias = True
+        self.with_relu = True
+        self.is_quant = True
+        self.quant_round_type = 1
+        self.quant_max_bound = 127
+        self.quant_min_bound = -127
+        self.matrix = MatrixGenerate(1, 4, 3, 128, 128, 2)
+        self.scale_in = get_scale_in(self.matrix.input)
+        self.scale_weights = get_scale_weights(self.matrix.weights)
+        self.matrix.weights = quant_weights(self.matrix.weights, self.scale_weights, self.quant_round_type, self.quant_max_bound, self.quant_min_bound)
 
 
 class TestFCOpError(unittest.TestCase):
