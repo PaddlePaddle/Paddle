@@ -145,6 +145,15 @@
   backward : fused_dropout_add_grad
   support_dygraph_mode : true
 
+- op : fused_embedding_eltwise_layernorm
+  args : (Tensor[] ids, Tensor[] embs, Tensor bias, Tensor scale, float epsilon = 0.00001f)
+  output : Tensor(out)
+  infer_meta :
+    func : FusedEmbeddingEltWiseLayerNormInferMeta
+  kernel :
+    func : fused_embedding_eltwise_layernorm
+    data_type : ids
+
 - op : fused_linear_param_grad_add
   args : (Tensor x, Tensor dout, Tensor dweight, Tensor dbias, bool multi_precision = true, bool has_bias = true)
   output : Tensor(dweight_out), Tensor(dbias_out)

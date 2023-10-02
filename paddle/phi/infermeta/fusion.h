@@ -485,4 +485,12 @@ void SqueezeExcitationInferMeta(const MetaTensor& x,
                                 const std::vector<int>& filter_dims,
                                 MetaTensor* out);
 
+void FusedEmbeddingEltWiseLayerNormInferMeta(
+    const std::vector<const MetaTensor*>& ids,
+    const std::vector<const MetaTensor*>& embs,
+    const MetaTensor& bias,
+    const MetaTensor& scale,
+    const float epsilon,
+    MetaTensor* out);
+
 }  // namespace phi

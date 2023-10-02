@@ -1842,4 +1842,80 @@ void SqueezeExcitationInferMeta(const MetaTensor& x,
   out->set_dims(DDim(out_shape.data(), static_cast<int>(out_shape.size())));
 }
 
+void FusedEmbeddingEltWiseLayerNormInferMeta(
+    const std::vector<const MetaTensor*>& ids,
+    const std::vector<const MetaTensor*>& embs,
+    const MetaTensor& bias,
+    const MetaTensor& scale,
+    const float epsilon,
+    MetaTensor* out) {
+  PADDLE_ENFORCE_EQ(
+      ids.size(),
+      embs.size(),
+      phi::errors::InvalidArgument(
+          "Two inputs of EmbeddingEltWiseLayerNormOp shoube be "
+          "the same size, but received the size of input Ids = %d,"
+          " the size of input Embs = %d",
+          ids.size(),
+          embs.size()));
+  PADDLE_ENFORCE_GE(embs.size(),
+                    2UL,
+                    phi::errors::InvalidArgument(
+                        "Input Embs of EmbeddingEltWiseLayerNormOp should "
+                        "have at least 2 tensors"));
+  PADDLE_ENFORCE_GE(ids.size(),
+                    2UL,
+                    phi::errors::InvalidArgument(
+                        "Input Ids of EmbeddingEltWiseLayerNormOp should "
+                        "have at least 2 tensors"));
+
+  // batch * seq_len * 1
+  std::vector<DDim> ids_dims, embs_dims;
+  ids_dims.reserve(ids.size());
+  std::transform(ids.begin(),
+                 ids.end(),
+                 std::back_inserter(ids_dims),
+                 [](MetaTensor* var) { return var->dims(); });
+  // word_num * hidden
+  embs_dims.reserve(embs.size());
+  std::transform(embs.begin(),
+                 embs.end(),
+                 std::back_inserter(embs_dims),
+                 [](MetaTensor* var) { return var->dims(); });
+  // hidden
+  DDim dims_bias = bias.dims();
+
+  int batch = ids_dims[0][0];
+  int seq_len = ids_dims[0][1];
+  int hidden = embs_dims[0][1];
+  for (auto& embs_dim : embs_dims) {
+    PADDLE_ENFORCE_EQ(
+        embs_dim.size(),
+        2,
+        phi::errors::InvalidArgument(
+            "The Emb dim's size shoule be 2, but found %d.", embs_dim.size()));
+    PADDLE_ENFORCE_EQ(
+        embs_dim[1],
+        dims_bias[0],
+        platform::errors::InvalidArgument(
+            "The second dims (%d) of the Embedding should be equal "
+            "to the Bias's size(%d).",
+            embs_dim[1],
+            dims_bias[0]));
+    PADDLE_ENFORCE_EQ(
+        embs_dim[1],
+        hidden,
+        platform::errors::InvalidArgument(
+            "The second dimension size(%d) of the Embedding should be "
+            "equal to the hidden's size(%d)",
+            embs_dim[1],
+            hidden));
+  }
+
+  auto dim_output = phi::make_ddim({batch, seq_len, hidden});
+  out->set_dims(dim_output);
+  out->share_lod(ids);
+  // context->ShareLoD("Ids", /*->*/ "Out");
+}
+
 }  // namespace phi
