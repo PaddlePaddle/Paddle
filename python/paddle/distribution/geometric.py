@@ -56,7 +56,7 @@ class Geometric(distribution.Distribution):
 
             >>> print(geom.mean)
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-            2.)
+            1.)
 
             >>> print(geom.variance)
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -146,7 +146,7 @@ class Geometric(distribution.Distribution):
                 >>> geom = Geometric(0.5)
                 >>> print(geom.pmf(2))
                 Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-                0.25000000)
+                0.12500000)
         """
         if isinstance(k, (numbers.Integral, framework.Variable)):
             return paddle.pow((1.0 - self.probs), k) * self.probs
@@ -177,7 +177,7 @@ class Geometric(distribution.Distribution):
                 >>> geom = Geometric(0.5)
                 >>> print(geom.log_pmf(2))
                 Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-                -1.38629436)
+                -2.07944131)
         """
         if isinstance(k, (numbers.Integral, framework.Variable)):
             return paddle.log(self.pmf(k))
@@ -206,8 +206,8 @@ class Geometric(distribution.Distribution):
                 >>> geom = Geometric(0.5)
                 >>> print(geom.sample((2,2)))
                 Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-                [[0.20783406, 0.94300812],
-                 [1.94558561, 0.14360668]])
+                [[0., 0.],
+                 [0., 1.]])
         """
         with paddle.no_grad():
             return self.rsample(shape)
@@ -232,8 +232,8 @@ class Geometric(distribution.Distribution):
                 >>> geom = Geometric(0.5)
                 >>> print(geom.rsample((2,2)))
                 Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-                [[0.20783406, 0.94300812],
-                 [1.94558561, 0.14360668]])
+                [[0., 0.],
+                 [0., 1.]])
 
         """
         shape = distribution.Distribution._extend_shape(
@@ -269,7 +269,7 @@ class Geometric(distribution.Distribution):
                 >>> geom = Geometric(0.5)
                 >>> print(geom.entropy())
                 Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-                1.38629436)
+                1.38629425)
         """
         x = (1.0 - self.probs) * paddle.log(1.0 - self.probs)
         y = self.probs * paddle.log(self.probs)
@@ -299,7 +299,7 @@ class Geometric(distribution.Distribution):
                 >>> geom = Geometric(0.5)
                 >>> print(geom.cdf(4))
                 Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-                0.93750000)
+                0.96875000)
         """
         if isinstance(k, (numbers.Integral, framework.Variable)):
             return 1.0 - paddle.pow((1.0 - self.probs), k + 1)
