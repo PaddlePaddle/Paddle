@@ -207,7 +207,7 @@ class Geometric(distribution.Distribution):
                 >>> print(geom.sample((2,2)))
                 Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [[0., 0.],
-                 [0., 1.]])
+                 [1., 0.]])
         """
         with paddle.no_grad():
             return self.rsample(shape)
@@ -233,7 +233,7 @@ class Geometric(distribution.Distribution):
                 >>> print(geom.rsample((2,2)))
                 Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [[0., 0.],
-                 [0., 1.]])
+                 [1., 0.]])
 
         """
         shape = distribution.Distribution._extend_shape(
