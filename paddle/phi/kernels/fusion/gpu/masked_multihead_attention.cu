@@ -489,10 +489,13 @@ __global__ void masked_multihead_attention_kernel(
 
     if (!params.neox_rotary_style) {
       if (params.rotary_emb_dims != 0 && tid * QK_VEC_SIZE < Dh / 2) {
-        int rotary_offset = bi * Dh + tid * QK_VEC_SIZE;
+        // bi 就是batch的意思吧！
+        int rotary_offset = bi * Dh / 2 + tid * QK_VEC_SIZE;
+        // int rotary_offset = 0 * Dh + tid * QK_VEC_SIZE;
         // Dh的意思就是dim head！
         const float *cos_base = params.rotary_emb;
         const float *sin_base = params.rotary_emb + params.batch_size * Dh / 2;
+        // const float *sin_base = params.rotary_emb + 1 * Dh / 2;
         Qk_vec_RoPE cos_emb, sin_emb;
         zero(cos_emb);
         zero(sin_emb);
