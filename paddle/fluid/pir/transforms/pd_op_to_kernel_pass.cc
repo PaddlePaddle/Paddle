@@ -1230,7 +1230,7 @@ pir::Operation* BuildPhiKernelOp(
 
   pir::OpInfo legacy_kernel_op_info =
       ctx->GetRegisteredOpInfo(paddle::dialect::LegacyKernelOp::name());
-  pir::Operation* op;
+  pir::Operation* op = nullptr;
   if (dialect::IsLegacyOp(op_item->name())) {
     op = pir::Operation::Create(
         vec_inputs, op_attribute, op_output_types, legacy_kernel_op_info);

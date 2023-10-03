@@ -211,8 +211,8 @@ void bilinear_interpolate(const T* in_data,
 
   int in_w_floor = floor(in_w);
   int in_h_floor = floor(in_h);
-  int in_w_ceil;
-  int in_h_ceil;
+  int in_w_ceil = 0;
+  int in_h_ceil = 0;
 
   if (GT_E<T>(in_w_floor, width - 1)) {
     in_w_ceil = in_w_floor = width - 1;
@@ -361,8 +361,8 @@ T get_feature_gradient(
 
   int xs_floor = floor(xs);
   int ys_floor = floor(ys);
-  int xs_ceil;
-  int ys_ceil;
+  int xs_ceil = 0;
+  int ys_ceil = 0;
 
   if (GT_E(xs_floor, width - 1)) {
     xs_ceil = xs_floor = width - 1;
