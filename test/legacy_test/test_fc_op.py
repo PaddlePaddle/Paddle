@@ -307,7 +307,7 @@ class TestFCOpQuantWithBias2(TestFCOp):
         self.matrix.weights = quant_weights(self.matrix.weights, self.scale_weights, self.quant_round_type, self.quant_max_bound, self.quant_min_bound)
 
 
-class TestFCOpQuantWithPadding(TestFCOp):
+class TestFCOpQuantWithPadding1(TestFCOp):
     def config(self):
         self.with_bias = True
         self.with_relu = True
@@ -321,7 +321,7 @@ class TestFCOpQuantWithPadding(TestFCOp):
         self.matrix.weights = quant_weights(self.matrix.weights, self.scale_weights, self.quant_round_type, self.quant_max_bound, self.quant_min_bound)
 
 
-class TestFCOpQuantWithPadding(TestFCOp):
+class TestFCOpQuantWithPadding2(TestFCOp):
     def config(self):
         self.with_bias = True
         self.with_relu = True

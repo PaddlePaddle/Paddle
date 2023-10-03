@@ -379,9 +379,9 @@ void FCInt8Functor<DeviceContext, T>::operator()(
     const int M,
     const int N,
     const int K,
-    const DenseTensor* x_tensor,
+    const T* X,
     const DenseTensor* w_tensor,
-    DenseTensor* y_tensor,
+    T* Y,
     float scale_in,
     std::vector<float> scale_weights,
     int quant_round_type,
@@ -394,9 +394,7 @@ void FCInt8Functor<DeviceContext, T>::operator()(
                     false,
                     errors::PermissionDenied(
                         "Weight padding in fc can not be used in GPU scope."));
-  const T* X = x_tensor->data<T>();
   const int8_t* W = w_tensor->data<int8_t>();
-  T* Y = y_tensor->data<T>();
 
   DenseTensor quant_x_tensor, quant_y_tensor;
   quant_x_tensor.Resize(phi::make_ddim({M, K}));
@@ -428,18 +426,22 @@ void FCInt8Functor<DeviceContext, T>::operator()(
                   N * sizeof(float),
                   cudaMemcpyHostToDevice);
 
-  phi::backends::gpu::GpuLaunchConfig config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(
-          context, M * N, DequantKernelVecSize);
-  LaunchDequantKernelWithWeight(quant_y_tensor.data<int32_t>(),
-                                Y,
-                                M,
-                                N,
-                                context.stream(),
-                                &config,
-                                scale_in,
-                                scale_weights_dev_ptr,
-                                quant_max_bound);
+  phi::backends::gpu::GpuLaunchConfig config;
+  if (N % DequantKernelVecSize == 0) {
+    config = phi::backends::gpu::GetGpuLaunchConfig1D(
+        context, M * N, DequantKernelVecSize);
+  } else {
+    config = phi::backends::gpu::GetGpuLaunchConfig1D(context, M * N, 1);
+  }
+  LaunchDequantKernelWithScaleOfInputAndWeight(quant_y_tensor.data<int32_t>(),
+                                               Y,
+                                               M,
+                                               N,
+                                               context.stream(),
+                                               &config,
+                                               scale_in,
+                                               scale_weights_dev_ptr,
+                                               quant_max_bound);
 
   if (B == NULL) {
     return;

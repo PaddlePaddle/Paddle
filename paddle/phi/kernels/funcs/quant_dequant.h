@@ -156,13 +156,14 @@ void LaunchDequantKernel(const int32_t* input,
 }
 
 template <typename T, int VecSize>
-__global__ void DequantKernelWithWeight(T* output,
-                                        const int32_t* input,
-                                        const int m,  // batch size
-                                        const int n,  // hidden
-                                        const float quant_in_scale,
-                                        const float* quant_weight_scale,
-                                        float quant_max_bound) {
+__global__ void DequantKernelWithScaleOfInputAndWeight(
+    T* output,
+    const int32_t* input,
+    const int m,  // batch size
+    const int n,  // hidden
+    const float quant_in_scale,
+    const float* quant_weight_scale,
+    float quant_max_bound) {
   int numel = m * n;
   int stride = blockDim.x * gridDim.x * VecSize;
   int idx = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
@@ -188,16 +189,30 @@ __global__ void DequantKernelWithWeight(T* output,
 }
 
 template <typename T>
-void LaunchDequantKernelWithWeight(const int32_t* input,
-                                   T* output,
-                                   const int m,  // m
-                                   const int n,  // n
-                                   gpuStream_t stream,
-                                   GpuLaunchConfig* gpu_config,
-                                   const float quant_in_scale,
-                                   const float* quant_weight_scale,
-                                   float quant_max_bound) {
-  DequantKernelWithWeight<T, DequantKernelVecSize>
+void LaunchDequantKernelWithScaleOfInputAndWeight(
+    const int32_t* input,
+    T* output,
+    const int m,  // m
+    const int n,  // n
+    gpuStream_t stream,
+    GpuLaunchConfig* gpu_config,
+    const float quant_in_scale,
+    const float* quant_weight_scale,
+    float quant_max_bound) {
+  if (n % DequantKernelVecSize != 0) {
+    DequantKernelWithScaleOfInputAndWeight<T, 1><<<gpu_config->block_per_grid,
+                                                   gpu_config->thread_per_block,
+                                                   0,
+                                                   stream>>>(output,
+                                                             input,
+                                                             m,
+                                                             n,
+                                                             quant_in_scale,
+                                                             quant_weight_scale,
+                                                             quant_max_bound);
+    return;
+  }
+  DequantKernelWithScaleOfInputAndWeight<T, DequantKernelVecSize>
       <<<gpu_config->block_per_grid, gpu_config->thread_per_block, 0, stream>>>(
           output,
           input,
