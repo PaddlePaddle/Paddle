@@ -27,8 +27,13 @@ from paddle.distribution.poisson import Poisson
 @parameterize.parameterize_cls(
     (parameterize.TEST_CASE_NAME, 'rate'),
     [
-        ('one-dim', np.array([100])),
-        ('multi-dim', parameterize.xrand((5,), min=1, max=20).astype('int32')),
+        ('one-dim', np.array([100.0]).astype('float32')),
+        (
+            'multi-dim',
+            parameterize.xrand((5,), min=1, max=20)
+            .astype('int32')
+            .astype('float32'),
+        ),
     ],
 )
 class TestPoisson(unittest.TestCase):
@@ -37,38 +42,38 @@ class TestPoisson(unittest.TestCase):
 
     def test_mean(self):
         mean = self._dist.mean
-        self.assertEqual(mean.numpy().dtype, self._dist.dtype)
+        self.assertEqual(mean.numpy().dtype, self.rate.dtype)
         np.testing.assert_allclose(
             mean,
             self._np_mean(),
-            rtol=config.RTOL.get(str(self._dist.dtype)),
-            atol=config.ATOL.get(str(self._dist.dtype)),
+            rtol=config.RTOL.get(str(self.rate.dtype)),
+            atol=config.ATOL.get(str(self.rate.dtype)),
         )
 
     def test_variance(self):
         var = self._dist.variance
-        self.assertEqual(var.numpy().dtype, self._dist.dtype)
+        self.assertEqual(var.numpy().dtype, self.rate.dtype)
         np.testing.assert_allclose(
             var,
             self._np_variance(),
-            rtol=config.RTOL.get(str(self._dist.dtype)),
-            atol=config.ATOL.get(str(self._dist.dtype)),
+            rtol=config.RTOL.get(str(self.rate.dtype)),
+            atol=config.ATOL.get(str(self.rate.dtype)),
         )
 
     def test_entropy(self):
         entropy = self._dist.entropy()
-        self.assertEqual(entropy.numpy().dtype, self._dist.dtype)
+        self.assertEqual(entropy.numpy().dtype, self.rate.dtype)
         np.testing.assert_allclose(
             entropy,
             self._np_entropy(),
-            rtol=config.RTOL.get(str(self._dist.dtype)),
-            atol=config.ATOL.get(str(self._dist.dtype)),
+            rtol=config.RTOL.get(str(self.rate.dtype)),
+            atol=config.ATOL.get(str(self.rate.dtype)),
         )
 
     def test_sample(self):
         sample_shape = ()
         samples = self._dist.sample(sample_shape)
-        self.assertEqual(samples.numpy().dtype, self._dist.dtype)
+        self.assertEqual(samples.numpy().dtype, self.rate.dtype)
         self.assertEqual(
             tuple(samples.shape),
             sample_shape + self._dist.batch_shape + self._dist.event_shape,
@@ -100,11 +105,15 @@ class TestPoisson(unittest.TestCase):
 @parameterize.parameterize_cls(
     (parameterize.TEST_CASE_NAME, 'rate', 'value'),
     [
-        ('value-same-shape', 10, 11),
+        (
+            'value-same-shape',
+            np.array(10).astype('float32'),
+            np.array(11).astype('float32'),
+        ),
         (
             'value-broadcast-shape',
-            10,
-            np.array([2.0, 3.0, 5.0, 10.0, 20.0]),
+            np.array(10).astype('float32'),
+            np.array([2.0, 3.0, 5.0, 10.0, 20.0]).astype('float32'),
         ),
     ],
 )
@@ -116,16 +125,16 @@ class TestPoissonProbs(unittest.TestCase):
         np.testing.assert_allclose(
             self._dist.prob(paddle.to_tensor(self.value)),
             scipy.stats.poisson.pmf(self.value, self.rate),
-            rtol=config.RTOL.get(str(self._dist.dtype)),
-            atol=config.ATOL.get(str(self._dist.dtype)),
+            rtol=config.RTOL.get(str(self.rate.dtype)),
+            atol=config.ATOL.get(str(self.rate.dtype)),
         )
 
     def test_log_prob(self):
         np.testing.assert_allclose(
             self._dist.log_prob(paddle.to_tensor(self.value)),
             scipy.stats.poisson.logpmf(self.value, self.rate),
-            rtol=config.RTOL.get(str(self._dist.dtype)),
-            atol=config.ATOL.get(str(self._dist.dtype)),
+            rtol=config.RTOL.get(str(self.rate.dtype)),
+            atol=config.ATOL.get(str(self.rate.dtype)),
         )
 
 
@@ -135,13 +144,21 @@ class TestPoissonProbs(unittest.TestCase):
     [
         (
             'one-dim',
-            parameterize.xrand((1,), min=1, max=20).astype('int32'),
-            parameterize.xrand((1,), min=1, max=20).astype('int32'),
+            parameterize.xrand((1,), min=1, max=20)
+            .astype('int32')
+            .astype('float32'),
+            parameterize.xrand((1,), min=1, max=20)
+            .astype('int32')
+            .astype('float32'),
         ),
         (
             'multi-dim',
-            parameterize.xrand((5, 3), min=1, max=20).astype('int32'),
-            parameterize.xrand((5, 3), min=1, max=20).astype('int32'),
+            parameterize.xrand((5, 3), min=1, max=20)
+            .astype('int32')
+            .astype('float32'),
+            parameterize.xrand((5, 3), min=1, max=20)
+            .astype('int32')
+            .astype('float32'),
         ),
     ],
 )
