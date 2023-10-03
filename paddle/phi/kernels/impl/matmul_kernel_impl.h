@@ -1446,6 +1446,10 @@ MatmulJudgeDtypeKernel(const Context& ctx,
   DenseTensor out_tmp;
   MatMulFunction<Context, float>(
       ctx, x_tmp, y_tmp, x_dims, y_dims, &out_tmp, transpose_x, transpose_y);
+  if (x.dtype() == phi::DataType::INT8) {
+    phi::CastKernel<float>(ctx, out_tmp, phi::DataType::INT32, out);
+    return;
+  }
   phi::CastKernel<float>(ctx, out_tmp, x.dtype(), out);
 }
 
