@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 try:
-    from paddle.version import full_version as __version__
-    from paddle.version import commit as __git_commit__
+    from paddle.version import full_version as __version__  # noqa: F401
+    from paddle.version import commit as __git_commit__  # noqa: F401
     from paddle.cuda_env import *  # noqa: F403
 except ImportError:
     import sys
@@ -23,7 +23,7 @@ except ImportError:
      import paddle from the source directory; please install paddlepaddle*.whl firstly.'''
     )
 
-from .batch import batch  # noqa: F401
+from .batch import batch
 
 # Do the *DUPLICATED* monkey-patch for the tensor object.
 # We need remove the duplicated code here once we fix
@@ -34,37 +34,37 @@ from .framework import monkey_patch_math_tensor
 monkey_patch_variable()
 monkey_patch_math_tensor()
 
-from .framework import disable_signal_handler  # noqa: F401
-from .framework import get_flags  # noqa: F401
-from .framework import set_flags  # noqa: F401
+from .framework import (
+    disable_signal_handler,
+    get_flags,
+    set_flags,
+    disable_static,
+    enable_static,
+    in_dynamic_mode,
+)
+from .base.dataset import *  # noqa: F403
 
-from .framework import disable_static  # noqa: F401
-from .framework import enable_static  # noqa: F401
-from .framework import in_dynamic_mode  # noqa: F401
-from .base.dataset import *  # noqa: F401, F403
+from .framework.dtype import (
+    iinfo,
+    finfo,
+    dtype,
+    uint8,
+    int8,
+    int16,
+    int32,
+    int64,
+    float16,
+    float32,
+    float64,
+    bfloat16,
+    bool,
+    complex64,
+    complex128,
+)
 
-from .framework.dtype import iinfo  # noqa: F401
-from .framework.dtype import finfo  # noqa: F401
-from .framework.dtype import dtype  # noqa: F401
-from .framework.dtype import uint8  # noqa: F401
-from .framework.dtype import int8  # noqa: F401
-from .framework.dtype import int16  # noqa: F401
-from .framework.dtype import int32  # noqa: F401
-from .framework.dtype import int64  # noqa: F401
-from .framework.dtype import float16  # noqa: F401
-from .framework.dtype import float32  # noqa: F401
-from .framework.dtype import float64  # noqa: F401
-from .framework.dtype import bfloat16  # noqa: F401
-from .framework.dtype import bool  # noqa: F401
-from .framework.dtype import complex64  # noqa: F401
-from .framework.dtype import complex128  # noqa: F401
+Tensor = framework.core.eager.Tensor
+Tensor.__qualname__ = 'Tensor'
 
-Tensor = framework.core.eager.Tensor  # noqa: F401
-Tensor.__qualname__ = 'Tensor'  # noqa: F401
-import paddle.distributed  # noqa: F401
-import paddle.sysconfig  # noqa: F401
-import paddle.distribution  # noqa: F401
-import paddle.nn  # noqa: F401
 import paddle.distributed.fleet  # noqa: F401
 import paddle.optimizer  # noqa: F401
 import paddle.metric  # noqa: F401
@@ -456,23 +456,458 @@ from .device import is_compiled_with_cinn  # noqa: F401
 from .device import is_compiled_with_cuda  # noqa: F401
 from .device import is_compiled_with_rocm  # noqa: F401
 from .device import is_compiled_with_custom_device  # noqa: F401
+=======
+
+from paddle import (  # noqa: F401
+    distributed,
+    sysconfig,
+    distribution,
+    nn,
+    optimizer,
+    metric,
+    regularizer,
+    incubate,
+    autograd,
+    device,
+    decomposition,
+    jit,
+    amp,
+    dataset,
+    inference,
+    io,
+    onnx,
+    reader,
+    static,
+    vision,
+    audio,
+    geometric,
+    sparse,
+    quantization,
+)
+
+from .tensor.attribute import (
+    is_complex,
+    is_integer,
+    rank,
+    shape,
+    real,
+    imag,
+    is_floating_point,
+)
+
+from .tensor.creation import (
+    create_parameter,
+    to_tensor,
+    diag,
+    diagflat,
+    eye,
+    linspace,
+    logspace,
+    ones,
+    ones_like,
+    zeros,
+    zeros_like,
+    arange,
+    full,
+    full_like,
+    triu,
+    triu_,
+    tril,
+    tril_,
+    meshgrid,
+    empty,
+    empty_like,
+    assign,
+    complex,
+    clone,
+    tril_indices,
+    triu_indices,
+    polar,
+    geometric_,
+    cauchy_,
+)
+
+from .tensor.linalg import (  # noqa: F401
+    matmul,
+    dot,
+    norm,
+    transpose,
+    transpose_,
+    dist,
+    t,
+    t_,
+    cdist,
+    cross,
+    cholesky,
+    bmm,
+    histogram,
+    bincount,
+    mv,
+    eigvalsh,
+)
+
+from .tensor.logic import (  # noqa: F401
+    equal,
+    equal_,
+    greater_equal,
+    greater_equal_,
+    greater_than,
+    greater_than_,
+    is_empty,
+    less_equal,
+    less_equal_,
+    less_than,
+    less_than_,
+    logical_and,
+    logical_and_,
+    logical_not,
+    logical_not_,
+    logical_or,
+    logical_or_,
+    logical_xor,
+    logical_xor_,
+    bitwise_and,
+    bitwise_and_,
+    bitwise_not,
+    bitwise_not_,
+    bitwise_or,
+    bitwise_or_,
+    bitwise_xor,
+    bitwise_xor_,
+    not_equal,
+    not_equal_,
+    allclose,
+    isclose,
+    equal_all,
+    is_tensor,
+)
+
+
+from .tensor.manipulation import (  # noqa: F401
+    cast,
+    cast_,
+    concat,
+    broadcast_tensors,
+    expand,
+    broadcast_to,
+    expand_as,
+    tile,
+    flatten,
+    gather,
+    gather_nd,
+    reshape,
+    reshape_,
+    flip as reverse,
+    scatter,
+    scatter_,
+    scatter_nd_add,
+    scatter_nd,
+    shard_index,
+    slice,
+    crop,
+    split,
+    vsplit,
+    squeeze,
+    squeeze_,
+    stack,
+    strided_slice,
+    unique,
+    unique_consecutive,
+    unsqueeze,
+    unsqueeze_,
+    unstack,
+    flip,
+    rot90,
+    unbind,
+    roll,
+    chunk,
+    tolist,
+    take_along_axis,
+    put_along_axis,
+    tensordot,
+    as_complex,
+    as_real,
+    moveaxis,
+    repeat_interleave,
+    index_add,
+    index_add_,
+    index_put,
+    index_put_,
+    unflatten,
+    as_strided,
+    view,
+    view_as,
+    unfold,
+)
+
+from .tensor.math import (  # noqa: F401
+    abs,
+    abs_,
+    acos,
+    acos_,
+    asin,
+    asin_,
+    atan,
+    atan_,
+    atan2,
+    ceil,
+    cos,
+    cos_,
+    tan,
+    tan_,
+    cosh,
+    cosh_,
+    cumsum,
+    cumsum_,
+    cummax,
+    cummin,
+    cumprod,
+    cumprod_,
+    logcumsumexp,
+    logit,
+    logit_,
+    exp,
+    expm1,
+    expm1_,
+    floor,
+    increment,
+    log,
+    log_,
+    log2_,
+    log2,
+    log10,
+    log10_,
+    multiplex,
+    pow,
+    pow_,
+    reciprocal,
+    all,
+    any,
+    round,
+    rsqrt,
+    scale,
+    sign,
+    sin,
+    sin_,
+    sinh,
+    sinh_,
+    sqrt,
+    square,
+    square_,
+    stanh,
+    sum,
+    nan_to_num,
+    nan_to_num_,
+    nansum,
+    nanmean,
+    count_nonzero,
+    tanh,
+    tanh_,
+    add_n,
+    max,
+    maximum,
+    amax,
+    min,
+    minimum,
+    amin,
+    mm,
+    divide,
+    divide_,
+    floor_divide,
+    floor_divide_,
+    remainder,
+    remainder_,
+    mod,
+    mod_,
+    floor_mod,
+    floor_mod_,
+    multiply,
+    multiply_,
+    renorm,
+    renorm_,
+    add,
+    subtract,
+    logsumexp,
+    logaddexp,
+    inverse,
+    log1p,
+    log1p_,
+    erf,
+    erf_,
+    addmm,
+    addmm_,
+    clip,
+    trace,
+    diagonal,
+    kron,
+    isfinite,
+    isinf,
+    isnan,
+    prod,
+    broadcast_shape,
+    conj,
+    trunc,
+    trunc_,
+    digamma,
+    digamma_,
+    neg,
+    neg_,
+    lgamma,
+    lgamma_,
+    acosh,
+    acosh_,
+    asinh,
+    asinh_,
+    atanh,
+    atanh_,
+    lerp,
+    erfinv,
+    rad2deg,
+    deg2rad,
+    gcd,
+    gcd_,
+    lcm,
+    lcm_,
+    diff,
+    angle,
+    fmax,
+    fmin,
+    inner,
+    outer,
+    heaviside,
+    frac,
+    frac_,
+    sgn,
+    take,
+    frexp,
+    ldexp,
+    ldexp_,
+    trapezoid,
+    cumulative_trapezoid,
+    vander,
+    nextafter,
+    i0,
+    i0_,
+    i0e,
+    i1,
+    i1e,
+    polygamma,
+    polygamma_,
+)
+
+from .tensor.random import (
+    bernoulli,
+    poisson,
+    multinomial,
+    standard_normal,
+    normal,
+    normal_,
+    uniform,
+    randn,
+    rand,
+    randint,
+    randint_like,
+    randperm,
+)
+from .tensor.search import (
+    argmax,
+    argmin,
+    argsort,
+    searchsorted,
+    bucketize,
+    masked_select,
+    topk,
+    where,
+    where_,
+    index_select,
+    nonzero,
+    sort,
+    kthvalue,
+    mode,
+)
+
+from .tensor.to_string import set_printoptions
+
+from .tensor.einsum import einsum
+
+from .framework.random import (
+    seed,
+    get_cuda_rng_state,
+    set_cuda_rng_state,
+    get_rng_state,
+    set_rng_state,
+)
+from .framework import (  # noqa: F401
+    ParamAttr,
+    CPUPlace,
+    IPUPlace,
+    CUDAPlace,
+    CUDAPinnedPlace,
+    CustomPlace,
+    XPUPlace,
+)
+
+from .autograd import (
+    grad,
+    no_grad,
+    enable_grad,
+    set_grad_enabled,
+    is_grad_enabled,
+)
+from .framework import (
+    save,
+    load,
+)
+from .distributed import DataParallel
+
+from .framework import (
+    set_default_dtype,
+    get_default_dtype,
+)
+
+from .tensor.search import index_sample
+from .tensor.stat import (
+    mean,
+    std,
+    var,
+    numel,
+    median,
+    nanmedian,
+    quantile,
+    nanquantile,
+)
+from .device import (  # noqa: F401
+    get_cudnn_version,
+    set_device,
+    get_device,
+    is_compiled_with_xpu,
+    is_compiled_with_ipu,
+    is_compiled_with_cinn,
+    is_compiled_with_cuda,
+    is_compiled_with_rocm,
+    is_compiled_with_custom_device,
+)
 
 # high-level api
-from .hapi import Model  # noqa: F401
-from . import callbacks  # noqa: F401
-from .hapi import summary  # noqa: F401
-from .hapi import flops  # noqa: F401
-from . import hub  # noqa: F401
-from . import linalg  # noqa: F401
-from . import fft  # noqa: F401
-from . import signal  # noqa: F401
-from . import _pir_ops  # noqa: F401
+from . import (  # noqa: F401
+    callbacks,
+    hub,
+    linalg,
+    fft,
+    signal,
+    _pir_ops,
+)
+from .hapi import (
+    Model,
+    summary,
+    flops,
+)
 
 import paddle.text  # noqa: F401
 import paddle.vision  # noqa: F401
 
-from .tensor.random import check_shape  # noqa: F401
-from .nn.initializer.lazy_init import LazyGuard  # noqa: F401
+from .tensor.random import check_shape
+from .nn.initializer.lazy_init import LazyGuard
 
 # CINN has to set a flag to include a lib
 if is_compiled_with_cinn():
@@ -486,12 +921,12 @@ if is_compiled_with_cinn():
 
 disable_static()
 
-from .pir_utils import IrGuard  # noqa: F401
+from .pir_utils import IrGuard
 
 ir_change = IrGuard()
 ir_change._switch_to_pir()
 
-__all__ = [  # noqa
+__all__ = [
     'iinfo',
     'finfo',
     'dtype',

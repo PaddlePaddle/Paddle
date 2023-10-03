@@ -141,60 +141,6 @@ const std::unordered_set<std::string> SpecialOps = {"pd_op.feed",
                                                     "pd_op.shadow_output",
                                                     "pd_op.if"};
 
-void AddNewData(pir::Value value,
-                std::string name,
-                paddle::framework::Variable* var,
-                std::unordered_map<pir::Value, std::string>* value_2_var_name,
-                std::unordered_map<const paddle::framework::Variable*,
-                                   std::string>* variable_2_var_name,
-                std::map<std::string, int>* var_name_2_id,
-                std::vector<paddle::framework::Variable*>* variable_list) {
-  if (value_2_var_name->count(value) == 0) {
-    value_2_var_name->emplace(value, name);
-  }
-
-  variable_2_var_name->emplace(var, name);
-  if (var_name_2_id->count(name) == 0) {
-    auto id = var_name_2_id->size();
-    var_name_2_id->emplace(name, id);
-    variable_list->push_back(var);
-  }
-  PADDLE_ENFORCE_EQ(
-      variable_list->size(),
-      var_name_2_id->size(),
-      paddle::platform::errors::InvalidArgument(
-          "The size of variable_list and var_name_2_id map should be equal"));
-}
-
-void RenameData(pir::Value value,
-                std::string new_name,
-                std::string orig_name,
-                std::unordered_map<pir::Value, std::string>* value_2_var_name,
-                std::unordered_map<const paddle::framework::Variable*,
-                                   std::string>* variable_2_var_name,
-                std::map<std::string, int>* var_name_2_id) {
-  (*value_2_var_name)[value] = new_name;
-
-  for (auto kv : (*value_2_var_name)) {
-    if (kv.second == orig_name) {
-      (*value_2_var_name)[kv.first] = new_name;
-    }
-  }
-
-  for (auto kv : (*variable_2_var_name)) {
-    if (kv.second == orig_name) {
-      (*variable_2_var_name)[kv.first] = new_name;
-    }
-  }
-
-  for (auto kv : *(var_name_2_id)) {
-    if (kv.first == orig_name) {
-      var_name_2_id->emplace(new_name, kv.second);
-    }
-  }
-  var_name_2_id->erase(orig_name);
-}
-
 using VariableNameMap =
     std::unordered_map<const paddle::framework::Variable*, std::string>;
 
@@ -225,13 +171,6 @@ paddle::framework::Variable* CreateVar(
             << value_exe_info->GetScope();
     var = value_exe_info->GetScope()->Var(name);
   }
-  // AddNewData(value,
-  //            name,
-  //            var,
-  //            value_2_var_name,
-  //            variable_2_var_name,
-  //            var_name_2_id,
-  //            variable_list);
 
   value_exe_info->Add(value, name);
 
@@ -246,7 +185,7 @@ void CheckInputVars(
   if (input_num > 0) {
     for (size_t i = 0; i < input_num; ++i) {
       auto value = op->operand_source(i);
-      if (value) {
+      if (IsInvalid(value)) {
         PADDLE_ENFORCE_NE(
             value_2_var_name.find(value),
             value_2_var_name.end(),
@@ -262,6 +201,11 @@ void CheckInputVars(
 void BuildValue(pir::Value value,
                 const std::string& var_name_prefix,
                 paddle::framework::ValueExecutionInfo* value_exe_info) {
+  if (!IsInvalid(value)) {
+    VLOG(8) << "Value is not invalid, so skip build a variable.";
+    return;
+  }
+
   paddle::framework::Variable* var = nullptr;
   auto& value_2_var_name = value_exe_info->GetValue2VarName();
   if (value_2_var_name.find(value) != value_2_var_name.end()) {
@@ -319,13 +263,6 @@ void HandleForSpecialOp(
     var->GetMutable<phi::DenseTensor>();
     auto value = op->result(0);
 
-    // AddNewData(value,
-    //            fetch_var_name,
-    //            var,
-    //            value_2_var_name,
-    //            variable_2_var_name,
-    //            var_name_2_id,
-    //            variable_list);
     value_exe_info->Add(value, fetch_var_name);
   }
 
@@ -342,13 +279,6 @@ void HandleForSpecialOp(
                    paddle::platform::errors::InvalidArgument(
                        "The variable %s shoud exist", name));
 
-    // AddNewData(value,
-    //            name,
-    //            var,
-    //            value_2_var_name,
-    //            variable_2_var_name,
-    //            var_name_2_id,
-    //            variable_list);
     value_exe_info->Add(value, name);
   }
 
@@ -402,12 +332,6 @@ void HandleForSpecialOp(
               << param_name;
     }
 
-    // RenameData(value,
-    //            param_name,
-    //            orig_name,
-    //            value_2_var_name,
-    //            variable_2_var_name,
-    //            var_name_2_id);
     value_exe_info->Rename(value, param_name, orig_name);
   }
 
@@ -424,12 +348,7 @@ void HandleForSpecialOp(
       const_cast<paddle::framework::Scope*>(value_exe_info->GetScope()->root())
           ->Rename(orig_name, var_name);
     }
-    // RenameData(value,
-    //            var_name,
-    //            orig_name,
-    //            value_2_var_name,
-    //            variable_2_var_name,
-    //            var_name_2_id);
+
     value_exe_info->Rename(value, var_name, orig_name);
   }
 
@@ -441,14 +360,6 @@ void HandleForSpecialOp(
                           .AsString();
     auto value = op->result(0);
 
-    // paddle::framework::Variable* var =
-    // value_exe_info->GetScope()->FindVar(param_name); AddNewData(value,
-    //            param_name,
-    //            var,
-    //            value_2_var_name,
-    //            variable_2_var_name,
-    //            var_name_2_id,
-    //            variable_list);
     value_exe_info->Add(value, param_name);
   }
 
@@ -545,7 +456,9 @@ void HandleForInplaceOp(pir::Operation* op,
 
   for (size_t i = 0; i < op->num_results(); ++i) {
     pir::Value value = op->result(i);
-    if (value.type().storage() == nullptr) {
+    if (!IsInvalid(value)) {
+      VLOG(8) << "Number " << i << " result of " << op_name
+              << " is not invalid, so skip build a variable.";
       continue;
     }
     std::string value_name = yaml_parser.OutputNames()[i];
@@ -652,16 +565,18 @@ void BuildRuntimeContext(
     auto index = op_yaml_info.InputName2Id().at(name);
     pir::Value ptr = op->operand_source(index);
 
+    if (!IsInvalid(ptr)) {
+      VLOG(8) << "ctx->EmplaceBackInput : an optioanl input " << name;
+      continue;
+    }
+
+    auto legacy_attr_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
     auto in_var_name = name_map.at(ptr);
     VLOG(6) << "ctx->EmplaceBackInput: " << name << "\t" << in_var_name;
-
     PADDLE_ENFORCE_NOT_NULL(inner_scope->FindVar(in_var_name),
                             phi::errors::PreconditionNotMet(
                                 "can not find var[%s] in scope", in_var_name));
     auto var = inner_scope->FindVar(in_var_name);
-    std::vector<paddle::framework::Variable*> vec_tmp = {var};
-    auto legacy_attr_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
-
     runtime_ctx->inputs[legacy_attr_name].push_back(var);
   }
 
@@ -669,6 +584,12 @@ void BuildRuntimeContext(
   for (size_t i = 0; i < output_name_list.size(); ++i) {
     auto name = output_name_list[i];
     pir::Value ptr = op->result(i);
+    auto legacy_arg_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
+
+    if (!IsInvalid(ptr)) {
+      VLOG(8) << "ctx->EmplaceBackOutput : an optioanl output " << name;
+      continue;
+    }
 
     auto in_var_name = name_map.at(ptr);
     VLOG(6) << "ctx->EmplaceBackOutput: " << name << "\t" << in_var_name;
@@ -680,7 +601,6 @@ void BuildRuntimeContext(
     auto var = inner_scope->FindVar(in_var_name);
 
     auto type = ptr.type();
-    auto legacy_arg_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
     if (type.isa<paddle::dialect::AllocatedDenseTensorType>() ||
         type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
       runtime_ctx->outputs[legacy_arg_name] = {var};
@@ -718,6 +638,7 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
 
   auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
 
+  // build inputs
   for (auto& name : vec_kernel_fn_tensor_params) {
     PADDLE_ENFORCE_EQ(
         name2id.count(name),
@@ -725,11 +646,15 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
         phi::errors::NotFound("param [%s] MUST in name2id map", name));
     auto index = op_yaml_info.InputName2Id().at(name);
     pir::Value ptr = op->operand_source(index);
-
-    auto in_var_name = name_map.at(ptr);
-
     auto legacy_attr_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
-    in_name_map[legacy_attr_name].push_back(in_var_name);
+
+    if (!IsInvalid(ptr)) {
+      VLOG(8) << "Push back inputs to VariableNameMap : an optioanl input "
+              << name;
+      continue;
+    }
+    VLOG(6) << "Push back inputs to VariableNameMap : " << name_map.at(ptr);
+    in_name_map[legacy_attr_name].push_back(name_map.at(ptr));
   }
 
   // build attribute
@@ -805,26 +730,33 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
     }
   }
 
+  // build outputs
   auto& output_name_list = op_yaml_info.OutputNames();
   for (size_t i = 0; i < output_name_list.size(); ++i) {
-    auto name = output_name_list[i];
     pir::Value ptr = op->result(i);
+    auto legacy_arg_name =
+        op_normalizer.GetLegacyArgName(fluid_op_name, output_name_list[i]);
 
-    auto out_var_name = name_map.at(ptr);
+    if (!IsInvalid(ptr)) {
+      VLOG(8) << "Push back outputs to VariableNameMap : an optioanl output "
+              << legacy_arg_name;
+      continue;
+    }
 
-    auto type = ptr.type();
-    auto legacy_arg_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
-    if (type.isa<paddle::dialect::AllocatedDenseTensorType>() ||
-        type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
-      out_name_map[legacy_arg_name].push_back(out_var_name);
-    } else if (type.isa<pir::VectorType>()) {
-      auto var = scope->FindVar(out_var_name);
+    if (ptr.type().isa<paddle::dialect::AllocatedDenseTensorType>() ||
+        ptr.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+      out_name_map[legacy_arg_name].push_back(name_map.at(ptr));
+      VLOG(6) << "Push back outputs to VariableNameMap : " << name_map.at(ptr);
+    } else if (ptr.type().isa<pir::VectorType>()) {
+      auto var = scope->FindVar(name_map.at(ptr));
       auto var_ref = var->Get<paddle::framework::VariableRefArray>();
       for (size_t k = 0; k < var_ref.size(); ++k) {
         PADDLE_ENFORCE(variable_2_var_name.count(var_ref[k]),
                        "Variable MUST in variable_2_var_name map");
         out_name_map[legacy_arg_name].push_back(
             variable_2_var_name.at(var_ref[k]));
+        VLOG(6) << "Push back outputs to VariableNameMap : "
+                << variable_2_var_name.at(var_ref[k]);
       }
     } else {
       PADDLE_THROW(phi::errors::Unimplemented(
