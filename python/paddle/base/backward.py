@@ -812,7 +812,7 @@ def _find_not_need_ops(grad_op_descs, forward_ops, input_grad_names_set):
             assert isinstance(var, Var)
             self.outputs.append(var)
 
-    var_versions = dict()
+    var_versions = {}
 
     def _create_node(name):
         if name not in var_versions.keys():
@@ -1817,7 +1817,7 @@ def _rename_grad_(
 
 
 def _get_stop_gradients_(program):
-    no_grad_dict = dict()
+    no_grad_dict = {}
     assert isinstance(program, framework.Program)
     for block in program.blocks:
         assert isinstance(block, framework.Block)
@@ -2041,7 +2041,7 @@ def append_backward(
     for idx in son_parent_block_idx_dict:
         block_fwd_op_num_dict[idx] = program.block(idx).desc.op_size()
 
-    grad_to_var = dict()
+    grad_to_var = {}
 
     # pass the cuda_graph_attr to the fill_constant which generates the loss_grad
     op_desc = _create_loss_op_desc_(loss)
@@ -2055,7 +2055,7 @@ def append_backward(
             map(_strip_grad_suffix_, no_grad_dict[block_idx])
         )
 
-        op_path_dict = dict()
+        op_path_dict = {}
         op_path = _find_op_path_(
             block, [loss], [], block_no_grad_set, op_path_dict
         )
@@ -2118,7 +2118,7 @@ def append_backward(
                 grad_op_id_to_fwd_op=grad_op_id_to_fwd_op,
             )
 
-    grad_info_map = dict()
+    grad_info_map = {}
 
     # if in control flow, target_grad_block is a created new block which only contains grad ops,
     # so fwd_op_num is set to 0.
@@ -2319,7 +2319,7 @@ def _find_op_path_(
     input_names = {inp.name for inp in inputs}
     output_names = _get_output_names(block, targets)
     if op_path_dict is None:
-        op_path_dict = dict()
+        op_path_dict = {}
 
     relevant_op_flags = [True] * len(block.ops)
 
@@ -2465,7 +2465,7 @@ def calc_gradient_helper(
             raise ValueError("input must be in the same program as targets")
     block_no_grad_set = set(map(_strip_grad_suffix_, no_grad_dict[0]))
 
-    op_path_dict = dict()
+    op_path_dict = {}
     op_path = _find_op_path_(
         block, targets, inputs, block_no_grad_set, op_path_dict
     )
@@ -2516,8 +2516,8 @@ def calc_gradient_helper(
     block_no_grad_set.update(no_grad_vars)
 
     no_grad_dict[0].update(list(map(_append_grad_suffix_, block_no_grad_set)))
-    grad_to_var = dict()
-    grad_info_map = dict()
+    grad_to_var = {}
+    grad_info_map = {}
     _append_backward_ops_(
         block,
         op_path,
