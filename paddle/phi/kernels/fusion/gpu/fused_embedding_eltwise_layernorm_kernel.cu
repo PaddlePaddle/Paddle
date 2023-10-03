@@ -46,8 +46,7 @@ void EmbeddingEltWiseLayerNormKernel(
           "'epsilon' is %f, but it should be between 0.0 and 0.001.", epsilon));
   int input_num = static_cast<int>(ids.size());
 
-  DenseTensor in_ids_(phi::TransToPhiDataType(phi::dtype::int64)),
-      in_embs_(phi::TransToPhiDataType(phi::dtype::int64));
+  DenseTensor in_ids_(phi::DataType::INT64), in_embs_(phi::DataType::INT64);
   DDim in_dim{input_num};
   int device_id;
 #ifdef PADDLE_WITH_HIP
@@ -74,23 +73,23 @@ void EmbeddingEltWiseLayerNormKernel(
                  in1s.data(),
                  sizeof(int64_t) * input_num,
                  hipMemcpyHostToDevice,
-                 device_ctx.stream());
+                 dev_ctx.stream());
   hipMemcpyAsync(in_embs_d,
                  in2s.data(),
                  sizeof(int64_t) * input_num,
                  hipMemcpyHostToDevice,
-                 device_ctx.stream());
+                 dev_ctx.stream());
 #else
   cudaMemcpyAsync(in_ids_d,
                   in1s.data(),
                   sizeof(int64_t) * input_num,
                   cudaMemcpyHostToDevice,
-                  device_ctx.stream());
+                  dev_ctx.stream());
   cudaMemcpyAsync(in_embs_d,
                   in2s.data(),
                   sizeof(int64_t) * input_num,
                   cudaMemcpyHostToDevice,
-                  device_ctx.stream());
+                  dev_ctx.stream());
 #endif
 
   // should be (B * S * hidden)
@@ -119,9 +118,9 @@ void EmbeddingEltWiseLayerNormKernel(
                                bias_new,
                                in_embs_d,
                                output_new,
-                               eps,
+                               epsilon,
                                input_num,
-                               device_ctx.stream());
+                               dev_ctx.stream());
   } else {
     phi::funcs::EmbEltwiseLayerNormFunctor<T> emb_eltwise_layernorm_func;
     emb_eltwise_layernorm_func(batch,
@@ -132,9 +131,9 @@ void EmbeddingEltWiseLayerNormKernel(
                                bias_d,
                                in_embs_d,
                                output_d,
-                               eps,
+                               epsilon,
                                input_num,
-                               device_ctx.stream());
+                               dev_ctx.stream());
   }
 }
 

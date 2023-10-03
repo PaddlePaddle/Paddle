@@ -1875,13 +1875,13 @@ void FusedEmbeddingEltWiseLayerNormInferMeta(
   std::transform(ids.begin(),
                  ids.end(),
                  std::back_inserter(ids_dims),
-                 [](MetaTensor* var) { return var->dims(); });
+                 [](const MetaTensor* var) { return var->dims(); });
   // word_num * hidden
   embs_dims.reserve(embs.size());
   std::transform(embs.begin(),
                  embs.end(),
                  std::back_inserter(embs_dims),
-                 [](MetaTensor* var) { return var->dims(); });
+                 [](const MetaTensor* var) { return var->dims(); });
   // hidden
   DDim dims_bias = bias.dims();
 
@@ -1897,7 +1897,7 @@ void FusedEmbeddingEltWiseLayerNormInferMeta(
     PADDLE_ENFORCE_EQ(
         embs_dim[1],
         dims_bias[0],
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The second dims (%d) of the Embedding should be equal "
             "to the Bias's size(%d).",
             embs_dim[1],
@@ -1905,7 +1905,7 @@ void FusedEmbeddingEltWiseLayerNormInferMeta(
     PADDLE_ENFORCE_EQ(
         embs_dim[1],
         hidden,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The second dimension size(%d) of the Embedding should be "
             "equal to the hidden's size(%d)",
             embs_dim[1],
@@ -1914,7 +1914,7 @@ void FusedEmbeddingEltWiseLayerNormInferMeta(
 
   auto dim_output = phi::make_ddim({batch, seq_len, hidden});
   out->set_dims(dim_output);
-  out->share_lod(ids);
+  // out->share_lod(ids);
   // context->ShareLoD("Ids", /*->*/ "Out");
 }
 
