@@ -25,7 +25,7 @@ PADDLE_DEFINE_EXPORTED_bool(
 namespace paddle {
 namespace platform {
 
-bool is_gpu_place(const Place &p) {
+TEST_API bool is_gpu_place(const Place &p) {
   return p.GetType() == phi::AllocationType::GPU;
 }
 
@@ -37,7 +37,7 @@ bool is_ipu_place(const Place &p) {
   return p.GetType() == phi::AllocationType::IPU;
 }
 
-bool is_cpu_place(const Place &p) {
+TEST_API bool is_cpu_place(const Place &p) {
   return p.GetType() == phi::AllocationType::CPU;
 }
 
@@ -62,11 +62,7 @@ bool is_same_place(const Place &p1, const Place &p2) {
   if (places_are_same_class(p1, p2)) {
     if (is_cpu_place(p1) || is_cuda_pinned_place(p1)) {
       return true;
-    } else if (is_xpu_place(p1)) {
-      return p1 == p2;
-    } else if (is_ipu_place(p1)) {
-      return p1 == p2;
-    } else if (is_custom_place(p1)) {
+    } else if (is_xpu_place(p1) || is_ipu_place(p1) || is_custom_place(p1)) {
       return p1 == p2;
     } else {
       return p1 == p2;

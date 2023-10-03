@@ -17,10 +17,11 @@
 #include "paddle/pir/core/op_operand_impl.h"
 #include "paddle/pir/core/value.h"
 
-namespace pir {
-constexpr const uint32_t OUTLINE_OP_RESULT_INDEX = 6;
-constexpr const uint32_t BLOCK_ARGUMENT_INDEX = OUTLINE_OP_RESULT_INDEX + 1;
+#define OUTLINE_RESULT_IDX 6u
+#define MAX_INLINE_RESULT_IDX (OUTLINE_RESULT_IDX - 1u)
+#define BLOCK_ARG_IDX (OUTLINE_RESULT_IDX + 1u)
 
+namespace pir {
 class Operation;
 
 namespace detail {

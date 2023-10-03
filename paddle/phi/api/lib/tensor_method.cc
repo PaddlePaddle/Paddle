@@ -128,24 +128,6 @@ void Tensor::copy_(const Tensor &src,
   auto *dev_ctx = pool.GetMutable(
       place.GetType() == target_place.GetType() ? target_place : place);
 
-  Backend kernel_backend = Backend::UNDEFINED;
-  DataLayout kernel_layout = DataLayout::UNDEFINED;
-  DataType kernel_data_type = DataType::UNDEFINED;
-
-  if (kernel_backend == Backend::UNDEFINED ||
-      kernel_layout == DataLayout::UNDEFINED ||
-      kernel_data_type == DataType::UNDEFINED) {
-    if (kernel_backend == Backend::UNDEFINED) {
-      kernel_backend = kernel_key.backend();
-    }
-    if (kernel_layout == DataLayout::UNDEFINED) {
-      kernel_layout = kernel_key.layout();
-    }
-    if (kernel_data_type == DataType::UNDEFINED) {
-      kernel_data_type = kernel_key.dtype();
-    }
-  }
-
   if (kernel_type == KernelType::DENSE_TENSOR_KENREL) {
     SetKernelOutput(this);
     phi::MetaTensor meta_out(impl_.get());

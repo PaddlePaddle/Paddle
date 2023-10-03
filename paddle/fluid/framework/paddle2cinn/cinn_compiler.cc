@@ -343,7 +343,7 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
   auto compiled_obj = std::make_unique<CinnCompiledObject>();
   *compiled_obj = {std::move(graph_compiler),
                    std::move(auto_tuner),
-                   std::move(compiled_res.runtime_program),
+                   std::move(compiled_res.RuntimeProgram()),
                    scope,
                    symbol.var_model_to_program_map()};
   compiled_obj->cached_index = compiled_num;

@@ -30,10 +30,6 @@
 #define CHECK_VALUE_NULL_IMPL(func_name) CHECK_NULL_IMPL(Value, func_name)
 
 namespace pir {
-
-Value::Value(const detail::ValueImpl *impl)
-    : impl_(const_cast<detail::ValueImpl *>(impl)) {}
-
 bool Value::operator==(const Value &other) const {
   return impl_ == other.impl_;
 }
@@ -43,6 +39,10 @@ bool Value::operator!=(const Value &other) const {
 }
 
 bool Value::operator!() const { return impl_ == nullptr; }
+
+bool Value::operator<(const Value &other) const {
+  return std::hash<Value>{}(*this) < std::hash<Value>{}(other);
+}
 
 Value::operator bool() const { return impl_; }
 
@@ -54,11 +54,6 @@ pir::Type Value::type() const {
 void Value::set_type(pir::Type type) {
   CHECK_VALUE_NULL_IMPL(set_type);
   impl_->set_type(type);
-}
-
-Operation *Value::GetDefiningOp() const {
-  if (auto result = dyn_cast<OpResult>()) return result.owner();
-  return nullptr;
 }
 
 std::string Value::PrintUdChain() {

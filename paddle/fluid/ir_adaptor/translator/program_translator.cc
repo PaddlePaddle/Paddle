@@ -528,7 +528,7 @@ void ProgramTranslator::SetStopGradientAttributeForAllValue(
       stop_gradients = std::vector<pir::Attribute>(
           defining_op->num_results(), pir::BoolAttribute::get(ctx_, false));
     }
-    stop_gradients[value.GetResultIndex()] =
+    stop_gradients[value.index()] =
         pir::BoolAttribute::get(ctx_, var->StopGradient());
     defining_op->set_attribute(kAttrStopGradients,
                                pir::ArrayAttribute::get(ctx_, stop_gradients));
@@ -567,7 +567,7 @@ void ProgramTranslator::SetIsPersisableAttributeForAllValue(
       is_persisable = std::vector<pir::Attribute>(
           defining_op->num_results(), pir::BoolAttribute::get(ctx_, false));
     }
-    is_persisable[value.GetResultIndex()] =
+    is_persisable[value.index()] =
         pir::BoolAttribute::get(ctx_, var->Persistable());
     defining_op->set_attribute(kAttrIsPersisable,
                                pir::ArrayAttribute::get(ctx_, is_persisable));

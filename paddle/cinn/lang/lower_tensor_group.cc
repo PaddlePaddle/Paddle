@@ -25,9 +25,9 @@
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/optim/transform_polyfor_to_for.h"
@@ -88,7 +88,7 @@ std::vector<ir::LoweredFunc> LowerTensorGroup::operator()() {
     }
 
     // Some store tensors are also temp tensors;
-    auto store_exprs = ir::CollectIRNodes(
+    auto store_exprs = ir::ir_utils::CollectIRNodes(
         func_body, [](const Expr* x) { return x->As<ir::Store>(); });
     for (auto& expr : store_exprs) {
       auto* store_node = expr.As<ir::Store>();
@@ -146,7 +146,7 @@ std::vector<ir::LoweredFunc> LowerTensorGroup::operator()() {
 std::vector<ir::Argument> LowerTensorGroup::GenerateFunctionArgumentList(
     Expr fn_body) {
   std::vector<ir::Argument> args;
-  auto teller = ir::CollectTensorNeedsWrite(&fn_body);
+  auto teller = ir::ir_utils::CollectTensorNeedsWrite(&fn_body);
 
   std::set<std::string> arg_names;
 
@@ -169,8 +169,8 @@ std::vector<ir::Argument> LowerTensorGroup::GenerateFunctionArgumentList(
     if (!tensor_node->buffer.defined()) {
       continue;
     }
-    // if a argument is already marked as kInput, mark it as kOutput and move it
-    // to the back.
+    // if a argument is already marked as kInput, mark it as kOutput and move
+    // it to the back.
     if (arg_names.count(tensor_node->buffer->name)) {
       auto it =
           std::find_if(args.begin(), args.end(), [&](const ir::Argument& x) {
@@ -201,7 +201,9 @@ ir::Expr LowerTensorGroup::GenerateFunctionBody(
       tensor_group->GetGenFuncTopoOrder(tensor_args_);
   std::vector<ir::Expr> bodies;
   for (const ir::Tensor& tensor : ordered_tensors) {
-    bodies.emplace_back(ast_gen_ius::AstGen::Build(tensor));
+    if (!tensor->is_placeholder_node()) {
+      bodies.emplace_back(ast_gen_ius::AstGen::Build(tensor, tensor_group));
+    }
   }
   if (bodies.size() == 1) {
     return bodies[0];

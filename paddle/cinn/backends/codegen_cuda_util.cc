@@ -15,7 +15,7 @@
 #include "paddle/cinn/backends/codegen_cuda_util.h"
 
 #include "paddle/cinn/backends/cuda_util.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
+#include "paddle/cinn/ir/ir_mutator.h"
 
 namespace cinn {
 namespace backends {

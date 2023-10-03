@@ -6,7 +6,7 @@ cc_library(
 cc_library(
   pd_op_to_kernel_pass
   SRCS pd_op_to_kernel_pass.cc
-  DEPS pd_kernel_dialect pd_op_dialect_core pd_op_dialect_utils)
+  DEPS pd_kernel_dialect pd_op_dialect pd_op_dialect_utils)
 
 cc_library(
   _constant_folding_pass
@@ -17,3 +17,10 @@ cc_library(
   pd_inplace_pass
   SRCS inplace_pass.cc
   DEPS pd_op_dialect_core op_yaml_info_parser)
+
+if(WITH_CINN)
+  cc_library(
+    pd_build_cinn_pass
+    SRCS build_cinn_pass.cc
+    DEPS pd_op_dialect cinn_op_dialect pir_control_flow cinnapi)
+endif()

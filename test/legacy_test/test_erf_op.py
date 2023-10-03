@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
 from scipy.special import erf
+from utils import static_guard
 
 import paddle
 import paddle.base.dygraph as dg
@@ -65,13 +66,13 @@ class TestErfLayer(unittest.TestCase):
         np.testing.assert_allclose(y_ref, y_test, rtol=1e-05)
 
     def test_case(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             self._test_case(base.CPUPlace())
             if base.is_compiled_with_cuda():
                 self._test_case(base.CUDAPlace(0))
 
     def test_name(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with base.program_guard(base.Program()):
                 x = paddle.static.data('x', [3, 4])
                 y = paddle.erf(x, name='erf')
@@ -92,10 +93,10 @@ class TestErfFP16OP(OpTest):
         self.outputs = {'Out': y_ref}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
 
 @unittest.skipIf(
@@ -120,11 +121,13 @@ class TestErfBF16OP(OpTest):
 
     def test_check_output(self):
         place = paddle.base.core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_new_ir=True)
 
     def test_check_grad(self):
         place = paddle.base.core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', check_prim=True, check_new_ir=True
+        )
 
 
 if __name__ == '__main__':

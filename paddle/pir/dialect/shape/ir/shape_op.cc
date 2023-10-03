@@ -177,7 +177,7 @@ void TieProductEqualOp::Build(Builder &builder,
   argument.AddInputs(rhs);
 }
 
-std::vector<Value> TieProductEqualOp::getLhs() {
+std::vector<Value> TieProductEqualOp::lhs() {
   int64_t lhs_len = attribute<Int64Attribute>("lhs_len").data();
   std::vector<Value> res;
   for (uint32_t idx = 0; idx < lhs_len; idx++) {
@@ -185,7 +185,7 @@ std::vector<Value> TieProductEqualOp::getLhs() {
   }
   return res;
 }
-std::vector<Value> TieProductEqualOp::getRhs() {
+std::vector<Value> TieProductEqualOp::rhs() {
   int64_t lhs_len = attribute<Int64Attribute>("lhs_len").data();
   int64_t rhs_len = attribute<Int64Attribute>("rhs_len").data();
   std::vector<Value> res;
@@ -211,9 +211,9 @@ void TieShapeOp::Build(Builder &builder,             // NOLINT
   argument.AddInputs(dims);
 }
 
-Value TieShapeOp::getValue() { return operand_source(0); }
+Value TieShapeOp::value() { return operand_source(0); }
 
-std::vector<Value> TieShapeOp::getShapeDimIndexes() {
+std::vector<Value> TieShapeOp::dims() {
   std::vector<Value> res;
   for (uint32_t i = 1; i < num_operands(); i++) {
     res.push_back(operand_source(i));
@@ -222,13 +222,24 @@ std::vector<Value> TieShapeOp::getShapeDimIndexes() {
 }
 
 void FuncOp::Build(Builder &builder, OperationArgument &argument) {
-  argument.num_regions = 1;
+  argument.AddRegion(nullptr);
 }
 
 Block *FuncOp::block() {
   Region &region = (*this)->region(0);
   if (region.empty()) region.emplace_back();
   return region.front();
+}
+
+void FuncOp::Print(IrPrinter &printer) {
+  auto &os = printer.os;
+  os << " shape.func () ";
+  os << "{";
+  for (auto item : *block()) {
+    os << "\n  ";
+    printer.PrintOperation(item);
+  }
+  os << "\n }";
 }
 
 void TensorDimOp::Build(Builder &builder,
@@ -245,16 +256,16 @@ void TensorDimOp::Build(Builder &builder,
                         int64_t index) {
   OpResult indexValue =
       builder
-          .Build<ConstantOp>(Int64Attribute::get(IrContext::Instance(), 2),
+          .Build<ConstantOp>(Int64Attribute::get(IrContext::Instance(), index),
                              IndexType::get(IrContext::Instance()))
           ->result(0);
   argument.AddInputs({source, indexValue});
   argument.output_types.emplace_back(IndexType::get(IrContext::Instance()));
 }
 
-Value TensorDimOp::getSource() { return operand_source(0); }
+Value TensorDimOp::source() { return operand_source(0); }
 
-Value TensorDimOp::getIndex() { return operand_source(1); }
+Value TensorDimOp::index() { return operand_source(1); }
 }  // namespace dialect
 }  // namespace pir
 

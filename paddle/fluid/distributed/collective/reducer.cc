@@ -1109,7 +1109,8 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
 
   VLOG(3) << "sparse_group [" << curr_group_index << "] start allreduce.";
 
-  auto *dev_ctx = platform::DeviceContextPool::Instance().Get(inner_place_);
+  auto *dev_ctx =
+      platform::DeviceContextPool::Instance().Get(inner_place_);  // NOLINT
   if (platform::is_gpu_place(inner_place_)) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     dev_ctx = static_cast<phi::GPUContext *>(

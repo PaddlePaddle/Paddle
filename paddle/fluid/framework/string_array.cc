@@ -48,7 +48,7 @@ void NFD(const std::string& s, std::string* ret) {
       utf8proc_NFD(reinterpret_cast<const unsigned char*>(s.c_str())));
   if (result) {
     *ret = std::move(std::string(result));
-    free(result);
+    free(result);  // NOLINT
   }
 }
 
