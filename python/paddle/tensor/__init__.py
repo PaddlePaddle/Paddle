@@ -78,6 +78,7 @@ from .linalg import cholesky_solve  # noqa: F401
 from .linalg import lu  # noqa: F401
 from .linalg import lu_unpack  # noqa: F401
 from .linalg import cdist  # noqa: F401
+from .linalg import pdist  # noqa: F401
 from .logic import equal  # noqa: F401
 from .logic import equal_  # noqa: F401
 from .logic import greater_equal  # noqa: F401
@@ -634,6 +635,7 @@ tensor_method_func = [  # noqa
     'lu',
     'lu_unpack',
     'cdist',
+    'pdist',
     'as_complex',
     'as_real',
     'rad2deg',
