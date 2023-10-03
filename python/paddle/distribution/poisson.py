@@ -19,6 +19,7 @@ import numpy as np
 
 import paddle
 from paddle.distribution import distribution
+from paddle.framework import in_dynamic_mode
 
 
 class Poisson(distribution.Distribution):
@@ -73,7 +74,7 @@ class Poisson(distribution.Distribution):
             raise ValueError(
                 'Every element of input parameter `rate` should be nonnegative.'
             )
-        if self.total_count.shape == []:
+        if self.rate.shape == []:
             batch_shape = (1,)
         else:
             batch_shape = self.rate.shape
@@ -88,6 +89,8 @@ class Poisson(distribution.Distribution):
         # convert type
         if isinstance(rate, (float, int)):
             rate = paddle.to_tensor([rate], dtype=self.dtype)
+        if isinstance(rate, np.ndarray):
+            rate = paddle.to_tensor(rate)
         rate = paddle.cast(rate, dtype=self.dtype)
         return rate
 
@@ -133,169 +136,27 @@ class Poisson(distribution.Distribution):
             raise TypeError('sample shape must be Iterable object.')
 
         with paddle.set_grad_enabled(False):
-            shape = list(shape)
-            batch_shape = list(self.batch_shape)
-            output_shape = list(shape + batch_shape)
-            output_rate = paddle.broadcast_to(
-                self.rate, shape=output_shape
-            ).numpy()
-            broadcast_func = np.frompyfunc(self._poisson_sample, nin=1, nout=1)
-            return paddle.to_tensor(
-                broadcast_func(output_rate).astype('float32')
-            )
-
-    def _poisson_sample(self, rate):
-        """PD algorithm, a Poisson r.v. sampling algorithm.
-
-        Args:
-            rate (float): rate
-
-        Returns:
-            int, one poisson sample
-
-        ### References
-
-        [1]: Ahrens, J. H. and Dieter, U. (1982). Computer generation of Poisson deviates
-             from modified normal distributions. ACM Transactions on Mathematical Software, 8, 163–179.
-        """
-        if rate == 0:
-            return 0
-        factorial_table = np.array(
-            [1.0, 1.0, 2.0, 6.0, 24.0, 120.0, 720.0, 5040.0, 40320.0, 362880.0]
-        )  # factorial of 0~9
-        error_table = np.array(
-            [
-                -0.5,
-                0.3333333,
-                -0.2500068,
-                0.2000118,
-                -0.1661269,
-                0.1421878,
-                -0.1384794,
-                0.1250060,
-            ]
-        )  # truncation error table with |\epsilon| < 2*10^{-8} for taylor expension of equation (6) in the paper
-        p_table = np.zeros([36])
-
-        big_rate = rate > 10
-        rate_prev = 0
-        rate_prev2 = 0
-        rate_changed = False
-
-        def _step_F():
-            # step F
-            if K < 10:
-                px = -rate
-                py = rate**K / factorial_table[int(K)]
+            shape = tuple(shape)
+            batch_shape = tuple(self.batch_shape)
+            output_shape = tuple(shape + batch_shape)
+            output_rate = paddle.broadcast_to(self.rate, shape=output_shape)
+            if in_dynamic_mode():
+                broadcast_func = np.frompyfunc(poisson_sample, nin=1, nout=1)
+                return paddle.to_tensor(
+                    broadcast_func(output_rate.numpy()).astype('float32')
+                )
             else:
-                d = 1 / (12 * K)
-                d = d - 4.8 * d**3
-                V = (rate - K) / K
-                if abs(V) <= 0.25:
-                    sum_av = 1
-                    for i in range(len(error_table)):
-                        sum_av += error_table[i] * V**i
-                    px = K * V**2 * sum_av - d
-                else:
-                    px = K * math.log(1 + V) - (rate - K) - d
-                py = 1 / math.sqrt(2 * math.pi) / math.sqrt(K)
-            X = (K - rate + 0.5) / s
-            X *= X
-            fx = -0.5 * X
-            fy = w * (((c_3 * X + c_2) * X + c_1) * X + c_0)
-            return px, py, fx, fy
-
-        if not (big_rate and rate == rate_prev):
-            if big_rate:  # rate >= 10, and rate changed
-                # case A
-                rate_changed = True
-                rate_prev = rate
-                s = math.sqrt(rate)
-                d = 6 * rate**2
-                L = int(rate - 1.1484)
-            else:  # rate < 10
-                # case B
-                if rate != rate_prev:
-                    rate_prev = rate
-                    M = max(1, int(rate))
-                    L2 = 0
-                    p = q = p_0 = math.exp(-rate)
-                while True:
-                    # step U
-                    u = np.random.uniform()
-                    if u <= p_0:
-                        return 0
-                    # step T
-                    if L2 != 0:
-                        for k in range(1 if u <= 0.458 else min(L2, M), L2 + 1):
-                            if u <= p_table[k]:
-                                return k
-                        if L2 == 35:
-                            continue
-                    # step C
-                    for k in range(L2 + 1, 36):
-                        p = p * rate / k
-                        q += p
-                        p_table[k] = q
-                        if u <= q:
-                            L2 = k
-                            return k
-                    L2 = 35
-        # step N
-        G = rate + s * np.random.standard_normal()
-        if G >= 0:
-            K = int(G)
-            if K >= L:  # step I
-                return K
-            u = np.random.uniform()  # step S
-            if d * u >= (rate - K) ** 3:
-                return K
-
-        # step P
-        if rate_changed or rate != rate_prev2:
-            rate_prev2 = rate
-            w = 1 / math.sqrt(2 * math.pi) / s
-            b_1 = 1 / 24 / rate
-            b_2 = 3 / 10 * b_1**2
-            c_3 = 1 / 7 * b_1 * b_2
-            c_2 = b_2 - 15 * c_3
-            c_1 = b_1 - 6 * b_2 + 45 * c_3
-            c_0 = 1 - b_1 + 3 * b_2 - 15 * c_3
-            c = 0.1069 / rate
-        if G >= 0:  # G >= 0: F -> Q? -> E -> E... -> E -> F -> H
-            px, py, fx, fy = _step_F()
-            # step Q
-            if fy * (1 - u) <= py * math.exp(px - fx):
-                return K
-            else:
-                while True:
-                    # step E
-                    E = np.random.exponential()
-                    u = 2 * np.random.uniform() - 1
-                    T = 1.8 + E * np.sign(u)
-                    if T > 0.6744:
-                        K = int(rate + s * T)
-                        px, py, fx, fy = _step_F()
-                        # step H
-                        if c * abs(u) <= py * math.exp(px + E) - fy * math.exp(
-                            fx + E
-                        ):
-                            break
-        else:  # G < 0: E -> E... -> E -> F -> H
-            while True:
-                # step E
-                E = np.random.exponential()
-                u = 2 * np.random.uniform() - 1
-                T = 1.8 + E * np.sign(u)
-                if T > 0.6744:
-                    K = int(rate + s * T)
-                    px, py, fx, fy = _step_F()
-                    # step H
-                    if c * abs(u) <= py * math.exp(px + E) - fy * math.exp(
-                        fx + E
-                    ):
-                        break
-        return K
+                output = (
+                    paddle.static.default_main_program()
+                    .current_block()
+                    .create_var(dtype=self.dtype, shape=output_shape)
+                )
+                paddle.static.py_func(
+                    func=poisson_sample_vectorized,
+                    x=output_rate,
+                    out=output,
+                )
+                return output
 
     def entropy(self):
         r"""Shannon entropy in nats.
@@ -313,16 +174,24 @@ class Poisson(distribution.Distribution):
         Returns:
             Tensor, Shannon entropy of poisson distribution. The data type is float32.
         """
-        broadcast_func = np.frompyfunc(
-            self._entropy_on_bounded_support, nin=1, nout=1
+        values = self._enumerate_bounded_support(self.rate).reshape(
+            (-1,) + (1,) * len(self.batch_shape)
         )
-        return paddle.to_tensor(
-            broadcast_func(self.rate.numpy()).astype('float32')
+        log_prob = paddle.nan_to_num(
+            (
+                -self.rate
+                + values * paddle.log(self.rate)
+                - paddle.lgamma(values + 1)
+            ),
+            neginf=0,
         )
+        return paddle.nan_to_num(
+            -(paddle.exp(log_prob) * log_prob), posinf=0
+        ).sum(0)
 
     def _enumerate_bounded_support(self, rate):
         """Generate a bounded approximation of the support. Approximately view Poisson r.v. as a Normal r.v. with mu = rate and sigma = sqrt(rate).
-        Then by 5-sigma principle, generate a bounded approximation of the support.
+        Then by 30-sigma rule, generate a bounded approximation of the support.
 
         Args:
             rate (float): rate of one poisson r.v.
@@ -330,28 +199,10 @@ class Poisson(distribution.Distribution):
         Returns:
             numpy.ndarray: the bounded approximation of the support
         """
-        s = np.sqrt(rate)
-        upper = int(rate + 5 * s)
-        lower = int(np.clip(rate - 5 * s, a_min=0, a_max=rate))
-        values = np.arange(lower, upper, dtype=self.dtype)
+        s_max = paddle.sqrt(paddle.max(rate))
+        upper = paddle.max(paddle.cast(rate + 30 * s_max, dtype="int32"))
+        values = paddle.arange(0, upper, dtype="float32")
         return values
-
-    def _entropy_on_bounded_support(self, rate):
-        """Evaluated the entropy of one poisson r.v. based on bounded approximation of the support.
-
-        Args:
-            rate (float): rate of the poisson r.v.
-
-        Returns:
-            float: entropy of the poisson r.v. with :attr:`rate`.
-        """
-        values = self._enumerate_bounded_support(rate)
-        log_prob = (
-            -rate
-            + values * paddle.log(paddle.to_tensor(rate))
-            - paddle.lgamma(paddle.to_tensor(values) + 1)
-        ).numpy()
-        return -(np.exp(log_prob) * log_prob).sum()
 
     def log_prob(self, value):
         """Log probability density/mass function.
@@ -417,21 +268,182 @@ class Poisson(distribution.Distribution):
             raise ValueError(
                 "KL divergence of two poisson distributions should share the same `batch_shape`."
             )
-
-        rate_1_max = self.rate.max().numpy()
-        rate_1_min = self.rate.min().numpy()
-        rate_2_max = other.rate.max().numpy()
-        rate_2_min = other.rate.min().numpy()
-        support_1_max = self._enumerate_bounded_support(rate_1_max)
-        support_1_min = self._enumerate_bounded_support(rate_1_min)
-        support_2_max = self._enumerate_bounded_support(rate_2_max)
-        support_2_min = self._enumerate_bounded_support(rate_2_min)
-        a_min = min(support_1_min[0], support_2_min[0])
-        a_max = max(support_1_max[-1], support_2_max[-1])
-        common_support = paddle.to_tensor(
-            np.arange(a_min, a_max, dtype=self.dtype)
-        ).reshape((-1,) + (1,) * len(self.batch_shape))
+        rate_max = paddle.max(paddle.maximum(self.rate, other.rate))
+        rate_min = paddle.min(paddle.minimum(self.rate, other.rate))
+        support_max = self._enumerate_bounded_support(rate_max)
+        support_min = self._enumerate_bounded_support(rate_min)
+        a_min = paddle.min(support_min)
+        a_max = paddle.max(support_max)
+        common_support = paddle.arange(a_min, a_max, dtype=self.dtype).reshape(
+            (-1,) + (1,) * len(self.batch_shape)
+        )
 
         log_prob_1 = self.log_prob(common_support)
         log_prob_2 = other.log_prob(common_support)
         return (paddle.exp(log_prob_1) * (log_prob_1 - log_prob_2)).sum(0)
+
+
+def poisson_sample(rate):
+    """PD algorithm, a Poisson r.v. sampling algorithm.
+
+    Args:
+        rate (float): rate
+
+    Returns:
+        int, one poisson sample
+
+    ### References
+
+    [1]: Ahrens, J. H. and Dieter, U. (1982). Computer generation of Poisson deviates
+            from modified normal distributions. ACM Transactions on Mathematical Software, 8, 163–179.
+    """
+    if rate == 0:
+        return 0
+    factorial_table = np.array(
+        [1.0, 1.0, 2.0, 6.0, 24.0, 120.0, 720.0, 5040.0, 40320.0, 362880.0]
+    )  # factorial of 0~9
+    error_table = np.array(
+        [
+            -0.5,
+            0.3333333,
+            -0.2500068,
+            0.2000118,
+            -0.1661269,
+            0.1421878,
+            -0.1384794,
+            0.1250060,
+        ]
+    )  # truncation error table with |\epsilon| < 2*10^{-8} for taylor expension of equation (6) in the paper
+    p_table = np.zeros([36])
+
+    big_rate = rate > 10
+    rate_prev = 0
+    rate_prev2 = 0
+    rate_changed = False
+
+    def _step_F():
+        # step F
+        if K < 10:
+            px = -rate
+            py = rate**K / factorial_table[int(K)]
+        else:
+            d = 1 / (12 * K)
+            d = d - 4.8 * d**3
+            V = (rate - K) / K
+            if abs(V) <= 0.25:
+                sum_av = 1
+                for i in range(len(error_table)):
+                    sum_av += error_table[i] * V**i
+                px = K * V**2 * sum_av - d
+            else:
+                px = K * math.log(1 + V) - (rate - K) - d
+            py = 1 / math.sqrt(2 * math.pi) / math.sqrt(K)
+        X = (K - rate + 0.5) / s
+        X *= X
+        fx = -0.5 * X
+        fy = w * (((c_3 * X + c_2) * X + c_1) * X + c_0)
+        return px, py, fx, fy
+
+    if not (big_rate and rate == rate_prev):
+        if big_rate:  # rate >= 10, and rate changed
+            # case A
+            rate_changed = True
+            rate_prev = rate
+            s = math.sqrt(rate)
+            d = 6 * rate**2
+            L = int(rate - 1.1484)
+        else:  # rate < 10
+            # case B
+            if rate != rate_prev:
+                rate_prev = rate
+                M = max(1, int(rate))
+                L2 = 0
+                p = q = p_0 = math.exp(-rate)
+            while True:
+                # step U
+                u = np.random.uniform()
+                if u <= p_0:
+                    return 0
+                # step T
+                if L2 != 0:
+                    for k in range(1 if u <= 0.458 else min(L2, M), L2 + 1):
+                        if u <= p_table[k]:
+                            return k
+                    if L2 == 35:
+                        continue
+                # step C
+                for k in range(L2 + 1, 36):
+                    p = p * rate / k
+                    q += p
+                    p_table[k] = q
+                    if u <= q:
+                        L2 = k
+                        return k
+                L2 = 35
+    # step N
+    G = rate + s * np.random.standard_normal()
+    if G >= 0:
+        K = int(G)
+        if K >= L:  # step I
+            return K
+        u = np.random.uniform()  # step S
+        if d * u >= (rate - K) ** 3:
+            return K
+
+    # step P
+    if rate_changed or rate != rate_prev2:
+        rate_prev2 = rate
+        w = 1 / math.sqrt(2 * math.pi) / s
+        b_1 = 1 / 24 / rate
+        b_2 = 3 / 10 * b_1**2
+        c_3 = 1 / 7 * b_1 * b_2
+        c_2 = b_2 - 15 * c_3
+        c_1 = b_1 - 6 * b_2 + 45 * c_3
+        c_0 = 1 - b_1 + 3 * b_2 - 15 * c_3
+        c = 0.1069 / rate
+    if G >= 0:  # G >= 0: F -> Q? -> E -> E... -> E -> F -> H
+        px, py, fx, fy = _step_F()
+        # step Q
+        if fy * (1 - u) <= py * math.exp(px - fx):
+            return K
+        else:
+            while True:
+                # step E
+                E = np.random.exponential()
+                u = 2 * np.random.uniform() - 1
+                T = 1.8 + E * np.sign(u)
+                if T > 0.6744:
+                    K = int(rate + s * T)
+                    px, py, fx, fy = _step_F()
+                    # step H
+                    if c * abs(u) <= py * math.exp(px + E) - fy * math.exp(
+                        fx + E
+                    ):
+                        break
+    else:  # G < 0: E -> E... -> E -> F -> H
+        while True:
+            # step E
+            E = np.random.exponential()
+            u = 2 * np.random.uniform() - 1
+            T = 1.8 + E * np.sign(u)
+            if T > 0.6744:
+                K = int(rate + s * T)
+                px, py, fx, fy = _step_F()
+                # step H
+                if c * abs(u) <= py * math.exp(px + E) - fy * math.exp(fx + E):
+                    break
+    return K
+
+
+def poisson_sample_vectorized(rr):
+    """Vectorized binomial sampling function
+
+    Args:
+        nn (Tensor): size
+        pp (Tensor): probability
+
+    Returns:
+        np.ndarray, binomial samples.
+    """
+    broadcast_func = np.frompyfunc(poisson_sample, nin=1, nout=1)
+    return np.array(broadcast_func(rr), dtype='float32')

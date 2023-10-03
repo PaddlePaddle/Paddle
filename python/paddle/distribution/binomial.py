@@ -90,6 +90,10 @@ class Binomial(distribution.Distribution):
             total_count = paddle.to_tensor([total_count], dtype=self.dtype)
         if isinstance(probability, float):
             probability = paddle.to_tensor([probability], dtype=self.dtype)
+        if isinstance(total_count, np.ndarray):
+            total_count = paddle.to_tensor(total_count)
+        if isinstance(probability, np.ndarray):
+            probability = paddle.to_tensor(probability)
         total_count = paddle.cast(total_count, dtype=self.dtype)
         probability = paddle.cast(probability, dtype=self.dtype)
 
@@ -186,25 +190,18 @@ class Binomial(distribution.Distribution):
         Returns:
             Tensor: Shannon entropy of binomial distribution. The data type is float32.
         """
-        if in_dynamic_mode():
-            broadcast_func = np.frompyfunc(binomial_entropy, nin=2, nout=1)
-            return paddle.to_tensor(
-                broadcast_func(
-                    self.total_count.numpy(), self.probability.numpy()
-                ).astype('float32')
-            )
-        else:
-            output = (
-                paddle.static.default_main_program()
-                .current_block()
-                .create_var(dtype=self.dtype, shape=self.batch_shape)
-            )
-            paddle.static.py_func(
-                func=binomial_entropy_vectorized,
-                x=[self.total_count, self.probability],
-                out=output,
-            )
-            return output
+        """Evaluated the entropy of one binomial r.v..
+
+        Args:
+            n (float): size of the binomial r.v.
+            p (float): probability of the binomial r.v.
+
+        Returns:
+            numpy.ndarray: the entropy for the binomial r.v.
+        """
+        values = self._enumerate_support()
+        log_prob = paddle.nan_to_num(self.log_prob(values), neginf=0)
+        return -(paddle.exp(log_prob) * log_prob).sum(0)
 
     def _enumerate_support(self):
         """Return the support of binomial distribution [0, 1, ... ,n]
@@ -212,7 +209,9 @@ class Binomial(distribution.Distribution):
         Returns:
             Tensor: the support of binomial distribution
         """
-        values = paddle.arange(1 + self.total_count.max(), dtype=self.dtype)
+        values = paddle.arange(
+            1 + paddle.max(self.total_count), dtype=self.dtype
+        )
         values = values.reshape((-1,) + (1,) * len(self.batch_shape))
         return values
 
@@ -226,10 +225,6 @@ class Binomial(distribution.Distribution):
           Tensor: log probability. The data type is same with :attr:`value` .
         """
         value = paddle.cast(value, dtype=self.dtype)
-        if not ((value >= 0).all() and (value <= self.total_count).all()):
-            raise ValueError(
-                'Every element of input parameter `value` should be within the support of binomial distribution [0, total_count].'
-            )
 
         # combination
         log_comb = (
@@ -238,13 +233,10 @@ class Binomial(distribution.Distribution):
             - paddle.lgamma(value + 1.0)
         )
         # log_p
-        return paddle.nan_to_num(
-            (
-                log_comb
-                + value * paddle.log(self.probability)
-                + (self.total_count - value) * paddle.log(1 - self.probability)
-            ),
-            neginf=0,
+        return (
+            log_comb
+            + value * paddle.log(self.probability)
+            + (self.total_count - value) * paddle.log(1 - self.probability)
         )
 
     def prob(self, value):
@@ -488,40 +480,4 @@ def binomial_sample_vectorized(nn, pp):
         np.ndarray, binomial samples.
     """
     broadcast_func = np.frompyfunc(binomial_sample, nin=2, nout=1)
-    return np.array(broadcast_func(nn, pp), dtype='float32')
-
-
-def binomial_entropy(n, p):
-    """Evaluated the entropy of one binomial r.v..
-
-    Args:
-        n (float): size of the binomial r.v.
-        p (float): probability of the binomial r.v.
-
-    Returns:
-        numpy.ndarray: the entropy for the binomial r.v.
-    """
-    lgamma = np.vectorize(math.lgamma)
-    n = np.array(n)
-    p = np.array(p)
-    v = np.arange(1 + n, dtype="float32")
-    log_comb = lgamma(n + 1.0) - lgamma(n - v + 1.0) - lgamma(v + 1.0)
-    log_prob = np.nan_to_num(
-        (log_comb + v * np.log(p) + (n - v) * np.log(1 - p)), neginf=0
-    )
-    # return paddle.nan_to_num(-(paddle.exp(log_prob) * log_prob), posinf = 0).numpy().sum()
-    return np.nan_to_num(-(np.exp(log_prob) * log_prob), posinf=0).sum()
-
-
-def binomial_entropy_vectorized(nn, pp):
-    """Vectorized binomial entropy function
-
-    Args:
-        nn (Tensor): size
-        pp (Tensor): probability
-
-    Returns:
-        np.ndarray, binomial entropies.
-    """
-    broadcast_func = np.frompyfunc(binomial_entropy, nin=2, nout=1)
     return np.array(broadcast_func(nn, pp), dtype='float32')
