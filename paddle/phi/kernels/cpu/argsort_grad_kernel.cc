@@ -86,6 +86,7 @@ void ArgsortGradKernel(const Context& dev_ctx,
   } else {
     // If not full assign do transpose
     std::vector<int> trans;
+    trans.reserve(axis);
     for (int i = 0; i < axis; i++) {
       trans.push_back(i);
     }

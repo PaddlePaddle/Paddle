@@ -75,6 +75,7 @@ class CreatePyReaderOp : public framework::OperatorBase {
     // Converts VarType from int to enum
     auto& dtype_int = Attr<std::vector<int>>("dtypes");
     std::vector<framework::proto::VarType::Type> var_types;
+    var_types.reserve(dtype_int.size());
     for (auto type_int : dtype_int) {
       var_types.push_back(
           static_cast<framework::proto::VarType::Type>(type_int));
@@ -83,6 +84,7 @@ class CreatePyReaderOp : public framework::OperatorBase {
     // Converts need_check_feed from int to bool
     auto& need_check_feed_int = Attr<std::vector<int>>("need_check_feed");
     std::vector<bool> need_check_feed;
+    need_check_feed.reserve(need_check_feed_int.size());
     for (auto feed_int : need_check_feed_int) {
       need_check_feed.push_back(static_cast<bool>(feed_int));
     }

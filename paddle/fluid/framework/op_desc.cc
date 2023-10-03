@@ -871,6 +871,7 @@ std::vector<int> OpDesc::GetBlocksAttrIds(const std::string &name) const {
   auto blocks = PADDLE_GET_CONST(std::vector<BlockDesc *>, it->second);
 
   std::vector<int> ids;
+  ids.reserve(blocks.size());
   for (auto n : blocks) {
     ids.push_back(n->ID());
   }
@@ -979,6 +980,7 @@ struct SetAttrDescVisitor {
   }
   void operator()(const std::vector<VarDesc *> &v) const {
     std::vector<std::string> var_names;
+    var_names.reserve(v.size());
     for (auto var : v) {
       var_names.emplace_back(var->Name());
     }
@@ -991,6 +993,7 @@ struct SetAttrDescVisitor {
 
   void operator()(const std::vector<BlockDesc *> &v) const {
     std::vector<int> blocks_idx;
+    blocks_idx.reserve(v.size());
     for (auto blk : v) {
       blocks_idx.push_back(blk->ID());
     }

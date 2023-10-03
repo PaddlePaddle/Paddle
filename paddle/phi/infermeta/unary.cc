@@ -911,6 +911,7 @@ void EigInferMeta(const MetaTensor& x, MetaTensor* out_w, MetaTensor* out_v) {
                         x_dims[rank - 1]));
 
   std::vector<int> batch_dims_vec{};
+  batch_dims_vec.reserve(rank - 1);
   for (int i = 0; i < rank - 1; ++i) {
     batch_dims_vec.emplace_back(x_dims[i]);
   }
@@ -953,6 +954,7 @@ void EighInferMeta(const MetaTensor& x,
 
   std::vector<int64_t> values_dim;
 
+  values_dim.reserve(rank - 1);
   for (auto i = 0; i < rank - 1; i++) {
     values_dim.emplace_back(input_dim[i]);
   }
@@ -1021,6 +1023,7 @@ void EigvalshInferMeta(const MetaTensor& x,
 
   std::vector<int64_t> values_dim;
 
+  values_dim.reserve(rank - 1);
   for (auto i = 0; i < rank - 1; i++) {
     values_dim.emplace_back(input_dim[i]);
   }
@@ -2024,6 +2027,7 @@ void KthvalueInferMeta(const MetaTensor& x,
             axis));
   }
   std::vector<int64_t> dimvec;
+  dimvec.reserve(axis);
   for (int i = 0; i < axis; i++) {
     dimvec.emplace_back(input_dims[i]);
   }
@@ -2327,6 +2331,7 @@ void ModeInferMeta(const MetaTensor& x,
   }
 
   std::vector<int64_t> dimvec;
+  dimvec.reserve(axis);
   for (int i = 0; i < axis; i++) {
     dimvec.emplace_back(input_dims[i]);
   }
@@ -3906,6 +3911,7 @@ void SplitWithNumInferMeta(const MetaTensor& x,
                           x.dims(),
                           axis_value));
 
+    sections_vec.reserve(num);
     for (int i = 0; i < num; ++i) {
       sections_vec.push_back(input_axis_dim / num);
     }

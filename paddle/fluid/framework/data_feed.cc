@@ -667,6 +667,7 @@ void MultiSlotDataFeed::Init(
           }
         }
       }
+      local_shape.reserve(slot.shape_size());
       for (int j = 0; j < slot.shape_size(); ++j) {
         local_shape.push_back(slot.shape(j));
       }
@@ -1078,6 +1079,7 @@ void MultiSlotInMemoryDataFeed::Init(
           }
         }
       }
+      local_shape.reserve(slot.shape_size());
       for (int j = 0; j < slot.shape_size(); ++j) {
         local_shape.push_back(slot.shape(j));
       }

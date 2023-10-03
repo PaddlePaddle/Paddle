@@ -42,6 +42,8 @@ void ReshapeCooCPUKernel(const Context& dev_ctx,
   // get sparse part dimensions of x and out
   std::vector<int64_t> x_sparse_part_dims;
   std::vector<int64_t> out_sparse_part_dims;
+  x_sparse_part_dims.reserve(x.sparse_dim());
+  out_sparse_part_dims.reserve(out_dims.size() - x.dense_dim());
   for (int i = 0; i < x.sparse_dim(); ++i) {
     x_sparse_part_dims.push_back(x.dims()[i]);
   }

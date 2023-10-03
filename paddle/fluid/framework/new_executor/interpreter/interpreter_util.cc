@@ -588,6 +588,7 @@ void BuildOpFuncList(const platform::Place& place,
 #endif
   // its elements will be moved to vec_func_list
   std::vector<std::shared_ptr<OperatorBase>> ops;
+  ops.reserve(ops_unique.size());
   for (auto& op_unique : ops_unique) {
     ops.emplace_back(std::move(op_unique));
   }

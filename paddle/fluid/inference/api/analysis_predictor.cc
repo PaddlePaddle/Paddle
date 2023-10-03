@@ -1874,6 +1874,7 @@ void AnalysisPredictor::CreateFeedFetchVar(framework::Scope *scope) {
 
 std::vector<std::string> AnalysisPredictor::GetInputNames() {
   std::vector<std::string> input_names;
+  input_names.reserve(idx2feeds_.size());
   for (auto &item : idx2feeds_) {
     input_names.push_back(item.second);
   }
@@ -1933,6 +1934,7 @@ AnalysisPredictor::GetInputTypes() {
 
 std::vector<std::string> AnalysisPredictor::GetOutputNames() {
   std::vector<std::string> output_names;
+  output_names.reserve(idx2fetches_.size());
   for (auto &item : idx2fetches_) {
     output_names.push_back(item.second);
   }
@@ -2374,6 +2376,7 @@ void AnalysisPredictor::StatisticShapeRangeInfo() {
           auto ShapeMaxFreq =
               [](const std::map<int32_t, int32_t> &m) -> int32_t {
             std::vector<std::pair<int32_t, int32_t>> counter;
+            counter.reserve(m.size());
             for (auto &it : m) counter.emplace_back(it);
             std::sort(counter.begin(),
                       counter.end(),

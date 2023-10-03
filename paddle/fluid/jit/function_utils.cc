@@ -26,6 +26,7 @@ namespace utils {
 
 std::vector<DenseTensor> ToDenseTensors(const std::vector<Tensor> &tensors) {
   std::vector<DenseTensor> ret;
+  ret.reserve(tensors.size());
   for (auto &t : tensors) {
     ret.emplace_back(*std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
   }
@@ -34,6 +35,7 @@ std::vector<DenseTensor> ToDenseTensors(const std::vector<Tensor> &tensors) {
 
 std::vector<Tensor> ToTensors(const std::vector<DenseTensor> &tensors) {
   std::vector<Tensor> ret;
+  ret.reserve(tensors.size());
   for (auto &t : tensors) {
     ret.emplace_back(std::make_shared<DenseTensor>(t));
   }

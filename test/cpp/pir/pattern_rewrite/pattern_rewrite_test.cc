@@ -714,10 +714,12 @@ void Conv2dFusionOpTest::Build(pir::Builder &builder,
   std::vector<phi::DenseTensor> vec_dense_outputs((channels.size()),
                                                   phi::DenseTensor());
   std::vector<phi::MetaTensor> vec_meta_outputs;
+  vec_meta_outputs.reserve(channels.size());
   for (size_t i = 0; i < static_cast<size_t>(channels.size()); i++) {
     vec_meta_outputs.push_back(phi::MetaTensor(&vec_dense_outputs[i]));
   }
   std::vector<phi::MetaTensor *> meta_outputs;
+  meta_outputs.reserve(vec_meta_outputs.size());
   for (auto &vec_meta_output : vec_meta_outputs) {
     meta_outputs.push_back(&vec_meta_output);
   }

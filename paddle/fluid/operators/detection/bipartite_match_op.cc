@@ -110,6 +110,7 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
     } else {
       constexpr T kEPS = static_cast<T>(1e-6);
       std::vector<int> row_pool;
+      row_pool.reserve(row);
       for (int i = 0; i < row; ++i) {
         row_pool.push_back(i);
       }

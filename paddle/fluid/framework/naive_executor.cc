@@ -204,6 +204,7 @@ void NaiveExecutor::MakeReusePlan(
   }
 
   std::vector<std::string> cluster_names;
+  cluster_names.reserve(clusters.size());
   for (auto &it : clusters) {
     cluster_names.push_back(it.first);
   }

@@ -178,6 +178,7 @@ void DropoutNdKernel(const Context& dev_ctx,
     T* broadcast_mask_data = dev_ctx.template Alloc<T>(&broadcast_mask);
 
     std::vector<int64_t> mask_bst_dims_vec;
+    mask_bst_dims_vec.reserve(x_dims.size());
     for (int i = 0; i < x_dims.size(); i++) {
       mask_bst_dims_vec.emplace_back(x_dims[i]);
     }

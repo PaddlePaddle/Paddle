@@ -112,6 +112,7 @@ void KthvalueKernel(const Context& dev_ctx,
                             k);
   } else {
     std::vector<int> trans;
+    trans.reserve(axis + in_dims.size() + 2);
     for (int i = 0; i < axis; i++) {
       trans.emplace_back(i);
     }

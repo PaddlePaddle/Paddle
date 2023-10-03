@@ -107,6 +107,7 @@ ProgramDesc::ProgramDesc(const ProgramDesc &o) {
                                                .Op(static_cast<int>(op_id))
                                                ->GetBlocksAttrIds(attr_name);
           std::vector<BlockDesc *> block_descs;
+          block_descs.reserve(sub_block_ids.size());
           for (int block_id : sub_block_ids) {
             block_descs.push_back(MutableBlock(block_id));
           }

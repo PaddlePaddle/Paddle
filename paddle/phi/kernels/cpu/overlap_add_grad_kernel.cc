@@ -137,6 +137,7 @@ void OverlapAddGradKernel(const Context& dev_ctx,
   // Restore output dims when the number of dims is larger than 2.
   if (out_grad_rank > 2) {
     std::vector<int64_t> restored_x_grad_shape;
+    restored_x_grad_shape.reserve(preserved_dims.size());
     for (int i = 0; i < preserved_dims.size(); i++) {
       restored_x_grad_shape.push_back(preserved_dims[i]);
     }

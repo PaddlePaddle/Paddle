@@ -100,6 +100,7 @@ void SToRReshardFunction::Eval(DeviceContext* dev_ctx,
 
     // Concat the result after split on correct axis.
     std::vector<const DenseTensor*> concat_input_vec;
+    concat_input_vec.reserve(split_out_vec.size());
     for (const auto& tensor : split_out_vec) {
       concat_input_vec.emplace_back(&tensor);
     }

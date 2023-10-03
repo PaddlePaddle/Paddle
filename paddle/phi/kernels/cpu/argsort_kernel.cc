@@ -104,6 +104,7 @@ void ArgsortKernel(const Context& dev_ctx,
   } else {
     // If not full sort do transpose
     std::vector<int> trans;
+    trans.reserve(axis);
     for (int i = 0; i < axis; i++) {
       trans.push_back(i);
     }

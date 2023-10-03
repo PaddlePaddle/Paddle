@@ -1135,6 +1135,7 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
 
     // update.shape = index.shape[:-1] + output.shape[index.shape[-1]:]
     std::vector<int64_t> r_updates_dims;
+    r_updates_dims.reserve(index_dims_size - 1);
     for (int i = 0; i < index_dims_size - 1; ++i) {
       r_updates_dims.emplace_back(index_dims[i]);
     }

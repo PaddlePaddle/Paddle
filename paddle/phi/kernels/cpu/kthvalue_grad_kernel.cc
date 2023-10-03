@@ -66,6 +66,7 @@ void KthvalueGradKernel(const Context& dev_ctx,
   axis = (axis < 0) ? (in_dims.size() + axis) : axis;
   if (!keepdim) {
     std::vector<int> tmp_out_shape;
+    tmp_out_shape.reserve(axis + in_dims.size() + 1);
     for (int i = 0; i < axis; i++) {
       tmp_out_shape.emplace_back(out_dims[i]);
     }
@@ -107,6 +108,7 @@ void KthvalueGradKernel(const Context& dev_ctx,
     }
   } else {
     std::vector<int> trans;
+    trans.reserve(axis + out_dims.size() + 2);
     for (int i = 0; i < axis; i++) {
       trans.emplace_back(i);
     }

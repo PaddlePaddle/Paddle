@@ -92,6 +92,7 @@ void TopkGradKernel(const Context& dev_ctx,
   } else {
     // can not assign grad to input_grad, must do the transpose
     std::vector<int> trans;
+    trans.reserve(axis);
     for (int i = 0; i < axis; i++) {
       trans.emplace_back(i);
     }

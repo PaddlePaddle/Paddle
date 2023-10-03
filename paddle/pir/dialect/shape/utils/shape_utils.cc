@@ -268,6 +268,7 @@ std::vector<SymbolicDim> SymbolicDimMgr::CreateSymbolicDimsForRankedValue(
     Value value) {
   std::vector<SymbolicDim> symbols;
   auto dims = value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+  symbols.reserve(dims.size());
   for (int idx = 0; idx < dims.size(); ++idx) {
     symbols.push_back(dims[idx] == ShapedTypeInterface::kDynamic
                           ? NewSymbolicDim()

@@ -392,6 +392,7 @@ void Carrier::CreateInterceptors(
         }
       }
 
+      cores.reserve(microbatch_scopes_.size());
       for (framework::Scope* scope : microbatch_scopes_) {
         cores.push_back(std::make_shared<InterpreterCore>(
             place_, task_node->program()->Block(0), scope, execution_config));

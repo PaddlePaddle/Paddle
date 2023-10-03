@@ -28,6 +28,7 @@ const std::string& Argument::Name() const { return name_; }
 
 const std::vector<std::string> FunctionSchema::InputArgNames() const {
   std::vector<std::string> input_arg_names;
+  input_arg_names.reserve(input_args.size());
   for (auto& arg : input_args) {
     input_arg_names.emplace_back(arg.Name());
   }
@@ -36,6 +37,7 @@ const std::vector<std::string> FunctionSchema::InputArgNames() const {
 
 const std::vector<std::string> FunctionSchema::OutputArgNames() const {
   std::vector<std::string> output_arg_names;
+  output_arg_names.reserve(output_args.size());
   for (auto& arg : output_args) {
     output_arg_names.emplace_back(arg.Name());
   }

@@ -31,6 +31,7 @@ std::vector<std::vector<paddle::Tensor>> add_n_vjp(
     const Tensor& out_grad,
     const std::vector<std::vector<bool>>& stop_gradients) {
   std::vector<std::vector<paddle::Tensor>> vjp_res;
+  vjp_res.reserve(stop_gradients.size());
   for (auto arg : stop_gradients) {
     vjp_res.push_back(std::vector<paddle::Tensor>(arg.size()));
   }
@@ -45,6 +46,7 @@ std::vector<std::vector<paddle::Tensor>> reshape_vjp(
     const Tensor& out_grad,
     const std::vector<std::vector<bool>>& stop_gradients) {
   std::vector<std::vector<paddle::Tensor>> vjp_res;
+  vjp_res.reserve(stop_gradients.size());
   for (auto arg : stop_gradients) {
     vjp_res.push_back(std::vector<paddle::Tensor>(arg.size()));
   }

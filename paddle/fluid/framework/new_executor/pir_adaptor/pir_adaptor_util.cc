@@ -682,12 +682,14 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
           paddle::platform::errors::Fatal("Attribute %s is empty", name));
       if (array_list[0].isa<pir::Int32Attribute>()) {
         std::vector<int> vec_int;
+        vec_int.reserve(array_list.size());
         for (auto attribute : array_list) {
           vec_int.push_back(attribute.dyn_cast<pir::Int32Attribute>().data());
         }
         attr_map[name] = vec_int;
       } else if (array_list[0].isa<pir::Int64Attribute>()) {
         std::vector<int> vec_int64;
+        vec_int64.reserve(array_list.size());
         for (auto attribute : array_list) {
           vec_int64.push_back(
               attribute.dyn_cast<pir::Int64Attribute>().data());  // NOLINT
@@ -695,12 +697,14 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
         attr_map[name] = vec_int64;
       } else if (array_list[0].isa<pir::BoolAttribute>()) {
         std::vector<int> vec_bool;
+        vec_bool.reserve(array_list.size());
         for (auto attribute : array_list) {
           vec_bool.push_back(attribute.dyn_cast<pir::BoolAttribute>().data());
         }
         attr_map[name] = vec_bool;
       } else if (array_list[0].isa<pir::FloatAttribute>()) {
         std::vector<int> vec_float;
+        vec_float.reserve(array_list.size());
         for (auto attribute : array_list) {
           vec_float.push_back(
               attribute.dyn_cast<pir::FloatAttribute>().data());  // NOLINT
@@ -708,6 +712,7 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
         attr_map[name] = vec_float;
       } else if (array_list[0].isa<pir::DoubleAttribute>()) {
         std::vector<int> vec_double;
+        vec_double.reserve(array_list.size());
         for (auto attribute : array_list) {
           vec_double.push_back(
               attribute.dyn_cast<pir::DoubleAttribute>().data());  // NOLINT

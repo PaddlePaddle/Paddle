@@ -24,6 +24,7 @@ std::vector<std::vector<pir::OpResult>> VjpInterface::Vjp(
   std::vector<std::vector<pir::Value>> out_grads_value;
   for (const auto& grad : out_grads) {
     std::vector<pir::Value> grad_value;
+    grad_value.reserve(grad.size());
     for (auto op_result : grad) {
       grad_value.emplace_back(op_result);
     }

@@ -415,6 +415,7 @@ paddle::imperative::NameTensorMap ConvertToNameTensorMap(
     if (!var_vec.empty()) {
       // change vector<Tensor> -> vector<shared_ptr<Tensor>>
       std::vector<std::shared_ptr<egr::EagerVariable>> dst_var_vec;
+      dst_var_vec.reserve(var_vec.size());
       for (auto &v : var_vec) {
         dst_var_vec.emplace_back(
             std::make_shared<egr::EagerVariable>(std::move(v)));

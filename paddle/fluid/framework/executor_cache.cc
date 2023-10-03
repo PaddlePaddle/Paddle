@@ -508,6 +508,7 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
   }
 
   std::vector<std::string> param_grad_names;
+  param_grad_names.reserve(params_grad.size() + x_grad.size());
   for (auto &p_g : params_grad) {
     param_grad_names.push_back(p_g->name());
   }

@@ -848,6 +848,7 @@ void MultiSlotDataset::GlobalShuffle(int thread_num) {
     thread_num = thread_num_;
   }
   VLOG(3) << "start global shuffle threads, num = " << thread_num;
+  global_shuffle_threads.reserve(thread_num);
   for (int i = 0; i < thread_num; ++i) {
     global_shuffle_threads.emplace_back(global_shuffle_func);
   }
@@ -1367,6 +1368,7 @@ void MultiSlotDataset::GenerateLocalTablesUnlock(int table_id,
           }
         }
 
+        task_futures.reserve(shard_num);
         for (int shard_id = 0; shard_id < shard_num; shard_id++) {
           task_futures.emplace_back(consume_task_pool_[shard_id]->enqueue(
               consume_func, shard_id, feadim, task_keys[shard_id]));

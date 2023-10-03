@@ -267,6 +267,7 @@ static std::shared_ptr<imperative::GradOpNode> CreateGradNode(
   op->SetAttrMap(attrs);
   for (auto& pair : ins) {
     std::vector<std::shared_ptr<VariableWrapper>> vars;
+    vars.reserve(pair.second.size());
     for (auto& var : pair.second) {
       vars.emplace_back(var->SharedVar());
     }
@@ -275,6 +276,7 @@ static std::shared_ptr<imperative::GradOpNode> CreateGradNode(
 
   for (auto& pair : outs) {
     std::vector<std::shared_ptr<VariableWrapper>> vars;
+    vars.reserve(pair.second.size());
     for (auto& var : pair.second) {
       vars.emplace_back(var->SharedVar());
     }

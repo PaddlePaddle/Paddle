@@ -23,6 +23,7 @@ std::vector<std::vector<paddle::Tensor>> {{fwd_name}}_vjp({{common.params(inputs
 
 {% macro body(api) %}
 std::vector<std::vector<paddle::Tensor>> vjp_res;
+vjp_res.reserve(stop_gradients.size());
 for (auto arg: stop_gradients) {
   vjp_res.push_back(std::vector<paddle::Tensor>(arg.size()));
 }

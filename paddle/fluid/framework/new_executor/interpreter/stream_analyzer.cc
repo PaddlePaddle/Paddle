@@ -51,6 +51,8 @@ void StreamAnalyzer::ConstructEvents(std::vector<Instruction>* instructions) {
     }
 
     std::vector<Instruction*> cross_step_merged_instructions_ptr;
+    cross_step_merged_instructions_ptr.reserve(
+        cross_step_merged_instructions.size());
     for (Instruction& instr : cross_step_merged_instructions) {
       cross_step_merged_instructions_ptr.emplace_back(&instr);
     }
@@ -657,6 +659,7 @@ void NewIrStreamAnalyzer::ConstructEvents(
   if (!is_event_info_build_) {
     std::vector<paddle::framework::InstructionBase*>
         cross_step_merged_instructions_ptr;
+    cross_step_merged_instructions_ptr.reserve(instructions.size());
     for (auto& instr : instructions) {
       cross_step_merged_instructions_ptr.emplace_back(instr.get());
     }

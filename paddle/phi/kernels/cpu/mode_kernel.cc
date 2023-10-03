@@ -62,6 +62,7 @@ void ModeKernel(const Context& dev_ctx,
                                indices_data);
   } else {
     std::vector<int> trans_axis;
+    trans_axis.reserve(axis + in_dims.size() + 2);
     for (int i = 0; i < axis; i++) {
       trans_axis.emplace_back(i);
     }
@@ -73,6 +74,7 @@ void ModeKernel(const Context& dev_ctx,
 
     if (!keepdim) {
       std::vector<int> tmp_out_shape;
+      tmp_out_shape.reserve(axis + in_dims.size() + 1);
       for (int i = 0; i < axis; i++) {
         tmp_out_shape.emplace_back(in_dims[i]);
       }

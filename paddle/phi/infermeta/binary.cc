@@ -1618,6 +1618,7 @@ void GatherNdInferMeta(const MetaTensor& x,
   std::vector<int64_t> result_dims;
   // The result dims is
   //   Index.shape[:-1] + X.shape[Index.shape[-1]:]
+  result_dims.reserve(index_dims_size - 1);
   for (int i = 0; i < index_dims_size - 1; ++i) {
     result_dims.emplace_back(index_dims[i]);
   }
