@@ -18,7 +18,7 @@
 namespace test {
 
 void RegionOp::Build(pir::Builder &builder, pir::OperationArgument &argument) {
-  argument.num_regions = 1;
+  argument.AddRegion(nullptr);
 }
 
 void BranchOp::Build(pir::Builder &builder,  // NOLINT

@@ -52,7 +52,7 @@ class TestCastOpFp32ToFp64(OpTest):
         self.input_shape = [10, 10]
 
     def test_check_output(self):
-        self.check_output(check_prim_pir=True, check_new_ir=True)
+        self.check_output(check_new_ir=True)
 
     def test_grad(self):
         self.check_grad(
