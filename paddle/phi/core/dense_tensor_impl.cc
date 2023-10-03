@@ -195,11 +195,11 @@ void DenseTensor::ShareBufferWith(const DenseTensor& tensor, bool only_buffer) {
   }
 }
 
-#define LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(dtype)                \
-  template dtype* DenseTensor::mutable_data(                        \
-      const DDim& dims, const Place& place, size_t requested_size); \
-  template dtype* DenseTensor::mutable_data(const Place& place,     \
-                                            size_t requested_size);
+#define LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(dtype)                     \
+  template TEST_API dtype* DenseTensor::mutable_data(                    \
+      const DDim& dims, const Place& place, size_t requested_size);      \
+  template TEST_API dtype* DenseTensor::mutable_data(const Place& place, \
+                                                     size_t requested_size);
 
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(bool)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int8_t)

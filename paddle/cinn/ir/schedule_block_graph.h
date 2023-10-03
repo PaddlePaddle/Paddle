@@ -20,9 +20,9 @@
 #include "paddle/cinn/common/graph_utils.h"
 #include "paddle/cinn/hlir/framework/graph.h"
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 
 using Group = cinn::hlir::framework::Graph::Group;
 
