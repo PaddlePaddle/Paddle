@@ -1,0 +1,57 @@
+digraph G {
+   node_81325[label="trans_out1(12)
+9,1" shape="box" style="rounded,filled,bold" fontname="Arial" fillcolor="#999999" color="#dddddd"]
+   node_81324[label="flatten2(14)" style="rounded,filled,bold" shape="box" color="#303A3A" fontcolor="#ffffff" width="1.3" height="0.84" fontname="Arial"]
+   node_81321[label="feed(3)" style="rounded,filled,bold" shape="box" color="#303A3A" fontcolor="#ffffff" width="1.3" height="0.84" fontname="Arial"]
+   node_81320[label="xshape1(16)
+0,9,1" shape="box" style="rounded,filled,bold" fontname="Arial" fillcolor="#999999" color="#dddddd"]
+   node_81307[label="transpose2(5)" style="rounded,filled,bold" shape="box" color="#303A3A" fontcolor="#ffffff" width="1.3" height="0.84" fontname="Arial"]
+   node_81306[label="trans_shape1(13)
+0,1,9" shape="box" style="rounded,filled,bold" fontname="Arial" fillcolor="#999999" color="#dddddd"]
+   node_81310[label="feed(0)" style="rounded,filled,bold" shape="box" color="#303A3A" fontcolor="#ffffff" width="1.3" height="0.84" fontname="Arial"]
+   node_81323[label="concat_out(18)
+2,9" shape="box" style="rounded,filled,bold" fontname="Arial" fillcolor="#999999" color="#dddddd"]
+   node_81309[label="transpose2_x1(2)
+1,9" shape="box" style="rounded,filled,bold" fontname="Arial" fillcolor="#999999" color="#dddddd"]
+   node_81304[label="fetch(20)" shape="box" style="rounded,filled,bold" fontname="Arial" fillcolor="#999999" color="#dddddd"]
+   node_81312[label="concat(17)" style="rounded,filled,bold" shape="box" color="#303A3A" fontcolor="#ffffff" width="1.3" height="0.84" fontname="Arial"]
+   node_81311[label="flatten2_out0(9)
+1,9" shape="box" style="rounded,filled,bold" fontname="Arial" fillcolor="#999999" color="#dddddd"]
+   node_81313[label="trans_out0(6)
+9,1" shape="box" style="rounded,filled,bold" fontname="Arial" fillcolor="#999999" color="#dddddd"]
+   node_81322[label="xshape0(10)
+0,9,1" shape="box" style="rounded,filled,bold" fontname="Arial" fillcolor="#999999" color="#dddddd"]
+   node_81308[label="transpose2_x0(4)
+1,9" shape="box" style="rounded,filled,bold" fontname="Arial" fillcolor="#999999" color="#dddddd"]
+   node_81314[label="feed(1)" shape="box" style="rounded,filled,bold" fontname="Arial" color="#148b97" fontcolor="#ffffff"]
+   node_81317[label="place_holder_weight(21)
+1" shape="box" style="rounded,filled,bold" fontname="Arial" color="#148b97" fontcolor="#ffffff"]
+   node_81315[label="trans_shape0(7)
+0,1,9" shape="box" style="rounded,filled,bold" fontname="Arial" fillcolor="#999999" color="#dddddd"]
+   node_81319[label="flatten2(8)" style="rounded,filled,bold" shape="box" color="#303A3A" fontcolor="#ffffff" width="1.3" height="0.84" fontname="Arial"]
+   node_81316[label="transpose2(11)" style="rounded,filled,bold" shape="box" color="#303A3A" fontcolor="#ffffff" width="1.3" height="0.84" fontname="Arial"]
+   node_81305[label="fetch(19)" style="rounded,filled,bold" shape="box" color="#303A3A" fontcolor="#ffffff" width="1.3" height="0.84" fontname="Arial"]
+   node_81318[label="flatten2_out1(15)
+1,9" shape="box" style="rounded,filled,bold" fontname="Arial" fillcolor="#999999" color="#dddddd"]
+   node_81305->node_81304
+   node_81307->node_81313
+   node_81307->node_81315
+   node_81308->node_81307
+   node_81309->node_81316
+   node_81310->node_81309
+   node_81311->node_81312
+   node_81312->node_81323
+   node_81313->node_81319
+   node_81314->node_81310
+   node_81314->node_81321
+   node_81316->node_81325
+   node_81316->node_81306
+   node_81318->node_81312
+   node_81319->node_81311
+   node_81319->node_81322
+   node_81321->node_81308
+   node_81323->node_81305
+   node_81324->node_81318
+   node_81324->node_81320
+   node_81325->node_81324
+} // end G

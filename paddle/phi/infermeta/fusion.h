@@ -493,4 +493,11 @@ void FusedEmbeddingEltWiseLayerNormInferMeta(
     const float epsilon,
     MetaTensor* out);
 
+void FusionTransposeFlattenConcatInferMeta(
+    const std::vector<const MetaTensor*>& x,
+    const std::vector<int>& trans_axis,
+    const int flatten_axis,
+    const int concat_axis,
+    MetaTensor* out);
+
 }  // namespace phi

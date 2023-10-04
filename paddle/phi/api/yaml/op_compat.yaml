@@ -1302,6 +1302,16 @@
   extra :
     attrs : [str data_format = "AnyLayout"]
 
+- op : fusion_transpose_flatten_concat
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs :
+    trans_axis : trans_axis
+    flatten_axis : flatten_axis
+    concat_axis : concat_axis
+
 - op : gather
   backward : gather_grad
   inputs :

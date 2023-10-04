@@ -197,6 +197,15 @@
     func : fused_scale_bias_relu_conv_bnstats
     data_type : x
 
+- op : fusion_transpose_flatten_concat
+  args : (Tensor[] x, int[] trans_axis, int flatten_axis, int concat_axis)
+  output : Tensor(out)
+  infer_meta :
+    func : FusionTransposeFlattenConcatInferMeta
+  kernel :
+    func : fusion_transpose_flatten_concat
+    data_type : x
+
 - op : generate_sequence_xpu
   args : (Tensor x, DataType dtype)
   output : Tensor

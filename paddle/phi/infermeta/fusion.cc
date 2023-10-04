@@ -1918,4 +1918,65 @@ void FusedEmbeddingEltWiseLayerNormInferMeta(
   // context->ShareLoD("Ids", /*->*/ "Out");
 }
 
+void FusionTransposeFlattenConcatInferMeta(
+    const std::vector<const MetaTensor*>& x,
+    const std::vector<int>& trans_axis,
+    const int flatten_axis,
+    const int concat_axis,
+    MetaTensor* out) {
+  PADDLE_ENFORCE_GE(
+      x.size(),
+      1UL,
+      phi::errors::InvalidArgument(
+          "Inputs(X) of TransposeFlattenConcat op should not be empty."));
+
+  std::vector<DDim> ins;
+  ins.reserve(x.size());
+  std::transform(
+      x.begin(), x.end(), std::back_inserter(ins), [](const MetaTensor* var) {
+        return var->dims();
+      });
+  const size_t n = ins.size();
+  PADDLE_ENFORCE_GT(n,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The size of Inputs(X)'s dimension should be greater "
+                        " than 0, but received %d.",
+                        n));
+
+  size_t x_rank = ins[0].size();
+  size_t trans_axis_size = trans_axis.size();
+  PADDLE_ENFORCE_EQ(x_rank,
+                    trans_axis_size,
+                    phi::errors::InvalidArgument(
+                        "The input tensor's rank(%d) "
+                        "should be equal to the permutation axis's size(%d)",
+                        x_rank,
+                        trans_axis_size));
+
+  auto dims0 = phi::funcs::GetFlattenShape(
+      flatten_axis, phi::funcs::GetPermuteShape(trans_axis, ins[0]));
+  std::vector<int> out_dims(dims0);
+  for (size_t i = 1; i < n; i++) {
+    auto dimsi = phi::funcs::GetFlattenShape(
+        flatten_axis, phi::funcs::GetPermuteShape(trans_axis, ins[i]));
+    for (int j = 0; j < static_cast<int>(dims0.size()); j++) {
+      if (j == concat_axis) {
+        out_dims[concat_axis] += dimsi[j];
+      } else {
+        PADDLE_ENFORCE_EQ(out_dims[j],
+                          dimsi[j],
+                          phi::errors::InvalidArgument(
+                              "After flatting, the %d-th dim should be save "
+                              "except the specify axis.",
+                              j));
+      }
+    }
+  }
+  if (out_dims[concat_axis] < 0) {
+    out_dims[concat_axis] = -1;
+  }
+  out->set_dims(phi::make_ddim(out_dims));
+}
+
 }  // namespace phi
