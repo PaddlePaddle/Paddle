@@ -899,4 +899,6 @@ __all__ = [
     'i1e',
     'polygamma',
     'polygamma_',
+    'select_scatter',
+    'select_scatter_'
 ]

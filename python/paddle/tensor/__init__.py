@@ -165,6 +165,8 @@ from .manipulation import as_strided  # noqa: F401
 from .manipulation import view  # noqa: F401
 from .manipulation import view_as  # noqa: F401
 from .manipulation import unfold  # noqa: F401
+from .manipulation import select_scatter
+from .manipulation import select_scatter_
 from .math import abs  # noqa: F401
 from .math import abs_  # noqa: F401
 from .math import acos  # noqa: F401
@@ -704,6 +706,8 @@ tensor_method_func = [  # noqa
     'triu_',
     'stft',
     'istft',
+    'select_scatter',
+    'select_scatter_',
     'abs_',
     'acos_',
     'atan_',
