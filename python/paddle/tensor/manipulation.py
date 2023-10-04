@@ -5246,7 +5246,8 @@ def select_scatter_(x, value, dim, index):
         index += size
     if value.dtype != x.dtype:
         print(f"The data type of tensor value must be same to the data type of tensor x")
-    indices = [slice(None)] * len(x.shape)
+    from builtins import slice as original_slice
+    indices = [original_slice(None)] * len(x.shape)
     indices[dim] = index
     x[tuple(indices)] = value
     return x
