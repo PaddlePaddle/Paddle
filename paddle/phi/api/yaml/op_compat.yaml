@@ -1266,6 +1266,24 @@
   attrs :
     epsilon : epsilon
 
+- op : fused_fc_elementwise_layernorm
+  inputs :
+    x : X
+    w : W
+    y : Y
+    bias0 : Bias0
+    scale : Scale
+    bias1 : Bias1
+  outputs :
+    out : Out
+    mean : Mean
+    variance : Variance
+  attrs :
+    x_num_col_dims : x_num_col_dims
+    activation_type : activation_type
+    epsilon : epsilon
+    begin_norm_axis : begin_norm_axis
+
 - op : fused_feedforward
   backward: fused_feedforward_grad
   inputs:

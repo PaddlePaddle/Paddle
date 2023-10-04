@@ -154,6 +154,16 @@
     func : fused_embedding_eltwise_layernorm
     data_type : embs
 
+- op : fused_fc_elementwise_layernorm
+  args : (Tensor x, Tensor w, Tensor y, Tensor bias0, Tensor scale, Tensor bias1, int x_num_col_dims = 1, str activation_type = "", float epsilon = 0.00001f, int begin_norm_axis = 1)
+  output : Tensor(out), Tensor(mean), Tensor(variance)
+  infer_meta :
+    func : FusedFCElementwiseLayerNormInferMeta
+  kernel :
+    func : fused_fc_elementwise_layernorm
+    data_type : x
+  optional : bias0, scale, bias1
+
 - op : fused_linear_param_grad_add
   args : (Tensor x, Tensor dout, Tensor dweight, Tensor dbias, bool multi_precision = true, bool has_bias = true)
   output : Tensor(dweight_out), Tensor(dbias_out)

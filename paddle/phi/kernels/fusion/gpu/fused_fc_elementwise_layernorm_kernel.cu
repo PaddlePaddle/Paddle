@@ -1,16 +1,19 @@
-/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+#include <algorithm>
+#include <type_traits>
 
 #ifdef __NVCC__
 #include <cub/cub.cuh>
@@ -24,13 +27,17 @@ namespace cub = hipcub;
 #include <cuda_fp16.h>
 #endif
 
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/errors.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
+namespace fusion {
 
 using float16 = phi::dtype::float16;
 
@@ -300,8 +307,8 @@ __global__ void InplaceAddReluAddLayerNormKernel(const float16* y_data,
   }
 }
 
-template <typename T>
-void AddReluAddLayerNorm(gpuStream_t stream,
+template <typename T, typename Context>
+void AddReluAddLayerNorm(const Context& dev_ctx,
                          bool with_relu,
                          int max_threads,
                          const T* y,
@@ -315,30 +322,30 @@ void AddReluAddLayerNorm(gpuStream_t stream,
                          int N,
                          float epsilon) {
   if (with_relu) {
-    switch (platform::RoundToPowerOfTwo(N)) {
+    switch (phi::backends::gpu::RoundToPowerOfTwo(N)) {
       CUDA_LAUNCH_KERNEL_HELPER(
           InplaceAddReluAddLayerNormKernel<T, true, kPowerOfTwoDim>
           <<<std::max(max_threads / kPowerOfTwoDim, 1),
              kPowerOfTwoDim,
              0,
-             stream>>>(
+             dev_ctx.stream()>>>(
               y, bias_0, bias_1, scale, out, mean, variance, M, N, epsilon));
     }
   } else {
-    switch (platform::RoundToPowerOfTwo(N)) {
+    switch (phi::backends::gpu::RoundToPowerOfTwo(N)) {
       CUDA_LAUNCH_KERNEL_HELPER(
           InplaceAddReluAddLayerNormKernel<T, false, kPowerOfTwoDim>
           <<<std::max(max_threads / kPowerOfTwoDim, 1),
              kPowerOfTwoDim,
              0,
-             stream>>>(
+             dev_ctx.stream()>>>(
               y, bias_0, bias_1, scale, out, mean, variance, M, N, epsilon));
     }
   }
 }
 
-template <>
-void AddReluAddLayerNorm(gpuStream_t stream,
+template <typename Context>
+void AddReluAddLayerNorm(const Context& dev_ctx,
                          bool with_relu,
                          int max_threads,
                          const float16* y,
@@ -352,109 +359,122 @@ void AddReluAddLayerNorm(gpuStream_t stream,
                          int N,
                          float epsilon) {
   if (with_relu) {
-    switch (platform::RoundToPowerOfTwo(N)) {
+    switch (phi::backends::gpu::RoundToPowerOfTwo(N)) {
       CUDA_LAUNCH_KERNEL_HELPER(
           InplaceAddReluAddLayerNormKernel<true, kPowerOfTwoDim>
           <<<std::max(max_threads / kPowerOfTwoDim, 1),
              kPowerOfTwoDim,
              0,
-             stream>>>(
+             dev_ctx.stream()>>>(
               y, bias_0, bias_1, scale, out, mean, variance, M, N, epsilon));
     }
   } else {
-    switch (platform::RoundToPowerOfTwo(N)) {
+    switch (phi::backends::gpu::RoundToPowerOfTwo(N)) {
       CUDA_LAUNCH_KERNEL_HELPER(
           InplaceAddReluAddLayerNormKernel<false, kPowerOfTwoDim>
           <<<std::max(max_threads / kPowerOfTwoDim, 1),
              kPowerOfTwoDim,
              0,
-             stream>>>(
+             dev_ctx.stream()>>>(
               y, bias_0, bias_1, scale, out, mean, variance, M, N, epsilon));
     }
   }
 }
 
-template <typename T, typename DeviceContext>
-class FusedFCElementwiseLayerNormOpKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<phi::DenseTensor>("X");
-    auto* w = ctx.Input<phi::DenseTensor>("W");
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
+template <typename T, typename Context>
+void FusedFCElementwiseLayerNormKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const DenseTensor& w,
+    const DenseTensor& y,
+    const paddle::optional<DenseTensor>& bias0,
+    const paddle::optional<DenseTensor>& scale,
+    const paddle::optional<DenseTensor>& bias1,
+    const int x_num_col_dims,
+    const std::string activation_type,
+    const float epsilon,
+    const int begin_norm_axis,
+    DenseTensor* out,
+    DenseTensor* mean,
+    DenseTensor* variance) {
+  PADDLE_ENFORCE_GE(
+      x_num_col_dims,
+      1,
+      phi::errors::InvalidArgument(
+          "The x_num_col_dims must be  greater than or equal to 1, "
+          "But received the x_num_col_dims is %d",
+          x_num_col_dims));
+  PADDLE_ENFORCE_GE(epsilon,
+                    0.0f,
+                    phi::errors::InvalidArgument(
+                        "'epsilon' should be between 0.0 and 0.001."));
+  PADDLE_ENFORCE_LE(epsilon,
+                    0.001f,
+                    phi::errors::InvalidArgument(
+                        "'epsilon' should be between 0.0 and 0.001."));
+  PADDLE_ENFORCE_GT(begin_norm_axis,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "'begin_norm_axis' should be greater than zero."));
 
-    auto w_dims = w->dims();
-    int N = w_dims[1];
-    int K = w_dims[0];
-    int M = phi::product(x->dims()) / K;
+  auto w_dims = w.dims();
+  int N = w_dims[1];
+  int K = w_dims[0];
+  int M = phi::product(x.dims()) / K;
 
-    const T* x_data = x->data<T>();
-    const T* w_data = w->data<T>();
+  const T* x_data = x.data<T>();
+  const T* w_data = w.data<T>();
 
-    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
-    auto* out_data = dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
+  auto* out_data = dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
 
-    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
-    blas.GEMM(CblasNoTrans,
-              CblasNoTrans,
-              M,
-              N,
-              K,
-              static_cast<T>(1.0),
-              x_data,
-              w_data,
-              static_cast<T>(0.0),
-              out_data);
-    auto* y = ctx.Input<phi::DenseTensor>("Y");
-    auto* bias_0 = ctx.Input<phi::DenseTensor>("Bias0");
-    auto* bias_1 = ctx.Input<phi::DenseTensor>("Bias1");
-    auto* scale = ctx.Input<phi::DenseTensor>("Scale");
+  auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
+  blas.GEMM(CblasNoTrans,
+            CblasNoTrans,
+            M,
+            N,
+            K,
+            static_cast<T>(1.0),
+            x_data,
+            w_data,
+            static_cast<T>(0.0),
+            out_data);
 
-    const T* y_data = y->data<T>();
-    const T* bias_0_data = bias_0 ? bias_0->data<T>() : nullptr;
-    const T* bias_1_data = bias_1 ? bias_1->data<T>() : nullptr;
-    const T* scale_data = scale ? scale->data<T>() : nullptr;
+  const T* y_data = y.data<T>();
+  const T* bias_0_data = bias0 ? bias0->data<T>() : nullptr;
+  const T* bias_1_data = bias1 ? bias1->data<T>() : nullptr;
+  const T* scale_data = scale ? scale->data<T>() : nullptr;
 
-    auto* mean = ctx.Output<phi::DenseTensor>("Mean");
-    auto* variance = ctx.Output<phi::DenseTensor>("Variance");
+  T* mean_data =
+      mean ? dev_ctx.template Alloc<T>(mean, mean->numel() * sizeof(T))
+           : nullptr;
+  T* variance_data = variance ? dev_ctx.template Alloc<T>(
+                                    variance, variance->numel() * sizeof(T))
+                              : nullptr;
 
-    T* mean_data =
-        mean ? dev_ctx.template Alloc<T>(mean, mean->numel() * sizeof(T))
-             : nullptr;
-    T* variance_data = variance ? dev_ctx.template Alloc<T>(
-                                      variance, variance->numel() * sizeof(T))
-                                : nullptr;
+  bool with_relu = (activation_type == "relu") ? true : false;
 
-    bool with_relu =
-        (ctx.Attr<std::string>("activation_type") == "relu") ? true : false;
-    float epsilon = ctx.Attr<float>("epsilon");
+  int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
+  AddReluAddLayerNorm(dev_ctx,
+                      with_relu,
+                      max_threads,
+                      y_data,
+                      bias_0_data,
+                      bias_1_data,
+                      scale_data,
+                      out_data,
+                      mean_data,
+                      variance_data,
+                      M,
+                      N,
+                      epsilon);
+}
+}  // namespace fusion
+}  // namespace phi
 
-    int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
-    AddReluAddLayerNorm(dev_ctx.stream(),
-                        with_relu,
-                        max_threads,
-                        y_data,
-                        bias_0_data,
-                        bias_1_data,
-                        scale_data,
-                        out_data,
-                        mean_data,
-                        variance_data,
-                        M,
-                        N,
-                        epsilon);
-  }
-};
-
-}  // namespace operators
-}  // namespace paddle
-
-namespace ops = paddle::operators;
-namespace plat = paddle::platform;
-
-PD_REGISTER_STRUCT_KERNEL(fused_fc_elementwise_layernorm,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::FusedFCElementwiseLayerNormOpKernel,
-                          float,
-                          double,
-                          plat::float16) {}
+PD_REGISTER_KERNEL(fused_fc_elementwise_layernorm,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::fusion::FusedFCElementwiseLayerNormKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}

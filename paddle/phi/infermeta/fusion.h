@@ -500,4 +500,19 @@ void FusionTransposeFlattenConcatInferMeta(
     const int concat_axis,
     MetaTensor* out);
 
+void FusedFCElementwiseLayerNormInferMeta(const MetaTensor& x,
+                                          const MetaTensor& w,
+                                          const MetaTensor& y,
+                                          const MetaTensor& bias0,
+                                          const MetaTensor& scale,
+                                          const MetaTensor& bias1,
+                                          const int x_num_col_dims,
+                                          const std::string activation_type,
+                                          const float epsilon,
+                                          const int begin_norm_axis,
+                                          MetaTensor* out,
+                                          MetaTensor* mean,
+                                          MetaTensor* variance,
+                                          MetaConfig config = MetaConfig());
+
 }  // namespace phi
