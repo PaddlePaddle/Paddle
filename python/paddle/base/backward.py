@@ -20,8 +20,7 @@ import warnings
 from collections.abc import Sequence
 
 import paddle.base
-from paddle.base import framework as framework
-from paddle.base import program_guard
+from paddle.base import framework, program_guard
 
 from . import core, log_helper, unique_name
 from .data_feeder import check_type
