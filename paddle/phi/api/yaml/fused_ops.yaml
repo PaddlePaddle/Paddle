@@ -152,7 +152,7 @@
     func : FusedEmbeddingEltWiseLayerNormInferMeta
   kernel :
     func : fused_embedding_eltwise_layernorm
-    data_type : ids
+    data_type : embs
 
 - op : fused_linear_param_grad_add
   args : (Tensor x, Tensor dout, Tensor dweight, Tensor dbias, bool multi_precision = true, bool has_bias = true)

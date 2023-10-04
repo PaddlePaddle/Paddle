@@ -1257,11 +1257,14 @@
 
 - op : fused_embedding_eltwise_layernorm
   inputs :
-    {ids : Ids, embs : Embs, bias : Bias, scale : Scale}
+    ids : Ids
+    embs : Embs
+    bias : Bias
+    scale : Scale
   outputs :
     out : Out
   attrs :
-    {epsilon : epsilon}
+    epsilon : epsilon
 
 - op : fused_feedforward
   backward: fused_feedforward_grad
