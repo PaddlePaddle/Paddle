@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/split.h"
 #include "paddle/phi/infermeta/spmd_rules/squeeze.h"
 #include "paddle/phi/infermeta/spmd_rules/transpose.h"
+#include "paddle/phi/infermeta/spmd_rules/unsqueeze.h"
 
 /**
  * Design Notes:
@@ -64,11 +65,11 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
 
-// default data parallel rule
+// unsqueeze rule
 PD_REGISTER_SPMD_RULE(
     unsqueeze,
-    PD_INFER_SPMD(phi::distributed::DefaultDataParallelInferSpmd),
-    PD_INFER_SPMD(phi::distributed::DefaultDataParallelInferSpmdReverse));
+    PD_INFER_SPMD(phi::distributed::UnsqueezeInferSpmd),
+    PD_INFER_SPMD(phi::distributed::UnsqueezeInferSpmdReverse));
 
 // replicated rule /* for unittest */
 PD_REGISTER_SPMD_RULE(
