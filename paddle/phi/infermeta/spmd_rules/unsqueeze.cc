@@ -22,124 +22,13 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/infermeta/spmd_rules/dim_trans.h"
+#include "paddle/phi/infermeta/spmd_rules/reshape.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
 namespace phi {
 namespace distributed {
 
 using phi::distributed::auto_parallel::str_join;
-
-// The target shape in unsqueeze may contains a -1 dimension,
-// this function is used to infer what the "-1" dimension is.
-std::vector<int64_t> InferTargetShape(const std::vector<int64_t>& shape,
-                                      int64_t len) {
-  int64_t infer_idx = -1;
-  for (int64_t i = 0, n = static_cast<int64_t>(shape.size()); i < n; i++) {
-    if (shape[i] == -1) {
-      PADDLE_ENFORCE_EQ(
-          infer_idx,
-          -1,
-          phi::errors::InvalidArgument(
-              "There can't be more than one -1 dimension in target shape."));
-      infer_idx = i;
-    }
-  }
-
-  int64_t product = std::accumulate(
-      shape.begin(), shape.end(), 1, std::multiplies<int64_t>());
-  if (product > 0) {
-    PADDLE_ENFORCE_EQ(
-        product,
-        len,
-        phi::errors::InvalidArgument("The total size are not matched"));
-    return std::vector<int64_t>(shape);
-  } else {
-    std::vector<int64_t> new_shape(shape);
-    product = -product;
-    int64_t infer_size = len / product;
-    PADDLE_ENFORCE_EQ(len % infer_size,
-                      0,
-                      phi::errors::InvalidArgument(
-                          "The total is not diviable by infer_size"));
-    new_shape[infer_idx] = infer_size;
-    return new_shape;
-  }
-}
-
-// Compute how each dimension in target shape
-// is obtained from the input dimensions
-std::vector<DimTrans*> MakeUnsqueezeDimTrans(
-    const std::vector<int64_t>& src_shape,
-    const std::vector<int64_t>& tgt_shape) {
-  std::vector<DimTrans*> ret;
-  int64_t total_elem_num_src = std::accumulate(
-      src_shape.begin(), src_shape.end(), 1, std::multiplies<int64_t>());
-  std::vector<int64_t> inferred_tgt_shape =
-      InferTargetShape(tgt_shape, total_elem_num_src);
-
-  int src_idx = 0, tgt_idx = 0;
-  int s, t;
-  int src_len, tgt_len;
-  src_len = static_cast<int64_t>(src_shape.size());
-  tgt_len = static_cast<int64_t>(inferred_tgt_shape.size());
-  while (src_idx < src_len || tgt_idx < tgt_len) {
-    std::vector<int64_t> src_dims, tgt_splitted_shape;
-    if (src_idx >= src_len) {
-      s = 1;
-    } else {
-      s = src_shape[src_idx];
-      src_dims.emplace_back(src_idx);
-      src_idx++;
-    }
-    if (tgt_idx >= tgt_len) {
-      t = 1;
-    } else {
-      t = inferred_tgt_shape[tgt_idx];
-      tgt_splitted_shape.emplace_back(t);
-      tgt_idx++;
-    }
-
-    // deal with the singleton case
-    if (s == 1 && t != 1) {
-      // case [1] [a]
-      tgt_idx--;
-      tgt_splitted_shape.clear();
-    } else if (s != 1 && t == 1) {
-      src_idx--;
-      src_dims.clear();
-    } else {
-      while (s != t) {
-        if (s < t) {
-          src_dims.emplace_back(src_idx);
-          s *= src_shape[src_idx];
-          src_idx++;
-        } else {
-          tgt_splitted_shape.emplace_back(inferred_tgt_shape[tgt_idx]);
-          t *= inferred_tgt_shape[tgt_idx];
-          tgt_idx++;
-        }
-      }
-    }
-
-    if (tgt_splitted_shape.size() > 0) {
-      std::vector<DimTrans*> input_dims;
-      for (int i = 0, n = static_cast<int>(src_dims.size()); i < n; i++) {
-        int64_t in_dim = src_dims[i];
-        if (src_shape[in_dim] > 1) {
-          input_dims.emplace_back(new InputDim(in_dim));
-        }
-      }
-      DimTrans* flatten = make_flatten(input_dims);
-
-      for (int64_t i = 0, n = static_cast<int64_t>(tgt_splitted_shape.size());
-           i < n;
-           i++) {
-        ret.emplace_back(make_split(flatten, tgt_splitted_shape, i));
-      }
-    }
-  }
-  return ret;
-}
 
 bool contain(const std::vector<int64_t>& axis, int64_t i, int64_t ndim) {
   for (int64_t j = 0; i < static_cast<int64_t>(axis.size()); j++) {
@@ -188,7 +77,7 @@ SpmdInfo UnsqueezeInferSpmd(const DistMetaTensor& x,
     tgt_shape.emplace(tgt_shape.begin() + axis_copy[i], 1);
   }
 
-  std::vector<DimTrans*> trans = MakeUnsqueezeDimTrans(src_shape, tgt_shape);
+  std::vector<DimTrans*> trans = MakeReshapeDimTrans(src_shape, tgt_shape);
 
   // Step2: Infer the dims mapping of input (if reshard is
   // needed) and output from the dimension transformation.
@@ -241,7 +130,7 @@ SpmdInfo UnsqueezeInferSpmdReverse(const DistMetaTensor& x,
   // from output to input, we first get the transformation
   // from output to input so that we can infer the dims mapping
   // with the map from output axes to input axes.
-  std::vector<DimTrans*> trans = MakeUnsqueezeDimTrans(out_shape, x_shape);
+  std::vector<DimTrans*> trans = MakeReshapeDimTrans(out_shape, x_shape);
 
   // Step2: Infer the dims mapping of input with
   // output's dims_mapping and the transformation.

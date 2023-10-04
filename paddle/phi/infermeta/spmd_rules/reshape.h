@@ -22,6 +22,13 @@ limitations under the License. */
 namespace phi {
 namespace distributed {
 
+std::vector<int64_t> InferTargetShape(const std::vector<int64_t>& shape,
+                                      int64_t len);
+
+std::vector<DimTrans*> MakeReshapeDimTrans(
+    const std::vector<int64_t>& src_shape,
+    const std::vector<int64_t>& tgt_shape);
+
 SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
                           const std::vector<int64_t>& shape);
 
