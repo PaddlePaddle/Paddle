@@ -45,7 +45,7 @@ std::vector<DimTrans*> MakeFlattenDimTrans(
   std::vector<DimTrans*> ret;
 
   std::vector<DimTrans*> input_dims;
-  for (int64_t i = 0; i < src_shape.size(); i++) {
+  for (int64_t i = 0; i < static_cast<int64_t>(src_shape.size()); i++) {
     if (i < start_axis || i > stop_axis) {
       ret.emplace_back(new InputDim(i));
     } else {
@@ -69,7 +69,7 @@ std::vector<DimTrans*> MakeFlattenDimTransReverse(
     tgt_splitted_shape.emplace_back(src_shape[i]);
   }
 
-  for (int64_t i = 0; i < src_shape.size(); i++) {
+  for (int64_t i = 0; i < static_cast<int64_t>(src_shape.size()); i++) {
     if (i < start_axis) {
       ret.emplace_back(new InputDim(i));
     } else if (i > stop_axis) {
@@ -88,7 +88,7 @@ SpmdInfo FlattenInferSpmd(const DistMetaTensor& x,
                           int stop_axis) {
   // Step0: Verify input args based on flatten logic
   auto src_shape = phi::vectorize(x.dims());
-  int x_ndim = src_shape.size();
+  int x_ndim = static_cast<int64_t>(src_shape.size());
   auto x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(
