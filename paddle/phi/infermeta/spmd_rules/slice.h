@@ -22,14 +22,6 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
 #include "paddle/phi/core/distributed/type_defs.h"
 
-// PADDLE_API Tensor slice(const Tensor& input, const std::vector<int64_t>&
-// axes, const IntArray& starts, const IntArray& ends, const
-// std::vector<int64_t>& infer_flags,
-//  const std::vector<int64_t>& decrease_axis)
-
-// PADDLE_API std::vector<Tensor> split(const Tensor& x, const IntArray&
-// sections, const Scalar& axis)
-
 namespace phi {
 namespace distributed {
 
@@ -41,7 +33,7 @@ SpmdInfo SliceInferSpmd(const DistMetaTensor& input,
                         const std::vector<int64_t>& decrease_axis);
 
 SpmdInfo SliceInferSpmdReverse(const DistMetaTensor& input,
-                               const DistMetaTensor* output,
+                               const DistMetaTensor& output,
                                const std::vector<int64_t>& axes,
                                const std::vector<int>& starts,
                                const std::vector<int>& ends,

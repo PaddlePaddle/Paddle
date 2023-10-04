@@ -91,15 +91,15 @@ SpmdInfo SliceInferSpmd(const DistMetaTensor& input,
 }
 
 SpmdInfo SliceInferSpmdReverse(const DistMetaTensor& input,
-                               const DistMetaTensor* output,
+                               const DistMetaTensor& output,
                                const std::vector<int64_t>& axes,
                                const std::vector<int>& starts,
                                const std::vector<int>& ends,
                                const std::vector<int64_t>& infer_flags,
                                const std::vector<int64_t>& decrease_axis) {
-  auto output_shape = phi::vectorize(output->dims());
+  auto output_shape = phi::vectorize(output.dims());
   int out_ndim = output_shape.size();
-  auto out_dist_attr = output->dist_attr();
+  auto out_dist_attr = output.dist_attr();
   int out_dims_mapping_size = out_dist_attr.dims_mapping().size();
   auto input_shape = phi::vectorize(input.dims());
   int input_ndim = input_shape.size();
@@ -139,7 +139,7 @@ SpmdInfo SliceInferSpmdReverse(const DistMetaTensor& input,
   }
 
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
-  std::vector<int64_t> out_dims_mapping = output->dist_attr().dims_mapping();
+  std::vector<int64_t> out_dims_mapping = output.dist_attr().dims_mapping();
   axes_sharding_info.emplace_back(std::make_pair(out_axes, out_dims_mapping));
 
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
@@ -161,9 +161,9 @@ SpmdInfo SliceInferSpmdReverse(const DistMetaTensor& input,
   VLOG(4) << "SliceInferSpmdReverse:";
   VLOG(4) << "Einsum Notation: " << input_axes << "-->" << out_axes;
   VLOG(4) << "Output"
-          << " shape: [" << str_join(phi::vectorize(output->dims())) << "] "
+          << " shape: [" << str_join(phi::vectorize(output.dims())) << "] "
           << "src_dims_mapping: ["
-          << str_join(output->dist_attr().dims_mapping()) << "] "
+          << str_join(output.dist_attr().dims_mapping()) << "] "
           << "dst_dims_mapping: [" << str_join(out_dist_attr.dims_mapping())
           << "]";
   VLOG(4) << "Input shape: [" << str_join(input_shape) << "] "
