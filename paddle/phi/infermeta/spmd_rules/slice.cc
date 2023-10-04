@@ -48,14 +48,14 @@ SpmdInfo SliceInferSpmd(const DistMetaTensor& input,
   std::string input_axes = alphabet.substr(0, input_ndim);
   std::string special_axes = alphabet.substr(input_ndim);
 
-  for (int i = 0; i < axes.size(); i++) {
+  for (int i = 0; i < static_cast<int>(axes.size()); i++) {
     int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];
     input_axes[axis] = special_axes[i];
   }
 
   std::string out_axes(input_axes);
 
-  for (int i = 0; i < axes.size(); i++) {
+  for (int i = 0; i < static_cast<int>(axes.size()); i++) {
     int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];
     out_axes[axis] = '1';
   }
@@ -71,7 +71,7 @@ SpmdInfo SliceInferSpmd(const DistMetaTensor& input,
   out_dist_attr.set_dims_mapping(out_dims_mapping);
 
   TensorDistAttr input_dist_attr_dst(input_dist_attr_src);
-  for (int i = 0; i < axes.size(); i++) {
+  for (int i = 0; i < static_cast<int>(axes.size()); i++) {
     int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];
     input_dims_mapping[axis] = -1;
   }
@@ -126,14 +126,14 @@ SpmdInfo SliceInferSpmdReverse(const DistMetaTensor& input,
   std::string input_axes = alphabet.substr(0, input_ndim);
   std::string special_axes = alphabet.substr(input_ndim);
 
-  for (int i = 0; i < axes.size(); i++) {
+  for (int i = 0; i < static_cast<int>(axes.size()); i++) {
     int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];
     input_axes[axis] = special_axes[i];
   }
 
   std::string out_axes(input_axes);
 
-  for (int i = 0; i < axes.size(); i++) {
+  for (int i = 0; i < static_cast<int>(axes.size()); i++) {
     int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];
     out_axes[axis] = special_axes[i];
   }
@@ -146,13 +146,13 @@ SpmdInfo SliceInferSpmdReverse(const DistMetaTensor& input,
       ShardingMergeForTensors(axes_sharding_info);
 
   input_dims_mapping = GetDimsMappingForAxes(input_axes, axis_to_dim_map, true);
-  for (int i = 0; i < axes.size(); i++) {
+  for (int i = 0; i < static_cast<int>(axes.size()); i++) {
     int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];
     input_dims_mapping[axis] = -1;
   }
   input_dist_attr.set_dims_mapping(input_dims_mapping);
   out_dims_mapping = GetDimsMappingForAxes(out_axes, axis_to_dim_map, true);
-  for (int i = 0; i < axes.size(); i++) {
+  for (int i = 0; i < static_cast<int>(axes.size()); i++) {
     int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];
     out_dims_mapping[axis] = -1;
   }
