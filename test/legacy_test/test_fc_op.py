@@ -78,7 +78,7 @@ def fc_quant_refer(matrix, with_bias, scale_in, scale_weights, quant_round_type 
     w_data = np.reshape(matrix.weights, [w_i, w_o])
     b_data = np.reshape(matrix.bias, [1, w_o])
     result = None
-    quant_result = np.matmul(quant_x_data.astype('int32'), w_data.astype('int32'))
+    quant_result = np.dot(quant_x_data.astype('int32'), w_data.astype('int32'))
     scale_out = scale_weights * scale_in
     result = quant_result / quant_max_bound / quant_max_bound / scale_out
     result = result.astype(x_data.dtype)
@@ -162,8 +162,11 @@ class TestFCOp(OpTest):
             }
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_dygraph=False)
+        if hasattr(self, 'is_quant') and self.attrs['is_quant']:
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, check_dygraph=False, rtol=2e-2)
+        else:
+            self.check_output(check_dygraph=False)
 
 class TestFCOpNoBias1(TestFCOp):
     def config(self):

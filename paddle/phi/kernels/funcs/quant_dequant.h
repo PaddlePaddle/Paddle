@@ -179,9 +179,9 @@ __global__ void DequantKernelWithScaleOfInputAndWeight(
 
 #pragma unroll
     for (int i = 0; i < VecSize; ++i) {
-      out_vec[i] = static_cast<T>(
-          static_cast<float>(in_vec[i] / quant_max_bound / quant_max_bound /
-                             quant_in_scale / out_scale_vec[i]));
+      out_vec[i] = static_cast<T>(static_cast<float>(in_vec[i]) /
+                                  (quant_max_bound * quant_max_bound *
+                                   quant_in_scale * out_scale_vec[i]));
     }
 
     phi::Store<T, VecSize>(out_vec, output + idx);
