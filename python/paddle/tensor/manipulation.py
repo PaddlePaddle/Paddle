@@ -5171,13 +5171,13 @@ for name, func in __METHODS.items():
 def select_scatter(x, value, dim, index):
     """
     Embeds the values of the value tensor into x at the given dim and index. This function returns a tensor with fresh storage.
-    
+
     Args:
         x (Tensor) : The Input Tensor. Supported data types are bool, float16, float32, float64, int32, int64.
         value (Tensor) : The Tensor to embed into x. (assert value.dtype == x.dtype)
         dim (int) : The dimension to insert the slice into. Supported data types are int32, int64.
         index (int) : The index to select with. Supported data types are int32, int64.
-    
+
     Returns:
         Tensor, same dimension and dtype with x.
     Examples:
@@ -5192,23 +5192,30 @@ def select_scatter(x, value, dim, index):
             Tensor(shape=[2, 2], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                    [[1, 2],
                     [0, 0]])
-    """     
+    """
+
     if len(x.shape) == 0:
-        print(f"select_scatter() can not be applied to a 0-dim tensor")
+        print("select_scatter() can not be applied to a 0-dim tensor")
         return None
     if x.shape[dim] < -index | x.shape[dim] <= index:
-        print(f"select_scatter() index: {index} out of range for tensoe of size: {x.shape[dim]}")
+        print(
+            f"select_scatter() index: {index} out of range for tensoe of size: {x.shape[dim]}"
+        )
         return None
     if index < 0:
-        index += size
+        index += x.shape[dim]
     if value.dtype != x.dtype:
-        print(f"The data type of tensor value must be same to the data type of tensor x")
+        print(
+            "The data type of tensor value must be same to the data type of tensor x"
+        )
     from builtins import slice as original_slice
+
     indices = [original_slice(None)] * len(x.shape)
     indices[dim] = index
     out = x.clone()
     out[tuple(indices)] = value
     return out
+
 
 def select_scatter_(x, value, dim, index):
     """
@@ -5220,7 +5227,7 @@ def select_scatter_(x, value, dim, index):
         value (Tensor) : The Tensor to embed into x. (assert value.dtype == x.dtype)
         dim (int) : The dimension to insert the slice into. Supported data types are int32, int64.
         index (int) : The index to select with. Supported data types are int32, int64.
-    
+
     Returns:
         Tensor, same dimension and dtype with x.
     Examples:
@@ -5235,18 +5242,23 @@ def select_scatter_(x, value, dim, index):
             Tensor(shape=[2, 2], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                    [[1, 2],
                     [0, 0]])
-    """     
+    """
     if len(x.shape) == 0:
-        print(f"select_scatter() can not be applied to a 0-dim tensor")
+        print("select_scatter() can not be applied to a 0-dim tensor")
         return None
     if x.shape[dim] < -index | x.shape[dim] <= index:
-        print(f"select_scatter() index: {index} out of range for tensoe of size: {x.shape[dim]}")
+        print(
+            f"select_scatter() index: {index} out of range for tensoe of size: {x.shape[dim]}"
+        )
         return None
     if index < 0:
-        index += size
+        index += x.shape[dim]
     if value.dtype != x.dtype:
-        print(f"The data type of tensor value must be same to the data type of tensor x")
+        print(
+            "The data type of tensor value must be same to the data type of tensor x"
+        )
     from builtins import slice as original_slice
+
     indices = [original_slice(None)] * len(x.shape)
     indices[dim] = index
     x[tuple(indices)] = value

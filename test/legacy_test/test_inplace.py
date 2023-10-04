@@ -255,6 +255,7 @@ class TestDygraphInplaceSelectScatter(TestDygraphInplace):
         self.input_var_numpy = np.random.uniform(-10, 10, [2, 2])
         self.dtype = "float32"
         self.value = paddle.to_tensor([1, 2], dtype='float32')
+
         self.dim = 1
         self.index = 1
 
@@ -263,6 +264,7 @@ class TestDygraphInplaceSelectScatter(TestDygraphInplace):
 
     def inplace_api_processing(self, var):
         return paddle.select_scatter_(var, self.value, self.dim, self.index)
+
 
 class TestDygraphInplaceWithContinuous(TestDygraphInplace):
     def init_data(self):
