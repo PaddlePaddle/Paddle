@@ -247,6 +247,8 @@ from .tensor.manipulation import (  # noqa: F401
     view,
     view_as,
     unfold,
+    select_scatter, 
+    select_scatter_,
 )
 
 from .tensor.math import (  # noqa: F401
