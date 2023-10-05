@@ -1291,6 +1291,32 @@
   extra :
     attrs : [str data_format = "AnyLayout"]
 
+- op : fusion_gru
+  inputs :
+    x : X
+    h0 : H0
+    weight_x : WeightX
+    weight_h : WeightH
+    bias : Bias
+    recorder_h0 : ReorderedH0
+  outputs :
+    xx : XX
+    batched_input : BatchedInput
+    batched_out : BatchedOut
+    hidden : Hidden
+  attrs :
+    activation : activation
+    gate_activation : gate_activation
+    is_reverse : is_reverse
+    use_seq : use_seq
+    origin_mode : origin_mode
+    use_mkldnn : use_mkldnn
+    mkldnn_data_type : mkldnn_data_type
+    scale_data : Scale_data
+    shift_data : Shift_data
+    scale_weights : Scale_weights
+    force_fp32_output : force_fp32_output
+
 - op : gather
   backward : gather_grad
   inputs :
