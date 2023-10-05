@@ -28,6 +28,8 @@ from .math import _get_reduce_axis
 
 __all__ = []
 
+_range = range
+
 # Consistent with kDefaultDim from C++ Backend
 K_DEFAULT_DIM = 9
 
@@ -3730,3 +3732,151 @@ def cdist(
     return paddle.linalg.norm(
         x[..., None, :] - y[..., None, :, :], p=p, axis=-1
     )
+
+
+def histogramdd(sample, bins=10, range=None, density=None, weights=None, name=None):
+    r"""
+        Computes a multi-dimensional histogram of the values in a tensor.
+        Interprets the elements of an input tensor whose innermost dimension has size N as a collection of N-dimensional points. Maps each of the points into a set of N-dimensional bins and returns the number of points (or total weight) in each bin.
+        input must be a tensor with at least 2 dimensions. If input has shape (M, N), each of its M rows defines a point in N-dimensional space. If input has three or more dimensions, all but the last dimension are flattened.
+        Each dimension is independently associated with its own strictly increasing sequence of bin edges. Bin edges may be specified explicitly by passing a sequence of 1D tensors. Alternatively, bin edges may be constructed automatically by passing a sequence of integers specifying the number of equal-width bins in each dimension.    
+    
+    Args:
+        sample (Tensor): The input tensor.
+        bins (Tensor[], int[], or int): If Tensor[], defines the sequences of bin edges. If int[], defines the number of equal-width bins in each dimension. If int, defines the number of equal-width bins for all dimensions.
+        range (sequence of float, optional): Defines the leftmost and rightmost bin edges in each dimension. If is None, set the minimum and maximum as leftmost and rightmost edges for each dimension.
+        density (bool, optional): If False (default), the result will contain the count (or total weight) in each bin. If True, each count (weight) is divided by the total count (total weight), then divided by the volume of its associated bin.
+        weights (Tensor, optional): By default, each value in the input has weight 1. If a weight tensor is passed, each N-dimensional coordinate in input contributes its associated weight towards its bin’s result. The weight tensor should have the same shape as the input tensor excluding its innermost dimension N.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        N-dimensional Tensor containing the values of the histogram. bin_edges(Tensor[]): sequence of N 1D Tensors containing the bin edges.
+
+
+    Examples:
+        .. code-block:: python
+
+            >>> paddle.histogramdd(paddle.to_tensor([[0., 1.], [1., 0.], [2.,0.], [2., 2.]]), bins=[3,3], weights=paddle.to_tensor([1., 2., 4., 8.]))
+            (Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [[0., 1., 0.],
+                    [2., 0., 0.],
+                    [4., 0., 8.]]), [Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [0.        , 0.66666669, 1.33333337, 2.        ]), Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [0.        , 0.66666669, 1.33333337, 2.        ])])
+           
+            >>> paddle.histogramdd(paddle.to_tensor([[0., 0.], [1., 1.], [2., 2.]]), bins=[2,2], range=[0., 1., 0., 1.], density=True)
+        (Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+               [[2., 0.],
+                [0., 2.]]), [Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+               [0.        , 0.50000000, 1.        ]), Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+               [0.        , 0.50000000, 1.        ])])
+
+
+    """
+    
+
+    def __check_weights(x, w):
+        if w is None: return
+        x_shape, w_shape = x.shape, w.shape
+        assert len(x_shape) == len(w_shape) + 1, (
+            "if weight tensor is provided,"
+            "it should have the same shape as the input tensor excluding its innermost dimension.\n"
+        )
+        for i, _ in enumerate(w_shape):
+            assert w_shape[i] == x_shape[i], (
+                "if weight tensor is provided,"
+                "it should have the same shape as the input tensor excluding its innermost dimension.\n"
+            )
+    def __check_range(d, r):
+        if r is None: return
+        check_type(r, 'range', (list, tuple), 'histogramdd')
+        assert d * 2 == len(r), (
+            "The length of range list must be %d\n" % (d * 2)
+        )
+    def look_up(lut, inds):
+        return lut[inds]
+
+
+    # weights
+    __check_weights(sample, weights)
+    D = sample.shape[-1]
+    reshaped_input = sample.reshape([-1, D])
+    N = reshaped_input.shape[0]
+    reshaped_weights = None
+    if weights is not None:
+        reshaped_weights = weights.reshape([N])
+        assert reshaped_weights.shape[0] == N, (
+            "The size of weight must be %d" % N
+        )
+    # range
+    __check_range(D, range)
+    if range is None:
+        range = paddle.zeros([D, 2])
+        maxv = paddle.max(reshaped_input, axis=0).reshape([-1])
+        minv = paddle.min(reshaped_input, axis=0).reshape([-1])
+        # range = paddle.to_tensor(list(zip(minv, maxv)))
+
+        if paddle.in_dynamic_mode():
+            range[:, 0] = minv
+            range[:, 1] = maxv
+        else:
+            range = paddle.static.setitem(
+                range, (slice(None), 0), minv
+            )
+            range = paddle.static.setitem(
+                range, (slice(None), 1), maxv
+            )
+
+
+    else: range = paddle.to_tensor(range).reshape([D, 2])
+    # bins to edges
+    edges = []
+    hist_shape = []
+    dedges = []
+    if isinstance(bins, (int, list)): # int or int[]
+        if isinstance(bins, int): bins = [bins] * D
+        for idx, r in enumerate(range):
+            e = paddle.linspace(r[0], r[1], bins[idx] + 1, 'float32')
+            edges.append(e)
+            dedges.append(e.diff())
+    elif isinstance(bins, tuple):  # tuple with D tensors for each innermost dimension
+        for bin in bins:
+            edges.append(bin)
+            dedges.append(bin.diff())
+    hist_shape = [edge.shape[0] + 1 for edge in edges]
+    index_list = []
+    # edges shape: [D, linspaced]
+    # index_list shape: [D, N]
+    for idx, edge in enumerate(edges):
+        edge = paddle.to_tensor(edge)
+        index_list.append(paddle.searchsorted(edge, reshaped_input[:, idx], right=True))
+    index_list = paddle.to_tensor(index_list)
+    for i in _range(D):
+        on_edge = (reshaped_input[:, i] == edges[i][-1])
+        if paddle.in_dynamic_mode():
+            index_list[i][on_edge] -= 1
+        else:
+            index_list = paddle.static.setitem(
+                index_list, (i, on_edge), index_list[i][on_edge] - 1
+            )
+    index_list = tuple(index_list)
+    lut = paddle.arange(paddle.to_tensor(hist_shape).prod()).reshape(hist_shape)
+    flattened_index = lut[index_list]
+    hist = paddle.bincount(flattened_index, reshaped_weights, minlength=paddle.to_tensor(hist_shape).prod())
+    hist = hist.reshape(hist_shape)
+    hist = hist.astype('float32')
+
+    core = D*(slice(1, -1),)
+    hist = hist[core]
+
+    if density:
+        s = hist.sum()
+        for i in _range(D):
+            shape = D*[1]
+            shape[i] = hist_shape[i] - 2
+            hist = hist / dedges[i].reshape(shape)
+        hist /= s
+    
+    return (hist, edges)
+
+
