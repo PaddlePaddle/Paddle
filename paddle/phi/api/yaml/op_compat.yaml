@@ -478,6 +478,12 @@
   outputs :
     out : Out
 
+- op : cholesky_inverse
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : cholesky_solve
   inputs :
     {x : X, y : Y}

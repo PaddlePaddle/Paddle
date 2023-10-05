@@ -436,6 +436,18 @@ void lapackGelss<float>(int m,
 }
 
 template <>
+void lapackCholeskyInverse<double>(
+    char uplo, int n, double *a, int lda, int *info) {
+  dynload::dpotri_(&uplo, &n, a, &lda, info);
+}
+
+template <>
+void lapackCholeskyInverse<float>(
+    char uplo, int n, float *a, int lda, int *info) {
+  dynload::spotri_(&uplo, &n, a, &lda, info);
+}
+
+template <>
 void lapackCholeskySolve<phi::dtype::complex<double>>(
     char uplo,
     int n,

@@ -1553,6 +1553,80 @@ def cholesky(x, upper=False, name=None):
         return out
 
 
+def cholesky_inverse(x, upper=False, name=None):
+    r"""
+    Computes the inverse of a symmetric positive-definite matrix :math:`A`
+    using its Cholesky factor.
+
+    If `upper` is `True`, Cholesky factor :math:`U` is upper-triangular such
+    that the returned matrix :math:`inv` is :math:`(U^{T}U)^{-1}`. Otherwise,
+    Cholesky factor :math:`L` is lower-triangular such that the returned matrix
+    :math:`inv` is :math:`(LL^{T})^{-1}`.
+
+
+    Args:
+    x (Tensor): The input tensor. Its shape should be :math:`[*, M, M]`,
+        where :math:`*` is zero or more batch dimensions. Its data type should
+        be float32 or float64.
+    upper (bool, optional): The flag indicating whether the Cholesky
+        factor is upper or lower triangular matrices. Default: False.
+    name (str, optional): Name for the operation (optional, default is None).
+        For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, A Tensor with same shape and data type as `x`. It represents
+        inverse of the symmetric positive-definite matrices computed with
+        Cholesky factors.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.seed(2023)
+
+            >>> a = paddle.rand([3,3], dtype="float32")
+            >>> a_t = paddle.transpose(a, [1,0])
+            >>> x = paddle.matmul(a, a_t) + 1e-03
+            >>> print(x.inverse())
+            Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[ 45.15793228, -25.02791595, -14.93955708],
+             [-25.02785110,  35.53761673, -8.97592354 ],
+             [-14.93961048, -8.97587204 ,  19.25232124]])
+
+            >>> l = paddle.cholesky(x, upper=False)
+            >>> out = paddle.cholesky_inverse(l, upper=False)
+            >>> print(out)
+            Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[ 45.15793228, -25.02791595, -14.93955708],
+             [-25.02785110,  35.53761673, -8.97592354 ],
+             [-14.93961048, -8.97587204 ,  19.25232124]])
+
+            >>> u = paddle.cholesky(x, upper=True)
+            >>> out = paddle.cholesky_inverse(u, upper=True)
+            >>> print(out)
+            Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[ 45.15793228, -25.02791595, -14.93955708],
+             [-25.02785110,  35.53761673, -8.97592354 ],
+             [-14.93961048, -8.97587204 ,  19.25232124]])
+    """
+    if in_dynamic_mode():
+        return _C_ops.cholesky_inverse(x, upper)
+    else:
+        check_variable_and_dtype(
+            x, 'dtype', ['float32', 'float64'], 'cholesky_inverse'
+        )
+        check_type(upper, 'upper', bool, 'cholesky_inverse')
+        helper = LayerHelper('cholesky_inverse', **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='cholesky_inverse',
+            inputs={'X': [x]},
+            outputs={'Out': out},
+            attrs={'upper': upper},
+        )
+        return out
+
+
 def matrix_rank(x, tol=None, hermitian=False, name=None):
     r"""
     Computes the rank of a matrix.

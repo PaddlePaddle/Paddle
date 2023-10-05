@@ -94,6 +94,8 @@ void CINNBroadcastInferMeta(const MetaTensor& x,
                             const std::vector<int64_t>& out_shape,
                             MetaTensor* output);
 
+void CholeskyInverseInferMeta(const MetaTensor& x, bool upper, MetaTensor* out);
+
 void ClassCenterSampleInferMeta(const MetaTensor& label,
                                 int num_classes,
                                 int num_samples,

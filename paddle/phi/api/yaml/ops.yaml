@@ -441,6 +441,15 @@
     func : cholesky
   backward : cholesky_grad
 
+- op : cholesky_inverse
+  args : (Tensor x, bool upper=false)
+  output : Tensor
+  infer_meta :
+    func : CholeskyInverseInferMeta
+  kernel :
+    func : cholesky_inverse
+  backward : cholesky_inverse_grad
+
 - op : cholesky_solve
   args : (Tensor x, Tensor y, bool upper=false)
   output : Tensor

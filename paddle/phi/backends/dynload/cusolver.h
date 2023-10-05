@@ -128,6 +128,20 @@ CUSOLVER_ROUTINE_EACH_R1(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP)
 CUSOLVER_ROUTINE_EACH_R2(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP)
 #endif
 
+#if CUDA_VERSION >= 10020
+#define CUSOLVER_ROUTINE_EACH_R3(__macro) \
+  __macro(cusolverDnSpotri);              \
+  __macro(cusolverDnDpotri);              \
+  __macro(cusolverDnCpotri);              \
+  __macro(cusolverDnZpotri);              \
+  __macro(cusolverDnSpotri_bufferSize);   \
+  __macro(cusolverDnDpotri_bufferSize);   \
+  __macro(cusolverDnCpotri_bufferSize);   \
+  __macro(cusolverDnZpotri_bufferSize);
+
+CUSOLVER_ROUTINE_EACH_R3(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP)
+#endif
+
 #undef DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP
 }  // namespace dynload
 }  // namespace phi

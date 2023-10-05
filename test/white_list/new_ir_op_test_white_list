@@ -29,6 +29,7 @@ test_bmm_op
 test_box_coder_op
 test_cast_op
 test_channel_shuffle
+test_cholesky_inverse_op
 test_cholesky_op
 test_cholesky_solve_op
 test_class_center_sample_op

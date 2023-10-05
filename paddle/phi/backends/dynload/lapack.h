@@ -279,6 +279,8 @@ extern "C" void spotrs_(char *uplo,
                         float *b,
                         int *ldb,
                         int *info);
+extern "C" void dpotri_(char *uplo, int *n, double *a, int *lda, int *info);
+extern "C" void spotri_(char *uplo, int *n, float *a, int *lda, int *info);
 extern "C" void dgesdd_(char *,
                         int *,
                         int *,
@@ -360,7 +362,9 @@ extern void *lapack_dso_handle;
   __macro(zpotrs_);                  \
   __macro(cpotrs_);                  \
   __macro(dpotrs_);                  \
-  __macro(spotrs_);
+  __macro(spotrs_);                  \
+  __macro(dpotri_);                  \
+  __macro(spotri_);
 
 LAPACK_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_LAPACK_WRAP);
 

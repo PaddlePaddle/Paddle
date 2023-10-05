@@ -285,6 +285,16 @@
   kernel :
     func : cholesky_grad
 
+- backward_op : cholesky_inverse_grad
+  forward : cholesky_inverse (Tensor x, bool upper) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, bool upper)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : cholesky_inverse_grad
+
 - backward_op : cholesky_solve_grad
   forward : cholesky_solve (Tensor x, Tensor y, bool upper) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out, Tensor out_grad, bool upper)

@@ -38,6 +38,7 @@ using experimental::atanh;
 using experimental::bernoulli;
 using experimental::ceil;
 using experimental::cholesky;
+using experimental::cholesky_inverse;
 using experimental::cholesky_solve;
 using experimental::clip;
 using experimental::concat;

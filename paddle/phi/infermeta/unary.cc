@@ -432,6 +432,30 @@ void CINNBroadcastInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void CholeskyInverseInferMeta(const MetaTensor& x,
+                              bool upper,
+                              MetaTensor* out) {
+  auto dims = x.dims();
+  auto rank = dims.size();
+  PADDLE_ENFORCE_GE(rank,
+                    2,
+                    errors::InvalidArgument(
+                        "The Input(X) should have at least 2 dimensions. But "
+                        "received a %d dimension tensor.",
+                        rank));
+  PADDLE_ENFORCE_EQ(
+      dims[rank - 2],
+      dims[rank - 1],
+      errors::InvalidArgument(
+          "The inner-most 2 dimensions of Input(X) all should be symmetric "
+          "positive-definite matrices and have the same size. But received "
+          "X's shape[-2] = %d and shape[-1] = %d.",
+          dims[rank - 2],
+          dims[rank - 1]));
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+}
+
 void ClassCenterSampleInferMeta(const MetaTensor& label,
                                 int num_classes,
                                 int num_samples,

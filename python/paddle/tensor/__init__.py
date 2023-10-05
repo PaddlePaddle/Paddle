@@ -76,6 +76,7 @@ from .linalg import eigh  # noqa: F401
 from .linalg import pinv  # noqa: F401
 from .linalg import solve  # noqa: F401
 from .linalg import cholesky_solve  # noqa: F401
+from .linalg import cholesky_inverse  # noqa: F401
 from .linalg import lu  # noqa: F401
 from .linalg import lu_unpack  # noqa: F401
 from .linalg import cdist  # noqa: F401
@@ -406,6 +407,7 @@ tensor_method_func = [
     't_',
     'cross',
     'cholesky',
+    'cholesky_inverse',
     'bmm',
     'histogram',
     'bincount',

@@ -137,6 +137,9 @@ void lapackSvd(char jobz,
                int *info);
 
 template <typename T>
+void lapackCholeskyInverse(char uplo, int n, T *a, int lda, int *info);
+
+template <typename T>
 void lapackCholeskySolve(
     char uplo, int n, int nrhs, T *a, int lda, T *b, int ldb, int *info);
 
