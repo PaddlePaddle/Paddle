@@ -5197,9 +5197,9 @@ def select_scatter(x, value, dim, index):
     if len(x.shape) == 0:
         print("select_scatter() can not be applied to a 0-dim tensor")
         return None
-    if x.shape[dim] < -index | x.shape[dim] <= index:
-        print(
-            f"select_scatter() index: {index} out of range for tensoe of size: {x.shape[dim]}"
+    if (x.shape[dim] < -index) | (x.shape[dim] <= index):
+        raise ValueError(
+            f"select_scatter() index: {index} out of range for tensor of size: {x.shape[dim]}"
         )
         return None
     if index < 0:
@@ -5212,8 +5212,11 @@ def select_scatter(x, value, dim, index):
 
     indices = [original_slice(None)] * len(x.shape)
     indices[dim] = index
-    out = x.clone()
-    out[tuple(indices)] = value
+    if paddle.in_dynamic_mode():
+        out = x.clone()
+        out[tuple(indices)] = value
+    else:
+        out = paddle.static.setitem(x, tuple(indices), value)
     return out
 
 
@@ -5246,8 +5249,8 @@ def select_scatter_(x, value, dim, index):
     if len(x.shape) == 0:
         print("select_scatter() can not be applied to a 0-dim tensor")
         return None
-    if x.shape[dim] < -index | x.shape[dim] <= index:
-        print(
+    if (x.shape[dim] < -index) | (x.shape[dim] <= index):
+        raise ValueError(
             f"select_scatter() index: {index} out of range for tensoe of size: {x.shape[dim]}"
         )
         return None
@@ -5259,7 +5262,16 @@ def select_scatter_(x, value, dim, index):
         )
     from builtins import slice as original_slice
 
-    indices = [original_slice(None)] * len(x.shape)
-    indices[dim] = index
-    x[tuple(indices)] = value
+    if paddle.in_dynamic_mode():
+        indices = [original_slice(None)] * len(x.shape)
+        indices[dim] = index
+        x[tuple(indices)] = value
+    else:
+        mask = paddle.zeros_like(x)
+        dim_size = mask.shape[dim]
+        indices = [original_slice(None)] * len(mask.shape)
+        indices[dim] = index
+        mask = paddle.static.setitem(mask, tuple(indices), value)
+        indexs = tuple(item.squeeze() for item in paddle.where(mask))
+        paddle.index_put_(x, indexs, value.flatten())
     return x
