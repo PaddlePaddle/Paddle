@@ -29,7 +29,7 @@ namespace distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
-bool contain(const std::vector<int64_t>& axis, int64_t i, int64_t ndim) {
+bool SqueezeContain(const std::vector<int64_t>& axis, int64_t i, int64_t ndim) {
   for (int64_t j = 0; i < static_cast<int64_t>(axis.size()); j++) {
     int64_t tmp = axis[j] < 0 ? axis[j] + ndim : axis[j];
 
@@ -68,7 +68,7 @@ SpmdInfo SqueezeInferSpmd(const DistMetaTensor& x,
     }
   } else {
     for (int64_t i = 0; i < static_cast<int64_t>(src_shape.size()); i++) {
-      if (!(contain(axis, i, x_ndim) && src_shape[i] == 1)) {
+      if (!(SqueezeContain(axis, i, x_ndim) && src_shape[i] == 1)) {
         tgt_shape.emplace_back(src_shape[i]);
       }
     }

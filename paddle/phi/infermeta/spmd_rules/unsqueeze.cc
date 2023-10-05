@@ -30,19 +30,7 @@ namespace distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
-bool contain(const std::vector<int64_t>& axis, int64_t i, int64_t ndim) {
-  for (int64_t j = 0; i < static_cast<int64_t>(axis.size()); j++) {
-    int64_t tmp = axis[j] < 0 ? axis[j] + ndim : axis[j];
-
-    if (tmp == i) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-bool cmp(const int64_t& a, const int64_t& b) { return a > b; }
+bool UnsqueezeCmp(const int64_t& a, const int64_t& b) { return a > b; }
 
 SpmdInfo UnsqueezeInferSpmd(const DistMetaTensor& x,
                             const std::vector<int64_t>& axis) {
@@ -71,7 +59,7 @@ SpmdInfo UnsqueezeInferSpmd(const DistMetaTensor& x,
     }
   }
 
-  std::sort(axis_copy.begin(), axis_copy.end(), cmp);
+  std::sort(axis_copy.begin(), axis_copy.end(), UnsqueezeCmp);
 
   for (int64_t i = static_cast<int64_t>(axis_copy.size()) - 1; i >= 0; i--) {
     tgt_shape.emplace(tgt_shape.begin() + axis_copy[i], 1);
