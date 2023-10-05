@@ -162,7 +162,7 @@
   kernel :
     func : fused_fc_elementwise_layernorm
     data_type : x
-  optional : bias0, scale, bias1
+  optional : bias0, scale, bias1, mean, variance
 
 - op : fused_linear_param_grad_add
   args : (Tensor x, Tensor dout, Tensor dweight, Tensor dbias, bool multi_precision = true, bool has_bias = true)
