@@ -98,7 +98,7 @@ void LaunchQuantKernel(const T* input,
                        const float min_bound,
                        gpuStream_t stream) {
   // TODO(minghaoBD): optimize the kennel launch times when m==1 or n==1
-  dim3 grid((n >> 2 + 31) / 32, (m + 31) / 32);
+  dim3 grid(((n >> 2) + 31) / 32, (m + 31) / 32);
   dim3 block(32, 32);
 
   QuantKernel<<<grid, block, 0, stream>>>(input,
