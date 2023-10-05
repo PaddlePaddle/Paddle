@@ -1986,7 +1986,7 @@ void FusedFCElementwiseLayerNormInferMeta(const MetaTensor& x,
                                           const MetaTensor& scale,
                                           const MetaTensor& bias1,
                                           const int x_num_col_dims,
-                                          const std::string activation_type,
+                                          const std::string& activation_type,
                                           const float epsilon,
                                           const int begin_norm_axis,
                                           MetaTensor* out,
@@ -2159,7 +2159,7 @@ void FusedFCElementwiseLayerNormInferMeta(const MetaTensor& x,
 
   out->set_dims(y_dims);
   if (mean) {
-    mean->set_dims({dim_0})
+    mean->set_dims({dim_0});
   }
   if (variance) {
     variance->set_dims({dim_0});

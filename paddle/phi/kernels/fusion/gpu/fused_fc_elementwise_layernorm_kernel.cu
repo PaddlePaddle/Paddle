@@ -391,7 +391,7 @@ void FusedFCElementwiseLayerNormKernel(
     const paddle::optional<DenseTensor>& scale,
     const paddle::optional<DenseTensor>& bias1,
     const int x_num_col_dims,
-    const std::string activation_type,
+    const std::string& activation_type,
     const float epsilon,
     const int begin_norm_axis,
     DenseTensor* out,
