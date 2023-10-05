@@ -282,6 +282,48 @@ class TestFCOpQuantNoBias2(TestFCOp):
         self.matrix.weights = quant_weights(self.matrix.weights, self.scale_weights, self.quant_round_type, self.quant_max_bound, self.quant_min_bound)
 
 
+class TestFCOpQuantNoBias3(TestFCOp):
+    def config(self):
+        self.with_bias = False
+        self.with_relu = False
+        self.is_quant = True
+        self.quant_round_type = 1
+        self.quant_max_bound = 127
+        self.quant_min_bound = -127
+        self.matrix = MatrixGenerate(2, 6, 10, 1, 1, 2)
+        self.scale_in = get_scale_in(self.matrix.input)
+        self.scale_weights = get_scale_weights(self.matrix.weights)
+        self.matrix.weights = quant_weights(self.matrix.weights, self.scale_weights, self.quant_round_type, self.quant_max_bound, self.quant_min_bound)
+
+
+class TestFCOpQuantNoBias4(TestFCOp):
+    def config(self):
+        self.with_bias = False
+        self.with_relu = False
+        self.is_quant = True
+        self.quant_round_type = 1
+        self.quant_max_bound = 127
+        self.quant_min_bound = -127
+        self.matrix = MatrixGenerate(2, 14, 10, 1, 1, 2)
+        self.scale_in = get_scale_in(self.matrix.input)
+        self.scale_weights = get_scale_weights(self.matrix.weights)
+        self.matrix.weights = quant_weights(self.matrix.weights, self.scale_weights, self.quant_round_type, self.quant_max_bound, self.quant_min_bound)
+
+
+class TestFCOpQuantNoBias5(TestFCOp):
+    def config(self):
+        self.with_bias = False
+        self.with_relu = False
+        self.is_quant = True
+        self.quant_round_type = 1
+        self.quant_max_bound = 127
+        self.quant_min_bound = -127
+        self.matrix = MatrixGenerate(2, 1, 10, 1, 1, 2)
+        self.scale_in = get_scale_in(self.matrix.input)
+        self.scale_weights = get_scale_weights(self.matrix.weights)
+        self.matrix.weights = quant_weights(self.matrix.weights, self.scale_weights, self.quant_round_type, self.quant_max_bound, self.quant_min_bound)
+
+
 class TestFCOpQuantWithBias1(TestFCOp):
     def config(self):
         self.with_bias = True

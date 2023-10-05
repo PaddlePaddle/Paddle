@@ -403,15 +403,15 @@ void FCInt8Functor<DeviceContext, T>::operator()(
                                  quant_x_tensor.numel() * sizeof(int8_t));
   context.template Alloc<int32_t>(&quant_y_tensor,
                                   quant_y_tensor.numel() * sizeof(int32_t));
-  LaunchQuantKernel(X,
-                    quant_x_tensor.data<int8_t>(),
-                    scale_in,
-                    M,
-                    K,
-                    quant_round_type,
-                    quant_max_bound,
-                    quant_min_bound,
-                    context.stream());
+  LaunchQuantKernelWithVecSize<T>(X,
+                                  quant_x_tensor.data<int8_t>(),
+                                  scale_in,
+                                  M,
+                                  K,
+                                  quant_round_type,
+                                  quant_max_bound,
+                                  quant_min_bound,
+                                  context.stream());
 
   MatmulKernel<int8_t, GPUContext>(
       context, quant_x_tensor, *w_tensor, false, false, &quant_y_tensor);

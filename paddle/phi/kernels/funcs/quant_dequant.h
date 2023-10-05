@@ -88,6 +88,75 @@ __global__ void QuantKernel(const T* input,
 }
 
 template <typename T>
+__global__ void QuantKernel(const T* input,
+                            char3* output,
+                            const float scale,
+                            const int m,
+                            const int n,
+                            const int round_type,
+                            const float max_bound,
+                            const float min_bound) {
+  int n_id = (blockIdx.x * blockDim.x + threadIdx.x) * 3;
+  int m_id = blockIdx.y * blockDim.y + threadIdx.y;
+
+  bool check = ((m_id < m) && (n_id < n));
+  if (check) {
+    char3 tmp;
+    tmp.x = quant_helper(
+        input[m_id * n + n_id], scale, round_type, max_bound, min_bound);
+    tmp.y = quant_helper(
+        input[m_id * n + n_id + 1], scale, round_type, max_bound, min_bound);
+    tmp.z = quant_helper(
+        input[m_id * n + n_id + 2], scale, round_type, max_bound, min_bound);
+    output[(m_id * n + n_id) / 3] = tmp;
+  }
+}
+
+template <typename T>
+__global__ void QuantKernel(const T* input,
+                            char2* output,
+                            const float scale,
+                            const int m,
+                            const int n,
+                            const int round_type,
+                            const float max_bound,
+                            const float min_bound) {
+  int n_id = (blockIdx.x * blockDim.x + threadIdx.x) * 2;
+  int m_id = blockIdx.y * blockDim.y + threadIdx.y;
+
+  bool check = ((m_id < m) && (n_id < n));
+  if (check) {
+    char2 tmp;
+    tmp.x = quant_helper(
+        input[m_id * n + n_id], scale, round_type, max_bound, min_bound);
+    tmp.y = quant_helper(
+        input[m_id * n + n_id + 1], scale, round_type, max_bound, min_bound);
+    output[(m_id * n + n_id) >> 1] = tmp;
+  }
+}
+
+template <typename T>
+__global__ void QuantKernel(const T* input,
+                            char* output,
+                            const float scale,
+                            const int m,
+                            const int n,
+                            const int round_type,
+                            const float max_bound,
+                            const float min_bound) {
+  int n_id = (blockIdx.x * blockDim.x + threadIdx.x);
+  int m_id = blockIdx.y * blockDim.y + threadIdx.y;
+
+  bool check = ((m_id < m) && (n_id < n));
+  if (check) {
+    char tmp;
+    tmp = quant_helper(
+        input[m_id * n + n_id], scale, round_type, max_bound, min_bound);
+    output[m_id * n + n_id] = tmp;
+  }
+}
+
+template <typename T>
 void LaunchQuantKernel(const T* input,
                        int8_t* output,
                        const float scale,
@@ -109,6 +178,74 @@ void LaunchQuantKernel(const T* input,
                                           round_type,
                                           max_bound,
                                           min_bound);
+}
+
+template <typename T>
+void LaunchQuantKernelWithVecSize(const T* input,
+                                  int8_t* output,
+                                  const float scale,
+                                  const int m,
+                                  const int n,
+                                  const int round_type,
+                                  const float max_bound,
+                                  const float min_bound,
+                                  gpuStream_t stream) {
+  int vec_size = 1;
+  if (n % 4 == 0) {
+    vec_size = 4;
+  } else if (n % 3 == 0) {
+    vec_size = 3;
+  } else if (n % 2 == 0) {
+    vec_size = 2;
+  }
+
+  dim3 grid(((n / vec_size) + 31) / 32, (m + 31) / 32);
+  dim3 block(32, 32);
+
+  switch (vec_size) {
+    case 4:
+      QuantKernel<<<grid, block, 0, stream>>>(input,
+                                              (char4*)output,  // NOLINT
+                                              scale,
+                                              m,
+                                              n,
+                                              round_type,
+                                              max_bound,
+                                              min_bound);
+      break;
+    case 3:
+      QuantKernel<<<grid, block, 0, stream>>>(input,
+                                              (char3*)output,  // NOLINT
+                                              scale,
+                                              m,
+                                              n,
+                                              round_type,
+                                              max_bound,
+                                              min_bound);
+      break;
+    case 2:
+      QuantKernel<<<grid, block, 0, stream>>>(input,
+                                              (char2*)output,  // NOLINT
+                                              scale,
+                                              m,
+                                              n,
+                                              round_type,
+                                              max_bound,
+                                              min_bound);
+      break;
+    case 1:
+      QuantKernel<<<grid, block, 0, stream>>>(input,
+                                              (char*)output,  // NOLINT
+                                              scale,
+                                              m,
+                                              n,
+                                              round_type,
+                                              max_bound,
+                                              min_bound);
+      break;
+    default:
+      return;
+  }
 }
 
 template <typename T, int VecSize>
