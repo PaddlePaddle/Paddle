@@ -76,6 +76,8 @@ class TestHistogramddAPI(unittest.TestCase):
         self.weights_dy = None
         if self.weights is not None:
             self.weights_dy = paddle.to_tensor(self.weights)
+        if isinstance(self.bins, tuple):
+            self.bins = tuple([paddle.to_tensor(bin) for bin in self.bins])
         hist, edges = paddle.histogramdd(self.sample_dy, bins=self.bins, weights=self.weights_dy, range=self.range, density=self.density)
 
         np.testing.assert_allclose(self.expect_hist, hist.numpy(), rtol=1e-4, atol=1e-4)
@@ -316,6 +318,64 @@ class TestHistogramddAPICase8MoreInnermostDimAndDensity(TestHistogramddAPI):
                             [ 2.,  9., 16.],
                             [ 1.,  4.,  7., 10.],
                             [ 2.0000,  4.5000,  7.0000,  9.5000, 12.0000]]
+        
+class TestHistogramddAPICase9ForIntBin(TestHistogramddAPI):
+    def init_input(self):
+        # shape: [4,2,2]
+        self.sample = np.array([
+                [[1., 2.], [3., 4.]],
+                [[5., 6.], [7., 8.]],
+                [[9., 10.], [11., 12.]],
+                [[13., 14.], [15., 16.]],
+            ])
+        self.weights = np.array([
+            [1., 2.],
+            [3., 4.],
+            [5., 6.],
+            [7., 8.],
+        ])
+        self.bins = 5
+        self.density = True
+        self.range = [1., 10., 1., 100.]
+
+
+    def set_expect_output(self):
+        self.expect_hist = np.array([[0.0019, 0.0000, 0.0000, 0.0000, 0.0000],
+                                    [0.0037, 0.0000, 0.0000, 0.0000, 0.0000],
+                                    [0.0056, 0.0000, 0.0000, 0.0000, 0.0000],
+                                    [0.0075, 0.0000, 0.0000, 0.0000, 0.0000],
+                                    [0.0094, 0.0000, 0.0000, 0.0000, 0.0000]])
+        self.expect_edges = [[ 1.0000,  2.8000,  4.6000,  6.4000,  8.2000, 10.0000],
+                            [  1.0000,  20.8000,  40.6000,  60.4000,  80.2000, 100.0000]]
+
+class TestHistogramddAPICase10ForTensorBin(TestHistogramddAPI):
+    def init_input(self):
+        # shape: [4,2,2]
+        self.sample = np.array([
+                [[1., 2.], [3., 4.]],
+                [[5., 6.], [7., 8.]],
+                [[9., 10.], [11., 12.]],
+                [[13., 14.], [15., 16.]],
+            ])
+        self.weights = np.array([
+            [1., 2.],
+            [3., 4.],
+            [5., 6.],
+            [7., 8.],
+        ])
+        self.bins = (np.array([1., 2., 10., 15., 20.]), np.array([0., 20., 100.]))
+        self.density = True
+        
+
+    def set_expect_output(self):
+        self.expect_hist = np.array([[0.0014, 0.0000],
+                                    [0.0024, 0.0000],
+                                    [0.0036, 0.0000],
+                                    [0.0022, 0.0000]])
+        self.expect_edges = [[ 1.,  2., 10., 15., 20.],
+                            [  0.,  20., 100.]]
+
+
 
 if __name__ == '__main__':
     paddle.enable_static()

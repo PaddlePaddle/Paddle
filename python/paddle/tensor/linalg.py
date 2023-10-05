@@ -3841,6 +3841,7 @@ def histogramdd(sample, bins=10, range=None, density=None, weights=None, name=No
             dedges.append(e.diff())
     elif isinstance(bins, tuple):  # tuple with D tensors for each innermost dimension
         for bin in bins:
+            bin = paddle.to_tensor(bin)
             edges.append(bin)
             dedges.append(bin.diff())
     hist_shape = [edge.shape[0] + 1 for edge in edges]
