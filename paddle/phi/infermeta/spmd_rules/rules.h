@@ -65,6 +65,12 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
 
+// default_data_parallel rule
+PD_REGISTER_SPMD_RULE(
+    default_data_parallel,
+    PD_INFER_SPMD(phi::distributed::DefaultDataParallelInferSpmd),
+    PD_INFER_SPMD(phi::distributed::DefaultDataParallelInferSpmdReverse));
+
 // unsqueeze rule
 PD_REGISTER_SPMD_RULE(
     unsqueeze,
