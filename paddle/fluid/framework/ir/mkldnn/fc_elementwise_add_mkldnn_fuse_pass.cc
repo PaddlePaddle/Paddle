@@ -114,11 +114,17 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
     }
 
     // Binary_add may have some error when scale in int8, thus skip
-    proto::VarType::Type data_type = fc_input->Var()->GetDataType();
-    LOG(INFO) << "This is data type";
-    LOG(INFO) << fc_input->Var()->GetDataType();
-    if (data_type == proto::VarType::INT8 ||
-        data_type == proto::VarType::UINT8) {
+    // proto::VarType::Type data_type = fc_input->Var()->GetDataType();
+    // LOG(INFO) << "This is data type";
+    // LOG(INFO) << fc_input->Var()->GetDataType();
+    // if (data_type == proto::VarType::INT8 ||
+    //     data_type == proto::VarType::UINT8) {
+    //   LOG(INFO) << "Skip fusion fc + elementwise_add with int8 data type";
+    //   return;
+    // }
+
+    // skip if should not be quantized
+    if (platform::HasOpINT8DataType(fc_op->Op())) {
       LOG(INFO) << "Skip fusion fc + elementwise_add with int8 data type";
       return;
     }
