@@ -280,11 +280,11 @@ struct Argument {
   DECL_ARGUMENT_FIELD(tensorrt_optimization_level,
                       TensorRtOptimizationLevel,
                       int);
-  DECL_ARGUMENT_FIELD(tensorrt_ops_run_float,
-                      TensorRtOpsRunFloat,
+  DECL_ARGUMENT_FIELD(tensorrt_run_float_output_names,
+                      TensorRtRunFloatOutputNames,
                       std::unordered_set<std::string>);
-  DECL_ARGUMENT_FIELD(tensorrt_layers_run_float,
-                      TensorRtLayersRunFloat,
+  DECL_ARGUMENT_FIELD(tensorrt_run_float_op_types,
+                      TensorRtRunFloatOpTypes,
                       std::unordered_set<std::string>);
 
   DECL_ARGUMENT_FIELD(use_dlnne, UseDlnne, bool);

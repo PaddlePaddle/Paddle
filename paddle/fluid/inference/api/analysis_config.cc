@@ -482,8 +482,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(trt_engine_memory_sharing_);
   CP_MEMBER(trt_engine_memory_sharing_identifier_);
   CP_MEMBER(trt_optimization_level_);
-  CP_MEMBER(trt_ops_run_float_);
-  CP_MEMBER(trt_layers_run_float_);
+  CP_MEMBER(trt_run_float_output_names_);
+  CP_MEMBER(trt_run_float_op_types_);
   // Dlnne related
   CP_MEMBER(use_dlnne_);
   CP_MEMBER(dlnne_min_subgraph_size_);
@@ -796,10 +796,10 @@ void AnalysisConfig::EnableTensorRTMemoryOptim(bool engine_memory_sharing,
 }
 
 void AnalysisConfig::Exp_DisableTensorRtHalfOps(
-    const std::unordered_set<std::string> &ops_run_float,
-    const std::unordered_set<std::string> &layers_run_float) {
-  trt_ops_run_float_ = ops_run_float;
-  trt_layers_run_float_ = layers_run_float;
+    const std::unordered_set<std::string> &output_names,
+    const std::unordered_set<std::string> &op_types) {
+  trt_run_float_output_names_ = output_names;
+  trt_run_float_op_types_ = op_types;
 }
 
 void AnalysisConfig::EnableLowPrecisionIO(bool x) {

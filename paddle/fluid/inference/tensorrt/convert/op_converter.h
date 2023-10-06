@@ -378,7 +378,7 @@ class OpConverter {
     if (engine_->OpIsRunFloat(output_name) ||
         engine_->LayerIsRunFloat(op_type)) {
       VLOG(3) << op_type << "(output: " << output_name << ")"
-              << " is forced to run on Float32.";
+              << " is forced to run in FP32 precision.";
       layer->resetPrecision();
       layer->setPrecision(nvinfer1::DataType::kFLOAT);
     }

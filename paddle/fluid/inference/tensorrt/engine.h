@@ -318,18 +318,18 @@ class TensorRTEngine {
     return quant_dynamic_range_.count(tensor);
   }
 
-  void SetRunFloat(const std::unordered_set<std::string>& ops,
-                   const std::unordered_set<std::string>& layers) {
-    ops_run_float_ = ops;
-    layers_run_float_ = layers;
+  void SetRunFloat(const std::unordered_set<std::string>& output_names,
+                   const std::unordered_set<std::string>& op_types) {
+    run_float_output_names_ = output_names;
+    run_float_op_types_ = op_types;
   }
 
-  bool OpIsRunFloat(const std::string& op_type) const {
-    return ops_run_float_.count(op_type) > 0;
+  bool OpIsRunFloat(const std::string& output_name) const {
+    return run_float_output_names_.count(output_name) > 0;
   }
 
-  bool LayerIsRunFloat(const std::string& layer_type) const {
-    return layers_run_float_.count(layer_type) > 0;
+  bool LayerIsRunFloat(const std::string& op_type) const {
+    return run_float_op_types_.count(op_type) > 0;
   }
 
   // A pointer to CPU memory is needed of the TRT weight.
@@ -603,8 +603,8 @@ class TensorRTEngine {
   const framework::Scope* scope_{nullptr};
 
   // specify run on float to avoid overflow
-  std::unordered_set<std::string> ops_run_float_;
-  std::unordered_set<std::string> layers_run_float_;
+  std::unordered_set<std::string> run_float_output_names_;
+  std::unordered_set<std::string> run_float_op_types_;
 
 #if IS_TRT_VERSION_GE(6000)
   int binding_num_;

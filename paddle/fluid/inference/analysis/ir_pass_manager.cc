@@ -226,12 +226,12 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("use_inspector", new bool(argument->tensorrt_use_inspector()));
       pass->Set("inspector_serialize",
                 new bool(argument->tensorrt_inspector_serialize()));
-      pass->Set("trt_ops_run_float",
+      pass->Set("trt_run_float_output_names",
                 new std::unordered_set<std::string>(
-                    argument->tensorrt_ops_run_float()));
-      pass->Set("trt_layers_run_float",
+                    argument->tensorrt_run_float_output_names()));
+      pass->Set("trt_run_float_op_types",
                 new std::unordered_set<std::string>(
-                    argument->tensorrt_layers_run_float()));
+                    argument->tensorrt_run_float_op_types()));
       // tuned trt dynamic_shape
       pass->Set("trt_shape_range_info_path",
                 new std::string(argument->tensorrt_shape_range_info_path()));

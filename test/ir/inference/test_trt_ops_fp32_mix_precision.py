@@ -41,7 +41,7 @@ class TensorRTConv2dFp32MixPrecisionTest(InferencePassTest):
                 act=None,
             )
         self.feeds = {
-            "data": np.random.random([1, 6, 64, 64]).astype("float32"),
+            "data": (np.ones([1, 6, 64, 64]) * 70000).astype("float32"),
         }
 
         output_name = ["save_infer_model/scale_0.tmp_0"]
@@ -65,6 +65,45 @@ class TensorRTConv2dFp32MixPrecisionTest(InferencePassTest):
         self.conv_groups = 3
         self.conv_padding = [1, 1]
         self.use_cudnn = True
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            trt_compile_version = paddle.inference.get_trt_compile_version()
+            trt_runtime_version = paddle.inference.get_trt_runtime_version()
+            valid_version = (8, 2, 1)
+            if (
+                trt_compile_version >= valid_version
+                and trt_runtime_version >= valid_version
+            ):
+                use_gpu = True
+                self.check_output_with_option(use_gpu)
+
+
+class TensorRTMatrixMultiplyFp32MixPrecisionTest(InferencePassTest):
+    def setUp(self):
+        with base.program_guard(self.main_program, self.startup_program):
+            data = paddle.static.data(
+                name="data", shape=[-1, 10], dtype="float32"
+            )
+            conv_out = paddle.static.nn.fc(data, 10)
+        self.feeds = {
+            "data": (np.ones([1, 10]) * 70000).astype("float32"),
+        }
+
+        output_name = ["save_infer_model/scale_0.tmp_1"]
+        self.enable_trt = True
+        self.trt_parameters = InferencePassTest.TensorRTParam(
+            1 << 30,
+            1,
+            0,
+            AnalysisConfig.Precision.Half,
+            False,
+            False,
+            False,
+            False,
+            set(output_name),
+        )
+        self.fetch_list = [conv_out]
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
