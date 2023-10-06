@@ -6952,14 +6952,14 @@ def signbit(x, name=None):
             >>> import paddle
 
             >>> # example1
-            >>> x = paddle.to_tensor([1.1, -2.1, 0., 2.5], dtype='float32')
+            >>> x = paddle.to_tensor([1.1, -2.1, -0., 2.5], dtype='float32')
             >>> res = paddle.signbit(x, y)
             >>> print(res)
             Tensor(shape=[4], dtype=bool, place=Place(cpu), stop_gradient=True,
-            [False , True, False, False])
+            [False , True, True, False])
 
             >>> # example2
-            >>> x = paddle.to_tensor([-0, -2, 3], dtype='int32')
+            >>> x = paddle.to_tensor([-5, -2, 3], dtype='int32')
             >>> res = paddle.signbit(x, y)
             >>> print(res)
             Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
@@ -6971,5 +6971,7 @@ def signbit(x, name=None):
     
     check_variable_and_dtype(x, "x", ['float16', 'float32', 'float64', 'bfloat16', 'int8', 'int16', 'int32', 'int64'], "signbit")
     
-    
+    out_mask = paddle.cast(x < 0, dtype='bool')
+    out_mask[x == -0] = True
+    return out_mask
     
