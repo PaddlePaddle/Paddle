@@ -1298,8 +1298,8 @@
     weight_x : WeightX
     weight_h : WeightH
     bias : Bias
-    recorder_h0 : ReorderedH0
   outputs :
+    reordered_h0 : ReorderedH0
     xx : XX
     batched_input : BatchedInput
     batched_out : BatchedOut

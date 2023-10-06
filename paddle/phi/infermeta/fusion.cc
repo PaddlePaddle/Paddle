@@ -1842,4 +1842,134 @@ void SqueezeExcitationInferMeta(const MetaTensor& x,
   out->set_dims(DDim(out_shape.data(), static_cast<int>(out_shape.size())));
 }
 
+void FusionGRUInferMeta(const MetaTensor& x,
+                        const MetaTensor& h0,
+                        const MetaTensor& weight_x,
+                        const MetaTensor& weight_h,
+                        const MetaTensor& bias,
+                        const std::string& activation,
+                        const std::string& gate_activation,
+                        const bool is_reverse,
+                        const bool use_seq,
+                        const bool origin_mode,
+                        const bool use_mkldnn,
+                        const std::string& mkldnn_data_type,
+                        const float scale_data,
+                        const float shift_data,
+                        const std::vector<float>& scale_weights,
+                        const bool force_fp32_output,
+                        MetaTensor* reordered_h0,
+                        MetaTensor* xx,
+                        MetaTensor* batched_input,
+                        MetaTensor* batched_out,
+                        MetaTensor* hidden) {
+  DDim x_dims = x.dims();
+  auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1)
+                        ? phi::flatten_to_2d(x_dims, 1)
+                        : x_dims;
+  PADDLE_ENFORCE_EQ(
+      x_mat_dims.size(),
+      2,
+      phi::errors::InvalidArgument("The size of input X dims should be 2, "
+                                   "or 3 with second dimension equal to "
+                                   "1, but now Input X dim is:[%s] ",
+                                   x_dims));
+
+  auto wx_dims = weight_x.dims();
+  PADDLE_ENFORCE_EQ(wx_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The rank of Input(WeightX) should be 2, but received "
+                        "WeightX dim size is:%d, WeightX dim is:[%s] ",
+                        wx_dims.size(),
+                        wx_dims));
+  PADDLE_ENFORCE_EQ(
+      wx_dims[0],
+      x_mat_dims[1],
+      phi::errors::InvalidArgument(
+          "The first dimension of flattened WeightX"
+          "should equal to last dimension of flattened input X, but "
+          "received fattened WeightX dimension is:%d, flattened X dimension "
+          "is:%d",
+          wx_dims[0],
+          x_mat_dims[1]));
+
+  int frame_size = static_cast<int>(wx_dims[1] / 3);
+  auto wh_dims = weight_h.dims();
+
+  PADDLE_ENFORCE_EQ(wh_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The rank of Input(WeightH) should be 2, but received "
+                        "WeightH dim size is:%d, WeightH dim is:[%s]",
+                        wh_dims.size(),
+                        wh_dims));
+  PADDLE_ENFORCE_EQ(wh_dims[0],
+                    frame_size,
+                    phi::errors::InvalidArgument(
+                        "The first dimension of WeightH "
+                        "should equal to frame_size, but received WeightH's "
+                        "first dimension is: "
+                        "%d, frame size is:%d",
+                        wh_dims[0],
+                        frame_size));
+  PADDLE_ENFORCE_EQ(wh_dims[1],
+                    3 * frame_size,
+                    phi::errors::InvalidArgument(
+                        "The second dimension of Input(WeightH) "
+                        "should equal to 3 * frame_size, but received WeightH "
+                        "is:%d, frame size is:%d",
+                        wh_dims[1],
+                        frame_size));
+
+  if (h0) {
+    auto h0_dims = h0.dims();
+    PADDLE_ENFORCE_EQ(h0_dims[1],
+                      frame_size,
+                      phi::errors::InvalidArgument(
+                          "The width of H0 must be equal to frame_size, but "
+                          "receiced the width of H0 is:%d, frame size is:%d",
+                          h0_dims[1],
+                          frame_size));
+  }
+  if (bias) {
+    auto b_dims = bias.dims();
+    PADDLE_ENFORCE_EQ(b_dims.size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "The rank of Input(Bias) should be 2, but received "
+                          "Bias rank is:%d, Bias dim is:[%s]",
+                          b_dims.size(),
+                          b_dims));
+    PADDLE_ENFORCE_EQ(b_dims[0],
+                      1,
+                      phi::errors::InvalidArgument(
+                          "The first dimension of Input(Bias) should be 1, but "
+                          "received Bias first dim is:%d, Bias dim is:[%s]",
+                          b_dims[0],
+                          b_dims));
+    PADDLE_ENFORCE_EQ(b_dims[1],
+                      frame_size * 3,
+                      phi::errors::InvalidArgument(
+                          "The shape of Bias must be [1, frame_size * 3], but "
+                          "received bias dim is:[%s], frame size is:%d",
+                          b_dims,
+                          frame_size));
+  }
+  DDim out_dims({x_mat_dims[0], frame_size});
+  hidden->set_dims(out_dims);
+  hidden->share_lod(x);
+  int xx_width;
+  if (use_seq) {
+    xx_width = static_cast<int>(wx_dims[1]);
+  } else {
+    xx_width = static_cast<int>(x_mat_dims[1] > wx_dims[1] ? wx_dims[1]
+                                                           : x_mat_dims[1]);
+    batched_input->set_dims({x_mat_dims[0], wx_dims[1]});
+    batched_out->set_dims(out_dims);
+  }
+  xx->set_dims({x_mat_dims[0], xx_width});
+  xx->share_lod(x);
+}
+
 }  // namespace phi

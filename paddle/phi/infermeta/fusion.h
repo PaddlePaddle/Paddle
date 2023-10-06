@@ -485,4 +485,26 @@ void SqueezeExcitationInferMeta(const MetaTensor& x,
                                 const std::vector<int>& filter_dims,
                                 MetaTensor* out);
 
+void FusionGRUInferMeta(const MetaTensor& x,
+                        const MetaTensor& h0,
+                        const MetaTensor& weight_x,
+                        const MetaTensor& weight_h,
+                        const MetaTensor& bias,
+                        const std::string& activation,
+                        const std::string& gate_activation,
+                        const bool is_reverse,
+                        const bool use_seq,
+                        const bool origin_mode,
+                        const bool use_mkldnn,
+                        const std::string& mkldnn_data_type,
+                        const float scale_data,
+                        const float shift_data,
+                        const std::vector<float>& scale_weights,
+                        const bool force_fp32_output,
+                        MetaTensor* reordered_h0,
+                        MetaTensor* xx,
+                        MetaTensor* batched_input,
+                        MetaTensor* batched_out,
+                        MetaTensor* hidden);
+
 }  // namespace phi

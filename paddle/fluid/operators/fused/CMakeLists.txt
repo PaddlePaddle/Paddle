@@ -16,7 +16,6 @@ register_operators(
   yolo_box_post_op
   fused_embedding_eltwise_layernorm_op
   fusion_group_op
-  fusion_gru_op
   fusion_lstm_op
   fused_bn_add_activation_op
   fused_attention_op
@@ -30,8 +29,6 @@ register_operators(
   fused_gate_attention_op
   resnet_basic_block_op)
 
-# fusion_gru_op does not have CUDA kernel
-op_library(fusion_gru_op)
 op_library(fusion_lstm_op)
 if(WITH_AVX
    AND AVX512F_FOUND
