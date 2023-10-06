@@ -24,34 +24,29 @@ from paddle.framework import core
 
 
 class TestSliceSPMDRule(unittest.TestCase):
-    """
-    Unit tests for slice spmd rule.
-    """
-
     def setUp(self):
-        input_shape = [64, 32, 48]
-        process_mesh = auto.ProcessMesh(mesh=[0, 1, 2, 3])
-
-        input_tensor_dist_attr = TensorDistAttr()
-        input_tensor_dist_attr.dims_mapping = [1, 0]
-        input_tensor_dist_attr.process_mesh = process_mesh
-        self.input_dist_tensor_spec = DistTensorSpec(
-            input_shape, input_tensor_dist_attr
-        )
-
-    def test_single_mesh_dim(self):
-        # axes = [1, 2], starts = [8, 16], ends = [16, 32]
-        # [-1, -1, 0] --> [-1, -1, -1], [-1, -1, -1], [-1, -1, -1], [-1, -1, -1]
         self.rule = core.get_phi_spmd_rule("slice")
+
+        x_shape = [8, 8, 16, 16]
+        process_mesh = auto.ProcessMesh(mesh=[[0, 1, 2, 3], [4, 5, 6, 7]])
+
+        x_tensor_dist_attr = TensorDistAttr()
+        x_tensor_dist_attr.dims_mapping = [-1, -1, -1, -1]
+        x_tensor_dist_attr.process_mesh = process_mesh
+        self.x_dist_tensor_spec = DistTensorSpec(x_shape, x_tensor_dist_attr)
         self.attrs = OrderedDict()
-        self.attrs['axes'] = [1, 2]
-        self.attrs['starts'] = [8, 16]
-        self.attrs['ends'] = [16, 32]
         self.attrs['infer_flags'] = []
         self.attrs['decrease_axis'] = []
-        self.input_dist_tensor_spec.set_dims_mapping([-1, -1, 0])
+
+    def test_slice_infer_forward(self):
+        # axes: [-1]
+        # dims_mapping: [-1, 0, 1, -1] --> [-1, 0, 1, -1] [-1, 0, 1, -1]
+        self.x_dist_tensor_spec.set_dims_mapping([-1, 0, 1, -1])
+        self.attrs['axes'] = [-1]
+        self.attrs['starts'] = [4]
+        self.attrs['ends'] = [8]
         result_dist_attrs = self.rule.infer_forward(
-            self.input_dist_tensor_spec,
+            self.x_dist_tensor_spec,
             self.attrs['axes'],
             self.attrs['starts'],
             self.attrs['ends'],
@@ -61,13 +56,246 @@ class TestSliceSPMDRule(unittest.TestCase):
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
 
-        self.assertEqual(len(result_dist_attrs), 2)
         self.assertEqual(len(infered_input_dist_attrs), 1)
         self.assertEqual(len(infered_output_dist_attrs), 1)
-
-        self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [-1, -1, -1])
         self.assertEqual(
-            infered_output_dist_attrs[0].dims_mapping, [-1, -1, -1]
+            infered_input_dist_attrs[0].dims_mapping, [-1, 0, 1, -1]
+        )
+        self.assertEqual(
+            infered_output_dist_attrs[0].dims_mapping, [-1, 0, 1, -1]
+        )
+
+        # axes: [-1]
+        # dims_mapping: [-1, -1, 1, 0] --> [-1, -1, 1, -1] [-1, -1, 1, -1]
+        self.x_dist_tensor_spec.set_dims_mapping([-1, -1, 1, 0])
+        self.attrs['axes'] = [-1]
+        self.attrs['starts'] = [4]
+        self.attrs['ends'] = [-1]
+        result_dist_attrs = self.rule.infer_forward(
+            self.x_dist_tensor_spec,
+            self.attrs['axes'],
+            self.attrs['starts'],
+            self.attrs['ends'],
+            self.attrs['infer_flags'],
+            self.attrs['decrease_axis'],
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(
+            infered_input_dist_attrs[0].dims_mapping, [-1, -1, 1, -1]
+        )
+        self.assertEqual(
+            infered_output_dist_attrs[0].dims_mapping, [-1, -1, 1, -1]
+        )
+
+        # axes: [1, 2]
+        # dims_mapping: [0, -1, -1, 1] --> [0, -1, -1, 1] [0, -1, -1, 1]
+        self.x_dist_tensor_spec.set_dims_mapping([0, -1, -1, 1])
+        self.attrs['axes'] = [1, 2]
+        self.attrs['starts'] = [4, 4]
+        self.attrs['ends'] = [-1, 32]
+        result_dist_attrs = self.rule.infer_forward(
+            self.x_dist_tensor_spec,
+            self.attrs['axes'],
+            self.attrs['starts'],
+            self.attrs['ends'],
+            self.attrs['infer_flags'],
+            self.attrs['decrease_axis'],
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(
+            infered_input_dist_attrs[0].dims_mapping, [0, -1, -1, 1]
+        )
+        self.assertEqual(
+            infered_output_dist_attrs[0].dims_mapping, [0, -1, -1, 1]
+        )
+
+        # axes: [1, 2]
+        # dims_mapping: [-1, 1, 0, -1] --> [-1, -1, -1, -1] [-1, -1, -1, -1]
+        self.x_dist_tensor_spec.set_dims_mapping([-1, 1, 0, -1])
+        self.attrs['axes'] = [1, 2]
+        self.attrs['starts'] = [4, 4]
+        self.attrs['ends'] = [-1, 32]
+        result_dist_attrs = self.rule.infer_forward(
+            self.x_dist_tensor_spec,
+            self.attrs['axes'],
+            self.attrs['starts'],
+            self.attrs['ends'],
+            self.attrs['infer_flags'],
+            self.attrs['decrease_axis'],
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(
+            infered_input_dist_attrs[0].dims_mapping, [-1, -1, -1, -1]
+        )
+        self.assertEqual(
+            infered_output_dist_attrs[0].dims_mapping, [-1, -1, -1, -1]
+        )
+
+        # axes: [0, 1, 2, 3]
+        # dims_mapping: [0, 1, -1, -1] --> [-1, -1, -1, -1] [-1, -1, -1, -1]
+        self.x_dist_tensor_spec.set_dims_mapping([0, 1, -1, -1])
+        self.attrs['axes'] = [0, 1, 2, 3]
+        self.attrs['starts'] = [0, 0, 4, 4]
+        self.attrs['ends'] = [4, 4, -1, 32]
+        result_dist_attrs = self.rule.infer_forward(
+            self.x_dist_tensor_spec,
+            self.attrs['axes'],
+            self.attrs['starts'],
+            self.attrs['ends'],
+            self.attrs['infer_flags'],
+            self.attrs['decrease_axis'],
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(
+            infered_input_dist_attrs[0].dims_mapping, [-1, -1, -1, -1]
+        )
+        self.assertEqual(
+            infered_output_dist_attrs[0].dims_mapping, [-1, -1, -1, -1]
+        )
+
+    def test_slice_infer_backward(self):
+        process_mesh = auto.ProcessMesh(mesh=[[0, 1, 2, 3], [4, 5, 6, 7]])
+
+        output_tensor_dist_attr = TensorDistAttr()
+        output_tensor_dist_attr.dims_mapping = [-1, -1, -1, -1]
+        output_tensor_dist_attr.process_mesh = process_mesh
+        self.output_dist_tensor_spec = DistTensorSpec(
+            [8, 8, 16, 16], output_tensor_dist_attr
+        )
+
+        # axes: [-1]
+        # dims_mapping: [-1, -1, 0, 1] --> [-1, -1, 0, -1], [-1, -1, 0, -1] (output --> input, output)
+        self.output_dist_tensor_spec.set_dims_mapping([-1, -1, 0, 1])
+        self.attrs['axes'] = [-1]
+        self.attrs['starts'] = [4]
+        self.attrs['ends'] = [8]
+        result_dist_attrs = self.rule.infer_backward(
+            self.x_dist_tensor_spec,
+            self.output_dist_tensor_spec,
+            self.attrs['axes'],
+            self.attrs['starts'],
+            self.attrs['ends'],
+            self.attrs['infer_flags'],
+            self.attrs['decrease_axis'],
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(len(infered_input_dist_attrs), 1)
+        self.assertEqual(len(infered_output_dist_attrs), 1)
+        self.assertEqual(
+            infered_input_dist_attrs[0].dims_mapping, [-1, -1, 0, -1]
+        )
+        self.assertEqual(
+            infered_output_dist_attrs[0].dims_mapping, [-1, -1, 0, -1]
+        )
+
+        # axes: [-1]
+        # dims_mapping: [-1, 1, 0, -1] --> [-1, 1, 0, -1], [-1, 1, 0, -1] (output --> input, output)
+        self.output_dist_tensor_spec.set_dims_mapping([-1, 1, 0, -1])
+        self.attrs['axes'] = [-1]
+        self.attrs['starts'] = [4]
+        self.attrs['ends'] = [-1]
+        result_dist_attrs = self.rule.infer_backward(
+            self.x_dist_tensor_spec,
+            self.output_dist_tensor_spec,
+            self.attrs['axes'],
+            self.attrs['starts'],
+            self.attrs['ends'],
+            self.attrs['infer_flags'],
+            self.attrs['decrease_axis'],
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(
+            infered_input_dist_attrs[0].dims_mapping, [-1, 1, 0, -1]
+        )
+        self.assertEqual(
+            infered_output_dist_attrs[0].dims_mapping, [-1, 1, 0, -1]
+        )
+
+        # axes: [1, 2]
+        # dims_mapping: [-1, 1, 0, -1] --> [-1, -1, -1, -1], [-1, -1, -1, -1] (output --> input, output)
+        self.output_dist_tensor_spec.set_dims_mapping([-1, 1, 0, -1])
+        self.attrs['axes'] = [1, 2]
+        self.attrs['starts'] = [4, 4]
+        self.attrs['ends'] = [-1, 32]
+        result_dist_attrs = self.rule.infer_backward(
+            self.x_dist_tensor_spec,
+            self.output_dist_tensor_spec,
+            self.attrs['axes'],
+            self.attrs['starts'],
+            self.attrs['ends'],
+            self.attrs['infer_flags'],
+            self.attrs['decrease_axis'],
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(
+            infered_input_dist_attrs[0].dims_mapping, [-1, -1, -1, -1]
+        )
+        self.assertEqual(
+            infered_output_dist_attrs[0].dims_mapping, [-1, -1, -1, -1]
+        )
+
+        # axes: [1, 2]
+        # dims_mapping: [0, -1, -1, 1] --> [0, -1, -1, 1], [0, -1, -1, 1] (output --> input, output)
+        self.output_dist_tensor_spec.set_dims_mapping([0, -1, -1, 1])
+        self.attrs['axes'] = [1, 2]
+        self.attrs['starts'] = [4, 4]
+        self.attrs['ends'] = [-1, 32]
+        result_dist_attrs = self.rule.infer_backward(
+            self.x_dist_tensor_spec,
+            self.output_dist_tensor_spec,
+            self.attrs['axes'],
+            self.attrs['starts'],
+            self.attrs['ends'],
+            self.attrs['infer_flags'],
+            self.attrs['decrease_axis'],
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(
+            infered_input_dist_attrs[0].dims_mapping, [0, -1, -1, 1]
+        )
+        self.assertEqual(
+            infered_output_dist_attrs[0].dims_mapping, [0, -1, -1, 1]
+        )
+
+        # axes: [0, 1, 2, 3]
+        # dims_mapping: [0, 1, -1, -1] --> [-1, -1, -1, -1] [-1, -1, -1, -1] (output --> input, output)
+        self.output_dist_tensor_spec.set_dims_mapping([0, 1, -1, -1])
+        self.attrs['axes'] = [0, 1, 2, 3]
+        self.attrs['starts'] = [0, 0, 4, 4]
+        self.attrs['ends'] = [4, 4, -1, 32]
+        result_dist_attrs = self.rule.infer_backward(
+            self.x_dist_tensor_spec,
+            self.output_dist_tensor_spec,
+            self.attrs['axes'],
+            self.attrs['starts'],
+            self.attrs['ends'],
+            self.attrs['infer_flags'],
+            self.attrs['decrease_axis'],
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(
+            infered_input_dist_attrs[0].dims_mapping, [-1, -1, -1, -1]
+        )
+        self.assertEqual(
+            infered_output_dist_attrs[0].dims_mapping, [-1, -1, -1, -1]
         )
 
 
