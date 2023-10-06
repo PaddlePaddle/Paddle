@@ -56,7 +56,8 @@ void OperatorDialect::initialize() {
               paddle::dialect::FusedGemmEpilogueOp,
               paddle::dialect::FusedGemmEpilogueGradOp,
               paddle::dialect::SplitGradOp,
-              paddle::dialect::IfOp>();
+              paddle::dialect::IfOp,
+              paddle::dialect::WhileOp>();
 
   RegisterInterfaces<ParameterConvertInterface>();
 }
@@ -67,7 +68,7 @@ void OperatorDialect::PrintType(pir::Type type, std::ostream &os) const {
   if (auto tensor_type = type.dyn_cast<DenseTensorType>()) {
     os << "tensor<";
     for (auto d : phi::vectorize(tensor_type.dims())) {
-      pir::ShapedTypeInterface::isDynamic(d) ? os << "?" : os << d;
+      pir::ShapedTypeInterface::IsDynamic(d) ? os << "?" : os << d;
       os << "x";
     }
     tensor_type.dtype().Print(os);

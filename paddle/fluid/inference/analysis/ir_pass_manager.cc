@@ -232,6 +232,9 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("trt_run_float_op_types",
                 new std::unordered_set<std::string>(
                     argument->tensorrt_run_float_op_types()));
+      pass->Set("use_explicit_quantization",
+                new bool(argument->tensorrt_use_explicit_quantization()));
+
       // tuned trt dynamic_shape
       pass->Set("trt_shape_range_info_path",
                 new std::string(argument->tensorrt_shape_range_info_path()));

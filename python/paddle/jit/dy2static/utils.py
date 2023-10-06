@@ -137,7 +137,7 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
     data can be various-length. This API is used in translating dygraph into
     static graph.
 
-     Note:
+    Note:
         The default :code:`stop_gradient` attribute of the Tensor created by
         this API is true, which means the gradient won't be passed backward
         through the data Tensor. Set :code:`var.stop_gradient = False` If
@@ -153,8 +153,7 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
            dtype: bool, float16, float32, float64, int8, int16, int32, int64,
            uint8. Default: float32
        lod_level (int, optional): The LoD level of the LoDTensor. Usually users
-           don't have to set this value. For more details about when and how to
-           use LoD level, see :ref:`user_guide_lod_tensor` . Default: 0
+           don't have to set this value. Default: 0
 
     Returns:
         Tensor: The global Tensor that gives access to the data.

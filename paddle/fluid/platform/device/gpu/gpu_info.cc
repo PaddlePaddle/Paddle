@@ -52,10 +52,10 @@ PHI_DECLARE_uint64(reallocate_gpu_memory_in_mb);
 PHI_DECLARE_bool(enable_cublas_tensor_op_math);
 PHI_DECLARE_uint64(gpu_memory_limit_mb);
 
-PADDLE_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log,
-                            false,
-                            "Whether to print the message of gpu memory usage "
-                            "at exit, mainly used for UT and CI.");
+PHI_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log,
+                         false,
+                         "Whether to print the message of gpu memory usage "
+                         "at exit, mainly used for UT and CI.");
 PADDLE_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log_mb,
                             true,
                             "Whether to print the message of gpu memory usage "

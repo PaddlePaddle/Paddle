@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/phi/core/ddim.h"
 #include "paddle/utils/any.h"
 #include "paddle/utils/optional.h"
+#include "paddle/utils/test_macros.h"
 
 namespace phi {
 
@@ -45,7 +46,7 @@ using LoD = std::vector<std::vector<size_t>>;
 /// \brief The meta data of dense tensor. Take the structure type
 /// and use all default operations.
 ///
-struct DenseTensorMeta {
+struct TEST_API DenseTensorMeta {
   DenseTensorMeta();
   DenseTensorMeta(DataType dtype, const DDim& dims);
   DenseTensorMeta(DataType dtype, const DDim& dims, const DDim& stride);

@@ -1316,7 +1316,7 @@ class TranslatedLayer(layers.Layer):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP
+            >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
             >>> import numpy as np
             >>> import paddle
             >>> import paddle.nn as nn
@@ -1526,7 +1526,7 @@ class TranslatedLayer(layers.Layer):
         Examples:
             .. code-block:: python
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
                 >>> import numpy as np
                 >>> import paddle
                 >>> from paddle import nn
