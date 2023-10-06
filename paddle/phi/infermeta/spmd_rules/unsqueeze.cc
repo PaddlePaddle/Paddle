@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/infermeta/spmd_rules/unsqueeze.h"
-#include <algorithm>
 #include <numeric>
 
 #include "glog/logging.h"
@@ -59,9 +58,7 @@ SpmdInfo UnsqueezeInferSpmd(const DistMetaTensor& x,
     }
   }
 
-  std::sort(axis_copy.begin(), axis_copy.end(), UnsqueezeCmp);
-
-  for (int64_t i = static_cast<int64_t>(axis_copy.size()) - 1; i >= 0; i--) {
+  for (int64_t i = 0, n = static_cast<int64_t>(axis_copy.size()); i < n; i++) {
     tgt_shape.emplace(tgt_shape.begin() + axis_copy[i], 1);
   }
 
