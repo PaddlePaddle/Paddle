@@ -66,7 +66,7 @@ def fc_quant_refer(matrix, with_bias, scale_in, scale_weights, quant_round_type 
 
     x_data = np.reshape(matrix.input, [in_n, in_c * in_h * in_w])
     quant_x_data = x_data.astype('float32')
-    quant_x_data = quant_x_data * quant_max_bound * scale_in
+    quant_x_data = quant_max_bound * scale_in * quant_x_data
     if quant_round_type == 0:
         round_array_with_ties_to_even(quant_x_data)
     else:
@@ -80,7 +80,7 @@ def fc_quant_refer(matrix, with_bias, scale_in, scale_weights, quant_round_type 
     result = None
     quant_result = np.dot(quant_x_data.astype('int32'), w_data.astype('int32'))
     scale_out = scale_weights * scale_in
-    result = quant_result / quant_max_bound / quant_max_bound / scale_out
+    result = quant_result / (quant_max_bound * quant_max_bound * scale_out)
     result = result.astype(x_data.dtype)
 
     if with_bias:
@@ -164,7 +164,7 @@ class TestFCOp(OpTest):
     def test_check_output(self):
         if hasattr(self, 'is_quant') and self.attrs['is_quant']:
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, check_dygraph=False, rtol=2e-2)
+            self.check_output_with_place(place, check_dygraph=False)
         else:
             self.check_output(check_dygraph=False)
 
@@ -273,7 +273,7 @@ class TestFCOpQuantNoBias2(TestFCOp):
         self.with_bias = False
         self.with_relu = False
         self.is_quant = True
-        self.quant_round_type = 1
+        self.quant_round_type = 0
         self.quant_max_bound = 127
         self.quant_min_bound = -127
         self.matrix = MatrixGenerate(2, 8, 10, 1, 1, 2)
@@ -315,7 +315,7 @@ class TestFCOpQuantNoBias5(TestFCOp):
         self.with_bias = False
         self.with_relu = False
         self.is_quant = True
-        self.quant_round_type = 1
+        self.quant_round_type = 0
         self.quant_max_bound = 127
         self.quant_min_bound = -127
         self.matrix = MatrixGenerate(2, 1, 10, 1, 1, 2)
@@ -343,7 +343,7 @@ class TestFCOpQuantWithBias2(TestFCOp):
         self.with_bias = True
         self.with_relu = True
         self.is_quant = True
-        self.quant_round_type = 1
+        self.quant_round_type = 0
         self.quant_max_bound = 127
         self.quant_min_bound = -127
         self.matrix = MatrixGenerate(3, 8, 10, 2, 1, 2)
@@ -371,7 +371,7 @@ class TestFCOpQuantWithPadding2(TestFCOp):
         self.with_bias = True
         self.with_relu = True
         self.is_quant = True
-        self.quant_round_type = 1
+        self.quant_round_type = 0
         self.quant_max_bound = 127
         self.quant_min_bound = -127
         self.matrix = MatrixGenerate(1, 4, 3, 128, 128, 2)

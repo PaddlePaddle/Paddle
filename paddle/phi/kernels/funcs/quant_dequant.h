@@ -43,6 +43,11 @@ inline HOSTDEVICE T roundWithTiesToEven(T x) {
 }
 
 template <typename T>
+inline HOSTDEVICE T roundWithTiesAwayFromZero(T x) {
+  return static_cast<T>(x > 0 ? ceil(x) : floor(x));
+}
+
+template <typename T>
 __forceinline__ __device__ int8_t quant_helper(const T input,
                                                const float scale,
                                                const int round_type,
@@ -54,6 +59,25 @@ __forceinline__ __device__ int8_t quant_helper(const T input,
     quant_value = static_cast<float>(roundWithTiesToEven(quant_value));
   } else {
     quant_value = static_cast<float>(round(quant_value));
+  }
+  quant_value = quant_value > max_bound ? max_bound : quant_value;
+  quant_value = quant_value < min_bound ? min_bound : quant_value;
+  return static_cast<int8_t>(quant_value);
+}
+
+template <typename T>
+__forceinline__ __device__ int8_t
+quant_helper_ties_to_even_or_away_from_zero(const T input,
+                                            const float scale,
+                                            const int round_type,
+                                            const float max_bound,
+                                            const float min_bound) {
+  float quant_value = max_bound * scale * static_cast<float>(input);
+
+  if (round_type == 0) {
+    quant_value = static_cast<float>(roundWithTiesToEven(quant_value));
+  } else {
+    quant_value = static_cast<float>(roundWithTiesAwayFromZero(quant_value));
   }
   quant_value = quant_value > max_bound ? max_bound : quant_value;
   quant_value = quant_value < min_bound ? min_bound : quant_value;
@@ -88,69 +112,96 @@ __global__ void QuantKernel(const T* input,
 }
 
 template <typename T>
-__global__ void QuantKernel(const T* input,
-                            char3* output,
-                            const float scale,
-                            const int m,
-                            const int n,
-                            const int round_type,
-                            const float max_bound,
-                            const float min_bound) {
+__global__ void QuantKernelWithVecSize(const T* input,
+                                       char4* output,
+                                       const float scale,
+                                       const int m,
+                                       const int n,
+                                       const int round_type,
+                                       const float max_bound,
+                                       const float min_bound) {
+  int n_id = (blockIdx.x * blockDim.x + threadIdx.x) << 2;
+  int m_id = blockIdx.y * blockDim.y + threadIdx.y;
+
+  bool check = ((m_id < m) && (n_id < n));
+  if (check) {
+    char4 tmp;
+    tmp.x = quant_helper_ties_to_even_or_away_from_zero(
+        input[m_id * n + n_id], scale, round_type, max_bound, min_bound);
+    tmp.y = quant_helper_ties_to_even_or_away_from_zero(
+        input[m_id * n + n_id + 1], scale, round_type, max_bound, min_bound);
+    tmp.z = quant_helper_ties_to_even_or_away_from_zero(
+        input[m_id * n + n_id + 2], scale, round_type, max_bound, min_bound);
+    tmp.w = quant_helper_ties_to_even_or_away_from_zero(
+        input[m_id * n + n_id + 3], scale, round_type, max_bound, min_bound);
+    output[(m_id * n + n_id) >> 2] = tmp;
+  }
+}
+
+template <typename T>
+__global__ void QuantKernelWithVecSize(const T* input,
+                                       char3* output,
+                                       const float scale,
+                                       const int m,
+                                       const int n,
+                                       const int round_type,
+                                       const float max_bound,
+                                       const float min_bound) {
   int n_id = (blockIdx.x * blockDim.x + threadIdx.x) * 3;
   int m_id = blockIdx.y * blockDim.y + threadIdx.y;
 
   bool check = ((m_id < m) && (n_id < n));
   if (check) {
     char3 tmp;
-    tmp.x = quant_helper(
+    tmp.x = quant_helper_ties_to_even_or_away_from_zero(
         input[m_id * n + n_id], scale, round_type, max_bound, min_bound);
-    tmp.y = quant_helper(
+    tmp.y = quant_helper_ties_to_even_or_away_from_zero(
         input[m_id * n + n_id + 1], scale, round_type, max_bound, min_bound);
-    tmp.z = quant_helper(
+    tmp.z = quant_helper_ties_to_even_or_away_from_zero(
         input[m_id * n + n_id + 2], scale, round_type, max_bound, min_bound);
     output[(m_id * n + n_id) / 3] = tmp;
   }
 }
 
 template <typename T>
-__global__ void QuantKernel(const T* input,
-                            char2* output,
-                            const float scale,
-                            const int m,
-                            const int n,
-                            const int round_type,
-                            const float max_bound,
-                            const float min_bound) {
+__global__ void QuantKernelWithVecSize(const T* input,
+                                       char2* output,
+                                       const float scale,
+                                       const int m,
+                                       const int n,
+                                       const int round_type,
+                                       const float max_bound,
+                                       const float min_bound) {
   int n_id = (blockIdx.x * blockDim.x + threadIdx.x) * 2;
   int m_id = blockIdx.y * blockDim.y + threadIdx.y;
 
   bool check = ((m_id < m) && (n_id < n));
   if (check) {
     char2 tmp;
-    tmp.x = quant_helper(
+    tmp.x = quant_helper_ties_to_even_or_away_from_zero(
         input[m_id * n + n_id], scale, round_type, max_bound, min_bound);
-    tmp.y = quant_helper(
+    tmp.y = quant_helper_ties_to_even_or_away_from_zero(
         input[m_id * n + n_id + 1], scale, round_type, max_bound, min_bound);
     output[(m_id * n + n_id) >> 1] = tmp;
   }
 }
 
 template <typename T>
-__global__ void QuantKernel(const T* input,
-                            char* output,
-                            const float scale,
-                            const int m,
-                            const int n,
-                            const int round_type,
-                            const float max_bound,
-                            const float min_bound) {
+__global__ void QuantKernelWithVecSize(const T* input,
+                                       char* output,
+                                       const float scale,
+                                       const int m,
+                                       const int n,
+                                       const int round_type,
+                                       const float max_bound,
+                                       const float min_bound) {
   int n_id = (blockIdx.x * blockDim.x + threadIdx.x);
   int m_id = blockIdx.y * blockDim.y + threadIdx.y;
 
   bool check = ((m_id < m) && (n_id < n));
   if (check) {
     char tmp;
-    tmp = quant_helper(
+    tmp = quant_helper_ties_to_even_or_away_from_zero(
         input[m_id * n + n_id], scale, round_type, max_bound, min_bound);
     output[m_id * n + n_id] = tmp;
   }
@@ -204,44 +255,48 @@ void LaunchQuantKernelWithVecSize(const T* input,
 
   switch (vec_size) {
     case 4:
-      QuantKernel<<<grid, block, 0, stream>>>(input,
-                                              (char4*)output,  // NOLINT
-                                              scale,
-                                              m,
-                                              n,
-                                              round_type,
-                                              max_bound,
-                                              min_bound);
+      QuantKernelWithVecSize<<<grid, block, 0, stream>>>(
+          input,
+          (char4*)output,  // NOLINT
+          scale,
+          m,
+          n,
+          round_type,
+          max_bound,
+          min_bound);
       break;
     case 3:
-      QuantKernel<<<grid, block, 0, stream>>>(input,
-                                              (char3*)output,  // NOLINT
-                                              scale,
-                                              m,
-                                              n,
-                                              round_type,
-                                              max_bound,
-                                              min_bound);
+      QuantKernelWithVecSize<<<grid, block, 0, stream>>>(
+          input,
+          (char3*)output,  // NOLINT
+          scale,
+          m,
+          n,
+          round_type,
+          max_bound,
+          min_bound);
       break;
     case 2:
-      QuantKernel<<<grid, block, 0, stream>>>(input,
-                                              (char2*)output,  // NOLINT
-                                              scale,
-                                              m,
-                                              n,
-                                              round_type,
-                                              max_bound,
-                                              min_bound);
+      QuantKernelWithVecSize<<<grid, block, 0, stream>>>(
+          input,
+          (char2*)output,  // NOLINT
+          scale,
+          m,
+          n,
+          round_type,
+          max_bound,
+          min_bound);
       break;
     case 1:
-      QuantKernel<<<grid, block, 0, stream>>>(input,
-                                              (char*)output,  // NOLINT
-                                              scale,
-                                              m,
-                                              n,
-                                              round_type,
-                                              max_bound,
-                                              min_bound);
+      QuantKernelWithVecSize<<<grid, block, 0, stream>>>(
+          input,
+          (char*)output,  // NOLINT
+          scale,
+          m,
+          n,
+          round_type,
+          max_bound,
+          min_bound);
       break;
     default:
       return;
