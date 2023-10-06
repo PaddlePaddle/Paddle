@@ -6968,10 +6968,23 @@ def signbit(x, name=None):
     """
     if not isinstance(x, (paddle.Tensor, Variable)):
         raise TypeError(f"x must be tensor type, but got {type(x)}")
-    
-    check_variable_and_dtype(x, "x", ['float16', 'float32', 'float64', 'bfloat16', 'int8', 'int16', 'int32', 'int64'], "signbit")
-    
+
+    check_variable_and_dtype(
+        x,
+        "x",
+        [
+            'float16',
+            'float32',
+            'float64',
+            'bfloat16',
+            'int8',
+            'int16',
+            'int32',
+            'int64',
+        ],
+        "signbit",
+    )
+
     out_mask = paddle.cast(x < 0, dtype='bool')
     out_mask[x == -0] = True
     return out_mask
-    

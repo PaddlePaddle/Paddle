@@ -19,15 +19,8 @@ import numpy as np
 import paddle
 
 
-def np_sgn(x: np.ndarray):
-    if x.dtype == 'complex128' or x.dtype == 'complex64':
-        x_abs = np.abs(x)
-        eps = np.finfo(x.dtype).eps
-        x_abs = np.maximum(x_abs, eps)
-        out = x / x_abs
-    else:
-        out = np.sign(x)
-    return out
+def np_signbit(x: np.ndarray):
+    return np.signbit(x)
 
 
 class TestSignbitAPI(unittest.TestCase):
@@ -36,11 +29,20 @@ class TestSignbitAPI(unittest.TestCase):
             'float16',
             'float32',
             'float64',
+            'bfloat16',
+            'int8',
+            'int16',
+            'int32',
+            'int64',
         ]
         if paddle.device.get_device() == 'cpu':
             self.support_dtypes = [
                 'float32',
                 'float64',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
             ]
 
     def test_dtype(self):
@@ -50,25 +52,14 @@ class TestSignbitAPI(unittest.TestCase):
             )
             paddle.signbit(x)
 
-    def test_complex(self):
-        for dtype in ['complex64', 'complex128']:
-            np_x = np.array(
-                [[3 + 4j, 7 - 24j, 0, 1 + 2j], [6 + 8j, 3, 0, -2]], dtype=dtype
-            )
-            x = paddle.to_tensor(np_x)
-            z = paddle.sgn(x)
-            np_z = z.numpy()
-            z_expected = np_sgn(np_x)
-            np.testing.assert_allclose(np_z, z_expected, rtol=1e-05)
-
     def test_float(self):
         for dtype in self.support_dtypes:
             np_x = np.random.randint(-10, 10, size=[12, 20, 2]).astype(dtype)
             x = paddle.to_tensor(np_x)
-            z = paddle.sgn(x)
-            np_z = z.numpy()
-            z_expected = np_sgn(np_x)
-            np.testing.assert_allclose(np_z, z_expected, rtol=1e-05)
+            out = paddle.signbit(x)
+            np_out = out.numpy()
+            out_expected = np_signbit(np_x)
+            np.testing.assert_allclose(np_out, out_expected, rtol=1e-05)
 
 
 if __name__ == "__main__":
