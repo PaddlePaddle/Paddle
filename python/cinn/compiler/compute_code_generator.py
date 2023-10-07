@@ -241,9 +241,5 @@ class ComputeCodeGenerator(ast.NodeVisitor):
         if is_node_parsed_in_schedule(node.value):
             return
         res = ExprExecutor(self.variables_table.get()).exec(node.value)
-        if res is None:
-            pass
-        elif isinstance(res, ir.Expr):
+        if isinstance(res, ir.Expr):
             ir.link_to_parent_context(res)
-        else:
-            pass
