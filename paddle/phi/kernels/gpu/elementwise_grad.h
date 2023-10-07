@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_grad_base.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {
 
@@ -31,8 +32,8 @@ void ReduceWrapper(const GPUContext &dev_ctx,
                    DenseTensor *dst) {
   std::vector<int> reduce_dims =
       funcs::GetReduceDim(dst->dims(), src->dims(), axis);
-  funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-      dev_ctx, *src, dst, kps::IdentityFunctor<T>(), reduce_dims);
+  phi::SumKernel<T, GPUContext>(
+      dev_ctx, *src, reduce_dims, src->dtype(), false, dst);
 }
 
 template <typename T, typename Functor>
@@ -169,8 +170,8 @@ void DefaultElementwiseAddGrad(const GPUContext &ctx,
       }
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(x.dims(), out.dims(), axis);
-      funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          ctx, dout, dx, kps::IdentityFunctor<T>(), reduce_dims);
+      phi::SumKernel<T, GPUContext>(
+          ctx, dout, reduce_dims, dout.dtype(), false, dx);
     }
   }
   // dy
@@ -183,8 +184,8 @@ void DefaultElementwiseAddGrad(const GPUContext &ctx,
     } else {
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(y.dims(), out.dims(), axis);
-      funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          ctx, dout, dy, kps::IdentityFunctor<T>(), reduce_dims);
+      phi::SumKernel<T, GPUContext>(
+          ctx, dout, reduce_dims, dout.dtype(), false, dy);
     }
   }
 }
@@ -280,8 +281,8 @@ void default_elementwise_sub_grad(const GPUContext &ctx,
       }
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(x.dims(), out.dims(), axis);
-      funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          ctx, dout, dx, kps::IdentityFunctor<T>(), reduce_dims);
+      phi::SumKernel<T, GPUContext>(
+          ctx, dout, reduce_dims, dout.dtype(), false, dx);
     }
   }
   // dy

@@ -833,7 +833,7 @@ def uniform_(x, min=-1.0, max=1.0, seed=0, name=None):
     """
     This is the inplace version of OP ``uniform``, which returns a Tensor filled
     with random values sampled from a uniform distribution. The output Tensor will
-    be inplaced with input ``x``. Please refer to :ref:`api_tensor_uniform`.
+    be inplaced with input ``x``. Please refer to :ref:`api_paddle_uniform`.
 
     Args:
         x(Tensor): The input tensor to be filled with random values.
@@ -1281,7 +1281,7 @@ def rand(shape, dtype=None, name=None):
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         dtype (str|np.dtype, optional): The data type of the output Tensor.
             Supported data types: float32, float64.
-            Default is None, use global default dtype (see ``get_default_dtype``
+            Default is None, use global default dtype (see :ref:`get_default_dtype`
             for details).
         name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please

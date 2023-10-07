@@ -49,6 +49,10 @@ class OpYamlInfoParser {
     return output_name_list_;
   }
 
+  const std::string& GetInputType(uint32_t input_id) const;
+
+  const std::string& GetOutputType(uint32_t output_id) const;
+
   bool HasInplace(const std::string& out_name) const;
 
   const std::string& InplaceName(const std::string& out_name) const;

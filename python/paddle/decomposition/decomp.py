@@ -38,6 +38,10 @@ def _prepare_python_api_arguments(op):
     op (Operator): The target operator.
     """
     op_inputs = [x.source() for x in op.operands()]
+    # The inputs of PIR op builtin.combine will be restored as list of tensor.
+    if op.name() in ["builtin.combine"]:
+        return (op_inputs,)
+
     op_attrs_dict = op.attrs()
     op_attrs_name = op.get_attr_names()
     op_attrs = [op_attrs_dict[x] for x in op_attrs_name]
@@ -198,15 +202,28 @@ def _decompose_subgraph(block, orig_vars, dst_vars, op_filter):
 
     if isinstance(block, Block):
         ops_list = block.ops
-        for op in ops_list:
+        temp_op = None
+        temp_inputs = None
+        for idx, op in enumerate(ops_list):
             op_name = op.name()
             decom_rule = register.get_decomp_rule(op_name)
             lower = decom_rule and op_filter(op)
 
+            if op.name() == "builtin.combine":
+                temp_op = op
+                temp_inputs = _prepare_python_api_arguments(op)
+
             if lower:
                 core.prim_config["composite_ops_record"].add(op_name)
-                input_args = _prepare_python_api_arguments(op)
-                pir.set_insertion_point(op)
+                if (
+                    temp_op is not None
+                    and ops_list[idx - 1].name() == "builtin.combine"
+                ):
+                    input_args = temp_inputs
+                    pir.set_insertion_point(temp_op)
+                else:
+                    input_args = _prepare_python_api_arguments(op)
+                    pir.set_insertion_point(op)
                 orig_outs = op.results()
                 new_outs = _build_tensor_tuple(decom_rule(*input_args))
 
@@ -217,6 +234,16 @@ def _decompose_subgraph(block, orig_vars, dst_vars, op_filter):
 
                 op.replace_all_uses_with(new_outs)
                 block.remove_op(op)
+
+                if temp_op is not None:
+                    remove_op = True
+                    for item in temp_op.results():
+                        if item.has_one_use():
+                            remove_op = False
+                            break
+                    if remove_op:
+                        block.remove_op(temp_op)
+                    temp_op = None
         return
 
     elif isinstance(block, typing.Sequence):

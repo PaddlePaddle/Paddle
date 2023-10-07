@@ -1310,7 +1310,6 @@ class TestTruncatedNormalInitializerDygraph(unittest.TestCase):
         _tensor = np.random.uniform(
             low=2 * l - 1, high=2 * u - 1, size=tensor.shape
         ).astype(paddle.get_default_dtype())
-        print(2 * l - 1, 2 * u - 1)
 
         # Use inverse cdf transform for normal distribution to get truncated
         # standard normal

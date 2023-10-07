@@ -211,7 +211,7 @@ def _mock_guard(mock):
     base.Executor._prune_program = original
 
 
-def net1():
+def create_net1():
     x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
     x.desc.set_need_check_feed(False)
     label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
@@ -238,7 +238,7 @@ def net1():
     return x, y, label, loss1, loss2, w_param_attrs
 
 
-def net2():
+def create_net2():
     x1 = paddle.static.data(name='x1', shape=[-1, 2], dtype='float32')
     x1.desc.set_need_check_feed(False)
     x2 = paddle.static.data(name='x2', shape=[-1, 2], dtype='float32')
@@ -286,8 +286,8 @@ def net2():
 
 class TestExecutorRunAutoPrune(unittest.TestCase):
     def setUp(self):
-        self.net1 = net1
-        self.net2 = net2
+        self.net1 = create_net1
+        self.net2 = create_net2
 
     def test_not_prune(self):
         """
