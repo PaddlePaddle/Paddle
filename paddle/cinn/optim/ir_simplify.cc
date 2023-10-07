@@ -24,11 +24,11 @@
 #include "paddle/cinn/common/arithmatic.h"
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {
@@ -303,23 +303,6 @@ struct SimplifyBlocksMutator : public ir::IRMutator<> {
         }
       }
       expr->As<ir::Block>()->stmts = stmts;
-    }
-  }
-
-  void Visit(const IfThenElse* op, Expr* expr) override {
-    auto* node = expr->As<IfThenElse>();
-    Visit(&node->condition, &node->condition);
-    if (node->true_case.As<Block>() &&
-        (node->true_case.As<Block>()->stmts.size() == 1)) {
-      node->true_case = node->true_case.As<Block>()->stmts[0];
-    }
-    Visit(&node->true_case, &node->true_case);
-    if (node->false_case.defined()) {
-      if (node->false_case.As<Block>() &&
-          (node->false_case.As<Block>()->stmts.size() == 1)) {
-        node->false_case = node->false_case.As<Block>()->stmts[0];
-      }
-      Visit(&node->false_case, &node->false_case);
     }
   }
 

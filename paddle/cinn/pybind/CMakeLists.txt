@@ -2,7 +2,9 @@ set(srcs
     runtime.cc
     common.cc
     lang.cc
-    ir.cc
+    ir/ir.cc
+    ir/ir_api.cc
+    ir/ir_context.cc
     poly.cc
     backends.cc
     bind.cc
@@ -10,7 +12,8 @@ set(srcs
     pe.cc
     frontend.cc
     framework.cc
-    utils.cc)
+    utils.cc
+    schedule.cc)
 
 if(WITH_CUDA)
   message(STATUS "Compile core_api with CUDA support")

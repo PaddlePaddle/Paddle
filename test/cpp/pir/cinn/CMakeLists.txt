@@ -34,4 +34,28 @@ if(WITH_TESTING AND WITH_CINN)
     pir
     gtest
     glog)
+
+  cc_test_old(
+    test_group_op
+    SRCS
+    group_op_test.cc
+    DEPS
+    cinn_op_dialect
+    pir
+    phi
+    gtest
+    glog)
+  set_tests_properties(test_group_op PROPERTIES LABELS "RUN_TYPE=CINN")
+
+  cc_test_old(
+    test_pir_build_cinn_pass
+    SRCS
+    build_cinn_pass_test.cc
+    DEPS
+    pd_build_cinn_pass
+    pir_pass
+    gtest
+    glog)
+  set_tests_properties(test_pir_build_cinn_pass PROPERTIES LABELS
+                                                           "RUN_TYPE=CINN")
 endif()

@@ -33,7 +33,10 @@ NCCLCommContext::NCCLCommContext(int rank, int size, ncclUniqueId nccl_id)
     : CommContext(rank, size) {
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::ncclCommInitRank(&nccl_comm_, size_, nccl_id, rank_));
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGetVersion(&nccl_version_));
 }
+
+int NCCLCommContext::GetNcclVersion() { return nccl_version_; }
 
 ncclComm_t NCCLCommContext::GetNcclComm() { return nccl_comm_; }
 
@@ -227,6 +230,20 @@ void NCCLCommContext::GroupStart() {
   NCCL_CHECK(phi::dynload::ncclGroupStart());
 }
 void NCCLCommContext::GroupEnd() { NCCL_CHECK(phi::dynload::ncclGroupEnd()); }
+
+#if NCCL_VERSION_CODE >= 21100
+void NCCLCommContext::RedOpCreatePreMulSum(ncclRedOp_t* op,
+                                           void* scalar,
+                                           ncclDataType_t dtype,
+                                           ncclScalarResidence_t residence) {
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclRedOpCreatePreMulSum(
+      op, scalar, dtype, residence, nccl_comm_));
+}
+
+void NCCLCommContext::RedOpDestroy(ncclRedOp_t op) {
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclRedOpDestroy(op, nccl_comm_));
+}
+#endif
 
 }  // namespace distributed
 }  // namespace phi

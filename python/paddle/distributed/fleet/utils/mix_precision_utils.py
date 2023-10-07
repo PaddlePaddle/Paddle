@@ -67,7 +67,6 @@ class MixPrecisionLayer(nn.Layer):
                     param.main_grad.add_(tmp_grad)
 
                 tmp_grad._clear_data()
-            return None
 
         return param_hook
 

@@ -66,7 +66,9 @@ void* GenBase::operator new(size_t size) {
   return ptr;
 }
 
-void GenBase::operator delete(void* ptr) { posix_memalign_free(ptr); }
+void GenBase::operator delete(void* ptr) {
+  posix_memalign_free(ptr);  // NOLINT
+}
 
 std::vector<int> packed_groups(int n, int k, int* block_out, int* rest_out) {
   int block;

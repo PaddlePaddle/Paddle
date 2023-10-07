@@ -17,12 +17,12 @@
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
+#include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
-#include "paddle/fluid/pir/phi_kernel_adaptor/phi_kernel_util.h"
 
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -48,7 +48,7 @@ LegacyKernelInstruction::LegacyKernelInstruction(
       op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
   pir::OpInfo op_info =
       pir::IrContext::Instance()->GetRegisteredOpInfo(op_name);
-
+  op_ = op;
   legacy_op_name_ = op_name;
   VLOG(6) << "construct phi kernel instruction for: " << legacy_op_name_;
 
@@ -187,6 +187,5 @@ void LegacyKernelInstruction::Run() {
   (*(phi_kernel_))((kernel_context_));
   VLOG(6) << "Run op " << legacy_op_name_ << " kernel.";
 }
-
 }  // namespace framework
 }  // namespace paddle

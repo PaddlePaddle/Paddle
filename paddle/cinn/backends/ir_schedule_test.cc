@@ -24,8 +24,8 @@
 #include "paddle/cinn/backends/codegen_c_x86.h"
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
 #include "paddle/cinn/cinn.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_error.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/lang/lower.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/remove_schedule_block.h"
@@ -794,10 +794,8 @@ void test_simple_compute_at(void* _args, int32_t num_args)
   for (int32_t i_j_fused_1 = 0; i_j_fused_1 < 2; i_j_fused_1 += 1) {
     for (int32_t i_j_fused_2 = 0; i_j_fused_2 < 1024; i_j_fused_2 += 1) {
       if ((((1024 * i_j_fused_1) + i_j_fused_2) < 1280)) {
-      {
         B[((1024 * i_j_fused_1) + i_j_fused_2)] = A[((1024 * i_j_fused_1) + i_j_fused_2)];
         C[((1024 * i_j_fused_1) + i_j_fused_2)] = B[((1024 * i_j_fused_1) + i_j_fused_2)];
-      }
       };
     };
   };
@@ -869,10 +867,8 @@ void test_compute_at0(void* _args, int32_t num_args)
   for (int32_t i_j_fused_1 = 0; i_j_fused_1 < 2; i_j_fused_1 += 1) {
     for (int32_t i_j_fused_2 = 0; i_j_fused_2 < 1024; i_j_fused_2 += 1) {
       if ((((1024 * i_j_fused_1) + i_j_fused_2) < 1280)) {
-      {
         B[((1024 * i_j_fused_1) + i_j_fused_2)] = A[((1024 * i_j_fused_1) + i_j_fused_2)];
         C[((1024 * i_j_fused_1) + i_j_fused_2)] = B[((1024 * i_j_fused_1) + i_j_fused_2)];
-      }
       };
     };
   };

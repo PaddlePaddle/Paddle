@@ -30,7 +30,13 @@ const std::unordered_set<std::string> LegacyOpList = {
     "pd_op.send_v2",
     "pd_op.recv_v2",
     "pd_op.c_allreduce_sum",
-    "pd_op.c_allreduce_sum_"};
+    "pd_op.c_allreduce_sum_",
+    "pd_op.c_reduce_sum",
+    "pd_op.c_reduce_sum_",
+    "pd_op.c_allreduce_max_",
+    "pd_op.c_allgather",
+    "pd_op.seed",
+    "pd_op.share_data"};
 
 enum class AttrType {
   UNDEFINED = 0,
@@ -170,6 +176,13 @@ static std::unordered_map<
                    vec_element.dyn_cast<pir::DoubleAttribute>().data());
              }
              return VariantType{vec_double};
+           } else if (element_type == AttrType::STRING) {
+             std::vector<std::string> vec_string;
+             for (auto vec_element : attr_vec) {
+               vec_string.push_back(
+                   vec_element.dyn_cast<pir::StrAttribute>().AsString());
+             }
+             return VariantType{vec_string};
            } else {
              PADDLE_THROW(phi::errors::Unimplemented(
                  "Unsupported ir Attribute type when casting it into "
@@ -184,6 +197,10 @@ VariantType GetAttributeData(const pir::Attribute& attr) {
 }
 
 bool IsLegacyOp(const std::string& name) { return LegacyOpList.count(name); }
+
+bool IsEmptyValue(const pir::Value& value) {
+  return !value.impl() || !value.type();
+}
 
 }  // namespace dialect
 }  // namespace paddle

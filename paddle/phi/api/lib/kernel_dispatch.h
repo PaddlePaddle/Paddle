@@ -171,20 +171,22 @@ struct KernelTypeParser : ArgsIterator<KernelTypeParser> {
 /* ------------------ for auto parallel ----------------------- */
 
 struct DistTensorTypeParser : ArgsIterator<DistTensorTypeParser> {
-  bool result = true;
+  bool result = false;
 
-  void operator()(const Tensor& x) { result &= x.is_dist_tensor(); }
+  bool short_circuit() { return result; }
+
+  void operator()(const Tensor& x) { result = x.is_dist_tensor(); }
 
   void operator()(const paddle::optional<Tensor>& x) {
     if (x) {
-      result &= x.get_ptr()->is_dist_tensor();
+      result = x.get_ptr()->is_dist_tensor();
     }
   }
 
   void operator()(const std::vector<Tensor>& x) {
     if (!x.empty()) {
       for (auto& t : x) {
-        result &= t.is_dist_tensor();
+        result = t.is_dist_tensor();
       }
     }
   }
@@ -193,7 +195,7 @@ struct DistTensorTypeParser : ArgsIterator<DistTensorTypeParser> {
     if (x) {
       if (!(x.get_ptr()->empty())) {
         for (auto& t : *(x.get_ptr())) {
-          result &= t.is_dist_tensor();
+          result = t.is_dist_tensor();
         }
       }
     }

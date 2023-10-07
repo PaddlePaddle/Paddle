@@ -18,7 +18,13 @@ limitations under the License. */
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/flags.h"
+PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
+
+#include "paddle/fluid/distributed/collective/utils.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 
 namespace paddle {
 namespace operators {
@@ -38,17 +44,57 @@ class PartialAllGatherOpCUDAKernel : public framework::OpKernel<T> {
     int rank = ctx.Attr<int>("rank");
     int rid = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
-    auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
+    gpuStream_t stream = nullptr;
+
+    platform::NCCLComm* comm = nullptr;
+    phi::distributed::NCCLCommContext* comm_ctx = nullptr;
+
+    const auto& comm_context_manager =
+        phi::distributed::CommContextManager::GetInstance();
+
+    int real_nranks = 0;
+    int real_rank = 0;
+    if (FLAGS_dynamic_static_unified_comm) {
+      PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
+                        true,
+                        platform::errors::InvalidArgument(
+                            "You choose to use new communication library by "
+                            "setting environment "
+                            "variable FLAGS_dynamic_static_unified_comm True. "
+                            "But ring_id(%d) is "
+                            "not found in comm_context_manager.",
+                            std::to_string(rid)));
+      comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
+          comm_context_manager.Get(std::to_string(rid)));
+      PADDLE_ENFORCE_NE(comm_ctx,
+                        nullptr,
+                        platform::errors::Unavailable(
+                            "NCCLCommContext is nullptr, collective op should "
+                            "has ring_id attr."));
+
+      stream = comm_ctx->GetStream();
+      real_nranks = comm_ctx->GetSize();
+      real_rank = comm_ctx->GetRank();
+      VLOG(3) << "new comm_context_manager has ring_id " << rid;
+    } else {  // old comm_context
+      comm = platform::NCCLCommContext::Instance().Get(rid, place);
+
+      stream = comm->stream();
+      real_nranks = comm->nranks();
+      real_rank = comm->rank();
+      VLOG(3) << "old NCCLCommContext has ring_id " << rid;
+    }
 
     PADDLE_ENFORCE_EQ(
         nranks,
-        comm->nranks(),
+        real_nranks,
         platform::errors::InvalidArgument(
-            "nranks: %s should equal to %s", nranks, comm->nranks()));
+            "nranks: %s should equal to %s", nranks, real_nranks));
     PADDLE_ENFORCE_EQ(rank,
-                      comm->rank(),
+                      real_rank,
                       platform::errors::InvalidArgument(
-                          "rank: %s should equal to %s", rank, comm->rank()));
+                          "rank: %s should equal to %s", rank, real_rank));
+
     PADDLE_ENFORCE_EQ(
         (numel % nranks),
         0,
@@ -70,24 +116,26 @@ class PartialAllGatherOpCUDAKernel : public framework::OpKernel<T> {
       auto task = pg->AllGather(out, *in, offset, send_numel, /*sync_op*/ true);
       task->Wait();
     } else {
-      const T* send_buff = in->data<T>() + offset;
-      T* recv_buff = out->data<T>();
-
-      gpuStream_t stream = nullptr;
       if (ctx.Attr<bool>("use_calc_stream")) {
         // should ExecutionContext for calc stream.
         stream = ctx.cuda_device_context().stream();
-      } else {
-        stream = comm->stream();
       }
 
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::ncclAllGather(send_buff,
-                                           recv_buff,
-                                           send_numel,
-                                           static_cast<ncclDataType_t>(dtype),
-                                           comm->comm(),
-                                           stream));
+      if (comm_ctx) {
+        auto send_buf = distributed::GetPartialTensor(*in, offset, send_numel);
+
+        comm_ctx->AllGather(out, send_buf, stream);
+      } else {
+        const T* send_buff = in->data<T>() + offset;
+        T* recv_buff = out->data<T>();
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            platform::dynload::ncclAllGather(send_buff,
+                                             recv_buff,
+                                             send_numel,
+                                             static_cast<ncclDataType_t>(dtype),
+                                             comm->comm(),
+                                             stream));
+      }
     }
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(

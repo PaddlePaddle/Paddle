@@ -26,10 +26,31 @@ from paddle.distributed.fleet import auto
 paddle.enable_static()
 
 
-def apply_pass():
+def apply_pass(use_sharding=False):
     strategy = auto.Strategy()
     strategy.auto_mode = "semi"
     strategy.reinit = True
+
+    amp = strategy.amp
+    amp.enable = True
+    amp.dtype = "float16"
+    amp.level = "o2"
+    amp.custom_white_list = ['softmax', 'layer_norm', 'gelu']
+    amp.custom_black_list = [
+        'c_softmax_with_cross_entropy',
+        'elementwise_div',
+        'reduce_sum',
+    ]
+
+    recompute = strategy.recompute
+    recompute.enable = True
+
+    if use_sharding:
+        sharding = strategy.sharding
+        sharding.enable = True
+        sharding.degree = 2
+        sharding.stage = 2
+
     return strategy
 
 
@@ -49,24 +70,27 @@ class TestNewIR(unittest.TestCase):
         paddle.set_flags({'FLAGS_embedding_deterministic': 1})
         paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
 
-    def init(self, engine):
+    def init(self, engine, name):
         paddle.seed(2021)
         np.random.seed(2021)
         random.seed(2021)
         paddle.distributed.fleet.init(is_collective=True)
+        paddle.distributed.auto_parallel.random._rng_name_to_seed.clear()
+        paddle.distributed.auto_parallel.random._inited_rng_name_to_seed.clear()
+        paddle.distributed.auto_parallel.parallel_manual_seed(2021, name)
         place = paddle.CUDAPlace(ParallelEnv().dev_id)
         engine._executor = paddle.static.Executor(place)
 
-    def get_engine(self, mode):
+    def get_engine(self, mode, name, use_sharding=False):
         reset_prog()
 
-        strategy = apply_pass()
+        strategy = apply_pass(use_sharding)
         clip = paddle.nn.ClipGradByGlobalNorm(self.clip_norm)
-        opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=None)
-        model, loss = generate_model(mode)
+        opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip)
+        model, loss = generate_model(mode, dropout_prob=0.1)
 
         engine = auto.Engine(model, loss, opt, strategy=strategy)
-        self.init(engine)
+        self.init(engine, name)
         return engine
 
     def check_results(self, ref_losses, check_losses):
@@ -84,13 +108,15 @@ class TestNewIR(unittest.TestCase):
 
     def test_dp(self):
         self.enable_new_ir(False)
-        engine_dp_prog = self.get_engine("dp")
+        engine_dp_prog = self.get_engine(
+            "dp", name="dp_prog", use_sharding=True
+        )
         out_dp_prog = engine_dp_prog.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
 
         self.enable_new_ir(True)
-        engine_dp_ir = self.get_engine("dp")
+        engine_dp_ir = self.get_engine("dp", name="dp_newir", use_sharding=True)
         out_dp_ir = engine_dp_ir.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
@@ -101,13 +127,13 @@ class TestNewIR(unittest.TestCase):
 
     def test_mp(self):
         self.enable_new_ir(False)
-        engine_mp_prog = self.get_engine("mp")
+        engine_mp_prog = self.get_engine("mp", name="mp_prog")
         out_mp_prog = engine_mp_prog.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
 
         self.enable_new_ir(True)
-        engine_mp_ir = self.get_engine("mp")
+        engine_mp_ir = self.get_engine("mp", name="mp_newir")
         out_mp_ir = engine_mp_ir.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
@@ -119,14 +145,14 @@ class TestNewIR(unittest.TestCase):
     def test_pp(self):
         # navie pipeline parallel without schedule
         self.enable_new_ir(False)
-        engine_pp_prog = self.get_engine("pp")
+        engine_pp_prog = self.get_engine("pp", name="pp_prog0")
         out_pp_prog = engine_pp_prog.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
 
         self.enable_new_ir(True)
         # send_v2/recv_v2 dynamic_shape is True
-        engine_pp_ir = self.get_engine("pp")
+        engine_pp_ir = self.get_engine("pp", name="pp_newir")
         out_pp_ir = engine_pp_ir.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
@@ -137,7 +163,7 @@ class TestNewIR(unittest.TestCase):
             )
 
         # send_v2/recv_v2 dynamic_shape is False
-        engine_pp_prog1 = self.get_engine("pp")
+        engine_pp_prog1 = self.get_engine("pp", name="pp_prog1")
         dataloader_pp_prog = engine_pp_prog1.dataloader(
             self.dataset,
             batch_size=self.batch_size,

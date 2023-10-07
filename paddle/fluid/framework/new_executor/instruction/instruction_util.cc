@@ -28,7 +28,7 @@
 
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
-#include "paddle/fluid/pir/phi_kernel_adaptor/phi_kernel_util.h"
+#include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
@@ -167,7 +167,7 @@ OpFuncType AnalyseOpFuncType(pir::Operation* op, const platform::Place& place) {
   auto& op_attributes = op->attributes();
   auto op_name =
       op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
-  if (op_name == kCoalesceTensor &&
+  if (op_name == "pd_op.coalesce_tensor" &&
       (!platform::is_xpu_place(place) ||
        op->attribute<pir::BoolAttribute>("persist_output").data() == false) &&
       op->attribute<pir::BoolAttribute>("set_constant").data() == false &&
@@ -176,11 +176,11 @@ OpFuncType AnalyseOpFuncType(pir::Operation* op, const platform::Place& place) {
   }
 
   // for memcpy explicitly called by user
-  if (platform::is_gpu_place(place) && op_name == interpreter::kMemcpyD2H) {
+  if (platform::is_gpu_place(place) && op_name == "pd_op.memcpy_d2h") {
     return OpFuncType::kGpuSync;
   }
 
-  if (op_name == "shape") {
+  if (op_name == "pd_op.shape") {
     return OpFuncType::kGpuSync;
   }
   return OpFuncType::kGpuAsync;

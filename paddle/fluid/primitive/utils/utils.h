@@ -26,6 +26,9 @@ namespace primitive {
 template <typename T>
 void set_output(const Tensor& x_tmp, Tensor* x);
 
+template <typename T>
+void by_pass(const Tensor& x_tmp, Tensor* x);
+
 // This fucction compute unsqueeze dims for reshape to replace unsqueeze.
 static std::vector<int64_t> get_unsqueeze_dims(
     const Tensor& origin, const std::vector<int64_t>& axis) {
@@ -87,6 +90,9 @@ static phi::DDim get_reduce_dims(const phi::DDim& x_dims,
   auto out_dims = paddle::operators::details::BroadcastTwoDims(x_dims, y_dims);
   return get_reduce_dims_from_out(out_dims, x_dims);
 }
+
+void SetEmptyGrad(const std::vector<std::vector<Tensor>>& outputs,
+                  const std::vector<std::vector<bool>>& stop_gradients);
 
 std::vector<std::vector<Tensor>> ConstructVjpResultByStopGradients(
     const std::vector<std::vector<Tensor>>& outputs,

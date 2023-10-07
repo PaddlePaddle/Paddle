@@ -15,4 +15,15 @@
 #include "paddle/pir/core/builtin_type_interfaces.h"
 #include "paddle/pir/core/type_id.h"
 
+namespace pir {
+
+Type ShapedTypeInterface::GetElementType() const {
+  return impl_->get_element_type(*this);
+}
+
+phi::DDim ShapedTypeInterface::GetShape() const {
+  return impl_->get_shape(*this);
+}
+
+}  // namespace pir
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ShapedTypeInterface)

@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/utils/flags.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_DECLARE_bool(enable_gpu_memory_usage_log);
+PHI_DECLARE_bool(enable_gpu_memory_usage_log);
 #endif
 
 int main(int argc, char** argv) {  // NOLINT
@@ -76,6 +76,6 @@ int main(int argc, char** argv) {  // NOLINT
 
   int ret = RUN_ALL_TESTS();
 
-  if (env_str) free(env_str);
+  if (env_str) free(env_str);  // NOLINT
   return ret;
 }

@@ -4,7 +4,6 @@ gather_srcs(
   cinnapi_src
   SRCS
   replace_call_with_expr.cc
-  ir_replace.cc
   replace_var_with_expr.cc
   ir_simplify.cc
   optimize.cc
@@ -23,7 +22,6 @@ gather_srcs(
   replace_const_param_to_integer.cc
   lower_intrin.cc
   cast_bool_to_int8.cc
-  collect_undefined_vars.cc
   var_mod_simplify.cc
   remove_schedule_block.cc)
 

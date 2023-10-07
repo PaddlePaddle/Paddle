@@ -651,9 +651,7 @@ def get_the_one_send_context(attrs, split_dense_table=False, ep_list=None):
 def find_heter_ops(program, default_device="cpu"):
     if default_device not in DEVICE_LIST:
         raise ValueError(
-            "Given device {} is not in device list {}".format(
-                default_device, DEVICE_LIST
-            )
+            f"Given device {default_device} is not in device list {DEVICE_LIST}"
         )
 
     def _is_heter_op(op, current_heter_device, default_device="cpu"):
@@ -1153,12 +1151,12 @@ def get_communicate_var_info(
     input_var_reshape_name = []
 
     if type == "forward":
-        block_input_var_name = "forward_joint_{}_{}@Heter".format(
-            block_index - 1, block_index
+        block_input_var_name = (
+            f"forward_joint_{block_index - 1}_{block_index}@Heter"
         )
     else:
-        block_input_var_name = "backward_joint_{}_{}@Heter".format(
-            block_index + 1, block_index
+        block_input_var_name = (
+            f"backward_joint_{block_index + 1}_{block_index}@Heter"
         )
 
     entrance_var_list.sort()

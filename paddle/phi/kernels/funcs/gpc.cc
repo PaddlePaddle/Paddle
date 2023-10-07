@@ -1048,7 +1048,7 @@ void gpc_polygon_clip(gpc_op op,
     px = -DBL_MAX;
     /* Create bundles within AET */
     e0 = aet;
-    e1 = aet;
+    e1 = aet;  // NOLINT
     /* Set up bundle fields of first edge */
     PADDLE_ENFORCE_NOT_NULL(
         aet, phi::errors::InvalidArgument("Edge node AET is nullptr."));
@@ -1689,7 +1689,7 @@ void gpc_tristrip_clip(gpc_op op,
     /* Create bundles within AET */
     px = -DBL_MAX;
     e0 = aet;
-    e1 = aet;
+    e1 = aet;  // NOLINT
 
     /* Set up bundle fields of first edge */
     PADDLE_ENFORCE_NOT_NULL(
