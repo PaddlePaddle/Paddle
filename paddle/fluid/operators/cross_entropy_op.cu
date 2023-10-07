@@ -18,21 +18,6 @@ limitations under the License. */
 namespace plat = paddle::platform;
 namespace ops = paddle::operators;
 
-PD_REGISTER_STRUCT_KERNEL(cross_entropyaaa,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::CrossEntropyOpKernel,
-                          float,
-                          double,
-                          plat::float16) {}
-PD_REGISTER_STRUCT_KERNEL(cross_entropy_gradaaa,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::CrossEntropyGradientOpKernel,
-                          float,
-                          double,
-                          plat::float16) {}
-
 PD_REGISTER_STRUCT_KERNEL(cross_entropy2,
                           GPU,
                           ALL_LAYOUT,
