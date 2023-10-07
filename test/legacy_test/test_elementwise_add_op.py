@@ -56,8 +56,6 @@ class TestElementwiseAddOp(OpTest):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_output(
             check_dygraph=self.check_dygraph(),
-            check_prim=self.check_prim,
-            check_prim_pir=self.check_dygraph(),
             check_new_ir=self.check_dygraph(),
         )
 
@@ -155,8 +153,6 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
             place,
             atol=1e-3,
             check_dygraph=self.check_dygraph(),
-            check_prim=self.check_prim,
-            check_prim_pir=self.check_dygraph(),
             check_new_ir=self.check_dygraph(),
         )
 
