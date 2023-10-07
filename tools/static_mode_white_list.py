@@ -463,7 +463,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_size_op',
     'test_share_data_op',
     'test_smooth_l1_loss',
-    'test_smooth_l1_loss_op',
     'test_softmax_with_cross_entropy_op',
     'test_spectral_norm_op',
     'test_split_ids_op',
