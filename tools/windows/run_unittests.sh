@@ -49,7 +49,6 @@ disable_wingpu_test="^test_model$|\
 ^test_gather_op$|\
 ^test_activation_op$|\
 ^test_norm_nn_grad$|\
-^test_bilinear_interp_op$|\
 ^disable_wingpu_test$"
 
 # /*=================Fixed Disabled Windows TRT MKL unittests=======================*/
@@ -238,10 +237,7 @@ long_time_test="^test_gru_op$|\
 ^test_normal$|\
 ^test_pool3d_op$|\
 ^test_static_save_load$|\
-^test_trilinear_interp_op$|\
 ^test_trilinear_interp_v2_op$|\
-^test_bilinear_interp_op$|\
-^test_nearest_interp_op$|\
 ^test_sequence_conv$|\
 ^test_sgd_op$|\
 ^test_transformer$|\
