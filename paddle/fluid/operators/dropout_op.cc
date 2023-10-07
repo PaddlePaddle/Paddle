@@ -211,17 +211,17 @@ class DropoutNdGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(dropout,
+DECLARE_INFER_SHAPE_FUNCTOR(dropoutaaa,
                             DropoutInferShapeFunctor,
                             PD_INFER_META(phi::DropoutInferMeta));
-REGISTER_OPERATOR(dropout,
+REGISTER_OPERATOR(dropoutaaa,
                   ops::DropoutOp,
                   ops::DropoutOpMaker,
                   ops::DropoutCompositeGradOpMaker,
                   ops::DropoutGradOpMaker<paddle::framework::OpDesc>,
                   ops::DropoutGradOpMaker<paddle::imperative::OpBase>,
                   DropoutInferShapeFunctor);
-REGISTER_OPERATOR(dropout_grad, ops::DropoutOpGrad);
+REGISTER_OPERATOR(dropout_gradaaa, ops::DropoutOpGrad);
 
 DECLARE_INFER_SHAPE_FUNCTOR(dropout_nd,
                             DropoutNdInferShapeFunctor,
