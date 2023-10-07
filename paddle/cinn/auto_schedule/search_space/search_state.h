@@ -20,9 +20,9 @@
 
 #include "paddle/cinn/common/object.h"
 #include "paddle/cinn/common/shared.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/utils/ir_compare.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
 
 namespace cinn {
 namespace auto_schedule {

@@ -14,13 +14,19 @@
 
 """Tests for PyLayer of Dynamic-to-Static.
 Only test simple cases here."""
+import sys
+from pathlib import Path
+
+sys.path.append(
+    str(Path(__file__).absolute().parent.parent.joinpath("legacy_test"))
+)
 
 import os
 import tempfile
 import unittest
 
 import numpy as np
-from legacy_test.test_jit_save_load import train
+from test_jit_save_load import train
 
 import paddle
 from paddle.autograd.py_layer import PyLayer
@@ -237,7 +243,7 @@ class SimplePyLayerNetMultiIn(paddle.nn.Layer):
     def forward(self, x1, x2):
         y1 = self.linear1(x1)
         y2 = self.linear1(x2)
-        out = cus_tanh_2.apply(y1, func1=paddle.tanh)
+        out = cus_tanh_2.apply(y1, paddle.tanh)
         out = out + y2
         out = paddle.mean(out)
         return out

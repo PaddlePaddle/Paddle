@@ -222,7 +222,7 @@ std::vector<Value> TieShapeOp::dims() {
 }
 
 void FuncOp::Build(Builder &builder, OperationArgument &argument) {
-  argument.num_regions = 1;
+  argument.AddRegion(nullptr);
 }
 
 Block *FuncOp::block() {

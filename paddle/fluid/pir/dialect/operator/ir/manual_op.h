@@ -193,6 +193,22 @@ class IfOp : public pir::Op<IfOp> {
   void Verify();
 };
 
+class WhileOp : public pir::Op<WhileOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd.while"; }
+  static constexpr uint32_t attributes_num = 0;
+  static constexpr const char **attributes_name = nullptr;
+
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    const std::vector<pir::Value> &inputs,
+                    const std::vector<pir::Type> &output_types);
+  void Verify() {}
+  pir::Block *cond_block();
+  pir::Block *body_block();
+};
+
 }  // namespace dialect
 }  // namespace paddle
 
@@ -203,3 +219,4 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNWithKernelOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueGradOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::IfOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::WhileOp)
