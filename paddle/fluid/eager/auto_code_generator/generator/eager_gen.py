@@ -1608,7 +1608,9 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 view_share_autogradmeta_str += f"""
   if ({input}.initialized() && {output}.initialized() && {input}.is_dense_tensor() && {output}.is_dense_tensor() && std::dynamic_pointer_cast<phi::DenseTensor>({input}.impl())->IsSharedBufferWith(*std::dynamic_pointer_cast<phi::DenseTensor>({output}.impl()))) {{
     {output}.set_autograd_meta({input}.mutable_autograd_meta());
-    grad_node->SetIsForwardView(true);
+    if (grad_node) {{
+      grad_node->SetIsForwardView(true);
+    }}
   }}
   """
 
