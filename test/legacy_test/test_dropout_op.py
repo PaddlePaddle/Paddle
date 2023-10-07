@@ -330,8 +330,9 @@ class TestDropoutOpWithSeed(OpTest):
         self.enable_check_static_comp = False
 
     def test_check_output(self):
+        # ir backward don't support of variable derivation of itself
         self.check_output(
-            check_prim=True, check_prim_pir=True, check_new_ir=True
+            check_prim=True, check_prim_pir=False, check_new_ir=True
         )
 
     def test_check_grad_normal(self):
