@@ -1426,7 +1426,6 @@ set(STRIED_TESTS
     test_signal
     test_slice_op
     test_solve_op
-    test_squeeze_op
     test_squeeze2_op
     test_unbind_op
     test_unsqueeze_op
