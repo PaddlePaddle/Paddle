@@ -108,7 +108,7 @@ void Test_Pool2d_Transpose_NHWC(const std::string &transpose_type) {
 }
 
 TEST(test_pool2d_transpose_nhwc, cpu_place) {
-  Test_Pool2d_Transpose_NHWC({"transpose"});
+  Test_Pool2d_Transpose_NHWC({"transpose2"});
   Test_Pool2d_Transpose_NHWC({"fused_transpose"});
 }
 

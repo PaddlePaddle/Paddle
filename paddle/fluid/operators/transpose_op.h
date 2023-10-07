@@ -29,15 +29,14 @@ namespace operators {
 // will be used in transpose_grad, in this way, the framework can reuse
 // the memory of X immediately the transpose2_op is finished.
 // Considering compatibility issues, we could not fix transpose2_op
-class Transpose2Op {
+class Transpose2Op : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  using TransposeOp::TransposeOp;
   Transpose2Op(const std::string &type,
                const framework::VariableNameMap &inputs,
                const framework::VariableNameMap &outputs,
                const framework::AttributeMap &attrs)
-      : TransposeOp(type, inputs, outputs, attrs) {}
+      : OperatorWithKernel(type, inputs, outputs, attrs) {}
   void InferShape(framework::InferShapeContext *ctx) const override;
 
  protected:
