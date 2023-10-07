@@ -179,7 +179,7 @@ class TopkOpGradCUDAKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 REGISTER_OP_CUDA_KERNEL(
-    top_k,
+    top_kaaa,
     paddle::operators::TopkOpCUDAKernel<phi::GPUContext, float>,
     paddle::operators::TopkOpCUDAKernel<phi::GPUContext, double>,
     paddle::operators::TopkOpCUDAKernel<phi::GPUContext, int>,
@@ -188,7 +188,7 @@ REGISTER_OP_CUDA_KERNEL(
                                         paddle::platform::float16>);
 
 REGISTER_OP_CUDA_KERNEL(
-    top_k_grad,
+    top_k_gradaaa,
     paddle::operators::TopkOpGradCUDAKernel<phi::GPUContext, float>,
     paddle::operators::TopkOpGradCUDAKernel<phi::GPUContext, double>,
     paddle::operators::TopkOpGradCUDAKernel<phi::GPUContext, int>,

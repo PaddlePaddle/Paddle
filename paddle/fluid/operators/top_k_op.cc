@@ -162,19 +162,19 @@ class TopkInferVarType : public framework::VarTypeInference {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(top_k,
+REGISTER_OPERATOR(top_kaaa,
                   ops::TopkOp,
                   ops::TopkOpMaker,
                   ops::TopkInferVarType,
                   ops::TopkGradOpMaker<paddle::framework::OpDesc>,
                   ops::TopkGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(top_k_grad, ops::TopkOpGrad);
+REGISTER_OPERATOR(top_k_gradaaa, ops::TopkOpGrad);
 
-REGISTER_OP_CPU_KERNEL(top_k,
+REGISTER_OP_CPU_KERNEL(top_kaaa,
                        ops::TopkKernel<paddle::platform::CPUPlace, float>,
                        ops::TopkKernel<paddle::platform::CPUPlace, double>);
 
-REGISTER_OP_CPU_KERNEL(top_k_grad,
+REGISTER_OP_CPU_KERNEL(top_k_gradaaa,
                        ops::TopkGradKernel<paddle::platform::CPUPlace, float>,
                        ops::TopkGradKernel<paddle::platform::CPUPlace, double>);
