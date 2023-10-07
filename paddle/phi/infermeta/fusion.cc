@@ -1972,4 +1972,59 @@ void FusionGRUInferMeta(const MetaTensor& x,
   xx->share_lod(x);
 }
 
+void FusionSeqConvEltAddReluInferMeta(const MetaTensor& x,
+                                      const MetaTensor& filter,
+                                      const MetaTensor& bias,
+                                      const int context_length,
+                                      const int context_start,
+                                      const int context_stride,
+                                      MetaTensor* out,
+                                      MetaTensor* col_mat) {
+  auto x_dims = x.dims();
+  auto w_dims = filter.dims();
+  PADDLE_ENFORCE_EQ(context_stride,
+                    1,
+                    phi::errors::InvalidArgument(
+                        "Currently, FusionSeqConvEltAddReluOp only supports "
+                        "contextStride=1, but received value is: %d.",
+                        context_stride));
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "Input(X) should be 2-D tensor, but reveiced value is: %d.",
+          x_dims.size()));
+
+  PADDLE_ENFORCE_EQ(
+      w_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "Filter should be 2-D tensor, but reveiced value is: %d.",
+          w_dims.size()));
+
+  PADDLE_ENFORCE_EQ(w_dims[0],
+                    context_length * x_dims[1],
+                    phi::errors::InvalidArgument(
+                        "Filter's height should be equal to context_length * "
+                        "input_hidden_size, but received Filter height is: %d,"
+                        "context_length is: %d, input_hidden_size is: %d.",
+                        w_dims[0],
+                        context_length,
+                        x_dims[1]));
+
+  PADDLE_ENFORCE_GT(
+      context_start,
+      0,
+      phi::errors::InvalidArgument(
+          "contextStart size should be smaller than contextLength, "
+          "but received context_length is: %d, contextStart is: "
+          "%d.",
+          context_length,
+          context_start));
+  out->set_dims({x_dims[0], w_dims[1]});
+  out->set_dims({x_dims[0], w_dims[0]});
+  out->share_lod(x);
+}
+
 }  // namespace phi

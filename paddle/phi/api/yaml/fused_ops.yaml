@@ -198,6 +198,15 @@
     data_type : x
   optional : h0, bias
 
+- op : fusion_seqconv_eltadd_relu
+  args : (Tensor x, Tensor filter, Tensor bias, int context_length, int context_start = 0, int context_stride = 1)
+  output : Tensor(out), Tensor(col_mat)
+  infer_meta :
+    func : FusionSeqConvEltAddReluInferMeta
+  kernel :
+    func : fusion_seqconv_eltadd_relu
+    data_type : x
+
 - op : generate_sequence_xpu
   args : (Tensor x, DataType dtype)
   output : Tensor

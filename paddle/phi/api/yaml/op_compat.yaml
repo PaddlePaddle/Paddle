@@ -1317,6 +1317,19 @@
     scale_weights : Scale_weights
     force_fp32_output : force_fp32_output
 
+- op : fusion_seqconv_eltadd_relu
+  inputs :
+    x : X
+    filter : Filter
+    bias : Bias
+  outputs :
+    out : Out
+    col_mat : ColMat
+  attrs :
+    context_length : contextLength
+    context_start : contextStart
+    context_stride : contextStride
+
 - op : gather
   backward : gather_grad
   inputs :

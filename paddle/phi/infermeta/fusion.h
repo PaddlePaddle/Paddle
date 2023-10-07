@@ -507,4 +507,13 @@ void FusionGRUInferMeta(const MetaTensor& x,
                         MetaTensor* batched_out,
                         MetaTensor* hidden);
 
+void FusionSeqConvEltAddReluInferMeta(const MetaTensor& x,
+                                      const MetaTensor& filter,
+                                      const MetaTensor& bias,
+                                      const int context_length,
+                                      const int context_start,
+                                      const int context_stride,
+                                      MetaTensor* out,
+                                      MetaTensor* col_mat);
+
 }  // namespace phi
