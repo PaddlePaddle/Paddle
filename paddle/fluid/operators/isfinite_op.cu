@@ -35,7 +35,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::OverflowKernel<phi::GPUContext, plat::bfloat16, ops::NANFunctor>);
 
 REGISTER_OP_CUDA_KERNEL(
-    isfinite,
+    isfiniteaa,
     ops::OverflowKernel<phi::GPUContext, int, ops::IsfiniteFunctor>,
     ops::OverflowKernel<phi::GPUContext, float, ops::IsfiniteFunctor>,
     ops::OverflowKernel<phi::GPUContext, double, ops::IsfiniteFunctor>,
