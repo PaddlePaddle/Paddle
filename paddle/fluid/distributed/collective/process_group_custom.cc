@@ -603,7 +603,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::RunFnInXCCLEnv(
       use_calc_stream ? *calc_ctx->GetStream() : *comm_ctx->GetStream();
 
   std::string event_name;
-  if (comm_group_.empty()) {
+  if (comm_group_.empty() && device_type_.find("swai") != std::string::npos) {
     BuildCommunicationField({place}, key, /*i*/ 0, use_calc_stream);
     event_name = "first_all_gather";
   } else {
@@ -760,7 +760,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Collective(
     for (size_t i = 0; i < inputs.size(); ++i) {
       phi::DeviceGuard guard(places[i]);
       const auto& xccl_stream = *places_to_ctx_.at(key)[i]->GetStream();
-      if (comm_group_.empty()) {
+      if (comm_group_.empty() &&
+          device_type_.find("swai") != std::string::npos) {
         BuildCommunicationField(places, key, i, /*use_calc_stream*/ false);
         event_name = "first_all_gather";
       } else {
@@ -832,7 +833,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::PointToPoint(
     std::string event_name;
     for (size_t i = 0; i < tensors.size(); ++i) {
       phi::DeviceGuard guard(places[i]);
-      if (comm_group_.empty()) {
+      if (comm_group_.empty() &&
+          device_type_.find("swai") != std::string::npos) {
         BuildCommunicationField(places, key, i, /*use_calc_stream*/ false);
         event_name = "first_all_gather";
       } else {
