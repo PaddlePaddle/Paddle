@@ -85,7 +85,6 @@ register_unity_group(
   py_func_op.cc
   real_op.cc
   sync_batch_norm_op.cc
-  top_k_op.cc
   gru_unit_op.cc)
 register_unity_group(
   cc
@@ -540,7 +539,6 @@ register_unity_group(cu activation_op.cu)
 register_unity_group(cu dist_op.cu)
 register_unity_group(cu expand_as_v2_op.cu)
 register_unity_group(cu gru_unit_op.cu)
-register_unity_group(cu top_k_op.cu)
 register_unity_group(cu argsort_op.cu)
 register_unity_group(cu kron_op.cu)
 register_unity_group(cu unique_op.cu)
