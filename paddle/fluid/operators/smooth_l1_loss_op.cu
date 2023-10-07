@@ -15,6 +15,9 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 PD_REGISTER_STRUCT_KERNEL(
-    smooth_l1_loss, GPU, ALL_LAYOUT, ops::SmoothL1LossKernel, float) {}
-PD_REGISTER_STRUCT_KERNEL(
-    smooth_l1_loss_grad, GPU, ALL_LAYOUT, ops::SmoothL1LossGradKernel, float) {}
+    smooth_l1_lossaa, GPU, ALL_LAYOUT, ops::SmoothL1LossKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(smooth_l1_loss_gradaa,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SmoothL1LossGradKernel,
+                          float) {}

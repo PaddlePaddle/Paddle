@@ -219,13 +219,16 @@ class SmoothL1LossGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(smooth_l1_loss,
+REGISTER_OPERATOR(smooth_l1_lossaa,
                   ops::SmoothL1LossOp,
                   ops::SmoothL1LossOpMaker,
                   ops::SmoothL1LossGradMaker<paddle::framework::OpDesc>,
                   ops::SmoothL1LossGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(smooth_l1_loss_grad, ops::SmoothL1LossGradOp);
+REGISTER_OPERATOR(smooth_l1_loss_gradaa, ops::SmoothL1LossGradOp);
 PD_REGISTER_STRUCT_KERNEL(
-    smooth_l1_loss, CPU, ALL_LAYOUT, ops::SmoothL1LossKernel, float) {}
-PD_REGISTER_STRUCT_KERNEL(
-    smooth_l1_loss_grad, CPU, ALL_LAYOUT, ops::SmoothL1LossGradKernel, float) {}
+    smooth_l1_lossaa, CPU, ALL_LAYOUT, ops::SmoothL1LossKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(smooth_l1_loss_gradaa,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::SmoothL1LossGradKernel,
+                          float) {}
