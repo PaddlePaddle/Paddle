@@ -120,7 +120,6 @@ register_unity_group(
   increment_op.cc
   index_sample_op.cc
   index_select_op.cc
-  interpolate_op.cc
   isfinite_v2_op.cc)
 register_unity_group(
   cc
@@ -411,7 +410,6 @@ register_unity_group(
   increment_op.cu
   index_sample_op.cu
   index_select_op.cu
-  interpolate_op.cu
   isfinite_v2_op.cu)
 register_unity_group(
   cu

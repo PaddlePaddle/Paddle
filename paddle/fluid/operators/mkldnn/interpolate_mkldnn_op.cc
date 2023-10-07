@@ -12,7 +12,6 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/fluid/operators/interpolate_op.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 
 namespace paddle {
