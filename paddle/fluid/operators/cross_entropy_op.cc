@@ -421,16 +421,20 @@ class CrossEntropyGradOpMaker2 : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(cross_entropy,
+REGISTER_OPERATOR(cross_entropyaaa,
                   ops::CrossEntropyOpBase,
                   ops::CrossEntropyOpMaker,
                   ops::CrossEntropyOpInferVarType,
                   ops::CrossEntropyGradOpMaker<paddle::framework::OpDesc>,
                   ops::CrossEntropyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(cross_entropy_grad, ops::CrossEntropyGradientOp);
-PD_REGISTER_STRUCT_KERNEL(
-    cross_entropy, CPU, ALL_LAYOUT, ops::CrossEntropyOpKernel, float, double) {}
-PD_REGISTER_STRUCT_KERNEL(cross_entropy_grad,
+REGISTER_OPERATOR(cross_entropy_gradaaa, ops::CrossEntropyGradientOp);
+PD_REGISTER_STRUCT_KERNEL(cross_entropyaaa,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CrossEntropyOpKernel,
+                          float,
+                          double) {}
+PD_REGISTER_STRUCT_KERNEL(cross_entropy_gradaaa,
                           CPU,
                           ALL_LAYOUT,
                           ops::CrossEntropyGradientOpKernel,
