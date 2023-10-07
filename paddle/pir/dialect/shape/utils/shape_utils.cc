@@ -35,8 +35,8 @@ bool CompareSymbolicDimProduct(SymbolicDimProduct& lhs,    // NOLINT
   if (lhs.symbols.size() < rhs.symbols.size()) return true;
   if (lhs.symbols.size() == rhs.symbols.size()) {
     for (size_t idx = 0; idx < lhs.symbols.size(); ++idx) {
-      const std::string lhsName = lhs.symbols[idx].getSymName();
-      const std::string rhsName = rhs.symbols[idx].getSymName();
+      const std::string lhsName = lhs.symbols[idx].GetSymName();
+      const std::string rhsName = rhs.symbols[idx].GetSymName();
       if (CompareSymbolicDimNames(lhsName, rhsName)) return true;
       if (lhsName != rhsName) return false;
     }
@@ -47,7 +47,7 @@ bool CompareSymbolicDimProduct(SymbolicDimProduct& lhs,    // NOLINT
 const std::string SymbolTable::insert(Operation* symbol) {
   std::string name;
   if (symbol->isa<dialect::SymbolicDim>()) {
-    name = symbol->dyn_cast<SymbolicDim>().getSymName();
+    name = symbol->dyn_cast<SymbolicDim>().GetSymName();
     symbolTableMap_.insert({name, symbol});
   }
 
@@ -67,7 +67,7 @@ bool SymbolicDimMgr::Load() {
     symbolTable_.insert(op_);
     if (SymbolicDim op = op_->dyn_cast<SymbolicDim>()) {
       symbolDimUnionSet_[op] = op;
-      symbolNameSet_.insert(op.getSymName());
+      symbolNameSet_.insert(op.GetSymName());
     }
   }
   return LoadShapeConstraintGraph();
@@ -168,7 +168,7 @@ SymbolicDimMgr::SimplifySymbolicDimProductPair(const SymbolicDimProduct& x,
 
   for (SymbolicDim op : lhs.symbols) {
     auto it = rhsSymbolMap.find(op);
-    if (it != rhsSymbolMap.end() && op.getKnownNonSizeZero()) {
+    if (it != rhsSymbolMap.end() && op.GetKnownNonSizeZero()) {
       if (--it->second == 0) rhsSymbolMap.erase(it);
       continue;
     }
@@ -177,7 +177,7 @@ SymbolicDimMgr::SimplifySymbolicDimProductPair(const SymbolicDimProduct& x,
 
   for (SymbolicDim op : rhs.symbols) {
     auto it = lhsSymbolMap.find(op);
-    if (it != lhsSymbolMap.end() && op.getKnownNonSizeZero()) {
+    if (it != lhsSymbolMap.end() && op.GetKnownNonSizeZero()) {
       if (--it->second == 0) lhsSymbolMap.erase(it);
       continue;
     }
@@ -197,13 +197,13 @@ SymbolicDimProduct SymbolicDimMgr::SimplifySymbolicDimProduct(
   for (SymbolicDim op : x.symbols) copied.push_back(GetRootSymbolicDim(op));
 
   sort(copied.begin(), copied.end(), [&](SymbolicDim lhs, SymbolicDim rhs) {
-    return CompareSymbolicDimNames(lhs.getSymName(), rhs.getSymName());
+    return CompareSymbolicDimNames(lhs.GetSymName(), rhs.GetSymName());
   });
   SymbolicDimProduct newX;
   newX.factor = x.factor;
   for (SymbolicDim op : copied) {
     if (!op.IsDynamic()) {
-      newX.factor *= op.getValue();
+      newX.factor *= op.GetDimSize();
     } else {
       newX.symbols.push_back(op);
     }
@@ -255,11 +255,11 @@ SymbolicDim SymbolicDimMgr::NewConstantSymbolicDim(int64_t val) {
     it = constantSymbolicDimMap_
              .insert(std::make_pair(val, NewSymbolicDim(name)))
              .first;
-    it->second.updateValue(val);
-    if (val == -1) it->second.updateKnownNegativeOne(true);
-    if (val >= 0) it->second.updateKnownNonNegative(true);
-    if (val != 1) it->second.updateKnownNonSizeOne(true);
-    if (val != 0) it->second.updateKnownNonSizeZero(true);
+    it->second.SetDimSize(val);
+    if (val == -1) it->second.UpdateKnownNegativeOne(true);
+    if (val >= 0) it->second.UpdateKnownNonNegative(true);
+    if (val != 1) it->second.UpdateKnownNonSizeOne(true);
+    if (val != 0) it->second.UpdateKnownNonSizeZero(true);
   }
   return GetRootSymbolicDim(it->second);
 }
@@ -298,7 +298,7 @@ bool SymbolicDimMgr::MapSymbolicDimEqual(SymbolicDim lhs, SymbolicDim rhs) {
   SymbolicDim rhsRoot = GetRootSymbolicDim(rhs);
 
   if (lhsRoot != rhsRoot) {
-    if (CompareSymbolicDimNames(lhsRoot.getSymName(), rhsRoot.getSymName())) {
+    if (CompareSymbolicDimNames(lhsRoot.GetSymName(), rhsRoot.GetSymName())) {
       if (!lhsRoot.Merge(rhsRoot)) return false;
       symbolDimUnionSet_[rhsRoot] = lhsRoot;
     } else {
@@ -469,7 +469,7 @@ bool SymbolicDimMgr::Save() {
       assert(sym);
       SymbolicDim root = GetRootSymbolicDim(sym);
       Attribute rootSymbol =
-          StrAttribute::get(m_->ir_context(), root.getSymName());
+          StrAttribute::get(m_->ir_context(), root.GetSymName());
       newAttrs.push_back(rootSymbol);
     }
     return ArrayAttribute::get(m_->ir_context(), newAttrs);
@@ -477,13 +477,13 @@ bool SymbolicDimMgr::Save() {
 
   // TODO(liujinnan): update attributes attached in DenseTensorType
   for (auto op : *(m_.block())) {
-    if (!op->HasAttribute(SymbolicDim::getSymbolicDimAttrName())) continue;
+    if (!op->HasAttribute(SymbolicDim::GetSymbolicDimAttrName())) continue;
     auto attrs =
-        op->attribute<ArrayAttribute>(SymbolicDim::getSymbolicDimAttrName());
+        op->attribute<ArrayAttribute>(SymbolicDim::GetSymbolicDimAttrName());
     auto symbolicShapeAttr = updateAttrs(attrs, [&](const std::string& name) {
       return symbolTable_.Lookup<SymbolicDim>(name);
     });
-    op->set_attribute(SymbolicDim::getSymbolicDimAttrName(), symbolicShapeAttr);
+    op->set_attribute(SymbolicDim::GetSymbolicDimAttrName(), symbolicShapeAttr);
   }
   if (!UpdateProductEqualityMap()) {
     return false;
@@ -497,13 +497,13 @@ bool SymbolicDimMgr::Save() {
           attr.dyn_cast<StrAttribute>().AsString());
       assert(sym);
       if (usedSymbolicOps.insert(sym).second)
-        usedSymbolNames.push_back(sym.getSymName());
+        usedSymbolNames.push_back(sym.GetSymName());
     }
   };
   for (auto op : *(m_.block())) {
-    if (!op->HasAttribute(SymbolicDim::getSymbolicDimAttrName())) continue;
+    if (!op->HasAttribute(SymbolicDim::GetSymbolicDimAttrName())) continue;
     auto attrs =
-        op->attribute<ArrayAttribute>(SymbolicDim::getSymbolicDimAttrName());
+        op->attribute<ArrayAttribute>(SymbolicDim::GetSymbolicDimAttrName());
     collectUsedSymbols(attrs);
   }
   auto funcOp = symbolTable_.getOp()->dyn_cast<dialect::FuncOp>();
@@ -553,18 +553,18 @@ bool SymbolicDimMgr::Save() {
 
   std::unordered_map<std::string, SymbolicDim> name2Symbol;
   for (SymbolicDim op : usedSymbolicOps) {
-    auto name = op.getSymName();
-    op.updateSymName(nameMapping[name]);
+    auto name = op.GetSymName();
+    op.SetSymName(nameMapping[name]);
     name2Symbol[name] = op;
   }
 
   for (auto op : *(m_.block())) {
-    if (!op->HasAttribute(SymbolicDim::getSymbolicDimAttrName())) continue;
+    if (!op->HasAttribute(SymbolicDim::GetSymbolicDimAttrName())) continue;
     auto attrs =
-        op->attribute<ArrayAttribute>(SymbolicDim::getSymbolicDimAttrName());
+        op->attribute<ArrayAttribute>(SymbolicDim::GetSymbolicDimAttrName());
     auto symbolicShapeAttr = updateAttrs(
         attrs, [&](const std::string& name) { return name2Symbol[name]; });
-    op->set_attribute(SymbolicDim::getSymbolicDimAttrName(), symbolicShapeAttr);
+    op->set_attribute(SymbolicDim::GetSymbolicDimAttrName(), symbolicShapeAttr);
   }
 
   // TODO(liujinnan): update attributes attached to values.
@@ -597,7 +597,7 @@ bool SymbolicDimMgr::SaveShapeConstraintGraph() {
               ->result(0));
     }
     for (SymbolicDim sym : prod.symbols) {
-      values.push_back(builder.Build<dialect::DimOp>(sym.getSymName()).out());
+      values.push_back(builder.Build<dialect::DimOp>(sym.GetSymName()).out());
     }
     return values;
   };
@@ -649,7 +649,7 @@ SymbolicDimShapeAnalysis::SymbolicDimShapeAnalysis(ModuleOp m)
     auto& symbols = value2SymDims_[result];
     auto attrs =
         tieShapeOp
-            .attribute<ArrayAttribute>(SymbolicDim::getSymbolicDimAttrName())
+            .attribute<ArrayAttribute>(SymbolicDim::GetSymbolicDimAttrName())
             .AsVector();
     for (const auto& attr : attrs) {
       auto symOp = mgr_.symbolTable().Lookup<SymbolicDim>(
@@ -776,9 +776,9 @@ bool ShapeComputationIRAnalysis::BuildShapeOnOperation(Operation* op) {
   if (op->isa<dialect::TieShapeOp>()) {
     Value value = op->operand_source(0);
     std::vector<SymbolicDim> symbols;
-    if (op->HasAttribute(SymbolicDim::getSymbolicDimAttrName())) {
+    if (op->HasAttribute(SymbolicDim::GetSymbolicDimAttrName())) {
       auto attrs =
-          op->attribute<ArrayAttribute>(SymbolicDim::getSymbolicDimAttrName())
+          op->attribute<ArrayAttribute>(SymbolicDim::GetSymbolicDimAttrName())
               .AsVector();
       for (Attribute attr : attrs) {
         auto sym = mgr_.symbolTable().Lookup<SymbolicDim>(
@@ -792,10 +792,10 @@ bool ShapeComputationIRAnalysis::BuildShapeOnOperation(Operation* op) {
       std::vector<Attribute> attrs;
       for (SymbolicDim sym : symbols) {
         Attribute rootSymbol =
-            StrAttribute::get(m_->ir_context(), sym.getSymName());
+            StrAttribute::get(m_->ir_context(), sym.GetSymName());
         attrs.push_back(rootSymbol);
       }
-      op->set_attribute(SymbolicDim::getSymbolicDimAttrName(),
+      op->set_attribute(SymbolicDim::GetSymbolicDimAttrName(),
                         ArrayAttribute::get(m_->ir_context(), attrs));
     }
     rankedTensor2SymDims_[value] = std::move(symbols);
@@ -844,7 +844,7 @@ bool ShapeComputationIRAnalysis::ApplyIndexOpConstraint(Operation* op) {
                            .owner()
                            ->attribute<Int64Attribute>("value")
                            .data();
-    value2SymDim_[dimOp.out()].updateKnownNonNegative(true);
+    value2SymDim_[dimOp.out()].UpdateKnownNonNegative(true);
     if (!mgr_.MapSymbolicDimEqual(
             value2SymDim_[dimOp.out()],
             rankedTensor2SymDims_[dimOp.source()][dimIndex])) {
@@ -869,7 +869,7 @@ bool ShapeComputationIRAnalysis::ApplyTieShapeOpConstraint(Operation* op) {
       if (!mgr_.MapSymbolicDimEqual(value2SymDim_[tieShape.dims()[idx]],
                                     value[idx]))
         return false;
-      mgr_.GetRootSymbolicDim(value[idx]).updateKnownNonNegative(true);
+      mgr_.GetRootSymbolicDim(value[idx]).UpdateKnownNonNegative(true);
     }
   }
   return true;
