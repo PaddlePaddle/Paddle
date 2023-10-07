@@ -18,7 +18,7 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
-    squeeze,
+    squeezeaa,
     ops::SqueezeKernel<phi::GPUContext, float>,
     ops::SqueezeKernel<phi::GPUContext, double>,
     ops::SqueezeKernel<phi::GPUContext, plat::float16>,
@@ -31,7 +31,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SqueezeKernel<phi::GPUContext, paddle::platform::complex<float>>,
     ops::SqueezeKernel<phi::GPUContext, paddle::platform::complex<double>>);
 REGISTER_OP_CUDA_KERNEL(
-    squeeze_grad,
+    squeeze_gradaa,
     ops::SqueezeGradKernel<phi::GPUContext, float>,
     ops::SqueezeGradKernel<phi::GPUContext, double>,
     ops::SqueezeGradKernel<phi::GPUContext, plat::float16>,

@@ -232,19 +232,19 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(SqueezeGradNoNeedBufferVarsInferer, "X");
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(squeeze,
+REGISTER_OPERATOR(squeezeaa,
                   ops::SqueezeOp,
                   ops::SqueezeOpMaker,
                   ops::SqueezeGradOpMaker<paddle::framework::OpDesc>,
                   ops::SqueezeGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(squeeze_grad,
+REGISTER_OPERATOR(squeeze_gradaa,
                   ops::SqueezeGradOp,
                   ops::SqueezeDoubleGradOpMaker<paddle::framework::OpDesc>,
                   ops::SqueezeDoubleGradOpMaker<paddle::imperative::OpBase>,
                   ops::SqueezeGradNoNeedBufferVarsInferer);
 
 REGISTER_OP_CPU_KERNEL(
-    squeeze,
+    squeezeaa,
     ops::SqueezeKernel<phi::CPUContext, float>,
     ops::SqueezeKernel<phi::CPUContext, double>,
     ops::SqueezeKernel<phi::CPUContext, bool>,
@@ -256,7 +256,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::SqueezeKernel<phi::CPUContext, paddle::platform::complex<double>>,
     ops::SqueezeKernel<phi::CPUContext, paddle::platform::bfloat16>);
 REGISTER_OP_CPU_KERNEL(
-    squeeze_grad,
+    squeeze_gradaa,
     ops::SqueezeGradKernel<phi::CPUContext, float>,
     ops::SqueezeGradKernel<phi::CPUContext, double>,
     ops::SqueezeGradKernel<phi::CPUContext, bool>,
