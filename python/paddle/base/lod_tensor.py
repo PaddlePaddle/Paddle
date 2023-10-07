@@ -46,7 +46,6 @@ def create_lod_tensor(data, recursive_seq_lens, place):
     would be converted to offset-based LoD [[0, 2, 5]] inside the function
     call.
 
-    Please reference :ref:`user_guide_lod_tensor` for more details regarding LoD.
 
     Args:
         data (numpy.ndarray|list|LoDTensor): a numpy array, a list or ad LoDTensor

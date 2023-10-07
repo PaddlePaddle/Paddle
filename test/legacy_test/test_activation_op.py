@@ -174,11 +174,11 @@ class TestExp_Complex64(OpTest):
         self.convert_input_output()
 
     def test_check_output(self):
-        self.check_output(check_new_ir=False)
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], 'Out', max_relative_error=0.006, check_new_ir=False
+            ['X'], 'Out', max_relative_error=0.006, check_new_ir=True
         )
 
     def init_dtype(self):
@@ -260,10 +260,10 @@ class TestExpm1_Complex64(TestExpm1):
         self.dtype = np.complex64
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_new_ir=False)
+        self.check_grad(['X'], 'Out', check_new_ir=True)
 
     def test_check_output(self):
-        self.check_output(check_new_ir=False)
+        self.check_output(check_new_ir=True)
 
 
 class TestExpm1_Complex128(TestExpm1_Complex64):
@@ -506,7 +506,7 @@ class TestSilu(TestActivation):
     def test_check_grad(self):
         # TODO(BeingGod): set `check_prim=True` when `fill_constant` supports `complex` dtype
         if self.dtype == np.complex64 or self.dtype == np.complex128:
-            self.check_grad(['X'], 'Out', check_prim=False, check_new_ir=False)
+            self.check_grad(['X'], 'Out', check_prim=False, check_new_ir=True)
         else:
             self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
@@ -706,7 +706,7 @@ class TestTanh(TestActivation, TestParameter):
                 'Out',
                 check_prim=False,
                 check_prim_pir=False,
-                check_new_ir=False,
+                check_new_ir=True,
             )
         else:
             self.check_grad(
@@ -2812,7 +2812,13 @@ class TestHardSwish(TestActivation):
         self.public_python_api = paddle.nn.functional.hardswish
 
         np.random.seed(1024)
-        x = np.random.uniform(-6, 6, self.shape).astype(self.dtype)
+        if self.dtype is np.complex64 or self.dtype is np.complex128:
+            x = (
+                np.random.uniform(-6, 6, self.shape)
+                + 1j * np.random.uniform(-6, 6, self.shape)
+            ).astype(self.dtype)
+        else:
+            x = np.random.uniform(-6, 6, self.shape).astype(self.dtype)
         threshold = 6.0
         scale = 6.0
         offset = 3.0
@@ -2836,17 +2842,33 @@ class TestHardSwish(TestActivation):
         self.check_grad(
             ['X'],
             'Out',
-            check_prim=True,
+            check_prim=True
+            if self.dtype not in [np.complex64, np.complex128]
+            else False,
             only_check_prim=self.if_only_check_prim(),
         )
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(
+            check_prim=True
+            if self.dtype not in [np.complex64, np.complex128]
+            else False
+        )
 
 
 class TestHardSwish_ZeroDim(TestHardSwish):
     def init_shape(self):
         self.shape = []
+
+
+class TestHardSwishComplex64(TestHardSwish):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestHardSwishComplex128(TestHardSwish):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestHardswishAPI(unittest.TestCase):

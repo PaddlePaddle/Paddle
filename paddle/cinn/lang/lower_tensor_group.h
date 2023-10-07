@@ -28,7 +28,7 @@
 #include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/common/graph_utils.h"
 #include "paddle/cinn/ir/buffer.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/optim/buffer_assign.h"
 #include "paddle/cinn/optim/compute_inline_expand.h"
 #include "paddle/cinn/optim/fold_cinn_call_arguments.h"
