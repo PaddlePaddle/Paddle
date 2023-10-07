@@ -69,12 +69,13 @@ void FusedBatchNormAddActKernel(const Context &dev_ctx,
                     true,
                     phi::errors::PreconditionNotMet("It must use CUDAPlace."));
 
-  if (epsilon <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
+  double epsilon1 = static_cast<double>(epsilon);
+  if (epsilon1 <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
     LOG(ERROR) << "Provided epsilon is smaller than "
                << "CUDNN_BN_MIN_EPSILON. Setting it to "
                << "CUDNN_BN_MIN_EPSILON instead.";
   }
-  epsilon = std::max(static_cast<double>(epsilon), CUDNN_BN_MIN_EPSILON);
+  epsilon1 = std::max(static_cast<double>(epsilon1), CUDNN_BN_MIN_EPSILON);
 
   // Get the size for each dimension.
   // NHWC [batch_size, in_height, in_width, in_channels]
@@ -192,7 +193,7 @@ void FusedBatchNormAddActKernel(const Context &dev_ctx,
           dev_ctx.template Alloc<BatchNormParamType<T>>(
               variance_out,
               variance_out->numel() * sizeof(BatchNormParamType<T>)),
-          epsilon,
+          epsilon1,
           dev_ctx.template Alloc<BatchNormParamType<T>>(
               saved_mean, saved_mean->numel() * sizeof(BatchNormParamType<T>)),
           dev_ctx.template Alloc<BatchNormParamType<T>>(

@@ -94,7 +94,8 @@ struct DequantizeFunctor<phi::GPUContext, T> {
                   phi::DenseTensor* out) {
     const T* in_data = in->data<T>();
     const T* scale_factor = scale->data<T>();
-    T* out_data = dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
+    out->Resize({static_cast<int64_t>(out->numel() * sizeof(T))});
+    T* out_data = dev_ctx.template Alloc<T>(out);
 
     int64_t num = in->numel();
     int64_t block_size = std::min(

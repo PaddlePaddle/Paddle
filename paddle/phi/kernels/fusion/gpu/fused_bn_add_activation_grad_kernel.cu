@@ -68,29 +68,45 @@ void FusedBatchNormAddActGradKernel(const Context &dev_ctx,
   PADDLE_ENFORCE_EQ(is_gpu_place,
                     true,
                     phi::errors::PreconditionNotMet("It must use CUDAPlace."));
+  double epsilon1 = static_cast<double>(epsilon);
 
-  const auto *d_y = &y;
-  const auto &in_dims = x.dims();
+  const auto *x_ptr = &x;
+  const auto *y_ptr = &y;
+  const auto *d_y = &y_grad;
+  const auto *scale_ptr = &scale;
+  const auto *bias_ptr = &bias;
+  const auto *reserve_space_ptr = &reserve_space;
+
+  const auto &in_dims = x_ptr->dims();
 
   int N, C, H, W, D;
   const DataLayout data_layout = DataLayout::kNHWC;
   phi::funcs::ExtractNCWHD(in_dims, data_layout, &N, &C, &H, &W, &D);
 
-  dev_ctx.template Alloc<T>(x_grad);
-  dev_ctx.template Alloc<T>(z_grad);
+  // init output
+  auto *d_x = x_grad;
+  auto *d_z = z_grad;
+  auto *d_scale = scale_grad;
+  auto *d_bias = bias_grad;
+
+  dev_ctx.template Alloc<T>(d_x);
+  dev_ctx.template Alloc<T>(d_z);
+
   PADDLE_ENFORCE_EQ(
-      scale_grad && bias_grad,
+      d_scale && d_bias,
       true,
       phi::errors::PreconditionNotMet(
           "Both the scale grad and the bias grad must not be null."));
-  dev_ctx.template Alloc<BatchNormParamType<T>>(scale_grad);
-  dev_ctx.template Alloc<BatchNormParamType<T>>(bias_grad);
+
+  dev_ctx.template Alloc<BatchNormParamType<T>>(d_scale);
+  dev_ctx.template Alloc<BatchNormParamType<T>>(d_bias);
+
   PADDLE_ENFORCE_EQ(
-      scale.dims().size(),
+      scale_ptr->dims().size(),
       1UL,
       phi::errors::PreconditionNotMet("The scale only has one dimension."));
   PADDLE_ENFORCE_EQ(
-      scale.dims()[0],
+      scale_ptr->dims()[0],
       C,
       phi::errors::PreconditionNotMet(
           "The size of scale is equal to the channel of Input(X)."));
@@ -106,12 +122,12 @@ void FusedBatchNormAddActGradKernel(const Context &dev_ctx,
       phi::dynload::cudnnCreateTensorDescriptor(&data_desc_));
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::cudnnCreateTensorDescriptor(&bn_param_desc_));
-  if (epsilon <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
+  if (epsilon1 <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
     LOG(ERROR) << "Provided epsilon is smaller than "
                << "CUDNN_BN_MIN_EPSILON. Setting it to "
                << "CUDNN_BN_MIN_EPSILON instead.";
   }
-  epsilon = std::max(static_cast<double>(epsilon), CUDNN_BN_MIN_EPSILON);
+  epsilon1 = std::max(epsilon1, CUDNN_BN_MIN_EPSILON);
 
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetTensorNdDescriptor(
       data_desc_,
@@ -122,15 +138,17 @@ void FusedBatchNormAddActGradKernel(const Context &dev_ctx,
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnDeriveBNTensorDescriptor(
       bn_param_desc_, data_desc_, mode_));
 
+  const auto *saved_mean_ptr = &saved_mean;
+  const auto *saved_var_ptr = &saved_variance;
   const auto *saved_mean_data =
-      saved_mean.template data<BatchNormParamType<T>>();
+      saved_mean_ptr->template data<BatchNormParamType<T>>();
   const auto *saved_var_data =
-      saved_variance.template data<BatchNormParamType<T>>();
+      saved_var_ptr->template data<BatchNormParamType<T>>();
 
   size_t workspace_size = 0;
   void *workspace_ptr = nullptr;
   phi::DenseTensor workspace_tensor;
-  auto reserve_space_size = reserve_space.memory_size();
+  auto reserve_space_size = reserve_space_ptr->memory_size();
   cudnnBatchNormOps_t bnOps_ = CUDNN_BATCHNORM_OPS_BN_ADD_ACTIVATION;
   phi::backends::gpu::ScopedActivationDescriptor scope_act_desc;
   cudnnActivationDescriptor_t activation_desc_ =
@@ -162,27 +180,27 @@ void FusedBatchNormAddActGradKernel(const Context &dev_ctx,
       /*alphaParamDiff=*/CudnnDataType<T>::kOne(),
       /*betaParamDiff=*/CudnnDataType<T>::kZero(),
       /*xDesc=*/data_desc_,
-      /*xData=*/x.template data<T>(),
+      /*xData=*/x_ptr->template data<T>(),
       /*yDesc=*/data_desc_,
-      /*yData=*/y.template data<T>(),
+      /*yData=*/y_ptr->template data<T>(),
       /*dyDesc=*/data_desc_,
       /*dyData=*/d_y->template data<T>(),
       /*dzDesc=*/data_desc_,
-      /*dzData=*/z_grad->template data<T>(),
+      /*dzData=*/d_z->template data<T>(),
       /*dxDesc=*/data_desc_,
-      /*dxData=*/x_grad->template data<T>(),
+      /*dxData=*/d_x->template data<T>(),
       /*dBnScaleBiasDesc=*/bn_param_desc_,
-      /*bnScaleData=*/scale.template data<BatchNormParamType<T>>(),
-      /*bnBiasData=*/bias.template data<BatchNormParamType<T>>(),
-      /*dBnScaleData=*/scale_grad->template data<BatchNormParamType<T>>(),
-      /*dBnBiasData=*/bias_grad->template data<BatchNormParamType<T>>(),
-      /*epsilon=*/epsilon,
+      /*bnScaleData=*/scale_ptr->template data<BatchNormParamType<T>>(),
+      /*bnBiasData=*/bias_ptr->template data<BatchNormParamType<T>>(),
+      /*dBnScaleData=*/d_scale->template data<BatchNormParamType<T>>(),
+      /*dBnBiasData=*/d_bias->template data<BatchNormParamType<T>>(),
+      /*epsilon=*/epsilon1,
       /*savedMean=*/saved_mean_data,
       /*savedInvVariance=*/saved_var_data,
       /*activationDesmc=*/activation_desc_,
       /*workspace=*/workspace_ptr,
       /*workSpaceSizeInBytes=*/workspace_size,
-      /*reserveSpace=*/const_cast<T *>(reserve_space.template data<T>()),
+      /*reserveSpace=*/const_cast<T *>(reserve_space_ptr->template data<T>()),
       /*reserveSpaceSizeInBytes=*/reserve_space_size));
 
   // clean when exit.
