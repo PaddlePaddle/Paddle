@@ -249,11 +249,11 @@ class TransposeGradInferVarType : public framework::VarTypeInference {
 
 }  // namespace operators
 }  // namespace paddle
-DECLARE_INFER_SHAPE_FUNCTOR(transpose,
+DECLARE_INFER_SHAPE_FUNCTOR(transposeaa,
                             TransposeInferShapeFunctor,
                             PD_INFER_META(phi::TransposeInferMeta));
 
-DECLARE_INFER_SHAPE_FUNCTOR(transpose_grad,
+DECLARE_INFER_SHAPE_FUNCTOR(transpose_gradaa,
                             TransposeGradInferShapeFunctor,
                             PD_INFER_META(phi::TransposeGradInferMeta));
 
@@ -263,14 +263,14 @@ DECLARE_INFER_SHAPE_FUNCTOR(transpose2_grad,
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    transpose,
+    transposeaa,
     ops::TransposeOp,
     ops::TransposeOpMaker,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>,
     TransposeInferShapeFunctor);
 
-REGISTER_OPERATOR(transpose_grad,
+REGISTER_OPERATOR(transpose_gradaa,
                   ops::TransposeOpGrad,
                   ops::TransposeGradInferVarType,
                   TransposeGradInferShapeFunctor);
