@@ -1348,16 +1348,19 @@ foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
     FLAGS_new_executor_static_build=true)
 endforeach()
 
-set(NEW_IR_COVERAGE_TESTS test_label_smooth_op test_instance_norm_op_v2
-                          test_edit_distance_op)
+set(NEW_IR_COVERAGE_TESTS test_fused_feedforward_pass)
+if(NOT WITH_GPU)
+  list(REMOVE_ITEM NEW_IR_COVERAGE_TESTS test_fused_feedforward_pass)
+endif()
 
 foreach(NEW_IR_COVERAGE_TEST ${NEW_IR_COVERAGE_TESTS})
   py_test_modules(
     ${NEW_IR_COVERAGE_TEST}_new_ir MODULES ${NEW_IR_COVERAGE_TEST} ENVS
     FLAGS_enable_new_ir_in_executor=true)
+  set_tests_properties(${NEW_IR_COVERAGE_TEST}_new_ir PROPERTIES TIMEOUT 120)
+  message(
+    STATUS "NewIR Copied OpTest: ${NEW_IR_COVERAGE_TEST}_new_ir in legacy_test")
 endforeach()
-
-set_tests_properties(test_instance_norm_op_v2_new_ir PROPERTIES TIMEOUT 120)
 
 set_tests_properties(test_decoupled_py_reader_static_build PROPERTIES TIMEOUT
                                                                       120)

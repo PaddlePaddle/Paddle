@@ -291,9 +291,7 @@ inline void newir_run_program_ad_func(
     // Set TensorWrappers
     grad_node->SetFwdX(filter_x);
 
-    auto filter_params =
-        newir_filter_unused_input_var_in_backward(params, "bp", attrs);
-    grad_node->SetFwdParams(filter_params);
+    grad_node->SetFwdParams(params);
 
     grad_node->SetStepScope(step_scope);  // just for set useable.
 
