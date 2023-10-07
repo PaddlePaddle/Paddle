@@ -19,6 +19,7 @@ from paddle.distribution.categorical import Categorical
 from paddle.distribution.cauchy import Cauchy
 from paddle.distribution.dirichlet import Dirichlet
 from paddle.distribution.distribution import Distribution
+from paddle.distribution.gamma import Gamma
 from paddle.distribution.gumbel import Gumbel
 from paddle.distribution.exponential import Exponential
 from paddle.distribution.exponential_family import ExponentialFamily
@@ -52,6 +53,7 @@ __all__ = [  # noqa
     'TransformedDistribution',
     'Laplace',
     'LogNormal',
+    'Gamma',
     'Gumbel',
     'Geometric',
 ]
