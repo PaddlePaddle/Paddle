@@ -25,7 +25,7 @@ namespace ir {
 
 class OpNode {
  public:
-  explicit OpNode(const ::pir::Operation* node)
+  explicit OpNode(::pir::Operation* node)
       : node_(node), input_tensors_(node), output_tensors_(node) {}
 
   OpPatternKind kind() const {
@@ -42,7 +42,7 @@ class OpNode {
 
   class TensorListIterator {
    public:
-    TensorListIterator(size_t index, const ::pir::Operation* op)
+    TensorListIterator(size_t index, ::pir::Operation* op)
         : iter_(index), op_(op) {}
 
     TensorListIterator& operator++() {
@@ -64,20 +64,18 @@ class OpNode {
       return !(*this == other);
     }
 
-    TensorNode operator*() const {
-      return TensorNode(op_->operand_source(iter_));
-    }
+    TensorNode operator*() const { return TensorNode(op_->operand(iter_)); }
 
    private:
     size_t iter_;
-    const ::pir::Operation* op_;
+    ::pir::Operation* op_;
   };
 
   using const_iterator = TensorListIterator;
 
   class InputTensorListView {
    public:
-    explicit InputTensorListView(const ::pir::Operation* op) : op_(op) {}
+    explicit InputTensorListView(::pir::Operation* op) : op_(op) {}
 
     // InputTensorListView(const InputTensorListView& other) = delete;
     // InputTensorListView(InputTensorListView&& other) = delete;
@@ -88,7 +86,7 @@ class OpNode {
     size_t size() const { return op_->num_operands(); }
 
     TensorNode operator[](size_t index) const {
-      return TensorNode(op_->operand_source(index));
+      return TensorNode(op_->operand(index));
     }
 
     const_iterator begin() const { return const_iterator(0, op_); }
@@ -98,12 +96,12 @@ class OpNode {
     }
 
    private:
-    const ::pir::Operation* op_;
+    ::pir::Operation* op_;
   };
 
   class OutputTensorListView {
    public:
-    explicit OutputTensorListView(const ::pir::Operation* op) : op_(op) {}
+    explicit OutputTensorListView(::pir::Operation* op) : op_(op) {}
 
     // OutputTensorListView(const OutputTensorListView& other) = delete;
     // OutputTensorListView(OutputTensorListView&& other) = delete;
@@ -124,7 +122,7 @@ class OpNode {
     }
 
    private:
-    const ::pir::Operation* op_;
+    ::pir::Operation* op_;
   };
 
   bool operator==(const OpNode& other) const { return node_ == other.node_; }
@@ -138,7 +136,7 @@ class OpNode {
  private:
   friend struct std::hash<OpNode>;
 
-  const ::pir::Operation* node_;
+  ::pir::Operation* node_;
 
   const InputTensorListView input_tensors_;
   const OutputTensorListView output_tensors_;

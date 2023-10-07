@@ -20,6 +20,7 @@
 #include "paddle/phi/core/attribute.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_type.h"
+#include "paddle/pir/core/value.h"
 
 namespace paddle {
 namespace dialect {

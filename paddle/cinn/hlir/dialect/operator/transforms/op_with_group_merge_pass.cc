@@ -56,7 +56,7 @@ OpPatternKind GetOpKind(const std::string& op_name) {
 }
 
 phi::DDim GetFirstInputShape(const ::pir::Operation* op) {
-  auto in = op->operand(0);
+  auto in = op->operand_source(0);
 
   return in.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
 }
@@ -85,7 +85,7 @@ bool WithoutLastDimInReduce(const std::vector<int64_t>& inshape,
   }
 }
 
-int GetSharedSize(const ::pir::Operation* node) {
+int GetSharedSize(::pir::Operation* node) {
   auto inshape = phi::vectorize<int64_t>(GetValueShape(node->result(0)));
 
   auto axes = GetVectorAttr(node, "axis");
@@ -135,7 +135,7 @@ int GetSharedSize(const ::pir::Operation* node) {
 }
 
 using ConditionFunction =
-    std::function<bool(const ::pir::Operation*, const GroupPtr&)>;
+    std::function<bool(::pir::Operation*, const GroupPtr&)>;
 
 // Op Fusion Pass which performs Ops fusion, Ops are fused
 // "vertically", meaning producing Ops are fused into their consumers
@@ -167,7 +167,7 @@ class OpFusionPassHelper {
         // input node
 
         for (size_t i = 0; i < node->num_operands(); ++i) {
-          auto input = node->operand_source(i).GetDefiningOp();
+          auto input = node->operand(i).owner();
           if (input && (local_ops_.count(input))) {
             group->input_nodes[input] = 1;
           }
@@ -246,9 +246,9 @@ class OpFusionPassHelper {
       auto consumer_fusion = fusion_groups_[consumer];  //
       // check all linkin node
       for (size_t i = 0; i < consumer->num_operands(); ++i) {
-        auto producer_data = consumer->operand_source(i);
+        auto producer_data = consumer->operand(i);
 
-        auto producer = producer_data.GetDefiningOp();
+        auto producer = producer_data.owner();
         if (!local_ops_.count(producer)) {
           continue;
         }
@@ -276,7 +276,8 @@ class OpFusionPassHelper {
 
         // find all the op use by
         size_t producer_data_used_num = 0;
-        for (auto it = producer_data.use_begin(); it != producer_data.use_end();
+        for (auto it = producer_data.source().use_begin();
+             it != producer_data.source().use_end();
              ++it) {
           auto consumer_node = it->owner();
           producer_data_used_num++;
@@ -351,8 +352,7 @@ class OpFusionPassHelper {
           // must be horizontal, as Elementwise + Broadcast is left to fusion
           // merge pass.
           {kBroadcast,
-           [](const ::pir::Operation* producer,
-              const GroupPtr& consumer) -> bool {
+           [](::pir::Operation* producer, const GroupPtr& consumer) -> bool {
              // NOTE, producer and consumer NEVER be same size
              if (is_same_size(producer, consumer)) {
                return true;
@@ -459,8 +459,7 @@ class OpFusionPassHelper {
     }
   }
 
-  bool CanFuse(const ::pir::Operation* producer,
-               const ::pir::Operation* consumer) {
+  bool CanFuse(::pir::Operation* producer, const ::pir::Operation* consumer) {
     auto& relation = fusion_relation_map_[GetOpKind(producer->name())];
     // first step: check producer can be fused into consumer
     if (relation.op_kind.count(GetOpKind(consumer->name()))) {

@@ -145,7 +145,7 @@ struct Group {
   }
 
   void WalkNodes(
-      const std::function<void(const ::pir::Operation*)>& VisitNode) const {
+      const std::function<void(::pir::Operation*)>& VisitNode) const {
     if (fused_sub_groups.size()) {
       for (auto& group : fused_sub_groups) {
         for (const auto& node : group->nodes) {
@@ -224,26 +224,26 @@ phi::DDim GetValueShape(const ::pir::Value value);
 bool WithoutLastDimInReduce(const std::vector<int64_t>& inshape,
                             const std::vector<int64_t>& axes);
 
-int GetSharedSize(const ::pir::Operation* node);
+int GetSharedSize(::pir::Operation* node);
 
-inline bool always_fuse(const ::pir::Operation* producer,
+inline bool always_fuse(::pir::Operation* producer,
                         const std::shared_ptr<Group>& consumer) {
   return true;
 }
 
-inline bool no_fuse(const ::pir::Operation* producer,
+inline bool no_fuse(::pir::Operation* producer,
                     const std::shared_ptr<Group>& consumer) {
   return false;
 }
 
-inline bool is_same_shape(const ::pir::Operation* producer,
+inline bool is_same_shape(::pir::Operation* producer,
                           const std::shared_ptr<Group>& consumer) {
   auto master_node = consumer->master_nodes.begin();
   return GetValueShape(producer->result(0)) ==
          GetValueShape((*master_node)->result(0));
 }
 
-inline bool is_same_size(const ::pir::Operation* producer,
+inline bool is_same_size(::pir::Operation* producer,
                          const std::shared_ptr<Group>& consumer) {
   auto master_node = consumer->master_nodes.begin();
   auto producer_shape = GetValueShape(producer->result(0));
@@ -257,13 +257,13 @@ inline bool is_same_size(const ::pir::Operation* producer,
 }
 
 inline bool without_last_dimension_in_reduce(
-    const ::pir::Operation* producer, const std::shared_ptr<Group>& consumer) {
+    ::pir::Operation* producer, const std::shared_ptr<Group>& consumer) {
   auto in_shape = phi::vectorize<int64_t>(GetFirstInputShape(producer));
   auto reduce_axes = GetVectorAttr(producer, "axis");
   return WithoutLastDimInReduce(in_shape, reduce_axes);
 }
 
-inline bool reduce_fuse_reduce(const ::pir::Operation* producer,
+inline bool reduce_fuse_reduce(::pir::Operation* producer,
                                const std::shared_ptr<Group>& consumer) {
   ::pir::Operation* reducer = NULL;
   for (auto* master : consumer->master_nodes) {
@@ -326,11 +326,11 @@ inline bool reduce_fuse_reduce(const ::pir::Operation* producer,
   return false;
 }
 
-inline bool is_horizontal_relation(const ::pir::Operation* producer,
+inline bool is_horizontal_relation(::pir::Operation* producer,
                                    const std::shared_ptr<Group>& consumer) {
-  auto check_depency = [&](const ::pir::Operation* node) {
-    std::queue<const ::pir::Operation*> candidates;
-    std::unordered_set<const ::pir::Operation*> visited_set;
+  auto check_depency = [&](::pir::Operation* node) {
+    std::queue<::pir::Operation*> candidates;
+    std::unordered_set<::pir::Operation*> visited_set;
     candidates.push(node);
 
     while (!candidates.empty()) {
@@ -338,7 +338,7 @@ inline bool is_horizontal_relation(const ::pir::Operation* producer,
       candidates.pop();
       // visit all producer node
       for (size_t i = 0; i < candidate->num_operands(); ++i) {
-        auto tmp_node = candidate->operand_source(i).GetDefiningOp();
+        auto tmp_node = candidate->operand(i).owner();
         // check depency.
         if (producer == tmp_node) {
           return true;
@@ -371,7 +371,7 @@ inline bool is_horizontal_relation(const ::pir::Operation* producer,
 }
 
 inline bool horizontal_or_vertical_reduce_relation(
-    const ::pir::Operation* producer, const std::shared_ptr<Group>& consumer) {
+    ::pir::Operation* producer, const std::shared_ptr<Group>& consumer) {
   // check is same shape with horizontal relation.
   if (is_same_size(producer, consumer)) {
     return true;
@@ -431,7 +431,7 @@ inline bool horizontal_or_vertical_reduce_relation(
              : true;
 }
 
-inline bool horizontal_or_can_inline(const ::pir::Operation* producer,
+inline bool horizontal_or_can_inline(::pir::Operation* producer,
                                      const std::shared_ptr<Group>& consumer) {
   // horizontal relation.
   if (is_horizontal_relation(producer, consumer)) {
@@ -463,13 +463,13 @@ inline bool horizontal_or_can_inline(const ::pir::Operation* producer,
   return false;
 }
 
-inline bool horizontal_with_same_size(const ::pir::Operation* producer,
+inline bool horizontal_with_same_size(::pir::Operation* producer,
                                       const std::shared_ptr<Group>& consumer) {
   return is_horizontal_relation(producer, consumer) &&
          is_same_size(producer, consumer);
 }
 
-inline bool reduce_fuse_broadcast(const ::pir::Operation* producer,
+inline bool reduce_fuse_broadcast(::pir::Operation* producer,
                                   const std::shared_ptr<Group>& consumer) {
   if (is_horizontal_relation(producer, consumer)) {
     if (is_same_size(producer, consumer)) {
@@ -509,10 +509,10 @@ inline bool reduce_fuse_broadcast(const ::pir::Operation* producer,
   auto routput_shape =
       phi::vectorize<int64_t>(GetValueShape(producer->result(0)));
   auto find_reducer =
-      [&](const ::pir::Operation* node,
-          const ::pir::Operation* reducer,
+      [&](::pir::Operation* node,
+          ::pir::Operation* reducer,
           const std::unordered_set<::pir::Operation*>& nodes_set) {
-        std::queue<const ::pir::Operation*> candidates;
+        std::queue<::pir::Operation*> candidates;
         candidates.push(node);
 
         while (!candidates.empty()) {
@@ -520,7 +520,7 @@ inline bool reduce_fuse_broadcast(const ::pir::Operation* producer,
           candidates.pop();
 
           for (size_t i = 0; i < candidate->num_operands(); ++i) {
-            auto producer = candidate->operand_source(i).GetDefiningOp();
+            auto producer = candidate->operand(i).owner();
             if (producer == reducer) {
               return true;
             }

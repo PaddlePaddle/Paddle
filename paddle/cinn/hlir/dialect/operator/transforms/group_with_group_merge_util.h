@@ -347,9 +347,9 @@ inline bool horizontal_relation(const std::shared_ptr<ir::Group>& first,
   };
   auto selected_nodes = select_node_set(second_set, op_pattern_kind);
 
-  auto check_depency = [&](const ::pir::Operation* node) {
-    std::queue<const ::pir::Operation*> candidates;
-    std::unordered_set<const ::pir::Operation*> visited_set;
+  auto check_depency = [&](::pir::Operation* node) {
+    std::queue<::pir::Operation*> candidates;
+    std::unordered_set<::pir::Operation*> visited_set;
     candidates.push(node);
 
     while (!candidates.empty()) {
@@ -358,7 +358,7 @@ inline bool horizontal_relation(const std::shared_ptr<ir::Group>& first,
       // visit all producer node
       // Get all the input Op
       for (size_t i = 0; i < candidate->num_operands(); ++i) {
-        auto producer = candidate->operand_source(i).GetDefiningOp();
+        auto producer = candidate->operand(i).owner();
         // check dependency.
         if (first_set.count(producer)) {
           return true;
@@ -459,12 +459,11 @@ inline bool reduce_fuse_broadcast(const std::shared_ptr<ir::Group>& first,
     // Second type conditions
     // Find directly or indirectly consumers with type of Broadcast in the
     // second group
-    auto find_broadcasters_in_descendants =
-        [&](const ::pir::Operation* producer)
-        -> std::unordered_set<const ::pir::Operation*> {
-      std::queue<const ::pir::Operation*> candidates;
-      std::unordered_set<const ::pir::Operation*> visited_set;
-      std::unordered_set<const ::pir::Operation*> broadcasters;
+    auto find_broadcasters_in_descendants = [&](::pir::Operation* producer)
+        -> std::unordered_set<::pir::Operation*> {
+      std::queue<::pir::Operation*> candidates;
+      std::unordered_set<::pir::Operation*> visited_set;
+      std::unordered_set<::pir::Operation*> broadcasters;
       candidates.push(producer);
 
       while (!candidates.empty()) {
@@ -491,7 +490,7 @@ inline bool reduce_fuse_broadcast(const std::shared_ptr<ir::Group>& first,
     };
 
     // Check if each broadcast node meets the conditions
-    std::unordered_set<const ::pir::Operation*> broadcasters_in_consumers =
+    std::unordered_set<::pir::Operation*> broadcasters_in_consumers =
         find_broadcasters_in_descendants(reducer);
     for (auto broadcaster : broadcasters_in_consumers) {
       // auto  = absl::get<std::vector<int>>(
