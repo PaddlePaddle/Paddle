@@ -3734,12 +3734,12 @@ def cdist(
     )
 
 
-def histogramdd(sample, bins=10, range=None, density=None, weights=None, name=None):
+def histogramdd(sample, bins=10, range=None, density=False, weights=None, name=None):
     r"""
-        Computes a multi-dimensional histogram of the values in a tensor.
-        Interprets the elements of an input tensor whose innermost dimension has size N as a collection of N-dimensional points. Maps each of the points into a set of N-dimensional bins and returns the number of points (or total weight) in each bin.
-        input must be a tensor with at least 2 dimensions. If input has shape (M, N), each of its M rows defines a point in N-dimensional space. If input has three or more dimensions, all but the last dimension are flattened.
-        Each dimension is independently associated with its own strictly increasing sequence of bin edges. Bin edges may be specified explicitly by passing a sequence of 1D tensors. Alternatively, bin edges may be constructed automatically by passing a sequence of integers specifying the number of equal-width bins in each dimension.    
+    Computes a multi-dimensional histogram of the values in a tensor.
+    Interprets the elements of an input tensor whose innermost dimension has size N as a collection of N-dimensional points. Maps each of the points into a set of N-dimensional bins and returns the number of points (or total weight) in each bin.
+    input must be a tensor with at least 2 dimensions. If input has shape (M, N), each of its M rows defines a point in N-dimensional space. If input has three or more dimensions, all but the last dimension are flattened.
+    Each dimension is independently associated with its own strictly increasing sequence of bin edges. Bin edges may be specified explicitly by passing a sequence of 1D tensors. Alternatively, bin edges may be constructed automatically by passing a sequence of integers specifying the number of equal-width bins in each dimension.    
     
     Args:
         sample (Tensor): The input tensor.
@@ -3756,47 +3756,55 @@ def histogramdd(sample, bins=10, range=None, density=None, weights=None, name=No
     Examples:
         .. code-block:: python
 
-            >>> paddle.histogramdd(paddle.to_tensor([[0., 1.], [1., 0.], [2.,0.], [2., 2.]]), bins=[3,3], weights=paddle.to_tensor([1., 2., 4., 8.]))
+            >>> import paddle
+            >>> x = paddle.to_tensor([[0., 1.], [1., 0.], [2.,0.], [2., 2.]])
+            >>> bins = [3,3]
+            >>> weights = paddle.to_tensor([1., 2., 4., 8.])
+            >>> paddle.histogramdd(x, bins=bins, weights=weights)
             (Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
                    [[0., 1., 0.],
                     [2., 0., 0.],
                     [4., 0., 8.]]), [Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
                    [0.        , 0.66666669, 1.33333337, 2.        ]), Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
                    [0.        , 0.66666669, 1.33333337, 2.        ])])
-           
-            >>> paddle.histogramdd(paddle.to_tensor([[0., 0.], [1., 1.], [2., 2.]]), bins=[2,2], range=[0., 1., 0., 1.], density=True)
-        (Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-               [[2., 0.],
-                [0., 2.]]), [Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-               [0.        , 0.50000000, 1.        ]), Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-               [0.        , 0.50000000, 1.        ])])
+
+
+            >>> y = paddle.to_tensor([[0., 0.], [1., 1.], [2., 2.]])
+            >>> bins = [2,2]
+            >>> range = [0., 1., 0., 1.]
+            >>> density = True
+            >>> paddle.histogramdd(y, bins=bins, range=range, density=density)
+            (Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [[2., 0.],
+                    [0., 2.]]), [Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [0.        , 0.50000000, 1.        ]), Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [0.        , 0.50000000, 1.        ])])
 
 
     """
     
 
-    def __check_weights(x, w):
-        if w is None: return
-        x_shape, w_shape = x.shape, w.shape
-        assert len(x_shape) == len(w_shape) + 1, (
+    def __check_weights(sample, weights):
+        if weights is None: return
+        sample_shape, weights_shape = sample.shape, weights.shape
+        assert len(sample_shape) == len(weights_shape) + 1, (
             "if weight tensor is provided,"
             "it should have the same shape as the input tensor excluding its innermost dimension.\n"
         )
-        for i, _ in enumerate(w_shape):
-            assert w_shape[i] == x_shape[i], (
+        for i, _ in enumerate(weights_shape):
+            assert weights_shape[i] == sample_shape[i], (
                 "if weight tensor is provided,"
                 "it should have the same shape as the input tensor excluding its innermost dimension.\n"
             )
-    def __check_range(d, r):
-        if r is None: return
-        check_type(r, 'range', (list, tuple), 'histogramdd')
-        assert d * 2 == len(r), (
-            "The length of range list must be %d\n" % (d * 2)
+    def __check_range(D, range):
+        if range is None: return
+        check_type(range, 'range', (list, tuple), 'histogramdd')
+        assert D * 2 == len(range), (
+            "The length of range list must be %d\n" % (D * 2)
         )
-    def look_up(lut, inds):
-        return lut[inds]
-
-
+    assert len(sample.shape) >= 2, (
+        "input sample must be a tensor with at least 2 dimensions."
+    )
     # weights
     __check_weights(sample, weights)
     D = sample.shape[-1]
@@ -3814,7 +3822,6 @@ def histogramdd(sample, bins=10, range=None, density=None, weights=None, name=No
         range = paddle.zeros([D, 2])
         maxv = paddle.max(reshaped_input, axis=0).reshape([-1])
         minv = paddle.min(reshaped_input, axis=0).reshape([-1])
-        # range = paddle.to_tensor(list(zip(minv, maxv)))
 
         if paddle.in_dynamic_mode():
             range[:, 0] = minv
