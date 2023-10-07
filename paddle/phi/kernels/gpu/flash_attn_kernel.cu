@@ -24,8 +24,6 @@
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
 
-// PD_DECLARE_bool(cudnn_deterministic);
-
 namespace phi {
 
 template <typename T, typename Context>

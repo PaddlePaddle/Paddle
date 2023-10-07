@@ -132,6 +132,7 @@ from .input import one_hot  # noqa: F401
 from .input import embedding  # noqa: F401
 from .extension import gather_tree  # noqa: F401
 from .extension import temporal_shift  # noqa: F401
+from .flash_attention import flash_attention_with_mask
 
 from .sparse_attention import sparse_attention
 
@@ -251,4 +252,5 @@ __all__ = [  # noqa
     'multi_margin_loss',
     'soft_margin_loss',
     'gaussian_nll_loss',
+    'flash_attention_with_mask',
 ]

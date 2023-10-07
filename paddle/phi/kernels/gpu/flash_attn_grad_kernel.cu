@@ -23,15 +23,10 @@
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
 
-//PD_DECLARE_bool(cudnn_deterministic);
-
+DECLARE_bool(cudnn_deterministic);
 namespace phi {
 
-int get_num_split() {
-  // 0 for an internal heuristic, which is optimal
-  return 0;
-  //return FLAGS_cudnn_deterministic ? 1 : 0;
-}
+int get_num_split() { return FLAGS_cudnn_deterministic ? 1 : 0; }
 
 template <typename T, typename Context>
 void FlashAttnUnpaddedGradKernel(const Context& ctx,
