@@ -415,8 +415,8 @@ class While:
     while loop control flow. Repeat while body until cond is False.
 
     Note:
-        A new OP :ref:`api_base_layers_while_loop` is highly recommended instead of ``While`` if the shape of parameter ``cond`` is [1].
-        OP :ref:`api_base_layers_while_loop` is easier to use and is called with less code but does the same thing as ``While`` .
+        A new OP :ref:`api_paddle_static_nn_while_loop` is highly recommended instead of ``While`` if the shape of parameter ``cond`` is [1].
+        OP :ref:`api_paddle_static_nn_while_loop` is easier to use and is called with less code but does the same thing as ``While`` .
 
     Notice:
         Local variables created in ``While`` are similar to that created in while of C++, and cannot be referenced externally.
@@ -1422,9 +1422,7 @@ def _select_input_infer_shape(first_shape, second_shape):
             f"the input shapes of select_input should have the same rank, but get {first_shape}, {second_shape}"
         )
         return second_shape
-    out_shape = list(
-        map(lambda a, b: a if a == b else -1, first_shape, second_shape)
-    )
+    out_shape = [a if a == b else -1 for a, b in zip(first_shape, second_shape)]
     return out_shape
 
 

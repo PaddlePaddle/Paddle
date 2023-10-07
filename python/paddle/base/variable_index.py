@@ -956,7 +956,8 @@ def _setitem_static(x, indices, values):
             values = values.astype(transed_sub_tensor.dtype)
 
         if paddle.in_dynamic_mode():
-            return transed_sub_tensor.index_put_(
+            # NOTE(zoooo0820): directly return result instead of another set_value, after backward bug fixed.
+            transed_sub_tensor = transed_sub_tensor.index_put_(
                 adjusted_advanced_index, values
             )
         else:
@@ -964,9 +965,13 @@ def _setitem_static(x, indices, values):
                 adjusted_advanced_index, values
             )
 
-            transback_sub_tensor = transed_sub_tensor.transpose(transback_dim)
-            inputs["ValueTensor"] = transback_sub_tensor
+        transback_sub_tensor = transed_sub_tensor.transpose(transback_dim)
+        inputs["ValueTensor"] = transback_sub_tensor
 
+        if paddle.in_dynamic_mode():
+            x._bump_inplace_version()
+            output = x
+        else:
             helper = paddle.base.layer_helper.LayerHelper(
                 'set_value', **locals()
             )
@@ -979,20 +984,21 @@ def _setitem_static(x, indices, values):
                 output = helper.create_variable_for_type_inference(
                     dtype=x.dtype
                 )
-            cur_block = default_main_program().current_block()
-            cur_block.append_op(
-                type="set_value",
-                inputs=inputs,
-                outputs={'Out': output},
-                attrs=attrs,
-                inplace_map={"Input": "Out"},
-            )
+        cur_block = default_main_program().current_block()
+        cur_block.append_op(
+            type="set_value",
+            inputs=inputs,
+            outputs={'Out': output},
+            attrs=attrs,
+            inplace_map={"Input": "Out"},
+        )
 
+        if not paddle.in_dynamic_mode():
             # map var to the new output
             paddle.jit.api.ProgramTranslator.get_instance()._inplace_map.add(
                 cur_block.program, x.desc.id(), output
             )
-            return output
+        return output
 
 
 def get_tensor_with_basic_indexing(

@@ -30,6 +30,9 @@ class IR_API Region {
   using iterator = std::list<Block *>::iterator;
   using reverse_iterator = std::list<Block *>::reverse_iterator;
   using const_iterator = std::list<Block *>::const_iterator;
+  explicit Region(Operation *op = nullptr) : parent_(op) {}
+  Region(const Region &) = delete;
+  Region &operator=(const Region &) = delete;
   ~Region();
   bool empty() const { return blocks_.empty(); }
   size_t size() const { return blocks_.size(); }
@@ -44,7 +47,7 @@ class IR_API Region {
   Block *back() const { return blocks_.back(); }
   Block *front() const { return blocks_.front(); }
   void push_back(Block *block);
-  void emplace_back();
+  Block *emplace_back();
   void push_front(Block *block);
   iterator insert(const_iterator position, Block *block);
   iterator erase(const_iterator position);
@@ -53,16 +56,9 @@ class IR_API Region {
   void TakeBody(Region &&other);
 
   Operation *GetParent() const { return parent_; }
+  void set_parent(Operation *parent) { parent_ = parent; }
 
   IrContext *ir_context() const;
-
- private:
-  // region only support construncted by operation.
-  Region() = delete;
-  Region(Region &) = delete;
-  Region &operator=(const Region &) = delete;
-  friend class Operation;
-  explicit Region(Operation *op) : parent_(op) {}
 
  private:
   Operation *parent_{nullptr};  // not owned

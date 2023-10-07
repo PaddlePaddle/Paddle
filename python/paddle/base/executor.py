@@ -256,8 +256,9 @@ def check_feed_shape_type(var, feed, num_places=1):
                 else feed._dtype()
             )
             raise ValueError(
-                'The data type of fed Variable %r must be %r, but received %r'
-                % (var.name, var_dtype_format, feed_dtype_format)
+                'The data type of fed Variable {!r} must be {!r}, but received {!r}'.format(
+                    var.name, var_dtype_format, feed_dtype_format
+                )
             )
     return True
 
@@ -305,8 +306,9 @@ def pir_check_feed_shape_type(feed, name, target_shape, dtype, num_places=1):
             else feed._dtype()
         )
         raise ValueError(
-            'The data type of fed Variable %r must be %r, but received %r'
-            % (name, var_dtype_format, feed_dtype_format)
+            'The data type of fed Variable {!r} must be {!r}, but received {!r}'.format(
+                name, var_dtype_format, feed_dtype_format
+            )
         )
     return True
 
@@ -487,7 +489,7 @@ def _add_feed_fetch_ops(
         for i, var in enumerate(fetch_list):
             assert isinstance(
                 var, (Variable, str)
-            ), "Wrong type for fetch_list[%s]: %s" % (i, type(var))
+            ), f"Wrong type for fetch_list[{i}]: {type(var)}"
             global_block.append_op(
                 type=fetch_op,
                 inputs={'X': [var]},
@@ -510,7 +512,7 @@ def _add_pir_fetch_ops(program, fetch_list, fetch_var_name):
             for i, fetch_input in enumerate(fetch_list):
                 assert isinstance(
                     fetch_input, OpResult
-                ), "Wrong type for fetch_list[%s]: %s" % (i, type(fetch_input))
+                ), f"Wrong type for fetch_list[{i}]: {type(fetch_input)}"
                 paddle._pir_ops.fetch(fetch_input, fetch_var_name + str(i), i)
 
 
@@ -1085,7 +1087,7 @@ class Executor:
 
     def __init__(self, place=None):
         if place is None:
-            expected_place = framework._current_expected_place()
+            expected_place = framework._current_expected_place_()
             self.place = expected_place
         else:
             self.place = framework._get_paddle_place(place)
@@ -2792,7 +2794,7 @@ class Executor:
             for i, var in enumerate(fetch_list):
                 assert isinstance(
                     var, (Variable, str)
-                ), "Wrong type for fetch_list[%s]: %s" % (i, type(var))
+                ), f"Wrong type for fetch_list[{i}]: {type(var)}"
                 global_block.append_op(
                     type=fetch_op,
                     inputs={'X': [var]},

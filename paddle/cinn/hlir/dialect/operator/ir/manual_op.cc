@@ -28,7 +28,7 @@ const char *GroupOp::attributes_name[GroupOp::attributes_num] = {"group_info"};
 void GroupOp::Build(pir::Builder &builder,
                     pir::OperationArgument &argument,
                     const std::vector<pir::Type> &output_types) {
-  argument.num_regions = 1;
+  argument.AddRegion(nullptr);
   argument.output_types = output_types;
 }
 

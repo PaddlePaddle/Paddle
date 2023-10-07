@@ -21,11 +21,17 @@ using DataType = phi::DataType;
 
 {% for api in apis %}
   {%- if api.name in backend_white_list -%}
+  {% set inplace_map = {} %}
+  {% if 'inplace' in api and api.inplace != None %}
+    {% for source, target in api.inplace.items() %}
+      {% do inplace_map.update({source: target}) %}
+    {% endfor %}
+  {% endif %}
   {% if api.attrs is exist_mutable_attribute %}
-{{common.sig(api.name, api.inputs, api.outputs|trip_intermediate , api.attrs, True, True)}};
+{{common.sig(api.name, api.inputs, api.outputs|trip_intermediate , api.attrs, inplace_map, True, True)}};
 
   {% endif %}
-{{common.sig(api.name, api.inputs, api.outputs|trip_intermediate , api.attrs, False, True)}};
+{{common.sig(api.name, api.inputs, api.outputs|trip_intermediate , api.attrs, inplace_map, False, True)}};
 
   {% endif %}
 {% endfor %}
