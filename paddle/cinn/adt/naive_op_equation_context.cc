@@ -22,86 +22,10 @@
 
 #include "glog/logging.h"
 
-
 namespace cinn::adt::config {
-
-namespace {
-
-using InBox2OutBox =
-    InMsgBox2OutMsgBox<tOut<FakeOpPlaceHolder>,
-                       tOut<OpArgIndexes<std::optional<Index>>>,
-                       tIn<OpArgIndexes<Index>>>;
-
-template <typename HandleInMsgBox2OutMsgBoxT, typename HandleOtherT>
-Equations TransformEquations(
-    const Equations& origin_equations,
-    const HandleInMsgBox2OutMsgBoxT& HandleInMsgBox2OutMsgBox,
-    const HandleOtherT& HandleOther) {
-  Equations equations{};
-  for (const auto& origin_equation : *origin_equations) {
-    if (origin_equation.Has<InBox2OutBox>()) {
-      equations->emplace_back(HandleInMsgBox2OutMsgBox(origin_equation));
-    } else {
-      equations->emplace_back(HandleOther(origin_equation));
-    }
-  }
-  return equations;
-}
-
-List<std::optional<Index>> GetMaskedOutIndexes(
-    const List<Index>& in_box_out_indexes,
-    const List<std::optional<Index>>& out_box_out_indexes,
-    const std::vector<Index>& erased_in_msg_box_out_tensor_indexes) {
-  List<std::optional<Index>> ret{};
-  const auto& erased = erased_in_msg_box_out_tensor_indexes;
-  CHECK_EQ(in_box_out_indexes->size(), out_box_out_indexes->size());
-  for (std::size_t i = 0; i < in_box_out_indexes->size(); ++i) {
-    const auto& in_box_index = in_box_out_indexes->at(i);
-    if (std::find(erased.begin(), erased.end(), in_box_index) == erased.end()) {
-      ret->emplace_back(out_box_out_indexes->at(i));
-    } else {
-      ret->emplace_back(std::nullopt);
-    }
-  }
-  return ret;
-}
-
-Equation EraseIndexes(
-    const Equation& equation,
-    const std::vector<Index>& erased_in_msg_box_out_tensor_indexes) {
-  const auto& in_msg_box2out_msg_box = equation.Get<InBox2OutBox>();
-  const auto& [op_placeholder, out_box_indexes, in_box_indexes] =
-      in_msg_box2out_msg_box.tuple();
-
-  const auto& [_, in_box_out_indexes] = in_box_indexes.value().tuple();
-  const auto& [out_box_in_indexes, out_box_out_indexes] =
-      out_box_indexes.value().tuple();
-  const auto& masked_out_indexes =
-      GetMaskedOutIndexes(in_box_out_indexes.value(),
-                          out_box_out_indexes.value(),
-                          erased_in_msg_box_out_tensor_indexes);
-
-  OpArgIndexes<std::optional<Index>> out_box{out_box_in_indexes,
-                                             masked_out_indexes};
-
-  Equation ret_equation = InBox2OutBox{op_placeholder, out_box, in_box_indexes};
-
-  return ret_equation;
-}
-
-}  // namespace
 
 void NaiveOpEquationContext::Print() {
   VLOG(3) << "equations : \n" << ToTxtString(equations(), "\n");
-}
-
-void NaiveOpEquationContext::EraseOutMsgBoxIndexes(
-    const std::vector<Index>& erased_output_tensor_indexes) {
-  const auto& Identity = [](const Equation& equation) { return equation; };
-  const auto& Erase = [&](const Equation& equation) {
-    return EraseIndexes(equation, erased_output_tensor_indexes);
-  };
-  equations_ = TransformEquations(equations_, Erase, Identity);
 }
 
 std::vector<std::uint64_t> MakeTensorRanks(const List<Arg>& arg_lists) {

@@ -25,6 +25,7 @@
 #include "paddle/cinn/adt/equation_graph.h"
 #include "paddle/cinn/adt/m_expr.h"
 #include "paddle/cinn/adt/m_ir.h"
+#include "paddle/cinn/adt/naive_bidirection_equation_generator.h"
 #include "paddle/cinn/adt/naive_equation_function_constants_provider.h"
 #include "paddle/cinn/adt/naive_op_equation_context.h"
 #include "paddle/cinn/adt/partition_op_stmts.h"
@@ -67,8 +68,11 @@ class IGroup final {
   }
 
   GraphView GetDefaultGraphView() const {
-    return MakeGlobalEquationGraphViewForPartition(EquationCtx4OpStmt_,
-                                                   op_stmts_);
+    auto direction_equation_generator =
+        std::make_shared<NaiveBidirectionEquationGenerator>(
+            op_stmts_, EquationCtx4OpStmt_);
+    return MakeGlobalEquationGraphViewForPartition(
+        EquationCtx4OpStmt_, op_stmts_, direction_equation_generator);
   }
 
   const Tensor& GetTensor(const Index& index) const {

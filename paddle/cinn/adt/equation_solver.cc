@@ -95,28 +95,28 @@ std::unordered_map<Variable, Value> InferValuesImpl(
 }
 
 std::unordered_map<Variable, Value> InferValuesImpl(
-    const InMsgBox2OutMsgBox<tOut<FakeOpPlaceHolder>,
-                             tOut<OpArgIndexes<std::optional<Index>>>,
-                             tIn<OpArgIndexes<Index>>>& in_msg_box2out_msg_box,
+    const InMsg2OutMsg<tOut<FakeOpPlaceHolder>,
+                       tOut<OpArgIndexes<std::optional<Index>>>,
+                       tIn<OpArgIndexes<Index>>>& in_msg2out_msg,
     IndexExprInferContext* ctx) {
-  const auto& [op_placeholder, out_box_indexes, in_box_indexes] =
-      in_msg_box2out_msg_box.tuple();
-  const auto& [out_box_in_indexes, out_box_out_indexes] =
-      out_box_indexes.value().tuple();
-  const auto& [in_box_in_indexes, in_box_out_indexes] =
-      in_box_indexes.value().tuple();
+  const auto& [op_placeholder, out_msg_indexes, in_msg_indexes] =
+      in_msg2out_msg.tuple();
+  const auto& [out_msg_in_indexes, out_msg_out_indexes] =
+      out_msg_indexes.value().tuple();
+  const auto& [in_msg_in_indexes, in_msg_out_indexes] =
+      in_msg_indexes.value().tuple();
   std::unordered_map<Variable, Value> ret{{op_placeholder.value(), Ok{}}};
-  CHECK_EQ(out_box_in_indexes.value()->size(),
-           in_box_in_indexes.value()->size());
-  CHECK_EQ(out_box_out_indexes.value()->size(),
-           in_box_out_indexes.value()->size());
-  for (std::size_t i = 0; i < out_box_in_indexes.value()->size(); ++i) {
-    const auto& value = ctx->GetValue(in_box_in_indexes.value()->at(i));
-    CHECK(ret.emplace(out_box_in_indexes.value()->at(i), value).second);
+  CHECK_EQ(out_msg_in_indexes.value()->size(),
+           in_msg_in_indexes.value()->size());
+  CHECK_EQ(out_msg_out_indexes.value()->size(),
+           in_msg_out_indexes.value()->size());
+  for (std::size_t i = 0; i < out_msg_in_indexes.value()->size(); ++i) {
+    const auto& value = ctx->GetValue(in_msg_in_indexes.value()->at(i));
+    CHECK(ret.emplace(out_msg_in_indexes.value()->at(i), value).second);
   }
-  for (std::size_t i = 0; i < out_box_out_indexes.value()->size(); ++i) {
-    const auto& value = ctx->GetValue(in_box_out_indexes.value()->at(i));
-    const auto& out_index = out_box_out_indexes.value()->at(i);
+  for (std::size_t i = 0; i < out_msg_out_indexes.value()->size(); ++i) {
+    const auto& value = ctx->GetValue(in_msg_out_indexes.value()->at(i));
+    const auto& out_index = out_msg_out_indexes.value()->at(i);
     if (out_index.has_value()) {
       CHECK(ret.emplace(out_index.value(), value).second);
     }

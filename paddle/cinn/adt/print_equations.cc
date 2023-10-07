@@ -102,16 +102,16 @@ std::string ToTxtString(const List<Stride>& stride_list) {
   return ret;
 }
 
-std::string ToTxtString(const tInMsgBox<List<Index>>& in_msg_box_indexes) {
+std::string ToTxtString(const tInMsg<List<Index>>& in_msg_indexes) {
   std::string ret;
-  const List<Index>& index_list = in_msg_box_indexes.value();
+  const List<Index>& index_list = in_msg_indexes.value();
   ret += ToTxtString(index_list);
   return ret;
 }
 
-std::string ToTxtString(const tOutMsgBox<List<Index>>& out_msg_box_indexes) {
+std::string ToTxtString(const tOutMsg<List<Index>>& out_msg_indexes) {
   std::string ret;
-  const List<Index>& index_list = out_msg_box_indexes.value();
+  const List<Index>& index_list = out_msg_indexes.value();
   ret += ToTxtString(index_list);
   return ret;
 }
@@ -163,25 +163,22 @@ struct ToTxtStringStruct {
   }
 
   std::string operator()(
-      const InMsgBox2OutMsgBox<tOut<FakeOpPlaceHolder>,
-                               tOut<OpArgIndexes<std::optional<Index>>>,
-                               tIn<OpArgIndexes<Index>>>& box) const {
+      const InMsg2OutMsg<tOut<FakeOpPlaceHolder>,
+                         tOut<OpArgIndexes<std::optional<Index>>>,
+                         tIn<OpArgIndexes<Index>>>& in_msg2out_msg) const {
     std::string ret;
     const auto& [out_op_tag, out_index_list_tag, in_index_list_tag] =
-        box.tuple();
+        in_msg2out_msg.tuple();
     const FakeOpPlaceHolder& op = out_op_tag.value();
     const auto& out_index_tuple = out_index_list_tag.value();
     const auto& in_index_tuple = in_index_list_tag.value();
-    const auto& [out_index_list_inbox, out_index_list_outbox] =
-        out_index_tuple.tuple();
-    const auto& [in_index_list_inbox, in_index_list_outbox] =
-        in_index_tuple.tuple();
+    const auto& [out_msg_list_in, out_msg_list_out] = out_index_tuple.tuple();
+    const auto& [in_msg_list_in, in_msg_list_out] = in_index_tuple.tuple();
     ret += ToTxtString(op) + ", ";
-    ret += "(" + ToTxtString(out_index_list_inbox.value()) + ", " +
-           ToTxtString(out_index_list_outbox.value()) +
-           ") = InMsgBox2OutMsgBox(";
-    ret += ToTxtString(in_index_list_inbox.value()) + ", " +
-           ToTxtString(in_index_list_outbox.value()) + ")";
+    ret += "(" + ToTxtString(out_msg_list_in.value()) + ", " +
+           ToTxtString(out_msg_list_out.value()) + ") = InMsg2OutMsg(";
+    ret += ToTxtString(in_msg_list_in.value()) + ", " +
+           ToTxtString(in_msg_list_out.value()) + ")";
     return ret;
   }
 

@@ -72,14 +72,14 @@ struct OpArgIndexes final
 };
 
 template <typename FakeOpT, typename OutT, typename InT>
-struct InMsgBox2OutMsgBox;
+struct InMsg2OutMsg;
 
-// InMsgBox2OutMsgBox (tOut FakeOpPlaceHolder) (tOut (tOutMsgBox OpArgIndexes))
-// (tIn (tInMsgBox OpArgIndexes))
+// InMsg2OutMsg (tOut FakeOpPlaceHolder) (tOut (tOutMsg OpArgIndexes))
+// (tIn (tInMsg OpArgIndexes))
 template <>
-struct InMsgBox2OutMsgBox<tOut<FakeOpPlaceHolder>,
-                          tOut<OpArgIndexes<std::optional<Index>>>,
-                          tIn<OpArgIndexes<Index>>>
+struct InMsg2OutMsg<tOut<FakeOpPlaceHolder>,
+                    tOut<OpArgIndexes<std::optional<Index>>>,
+                    tIn<OpArgIndexes<Index>>>
     : public Tuple<tOut<FakeOpPlaceHolder>,
                    tOut<OpArgIndexes<std::optional<Index>>>,
                    tIn<OpArgIndexes<Index>>> {
@@ -103,7 +103,7 @@ DEFINE_ADT_UNION(Equation,
                  Identity<tOut<Index>, tIn<Index>>,
                  Dot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>,
                  UnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>,
-                 InMsgBox2OutMsgBox<tOut<FakeOpPlaceHolder>,
+                 InMsg2OutMsg<tOut<FakeOpPlaceHolder>,
                                     tOut<OpArgIndexes<std::optional<Index>>>,
                                     tIn<OpArgIndexes<Index>>>,
                  ConstantFunction<tOut<Iterator>, tIn<Index>>);

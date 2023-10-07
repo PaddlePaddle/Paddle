@@ -36,9 +36,9 @@ std::string ToTxtString(const FakeOpPlaceHolder& op);
 
 std::string ToTxtString(const List<Iterator>& iterator_list);
 
-std::string ToTxtString(const tInMsgBox<List<Index>>& in_msg_box_indexes_);
+std::string ToTxtString(const tInMsg<List<Index>>& in_msg_indexes_);
 
-std::string ToTxtString(const tOutMsgBox<List<Index>>& out_msg_box_indexes_);
+std::string ToTxtString(const tOutMsg<List<Index>>& out_msg_indexes_);
 
 void PrintEquations(const Equations& equations, const std::string& separator);
 

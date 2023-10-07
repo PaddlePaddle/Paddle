@@ -24,6 +24,7 @@
 namespace cinn::adt {
 
 class EquationFunctionConstantsProvider;
+class DirectionEquationGenerator;
 
 using EquationCtx4OpStmtT =
     std::function<std::shared_ptr<config::NaiveOpEquationContext>(
@@ -41,15 +42,21 @@ struct AnchorGroup {
 
 std::vector<AnchorGroup> PartitionOpStmts(
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,
-    const List<OpStmt>& op_stmts);
+    const List<OpStmt>& op_stmts,
+    const std::shared_ptr<DirectionEquationGenerator>&
+        direction_equation_generator);
 
 void CheckEquationSolvable(
     const AnchorGroup& igroup_spec,
     const std::shared_ptr<const EquationFunctionConstantsProvider>&
-        constant_provider);
+        constant_provider,
+    const std::shared_ptr<DirectionEquationGenerator>&
+        direction_equation_generator);
 
 GraphView MakeGlobalEquationGraphViewForPartition(
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,
-    const List<OpStmt>& op_stmts);
+    const List<OpStmt>& op_stmts,
+    const std::shared_ptr<DirectionEquationGenerator>&
+        direction_equation_generator);
 
 }  // namespace cinn::adt

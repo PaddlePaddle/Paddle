@@ -171,29 +171,29 @@ class Graph final : public std::enable_shared_from_this<Graph> {
         }
         in_variables.emplace(Variable{in_index.value()});
       },
-      [&](const InMsgBox2OutMsgBox<
+      [&](const InMsg2OutMsg<
                   tOut<FakeOpPlaceHolder>,
                   tOut<OpArgIndexes<std::optional<Index>>>,
-                  tIn<OpArgIndexes<Index>>>& in_msg_box2out_msg_box) {
-        const auto& [op_placeholder, out_box_indexes, in_box_indexes] =
-            in_msg_box2out_msg_box.tuple();
+                  tIn<OpArgIndexes<Index>>>& in_msg2out_msg) {
+        const auto& [op_placeholder, out_msg_indexes, in_msg_indexes] =
+            in_msg2out_msg.tuple();
         out_variables.emplace(Variable{op_placeholder.value()});
-        const auto& [out_box_in_indexes, out_box_out_indexes] =
-            out_box_indexes.value().tuple();
-        const auto& [in_box_in_indexes, in_box_out_indexes] =
-            in_box_indexes.value().tuple();
-        for (const auto& index : *out_box_in_indexes.value()) {
+        const auto& [out_msg_in_indexes, out_msg_out_indexes] =
+            out_msg_indexes.value().tuple();
+        const auto& [in_msg_in_indexes, in_msg_out_indexes] =
+            in_msg_indexes.value().tuple();
+        for (const auto& index : *out_msg_in_indexes.value()) {
           out_variables.emplace(Variable{index});
         }
-        for (const auto& index : *out_box_out_indexes.value()) {
+        for (const auto& index : *out_msg_out_indexes.value()) {
           if (index.has_value()) {
             out_variables.emplace(Variable{index.value()});
           }
         }
-        for (const auto& index : *in_box_in_indexes.value()) {
+        for (const auto& index : *in_msg_in_indexes.value()) {
           in_variables.emplace(Variable{index});
         }
-        for (const auto& index : *in_box_out_indexes.value()) {
+        for (const auto& index : *in_msg_out_indexes.value()) {
           in_variables.emplace(Variable{index});
         }
       },

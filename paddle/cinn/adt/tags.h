@@ -30,8 +30,8 @@ DEFINE_ADT_TAG(tIndex);
 DEFINE_ADT_TAG(tDim);
 DEFINE_ADT_TAG(tOpPlaceHolder);
 
-DEFINE_ADT_TAG(tInMsgBox);
-DEFINE_ADT_TAG(tOutMsgBox);
+DEFINE_ADT_TAG(tInMsg);
+DEFINE_ADT_TAG(tOutMsg);
 
 DEFINE_ADT_TAG(tBreak);
 
