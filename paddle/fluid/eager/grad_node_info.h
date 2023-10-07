@@ -324,6 +324,11 @@ class GradNodeBase {
     is_run_auto_parallel_ = is_run_auto_parallel;
   }
 
+  bool IsForwardView() const { return is_forward_view_; }
+  void SetIsForwardView(bool is_forward_view) {
+    is_forward_view_ = is_forward_view;
+  }
+
  private:
   // bwd_out_meta_ is used to record Grad output info for backward
   paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>
@@ -355,6 +360,8 @@ class GradNodeBase {
   // With this flag, short-circuit the backward traversal of Tensor and
   // set the DistAttr to reduce the impact on scheduling performance
   bool is_run_auto_parallel_{false};
+
+  bool is_forward_view_{false};
 };
 
 }  // namespace egr

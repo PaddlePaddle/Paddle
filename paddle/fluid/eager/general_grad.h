@@ -92,7 +92,8 @@ class GeneralGrad {
     std::unordered_set<GradNodeBase*> potential_startup_nodes_to_be_erased;
     for (auto startup_node : potential_startup_nodes_) {
       auto iter = input_target_nodes_inputmeta_map_.find(startup_node);
-      if (iter != input_target_nodes_inputmeta_map_.end()) {
+      if (iter != input_target_nodes_inputmeta_map_.end() &&
+          !iter->first->IsForwardView()) {
         potential_startup_nodes_to_be_erased.emplace(iter->first);
       }
     }
