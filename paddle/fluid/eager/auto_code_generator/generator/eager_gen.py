@@ -1606,7 +1606,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         if self.forward_view_map is not None:
             for input, output in self.forward_view_map.items():
                 view_share_autogradmeta_str += f"""
-  if ({input}.initialized() && {output}.initialized() && {input}.is_dense_tensor()  && {output}.is_dense_tensor() && std::dynamic_pointer_cast<phi::DenseTensor>({input}.impl())->IsSharedBufferWith(*std::dynamic_pointer_cast<phi::DenseTensor>({output}.impl()))) {{
+  if ({input}.initialized() && {output}.initialized() && {input}.is_dense_tensor() && {output}.is_dense_tensor() && std::dynamic_pointer_cast<phi::DenseTensor>({input}.impl())->IsSharedBufferWith(*std::dynamic_pointer_cast<phi::DenseTensor>({output}.impl()))) {{
     {output}.set_autograd_meta({input}.mutable_autograd_meta());
     if (grad_node) {{
       grad_node->SetIsForwardView(true);
