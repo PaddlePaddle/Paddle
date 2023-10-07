@@ -36,8 +36,8 @@ USE_OP_ITSELF(fused_transpose);
 PD_DECLARE_KERNEL(fused_transpose, OneDNN, ONEDNN);
 USE_OP_ITSELF(shape);
 PD_DECLARE_KERNEL(shape, OneDNN, ONEDNN);
-USE_OP_ITSELF(crop);
-PD_DECLARE_KERNEL(crop, CPU, ALL_LAYOUT);
+USE_OP_ITSELF(crop_tensor);
+PD_DECLARE_KERNEL(crop_tensor, CPU, ALL_LAYOUT);
 
 PD_DECLARE_KERNEL(pool2d, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(relu, CPU, ALL_LAYOUT);
@@ -281,7 +281,7 @@ TEST(test_pool2d_crop_nhwc, cpu_place) {
                                        {"use_mkldnn", {true}}});
 
   std::vector<int> offsets{0, 0, 0, 0};
-  auto op_crop = framework::OpRegistry::CreateOp("crop",
+  auto op_crop = framework::OpRegistry::CreateOp("crop_tensor",
                                                  {{"X", {"y"}}, {"Y", {"v"}}},
                                                  {{"Out", {"z"}}},
                                                  {{"offsets", {offsets}}});
