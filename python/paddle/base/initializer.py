@@ -45,7 +45,7 @@ def set_global_initializer(weight_init, bias_init=None):
     The model parameters include ``weight`` and ``bias`` . In the framework, they correspond
     to ``paddle.ParamAttr`` , which is inherited from ``paddle.Tensor`` , and is a persistable Variable.
     This API only takes effect for model parameters, not for variables created through apis such as
-    :ref:`api_base_layers_create_global_var` , :ref:`api_base_layers_create_tensor`.
+    :ref:`api_paddle_static_create_global_var` , :ref:`api_paddle_Tensor_create_tensor`.
 
     If the initializer is also set up by ``param_attr`` or ``bias_attr`` when creating a network layer,
     the global initializer setting here will not take effect because it has a lower priority.
