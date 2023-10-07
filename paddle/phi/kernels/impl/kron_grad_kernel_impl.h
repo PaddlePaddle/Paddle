@@ -235,14 +235,12 @@ struct KronGradOpFunctor {
 #if defined(__NVCC__) || defined(__HIPCC__)
     auto stream = dev_ctx.stream();  // it is a cuda device_context
     if (dx) {
-      std::vector<int> reduce_dims{1};
       phi::SumKernel<T, Context>(
-          dev_ctx, dout_x, reduce_dims, dout_x.dtype(), false, dx);
+          dev_ctx, dout_x, {1}, dout_x.dtype(), false, dx);
     }
     if (dy) {
-      std::vector<int> reduce_dims{1};
       phi::SumKernel<T, Context>(
-          dev_ctx, dout_y, reduce_dims, dout_y.dtype(), false, dy);
+          dev_ctx, dout_y, {1}, dout_y.dtype(), false, dy);
     }
 #else
     auto *place = dev_ctx.eigen_device();
