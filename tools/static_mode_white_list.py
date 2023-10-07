@@ -123,7 +123,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_crop_tensor_op',
     'test_cross_entropy2_op',
     'test_cross_entropy_loss',
-    'test_cross_entropy_op',
     'test_cross_op',
     'test_ctc_align',
     'test_cumsum_op',
