@@ -643,16 +643,11 @@ def add(x, y, name=None):
     $X$ the tensor of any dimension.
     $Y$ the tensor whose dimensions must be less than or equal to the dimensions of $X$.
 
-    There are two cases for this operator:
+    This operator is used in the following cases:
 
     1. The shape of $Y$ is the same with $X$.
     2. The shape of $Y$ is a continuous subsequence of $X$.
 
-    For case 2:
-
-    1. Broadcast $Y$ to match the shape of $X$, where axis is the start dimension index for broadcasting $Y$ onto $X$.
-    2. If $axis$ is -1 (default), $axis$=rank($X$)-rank($Y$).
-    3. The trailing dimensions of size 1 for $Y$ will be ignored for the consideration of subsequence, such as shape($Y$) = (2, 1) => (2).
 
         For example:
 
@@ -690,8 +685,6 @@ def add(x, y, name=None):
     if in_dynamic_or_pir_mode():
         return _C_ops.add(x, y)
     else:
-        if in_pir_mode():
-            return paddle._pir_ops.add(x, y)
         return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 
 
@@ -4753,7 +4746,7 @@ def all(x, axis=None, keepdim=False, name=None):
              [True ]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.all(x, axis, keepdim)
     else:
         reduce_all, axis = _get_reduce_axis(axis, x)

@@ -295,6 +295,7 @@ def launch():
     elif ctx.is_auto_tuner_mode():
         import copy
         import json
+        import logging
         import os
         import sys
         import time
@@ -306,11 +307,27 @@ def launch():
 
         start_time = time.time()
         # read user defined tuner config json
+        if not ctx.args.auto_tuner_json.endswith(".json"):
+            raise ValueError("Please use '.json' as the file name suffix.")
         try:
             with open(ctx.args.auto_tuner_json, "r") as f:
                 tuner_cfg = json.load(f)
         except:
             raise ValueError("Please check your auto tuner json whether valid.")
+
+        logger = logging.getLogger('auto_tuner')
+        logger.setLevel(logging.INFO)
+        auto_tuner_log_path = os.path.join(
+            os.path.dirname(ctx.args.auto_tuner_json),
+            f'{os.path.basename(ctx.args.auto_tuner_json).split(".")[0]}_auto_tuner.log',
+        )
+        handler = logging.FileHandler(auto_tuner_log_path, mode="w")
+        handler.setLevel(logging.INFO)
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
 
         # copy training script args
         if ctx.args.training_script.endswith('.py'):
@@ -332,7 +349,12 @@ def launch():
             nnodes = int(nnodes)
         tuner_cfg["nodes"] = nnodes
         tuner_cfg["num_gpus"] = gpus_per_node * tuner_cfg["nodes"]
+        mode = tuner_cfg.get("mode", None)
 
+        history_file_path = os.path.join(
+            os.path.dirname(ctx.args.auto_tuner_json),
+            f'{os.path.basename(ctx.args.auto_tuner_json).split(".")[0]}_history.csv',
+        )
         if nnodes > 1:
             from .utils.etcd_client import ETCDClient
 
@@ -352,6 +374,9 @@ def launch():
             if "warmup_time" not in tuner_cfg
             else tuner_cfg.get("warmup_time")
         )
+
+        # max_search_time
+        max_search_time = tuner_cfg.get("max_search_time", None)
 
         is_first_task = True
         # build history recorder
@@ -405,6 +430,11 @@ def launch():
                         task_job_id, log_dir, gbs_cur_cfg
                     )
                 )
+                logger.info(
+                    "Launch task from auto tuner: job_id {}, log_dir {}, config {}".format(
+                        task_job_id, log_dir, gbs_cur_cfg
+                    )
+                )
                 c = controllers.init(ctx)
                 c.run()
 
@@ -422,6 +452,9 @@ def launch():
                     ctx.logger.warning(
                         f"Read metric failed for parameters: {log_dir}"
                     )
+                    logger.warning(
+                        f"Read metric failed for parameters: {log_dir}"
+                    )
                     # for pruner use
                     gbs_cur_cfg['time'] = -1
                     gbs_cur_cfg[tuner_cfg['metric_cfg']['name']] = None
@@ -431,6 +464,7 @@ def launch():
                     ctx.logger.warning(
                         f"Out of memory for parameters: {log_dir}"
                     )
+                    logger.warning(f"Out of memory for parameters: {log_dir}")
                     # for pruner use
                     gbs_cur_cfg['time'] = -1
                     gbs_cur_cfg[tuner_cfg['metric_cfg']['name']] = None
@@ -439,6 +473,9 @@ def launch():
                 # not err & (1 << 1): do not record memory usage when out of memory
                 if err & (1 << 2) and not err & (1 << 1):
                     ctx.logger.warning(
+                        f"Read memory usage failed for parameters: {log_dir}"
+                    )
+                    logger.warning(
                         f"Read memory usage failed for parameters: {log_dir}"
                     )
                     gbs_cur_cfg["max_mem_usage"] = None
@@ -484,26 +521,40 @@ def launch():
             ctx.logger.info(
                 f"AtuoTuner for GBS search ends in {end_time-start_time}s."
             )
+            logger.info(
+                f"AtuoTuner for GBS search ends in {end_time-start_time}s."
+            )
+
         # build AutoTuner to get new config
         auto_tuner = AutoTuner(tuner_cfg)
         cur_cfg = auto_tuner.search_once()
         auto_tuner.add_cfg(cur_cfg)
-
+        assert cur_cfg is not None, "No config can run."
         while cur_cfg:
+            task_start_time = time.time()
             ctx = copy.deepcopy(raw_ctx)
             if is_first_task:
                 ctx.max_time_per_task = warmup_time
             is_first_task = False
             # auto tuner supports dp, mp, pp, micro batch size, sharding, recompute by default and every task has own log dir
-            log_dir = "DP{}_MP{}_PP{}_Sharding_degree_{}_stage_{}_MBS_{}_Recompute_{}_granularity_{}".format(
+            acc_steps = (
+                tuner_cfg["model_cfg"]["global_batch_size"]
+                // cur_cfg["dp_degree"]
+                // cur_cfg["sharding_degree"]
+                // cur_cfg["micro_batch_size"]
+            )
+            cur_cfg["acc_steps"] = acc_steps
+            log_dir = "DP{}_MP{}_PP{}_VPP_{}_Sharding_degree_{}_stage_{}_MBS_{}_Recompute_{}_granularity_{}_AccStep_{}".format(
                 cur_cfg["dp_degree"],
                 cur_cfg["mp_degree"],
                 cur_cfg["pp_degree"],
+                cur_cfg["vpp_degree"],
                 cur_cfg["sharding_degree"],
                 cur_cfg["sharding_stage"],
                 cur_cfg["micro_batch_size"],
                 cur_cfg["use_recompute"],
                 cur_cfg["recompute_granularity"],
+                cur_cfg["acc_steps"],
             )
 
             ctx.args.log_dir = log_dir
@@ -523,9 +574,26 @@ def launch():
                     task_job_id, log_dir, cur_cfg
                 )
             )
+            logger.info(
+                "Launch task from auto tuner: job_id {}, log_dir {}, config {}".format(
+                    task_job_id, log_dir, cur_cfg
+                )
+            )
             c = controllers.init(ctx)
             c.run()
 
+            task_end_time = time.time()
+            cur_cfg["exec_time"] = round(task_end_time - task_start_time, 2)
+            ctx.logger.info(
+                "Task: job_id {}, log_dir {}, config {} ends in {}s".format(
+                    task_job_id, log_dir, cur_cfg, cur_cfg["exec_time"]
+                )
+            )
+            logger.info(
+                "Task: job_id {}, log_dir {}, config {} ends in {}s".format(
+                    task_job_id, log_dir, cur_cfg, cur_cfg["exec_time"]
+                )
+            )
             # process generated result
 
             metric, mem, err = read_log(
@@ -536,6 +604,7 @@ def launch():
             )
             # sync sigint
             timeout_flag = True
+            OOM_flag = err & (1 << 1)
 
             if nnodes > 1:
                 import socket
@@ -548,16 +617,22 @@ def launch():
                     ip = '127.0.0.1'
                 assert ip != '127.0.0.1'
                 path = f"auto_tuner/{job_id}/{ip}"
-                OOM_flag = err & (1 << 1)
                 if OOM_flag:
                     client.put(path, "OOM".encode('latin-1'))
                     ctx.logger.info(f"Put OOM to {path}")
+                    logger.info(f"Put OOM to {path}")
                 elif hasattr(c, 'sigint') and c.sigint == 14:
                     client.put(path, "OK".encode('latin-1'))
                     ctx.logger.info(f"Put OK to {path}")
+                    logger.info(f"Put OK to {path}")
+                elif not hasattr(c, 'sigint') and c.pod.exit_code == 0:
+                    client.put(path, "OK".encode('latin-1'))
+                    ctx.logger.info(f"Put OK to {path}")
+                    logger.info(f"Put OK to {path}")
                 else:
                     client.put(path, "Error".encode('latin-1'))
                     ctx.logger.info(f"Put Error to {path}")
+                    logger.info(f"Put Error to {path}")
 
                 result = list(client.get_prefix(f"auto_tuner/{job_id}/"))
                 size = len(result)
@@ -568,9 +643,11 @@ def launch():
 
                 status = [i[0].decode() for i in result]
                 ctx.logger.info(f"Status of auto_tuner/{job_id}/: {status}")
+                logger.info(f"Status of auto_tuner/{job_id}/: {status}")
 
                 if "OOM" in status:
                     timeout_flag = False
+                    OOM_flag = True
                 elif "OK" not in status:
                     timeout_flag = False
 
@@ -578,13 +655,15 @@ def launch():
                 ctx.logger.warning(
                     f"Read metric failed for parameters: {log_dir}"
                 )
+                logger.warning(f"Read metric failed for parameters: {log_dir}")
                 # for pruner use
                 cur_cfg['time'] = -1
                 cur_cfg[tuner_cfg['metric_cfg']['name']] = None
-                cur_cfg["max_mem_usage"] = mem
+                cur_cfg["max_mem_usage"] = mem if not OOM_flag else "OOM"
 
             if err & (1 << 1):
                 ctx.logger.warning(f"Out of memory for parameters: {log_dir}")
+                logger.warning(f"Out of memory for parameters: {log_dir}")
                 # for pruner use
                 cur_cfg['time'] = -1
                 cur_cfg[tuner_cfg['metric_cfg']['name']] = None
@@ -595,18 +674,21 @@ def launch():
                 ctx.logger.warning(
                     f"Read memory usage failed for parameters: {log_dir}"
                 )
-                cur_cfg["max_mem_usage"] = None
+                logger.warning(
+                    f"Read memory usage failed for parameters: {log_dir}"
+                )
+                cur_cfg["max_mem_usage"] = None if not OOM_flag else "OOM"
 
             if not err and timeout_flag:
                 # for pruner use
                 cur_cfg['time'] = metric
                 cur_cfg[tuner_cfg['metric_cfg']['name']] = metric
-                cur_cfg["max_mem_usage"] = mem
+                cur_cfg["max_mem_usage"] = mem if not OOM_flag else "OOM"
 
             if not err and not timeout_flag:
                 cur_cfg['time'] = -1
                 cur_cfg[tuner_cfg['metric_cfg']['name']] = None
-                cur_cfg["max_mem_usage"] = None
+                cur_cfg["max_mem_usage"] = None if not OOM_flag else "OOM"
 
             # record history
             cur_cfg['job_id'] = job_id
@@ -617,11 +699,13 @@ def launch():
             )
             if not err:
                 ctx.logger.info(f"Current best config: {cur_best_cfgs}")
-                recorder.store_history(
-                    ctx.args.auto_tuner_json.split(".")[0] + "_history.csv"
-                )
+                logger.info(f"Current best config: {cur_best_cfgs}")
+                recorder.store_history(history_file_path)
             else:
                 ctx.logger.info(
+                    "Get best config failed. Currently there are no appropriate configs."
+                )
+                logger.info(
                     "Get best config failed. Currently there are no appropriate configs."
                 )
             c.finalize(exit=False)
@@ -641,7 +725,12 @@ def launch():
                 if pid != self_pid:
                     os.system("kill -9 " + pid)
             time.sleep(3)
-        recorder.store_history()
+            end_time = time.time()
+            if max_search_time and (end_time - start_time) > int(
+                max_search_time
+            ):
+                break
+        recorder.store_history(history_file_path)
 
         # get best config to run
         best_cfg = None
@@ -662,6 +751,7 @@ def launch():
                 best_cfg, err = recorder.get_best(
                     metric=tuner_cfg['metric_cfg']['name'],
                     direction=tuner_cfg['metric_cfg']['OptimizationDirection'],
+                    mode=mode,
                 )
                 if err:
                     raise ValueError(
@@ -678,6 +768,7 @@ def launch():
                         best_cfg = json.loads(data)
                     except Exception as e:
                         ctx.logger.warning(e)
+                        logger.warning(e)
                         time.sleep(2)
                     if best_cfg:
                         break
@@ -686,21 +777,24 @@ def launch():
             best_cfg, err = recorder.get_best(
                 metric=tuner_cfg['metric_cfg']['name'],
                 direction=tuner_cfg['metric_cfg']['OptimizationDirection'],
+                mode=mode,
             )
             if err:
                 raise ValueError(
                     "Get best config failed. Currently there are no appropriate configs."
                 )
-        assert best_cfg
+        assert best_cfg and best_cfg["time"] != -1
 
         end_time = time.time()
         ctx.logger.info(f"AutoTuner ends in {end_time-start_time}s.")
+        logger.info(f"AutoTuner ends in {end_time-start_time}s.")
         # launch best cfg
-        new_args = gen_new_args(raw_args, best_cfg, tuner_cfg)
+        new_args = gen_new_args(raw_args, best_cfg, tuner_cfg, run_best=True)
         ctx.run_best = True
         ctx.args.training_script_args = new_args
         ctx.args.job_id = "best_cfg"
         ctx.logger.info(f"Launch best cfg from auto tuner: {best_cfg}")
+        logger.info(f"Launch best cfg from auto tuner: {best_cfg}")
         ctx.args.log_dir = "best_cfg"
         # run best cfg
         c = controllers.init(ctx)

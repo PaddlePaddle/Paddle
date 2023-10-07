@@ -17,10 +17,10 @@
 #include <tuple>
 #include <vector>
 
-#include "paddle/cinn/ir/utils/ir_mutator.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/utils/ir_replace.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
 
 namespace cinn {
 namespace optim {

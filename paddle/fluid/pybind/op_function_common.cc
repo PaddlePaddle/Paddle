@@ -1027,6 +1027,7 @@ void ConstructAttrMapForRunProgram(
                                       "fm",
                                       "fo",
                                       "bx",
+                                      "no_need_buffers",
                                       "bp",
                                       "bm",
                                       "bo_g",

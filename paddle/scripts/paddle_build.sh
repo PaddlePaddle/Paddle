@@ -461,7 +461,7 @@ EOF
         fi
         echo "PR whl Size: $PR_whlSize"
         echo "ipipe_log_param_PR_whl_Size: $PR_whlSize" >> ${PADDLE_ROOT}/build/build_summary.txt
-        PR_soSize=$($com ${PADDLE_ROOT}/build/python/paddle/fluid/libpaddle.so |awk '{print $1}')
+        PR_soSize=$($com ${PADDLE_ROOT}/build/python/paddle/base/libpaddle.so |awk '{print $1}')
         echo "PR so Size: $PR_soSize"
         echo "ipipe_log_param_PR_so_Size: $PR_soSize" >> ${PADDLE_ROOT}/build/build_summary.txt
     fi
@@ -2740,7 +2740,7 @@ function enable_unused_var_check() {
     export FLAGS_enable_unused_var_check=1
 }
 function check_coverage_added_ut() {
-    # NOTE(risemeup1):The steps of checkinge added test can be placed on the cpu machine to save gpu resources
+    # NOTE(risemeup1):The step of checking added test can be placed on the cpu machine to save gpu resources
     bash $PADDLE_ROOT/tools/check_added_ut.sh
 }
 function gen_doc_lib() {
@@ -3554,6 +3554,7 @@ EOF
     export WITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
     export WITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
     export WITH_SHARED_PHI=${WITH_SHARED_PHI:-OFF}
+    export WITH_NVCC_LAZY=${WITH_NVCC_LAZY:-ON}
     
     if [ "$SYSTEM" == "Linux" ];then
       if [ `nproc` -gt 16 ];then
