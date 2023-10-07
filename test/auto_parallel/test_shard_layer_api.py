@@ -91,5 +91,5 @@ class TestShardLayer(unittest.TestCase):
         self.assertEqual(sharded_layer, sharded_layer_output)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

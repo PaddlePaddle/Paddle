@@ -171,7 +171,7 @@ def shard_layer(
         input_fn(Callable): Specify the partition distribution of the input, input_fn will serve for the Layer as forward_pre_hook.By default we do not do any partitioning.
         ouput_fn(Callable): Specify the partition distribution of the output, output_fn will serve for the Layer as forward_post_hook. By default we do not do any partitioning.
     Returns:
-        model:model with DistTensor parameters
+        model: model with DistTensor parameters
     Examples:
         ..code-block:: python
 
@@ -190,7 +190,7 @@ def shard_layer(
             ...     if model_name == 'fc1':
             ...         model.weight = dist.shard_tensor(model.weight, dist_attr)
             >>> model = MLP()
-            >>> model = dist.shard_layer(model, shard_params_func)
+            >>> model = dist.shard_layer(model, mesh, shard_params_func)
             >>> print(model)
     """
     # Ensure that process_mesh is not an empty object
@@ -203,9 +203,7 @@ def shard_layer(
             "process_mesh parameter must be of type dist.ProcessMesh"
         )
 
-    def replicate_layer_params_buffers(
-        m: nn.Layer, mesh: dist.ProcessMesh
-    ) -> None:
+    def shard_fn_default(m: nn.Layer, mesh: dist.ProcessMesh) -> None:
         # dist_attr = dist.DistAttr(mesh=mesh)
         for key, param in m._parameters.items():
             if param is not None:
@@ -214,23 +212,19 @@ def shard_layer(
                     shard_tensor(param.data, dist_attr=None),
                 )
             else:
-                raise ValueError("param cannot be none")
+                raise ValueError("model._parameters cannot be empty")
         for key, buffer in m._buffers.items():
             if buffer is not None:
                 m._buffers[key] = shard_tensor(buffer)
             else:
-                raise ValueError("buffer cannot be none")
+                raise ValueError("model._buffers cannot be empty")
 
     if shard_fn is None:
-        # if shard_fn not specified, by default replicate
-        # all model params
-        for name, sublayers in model.named_sublayers():
-            replicate_layer_params_buffers(sublayers, process_mesh)
+        # if shard_fn not specified, use default shard_fn_default
+        shard_fn_default(model, process_mesh)
     else:
-        # apply shard_fn to sublayers
-        for name, sublayers in model.named_sublayers():
-            shard_fn(name, sublayers, process_mesh)
-            replicate_layer_params_buffers(sublayers, process_mesh)
+        # apply shard_fn to layer
+        shard_fn(model, process_mesh)
 
     # register input_fn as model forward pre hook
     if input_fn is not None:
