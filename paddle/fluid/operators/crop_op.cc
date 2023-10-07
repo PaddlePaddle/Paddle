@@ -213,23 +213,23 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(GropNoNeedBufferVarInferer, "Y");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(crop,
+REGISTER_OPERATOR(cropaa,
                   ops::CropOp,
                   ops::CropOpMaker,
                   ops::CropGradOpMaker<paddle::framework::OpDesc>,
                   ops::CropGradOpMaker<paddle::imperative::OpBase>,
                   ops::GropNoNeedBufferVarInferer);
-REGISTER_OPERATOR(crop_grad, ops::CropOpGrad);
-REGISTER_OP_CPU_KERNEL(crop,
+REGISTER_OPERATOR(crop_gradaa, ops::CropOpGrad);
+REGISTER_OP_CPU_KERNEL(cropaa,
                        ops::CropKernel<phi::CPUContext, float>,
                        ops::CropKernel<phi::CPUContext, double>);
-REGISTER_OP_CPU_KERNEL(crop_grad,
+REGISTER_OP_CPU_KERNEL(crop_gradaa,
                        ops::CropGradKernel<phi::CPUContext, float>,
                        ops::CropGradKernel<phi::CPUContext, double>);
 
-REGISTER_OP_CUDA_KERNEL(crop,
+REGISTER_OP_CUDA_KERNEL(cropaa,
                         ops::CropKernel<phi::GPUContext, float>,
                         ops::CropKernel<phi::GPUContext, double>);
-REGISTER_OP_CUDA_KERNEL(crop_grad,
+REGISTER_OP_CUDA_KERNEL(crop_gradaa,
                         ops::CropGradKernel<phi::GPUContext, float>,
                         ops::CropGradKernel<phi::GPUContext, double>);
