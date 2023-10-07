@@ -22,6 +22,8 @@ namespace framework {
 namespace ir {
 
 using GraphWithStats = std::pair<ir::Graph*, int>;
+using VarQuantScale =
+    std::unordered_map<std::string, std::pair<bool, phi::DenseTensor>>;
 
 class FCResidualConnectionMKLDNNFusePass : public FusePassBase {
  private:
@@ -42,6 +44,8 @@ class FCResidualConnectionMKLDNNFusePass : public FusePassBase {
   }
 
   const std::string name_scope_{"fc_elementwise_add_mkldnn_fuse"};
+  VarQuantScale string_pair_map = {};
+  VarQuantScale* const var_quant_scales_ = &string_pair_map;
 };
 }  // namespace ir
 }  // namespace framework
