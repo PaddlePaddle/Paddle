@@ -40,7 +40,6 @@ def masked_multihead_attention(
     quant_round_type=1,
     quant_max_bound=127.0,
     quant_min_bound=-127.0,
-    cache_scale_group_num=1,
 ):
     r"""
     Masked Multi-head attention for text summarization.
@@ -70,7 +69,6 @@ def masked_multihead_attention(
         quant_round_type (int, optional): The quant_round_type, used in quant. Default 1.
         quant_max_bound (float, optional): The quant_max_bound, used in quant. Default 127.0.
         quant_min_bound (float, optional): The quant_min_bound, used in quant. Default -127.0.
-        cache_scale_group_num (int, optional): The number of cache scale groups, which is used in cache kv quantization.
 
     Returns:
         Tensor|tuple: If "beam_cache_offset_out" is not none, return the
@@ -124,7 +122,6 @@ def masked_multihead_attention(
             quant_round_type,
             quant_max_bound,
             quant_min_bound,
-            cache_scale_group_num,
         )
 
     helper = LayerHelper('masked_multihead_attention', **locals())
@@ -172,8 +169,8 @@ def masked_multihead_attention(
         inputs["cache_v_quant_scales"] = cache_v_quant_scales
     if cache_k_dequant_scales is not None:
         inputs["cache_k_dequant_scales"] = cache_k_dequant_scales
-    if cache_k_dequant_scales is not None:
-        inputs["cache_k_dequant_scales"] = cache_k_dequant_scales
+    if cache_v_dequant_scales is not None:
+        inputs["cache_v_dequant_scales"] = cache_v_dequant_scales
 
     outputs = {
         'out': out,
@@ -193,7 +190,6 @@ def masked_multihead_attention(
             'quant_round_type': quant_round_type,
             'quant_max_bound': quant_max_bound,
             'quant_min_bound': quant_min_bound,
-            'cache_scale_group_num': cache_scale_group_num,
         },
     )
     return (

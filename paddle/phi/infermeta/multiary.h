@@ -863,10 +863,10 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
                                        const int quant_round_type,
                                        const float quant_max_bound,
                                        const float quant_min_bound,
-                                       const int cache_scale_group_num,
                                        MetaTensor* out,
                                        MetaTensor* cache_kv_out,
-                                       MetaTensor* beam_cache_offset_out);
+                                       MetaTensor* beam_cache_offset_out,
+                                       MetaConfig config = MetaConfig());
 
 void FullWithTensorInferMeta(const MetaTensor& shape,
                              DataType dtype,

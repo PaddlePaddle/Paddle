@@ -108,7 +108,6 @@ struct Masked_multihead_attention_params {
   const float *cache_v_quant_scales = nullptr;
   const float *cache_k_dequant_scales = nullptr;
   const float *cache_v_dequant_scales = nullptr;
-  int cache_scale_group_num = 0;
 };
 
 #ifdef MMHA_USE_FP32_ACUM_FOR_FMA
@@ -421,8 +420,7 @@ __global__ void __launch_bounds__(THREADS_PER_BLOCK)
   float v_dequant_scale;
 
   if (USE_CACHE_INT8) {
-    const int cache_id =
-        params.cache_scale_group_num == 1 ? 0 : bi * params.num_head + hi;
+    const int cache_id = bi * params.num_head + hi;
     k_quant_scale = params.cache_k_quant_scales[cache_id];
     v_quant_scale = params.cache_v_quant_scales[cache_id];
     k_dequant_scale = params.cache_k_dequant_scales[cache_id];
@@ -1510,7 +1508,6 @@ void DispatchWithDtype(
     const int quant_round_type,
     const float quant_max_bound,
     const float quant_min_bound,
-    const int cache_scale_group_num,
     DenseTensor *out,
     DenseTensor *cache_kv_out,
     DenseTensor *beam_cache_offset_out,
@@ -1580,7 +1577,6 @@ void DispatchWithDtype(
 
   params.mask_broadcast_num_heads = mask_broadcast_num_heads;
   if (cache_k_quant_scales) {
-    VLOG(1) << "cache_scale_group_num" << cache_scale_group_num;
     params.cache_kv_I = const_cast<uint8_t *>(cache_kv_out->data<uint8_t>());
     params.cache_k_quant_scales = cache_k_quant_scales.get_ptr()->data<float>();
     params.cache_v_quant_scales = cache_v_quant_scales.get_ptr()->data<float>();
@@ -1588,7 +1584,6 @@ void DispatchWithDtype(
         cache_k_dequant_scales.get_ptr()->data<float>();
     params.cache_v_dequant_scales =
         cache_v_dequant_scales.get_ptr()->data<float>();
-    params.cache_scale_group_num = cache_scale_group_num;
   } else {
     params.cache_kv = const_cast<T *>(cache_kv_out->data<T>());
   }
@@ -1686,7 +1681,6 @@ void DispatchWithDtype(
     const int quant_round_type,
     const float quant_max_bound,
     const float quant_min_bound,
-    const int cache_scale_group_num,
     DenseTensor *out,
     DenseTensor *cache_kv_out,
     DenseTensor *beam_cache_offset_out,
@@ -1719,7 +1713,6 @@ void MMHAKernel(const Context &dev_ctx,
                 const int quant_round_type,
                 const float quant_max_bound,
                 const float quant_min_bound,
-                const int cache_scale_group_num,
                 DenseTensor *out,
                 DenseTensor *cache_kv_out,
                 DenseTensor *beam_cache_offset_out) {
@@ -1751,7 +1744,6 @@ void MMHAKernel(const Context &dev_ctx,
             quant_round_type,
             quant_max_bound,
             quant_min_bound,
-            cache_scale_group_num,
             out,
             cache_kv_out,
             beam_cache_offset_out,
@@ -1783,7 +1775,6 @@ void MMHAKernel(const Context &dev_ctx,
             quant_round_type,
             quant_max_bound,
             quant_min_bound,
-            cache_scale_group_num,
             out,
             cache_kv_out,
             beam_cache_offset_out,
@@ -1815,7 +1806,6 @@ void MMHAKernel(const Context &dev_ctx,
             quant_round_type,
             quant_max_bound,
             quant_min_bound,
-            cache_scale_group_num,
             out,
             cache_kv_out,
             beam_cache_offset_out,
@@ -1853,7 +1843,6 @@ void MMHAKernel(const Context &dev_ctx,
         quant_round_type,
         quant_max_bound,
         quant_min_bound,
-        cache_scale_group_num,
         out,
         cache_kv_out,
         beam_cache_offset_out,

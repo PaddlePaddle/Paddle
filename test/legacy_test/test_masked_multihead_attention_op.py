@@ -125,7 +125,6 @@ class TestMMHAOp(unittest.TestCase):
         cache_v_quant_scales,
         cache_k_dequant_scales,
         cache_v_dequant_scales,
-        cache_scale_group_num,
     ):
         if qkv_out_scale is not None:
             x = x.cast(bias.dtype) * qkv_out_scale + bias
@@ -182,7 +181,6 @@ class TestMMHAOp(unittest.TestCase):
         cache_v_quant_scales=None,
         cache_k_dequant_scales=None,
         cache_v_dequant_scales=None,
-        cache_scale_group_num=1,
     ):
         paddle.disable_static()
         if qkv_out_scale is not None:
@@ -228,7 +226,6 @@ class TestMMHAOp(unittest.TestCase):
             cache_v_quant_scales,
             cache_k_dequant_scales,
             cache_v_dequant_scales,
-            cache_scale_group_num,
         )
 
         x = x.reshape([self.bsz, -1])
@@ -262,7 +259,6 @@ class TestMMHAOp(unittest.TestCase):
             self.quant_round_type,
             self.quant_max_bound,
             self.quant_min_bound,
-            cache_scale_group_num,
         )
         print(paddle_mmha_out[1].shape)
         print("-1:", paddle_mmha_out[1][0, 0, 0, -1, :])

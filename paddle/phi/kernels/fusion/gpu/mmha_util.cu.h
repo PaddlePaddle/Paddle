@@ -106,8 +106,6 @@ template <>
 struct num_elems<float4> {
   static constexpr int value = 4;
 };
-// lyq::todo float8
-// lyq::todo uint16_t
 template <>
 struct num_elems<uint32_t> {
   static constexpr int value = 2;
@@ -715,6 +713,7 @@ inline __device__ void mul_pointer_v2(uint4* c, float a, uint64_t* b) {
   }
 }
 
+#ifdef ENABLE_BF16
 inline __device__ static void convert_(__nv_bfloat16* result,
                                        uint32_t const& source) {
 #if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
@@ -796,6 +795,7 @@ inline __device__ void mul_pointer_v2(bf16_8_t* c, float a, uint64_t* b) {
     mul_pointer_v2<bf16_4_t>(tmp_c + i, a, tmp_b + i);
   }
 }
+#endif  // ENABLE_BF16
 
 template <typename Acc, typename A, typename B>
 inline __device__ Acc mul(A a, B b);
@@ -805,6 +805,7 @@ inline __device__ float mul<float, float>(float a, float b) {
   return a * b;
 }
 
+#ifdef ENABLE_BF16
 template <>
 inline __device__ __nv_bfloat162 mul(float a, __nv_bfloat162 b) {
   __nv_bfloat162 ret;
@@ -830,6 +831,7 @@ inline __device__ bf16_8_t mul(float a, bf16_8_t b) {
   ret.w = mul<__nv_bfloat162, float, __nv_bfloat162>(a, b.w);
   return ret;
 }
+#endif  // ENABLE_BF16
 
 template <>
 inline __device__ uint32_t mul(float a, uint32_t b) {
