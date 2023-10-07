@@ -64,7 +64,7 @@ for _type_name in {'float32', 'float64', 'int32', 'int64', 'float16'}:
     create_test_class(
         'greater_equal', _type_name, lambda _a, _b: _a >= _b, True
     )
-    create_test_class('equal', _type_name, lambda _a, _b: _a == _b)
+    create_test_class('equal', _type_name, lambda _a, _b: _a == _b, True)
     create_test_class('not_equal', _type_name, lambda _a, _b: _a != _b)
 
 
@@ -473,7 +473,7 @@ create_bf16_case('less_than', lambda _a, _b: _a < _b)
 create_bf16_case('less_equal', lambda _a, _b: _a <= _b)
 create_bf16_case('greater_than', lambda _a, _b: _a > _b)
 create_bf16_case('greater_equal', lambda _a, _b: _a >= _b, True)
-create_bf16_case('equal', lambda _a, _b: _a == _b)
+create_bf16_case('equal', lambda _a, _b: _a == _b, True)
 create_bf16_case('not_equal', lambda _a, _b: _a != _b)
 
 
