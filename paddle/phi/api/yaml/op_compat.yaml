@@ -1330,6 +1330,17 @@
     context_start : contextStart
     context_stride : contextStride
 
+- op : fusion_seqexpand_concat_fc
+  inputs :
+    x : X
+    fc_weight : FCWeight
+    fc_bias : FCBias
+  outputs :
+    out : Out
+    fc_out : FCOut
+  attrs :
+    fc_activation : fc_activation
+
 - op : gather
   backward : gather_grad
   inputs :

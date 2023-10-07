@@ -207,6 +207,16 @@
     func : fusion_seqconv_eltadd_relu
     data_type : x
 
+- op : fusion_seqexpand_concat_fc
+  args : (Tensor[] x, Tensor fc_weight, Tensor fc_bias, str fc_activation="identity")
+  output : Tensor(out), Tensor(fc_out)
+  infer_meta :
+    func : FusionSeqExpandConcatFCInferMeta
+  kernel :
+    func : fusion_seqexpand_concat_fc
+    data_type : x
+  optional : fc_bias
+
 - op : generate_sequence_xpu
   args : (Tensor x, DataType dtype)
   output : Tensor

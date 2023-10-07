@@ -516,4 +516,11 @@ void FusionSeqConvEltAddReluInferMeta(const MetaTensor& x,
                                       MetaTensor* out,
                                       MetaTensor* col_mat);
 
+void FusionSeqExpandConcatFCInferMeta(const std::vector<const MetaTensor*>& x,
+                                      const MetaTensor& fc_weight,
+                                      const MetaTensor& fc_bias,
+                                      const std::string& fc_activation,
+                                      MetaTensor* out,
+                                      MetaTensor* fc_out);
+
 }  // namespace phi

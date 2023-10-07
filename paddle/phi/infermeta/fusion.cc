@@ -2027,4 +2027,84 @@ void FusionSeqConvEltAddReluInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void FusionSeqExpandConcatFCInferMeta(const std::vector<const MetaTensor*>& x,
+                                      const MetaTensor& fc_weight,
+                                      const MetaTensor& fc_bias,
+                                      const std::string& fc_activation,
+                                      MetaTensor* out,
+                                      MetaTensor* fc_out) {
+  PADDLE_ENFORCE_GT(x.size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "Inputs(X) of FusionSeqExpandConcatFCOp should larger "
+                        "than 1, but received value is: %d.",
+                        x.size()));
+
+  std::vector<DDim> ins_dims;
+  ins_dims.reserve(x.size());
+  std::transform(x.begin(),
+                 x.end(),
+                 std::back_inserter(ins_dims),
+                 [](const MetaTensor* var) { return var->dims(); });
+
+  auto w_dims = fc_weight.dims();  // (M0+M1+M2+..) x D
+  PADDLE_ENFORCE_EQ(
+      w_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "Input(FCWeight)'s rank must be 2, but received value is: %d.",
+          w_dims.size()));
+  const int D = static_cast<int>(w_dims[1]);
+  int sum = static_cast<int>(ins_dims[0][1]);
+  for (size_t i = 1; i < ins_dims.size(); ++i) {
+    sum += static_cast<int>(ins_dims[i][1]);
+  }
+  PADDLE_ENFORCE_EQ(
+      sum,
+      w_dims[0],
+      phi::errors::InvalidArgument("FC height should be sum of all inputs "
+                                   "width, but received FC height is: %d, "
+                                   "sum of all inputs width is: %d.",
+                                   w_dims[0],
+                                   sum));
+  if (fc_bias) {
+    auto b_dims = fc_bias.dims();
+    PADDLE_ENFORCE_EQ(
+        b_dims.size() == 1 || b_dims.size() == 2,
+        true,
+        phi::errors::InvalidArgument(
+            "FCBias dim should be 1 or 2, but received value is: %d.",
+            b_dims.size()));
+    if (b_dims.size() == 1) {
+      PADDLE_ENFORCE_EQ(b_dims[0],
+                        D,
+                        phi::errors::InvalidArgument(
+                            "FCBias shapes must be %d when FCBias dim = 1, but "
+                            "received value is: %d.",
+                            D,
+                            b_dims[0]));
+    } else {
+      PADDLE_ENFORCE_EQ(b_dims[0],
+                        1,
+                        phi::errors::InvalidArgument(
+                            "FCBias shapes must be 1x%d, when FCBias dim = 2, "
+                            "but received dim[0] is: %d.",
+                            D,
+                            b_dims[0]));
+      PADDLE_ENFORCE_EQ(b_dims[1],
+                        D,
+                        phi::errors::InvalidArgument(
+                            "FCBias shapes must be 1x%d, when FCBias dim = 2, "
+                            "but received dim[1] is: %d.",
+                            D,
+                            b_dims[1]));
+    }
+  }
+  out->set_dims({ins_dims[0][0], D});
+  // fcout should be reshape when run since can not get lod in infershape
+  // explicit share the ref lod
+  // ctx->ShareLoD("X", "Out", 0);
+  // out->share_lod(x);
+}
+
 }  // namespace phi
