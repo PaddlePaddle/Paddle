@@ -428,7 +428,7 @@ def mobilenet_v3_small(pretrained=False, scale=1.0, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained on ImageNet. Default: False.
         scale (float, optional): Scale of channels in each layer. Default: 1.0.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`MobileNetV3Small <api_paddle_vision_MobileNetV3Small>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`MobileNetV3Small <api_paddle_vision_models_MobileNetV3Small>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of MobileNetV3 Small architecture model.
@@ -467,7 +467,7 @@ def mobilenet_v3_large(pretrained=False, scale=1.0, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained on ImageNet. Default: False.
         scale (float, optional): Scale of channels in each layer. Default: 1.0.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`MobileNetV3Large <api_paddle_vision_MobileNetV3Large>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`MobileNetV3Large <api_paddle_vision_models_MobileNetV3Large>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of MobileNetV3 Large architecture model.

@@ -21,4 +21,21 @@ OperationArgument::OperationArgument(IrContext* ir_context,
                                      const std::string& name) {
   info = ir_context->GetRegisteredOpInfo(name);
 }
+
+Region* OperationArgument::AddRegion() {
+  regions.emplace_back(new Region);
+  return regions.back().get();
+}
+
+/// Take a region that should be attached to the Operation.
+void OperationArgument::AddRegion(std::unique_ptr<Region>&& region) {
+  regions.emplace_back(std::move(region));
+}
+
+void OperationArgument::AddRegions(size_t size) {
+  for (size_t i = 0; i < size; ++i) {
+    regions.emplace_back(nullptr);
+  }
+}
+
 }  // namespace pir
