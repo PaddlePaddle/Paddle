@@ -76,10 +76,6 @@ if(WITH_CINN)
 endif()
 if(WITH_GPU)
   nv_test(
-    dropout_op_test
-    SRCS dropout_op_test.cc
-    DEPS dropout_op tensor phi)
-  nv_test(
     test_leaky_relu_grad_grad_functor
     SRCS test_leaky_relu_grad_grad_functor.cc
          test_leaky_relu_grad_grad_functor.cu
@@ -89,10 +85,6 @@ if(WITH_GPU)
     SRCS feed_forward_test.cu
     DEPS fleet_executor elementwise_add_op matmul_op tensor phi ${CINN_DEPS})
 elseif(WITH_ROCM)
-  hip_test(
-    dropout_op_test
-    SRCS dropout_op_test.cc
-    DEPS dropout_op tensor phi)
   hip_test(
     test_leaky_relu_grad_grad_functor
     SRCS test_leaky_relu_grad_grad_functor.cc

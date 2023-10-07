@@ -160,26 +160,6 @@ class DropoutGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-class DropoutCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
-  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
-
- public:
-  void Apply() override {
-    auto mask = this->GetSingleForwardOutput("Mask");
-    auto out_grad = this->GetSingleOutputGrad("Out");
-    auto x_grad = this->GetSingleInputGrad("X");
-    auto x_grad_p = this->GetOutputPtr(&x_grad);
-    auto x_grad_name = this->GetOutputName(x_grad);
-    auto p = this->Attr<float>("dropout_prob");
-    auto is_test = this->Attr<bool>("is_test");
-    auto mode = this->Attr<std::string>("dropout_implementation");
-    prim::dropout_grad<prim::DescTensor>(
-        mask, out_grad, p, is_test, mode, x_grad_p);
-    VLOG(3) << "Runing dropout_grad composite func";
-    this->RecoverOutputName(x_grad, x_grad_name);
-  }
-};
-
 class DropoutNdOpMaker : public DropoutOpMaker {
  public:
   void Make() override {
@@ -210,18 +190,6 @@ class DropoutNdGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-
-DECLARE_INFER_SHAPE_FUNCTOR(dropoutaaa,
-                            DropoutInferShapeFunctor,
-                            PD_INFER_META(phi::DropoutInferMeta));
-REGISTER_OPERATOR(dropoutaaa,
-                  ops::DropoutOp,
-                  ops::DropoutOpMaker,
-                  ops::DropoutCompositeGradOpMaker,
-                  ops::DropoutGradOpMaker<paddle::framework::OpDesc>,
-                  ops::DropoutGradOpMaker<paddle::imperative::OpBase>,
-                  DropoutInferShapeFunctor);
-REGISTER_OPERATOR(dropout_gradaaa, ops::DropoutOpGrad);
 
 DECLARE_INFER_SHAPE_FUNCTOR(dropout_nd,
                             DropoutNdInferShapeFunctor,
