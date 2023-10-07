@@ -24,22 +24,14 @@
 namespace paddle {
 namespace operators {
 
-class TransposeOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
- protected:
-  phi::KernelKey GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override;
-};
-
 // FIXME(zcd): transpose2 adds an intermediate output(XShape) based on
 // transpose, the XShape is used to carry the shape and lod of X which
 // will be used in transpose_grad, in this way, the framework can reuse
 // the memory of X immediately the transpose2_op is finished.
 // Considering compatibility issues, we could not fix transpose2_op
-class Transpose2Op : public TransposeOp {
+class Transpose2Op {
  public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
   using TransposeOp::TransposeOp;
   Transpose2Op(const std::string &type,
                const framework::VariableNameMap &inputs,
