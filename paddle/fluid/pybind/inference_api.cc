@@ -293,10 +293,15 @@ void PaddleInferShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
         static_cast<int64_t *>(input_tensor.data()),
         shape,
         ToPaddleInferPlace(input_tensor.place().GetType()));
+  } else if (input_tensor.dtype() == phi::DataType::UINT8) {
+    tensor.ShareExternalData(
+        static_cast<uint8_t *>(input_tensor.data()),
+        shape,
+        ToPaddleInferPlace(input_tensor.place().GetType()));
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unsupported data type. Now share_external_data only supports INT32, "
-        "INT64, FLOAT64, FLOAT32, FLOAT16, BFLOAT16 and BOOL."));
+        "INT64, UINT8, FLOAT64, FLOAT32, FLOAT16, BFLOAT16 and BOOL."));
   }
 }
 
@@ -343,10 +348,15 @@ void PaddleTensorShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
         static_cast<int64_t *>(paddle_tensor.data<int64_t>()),
         shape,
         ToPaddleInferPlace(paddle_tensor.place().GetType()));
+  } else if (paddle_tensor.dtype() == phi::DataType::UINT8) {
+    tensor.ShareExternalData(
+        static_cast<uint8_t *>(paddle_tensor.data()),
+        shape,
+        ToPaddleInferPlace(paddle_tensor.place().GetType()));
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unsupported data type. Now share_external_data only supports INT32, "
-        "INT64, FLOAT32, FLOAT16, BFLOAT16 and BOOL."));
+        "INT64, UINT8, FLOAT32, FLOAT16, BFLOAT16 and BOOL."));
   }
 }
 
@@ -929,6 +939,10 @@ void BindAnalysisConfig(py::module *m) {
       .def("tensorrt_explicit_quantization_enabled",
            &AnalysisConfig::tensorrt_explicit_quantization_enabled)
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
+      .def("set_tensorrt_optimization_level",
+           &AnalysisConfig::SetTensorRtOptimizationLevel)
+      .def("tensorrt_optimization_level",
+           &AnalysisConfig::tensorrt_optimization_level)
       .def("enable_dlnne",
            &AnalysisConfig::EnableDlnne,
            py::arg("min_subgraph_size") = 3,

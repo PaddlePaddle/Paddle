@@ -1370,7 +1370,7 @@ class OpTest(unittest.TestCase):
                             result[key][0][
                                 i
                             ].name = self.python_out_sig_sub_name[key][i]
-            return result
+                return result
 
     def _check_ir_output(self, place, program, feed_map, fetch_list, outs):
         if os.getenv("FLAGS_NEW_IR_OPTEST") is None:
@@ -2087,14 +2087,16 @@ class OpTest(unittest.TestCase):
                     expect, expect_np = self.find_expect_value(name)
                 else:
                     expect_np = (
-                        expect[0] if isinstance(expect, tuple) else expect
+                        expect[0]
+                        if isinstance(expect, (tuple, list))
+                        else expect
                     )
                 actual_np, expect_np = self.convert_uint16_to_float_ifneed(
                     actual_np, expect_np
                 )
                 # modify there for fp32 check
                 self._compare_numpy(name, actual_np, expect_np)
-                if isinstance(expect, tuple):
+                if isinstance(expect, (tuple, list)):
                     self._compare_list(name, actual, expect)
 
             def compare_outputs_with_expects(self):
@@ -2503,7 +2505,7 @@ class OpTest(unittest.TestCase):
             self.__class__.op_type = self.op_type
 
         if check_prim_pir:
-            with paddle.new_ir_utils.IrGuard():
+            with paddle.pir_utils.IrGuard():
                 prim_checker = PrimForwardChecker(self, place)
                 prim_checker.check()
                 # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
@@ -2525,7 +2527,7 @@ class OpTest(unittest.TestCase):
                 type(place) is paddle.base.libpaddle.CPUPlace
                 or type(place) is paddle.base.libpaddle.CUDAPlace
             ):
-                with paddle.new_ir_utils.IrGuard():
+                with paddle.pir_utils.IrGuard():
                     new_ir_checker = NewIRChecker(self, self.outputs)
                     new_ir_checker.check()
 
@@ -2694,7 +2696,7 @@ class OpTest(unittest.TestCase):
             outs.sort(key=len)
             checker(outs)
             if check_new_ir:
-                with paddle.new_ir_utils.IrGuard():
+                with paddle.pir_utils.IrGuard():
                     outs_p = self._calc_new_ir_output(place)
                     outs_p = [outs_p[out] for out in outs_p]
                     outs_p.sort(key=len)
@@ -2908,7 +2910,7 @@ class OpTest(unittest.TestCase):
             self.__class__.check_prim = True
 
         if check_prim_pir:
-            with paddle.new_ir_utils.IrGuard():
+            with paddle.pir_utils.IrGuard():
                 self._check_grad_helper()
                 prim_grad_checker = PrimGradChecker(
                     self,
@@ -3105,7 +3107,7 @@ class OpTest(unittest.TestCase):
                 type(place) is paddle.base.libpaddle.CPUPlace
                 or type(place) is paddle.base.libpaddle.CUDAPlace
             ):
-                with paddle.new_ir_utils.IrGuard():
+                with paddle.pir_utils.IrGuard():
                     new_ir_grad = self._get_ir_gradient(
                         inputs_to_check,
                         place,
@@ -3492,6 +3494,11 @@ class OpTest(unittest.TestCase):
 
         return res
 
+    def _find_var_in_pir(self, output_vars, name):
+        if name in output_vars:
+            return output_vars[name]
+        raise AssertionError(name, " not in outputs:", output_vars.keys())
+
     def _get_ir_gradient(
         self,
         inputs_to_check,
@@ -3572,13 +3579,36 @@ class OpTest(unittest.TestCase):
 
                 # cast outputs
                 if self.dtype == np.uint16:
-                    for output in outputs:
-                        outputs[output][0] = paddle.cast(
-                            outputs[output][0],
-                            paddle.base.core.DataType.FLOAT32,
-                        )
+                    cast_inputs = []
+                    for output_name in output_names:
+                        cast_input = self._find_var_in_pir(outputs, output_name)
+                        cast_inputs = cast_inputs + cast_input
+                    cast_outputs = []
+                    for cast_input in cast_inputs:
+                        if isinstance(
+                            cast_input, paddle.base.libpaddle.ir.OpResult
+                        ):
+                            cast_outputs.append(
+                                paddle.cast(
+                                    cast_input,
+                                    paddle.base.core.DataType.FLOAT32,
+                                )
+                            )
+                        else:
+                            raise TypeError(
+                                "Unsupported test data type %s."
+                                % type(cast_input)
+                            )
 
-                outputs_valid = outputs
+                    outputs = {}
+                    for i in range(len(output_names)):
+                        outputs.update({output_names[i]: [cast_outputs[i]]})
+
+                outputs_valid = {}
+                for output_name in output_names:
+                    outputs_valid[output_name] = self._find_var_in_pir(
+                        outputs, output_name
+                    )
                 loss_inputs = []
                 for input_name in inputs_to_check:
                     loss_inputs.append(inputs_dict[input_name])
@@ -3613,7 +3643,6 @@ class OpTest(unittest.TestCase):
                         grad_outputs=grad_outputs,
                     )
                 fetch_list = list(grad_inputs)
-
                 # executor run
                 executor = paddle.static.Executor()
                 outs = executor.run(

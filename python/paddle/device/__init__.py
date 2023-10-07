@@ -254,6 +254,9 @@ def set_device(device):
             It can be ``cpu``, ``gpu``, ``xpu``, ``npu``, ``gpu:x``, ``xpu:x``, ``npu:x`` and ``ipu``,
             where ``x`` is the index of the GPUs, XPUs or NPUs.
 
+    Returns:
+        Place,the Place to set.
+
     Examples:
 
         .. code-block:: python

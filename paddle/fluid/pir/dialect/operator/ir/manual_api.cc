@@ -28,6 +28,18 @@ pir::OpResult builtin_combine(const std::vector<pir::Value>& x) {
   return combine_op.out();
 }
 
+std::vector<pir::OpResult> add_n_grad(std::vector<pir::Value> inputs,
+                                      pir::Value out_grad) {
+  std::vector<pir::OpResult> inputs_grad;
+  for (size_t i = 0; i < inputs.size(); i++) {
+    paddle::dialect::ScaleOp scale_op =
+        APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::ScaleOp>(
+            out_grad, 1.0, 0.0, true);
+    inputs_grad.push_back(scale_op.result(0));
+  }
+  return inputs_grad;
+}
+
 pir::OpResult zeros_like(pir::Value x,
                          phi::DataType dtype,
                          const Place& place) {
@@ -76,5 +88,23 @@ pir::OpResult embedding_grad(pir::Value x,
   }
 }
 
+pir::OpResult split_with_num_grad(std::vector<pir::Value> out_grad, int axis) {
+  auto out_grad_combine_op =
+      APIBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(out_grad);
+  paddle::dialect::SplitGradOp split_grad_op =
+      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::SplitGradOp>(
+          out_grad_combine_op.out(), axis);
+  return split_grad_op.result(0);
+}
+
+pir::OpResult split_with_num_grad(std::vector<pir::Value> out_grad,
+                                  pir::Value axis) {
+  auto out_grad_combine_op =
+      APIBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(out_grad);
+  paddle::dialect::SplitGradOp split_grad_op =
+      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::SplitGradOp>(
+          out_grad_combine_op.out(), axis);
+  return split_grad_op.result(0);
+}
 }  // namespace dialect
 }  // namespace paddle

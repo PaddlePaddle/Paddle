@@ -363,6 +363,13 @@ void TensorRTEngine::FreezeNetwork() {
   }
 #endif
 
+#if IS_TRT_VERSION_GE(8600)
+  VLOG(4) << "Set the TensorRT optimization level to be "
+          << params_.optimization_level;
+  infer_builder_config_->setBuilderOptimizationLevel(
+      params_.optimization_level);
+#endif
+
 #if IS_TRT_VERSION_LT(8000)
   infer_engine_.reset(infer_builder_->buildEngineWithConfig(
       *network(), *infer_builder_config_));

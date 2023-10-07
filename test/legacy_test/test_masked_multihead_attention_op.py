@@ -64,6 +64,15 @@ class TestMMHAOp(unittest.TestCase):
                 self.dim_head,
             ],
         )
+        self.cache_k_quant_scales = 127.0 / (
+            np.ones([self.cache_bsz, self.num_head, 1, 1]) * 0.05
+        )
+        self.cache_v_quant_scales = 127.0 / (
+            np.ones([self.cache_bsz, self.num_head, 1, 1]) * 0.05
+        )
+        self.cache_k_dequant_scales = 1 / self.cache_k_quant_scales
+        self.cache_v_dequant_scales = 1 / self.cache_v_quant_scales
+
         numpy_ones = np.zeros(
             [2, self.cache_bsz, self.num_head, 1, self.dim_head]
         )
@@ -112,9 +121,13 @@ class TestMMHAOp(unittest.TestCase):
         quant_max_bound,
         quant_min_bound,
         bsz,
+        cache_k_quant_scales,
+        cache_v_quant_scales,
+        cache_k_dequant_scales,
+        cache_v_dequant_scales,
     ):
         if qkv_out_scale is not None:
-            x = x.cast(cache_kv_out.dtype) * qkv_out_scale + bias
+            x = x.cast(bias.dtype) * qkv_out_scale + bias
         else:
             x = x + bias
 
@@ -123,6 +136,16 @@ class TestMMHAOp(unittest.TestCase):
         )  # [bz, seqlen, nhead, head_dim] --> [bz, nhead, seqlen, head_dim]
         q, k, v = paddle.split(x, 3, axis=2)
         cache_k, cache_v = paddle.split(cache_kv_out, 2, axis=0)
+        print(cache_k.dtype)
+        if cache_k.dtype == paddle.uint8:
+            cache_k = cache_k.astype(bias.dtype) - 128.0
+            cache_k = cache_k * cache_k_dequant_scales
+            cache_v = cache_v.astype(bias.dtype) - 128.0
+            cache_v = cache_v * cache_v_dequant_scales
+
+        # tmp_k = k * cache_k_quant_scales
+        # tmp_v = v * cache_v_quant_scales
+
         k = paddle.concat([cache_k.squeeze(0), k], axis=2)
         v = paddle.concat([cache_v.squeeze(0), v], axis=2)
 
@@ -154,6 +177,10 @@ class TestMMHAOp(unittest.TestCase):
         qkv_out_scale,
         out_scale,
         dtype,
+        cache_k_quant_scales=None,
+        cache_v_quant_scales=None,
+        cache_k_dequant_scales=None,
+        cache_v_dequant_scales=None,
     ):
         paddle.disable_static()
         if qkv_out_scale is not None:
@@ -163,8 +190,25 @@ class TestMMHAOp(unittest.TestCase):
             x = paddle.to_tensor(x).cast(dtype)
         src_mask = paddle.to_tensor(src_mask).cast(dtype)
         bias = paddle.to_tensor(bias).cast(dtype)
-        cache_kv_out = paddle.to_tensor(cache_kv_out).cast(dtype)
-        cache_kv_mmha_out = paddle.to_tensor(cache_kv_mmha_out).cast(dtype)
+        if cache_k_quant_scales is None:
+            cache_kv_out = paddle.to_tensor(cache_kv_out).cast(dtype)
+            cache_kv_mmha_out = paddle.to_tensor(cache_kv_mmha_out).cast(dtype)
+        else:
+            cache_kv_out = paddle.to_tensor(cache_kv_out)
+            cache_kv_mmha_out = paddle.to_tensor(cache_kv_mmha_out)
+            cache_k_quant_scales = paddle.to_tensor(
+                cache_k_quant_scales
+            ).astype('float32')
+            cache_v_quant_scales = paddle.to_tensor(
+                cache_v_quant_scales
+            ).astype('float32')
+            cache_k_dequant_scales = paddle.to_tensor(
+                cache_k_dequant_scales
+            ).astype('float32')
+            cache_v_dequant_scales = paddle.to_tensor(
+                cache_v_dequant_scales
+            ).astype('float32')
+
         paddle_naive_mmha_out = 0
         paddle_naive_mmha_out = self.mmha_naive(
             x,
@@ -178,13 +222,19 @@ class TestMMHAOp(unittest.TestCase):
             self.quant_max_bound,
             self.quant_min_bound,
             self.bsz,
+            cache_k_quant_scales,
+            cache_v_quant_scales,
+            cache_k_dequant_scales,
+            cache_v_dequant_scales,
         )
 
         x = x.reshape([self.bsz, -1])
-        if x.dtype == paddle.float16:
+        if x.dtype == paddle.float16 or x.dtype == paddle.bfloat16:
             dtype = self.compute_dtype
-        else:
+        elif x.dtype == paddle.float16:
             dtype = "fp16"
+        else:
+            dtype = "bf16"
         paddle_mmha_out = masked_multihead_attention(
             x,
             cache_kv_mmha_out,
@@ -197,6 +247,10 @@ class TestMMHAOp(unittest.TestCase):
             qkv_out_scale,
             None,
             None,
+            cache_k_quant_scales,
+            cache_v_quant_scales,
+            cache_k_dequant_scales,
+            cache_v_dequant_scales,
             self.seq_len,
             self.rotary_emb_dims,
             self.use_neox_rotary_style,
@@ -206,6 +260,9 @@ class TestMMHAOp(unittest.TestCase):
             self.quant_max_bound,
             self.quant_min_bound,
         )
+        print(paddle_mmha_out[1].shape)
+        print("-1:", paddle_mmha_out[1][0, 0, 0, -1, :])
+        print(np.sum(paddle_mmha_out[1][0, 0, 0, -1, :].numpy() == 128))
         paddle.enable_static()
         return paddle_naive_mmha_out, paddle_mmha_out
 
@@ -272,11 +329,62 @@ class TestMMHAOp(unittest.TestCase):
             atol=1,
         )
 
+    def test_mmha_cachekv_int8(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+
+        cache_kv_out_int8 = self.cache_kv_out * np.concatenate(
+            [
+                self.cache_k_quant_scales[np.newaxis, :],
+                self.cache_v_quant_scales[np.newaxis, :],
+            ],
+            axis=0,
+        )
+        cache_kv_out_int8 = (np.around(cache_kv_out_int8) + 128.0).astype(
+            'uint8'
+        )
+
+        # print(cache_kv_out_int8)
+
+        cache_kv_mmha_out_int8 = self.cache_kv_mmha_out * np.concatenate(
+            [
+                self.cache_k_quant_scales[np.newaxis, :],
+                self.cache_v_quant_scales[np.newaxis, :],
+            ],
+            axis=0,
+        )
+        cache_kv_mmha_out_int8 = (
+            np.around(cache_kv_mmha_out_int8) + 128.0
+        ).astype('uint8')
+
+        paddle_naive_mmha, paddle_mmha_out = self.check_main(
+            self.x,
+            cache_kv_out_int8,
+            cache_kv_mmha_out_int8,
+            self.bias,
+            self.src_mask,
+            None,
+            -1,
+            'float16',
+            self.cache_k_quant_scales,
+            self.cache_v_quant_scales,
+            self.cache_k_dequant_scales,
+            self.cache_v_dequant_scales,
+            self.bsz * self.num_head,
+        )
+
+        np.testing.assert_allclose(
+            paddle_mmha_out[0].numpy(),
+            paddle_naive_mmha[0].numpy(),
+            rtol=1e-3,
+            atol=1e-3,
+        )
+
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
-class TestLayerNormStaticInt8Op(unittest.TestCase):
+class TestMMHAOpStaticOp(unittest.TestCase):
     def setUp(self):
         np.random.seed(0)
         self.bsz = 2
@@ -435,6 +543,10 @@ class TestLayerNormStaticInt8Op(unittest.TestCase):
                 cache_kv_mmha_out_static,
                 bias_static,
                 src_mask_static,
+                None,
+                None,
+                None,
+                None,
                 None,
                 None,
                 None,

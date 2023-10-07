@@ -325,8 +325,11 @@ void BindValue(py::module *m) {
   value
       .def(
           "get_defining_op",
-          [](const Value &self) {
-            return self.dyn_cast<pir::OpResult>().owner();
+          [](const Value &self) -> pir::Operation * {
+            if (auto op_result = self.dyn_cast<pir::OpResult>()) {
+              return op_result.owner();
+            }
+            return nullptr;
           },
           return_value_policy::reference)
       .def("first_use", &Value::first_use, return_value_policy::reference)
@@ -447,7 +450,12 @@ void BindOpResult(py::module *m) {
            })
       .def("__hash__",
            [](OpResult &self) { return std::hash<pir::Value>{}(self); })
-      .def("get_defining_op", &OpResult::owner, return_value_policy::reference)
+      .def(
+          "get_defining_op",
+          [](const OpResult &self) -> pir::Operation * {
+            return self ? self.owner() : nullptr;
+          },
+          return_value_policy::reference)
       .def_property_readonly(
           "block",
           [](OpResult &self) { return self.owner()->GetParent(); },

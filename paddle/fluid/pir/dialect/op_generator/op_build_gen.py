@@ -25,6 +25,7 @@ _PREPARE_DATA_WITH_VECTOR_INT64_MTTABLE_ATTRIBUTE = {'FrobeniusNormOp'}
 
 OP_BUILD_TEMPLATE = """
 void {op_name}::Build({build_args}) {{
+{build_info}
 {get_attributes}
 {build_mutable_attributes}
 {build_inputs}
@@ -32,6 +33,8 @@ void {op_name}::Build({build_args}) {{
 {build_outputs}
 }}
 """
+
+OP_INFO_TEMPLATE = '  VLOG(4) << "Start build {op_name}";\n'
 
 
 def GenBuildInputArgsStr(
@@ -146,6 +149,7 @@ mutable_attribute_phi_type_maps = {
 
 
 def GenBuildInserFullForMutableAttribute(
+    op_class_name,
     op_attribute_name_list,
     op_attribute_build_arg_type_list,
     op_mutable_attribute_name_list,
@@ -173,6 +177,7 @@ def GenBuildInserFullForMutableAttribute(
             phi_dtype = mutable_attribute_phi_type_maps[
                 op_mutable_attribute_type_list[idx][1]
             ]
+
         if attr_type == "paddle::dialect::IntArrayAttribute":
             build_mutable_attribute += BUILD_INTARRAY_ATTRIBUTE_TEMPLATE.format(
                 attr_name=attr_name, phi_dtype=phi_dtype
@@ -622,6 +627,7 @@ def gen_build_func_str(
 ):
     build_args_for_declare = ""
     build_func = ""
+    build_info_str = OP_INFO_TEMPLATE.format(op_name=op_class_name)
 
     build_args_for_declare = GenBuildInputArgsStr(
         op_input_name_list,
@@ -654,6 +660,7 @@ def gen_build_func_str(
     if not muta_attr_is_input:
         inset_full_for_mutable_attributes_str = (
             GenBuildInserFullForMutableAttribute(
+                op_class_name,
                 op_attribute_name_list,
                 op_attribute_build_arg_type_list,
                 op_mutable_attribute_name_list,
@@ -794,12 +801,94 @@ def gen_build_func_str(
 
     build_func = OP_BUILD_TEMPLATE.format(
         op_name=op_class_name,
+        build_info=build_info_str,
         build_args=build_args_for_define,
         build_mutable_attributes=inset_full_for_mutable_attributes_str,
         get_attributes=get_attributes_str,
         build_inputs=build_inputs_str,
         build_attributes=build_attributes_str,
         build_outputs=build_outputs_str,
+    )
+
+    return (build_args_for_declare, build_func)
+
+
+OP_BUILD_BY_INVOKE_TEMPLATE = """
+void {op_name}::Build({build_args}) {{
+  {invoke_class}::Build(builder, argument{invoke_args});
+}}
+"""
+
+
+def gen_build_func_str_by_invoke(
+    op_class_name,
+    op_input_name_list,
+    op_input_type_list,
+    op_input_optional_list,
+    op_attribute_name_list,
+    op_attribute_type_list,
+    op_attribute_build_arg_type_list,
+    op_attribute_default_value_list,
+    op_mutable_attribute_name_list,
+    op_mutable_attribute_type_list,
+    op_non_mutable_attribute_name_list,
+    op_non_mutable_attribute_type_list,
+    op_non_mutable_attribute_build_arg_type_list,
+    op_non_mutable_attribute_default_value_list,
+    op_invoke_class_name,
+    op_invoke_map,
+):
+    build_args_for_declare = ""
+    build_func = ""
+
+    build_args_for_declare = GenBuildInputArgsStr(
+        op_input_name_list,
+        op_attribute_name_list,
+        op_attribute_build_arg_type_list,
+        op_attribute_default_value_list,
+        op_mutable_attribute_name_list,
+        op_non_mutable_attribute_name_list,
+        op_non_mutable_attribute_build_arg_type_list,
+        op_non_mutable_attribute_default_value_list,
+        True,
+        False,
+        False,
+    )
+
+    build_args_for_define = GenBuildInputArgsStr(
+        op_input_name_list,
+        op_attribute_name_list,
+        op_attribute_build_arg_type_list,
+        op_attribute_default_value_list,
+        op_mutable_attribute_name_list,
+        op_non_mutable_attribute_name_list,
+        op_non_mutable_attribute_build_arg_type_list,
+        op_non_mutable_attribute_default_value_list,
+        False,
+        False,
+        False,
+    )
+
+    invoke_args = op_invoke_map['args'].split(", ")
+    invoke_args_str = ""
+    for item in invoke_args:
+        if item in op_input_name_list:
+            invoke_args_str += ", " + item + "_"
+        elif ".dtype()" in item:
+            invoke_args_str += (
+                ", paddle::dialect::TransToPhiDataType("
+                + item[:-8]
+                + "_"
+                + ".type().dyn_cast<paddle::dialect::DenseTensorType>().dtype())"
+            )
+        else:
+            invoke_args_str += ", " + item
+
+    build_func = OP_BUILD_BY_INVOKE_TEMPLATE.format(
+        op_name=op_class_name,
+        build_args=build_args_for_define,
+        invoke_class=op_invoke_class_name,
+        invoke_args=invoke_args_str,
     )
 
     return (build_args_for_declare, build_func)
