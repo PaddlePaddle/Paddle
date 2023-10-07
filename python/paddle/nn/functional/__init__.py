@@ -73,6 +73,7 @@ from .conv import conv2d_transpose  # noqa: F401
 from .conv import conv3d  # noqa: F401
 from .conv import conv3d_transpose  # noqa: F401
 from .distance import pairwise_distance  # noqa: F401
+from .distance import pdist  # noqa: F401
 from .extension import diag_embed  # noqa: F401
 from .extension import sequence_mask
 from .loss import binary_cross_entropy  # noqa: F401
@@ -149,6 +150,7 @@ __all__ = [  # noqa
     'conv3d',
     'conv3d_transpose',
     'pairwise_distance',
+    'pdist',
     'elu',
     'elu_',
     'gelu',

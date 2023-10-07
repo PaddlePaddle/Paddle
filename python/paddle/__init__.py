@@ -146,7 +146,6 @@ from .tensor.linalg import (  # noqa: F401
     t,
     t_,
     cdist,
-    pdist,
     cross,
     cholesky,
     bmm,
@@ -511,6 +510,10 @@ from .hapi import (
     Model,
     summary,
     flops,
+)
+
+from .nn.functional.distance import (  # noqa: F401
+    pdist,
 )
 
 import paddle.text  # noqa: F401

@@ -3733,50 +3733,50 @@ def cdist(
     )
 
 
-def pdist(
-    x, p=2.0, compute_mode="use_mm_for_euclid_dist_if_necessary", name=None
-):
-    r'''
-    Computes the p-norm distance between every pair of row vectors in the input. 
+# def pdist(
+#     x, p=2.0, compute_mode="use_mm_for_euclid_dist_if_necessary", name=None
+# ):
+#     r'''
+#     Computes the p-norm distance between every pair of row vectors in the input. 
     
-    Args:
-        x (Tensor): A tensor with shape :math:`N \times M`.
-        p (float, optional): The value for the p-norm distance to calculate between each vector pair. Default: :math:`2.0`.
-        compute_mode (str, optional): The mode for compute distance.
+#     Args:
+#         x (Tensor): A tensor with shape :math:`N \times M`.
+#         p (float, optional): The value for the p-norm distance to calculate between each vector pair. Default: :math:`2.0`.
+#         compute_mode (str, optional): The mode for compute distance.
 
-            - ``use_mm_for_euclid_dist_if_necessary`` , for p = 2.0 and (P > 25 or R > 25), it will use matrix multiplication to calculate euclid distance if possible.
-            - ``use_mm_for_euclid_dist`` , for p = 2.0, it will use matrix multiplication to calculate euclid distance.
-            - ``donot_use_mm_for_euclid_dist`` , it will not use matrix multiplication to calculate euclid distance.
+#             - ``use_mm_for_euclid_dist_if_necessary`` , for p = 2.0 and (P > 25 or R > 25), it will use matrix multiplication to calculate euclid distance if possible.
+#             - ``use_mm_for_euclid_dist`` , for p = 2.0, it will use matrix multiplication to calculate euclid distance.
+#             - ``donot_use_mm_for_euclid_dist`` , it will not use matrix multiplication to calculate euclid distance.
 
-            Default: ``use_mm_for_euclid_dist_if_necessary``.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+#             Default: ``use_mm_for_euclid_dist_if_necessary``.
+#         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
-    Returns:
-        Tensor with shape: math:`N(N-1)/2` the dtype is same as input tensor.
+#     Returns:
+#         Tensor with shape: math:`N(N-1)/2` the dtype is same as input tensor.
 
-    Examples:
-        .. code-block:: python
+#     Examples:
+#         .. code-block:: python
              
-            >>> import paddle
-            >>> a = paddle.randn([4, 5])
-            >>> a
-            Tensor(shape=[4, 5], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                   [[-0.33173719, -0.93648648, -0.01741328, -0.94435263,  2.22178721],
-                    [-0.65466857,  0.10307083,  0.08741203, -0.91078597,  0.72589827],
-                    [ 0.06907391, -0.27584535,  1.35355449, -0.69688839,  0.18408430],
-                    [-0.00939178, -0.32901841, -1.06503606,  0.81856263,  0.16791444]])
-            >>> pdist_out=paddle.pdist(a)
-            >>> pdist_out
-            Tensor(shape=[6], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                   [1.85331142, 2.58652687, 2.98273396, 1.61549115, 2.28762150, 2.85576940])
+#             >>> import paddle
+#             >>> a = paddle.randn([4, 5])
+#             >>> a
+#             Tensor(shape=[4, 5], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+#                    [[-0.33173719, -0.93648648, -0.01741328, -0.94435263,  2.22178721],
+#                     [-0.65466857,  0.10307083,  0.08741203, -0.91078597,  0.72589827],
+#                     [ 0.06907391, -0.27584535,  1.35355449, -0.69688839,  0.18408430],
+#                     [-0.00939178, -0.32901841, -1.06503606,  0.81856263,  0.16791444]])
+#             >>> pdist_out=paddle.pdist(a)
+#             >>> pdist_out
+#             Tensor(shape=[6], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+#                    [1.85331142, 2.58652687, 2.98273396, 1.61549115, 2.28762150, 2.85576940])
                    
-    '''
+#     '''
 
-    x_shape = list(x.shape)
-    assert len(x_shape) == 2, (
-        "The x must be 2-dimensional"
-    )
-    d = cdist(x, x, p, compute_mode)
-    mask = ~paddle.tril(paddle.ones(d.shape, dtype='bool'))
-    return masked_select(d, mask)
+#     x_shape = list(x.shape)
+#     assert len(x_shape) == 2, (
+#         "The x must be 2-dimensional"
+#     )
+#     d = cdist(x, x, p, compute_mode)
+#     mask = ~paddle.tril(paddle.ones(d.shape, dtype='bool'))
+#     return masked_select(d, mask)
 
