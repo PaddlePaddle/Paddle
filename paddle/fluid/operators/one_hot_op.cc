@@ -130,11 +130,11 @@ Out is a LoDTensor:
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    one_hot,
+    one_hotaa,
     ops::OneHotOp,
     ops::OneHotOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(one_hot,
+REGISTER_OP_CPU_KERNEL(one_hotaa,
                        ops::OneHotKernel<phi::CPUContext, int>,
                        ops::OneHotKernel<phi::CPUContext, int64_t>);
