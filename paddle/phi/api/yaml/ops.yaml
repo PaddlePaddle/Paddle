@@ -2795,6 +2795,7 @@
     func : weight_only_linear
     data_type : x
   optional: bias
+  backward: weight_only_linear_grad
 
 - op : weight_quantize
   args : (Tensor x, str algo = "weight_only_int8")

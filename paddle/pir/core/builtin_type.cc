@@ -17,7 +17,7 @@
 namespace pir {
 std::vector<Type> VectorType::data() const { return storage()->GetAsKey(); }
 
-const pir::Type& DenseTensorType::dtype() const { return storage()->dtype_; }
+pir::Type DenseTensorType::dtype() const { return storage()->dtype_; }
 
 const DenseTensorTypeStorage::Dim& DenseTensorType::dims() const {
   return storage()->dims_;

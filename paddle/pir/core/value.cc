@@ -40,6 +40,10 @@ bool Value::operator!=(const Value &other) const {
 
 bool Value::operator!() const { return impl_ == nullptr; }
 
+bool Value::operator<(const Value &other) const {
+  return std::hash<Value>{}(*this) < std::hash<Value>{}(other);
+}
+
 Value::operator bool() const { return impl_; }
 
 pir::Type Value::type() const {

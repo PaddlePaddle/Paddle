@@ -20,6 +20,7 @@
 
 #include "paddle/phi/api/ext/exception.h"
 #include "paddle/phi/core/utils/dim.h"
+#include "paddle/utils/test_macros.h"
 
 namespace phi {
 
@@ -203,9 +204,9 @@ class DDim {
  *
  * \param dims An vector of ints. Must be sized between [1, 9]
  */
-DDim make_ddim(const std::vector<int64_t>& dims);
+TEST_API DDim make_ddim(const std::vector<int64_t>& dims);
 
-DDim make_ddim(const std::vector<int>& dims);
+TEST_API DDim make_ddim(const std::vector<int>& dims);
 
 /**
  * \brief Make a DDim from an initializer list
@@ -213,7 +214,7 @@ DDim make_ddim(const std::vector<int>& dims);
  * \param dims An initializer list of ints. Must be sized between [1, 9]
  *
  */
-DDim make_ddim(std::initializer_list<int64_t> dims);
+TEST_API DDim make_ddim(std::initializer_list<int64_t> dims);
 
 template <typename T = int64_t>
 std::vector<T> vectorize(const DDim& ddim) {
@@ -247,7 +248,7 @@ DDim slice_ddim(const DDim& dim, int begin, int end);
 
 int arity(const DDim& ddim);
 
-std::ostream& operator<<(std::ostream&, const DDim&);
+TEST_API std::ostream& operator<<(std::ostream&, const DDim&);
 
 /**
  * \brief Flatten dim to 3d

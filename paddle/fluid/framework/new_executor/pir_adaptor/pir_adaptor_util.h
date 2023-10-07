@@ -113,6 +113,18 @@ class ValueExecutionInfo {
 }  // namespace paddle
 
 namespace pir {
+
+// NOTE(zhangbo): Some operators of Paddle support optional inputs or outputs,
+// representing whether the input or output exists. In the Pir, whether the
+// value itself is empty or the type it holds is empty is used to indicate
+// whether the input or output exists.
+inline bool IsInvalid(pir::Value value) {
+  if ((!value) || (!value.type())) {
+    return false;
+  }
+  return true;
+}
+
 void BuildScope(
     const pir::Block& block,
     const std::string& var_name_prefix,
@@ -155,20 +167,28 @@ void BuildPhiContext(
 
   auto attr_map = op->attributes();
 
+  // EmplaceBackInputs
   auto& vec_kernel_fn_tensor_params = op_yaml_info.TensorParams(is_kernel);
-
   auto& name2id = op_yaml_info.InputName2Id();
   for (auto& t : vec_kernel_fn_tensor_params) {
     PADDLE_ENFORCE_EQ(
         name2id.count(t),
         true,
         phi::errors::NotFound("param [%s] MUST in name2id map", t));
-    auto index = op_yaml_info.InputName2Id().at(t);
-    pir::Value ptr = op->operand_source(index);
-    if (!ptr) {
-      phi::DenseTensor* ptr = nullptr;
-      OutType in_ptr(ptr);
-      ctx->EmplaceBackInput(in_ptr);
+
+    pir::Value ptr = op->operand_source(op_yaml_info.InputName2Id().at(t));
+
+    if (!IsInvalid(ptr)) {
+      if (op_yaml_info.GetInputType(op_yaml_info.InputName2Id().at(t)) ==
+          "pir::VectorType<paddle::dialect::DenseTensorType>") {
+        InListType optional_inputs;
+        ctx->EmplaceBackInputs(optional_inputs);
+      } else {
+        phi::DenseTensor* temp = nullptr;
+        InType optional_input(temp);
+        ctx->EmplaceBackInput(optional_input);
+      }
+      VLOG(8) << "ctx->EmplaceBackInput : an optioanl input " << t;
       continue;
     }
 
@@ -206,6 +226,7 @@ void BuildPhiContext(
     }
   }
 
+  // EmplaceBackAttributes
   auto& vec_kernel_fn_attr_params = op_yaml_info.AttrParams(is_kernel);
   for (auto& t : vec_kernel_fn_attr_params) {
     if (name2id.count(t)) {
@@ -367,29 +388,33 @@ void BuildPhiContext(
     VLOG(6) << "ctx->EmplaceBackAttr: " << t;
   }
 
-  // TODO(phlrain): use var type instead of op name
+  // EmplaceBackOutputs
   for (size_t i = 0; i < op->num_results(); ++i) {
     pir::Value out_ptr = op->result(i);
-    auto out_type = out_ptr.type();
-    if (out_type) {
-      auto& name = name_map.at(out_ptr);
-      VLOG(6) << "ctx->EmplaceBackOutput: " << name;
-    } else {
-      VLOG(6) << "ctx->EmplaceBackOutput : an optioanl output";
+    if (!IsInvalid(out_ptr)) {
+      if (op_yaml_info.GetOutputType(i) ==
+          "pir::VectorType<paddle::dialect::DenseTensorType>") {
+        OutListType optional_outputs;
+        ctx->EmplaceBackOutputs(optional_outputs);
+      } else {
+        phi::DenseTensor* temp = nullptr;
+        OutType optional_input(temp);
+        ctx->EmplaceBackOutput(optional_input);
+      }
+      VLOG(8) << "ctx->EmplaceBackOutput : an optioanl output";
+      continue;
     }
-    if (!out_type) {
-      phi::DenseTensor* ptr = nullptr;
-      OutType out_ptr(ptr);
-      ctx->EmplaceBackOutput(out_ptr);
-    } else if (out_type.isa<paddle::dialect::AllocatedDenseTensorType>()) {
+
+    if (out_ptr.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
       ctx->EmplaceBackOutput(OutType(const_cast<phi::DenseTensor*>(
           &(inner_scope->FindVar(name_map.at(out_ptr))
                 ->Get<phi::DenseTensor>()))));
-    } else if (out_type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+    } else if (out_ptr.type()
+                   .isa<paddle::dialect::AllocatedSelectedRowsType>()) {
       ctx->EmplaceBackOutput(OutType(const_cast<phi::SelectedRows*>(
           &(inner_scope->FindVar(name_map.at(out_ptr))
                 ->Get<phi::SelectedRows>()))));
-    } else if (out_type.isa<pir::VectorType>()) {
+    } else if (out_ptr.type().isa<pir::VectorType>()) {
       OutListType outputs;
       auto& variable_array = inner_scope->FindVar(name_map.at(out_ptr))
                                  ->Get<paddle::framework::VariableRefArray>();

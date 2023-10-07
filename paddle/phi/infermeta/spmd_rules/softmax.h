@@ -14,28 +14,22 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
+#include "paddle/phi/core/distributed/type_defs.h"
 
-namespace paddle {
+namespace phi {
 namespace distributed {
-namespace auto_parallel {
 
 // (TODO) Support 2 kind of parallel:
 // 1. sharding on batch axes (any axis that is not to be softmax normalized) of
 // tensor.
 // 2. sharding on normalized axis of tensor. (naive support by now, effecient
 // support need to change the softmax kernel).
-class SoftmaxSPMDRule : public SPMDRuleBase {
- public:
-  std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
-  InferForward(const std::vector<DistTensorSpec>& input_specs,
-               const paddle::framework::AttributeMap& attrs) override;
+SpmdInfo SoftmaxInferSpmd(const DistMetaTensor& x, int axis);
 
-  std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
-  InferBackward(const std::vector<DistTensorSpec>& input_specs,
-                const std::vector<DistTensorSpec>& output_specs,
-                const paddle::framework::AttributeMap& attrs) override;
-};
-}  // namespace auto_parallel
+SpmdInfo SoftmaxInferSpmdReverse(const DistMetaTensor& x,
+                                 const DistMetaTensor& out,
+                                 int axis);
+
 }  // namespace distributed
-}  // namespace paddle
+}  // namespace phi
