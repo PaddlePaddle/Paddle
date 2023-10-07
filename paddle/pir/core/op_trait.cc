@@ -69,7 +69,8 @@ void VerifySameOperandsAndResultShapeTrait(Operation *op) {
 
   IR_ENFORCE(VerifyCompatibleShapes(types),
              "Op %s with SameOperandsAndResultShapeTrait requires compatible "
-             "shapes for operands and results.");
+             "shapes for operands and results.",
+             op->name());
 }
 
 void VerifySameOperandsElementTypeTrait(Operation *op) {

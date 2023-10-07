@@ -62,14 +62,95 @@ void TraitExampleOp::Build(pir::Builder &builder,             // NOLINT
                            pir::Value l_operand,
                            pir::Value r_operand,
                            pir::Type out_type) {
-  std::unordered_map<std::string, pir::Attribute> attributes{
-      {"op3_attr1", builder.str_attr("op3_attr2")},
-      {"op3_attr2", builder.str_attr("op3_attr2")}};
-
-  argument.AddAttributes(attributes);
   argument.AddInput(l_operand);
   argument.AddInput(r_operand);
   argument.AddOutput(out_type);
+}
+
+void SameOperandsShapeTraitOp2::Build(
+    pir::Builder &builder,             // NOLINT
+    pir::OperationArgument &argument,  // NOLINT
+    pir::Value l_operand,
+    pir::Value r_operand,
+    pir::Type out_type) {
+  argument.AddInput(l_operand);
+  argument.AddInput(r_operand);
+  argument.AddOutput(out_type);
+}
+
+void SameOperandsAndResultShapeTraitOp2::Build(
+    pir::Builder &builder,             // NOLINT
+    pir::OperationArgument &argument,  // NOLINT
+    pir::Value l_operand,
+    pir::Value r_operand) {
+  argument.AddInput(l_operand);
+  argument.AddInput(r_operand);
+}
+
+void SameOperandsAndResultShapeTraitOp3::Build(
+    pir::Builder &builder,             // NOLINT
+    pir::OperationArgument &argument,  // NOLINT
+    pir::Value l_operand,
+    pir::Value r_operand,
+    pir::Type out_type) {
+  argument.AddInput(l_operand);
+  argument.AddInput(r_operand);
+  argument.AddOutput(out_type);
+}
+
+void SameOperandsElementTypeTraitOp2::Build(
+    pir::Builder &builder,             // NOLINT
+    pir::OperationArgument &argument,  // NOLINT
+    pir::Value l_operand,
+    pir::Value r_operand,
+    pir::Type out_type) {
+  argument.AddInput(l_operand);
+  argument.AddInput(r_operand);
+  argument.AddOutput(out_type);
+}
+
+void SameOperandsAndResultElementTypeTraitOp2::Build(
+    pir::Builder &builder,             // NOLINT
+    pir::OperationArgument &argument,  // NOLINT
+    pir::Value l_operand,
+    pir::Value r_operand) {
+  argument.AddInput(l_operand);
+  argument.AddInput(r_operand);
+}
+
+void SameOperandsAndResultElementTypeTraitOp3::Build(
+    pir::Builder &builder,             // NOLINT
+    pir::OperationArgument &argument,  // NOLINT
+    pir::Value l_operand,
+    pir::Value r_operand,
+    pir::Type out_type1,
+    pir::Type out_type2) {
+  argument.AddInput(l_operand);
+  argument.AddInput(r_operand);
+  argument.AddOutput(out_type1);
+  argument.AddOutput(out_type2);
+}
+
+void SameOperandsAndResultTypeTraitOp2::Build(
+    pir::Builder &builder,             // NOLINT
+    pir::OperationArgument &argument,  // NOLINT
+    pir::Value l_operand,
+    pir::Value r_operand) {
+  argument.AddInput(l_operand);
+  argument.AddInput(r_operand);
+}
+
+void SameOperandsAndResultTypeTraitOp3::Build(
+    pir::Builder &builder,             // NOLINT
+    pir::OperationArgument &argument,  // NOLINT
+    pir::Value l_operand,
+    pir::Value r_operand,
+    pir::Type out_type1,
+    pir::Type out_type2) {
+  argument.AddInput(l_operand);
+  argument.AddInput(r_operand);
+  argument.AddOutput(out_type1);
+  argument.AddOutput(out_type2);
 }
 
 }  // namespace test
@@ -79,3 +160,16 @@ IR_DEFINE_EXPLICIT_TYPE_ID(test::BranchOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(test::Operation1)
 IR_DEFINE_EXPLICIT_TYPE_ID(test::Operation2)
 IR_DEFINE_EXPLICIT_TYPE_ID(test::TraitExampleOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(test::SameOperandsShapeTraitOp1)
+IR_DEFINE_EXPLICIT_TYPE_ID(test::SameOperandsShapeTraitOp2)
+IR_DEFINE_EXPLICIT_TYPE_ID(test::SameOperandsAndResultShapeTraitOp1)
+IR_DEFINE_EXPLICIT_TYPE_ID(test::SameOperandsAndResultShapeTraitOp2)
+IR_DEFINE_EXPLICIT_TYPE_ID(test::SameOperandsAndResultShapeTraitOp3)
+IR_DEFINE_EXPLICIT_TYPE_ID(test::SameOperandsElementTypeTraitOp1)
+IR_DEFINE_EXPLICIT_TYPE_ID(test::SameOperandsElementTypeTraitOp2)
+IR_DEFINE_EXPLICIT_TYPE_ID(test::SameOperandsAndResultElementTypeTraitOp1)
+IR_DEFINE_EXPLICIT_TYPE_ID(test::SameOperandsAndResultElementTypeTraitOp2)
+IR_DEFINE_EXPLICIT_TYPE_ID(test::SameOperandsAndResultElementTypeTraitOp3)
+IR_DEFINE_EXPLICIT_TYPE_ID(test::SameOperandsAndResultTypeTraitOp1)
+IR_DEFINE_EXPLICIT_TYPE_ID(test::SameOperandsAndResultTypeTraitOp2)
+IR_DEFINE_EXPLICIT_TYPE_ID(test::SameOperandsAndResultTypeTraitOp3)
