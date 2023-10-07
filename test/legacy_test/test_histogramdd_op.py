@@ -42,8 +42,8 @@ class TestHistogramddAPI(unittest.TestCase):
         self.expect_hist = np.array([[0., 1., 0.],
                                      [2., 0., 0.],
                                      [4., 0., 8.]])
-        self.expect_edges = [[0.0000, 0.6667, 1.3333, 2.0000],
-                             [0.0000, 0.6667, 1.3333, 2.0000]]
+        self.expect_edges = [[0.00000000, 0.66666669, 1.33333325, 2.00000000],
+                             [0.00000000, 0.66666669, 1.33333325, 2.00000000]]
 
 
     def test_static_api(self):
@@ -63,11 +63,11 @@ class TestHistogramddAPI(unittest.TestCase):
 
             hist_out, edges_out = res[0], res[1:]
 
-            np.testing.assert_allclose(self.expect_hist, hist_out, rtol=1e-4, atol=1e-4)
+            np.testing.assert_allclose(hist_out, self.expect_hist, atol=1e-8)
             for idx, edge_out in enumerate(edges_out):
                 edge_out = edge_out
                 expect_edge = np.array(self.expect_edges[idx])
-                np.testing.assert_allclose(expect_edge, edge_out, rtol=1e-4, atol=1e-4)
+                np.testing.assert_allclose(edge_out, expect_edge, atol=1e-8)
 
 
     def test_dygraph_api(self):
@@ -98,8 +98,8 @@ class TestHistogramddAPICase1ForDensity(TestHistogramddAPI):
     def set_expect_output(self):
         self.expect_hist = np.array([[2., 0.],
                                      [0., 2.]])
-        self.expect_edges = [[0.0000, 0.5000, 1.0000],
-                             [0.0000, 0.5000, 1.0000]]
+        self.expect_edges = [[0.00000000, 0.50000000, 1.00000000],
+                             [0.00000000, 0.50000000, 1.00000000]]
 
 class TestHistogramddAPICase2ForMultiDimsAndDensity(TestHistogramddAPI):
     def init_input(self):
@@ -115,12 +115,12 @@ class TestHistogramddAPICase2ForMultiDimsAndDensity(TestHistogramddAPI):
 
     def set_expect_output(self):
         self.expect_hist = np.array([
-                [0.0153, 0.0077, 0.0000, 0.0000],
-                [0.0000, 0.0077, 0.0077, 0.0000],
-                [0.0000, 0.0000, 0.0077, 0.0153]
+                [0.01530612, 0.00765306, 0.00000000, 0.00000000],
+                [0.00000000, 0.00765306, 0.00765306, 0.00000000],
+                [0.00000000, 0.00000000, 0.00765306, 0.01530612]
             ])
-        self.expect_edges = [[1.0000, 5.6667, 10.3333, 15.0000],
-                            [2.0000, 5.5000, 9.0000, 12.5000, 16.0000]]
+        self.expect_edges = [[ 1.00000000,  5.66666651, 10.33333397, 15.00000000],
+                            [ 2.00000000,  5.50000000,  9.00000000, 12.50000000, 16.00000000]]
 
 
 
@@ -142,8 +142,8 @@ class TestHistogramddAPICase3ForMultiDimsNotDensity(TestHistogramddAPI):
                 [0., 1., 1., 0.],
                 [0., 0., 1., 2.]
             ])
-        self.expect_edges = [[1.0000, 5.6667, 10.3333, 15.0000],
-                            [2.0000, 5.5000, 9.0000, 12.5000, 16.0000]]
+        self.expect_edges = [[ 1.00000000,  5.66666651, 10.33333397, 15.00000000],
+                            [ 2.00000000,  5.50000000,  9.00000000, 12.50000000, 16.00000000]]
 
 
 
@@ -163,12 +163,12 @@ class TestHistogramddAPICase4ForRangeAndDensity(TestHistogramddAPI):
 
     def set_expect_output(self):
         self.expect_hist = np.array([
-                [0.0054, 0.0000, 0.0000, 0.0000],
-                [0.0027, 0.0000, 0.0000, 0.0000],
-                [0.0054, 0.0000, 0.0000, 0.0000]
+                [0.00538721, 0.00000000, 0.00000000, 0.00000000],
+                [0.00269360, 0.00000000, 0.00000000, 0.00000000],
+                [0.00538721, 0.00000000, 0.00000000, 0.00000000]
             ])
         self.expect_edges = [[1., 4., 7. ,10.],
-                            [1.0000, 25.7500, 50.5000, 75.2500 ,100.0000]]
+                            [  1.00000000,  25.75000000,  50.50000000,  75.25000000, 100.00000000]]
 
 
 
@@ -194,7 +194,7 @@ class TestHistogramddAPICase5ForRangeNotDensity(TestHistogramddAPI):
                 [2., 0., 0., 0.]
             ])
         self.expect_edges = [[1., 4., 7. ,10.],
-                            [1.0000, 25.7500, 50.5000, 75.2500 ,100.0000]]
+                            [  1.00000000,  25.75000000,  50.50000000,  75.25000000, 100.00000000]]
 
 
 
@@ -219,12 +219,12 @@ class TestHistogramddAPICase6NotRangeAndDensityAndWeights(TestHistogramddAPI):
         ])
 
     def set_expect_output(self):
-        self.expect_hist = np.array([[0.0051, 0.0051, 0.0000, 0.0000],
-                                    [0.0000, 0.0068, 0.0085, 0.0000],
-                                    [0.0000, 0.0000, 0.0102, 0.0255]])
+        self.expect_hist = np.array([[0.00510204, 0.00510204, 0.00000000, 0.00000000],
+                                    [0.00000000, 0.00680272, 0.00850340, 0.00000000],
+                                    [0.00000000, 0.00000000, 0.01020408, 0.02551021]])
 
-        self.expect_edges = [[ 1.0000,  5.6667, 10.3333, 15.0000],
-                            [ 2.0000,  5.5000,  9.0000, 12.5000, 16.0000]]
+        self.expect_edges = [[ 1.00000000,  5.66666651, 10.33333397, 15.00000000],
+                            [ 2.00000000,  5.50000000,  9.00000000, 12.50000000, 16.00000000]]
 
 
 class TestHistogramddAPICase7ForRangeAndDensityAndWeights(TestHistogramddAPI):
@@ -248,11 +248,11 @@ class TestHistogramddAPICase7ForRangeAndDensityAndWeights(TestHistogramddAPI):
         ])
 
     def set_expect_output(self):
-        self.expect_hist = np.array([[0.0027, 0.0000, 0.0000, 0.0000],
-                                    [0.0027, 0.0000, 0.0000, 0.0000],
-                                    [0.0081, 0.0000, 0.0000, 0.0000]])
+        self.expect_hist = np.array([[0.00269360, 0.00000000, 0.00000000, 0.00000000],
+                                    [0.00269360, 0.00000000, 0.00000000, 0.00000000],
+                                    [0.00808081, 0.00000000, 0.00000000, 0.00000000]])
         self.expect_edges = [[1., 4., 7. ,10.],
-                            [1.0000, 25.7500, 50.5000, 75.2500 ,100.0000]]
+                            [1.00000000, 25.75000000, 50.50000000, 75.25000000 ,100.00000000]]
 
 
 class TestHistogramddAPICase8MoreInnermostDim(TestHistogramddAPI):
@@ -285,7 +285,7 @@ class TestHistogramddAPICase8MoreInnermostDim(TestHistogramddAPI):
         self.expect_edges = [[ 1., 15.],
                             [ 2.,  9., 16.],
                             [ 1.,  4.,  7., 10.],
-                            [ 2.0000,  4.5000,  7.0000,  9.5000, 12.0000]]
+                            [ 2.00000000,  4.50000000,  7.00000000,  9.50000000, 12.00000000]]
 
 class TestHistogramddAPICase8MoreInnermostDimAndDensity(TestHistogramddAPI):
     def init_input(self):
@@ -307,17 +307,17 @@ class TestHistogramddAPICase8MoreInnermostDimAndDensity(TestHistogramddAPI):
         ])
 
     def set_expect_output(self):
-        self.expect_hist = np.array([[[[0.0000e+00, 0.0000e+00, 2.6455e-04, 0.0000e+00],
-                                       [0.0000e+00, 0.0000e+00, 0.0000e+00, 3.7793e-05],
-                                       [0.0000e+00, 0.0000e+00, 0.0000e+00, 7.5586e-05]],
+        self.expect_hist = np.array([[[[0.00000000e+00, 0.00000000e+00, 2.64550268e-04, 0.00000000e+00],
+                                       [0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 3.77928955e-05],
+                                       [0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 7.55857909e-05]],
 
-                                      [[0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00],
-                                       [3.0234e-04, 0.0000e+00, 0.0000e+00, 0.0000e+00],
-                                       [1.8896e-04, 2.2676e-04, 2.6455e-04, 0.0000e+00]]]])
+                                      [[0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00],
+                                       [3.02343164e-04, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00],
+                                       [1.88964477e-04, 2.26757373e-04, 2.64550268e-04, 0.00000000e+00]]]])
         self.expect_edges = [[ 1., 15.],
                             [ 2.,  9., 16.],
                             [ 1.,  4.,  7., 10.],
-                            [ 2.0000,  4.5000,  7.0000,  9.5000, 12.0000]]
+                            [ 2.00000000,  4.50000000,  7.00000000,  9.50000000, 12.00000000]]
         
 class TestHistogramddAPICase9ForIntBin(TestHistogramddAPI):
     def init_input(self):
@@ -340,13 +340,13 @@ class TestHistogramddAPICase9ForIntBin(TestHistogramddAPI):
 
 
     def set_expect_output(self):
-        self.expect_hist = np.array([[0.0019, 0.0000, 0.0000, 0.0000, 0.0000],
-                                    [0.0037, 0.0000, 0.0000, 0.0000, 0.0000],
-                                    [0.0056, 0.0000, 0.0000, 0.0000, 0.0000],
-                                    [0.0075, 0.0000, 0.0000, 0.0000, 0.0000],
-                                    [0.0094, 0.0000, 0.0000, 0.0000, 0.0000]])
-        self.expect_edges = [[ 1.0000,  2.8000,  4.6000,  6.4000,  8.2000, 10.0000],
-                            [  1.0000,  20.8000,  40.6000,  60.4000,  80.2000, 100.0000]]
+        self.expect_hist = np.array([[0.00187056, 0.00000000, 0.00000000, 0.00000000, 0.00000000],
+                                    [0.00374112, 0.00000000, 0.00000000, 0.00000000, 0.00000000],
+                                    [0.00561167, 0.00000000, 0.00000000, 0.00000000, 0.00000000],
+                                    [0.00748223, 0.00000000, 0.00000000, 0.00000000, 0.00000000],
+                                    [0.00935279, 0.00000000, 0.00000000, 0.00000000, 0.00000000]])
+        self.expect_edges = [[ 1.00000000,  2.79999995,  4.59999990,  6.40000010,  8.19999981, 10.00000000],
+                            [  1.00000000,  20.79999924,  40.59999847,  60.40000153,  80.19999695, 100.00000000]]
 
 class TestHistogramddAPICase10ForTensorBin(TestHistogramddAPI):
     def init_input(self):
@@ -368,10 +368,10 @@ class TestHistogramddAPICase10ForTensorBin(TestHistogramddAPI):
         
 
     def set_expect_output(self):
-        self.expect_hist = np.array([[0.0014, 0.0000],
-                                    [0.0024, 0.0000],
-                                    [0.0036, 0.0000],
-                                    [0.0022, 0.0000]])
+        self.expect_hist = np.array([[0.00138889, 0.00000000],
+                                    [0.00243056, 0.00000000],
+                                    [0.00361111, 0.00000000],
+                                    [0.00222222, 0.00000000]])
         self.expect_edges = [[ 1.,  2., 10., 15., 20.],
                             [  0.,  20., 100.]]
 
