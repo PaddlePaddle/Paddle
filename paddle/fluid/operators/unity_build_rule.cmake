@@ -48,7 +48,6 @@ register_unity_group(
   correlation_op.cc
   cos_sim_op.cc
   crf_decoding_op.cc
-  crop_op.cc
   conj_op.cc
   imag_op.cc
   kldiv_loss_op.cc
@@ -361,14 +360,8 @@ register_unity_group(
   clip_op.cu
   conv_cudnn_op.cu
   affine_grid_op.cu)
-register_unity_group(
-  cu
-  center_loss_op.cu
-  conv_transpose_cudnn_op.cu
-  cos_sim_op.cu
-  crop_op.cu
-  conj_op.cu
-  correlation_op.cu)
+register_unity_group(cu center_loss_op.cu conv_transpose_cudnn_op.cu
+                     cos_sim_op.cu conj_op.cu correlation_op.cu)
 register_unity_group(
   cu
   cross_entropy_op.cu

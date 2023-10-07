@@ -69,7 +69,6 @@ if(WIN32 AND WITH_TESTING)
     recurrent_op
     op_registry
     generated_static_op
-    crop_op
     activation_op
     generated_op
     generated_static_op
