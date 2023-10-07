@@ -199,7 +199,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_fetch_var',
     'test_fill_any_like_op',
     'test_fill_constant_op',
-    'test_fill_op',
     'test_fill_zeros_like_op',
     'test_filter_by_instag_op',
     'test_flatten2_op',
