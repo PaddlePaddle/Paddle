@@ -80,11 +80,11 @@ class TestHistogramddAPI(unittest.TestCase):
             self.bins = tuple([paddle.to_tensor(bin) for bin in self.bins])
         hist, edges = paddle.histogramdd(self.sample_dy, bins=self.bins, weights=self.weights_dy, range=self.range, density=self.density)
 
-        np.testing.assert_allclose(self.expect_hist, hist.numpy(), rtol=1e-4, atol=1e-4)
+        np.testing.assert_allclose(hist.numpy(), self.expect_hist, atol=1e-8)
         for idx, edge in enumerate(edges):
             edge = edge.numpy()
             expect_edge = np.array(self.expect_edges[idx])
-            np.testing.assert_allclose(expect_edge, edge, rtol=1e-4, atol=1e-4)
+            np.testing.assert_allclose(edge, expect_edge, atol=1e-8)
 
         paddle.enable_static()
 
