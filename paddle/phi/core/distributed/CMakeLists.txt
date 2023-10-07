@@ -3,6 +3,8 @@ add_subdirectory(store)
 add_subdirectory(auto_parallel)
 
 set(DISTRIBUTED_COMMON_SRCS comm_context_manager.cc)
+list(APPEND DISTRIBUTED_COMMON_SRCS comm_task_manager.cc nccl_comm_task.cc
+     nccl_tools.cc)
 
 if(WITH_NCCL OR WITH_RCCL)
   list(APPEND DISTRIBUTED_COMMON_SRCS nccl_comm_context.cc)
