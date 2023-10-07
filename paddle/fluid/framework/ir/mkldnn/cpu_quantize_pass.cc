@@ -1294,7 +1294,7 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizeConcat(graph);
   QuantizePriorBox(graph);
   QuantizeFc(graph, false /* with_residual_data */);
-  QuantizeFc(graph, true /* with_residual_data */);
+  // QuantizeFc(graph, true /* with_residual_data */);
   QuantizeMatmul(graph, false /* with_residual_data */);
   QuantizeMatmul(graph, true /* with_residual_data */);
   QuantizeImmutable(graph, "reshape2", "X");

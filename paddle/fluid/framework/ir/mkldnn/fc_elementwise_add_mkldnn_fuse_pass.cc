@@ -15,8 +15,8 @@
 #include "paddle/fluid/framework/ir/mkldnn/fc_elementwise_add_mkldnn_fuse_pass.h"
 
 #include "paddle/fluid/framework/ir/graph_traits.h"
-#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
@@ -78,10 +78,7 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    LOG(INFO) << "Fuse fc + elementwise_add as residual";
-    GetInfoFromTheTmpOp(
-        g, "has_quant_info", "var_quant_scales", var_quant_scales_);
-
+    VLOG(4) << "Fuse fc + elementwise_add as residual";
     GET_IR_NODE_FROM_SUBGRAPH(fc_op, fc, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_input, input, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_weights, weights, fc_pattern);
@@ -115,34 +112,6 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
               << ") with " << elementwise_op->Name() << "("
               << elementwise_op->id() << ") because fc has activation fused";
       return;
-    }
-
-    // Binary_add may have some error when scale in int8, thus skip
-    // proto::VarType::Type data_type = fc_input->Var()->GetDataType();
-    // LOG(INFO) << fc_input->Var()->GetDataType();
-    // if (data_type == proto::VarType::INT8 ||
-    //     data_type == proto::VarType::UINT8) {
-    //   LOG(INFO) << "Skip fusion fc + elementwise_add with int8 data type";
-    //   return;
-    // }
-    // auto& quant_var_scales =
-    // Get<std::unordered_map<std::string, std::pair<bool,
-    // phi::DenseTensor>>>("quant_var_scales");
-
-    // if (!quant_var_scales.empty()) {
-    //   LOG(INFO) << "Skip fusion fc + elementwise_add with quantize data
-    //   type"; return;
-    // }else{
-    //   LOG(INFO) << "It's empty";
-    // }
-    for (auto node : {fc_input, fc_weights}) {
-      if (!var_quant_scales_->empty()) {
-        LOG(INFO) << "11";
-        if (var_quant_scales_->count(node->Name()) != 0) {
-          LOG(INFO) << "It's int8";
-          return;
-        }
-      }
     }
 
     if (!IsCompat(subgraph, g)) {
