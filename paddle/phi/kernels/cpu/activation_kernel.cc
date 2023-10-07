@@ -278,7 +278,7 @@ PD_REGISTER_KERNEL(log1p,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 
-PD_REGISTER_ACTIVATION_KERNEL(hardswish, HardSwishKernel)
+PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(hardswish, HardSwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(round, RoundKernel)
 PD_REGISTER_ACTIVATION_KERNEL(floor, FloorKernel)
 PD_REGISTER_ACTIVATION_KERNEL(ceil, CeilKernel)

@@ -14,6 +14,7 @@
 
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
+from ..completion import get_phi_spmd_rule
 from ..cost import (
     _g_op_cost_factory,
     build_comp_costs_from_descs,
@@ -23,14 +24,18 @@ from ..cost import (
 from ..utils import (
     compute_compatible_dim_mapping,
     compute_compatible_dims_mapping,
+    get_dist_tensor_spec,
 )
 from .common import (
     DistributedOperatorImpl,
     DistributedOperatorImplContainer,
+    get_default_distributed_operator_impl,
     is_elementwise_op,
     is_parameter_related,
+    merge_forward_backward_dims_mapping,
     register_distributed_operator_impl,
     register_distributed_operator_impl_container,
+    update_op_dims_mapping,
 )
 from .dist_default import DistributedDefaultImpl0
 
@@ -38,6 +43,68 @@ from .dist_default import DistributedDefaultImpl0
 class DistributedElementwise(DistributedOperatorImplContainer):
     def __init__(self, op_type):
         super().__init__(op_type)
+
+    @staticmethod
+    def update_dims_mapping(dist_op):
+        # step1: prepare inputs need for rule (order args as PHI definition and filter out unnecessary args)
+        op_desc = dist_op.serial_op.desc
+        assert (
+            len(op_desc.input_arg_names()) >= 1
+        ), "elementwsie op [{}] has [{}] inputs".format(
+            op_desc.type, len(op_desc.input_arg_names())
+        )
+        input_arg_names = op_desc.input_arg_names()
+        assert (
+            len(op_desc.output_arg_names()) == 1
+        ), "elementwsie op [{}] has [{}] outputs".format(
+            str(dist_op.serial_op), len(op_desc.output_arg_names())
+        )
+        output_arg_name = op_desc.output_arg_names()[0]
+        num_inputs = len(input_arg_names)
+
+        # TODO (zhangyichen) replace dist tensor spece by dist tensor in future.
+        input_specs = []
+        for i in range(num_inputs):
+            input_specs.append(
+                get_dist_tensor_spec(dist_op, input_arg_names[i])
+            )
+        output_spec = get_dist_tensor_spec(dist_op, output_arg_name, False)
+
+        # step2: infer spmd
+        # TODO reivse me
+        op_type = op_desc.type()
+        rule = get_phi_spmd_rule(op_type)
+        fw_results = rule.infer_forward(*input_specs)
+        bw_results = rule.infer_backward(*input_specs, output_spec)
+
+        # step3: merge fw & bw results
+        (
+            infered_input_dims_mappings,
+            infered_output_dims_mappings,
+        ) = merge_forward_backward_dims_mapping(fw_results, bw_results)
+
+        # step4: update dist_attr
+        # tensor order following order in PHI defition
+        changed = update_op_dims_mapping(
+            dist_op,
+            input_arg_names,
+            infered_input_dims_mappings,
+            [output_arg_name],
+            infered_output_dims_mappings,
+        )
+
+        return changed
+
+    # NOTE this function will be remove once we use local reshard to replace distopimpls
+    @staticmethod
+    def mapping_to_dist_operator_impl(dist_op, original_op_dist_attr):
+        # all elementwise op use default dist operator impl.
+        op_dist_attr = dist_op.dist_attr
+        default_impl = get_default_distributed_operator_impl()
+        op_dist_attr.impl_type = default_impl.type
+        op_dist_attr.impl_idx = default_impl.idx
+
+        return False
 
 
 register_distributed_operator_impl_container(
