@@ -143,6 +143,10 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set(
           "quantize_excluded_op_ids",
           new std::unordered_set<int>(argument->quantize_excluded_op_ids()));
+    } else if (pass_name == "fc_elementwise_add_mkldnn_fuse_pass") {
+      pass->Set("quantize_enabled_op_types",
+                new std::unordered_set<std::string>(
+                    argument->quantize_enabled_op_types()));
     } else if (pass_name == "cpu_quantize_pass") {
       if (argument->quantize_enabled_op_types().count("conv2d") ||
           argument->quantize_enabled_op_types().count("fused_conv2d") ||
