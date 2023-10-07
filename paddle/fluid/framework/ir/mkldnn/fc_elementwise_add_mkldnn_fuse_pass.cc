@@ -125,8 +125,15 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
     // }
 
     // skip if should not be quantized
-    if (platform::HasOpINT8DataType(fc_op->Op())) {
-      LOG(INFO) << "Skip fusion fc + elementwise_add with int8 data type";
+    // if (platform::HasOpINT8DataType(fc_op->Op())) {
+    //   LOG(INFO) << "Skip fusion fc + elementwise_add with int8 data type";
+    //   return;
+    // }
+    const auto& quantize_enabled_op_types =
+        Get<std::unordered_set<std::string>>("quantize_enabled_op_types");
+
+    if (!quantize_enabled_op_types.empty()) {
+      LOG(INFO) << "Skip fusion fc + elementwise_add with quantize data type";
       return;
     }
 
