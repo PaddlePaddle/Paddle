@@ -185,10 +185,10 @@ DECLARE_INFER_SHAPE_FUNCTOR(deformable_conv,
                             DeformableConvV1InferShapeFunctor,
                             PD_INFER_META(phi::DeformableConvInferMeta));
 
-REGISTER_OPERATOR(deformable_conv_v1,
+REGISTER_OPERATOR(deformable_conv_v1aa,
                   ops::DeformableConvV1Op,
                   ops::DeformableConvV1OpMaker,
                   ops::DeformableConvV1GradOpMaker<paddle::framework::OpDesc>,
                   ops::DeformableConvV1GradOpMaker<paddle::imperative::OpBase>,
                   DeformableConvV1InferShapeFunctor);
-REGISTER_OPERATOR(deformable_conv_v1_grad, ops::DeformableConvV1GradOp);
+REGISTER_OPERATOR(deformable_conv_v1_gradaa, ops::DeformableConvV1GradOp);
