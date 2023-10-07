@@ -16,6 +16,7 @@ import ast
 
 from cinn import ir
 
+# The Python native AST node that cinn ir supports
 AST2CINN = {
     ast.Add: ir.Add,
     ast.Sub: ir.Sub,

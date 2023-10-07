@@ -178,7 +178,7 @@ class ComputeCodeGenerator(ast.NodeVisitor):
         rhs_expr = ExprExecutor(self.variables_table.get()).exec(node.value)
 
         # 2 parse LHS
-        # 2.1 Tensor
+        # 2.1 Type of arg is Tensor
         if isinstance(lhs, ast.Subscript):
             expr_tensor = ExprExecutor(self.variables_table.get()).exec(
                 lhs.value
@@ -196,11 +196,8 @@ class ComputeCodeGenerator(ast.NodeVisitor):
             if not isinstance(rhs_expr, ir.Expr):
                 rhs_expr = ir.Expr(rhs_expr)
             ir.TensorStore(expr_tensor.Expr(), rhs_expr, expr_indices)
-        # 2.3 Var
+        # 2.2 Type of arg is Var
         else:
-            # TODO(6clc): We need to figure out a better way to
-            # handle the IterVar names and python variable names same
-            # Current only suport AxisMap function
             local_var_table = exec_assign(target=lhs, source=rhs_expr)
             if isinstance(lhs, ast.Tuple):
                 for k, v in local_var_table.items():
