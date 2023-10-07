@@ -506,7 +506,7 @@ phi::KernelKey GetKernelKey(
                 op->result(0).type().dyn_cast<DenseTensorType>().dtype())};
   }
 
-  if (op->name() == "pd_op.seed") {
+  if (op->isa<paddle::dialect::SeedOp>()) {
     auto backend = paddle::experimental::ParseBackend(place);
     return {backend,
             phi::DataLayout::ANY,
@@ -1111,8 +1111,9 @@ std::vector<pir::Value> BuildOpInputList(
               new_in, out_type, in_place, out_place, kernel_key, block);
         }
       } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
-            "only support allocated dense tensor type for now"));
+        PADDLE_THROW(
+            phi::errors::Unimplemented("only support allocated dense tensor "
+                                       "type and selected rows for now"));
       }
     }
     vec_inputs.push_back(new_in);
