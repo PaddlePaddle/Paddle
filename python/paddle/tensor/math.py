@@ -6983,6 +6983,7 @@ def hypot(x, y, name=None):
     return out
 
 
+@inplace_apis_in_dygraph_only
 def hypot_(x, y, name=None):
     r"""
     Inplace version of ``hypot`` API, the output Tensor will be inplaced with input ``x``.
