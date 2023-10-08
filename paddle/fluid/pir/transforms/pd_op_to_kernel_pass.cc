@@ -532,19 +532,6 @@ phi::KernelKey GetKernelKey(
     // parse all the input tensor
     if (tensor_input_number == 0 || op->isa<paddle::dialect::Full_Op>()) {
       // all the information have to get from attribute and context
-
-      if (op->isa<paddle::dialect::UniformOp>()) {
-        // try to process uniform, use shape to determin backend
-        // TODO(phlrain): shuold support other initilize op
-        auto define_op =
-            op->operand_source(0).dyn_cast<pir::OpResult>().owner();
-        if (define_op->isa<paddle::dialect::FullIntArrayOp>()) {
-          auto shape = define_op->attribute<dialect::IntArrayAttribute>("value")
-                           .data()
-                           .GetData();
-        }
-      }
-
       if (kernel_backend == phi::Backend::UNDEFINED) {
         kernel_backend = paddle::experimental::ParseBackend(place);
       }
