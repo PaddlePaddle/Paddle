@@ -38,6 +38,7 @@ import paddle.version as fluid_version
 import warnings
 import functools
 from .variable_index import _getitem_static, _setitem_static, _setitem_impl_
+import threading
 
 __all__ = []
 
