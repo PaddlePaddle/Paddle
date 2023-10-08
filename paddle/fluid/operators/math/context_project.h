@@ -96,17 +96,21 @@ class ContextProjectFunctor {
                   phi::DenseTensor* col) {
     auto lod_level_0 = in.lod()[0];
 
-    phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, float>
-        im2col_ocf;
+    // phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, float>
+    //     im2col_ocf;
+    phi::funcs::Im2ColFuseFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, float>
+        im2col_ocf_fuse;
 
     std::vector<int> dilation({1, 1});
     std::vector<int> padding({up_pad, 0, down_pad, 0});
     std::vector<int> stride({context_stride, 1});
 
-    int input_row_begin, input_row_end;
-    int sequence_height, sequence_width;
+    // int input_row_begin, input_row_end;
+    // int sequence_height, sequence_width;
+    int sequence_width;
     sequence_width = in.dims()[1];
 
+   /*
     for (int i = 0; i < static_cast<int>(lod_level_0.size()) - 1; ++i) {
       if (lod_level_0[i] == lod_level_0[i + 1]) continue;
 
@@ -141,6 +145,216 @@ class ContextProjectFunctor {
         out_t.Resize({sequence_height, context_length * sequence_width});
       }
     }
+*/
+
+    int concurrency_size = 5;
+    int thread_size = static_cast<int>(lod_level_0.size()) - 1;
+    std::vector<std::thread> threads_vec(concurrency_size);
+    // std::vector<Tensor> input_tensor(thread_size); 
+    // std::vector<Tensor> output_tensor(thread_size);
+
+
+   // 优化掉，放在第一个循环里
+    int im_channels = 1;
+    std::vector<int> im_height(thread_size, 0);
+    int im_width = sequence_width;
+    int filter_height = context_length;
+    int filter_width = sequence_width;
+    int col_width = 1;
+    std::vector<int> col_height(thread_size, 0);
+    // framework::Vector<size_t> lod_level_0_cuda = lod_level_0;
+    // im_data, col_data
+    std::vector<float*> im_datas(thread_size);
+    std::vector<float*> col_datas(thread_size);
+    int max_col_height = -1;
+
+/*
+    for (int i= 0; i < size; i++) {
+      if (lod_level_0[i] == lod_level_0[i+1]) {
+        im_datas[i] = nullptr;
+        col_datas[i] = nullptr;
+        continue;
+      }
+      // == 其实也可以去掉 ==
+      PADDLE_ENFORCE_EQ(im[i].dims().size(), 3,
+                      platform::errors::InvalidArgument(
+                          "The dimension of tensor 'im' should be 3. But got "
+                          "the dims of tensor 'im' is [%s].",
+                          im[i].dims()));
+      PADDLE_ENFORCE_EQ(col[i].dims().size(), 5,
+                      platform::errors::InvalidArgument(
+                          "The dimension of tensor 'col' should be 5. But got "
+                          "the dims of tensor 'col' is [%s].",
+                          col[i].dims()));
+      // == 其实也可以去掉 ==
+      im_height[i] = im[i].dims()[1];
+      if (im_channels == -1)im_channels = im[i].dims()[0];
+      if (im_width == -1) im_width = im[i].dims()[2];
+      if (filter_height == -1) filter_height = col[i].dims()[3];
+      if (filter_width == -1) filter_width = col[i].dims()[4];
+      if (col_width == -1) col_width = col[i].dims()[1];
+      col_height[i] = col[i].dims()[0];
+      if (col_height[i] > max_col_height) max_col_height = col_height[i];
+      im_datas[i] = im[i].data<T>(); 
+      col_datas[i] = col[i].data<T>();
+    }
+*/
+    int avg_ele = thread_size / concurrency_size;
+    int left_ele = thread_size % concurrency_size;
+
+    for (int i = 0; i < concurrency_size; i++) {
+     // int start_id = i * avg_ele;
+     // int end_id = i < left_ele ? start_id + avg_ele + 1 : start_id + avg_ele;
+        int start_id = -1, end_id = -1;
+        if (i < left_ele) {
+          start_id = i * (avg_ele + 1);
+          end_id = start_id + avg_ele + 1;
+        } else {
+          start_id = (i - left_ele) * avg_ele + left_ele * (avg_ele + 1);
+          end_id = start_id + avg_ele;
+        }
+
+     threads_vec[i] = std::thread([sequence_width, context_length, context_start, &lod_level_0, &in, &col, &im_datas, &col_datas, &col_height, &im_height](int start_id, int end_id) {
+      for (int t = start_id; t <end_id; t++) {
+        if (lod_level_0[t] == lod_level_0[t + 1]) {
+          // input_tensor[i] = Tensor();
+          // output_tensor[i] = Tensor();
+          im_datas[t] = nullptr;
+          col_datas[t] = nullptr;
+          return;
+        }
+        int input_row_begin = (context_start > 0)
+                            ? static_cast<int>(lod_level_0[t]) + context_start
+                            : static_cast<int>(lod_level_0[t]);
+        int input_row_end = static_cast<int>(lod_level_0[t + 1]);
+
+        phi::DenseTensor out_t = col->Slice(static_cast<int>(lod_level_0[t]),
+                                      static_cast<int>(lod_level_0[t + 1]));
+
+        col_datas[t] = out_t.data<float>();
+        int sequence_height = static_cast<int>(out_t.dims()[0]);
+
+        if (input_row_begin < input_row_end) {
+          phi::DenseTensor in_t = in.Slice(input_row_begin, input_row_end);
+
+          // std::vector<int64_t> output_shape(
+          //     {sequence_height, 1, 1, context_length,
+          //      sequence_width});  // output_height, output_width,
+          // input_channels, filter_height, filter_width
+          // out_t.Resize(phi::make_ddim(output_shape));
+          col_height[t] = sequence_height;
+          // if (col_height[i] > max_col_height) max_col_height = col_height[i];
+
+          // std::vector<int64_t> input_shape(
+          //     {1, input_row_end - input_row_begin,
+          //      sequence_width});  // input_channels, input_height, input_width
+          // in_t.Resize(phi::make_ddim(input_shape));
+          im_datas[t] = in_t.data<float>(); 
+          im_height[t] = input_row_end - input_row_begin;
+          // im2col_ocf(context, in_t, dilation, stride, padding, &out_t);
+          // out_t.Resize({sequence_height, context_length * sequence_width});
+        }
+       }
+      }, start_id, end_id);
+    }
+    for (int i = 0; i < concurrency_size; i++) {
+      if (threads_vec[i].joinable()) threads_vec[i].join();
+    }
+
+    max_col_height = *std::max_element(col_height.begin(), col_height.end());
+    // === kernel ===
+    auto gpu_place = context.GetPlace();
+    auto all_hbm = memory::Alloc(gpu_place, (4 * thread_size  + 1 + (4 * thread_size + 1) % 2) * sizeof(uint64_t));
+    /*
+    auto mixv_im_height = memory::Alloc(gpu_place, size * sizeof(int));
+    auto mixv_col_height = memory::Alloc(gpu_place, size * sizeof(int));
+    auto mixv_lod_level_0_cuda = memory::Alloc(gpu_place, (size + 1) * sizeof(size_t));
+    auto mixv_im_data = memory::Alloc(gpu_place, size * sizeof(T*));
+    auto mixv_col_data = memory::Alloc(gpu_place, size * sizeof(T*));
+    int* im_height_data = reinterpret_cast<int*>(mixv_im_height->ptr());
+    int* col_height_data = reinterpret_cast<int*>(mixv_col_height->ptr());
+    size_t* lod_level_0_data = reinterpret_cast<size_t*>(mixv_lod_level_0_cuda->ptr());
+    T** im_data = reinterpret_cast<T**>(mixv_im_data->ptr());
+    T** col_data = reinterpret_cast<T**>(mixv_col_data->ptr());
+    */
+
+    int* im_height_data = reinterpret_cast<int*>(all_hbm->ptr());
+    int* col_height_data = reinterpret_cast<int*>(im_height_data + thread_size);
+    size_t* lod_level_0_data = reinterpret_cast<size_t*>(col_height_data + thread_size);
+    float** im_data = reinterpret_cast<float**>(lod_level_0_data + thread_size + 1);
+    float** col_data = reinterpret_cast<float**>(im_data + thread_size);
+
+    // 其实im_height 就是col_height，这块可以继续优化 
+    cudaMemcpy(im_height_data, im_height.data(), thread_size * sizeof(int),
+               cudaMemcpyHostToDevice);
+    cudaMemcpy(col_height_data, col_height.data(), thread_size * sizeof(int),
+               cudaMemcpyHostToDevice);
+    cudaMemcpy(lod_level_0_data, lod_level_0.data(), (thread_size + 1)  * sizeof(size_t),
+               cudaMemcpyHostToDevice);
+    cudaMemcpy(im_data, im_datas.data(), thread_size * sizeof(float*),
+               cudaMemcpyHostToDevice);
+    cudaMemcpy(col_data, col_datas.data(), thread_size * sizeof(float*),
+               cudaMemcpyHostToDevice);
+
+/*
+    int block_dim_x = 0;
+    int block_dim_y = 0;
+    if (filter_height <= 4 && filter_width <= 4) {
+      block_dim_x = 4;
+      block_dim_y = 4;
+    } else if (filter_height <= 8 && filter_width <= 8) {
+      block_dim_x = 8;
+      block_dim_y = 8;
+    } else if (filter_height <= 16 && filter_width <= 16) {
+      block_dim_x = 16;
+      block_dim_y = 16;
+    } else {
+      block_dim_x = 32;
+      block_dim_y = 32;
+    } 
+    int block_dim_z = 1024 / block_dim_x / block_dim_y;
+    dim3 threads(block_dim_x, block_dim_y, std::min(block_dim_z, im_channels));
+    dim3 grid(col_width, max_col_height, thread_size);
+    im2colOCF_Fuse_2<T><<<grid, threads, 0, context.stream()>>>(
+     im_data, thread_size, lod_level_0_data, im_channels, im_height_data, im_width, filter_height,
+     filter_width, stride[0], stride[1], padding[0], padding[1], col_height_data,
+     col_width, col_data);
+*/
+    im2col_ocf_fuse(context, im_data, thread_size, filter_height, filter_width, im_width, col_width, max_col_height, im_channels,
+                    col_height_data, im_height_data, lod_level_0_data, dilation, stride, padding, col_data);
+    // === kernel ===
+/*
+      threads_vec.clear();
+      threads_vec.resize(concurrency_size); 
+    for (int i = 0; i < concurrency_size; i++) {
+     // int start_id = i * avg_ele;
+     // int end_id = i < left_ele ? start_id + avg_ele + 1 : start_id + avg_ele; 
+        int start_id = -1, end_id = -1;
+        if (i < left_ele) {
+          start_id = i * (avg_ele + 1);
+          end_id = start_id + avg_ele + 1;
+        } else {
+          start_id = (i - left_ele) * avg_ele + left_ele * (avg_ele + 1);
+          end_id = start_id + avg_ele;
+        }
+     threads_vec[i] = std::thread([context_length, sequence_width, &lod_level_0, &output_tensor](int start_id, int end_id) {
+       for (int t = start_id; t <end_id; t++) {
+         if (lod_level_0[t] == lod_level_0[t + 1]) continue;
+         int sequence_height = static_cast<int>(output_tensor[t].dims()[0]);
+         output_tensor[t].Resize({sequence_height, context_length * sequence_width});
+       }
+      }, start_id, end_id);
+    }
+    for (int i = 0; i < concurrency_size; i++) {
+      if (threads_vec[i].joinable()) threads_vec[i].join();
+    }
+    */
+
+
+
+
+
+
     if (padding_trainable) {
       PADDLE_ENFORCE_NOT_NULL(
           padding_data,
@@ -153,7 +367,7 @@ class ContextProjectFunctor {
             col->Slice(static_cast<int>(lod_level_0[i]),
                        static_cast<int>(lod_level_0[i + 1]));
 
-        sequence_height = static_cast<int>(out_t.dims()[0]);
+        int sequence_height = static_cast<int>(out_t.dims()[0]);
 
         // add up trainable data
         out_t.Resize({static_cast<int64_t>(sequence_height) * context_length,
@@ -228,19 +442,23 @@ class ContextProjectGradFunctor {
                   phi::DenseTensor* col) {
     auto lod_level_0 = in.lod()[0];
 
-    phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, float>
-        col2im_ocf;
+    // phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, float>
+    //     col2im_ocf;
+    phi::funcs::Col2ImFuseFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, float>
+        col2im_ocf_fuse;
 
     std::vector<int> dilation({1, 1});
     std::vector<int> padding({up_pad, 0, down_pad, 0});
     std::vector<int> stride({context_stride, 1});
 
-    int input_row_begin, input_row_end;
-    int sequence_height, sequence_width;
+    // int input_row_begin, input_row_end;
+    // int sequence_height, sequence_width;
+    int sequence_width;
     sequence_width = in.dims()[1];
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
 
     if (input_grad) {
+/*
       for (int i = 0; i < static_cast<int>(lod_level_0.size()) - 1; ++i) {
         if (lod_level_0[i] == lod_level_0[i + 1]) continue;
 
@@ -277,6 +495,167 @@ class ContextProjectGradFunctor {
           out_t.Resize({sequence_height, context_length * sequence_width});
         }
       }
+*/
+
+     int concurrency_size = 5;
+      int thread_size = static_cast<int>(lod_level_0.size()) - 1;
+      std::vector<std::thread> threads_vec(concurrency_size);
+      // std::vector<Tensor> output_tensor(thread_size); 
+
+      int im_channels = 1;
+      std::vector<int> im_height(thread_size, 0);
+      int im_width = sequence_width;
+      int filter_height = context_length;
+      int filter_width = sequence_width;
+      int col_width = 1;
+      std::vector<int> col_height(thread_size, 0);
+
+      // framework::Vector<size_t> lod_level_0_cuda = lod_level_0;
+      // im_data, col_data
+      std::vector<float*> im_datas(thread_size);
+      std::vector<float*> col_datas(thread_size);
+      int max_col_height = -1;
+
+
+      int avg_ele = thread_size / concurrency_size;
+      int left_ele = thread_size % concurrency_size;
+      for (int i = 0; i < concurrency_size; i++) {
+       //  int start_id = i * avg_ele;
+       //  int end_id = i < left_ele ? start_id + avg_ele + 1 : start_id + avg_ele;
+
+        int start_id = -1, end_id = -1;
+        if (i < left_ele) {
+          start_id = i * (avg_ele + 1);
+          end_id = start_id + avg_ele + 1;
+        } else {
+          start_id = (i - left_ele) * avg_ele + left_ele * (avg_ele + 1);
+          end_id = start_id + avg_ele;
+        }
+
+        threads_vec[i] = std::thread([sequence_width, context_length, context_start, &lod_level_0, &in, &col, &im_datas, &col_datas, &col_height, &im_height](int start_id, int end_id) {
+         for (int t = start_id; t < end_id; t++) {
+
+          if (lod_level_0[t] == lod_level_0[t + 1]) {
+            im_datas[t] = nullptr;     
+            col_datas[t] = nullptr;     
+            // input_tensor[i] = Tensor();
+            // output_tensor[i] = Tensor();
+            return;
+          }
+          int input_row_begin = (context_start > 0)
+                              ? static_cast<int>(lod_level_0[t]) + context_start
+                              : static_cast<int>(lod_level_0[t]);
+          int input_row_end = static_cast<int>(lod_level_0[t + 1]);
+
+          phi::DenseTensor out_t = col->Slice(static_cast<int>(lod_level_0[t]),
+                                      static_cast<int>(lod_level_0[t + 1]));
+
+          col_datas[t] = out_t.data<float>();
+          int sequence_height = static_cast<int>(out_t.dims()[0]);
+
+          if (input_row_begin < input_row_end) {
+            phi::DenseTensor in_t = in.Slice(input_row_begin, input_row_end);
+
+            col_height[t] = sequence_height;
+            // std::vector<int64_t> output_shape(
+            //     {sequence_height, 1, 1, context_length,
+            //      sequence_width});  // output_height, output_width,
+            // input_channels, filter_height, filter_width
+            // output_tensor[i].Resize(phi::make_ddim(output_shape));
+
+            // std::vector<int64_t> input_shape(
+            //    {1, input_row_end - input_row_begin,
+            //     sequence_width});  // input_channels, input_height, input_width
+            im_datas[t] = in_t.data<float>(); 
+            im_height[t] = input_row_end - input_row_begin;
+            // input_tensor[i].Resize(phi::make_ddim(input_shape));
+            // im2col_ocf(context, in_t, dilation, stride, padding, &out_t);
+            // out_t.Resize({sequence_height, context_length * sequence_width});
+           }
+          }
+        }, start_id, end_id);
+      }
+
+      for (int i = 0; i < concurrency_size; i++) {
+        if (threads_vec[i].joinable()) threads_vec[i].join();
+      }
+
+      threads_vec.clear();
+      threads_vec.resize(concurrency_size); 
+      max_col_height = *std::max_element(col_height.begin(), col_height.end());
+
+      auto gpu_place = context.GetPlace();
+      auto all_hbm = memory::Alloc(gpu_place, (4 * thread_size  + 1 + (4 * thread_size + 1) % 2) * sizeof(uint64_t));
+    /*
+    auto mixv_im_height = memory::Alloc(gpu_place, size * sizeof(int));
+    auto mixv_col_height = memory::Alloc(gpu_place, size * sizeof(int));
+    auto mixv_lod_level_0_cuda = memory::Alloc(gpu_place, (size + 1) * sizeof(size_t));
+    auto mixv_im_data = memory::Alloc(gpu_place, size * sizeof(T*));
+    auto mixv_col_data = memory::Alloc(gpu_place, size * sizeof(T*));
+    int* im_height_data = reinterpret_cast<int*>(mixv_im_height->ptr());
+    int* col_height_data = reinterpret_cast<int*>(mixv_col_height->ptr());
+    size_t* lod_level_0_data = reinterpret_cast<size_t*>(mixv_lod_level_0_cuda->ptr());
+    T** im_data = reinterpret_cast<T**>(mixv_im_data->ptr());
+    T** col_data = reinterpret_cast<T**>(mixv_col_data->ptr());
+    */
+
+      int* im_height_data = reinterpret_cast<int*>(all_hbm->ptr());
+      int* col_height_data = reinterpret_cast<int*>(im_height_data + thread_size);
+      size_t* lod_level_0_data = reinterpret_cast<size_t*>(col_height_data + thread_size);
+      float** im_data = reinterpret_cast<float**>(lod_level_0_data + thread_size + 1);
+      float** col_data = reinterpret_cast<float**>(im_data + thread_size);
+
+      // 其实im_height 就是col_height，这块可以继续优化 
+      cudaMemcpy(im_height_data, im_height.data(), thread_size * sizeof(int),
+                cudaMemcpyHostToDevice);
+      cudaMemcpy(col_height_data, col_height.data(), thread_size * sizeof(int),
+               cudaMemcpyHostToDevice);
+      cudaMemcpy(lod_level_0_data, lod_level_0.data(), (thread_size + 1)  * sizeof(size_t),
+                cudaMemcpyHostToDevice);
+      cudaMemcpy(im_data, im_datas.data(), thread_size * sizeof(float*),
+                 cudaMemcpyHostToDevice);
+      cudaMemcpy(col_data, col_datas.data(), thread_size * sizeof(float*),
+                 cudaMemcpyHostToDevice);
+
+
+      col2im_ocf_fuse(context, col_data, thread_size, filter_height, filter_width, im_width, col_width, max_col_height, im_channels,
+                    col_height_data, im_height_data, lod_level_0_data, dilation, stride, padding, im_data);
+
+
+      // col2im_ocf_fuse(context, output_tensor, thread_size, lod_level_0, dilation, stride, padding, input_tensor.data());
+
+      // col2im_ocf_fuse(context, input_tensor, thread_size, lod_level_0, dilation, stride, padding, output_tensor.data());
+      // for (int i = 0; i < concurrency_size; i++) {
+      //   if (lod_level_0[i] == lod_level_0[i + 1]) continue;
+      //   int sequence_height = static_cast<int>(output_tensor[i].dims()[0]);
+      //   output_tensor[i].Resize({sequence_height, context_length * sequence_width});
+      // }
+/*
+      for (int i = 0; i < concurrency_size; i++) {
+        int start_id = -1, end_id = -1;
+        if (i < left_ele) {
+          start_id = i * (avg_ele + 1);
+          end_id = start_id + avg_ele + 1;
+        } else {
+          start_id = (i - left_ele) * avg_ele + left_ele * (avg_ele + 1);
+          end_id = start_id + avg_ele;
+        }
+        threads_vec[i] = std::thread([context_length, sequence_width, &lod_level_0, &output_tensor](int start_id, int end_id) {
+         for (int t = start_id; t < end_id; t++) {
+           if (lod_level_0[t] == lod_level_0[t + 1]) continue;
+           int sequence_height = static_cast<int>(output_tensor[t].dims()[0]);
+           output_tensor[t].Resize({sequence_height, context_length * sequence_width});
+         }
+        }, start_id, end_id);
+      }
+    
+      for (int i = 0; i < concurrency_size; i++) {
+        if (threads_vec[i].joinable()) threads_vec[i].join();
+      }
+*/
+
+
+
     }
     if (pad_grad) {
       if (padding_trainable) {
@@ -287,7 +666,7 @@ class ContextProjectGradFunctor {
               col->Slice(static_cast<int>(lod_level_0[i]),
                          static_cast<int>(lod_level_0[i + 1]));
 
-          sequence_height = static_cast<int>(out_t.dims()[0]);
+          int sequence_height = static_cast<int>(out_t.dims()[0]);
           out_t.Resize({static_cast<int64_t>(sequence_height) * context_length,
                         sequence_width});
 
