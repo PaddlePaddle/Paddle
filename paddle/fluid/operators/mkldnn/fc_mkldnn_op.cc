@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include <memory>
 
-#include <glog/logging.h>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/fc_op.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
