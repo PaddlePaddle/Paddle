@@ -59,7 +59,8 @@ void ScatterKernel(const Context &ctx,
                                      "index.dims().size() =2 in scatter_op."
                                      "But received value is [%d]",
                                      index.dims()[1]));
-    index.Resize(make_ddim({index.dims()[0]}));
+    auto index_dim = index.dims()[0];
+    index.Resize(make_ddim({index_dim}));
   } else {
     PADDLE_ENFORCE_EQ(
         index.dims().size() == 1,
