@@ -216,7 +216,7 @@ class Poisson(distribution.Distribution):
                 + value * paddle.log(self.rate)
                 - paddle.lgamma(value + 1)
             ),
-            neginf=eps,
+            neginf=-eps,
         )
 
     def prob(self, value):
