@@ -53,8 +53,7 @@ class TypeId {
   ///
   /// \brief Support PointerLikeTypeTraits.
   ///
-  operator const void *() const { return storage_; }
-  void *AsOpaquePointer() const { return storage_; }
+  operator void *() const { return storage_; }
   static TypeId RecoverFromOpaquePointer(void *pointer) {
     return TypeId(static_cast<Storage *>(pointer));
   }
@@ -146,7 +145,7 @@ namespace std {
 template <>
 struct hash<pir::TypeId> {
   std::size_t operator()(const pir::TypeId &obj) const {
-    return std::hash<const void *>()(obj);
+    return std::hash<void *>()(obj);
   }
 };
 }  // namespace std
