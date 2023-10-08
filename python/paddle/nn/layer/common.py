@@ -1523,6 +1523,162 @@ class Embedding(Layer):
         return main_str.format(**self.__dict__)
 
 
+
+class EmbeddingBag(Layer):
+    r"""
+
+    Computes sums or means of ‘bags’ of embeddings, without instantiating the intermediate embeddings.
+
+    Parameters:
+        num_embeddings (int): Just one element which indicate the size of the dictionary of embeddings.
+        embedding_dim (int):  Just one element which indicate the size of each embedding vector respectively.
+        padding_idx(int|long|None, optional): padding_idx needs to be in the interval [-num_embeddings, num_embeddings).
+            If :math:`padding\_idx < 0`, the :math:`padding\_idx` will automatically be converted
+            to :math:`vocab\_size + padding\_idx` . It will output all-zero padding data whenever lookup
+            encounters :math:`padding\_idx` in id. And the padding data will not be updated while training.
+            If set None, it makes no effect to output. Default: None.
+        sparse(bool, optional): The flag indicating whether to use sparse update. This parameter only
+            affects the performance of the backwards gradient update. It is recommended to set
+            True because sparse update is faster. But some optimizer does not support sparse update,
+            such as :ref:`api_paddle_optimizer_adadelta_Adadelta` , :ref:`api_paddle_optimizer_adamax_Adamax` , :ref:`api_paddle_optimizer_lamb_Lamb`.
+            In these case, sparse must be False. Default: False.
+        weight_attr(ParamAttr, optional): To specify the weight parameter property. Default: None, which means the
+            default weight parameter property is used. See usage for details in :ref:`api_ParamAttr` . In addition,
+            user-defined or pre-trained word vectors can be loaded with the :attr:`param_attr` parameter.
+            The local word vector needs to be transformed into numpy format, and the shape of local word
+            vector should be consistent with :attr:`num_embeddings` . Then :ref:`api_paddle_nn_initializer_Assign`
+            is used to load custom or pre-trained word vectors. See code example for details.
+        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and
+            None by default.
+        mode(str, optional): "sum", "mean" or "max". Specifies the way to reduce the bag.
+            "sum" computes the sum . "mean" computes the average of the values in the bag, "max" computes the max value over each bag. Default: "mean"
+
+    Attribute:
+        **weight** (Parameter): the learnable weights of this layer.
+
+    Returns:
+        None
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[0], [1], [3]], dtype="int64", stop_gradient=False)
+            >>> embedding = paddle.nn.EmbeddingBag(4, 3, sparse=True)
+
+            >>> w0 = paddle.to_tensor([[0., 0., 0.],
+            ...                        [1., 1., 1.],
+            ...                        [2., 2., 2.],
+            ...                        [3., 3., 3.]], dtype="float32")
+            >>> embedding.weight.set_value(w0)
+            >>> print(embedding.weight)
+            Parameter containing:
+            Tensor(shape=[4, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[0., 0., 0.],
+             [1., 1., 1.],
+             [2., 2., 2.],
+             [3., 3., 3.]])
+
+            >>> adam = paddle.optimizer.Adam(parameters=[embedding.weight], learning_rate=0.01)
+            >>> adam.clear_grad()
+
+            >>> out = embedding(x)
+            >>> print(out)
+            Tensor(shape=[3, 1, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[[0., 0., 0.]],
+             [[1., 1., 1.]],
+             [[3., 3., 3.]]])
+
+            >>> out.backward()
+            >>> adam.step()
+
+    """
+
+    def __init__(
+        self,
+        num_embeddings,
+        embedding_dim,
+        padding_idx=None,
+        sparse=False,
+        weight_attr=None,
+        name=None,
+        mode="mean",
+    ):
+        super().__init__()
+        self._num_embeddings = num_embeddings
+        self._embedding_dim = embedding_dim
+        self._sparse = sparse
+        self._is_distributed = False
+        self._padding_idx = padding_idx
+        self._mode = mode
+
+        if self._mode not int ("mean", "sum", "max"):
+            raise ValueError("mode must be one of'mean','sum','max'")
+
+        if self._num_embeddings <= 0:
+            raise ValueError("num_embeddings must be gather than 0")
+
+        if self._embedding_dim <= 0:
+            raise ValueError("embedding_dim must be gather than 0")
+
+        padding_idx = (
+            -1
+            if padding_idx is None
+            else padding_idx
+            if padding_idx >= 0
+            else (num_embeddings + padding_idx)
+        )
+
+        if padding_idx >= num_embeddings or padding_idx < -num_embeddings:
+            raise ValueError(
+                f"padding_idx must be within [-{num_embeddings}, {num_embeddings})"
+            )
+
+        self._dtype = self._helper.get_default_dtype()
+        self._size = [self._num_embeddings, self._embedding_dim]
+
+        self._weight_attr = weight_attr
+        self._remote_prefetch = False
+        self._name = name
+        self.weight = self.create_parameter(
+            attr=self._weight_attr,
+            shape=self._size,
+            dtype=self._dtype,
+            is_bias=False,
+        )
+
+        if in_dynamic_mode() and padding_idx != -1:
+            with paddle.no_grad():
+                self.weight[padding_idx] = 0.0
+
+    def forward(self, x):
+        out = F.embedding(
+            x,
+            weight=self.weight,
+            padding_idx=self._padding_idx,
+            sparse=self._sparse,
+            name=self._name,
+        )
+        if self._mode == "sum":
+            return paddle.sum(out, axis=1)
+        elif self._mode == "mean":
+            return paddle.mean(out, axis=1)
+        elif self._mode == "max":
+            return paddle.max(out, axis=1)
+
+    def extra_repr(self):
+        main_str = '{_num_embeddings}, {_embedding_dim}'
+        if self._padding_idx is not None:
+            main_str += ', padding_idx={_padding_idx}'
+        main_str += ', sparse={_sparse}'
+        if self._name is not None:
+            main_str += ', name={_name}'
+        main_str += ', mode={_mode}'
+        return main_str.format(**self.__dict__)
+
+
 class Unfold(Layer):
     """
     Returns a col buffer of sliding local blocks of input x, also known

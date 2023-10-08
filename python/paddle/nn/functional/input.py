@@ -18,6 +18,7 @@ from ...base.data_feeder import check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
 from ...common_ops_import import Variable
 from ...framework import in_dynamic_mode, in_dynamic_or_pir_mode
+from ...tensor.math import max, mean, sum
 
 __all__ = []
 
@@ -252,3 +253,97 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
             },
         )
         return tmp
+
+
+def embedding_bag(
+    x, weight, padding_idx=None, sparse=False, name=None, mode="mean"
+):
+    r"""
+    Computes sums or means of ‘bags’ of embeddings, without instantiating the intermediate embeddings..
+
+    Args:
+        x(Tensor): A Tensor with type int32/int64, which contains the id information. The value of the input id should
+            satisfy :math:`0<= id < weight.shape[0]` .
+        weight (Tensor): The weight. A Tensor with shape of lookup table parameter. It should have two elements which
+            indicates the size of the dictionary of embeddings and the size of each embedding vector respectively.
+        sparse(bool, optional): The flag indicating whether to use sparse update. This parameter only
+            affects the performance of the backwards gradient update. It is recommended to set
+            True because sparse update is faster. But some optimizers does not support sparse update,
+            such as :ref:`api_paddle_optimizer_adadelta_Adadelta` , :ref:`api_paddle_optimizer_adamax_Adamax` , :ref:`api_paddle_optimizer_lamb_Lamb`.
+            In these cases, sparse must be False. Default: False.
+        padding_idx(int|long|None, optional): padding_idx needs to be in the interval [-weight.shape[0], weight.shape[0]).
+            If :math:`padding\_idx < 0`, the :math:`padding\_idx` will automatically be converted
+            to :math:`weight.shape[0] + padding\_idx` . It will output all-zero padding data whenever lookup
+            encounters :math:`padding\_idx` in id. And the padding data will not be updated while training.
+            If set None, it makes no effect to output. Default: None.
+        name(str|None, optional): For detailed information, please refer
+           to :ref:`api_guide_Name`. Usually name is no need to set and
+           None by default.
+        mode(str, optional): "sum", "mean" or "max". Specifies the way to reduce the bag.
+            "sum" computes the sum . "mean" computes the average of the values in the bag, "max" computes the max value over each bag. Default: "mean"
+
+    Returns:
+        Tensor: Embedding Tensor  mapped by x. The data type is the same as :attr:`weight`.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn as nn
+
+            >>> x0 = paddle.arange(3, 6).reshape((3, 1)).astype(paddle.int64)
+            >>> w0 = paddle.full(shape=(10, 3), fill_value=2).astype(paddle.float32)
+
+            >>> x = paddle.to_tensor(x0, stop_gradient=False)
+            >>> print(x.numpy())
+            [[3]
+             [4]
+             [5]]
+            >>> print(x.shape)
+            [3, 1]
+
+            >>> w = paddle.to_tensor(w0, stop_gradient=False)
+            >>> print(w.numpy())
+            [[2. 2. 2.]
+             [2. 2. 2.]
+             [2. 2. 2.]
+             [2. 2. 2.]
+             [2. 2. 2.]
+             [2. 2. 2.]
+             [2. 2. 2.]
+             [2. 2. 2.]
+             [2. 2. 2.]
+             [2. 2. 2.]]
+            >>> print(w.shape)
+            [10, 3]
+
+            >>> emb = nn.functional.embedding_bag(
+            ...         x=x, weight=w, sparse=True, name="embedding", mode="mean")
+            >>> print(emb.numpy())
+            [[[2. 2. 2.]]
+             [[2. 2. 2.]]
+             [[2. 2. 2.]]]
+            >>> print(emb.shape)
+            [3, 1, 3]
+
+    """
+
+    if mode not in ("mean", "sum", "max"):
+        raise ValueError(
+            f"mode should be one of'mean','sum','max', but got {mode}"
+        )
+
+    out = embedding(
+        x,
+        weight=weight,
+        padding_idx=padding_idx,
+        sparse=sparse,
+        name=name,
+    )
+    if mode == "sum":
+        return sum(out, axis=1)
+    elif mode == "mean":
+        return mean(out, axis=1)
+    elif mode == "max":
+        return max(out, axis=1)
