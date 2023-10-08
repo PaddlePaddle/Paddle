@@ -262,29 +262,31 @@ void ScatterKernel(const Context& ctx,
           "but desires to be add, mul, multiply, mean, amin, amax.",
           reduce));
 
-  if (index.dims().size() == 2) {
+  DenseTensor new_index = index;
+
+  if (new_index.dims().size() == 2) {
     PADDLE_ENFORCE_EQ(
-        index.dims()[1],
+        new_index.dims()[1],
         1,
         phi::errors::InvalidArgument("index.dims()[1] should be 1 when "
                                      "index.dims().size() =2 in scatter_op."
                                      "But received value is [%d]",
                                      index.dims()[1]));
-    auto index_dim = index.dims()[0];
-    index.Resize(make_ddim({index_dim}));
+    auto index_dim = new_index.dims()[0];
+    new_index.Resize(make_ddim({index_dim}));
   } else {
     PADDLE_ENFORCE_EQ(
-        index.dims().size() == 1,
+        new_index.dims().size() == 1,
         true,
         phi::errors::InvalidArgument("index.dims().size() should be 1 in "
                                      "scatter_op. But received value is [%d]",
-                                     index.dims().size()));
+                                     new_index.dims().size()));
   }
 
   auto src_dims = updates.dims();
   auto dst_dims = out->dims();
 
-  if (index.dims().size() != 0) {
+  if (new_index.dims().size() != 0) {
     // check src shape and dst shape should match
     for (int i = 1; i < src_dims.size(); i++)
       PADDLE_ENFORCE_EQ(
@@ -302,10 +304,10 @@ void ScatterKernel(const Context& ctx,
 
   auto input_dim = x.dims();
   axis = axis >= 0 ? axis : axis + input_dim.size();
-  int index_size = index.dims().size();
+  int index_size = new_index.dims().size();
 
   DenseTensor index_cpu;
-  phi::Copy(ctx, index, phi::CPUPlace(), false, &index_cpu);
+  phi::Copy(ctx, new_index, phi::CPUPlace(), false, &index_cpu);
 
   for (int i = 0; i < index_size; i++) {
     if (index_type == phi::DataType::INT32) {
@@ -360,7 +362,7 @@ void ScatterKernel(const Context& ctx,
   }
 
   IndexReduceKernel<T, Context>(
-      ctx, x, index, updates, axis, reducer, include_self, out);
+      ctx, x, new_index, updates, axis, reducer, include_self, out);
 }
 
 }  // namespace phi

@@ -51,29 +51,31 @@ void ScatterKernel(const Context &ctx,
           "but desires to be add, mul, multiply, mean, amin, amax.",
           reduce));
 
-  if (index.dims().size() == 2) {
+  DenseTensor new_index = index;
+
+  if (new_index.dims().size() == 2) {
     PADDLE_ENFORCE_EQ(
         index.dims()[1],
         1,
         phi::errors::InvalidArgument("index.dims()[1] should be 1 when "
                                      "index.dims().size() =2 in scatter_op."
                                      "But received value is [%d]",
-                                     index.dims()[1]));
-    auto index_dim = index.dims()[0];
-    index.Resize(make_ddim({index_dim}));
+                                     new_index.dims()[1]));
+    auto index_dim = new_index.dims()[0];
+    new_index.Resize(make_ddim({index_dim}));
   } else {
     PADDLE_ENFORCE_EQ(
-        index.dims().size() == 1,
+        new_index.dims().size() == 1,
         true,
         phi::errors::InvalidArgument("index.dims().size() should be 1 in "
                                      "scatter_op. But received value is [%d]",
-                                     index.dims().size()));
+                                     new_index.dims().size()));
   }
 
   auto src_dims = updates.dims();
   auto dst_dims = out->dims();
 
-  if (index.dims().size() != 0) {
+  if (new_index.dims().size() != 0) {
     // check src shape and dst shape should match
     for (int i = 1; i < src_dims.size(); i++)
       PADDLE_ENFORCE_EQ(
@@ -96,7 +98,7 @@ void ScatterKernel(const Context &ctx,
 
   IndexReduceBaseKernel<T, Context>(ctx,
                                     x,
-                                    index,
+                                    new_index,
                                     const_cast<DenseTensor &>(updates),
                                     axis,
                                     reducer,
