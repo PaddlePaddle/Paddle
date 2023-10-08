@@ -87,7 +87,6 @@ class TestIndexFillAPIBase(unittest.TestCase):
         self.value = -1
         self.combs = list(combinations(list(range(10)), self.index_size[0]))
 
-
     def modify_setting(self):
         pass
 
