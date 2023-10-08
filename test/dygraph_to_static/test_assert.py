@@ -18,13 +18,13 @@ import numpy
 from dygraph_to_static_util import test_and_compare_with_new_ir
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.jit.api import to_static
 
 
 @paddle.jit.to_static
 def dyfunc_assert_variable(x):
-    x_v = fluid.dygraph.to_variable(x)
+    x_v = base.dygraph.to_variable(x)
     assert x_v
 
 
@@ -38,10 +38,10 @@ class TestAssertVariable(unittest.TestCase):
         paddle.jit.enable_to_static(to_static)
         if with_exception:
             with self.assertRaises(BaseException):
-                with fluid.dygraph.guard():
+                with base.dygraph.guard():
                     func(x)
         else:
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 func(x)
 
     def _run_dy_static(self, func, x, with_exception):

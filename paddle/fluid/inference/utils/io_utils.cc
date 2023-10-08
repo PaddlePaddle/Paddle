@@ -53,7 +53,7 @@ void SerializePDTensorToStream(std::ostream *os, const PaddleTensor &tensor) {
   // 2. Name
   uint64_t name_bytes = tensor.name.size();
   os->write(reinterpret_cast<char *>(&name_bytes), sizeof(name_bytes));
-  os->write(tensor.name.c_str(), name_bytes);
+  os->write(tensor.name.c_str(), name_bytes);  // NOLINT
   // 3. LoD
   auto lod = tensor.lod;
   uint64_t lod_size = lod.size();
@@ -68,13 +68,14 @@ void SerializePDTensorToStream(std::ostream *os, const PaddleTensor &tensor) {
   size_t dims = tensor.shape.size();
   os->write(reinterpret_cast<const char *>(&dims), sizeof(dims));
   os->write(reinterpret_cast<const char *>(tensor.shape.data()),
-            sizeof(int) * dims);
+            sizeof(int) * dims);  // NOLINT
   // 5. Data
   os->write(reinterpret_cast<const char *>(&tensor.dtype),
             sizeof(tensor.dtype));
   uint64_t length = tensor.data.length();
   os->write(reinterpret_cast<const char *>(&length), sizeof(size_t));
-  os->write(reinterpret_cast<const char *>(tensor.data.data()), length);
+  os->write(reinterpret_cast<const char *>(tensor.data.data()),
+            length);  // NOLINT
 }
 
 void DeserializePDTensorToStream(std::istream &is, PaddleTensor *tensor) {
@@ -85,7 +86,7 @@ void DeserializePDTensorToStream(std::istream &is, PaddleTensor *tensor) {
   uint64_t name_bytes;
   is.read(reinterpret_cast<char *>(&name_bytes), sizeof(name_bytes));
   std::vector<char> bytes(name_bytes);
-  is.read(bytes.data(), name_bytes);
+  is.read(bytes.data(), name_bytes);  // NOLINT
   tensor->name = std::string(bytes.data(), name_bytes);
   // 3. LoD
   uint64_t lod_level;
@@ -104,13 +105,14 @@ void DeserializePDTensorToStream(std::istream &is, PaddleTensor *tensor) {
   size_t dims;
   is.read(reinterpret_cast<char *>(&dims), sizeof(dims));
   tensor->shape.resize(dims);
-  is.read(reinterpret_cast<char *>(tensor->shape.data()), sizeof(int) * dims);
+  is.read(reinterpret_cast<char *>(tensor->shape.data()),
+          sizeof(int) * dims);  // NOLINT
   // 5. Data
   uint64_t length;
   is.read(reinterpret_cast<char *>(&tensor->dtype), sizeof(tensor->dtype));
   is.read(reinterpret_cast<char *>(&length), sizeof(length));
   tensor->data.Resize(length);
-  is.read(reinterpret_cast<char *>(tensor->data.data()), length);
+  is.read(reinterpret_cast<char *>(tensor->data.data()), length);  // NOLINT
 }
 
 // =========================================================

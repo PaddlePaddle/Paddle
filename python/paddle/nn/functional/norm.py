@@ -16,11 +16,11 @@ import numbers
 
 # TODO: define normalization api
 import paddle
-from paddle import _C_ops, fluid, in_dynamic_mode
-from paddle.fluid.framework import in_dygraph_mode
+from paddle import _C_ops, base, in_dynamic_mode
+from paddle.base.framework import in_dygraph_mode, in_dynamic_or_pir_mode
 
-from ...fluid.data_feeder import check_type, check_variable_and_dtype
-from ...fluid.layer_helper import LayerHelper
+from ...base.data_feeder import check_type, check_variable_and_dtype
+from ...base.layer_helper import LayerHelper
 
 __all__ = []
 
@@ -79,7 +79,7 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
     """
 
     if in_dygraph_mode():
-        eps = fluid.dygraph.base.to_variable([epsilon], dtype=x.dtype)
+        eps = base.dygraph.base.to_variable([epsilon], dtype=x.dtype)
         out = _C_ops.p_norm(x, float(p), axis, epsilon, True, False)
         return x / _C_ops.maximum(out, eps)
 
@@ -183,7 +183,7 @@ def batch_norm(
     if data_format not in true_data_format:
         raise ValueError(
             "data_format must be one of 'NC', 'NCL', 'NCHW', 'NCDHW', "
-            "'NLC', 'NHWC', 'NDHWC' but receive {}".format(data_format)
+            f"'NLC', 'NHWC', 'NDHWC' but receive {data_format}"
         )
 
     data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
@@ -236,7 +236,7 @@ def batch_norm(
         }
 
         helper = LayerHelper('batch_norm', **locals())
-        from paddle.fluid.data_feeder import convert_dtype
+        from paddle.base.data_feeder import convert_dtype
 
         param_dtype = (
             x.dtype
@@ -342,7 +342,7 @@ def layer_norm(
             + str(input_shape)
         )
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.layer_norm(x, weight, bias, epsilon, begin_norm_axis)
         return out
 
@@ -361,7 +361,7 @@ def layer_norm(
 
         # create output
         helper = LayerHelper('layer_norm', **locals())
-        from paddle.fluid.data_feeder import convert_dtype
+        from paddle.base.data_feeder import convert_dtype
 
         param_dtype = (
             x.dtype if convert_dtype(x.dtype) != 'float16' else 'float32'
@@ -545,23 +545,21 @@ def local_response_norm(
     if data_format not in ['NCL', 'NLC', 'NCHW', 'NHWC', 'NCDHW', 'NDHWC']:
         raise ValueError(
             "data_format should be in one of [NCL, NCHW, NCDHW, NLC, NHWC, NDHWC], "
-            "but got {}".format(data_format)
+            f"but got {data_format}"
         )
 
     sizes = x.shape
     dim = len(sizes)
     if dim < 3:
         raise ValueError(
-            'Expected 3D or higher dimensionality input, but got {} dimensions'.format(
-                dim
-            )
+            f'Expected 3D or higher dimensionality input, but got {dim} dimensions'
         )
 
     for i, sz in enumerate(sizes):
         if not sz > 0 and i > 0:
             raise ValueError(
                 "Expected every dim's size to be larger than 0, "
-                "but the size of the {}-th dim is {}".format(i, sz)
+                f"but the size of the {i}-th dim is {sz}"
             )
 
     channel_last = True if data_format[-1] == "C" else False

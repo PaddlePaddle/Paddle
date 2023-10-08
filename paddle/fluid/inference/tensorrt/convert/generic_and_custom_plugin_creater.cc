@@ -205,7 +205,8 @@ class GenericPluginCreater : public OpConverter {
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
 
     plugin::GenericPlugin::InputOutPutVarInfo in_out_info;
-
+    using paddle::inference::tensorrt::plugin::
+        ProtoTypeToGeneratePluginDataType;
     for (auto &param_name : phi_kernel_signature.input_names) {
       for (auto &arg_name : op_desc.Input(param_name)) {
         inputs.push_back(engine_->GetITensor(arg_name));
@@ -219,7 +220,8 @@ class GenericPluginCreater : public OpConverter {
             FluidDT::VarType_Type_LOD_TENSOR,
             platform::errors::InvalidArgument("TensorRT engine only takes "
                                               "LoDTensor as input"));
-        in_out_info.inputs_data_type.push_back(var->GetDataType());
+        in_out_info.inputs_data_type.push_back(
+            ProtoTypeToGeneratePluginDataType(var->GetDataType()));
       }
     }
 
@@ -237,7 +239,8 @@ class GenericPluginCreater : public OpConverter {
             FluidDT::VarType_Type_LOD_TENSOR,
             platform::errors::InvalidArgument("TensorRT engine only takes "
                                               "LoDTensor as input"));
-        in_out_info.outputs_data_type.push_back(var->GetDataType());
+        in_out_info.outputs_data_type.push_back(
+            ProtoTypeToGeneratePluginDataType(var->GetDataType()));
       }
     }
     plugin::GenericPlugin *plugin =

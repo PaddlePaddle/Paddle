@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -294,7 +295,7 @@ void RnnFunc(const Context& dev_ctx,
                         num_layers,
                         init_h_dims[0]));
   if (is_lstm(cell_type)) {
-    const auto& init_c_dims = init_c->dims();
+    const auto& init_c_dims = init_c->dims();  // NOLINT
     PADDLE_ENFORCE_EQ(init_c_dims[0],
                       num_layers * direction_num,
                       phi::errors::InvalidArgument(
@@ -344,6 +345,12 @@ void RnnFunc(const Context& dev_ctx,
   auto last_h_unbind = Unbind(*last_h);
   std::vector<DenseTensor> init_c_unbind, last_c_unbind;
   if (is_lstm(cell_type)) {
+    PADDLE_ENFORCE_NOT_NULL(
+        init_c,
+        paddle::platform::errors::InvalidArgument("init_c contains no data."));
+    PADDLE_ENFORCE_NOT_NULL(
+        last_c,
+        paddle::platform::errors::InvalidArgument("last_c contains no data."));
     init_c_unbind = Unbind(*init_c);
     last_c_unbind = Unbind(*last_c);
   }

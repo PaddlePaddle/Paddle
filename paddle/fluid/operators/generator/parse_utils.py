@@ -366,7 +366,7 @@ def check_op_config(op_entry, op_name):
         'composite',
         'support_dygraph_mode',
     )
-    infer_meta_key_set = ('func', 'param')
+    infer_meta_key_set = ('func', 'param', 'spmd_rule')
     kernel_key_set = (
         'func',
         'param',

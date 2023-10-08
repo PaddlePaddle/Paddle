@@ -19,7 +19,7 @@ from prim.composite_ops.utils import TOLERANCE
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core, framework
+from paddle.base import core, framework
 from paddle.incubate.autograd import primapi
 
 
@@ -36,15 +36,12 @@ class Attr:
 
     def set_dtype(self, dtype) -> None:
         self.dtype = dtype
-        return
 
     def set_axis(self, axis) -> None:
         self.axis = axis
-        return
 
     def set_shape(self, shape) -> None:
         self.shape = shape
-        return
 
     def get_rtol(self, flag):
         rtol = TOLERANCE[self.dtype][flag].get("rtol")

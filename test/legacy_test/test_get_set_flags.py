@@ -14,7 +14,7 @@
 
 import unittest
 
-from paddle import fluid
+from paddle import base
 
 
 class TestGetAndSetFlags(unittest.TestCase):
@@ -24,13 +24,13 @@ class TestGetAndSetFlags(unittest.TestCase):
             'FLAGS_check_nan_inf': True,
         }
 
-        fluid.set_flags(flags)
+        base.set_flags(flags)
 
         flags_list = ['FLAGS_eager_delete_tensor_gb', 'FLAGS_check_nan_inf']
         flag = 'FLAGS_eager_delete_tensor_gb'
 
-        res_list = fluid.get_flags(flags_list)
-        res = fluid.get_flags(flag)
+        res_list = base.get_flags(flags_list)
+        res = base.get_flags(flag)
 
         self.assertTrue(res_list['FLAGS_eager_delete_tensor_gb'], 1.0)
         self.assertTrue(res_list['FLAGS_check_nan_inf'], True)
@@ -45,25 +45,25 @@ class TestGetAndSetFlagsErrors(unittest.TestCase):
 
         # flags type of set_flags should be dict.
         def test_set_flags_input_type():
-            fluid.set_flags(flags_list)
+            base.set_flags(flags_list)
 
         self.assertRaises(TypeError, test_set_flags_input_type)
 
         # flags in set_flags should be public flags.
         def test_set_private_flag():
-            fluid.set_flags(flag_private)
+            base.set_flags(flag_private)
 
         self.assertRaises(ValueError, test_set_private_flag)
 
         # flags type of set_flags should be list, tuple or string
         def test_get_flags_input_type():
-            fluid.get_flags(flag)
+            base.get_flags(flag)
 
         self.assertRaises(TypeError, test_get_flags_input_type)
 
         # flags in get_flags should be public flags.
         def test_get_private_flag():
-            fluid.get_flags('FLAGS_free_idle_chunk')
+            base.get_flags('FLAGS_free_idle_chunk')
 
         self.assertRaises(ValueError, test_get_private_flag)
 

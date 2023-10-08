@@ -70,9 +70,7 @@ def shard_tensor(x, process_mesh=None, shard_spec=None):
     if process_mesh is not None:
         assert isinstance(
             process_mesh, core.ProcessMesh
-        ), "Argument process_mesh {} is not an instance of ProcessMesh".format(
-            process_mesh
-        )
+        ), f"Argument process_mesh {process_mesh} is not an instance of ProcessMesh"
     else:
         process_mesh = get_current_process_mesh()
         assert (
@@ -163,9 +161,7 @@ def shard_op(op, process_mesh=None, in_shard_specs=None, out_shard_specs=None):
     if process_mesh is not None:
         assert isinstance(
             process_mesh, ProcessMesh
-        ), "Argument process_mesh {} is not an instance of ProcessMesh".format(
-            process_mesh
-        )
+        ), f"Argument process_mesh {process_mesh} is not an instance of ProcessMesh"
     else:
         process_mesh = get_current_process_mesh()
         assert (
@@ -176,9 +172,7 @@ def shard_op(op, process_mesh=None, in_shard_specs=None, out_shard_specs=None):
         assert all(
             (isinstance(shard_spec, list) or shard_spec is None)
             for shard_spec in in_shard_specs
-        ), "in_shard_spec {} is not a list of list or None".format(
-            in_shard_specs
-        )
+        ), f"in_shard_spec {in_shard_specs} is not a list of list or None"
         for shard_spec in in_shard_specs:
             if shard_spec is not None:
                 in_dims_mappings.append(
@@ -191,9 +185,7 @@ def shard_op(op, process_mesh=None, in_shard_specs=None, out_shard_specs=None):
         assert all(
             (isinstance(shard_spec, list) or shard_spec is None)
             for shard_spec in out_shard_specs
-        ), "out_shard_spec {} is not a list of list or None".format(
-            out_shard_specs
-        )
+        ), f"out_shard_spec {out_shard_specs} is not a list of list or None"
         for shard_spec in out_shard_specs:
             if shard_spec is not None:
                 out_dims_mappings.append(

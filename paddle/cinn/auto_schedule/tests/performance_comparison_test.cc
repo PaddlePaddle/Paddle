@@ -44,9 +44,9 @@
  * parameters for more detail.
  */
 
-DEFINE_string(resnet50_model_dir,
-              "./ResNet50",
-              "the path to paddle model resnet50.");
+PD_DEFINE_string(resnet50_model_dir,
+                 "./ResNet50",
+                 "the path to paddle model resnet50.");
 // Flags that control which schedule tests will be run.
 // Bit with index 0 controls no schedule test, means options = 1 = "001" will
 // run no schedule test. Bit with index 1 controls manual schedule test, means
@@ -54,10 +54,10 @@ DEFINE_string(resnet50_model_dir,
 // auto schedule test, means options = 4 = "100" will run auto schedule test.
 // The default value is -1, which means that this flag is disabled to set the
 // options
-DEFINE_int32(evaluate_knobs,
-             -1,
-             "the options to control which schedule tests will be run.");
-DECLARE_double(cinn_infer_model_version);
+PD_DEFINE_int32(evaluate_knobs,
+                -1,
+                "the options to control which schedule tests will be run.");
+PD_DECLARE_double(cinn_infer_model_version);
 
 namespace cinn {
 namespace auto_schedule {

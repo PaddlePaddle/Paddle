@@ -16,7 +16,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.framework import default_main_program, in_dygraph_mode
+from paddle.base.framework import default_main_program, in_dygraph_mode
 from paddle.incubate.nn import FusedTransformerEncoderLayer
 from paddle.nn import TransformerEncoderLayer
 

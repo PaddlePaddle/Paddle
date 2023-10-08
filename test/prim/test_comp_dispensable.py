@@ -19,10 +19,10 @@ import paddle
 
 class TestDispensable(unittest.TestCase):
     def setUp(self):
-        paddle.fluid.core._set_prim_all_enabled(True)
+        paddle.base.core._set_prim_all_enabled(True)
 
     def tearDown(self):
-        paddle.fluid.core._set_prim_all_enabled(False)
+        paddle.base.core._set_prim_all_enabled(False)
 
     def test_dispensable(self):
         @paddle.jit.to_static
@@ -36,7 +36,7 @@ class TestDispensable(unittest.TestCase):
         op = f.get_concrete_program(x)[1].backward_program.block(0).ops[-1]
         self.assertEqual(
             op.attr('op_role'),
-            int(paddle.fluid.core.op_proto_and_checker_maker.OpRole.Backward),
+            int(paddle.base.core.op_proto_and_checker_maker.OpRole.Backward),
         )
         self.assertIn('AxisTensor', op.input_names)
 

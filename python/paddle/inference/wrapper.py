@@ -18,8 +18,8 @@ from typing import Set
 import numpy as np
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.core import (
+from paddle.base import core
+from paddle.base.core import (
     AnalysisConfig,
     PaddleDType,
     PaddleInferPredictor,
@@ -58,7 +58,7 @@ def tensor_share_external_data(self, data):
         self._share_external_data_bind(data)
     elif isinstance(data, paddle.Tensor):
         self._share_external_data_paddle_tensor_bind(data)
-    elif isinstance(data, paddle.fluid.framework.Variable):
+    elif isinstance(data, paddle.base.framework.Variable):
         raise TypeError(
             "The interface 'share_external_data' can only be used in dynamic graph mode. "
             "Maybe you called 'paddle.enable_static()' and you are in static graph mode now. "

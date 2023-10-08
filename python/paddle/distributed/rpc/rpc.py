@@ -18,10 +18,10 @@ import pickle
 import time
 from collections import namedtuple
 
+from paddle.base import core
 from paddle.distributed.launch.context import Node
 from paddle.distributed.rpc.internal import PythonFunc, _serialize
 from paddle.distributed.utils.launch_utils import logger
-from paddle.fluid import core
 
 WorkerInfo = namedtuple("WorkerInfo", ["name", "rank", "ip", "port"])
 

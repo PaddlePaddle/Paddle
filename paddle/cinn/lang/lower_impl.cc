@@ -23,9 +23,9 @@
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/optim/remove_nested_block.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/optim/transform_polyfor_to_for.h"
 #include "paddle/cinn/poly/stage.h"
@@ -35,7 +35,7 @@ namespace lang {
 namespace detail {
 
 void CheckNoIslCallRemains(Expr* expr) {
-  auto isl_calls = ir::CollectIRNodes(*expr, [](const Expr* expr) {
+  auto isl_calls = ir::ir_utils::CollectIRNodes(*expr, [](const Expr* expr) {
     return expr->As<ir::Call>() && expr->As<ir::Call>()->is_isl_call();
   });
 #ifdef CINN_DEBUG
@@ -223,7 +223,7 @@ void CreateCompGraphWithInlineTensors(common::Graph* graph,
   // collect dependency tensors of t
   // here we just collect the tensors in Load nodes
   // NOTE there may be some other cases.
-  auto deps = ir::CollectLoadTensors(
+  auto deps = ir::ir_utils::CollectLoadTensors(
       t->body(), [](const Expr* x) { return x->as_tensor(); });
   for (const auto& dep : deps) {
     auto e_tensor = dep.as_tensor_ref();
@@ -342,8 +342,7 @@ std::vector<ir::Argument> LowerImpl::GenerateFunctionArgumentList(
   CheckArgsUnique();
 
   std::vector<ir::Argument> args;
-  optim::TensorWriteTeller teller;
-  teller.Collect(&fn_body);
+  auto teller = ir::ir_utils::CollectTensorNeedsWrite(&fn_body);
 
   std::set<std::string> arg_names;
 
@@ -358,7 +357,7 @@ std::vector<ir::Argument> LowerImpl::GenerateFunctionArgumentList(
 
   for (auto& tensor : tensor_args_) {
     auto* tensor_node = tensor.As<ir::_Tensor_>();
-    bool is_output = teller.IsWrite(tensor->name);
+    bool is_output = teller.count(tensor->name);
     VLOG(1) << "tensor argument " << tensor->name << " buffer "
             << tensor->buffer->name;
 
@@ -396,8 +395,7 @@ std::vector<ir::Argument> LowerImpl::GenFuncArgForSplitKernel(
 
   std::vector<ir::Argument> in_args;
   std::vector<ir::Argument> out_args;
-  optim::TensorWriteTeller teller;
-  teller.Collect(&func_iterator);
+  auto teller = ir::ir_utils::CollectTensorNeedsWrite(&func_iterator);
   std::set<std::string> arg_names;
   std::set<std::string> all_tensor_names;
 
@@ -410,11 +408,12 @@ std::vector<ir::Argument> LowerImpl::GenFuncArgForSplitKernel(
     in_args.emplace_back(scalar, ir::Argument::IO::kInput);
   }
 
-  auto all_tensors = ir::CollectIRNodes(func_iterator, [&](const Expr* x) {
-    return x->as_tensor() && !stages_[x->as_tensor()]->inlined();
-  });
+  auto all_tensors =
+      ir::ir_utils::CollectIRNodes(func_iterator, [&](const Expr* x) {
+        return x->as_tensor() && !stages_[x->as_tensor()]->inlined();
+      });
 
-  auto all_vars = ir::CollectIRNodes(
+  auto all_vars = ir::ir_utils::CollectIRNodes(
       func_iterator, [&](const Expr* x) { return x->as_var(); });
 
   for (auto& i : all_tensors) {
@@ -448,7 +447,7 @@ std::vector<ir::Argument> LowerImpl::GenFuncArgForSplitKernel(
     VLOG(3) << "In tensor_args_, it has : " << tensor->name;
     if (temp_tensor_names.count(tensor->name) > 0) continue;
     if (all_tensor_names.count(tensor->name) == 0) continue;
-    bool is_output = teller.IsWrite(tensor->name);
+    bool is_output = teller.count(tensor->name);
     VLOG(3) << "tensor argument " << tensor->name << " buffer "
             << tensor->buffer->name;
 
@@ -485,7 +484,7 @@ std::vector<ir::Argument> LowerImpl::GenFuncArgForSplitKernel(
       VLOG(3) << "Tensor " << tensor->name;
       if (tensor->buffer.defined() && !arg_names.count(tensor->buffer->name)) {
         bool is_output =
-            teller.IsWrite(tensor->name) && teller.IsWrite(tensor->name);
+            teller.count(tensor->name) && teller.count(tensor->name);
         if (is_output)
           out_args.emplace_back(tensor->buffer, ir::Argument::IO::kOutput);
       }
@@ -590,7 +589,7 @@ std::vector<ir::LoweredFunc> LowerImpl::operator()() {
         Reference(&arg)->buffer = tensor_map.at(arg->name)->buffer;
       }
     }
-    auto store_exprs = ir::CollectIRNodes(
+    auto store_exprs = ir::ir_utils::CollectIRNodes(
         func_iterator, [](const Expr* x) { return x->As<ir::Store>(); });
     std::vector<ir::Tensor> new_temp_tensors;
     for (auto& expr : store_exprs) {
@@ -655,7 +654,7 @@ std::vector<ir::LoweredFunc> LowerImpl::operator()() {
 
     if (support_ir_schedule_) {
       optim::TransformPolyForToFor(&func->body);
-      optim::RemoveNestedBlock(&func->body);
+      optim::SimplifyBlocks(&func->body);
       func->body = ir::Block::Make({func->body});
       result.push_back(ir::LoweredFunc(func.get()));
       num_func++;

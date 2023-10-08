@@ -97,11 +97,11 @@ struct BenchFunc {
     for (int i = 0; i < FLAGS_burning; ++i) {
       tgt(args...);
     }
-    auto start = phi::PosixInNsec() * 1e-3;
+    double start = static_cast<double>(phi::PosixInNsec()) * 1e-3;
     for (int i = 0; i < FLAGS_repeat; ++i) {
       tgt(args...);
     }
-    auto end = phi::PosixInNsec() * 1e-3;
+    double end = static_cast<double>(phi::PosixInNsec()) * 1e-3;
     return static_cast<double>(end - start) / FLAGS_repeat;
   }
 };

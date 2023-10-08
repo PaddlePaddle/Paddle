@@ -17,9 +17,9 @@ import typing
 from collections import OrderedDict
 
 import paddle
-from paddle.fluid import framework
-from paddle.fluid.core import ops_contain_none, prim_config
-from paddle.fluid.framework import Operator, default_main_program
+from paddle.base import framework
+from paddle.base.core import ops_contain_none, prim_config
+from paddle.base.framework import Operator, default_main_program
 from paddle.incubate.autograd.utils import as_tensors
 
 from .composite_rules import _composite
@@ -141,8 +141,8 @@ class VarMap:
     def add_rec(self, key_vars, value_vars):
         if value_vars is None:
             return
-        if isinstance(key_vars, paddle.fluid.framework.Variable):
-            if not isinstance(value_vars, paddle.fluid.framework.Variable):
+        if isinstance(key_vars, paddle.base.framework.Variable):
+            if not isinstance(value_vars, paddle.base.framework.Variable):
                 raise TypeError(
                     f'value_vars must be Variable, but got {type(value_vars)}'
                 )
@@ -212,7 +212,7 @@ class Transform:
     def add_vars_rec(self, new_vars):
         if new_vars is None:
             return
-        if isinstance(new_vars, paddle.fluid.framework.Variable):
+        if isinstance(new_vars, paddle.base.framework.Variable):
             self.vars.update({id(new_vars): new_vars})
             return
         if not isinstance(new_vars, list):
@@ -246,7 +246,7 @@ class Transform:
 
     def var2dot_rec(self, vars):
         """Lookup var2dot recursively."""
-        if isinstance(vars, paddle.fluid.framework.Variable):
+        if isinstance(vars, paddle.base.framework.Variable):
             dot = self.var2dot.lookup(vars)
             return dot
 
@@ -254,7 +254,7 @@ class Transform:
         return dots
 
     def dot2bar_rec(self, dots):
-        if isinstance(dots, paddle.fluid.framework.Variable):
+        if isinstance(dots, paddle.base.framework.Variable):
             bar = self.dot2bar.lookup(dots)
             assert bar is not None, 'bar must be not None'
             return bar
@@ -509,7 +509,7 @@ def _lower(block, reverse, blacklist):
             attrs = {}
             for name in sorted(op.attr_names):
                 attrs[name] = op.attr(name)
-            from paddle.fluid.dygraph.base import param_guard
+            from paddle.base.dygraph.base import param_guard
 
             new_op_desc = block.desc.append_op()
             with param_guard(inputs), param_guard(outputs):
@@ -561,7 +561,7 @@ def _lower_composite(
         for i in range(len(args)):
             if isinstance(args[i], list):
                 bind(args[i], to_bind, value_table)
-            if not isinstance(args[i], paddle.fluid.framework.Variable):
+            if not isinstance(args[i], paddle.base.framework.Variable):
                 continue
             elif args[i] is not None and args[i].name in to_bind:
                 args[i] = value_table[to_bind[args[i].name]]
@@ -584,7 +584,7 @@ def _lower_composite(
                 return_list.append(x)
         return return_list
 
-    if isinstance(block, paddle.fluid.framework.Block):
+    if isinstance(block, paddle.base.framework.Block):
         logging.info("Atomize composite op to primitive ops begin.")
 
         # Step1: Do some preparatory work for lower

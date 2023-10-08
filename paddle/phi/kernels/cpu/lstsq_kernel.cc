@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <math.h>
 #include <algorithm>
+#include <cmath>
 #include <complex>
 
 #include "paddle/phi/backends/cpu/cpu_context.h"

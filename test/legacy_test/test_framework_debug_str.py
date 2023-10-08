@@ -14,7 +14,7 @@
 
 import unittest
 
-from paddle.fluid.framework import Program
+from paddle.base.framework import Program
 
 
 class TestDebugStringFramework(unittest.TestCase):

@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
+from paddle import base
 from paddle.distributed import fleet
 from paddle.distributed.passes import PassManager, new_pass
 
@@ -116,8 +116,8 @@ class TestFusedAttentionPassWithMP(unittest.TestCase):
         self.nranks = len(self.endpoints)
         self.rank = self.endpoints.index(self.current_endpoint)
         self.gpu_id = int(os.getenv("FLAGS_selected_gpus"))
-        self.place = fluid.CUDAPlace(self.gpu_id)
-        self.exe = fluid.Executor(self.place)
+        self.place = base.CUDAPlace(self.gpu_id)
+        self.exe = base.Executor(self.place)
         self.endpoints.remove(self.current_endpoint)
         self.other_endpoints = self.endpoints
         self.add_residual = True
@@ -180,9 +180,9 @@ class TestFusedAttentionPassWithMP(unittest.TestCase):
 
         startup_block = startup_prog.global_block()
         nccl_id_var = startup_block.create_var(
-            name=fluid.unique_name.generate('nccl_id'),
+            name=base.unique_name.generate('nccl_id'),
             persistable=True,
-            type=fluid.core.VarDesc.VarType.RAW,
+            type=base.core.VarDesc.VarType.RAW,
         )
         startup_block.append_op(
             type='c_gen_nccl_id',

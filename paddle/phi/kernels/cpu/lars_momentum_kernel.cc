@@ -36,7 +36,7 @@ void LarsMomentumKernel(
     std::vector<DenseTensor*> param_out,
     std::vector<DenseTensor*> velocity_out,
     std::vector<DenseTensor*> master_param_out) {
-  int op_num = param.size();
+  int op_num = static_cast<int>(param.size());
   T mu_ = static_cast<T>(mu);
   for (int i = 0; i < op_num; ++i) {
     auto* lr = learning_rate[i]->data<T>();

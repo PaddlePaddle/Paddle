@@ -197,7 +197,7 @@ void DownpourWorkerOpt::CreateThreadOperatorsWithRerank(
   auto& block = program.Block(0);
   std::vector<OpDesc*> ops = block.AllOps();
   // check if Independent between losses if not skip for now
-  int loss_num = loss_names_.size();
+  int loss_num = static_cast<int>(loss_names_.size());
   std::unordered_map<std::string, std::unordered_set<std::string>>
       loss_input_map;
   std::unordered_map<std::string, std::unordered_set<std::string>>

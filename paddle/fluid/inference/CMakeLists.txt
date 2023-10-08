@@ -103,8 +103,8 @@ set(SHARED_INFERENCE_SRCS
 
 # NOTE(Aurelius84): For inference library, some DEPS is usless
 # such as non-infer operator related targets et.al.
-list(REMOVE_ITEM fluid_modules cinn_dialect)
-# NOTE(Aurelisu84): Remove ir dialect related target DEPS for inference
+list(REMOVE_ITEM fluid_modules cinn_op_dialect)
+# NOTE(Aurelisu84): Remove pir dialect related target DEPS for inference
 # shared library to prune library size.
 list(REMOVE_ITEM fluid_modules ${not_infer_modules})
 

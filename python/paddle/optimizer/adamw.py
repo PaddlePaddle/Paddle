@@ -19,9 +19,9 @@ from collections.abc import Callable
 import paddle
 
 from .. import _C_ops
-from ..fluid import core, framework
-from ..fluid.dygraph import base as imperative_base
-from ..fluid.framework import Parameter, Variable
+from ..base import core, framework
+from ..base.dygraph import base as imperative_base
+from ..base.framework import Parameter, Variable
 from ..nn.clip import GradientClipBase
 from .lr import LRScheduler
 from .optimizer import Optimizer
@@ -77,8 +77,8 @@ class AdamW(Optimizer):
             Default: None.
         grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three clipping strategies
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
-            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
+            ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
+            :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
         lazy_mode (bool, optional): The official Adam algorithm has two moving-average accumulators.
             The accumulators are updated at every step. Every element of the two moving-average
             is updated in both dense mode and sparse mode. If the size of parameter is very large,
@@ -341,8 +341,25 @@ class AdamW(Optimizer):
         acc_dtype = p.dtype
         if self._is_dtype_fp16_or_bf16(acc_dtype):
             acc_dtype = core.VarDesc.VarType.FP32
-        self._add_accumulator(self._moment1_acc_str, p, dtype=acc_dtype)
-        self._add_accumulator(self._moment2_acc_str, p, dtype=acc_dtype)
+        if core.is_compiled_with_xpu():
+            import os
+
+            xpu_adamw_moment_dtype = os.getenv(
+                "xpu_adamw_moment_dtype", default="fp32"
+            )
+            if xpu_adamw_moment_dtype == "fp16":
+                self._add_accumulator(
+                    self._moment1_acc_str, p, dtype=core.VarDesc.VarType.FP16
+                )
+                self._add_accumulator(
+                    self._moment2_acc_str, p, dtype=core.VarDesc.VarType.FP16
+                )
+            else:
+                self._add_accumulator(self._moment1_acc_str, p, dtype=acc_dtype)
+                self._add_accumulator(self._moment2_acc_str, p, dtype=acc_dtype)
+        else:
+            self._add_accumulator(self._moment1_acc_str, p, dtype=acc_dtype)
+            self._add_accumulator(self._moment2_acc_str, p, dtype=acc_dtype)
         self._add_accumulator(
             name=self._beta1_pow_acc_str,
             param=p,
@@ -557,7 +574,7 @@ class AdamW(Optimizer):
                 >>> opt.step()
                 >>> opt.clear_grad()
         """
-        if paddle.fluid.dygraph.base.in_declarative_mode():
+        if paddle.base.dygraph.base.in_to_static_mode():
             self._declarative_step()
             return
 

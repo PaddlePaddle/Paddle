@@ -22,7 +22,7 @@ from cinn.common import DefaultHostTarget, DefaultNVGPUTarget, Float
 from cinn.frontend import Computation, NetBuilder
 
 import paddle
-from paddle import fluid, static
+from paddle import base, static
 
 assert len(sys.argv) == 3
 enable_gpu = sys.argv.pop()
@@ -113,11 +113,11 @@ class TestCompilePaddleModel(unittest.TestCase):
         out = computation.get_tensor("fc_0.tmp_2")
         res_cinn = out.numpy(self.target)
 
-        config = fluid.core.AnalysisConfig(naive_model_dir)
+        config = base.core.AnalysisConfig(naive_model_dir)
         config.disable_gpu()
         config.switch_ir_optim(False)
-        paddle_predictor = fluid.core.create_paddle_predictor(config)
-        data = fluid.core.PaddleTensor(A_data)
+        paddle_predictor = base.core.create_paddle_predictor(config)
+        data = base.core.PaddleTensor(A_data)
         paddle_out = paddle_predictor.run([data])
         res_paddle = paddle_out[0].as_ndarray()
 

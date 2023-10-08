@@ -73,5 +73,31 @@ inline void AllowUndefinedFlags() { gflags::AllowCommandLineReparsing(); }
 using paddle::flags::AllowUndefinedFlags;
 #endif
 
+#ifdef PADDLE_WITH_GFLAGS
+using gflags::BoolFromEnv;
+using gflags::DoubleFromEnv;
+using gflags::Int32FromEnv;
+using gflags::Int64FromEnv;
+using gflags::StringFromEnv;
+using gflags::Uint32FromEnv;
+using gflags::Uint64FromEnv;
+#else
+#define DEFINE_FROM_ENV_FUNC(type, name)                     \
+  inline type name##FromEnv(const std::string& env_var_name, \
+                            type default_val) {              \
+    return GetFromEnv(env_var_name, default_val);            \
+  }
+
+DEFINE_FROM_ENV_FUNC(bool, Bool);
+DEFINE_FROM_ENV_FUNC(int32_t, Int32);
+DEFINE_FROM_ENV_FUNC(uint32_t, Uint32);
+DEFINE_FROM_ENV_FUNC(int64_t, Int64);
+DEFINE_FROM_ENV_FUNC(uint64_t, Uint64);
+DEFINE_FROM_ENV_FUNC(double, Double);
+DEFINE_FROM_ENV_FUNC(std::string, String);
+
+#undef DEFINE_FROM_ENV_FUNC
+#endif
+
 }  // namespace flags
 }  // namespace paddle

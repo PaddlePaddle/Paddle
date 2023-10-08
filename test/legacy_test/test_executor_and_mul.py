@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.executor import Executor
+from paddle.base.executor import Executor
 from paddle.static import data
 from paddle.tensor import array_write
 

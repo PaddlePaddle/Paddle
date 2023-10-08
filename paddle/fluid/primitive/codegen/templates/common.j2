@@ -1,6 +1,6 @@
-{%- macro sig(name, inputs, outputs, attrs, mutable_attribute_as_inputs=False, default=False) -%}
+{%- macro sig(name, inputs, outputs, attrs, inplace_map, mutable_attribute_as_inputs=False, default=False) -%}
 template <typename T>
-{{ret(outputs)}} {{name}}({{params(inputs, attrs, mutable_attribute_as_inputs, default)}})
+{{ret(outputs, inplace_map)}} {{name}}({{params(inputs, attrs, mutable_attribute_as_inputs, default)}})
 {%- endmacro %}
 
 
@@ -40,9 +40,9 @@ template <typename T>
 {%- endmacro -%}
 
 
-{%- macro ret(outputs) -%}
+{%- macro ret(outputs, inplace_map) -%}
   {%- set names = [] -%}
-  {%- for i in outputs -%} {%- do names.append(i.typename|to_paddle_output_type) -%} {%- endfor -%}
+  {%- for i in outputs -%} {%- do names.append(i.typename|to_paddle_output_type(i.name in inplace_map and i.optional)) -%} {%- endfor -%}
   {%- if names|length > 1 -%} 
 std::tuple<{{sequence('', '', ', ', names)}}>
   {%- else -%}

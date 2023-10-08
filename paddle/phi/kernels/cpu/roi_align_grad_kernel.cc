@@ -85,7 +85,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
   int channels = in_dims[1];
   int height = in_dims[2];
   int width = in_dims[3];
-  int rois_num = boxes.dims()[0];
+  int rois_num = static_cast<int>(boxes.dims()[0]);
 
   if (!dx) {
     return;
@@ -96,7 +96,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
 
   int boxes_batch_size;
   if (boxes_num) {
-    boxes_batch_size = boxes_num->numel();
+    boxes_batch_size = static_cast<int>(boxes_num->numel());
     auto* boxes_num_data = boxes_num->data<int>();
     int start = 0;
     for (int n = 0; n < boxes_batch_size; ++n) {
@@ -107,7 +107,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
     }
   } else {
     auto boxes_lod = boxes.lod().back();
-    boxes_batch_size = boxes_lod.size() - 1;
+    boxes_batch_size = static_cast<int>(boxes_lod.size() - 1);
     for (int n = 0; n < boxes_batch_size; ++n) {
       for (std::size_t i = boxes_lod[n]; i < boxes_lod[n + 1]; ++i) {
         box_batch_id_data[i] = n;
@@ -119,7 +119,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
   phi::funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, dx, static_cast<T>(0));
 
-  int output_grad_size = out_grad.numel();
+  int output_grad_size = static_cast<int>(out_grad.numel());
 
   if ((!out_grad.IsInitialized()) || (output_grad_size <= 0)) {
     return;

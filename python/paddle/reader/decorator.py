@@ -22,7 +22,7 @@ from itertools import zip_longest
 from queue import Queue
 from threading import Thread
 
-from paddle.fluid.reader import QUEUE_GET_TIMEOUT
+from paddle.base.reader import QUEUE_GET_TIMEOUT
 
 __all__ = []
 
@@ -67,7 +67,7 @@ def cache(reader):
             ...         yield i
             ...
             >>> # All data is cached into memory
-            >>> cached_reader = paddle.fluid.io.cache(reader)
+            >>> cached_reader = paddle.base.io.cache(reader)
 
             >>> for i in cached_reader():
             ...     print(i)
@@ -126,7 +126,7 @@ def map_readers(func, *readers):
 
 def shuffle(reader, buf_size):
     """
-    paddle.fluid.io.shuffle ( :ref:`api_fluid_io_shuffle` ) is recommended to use,
+    paddle.base.io.shuffle ( :ref:`api_base_io_shuffle` ) is recommended to use,
     and paddle.reader.shuffle is an alias.
 
     This API creates a decorated reader that outputs the shuffled data.
@@ -179,8 +179,8 @@ def chain(*readers):
     the format of the outputs.
 
     **Note**:
-        ``paddle.reader.chain`` is the alias of ``paddle.fluid.io.chain``, and
-        ``paddle.fluid.io.chain`` is recommended to use.
+        ``paddle.reader.chain`` is the alias of ``paddle.base.io.chain``, and
+        ``paddle.base.io.chain`` is recommended to use.
 
     For example, if three input readers' outputs are as follows:
     [0, 0, 0],
@@ -359,7 +359,7 @@ def buffered(reader, size):
 
 def firstn(reader, n):
     """
-    paddle.fluid.io.firstn ( :ref:`api_fluid_io_firstn` ) is recommended to use,
+    paddle.base.io.firstn ( :ref:`api_base_io_firstn` ) is recommended to use,
     and paddle.reader.firstn is an alias.
 
     This API creates a decorated reader, and limits the max number of
@@ -553,23 +553,23 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
             ...     # generate sample input files
             ...     fake_input_files()
             ...
-            ...     with fluid.program_guard(fluid.Program(), fluid.Program()):
-            ...         place = fluid.CPUPlace()
+            ...     with base.program_guard(base.Program(), base.Program()):
+            ...         place = base.CPUPlace()
             ...         # the 1st 2 is batch size
             ...
             ...         image = paddle.static.data(name='image', dtype='int64', shape=[2, 1, 2])
             ...         paddle.static.Print(image)
             ...         # print detailed tensor info of image variable
             ...
-            ...         reader = fluid.io.PyReader(feed_list=[image], capacity=2)
+            ...         reader = base.io.PyReader(feed_list=[image], capacity=2)
             ...
             ...         decorated_reader = paddle.reader.multiprocess_reader(
             ...             [generate_reader(sample_files[0]), generate_reader(sample_files[1])], False)
             ...
             ...         reader.decorate_sample_generator(decorated_reader, batch_size=2, places=[place])
             ...
-            ...         exe = fluid.Executor(place)
-            ...         exe.run(fluid.default_startup_program())
+            ...         exe = base.Executor(place)
+            ...         exe.run(base.default_startup_program())
             ...
             ...         for data in reader():
             ...             res = exe.run(feed=data, fetch_list=[image])

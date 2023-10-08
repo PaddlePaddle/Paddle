@@ -15,7 +15,7 @@
 from transformer_dygraph_model import MultiHeadAttention, PrePostProcessLayer
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.jit.api import to_static
 from paddle.nn import Layer, Linear
 
@@ -35,7 +35,7 @@ class PositionwiseFeedForwardLayer(Layer):
         self._i2h = Linear(
             in_features=d_model,
             out_features=d_inner_hid,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 name=name + '_fc_0.w_0', initializer=param_initializer
             ),
             bias_attr=name + '_fc_0.b_0',
@@ -44,7 +44,7 @@ class PositionwiseFeedForwardLayer(Layer):
         self._h2o = Linear(
             in_features=d_inner_hid,
             out_features=d_model,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 name=name + '_fc_1.w_0', initializer=param_initializer
             ),
             bias_attr=name + '_fc_1.b_0',
@@ -207,7 +207,7 @@ class BertModelLayer(Layer):
         self._src_emb = paddle.nn.Embedding(
             self._voc_size,
             self._emb_size,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 name=self._word_emb_name, initializer=self._param_initializer
             ),
         )
@@ -215,7 +215,7 @@ class BertModelLayer(Layer):
         self._pos_emb = paddle.nn.Embedding(
             self._max_position_seq_len,
             self._emb_size,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 name=self._pos_emb_name, initializer=self._param_initializer
             ),
         )
@@ -223,7 +223,7 @@ class BertModelLayer(Layer):
         self._sent_emb = paddle.nn.Embedding(
             self._sent_types,
             self._emb_size,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 name=self._sent_emb_name, initializer=self._param_initializer
             ),
         )
@@ -231,7 +231,7 @@ class BertModelLayer(Layer):
         self.pooled_fc = Linear(
             in_features=self._emb_size,
             out_features=self._emb_size,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 name="pooled_fc.w_0", initializer=self._param_initializer
             ),
             bias_attr="pooled_fc.b_0",
@@ -332,13 +332,13 @@ class PretrainModelLayer(Layer):
         self.pooled_fc = Linear(
             in_features=self._emb_size,
             out_features=self._emb_size,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 name="mask_lm_trans_fc.w_0", initializer=self._param_initializer
             ),
             bias_attr="mask_lm_trans_fc.b_0",
         )
 
-        self.mask_lm_out_bias_attr = fluid.ParamAttr(
+        self.mask_lm_out_bias_attr = base.ParamAttr(
             name="mask_lm_out_fc.b_0",
             initializer=paddle.nn.initializer.Constant(value=0.0),
         )
@@ -347,7 +347,7 @@ class PretrainModelLayer(Layer):
             self.out_fc = Linear(
                 in_features=self._emb_size,
                 out_features=self._voc_size,
-                weight_attr=fluid.ParamAttr(
+                weight_attr=base.ParamAttr(
                     name="mask_lm_out_fc.w_0",
                     initializer=self._param_initializer,
                 ),
@@ -364,7 +364,7 @@ class PretrainModelLayer(Layer):
         self.next_sent_fc = Linear(
             in_features=self._emb_size,
             out_features=2,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 name="next_sent_fc.w_0", initializer=self._param_initializer
             ),
             bias_attr="next_sent_fc.b_0",

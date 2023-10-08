@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestUnfoldOp(OpTest):
@@ -144,6 +144,17 @@ class TestUnfoldOp(OpTest):
     def test_check_grad(self):
         self.check_grad(['X'], 'Y')
 
+    def test_support_tuple(self):
+        paddle.disable_static()
+        x = paddle.randn((10, 3, 64, 64))
+        paddle.nn.functional.unfold(x, 3, (1, 1), 1, 1)
+        paddle.nn.functional.unfold(x, 3, 1, (1, 1), 1)
+        paddle.nn.functional.unfold(x, 3, 1, 1, (1, 1))
+        out1 = paddle.nn.functional.unfold(x, 3, (1, 1), (1, 1), (1, 1))
+        out2 = paddle.nn.functional.unfold(x, (3, 3), (1, 1), (1, 1), (1, 1))
+        self.assertTrue(np.allclose(out1.numpy(), out2.numpy()))
+        paddle.enable_static()
+
 
 class TestUnfoldFP16Op(TestUnfoldOp):
     def init_dtype(self):
@@ -203,14 +214,14 @@ class TestUnfoldAPI(TestUnfoldOp):
         self.op_type = 'unfold'
         self.python_api = paddle.nn.functional.unfold
         self.set_data()
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
 
     def test_dygraph(self):
         for place in self.places:
-            with fluid.dygraph.guard(place):
-                input = fluid.dygraph.to_variable(self.inputs['X'])
+            with base.dygraph.guard(place):
+                input = base.dygraph.to_variable(self.inputs['X'])
                 m = paddle.nn.Unfold(**self.attrs)
                 m.eval()
                 result = m(input)

@@ -23,7 +23,7 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -57,9 +57,9 @@ class XPUTestOneHotOP(XPUOpTestWrapper):
             )
 
             self.out = np.zeros(
-                shape=(np.product(self.x.shape[:-1]), self.depth)
+                shape=(np.prod(self.x.shape[:-1]), self.depth)
             ).astype('float32')
-            for i in range(np.product(self.x.shape)):
+            for i in range(np.prod(self.x.shape)):
                 self.out[i, self.x[i]] = 1.0
 
             self.outputs = {'Out': (self.out, self.x_lod)}
@@ -113,7 +113,7 @@ class XPUTestOneHotOP(XPUOpTestWrapper):
             )
 
             self.out = np.zeros(
-                shape=(np.product(self.x.shape[:-1]), self.depth)
+                shape=(np.prod(self.x.shape[:-1]), self.depth)
             ).astype('float32')
 
             self.outputs = {'Out': (self.out, self.x_lod)}

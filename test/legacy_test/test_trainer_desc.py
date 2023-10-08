@@ -18,7 +18,7 @@ including config, etc.
 
 import unittest
 
-from paddle import fluid
+from paddle import base
 
 
 class TestTrainerDesc(unittest.TestCase):
@@ -28,7 +28,7 @@ class TestTrainerDesc(unittest.TestCase):
         """
         Testcase for python config.
         """
-        trainer_desc = fluid.trainer_desc.TrainerDesc()
+        trainer_desc = base.trainer_desc.TrainerDesc()
         trainer_desc._set_dump_fields(["a", "b"])
         trainer_desc._set_mpi_rank(1)
         trainer_desc._set_dump_fields_path("path")
@@ -46,7 +46,7 @@ class TestTrainerDesc(unittest.TestCase):
         """
         Testcase for dump_in_simple_mode
         """
-        trainer_desc = fluid.trainer_desc.TrainerDesc()
+        trainer_desc = base.trainer_desc.TrainerDesc()
         trainer_desc._set_dump_fields(["a", "b"])
         trainer_desc._set_is_dump_in_simple_mode(True)
 

@@ -19,8 +19,8 @@ import numpy as np
 from decorator_helper import prog_scope
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestConvDoubleGradCheck(unittest.TestCase):
@@ -28,12 +28,12 @@ class TestConvDoubleGradCheck(unittest.TestCase):
     def func(self, place):
         shape = [2, 4, 3, 3]
         eps = 0.005
-        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
+        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
         x = paddle.static.data('x', shape, dtype)
         y = paddle.static.nn.conv2d(x, 2, 1, groups=1, bias_attr=False)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
-        w = fluid.default_main_program().global_block().all_parameters()
+        w = base.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
@@ -42,10 +42,10 @@ class TestConvDoubleGradCheck(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
 
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -55,12 +55,12 @@ class TestConvDoubleGradCheckTest0(unittest.TestCase):
     def func(self, place):
         shape = [2, 4, 3, 3]
         eps = 0.005
-        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
+        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
         x = paddle.static.data('x', shape, dtype)
         y = paddle.static.nn.conv2d(x, 2, 1, bias_attr=False)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
-        w = fluid.default_main_program().global_block().all_parameters()
+        w = base.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
@@ -69,9 +69,9 @@ class TestConvDoubleGradCheckTest0(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -81,12 +81,12 @@ class TestConvDoubleGradCheckTest1(unittest.TestCase):
     def func(self, place):
         shape = [2, 3, 3, 3]
         eps = 0.005
-        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
+        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
         x = paddle.static.data('x', shape, dtype)
         y = paddle.static.nn.conv2d(x, 2, 1, padding=1, bias_attr=False)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
-        w = fluid.default_main_program().global_block().all_parameters()
+        w = base.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
@@ -95,9 +95,9 @@ class TestConvDoubleGradCheckTest1(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -107,12 +107,12 @@ class TestConv3DDoubleGradCheck(unittest.TestCase):
     def func(self, place):
         shape = [2, 4, 3, 4, 2]
         eps = 0.005
-        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
+        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
         x = paddle.static.data('x', shape, dtype)
         y = paddle.static.nn.conv3d(x, 2, 1, bias_attr=False)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
-        w = fluid.default_main_program().global_block().all_parameters()
+        w = base.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
@@ -121,10 +121,10 @@ class TestConv3DDoubleGradCheck(unittest.TestCase):
         )
 
     def test_grad(self):
-        # places = [fluid.CPUPlace()]
+        # places = [base.CPUPlace()]
         places = []
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -134,12 +134,12 @@ class TestConv3DDoubleGradCheckTest1(unittest.TestCase):
     def func(self, place):
         shape = [2, 4, 5, 3, 2]
         eps = 0.005
-        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
+        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
         x = paddle.static.data('x', shape, dtype)
         y = paddle.static.nn.conv3d(x, 2, 1, padding=1, bias_attr=False)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
-        w = fluid.default_main_program().global_block().all_parameters()
+        w = base.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
@@ -148,9 +148,9 @@ class TestConv3DDoubleGradCheckTest1(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -160,7 +160,7 @@ class TestConv2DoubleGradCheck_AsyPadding(unittest.TestCase):
     def func(self, place):
         shape = [2, 2, 3, 3]
         eps = 0.005
-        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
+        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
         x = paddle.static.data('x', shape, dtype)
         y = paddle.static.nn.conv2d(
             input=x,
@@ -172,7 +172,7 @@ class TestConv2DoubleGradCheck_AsyPadding(unittest.TestCase):
         )
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
-        w = fluid.default_main_program().global_block().all_parameters()
+        w = base.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
@@ -181,9 +181,9 @@ class TestConv2DoubleGradCheck_AsyPadding(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -193,7 +193,7 @@ class TestConv2DoubleGradCheck_PaddingSAME(unittest.TestCase):
     def func(self, place):
         shape = [2, 2, 3, 3]
         eps = 0.005
-        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
+        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
         x = paddle.static.data('x', shape, dtype)
         y = paddle.static.nn.conv2d(
             input=x,
@@ -205,7 +205,7 @@ class TestConv2DoubleGradCheck_PaddingSAME(unittest.TestCase):
         )
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
-        w = fluid.default_main_program().global_block().all_parameters()
+        w = base.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
@@ -214,9 +214,9 @@ class TestConv2DoubleGradCheck_PaddingSAME(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -226,7 +226,7 @@ class TestConv2DoubleGradCheck_PaddingVALID(unittest.TestCase):
     def func(self, place):
         shape = [2, 2, 3, 3]
         eps = 0.005
-        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
+        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
         x = paddle.static.data('x', shape, dtype)
         y = paddle.static.nn.conv2d(
             input=x,
@@ -238,7 +238,7 @@ class TestConv2DoubleGradCheck_PaddingVALID(unittest.TestCase):
         )
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
-        w = fluid.default_main_program().global_block().all_parameters()
+        w = base.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
@@ -247,9 +247,9 @@ class TestConv2DoubleGradCheck_PaddingVALID(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -259,7 +259,7 @@ class TestConv2DoubleGradCheck_ChannelLast(unittest.TestCase):
     def func(self, place):
         shape = [2, 2, 3, 3]
         eps = 0.005
-        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
+        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
         x = paddle.static.data('x', shape, dtype)
         y = paddle.static.nn.conv2d(
             input=x,
@@ -273,7 +273,7 @@ class TestConv2DoubleGradCheck_ChannelLast(unittest.TestCase):
         )
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
-        w = fluid.default_main_program().global_block().all_parameters()
+        w = base.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
@@ -282,9 +282,9 @@ class TestConv2DoubleGradCheck_ChannelLast(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -294,7 +294,7 @@ class TestConv2DoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
     def func(self, place):
         shape = [2, 2, 3, 3]
         eps = 0.005
-        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
+        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
         x = paddle.static.data('x', shape, dtype)
         y = paddle.static.nn.conv2d(
             input=x,
@@ -308,7 +308,7 @@ class TestConv2DoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
         )
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
-        w = fluid.default_main_program().global_block().all_parameters()
+        w = base.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
@@ -317,9 +317,9 @@ class TestConv2DoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -329,7 +329,7 @@ class TestConv3DDoubleGradCheck_AsyPadding(unittest.TestCase):
     def func(self, place):
         shape = [2, 2, 2, 2, 2]
         eps = 0.005
-        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
+        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
         x = paddle.static.data('x', shape, dtype)
         y = paddle.static.nn.conv3d(
             input=x,
@@ -341,7 +341,7 @@ class TestConv3DDoubleGradCheck_AsyPadding(unittest.TestCase):
         )
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
-        w = fluid.default_main_program().global_block().all_parameters()
+        w = base.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
@@ -350,9 +350,9 @@ class TestConv3DDoubleGradCheck_AsyPadding(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -362,7 +362,7 @@ class TestConv3DoubleGradCheck_PaddingSAME(unittest.TestCase):
     def func(self, place):
         shape = [2, 2, 2, 2, 2]
         eps = 0.005
-        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
+        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
         x = paddle.static.data('x', shape, dtype)
         y = paddle.static.nn.conv3d(
             input=x,
@@ -375,7 +375,7 @@ class TestConv3DoubleGradCheck_PaddingSAME(unittest.TestCase):
         )
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
-        w = fluid.default_main_program().global_block().all_parameters()
+        w = base.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
@@ -384,9 +384,9 @@ class TestConv3DoubleGradCheck_PaddingSAME(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -396,7 +396,7 @@ class TestConv3DoubleGradCheck_PaddingVALID(unittest.TestCase):
     def func(self, place):
         shape = [2, 2, 3, 3, 2]
         eps = 0.005
-        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
+        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
         x = paddle.static.data('x', shape, dtype)
         y = paddle.static.nn.conv3d(
             input=x,
@@ -408,7 +408,7 @@ class TestConv3DoubleGradCheck_PaddingVALID(unittest.TestCase):
         )
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
-        w = fluid.default_main_program().global_block().all_parameters()
+        w = base.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
@@ -417,9 +417,9 @@ class TestConv3DoubleGradCheck_PaddingVALID(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -429,7 +429,7 @@ class TestConv3DDoubleGradCheck_ChannelLast(unittest.TestCase):
     def func(self, place):
         shape = [2, 2, 2, 2, 3]
         eps = 0.005
-        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
+        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
         x = paddle.static.data('x', shape, dtype)
         y = paddle.static.nn.conv3d(
             input=x,
@@ -443,7 +443,7 @@ class TestConv3DDoubleGradCheck_ChannelLast(unittest.TestCase):
         )
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
-        w = fluid.default_main_program().global_block().all_parameters()
+        w = base.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
@@ -452,9 +452,9 @@ class TestConv3DDoubleGradCheck_ChannelLast(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -464,7 +464,7 @@ class TestConv3DDoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
     def func(self, place):
         shape = [2, 2, 2, 2, 3]
         eps = 0.005
-        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
+        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
         x = paddle.static.data('x', shape, dtype)
         y = paddle.static.nn.conv3d(
             input=x,
@@ -478,7 +478,7 @@ class TestConv3DDoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
         )
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
-        w = fluid.default_main_program().global_block().all_parameters()
+        w = base.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
@@ -487,9 +487,9 @@ class TestConv3DDoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -499,7 +499,7 @@ class TestDepthWiseConvDoubleGradCheck(unittest.TestCase):
     def func(self, place):
         shape = [2, 4, 3, 3]
         eps = 0.005
-        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
+        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
         x = paddle.static.data('x', shape, dtype)
 
         # condition of depthwise conv:
@@ -511,7 +511,7 @@ class TestDepthWiseConvDoubleGradCheck(unittest.TestCase):
         )
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
-        w = fluid.default_main_program().global_block().all_parameters()
+        w = base.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
@@ -522,7 +522,7 @@ class TestDepthWiseConvDoubleGradCheck(unittest.TestCase):
     def test_grad(self):
         places = []
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -536,7 +536,7 @@ class TestDepthWiseConvDoubleGradCheckCase1(unittest.TestCase):
         x_shape = [2, 4, 3, 3]
         w_shape = [4, 1, 3, 3]
         eps = 0.005
-        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
+        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
         x = paddle.static.data('x', x_shape, dtype)
         w = paddle.static.data('w', w_shape, dtype)
 
@@ -563,7 +563,7 @@ class TestDepthWiseConvDoubleGradCheckCase1(unittest.TestCase):
     def test_grad(self):
         places = []
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -577,7 +577,7 @@ class TestConv3DDoubleGradCheck_NN(unittest.TestCase):
         x_shape = [2, 3, 8, 8, 8]
         w_shape = [6, 3, 3, 3, 3]
         eps = 0.005
-        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
+        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
         x = paddle.static.data('x', x_shape, dtype)
         w = paddle.static.data('w', w_shape, dtype)
         x.persistable = True
@@ -596,7 +596,7 @@ class TestConv3DDoubleGradCheck_NN(unittest.TestCase):
     def test_grad(self):
         places = []
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 

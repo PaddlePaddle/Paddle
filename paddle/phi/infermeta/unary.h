@@ -73,13 +73,6 @@ void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out);
 
 void CConcatInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
 
-void SendV2InferMeta(const int peer, const int ring_id);
-
-void RecvV2InferMeta(int peer,
-                     DataType dtype,
-                     const std::vector<int>& out_shape,
-                     MetaTensor* out);
-
 void ChannelShuffleInferMeta(const MetaTensor& x,
                              int groups,
                              const std::string& data_format,
@@ -447,6 +440,8 @@ void Pool2DInferMeta(const MetaTensor& x,
 void PSendInferMeta(const MetaTensor& x, int peer);
 
 void PSendArrayInferMeta(const MetaTensor& x, int peer);
+
+void SendV2InferMeta(const int peer, const int ring_id);
 
 void QrInferMeta(const MetaTensor& x,
                  const std::string& mode,

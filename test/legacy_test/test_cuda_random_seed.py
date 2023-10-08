@@ -21,8 +21,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 @unittest.skipIf(
@@ -36,7 +36,7 @@ class TestGeneratorSeed(unittest.TestCase):
     def test_gen_dropout_dygraph(self):
         gen = paddle.seed(12343)
 
-        fluid.enable_dygraph()
+        base.enable_dygraph()
 
         gen.manual_seed(111111111)
         st = paddle.get_cuda_rng_state()
@@ -65,7 +65,7 @@ class TestGeneratorSeed(unittest.TestCase):
 
     def test_generator_gaussian_random_dygraph(self):
         """Test Generator seed."""
-        fluid.enable_dygraph()
+        base.enable_dygraph()
 
         st = paddle.get_cuda_rng_state()
         x1 = paddle.randn([120], dtype="float32")
@@ -86,7 +86,7 @@ class TestGeneratorSeed(unittest.TestCase):
     def test_generator_randint_dygraph(self):
         """Test Generator seed."""
 
-        fluid.enable_dygraph()
+        base.enable_dygraph()
 
         paddle.seed(12312321111)
         x = paddle.randint(low=10, shape=[10], dtype="int32")
@@ -106,14 +106,14 @@ class TestGeneratorSeed(unittest.TestCase):
             np.testing.assert_allclose(x_np, x3_np, rtol=1e-05)
 
     def test_gen_TruncatedNormal_initializer(self):
-        fluid.disable_dygraph()
+        base.disable_dygraph()
 
         gen = paddle.seed(123123143)
         cur_state = paddle.get_cuda_rng_state()
 
-        startup_program = fluid.Program()
-        train_program = fluid.Program()
-        with fluid.program_guard(train_program, startup_program):
+        startup_program = base.Program()
+        train_program = base.Program()
+        with base.program_guard(train_program, startup_program):
             # example 1:
             # attr shape is a list which doesn't contain tensor Variable.
             x = paddle.uniform(shape=[2, 10])
@@ -132,14 +132,14 @@ class TestGeneratorSeed(unittest.TestCase):
                 ),
             )
 
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = base.Executor(base.CPUPlace())
             exe.run(startup_program)
             out1 = exe.run(
                 train_program, feed={}, fetch_list=[result_1, result_2]
             )
 
         paddle.seed(123123143)
-        with fluid.program_guard(train_program, startup_program):
+        with base.program_guard(train_program, startup_program):
             exe.run(startup_program)
             out2 = exe.run(
                 train_program, feed={}, fetch_list=[result_1, result_2]
@@ -160,7 +160,7 @@ class TestGeneratorSeed(unittest.TestCase):
         output_dir = tempfile.mkdtemp()
         random_file = os.path.join(output_dir, "random.pdmodel")
 
-        fluid.enable_dygraph()
+        base.enable_dygraph()
         x0 = paddle.randn([120], dtype="float32")
 
         st = paddle.get_cuda_rng_state()

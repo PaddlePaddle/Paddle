@@ -21,16 +21,17 @@ from paddle import _C_ops
 from paddle.common_ops_import import VarDesc, Variable
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
-from ..fluid.data_feeder import check_dtype, check_variable_and_dtype
+from ..base.data_feeder import check_dtype, check_variable_and_dtype
 from ..framework import (
     LayerHelper,
     convert_np_dtype_to_dtype_,
     core,
     in_dynamic_mode,
+    in_dynamic_or_pir_mode,
 )
 
-# from ..fluid.layers import has_inf  #DEFINE_ALIAS
-# from ..fluid.layers import has_nan  #DEFINE_ALIAS
+# from ..base.layers import has_inf  #DEFINE_ALIAS
+# from ..base.layers import has_nan  #DEFINE_ALIAS
 
 __all__ = []
 
@@ -686,7 +687,7 @@ def where(condition, x=None, y=None, name=None):
         broadcast_condition = paddle.add(cast_cond, broadcast_zeros)
         broadcast_condition = paddle.cast(broadcast_condition, 'bool')
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.where(broadcast_condition, broadcast_x, broadcast_y)
     else:
         check_variable_and_dtype(condition, 'condition', ['bool'], 'where')

@@ -15,7 +15,7 @@
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
-from paddle.fluid.param_attr import ParamAttr
+from paddle.base.param_attr import ParamAttr
 from paddle.nn import AdaptiveAvgPool2D, Conv2D, Dropout, MaxPool2D
 from paddle.utils.download import get_weights_path_from_url
 
@@ -115,9 +115,7 @@ class SqueezeNet(nn.Layer):
         supported_versions = ['1.0', '1.1']
         assert (
             version in supported_versions
-        ), "supported versions are {} but input version is {}".format(
-            supported_versions, version
-        )
+        ), f"supported versions are {supported_versions} but input version is {version}"
 
         if self.version == "1.0":
             self._conv = Conv2D(
@@ -225,7 +223,7 @@ def squeezenet1_0(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`SqueezeNet <api_paddle_vision_SqueezeNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`SqueezeNet <api_paddle_vision_models_SqueezeNet>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of SqueezeNet v1.0 model.
@@ -259,7 +257,7 @@ def squeezenet1_1(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`SqueezeNet <api_paddle_vision_SqueezeNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`SqueezeNet <api_paddle_vision_models_SqueezeNet>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of SqueezeNet v1.1 model.

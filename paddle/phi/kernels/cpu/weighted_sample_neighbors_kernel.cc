@@ -219,7 +219,7 @@ void WeightedSampleNeighborsKernel(const Context& dev_ctx,
   const T* x_data = x.data<T>();
   const T* eids_data =
       (eids.get_ptr() == nullptr ? nullptr : eids.get_ptr()->data<T>());
-  int bs = x.dims()[0];
+  int bs = static_cast<int>(x.dims()[0]);
 
   std::vector<T> output;
   std::vector<int> output_count;

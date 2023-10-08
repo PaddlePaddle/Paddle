@@ -18,7 +18,7 @@ import numpy as np
 from decorator_helper import prog_scope
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class TestRegistry(unittest.TestCase):
@@ -27,8 +27,8 @@ class TestRegistry(unittest.TestCase):
         x = paddle.static.data(name='X', shape=[-1, 10, 10], dtype='float32')
         output = paddle.mean(x)
 
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        place = base.CPUPlace()
+        exe = base.Executor(place)
         X = np.random.random((10, 10)).astype("float32")
         mean_out = exe.run(feed={"X": X}, fetch_list=[output])
         self.assertAlmostEqual(np.mean(X), mean_out[0], delta=1e-5)

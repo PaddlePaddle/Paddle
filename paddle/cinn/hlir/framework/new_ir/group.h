@@ -16,8 +16,9 @@
 #include <string>
 #include <vector>
 
+#include "paddle/cinn/hlir/framework/new_ir/utils.h"
 #include "paddle/cinn/hlir/framework/op.h"
-#include "paddle/ir/core/operation.h"
+#include "paddle/pir/core/operation.h"
 
 namespace cinn {
 namespace hlir {
@@ -28,22 +29,28 @@ using framework::OpPatternKind;
 // TODO(Aurelius84): Need to be replaced with CinnGroupOp
 struct Group {
  public:
-  explicit Group(const std::vector<::ir::Operation*>& group_ops)
+  explicit Group(const std::vector<::pir::Operation*>& group_ops)
       : ops(group_ops) {
-    op_pattern_kind = OpPatternKind::kElementWise;
-    fn_name = "fn_";
-    for (auto& op : group_ops) {
-      fn_name += "_" + op->name();
-    }
+    Initialize();
   }
 
-  std::vector<::ir::Operation*> ops;
+  explicit Group(std::initializer_list<::pir::Operation*> group_ops)
+      : ops(group_ops) {
+    Initialize();
+  }
+
+  int group_id;
+  std::string fn_name;
+  OpPatternKind op_pattern_kind;
+  std::vector<::pir::Operation*> ops;
   std::vector<std::string> input_names;
   std::vector<std::string> output_names;
-  int group_id;
-  // FIXME(Aurelius84): This should be refactored with CinnGroupOp
-  OpPatternKind op_pattern_kind;
-  std::string fn_name;
+
+ private:
+  void Initialize() {
+    op_pattern_kind = OpPatternKind::kElementWise;
+    fn_name = CompatibleInfo::GroupOpsName(ops);
+  }
 };
 
 }  // namespace newir

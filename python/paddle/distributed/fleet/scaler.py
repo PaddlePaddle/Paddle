@@ -18,8 +18,8 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
+from paddle.base.dygraph import to_variable
 from paddle.distributed import fleet
-from paddle.fluid.dygraph import to_variable
 from paddle.framework import core
 
 from .base.topology import ParallelMode

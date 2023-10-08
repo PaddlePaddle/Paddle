@@ -40,7 +40,7 @@ struct DequantizeFunctor<phi::CPUContext, T> {
     const float* dict_data = dict->data<float>();
     const T* input_data = in->data<T>();
     float* output_data = out->mutable_data<float>(dev_ctx.GetPlace());
-    int ind = in->numel();
+    int ind = static_cast<int>(in->numel());
     for (size_t i = 0; i < (unsigned)ind; i++) {
       if (input_data[i] < 0) {
         output_data[i] = -dict_data[input_data[i] + 128];

@@ -22,6 +22,7 @@
 
 #include "paddle/phi/core/macros.h"
 #include "paddle/utils/flags.h"
+#include "paddle/utils/test_macros.h"
 #include "paddle/utils/variant.h"
 
 #if defined(_WIN32)
@@ -59,24 +60,20 @@
 #else  // PADDLE_WITH_GFLAGS
 
 #define PHI_DECLARE_VARIABLE(type, shorttype, name) \
-  namespace paddle {                                \
-  namespace flags {                                 \
+  namespace paddle_flags {                          \
   extern PHI_IMPORT_FLAG type FLAGS_##name;         \
   }                                                 \
-  }                                                 \
-  using paddle::flags::FLAGS_##name
+  using paddle_flags::FLAGS_##name
 
 #define PHI_DEFINE_VARIABLE(type, shorttype, name, default_value, description) \
-  namespace paddle {                                                           \
-  namespace flags {                                                            \
+  namespace paddle_flags {                                                     \
   static const type FLAGS_##name##_default = default_value;                    \
   PHI_EXPORT_FLAG type FLAGS_##name = default_value;                           \
   /* Register FLAG */                                                          \
   static ::paddle::flags::FlagRegisterer flag_##name##_registerer(             \
       #name, description, __FILE__, &FLAGS_##name##_default, &FLAGS_##name);   \
   }                                                                            \
-  }                                                                            \
-  using paddle::flags::FLAGS_##name
+  using paddle_flags::FLAGS_##name
 
 #endif
 
@@ -142,8 +139,8 @@ struct FlagInfo {
 };
 
 using ExportedFlagInfoMap = std::map<std::string, FlagInfo>;
-const ExportedFlagInfoMap& GetExportedFlagInfoMap();
-ExportedFlagInfoMap* GetMutableExportedFlagInfoMap();
+TEST_API const ExportedFlagInfoMap& GetExportedFlagInfoMap();
+TEST_API ExportedFlagInfoMap* GetMutableExportedFlagInfoMap();
 
 #define __PHI_DEFINE_EXPORTED_FLAG(                                           \
     __name, __is_writable, __cpp_type, __gflag_type, __default_value, __doc)  \

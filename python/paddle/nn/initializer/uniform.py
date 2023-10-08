@@ -14,9 +14,9 @@
 
 from paddle import _C_ops
 
-from ...fluid import core, framework, unique_name
-from ...fluid.data_feeder import check_variable_and_dtype
-from ...fluid.framework import _current_expected_place, in_dygraph_mode
+from ...base import core, framework, unique_name
+from ...base.data_feeder import check_variable_and_dtype
+from ...base.framework import _current_expected_place, in_dygraph_mode
 from .initializer import Initializer
 
 __all__ = []

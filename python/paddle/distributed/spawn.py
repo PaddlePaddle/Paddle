@@ -18,6 +18,9 @@ import signal
 import sys
 import warnings
 
+# deprecated module import
+# (TODO: GhostScreaming) It will be removed later.
+from paddle.base import core
 from paddle.device import get_device
 from paddle.distributed.cloud_utils import (
     _get_trainers_num,
@@ -35,10 +38,6 @@ from paddle.distributed.utils.launch_utils import (
     _print_arguments,
     get_host_name_ip,
 )
-
-# deprecated module import
-# (TODO: GhostScreaming) It will be removed later.
-from paddle.fluid import core
 from paddle.framework import set_flags
 
 __all__ = []
