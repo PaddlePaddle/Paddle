@@ -12,16 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
+#pragma once
+
+#include <memory>
+#include "paddle/pir/core/dll_decl.h"
 
 namespace pir {
 
-void YieldOp::Build(Builder &builder,
-                    OperationArgument &argument,
-                    const std::vector<Value> &inputs) {
-  argument.AddInputs(inputs);
-}
-}  // namespace pir
+class Pass;
 
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::YieldOp)
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::CondYieldOp)
+IR_API std::unique_ptr<Pass> CreateBuildCinnPass();
+
+}  // namespace pir
