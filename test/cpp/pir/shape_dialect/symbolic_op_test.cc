@@ -573,7 +573,7 @@ TEST(assist_struct_test, shape_analysis) {
   tieShapeOp5->set_attribute(
       pir::dialect::SymbolicDim::GetSymbolicDimAttrName(), attrOp5);
 
-  pir::SymbolicDimShapeAnalysis shapeAnalysis(program.module_op());
+  pir::ShapeConstraintIRAnalysis shapeAnalysis(program.module_op());
   EXPECT_TRUE(shapeAnalysis.IsShapeEqual(value3, value4));
   EXPECT_FALSE(shapeAnalysis.IsShapeEqual(value1, value2));
   EXPECT_FALSE(shapeAnalysis.IsShapeEqual(value1, value3));
