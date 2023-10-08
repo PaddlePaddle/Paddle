@@ -37,6 +37,9 @@ void WeightDequantizeKernel(const Context& dev_ctx,
   out->Resize({{out_dims[1], out_dims[0]}});
   auto out_tmp = Transpose<T, Context>(dev_ctx, *out, {1, 0});
   out->ShareDataWith(out_tmp);
+#else
+  PADDLE_THROW(
+      phi::errors::PreconditionNotMet("Not compiled with WITH_CUTLASS=ON"));
 #endif
 }
 

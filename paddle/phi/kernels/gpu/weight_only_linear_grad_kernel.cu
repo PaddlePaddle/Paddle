@@ -46,6 +46,9 @@ void WeightOnlyLinearGradKernel(const Context& dev_ctx,
       dev_ctx, weight, weight_scale, algo, true, &weight_dequantized);
   MatmulKernel<T, Context>(
       dev_ctx, out_grad, weight_dequantized, false, false, x_grad);
+#else
+  PADDLE_THROW(
+      phi::errors::PreconditionNotMet("Not compiled with WITH_CUTLASS=ON"));
 #endif
 }
 
