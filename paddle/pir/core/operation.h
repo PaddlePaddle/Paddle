@@ -119,6 +119,7 @@ class IR_API alignas(8) Operation final {
   Program *GetParentProgram();
   operator Block::Iterator() { return position_; }
   operator Block::ConstIterator() const { return position_; }
+  void MoveTo(Block *block, Block::Iterator position);
 
   void Print(std::ostream &os);
   pir::OpInfo info() const { return info_; }
