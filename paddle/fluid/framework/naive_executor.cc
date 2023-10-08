@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/naive_executor.h"
 
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -49,6 +50,19 @@ void NaiveExecutor::Prepare(Scope *scope,
 
   VLOG(3) << "NaiveExecutor init with scope " << scope;
   CreateOps(program_desc, block_id, with_feed_fetch_ops);
+}
+
+void NaiveExecutor::PrepareInterperterCore(
+    Scope *scope,
+    const ProgramDesc &program_desc,
+    const framework::interpreter::ExecutionConfig &execution_config) {
+  interpreter_core_ = std::make_unique<framework::InterpreterCore>(
+      place_, program_desc.Block(0), scope, execution_config);
+}
+
+void NaiveExecutor::RunInterperterCore(
+    const std::vector<std::string> &feed_names, bool need_fetch) {
+  interpreter_core_->Run(feed_names, need_fetch);
 }
 
 void NaiveExecutor::Run() {
