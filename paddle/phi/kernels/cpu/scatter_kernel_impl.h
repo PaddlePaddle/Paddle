@@ -79,7 +79,9 @@ void IndexReduceInner(const Context& ctx,
       init_val = static_cast<T>(0);
     }
     auto init = Full<T, Context>(ctx, vectorize(input_dim), init_val);
-    *output = Where<T, Context>(ctx, mask, *input, init);
+
+    auto out = Where<T, Context>(ctx, mask, *input, init);
+    phi::Copy(ctx, out, ctx.GetPlace(), false, output);
   }
 
   auto slice_size = 1;
@@ -146,7 +148,8 @@ void IndexReduceInner(const Context& ctx,
 
   if (reduce == "mean") {
     auto src_cnts_wo_zeros = Where<T, Context>(ctx, mask, ones, src_cnts);
-    *output = Divide<T, Context>(ctx, *output, src_cnts_wo_zeros);
+    auto out = Divide<T, Context>(ctx, *output, src_cnts_wo_zeros);
+    phi::Copy(ctx, out, ctx.GetPlace(), false, output);
   }
 }
 

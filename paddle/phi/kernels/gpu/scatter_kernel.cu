@@ -228,7 +228,8 @@ void IndexReduceKernel(const Context& ctx,
     auto mask = Equal<T, Context>(ctx, src_cnts, zeros);
 
     auto src_cnts_wo_zeros = Where<T, Context>(ctx, mask, ones, src_cnts);
-    *output = Divide<T, Context>(ctx, *output, src_cnts_wo_zeros);
+    auto out = Divide<T, Context>(ctx, *output, src_cnts_wo_zeros);
+    phi::Copy(ctx, out, ctx.GetPlace(), false, output);
   }
 }
 
