@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import itertools
 import os
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
 import unittest
-import socket
-import contextlib
 
 
 class CommunicationTestDistBase(unittest.TestCase):
