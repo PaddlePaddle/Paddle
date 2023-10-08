@@ -15,7 +15,7 @@
 from . import OpResult
 
 
-def monkey_patch_opResult():
+def monkey_patch_opresult():
     # Handling Tensor Methods
     import paddle.tensor
 

@@ -693,5 +693,4 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with paddle.pir_utils.IrGuard():
-        unittest.main()
+    unittest.main()
