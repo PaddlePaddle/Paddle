@@ -169,10 +169,7 @@ class FCMKLDNNHandler
                dst_scales.size() * sizeof(float));
       }
     }
-    LOG(INFO) << "Before residual:";
-    if (phi::funcs::is_int8<T_in>()) {
-      LOG(INFO) << "This is int8";
-    }
+
     if (!phi::funcs::is_int8<T_in>() &&
         ctx.HasAttr("fuse_residual_connection") &&
         ctx.Attr<bool>("fuse_residual_connection")) {
