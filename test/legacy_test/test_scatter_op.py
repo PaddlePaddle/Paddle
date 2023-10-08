@@ -758,7 +758,7 @@ class TestScatterError(unittest.TestCase):
             )
             out = paddle.scatter(x, index, updates)
 
-        self.assertRaises(IndexError, test_too_big_index)
+        self.assertRaises(ValueError, test_too_big_index)
         paddle.enable_static()
 
 
