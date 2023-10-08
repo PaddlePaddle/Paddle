@@ -13,3 +13,56 @@
 // limitations under the License.
 
 #pragma once
+
+#include <algorithm>
+#include <functional>
+#include <iterator>
+#include <type_traits>
+#include <unordered_map>
+#include <unordered_set>
+#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/builtin_op.h"
+#include "paddle/pir/core/builtin_type_interfaces.h"
+#include "paddle/pir/core/utils.h"
+#include "paddle/pir/dialect/shape/ir/shape_op.h"
+
+namespace pir {
+
+using dialect::SymbolicDim;
+class SymbolTable {
+ public:
+  explicit SymbolTable(Operation* symbol_table_op)
+      : symbol_table_op_(symbol_table_op) {}
+  SymbolTable() = default;
+  template <typename T>
+  typename std::enable_if<std::is_same<T, SymbolicDim>::value,
+                          SymbolicDim>::type
+  Lookup(const std::string& name) const {
+    auto it = symbol_table_map_.find(name);
+    return it != symbol_table_map_.end() ? it->second->dyn_cast<SymbolicDim>()
+                                         : SymbolicDim(nullptr);
+  }
+  template <typename T>
+  typename std::enable_if<!std::is_same<T, SymbolicDim>::value,
+                          std::vector<T>>::type
+  Lookup(const std::string& name) const {
+    std::vector<T> res;
+    auto it = symbol_func_map_.find(name);
+    if (it != symbol_func_map_.end()) {
+      for (auto& p : it->second) {
+        res.push_back(p->dyn_cast<T>());
+      }
+    }
+    return res;
+  }
+
+  const std::string insert(Operation* symbol);
+  Operation* getOp() const { return symbol_table_op_; }
+
+ private:
+  Operation* symbol_table_op_;
+  std::unordered_map<std::string, Operation*> symbol_table_map_;
+  std::unordered_map<std::string, std::vector<Operation*>> symbol_func_map_;
+};
+
+}  // namespace pir

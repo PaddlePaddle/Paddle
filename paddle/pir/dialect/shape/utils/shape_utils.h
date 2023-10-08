@@ -14,17 +14,7 @@
 
 #pragma once
 
-#include <algorithm>
-#include <functional>
-#include <iterator>
-#include <type_traits>
-#include <unordered_map>
-#include <unordered_set>
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/builtin_type_interfaces.h"
-#include "paddle/pir/core/utils.h"
-#include "paddle/pir/dialect/shape/ir/shape_op.h"
+#include "paddle/pir/dialect/shape/utils/symbol_table.h"
 
 namespace pir {
 
@@ -74,42 +64,6 @@ struct SymbolicDimProduct {
   }
 };
 
-class SymbolTable {
- public:
-  explicit SymbolTable(Operation* symbolTableOp)
-      : symbolTableOp_(symbolTableOp) {}
-  SymbolTable() = default;
-  template <typename T>
-  typename std::enable_if<std::is_same<T, SymbolicDim>::value,
-                          SymbolicDim>::type
-  Lookup(const std::string& name) const {
-    auto it = symbolTableMap_.find(name);
-    return it != symbolTableMap_.end() ? it->second->dyn_cast<SymbolicDim>()
-                                       : SymbolicDim(nullptr);
-  }
-  template <typename T>
-  typename std::enable_if<!std::is_same<T, SymbolicDim>::value,
-                          std::vector<T>>::type
-  Lookup(const std::string& name) const {
-    std::vector<T> res;
-    auto it = symbolFuncMap_.find(name);
-    if (it != symbolFuncMap_.end()) {
-      for (auto& p : it->second) {
-        res.push_back(p->dyn_cast<T>());
-      }
-    }
-    return res;
-  }
-
-  const std::string insert(Operation* symbol);
-  Operation* getOp() const { return symbolTableOp_; }
-
- private:
-  Operation* symbolTableOp_;
-  std::unordered_map<std::string, Operation*> symbolTableMap_;
-  std::unordered_map<std::string, std::vector<Operation*>> symbolFuncMap_;
-};
-
 struct SymDimHasher {
   size_t operator()(const dialect::SymbolicDim& symbol) const noexcept {
     return std::hash<Operation*>{}(symbol.operation());
@@ -136,7 +90,7 @@ class SymbolicDimMgr {
   std::vector<SymbolicDim> CreateSymbolicDimsForRankedValue(Value value);
   SymbolicDim GetRootSymbolicDim(SymbolicDim symbol);
   bool IsSymbolicDimEqual(SymbolicDim lhs, SymbolicDim rhs);
-  SymbolTable& symbolTable() { return symbolTable_; }
+  SymbolTable& symbolTable() { return symbol_table_; }
   bool MapSymbolicDimEqual(SymbolicDim lhs, SymbolicDim rhs);
   SymbolicDimProduct SimplifySymbolicDimProduct(const SymbolicDimProduct& x);
   std::pair<SymbolicDimProduct, SymbolicDimProduct>
@@ -163,7 +117,7 @@ class SymbolicDimMgr {
  private:
   ModuleOp m_;
 
-  SymbolTable symbolTable_;
+  SymbolTable symbol_table_;
 
   int64_t nextSymbolicIdx_ = 0;
 

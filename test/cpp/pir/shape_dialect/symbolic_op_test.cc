@@ -26,6 +26,7 @@
 #include "paddle/pir/dialect/shape/ir/shape_dialect.h"
 #include "paddle/pir/dialect/shape/ir/shape_op.h"
 #include "paddle/pir/dialect/shape/utils/shape_utils.h"
+#include "paddle/pir/dialect/shape/utils/symbol_table.h"
 
 pir::AttributeMap CreateAttributeMap(
     const std::vector<std::string> &attribute_names,
