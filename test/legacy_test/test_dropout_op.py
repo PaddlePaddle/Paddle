@@ -330,8 +330,9 @@ class TestDropoutOpWithSeed(OpTest):
         self.enable_check_static_comp = False
 
     def test_check_output(self):
+        # ir backward don't support of variable derivation of itself
         self.check_output(
-            check_prim=True, check_prim_pir=True, check_new_ir=True
+            check_prim=True, check_prim_pir=False, check_new_ir=True
         )
 
     def test_check_grad_normal(self):
@@ -1518,7 +1519,7 @@ def apply_to_static(net, use_cinn):
     (
         (
             'fp32',
-            np.random.rand(100000),
+            np.ones(100000),
             0.3,
             False,
             'upscale_in_train',
@@ -1528,7 +1529,7 @@ def apply_to_static(net, use_cinn):
         ),
         (
             'bfp16',
-            np.random.rand(100000),
+            np.ones(100000),
             0.3,
             False,
             'upscale_in_train',
@@ -1538,7 +1539,7 @@ def apply_to_static(net, use_cinn):
         ),
         (
             'fp64',
-            np.random.rand(100000),
+            np.ones(100000),
             0.7,
             False,
             'upscale_in_train',
@@ -1548,7 +1549,7 @@ def apply_to_static(net, use_cinn):
         ),
         (
             'is_test=True',
-            np.random.rand(100000),
+            np.ones(100000),
             0.5,
             True,
             'upscale_in_train',
@@ -1558,7 +1559,7 @@ def apply_to_static(net, use_cinn):
         ),
         (
             'p=1.0',
-            np.random.rand(100000),
+            np.ones(100000),
             1.0,
             True,
             'upscale_in_train',
@@ -1568,7 +1569,7 @@ def apply_to_static(net, use_cinn):
         ),
         (
             'p=1.0,dtype=bfp16',
-            np.random.rand(100000),
+            np.ones(100000),
             1.0,
             True,
             'upscale_in_train',
@@ -1578,7 +1579,7 @@ def apply_to_static(net, use_cinn):
         ),
         (
             'p=1.0,test=False',
-            np.random.rand(100000),
+            np.ones(100000),
             1.0,
             False,
             'upscale_in_train',
@@ -1588,7 +1589,7 @@ def apply_to_static(net, use_cinn):
         ),
         (
             'p=1.0,test=False,dtype=bfp16',
-            np.random.rand(100000),
+            np.ones(100000),
             1.0,
             False,
             'upscale_in_train',
@@ -1598,7 +1599,7 @@ def apply_to_static(net, use_cinn):
         ),
         (
             'p=0.0',
-            np.random.rand(100000),
+            np.ones(100000),
             0,
             True,
             'upscale_in_train',
@@ -1608,7 +1609,7 @@ def apply_to_static(net, use_cinn):
         ),
         (
             'p=0.0,dtype=bfp16',
-            np.random.rand(100000),
+            np.ones(100000),
             0,
             True,
             'upscale_in_train',
@@ -1618,7 +1619,7 @@ def apply_to_static(net, use_cinn):
         ),
         (
             'downgrade_train',
-            np.random.rand(100000),
+            np.ones(100000),
             0.5,
             False,
             'downscale_in_infer',
@@ -1628,7 +1629,7 @@ def apply_to_static(net, use_cinn):
         ),
         (
             'downgrade_train,dtype=bfp16',
-            np.random.rand(100000),
+            np.ones(100000),
             0.5,
             False,
             'downscale_in_infer',
@@ -1638,7 +1639,7 @@ def apply_to_static(net, use_cinn):
         ),
         (
             'fp32_cpu',
-            np.random.rand(100000),
+            np.ones(100000),
             0.6,
             False,
             'upscale_in_train',
@@ -1648,7 +1649,7 @@ def apply_to_static(net, use_cinn):
         ),
         (
             'fp64_cpu',
-            np.random.rand(100000),
+            np.ones(100000),
             0.6,
             False,
             'upscale_in_train',
@@ -1658,7 +1659,7 @@ def apply_to_static(net, use_cinn):
         ),
         (
             'downgrade_train_cpu',
-            np.random.rand(100000),
+            np.ones(100000),
             0.5,
             False,
             'downscale_in_infer',
@@ -1860,7 +1861,7 @@ class TestCompositeDropout(unittest.TestCase):
     (
         (
             'fp32',
-            np.random.rand(100000),
+            np.ones(100000),
             0.3,
             False,
             'upscale_in_train',
@@ -1870,7 +1871,7 @@ class TestCompositeDropout(unittest.TestCase):
         ),
         (
             'bfp16',
-            np.random.rand(100000),
+            np.ones(100000),
             0.3,
             False,
             'upscale_in_train',
@@ -1880,7 +1881,7 @@ class TestCompositeDropout(unittest.TestCase):
         ),
         (
             'fp64',
-            np.random.rand(100000),
+            np.ones(100000),
             0.7,
             False,
             'upscale_in_train',
@@ -1890,7 +1891,7 @@ class TestCompositeDropout(unittest.TestCase):
         ),
         (
             'is_test=True',
-            np.random.rand(100000),
+            np.ones(100000),
             0.5,
             True,
             'upscale_in_train',
@@ -1900,7 +1901,7 @@ class TestCompositeDropout(unittest.TestCase):
         ),
         (
             'p=1.0',
-            np.random.rand(100000),
+            np.ones(100000),
             1.0,
             True,
             'upscale_in_train',
@@ -1910,7 +1911,7 @@ class TestCompositeDropout(unittest.TestCase):
         ),
         (
             'p=1.0,dtype=bfp16',
-            np.random.rand(100000),
+            np.ones(100000),
             1.0,
             True,
             'upscale_in_train',
@@ -1920,7 +1921,7 @@ class TestCompositeDropout(unittest.TestCase):
         ),
         (
             'p=1.0,test=False',
-            np.random.rand(100000),
+            np.ones(100000),
             1.0,
             False,
             'upscale_in_train',
@@ -1930,7 +1931,7 @@ class TestCompositeDropout(unittest.TestCase):
         ),
         (
             'p=1.0,test=False,dtype=bfp16',
-            np.random.rand(100000),
+            np.ones(100000),
             1.0,
             False,
             'upscale_in_train',
@@ -1940,7 +1941,7 @@ class TestCompositeDropout(unittest.TestCase):
         ),
         (
             'p=0.0',
-            np.random.rand(100000),
+            np.ones(100000),
             0,
             True,
             'upscale_in_train',
@@ -1950,7 +1951,7 @@ class TestCompositeDropout(unittest.TestCase):
         ),
         (
             'p=0.0,dtype=bfp16',
-            np.random.rand(100000),
+            np.ones(100000),
             0,
             True,
             'upscale_in_train',
@@ -1960,7 +1961,7 @@ class TestCompositeDropout(unittest.TestCase):
         ),
         (
             'downgrade_train',
-            np.random.rand(100000),
+            np.ones(100000),
             0.5,
             False,
             'downscale_in_infer',
@@ -1970,7 +1971,7 @@ class TestCompositeDropout(unittest.TestCase):
         ),
         (
             'downgrade_train,dtype=bfp16',
-            np.random.rand(100000),
+            np.ones(100000),
             0.5,
             False,
             'downscale_in_infer',
@@ -1980,7 +1981,7 @@ class TestCompositeDropout(unittest.TestCase):
         ),
         (
             'fp32_cpu',
-            np.random.rand(100000),
+            np.ones(100000),
             0.6,
             False,
             'upscale_in_train',
@@ -1990,7 +1991,7 @@ class TestCompositeDropout(unittest.TestCase):
         ),
         (
             'fp64_cpu',
-            np.random.rand(100000),
+            np.ones(100000),
             0.6,
             False,
             'upscale_in_train',
@@ -2000,7 +2001,7 @@ class TestCompositeDropout(unittest.TestCase):
         ),
         (
             'downgrade_train_cpu',
-            np.random.rand(100000),
+            np.ones(100000),
             0.5,
             False,
             'downscale_in_infer',

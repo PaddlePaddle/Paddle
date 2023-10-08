@@ -98,13 +98,13 @@ OPTIONAL_VALUE_INPUT_TEMPLATE = """
 
 OPTIONAL_OPRESULT_OUTPUT_TEMPLATE = """
     paddle::optional<pir::OpResult> optional_{name};
-    if (!IsEmptyOpResult({op_name}_op.result({index}))) {{
+    if (!IsEmptyValue({op_name}_op.result({index}))) {{
         optional_{name} = paddle::make_optional<pir::OpResult>({op_name}_op.result({index}));
     }}"""
 
 OPTIONAL_VECTOR_OPRESULT_OUTPUT_TEMPLATE = """
     paddle::optional<std::vector<pir::OpResult>> optional_{name};
-    if (!IsEmptyOpResult({op_name}_op.result({index}))) {{
+    if (!IsEmptyValue({op_name}_op.result({index}))) {{
         auto optional_{name}_slice_op = APIBuilder::Instance().GetBuilder()->Build<pir::SplitOp>({op_name}_op.result({index}));
         optional_{name} = paddle::make_optional<std::vector<pir::OpResult>>(optional_{name}_slice_op.outputs());
     }}"""
