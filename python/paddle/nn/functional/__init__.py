@@ -133,6 +133,7 @@ from .vision import pixel_unshuffle  # noqa: F401
 from .vision import channel_shuffle  # noqa: F401
 from .input import one_hot  # noqa: F401
 from .input import embedding  # noqa: F401
+from .input import embedding_bag  # noqa: F401
 from .extension import gather_tree  # noqa: F401
 from .extension import temporal_shift  # noqa: F401
 
