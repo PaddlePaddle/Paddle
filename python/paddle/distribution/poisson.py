@@ -177,17 +177,8 @@ class Poisson(distribution.Distribution):
         values = self._enumerate_bounded_support(self.rate).reshape(
             (-1,) + (1,) * len(self.batch_shape)
         )
-        log_prob = paddle.nan_to_num(
-            (
-                -self.rate
-                + values * paddle.log(self.rate)
-                - paddle.lgamma(values + 1)
-            ),
-            neginf=0,
-        )
-        return paddle.nan_to_num(
-            -(paddle.exp(log_prob) * log_prob), posinf=0
-        ).sum(0)
+        log_prob = self.log_prob(values)
+        return -(paddle.exp(log_prob) * log_prob).sum(0)
 
     def _enumerate_bounded_support(self, rate):
         """Generate a bounded approximation of the support. Approximately view Poisson r.v. as a Normal r.v. with mu = rate and sigma = sqrt(rate).
@@ -218,14 +209,14 @@ class Poisson(distribution.Distribution):
             raise ValueError(
                 'Every element of input parameter `value` should be nonnegative.'
             )
-
+        eps = paddle.finfo(self.rate.dtype).eps
         return paddle.nan_to_num(
             (
                 -self.rate
                 + value * paddle.log(self.rate)
                 - paddle.lgamma(value + 1)
             ),
-            neginf=0,
+            neginf=eps,
         )
 
     def prob(self, value):

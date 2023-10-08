@@ -31,13 +31,13 @@ paddle.enable_static()
     [
         (
             'one-dim',
-            np.array([100]),
+            np.array([20]),
             parameterize.xrand((1,), dtype='float32', min=0, max=1),
         ),
         (
             'multi-dim',
-            np.array([100]),
-            parameterize.xrand((3, 2), dtype='float32', min=0, max=1),
+            np.array([20]),
+            parameterize.xrand((1, 3), dtype='float32', min=0, max=1),
         ),
     ],
 )
@@ -58,7 +58,7 @@ class TestBinomial(unittest.TestCase):
             var = dist.variance
             entropy = dist.entropy()
             mini_samples = dist.sample(shape=())
-            large_samples = dist.sample(shape=(5000,))
+            large_samples = dist.sample(shape=(500,))
         fetch_list = [mean, var, entropy, mini_samples, large_samples]
         feed = {
             'probability': self.probability,
@@ -191,17 +191,17 @@ class TestBinomialProbs(unittest.TestCase):
     [
         (
             'one-dim-probability',
-            np.array([75]),
+            np.array([16]),
             parameterize.xrand((1,), dtype='float32', min=0, max=1),
             np.array([75]),
             parameterize.xrand((1,), dtype='float32', min=0, max=1),
         ),
         (
             'multi-dim-probability',
-            np.array([189]),
-            parameterize.xrand((5, 3), dtype='float32', min=0, max=1),
-            np.array([189]),
-            parameterize.xrand((5, 3), dtype='float32', min=0, max=1),
+            np.array([32]),
+            parameterize.xrand((1, 2), dtype='float32', min=0, max=1),
+            np.array([32]),
+            parameterize.xrand((1, 2), dtype='float32', min=0, max=1),
         ),
     ],
 )

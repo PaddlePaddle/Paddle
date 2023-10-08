@@ -200,7 +200,8 @@ class Binomial(distribution.Distribution):
             numpy.ndarray: the entropy for the binomial r.v.
         """
         values = self._enumerate_support()
-        log_prob = paddle.nan_to_num(self.log_prob(values), neginf=0)
+        eps = paddle.finfo(self.probability.dtype).eps
+        log_prob = paddle.nan_to_num(self.log_prob(values), neginf=eps)
         return -(paddle.exp(log_prob) * log_prob).sum(0)
 
     def _enumerate_support(self):
