@@ -649,10 +649,10 @@ std::string EagerUtils::TensorStr(const paddle::Tensor& t) {
       "Type: %s, Dtype: %s, Place: %s, Shape: %s, DistAttr: %s";
   std::string tensor_info_str = "";
   if (t.defined()) {
-    if (t.initialized()) {
-      if (t.is_dist_tensor()) {
-        auto dist_t =
-            std::static_pointer_cast<phi::distributed::DistTensor>(t.impl());
+    if (t.is_dist_tensor()) {
+      auto dist_t =
+          std::static_pointer_cast<phi::distributed::DistTensor>(t.impl());
+      if (t.initialized()) {
         tensor_info_str += paddle::string::Sprintf(
             TENSOR_INFO_TEMPLATE,
             t.impl()->type_info().name(),
@@ -664,24 +664,34 @@ std::string EagerUtils::TensorStr(const paddle::Tensor& t) {
       } else {
         tensor_info_str += paddle::string::Sprintf(TENSOR_INFO_TEMPLATE,
                                                    t.impl()->type_info().name(),
+                                                   "Unknown",
+                                                   "Unknown",
+                                                   t.dims(),
+                                                   dist_t->dist_attr());
+      }
+    } else {
+      if (t.initialized()) {
+        tensor_info_str += paddle::string::Sprintf(TENSOR_INFO_TEMPLATE,
+                                                   t.impl()->type_info().name(),
                                                    t.dtype(),
                                                    t.place().DebugString(),
                                                    t.dims(),
                                                    "Unknown");
+      } else {
+        tensor_info_str += paddle::string::Sprintf(TENSOR_INFO_TEMPLATE,
+                                                   t.impl()->type_info().name(),
+                                                   "Unknown",
+                                                   "Unknown",
+                                                   "Unknown",
+                                                   "Unknown");
       }
-    } else {
-      tensor_info_str += paddle::string::Sprintf(TENSOR_INFO_TEMPLATE,
-                                                 t.impl()->type_info().name(),
-                                                 "Unknown",
-                                                 "Unknown",
-                                                 "Unknown");
     }
   } else {
     tensor_info_str += "Unknown";
   }
   if (VLOG_IS_ON(11)) {
     const char* TENSOR_PRINT_TEMPLATE =
-        "{Name: %s, Initialized: %d, Ptr: %d "
+        "{Name: %s, Initialized: %d, Ptr: %d, "
         "TensorInfo: [ %s ], Value:[ %s ], ADInfo:[ %s ]}";
     auto* ad_meta = nullable_autograd_meta(t);
     if (ad_meta && (ad_meta->WeakGrad().lock().get())) {
@@ -732,7 +742,7 @@ std::string EagerUtils::TensorStr(const paddle::Tensor& t) {
     }
   } else if (VLOG_IS_ON(6)) {
     const char* TENSOR_PRINT_TEMPLATE =
-        "{Name: %s, Initialized: %d, Ptr: %d "
+        "{Name: %s, Initialized: %d, Ptr: %d,"
         "TensorInfo: [ %s ], ADInfo:[ %s ]}";
     auto* ad_meta = nullable_autograd_meta(t);
     if (ad_meta && (ad_meta->WeakGrad().lock().get())) {
@@ -759,7 +769,7 @@ std::string EagerUtils::TensorStr(const paddle::Tensor& t) {
     }
   } else if (VLOG_IS_ON(5)) {
     const char* TENSOR_PRINT_TEMPLATE =
-        "{Name: %s, Initialized: %d , Ptr: %d "
+        "{Name: %s, Initialized: %d , Ptr: %d, "
         "TensorInfo: [ %s ]}";
     return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
                                    tensor_name_str,

@@ -1256,39 +1256,88 @@ const paddle::framework::Variable* GetVariableByName(
   return nullptr;
 }
 
+std::vector<std::string> GetOriginInputNames(std::string op_name) {
+  std::vector<std::string> ret;
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
+  if (op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()) {
+    paddle::dialect::OpYamlInfoParser yaml_parser(
+        op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
+            ->get_op_info_());
+    ret = yaml_parser.InputNames();
+  }
+  return ret;
+}
+
+std::vector<std::string> GetOriginOutputNames(std::string op_name) {
+  std::vector<std::string> ret;
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
+  if (op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()) {
+    paddle::dialect::OpYamlInfoParser yaml_parser(
+        op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
+            ->get_op_info_());
+    ret = yaml_parser.OutputNames();
+  }
+  return ret;
+}
+
 void PrintValuesAndVariables(
     const pir::Block& block,
     const std::unordered_map<pir::Value, std::string>& value_2_var_name,
     const std::unordered_map<const paddle::framework::Variable*, std::string>&
         variable_2_var_name) {
-  std::stringstream ss;
   for (const auto& op : block) {
+    std::stringstream ss;
     VLOG(6) << "-----------------------------";
     op->Print(ss);
     VLOG(6) << ss.str();
+
+    std::string op_name = op->name();
+    if (op->attributes().count("op_name")) {
+      op_name = op->attributes()
+                    .at("op_name")
+                    .dyn_cast<pir::StrAttribute>()
+                    .AsString();
+    }
+    std::vector<std::string> origin_input_names = GetOriginInputNames(op_name);
+    std::vector<std::string> origin_output_names =
+        GetOriginOutputNames(op_name);
 
     // 1. output string
     std::string ret_value_str = "Value   : (";
     std::string ret_variable_str = "Variable: (";
     if (!op->results().empty()) {
-      for (auto& out_value : op->results()) {
+      for (size_t i = 0; i < op->num_results(); ++i) {
+        pir::Value out_value = op->result(i);
         if (value_2_var_name.count(out_value)) {
+          // get Variable by Value
           auto& var_name = value_2_var_name.at(out_value);
           const paddle::framework::Variable* out_variable =
               GetVariableByName(var_name, variable_2_var_name);
+
+          // get origin name
+          std::string origin_name;
+          if (!origin_output_names.empty())
+            origin_name = origin_output_names[i];
+          else
+            origin_name = var_name;
+
+          // process info
           ss.str("");
           ss << out_value.impl();
           ret_value_str +=
-              (std::string(var_name.length(), ' ') + "[" + ss.str() + "]");
+              (std::string(origin_name.length(), ' ') + "[" + ss.str() + "]");
           ss.str("");
           if (out_variable) {
             ss << out_variable;
-            ret_variable_str += (var_name + "[" + ss.str() + "]");
+            ret_variable_str += (origin_name + "[" + ss.str() + "]");
           } else {
-            ret_variable_str += (var_name + "[NULL]");
+            ret_variable_str += (origin_name + "[NULL]");
           }
         } else {
           ret_value_str += "NULL";
+          ret_variable_str += "NULL";
         }
         ret_value_str += ", ";
         ret_variable_str += ", ";
@@ -1301,15 +1350,6 @@ void PrintValuesAndVariables(
     ret_variable_str += ") = ";
 
     // 2. op name
-    std::string op_name;
-    if (op->attributes().find("op_name") != op->attributes().end()) {
-      op_name = op->attributes()
-                    .at("op_name")
-                    .dyn_cast<::pir::StrAttribute>()
-                    .AsString();
-    } else {
-      op_name = op->name();
-    }
     ret_value_str += op_name;
     ret_variable_str += op_name;
 
@@ -1317,25 +1357,36 @@ void PrintValuesAndVariables(
     ret_value_str += "(";
     ret_variable_str += "(";
     if (!op->operands().empty()) {
-      for (auto& input : op->operands()) {
-        ::pir::Value in_value = input.source();
+      for (size_t i = 0; i < op->num_operands(); ++i) {
+        ::pir::Value in_value = op->operand(i).source();
         if (value_2_var_name.count(in_value)) {
+          // get Variable by Value
           auto& var_name = value_2_var_name.at(in_value);
           const paddle::framework::Variable* in_variable =
               GetVariableByName(var_name, variable_2_var_name);
+
+          // get origin name
+          std::string origin_name;
+          if (!origin_input_names.empty())
+            origin_name = origin_input_names[i];
+          else
+            origin_name = var_name;
+
+          // process info
           ss.str("");
           ss << in_value.impl();
           ret_value_str +=
-              (std::string(var_name.length(), ' ') + "[" + ss.str() + "]");
+              (std::string(origin_name.length(), ' ') + "[" + ss.str() + "]");
           ss.str("");
           if (in_variable) {
             ss << in_variable;
-            ret_variable_str += (var_name + "[" + ss.str() + "]");
+            ret_variable_str += (origin_name + "[" + ss.str() + "]");
           } else {
-            ret_variable_str += (var_name + "[NULL]");
+            ret_variable_str += (origin_name + "[NULL]");
           }
         } else {
           ret_value_str += "NULL";
+          ret_variable_str += "NULL";
         }
         ret_value_str += ", ";
         ret_variable_str += ", ";

@@ -106,7 +106,7 @@ class IrContextImpl {
   void RegisterOpInfo(const std::string &name, OpInfo info) {
     std::lock_guard<pir::SpinLock> guard(registed_op_infos_lock_);
     VLOG(6) << "Register an operation of: [Name=" << name
-            << ", OpInfo ptr=" << info.AsOpaquePointer() << "].";
+            << ", OpInfo ptr=" << info << "].";
     registed_op_infos_.emplace(name, info);
   }
 
@@ -115,7 +115,7 @@ class IrContextImpl {
     auto iter = registed_op_infos_.find(name);
     if (iter != registed_op_infos_.end()) {
       VLOG(8) << "Found a cached OpInfo of: [name=" << name
-              << ", OpInfo: ptr=" << iter->second.AsOpaquePointer() << "].";
+              << ", OpInfo: ptr=" << iter->second << "].";
       return iter->second;
     }
     VLOG(8) << "No cache found operation of: [Name=" << name << "].";
