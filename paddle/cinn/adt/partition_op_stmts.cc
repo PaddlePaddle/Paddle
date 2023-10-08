@@ -25,23 +25,20 @@
 namespace cinn::adt {
 
 AnchorIndex PickThenEraseAnchorIndex(
-    std::unordered_set<AnchorIndex>* candidate_anchor_indexes) {
-  // Heuristic optimization will be added later
-  // such as choosing the one with the biggest rank number as the anchor tensor
-  // first
-  AnchorIndex ret = *candidate_anchor_indexes->begin();
-  candidate_anchor_indexes->erase(candidate_anchor_indexes->begin());
+    std::vector<AnchorIndex>* candidate_anchor_indexes) {
+  AnchorIndex ret = candidate_anchor_indexes->back();
+  candidate_anchor_indexes->pop_back();
   return ret;
 }
 
-std::unordered_set<AnchorIndex> InitCandidateAnchorIndex(
+std::vector<AnchorIndex> InitCandidateAnchorIndex(
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,
     const List<OpStmt>& op_stmts) {
-  std::unordered_set<AnchorIndex> ret{};
+  std::vector<AnchorIndex> ret{};
   for (const auto& op_stmt : *op_stmts) {
     const auto& equation_ctx = EquationCtx4OpStmt(op_stmt);
     equation_ctx->VisitEachTensorIndex(
-        [&](const auto& tensor_index) { ret.emplace(tensor_index); });
+        [&](const auto& tensor_index) { ret.emplace_back(tensor_index); });
   }
   return ret;
 }
@@ -296,14 +293,22 @@ void UpdataAnchorIndex2AnchorGroup(
 
 void EraseCandidateAnchorIndexes(
     const AnchorGroup& igroup_spec,
-    std::unordered_set<AnchorIndex>* candidate_anchor_indexes) {
+    std::vector<AnchorIndex>* candidate_anchor_indexes) {
   VisitTensorIndex(igroup_spec, [&](const auto& tensor_index) {
-    candidate_anchor_indexes->erase(tensor_index);
+    auto iter = std::find(candidate_anchor_indexes->begin(),
+                          candidate_anchor_indexes->end(),
+                          tensor_index);
+    while (iter != candidate_anchor_indexes->end()) {
+      candidate_anchor_indexes->erase(iter);
+      iter = std::find(candidate_anchor_indexes->begin(),
+                       candidate_anchor_indexes->end(),
+                       tensor_index);
+    }
   });
 }
 
 std::unordered_map<AnchorIndex, AnchorGroup> PartitionOpStmtsIntoAnchorGroups(
-    std::unordered_set<AnchorIndex>* candidate_anchor_indexes,
+    std::vector<AnchorIndex>* candidate_anchor_indexes,
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,
     const List<OpStmt>& op_stmts,
     const std::shared_ptr<DirectionEquationGenerator>&
@@ -478,7 +483,7 @@ std::vector<AnchorGroup> PartitionOpStmts(
     const List<OpStmt>& op_stmts,
     const std::shared_ptr<DirectionEquationGenerator>&
         direction_equation_generator) {
-  std::unordered_set<AnchorIndex> candidate_anchor_indexes =
+  std::vector<AnchorIndex> candidate_anchor_indexes =
       InitCandidateAnchorIndex(EquationCtx4OpStmt, op_stmts);
 
   std::unordered_map<AnchorIndex, AnchorGroup> anchor_index2igroup_spec =

@@ -129,17 +129,17 @@ WriteBroadcastDisabledBidirectionEquationGenerator::GetDirectionEquations()
     const {
   std::shared_ptr<const EquationFunctionConstantsProvider> constants_provider{
       new NaiveEquationFunctionConstantsProvider{
-          naive_bidirection_equation_generator_->op_stmts(),
-          naive_bidirection_equation_generator_->EquationCtx4OpStmt()}};
+          naive_bidirection_equation_generator_.op_stmts(),
+          naive_bidirection_equation_generator_.EquationCtx4OpStmt()}};
   Equations ret{};
   VisitEachOpStmtAndEquationCtx(
-      naive_bidirection_equation_generator_->op_stmts(),
-      naive_bidirection_equation_generator_->EquationCtx4OpStmt(),
+      naive_bidirection_equation_generator_.op_stmts(),
+      naive_bidirection_equation_generator_.EquationCtx4OpStmt(),
       [&](std::size_t idx,
           const OpStmt& op_stmt,
           const std::shared_ptr<config::NaiveOpEquationContext>& ctx) {
         const auto& in_msg2out_msg_equations =
-            naive_bidirection_equation_generator_->equations();
+            naive_bidirection_equation_generator_.equations();
         const auto& truncated_output_tensor_idxes =
             GenerateWriteBroadcastTensorIndexs(
                 ctx, in_msg2out_msg_equations, constants_provider);

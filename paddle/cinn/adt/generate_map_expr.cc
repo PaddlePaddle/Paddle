@@ -245,11 +245,6 @@ GraphView GenerateSdEquationGraphView(const std::shared_ptr<IGroup>& igroup,
   return Graph::New(equations)->GetGraphView();
 }
 
-GraphView MakeEquationGraphView(const std::shared_ptr<IGroup>& igroup,
-                                const ScheduleDescriptor& sd) {
-  return GenerateSdEquationGraphView(igroup, sd);
-}
-
 using TensorIndexExpr = Value;
 
 std::unordered_map<Variable, const Value> MakeSdIterator2Iterator(
@@ -382,7 +377,7 @@ AnchoredMapStmt GenerateAnchoredMapStmt(
 
 AnchoredMapStmt GenerateAnchoredMapStmt(const std::shared_ptr<IGroup>& igroup,
                                         const ScheduleDescriptor& sd) {
-  const auto& sd_equation_graph_view = MakeEquationGraphView(igroup, sd);
+  const auto& sd_equation_graph_view = GenerateSdEquationGraphView(igroup, sd);
 
   const auto& TensorIndexExpr4Tensor =
       MakeGetterTensorIndexExpr(igroup, sd_equation_graph_view);
