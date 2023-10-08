@@ -13,6 +13,8 @@
 # limitations under the License.
 
 
+from functools import wraps
+
 import paddle
 
 
@@ -95,3 +97,16 @@ class IrGuard:
                 "IrGuard._switch_to_old_ir only work when paddle.framework.in_pir_mode() is false, \
                 please set FLAGS_enable_pir_api = false"
             )
+
+
+def test_with_pir_api():
+    def decorator(func):
+        @wraps(func)
+        def impl(*args, **kwargs):
+            func(*args, **kwargs)
+            with IrGuard():
+                func(*args, **kwargs)
+
+        return impl
+
+    return decorator
