@@ -1045,7 +1045,6 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
                  pir::Value cond,
                  std::vector<pir::Type> &&output_types) {
   VLOG(4) << "Start build IfOp";
-
   argument.AddRegions(2u);
   argument.AddInput(cond);
   argument.output_types.swap(output_types);
@@ -1086,11 +1085,9 @@ void WhileOp::Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
                     const std::vector<pir::Value> &inputs,
                     const std::vector<pir::Type> &output_types) {
-  // auto insert_point = builder.insert_point();
   argument.AddInputs(inputs);
   argument.AddOutputs(output_types);
-  argument.AddRegion(nullptr);
-  argument.AddRegion(nullptr);
+  argument.AddRegions(2u);
 }
 pir::Block *WhileOp::cond_block() {
   pir::Region &cond_region = (*this)->region(0);
