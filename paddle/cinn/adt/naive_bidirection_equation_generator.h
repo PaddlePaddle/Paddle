@@ -23,7 +23,6 @@
 
 namespace cinn::adt {
 
-class EquationFunctionConstantsProvider;
 namespace config {
 class NaiveOpEquationContext;
 }

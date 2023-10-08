@@ -35,26 +35,23 @@ class WriteBroadcastDisabledBidirectionEquationGenerator final
   WriteBroadcastDisabledBidirectionEquationGenerator(
       const List<OpStmt>& op_stmts,
       const EquationCtx4OpStmtT& EquationCtx4OpStmt)
-      : naive_bidirection_equation_generator_(
-            std::make_unique<NaiveBidirectionEquationGenerator>(
-                op_stmts, EquationCtx4OpStmt)) {}
+      : naive_bidirection_equation_generator_(op_stmts, EquationCtx4OpStmt) {}
 
   Equations GetDirectionEquations() const override;
 
   std::function<const OpStmt*(const FakeOpPlaceHolder&)>
   MakeGetterOpStmt4OpPlaceHolder() const override {
     return naive_bidirection_equation_generator_
-        ->MakeGetterOpStmt4OpPlaceHolder();
+        .MakeGetterOpStmt4OpPlaceHolder();
   }
 
   std::optional<Index> OutMsgIndex4InMsgIndex(
       const Index& index) const override {
-    return naive_bidirection_equation_generator_->OutMsgIndex4InMsgIndex(index);
+    return naive_bidirection_equation_generator_.OutMsgIndex4InMsgIndex(index);
   }
 
  private:
-  std::unique_ptr<NaiveBidirectionEquationGenerator>
-      naive_bidirection_equation_generator_;
+  NaiveBidirectionEquationGenerator naive_bidirection_equation_generator_;
 };
 
 }  // namespace cinn::adt
