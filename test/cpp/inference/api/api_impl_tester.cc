@@ -330,13 +330,4 @@ TEST(inference_api_native, word2vec_cpu_onednn) {
 }
 #endif
 
-TEST(PassBuilder, Delete) {
-  AnalysisConfig config;
-  config.DisableGpu();
-  config.pass_builder()->DeletePass("attention_lstm_fuse_pass");
-  const auto& passes = config.pass_builder()->AllPasses();
-  auto it = std::find(passes.begin(), passes.end(), "attention_lstm_fuse_pass");
-  ASSERT_EQ(it, passes.end());
-}
-
 }  // namespace paddle

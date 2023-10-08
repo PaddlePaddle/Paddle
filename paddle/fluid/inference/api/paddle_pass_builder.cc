@@ -311,7 +311,6 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
   // not be damaged by smaller ones.
   passes_.assign({"simplify_with_basic_ops_pass",  //
                   "layer_norm_fuse_pass",
-                  "attention_lstm_fuse_pass",       //
                   "seqconv_eltadd_relu_fuse_pass",  //
                   // "seqpool_concat_fuse_pass",    //
                   "seqpool_cvm_concat_fuse_pass",  //
@@ -428,7 +427,6 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.emplace_back("constant_folding_pass");
     passes_.emplace_back("squeeze2_transpose2_onednn_fuse_pass");
     passes_.emplace_back("layer_norm_fuse_pass");
-    passes_.emplace_back("attention_lstm_fuse_pass");
     passes_.emplace_back("seqconv_eltadd_relu_fuse_pass");
     passes_.emplace_back("fc_lstm_fuse_pass");
     passes_.emplace_back("mul_lstm_fuse_pass");
