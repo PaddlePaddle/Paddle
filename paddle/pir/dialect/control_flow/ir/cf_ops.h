@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-
+#include <functional>
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/op_base.h"
 
@@ -30,6 +30,31 @@ class IR_API YieldOp : public Op<YieldOp> {
                     const std::vector<Value> &Value);
   void Verify() {}
 };
+
+class IR_API CondYieldOp : public Op<CondYieldOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "cf.cond_yield"; }
+  static constexpr uint32_t attributes_num = 0;
+  static constexpr const char **attributes_name = nullptr;
+
+  template <class ValueContainer>
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    Value cond,
+                    const ValueContainer &inputs);
+  void Verify() {}
+};
+
+template <class ValueContainer>
+void CondYieldOp::Build(Builder &builder,             // NOLINT
+                        OperationArgument &argument,  // NOLINT
+                        Value cond,
+                        const ValueContainer &inputs) {
+  argument.AddInput(cond);
+  argument.AddInputs(inputs);
+}
 }  // namespace pir
 
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::YieldOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::CondYieldOp);

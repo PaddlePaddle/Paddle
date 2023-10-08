@@ -48,7 +48,11 @@ class TestElementwiseOp(OpTest):
 
     def test_check_grad_normal(self):
         self.check_grad(
-            ['X', 'Y'], 'Out', check_prim=self.check_prim, check_new_ir=True
+            ['X', 'Y'],
+            'Out',
+            check_prim=self.check_prim,
+            check_prim_pir=self.check_prim_pir,
+            check_new_ir=True,
         )
 
     def test_check_grad_ingore_x(self):
@@ -58,6 +62,7 @@ class TestElementwiseOp(OpTest):
             max_relative_error=0.005,
             no_grad_set=set("X"),
             check_prim=self.check_prim,
+            check_prim_pir=self.check_prim_pir,
             check_new_ir=True,
         )
 
@@ -68,11 +73,13 @@ class TestElementwiseOp(OpTest):
             max_relative_error=0.005,
             no_grad_set=set('Y'),
             check_prim=self.check_prim,
+            check_prim_pir=self.check_prim_pir,
             check_new_ir=True,
         )
 
     def if_check_prim(self):
         self.check_prim = True
+        self.check_prim_pir = True
 
     def if_enable_cinn(self):
         pass
@@ -125,6 +132,8 @@ class TestElementwiseBF16OP(TestElementwiseOp):
             'Out',
             no_grad_set=set("X"),
             max_relative_error=0.1,
+            check_prim=True,
+            check_prim_pir=True,
             check_new_ir=True,
         )
 
@@ -137,6 +146,7 @@ class TestElementwiseBF16OP(TestElementwiseOp):
             no_grad_set=set('Y'),
             max_relative_error=0.1,
             check_prim=True,
+            check_prim_pir=True,
             check_new_ir=True,
         )
 

@@ -119,6 +119,7 @@ class IR_API alignas(8) Operation final {
   Program *GetParentProgram();
   operator Block::Iterator() { return position_; }
   operator Block::ConstIterator() const { return position_; }
+  void MoveTo(Block *block, Block::Iterator position);
 
   void Print(std::ostream &os);
   pir::OpInfo info() const { return info_; }
@@ -172,10 +173,10 @@ class IR_API alignas(8) Operation final {
   detail::OpOperandImpl *op_operand_impl(uint32_t index);
   const detail::OpOperandImpl *op_operand_impl(uint32_t index) const;
 
-  template <typename T, typename Enabler = void>
+  template <typename To, typename Enabler = void>
   struct CastUtil {
-    static T call(Operation *op) {
-      throw("Can't dyn_cast to T, T should be a Op or Trait or Interface");
+    static To call(Operation *op) {
+      throw("Can't dyn_cast to To, To should be a Op or Trait or Interface");
     }
   };
 
@@ -183,11 +184,11 @@ class IR_API alignas(8) Operation final {
   friend class Block;
   void SetParent(Block *parent, const Block::Iterator &position);
 
-  template <typename T>
+  template <typename To>
   struct CastUtil<
-      T,
-      typename std::enable_if<std::is_base_of<OpBase, T>::value>::type> {
-    static T call(Operation *op) { return T::dyn_cast(op); }
+      To,
+      typename std::enable_if<std::is_base_of<OpBase, To>::value>::type> {
+    static To call(Operation *op) { return To::dyn_cast(op); }
   };
 
   AttributeMap attributes_;
