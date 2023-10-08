@@ -2248,7 +2248,7 @@ class CosineAnnealingWarmRestarts(LRScheduler):
     `SGDR: Stochastic Gradient Descent with Warm Restarts`_.
 
     Args:
-        optimizer (Optimizer): Wrapped optimizer.
+        learning_rate (float): Initial learning rate.
         T_0 (int): Number of iterations for the first restart.
         T_mult (int, optional): A factor increases :math:`T_{i}` after a restart. Default: 1.
         eta_min (float, optional): Minimum learning rate. Default: 0.
@@ -2312,7 +2312,15 @@ class CosineAnnealingWarmRestarts(LRScheduler):
             ...         scheduler.step(epoch)    # You should update learning rate each step
     """
 
-    def __init__(self, learning_rate, T_0, T_mult=1, eta_min=0, last_epoch=-1, verbose=False):
+    def __init__(
+        self,
+        learning_rate,
+        T_0,
+        T_mult=1,
+        eta_min=0,
+        last_epoch=-1,
+        verbose=False,
+    ):
         if T_0 <= 0 or not isinstance(T_0, int):
             raise ValueError("Expected positive integer T_0, but got {}".format(T_0))
         if T_mult < 1 or not isinstance(T_mult, int):
@@ -2325,7 +2333,12 @@ class CosineAnnealingWarmRestarts(LRScheduler):
         super().__init__(learning_rate, last_epoch, verbose)
 
     def get_lr(self):
-        return self.eta_min + (self.base_lr - self.eta_min) * (1 + math.cos(math.pi * self.T_cur / self.T_i)) / 2                
+        return (
+            self.eta_min
+            + (self.base_lr - self.eta_min)
+            * (1 + math.cos(math.pi * self.T_cur / self.T_i))
+            / 2
+        )
 
     def step(self, epoch=None):
         """
@@ -2353,13 +2366,22 @@ class CosineAnnealingWarmRestarts(LRScheduler):
                 self.T_i = self.T_i * self.T_mult
         else:
             if epoch < 0:
-                raise ValueError("Expected non-negative epoch, but got {}".format(epoch))
+                raise ValueError(
+                    f"Expected non-negative epoch, but got {epoch}"
+                )
             if epoch >= self.T_0:
                 if self.T_mult == 1:
                     self.T_cur = epoch % self.T_0
                 else:
-                    n = int(math.log((epoch / self.T_0 * (self.T_mult - 1) + 1), self.T_mult))
-                    self.T_cur = epoch - self.T_0 * (self.T_mult ** n - 1) / (self.T_mult - 1)
+                    n = int(
+                        math.log(
+                            (epoch / self.T_0 * (self.T_mult - 1) + 1),
+                            self.T_mult,
+                        )
+                    )
+                    self.T_cur = epoch - self.T_0 * (self.T_mult**n - 1) / (
+                        self.T_mult - 1
+                    )
                     self.T_i = self.T_0 * self.T_mult ** (n)
             else:
                 self.T_i = self.T_0

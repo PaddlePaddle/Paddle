@@ -214,14 +214,16 @@ class TestReduceOnPlateauDecay:
         self.assertEqual(scheduler.last_lr, scheduler1.last_lr)
 
 
-def cosine_annealing_warm_restarts_lr(
-        epoch_num, v_l
-):
+def cosine_annealing_warm_restarts_lr(epoch_num, v_l):
     if epoch_num is None and v_l['last_epoch'] < 0:
         epoch_num = 0
 
-    cur_lr = v_l['eta_min'] + (v_l['base_lr'] - v_l['eta_min']) * (
-            1 + math.cos(math.pi * v_l['T_cur'] / v_l['T_i'])) / 2
+    cur_lr = (
+        v_l['eta_min']
+        + (v_l['base_lr'] - v_l['eta_min'])
+        * (1 + math.cos(math.pi * v_l['T_cur'] / v_l['T_i']))
+        / 2
+    )
 
     if v_l['last_epoch'] == -1:
         cur_lr = v_l['base_lr']
@@ -234,13 +236,22 @@ def cosine_annealing_warm_restarts_lr(
             v_l['T_i'] = v_l['T_i'] * v_l['T_mult']
     else:
         if epoch_num < 0:
-            raise ValueError("Expected non-negative epoch, but got {}".format(epoch_num))
+            raise ValueError(
+                f"Expected non-negative epoch, but got {epoch_num}"
+            )
         if epoch_num >= v_l['T_0']:
             if v_l['T_mult'] == 1:
                 v_l['T_cur'] = epoch_num % v_l['T_0']
             else:
-                n = int(math.log((epoch_num / v_l['T_0'] * (v_l['T_mult'] - 1) + 1), v_l['T_mult']))
-                v_l['T_cur'] = epoch_num - v_l['T_0'] * (v_l['T_mult'] ** n - 1) / (v_l['T_mult'] - 1)
+                n = int(
+                    math.log(
+                        (epoch_num / v_l['T_0'] * (v_l['T_mult'] - 1) + 1),
+                        v_l['T_mult'],
+                    )
+                )
+                v_l['T_cur'] = epoch_num - v_l['T_0'] * (
+                    v_l['T_mult'] ** n - 1
+                ) / (v_l['T_mult'] - 1)
                 v_l['T_i'] = v_l['T_0'] * v_l['T_mult'] ** (n)
         else:
             v_l['T_i'] = v_l['T_0']
@@ -302,8 +313,15 @@ class TestCosineAnnealingWarmRestarts(unittest.TestCase):
 
     def _test_static(self, place, kwargs):
         paddle.enable_static()
-        v_l = {'base_lr': kwargs['learning_rate'], 'T_0': kwargs['T_0'], 'T_i': kwargs['T_0'],
-               'T_mult': kwargs['T_mult'], 'eta_min': kwargs['eta_min'], 'T_cur': -1, 'last_epoch': -1}
+        v_l = {
+            'base_lr': kwargs['learning_rate'],
+            'T_0': kwargs['T_0'],
+            'T_i': kwargs['T_0'],
+            'T_mult': kwargs['T_mult'],
+            'eta_min': kwargs['eta_min'],
+            'T_cur': -1,
+            'last_epoch': -1,
+        }
         scheduler = paddle.optimizer.lr.CosineAnnealingWarmRestarts(**kwargs)
         adam = paddle.optimizer.Adam(learning_rate=scheduler)
 
@@ -326,7 +344,9 @@ class TestCosineAnnealingWarmRestarts(unittest.TestCase):
                     feed={'x': np.random.randn(3, 4, 5).astype('float32')},
                     fetch_list=lr_var.name,
                 )
-            expected_lr = np.array(cosine_annealing_warm_restarts_lr(epoch, v_l)).astype(out[0].dtype)
+            expected_lr = np.array(
+                cosine_annealing_warm_restarts_lr(epoch, v_l)
+            ).astype(out[0].dtype)
             self.assertEqual(out[0], expected_lr)
             scheduler.step(epoch)
 
@@ -337,7 +357,9 @@ class TestCosineAnnealingWarmRestarts(unittest.TestCase):
                     feed={'x': np.random.randn(3, 4, 5).astype('float32')},
                     fetch_list=lr_var.name,
                 )
-            expected_lr = np.array(cosine_annealing_warm_restarts_lr(epoch_num=None, v_l=v_l)).astype(out[0].dtype)
+            expected_lr = np.array(
+                cosine_annealing_warm_restarts_lr(epoch_num=None, v_l=v_l)
+            ).astype(out[0].dtype)
             self.assertEqual(out[0], expected_lr)
             scheduler.step()
 
@@ -345,8 +367,15 @@ class TestCosineAnnealingWarmRestarts(unittest.TestCase):
         paddle.disable_static(place)
         x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
         linear = paddle.nn.Linear(10, 10)
-        v_l = {'base_lr': kwargs['learning_rate'], 'T_0': kwargs['T_0'], 'T_i': kwargs['T_0'],
-               'T_mult': kwargs['T_mult'], 'eta_min': kwargs['eta_min'], 'T_cur': -1, 'last_epoch': -1}
+        v_l = {
+            'base_lr': kwargs['learning_rate'],
+            'T_0': kwargs['T_0'],
+            'T_i': kwargs['T_0'],
+            'T_mult': kwargs['T_mult'],
+            'eta_min': kwargs['eta_min'],
+            'T_cur': -1,
+            'last_epoch': -1,
+        }
 
         scheduler = paddle.optimizer.lr.CosineAnnealingWarmRestarts(**kwargs)
         adam = paddle.optimizer.Adam(
@@ -375,7 +404,9 @@ class TestCosineAnnealingWarmRestarts(unittest.TestCase):
                 adam.step()
                 adam.clear_grad()
             current_lr = scheduler.get_lr()
-            expected_lr = cosine_annealing_warm_restarts_lr(epoch_num=None, v_l=v_l)
+            expected_lr = cosine_annealing_warm_restarts_lr(
+                epoch_num=None, v_l=v_l
+            )
             self.assertEqual(current_lr, expected_lr)
             scheduler.step()
 

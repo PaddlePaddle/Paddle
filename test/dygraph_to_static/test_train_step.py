@@ -443,9 +443,9 @@ class TestTrainStepTinyModelCosineAnnealingWarmRestarts(TestTrainStepTinyModel):
         self.net_creator = TinyModel
         self.lr_creator = partial(
             paddle.optimizer.lr.CosineAnnealingWarmRestarts,
-                learning_rate=0.5,
-                T_0=1,
-                T_mult=1,
+            learning_rate=0.5,
+            T_0=1,
+            T_mult=1,
         )
         self.optimizer_creator = paddle.optimizer.SGD
         self.loss_fn = loss_fn_tiny_model
