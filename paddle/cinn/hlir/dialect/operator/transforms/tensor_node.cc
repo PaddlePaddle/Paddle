@@ -22,7 +22,9 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-OpNode TensorNode::producer() const { return OpNode(producer_); }
+OpNode TensorNode::producer() const {
+  return OpNode(node_data_.dyn_cast<pir::OpResult>().owner());
+}
 
 OpNode TensorNode::ConsumerOpListView::Iterator::operator*() const {
   return OpNode(iter_.owner());

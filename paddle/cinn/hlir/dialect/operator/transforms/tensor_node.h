@@ -28,15 +28,7 @@ class OpNode;
 
 class TensorNode final {
  public:
-  TensorNode(::pir::OpOperand op_operand)
-      : node_data_(op_operand.source()),
-        producer_(op_operand.owner()),
-        consumers_(op_operand.source()) {}
-
-  TensorNode(::pir::OpResult op_result)
-      : node_data_(op_result),
-        producer_(op_result.owner()),
-        consumers_(op_result) {}
+  TensorNode(::pir::Value value) : node_data_(value), consumers_(value) {}
 
   // Get the shape of tensor.
   const phi::DDim& shape() const {
@@ -101,7 +93,6 @@ class TensorNode final {
 
  private:
   ::pir::Value node_data_;
-  ::pir::Operation* producer_;
 
   const ConsumerOpListView consumers_;
 };

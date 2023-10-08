@@ -64,7 +64,9 @@ class OpNode {
       return !(*this == other);
     }
 
-    TensorNode operator*() const { return TensorNode(op_->operand(iter_)); }
+    TensorNode operator*() const {
+      return TensorNode(op_->operand_source(iter_));
+    }
 
    private:
     size_t iter_;
@@ -86,7 +88,7 @@ class OpNode {
     size_t size() const { return op_->num_operands(); }
 
     TensorNode operator[](size_t index) const {
-      return TensorNode(op_->operand(index));
+      return TensorNode(op_->operand_source(index));
     }
 
     const_iterator begin() const { return const_iterator(0, op_); }

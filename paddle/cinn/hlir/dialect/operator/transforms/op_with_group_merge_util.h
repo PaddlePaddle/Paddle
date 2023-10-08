@@ -338,7 +338,8 @@ inline bool is_horizontal_relation(::pir::Operation* producer,
       candidates.pop();
       // visit all producer node
       for (size_t i = 0; i < candidate->num_operands(); ++i) {
-        auto tmp_node = candidate->operand(i).owner();
+        auto tmp_node =
+            candidate->operand_source(i).dyn_cast<pir::OpResult>().owner();
         // check depency.
         if (producer == tmp_node) {
           return true;
@@ -520,7 +521,8 @@ inline bool reduce_fuse_broadcast(::pir::Operation* producer,
           candidates.pop();
 
           for (size_t i = 0; i < candidate->num_operands(); ++i) {
-            auto producer = candidate->operand(i).owner();
+            auto producer =
+                candidate->operand_source(i).dyn_cast<pir::OpResult>().owner();
             if (producer == reducer) {
               return true;
             }

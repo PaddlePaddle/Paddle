@@ -167,7 +167,8 @@ class OpFusionPassHelper {
         // input node
 
         for (size_t i = 0; i < node->num_operands(); ++i) {
-          auto input = node->operand(i).owner();
+          auto input =
+              node->operand_source(i).dyn_cast<pir::OpResult>().owner();
           if (input && (local_ops_.count(input))) {
             group->input_nodes[input] = 1;
           }
@@ -246,9 +247,9 @@ class OpFusionPassHelper {
       auto consumer_fusion = fusion_groups_[consumer];  //
       // check all linkin node
       for (size_t i = 0; i < consumer->num_operands(); ++i) {
-        auto producer_data = consumer->operand(i);
+        auto producer_data = consumer->operand_source(i);
 
-        auto producer = producer_data.owner();
+        auto producer = producer_data.dyn_cast<pir::OpResult>().owner();
         if (!local_ops_.count(producer)) {
           continue;
         }
@@ -276,8 +277,7 @@ class OpFusionPassHelper {
 
         // find all the op use by
         size_t producer_data_used_num = 0;
-        for (auto it = producer_data.source().use_begin();
-             it != producer_data.source().use_end();
+        for (auto it = producer_data.use_begin(); it != producer_data.use_end();
              ++it) {
           auto consumer_node = it->owner();
           producer_data_used_num++;
