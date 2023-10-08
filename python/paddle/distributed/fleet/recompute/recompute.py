@@ -19,10 +19,10 @@ import weakref
 import paddle
 from paddle import framework
 from paddle.autograd import PyLayer
+from paddle.base.framework import EagerParamBase
 from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
     get_rng_state_tracker,
 )
-from paddle.fluid.framework import EagerParamBase
 from paddle.framework import core, in_dynamic_mode
 
 from ..utils.log_util import logger
@@ -51,6 +51,7 @@ def detach_variable(inputs):
 
         if isinstance(inp, EagerParamBase):
             out.append(_varbase_help(inp))
+            continue
 
         if type(inp) is tuple:
             detach_inp = []
