@@ -140,3 +140,9 @@ cc_test_old(
   test_dialect
   gtest
   pir)
+
+if(WITH_ONNXRUNTIME AND WIN32)
+  # Copy onnxruntime for some c++ test in Windows, since the test will
+  # be build only in CI, so suppose the generator in Windows is Ninja.
+  copy_onnx(ir_op_test)
+endif()
