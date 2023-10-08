@@ -671,6 +671,59 @@ class TestLayer(LayerTest):
                 emb1.weight.numpy(), emb2.weight.numpy()
             )
 
+    def test_embeding_bag(self):
+        inp_word = np.array([[[1]]]).astype('int64')
+        dict_size = 20
+        with self.static_graph():
+            data_t = paddle.static.data(
+                name='word', shape=[-1, 1], dtype='int64'
+            )
+            data_t.desc.set_need_check_feed(False)
+            emb2 = paddle.nn.EmbeddingBag(
+                dict_size, 32, weight_attr='emb.w', sparse=False, mode="mean"
+            )
+            emb_rlt = emb2(data_t)
+            static_rlt2 = self.get_static_graph_result(
+                feed={'word': inp_word}, fetch_list=[emb_rlt]
+            )[0]
+        with self.dynamic_graph():
+            emb2 = paddle.nn.EmbeddingBag(
+                dict_size, 32, weight_attr='emb.w', sparse=False, mode="mean"
+            )
+            dy_rlt = emb2(to_variable(inp_word))
+            dy_rlt_value = dy_rlt.numpy()
+
+        np.testing.assert_allclose(static_rlt2[0], dy_rlt_value[0])
+
+        with self.dynamic_graph():
+            custom_weight = np.random.randn(dict_size, 32).astype("float32")
+            weight_attr = base.ParamAttr(
+                initializer=paddle.nn.initializer.Assign(custom_weight)
+            )
+            emb1 = paddle.nn.EmbeddingBag(
+                dict_size, 32, sparse=False, mode="mean"
+            )
+            emb2 = paddle.nn.EmbeddingBag(
+                dict_size,
+                32,
+                weight_attr=weight_attr,
+                sparse=False,
+                mode="mean",
+            )
+            rep1 = emb1(to_variable(inp_word))
+            rep2 = emb2(to_variable(inp_word))
+            self.assertFalse(np.array_equal(emb1.weight.numpy(), custom_weight))
+            np.testing.assert_array_equal(emb2.weight.numpy(), custom_weight)
+            self.assertFalse(np.array_equal(rep1.numpy(), rep2.numpy()))
+            emb2.weight.set_value(emb1.weight.numpy())
+            rep2 = emb2(to_variable(inp_word))
+            np.testing.assert_array_equal(rep1.numpy(), rep2.numpy())
+
+            emb2.weight = emb1.weight
+            np.testing.assert_array_equal(
+                emb1.weight.numpy(), emb2.weight.numpy()
+            )
+
     def test_one_hot(self):
         with self.dynamic_graph():
             label = base.dygraph.to_variable(np.array([[1], [1], [3], [0]]))

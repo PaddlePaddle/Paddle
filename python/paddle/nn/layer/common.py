@@ -1523,7 +1523,6 @@ class Embedding(Layer):
         return main_str.format(**self.__dict__)
 
 
-
 class EmbeddingBag(Layer):
     r"""
 
@@ -1614,7 +1613,7 @@ class EmbeddingBag(Layer):
         self._padding_idx = padding_idx
         self._mode = mode
 
-        if self._mode not int ("mean", "sum", "max"):
+        if self._mode not in ("mean", "sum", "max"):
             raise ValueError("mode must be one of'mean','sum','max'")
 
         if self._num_embeddings <= 0:
