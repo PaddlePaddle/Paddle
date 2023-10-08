@@ -32,7 +32,7 @@ void SubtractKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     DenseTensor* out) {
-  AddRawKernel<T, Context>(dev_ctx, x, y, -1, out);
+  phi::SubtractRawKernel<T, Context>(dev_ctx, x, y, -1, out);
 }
 
 template <typename T, typename Context>
@@ -40,7 +40,7 @@ void MultiplyKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     DenseTensor* out) {
-  MultiplyRawKernel<T, Context>(dev_ctx, x, y, -1, out);
+  phi::MultiplyRawKernel<T, Context>(dev_ctx, x, y, -1, out);
 }
 
 template <typename T, typename Context>
@@ -48,7 +48,7 @@ void DivideKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const DenseTensor& y,
                   DenseTensor* out) {
-  DivideRawKernel<T, Context>(dev_ctx, x, y, -1, out);
+  phi::DivideRawKernel<T, Context>(dev_ctx, x, y, -1, out);
 }
 
 template <typename T, typename Context>
@@ -90,7 +90,7 @@ void AddKernel(const Context& dev_ctx,
     MultiPrecisionAddKernelImpl<float, Context>(dev_ctx, x, y, out);
   } else {
 #endif
-    AddRawKernel<T, Context>(dev_ctx, x, y, -1, out);
+    phi::AddRawKernel<T, Context>(dev_ctx, x, y, -1, out);
 #ifdef PADDLE_WITH_CUDA
   }
 #endif
@@ -101,7 +101,7 @@ void GradAddKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,
                    DenseTensor* out) {
-  AddRawKernel<T, Context>(dev_ctx, x, y, -1, out);
+  phi::AddRawKernel<T>(dev_ctx, x, y, -1, out);
 }
 
 template <typename T, typename Context>
