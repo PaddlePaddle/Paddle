@@ -72,11 +72,16 @@ INPUT_OPTIONAL_VECTORTYPE_CHECK_TEMPLATE = """
     }}
   }}"""
 ATTRIBUTE_CHECK_TEMPLATE = """
-  PADDLE_ENFORCE(attributes.count("{attribute_name}")>0 && attributes.at("{attribute_name}").isa<{standard}>(),
-                 phi::errors::PreconditionNotMet("Type of attribute: {attribute_name} is not right."));"""
+  PADDLE_ENFORCE(attributes.count("{attribute_name}")>0,
+                 phi::errors::PreconditionNotMet("{attribute_name} does not exist."));
+  PADDLE_ENFORCE(attributes.at("{attribute_name}").isa<{standard}>(),
+                 phi::errors::PreconditionNotMet("Type of attribute: {attribute_name} is not {standard}."));
+"""
 ATTRIBUTE_VECTOR_CHECK_TEMPLATE = """
-  PADDLE_ENFORCE(attributes.count("{attribute_name}")>0 && attributes.at("{attribute_name}").isa<pir::ArrayAttribute>(),
-                 phi::errors::PreconditionNotMet("Type of attribute: {attribute_name} is not right."));
+  PADDLE_ENFORCE(attributes.count("{attribute_name}")>0,
+                 phi::errors::PreconditionNotMet("{attribute_name} does not exist."));
+  PADDLE_ENFORCE(attributes.at("{attribute_name}").isa<pir::ArrayAttribute>(),
+                 phi::errors::PreconditionNotMet("Type of attribute: {attribute_name} is not pir::ArrayAttribute."));
   for (size_t i = 0; i < attributes.at("{attribute_name}").dyn_cast<pir::ArrayAttribute>().size(); i++) {{
     PADDLE_ENFORCE(attributes.at("{attribute_name}").dyn_cast<pir::ArrayAttribute>().at(i).isa<{standard}>(),
                    phi::errors::PreconditionNotMet("Type of attribute: {attribute_name} is not right."));
