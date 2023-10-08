@@ -51,12 +51,22 @@ void ScatterKernel(const Context &ctx,
           "but desires to be add, mul, multiply, mean, amin, amax.",
           reduce));
 
-  PADDLE_ENFORCE_EQ(
-      index.dims().size() == 1,
-      true,
-      phi::errors::InvalidArgument("index.dims().size() should be 1 in "
-                                   "scatter_op. But received value is [%d]",
-                                   index.dims().size()));
+  if (index.dims().size() == 2) {
+    PADDLE_ENFORCE_EQ(
+        index.dims()[1],
+        1,
+        phi::errors::InvalidArgument("index.dims()[1] should be 1 when "
+                                     "index.dims().size() =2 in scatter_op."
+                                     "But received value is [%d]",
+                                     index.dims()[1]));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        index.dims().size() == 1,
+        true,
+        phi::errors::InvalidArgument("index.dims().size() should be 1 in "
+                                     "scatter_op. But received value is [%d]",
+                                     index.dims().size()));
+  }
 
   auto src_dims = updates.dims();
   auto dst_dims = out->dims();
