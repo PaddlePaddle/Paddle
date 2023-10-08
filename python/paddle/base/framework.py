@@ -7704,8 +7704,8 @@ def _get_var(name, program=None):
 
 @signature_safe_contextmanager
 def dygraph_guard_if_declarative():
-    from .dygraph import Tracer
     from .dygraph.base import in_to_static_mode
+    from .dygraph import Tracer
 
     if in_to_static_mode():
         # Under @paddle.jit.to_static decorator, we switch back dygraph mode temporarily.
