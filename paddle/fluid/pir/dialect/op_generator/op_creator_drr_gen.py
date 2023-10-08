@@ -122,7 +122,9 @@ class OpCreatorCodeGen:
                     if len(op_info_item.attribute_name_list) > len(
                         op_info_item.mutable_attribute_name_list
                     ):
-                        params_with_mutable_attr.append("attrs")
+                        # TODO(zyfncg): Currently Op::Build Interface doesn't support this case.
+                        continue
+                        # params_with_mutable_attr.append("attrs")
 
                     body_code += MUTABLE_ATTR_FUNCTION_TEMPLATE.format(
                         op_name=ir_op_name,
