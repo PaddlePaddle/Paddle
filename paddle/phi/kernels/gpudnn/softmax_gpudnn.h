@@ -817,10 +817,9 @@ void SwitchWarpSoftmaxBackward(const int blocks,
     SOFTMAX_WARP_BACKWARD_CASE(9, AccT);
     SOFTMAX_WARP_BACKWARD_CASE(10, AccT);
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
-          "Unsupported softmax dim: element_count=%d, log2_element_count=%d!",
-          element_count,
-          log2_element_count));
+      // PADDLE_THROW(phi::errors::Unimplemented(
+      //     "Unsupported softmax dim: element_count=%d,
+      //     log2_element_count=%d!", element_count, log2_element_count));
       break;
   }
 }
