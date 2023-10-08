@@ -1591,7 +1591,6 @@ SIXTH_PARALLEL_JOB_NEW = [
     'test_trt_conv_quant_dequant_pass',
     'test_trt_convert_elementwise',
     'test_trt_convert_depthwise_conv2d_transpose',
-    'test_trt_convert_flatten',
     'test_trt_matmul_quant_dequant',
     'test_trt_convert_dropout',
     'test_trt_convert_conv2d_transpose',
