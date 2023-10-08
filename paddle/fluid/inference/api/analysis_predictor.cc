@@ -702,6 +702,20 @@ bool AnalysisPredictor::PrepareExecutor() {
   executor_->Prepare(
       sub_scope_, *inference_program_, 0, config_.use_feed_fetch_ops_);
 
+  if (config_.new_executor_enabled()) {
+    framework::interpreter::ExecutionConfig execution_config;
+    execution_config.create_local_scope = false;
+    execution_config.used_for_inference = true;
+    auto input_names = GetInputNames();
+    execution_config.skip_gc_vars.insert(input_names.begin(),
+                                         input_names.end());
+    auto output_names = GetOutputNames();
+    execution_config.skip_gc_vars.insert(output_names.begin(),
+                                         output_names.end());
+    executor_->PrepareInterperterCore(
+        sub_scope_, *inference_program_, execution_config);
+  }
+
   if (config_.enable_memory_optim_) {
     auto *pass_res_info =
         inference::analysis::PassResultInfoForRuntime::Instance();
@@ -1107,9 +1121,13 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
     HookCollectShapeRangeInfo();
   }
 
-  // Run the inference program
-  // if share variables, we need not create variables
-  executor_->Run();
+  if (config_.new_executor_enabled()) {
+    executor_->RunInterperterCore();
+  } else {
+    // Run the inference program
+    // if share variables, we need not create variables
+    executor_->Run();
+  }
 
   // get fetch variable
   if (!GetFetch(output_data, scope)) {
@@ -1175,9 +1193,13 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
     HookCollectShapeRangeInfo();
   }
 
-  // Run the inference program
-  // if share variables, we need not create variables
-  executor_->Run();
+  if (config_.new_executor_enabled()) {
+    executor_->RunInterperterCore();
+  } else {
+    // Run the inference program
+    // if share variables, we need not create variables
+    executor_->Run();
+  }
 
   inference::DisplayMemoryInfo(place_, "after run");
 
@@ -2154,7 +2176,11 @@ bool AnalysisPredictor::ZeroCopyRun() {
   }
 #endif
 
-  executor_->Run();
+  if (config_.new_executor_enabled()) {
+    executor_->RunInterperterCore();
+  } else {
+    executor_->Run();
+  }
   inference::DisplayMemoryInfo(place_, "after run");
 
 #ifdef PADDLE_WITH_XPU
