@@ -12,33 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import textwrap
 import collections
-from collections.abc import Iterable
-from .wrapped_decorator import signature_safe_contextmanager, wrap_decorator
+import copy
+import functools
+import multiprocessing
 import os
 import re
+import subprocess
+import sys
+import textwrap
+import threading
 import traceback
-import copy
-from types import MethodType, FunctionType
+import warnings
+from collections.abc import Iterable
+from types import FunctionType, MethodType
 
 import numpy as np
-import subprocess
-import multiprocessing
-import sys
 
-from .proto import framework_pb2
-from .proto import data_feed_pb2  # noqa: F401
+import paddle.version as paddle_version
 
-from . import core
-from . import unique_name
 from .. import pir
-from paddle.base.libpaddle import DataType
-import paddle.version as fluid_version
-import warnings
-import functools
-from .variable_index import _getitem_static, _setitem_static, _setitem_impl_
-import threading
+from . import core, unique_name
+from .libpaddle import DataType
+from .proto import data_feed_pb2  # noqa: F401
+from .proto import framework_pb2
+from .variable_index import _getitem_static, _setitem_impl_, _setitem_static
+from .wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 
 __all__ = []
 
@@ -503,10 +502,10 @@ def require_version(min_version, max_version=None):
             )
 
     version_installed = [
-        fluid_version.major,
-        fluid_version.minor,
-        fluid_version.patch,
-        fluid_version.rc,
+        paddle_version.major,
+        paddle_version.minor,
+        paddle_version.patch,
+        paddle_version.rc,
     ]
     zero_version = ['0', '0', '0', '0']
 
@@ -524,7 +523,7 @@ def require_version(min_version, max_version=None):
                 "PaddlePaddle version in [{}, {}] required, but {} installed. "
                 "Maybe you are using a develop version, "
                 "please make sure the version is good with your code.".format(
-                    min_version, max_version, fluid_version.full_version
+                    min_version, max_version, paddle_version.full_version
                 )
             )
         else:
@@ -532,7 +531,7 @@ def require_version(min_version, max_version=None):
                 "PaddlePaddle version {} or higher is required, but {} installed, "
                 "Maybe you are using a develop version, "
                 "please make sure the version is good with your code.".format(
-                    min_version, fluid_version.full_version
+                    min_version, paddle_version.full_version
                 )
             )
         return
@@ -554,7 +553,7 @@ def require_version(min_version, max_version=None):
         ):
             raise Exception(
                 "VersionError: PaddlePaddle version in [{}, {}] required, but {} installed.".format(
-                    min_version, max_version, fluid_version.full_version
+                    min_version, max_version, paddle_version.full_version
                 )
             )
     else:
@@ -562,7 +561,7 @@ def require_version(min_version, max_version=None):
             raise Exception(
                 "VersionError: PaddlePaddle version {} or higher is required, but {} installed, "
                 "please upgrade your PaddlePaddle to {} or other higher version.".format(
-                    min_version, fluid_version.full_version, min_version
+                    min_version, paddle_version.full_version, min_version
                 )
             )
 
@@ -7703,8 +7702,8 @@ def _get_var(name, program=None):
 
 @signature_safe_contextmanager
 def dygraph_guard_if_declarative():
-    from .dygraph.base import in_to_static_mode
     from .dygraph import Tracer
+    from .dygraph.base import in_to_static_mode
 
     if in_to_static_mode():
         # Under @paddle.jit.to_static decorator, we switch back dygraph mode temporarily.
