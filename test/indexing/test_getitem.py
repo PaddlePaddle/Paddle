@@ -429,15 +429,12 @@ class TestGetitemGard(unittest.TestCase):
             x = x.astype('int')
         y = x[[0, 1], :, [1, 2]]
         z = y + 1
+        z.backward()
         if self.dtype == 'bfloat16':
-            z.backward()
             np.testing.assert_allclose(x.grad.cast('float32').numpy(), res)
-        elif self.dtype in ['bool', 'int8', 'int16']:
-            with self.assertRaises((AttributeError, RuntimeError)):
-                z.backward()
-                np.testing.assert_allclose(x.grad.numpy(), res)
+        elif self.dtype == 'bool':
+            self.assertIsNone(x.grad)
         else:
-            z.backward()
             np.testing.assert_allclose(x.grad.numpy(), res)
 
     def test_combined_index_2(self):
@@ -451,15 +448,12 @@ class TestGetitemGard(unittest.TestCase):
         np_res = np_data[:, 1, [1, 2], 0]
         y = x[:, 1, [1, 2], 0]
         z = y + 1
+        z.backward()
         if self.dtype == 'bfloat16':
-            z.backward()
             np.testing.assert_allclose(x.grad.cast('float32').numpy(), res)
-        elif self.dtype in ['bool', 'int8', 'int16']:
-            with self.assertRaises((AttributeError, RuntimeError)):
-                z.backward()
-                np.testing.assert_allclose(x.grad.numpy(), res)
+        elif self.dtype == 'bool':
+            self.assertIsNone(x.grad)
         else:
-            z.backward()
             np.testing.assert_allclose(x.grad.numpy(), res)
 
     def test_combined_index_3(self):
@@ -472,15 +466,12 @@ class TestGetitemGard(unittest.TestCase):
             x = x.astype('int')
         y = x[[1, 0], :, [1, 4], 1:5:2, 4]
         z = y + 1
+        z.backward()
         if self.dtype == 'bfloat16':
-            z.backward()
             np.testing.assert_allclose(x.grad.cast('float32').numpy(), res)
-        elif self.dtype in ['bool', 'int8', 'int16']:
-            with self.assertRaises((AttributeError, RuntimeError)):
-                z.backward()
-                np.testing.assert_allclose(x.grad.numpy(), res)
+        elif self.dtype == 'bool':
+            self.assertIsNone(x.grad)
         else:
-            z.backward()
             np.testing.assert_allclose(x.grad.numpy(), res)
 
     def test_combined_index_4(self):
@@ -493,15 +484,12 @@ class TestGetitemGard(unittest.TestCase):
             x = x.astype('int')
         y = x[:, [1, 0], 0:4:2, [2, 3], 4]
         z = y + 1
+        z.backward()
         if self.dtype == 'bfloat16':
-            z.backward()
             np.testing.assert_allclose(x.grad.cast('float32').numpy(), res)
-        elif self.dtype in ['bool', 'int8', 'int16']:
-            with self.assertRaises((AttributeError, RuntimeError)):
-                z.backward()
-                np.testing.assert_allclose(x.grad.numpy(), res)
+        elif self.dtype == 'bool':
+            self.assertIsNone(x.grad)
         else:
-            z.backward()
             np.testing.assert_allclose(x.grad.numpy(), res)
 
     def test_combined_index_5(self):
@@ -514,15 +502,12 @@ class TestGetitemGard(unittest.TestCase):
             x = x.astype('int')
         y = x[::2, [1, 0], [2, 3], 0:4:2]
         z = y + 1
+        z.backward()
         if self.dtype == 'bfloat16':
-            z.backward()
             np.testing.assert_allclose(x.grad.cast('float32').numpy(), res)
-        elif self.dtype in ['bool', 'int8', 'int16']:
-            with self.assertRaises((AttributeError, RuntimeError)):
-                z.backward()
-                np.testing.assert_allclose(x.grad.numpy(), res)
+        elif self.dtype == 'bool':
+            self.assertIsNone(x.grad)
         else:
-            z.backward()
             np.testing.assert_allclose(x.grad.numpy(), res)
 
     def test_combined_index_6(self):
@@ -535,15 +520,12 @@ class TestGetitemGard(unittest.TestCase):
             x = x.astype('int')
         y = x[::2, [1, 0], [2, 3], 0:4:2, [4, 6]]
         z = y + 1
+        z.backward()
         if self.dtype == 'bfloat16':
-            z.backward()
             np.testing.assert_allclose(x.grad.cast('float32').numpy(), res)
-        elif self.dtype in ['bool', 'int8', 'int16']:
-            with self.assertRaises((AttributeError, RuntimeError)):
-                z.backward()
-                np.testing.assert_allclose(x.grad.numpy(), res)
+        elif self.dtype == 'bool':
+            self.assertIsNone(x.grad)
         else:
-            z.backward()
             np.testing.assert_allclose(x.grad.numpy(), res)
 
     def test_combined_index_7(self):
@@ -556,15 +538,12 @@ class TestGetitemGard(unittest.TestCase):
             x = x.astype('int')
         y = x[::2, [[1, 0]], [[2, 3]], 0:4:2, [[4, 6]]]
         z = y + 1
+        z.backward()
         if self.dtype == 'bfloat16':
-            z.backward()
             np.testing.assert_allclose(x.grad.cast('float32').numpy(), res)
-        elif self.dtype in ['bool', 'int8', 'int16']:
-            with self.assertRaises((AttributeError, RuntimeError)):
-                z.backward()
-                np.testing.assert_allclose(x.grad.numpy(), res)
+        elif self.dtype == 'bool':
+            self.assertIsNone(x.grad)
         else:
-            z.backward()
             np.testing.assert_allclose(x.grad.numpy(), res)
 
     def test_combined_index_8(self):
@@ -577,15 +556,12 @@ class TestGetitemGard(unittest.TestCase):
             x = x.astype('int')
         y = x[[[1, 0], [0, 1]], [[2, 3], [1, 0]], 0:4:2, [[3, 5], [4, 2]]]
         z = y + 1
+        z.backward()
         if self.dtype == 'bfloat16':
-            z.backward()
             np.testing.assert_allclose(x.grad.cast('float32').numpy(), res)
-        elif self.dtype in ['bool', 'int8', 'int16']:
-            with self.assertRaises((AttributeError, RuntimeError)):
-                z.backward()
-                np.testing.assert_allclose(x.grad.numpy(), res)
+        elif self.dtype == 'bool':
+            self.assertIsNone(x.grad)
         else:
-            z.backward()
             np.testing.assert_allclose(x.grad.numpy(), res)
 
     def test_combined_index_9(self):
@@ -598,15 +574,12 @@ class TestGetitemGard(unittest.TestCase):
             x = x.astype('int')
         y = x[[[1, 0]], [1, 0], 0:4:2, [[3, 5], [4, 2]]]
         z = y + 1
+        z.backward()
         if self.dtype == 'bfloat16':
-            z.backward()
             np.testing.assert_allclose(x.grad.cast('float32').numpy(), res)
-        elif self.dtype in ['bool', 'int8', 'int16']:
-            with self.assertRaises((AttributeError, RuntimeError)):
-                z.backward()
-                np.testing.assert_allclose(x.grad.numpy(), res)
+        elif self.dtype == 'bool':
+            self.assertIsNone(x.grad)
         else:
-            z.backward()
             np.testing.assert_allclose(x.grad.numpy(), res)
 
     def test_combined_index_10(self):
@@ -619,15 +592,12 @@ class TestGetitemGard(unittest.TestCase):
             x = x.astype('int')
         y = x[:, [True, False, True, False], 4]
         z = y + 1
+        z.backward()
         if self.dtype == 'bfloat16':
-            z.backward()
             np.testing.assert_allclose(x.grad.cast('float32').numpy(), res)
-        elif self.dtype in ['bool', 'int8', 'int16']:
-            with self.assertRaises((AttributeError, RuntimeError)):
-                z.backward()
-                np.testing.assert_allclose(x.grad.numpy(), res)
+        elif self.dtype == 'bool':
+            self.assertIsNone(x.grad)
         else:
-            z.backward()
             np.testing.assert_allclose(x.grad.numpy(), res)
 
     def test_index_has_range(self):
@@ -638,17 +608,16 @@ class TestGetitemGard(unittest.TestCase):
         res[:, range(3), 4] = 1
 
         x = paddle.to_tensor(np_data, dtype=self.dtype, stop_gradient=False)
+        if self.dtype == 'bool':
+            x = x.astype('int')
         y = x[:, range(3), 4]
         z = y + 1
+        z.backward()
         if self.dtype == 'bfloat16':
-            z.backward()
             np.testing.assert_allclose(x.grad.cast('float32').numpy(), res)
-        elif self.dtype in ['bool', 'int8', 'int16']:
-            with self.assertRaises((AttributeError, RuntimeError)):
-                z.backward()
-                np.testing.assert_allclose(x.grad.numpy(), res)
+        elif self.dtype == 'bool':
+            self.assertIsNone(x.grad)
         else:
-            z.backward()
             np.testing.assert_allclose(x.grad.numpy(), res)
 
     def test_indexing_with_bool_list1(self):
@@ -663,15 +632,12 @@ class TestGetitemGard(unittest.TestCase):
             x = x.astype('int')
         y = x[[True, False, True], [False, False, False, True]]
         z = y + 1
+        z.backward()
         if self.dtype == 'bfloat16':
-            z.backward()
             np.testing.assert_allclose(x.grad.cast('float32').numpy(), res)
-        elif self.dtype in ['bool', 'int8', 'int16']:
-            with self.assertRaises((AttributeError, RuntimeError)):
-                z.backward()
-                np.testing.assert_allclose(x.grad.numpy(), res)
+        elif self.dtype == 'bool':
+            self.assertIsNone(x.grad)
         else:
-            z.backward()
             np.testing.assert_allclose(x.grad.numpy(), res)
 
     def test_indexing_with_bool_list2(self):
@@ -694,15 +660,12 @@ class TestGetitemGard(unittest.TestCase):
             [True, False, False, True, False],
         ]
         z = y + 1
+        z.backward()
         if self.dtype == 'bfloat16':
-            z.backward()
             np.testing.assert_allclose(x.grad.cast('float32').numpy(), res)
-        elif self.dtype in ['bool', 'int8', 'int16']:
-            with self.assertRaises((AttributeError, RuntimeError)):
-                z.backward()
-                np.testing.assert_allclose(x.grad.numpy(), res)
+        elif self.dtype == 'bool':
+            self.assertIsNone(x.grad)
         else:
-            z.backward()
             np.testing.assert_allclose(x.grad.numpy(), res)
 
 

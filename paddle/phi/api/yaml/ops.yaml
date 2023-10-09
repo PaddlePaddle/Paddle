@@ -1035,7 +1035,7 @@
 
 - op : gather_nd
   args : (Tensor x, Tensor index)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : GatherNdInferMeta
   kernel :
