@@ -59,3 +59,43 @@ TEST(if_op_test, base) {
 
   LOG(INFO) << ss.str();
 }
+
+TEST(if_op_test, build_by_block) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<pir::ControlFlowDialect>();
+
+  pir::Program program(ctx);
+  pir::Block* block = program.block();
+  pir::Builder builder(ctx, block);
+  auto full_op = builder.Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{1}, true, phi::DataType::BOOL);
+
+  // construct true block
+  std::unique_ptr<pir::Block> true_block(new pir::Block());
+  builder.SetInsertionPointToStart(true_block.get());
+  auto full_op_1 = builder.Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{2}, true, phi::DataType::BOOL);
+  builder.Build<pir::YieldOp>(std::vector<pir::Value>{full_op_1.out()});
+
+  // construct false block
+  std::unique_ptr<pir::Block> false_block(new pir::Block());
+  builder.SetInsertionPointToStart(false_block.get());
+  auto full_op_2 = builder.Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{2}, true, phi::DataType::BOOL);
+  builder.Build<pir::YieldOp>(std::vector<pir::Value>{full_op_2.out()});
+
+  builder.SetInsertionPointToEnd(block);
+
+  builder.Build<paddle::dialect::IfOp>(
+      full_op.out(), std::move(true_block), std::move(false_block));
+
+  EXPECT_FALSE(true_block);
+  EXPECT_FALSE(false_block);
+  EXPECT_EQ(full_op_2->GetParentProgram(), &program);
+
+  std::stringstream ss;
+  program.Print(ss);
+
+  LOG(INFO) << ss.str();
+}
