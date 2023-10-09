@@ -318,13 +318,13 @@ class DrrRewritePattern : public pir::RewritePattern {
     if (drr_op->name() != ir_op->name()) {
       return;
     }
-    // check input's size
+    // check op input's size
     const auto& drr_op_input_tensors = drr_op->inputs();
     auto ir_op_input_value_size = ir_op->num_operands();
     if (drr_op_input_tensors.size() != ir_op_input_value_size) {
       return;
     }
-    // check output's size
+    // check op output's size
     const auto& drr_op_output_tensors = drr_op->outputs();
     auto ir_op_output_value_size = ir_op->num_results();
     if (drr_op_output_tensors.size() != ir_op_output_value_size) {
@@ -374,7 +374,6 @@ class DrrRewritePattern : public pir::RewritePattern {
                  drr_output_op_set,
                  drr_visited_ops,
                  output_op_bind_map);
-
       drr_visited_ops->erase(drr_producer_op);
     }
     if (drr_output_op_set.count(drr_op)) {
@@ -423,6 +422,8 @@ class DrrRewritePattern : public pir::RewritePattern {
     bool matched = true;
     size_t step = 0;
     for (auto it = output_op_map.begin(); it != output_op_map.end(); ++it) {
+      VLOG(6) << "match (" << it->first->name() << " @" << it->first << " : @"
+              << it->second << ") in source_pattern_graph ";
       drr_q.push(it->first);
       drr_visited.insert(it->first);
       ir_q.push(it->second);
@@ -518,10 +519,17 @@ class DrrRewritePattern : public pir::RewritePattern {
     // using dfs to obtain the arrangement of all candidate ir ops
     auto permute = [&](auto&& permute, size_t index) -> bool {
       if (index == drr_output_sequence.size()) {
+        // avoiding duplicate binding of ir op
+        std::unordered_set<Operation*> ir_output_set;
+        for (Operation* op : ir_output_sequence) {
+          auto pr = ir_output_set.insert(op);
+          if (pr.second == false) {
+            return false;
+          }
+        }
         // new match_ctx
         std::shared_ptr<MatchContextImpl> match_ctx =
             std::make_shared<MatchContextImpl>();
-        // create output op map
         std::transform(drr_output_sequence.begin(),
                        drr_output_sequence.end(),
                        ir_output_sequence.begin(),
@@ -675,7 +683,7 @@ class DrrRewritePattern : public pir::RewritePattern {
                            const MatchContextImpl& res_match_ctx,
                            pir::PatternRewriter& rewriter) const {  // NOLINT
     for (const auto& output_name : result_pattern_graph_->output_tensors()) {
-      if (source_pattern_graph_->output_tensors().count(output_name)) {
+      if (source_pattern_graph_->id2owend_tensor().count(output_name)) {
         const auto& src_ir_tensor = src_match_ctx.GetIrValue(output_name);
         const auto& res_ir_tensor = res_match_ctx.GetIrValue(output_name);
         rewriter.ReplaceAllUsesWith(src_ir_tensor.get(), res_ir_tensor.get());
@@ -728,35 +736,32 @@ class DrrRewritePattern : public pir::RewritePattern {
         result_pattern_graph.output_tensors());
     std::vector<const OpCall*> deleted_ops;
     std::unordered_set<const OpCall*> deleted_ops_set;
-    std::for_each(
-        topo_order_ops.rbegin(),
-        topo_order_ops.rend(),
-        [&deleted_ops,
-         &deleted_ops_set,
-         &backward_visited_tensor_set,
-         &forward_deleted_ops](const OpCall* op_call) {
-          bool all_comsumer_deleted = true;
-          for (const auto* output : op_call->outputs()) {
-            if (backward_visited_tensor_set.count(output->name())) {
-              for (const auto* consumer : output->consumers()) {
-                if (!deleted_ops_set.count(consumer)) {
-                  all_comsumer_deleted = false;
-                }
-              }
-            } else if (output->consumers().empty()) {
-              continue;
-            } else {
-              all_comsumer_deleted = false;
-            }
-          }
-          if (all_comsumer_deleted && forward_deleted_ops.count(op_call)) {
-            deleted_ops_set.insert(op_call);
-            deleted_ops.push_back(op_call);
-            for (const auto* input : op_call->inputs()) {
-              backward_visited_tensor_set.insert(input->name());
-            }
-          }
-        });
+    std::for_each(topo_order_ops.rbegin(),
+                  topo_order_ops.rend(),
+                  [&deleted_ops,
+                   &deleted_ops_set,
+                   &backward_visited_tensor_set,
+                   &forward_deleted_ops](const OpCall* op_call) {
+                    bool all_comsumer_deleted = true;
+                    bool from_backward_visited_tensor = false;
+                    for (const auto* output : op_call->outputs()) {
+                      if (backward_visited_tensor_set.count(output->name())) {
+                        from_backward_visited_tensor = true;
+                      } else if (output->consumers().empty()) {
+                        continue;
+                      } else {
+                        all_comsumer_deleted = false;
+                      }
+                    }
+                    if (all_comsumer_deleted && from_backward_visited_tensor &&
+                        forward_deleted_ops.count(op_call)) {
+                      deleted_ops_set.insert(op_call);
+                      deleted_ops.push_back(op_call);
+                      for (const auto* input : op_call->inputs()) {
+                        backward_visited_tensor_set.insert(input->name());
+                      }
+                    }
+                  });
 
     // Delete Operation with topo order from output tensors.
     for (const auto* op_call : deleted_ops) {

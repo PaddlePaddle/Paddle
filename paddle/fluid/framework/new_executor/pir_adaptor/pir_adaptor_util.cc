@@ -646,14 +646,12 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
     auto index = op_yaml_info.InputName2Id().at(name);
     pir::Value ptr = op->operand_source(index);
 
-    auto in_var_name = name_map.at(ptr);
-    auto legacy_attr_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
-
     if (!IsInvalid(ptr)) {
       VLOG(8) << "Push back inputs to VariableNameMap : an optioanl input "
               << name;
       continue;
     }
+    auto legacy_attr_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
     VLOG(6) << "Push back inputs to VariableNameMap : " << name_map.at(ptr);
     in_name_map[legacy_attr_name].push_back(name_map.at(ptr));
   }

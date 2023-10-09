@@ -32,7 +32,6 @@ class FusedLinearPattern : public pir::drr::DrrPatternBase<FusedLinearPattern> {
     pat.Tensor("tmp") = matmul(pat.Tensor("x"), pat.Tensor("w"));
     pat.Tensor("out") = add(pat.Tensor("tmp"), pat.Tensor("bias"));
 
-    // Result patterns：要替换为的子图
     pir::drr::ResultPattern res = pat.ResultPattern();
     const auto &act_attr =
         res.Attr([](const pir::drr::MatchContext &match_ctx) -> std::any {
@@ -111,7 +110,6 @@ class FusedLinearGeluGradPattern
                {{{"trans_x", pat.Attr("trans_x2")},
                  {"trans_y", pat.Attr("trans_y2")},
                  {"activation_grad", pat.Attr("act2")}}});
-    // TODO(gst): don't have reserve_space
     fused_gemm_epilogue(
         {&pat.Tensor("x"), &pat.Tensor("w"), &pat.Tensor("bias")},
         {&pat.Tensor("fuse_out"), &pat.Tensor("reserve_space")});
@@ -132,7 +130,6 @@ class FusedLinearGeluGradPattern
              match_ctx.Attr<std::string>("act2") == "none";
     });
 
-    // Result patterns：要替换为的子图
     pir::drr::ResultPattern res = pat.ResultPattern();
     const auto &act_attr =
         res.Attr([](const pir::drr::MatchContext &match_ctx) -> std::any {
@@ -165,6 +162,85 @@ class FusedLinearGeluGradPattern
   }
 };
 
+class FusedLinearReluGradPattern
+    : public pir::drr::DrrPatternBase<FusedLinearReluGradPattern> {
+ public:
+  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+    pir::drr::SourcePattern pat = ctx->SourcePattern();
+    const auto &fused_gemm_epilogue =
+        pat.Op("pd_op.fused_gemm_epilogue",
+               {{{"trans_x", pat.Attr("trans_x1")},
+                 {"trans_y", pat.Attr("trans_y1")},
+                 {"activation", pat.Attr("act1")}}});
+    const auto &fused_gemm_epilogue_grad =
+        pat.Op("pd_op.fused_gemm_epilogue_grad",
+               {{{"trans_x", pat.Attr("trans_x2")},
+                 {"trans_y", pat.Attr("trans_y2")},
+                 {"activation_grad", pat.Attr("act2")}}});
+    const auto &fused_gemm_epilogue_grad1 =
+        pat.Op("pd_op.fused_gemm_epilogue_grad",
+               {{{"trans_x", pat.Attr("trans_x3")},
+                 {"trans_y", pat.Attr("trans_y3")},
+                 {"activation_grad", pat.Attr("act3")}}});
+    fused_gemm_epilogue(
+        {&pat.Tensor("x"), &pat.Tensor("w"), &pat.Tensor("bias")},
+        {&pat.Tensor("fuse_out"), &pat.Tensor("reserve_space")});
+    pat.Tensor("out") = pat.Op("pd_op.relu")(pat.Tensor("fuse_out"));
+
+    fused_gemm_epilogue_grad1({&pat.Tensor("x1"),
+                               &pat.Tensor("w1"),
+                               &pat.Tensor("reserve_space2"),
+                               &pat.Tensor("out_grad")},
+                              {&pat.Tensor("x1_grad"),
+                               &pat.Tensor("w1_grad"),
+                               &pat.Tensor("bias1_grad")});
+    pat.Tensor("relu_dx") =
+        pat.Op("pd_op.relu_grad")(pat.Tensor("x1"), pat.Tensor("x1_grad"));
+    fused_gemm_epilogue_grad({&pat.Tensor("x"),
+                              &pat.Tensor("w"),
+                              &pat.Tensor("reserve_space1"),
+                              &pat.Tensor("relu_dx")},
+                             {&pat.Tensor("x_grad"),
+                              &pat.Tensor("w_grad"),
+                              &pat.Tensor("bias_grad")});
+
+    pat.RequireNativeCall([&](const pir::drr::MatchContext &match_ctx) {
+      return match_ctx.Attr<std::string>("act1") == "none" &&
+             match_ctx.Attr<std::string>("act3") == "none";
+    });
+
+    pir::drr::ResultPattern res = pat.ResultPattern();
+    const auto &act_attr =
+        res.Attr([](const pir::drr::MatchContext &match_ctx) -> std::any {
+          return "relu";
+        });
+    const auto &fused_gemm_epilogue_new =
+        res.Op("pd_op.fused_gemm_epilogue",
+               {{{"trans_x", pat.Attr("trans_x1")},
+                 {"trans_y", pat.Attr("trans_y1")},
+                 {"activation", act_attr}}});
+    const auto &act_grad_attr =
+        res.Attr([](const pir::drr::MatchContext &match_ctx) -> std::any {
+          return "relu_grad";
+        });
+    const auto &fused_gemm_epilogue_grad1_new =
+        res.Op("pd_op.fused_gemm_epilogue_grad",
+               {{{"trans_x", pat.Attr("trans_x2")},
+                 {"trans_y", pat.Attr("trans_y2")},
+                 {"activation_grad", act_grad_attr}}});
+    fused_gemm_epilogue_new(
+        {&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("bias")},
+        {&res.Tensor("out"), &res.Tensor("reserve_space3")});
+    fused_gemm_epilogue_grad1_new({&res.Tensor("x1"),
+                                   &res.Tensor("w1"),
+                                   &res.Tensor("reserve_space3"),
+                                   &res.Tensor("out_grad")},
+                                  {&res.Tensor("relu_dx"),
+                                   &res.Tensor("w1_grad"),
+                                   &res.Tensor("bias1_grad")});
+  }
+};
+
 class FusedGemmEpiloguePass : public pir::Pass {
  public:
   FusedGemmEpiloguePass() : pir::Pass("FusedGemmEpiloguePass", 1) {}
@@ -174,6 +250,7 @@ class FusedGemmEpiloguePass : public pir::Pass {
     ps.Add(FusedLinearGradPattern().Build(context));
     ps.Add(FusedLinearPattern().Build(context));
     ps.Add(FusedLinearGeluGradPattern().Build(context));
+    ps.Add(FusedLinearReluGradPattern().Build(context));
 
     patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
     return true;
