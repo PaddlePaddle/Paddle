@@ -72,6 +72,9 @@ select = [
     "PLR1711",
     "PLR1722",
     "PLW3301",
+
+    # Pygrep-hooks
+    "PGH004",
 ]
 unfixable = [
     "NPY001"
