@@ -33,7 +33,7 @@ def weight_quantize(x, algo="weight_only_int8"):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:GPU)
+            >>> # doctest: +SKIP('No testing required')
             >>> import paddle
             >>> from paddle.nn.quant import weight_quantize
 
@@ -80,7 +80,7 @@ def weight_dequantize(x, scale, algo="weight_only_int8", out_dtype='float16'):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:GPU)
+            >>> # doctest: +SKIP('No testing required')
             >>> import paddle
             >>> from paddle.nn.quant import weight_quantize, weight_dequantize
 
@@ -133,7 +133,7 @@ def weight_only_linear(
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:GPU)
+            >>> # doctest: +SKIP('No testing required')
             >>> import paddle
             >>> from paddle.nn.quant import weight_only_linear
 
@@ -204,7 +204,7 @@ def llm_int8_linear(
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:GPU)
+            >>> # doctest: +SKIP('No testing required')
             >>> import paddle
             >>> from paddle.nn.quant import llm_int8_linear
 
