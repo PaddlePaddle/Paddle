@@ -274,7 +274,12 @@ class Dirac(Initializer):
                     "Ids": index_tensor,
                     "Updates": value_tensor,
                 },
-                attrs={'overwrite': True, "axis": 0, "reduce": "add", "include_self": False},
+                attrs={
+                    'overwrite': True,
+                    "axis": 0,
+                    "reduce": "add",
+                    "include_self": False,
+                },
                 outputs={"Out": out_var},
                 stop_gradient=True,
             )

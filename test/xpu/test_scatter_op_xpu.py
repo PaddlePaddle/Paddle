@@ -145,7 +145,9 @@ class XPUTestScatterOp(XPUOpTestWrapper):
             self.check_output_with_place(self.place)
 
         def test_check_grad(self):
-            self.check_grad_with_place(self.place, ['X'], 'Out',  no_grad_set=set("Updates"))
+            self.check_grad_with_place(
+                self.place, ['X'], 'Out', no_grad_set=set("Updates")
+            )
 
 
 support_types = get_xpu_op_support_types('scatter')
