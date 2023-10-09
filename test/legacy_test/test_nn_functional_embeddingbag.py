@@ -18,19 +18,15 @@ import numpy as np
 
 import paddle
 from paddle import base
-from paddle.nn import functional
 
 
 class EmbeddingDygraph(unittest.TestCase):
-    def setUp(self):
-        paddle.disable_static()
-
     def test_1(self):
         x_data = np.arange(3, 6).reshape((3, 1)).astype(np.int64)
         paddle.disable_static(paddle.CPUPlace())
         x = paddle.to_tensor(x_data, stop_gradient=False)
 
-        embedding_bag = paddle.nn.embedding_bag(
+        embedding_bag = paddle.nn.EmbeddingBag(
             10, 3, sparse=True, padding_idx=9
         )
 
@@ -54,18 +50,21 @@ class EmbeddingDygraph(unittest.TestCase):
         y = paddle.to_tensor(y_data, stop_gradient=False)
 
         with self.assertRaises(ValueError):
-            embedding_bag = paddle.nn.embedding_bag(
+            embedding_bag = paddle.nn.EmbeddingBag(
                 10, 3, padding_idx=11, sparse=True
             )
 
         with self.assertRaises(ValueError):
-            embedding_bag = paddle.nn.embedding_bag(-1, 3, sparse=True)
+            embedding_bag = paddle.nn.EmbeddingBag(-1, 3, sparse=True)
 
         with self.assertRaises(ValueError):
-            embedding_bag = paddle.nn.embedding_bag(10, -3, sparse=True)
+            embedding_bag = paddle.nn.EmbeddingBag(10, -3, sparse=True)
 
 
 class EmbeddingStatic(unittest.TestCase):
+    def setUp(self):
+        paddle.enable_static()
+
     def test_1(self):
         prog = base.Program()
         with base.program_guard(prog):
@@ -92,7 +91,7 @@ class EmbeddingStatic(unittest.TestCase):
                     dtype="int64",
                 )
 
-                emb = functional.embedding_bag(
+                emb = paddle.nn.functional.embedding_bag(
                     x=label, weight=weight, sparse=True, name="embedding_bag"
                 )
 
@@ -124,7 +123,7 @@ class EmbeddingStatic(unittest.TestCase):
                     dtype="int32",
                 )
 
-                emb = functional.embedding_bag(
+                emb = paddle.nn.functional.embedding_bag(
                     x=label,
                     weight=weight,
                     padding_idx=129,
