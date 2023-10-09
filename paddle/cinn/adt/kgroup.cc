@@ -13,8 +13,12 @@
 // limitations under the License.
 
 #include "paddle/cinn/adt/kgroup.h"
+#include "paddle/cinn/adt/equation_solver.h"
 #include "paddle/cinn/adt/igroup.h"
+#include "paddle/cinn/adt/index_expr_infer_context.h"
+#include "paddle/cinn/adt/m_ir.h"
 #include "paddle/cinn/adt/schedule_descriptor.h"
+#include "paddle/cinn/adt/schedule_dim.h"
 #include "paddle/cinn/hlir/framework/graph.h"
 
 namespace cinn::adt {
@@ -35,14 +39,14 @@ const std::vector<int32_t>& GetTensorShape(const Tensor& tensor) {
 
 }  // namespace
 
-ScheduleDescriptor KGroup::GetDefaultScheduleDescriptor(
+List<LoopSize> KGroup::GetDefaultScheduleSizes(
     const std::shared_ptr<IGroup>& igroup) const {
-  const Tensor& tensor = igroup->anchor_tensor();
+  List<LoopSize> ret{};
 
-  List<LoopDescriptor> ret{};
+  const Tensor& tensor = igroup->anchor_tensor();
   const auto tensor_shape = GetTensorShape(tensor);
   for (int32_t dim : tensor_shape) {
-    ret->emplace_back(LoopDescriptor{Temporal{}, dim});
+    ret->emplace_back(LoopSize{dim});
   }
   return ret;
 }

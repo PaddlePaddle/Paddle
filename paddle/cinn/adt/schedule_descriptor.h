@@ -117,4 +117,13 @@ inline std::string DebugString(const LoopDescriptor& loop_descriptor) {
   return DebugStringImpl(loop_descriptor);
 }
 
+List<LoopSize> GenerateLoopSizeFromSd(const ScheduleDescriptor& sd);
+
+class KGroup;
+class IGroup;
+
+ScheduleDescriptor MakeNaiveScheduleDescriptor(
+    const std::shared_ptr<KGroup>& kgroup,
+    const std::shared_ptr<IGroup>& igroup);
+
 }  // namespace cinn::adt

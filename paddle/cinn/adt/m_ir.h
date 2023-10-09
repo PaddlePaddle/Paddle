@@ -51,4 +51,7 @@ MapIrList GenerateMapIrListForLoopFuse(
     const std::function<TensorIndexExpr(const Tensor&)>&
         TensorIndexExpr4Tensor);
 
+void CollectTensorIndexIterators(const TensorIndexExpr& tensor_index_expr,
+                                 std::unordered_set<Iterator>* ret);
+
 }  // namespace cinn::adt

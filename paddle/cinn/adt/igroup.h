@@ -29,6 +29,7 @@
 #include "paddle/cinn/adt/naive_equation_function_constants_provider.h"
 #include "paddle/cinn/adt/naive_op_equation_context.h"
 #include "paddle/cinn/adt/partition_op_stmts.h"
+#include "paddle/cinn/adt/schedule_dim.h"
 
 namespace cinn::adt {
 
@@ -54,6 +55,7 @@ class IGroup final {
         constants_provider_(constants_provider) {
     GenerateIndex2Tensor(
         op_stmts, EquationCtx4OpStmt, &index2tensor_, &tensor2indexes_);
+    InitAnchorScheduleDims();
   }
 
   const List<OpStmt>& op_stmts() const { return op_stmts_; }
@@ -61,6 +63,14 @@ class IGroup final {
   const AnchorIndex& anchor_index() const { return anchor_index_; }
 
   const Tensor& anchor_tensor() const { return GetTensor(anchor_index()); }
+
+  const List<ScheduleDim>& anchor_schedule_dims() const {
+    return anchor_schedule_dims_;
+  }
+
+  const EquationCtx4OpStmtT& EquationCtx4OpStmt() const {
+    return EquationCtx4OpStmt_;
+  }
 
   const std::shared_ptr<const EquationFunctionConstantsProvider>&
   constants_provider() const {
@@ -89,9 +99,9 @@ class IGroup final {
   }
 
   void set_anchor_sd_equation_ctx(const config::AnchorSdEquationContext& ctx,
-                                  const ScheduleDescriptor& sd) {
+                                  const List<LoopSize>& sd_sizes) {
     anchor_sd_equation_ctx_ = ctx;
-    CHECK_EQ(ctx.strides()->size(), sd->size());
+    CHECK_EQ(ctx.strides()->size(), sd_sizes->size());
     auto* mut_constants_provider =
         const_cast<EquationFunctionConstantsProvider*>(
             constants_provider_.get());
@@ -99,7 +109,7 @@ class IGroup final {
     for (int i = ctx.strides()->size() - 1; i >= 0; --i) {
       CHECK(mut_constants_provider->AddStride(ctx.strides()->at(i),
                                               loop_acc_size));
-      const auto& [loop_type, loop_size] = sd->at(i).tuple();
+      const auto& loop_size = sd_sizes->at(i);
       CHECK(loop_size.Has<std::int64_t>());
       loop_acc_size *= loop_size.Get<std::int64_t>();
     }
@@ -110,7 +120,11 @@ class IGroup final {
     return anchor_sd_equation_ctx_.value().loop_iterators();
   }
 
+  List<Iterator> GetAnchorIterators() const;
+
  private:
+  void InitAnchorScheduleDims();
+
   static void GenerateIndex2Tensor(
       const List<OpStmt>& op_stmts,
       const EquationCtx4OpStmtT& EquationCtx4OpStmt,
@@ -141,6 +155,7 @@ class IGroup final {
   std::unordered_map<Tensor, std::vector<Index>> tensor2indexes_;
   std::optional<config::AnchorSdEquationContext> anchor_sd_equation_ctx_;
   std::shared_ptr<const EquationFunctionConstantsProvider> constants_provider_;
+  List<ScheduleDim> anchor_schedule_dims_;
 };
 
 }  // namespace cinn::adt

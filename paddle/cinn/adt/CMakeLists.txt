@@ -7,6 +7,7 @@ gather_srcs(
   equation_solver.cc
   equation_value.cc
   generate_map_expr.cc
+  igroup.cc
   index_expr_infer_context.cc
   kgroup.cc
   m_ir.cc
@@ -17,6 +18,7 @@ gather_srcs(
   print_map_expr.cc
   print_value.cc
   schedule_descriptor.cc
+  schedule_dim.cc
   simplify_value.cc
   write_broadcast_disabled_bidirection_equation_generator.cc)
 

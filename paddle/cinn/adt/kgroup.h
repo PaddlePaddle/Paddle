@@ -42,7 +42,7 @@ class KGroup final {
     return igroups_;
   }
 
-  ScheduleDescriptor GetDefaultScheduleDescriptor(
+  List<LoopSize> GetDefaultScheduleSizes(
       const std::shared_ptr<IGroup>& igroup) const;
 
  private:

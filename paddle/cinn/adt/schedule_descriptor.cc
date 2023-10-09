@@ -13,8 +13,57 @@
 // limitations under the License.
 
 #include "paddle/cinn/adt/schedule_descriptor.h"
+#include "paddle/cinn/adt/equation_solver.h"
+#include "paddle/cinn/adt/igroup.h"
+#include "paddle/cinn/adt/index_expr_infer_context.h"
+#include "paddle/cinn/adt/kgroup.h"
+#include "paddle/cinn/adt/schedule_dim.h"
 
 namespace cinn::adt {
+
+namespace {
+
+const std::vector<int32_t>& GetTensorShape(const Tensor& tensor) {
+  CHECK(tensor.Has<adapter::Tensor>());
+  return tensor.Get<adapter::Tensor>().GetShape();
+}
+
+ScheduleDescriptor CreateOptimizedScheduleDescriptor(
+    const List<ScheduleDim>& loop_sizes) {
+  ADT_TODO();
+}
+
+}  // namespace
+
+ScheduleDescriptor MakeOptimizedScheduleDescriptor(
+    const std::shared_ptr<KGroup>& kgroup,
+    const std::shared_ptr<IGroup>& igroup) {
+  const auto& schedule_dim = igroup->anchor_schedule_dims();
+
+  return CreateOptimizedScheduleDescriptor(schedule_dim);
+}
+
+ScheduleDescriptor MakeNaiveScheduleDescriptor(
+    const std::shared_ptr<KGroup>& kgroup,
+    const std::shared_ptr<IGroup>& igroup) {
+  const Tensor& tensor = igroup->anchor_tensor();
+
+  List<LoopDescriptor> ret{};
+  const auto tensor_shape = GetTensorShape(tensor);
+  for (int32_t dim : tensor_shape) {
+    ret->emplace_back(LoopDescriptor{Temporal{}, dim});
+  }
+  return ret;
+}
+
+List<LoopSize> GenerateLoopSizeFromSd(const ScheduleDescriptor& sd) {
+  List<LoopSize> sd_sizes{};
+  for (const auto& loop_descriptor : *sd) {
+    const auto& [loop_type, loop_size] = loop_descriptor.tuple();
+    sd_sizes->emplace_back(loop_size);
+  }
+  return sd_sizes;
+}
 
 std::string DebugStringImpl(const LoopDescriptor& loop_descriptor) {
   const auto& [loop_type, loop_size] = loop_descriptor.tuple();
