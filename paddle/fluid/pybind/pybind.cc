@@ -122,9 +122,9 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/io.h"
-#include "paddle/fluid/pybind/ir.h"
 #include "paddle/fluid/pybind/jit.h"
 #include "paddle/fluid/pybind/metrics_py.h"
+#include "paddle/fluid/pybind/pir.h"
 #include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/fluid/pybind/xpu_streams_py.h"
@@ -195,7 +195,8 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
-#include "paddle/fluid/ir/interface/vjp.h"
+#include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
+#include "paddle/fluid/pir/dialect/operator/trait/custom_vjp.h"
 #include "paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
 #include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
 #include "paddle/fluid/pybind/eager_utils.h"
@@ -205,6 +206,7 @@ limitations under the License. */
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
+#include "paddle/pir/core/program.h"
 #include "pybind11/stl.h"
 
 PHI_DECLARE_bool(use_mkldnn);
@@ -419,7 +421,7 @@ struct iinfo {
         dtype = "int64";
         break;
       case framework::proto::VarType::INT8:
-        min = std::numeric_limits<int8_t>::min();
+        min = std::numeric_limits<int8_t>::min();  // NOLINT
         max = std::numeric_limits<int8_t>::max();
         bits = 8;
         dtype = "int8";
@@ -675,7 +677,7 @@ static void AssertStaticGraphAndDygraphGradMakerNoDiff() {
                         string::join_strings(ops, ',')));
 }
 
-#ifdef PADDLE_WITH_NCCL
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 static int GetNCCLVersion() {
 #if NCCL_VERSION_CODE >= 2304
   int ver;
@@ -691,20 +693,18 @@ static int GetNCCLVersion() {
 void BindVjp(pybind11::module *m) {
   m->def(
       "call_vjp",
-      [](ir::Operation &fwd_op,
-         const std::vector<std::vector<ir::OpResult>> &out_grads,
-         const std::vector<std::vector<int>> &stop_gradients) {
+      [](pir::Operation &fwd_op,
+         const std::vector<std::vector<pir::OpResult>> &out_grads,
+         const std::vector<std::vector<bool>> &stop_gradients) {
         py::list res;
-        ir::IrContext *ctx = ir::IrContext::Instance();
-        ir::OpInfo fwd_op_info = ctx->GetRegisteredOpInfo(fwd_op.name());
-        auto vjp_interface_impl =
-            fwd_op_info.GetInterfaceImpl<paddle::dialect::VjpInterface>();
-        if (vjp_interface_impl == nullptr) {
-          PADDLE_THROW(phi::errors::InvalidArgument(
-              "The vjp function is not registered in %s op ", fwd_op.name()));
-        }
-        std::vector<std::vector<ir::OpResult>> vjp_res =
-            vjp_interface_impl->vjp_(&fwd_op, out_grads, stop_gradients);
+        paddle::dialect::VjpInterface vjp_interface =
+            fwd_op.dyn_cast<paddle::dialect::VjpInterface>();
+        PADDLE_ENFORCE(
+            vjp_interface,
+            phi::errors::InvalidArgument(
+                "The vjp function is not registered in %s op ", fwd_op.name()));
+        std::vector<std::vector<pir::OpResult>> vjp_res =
+            vjp_interface.Vjp(&fwd_op, out_grads, stop_gradients);
         PADDLE_ENFORCE_EQ(
             stop_gradients.size(),
             vjp_res.size(),
@@ -731,7 +731,7 @@ void BindVjp(pybind11::module *m) {
                                 vjp_res[i].size()));
           py::list sub_res;
           for (size_t j = 0; j < vjp_res[i].size(); ++j) {
-            if (stop_gradients[i][j]) {
+            if (!vjp_res[i][j]) {
               sub_res.append(nullptr);
             } else {
               sub_res.append(vjp_res[i][j]);
@@ -742,14 +742,29 @@ void BindVjp(pybind11::module *m) {
         return res;
       });
 
-  m->def("has_vjp", [](ir::Operation &fwd_op) {
-    ir::IrContext *ctx = ir::IrContext::Instance();
-    ir::OpInfo fwd_op_info = ctx->GetRegisteredOpInfo(fwd_op.name());
+  m->def("has_vjp", [](pir::Operation &fwd_op) {
+    pir::IrContext *ctx = pir::IrContext::Instance();
+    pir::OpInfo fwd_op_info = ctx->GetRegisteredOpInfo(fwd_op.name());
     auto vjp_interface_impl =
         fwd_op_info.GetInterfaceImpl<paddle::dialect::VjpInterface>();
     if (vjp_interface_impl == nullptr) return false;
     return true;
   });
+
+  m->def(
+      "has_custom_vjp",
+      [](pir::Operation &op) -> py::bool_ {
+        return op.info().HasTrait<paddle::dialect::CustomVjpTrait>();
+      },
+      R"DOC(
+           Return whether an op has custom vjp rules.
+
+           Args:
+               op (pir::Operation): op to be checked
+
+           Returns:
+               out (bool): True means that the op has custom vjp rules, False means it does not.
+           )DOC");
 }
 PYBIND11_MODULE(libpaddle, m) {
   BindImperative(&m);
@@ -853,6 +868,7 @@ PYBIND11_MODULE(libpaddle, m) {
           [](const std::shared_ptr<egr::GradNodeBase> &self) {
             return self->NextFunctions();
           })
+      .def("node_ptr", &egr::GradNodeBase::GetPtr)
       .def("input_meta",
            [](const std::shared_ptr<egr::GradNodeBase> &self) {
              return self->InputMeta();
@@ -871,7 +887,7 @@ PYBIND11_MODULE(libpaddle, m) {
   });
 #endif
 
-#ifdef PADDLE_WITH_NCCL
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   m.def("nccl_version", &GetNCCLVersion);
 #endif
 
@@ -1102,7 +1118,7 @@ PYBIND11_MODULE(libpaddle, m) {
   });
 
   // NOTE(zjl): ctest would load environment variables at the beginning even
-  // though we have not `import paddle.fluid as fluid`. So we add this API
+  // though we have not `import paddle.base as base`. So we add this API
   // to enable eager deletion mode in unittest.
   m.def("_set_eager_deletion_mode", &paddle::framework::SetEagerDeletionMode);
 
@@ -1238,12 +1254,15 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          # create tensor from a scope and set value to it.
-          param = scope.var('Param').get_tensor()
-          param_array = np.full((height, row_numel), 5.0).astype("float32")
-          param.set(param_array, place)
+            >>> import paddle
+            >>> import numpy as np
 
+            >>> scope = paddle.static.global_scope()
+            >>> place = paddle.CPUPlace()
+            >>> # create tensor from a scope and set value to it.
+            >>> param = scope.var('Param').get_tensor()
+            >>> param_array = np.full((10, 12), 5.0).astype("float32")
+            >>> param.set(param_array, place)
         )DOC");
   g_framework_scope_pytype = reinterpret_cast<PyTypeObject *>(_Scope.ptr());
   _Scope
@@ -1419,6 +1438,8 @@ All parameter, weight, gradient are variables in Paddle.
             defalut_val.index() - 1);
       });
   m.def("_add_skip_comp_ops", &paddle::prim::PrimCommonUtils::AddSkipCompOps);
+  m.def("_set_bwd_prim_blacklist",
+        &paddle::prim::PrimCommonUtils::SetPrimBackwardBlacklist);
   m.def("_remove_skip_comp_ops",
         &paddle::prim::PrimCommonUtils::RemoveSkipCompOps);
   m.def("get_grad_op_desc",
@@ -1531,7 +1552,9 @@ All parameter, weight, gradient are variables in Paddle.
           ProgramDesc prog_with_targets(origin);
 
           for (const auto &t : targets) {
-            prog_with_targets.MutableBlock(t[0])->Op(t[1])->SetIsTarget(true);
+            prog_with_targets.MutableBlock(t[0])
+                ->Op(static_cast<int>(t[1]))
+                ->SetIsTarget(true);
           }
           proto::ProgramDesc pruned_desc;
           auto pruned_origin_block_id_map =
@@ -1977,6 +2000,13 @@ All parameter, weight, gradient are variables in Paddle.
                   &>(),
           py::arg("job_list"),
           py::arg("type_to_program"))
+      .def(
+          py::init<
+              const std::vector<std::shared_ptr<framework::interpreter::Job>> &,
+              const std::unordered_map<std::string,
+                                       std::shared_ptr<::pir::Program>> &>(),
+          py::arg("job_list"),
+          py::arg("type_to_ir_program"))
       .def("job_list", &framework::interpreter::Plan::JobList)
       .def("micro_batch_num", &framework::interpreter::Plan::MicroBatchNum)
       .def("program", &framework::interpreter::Plan::Program);
@@ -2139,9 +2169,8 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-
-          arr = fluid.LoDTensorArray()
+            >>> import paddle
+            >>> arr = paddle.framework.core.LoDTensorArray()
 )DOC");
   g_framework_lodtensorarray_pytype =
       reinterpret_cast<PyTypeObject *>(pylodtensorarray.ptr());
@@ -2181,15 +2210,15 @@ All parameter, weight, gradient are variables in Paddle.
                    None.
 
              Examples:
-                 .. code-block:: python
+                    .. code-block:: python
 
-                   import paddle.fluid as fluid
-                   import numpy as np
+                        >>> import paddle
+                        >>> import numpy as np
 
-                   arr = fluid.LoDTensorArray()
-                   t = fluid.LoDTensor()
-                   t.set(np.ndarray([5, 30]), fluid.CPUPlace())
-                   arr.append(t)
+                        >>> arr = paddle.framework.core.LoDTensorArray()
+                        >>> t = paddle.framework.core.LoDTensor()
+                        >>> t.set(np.ndarray([5, 30]), paddle.CPUPlace())
+                        >>> arr.append(t)
            )DOC")
       .def(
           "_move_to_list",
@@ -2909,7 +2938,7 @@ All parameter, weight, gradient are variables in Paddle.
   GetAllWorkerInfos(&m);
 #endif
 
-  BindNewIR(&m);
+  BindPIR(&m);
   BindVjp(&m);
 }
 }  // namespace pybind

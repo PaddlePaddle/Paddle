@@ -22,10 +22,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/multi_devices_graph_pass.h"
 #include "paddle/phi/core/flags.h"
 
-DECLARE_bool(convert_all_blocks);
+PD_DECLARE_bool(convert_all_blocks);
 PHI_DECLARE_bool(use_mkldnn);
 #ifdef PADDLE_WITH_CINN
-DECLARE_bool(use_cinn);
+PD_DECLARE_bool(use_cinn);
 #endif
 
 namespace paddle {

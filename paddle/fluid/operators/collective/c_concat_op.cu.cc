@@ -15,6 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/c_concat_op.h"
 
 #include <vector>
+#include "paddle/fluid/distributed/collective/utils.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/phi/api/include/tensor.h"
@@ -23,6 +25,9 @@ limitations under the License. */
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/flags.h"
+PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 namespace paddle {
@@ -68,6 +73,12 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
     temp_out.mutable_data<T>(temp_out_dims, place);
 
     auto map = distributed::ProcessGroupMapFromGid::getInstance();
+
+    int64_t send_numel = x->numel();
+    const T* send_buff = x->data<T>();
+    T* recv_buff = temp_out.data<T>();
+    gpuStream_t stream = nullptr;
+
     if (map->has(rid)) {
       // Use ProcessGroup
       distributed::ProcessGroup* pg = map->get(rid);
@@ -78,27 +89,55 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
       auto task = pg->AllGather(in_tensor, out_tensor);
       task->Wait();
     } else {
-      auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
-      PADDLE_ENFORCE_EQ(
-          nranks,
-          comm->nranks(),
-          platform::errors::InvalidArgument(
-              "nranks: %s should equal to %s", nranks, comm->nranks()));
-
-      int64_t send_numel = x->numel();
-      const T* send_buff = x->data<T>();
-      T* recv_buff = temp_out.data<T>();
-      gpuStream_t stream = nullptr;
-      // should ExecutionContext for calc stream.
-      stream = ctx.cuda_device_context().stream();
-
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::ncclAllGather(send_buff,
-                                           recv_buff,
-                                           send_numel,
-                                           static_cast<ncclDataType_t>(dtype),
-                                           comm->comm(),
-                                           stream));
+      platform::NCCLComm* comm = nullptr;
+      phi::distributed::NCCLCommContext* comm_ctx = nullptr;
+      const auto& comm_context_manager =
+          phi::distributed::CommContextManager::GetInstance();
+      if (FLAGS_dynamic_static_unified_comm) {
+        PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
+                          true,
+                          platform::errors::InvalidArgument(
+                              "You choose to use new communication library by "
+                              "setting environment "
+                              "variable FLAGS_dynamic_static_unified_comm "
+                              "True. But ring_id(%d) is "
+                              "not found in comm_context_manager.",
+                              std::to_string(rid)));
+        comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
+            comm_context_manager.Get(std::to_string(rid)));
+        PADDLE_ENFORCE_NE(
+            comm_ctx,
+            nullptr,
+            platform::errors::Unavailable(
+                "NCCLCommContext is nullptr, collective op should "
+                "has ring_id attr."));
+        stream = comm_ctx->GetStream();
+        VLOG(3) << "new comm_context_manager has rid " << rid;
+      } else {  // old comm_context
+        comm = platform::NCCLCommContext::Instance().Get(rid, place);
+        PADDLE_ENFORCE_EQ(
+            nranks,
+            comm->nranks(),
+            platform::errors::InvalidArgument(
+                "nranks: %s should equal to %s", nranks, comm->nranks()));
+        stream = comm->stream();
+        VLOG(3) << "old NCCLCommContext has rid " << rid;
+      }
+      if (ctx.Attr<bool>("use_calc_stream")) {
+        // should ExecutionContext for calc stream.
+        stream = ctx.cuda_device_context().stream();
+      }
+      if (comm_ctx) {
+        comm_ctx->AllGather(&temp_out, *x, stream);
+      } else {
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            platform::dynload::ncclAllGather(send_buff,
+                                             recv_buff,
+                                             send_numel,
+                                             static_cast<ncclDataType_t>(dtype),
+                                             comm->comm(),
+                                             stream));
+      }
     }
 
     std::vector<phi::DenseTensor> inputs;

@@ -34,12 +34,12 @@ def hz_to_mel(
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            val = 3.0
-            htk_flag = True
-            mel_paddle_tensor = paddle.audio.functional.hz_to_mel(
-                paddle.to_tensor(val), htk_flag)
+            >>> val = 3.0
+            >>> htk_flag = True
+            >>> mel_paddle_tensor = paddle.audio.functional.hz_to_mel(
+            ...     paddle.to_tensor(val), htk_flag)
     """
 
     if htk:
@@ -90,13 +90,13 @@ def mel_to_hz(
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            val = 3.0
-            htk_flag = True
-            mel_paddle_tensor = paddle.audio.functional.mel_to_hz(
-                paddle.to_tensor(val), htk_flag)
-
+            >>> val = 3.0
+            >>> htk_flag = True
+            >>> mel_paddle_tensor = paddle.audio.functional.mel_to_hz(
+            ...     paddle.to_tensor(val), htk_flag)
+            ...
     """
     if htk:
         return 700.0 * (10.0 ** (mel / 2595.0) - 1.0)
@@ -142,15 +142,15 @@ def mel_frequencies(
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            n_mels = 64
-            f_min = 0.5
-            f_max = 10000
-            htk_flag = True
+            >>> n_mels = 64
+            >>> f_min = 0.5
+            >>> f_max = 10000
+            >>> htk_flag = True
 
-            paddle_mel_freq = paddle.audio.functional.mel_frequencies(
-                n_mels, f_min, f_max, htk_flag, 'float64')
+            >>> paddle_mel_freq = paddle.audio.functional.mel_frequencies(
+            ...     n_mels, f_min, f_max, htk_flag, 'float64')
     """
     # 'Center freqs' of mel bands - uniformly spaced between limits
     min_mel = hz_to_mel(f_min, htk=htk)
@@ -174,11 +174,11 @@ def fft_frequencies(sr: int, n_fft: int, dtype: str = 'float32') -> Tensor:
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            sr = 16000
-            n_fft = 128
-            fft_freq = paddle.audio.functional.fft_frequencies(sr, n_fft)
+            >>> sr = 16000
+            >>> n_fft = 128
+            >>> fft_freq = paddle.audio.functional.fft_frequencies(sr, n_fft)
     """
     return paddle.linspace(0, float(sr) / 2, int(1 + n_fft // 2), dtype=dtype)
 
@@ -211,11 +211,11 @@ def compute_fbank_matrix(
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            n_mfcc = 23
-            n_mels = 51
-            paddle_dct = paddle.audio.functional.create_dct(n_mfcc, n_mels)
+            >>> sr = 23
+            >>> n_fft = 51
+            >>> fbank = paddle.audio.functional.compute_fbank_matrix(sr, n_fft)
     """
 
     if f_max is None:
@@ -276,11 +276,11 @@ def power_to_db(
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            val = 3.0
-            decibel_paddle = paddle.audio.functional.power_to_db(
-                paddle.to_tensor(val))
+            >>> val = 3.0
+            >>> decibel_paddle = paddle.audio.functional.power_to_db(
+            ...     paddle.to_tensor(val))
     """
     if amin <= 0:
         raise Exception("amin must be strictly positive")
@@ -320,10 +320,10 @@ def create_dct(
     Examples:
         .. code-block:: python
 
-            import paddle
-            n_mfcc = 23
-            n_mels = 257
-            dct = paddle.audio.functional.create_dct(n_mfcc, n_mels)
+            >>> import paddle
+            >>> n_mfcc = 23
+            >>> n_mels = 257
+            >>> dct = paddle.audio.functional.create_dct(n_mfcc, n_mels)
     """
     n = paddle.arange(n_mels, dtype=dtype)
     k = paddle.arange(n_mfcc, dtype=dtype).unsqueeze(1)

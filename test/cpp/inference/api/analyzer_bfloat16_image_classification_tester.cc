@@ -16,7 +16,7 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "test/cpp/inference/api/tester_helper.h"
 
-DEFINE_bool(enable_mkldnn, true, "Enable MKLDNN");
+PD_DEFINE_bool(enable_mkldnn, true, "Enable MKLDNN");
 
 namespace paddle {
 namespace inference {

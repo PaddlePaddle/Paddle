@@ -18,7 +18,7 @@ import subprocess
 import time
 import unittest
 
-from paddle import fluid
+from paddle import base
 from paddle.distributed.utils.launch_utils import (
     TrainerProc,
     find_free_ports,
@@ -105,7 +105,7 @@ def start_local_trainers(
 
 class TestMultipleGpus(unittest.TestCase):
     def run_mnist_2gpu(self, target_file_name):
-        if fluid.core.get_cuda_device_count() == 0:
+        if base.core.get_cuda_device_count() == 0:
             return
 
         selected_gpus = get_gpus('0,1')

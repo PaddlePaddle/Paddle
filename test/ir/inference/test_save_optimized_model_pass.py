@@ -122,9 +122,9 @@ class TestSaveOptimizedModelPassWithTRT(
                 use_calib_mode=False,
             )
             config.set_trt_dynamic_shape_info(
-                {"x": [1, 3, 224, 224], "flatten_1.tmp_0": [1, 9216]},
-                {"x": [1, 3, 224, 224], "flatten_1.tmp_0": [1, 9216]},
-                {"x": [1, 3, 224, 224], "flatten_1.tmp_0": [1, 9216]},
+                {"x": [1, 3, 224, 224], "flatten_0.tmp_0": [1, 9216]},
+                {"x": [1, 3, 224, 224], "flatten_0.tmp_0": [1, 9216]},
+                {"x": [1, 3, 224, 224], "flatten_0.tmp_0": [1, 9216]},
             )
             config.exp_disable_tensorrt_ops(["flatten_contiguous_range"])
             config.enable_memory_optim()

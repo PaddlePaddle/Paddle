@@ -17,8 +17,8 @@
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 
 #include <fcntl.h>
-#include <stdlib.h>
 #include <sys/mman.h>
+#include <cstdlib>
 
 #include <atomic>
 #include <random>
@@ -345,7 +345,8 @@ int MemoryMapAllocationPool::FindFromCache(const int &flag,
                                            const std::string &file_name,
                                            bool check_refcount) {
   std::lock_guard<std::mutex> guard(mtx_);
-  for (size_t idx = 0; idx < memory_map_allocations_.size(); idx++) {
+  for (int idx = 0; idx < static_cast<int>(memory_map_allocations_.size());
+       idx++) {
     if (memory_map_allocations_.at(idx).flags_ == flag &&
         memory_map_allocations_.at(idx).data_size_ == data_size) {
       if (file_name.empty() ||
@@ -391,7 +392,7 @@ void MemoryMapAllocationPool::Clear() {
   memory_map_allocations_.clear();
 }
 
-MemoryMapAllocationPool::~MemoryMapAllocationPool() { Clear(); }
+MemoryMapAllocationPool::~MemoryMapAllocationPool() { Clear(); }  // NOLINT
 
 }  // namespace allocation
 }  // namespace memory

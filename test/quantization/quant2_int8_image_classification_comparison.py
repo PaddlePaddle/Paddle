@@ -23,7 +23,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.framework import IrGraph
+from paddle.base.framework import IrGraph
 from paddle.framework import core
 from paddle.static.quantization import Quant2Int8MkldnnPass
 
@@ -113,9 +113,7 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
                 while step < num:
                     fp.seek(imgs_offset + img_size * step)
                     img = fp.read(img_size)
-                    img = struct.unpack_from(
-                        '{}f'.format(img_ch * img_w * img_h), img
-                    )
+                    img = struct.unpack_from(f'{img_ch * img_w * img_h}f', img)
                     img = np.array(img)
                     img.shape = (img_ch, img_w, img_h)
                     fp.seek(labels_offset + label_size * step)
@@ -195,7 +193,9 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
                     inference_program,
                     feed_target_names,
                     fetch_targets,
-                ] = paddle.fluid.io.load_inference_model(model_path, exe)
+                ] = paddle.static.io.load_inference_model(
+                    model_path, exe, model_filename=None, params_filename=None
+                )
             else:
                 [
                     inference_program,
@@ -308,17 +308,11 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
             return outputs, acc1_avg, acc5_avg, fps_avg, latency_avg
 
     def _print_performance(self, title, fps, lat):
-        _logger.info(
-            '{}: avg fps: {:.2f}, avg latency: {:.4f} ms'.format(
-                title, fps, lat
-            )
-        )
+        _logger.info(f'{title}: avg fps: {fps:.2f}, avg latency: {lat:.4f} ms')
 
     def _print_accuracy(self, title, acc1, acc5):
         _logger.info(
-            '{}: avg top1 accuracy: {:.4f}, avg top5 accuracy: {:.4f}'.format(
-                title, acc1, acc5
-            )
+            f'{title}: avg top1 accuracy: {acc1:.4f}, avg top5 accuracy: {acc5:.4f}'
         )
 
     def _summarize_performance(self, int8_fps, int8_lat, fp32_fps, fp32_lat):

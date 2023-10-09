@@ -43,6 +43,25 @@ class TestCollectiveReduceScatterAPI(test_base.TestDistBase):
                 need_envs={"USE_COMM_CONTEXT": "1"},
             )
 
+    def test_reduce_scatter_nccl_with_new_comm(self):
+        dtypes_to_test = [
+            "float16",
+            "float32",
+            "float64",
+            "int32",
+            "int64",
+        ]
+        if self._nccl_version >= 21000:
+            dtypes_to_test.append("bfloat16")
+        for dtype in dtypes_to_test:
+            self.check_with_place(
+                "collective_reduce_scatter_api.py",
+                "reduce_scatter",
+                "nccl",
+                dtype=dtype,
+                need_envs={"FLAGS_dynamic_static_unified_comm": "1"},
+            )
+
     def test_reduce_scatter_nccl_dygraph(self):
         dtypes_to_test = [
             "float16",

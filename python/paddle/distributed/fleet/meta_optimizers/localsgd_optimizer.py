@@ -113,7 +113,7 @@ class LocalSGDOptimizer(MetaOptimizerBase):
 
         p2s = self.create_snapshot_vars(main_block.program)
         with program_guard(main_block.program, startup_program):
-            step = paddle.fluid.layers.autoincreased_step_counter(begin=1)
+            step = paddle.optimizer.lr.autoincreased_step_counter(begin=1)
             k_steps = paddle.static.create_global_var(
                 name="k_steps",
                 shape=[1],
@@ -330,7 +330,7 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
 
         p2s = self.create_snapshot_vars(main_block.program)
         with program_guard(main_block.program, startup_program):
-            step = paddle.fluid.layers.autoincreased_step_counter(begin=1)
+            step = paddle.optimizer.lr.autoincreased_step_counter(begin=1)
 
             k_steps = paddle.static.create_global_var(
                 name="k_steps",
@@ -351,7 +351,7 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
             last_step = paddle.static.create_global_var(
                 name="last_step",
                 shape=[1],
-                value=int(0),
+                value=0,
                 dtype='int64',
                 persistable=True,
             )

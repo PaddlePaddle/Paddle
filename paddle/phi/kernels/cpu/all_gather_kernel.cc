@@ -20,6 +20,9 @@
 #if defined(PADDLE_WITH_GLOO)
 #include "paddle/phi/core/distributed/gloo_comm_context.h"
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/core/distributed/xccl_comm_context.h"
+#endif
 
 namespace phi {
 
@@ -49,6 +52,28 @@ void AllGatherKernel(const Context& dev_ctx,
 #endif
 }
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+template <typename T>
+void AllGatherKernel(const phi::CustomContext& dev_ctx,
+                     const DenseTensor& x,
+                     int nranks,
+                     DenseTensor* out) {
+  dev_ctx.template Alloc<T>(out);
+  auto out_dims = x.dims();
+  out_dims[0] *= nranks;
+  out->Resize(out_dims);
+
+  auto comm_ctx =
+      static_cast<distributed::XCCLCommContext*>(dev_ctx.GetCommContext());
+  PADDLE_ENFORCE_EQ(
+      nranks,
+      comm_ctx->GetSize(),
+      errors::InvalidArgument(
+          "nranks: %s should equal to %s", nranks, comm_ctx->GetSize()));
+
+  comm_ctx->AllGather(out, x, *dev_ctx.GetStream());
+}
+#endif
 }  // namespace phi
 
 PD_REGISTER_KERNEL(all_gather,
@@ -61,5 +86,22 @@ PD_REGISTER_KERNEL(all_gather,
                    bool,
                    int8_t,
                    uint8_t,
+                   int16_t,
                    int64_t,
                    phi::dtype::float16) {}
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+PD_REGISTER_KERNEL(all_gather,
+                   Custom,
+                   ALL_LAYOUT,
+                   phi::AllGatherKernel,
+                   float,
+                   double,
+                   int,
+                   bool,
+                   int8_t,
+                   uint8_t,
+                   int16_t,
+                   int64_t,
+                   phi::dtype::float16) {}
+#endif

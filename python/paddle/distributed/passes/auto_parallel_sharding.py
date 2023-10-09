@@ -43,6 +43,7 @@ from paddle.static import default_main_program, default_startup_program
 from paddle.utils import unique_name
 
 from .pass_base import PassBase, register_pass
+from .pass_utils import AutoParallelStreamType
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
@@ -295,12 +296,12 @@ class ShardingPass(PassBase):
         self._insert_optimizer_broadcasts(main_block, startup_block)
 
     def _shard_amp_related_op_and_vars(self, main_block):
-        if self.stage < 2:
+        if self.stage < 1:
             return
 
         for idx, op in reversed(list(enumerate(main_block.ops))):
             # shard amp related param_grad cast
-            if _is_param_grad_fp32_cast_op(main_block, op):
+            if _is_param_grad_fp32_cast_op(main_block, op) and self.stage > 1:
                 output_name = op.output_arg_names[0]
                 param_name = output_name[: output_name.find("@")]
                 if not self._is_parameter_in_local_shard(param_name):
@@ -748,13 +749,11 @@ class ShardingPass(PassBase):
                     group = sharding_info.group
                 else:
                     group = new_process_group(ranks, force_new_group=True)
-                # NOTE here stream is just a presentation with different name,
-                # it is up to executor to create the exact streams given the name.
-                stream = f"sharding_param_comm_stream{i}"
+
                 self.param_comm_group_stream_pairs.append(
                     {
                         "comm_group": group,
-                        "comm_stream": stream,
+                        "comm_stream": AutoParallelStreamType.SHARDING_STREAM.value,
                     }
                 )
             _logger.info(
@@ -805,10 +804,7 @@ class ShardingPass(PassBase):
                 )
             )
             _logger.debug(
-                "Bucket[{}] parameters: {}.".format(
-                    i,
-                    [p.name for p in param_group.vars],
-                )
+                f"Bucket[{i}] parameters: {[p.name for p in param_group.vars]}."
             )
 
             broadcast_var_to_group_map[
@@ -1430,7 +1426,6 @@ def _insert_init_and_broadcast_op(
             broadcast_var_dist_attr.dims_mapping,
             dist_context,
         )
-    return
 
 
 def _insert_reduce_op(
@@ -1649,9 +1644,7 @@ def partition_by_greedy_even(params, group_size):
         numel = reduce(lambda x, y: x * y, param.shape, 1)
         assert (
             numel > 0
-        ), "param [{}] should larger than 0, but it is [{}]".format(
-            param.name, numel
-        )
+        ), f"param [{param.name}] should larger than 0, but it is [{numel}]"
         sizes[rank] += numel
 
     return mapping
@@ -1666,9 +1659,7 @@ def partition_parameters(params, group_size, algor="greedy_even"):
     _logger.info("Sharding Parameter Partition:")
     for k, v in rank_to_params.items():
         _logger.info(
-            "Rank:{}, Parameter Size:{} MB.".format(
-                k, sum([get_var_size(var) for var in v])
-            )
+            f"Rank:{k}, Parameter Size:{sum([get_var_size(var) for var in v])} MB."
         )
         _logger.info(f"Params in this rank: {[var.name for var in v]}.")
 

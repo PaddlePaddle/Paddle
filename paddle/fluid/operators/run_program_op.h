@@ -143,7 +143,8 @@ static void ShareVarsIntoScope(const std::vector<Variable *> &vars,
                                const std::vector<std::string> &var_names,
                                framework::Scope *scope) {
   for (size_t i = 0; i < vars.size(); ++i) {
-    if (var_names[i] == framework::kFakeVarName) {
+    if (var_names[i] == framework::kFakeVarName ||
+        var_names[i] == paddle::framework::kEmptyVarName) {
       continue;
     }
     auto *var = scope->Var(var_names[i]);

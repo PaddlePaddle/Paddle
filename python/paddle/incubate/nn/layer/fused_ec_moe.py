@@ -46,15 +46,17 @@ class FusedEcMoe(Layer):
     Examples:
         .. code-block:: python
 
-            # required: gpu
-            import paddle
-            from paddle.incubate.nn.layer.fused_ec_moe import FusedEcMoe
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+            >>> from paddle.incubate.nn.layer.fused_ec_moe import FusedEcMoe
 
-            x = paddle.randn([10, 128, 1024]) # [bsz, seq_len, d_model]
-            gate = paddle.randn([10, 128, 8]) # [bsz, seq_len, num_experts]
-            moe = FusedEcMoe(1024, 4096, 8, act_type="gelu")
-            y = moe(x, gate)
-            print(y.shape) # [10, 128, 1024]
+            >>> x = paddle.randn([10, 128, 1024]) # [bsz, seq_len, d_model]
+            >>> gate = paddle.randn([10, 128, 8]) # [bsz, seq_len, num_experts]
+            >>> moe = FusedEcMoe(1024, 4096, 8, act_type="gelu")
+            >>> y = moe(x, gate)
+            >>> print(y.shape)
+            [10, 128, 1024]
     """
 
     def __init__(

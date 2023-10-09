@@ -59,9 +59,9 @@ limitations under the License. */
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "paddle/phi/core/errors.h"
 
-#include "paddle/phi/backends/dynload/port.h"
 #include "paddle/utils/string/printf.h"
 #include "paddle/utils/string/to_string.h"
+#include "paddle/utils/test_macros.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cublas.h"
@@ -228,9 +228,9 @@ struct BinaryCompareMessageConverter<false> {
 };
 }  // namespace details
 
-int GetCallStackLevel();
-std::string GetCurrentTraceBackString(bool for_signal = false);
-std::string SimplifyErrorTypeFormat(const std::string& str);
+TEST_API int GetCallStackLevel();
+TEST_API std::string GetCurrentTraceBackString(bool for_signal = false);
+TEST_API std::string SimplifyErrorTypeFormat(const std::string& str);
 
 template <typename StrType>
 static std::string GetErrorSumaryString(StrType&& what,

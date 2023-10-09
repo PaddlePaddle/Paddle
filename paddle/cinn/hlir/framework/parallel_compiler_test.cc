@@ -20,6 +20,7 @@
 #include "paddle/cinn/frontend/net_builder.h"
 #include "paddle/cinn/frontend/optimize.h"
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 
 namespace cinn {
 namespace hlir {
@@ -35,9 +36,9 @@ TEST(ParallelCompilerTest, Add_TEST_0) {
   auto graph = std::make_shared<Graph>(program, target);
   auto scope = BuildScope(target, graph);
 
-  ParallelCompiler::CompileOptions option;
-  ParallelCompiler pc(scope, graph, option, target);
-  auto runtime_program = pc();
+  CompilationContext context(graph, scope, target);
+  ParallelCompiler pc(&context);
+  auto compilation_result = pc();
 }
 
 TEST(ParallelCompilerTest, Conv2d_Test_0) {
@@ -53,9 +54,9 @@ TEST(ParallelCompilerTest, Conv2d_Test_0) {
   auto graph = frontend::Optimize(&program, {}, target);
   auto scope = BuildScope(target, graph);
 
-  ParallelCompiler::CompileOptions option;
-  ParallelCompiler pc(scope, graph, option, target);
-  auto runtime_program = pc();
+  CompilationContext context(graph, scope, target);
+  ParallelCompiler pc(&context);
+  auto compilation_result = pc();
 }
 
 TEST(ParallelCompilerTest, Matmul_Test_0) {
@@ -71,9 +72,9 @@ TEST(ParallelCompilerTest, Matmul_Test_0) {
   auto graph = frontend::Optimize(&program, {}, target);
   auto scope = BuildScope(target, graph);
 
-  ParallelCompiler::CompileOptions option;
-  ParallelCompiler pc(scope, graph, option, target);
-  auto runtime_program = pc();
+  CompilationContext context(graph, scope, target);
+  ParallelCompiler pc(&context);
+  auto compilation_result = pc();
 }
 
 }  // namespace framework

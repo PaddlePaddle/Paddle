@@ -115,7 +115,7 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& ctx,
                                          int64_t out_size,
                                          DenseTensor* out,
                                          DenseTensor* dst_count = nullptr) {
-  const int& index_size = src_index.dims()[0];
+  const int& index_size = src_index.dims()[0];  // NOLINT
   auto out_dims = out->dims();
   int64_t memset_size = 1;
   std::vector<int64_t> dims_ = phi::vectorize(out_dims);

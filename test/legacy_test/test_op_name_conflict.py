@@ -17,24 +17,24 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class TestOpNameConflict(unittest.TestCase):
     def test_conflict(self):
         paddle.enable_static()
-        main = fluid.Program()
-        startup = fluid.Program()
-        with fluid.unique_name.guard():
-            with fluid.program_guard(main, startup):
+        main = base.Program()
+        startup = base.Program()
+        with base.unique_name.guard():
+            with base.program_guard(main, startup):
                 x = paddle.static.data(name="x", shape=[1], dtype='float32')
                 y = paddle.static.data(name="y", shape=[1], dtype='float32')
 
                 m = paddle.log2(x, name="log2")
                 n = paddle.log2(y, name="log2")
 
-                place = fluid.CPUPlace()
-                exe = fluid.Executor(place)
+                place = base.CPUPlace()
+                exe = base.Executor(place)
                 m_v, n_v = exe.run(
                     feed={
                         "x": np.ones((1), "float32") * 1,

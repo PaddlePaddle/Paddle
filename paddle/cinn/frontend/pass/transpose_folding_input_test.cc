@@ -24,6 +24,7 @@
 #include "paddle/cinn/frontend/syntax.h"
 #include "paddle/cinn/hlir/framework/graph.h"
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/hlir/op/use_ops.h"
 #include "paddle/cinn/hlir/pass/use_pass.h"
@@ -38,7 +39,8 @@ void RunWithProgram(const Program& program,
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
   hlir::framework::ApplyPasses(graph.get(), {"OpFusionPass"});
   VLOG(1) << "graph:\n" << graph->Visualize();
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
   runtime_program->Execute();
 }

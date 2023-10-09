@@ -17,7 +17,7 @@ import os
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 IS_SPARSE = True
 EMBED_SIZE = 32
@@ -25,8 +25,8 @@ HIDDEN_SIZE = 256
 N = 5
 
 # Fix seed for test
-fluid.default_startup_program().random_seed = 1
-fluid.default_main_program().random_seed = 1
+base.default_startup_program().random_seed = 1
+base.default_main_program().random_seed = 1
 
 
 class TestDistWord2vec2x2(TestDistRunnerBase):
@@ -39,7 +39,7 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
                 size=[dict_size, EMBED_SIZE],
                 dtype='float32',
                 is_sparse=IS_SPARSE,
-                param_attr=fluid.ParamAttr(
+                param_attr=base.ParamAttr(
                     name='shared_w',
                     initializer=paddle.nn.initializer.Constant(value=0.1),
                 ),
@@ -49,7 +49,7 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
                 size=[dict_size, EMBED_SIZE],
                 dtype='float32',
                 is_sparse=IS_SPARSE,
-                param_attr=fluid.ParamAttr(
+                param_attr=base.ParamAttr(
                     name='shared_w',
                     initializer=paddle.nn.initializer.Constant(value=0.1),
                 ),
@@ -59,7 +59,7 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
                 size=[dict_size, EMBED_SIZE],
                 dtype='float32',
                 is_sparse=IS_SPARSE,
-                param_attr=fluid.ParamAttr(
+                param_attr=base.ParamAttr(
                     name='shared_w',
                     initializer=paddle.nn.initializer.Constant(value=0.1),
                 ),
@@ -69,7 +69,7 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
                 size=[dict_size, EMBED_SIZE],
                 dtype='float32',
                 is_sparse=IS_SPARSE,
-                param_attr=fluid.ParamAttr(
+                param_attr=base.ParamAttr(
                     name='shared_w',
                     initializer=paddle.nn.initializer.Constant(value=0.1),
                 ),
@@ -83,7 +83,7 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
                 x=concat_embed,
                 size=HIDDEN_SIZE,
                 activation='sigmoid',
-                weight_attr=fluid.ParamAttr(
+                weight_attr=base.ParamAttr(
                     initializer=paddle.nn.initializer.Constant(value=0.1)
                 ),
             )
@@ -91,7 +91,7 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
                 x=hidden1,
                 size=dict_size,
                 activation='softmax',
-                weight_attr=fluid.ParamAttr(
+                weight_attr=base.ParamAttr(
                     initializer=paddle.nn.initializer.Constant(value=0.1)
                 ),
             )
@@ -126,7 +126,7 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
             [first_word, second_word, third_word, forth_word, next_word]
         )
 
-        inference_program = paddle.fluid.default_main_program().clone()
+        inference_program = paddle.base.default_main_program().clone()
 
         sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
         sgd_optimizer.minimize(avg_cost)

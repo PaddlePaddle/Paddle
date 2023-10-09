@@ -15,8 +15,8 @@
 import paddle
 import paddle.nn.functional as F
 from paddle import _C_ops, in_dynamic_mode
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+from paddle.base.layer_helper import LayerHelper
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
 g_enable_math = None
 g_enable_flash = None
@@ -181,13 +181,12 @@ def flash_attention(
     Examples:
         .. code-block:: python
 
-            # required: skiptest
-            import paddle
+            >>> import paddle
 
-            q = paddle.rand((1, 128, 2, 16), dtype=paddle.float16)
+            >>> paddle.seed(1)
+            >>> q = paddle.rand((1, 128, 2, 16))
 
-            output = paddle.nn.functional.flash_attention(q, q, q, 0.9, False, False)
-            print(output)
+            >>> output = paddle.nn.functional.flash_attention.flash_attention(q, q, q, 0.9, False, False)
     """
     head_dim = query.shape[3]
     sdp_func_name = _select_sdp(head_dim)
@@ -340,13 +339,12 @@ def flash_attn_unpadded(
     Examples:
         .. code-block:: python
 
-            # required: skiptest
-            import paddle
+            >>> import paddle
+            >>> paddle.seed(1)
+            >>> q = paddle.rand((1, 128, 2, 16))
 
-            q = paddle.rand((1, 128, 2, 16), dtype=paddle.float16)
-
-            output = paddle.nn.functional.flash_attn_unpadded(q, q, q, 0.9, False, False)
-            print(output)
+            >>> output = paddle.nn.functional.flash_attention.flash_attn_unpadded(q, q, q, 0.9, False, False)
+            >>> print(output)
     """
     if in_dynamic_mode():
         (
@@ -417,6 +415,7 @@ def scaled_dot_product_attention(
     dropout_p=0.0,
     is_causal=False,
     training=True,
+    name=None,
 ):
     r"""
     The equation is:
@@ -447,10 +446,12 @@ def scaled_dot_product_attention(
                         The dtype can be float61 or bfloat16.
         attn_mask(Tensor,optional): A float mask of the same type as query,
                         key, value that is added to the attention score.
-                        not supported yet.
         dropout_p(float): The dropout ratio.
         is_causal(bool): Whether enable causal mode.
-        training(bool): Whether it is in the training phase
+        training(bool): Whether it is in the training phase.
+        name(str, optional): The default value is None. Normally there is no need for user
+                        to set this property. For more information, please refer to
+                        :ref:`api_guide_Name`.
 
     Returns:
         out(Tensor): The attention tensor.
@@ -459,13 +460,13 @@ def scaled_dot_product_attention(
 
     Examples:
         .. code-block:: python
-            # required: skiptest
-            >>> # xdoctest: +SKIP()
+
+            >>> # doctest: +SKIP()
             >>> import paddle
             >>> q = paddle.rand((1, 128, 2, 16), dtype=paddle.bfloat16)
             >>> output = paddle.nn.functional.scaled_dot_product_attention(q, q, q, None, 0.9, False)
             >>> print(output)
-            >>> # xdoctest: -SKIP
+            >>> # doctest: -SKIP
     """
     if attn_mask is None:
         out, _ = flash_attention(query, key, value, dropout_p, is_causal)

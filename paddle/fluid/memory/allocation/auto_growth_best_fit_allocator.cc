@@ -199,12 +199,15 @@ void AutoGrowthBestFitAllocator::Trace() const {
     cur_idle_bytes += it->second->size_;
   }
 
-  VLOG(1) << "alloc:" << total_alloc_size_ / static_cast<double>(1024 * 1024)
-          << "m free:" << total_free_size_ / static_cast<double>(1024 * 1024)
+  VLOG(1) << "alloc:"
+          << total_alloc_size_ / static_cast<double>(1024 * 1024)  // NOLINT
+          << "m free:"
+          << total_free_size_ / static_cast<double>(1024 * 1024)  // NOLINT
           << "m busy:"
-          << (total_alloc_size_ - total_free_size_) /
+          << (total_alloc_size_ - total_free_size_) /  // NOLINT
                  static_cast<double>(1024 * 1024)
-          << "m idle:" << cur_idle_bytes / static_cast<double>(1024 * 1024)
+          << "m idle:"
+          << cur_idle_bytes / static_cast<double>(1024 * 1024)  // NOLINT
           << "m alloc_times:" << total_alloc_times_
           << " free_times:" << total_free_times_
           << " free_blocks_num:" << free_blocks_.size()

@@ -64,7 +64,7 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
 
   auto* mask_data = mask_expand.data<bool>();
   auto* input_data = out_grad.data<T>();
-  int mask_size = mask_expand.numel();
+  int mask_size = static_cast<int>(mask_expand.numel());
 
   int index = 0;
   for (int i = 0; i < mask_size; i++) {

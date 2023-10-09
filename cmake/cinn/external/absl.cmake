@@ -1,8 +1,8 @@
 include(ExternalProject)
 
-set(ABSL_SOURCES_DIR ${THIRD_PARTY_PATH}/absl)
+set(ABSL_SOURCES_DIR ${PADDLE_SOURCE_DIR}/third_party/absl)
 set(ABSL_INSTALL_DIR ${THIRD_PARTY_PATH}/install/absl)
-
+set(ABSL_PREFIX_DIR ${THIRD_PARTY_PATH}/absl)
 set(ABSL_CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
 
 set(ABSL_REPOSITORY "https://github.com/abseil/abseil-cpp.git")
@@ -22,9 +22,8 @@ ExternalProject_Add(
   external_absl
   ${EXTERNAL_PROJECT_LOG_ARGS}
   DEPENDS gflags
-  GIT_REPOSITORY ${ABSL_REPOSITORY}
-  GIT_TAG ${ABSL_TAG}
-  PREFIX ${ABSL_SOURCES_DIR}
+  PREFIX ${ABSL_PREFIX_DIR}
+  SOURCE_DIR ${ABSL_SOURCES_DIR}
   UPDATE_COMMAND ""
   CMAKE_ARGS ${OPTIONAL_ARGS}
              -DCMAKE_INSTALL_PREFIX=${ABSL_INSTALL_DIR}

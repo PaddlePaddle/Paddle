@@ -76,7 +76,7 @@ class SplitOp : public framework::OperatorWithKernel {
     // Construct sections_final
     if (ctx->IsRuntime() && ctx->HasInputs("SectionsTensorList")) {
       int sections_tensor_list_size =
-          ctx->GetInputVarPtrs("SectionsTensorList").size();
+          static_cast<int>(ctx->GetInputVarPtrs("SectionsTensorList").size());
       const paddle::small_vector<framework::InferShapeVarPtr,
                                  phi::kInputSmallVectorSize>
           &sections_varptr_list = ctx->GetInputVarPtrs("SectionsTensorList");

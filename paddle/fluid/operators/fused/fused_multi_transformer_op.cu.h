@@ -24,24 +24,28 @@ limitations under the License. */
 
 #include <cub/cub.cuh>
 
+#include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/fused/attention_layer_norm.h"
-#include "paddle/fluid/operators/fused/attn_gemm.h"
 #include "paddle/fluid/operators/fused/fmha_ref.h"
 #include "paddle/fluid/operators/fused/fused_dropout_helper.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/dynload/cublasLt.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/fused_gemm_epilogue.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/fusion/gpu/attn_gemm.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 PHI_DECLARE_bool(gemm_use_half_precision_compute_type);
@@ -78,10 +82,47 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
     const void *sendbuff = tensor.data<T>();
     auto place = ctx.GetPlace();
     void *recvbuff = tensor.mutable_data<T>(place);
-    auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
-    auto stream = ctx.stream();
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-        sendbuff, recvbuff, count, dtype, ncclSum, comm->comm(), stream));
+    gpuStream_t stream = nullptr;
+    platform::NCCLComm *comm = nullptr;
+    phi::distributed::NCCLCommContext *comm_ctx = nullptr;
+
+    const auto &comm_context_manager =
+        phi::distributed::CommContextManager::GetInstance();
+
+    if (FLAGS_dynamic_static_unified_comm) {
+      // Use New Communication Library
+      PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
+                        true,
+                        platform::errors::InvalidArgument(
+                            "You choose to use new communication library by "
+                            "setting environment "
+                            "variable FLAGS_dynamic_static_unified_comm True. "
+                            "But ring_id(%d) is "
+                            "not found in comm_context_manager.",
+                            std::to_string(ring_id)));
+      comm_ctx = static_cast<phi::distributed::NCCLCommContext *>(
+          comm_context_manager.Get(std::to_string(ring_id)));
+      PADDLE_ENFORCE_NE(comm_ctx,
+                        nullptr,
+                        platform::errors::Unavailable(
+                            "NCCLCommContext is nullptr, collective op should "
+                            "has ring_id attr."));
+
+      stream = comm_ctx->GetStream();
+
+      VLOG(3) << "new comm_context_manager has ring_id" << ring_id;
+    } else {
+      comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
+
+      stream = ctx.stream();
+      VLOG(3) << "old NCCLCommContext has ring_id " << ring_id;
+    }
+    if (comm_ctx) {
+      comm_ctx->AllReduce(&tensor, tensor, ncclSum, stream);
+    } else {
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+          sendbuff, recvbuff, count, dtype, ncclSum, comm->comm(), stream));
+    }
   }
 #else
   PADDLE_THROW(platform::errors::Unimplemented(
@@ -931,9 +972,8 @@ __global__ void masked_multihead_attention_kernel(
 
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
   if (bi == 0 && hi == 0 && tid == 0) {
-    printf("=======q_out=======\n");
-    for (int i = 0; i < Dh; ++i) printf("%f ", static_cast<float>(q_smem[i]));
-    printf("\n");
+    VLOG(0) << "=======q_out=======\n";
+    for (int i = 0; i < Dh; ++i) VLOG(0) << static_cast<float>(q_smem[i]);
   }
   __syncthreads();
 #endif
@@ -1256,6 +1296,10 @@ void fmha(const phi::GPUContext &dev_ctx,
       break;
     case 64:
       fmha_launch_kernel<T, 64, 64>(params, dev_ctx.stream());
+      break;
+    // opt model
+    case 80:
+      fmha_launch_kernel<T, 80, 128>(params, dev_ctx.stream());
       break;
     case 96:
       fmha_launch_kernel<T, 96, 128>(params, dev_ctx.stream());

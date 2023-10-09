@@ -14,9 +14,21 @@
 
 import collections
 import re
+from typing import List
 
 PREFIX_TENSOR_NAME = 'input_'
 PREFIX_META_TENSOR_NAME = 'meta_'
+
+
+def parse_plain_list(s: str, sep=",") -> List[str]:
+    """Copy from `paddle/fluid/operators/generator/parse_utils.py`"""
+    if sep == ",":
+        patten = re.compile(r',(?![^{]*\})')  # support "int[] a={1,2}"
+        items = re.split(patten, s.strip())
+        items = [x.strip() for x in items]
+        return items
+    else:
+        return [item.strip() for item in s.strip().split(sep)]
 
 
 class BaseAPI:
@@ -367,14 +379,13 @@ class BaseAPI:
         data_transform = {'skip_transform': [], 'support_trans_dtype': []}
         if 'data_transform' in api_item_yaml:
             if 'skip_transform' in api_item_yaml['data_transform']:
-                data_transform['skip_transform'] = api_item_yaml[
-                    'data_transform'
-                ]['skip_transform']
+                data_transform['skip_transform'] = parse_plain_list(
+                    api_item_yaml['data_transform']['skip_transform']
+                )
             if 'support_trans_dtype' in api_item_yaml['data_transform']:
-                data_transform['support_trans_dtype'] = api_item_yaml[
-                    'data_transform'
-                ]['support_trans_dtype']
-
+                data_transform['support_trans_dtype'] = parse_plain_list(
+                    api_item_yaml['data_transform']['support_trans_dtype']
+                )
         return data_transform
 
     # Override by child class
@@ -1212,6 +1223,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             "unsqueeze",
             "reshape",
             "flatten",
+            "transpose",
         ]:
             i = 0
             for kernel_out in outputs_args:
@@ -1225,7 +1237,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         return f"""
 {code_indent}  VLOG(6) << "{self.api} API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
 {code_indent}  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-{code_indent}      "{kernel_name}", {{kernel_backend, kernel_layout, kernel_data_type}});
+{code_indent}      "{kernel_name}", {{kernel_backend, kernel_layout, kernel_data_type}}, true);
 {code_indent}  const auto& kernel = kernel_result.kernel;
 {code_indent}  if (FLAGS_low_precision_op_list) {{
 {code_indent}    phi::KernelFactory::Instance().AddToLowPrecisionKernelList("{self.api}", kernel_data_type);

@@ -15,17 +15,15 @@
 import logging
 
 import paddle
-from paddle.fluid.layers.learning_rate_scheduler import (
-    exponential_decay,
-    inverse_time_decay,
-    noam_decay,
-)
 from paddle.optimizer.lr import (
     ExponentialDecay,
     InverseTimeDecay,
     LRScheduler,
     NaturalExpDecay,
     NoamDecay,
+    exponential_decay,
+    inverse_time_decay,
+    noam_decay,
 )
 
 from ..ps.utils.public import (

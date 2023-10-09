@@ -19,9 +19,9 @@ import numpy as np
 import paddle
 
 paddle.enable_static()
-from eager_op_test import OpTest, copy_bits_from_float_to_uint16
+from op_test import OpTest, copy_bits_from_float_to_uint16
 
-from paddle.fluid import core
+from paddle.base import core
 
 
 def convert_float_to_uint16(float_list, data_format="NCHW"):

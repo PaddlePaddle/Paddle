@@ -21,8 +21,8 @@ paddle.enable_static()
 
 
 def make_program():
-    main_program = paddle.fluid.Program()
-    start_program = paddle.fluid.Program()
+    main_program = paddle.base.Program()
+    start_program = paddle.base.Program()
     with paddle.static.program_guard(main_program, start_program):
         x = paddle.static.data(name='x', shape=[4, 4, 8], dtype='float32')
         x.stop_gradient = False

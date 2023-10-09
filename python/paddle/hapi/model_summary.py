@@ -30,108 +30,200 @@ def summary(net, input_size=None, dtypes=None, input=None):
     """Prints a string summary of the network.
 
     Args:
-        net (Layer): the network which must be a subinstance of Layer.
-        input_size (tuple|InputSpec|list[tuple|InputSpec], optional): size of input tensor. if model only
+        net (Layer): The network which must be a subinstance of Layer.
+        input_size (tuple|InputSpec|list[tuple|InputSpec], optional): Size of input tensor. if model only
                     have one input, input_size can be tuple or InputSpec. if model
                     have multiple input, input_size must be a list which contain
                     every input's shape. Note that input_size only dim of
                     batch_size can be None or -1. Default: None. Note that
                     input_size and input cannot be None at the same time.
-        dtypes (str, optional): if dtypes is None, 'float32' will be used, Default: None.
-        input: the input tensor. if input is given, input_size and dtype will be ignored, Default: None.
+        dtypes (str, optional): If dtypes is None, 'float32' will be used, Default: None.
+        input (Tensor, optional): If input is given, input_size and dtype will be ignored, Default: None.
 
     Returns:
-        Dict: a summary of the network including total params and total trainable params.
+        Dict: A summary of the network including total params and total trainable params.
 
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn as nn
+            >>> import paddle
+            >>> import paddle.nn as nn
+            >>> paddle.seed(2023)
+            >>> class LeNet(nn.Layer):
+            ...     def __init__(self, num_classes=10):
+            ...         super().__init__()
+            ...         self.num_classes = num_classes
+            ...         self.features = nn.Sequential(
+            ...             nn.Conv2D(1, 6, 3, stride=1, padding=1),
+            ...             nn.ReLU(),
+            ...             nn.MaxPool2D(2, 2),
+            ...             nn.Conv2D(6, 16, 5, stride=1, padding=0),
+            ...             nn.ReLU(),
+            ...             nn.MaxPool2D(2, 2))
+            ...
+            ...         if num_classes > 0:
+            ...             self.fc = nn.Sequential(
+            ...                 nn.Linear(400, 120),
+            ...                 nn.Linear(120, 84),
+            ...                 nn.Linear(84, 10))
+            ...
+            ...     def forward(self, inputs):
+            ...         x = self.features(inputs)
+            ...
+            ...         if self.num_classes > 0:
+            ...             x = paddle.flatten(x, 1)
+            ...             x = self.fc(x)
+            ...         return x
+            ...
+            >>> lenet = LeNet()
 
-            class LeNet(nn.Layer):
-                def __init__(self, num_classes=10):
-                    super().__init__()
-                    self.num_classes = num_classes
-                    self.features = nn.Sequential(
-                        nn.Conv2D(
-                            1, 6, 3, stride=1, padding=1),
-                        nn.ReLU(),
-                        nn.MaxPool2D(2, 2),
-                        nn.Conv2D(
-                            6, 16, 5, stride=1, padding=0),
-                        nn.ReLU(),
-                        nn.MaxPool2D(2, 2))
+            >>> params_info = paddle.summary(lenet, (1, 1, 28, 28))
+            >>> # doctest: +SKIP
+            >>> print(params_info)
+            ---------------------------------------------------------------------------
+            Layer (type)       Input Shape          Output Shape         Param #
+            ===========================================================================
+              Conv2D-1       [[1, 1, 28, 28]]      [1, 6, 28, 28]          60
+                ReLU-1        [[1, 6, 28, 28]]      [1, 6, 28, 28]           0
+              MaxPool2D-1     [[1, 6, 28, 28]]      [1, 6, 14, 14]           0
+              Conv2D-2       [[1, 6, 14, 14]]     [1, 16, 10, 10]         2,416
+                ReLU-2       [[1, 16, 10, 10]]     [1, 16, 10, 10]           0
+              MaxPool2D-2    [[1, 16, 10, 10]]      [1, 16, 5, 5]            0
+              Linear-1          [[1, 400]]            [1, 120]           48,120
+              Linear-2          [[1, 120]]            [1, 84]            10,164
+              Linear-3          [[1, 84]]             [1, 10]              850
+            ===========================================================================
+            Total params: 61,610
+            Trainable params: 61,610
+            Non-trainable params: 0
+            ---------------------------------------------------------------------------
+            Input size (MB): 0.00
+            Forward/backward pass size (MB): 0.11
+            Params size (MB): 0.24
+            Estimated Total Size (MB): 0.35
+            ---------------------------------------------------------------------------
+            {'total_params': 61610, 'trainable_params': 61610}
+            >>> # doctest: -SKIP
+            >>> # multi input demo
+            >>> class LeNetMultiInput(LeNet):
+            ...     def forward(self, inputs, y):
+            ...         x = self.features(inputs)
+            ...
+            ...         if self.num_classes > 0:
+            ...             x = paddle.flatten(x, 1)
+            ...             x = self.fc(x + y)
+            ...         return x
+            ...
+            >>> lenet_multi_input = LeNetMultiInput()
 
-                    if num_classes > 0:
-                        self.fc = nn.Sequential(
-                            nn.Linear(400, 120),
-                            nn.Linear(120, 84),
-                            nn.Linear(
-                                84, 10))
-
-                def forward(self, inputs):
-                    x = self.features(inputs)
-
-                    if self.num_classes > 0:
-                        x = paddle.flatten(x, 1)
-                        x = self.fc(x)
-                    return x
-
-            lenet = LeNet()
-
-            params_info = paddle.summary(lenet, (1, 1, 28, 28))
-            print(params_info)
-
-            # multi input demo
-            class LeNetMultiInput(LeNet):
-
-                def forward(self, inputs, y):
-                    x = self.features(inputs)
-
-                    if self.num_classes > 0:
-                        x = paddle.flatten(x, 1)
-                        x = self.fc(x + y)
-                    return x
-
-            lenet_multi_input = LeNetMultiInput()
-
-            params_info = paddle.summary(lenet_multi_input, [(1, 1, 28, 28), (1, 400)],
-                                        dtypes=['float32', 'float32'])
-            print(params_info)
-
-            # list input demo
-            class LeNetListInput(LeNet):
-
-                def forward(self, inputs):
-                    x = self.features(inputs[0])
-
-                    if self.num_classes > 0:
-                        x = paddle.flatten(x, 1)
-                        x = self.fc(x + inputs[1])
-                    return x
-
-            lenet_list_input = LeNetListInput()
-            input_data = [paddle.rand([1, 1, 28, 28]), paddle.rand([1, 400])]
-            params_info = paddle.summary(lenet_list_input, input=input_data)
-            print(params_info)
-
-            # dict input demo
-            class LeNetDictInput(LeNet):
-
-                def forward(self, inputs):
-                    x = self.features(inputs['x1'])
-
-                    if self.num_classes > 0:
-                        x = paddle.flatten(x, 1)
-                        x = self.fc(x + inputs['x2'])
-                    return x
-
-            lenet_dict_input = LeNetDictInput()
-            input_data = {'x1': paddle.rand([1, 1, 28, 28]),
-                          'x2': paddle.rand([1, 400])}
-            params_info = paddle.summary(lenet_dict_input, input=input_data)
-            print(params_info)
+            >>> params_info = paddle.summary(lenet_multi_input,
+            ...                              [(1, 1, 28, 28), (1, 400)],
+            ...                              dtypes=['float32', 'float32'])
+            >>> # doctest: +SKIP
+            >>> print(params_info)
+            ---------------------------------------------------------------------------
+            Layer (type)       Input Shape          Output Shape         Param #
+            ===========================================================================
+              Conv2D-3       [[1, 1, 28, 28]]      [1, 6, 28, 28]          60
+                ReLU-3        [[1, 6, 28, 28]]      [1, 6, 28, 28]           0
+              MaxPool2D-3     [[1, 6, 28, 28]]      [1, 6, 14, 14]           0
+              Conv2D-4       [[1, 6, 14, 14]]     [1, 16, 10, 10]         2,416
+                ReLU-4       [[1, 16, 10, 10]]     [1, 16, 10, 10]           0
+              MaxPool2D-4    [[1, 16, 10, 10]]      [1, 16, 5, 5]            0
+              Linear-4          [[1, 400]]            [1, 120]           48,120
+              Linear-5          [[1, 120]]            [1, 84]            10,164
+              Linear-6          [[1, 84]]             [1, 10]              850
+            ===========================================================================
+            Total params: 61,610
+            Trainable params: 61,610
+            Non-trainable params: 0
+            ---------------------------------------------------------------------------
+            Input size (MB): 0.00
+            Forward/backward pass size (MB): 0.11
+            Params size (MB): 0.24
+            Estimated Total Size (MB): 0.35
+            ---------------------------------------------------------------------------
+            {'total_params': 61610, 'trainable_params': 61610}
+            >>> # doctest: -SKIP
+            >>> # list input demo
+            >>> class LeNetListInput(LeNet):
+            ...     def forward(self, inputs):
+            ...         x = self.features(inputs[0])
+            ...
+            ...         if self.num_classes > 0:
+            ...             x = paddle.flatten(x, 1)
+            ...             x = self.fc(x + inputs[1])
+            ...         return x
+            ...
+            >>> lenet_list_input = LeNetListInput()
+            >>> input_data = [paddle.rand([1, 1, 28, 28]), paddle.rand([1, 400])]
+            >>> params_info = paddle.summary(lenet_list_input, input=input_data)
+            >>> # doctest: +SKIP
+            >>> print(params_info)
+            ---------------------------------------------------------------------------
+            Layer (type)       Input Shape          Output Shape         Param #
+            ===========================================================================
+              Conv2D-5       [[1, 1, 28, 28]]      [1, 6, 28, 28]          60
+                ReLU-5        [[1, 6, 28, 28]]      [1, 6, 28, 28]           0
+              MaxPool2D-5     [[1, 6, 28, 28]]      [1, 6, 14, 14]           0
+              Conv2D-6       [[1, 6, 14, 14]]     [1, 16, 10, 10]         2,416
+                ReLU-6       [[1, 16, 10, 10]]     [1, 16, 10, 10]           0
+              MaxPool2D-6    [[1, 16, 10, 10]]      [1, 16, 5, 5]            0
+              Linear-7          [[1, 400]]            [1, 120]           48,120
+              Linear-8          [[1, 120]]            [1, 84]            10,164
+              Linear-9          [[1, 84]]             [1, 10]              850
+            ===========================================================================
+            Total params: 61,610
+            Trainable params: 61,610
+            Non-trainable params: 0
+            ---------------------------------------------------------------------------
+            Input size (MB): 0.00
+            Forward/backward pass size (MB): 0.11
+            Params size (MB): 0.24
+            Estimated Total Size (MB): 0.35
+            ---------------------------------------------------------------------------
+            {'total_params': 61610, 'trainable_params': 61610}
+            >>> # doctest: -SKIP
+            >>> # dict input demo
+            >>> class LeNetDictInput(LeNet):
+            ...     def forward(self, inputs):
+            ...         x = self.features(inputs['x1'])
+            ...
+            ...         if self.num_classes > 0:
+            ...             x = paddle.flatten(x, 1)
+            ...             x = self.fc(x + inputs['x2'])
+            ...         return x
+            ...
+            >>> lenet_dict_input = LeNetDictInput()
+            >>> input_data = {'x1': paddle.rand([1, 1, 28, 28]),
+            ...               'x2': paddle.rand([1, 400])}
+            >>> params_info = paddle.summary(lenet_dict_input, input=input_data)
+            >>> # doctest: +SKIP
+            >>> print(params_info)
+            ---------------------------------------------------------------------------
+            Layer (type)       Input Shape          Output Shape         Param #
+            ===========================================================================
+              Conv2D-7       [[1, 1, 28, 28]]      [1, 6, 28, 28]          60
+                ReLU-7        [[1, 6, 28, 28]]      [1, 6, 28, 28]           0
+              MaxPool2D-7     [[1, 6, 28, 28]]      [1, 6, 14, 14]           0
+              Conv2D-8       [[1, 6, 14, 14]]     [1, 16, 10, 10]         2,416
+                ReLU-8       [[1, 16, 10, 10]]     [1, 16, 10, 10]           0
+              MaxPool2D-8    [[1, 16, 10, 10]]      [1, 16, 5, 5]            0
+              Linear-10         [[1, 400]]            [1, 120]           48,120
+              Linear-11         [[1, 120]]            [1, 84]            10,164
+              Linear-12         [[1, 84]]             [1, 10]              850
+            ===========================================================================
+            Total params: 61,610
+            Trainable params: 61,610
+            Non-trainable params: 0
+            ---------------------------------------------------------------------------
+            Input size (MB): 0.00
+            Forward/backward pass size (MB): 0.11
+            Params size (MB): 0.24
+            Estimated Total Size (MB): 0.35
+            ---------------------------------------------------------------------------
+            {'total_params': 61610, 'trainable_params': 61610}
+            >>> # doctest: -SKIP
 
     """
     if input_size is None and input is None:
@@ -148,7 +240,7 @@ def summary(net, input_size=None, dtypes=None, input=None):
             input_size = []
             for key in input.keys():
                 input_size.append(tuple(input[key].shape))
-        elif isinstance(input, paddle.fluid.framework.Variable):
+        elif isinstance(input, paddle.base.framework.Variable):
             input_size = tuple(input.shape)
         else:
             raise ValueError(
@@ -164,10 +256,8 @@ def summary(net, input_size=None, dtypes=None, input=None):
                 item = (item,)
             assert isinstance(
                 item, (tuple, InputSpec)
-            ), 'When input_size is list, \
-            expect item in input_size is a tuple or InputSpec, but got {}'.format(
-                type(item)
-            )
+            ), f'When input_size is list, \
+            expect item in input_size is a tuple or InputSpec, but got {type(item)}'
 
             if isinstance(item, InputSpec):
                 _input_size.append(tuple(item.shape))
@@ -261,9 +351,7 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
     depth = len(list(model.sublayers()))
 
     def _get_shape_from_tensor(x):
-        if isinstance(
-            x, (paddle.fluid.Variable, paddle.fluid.core.eager.Tensor)
-        ):
+        if isinstance(x, (paddle.base.Variable, paddle.base.core.eager.Tensor)):
             return list(x.shape)
         elif isinstance(x, (list, tuple)):
             return [_get_shape_from_tensor(xx) for xx in x]

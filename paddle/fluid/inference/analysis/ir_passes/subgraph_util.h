@@ -62,6 +62,11 @@ void RenameAndGetOutputs(
     const std::unordered_map<std::string, framework::ir::Node *> &graph_var_map,
     bool trt_and_not_int8 = false);
 
+// When fuse some ops into one subgraph, we need to rename all vars within this
+// subgraph (excluding the inputs and outputs of the subgraph) to a unique name.
+std::string RenameVarBeUnique(std::string original_var_name,
+                              std::string var_id);
+
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle

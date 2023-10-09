@@ -24,9 +24,9 @@ import time
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
+from paddle.base.log_helper import get_logger
 from paddle.distributed.fleet.utils.fs import HDFSClient
-from paddle.fluid.log_helper import get_logger
 
 from . import utils
 
@@ -46,9 +46,10 @@ class FleetUtil:
     Examples:
         .. code-block:: python
 
-          from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
-          fleet_util = FleetUtil()
-          fleet_util.rank0_print("my log")
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
+            >>> fleet_util = FleetUtil()
+            >>> fleet_util.rank0_print("my log")
 
     """
 
@@ -81,9 +82,10 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
-              fleet_util.rank0_print("my log")
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
+                >>> fleet_util = FleetUtil()
+                >>> fleet_util.rank0_print("my log")
 
         """
         if fleet.worker_index() != 0:
@@ -101,9 +103,10 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
-              fleet_util.rank0_info("my log info")
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
+                >>> fleet_util = FleetUtil()
+                >>> fleet_util.rank0_info("my log info")
 
         """
         if fleet.worker_index() != 0:
@@ -120,9 +123,10 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
-              fleet_util.rank0_error("my log error")
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
+                >>> fleet_util = FleetUtil()
+                >>> fleet_util.rank0_error("my log error")
 
         """
         if fleet.worker_index() != 0:
@@ -132,8 +136,8 @@ class FleetUtil:
     def set_zero(
         self,
         var_name,
-        scope=fluid.global_scope(),
-        place=fluid.CPUPlace(),
+        scope=base.global_scope(),
+        place=base.CPUPlace(),
         param_type="int64",
     ):
         """
@@ -141,16 +145,18 @@ class FleetUtil:
 
         Args:
             var_name(str): name of Variable
-            scope(Scope): Scope object, default is fluid.global_scope()
-            place(Place): Place object, default is fluid.CPUPlace()
+            scope(Scope): Scope object, default is base.global_scope()
+            place(Place): Place object, default is base.CPUPlace()
             param_type(str): param data type, default is int64
 
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
-              fleet_util.set_zero(myvar.name, myscope)
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> # doctest: +SKIP('dependency on custom variables')
+                >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
+                >>> fleet_util = FleetUtil()
+                >>> fleet_util.set_zero(myvar.name, myscope)
 
         """
         param = scope.var(var_name).get_tensor()
@@ -159,7 +165,7 @@ class FleetUtil:
 
     def print_global_auc(
         self,
-        scope=fluid.global_scope(),
+        scope=base.global_scope(),
         stat_pos="_generated_var_2",
         stat_neg="_generated_var_3",
         print_prefix="",
@@ -168,7 +174,7 @@ class FleetUtil:
         Print global auc of all distributed workers.
 
         Args:
-            scope(Scope): Scope object, default is fluid.global_scope()
+            scope(Scope): Scope object, default is base.global_scope()
             stat_pos(str): name of auc pos bucket Variable
             stat_neg(str): name of auc neg bucket Variable
             print_prefix(str): prefix of print auc
@@ -176,23 +182,27 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
-              fleet_util.print_global_auc(myscope, stat_pos=stat_pos.name,
-                                          stat_neg=stat_neg.name)
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> # doctest: +SKIP('dependency on custom variables')
+                >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
+                >>> fleet_util = FleetUtil()
+                >>> fleet_util.print_global_auc(myscope, stat_pos=stat_pos.name,
+                ...                           stat_neg=stat_neg.name)
 
-              # below is part of model
-              emb = my_slot_net(slots, label) # emb can be fc layer of size 1
-              similarity_norm = fluid.layers.sigmoid(paddle.clip(\
-                  emb, min=-15.0, max=15.0), name="similarity_norm")\
-              binary_predict = fluid.layers.concat(input=[\
-                  paddle.subtract(\
-                      fluid.layers.ceil(similarity_norm), similarity_norm),\
-                  similarity_norm], axis=1)
-              auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos, \
-                  stat_neg] = paddle.static.auc(input=binary_predict,\
-                                               label=label, curve='ROC',\
-                                               num_thresholds=4096)
+                >>> # below is part of model
+                >>> emb = my_slot_net(slots, label) # emb can be fc layer of size 1
+                >>> similarity_norm = paddle.nn.functional.sigmoid(paddle.clip(
+                ...     emb, min=-15.0, max=15.0), name="similarity_norm")
+                >>> binary_predict = paddle.concat(input=[
+                ...     paddle.subtract(
+                ...         paddle.ceil(similarity_norm),
+                ...         similarity_norm),
+                ...     similarity_norm],
+                ...     axis=1)
+                >>> auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos,
+                ...     stat_neg] = paddle.static.auc(input=binary_predict,
+                ...                                   label=label,curve='ROC',
+                ...                                   num_thresholds=4096)
 
         """
         auc_value = self.get_global_auc(scope, stat_pos, stat_neg)
@@ -200,7 +210,7 @@ class FleetUtil:
 
     def get_global_auc(
         self,
-        scope=fluid.global_scope(),
+        scope=base.global_scope(),
         stat_pos="_generated_var_2",
         stat_neg="_generated_var_3",
     ):
@@ -208,7 +218,7 @@ class FleetUtil:
         Get global auc of all distributed workers.
 
         Args:
-            scope(Scope): Scope object, default is fluid.global_scope()
+            scope(Scope): Scope object, default is base.global_scope()
             stat_pos(str): name of auc pos bucket Variable
             stat_neg(str): name of auc neg bucket Variable
 
@@ -218,11 +228,13 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
-              auc_value, _ = fleet_util.get_global_auc(myscope,
-                                                       stat_pos=stat_pos,
-                                                       stat_neg=stat_neg)
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> # doctest: +SKIP('dependency on custom variables')
+                >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
+                >>> fleet_util = FleetUtil()
+                >>> auc_value, _ = fleet_util.get_global_auc(myscope,
+                ...                                          stat_pos=stat_pos,
+                ...                                          stat_neg=stat_neg)
 
         """
         if scope.find_var(stat_pos) is None or scope.find_var(stat_neg) is None:
@@ -288,9 +300,10 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
-              fleet_util.load_fleet_model("hdfs:/my/model/path", table_id=1)
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
+                >>> fleet_util = FleetUtil()
+                >>> fleet_util.load_fleet_model_one_table(1, path="hdfs:/my/model/path")
         """
         fleet.load_one_table(table_id, path)
 
@@ -306,12 +319,13 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
+                >>> fleet_util = FleetUtil()
 
-              fleet_util.load_fleet_model("hdfs:/my/model/path")
+                >>> fleet_util.load_fleet_model("hdfs:/my/model/path")
 
-              fleet_util.load_fleet_model("hdfs:/my/model/path", mode=0)
+                >>> fleet_util.load_fleet_model("hdfs:/my/model/path", mode=0)
 
         """
         fleet.init_server(path, mode=mode)
@@ -328,9 +342,10 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
-              fleet_util.save_fleet_model("hdfs:/my/model/path")
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
+                >>> fleet_util = FleetUtil()
+                >>> fleet_util.save_fleet_model("hdfs:/my/model/path")
 
         """
         fleet.save_persistables(None, path, mode=mode)
@@ -406,15 +421,15 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
-              fleet_util.write_model_donefile(output_path="hdfs:/my/output",
-                                              model_path="hdfs:/my/model",
-                                              day=20190723,
-                                              pass_id=66,
-                                              xbox_base_key=int(time.time()),
-                                              hadoop_fs_name="hdfs://xxx",
-                                              hadoop_fs_ugi="user,passwd")
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
+                >>> fleet_util = FleetUtil()
+                >>> fleet_util.write_model_donefile(output_path="hdfs:/my/output",
+                ...                                 day=20190723,
+                ...                                 pass_id=66,
+                ...                                 xbox_base_key=int(time.time()),
+                ...                                 hadoop_fs_name="hdfs://xxx",
+                ...                                 hadoop_fs_ugi="user,passwd")
 
         """
         day = str(day)
@@ -465,8 +480,8 @@ class FleetUtil:
                     )
                 else:
                     self.rank0_error(
-                        "not write {} because {}/{} already "
-                        "exists".format(donefile_name, day, pass_id)
+                        f"not write {donefile_name} because {day}/{pass_id} already "
+                        "exists"
                     )
             else:
                 with open(donefile_name, "w") as f:
@@ -508,19 +523,18 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
-              fleet_util.write_xbox_donefile(
-                  output_path="hdfs:/my/output/",
-                  model_path="hdfs:/my/output/20190722/01",
-                  day=20190722,
-                  pass_id=1,
-                  xbox_base_key=int(time.time()),
-                  data_path="hdfs:/my/data/",
-                  hadoop_fs_name="hdfs://xxx",
-                  hadoop_fs_ugi="user,passwd",
-                  monitor_data={}
-                  )
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
+                >>> fleet_util = FleetUtil()
+                >>> fleet_util.write_xbox_donefile(
+                ...     output_path="hdfs:/my/output/",
+                ...     day=20190722,
+                ...     pass_id=1,
+                ...     xbox_base_key=int(time.time()),
+                ...     data_path="hdfs:/my/data/",
+                ...     hadoop_fs_name="hdfs://xxx",
+                ...     hadoop_fs_ugi="user,passwd",
+                ...     monitor_data={})
 
         """
         day = str(day)
@@ -584,8 +598,8 @@ class FleetUtil:
                     )
                 else:
                     self.rank0_error(
-                        "not write {} because {}/{} already "
-                        "exists".format(donefile_name, day, pass_id)
+                        f"not write {donefile_name} because {day}/{pass_id} already "
+                        "exists"
                     )
             else:
                 with open(donefile_name, "w") as f:
@@ -627,16 +641,16 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
-              fleet_util.write_cache_donefile(
-                  output_path="hdfs:/my/output/",
-                  day=20190722,
-                  pass_id=1,
-                  key_num=123456,
-                  hadoop_fs_name="hdfs://xxx",
-                  hadoop_fs_ugi="user,passwd",
-                  )
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
+                >>> fleet_util = FleetUtil()
+                >>> fleet_util.write_cache_donefile(
+                ...     output_path="hdfs:/my/output/",
+                ...     day=20190722,
+                ...     pass_id=1,
+                ...     key_num=123456,
+                ...     hadoop_fs_name="hdfs://xxx",
+                ...     hadoop_fs_ugi="user,passwd")
 
         """
         day = str(day)
@@ -686,9 +700,10 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
-              fleet_util.load_model("hdfs:/my/path", 20190722, 88)
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
+                >>> fleet_util = FleetUtil()
+                >>> fleet_util.load_model("hdfs:/my/path", 20190722, 88)
 
         """
         day = str(day)
@@ -711,9 +726,10 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
-              fleet_util.save_model("hdfs:/my/path", 20190722, 88)
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
+                >>> fleet_util = FleetUtil()
+                >>> fleet_util.save_model("hdfs:/my/path", 20190722, 88)
 
         """
         day = str(day)
@@ -735,9 +751,10 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
-              fleet_util.save_batch_model("hdfs:/my/path", 20190722)
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
+                >>> fleet_util = FleetUtil()
+                >>> fleet_util.save_batch_model("hdfs:/my/path", 20190722)
 
         """
         day = str(day)
@@ -759,9 +776,10 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
-              fleet_util.save_batch_model("hdfs:/my/path", 20190722, 88)
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
+                >>> fleet_util = FleetUtil()
+                >>> fleet_util.save_delta_model("hdfs:/my/path", 20190722, 88)
 
         """
         day = str(day)
@@ -783,9 +801,10 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
-              fleet_util.save_xbox_base_model("hdfs:/my/path", 20190722, 88)
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
+                >>> fleet_util = FleetUtil()
+                >>> fleet_util.save_xbox_base_model("hdfs:/my/path", 20190722)
 
         """
         day = str(day)
@@ -813,9 +832,10 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
-              fleet_util.save_cache_model("hdfs:/my/path", 20190722, 88)
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
+                >>> fleet_util = FleetUtil()
+                >>> fleet_util.save_cache_model("hdfs:/my/path", 20190722, 88)
 
         """
         day = str(day)
@@ -848,9 +868,10 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
-              fleet_util.save_cache_base_model("hdfs:/my/path", 20190722)
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
+                >>> fleet_util = FleetUtil()
+                >>> fleet_util.save_cache_base_model("hdfs:/my/path", 20190722)
 
         """
         day = str(day)
@@ -869,15 +890,17 @@ class FleetUtil:
         pull all dense params in trainer of rank 0
 
         Args:
-            scope(Scope): fluid Scope
-            program(Program): fluid Program
+            scope(Scope): base Scope
+            program(Program): base Program
 
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
-              fleet_util.pull_all_dense_params(my_scope, my_program)
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> # doctest: +SKIP('dependency on custom variables')
+                >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
+                >>> fleet_util = FleetUtil()
+                >>> fleet_util.pull_all_dense_params(my_scope, my_program)
 
         """
         fleet._role_maker._barrier_worker()
@@ -933,9 +956,9 @@ class FleetUtil:
         save paddle inference model, and upload to hdfs dnn_plugin path
 
         Args:
-            executor(Executor): fluid Executor
-            scope(Scope): fluid Scope
-            program(Program): fluid Program
+            executor(Executor): base Executor
+            scope(Scope): base Scope
+            program(Program): base Program
             feeded_vars(list[Variable]): feed vars
             target_vars(list[variable]): fetch vars
             output_path(str): hdfs/afs output path
@@ -950,43 +973,43 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
-              fleet_util.save_paddle_inference_model(exe,
-                                                     join_scope,
-                                                     join_program,
-                                                     feeded_vars,
-                                                     target_vars,
-                                                     "hdfs:/my/output/path/",
-                                                     day=20190727,
-                                                     pass_id=6,
-                                                     hadoop_fs_name="xxx",
-                                                     hadoop_fs_ugi="xxx,xxx")
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> # doctest: +SKIP('dependency on custom variables')
+                >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
+                >>> fleet_util = FleetUtil()
+                >>> fleet_util.save_paddle_inference_model(exe,
+                ...                                        join_scope,
+                ...                                        join_program,
+                ...                                        feeded_vars,
+                ...                                        target_vars,
+                ...                                        "hdfs:/my/output/path/",
+                ...                                        day=20190727,
+                ...                                        pass_id=6,
+                ...                                        hadoop_fs_name="xxx",
+                ...                                        hadoop_fs_ugi="xxx,xxx")
         """
         day = str(day)
         pass_id = str(pass_id)
-        feeded_var_names = [i.name for i in feeded_vars]
         model_name = "inference_model"
         # pull dense before save
         self.pull_all_dense_params(scope, program)
         if fleet.worker_index() == 0:
-            with fluid.scope_guard(scope):
+            with base.scope_guard(scope):
                 if save_combine:
-                    fluid.io.save_inference_model(
-                        dirname=model_name,
-                        feeded_var_names=feeded_var_names,
-                        target_vars=target_vars,
-                        executor=executor,
-                        main_program=program.clone(),
-                        params_filename="params",
+                    paddle.static.io.save_inference_model(
+                        model_name,
+                        feeded_vars,
+                        target_vars,
+                        executor,
+                        program=program.clone(),
                     )
                 else:
-                    fluid.io.save_inference_model(
-                        dirname=model_name,
-                        feeded_var_names=feeded_var_names,
-                        target_vars=target_vars,
-                        executor=executor,
-                        main_program=program.clone(),
+                    paddle.static.io.save_inference_model(
+                        model_name,
+                        feeded_vars,
+                        target_vars,
+                        executor,
+                        program=program.clone(),
                     )
 
             configs = {
@@ -998,11 +1021,7 @@ class FleetUtil:
             if pass_id == "-1":
                 dest = f"{output_path}/{day}/base/dnn_plugin/"
             else:
-                dest = "{}/{}/delta-{}/dnn_plugin/".format(
-                    output_path,
-                    day,
-                    pass_id,
-                )
+                dest = f"{output_path}/{day}/delta-{pass_id}/dnn_plugin/"
             if not client.is_exist(dest):
                 client.makedirs(dest)
 
@@ -1029,9 +1048,9 @@ class FleetUtil:
         save paddle model, and upload to hdfs dnn_plugin path
 
         Args:
-            executor(Executor): fluid Executor
-            scope(Scope): fluid Scope
-            program(Program): fluid Program
+            executor(Executor): base Executor
+            scope(Scope): base Scope
+            program(Program): base Program
             model_name(str): save model local dir or filename
             output_path(str): hdfs/afs output path
             day(str|int): training day
@@ -1046,38 +1065,40 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
-              fleet_util.save_paddle_params(exe,
-                                            join_scope,
-                                            join_program,
-                                            "paddle_dense.model.0",
-                                            "hdfs:/my/output/path/",
-                                            day=20190727,
-                                            pass_id=6,
-                                            hadoop_fs_name="xxx",
-                                            hadoop_fs_ugi="xxx,xxx",
-                                            var_names=join_all_var_names)
-              fleet_util.save_paddle_params(exe,
-                                            join_scope,
-                                            join_program,
-                                            "paddle_dense.model.usr.0",
-                                            "hdfs:/my/output/path/",
-                                            day=20190727,
-                                            pass_id=6,
-                                            hadoop_fs_name="xxx",
-                                            hadoop_fs_ugi="xxx,xxx",
-                                            var_names=join_user_var_names)
-              fleet_util.save_paddle_params(exe,
-                                            join_scope,
-                                            join_program,
-                                            "paddle_dense.model.item.0",
-                                            "hdfs:/my/output/path/",
-                                            day=20190727,
-                                            pass_id=6,
-                                            hadoop_fs_name="xxx",
-                                            hadoop_fs_ugi="xxx,xxx",
-                                            var_names=join_user_item_names)
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> # doctest: +SKIP('dependency on custom variables')
+                >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
+                >>> fleet_util = FleetUtil()
+                >>> fleet_util.save_paddle_params(exe,
+                ...                               join_scope,
+                ...                               join_program,
+                ...                               "paddle_dense.model.0",
+                ...                               "hdfs:/my/output/path/",
+                ...                               day=20190727,
+                ...                               pass_id=6,
+                ...                               hadoop_fs_name="xxx",
+                ...                               hadoop_fs_ugi="xxx,xxx",
+                ...                               var_names=join_all_var_names)
+                >>> fleet_util.save_paddle_params(exe,
+                ...                               join_scope,
+                ...                               join_program,
+                ...                               "paddle_dense.model.usr.0",
+                ...                               "hdfs:/my/output/path/",
+                ...                               day=20190727,
+                ...                               pass_id=6,
+                ...                               hadoop_fs_name="xxx",
+                ...                               hadoop_fs_ugi="xxx,xxx",
+                ...                               var_names=join_user_var_names)
+                >>> fleet_util.save_paddle_params(exe,
+                ...                               join_scope,
+                ...                               join_program,
+                ...                               "paddle_dense.model.item.0",
+                ...                               "hdfs:/my/output/path/",
+                ...                               day=20190727,
+                ...                               pass_id=6,
+                ...                               hadoop_fs_name="xxx",
+                ...                               hadoop_fs_ugi="xxx,xxx",
+                ...                               var_names=join_user_item_names)
 
         """
         day = str(day)
@@ -1086,7 +1107,7 @@ class FleetUtil:
         self.pull_all_dense_params(scope, program)
         if fleet.worker_index() == 0:
             vars = [program.global_block().var(i) for i in var_names]
-            with fluid.scope_guard(scope):
+            with base.scope_guard(scope):
                 if save_combine:
                     paddle.static.io.save_vars(
                         executor, "./", program, vars=vars, filename=model_name
@@ -1105,11 +1126,7 @@ class FleetUtil:
             if pass_id == "-1":
                 dest = f"{output_path}/{day}/base/dnn_plugin/"
             else:
-                dest = "{}/{}/delta-{}/dnn_plugin/".format(
-                    output_path,
-                    day,
-                    pass_id,
-                )
+                dest = f"{output_path}/{day}/delta-{pass_id}/dnn_plugin/"
             if not client.is_exist(dest):
                 client.mkdirs(dest)
             client.upload(model_name, dest, multi_processes=5, overwrite=True)
@@ -1141,11 +1158,13 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
-              last_save_day, last_path, xbox_base_key = \
-                  fleet_util.get_last_save_xbox_base("hdfs:/my/path", 20190722,
-                                                     88)
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
+                >>> fleet_util = FleetUtil()
+                >>> last_save_day, last_path, xbox_base_key = \
+                ...     fleet_util.get_last_save_xbox_base("hdfs:/my/path",
+                ...                                        hadoop_fs_name="hdfs://xxx",
+                ...                                        hadoop_fs_ugi="user,passwd")
 
         """
         donefile_path = output_path + "/xbox_base_done.txt"
@@ -1189,10 +1208,13 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
-              last_save_day, last_save_pass, last_path, xbox_base_key = \
-                  fleet_util.get_last_save_xbox("hdfs:/my/path", 20190722, 88)
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
+                >>> fleet_util = FleetUtil()
+                >>> last_save_day, last_save_pass, last_path, xbox_base_key = \
+                ...     fleet_util.get_last_save_xbox("hdfs:/my/path",
+                ...                                   hadoop_fs_name="hdfs://xxx",
+                ...                                   hadoop_fs_ugi="user,passwd")
 
         """
         donefile_path = output_path + "/xbox_patch_done.txt"
@@ -1237,10 +1259,13 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
-              last_save_day, last_save_pass, last_path, xbox_base_key = \
-                  fleet_util.get_last_save_model("hdfs:/my/path", 20190722, 88)
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
+                >>> fleet_util = FleetUtil()
+                >>> last_save_day, last_save_pass, last_path, xbox_base_key = \
+                ...     fleet_util.get_last_save_model("hdfs:/my/path",
+                ...                                    hadoop_fs_name="hdfs://xxx",
+                ...                                    hadoop_fs_ugi="user,passwd")
 
         """
         last_save_day = -1
@@ -1281,14 +1306,15 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
-              online_pass_interval = fleet_util.get_online_pass_interval(
-                  days="{20190720..20190729}",
-                  hours="{0..23}",
-                  split_interval=5,
-                  split_per_pass=2,
-                  is_data_hourly_placed=False)
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
+                >>> fleet_util = FleetUtil()
+                >>> online_pass_interval = fleet_util.get_online_pass_interval(
+                ...     days="{20190720..20190729}",
+                ...     hours="{0..23}",
+                ...     split_interval=5,
+                ...     split_per_pass=2,
+                ...     is_data_hourly_placed=False)
 
         """
         days = os.popen("echo -n " + days).read().split(" ")
@@ -1328,7 +1354,7 @@ class FleetUtil:
 
     def get_global_metrics(
         self,
-        scope=fluid.global_scope(),
+        scope=base.global_scope(),
         stat_pos_name="_generated_var_2",
         stat_neg_name="_generated_var_3",
         sqrerr_name="sqrerr",
@@ -1343,7 +1369,7 @@ class FleetUtil:
         actual_ctr, predicted_ctr, copc, mean_predict_qvalue, total_ins_num.
 
         Args:
-            scope(Scope): Scope object, default is fluid.global_scope()
+            scope(Scope): Scope object, default is base.global_scope()
             stat_pos_name(str): name of auc pos bucket Variable
             stat_neg_name(str): name of auc neg bucket Variable
             sqrerr_name(str): name of sqrerr Variable
@@ -1360,35 +1386,37 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
-              metric_list = fleet_util.get_global_metrics(myscope,
-                                                          stat_pos.name,
-                                                          stat_neg.name,
-                                                          local_sqrerr.name,
-                                                          local_abserr.name,
-                                                          local_prob.name,
-                                                          local_q.name,
-                                                          local_pos_ins.name,
-                                                          local_total_ins.name)
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> # doctest: +SKIP('dependency on custom variables')
+                >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
+                >>> fleet_util = FleetUtil()
+                >>> metric_list = fleet_util.get_global_metrics(myscope,
+                ...                                             stat_pos.name,
+                ...                                             stat_neg.name,
+                ...                                             local_sqrerr.name,
+                ...                                             local_abserr.name,
+                ...                                             local_prob.name,
+                ...                                             local_q.name,
+                ...                                             local_pos_ins.name,
+                ...                                             local_total_ins.name)
 
-              # below is part of example model
-              label = paddle.static.data(name="click", shape=[-1, 1],\
-                  dtype="int64", lod_level=0)
-              emb = my_slot_net(slots, label) # emb can be fc layer of size 1
-              similarity_norm = fluid.layers.sigmoid(paddle.clip(\
-                  emb, min=-15.0, max=15.0), name="similarity_norm")\
-              binary_predict = fluid.layers.concat(input=[\
-                  paddle.subtract(\
-                      fluid.layers.ceil(similarity_norm), similarity_norm),\
-                  similarity_norm], axis=1)
-              auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos, \
-                  stat_neg] = paddle.static.auc(input=binary_predict,\
-                                               label=label, curve='ROC',\
-                                               num_thresholds=4096)
-              local_sqrerr, local_abserr, local_prob, local_q, local_pos_ins,\
-                  local_total_ins = paddle.static.ctr_metric_bundle(\
-                      similarity_norm, label)
+                >>> # below is part of example model
+                >>> label = paddle.static.data(name="click", shape=[-1, 1],\
+                ...     dtype="int64", lod_level=0)
+                >>> emb = my_slot_net(slots, label) # emb can be fc layer of size 1
+                >>> similarity_norm = paddle.nn.functional.sigmoid(paddle.clip(\
+                ...     emb, min=-15.0, max=15.0), name="similarity_norm")\
+                >>> binary_predict = paddle.concat(input=[\
+                ...     paddle.subtract(\
+                ...         paddle.ceil(similarity_norm), similarity_norm),\
+                ...     similarity_norm], axis=1)
+                >>> auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos, \
+                ...     stat_neg] = paddle.static.auc(input=binary_predict,\
+                ...                                  label=label, curve='ROC',\
+                ...                                  num_thresholds=4096)
+                >>> local_sqrerr, local_abserr, local_prob, local_q, local_pos_ins,\
+                ...     local_total_ins = paddle.static.ctr_metric_bundle(\
+                ...         similarity_norm, label)
 
         """
         if (
@@ -1530,7 +1558,7 @@ class FleetUtil:
 
     def print_global_metrics(
         self,
-        scope=fluid.global_scope(),
+        scope=base.global_scope(),
         stat_pos_name="_generated_var_2",
         stat_neg_name="_generated_var_3",
         sqrerr_name="sqrerr",
@@ -1546,7 +1574,7 @@ class FleetUtil:
         actual_ctr, predicted_ctr, copc, mean_predict_qvalue, total_ins_num.
 
         Args:
-            scope(Scope): Scope object, default is fluid.global_scope()
+            scope(Scope): Scope object, default is base.global_scope()
             stat_pos_name(str): name of auc pos bucket Variable
             stat_neg_name(str): name of auc neg bucket Variable
             sqrerr_name(str): name of sqrerr Variable
@@ -1560,35 +1588,37 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
-              fleet_util.print_global_metrics(myscope,
-                                              stat_pos.name,
-                                              stat_neg.name,
-                                              local_sqrerr.name,
-                                              local_abserr.name,
-                                              local_prob.name,
-                                              local_q.name,
-                                              local_pos_ins.name,
-                                              local_total_ins.name)
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> # doctest: +SKIP('dependency on custom variables')
+                >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
+                >>> fleet_util = FleetUtil()
+                >>> fleet_util.print_global_metrics(myscope,
+                ...                                 stat_pos.name,
+                ...                                 stat_neg.name,
+                ...                                 local_sqrerr.name,
+                ...                                 local_abserr.name,
+                ...                                 local_prob.name,
+                ...                                 local_q.name,
+                ...                                 local_pos_ins.name,
+                ...                                 local_total_ins.name)
 
-              # below is part of model
-              label = paddle.static.data(name="click", shape=[-1, 1],\
-                  dtype="int64", lod_level=0)
-              emb = my_slot_net(slots, label) # emb can be fc layer of size 1
-              similarity_norm = fluid.layers.sigmoid(paddle.clip(\
-                  emb, min=-15.0, max=15.0), name="similarity_norm")\
-              binary_predict = fluid.layers.concat(input=[\
-                  paddle.subtract(\
-                      fluid.layers.ceil(similarity_norm), similarity_norm),\
-                  similarity_norm], axis=1)
-              auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos, \
-                  stat_neg] = paddle.static.auc(input=binary_predict,\
-                                               label=label, curve='ROC',\
-                                               num_thresholds=4096)
-              local_sqrerr, local_abserr, local_prob, local_q, local_pos_ins, \
-                  local_total_ins = paddle.static.ctr_metric_bundle(\
-                      similarity_norm, label)
+                >>> # below is part of model
+                >>> label = paddle.static.data(name="click", shape=[-1, 1],\
+                ...     dtype="int64", lod_level=0)
+                >>> emb = my_slot_net(slots, label) # emb can be fc layer of size 1
+                >>> similarity_norm = paddle.nn.functional.sigmoid(paddle.clip(\
+                ...     emb, min=-15.0, max=15.0), name="similarity_norm")\
+                >>> binary_predict = paddle.concat(input=[\
+                ...     paddle.subtract(\
+                ...         paddle.ceil(similarity_norm), similarity_norm),\
+                ...     similarity_norm], axis=1)
+                >>> auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos, \
+                ...     stat_neg] = paddle.static.auc(input=binary_predict,\
+                ...                                  label=label, curve='ROC',\
+                ...                                  num_thresholds=4096)
+                >>> local_sqrerr, local_abserr, local_prob, local_q, local_pos_ins, \
+                ...     local_total_ins = paddle.static.ctr_metric_bundle(\
+                ...         similarity_norm, label)
 
         """
         if (
@@ -1724,12 +1754,13 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
-              program_path = "./program.pbtxt"
-              is_text = True
-              output_dir = "/tmp/"
-              fleet_util.parse_program_proto(program_path, is_text, output_dir)
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
+                >>> fleet_util = FleetUtil()
+                >>> program_path = "./program.pbtxt"
+                >>> is_text = True
+                >>> output_dir = "/tmp/"
+                >>> fleet_util.parse_program_proto(program_path, is_text, output_dir)
         """
         program = self.load_program(prog_path, is_text)
         utils.parse_program(program, output_dir)
@@ -1742,9 +1773,10 @@ class GPUPSUtil(FleetUtil):
     Examples:
         .. code-block:: python
 
-          from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
-          fleet_util = GPUPSUtil()
-          fleet_util.rank0_print("my log")
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
+            >>> fleet_util = GPUPSUtil()
+            >>> fleet_util.rank0_print("my log")
     """
 
     def __init__(self, fs_client=None):
@@ -1768,9 +1800,10 @@ class GPUPSUtil(FleetUtil):
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
-              fleet_util = GPUPSUtil()
-              fleet_util.init(20190722, 88, 88, "./afs.conf")
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
+                >>> fleet_util = GPUPSUtil()
+                >>> fleet_util.init(20190722, 88, 88, "./afs.conf")
         """
         self._afs.init(fs_name, fs_user, fs_passwd, fs_conf)
 
@@ -1787,11 +1820,12 @@ class GPUPSUtil(FleetUtil):
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
-              from paddle.distributed.fleet.utils.fs import AFSClient
-              hdfs_client = AFSClient()
-              fleet_util = GPUPSUtil()
-              fleet_util.set_fsclient(hdfs_client)
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
+                >>> from paddle.distributed.fleet.utils.fs import AFSClient
+                >>> hdfs_client = AFSClient()
+                >>> fleet_util = GPUPSUtil()
+                >>> fleet_util.set_fsclient(hdfs_client)
         """
         self._afs = fs_client
 
@@ -1811,13 +1845,14 @@ class GPUPSUtil(FleetUtil):
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
-              from paddle.distributed.fleet.utils.fs import AFSClient
-              hdfs_client = AFSClient()
-              fleet_util = GPUPSUtil()
-              fleet_util.set_fsclient(hdfs_client)
-              last_save_day, last_path, xbox_base_key = \
-                  fleet_util.get_last_save_xbox_base("hdfs:/my/path")
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
+                >>> from paddle.distributed.fleet.utils.fs import AFSClient
+                >>> hdfs_client = AFSClient()
+                >>> fleet_util = GPUPSUtil()
+                >>> fleet_util.set_fsclient(hdfs_client)
+                >>> last_save_day, last_path, xbox_base_key = \
+                ...     fleet_util.get_last_save_xbox_base("hdfs:/my/path")
 
         """
         donefile_path = output_path + "/xbox_base_done.txt"
@@ -1853,13 +1888,14 @@ class GPUPSUtil(FleetUtil):
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
-              from paddle.distributed.fleet.utils.fs import AFSClient
-              hdfs_client = AFSClient()
-              fleet_util = GPUPSUtil()
-              fleet_util.set_fsclient(hdfs_client)
-              last_save_day, last_save_pass, last_path, xbox_base_key = \
-                  fleet_util.get_last_save_xbox("hdfs:/my/path")
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
+                >>> from paddle.distributed.fleet.utils.fs import AFSClient
+                >>> hdfs_client = AFSClient()
+                >>> fleet_util = GPUPSUtil()
+                >>> fleet_util.set_fsclient(hdfs_client)
+                >>> last_save_day, last_save_pass, last_path, xbox_base_key = \
+                ...     fleet_util.get_last_save_xbox("hdfs:/my/path")
 
         """
         donefile_path = output_path + "/xbox_patch_done.txt"
@@ -1896,13 +1932,14 @@ class GPUPSUtil(FleetUtil):
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
-              from paddle.distributed.fleet.utils.fs import AFSClient
-              hdfs_client = AFSClient()
-              fleet_util = GPUPSUtil()
-              fleet_util.set_fsclient(hdfs_client)
-              last_save_day, last_save_pass, last_path, xbox_base_key = \
-                  fleet_util.get_last_save_model("hdfs:/my/path")
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
+                >>> from paddle.distributed.fleet.utils.fs import AFSClient
+                >>> hdfs_client = AFSClient()
+                >>> fleet_util = GPUPSUtil()
+                >>> fleet_util.set_fsclient(hdfs_client)
+                >>> last_save_day, last_save_pass, last_path, xbox_base_key = \
+                ...     fleet_util.get_last_save_model("hdfs:/my/path")
 
         """
         last_save_day = -1
@@ -1944,16 +1981,16 @@ class GPUPSUtil(FleetUtil):
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
-              from paddle.distributed.fleet.utils.fs import AFSClient
-              hdfs_client = AFSClient()
-              fleet_util = GPUPSUtil()
-              fleet_util.set_fsclient(hdfs_client)
-              fleet_util.write_model_donefile(output_path="hdfs:/my/output",
-                                              model_path="hdfs:/my/model",
-                                              day=20190723,
-                                              pass_id=66,
-                                              xbox_base_key=int(time.time()))
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
+                >>> from paddle.distributed.fleet.utils.fs import AFSClient
+                >>> hdfs_client = AFSClient()
+                >>> fleet_util = GPUPSUtil()
+                >>> fleet_util.set_fsclient(hdfs_client)
+                >>> fleet_util.write_model_donefile(output_path="hdfs:/my/output",
+                ...                                 day=20190723,
+                ...                                 pass_id=66,
+                ...                                 xbox_base_key=int(time.time()))
 
         """
         day = str(day)
@@ -2003,8 +2040,8 @@ class GPUPSUtil(FleetUtil):
                     )
                 else:
                     self.rank0_error(
-                        "not write {} because {}/{} already "
-                        "exists".format(donefile_name, day, pass_id)
+                        f"not write {donefile_name} because {day}/{pass_id} already "
+                        "exists"
                     )
             else:
                 with open(donefile_name, "w") as f:
@@ -2043,19 +2080,19 @@ class GPUPSUtil(FleetUtil):
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
-              from paddle.distributed.fleet.utils.fs import AFSClient
-              hdfs_client = AFSClient()
-              fleet_util = GPUPSUtil()
-              fleet_util.set_fsclient(hdfs_client)
-              fleet_util.write_xbox_donefile(
-                  output_path="hdfs:/my/output/",
-                  model_path="hdfs:/my/output/20190722/01",
-                  day=20190722,
-                  pass_id=1,
-                  xbox_base_key=int(time.time()),
-                  data_path="hdfs:/my/data/",
-                  monitor_data={})
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
+                >>> from paddle.distributed.fleet.utils.fs import AFSClient
+                >>> hdfs_client = AFSClient()
+                >>> fleet_util = GPUPSUtil()
+                >>> fleet_util.set_fsclient(hdfs_client)
+                >>> fleet_util.write_xbox_donefile(
+                ...     output_path="hdfs:/my/output/",
+                ...     day=20190722,
+                ...     pass_id=1,
+                ...     xbox_base_key=int(time.time()),
+                ...     data_path="hdfs:/my/data/",
+                ...     monitor_data={})
 
         """
         day = str(day)
@@ -2120,8 +2157,8 @@ class GPUPSUtil(FleetUtil):
                     )
                 else:
                     self.rank0_info(
-                        "not write {} because {}/{} already "
-                        "exists".format(donefile_name, day, pass_id)
+                        f"not write {donefile_name} because {day}/{pass_id} already "
+                        "exists"
                     )
             else:
                 with open(donefile_name, "w") as f:
@@ -2156,16 +2193,17 @@ class GPUPSUtil(FleetUtil):
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
-              from paddle.distributed.fleet.utils.fs import AFSClient
-              hdfs_client = AFSClient()
-              fleet_util = GPUPSUtil()
-              fleet_util.set_fsclient(hdfs_client)
-              fleet_util.write_cache_donefile(
-                  output_path="hdfs:/my/output/",
-                  day=20190722,
-                  pass_id=1,
-                  key_num=123456)
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
+                >>> from paddle.distributed.fleet.utils.fs import AFSClient
+                >>> hdfs_client = AFSClient()
+                >>> fleet_util = GPUPSUtil()
+                >>> fleet_util.set_fsclient(hdfs_client)
+                >>> fleet_util.write_cache_donefile(
+                ...     output_path="hdfs:/my/output/",
+                ...     day=20190722,
+                ...     pass_id=1,
+                ...     key_num=123456)
 
         """
         day = str(day)

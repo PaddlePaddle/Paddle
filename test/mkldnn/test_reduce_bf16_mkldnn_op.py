@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import (
+from op_test import (
     OpTest,
     OpTestTool,
     convert_float_to_uint16,
@@ -23,7 +23,7 @@ from eager_op_test import (
 )
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -40,7 +40,7 @@ class TestReduceSumDefaultBF16OneDNNOp(OpTest):
         self.attrs = {'use_mkldnn': self.use_mkldnn}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output(check_dygraph=False, check_new_ir=False)
 
     def calculate_grads(self):
         tmp_tensor = np.zeros(self.x_fp32.shape).astype("float32")
@@ -84,6 +84,7 @@ class TestReduceDefaultWithGradBF16OneDNNOp(TestReduceSumDefaultBF16OneDNNOp):
             check_dygraph=False,
             user_defined_grads=[self.grad_X],
             user_defined_grad_outputs=[convert_float_to_uint16(self.grad_Out)],
+            check_new_ir=False,
         )
 
 

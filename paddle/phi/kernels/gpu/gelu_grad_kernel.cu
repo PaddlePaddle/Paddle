@@ -21,7 +21,7 @@
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/gpu/gelu_funcs.h"
 
-DECLARE_bool(use_fast_math);
+PD_DECLARE_bool(use_fast_math);
 
 namespace phi {
 

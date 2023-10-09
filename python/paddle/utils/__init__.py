@@ -18,7 +18,7 @@ from .lazy_import import try_import  # noqa: F401
 from .op_version import OpLastCheckpointChecker  # noqa: F401
 from .install_check import run_check  # noqa: F401
 from . import unique_name  # noqa: F401
-from ..fluid.framework import require_version  # noqa: F401
+from ..base.framework import require_version  # noqa: F401
 
 from . import download  # noqa: F401
 from . import image_util  # noqa: F401

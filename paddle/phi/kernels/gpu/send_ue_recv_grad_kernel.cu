@@ -113,11 +113,7 @@ void CalculateXGrad(const Context& ctx,
                     const DenseTensor& out_grad_tensor,
                     const DenseTensor* dst_count = nullptr,
                     const DenseTensor* out = nullptr) {
-#ifdef PADDLE_WITH_HIP
-  int block = 256;
-#else
   int block = 1024;
-#endif
   int64_t n = slice_size * index_size;
   int max_grid_dimx = ctx.GetCUDAMaxGridDimSize()[0];
   int64_t grid_tmp = (n + block - 1) / block;

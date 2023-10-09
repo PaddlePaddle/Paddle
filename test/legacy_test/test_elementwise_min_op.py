@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -344,7 +344,7 @@ class TestElementwiseBF16Op(OpTest):
     def test_check_grad_normal(self):
         places = self._get_places()
         for place in places:
-            if type(place) is paddle.fluid.libpaddle.CPUPlace:
+            if type(place) is paddle.base.libpaddle.CPUPlace:
                 check_prim = False
             else:
                 check_prim = True
@@ -369,7 +369,7 @@ class TestElementwiseBF16Op(OpTest):
     def test_check_grad_ingore_x(self):
         places = self._get_places()
         for place in places:
-            if isinstance(place, paddle.fluid.libpaddle.CPUPlace):
+            if isinstance(place, paddle.base.libpaddle.CPUPlace):
                 check_prim = False
             else:
                 check_prim = True
@@ -394,7 +394,7 @@ class TestElementwiseBF16Op(OpTest):
     def test_check_grad_ingore_y(self):
         places = self._get_places()
         for place in places:
-            if isinstance(place, paddle.fluid.libpaddle.CPUPlace):
+            if isinstance(place, paddle.base.libpaddle.CPUPlace):
                 check_prim = False
             else:
                 check_prim = True

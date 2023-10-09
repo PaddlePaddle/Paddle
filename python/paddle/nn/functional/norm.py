@@ -16,11 +16,11 @@ import numbers
 
 # TODO: define normalization api
 import paddle
-from paddle import _C_ops, fluid, in_dynamic_mode
-from paddle.fluid.framework import in_dygraph_mode
+from paddle import _C_ops, base, in_dynamic_mode
+from paddle.base.framework import in_dygraph_mode, in_dynamic_or_pir_mode
 
-from ...fluid.data_feeder import check_type, check_variable_and_dtype
-from ...fluid.layer_helper import LayerHelper
+from ...base.data_feeder import check_type, check_variable_and_dtype
+from ...base.layer_helper import LayerHelper
 
 __all__ = []
 
@@ -53,32 +53,33 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
 
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-            paddle.disable_static()
-            x = paddle.arange(6, dtype="float32").reshape([2,3])
-            y = F.normalize(x)
-            print(y)
-            # Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[0.        , 0.44721359, 0.89442718],
-            #         [0.42426404, 0.56568539, 0.70710671]])
+            >>> paddle.disable_static()
+            >>> x = paddle.arange(6, dtype="float32").reshape([2,3])
+            >>> y = F.normalize(x)
+            >>> print(y)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.        , 0.44721359, 0.89442718],
+             [0.42426404, 0.56568539, 0.70710671]])
 
-            y = F.normalize(x, p=1.5)
-            print(y)
-            # Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[0.        , 0.40862012, 0.81724024],
-            #         [0.35684016, 0.47578689, 0.59473360]])
+            >>> y = F.normalize(x, p=1.5)
+            >>> print(y)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.        , 0.40862012, 0.81724024],
+             [0.35684016, 0.47578689, 0.59473360]])
 
-            y = F.normalize(x, axis=0)
-            print(y)
-            # Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[0.        , 0.24253564, 0.37139067],
-            #         [1.        , 0.97014254, 0.92847669]])
+            >>> y = F.normalize(x, axis=0)
+            >>> print(y)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.        , 0.24253564, 0.37139067],
+             [1.        , 0.97014254, 0.92847669]])
+
     """
 
     if in_dygraph_mode():
-        eps = fluid.dygraph.base.to_variable([epsilon], dtype=x.dtype)
+        eps = base.dygraph.base.to_variable([epsilon], dtype=x.dtype)
         out = _C_ops.p_norm(x, float(p), axis, epsilon, True, False)
         return x / _C_ops.maximum(out, eps)
 
@@ -148,31 +149,29 @@ def batch_norm(
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.arange(12, dtype="float32").reshape([2, 1, 2, 3])
-            print(x)
-            # Tensor(shape=[2, 1, 2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[[[0. , 1. , 2. ],
-            #           [3. , 4. , 5. ]]],
+            >>> x = paddle.arange(12, dtype="float32").reshape([2, 1, 2, 3])
+            >>> print(x)
+            Tensor(shape=[2, 1, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[0. , 1. , 2. ],
+               [3. , 4. , 5. ]]],
+             [[[6. , 7. , 8. ],
+               [9. , 10., 11.]]]])
+            >>> running_mean = paddle.to_tensor([0], dtype="float32")
+            >>> running_variance = paddle.to_tensor([1], dtype="float32")
+            >>> weight = paddle.to_tensor([2], dtype="float32")
+            >>> bias = paddle.to_tensor([1], dtype="float32")
 
-            #         [[[6. , 7. , 8. ],
-            #           [9. , 10., 11.]]]])
+            >>> batch_norm_out = paddle.nn.functional.batch_norm(x, running_mean,
+            ...                                             running_variance, weight, bias)
+            >>> print(batch_norm_out)
+            Tensor(shape=[2, 1, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[1.         , 2.99998999 , 4.99997997 ],
+               [6.99996948 , 8.99995995 , 10.99994946]]],
+             [[[12.99993896, 14.99992943, 16.99991989],
+               [18.99990845, 20.99989891, 22.99988937]]]])
 
-            running_mean = paddle.to_tensor([0], dtype="float32")
-            running_variance = paddle.to_tensor([1], dtype="float32")
-            weight = paddle.to_tensor([2], dtype="float32")
-            bias = paddle.to_tensor([1], dtype="float32")
-
-            batch_norm_out = paddle.nn.functional.batch_norm(x, running_mean,
-                                                        running_variance, weight, bias)
-            print(batch_norm_out)
-            # Tensor(shape=[2, 1, 2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[[[1.         , 2.99998999 , 4.99997997 ],
-            #           [6.99996948 , 8.99995995 , 10.99994946]]],
-
-            #         [[[12.99993896, 14.99992943, 16.99991989],
-            #           [18.99990845, 20.99989891, 22.99988937]]]])
     """
     assert len(x.shape) >= 2, "input dim must be larger than 1"
 
@@ -184,7 +183,7 @@ def batch_norm(
     if data_format not in true_data_format:
         raise ValueError(
             "data_format must be one of 'NC', 'NCL', 'NCHW', 'NCDHW', "
-            "'NLC', 'NHWC', 'NDHWC' but receive {}".format(data_format)
+            f"'NLC', 'NHWC', 'NDHWC' but receive {data_format}"
         )
 
     data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
@@ -237,7 +236,7 @@ def batch_norm(
         }
 
         helper = LayerHelper('batch_norm', **locals())
-        from paddle.fluid.data_feeder import convert_dtype
+        from paddle.base.data_feeder import convert_dtype
 
         param_dtype = (
             x.dtype
@@ -300,11 +299,21 @@ def layer_norm(
 
         .. code-block:: python
 
-          import paddle
+            >>> import paddle
+            >>> paddle.seed(2023)
+            >>> x = paddle.rand((2, 2, 2, 3))
+            >>> layer_norm_out = paddle.nn.functional.layer_norm(x, x.shape[1:])
+            >>> print(layer_norm_out)
+            Tensor(shape=[2, 2, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[ 0.87799639, -0.32706568, -1.23529339],
+               [ 1.01540327, -0.66222906, -0.72354043]],
+              [[ 1.24183702,  0.45458138, -0.33506915],
+               [ 0.41468468,  1.26852870, -1.98983312]]],
+             [[[ 0.02837803,  1.27684665, -0.90110683],
+               [-0.94709367, -0.15110941, -1.16546965]],
+              [[-0.82010198,  0.11218392, -0.86506516],
+               [ 1.09489357,  0.19107464,  2.14656854]]]])
 
-          x = paddle.rand((2, 2, 2, 3))
-          layer_norm_out = paddle.nn.functional.layer_norm(x, x.shape[1:])
-          print(layer_norm_out)
     """
     input_shape = list(x.shape)
     input_ndim = len(input_shape)
@@ -333,7 +342,7 @@ def layer_norm(
             + str(input_shape)
         )
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.layer_norm(x, weight, bias, epsilon, begin_norm_axis)
         return out
 
@@ -352,7 +361,7 @@ def layer_norm(
 
         # create output
         helper = LayerHelper('layer_norm', **locals())
-        from paddle.fluid.data_feeder import convert_dtype
+        from paddle.base.data_feeder import convert_dtype
 
         param_dtype = (
             x.dtype if convert_dtype(x.dtype) != 'float16' else 'float32'
@@ -415,12 +424,21 @@ def instance_norm(
 
         .. code-block:: python
 
-          import paddle
+            >>> import paddle
+            >>> paddle.seed(2023)
+            >>> x = paddle.rand((2, 2, 2, 3))
+            >>> instance_norm_out = paddle.nn.functional.instance_norm(x)
 
-          x = paddle.rand((2, 2, 2, 3))
-          instance_norm_out = paddle.nn.functional.instance_norm(x)
-
-          print(instance_norm_out)
+            >>> print(instance_norm_out)
+            Tensor(shape=[2, 2, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[ 1.25768495, -0.18054862, -1.26451230],
+               [ 1.42167914, -0.58056390, -0.65373862]],
+              [[ 0.95882601,  0.25075224, -0.45947552],
+               [ 0.21486834,  0.98283297, -1.94780385]]],
+             [[[ 0.40697321,  1.90885782, -0.71117985],
+               [-0.76650119,  0.19105314, -1.02920341]],
+              [[-1.06926346, -0.18710862, -1.11180890],
+               [ 0.74275863, -0.11246002,  1.73788261]]]])
 
     """
     if in_dygraph_mode():
@@ -510,13 +528,15 @@ def local_response_norm(
 
     Examples:
 
-    .. code-block:: python
+        .. code-block:: python
 
-        import paddle
+            >>> import paddle
 
-        x = paddle.rand(shape=(3, 3, 112, 112), dtype="float32")
-        y = paddle.nn.functional.local_response_norm(x, size=5)
-        print(y.shape)  # [3, 3, 112, 112]
+            >>> x = paddle.rand(shape=(3, 3, 112, 112), dtype="float32")
+            >>> y = paddle.nn.functional.local_response_norm(x, size=5)
+            >>> print(y.shape)
+            [3, 3, 112, 112]
+
     """
     if not in_dynamic_mode():
         check_variable_and_dtype(
@@ -525,23 +545,21 @@ def local_response_norm(
     if data_format not in ['NCL', 'NLC', 'NCHW', 'NHWC', 'NCDHW', 'NDHWC']:
         raise ValueError(
             "data_format should be in one of [NCL, NCHW, NCDHW, NLC, NHWC, NDHWC], "
-            "but got {}".format(data_format)
+            f"but got {data_format}"
         )
 
     sizes = x.shape
     dim = len(sizes)
     if dim < 3:
         raise ValueError(
-            'Expected 3D or higher dimensionality input, but got {} dimensions'.format(
-                dim
-            )
+            f'Expected 3D or higher dimensionality input, but got {dim} dimensions'
         )
 
     for i, sz in enumerate(sizes):
         if not sz > 0 and i > 0:
             raise ValueError(
                 "Expected every dim's size to be larger than 0, "
-                "but the size of the {}-th dim is {}".format(i, sz)
+                f"but the size of the {i}-th dim is {sz}"
             )
 
     channel_last = True if data_format[-1] == "C" else False

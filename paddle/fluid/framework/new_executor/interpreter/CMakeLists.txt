@@ -34,6 +34,10 @@ set(INTERPRETER_DEPS
     ${DEVICE_EVENT_LIBS}
     glog)
 
+if(WITH_CINN AND NOT CINN_ONLY)
+  set(INTERPRETER_DEPS ${INTERPRETER_DEPS} cinn_jit_instruction)
+endif()
+
 cc_library(
   interpreter
   SRCS ${INTERPRETER_SRCS}
@@ -42,4 +46,4 @@ cc_library(
 cc_library(
   plan
   SRCS plan.cc
-  DEPS framework_proto)
+  DEPS proto_desc framework_proto)

@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.variable_index import _setitem_static
+from paddle.base.variable_index import _setitem_static
 
 
 class TestSetitemInDygraph(unittest.TestCase):
@@ -50,6 +50,95 @@ class TestSetitemInDygraph(unittest.TestCase):
         x[:, [True, False, True, False], [1, 4]] = 10
 
         np.testing.assert_allclose(x.numpy(), np_data)
+
+    def test_index_has_range(self):
+        np_data = np.ones((3, 4, 5, 6), dtype='int32')
+        x = paddle.to_tensor(np_data)
+
+        np_data[:, range(3), [1, 2, 4]] = 10
+        x[:, range(3), [1, 2, 4]] = 10
+
+        np.testing.assert_allclose(x.numpy(), np_data)
+
+    def test_src_value_with_different_dtype_1(self):
+        # basic-indexing, with set_value op
+        np_data = np.ones((3, 4, 5, 6), dtype='int32')
+        np_value = np.zeros((6,), dtype='float32')
+        x = paddle.to_tensor(np_data)
+        v = paddle.to_tensor(np_value)
+
+        np_data[0, 2, 3] = np_value
+        x[0, 2, 3] = v
+
+        np.testing.assert_allclose(x.numpy(), np_data)
+
+    def test_src_value_with_different_dtype_2(self):
+        # combined-indexing, with index_put op
+        np_data = np.ones((3, 4, 5, 6), dtype='float32')
+        np_value = np.zeros((6,), dtype='int64')
+
+        x = paddle.to_tensor(np_data)
+        v = paddle.to_tensor(np_value)
+
+        np_data[:, [1, 0], 3] = np_value
+        x[:, [1, 0], 3] = v
+
+        np.testing.assert_allclose(x.numpy(), np_data)
+
+    def test_indexing_with_bool_list1(self):
+        # test bool-list indexing when axes num less than x.rank
+        np_data = np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
+        np_data[[True, False, True], [False, False, False, True]] = 7
+
+        x = paddle.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
+        x[[True, False, True], [False, False, False, True]] = 7
+
+        np.testing.assert_allclose(x.numpy(), np_data)
+
+    def test_indexing_with_bool_list2(self):
+        # test bool-list indexing when axes num less than x.rank
+        np_data = np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
+        np_data[
+            [True, False, True],
+            [False, False, True, False],
+            [True, False, False, True, False],
+        ] = 8
+
+        x = paddle.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
+        x[
+            [True, False, True],
+            [False, False, True, False],
+            [True, False, False, True, False],
+        ] = 8
+
+        np.testing.assert_allclose(x.numpy(), np_data)
+
+    def test_indexing_is_multi_dim_list(self):
+        # indexing is multi-dim int list, should be treat as one index, like numpy>=1.23
+        np_data = np.arange(3 * 4 * 5 * 6).reshape((6, 5, 4, 3))
+        np_data[np.array([[2, 3, 4], [1, 2, 5]])] = 100
+
+        x = paddle.arange(3 * 4 * 5 * 6).reshape((6, 5, 4, 3))
+        x[[[2, 3, 4], [1, 2, 5]]] = 100
+
+        np.testing.assert_allclose(x.numpy(), np_data)
+
+    def test_inplace_with_stride(self):
+        v = paddle.randn((3, 1))
+        v.stop_gradient = False
+        vv = v * 1
+
+        zero = paddle.randn((3, 3, 5))
+        zero.stop_gradient = False
+
+        zero1 = zero * 1
+        zero1[paddle.to_tensor([0, 1])] = vv
+
+        loss = zero1.sum()
+        loss.backward()
+
+        expected_v_grad = np.ones((3, 1)) * 10.0
+        np.testing.assert_equal(v.grad.numpy(), expected_v_grad)
 
 
 class TestSetitemInStatic(unittest.TestCase):
@@ -134,6 +223,117 @@ class TestSetitemInStatic(unittest.TestCase):
                 (..., [1, 4, 3], slice(None, None, 2)),
                 5,
             )
+            res = self.exe.run(fetch_list=[y.name])
+
+        np.testing.assert_allclose(res[0], np_data)
+
+    def test_index_has_range(self):
+        np_data = np.ones((3, 4, 5, 6), dtype='int32')
+        np_data[:, range(3), [1, 2, 4]] = 10
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.ones((3, 4, 5, 6), dtype='int32')
+            y = _setitem_static(
+                x,
+                (slice(None, None), range(3), [1, 2, 4]),
+                10,
+            )
+            res = self.exe.run(fetch_list=[y.name])
+
+        np.testing.assert_allclose(res[0], np_data)
+
+    def test_src_value_with_different_dtype_1(self):
+        # basic-indexing, with set_value op
+        np_data = np.ones((3, 4, 5, 6), dtype='int32')
+        np_value = np.zeros((6,), dtype='float32')
+        np_data[0, 2, 3] = np_value
+
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.ones((3, 4, 5, 6), dtype='int32')
+            v = paddle.zeros((6,), dtype='float32')
+            y = _setitem_static(
+                x,
+                (0, 2, 3),
+                v,
+            )
+            res = self.exe.run(fetch_list=[y.name])
+
+        np.testing.assert_allclose(res[0], np_data)
+
+    def test_src_value_with_different_dtype_2(self):
+        # combined-indexing, with index_put op
+        np_data = np.ones((3, 4, 5, 6), dtype='float32')
+        np_value = np.zeros((6,), dtype='int64')
+        np_data[:, [1, 0], 3] = np_value
+
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.ones((3, 4, 5, 6), dtype='float32')
+            v = paddle.zeros((6,), dtype='int64')
+            y = _setitem_static(
+                x,
+                (slice(None, None), [1, 0], 3),
+                v,
+            )
+            res = self.exe.run(fetch_list=[y.name])
+
+        np.testing.assert_allclose(res[0], np_data)
+
+    def test_indexing_with_bool_list1(self):
+        # test bool-list indexing when axes num less than x.rank
+        np_data = np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
+        np_data[[True, False, True], [False, False, False, True]] = 7
+
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
+            y = _setitem_static(
+                x, ([True, False, True], [False, False, False, True]), 7
+            )
+            res = self.exe.run(fetch_list=[y.name])
+
+        np.testing.assert_allclose(res[0], np_data)
+
+    def test_indexing_with_bool_list2(self):
+        # test bool-list indexing when axes num less than x.rank
+        np_data = np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
+        np_data[
+            [True, False, True],
+            [False, False, True, False],
+            [True, False, False, True, False],
+        ] = 8
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
+            y = _setitem_static(
+                x,
+                (
+                    [True, False, True],
+                    [False, False, True, False],
+                    [True, False, False, True, False],
+                ),
+                8,
+            )
+            res = self.exe.run(fetch_list=[y.name])
+
+        np.testing.assert_allclose(res[0], np_data)
+
+    def test_indexing_is_multi_dim_list(self):
+        # indexing is multi-dim int list, should be treat as one index, like numpy>=1.23
+        np_data = np.arange(3 * 4 * 5 * 6).reshape((6, 5, 4, 3))
+        np_data[np.array([[2, 3, 4], [1, 2, 5]])] = 10
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.arange(3 * 4 * 5 * 6).reshape((6, 5, 4, 3))
+            y = _setitem_static(x, [[[2, 3, 4], [1, 2, 5]]], 10)
+
             res = self.exe.run(fetch_list=[y.name])
 
         np.testing.assert_allclose(res[0], np_data)

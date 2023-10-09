@@ -42,8 +42,19 @@ void BatchNormCooGradKernel(const Context& dev_ctx,
                             DenseTensor* scale_grad,
                             DenseTensor* bias_grad) {
   EmptyLikeCooKernel<T, Context>(dev_ctx, x, x_grad);
-  *scale_grad = phi::EmptyLike<T, Context>(dev_ctx, scale);
-  *bias_grad = phi::EmptyLike<T, Context>(dev_ctx, bias);
+
+  // TODO(umiswing): add check for parameter freezing automatically
+  PADDLE_ENFORCE_EQ((scale_grad == nullptr && bias_grad == nullptr) ||
+                        (scale_grad != nullptr && bias_grad != nullptr),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Weight and bias's stop_gradient of BatchNorm must be "
+                        "True or False at the same time."));
+
+  if (scale_grad && bias_grad) {
+    *scale_grad = phi::EmptyLike<T, Context>(dev_ctx, scale);
+    *bias_grad = phi::EmptyLike<T, Context>(dev_ctx, bias);
+  }
   phi::BatchNormGradKernel<T, Context>(dev_ctx,
                                        x.values(),
                                        scale,

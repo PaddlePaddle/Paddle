@@ -12,7 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Disable Test list: test_fused_linear_param_grad_add
+
+function collect_failed_tests() {
+    for file in `ls $tmp_dir`; do
+        exit_code=0
+        grep -q 'The following tests FAILED:' $tmp_dir/$file||exit_code=$?
+        if [ $exit_code -ne 0 ]; then
+            failuretest=''
+        else
+            failuretest=`grep -A 10000 'The following tests FAILED:' $tmp_dir/$file | sed 's/The following tests FAILED://g'|sed '/^$/d'`
+            failed_test_lists="${failed_test_lists}
+            ${failuretest}"
+        fi
+    done
+}
 
 serial_list="^test_conv2d_op$|\
 ^test_conv2d_transpose_op$|\
@@ -46,7 +59,9 @@ parallel_list="^init_phi_test$|\
 ^test_custom_kernel$|\
 ^test_dist_fleet_ps11$|\
 ^test_dist_fleet_ps12$|\
+^test_dygraph_sharding_stage2_bf16$|\
 ^test_executor_feed_non_tensor$|\
+^test_flash_attention$|\
 ^test_fused_adam_op$|\
 ^test_fused_attention_no_dropout$|\
 ^test_fused_attention_op$|\
@@ -69,6 +84,7 @@ parallel_list="^init_phi_test$|\
 ^test_fused_gemm_epilogue_op$|\
 ^test_fused_gemm_epilogue_op_with_es$|\
 ^test_fused_layernorm_residual_dropout_bias$|\
+^test_fused_linear_param_grad_add$|\
 ^test_fused_linear_pass$|\
 ^test_fused_matmul_bias$|\
 ^test_fused_multi_transformer_decoder_pass$|\
@@ -90,16 +106,24 @@ parallel_list="^init_phi_test$|\
 ^test_top_k_v2_op$"
 
 cd ${work_dir}/build
-
+tmp_dir=`mktemp -d`
+tmpfile_rand=`date +%s%N`
+tmpfile=$tmp_dir/$tmpfile_rand"_"$i
 set +e
-ctest --output-on-failure -R "($parallel_list)" --timeout 120 -j4
+ctest --output-on-failure -R "($parallel_list)" --timeout 120 -j4 | tee -a $tmpfile; test ${PIPESTATUS[0]} -eq 0;
 EXIT_CODE_1=$?
 
-ctest --output-on-failure -R "($serial_list)" --timeout 120 -j1
+ctest --output-on-failure -R "($serial_list)" --timeout 120 -j1 | tee -a $tmpfile; test ${PIPESTATUS[0]} -eq 0;
 EXIT_CODE_2=$?
 set -e
 
 if [ "${EXIT_CODE_1}" != "0" ] || [ "${EXIT_CODE_2}" != "0" ];then
   echo "Sorry, some tests failed."
+  collect_failed_tests
+  rm -f $tmp_dir/*
+  echo "Summary Failed Tests... "
+  echo "========================================"
+  echo "The following tests FAILED: "
+  echo "${failuretest}" | sort -u
   exit 8
 fi

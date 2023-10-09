@@ -28,17 +28,18 @@ std::vector<TreeNode> Tree2ColUtil::construct_patch(
 
   stack.emplace(root, 1, 1, 0);
   patch.emplace_back(root, 1, 1, 0);
-  visited[root] = true;
+  visited[static_cast<int>(root)] = true;
 
   while (!stack.empty()) {
     TreeNode &u = stack.top();
     bool end = true;
     size_t node = u.get_node(), sz = tr[node].size();
-    visited[node] = true;
+    visited[static_cast<int>(node)] = true;
     for (size_t i = 0; i < sz; i++) {
       size_t v = tr[node][i];
-      if (!visited[v] && static_cast<int>(u.get_depth()) + 1 < max_depth) {
-        visited[v] = true;
+      if (!visited[static_cast<int>(v)] &&
+          static_cast<int>(u.get_depth()) + 1 < max_depth) {
+        visited[static_cast<int>(v)] = true;
         stack.emplace(v, i, sz, u.get_depth() + 1);
         patch.emplace_back(v, i + 1, sz, u.get_depth() + 1);
         end = false;

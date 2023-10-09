@@ -53,6 +53,7 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
     typename phi::dtype::MPTypeTrait<T>::Type *mean_val,
     typename phi::dtype::MPTypeTrait<T>::Type *var_val,
     Functor act_func,
+    const float residual_alpha = 1.0,
     const float quant_last_in_scale = 1.0,
     const float *dequant_out_scale_data = nullptr,
     const float quant_next_in_scale = 1.0,
@@ -121,10 +122,11 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
       tmp = act_func(tmp);
     }
     if (HasDropout) {
-      dest_vec[ii] =
-          tmp * static_cast<T>(mask_vec[ii]) * factor + residual_vec[ii];
+      dest_vec[ii] = tmp * static_cast<T>(mask_vec[ii]) * factor +
+                     residual_vec[ii] * static_cast<T>(residual_alpha);
     } else {
-      dest_vec[ii] = tmp * factor + residual_vec[ii];
+      dest_vec[ii] =
+          tmp * factor + residual_vec[ii] * static_cast<T>(residual_alpha);
     }
     if (ComputeLayerNorm) {
       U tmp = static_cast<U>(dest_vec[ii]);
@@ -274,7 +276,8 @@ __global__ void FusedResidualDropoutBias(
     const bool is_test,
     const float quant_last_in_scale = 1.0,
     const float *dequant_out_scale_data = nullptr,
-    const float quant_next_in_scale = 1.0) {
+    const float quant_next_in_scale = 1.0,
+    const float residual_alpha = 1.0) {
   int col_id = blockDim.x * blockIdx.x + threadIdx.x;
   int row_id = blockIdx.y;
   int idx = row_id * cols + col_id;
@@ -316,6 +319,7 @@ __global__ void FusedResidualDropoutBias(
                                                     nullptr,
                                                     nullptr,
                                                     relu,
+                                                    residual_alpha,
                                                     quant_last_in_scale,
                                                     dequant_out_scale_data,
                                                     quant_next_in_scale);
@@ -345,7 +349,8 @@ void LaunchResidualDropoutBias(const uint32_t rows,
                                const phi::GPUContext &ctx,
                                const float quant_last_in_scale = 1.0,
                                const float *dequant_out_scale_data = nullptr,
-                               const float quant_next_in_scale = 1.0) {
+                               const float quant_next_in_scale = 1.0,
+                               const float residual_alpha = 1.0) {
   // dropout_prob == 1.0f
   if (std::abs(dropout_prob - 1.0f) < 1e-5) {
     // NOTE(minghaoBD): OutType should be T if dropout_prob == 1.0
@@ -396,7 +401,8 @@ void LaunchResidualDropoutBias(const uint32_t rows,
                              is_test,                                         \
                              quant_last_in_scale,                             \
                              dequant_out_scale_data,                          \
-                             quant_next_in_scale);                            \
+                             quant_next_in_scale,                             \
+                             residual_alpha);                                 \
     } else {                                                                  \
       FusedResidualDropoutBias<T, uint8_t, 1, InType, OutType, __has_dropout> \
           <<<config.block_per_grid,                                           \
@@ -416,7 +422,8 @@ void LaunchResidualDropoutBias(const uint32_t rows,
                              is_test,                                         \
                              quant_last_in_scale,                             \
                              dequant_out_scale_data,                          \
-                             quant_next_in_scale);                            \
+                             quant_next_in_scale,                             \
+                             residual_alpha);                                 \
     }                                                                         \
   } while (0)
 

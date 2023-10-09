@@ -19,8 +19,7 @@ import time
 import warnings
 from collections import OrderedDict, namedtuple
 from contextlib import contextmanager
-from multiprocessing import Manager  # noqa: F401
-from multiprocessing import Process  # noqa: F401
+from multiprocessing import Manager, Process
 
 import numpy as np
 
@@ -43,7 +42,7 @@ from paddle.distributed.communication.group import (
     _get_global_group,
     is_initialized,
 )
-from paddle.distributed.fleet.base.private_helper_function import (  # noqa: F401
+from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
 from paddle.distributed.fleet.launch_utils import check_backend
@@ -145,7 +144,11 @@ def build_groups(vars, group_size):
 @imperative_base.no_grad
 @framework.dygraph_only
 def sync_params_buffers(
-    model, comm_group=None, src_rank=0, is_model_parallel=False
+    model,
+    comm_group=None,
+    src_rank=0,
+    is_model_parallel=False,
+    fuse_params=True,
 ):
     model_vars = []
     for _, param in model._obtain_parameters_buffers().items():
@@ -170,22 +173,28 @@ def sync_params_buffers(
     if len(model_vars) == 0:
         return
 
-    # group size is 128M
-    coalesced_vars = build_groups(model_vars, 128 * 1024 * 1024)
+    if fuse_params:
+        # group size is 128M
+        coalesced_vars = build_groups(model_vars, 128 * 1024 * 1024)
 
-    for coalesced_var, _, _ in coalesced_vars:
-        paddle.distributed.broadcast(
-            coalesced_var, src=src_rank, group=comm_group, sync_op=True
-        )
+        for coalesced_var, _, _ in coalesced_vars:
+            paddle.distributed.broadcast(
+                coalesced_var, src=src_rank, group=comm_group, sync_op=True
+            )
 
-    for coalesced_var, origin_vars, var_shapes in coalesced_vars:
-        var_len = [np.prod(v_shape) for v_shape in var_shapes]
-        paddle.fluid.framework._dygraph_tracer().trace_op(
-            type='split',
-            inputs={'X': coalesced_var},
-            outputs={'Out': origin_vars},
-            attrs={'sections': var_len, 'axis': 0},
-        )
+        for coalesced_var, origin_vars, var_shapes in coalesced_vars:
+            var_len = [np.prod(v_shape) for v_shape in var_shapes]
+            paddle.base.framework._dygraph_tracer().trace_op(
+                type='split',
+                inputs={'X': coalesced_var},
+                outputs={'Out': origin_vars},
+                attrs={'sections': var_len, 'axis': 0},
+            )
+    else:
+        for var in model_vars:
+            paddle.distributed.broadcast(
+                var, src=src_rank, group=comm_group, sync_op=True
+            )
 
 
 class DataParallel(layers.Layer):
@@ -398,7 +407,7 @@ class DataParallel(layers.Layer):
                 ), "ProcessGroup must be an instance of Group in DataParallel."
 
             # sync buffer and params
-            sync_params_buffers(self._layers)
+            sync_params_buffers(self._layers, fuse_params=False)
 
             self.comm_buffer_size = int(comm_buffer_size * 1024 * 1024)
             # NOTE(shenliang03): We can set environment variables to control
@@ -690,8 +699,8 @@ class ParallelEnv:
 
         # imperative only support one gpu or xpu
         if self._device_type != "":
-            FLAGS_selected_custom_devices = 'FLAGS_selected_{}s'.format(
-                self._device_type
+            FLAGS_selected_custom_devices = (
+                f'FLAGS_selected_{self._device_type}s'
             )
             selected_custom_devices = os.getenv(
                 FLAGS_selected_custom_devices, "0"
@@ -1004,8 +1013,8 @@ def init_parallel_env():
         )
 
     if backend == "xccl":
-        FLAGS_selected_custom_devices = 'FLAGS_selected_{}s'.format(
-            parallel_env.device_type
+        FLAGS_selected_custom_devices = (
+            f'FLAGS_selected_{parallel_env.device_type}s'
         )
         _check_var_exists(FLAGS_selected_custom_devices)
     else:
@@ -1074,13 +1083,7 @@ def init_parallel_env():
         master_port = int(master_port)
         is_master = rank == 0
         stop_check_timeout = int(os.getenv("FLAGS_stop_check_timeout", "900"))
-        default_store = core.TCPStore(
-            master_addr,
-            master_port,
-            is_master,
-            world_size,
-            timeout=stop_check_timeout,
-        )
+        default_store = core.create_or_get_global_tcp_store()
         _set_default_store(default_store)
         pg = _new_process_group_impl(
             backend,
@@ -1098,6 +1101,11 @@ def init_parallel_env():
         _add_new_group(group)
         parallel_helper._set_parallel_ctx(True)
 
+        # barrier will call CreateNCCLEnvCache which will call CreateNCCLCommContext.
+        # Set device_id to prevent creating null dev_ctx.
+        # TODO(mine): support XPU and other backends.
+        if backend in ["nccl", 'xccl', 'bkcl']:
+            core.CommContextManager.set_device_id(parallel_env.device_id)
         paddle.distributed.barrier(group=group)
         return group
 

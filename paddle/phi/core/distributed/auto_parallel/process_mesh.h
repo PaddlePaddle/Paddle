@@ -27,7 +27,6 @@ limitations under the License. */
 
 namespace phi {
 namespace distributed {
-namespace auto_parallel {
 
 class ProcessMesh {
  public:
@@ -48,7 +47,7 @@ class ProcessMesh {
   int64_t ndim() const { return shape_.size(); }
 
   int64_t dim_size(int64_t dim) const {
-    int64_t cdim = canonical_dim(dim, shape_.size());
+    int64_t cdim = auto_parallel::canonical_dim(dim, shape_.size());
     return shape_[cdim];
   }
 
@@ -68,8 +67,8 @@ class ProcessMesh {
   // ProcessMesh from_string(const std::string& mesh_str);
   std::string to_string() const;
 
-  static ProcessMesh from_proto(const ProcessMeshProto& proto);
-  ProcessMeshProto to_proto() const;
+  static ProcessMesh from_proto(const auto_parallel::ProcessMeshProto& proto);
+  auto_parallel::ProcessMeshProto to_proto() const;
 
  private:
   std::vector<int64_t> shape_;
@@ -88,6 +87,5 @@ inline bool operator!=(const ProcessMesh& lhs, const ProcessMesh& rhs) {
   return !operator==(lhs, rhs);
 }
 
-}  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace phi

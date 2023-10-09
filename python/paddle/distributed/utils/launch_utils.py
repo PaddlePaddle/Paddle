@@ -35,9 +35,7 @@ def get_cluster_from_args(args, selected_gpus):
     node_rank = node_ips.index(node_ip)
 
     logger.debug(
-        "parsed from args:node_ips:{} node_ip:{} node_rank:{}".format(
-            node_ips, node_ip, node_rank
-        )
+        f"parsed from args:node_ips:{node_ips} node_ip:{node_ip} node_rank:{node_rank}"
     )
 
     free_ports = None
@@ -91,11 +89,9 @@ def get_gpus(selected_gpus):
                 for x in selected_gpus.split(',')
             ]
             logger.info(
-                "Change selected_gpus into reletive values. --ips:{} "
-                "will change into relative_ips:{} according to your "
-                "CUDA_VISIBLE_DEVICES:{}".format(
-                    selected_gpus, gpus, cuda_visible_devices_list
-                )
+                f"Change selected_gpus into reletive values. --ips:{selected_gpus} "
+                f"will change into relative_ips:{gpus} according to your "
+                f"CUDA_VISIBLE_DEVICES:{cuda_visible_devices_list}"
             )
 
     return gpus
@@ -217,9 +213,7 @@ class Trainer:
         self.rank = None
 
     def __str__(self):
-        return "gpu:{} endpoint:{} rank:{}".format(
-            self.gpus, self.endpoint, self.rank
-        )
+        return f"gpu:{self.gpus} endpoint:{self.endpoint} rank:{self.rank}"
 
     def __eq__(self, t):
         if len(self.gpus) != len(t.gpus):
@@ -365,11 +359,15 @@ def get_host_name_ip():
 
 def add_arguments(argname, type, default, help, argparser, **kwargs):
     """Add argparse's argument.
-    Usage:
-    .. code-block:: python
-        parser = argparse.ArgumentParser()
-        add_argument("name", str, "Jonh", "User name.", parser)
-        args = parser.parse_args()
+    Examples:
+        .. code-block:: python
+
+            >>> import argparse
+            >>> from paddle.distributed.utils import launch_utils
+            >>> parser = argparse.ArgumentParser()
+            >>> launch_utils.add_arguments("name", str, "Jonh", "User name.", parser)
+            >>> args = parser.parse_args()
+
     """
     type = strtobool if type == bool else type
     argparser.add_argument(
@@ -436,6 +434,18 @@ def _prepare_trainer_env(cluster, trainer, backend=None):
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
             "PADDLE_DISTRI_BACKEND": backend,  # only add here, other will be auto
+        }
+    elif backend == 'xccl':
+        from paddle.framework import core
+
+        custom_device_name = core.get_all_custom_device_type()[0]
+        proc_env = {
+            f"FLAGS_selected_{custom_device_name}s": "%s"
+            % ",".join([str(g) for g in trainer.gpus]),
+            "PADDLE_TRAINER_ID": "%d" % trainer.rank,
+            "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
+            "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
+            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
         }
     else:
         raise ValueError("backend must be one of 'gloo, nccl, bkcl'")

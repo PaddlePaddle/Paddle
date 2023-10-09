@@ -65,7 +65,7 @@ if(WIN32)
     add_custom_command(
       OUTPUT ${eager_generator_path}/ir.dll
       COMMAND ${CMAKE_COMMAND} -E copy ${IR_LIB} ${eager_generator_path}
-      DEPENDS ir)
+      DEPENDS pir)
     list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/ir.dll)
   endif()
 

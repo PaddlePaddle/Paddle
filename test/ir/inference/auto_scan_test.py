@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import abc
 import enum
 import os
@@ -33,7 +34,7 @@ from program_config import (
 
 import paddle
 import paddle.inference as paddle_infer
-from paddle.fluid.core import PassVersionChecker
+from paddle.base.core import PassVersionChecker
 from paddle.static.log_helper import get_logger
 
 LOGLEVEL = os.environ.get("PADDLE_TEST_LOGLEVEL", "INFO").upper()
@@ -716,7 +717,9 @@ class TrtLayerAutoScanTest(AutoScanTest):
             dic["use_trt"] = False
         return str(dic)
 
-    def run_test(self, quant=False, skip_baseline=False, *args, **kwargs):
+    def run_test(
+        self, quant=False, explicit=False, skip_baseline=False, *args, **kwargs
+    ):
         all_passes = True
 
         def random_to_skip():
@@ -769,9 +772,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 if isinstance(threshold, float):
                     atol = threshold
                     rtol = 1e-8
-                elif isinstance(threshold, list) or isinstance(
-                    threshold, tuple
-                ):
+                elif isinstance(threshold, (list, tuple)):
                     atol = threshold[0]
                     rtol = threshold[1]
                 else:
@@ -781,8 +782,16 @@ class TrtLayerAutoScanTest(AutoScanTest):
                     pred_config.tensorrt_precision_mode()
                     == paddle_infer.PrecisionType.Int8
                 )
-                if (not is_fp8 and quant) or (is_fp8 and not quant):
+                if (not is_fp8 and quant) or (
+                    is_fp8 and not (quant or explicit)
+                ):
                     continue
+
+                if explicit:
+                    pred_config.enable_tensorrt_explicit_quantization()
+                    self.assertTrue(
+                        pred_config.tensorrt_explicit_quantization_enabled()
+                    )
 
                 ignore_flag = False
                 for teller, reason, note in self.ignore_cases:

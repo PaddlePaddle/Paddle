@@ -46,7 +46,25 @@ static void CopyOrAddTensor(paddle::Tensor* tensor,
       if (LIKELY(t.is_dense_tensor())) {
         if (LIKELY(tensor->is_dense_tensor())) {
           if (t.is_custom_device()) {
-            add__ad_func(*tensor, t);
+            auto* dev_ctx =
+                phi::DeviceContextPool::Instance().Get(tensor->place());
+            auto kernel_result =
+                phi::KernelFactory::Instance().SelectKernelOrThrowError(
+                    "add",
+                    phi::KernelKey(phi::TransToPhiBackend(tensor->place()),
+                                   phi::DataLayout::ALL_LAYOUT,
+                                   tensor->dtype()));
+            const auto& kernel = kernel_result.kernel;
+            using kernel_signature = void (*)(const phi::DeviceContext&,
+                                              const phi::DenseTensor&,
+                                              const phi::DenseTensor&,
+                                              phi::DenseTensor*);
+            auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+            (*kernel_fn)(
+                *dev_ctx,
+                *reinterpret_cast<phi::DenseTensor*>(tensor->impl().get()),
+                *reinterpret_cast<phi::DenseTensor*>(t.impl().get()),
+                reinterpret_cast<phi::DenseTensor*>(tensor->impl().get()));
           } else {
             paddle::imperative::TensorAdd<paddle::Tensor>(t, tensor);
           }
@@ -71,7 +89,25 @@ static void CopyOrAddTensor(paddle::Tensor* tensor,
           paddle::Tensor tensor_values(std::make_shared<phi::DenseTensor>(
               tensor_sparse->non_zero_elements()));
           if (t.is_custom_device()) {
-            add__ad_func(tensor_values, t_values);
+            auto* dev_ctx =
+                phi::DeviceContextPool::Instance().Get(tensor->place());
+            auto kernel_result =
+                phi::KernelFactory::Instance().SelectKernelOrThrowError(
+                    "add_coo_coo",
+                    phi::KernelKey(phi::TransToPhiBackend(tensor->place()),
+                                   phi::DataLayout::ALL_LAYOUT,
+                                   tensor->dtype()));
+            const auto& kernel = kernel_result.kernel;
+            using kernel_signature = void (*)(const phi::DeviceContext&,
+                                              const phi::SparseCooTensor&,
+                                              const phi::SparseCooTensor&,
+                                              phi::SparseCooTensor*);
+            auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+            (*kernel_fn)(
+                *dev_ctx,
+                *reinterpret_cast<phi::SparseCooTensor*>(tensor->impl().get()),
+                *reinterpret_cast<phi::SparseCooTensor*>(t.impl().get()),
+                reinterpret_cast<phi::SparseCooTensor*>(tensor->impl().get()));
           } else {
             paddle::imperative::TensorAdd<paddle::Tensor>(t_values,
                                                           &tensor_values);
@@ -135,19 +171,23 @@ GradNodeAccumulation::operator()(
   if (ReduceHooksRegistered()) {
     ApplyReduceHooks();
   }
+
   VLOG(3) << "Finish AD API Grad: GradNodeAccumulation";
   if (VLOG_IS_ON(4)) {
     const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s], Output: [%s] } ";
 
     std::string input_str = "";
     std::string output_str = "";
+
     const char* TENSOR_OUT_GRAD_TEMPLATE = "(grads[0][0], [%s]), ";
     std::string input_out_grad_str = paddle::string::Sprintf(
         TENSOR_OUT_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(grads[0][0]));
+    input_str += input_out_grad_str;
     const char* TENSOR_X_GRAD_TEMPLATE = "(grad_out, [%s]), ";
     std::string output_x_grad_str = paddle::string::Sprintf(
         TENSOR_X_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(grad_out));
     output_str += output_x_grad_str;
+    VLOG(6) << "gradnode_ptr = " << this;
     VLOG(4) << paddle::string::Sprintf(
         INPUT_PRINT_TEMPLATE, input_str, output_str);
   }

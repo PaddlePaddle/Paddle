@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "test/cpp/inference/api/tester_helper.h"
 
-DEFINE_bool(enable_mkldnn, true, "Enable MKLDNN");
+PD_DEFINE_bool(enable_mkldnn, true, "Enable MKLDNN");
 
 namespace paddle {
 namespace inference {
@@ -53,7 +53,7 @@ TEST(Analyzer_int8_image_classification, quantization) {
     // prepare warmup batch from input data read earlier
     // warmup batch size can be different than batch size
     std::shared_ptr<std::vector<PaddleTensor>> warmup_data =
-        paddle::inference::GetWarmupData(input_slots_all);
+        ::paddle::inference::GetWarmupData(input_slots_all);
 
     // INT8 implies FC oneDNN passes to be used
     q_cfg.pass_builder()->AppendPass("fc_mkldnn_pass");

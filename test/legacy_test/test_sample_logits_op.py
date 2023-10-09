@@ -16,7 +16,7 @@ import collections
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 
 class TestSampleLogitsOp(OpTest):
@@ -76,19 +76,13 @@ class TestSampleLogitsOp(OpTest):
             ), f"Samples dtype is {Samples.dtype}, not int64"
             assert (
                 Probabilities.dtype == np.float64
-            ), "Probabilities dtype is {}, not float64".format(
-                Probabilities.dtype
-            )
+            ), f"Probabilities dtype is {Probabilities.dtype}, not float64"
             assert (
                 SampledLogits.dtype == np.float64
-            ), "SampledLogits dtype is {}, not float64".format(
-                SampledLogits.dtype
-            )
+            ), f"SampledLogits dtype is {SampledLogits.dtype}, not float64"
             assert (
                 SampledLabels.dtype == np.int64
-            ), "SampledLabels dtype is {}, not int64".format(
-                SampledLabels.dtype
-            )
+            ), f"SampledLabels dtype is {SampledLabels.dtype}, not int64"
 
             assert Samples.shape == (self.bs, self.NT + self.S)
             assert Probabilities.shape == (self.bs, self.NT + self.S)

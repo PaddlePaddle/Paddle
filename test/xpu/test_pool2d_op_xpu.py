@@ -319,7 +319,7 @@ class XPUTestPool2D_Op(XPUOpTestWrapper):
                 self.pool_type,
                 self.padding_algorithm,
             ).astype(self.dtype)
-            self.inputs = {'X': XPUOpTest.np_dtype_to_fluid_dtype(input)}
+            self.inputs = {'X': XPUOpTest.np_dtype_to_base_dtype(input)}
 
             self.attrs = {
                 'strides': self.strides,

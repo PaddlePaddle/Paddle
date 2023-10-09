@@ -17,23 +17,23 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class TestIncrement(unittest.TestCase):
     def test_api(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             input = paddle.tensor.fill_constant(
                 shape=[1], dtype='int64', value=5
             )
             expected_result = np.array([8], dtype='int64')
 
             output = paddle.tensor.math.increment(input, value=3)
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = base.Executor(base.CPUPlace())
             result = exe.run(fetch_list=[output])
             self.assertEqual((result == expected_result).all(), True)
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             input = paddle.ones(shape=[1], dtype='int64')
             expected_result = np.array([2], dtype='int64')
             output = paddle.tensor.math.increment(input, value=1)
@@ -42,11 +42,11 @@ class TestIncrement(unittest.TestCase):
 
 class TestInplaceApiWithDataTransform(unittest.TestCase):
     def test_increment(self):
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             paddle.enable_static()
-            with paddle.fluid.device_guard("gpu:0"):
+            with paddle.base.device_guard("gpu:0"):
                 x = paddle.tensor.fill_constant([1], "float32", 0)
-            with paddle.fluid.device_guard("cpu"):
+            with paddle.base.device_guard("cpu"):
                 x = paddle.increment(x)
             exe = paddle.static.Executor(paddle.CUDAPlace(0))
             (a,) = exe.run(paddle.static.default_main_program(), fetch_list=[x])

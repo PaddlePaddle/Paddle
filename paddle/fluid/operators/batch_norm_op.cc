@@ -361,10 +361,10 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
   const DataLayout data_layout =
       phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
 
-  const int C =
+  const int C = static_cast<int>(
       ((ctx->IsRunMKLDNNKernel() == true) || (data_layout == DataLayout::kNCHW)
            ? x_dims[1]
-           : x_dims[x_dims.size() - 1]);
+           : x_dims[x_dims.size() - 1]));
 
   // has_scale_grad == has_bias_grad, judge has_scale_grad is enough
   if (has_scale_grad) {
@@ -385,8 +385,6 @@ phi::KernelKey BatchNormGradOp::GetExpectedKernelType(
   }
   const phi::DenseTensor *t = nullptr;
   if (var->IsType<phi::DenseTensor>()) {
-    t = &var->Get<phi::DenseTensor>();
-  } else if (var->IsType<phi::DenseTensor>()) {
     t = &var->Get<phi::DenseTensor>();
   }
   if (t == nullptr) {
@@ -443,6 +441,9 @@ void BatchNormGradMaker<T>::Apply(GradOpPtr<T> op) const {
     op->SetInput("Mean", this->Output("MeanOut"));
     op->SetInput("Variance", this->Output("VarianceOut"));
   }
+
+  op->SetInput("MeanOut", this->Output("MeanOut"));
+  op->SetInput("VarianceOut", this->Output("VarianceOut"));
 
   op->SetAttrMap(this->Attrs());
 
@@ -501,10 +502,10 @@ void BatchNormDoubleGradOp::InferShape(
   const auto x_dims = ctx->GetInputDim("X");
   const DataLayout data_layout =
       phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
-  const int C =
+  const int C = static_cast<int>(
       ((ctx->IsRunMKLDNNKernel() == true) || (data_layout == DataLayout::kNCHW)
            ? x_dims[1]
-           : x_dims[x_dims.size() - 1]);
+           : x_dims[x_dims.size() - 1]));
 
   if (ctx->HasOutput("DX")) {
     ctx->SetOutputDim("DX", x_dims);
@@ -526,8 +527,6 @@ phi::KernelKey BatchNormDoubleGradOp::GetExpectedKernelType(
   }
   const phi::DenseTensor *t = nullptr;
   if (var->IsType<phi::DenseTensor>()) {
-    t = &var->Get<phi::DenseTensor>();
-  } else if (var->IsType<phi::DenseTensor>()) {
     t = &var->Get<phi::DenseTensor>();
   }
   if (t == nullptr) {

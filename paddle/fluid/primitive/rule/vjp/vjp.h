@@ -14,40 +14,5 @@
 
 #pragma once
 
-#ifndef _USE_MATH_DEFINES
-#define _USE_MATH_DEFINES
-#endif
-
-#include <math.h>
-#include <vector>
-
-#include "paddle/fluid/primitive/primitive/primitive.h"
-#include "paddle/ir/core/value.h"
-#include "paddle/phi/api/include/tensor.h"
-
-namespace paddle {
-namespace primitive {
-namespace experimental {
-// TODO(wanghao107):
-//  op's vjp will be auto generated.
-std::vector<std::vector<paddle::Tensor>> tanh_vjp(
-    const Tensor& out,
-    const Tensor& grad_out,
-    const std::vector<std::vector<int>>& stop_gradients);
-
-std::vector<std::vector<paddle::Tensor>> mean_vjp(
-    const Tensor& x,
-    const Tensor& out_grad,
-    std::vector<int64_t> axis,
-    bool keepdim,
-    bool reduce_all,
-    const std::vector<std::vector<int>>& stop_gradients);
-
-namespace details {
-// NOTE: this namespace will store
-// primitive ops grad composite rules.
-
-}  // namespace details
-}  // namespace experimental
-}  // namespace primitive
-}  // namespace paddle
+#include "paddle/fluid/primitive/rule/vjp/generated/generated_vjp.h"
+#include "paddle/fluid/primitive/rule/vjp/manual/manual_vjp.h"

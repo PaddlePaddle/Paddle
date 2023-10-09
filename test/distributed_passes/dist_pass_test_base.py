@@ -137,7 +137,7 @@ class DistPassTestBase(unittest.TestCase):
             paddle.static.Program(), paddle.static.Program()
         ):
             with paddle.static.scope_guard(scope):
-                with paddle.fluid.unique_name.guard():
+                with paddle.base.unique_name.guard():
                     main_prog, startup_prog, inputs, outputs, reader = model(
                         place, **kwargs
                     )
@@ -287,9 +287,7 @@ class PassConflictChecker(DistPassTestBase):
         self.assertEqual(
             len(passes),
             len(new_passes),
-            "After solving conflicts, the left passes are: {}".format(
-                auto_pass_manager.names
-            ),
+            f"After solving conflicts, the left passes are: {auto_pass_manager.names}",
         )
 
         for i, (p1, p2) in enumerate(zip(passes, new_passes)):

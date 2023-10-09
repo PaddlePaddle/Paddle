@@ -111,9 +111,7 @@ class ParameterServerRuntime(RuntimeBase):
             var_path = os.path.join(dirname, origin_varname)
             if not os.path.exists(var_path):
                 raise ValueError(
-                    "SelectedRows var {} can not find at {}".format(
-                        new_var.name, var_path
-                    )
+                    f"SelectedRows var {new_var.name} can not find at {var_path}"
                 )
 
             if os.path.isfile(var_path):
@@ -309,9 +307,7 @@ class ParameterServerRuntime(RuntimeBase):
             )
             if heter_worker_device_guard not in ["GPU", "XPU", "CPU"]:
                 raise ValueError(
-                    "Heter Worker Not Support Device {}".format(
-                        heter_worker_device_guard
-                    )
+                    f"Heter Worker Not Support Device {heter_worker_device_guard}"
                 )
             if self.role_maker._is_heter_worker():
                 if heter_worker_device_guard == "GPU":
@@ -714,7 +710,7 @@ class ParameterServerRuntime(RuntimeBase):
         self,
         executor,
         dirname,
-        feeded_var_names,
+        feeded_vars,
         target_vars,
         main_program=None,
         export_for_deployment=True,
@@ -735,28 +731,21 @@ class ParameterServerRuntime(RuntimeBase):
                 raise TypeError(
                     "in fleet.save_inference_model() function, main_program must be as Program type, CompiledProgram is not allowed"
                 )
-            paddle.fluid.io.save_inference_model(
+            paddle.static.io.save_inference_model(
                 dirname,
-                feeded_var_names,
+                feeded_vars,
                 target_vars,
                 executor,
-                main_program,
-                None,
-                None,
-                export_for_deployment,
+                program=main_program,
                 legacy_format=legacy_format,
             )
         else:
-            paddle.fluid.io.save_inference_model(
+            paddle.static.save_inference_model(
                 dirname,
-                feeded_var_names,
+                feeded_vars,
                 target_vars,
                 executor,
-                self.origin_main_program,
-                None,
-                None,
-                export_for_deployment,
-                True,
+                program=self.origin_main_program,
                 legacy_format=legacy_format,
             )
 

@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -158,6 +158,86 @@ class TestDistOpCase5(TestDistOp):
         self.p = 1.5
 
 
+class TestDistBF16Op(OpTest):
+    def init_data_type(self):
+        self.data_type = 'bfloat16'
+
+
+class TestDistBF16OpCase1(TestDistBF16Op):
+    def init_case(self):
+        self.x_shape = (3, 5, 5, 6)
+        self.y_shape = (5, 5, 6)
+        self.p = 1.0
+
+
+class TestDistBF16OpCase2(TestDistBF16Op):
+    def init_case(self):
+        self.x_shape = (10, 10)
+        self.y_shape = (4, 10, 10)
+        self.p = 2.0
+
+
+class TestDistBF16OpCase3(TestDistBF16Op):
+    def init_case(self):
+        self.x_shape = (15, 10)
+        self.y_shape = (15, 10)
+        self.p = float("inf")
+
+
+class TestDistBF16OpCase4(TestDistBF16Op):
+    def init_case(self):
+        self.x_shape = (2, 3, 4, 5, 8)
+        self.y_shape = (3, 1, 5, 8)
+        self.p = float("-inf")
+
+
+class TestDistBF16OpCase5(TestDistBF16Op):
+    def init_case(self):
+        self.x_shape = (4, 1, 4, 8)
+        self.y_shape = (2, 2, 1, 4, 4, 8)
+        self.p = 1.5
+
+
+class TestDistFP16Op(OpTest):
+    def init_data_type(self):
+        self.data_type = 'float16'
+
+
+class TestDistFP16OpCase1(TestDistFP16Op):
+    def init_case(self):
+        self.x_shape = (3, 5, 5, 6)
+        self.y_shape = (5, 5, 6)
+        self.p = 1.0
+
+
+class TestDistFP16OpCase2(TestDistFP16Op):
+    def init_case(self):
+        self.x_shape = (10, 10)
+        self.y_shape = (4, 10, 10)
+        self.p = 2.0
+
+
+class TestDistFP16OpCase3(TestDistFP16Op):
+    def init_case(self):
+        self.x_shape = (15, 10)
+        self.y_shape = (15, 10)
+        self.p = float("inf")
+
+
+class TestDistFP16OpCase4(TestDistFP16Op):
+    def init_case(self):
+        self.x_shape = (2, 3, 4, 5, 8)
+        self.y_shape = (3, 1, 5, 8)
+        self.p = float("-inf")
+
+
+class TestDistFP16OpCase5(TestDistFP16Op):
+    def init_case(self):
+        self.x_shape = (4, 1, 4, 8)
+        self.y_shape = (2, 2, 1, 4, 4, 8)
+        self.p = 1.5
+
+
 class TestDistAPI(unittest.TestCase):
     def init_data_type(self):
         self.data_type = (
@@ -166,9 +246,9 @@ class TestDistAPI(unittest.TestCase):
 
     def test_api(self):
         self.init_data_type()
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(main_program, startup_program):
+        main_program = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(main_program, startup_program):
             x = paddle.static.data(
                 name='x', shape=[2, 3, 4, 5], dtype=self.data_type
             )
@@ -180,13 +260,13 @@ class TestDistAPI(unittest.TestCase):
             y_i = np.random.random((3, 1, 5)).astype(self.data_type)
             result = paddle.dist(x, y, p)
             place = (
-                fluid.CUDAPlace(0)
+                base.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
-                else fluid.CPUPlace()
+                else base.CPUPlace()
             )
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             out = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={'x': x_i, 'y': y_i},
                 fetch_list=[result],
             )

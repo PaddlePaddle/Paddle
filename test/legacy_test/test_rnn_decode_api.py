@@ -19,9 +19,9 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import Model, fluid, nn, set_device
-from paddle.fluid import layers
-from paddle.fluid.data_feeder import convert_dtype
+from paddle import Model, base, nn, set_device
+from paddle.base import layers
+from paddle.base.data_feeder import convert_dtype
 from paddle.nn import (
     RNN,
     BeamSearchDecoder,
@@ -171,10 +171,10 @@ class SeqPGAgent:
         seed=None,
     ):
         self.main_program = (
-            fluid.Program() if main_program is None else main_program
+            base.Program() if main_program is None else main_program
         )
         self.startup_program = (
-            fluid.Program() if startup_program is None else startup_program
+            base.Program() if startup_program is None else startup_program
         )
         if seed is not None:
             self.main_program.random_seed = seed
@@ -183,7 +183,7 @@ class SeqPGAgent:
         self.executor = executor
 
     def build_program(self, model_cls, alg_cls, model_hparams, alg_hparams):
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             source = paddle.static.data(
                 name="src", shape=[None, None], dtype="int64"
             )
@@ -300,13 +300,13 @@ class ModuleApiTest(unittest.TestCase):
 
     def _calc_output(self, place, mode="test", dygraph=True):
         if dygraph:
-            fluid.enable_dygraph(place)
+            base.enable_dygraph(place)
         else:
-            fluid.disable_dygraph()
+            base.disable_dygraph()
         gen = paddle.seed(self._random_seed)
         paddle.framework.random._manual_program_seed(self._random_seed)
-        scope = fluid.core.Scope()
-        with fluid.scope_guard(scope):
+        scope = base.core.Scope()
+        with base.scope_guard(scope):
             layer = (
                 self.model_cls(**self.attrs)
                 if isinstance(self.attrs, dict)
@@ -331,7 +331,7 @@ class ModuleApiTest(unittest.TestCase):
                 )
 
     def check_output(self):
-        devices = ["CPU", "GPU"] if fluid.is_compiled_with_cuda() else ["CPU"]
+        devices = ["CPU", "GPU"] if base.is_compiled_with_cuda() else ["CPU"]
         for device in devices:
             place = set_device(device)
             self.check_output_with_place(place)

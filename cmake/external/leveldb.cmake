@@ -30,29 +30,6 @@ if(WITH_HETERPS AND WITH_PSLIB)
   set(LEVELDN_CXXFLAGS "${LEVELDN_CXXFLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
 endif()
 
-file(GLOB LEVELDB_SOURCE_FILE_LIST ${LEVELDB_SOURCE_DIR})
-list(LENGTH LEVELDB_SOURCE_FILE_LIST RES_LEN)
-if(RES_LEN EQUAL 0)
-  execute_process(
-    COMMAND ${GIT_EXECUTABLE} clone -b ${LEVELDB_TAG}
-            https://github.com/google/leveldb.git ${LEVELDB_SOURCE_DIR})
-else()
-  # check git tag
-  execute_process(
-    COMMAND ${GIT_EXECUTABLE} describe --abbrev=6 --always --tags
-    OUTPUT_VARIABLE VERSION
-    OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET
-    WORKING_DIRECTORY ${LEVELDB_SOURCE_DIR})
-  if(NOT ${VERSION} STREQUAL ${LEVELDB_TAG})
-    file(REMOVE_RECURSE ${LEVELDB_PREFIX_DIR})
-    file(REMOVE_RECURSE ${LEVELDB_INSTALL_DIR})
-    message(
-      WARNING "leveldb version is not ${VERSION}, checkout to ${LEVELDB_TAG}")
-    execute_process(COMMAND ${GIT_EXECUTABLE} checkout ${LEVELDB_TAG}
-                    WORKING_DIRECTORY ${LEVELDB_SOURCE_DIR})
-  endif()
-endif()
-
 ExternalProject_Add(
   extern_leveldb
   ${EXTERNAL_PROJECT_LOG_ARGS}

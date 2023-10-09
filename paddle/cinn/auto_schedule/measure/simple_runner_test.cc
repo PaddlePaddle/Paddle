@@ -25,11 +25,13 @@
 #include "paddle/cinn/frontend/optimize.h"
 #include "paddle/cinn/frontend/syntax.h"
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 
 namespace cinn {
 namespace auto_schedule {
 
 using ::cinn::hlir::framework::BuildScope;
+using ::cinn::hlir::framework::CompilationContext;
 using ::cinn::hlir::framework::Graph;
 using ::cinn::hlir::framework::GraphCompiler;
 using ::cinn::hlir::framework::Instruction;
@@ -56,8 +58,8 @@ class TestSimpleRunner : public ::testing::Test {
     auto program = CreateAddReluProgram();
     auto graph = cinn::frontend::Optimize(&program, fetch_ids, target);
     compiled_scope = BuildScope(target, graph);
-    graph_compiler =
-        std::make_unique<GraphCompiler>(target, compiled_scope, graph);
+    CompilationContext context(graph, compiled_scope, target);
+    graph_compiler = std::make_unique<GraphCompiler>(context);
     auto runtime_program = graph_compiler->Build();
     const auto& instructions = runtime_program->GetRunInstructions();
     ASSERT_EQ(1, instructions.size());
@@ -123,8 +125,8 @@ TEST_F(TestSimpleRunner, TimeMeasured) {
                                             "sleep_fn"));
   instructions.back()->SetLoweredFunc(reinterpret_cast<void*>(sleep_fn));
   instructions.back()->Finalize();
-  build_result.runtime_program.reset(
-      new hlir::framework::Program(nullptr, std::move(instructions)));
+  build_result.runtime_program = std::make_unique<hlir::framework::Program>(
+      nullptr, std::move(instructions));
 
   // to skip the condition check of params in Instruction::PreparePodArgs
   std::map<std::string, cinn_pod_value_t> preset_args;

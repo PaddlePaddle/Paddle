@@ -25,7 +25,12 @@ from .fused_ec_moe import fused_ec_moe
 from .fused_dropout_add import fused_dropout_add
 from .fused_gate_attention import fused_gate_attention
 from .fused_rotary_position_embedding import fused_rotary_position_embedding
-from .rms_norm import rms_norm
+from .variable_length_memory_efficient_attention import (
+    variable_length_memory_efficient_attention,
+)
+from .fused_rms_norm import fused_rms_norm
+from .fused_layer_norm import fused_layer_norm
+from .masked_multihead_attention import masked_multihead_attention
 
 __all__ = [
     'fused_multi_head_attention',
@@ -38,5 +43,8 @@ __all__ = [
     'fused_ec_moe',
     'fused_dropout_add',
     'fused_rotary_position_embedding',
-    "rms_norm",
+    'variable_length_memory_efficient_attention',
+    "fused_rms_norm",
+    "fused_layer_norm",
+    "masked_multihead_attention",
 ]

@@ -28,11 +28,11 @@ from contextlib import closing
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
+from paddle.base import compiler
 from paddle.distributed.fleet.meta_optimizers import (
     RawProgramOptimizer as RawProgram,
 )
-from paddle.fluid import compiler
 from paddle.incubate.distributed.fleet import role_maker
 from paddle.incubate.distributed.fleet.collective import (
     DistributedStrategy,
@@ -149,7 +149,7 @@ class TestDistRunnerBase:
         nccl_comm_num=1,
         hogwild_mode=False,
     ):
-        # NOTE: import fluid until runtime, or else forking processes will cause error.
+        # NOTE: import base until runtime, or else forking processes will cause error.
         config = paddle.distributed.transpiler.DistributeTranspilerConfig()
         config.enable_dc_asgd = dc_asgd
         config.sync_mode = sync_mode
@@ -186,7 +186,7 @@ class TestDistRunnerBase:
 
         t = self.get_transpiler(
             trainer_id=args.trainer_id,
-            main_program=fluid.default_main_program(),
+            main_program=base.default_main_program(),
             pserver_endpoints=args.endpoints,
             trainers=args.trainers,
             sync_mode=args.sync_mode,
@@ -198,8 +198,8 @@ class TestDistRunnerBase:
             args.current_endpoint, pserver_prog
         )
 
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        place = base.CPUPlace()
+        exe = base.Executor(place)
         exe.run(startup_prog)
         print_to_err(type(self).__name__, "run pserver startup program done.")
         exe.run(pserver_prog)
@@ -223,10 +223,10 @@ class TestDistRunnerBase:
 
         device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
         eprint(type(self).__name__, "device_id: %d." % device_id)
-        place = fluid.CUDAPlace(device_id)
+        place = base.CUDAPlace(device_id)
 
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
         eprint(type(self).__name__, "run worker startup program done.")
 
         data_loader.set_sample_list_generator(train_reader, place)
@@ -234,7 +234,7 @@ class TestDistRunnerBase:
         print_to_err(type(self).__name__, "begin to train on trainer")
         out_losses = []
 
-        main_program = fluid.default_main_program()
+        main_program = base.default_main_program()
         lr_scheduler = self.get_lr_scheduler(main_program)
         for i in range(RUN_STEP):
             loss = exe.run(main_program, fetch_list=[avg_cost])
@@ -269,24 +269,24 @@ class TestDistRunnerBase:
             predict,
         ) = self.get_model(batch_size=args.batch_size)
 
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-            place = fluid.CUDAPlace(device_id)
-        elif fluid.core.is_compiled_with_xpu():
+            place = base.CUDAPlace(device_id)
+        elif base.core.is_compiled_with_xpu():
             device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
-            place = fluid.XPUPlace(device_id)
+            place = base.XPUPlace(device_id)
         else:
             raise ValueError(
                 "fleet dygraph api must in paddlepaddle-xpu or paddlepaddle-gpu."
             )
 
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
         eprint(type(self).__name__, "run worker startup program done.")
 
         feed_var_list = [
             var
-            for var in fluid.default_main_program().global_block().vars.values()
+            for var in base.default_main_program().global_block().vars.values()
             if var.is_data
         ]
 
@@ -295,7 +295,7 @@ class TestDistRunnerBase:
         if feed_var_list[0].name == 'label':
             feed_var_list = feed_var_list[::-1]
 
-        feeder = fluid.DataFeeder(feed_var_list, place)
+        feeder = base.DataFeeder(feed_var_list, place)
         reader_generator = train_reader()
 
         def get_data():
@@ -319,7 +319,7 @@ class TestDistRunnerBase:
         out_losses = []
         for i in range(RUN_STEP):
             (loss,) = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 fetch_list=[avg_cost.name],
                 feed=feeder.feed(get_data()),
             )
@@ -335,7 +335,7 @@ class TestDistRunnerBase:
 
         self.lr = args.lr
 
-        exec_strategy = fluid.ExecutionStrategy()
+        exec_strategy = base.ExecutionStrategy()
         exec_strategy.num_threads = 1
 
         dist_strategy = DistributedStrategy()
@@ -369,19 +369,19 @@ class TestDistRunnerBase:
         trainer_prog = fleet._origin_program
         dist_prog = fleet.main_program
 
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-            place = fluid.CUDAPlace(device_id)
-        elif fluid.core.is_compiled_with_xpu():
+            place = base.CUDAPlace(device_id)
+        elif base.core.is_compiled_with_xpu():
             device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
-            place = fluid.XPUPlace(device_id)
+            place = base.XPUPlace(device_id)
         else:
             raise ValueError(
                 "fleet dygraph api must in paddlepaddle-xpu or paddlepaddle-gpu."
             )
 
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
         eprint(type(self).__name__, "run worker startup program done.")
 
         feed_var_list = [
@@ -397,7 +397,7 @@ class TestDistRunnerBase:
         if feed_var_list[0].name == 'label':
             feed_var_list = feed_var_list[::-1]
 
-        feeder = fluid.DataFeeder(feed_var_list, place)
+        feeder = base.DataFeeder(feed_var_list, place)
         reader_generator = train_reader()
 
         def get_data():
@@ -428,45 +428,44 @@ class TestDistRunnerBase:
         if args.save_model:
             model_save_dir = "/tmp"
             if fleet.worker_index() == 0:
-                model_save_dir_fluid = os.path.join(
-                    model_save_dir, "fluid_persistables"
+                model_save_dir_base = os.path.join(
+                    model_save_dir, "base_persistables"
                 )
                 model_save_dir_fleet = os.path.join(
                     model_save_dir, "fleet_persistables"
                 )
-                infer_save_dir_fluid = os.path.join(
-                    model_save_dir, "fluid_infer"
+                infer_save_dir_base = os.path.join(
+                    model_save_dir, "base_infer/infer"
                 )
                 infer_save_dir_fleet = os.path.join(
-                    model_save_dir, "fleet_infer"
+                    model_save_dir, "fleet_infer/infer"
                 )
             else:
-                model_save_dir_fluid = os.path.join(
-                    model_save_dir, "fluid_persistables_2"
+                model_save_dir_base = os.path.join(
+                    model_save_dir, "base_persistables_2"
                 )
                 model_save_dir_fleet = os.path.join(
                     model_save_dir, "fleet_persistables_2"
                 )
-                infer_save_dir_fluid = os.path.join(
-                    model_save_dir, "fluid_infer_2"
+                infer_save_dir_base = os.path.join(
+                    model_save_dir, "base_infer_2/infer_2"
                 )
                 infer_save_dir_fleet = os.path.join(
-                    model_save_dir, "fleet_infer_2"
+                    model_save_dir, "fleet_infer_2/infer_2"
                 )
             paddle.distributed.io.save_persistables(
-                exe, model_save_dir_fluid, fleet._origin_program
+                exe, model_save_dir_base, fleet._origin_program
             )
             fleet.save_persistables(executor=exe, dirname=model_save_dir_fleet)
-            feeded_var_names = [var.name for var in feed_var_list]
-            fluid.io.save_inference_model(
-                infer_save_dir_fluid,
-                feeded_var_names,
-                [avg_cost],
-                exe,
-                fleet._origin_program,
+            paddle.static.io.save_inference_model(
+                path_prefix=infer_save_dir_base,
+                feed_vars=feed_var_list,
+                fetch_vars=[avg_cost],
+                executor=exe,
+                program=fleet._origin_program,
             )
             fleet.save_inference_model(
-                exe, infer_save_dir_fleet, feeded_var_names, [avg_cost]
+                exe, infer_save_dir_fleet, feed_var_list, [avg_cost]
             )
 
     def run_trainer(self, args):
@@ -475,7 +474,7 @@ class TestDistRunnerBase:
         old_stdout = sys.stdout
         sys.stdout = StringIO()
 
-        build_stra = fluid.BuildStrategy()
+        build_stra = base.BuildStrategy()
         # FIXME force disable enable_inplace and memory_optimize
         build_stra.enable_inplace = False
         build_stra.memory_optimize = False
@@ -492,11 +491,11 @@ class TestDistRunnerBase:
 
         if args.use_reduce:
             build_stra.reduce_strategy = (
-                fluid.BuildStrategy.ReduceStrategy.Reduce
+                base.BuildStrategy.ReduceStrategy.Reduce
             )
         else:
             build_stra.reduce_strategy = (
-                fluid.BuildStrategy.ReduceStrategy.AllReduce
+                base.BuildStrategy.ReduceStrategy.AllReduce
             )
         pass_builder = None
         if args.batch_merge_repeat > 1:
@@ -555,7 +554,7 @@ class TestDistRunnerBase:
             )
             t = self.get_transpiler(
                 trainer_id=args.trainer_id,
-                main_program=fluid.default_main_program(),
+                main_program=base.default_main_program(),
                 pserver_endpoints=args.endpoints,
                 trainers=args.trainers,
                 sync_mode=args.sync_mode,
@@ -590,21 +589,21 @@ class TestDistRunnerBase:
             )
             nccl2_t.transpile(
                 args.trainer_id,
-                program=fluid.default_main_program(),
-                startup_program=fluid.default_startup_program(),
+                program=base.default_main_program(),
+                startup_program=base.default_startup_program(),
                 trainers=args.endpoints,
                 current_endpoint=args.current_endpoint,
             )
             print_to_err(
                 type(self).__name__, "get trainer program done. with nccl2 mode"
             )
-            trainer_prog = fluid.default_main_program()
+            trainer_prog = base.default_main_program()
         else:
             print_to_err(
                 type(self).__name__,
                 "do nothing about main program, just use it",
             )
-            trainer_prog = fluid.default_main_program()
+            trainer_prog = base.default_main_program()
             print_to_err(type(self).__name__, "use main program done.")
 
         # FIXME(gongwb):wait pserver initialization.
@@ -612,15 +611,15 @@ class TestDistRunnerBase:
 
         if args.use_cuda:
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-            place = fluid.CUDAPlace(device_id)
+            place = base.CUDAPlace(device_id)
         else:
-            place = fluid.CPUPlace()
+            place = base.CPUPlace()
 
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
         print_to_err(type(self).__name__, "run worker startup program done.")
 
-        exec_strategy = fluid.ExecutionStrategy()
+        exec_strategy = base.ExecutionStrategy()
         exec_strategy.num_threads = 1
 
         print_to_err(type(self).__name__, "begin to compile with data parallel")
@@ -635,7 +634,7 @@ class TestDistRunnerBase:
             if var.is_data
         ]
 
-        feeder = fluid.DataFeeder(feed_var_list, place)
+        feeder = base.DataFeeder(feed_var_list, place)
         reader_generator = train_reader()
 
         def get_data():
@@ -716,19 +715,19 @@ class TestParallelDyGraphRunnerBase:
     def run_trainer(self, args):
         seed = 90
         if args.update_method == 'gloo':
-            place = fluid.CPUPlace()
-        elif fluid.core.is_compiled_with_cuda():
+            place = base.CPUPlace()
+        elif base.core.is_compiled_with_cuda():
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-            place = fluid.CUDAPlace(device_id)
-        elif fluid.core.is_compiled_with_xpu():
+            place = base.CUDAPlace(device_id)
+        elif base.core.is_compiled_with_xpu():
             device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
-            place = fluid.XPUPlace(device_id)
+            place = base.XPUPlace(device_id)
         else:
             assert "Only support CUDAPlace or XPUPlace or CPU(Gloo) for now."
 
-        with fluid.dygraph.guard(place):
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+        with base.dygraph.guard(place):
+            base.default_startup_program().random_seed = seed
+            base.default_main_program().random_seed = seed
             np.random.seed(seed)
             import random
 
@@ -977,7 +976,7 @@ class TestDistBase(unittest.TestCase):
             self.__use_xpu = True
             self._use_dgc = False
         else:
-            if fluid.core.is_compiled_with_cuda():
+            if base.core.is_compiled_with_cuda():
                 self.__use_cuda = True
             else:
                 self.__use_cuda = False
@@ -1136,9 +1135,8 @@ class TestDistBase(unittest.TestCase):
             envs['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
             cmd += " -m coverage run --branch -p"
 
-        cmd += " {} --role trainer --update_method local --lr {:f}".format(
-            model,
-            self._lr,
+        cmd += (
+            f" {model} --role trainer --update_method local --lr {self._lr:f}"
         )
 
         if batch_size != DEFAULT_BATCH_SIZE:
@@ -1523,9 +1521,7 @@ class TestDistBase(unittest.TestCase):
             tr_env["GLOG_vmodule"] = 'gloo_context=4'
             tr_env["GLOG_v"] = '3'
             print(
-                "use_hallreduce:{} tr_cmd:{}, env: {}".format(
-                    self._use_hallreduce, tr_cmd, tr_env
-                )
+                f"use_hallreduce:{self._use_hallreduce} tr_cmd:{tr_cmd}, env: {tr_env}"
             )
 
             path = os.path.join(
@@ -1597,9 +1593,7 @@ class TestDistBase(unittest.TestCase):
             )
             tr_env.update(envs)
             print(
-                "use_hallreduce:{} tr_cmd:{}, env: {}".format(
-                    self._use_hallreduce, tr_cmd, tr_env
-                )
+                f"use_hallreduce:{self._use_hallreduce} tr_cmd:{tr_cmd}, env: {tr_env}"
             )
 
             path = os.path.join(

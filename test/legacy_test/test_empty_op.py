@@ -15,22 +15,23 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.framework import convert_np_dtype_to_dtype_
+from paddle import base
+from paddle.base import core
+from paddle.base.framework import convert_np_dtype_to_dtype_
 
 
 # Situation 1: Attr(shape) is a list(without tensor)
 class TestEmptyOp(OpTest):
     def setUp(self):
         self.op_type = "empty"
+        self.python_api = paddle.tensor.empty
         self.init_config()
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        self.check_output_customized(self.verify_output, check_new_ir=True)
 
     def verify_output(self, outs):
         data_type = outs[0].dtype
@@ -108,6 +109,7 @@ class TestEmptyOp5(TestEmptyOp):
 class TestEmptyOp_ShapeTensor(OpTest):
     def setUp(self):
         self.op_type = "empty"
+        self.python_api = paddle.empty
         self.init_config()
 
     def init_config(self):
@@ -119,7 +121,7 @@ class TestEmptyOp_ShapeTensor(OpTest):
         self.outputs = {'Out': np.zeros(self.shape).astype(dtype)}
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        self.check_output_customized(self.verify_output, check_new_ir=True)
 
     def verify_output(self, outs):
         data_type = outs[0].dtype
@@ -149,6 +151,7 @@ class TestEmptyOp_ShapeTensor(OpTest):
 class TestEmptyOp_ShapeTensorList(OpTest):
     def setUp(self):
         self.op_type = "empty"
+        self.python_api = paddle.empty
         self.init_config()
 
     def init_config(self):
@@ -169,7 +172,7 @@ class TestEmptyOp_ShapeTensorList(OpTest):
         self.outputs = {'Out': np.zeros(self.shape).astype(dtype)}
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        self.check_output_customized(self.verify_output, check_new_ir=True)
 
     def verify_output(self, outs):
         data_type = outs[0].dtype
@@ -263,7 +266,7 @@ class TestEmptyAPI(unittest.TestCase):
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
         res_1, res_2, res_3, res_4, res_5, res_6 = exe.run(
-            fluid.default_main_program(),
+            base.default_main_program(),
             feed={
                 "shape_tensor_int32": np.array([200, 3]).astype("int32"),
                 "shape_tensor_int64": np.array([200, 3]).astype("int64"),
@@ -309,7 +312,7 @@ class TestEmptyBF16Op(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        self.check_output_customized(self.verify_output, check_new_ir=True)
 
     def verify_output(self, outs):
         max_value = np.nanmax(outs[0])

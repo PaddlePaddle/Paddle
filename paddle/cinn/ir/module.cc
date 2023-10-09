@@ -30,6 +30,10 @@ void Module::Builder::AddFunction(ir::LoweredFunc func) {
   module_->functions.push_back(func);
 }
 
+void Module::Builder::AddFunctionWithoutOptim(const ir::LoweredFunc &func) {
+  module_->functions.push_back(func);
+}
+
 void Module::Builder::AddBuffer(ir::Buffer buffer) {
   CHECK(buffer->target.defined())
       << "buffer [" << buffer->name << "]'s target is undefined";
@@ -49,6 +53,8 @@ void Module::Builder::Clear() {
   module_->functions.clear();
   module_->submodules.clear();
 }
+
+Target::Arch Module::Builder::GetTargetArch() { return module_->target.arch; }
 
 Module Module::Builder::Build() {
   if (module_->functions.empty()) {

@@ -83,7 +83,7 @@ def export(layer, path, input_spec=None, opset_version=9, **configs):
             ...     # Static and run model.
             ...     paddle.jit.to_static(model)
             ...     out = model(x, y, z=True)
-            ...     paddle.onnx.export(model, 'pruned', input_spec=[x], output_spec=[out])
+            ...     paddle.onnx.export(model, 'pruned', input_spec=[x, y, z], output_spec=[out], input_names_after_prune=[x])
             ...
             >>> export_logic()
     """
@@ -95,7 +95,7 @@ def export(layer, path, input_spec=None, opset_version=9, **configs):
         raise ValueError(
             "The input path MUST be format of dirname/file_prefix "
             "[dirname\\file_prefix in Windows system], but "
-            "the file_prefix is empty in received path: {}".format(path)
+            f"the file_prefix is empty in received path: {path}"
         )
     save_file = path + '.onnx'
 
@@ -104,5 +104,5 @@ def export(layer, path, input_spec=None, opset_version=9, **configs):
         save_file,
         input_spec=input_spec,
         opset_version=opset_version,
-        **configs
+        **configs,
     )

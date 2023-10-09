@@ -51,13 +51,17 @@ OpSupportedInfos(const std::string& place,
       {"GPU", &platform::is_gpu_place},
       {"CPU", &platform::is_cpu_place},
       {"XPU", &platform::is_xpu_place},
+      {"CUSTOM_DEVICE", &platform::is_custom_place},
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      {query_place, &platform::is_custom_place},
+#endif
   };
-  PADDLE_ENFORCE_NE(
-      is_target_place.count(query_place),
-      0,
-      platform::errors::InvalidArgument(
-          "The argument `place` should be 'GPU', 'CPU', 'XPU', but got '%s'.",
-          place));
+  PADDLE_ENFORCE_NE(is_target_place.count(query_place),
+                    0,
+                    platform::errors::InvalidArgument(
+                        "The argument `place` should be 'GPU', 'CPU', 'XPU' or "
+                        "other Custom Device, but got '%s'.",
+                        place));
 
   std::unordered_set<std::string> all_ops;
   const auto& op_info = framework::OpInfoMap::Instance().map();
@@ -76,12 +80,6 @@ OpSupportedInfos(const std::string& place,
     }
   }
 
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-  auto is_custom_place = [&](const std::string& place) {
-    return is_target_place.count(place) && place != "CPU" && place != "GPU" &&
-           place != "XPU";
-  };
-#endif
   auto phi_kernels = phi::KernelFactory::Instance().kernels();
   for (auto& kernel_pair : phi_kernels) {
     auto op_type = phi::TransToFluidOpName(kernel_pair.first);
@@ -90,15 +88,6 @@ OpSupportedInfos(const std::string& place,
           all_ops.count(op_type) == 0) {
         continue;
       }
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-      if (info_pair.first.backend() == phi::Backend::CUSTOM) {
-        if (is_custom_place(query_place)) {
-          VLOG(4) << op_type << " " << supported_ops.size();
-          supported_ops.emplace(op_type);
-        }
-        continue;
-      }
-#endif
       if (is_target_place[query_place](
               phi::TransToPhiPlace(info_pair.first.backend(), false))) {
         VLOG(8) << op_type << " " << supported_ops.size();

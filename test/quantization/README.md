@@ -94,7 +94,7 @@ The code snipped shows how the `Quant2Int8MkldnnPass` can be applied to a model 
     import paddle
     import paddle.static as static
     from paddle.static.quantization import Quant2Int8MkldnnPass
-    from paddle.fluid.framework import IrGraph
+    from paddle.base.framework import IrGraph
     from paddle.framework import core
 
     # Create the IrGraph by Program

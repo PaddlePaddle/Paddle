@@ -194,173 +194,6 @@ class Linear(Layer):
         )
 
 
-class LinearCompress(Layer):
-    r"""
-
-    Fully-connected linear transformation layer. For each input :math:`X` ,
-    the equation is:
-
-    .. math::
-
-        Out = XW + b
-
-    where :math:`W` is the weight and :math:`b` is the bias.
-
-    Linear layer takes only one multi-dimensional tensor as input with the
-    shape :math:`[batch\_size, *, in\_features]` , where :math:`*` means any
-    number of additional dimensions. It multiplies input tensor with the weight
-    (a 2-D tensor of shape :math:`[in\_features, out\_features]` ) and produces
-    an output tensor of shape :math:`[batch\_size, *, out\_features]` .
-    If :math:`bias\_attr` is not False, the bias (a 1-D tensor of
-    shape :math:`[out\_features]` ) will be created and added to the output.
-
-    Parameters:
-        in_features (int): The number of input units.
-        out_features (int): The number of output units.
-        weight_attr (ParamAttr, optional): The attribute for the weight of this layer.
-            The default value is None. If the Initializer of the
-            param_attr is not set, the parameter is initialized with Xavier.
-            For detailed information, please refer to paddle.ParamAttr.
-        bias_attr (ParamAttr|bool, optional): The attribute for the bias of this layer.
-            If it is set to False, no bias will be added to the output.
-            If it is set to None or one kind of ParamAttr, a bias parameter will
-            be created according to ParamAttr. For detailed information, please refer
-            to paddle.ParamAttr. The default value is None and the bias will be
-            initialized to zero.
-        name (str, optional): Normally there is no need for user to set this parameter.
-            For detailed information, please refer to :ref:`api_guide_Name` .
-        bits (int, optional): The attribute to set num of bits in quant during weight_only,
-            it must be set as 8, default: 8.
-        algo (str, optional): The  attribute to set algorithm of cpmoress, it must be set as 'weight_only'
-            or 'llm.int8', default: weight_only.
-        config (dict, optional): The parameter config for algorithm of cpmoress.
-            For llm.int8, it should be set as {'threshold': 6.0}, default: {'threshold': 6.0}.
-
-    Attribute:
-        **weight** (Parameter): the learnable weight of this layer.
-
-        **bias** (Parameter): the learnable bias of this layer.
-
-    Shape:
-        - input: Multi-dimentional tensor with shape :math:`[batch\_size, *, in\_features]` . Its data types are float16.
-        - output: Multi-dimentional tensor with shape :math:`[batch\_size, *, out\_features]` . The data type is the same as the input .
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> paddle.seed(100)
-
-            >>> # Define the linear layer.
-            >>> paddle.set_default_dtype('float16')
-            >>> weight_attr = paddle.ParamAttr(
-            ...     name="weight",
-            ...     initializer=paddle.nn.initializer.Constant(value=0.5))
-
-            >>> bias_attr = paddle.ParamAttr(
-            ...     name="bias",
-            ...     initializer=paddle.nn.initializer.Constant(value=1.0))
-
-            >>> linear = paddle.nn.LinearCompress(128, 64, weight_attr=weight_attr, bias_attr=bias_attr, bits=8, algo='weight_only')
-            >>> x = paddle.randn((3, 128), dtype="float16")
-            >>> y = linear(x)
-    """
-
-    def __init__(
-        self,
-        in_features,
-        out_features,
-        weight_attr=None,
-        bias_attr=None,
-        name=None,
-        bits=8,
-        algo="weight_only",
-        config={'threshold': 6.0},
-    ):
-        super().__init__()
-        self._dtype = self._helper.get_default_dtype()
-        self._weight_attr = weight_attr
-        self._bias_attr = bias_attr
-        self.weight = self.create_parameter(
-            shape=[in_features, out_features],
-            attr=self._weight_attr,
-            dtype=self._dtype,
-            is_bias=False,
-        )
-        self.bias = self.create_parameter(
-            shape=[out_features],
-            attr=self._bias_attr,
-            dtype=self._dtype,
-            is_bias=True,
-        )
-        self.weight_scale = self.create_parameter(
-            shape=[out_features],
-            attr=None,
-            dtype=self._dtype,
-            is_bias=False,
-        )
-        self.is_weight_quanted = False
-        self.name = (name,)
-        self.bits = bits
-        self.layout = algo
-        self.algo = algo
-        self.config = config
-
-    def forward(self, input):
-        if in_dynamic_mode():
-            if not self.is_weight_quanted:
-                weight_tensor, weight_scale_tensor = F.quant_for_compress(
-                    self.weight, self.bits, self.layout
-                )
-                weight_attr = paddle.framework.ParamAttr(
-                    initializer=paddle.nn.initializer.Assign(weight_tensor)
-                )
-                weight_shape = (
-                    [self.weight.shape[1], self.weight.shape[0]]
-                    if self.bits == 8
-                    else [self.weight.shape[1] / 2, self.weight.shape[0]]
-                )
-                self.weight = self.create_parameter(
-                    shape=weight_shape,
-                    attr=weight_attr,
-                    dtype="int8",
-                    is_bias=False,
-                )
-                weight_scale_attr = paddle.framework.ParamAttr(
-                    initializer=paddle.nn.initializer.Assign(
-                        weight_scale_tensor
-                    )
-                )
-                self.weight_scale = self.create_parameter(
-                    shape=self.weight_scale.shape,
-                    attr=weight_scale_attr,
-                    dtype="float32",
-                    is_bias=False,
-                )
-                self.is_weight_quanted = True
-            out = F.linear_compress(
-                x=input,
-                weight=self.weight,
-                weight_scale=self.weight_scale,
-                bias=self.bias,
-                bits=self.bits,
-                algo=self.algo,
-                name=self.name,
-                config=self.config,
-            )
-            return out
-
-    def extra_repr(self):
-        name_str = f', name={self.name}' if self.name else ''
-        return 'in_features={}, out_features={}, dtype={}{}, algo={}'.format(
-            self.weight.shape[0],
-            self.weight.shape[1],
-            self._dtype,
-            name_str,
-            self.algo,
-        )
-
-
 class Upsample(Layer):
     """
     This op resizes a batch of images.
@@ -617,10 +450,11 @@ class UpsamplingNearest2D(Layer):
     Parameters:
         x (Tensor): 4-D Tensor, its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
-        size (list|tuple|Tensor|None): Output shape of image resize
+        size (int|list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_h, out_w) when input is a 4-D Tensor.
-             Default: None. If a list/tuple, each element can be an integer or a Tensor of shape: [1].
-             If a Tensor , its dimensions size should be a 1.
+             Default: None. If an int value, the `out_h` and `out_w` will be set as the number.
+             If a list/tuple, each element can be an integer or a Tensor of shape: [1].
+             If a Tensor, its dimensions size should be a 1.
         scale_factor (float|int|list|tuple|Tensor|None): The multiplier for the input height or width. At
              least one of :attr:`size` or :attr:`scale_factor` must be set.
              And :attr:`size` has a higher priority than :attr:`scale_factor`.
@@ -656,6 +490,8 @@ class UpsamplingNearest2D(Layer):
         self, size=None, scale_factor=None, data_format='NCHW', name=None
     ):
         super().__init__()
+        if isinstance(size, int):
+            size = [size, size]
         self.size = size
         self.scale_factor = scale_factor
         self.data_format = data_format
@@ -681,9 +517,7 @@ class UpsamplingNearest2D(Layer):
         else:
             main_str = f'size={self.size}'
         name_str = f', name={self.name}' if self.name else ''
-        return '{}, data_format={}{}'.format(
-            main_str, self.data_format, name_str
-        )
+        return f'{main_str}, data_format={self.data_format}{name_str}'
 
 
 class UpsamplingBilinear2D(Layer):
@@ -704,9 +538,10 @@ class UpsamplingBilinear2D(Layer):
     Parameters:
         x (Tensor): 4-D Tensor, its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
-        size (list|tuple|Tensor|None): Output shape of image resize
+        size (int|list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_h, out_w) when input is a 4-D Tensor.
-             Default: None. If a list/tuple, each element can be an integer or a Tensor  of shape: [1].
+             Default: None. If an int value, the `out_h` and `out_w` will be set as the number.
+             If a list/tuple, each element can be an integer or a Tensor  of shape: [1].
              If a Tensor , its dimensions size should be a 1.
         scale_factor (float|int|list|tuple|Tensor|None): The multiplier for the input height or width. At
              least one of :attr:`size` or :attr:`scale_factor` must be set.
@@ -742,6 +577,8 @@ class UpsamplingBilinear2D(Layer):
         self, size=None, scale_factor=None, data_format='NCHW', name=None
     ):
         super().__init__()
+        if isinstance(size, int):
+            size = [size, size]
         self.size = size
         self.scale_factor = scale_factor
         self.data_format = data_format
@@ -767,9 +604,7 @@ class UpsamplingBilinear2D(Layer):
         else:
             main_str = f'size={self.size}'
         name_str = f', name={self.name}' if self.name else ''
-        return '{}, data_format={}{}'.format(
-            main_str, self.data_format, name_str
-        )
+        return f'{main_str}, data_format={self.data_format}{name_str}'
 
 
 class Bilinear(Layer):
@@ -891,6 +726,9 @@ class Dropout(Layer):
 
     In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 
+    Warning:
+        The corresponding `functional methods` please reference :ref:`api_paddle_nn_functional_dropout`.
+
     Parameters:
         p (float|int, optional): Probability of setting units to zero. Default: 0.5
         axis (int|list|tuple, optional): The axis along which the dropout is performed. Default: None.
@@ -956,9 +794,7 @@ class Dropout(Layer):
 
     def extra_repr(self):
         name_str = f', name={self.name}' if self.name else ''
-        return 'p={}, axis={}, mode={}{}'.format(
-            self.p, self.axis, self.mode, name_str
-        )
+        return f'p={self.p}, axis={self.axis}, mode={self.mode}{name_str}'
 
 
 class Dropout2D(Layer):
@@ -1034,9 +870,7 @@ class Dropout2D(Layer):
 
     def extra_repr(self):
         name_str = f', name={self.name}' if self.name else ''
-        return 'p={}, data_format={}{}'.format(
-            self.p, self.data_format, name_str
-        )
+        return f'p={self.p}, data_format={self.data_format}{name_str}'
 
 
 class Dropout3D(Layer):
@@ -1114,9 +948,7 @@ class Dropout3D(Layer):
 
     def extra_repr(self):
         name_str = f', name={self.name}' if self.name else ''
-        return 'p={}, data_format={}{}'.format(
-            self.p, self.data_format, name_str
-        )
+        return f'p={self.p}, data_format={self.data_format}{name_str}'
 
 
 class AlphaDropout(Layer):
@@ -1382,9 +1214,7 @@ class ZeroPad2D(Layer):
 
     def extra_repr(self):
         name_str = f', name={self._name}' if self._name else ''
-        return 'padding={}, data_format={}{}'.format(
-            self._pad, self._data_format, name_str
-        )
+        return f'padding={self._pad}, data_format={self._data_format}{name_str}'
 
 
 class Pad3D(Layer):
@@ -1574,7 +1404,7 @@ class Embedding(Layer):
             default weight parameter property is used. See usage for details in :ref:`api_ParamAttr` . In addition,
             user-defined or pre-trained word vectors can be loaded with the :attr:`param_attr` parameter.
             The local word vector needs to be transformed into numpy format, and the shape of local word
-            vector should be consistent with :attr:`num_embeddings` . Then :ref:`api_initializer_NumpyArrayInitializer`
+            vector should be consistent with :attr:`num_embeddings` . Then :ref:`api_paddle_nn_initializer_Assign`
             is used to load custom or pre-trained word vectors. See code example for details.
         name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and
             None by default.
@@ -1654,9 +1484,7 @@ class Embedding(Layer):
 
         if padding_idx >= num_embeddings or padding_idx < -num_embeddings:
             raise ValueError(
-                "padding_idx must be within [-{}, {})".format(
-                    num_embeddings, num_embeddings
-                )
+                f"padding_idx must be within [-{num_embeddings}, {num_embeddings})"
             )
 
         self._dtype = self._helper.get_default_dtype()
@@ -1709,17 +1537,17 @@ class Unfold(Layer):
 
 
     Parameters:
-        kernel_sizes(int|list): The size of convolution kernel, should be [k_h, k_w]
+        kernel_sizes(int|list|tuple): The size of convolution kernel, should be [k_h, k_w]
             or an integer k treated as [k, k].
-        strides(int|list, optional): The strides, should be [stride_h, stride_w]
+        strides(int|list|tuple, optional): The strides, should be [stride_h, stride_w]
             or an integer stride treated as [sride, stride]. For default, strides will be [1, 1].
-        paddings(int|list, optional): The paddings of each dimension, should be
+        paddings(int|list|tuple, optional): The paddings of each dimension, should be
             [padding_top, padding_left, padding_bottom, padding_right] or [padding_h, padding_w]
             or an integer padding. If [padding_h, padding_w] was given, it will expanded to
             [padding_h, padding_w, padding_h, padding_w]. If an integer padding was given,
             [padding, padding, padding, padding] will be used. For default,
             paddings will be [0, 0, 0, 0].
-        dilations(int|list, optional): The dilations of convolution kernel, should be
+        dilations(int|list|tuple, optional): The dilations of convolution kernel, should be
             [dilation_h, dilation_w], or an integer dilation treated as [dilation, dilation].
             For default, it will be [1, 1].
         name(str, optional): The default value is None. Normally there is no need for user to
