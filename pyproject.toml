@@ -108,7 +108,6 @@ ignore = [
     "B019", # Confirmation required
     "C416",
     "F821",
-    "PLC0414",
 ]
 
 # B017
