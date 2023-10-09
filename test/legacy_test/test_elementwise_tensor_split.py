@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import re
 import unittest
 
 import numpy as np
@@ -29,6 +30,17 @@ class TestElementwiseOp(unittest.TestCase):
 
     def test_float16_sub(self):
         if not core.is_compiled_with_cuda():
+            return
+
+        gpu_info = paddle.device.cuda.get_device_properties()
+
+        gpu_name = gpu_info.name
+        try:
+            re_result = re.split(r'[ , -]', gpu_name)
+            memory = int(re_result[-1][:-2])
+        except:
+            memory = int(gpu_info.total_memory) // (1000**3)
+        if memory < 37:  # 37GB
             return
 
         paddle.disable_static()
