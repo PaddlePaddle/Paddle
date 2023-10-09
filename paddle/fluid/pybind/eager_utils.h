@@ -29,6 +29,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/jit/function.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
@@ -36,6 +37,8 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/pir/core/op_result.h"
 #include "paddle/utils/pybind.h"
@@ -383,6 +386,71 @@ class eager_gil_scoped_release {
  private:
   PyThreadState* tstate{nullptr};
 };
+
+/* ------------------ for auto parallel ----------------------- */
+using paddle::experimental::detail::ArgsIterator;
+
+struct DistTensorTypeParser : ArgsIterator<DistTensorTypeParser> {
+  bool result = false;
+  const phi::distributed::ProcessMesh** mesh = nullptr;
+
+  explicit DistTensorTypeParser(const phi::distributed::ProcessMesh** m)
+      : mesh(m) {}
+
+  bool short_circuit() { return result; }
+
+  void operator()(const Tensor& x);
+  void operator()(const paddle::optional<Tensor>& x);
+  void operator()(const std::vector<Tensor>& x);
+  void operator()(const paddle::optional<std::vector<Tensor>>& x);
+
+  // skip other type args, these args don't used in kernel selection
+  template <typename T>
+  void operator()(const T& x) {
+    // do nothing
+  }
+};
+
+struct DistTensorConverter : ArgsIterator<DistTensorConverter> {
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+
+  explicit DistTensorConverter(const phi::distributed::ProcessMesh* m) {
+    PADDLE_ENFORCE_NE(
+        m,
+        nullptr,
+        platform::errors::InvalidArgument(
+            "Input mesh of DistTensorConverter() shouldn't be nullptr."));
+    mesh = m;
+  }
+
+  void convert(Tensor* x);
+  void operator()(Tensor* x);
+  void operator()(paddle::optional<Tensor>* x);
+  void operator()(std::vector<Tensor>* x);
+  void operator()(paddle::optional<std::vector<Tensor>>* x);
+
+  // skip other type args, these args don't used in kernel selection
+  template <typename T>
+  void operator()(const T& x) {
+    // do nothing
+  }
+};
+
+template <typename... Args>
+bool InputsContainDistTensor(const phi::distributed::ProcessMesh** mesh,
+                             const Args&... args) {
+  return DistTensorTypeParser(mesh).apply(args...).result;
+}
+
+template <typename... Args>
+void ConvertAllInputsToDistTensor(const phi::distributed::ProcessMesh* mesh,
+                                  Args&... args) {
+  PADDLE_ENFORCE_NE(
+      mesh,
+      nullptr,
+      platform::errors::InvalidArgument("Input mesh should not be nullptr."));
+  DistTensorConverter(mesh).apply(&args...);
+}
 
 }  // namespace pybind
 }  // namespace paddle

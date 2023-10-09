@@ -17,7 +17,6 @@ extend_skip_glob = [
     # These files do not need to be formatted,
     # see .flake8 for more details
     "python/paddle/utils/gast/**",
-    "python/paddle/base/core.py",
     "python/paddle/base/framework.py",
 ]
 
@@ -108,9 +107,7 @@ ignore = [
     "C408",
     "UP030",
     "C405",
-    "B009",
     "B019", # Confirmation required
-    "C411",
     "C416",
     "F821",
     "PLC0414",
