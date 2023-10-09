@@ -136,7 +136,7 @@ def elu(x, alpha=1.0, name=None):
 def elu_(x, alpha=1.0, name=None):
     r"""
     Inplace version of ``elu`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_nn_cn_elu`.
+    Please refer to :ref:`api_paddle_nn_functional_elu`.
     """
     assert alpha >= 0.0, "elu_ only support alpha >= 0, please use elu instead."
     if in_dynamic_mode():
@@ -780,7 +780,7 @@ def relu(x, name=None):
 def relu_(x, name=None):
     """
     Inplace version of ``relu`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_nn_cn_relu`.
+    Please refer to :ref:`api_paddle_nn_functional_relu`.
     """
     return _C_ops.relu_(x)
 
@@ -1254,7 +1254,7 @@ def softmax(x, axis=-1, dtype=None, name=None):
 def softmax_(x, axis=-1, dtype=None, name=None):
     r"""
     Inplace version of ``softmax`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_nn_cn_softmax`.
+    Please refer to :ref:`api_paddle_nn_functional_softmax`.
     """
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
