@@ -4569,7 +4569,9 @@ create_test_act_fp16_class(
 create_test_act_fp16_class(
     TestSqrtComp, check_prim=True, enable_cinn=True, check_new_ir=True
 )
-create_test_act_fp16_class(TestAbs, check_prim=True, enable_cinn=True)
+create_test_act_fp16_class(
+    TestAbs, check_prim=True, enable_cinn=True, check_new_ir=True
+)
 create_test_act_fp16_class(TestCeil, grad_check=False)
 create_test_act_fp16_class(
     TestFloor, check_prim=True, grad_check=False, enable_cinn=True
@@ -4713,7 +4715,7 @@ create_test_act_bf16_class(TestHardShrink)
 create_test_act_bf16_class(TestSoftshrink)
 create_test_act_bf16_class(TestSqrt, check_prim=True, check_new_ir=True)
 create_test_act_bf16_class(TestSqrtComp, check_prim=True, check_new_ir=True)
-create_test_act_bf16_class(TestAbs, check_prim=True)
+create_test_act_bf16_class(TestAbs, check_prim=True, check_new_ir=True)
 create_test_act_bf16_class(TestCeil, grad_check=False)
 create_test_act_bf16_class(TestFloor, grad_check=False, check_prim=True)
 create_test_act_bf16_class(TestCos)
