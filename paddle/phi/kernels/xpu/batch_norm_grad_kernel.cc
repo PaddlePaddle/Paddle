@@ -72,8 +72,7 @@ static int CalculateInvVar(xpu::Context *ctx,
 template <typename T, typename Context>
 void BatchNormGradKernel(const Context &dev_ctx,
                          const DenseTensor &x,
-                         const DenseTensor &scale,
-                         const DenseTensor &bias,
+                         const paddle::optional<DenseTensor> &scale_opt,
                          const paddle::optional<DenseTensor> &mean,
                          const paddle::optional<DenseTensor> &variance,
                          const DenseTensor &saved_mean,
@@ -132,6 +131,24 @@ void BatchNormGradKernel(const Context &dev_ctx,
   D = (D == 0) ? 1 : D;
 
   W = W * D;
+
+  auto *scale_ptr = scale_opt.get_ptr();
+  auto *bias_ptr = bias_opt.get_ptr();
+
+  phi::DenseTensor scale;
+  phi::DenseTensor bias;
+
+  if (scale_ptr) {
+    scale = scale_opt.get();
+  } else {
+    scale = phi::Full<T, Context>(dev_ctx, C, 1);
+  }
+
+  if (bias_ptr) {
+    bias = bias_opt.get();
+  } else {
+    bias = phi::Full<T, Context>(dev_ctx, C, 0);
+  }
 
   const auto *x_data = reinterpret_cast<const XPUType *>(x.data<T>());
   const auto *d_y_data = reinterpret_cast<const XPUType *>(y_grad.data<T>());

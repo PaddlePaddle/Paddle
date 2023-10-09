@@ -29,6 +29,7 @@ namespace cub = hipcub;
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/batch_norm_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/norm_utils.cu.h"
@@ -515,8 +516,8 @@ void BatchNormKernel(const Context &ctx,
                      const DenseTensor &x,
                      const DenseTensor &mean,
                      const DenseTensor &variance,
-                     const DenseTensor &scale,
-                     const DenseTensor &bias,
+                     const paddle::optional<DenseTensor> &scale_opt,
+                     const paddle::optional<DenseTensor> &bias_opt,
                      bool is_test,
                      float momentum,
                      float epsilon_f,
@@ -550,6 +551,24 @@ void BatchNormKernel(const Context &ctx,
   phi::funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
   auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
+
+  auto *scale_ptr = scale_opt.get_ptr();
+  auto *bias_ptr = bias_opt.get_ptr();
+
+  phi::DenseTensor scale;
+  phi::DenseTensor bias;
+
+  if (scale_ptr) {
+    scale = scale_opt.get();
+  } else {
+    scale = phi::Full<T, Context>(dev_ctx, C, 1);
+  }
+
+  if (bias_ptr) {
+    bias = bias_opt.get();
+  } else {
+    bias = phi::Full<T, Context>(dev_ctx, C, 0);
+  }
 
 #ifdef PADDLE_WITH_HIP
   auto compute_format =

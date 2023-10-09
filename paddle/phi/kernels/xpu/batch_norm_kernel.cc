@@ -25,8 +25,8 @@ void BatchNormKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& mean,
                      const DenseTensor& variance,
-                     const DenseTensor& scale,
-                     const DenseTensor& bias,
+                     const paddle::optional<DenseTensor>& scale_opt,
+                     const paddle::optional<DenseTensor>& bias_opt,
                      bool is_test,
                      float momentum,
                      float epsilon,
@@ -68,6 +68,24 @@ void BatchNormKernel(const Context& dev_ctx,
   D = (D == 0) ? 1 : D;
 
   W = W * D;
+
+  auto* scale_ptr = scale_opt.get_ptr();
+  auto* bias_ptr = bias_opt.get_ptr();
+
+  phi::DenseTensor scale;
+  phi::DenseTensor bias;
+
+  if (scale_ptr) {
+    scale = scale_opt.get();
+  } else {
+    scale = phi::Full<T, Context>(dev_ctx, C, 1);
+  }
+
+  if (bias_ptr) {
+    bias = bias_opt.get();
+  } else {
+    bias = phi::Full<T, Context>(dev_ctx, C, 0);
+  }
 
   const auto* x_data = reinterpret_cast<const XPUType*>(x.data<T>());
   const auto* scale_data = scale.data<float>();
