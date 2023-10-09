@@ -31,6 +31,11 @@ paddle.seed(2023)
     (parameterize.TEST_CASE_NAME, 'concentration', 'rate'),
     [
         (
+            '0-dim',
+            0.5,
+            0.5,
+        ),
+        (
             'one-dim',
             parameterize.xrand(
                 (2,),
@@ -47,6 +52,19 @@ paddle.seed(2023)
             'multi-dim',
             parameterize.xrand(
                 (2, 3),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+            ),
+            parameterize.xrand(
+                (2, 3),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+            ),
+        ),
+        (
+            'broadcast',
+            parameterize.xrand(
+                (2, 1),
                 dtype='float32',
                 min=np.finfo(dtype='float32').tiny,
             ),

@@ -57,6 +57,19 @@ paddle.enable_static()
                 min=np.finfo(dtype='float32').tiny,
             ),
         ),
+        (
+            'broadcast',
+            parameterize.xrand(
+                (2, 1),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+            ),
+            parameterize.xrand(
+                (2, 3),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+            ),
+        ),
     ],
 )
 class TestGamma(unittest.TestCase):

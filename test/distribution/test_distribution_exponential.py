@@ -31,6 +31,10 @@ paddle.seed(2023)
     (parameterize.TEST_CASE_NAME, 'rate'),
     [
         (
+            '0-dim',
+            0.5,
+        ),
+        (
             'one-dim',
             parameterize.xrand(
                 (2,),

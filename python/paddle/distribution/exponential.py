@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+import numbers
+
 import numpy as np
 
 import paddle
@@ -28,14 +31,28 @@ class Exponential(exponential_family.ExponentialFamily):
 
         f(x; \theta) =  \theta e^{- \theta x },  (x \ge 0) $$
 
+    Args:
+        rate (float|Tensor): Rate parameter. The value of beta must be positive.
+
     Example::
         .. code-block:: python
 
-            >>> m = Exponential(paddle.tensor([1.0]))
+            >>> import paddle
 
+            >>> expon = paddle.distribution.Exponential(paddle.to_tensor([0.5]))
+            >>> print(expon.mean)
+            Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [2.])
+
+            >>> print(expon.variance)
+            Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [4.])
+
+            >>> print(expon.entropy())
+            Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [1.69314718])
     """
 
     def __init__(self, rate):
+        if isinstance(rate, numbers.Real):
+            rate = paddle.full(shape=(), fill_value=rate, dtype=paddle.float32)
         self.rate = rate
         super().__init__(self.rate.shape)
 

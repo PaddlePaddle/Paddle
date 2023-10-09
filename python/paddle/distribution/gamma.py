@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numbers
 
 import paddle
 from paddle.distribution import exponential_family
@@ -29,16 +30,54 @@ class Gamma(exponential_family.ExponentialFamily):
 
         \Gamma(\alpha)=\int_{0}^{\infty} x^{\alpha-1} e^{-x} \mathrm{~d} x, (\alpha>0)
 
+    Args:
+        concentration (float|Tensor): Concentration parameter. It supports broadcast semantics.
+            The value of concentration must be positive. When the parameter is a tensor,
+            it represents multiple independent distribution with
+            a batch_shape(refer to ``Distribution`` ).
+        rate (float|Tensor): Rate parameter. It supports broadcast semantics.
+            The value of rate must be positive. When the parameter is tensor,
+            it represent multiple independent distribution with
+            a batch_shape(refer to ``Distribution`` ).
+
     Example::
         .. code-block:: python
 
-            >>> m = Gamma(paddle.tensor([1.0]), paddle.tensor([1.0]))
+            >>> import paddle
 
+            >>> # scale input
+            >>> gamma = paddle.distribution.Gamma(0.5, 0.5)
+            >>> print(gamma.mean)
+            Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True, 1.)
+
+            >>> print(gamma.variance)
+            Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True, 2.)
+
+            >>> print(gamma.entropy())
+            Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True, 0.78375685)
+
+             >>> # tensor input with broadcast
+            >>> gamma = paddle.distribution.Gamma(paddle.to_tensor([0.2, 0.4]), 0.6)
+            >>> print(gamma.mean)
+            Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True, [0.33333331, 0.66666663])
+
+            >>> print(gamma.variance)
+            Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True, [0.55555552, 1.11111104])
+
+            >>> print(gamma.entropy())
+            Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True, [-1.99634242,  0.17067254])
     """
 
     def __init__(self, concentration, rate):
-        self.concentration = concentration
-        self.rate = rate
+        if isinstance(concentration, numbers.Real):
+            concentration = paddle.full(shape=[], fill_value=concentration)
+
+        if isinstance(rate, numbers.Real):
+            rate = paddle.full(shape=[], fill_value=rate)
+
+        self.concentration, self.rate = paddle.broadcast_tensors(
+            [concentration, rate]
+        )
         super().__init__(self.concentration.shape)
 
     @property
@@ -98,6 +137,30 @@ class Gamma(exponential_family.ExponentialFamily):
             + paddle.lgamma(self.concentration)
             + (1.0 - self.concentration) * paddle.digamma(self.concentration)
         )
+
+    def sample(self, shape=()):
+        """Generate samples of the specified shape.
+
+        Args:
+            shape (Sequence[int], optional): Shape of the generated samples.
+
+        Returns:
+            Tensor, A tensor with prepended dimensions shape.The data type is float32.
+
+        """
+        raise NotImplementedError
+
+    def rsample(self, shape=()):
+        """Generate reparameterized samples of the specified shape.
+
+        Args:
+          shape (Sequence[int], optional): Shape of the generated samples.
+
+        Returns:
+          Tensor: A tensor with prepended dimensions shape.The data type is float32.
+
+        """
+        raise NotImplementedError
 
     def _natural_parameters(self):
         return (self.concentration - 1, -self.rate)
