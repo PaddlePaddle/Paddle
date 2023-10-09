@@ -197,6 +197,7 @@
     func : fusion_gru
     data_type : x
   optional : h0, bias
+  intermediate : reordered_h0, xx, batched_input, batched_out
 
 - op : fusion_seqconv_eltadd_relu
   args : (Tensor x, Tensor filter, Tensor bias, int context_length, int context_start = 0, int context_stride = 1)
@@ -206,6 +207,7 @@
   kernel :
     func : fusion_seqconv_eltadd_relu
     data_type : x
+  intermediate : col_mat
 
 - op : fusion_seqexpand_concat_fc
   args : (Tensor[] x, Tensor fc_weight, Tensor fc_bias, str fc_activation="identity")
@@ -216,6 +218,7 @@
     func : fusion_seqexpand_concat_fc
     data_type : x
   optional : fc_bias
+  intermediate : fc_out
 
 - op : generate_sequence_xpu
   args : (Tensor x, DataType dtype)
