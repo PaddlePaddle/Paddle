@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,11 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/tree_conv_op.h"
-
-namespace ops = paddle::operators;
-
-PD_REGISTER_STRUCT_KERNEL(
-    tree_conv, GPU, ALL_LAYOUT, ops::TreeConvKernel, float, double) {}
-PD_REGISTER_STRUCT_KERNEL(
-    tree_conv_grad, GPU, ALL_LAYOUT, ops::TreeConvGradKernel, float, double) {}
+#include "paddle/pir/dialect/shape/utils/shape_optimization_utils.h"
