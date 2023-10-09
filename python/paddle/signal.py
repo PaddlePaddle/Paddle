@@ -631,6 +631,8 @@ def istft(
             'Abort istft because Nonzero Overlap Add (NOLA) condition failed. For more information about NOLA constraint please see `scipy.signal.check_NOLA`(https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.check_NOLA.html).'
         )
 
+    print(out)
+
     out = out / window_envelop
 
     if x_rank == 2:
