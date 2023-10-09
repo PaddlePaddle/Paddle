@@ -88,19 +88,24 @@ from paddle.fluid.framework import EagerParamBase
 
 
 def create_async_load():
-    # place = paddle.framework._current_expected_place()
     return core.AsyncLoad()
 
 
-def async_offload(src_tensor, async_load):
-    place = paddle.framework._current_expected_place()
+def _load_impl(src_tensor, func):
     if isinstance(src_tensor, EagerParamBase):
-        # src_tensor = src_tensor._ivar.value().get_tensor()
         state = copy.deepcopy(src_tensor.__dict__)
         new_param = EagerParamBase(src_tensor.shape, src_tensor.dtype, **state)
-        task = async_load.offload(new_param, src_tensor)
+        task = func(new_param, src_tensor)
         return new_param, task
     elif isinstance(src_tensor, paddle.Tensor):
         new_varbase = core.eager.Tensor()
-        task = async_load.offload(new_varbase, src_tensor)
+        task = func(new_varbase, src_tensor)
         return new_varbase, task
+
+
+def async_offload(src_tensor, async_load):
+    return _load_impl(src_tensor, async_load.offload)
+
+
+def async_reload(src_tensor, async_load):
+    return _load_impl(src_tensor, async_load.reload)

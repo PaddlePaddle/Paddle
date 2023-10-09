@@ -147,6 +147,26 @@ void BindDistributed(py::module *m) {
               },
               py::arg("dst"),
               py::arg("src"),
+              py::call_guard<py::gil_scoped_release>())
+          .def(
+              "reload",
+              [](distributed::AsyncLoad &self,
+                 py::handle py_dst_tensor,
+                 py::handle py_src_tensor) {
+                auto dst_tensor = CastPyArg2Tensor(py_dst_tensor.ptr(), 0);
+                auto p_dst_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    dst_tensor.impl());
+                auto *dst_dense = p_dst_tensor.get();
+
+                auto src_tensor = CastPyArg2Tensor(py_src_tensor.ptr(), 0);
+                auto p_src_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    src_tensor.impl());
+                auto src_dense = *p_src_tensor;
+
+                return self.Reload(dst_dense, src_dense);
+              },
+              py::arg("dst"),
+              py::arg("src"),
               py::call_guard<py::gil_scoped_release>());
 
   auto ProcessGroup =

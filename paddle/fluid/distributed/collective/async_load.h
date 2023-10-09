@@ -52,7 +52,10 @@ class AsyncLoad {
   std::shared_ptr<AsyncLoad::Task> Offload(phi::DenseTensor* dst,
                                            const phi::DenseTensor& src);
 
-  // void SyncCalcStream();
+  void PrepareLoadEnv(const std::string& key);
+
+  std::shared_ptr<AsyncLoad::Task> Reload(phi::DenseTensor* dst,
+                                          const phi::DenseTensor& src);
 
  private:
   // platform::DeviceEvent calc_event_;

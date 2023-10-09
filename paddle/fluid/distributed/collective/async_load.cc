@@ -37,15 +37,23 @@ void AsyncLoad::Task::UpdateWaitChain(const phi::DeviceContext& ctx) {
   load_event_.Record(&ctx);
 }
 
-// AsyncLoad::AsyncLoad(){}
-
 std::shared_ptr<AsyncLoad::Task> AsyncLoad::CreateTask(const Place& place) {
   return std::make_shared<AsyncLoad::Task>(place);
 }
 
-// void AsyncLoad::SyncCalcStream(){
+void AsyncLoad::PrepareLoadEnv(const std::string& key) {
+  if (place_to_calc_event_.find(key) == place_to_calc_event_.end()) {
+    place_to_calc_event_.emplace(
+        key, platform::DeviceEvent(place, platform::GenerateDeviceEventFlag()));
+    place_to_load_ctx_.emplace(
+        key, std::move(std::make_unique<phi::GPUContext>(place)));
+  }
 
-// }
+  const auto* calc_ctx = static_cast<phi::GPUContext*>(
+      platform::DeviceContextPool::Instance().Get(place));
+  calc_event.Record(calc_ctx);
+  calc_event.Wait(platform::Place2DeviceType(place), async_ctx.get());
+}
 
 std::shared_ptr<AsyncLoad::Task> AsyncLoad::Offload(
     phi::DenseTensor* dst, const phi::DenseTensor& src) {
@@ -64,30 +72,50 @@ std::shared_ptr<AsyncLoad::Task> AsyncLoad::Offload(
   auto size = src.numel() * phi::SizeOf(src.dtype());
 
   // 1. wait calc stream to finish
-  std::string key = "async_load";
-  if (place_to_calc_event_.find(key) == place_to_calc_event_.end()) {
-    place_to_calc_event_.emplace(
-        key, platform::DeviceEvent(place, platform::GenerateDeviceEventFlag()));
-    place_to_load_ctx_.emplace(
-        key, std::move(std::make_unique<phi::GPUContext>(place)));
-  }
-
-  auto& calc_event = place_to_calc_event_.at(key);
-  auto& offload_ctx = place_to_load_ctx_.at(key);
-
-  const auto* calc_ctx = static_cast<phi::GPUContext*>(
-      platform::DeviceContextPool::Instance().Get(place));
-  calc_event.Record(calc_ctx);
-  calc_event.Wait(platform::Place2DeviceType(place), offload_ctx.get());
+  std::string key = "offload";
+  PrepareLoadEnv(key);
+  auto& async_ctx = place_to_load_ctx_.at(key);
 
   // 2. copy data from src to dst
-  auto stream = offload_ctx->stream();
+  auto stream = async_ctx->stream();
+  phi::memory_utils::Copy(
+      platform::CUDAPlace(), dst_ptr, place, src_ptr, size, stream);
+
+  // 3. record event on offload stream
+  auto task = CreateTask(place);
+  task->UpdateWaitChain(*async_ctx);
+  return task;
+}
+
+std::shared_ptr<AsyncLoad::Task> AsyncLoad::Reload(
+    phi::DenseTensor* dst, const phi::DenseTensor& src) {
+  // GPUPinned -> GPU
+  const auto& place = src.place();
+  PADDLE_ENFORCE_EQ(
+      platform::is_cuda_pinned_place(place),
+      true,
+      platform::errors::InvalidArgument(
+          "AsyncLoad::Reload only support GPUPinned -> GPU now."));
+
+  dst->Resize(src.dims());
+  auto* dst_ptr = dst->mutable_data(platform::CUDAPlace(), src.dtype());
+  auto* src_ptr = src.data();
+  auto size = src.numel() * phi::SizeOf(src.dtype());
+
+  // 1. wait calc stream to finish
+  std::string key = "reload";
+  PrepareLoadEnv(key);
+
+  auto& async_ctx = place_to_load_ctx_.at(key);
+
+  // 2. copy data from src to dst
+  auto stream = async_ctx->stream();
   phi::memory_utils::Copy(
       platform::CUDAPinnedPlace(), dst_ptr, place, src_ptr, size, stream);
 
   // 3. record event on offload stream
   auto task = CreateTask(place);
-  task->UpdateWaitChain(*offload_ctx);
+  task->UpdateWaitChain(*async_ctx);
   return task;
 }
 
