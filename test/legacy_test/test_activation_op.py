@@ -4583,7 +4583,9 @@ create_test_act_fp16_class(TestAcosh)
 create_test_act_fp16_class(TestAsinh)
 create_test_act_fp16_class(TestAtanh)
 create_test_act_fp16_class(TestRound, grad_check=False)
-create_test_act_fp16_class(TestRelu, check_prim=True, enable_cinn=True)
+create_test_act_fp16_class(
+    TestRelu, check_prim=True, enable_cinn=True, check_new_ir=True
+)
 create_test_act_fp16_class(
     TestGelu,
     check_prim=True,
@@ -4725,7 +4727,7 @@ create_test_act_bf16_class(TestAcosh)
 create_test_act_bf16_class(TestAsinh)
 create_test_act_bf16_class(TestAtanh)
 create_test_act_bf16_class(TestRound, grad_check=False)
-create_test_act_bf16_class(TestRelu, check_prim=True)
+create_test_act_bf16_class(TestRelu, check_prim=True, check_new_ir=True)
 create_test_act_bf16_class(
     TestGelu,
     check_prim=True,
