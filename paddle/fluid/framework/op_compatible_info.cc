@@ -94,8 +94,6 @@ void OpCompatibleMap::InitOpCompatibleMap() {
   op_compatible_map_["pull_box_sparse"] = {"1.6.0",
                                            OpCompatibleType::DEFIN_NOT};
   op_compatible_map_["scatter_nd_add"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
-  op_compatible_map_["sequence_topk_avg_pooling"] = {
-      "1.6.0", OpCompatibleType::DEFIN_NOT};
   op_compatible_map_["shard_index"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
   op_compatible_map_["size"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
   op_compatible_map_["strided_slice"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
