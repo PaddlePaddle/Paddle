@@ -2879,7 +2879,6 @@ class Operator:
         'fetch',
         'recurrent',
         'go',
-        'rnn_memory_helper_grad',
         'conditional_block',
         'pylayer',
         'while',
