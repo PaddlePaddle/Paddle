@@ -78,3 +78,29 @@ def _npu_identity(x, format=-1):
             attrs={'format': format},
         )
         return out
+
+
+import copy
+
+import paddle
+from paddle.fluid import core
+from paddle.fluid.framework import EagerParamBase
+
+
+def create_async_load():
+    # place = paddle.framework._current_expected_place()
+    return core.AsyncLoad()
+
+
+def async_offload(src_tensor, async_load):
+    place = paddle.framework._current_expected_place()
+    if isinstance(src_tensor, EagerParamBase):
+        # src_tensor = src_tensor._ivar.value().get_tensor()
+        state = copy.deepcopy(src_tensor.__dict__)
+        new_param = EagerParamBase(src_tensor.shape, src_tensor.dtype, **state)
+        task = async_load.offload(new_param, src_tensor)
+        return new_param, task
+    elif isinstance(src_tensor, paddle.Tensor):
+        new_varbase = core.eager.Tensor()
+        task = async_load.offload(new_varbase, src_tensor)
+        return new_varbase, task
