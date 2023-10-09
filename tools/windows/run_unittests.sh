@@ -145,7 +145,6 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_tensor_scalar_type_promotion_dynamic$|\
 ^test_model$|\
 ^test_py_reader_combination$|\
-^test_trt_convert_flatten$|\
 ^test_py_reader_push_pop$|\
 ^test_parallel_executor_feed_persistable_var$|\
 ^test_parallel_executor_inference_feed_partial_data$|\
