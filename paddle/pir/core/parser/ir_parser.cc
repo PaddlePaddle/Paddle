@@ -16,6 +16,7 @@
 
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/core/builtin_type.h"
+#include "paddle/pir/core/operation_utils.h"
 
 namespace pir {
 IrParser::IrParser(IrContext* ctx, std::istream& is) {
@@ -207,8 +208,8 @@ void IrParser::ParseBlock(Block& block) {  // NOLINT
   ConsumeAToken("}");
 }
 
-// Operation := ValueList ":=" Opname "(" OprandList ? ")" AttributeMap ":"
-// FunctionType
+// Operation := ValueList "=" (GeneralOp | CustomOp)
+// GeneralOp := Opname "(" OperandList ? ")" AttributeMap ":" FunctionType
 // FunctionType := "(" TypeList ")"  "->" TypeList
 Operation* IrParser::ParseOperation() {
   std::vector<std::string> value_index = ParseValueList();

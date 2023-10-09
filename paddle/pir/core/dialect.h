@@ -28,6 +28,7 @@
 namespace pir {
 
 class Operation;
+class OperationArgument;
 class IrPrinter;
 class IrParser;
 class DialectInterface;
@@ -156,7 +157,8 @@ class IR_API Dialect {
   virtual void PrintOperation(Operation *op,
                               IrPrinter &printer) const;  // NOLINT
 
-  virtual Operation ParseOperation(IrParser &parser) {  // NOLINT
+  virtual void ParseOperation(IrParser &parser,              // NOLINT
+                              OperationArgument &op_args) {  // NOLINT
     IR_THROW("dialect has no registered operation parsing hook");
   }
 
