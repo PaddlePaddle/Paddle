@@ -2638,8 +2638,8 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
     """
     if framework.in_pir_mode():
         check_type(
-            outputs,
-            'outputs',
+            targets,
+            'targets',
             ((paddle.pir.Value, paddle.pir.OpResult), list, tuple),
             'paddle.autograd.ir_backward.grad',
         )
@@ -2650,8 +2650,8 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
             'paddle.autograd.ir_backward.grad',
         )
         check_type(
-            grad_outputs,
-            'grad_outputs',
+            target_gradients,
+            'target_gradients',
             ((paddle.pir.Value, paddle.pir.OpResult), list, tuple, type(None)),
             'paddle.autograd.ir_backward.grad',
         )
@@ -2668,9 +2668,9 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
             ),
             'paddle.autograd.ir_backward.grad',
         )
-        outputs = _as_list(outputs)
+        targets = _as_list(targets)
         inputs = _as_list(inputs)
-        grad_outputs = _as_list(grad_outputs)
+        target_gradients = _as_list(target_gradients)
         if no_grad_set is None:
             no_grad_set = set()
         elif no_grad_set is not set:
@@ -2682,7 +2682,7 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
         )
 
         input_grad = pir_calc_gradient(
-            outputs, inputs, grad_outputs, no_grad_set
+            targets, inputs, target_gradients, no_grad_set
         )
         return input_grad
 
