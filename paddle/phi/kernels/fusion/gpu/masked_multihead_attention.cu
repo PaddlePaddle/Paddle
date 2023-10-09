@@ -893,7 +893,7 @@ void fmha_impl(const phi::GPUContext &dev_ctx,
   }
 }
 
-template <typename T>
+template <typename T, bool CACHE_KV_INT8 = false>
 void DispatchFMHA(const phi::GPUContext &dev_ctx,
                   const phi::DenseTensor &qkv_tensor,
                   const Masked_multihead_attention_params<T> &params,

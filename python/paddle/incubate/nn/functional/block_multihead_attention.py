@@ -28,11 +28,19 @@ def block_multihead_attention(
     cu_seqlens_q,
     cu_seqlens_k,
     block_tables,
+    cache_k_quant_scales=None,
+    cache_v_quant_scales=None,
+    cache_k_dequant_scales=None,
+    cache_v_dequant_scales=None,
     rope_emb=None,
     mask=None,
     max_seq_len=-1,
     block_size=64,
     use_neox_style=False,
+    use_dynamic_cachekv_quant=False,
+    quant_round_type=1,
+    quant_max_bound=127.0,
+    quant_min_bound=-127.0,
 ):
     r"""
     Block Multi-head attention for text summarization.
@@ -53,9 +61,17 @@ def block_multihead_attention(
             block_tables,
             rope_emb,
             mask,
+            cache_k_quant_scales,
+            cache_v_quant_scales,
+            cache_k_dequant_scales,
+            cache_v_dequant_scales,
             max_seq_len,
             block_size,
             use_neox_style,
+            use_dynamic_cachekv_quant,
+            quant_round_type,
+            quant_max_bound,
+            quant_min_bound,
         )
 
     helper = LayerHelper('block_multihead_attention', **locals())
@@ -77,6 +93,14 @@ def block_multihead_attention(
         inputs['rope_emb'] = rope_emb
     if mask is not None:
         inputs['mask'] = mask
+    if cache_k_quant_scales is not None:
+        inputs["cache_k_quant_scales"] = cache_k_quant_scales
+    if cache_v_quant_scales is not None:
+        inputs["cache_v_quant_scales"] = cache_v_quant_scales
+    if cache_k_dequant_scales is not None:
+        inputs["cache_k_dequant_scales"] = cache_k_dequant_scales
+    if cache_v_dequant_scales is not None:
+        inputs["cache_v_dequant_scales"] = cache_v_dequant_scales
 
     outputs = {
         'fmha_out': out,
@@ -92,6 +116,10 @@ def block_multihead_attention(
             'max_seq_len': max_seq_len,
             'block_size': block_size,
             'use_neox_style': use_neox_style,
+            'dynamic_cachekv_quant': use_dynamic_cachekv_quant,
+            'quant_round_type': quant_round_type,
+            'quant_max_bound': quant_max_bound,
+            'quant_min_bound': quant_min_bound,
         },
     )
     return out, qkv, key_cache, value_cache

@@ -929,121 +929,6 @@ inline __device__ Float8_ mul(float a, Float8_ b) {
 }
 
 template <>
-inline __device__ __nv_bfloat162 mul(float a, __nv_bfloat162 b) {
-  __nv_bfloat162 ret;
-  ret.x = static_cast<__nv_bfloat16>(a) * b.x;
-  ret.y = static_cast<__nv_bfloat16>(a) * b.y;
-  return ret;
-}
-
-template <>
-inline __device__ bf16_4_t mul(float a, bf16_4_t b) {
-  bf16_4_t ret;
-  ret.x = mul<__nv_bfloat162, float, __nv_bfloat162>(a, b.x);
-  ret.y = mul<__nv_bfloat162, float, __nv_bfloat162>(a, b.y);
-  return ret;
-}
-
-template <>
-inline __device__ bf16_8_t mul(float a, bf16_8_t b) {
-  bf16_8_t ret;
-  ret.x = mul<__nv_bfloat162, float, __nv_bfloat162>(a, b.x);
-  ret.y = mul<__nv_bfloat162, float, __nv_bfloat162>(a, b.y);
-  ret.z = mul<__nv_bfloat162, float, __nv_bfloat162>(a, b.z);
-  ret.w = mul<__nv_bfloat162, float, __nv_bfloat162>(a, b.w);
-  return ret;
-}
-
-template <>
-inline __device__ uint32_t mul(float a, uint32_t b) {
-  union {
-    float16 out[2];
-    uint32_t t_out;
-  };
-
-  union {
-    float16 in[2];
-    uint32_t t_in;
-  };
-  t_in = b;
-#pragma unroll
-  for (int i = 0; i < 2; ++i) {
-    out[i] = static_cast<float16>(a) * in[i];
-  }
-  return t_out;
-}
-
-template <>
-inline __device__ float16 mul(float a, float16 b) {
-  return static_cast<float16>(a) * b;
-}
-
-template <>
-inline __device__ uint2 mul(float a, uint2 b) {
-  union {
-    uint2 tmp_in;
-    float16 tmp_in_fp16[4];
-  };
-  tmp_in = b;
-  union {
-    uint2 ret;
-    float16 tmp_out_fp16[4];
-  };
-
-#pragma unroll
-  for (int i = 0; i < 4; ++i) {
-    tmp_out_fp16[i] = mul<float16, float, float16>(a, tmp_in_fp16[i]);
-  }
-  return ret;
-}
-
-template <>
-inline __device__ uint4 mul(float a, uint4 b) {
-  union {
-    uint4 tmp_in;
-    float16 tmp_in_fp16[8];
-  };
-  tmp_in = b;
-  union {
-    uint4 ret;
-    float16 tmp_out_fp16[8];
-  };
-#pragma unroll
-  for (int i = 0; i < 8; ++i) {
-    tmp_out_fp16[i] = mul<float16, float, float16>(a, tmp_in_fp16[i]);
-  }
-  return ret;
-}
-
-template <>
-inline __device__ float2 mul(float a, float2 b) {
-  float2 c;
-  c.x = a * b.x;
-  c.y = a * b.y;
-  return c;
-}
-
-template <>
-inline __device__ float4 mul(float a, float4 b) {
-  float4 c;
-  c.x = a * b.x;
-  c.y = a * b.y;
-  c.z = a * b.z;
-  c.w = a * b.w;
-  return c;
-}
-
-template <>
-inline __device__ Float8_ mul(float a, Float8_ b) {
-  Float8_ c;
-  c.x = mul<float2, float, float2>(a, b.x);
-  c.y = mul<float2, float, float2>(a, b.y);
-  c.z = mul<float2, float, float2>(a, b.z);
-  c.w = mul<float2, float, float2>(a, b.w);
-  return c;
-}
-
-template <>
 inline __device__ float2 mul(float2 a, float2 b) {
   float2 c;
   c.x = a.x * b.x;
@@ -2861,430 +2746,116 @@ struct MMHAStore<T, int8_t, true> {
   const float quant_min_bound_;
 };
 
-//------------------------------------
-template <typename T, int N>
-struct packed_type;
+constexpr int32_t WARP_SIZE = 32;
+constexpr int32_t HALF_WARP = 16;
+constexpr float QUANT_MAX_BOUND = 127.0;
+constexpr float QUANT_MIN_BOUND = -127.0;
+
 template <typename T>
-struct packed_type<T, 1> {
-  using type = T;
-};
-template <>
-struct packed_type<uint8_t, 2> {
-  using type = uint16_t;
-};
-template <>
-struct packed_type<uint8_t, 4> {
-  using type = uint32_t;
-};
-template <>
-struct packed_type<uint8_t, 8> {
-  using type = uint64_t;
-};
-template <>
-struct packed_type<float, 2> {
-  using type = float2;
-};
-template <>
-struct packed_type<float, 4> {
-  using type = float4;
-};
-template <>
-struct packed_type<float, 8> {
-  using type = Float8_;
+struct QuantFunc {
+  __host__ __device__ uint8_t operator()(T x, float quant_scale) {
+    float tmp = static_cast<float>(x) * quant_scale;
+    tmp = round(tmp);
+    if (tmp > QUANT_MAX_BOUND)
+      tmp = QUANT_MAX_BOUND;
+    else if (tmp < QUANT_MIN_BOUND)
+      tmp = QUANT_MIN_BOUND;
+    return static_cast<uint8_t>(tmp + 128.0f);
+  }
 };
 
-//------------------------------------
 template <typename T>
-struct num_elems;
-template <>
-struct num_elems<float> {
-  static constexpr int value = 1;
+struct MaxFunc {
+  __device__ T operator()(T a, T b) { return max(a, b); }
 };
+
 template <>
-struct num_elems<float2> {
-  static constexpr int value = 2;
-};
-template <>
-struct num_elems<float4> {
-  static constexpr int value = 4;
-};
-// lyq::todo float8
-// lyq::todo uint16_t
-template <>
-struct num_elems<uint32_t> {
-  static constexpr int value = 2;
-};
-template <>
-struct num_elems<uint2> {
-  static constexpr int value = 4;
-};
-template <>
-struct num_elems<uint4> {
-  static constexpr int value = 8;
-};
-#ifdef ENABLE_BF16
-template <>
-struct num_elems<__nv_bfloat162> {
-  static constexpr int value = 2;
-};
-template <>
-struct num_elems<bf16_4_t> {
-  static constexpr int value = 4;
-};
-template <>
-struct num_elems<bf16_8_t> {
-  static constexpr int value = 8;
-};
+struct MaxFunc<half> {
+  __device__ half operator()(half a, half b) {
+#if __CUDA_ARCH__ >= 800
+    return __hmax(a, b);
+#else
+    return max(static_cast<float>(a), static_cast<float>(b));
 #endif
+  }
+};
+
+template <>
+struct MaxFunc<__nv_bfloat16> {
+  __device__ __nv_bfloat16 operator()(__nv_bfloat16 a, __nv_bfloat16 b) {
+#if __CUDA_ARCH__ >= 800
+    return __hmax(a, b);
+#else
+    return max(static_cast<float>(a), static_cast<float>(b));
+#endif
+  }
+};
 
 template <typename T>
-inline __device__ T roundWithTiesToEven(T x) {
-  T xLower = floor(x);
-  T xUpper = ceil(x);
-  // x is in interval [xl,xu]. Choose closest of two bounds, breaking ties to
-  // even.
-  T dLower = x - xLower;
-  T dUpper = xUpper - x;
-  return static_cast<T>(
-      (dLower == dUpper ? fmod(xLower, 2.0F) == 0.0F : dLower < dUpper)
-          ? xLower
-          : xUpper);
-}
-
-template <typename T, typename D>
-inline __device__ T round_tmp(D val);
+struct AbsFunc {
+  __device__ T operator()(T x) { return abs(x); }
+};
 
 template <>
-inline __device__ uint8_t round_tmp(float val) {
-  float quant_value = roundWithTiesToEven(val);
-  quant_value = quant_value > 127.0f ? 127.0f : quant_value;
-  quant_value = quant_value < -127.0f ? -127.0f : quant_value;
-  return static_cast<uint8_t>(quant_value + 128.0);
-}
-
-template <>
-inline __device__ uint8_t round_tmp(float16 val) {
-  float quant_value = roundWithTiesToEven(static_cast<float>(val));
-  quant_value = quant_value > 127.0f ? 127.0f : quant_value;
-  quant_value = quant_value < -127.0f ? -127.0f : quant_value;
-  return static_cast<uint8_t>(quant_value + 128.0);
-}
-
-template <>
-inline __device__ uint8_t round_tmp(__nv_bfloat16 val) {
-  float quant_value =
-      static_cast<float>(roundWithTiesToEven(static_cast<float>(val)));
-  quant_value = quant_value > 127.0f ? 127.0f : quant_value;
-  quant_value = quant_value < -127.0f ? -127.0f : quant_value;
-  return static_cast<uint8_t>(quant_value + 128.0);
-}
-
-template <>
-inline __device__ uint16_t round_tmp(float2 val) {
-  union {
-    uint16_t ret;
-    uint8_t tmp[2];
-  };
-  tmp[0] = round_tmp<uint8_t, float>(val.x);
-  tmp[1] = round_tmp<uint8_t, float>(val.y);
-  return ret;
-}
-
-template <>
-inline __device__ uint32_t round_tmp(float4 val) {
-  union {
-    uint32_t ret;
-    uint8_t tmp[4];
-  };
-  tmp[0] = round_tmp<uint8_t, float>(val.x);
-  tmp[1] = round_tmp<uint8_t, float>(val.y);
-  tmp[2] = round_tmp<uint8_t, float>(val.z);
-  tmp[3] = round_tmp<uint8_t, float>(val.w);
-  return ret;
-}
-
-template <>
-inline __device__ uint16_t round_tmp(uint32_t val) {
-  union {
-    uint8_t int8[2];
-    uint16_t ret;
-  };
-  union {
-    float16 fp16[2];
-    uint32_t tmp;
-  };
-  tmp = val;
-
-#pragma unroll
-  for (int i = 0; i < 2; ++i) {
-    int8[i] = round_tmp<uint8_t, float16>(fp16[i]);
-  }
-
-  return ret;
-}
-
-template <>
-inline __device__ uint32_t round_tmp(uint2 val) {
-  union {
-    uint8_t int8[4];
-    uint32_t ret;
-  };
-
-  union {
-    uint2 ui2;
-    float16 tmp_fp16[4];
-  };
-  ui2 = val;
-
-#pragma unroll
-  for (int i = 0; i < 4; ++i) {
-    int8[i] = round_tmp<uint8_t, float16>(tmp_fp16[i]);
-  }
-  return ret;
-}
-
-template <>
-inline __device__ uint64_t round_tmp(uint4 val) {
-  union {
-    uint8_t int8[8];
-    uint64_t ret;
-  };
-
-  union {
-    uint4 ui4;
-    float16 tmp_fp16[8];
-  };
-  ui4 = val;
-
-#pragma unroll
-  for (int i = 0; i < 8; ++i) {
-    int8[i] = round_tmp<uint8_t, float16>(tmp_fp16[i]);
-  }
-  return ret;
-}
-
-template <>
-inline __device__ uint16_t round_tmp(__nv_bfloat162 val) {
-  union {
-    uint8_t tmp[2];
-    uint16_t ret;
-  };
-  tmp[0] = round_tmp<uint8_t, __nv_bfloat16>(val.x);
-  tmp[1] = round_tmp<uint8_t, __nv_bfloat16>(val.y);
-  return ret;
-}
-
-template <>
-inline __device__ uint32_t round_tmp(bf16_4_t val) {
-  union {
-    uint16_t tmp[2];
-    uint32_t ret;
-  };
-  tmp[0] = round_tmp<uint16_t, __nv_bfloat162>(val.x);
-  tmp[1] = round_tmp<uint16_t, __nv_bfloat162>(val.y);
-  return ret;
-}
-
-template <>
-inline __device__ uint64_t round_tmp(bf16_8_t val) {
-  union {
-    uint16_t int16[4];
-    uint64_t int64;
-  };
-  int16[0] = round_tmp<uint16_t, __nv_bfloat162>(val.x);
-  int16[1] = round_tmp<uint16_t, __nv_bfloat162>(val.y);
-  int16[2] = round_tmp<uint16_t, __nv_bfloat162>(val.z);
-  int16[3] = round_tmp<uint16_t, __nv_bfloat162>(val.w);
-  return int64;
-}
-
-template <typename T, typename IntT>
-inline __device__ void mul_pointer_v2(T* c, float a, IntT* b);
-
-template <>
-inline __device__ void mul_pointer_v2(float4* c, float a, uint8_t* b) {
-  c->x = a * (static_cast<float>(b[0]) - 128.0);
-  c->y = a * (static_cast<float>(b[1]) - 128.0);
-  c->z = a * (static_cast<float>(b[2]) - 128.0);
-  c->w = a * (static_cast<float>(b[3]) - 128.0);
-}
-
-template <>
-inline __device__ void mul_pointer_v2(float4* c, float a, uint32_t* b) {
-  uint8_t* b_tmp = reinterpret_cast<uint8_t*>(b);
-  c->x = a * (static_cast<float>(b_tmp[0]) - 128.0);
-  c->y = a * (static_cast<float>(b_tmp[1]) - 128.0);
-  c->z = a * (static_cast<float>(b_tmp[2]) - 128.0);
-  c->w = a * (static_cast<float>(b_tmp[3]) - 128.0);
-}
-
-template <>
-inline __device__ void mul_pointer_v2(float2* c, float a, uint8_t* b) {
-  c->x = a * (static_cast<float>(b[0]) - 128.0);
-  c->y = a * (static_cast<float>(b[1]) - 128.0);
-}
-
-template <>
-inline __device__ void mul_pointer_v2(float* c, float a, uint8_t* b) {
-  c[0] = a * (static_cast<float>(b[0]) - 128.0);
-}
-
-template <>
-inline __device__ void mul_pointer_v2(uint32_t* c, float a, uint8_t* b) {
-  float16* tmp_fp16 = reinterpret_cast<float16*>(c);
-  float16 a_prime = static_cast<float16>(a);
-  float16 offset = static_cast<float16>(128.0);
-#pragma unroll
-  for (int i = 0; i < 2; ++i) {
-    tmp_fp16[i] = a_prime * (static_cast<float16>(b[i]) - offset);
-  }
-}
-
-template <>
-inline __device__ void mul_pointer_v2(uint2* c, float a, uint8_t* b) {
-  float16* tmp_fp16 = reinterpret_cast<float16*>(c);
-  float16 a_prime = static_cast<float16>(a);
-  float16 offset = static_cast<float16>(128.0);
-#pragma unroll
-  for (int i = 0; i < 4; ++i) {
-    tmp_fp16[i] = a_prime * (static_cast<float16>(b[i]) - offset);
-  }
-}
-
-template <>
-inline __device__ void mul_pointer_v2(uint4* c, float a, uint8_t* b) {
-  float16* tmp_fp16 = reinterpret_cast<float16*>(c);
-  float16 a_prime = static_cast<float16>(a);
-  float16 offset = static_cast<float16>(128.0);
-#pragma unroll
-  for (int i = 0; i < 8; ++i) {
-    tmp_fp16[i] = a_prime * (static_cast<float16>(b[i]) - offset);
-  }
-}
-
-template <>
-inline __device__ void mul_pointer_v2(uint4* c, float a, uint64_t* b) {
-  uint8_t* tmp_b = reinterpret_cast<uint8_t*>(b);
-  float16* tmp_fp16 = reinterpret_cast<float16*>(c);
-  float16 a_prime = static_cast<float16>(a);
-  float16 offset = static_cast<float16>(128.0);
-#pragma unroll
-  for (int i = 0; i < 8; ++i) {
-    tmp_fp16[i] = a_prime * (static_cast<float16>(tmp_b[i]) - offset);
-  }
-}
-
-inline __device__ static void convert_(__nv_bfloat16* result,
-                                       uint32_t const& source) {
-#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
-
-  uint32_t* bf16_result_ptr = reinterpret_cast<uint32_t*>(result);
-  uint32_t const i8s = reinterpret_cast<uint32_t const&>(source);
-
-  static constexpr uint32_t fp32_base = 0x4B000000;
-  float fp32_intermediates[4];
-
-  uint32_t* fp32_intermediates_casted =
-      reinterpret_cast<uint32_t*>(fp32_intermediates);
-  fp32_intermediates_casted[0] = __byte_perm(i8s, fp32_base, 0x7650);
-  fp32_intermediates_casted[1] = __byte_perm(i8s, fp32_base, 0x7651);
-  fp32_intermediates_casted[2] = __byte_perm(i8s, fp32_base, 0x7652);
-  fp32_intermediates_casted[3] = __byte_perm(i8s, fp32_base, 0x7653);
-
-#pragma unroll
-  for (int ii = 0; ii < 4; ++ii) {
-    fp32_intermediates[ii] -= (8388608.f + 128.f);
-  }
-
-#pragma unroll
-  for (int ii = 0; ii < 2; ++ii) {
-    bf16_result_ptr[ii] = __byte_perm(fp32_intermediates_casted[2 * ii + 0],
-                                      fp32_intermediates_casted[2 * ii + 1],
-                                      0x7632);
-  }
+struct AbsFunc<half> {
+  __device__ half operator()(half x) {
+#if __CUDA_ARCH__ >= 800
+    return __habs(x);
+#else
+    return abs(static_cast<float>(x));
 #endif
-}
+  }
+};
 
 template <>
-inline __device__ void mul_pointer_v2(__nv_bfloat162* c, float a, uint8_t* b) {
-  __nv_bfloat16 a_prime = static_cast<__nv_bfloat16>(a);
-  __nv_bfloat16* c_prime = reinterpret_cast<__nv_bfloat16*>(c);
-  convert_(c_prime, static_cast<uint32_t>(*reinterpret_cast<uint16_t*>(b)));
-#pragma unroll
-  for (int i = 0; i < 2; ++i) {
-    c_prime[i] *= a_prime;
+struct AbsFunc<__nv_bfloat16> {
+  __device__ __nv_bfloat16 operator()(__nv_bfloat16 x) {
+#if __CUDA_ARCH__ >= 800
+    return __habs(x);
+#else
+    return abs(static_cast<float>(x));
+#endif
   }
+};
+
+template <typename T, typename Vec, int VecSize>
+__inline__ __device__ T LocalReduceMax(Vec& vec) {  // NOLINT
+  T local_max = static_cast<T>(0.0);
+#pragma unroll
+  for (int i = 0; i < VecSize; ++i) {
+    local_max = vec[i] > local_max ? vec[i] : local_max;
+  }
+  return local_max;
 }
 
-template <>
-inline __device__ void mul_pointer_v2(__nv_bfloat162* c, float a, uint16_t* b) {
-  using Packed_Int8_t = typename packed_type<uint8_t, 2>::type;
-  Packed_Int8_t int8_vec_4_val = *reinterpret_cast<Packed_Int8_t*>(b);
-  uint8_t* int8_vec_pointer = reinterpret_cast<uint8_t*>(&int8_vec_4_val);
-
-  uint32_t* bf16_result_ptr = reinterpret_cast<uint32_t*>(c);
-  uint32_t const i8s = int8_vec_4_val;
-
-  static constexpr uint32_t fp32_base = 0x4B000000;
-  float fp32_intermediates[2];
-
-  uint32_t* fp32_intermediates_casted =
-      reinterpret_cast<uint32_t*>(fp32_intermediates);
-  fp32_intermediates_casted[0] = __byte_perm(i8s, fp32_base, 0x7650);
-  fp32_intermediates_casted[1] = __byte_perm(i8s, fp32_base, 0x7651);
-
+template <typename T>
+__inline__ __device__ T WarpReduceAbsMax(T val, unsigned lane_mask) {
 #pragma unroll
-  for (int ii = 0; ii < 2; ++ii) {
-    fp32_intermediates[ii] -= (8388608.f + 128.f);
+  for (int mask = HALF_WARP; mask > 0; mask >>= 1) {
+    val = MaxFunc<T>()(val, __shfl_xor_sync(lane_mask, val, mask, WARP_SIZE));
   }
-
-  bf16_result_ptr[0] = __byte_perm(
-      fp32_intermediates_casted[0], fp32_intermediates_casted[1], 0x7632);
-  __nv_bfloat16 scale = static_cast<__nv_bfloat16>(a);
-  c->x *= scale;
-  c->y *= scale;
+  return val;
 }
 
-template <>
-inline __device__ void mul_pointer_v2(bf16_4_t* c, float a, uint8_t* b) {
-  __nv_bfloat16 a_prime = static_cast<__nv_bfloat16>(a);
-  __nv_bfloat16* c_prime = reinterpret_cast<__nv_bfloat16*>(c);
-  convert_(c_prime, *reinterpret_cast<uint32_t*>(b));
-#pragma unroll
-  for (int i = 0; i < 4; ++i) {
-    c_prime[i] *= a_prime;
-  }
-}
+template <typename T>
+__inline__ __device__ T BlockReduceAbsMax(T val, unsigned mask) {
+  static __shared__ T smem[WARP_SIZE];
+  int32_t lane_id = threadIdx.x % WARP_SIZE;
+  int32_t warp_id = threadIdx.x / WARP_SIZE;
 
-template <>
-inline __device__ void mul_pointer_v2(bf16_4_t* c, float a, uint32_t* b) {
-  __nv_bfloat16 a_prime = static_cast<__nv_bfloat16>(a);
-  __nv_bfloat16* c_prime = reinterpret_cast<__nv_bfloat16*>(c);
-  convert_(c_prime, *b);
-#pragma unroll
-  for (int i = 0; i < 4; ++i) {
-    c_prime[i] *= a_prime;
-  }
-}
+  val = WarpReduceAbsMax(val, mask);
 
-template <>
-inline __device__ void mul_pointer_v2(bf16_8_t* c, float a, uint8_t* b) {
-  bf16_4_t* tmp_c = reinterpret_cast<bf16_4_t*>(c);
-#pragma unroll
-  for (int i = 0; i < 2; ++i) {
-    mul_pointer_v2<bf16_4_t>(tmp_c + i, a, b + 4 * i);
+  if (lane_id == 0) {
+    smem[warp_id] = val;
   }
-}
 
-template <>
-inline __device__ void mul_pointer_v2(bf16_8_t* c, float a, uint64_t* b) {
-  bf16_4_t* tmp_c = reinterpret_cast<bf16_4_t*>(c);
-  uint64_t bb = *b;
-  uint32_t* tmp_b = reinterpret_cast<uint32_t*>(&bb);
-#pragma unroll
-  for (int i = 0; i < 2; ++i) {
-    mul_pointer_v2<bf16_4_t>(tmp_c + i, a, tmp_b + i);
-  }
+  __syncthreads();
+
+  T abs_max_val = (threadIdx.x < (blockDim.x / WARP_SIZE))
+                      ? smem[threadIdx.x]
+                      : static_cast<T>(0.0f);
+  abs_max_val = WarpReduceAbsMax(abs_max_val, mask);
+  return abs_max_val;
 }
 
 }  // namespace fusion

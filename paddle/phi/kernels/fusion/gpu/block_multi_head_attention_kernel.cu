@@ -38,9 +38,17 @@ void BlockMultiheadAttentionKernel(
     const DenseTensor& block_tables,
     const paddle::optional<DenseTensor>& rope_emb,
     const paddle::optional<DenseTensor>& mask,
+    const paddle::optional<DenseTensor>& cache_k_quant_scales,
+    const paddle::optional<DenseTensor>& cache_v_quant_scales,
+    const paddle::optional<DenseTensor>& cache_k_dequant_scales,
+    const paddle::optional<DenseTensor>& cache_v_dequant_scales,
     int max_seq_len,
     int block_size,
     bool use_neox_style,
+    const bool dynamic_cachekv_quant,
+    const int quant_round_type,
+    const float quant_max_bound,
+    const float quant_min_bound,
     DenseTensor* fmha_out,
     DenseTensor* qkv_out,
     DenseTensor* key_cache_out,
@@ -159,17 +167,34 @@ void BlockMultiheadAttentionKernel(
                                     &softmax_lse,
                                     &seed_offset);
     VLOG(1) << "flash end";
-    CacheKernel<T>(dev_ctx,
-                   qkv,
-                   block_tables,
-                   padding_offsets,
-                   seq_lens_encoder,
-                   token_num,
-                   num_head,
-                   dim_head,
-                   max_seq_len,
-                   key_cache_out,
-                   value_cache_out);
+    if (cache_k_quant_scales && dynamic_cachekv_quant) {
+      DynamicQuantCacheKernel<T>(dev_ctx,
+                                 qkv,
+                                 block_tables,
+                                 padding_offsets,
+                                 seq_lens_encoder,
+                                 *(cache_k_quant_scales.get_ptr()),
+                                 *(cache_v_quant_scales.get_ptr()),
+                                 *(cache_k_dequant_scales.get_ptr()),
+                                 *(cache_v_dequant_scales.get_ptr()),
+                                 num_head,
+                                 dim_head,
+                                 max_seq_len,
+                                 key_cache_out,
+                                 value_cache_out);
+    } else {
+      CacheKernel<T>(dev_ctx,
+                     qkv,
+                     block_tables,
+                     padding_offsets,
+                     seq_lens_encoder,
+                     token_num,
+                     num_head,
+                     dim_head,
+                     max_seq_len,
+                     key_cache_out,
+                     value_cache_out);
+    }
     VLOG(1) << "cache end";
   }
   VLOG(1) << "encoder done";
@@ -187,28 +212,36 @@ void BlockMultiheadAttentionKernel(
                         max_seq_len,
                         dim_head);
     VLOG(1) << "qkv_out_decoder: " << qkv_out_decoder.dims();
-    blha<T>(dev_ctx,
-            qkv_out_decoder,
-            nullptr,  // qkv_bias
-            &block_tables,
-            nullptr,  // not need mask during generation
-            &cum_offsets,
-            &seq_lens_decoder,
-            rope_emb ? &rope_emb.get() : nullptr,  // rope_emb
-            key_cache_out,
-            value_cache_out,
-            fmha_out,
-            bsz,
-            max_block_per_seq,
-            block_size,
-            max_seq_len,
-            num_head,
-            dim_head,
-            max_dec_len_this_time,
-            rope_emb ? 1 : 0,
-            1. / sqrt(dim_head),
-            /*compute_bias*/ false,
-            use_neox_style);
+    blha<T>(
+        dev_ctx,
+        qkv_out_decoder,
+        nullptr,  // qkv_bias
+        &block_tables,
+        nullptr,  // not need mask during generation
+        &cum_offsets,
+        &seq_lens_decoder,
+        rope_emb ? &rope_emb.get() : nullptr,  // rope_emb
+        key_cache_out,
+        value_cache_out,
+        fmha_out,
+        bsz,
+        max_block_per_seq,
+        block_size,
+        max_seq_len,
+        num_head,
+        dim_head,
+        max_dec_len_this_time,
+        rope_emb ? 1 : 0,
+        1. / sqrt(dim_head),
+        /*compute_bias*/ false,
+        use_neox_style,
+        quant_round_type,
+        quant_max_bound,
+        quant_min_bound,
+        cache_k_quant_scales ? cache_k_quant_scales.get_ptr() : nullptr,
+        cache_v_quant_scales ? cache_v_quant_scales.get_ptr() : nullptr,
+        cache_k_dequant_scales ? cache_k_dequant_scales.get_ptr() : nullptr,
+        cache_v_dequant_scales ? cache_v_dequant_scales.get_ptr() : nullptr);
     VLOG(1) << "blha end";
   }
   VLOG(1) << "decoder done";

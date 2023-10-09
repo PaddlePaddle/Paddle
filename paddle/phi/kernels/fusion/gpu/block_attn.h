@@ -151,15 +151,10 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
   float v_dequant_scale;
 
   if (USE_CACHE_INT8) {
-    const int cache_id = params.cache_k_group_num == 1 ? 0 : hi;
-    k_quant_scale =
-        USE_CACHE_INT8 ? params.cache_k_quant_scales[cache_id] : 1.0f;
-    v_quant_scale =
-        USE_CACHE_INT8 ? params.cache_v_quant_scales[cache_id] : 1.0f;
-    k_dequant_scale =
-        USE_CACHE_INT8 ? params.cache_k_dequant_scales[cache_id] : 1.0f;
-    v_dequant_scale =
-        USE_CACHE_INT8 ? params.cache_v_dequant_scales[cache_id] : 1.0f;
+    k_quant_scale = params.cache_k_quant_scales[hi];
+    v_quant_scale = params.cache_v_quant_scales[hi];
+    k_dequant_scale = params.cache_k_dequant_scales[hi];
+    v_dequant_scale = params.cache_v_dequant_scales[hi];
   }
 
   const int bhi = bi * params.num_head + hi;
@@ -803,7 +798,6 @@ void blha(const phi::GPUContext &dev_ctx,
           const int quant_round_type = 1,
           const float quant_max_bound = 127.0f,
           const float quant_min_bound = -127.0f,
-          const int cache_scale_group_num = 1,
           const phi::DenseTensor *cache_k_quant_scales = nullptr,
           const phi::DenseTensor *cache_v_quant_scales = nullptr,
           const phi::DenseTensor *cache_k_dequant_scales = nullptr,
@@ -821,7 +815,6 @@ void blha(const phi::GPUContext &dev_ctx,
     params.cache_v_quant_scales = cache_v_quant_scales->data<float>();
     params.cache_k_dequant_scales = cache_k_dequant_scales->data<float>();
     params.cache_v_dequant_scales = cache_v_dequant_scales->data<float>();
-    params.cache_k_group_num = cache_scale_group_num;
   } else {
     params.k_cache = k_cache->data<T>();
     params.v_cache = v_cache->data<T>();
@@ -1142,6 +1135,186 @@ void CacheKernel(
             block_size,
             elem_nums);
   }
+}
+
+template <typename T, int VecSize>
+__global__ void quant_write_cache_int8_kernel(
+    const T *__restrict__ qkv,          // [num_tokens, 3, num_heads, head_size]
+    uint8_t *__restrict__ key_cache,    // [num_blocks, num_heads, block_size,
+                                        // head_size]
+    uint8_t *__restrict__ value_cache,  // [num_blocks, num_heads, block_size,
+                                        // head_size]
+    const int *__restrict__ block_tables,     // [bsz, max_blocks_per_seq]
+    const int *__restrict__ padding_offsets,  // [num_tokens]
+    const int *__restrict__ seq_lens,         // [bsz]
+    const int max_seq_len,
+    const int max_blocks_per_seq,
+    const int num_tokens,
+    const int num_heads,
+    const int head_size,
+    const int block_size,
+    float *k_quant_scales,
+    float *v_quant_scales,
+    float *k_dequant_scales,
+    float *v_dequant_scales) {
+  const int hi = blockIdx.x;
+  const int qkv_id = blockIdx.y;
+
+  using InVec = phi::AlignedVector<T, VecSize>;
+  using OutVec = phi::AlignedVector<uint8_t, VecSize>;
+
+  InVec in_vec;
+  OutVec out_vec;
+  InVec abs_max_vec;
+#pragma unroll
+  for (int i = 0; i < VecSize; ++i) {
+    abs_max_vec[i] = 0.0f;
+  }
+
+  uint8_t *dst_ptr;
+  float *quant_scales;
+  float *dequant_scales;
+  if (qkv_id == 0) {
+    dst_ptr = key_cache;
+    quant_scales = k_quant_scales;
+    dequant_scales = k_dequant_scales;
+  } else {
+    dst_ptr = value_cache;
+    quant_scales = v_quant_scales;
+    dequant_scales = v_dequant_scales;
+  }
+
+  T local_abs_max;
+
+  for (int idx = threadIdx.x * VecSize; idx < num_tokens * head_size;
+       idx += blockDim.x * VecSize) {
+    int token_idx = idx / head_size;
+    int h_offset = idx % head_size;
+    int linear_idx = token_idx * 3 * num_heads * head_size +
+                     (qkv_id + 1) * num_heads * head_size + hi * head_size +
+                     h_offset;
+
+    Load<T, VecSize>(qkv + linear_idx, &in_vec);
+#pragma unroll
+    for (int i = 0; i < VecSize; ++i) {
+      abs_max_vec[i] = MaxFunc<T>()(abs_max_vec[i], AbsFunc<T>()(in_vec[i]));
+    }
+  }
+
+  local_abs_max = LocalReduceMax<T, InVec, VecSize>(abs_max_vec);
+  T abs_max_val = BlockReduceAbsMax<T>(local_abs_max, 0xffffffff);
+
+  __shared__ float quant_scale;
+  if (threadIdx.x == 0) {
+    quant_scale = 127.0f / static_cast<float>(abs_max_val);
+  }
+
+  __syncthreads();
+  for (int idx = threadIdx.x * VecSize; idx < num_tokens * head_size;
+       idx += blockDim.x * VecSize) {
+    int token_idx = idx / head_size;
+    int h_offset = idx % head_size;
+    int linear_idx = token_idx * 3 * num_heads * head_size +
+                     (qkv_id + 1) * num_heads * head_size + hi * head_size +
+                     h_offset;
+
+    Load<T, VecSize>(qkv + linear_idx, &in_vec);
+#pragma unroll
+    for (int i = 0; i < VecSize; ++i) {
+      out_vec[i] = QuantFunc<T>()(in_vec[i], quant_scale);
+    }
+
+    const int ori_token_idx = token_idx + padding_offsets[token_idx];
+    const int ori_bi = ori_token_idx / max_seq_len;
+    if (seq_lens[ori_bi] == 0) continue;
+    const int ori_seq_id = ori_token_idx % max_seq_len;
+
+    const int *block_table_now = block_tables + ori_bi * max_blocks_per_seq;
+    const int block_idx = block_table_now[ori_seq_id / block_size];
+    const int block_offset = ori_seq_id % block_size;
+    // [max_block_num, num_head, block_size, head_dim/x, x]
+    Store<uint8_t>(out_vec,
+                   dst_ptr + block_idx * num_heads * block_size * head_size +
+                       hi * block_size * head_size + block_offset * head_size +
+                       h_offset);
+  }
+
+  if (threadIdx.x == 0) {
+    quant_scales[hi] = quant_scale;
+    dequant_scales[hi] = 1.0f / quant_scale;
+  }
+}
+
+template <typename T>
+void DynamicQuantCacheKernel(
+    const phi::GPUContext &dev_ctx,
+    const phi::DenseTensor &qkv,  // [token_num, 3, num_head, head_dim]
+    const phi::DenseTensor &block_tables,
+    const phi::DenseTensor &padding_offsets,
+    const phi::DenseTensor &seq_lens,
+    const phi::DenseTensor &k_quant_scales,
+    const phi::DenseTensor &v_quant_scales,
+    const phi::DenseTensor &k_dequant_scales,
+    const phi::DenseTensor &v_dequant_scales,
+    const int num_heads,
+    const int head_size,
+    const int max_seq_len,
+    phi::DenseTensor *key_cache_out,
+    phi::DenseTensor *value_cache_out) {
+  typedef PDDataTypeTraits<T> traits_;
+  typedef typename traits_::DataType DataType_;
+
+  const int bsz = block_tables.dims()[0];
+  const int num_tokens = padding_offsets.dims()[0];
+  const int max_blocks_per_seq = block_tables.dims()[1];
+  const int32_t block_size = key_cache_out->dims()[2];
+  const int elem_nums = num_tokens * 2 * num_heads * head_size;  // just k and v
+  constexpr int PackSize = 16 / sizeof(T);
+  const int pack_num = elem_nums / PackSize;
+
+  assert(head_size % PackSize == 0);
+
+  const DataType_ *qkv_ptr =
+      reinterpret_cast<DataType_ *>(const_cast<T *>(qkv.data<T>()));
+
+  //  [max_block_num, num_head, block_size, head_dim]
+
+  uint8_t *cache_k_ptr = key_cache_out->data<uint8_t>();
+  uint8_t *cache_v_ptr = value_cache_out->data<uint8_t>();
+
+  float *k_quant_scales_data =
+      const_cast<float *>(k_quant_scales.data<float>());
+  float *k_dequant_scales_data =
+      const_cast<float *>(k_dequant_scales.data<float>());
+
+  float *v_quant_scales_data =
+      const_cast<float *>(v_quant_scales.data<float>());
+  float *v_dequant_scales_data =
+      const_cast<float *>(v_dequant_scales.data<float>());
+
+  constexpr int block_sz = 1024;
+
+  dim3 grid(num_heads, 2);
+
+  // [token_num, 3, num_head, head_dim/x, x]->[max_block_num, num_head,
+  // block_size, head_dim/x, x] Quant and Write kv
+  quant_write_cache_int8_kernel<DataType_, PackSize>
+      <<<grid, block_sz, 0, dev_ctx.stream()>>>(qkv_ptr,
+                                                cache_k_ptr,
+                                                cache_v_ptr,
+                                                block_tables.data<int>(),
+                                                padding_offsets.data<int>(),
+                                                seq_lens.data<int>(),
+                                                max_seq_len,
+                                                max_blocks_per_seq,
+                                                num_tokens,
+                                                num_heads,
+                                                head_size,
+                                                block_size,
+                                                k_quant_scales_data,
+                                                v_quant_scales_data,
+                                                k_dequant_scales_data,
+                                                v_dequant_scales_data);
 }
 
 template <typename T, int VecSize = 1>
