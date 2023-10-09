@@ -190,7 +190,7 @@ cc_library(
   DEPS phi pd_interface pd_trait type_info)
 cc_library(
   pd_op_dialect_op
-  SRCS ${op_source_file} manual_op.cc
+  SRCS ${op_source_file} manual_op.cc control_flow_op.cc
   DEPS pd_op_dialect_core)
 cc_library(
   api_builder

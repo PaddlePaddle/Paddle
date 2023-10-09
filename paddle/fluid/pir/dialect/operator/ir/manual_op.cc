@@ -1040,47 +1040,6 @@ void SplitGradOp::InferMeta(phi::InferMetaContext *infer_meta) {
   fn(infer_meta);
 }
 
-void IfOp::Build(pir::Builder &builder,             // NOLINT
-                 pir::OperationArgument &argument,  // NOLINT
-                 pir::Value cond,
-                 std::vector<pir::Type> &&output_types) {
-  VLOG(4) << "Start build IfOp";
-
-  argument.AddRegions(2u);
-  argument.AddInput(cond);
-  argument.output_types.swap(output_types);
-}
-pir::Block *IfOp::true_block() {
-  pir::Region &true_region = (*this)->region(0);
-  if (true_region.empty()) true_region.emplace_back();
-  return true_region.front();
-}
-pir::Block *IfOp::false_block() {
-  pir::Region &false_region = (*this)->region(1);
-  if (false_region.empty()) false_region.emplace_back();
-  return false_region.front();
-}
-void IfOp::Print(pir::IrPrinter &printer) {
-  auto &os = printer.os;
-  auto op = operation();
-  printer.PrintOpResult(op);
-  os << " = pd_op.if";
-  printer.PrintOpOperands(op);
-  os << " -> ";
-  printer.PrintOpReturnType(op);
-  os << "{";
-  for (auto item : *true_block()) {
-    os << "\n  ";
-    printer.PrintOperation(item);
-  }
-  os << "\n } else {";
-  for (auto item : *false_block()) {
-    os << "\n  ";
-    printer.PrintOperation(item);
-  }
-  os << "\n }";
-}
-void IfOp::Verify() {}
 }  // namespace dialect
 }  // namespace paddle
 
@@ -1090,4 +1049,3 @@ IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddN_Op)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddNWithKernelOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueGradOp)
-IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::IfOp)

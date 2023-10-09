@@ -24,3 +24,4 @@ void YieldOp::Build(Builder &builder,
 }  // namespace pir
 
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::YieldOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::CondYieldOp)
