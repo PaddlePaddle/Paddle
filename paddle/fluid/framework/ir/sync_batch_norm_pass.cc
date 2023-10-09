@@ -39,9 +39,6 @@ class SyncBatchNormPass : public Pass {
         if (op->Type() == "batch_norm_grad") {
           op->SetType("sync_batch_norm_grad");
         }
-        if (op->Type() == "inplace_abn_grad") {
-          op->SetAttr("use_sync_bn", true);
-        }
       }
     }
   }
