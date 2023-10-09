@@ -4983,27 +4983,30 @@ def atleast_1d(x):
 
     Examples:
         .. code-block:: python
-
-
-        import paddle
-
-        x = paddle.arange(2)
-        print(x)
-        #Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,[0, 1])
-        x = paddle.atleast_1d(x)
-        print(x)
-        # Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,[0, 1])
-        x = paddle.to_tensor(2)
-        print(x)
-        #Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,2)
-        x = paddle.atleast_1d(x)
-        print(x)
-        # Tensor(shape=[1], dtype=int64, place=Place(cpu), stop_gradient=True,[2])
-        x = paddle.to_tensor(0.5)
-        y = paddle.to_tensor(1.)
-        x_y =  paddle.atleast_1d((x, y))
-        print(x_y)
-        (Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,[0.50000000]), Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,[1.]))
+        >>> import paddle
+        >>> x = paddle.to_tensor(2)
+        >>> print(x)
+        Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
+            2)
+        >>> x = paddle.atleast_1d(x)
+        >>> print(x)
+        Tensor(shape=[1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [2])
+        >>> x = paddle.arange(2)
+        >>> print(x)
+        Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [0, 1])
+        >>> x = paddle.atleast_1d(x)
+        >>> print(x)
+        Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [0, 1])
+        >>> x = paddle.to_tensor(0.5)
+        >>> y = paddle.to_tensor(1.)
+        >>> x_y =  paddle.atleast_1d((x, y))
+        >>> print(x_y)
+        (Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.50000000]), Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1.]))
     """
     check_type(x, 'x', (Variable, list, tuple), 'atleast_1d')
     if isinstance(x, Variable):
@@ -5036,29 +5039,33 @@ def atleast_2d(x):
 
     Examples:
         .. code-block:: python
-        import paddle
+        >>> import paddle
+        >>> x = paddle.to_tensor(1.)
+        >>> print(x)
+        Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            1.)
+        >>> x = paddle.atleast_2d(x)
+        >>> print(x)
+        Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1.]])
+        >>> x = paddle.arange(4).reshape([2, 2])
+        >>> print(x)
+        Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 1],
+                [2, 3]])
+        >>> x = paddle.atleast_2d(x)
+        >>> print(x)
+        Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 1],
+                [2, 3]])
+        >>> x = paddle.to_tensor(0.5)
+        >>> y = paddle.to_tensor(1.)
+        >>> x_y =  paddle.atleast_2d((x, y))
+        >>> print(x_y)
+        (Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.50000000]]), Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1.]]))
 
-        x = paddle.to_tensor(1.)
-        print(x)
-        #Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True, 1.)
-        x = paddle.atleast_2d(x)
-        print(x)
-        #Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=True, [[1.]])
-        x = paddle.arange(4).reshape([2, 2])
-        print(x)
-        #Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
-        #       [[0, 1],
-        #        [2, 3]])
-        x = paddle.atleast_2d(x)
-        print(x)
-        #Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
-        #       [[0, 1],
-        #        [2, 3]])
-        x = paddle.to_tensor(0.5)
-        y = paddle.to_tensor(1.)
-        x_y =  paddle.atleast_2d((x, y))
-        print(x_y)
-        #(Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,[[0.50000000]]), Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,[[1.]]))
     """
     check_type(x, 'x', (Variable, list, tuple), 'atleast_2d')
     if isinstance(x, Variable):
@@ -5090,39 +5097,47 @@ def atleast_3d(x):
 
      Examples:
          .. code-block:: python
-         import paddle
+        >>> import paddle
+        >>> x = paddle.to_tensor(0.5)
+        >>> print(x)
+        Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            0.50000000)
+        >>> x = paddle.atleast_3d(x)
+        >>> print(x)
+        dle.to_tensor(0.5)
+        y = paddle.to_tensor(1.)
+        x_y =  paddle.atleast_3d((x, y))
+        print(x_y)
+        Tensor(shape=[1, 1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[0.50000000]]])
+        >>> x = paddle.arange(4).reshape([2, 2])
+        >>> print(x)
+        Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 1],
+                [2, 3]])
+        >>> x = paddle.atleast_3d(x)
+        >>> print(x)
+        Tensor(shape=[2, 2, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[[0],
+                [1]],
 
-         x = paddle.to_tensor(0.5)
-         print(x)
-         #Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True, 0.50000000)
-         x = paddle.atleast_3d(x)
-         print(x)
-         #Tensor(shape=[1, 1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,[[[0.50000000]]])
-         x = paddle.arange(4).reshape([2, 2])
-         print(x)
-         #Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
-         #       [[0, 1],
-         #        [2, 3]])
-         x = paddle.atleast_3d(x)
-         print(x)
-         #
-         #Tensor(shape=[2, 2, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
-         #       [[[0],
-         #         [1]],
-
-         #        [[2],
-         #         [3]]])
-         x = paddle.to_tensor(1).reshape([1, 1, 1])
-         print(x)
-         #Tensor(shape=[1, 1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,[[[1]]])
-         x = paddle.atleast_3d(x)
-         print(x)
-         #Tensor(shape=[1, 1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,[[[1]]])
-         x = paddle.to_tensor(0.5)
-         y = paddle.to_tensor(1.)
-         x_y =  paddle.atleast_3d((x, y))
-         print(x_y)
-         #(Tensor(shape=[1, 1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,[[[0.50000000]]]), Tensor(shape=[1, 1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,[[[1.]]]))
+                [[2],
+                [3]]])
+        >>> x = paddle.to_tensor(1).reshape([1, 1, 1])
+        >>> print(x)
+        Tensor(shape=[1, 1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[[1]]])
+        >>> x = paddle.atleast_3d(x)
+        >>> print(x)
+        Tensor(shape=[1, 1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[[1]]])
+        >>> x = paddle.to_tensor(0.5)
+        >>> y = paddle.to_tensor(1.)
+        >>> x_y =  paddle.atleast_3d((x, y))
+        >>> print(x_y)
+        (Tensor(shape=[1, 1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[0.50000000]]]), Tensor(shape=[1, 1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[1.]]]))
     """
 
     def _expand3(arr):
