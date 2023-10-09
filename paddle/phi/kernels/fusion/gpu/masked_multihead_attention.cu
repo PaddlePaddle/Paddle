@@ -368,6 +368,7 @@ __global__ void masked_multihead_attention_kernel(
     LoadFunc load_func,
     StoreFunc store_func) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+  // bi 显然就是batch喽！
   const int bi = blockIdx.y;
   if (params.sequence_lengths && params.sequence_lengths[bi] == 0) {
     return;
@@ -404,8 +405,14 @@ __global__ void masked_multihead_attention_kernel(
   // real batch id
   const int bbi = bi / params.beam_width;
   const int hi = blockIdx.x;
+  // bhi的意思那显然就是当前cdua thread所负责的具体batch和num_head!
+
   const int bhi = bi * params.num_head + hi;
+  // bbhi 没啥大用处，估计是被beam search用的！
   const int bbhi = bbi * params.beam_width * params.num_head + hi;
+  if (threadIdx.x == 0) {
+    //printf("bbhi %d \n",bbhi);
+  }
   const int ti =
       params.cum_offsets ? bi * params.seq_len - params.cum_offsets[bi] : -1;
   const int thi = params.cum_offsets ? ti * params.num_head + hi : -1;
@@ -421,7 +428,13 @@ __global__ void masked_multihead_attention_kernel(
                           : params.sequence_lengths[bi];
 
   // qkv [B, S=1, 3, num_head, head_dim]
+  
+  // 直接就[batch,seq,qita]哦！
+  // bi 和 hi这两个字短比较简单哦！
   int qkv_base_offset = bi * 3 * params.num_head * Dh + hi * Dh;
+  
+  // QK_VEC_SIZE 这个字短是啥意思呢？？
+
 
   constexpr int QK_VEC_SIZE = sizeof(Qk_vec) / sizeof(T);
   static_assert(Dh_MAX % QK_VEC_SIZE == 0, "");
@@ -443,7 +456,7 @@ __global__ void masked_multihead_attention_kernel(
     q_bias_base = params.qkv_bias;
     k_bias_base = params.qkv_bias + params.num_head * Dh;
   }
-
+  // 为啥要这个if！！
   if (tid < QK_VECS_PER_WARP) {
     int qk_offset = qkv_base_offset + tid * QK_VEC_SIZE;
     int qk_bias_offset = hi * Dh + tid * QK_VEC_SIZE;
