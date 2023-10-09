@@ -4944,7 +4944,188 @@ def index_put(x, indices, value, accumulate=False, name=None):
         attrs={'accumulate': accumulate},
     )
     return out
+def _add_unit_axes(shape, ndim, append=False):
+    """
+    Prepends shape with 1s so that it has the number of dimensions ndim.
+    If append is set to True, returns shape appended with 1s instead.
+    """
+    if isinstance(shape, int):
+        shape = (shape,)
+    ndim_diff = ndim - len(shape)
+    if ndim_diff > 0:
+        if append:
+            shape = list(shape) + [1] * ndim_diff
+        else:
+            shape = [1] * ndim_diff + list(shape)
+    return tuple(shape)
 
+def _expand(x, ndim, axis=0):
+    """Expand x to ndim from axis, which can be 0 or -1."""
+    shape = _add_unit_axes(x.shape, ndim, axis == -1)
+    return paddle.reshape(x, shape)
+
+def atleast_1d(x):
+    r"""
+        Returns a 1-dimensional view of each input tensor with zero dimensions. Input tensors with one or more dimensions are returned as-is.
+
+        Args:
+            input (Tensor or list of Tensors)
+
+        Returns:
+            output (Tensor or tumple of Tensors)
+
+        Raises:
+            TypeError: If the `input` is not a tensor or a list of tensors.
+
+        Examples:
+            .. code-block:: python
+
+        
+            import paddle
+
+            x = paddle.arange(2)
+            print(x)
+            #Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,[0, 1])
+            x = paddle.atleast_1d(x)
+            print(x)
+            # Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,[0, 1])
+            x = paddle.to_tensor(2)
+            print(x)
+            #Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,2)
+            x = paddle.atleast_1d(x)
+            print(x)
+            # Tensor(shape=[1], dtype=int64, place=Place(cpu), stop_gradient=True,[2])
+            x = paddle.to_tensor(0.5)
+            y = paddle.to_tensor(1.)
+            x_y =  paddle.atleast_1d((x, y))
+            print(x_y)
+            (Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,[0.50000000]), Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,[1.]))
+        """
+    check_type(x, 'x', (Variable, list, tuple), 'atleast_1d')
+    if isinstance(x, Variable):
+        return _expand(x, 1)
+    for tensor in x:
+        check_type(tensor, 'x', (Variable), 'atleast_1d', f"For 'atleast_1d', each element of 'inputs' must be a tensor, but got {type(tensor)}")
+        # if not isinstance(tensor, Variable):
+        #     raise TypeError(f"For 'atleast_1d', each element of 'inputs' must be a tensor, but got {type(tensor)}")
+    return tuple([_expand(arr, 1) for arr in x])
+
+def atleast_2d(x):
+    r"""
+    Returns a 2-dimensional view of each input tensor with zero dimensions. Input tensors with two or more dimensions are returned as-is.
+
+    Args:
+        input (Tensor or list of Tensors) –
+
+    Returns:
+        output (Tensor or tuple of Tensors)
+
+    Raises:
+        TypeError: If the `input` is not a tensor or a list of tensors.
+
+    Examples:
+        .. code-block:: python
+        import paddle
+
+        x = paddle.to_tensor(1.)
+        print(x)
+        #Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True, 1.)
+        x = paddle.atleast_2d(x)
+        print(x)
+        #Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=True, [[1.]])
+        x = paddle.arange(4).reshape([2, 2])
+        print(x)
+        #Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+        #       [[0, 1],
+        #        [2, 3]])
+        x = paddle.atleast_2d(x)
+        print(x)
+        #Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+        #       [[0, 1],
+        #        [2, 3]])
+        x = paddle.to_tensor(0.5)
+        y = paddle.to_tensor(1.)
+        x_y =  paddle.atleast_2d((x, y))
+        print(x_y)
+        #(Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,[[0.50000000]]), Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,[[1.]]))
+    """
+    check_type(x, 'x', (Variable, list, tuple), 'atleast_2d')
+    if isinstance(x, Variable):
+        return _expand(x, 2)
+    for tensor in x:
+        check_type(tensor, 'x', (Variable), 'atleast_2d', "expect Tensor or list of tensors, but got " + f"{type(tensor)}")
+       
+    return tuple([_expand(arr, 2) for arr in x])
+
+
+def atleast_3d(x):
+    r"""
+   Returns a 3-dimensional view of each input tensor with zero dimensions. Input tensors with three or more dimensions are returned as-is.
+
+    Args:
+        input (Tensor or list of Tensors) –
+
+    Returns:
+        output (Tensor or tuple of Tensors)
+
+    Raises:
+        TypeError: If the `input` is not a tensor or a list of tensors.
+
+    Examples:
+        .. code-block:: python
+        import paddle
+
+        x = paddle.to_tensor(0.5)
+        print(x)
+        #Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True, 0.50000000)
+        x = paddle.atleast_3d(x)
+        print(x)
+        #Tensor(shape=[1, 1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,[[[0.50000000]]])
+        x = paddle.arange(4).reshape([2, 2])
+        print(x)
+        #Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+        #       [[0, 1],
+        #        [2, 3]])
+        x = paddle.atleast_3d(x)
+        print(x)
+        #
+        #Tensor(shape=[2, 2, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+        #       [[[0],
+        #         [1]],
+
+        #        [[2],
+        #         [3]]])
+        x = paddle.to_tensor(1).reshape([1, 1, 1])
+        print(x)
+        #Tensor(shape=[1, 1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,[[[1]]])
+        x = paddle.atleast_3d(x)
+        print(x)
+        #Tensor(shape=[1, 1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,[[[1]]])
+        x = paddle.to_tensor(0.5)
+        y = paddle.to_tensor(1.)
+        x_y =  paddle.atleast_3d((x, y))
+        print(x_y)
+        #(Tensor(shape=[1, 1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,[[[0.50000000]]]), Tensor(shape=[1, 1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,[[[1.]]]))
+    """
+    def _expand3(arr):
+        ndim = arr.ndim
+        if ndim == 0:
+            return paddle.reshape(arr, (1, 1, 1))
+        if ndim == 1:
+            size = arr.size
+           
+            return paddle.reshape(arr, (1, size, 1))
+        if ndim == 2:
+            arr = paddle.unsqueeze(arr, axis = -1)
+         
+        return arr
+    check_type(x, 'x', (Variable, list, tuple), 'atleast_3d')
+    if isinstance(x, Variable):
+        return _expand3(x)
+    for tensor in x:
+        check_type(tensor, 'x', (Variable), 'atleast_3d', f"For 'atleast_3d', each element of 'x' must be a tensor, but got {type(tensor)}")
+        
+    return tuple([_expand3(arr) for arr in x])
 
 def unflatten(x, axis, shape, name=None):
     """
