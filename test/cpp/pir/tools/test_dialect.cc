@@ -21,7 +21,24 @@ TestDialect::TestDialect(pir::IrContext *context)
   initialize();
 }
 void TestDialect::initialize() {
-  RegisterOps<RegionOp, BranchOp, Operation1, Operation2>();
+  RegisterOps<RegionOp,
+              BranchOp,
+              Operation1,
+              Operation2,
+              TraitExampleOp,
+              SameOperandsShapeTraitOp1,
+              SameOperandsShapeTraitOp2,
+              SameOperandsAndResultShapeTraitOp1,
+              SameOperandsAndResultShapeTraitOp2,
+              SameOperandsAndResultShapeTraitOp3,
+              SameOperandsElementTypeTraitOp1,
+              SameOperandsElementTypeTraitOp2,
+              SameOperandsAndResultElementTypeTraitOp1,
+              SameOperandsAndResultElementTypeTraitOp2,
+              SameOperandsAndResultElementTypeTraitOp3,
+              SameOperandsAndResultTypeTraitOp1,
+              SameOperandsAndResultTypeTraitOp2,
+              SameOperandsAndResultTypeTraitOp3>();
 }
 
 void TestDialect::PrintOperation(pir::Operation *op,

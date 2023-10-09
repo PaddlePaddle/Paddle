@@ -738,7 +738,7 @@ std::shared_ptr<Program> ProgramClone(const Program &program) {
 std::list<Operation *>::const_iterator list_offset(const Block *block,
                                                    int start_idx) {
   auto it = block->begin();
-  while (start_idx--) ++it;
+  while (it != block->end() && start_idx--) ++it;
   return it;
 }
 
@@ -913,6 +913,7 @@ SplitedResult ForwardBackwardSplit(
   std::unordered_map<pir::Value, pir::Value> forward_value_map;
   std::unordered_map<pir::Value, pir::Value> backward_value_map;
   pir::Builder backward_builder = pir::Builder(ctx, backward_program->block());
+  bool has_backward = (backward_range[1] > backward_range[0]);
 
   // forward program construct.
   VLOG(4) << "start create forward program.";
@@ -986,25 +987,28 @@ SplitedResult ForwardBackwardSplit(
   };
 
   // counter = 0;
-  VLOG(4) << "start create backward inputs, inserting pd.data ops.";
-  VLOG(4) << "Create pd.data for backward program: fo, start with input_"
-          << counter;
-  std::for_each(forward_outputs.begin(), forward_outputs.end(), create_data_fn);
-  VLOG(4) << "Create pd.data for backward program: fx, start with input_"
-          << counter;
-  std::for_each(forward_inputs.begin(), forward_inputs.end(), create_data_fn);
-  VLOG(4) << "Create pd.data for backward program: fp, start with input_"
-          << counter;
-  std::for_each(forward_params.begin(), forward_params.end(), create_data_fn);
-  VLOG(4) << "Create pd.data for backward program: fm, start with input_"
-          << counter;
-  std::for_each(middle_values.begin(), middle_values.end(), create_data_fn);
-  VLOG(4) << "Create pd.data for backward program: fo_g, start with input_"
-          << counter;
-  std::for_each(forward_outputs_grads.begin(),
-                forward_outputs_grads.end(),
-                create_data_fn);
-  VLOG(4) << "Create pd.data for backward program end. input_" << counter;
+  if (has_backward) {
+    VLOG(4) << "start create backward inputs, inserting pd.data ops.";
+    VLOG(4) << "Create pd.data for backward program: fo, start with input_"
+            << counter;
+    std::for_each(
+        forward_outputs.begin(), forward_outputs.end(), create_data_fn);
+    VLOG(4) << "Create pd.data for backward program: fx, start with input_"
+            << counter;
+    std::for_each(forward_inputs.begin(), forward_inputs.end(), create_data_fn);
+    VLOG(4) << "Create pd.data for backward program: fp, start with input_"
+            << counter;
+    std::for_each(forward_params.begin(), forward_params.end(), create_data_fn);
+    VLOG(4) << "Create pd.data for backward program: fm, start with input_"
+            << counter;
+    std::for_each(middle_values.begin(), middle_values.end(), create_data_fn);
+    VLOG(4) << "Create pd.data for backward program: fo_g, start with input_"
+            << counter;
+    std::for_each(forward_outputs_grads.begin(),
+                  forward_outputs_grads.end(),
+                  create_data_fn);
+    VLOG(4) << "Create pd.data for backward program end. input_" << counter;
+  }
 
   // counter = 0;
   VLOG(4) << "start create forward outputs, inserting set_parameter ops.";
@@ -1023,12 +1027,14 @@ SplitedResult ForwardBackwardSplit(
                  });
   // counter = 0;
   VLOG(4) << "start create backward outputs, inserting set_parameter ops.";
-  std::for_each(forward_inputs_grads.begin(),
-                forward_inputs_grads.end(),
-                create_output_fn_backward);
-  std::for_each(forward_params_grads.begin(),
-                forward_params_grads.end(),
-                create_output_fn_backward);
+  if (has_backward) {
+    std::for_each(forward_inputs_grads.begin(),
+                  forward_inputs_grads.end(),
+                  create_output_fn_backward);
+    std::for_each(forward_params_grads.begin(),
+                  forward_params_grads.end(),
+                  create_output_fn_backward);
+  }
 
   VLOG(4) << "forward_value_map.size() is " << forward_value_map.size();
   VLOG(4) << "backward_value_map.size() is " << backward_value_map.size();

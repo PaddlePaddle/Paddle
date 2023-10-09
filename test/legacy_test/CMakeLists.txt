@@ -1072,7 +1072,6 @@ set_tests_properties(test_pool2d_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_transpose_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_activation_op PROPERTIES TIMEOUT 270)
 set_tests_properties(test_normal PROPERTIES TIMEOUT 120)
-set_tests_properties(test_lstmp_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bilinear_interp_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_decoupled_py_reader PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fuse_bn_act_pass PROPERTIES TIMEOUT 120)
@@ -1348,16 +1347,19 @@ foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
     FLAGS_new_executor_static_build=true)
 endforeach()
 
-set(NEW_IR_COVERAGE_TESTS test_label_smooth_op test_instance_norm_op_v2
-                          test_edit_distance_op)
+set(NEW_IR_COVERAGE_TESTS test_fused_feedforward_pass)
+if(NOT WITH_GPU)
+  list(REMOVE_ITEM NEW_IR_COVERAGE_TESTS test_fused_feedforward_pass)
+endif()
 
 foreach(NEW_IR_COVERAGE_TEST ${NEW_IR_COVERAGE_TESTS})
   py_test_modules(
     ${NEW_IR_COVERAGE_TEST}_new_ir MODULES ${NEW_IR_COVERAGE_TEST} ENVS
     FLAGS_enable_new_ir_in_executor=true)
+  set_tests_properties(${NEW_IR_COVERAGE_TEST}_new_ir PROPERTIES TIMEOUT 120)
+  message(
+    STATUS "NewIR Copied OpTest: ${NEW_IR_COVERAGE_TEST}_new_ir in legacy_test")
 endforeach()
-
-set_tests_properties(test_instance_norm_op_v2_new_ir PROPERTIES TIMEOUT 120)
 
 set_tests_properties(test_decoupled_py_reader_static_build PROPERTIES TIMEOUT
                                                                       120)
@@ -1407,42 +1409,8 @@ foreach(IR_OP_TEST ${NEW_IR_OP_RELAXED_TESTS})
   endif()
 endforeach()
 
-set(STRIED_TESTS
-    test_complex_getitem
-    test_complex_grad_accumulated
-    test_complex_simplenet
-    test_conv1d_layer
-    test_conv1d_transpose_layer
-    test_conv2d_layer
-    test_diagonal_op
-    test_imperative_ocr_attention_model
-    test_imperative_ptb_rnn
-    test_imperative_ptb_rnn_sorted_gradient
-    test_initializer
-    test_inplace
-    test_real_imag_op
-    test_reshape_op
-    test_set_value_op
-    test_signal
-    test_slice_op
-    test_solve_op
-    test_squeeze_op
-    test_squeeze2_op
-    test_unbind_op
-    test_unsqueeze_op
-    test_unsqueeze2_op
-    test_var_base)
-
-foreach(STRIED_TEST ${STRIED_TESTS})
-  py_test_modules(${STRIED_TEST}_with_stride MODULES ${STRIED_TEST} ENVS
-                  FLAGS_use_stride_kernel=true)
-  set_tests_properties(${STRIED_TEST}_with_stride PROPERTIES TIMEOUT 120)
-endforeach()
-
 py_test_modules(test_stride MODULES test_stride ENVS
                 FLAGS_use_stride_kernel=true)
-
-set_tests_properties(test_slice_op_with_stride PROPERTIES TIMEOUT 300)
 
 if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
   # These UTs are specially designed for FleetExecutor
