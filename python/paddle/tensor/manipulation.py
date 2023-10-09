@@ -5104,10 +5104,6 @@ def atleast_3d(x):
             0.50000000)
         >>> x = paddle.atleast_3d(x)
         >>> print(x)
-        dle.to_tensor(0.5)
-        y = paddle.to_tensor(1.)
-        x_y =  paddle.atleast_3d((x, y))
-        print(x_y)
         Tensor(shape=[1, 1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[0.50000000]]])
         >>> x = paddle.arange(4).reshape([2, 2])
@@ -5138,6 +5134,7 @@ def atleast_3d(x):
         (Tensor(shape=[1, 1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[0.50000000]]]), Tensor(shape=[1, 1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[1.]]]))
+
     """
 
     def _expand3(arr):
