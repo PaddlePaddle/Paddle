@@ -68,7 +68,6 @@ void OpCompatibleMap::InitOpCompatibleMap() {
   op_compatible_map_["sequence_pad"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
   op_compatible_map_["sequence_unpad"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
 
-  op_compatible_map_["center_loss"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
   op_compatible_map_["coalesce_tensor"] = {"1.6.0",
                                            OpCompatibleType::DEFIN_NOT};
   op_compatible_map_["crop_tensor"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};

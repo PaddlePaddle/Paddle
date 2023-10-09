@@ -12,27 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/pir/core/dialect.h"
+#include "paddle/pir/dialect/shape/utils/symbol_table.h"
 
 namespace pir {
-namespace dialect {
-///
-/// \brief Shape Dialect:
-///
-class IR_API ShapeDialect : public Dialect {
- public:
-  explicit ShapeDialect(IrContext* context);
-  static const char* name() { return "shape"; }
-  void PrintOperation(Operation* op,
-                      IrPrinter& printer) const override;  // NOLINT
 
- private:
-  void initialize();
-};
+const std::string SymbolTable::insert(Operation* symbol) {
+  std::string name;
+  if (symbol->isa<dialect::SymbolicDim>()) {
+    name = symbol->dyn_cast<SymbolicDim>().GetSymName();
+    symbol_table_map_.insert({name, symbol});
+  }
 
-}  // namespace dialect
+  // TODO(liujinnan): add more constraint_func name branch.
+  if (symbol->isa<dialect::TieProductEqualOp>()) {
+    name = "tie_product_equal";
+    symbol_func_map_[name].emplace_back(symbol);
+  }
+
+  return name;
+}
 }  // namespace pir
-
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::ShapeDialect)
