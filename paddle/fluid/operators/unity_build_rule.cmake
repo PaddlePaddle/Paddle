@@ -97,8 +97,7 @@ register_unity_group(
   fill_constant_batch_size_like_op.cc
   fill_constant_op.cc
   fill_op.cc
-  fill_zeros_like_op.cc
-  filter_by_instag_op.cc)
+  fill_zeros_like_op.cc)
 register_unity_group(
   cc
   flatten_op.cc
@@ -201,7 +200,6 @@ register_unity_group(
   positive_negative_pair_op.cc
   prelu_op.cc
   print_op.cc
-  prroi_pool_op.cc
   psroi_pool_op.cc
   pull_box_extended_sparse_op.cc
   pull_box_sparse_op.cc
@@ -213,7 +211,6 @@ register_unity_group(
   quantize_op.cc
   mkldnn/quantize_mkldnn_op.cc
   queue_generator_op.cc
-  random_crop_op.cc
   range_op.cc
   rank_attention_op.cc
   rank_loss_op.cc
@@ -256,7 +253,6 @@ register_unity_group(
   slice_op.cc)
 register_unity_group(
   cc
-  space_to_depth_op.cc
   spectral_norm_op.cc
   split_lod_tensor_op.cc
   split_op.cc
@@ -281,7 +277,6 @@ register_unity_group(
   trace_op.cc
   transpose_op.cc
   mkldnn/transpose_mkldnn_op.cc
-  tree_conv_op.cc
   unbind_op.cc
   unfold_op.cc)
 register_unity_group(
@@ -326,7 +321,7 @@ register_unity_group(
   unbind_op.cu.cc
   unpool_op.cu.cc
   unsqueeze_op.cu.cc)
-register_unity_group(cc arg_max_op.cc arg_min_op.cc squared_l2_distance_op.cc)
+register_unity_group(cc arg_max_op.cc arg_min_op.cc)
 register_unity_group(
   cc
   linear_chain_crf_op.cc
@@ -437,8 +432,7 @@ register_unity_group(
   margin_rank_loss_op.cu
   masked_select_op.cu
   shuffle_channel_op.cu
-  softmax_cudnn_op.cu
-  squared_l2_distance_op.cu)
+  softmax_cudnn_op.cu)
 register_unity_group(
   cu
   conv_shift_op.cu
@@ -470,18 +464,11 @@ register_unity_group(
   partial_sum_op.cu
   pixel_shuffle_op.cu
   prelu_op.cu
-  prroi_pool_op.cu
   run_program_op.cu
   pull_box_extended_sparse_op.cu
   pull_box_sparse_op.cu)
-register_unity_group(
-  cu
-  random_crop_op.cu
-  range_op.cu
-  reverse_op.cu
-  partial_concat_op.cu
-  kldiv_loss_op.cu
-  instance_norm_op.cu)
+register_unity_group(cu range_op.cu reverse_op.cu partial_concat_op.cu
+                     kldiv_loss_op.cu instance_norm_op.cu)
 register_unity_group(
   cu
   roi_align_op.cu
@@ -505,7 +492,6 @@ register_unity_group(
   slice_op.cu)
 register_unity_group(
   cu
-  space_to_depth_op.cu
   spectral_norm_op.cu
   split_op.cu
   split_selected_rows_op.cu
@@ -513,14 +499,8 @@ register_unity_group(
   sum_op.cu
   temporal_shift_op.cu
   arg_max_op.cu)
-register_unity_group(
-  cu
-  row_conv_op.cu
-  tree_conv_op.cu
-  tril_triu_op.cu
-  unfold_op.cu
-  arg_min_op.cu
-  crop_tensor_op.cu)
+register_unity_group(cu row_conv_op.cu tril_triu_op.cu unfold_op.cu
+                     arg_min_op.cu crop_tensor_op.cu)
 register_unity_group(
   cu
   smooth_l1_loss_op.cu
