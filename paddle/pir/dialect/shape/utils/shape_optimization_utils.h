@@ -50,6 +50,7 @@ struct SymProductHasher {
     return hash;
   }
 };
+
 class SymbolicDimMgr {
  public:
   explicit SymbolicDimMgr(ModuleOp m);
