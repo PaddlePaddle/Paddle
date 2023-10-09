@@ -326,7 +326,7 @@ def embedding_bag(
              [[2. 2. 2.]]
              [[2. 2. 2.]]]
             >>> print(emb.shape)
-            [3, 1, 3]
+            [3, 3]
 
     """
 

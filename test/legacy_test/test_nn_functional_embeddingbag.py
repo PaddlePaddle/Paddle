@@ -29,6 +29,7 @@ class EmbeddingDygraph(unittest.TestCase):
         embedding_bag = paddle.nn.EmbeddingBag(
             10, 3, sparse=True, padding_idx=9
         )
+        embedding_bag.extra_repr()
 
         w0 = np.full(shape=(10, 3), fill_value=2).astype(np.float32)
         embedding_bag.weight.set_value(w0)
@@ -59,6 +60,53 @@ class EmbeddingDygraph(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             embedding_bag = paddle.nn.EmbeddingBag(10, -3, sparse=True)
+
+        with self.assertRaises(ValueError):
+            embedding_bag = paddle.nn.EmbeddingBag(
+                10, 3, sparse=True, mode="min"
+            )
+
+    def test_3(self):
+        x_data = np.arange(3, 6).reshape((3, 1)).astype(np.int64)
+        paddle.disable_static(paddle.CPUPlace())
+        x = paddle.to_tensor(x_data, stop_gradient=False)
+
+        embedding_bag = paddle.nn.EmbeddingBag(
+            10, 3, sparse=True, padding_idx=9, mode="sum"
+        )
+
+        w0 = np.full(shape=(10, 3), fill_value=2).astype(np.float32)
+        embedding_bag.weight.set_value(w0)
+
+        adam = paddle.optimizer.Adam(
+            parameters=[embedding_bag.weight], learning_rate=0.01
+        )
+        adam.clear_grad()
+
+        out = embedding_bag(x)
+        out.backward()
+        adam.step()
+
+    def test_4(self):
+        x_data = np.arange(3, 6).reshape((3, 1)).astype(np.int64)
+        paddle.disable_static(paddle.CPUPlace())
+        x = paddle.to_tensor(x_data, stop_gradient=False)
+
+        embedding_bag = paddle.nn.EmbeddingBag(
+            10, 3, sparse=True, padding_idx=9, mode="max"
+        )
+
+        w0 = np.full(shape=(10, 3), fill_value=2).astype(np.float32)
+        embedding_bag.weight.set_value(w0)
+
+        adam = paddle.optimizer.Adam(
+            parameters=[embedding_bag.weight], learning_rate=0.01
+        )
+        adam.clear_grad()
+
+        out = embedding_bag(x)
+        out.backward()
+        adam.step()
 
 
 class EmbeddingStatic(unittest.TestCase):
@@ -132,6 +180,115 @@ class EmbeddingStatic(unittest.TestCase):
                 )
 
         with self.assertRaises(ValueError):
+            test_bad_x()
+
+    def test_3(self):
+        prog = base.Program()
+        with base.program_guard(prog):
+
+            def test_bad_x():
+                initializer = paddle.nn.initializer.Assign(
+                    np.random.random(size=(128, 100))
+                )
+
+                param_attr = base.ParamAttr(
+                    name="emb_weight",
+                    learning_rate=0.5,
+                    initializer=initializer,
+                    trainable=True,
+                )
+
+                weight = prog.global_block().create_parameter(
+                    (128, 100), attr=param_attr, dtype="float32"
+                )
+
+                label = paddle.static.data(
+                    name="label",
+                    shape=[-1, 4],
+                    dtype="int64",
+                )
+
+                emb = paddle.nn.functional.embedding_bag(
+                    x=label,
+                    weight=weight,
+                    sparse=True,
+                    name="embedding_bag",
+                    mode="min",
+                )
+
+        with self.assertRaises(ValueError):
+            test_bad_x()
+
+    def test_4(self):
+        prog = base.Program()
+        with base.program_guard(prog):
+
+            def test_bad_x():
+                initializer = paddle.nn.initializer.Assign(
+                    np.random.random(size=(128, 100))
+                )
+
+                param_attr = base.ParamAttr(
+                    name="emb_weight",
+                    learning_rate=0.5,
+                    initializer=initializer,
+                    trainable=True,
+                )
+
+                weight = prog.global_block().create_parameter(
+                    (128, 100), attr=param_attr, dtype="float32"
+                )
+
+                label = paddle.static.data(
+                    name="label",
+                    shape=[-1, 4],
+                    dtype="int64",
+                )
+
+                emb = paddle.nn.functional.embedding_bag(
+                    x=label,
+                    weight=weight,
+                    sparse=True,
+                    name="embedding_bag",
+                    mode="sum",
+                )
+
+            test_bad_x()
+
+    def test_5(self):
+        prog = base.Program()
+        with base.program_guard(prog):
+
+            def test_bad_x():
+                initializer = paddle.nn.initializer.Assign(
+                    np.random.random(size=(128, 100))
+                )
+
+                param_attr = base.ParamAttr(
+                    name="emb_weight",
+                    learning_rate=0.5,
+                    initializer=initializer,
+                    trainable=True,
+                )
+
+                weight = prog.global_block().create_parameter(
+                    (128, 100), attr=param_attr, dtype="float32"
+                )
+
+                label = paddle.static.data(
+                    name="label",
+                    shape=[-1, 4],
+                    dtype="int64",
+                )
+
+                emb = paddle.nn.functional.embedding_bag(
+                    x=label,
+                    weight=weight,
+                    sparse=True,
+                    name="embedding_bag",
+                    mode="max",
+                )
+
             test_bad_x()
 
 

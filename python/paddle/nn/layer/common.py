@@ -1585,10 +1585,10 @@ class EmbeddingBag(Layer):
 
             >>> out = embedding(x)
             >>> print(out)
-            Tensor(shape=[3, 1, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
-            [[[0., 0., 0.]],
-             [[1., 1., 1.]],
-             [[3., 3., 3.]]])
+            Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[0., 0., 0.],
+             [1., 1., 1.],
+             [3., 3., 3.]])
 
             >>> out.backward()
             >>> adam.step()
