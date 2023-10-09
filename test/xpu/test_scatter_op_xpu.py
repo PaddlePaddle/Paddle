@@ -132,7 +132,12 @@ class XPUTestScatterOp(XPUOpTestWrapper):
                 'Ids': self.index_np,
                 'Updates': self.updates_np,
             }
-            self.attrs = {'overwrite': self.overwrite}
+            self.attrs = {
+                'overwrite': self.overwrite,
+                "axis": 0,
+                "reduce": "add",
+                "include_self": False,
+            }
             self.outputs = {'Out': self.output_np}
 
         def init_config(self):
@@ -145,9 +150,7 @@ class XPUTestScatterOp(XPUOpTestWrapper):
             self.check_output_with_place(self.place)
 
         def test_check_grad(self):
-            self.check_grad_with_place(
-                self.place, ['X'], 'Out', no_grad_set=set("Updates")
-            )
+            self.check_grad_with_place(self.place, ['X', 'Updates'], 'Out')
 
 
 support_types = get_xpu_op_support_types('scatter')
