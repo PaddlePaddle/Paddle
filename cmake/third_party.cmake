@@ -377,7 +377,7 @@ if(WITH_GPU)
     list(APPEND third_party_deps extern_cub)
   else()
     include(external/cccl)
-    list(APPEND third_party_deps CCCL::CCCL)
+    list(APPEND third_party_deps extern_cccl)
   endif()
   set(URL
       "https://paddlepaddledeps.bj.bcebos.com/externalErrorMsg_20210928.tar.gz"
