@@ -28,6 +28,8 @@ from ..framework import (
     core,
     in_dynamic_mode,
     in_dynamic_or_pir_mode,
+    in_pir_mode,
+    paddle_type_to_proto_type,
 )
 
 # from ..base.layers import has_inf  #DEFINE_ALIAS
@@ -191,6 +193,8 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
         axis = 0
 
     if in_dynamic_or_pir_mode():
+        if in_pir_mode():
+            var_dtype = paddle_type_to_proto_type[var_dtype]
         return _C_ops.argmax(x, axis, keepdim, flatten, var_dtype)
     else:
         helper = LayerHelper("argmax", **locals())
