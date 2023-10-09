@@ -1022,7 +1022,7 @@ def cuda_pinned_places(device_count=None):
 
 class NameScope:
     def __init__(self, name="", parent=None):
-        self._children = dict()
+        self._children = {}
         self._name = name
         self._parent = parent
 
@@ -1218,7 +1218,7 @@ def _debug_string_(proto, throw_on_error=True):
     Returns(str): The debug string of the protobuf message
 
     """
-    error_fields = list()
+    error_fields = []
     if not proto.IsInitialized(error_fields) and throw_on_error:
         raise ValueError(
             f"{error_fields} are not initialized.\nThe message is {proto}:\n"
@@ -2931,7 +2931,7 @@ class Operator:
             # https://github.com/PaddlePaddle/Paddle/pull/12583#pullrequestreview-145093173
             op_attrs = attrs
             if op_attrs is None:
-                op_attrs = dict()
+                op_attrs = {}
             del attrs
 
             # attr for static graph mode cuda graph
@@ -3955,7 +3955,7 @@ class Block:
     def __init__(self, program, idx):
         self.desc = program.desc.block(idx)
         self.vars = collections.OrderedDict()  # var_name --> var
-        self.ops = list()  # operator list
+        self.ops = []  # operator list
         self.program = program
 
     def __str__(self):
@@ -4113,7 +4113,7 @@ class Block:
         Returns:
             Variable: the Variable with the giving name. Or None if not found.
         """
-        frontier = list()
+        frontier = []
         visited = set()
 
         frontier.append(self)
@@ -5426,7 +5426,7 @@ class IrGraph:
 
     def resolve_hazard(self):
         ordered_nodes = core.topology_sort(self.graph)
-        var_nodes = dict()
+        var_nodes = {}
         for node in ordered_nodes:
             if node.is_op() and node.op() is not None:
                 for each_var_name in node.op().input_arg_names():
@@ -5483,7 +5483,7 @@ class IrGraph:
             dict{IrNode: set(IrNode)}: the adjacency list.
         """
         adj_list = core.build_adjacency_list(self.graph)
-        wrapped_adj_list = dict()
+        wrapped_adj_list = {}
         for k, v in adj_list.items():
             wrapped_adj_list[IrNode(k)] = {IrNode(n) for n in v}
         return wrapped_adj_list
@@ -7121,7 +7121,7 @@ class Program:
 
         var_list = filter(condition, self.list_vars())
 
-        state_dict = dict()
+        state_dict = {}
         for var in var_list:
             var_temp = scope.find_var(var.name)
             if var_temp is None:
