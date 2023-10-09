@@ -52,7 +52,7 @@ class AsyncLoad {
   std::shared_ptr<AsyncLoad::Task> Offload(phi::DenseTensor* dst,
                                            const phi::DenseTensor& src);
 
-  void PrepareLoadEnv(const std::string& key);
+  void PrepareLoadEnv(const std::string& key, const Place& place);
 
   std::shared_ptr<AsyncLoad::Task> Reload(phi::DenseTensor* dst,
                                           const phi::DenseTensor& src);
