@@ -177,11 +177,18 @@ TEST(lower_to_ast, basic) {
   auto out = R"ROC(
 function cal_B (_A, _B)
 {
-  serial for (i, 0, 100)
+  ScheduleBlock(root)
   {
-    serial for (j, 0, 15)
+    serial for (i, 0, 100)
     {
-      B[i, j] = (A[i, j] + 1.00000000f)
+      serial for (j, 0, 15)
+      {
+        ScheduleBlock(B)
+        {
+          i0, i1 = axis.bind(i, j)
+          B[i0, i1] = (A[i0, i1] + 1.00000000f)
+        }
+      }
     }
   }
 }
@@ -212,13 +219,20 @@ TEST(lower_to_ast, three_dim) {
   auto out = R"ROC(
 function cal_C (_A, _B, _C)
 {
-  serial for (i, 0, 100)
+  ScheduleBlock(root)
   {
-    serial for (j, 0, 15)
+    serial for (i, 0, 100)
     {
-      serial for (k, 0, 200)
+      serial for (j, 0, 15)
       {
-        C[i, j, k] = (A[i, j] * B[j, k])
+        serial for (k, 0, 200)
+        {
+          ScheduleBlock(C)
+          {
+            i0, i1, i2 = axis.bind(i, j, k)
+            C[i0, i1, i2] = (A[i0, i1] * B[i1, i2])
+          }
+        }
       }
     }
   }
@@ -247,14 +261,25 @@ TEST(lower_to_ast, matmul_with_reduce_sum) {
   auto out = R"ROC(
 function matmul (_A, _B, _C)
 {
-  serial for (i, 0, 100)
+  ScheduleBlock(root)
   {
-    serial for (j, 0, 50)
+    serial for (i, 0, 100)
     {
-      C__reduce_init[i, j] = 0.00000000f
-      serial for (k0, 0, 20)
+      serial for (j, 0, 50)
       {
-        C[i, j] = (C[i, j] + (A[i, k0] * B[k0, j]))
+        ScheduleBlock(C__reduce_init)
+        {
+          i0, i1 = axis.bind(i, j)
+          C__reduce_init[i0, i1] = 0.00000000f
+        }
+        serial for (k0, 0, 20)
+        {
+          ScheduleBlock(C)
+          {
+            i0_0, i1_0, i2 = axis.bind(i, j, k0)
+            C[i0_0, i1_0] = (C[i0_0, i1_0] + (A[i0_0, i2] * B[i2, i1_0]))
+          }
+        }
       }
     }
   }
