@@ -46,6 +46,7 @@ namespace paddle {
 namespace framework {
 
 class CondInstruction;
+class WhileInstruction;
 class ValueExecutionInfo {
  public:
   explicit ValueExecutionInfo(Scope* scope) : scope_(scope) {}
@@ -89,6 +90,7 @@ class ValueExecutionInfo {
   void ResetVarList(int id, Variable* var) { var_list_[id] = var; }
 
   friend class CondInstruction;
+  friend class WhileInstruction;
 
  private:
   std::shared_ptr<ValueExecutionInfo> NewChild(Scope* scope);

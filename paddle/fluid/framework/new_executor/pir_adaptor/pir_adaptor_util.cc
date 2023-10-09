@@ -140,7 +140,8 @@ const std::unordered_set<std::string> SpecialOps = {"pd_op.feed",
                                                     "builtin.split",
                                                     "pd_op.data",
                                                     "pd_op.shadow_output",
-                                                    "pd_op.if"};
+                                                    "pd_op.if",
+                                                    "pd_op.while"};
 
 using VariableNameMap =
     std::unordered_map<const paddle::framework::Variable*, std::string>;
@@ -431,10 +432,27 @@ void HandleForSpecialOp(
     sub_blocks->emplace(false_block, &false_branch_scope);
 
     for (size_t i = 0; i < if_op->num_results(); ++i) {
-      // auto true_value = true_yeid_op->operand_source(i);
-
       auto if_op_out_value = if_op->result(i);
       BuildValue(if_op_out_value, var_name_prefix, value_exe_info);
+    }
+  }
+
+  if (op_name == "pd_op.while") {
+    auto while_op = op->dyn_cast<paddle::dialect::WhileOp>();
+
+    auto cond_block = while_op.cond_block();
+
+    auto body_block = while_op.body_block();
+
+    auto& cond_scope = value_exe_info->GetScope()->NewScope();
+    sub_blocks->emplace(cond_block, &cond_scope);
+
+    auto& body_scope = value_exe_info->GetScope()->NewScope();
+    sub_blocks->emplace(body_block, &body_scope);
+
+    for (size_t i = 0; i < while_op->num_results(); ++i) {
+      auto while_op_out_value = while_op->result(i);
+      BuildValue(while_op_out_value, var_name_prefix, value_exe_info);
     }
   }
 }

@@ -67,8 +67,9 @@ const std::unordered_set<std::string> SpecialLowerOps = {"builtin.combine",
                                                          "builtin.slice",
                                                          "builtin.split",
                                                          "pd_op.if",
-                                                         "pd.while",
-                                                         "cf.yield"};
+                                                         "pd_op.while",
+                                                         "cf.yield",
+                                                         "cf.cond_yield"};
 
 bool NeedFallBackCpu(const pir::Operation* op,
                      const std::string& kernel_fn_name,
@@ -580,10 +581,12 @@ phi::KernelKey GetKernelKey(
       // don't know how to select the kernel in the next of op that
       // uses data op outout as inputs. So, we need set kernel backend
       // manually.
-      if (op->operand_source(i)
-              .dyn_cast<pir::OpResult>()
-              .owner()
-              ->isa<paddle::dialect::DataOp>()) {
+      auto op_res = op->operand_source(i).dyn_cast<pir::OpResult>();
+
+      if (!op_res) {
+        continue;
+      }
+      if (op_res.owner()->isa<paddle::dialect::DataOp>()) {
         auto data_op = op->operand_source(i).dyn_cast<pir::OpResult>().owner();
         auto data_place =
             data_op->attribute<dialect::PlaceAttribute>("place").data();
@@ -715,7 +718,6 @@ void HandleForWhileOp(
     pir::IrContext* ctx,
     std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
     std::unordered_map<pir::Value, pir::Value>* map_value_pair) {
-  std::cerr << "process whle op" << std::endl;
   std::vector<pir::Value> vec_in;
   for (size_t i = 0; i < op_item->num_operands(); ++i) {
     auto cur_in = op_item->operand_source(i);
@@ -746,12 +748,10 @@ void HandleForWhileOp(
   pir::Block* cond_block = new_while_op.cond_block();
   for (size_t i = 0; i < vec_in.size(); ++i) {
     auto block_arg = cond_block->AddArgument(vec_in[i].type());
-    (*map_value_pair)[base_while_op.cond_block()->argument(i)] =
-        block_arg.dyn_cast<pir::OpResult>();
+    (*map_value_pair)[base_while_op.cond_block()->argument(i)] = block_arg;
   }
 
   // process cond block
-
   ProcessBlock(place,
                base_while_op.cond_block(),
                cond_block,
@@ -761,8 +761,8 @@ void HandleForWhileOp(
 
   pir::Block* body_block = new_while_op.body_block();
   for (size_t i = 0; i < vec_in.size(); ++i) {
-    auto block_arg = cond_block->AddArgument(vec_in[i].type());
-    (*map_value_pair)[base_while_op.cond_block()->argument(i)] = block_arg;
+    auto block_arg = body_block->AddArgument(vec_in[i].type());
+    (*map_value_pair)[base_while_op.body_block()->argument(i)] = block_arg;
   }
 
   // process body block
@@ -876,7 +876,7 @@ void HandleForSpecialOp(
     }
   }
 
-  if (op_item->name() == "cf.yield") {
+  if (op_item->name() == "cf.yield" || op_item->name() == "cf.cond_yield") {
     if (op_item->num_operands() > 0) {
       for (size_t i = 0; i < op_item->num_operands(); ++i) {
         auto cur_in = op_item->operand_source(i);
