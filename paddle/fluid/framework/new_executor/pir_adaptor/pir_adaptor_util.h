@@ -188,7 +188,7 @@ void BuildPhiContext(
         InType optional_input(temp);
         ctx->EmplaceBackInput(optional_input);
       }
-      VLOG(6) << "ctx->EmplaceBackInput : an optioanl input " << t;
+      VLOG(8) << "ctx->EmplaceBackInput : an optioanl input " << t;
       continue;
     }
 
@@ -401,7 +401,7 @@ void BuildPhiContext(
         OutType optional_input(temp);
         ctx->EmplaceBackOutput(optional_input);
       }
-      VLOG(6) << "ctx->EmplaceBackOutput : an optioanl output";
+      VLOG(8) << "ctx->EmplaceBackOutput : an optioanl output";
       continue;
     }
 

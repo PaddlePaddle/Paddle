@@ -43,6 +43,7 @@
 #include "glog/logging.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 
 namespace paddle {
@@ -202,6 +203,7 @@ void BuildValue(pir::Value value,
                 const std::string& var_name_prefix,
                 paddle::framework::ValueExecutionInfo* value_exe_info) {
   if (!IsInvalid(value)) {
+    VLOG(8) << "Value is not invalid, so skip build a variable.";
     return;
   }
 
@@ -456,6 +458,8 @@ void HandleForInplaceOp(pir::Operation* op,
   for (size_t i = 0; i < op->num_results(); ++i) {
     pir::Value value = op->result(i);
     if (!IsInvalid(value)) {
+      VLOG(8) << "Number " << i << " result of " << op_name
+              << " is not invalid, so skip build a variable.";
       continue;
     }
     std::string value_name = yaml_parser.OutputNames()[i];
@@ -563,6 +567,7 @@ void BuildRuntimeContext(
     pir::Value ptr = op->operand_source(index);
 
     if (!IsInvalid(ptr)) {
+      VLOG(8) << "ctx->EmplaceBackInput : an optioanl input " << name;
       continue;
     }
 
@@ -583,6 +588,7 @@ void BuildRuntimeContext(
     auto legacy_arg_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
 
     if (!IsInvalid(ptr)) {
+      VLOG(8) << "ctx->EmplaceBackOutput : an optioanl output " << name;
       continue;
     }
 
@@ -644,9 +650,11 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
     auto legacy_attr_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
 
     if (!IsInvalid(ptr)) {
+      VLOG(8) << "Push back inputs to VariableNameMap : an optioanl input "
+              << name;
       continue;
     }
-
+    VLOG(6) << "Push back inputs to VariableNameMap : " << name_map.at(ptr);
     in_name_map[legacy_attr_name].push_back(name_map.at(ptr));
   }
 
@@ -731,12 +739,15 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
         op_normalizer.GetLegacyArgName(fluid_op_name, output_name_list[i]);
 
     if (!IsInvalid(ptr)) {
+      VLOG(8) << "Push back outputs to VariableNameMap : an optioanl output "
+              << legacy_arg_name;
       continue;
     }
 
     if (ptr.type().isa<paddle::dialect::AllocatedDenseTensorType>() ||
         ptr.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
       out_name_map[legacy_arg_name].push_back(name_map.at(ptr));
+      VLOG(6) << "Push back outputs to VariableNameMap : " << name_map.at(ptr);
     } else if (ptr.type().isa<pir::VectorType>()) {
       auto var = scope->FindVar(name_map.at(ptr));
       auto var_ref = var->Get<paddle::framework::VariableRefArray>();
@@ -745,6 +756,8 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
                        "Variable MUST in variable_2_var_name map");
         out_name_map[legacy_arg_name].push_back(
             variable_2_var_name.at(var_ref[k]));
+        VLOG(6) << "Push back outputs to VariableNameMap : "
+                << variable_2_var_name.at(var_ref[k]);
       }
     } else {
       PADDLE_THROW(phi::errors::Unimplemented(
