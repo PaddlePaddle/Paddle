@@ -1155,13 +1155,6 @@
     { axis : dim,  keepdim : keep_dim}
   outputs:
     out : Out
-  int_array:
-    axis :
-      data_type : int
-      support_tensor : true
-  get_expected_kernel_type :
-    frobenius_norm : GetReduceExpectedKernelType
-    frobenius_norm_grad : GetReduceGradExpectedKernelType
   extra :
     attrs : [bool use_mkldnn = false]
 
