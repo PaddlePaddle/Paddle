@@ -18,7 +18,8 @@ from ...base.data_feeder import check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
 from ...common_ops_import import Variable
 from ...framework import in_dynamic_mode, in_dynamic_or_pir_mode
-from ...tensor.math import max, mean, sum
+from ...tensor.math import max, sum
+from ...tensor.stat import mean
 
 __all__ = []
 
