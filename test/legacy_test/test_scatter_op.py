@@ -510,24 +510,41 @@ class TestScatterOp6(OpTest):
         self.prim_op_type = "prim"
         self.if_enable_cinn()
         self._set_dtype()
-        target_dtype = "float16" if self.dtype == np.float16 else "float32"
-        ref_np = np.ones((3, 50)).astype(target_dtype)
-        index_np = np.array([1, 2]).astype("int32")
-        updates_np = np.random.random((2, 50)).astype(target_dtype)
-        output_np = np.copy(ref_np)
-        output_np[np.array([1, 2]).astype("int32")] = updates_np
+        self._set_attr()
+        self._set_inout()
+
         if self.dtype == np.uint16:
-            ref_np = convert_float_to_uint16(ref_np)
-            updates_np = convert_float_to_uint16(updates_np)
-            output_np = convert_float_to_uint16(output_np)
-        self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
-        self.outputs = {'Out': output_np}
+            self.ref_np = convert_float_to_uint16(self.ref_np)
+            self.updates_np = convert_float_to_uint16(self.updates_np)
+            self.output_np = convert_float_to_uint16(self.output_np)
+        self.inputs = {
+            'X': self.ref_np,
+            'Ids': self.index_np,
+            'Updates': self.updates_np,
+        }
+        self.outputs = {'Out': self.output_np}
 
     def if_enable_cinn(self):
         pass
 
     def _set_dtype(self):
         self.dtype = np.float32
+        self.target_dtype = "float16" if self.dtype == np.float16 else "float32"
+
+    def _set_attr(self):
+        self.attrs = {
+            'overwrite': True,
+            'axis': 0,
+            'reduce': "add",
+            'include_self': False,
+        }
+
+    def _set_inout(self):
+        self.ref_np = np.ones((3, 50)).astype(self.target_dtype)
+        self.index_np = np.array([1, 2]).astype("int32")
+        self.updates_np = np.random.random((2, 50)).astype(self.target_dtype)
+        self.output_np = np.copy(self.ref_np)
+        self.output_np[np.array([1, 2]).astype("int32")] = self.updates_np
 
     def test_check_output(self):
         self.check_output()
@@ -762,6 +779,28 @@ class TestScatterError(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestScatterOp6ReduceAdd(TestScatterOp6):
+    def _set_attr(self):
+        self.attrs = {
+            'overwrite': False,
+            'axis': 0,
+            'reduce': "add",
+            'include_self': False,
+        }
+
+    def _set_inout(self):
+        self.ref_np = np.array([[1, 1], [2, 2], [3, 3]]).astype(
+            self.target_dtype
+        )
+        self.index_np = np.array([2, 1, 0, 1]).astype(np.int32)
+        self.updates_np = np.array([[1, 1], [2, 2], [3, 3], [4, 4]]).astype(
+            self.target_dtype
+        )
+        self.output_np = np.array([[3.0, 3.0], [6.0, 6.0], [1.0, 1.0]]).astype(
+            self.target_dtype
+        )
+
+
 class TestScatterAPIReduceAdd(unittest.TestCase):
     def setUp(self):
         self.places = [base.CPUPlace()]
@@ -787,6 +826,7 @@ class TestScatterAPIReduceAdd(unittest.TestCase):
                 index,
                 updates,
                 overwrite=False,
+                axis=0,
                 reduce='add',
                 include_self=False,
             )
@@ -1037,6 +1077,28 @@ class TestScatterAPIReduceAdd(unittest.TestCase):
         np.testing.assert_array_equal(test_dygraph(), test_static_graph())
 
 
+class TestScatterOp6ReduceMul(TestScatterOp6):
+    def _set_attr(self):
+        self.attrs = {
+            'overwrite': False,
+            'axis': 0,
+            'reduce': "mul",
+            'include_self': False,
+        }
+
+    def _set_inout(self):
+        self.ref_np = np.array([[1, 1], [2, 2], [3, 3]]).astype(
+            self.target_dtype
+        )
+        self.index_np = np.array([2, 1, 0, 1]).astype(np.int32)
+        self.updates_np = np.array([[1, 1], [2, 2], [3, 3], [4, 4]]).astype(
+            self.target_dtype
+        )
+        self.output_np = np.array([[3.0, 3.0], [8.0, 8.0], [1.0, 1.0]]).astype(
+            self.target_dtype
+        )
+
+
 class TestScatterAPIReduceMul(unittest.TestCase):
     def setUp(self):
         self.places = [base.CPUPlace()]
@@ -1080,6 +1142,7 @@ class TestScatterAPIReduceMul(unittest.TestCase):
                     "index": index_data,
                     "updates": updates_data,
                     "overwrite": False,
+                    "axis": 0,
                     "reduce": "mul",
                     "inlcude_self": False,
                 },
@@ -1317,6 +1380,28 @@ class TestScatterAPIReduceMul(unittest.TestCase):
                 return gpu_value
 
         np.testing.assert_array_equal(test_dygraph(), test_static_graph())
+
+
+class TestScatterOp6ReduceAmin(TestScatterOp6):
+    def _set_attr(self):
+        self.attrs = {
+            'overwrite': False,
+            'axis': 0,
+            'reduce': "amin",
+            'include_self': False,
+        }
+
+    def _set_inout(self):
+        self.ref_np = np.array([[1, 1], [2, 2], [3, 3]]).astype(
+            self.target_dtype
+        )
+        self.index_np = np.array([2, 1, 0, 1]).astype(np.int32)
+        self.updates_np = np.array([[1, 1], [2, 2], [3, 3], [4, 4]]).astype(
+            self.target_dtype
+        )
+        self.output_np = np.array([[3.0, 3.0], [2.0, 2.0], [1.0, 1.0]]).astype(
+            self.target_dtype
+        )
 
 
 class TestScatterAPIReduceAmin(unittest.TestCase):
@@ -1598,6 +1683,28 @@ class TestScatterAPIReduceAmin(unittest.TestCase):
         np.testing.assert_array_equal(test_dygraph(), test_static_graph())
 
 
+class TestScatterOp6ReduceAmax(TestScatterOp6):
+    def _set_attr(self):
+        self.attrs = {
+            'overwrite': False,
+            'axis': 0,
+            'reduce': "amax",
+            'include_self': False,
+        }
+
+    def _set_inout(self):
+        self.ref_np = np.array([[1, 1], [2, 2], [3, 3]]).astype(
+            self.target_dtype
+        )
+        self.index_np = np.array([2, 1, 0, 1]).astype(np.int32)
+        self.updates_np = np.array([[1, 1], [2, 2], [3, 3], [4, 4]]).astype(
+            self.target_dtype
+        )
+        self.output_np = np.array([[3.0, 3.0], [4.0, 4.0], [1.0, 1.0]]).astype(
+            self.target_dtype
+        )
+
+
 class TestScatterAPIReduceAmax(unittest.TestCase):
     def setUp(self):
         self.places = [base.CPUPlace()]
@@ -1875,6 +1982,28 @@ class TestScatterAPIReduceAmax(unittest.TestCase):
                 return gpu_value
 
         np.testing.assert_array_equal(test_dygraph(), test_static_graph())
+
+
+class TestScatterOp6ReduceMean(TestScatterOp6):
+    def _set_attr(self):
+        self.attrs = {
+            'overwrite': False,
+            'axis': 0,
+            'reduce': "mean",
+            'include_self': False,
+        }
+
+    def _set_inout(self):
+        self.ref_np = np.array([[1, 1], [2, 2], [3, 3]]).astype(
+            self.target_dtype
+        )
+        self.index_np = np.array([2, 1, 0, 1]).astype(np.int32)
+        self.updates_np = np.array([[1, 1], [2, 2], [3, 3], [4, 4]]).astype(
+            self.target_dtype
+        )
+        self.output_np = np.array([[3.0, 3.0], [3.0, 3.0], [1.0, 1.0]]).astype(
+            self.target_dtype
+        )
 
 
 class TestScatterAPIReduceMean(unittest.TestCase):
