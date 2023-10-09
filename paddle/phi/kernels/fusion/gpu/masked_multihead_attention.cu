@@ -657,7 +657,7 @@ __global__ void masked_multihead_attention_kernel(
 #pragma unroll
     for (int ii = 0; ii < K_VECS_PER_THREAD; ++ii) {
       int jj = ii * params.max_seq_length + ti;
-      if (ti < act_time_step + 1) {
+      if (ti < act_time_step) {
         if (beam_offset) {
           k[ii] =
               (Dh == Dh_MAX || jj * QK_ELTS_IN_16B < Dh * params.max_seq_length)
@@ -679,7 +679,7 @@ __global__ void masked_multihead_attention_kernel(
     float qk = Qk_dot<T, THREADS_PER_KEY>::dot(q, k, params.inv_sqrt_dh);
 
     // bool is_mask = false;
-    if (ti < act_time_step + 1 && tid % THREADS_PER_KEY == 0) {
+    if (ti < act_time_step && tid % THREADS_PER_KEY == 0) {
       // qk_max = is_mask ? qk_max : fmaxf(qk_max, qk);
       auto mask_bhi = params.mask_broadcast_num_heads ? bi : bhi;
       // T mask = params.attn_mask[mask_bhi * (params.timestep + 1) + ti];
