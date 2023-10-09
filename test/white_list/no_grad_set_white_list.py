@@ -58,7 +58,6 @@ NEED_TO_FIX_OP_LIST = [
     'lookup_table',
     'lookup_table_v2',
     'lstm',
-    'lstmp',
     'margin_rank_loss',
     'matmul',
     'matmul_v2',

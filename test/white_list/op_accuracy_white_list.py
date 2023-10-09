@@ -61,7 +61,6 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'sequence_pool',
     'sequence_reverse',
     'sequence_slice',
-    'sequence_topk_avg_pooling',
     'shuffle_channel',
     'sigmoid',
     'smooth_l1_loss',
