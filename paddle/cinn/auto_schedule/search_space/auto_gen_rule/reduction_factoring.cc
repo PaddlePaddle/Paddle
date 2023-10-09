@@ -144,45 +144,39 @@ void ReductionFactoring::Apply(const std::string& block_name,
     }
   }
 
-  // TODO(BiynXu): After implementing the factorize_reduction schedule
-  // primitive, restore the following annotations. The factorize_reduction
-  // schedule primitive needs to support complex subscripts to support pre
-  // schedule transformations.
-
-  // // 4. Fuse all reduction loops
-  // ir::Expr fused_reduce_loop;
-  // if (num_reduction_loops > 1) {
-  //   std::vector<int> reduction_loop_indices;
-  //   for (int i = num_spatial_loops - 1; i < all_loops.size(); ++i) {
-  //     reduction_loop_indices.push_back(i);
-  //   }
-  //   CHECK_EQ(reduction_loop_indices.size(), num_reduction_loops);
-  //   fused_reduce_loop = ir_schedule->Fuse(block_name,
-  //   reduction_loop_indices);
-  // } else {
-  //   all_loops = ir_schedule->GetLoops(block_name);
-  //   fused_reduce_loop = all_loops.back();
-  // }
-  // // 5. Split the reduction loop into 2 part
-  // int factor = 1;
-  // int extent = ir::GetLoopExtent(fused_reduce_loop);
-  // for (int i = ceil(sqrt(extent)); i >= 1; --i) {
-  //   if (extent % i == 0) {
-  //     factor = i;
-  //     break;
-  //   }
-  // }
-  // std::vector<cinn::ir::Expr> splited_reduction_loops =
-  // ir_schedule->Split(fused_reduce_loop, {-1, factor});
-  // // Apply FactorizeReduction
-  // LOG(INFO) << "before FactorizeReduction: " <<
-  // ir_schedule->GetModule().GetExprs()[0];
-  // ir_schedule->FactorizeReduction(splited_reduction_loops[0],
-  // num_spatial_loops);
-
-  // Apply rfactor
-  all_loops = ir_schedule->GetLoops(block_name);
-  ir_schedule->Rfactor(all_loops[num_spatial_loops], num_spatial_loops);
+  // 4. Fuse all reduction loops
+  ir::Expr fused_reduce_loop;
+  VLOG(6) << "before Fuse: " << ir_schedule->GetModule().GetExprs()[0];
+  if (num_reduction_loops > 1) {
+    std::vector<int> reduction_loop_indices;
+    for (int i = num_spatial_loops; i < all_loops.size(); ++i) {
+      reduction_loop_indices.push_back(i);
+    }
+    CHECK_EQ(reduction_loop_indices.size(), num_reduction_loops);
+    fused_reduce_loop = ir_schedule->Fuse(block_name, reduction_loop_indices);
+  } else {
+    all_loops = ir_schedule->GetLoops(block_name);
+    fused_reduce_loop = all_loops.back();
+  }
+  // 5. Split the reduction loop into 2 part
+  VLOG(6) << "before Split: " << ir_schedule->GetModule().GetExprs()[0];
+  int factor = 1;
+  int extent = ir::GetLoopExtent(fused_reduce_loop);
+  for (int i = ceil(sqrt(extent)); i >= 1; --i) {
+    if (extent % i == 0) {
+      factor = i;
+      break;
+    }
+  }
+  std::vector<cinn::ir::Expr> splited_reduction_loops =
+      ir_schedule->Split(fused_reduce_loop, {-1, factor});
+  // 6.  Apply FactorizeReduction
+  VLOG(6) << "before FactorizeReduction: "
+          << ir_schedule->GetModule().GetExprs()[0];
+  ir_schedule->FactorizeReduction(splited_reduction_loops[0],
+                                  num_spatial_loops);
+  VLOG(6) << "after FactorizeReduction: "
+          << ir_schedule->GetModule().GetExprs()[0];
 }
 
 }  // namespace auto_schedule
