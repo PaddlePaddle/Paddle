@@ -47,10 +47,9 @@ USE_CUDA_ATOMIC(Add, int);
 USE_CUDA_ATOMIC(Add, unsigned int);
 
 CUDA_ATOMIC_WRAPPER(Add, bool) {
-  static_cast<size_t> offset = (static_cast<size_t>)address & 3;
-  reinterpret_cast<uint32_t *> address_as_ui =
-      (reinterpret_cast<uint32_t *>)((reinterpret_cast<char *>)address -
-                                     offset);
+  size_t offset = reinterpret_cast<size_t>(address) & 3;
+  uint32_t *address_as_ui =
+      reinterpret_cast<uint32_t *>(reinterpret_cast<char *>(address) - offset);
   uint32_t old = *address_as_ui;
   uint32_t shift = offset * 8;
   uint32_t old_byte;
@@ -67,10 +66,9 @@ CUDA_ATOMIC_WRAPPER(Add, bool) {
 }
 
 CUDA_ATOMIC_WRAPPER(Add, uint8_t) {
-  static_cast<size_t> offset = (static_cast<size_t>)address & 3;
-  reinterpret_cast<uint32_t *> address_as_ui =
-      (reinterpret_cast<uint32_t *>)((reinterpret_cast<char *>)address -
-                                     offset);
+  size_t offset = reinterpret_cast<size_t>(address) & 3;
+  uint32_t *address_as_ui =
+      reinterpret_cast<uint32_t *>(reinterpret_cast<char *>(address) - offset);
   uint32_t old = *address_as_ui;
   uint32_t shift = offset * 8;
   uint32_t old_byte;
@@ -87,10 +85,9 @@ CUDA_ATOMIC_WRAPPER(Add, uint8_t) {
 }
 
 CUDA_ATOMIC_WRAPPER(Add, int8_t) {
-  static_cast<size_t> offset = (static_cast<size_t>)address & 3;
-  reinterpret_cast<uint32_t *> address_as_ui =
-      (reinterpret_cast<uint32_t *>)((reinterpret_cast<char *>)address -
-                                     offset);
+  size_t offset = reinterpret_cast<size_t>(address) & 3;
+  uint32_t *address_as_ui =
+      reinterpret_cast<uint32_t *>(reinterpret_cast<char *>(address) - offset);
   uint32_t old = *address_as_ui;
   uint32_t shift = offset * 8;
   uint32_t old_byte;
@@ -107,10 +104,9 @@ CUDA_ATOMIC_WRAPPER(Add, int8_t) {
 }
 
 CUDA_ATOMIC_WRAPPER(Add, int16_t) {
-  static_cast<size_t> offset = (static_cast<size_t>)address & 2;
-  reinterpret_cast<uint32_t *> address_as_ui =
-      (reinterpret_cast<uint32_t *>)((reinterpret_cast<char *>)address -
-                                     offset);
+  size_t offset = reinterpret_cast<size_t>(address) & 2;
+  uint32_t *address_as_ui =
+      reinterpret_cast<uint32_t *>(reinterpret_cast<char *>(address) - offset);
   bool is_32_align = offset;
   uint32_t old = *address_as_ui;
   uint32_t old_bytes;
