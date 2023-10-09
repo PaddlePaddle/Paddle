@@ -22,6 +22,8 @@
 #include "paddle/pir/core/utils.h"
 
 namespace pir {
+class Builder;
+class IrPrinter;
 
 class IR_API OpBase {
  public:
