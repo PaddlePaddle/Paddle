@@ -33,6 +33,7 @@ def weight_quantize(x, algo="weight_only_int8"):
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> from paddle.nn.quant import weight_quantize
 
