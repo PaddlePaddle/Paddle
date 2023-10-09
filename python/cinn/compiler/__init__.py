@@ -12,18 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from cinn import ir
+from .compiler import compile
 
-from .ir_context import ForContext
-
-
-# Python's range() function calls the sequential()
-def sequential(min, extent=None):
-    if extent is None:
-        extent = min
-        min = ir.Expr(0)
-    if not isinstance(min, ir.Expr):
-        min = ir.Expr(min)
-    if not isinstance(extent, ir.Expr):
-        extent = ir.Expr(extent)
-    return ForContext(min, extent)
+__all__ = ["compile"]
