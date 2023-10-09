@@ -1385,7 +1385,7 @@ class Variable(metaclass=VariableMetaClass):
 
         In Static Graph Mode: Please use ** `Block.create_var` ** to create a Static variable which has no data until being feed.
 
-        In Dygraph Mode: Please use ** :ref:`api_base_dygraph_to_variable` ** to create a dygraph variable with real data.
+        In Dygraph Mode: Please use ** :ref:`api_paddle_to_tensor` ** to create a dygraph variable with real data.
 
     In Fluid, every input and output of an OP is a variable. In most
     cases, variables are used for holding different kinds of data or training
