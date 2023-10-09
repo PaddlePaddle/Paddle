@@ -39,6 +39,7 @@
 #include "paddle/pir/core/value.h"
 #include "paddle/pir/dialect/shape/ir/shape_dialect.h"
 #include "paddle/pir/dialect/shape/ir/shape_op.h"
+#include "paddle/pir/dialect/shape/transforms/shape_optimization.h"
 #include "paddle/pir/dialect/shape/transforms/shape_optimization_pass.h"
 #include "paddle/pir/dialect/shape/utils/shape_utils.h"
 #include "paddle/pir/pass/pass.h"
