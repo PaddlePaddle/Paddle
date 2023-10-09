@@ -258,7 +258,7 @@ class Dirac(Initializer):
         if framework.in_dygraph_mode():
             with base.dygraph.no_grad():
                 tmp_out = _C_ops.scatter(
-                    out_var, index_tensor, value_tensor, True
+                    out_var, index_tensor, value_tensor, True, 0, 'add', False
                 )
                 tmp_out._share_underline_tensor_to(out_var)
                 tmp_reshape_out = _C_ops.reshape(out_var, origin_shape)
@@ -274,7 +274,7 @@ class Dirac(Initializer):
                     "Ids": index_tensor,
                     "Updates": value_tensor,
                 },
-                attrs={'overwrite': True},
+                attrs={'overwrite': True, "axis": 0, "reduce": "add", "include_self": False},
                 outputs={"Out": out_var},
                 stop_gradient=True,
             )

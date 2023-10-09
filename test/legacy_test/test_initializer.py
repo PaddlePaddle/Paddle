@@ -1185,7 +1185,6 @@ class TestDiracInitializer1(unittest.TestCase):
             weight_attr=self.weight_attr,
         )
         weight_dygraph = conv.weight.numpy()
-
         paddle.enable_static()
         start_prog = paddle.static.Program()
         main_prog = paddle.static.Program()
