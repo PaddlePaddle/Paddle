@@ -35,7 +35,7 @@ from paddle.distribution.laplace import Laplace
 from paddle.distribution.geometric import Geometric
 
 
-__all__ = [  # noqa
+__all__ = [
     'Bernoulli',
     'Beta',
     'Categorical',
