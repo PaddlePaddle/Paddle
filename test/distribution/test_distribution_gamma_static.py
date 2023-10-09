@@ -268,12 +268,10 @@ class TestGammaKL(unittest.TestCase):
             self._gamma2 = gamma.Gamma(concentration2, rate2)
 
             self.feeds = {
-                {
-                    'concentration1': self.concentration1,
-                    'concentration2': self.concentration2,
-                    'rate1': self.rate1,
-                    'rate2': self.rate2,
-                }
+                'concentration1': self.concentration1,
+                'concentration2': self.concentration2,
+                'rate1': self.rate1,
+                'rate2': self.rate2,
             }
 
     def test_kl_divergence(self):
