@@ -48,6 +48,8 @@ from .io_utils import _load_program_scope
 # We need remove the duplicated code here once we fix
 # the illogical implement in the monkey-patch methods later.
 from ..base.layers.math_op_patch import monkey_patch_variable
+from ..base.layers.math_op_patch import monkey_patch_opresult
+
 from ..base.dygraph.math_op_patch import monkey_patch_math_tensor
 from ..base.framework import disable_signal_handler  # noqa: F401
 from ..base.framework import get_flags  # noqa: F401
