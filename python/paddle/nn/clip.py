@@ -965,7 +965,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
                 It can be a list of parameter or a list of parameter's name.
                 Default None, meaning that all parameters in the program will be included.
         program (Program, optional): The program where parameters are located.
-                Default None, meaning that using :ref:`api_base_default_main_program` .
+                Default None, meaning that using :ref:`api_paddle_static_default_main_program` .
 
     Returns:
         None

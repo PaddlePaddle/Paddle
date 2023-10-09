@@ -2060,11 +2060,11 @@ def append_backward(
             block, [loss], [], block_no_grad_set, op_path_dict
         )
 
-        no_grad_vars = _find_no_grad_vars(
+        no_grad_set = _find_no_grad_vars(
             block, op_path, [loss], block_no_grad_set
         )
 
-        block_no_grad_set.update(no_grad_vars)
+        block_no_grad_set.update(no_grad_set)
         no_grad_dict[block_idx].update(
             list(map(_append_grad_suffix_, block_no_grad_set))
         )
@@ -2510,10 +2510,10 @@ def calc_gradient_helper(
         block.program._sync_with_cpp()
 
     # find no grad var by op_path
-    no_grad_vars = _find_no_grad_vars(
+    no_grad_set = _find_no_grad_vars(
         block, op_path, tmp_targets, block_no_grad_set
     )
-    block_no_grad_set.update(no_grad_vars)
+    block_no_grad_set.update(no_grad_set)
 
     no_grad_dict[0].update(list(map(_append_grad_suffix_, block_no_grad_set)))
     grad_to_var = dict()
@@ -2636,6 +2636,56 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
             >>> print(z)
             [var x@GRAD : LOD_TENSOR.shape(-1, 2, 8, 8).dtype(float32).stop_gradient(False)]
     """
+    if framework.in_pir_mode():
+        check_type(
+            outputs,
+            'outputs',
+            ((paddle.pir.Value, paddle.pir.OpResult), list, tuple),
+            'paddle.autograd.ir_backward.grad',
+        )
+        check_type(
+            inputs,
+            'inputs',
+            ((paddle.pir.Value, paddle.pir.OpResult), list, tuple),
+            'paddle.autograd.ir_backward.grad',
+        )
+        check_type(
+            grad_outputs,
+            'grad_outputs',
+            ((paddle.pir.Value, paddle.pir.OpResult), list, tuple, type(None)),
+            'paddle.autograd.ir_backward.grad',
+        )
+
+        check_type(
+            no_grad_set,
+            'no_grad_set',
+            (
+                (paddle.pir.Value, paddle.pir.OpResult),
+                list,
+                tuple,
+                set,
+                type(None),
+            ),
+            'paddle.autograd.ir_backward.grad',
+        )
+        outputs = _as_list(outputs)
+        inputs = _as_list(inputs)
+        grad_outputs = _as_list(grad_outputs)
+        if no_grad_set is None:
+            no_grad_set = set()
+        elif no_grad_set is not set:
+            no_grad_set = set(no_grad_set)
+        else:
+            no_grad_set = no_grad_set
+        from paddle.autograd.ir_backward import (
+            calc_gradient as pir_calc_gradient,
+        )
+
+        input_grad = pir_calc_gradient(
+            outputs, inputs, grad_outputs, no_grad_set
+        )
+        return input_grad
+
     check_type(
         targets,
         'targets',
