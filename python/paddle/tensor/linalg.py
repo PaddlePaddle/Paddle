@@ -382,7 +382,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
                 "The dim of frobenius norm op should be None or two elements list!"
             )
 
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             if dim is None:
                 return _C_ops.frobenius_norm(input, [], keepdim, True)
             return _C_ops.frobenius_norm(input, dim, keepdim, False)
@@ -421,7 +421,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
           name (str, optional): The default value is None. Normally there is no need for
               user to set this property. For more information, please refer to :ref:`api_guide_Name`.
         """
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             if axis is None:
                 axis = -1
             return _C_ops.p_norm(input, porder, axis, 1e-12, keepdim, asvector)
@@ -460,7 +460,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
     def inf_norm(
         input, porder=None, axis=axis, keepdim=False, asvector=False, name=None
     ):
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             out = _C_ops.abs(input)
             if porder == np.float64('inf'):
                 return _C_ops.max(out, axis, keepdim)
@@ -499,7 +499,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
         NOTE:
             This function actually treats the matrix as flattened vector to calculate vector norm instead of matrix norm.
         """
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             abs_out = _C_ops.abs(input)
             pow_out = _C_ops.pow(abs_out, porder)
             sum_out = _C_ops.sum(pow_out, axis, None, keepdim)

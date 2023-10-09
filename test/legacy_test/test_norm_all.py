@@ -20,14 +20,14 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import _C_ops, base
 from paddle.base import core
-from paddle.base.framework import in_dygraph_mode
+from paddle.base.framework import in_dynamic_or_pir_mode
 
 
 # hack method for test p_norm final state
 def p_norm_python_api(
     x, p=2.0, axis=-1, epsilon=1e-12, keepdim=False, as_vector=False
 ):
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.p_norm(x, p, axis, epsilon, keepdim, as_vector)
 
 
@@ -102,10 +102,10 @@ class TestFrobeniusNormOp(OpTest):
         self.outputs = {'Out': norm}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_new_ir=True)
 
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
@@ -126,7 +126,7 @@ class TestFrobeniusNormOp2(TestFrobeniusNormOp):
         self.dtype = "float32"
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_new_ir=True)
 
 
 class TestPnormOp(OpTest):
@@ -149,10 +149,10 @@ class TestPnormOp(OpTest):
         self.gradient = self.calc_gradient()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_new_ir=True)
 
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
@@ -219,7 +219,7 @@ class TestPnormOp2(TestPnormOp):
         self.dtype = "float32"
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_new_ir=True)
 
 
 class TestPnormOp3(TestPnormOp):
@@ -235,7 +235,9 @@ class TestPnormOp3(TestPnormOp):
         self.dtype = "float32"
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
+        self.check_grad(
+            ['X'], 'Out', user_defined_grads=self.gradient, check_new_ir=True
+        )
 
 
 class TestPnormOp4(TestPnormOp):
@@ -251,7 +253,9 @@ class TestPnormOp4(TestPnormOp):
         self.dtype = "float32"
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
+        self.check_grad(
+            ['X'], 'Out', user_defined_grads=self.gradient, check_new_ir=True
+        )
 
 
 class TestPnormOp5(TestPnormOp):
@@ -267,7 +271,9 @@ class TestPnormOp5(TestPnormOp):
         self.dtype = "float32"
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
+        self.check_grad(
+            ['X'], 'Out', user_defined_grads=self.gradient, check_new_ir=True
+        )
 
 
 class TestPnormOp6(TestPnormOp):
@@ -283,7 +289,9 @@ class TestPnormOp6(TestPnormOp):
         self.dtype = "float32"
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
+        self.check_grad(
+            ['X'], 'Out', user_defined_grads=self.gradient, check_new_ir=True
+        )
 
 
 def create_test_fp16_class(parent, max_relative_error=2e-3):
@@ -297,7 +305,7 @@ def create_test_fp16_class(parent, max_relative_error=2e-3):
         def test_check_output(self):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place)
+                self.check_output_with_place(place, check_new_ir=True)
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
@@ -308,6 +316,7 @@ def create_test_fp16_class(parent, max_relative_error=2e-3):
                     'Out',
                     user_defined_grads=self.gradient,
                     max_relative_error=max_relative_error,
+                    check_new_ir=True,
                 )
 
     cls_name = "{}_{}".format(parent.__name__, "Fp16")
@@ -348,7 +357,7 @@ class TestPnormBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=1e-3)
+        self.check_output_with_place(place, atol=1e-3, check_new_ir=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
@@ -357,6 +366,7 @@ class TestPnormBF16Op(OpTest):
             ['X'],
             'Out',
             user_defined_grads=self.gradient,
+            check_new_ir=True,
         )
 
     def init_test_case(self):
