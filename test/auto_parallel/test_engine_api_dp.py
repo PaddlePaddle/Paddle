@@ -52,4 +52,5 @@ class TestEngineAPI(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    os.environ["FLAGS_dynamic_static_unified_comm"] = "0"
     unittest.main()

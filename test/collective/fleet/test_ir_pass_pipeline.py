@@ -22,6 +22,7 @@ class TestPipelineWithIRPass(test_pipeline.TestPipeline):
         return {
             'FLAGS_apply_pass_to_program': '1',
             'FLAGS_new_executor_micro_batching': '0',
+            'FLAGS_dynamic_static_unified_comm': '0',
         }
 
 
