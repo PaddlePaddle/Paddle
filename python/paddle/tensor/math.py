@@ -171,7 +171,7 @@ def log(x, name=None):
             [[0.69314718, 1.09861231, 1.38629436],
              [1.94591010, 2.07944155, 2.19722462]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.log(x)
     else:
         check_variable_and_dtype(
