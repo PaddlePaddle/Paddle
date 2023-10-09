@@ -44,18 +44,18 @@ struct BitwiseAdd {
   }
 };
 
-#define DEFINE_CUDA_COMPARE_KERNEL(name)               \
-  template <typename T, typename Context>              \
-  void name##Kernel(const Context& ctx,                \
-                    const DenseTensor& x,              \
-                    const DenseTensor& y,              \
-                    DenseTensor* out) {                \
-    if (out->IsSharedWith(x)) {                        \
-      auto x_origin = x;                               \
-      name##RawKernel<T, Context>(ctx, x, y, -1, out); \
-    } else {                                           \
-      name##RawKernel<T, Context>(ctx, x, y, -1, out); \
-    }                                                  \
+#define DEFINE_CUDA_COMPARE_KERNEL(name)                      \
+  template <typename T, typename Context>                     \
+  void name##Kernel(const Context& ctx,                       \
+                    const DenseTensor& x,                     \
+                    const DenseTensor& y,                     \
+                    DenseTensor* out) {                       \
+    if (out->IsSharedWith(x)) {                               \
+      auto x_origin = x;                                      \
+      name##RawKernel<T, Context>(ctx, x_origin, y, -1, out); \
+    } else {                                                  \
+      name##RawKernel<T, Context>(ctx, x, y, -1, out);        \
+    }                                                         \
   }
 
 DEFINE_CUDA_COMPARE_KERNEL(LessThan)
