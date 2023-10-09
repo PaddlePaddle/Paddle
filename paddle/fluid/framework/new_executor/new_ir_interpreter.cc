@@ -1392,6 +1392,17 @@ void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
   try {
     instr_node->WaitEvent(place_);
     VLOG(4) << "begin to run op " << instr_node->Name();
+    VLOG(4) << "begin: " << __func__ << " OP id:" << instr_node->Id()
+            << " name:" << instr_node->Name() << " type:"
+            << (instr_node->KernelType() == OpFuncType::kCpuSync
+                    ? "kCpuSync"
+                    : (instr_node->KernelType() == OpFuncType::kGpuSync
+                           ? "kGpuSync"
+                           : "kGpuAsync"))
+            << " runs on " << platform::GetCurrentThreadName();
+    VLOG(4) << place_ << " "
+            << instr_node->DebugStringEx(scope_,
+                                         value_exe_info_->GetValue2VarName());
     if (!instr_node->IsArtificial()) {
       instr_node->Run();
 
@@ -1403,8 +1414,8 @@ void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
                 << "): context wait and get last error";
 #endif
       }
-
-      VLOG(4) << __func__ << " OP id:" << instr_node->Id()
+      VLOG(4) << "done instruction node run";
+      VLOG(4) << "done: " << __func__ << " OP id:" << instr_node->Id()
               << " name:" << instr_node->Name() << " type:"
               << (instr_node->KernelType() == OpFuncType::kCpuSync
                       ? "kCpuSync"
@@ -1412,15 +1423,13 @@ void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
                              ? "kGpuSync"
                              : "kGpuAsync"))
               << " runs on " << platform::GetCurrentThreadName();
-
-      VLOG(4) << "done instruction node run";
+      VLOG(4) << place_ << " "
+              << instr_node->DebugStringEx(scope_,
+                                           value_exe_info_->GetValue2VarName());
       CheckGC(instr_node);
       VLOG(4) << "done CheckGC";
       interpreter::LogDeviceMemoryStats(place_);
     }
-    VLOG(4) << place_ << " "
-            << instr_node->DebugStringEx(scope_,
-                                         value_exe_info_->GetValue2VarName());
     VLOG(5) << "after run kernel";
     instr_node->RecordEvent(place_);
   } catch (platform::EnforceNotMet& ex) {

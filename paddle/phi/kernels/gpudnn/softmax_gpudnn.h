@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include "glog/logging.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/bfloat16.h"
@@ -30,16 +29,6 @@ limitations under the License. */
 
 #define MATRIX_SOFTMAX_ALIGN_BYTES 16
 #define MATRIX_SOFTMAX_THREAHOLD 100000
-
-#define FIXED_VEC_SIZE_BASE(vec_size, ...) \
-  case (vec_size): {                       \
-    constexpr auto VecSize = (vec_size);   \
-    __VA_ARGS__;                           \
-  } break
-
-#define FIXED_VEC_SIZE(...)              \
-  FIXED_VEC_SIZE_BASE(8, ##__VA_ARGS__); \
-  FIXED_VEC_SIZE_BASE(4, ##__VA_ARGS__)
 
 namespace phi {
 
@@ -412,13 +401,11 @@ __device__ __forceinline__ void ThreadReadWrite(T* out,
   }
 }
 
-template <typename T,
-          typename AccT,
-          typename IndexType,
-          int VecSize,
-          bool LogMode = false>
+template <typename T, typename AccT, typename IndexType, bool LogMode = false>
 __global__ void KeMatrixSoftmaxForward(T* softmax, const T* src, int dim_size) {
-  using VecT = phi::AlignedVector<T, VecSize>;
+  constexpr int kVecSize =
+      MaxWithOne<MATRIX_SOFTMAX_ALIGN_BYTES / sizeof(T)>::kValue;
+  using VecT = phi::AlignedVector<T, kVecSize>;
 
   int bid = blockIdx.x;
   const T* batch_input = const_cast<T*>(src) + bid * dim_size;
@@ -430,7 +417,7 @@ __global__ void KeMatrixSoftmaxForward(T* softmax, const T* src, int dim_size) {
       ((uint64_t)batch_output) % MATRIX_SOFTMAX_ALIGN_BYTES / sizeof(T);
 
   // get max value
-  AccT thread_max = ThreadVecReduce<MaxFunctor, T, AccT, VecSize>(
+  AccT thread_max = ThreadVecReduce<MaxFunctor, T, AccT, kVecSize>(
       batch_input,
       dim_size,
       input_align_shift,
@@ -439,7 +426,7 @@ __global__ void KeMatrixSoftmaxForward(T* softmax, const T* src, int dim_size) {
   BlockReduceMax<AccT>(&thread_max);
 
   // get exp value and sum all
-  AccT thread_exp = ThreadVecReduce<SumExpFunctor, T, AccT, VecSize>(
+  AccT thread_exp = ThreadVecReduce<SumExpFunctor, T, AccT, kVecSize>(
       batch_input,
       dim_size,
       input_align_shift,
@@ -451,7 +438,7 @@ __global__ void KeMatrixSoftmaxForward(T* softmax, const T* src, int dim_size) {
   if (LogMode) {
     LogSoftmaxForwardFunctor<AccT, T> softmax(thread_max, thread_exp);
     if (input_align_shift == output_align_shift) {
-      ThreadVecReadWrite<LogSoftmaxForwardFunctor, T, AccT, VecSize>(
+      ThreadVecReadWrite<LogSoftmaxForwardFunctor, T, AccT, kVecSize>(
           batch_output, batch_input, dim_size, input_align_shift, softmax);
     } else {
       ThreadReadWrite<LogSoftmaxForwardFunctor, T, AccT>(
@@ -460,7 +447,7 @@ __global__ void KeMatrixSoftmaxForward(T* softmax, const T* src, int dim_size) {
   } else {
     SoftmaxForwardFunctor<AccT, T> softmax(thread_max, thread_exp);
     if (input_align_shift == output_align_shift) {
-      ThreadVecReadWrite<SoftmaxForwardFunctor, T, AccT, VecSize>(
+      ThreadVecReadWrite<SoftmaxForwardFunctor, T, AccT, kVecSize>(
           batch_output, batch_input, dim_size, input_align_shift, softmax);
     } else {
       ThreadReadWrite<SoftmaxForwardFunctor, T, AccT>(
@@ -793,10 +780,9 @@ void SwitchWarpSoftmaxBackward(const int blocks,
     SOFTMAX_WARP_BACKWARD_CASE(9, AccT);
     SOFTMAX_WARP_BACKWARD_CASE(10, AccT);
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
-          "Unsupported softmax dim: element_count=%d, log2_element_count=%d!",
-          element_count,
-          log2_element_count));
+      // PADDLE_THROW(phi::errors::Unimplemented(
+      //     "Unsupported softmax dim: element_count=%d,
+      //     log2_element_count=%d!", element_count, log2_element_count));
       break;
   }
 }
@@ -1156,31 +1142,16 @@ void LaunchSoftmaxBackwardCudnnKernel(const GPUContext& dev_ctx,
   }
 }
 
-template <typename T, typename IndexType, int VecSize, bool LogMode>
-void LaunchKeMatrixSoftmaxForward(
+template <typename T, typename IndexType, bool LogMode>
+void LaunchKeMatrixSoftmaxForwardKernel(
     const GPUContext& dev_ctx, T* out, const T* input, int N, int dim_size) {
   using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
-  int block_dim = CalcBlockSize(VecSize, dim_size);
-  VLOG(10) << "Softmax Forward for extra long dim: N=" << N
-           << ", dim_size=" << dim_size << ", block_dim=" << block_dim
-           << ", vec_size=" << VecSize;
+  constexpr int kVecSize =
+      MaxWithOne<MATRIX_SOFTMAX_ALIGN_BYTES / sizeof(T)>::kValue;
   // Use a block to calculate the softmax of a row along the lowest dimension.
-  KeMatrixSoftmaxForward<T, AccT, IndexType, VecSize, LogMode>
+  int block_dim = CalcBlockSize(kVecSize, dim_size);
+  KeMatrixSoftmaxForward<T, AccT, IndexType, LogMode>
       <<<N, block_dim, 0, dev_ctx.stream()>>>(out, input, dim_size);
-}
-
-template <typename T, typename IndexType, bool LogMode>
-void SoftmaxForwardForExtraLongDim(
-    const GPUContext& dev_ctx, T* out, const T* input, int N, int dim_size) {
-  int vec_size = MATRIX_SOFTMAX_ALIGN_BYTES / sizeof(T);
-  switch (vec_size) {
-    FIXED_VEC_SIZE(LaunchKeMatrixSoftmaxForward<T, IndexType, VecSize, LogMode>(
-                       dev_ctx, out, input, N, dim_size););
-    default:
-      PADDLE_THROW(phi::errors::Unimplemented(
-          "Unsupported vectorized size: %d!", vec_size));
-      break;
-  }
 }
 
 #if CUDNN_VERSION < 8100
@@ -1249,7 +1220,7 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
   if (D == 1) {
     if (!UseCudnnSoftmax<T>(dev_ctx, dim, true)) {
       if (dim >= MATRIX_SOFTMAX_THREAHOLD) {
-        SoftmaxForwardForExtraLongDim<T, IndexType, LogMode>(
+        LaunchKeMatrixSoftmaxForwardKernel<T, IndexType, LogMode>(
             dev_ctx, out_data, x.data<T>(), N, dim);
         return;
       }
@@ -1411,7 +1382,5 @@ void SoftmaxBackwardCUDAKernelDriver(const GPUContext& dev_ctx,
         dev_ctx, dx_data, dout.data<T>(), out.data<T>(), N, dim, D);
   }
 }
-#undef FIXED_VEC_SIZE_BASE
-#undef FIXED_VEC_SIZE
 
 }  // namespace phi
