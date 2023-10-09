@@ -21,7 +21,6 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'conv2d_transpose',
     'conv3d',
     'conv3d_transpose',
-    'cos_sim',
     'cudnn_lstm',
     'cvm',
     'data_norm',
