@@ -78,8 +78,6 @@ def trans_x_y_dims_mapping(trans_x, trans_y, x_dims_mapping, y_dims_mapping):
 
 
 def copy_op_with_new_input_output(ctx, block, src_op, **kwargs):
-    pass
-
     src_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
     dist_attr = copy.deepcopy(src_dist_attr)
     dist_op = block.append_op(type='nop')
@@ -92,12 +90,15 @@ def copy_op_with_new_input_output(ctx, block, src_op, **kwargs):
         dist_attr.rename_input(
             src_op.desc.input(input_name)[0], kwargs[input_name][0]
         )
+
     for output_name in src_op.desc.output_names():
-        assert output_name in kwargs
-        dist_op_desc.set_output(output_name, kwargs[output_name])
-        dist_attr.rename_output(
-            src_op.desc.output(output_name)[0], kwargs[output_name][0]
-        )
+        # NOTE if stop_gradient is set, some of the output of grad_op should be empty.
+        if len(src_op.desc.output(output_name)) > 0:
+            assert output_name in kwargs
+            dist_op_desc.set_output(output_name, kwargs[output_name])
+            dist_attr.rename_output(
+                src_op.desc.output(output_name)[0], kwargs[output_name][0]
+            )
     # TODO: this call leads to a deepcopy when we init the dist op
     ctx.set_op_dist_attr_for_program(dist_op, dist_attr)
 
@@ -384,7 +385,6 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
         if dim >= 0 and process_mesh_shape[dim] > 0:
             Y_var_partitioned = True
             break
-
     if is_parameter_related(Y_var.name, main_block) and Y_var_partitioned:
         if Y_var_dim_mapping[0] >= 0:
             # row parallel: c_identity + matmul

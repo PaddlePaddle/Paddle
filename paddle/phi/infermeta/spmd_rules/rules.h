@@ -472,6 +472,10 @@ PD_REGISTER_SPMD_RULE(
     sum,
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(
+    reduce_sum,  // static
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
 
 // layer_norm
 PD_REGISTER_SPMD_RULE(
