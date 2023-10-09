@@ -978,6 +978,16 @@ void DepthwiseConvInferMeta(const MetaTensor& input,
                 config);
 }
 
+void DeQuantizeXPUInferMeta(const MetaTensor& x,
+                            const MetaTensor& max,
+                            DataType out_dtype,
+                            float scale,
+                            MetaTensor* y) {
+  auto x_dims = x.dims();
+  y->set_dims(x_dims);
+  y->set_dtype(out_dtype);
+}
+
 void DistInferMeta(const MetaTensor& x,
                    const MetaTensor& y,
                    float p,
@@ -2595,6 +2605,16 @@ void PriorBoxInferMeta(const MetaTensor& input,
   var->set_dtype(input.dtype());
   out->set_dims(phi::make_ddim(dim_vec));
   var->set_dims(phi::make_ddim(dim_vec));
+}
+
+void QuantizeXPUInferMeta(const MetaTensor& x,
+                          const MetaTensor& max,
+                          DataType out_dtype,
+                          float scale,
+                          MetaTensor* y) {
+  auto x_dims = x.dims();
+  y->set_dims(x_dims);
+  y->set_dtype(out_dtype);
 }
 
 void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,

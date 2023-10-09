@@ -155,6 +155,12 @@ void DepthwiseConvInferMeta(const MetaTensor& input,
                             MetaTensor* out,
                             MetaConfig config = MetaConfig());
 
+void DeQuantizeXPUInferMeta(const MetaTensor& x,
+                            const MetaTensor& max,
+                            DataType out_dtype,
+                            float scale,
+                            MetaTensor* y);
+
 void DistInferMeta(const MetaTensor& x,
                    const MetaTensor& y,
                    float p,
@@ -407,6 +413,12 @@ void PriorBoxInferMeta(const MetaTensor& input,
                        bool min_max_aspect_ratios_order,
                        MetaTensor* out,
                        MetaTensor* var);
+
+void QuantizeXPUInferMeta(const MetaTensor& x,
+                          const MetaTensor& max,
+                          DataType out_dtype,
+                          float scale,
+                          MetaTensor* y);
 
 void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
                            const MetaTensor& value,

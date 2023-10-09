@@ -561,10 +561,12 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "fast_where_xpu_fuse_pass",
       "elementwise_mul_add_fuse_pass",
       "link_xpu_op_max_pass",
-      "delete_isolated_node_pass",
       // "auto_mixed_precision_pass",
       "cast_mixed_precision_op_fuse_pass",
-      "auto_trans_quantize_op_precision_pass",
+      "xpu_quantize_op_pass",
+      "xpu_quantize_squash_pass",
+      // "auto_trans_quantize_op_precision_pass",
+      "delete_isolated_node_pass",
       "inplace_op_var_pass",
   });
   use_xpu_ = true;

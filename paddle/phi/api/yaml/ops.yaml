@@ -657,6 +657,16 @@
     func : depthwise_conv2d
   backward : depthwise_conv2d_grad
 
+- op : dequantize_xpu
+  args : (Tensor x, Tensor max, DataType out_dtype, float scale = 1.0f)
+  output : Tensor(y)
+  infer_meta :
+    func : DeQuantizeXPUInferMeta
+  kernel :
+    func : dequantize_xpu
+    data_type: x
+  optional : max
+
 - op : det
   args : (Tensor x)
   output : Tensor
@@ -2016,6 +2026,16 @@
   kernel :
     func : qr
   backward : qr_grad
+
+- op : quantize_xpu
+  args : (Tensor x, Tensor max, DataType out_dtype, float scale = 1.0f)
+  output : Tensor(y)
+  infer_meta :
+    func : QuantizeXPUInferMeta
+  kernel :
+    func : quantize_xpu
+    data_type : x
+  optional : max
 
 - op : real
   args : (Tensor x)
