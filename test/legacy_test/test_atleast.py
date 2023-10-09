@@ -1,11 +1,13 @@
 import unittest
+
 import numpy as np
+
 import paddle
 
+
 class AtleastBase(unittest.TestCase):
-    
     def setUp(self):
-        self.x = np.array(1.0, dtype = "float64")
+        self.x = np.array(1.0, dtype="float64")
         self.x_shape = []
         self.x_dtype = "float64"
         self.place = (
@@ -17,7 +19,9 @@ class AtleastBase(unittest.TestCase):
     def static_api(self, func):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data(name = 'x', shape = self.x_shape, dtype=self.x_dtype)
+            x = paddle.static.data(
+                name='x', shape=self.x_shape, dtype=self.x_dtype
+            )
             f = getattr(paddle, func)
             out = f(x)
             exe = paddle.static.Executor(self.place)
@@ -38,17 +42,17 @@ class AtleastBase(unittest.TestCase):
         res = f(x)
         f = getattr(np, func)
         expect_output = f(self.x)
-      
+
         np.testing.assert_allclose(expect_output, res.numpy(), atol=1e-05)
         paddle.enable_static()
 
+
 class AtleastList(unittest.TestCase):
-    
     def setUp(self):
-        self.x = np.array(1.0, dtype = "float64")
+        self.x = np.array(1.0, dtype="float64")
         self.x_shape = []
         self.x_dtype = "float64"
-        self.y = np.array(0.5, dtype = "float64")
+        self.y = np.array(0.5, dtype="float64")
         self.y_shape = []
         self.y_dtype = "float64"
         self.place = (
@@ -57,14 +61,18 @@ class AtleastList(unittest.TestCase):
             else paddle.CPUPlace()
         )
         # numpy's atleast_*d not use to pytorch, for list, the arg , [np.array(1.0, dtype = "float64"), np.array(1.0, dtype = "float64")] , is 2 dimension array ,not a list of tensor
-            # this expect output is the result for torch.atleast_*d((torch.tensor(1.), torch.tensor(0.5)))
-        self.expect_output = np.array([[1.], [0.5]])
+        # this expect output is the result for torch.atleast_*d((torch.tensor(1.), torch.tensor(0.5)))
+        self.expect_output = np.array([[1.0], [0.5]])
 
     def static_api(self, func):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data(name = 'x', shape = self.x_shape, dtype=self.x_dtype)
-            y = paddle.static.data(name = 'y', shape = self.y_shape, dtype=self.y_dtype)
+            x = paddle.static.data(
+                name='x', shape=self.x_shape, dtype=self.x_dtype
+            )
+            y = paddle.static.data(
+                name='y', shape=self.y_shape, dtype=self.y_dtype
+            )
             f = getattr(paddle, func)
             out = f((x, y))
             exe = paddle.static.Executor(self.place)
@@ -75,7 +83,7 @@ class AtleastList(unittest.TestCase):
                 },
                 fetch_list=[out],
             )
-            
+
             np.testing.assert_allclose(self.expect_output, res, atol=1e-05)
 
     def dygraph_api(self, func):
@@ -92,11 +100,11 @@ class AtleastList(unittest.TestCase):
         np.testing.assert_allclose(self.expect_output, res_num, atol=1e-05)
         paddle.enable_static()
 
+
 class TestAtleast1D0D(AtleastBase):
     # test atleast_1d function using 0 dim tensor
     def setUp(self):
-       
-        self.x = np.array(1.0, dtype = "float64")
+        self.x = np.array(1.0, dtype="float64")
         self.x_shape = []
         self.x_dtype = "float64"
         self.place = (
@@ -107,15 +115,15 @@ class TestAtleast1D0D(AtleastBase):
 
     def test_static_api(self):
         super().static_api('atleast_1d')
-        
+
     def test_dygraph_api(self):
         super().dygraph_api('atleast_1d')
+
 
 class TestAtleast1D1D(AtleastBase):
     # test atleast_1d function using 1 dim tensor
     def setUp(self):
-       
-        self.x = np.array([1.0], dtype = "float64")
+        self.x = np.array([1.0], dtype="float64")
         self.x_shape = [1]
         self.x_dtype = "float64"
         self.place = (
@@ -126,14 +134,14 @@ class TestAtleast1D1D(AtleastBase):
 
     def test_static_api(self):
         super().static_api('atleast_1d')
-        
+
     def test_dygraph_api(self):
-        super().dygraph_api('atleast_1d')        
+        super().dygraph_api('atleast_1d')
+
 
 class TestAtleast1D2D(AtleastBase):
     # test atleast_1d function using 2 dim tensor
     def setUp(self):
-       
         self.x = np.arange(2, dtype="int64")
         self.x_shape = [2]
         self.x_dtype = "int64"
@@ -145,23 +153,26 @@ class TestAtleast1D2D(AtleastBase):
 
     def test_static_api(self):
         super().static_api('atleast_1d')
-        
+
     def test_dygraph_api(self):
-        super().dygraph_api('atleast_1d')     
+        super().dygraph_api('atleast_1d')
+
+
 class TestAtleast1Dlist(AtleastList):
     # test atleast_1d function using list of tensor
-   
+
     def test_static_api(self):
         super().static_api('atleast_1d')
-        
+
     def test_dygraph_api(self):
-        super().dygraph_api('atleast_1d')    
+        super().dygraph_api('atleast_1d')
+
 
 class TestAtleast2D0D(AtleastBase):
     # test atleast_2d function using 0 dim tensor
     def setUp(self):
-        #for 0 dim
-        self.x = np.array(1.0, dtype = "float64")
+        # for 0 dim
+        self.x = np.array(1.0, dtype="float64")
         self.x_shape = []
         self.x_dtype = "float64"
         self.place = (
@@ -172,14 +183,15 @@ class TestAtleast2D0D(AtleastBase):
 
     def test_static_api(self):
         super().static_api('atleast_2d')
-        
+
     def test_dygraph_api(self):
         super().dygraph_api('atleast_2d')
-        
+
+
 class TestAtleast2D2D(AtleastBase):
     # test atleast_2d function using 2 dim tensor
     def setUp(self):
-        #for 2 dim
+        # for 2 dim
         self.x = np.arange(2, dtype="int64")
         self.x_shape = [2]
         self.x_dtype = "int64"
@@ -191,16 +203,18 @@ class TestAtleast2D2D(AtleastBase):
 
     def test_static_api(self):
         super().static_api('atleast_2d')
-        
+
     def test_dygraph_api(self):
         super().dygraph_api('atleast_2d')
+
+
 class TestAtleast2Dlist(AtleastList):
     # test atleast_2d function using list of tensor
     def setUp(self):
-        self.x = np.array(1.0, dtype = "float64")
+        self.x = np.array(1.0, dtype="float64")
         self.x_shape = []
         self.x_dtype = "float64"
-        self.y = np.array(0.5, dtype = "float64")
+        self.y = np.array(0.5, dtype="float64")
         self.y_shape = []
         self.y_dtype = "float64"
         self.place = (
@@ -209,18 +223,21 @@ class TestAtleast2Dlist(AtleastList):
             else paddle.CPUPlace()
         )
         # numpy's atleast_*d not use to pytorch, for list, the arg , [np.array(1.0, dtype = "float64"), np.array(1.0, dtype = "float64")] , is 2 dimension array ,not a list of tensor
-            # this expect output is the result for torch.atleast_2d((torch.tensor(1.), torch.tensor(0.5)))
-        self.expect_output = np.array([[[1.]], [[0.5]]])
+        # this expect output is the result for torch.atleast_2d((torch.tensor(1.), torch.tensor(0.5)))
+        self.expect_output = np.array([[[1.0]], [[0.5]]])
+
     def test_static_api(self):
         super().static_api('atleast_2d')
-        
+
     def test_dygraph_api(self):
-        super().dygraph_api('atleast_2d')     
+        super().dygraph_api('atleast_2d')
+
+
 class TestAtleast3D0D(AtleastBase):
     # test atleast_3d function using 0 dim tensor
     def setUp(self):
-        #for 0 dim
-        self.x = np.array(1.0, dtype = "float64")
+        # for 0 dim
+        self.x = np.array(1.0, dtype="float64")
         self.x_shape = []
         self.x_dtype = "float64"
         self.place = (
@@ -231,9 +248,11 @@ class TestAtleast3D0D(AtleastBase):
 
     def test_static_api(self):
         super().static_api('atleast_3d')
-        
+
     def test_dygraph_api(self):
         super().dygraph_api('atleast_3d')
+
+
 class TestAtleast3D2D(AtleastBase):
     # test atleast_3d function using 2 dim tensor
     def setUp(self):
@@ -248,9 +267,11 @@ class TestAtleast3D2D(AtleastBase):
 
     def test_static_api(self):
         super().static_api('atleast_3d')
-        
+
     def test_dygraph_api(self):
-        super().dygraph_api('atleast_3d')    
+        super().dygraph_api('atleast_3d')
+
+
 class TestAtleast3D3D(AtleastBase):
     # test atleast_3d function using 3 dim tensor
     def setUp(self):
@@ -265,16 +286,18 @@ class TestAtleast3D3D(AtleastBase):
 
     def test_static_api(self):
         super().static_api('atleast_3d')
-        
+
     def test_dygraph_api(self):
-        super().dygraph_api('atleast_3d')       
+        super().dygraph_api('atleast_3d')
+
+
 class TestAtleast3Dlist(AtleastList):
     # test atleast_3d function using list of tensor
     def setUp(self):
-        self.x = np.array(1.0, dtype = "float64")
+        self.x = np.array(1.0, dtype="float64")
         self.x_shape = []
         self.x_dtype = "float64"
-        self.y = np.array(0.5, dtype = "float64")
+        self.y = np.array(0.5, dtype="float64")
         self.y_shape = []
         self.y_dtype = "float64"
         self.place = (
@@ -283,13 +306,16 @@ class TestAtleast3Dlist(AtleastList):
             else paddle.CPUPlace()
         )
         # numpy's atleast_*d not use to pytorch, for list, the arg , [np.array(1.0, dtype = "float64"), np.array(1.0, dtype = "float64")] , is 2 dimension array ,not a list of tensor
-            # this expect output is the result for torch.atleast_3d((torch.tensor(1.), torch.tensor(0.5)))
-        self.expect_output = np.array([[[[1.]]], [[[0.5]]]])
+        # this expect output is the result for torch.atleast_3d((torch.tensor(1.), torch.tensor(0.5)))
+        self.expect_output = np.array([[[[1.0]]], [[[0.5]]]])
+
     def test_static_api(self):
         super().static_api('atleast_3d')
-        
+
     def test_dygraph_api(self):
-        super().dygraph_api('atleast_3d')   
+        super().dygraph_api('atleast_3d')
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
