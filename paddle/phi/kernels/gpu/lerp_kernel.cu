@@ -17,14 +17,10 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 
 namespace phi {
-
-template <typename T>
-struct BroadcastMinElementWiseDirectCUDAFunctor {
-  HOSTDEVICE inline T operator()(const T min) const { return min; }
-};
 
 template <typename T>
 struct LerpElementWiseDirectCUDAFunctor {
@@ -87,36 +83,38 @@ void LerpKernel(const Context &ctx,
     DenseTensor b_min = phi::EmptyLike<T>(ctx, *out);
     if (x.dims().size() != y.dims().size() &&
         weight.dims().size() != y.dims().size()) {
-      std::vector<const DenseTensor *> broadcast_min_inputs;
-      broadcast_min_inputs.reserve(1);
-      std::vector<DenseTensor *> broadcast_min_outputs = {&b_min};
-      auto broadcast_min_functor =
-          BroadcastMinElementWiseDirectCUDAFunctor<T>();
+      // std::vector<const DenseTensor *> broadcast_min_inputs;
+      // broadcast_min_inputs.reserve(1);
+      // std::vector<DenseTensor *> broadcast_min_outputs = {&b_min};
+      // auto broadcast_min_functor = kps::IdentityFunctor<T>();
       if (x.dims().size() < y.dims().size() &&
           x.dims().size() < weight.dims().size()) {
-        broadcast_min_inputs.emplace_back(&x);
-        phi::funcs::BroadcastKernel<T>(ctx,
-                                       broadcast_min_inputs,
-                                       &broadcast_min_outputs,
-                                       broadcast_min_functor);
+        // broadcast_min_inputs.emplace_back(&x);
+        CastKernel<T, Context>(ctx, x, b_min.dtype(), &b_min);
+        // phi::funcs::BroadcastKernel<T>(ctx,
+        //                                broadcast_min_inputs,
+        //                                &broadcast_min_outputs,
+        //                                broadcast_min_functor);
         inputs.emplace_back(&b_min);
         inputs.emplace_back(&y);
         inputs.emplace_back(&weight);
       } else if (y.dims().size() < weight.dims().size()) {
-        broadcast_min_inputs.emplace_back(&y);
-        phi::funcs::BroadcastKernel<T>(ctx,
-                                       broadcast_min_inputs,
-                                       &broadcast_min_outputs,
-                                       broadcast_min_functor);
+        // broadcast_min_inputs.emplace_back(&y);
+        // phi::funcs::BroadcastKernel<T>(ctx,
+        //                                broadcast_min_inputs,
+        //                                &broadcast_min_outputs,
+        //                                broadcast_min_functor);
+        CastKernel<T, Context>(ctx, y, b_min.dtype(), &b_min);
         inputs.emplace_back(&x);
         inputs.emplace_back(&b_min);
         inputs.emplace_back(&weight);
       } else {
-        broadcast_min_inputs.emplace_back(&weight);
-        phi::funcs::BroadcastKernel<T>(ctx,
-                                       broadcast_min_inputs,
-                                       &broadcast_min_outputs,
-                                       broadcast_min_functor);
+        // broadcast_min_inputs.emplace_back(&weight);
+        // phi::funcs::BroadcastKernel<T>(ctx,
+        //                                broadcast_min_inputs,
+        //                                &broadcast_min_outputs,
+        //                                broadcast_min_functor);
+        CastKernel<T, Context>(ctx, weight, b_min.dtype(), &b_min);
         inputs.emplace_back(&x);
         inputs.emplace_back(&y);
         inputs.emplace_back(&b_min);
