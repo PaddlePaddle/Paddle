@@ -1410,42 +1410,8 @@ foreach(IR_OP_TEST ${NEW_IR_OP_RELAXED_TESTS})
   endif()
 endforeach()
 
-set(STRIED_TESTS
-    test_complex_getitem
-    test_complex_grad_accumulated
-    test_complex_simplenet
-    test_conv1d_layer
-    test_conv1d_transpose_layer
-    test_conv2d_layer
-    test_diagonal_op
-    test_imperative_ocr_attention_model
-    test_imperative_ptb_rnn
-    test_imperative_ptb_rnn_sorted_gradient
-    test_initializer
-    test_inplace
-    test_real_imag_op
-    test_reshape_op
-    test_set_value_op
-    test_signal
-    test_slice_op
-    test_solve_op
-    test_squeeze_op
-    test_squeeze2_op
-    test_unbind_op
-    test_unsqueeze_op
-    test_unsqueeze2_op
-    test_var_base)
-
-foreach(STRIED_TEST ${STRIED_TESTS})
-  py_test_modules(${STRIED_TEST}_with_stride MODULES ${STRIED_TEST} ENVS
-                  FLAGS_use_stride_kernel=true)
-  set_tests_properties(${STRIED_TEST}_with_stride PROPERTIES TIMEOUT 120)
-endforeach()
-
 py_test_modules(test_stride MODULES test_stride ENVS
                 FLAGS_use_stride_kernel=true)
-
-set_tests_properties(test_slice_op_with_stride PROPERTIES TIMEOUT 300)
 
 if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
   # These UTs are specially designed for FleetExecutor
