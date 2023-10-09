@@ -17,7 +17,6 @@
 
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/program.h"
-// #include "paddle/pir/dialect/shape/transforms/shape_optimization.h"
 #include "paddle/pir/dialect/shape/utils/shape_utils.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
