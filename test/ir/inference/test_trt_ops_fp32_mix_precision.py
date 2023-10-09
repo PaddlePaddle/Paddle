@@ -86,13 +86,13 @@ class TestTrtFp32MixPrecision(TrtLayerAutoScanTest):
         ]
         for op_type in [
             "elementwise_add",
-            # "elementwise_mul",
-            # "elementwise_sub",
-            # "elementwise_div",
-            # "elementwise_pow",
-            # "elementwise_min",
-            # "elementwise_max",
-            # "elementwise_mod",
+            "elementwise_mul",
+            "elementwise_sub",
+            "elementwise_div",
+            "elementwise_pow",
+            "elementwise_min",
+            "elementwise_max",
+            "elementwise_mod",
         ]:
             ops_config = [
                 {
