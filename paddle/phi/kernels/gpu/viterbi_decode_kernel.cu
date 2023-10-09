@@ -337,7 +337,7 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
           dev_ctx, left_length, one, &float_mask);
       phi::MultiplyKernel<T, Context>(
           dev_ctx, stop_trans, float_mask, &alpha_nxt);
-      phi::MultiplyKernel<T, Context>(dev_ctx, alpha, alpha_nxt, &alpha);
+      phi::AddKernel<T, Context>(dev_ctx, alpha, alpha_nxt, &alpha);
     }
     phi::SubtractKernel<int64_t, Context>(
         dev_ctx, left_length, one, &left_length);
