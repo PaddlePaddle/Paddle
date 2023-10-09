@@ -27,8 +27,8 @@ class Geometric(distribution.Distribution):
 
     In probability theory and statistics, the geometric distribution is one of
     discrete probability distributions, parameterized by one positive shape parameter, denoted by probs.
-    In n Bernoulli trials, it takes k trials to get the probability of success for the first time.
-    In detail, it is: the probability that the first k-1 times failed and the kth time succeeded.
+    In n Bernoulli trials, it takes k+1 trials to get the probability of success for the first time.
+    In detail, it is: the probability that the first k times failed and the kth time succeeded.
     The geometric distribution is a special case of the Pascal distribution when r=1.
 
     The probability mass function (pmf) is
@@ -36,7 +36,7 @@ class Geometric(distribution.Distribution):
     .. math::
             Pr(Y=k)=(1-p)^kp
 
-    where k is number of trials performed and p is probability of success for each trial and k=0,1,2,3,4..., p belong to (0,1].
+    where k is number of trials failed before seeing a success, and p is probability of success for each trial and k=0,1,2,3,4..., p belong to (0,1].
 
     Args:
         probs (Real|Tensor): Probability parameter.
