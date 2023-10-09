@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 import paddle
 from paddle.autograd import PyLayer
 from paddle.base import core
@@ -216,8 +218,9 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
         task = ctx.model_parallel_group.process_group.all_reduce(
             dx, op_type, sync_op=False
         )
-        # TODO(GhostScreaming): remove it in future.
-        tmp = paddle.ones([512])
+        # Using small operation to preempt GPU SMs for all_reduce to achieve overlap.
+        if int(os.getenv("CUDA_DEVICE_MAX_CONNECTIONS", "0")) != 1:
+            tmp = paddle.ones([512])
 
         if ctx.mp_fused_linear_param_grad_add:
             if not is_fused_linear_param_grad_add_supported():
