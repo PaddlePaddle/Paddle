@@ -379,17 +379,17 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   std::vector<int> origin_outputs_dtype;
   std::map<std::string, int> map_origin_outputs_dtype;
 
-  // rename output names in trt_run_float_output_names
-  auto trt_run_float_output_names =
-      Get<std::unordered_set<std::string>>("trt_run_float_output_names");
+  // rename output names in trt_ops_run_float
+  auto trt_ops_run_float =
+      Get<std::unordered_set<std::string>>("trt_ops_run_float");
   for (auto node : subgraph) {
     if (node->NodeType() == Node::Type::kOperation) {
       for (auto *x : node->outputs) {
         if (std::count(parameters.begin(), parameters.end(), x->Name()) > 0)
           continue;
-        if (trt_run_float_output_names.count(x->Name()) > 0) {
-          trt_run_float_output_names.erase(x->Name());
-          trt_run_float_output_names.insert(
+        if (trt_ops_run_float.count(x->Name()) > 0) {
+          trt_ops_run_float.erase(x->Name());
+          trt_ops_run_float.insert(
               RenameVarBeUnique(x->Name(), std::to_string(x->id())));
         }
       }
@@ -800,10 +800,8 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
       inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
           .Create(engine_key + std::to_string(predictor_id), params);
 
-  // support set layer precision as float32
-  trt_engine->SetRunFloat(
-      trt_run_float_output_names,
-      Get<std::unordered_set<std::string>>("trt_run_float_op_types"));
+  // support force ops to run in FP32 precision
+  trt_engine->SetRunFloat(trt_ops_run_float);
 
   if (use_static_engine) {
     trt_engine_serialized_data = GetTrtEngineSerializedData(

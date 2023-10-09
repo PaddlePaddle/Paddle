@@ -930,8 +930,7 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::tensorrt_explicit_quantization_enabled)
       .def("exp_disable_tensorrt_half_ops",
            &AnalysisConfig::Exp_DisableTensorRtHalfOps,
-           py::arg("output_names") = std::unordered_set<std::string>({}),
-           py::arg("op_types") = std::unordered_set<std::string>({}))
+           py::arg("ops") = std::unordered_set<std::string>({}))
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
       .def("set_tensorrt_optimization_level",
            &AnalysisConfig::SetTensorRtOptimizationLevel)

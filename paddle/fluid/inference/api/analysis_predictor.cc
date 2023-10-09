@@ -1425,9 +1425,7 @@ void AnalysisPredictor::PrepareArgument() {
         config_.trt_use_explicit_quantization_);
     argument_->SetTrtEngineMemorySharing(config_.trt_engine_memory_sharing());
     argument_->SetTensorRtOptimizationLevel(config_.trt_optimization_level_);
-    argument_->SetTensorRtRunFloatOutputNames(
-        config_.trt_run_float_output_names_);
-    argument_->SetTensorRtRunFloatOpTypes(config_.trt_run_float_op_types_);
+    argument_->SetTensorRtOpsRunFloat(config_.trt_ops_run_float_);
   }
 
   if (config_.dlnne_enabled()) {

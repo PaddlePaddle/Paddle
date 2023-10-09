@@ -856,9 +856,7 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \brief Prevent ops running in Paddle-TRT with half precision.
   /// NOTE: just experimental, not an official stable API, easy to be broken.
   ///
-  void Exp_DisableTensorRtHalfOps(
-      const std::unordered_set<std::string>& ops,
-      const std::unordered_set<std::string>& layers);
+  void Exp_DisableTensorRtHalfOps(const std::unordered_set<std::string>& ops);
 
   ///
   /// \brief A boolean state telling whether to use TensorRT explicit
@@ -1302,8 +1300,7 @@ struct PD_INFER_DECL AnalysisConfig {
   bool trt_engine_memory_sharing_{false};
   int trt_engine_memory_sharing_identifier_{0};
 
-  std::unordered_set<std::string> trt_run_float_output_names_;
-  std::unordered_set<std::string> trt_run_float_op_types_;
+  std::unordered_set<std::string> trt_ops_run_float_;
 
   bool use_mkldnn_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;

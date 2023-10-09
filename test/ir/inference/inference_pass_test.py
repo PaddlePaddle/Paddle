@@ -156,14 +156,6 @@ class InferencePassTest(unittest.TestCase):
                     self.trt_parameters.use_static,
                     self.trt_parameters.use_calib_mode,
                 )
-                if (
-                    len(self.trt_parameters.fp32_ops) > 0
-                    or len(self.trt_parameters.fp32_layers) > 0
-                ):
-                    config.exp_disable_tensorrt_half_ops(
-                        self.trt_parameters.fp32_ops,
-                        self.trt_parameters.fp32_layers,
-                    )
                 if self.trt_parameters.use_inspector:
                     config.enable_tensorrt_inspector(
                         self.trt_parameters.inspector_serialize
@@ -330,8 +322,6 @@ class InferencePassTest(unittest.TestCase):
             use_calib_mode,
             use_inspector=False,
             inspector_serialize=False,
-            fp32_ops=set(),
-            fp32_layers=set(),
         ):
             self.workspace_size = workspace_size
             self.max_batch_size = max_batch_size
@@ -341,8 +331,6 @@ class InferencePassTest(unittest.TestCase):
             self.use_calib_mode = use_calib_mode
             self.use_inspector = use_inspector
             self.inspector_serialize = inspector_serialize
-            self.fp32_ops = fp32_ops
-            self.fp32_layers = fp32_layers
 
     class DynamicShapeParam:
         '''
