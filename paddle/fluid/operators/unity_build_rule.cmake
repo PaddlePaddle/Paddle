@@ -148,8 +148,7 @@ register_unity_group(
   lookup_table_dequant_op.cc
   lrn_op.cc
   mkldnn/lrn_mkldnn_op.cc
-  lstm_unit_op.cc
-  lstmp_op.cc)
+  lstm_unit_op.cc)
 register_unity_group(
   cc
   log_loss_op.cc
@@ -436,7 +435,6 @@ register_unity_group(
   log_loss_op.cu
   lookup_table_v2_op.cu
   masked_select_op.cu
-  lstmp_op.cu
   shuffle_channel_op.cu
   softmax_cudnn_op.cu
   squared_l2_distance_op.cu)
