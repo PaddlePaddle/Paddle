@@ -22,6 +22,7 @@ from paddle.common_ops_import import VarDesc, Variable
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import check_dtype, check_variable_and_dtype
+from ..base.framework import paddle_type_to_proto_type
 from ..framework import (
     LayerHelper,
     convert_np_dtype_to_dtype_,
@@ -29,7 +30,6 @@ from ..framework import (
     in_dynamic_mode,
     in_dynamic_or_pir_mode,
     in_pir_mode,
-    paddle_type_to_proto_type,
 )
 
 # from ..base.layers import has_inf  #DEFINE_ALIAS
