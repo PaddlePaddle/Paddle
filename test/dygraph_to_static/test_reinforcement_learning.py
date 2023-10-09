@@ -64,7 +64,7 @@ def train(args, place, to_static):
     paddle.jit.enable_to_static(to_static)
 
     env = gym.make('CartPole-v0')
-    env.seed(SEED)
+    env.reset(seed=SEED)
 
     with base.dygraph.guard(place):
         paddle.seed(SEED)
