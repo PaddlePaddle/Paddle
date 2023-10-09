@@ -58,7 +58,8 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
    */
   std::vector<ir::LoweredFunc> Lower(const GroupPtr& group,
                                      bool apply_op_schedule = true,
-                                     bool apply_group_schedule = true);
+                                     bool apply_group_schedule = true,
+                                     bool apply_pass = true);
 
  private:
   /**

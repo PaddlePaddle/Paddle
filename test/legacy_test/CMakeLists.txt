@@ -523,9 +523,7 @@ set(TEST_OPS_WITH_GC
     test_mean_op
     test_pad2d_op
     test_scatter_op
-    test_slice_op
-    test_space_to_depth_op
-    test_squared_l2_distance_op)
+    test_slice_op)
 
 foreach(TEST_OP ${TEST_OPS_WITH_GC})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
@@ -1047,7 +1045,6 @@ set_tests_properties(test_sigmoid_cross_entropy_with_logits_op
 set_tests_properties(test_imperative_optimizer_v2 PROPERTIES TIMEOUT 150)
 set_tests_properties(test_partial_sum_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cond PROPERTIES TIMEOUT 120)
-set_tests_properties(test_space_to_depth_op PROPERTIES TIMEOUT 200)
 set_tests_properties(test_sgd_op PROPERTIES TIMEOUT 250)
 set_tests_properties(test_parallel_executor_seresnext_base_gpu
                      PROPERTIES TIMEOUT 120)
@@ -1072,7 +1069,6 @@ set_tests_properties(test_pool2d_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_transpose_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_activation_op PROPERTIES TIMEOUT 270)
 set_tests_properties(test_normal PROPERTIES TIMEOUT 120)
-set_tests_properties(test_lstmp_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bilinear_interp_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_decoupled_py_reader PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fuse_bn_act_pass PROPERTIES TIMEOUT 120)
@@ -1283,6 +1279,7 @@ set(STATIC_BUILD_TESTS
     test_adamw_op
     test_arg_min_max_op
     test_assign_pos_op
+    test_batch_norm_op
     test_bucketize_api
     test_bincount_op
     test_c_embedding_op
@@ -1290,6 +1287,7 @@ set(STATIC_BUILD_TESTS
     test_decoupled_py_reader
     test_eig_op
     test_eigh_op
+    test_fake_dequantize_op
     test_fake_quantize_op
     test_fetch_lod_tensor_array
     test_ftrl_op
