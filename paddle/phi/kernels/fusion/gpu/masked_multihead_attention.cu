@@ -652,7 +652,7 @@ __global__ void masked_multihead_attention_kernel(
 #pragma unroll
     for (int ii = 0; ii < K_VECS_PER_THREAD; ++ii) {
       int jj = ii * params.max_seq_length + ti;
-      if (ti < act_time_stepi + 1) {
+      if (ti < act_time_step + 1) {
         if (beam_offset) {
           k[ii] =
               (Dh == Dh_MAX || jj * QK_ELTS_IN_16B < Dh * params.max_seq_length)
