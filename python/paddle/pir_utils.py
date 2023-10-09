@@ -99,14 +99,11 @@ class IrGuard:
             )
 
 
-def test_with_pir_api():
-    def decorator(func):
-        @wraps(func)
-        def impl(*args, **kwargs):
+def test_with_pir_api(func):
+    @wraps(func)
+    def impl(*args, **kwargs):
+        func(*args, **kwargs)
+        with IrGuard():
             func(*args, **kwargs)
-            with IrGuard():
-                func(*args, **kwargs)
 
-        return impl
-
-    return decorator
+    return impl
