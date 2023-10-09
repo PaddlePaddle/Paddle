@@ -15,11 +15,12 @@
 #pragma once
 
 #include <cstdint>
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace imperative {
 
-extern bool IsDebugEnabled();
+extern TEST_API bool IsDebugEnabled();
 extern uint64_t GetDebugLevel();
 
 }  // namespace imperative

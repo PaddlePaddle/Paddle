@@ -25,7 +25,7 @@ PADDLE_DEFINE_EXPORTED_bool(
 namespace paddle {
 namespace platform {
 
-bool is_gpu_place(const Place &p) {
+TEST_API bool is_gpu_place(const Place &p) {
   return p.GetType() == phi::AllocationType::GPU;
 }
 
@@ -37,7 +37,7 @@ bool is_ipu_place(const Place &p) {
   return p.GetType() == phi::AllocationType::IPU;
 }
 
-bool is_cpu_place(const Place &p) {
+TEST_API bool is_cpu_place(const Place &p) {
   return p.GetType() == phi::AllocationType::CPU;
 }
 

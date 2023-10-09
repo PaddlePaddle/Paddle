@@ -595,9 +595,7 @@ class DistForwardAPI(ForwardAPI):
                         )
         else:
             raise ValueError(
-                "{} : Output error: the output should not be empty.".format(
-                    self.api
-                )
+                f"{self.api} : Output error: the output should not be empty."
             )
 
         return output_creation_code
@@ -1073,9 +1071,7 @@ class DistForwardAPI(ForwardAPI):
                         self.vector_output_size_assertion_check()
             else:
                 raise ValueError(
-                    "{} : Output error: the output should not be empty.".format(
-                        self.api
-                    )
+                    f"{self.api} : Output error: the output should not be empty."
                 )
         else:
             reshard_p2r_code = (

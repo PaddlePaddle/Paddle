@@ -620,12 +620,12 @@ bool SymbolicDimMgr::SaveShapeConstraintGraph() {
 
 bool ShapeAnalysis::IsSameNumElements(Value lhs, Value rhs) {
   if (lhs == rhs) return true;
-  auto lhsTy = lhs.type().dyn_cast_interface<ShapedTypeInterface>();
-  auto rhsTy = rhs.type().dyn_cast_interface<ShapedTypeInterface>();
+  auto lhsTy = lhs.type().dyn_cast<ShapedTypeInterface>();
+  auto rhsTy = rhs.type().dyn_cast<ShapedTypeInterface>();
 
-  if (!lhsTy || !rhsTy || !lhsTy.hasRank() || !rhsTy.hasRank()) return false;
+  if (!lhsTy || !rhsTy || !lhsTy.HasRank() || !rhsTy.HasRank()) return false;
 
-  return IsProductEqual(lhs, 0, lhsTy.getRank(), rhs, 0, rhsTy.getRank());
+  return IsProductEqual(lhs, 0, lhsTy.GetRank(), rhs, 0, rhsTy.GetRank());
 }
 
 bool ShapeAnalysis::IsProductEqual(
@@ -665,13 +665,13 @@ SymbolicDimShapeAnalysis::~SymbolicDimShapeAnalysis() { mgr_.Save(); }
 bool SymbolicDimShapeAnalysis::IsShapeEqual(Value lhs, Value rhs) {
   if (lhs == rhs) return true;
 
-  auto lhsTy = lhs.type().dyn_cast_interface<ShapedTypeInterface>();
-  auto rhsTy = rhs.type().dyn_cast_interface<ShapedTypeInterface>();
+  auto lhsTy = lhs.type().dyn_cast<ShapedTypeInterface>();
+  auto rhsTy = rhs.type().dyn_cast<ShapedTypeInterface>();
 
-  if (!lhsTy || !rhsTy || !lhsTy.hasRank() || !rhsTy.hasRank()) return false;
+  if (!lhsTy || !rhsTy || !lhsTy.HasRank() || !rhsTy.HasRank()) return false;
 
-  if (lhsTy.hasStaticShape() && rhsTy.hasStaticShape()) {
-    return vectorize(lhsTy.getShape()) == vectorize(rhsTy.getShape());
+  if (lhsTy.HasStaticShape() && rhsTy.HasStaticShape()) {
+    return vectorize(lhsTy.GetShape()) == vectorize(rhsTy.GetShape());
   }
 
   auto lhsIt = value2SymDims_.find(lhs);
@@ -701,17 +701,17 @@ bool SymbolicDimShapeAnalysis::IsProductEqual(Value lhs,
 
   auto buildSymbolicDimProduct =
       [&](SymbolicDimProduct& prod, Value value, std::vector<int> dimIdxs) {
-        auto ty = value.type().dyn_cast_interface<ShapedTypeInterface>();
+        auto ty = value.type().dyn_cast<ShapedTypeInterface>();
         auto it = value2SymDims_.find(value);
-        if (!ty || !ty.hasRank()) return false;
+        if (!ty || !ty.HasRank()) return false;
         for (int idx : dimIdxs) {
-          if (ty.getShape()[idx] == ShapedTypeInterface::kDynamic) {
+          if (ty.GetShape()[idx] == ShapedTypeInterface::kDynamic) {
             if (it == value2SymDims_.end() ||
                 static_cast<int>(it->second.size()) <= idx)
               return false;
             prod.symbols.push_back(it->second[idx]);
           } else {
-            prod.factor *= ty.getShape()[idx];
+            prod.factor *= ty.GetShape()[idx];
           }
         }
         return true;
@@ -813,9 +813,9 @@ bool ShapeComputationIRAnalysis::BuildShapeOnValue(Value value) {
     SymbolicDim sym = mgr_.NewSymbolicDim();
     value2SymDim_[value] = sym;
   } else if (IsCandidateShapeTensorType(ty)) {
-    auto shapedTy = ty.dyn_cast_interface<ShapedTypeInterface>();
+    auto shapedTy = ty.dyn_cast<ShapedTypeInterface>();
     std::vector<SymbolicDim> symbols;
-    for (size_t i = 0, d = shapedTy.getShape()[0]; i < d; ++i)
+    for (size_t i = 0, d = shapedTy.GetShape()[0]; i < d; ++i)
       symbols.push_back(mgr_.NewSymbolicDim());
     shapeTensor2SymDims_[value] = std::move(symbols);
   }
@@ -883,10 +883,10 @@ bool IsIntOrIndex(Type type) {
 
 bool IsCandidateShapeTensorType(Type ty) {
   if (auto tensorTy = ty.dyn_cast<paddle::dialect::DenseTensorType>()) {
-    auto shapedTy = tensorTy.dyn_cast_interface<ShapedTypeInterface>();
-    return (shapedTy.getRank() == 1 && shapedTy.hasStaticShape() &&
-            IsIntOrIndex(shapedTy.getElementType()) &&
-            shapedTy.getShape()[0] < 32);
+    auto shapedTy = tensorTy.dyn_cast<ShapedTypeInterface>();
+    return (shapedTy.GetRank() == 1 && shapedTy.HasStaticShape() &&
+            IsIntOrIndex(shapedTy.GetElementType()) &&
+            shapedTy.GetShape()[0] < 32);
   }
   return false;
 }

@@ -65,6 +65,12 @@
     func : fetch
     param : [x]
 
+- op : get_tensor_from_selected_rows
+  args : (Tensor x)
+  output : Tensor(out)
+  kernel:
+    func: get_tensor_from_selected_rows {selected_rows -> dense}
+
 - op : load_combine
   args : (str file_path, bool load_as_fp16, bool model_from_memory)
   output : Tensor[](Out)
@@ -178,4 +184,15 @@
     func: fused_attention
   infer_meta:
     func: FusedAttentionInferMeta
-  optional: cache_kv, ln_scale, ln_bias, qkv_bias, src_mask, out_linear_bias, ln_scale_2, ln_bias_2
+  optional: cache_kv, ln_scale, ln_bias, qkv_bias, src_mask, out_linear_bias, ln_scale_2, ln_bias_2, ln_mean_2
+  backward: fused_attention_grad
+
+- op: fused_feedforward
+  args: (Tensor x, Tensor dropout1_seed, Tensor dropout2_seed, Tensor linear1_weight, Tensor linear1_bias, Tensor linear2_weight, Tensor linear2_bias, Tensor ln1_scale, Tensor ln1_bias, Tensor ln2_scale, Tensor ln2_bias, bool pre_layer_norm, float ln1_epsilon, float ln2_epsilon, str act_method, float dropout1_prob, float dropout2_prob, str dropout1_implementation, str dropout2_implementation, bool is_test, bool dropout1_fix_seed, bool dropout2_fix_seed, int dropout1_seed_val, int dropout2_seed_val, bool add_residual, int ring_id)
+  output: Tensor(out), Tensor(dropout1_mask), Tensor(dropout2_mask), Tensor(ln1_mean), Tensor(ln1_variance), Tensor(ln2_mean), Tensor(ln2_variance), Tensor(linear1_out), Tensor(ln1_out), Tensor(dropout1_out), Tensor(dropout2_out)
+  kernel:
+    func: fused_feedforward
+  infer_meta:
+    func: FusedFeedForwardInferMeta
+  optional: dropout1_seed, dropout2_seed, linear1_bias, linear2_bias, ln1_scale, ln1_bias, ln2_scale, ln2_bias, ln2_mean, ln2_variance, ln1_mean, ln1_variance, ln1_out
+  backward: fused_feedforward_grad

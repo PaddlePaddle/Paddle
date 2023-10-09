@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/proto_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace framework {
@@ -37,7 +38,7 @@ class VarDesc;
 // read/write speed. Only when we want the protobuf message, the local changes
 // will be synchronized (by `Sync` method).
 
-class BlockDesc {
+class TEST_API BlockDesc {
  public:
   BlockDesc(ProgramDesc *prog, proto::BlockDesc *desc);
 
