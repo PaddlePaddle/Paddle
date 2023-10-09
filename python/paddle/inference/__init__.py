@@ -31,6 +31,7 @@ from paddle.base.core import (
     get_num_bytes_of_data_type,
     PredictorPool,
     XpuConfig,
+    InternalUtils,
 )
 
 __all__ = [  # noqa
@@ -49,4 +50,5 @@ __all__ = [  # noqa
     'get_num_bytes_of_data_type',
     'PredictorPool',
     'XpuConfig',
+    'InternalUtils',
 ]
