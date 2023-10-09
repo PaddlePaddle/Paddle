@@ -484,9 +484,9 @@ void BindPlace(pybind11::module &m) {  // NOLINT
            phi::backends::xpu::XPUVersion::XPU1;
   });
   m.def("is_bfloat16_supported", [](const platform::XPUPlace &place) -> bool {
-    // Only xpu2 supports bfloat16
-    return platform::get_xpu_version(place.device) ==
-           phi::backends::xpu::XPUVersion::XPU2;
+    // XPUs with Compute Capability > xpu2 support float16 and bfloat16
+    return platform::get_xpu_version(place.device) >
+           phi::backends::xpu::XPUVersion::XPU1;
   });
 #endif
 

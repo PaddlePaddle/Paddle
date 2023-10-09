@@ -14,19 +14,38 @@
 
 #pragma once
 
-#include <algorithm>
-#include <functional>
-#include <iterator>
-#include <type_traits>
-#include <unordered_map>
-#include <unordered_set>
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/builtin_type_interfaces.h"
-#include "paddle/pir/core/utils.h"
-#include "paddle/pir/dialect/shape/ir/shape_op.h"
+#include "paddle/pir/dialect/shape/utils/symbol_table.h"
 
 namespace pir {
+
+// Helper class to query and manipulate shape constraint IR on buffer level.
+class ShapeAnalysis {
+ public:
+  virtual ~ShapeAnalysis() = default;
+
+  // Returns true if the two value have the same symbolic shape.
+  virtual bool IsShapeEqual(Value lhs, Value rhs) = 0;
+
+  // Suppose:
+  //    lhs_dim_idxs = {ld0, ld1, ...}
+  //    rhs_dim_idxs = {rd0, rd1, ...}
+  // Returns true if:
+  //    lhs.shape[ld0] * lhs.shape[ld1] * ... ==
+  //    rhs.shape[rd0] * rhs.shape[rd1] * ...
+  virtual bool IsProductEqual(Value lhs,
+                              std::vector<int> lhs_dim_idxs,
+                              Value rhs,
+                              std::vector<int> rhs_dim_idxs) = 0;
+
+  // Returns true if:
+  //    lhs.shape[lhs_from] * ... lhs.shape[lhs_to-1] ==
+  //    rhs.shape[rhs_from] * ... rhs.shape[rhs_to-1]
+  virtual bool IsProductEqual(
+      Value lhs, int lhs_from, int lhs_to, Value rhs, int rhs_from, int rhs_to);
+
+  // Returns true if the two value have the same number elements.
+  virtual bool IsSameNumElements(Value lhs, Value rhs);
+};
 
 using dialect::SymbolicDim;
 
@@ -43,42 +62,6 @@ struct SymbolicDimProduct {
                                 const SymbolicDimProduct& rhs) {
     return !(lhs == rhs);
   }
-};
-
-class SymbolTable {
- public:
-  explicit SymbolTable(Operation* symbolTableOp)
-      : symbolTableOp_(symbolTableOp) {}
-  SymbolTable() = default;
-  template <typename T>
-  typename std::enable_if<std::is_same<T, SymbolicDim>::value,
-                          SymbolicDim>::type
-  Lookup(const std::string& name) const {
-    auto it = symbolTableMap_.find(name);
-    return it != symbolTableMap_.end() ? it->second->dyn_cast<SymbolicDim>()
-                                       : SymbolicDim(nullptr);
-  }
-  template <typename T>
-  typename std::enable_if<!std::is_same<T, SymbolicDim>::value,
-                          std::vector<T>>::type
-  Lookup(const std::string& name) const {
-    std::vector<T> res;
-    auto it = symbolFuncMap_.find(name);
-    if (it != symbolFuncMap_.end()) {
-      for (auto& p : it->second) {
-        res.push_back(p->dyn_cast<T>());
-      }
-    }
-    return res;
-  }
-
-  const std::string insert(Operation* symbol);
-  Operation* getOp() const { return symbolTableOp_; }
-
- private:
-  Operation* symbolTableOp_;
-  std::unordered_map<std::string, Operation*> symbolTableMap_;
-  std::unordered_map<std::string, std::vector<Operation*>> symbolFuncMap_;
 };
 
 struct SymDimHasher {
@@ -107,7 +90,7 @@ class SymbolicDimMgr {
   std::vector<SymbolicDim> CreateSymbolicDimsForRankedValue(Value value);
   SymbolicDim GetRootSymbolicDim(SymbolicDim symbol);
   bool IsSymbolicDimEqual(SymbolicDim lhs, SymbolicDim rhs);
-  SymbolTable& symbolTable() { return symbolTable_; }
+  SymbolTable& symbolTable() { return symbol_table_; }
   bool MapSymbolicDimEqual(SymbolicDim lhs, SymbolicDim rhs);
   SymbolicDimProduct SimplifySymbolicDimProduct(const SymbolicDimProduct& x);
   std::pair<SymbolicDimProduct, SymbolicDimProduct>
@@ -134,7 +117,7 @@ class SymbolicDimMgr {
  private:
   ModuleOp m_;
 
-  SymbolTable symbolTable_;
+  SymbolTable symbol_table_;
 
   int64_t nextSymbolicIdx_ = 0;
 
@@ -153,39 +136,45 @@ class SymbolicDimMgr {
   bool productEqualityMapUpdated_ = true;
 };
 
-class ShapeAnalysis {
+// A subclass to impement `ShapeAnalysis` on buffer level.
+// The implementation is based on shape constraint ir.
+class ShapeConstraintIRAnalysis : public ShapeAnalysis {
  public:
-  virtual ~ShapeAnalysis() = default;
+  // Build shape related analysis on the provided `op`.
+  // This generally can be divided into two steps:
+  // 1, load exsiting shape constraint ir (e.g. symbolic dim ops)
+  // 2, build mapping between memref values and symbolic dim ops.
+  explicit ShapeConstraintIRAnalysis(ModuleOp m);
 
-  virtual bool IsShapeEqual(Value lhs, Value rhs) = 0;
+  // auto-save updated shape constriant ir when destroying.
+  ~ShapeConstraintIRAnalysis();
 
-  virtual bool IsProductEqual(Value lhs,
-                              std::vector<int> lhsDimIdxs,
-                              Value rhs,
-                              std::vector<int> rhsDimIdxs) = 0;
-  virtual bool IsProductEqual(
-      Value lhs, int lhsFrom, int lhsTo, Value rhs, int rhsFrom, int rhsTo);
-  virtual bool IsSameNumElements(Value lhs, Value rhs);
-};
-
-class SymbolicDimShapeAnalysis : public ShapeAnalysis {
- public:
-  explicit SymbolicDimShapeAnalysis(ModuleOp m);
-  ~SymbolicDimShapeAnalysis();
-
+  // Returns the `SymbolicDimMgr` this object holds.
   SymbolicDimMgr& symbolicDimMgr() { return mgr_; }
   const SymbolicDimMgr& symbolicDimMgr() const { return mgr_; }
+
+  // Returns true if the two value have the same symbolic shape.
   bool IsShapeEqual(Value lhs, Value rhs) override;
 
+  // Suppose:
+  //    lhs_dim_idxs = {ld0, ld1, ...}
+  //    rhs_dim_idxs = {rd0, rd1, ...}
+  // Returns true if:
+  //    lhs.shape[ld0] * lhs.shape[ld1] * ... ==
+  //    rhs.shape[rd0] * rhs.shape[rd1] * ...
   bool IsProductEqual(Value lhs,
-                      std::vector<int> lhsDimIdxs,
+                      std::vector<int> lhs_dim_idxs,
                       Value rhs,
-                      std::vector<int> rhsDimIdxs) override;
+                      std::vector<int> rhs_dim_idxs) override;
 
  private:
+  // The operation this analysis runs on.
   ModuleOp m_;
+  // The `SymbolicDimMgr` this analysis holds.
   SymbolicDimMgr mgr_;
-  std::unordered_map<Value, std::vector<SymbolicDim>> value2SymDims_;
+  // Map a ranked memref value to an array of symbolicDims, each represents one
+  // dimension size of the memref value.
+  std::unordered_map<Value, std::vector<SymbolicDim>> value_to_sym_dims_;
 };
 
 class ShapeComputationIRAnalysis {
