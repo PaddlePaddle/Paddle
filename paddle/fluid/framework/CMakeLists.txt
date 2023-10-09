@@ -619,7 +619,7 @@ if(WITH_PYTHON)
               ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
       COMMENT "Copy generated python proto into directory paddle/fluid/proto."
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-    if(NOT WITH_ROCM)
+    # if(NOT WITH_ROCM)
       add_custom_target(
         fleet_executor_proto_init ALL
         DEPENDS fleet_proto_init fleet_executor_desc_py_proto
@@ -630,7 +630,7 @@ if(WITH_PYTHON)
         COMMENT
           "Copy generated python proto into directory paddle/distributed/fleet/proto."
       )
-    endif()
+    # endif()
   else()
     string(REPLACE "/" "\\" proto_dstpath
                    "${PADDLE_BINARY_DIR}/python/paddle/base/proto/")
