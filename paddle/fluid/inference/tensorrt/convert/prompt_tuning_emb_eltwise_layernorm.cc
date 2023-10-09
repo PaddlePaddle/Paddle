@@ -13,6 +13,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/utils.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
+#include "paddle/fluid/inference/tensorrt/plugin/prompt_tuning_emb_layernorm_varseqlen_plugin.h"
 #include "paddle/phi/core/ddim.h"
 
 namespace paddle {
@@ -149,9 +150,9 @@ class PromptTuningEmbEltwiseLayerNormOpConverter : public OpConverter {
       engine_->SetTensorDynamicRange(plugin_layer->getOutput(0),
                                      out_scale);  // output
       engine_->SetTensorDynamicRange(plugin_layer->getOutput(1),
-                                     out_scale);  // mask
+                                     out_scale);  // new mask
       engine_->SetTensorDynamicRange(plugin_layer->getOutput(2),
-                                     out_scale);  // max seqlen
+                                     out_scale);  // new max seqlen
     }
 
     engine_->DeleteITensor("mask_id", engine_->GetITensor("mask_id"));

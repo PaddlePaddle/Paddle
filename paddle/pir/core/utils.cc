@@ -16,7 +16,8 @@
 
 namespace pir {
 std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
-  return lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
+  lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
+  return lhs;
 }
 
 void *aligned_malloc(size_t size, size_t alignment) {

@@ -76,7 +76,6 @@ class IR_API OpInfo {
 
   const char *attribute_name(size_t idx) const;
 
-  void *AsOpaquePointer() const { return impl_; }
   static OpInfo RecoverFromOpaquePointer(void *pointer) {
     return OpInfo(static_cast<OpInfoImpl *>(pointer));
   }
@@ -109,7 +108,7 @@ namespace std {
 template <>
 struct hash<pir::OpInfo> {
   std::size_t operator()(const pir::OpInfo &obj) const {
-    return std::hash<const void *>()(obj);
+    return std::hash<void *>()(obj);
   }
 };
 }  // namespace std

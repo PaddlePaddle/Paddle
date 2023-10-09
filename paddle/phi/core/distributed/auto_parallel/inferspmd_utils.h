@@ -138,8 +138,27 @@ struct InferSpmdFnImpl<Return (*)(Args...), infer_spmd_fn> {
     }                                                                     \
   }
 
+#define PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_CONST_ATTRIBUTE_REF(attr_type) \
+  template <typename... Tail>                                                  \
+  struct InferSpmdFnCallHelper<const attr_type&, Tail...> {                    \
+    template <int in_idx, int attr_idx, typename... PreviousArgs>              \
+    static SpmdInfo Call(const InferSpmdContext& ctx,                          \
+                         PreviousArgs&... pargs) {                             \
+      attr_type arg = ctx.AttrAt<attr_type>(attr_idx);                         \
+      return InferSpmdFnCallHelper<Tail...>::template Call<in_idx,             \
+                                                           attr_idx + 1>(      \
+          ctx, pargs..., arg);                                                 \
+    }                                                                          \
+  }
+
   // TODO(chenweihang): support other attr type later as needed
   PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_ATTRIBUTE(bool);
+  PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_ATTRIBUTE(int);
+  PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_ATTRIBUTE(float);
+  PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_ATTRIBUTE(int64_t);
+  PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_CONST_ATTRIBUTE_REF(std::vector<int>);
+  PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_CONST_ATTRIBUTE_REF(
+      std::vector<int64_t>);
 
   /* End case */
   template <typename T>

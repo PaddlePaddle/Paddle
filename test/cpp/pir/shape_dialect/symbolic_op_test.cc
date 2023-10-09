@@ -26,6 +26,7 @@
 #include "paddle/pir/dialect/shape/ir/shape_dialect.h"
 #include "paddle/pir/dialect/shape/ir/shape_op.h"
 #include "paddle/pir/dialect/shape/utils/shape_utils.h"
+#include "paddle/pir/dialect/shape/utils/symbol_table.h"
 
 pir::AttributeMap CreateAttributeMap(
     const std::vector<std::string> &attribute_names,
@@ -66,35 +67,37 @@ TEST(assist_struct_test, symbolic_dim) {
   pir::Program program(ctx);
   ctx->GetOrRegisterDialect<pir::dialect::ShapeDialect>();
   pir::Builder builder = pir::Builder(ctx, program.block());
-  pir::dialect::SymbolicDim symDim = builder.Build<pir::dialect::SymbolicDim>(
+
+  pir::dialect::SymbolicDim sym_dim1 = builder.Build<pir::dialect::SymbolicDim>(
       "S0", 10, false, false, false, false);
-  pir::dialect::SymbolicDim symDim_ = builder.Build<pir::dialect::SymbolicDim>(
+  pir::dialect::SymbolicDim sym_dim2 = builder.Build<pir::dialect::SymbolicDim>(
       "S1", 10, false, false, false, false);
-  EXPECT_EQ(symDim.getValue(), 10);
-  EXPECT_EQ(symDim.getSymName(), "S0");
-  EXPECT_FALSE(symDim.getKnownNegativeOne());
-  EXPECT_FALSE(symDim.getKnownNonSizeOne());
-  EXPECT_FALSE(symDim.getKnownNonSizeZero());
-  EXPECT_FALSE(symDim.getKnownNonNegative());
 
-  EXPECT_FALSE(symDim.IsDynamic());
-  EXPECT_TRUE(symDim.Merge(symDim_));
+  EXPECT_EQ(sym_dim1.GetDimSize(), 10);
+  EXPECT_EQ(sym_dim1.GetSymName(), "S0");
+  EXPECT_FALSE(sym_dim1.GetKnownNegativeOne());
+  EXPECT_FALSE(sym_dim1.GetKnownNonSizeOne());
+  EXPECT_FALSE(sym_dim1.GetKnownNonSizeZero());
+  EXPECT_FALSE(sym_dim1.GetKnownNonNegative());
 
-  symDim.updateValue(20);
-  symDim.updateSymName("S2");
-  symDim.updateKnownNegativeOne(true);
-  symDim.updateKnownNonSizeOne(true);
-  symDim.updateKnownNonSizeZero(true);
-  symDim.updateKnownNonNegative(true);
+  EXPECT_FALSE(sym_dim1.IsDynamic());
+  EXPECT_TRUE(sym_dim1.Merge(sym_dim2));
 
-  EXPECT_FALSE(symDim.Merge(symDim_));
+  sym_dim1.SetDimSize(20);
+  sym_dim1.SetSymName("S2");
+  sym_dim1.UpdateKnownNegativeOne(true);
+  sym_dim1.UpdateKnownNonSizeOne(true);
+  sym_dim1.UpdateKnownNonSizeZero(true);
+  sym_dim1.UpdateKnownNonNegative(true);
 
-  EXPECT_EQ(symDim.getValue(), 20);
-  EXPECT_EQ(symDim.getSymName(), "S2");
-  EXPECT_TRUE(symDim.getKnownNegativeOne());
-  EXPECT_TRUE(symDim.getKnownNonSizeOne());
-  EXPECT_TRUE(symDim.getKnownNonSizeZero());
-  EXPECT_TRUE(symDim.getKnownNonNegative());
+  EXPECT_FALSE(sym_dim1.Merge(sym_dim2));
+
+  EXPECT_EQ(sym_dim1.GetDimSize(), 20);
+  EXPECT_EQ(sym_dim1.GetSymName(), "S2");
+  EXPECT_TRUE(sym_dim1.GetKnownNegativeOne());
+  EXPECT_TRUE(sym_dim1.GetKnownNonSizeOne());
+  EXPECT_TRUE(sym_dim1.GetKnownNonSizeZero());
+  EXPECT_TRUE(sym_dim1.GetKnownNonNegative());
 }
 
 TEST(assist_struct_test, symbolic_dim_product) {
@@ -150,13 +153,13 @@ TEST(assist_struct_test, symbolic_dim_mgr_simple) {
   std::vector<pir::dialect::SymbolicDim> symDimVec =
       symDimMgr.CreateSymbolicDimsForRankedValue(res);
 
-  EXPECT_EQ(symDimS0.getSymName(), "S0");
-  EXPECT_EQ(symDimS1.getSymName(), "S1");
-  EXPECT_EQ(symDimS1.getValue(), pir::ShapedTypeInterface::kDynamic);
-  EXPECT_EQ(symDimC10.getSymName(), "C10");
-  EXPECT_EQ(symDimC10.getValue(), 10);
-  EXPECT_EQ(symDimVec[0].getSymName(), "S2");
-  EXPECT_EQ(symDimVec[1].getSymName(), "C2");
+  EXPECT_EQ(symDimS0.GetSymName(), "S0");
+  EXPECT_EQ(symDimS1.GetSymName(), "S1");
+  EXPECT_EQ(symDimS1.GetDimSize(), pir::ShapedTypeInterface::kDynamic);
+  EXPECT_EQ(symDimC10.GetSymName(), "C10");
+  EXPECT_EQ(symDimC10.GetDimSize(), 10);
+  EXPECT_EQ(symDimVec[0].GetSymName(), "S2");
+  EXPECT_EQ(symDimVec[1].GetSymName(), "C2");
   EXPECT_EQ(symDimMgr.symbolTable().Lookup<pir::dialect::SymbolicDim>("S0"),
             symDimS0);
   EXPECT_EQ(symDimMgr.symbolTable().Lookup<pir::dialect::SymbolicDim>("C10"),
@@ -296,10 +299,10 @@ TEST(assist_struct_test, symbolic_dim_mgr_complex) {
   auto arrayAttr = pir::ArrayAttribute::get(ctx, newAttrs);
   auto arrayAttrRef = pir::ArrayAttribute::get(ctx, newAttrsRef);
   auto arrayAttr_ = pir::ArrayAttribute::get(ctx, newAttrs_);
-  tieShapeOp->set_attribute(pir::dialect::SymbolicDim::getSymbolicDimAttrName(),
+  tieShapeOp->set_attribute(pir::dialect::SymbolicDim::GetSymbolicDimAttrName(),
                             arrayAttr);
   tieShapeOp_->set_attribute(
-      pir::dialect::SymbolicDim::getSymbolicDimAttrName(), arrayAttr_);
+      pir::dialect::SymbolicDim::GetSymbolicDimAttrName(), arrayAttr_);
 
   EXPECT_TRUE(symDimMgr.Load());
 
@@ -362,10 +365,10 @@ TEST(assist_struct_test, symbolic_dim_mgr_complex) {
   EXPECT_TRUE(symDimMgr.IsSymbolicDimEqual(symDimS1, symDimS2));
   EXPECT_TRUE(symDimMgr.IsSymbolicDimEqual(symDimS0, symDimS3));
   EXPECT_TRUE(symDimMgr.IsSymbolicDimEqual(symDimS4, symDimS5));
-  EXPECT_EQ(symDimS6.getValue(), 200);
+  EXPECT_EQ(symDimS6.GetDimSize(), 200);
   EXPECT_EQ(symDimMgr.symbolTable().Lookup<pir::dialect::SymbolicDim>("C20"),
             symDimC20);
-  EXPECT_EQ(symDimS7.getValue(), symDimC10.getValue());
+  EXPECT_EQ(symDimS7.GetDimSize(), symDimC10.GetDimSize());
   EXPECT_EQ(simplifiedProductS7.factor, 10);
   EXPECT_EQ(simplifiedProductS7.symbols.size(), static_cast<size_t>(0));
   EXPECT_EQ(newLhs.symbols.size(), static_cast<size_t>(1));
@@ -384,7 +387,7 @@ TEST(assist_struct_test, symbolic_dim_mgr_complex) {
   pir::SymbolicDimMgr symDimMgr_(program.module_op());
   EXPECT_TRUE(symDimMgr_.Load());
   auto attrs = tieShapeOp.attribute<pir::ArrayAttribute>(
-      pir::dialect::SymbolicDim::getSymbolicDimAttrName());
+      pir::dialect::SymbolicDim::GetSymbolicDimAttrName());
   EXPECT_FALSE(
       symDimMgr_.symbolTable().Lookup<pir::dialect::SymbolicDim>("S7"));
   EXPECT_EQ(symDimMgr_.symbolTable()
@@ -429,8 +432,8 @@ TEST(shape_op, tie_product_equal) {
           3,
           std::vector<pir::Value>{dimOp0, dimOp1, dimOp2, dimOp3, dimOp4});
 
-  std::vector<pir::Value> lhs = tie_product_equal.getLhs();
-  std::vector<pir::Value> rhs = tie_product_equal.getRhs();
+  std::vector<pir::Value> lhs = tie_product_equal.lhs();
+  std::vector<pir::Value> rhs = tie_product_equal.rhs();
 
   std::vector<pir::Value> lhs_ref{dimOp0, dimOp1};
   std::vector<pir::Value> rhs_ref{dimOp2, dimOp3, dimOp4};
@@ -461,7 +464,7 @@ TEST(shape_op, tie_shape) {
 
   pir::dialect::TieShapeOp tieShapeOp =
       builder.Build<pir::dialect::TieShapeOp>(res);
-  pir::Value tieShapeOpValue = tieShapeOp.getValue();
+  pir::Value tieShapeOpValue = tieShapeOp.value();
 
   pir::Attribute attrS0 = pir::StrAttribute::get(ctx, "S0");
   pir::Attribute attrS1 = pir::StrAttribute::get(ctx, "S1");
@@ -469,13 +472,13 @@ TEST(shape_op, tie_shape) {
   std::vector<pir::Attribute> newAttrs = {attrS0, attrS1};
 
   auto arrayAttr = pir::ArrayAttribute::get(ctx, newAttrs);
-  tieShapeOp->set_attribute(pir::dialect::SymbolicDim::getSymbolicDimAttrName(),
+  tieShapeOp->set_attribute(pir::dialect::SymbolicDim::GetSymbolicDimAttrName(),
                             arrayAttr);
 
   std::vector<pir::Attribute> arrAttrVec =
       tieShapeOp
           ->attribute<pir::ArrayAttribute>(
-              pir::dialect::SymbolicDim::getSymbolicDimAttrName())
+              pir::dialect::SymbolicDim::GetSymbolicDimAttrName())
           .AsVector();
 
   EXPECT_EQ(tieShapeOpValue, res);
@@ -483,7 +486,7 @@ TEST(shape_op, tie_shape) {
   EXPECT_EQ(arrAttrVec[0].dyn_cast<pir::StrAttribute>(), attrS0);
   EXPECT_EQ(arrAttrVec[1].dyn_cast<pir::StrAttribute>(), attrS1);
   EXPECT_TRUE(tieShapeOp->HasAttribute(
-      pir::dialect::SymbolicDim::getSymbolicDimAttrName()));
+      pir::dialect::SymbolicDim::GetSymbolicDimAttrName()));
 }
 
 TEST(shape_op, func_op) {
@@ -561,17 +564,17 @@ TEST(assist_struct_test, shape_analysis) {
   auto attrOp5 = pir::ArrayAttribute::get(ctx, {attrS2});
 
   tieShapeOp1->set_attribute(
-      pir::dialect::SymbolicDim::getSymbolicDimAttrName(), attrOp1);
+      pir::dialect::SymbolicDim::GetSymbolicDimAttrName(), attrOp1);
   tieShapeOp2->set_attribute(
-      pir::dialect::SymbolicDim::getSymbolicDimAttrName(), attrOp2);
+      pir::dialect::SymbolicDim::GetSymbolicDimAttrName(), attrOp2);
   tieShapeOp3->set_attribute(
-      pir::dialect::SymbolicDim::getSymbolicDimAttrName(), attrOp3);
+      pir::dialect::SymbolicDim::GetSymbolicDimAttrName(), attrOp3);
   tieShapeOp4->set_attribute(
-      pir::dialect::SymbolicDim::getSymbolicDimAttrName(), attrOp4);
+      pir::dialect::SymbolicDim::GetSymbolicDimAttrName(), attrOp4);
   tieShapeOp5->set_attribute(
-      pir::dialect::SymbolicDim::getSymbolicDimAttrName(), attrOp5);
+      pir::dialect::SymbolicDim::GetSymbolicDimAttrName(), attrOp5);
 
-  pir::SymbolicDimShapeAnalysis shapeAnalysis(program.module_op());
+  pir::ShapeConstraintIRAnalysis shapeAnalysis(program.module_op());
   EXPECT_TRUE(shapeAnalysis.IsShapeEqual(value3, value4));
   EXPECT_FALSE(shapeAnalysis.IsShapeEqual(value1, value2));
   EXPECT_FALSE(shapeAnalysis.IsShapeEqual(value1, value3));
@@ -613,7 +616,7 @@ TEST(shape_op, tensor_dim) {
 
   EXPECT_EQ(res0.type(), pir::IndexType::get(ctx));
   EXPECT_EQ(res1.type(), pir::IndexType::get(ctx));
-  EXPECT_EQ(tensorDimOp0.getSource(), resDenseTensorValue);
-  EXPECT_EQ(tensorDimOp1.getSource(), resDenseTensorValue);
-  EXPECT_EQ(tensorDimOp1.getIndex(), indexValue);
+  EXPECT_EQ(tensorDimOp0.source(), resDenseTensorValue);
+  EXPECT_EQ(tensorDimOp1.source(), resDenseTensorValue);
+  EXPECT_EQ(tensorDimOp1.index(), indexValue);
 }

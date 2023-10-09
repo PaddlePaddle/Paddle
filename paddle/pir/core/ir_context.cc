@@ -106,7 +106,7 @@ class IrContextImpl {
   void RegisterOpInfo(const std::string &name, OpInfo info) {
     std::lock_guard<pir::SpinLock> guard(registed_op_infos_lock_);
     VLOG(6) << "Register an operation of: [Name=" << name
-            << ", OpInfo ptr=" << info.AsOpaquePointer() << "].";
+            << ", OpInfo ptr=" << info << "].";
     registed_op_infos_.emplace(name, info);
   }
 
@@ -115,7 +115,7 @@ class IrContextImpl {
     auto iter = registed_op_infos_.find(name);
     if (iter != registed_op_infos_.end()) {
       VLOG(8) << "Found a cached OpInfo of: [name=" << name
-              << ", OpInfo: ptr=" << iter->second.AsOpaquePointer() << "].";
+              << ", OpInfo: ptr=" << iter->second << "].";
       return iter->second;
     }
     VLOG(8) << "No cache found operation of: [Name=" << name << "].";
@@ -284,15 +284,14 @@ void IrContext::RegisterAbstractType(pir::TypeId type_id,
   }
 }
 
-void IrContext::RegisterOpInfo(
-    Dialect *dialect,
-    TypeId op_id,
-    const char *name,
-    std::vector<details::InterfaceValue> &&interface_map,
-    const std::vector<TypeId> &trait_set,
-    size_t attributes_num,
-    const char **attributes_name,
-    VerifyPtr verify) {
+void IrContext::RegisterOpInfo(Dialect *dialect,
+                               TypeId op_id,
+                               const char *name,
+                               std::vector<InterfaceValue> &&interface_map,
+                               const std::vector<TypeId> &trait_set,
+                               size_t attributes_num,
+                               const char **attributes_name,
+                               VerifyPtr verify) {
   if (impl().IsOpInfoRegistered(name)) {
     LOG(WARNING) << name << " op already registered.";
   } else {

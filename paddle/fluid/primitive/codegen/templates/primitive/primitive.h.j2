@@ -18,7 +18,13 @@ using IntArray = paddle::experimental::IntArray;
   {%- for i in api.inputs -%} {%- do input_names.append(i.name) -%} {%- endfor -%}
   {%- set attr_names = [] -%}
   {%- for i in api.attrs -%} {%- do attr_names.append(i.name) -%} {% endfor %}
-{{common.sig(api.name, api.inputs, api.outputs | trip_intermediate, api.attrs, False, True)}} {
+  {% set inplace_map = {} %}
+  {% if 'inplace' in api and api.inplace != None %}
+    {% for source, target in api.inplace.items() %}
+      {% do inplace_map.update({source: target}) %}
+    {% endfor %}
+  {% endif %}
+{{common.sig(api.name, api.inputs, api.outputs | trip_intermediate, api.attrs, inplace_map, False, True)}} {
     return backend::{{api.name}}<T>({{common.args(input_names, attr_names)}});
 }
 

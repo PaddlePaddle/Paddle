@@ -14,7 +14,7 @@
 #include <gtest/gtest.h>
 #include <iostream>
 
-#include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/builder.h"
@@ -44,7 +44,7 @@ TEST(if_op_test, base) {
 
   auto full_op_1 = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{2}, true, phi::DataType::BOOL);
-  builder.Build<pir::YieldOp>(std::vector<pir::OpResult>{full_op_1.out()});
+  builder.Build<pir::YieldOp>(std::vector<pir::Value>{full_op_1.out()});
 
   pir::Block* false_block = if_op.false_block();
 
@@ -52,7 +52,7 @@ TEST(if_op_test, base) {
 
   auto full_op_2 = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{3}, true, phi::DataType::BOOL);
-  builder.Build<pir::YieldOp>(std::vector<pir::OpResult>{full_op_2.out()});
+  builder.Build<pir::YieldOp>(std::vector<pir::Value>{full_op_2.out()});
 
   std::stringstream ss;
   program.Print(ss);

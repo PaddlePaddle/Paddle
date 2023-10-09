@@ -143,6 +143,7 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   bool no_calib_int8 = enable_int8 && !(use_calib_mode);
   auto trt_disabled_ops = Get<std::vector<std::string>>("trt_disabled_ops");
   auto with_dynamic_shape = Get<bool>("with_dynamic_shape");
+  auto use_explicit_quantization = Get<bool>("use_explicit_quantization");
   auto teller = [&](const framework::ir::Node *node) {
     if (!node->IsOp() || !node->Op()) return false;
     if (find(trt_disabled_ops.begin(),
@@ -163,7 +164,7 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
       }
     }
     bool is_ok = tensorrt::OpTeller::Global().Tell(
-        node, no_calib_int8, with_dynamic_shape);
+        node, no_calib_int8, with_dynamic_shape, use_explicit_quantization);
     if (!is_ok)
       VLOG(3) << node->Op()->Type().c_str() << " op is not in TensorRT";
     return is_ok;
@@ -571,6 +572,8 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   auto enable_low_precision_io = Get<bool>("enable_low_precision_io");
   auto workspace_size = Get<int64_t>("workspace_size");
   auto gpu_device_id = Get<int>("gpu_device_id");
+  auto optimization_level = Get<int>("optimization_level");
+  auto use_explicit_quantization = Get<bool>("use_explicit_quantization");
 
   // Set op's attrs.
   op_desc->SetType("tensorrt_engine");
@@ -622,6 +625,8 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
     op_desc->SetAttr("max_input_shape_vector", max_input_shape_vector);
     op_desc->SetAttr("opt_input_shape_vector", opt_input_shape_vector);
   }
+
+  op_desc->SetAttr("optimization_level", Get<int>("optimization_level"));
 
   // we record all inputs' shapes in attr to check if they are consistent
   // with the real inputs' shapes retrieved from scope when trt runs.
@@ -771,6 +776,8 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   params.use_inspector = use_inspector;
   params.engine_info_path = engine_info_path;
   params.enable_low_precision_io = enable_low_precision_io;
+  params.optimization_level = optimization_level;
+  params.use_explicit_quantization = use_explicit_quantization;
 
   tensorrt::TensorRTEngine *trt_engine =
       inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()

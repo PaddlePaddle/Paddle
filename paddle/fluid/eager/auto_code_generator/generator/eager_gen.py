@@ -200,6 +200,7 @@ class {} : public egr::GradNodeBase {{
 GRAD_FUNCTION_TEMPLATE = """
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}::operator()(paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph, bool is_new_grad) {{
   VLOG(3) << \"Running AD API GRAD: \" << \"{}\";
+
   // Fill Zero For GradIn Tensors
 {}
   // Apply Gradient Hooks
@@ -230,7 +231,9 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
   // Create Grad Node
 {}
   VLOG(4) << \"Finish AD API GRAD: {}";
+  VLOG(6) << "gradnode_ptr = " << this;
   // LOG IF DEBUG
+
   {}
   // Return
 {}
@@ -238,7 +241,7 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
 """
 
 FORWARD_FUNCTION_TEMPLATE = """
-{} {}({}) {{
+TEST_API {} {}({}) {{
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << \"Running AD API: \" << \"{}\";
   // Dygraph Record Event
@@ -304,7 +307,7 @@ BEFORE_LOG_PRINT_TEMPLATE = """
 """
 
 FORWARD_ONLY_FUNCTION_TEMPLATE = """
-{} {}({}) {{
+TEST_API {} {}({}) {{
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << \"Running AD API: \" << \"{}\";
   // Dygraph Record Event
@@ -454,6 +457,7 @@ FORWARD_H_FILE_TEMPLATE = """
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
+#include "paddle/utils/test_macros.h"
 
 using CPUPlace = phi::CPUPlace;
 {}
@@ -1861,7 +1865,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 returns_str,
             )
 
-        self.forward_declaration_str += f"{returns_type_str} {forward_ad_function_name}({inputs_args_declaration_str});\n"
+        self.forward_declaration_str += f"TEST_API {returns_type_str} {forward_ad_function_name}({inputs_args_declaration_str});\n"
 
     def GenerateInplacedForwardDygraphFunctions(self):
         # Inplaced Version Dygraph Function Generation

@@ -190,7 +190,7 @@ cc_library(
   DEPS phi pd_interface pd_trait type_info)
 cc_library(
   pd_op_dialect_op
-  SRCS ${op_source_file} manual_op.cc
+  SRCS ${op_source_file} manual_op.cc control_flow_op.cc
   DEPS pd_op_dialect_core)
 cc_library(
   api_builder
@@ -199,7 +199,11 @@ cc_library(
 cc_library(
   pd_op_dialect_api
   SRCS ${api_source_file} manual_api.cc
-  DEPS api_builder pd_op_dialect_op)
+  DEPS api_builder pd_op_dialect_op pd_op_dialect_utils)
+if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
+  set_target_properties(pd_op_dialect_api PROPERTIES COMPILE_FLAGS
+                                                     "-Wno-maybe-uninitialized")
+endif()
 
 target_include_directories(pd_op_dialect_api INTERFACE ${PD_DIALECT_BINARY_DIR})
 

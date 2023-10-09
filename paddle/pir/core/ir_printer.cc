@@ -88,7 +88,15 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) {
   }
 
   if (auto s = attr.dyn_cast<StrAttribute>()) {
-    os_ << "(String)" << s.AsString();
+    std::string s_val = s.AsString();
+    std::string replacement = "\\\"";
+    std::string search = "\"";
+    size_t found = s_val.find(search);
+    while (found != std::string::npos) {
+      s_val.replace(found, search.length(), replacement);
+      found = s_val.find(search, found + replacement.length());
+    }
+    os << "\"" << s_val << "\"";
   } else if (auto b = attr.dyn_cast<BoolAttribute>()) {
     if (b.data()) {
       os_ << "true";
@@ -107,8 +115,7 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) {
     os_ << "(Pointer)" << p.data();
   } else if (auto arr = attr.dyn_cast<ArrayAttribute>()) {
     const auto& vec = arr.AsVector();
-    os_ << "(Array)"
-        << "[";
+    os << "[";
     PrintInterleave(
         vec.begin(),
         vec.end(),
@@ -326,6 +333,11 @@ void Operation::Print(std::ostream& os) { Print(os, PrinterOptions()); }
 void Operation::Print(std::ostream& os, const PrinterOptions options) {
   IrPrinter printer(os, options);
   printer.PrintOperation(this);
+}
+
+void Value::Print(std::ostream& os) const {
+  IrPrinter printer(os);
+  printer.PrintValue(*this);
 }
 
 void Type::Print(std::ostream& os) const { Print(os, PrinterOptions()); }
