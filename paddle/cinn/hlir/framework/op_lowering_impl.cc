@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/hlir/framework/op_lowering_impl.h"
 
+#include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/hlir/framework/compile_error.h"
 #include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/hlir/framework/op_lowering_util.h"
@@ -391,16 +392,16 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
   }
 
   // 2.Do lower
-  std::vector<ir::LoweredFunc> funcs = lang::LowerVec("fn_" + node->id(),
-                                                      tmp_stages,
-                                                      *op_func_arg_tensors,
-                                                      {},
-                                                      {},
-                                                      nullptr,
-                                                      this->target_,
-                                                      true);
+  ast_gen_ius::TensorGroup tensor_group =
+      ast_gen_ius::ConvertStageMapToTensorGroup(tmp_stages);
+  std::vector<ir::LoweredFunc> funcs = lang::LowerToAstVec(
+      "fn_" + node->id(), *op_func_arg_tensors, {&tensor_group}, this->target_);
+
   VLOG(4) << "Lower op: " << node->op()->name << ", get " << funcs.size()
           << " LoweredFunc:\n";
+  for (auto fun : funcs) {
+    VLOG(4) << fun;
+  }
 
   op_func_arg_tensors->clear();
   for (int idx = 0; idx < pack.size() - 1; ++idx) {
