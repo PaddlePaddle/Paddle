@@ -620,7 +620,6 @@ class GroupShardedStage3(nn.Layer):
 
             param.fw_storage = _TensorWrapper(param)
             if self.use_main_grad:
-                assert param.fw_storage.main_grad is None
                 param.fw_storage.main_grad = param.bw_storage
             else:
                 assert param.fw_storage.grad is None

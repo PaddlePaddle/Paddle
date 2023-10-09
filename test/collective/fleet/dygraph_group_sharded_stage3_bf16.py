@@ -38,8 +38,8 @@ class MLP(paddle.nn.Layer):
     def __init__(self, linear_size=1000):
         super().__init__()
 
-        self._linear1 = Linear(linear_size, linear_size)
-        self._linear2 = Linear(linear_size, linear_size)
+        self._linear1 = Linear(linear_size, 4 * linear_size)
+        self._linear2 = Linear(4 * linear_size, linear_size)
         self._linear3 = Linear(linear_size, 10)
         self._relu = ReLU()
 
@@ -113,11 +113,6 @@ def train_mlp(
             "reduce_mean",
         ]
 
-    if sharding_stage == 3:
-        model = GroupShardedStage3(model, optimizer, group=group)
-    else:
-        model = paddle.DataParallel(model)
-
     paddle.seed(2023)
     np.random.seed(2023)
     train_loader = paddle.io.DataLoader(
@@ -137,6 +132,11 @@ def train_mlp(
                 paddle.cast(param, dtype='bfloat16'), dtype='float32'
             )
             param.set_value(t)
+
+    if sharding_stage == 3:
+        model = GroupShardedStage3(model, optimizer, group=group)
+    else:
+        model = paddle.DataParallel(model)
 
     losses = []
     for eop in range(epoch):
