@@ -223,7 +223,6 @@ register_unity_group(
   reverse_op.cc)
 register_unity_group(
   cc
-  rnn_memory_helper_op.cc
   roi_align_op.cc
   roll_op.cc
   run_program_op.cc

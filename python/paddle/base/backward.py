@@ -1671,17 +1671,8 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
                     or var in parent_op_vars
                 ]
                 if not existing_grad_var_ins:
-                    '''
-                    FIXME(paddle-dev, zengjinle): rnn_memory_helper_grad is used
-                    in recurrent op. The input of this op does not even exist in
-                    the program! Therefore, any dependency analysis would not
-                    work to this op! If I do not add the following code, this op
-                    would be pruned, and the calculation result would be wrong.
-                    Maybe we should re-design this op later...
-                    '''
-                    if op_desc.type() not in ['rnn_memory_helper_grad']:
-                        ops_to_remove.append(op_idx)
-                        continue
+                    ops_to_remove.append(op_idx)
+                    continue
 
         # sum may create invalid variable, here to deal with it.
         if op_desc.type() == 'sum':
