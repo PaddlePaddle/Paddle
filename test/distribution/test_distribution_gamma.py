@@ -20,7 +20,7 @@ import scipy.stats
 from distribution import config
 
 import paddle
-from paddle.distribution import gamma
+from paddle.distribution import gamma, kl
 
 np.random.seed(2023)
 paddle.seed(2023)
@@ -76,7 +76,7 @@ paddle.seed(2023)
         ),
     ],
 )
-class TestExponential(unittest.TestCase):
+class Testgammaential(unittest.TestCase):
     def setUp(self):
         concentration = paddle.to_tensor(self.concentration)
         rate = paddle.to_tensor(self.rate)
@@ -158,6 +158,104 @@ class TestExponential(unittest.TestCase):
                     str(self._paddle_gamma.concentration.numpy().dtype)
                 ),
             )
+
+
+@parameterize.place(config.DEVICES)
+@parameterize.parameterize_cls(
+    (
+        parameterize.TEST_CASE_NAME,
+        'concentration1',
+        'rate1',
+        'concentration2',
+        'rate2',
+    ),
+    [
+        (
+            'one-dim',
+            parameterize.xrand(
+                (2,),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+            ),
+            parameterize.xrand(
+                (2,),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+            ),
+            parameterize.xrand(
+                (2,),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+            ),
+            parameterize.xrand(
+                (2,),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+            ),
+        ),
+        (
+            'multi-dim',
+            parameterize.xrand(
+                (2, 3),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+            ),
+            parameterize.xrand(
+                (2, 3),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+            ),
+            parameterize.xrand(
+                (2, 3),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+            ),
+            parameterize.xrand(
+                (2, 3),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+            ),
+        ),
+    ],
+)
+class TestGammaKL(unittest.TestCase):
+    def setUp(self):
+        self._gamma1 = gamma.Gamma(
+            paddle.to_tensor(self.concentration1), paddle.to_tensor(self.rate1)
+        )
+        self._gamma2 = gamma.Gamma(
+            paddle.to_tensor(self.concentration2), paddle.to_tensor(self.rate2)
+        )
+
+    def test_kl_divergence(self):
+        np.testing.assert_allclose(
+            kl.kl_divergence(self._gamma1, self._gamma2),
+            self._kl(),
+            rtol=config.RTOL.get(str(self._gamma1.concentration.numpy().dtype)),
+            atol=config.ATOL.get(str(self._gamma1.concentration.numpy().dtype)),
+        )
+
+    def test_kl1_error(self):
+        self.assertRaises(
+            TypeError,
+            self._gamma1.kl_divergence,
+            paddle.distribution.beta.Beta,
+        )
+
+    def _kl(self):
+        concentration1 = self.concentration1
+        concentration2 = self.concentration2
+        rate1 = self.rate1
+        rate2 = self.rate2
+        t1 = concentration2 * np.log(rate1 / rate2)
+        t2 = scipy.special.gammaln(concentration2) - scipy.special.gammaln(
+            concentration1
+        )
+        t3 = (concentration1 - concentration2) * scipy.special.digamma(
+            concentration1
+        )
+        t4 = (rate2 - rate1) * (concentration1 / rate1)
+        return t1 + t2 + t3 + t4
 
 
 if __name__ == '__main__':

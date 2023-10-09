@@ -56,7 +56,7 @@ class Gamma(exponential_family.ExponentialFamily):
             >>> print(gamma.entropy())
             Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True, 0.78375685)
 
-             >>> # tensor input with broadcast
+            >>> # tensor input with broadcast
             >>> gamma = paddle.distribution.Gamma(paddle.to_tensor([0.2, 0.4]), 0.6)
             >>> print(gamma.mean)
             Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True, [0.33333331, 0.66666663])
@@ -161,6 +161,30 @@ class Gamma(exponential_family.ExponentialFamily):
 
         """
         raise NotImplementedError
+
+    def kl_divergence(self, other):
+        """The KL-divergence between two Exponential distributions.
+
+        Args:
+            other (Exponential): instance of Exponential.
+
+        Returns:
+            Tensor: kl-divergence between two Exponential distributions.
+        """
+        if not isinstance(other, Gamma):
+            raise TypeError(
+                f"Expected type of other is Exponential, but got {type(other)}"
+            )
+
+        t1 = other.concentration * paddle.log(self.rate / other.rate)
+        t2 = paddle.lgamma(other.concentration) - paddle.lgamma(
+            self.concentration
+        )
+        t3 = (self.concentration - other.concentration) * paddle.digamma(
+            self.concentration
+        )
+        t4 = (other.rate - self.rate) * (self.concentration / self.rate)
+        return t1 + t2 + t3 + t4
 
     def _natural_parameters(self):
         return (self.concentration - 1, -self.rate)

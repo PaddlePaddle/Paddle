@@ -139,6 +139,24 @@ class Exponential(exponential_family.ExponentialFamily):
         """
         return 1.0 - paddle.log(self.rate)
 
+    def kl_divergence(self, other):
+        """The KL-divergence between two Exponential distributions.
+
+        Args:
+            other (Exponential): instance of Exponential.
+
+        Returns:
+            Tensor: kl-divergence between two Exponential distributions.
+        """
+        if not isinstance(other, Exponential):
+            raise TypeError(
+                f"Expected type of other is Exponential, but got {type(other)}"
+            )
+
+        rate_ratio = other.rate / self.rate
+        t1 = -paddle.log(rate_ratio)
+        return t1 + rate_ratio - 1
+
     @property
     def _natural_parameters(self):
         return (-self.rate,)

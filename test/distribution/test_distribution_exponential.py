@@ -20,7 +20,7 @@ import scipy.stats
 from distribution import config
 
 import paddle
-from paddle.distribution import exponential
+from paddle.distribution import exponential, kl
 
 np.random.seed(2023)
 paddle.seed(2023)
@@ -233,6 +233,102 @@ class TestExponentialSample(unittest.TestCase):
             rtol=0.1,
             atol=config.ATOL.get(str(self._paddle_expon.rate.numpy().dtype)),
         )
+
+    def test_rsample_backpropagation(self):
+        sample_shape = (1000,)
+        self._paddle_expon.rate.stop_gradient = False
+        samples = self._paddle_expon.rsample(sample_shape)
+        grads = paddle.grad([samples], [self._paddle_expon.rate])
+        self.assertEqual(len(grads), 1)
+        self.assertEqual(grads[0].dtype, self._paddle_expon.rate.dtype)
+        self.assertEqual(grads[0].shape, self._paddle_expon.rate.shape)
+
+
+@parameterize.place(config.DEVICES)
+@parameterize.parameterize_cls(
+    (parameterize.TEST_CASE_NAME, 'rate'),
+    [
+        ('0-dim', 0.4),
+    ],
+)
+class TestExponentialSampleKS(unittest.TestCase):
+    def setUp(self):
+        rate = paddle.to_tensor(self.rate, dtype=paddle.float32)
+        self.scale = rate.reciprocal()
+        self._paddle_expon = exponential.Exponential(rate)
+
+    def test_sample_ks(self):
+        sample_shape = (20000,)
+        samples = self._paddle_expon.sample(sample_shape)
+        self.assertTrue(self._kstest(self.scale, samples))
+
+    def test_rsample_ks(self):
+        sample_shape = (20000,)
+        samples = self._paddle_expon.rsample(sample_shape)
+        self.assertTrue(self._kstest(self.scale, samples))
+
+    def _kstest(self, scale, samples):
+        # Uses the Kolmogorov-Smirnov test for goodness of fit.
+        ks, _ = scipy.stats.kstest(samples, scipy.stats.expon(scale=scale).cdf)
+        return ks < 0.02
+
+
+@parameterize.place(config.DEVICES)
+@parameterize.parameterize_cls(
+    (parameterize.TEST_CASE_NAME, 'rate1', 'rate2'),
+    [
+        (
+            'one-dim',
+            parameterize.xrand(
+                (2,),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+            ),
+            parameterize.xrand(
+                (2,),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+            ),
+        ),
+        (
+            'multi-dim',
+            parameterize.xrand(
+                (2, 3),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+            ),
+            parameterize.xrand(
+                (2, 3),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+            ),
+        ),
+    ],
+)
+class TestExponentialKL(unittest.TestCase):
+    def setUp(self):
+        self._expon1 = exponential.Exponential(paddle.to_tensor(self.rate1))
+        self._expon2 = exponential.Exponential(paddle.to_tensor(self.rate2))
+
+    def test_kl_divergence(self):
+        np.testing.assert_allclose(
+            kl.kl_divergence(self._expon1, self._expon2),
+            self._kl(),
+            rtol=config.RTOL.get(str(self._expon1.rate.numpy().dtype)),
+            atol=config.ATOL.get(str(self._expon1.rate.numpy().dtype)),
+        )
+
+    def test_kl1_error(self):
+        self.assertRaises(
+            TypeError,
+            self._expon1.kl_divergence,
+            paddle.distribution.beta.Beta,
+        )
+
+    def _kl(self):
+        rate_ratio = self.rate2 / self.rate1
+        t1 = -np.log(rate_ratio)
+        return t1 + rate_ratio - 1
 
 
 if __name__ == '__main__':

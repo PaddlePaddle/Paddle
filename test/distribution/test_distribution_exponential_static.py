@@ -256,5 +256,129 @@ class TestExponentialSample(unittest.TestCase):
             )
 
 
+@parameterize.place(config.DEVICES)
+@parameterize.parameterize_cls(
+    (parameterize.TEST_CASE_NAME, 'rate'),
+    [
+        ('0-dim', 0.4),
+    ],
+)
+class TestExponentialSampleKS(unittest.TestCase):
+    def setUp(self):
+        self.program = paddle.static.Program()
+        self.executor = paddle.static.Executor(self.place)
+        with paddle.static.program_guard(self.program):
+            self.scale = 1 / self.rate
+            rate = paddle.static.data('rate', (), 'float')
+            self._paddle_expon = exponential.Exponential(rate)
+            self.feeds = {'rate': self.rate}
+
+    def test_sample(self):
+        sample_shape = (20000,)
+        with paddle.static.program_guard(self.program):
+            [samples] = self.executor.run(
+                self.program,
+                feed=self.feeds,
+                fetch_list=self._paddle_expon.sample(sample_shape),
+            )
+            self.assertTrue(self._kstest(self.scale, samples))
+
+    def test_rsample(self):
+        sample_shape = (20000,)
+        with paddle.static.program_guard(self.program):
+            [samples] = self.executor.run(
+                self.program,
+                feed=self.feeds,
+                fetch_list=self._paddle_expon.rsample(sample_shape),
+            )
+            self.assertTrue(self._kstest(self.scale, samples))
+
+    def _kstest(self, scale, samples):
+        # Uses the Kolmogorov-Smirnov test for goodness of fit.
+        ks, _ = scipy.stats.kstest(samples, scipy.stats.expon(scale=scale).cdf)
+        return ks < 0.02
+
+
+@parameterize.place(config.DEVICES)
+@parameterize.parameterize_cls(
+    (parameterize.TEST_CASE_NAME, 'rate1', 'rate2'),
+    [
+        (
+            'one-dim',
+            parameterize.xrand(
+                (2,),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+            ),
+            parameterize.xrand(
+                (2,),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+            ),
+        ),
+        (
+            'multi-dim',
+            parameterize.xrand(
+                (2, 3),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+            ),
+            parameterize.xrand(
+                (2, 3),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+            ),
+        ),
+    ],
+)
+class TestExponentialKL(unittest.TestCase):
+    def setUp(self):
+        self.program1 = paddle.static.Program()
+        self.program2 = paddle.static.Program()
+        self.executor = paddle.static.Executor(self.place)
+        with paddle.static.program_guard(self.program1, self.program2):
+            rate1 = paddle.static.data(
+                'rate1', self.rate1.shape, self.rate1.dtype
+            )
+            rate2 = paddle.static.data(
+                'rate2', self.rate2.shape, self.rate2.dtype
+            )
+
+            self._expon1 = exponential.Exponential(rate1)
+            self._expon2 = exponential.Exponential(rate2)
+
+            self.feeds = {
+                'rate1': self.rate1,
+                'rate2': self.rate2,
+            }
+
+    def test_kl_divergence(self):
+        with paddle.static.program_guard(self.program1, self.program2):
+            self.executor.run(self.program2)
+            [kl] = self.executor.run(
+                self.program1,
+                feed=self.feeds,
+                fetch_list=[self._expon1.kl_divergence(self._expon2)],
+            )
+            np.testing.assert_allclose(
+                kl,
+                self._kl(),
+                rtol=config.RTOL.get(str(self.rate1.dtype)),
+                atol=config.ATOL.get(str(self.rate1.dtype)),
+            )
+
+    def test_kl1_error(self):
+        self.assertRaises(
+            TypeError,
+            self._expon1.kl_divergence,
+            paddle.distribution.beta.Beta,
+        )
+
+    def _kl(self):
+        rate_ratio = self.rate2 / self.rate1
+        t1 = -np.log(rate_ratio)
+        return t1 + rate_ratio - 1
+
+
 if __name__ == '__main__':
     unittest.main()
