@@ -16,6 +16,7 @@
 from collections import defaultdict
 from types import MethodType
 
+import deprecated
 import numpy as np
 
 import paddle
@@ -232,6 +233,11 @@ def unscale_method(self, optimizer):
         self._found_inf = int(is_found_inf)
 
 
+@deprecated(
+    since="2.5.0",
+    update_to="paddle.distributed_scaler",
+    level=1,
+)
 class MixPrecisionScaler:
     def __init__(self, scaler):
         self._inner_scaler = scaler
