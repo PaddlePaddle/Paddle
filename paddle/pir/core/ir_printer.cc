@@ -114,8 +114,7 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) {
     os << "(Pointer)" << p.data();
   } else if (auto arr = attr.dyn_cast<ArrayAttribute>()) {
     const auto& vec = arr.AsVector();
-    os << "(Array)"
-       << "[";
+    os << "[";
     PrintInterleave(
         vec.begin(),
         vec.end(),

@@ -12,7 +12,8 @@ set(srcs
     pe.cc
     frontend.cc
     framework.cc
-    utils.cc)
+    utils.cc
+    schedule.cc)
 
 if(WITH_CUDA)
   message(STATUS "Compile core_api with CUDA support")
