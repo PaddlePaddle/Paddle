@@ -420,12 +420,8 @@ register_unity_group(
   rank_loss_op.cu
   real_op.cu)
 register_unity_group(
-  cu
-  log_loss_op.cu
-  lookup_table_v2_op.cu
-  masked_select_op.cu
-  shuffle_channel_op.cu
-  softmax_cudnn_op.cu)
+  cu log_loss_op.cu lookup_table_v2_op.cu masked_select_op.cu
+  shuffle_channel_op.cu softmax_cudnn_op.cu)
 register_unity_group(
   cu
   dequantize_log_op.cu
