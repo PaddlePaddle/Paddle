@@ -17,12 +17,12 @@
 #include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_inline.h"
 #include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/reduction_factoring.h"
 #include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 
 namespace cinn {
@@ -694,8 +694,8 @@ void GroupScheduler::AllocateStorage() {
   auto CalculateRange = [&for_map](ir::Expr indice_value,
                                    const CudaBindInfo& bind_info,
                                    const std::string& block_name) {
-    ir::Expr copy_for_upper_bound = optim::IRCopy(indice_value);
-    ir::Expr copy_for_lower_bound = optim::IRCopy(indice_value);
+    ir::Expr copy_for_upper_bound = ir::ir_utils::IRCopy(indice_value);
+    ir::Expr copy_for_lower_bound = ir::ir_utils::IRCopy(indice_value);
     std::set<ir::Expr> var_set = ir::ir_utils::CollectIRNodesWithoutTensor(
         indice_value, [](const ir::Expr* x) { return x->as_var(); });
     for (ir::Expr var : var_set) {
@@ -794,7 +794,7 @@ void GroupScheduler::AllocateStorage() {
     std::vector<std::pair<int, Range>> coef_and_ranges(3);
     std::vector<ir::Expr> indice_copies;
     for (int i = 0; i < 3; ++i) {
-      indice_copies.push_back(optim::IRCopy(indice_value));
+      indice_copies.push_back(ir::ir_utils::IRCopy(indice_value));
     }
     std::set<ir::Expr> var_set = ir::ir_utils::CollectIRNodesWithoutTensor(
         indice_value, [](const ir::Expr* x) { return x->as_var(); });
