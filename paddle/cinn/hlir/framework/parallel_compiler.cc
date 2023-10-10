@@ -38,94 +38,6 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
-std::string GetCutlassSourceCode() {
-  std::string sc;
-  sc += "#include <cuda_fp16.h>\n";
-  sc += "#include <cutlass/cutlass.h>\n";
-  sc += "#include <cutlass/coord.h>\n";
-  sc += "#include <cutlass/tensor_ref.h>\n";
-  sc += "#include <cutlass/util/host_tensor.h>\n";
-  sc += "#include <cutlass/epilogue/thread/linear_combination.h>\n";
-  sc += "#include <cutlass/gemm/device/gemm.h>\n";
-  sc += "\nextern \"C\"\n";
-  sc += "{\n\n";
-  sc += "#define CUTLASS_CALL(func)                        \\\n";
-  sc += " {\\\n";
-  sc += "    auto status = func;\\\n";
-  sc += "    if (status != cutlass::Status::kSuccess) {\\\n";
-  sc += "      printf(\"CUTLASS Error: %d\", static_cast<int>(status));\\\n";
-  sc += "      return;\\\n";
-  sc += "    }\\\n";
-  sc += "  }\n";
-  sc +=
-      "void cutlass_tensorop_h1688gemm_256x128_32x2_tn_align8_kernel(void* A, "
-      "void* B, void* C) {\n";
-  sc += "using ElementInputA = cutlass::half_t;\n";
-  sc += "using ElementInputB = cutlass::half_t;\n";
-  sc += "using ElementOutput = cutlass::half_t;\n";
-  sc += "using ElementComputeEpilogue = cutlass::half_t;\n\n";
-  sc += "// Gemm operator cutlass_tensorop_h1688gemm_256x128_32x2_tn_align8\n";
-  sc +=
-      "using Operation_cutlass_tensorop_h1688gemm_256x128_32x2_tn_align8 = "
-      "cutlass::gemm::device::Gemm<\n";
-  sc += "  cutlass::half_t, cutlass::layout::RowMajor,\n";
-  sc += "  cutlass::half_t, cutlass::layout::ColumnMajor,\n";
-  sc += "  cutlass::half_t, cutlass::layout::RowMajor,\n";
-  sc += "  cutlass::half_t,\n";
-  sc += "  cutlass::arch::OpClassTensorOp,\n";
-  sc += "  cutlass::arch::Sm75,\n";
-  sc += "  cutlass::gemm::GemmShape<256, 128, 32>,\n";
-  sc += "  cutlass::gemm::GemmShape<64, 64, 32>,\n";
-  sc += "  cutlass::gemm::GemmShape<16, 8, 8>,\n\n";
-  sc += "  cutlass::epilogue::thread::LinearCombination<\n";
-  sc += "    cutlass::half_t,\n";
-  sc += "    8,\n";
-  sc += "    cutlass::half_t,\n";
-  sc += "    cutlass::half_t\n";
-  sc += "  >,\n";
-  sc += "  cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,\n";
-  sc += "  2,\n";
-  sc += "  8,\n";
-  sc += "  8,\n";
-  sc += "  false,\n";
-  sc += "  cutlass::arch::OpMultiplyAdd\n";
-  sc += ">;\n\n";
-  sc +=
-      "using Gemm = "
-      "Operation_cutlass_tensorop_h1688gemm_256x128_32x2_tn_align8;\n";
-  sc += "int M = 128;\n";
-  sc += "int N = 128;\n";
-  sc += "int K = 128;\n";
-  sc += "cutlass::gemm::GemmCoord problem_size(M, N, K);\n";
-  sc += "ElementComputeEpilogue alpha = ElementComputeEpilogue(1);\n";
-  sc += "ElementComputeEpilogue beta = ElementComputeEpilogue(0);\n";
-  sc += "void* ptr_a = (void*)(A);\n";
-  sc += "void* ptr_b = (void*)(B);\n";
-  sc += "\n";
-  sc += "void* ptr_out = (void*)(C);\n";
-  sc += "\n";
-  sc += "typename Gemm::Arguments arguments{\n";
-  sc += " problem_size,\n";
-  sc += " {static_cast<ElementInputA*>(ptr_a), K},\n";
-  sc += " {static_cast<ElementInputB*>(ptr_b), K},\n";
-  sc += " {static_cast<ElementOutput*>(ptr_out), N},\n";
-  sc += " {static_cast<ElementOutput*>(ptr_out), N},\n";
-  sc += " {alpha, beta},\n";
-  sc += " 1\n";
-  sc += "};\n";
-  sc += "size_t workspace_size = Gemm::get_workspace_size(arguments);\n";
-  sc +=
-      "cutlass::device_memory::allocation<uint8_t> "
-      "workspace(workspace_size);\n";
-  sc += "Gemm gemm_op;\n";
-  sc += "CUTLASS_CALL(gemm_op.can_implement(arguments));\n";
-  sc += "CUTLASS_CALL(gemm_op.initialize(arguments, workspace.get()));\n";
-  sc += "CUTLASS_CALL(gemm_op());\n";
-  sc += "}\n";
-  sc += "}\n\n";
-  return sc;
-}
-
 CompilationResult ParallelCompiler::operator()() {
   if (context_->graph->fusion_groups.empty()) {
     hlir::framework::ApplyPasses(context_->graph.get(),
@@ -256,10 +168,6 @@ void ParallelCompiler::Task::CodegenAndJit() {
     }
     CHECK(!cuda_c.empty()) << "Compile CUDA C code failed from device module:\n"
                            << dmodule;
-    if (FLAGS_cinn_use_cutlass) {
-      cuda_c = GetCutlassSourceCode();
-    }
-    VLOG(4) << "cuda_c: \n" << cuda_c;
     backends::CompilationInfoDumper::DumpSourceCodeByGroupIndex(cuda_c,
                                                                 group_id);
     pcompiler->result_.source_codes[group_id] = cuda_c;

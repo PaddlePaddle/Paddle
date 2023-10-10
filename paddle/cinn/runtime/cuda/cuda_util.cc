@@ -19,6 +19,7 @@
 #include <cuda_runtime.h>
 #include <curand.h>
 #include <cusolverDn.h>
+#include <dlfcn.h>
 #include <glog/logging.h>
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
@@ -41,6 +42,14 @@
 namespace cinn {
 namespace runtime {
 namespace cuda {
+
+struct FunctionSym {
+  std::string strsym;
+  explicit FunctionSym(std::string &str) : strsym(funcname2sym(str)) {}
+  std::string funcname2sym(std::string &str) {
+    return "_Z" + std::to_string(str.size()) + str + "PvS_S_";
+  }
+};
 
 class CublasHandle {
  public:
@@ -126,14 +135,122 @@ void cinn_call_cuda_kernel(void *kernel_fn,
   }
 }
 
-void cinn_call_cutlass_kernel(void *kernel_fn, void *v_args) {
+std::string GetCutlassSourceCode() {
+  std::string sc;
+  sc += "#include <cuda_fp16.h>\n";
+  sc += "#include <cutlass/cutlass.h>\n";
+  sc += "#include <cutlass/coord.h>\n";
+  sc += "#include <cutlass/tensor_ref.h>\n";
+  sc += "#include <cutlass/util/host_tensor.h>\n";
+  sc += "#include <cutlass/epilogue/thread/linear_combination.h>\n";
+  sc += "#include <cutlass/gemm/device/gemm.h>\n";
+  sc += "\nextern \"C\"\n";
+  sc += "{\n\n";
+  sc += "#define CUTLASS_CALL(func)                        \\\n";
+  sc += " {\\\n";
+  sc += "    auto status = func;\\\n";
+  sc += "    if (status != cutlass::Status::kSuccess) {\\\n";
+  sc += "      printf(\"CUTLASS Error: %d\", static_cast<int>(status));\\\n";
+  sc += "      return;\\\n";
+  sc += "    }\\\n";
+  sc += "  }\n";
+  sc +=
+      "void cutlass_tensorop_h1688gemm_256x128_32x2_tn_align8_kernel(void* A, "
+      "void* B, void* C) {\n";
+  sc += "using ElementInputA = cutlass::half_t;\n";
+  sc += "using ElementInputB = cutlass::half_t;\n";
+  sc += "using ElementOutput = cutlass::half_t;\n";
+  sc += "using ElementComputeEpilogue = cutlass::half_t;\n\n";
+  sc += "// Gemm operator cutlass_tensorop_h1688gemm_256x128_32x2_tn_align8\n";
+  sc +=
+      "using Operation_cutlass_tensorop_h1688gemm_256x128_32x2_tn_align8 = "
+      "cutlass::gemm::device::Gemm<\n";
+  sc += "  cutlass::half_t, cutlass::layout::RowMajor,\n";
+  sc += "  cutlass::half_t, cutlass::layout::ColumnMajor,\n";
+  sc += "  cutlass::half_t, cutlass::layout::RowMajor,\n";
+  sc += "  cutlass::half_t,\n";
+  sc += "  cutlass::arch::OpClassTensorOp,\n";
+  sc += "  cutlass::arch::Sm75,\n";
+  sc += "  cutlass::gemm::GemmShape<256, 128, 32>,\n";
+  sc += "  cutlass::gemm::GemmShape<64, 64, 32>,\n";
+  sc += "  cutlass::gemm::GemmShape<16, 8, 8>,\n\n";
+  sc += "  cutlass::epilogue::thread::LinearCombination<\n";
+  sc += "    cutlass::half_t,\n";
+  sc += "    8,\n";
+  sc += "    cutlass::half_t,\n";
+  sc += "    cutlass::half_t\n";
+  sc += "  >,\n";
+  sc += "  cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,\n";
+  sc += "  2,\n";
+  sc += "  8,\n";
+  sc += "  8,\n";
+  sc += "  false,\n";
+  sc += "  cutlass::arch::OpMultiplyAdd\n";
+  sc += ">;\n\n";
+  sc +=
+      "using Gemm = "
+      "Operation_cutlass_tensorop_h1688gemm_256x128_32x2_tn_align8;\n";
+  sc += "int M = 128;\n";
+  sc += "int N = 128;\n";
+  sc += "int K = 128;\n";
+  sc += "cutlass::gemm::GemmCoord problem_size(M, N, K);\n";
+  sc += "ElementComputeEpilogue alpha = ElementComputeEpilogue(1);\n";
+  sc += "ElementComputeEpilogue beta = ElementComputeEpilogue(0);\n";
+  sc += "void* ptr_a = (void*)(A);\n";
+  sc += "void* ptr_b = (void*)(B);\n";
+  sc += "\n";
+  sc += "void* ptr_out = (void*)(C);\n";
+  sc += "\n";
+  sc += "typename Gemm::Arguments arguments{\n";
+  sc += " problem_size,\n";
+  sc += " {static_cast<ElementInputA*>(ptr_a), K},\n";
+  sc += " {static_cast<ElementInputB*>(ptr_b), K},\n";
+  sc += " {static_cast<ElementOutput*>(ptr_out), N},\n";
+  sc += " {static_cast<ElementOutput*>(ptr_out), N},\n";
+  sc += " {alpha, beta},\n";
+  sc += " 1\n";
+  sc += "};\n";
+  sc += "size_t workspace_size = Gemm::get_workspace_size(arguments);\n";
+  sc +=
+      "cutlass::device_memory::allocation<uint8_t> "
+      "workspace(workspace_size);\n";
+  sc += "Gemm gemm_op;\n";
+  sc += "CUTLASS_CALL(gemm_op.can_implement(arguments));\n";
+  sc += "CUTLASS_CALL(gemm_op.initialize(arguments, workspace.get()));\n";
+  sc += "CUTLASS_CALL(gemm_op());\n";
+  sc += "}\n";
+  sc += "}\n\n";
+  return sc;
+}
+
+void cinn_call_cutlass_kernel(void *v_args, int num_args, void *stream) {
   cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
   void *A = args[0].operator cinn_buffer_t *()->memory;
   void *B = args[1].operator cinn_buffer_t *()->memory;
   void *C = args[2].operator cinn_buffer_t *()->memory;
-  // cutlass_tensorop_h1688gemm_256x128_32x2_tn_align8_kernel(A, B, C);
-  // auto tmp =
-  //     static_cast<std::function<void(void *, void *, void *)>>(kernel_fn);
+  std::string cuda_c = GetCutlassSourceCode();
+  VLOG(4) << "cuda_c: \n" << cuda_c;
+
+  system(
+      "nvcc -std=c++14 --shared -O3 -I "
+      "/work/.virtualenvs_cu117/cu117_py39_zz/lib/python3.9/site-packages/cinn/"
+      "libs -I /work/workspace/Paddle/third_party/cutlass/include -I "
+      "/work/workspace/Paddle/third_party/cutlass/tools/util/include "
+      "-DCUTLASS_ENABLE_TENSOR_CORE_MMA=1 -Xcompiler=-fPIC -arch=sm_80 "
+      "/work/workspace/Paddle/build/tmp/source_code.cu -o /tmp/libcode.so");
+
+  void *handle;
+  handle = dlopen("/tmp/libcode.so", RTLD_LAZY);
+  std::string function =
+      "cutlass_tensorop_h1688gemm_256x128_32x2_tn_align8_kernel";
+  VLOG(4) << "function name: " << function;
+  function = FunctionSym(function).strsym;
+  VLOG(4) << "function name: " << function;
+
+  void (*func_call)(void *, void *, void *) =
+      (void (*)(void *, void *, void *))dlsym(handle, function.c_str());
+  func_call(A, B, C);
+  dlclose(handle);
 }
 
 void cinn_call_cublas(void *v_args,

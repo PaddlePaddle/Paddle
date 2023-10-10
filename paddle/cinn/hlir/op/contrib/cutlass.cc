@@ -168,12 +168,21 @@ std::shared_ptr<OpStrategy> StrategyForCutlassMatmul(
     // create call function.
     ir::Var kernel_ptr(cutlass_kernel + "_kernel", type_of<std::string>());
     ir::Var kernel_args(KERNEL_ARGS, type_of<void *>());
+    ir::Var kernel_args_num(KERNEL_ARGS_NUM, type_of<int>());
 
-    std::vector<ir::Expr> host_args = {kernel_ptr, kernel_args};
+    std::vector<ir::Expr> host_args = {kernel_args, kernel_args_num};
     std::vector<ir::Argument> arguments = {
-        ir::Argument(kernel_args, ir::Argument::IO::kOutput)};
+        ir::Argument(kernel_args, ir::Argument::IO::kOutput),
+        ir::Argument(kernel_args_num, ir::Argument::IO::kInput)};
+    // if target is nvgpu, add stream.
+    if (target == common::DefaultNVGPUTarget()) {
+      ir::Var kernel_stream(KERNEL_STREAM, type_of<void *>());
+
+      host_args.push_back(kernel_stream);
+      arguments.emplace_back(kernel_stream, ir::Argument::IO::kOutput);
+    }
     auto call_extern_api = ir::Call::Make(Void(),
-                                          "cinn_call_cutlass",
+                                          "cinn_call_cutlass_kernel",
                                           host_args,
                                           {},
                                           ir::CallType::Extern,
