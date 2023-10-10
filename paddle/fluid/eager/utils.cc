@@ -36,27 +36,11 @@ void SetGradOutputDistAttrIter::visit_element(paddle::Tensor* element,
                "SetGradOutputDistAttrIter.";
     return;
   }
-  if (meta.DistAttr().empty()) {
-    VLOG(4) << "The input element's meta doesn't contains DistAttr when "
-               "calling SetGradOutputDistAttrIter.";
-    return;
-  }
-  if (element->defined()) {
-    if (element->is_dist_tensor()) {
-      PADDLE_THROW(
-          phi::errors::Unimplemented("Unsupport set defined dist tensor now."));
-    } else {
-      // Only deal with dist tensor here
-      VLOG(4) << "The input element is DenseTensor when calling "
-                 "SetGradOutputDistAttrIter.";
-      return;
-    }
-  } else {
-    VLOG(4) << "The input element is set DistTensor impl when calling "
-               "SetGradOutputDistAttrIter.";
-    element->set_impl(std::make_shared<phi::distributed::DistTensor>(
-        phi::DDim(), meta.DistAttr()));
-  }
+  // Here the element is empty or defined DistTensor
+  VLOG(4) << "The input element is set DistTensor impl when calling "
+             "SetGradOutputDistAttrIter.";
+  element->set_impl(std::make_shared<phi::distributed::DistTensor>(
+      phi::DDim(), meta.DistAttr()));
 }
 
 void SetGradOutputDistAttrIter::visit(paddle::Tensor* element) {
