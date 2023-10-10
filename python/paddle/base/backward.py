@@ -20,8 +20,7 @@ import warnings
 from collections.abc import Sequence
 
 import paddle.base
-from paddle.base import framework as framework
-from paddle.base import program_guard
+from paddle.base import framework, program_guard
 
 from . import core, log_helper, unique_name
 from .data_feeder import check_type
@@ -231,7 +230,7 @@ class ProgramStats:
 
 
 def _pretty_op_desc_(op_desc, prefix):
-    out_s = "%s\tname:[%s]\n%s    \tinputs:[%s]\n%s    \toutputs:[%s]" % (
+    out_s = "{}\tname:[{}]\n{}    \tinputs:[{}]\n{}    \toutputs:[{}]".format(
         prefix + "_op",
         str(op_desc.type()),
         prefix + "_input",
@@ -760,7 +759,7 @@ def _remove_no_grad_branch_(
                         ] = grad_op_id_to_fwd_op[op_desc.original_id()]
                     to_insert.append((new_op_desc, idx))
 
-    list([op_descs.insert(p[1], p[0]) for p in reversed(to_insert)])
+    [op_descs.insert(p[1], p[0]) for p in reversed(to_insert)]
 
     return op_descs
 
@@ -812,7 +811,7 @@ def _find_not_need_ops(grad_op_descs, forward_ops, input_grad_names_set):
             assert isinstance(var, Var)
             self.outputs.append(var)
 
-    var_versions = dict()
+    var_versions = {}
 
     def _create_node(name):
         if name not in var_versions.keys():
@@ -1320,7 +1319,7 @@ def _append_backward_ops_(
     if callbacks is not None:
         assert isinstance(callbacks, (list, tuple))
         for cb in callbacks:
-            if not hasattr(cb, '__call__'):
+            if not callable(cb):
                 raise ValueError("'callback' must be a callable object.")
 
     # grad_op_descs holds created grad_op, and will be appended to target_block
@@ -1671,17 +1670,8 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
                     or var in parent_op_vars
                 ]
                 if not existing_grad_var_ins:
-                    '''
-                    FIXME(paddle-dev, zengjinle): rnn_memory_helper_grad is used
-                    in recurrent op. The input of this op does not even exist in
-                    the program! Therefore, any dependency analysis would not
-                    work to this op! If I do not add the following code, this op
-                    would be pruned, and the calculation result would be wrong.
-                    Maybe we should re-design this op later...
-                    '''
-                    if op_desc.type() not in ['rnn_memory_helper_grad']:
-                        ops_to_remove.append(op_idx)
-                        continue
+                    ops_to_remove.append(op_idx)
+                    continue
 
         # sum may create invalid variable, here to deal with it.
         if op_desc.type() == 'sum':
@@ -1817,7 +1807,7 @@ def _rename_grad_(
 
 
 def _get_stop_gradients_(program):
-    no_grad_dict = dict()
+    no_grad_dict = {}
     assert isinstance(program, framework.Program)
     for block in program.blocks:
         assert isinstance(block, framework.Block)
@@ -2041,7 +2031,7 @@ def append_backward(
     for idx in son_parent_block_idx_dict:
         block_fwd_op_num_dict[idx] = program.block(idx).desc.op_size()
 
-    grad_to_var = dict()
+    grad_to_var = {}
 
     # pass the cuda_graph_attr to the fill_constant which generates the loss_grad
     op_desc = _create_loss_op_desc_(loss)
@@ -2055,7 +2045,7 @@ def append_backward(
             map(_strip_grad_suffix_, no_grad_dict[block_idx])
         )
 
-        op_path_dict = dict()
+        op_path_dict = {}
         op_path = _find_op_path_(
             block, [loss], [], block_no_grad_set, op_path_dict
         )
@@ -2118,7 +2108,7 @@ def append_backward(
                 grad_op_id_to_fwd_op=grad_op_id_to_fwd_op,
             )
 
-    grad_info_map = dict()
+    grad_info_map = {}
 
     # if in control flow, target_grad_block is a created new block which only contains grad ops,
     # so fwd_op_num is set to 0.
@@ -2319,7 +2309,7 @@ def _find_op_path_(
     input_names = {inp.name for inp in inputs}
     output_names = _get_output_names(block, targets)
     if op_path_dict is None:
-        op_path_dict = dict()
+        op_path_dict = {}
 
     relevant_op_flags = [True] * len(block.ops)
 
@@ -2441,8 +2431,9 @@ def calc_gradient_helper(
                 raise ValueError("all targets must be in the same block")
             if target.shape != grad.shape:
                 raise ValueError(
-                    "The shapes of target and grad are different: %s %s"
-                    % (target.name, grad.name)
+                    "The shapes of target and grad are different: {} {}".format(
+                        target.name, grad.name
+                    )
                 )
             target_grad_map[_append_grad_suffix_(target.name)] = grad.name
             input_grad_names_set.add(grad.name)
@@ -2461,10 +2452,10 @@ def calc_gradient_helper(
 
     for input in inputs:
         if input.block.program != prog:
-            raise "input must be in the same program as targets"
+            raise ValueError("input must be in the same program as targets")
     block_no_grad_set = set(map(_strip_grad_suffix_, no_grad_dict[0]))
 
-    op_path_dict = dict()
+    op_path_dict = {}
     op_path = _find_op_path_(
         block, targets, inputs, block_no_grad_set, op_path_dict
     )
@@ -2515,8 +2506,8 @@ def calc_gradient_helper(
     block_no_grad_set.update(no_grad_vars)
 
     no_grad_dict[0].update(list(map(_append_grad_suffix_, block_no_grad_set)))
-    grad_to_var = dict()
-    grad_info_map = dict()
+    grad_to_var = {}
+    grad_info_map = {}
     _append_backward_ops_(
         block,
         op_path,

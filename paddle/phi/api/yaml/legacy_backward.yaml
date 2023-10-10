@@ -206,6 +206,7 @@
     param : [out_grad]
   kernel :
     func : dropout_grad
+  composite : dropout_grad(mask, out_grad, p, is_test, mode, x_grad)
 
 - backward_op : einsum_grad
   forward : einsum (Tensor[] x, str equation) -> Tensor(out), Tensor[](inner_cache), Tensor[](x_shape)

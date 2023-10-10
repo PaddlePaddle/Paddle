@@ -15,7 +15,6 @@
 #include <gtest/gtest.h>
 #include <sstream>
 
-#include "build/paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
@@ -24,9 +23,11 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
+#include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/platform/init.h"
@@ -110,7 +111,7 @@ TEST(kernel_dialect, legacy_op_test) {
                                            "kernel_key",
                                            kernel_key);
 
-  pir::Operation* op = pir::Operation::Create(argument);
+  pir::Operation* op = pir::Operation::Create(std::move(argument));
   EXPECT_EQ("pd_op.kernel_op",
             op->dyn_cast<paddle::dialect::LegacyKernelOp>().op_name());
   EXPECT_EQ("kernel_op",
