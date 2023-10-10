@@ -266,7 +266,7 @@ def to_prim(
     blacklist = prim_config["forward_blacklist"] | blacklist
 
     with framework.program_guard(main_program):
-        print("Lowering composite forward ops begin...", flush=True)
+        logging.info("Lowering composite forward ops begin...")
 
         if len(blacklist) > 0 and len(whitelist) > 0:
             filter_ = lambda x: x.type in whitelist and x.type not in blacklist
@@ -283,6 +283,4 @@ def to_prim(
             backward_length=backward_length,
         )
         replace_ops = prim_config["composite_ops_record"]
-        print(
-            f"Lowering composite forward ops finish: {replace_ops}", flush=True
-        )
+        logging.info(f"Lowering composite forward ops finish: {replace_ops}")

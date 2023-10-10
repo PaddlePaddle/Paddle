@@ -47,8 +47,7 @@ class IR_API Type {
 
   Type() = default;
 
-  Type(const Storage *storage)  // NOLINT
-      : storage_(storage) {}
+  Type(const Storage *storage) : storage_(storage) {}  // NOLINT
 
   Type(const Type &other) = default;
 
@@ -74,8 +73,8 @@ class IR_API Type {
   /// \brief Support PointerLikeTypeTraits.
   ///
   operator const void *() const { return storage_; }
-  static Type RecoverFromOpaquePointer(const void *pointer) {
-    return Type(reinterpret_cast<Storage *>(const_cast<void *>(pointer)));
+  static Type RecoverFromVoidPointer(const void *pointer) {
+    return Type(reinterpret_cast<const Storage *>(pointer));
   }
 
   ///
