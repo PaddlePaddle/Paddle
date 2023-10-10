@@ -35,9 +35,9 @@ from .operators import (
 )
 from .optimizer import DistributedFusedLamb  # noqa: F401
 from .optimizer import LookAhead, ModelAverage
+from .passes import fuse_resnet_unit_pass  # noqa: F401
 from .tensor import (  # noqa: F401
     _npu_identity,
-    fuse_resnet_unit_pass,
     segment_max,
     segment_mean,
     segment_min,
