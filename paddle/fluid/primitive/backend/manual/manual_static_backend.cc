@@ -45,6 +45,24 @@ std::vector<Tensor> add_n_grad<LazyTensor>(const std::vector<Tensor>& x,
   return x_grad;
 }
 
+template <>
+Tensor frobenius_norm_grad<LazyTensor>(const Tensor& x,
+                                       const Tensor& out,
+                                       const Tensor& out_grad,
+                                       const std::vector<int64_t>& axis,
+                                       bool keep_dim,
+                                       bool reduce_all) {
+  pir::Value x_res = std::static_pointer_cast<LazyTensor>(x.impl())->value();
+  pir::Value out_res =
+      std::static_pointer_cast<LazyTensor>(out.impl())->value();
+  pir::Value out_grad_res =
+      std::static_pointer_cast<LazyTensor>(out_grad.impl())->value();
+  auto op_res = paddle::dialect::frobenius_norm_grad(
+      x_res, out_res, out_grad_res, axis, keep_dim, reduce_all);
+  Tensor x_grad(std::make_shared<LazyTensor>(op_res));
+  return x_grad;
+}
+
 }  // namespace backend
 }  // namespace primitive
 }  // namespace paddle

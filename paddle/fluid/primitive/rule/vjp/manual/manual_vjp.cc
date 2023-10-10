@@ -40,6 +40,25 @@ std::vector<std::vector<paddle::Tensor>> add_n_vjp(
   return vjp_res;
 }
 
+std::vector<std::vector<paddle::Tensor>> frobenius_norm_vjp(
+    const Tensor& x,
+    const Tensor& out,
+    const Tensor& out_grad,
+    const IntArray& axis,
+    bool keep_dim,
+    bool reduce_all,
+    const std::vector<std::vector<bool>>& stop_gradients) {
+  std::vector<std::vector<paddle::Tensor>> vjp_res;
+  for (auto arg : stop_gradients) {
+    vjp_res.push_back(std::vector<paddle::Tensor>(arg.size()));
+  }
+  auto op_res = backend::frobenius_norm_grad<LazyTensor>(
+      x, out, out_grad, axis, keep_dim, reduce_all);
+  vjp_res[0][0] = op_res;
+  vjp_res = ConstructVjpResultByStopGradients(vjp_res, stop_gradients);
+  return vjp_res;
+}
+
 std::vector<std::vector<paddle::Tensor>> reshape_vjp(
     const Tensor& xshape,
     const Tensor& out_grad,
