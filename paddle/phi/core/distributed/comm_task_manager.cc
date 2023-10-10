@@ -33,10 +33,6 @@
 #include "paddle/phi/core/distributed/trace_utils.h"
 #include "paddle/phi/core/enforce.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/phi/core/distributed/nccl_comm_context.h"
-#endif
-
 namespace phi {
 namespace distributed {
 

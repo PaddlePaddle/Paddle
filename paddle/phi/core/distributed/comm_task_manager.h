@@ -25,7 +25,6 @@
 
 #include "paddle/phi/core/distributed/comm_context.h"
 #include "paddle/phi/core/distributed/comm_task.h"
-#include "paddle/phi/core/distributed/nccl_tools.h"
 #include "paddle/phi/core/macros.h"
 
 namespace phi {
