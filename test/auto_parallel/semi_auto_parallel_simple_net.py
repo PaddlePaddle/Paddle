@@ -138,7 +138,7 @@ class TestSimpleNetForSemiAutoParallel:
         self.w1 = np.random.random([IMAGE_SIZE, CLASS_NUM]).astype('float32')
 
     # TODO(chenweihang): optimizer cannot run auto-parallel now
-    def run_dynamic(self, layer, parallel=False):
+    def run_dynamic(self, layer):
         # create loss
         loss_fn = nn.MSELoss()
         # run forward and backward
@@ -163,7 +163,7 @@ class TestSimpleNetForSemiAutoParallel:
 
     def test_dp_demo_net(self):
         self.dp_loss, self.dp_w0_grad, self.dp_w1_grad = self.run_dynamic(
-            DPDemoNet(self.w0, self.w1, self._mesh), parallel=True
+            DPDemoNet(self.w0, self.w1, self._mesh)
         )
         self.check_tensor_eq(self.dp_loss, self.base_loss)
         self.check_tensor_eq(self.dp_w0_grad, self.base_w0_grad)
@@ -171,7 +171,7 @@ class TestSimpleNetForSemiAutoParallel:
 
     def test_mp_demo_net(self):
         self.mp_loss, self.mp_w0_grad, self.mp_w1_grad = self.run_dynamic(
-            MPDemoNet(self.w0, self.w1, self._mesh), parallel=True
+            MPDemoNet(self.w0, self.w1, self._mesh)
         )
         self.check_tensor_eq(self.mp_loss, self.base_loss)
         self.check_tensor_eq(self.mp_w0_grad, self.base_w0_grad)
