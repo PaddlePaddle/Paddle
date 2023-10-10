@@ -566,10 +566,6 @@ void HandleForSpecialOp(pir::Operation* op,
   if (op_name == "pd_op.while") {
     auto while_op = op->dyn_cast<paddle::dialect::WhileOp>();
 
-    auto cond_block = while_op.cond_block();
-
-    auto body_block = while_op.body_block();
-
     for (size_t i = 0; i < while_op->num_results(); ++i) {
       auto while_op_out_value = while_op->result(i);
       BuildValue(while_op_out_value, var_name_prefix, value_exe_info);

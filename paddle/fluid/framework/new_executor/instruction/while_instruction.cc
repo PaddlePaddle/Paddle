@@ -120,12 +120,7 @@ WhileInstruction::WhileInstruction(size_t id,
   // the true branch and false branch input will be the if_op inputs
 
   std::unordered_map<pir::Value, std::vector<int>> inputs;
-  GetInputIds(op,
-              inner_scope,
-              parent_exe_info->GetValue2VarName(),
-              parent_exe_info->GetVarName2Id(),
-              parent_exe_info->GetVar2VarName(),
-              &inputs);
+  GetInputIds(op, *parent_exe_info, &inputs);
   // GetOutsideOpInputs(cond_block_,
   //                    inner_scope,
   //                    parent_exe_info->GetValue2VarName(),
@@ -152,12 +147,7 @@ WhileInstruction::WhileInstruction(size_t id,
               "input should in name map, [%d] 'th input of [%s] op",
               i,
               "if op"));
-      std::vector<int> outputs_id =
-          GetValueIds(value,
-                      inner_scope,
-                      parent_exe_info->GetValue2VarName(),
-                      parent_exe_info->GetVarName2Id(),
-                      parent_exe_info->GetVar2VarName());
+      std::vector<int> outputs_id = GetValueIds(value, *parent_exe_info);
       outputs.emplace(value, outputs_id);
     }
   }
