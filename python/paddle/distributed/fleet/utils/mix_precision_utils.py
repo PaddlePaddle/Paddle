@@ -16,7 +16,6 @@
 from collections import defaultdict
 from types import MethodType
 
-import deprecated
 import numpy as np
 
 import paddle
@@ -29,6 +28,7 @@ from paddle.distributed.fleet.utils.hybrid_parallel_util import (
     obtain_optimizer_parameters_list,
 )
 from paddle.framework import core
+from paddle.utils import deprecated
 
 
 class MixPrecisionLayer(nn.Layer):
