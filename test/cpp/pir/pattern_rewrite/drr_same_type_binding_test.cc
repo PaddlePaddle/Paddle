@@ -26,7 +26,7 @@
 #include "paddle/pir/transforms/dead_code_elimination_pass.h"
 
 /* Source pattern:
-                                       input1 
+                                       input1
                                     /  |  \  \  \
                                   /    |   \   \    \
              full               /      |    |    \     \           full_tmp
@@ -36,22 +36,22 @@
          \     |      /    softmax2    |    |      |          add1      |
            \   |    /             \    |     \    /             |       |
            layernorm             matmul2     matmul1             \      |
-             / | \                   |         |                  \     | 
-           /   |   \                  \       /                     \   |                          
-         /     |     \                 matmul3                        add2                   
-        |      |      |                /  |  \                          |                
-        |      |      |              /    |    \                        |                       
-        |      |      |            /      |      \                      |                                                                                                       
-        |      |      |         trans4  trans5  trans6                  |                                
-        |      |      |           |       |        |                    |              
+             / | \                   |         |                  \     |
+           /   |   \                  \       /                     \   |
+         /     |     \                 matmul3                        add2
+        |      |      |                /  |  \                          |
+        |      |      |              /    |    \                        |
+        |      |      |            /      |      \                      |
+        |      |      |         trans4  trans5  trans6                  |
+        |      |      |           |       |        |                    |
         |      |      |         relu1  softmax3 softmax4              relu2
         |      |      |           |       |        |                    |
-    output0 output1 output2    output3  output4  output5             output6     
+    output0 output1 output2    output3  output4  output5             output6
 */
 
 class SameTypeBindingTestPattern
     // This class is for test cases of the same type of OP.
-    // (without considering the computational logic between OPs, 
+    // (without considering the computational logic between OPs,
     // only focusing on the process of matching and replacing)
     : public pir::drr::DrrPatternBase<SameTypeBindingTestPattern> {
  public:
