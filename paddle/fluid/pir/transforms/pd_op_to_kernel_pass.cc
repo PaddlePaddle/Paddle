@@ -1014,7 +1014,7 @@ std::vector<pir::Value> BuildOpInputList(
                                          op_info_parser,
                                          kernel.InputAt(i).backend,
                                          i);
-
+        VLOG(6) << "Infer kernel backend by input " << i << " of op ";
         bool need_trans =
             (in_place.GetType() != phi::AllocationType::UNDEFINED) &&
             (paddle::experimental::NeedTransformPlace(
@@ -1135,7 +1135,7 @@ std::vector<pir::Value> BuildOpInputList(
                                          op_info_parser,
                                          kernel.InputAt(i).backend,
                                          i);
-
+        VLOG(6) << "Infer kernel backend by input " << i << " of op ";
         bool need_trans =
             (in_place.GetType() != phi::AllocationType::UNDEFINED) &&
             (paddle::experimental::NeedTransformPlace(
