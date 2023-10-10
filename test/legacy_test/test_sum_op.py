@@ -58,11 +58,21 @@ class TestSumOp(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_cinn=True, check_new_ir=True)
+        self.check_output(
+            check_prim=True,
+            check_cinn=True,
+            check_new_ir=True,
+            check_prim_pir=True,
+        )
 
     def test_check_grad(self):
         self.check_grad(
-            ['x0'], 'Out', check_prim=True, check_cinn=True, check_new_ir=True
+            ['x0'],
+            'Out',
+            check_prim=True,
+            check_cinn=True,
+            check_new_ir=True,
+            check_prim_pir=True,
         )
 
 
@@ -296,7 +306,11 @@ class TestAFP16SumOp(TestSumOp):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
             self.check_output_with_place(
-                place, check_cinn=True, check_new_ir=True
+                place,
+                check_cinn=True,
+                check_prim=True,
+                check_prim_pir=True,
+                check_new_ir=True,
             )
 
     # FIXME: Because of the precision fp16, max_relative_error
@@ -304,7 +318,14 @@ class TestAFP16SumOp(TestSumOp):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_grad(['x0'], 'Out', check_cinn=True, check_new_ir=True)
+            self.check_grad(
+                ['x0'],
+                'Out',
+                check_cinn=True,
+                check_prim=True,
+                check_prim_pir=True,
+                check_new_ir=True,
+            )
 
 
 def create_test_sum_fp16_class(parent):
@@ -330,7 +351,9 @@ def create_test_sum_fp16_class(parent):
 class TestSumBF16Op(OpTest):
     def setUp(self):
         self.op_type = "sum"
+        self.prim_op_type = "prim"
         self.python_api = paddle.add_n
+        self.public_python_api = paddle.add_n
         self.init_kernel_type()
         x0 = np.random.random((3, 40)).astype(np.float32)
         x1 = np.random.random((3, 40)).astype(np.float32)
@@ -350,11 +373,23 @@ class TestSumBF16Op(OpTest):
 
     def test_check_output(self):
         # new dynamic graph mode does not support unit16 type
-        self.check_output(check_dygraph=False, check_new_ir=True)
+        self.check_output(
+            check_dygraph=False,
+            check_prim=True,
+            check_prim_pir=True,
+            check_new_ir=True,
+        )
 
     def test_check_grad(self):
         # new dynamic graph mode does not support unit16 type
-        self.check_grad(['x0'], 'Out', check_dygraph=False, check_new_ir=True)
+        self.check_grad(
+            ['x0'],
+            'Out',
+            check_dygraph=False,
+            check_prim=True,
+            check_prim_pir=True,
+            check_new_ir=True,
+        )
 
 
 class API_Test_Add_n(unittest.TestCase):

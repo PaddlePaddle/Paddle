@@ -15,6 +15,6 @@
 #include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
 
 namespace pir {
-void ControlFlowDialect::initialize() { RegisterOps<YieldOp>(); }
+void ControlFlowDialect::initialize() { RegisterOps<YieldOp, CondYieldOp>(); }
 }  // namespace pir
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ControlFlowDialect)

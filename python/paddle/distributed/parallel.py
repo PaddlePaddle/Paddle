@@ -19,8 +19,7 @@ import time
 import warnings
 from collections import OrderedDict, namedtuple
 from contextlib import contextmanager
-from multiprocessing import Manager  # noqa: F401
-from multiprocessing import Process  # noqa: F401
+from multiprocessing import Manager, Process
 
 import numpy as np
 
@@ -43,7 +42,7 @@ from paddle.distributed.communication.group import (
     _get_global_group,
     is_initialized,
 )
-from paddle.distributed.fleet.base.private_helper_function import (  # noqa: F401
+from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
 from paddle.distributed.fleet.launch_utils import check_backend
@@ -700,8 +699,8 @@ class ParallelEnv:
 
         # imperative only support one gpu or xpu
         if self._device_type != "":
-            FLAGS_selected_custom_devices = 'FLAGS_selected_{}s'.format(
-                self._device_type
+            FLAGS_selected_custom_devices = (
+                f'FLAGS_selected_{self._device_type}s'
             )
             selected_custom_devices = os.getenv(
                 FLAGS_selected_custom_devices, "0"
@@ -1014,8 +1013,8 @@ def init_parallel_env():
         )
 
     if backend == "xccl":
-        FLAGS_selected_custom_devices = 'FLAGS_selected_{}s'.format(
-            parallel_env.device_type
+        FLAGS_selected_custom_devices = (
+            f'FLAGS_selected_{parallel_env.device_type}s'
         )
         _check_var_exists(FLAGS_selected_custom_devices)
     else:

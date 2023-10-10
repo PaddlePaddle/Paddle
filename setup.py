@@ -1424,6 +1424,7 @@ def get_setup_parameters():
         'paddle.framework',
         'paddle.jit',
         'paddle.jit.dy2static',
+        'paddle.jit.newir_dy2static',
         'paddle.inference',
         'paddle.inference.contrib',
         'paddle.inference.contrib.utils',
@@ -1504,7 +1505,7 @@ def get_setup_parameters():
         'paddle.geometric',
         'paddle.geometric.message_passing',
         'paddle.geometric.sampling',
-        'paddle.ir',
+        'paddle.pir',
         'paddle.decomposition',
     ]
 
