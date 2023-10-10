@@ -54,36 +54,30 @@ class DemoNet(nn.Layer):
 class DPDemoNet(nn.Layer):
     def __init__(self, np_w0, np_w1, mesh):
         super().__init__()
-        self.replicate_dist_attr = dist.DistAttr(
-            mesh=mesh, sharding_specs=[None, None]
-        )
-        self.shard_axis0_dist_attr = dist.DistAttr(
-            mesh=mesh, sharding_specs=['x', None]
-        )
-        self.w0 = dist.shard_tensor(
-            self.create_parameter(
-                shape=[IMAGE_SIZE, IMAGE_SIZE],
-                attr=paddle.framework.ParamAttr(
-                    name="dp_demo_weight_1",
-                    initializer=paddle.nn.initializer.Assign(np_w0),
-                ),
+        self.mesh = mesh
+        self.w0 = self.create_parameter(
+            shape=[IMAGE_SIZE, IMAGE_SIZE],
+            attr=paddle.framework.ParamAttr(
+                name="dp_demo_weight_1",
+                initializer=paddle.nn.initializer.Assign(np_w0),
             ),
-            dist_attr=self.replicate_dist_attr,
         )
-        self.w1 = dist.shard_tensor(
-            self.create_parameter(
-                shape=[IMAGE_SIZE, CLASS_NUM],
-                attr=paddle.framework.ParamAttr(
-                    name="dp_nemo_weight_2",
-                    initializer=paddle.nn.initializer.Assign(np_w1),
-                ),
+        self.w1 = self.create_parameter(
+            shape=[IMAGE_SIZE, CLASS_NUM],
+            attr=paddle.framework.ParamAttr(
+                name="dp_nemo_weight_2",
+                initializer=paddle.nn.initializer.Assign(np_w1),
             ),
-            dist_attr=self.replicate_dist_attr,
         )
 
     def forward(self, x):
         y = paddle.matmul(
-            dist.shard_tensor(x, dist_attr=self.shard_axis0_dist_attr),
+            dist.shard_tensor(
+                x,
+                dist_attr=dist.DistAttr(
+                    mesh=self.mesh, sharding_specs=['x', None]
+                ),
+            ),
             self.w0,
         )
         z = paddle.matmul(y, self.w1)
@@ -93,15 +87,6 @@ class DPDemoNet(nn.Layer):
 class MPDemoNet(nn.Layer):
     def __init__(self, np_w0, np_w1, mesh):
         super().__init__()
-        self.replicate_dist_attr = dist.DistAttr(
-            mesh=mesh, sharding_specs=[None, None]
-        )
-        self.shard_axis0_dist_attr = dist.DistAttr(
-            mesh=mesh, sharding_specs=['x', None]
-        )
-        self.shard_axis1_dist_attr = dist.DistAttr(
-            mesh=mesh, sharding_specs=['x', None]
-        )
         self.w0 = dist.shard_tensor(
             self.create_parameter(
                 shape=[IMAGE_SIZE, IMAGE_SIZE],
@@ -110,7 +95,7 @@ class MPDemoNet(nn.Layer):
                     initializer=paddle.nn.initializer.Assign(np_w0),
                 ),
             ),
-            dist_attr=self.shard_axis1_dist_attr,
+            dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=[None, 'x']),
         )
         self.w1 = dist.shard_tensor(
             self.create_parameter(
@@ -120,13 +105,11 @@ class MPDemoNet(nn.Layer):
                     initializer=paddle.nn.initializer.Assign(np_w1),
                 ),
             ),
-            dist_attr=self.shard_axis0_dist_attr,
+            dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=['x', None]),
         )
 
     def forward(self, x):
-        y = paddle.matmul(
-            dist.shard_tensor(x, dist_attr=self.replicate_dist_attr), self.w0
-        )
+        y = paddle.matmul(x, self.w0)
         z = paddle.matmul(y, self.w1)
         return z
 
@@ -161,17 +144,10 @@ class TestSimpleNetForSemiAutoParallel:
         # run forward and backward
         image = paddle.to_tensor(self.image)
         out = layer(image)
-        label = (
-            dist.shard_tensor(
-                self.label,
-                dist_attr=dist.DistAttr(
-                    mesh=self._mesh, sharding_specs=[None, None]
-                ),
-            )
-            if parallel is True
-            else paddle.to_tensor(self.label)
-        )
+
+        label = paddle.to_tensor(self.label)
         loss = loss_fn(out, label)
+
         loss.backward()
         return loss, layer.w0.grad, layer.w1.grad
 
