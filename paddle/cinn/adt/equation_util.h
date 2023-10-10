@@ -154,9 +154,9 @@ void GenerateDotEquation(const List<Iterator>& iterators,
                          const List<Stride>& strides,
                          const Index& index,
                          const DoEachT& DoEach) {
-  DoEach(Dot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>{
+  DoEach(IndexDot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>{
       strides, index, iterators});
-  DoEach(UnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>{
+  DoEach(IndexUnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>{
       strides, iterators, index});
 }
 

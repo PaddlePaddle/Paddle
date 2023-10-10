@@ -138,26 +138,27 @@ struct ToTxtStringStruct {
   }
 
   std::string operator()(
-      const Dot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>& dot) const {
+      const IndexDot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>& dot)
+      const {
     std::string ret;
     const auto& [stride_list, out_index_tag, in_iterator_list_tag] =
         dot.tuple();
     const Index& out_index = out_index_tag.value();
     const List<Iterator>& in_iterator_list = in_iterator_list_tag.value();
-    ret += ToTxtString(out_index) + " = Dot(" + ToTxtString(in_iterator_list) +
-           ")";
+    ret += ToTxtString(out_index) + " = IndexDot(" +
+           ToTxtString(in_iterator_list) + ")";
     return ret;
   }
 
   std::string operator()(
-      const UnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>& undot)
+      const IndexUnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>& undot)
       const {
     std::string ret;
     const auto& [stride_list, out_iterator_list_tag, in_index_tag] =
         undot.tuple();
     const List<Iterator>& out_iterator_list = out_iterator_list_tag.value();
     const Index& in_index = in_index_tag.value();
-    ret += ToTxtString(out_iterator_list) + " = UnDot(" +
+    ret += ToTxtString(out_iterator_list) + " = IndexUnDot(" +
            ToTxtString(in_index) + ")";
     return ret;
   }

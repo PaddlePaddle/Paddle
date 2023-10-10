@@ -57,16 +57,16 @@ struct ToTxtStringStruct {
     return ret;
   }
 
-  std::string operator()(const IndexDot<Value, Constant>& value) {
+  std::string operator()(const IndexDotValue<Value, Constant>& value) {
     std::string ret;
     const auto& [_, constant] = value.tuple();
     const Value& value_ = value.GetIteratorsValue();
-    ret +=
-        "IndexDot(" + ToTxtString(value_) + ", " + ToTxtString(constant) + ")";
+    ret += "IndexDotValue(" + ToTxtString(value_) + ", " +
+           ToTxtString(constant) + ")";
     return ret;
   }
 
-  std::string operator()(const IndexUnDot<Value, Constant>& value) {
+  std::string operator()(const IndexUnDotValue<Value, Constant>& value) {
     std::string ret;
     const auto& [_, constant] = value.tuple();
     const Value& value_ = value.GetIndexValue();

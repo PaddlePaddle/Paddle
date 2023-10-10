@@ -67,13 +67,13 @@ void CollectTensorIndexIteratorsImpl(const List<Value>& tensor_index_expr,
 }
 
 void CollectTensorIndexIteratorsImpl(
-    const IndexDot<Value, Constant>& tensor_index_expr,
+    const IndexDotValue<Value, Constant>& tensor_index_expr,
     std::unordered_set<Iterator>* ret) {
   CollectTensorIndexIterators(tensor_index_expr.GetIteratorsValue(), ret);
 }
 
 void CollectTensorIndexIteratorsImpl(
-    const IndexUnDot<Value, Constant>& tensor_index_expr,
+    const IndexUnDotValue<Value, Constant>& tensor_index_expr,
     std::unordered_set<Iterator>* ret) {
   CollectTensorIndexIterators(tensor_index_expr.GetIndexValue(), ret);
 }

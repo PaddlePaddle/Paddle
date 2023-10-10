@@ -315,15 +315,15 @@ class NaiveOpEquationContext final : public OpEquationContext {
     }
   }
 
-  Index Dot(const IteratorTuple& iterator_tuple,
-            const StrideTuple& stride_tuple) {
+  Index IndexDot(const IteratorTuple& iterator_tuple,
+                 const StrideTuple& stride_tuple) {
     CHECK(iterator_tuple->size() == stride_tuple->size());
     Index index{UniqueId::New()};
     equations_->emplace_back(
-        adt::Dot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>{
+        adt::IndexDot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>{
             stride_tuple, index, iterator_tuple});
     equations_->emplace_back(
-        adt::UnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>{
+        adt::IndexUnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>{
             stride_tuple, iterator_tuple, index});
     return index;
   }
@@ -339,10 +339,12 @@ class NaiveOpEquationContext final : public OpEquationContext {
 
   void GenerateDots() {
     for (std::size_t i = 0; i < in_tensors_ranks_.size(); ++i) {
-      Equal(GetInIndex(i), Dot(GetInIteratorTuple(i), GetInStrideTuple(i)));
+      Equal(GetInIndex(i),
+            IndexDot(GetInIteratorTuple(i), GetInStrideTuple(i)));
     }
     for (std::size_t i = 0; i < out_tensors_ranks_.size(); ++i) {
-      Equal(GetOutIndex(i), Dot(GetOutIteratorTuple(i), GetOutStrideTuple(i)));
+      Equal(GetOutIndex(i),
+            IndexDot(GetOutIteratorTuple(i), GetOutStrideTuple(i)));
     }
   }
 

@@ -56,7 +56,7 @@ bool HasReplicatedValues(const List<Value>& values) {
 }
 
 std::unordered_map<Variable, Value> InferValuesImpl(
-    const Dot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>& dot,
+    const IndexDot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>& dot,
     IndexExprInferContext* ctx) {
   const auto& [strides, out_index, in_iters] = dot.tuple();
   List<Value> in_values;
@@ -70,12 +70,12 @@ std::unordered_map<Variable, Value> InferValuesImpl(
   for (const auto& stride : *strides) {
     stride_constants->emplace_back(stride);
   }
-  IndexDot<Value, Constant> index_dot{in_values, stride_constants};
+  IndexDotValue<Value, Constant> index_dot{in_values, stride_constants};
   return {{out_index.value(), index_dot}};
 }
 
 std::unordered_map<Variable, Value> InferValuesImpl(
-    const UnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>& undot,
+    const IndexUnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>& undot,
     IndexExprInferContext* ctx) {
   const auto& [strides, out_iters, in_index] = undot.tuple();
 
@@ -83,8 +83,8 @@ std::unordered_map<Variable, Value> InferValuesImpl(
   for (const auto& stride : *strides) {
     stride_constants->emplace_back(stride);
   }
-  IndexUnDot<Value, Constant> index_undot{ctx->GetValue(in_index.value()),
-                                          stride_constants};
+  IndexUnDotValue<Value, Constant> index_undot{ctx->GetValue(in_index.value()),
+                                               stride_constants};
 
   std::unordered_map<Variable, Value> ret{};
   for (std::size_t idx = 0; idx < out_iters.value()->size(); ++idx) {

@@ -157,14 +157,15 @@ class Graph final : public std::enable_shared_from_this<Graph> {
         out_variables.emplace(Variable{out_index.value()});
         in_variables.emplace(Variable{in_index.value()});
       },
-      [&](const Dot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>& dot) {
+      [&](const IndexDot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>& dot) {
         const auto& [strides, out_index, in_iterators] = dot.tuple();
         out_variables.emplace(Variable{out_index.value()});
         for (const auto& iterator : *in_iterators.value()) {
           in_variables.emplace(Variable{iterator});
         }
       },
-      [&](const UnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>& undot) {
+      [&](const IndexUnDot<List<Stride>,
+                           tOut<List<Iterator>>, tIn<Index>>& undot) {
         const auto& [strides, out_iterators, in_index] = undot.tuple();
         for (const auto& iterator : *out_iterators.value()) {
           out_variables.emplace(Variable{iterator});
