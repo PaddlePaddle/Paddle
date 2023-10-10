@@ -145,6 +145,16 @@ class Pipeline1F1BPass(PipelinePassBase):
             )
             '''
 
+            if backward_cost_to_overlap < forward_cost_to_overlap:
+                self._split_large_cost_op(forward_program, forward_op_id)
+                forward_op_id += 1
+                forward_op_to_overlap = forward_ops[forward_op_id]
+                forward_cost_to_overlap = self._op_cost(forward_op_to_overlap)
+                # Debug messages:
+                logger.info(
+                    f"forward_op_to_overlap : {forward_op_to_overlap}, cost = {self._op_cost(forward_op_to_overlap)}"
+                )
+
             while (
                 forward_op_id < num_forward_ops
                 and backward_cost_to_overlap >= forward_cost_to_overlap
@@ -152,12 +162,11 @@ class Pipeline1F1BPass(PipelinePassBase):
                 forward_op_id += 1
                 forward_op_to_overlap = forward_ops[forward_op_id]
                 forward_cost_to_overlap += self._op_cost(forward_op_to_overlap)
-                '''
+
                 # Debug messages:
                 logger.info(
                     f"forward_op_to_overlap : {forward_op_to_overlap}, cost = {self._op_cost(forward_op_to_overlap)}"
                 )
-                '''
 
                 if self.is_comm_op_valid_to_overlap(
                     forward_ops[forward_op_id - 1]
@@ -385,6 +394,115 @@ class Pipeline1F1BPass(PipelinePassBase):
         logger.info(f"jobs_in_stable_phase = {self.jobs_in_stable_phase}")
 
         return types, sub_programs
+
+    def _split_large_cost_op(self, program, op_id):
+        block = program.global_block()
+        op_to_split = block.ops[op_id]
+
+        if not (
+            op_to_split.type == "matmul_v2"
+            and op_to_split.attr("trans_x") is False
+            and op_to_split.attr("trans_y") is False
+        ):
+            logger.info(f"Unsupport split large cost op: {op_to_split}.")
+            return False
+
+        # Split large-cost matmul into multiple small-cost op.
+        # Replace Out = matmul(X, Y) with:
+        # (X0, X1) = split(X)
+        # Out0 = matmul(X0, Y)
+        # Out1 = matmul(X1, Y)
+        # Out = concat(Out0, Out1)
+        x = op_to_split.input("X")[0]
+        var_x = block.var(x)
+        x_shape = list(var_x.shape)
+
+        first_splitable_axis = 0
+        while (
+            first_splitable_axis < len(x_shape)
+            and x_shape[first_splitable_axis] < 2
+        ):
+            first_splitable_axis += 1
+
+        x_0 = block.create_var(
+            name=f"{x}@split_0",
+            dtype=var_x.dtype,
+            shape=x_shape[:first_splitable_axis]
+            + [x_shape[first_splitable_axis] // 2]
+            + x_shape[first_splitable_axis + 1 :],
+            persistable=False,
+        )
+        x_1 = block.create_var(
+            name=f"{x}@split_1",
+            dtype=var_x.dtype,
+            shape=x_shape[:first_splitable_axis]
+            + [
+                x_shape[first_splitable_axis]
+                - x_shape[first_splitable_axis] // 2
+            ]
+            + x_shape[first_splitable_axis + 1 :],
+            persistable=False,
+        )
+        block._insert_op_without_sync(
+            index=op_id + 1,
+            type="split",
+            inputs={"X": x},
+            outputs={"Out": [x_0, x_1]},
+            attrs={
+                "sections": [x_0.shape[first_splitable_axis], -1],
+                "axis": first_splitable_axis,
+            },
+        )
+
+        y = op_to_split.input("Y")[0]
+        out = op_to_split.output("Out")[0]
+        var_out = block.var(out)
+        out_shape = list(var_out.shape)
+        out_0 = block.create_var(
+            name=f"{out}@split_0",
+            dtype=var_out.dtype,
+            shape=out_shape[:first_splitable_axis]
+            + [out_shape[first_splitable_axis] // 2]
+            + out_shape[first_splitable_axis + 1 :],
+            persistable=False,
+        )
+        out_1 = block.create_var(
+            name=f"{out}@split_1",
+            dtype=var_out.dtype,
+            shape=out_shape[:first_splitable_axis]
+            + [
+                out_shape[first_splitable_axis]
+                - out_shape[first_splitable_axis] // 2
+            ]
+            + out_shape[first_splitable_axis + 1 :],
+            persistable=False,
+        )
+        block._insert_op_without_sync(
+            index=op_id + 2,
+            type="matmul_v2",
+            inputs={"X": x_0, "Y": y},
+            outputs={"Out": out_0},
+            attrs={"trans_x": False, "trans_y": False},
+        )
+        block._insert_op_without_sync(
+            index=op_id + 3,
+            type="matmul_v2",
+            inputs={"X": x_1, "Y": y},
+            outputs={"Out": out_1},
+            attrs={"trans_x": False, "trans_y": False},
+        )
+        block._insert_op_without_sync(
+            index=op_id + 4,
+            type="concat",
+            inputs={"X": [out_0, out_1]},
+            outputs={"Out": out},
+            attrs={"axis": first_splitable_axis},
+        )
+
+        block._remove_op(op_id)
+        block._sync_with_cpp()
+
+        return True
 
     def _split_program_for_overlapping(self, job_type, program, split_points):
         assert job_type in [
