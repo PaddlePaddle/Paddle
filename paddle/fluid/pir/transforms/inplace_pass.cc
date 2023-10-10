@@ -17,6 +17,7 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
+#include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
@@ -121,11 +122,10 @@ static std::unordered_set<pir::Value> GetSkipDeletionValues(pir::Block* block) {
 // NOTE(zhangbo): For inplace Pass, currently only the kernel_dialect operator
 // is supported. Therefore, this function only returns the values in the
 // kernel_dialect operator that can be eager deleted.
-static std::unordered_map<pir::Operation*, std::unordered_set<pir::Value>>
-GetEagerDeletionValues(pir::Block* block) {
-  std::unordered_set<pir::Value> skip_dels = GetSkipDeletionValues(block);
-
-  std::unordered_map<pir::Value, pir::Operation*> del_value_2_op;
+static void GetEagerDelValueOfOp(
+    pir::Block* block,
+    const std::unordered_set<pir::Value>& skip_dels,
+    std::unordered_map<pir::Value, pir::Operation*>* del_value_2_op) {
   for (auto& op : *block) {
     std::string upper_op_name = op->name();
     if (op->dialect()->name().compare(paddle::dialect::KernelDialect::name()) ==
@@ -150,16 +150,32 @@ GetEagerDeletionValues(pir::Block* block) {
         VLOG(8) << " -- is no_need_buffer: " << IsNoNeedBuffer(op, input);
         continue;
       }
-      del_value_2_op[input] = op;
+      (*del_value_2_op)[input] = op;
     }
 
     for (size_t i = 0; i < op->num_results(); ++i) {
       pir::Value output = op->result(i);
       if (output && CanBeDeleted(output)) {
-        del_value_2_op[output] = op;
+        (*del_value_2_op)[output] = op;
       }
     }
+
+    if (op->isa<paddle::dialect::IfOp>()) {
+      auto if_op = op->dyn_cast<paddle::dialect::IfOp>();
+      GetEagerDelValueOfOp(if_op.true_block(), skip_dels, del_value_2_op);
+      VLOG(8) << "GetEagerDelValueOfOp for IfOp true block";
+      GetEagerDelValueOfOp(if_op.false_block(), skip_dels, del_value_2_op);
+      VLOG(8) << "GetEagerDelValueOfOp for IfOp false block";
+    }
   }
+}
+
+static std::unordered_map<pir::Operation*, std::unordered_set<pir::Value>>
+GetEagerDeletionValues(pir::Block* block) {
+  std::unordered_set<pir::Value> skip_dels = GetSkipDeletionValues(block);
+
+  std::unordered_map<pir::Value, pir::Operation*> del_value_2_op;
+  GetEagerDelValueOfOp(block, skip_dels, &del_value_2_op);
 
   std::unordered_map<pir::Operation*, std::unordered_set<pir::Value>>
       eager_dels;

@@ -34,6 +34,8 @@ class CondInstruction : public InstructionBase {
                   ::pir::Operation* op,
                   ValueExecutionInfo* value_exe_info);
 
+  ~CondInstruction();
+
   void Run() override;
 
   const std::string& Name() const override { return cond_name_; }
