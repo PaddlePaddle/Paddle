@@ -1657,7 +1657,8 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
           py::isinstance<py::int_>(value_obj_tmp) ||
           py::isinstance<py::bool_>(value_obj_tmp) ||
           PyComplex_Check(value_obj)) {
-        if (self->tensor.dtype() == phi::DataType::FLOAT32) {
+        if (self->tensor.dtype() == phi::DataType::FLOAT32 ||
+            self->tensor.dtype() == phi::DataType::FLOAT16) {
           attrs["values"] = std::vector<paddle::experimental::Scalar>{
               value_obj_tmp.cast<float>()};
         } else if (self->tensor.dtype() == phi::DataType::FLOAT64) {
@@ -1672,9 +1673,6 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
         } else if (self->tensor.dtype() == phi::DataType::BOOL) {
           attrs["values"] = std::vector<paddle::experimental::Scalar>{
               value_obj_tmp.cast<bool>()};
-        } else if (self->tensor.dtype() == phi::DataType::FLOAT16) {
-          attrs["values"] = std::vector<paddle::experimental::Scalar>{
-              value_obj_tmp.cast<float>()};
         } else if (self->tensor.dtype() == phi::DataType::COMPLEX64) {
           attrs["values"] = std::vector<paddle::experimental::Scalar>{
               value_obj_tmp.cast<std::complex<float>>()};

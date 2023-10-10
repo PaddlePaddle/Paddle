@@ -18,12 +18,14 @@
 
 #include "paddle/cinn/ir/op/ir_operators.h"
 
-namespace cinn::ir {
-
+namespace cinn {
+namespace ir {
+namespace ir_utils {
 TEST(IrVerify, basic) {
   Expr a(1);
   Expr b(1);
   IrVerify(a + b);
 }
-
-}  // namespace cinn::ir
+}  // namespace ir_utils
+}  // namespace ir
+}  // namespace cinn

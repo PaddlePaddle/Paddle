@@ -6,10 +6,10 @@ if(NOT WIN32)
     SRCS
     standalone_executor_new_ir_test.cc
     DEPS
-    phi_kernel_adaptor
     pd_op_dialect
     pd_kernel_dialect
     pir
+    phi
     standalone_executor)
 endif()
 

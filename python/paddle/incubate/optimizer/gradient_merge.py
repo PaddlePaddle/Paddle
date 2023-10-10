@@ -154,9 +154,7 @@ class GradientMergeOptimizer:
         op = grad.op
         assert self._is_the_backward_op(
             op
-        ), 'grad.op={} is not the backward op which produces the grad={}'.format(
-            op, grad.name
-        )
+        ), f'grad.op={op} is not the backward op which produces the grad={grad.name}'
 
         block = grad.block
         var_attr = op.all_attrs()[op_maker.kOpRoleVarAttrName()]

@@ -22,15 +22,15 @@
 #include <utility>
 
 #include "paddle/cinn/common/axis.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/operation.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
+#include "paddle/cinn/ir/utils/ir_replace.h"
 #include "paddle/cinn/lang/compute.h"
-#include "paddle/cinn/optim/ir_replace.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/poly/compute_at_transform.h"
@@ -515,7 +515,7 @@ void Stage::EditTempTensor(Stage *other, int level) {
 
   std::vector<Expr> new_shape;
   for (auto &i : this->tensor()->new_indices) {
-    new_shape.push_back(optim::IRCopy(i));
+    new_shape.push_back(ir::ir_utils::IRCopy(i));
   }
   for (auto &i : new_shape) {
     for (auto &j : dim_to_range) {
@@ -805,7 +805,7 @@ void Stage::SimpleComputeAt(Stage *other, int level) {
   compute_ats_[other->id()] = relation;
   auto other_expr = other->expr();
   auto find_tensors =
-      ir::CollectIRNodesWithoutTensor(other_expr, [&](const Expr *x) {
+      ir::ir_utils::CollectIRNodesWithoutTensor(other_expr, [&](const Expr *x) {
         return x->as_tensor() && x->as_tensor_ref()->name == tensor()->name;
       });
   if (!find_tensors.empty()) {
@@ -1025,7 +1025,7 @@ Iterator Stage::Fuse(const Iterator &level0, const Iterator &level1) {
 std::vector<std::string> Stage::input_statements() const {
   if (!expr_.defined()) return {};
   VLOG(3) << "stage " << id() << " expr: " << expr_;
-  auto load_exprs = ir::CollectIRNodes(
+  auto load_exprs = ir::ir_utils::CollectIRNodes(
       expr_, [](const Expr *x) { return x->As<ir::Load>(); });
   std::set<std::string> statements;
   for (auto &expr : load_exprs) {
@@ -1563,10 +1563,11 @@ void Stage::ShareBufferWith(Stage *other) {
 isl_map *__isl_give GatherAccesses(Stage *stage,
                                    const std::string &tensor_name) {
   CHECK(stage->tensor_);
-  auto loads = ir::CollectIRNodes(stage->tensor_->body(), [&](const Expr *x) {
-    return x->As<ir::Load>() &&
-           x->As<ir::Load>()->tensor.as_tensor()->name == tensor_name;
-  });
+  auto loads =
+      ir::ir_utils::CollectIRNodes(stage->tensor_->body(), [&](const Expr *x) {
+        return x->As<ir::Load>() &&
+               x->As<ir::Load>()->tensor.as_tensor()->name == tensor_name;
+      });
 
   auto vars = stage->tensor_->axis_with_reduce();
 
@@ -1888,7 +1889,7 @@ StageMap CreateStages(const std::vector<ir::Tensor> &tensors) {
   std::set<ir::Tensor> all_tensors(tensors.begin(), tensors.end());
 
   for (auto &tensor : tensors) {
-    auto used_tensors = ir::CollectIRNodes(
+    auto used_tensors = ir::ir_utils::CollectIRNodes(
         tensor->body(), [](const Expr *x) { return x->as_tensor(); });
     for (const Expr &x : used_tensors) {
       all_tensors.insert(x.as_tensor_ref());

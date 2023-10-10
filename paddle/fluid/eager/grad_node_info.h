@@ -21,6 +21,7 @@
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/phi/api/all.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/utils/test_macros.h"
 
 namespace egr {
 /**
@@ -181,7 +182,7 @@ class GradSlotMeta {
 class GradNodeBase {
  public:
   GradNodeBase() { VLOG(7) << "Construct GradNodeBase"; }
-  GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num);
+  TEST_API GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num);
   // TODO(jiabin): Should we have other constructor here?
   virtual ~GradNodeBase() { VLOG(7) << "Destruct GradNodeBase"; }
 
@@ -216,12 +217,14 @@ class GradNodeBase {
 
   /**
    * Get Input Meta of current Grad node**/
-  const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
-  InputMeta() const;
+  TEST_API const
+      paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+      InputMeta() const;
   /**
    * Get Output Meta of current Grad node**/
-  const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
-  OutputMeta() const;
+  TEST_API const
+      paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+      OutputMeta() const;
 
   paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
   MutableOutputMeta();
@@ -245,7 +248,7 @@ class GradNodeBase {
    * Default setters for Grad in/out meta this should be used for same special
    * Node which will not create by user
    * **/
-  void SetDefaultGradInOutMeta();
+  TEST_API void SetDefaultGradInOutMeta();
   /**
    * Register GradientHook
    * **/
@@ -266,7 +269,7 @@ class GradNodeBase {
 
   std::vector<std::shared_ptr<egr::GradNodeBase>> NextFunctions();
 
-  uintptr_t GetThisPtr() const;
+  uintptr_t GetPtr() const;
 
   /**
    * Apply GradientHook

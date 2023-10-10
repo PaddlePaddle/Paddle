@@ -570,7 +570,7 @@ def convert_zip(*args):
         if isinstance(arg, Variable) and arg.shape[0] == -1:
             raise RuntimeError(
                 "Not support zip(tensor, ...) when tensor.shape[0] == -1, "
-                "but found args[{}].shape[0] == -1 in 'zip'".format(str(i))
+                f"but found args[{str(i)}].shape[0] == -1 in 'zip'"
             )
     return zip(*args)
 
