@@ -26,7 +26,7 @@ from ..framework import _current_expected_place
 from ..nn import BatchNorm2D, Conv2D, Layer, ReLU, Sequential
 from ..nn.initializer import Normal
 
-__all__ = [  # noqa
+__all__ = [
     'yolo_loss',
     'yolo_box',
     'prior_box',
