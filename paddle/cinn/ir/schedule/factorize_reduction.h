@@ -303,6 +303,12 @@ class RFBlockCreater : public ReduceBlockCreater {
     REPLACE_RF_TENSOR(Mul)
     REPLACE_RF_TENSOR(Max)
     REPLACE_RF_TENSOR(Min)
+    REPLACE_RF_TENSOR(And)
+    REPLACE_RF_TENSOR(Or)
+    REPLACE_RF_TENSOR(LT)
+    REPLACE_RF_TENSOR(LE)
+    REPLACE_RF_TENSOR(GT)
+    REPLACE_RF_TENSOR(GE)
 #undef REPLACE_RF_TENSOR
 
     new_update_stmt_ =
@@ -392,6 +398,12 @@ class RBBlockCreater : public ReduceBlockCreater {
     REPLACE_RF_TENSOR(Mul)
     REPLACE_RF_TENSOR(Max)
     REPLACE_RF_TENSOR(Min)
+    REPLACE_RF_TENSOR(And)
+    REPLACE_RF_TENSOR(Or)
+    REPLACE_RF_TENSOR(LT)
+    REPLACE_RF_TENSOR(LE)
+    REPLACE_RF_TENSOR(GT)
+    REPLACE_RF_TENSOR(GE)
 #undef REPLACE_RF_TENSOR
 
     Expr original_store_tensor = original_update_stmt_.As<ir::Store>()->tensor;
