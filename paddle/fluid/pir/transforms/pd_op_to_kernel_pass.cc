@@ -944,18 +944,21 @@ std::vector<pir::Value> BuildOpInputList(
 
     auto new_in = map_value_pair->at(cur_in);
 
-    int tensor_param_index = op_info_parser->GetTensorParamIndexByArgsName(
-        op_info_parser->InputNames()[i]);
-    // the input of op args is not the kernel parameter
-    if (tensor_param_index == -1) {
-      vec_inputs.emplace_back(new_in);
-      continue;
-    }
-
     auto new_in_type = new_in.type();
 
     auto& kernel = phi::KernelFactory::Instance().SelectKernelWithGPUDNN(
         kernel_fn_str, kernel_key);
+
+    int tensor_param_index = i;
+    if (kernel.IsValid()) {
+      tensor_param_index = op_info_parser->GetTensorParamIndexByArgsName(
+          op_info_parser->InputNames()[i]);
+      // the input of op args is not the kernel parameter
+      if (tensor_param_index == -1) {
+        vec_inputs.emplace_back(new_in);
+        continue;
+      }
+    }
 
     bool check_place_transfer =
         (op_item->isa<::pir::SetParameterOp>()) ||
