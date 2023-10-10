@@ -20,6 +20,7 @@ from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def broadcast_wrapper(shape=[1, 10, 12, 1]):
@@ -490,7 +491,7 @@ create_test_fp16_class(TestElementwiseDivOpXsizeLessThanYsize)
 
 
 class TestElementwiseDivBroadcast(unittest.TestCase):
-    # @test_with_pir_api
+    @test_with_pir_api
     def test_shape_with_batch_sizes(self):
         paddle.enable_static()
         with base.program_guard(base.Program()):
@@ -498,6 +499,7 @@ class TestElementwiseDivBroadcast(unittest.TestCase):
                 name='x', dtype='float32', shape=[None, 3, None, None]
             )
             one = 2.0
+            breakpoint()
             out = one / x_var
             exe = base.Executor(base.CPUPlace())
             x = np.random.uniform(0.1, 0.6, (1, 3, 32, 32)).astype("float32")
