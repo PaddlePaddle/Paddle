@@ -40,7 +40,7 @@ TEST(ir_op_info_test, op_op_info_test) {
   EXPECT_FALSE(info_map.empty());
 
   void* info_1 = op->info();
-  auto info_2 = pir::OpInfo::RecoverFromOpaquePointer(info_1);
+  auto info_2 = pir::OpInfo::RecoverFromVoidPointer(info_1);
   EXPECT_EQ(op->info(), info_2);
   pir::Verify(program.module_op());
 }
