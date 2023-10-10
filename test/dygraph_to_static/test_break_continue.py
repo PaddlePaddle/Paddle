@@ -39,7 +39,7 @@ class TestDy2staticException(unittest.TestCase):
             with self.assertRaisesRegex(Dygraph2StaticException, self.error):
                 paddle.jit.enable_to_static(True)
                 self.assertTrue(to_static(self.dyfunc)(self.x))
-        paddle.base.dygraph.base.global_var._in_declarative_mode_ = False
+        paddle.base.dygraph.base.global_var._in_to_static_mode_ = False
         paddle.jit.enable_to_static(False)
 
 
@@ -235,9 +235,7 @@ class TestContinueInFor(unittest.TestCase):
             dygraph_res,
             static_res,
             rtol=1e-05,
-            err_msg='dygraph res is {}\nstatic_res is {}'.format(
-                dygraph_res, static_res
-            ),
+            err_msg=f'dygraph res is {dygraph_res}\nstatic_res is {static_res}',
         )
 
 

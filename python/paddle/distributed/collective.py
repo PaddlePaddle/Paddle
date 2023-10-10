@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import datetime
+import hashlib
 
 import paddle
 
@@ -21,18 +22,20 @@ from paddle.base import core
 from paddle.framework import in_dynamic_mode
 
 from .communication.group import Group, _add_new_group, is_initialized
-from .fleet.layers.mpu.mp_ops import _c_concat  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _c_identity  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _c_lookup_table  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _c_softmax_with_cross_entropy  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _c_split  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _Linear  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _linear  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _mp_allreduce  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _parallel_embedding  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _parallel_linear  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _set_var_distributed  # noqa: F401
-from .fleet.layers.mpu.mp_ops import split  # noqa: F401
+from .fleet.layers.mpu.mp_ops import (  # noqa: F401
+    _c_concat,
+    _c_identity,
+    _c_lookup_table,
+    _c_softmax_with_cross_entropy,
+    _c_split,
+    _Linear,
+    _linear,
+    _mp_allreduce,
+    _parallel_embedding,
+    _parallel_linear,
+    _set_var_distributed,
+    split,
+)
 
 __all__ = []
 
@@ -330,9 +333,16 @@ def _init_parallel_env(backend):
             store, "0", rank, world_size
         )
     elif backend == "nccl":
+        endpoints_str = ""
+        for endpoint in global_env.trainer_endpoints:
+            endpoints_str += endpoint
+        endpoints_str += "ring_id:{}".format("0")
+        endpoints_str_hash = hashlib.md5(
+            endpoints_str.encode(encoding='UTF-8')
+        ).hexdigest()
         core.CommContextManager.set_device_id(dev_id)
         core.CommContextManager.create_nccl_comm_context(
-            store, "0", rank, world_size
+            store, "0", rank, world_size, endpoints_str_hash
         )
     elif backend == "xccl":
         dev_type = global_env.device_type

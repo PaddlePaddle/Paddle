@@ -30,6 +30,7 @@
 #endif
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
@@ -54,7 +55,8 @@ void CommContextManager::CreateNCCLCommContext(
     const std::shared_ptr<Store>& store,
     const std::string& unique_comm_key,
     int rank,
-    int size) {
+    int size,
+    const std::string& hash_key) {
   auto& comm_context_manager = CommContextManager::GetInstance();
   if (comm_context_manager.Has(unique_comm_key)) {
     return;
@@ -64,7 +66,7 @@ void CommContextManager::CreateNCCLCommContext(
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGetUniqueId(&nccl_id));
   }
 
-  std::string unique_key = "NCCLCommContext/" + unique_comm_key;
+  std::string unique_key = "NCCLCommContext/" + unique_comm_key + hash_key;
   if (rank == 0) {
     std::vector<uint8_t> nccl_id_wrapper(
         reinterpret_cast<uint8_t*>(&nccl_id),
@@ -77,7 +79,6 @@ void CommContextManager::CreateNCCLCommContext(
 
   auto nccl_comm_context =
       std::make_unique<NCCLCommContext>(rank, size, nccl_id);
-
   if (CommContextManager::device_id != -1) {
     std::unique_ptr<phi::GPUContext> dev_ctx(
         new phi::GPUContext(phi::GPUPlace(CommContextManager::device_id)));
@@ -174,6 +175,20 @@ CommContext* CommContextManager::Get(const std::string& unique_comm_key) const {
 
   return id_to_comm_context_.at(unique_comm_key).get();
 }
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+int CommContextManager::GetRingId(const ncclComm_t& comm) const {
+  for (auto iter = id_to_comm_context_.begin();
+       iter != id_to_comm_context_.end();
+       ++iter) {
+    if (static_cast<phi::distributed::NCCLCommContext*>(iter->second.get())
+            ->GetNcclComm() == comm) {
+      return std::stoi(iter->first);
+    }
+  }
+  return -1;
+}
+#endif
 
 bool CommContextManager::Has(const std::string& unique_comm_key) const {
   return id_to_comm_context_.find(unique_comm_key) != id_to_comm_context_.end();

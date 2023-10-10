@@ -195,11 +195,11 @@ void DenseTensor::ShareBufferWith(const DenseTensor& tensor, bool only_buffer) {
   }
 }
 
-#define LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(dtype)                \
-  template dtype* DenseTensor::mutable_data(                        \
-      const DDim& dims, const Place& place, size_t requested_size); \
-  template dtype* DenseTensor::mutable_data(const Place& place,     \
-                                            size_t requested_size);
+#define LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(dtype)                     \
+  template TEST_API dtype* DenseTensor::mutable_data(                    \
+      const DDim& dims, const Place& place, size_t requested_size);      \
+  template TEST_API dtype* DenseTensor::mutable_data(const Place& place, \
+                                                     size_t requested_size);
 
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(bool)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int8_t)
@@ -392,6 +392,9 @@ DenseTensor& DenseTensor::ShareDataWith(const DenseTensor& src) {
   meta_.offset = src.meta_.offset;
   meta_.use_gpudnn = src.meta_.use_gpudnn;
   meta_.strides = src.meta_.strides;
+#ifdef PADDLE_WITH_XPU
+  meta_.scale_value = src.meta_.scale_value;
+#endif
   storage_properties_ =
       std::move(CopyStorageProperties(src.storage_properties_));
 #ifdef PADDLE_WITH_DNNL

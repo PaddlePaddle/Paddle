@@ -89,6 +89,7 @@ API_FILES=("CMakeLists.txt"
            "python/paddle/incubate/autograd/primitives.py"
            "python/paddle/autograd/ir_backward.py"
            "python/paddle/autograd/backward_utils.py"
+           "paddle/scripts/paddle_build.sh"
            )
 
 approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
@@ -223,6 +224,9 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "python/paddle/autograd/ir_backward.py" ] || [ "${API_FILE}" == "python/paddle/autograd/backward_utils.py" ]; then
             echo_line="You must be approved by Aurelius84(zhangliujie) or cxxly(chenxiaoxu) or xiaoguoguo626807(wangruting) or changeyoung98(chenzhiyang) for python/paddle/autograd/ir_backward.py or python/paddle/autograd/backward_utils.py changes.\n"
             check_approval 1 Aurelius84 cxxly xiaoguoguo626807 changeyoung98
+      elif [ "${API_FILE}" == "paddle/scripts/paddle_build.sh" ]; then 
+	      echo_line="You must have one RD (tianshuo78520a or risemeup1 or zhangbo9674 or XieYunshen) for ${API_FILE} changes, which manages the Paddle CI on Linux.\n " 
+            check_approval 1 tianshuo78520a risemeup1 zhangbo9674 XieYunshen 
       else
           echo_line="You must have one RD (XiaoguangHu01,chenwhql,zhiqiu,Xreki,luotao1,qili93,Aurelius84) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
           check_approval 1 XiaoguangHu01 chenwhql zhiqiu Xreki luotao1 qili93 Aurelius84
@@ -230,10 +234,10 @@ for API_FILE in ${API_FILES[*]}; do
   fi
 done
 
-DEPS_PHI_IN_IR=`git diff --name-only upstream/$BRANCH | grep -E "paddle/ir/" | grep "CMakeList" |xargs -r git diff -U0 upstream/$BRANCH --| grep "^\+" | grep "phi" || true`
+DEPS_PHI_IN_IR=`git diff --name-only upstream/$BRANCH | grep -E "paddle/pir/" | grep "CMakeList" |xargs -r git diff -U0 upstream/$BRANCH --| grep "^\+" | grep "phi" || true`
 echo "DEPS_PHI_IN_IR:${DEPS_PHI_IN_IR}"
 if [ "${DEPS_PHI_IN_IR}" ] && [ "${DEPS_PHI_IN_IR}" != "" ]; then
-    echo_line="You must have one RD (Aurelius84, phlrain, zhangbo9674, winter-wang) approval for the CMakeLists.txt with DEPS phi* in paddle/ir directory.\n"
+    echo_line="You must have one RD (Aurelius84, phlrain, zhangbo9674, winter-wang) approval for the CMakeLists.txt with DEPS phi* in paddle/pir directory.\n"
     check_approval 1 Aurelius84 phlrain zhangbo9674 winter-wang
 fi
 FILTER=`git diff --name-only upstream/develop | grep -v "tools/"`
@@ -341,9 +345,9 @@ if [ "${HAS_MODIFIED_STATIC_BUILD}" != "" ] && [ "${GIT_PR_ID}" != ""]; then
     check_approval 1 From00 zhiqiu
 fi
 
-HAS_MODIFIED_PY_FLUID=`git diff --name-only upstream/$BRANCH | grep "python/paddle/base" || true`
+HAS_MODIFIED_PY_FLUID=`git diff --name-only upstream/$BRANCH | grep "python/paddle/fluid" || true`
 if [ "${HAS_MODIFIED_PY_FLUID}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must have one RD (zoooo0820(Recommend), or jeff41404) approval for file changes in python/paddle/base, because fluid API is going to be removed.\n"
+    echo_line="You must have one RD (zoooo0820(Recommend), or jeff41404) approval for file changes in python/paddle/fluid, because fluid API has been removed.\n"
     check_approval 1 zoooo0820 jeff41404
 fi
 

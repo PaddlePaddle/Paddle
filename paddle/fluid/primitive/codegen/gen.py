@@ -16,7 +16,6 @@ import argparse
 import hashlib
 import pathlib
 import sys
-from typing import Dict, List
 
 import jinja2
 import yaml
@@ -28,16 +27,21 @@ sys.path.append(
 )
 import filters as op_gen_filters
 import tests_utils as op_gen_tests
+from parse_utils import to_named_dict
 
-# import from paddle/fluid/ir/dialect/op_generator/api_gen.py
+# import from paddle/fluid/pir/dialect/op_generator/api_gen.py
 sys.path.append(
-    str(pathlib.Path(__file__).resolve().parents[2] / 'ir/dialect/op_generator')
+    str(pathlib.Path(__file__).resolve().parents[2] / 'pir/dialect/op_generator')
 )
 
 # fmt: on
 
 
 VJPS = [
+    'where_grad',
+    'tril_grad',
+    'triu_grad',
+    'tile_grad',
     'tanh_grad',
     'mean_grad',
     'add_grad',
@@ -45,6 +49,7 @@ VJPS = [
     'sum_grad',
     'concat_grad',
     'split_grad',
+    'split_with_num_grad',
     'gelu_grad',
     'softmax_grad',
     'silu_grad',
@@ -53,23 +58,115 @@ VJPS = [
     'erf_grad',
     'expand_grad',
     'exp_grad',
+    'expm1_grad',
     'elementwise_pow_grad',
     'fused_softmax_mask_upper_triangle_grad',
     'matmul_grad',
     'pow_grad',
-    'reshape_grad',
     'rsqrt_grad',
     'slice_grad',
     'transpose_grad',
+    'square_grad',
     'dropout_grad',
+    'cast_grad',
+    'slice_double_grad',
+    'layer_norm_grad',
+    'embedding_grad',
+    'scale_grad',
+    'gather_nd_grad',
+    'stack_grad',
+    'squeeze_grad',
+    'unsqueeze_grad',
+    'poisson_grad',
+    'gumbel_softmax_grad',
+    'conv2d_grad',
+    'depthwise_conv2d_grad',
+    'sqrt_grad',
+    'flatten_grad',
+    'relu_grad',
+    'abs_grad',
+    'log_grad',
+    'clip_grad',
+    'ceil_grad',
+    'frobenius_norm_grad',
+    'p_norm_grad',
+    'maximum_grad',
+    'argsort_grad',
+    'min_grad',
+    'batch_norm_grad',
+    'max_pool2d_with_index_grad',
+    'pool2d_grad',
+    'minimum_grad',
+    'prod_grad',
+    'round_grad',
+    'sin_grad',
+    'cos_grad',
+    'dot_grad',
+    'floor_grad',
+    'topk_grad',
+    'square_grad',
+    'gather_grad',
+    'label_smooth_grad',
+    'cross_entropy_with_softmax_grad',
+    'mean_all_grad',
+    'cumsum_grad',
+    'linear_interp_grad',
+    'bilinear_interp_grad',
+    'trilinear_interp_grad',
+    'nearest_interp_grad',
+    'bicubic_interp_grad',
+    'assign_grad',
+    'assign_out__grad',
+    'real_grad',
+    'flip_grad',
+    'softmax_grad',
+    'expand_grad',
+    'conv2d_transpose_grad',
+    'depthwise_conv2d_transpose_grad',
+    'sigmoid_grad',
+    'pad_grad',
+    'pad3d_grad',
+    'einsum_grad',
+    'leaky_relu_grad',
+    'log10_grad',
+    'conv3d_grad',
+    'solve_grad',
+    'diag_grad',
+    'trace_grad',
 ]
-VJP_COMPS = ['divide_grad', 'sum_grad']
+
+
+PRIM_VJP = [
+    'divide_grad',
+    'sum_grad',
+    'cast_grad',
+    'add_grad',
+    'multiply_grad',
+    'elementwise_pow_grad',
+    'reshape_grad',
+    'split_grad',
+    'tanh_grad',
+    'transpose_grad',
+    'concat_grad',
+]  # vjp list of primitive op
+CUSTOM_VJP = [
+    'gelu_grad',
+    'layer_norm_grad',
+    'dropout_grad',
+]  # custom vjp list of composite op
+VJP_COMPS = PRIM_VJP + CUSTOM_VJP
+
 BACKENDS = [
+    'where_grad',
+    'tril_grad',
+    'triu_grad',
+    'tile_grad',
     'add_n',
     'mean',
     'sum',
     'divide',
     'full',
+    'tanh',
     'tanh_grad',
     'mean_grad',
     'concat',
@@ -85,6 +182,7 @@ BACKENDS = [
     'sum_grad',
     'concat_grad',
     'split_grad',
+    'split_with_num_grad',
     'gelu_grad',
     'softmax_grad',
     'silu_grad',
@@ -93,6 +191,7 @@ BACKENDS = [
     'erf_grad',
     'expand_grad',
     'exp_grad',
+    'expm1_grad',
     'multiply',
     'exp',
     'erf',
@@ -128,7 +227,73 @@ BACKENDS = [
     'roll',
     'scatter',
     'scatter_nd_add',
+    'square_grad',
     'dropout_grad',
+    'slice',
+    'layer_norm_grad',
+    'embedding_grad',
+    'sqrt',
+    'uniform',
+    'poisson_grad',
+    'gumbel_softmax_grad',
+    'split',
+    'transpose',
+    'gather_nd_grad',
+    'stack_grad',
+    'squeeze_grad',
+    'unsqueeze_grad',
+    'conv2d_grad',
+    'depthwise_conv2d_grad',
+    'sqrt_grad',
+    'flatten_grad',
+    'relu_grad',
+    'abs_grad',
+    'log_grad',
+    'clip_grad',
+    'ceil_grad',
+    'frobenius_norm_grad',
+    'p_norm_grad',
+    'maximum_grad',
+    'argsort_grad',
+    'min_grad',
+    'batch_norm_grad',
+    'max_pool2d_with_index_grad',
+    'pool2d_grad',
+    'minimum_grad',
+    'prod_grad',
+    'round_grad',
+    'sin_grad',
+    'cos_grad',
+    'dot_grad',
+    'floor_grad',
+    'topk_grad',
+    'square_grad',
+    'gather_grad',
+    'label_smooth_grad',
+    'cross_entropy_with_softmax_grad',
+    'mean_all_grad',
+    'cumsum_grad',
+    'linear_interp_grad',
+    'bilinear_interp_grad',
+    'trilinear_interp_grad',
+    'nearest_interp_grad',
+    'bicubic_interp_grad',
+    'assign_out__grad',
+    'real_grad',
+    'softmax_grad',
+    'conv2d_transpose_grad',
+    'depthwise_conv2d_transpose_grad',
+    'sigmoid_grad',
+    'pad_grad',
+    'pad3d_grad',
+    'einsum_grad',
+    'leaky_relu_grad',
+    'log10_grad',
+    'conv3d_grad',
+    'solve_grad',
+    'diag_grad',
+    'trace_grad',
+    'flip',
 ]
 
 
@@ -218,21 +383,6 @@ def save(content: str, path: pathlib.Path):
             print(f"Generate source file {path}")
 
 
-def to_compat_dict(items: List[Dict]) -> Dict[str, Dict]:
-    compat_dict = {}
-    for item in items:
-        name = item["op"]
-        compat_dict[name] = item
-    return compat_dict
-
-
-def to_apis_dict(apis):
-    apis_dict = {}
-    for api in apis:
-        apis_dict[api['name']] = api
-    return apis_dict
-
-
 def get_inplace_api(apis):
     inplace_apis = []
     for api in apis:
@@ -270,7 +420,7 @@ def extend_compat_info(apis, compats):
                 attr['typename']
             ) or op_gen_tests.is_intarray(attr['typename']):
                 attr["support_tensor"] = False
-    apis_dict = to_apis_dict(apis)
+    apis_dict = to_named_dict(apis)
     for compat_item in compats:
         fwd_op_name = compat_item["op"]
         if fwd_op_name not in apis_dict:
@@ -286,7 +436,7 @@ def extend_compat_info(apis, compats):
                 backward_apis.append(apis_dict[backward_op_name])
         support_tensor_attrs_names = []
         compat_attrs_data_type = {}
-        if 'scalar' in compat_item:
+        if 'scalar' in compat_item and compat_item['op'] != "pow":
             for attr_name, attr_info in compat_item['scalar'].items():
                 if (
                     'support_tensor' in attr_info
@@ -319,6 +469,31 @@ def extend_compat_info(apis, compats):
                 if attr['name'] in compat_attrs_data_type:
                     attr['data_type'] = compat_attrs_data_type[attr['name']]
     return apis
+
+
+def process_backward_invoke_info(apis):
+    apis_dict = to_named_dict(apis)
+    for api in apis:
+        if api['is_fwd']:
+            continue
+        if 'invoke' in api and api['invoke']['func'] in apis_dict:
+            args = api['invoke']['args'].split(',')
+            args = [arg.strip() for arg in args]
+            attrs_dict = to_named_dict(api['attrs'])
+            inputs_dict = to_named_dict(api['inputs'])
+            arg_inputs = []
+            arg_attrs = []
+            for arg in args:
+                if arg in inputs_dict:
+                    arg_inputs.append(arg)
+                elif arg in attrs_dict and attrs_dict[arg].get(
+                    "support_tensor", False
+                ):
+                    arg_inputs.append(arg + '_')
+                else:
+                    arg_attrs.append(arg)
+            args = arg_inputs + arg_attrs
+            api['invoke']['args'] = ', '.join(args)
 
 
 def gen(
@@ -368,6 +543,7 @@ def gen(
     ]
     apis = extend_compat_info(apis, compats)
     apis = apis + get_inplace_api(apis)
+    process_backward_invoke_info(apis)
     render(
         templates_dir,
         destination_dir,

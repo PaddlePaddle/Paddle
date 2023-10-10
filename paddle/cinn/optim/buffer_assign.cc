@@ -15,10 +15,10 @@
 #include "paddle/cinn/optim/buffer_assign.h"
 
 #include "paddle/cinn/common/union_find.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/utils/ir_replace.h"
 #include "paddle/cinn/lang/lower_impl.h"
-#include "paddle/cinn/optim/ir_replace.h"
 
 namespace cinn {
 namespace optim {
@@ -73,7 +73,7 @@ std::map<std::string, ir::Tensor> InitialAssignBuffer(
 
   // unify all the tensor occurance with a global one, e.g. there are multiple
   // tensor B exists in the expression, replace them with a shared one.
-  ir::CollectIRNodes(*expr, [&](const Expr* x) -> bool {
+  ir::ir_utils::CollectIRNodes(*expr, [&](const Expr* x) -> bool {
     auto* t = x->as_tensor();
     if (t && !stages[t]->inlined()) {
       Reference(x) = Expr(all_tensor_map.at(t->name));

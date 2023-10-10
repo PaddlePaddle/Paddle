@@ -40,8 +40,10 @@ class OpLowerer {
 
   std::vector<ir::LoweredFunc> Lower(const T& group,
                                      bool apply_op_schedule = true,
-                                     bool apply_group_schedule = true) {
-    return impl_->Lower(group, apply_op_schedule, apply_group_schedule);
+                                     bool apply_group_schedule = true,
+                                     bool apply_pass = true) {
+    return impl_->Lower(
+        group, apply_op_schedule, apply_group_schedule, apply_pass);
   }
 
  private:

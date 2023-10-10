@@ -11,16 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License
-
 import logging
 
 import paddle
+from paddle.base.log_helper import get_logger
 from paddle.framework import core
 from paddle.utils import unique_name
 
-from ....utils.log_utils import get_logger
-
-_logger = get_logger(logging.INFO)
 from ...random import determinate_rng, is_enable_auto_rand_ctrl
 from ..utils import (
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
@@ -32,6 +29,10 @@ from .common import (
     register_distributed_operator_impl_container,
 )
 from .dist_eltwise import DistributedDefaultImpl0, DistributedElementwiseImpl0
+
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
+)
 
 
 class DistributedDropout(DistributedOperatorImplContainer):

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
@@ -46,18 +46,27 @@ class TestFlattenOp(OpTest):
     def test_check_output(self):
         if str(self.dtype) in {"float16", "uint16"}:
             self.check_output_with_place(
-                core.CUDAPlace(0), no_check_set=["XShape"], check_prim=True
+                core.CUDAPlace(0),
+                no_check_set=["XShape"],
+                check_prim=True,
+                check_new_ir=True,
             )
         else:
-            self.check_output(no_check_set=["XShape"], check_prim=True)
+            self.check_output(
+                no_check_set=["XShape"], check_prim=True, check_new_ir=True
+            )
 
     def test_check_grad(self):
         if str(self.dtype) in {"float16", "uint16"}:
             self.check_grad_with_place(
-                core.CUDAPlace(0), ["X"], "Out", check_prim=True
+                core.CUDAPlace(0),
+                ["X"],
+                "Out",
+                check_prim=True,
+                check_new_ir=True,
             )
         else:
-            self.check_grad(["X"], "Out", check_prim=True)
+            self.check_grad(["X"], "Out", check_prim=True, check_new_ir=True)
 
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)

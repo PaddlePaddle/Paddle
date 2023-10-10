@@ -20,9 +20,9 @@ namespace framework {
 namespace newir {
 
 const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
-    {"pd.full", "fill_constant"}};
+    {"pd_op.full", "fill_constant"}};
 
-std::string CompatibleInfo::OpName(const ::ir::Operation& op) {
+std::string CompatibleInfo::OpName(const ::pir::Operation& op) {
   std::string name = op.name();
   if (OP_NAMES.count(name)) {
     return OP_NAMES.at(name);
@@ -36,12 +36,12 @@ std::string CompatibleInfo::OpName(const ::ir::Operation& op) {
   return cinn_op_name;
 }
 
-std::string CompatibleInfo::ValueName(const ::ir::Value& value) {
+std::string CompatibleInfo::ValueName(const ::pir::Value& value) {
   return CompatibleInfo::kNamePrefix +
-         std::to_string(std::hash<::ir::Value>()(value));
+         std::to_string(std::hash<::pir::Value>()(value));
 }
 
-std::string CompatibleInfo::OpFuncName(const ::ir::Operation& op) {
+std::string CompatibleInfo::OpFuncName(const ::pir::Operation& op) {
   std::string op_name = OpName(op);
   std::string func_name =
       cinn::common::Context::Global().NewName("fn_" + op_name);
@@ -49,7 +49,7 @@ std::string CompatibleInfo::OpFuncName(const ::ir::Operation& op) {
 }
 
 std::string CompatibleInfo::GroupOpsName(
-    const std::vector<::ir::Operation*>& ops) {
+    const std::vector<::pir::Operation*>& ops) {
   std::string name = "fn";
   for (auto* op : ops) {
     std::string op_name = OpName(*op);
@@ -58,7 +58,7 @@ std::string CompatibleInfo::GroupOpsName(
   return name;
 }
 
-std::vector<std::string> CompatibleInfo::InputNames(const ::ir::Operation& op,
+std::vector<std::string> CompatibleInfo::InputNames(const ::pir::Operation& op,
                                                     bool allow_duplicate) {
   std::vector<std::string> names;
   std::unordered_set<std::string> repeat;
@@ -74,8 +74,7 @@ std::vector<std::string> CompatibleInfo::InputNames(const ::ir::Operation& op,
   return names;
 }
 
-std::vector<std::string> CompatibleInfo::OutputNames(
-    const ::ir::Operation& op) {
+std::vector<std::string> CompatibleInfo::OutputNames(::pir::Operation& op) {
   std::vector<std::string> names;
   for (int i = 0; i < op.num_results(); ++i) {
     auto value = op.result(i);

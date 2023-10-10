@@ -14,11 +14,11 @@
 
 import unittest
 
-import eager_op_test
 import gradient_checker
 import numpy as np
+import op_test
 from decorator_helper import prog_scope
-from eager_op_test import convert_float_to_uint16, convert_uint16_to_float
+from op_test import convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
 from paddle import base
@@ -26,7 +26,7 @@ from paddle.base import Program, core, program_guard
 from paddle.base.backward import append_backward
 
 
-class TestAssignOp(eager_op_test.OpTest):
+class TestAssignOp(op_test.OpTest):
     def setUp(self):
         self.python_api = paddle.assign
         self.public_python_api = paddle.assign
@@ -42,12 +42,12 @@ class TestAssignOp(eager_op_test.OpTest):
 
     def test_forward(self):
         paddle.enable_static()
-        self.check_output()
+        self.check_output(check_new_ir=True)
         paddle.disable_static()
 
     def test_backward(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
         paddle.disable_static()
 
 
@@ -59,7 +59,7 @@ class TestAssignOp_ZeroDim(TestAssignOp):
 @unittest.skipIf(
     not paddle.is_compiled_with_cuda(), "FP16 test runs only on GPU"
 )
-class TestAssignFP16Op(eager_op_test.OpTest):
+class TestAssignFP16Op(op_test.OpTest):
     def setUp(self):
         self.python_api = paddle.assign
         self.public_python_api = paddle.assign
@@ -71,12 +71,12 @@ class TestAssignFP16Op(eager_op_test.OpTest):
 
     def test_forward(self):
         paddle.enable_static()
-        self.check_output()
+        self.check_output(check_new_ir=True)
         paddle.disable_static()
 
     def test_backward(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
         paddle.disable_static()
 
 
@@ -84,7 +84,7 @@ class TestAssignFP16Op(eager_op_test.OpTest):
     not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
     "BFP16 test runs only on CUDA",
 )
-class TestAssignBFP16Op(eager_op_test.OpTest):
+class TestAssignBFP16Op(op_test.OpTest):
     def setUp(self):
         self.python_api = paddle.assign
         self.public_python_api = paddle.assign
@@ -97,12 +97,12 @@ class TestAssignBFP16Op(eager_op_test.OpTest):
 
     def test_forward(self):
         paddle.enable_static()
-        self.check_output()
+        self.check_output(check_new_ir=True)
         paddle.disable_static()
 
     def test_backward(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
         paddle.disable_static()
 
 

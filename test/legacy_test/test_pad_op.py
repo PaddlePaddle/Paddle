@@ -16,8 +16,9 @@ import os
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 from test_attribute_var import UnittestBase
+from utils import static_guard
 
 import paddle
 from paddle.base import Program, core, program_guard
@@ -56,10 +57,10 @@ class TestPadOp(OpTest):
         return np.float64
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
     def initTestCase(self):
         self.shape = (16, 16)
@@ -100,7 +101,7 @@ def create_test_fp16(parent):
             return np.float16
 
         def test_check_grad_normal(self):
-            self.check_grad(['X'], 'Out', check_prim=True)
+            self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
     cls_name = "{}_{}".format(parent.__name__, "Fp16")
     TestPadFp16.__name__ = cls_name
@@ -115,7 +116,7 @@ create_test_fp16(TestCase3)
 
 class TestPadOpError(unittest.TestCase):
     def test_errors(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with program_guard(Program(), Program()):
                 input_data = np.random.random((2, 2)).astype("float32")
 
@@ -136,7 +137,7 @@ class TestPaddingValueTensor(UnittestBase):
         self.save_path = os.path.join(self.temp_dir.name, self.path_prefix())
 
     def test_static(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             main_prog = Program()
             starup_prog = Program()
             with program_guard(main_prog, starup_prog):
@@ -196,7 +197,7 @@ class TestPaddingValueTensor2(TestPaddingValueTensor):
 
 class TestPaddingValueTensor3(unittest.TestCase):
     def test_static(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             np_x = np.random.random((16, 16)).astype('float32')
             main_prog = Program()
             starup_prog = Program()
@@ -252,11 +253,13 @@ class TestPadBP16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_new_ir=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', check_prim=True, check_new_ir=True
+        )
 
 
 if __name__ == '__main__':

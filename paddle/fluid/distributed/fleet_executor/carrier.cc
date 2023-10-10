@@ -285,6 +285,14 @@ static std::shared_ptr<framework::GarbageCollector> GetGC(
       }
     }
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    if (platform::is_custom_place(place)) {
+      if (framework::IsFastEagerDeletionModeEnabled()) {
+        gc.reset(new framework::CustomDeviceUnsafeFastGarbageCollector(
+            place, max_memory_size));
+      }
+    }
+#endif
   }  // max_memory_size >= 0
 
   return gc;

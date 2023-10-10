@@ -48,6 +48,10 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
                                    bool need_fetch = true) override;
 
+  void Build(
+      const std::vector<std::string>& feed_names,
+      std::vector<paddle::framework::OpFuncNode>* op_func_nodes) override;
+
   void ShareWorkQueueFrom(InterpreterBaseImpl* src) override;
 
   void ShareBuildResultsFrom(const InterpreterBaseImpl& src) override;
@@ -92,7 +96,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
     force_evnets_to_wait_ = force_evnets_to_wait;
   }
 
-  bool IsStaticBuild() const { return static_build_; }
+  bool IsStaticBuild() const override { return static_build_; }
 
  private:
   // build graph

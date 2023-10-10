@@ -162,7 +162,7 @@ def convert_call(func):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP
+            >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
             >>> import paddle
             >>> from paddle.jit.dy2static import Call
 

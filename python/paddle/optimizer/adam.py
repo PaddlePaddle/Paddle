@@ -72,15 +72,15 @@ class Adam(Optimizer):
             The default value is None in static graph mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization.
             It canbe a float value as coeff of L2 regularization or
-            :ref:`api_base_regularizer_L1Decay`, :ref:`api_base_regularizer_L2Decay`.
-            If a parameter has set regularizer using :ref:`api_base_ParamAttr` already,
+            :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
+            If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already,
             the regularization setting here in optimizer will be ignored for this parameter.
             Otherwise, the regularization setting here in optimizer will take effect.
             Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three cliping strategies
-            ( :ref:`api_base_clip_GradientClipByGlobalNorm` , :ref:`api_base_clip_GradientClipByNorm` ,
-            :ref:`api_base_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
+            ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
+            :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
         lazy_mode (bool, optional): The official Adam algorithm has two moving-average accumulators.
             The accumulators are updated at every step. Every element of the two moving-average
             is updated in both dense mode and sparse mode. If the size of parameter is very large,
@@ -419,7 +419,7 @@ class Adam(Optimizer):
                 >>> adam.step()
                 >>> adam.clear_grad()
         """
-        if paddle.base.dygraph.base.in_declarative_mode():
+        if paddle.base.dygraph.base.in_to_static_mode():
             self._declarative_step()
             return
 
@@ -716,7 +716,6 @@ class Adam(Optimizer):
                         attrs=attrs,
                         stop_gradient=True,
                     )
-        return None
 
     def _update_param_group(self, parameters):
         self._beta1 = parameters.get('beta1', self._default_dict['beta1'])

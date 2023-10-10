@@ -740,7 +740,7 @@ class SimpleRNNCell(RNNCellBase):
         - **states** (Tensor): shape `[batch_size, hidden_size]`, the new hidden state, corresponding to :math:`h_{t}` in the formula.
 
     Notes:
-        All the weights and bias are initialized with `Uniform(-std, std)` by default. Where std = :math:`\frac{1}{\sqrt{hidden\_size}}`. For more information about parameter initialization, please refer to :ref:`api_base_ParamAttr`.
+        All the weights and bias are initialized with `Uniform(-std, std)` by default. Where std = :math:`\frac{1}{\sqrt{hidden\_size}}`. For more information about parameter initialization, please refer to :ref:`api_paddle_ParamAttr`.
 
     Examples:
 
@@ -805,7 +805,7 @@ class SimpleRNNCell(RNNCellBase):
         if activation not in ["tanh", "relu"]:
             raise ValueError(
                 "activation for SimpleRNNCell should be tanh or relu, "
-                "but get {}".format(activation)
+                f"but get {activation}"
             )
         self.activation = activation
         self._activation_fn = paddle.tanh if activation == "tanh" else F.relu
@@ -893,7 +893,7 @@ class LSTMCell(RNNCellBase):
     Notes:
         All the weights and bias are initialized with `Uniform(-std, std)` by
         default. Where std = :math:`\frac{1}{\sqrt{hidden\_size}}`. For more
-        information about parameter initialization, please refer to :ref:`api_base_ParamAttr`.
+        information about parameter initialization, please refer to :ref:`api_paddle_ParamAttr`.
 
     Examples:
 
@@ -1054,7 +1054,7 @@ class GRUCell(RNNCellBase):
     Notes:
         All the weights and bias are initialized with `Uniform(-std, std)` by
         default. Where std = :math:`\frac{1}{\sqrt{hidden\_size}}`. For more
-        information about parameter initialization, please refer to s:ref:`api_base_ParamAttr`.
+        information about parameter initialization, please refer to s:ref:`api_paddle_ParamAttr`.
 
     Examples:
 
@@ -1285,10 +1285,8 @@ class BiRNN(Layer):
         self.cell_bw = cell_bw
         if cell_fw.input_size != cell_bw.input_size:
             raise ValueError(
-                "input size of forward cell({}) does not equals"
-                "that of backward cell({})".format(
-                    cell_fw.input_size, cell_bw.input_size
-                )
+                f"input size of forward cell({cell_fw.input_size}) does not equals"
+                f"that of backward cell({cell_bw.input_size})"
             )
         for cell in [self.cell_fw, self.cell_bw]:
             if not hasattr(cell, "call"):
@@ -1380,7 +1378,7 @@ class RNNBase(LayerList):
         else:
             raise ValueError(
                 "direction should be forward or bidirect (or bidirectional), "
-                "received direction = {}".format(direction)
+                f"received direction = {direction}"
             )
 
         self.could_use_cudnn = True

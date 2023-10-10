@@ -518,9 +518,22 @@ cc_test(
   SRCS version_test.cc
   DEPS version)
 
+add_library(proto_desc_base OBJECT var_desc.cc op_desc.cc block_desc.cc
+                                   program_desc.cc)
+add_dependencies(
+  proto_desc_base
+  attribute
+  ops_extra_info
+  shape_inference
+  op_info
+  glog
+  version
+  xxhash
+  phi)
+
 cc_library(
   proto_desc
-  SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc program_converter.cc
+  SRCS $<TARGET_OBJECTS:proto_desc_base> program_converter.cc
   DEPS attribute
        ops_extra_info
        shape_inference
@@ -696,6 +709,7 @@ cc_library(
   DEPS while_op_helper
        recurrent_op_helper
        conditional_block_op_helper
+       pylayer_op_helper
        scope
        proto_desc
        operator
@@ -1014,8 +1028,9 @@ else()
          monitor)
 endif()
 
-target_link_libraries(executor while_op_helper executor_gc_helper
-                      recurrent_op_helper conditional_block_op_helper)
+target_link_libraries(
+  executor while_op_helper executor_gc_helper recurrent_op_helper
+  conditional_block_op_helper pylayer_op_helper)
 
 cc_library(
   parallel_executor
@@ -1034,8 +1049,8 @@ cc_library(
 cc_library(
   executor_cache
   SRCS executor_cache.cc
-  DEPS parallel_executor standalone_executor phi_kernel_adaptor pd_inplace_pass
-       pd_op_to_kernel_pass ir)
+  DEPS parallel_executor standalone_executor pir_adaptor pd_inplace_pass
+       pd_op_to_kernel_pass pir)
 if(WITH_PSCORE)
   get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
   if(WITH_HETERPS)
@@ -1082,7 +1097,7 @@ endif()
 cc_library(
   prune
   SRCS prune.cc
-  DEPS framework_proto auto_parallel_proto)
+  DEPS framework_proto auto_parallel_proto proto_desc)
 cc_test(
   prune_test
   SRCS prune_test.cc

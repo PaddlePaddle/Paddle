@@ -14,8 +14,8 @@
 
 import unittest
 
-import eager_op_test
 import numpy as np
+import op_test
 
 import paddle
 from paddle import base
@@ -25,13 +25,18 @@ from paddle.base import framework
 def assign_value_wrapper(
     shape=[], dtype=base.core.VarDesc.VarType.FP32, values=0.0
 ):
-    tensor = paddle.Tensor()
+    if paddle.framework.in_dynamic_mode():
+        tensor = paddle.Tensor()
+    else:
+        np_type = paddle.base.data_feeder._PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
+        tensor = paddle.zeros(list(shape), np_type)
+        dtype = paddle.pir.core.convert_np_dtype_to_dtype_(np_type)
     return paddle._C_ops.assign_value_(
         tensor, shape, dtype, values, framework._current_expected_place()
     )
 
 
-class TestAssignValueOp(eager_op_test.OpTest):
+class TestAssignValueOp(op_test.OpTest):
     def setUp(self):
         self.op_type = "assign_value"
         self.python_api = assign_value_wrapper
@@ -49,7 +54,7 @@ class TestAssignValueOp(eager_op_test.OpTest):
         self.attrs["fp32_values"] = [float(v) for v in self.value.flat]
 
     def test_forward(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_new_ir=False)
 
 
 class TestAssignValueOp2(TestAssignValueOp):
@@ -74,7 +79,7 @@ class TestAssignValueOp4(TestAssignValueOp):
 
 class TestAssignApi(unittest.TestCase):
     def setUp(self):
-        with eager_op_test.paddle_static_guard():
+        with op_test.paddle_static_guard():
             self.init_dtype()
             self.value = (-100 + 200 * np.random.random(size=(2, 5))).astype(
                 self.dtype
@@ -89,7 +94,7 @@ class TestAssignApi(unittest.TestCase):
         self.dtype = "float32"
 
     def test_assign(self):
-        with eager_op_test.paddle_static_guard():
+        with op_test.paddle_static_guard():
             main_program = base.Program()
             with base.program_guard(main_program):
                 x = paddle.tensor.create_tensor(dtype=self.dtype)
@@ -113,7 +118,7 @@ class TestAssignApi3(TestAssignApi):
 
 class TestAssignApi4(TestAssignApi):
     def setUp(self):
-        with eager_op_test.paddle_static_guard():
+        with op_test.paddle_static_guard():
             self.init_dtype()
             self.value = np.random.choice(a=[False, True], size=(2, 5)).astype(
                 np.bool_

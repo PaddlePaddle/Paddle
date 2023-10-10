@@ -14,7 +14,7 @@
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
-from paddle.framework import core
+from paddle.framework import core, in_dynamic_or_pir_mode
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ...base.data_feeder import check_dtype, check_variable_and_dtype
@@ -136,7 +136,7 @@ def elu(x, alpha=1.0, name=None):
 def elu_(x, alpha=1.0, name=None):
     r"""
     Inplace version of ``elu`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_nn_cn_elu`.
+    Please refer to :ref:`api_paddle_nn_functional_elu`.
     """
     assert alpha >= 0.0, "elu_ only support alpha >= 0, please use elu instead."
     if in_dynamic_mode():
@@ -189,7 +189,7 @@ def gelu(x, approximate=False, name=None):
              [ 0.84119201,  1.39957154]])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.gelu(x, approximate)
     else:
         check_variable_and_dtype(
@@ -319,7 +319,7 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
 def hardtanh_(x, min=-1.0, max=1.0, name=None):
     r"""
     Inplace version of ``hardtanh`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`paddle_nn_functional_hardtanh`.
+    Please refer to :ref:`api_paddle_nn_functional_hardtanh`.
     """
     if in_dynamic_mode():
         return _C_ops.hardtanh_(x, min, max)
@@ -422,7 +422,17 @@ def hardswish(x, name=None):
         return _C_ops.hardswish(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'hardswish'
+            x,
+            'x',
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'complex64',
+                'complex128',
+            ],
+            'hardswish',
         )
 
         threshold = 6.0
@@ -495,7 +505,7 @@ def leaky_relu(x, negative_slope=0.01, name=None):
 def leaky_relu_(x, negative_slope=0.01, name=None):
     r"""
     Inplace version of ``leaky_relu`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`paddle_nn_functional_leaky_relu`.
+    Please refer to :ref:`api_paddle_nn_functional_leaky_relu`.
     """
     if in_dynamic_mode():
         return _C_ops.leaky_relu_(x, negative_slope)
@@ -564,7 +574,7 @@ def prelu(x, weight, data_format="NCHW", name=None):
         if data_format not in true_data_format:
             raise ValueError(
                 "data_format must be one of 'NC', 'NCL', 'NCHW', 'NCDHW', "
-                "'NLC', 'NHWC', 'NDHWC' but receive {}".format(data_format)
+                f"'NLC', 'NHWC', 'NDHWC' but receive {data_format}"
             )
 
         data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
@@ -700,9 +710,7 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
 
     if upper > 1:
         raise ValueError(
-            "The upper value must be no greater than one. Received: {}.".format(
-                upper
-            )
+            f"The upper value must be no greater than one. Received: {upper}."
         )
 
     is_test = not training
@@ -756,13 +764,9 @@ def relu(x, name=None):
             [0., 0., 1.])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.relu(x)
     else:
-        if paddle.framework.in_dynamic_or_new_ir_mode():
-            # Below code will be removed after we can generate IR api automatically
-            return paddle._ir_ops.relu(x)
-
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'relu'
         )
@@ -776,7 +780,7 @@ def relu(x, name=None):
 def relu_(x, name=None):
     """
     Inplace version of ``relu`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_nn_cn_relu`.
+    Please refer to :ref:`api_paddle_nn_functional_relu`.
     """
     return _C_ops.relu_(x)
 
@@ -1053,7 +1057,7 @@ def silu(x, name=None):
             [0.73105860, 1.76159406, 2.85772228, 3.92805505])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.silu(x)
     else:
         check_variable_and_dtype(
@@ -1198,9 +1202,13 @@ def softmax(x, axis=-1, dtype=None, name=None):
               [0.03205860, 0.08714432, 0.23688282, 0.64391426]]])
     """
 
-    if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
+    if (
+        (dtype is not None)
+        and (not isinstance(dtype, core.VarDesc.VarType))
+        and (not isinstance(dtype, core.DataType))
+    ):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         outs_cast = x if dtype is None else _C_ops.cast(x, dtype)
         return _C_ops.softmax(outs_cast, axis)
     else:
@@ -1246,7 +1254,7 @@ def softmax(x, axis=-1, dtype=None, name=None):
 def softmax_(x, axis=-1, dtype=None, name=None):
     r"""
     Inplace version of ``softmax`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_nn_cn_softmax`.
+    Please refer to :ref:`api_paddle_nn_functional_softmax`.
     """
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
@@ -1344,9 +1352,7 @@ def softshrink(x, threshold=0.5, name=None):
     """
     if threshold < 0:
         raise ValueError(
-            "The threshold must be no less than zero. Received: {}.".format(
-                threshold
-            )
+            f"The threshold must be no less than zero. Received: {threshold}."
         )
 
     if in_dynamic_mode():
@@ -1594,7 +1600,7 @@ def thresholded_relu(x, threshold=1.0, name=None):
 def thresholded_relu_(x, threshold=1.0, name=None):
     r"""
     Inplace version of ``thresholded_relu`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`paddle_nn_functional_thresholded_relu`.
+    Please refer to :ref:`api_paddle_nn_functional_thresholded_relu`.
     """
     if in_dynamic_mode():
         return _C_ops.thresholded_relu_(x, threshold)
@@ -1822,7 +1828,7 @@ def gumbel_softmax(x, temperature=1.0, hard=False, axis=-1, name=None):
              [0.00000000, 1.        , 0.00000000, 0.00000000, 0.00000000, 0.00000000]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.gumbel_softmax(x, temperature, hard, axis)
 
     helper = LayerHelper("gumbel_softmax", **locals())

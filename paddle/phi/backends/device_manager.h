@@ -127,7 +127,8 @@ class Device final {
  private:
   size_t dev_id_;
   DeviceInterface* impl_;
-  std::once_flag initialized_;
+  std::once_flag initialized_once_flag_;
+  bool initialized_{false};
 };
 
 class DeviceManager {

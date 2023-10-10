@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import base
@@ -63,10 +63,12 @@ class TestStackOpBase(OpTest):
         self.attrs = {'axis': self.axis}
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_new_ir=False)
 
     def test_check_grad(self):
-        self.check_grad(self.get_x_names(), 'Y', check_prim=True)
+        self.check_grad(
+            self.get_x_names(), 'Y', check_prim=True, check_new_ir=False
+        )
 
 
 class TestStackOp1(TestStackOpBase):
@@ -187,10 +189,12 @@ class TestStackBF16Op(OpTest):
         self.attrs = {'axis': self.axis}
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_new_ir=False)
 
     def test_check_grad(self):
-        self.check_grad(self.get_x_names(), 'Y', check_prim=True)
+        self.check_grad(
+            self.get_x_names(), 'Y', check_prim=True, check_new_ir=False
+        )
 
 
 class TestStackAPIWithLoDTensorArray(unittest.TestCase):

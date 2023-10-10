@@ -14,7 +14,7 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
-#include "paddle/phi/kernels/impl/compare_kernel_impl.h"
+#include "paddle/phi/kernels/funcs/compare_functors.h"
 
 #ifdef PADDLE_WITH_XPU_KP
 #include "paddle/phi/backends/xpu/xpu_context.h"
@@ -27,6 +27,7 @@
 #include "paddle/phi/kernels/compare_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
+#include "paddle/phi/kernels/legacy/compare_kernel.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 #endif
 
@@ -43,26 +44,27 @@ struct BitwiseAdd {
   }
 };
 
-template <typename T,
-          typename Context,
-          typename Functor,
-          typename InverseFunctor>
-inline void CompareKernelImpl(const Context& ctx,
-                              const DenseTensor& x,
-                              const DenseTensor& y,
-                              int axis,
-                              DenseTensor* out) {
-  if (!out->IsSharedWith(x)) {
-    ctx.template Alloc<bool>(out);
+#define DEFINE_CUDA_COMPARE_KERNEL(name)                      \
+  template <typename T, typename Context>                     \
+  void name##Kernel(const Context& ctx,                       \
+                    const DenseTensor& x,                     \
+                    const DenseTensor& y,                     \
+                    DenseTensor* out) {                       \
+    if (out->IsSharedWith(x)) {                               \
+      auto x_origin = x;                                      \
+      name##RawKernel<T, Context>(ctx, x_origin, y, -1, out); \
+    } else {                                                  \
+      name##RawKernel<T, Context>(ctx, x, y, -1, out);        \
+    }                                                         \
   }
-  std::vector<const DenseTensor*> ins{&x, &y};
-  std::vector<DenseTensor*> outs{out};
-  if (!out->IsSharedWith(x)) {
-    funcs::BroadcastKernel<bool>(ctx, ins, &outs, Functor(), axis);
-  } else {
-    funcs::BroadcastKernel<T>(ctx, ins, &outs, Functor(), axis);
-  }
-}
+
+DEFINE_CUDA_COMPARE_KERNEL(LessThan)
+DEFINE_CUDA_COMPARE_KERNEL(LessEqual)
+DEFINE_CUDA_COMPARE_KERNEL(GreaterThan)
+DEFINE_CUDA_COMPARE_KERNEL(GreaterEqual)
+DEFINE_CUDA_COMPARE_KERNEL(Equal)
+DEFINE_CUDA_COMPARE_KERNEL(NotEqual)
+#undef DEFINE_CUDA_COMPARE_KERNEL
 
 #ifndef PADDLE_WITH_XPU_KP
 template <typename T, typename Context, typename Functor>
@@ -94,6 +96,14 @@ inline void CompareAllKernelImpl(const Context& ctx,
   }
   funcs::ReduceKernel<bool, bool, BitwiseAdd, kps::IdentityFunctor<bool>>(
       ctx, tmp, out, kps::IdentityFunctor<bool>(), reduce_dims);
+}
+
+template <typename T, typename Context>
+void EqualAllKernel(const Context& ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    DenseTensor* out) {
+  CompareAllKernelImpl<T, Context, funcs::EqualFunctor<T>>(ctx, x, y, out);
 }
 #endif
 
@@ -134,18 +144,21 @@ PD_REGISTER_KERNEL(equal_all,
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 
-#define PD_REGISTER_COMPARE_KERNEL(name, func) \
-  PD_REGISTER_KERNEL(name,                     \
-                     KPS,                      \
-                     ALL_LAYOUT,               \
-                     phi::func##Kernel,        \
-                     bool,                     \
-                     int16_t,                  \
-                     int,                      \
-                     int64_t,                  \
-                     float,                    \
-                     double,                   \
-                     phi::dtype::float16) {}
+#define PD_REGISTER_COMPARE_KERNEL(name, func)            \
+  PD_REGISTER_KERNEL(name,                                \
+                     KPS,                                 \
+                     ALL_LAYOUT,                          \
+                     phi::func##Kernel,                   \
+                     bool,                                \
+                     int16_t,                             \
+                     int,                                 \
+                     int64_t,                             \
+                     float,                               \
+                     double,                              \
+                     phi::dtype::float16,                 \
+                     phi::dtype::bfloat16) {              \
+    kernel->OutputAt(0).SetDataType(phi::DataType::BOOL); \
+  }
 
 PD_REGISTER_COMPARE_KERNEL(less_than, LessThan)
 PD_REGISTER_COMPARE_KERNEL(less_equal, LessEqual)

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import base
@@ -55,12 +55,12 @@ class TestClipOp(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output(check_cinn=self.check_cinn)
+        self.check_output(check_cinn=self.check_cinn, check_new_ir=True)
         paddle.disable_static()
 
     def test_check_grad_normal(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_new_ir=True)
         paddle.disable_static()
 
     def initTestCase(self):
@@ -194,14 +194,14 @@ class TestClipBF16Op(OpTest):
         if paddle.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
             paddle.enable_static()
-            self.check_output_with_place(place)
+            self.check_output_with_place(place, check_new_ir=True)
             paddle.disable_static()
 
     def test_check_grad_normal(self):
         if paddle.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
             paddle.enable_static()
-            self.check_grad_with_place(place, ['X'], 'Out')
+            self.check_grad_with_place(place, ['X'], 'Out', check_new_ir=True)
             paddle.disable_static()
 
     def initTestCase(self):

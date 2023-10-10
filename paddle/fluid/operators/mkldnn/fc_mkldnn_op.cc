@@ -359,7 +359,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
     bool fuse_relu = ctx.Attr<std::string>("activation_type") == "relu";
 
     IF_CHANGE_FC_TW_TYPENAME((std::is_same<T_in, uint8_t>::value), ([&] {
-                               if (force_fp32_output) {
+                               if (force_fp32_output) {  // NOLINT
                                  this->RunKernel<float, T_w>(ctx);
                                } else if (phi::funcs::is_int8<T_in>()) {
                                  if (fuse_relu) {

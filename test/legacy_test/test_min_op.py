@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import check_out_dtype
+from op_test import check_out_dtype
 from test_sum_op import TestReduceOPTensorAxisBase
 
 import paddle
@@ -79,6 +79,15 @@ class ApiMinTest(unittest.TestCase):
         np_x = np.array([10, 10]).astype('float64')
         x = paddle.to_tensor(np_x)
         z = paddle.min(x, axis=0)
+        np_z = z.numpy()
+        z_expected = np.array(np.min(np_x, axis=0))
+        self.assertEqual((np_z == z_expected).all(), True)
+
+    def test_support_tuple(self):
+        paddle.disable_static()
+        np_x = np.array([10, 10]).astype('float64')
+        x = paddle.to_tensor(np_x)
+        z = paddle.min(x, axis=(0,))
         np_z = z.numpy()
         z_expected = np.array(np.min(np_x, axis=0))
         self.assertEqual((np_z == z_expected).all(), True)

@@ -33,6 +33,13 @@ class TestCollectiveBarrierAPI(TestCollectiveAPIRunnerBase):
             paddle.distributed.barrier()
             return []
 
+    def get_model_new_comm(
+        self, main_prog, startup_program, rank, dtype="float32"
+    ):
+        with base.program_guard(main_prog, startup_program):
+            paddle.distributed.barrier()
+            return []
+
 
 if __name__ == "__main__":
     runtime_main(TestCollectiveBarrierAPI, "barrier")

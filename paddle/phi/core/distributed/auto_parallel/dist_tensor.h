@@ -56,11 +56,15 @@ class DistTensor final
 
   /// \brief Set the global dims of the dist tensor.
   /// \return void
-  void set_dims(const DDim& dims);
+  void unsafe_set_dims(const DDim& dims);
 
   /// \brief Returns the dist attr of current dist tensor.
   /// \return The TensorDistAttr's const reference
   const TensorDistAttr& dist_attr() const { return dist_attr_; }
+
+  /// \brief Set the dist attr of current dist tensor.
+  /// \return void
+  void unsafe_set_dist_attr(const TensorDistAttr& dist_attr);
 
   /// \brief Returns the dense tensor value's const reference in dist tensor.
   /// \return The DenseTensor value's const reference

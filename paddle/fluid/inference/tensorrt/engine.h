@@ -154,6 +154,7 @@ class TensorRTEngine {
     ShapeMapType optim_shape_tensor;
 
     bool use_inspector{false};
+    std::string engine_info_path{""};
 
     //
     // From tensorrt_subgraph_pass, only used for OpConverter.
@@ -167,12 +168,14 @@ class TensorRTEngine {
     // not run fp16. When running fp16, the output accuracy of the model will be
     // affected, closing the plugin fp16 may bring some improvement on accuracy.
     bool disable_trt_plugin_fp16{false};
+    int optimization_level{3};
+    bool use_explicit_quantization{false};
   };
 
   // Weight is model parameter.
   class Weight {
    public:
-    Weight() = default;
+    Weight() { w_ = nvinfer1::Weights{}; }
     Weight(nvinfer1::DataType dtype, void* value, size_t num_elem) {
       w_.type = dtype;
       w_.values = value;
@@ -525,13 +528,17 @@ class TensorRTEngine {
 
   bool LowPrecisionIOEnabled() const { return params_.enable_low_precision_io; }
 
+  bool use_explicit_quantization() const {
+    return params_.use_explicit_quantization;
+  }
+
  private:
   // Each ICudaEngine object is bound to a specific GPU when it is instantiated,
   // ensure that the thread is associated with the correct device by calling
   // FreshDeviceId().
   void FreshDeviceId();
 
-  void GetEngineInfo();
+  void GetEngineInfo(const std::string& engine_info_path);
 
   int device_id() { return params_.device_id; }
 

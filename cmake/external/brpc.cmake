@@ -13,7 +13,9 @@
 # limitations under the License.
 
 include(ExternalProject)
-
+if(NOT WITH_ARM)
+  set(OPENSSL_USE_STATIC_LIBS ON)
+endif()
 find_package(OpenSSL REQUIRED)
 
 message(STATUS "ssl:" ${OPENSSL_SSL_LIBRARY})

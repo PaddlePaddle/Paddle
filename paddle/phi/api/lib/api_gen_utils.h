@@ -144,11 +144,29 @@ phi::distributed::DistTensor* SetKernelDistOutput(
     const phi::distributed::TensorDistAttr& dist_attr =
         phi::distributed::TensorDistAttr());
 
+std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
+    Tensor* out,
+    const phi::distributed::TensorDistAttr& dist_attr =
+        phi::distributed::TensorDistAttr());
+
 std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
     std::vector<Tensor*> out);
 
 std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
     size_t out_size, std::vector<Tensor>* out);
+
+std::vector<phi::distributed::DistTensor*> SetKernelDistInplaceOutput(
+    size_t out_size, std::vector<Tensor>* out);
+
+std::vector<phi::distributed::DistTensor*> SetKernelDistInplaceOptionalOutput(
+    size_t out_size, paddle::optional<std::vector<Tensor>> out);
+
+// DistTensor need to set initial dist attr after the dims setted, it is
+// constructed based dims and current process mesh, beforce calling this
+// function, the out should hold correct dims
+void SetReplicatedDistAttrForOutput(
+    phi::distributed::DistTensor* out,
+    const phi::distributed::ProcessMesh& process_mesh);
 
 }  // namespace experimental
 }  // namespace paddle

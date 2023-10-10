@@ -11,48 +11,41 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
-import decorator
-import contextlib
-import functools
 import inspect
 import sys
-import numpy as np
-from paddle.base import core
-from paddle.base import framework
-from paddle.base.framework import global_var
-from paddle.base.multiprocess_utils import CleanupFuncRegistrar
-from .tracer import Tracer
-import logging
-from ..data_feeder import convert_dtype
-import warnings
-from ..framework import _get_paddle_place
-import paddle
 import warnings
 
-__all__ = [
-    'no_grad',
-    'no_grad_',
-    'grad',
-    'guard',
-    'enable_dygraph',
-    'disable_dygraph',
-    'enabled',
-    'to_variable',
-]
+import decorator
+import numpy as np
+
+import paddle
+from paddle.base import core, framework
+from paddle.base.framework import global_var
+from paddle.base.multiprocess_utils import CleanupFuncRegistrar
+
+from ..data_feeder import convert_dtype
+from ..framework import _get_paddle_place
+from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
+from .tracer import Tracer
+
+__all__ = []
 
 NON_PERSISTABLE_VAR_NAME_SUFFIX = "__non_persistable"
 
 
-def in_declarative_mode():
+def in_to_static_mode():
     """
     Return a bool value that indicates whether running code under `@to_static`
 
     """
-    return global_var._in_declarative_mode_
+    return global_var._in_to_static_mode_
 
 
-def declarative_unsupport_argument_warning(
+# TODO(Aurelius84): Need to remove this alias after clean usage in PaddleX
+in_declarative_mode = in_to_static_mode
+
+
+def to_static_unsupport_argument_warning(
     func_name, input_names, inputs, support_values
 ):
     """
@@ -81,12 +74,12 @@ switch_to_static_graph = wrap_decorator(_switch_to_static_graph_)
 
 
 @signature_safe_contextmanager
-def _switch_declarative_mode_guard_(is_declarative=True):
+def _to_static_mode_guard_(is_to_static=True):
     global global_var
-    original_val = global_var._in_declarative_mode_
-    global_var._in_declarative_mode_ = is_declarative
+    original_val = global_var._in_to_static_mode_
+    global_var._in_to_static_mode_ = is_to_static
     yield
-    global_var._in_declarative_mode_ = original_val
+    global_var._in_to_static_mode_ = original_val
 
 
 @signature_safe_contextmanager
@@ -105,7 +98,7 @@ def program_desc_tracing_guard(enable):
 @signature_safe_contextmanager
 def param_guard(parameters):
     # Note: parameters is a reference of self._parameters or self._buffers
-    if in_declarative_mode() and not paddle.in_dynamic_mode() and parameters:
+    if in_to_static_mode() and not paddle.in_dynamic_mode() and parameters:
         try:
             origin_parameters = parameters.copy()
             for name, var_base in parameters.items():
@@ -125,6 +118,8 @@ def _convert_into_variable(tensor):
     """
     Convert Tensor into Variable.
     """
+    if paddle.framework.use_pir_api():
+        return paddle.pir.core._convert_into_opresult(tensor)
     if isinstance(tensor, core.eager.Tensor):
         # Check whether has been created before.
         new_var = tensor.block._find_var_recursive(tensor.name)
@@ -166,9 +161,8 @@ def _convert_into_variable(tensor):
 def enabled():
     """
     This function checks whether the program runs in dynamic graph mode or not.
-    You can enter dynamic graph mode with :ref:`api_base_dygraph_guard` api,
-    or enable and disable dynamic graph mode with :ref:`api_base_dygraph_enable_dygraph`
-    and :ref:`api_base_dygraph_disable_dygraph` api .
+    You can enable dynamic graph mode with :ref:`api_paddle_disable_static` api,
+    or disable dynamic graph mode with :ref:`api_paddle_enable_static` .
 
     **Note**:
         ``base.dygraph.enabled`` is the alias of ``base.in_dygraph_mode``, and
@@ -322,7 +316,7 @@ def no_grad(func=None):
         test_layer()
 
     """
-    if in_declarative_mode():
+    if in_to_static_mode():
         warnings.warn(
             "paddle.no_grad is only supported for inference model, and not supported for training under @to_static."
         )
@@ -351,8 +345,7 @@ class _DecoratorContextManager:
         def _decorate_generator(func, *args, **kwargs):
             gen = func(*args, **kwargs)
             with self:
-                for x in gen:
-                    yield x
+                yield from gen
 
         if inspect.isgeneratorfunction(func):
             return _decorate_generator(func)
@@ -732,12 +725,12 @@ def grad(
             grad_y1 = paddle.to_tensor(3.0)
             print(test_dygraph_grad([grad_y1, grad_value])) # [24.]
     '''
-    if in_declarative_mode():
+    if in_to_static_mode():
         # In dy2static context, we call static interface `gradients`
         # to calculate grads.
         from paddle.static import gradients
 
-        declarative_unsupport_argument_warning(
+        to_static_unsupport_argument_warning(
             "paddle.grad",
             ["retain_graph", "create_grad", "only_inputs", "allow_unused"],
             [retain_graph, create_graph, only_inputs, allow_unused],
@@ -746,19 +739,19 @@ def grad(
         return gradients(outputs, inputs, grad_outputs, no_grad_vars)
 
     def check_in_out(in_out_list, name):
-        assert in_out_list is not None, "{} should not be None".format(name)
+        assert in_out_list is not None, f"{name} should not be None"
 
         if isinstance(in_out_list, (list, tuple)):
-            assert len(in_out_list) > 0, "{} cannot be empty".format(name)
+            assert len(in_out_list) > 0, f"{name} cannot be empty"
             for each_var in in_out_list:
                 assert isinstance(
                     each_var, core.eager.Tensor
-                ), "Elements of {} must be Tensor".format(name)
+                ), f"Elements of {name} must be Tensor"
             return in_out_list
         else:
             assert isinstance(
                 in_out_list, core.eager.Tensor
-            ), "{} must be Tensor or list of Tensor".format(name)
+            ), f"{name} must be Tensor or list of Tensor"
             return [in_out_list]
 
     outputs = check_in_out(outputs, 'outputs')
@@ -892,8 +885,9 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
     )
     if not isinstance(value, support_type):
         raise TypeError(
-            "The type of 'value' in base.dygraph.to_variable must be %s, but received %s."
-            % (support_type, type(value))
+            "The type of 'value' in base.dygraph.to_variable must be {}, but received {}.".format(
+                support_type, type(value)
+            )
         )
     if isinstance(value, (core.eager.Tensor, framework.Variable)):
         return value

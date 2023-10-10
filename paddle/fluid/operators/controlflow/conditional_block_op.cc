@@ -292,7 +292,7 @@ class ConditionalBlockGradInferVarType : public framework::VarTypeInference {
     for (size_t i = 0; i < output_size; ++i) {
       ctx->SyncTypeAndDataType(ConditionalOp::kInputs,
                                framework::GradVarName(ConditionalOp::kInputs),
-                               i);
+                               static_cast<int>(i));
     }
   }
 };
