@@ -22,7 +22,6 @@
 #include "google/protobuf/text_format.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/utils/shape_range_info.pb.h"
-#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace inference {
@@ -47,8 +46,7 @@ namespace inference {
 //  Bytes of `Data`  |      uint64_t     |        8
 //        Data       |        Dtype      |  Bytes of `Data`
 // =========================================================
-TEST_API void SerializePDTensorToStream(std::ostream *os,
-                                        const PaddleTensor &tensor) {
+void SerializePDTensorToStream(std::ostream *os, const PaddleTensor &tensor) {
   // 1. Version
   os->write(reinterpret_cast<const char *>(&kCurPDTensorVersion),
             sizeof(kCurPDTensorVersion));
@@ -80,8 +78,7 @@ TEST_API void SerializePDTensorToStream(std::ostream *os,
             length);  // NOLINT
 }
 
-TEST_API void DeserializePDTensorToStream(std::istream &is,
-                                          PaddleTensor *tensor) {
+void DeserializePDTensorToStream(std::istream &is, PaddleTensor *tensor) {
   // 1. Version
   uint32_t version;
   is.read(reinterpret_cast<char *>(&version), sizeof(version));
@@ -139,8 +136,8 @@ void SerializePDTensorsToStream(std::ostream *os,
   }
 }
 
-TEST_API void DeserializePDTensorsToStream(std::istream &is,
-                                           std::vector<PaddleTensor> *tensors) {
+void DeserializePDTensorsToStream(std::istream &is,
+                                  std::vector<PaddleTensor> *tensors) {
   // 1. Version
   uint32_t version;
   is.read(reinterpret_cast<char *>(&version), sizeof(version));
@@ -160,8 +157,8 @@ void SerializePDTensorsToFile(const std::string &path,
   fout.close();
 }
 
-TEST_API void DeserializePDTensorsToFile(const std::string &path,
-                                         std::vector<PaddleTensor> *tensors) {
+void DeserializePDTensorsToFile(const std::string &path,
+                                std::vector<PaddleTensor> *tensors) {
   bool is_present = analysis::FileExists(path);
   PADDLE_ENFORCE_EQ(
       is_present,
@@ -172,7 +169,7 @@ TEST_API void DeserializePDTensorsToFile(const std::string &path,
   fin.close();
 }
 
-TEST_API void SerializeShapeRangeInfo(
+void SerializeShapeRangeInfo(
     const std::string &path,
     const paddle::inference::proto::ShapeRangeInfos &info) {
   int out_fd = open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
@@ -183,7 +180,7 @@ TEST_API void SerializeShapeRangeInfo(
   close(out_fd);
 }
 
-TEST_API void SerializeShapeRangeInfo(
+void SerializeShapeRangeInfo(
     const std::string &path,
     const std::map<std::string, std::vector<int32_t>> &min_shape,
     const std::map<std::string, std::vector<int32_t>> &max_shape,
@@ -212,7 +209,7 @@ TEST_API void SerializeShapeRangeInfo(
   inference::SerializeShapeRangeInfo(path, shape_range_infos);
 }
 
-TEST_API void DeserializeShapeRangeInfo(
+void DeserializeShapeRangeInfo(
     const std::string &path, paddle::inference::proto::ShapeRangeInfos *info) {
   int fd = open(path.c_str(), O_RDONLY);
   if (fd == -1) {
@@ -225,7 +222,7 @@ TEST_API void DeserializeShapeRangeInfo(
   close(fd);
 }
 
-TEST_API void DeserializeShapeRangeInfo(
+void DeserializeShapeRangeInfo(
     const std::string &path,
     std::map<std::string, std::vector<int32_t>> *min_shape,
     std::map<std::string, std::vector<int32_t>> *max_shape,
@@ -277,7 +274,7 @@ TEST_API void DeserializeShapeRangeInfo(
   }
 }
 
-TEST_API void UpdateShapeRangeInfo(
+void UpdateShapeRangeInfo(
     const std::string &path,
     const std::map<std::string, std::vector<int32_t>> &min_shape,
     const std::map<std::string, std::vector<int32_t>> &max_shape,
