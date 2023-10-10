@@ -86,13 +86,17 @@ class ReduceBlockCreater {
         ir::GenReduceInitTensorNameOf(new_update_block_name);
     VLOG(5) << "new_init_block_name = " << new_init_block_name;
 
-    Expr init_value = rf_tensor_->GetReduceInitVal();
-    const std::vector<Expr>& domain = rf_tensor_->domain_without_reduce_axis();
+    const ir::Tensor& real_tensor =
+        is_rf_block_
+            ? rf_tensor_
+            : original_update_stmt_.As<ir::Store>()->tensor.as_tensor_ref();
+    Expr init_value = real_tensor->GetReduceInitVal();
+    const std::vector<Expr>& domain = real_tensor->domain_without_reduce_axis();
     ir::Tensor init_tensor = lang::Compute(
         domain,
         [=](const std::vector<Expr>& axis) { return init_value; },
         new_init_block_name);
-    init_tensor->Bind(rf_tensor_->buffer);
+    init_tensor->Bind(real_tensor->buffer);
     Expr init_stmt = ir::Store::Make(
         init_tensor, init_value, new_update_stmt_.As<ir::Store>()->indices);
     new_init_sch_block_ = ScheduleBlock::Make(
