@@ -14,12 +14,11 @@
 
 #pragma once
 
+#include <cuda_runtime.h>
 #include <string>
 
-#include "paddle/phi/core/distributed/types.h"
-
-#include <cuda_runtime.h>
 #include "paddle/phi/backends/dynload/nccl.h"
+#include "paddle/phi/core/distributed/types.h"
 
 namespace phi {
 namespace distributed {
