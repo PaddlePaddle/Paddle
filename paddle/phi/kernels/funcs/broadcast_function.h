@@ -530,11 +530,6 @@ HOSTDEVICE static int64_t ConvertSrcIdxToDstIdx(
   return dst_idx;
 }
 
-template <int N>
-struct MaxWithOne {
-  static constexpr auto kValue = (N >= 1 ? N : 1);
-};
-
 template <int Index, int VecSize>
 struct ReadVecDataWithInt64Index {
   template <typename Array1, typename Array2, typename Array3, typename ArgsT>
