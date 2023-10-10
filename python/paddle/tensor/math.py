@@ -6977,6 +6977,7 @@ def signbit(x, name=None):
             'float32',
             'float64',
             'bfloat16',
+            'int8',
             'int16',
             'int32',
             'int64',

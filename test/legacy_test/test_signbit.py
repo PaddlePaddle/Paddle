@@ -30,6 +30,7 @@ class TestSignbitAPI(unittest.TestCase):
             'float32',
             'float64',
             'bfloat16',
+            'int8',
             'int16',
             'int32',
             'int64',
@@ -38,6 +39,7 @@ class TestSignbitAPI(unittest.TestCase):
             self.support_dtypes = [
                 'float32',
                 'float64',
+                'int8',
                 'int16',
                 'int32',
                 'int64',
