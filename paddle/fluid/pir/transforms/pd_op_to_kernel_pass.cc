@@ -487,6 +487,7 @@ phi::KernelKey GetKernelKey(
   if (op->isa<paddle::dialect::FeedOp>()) {
     // NOTE, for now feed op don't need a kernel, so the data type from Op
     // Result the next op use base program datatype
+    VLOG(6) << "FeedOp doesn't need a kernel. Backend: CPU, DataLayout: ANY";
     return {phi::Backend::CPU,
             phi::DataLayout::ANY,
             TransToPhiDataType(
@@ -496,6 +497,7 @@ phi::KernelKey GetKernelKey(
   if (op->isa<paddle::dialect::DataOp>()) {
     // NOTE, for now feed op don't need a kernel, so the data type from Op
     // Result the next op use base program datatype
+    VLOG(6) << "DataOp doesn't need a kernel";
     auto data_place =
         op->attributes().at("place").dyn_cast<dialect::PlaceAttribute>().data();
 
@@ -508,6 +510,7 @@ phi::KernelKey GetKernelKey(
   }
 
   if (op->isa<paddle::dialect::SeedOp>()) {
+    VLOG(6) << "SeedOp doesn't need a kernel";
     auto backend = paddle::experimental::ParseBackend(place);
     return {backend,
             phi::DataLayout::ANY,
@@ -516,6 +519,7 @@ phi::KernelKey GetKernelKey(
   }
 
   if (op->isa<paddle::dialect::FullWithTensorOp>()) {
+    VLOG(6) << "FullWithTensorOp doesn't need a kernel";
     auto backend = paddle::experimental::ParseBackend(place);
     auto dtype = op->attributes()
                      .at("dtype")
@@ -545,6 +549,8 @@ phi::KernelKey GetKernelKey(
       // all the information have to get from attribute and context
       if (kernel_backend == phi::Backend::UNDEFINED) {
         kernel_backend = paddle::experimental::ParseBackend(place);
+        VLOG(8) << "Infer kernel backend when tensor_input_number == 0  or is "
+                   "Full_Op";
       }
     }
   }
@@ -591,6 +597,7 @@ phi::KernelKey GetKernelKey(
         kernel_key_parser.key_set.backend_set =
             kernel_key_parser.key_set.backend_set |
             paddle::experimental::BackendSet(data_op_backend);
+        VLOG(8) << "Update kernel backend set from owner op (DataOp)";
       } else if (op->operand_source(i)
                      .dyn_cast<pir::OpResult>()
                      .owner()
@@ -615,6 +622,7 @@ phi::KernelKey GetKernelKey(
             kernel_key_parser.key_set.backend_set =
                 kernel_key_parser.key_set.backend_set |
                 paddle::experimental::BackendSet(data_op_backend);
+            VLOG(8) << "Update kernel backend set from owner op (CombineOp)";
             break;
           }
         }
@@ -627,16 +635,26 @@ phi::KernelKey GetKernelKey(
 
     if (kernel_backend == phi::Backend::UNDEFINED) {
       kernel_backend = kernel_key.backend();
+      if (kernel_backend != phi::Backend::UNDEFINED) {
+        VLOG(8) << "Infer kernel backend from op operands";
+      }
     }
     if (kernel_layout == phi::DataLayout::UNDEFINED) {
       kernel_layout = kernel_key.layout();
+      if (kernel_layout != phi::DataLayout::UNDEFINED) {
+        VLOG(8) << "Infer kernel layout from op operands";
+      }
     }
     if (kernel_data_type == phi::DataType::UNDEFINED) {
       kernel_data_type = kernel_key.dtype();
+      if (kernel_data_type != phi::DataType::UNDEFINED) {
+        VLOG(8) << "Infer kernel data_type from op operands";
+      }
     }
   }
 
   if (kernel_backend == phi::Backend::UNDEFINED) {
+    VLOG(8) << "Kernel backend cannot be infered from op operands";
     kernel_backend = paddle::experimental::ParseBackend(place);
   }
 
@@ -644,13 +662,17 @@ phi::KernelKey GetKernelKey(
 
   if (op->isa<paddle::dialect::LoadCombineOp>()) {
     res.set_dtype(phi::DataType::FLOAT32);
+    VLOG(8) << "LoadCombineOp's kernel data type must be FLOAT32";
   }
   if (NeedFallBackCpu((op), kernel_fn_str, res)) {
     res.set_backend(phi::Backend::CPU);
+    VLOG(8) << "kernel backend must be on CPU when need fallback";
   }
 
   if (NeedFallBackFromGPUDNN2GPU(op, res)) {
     res.set_backend(phi::Backend::GPU);
+    VLOG(8) << "kernel backend must be on GPU when need fallback from GPUDNN "
+               "to GPU";
   }
 
   return res;
@@ -1292,11 +1314,14 @@ void ProcessBlock(
     VLOG(6) << "op name " << op_item->name();
     if ((op_item->isa<paddle::dialect::FeedOp>()) &&
         SkipFeedOp(op_item, skip_feed_names)) {
+      VLOG(6) << "Skip FeedOp while lowering to kernel pass";
       continue;
     }
 
     // HandleSpecialOp
     if (SpecialLowerOps.count(op_item->name())) {
+      VLOG(6) << "Handle Special Op: [" << op_item->name()
+              << "] while lowering to kernel pass";
       HandleForSpecialOp(
           place, op_item, new_block, ctx, map_op_pair, map_value_pair);
       continue;
