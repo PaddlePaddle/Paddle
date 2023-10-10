@@ -21,8 +21,7 @@
 #ifdef PADDLE_WITH_RCCL
 #include <hip/hip_runtime.h>
 #include "paddle/phi/backends/dynload/rccl.h"
-#endif
-#ifdef PADDLE_WITH_NCCL
+#else
 #include <cuda_runtime.h>
 #include "paddle/phi/backends/dynload/nccl.h"
 #endif
