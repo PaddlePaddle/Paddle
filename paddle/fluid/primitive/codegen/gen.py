@@ -41,6 +41,7 @@ VJPS = [
     'where_grad',
     'tril_grad',
     'triu_grad',
+    'tile_grad',
     'tanh_grad',
     'mean_grad',
     'add_grad',
@@ -62,7 +63,6 @@ VJPS = [
     'fused_softmax_mask_upper_triangle_grad',
     'matmul_grad',
     'pow_grad',
-    'reshape_grad',
     'rsqrt_grad',
     'slice_grad',
     'transpose_grad',
@@ -149,13 +149,18 @@ PRIM_VJP = [
     'transpose_grad',
     'concat_grad',
 ]  # vjp list of primitive op
-CUSTOM_VJP = ['gelu_grad', 'layer_norm_grad']  # custom vjp list of composite op
+CUSTOM_VJP = [
+    'gelu_grad',
+    'layer_norm_grad',
+    'dropout_grad',
+]  # custom vjp list of composite op
 VJP_COMPS = PRIM_VJP + CUSTOM_VJP
 
 BACKENDS = [
     'where_grad',
     'tril_grad',
     'triu_grad',
+    'tile_grad',
     'add_n',
     'mean',
     'sum',

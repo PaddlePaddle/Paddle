@@ -47,6 +47,8 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
+#include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/pir/core/builtin_attribute.h"
 
@@ -114,7 +116,7 @@ NewIRInterpreter::NewIRInterpreter(
 
   std::stringstream ss;
   ss << this;
-  ::pir::BuildScope(*ir_block_, ss.str(), &sub_blocks_, value_exe_info_.get());
+  BuildScope(*ir_block_, ss.str(), value_exe_info_.get());
 }
 
 NewIRInterpreter::NewIRInterpreter(
@@ -176,7 +178,7 @@ NewIRInterpreter::NewIRInterpreter(
 
   std::stringstream ss;
   ss << this;
-  ::pir::BuildScope(*ir_block_, ss.str(), &sub_blocks_, value_exe_info_.get());
+  BuildScope(*ir_block_, ss.str(), value_exe_info_.get());
 }
 
 NewIRInterpreter::~NewIRInterpreter() {
@@ -379,7 +381,7 @@ std::string NewIRInterpreter::GetDepsString() const {
 
 bool NewIRInterpreter::HasLocalScope() const { return local_scope_ != nullptr; }
 
-Scope* NewIRInterpreter::InnerScope() {
+Scope* NewIRInterpreter::InnerScope() const {
   return local_scope_ != nullptr ? local_scope_ : scope_;
 }
 
@@ -558,20 +560,15 @@ void NewIRInterpreter::BuildInstruction() {
     VLOG(6) << "Build Instruction for op: " << op_idx;
     if (op->dialect()->name() == "builtin") {
       if (interpreter::GetSpecialOpNames().count(op->name())) {
-        VLOG(6) << "skip process " << op->name();
+        VLOG(6) << "skip process builtin dialect op: " << op->name();
         continue;
       }
     } else if (op->dialect()->name() == "cf") {
+      VLOG(6) << "skip process cf dialect op: " << op->name();
       continue;
-    } else if (op->dialect()->name() == "pd_op") {
-      vec_instruction_base_.emplace_back(
-          std::make_unique<CondInstruction>(op_idx++,
-                                            place_,
-                                            op,
-                                            scope_,
-                                            local_scope_,
-                                            value_exe_info_.get(),
-                                            sub_blocks_));
+    } else if (op->isa<paddle::dialect::IfOp>()) {
+      vec_instruction_base_.emplace_back(std::make_unique<CondInstruction>(
+          op_idx++, place_, op, value_exe_info_.get()));
     } else if (op->dialect()->name() == "pd_kernel") {
       auto op_name = op->attributes()
                          .at("op_name")
@@ -583,28 +580,14 @@ void NewIRInterpreter::BuildInstruction() {
       }
       VLOG(6) << "process " << op_name;
 
-      if (op->name().compare(paddle::dialect::LegacyKernelOp::name()) == 0) {
+      if (op->isa<paddle::dialect::LegacyKernelOp>()) {
         vec_instruction_base_.emplace_back(
             std::make_unique<LegacyKernelInstruction>(
-                op_idx++,
-                place_,
-                op,
-                scope_,
-                local_scope_,
-                value_exe_info_->GetValue2VarName(),
-                value_exe_info_->GetVarName2Id(),
-                value_exe_info_->GetVar2VarName()));
+                op_idx++, place_, op, *(value_exe_info_.get())));
       } else {
         vec_instruction_base_.emplace_back(
             std::make_unique<PhiKernelInstruction>(
-                op_idx++,
-                place_,
-                op,
-                scope_,
-                local_scope_,
-                value_exe_info_->GetValue2VarName(),
-                value_exe_info_->GetVarName2Id(),
-                value_exe_info_->GetVar2VarName()));
+                op_idx++, place_, op, *(value_exe_info_.get())));
       }
 #ifdef PADDLE_WITH_CINN
     } else if (op->dialect()->name() == "cinn_runtime") {
@@ -1392,6 +1375,17 @@ void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
   try {
     instr_node->WaitEvent(place_);
     VLOG(4) << "begin to run op " << instr_node->Name();
+    VLOG(4) << "begin: " << __func__ << " OP id:" << instr_node->Id()
+            << " name:" << instr_node->Name() << " type:"
+            << (instr_node->KernelType() == OpFuncType::kCpuSync
+                    ? "kCpuSync"
+                    : (instr_node->KernelType() == OpFuncType::kGpuSync
+                           ? "kGpuSync"
+                           : "kGpuAsync"))
+            << " runs on " << platform::GetCurrentThreadName();
+    VLOG(4) << place_ << " "
+            << instr_node->DebugStringEx(scope_,
+                                         value_exe_info_->GetValue2VarName());
     if (!instr_node->IsArtificial()) {
       instr_node->Run();
 
@@ -1403,8 +1397,8 @@ void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
                 << "): context wait and get last error";
 #endif
       }
-
-      VLOG(4) << __func__ << " OP id:" << instr_node->Id()
+      VLOG(4) << "done instruction node run";
+      VLOG(4) << "done: " << __func__ << " OP id:" << instr_node->Id()
               << " name:" << instr_node->Name() << " type:"
               << (instr_node->KernelType() == OpFuncType::kCpuSync
                       ? "kCpuSync"
@@ -1412,15 +1406,13 @@ void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
                              ? "kGpuSync"
                              : "kGpuAsync"))
               << " runs on " << platform::GetCurrentThreadName();
-
-      VLOG(4) << "done instruction node run";
+      VLOG(4) << place_ << " "
+              << instr_node->DebugStringEx(scope_,
+                                           value_exe_info_->GetValue2VarName());
       CheckGC(instr_node);
       VLOG(4) << "done CheckGC";
       interpreter::LogDeviceMemoryStats(place_);
     }
-    VLOG(4) << place_ << " "
-            << instr_node->DebugStringEx(scope_,
-                                         value_exe_info_->GetValue2VarName());
     VLOG(5) << "after run kernel";
     instr_node->RecordEvent(place_);
   } catch (platform::EnforceNotMet& ex) {

@@ -26,7 +26,7 @@ from . import mix_precision_utils  # noqa: F401
 from . import sequence_parallel_utils
 
 
-__all__ = ["LocalFS", "recompute", "DistributedInfer", "HDFSClient"]  # noqa
+__all__ = ["LocalFS", "recompute", "DistributedInfer", "HDFSClient"]
 
 
 def recompute(function, *args, **kwargs):

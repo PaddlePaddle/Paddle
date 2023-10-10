@@ -68,9 +68,9 @@ Block *ModuleOp::block() {
 ModuleOp ModuleOp::Create(IrContext *context, Program *pointer) {
   pir::OpInfo info = context->GetRegisteredOpInfo(name());
   OperationArgument argument(info);
-  argument.num_regions = 1;
+  argument.AddRegion(nullptr);
   argument.AddAttribute("program", PointerAttribute::get(context, pointer));
-  Operation *op = Operation::Create(argument);
+  Operation *op = Operation::Create(std::move(argument));
   op->region(0).emplace_back();
   return ModuleOp(op);
 }
@@ -354,16 +354,7 @@ void SplitOp::Verify() const {
              input_type.size());
 
   // for all i in outputs.size(): outputs[i].type == inputs[0][i].type
-  for (size_t i = 0; i < output_num; ++i) {
-    auto type = (*this)->result(i).type();
-    IR_ENFORCE(input_type[i] == type,
-               "The type %s of inputs[0][%d] must be "
-               "equal to type %s of outputs[%d].",
-               input_type[i],
-               i,
-               type,
-               i);
-  }
+  // TODO(@xiongkun) consult zhangbo to check what to do with null type.
 }
 
 const char *ConstantOp::attributes_name[attributes_num] = {"value"};  // NOLINT

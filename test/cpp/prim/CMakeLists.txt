@@ -43,23 +43,10 @@ if(NOT (NOT WITH_PYTHON AND ON_INFER))
   if(WITH_CINN)
     set(prim_eager_deps ${prim_eager_deps} cinn_compiler)
   endif()
-  cc_library(
-    init_env_utils
-    SRCS init_env_utils.cc
-    DEPS phi eager_tensor_operants static_tensor_operants)
+  cc_library(init_env_utils SRCS init_env_utils.cc)
+  target_compile_definitions(init_env_utils PUBLIC PADDLE_DLL_EXPORT)
 
-  cc_test_old(
-    test_comp_eager
-    SRCS
-    test_eager_prim.cc
-    DEPS
-    fleet_executor
-    ${prim_eager_deps}
-    ${prim_generated_deps}
-    prim_utils
-    static_global_utils
-    init_env_utils
-    python)
+  paddle_test(test_comp_eager SRCS test_eager_prim.cc DEPS init_env_utils)
 endif()
 
 # skip win32 since wget is not installed by default on windows machine.
@@ -69,4 +56,9 @@ if(NOT WIN32)
     test_vjp_new_ir
     SRCS test_vjp.cc
     DEPS pir_adaptor pd_op_dialect pir)
+endif()
+if(WITH_ONNXRUNTIME AND WIN32)
+  # Copy onnxruntime for some c++ test in Windows, since the test will
+  # be build only in CI, so suppose the generator in Windows is Ninja.
+  copy_onnx(test_comp_static)
 endif()

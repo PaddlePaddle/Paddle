@@ -42,6 +42,7 @@ limitations under the License. */
 
 namespace phi {
 
+DenseTensor::~DenseTensor() = default;
 DenseTensor::DenseTensor(Allocator* a, const DenseTensorMeta& meta)
     : meta_(meta), holder_(a->Allocate(SizeOf(dtype()) * numel())) {}
 
@@ -270,9 +271,9 @@ void DenseTensor::ResizeAndAllocate(const DDim& dims) {
 
 void DenseTensor::ResetLoD(const LoD& lod) { meta_.lod = lod; }
 
-#define DATA_MEMBER_FUNC_INSTANTIATION(dtype)      \
-  template const dtype* DenseTensor::data() const; \
-  template dtype* DenseTensor::data();
+#define DATA_MEMBER_FUNC_INSTANTIATION(dtype)               \
+  template TEST_API const dtype* DenseTensor::data() const; \
+  template TEST_API dtype* DenseTensor::data();
 
 DATA_MEMBER_FUNC_INSTANTIATION(bool);
 DATA_MEMBER_FUNC_INSTANTIATION(int8_t);

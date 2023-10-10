@@ -27,7 +27,6 @@ NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST = [
     'gru_unit',
     'kldiv_loss',
     'lstm',
-    'lstmp',
     'max_pool2d_with_index',
     'max_pool3d_with_index',
     'norm',
