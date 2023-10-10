@@ -152,7 +152,6 @@ register_unity_group(
   cc
   log_loss_op.cc
   lookup_table_v2_op.cc
-  margin_rank_loss_op.cc
   masked_select_op.cc
   match_matrix_tensor_op.cc
   matmul_op.cc
@@ -165,7 +164,6 @@ register_unity_group(
 register_unity_group(
   cc
   concat_op.cc
-  conv_shift_op.cc
   dequantize_log_op.cc
   dropout_op.cc
   expand_op.cc
@@ -430,13 +428,11 @@ register_unity_group(
   cu
   log_loss_op.cu
   lookup_table_v2_op.cu
-  margin_rank_loss_op.cu
   masked_select_op.cu
   shuffle_channel_op.cu
   softmax_cudnn_op.cu)
 register_unity_group(
   cu
-  conv_shift_op.cu
   dequantize_log_op.cu
   dropout_op.cu
   fake_quantize_op.cu
