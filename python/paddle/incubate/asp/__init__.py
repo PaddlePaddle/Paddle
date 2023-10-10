@@ -13,15 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-from .asp import ASPHelper  # noqa: F401
-from .asp import (
-    decorate,
-    prune_model,
-    reset_excluded_layers,
-    set_excluded_layers,
-)
-from .supported_layer_list import add_supported_layer
+# isort: off
+# NOTE(gouzil): MaskAlgo can cause circular references, so sorting is disabled
 from .utils import (  # noqa: F401
     CheckMethod,
     MaskAlgo,
@@ -34,6 +27,17 @@ from .utils import (  # noqa: F401
     get_mask_2d_best,
     get_mask_2d_greedy,
 )
+
+# isort: on
+
+from .asp import ASPHelper  # noqa: F401
+from .asp import (
+    decorate,
+    prune_model,
+    reset_excluded_layers,
+    set_excluded_layers,
+)
+from .supported_layer_list import add_supported_layer
 
 __all__ = [
     'calculate_density',
