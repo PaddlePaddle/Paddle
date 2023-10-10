@@ -24,6 +24,7 @@
 #include "paddle/pir/core/type.h"
 #include "paddle/pir/core/type_base.h"
 #include "paddle/pir/core/type_name.h"
+#include "paddle/pir/core/type_util.h"
 #include "paddle/pir/core/utils.h"
 
 class TypeA {};
@@ -258,6 +259,36 @@ TEST(type_test, pd_op_dialect) {
   EXPECT_EQ(select_rows_dtype.data_layout(), data_layout);
   EXPECT_EQ(select_rows_dtype.lod(), lod);
   EXPECT_EQ(select_rows_dtype.offset(), offset);
+}
+
+TEST(type_test, type_util) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+
+  pir::Type fp32_dtype = pir::Float32Type::get(ctx);
+  phi::DDim dims1 = {2, 2};
+  phi::DDim dims2 = {2, 2, 3};
+  phi::DataLayout data_layout = phi::DataLayout::NCHW;
+  phi::LoD lod = {{0, 1, 2}};
+  size_t offset = 0;
+
+  paddle::dialect::SelectedRowsType select_rows_dtype1 =
+      paddle::dialect::SelectedRowsType::get(
+          ctx, fp32_dtype, dims1, data_layout, lod, offset);
+
+  paddle::dialect::SelectedRowsType select_rows_dtype2 =
+      paddle::dialect::SelectedRowsType::get(
+          ctx, fp32_dtype, dims2, data_layout, lod, offset);
+
+  std::vector<pir::Type> types1 = {
+      select_rows_dtype1, select_rows_dtype1, select_rows_dtype1};
+  std::vector<pir::Type> types2 = {
+      select_rows_dtype1, select_rows_dtype1, select_rows_dtype1};
+  std::vector<pir::Type> types3 = {
+      select_rows_dtype2, select_rows_dtype2, select_rows_dtype2};
+
+  EXPECT_TRUE(pir::VerifyCompatibleShapes(types1, types2));
+  EXPECT_FALSE(pir::VerifyCompatibleShapes(types1, types3));
 }
 
 namespace TestNamespace {
