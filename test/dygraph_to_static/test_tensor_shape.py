@@ -495,6 +495,7 @@ class TestTensorShapeInWhile4(TestTensorShapeBasic):
 
 
 # 5. Test op num for negative dim
+@dy2static_unittest
 class TestOpNumBasicWithTensorShape(unittest.TestCase):
     def setUp(self):
         self._set_input_spec()
@@ -617,6 +618,7 @@ def dyfunc_with_static_convert_var_shape(x):
     return res
 
 
+@dy2static_unittest
 class TestFindStatiConvertVarShapeSuffixVar(unittest.TestCase):
     @ast_only_test
     def test(self):

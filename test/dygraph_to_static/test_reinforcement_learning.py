@@ -18,7 +18,10 @@ import unittest
 
 import gym
 import numpy as np
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_util import (
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 import paddle.nn.functional as F
@@ -202,6 +205,7 @@ def train(args, place, to_static):
         return np.array(loss_data)
 
 
+@dy2static_unittest
 class TestDeclarative(unittest.TestCase):
     def setUp(self):
         self.place = (

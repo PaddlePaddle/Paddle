@@ -15,6 +15,7 @@
 import unittest
 
 from dygraph_to_static_util import (
+    dy2static_unittest,
     enable_fallback_guard,
     test_and_compare_with_new_ir,
 )
@@ -40,6 +41,7 @@ class Net(Layer):
         return paddle.sum(out)
 
 
+@dy2static_unittest
 class TestArgsSpecName(unittest.TestCase):
     def read_from_dataset(self):
         self.x = paddle.randn([4, 2, 8])

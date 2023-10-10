@@ -15,7 +15,10 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_util import (
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 
@@ -30,6 +33,7 @@ class Net(paddle.nn.Layer):
         return out
 
 
+@dy2static_unittest
 class TestBackwardWithoutParams(unittest.TestCase):
     @test_and_compare_with_new_ir(False)
     def test_run(self):
@@ -55,6 +59,7 @@ class ZeroSizeNet(paddle.nn.Layer):
         return y, out
 
 
+@dy2static_unittest
 class TestZeroSizeNet(unittest.TestCase):
     @test_and_compare_with_new_ir(False)
     def test_run(self):

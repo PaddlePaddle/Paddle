@@ -15,7 +15,11 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test, test_and_compare_with_new_ir
+from dygraph_to_static_util import (
+    ast_only_test,
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 
 from paddle import base
 from paddle.jit.api import to_static
@@ -60,6 +64,7 @@ def test_mix_cast(x):
     return x
 
 
+@dy2static_unittest
 class TestCastBase(unittest.TestCase):
     def setUp(self):
         self.place = (

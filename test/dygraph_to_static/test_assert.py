@@ -15,7 +15,10 @@
 import unittest
 
 import numpy
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_util import (
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 from paddle import base
@@ -33,6 +36,7 @@ def dyfunc_assert_non_variable(x=True):
     assert x
 
 
+@dy2static_unittest
 class TestAssertVariable(unittest.TestCase):
     def _run(self, func, x, with_exception, to_static):
         paddle.jit.enable_to_static(to_static)

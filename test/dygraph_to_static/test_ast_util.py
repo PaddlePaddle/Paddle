@@ -17,7 +17,10 @@ import textwrap
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_util import (
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 from ifelse_simple_func import (
     dyfunc_with_if_else,
     dyfunc_with_if_else2,
@@ -31,6 +34,7 @@ from paddle.jit.dy2static.utils import ast_to_func
 from paddle.utils import gast
 
 
+@dy2static_unittest
 class TestAST2Func(unittest.TestCase):
     """
     TestCase for the transformation from ast.AST into python callable function.

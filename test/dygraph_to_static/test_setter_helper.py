@@ -14,6 +14,8 @@
 
 import unittest
 
+from dygraph_to_static_util import dy2static_unittest
+
 from paddle.jit.dy2static.utils import GetterSetterHelper
 
 vars = [1, 2, 3, 4, 5]
@@ -28,6 +30,7 @@ def setter(values):
     vars = values
 
 
+@dy2static_unittest
 class TestGetterSetterHelper(unittest.TestCase):
     def test_1(self):
         helper = GetterSetterHelper(

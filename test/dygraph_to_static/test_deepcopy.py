@@ -16,13 +16,17 @@ import unittest
 from copy import deepcopy
 
 import numpy as np
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_util import (
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 from test_rollback import Net, foo
 
 import paddle
 from paddle.jit.dy2static.program_translator import StaticFunction
 
 
+@dy2static_unittest
 class TestDeepCopy(unittest.TestCase):
     @test_and_compare_with_new_ir(False)
     def test_net(self):

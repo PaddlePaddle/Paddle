@@ -17,6 +17,7 @@ import os
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import dy2static_unittest
 
 import paddle
 from paddle import base
@@ -135,6 +136,7 @@ def func_suggestion_error_in_runtime(x):
     net(x)
 
 
+@dy2static_unittest
 class TestFlags(unittest.TestCase):
     def setUp(self):
         self.reset_flags_to_default()
@@ -168,6 +170,7 @@ class TestFlags(unittest.TestCase):
         self._test_set_flag(error.SIMPLIFY_ERROR_ENV_NAME, 0)
 
 
+@dy2static_unittest
 class TestErrorBase(unittest.TestCase):
     def setUp(self):
         self.set_input()
@@ -398,6 +401,7 @@ def func_ker_error(x):
     return y
 
 
+@dy2static_unittest
 class TestKeyError(unittest.TestCase):
     def test_key_error(self):
         paddle.disable_static()
@@ -413,6 +417,7 @@ def NpApiErr():
     print(b)
 
 
+@dy2static_unittest
 class TestNumpyApiErr(unittest.TestCase):
     def test_numpy_api_err(self):
         with self.assertRaises(TypeError) as e:
@@ -450,6 +455,7 @@ class test_set_state_dict_err_layer(paddle.nn.Layer):
         return y
 
 
+@dy2static_unittest
 class TestSetStateDictErr(unittest.TestCase):
     def test_set_state_dict_err(self):
         with self.assertRaises(ValueError) as e:

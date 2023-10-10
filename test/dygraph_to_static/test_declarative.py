@@ -17,7 +17,10 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_util import (
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 from test_basic_api_transformation import dyfunc_to_variable
 
 import paddle
@@ -89,6 +92,7 @@ class SimpleNet(Layer):
         return z
 
 
+@dy2static_unittest
 class TestStaticFunctionInstance(unittest.TestCase):
     def test_instance_same_class(self):
         with base.dygraph.guard(base.CPUPlace()):
@@ -106,6 +110,7 @@ class TestStaticFunctionInstance(unittest.TestCase):
             self.assertTrue(len(net_2.forward.program_cache) == 0)
 
 
+@dy2static_unittest
 class TestInputSpec(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -210,6 +215,7 @@ def foo_func(a, b, c=1, d=2):
     return z
 
 
+@dy2static_unittest
 class TestDifferentInputSpecCacheProgram(unittest.TestCase):
     def setUp(self):
         paddle.jit.enable_to_static(True)
@@ -324,6 +330,7 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
                 foo_3.concrete_program  # noqa: B018
 
 
+@dy2static_unittest
 class TestInputDefaultName(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
@@ -348,6 +355,7 @@ class TestInputDefaultName(unittest.TestCase):
         self.assert_default_name('func_with_list_dict', ['dl_0', 'x', 'y'])
 
 
+@dy2static_unittest
 class TestDeclarativeAPI(unittest.TestCase):
     def test_error(self):
         func = to_static(dyfunc_to_variable)
@@ -366,6 +374,7 @@ class TestDeclarativeAPI(unittest.TestCase):
             func(np.ones(5).astype("int32"))
 
 
+@dy2static_unittest
 class TestDecorateModelDirectly(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
@@ -393,6 +402,7 @@ class TestDecorateModelDirectly(unittest.TestCase):
         self.assertListEqual(list(input_shape), [-1, 16, 10])
 
 
+@dy2static_unittest
 class TestErrorWithInitFromStaticMode(unittest.TestCase):
     def test_raise_error(self):
         # disable imperative
@@ -435,6 +445,7 @@ class CallNonForwardFuncSubNet(paddle.nn.Layer):
         return x
 
 
+@dy2static_unittest
 class TestCallNonForwardFunc(unittest.TestCase):
     @test_and_compare_with_new_ir(False)
     def test_call_non_forward(self):
@@ -468,6 +479,7 @@ class SetBuffersNet2(paddle.nn.Layer):
         return self.b
 
 
+@dy2static_unittest
 class TestSetBuffers(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -498,6 +510,7 @@ class ClassNoInheritLayer:
         return x + 1
 
 
+@dy2static_unittest
 class TestClassNoInheritLayer(unittest.TestCase):
     def test_to_static(self):
         paddle.disable_static()

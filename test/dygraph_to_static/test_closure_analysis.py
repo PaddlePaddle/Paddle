@@ -16,7 +16,10 @@ import inspect
 import os
 import unittest
 
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_util import (
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 from numpy import append
 
 import paddle
@@ -161,6 +164,7 @@ def test_push_pop_4(x, *args, **kargs):
     return l, k
 
 
+@dy2static_unittest
 class TestClosureAnalysis(unittest.TestCase):
     def setUp(self):
         self.judge_type = "var and w_vars"
@@ -260,6 +264,7 @@ class TestClosureAnalysis_PushPop(TestClosureAnalysis):
         ]
 
 
+@dy2static_unittest
 class TestPushPopTrans(unittest.TestCase):
     @test_and_compare_with_new_ir(False)
     def test(self):

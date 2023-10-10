@@ -162,6 +162,7 @@ class TestToTensorReturnVal(unittest.TestCase):
             )
 
 
+@dy2static_unittest
 class TestStatic(unittest.TestCase):
     def test_static(self):
         paddle.enable_static()

@@ -16,6 +16,7 @@ import random
 import unittest
 
 from dygraph_to_static_util import (
+    dy2static_unittest,
     enable_fallback_guard,
     test_and_compare_with_new_ir,
 )
@@ -93,6 +94,7 @@ def train_static():
     return to_static(train)(net, adam, x)
 
 
+@dy2static_unittest
 class TestSimnet(unittest.TestCase):
     def test_dygraph_static_same_loss(self):
         dygraph_loss = train_dygraph()
