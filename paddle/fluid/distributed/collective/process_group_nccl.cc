@@ -27,8 +27,8 @@
 #include "paddle/phi/core/distributed/nccl_tools.h"
 #include "paddle/phi/core/distributed/trace_utils.h"
 #include "paddle/phi/core/distributed/utils.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/utils/data_type.h"
 
 PHI_DECLARE_bool(benchmark);
@@ -503,7 +503,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
                         "root world size [%d]  is less than root rank [%d]",
                         size_,
                         opts.root_rank));
-  auto gather_func = [&](phi::distributed::NCCLCommContext* comm_context, gpuStream_t stream) {
+  auto gather_func = [&](phi::distributed::NCCLCommContext* comm_context,
+                         gpuStream_t stream) {
     // shape check
     if (FLAGS_enable_nccl_dynamic_check) {
       phi::distributed::NCCLDynamicCheck::CheckGatherShape(
@@ -556,7 +557,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
   }
 
   return Point2Point(
-      [&](phi::distributed::NCCLCommContext* comm_context, gpuStream_t stream, int rank_in_group) {
+      [&](phi::distributed::NCCLCommContext* comm_context,
+          gpuStream_t stream,
+          int rank_in_group) {
         VLOG(3) << "[ncclRecv] "
                 << "recvbuff: " << tensor->data()
                 << ", count: " << tensor->numel() << ", datatype: "
@@ -589,7 +592,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send(
       numel > 0 ? GetPartialTensor(tensor, offset, numel) : tensor;
 
   return Point2Point(
-      [&](phi::distributed::NCCLCommContext* comm_context, gpuStream_t stream, int rank_in_group) {
+      [&](phi::distributed::NCCLCommContext* comm_context,
+          gpuStream_t stream,
+          int rank_in_group) {
         VLOG(3) << "[ncclSend] "
                 << "sendbuff: " << tensor_maybe_partial.data()
                 << ", count: " << tensor_maybe_partial.numel() << ", datatype: "
@@ -624,7 +629,9 @@ std::shared_ptr<ProcessGroupNCCL::NCCLTask> ProcessGroupNCCL::CreateTask(
       place, rank, comm_type, is_sync, use_calc_stream);
 }
 
-void ProcessGroupNCCL::GetStoreKey(const std::string& place_key, CommType comm_type, std::string& store_key) {
+void ProcessGroupNCCL::GetStoreKey(const std::string& place_key,
+                                   CommType comm_type,
+                                   std::string& store_key) {
   bool is_batch_p2p = s_group_call_counter > 0;
   bool is_p2p_op = IsP2POP(comm_type, is_batch_p2p);
 
@@ -673,7 +680,7 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
   comm_ctx->set_nccl_comm(nccl_comm_ctx->GetNcclComm());
 
   auto* calc_ctx = static_cast<phi::GPUContext*>(
-          platform::DeviceContextPool::Instance().Get(place));
+      platform::DeviceContextPool::Instance().Get(place));
 
   place_to_calc_event_.emplace(
       place_key,
@@ -776,7 +783,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
-    std::function<void(phi::distributed::NCCLCommContext*, gpuStream_t, int)> fn,
+    std::function<void(phi::distributed::NCCLCommContext*, gpuStream_t, int)>
+        fn,
     int peer,
     const phi::DenseTensor& tensor,
     CommType comm_type,

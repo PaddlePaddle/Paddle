@@ -1141,8 +1141,8 @@ PHI_DEFINE_EXPORTED_bool(nccl_blocking_wait, false, "nccl blocking wait");
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PHI_DEFINE_EXPORTED_bool(benchmark_nccl,
-        false,
-        "enable nccl debug mode to synchronize nccl comm");
+                         false,
+                         "enable nccl debug mode to synchronize nccl comm");
 #endif
 
 /**

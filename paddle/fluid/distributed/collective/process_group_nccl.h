@@ -179,8 +179,10 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
                                                          bool sync_op,
                                                          bool use_calc_stream);
 
-  void GetStoreKey(const std::string& place_key, CommType comm_type, std::string& store_key);
-  
+  void GetStoreKey(const std::string& place_key,
+                   CommType comm_type,
+                   std::string& store_key);
+
   void CreateNCCLEnvCache(const Place& place,
                           const std::string& place_key,
                           const std::string& store_key,
@@ -197,14 +199,16 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
       bool use_calc_stream);
 
   std::shared_ptr<ProcessGroup::Task> Point2Point(
-      std::function<void(phi::distributed::NCCLCommContext*, gpuStream_t, int)> fn,
+      std::function<void(phi::distributed::NCCLCommContext*, gpuStream_t, int)>
+          fn,
       int peer,
       const phi::DenseTensor& tensor,
       CommType comm_type,
       bool sync_op,
       bool use_calc_stream);
 
-  phi::distributed::NCCLCommContext* GetCommContext(const std::string* key = nullptr);
+  phi::distributed::NCCLCommContext* GetCommContext(
+      const std::string* key = nullptr);
 
  private:
   std::shared_ptr<phi::distributed::Store> store_;
