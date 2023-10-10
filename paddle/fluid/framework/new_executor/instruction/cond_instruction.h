@@ -29,14 +29,10 @@ class ValueExecutionInfo;
 
 class CondInstruction : public InstructionBase {
  public:
-  CondInstruction(
-      size_t id,
-      const platform::Place& place,
-      ::pir::Operation* op,
-      Scope* scope,
-      Scope* local_scope,
-      ValueExecutionInfo* parent_exe_info,
-      const std::map<pir::Block*, paddle::framework::Scope*>& sub_blocks);
+  CondInstruction(size_t id,
+                  const platform::Place& place,
+                  ::pir::Operation* op,
+                  ValueExecutionInfo* value_exe_info);
 
   void Run() override;
 
@@ -48,19 +44,23 @@ class CondInstruction : public InstructionBase {
   void CopyBranchOutput(const std::vector<std::string>& var_names,
                         const NewIRInterpreter* inter);
 
+  ::pir::Operation* op_;
+
   std::string cond_name_{"cond_instruction"};
 
-  Variable* cond_var;
+  Variable* cond_var_;
 
-  std::vector<Variable*> if_op_outputs_;
+  std::vector<Variable*> output_vars_;
 
-  NewIRInterpreter* true_branch_inter;
-  NewIRInterpreter* false_branch_inter;
+  NewIRInterpreter* true_branch_inter_;
 
+  NewIRInterpreter* false_branch_inter_;
+
+  // TODO(zhangbo): Currently, only the output of IfOp is included. In the
+  // future, need to consider how to support IfGradOp using IfOp value.
   std::vector<std::string> true_skip_gc_names_;
-  std::vector<std::string> false_skip_gc_names_;
 
-  ::pir::Operation* op_;
+  std::vector<std::string> false_skip_gc_names_;
 };
 
 }  // namespace framework
