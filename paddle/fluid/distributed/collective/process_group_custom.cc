@@ -494,7 +494,7 @@ void ProcessGroupCustom::CreateXCCLEnvCache(const Place& place,
           << ", place: " << place_key;
 
   phi::distributed::CommContextManager::CreateXCCLCommContext(
-      store_, std::to_string(gid_), place.GetDeviceType(), rank_, size_);
+      store_, std::to_string(gid_), place, rank_, size_);
 
   auto* calc_ctx = static_cast<phi::CustomContext*>(
       platform::DeviceContextPool::Instance().Get(place));
