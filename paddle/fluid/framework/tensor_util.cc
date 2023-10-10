@@ -963,7 +963,7 @@ std::ostream& operator<<(std::ostream& os, const LoD& lod) {
   return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const phi::DenseTensor& t) {
+TEST_API std::ostream& operator<<(std::ostream& os, const phi::DenseTensor& t) {
   if (!t.lod().empty()) {
     os << "  - lod: " << t.lod() << "\n";
   }

@@ -1087,22 +1087,22 @@ class Executor:
 
     def __init__(self, place=None):
         if place is None:
-            expected_place = framework._current_expected_place()
+            expected_place = framework._current_expected_place_()
             self.place = expected_place
         else:
             self.place = framework._get_paddle_place(place)
-        self.program_caches = dict()
-        self.ctx_caches = dict()
-        self.trainer_caches = dict()
-        self.scope_caches = dict()
-        self.micro_scope_cache = dict()
-        self.var_caches = dict()
-        self.pruned_program_caches = dict()
+        self.program_caches = {}
+        self.ctx_caches = {}
+        self.trainer_caches = {}
+        self.scope_caches = {}
+        self.micro_scope_cache = {}
+        self.var_caches = {}
+        self.pruned_program_caches = {}
         p = core.Place()
         p.set_place(self.place)
         self._default_executor = core.Executor(p)
         self._closed = False
-        self.pruned_program_scope_caches = dict()
+        self.pruned_program_scope_caches = {}
         self._prepare_to_run_called = False
 
         self._auto_checkpoint_name = unique_name.generate(

@@ -18,7 +18,8 @@ set(STANDALONE_EXECUTOR_DEPS
     program_translator
     instruction_base
     pd_inplace_pass
-    pir)
+    pir
+    plan)
 
 cc_library(
   standalone_executor

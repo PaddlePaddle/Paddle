@@ -72,6 +72,12 @@ PARSE_PYTHON_C_TENSORS_TEMPLATE = (
     "    auto {} = {}(\"{}\", \"{}\", args, {}, {});\n"
 )
 
+CONVERT_INPUT_TENSORS_TO_DIST_TENSOR_TEMPLATE = """
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh{inputs})) {{
+      ConvertAllInputsToDistTensor(mesh{inputs});
+    }}
+"""
 
 PARSE_PYTHON_C_ARGS_TEMPLATE = """    PyObject* {}_obj = PyTuple_GET_ITEM(args, {});
     {} {} = {}({}_obj, \"{}\", {});
@@ -325,7 +331,9 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         inplace_returns_pos_map = {}
         # Generate Python-C Tensors Parsing Logic
         get_eager_tensor_str = ""
+        input_names = ""
         for name, (ttype, pos) in forward_inputs_position_map.items():
+            input_names = input_names + ", " + name
             if forward_inplace_map and name in forward_inplace_map.keys():
                 inplace_args_pos_map[name] = pos
             is_optional = name in optional_inputs
@@ -375,6 +383,13 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                             "false",
                         )
                     )
+        # No inputs, skip convert to DistTensor
+        if len(input_names) > 0:
+            get_eager_tensor_str += (
+                CONVERT_INPUT_TENSORS_TO_DIST_TENSOR_TEMPLATE.format(
+                    inputs=input_names
+                )
+            )
 
         if forward_inplace_map:
             for name, (ttype, pos) in forward_outputs_position_map.items():

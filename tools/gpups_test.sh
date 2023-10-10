@@ -47,7 +47,6 @@ parallel_list="^init_phi_test$|\
 ^test_conv3d_transpose_op$|\
 ^test_conv_bn_fuse_pass_cc$|\
 ^test_conv_nn_grad$|\
-^test_conv_shift_op$|\
 ^test_conv_transpose_nn_grad$|\
 ^test_convert_call$|\
 ^test_convert_call_generator$|\

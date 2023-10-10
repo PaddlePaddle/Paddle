@@ -41,8 +41,9 @@ class TensorParallel(MetaParallelBase):
             logger.info("start broadcast sharding parameters")
             broadcast_sharding_parameters(self._layers, self._hcg)
 
-        logger.info("start broadcast dp parameters")
-        broadcast_dp_parameters(self._layers, self._hcg)
+        if self._hcg.get_data_parallel_world_size() > 1:
+            logger.info("start broadcast dp parameters")
+            broadcast_dp_parameters(self._layers, self._hcg)
 
         logger.info("mp's parameters is ready")
 

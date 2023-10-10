@@ -2000,5 +2000,120 @@ void* UnPackHook::operator()(void* packed_value, void* other) {
   return reinterpret_cast<void*>(ret);
 }
 
+/* ------------------ for auto parallel ----------------------- */
+
+void DistTensorTypeParser::operator()(const Tensor& x) {
+  if (x.is_dist_tensor()) {
+    *mesh = &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(x.impl())
+                  ->dist_attr()
+                  .process_mesh());
+    result = true;
+  }
+}
+
+void DistTensorTypeParser::operator()(const paddle::optional<Tensor>& x) {
+  if (x) {
+    if (x.get_ptr()->is_dist_tensor()) {
+      *mesh = &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                    x.get_ptr()->impl())
+                    ->dist_attr()
+                    .process_mesh());
+      result = true;
+    }
+  }
+}
+
+void DistTensorTypeParser::operator()(const std::vector<Tensor>& x) {
+  if (!x.empty()) {
+    for (auto& t : x) {
+      if (t.is_dist_tensor()) {
+        *mesh =
+            &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(t.impl())
+                  ->dist_attr()
+                  .process_mesh());
+        result = true;
+        break;
+      }
+    }
+  }
+}
+
+void DistTensorTypeParser::operator()(
+    const paddle::optional<std::vector<Tensor>>& x) {
+  if (x) {
+    if (!(x.get_ptr()->empty())) {
+      for (auto& t : *(x.get_ptr())) {
+        if (t.is_dist_tensor()) {
+          *mesh = &(
+              std::dynamic_pointer_cast<phi::distributed::DistTensor>(t.impl())
+                  ->dist_attr()
+                  .process_mesh());
+          result = true;
+          break;
+        }
+      }
+    }
+  }
+}
+
+void DistTensorConverter::convert(Tensor* x) {
+  if (x->is_dist_tensor()) {
+    PADDLE_ENFORCE_EQ(
+        std::dynamic_pointer_cast<phi::distributed::DistTensor>(x->impl())
+            ->dist_attr()
+            .process_mesh(),
+        *mesh,
+        platform::errors::InvalidArgument(
+            "Input %s has different mesh. However all inputs should "
+            "have the same mesh.",
+            x->name()));
+    return;
+  } else {
+    PADDLE_ENFORCE_EQ(
+        phi::DenseTensor::classof(x->impl().get()),
+        true,
+        platform::errors::InvalidArgument(
+            "Failed to convert input %s impl to phi::distributed::DistTensor "
+            "as it's not phi::DenseTensor.",
+            x->name()));
+    phi::distributed::TensorDistAttr dist_attr(
+        phi::vectorize(x->impl()->dims()));
+    dist_attr.set_process_mesh(*mesh);
+    auto dense_t = static_cast<phi::DenseTensor*>(x->impl().get());
+    x->set_impl(
+        std::make_shared<phi::distributed::DistTensor>(*dense_t, dist_attr));
+  }
+}
+
+void DistTensorConverter::operator()(Tensor* x) {
+  DistTensorConverter::convert(x);
+}
+
+void DistTensorConverter::operator()(paddle::optional<Tensor>* x) {
+  if (*x) {
+    DistTensorConverter::convert(x->get_ptr());
+  }
+}
+
+void DistTensorConverter::operator()(std::vector<Tensor>* x) {
+  if (!x->empty()) {
+    for (auto& t : *x) {
+      DistTensorConverter::convert(&t);
+    }
+  }
+}
+
+void DistTensorConverter::operator()(paddle::optional<std::vector<Tensor>>* x) {
+  if (*x) {
+    if (!(x->get_ptr()->empty())) {
+      for (auto& t : *(x->get_ptr())) {
+        if (!t.is_dist_tensor()) {
+          DistTensorConverter::convert(&t);
+        }
+      }
+    }
+  }
+}
+
 }  // namespace pybind
 }  // namespace paddle

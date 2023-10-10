@@ -118,6 +118,8 @@ def _convert_into_variable(tensor):
     """
     Convert Tensor into Variable.
     """
+    if paddle.framework.use_pir_api():
+        return paddle.pir.core._convert_into_opresult(tensor)
     if isinstance(tensor, core.eager.Tensor):
         # Check whether has been created before.
         new_var = tensor.block._find_var_recursive(tensor.name)
@@ -159,9 +161,8 @@ def _convert_into_variable(tensor):
 def enabled():
     """
     This function checks whether the program runs in dynamic graph mode or not.
-    You can enter dynamic graph mode with :ref:`api_base_dygraph_guard` api,
-    or enable and disable dynamic graph mode with :ref:`api_base_dygraph_enable_dygraph`
-    and :ref:`api_base_dygraph_disable_dygraph` api .
+    You can enable dynamic graph mode with :ref:`api_paddle_disable_static` api,
+    or disable dynamic graph mode with :ref:`api_paddle_enable_static` .
 
     **Note**:
         ``base.dygraph.enabled`` is the alias of ``base.in_dygraph_mode``, and
