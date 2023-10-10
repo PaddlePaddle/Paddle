@@ -510,6 +510,7 @@ class TestScatterOp6(OpTest):
         self.prim_op_type = "prim"
         self.if_enable_cinn()
         self._set_dtype()
+        self.target_dtype = "float16" if self.dtype == np.float16 else "float32"
         self._set_attr()
         self._set_inout()
 
@@ -529,7 +530,6 @@ class TestScatterOp6(OpTest):
 
     def _set_dtype(self):
         self.dtype = np.float32
-        self.target_dtype = "float16" if self.dtype == np.float16 else "float32"
 
     def _set_attr(self):
         self.attrs = {
@@ -550,7 +550,7 @@ class TestScatterOp6(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(["X", "Updates"], "Out", check_prim=True)
+        self.check_grad(["X", "Updates"], "Out")
 
 
 class TestScatterFP16Op6(TestScatterOp6):
@@ -1403,6 +1403,9 @@ class TestScatterOp6ReduceAmin(TestScatterOp6):
             self.target_dtype
         )
 
+    def test_check_grad(self):
+        self.check_grad(["X"], "Out", check_prim=True)
+
 
 class TestScatterAPIReduceAmin(unittest.TestCase):
     def setUp(self):
@@ -1487,6 +1490,35 @@ class TestScatterAPIReduceAmin(unittest.TestCase):
                     (
                         output1.numpy()
                         == np.array([[3.0, 3.0], [2.0, 2.0], [1.0, 1.0]])
+                    ).all(),
+                    True,
+                )
+
+                x.stop_gradient = False
+                updates.stop_gradient = False
+                self.scatter(
+                    x,
+                    index,
+                    updates,
+                    overwrite=False,
+                    reduce=self.reduce,
+                    include_self=False,
+                ).sum().backward()
+
+                self.assertEqual(
+                    (
+                        x.grad.numpy()
+                        == np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]])
+                    ).all(),
+                    True,
+                )
+
+                self.assertEqual(
+                    (
+                        updates.grad.numpy()
+                        == np.array(
+                            [[1.0, 1.0], [0.5, 0.5], [1.0, 1.0], [0.0, 0.0]]
+                        )
                     ).all(),
                     True,
                 )
