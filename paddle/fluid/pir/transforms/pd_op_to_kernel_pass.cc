@@ -941,7 +941,16 @@ std::vector<pir::Value> BuildOpInputList(
         true,
         phi::errors::PreconditionNotMet(
             "[%d]'s input of [%s] op MUST in map pair", i, op_item->name()));
+
     auto new_in = map_value_pair->at(cur_in);
+
+    int tensor_param_index = op_info_parser->GetTensorParamIndexByArgsName(
+        op_info_parser->InputNames()[i]);
+    // the input of op args is not the kernel parameter
+    if (tensor_param_index == -1) {
+      vec_inputs.emplace_back(new_in);
+      continue;
+    }
 
     auto new_in_type = new_in.type();
 
@@ -962,11 +971,12 @@ std::vector<pir::Value> BuildOpInputList(
         auto args_def = kernel.args_def();
         auto input_defs = args_def.input_defs();
 
-        auto dst_backend = GetDstBackend(op_item->name(),
-                                         place,
-                                         op_info_parser,
-                                         kernel.InputAt(i).backend,
-                                         i);
+        auto dst_backend =
+            GetDstBackend(op_item->name(),
+                          place,
+                          op_info_parser,
+                          kernel.InputAt(tensor_param_index).backend,
+                          i);
 
         bool need_trans =
             (in_place.GetType() != phi::AllocationType::UNDEFINED) &&
@@ -1025,12 +1035,13 @@ std::vector<pir::Value> BuildOpInputList(
                 (op_info_parser != nullptr &&
                  !op_info_parser->IsTensorAttribute(i)) &&
                 (paddle::experimental::NeedTransformPlace(
-                    place, kernel.InputAt(i).backend, {}));
+                    place, kernel.InputAt(tensor_param_index).backend, {}));
             if (need_trans) {
               VLOG(6) << "need trans from " << place << " to "
                       << kernel_key.backend();
               // build memcopy op
-              auto out_place = phi::TransToPhiPlace(kernel.InputAt(i).backend);
+              auto out_place = phi::TransToPhiPlace(
+                  kernel.InputAt(tensor_param_index).backend);
               pir::Type out_type;
               if (in_i_type.isa<dialect::AllocatedDenseTensorType>()) {
                 out_type = dialect::AllocatedDenseTensorType::get(
@@ -1083,11 +1094,12 @@ std::vector<pir::Value> BuildOpInputList(
         auto args_def = kernel.args_def();
         auto input_defs = args_def.input_defs();
 
-        auto dst_backend = GetDstBackend(op_item->name(),
-                                         place,
-                                         op_info_parser,
-                                         kernel.InputAt(i).backend,
-                                         i);
+        auto dst_backend =
+            GetDstBackend(op_item->name(),
+                          place,
+                          op_info_parser,
+                          kernel.InputAt(tensor_param_index).backend,
+                          i);
 
         bool need_trans =
             (in_place.GetType() != phi::AllocationType::UNDEFINED) &&
