@@ -32,6 +32,11 @@ class FusedLinearPattern : public pir::drr::DrrPatternBase<FusedLinearPattern> {
     pat.Tensor("tmp") = matmul(pat.Tensor("x"), pat.Tensor("w"));
     pat.Tensor("out") = add(pat.Tensor("tmp"), pat.Tensor("bias"));
 
+    pat.RequireNativeCall([&](const pir::drr::MatchContext &match_ctx) {
+      return (match_ctx.Tensor("w").Shape().size() == 2 &&
+              match_ctx.Tensor("x").Shape().size() >= 2);
+    });
+
     pir::drr::ResultPattern res = pat.ResultPattern();
     const auto &act_attr =
         res.Attr([](const pir::drr::MatchContext &match_ctx) -> std::any {
@@ -67,6 +72,11 @@ class FusedLinearGradPattern
              {&pat.Tensor("tmp_grad"), &pat.Tensor("bias_grad")});
     matmul_grad({&pat.Tensor("x"), &pat.Tensor("w"), &pat.Tensor("tmp_grad")},
                 {&pat.Tensor("x_grad"), &pat.Tensor("w_grad")});
+
+    pat.RequireNativeCall([&](const pir::drr::MatchContext &match_ctx) {
+      return (match_ctx.Tensor("w").Shape().size() == 2 &&
+              match_ctx.Tensor("x").Shape().size() >= 2);
+    });
 
     pir::drr::ResultPattern res = pat.ResultPattern();
     const auto &act_attr =
