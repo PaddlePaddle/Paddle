@@ -297,6 +297,10 @@ Variable* CreateVar(pir::Value value,
   bool is_persisable = false;
   if (def_op->isa<::pir::SetParameterOp>()) {
     is_persisable = true;
+  } else if (def_op->HasAttribute(kAttrIsPersisable)) {
+    is_persisable = def_op->attribute(kAttrIsPersisable)
+                        .dyn_cast<pir::ArrayAttribute>()
+                        .AsVector()[value.dyn_cast<pir::OpResult>().index()];
   }
 
   Variable* var = nullptr;
