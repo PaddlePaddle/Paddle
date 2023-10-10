@@ -38,6 +38,7 @@ from .tensor.linalg import (
     solve,
     svd,
     triangular_solve,
+    vdot,
 )
 
 __all__ = [
@@ -66,4 +67,5 @@ __all__ = [
     'cholesky_solve',
     'triangular_solve',
     'lstsq',
+    'vdot',
 ]

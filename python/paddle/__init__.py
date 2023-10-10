@@ -158,6 +158,7 @@ from .tensor.linalg import (  # noqa: F401
     bincount,
     mv,
     eigvalsh,
+    vdot,
 )
 
 from .tensor.logic import (  # noqa: F401
@@ -780,6 +781,7 @@ __all__ = [
     'isfinite',
     'create_parameter',
     'dot',
+    'vdot',
     'increment',
     'erf',
     'erf_',

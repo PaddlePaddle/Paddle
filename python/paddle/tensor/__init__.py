@@ -47,6 +47,7 @@ from .creation import cauchy_  # noqa: F401
 from .creation import geometric_  # noqa: F401
 from .linalg import matmul  # noqa: F401
 from .linalg import dot  # noqa: F401
+from .linalg import vdot  # noqa: F401
 from .linalg import cov  # noqa: F401
 from .linalg import corrcoef  # noqa: F401
 from .linalg import norm  # noqa: F401
@@ -386,6 +387,7 @@ tensor_method_func = [
     'create_tensor',
     'matmul',
     'dot',
+    'vdot',
     'cov',
     'corrcoef',
     'norm',

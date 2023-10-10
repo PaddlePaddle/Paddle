@@ -3120,6 +3120,12 @@
   get_expected_kernel_type :
     update_loss_scaling_ : GetUpdateLossScalingExpectedKernelType
 
+- op : vdot
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
 - op : viterbi_decode
   inputs :
     {potentials : Input, transition_params : Transition, lengths : Length}

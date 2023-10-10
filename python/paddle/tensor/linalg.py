@@ -2800,10 +2800,11 @@ def eigh(x, UPLO='L', name=None):
         name (str, optional): The default value is None. Normally there is no need for user to set this
             property.  For more information, please refer to :ref:`api_guide_Name`.
 
-    Returns:
-        - out_value(Tensor):  A Tensor with shape [*, N] and data type of float32 and float64.
+    :returns:
+        - out_value (Tensor): A Tensor with shape :math:`[*, N]` and data type of float32 and float64.
             The eigenvalues of eigh op.
-        - out_vector(Tensor): A Tensor with shape [*, N, N] and data type of float32,float64,
+
+        - out_vector (Tensor): A Tensor with shape :math:`[*, N, N]` and data type of float32,float64,
             complex64 and complex128. The eigenvectors of eigh op.
 
     Examples:
@@ -3730,3 +3731,112 @@ def cdist(
     return paddle.linalg.norm(
         x[..., None, :] - y[..., None, :, :], p=p, axis=-1
     )
+
+
+def vdot(x, y, name=None):
+    r"""
+    Compute the dot product for vectors. Different from ``paddle.dot``,
+    if the first argument is complex, the complex conjugate of the first argument is used for the calculation of the dot product.
+
+    .. math::
+
+        out = \sum_{i=0}^{N} \overline{x_{i}}y_{i}
+
+    Where:
+
+    - :math:`\overline{x_{i}}`: the conjugate for the :math:`i`-th complex tensor
+    - :math:`N`: the size of 1-D Tensor
+
+    Note:
+       Support 1-d and 2-d Tensor. When it is 2d, the first dimension of this matrix
+       is the batch dimension, which means that the vectors of multiple batches are dotted.
+
+    Args:
+        x (Tensor): 1-D or 2-D ``Tensor``, its data type should be ``float32``, ``float64``, ``int32``, ``int64``, ``complex64``, ``complex128``
+        y (Tensor): 1-D or 2-D ``Tensor``, its data type should be ``float32``, ``float64``, ``int32``, ``int64``, ``complex64``, ``complex128``
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor: the calculated result Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # 1-D Tensor * 1-D Tensor
+            >>> x = paddle.to_tensor([1+2j, 3-1j])
+            >>> y = paddle.to_tensor([2+1j, 4-0j])
+            >>> z = paddle.vdot(x, y)
+            >>> print(z)
+            Tensor(shape=[], dtype=complex64, place=Place(cpu), stop_gradient=True,
+                   (16+1j))
+
+            >>> z = paddle.vdot(y, x)
+            >>> print(z)
+            Tensor(shape=[], dtype=complex64, place=Place(cpu), stop_gradient=True,
+                   (16-1j))
+
+            >>> # 2-D Tensor * 2-D Tensor
+            >>> x = paddle.to_tensor([[1+2j, 3-1j], [3-1j, 1j]])
+            >>> y = paddle.to_tensor([[2+1j, 4-0j], [2j, 3+4j]])
+            >>> z = paddle.vdot(x, y)
+            >>> print(z)
+            Tensor(shape=[2], dtype=complex64, place=Place(cpu), stop_gradient=True,
+            [(16+1j), (2+3j) ])
+
+            >>> z = paddle.vdot(y, x)
+            >>> print(z)
+            Tensor(shape=[2], dtype=complex64, place=Place(cpu), stop_gradient=True,
+            [(16-1j), (2-3j) ])
+
+    """
+    if in_dynamic_mode():
+        return _C_ops.vdot(x, y)
+    else:
+        op_type = 'vdot'
+        assert x is not None, f'x cannot be None in {op_type}'
+        assert y is not None, f'y cannot be None in {op_type}'
+
+        check_variable_and_dtype(
+            x,
+            'x',
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ],
+            op_type,
+        )
+        check_variable_and_dtype(
+            y,
+            'y',
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ],
+            op_type,
+        )
+
+        helper = LayerHelper(op_type, **locals())
+        if name is None:
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        else:
+            out = helper.create_variable(
+                name=name, dtype=x.dtype, persistable=False
+            )
+        helper.append_op(
+            type="vdot", inputs={'X': x, 'Y': y}, attrs={}, outputs={"Out": out}
+        )
+        return out

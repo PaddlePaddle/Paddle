@@ -156,6 +156,7 @@ using experimental::tril;
 using experimental::unbind;
 using experimental::unique;
 using experimental::unsqueeze;
+using experimental::vdot;
 using experimental::where;
 using experimental::zeros;
 

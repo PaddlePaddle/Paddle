@@ -133,6 +133,7 @@ VJPS = [
     'solve_grad',
     'diag_grad',
     'trace_grad',
+    'vdot_grad',
 ]
 
 
@@ -294,6 +295,7 @@ BACKENDS = [
     'diag_grad',
     'trace_grad',
     'flip',
+    'vdot_grad',
 ]
 
 

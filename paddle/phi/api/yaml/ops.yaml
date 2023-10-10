@@ -2731,6 +2731,16 @@
     data_type : query
   optional : mask
 
+- op : vdot
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : DotInferMeta
+  kernel :
+    func : vdot
+    data_type : x
+  backward : vdot_grad
+
 - op : view_dtype
   args : (Tensor input, DataType dtype)
   output : Tensor(out)
