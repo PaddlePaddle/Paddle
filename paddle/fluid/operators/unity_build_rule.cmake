@@ -123,7 +123,6 @@ register_unity_group(
   isfinite_v2_op.cc)
 register_unity_group(
   cc
-  inplace_abn_op.cc
   interpolate_v2_op.cc
   inverse_op.cc
   is_empty_op.cc
@@ -406,7 +405,6 @@ register_unity_group(
   isfinite_v2_op.cu)
 register_unity_group(
   cu
-  inplace_abn_op.cu
   interpolate_v2_op.cu
   isfinite_op.cu
   l1_norm_op.cu

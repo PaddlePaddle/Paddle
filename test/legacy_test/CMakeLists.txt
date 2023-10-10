@@ -852,7 +852,6 @@ set_tests_properties(
   test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(
   test_sync_batch_norm_op
-  test_inplace_abn_op
   test_parallel_executor_seresnext_base_gpu
   test_parallel_executor_seresnext_with_reduce_gpu
   test_parallel_executor_seresnext_with_fuse_all_reduce_gpu
