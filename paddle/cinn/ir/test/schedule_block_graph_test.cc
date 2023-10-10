@@ -100,8 +100,8 @@ TEST(ScheduleBlockGraph, elementwise) {
   Context::Global().ResetNameId();
   frontend::Program program = CreateElementwiseProgram();
   IRSchedule ir_sch = MakeIRSchedule(&program);
-  ScheduleBlockGraph sbg(ir_sch);
   LOG(INFO) << GetIR(ir_sch);
+  ScheduleBlockGraph sbg(ir_sch);
   LOG(INFO) << sbg.Visualize();
   CHECK_EQ(sbg.BlockIdsInOrder().size(), 6);
   CHECK_EQ(sbg.nodes().size(), 6);
@@ -190,8 +190,8 @@ TEST(ScheduleBlockGraph, arg_max) {
   frontend::Program program = builder.Build();
 
   IRSchedule ir_sch = MakeIRSchedule(&program);
-  ScheduleBlockGraph sbg(ir_sch);
   LOG(INFO) << GetIR(ir_sch);
+  ScheduleBlockGraph sbg(ir_sch);
   LOG(INFO) << sbg.Visualize();
   CHECK_EQ(sbg.BlockIdsInOrder().size(), 3);
   CHECK_EQ(sbg.nodes().size(), 3);

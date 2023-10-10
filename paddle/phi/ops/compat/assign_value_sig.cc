@@ -33,6 +33,9 @@ KernelSignature AssignValueOpArgumentMapping(
   } else if (dtype == /*FP32*/ 5) {
     return KernelSignature(
         "assign_value", {}, {"shape", "dtype", "fp32_values"}, {"Out"});
+  } else if (dtype == /*FP64*/ 6) {
+    return KernelSignature(
+        "assign_value", {}, {"shape", "dtype", "fp64_values"}, {"Out"});
   } else if (dtype == /*INT64*/ 3) {
     return KernelSignature(
         "assign_value", {}, {"shape", "dtype", "int64_values"}, {"Out"});

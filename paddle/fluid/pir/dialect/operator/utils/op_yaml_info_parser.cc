@@ -92,6 +92,26 @@ const std::map<std::string, uint32_t>& OpYamlInfoParser::OutputName2Id() const {
   return output_name2id_;
 }
 
+const std::string& OpYamlInfoParser::GetInputType(uint32_t input_id) const {
+  PADDLE_ENFORCE_EQ(input_id < input_name_list_.size(),
+                    true,
+                    phi::errors::NotFound("Exceeding maximum input id %d",
+                                          input_name_list_.size()));
+  std::string input_name = input_name_list_[input_id];
+  auto it = input_info_.find(input_name);
+  return it->second.type_name;
+}
+
+const std::string& OpYamlInfoParser::GetOutputType(uint32_t output_id) const {
+  PADDLE_ENFORCE_EQ(output_id < output_name_list_.size(),
+                    true,
+                    phi::errors::NotFound("Exceeding maximum output id %d",
+                                          output_name_list_.size()));
+  std::string output_name = output_name_list_[output_id];
+  auto it = output_info_.find(output_name);
+  return it->second.type_name;
+}
+
 const std::vector<uint32_t>& OpYamlInfoParser::NoNeedBufferIds() const {
   return no_need_buffer_ids_;
 }

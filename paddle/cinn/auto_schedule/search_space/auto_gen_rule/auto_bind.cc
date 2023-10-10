@@ -16,10 +16,10 @@
 
 #include <glog/logging.h>
 
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 
 namespace cinn {
 namespace auto_schedule {

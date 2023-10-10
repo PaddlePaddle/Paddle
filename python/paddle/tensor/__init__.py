@@ -43,6 +43,8 @@ from .creation import empty  # noqa: F401
 from .creation import empty_like  # noqa: F401
 from .creation import complex  # noqa: F401
 from .creation import polar  # noqa: F401
+from .creation import cauchy_  # noqa: F401
+from .creation import geometric_  # noqa: F401
 from .linalg import matmul  # noqa: F401
 from .linalg import dot  # noqa: F401
 from .linalg import cov  # noqa: F401
@@ -51,9 +53,11 @@ from .linalg import norm  # noqa: F401
 from .linalg import pca_lowrank  # noqa: F401
 from .linalg import cond  # noqa: F401
 from .linalg import transpose  # noqa: F401
+from .linalg import transpose_  # noqa: F401
 from .linalg import lstsq  # noqa: F401
 from .linalg import dist  # noqa: F401
 from .linalg import t  # noqa: F401
+from .linalg import t_  # noqa: F401
 from .linalg import cross  # noqa: F401
 from .linalg import cholesky  # noqa: F401
 from .linalg import bmm  # noqa: F401
@@ -323,10 +327,13 @@ from .math import i1  # noqa: F401
 from .math import i1e  # noqa: F401
 from .math import polygamma  # noqa: F401
 from .math import polygamma_  # noqa: F401
+from .math import renorm  # noqa: F401
+from .math import renorm_  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
 from .random import normal  # noqa: F401
+from .random import normal_  # noqa: F401
 from .random import uniform  # noqa: F401
 from .random import uniform_  # noqa: F401
 from .random import randn  # noqa: F401
@@ -370,8 +377,11 @@ from .array import create_array  # noqa: F401
 
 from .einsum import einsum  # noqa: F401
 
+from ..signal import istft  # noqa: F401
+from ..signal import stft  # noqa: F401
+
 # this list used in math_op_patch.py for _binary_creator_
-tensor_method_func = [  # noqa
+tensor_method_func = [
     'create_parameter',
     'create_tensor',
     'matmul',
@@ -381,9 +391,12 @@ tensor_method_func = [  # noqa
     'norm',
     'cond',
     'transpose',
+    'cauchy_',
+    'geometric_',
     'lstsq',
     'dist',
     't',
+    't_',
     'cross',
     'cholesky',
     'bmm',
@@ -400,6 +413,7 @@ tensor_method_func = [  # noqa
     'all',
     'any',
     'asin',
+    'asin_',
     'atan',
     'ceil',
     'ceil_',
@@ -483,8 +497,6 @@ tensor_method_func = [  # noqa
     'add_',
     'subtract',
     'subtract_',
-    'atan',
-    'logsumexp',
     'inverse',
     'log1p',
     'log1p_',
@@ -558,6 +570,10 @@ tensor_method_func = [  # noqa
     'stack',
     'strided_slice',
     'transpose',
+    'transpose_',
+    'cauchy_',
+    'geometric_',
+    'tan_',
     'unique',
     'unique_consecutive',
     'unsqueeze',
@@ -618,6 +634,7 @@ tensor_method_func = [  # noqa
     'triangular_solve',
     'asinh',
     'atanh',
+    'atanh_',
     'acosh',
     'lu',
     'lu_unpack',
@@ -673,6 +690,31 @@ tensor_method_func = [  # noqa
     'i1e',
     'polygamma',
     'polygamma_',
+    'atan2',
+    'diagflat',
+    'multinomial',
+    'pinv',
+    'renorm',
+    'renorm_',
+    'tan',
+    'tan_',
+    'tril',
+    'tril_',
+    'triu',
+    'triu_',
+    'stft',
+    'istft',
+    'abs_',
+    'acos_',
+    'atan_',
+    'cos_',
+    'cosh_',
+    'sin_',
+    'sinh_',
+    'acosh_',
+    'asinh_',
+    'diag',
+    'normal_',
 ]
 
 # this list used in math_op_patch.py for magic_method bind

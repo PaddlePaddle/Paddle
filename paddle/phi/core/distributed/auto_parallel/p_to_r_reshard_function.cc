@@ -14,6 +14,8 @@
 
 #include "paddle/phi/core/distributed/auto_parallel/p_to_r_reshard_function.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
@@ -43,6 +45,7 @@ void PToRReshardFunction::Eval(DeviceContext* dev_ctx,
                                const DistTensor& in,
                                const TensorDistAttr& out_dist_attr,
                                DistTensor* out) {
+  VLOG(3) << "Call PToRReshardFunction Eval";
   const auto& in_dist_attr = in.dist_attr();
   const auto& in_process_mesh = in_dist_attr.process_mesh();
   const auto& in_process_ids = in_process_mesh.process_ids();

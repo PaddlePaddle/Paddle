@@ -39,6 +39,7 @@ from ..framework import (
     _get_paddle_place,
     convert_np_dtype_to_dtype_,
     core,
+    dygraph_only,
     in_dynamic_mode,
     in_dynamic_or_pir_mode,
     in_pir_mode,
@@ -880,11 +881,7 @@ def full_like(x, fill_value, dtype=None, name=None):
 
 def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     if in_dynamic_or_pir_mode():
-        place = (
-            _current_expected_place()
-            if not in_pir_mode()
-            else paddle.base.core.Place()
-        )
+        place = _current_expected_place()
         if force_cpu:
             place = core.CPUPlace()
         if isinstance(shape, (list, tuple)):
@@ -1342,8 +1339,8 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
 
     if dtype is None:
         for val in [start, end, step]:
-            if isinstance(val, Variable):
-                if not val.is_integer():
+            if isinstance(val, (Variable, paddle.pir.OpResult)):
+                if not paddle.is_integer(val):
                     dtype = paddle.get_default_dtype()
                     break
                 else:
@@ -1356,35 +1353,35 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
                     dtype = 'int64'
 
     out_shape = None
-    if not in_dynamic_mode() and (
-        not isinstance(start, Variable)
-        and not isinstance(end, Variable)
-        and not isinstance(step, Variable)
+    if not in_dynamic_or_pir_mode() and (
+        not isinstance(start, (Variable, paddle.pir.OpResult))
+        and not isinstance(end, (Variable, paddle.pir.OpResult))
+        and not isinstance(step, (Variable, paddle.pir.OpResult))
     ):
         out_shape = [int(math.ceil((end - start) / step))]
 
-    if not isinstance(dtype, core.VarDesc.VarType):
+    if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if not isinstance(start, Variable):
+    if not isinstance(start, (Variable, paddle.pir.OpResult)):
         with device_guard("cpu"):
             start = fill_constant([1], dtype, start, force_cpu=True)
     elif start.dtype != dtype:
         start = paddle.cast(start, dtype)
 
-    if not isinstance(end, Variable):
+    if not isinstance(end, (Variable, paddle.pir.OpResult)):
         with device_guard("cpu"):
             end = fill_constant([1], dtype, end, force_cpu=True)
     elif end.dtype != dtype:
         end = paddle.cast(end, dtype)
 
-    if not isinstance(step, Variable):
+    if not isinstance(step, (Variable, paddle.pir.OpResult)):
         with device_guard("cpu"):
             step = fill_constant([1], dtype, step, force_cpu=True)
     elif step.dtype != dtype:
         step = paddle.cast(step, dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.arange(start, end, step, dtype, _current_expected_place())
     else:
         check_dtype(
@@ -1503,7 +1500,7 @@ def tril(x, diagonal=0, name=None):
              [5 , 0 , 0 , 0 ],
              [9 , 10, 0 , 0 ]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.tril(x, diagonal)
     else:
         return _tril_triu_op(LayerHelper('tril', **locals()))
@@ -1580,7 +1577,7 @@ def triu(x, diagonal=0, name=None):
              [0 , 10, 11, 12]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.triu(x, diagonal)
     else:
         return _tril_triu_op(LayerHelper('triu', **locals()))
@@ -1958,7 +1955,7 @@ def empty(shape, dtype=None, name=None):
 
     dtype = convert_dtype(dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         shape = paddle.utils.convert_shape_to_list(shape)
         out = _C_ops.empty(
             shape, convert_np_dtype_to_dtype_(dtype), _current_expected_place()
@@ -2145,7 +2142,7 @@ def assign(x, output=None):
              [2.5 2.5]]
     """
     # speed up
-    if x is output and isinstance(x, Variable):
+    if x is output and isinstance(x, (Variable, paddle.pir.OpResult)):
         return x
 
     input = x
@@ -2153,7 +2150,16 @@ def assign(x, output=None):
     check_type(
         input,
         'input',
-        (Variable, np.ndarray, list, tuple, float, int, bool),
+        (
+            Variable,
+            paddle.pir.OpResult,
+            np.ndarray,
+            list,
+            tuple,
+            float,
+            int,
+            bool,
+        ),
         'assign',
     )
 
@@ -2166,12 +2172,17 @@ def assign(x, output=None):
     # but in_dynamic_mode()==False under @to_static, which means
     # isinstance(Tensor, Variable) == False. It will cause return None
     # after this api.
-    if isinstance(input, (Variable, core.eager.Tensor)):
+    if isinstance(input, (Variable, core.eager.Tensor, paddle.pir.OpResult)):
         if in_dynamic_mode():
             if output is None:
                 output = _C_ops.assign(input)
             else:
                 _C_ops.assign_out_(input, output)
+        elif in_pir_mode():
+            if output is None:
+                output = _C_ops.assign(input)
+            else:
+                output = _C_ops.assign_out_(input, output)
         else:
             check_dtype(
                 input.dtype,
@@ -2199,19 +2210,25 @@ def assign(x, output=None):
             )
     elif isinstance(input, np.ndarray):
         # We now support the form of [var, VAR...] if the Var.shape=[1,]
-        if len(input.shape) > 0 and any(isinstance(x, Variable) for x in input):
+        if len(input.shape) > 0 and any(
+            isinstance(x, (Variable, paddle.pir.OpResult)) for x in input
+        ):
             # We only deal with the case where the list is nested one level, convert all scalars into variables, and then use stack to process. It is necessary to ensure the consistency of types.
             if not all(
                 x.shape == (1,)
                 for x in input
-                if isinstance(x, (Variable, core.eager.Tensor))
+                if isinstance(
+                    x, (Variable, core.eager.Tensor, paddle.pir.OpResult)
+                )
             ):
                 raise TypeError(
                     "Unsupport paddle.assign([Variable, Variable...]) with non-scalar variable."
                 )
 
             def convert_scalar(x):
-                if not isinstance(x, (Variable, core.eager.Tensor)):
+                if not isinstance(
+                    x, (Variable, core.eager.Tensor, paddle.pir.OpResult)
+                ):
                     return assign(x)
                 return x
 
@@ -2236,16 +2253,33 @@ def assign(x, output=None):
                 "it to float32"
             )
             dtype = core.VarDesc.VarType.FP32
-        if dtype == core.VarDesc.VarType.BOOL:
+
+        if dtype == core.DataType.FLOAT64:
+            # Setting FP64 numpy data is not supported in Paddle, so we
+            # use FP32 here
+            warnings.warn(
+                "paddle.assign doesn't support float64 input now due "
+                "to current platform protobuf data limitation, we convert "
+                "it to float32"
+            )
+            dtype = core.DataType.FLOAT32
+
+        if dtype == core.VarDesc.VarType.BOOL or dtype == core.DataType.BOOL:
             value_name = "bool_values"
             values = [int(v) for v in input.flat]
-        elif dtype == core.VarDesc.VarType.FP32:
+        elif (
+            dtype == core.VarDesc.VarType.FP32 or dtype == core.DataType.FLOAT32
+        ):
             value_name = "fp32_values"
             values = [float(v) for v in input.flat]
-        elif dtype == core.VarDesc.VarType.INT32:
+        elif (
+            dtype == core.VarDesc.VarType.INT32 or dtype == core.DataType.INT32
+        ):
             value_name = "int32_values"
             values = [int(v) for v in input.flat]
-        elif dtype == core.VarDesc.VarType.INT64:
+        elif (
+            dtype == core.VarDesc.VarType.INT64 or dtype == core.DataType.INT64
+        ):
             value_name = "int64_values"
             values = [int(v) for v in input.flat]
         else:
@@ -2259,16 +2293,25 @@ def assign(x, output=None):
                 "The size of input is too big. Please consider "
                 "saving it to file and 'load_op' to load it"
             )
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             if output is None:
                 output = zeros(list(input.shape), dtype)
-            _C_ops.assign_value_(
-                output,
-                list(input.shape),
-                dtype,
-                values,
-                _current_expected_place(),
-            )
+            if in_dynamic_mode():
+                _C_ops.assign_value_(
+                    output,
+                    list(input.shape),
+                    dtype,
+                    values,
+                    _current_expected_place(),
+                )
+            else:
+                output = _C_ops.assign_value_(
+                    output,
+                    list(input.shape),
+                    dtype,
+                    values,
+                    _current_expected_place(),
+                )
         else:
             if output is None:
                 output = helper.create_variable_for_type_inference(
@@ -2655,3 +2698,71 @@ def polar(abs, angle, name=None):
     )
 
     return paddle.complex(abs * paddle.cos(angle), abs * paddle.sin(angle))
+
+
+@dygraph_only
+def cauchy_(x, loc=0, scale=1, name=None):
+    """Fills the tensor with numbers drawn from the Cauchy distribution.
+
+    Args:
+        x (Tenosr): the tensor will be filled, The data type is float32 or float64.
+        loc (scalar, optional):  Location of the peak of the distribution. The data type is float32 or float64.
+        scale (scalar, optional): The half-width at half-maximum (HWHM). The data type is float32 or float64. Must be positive values.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor: input tensor with numbers drawn from the Cauchy distribution.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.randn([3, 4])
+            >>> x.cauchy_(1, 2)
+            >>> # doctest: +SKIP('random check')
+            >>> print(x)
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[ 3.80087137,  2.25415039,  2.77960515,  7.64125967],
+             [ 0.76541221,  2.74023032,  1.99383152, -0.12685823],
+             [ 1.45228469,  1.76275957, -4.30458832, 34.74880219]])
+
+    """
+    x.normal_()
+    loc = paddle.to_tensor(loc).astype(x.dtype)
+    half = paddle.to_tensor(0.5).astype(x.dtype)
+    x.subtract_(half).scale_(np.pi).tan_().scale_(scale).add_(loc)
+    return x
+
+
+@dygraph_only
+def geometric_(x, probs, name=None):
+    """Fills the tensor with numbers drawn from the Geometric distribution.
+
+    Args:
+        x (Tenosr): the tensor will be filled, The data type is float32 or float64.
+        probs (Real|Tensor): Probability parameter.
+            The value of probs must be positive. When the parameter is a tensor, probs is probability of success for each trial.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor: input tensor with numbers drawn from the Geometric distribution.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.randn([3, 4])
+            >>> x.geometric_(0.3)
+            >>> # doctest: +SKIP('random check')
+            >>> print(x)
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[2.42739224, 4.78268528, 1.23302543, 3.76555204],
+             [1.38877118, 0.16075331, 0.16401523, 2.47349310],
+             [1.72872102, 2.76533413, 0.33410925, 1.63351011]])
+
+    """
+    tiny = np.finfo(dtype=convert_dtype(x.dtype)).tiny
+    probs = paddle.to_tensor(probs).astype(x.dtype)
+    x.uniform_(min=float(tiny), max=float(1))
+    x.log_().divide_(paddle.log1p(-(probs)))
+    return x

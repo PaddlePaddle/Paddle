@@ -461,7 +461,7 @@ EOF
         fi
         echo "PR whl Size: $PR_whlSize"
         echo "ipipe_log_param_PR_whl_Size: $PR_whlSize" >> ${PADDLE_ROOT}/build/build_summary.txt
-        PR_soSize=$($com ${PADDLE_ROOT}/build/python/paddle/fluid/libpaddle.so |awk '{print $1}')
+        PR_soSize=$($com ${PADDLE_ROOT}/build/python/paddle/base/libpaddle.so |awk '{print $1}')
         echo "PR so Size: $PR_soSize"
         echo "ipipe_log_param_PR_so_Size: $PR_soSize" >> ${PADDLE_ROOT}/build/build_summary.txt
     fi
@@ -687,7 +687,6 @@ EOF
             echo "Unittests with nightly labels  are only run at night"
             echo "========================================="
         fi
-        bash $PADDLE_ROOT/tools/check_added_ut.sh
         check_approvals_of_unittest 2
         # serial_list: Some single tests need to reduce concurrency
         single_list="^test_cdist$|^test_resnet$|^test_resnet_v2$|^test_concat_op$|^test_transformer$|^test_bert_with_stride$|^test_paddle_save_load$"
@@ -797,7 +796,6 @@ function run_linux_cpu_test() {
 EOF
 set -x
         export TEST_NUM_PERCENT_CASES=0.15
-        bash $PADDLE_ROOT/tools/check_added_ut.sh
         if [ -a "$PADDLE_ROOT/duplicate_ut" ];then
             duplicate_uts=$(cat $PADDLE_ROOT/duplicate_ut|sed -e 's/\r//g')
             if [[ "$duplicate_uts" != "" ]];then
@@ -2741,7 +2739,10 @@ function enable_unused_var_check() {
     # Currently, use it in coverage CI job.
     export FLAGS_enable_unused_var_check=1
 }
-
+function check_coverage_added_ut() {
+    # NOTE(risemeup1):The step of checking added test can be placed on the cpu machine to save gpu resources
+    bash $PADDLE_ROOT/tools/check_added_ut.sh
+}
 function gen_doc_lib() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -3553,6 +3554,7 @@ EOF
     export WITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
     export WITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
     export WITH_SHARED_PHI=${WITH_SHARED_PHI:-OFF}
+    export WITH_NVCC_LAZY=${WITH_NVCC_LAZY:-ON}
     
     if [ "$SYSTEM" == "Linux" ];then
       if [ `nproc` -gt 16 ];then
@@ -3988,6 +3990,7 @@ function main() {
         check_diff_file_for_coverage
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
         enable_unused_var_check
+        check_coverage_added_ut
         check_coverage_build
         ;;
       gpu_cicheck_coverage)

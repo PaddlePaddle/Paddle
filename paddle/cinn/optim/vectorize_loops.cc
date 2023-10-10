@@ -25,10 +25,10 @@
 
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_replace.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/unroll_loops.h"
@@ -148,11 +148,11 @@ class TensorVectorizeTeller : public ir::IRMutator<const Expr *> {
     }
 
     // check tensor accessed sequentially by comparing index one by one
-    Expr first_idx = optim::IRCopy(indices.back());
+    Expr first_idx = ir::ir_utils::IRCopy(indices.back());
     cinn::ir::ir_utils::IrReplace(&first_idx, Expr(iter_var_), Expr(0));
     const auto &interval = var_intervals_->at(iter_var_->name);
     for (int i = 1; i < interval.r; ++i) {
-      Expr next_idx = optim::IRCopy(indices.back());
+      Expr next_idx = ir::ir_utils::IRCopy(indices.back());
       cinn::ir::ir_utils::IrReplace(&next_idx, Expr(iter_var_), Expr(i));
       auto gap = common::AutoSimplify(Expr(next_idx - first_idx));
       if (!gap.As<IntImm>() || gap.as_int32() != i) {
@@ -800,7 +800,7 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
         cuda_vectorizer.Visit(&new_forloop->body);
         // unroll the new forloop to compute each element of the vector
         // iteratively
-        auto copied_loop = optim::IRCopy(_new_forloop);
+        auto copied_loop = ir::ir_utils::IRCopy(_new_forloop);
         copied_loop.As<ir::For>()->set_unrolled();
         optim::UnrollLoop(&copied_loop);
         // add cast exprs of vector type in the front of vectorized forloop,
@@ -883,12 +883,13 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
           Var new_iterator_outer(
               common::UniqName(outer_for->loop_var->name + "_s"));
 
-          Expr inner_for_b = Block::Make({For::Make(new_iterator_inner,
-                                                    inner_for->min,
-                                                    b,
-                                                    ForType::Serial,
-                                                    DeviceAPI::UNK,
-                                                    IRCopy(inner_for->body))});
+          Expr inner_for_b =
+              Block::Make({For::Make(new_iterator_inner,
+                                     inner_for->min,
+                                     b,
+                                     ForType::Serial,
+                                     DeviceAPI::UNK,
+                                     ir::ir_utils::IRCopy(inner_for->body))});
           cinn::ir::ir_utils::IrReplace(
               &inner_for_b, inner_for->loop_var, Expr(new_iterator_inner));
 

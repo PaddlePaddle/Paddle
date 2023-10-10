@@ -14,14 +14,7 @@
 """Definition of device workers."""
 import sys
 
-__all__ = [
-    'DeviceWorker',
-    'Hogwild',
-    'DownpourSGD',
-    'Section',
-    'DownpourSGDOPT',
-    'HeterSection',
-]
+__all__ = []
 
 
 class DeviceWorker:
