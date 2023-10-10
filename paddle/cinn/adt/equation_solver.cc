@@ -56,9 +56,9 @@ bool HasReplicatedValues(const List<Value>& values) {
 }
 
 std::unordered_map<Variable, Value> InferValuesImpl(
-    const IndexDot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>& dot,
+    const IndexDot<List<Dim>, tOut<Index>, tIn<List<Iterator>>>& dot,
     IndexExprInferContext* ctx) {
-  const auto& [strides, out_index, in_iters] = dot.tuple();
+  const auto& [dims, out_index, in_iters] = dot.tuple();
   List<Value> in_values;
   for (const auto& iter : *in_iters.value()) {
     in_values->emplace_back(ctx->GetValue(iter));
@@ -66,25 +66,25 @@ std::unordered_map<Variable, Value> InferValuesImpl(
   if (HasReplicatedValues(in_values)) {
     return {{out_index.value(), Undefined{}}};
   }
-  List<Constant> stride_constants{};
-  for (const auto& stride : *strides) {
-    stride_constants->emplace_back(stride);
+  List<Constant> dim_constants{};
+  for (const auto& dim : *dims) {
+    dim_constants->emplace_back(dim);
   }
-  IndexDotValue<Value, Constant> index_dot{in_values, stride_constants};
+  IndexDotValue<Value, Constant> index_dot{in_values, dim_constants};
   return {{out_index.value(), index_dot}};
 }
 
 std::unordered_map<Variable, Value> InferValuesImpl(
-    const IndexUnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>& undot,
+    const IndexUnDot<List<Dim>, tOut<List<Iterator>>, tIn<Index>>& undot,
     IndexExprInferContext* ctx) {
-  const auto& [strides, out_iters, in_index] = undot.tuple();
+  const auto& [dims, out_iters, in_index] = undot.tuple();
 
-  List<Constant> stride_constants{};
-  for (const auto& stride : *strides) {
-    stride_constants->emplace_back(stride);
+  List<Constant> dim_constants{};
+  for (const auto& dim : *dims) {
+    dim_constants->emplace_back(dim);
   }
   IndexUnDotValue<Value, Constant> index_undot{ctx->GetValue(in_index.value()),
-                                               stride_constants};
+                                               dim_constants};
 
   std::unordered_map<Variable, Value> ret{};
   for (std::size_t idx = 0; idx < out_iters.value()->size(); ++idx) {

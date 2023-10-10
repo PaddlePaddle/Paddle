@@ -103,8 +103,8 @@ class IGroup final {
     auto* mut_constants_provider =
         const_cast<EquationFunctionConstantsProvider*>(
             constants_provider_.get());
-    for (const auto& [stride, stride_value] : ctx.stride2constant()) {
-      CHECK(mut_constants_provider->AddStride(stride, stride_value));
+    for (const auto& [dim, dim_value] : ctx.dim2constant()) {
+      CHECK(mut_constants_provider->AddDim(dim, dim_value));
     }
   }
 

@@ -34,48 +34,44 @@ ExprT MatchAndRewrite(const ExprT& expr, const IndexExprInferContext& ctx) {
 }
 
 struct SimplifyDot {
-  using source_pattern_type = IndexDotValue<Value, List<Stride>>;
+  using source_pattern_type = IndexDotValue<Value, List<Dim>>;
 
   Value MatchAndRewrite(const Value& value, const IndexExprInferContext& ctx) {
-    const auto& [iterators, strides_constants] =
+    const auto& [iterators, dims_constants] =
         value.Get<IndexDotValue<Value, Constant>>().tuple();
-    List<Constant> int64_strides{};
-    for (const auto& stride_constant :
-         *strides_constants.Get<List<Constant>>()) {
-      const Constant& int64_stride =
-          ctx.GetStrideSize(stride_constant.Get<Stride>());
-      if (int64_stride.Has<std::int64_t>()) {
-        int64_strides->emplace_back(int64_stride);
+    List<Constant> int64_dims{};
+    for (const auto& dim_constant : *dims_constants.Get<List<Constant>>()) {
+      const Constant& int64_dim = ctx.GetDimSize(dim_constant.Get<Dim>());
+      if (int64_dim.Has<std::int64_t>()) {
+        int64_dims->emplace_back(int64_dim);
       } else {
         return IndexDotValue<Value, Constant>{SimplifyValue(iterators, ctx),
-                                              strides_constants};
+                                              dims_constants};
       }
     }
     return IndexDotValue<Value, Constant>{SimplifyValue(iterators, ctx),
-                                          int64_strides};
+                                          int64_dims};
   }
 };
 
 struct SimplifyUnDot {
-  using source_pattern_type = IndexUnDotValue<Value, List<Stride>>;
+  using source_pattern_type = IndexUnDotValue<Value, List<Dim>>;
 
   Value MatchAndRewrite(const Value& value, const IndexExprInferContext& ctx) {
-    const auto& [index, strides_constants] =
+    const auto& [index, dims_constants] =
         value.Get<IndexUnDotValue<Value, Constant>>().tuple();
-    List<Constant> int64_strides{};
-    for (const auto& stride_constant :
-         *strides_constants.Get<List<Constant>>()) {
-      const Constant& int64_stride =
-          ctx.GetStrideSize(stride_constant.Get<Stride>());
-      if (int64_stride.Has<std::int64_t>()) {
-        int64_strides->emplace_back(int64_stride);
+    List<Constant> int64_dims{};
+    for (const auto& dim_constant : *dims_constants.Get<List<Constant>>()) {
+      const Constant& int64_dim = ctx.GetDimSize(dim_constant.Get<Dim>());
+      if (int64_dim.Has<std::int64_t>()) {
+        int64_dims->emplace_back(int64_dim);
       } else {
         return IndexUnDotValue<Value, Constant>{SimplifyValue(index, ctx),
-                                                strides_constants};
+                                                dims_constants};
       }
     }
     return IndexUnDotValue<Value, Constant>{SimplifyValue(index, ctx),
-                                            int64_strides};
+                                            int64_dims};
   }
 };
 
@@ -98,7 +94,7 @@ struct SimplifyDotUndot {
                     List<std::int64_t>>;
 
   Value MatchAndRewrite(const Value& value, const IndexExprInferContext& ctx) {
-    const auto& [list_get_item_values, dot_strides] =
+    const auto& [list_get_item_values, dot_dims] =
         value.Get<IndexDotValue<Value, Constant>>().tuple();
     const auto& list_get_items = list_get_item_values.Get<List<Value>>();
     std::optional<Value> pre_index_undot{std::nullopt};
@@ -107,12 +103,12 @@ struct SimplifyDotUndot {
           list_get_items.Get(i).Get<ListGetItem<Value, Constant>>().tuple();
       if (!constant_idx.Get<std::int64_t>() == i) {
         return IndexDotValue<Value, Constant>{
-            SimplifyValue(list_get_item_values, ctx), dot_strides};
+            SimplifyValue(list_get_item_values, ctx), dot_dims};
       }
       if (pre_index_undot.has_value()) {
         if (!(pre_index_undot.value() == index_undot_value)) {
           return IndexDotValue<Value, Constant>{
-              SimplifyValue(list_get_item_values, ctx), dot_strides};
+              SimplifyValue(list_get_item_values, ctx), dot_dims};
         } else {
           // do nothing
         }
@@ -121,15 +117,15 @@ struct SimplifyDotUndot {
       }
     }
     CHECK(pre_index_undot.has_value());
-    const auto& [index_value, undot_strides] =
+    const auto& [index_value, undot_dims] =
         pre_index_undot.value().Get<IndexUnDotValue<Value, Constant>>().tuple();
-    CHECK(dot_strides.Has<List<Constant>>());
-    CHECK(undot_strides.Has<List<Constant>>());
-    if (dot_strides == undot_strides) {
+    CHECK(dot_dims.Has<List<Constant>>());
+    CHECK(undot_dims.Has<List<Constant>>());
+    if (dot_dims == undot_dims) {
       return index_value;
     }
     return IndexDotValue<Value, Constant>{
-        SimplifyValue(list_get_item_values, ctx), dot_strides};
+        SimplifyValue(list_get_item_values, ctx), dot_dims};
   }
 };
 
@@ -142,14 +138,14 @@ struct SimplifyUndotDot {
   Value MatchAndRewrite(const Value& value, const IndexExprInferContext& ctx) {
     const auto& [index_undot_value, constant_idx] =
         value.Get<ListGetItem<Value, Constant>>().tuple();
-    const auto& [index_value, undot_strides] =
+    const auto& [index_value, undot_dims] =
         index_undot_value.Get<IndexUnDotValue<Value, Constant>>().tuple();
-    const auto& [index_dot_values, dot_strides] =
+    const auto& [index_dot_values, dot_dims] =
         index_value.Get<IndexDotValue<Value, Constant>>().tuple();
     const auto& iter_values = index_dot_values.Get<List<Value>>();
-    CHECK(dot_strides.Has<List<Constant>>());
-    CHECK(undot_strides.Has<List<Constant>>());
-    if (dot_strides == undot_strides) {
+    CHECK(dot_dims.Has<List<Constant>>());
+    CHECK(undot_dims.Has<List<Constant>>());
+    if (dot_dims == undot_dims) {
       return iter_values.Get(constant_idx.Get<std::int64_t>());
     } else {
       return ListGetItem<Value, Constant>{SimplifyValue(index_undot_value, ctx),

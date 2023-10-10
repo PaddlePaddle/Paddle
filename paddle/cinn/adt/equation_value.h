@@ -27,18 +27,18 @@ namespace cinn::adt {
 
 DEFINE_ADT_TAG(tPointer);
 
-template <typename IteratorsT, typename StridesT>
-struct IndexDotValue : public Tuple<IteratorsT, StridesT> {
-  using Tuple<IteratorsT, StridesT>::Tuple;
+template <typename IteratorsT, typename DimsT>
+struct IndexDotValue : public Tuple<IteratorsT, DimsT> {
+  using Tuple<IteratorsT, DimsT>::Tuple;
 
   const IteratorsT& GetIteratorsValue() const {
     return std::get<0>(this->tuple());
   }
 };
 
-template <typename IndexT, typename StridesT>
-struct IndexUnDotValue : public Tuple<IndexT, StridesT> {
-  using Tuple<IndexT, StridesT>::Tuple;
+template <typename IndexT, typename DimsT>
+struct IndexUnDotValue : public Tuple<IndexT, DimsT> {
+  using Tuple<IndexT, DimsT>::Tuple;
 
   const IndexT& GetIndexValue() const { return std::get<0>(this->tuple()); }
 };

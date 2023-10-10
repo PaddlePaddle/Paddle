@@ -25,14 +25,9 @@ namespace cinn::adt {
 using Dim = tDim<UniqueId>;
 // DimTuple = [Dim]
 using DimTuple = List<Dim>;
-// Stride = tStride UniqueId
-using Stride = tStride<UniqueId>;
-// StrideTuple = [Stride]
-using StrideTuple = List<Stride>;
 
 DEFINE_ADT_UNION(Constant,
                  std::int64_t,
-                 Stride,
                  Dim,
                  List<Constant>,
                  Neg<Constant>,
@@ -46,8 +41,8 @@ using MulConstant = Mul<Constant, Constant>;
 OVERLOAD_OPERATOR_EQ_NE(AddConstant, TupleEqual);
 OVERLOAD_OPERATOR_EQ_NE(MulConstant, TupleEqual);
 
-// EquationStaticValue = Dim | Stride | std::int64_t
-DEFINE_ADT_UNION(EquationStaticValue, Dim, Stride, std::int64_t);
+// EquationStaticValue = Dim | std::int64_t
+DEFINE_ADT_UNION(EquationStaticValue, Dim, std::int64_t);
 OVERLOAD_OPERATOR_EQ_NE(EquationStaticValue, UnionEqual);
 
 using EquationStaticLogical = Logical<EquationStaticValue>;
@@ -55,13 +50,6 @@ using EquationStaticLogical = Logical<EquationStaticValue>;
 }  // namespace cinn::adt
 
 namespace std {
-
-template <>
-struct hash<::cinn::adt::Stride> final {
-  std::size_t operator()(const ::cinn::adt::Stride& stride) const {
-    return stride.value().unique_id();
-  }
-};
 
 template <>
 struct hash<::cinn::adt::Dim> final {

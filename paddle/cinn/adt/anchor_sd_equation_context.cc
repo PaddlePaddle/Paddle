@@ -21,7 +21,7 @@ void GenerateScheduleMeshEquations(
     const List<Iterator>& tmp_anchor_iterators,
     const List<Iterator>& sd_iterators,
     Equations* equations,
-    std::unordered_map<Stride, const Constant>* stride2constant);
+    std::unordered_map<Dim, const Constant>* dim2constant);
 
 namespace {
 
@@ -30,7 +30,7 @@ void GenerateScheduleMeshEquationsImpl(
     const List<Iterator>& input_iterators,
     const List<Iterator>& output_iterators,
     Equations* equations,
-    std::unordered_map<Stride, const Constant>* stride2constant) {
+    std::unordered_map<Dim, const Constant>* dim2constant) {
   CHECK_EQ(input_iterators->size(), output_iterators->size());
   for (std::size_t i = 0; i < output_iterators->size(); ++i) {
     Equal(input_iterators->at(i), output_iterators->at(i), equations);
@@ -42,41 +42,36 @@ void GenerateScheduleMeshEquationsImpl(
     const List<Iterator>& input_iterators,
     const List<Iterator>& output_iterators,
     Equations* equations,
-    std::unordered_map<Stride, const Constant>* stride2constant) {
+    std::unordered_map<Dim, const Constant>* dim2constant) {
   const auto& [middle_sched_mesh, shape] = sched_reshape.tuple();
   List<Iterator> middle_iterators =
       MakeIterators(GetOutputRank(middle_sched_mesh));
-  List<Stride> middle_strides = MakeStrides(GetOutputRank(middle_sched_mesh));
+  List<Dim> middle_dims = MakeDims(GetOutputRank(middle_sched_mesh));
   CHECK_EQ(shape.value()->size(), output_iterators->size());
-  List<Stride> output_strides = MakeStrides(output_iterators->size());
+  List<Dim> output_dims = MakeDims(output_iterators->size());
   {
-    List<Constant> middle_stride_values =
-        GetOutputStrideValues(middle_sched_mesh);
-    for (std::size_t i = 0; i < middle_stride_values->size(); ++i) {
-      CHECK(stride2constant
-                ->emplace(middle_strides->at(i), middle_stride_values->at(i))
+    List<Constant> middle_dim_values = GetOutputDimValues(middle_sched_mesh);
+    for (std::size_t i = 0; i < middle_dim_values->size(); ++i) {
+      CHECK(dim2constant->emplace(middle_dims->at(i), middle_dim_values->at(i))
                 .second);
     }
 
-    List<Constant> output_stride_values =
-        GetOutputStrideValues(ScheduleMesh{sched_reshape});
-    for (std::size_t i = 0; i < output_strides->size(); ++i) {
-      CHECK(stride2constant
-                ->emplace(output_strides->at(i), output_stride_values->at(i))
+    List<Constant> output_dim_values =
+        GetOutputDimValues(ScheduleMesh{sched_reshape});
+    for (std::size_t i = 0; i < output_dims->size(); ++i) {
+      CHECK(dim2constant->emplace(output_dims->at(i), output_dim_values->at(i))
                 .second);
     }
   }
-  const auto& middle_index =
-      MakeDot(middle_iterators, middle_strides, equations);
-  const auto& output_index =
-      MakeDot(output_iterators, output_strides, equations);
+  const auto& middle_index = MakeDot(middle_iterators, middle_dims, equations);
+  const auto& output_index = MakeDot(output_iterators, output_dims, equations);
   Equal(middle_index, output_index, equations);
 
   GenerateScheduleMeshEquations(middle_sched_mesh,
                                 input_iterators,
                                 middle_iterators,
                                 equations,
-                                stride2constant);
+                                dim2constant);
 }
 
 void GenerateScheduleMeshEquationsImpl(
@@ -84,7 +79,7 @@ void GenerateScheduleMeshEquationsImpl(
     const List<Iterator>& input_iterators,
     const List<Iterator>& output_iterators,
     Equations* equations,
-    std::unordered_map<Stride, const Constant>* stride2constant) {
+    std::unordered_map<Dim, const Constant>* dim2constant) {
   const auto& [sched_mesh, perm] = sched_transpose.tuple();
   CHECK_EQ(GetOutputRank(sched_mesh), output_iterators->size());
   List<Iterator> middle_iterators = MakeIterators(output_iterators->size());
@@ -93,11 +88,8 @@ void GenerateScheduleMeshEquationsImpl(
           output_iterators->at(i),
           equations);
   }
-  GenerateScheduleMeshEquations(sched_mesh,
-                                input_iterators,
-                                middle_iterators,
-                                equations,
-                                stride2constant);
+  GenerateScheduleMeshEquations(
+      sched_mesh, input_iterators, middle_iterators, equations, dim2constant);
 }
 
 void GenerateScheduleMeshEquationsImpl(
@@ -105,18 +97,15 @@ void GenerateScheduleMeshEquationsImpl(
     const List<Iterator>& input_iterators,
     const List<Iterator>& output_iterators,
     Equations* equations,
-    std::unordered_map<Stride, const Constant>* stride2constant) {
+    std::unordered_map<Dim, const Constant>* dim2constant) {
   const auto& [sched_mesh, _] = sched_padding.tuple();
   CHECK_EQ(GetOutputRank(sched_mesh), output_iterators->size());
   List<Iterator> middle_iterators = MakeIterators(output_iterators->size());
   for (std::size_t i = 0; i < output_iterators->size(); ++i) {
     Equal(middle_iterators->at(i), output_iterators->at(i), equations);
   }
-  GenerateScheduleMeshEquations(sched_mesh,
-                                input_iterators,
-                                middle_iterators,
-                                equations,
-                                stride2constant);
+  GenerateScheduleMeshEquations(
+      sched_mesh, input_iterators, middle_iterators, equations, dim2constant);
 }
 
 }  // namespace
@@ -126,35 +115,30 @@ void GenerateScheduleMeshEquations(
     const List<Iterator>& tmp_anchor_iterators,
     const List<Iterator>& sd_iterators,
     Equations* equations,
-    std::unordered_map<Stride, const Constant>* stride2constant) {
+    std::unordered_map<Dim, const Constant>* dim2constant) {
   return std::visit(
       [&](const auto& impl) {
-        return GenerateScheduleMeshEquationsImpl(impl,
-                                                 tmp_anchor_iterators,
-                                                 sd_iterators,
-                                                 equations,
-                                                 stride2constant);
+        return GenerateScheduleMeshEquationsImpl(
+            impl, tmp_anchor_iterators, sd_iterators, equations, dim2constant);
       },
       sched_mesh.variant());
 }
 
-void AnchorSdEquationContext::InitStride2Constant(
-    const ScheduleMesh& sched_mesh) {
-  const auto& AddStrideValue = [&](const List<Stride>& strides,
-                                   const List<Constant>& stride_values) {
-    CHECK_EQ(strides->size(), stride_values->size());
-    for (std::size_t i = 0; i < strides->size(); ++i) {
-      CHECK(stride2constant_.emplace(strides->at(i), stride_values->at(i))
-                .second);
+void AnchorSdEquationContext::InitDim2Constant(const ScheduleMesh& sched_mesh) {
+  const auto& AddDimValue = [&](const List<Dim>& dims,
+                                const List<Constant>& dim_values) {
+    CHECK_EQ(dims->size(), dim_values->size());
+    for (std::size_t i = 0; i < dims->size(); ++i) {
+      CHECK(dim2constant_.emplace(dims->at(i), dim_values->at(i)).second);
     }
   };
 
-  const auto& anchor_stride_values =
-      GetOutputStrideValues(GetInputScheduleMesh(sched_mesh));
-  AddStrideValue(anchor_strides_, anchor_stride_values);
+  const auto& anchor_dim_values =
+      GetOutputDimValues(GetInputScheduleMesh(sched_mesh));
+  AddDimValue(anchor_dims_, anchor_dim_values);
 
-  const auto& sd_stride_values = GetOutputStrideValues(sched_mesh);
-  AddStrideValue(sd_strides_, sd_stride_values);
+  const auto& sd_dim_values = GetOutputDimValues(sched_mesh);
+  AddDimValue(sd_dims_, sd_dim_values);
 }
 
 void AnchorSdEquationContext::GenerateSdEquation(const ScheduleMesh& sched_mesh,
@@ -163,7 +147,7 @@ void AnchorSdEquationContext::GenerateSdEquation(const ScheduleMesh& sched_mesh,
 
   {
     const auto& tmp_anchor_index =
-        MakeDot(tmp_anchor_iterators, anchor_strides_, &equations_);
+        MakeDot(tmp_anchor_iterators, anchor_dims_, &equations_);
     Equal(tmp_anchor_index, anchor_index, &equations_);
   }
 
@@ -171,7 +155,7 @@ void AnchorSdEquationContext::GenerateSdEquation(const ScheduleMesh& sched_mesh,
                                 tmp_anchor_iterators,
                                 sd_iterators_,
                                 &equations_,
-                                &stride2constant_);
+                                &dim2constant_);
 }
 
 }  // namespace cinn::adt::config

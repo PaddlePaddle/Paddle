@@ -25,11 +25,6 @@ struct MatchTrait<Constant, std::int64_t> final {
 };
 
 template <>
-struct MatchTrait<Constant, tStride<UniqueId>> final {
-  static constexpr int is_template = false;
-};
-
-template <>
 struct MatchTrait<Constant, tDim<UniqueId>> final {
   static constexpr int is_template = false;
 };

@@ -44,24 +44,24 @@ struct Identity<tOut<Index>, tIn<Index>>
   using Tuple<tOut<Index>, tIn<Index>>::Tuple;
 };
 
-template <typename StrideT, typename OutT, typename InT>
+template <typename DimT, typename OutT, typename InT>
 struct IndexDot;
 
-// IndexDot [Stride] (tOut Index) (tIn [Iterator])
+// IndexDot [Dim] (tOut Index) (tIn [Iterator])
 template <>
-struct IndexDot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>
-    : public Tuple<List<Stride>, tOut<Index>, tIn<List<Iterator>>> {
-  using Tuple<List<Stride>, tOut<Index>, tIn<List<Iterator>>>::Tuple;
+struct IndexDot<List<Dim>, tOut<Index>, tIn<List<Iterator>>>
+    : public Tuple<List<Dim>, tOut<Index>, tIn<List<Iterator>>> {
+  using Tuple<List<Dim>, tOut<Index>, tIn<List<Iterator>>>::Tuple;
 };
 
-template <typename StrideT, typename OutT, typename InT>
+template <typename DimT, typename OutT, typename InT>
 struct IndexUnDot;
 
-// IndexUnDot [Stride] (tOut [Iterator]) (tIn Index)
+// IndexUnDot [Dim] (tOut [Iterator]) (tIn Index)
 template <>
-struct IndexUnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>
-    : public Tuple<List<Stride>, tOut<List<Iterator>>, tIn<Index>> {
-  using Tuple<List<Stride>, tOut<List<Iterator>>, tIn<Index>>::Tuple;
+struct IndexUnDot<List<Dim>, tOut<List<Iterator>>, tIn<Index>>
+    : public Tuple<List<Dim>, tOut<List<Iterator>>, tIn<Index>> {
+  using Tuple<List<Dim>, tOut<List<Iterator>>, tIn<Index>>::Tuple;
 };
 
 // OpArgIndexes = (tIn [Index], tOut [Index])
@@ -101,8 +101,8 @@ struct ConstantFunction<tOut<Iterator>, tIn<Index>> final
 DEFINE_ADT_UNION(Equation,
                  Identity<tOut<Iterator>, tIn<Iterator>>,
                  Identity<tOut<Index>, tIn<Index>>,
-                 IndexDot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>,
-                 IndexUnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>,
+                 IndexDot<List<Dim>, tOut<Index>, tIn<List<Iterator>>>,
+                 IndexUnDot<List<Dim>, tOut<List<Iterator>>, tIn<Index>>,
                  InMsg2OutMsg<tOut<FakeOpPlaceHolder>,
                                     tOut<OpArgIndexes<std::optional<Index>>>,
                                     tIn<OpArgIndexes<Index>>>,

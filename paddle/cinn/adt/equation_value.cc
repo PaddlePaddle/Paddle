@@ -20,9 +20,6 @@
 namespace cinn::adt {
 
 std::string DebugStringImpl(std::int64_t c) { return std::to_string(c); }
-std::string DebugStringImpl(const tStride<UniqueId>& c) {
-  return std::string("stride_") + std::to_string(c.value().unique_id());
-}
 
 std::string DebugStringImpl(const tDim<UniqueId>& c) {
   return std::string("dim_") + std::to_string(c.value().unique_id());
