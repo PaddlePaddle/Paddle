@@ -1787,7 +1787,7 @@ class Resharder:
             var_name, block, self.auto_parallel_main_prog
         )
         for op_desc in op_desc_list:
-            if isinstance(op_desc, AllGatherOpDesc):  # noqa: F401
+            if isinstance(op_desc, AllGatherOpDesc):
                 if var_name not in self.has_allgather.keys():
                     self.has_allgather[var_name] = []
                 if not self.has_allgather[var_name] or op_desc.group not in [

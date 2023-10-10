@@ -40,9 +40,7 @@ bool Value::operator!=(const Value &other) const {
 
 bool Value::operator!() const { return impl_ == nullptr; }
 
-bool Value::operator<(const Value &other) const {
-  return std::hash<Value>{}(*this) < std::hash<Value>{}(other);
-}
+bool Value::operator<(const Value &other) const { return impl_ < other.impl_; }
 
 Value::operator bool() const { return impl_; }
 
