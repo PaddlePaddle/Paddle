@@ -144,7 +144,7 @@ class Normal(distribution.Distribution):
 
     @property
     def mean(self):
-        """Mean of multinomial distribuion.
+        """Mean of normal distribuion.
 
         Returns:
             Tensor: mean value.
@@ -153,7 +153,7 @@ class Normal(distribution.Distribution):
 
     @property
     def variance(self):
-        """Variance of lognormal distribution.
+        """Variance of normal distribution.
 
         Returns:
             Tensor: variance value.

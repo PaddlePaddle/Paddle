@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numbers
 import unittest
 
 import numpy as np
@@ -76,12 +77,17 @@ paddle.seed(2023)
         ),
     ],
 )
-class Testgammaential(unittest.TestCase):
+class TestGamma(unittest.TestCase):
     def setUp(self):
-        concentration = paddle.to_tensor(self.concentration)
-        rate = paddle.to_tensor(self.rate)
-        self.scale = rate.reciprocal()
+        concentration = self.concentration
+        if not isinstance(self.concentration, numbers.Real):
+            concentration = paddle.to_tensor(self.concentration)
 
+        rate = self.rate
+        if not isinstance(self.rate, numbers.Real):
+            rate = paddle.to_tensor(self.rate)
+
+        self.scale = 1 / rate
         self._paddle_gamma = gamma.Gamma(concentration, rate)
 
     def test_mean(self):
@@ -158,6 +164,86 @@ class Testgammaential(unittest.TestCase):
                     str(self._paddle_gamma.concentration.numpy().dtype)
                 ),
             )
+
+
+@parameterize.place(config.DEVICES)
+@parameterize.parameterize_cls(
+    (parameterize.TEST_CASE_NAME, 'concentration', 'rate'),
+    [
+        (
+            '0-dim',
+            0.5,
+            0.5,
+        ),
+        (
+            'one-dim',
+            parameterize.xrand(
+                (2,),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+            ),
+            parameterize.xrand(
+                (2,),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+            ),
+        ),
+        (
+            'multi-dim',
+            parameterize.xrand(
+                (2, 3),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+            ),
+            parameterize.xrand(
+                (2, 3),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+            ),
+        ),
+        (
+            'broadcast',
+            parameterize.xrand(
+                (2, 1),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+            ),
+            parameterize.xrand(
+                (2, 3),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+            ),
+        ),
+    ],
+)
+class TestGammaSample(unittest.TestCase):
+    def setUp(self):
+        concentration = self.concentration
+        if not isinstance(self.concentration, numbers.Real):
+            concentration = paddle.to_tensor(self.concentration)
+
+        rate = self.rate
+        if not isinstance(self.rate, numbers.Real):
+            rate = paddle.to_tensor(self.rate)
+
+        self.scale = 1 / rate
+        self._paddle_gamma = gamma.Gamma(concentration, rate)
+
+    def test_sample(self):
+        sample_shape = (20000,)
+        self.assertRaises(
+            NotImplementedError,
+            self._paddle_gamma.sample,
+            sample_shape,
+        )
+
+    def test_rsample(self):
+        sample_shape = (20000,)
+        self.assertRaises(
+            NotImplementedError,
+            self._paddle_gamma.rsample,
+            sample_shape,
+        )
 
 
 @parameterize.place(config.DEVICES)

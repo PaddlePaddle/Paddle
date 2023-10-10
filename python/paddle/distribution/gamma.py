@@ -146,7 +146,6 @@ class Gamma(exponential_family.ExponentialFamily):
 
         Returns:
             Tensor, A tensor with prepended dimensions shape.The data type is float32.
-
         """
         raise NotImplementedError
 
@@ -154,22 +153,21 @@ class Gamma(exponential_family.ExponentialFamily):
         """Generate reparameterized samples of the specified shape.
 
         Args:
-          shape (Sequence[int], optional): Shape of the generated samples.
+            shape (Sequence[int], optional): Shape of the generated samples.
 
         Returns:
-          Tensor: A tensor with prepended dimensions shape.The data type is float32.
-
+            Tensor: A tensor with prepended dimensions shape. The data type is float32.
         """
         raise NotImplementedError
 
     def kl_divergence(self, other):
-        """The KL-divergence between two Exponential distributions.
+        """The KL-divergence between two gamma distributions.
 
         Args:
-            other (Exponential): instance of Exponential.
+            other (Gamma): instance of Gamma.
 
         Returns:
-            Tensor: kl-divergence between two Exponential distributions.
+            Tensor: kl-divergence between two gamma distributions.
         """
         if not isinstance(other, Gamma):
             raise TypeError(

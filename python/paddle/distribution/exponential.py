@@ -90,10 +90,10 @@ class Exponential(exponential_family.ExponentialFamily):
         """Generate reparameterized samples of the specified shape.
 
         Args:
-          shape (Sequence[int], optional): Shape of the generated samples.
+            shape (Sequence[int], optional): Shape of the generated samples.
 
         Returns:
-          Tensor: A tensor with prepended dimensions shape.The data type is float32.
+            Tensor: A tensor with prepended dimensions shape.The data type is float32.
 
         """
         shape = distribution.Distribution._extend_shape(
@@ -132,7 +132,7 @@ class Exponential(exponential_family.ExponentialFamily):
         return paddle.log(self.rate) - self.rate * value
 
     def entropy(self):
-        """Entropy of gamma distribution
+        """Entropy of exponential distribution
 
         Returns:
             Tensor: Entropy.
@@ -140,13 +140,13 @@ class Exponential(exponential_family.ExponentialFamily):
         return 1.0 - paddle.log(self.rate)
 
     def kl_divergence(self, other):
-        """The KL-divergence between two Exponential distributions.
+        """The KL-divergence between two exponential distributions.
 
         Args:
             other (Exponential): instance of Exponential.
 
         Returns:
-            Tensor: kl-divergence between two Exponential distributions.
+            Tensor: kl-divergence between two exponential distributions.
         """
         if not isinstance(other, Exponential):
             raise TypeError(

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numbers
 import unittest
 
 import numpy as np
@@ -54,8 +55,11 @@ paddle.seed(2023)
 )
 class TestExponential(unittest.TestCase):
     def setUp(self):
-        rate = paddle.to_tensor(self.rate, dtype=paddle.float32)
-        self.scale = rate.reciprocal()
+        rate = self.rate
+        if not isinstance(self.rate, numbers.Real):
+            rate = paddle.to_tensor(self.rate, dtype=paddle.float32)
+
+        self.scale = 1 / rate
         self._paddle_expon = exponential.Exponential(rate)
 
     def test_mean(self):
@@ -154,8 +158,11 @@ class TestExponential(unittest.TestCase):
 )
 class TestExponentialSample(unittest.TestCase):
     def setUp(self):
-        rate = paddle.to_tensor(self.rate, dtype=paddle.float32)
-        self.scale = rate.reciprocal()
+        rate = self.rate
+        if not isinstance(self.rate, numbers.Real):
+            rate = paddle.to_tensor(self.rate, dtype=paddle.float32)
+
+        self.scale = 1 / rate
         self._paddle_expon = exponential.Exponential(rate)
 
     def test_sample_shape(self):
