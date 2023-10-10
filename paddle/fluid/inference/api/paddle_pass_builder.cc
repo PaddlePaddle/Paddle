@@ -462,6 +462,7 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.emplace_back("repeated_fc_relu_fuse_pass");
     passes_.emplace_back("fc_mkldnn_pass");
     passes_.emplace_back("fc_act_mkldnn_fuse_pass");
+    passes_.emplace_back("fc_elementwise_add_mkldnn_fuse_pass");
     passes_.emplace_back("matmul_transpose_reshape_mkldnn_fuse_pass");
     passes_.emplace_back("batch_norm_act_fuse_pass");
     passes_.emplace_back("softplus_activation_onednn_fuse_pass");
