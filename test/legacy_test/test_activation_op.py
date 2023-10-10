@@ -27,6 +27,7 @@ import paddle.nn.functional as F
 from paddle import base, static
 from paddle.base import Program, core, program_guard
 from paddle.base.layer_helper import LayerHelper
+from paddle.pir_utils import test_with_pir_api
 
 
 @contextmanager
@@ -39,6 +40,7 @@ def dynamic_guad():
 
 
 class TestSqrtOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with program_guard(Program(), Program()):
@@ -2304,6 +2306,7 @@ class TestReluAPI(unittest.TestCase):
     def executed_api(self):
         self.relu = F.relu
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -2327,6 +2330,7 @@ class TestReluAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with static_guard():

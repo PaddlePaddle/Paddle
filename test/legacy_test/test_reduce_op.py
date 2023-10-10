@@ -22,6 +22,7 @@ import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
 from paddle.base.framework import convert_np_dtype_to_dtype_, in_pir_mode
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestSumOp(OpTest):
@@ -944,6 +945,7 @@ class TestAll8DOpWithKeepDim(OpTest):
 
 
 class TestAllOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of reduce_all_op must be Variable.
@@ -1745,6 +1747,7 @@ class TestAllAPI(unittest.TestCase):
             )
             self.assertTrue((fetches[0] == np.all(input_np)).all())
 
+    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)

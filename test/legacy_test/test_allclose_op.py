@@ -19,6 +19,7 @@ from op_test import OpTest
 
 import paddle
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestAllcloseOp(OpTest):
@@ -115,6 +116,7 @@ class TestAllcloseOpNanTrue(TestAllcloseOp):
 
 
 class TestAllcloseDygraph(unittest.TestCase):
+    @test_with_pir_api
     def test_api_case(self):
         paddle.disable_static()
         x_data = np.random.rand(10, 10)
@@ -128,6 +130,7 @@ class TestAllcloseDygraph(unittest.TestCase):
 
 
 class TestAllcloseError(unittest.TestCase):
+    @test_with_pir_api
     def test_input_dtype(self):
         def test_x_dtype():
             with paddle.static.program_guard(
@@ -153,6 +156,7 @@ class TestAllcloseError(unittest.TestCase):
 
         self.assertRaises(TypeError, test_y_dtype)
 
+    @test_with_pir_api
     def test_attr(self):
         x = paddle.static.data(name='x', shape=[10, 10], dtype='float64')
         y = paddle.static.data(name='y', shape=[10, 10], dtype='float64')
@@ -174,6 +178,7 @@ class TestAllcloseError(unittest.TestCase):
 
 
 class TestAllcloseOpFp16(unittest.TestCase):
+    @test_with_pir_api
     def test_fp16(self):
         x_data = np.random.rand(10, 10).astype('float16')
         y_data = np.random.rand(10, 10).astype('float16')

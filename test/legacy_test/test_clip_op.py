@@ -20,6 +20,7 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestClipOp(OpTest):
@@ -250,6 +251,7 @@ class TestBF16Case5(TestClipBF16Op):
 
 
 class TestClipOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
@@ -266,6 +268,7 @@ class TestClipAPI(unittest.TestCase):
     def _executed_api(self, x, min=None, max=None):
         return paddle.clip(x, min, max)
 
+    @test_with_pir_api
     def test_clip(self):
         paddle.enable_static()
         data_shape = [1, 9, 9, 4]
@@ -420,6 +423,7 @@ class TestClipAPI(unittest.TestCase):
         np.testing.assert_allclose(out2.numpy(), egr_out2.numpy(), rtol=1e-05)
         np.testing.assert_allclose(out3.numpy(), egr_out3.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
         x1 = paddle.static.data(name='x1', shape=[1], dtype="int16")
@@ -430,6 +434,7 @@ class TestClipAPI(unittest.TestCase):
 
 
 class TestClipOpFp16(unittest.TestCase):
+    @test_with_pir_api
     def test_fp16(self):
         paddle.enable_static()
         data_shape = [1, 9, 9, 4]

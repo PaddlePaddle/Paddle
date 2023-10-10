@@ -19,6 +19,7 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestFlattenOp(OpTest):
@@ -398,6 +399,7 @@ class TestFlattenBF16OpSixDims(TestFlattenOpSixDims):
 
 
 class TestFlatten2OpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         image_shape = (2, 3, 4, 4)
         x = (
@@ -461,6 +463,7 @@ class TestStaticFlattenPythonAPI(unittest.TestCase):
     def execute_api(self, x, start_axis=0, stop_axis=-1):
         return paddle.flatten(x, start_axis, stop_axis)
 
+    @test_with_pir_api
     def test_static_api(self):
         paddle.enable_static()
         np_x = np.random.rand(2, 3, 4, 4).astype('float32')
@@ -481,6 +484,7 @@ class TestStaticFlattenInferShapePythonAPI(unittest.TestCase):
     def execute_api(self, x, start_axis=0, stop_axis=-1):
         return paddle.flatten(x, start_axis, stop_axis)
 
+    @test_with_pir_api
     def test_static_api(self):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -498,6 +502,7 @@ class TestStaticInplaceFlattenPythonAPI(TestStaticFlattenPythonAPI):
 
 
 class TestFlattenPython(unittest.TestCase):
+    @test_with_pir_api
     def test_python_api(self):
         image_shape = (2, 3, 4, 4)
         x = (
@@ -552,6 +557,7 @@ class TestDygraphInplaceFlattenPython(unittest.TestCase):
 
 
 class TestFlatten0DTensorOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         image_shape = ()
         x = np.random.uniform(-1.0, 1.0, []).astype('float32')
