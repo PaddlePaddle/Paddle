@@ -852,7 +852,6 @@ set_tests_properties(
   test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(
   test_sync_batch_norm_op
-  test_inplace_abn_op
   test_parallel_executor_seresnext_base_gpu
   test_parallel_executor_seresnext_with_reduce_gpu
   test_parallel_executor_seresnext_with_fuse_all_reduce_gpu
@@ -1279,6 +1278,7 @@ set(STATIC_BUILD_TESTS
     test_adamw_op
     test_arg_min_max_op
     test_assign_pos_op
+    test_batch_norm_op
     test_bucketize_api
     test_bincount_op
     test_c_embedding_op
@@ -1286,6 +1286,7 @@ set(STATIC_BUILD_TESTS
     test_decoupled_py_reader
     test_eig_op
     test_eigh_op
+    test_fake_dequantize_op
     test_fake_quantize_op
     test_fetch_lod_tensor_array
     test_ftrl_op
