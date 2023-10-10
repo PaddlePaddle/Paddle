@@ -1423,7 +1423,6 @@ void DispatchWithDtype(const Context &dev_ctx,
   params.cache_batch_size = cache_bsz;
   params.num_head = num_head;
   params.timestep = timestep;
-  printf("params.timestep", params.timestep);
   params.seq_len = seq_len;
   params.max_seq_length = max_seq_len;
   params.inv_sqrt_dh = inv_sqrt_dh;
