@@ -22,6 +22,7 @@ from paddle.nn import functional as F
 
 from ....communication.reduce import ReduceOp, _get_reduce_op
 from ...base import topology as tp
+from ...utils.log_util import logger
 from . import mp_ops
 from .random import get_rng_state_tracker
 
@@ -179,6 +180,9 @@ class VocabParallelEmbedding(paddle.nn.Layer):
         return output
 
 
+_raise_cuda_env_unset_warning = True
+
+
 class InnerOverlapLinear(paddle.autograd.PyLayer):
     @staticmethod
     def forward(
@@ -220,6 +224,14 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
         )
         # Using small operation to preempt GPU SMs for all_reduce to achieve overlap.
         if int(os.getenv("CUDA_DEVICE_MAX_CONNECTIONS", "0")) != 1:
+            global _raise_cuda_env_unset_warning
+            if _raise_cuda_env_unset_warning:
+                logger.warning(
+                    "You set mp_async_allreduce=True, but you forget to set environment "
+                    "variable CUDA_DEVICE_MAX_CONNECTIONS=1, which may leads to performance "
+                    "loss. Try to export CUDA_DEVICE_MAX_CONNECTIONS=1 for better performance."
+                )
+            _raise_cuda_env_unset_warning = False
             tmp = paddle.ones([512])
 
         if ctx.mp_fused_linear_param_grad_add:
