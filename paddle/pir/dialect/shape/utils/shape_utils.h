@@ -48,8 +48,6 @@ class ShapeAnalysis {
   virtual bool IsSameNumElements(Value lhs, Value rhs);
 };
 
-using dialect::SymbolicDim;
-
 // A subclass to impement `ShapeAnalysis` on buffer level.
 // The implementation is based on shape constraint ir.
 class ShapeConstraintIRAnalysis : public ShapeAnalysis {
@@ -78,9 +76,8 @@ class ShapeConstraintIRAnalysis : public ShapeAnalysis {
   SymbolicDimMgr mgr_;
   // Map a ranked memref value to an array of symbolicDims, each represents one
   // dimension size of the memref value.
-  std::unordered_map<Value, std::vector<SymbolicDim>> value_to_sym_dims_;
+  std::unordered_map<Value, std::vector<dialect::SymbolicDim>>
+      value_to_sym_dims_;
 };
 
-bool IsIntOrIndex(Type type);
-bool IsCandidateShapeTensorType(Type ty);
 }  // namespace pir
