@@ -631,14 +631,14 @@ std::shared_ptr<ProcessGroupNCCL::NCCLTask> ProcessGroupNCCL::CreateTask(
 
 void ProcessGroupNCCL::GetStoreKey(const std::string& place_key,
                                    CommType comm_type,
-                                   std::string& store_key) {
+                                   std::string* store_key) {
   bool is_batch_p2p = s_group_call_counter > 0;
   bool is_p2p_op = IsP2POP(comm_type, is_batch_p2p);
 
   if (!is_p2p_op) {
-    store_key = "nccl_ids/" + std::to_string(gid_) + "/0";
+    *store_key = "nccl_ids/" + std::to_string(gid_) + "/0";
   } else {
-    store_key = "nccl_ids/" + std::to_string(gid_) + "/" + place_key;
+    *store_key = "nccl_ids/" + std::to_string(gid_) + "/" + place_key;
   }
 }
 
@@ -715,7 +715,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
   platform::CUDADeviceGuard cuda_guard(place);
 
   std::string store_key;
-  GetStoreKey(key, comm_type, store_key);
+  GetStoreKey(key, comm_type, &store_key);
 
   if (place_to_comm_ctx_.find(key) == place_to_comm_ctx_.end()) {
     CreateNCCLEnvCache(place, key, store_key, comm_type);
@@ -812,7 +812,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
   platform::CUDADeviceGuard cuda_guard(place);
 
   std::string store_key;
-  GetStoreKey(key, comm_type, store_key);
+  GetStoreKey(key, comm_type, &store_key);
 
   if (place_to_comm_ctx_.find(key) == place_to_comm_ctx_.end()) {
     CreateNCCLEnvCache(place, key, store_key, comm_type, p2p_rank);

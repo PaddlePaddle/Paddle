@@ -181,7 +181,7 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
 
   void GetStoreKey(const std::string& place_key,
                    CommType comm_type,
-                   std::string& store_key);
+                   std::string* store_key);
 
   void CreateNCCLEnvCache(const Place& place,
                           const std::string& place_key,
