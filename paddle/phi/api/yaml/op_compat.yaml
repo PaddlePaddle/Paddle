@@ -1182,6 +1182,7 @@
       support_tensor : true
 
 - op : fused_attention
+  backward: fused_attention_grad
   inputs:
     x: X
     ln_scale: LnScale
@@ -1253,6 +1254,38 @@
   extra :
     attrs : [bool use_cudnn = false, float fuse_alpha = 0.0f, float fuse_beta = 0.0f, float Scale_in = 1.0f,
              float Scale_out = 1.0f, float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}']
+
+- op : fused_feedforward
+  backward: fused_feedforward_grad
+  inputs:
+    x: X
+    dropout1_seed: Dropout1Seed
+    dropout2_seed: Dropout2Seed
+    linear1_weight: Linear1Weight
+    linear1_bias: Linear1Bias
+    linear2_weight: Linear2Weight
+    linear2_bias: Linear2Bias
+    ln1_scale: Ln1Scale
+    ln1_bias: Ln1Bias
+    ln2_scale: Ln2Scale
+    ln2_bias: Ln2Bias
+  attrs:
+    dropout1_seed_val: dropout1_seed
+    dropout2_seed_val: dropout2_seed
+    dropout1_prob: dropout1_rate
+    dropout2_prob: dropout2_rate
+  outputs:
+    out: Out
+    dropout1_mask: Dropout1Mask
+    dropout2_mask: Dropout2Mask
+    ln1_mean: Ln1Mean
+    ln1_variance: Ln1Variance
+    ln2_mean: Ln2Mean
+    ln2_variance: Ln2Variance
+    linear1_out: Linear1Out
+    ln1_out: Ln1Out
+    dropout1_out: Dropout1Out
+    dropout2_out: Dropout2Out
 
 - op : fused_gemm_epilogue
   inputs:
@@ -1468,11 +1501,6 @@
     out : Out
   attrs :
     axis : dim
-
-- op : inplace_abn
-  backward : inplace_abn_grad
-  extra :
-    attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
 
 - op : instance_norm
   inputs :
