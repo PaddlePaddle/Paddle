@@ -185,6 +185,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
                                                                         300)
   set_tests_properties(test_trt_explicit_quantization_mobilenet
                        PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_ops_fp32_mix_precision PROPERTIES TIMEOUT 300)
   if(WITH_MKLDNN)
     set_tests_properties(test_save_optimized_model_pass PROPERTIES TIMEOUT 300)
   endif()
