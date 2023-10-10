@@ -37,7 +37,7 @@ class DotOp(OpTest):
         self.attrs = {}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad_normal(self):
         if core.is_compiled_with_rocm():
@@ -45,12 +45,10 @@ class DotOp(OpTest):
                 ['X', 'Y'],
                 'Out',
                 user_defined_grads=[self.inputs['Y'], self.inputs['X']],
+                check_new_ir=True,
             )
         else:
-            self.check_grad(
-                ['X', 'Y'],
-                'Out',
-            )
+            self.check_grad(['X', 'Y'], 'Out', check_new_ir=True)
 
     def test_check_grad_ingore_x(self):
         if core.is_compiled_with_rocm():
@@ -59,12 +57,11 @@ class DotOp(OpTest):
                 'Out',
                 no_grad_set=set("X"),
                 user_defined_grads=[self.inputs['X']],
+                check_new_ir=True,
             )
         else:
             self.check_grad(
-                ['Y'],
-                'Out',
-                no_grad_set=set("X"),
+                ['Y'], 'Out', no_grad_set=set("X"), check_new_ir=True
             )
 
     def test_check_grad_ingore_y(self):
@@ -74,12 +71,11 @@ class DotOp(OpTest):
                 'Out',
                 no_grad_set=set('Y'),
                 user_defined_grads=[self.inputs['Y']],
+                check_new_ir=True,
             )
         else:
             self.check_grad(
-                ['X'],
-                'Out',
-                no_grad_set=set('Y'),
+                ['X'], 'Out', no_grad_set=set('Y'), check_new_ir=True
             )
 
     def init_input_output(self):
@@ -129,13 +125,13 @@ class DotOpBatch(DotOp):
         self.out = np.sum(self.x * self.y, axis=1)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_new_ir=True)
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"), check_new_ir=True)
 
     def test_check_grad_ingore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_new_ir=True)
 
 
 class TestDotOpError(unittest.TestCase):
