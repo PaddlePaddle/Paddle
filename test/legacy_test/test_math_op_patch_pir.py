@@ -23,7 +23,9 @@ paddle.enable_static()
 class TestMathOpPatchesPir(unittest.TestCase):
     def test_math_exists(self):
         with paddle.pir_utils.IrGuard():
-            a = paddle.to_tensor([[1, 1], [2, 2], [3, 3]])
+            a = paddle.static.data(
+                name='a', shape=[[1, 1], [2, 2], [3, 3]], dtype='float32'
+            )
             self.assertTrue(isinstance(a, paddle.pir.OpResult))
             self.assertTrue(inspect.ismethod(a.dot))
             self.assertTrue(inspect.ismethod(a.logsumexp))
