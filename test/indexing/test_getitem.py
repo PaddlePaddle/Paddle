@@ -414,7 +414,7 @@ class TestComplex128GetitemInDygraph(TestGetitemInDygraph):
         self.dtype = 'complex128'
 
 
-class TestGetitemGard(unittest.TestCase):
+class TestGetitemGrad(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self.ndtype = np.float64
@@ -674,7 +674,7 @@ class TestGetitemGard(unittest.TestCase):
     or not core.is_float16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA and do not support bfloat16",
 )
-class TestFP16GetitemGradInDygraph(TestGetitemGard):
+class TestFP16GetitemGradInDygraph(TestGetitemGrad):
     def setUp(self):
         paddle.disable_static()
         self.ndtype = np.float16
@@ -686,63 +686,63 @@ class TestFP16GetitemGradInDygraph(TestGetitemGard):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA and do not support bfloat16",
 )
-class TestBF16GetitemGradInDygraph(TestGetitemGard):
+class TestBF16GetitemGradInDygraph(TestGetitemGrad):
     def setUp(self):
         paddle.disable_static()
         self.ndtype = np.float32
         self.dtype = 'bfloat16'
 
 
-class TestFP32GetitemGradInDygraph(TestGetitemGard):
+class TestFP32GetitemGradInDygraph(TestGetitemGrad):
     def setUp(self):
         paddle.disable_static()
         self.ndtype = np.float32
         self.dtype = 'float32'
 
 
-class TestBOOLGetitemGradInDygraph(TestGetitemGard):
+class TestBOOLGetitemGradInDygraph(TestGetitemGrad):
     def setUp(self):
         paddle.disable_static()
         self.ndtype = np.bool8
         self.dtype = 'bool'
 
 
-class TestINT8GetitemGradInDygraph(TestGetitemGard):
+class TestINT8GetitemGradInDygraph(TestGetitemGrad):
     def setUp(self):
         paddle.disable_static()
         self.ndtype = np.int8
         self.dtype = 'int8'
 
 
-class TestINT16GetitemGradInDygraph(TestGetitemGard):
+class TestINT16GetitemGradInDygraph(TestGetitemGrad):
     def setUp(self):
         paddle.disable_static()
         self.ndtype = np.int16
         self.dtype = 'int16'
 
 
-class TestINT32GetitemGradInDygraph(TestGetitemGard):
+class TestINT32GetitemGradInDygraph(TestGetitemGrad):
     def setUp(self):
         paddle.disable_static()
         self.ndtype = np.int32
         self.dtype = 'int32'
 
 
-class TestINT64GetitemGradInDygraph(TestGetitemGard):
+class TestINT64GetitemGradInDygraph(TestGetitemGrad):
     def setUp(self):
         paddle.disable_static()
         self.ndtype = np.int64
         self.dtype = 'int64'
 
 
-class TestComplex64GetitemGradInDygraph(TestGetitemGard):
+class TestComplex64GetitemGradInDygraph(TestGetitemGrad):
     def setUp(self):
         paddle.disable_static()
         self.ndtype = np.float32
         self.dtype = 'complex64'
 
 
-class TestComplex128GetitemGradInDygraph(TestGetitemGard):
+class TestComplex128GetitemGradInDygraph(TestGetitemGrad):
     def setUp(self):
         paddle.disable_static()
         self.ndtype = np.float64
