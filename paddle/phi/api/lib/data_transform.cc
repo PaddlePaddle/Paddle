@@ -785,7 +785,8 @@ PrepareDataForDistTensor(const std::vector<Tensor>& input,
         // change(NCHW->NHWC), so the new DistTensor's meta maybe not unified.
         VLOG(6) << "PrepareDataForDistTensor return transformed dist tensor";
         out.push_back(std::make_shared<phi::distributed::DistTensor>(
-            trans_in_tensor, dist_tensor->dist_attr()));
+            std::make_shared<phi::DenseTensor>(trans_in_tensor),
+            dist_tensor->dist_attr()));
       }
     } else {
       out.push_back(nullptr);
