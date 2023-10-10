@@ -105,10 +105,6 @@ strided_op_list = {
     "view_dtype",
 }
 
-# flag that determines the generation of forward or reverse code，
-# because the generation rules for optional variables are different
-IsGenerateForward = False
-
 
 #########
 # Utils #
@@ -2750,7 +2746,6 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
                 )
 
             # Generate Dygraph Forward Function
-            IsGenerateForward = True
             function_generator = DygraphForwardFunctionGenerator(
                 forward_api_contents,
                 backward_api_contents,
@@ -2767,7 +2762,6 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
             )
 
             # Generate Dygraph GradNode Function
-            IsGenerateForward = False
             while True:
                 if backward_api_contents is None:
                     break
