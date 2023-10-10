@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import random
 import unittest
 
@@ -27,6 +28,8 @@ from paddle.distributed.fleet.utils.mix_precision_utils import (
     MixPrecisionLayer,
     MixPrecisionOptimizer,
 )
+
+g_shard_split_param = int(os.environ.get("FLAGS_shard_split_param", 0))
 
 vocab_size = 20
 hidden_size = 10
@@ -280,7 +283,11 @@ class TestDistMPTraining(unittest.TestCase):
         )
 
         for idx in range(STEPS):
-            if idx == 2 and paddle.distributed.get_rank() == 0:
+            if (
+                idx == 2
+                and paddle.distributed.get_rank() == 0
+                and not g_shard_split_param
+            ):
                 self.assertTrue(
                     set(optimizer_a._inner_opt._inner_opt.state_dict().keys())
                     == sharded_accumulators
@@ -303,38 +310,40 @@ class TestDistMPTraining(unittest.TestCase):
                 )
 
     def test_sharding_adam(self):
-        sharded_accumulators = {
-            'linear_0.w_0_moment1_0',
-            'linear_1.b_0_moment1_0',
-            'linear_2.b_0_moment1_0',
-            'embedding_0.w_0_moment1_0',
-            'linear_0.w_0_moment2_0',
-            'linear_1.b_0_moment2_0',
-            'linear_2.b_0_moment2_0',
-            'embedding_0.w_0_moment2_0',
-            'linear_0.w_0_beta1_pow_acc_0',
-            'linear_1.b_0_beta1_pow_acc_0',
-            'linear_2.b_0_beta1_pow_acc_0',
-            'embedding_0.w_0_beta1_pow_acc_0',
-            'linear_0.w_0_beta2_pow_acc_0',
-            'linear_1.b_0_beta2_pow_acc_0',
-            'linear_2.b_0_beta2_pow_acc_0',
-            'embedding_0.w_0_beta2_pow_acc_0',
-        }
-        self.sharding_model(
-            Optimizer="adam", sharded_accumulators=sharded_accumulators
-        )
+        if not g_shard_split_param:
+            sharded_accumulators = {
+                'linear_0.w_0_moment1_0',
+                'linear_1.b_0_moment1_0',
+                'linear_2.b_0_moment1_0',
+                'embedding_0.w_0_moment1_0',
+                'linear_0.w_0_moment2_0',
+                'linear_1.b_0_moment2_0',
+                'linear_2.b_0_moment2_0',
+                'embedding_0.w_0_moment2_0',
+                'linear_0.w_0_beta1_pow_acc_0',
+                'linear_1.b_0_beta1_pow_acc_0',
+                'linear_2.b_0_beta1_pow_acc_0',
+                'embedding_0.w_0_beta1_pow_acc_0',
+                'linear_0.w_0_beta2_pow_acc_0',
+                'linear_1.b_0_beta2_pow_acc_0',
+                'linear_2.b_0_beta2_pow_acc_0',
+                'embedding_0.w_0_beta2_pow_acc_0',
+            }
+            self.sharding_model(
+                Optimizer="adam", sharded_accumulators=sharded_accumulators
+            )
 
     def test_sharding_momentum(self):
-        sharded_accumulators = {
-            'linear_6.w_0_velocity_0',
-            'linear_7.b_0_velocity_0',
-            'linear_8.b_0_velocity_0',
-            'embedding_2.w_0_velocity_0',
-        }
-        self.sharding_model(
-            Optimizer="Momentum", sharded_accumulators=sharded_accumulators
-        )
+        if not g_shard_split_param:
+            sharded_accumulators = {
+                'linear_6.w_0_velocity_0',
+                'linear_7.b_0_velocity_0',
+                'linear_8.b_0_velocity_0',
+                'embedding_2.w_0_velocity_0',
+            }
+            self.sharding_model(
+                Optimizer="Momentum", sharded_accumulators=sharded_accumulators
+            )
 
     def test_sharding_momentum_amp(self):
         sharded_accumulators = {

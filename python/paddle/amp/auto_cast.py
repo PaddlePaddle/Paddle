@@ -244,6 +244,7 @@ def check_models(models):
 def _is_valid_optimizer(optimizer):
     from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding_optimizer import (
         DygraphShardingOptimizer,
+        DygraphShardingOptimizerV2,
     )
 
     return isinstance(
@@ -251,6 +252,7 @@ def _is_valid_optimizer(optimizer):
         (
             paddle.optimizer.Optimizer,
             DygraphShardingOptimizer,
+            DygraphShardingOptimizerV2,
         ),
     )
 
@@ -481,11 +483,14 @@ class StateDictHook:
 def _set_multi_precision(optimizer, multi_precision):
     from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding_optimizer import (
         DygraphShardingOptimizer,
+        DygraphShardingOptimizerV2,
     )
 
     optimizer = (
         optimizer._inner_opt
-        if isinstance(optimizer, DygraphShardingOptimizer)
+        if isinstance(
+            optimizer, (DygraphShardingOptimizer, DygraphShardingOptimizerV2)
+        )
         else optimizer
     )
     if hasattr(optimizer, "_multi_precision"):
