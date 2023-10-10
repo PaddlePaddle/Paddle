@@ -14,9 +14,9 @@
 
 from .assert_transformer import AssertTransformer  # noqa: F401
 from .ast_transformer import DygraphToStaticAst  # noqa: F401
+from .convert_call_func import convert_call as Call  # noqa: F401
 from .convert_operators import convert_assert as Assert  # noqa: F401
 from .convert_operators import convert_attr as Attr  # noqa: F401
-from .convert_operators import convert_call as Call  # noqa: F401
 from .convert_operators import convert_ifelse as IfElse  # noqa: F401
 from .convert_operators import convert_len as Len  # noqa: F401
 from .convert_operators import convert_load as Ld  # noqa: F401
