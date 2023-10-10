@@ -32,5 +32,5 @@ set_tests_properties(
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will
   # be build only in CI, so suppose the generator in Windows is Ninja.
-  copy_onnx(symbolic_op_test)
+  copy_onnx(shape_op_test)
 endif()
