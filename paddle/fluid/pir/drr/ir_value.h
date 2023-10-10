@@ -35,7 +35,7 @@ class IrShape {
   int64_t at(int idx) const { return dims_.at(idx); }
 
  private:
-  const phi::DDim& dims_;
+  const phi::DDim dims_;
 };
 
 class IrDtype {
@@ -45,19 +45,21 @@ class IrDtype {
   bool operator==(IrDtype other) const { return dtype_ == other.dtype_; }
 
  private:
-  pir::Type dtype_;
+  const pir::Type dtype_;
 };
 
 class IrValue : public TensorInterface {
  public:
   explicit IrValue(const pir::Value& value)
       : value_(value),
-        shape_((value && value.type())
+        shape_((value && value.type() &&
+                value.type().dyn_cast<paddle::dialect::DenseTensorType>())
                    ? value.type()
                          .dyn_cast<paddle::dialect::DenseTensorType>()
                          .dims()
                    : phi::DDim{}),
-        dtype_((value && value.type())
+        dtype_((value && value.type() &&
+                value.type().dyn_cast<paddle::dialect::DenseTensorType>())
                    ? value.type()
                          .dyn_cast<paddle::dialect::DenseTensorType>()
                          .dtype()

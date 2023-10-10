@@ -683,7 +683,7 @@ class DrrRewritePattern : public pir::RewritePattern {
                            const MatchContextImpl& res_match_ctx,
                            pir::PatternRewriter& rewriter) const {  // NOLINT
     for (const auto& output_name : result_pattern_graph_->output_tensors()) {
-      if (source_pattern_graph_->output_tensors().count(output_name)) {
+      if (source_pattern_graph_->id2owend_tensor().count(output_name)) {
         const auto& src_ir_tensor = src_match_ctx.GetIrValue(output_name);
         const auto& res_ir_tensor = res_match_ctx.GetIrValue(output_name);
         rewriter.ReplaceAllUsesWith(src_ir_tensor.get(), res_ir_tensor.get());
@@ -736,35 +736,32 @@ class DrrRewritePattern : public pir::RewritePattern {
         result_pattern_graph.output_tensors());
     std::vector<const OpCall*> deleted_ops;
     std::unordered_set<const OpCall*> deleted_ops_set;
-    std::for_each(
-        topo_order_ops.rbegin(),
-        topo_order_ops.rend(),
-        [&deleted_ops,
-         &deleted_ops_set,
-         &backward_visited_tensor_set,
-         &forward_deleted_ops](const OpCall* op_call) {
-          bool all_comsumer_deleted = true;
-          for (const auto* output : op_call->outputs()) {
-            if (backward_visited_tensor_set.count(output->name())) {
-              for (const auto* consumer : output->consumers()) {
-                if (!deleted_ops_set.count(consumer)) {
-                  all_comsumer_deleted = false;
-                }
-              }
-            } else if (output->consumers().empty()) {
-              continue;
-            } else {
-              all_comsumer_deleted = false;
-            }
-          }
-          if (all_comsumer_deleted && forward_deleted_ops.count(op_call)) {
-            deleted_ops_set.insert(op_call);
-            deleted_ops.push_back(op_call);
-            for (const auto* input : op_call->inputs()) {
-              backward_visited_tensor_set.insert(input->name());
-            }
-          }
-        });
+    std::for_each(topo_order_ops.rbegin(),
+                  topo_order_ops.rend(),
+                  [&deleted_ops,
+                   &deleted_ops_set,
+                   &backward_visited_tensor_set,
+                   &forward_deleted_ops](const OpCall* op_call) {
+                    bool all_comsumer_deleted = true;
+                    bool from_backward_visited_tensor = false;
+                    for (const auto* output : op_call->outputs()) {
+                      if (backward_visited_tensor_set.count(output->name())) {
+                        from_backward_visited_tensor = true;
+                      } else if (output->consumers().empty()) {
+                        continue;
+                      } else {
+                        all_comsumer_deleted = false;
+                      }
+                    }
+                    if (all_comsumer_deleted && from_backward_visited_tensor &&
+                        forward_deleted_ops.count(op_call)) {
+                      deleted_ops_set.insert(op_call);
+                      deleted_ops.push_back(op_call);
+                      for (const auto* input : op_call->inputs()) {
+                        backward_visited_tensor_set.insert(input->name());
+                      }
+                    }
+                  });
 
     // Delete Operation with topo order from output tensors.
     for (const auto* op_call : deleted_ops) {
