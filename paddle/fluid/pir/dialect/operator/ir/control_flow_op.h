@@ -31,11 +31,11 @@ class IfOp : public pir::Op<IfOp> {
                     pir::Value cond,
                     std::vector<pir::Type> &&output_types);
 
-  // static void Build(pir::Builder &builder,             // NOLINT
-  //                   pir::OperationArgument &argument,  // NOLINT
-  //                   pir::Value cond,
-  //                   std::unique_ptr<pir::Block>&& true_block,
-  //                   std::unique_ptr<pir::Block>&& false_block);
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value cond,
+                    std::unique_ptr<pir::Block> &&true_block,
+                    std::unique_ptr<pir::Block> &&false_block);
 
   pir::Value cond() { return operand_source(0); }
   pir::Block *true_block();
