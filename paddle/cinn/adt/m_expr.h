@@ -20,6 +20,7 @@
 #include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/adt/equation_value.h"
 #include "paddle/cinn/adt/schedule_descriptor.h"
+#include "paddle/cinn/adt/schedule_mesh.h"
 #include "paddle/cinn/adt/tags.h"
 #include "paddle/cinn/adt/tree.h"
 
@@ -140,14 +141,16 @@ using TensorIndexExpr4TensorT = std::function<TensorIndexExpr(const Tensor&)>;
 using LoopDescriptor4LoopIteratorT =
     std::function<LoopDescriptor(const Iterator&)>;
 
-// AnchoredMapStmt = (MapStmt Stmt, tAnchor Tensor, TensorIndexExpr4TensorT,
-// LoopDescriptor4LoopIteratorT)
+// AnchoredMapStmt = (MapStmt Stmt, ScheduleMesh, tAnchor Tensor,
+// TensorIndexExpr4TensorT, LoopDescriptor4LoopIteratorT)
 class AnchoredMapStmt final : public Tuple<MapStmt<Stmt>,
+                                           ScheduleMesh,
                                            tAnchor<Tensor>,
                                            TensorIndexExpr4TensorT,
                                            LoopDescriptor4LoopIteratorT> {
  public:
   using Tuple<MapStmt<Stmt>,
+              ScheduleMesh,
               tAnchor<Tensor>,
               TensorIndexExpr4TensorT,
               LoopDescriptor4LoopIteratorT>::Tuple;

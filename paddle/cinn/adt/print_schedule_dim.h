@@ -14,23 +14,12 @@
 
 #pragma once
 
-#include <optional>
-
-#include "paddle/cinn/adt/equation_constant.h"
+#include <string>
 
 namespace cinn::adt {
 
-class EquationFunctionConstantsProvider {
- public:
-  virtual ~EquationFunctionConstantsProvider() = default;
+class ScheduleDim;
 
-  virtual Constant GetStrideSize(const Stride& stride) const = 0;
-
-  virtual bool AddStride(const Stride& stride,
-                         const Constant& stride_value) = 0;
-
- protected:
-  EquationFunctionConstantsProvider() = default;
-};
+std::string ToTxtString(const ScheduleDim& schedule_dim);
 
 }  // namespace cinn::adt

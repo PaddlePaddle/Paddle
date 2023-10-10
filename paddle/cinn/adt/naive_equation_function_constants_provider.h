@@ -46,7 +46,7 @@ class NaiveEquationFunctionConstantsProvider final
     return iter->second;
   }
 
-  bool AddStride(const Stride& stride, std::int64_t stride_value) override {
+  bool AddStride(const Stride& stride, const Constant& stride_value) override {
     return stride2constant_.emplace(stride, stride_value).second;
   }
 

@@ -231,18 +231,13 @@ std::shared_ptr<KGroup> GenerateKGroups(
   return std::make_shared<KGroup>(group, igroups);
 }
 
-Equations MakeSdEquations(const std::shared_ptr<IGroup>& igroup,
-                          const ScheduleDescriptor& sd) {
-  config::AnchorSdEquationContext ctx{sd->size(), igroup->anchor_index()};
-  const auto& sd_sizes = GenerateLoopSizeFromSd(sd);
-  igroup->set_anchor_sd_equation_ctx(ctx, sd_sizes);
-
-  return igroup->anchor_sd_equation_ctx().value().equations();
-}
-
 GraphView GenerateSdEquationGraphView(const std::shared_ptr<IGroup>& igroup,
-                                      const ScheduleDescriptor& sd) {
-  Equations equations = MakeSdEquations(igroup, sd);
+                                      const ScheduleMesh& sched_mesh) {
+  config::AnchorSdEquationContext ctx{sched_mesh, igroup->anchor_index()};
+  igroup->set_anchor_sd_equation_ctx(ctx);
+
+  Equations equations = igroup->anchor_sd_equation_ctx().value().equations();
+
   return Graph::New(equations)->GetGraphView();
 }
 
@@ -262,8 +257,10 @@ std::unordered_map<Variable, const Value> MakeSdIterator2Iterator(
 }
 
 std::function<TensorIndexExpr(const Tensor&)> MakeGetterTensorIndexExpr(
-    const std::shared_ptr<IGroup>& igroup,
-    const GraphView& sd_equation_graph_view) {
+    const std::shared_ptr<IGroup>& igroup, const ScheduleMesh& sched_mesh) {
+  const auto& sd_equation_graph_view =
+      GenerateSdEquationGraphView(igroup, sched_mesh);
+
   GraphView igroup_view = igroup->GetDefaultGraphView();
   GraphView merged_view = igroup_view.Merge(sd_equation_graph_view);
 
@@ -284,7 +281,7 @@ std::function<TensorIndexExpr(const Tensor&)> MakeGetterTensorIndexExpr(
 }
 
 LoopDescriptor4IterVarT MakeGetterLoopDescriptor4IterVar(
-    const LoopIterators& loop_iters, const ScheduleDescriptor& sd) {
+    const LoopIterators& loop_iters, const LoopDescriptors& sd) {
   CHECK_EQ(loop_iters->size(), sd->size());
   using Cache = std::unordered_map<Iterator, LoopDescriptor>;
   const auto& sd_iter2sd = std::make_shared<Cache>();
@@ -361,7 +358,8 @@ List<Tensor> MakeOutputTensors(const std::shared_ptr<KGroup>& kgroup) {
 AnchoredMapStmt GenerateAnchoredMapStmt(
     const std::shared_ptr<IGroup>& igroup,
     const LoopIterators& loop_iters,
-    const ScheduleDescriptor& sd,
+    const ScheduleMesh& sched_mesh,
+    const LoopDescriptors& sd,
     const TensorIndexExpr4TensorT& TensorIndexExpr4Tensor) {
   const auto& LoopDescriptor4IterVar =
       MakeGetterLoopDescriptor4IterVar(loop_iters, sd);
@@ -371,30 +369,32 @@ AnchoredMapStmt GenerateAnchoredMapStmt(
                                                      LoopDescriptor4IterVar,
                                                      TensorIndexExpr4Tensor);
   return AnchoredMapStmt{MakeMapStmt(map_irs),
+                         sched_mesh,
                          GetAnchorTensor(igroup),
                          TensorIndexExpr4Tensor,
                          LoopDescriptor4IterVar};
 }
 
-AnchoredMapStmt GenerateAnchoredMapStmt(const std::shared_ptr<IGroup>& igroup,
-                                        const ScheduleDescriptor& sd) {
-  const auto& sd_equation_graph_view = GenerateSdEquationGraphView(igroup, sd);
+AnchoredMapStmt GenerateAnchoredMapStmt(const std::shared_ptr<IGroup>& igroup) {
+  const auto& [sched_mesh, loop_types] =
+      CreateOptimizedScheduleMesh(igroup->anchor_schedule_dims());
+
+  const auto& sd = CreateScheduleDescriptor(sched_mesh, loop_types);
 
   const auto& TensorIndexExpr4Tensor =
-      MakeGetterTensorIndexExpr(igroup, sd_equation_graph_view);
+      MakeGetterTensorIndexExpr(igroup, sched_mesh);
 
   const auto& schedule_iters = igroup->loop_iterators();
 
   return GenerateAnchoredMapStmt(
-      igroup, schedule_iters, sd, TensorIndexExpr4Tensor);
+      igroup, schedule_iters, sched_mesh, sd, TensorIndexExpr4Tensor);
 }
 
 List<AnchoredMapStmt> MakeAnchoredMapStmts(
     const std::shared_ptr<KGroup>& kgroup) {
   List<AnchoredMapStmt> ret{};
   for (const auto& igroup : kgroup->igroups()) {
-    const auto& sd = MakeNaiveScheduleDescriptor(kgroup, igroup);
-    ret->emplace_back(GenerateAnchoredMapStmt(igroup, sd));
+    ret->emplace_back(GenerateAnchoredMapStmt(igroup));
   }
   return ret;
 }

@@ -22,7 +22,7 @@
 namespace cinn::adt {
 
 class IGroup;
-using cinn::adt::ScheduleDescriptor;
+using cinn::adt::LoopDescriptors;
 
 class KGroup final {
  public:

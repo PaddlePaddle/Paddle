@@ -16,6 +16,7 @@
 
 #include "paddle/cinn/adt/equation.h"
 #include "paddle/cinn/adt/equation_util.h"
+#include "paddle/cinn/adt/schedule_mesh.h"
 
 namespace cinn::adt::config {
 
@@ -28,28 +29,38 @@ class AnchorSdEquationContext final {
   AnchorSdEquationContext& operator=(const AnchorSdEquationContext&) = default;
   AnchorSdEquationContext& operator=(AnchorSdEquationContext&&) = default;
 
-  AnchorSdEquationContext(std::size_t num_strides,
+  AnchorSdEquationContext(const ScheduleMesh& sched_mesh,
                           const AnchorIndex& anchor_index)
-      : strides_(MakeStrides(num_strides)),
-        loop_iterators_(MakeIterators(num_strides)) {
-    GenerateSdEquation(anchor_index);
+      : sd_strides_(MakeStrides(GetOutputRank(sched_mesh))),
+        sd_iterators_(MakeIterators(GetOutputRank(sched_mesh))),
+        anchor_strides_(MakeStrides(GetInputRank(sched_mesh))) {
+    InitStride2Constant(sched_mesh);
+    GenerateSdEquation(sched_mesh, anchor_index);
   }
 
-  const List<Stride>& strides() const { return strides_; }
+  const List<Stride>& sd_strides() const { return sd_strides_; }
 
-  const List<Iterator>& loop_iterators() const { return loop_iterators_; }
+  const List<Stride>& anchor_strides() const { return anchor_strides_; }
+
+  const List<Iterator>& sd_iterators() const { return sd_iterators_; }
 
   const Equations& equations() const { return equations_; }
 
- private:
-  void GenerateSdEquation(const Index& tensor_index) {
-    const auto& sd_index = MakeDot(loop_iterators_, strides_, &equations_);
-    Equal(sd_index, tensor_index, &equations_);
+  const std::unordered_map<Stride, const Constant>& stride2constant() const {
+    return stride2constant_;
   }
 
-  List<Stride> strides_;
-  List<Iterator> loop_iterators_;
+ private:
+  void InitStride2Constant(const ScheduleMesh& sched_mesh);
+
+  void GenerateSdEquation(const ScheduleMesh& sched_mesh,
+                          const Index& tensor_index);
+
+  List<Stride> sd_strides_;
+  List<Iterator> sd_iterators_;
+  List<Stride> anchor_strides_;
   Equations equations_;
+  std::unordered_map<Stride, const Constant> stride2constant_;
 };
 
 }  // namespace cinn::adt::config

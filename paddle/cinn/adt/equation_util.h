@@ -109,12 +109,41 @@ inline void IdentityConnect(const Index& out,
 }
 
 template <typename DoEachT>
+void IdentityConnect(const Iterator& out,
+                     const Iterator& in,
+                     const DoEachT& DoEach) {
+  DoEach(Identity<tOut<Iterator>, tIn<Iterator>>{out, in});
+}
+
+inline void IdentityConnect(const Iterator& out,
+                            const Iterator& in,
+                            Equations* equations) {
+  IdentityConnect(out, in, [&](const auto& equation) {
+    (*equations)->push_back(equation);
+  });
+}
+
+template <typename DoEachT>
 void Equal(const Index& lhs, const Index& rhs, const DoEachT& DoEach) {
   IdentityConnect(lhs, rhs, DoEach);
   IdentityConnect(rhs, lhs, DoEach);
 }
 
 inline void Equal(const Index& lhs, const Index& rhs, Equations* equations) {
+  Equal(lhs, rhs, [&](const auto& equation) {
+    (*equations)->emplace_back(equation);
+  });
+}
+
+template <typename DoEachT>
+void Equal(const Iterator& lhs, const Iterator& rhs, const DoEachT& DoEach) {
+  IdentityConnect(lhs, rhs, DoEach);
+  IdentityConnect(rhs, lhs, DoEach);
+}
+
+inline void Equal(const Iterator& lhs,
+                  const Iterator& rhs,
+                  Equations* equations) {
   Equal(lhs, rhs, [&](const auto& equation) {
     (*equations)->emplace_back(equation);
   });

@@ -98,26 +98,19 @@ class IGroup final {
     return anchor_sd_equation_ctx_;
   }
 
-  void set_anchor_sd_equation_ctx(const config::AnchorSdEquationContext& ctx,
-                                  const List<LoopSize>& sd_sizes) {
+  void set_anchor_sd_equation_ctx(const config::AnchorSdEquationContext& ctx) {
     anchor_sd_equation_ctx_ = ctx;
-    CHECK_EQ(ctx.strides()->size(), sd_sizes->size());
     auto* mut_constants_provider =
         const_cast<EquationFunctionConstantsProvider*>(
             constants_provider_.get());
-    std::int64_t loop_acc_size = 1;
-    for (int i = ctx.strides()->size() - 1; i >= 0; --i) {
-      CHECK(mut_constants_provider->AddStride(ctx.strides()->at(i),
-                                              loop_acc_size));
-      const auto& loop_size = sd_sizes->at(i);
-      CHECK(loop_size.Has<std::int64_t>());
-      loop_acc_size *= loop_size.Get<std::int64_t>();
+    for (const auto& [stride, stride_value] : ctx.stride2constant()) {
+      CHECK(mut_constants_provider->AddStride(stride, stride_value));
     }
   }
 
   const List<Iterator>& loop_iterators() const {
     CHECK(anchor_sd_equation_ctx_.has_value());
-    return anchor_sd_equation_ctx_.value().loop_iterators();
+    return anchor_sd_equation_ctx_.value().sd_iterators();
   }
 
   List<Iterator> GetAnchorIterators() const;

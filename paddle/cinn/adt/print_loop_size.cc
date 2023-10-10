@@ -12,25 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include <optional>
-
-#include "paddle/cinn/adt/equation_constant.h"
+#include "paddle/cinn/adt/print_loop_size.h"
+#include "paddle/cinn/adt/schedule_descriptor.h"
 
 namespace cinn::adt {
 
-class EquationFunctionConstantsProvider {
- public:
-  virtual ~EquationFunctionConstantsProvider() = default;
+std::string ToTxtString(const LoopSize& loop_size) {
+  return std::to_string(loop_size.Get<std::int64_t>());
+}
 
-  virtual Constant GetStrideSize(const Stride& stride) const = 0;
-
-  virtual bool AddStride(const Stride& stride,
-                         const Constant& stride_value) = 0;
-
- protected:
-  EquationFunctionConstantsProvider() = default;
-};
+std::string ToTxtString(const List<LoopSize>& loop_sizes) {
+  std::string ret;
+  ret += "[";
+  for (std::size_t idx = 0; idx < loop_sizes->size(); ++idx) {
+    if (idx != 0) {
+      ret += ", ";
+    }
+    ret += ToTxtString(loop_sizes.Get(idx));
+  }
+  ret += "]";
+  return ret;
+}
 
 }  // namespace cinn::adt
