@@ -21,7 +21,7 @@ paddle.enable_static()
 
 
 class TestMathOpPatchesPir(unittest.TestCase):
-    def check_math_exists(self):
+    def test_math_exists(self):
         with paddle.pir_utils.IrGuard():
             a = paddle.to_tensor([[1, 1], [2, 2], [3, 3]])
             self.assertTrue(isinstance(a, paddle.pir.OpResult))
