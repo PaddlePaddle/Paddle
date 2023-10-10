@@ -15,6 +15,7 @@
 #include "paddle/cinn/hlir/framework/group_scheduler.h"
 #include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_bind.h"
 #include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_inline.h"
+#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/reduction_factoring.h"
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
@@ -137,6 +138,7 @@ GroupScheduler::GroupScheduler(ir::IRSchedule* ir_sch,
 void GroupScheduler::operator()() {
   feasible_conditions_.emplace_back(&GroupScheduler::IsKeepGraphDependency);
   DoLoopAlignment();
+  OptimizeReduction();
   DoComputeInline();
   DoHorizontalLoopFusion();
   DoVerticalLoopFusion();
@@ -1089,6 +1091,32 @@ void GroupScheduler::AllocateStorage() {
   };
   schedule_block_graph_->DFSTopoWalk(SetStorage);
   VLOG(5) << "[After AllocateStorage] func body: "
+          << ir_sch_->GetModule().GetExprs().front();
+}
+
+void GroupScheduler::OptimizeReduction() {
+  VLOG(5) << "[Start OptimizeReduction] func body: "
+          << ir_sch_->GetModule().GetExprs().front();
+
+  auto_schedule::ReductionFactoring rf(target_);
+
+  auto ReductionFactoring = [&](ir::ScheduleBlockNode* node) {
+    if (IsProhibitScheduleExternCallBlock(node->Block())) {
+      return;
+    }
+    VLOG(6) << "try ReductionFactoring on: " << node->id()
+            << ", before ReductionFactoring, func body: "
+            << ir_sch_->GetModule().GetExprs().front();
+    rf.Apply(node->id(), ir_sch_);
+    VLOG(6) << "try ReductionFactoring on: " << node->id()
+            << ", after ReductionFactoring, func body: "
+            << ir_sch_->GetModule().GetExprs().front();
+  };
+
+  schedule_block_graph_->DFSTopoWalk(ReductionFactoring);
+  schedule_block_graph_->Update(*ir_sch_);
+
+  VLOG(5) << "[After OptimizeReduction] func body: "
           << ir_sch_->GetModule().GetExprs().front();
 }
 

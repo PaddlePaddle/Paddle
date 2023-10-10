@@ -73,6 +73,9 @@ class GroupScheduler {
   // Automatically allocate storage locations for variables to optimize IO.
   void AllocateStorage();
 
+  // Automatically optimize the reductive calculation
+  void OptimizeReduction();
+
   // Evaluate the priority of ScheduleBlockNode.
   // The node where the performance bottleneck is located
   // has a higher priority, while the node with a lower priority
