@@ -130,7 +130,7 @@ def _can_apply_infer_spmd_rule(dist_op):
         enable = True if enable == 'true' else False
     enable = bool(enable)
 
-    # TODO remove me. ops to be adapted: lookup_table_v2, reshape2, split, transpose2,
+    # TODO remove me. ops to be adapted: squeeze2
     __adapted_ops__ = [
         "matmul_v2",
         "elementwise_div",
@@ -143,6 +143,11 @@ def _can_apply_infer_spmd_rule(dist_op):
         "dropout",
         "reduce_sum",
         "layer_norm",
+        "lookup_table_v2",
+        "reshape2",
+        "transpose2",
+        "split",
+        "unsqueeze2",
     ]
     op_type = dist_op.serial_op.type
     return enable and contains_spmd_rule(op_type) and op_type in __adapted_ops__

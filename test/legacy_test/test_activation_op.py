@@ -1699,10 +1699,13 @@ class TestAbs(TestActivation):
     def if_enable_cinn(self):
         pass
 
+    def test_check_output(self):
+        self.check_output(check_new_ir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
 
 class TestAbs_ZeroDim(TestAbs):
@@ -1727,6 +1730,9 @@ class TestCeil(TestActivation):
 
     def init_shape(self):
         self.shape = [10, 12]
+
+    def test_check_output(self):
+        self.check_output(check_new_ir=True)
 
     # The same reason with TestFloor
     def test_check_grad(self):
@@ -2272,10 +2278,10 @@ class TestRelu(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_new_ir=True)
 
     def if_enable_cinn(self):
         pass
@@ -3254,10 +3260,13 @@ class TestLog(TestActivation):
     def if_enable_cinn(self):
         pass
 
+    def test_check_output(self):
+        self.check_output(check_new_ir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
 
 class Test_Log_Op_Fp16(unittest.TestCase):
@@ -4566,8 +4575,10 @@ create_test_act_fp16_class(
 create_test_act_fp16_class(
     TestSqrtComp, check_prim=True, enable_cinn=True, check_new_ir=True
 )
-create_test_act_fp16_class(TestAbs, check_prim=True, enable_cinn=True)
-create_test_act_fp16_class(TestCeil, grad_check=False)
+create_test_act_fp16_class(
+    TestAbs, check_prim=True, enable_cinn=True, check_new_ir=True
+)
+create_test_act_fp16_class(TestCeil, grad_check=False, check_new_ir=True)
 create_test_act_fp16_class(
     TestFloor, check_prim=True, grad_check=False, enable_cinn=True
 )
@@ -4583,7 +4594,9 @@ create_test_act_fp16_class(TestAcosh)
 create_test_act_fp16_class(TestAsinh)
 create_test_act_fp16_class(TestAtanh)
 create_test_act_fp16_class(TestRound, grad_check=False)
-create_test_act_fp16_class(TestRelu, check_prim=True, enable_cinn=True)
+create_test_act_fp16_class(
+    TestRelu, check_prim=True, enable_cinn=True, check_new_ir=True
+)
 create_test_act_fp16_class(
     TestGelu,
     check_prim=True,
@@ -4601,7 +4614,7 @@ create_test_act_fp16_class(TestSoftRelu, check_dygraph=False)
 create_test_act_fp16_class(TestELU)
 create_test_act_fp16_class(TestCELU)
 create_test_act_fp16_class(TestReciprocal)
-create_test_act_fp16_class(TestLog, check_prim=True)
+create_test_act_fp16_class(TestLog, check_prim=True, check_new_ir=True)
 if core.is_compiled_with_rocm():
     create_test_act_fp16_class(TestLog2)
 else:
@@ -4710,8 +4723,8 @@ create_test_act_bf16_class(TestHardShrink)
 create_test_act_bf16_class(TestSoftshrink)
 create_test_act_bf16_class(TestSqrt, check_prim=True, check_new_ir=True)
 create_test_act_bf16_class(TestSqrtComp, check_prim=True, check_new_ir=True)
-create_test_act_bf16_class(TestAbs, check_prim=True)
-create_test_act_bf16_class(TestCeil, grad_check=False)
+create_test_act_bf16_class(TestAbs, check_prim=True, check_new_ir=True)
+create_test_act_bf16_class(TestCeil, grad_check=False, check_new_ir=True)
 create_test_act_bf16_class(TestFloor, grad_check=False, check_prim=True)
 create_test_act_bf16_class(TestCos)
 create_test_act_bf16_class(TestTan)
@@ -4725,7 +4738,7 @@ create_test_act_bf16_class(TestAcosh)
 create_test_act_bf16_class(TestAsinh)
 create_test_act_bf16_class(TestAtanh)
 create_test_act_bf16_class(TestRound, grad_check=False)
-create_test_act_bf16_class(TestRelu, check_prim=True)
+create_test_act_bf16_class(TestRelu, check_prim=True, check_new_ir=True)
 create_test_act_bf16_class(
     TestGelu,
     check_prim=True,
@@ -4741,7 +4754,7 @@ create_test_act_bf16_class(TestSoftRelu, check_dygraph=False)
 create_test_act_bf16_class(TestELU)
 create_test_act_bf16_class(TestCELU)
 create_test_act_bf16_class(TestReciprocal)
-create_test_act_bf16_class(TestLog, check_prim=True)
+create_test_act_bf16_class(TestLog, check_prim=True, check_new_ir=True)
 if core.is_compiled_with_rocm():
     create_test_act_bf16_class(TestLog2)
 else:

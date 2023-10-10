@@ -622,12 +622,13 @@ def merge_forward_backward_dims_mapping(fw_results, bw_results):
 
 
 def update_op_dims_mapping(
-    dist_op,
-    input_arg_names,
-    infered_input_dims_mappings,
-    output_arg_names,
-    infered_output_dims_mappings,
+    dist_op, input_arg_names, output_arg_names, fw_results, bw_results
 ):
+    (
+        infered_input_dims_mappings,
+        infered_output_dims_mappings,
+    ) = merge_forward_backward_dims_mapping(fw_results, bw_results)
+
     op_dist_attr = dist_op.dist_attr
     changed = False
     assert len(input_arg_names) == len(
@@ -661,6 +662,7 @@ def update_op_dims_mapping(
             op_dist_attr.set_input_dims_mapping(
                 input_arg_names[i], infered_dims_mapping
             )
+        # TODO support partial for inputs
 
     for i in range(len(output_arg_names)):
         original_dims_mapping = op_dist_attr.get_output_dims_mapping(
@@ -682,6 +684,29 @@ def update_op_dims_mapping(
             op_dist_attr.set_output_dims_mapping(
                 output_arg_names[i], infered_dims_mapping
             )
+
+        # NOTE in partial stage-I, we infer partial for output in infer_forward only
+        output_dist_attr = op_dist_attr.get_output_dist_attr(
+            output_arg_names[i]
+        )
+        output_idx = output_arg_names.index(output_arg_names[i])
+        if (
+            fw_results[1][output_idx]._partial_dims()
+            != output_dist_attr._partial_dims()
+        ):
+            _logger.info(
+                "Changed: Op [{}], tensor name [{}], Original partial on [{}], Infered partial on [{}]".format(
+                    dist_op.serial_op.type,
+                    output_arg_names[i],
+                    output_dist_attr._partial_dims(),
+                    fw_results[1][output_idx]._partial_dims(),
+                )
+            )
+            output_dist_attr._clean_partial_status()
+            output_dist_attr._set_partial_dims(
+                list(fw_results[1][0]._partial_dims())
+            )
+            changed = True
 
     return changed
 
