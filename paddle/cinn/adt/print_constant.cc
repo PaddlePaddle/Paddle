@@ -22,11 +22,6 @@ struct ToTxtStringStruct {
     return std::to_string(constant);
   }
 
-  std::string operator()(const tStride<UniqueId>& constant) {
-    std::size_t constant_unique_id = constant.value().unique_id();
-    return "stride_" + std::to_string(constant_unique_id);
-  }
-
   std::string operator()(const tDim<UniqueId>& constant) {
     std::size_t constant_unique_id = constant.value().unique_id();
     return "dim_" + std::to_string(constant_unique_id);

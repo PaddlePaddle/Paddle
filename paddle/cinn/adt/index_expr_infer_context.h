@@ -48,7 +48,7 @@ class IndexExprInferContext final {
     return variable2value_.count(variable) > 0;
   }
 
-  Constant GetStrideSize(const Stride& stride) const;
+  Constant GetDimSize(const Dim& dim) const;
 
  private:
   std::unordered_map<Variable, const Value> variable2value_;

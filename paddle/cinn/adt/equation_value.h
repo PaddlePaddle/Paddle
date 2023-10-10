@@ -27,18 +27,18 @@ namespace cinn::adt {
 
 DEFINE_ADT_TAG(tPointer);
 
-template <typename IteratorsT, typename StridesT>
-struct IndexDot : public Tuple<IteratorsT, StridesT> {
-  using Tuple<IteratorsT, StridesT>::Tuple;
+template <typename IteratorsT, typename DimsT>
+struct IndexDotValue : public Tuple<IteratorsT, DimsT> {
+  using Tuple<IteratorsT, DimsT>::Tuple;
 
   const IteratorsT& GetIteratorsValue() const {
     return std::get<0>(this->tuple());
   }
 };
 
-template <typename IndexT, typename StridesT>
-struct IndexUnDot : public Tuple<IndexT, StridesT> {
-  using Tuple<IndexT, StridesT>::Tuple;
+template <typename IndexT, typename DimsT>
+struct IndexUnDotValue : public Tuple<IndexT, DimsT> {
+  using Tuple<IndexT, DimsT>::Tuple;
 
   const IndexT& GetIndexValue() const { return std::get<0>(this->tuple()); }
 };
@@ -89,8 +89,8 @@ DEFINE_ADT_UNION(Value,
                  Iterator,
                  Constant,
                  List<Value>,
-                 IndexDot<Value, Constant>,
-                 IndexUnDot<Value, Constant>,
+                 IndexDotValue<Value, Constant>,
+                 IndexUnDotValue<Value, Constant>,
                  ConstantAdd<Value>,
                  ConstantDiv<Value>,
                  ConstantMod<Value>,
@@ -98,9 +98,9 @@ DEFINE_ADT_UNION(Value,
                  PtrGetItem<Value>);
 
 OVERLOAD_OPERATOR_EQ_NE(Value, UnionEqual);
-using IndexDot_Value_Constant = IndexDot<Value, Constant>;
+using IndexDot_Value_Constant = IndexDotValue<Value, Constant>;
 OVERLOAD_OPERATOR_EQ_NE(IndexDot_Value_Constant, TupleEqual);
-using IndexUnDot_Value_Constant = IndexUnDot<Value, Constant>;
+using IndexUnDot_Value_Constant = IndexUnDotValue<Value, Constant>;
 OVERLOAD_OPERATOR_EQ_NE(IndexUnDot_Value_Constant, TupleEqual);
 OVERLOAD_OPERATOR_EQ_NE(ConstantAdd<Value>, TupleEqual);
 OVERLOAD_OPERATOR_EQ_NE(ConstantDiv<Value>, TupleEqual);

@@ -24,10 +24,9 @@ class EquationFunctionConstantsProvider {
  public:
   virtual ~EquationFunctionConstantsProvider() = default;
 
-  virtual Constant GetStrideSize(const Stride& stride) const = 0;
+  virtual Constant GetDimSize(const Dim& dim) const = 0;
 
-  virtual bool AddStride(const Stride& stride,
-                         const Constant& stride_value) = 0;
+  virtual bool AddDim(const Dim& dim, const Constant& dim_value) = 0;
 
  protected:
   EquationFunctionConstantsProvider() = default;

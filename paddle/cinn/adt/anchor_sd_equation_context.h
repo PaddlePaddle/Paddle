@@ -31,36 +31,36 @@ class AnchorSdEquationContext final {
 
   AnchorSdEquationContext(const ScheduleMesh& sched_mesh,
                           const AnchorIndex& anchor_index)
-      : sd_strides_(MakeStrides(GetOutputRank(sched_mesh))),
+      : sd_dims_(MakeDims(GetOutputRank(sched_mesh))),
         sd_iterators_(MakeIterators(GetOutputRank(sched_mesh))),
-        anchor_strides_(MakeStrides(GetInputRank(sched_mesh))) {
-    InitStride2Constant(sched_mesh);
+        anchor_dims_(MakeDims(GetInputRank(sched_mesh))) {
+    InitDim2Constant(sched_mesh);
     GenerateSdEquation(sched_mesh, anchor_index);
   }
 
-  const List<Stride>& sd_strides() const { return sd_strides_; }
+  const List<Dim>& sd_dims() const { return sd_dims_; }
 
-  const List<Stride>& anchor_strides() const { return anchor_strides_; }
+  const List<Dim>& anchor_dims() const { return anchor_dims_; }
 
   const List<Iterator>& sd_iterators() const { return sd_iterators_; }
 
   const Equations& equations() const { return equations_; }
 
-  const std::unordered_map<Stride, const Constant>& stride2constant() const {
-    return stride2constant_;
+  const std::unordered_map<Dim, const Constant>& dim2constant() const {
+    return dim2constant_;
   }
 
  private:
-  void InitStride2Constant(const ScheduleMesh& sched_mesh);
+  void InitDim2Constant(const ScheduleMesh& sched_mesh);
 
   void GenerateSdEquation(const ScheduleMesh& sched_mesh,
                           const Index& tensor_index);
 
-  List<Stride> sd_strides_;
+  List<Dim> sd_dims_;
   List<Iterator> sd_iterators_;
-  List<Stride> anchor_strides_;
+  List<Dim> anchor_dims_;
   Equations equations_;
-  std::unordered_map<Stride, const Constant> stride2constant_;
+  std::unordered_map<Dim, const Constant> dim2constant_;
 };
 
 }  // namespace cinn::adt::config

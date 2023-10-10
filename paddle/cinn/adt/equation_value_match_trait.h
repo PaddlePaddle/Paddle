@@ -25,11 +25,6 @@ struct MatchTrait<Constant, std::int64_t> final {
 };
 
 template <>
-struct MatchTrait<Constant, tStride<UniqueId>> final {
-  static constexpr int is_template = false;
-};
-
-template <>
 struct MatchTrait<Constant, tDim<UniqueId>> final {
   static constexpr int is_template = false;
 };
@@ -133,8 +128,8 @@ struct MatchTrait<Value, List<T>> final {
   };
 
 DEFINE_MATCH_TRAIT_VALUE_UNION_ARGSIZE_2(ListGetItem, Value, Constant);
-DEFINE_MATCH_TRAIT_VALUE_UNION_ARGSIZE_2(IndexDot, Value, Constant);
-DEFINE_MATCH_TRAIT_VALUE_UNION_ARGSIZE_2(IndexUnDot, Value, Constant);
+DEFINE_MATCH_TRAIT_VALUE_UNION_ARGSIZE_2(IndexDotValue, Value, Constant);
+DEFINE_MATCH_TRAIT_VALUE_UNION_ARGSIZE_2(IndexUnDotValue, Value, Constant);
 
 #define DEFINE_ADT_MATCH_TRAIT_EQUATION(name)                              \
   template <typename T>                                                    \

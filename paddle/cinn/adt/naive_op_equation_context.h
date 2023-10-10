@@ -73,8 +73,6 @@ class NaiveOpEquationContext final : public OpEquationContext {
         fake_op_placeholder_{UniqueId::New()} {
     Init<Iterator>(&in_iterator_tuples_, in_tensors_ranks);
     Init<Iterator>(&out_iterator_tuples_, out_tensors_ranks);
-    Init<Stride>(&in_stride_tuples_, in_tensors_ranks);
-    Init<Stride>(&out_stride_tuples_, out_tensors_ranks);
     Init<Dim>(&in_dim_tuples_, in_tensors_ranks);
     Init<Dim>(&out_dim_tuples_, out_tensors_ranks);
     in_indexes_ = MakeArgIndexes(in_tensors_ranks.size());
@@ -177,14 +175,6 @@ class NaiveOpEquationContext final : public OpEquationContext {
     return out_indexes_->at(output_idx);
   }
 
-  const StrideTuple& GetInStrideTuple(std::size_t input_idx) const override {
-    return in_stride_tuples_.at(input_idx);
-  }
-
-  const StrideTuple& GetOutStrideTuple(std::size_t output_idx) const override {
-    return out_stride_tuples_.at(output_idx);
-  }
-
   const DimTuple& GetInDimTuple(std::size_t input_idx) const override {
     return in_dim_tuples_.at(input_idx);
   }
@@ -267,27 +257,21 @@ class NaiveOpEquationContext final : public OpEquationContext {
 
   std::int64_t GetDimSize(const Dim& dim) const;
 
-  Stride GetStride(bool is_out, std::size_t arg_idx, std::size_t axis) const {
+  Dim GetDim(bool is_out, std::size_t arg_idx, std::size_t axis) const {
     if (is_out) {
-      return out_stride_tuples_.at(arg_idx)->at(axis);
+      return out_dim_tuples_.at(arg_idx)->at(axis);
     } else {
-      return in_stride_tuples_.at(arg_idx)->at(axis);
+      return in_dim_tuples_.at(arg_idx)->at(axis);
     }
   }
 
-  Constant GetStrideSize(bool is_out,
-                         std::size_t arg_idx,
-                         std::size_t axis) const {
+  Constant GetDimSize(bool is_out,
+                      std::size_t arg_idx,
+                      std::size_t axis) const {
     const auto* Get = (is_out ? &GetOutDim_ : &GetInDim_);
-    const std::size_t rank = (is_out ? out_tensors_ranks_.at(arg_idx)
-                                     : in_tensors_ranks_.at(arg_idx));
-    std::size_t acc = 1;
-    for (std::size_t idx = axis + 1; idx < rank; ++idx) {
-      const auto& opt_dim = (*Get)(arg_idx, axis);
-      CHECK(opt_dim.has_value());
-      acc *= opt_dim.value();
-    }
-    return acc;
+    const auto& opt_dim = (*Get)(arg_idx, axis);
+    CHECK(opt_dim.has_value());
+    return opt_dim.value();
   }
 
   OpArgDimPos GetArgDimPosDescriptor(const Dim& dim) const {
@@ -315,16 +299,16 @@ class NaiveOpEquationContext final : public OpEquationContext {
     }
   }
 
-  Index Dot(const IteratorTuple& iterator_tuple,
-            const StrideTuple& stride_tuple) {
-    CHECK(iterator_tuple->size() == stride_tuple->size());
+  Index IndexDot(const IteratorTuple& iterator_tuple,
+                 const DimTuple& dim_tuple) {
+    CHECK(iterator_tuple->size() == dim_tuple->size());
     Index index{UniqueId::New()};
     equations_->emplace_back(
-        adt::Dot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>{
-            stride_tuple, index, iterator_tuple});
+        adt::IndexDot<List<Dim>, tOut<Index>, tIn<List<Iterator>>>{
+            dim_tuple, index, iterator_tuple});
     equations_->emplace_back(
-        adt::UnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>{
-            stride_tuple, iterator_tuple, index});
+        adt::IndexUnDot<List<Dim>, tOut<List<Iterator>>, tIn<Index>>{
+            dim_tuple, iterator_tuple, index});
     return index;
   }
 
@@ -339,10 +323,11 @@ class NaiveOpEquationContext final : public OpEquationContext {
 
   void GenerateDots() {
     for (std::size_t i = 0; i < in_tensors_ranks_.size(); ++i) {
-      Equal(GetInIndex(i), Dot(GetInIteratorTuple(i), GetInStrideTuple(i)));
+      Equal(GetInIndex(i), IndexDot(GetInIteratorTuple(i), GetInDimTuple(i)));
     }
     for (std::size_t i = 0; i < out_tensors_ranks_.size(); ++i) {
-      Equal(GetOutIndex(i), Dot(GetOutIteratorTuple(i), GetOutStrideTuple(i)));
+      Equal(GetOutIndex(i),
+            IndexDot(GetOutIteratorTuple(i), GetOutDimTuple(i)));
     }
   }
 
@@ -391,8 +376,6 @@ class NaiveOpEquationContext final : public OpEquationContext {
 
   std::vector<IteratorTuple> in_iterator_tuples_;
   std::vector<IteratorTuple> out_iterator_tuples_;
-  std::vector<StrideTuple> in_stride_tuples_;
-  std::vector<StrideTuple> out_stride_tuples_;
   std::vector<DimTuple> in_dim_tuples_;
   std::vector<DimTuple> out_dim_tuples_;
   List<Index> in_indexes_;

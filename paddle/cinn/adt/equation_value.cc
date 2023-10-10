@@ -20,9 +20,6 @@
 namespace cinn::adt {
 
 std::string DebugStringImpl(std::int64_t c) { return std::to_string(c); }
-std::string DebugStringImpl(const tStride<UniqueId>& c) {
-  return std::string("stride_") + std::to_string(c.value().unique_id());
-}
 
 std::string DebugStringImpl(const tDim<UniqueId>& c) {
   return std::string("dim_") + std::to_string(c.value().unique_id());
@@ -82,15 +79,16 @@ std::string DebugStringImpl(const List<Value>& values) {
   return ret;
 }
 
-std::string DebugStringImpl(const IndexDot<Value, Constant>& index_dot) {
+std::string DebugStringImpl(const IndexDotValue<Value, Constant>& index_dot) {
   const auto& [iters, constant] = index_dot.tuple();
-  return std::string() + "IndexDot(" + DebugString(iters) + ", " +
+  return std::string() + "IndexDotValue(" + DebugString(iters) + ", " +
          DebugString(constant) + ")";
 }
 
-std::string DebugStringImpl(const IndexUnDot<Value, Constant>& index_undot) {
+std::string DebugStringImpl(
+    const IndexUnDotValue<Value, Constant>& index_undot) {
   const auto& [index, constant] = index_undot.tuple();
-  return std::string() + "IndexUnDot(" + DebugString(index) + ", " +
+  return std::string() + "IndexUnDotValue(" + DebugString(index) + ", " +
          DebugString(constant) + ")";
 }
 

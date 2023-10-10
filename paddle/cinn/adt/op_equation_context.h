@@ -79,11 +79,6 @@ class OpEquationContext {
 
   virtual const Index& GetOutIndex(std::size_t output_idx) const = 0;
 
-  virtual const StrideTuple& GetInStrideTuple(std::size_t input_idx) const = 0;
-
-  virtual const StrideTuple& GetOutStrideTuple(
-      std::size_t output_idx) const = 0;
-
   virtual const DimTuple& GetInDimTuple(std::size_t input_idx) const = 0;
 
   virtual const DimTuple& GetOutDimTuple(std::size_t output_idx) const = 0;

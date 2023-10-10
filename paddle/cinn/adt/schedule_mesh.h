@@ -66,8 +66,6 @@ std::size_t GetOutputRank(const ScheduleMesh& sched_mesh);
 
 List<Constant> GetOutputDimValues(const ScheduleMesh& sched_mesh);
 
-List<Constant> GetOutputStrideValues(const ScheduleMesh& sched_mesh);
-
 ScheduleMesh GetInputScheduleMesh(const ScheduleMesh& sched_mesh);
 
 std::tuple<ScheduleMesh, List<LoopType>> CreateOptimizedScheduleMesh(

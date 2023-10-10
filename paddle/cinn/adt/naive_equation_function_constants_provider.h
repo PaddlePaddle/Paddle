@@ -40,14 +40,14 @@ class NaiveEquationFunctionConstantsProvider final
   NaiveEquationFunctionConstantsProvider(
       NaiveEquationFunctionConstantsProvider&&) = delete;
 
-  Constant GetStrideSize(const Stride& stride) const override {
-    const auto& iter = stride2constant_.find(stride);
-    CHECK(iter != stride2constant_.end());
+  Constant GetDimSize(const Dim& dim) const override {
+    const auto& iter = dim2constant_.find(dim);
+    CHECK(iter != dim2constant_.end());
     return iter->second;
   }
 
-  bool AddStride(const Stride& stride, const Constant& stride_value) override {
-    return stride2constant_.emplace(stride, stride_value).second;
+  bool AddDim(const Dim& dim, const Constant& dim_value) override {
+    return dim2constant_.emplace(dim, dim_value).second;
   }
 
  private:
@@ -57,15 +57,14 @@ class NaiveEquationFunctionConstantsProvider final
       const auto& ctx = EquationCtx4OpStmt(op_stmt);
       ctx->VisitEachArgPos(
           [&](bool is_out, std::size_t arg_idx, std::size_t axis) {
-            const Stride& stride = ctx->GetStride(is_out, arg_idx, axis);
-            const Constant& constant =
-                ctx->GetStrideSize(is_out, arg_idx, axis);
-            CHECK(stride2constant_.emplace(stride, constant).second);
+            const Dim& dim = ctx->GetDim(is_out, arg_idx, axis);
+            const Constant& constant = ctx->GetDimSize(is_out, arg_idx, axis);
+            CHECK(dim2constant_.emplace(dim, constant).second);
           });
     }
   }
 
-  std::unordered_map<Stride, const Constant> stride2constant_;
+  std::unordered_map<Dim, const Constant> dim2constant_;
 };
 
 }  // namespace cinn::adt

@@ -17,8 +17,8 @@
 
 namespace cinn::adt {
 
-Constant IndexExprInferContext::GetStrideSize(const Stride& stride) const {
-  return constants_provider_->GetStrideSize(stride);
+Constant IndexExprInferContext::GetDimSize(const Dim& dim) const {
+  return constants_provider_->GetDimSize(dim);
 }
 
 }  // namespace cinn::adt

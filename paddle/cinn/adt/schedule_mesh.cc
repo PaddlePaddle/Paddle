@@ -132,19 +132,6 @@ List<Constant> GetOutputDimValues(const ScheduleMesh& sched_mesh) {
       sched_mesh.variant());
 }
 
-List<Constant> GetOutputStrideValues(const ScheduleMesh& sched_mesh) {
-  const auto& dims = GetOutputDimValues(sched_mesh);
-  std::int64_t acc = 1;
-  List<Constant> ret{};
-  for (int i = dims->size() - 1; i >= 0; --i) {
-    ret->emplace_back(acc);
-    CHECK(dims->at(i).Has<std::int64_t>());
-    acc *= dims->at(i).Get<std::int64_t>();
-  }
-  std::reverse(ret->begin(), ret->end());
-  return ret;
-}
-
 namespace {
 
 ScheduleMesh GetInputScheduleMeshImpl(const List<ScheduleDim>& sched_dims) {
