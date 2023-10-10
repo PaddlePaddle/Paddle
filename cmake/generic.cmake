@@ -1348,6 +1348,8 @@ function(math_library TARGET)
     elseif(${CMAKE_CUDA_COMPILER_VERSION} EQUAL 12.0
            OR ${CMAKE_CUDA_COMPILER_VERSION} GREATER 12.0)
       list(APPEND math_common_deps cccl)
+    else()
+      list(APPEND math_common_deps)
     endif()
   endif()
   set(multiValueArgs DEPS)
