@@ -515,6 +515,16 @@ phi::KernelKey GetKernelKey(
                 op->result(0).type().dyn_cast<DenseTensorType>().dtype())};
   }
 
+  if (op->isa<paddle::dialect::FullWithTensorOp>()) {
+    auto backend = paddle::experimental::ParseBackend(place);
+    auto dtype = op->attributes()
+                     .at("dtype")
+                     .dyn_cast<dialect::DataTypeAttribute>()
+                     .data();
+
+    return {backend, phi::DataLayout::ANY, dtype};
+  }
+
   phi::Backend kernel_backend = phi::Backend::UNDEFINED;
   phi::DataLayout kernel_layout = phi::DataLayout::UNDEFINED;
   phi::DataType kernel_data_type = phi::DataType::UNDEFINED;

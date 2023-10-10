@@ -33,7 +33,7 @@ from paddle.base.core import (
     XpuConfig,
 )
 
-__all__ = [  # noqa
+__all__ = [
     'Config',
     'DataType',
     'PlaceType',

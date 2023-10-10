@@ -620,8 +620,6 @@ void BuildOpFuncList(const platform::Place& place,
         "pylayer",
         "pylayer_grad"
         "recurrent_grad",
-        "rnn_memory_helper",
-        "rnn_memory_helper_grad",
         "while",
         "while_grad"};
     bool allow_var_not_in_program = ops_with_var_not_in_program.count(op_type);

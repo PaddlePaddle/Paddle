@@ -12,6 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .cost_model import CostModel  # noqa: F401
+from .cost_model import CostModel
 
 __all__ = ['CostModel']
