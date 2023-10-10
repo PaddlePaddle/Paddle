@@ -76,19 +76,19 @@ class IR_API Pattern {
 
   std::optional<OpInfo> root_kind() const {
     if (root_kind_ == RootKind::OperationInfo)
-      return OpInfo::RecoverFromOpaquePointer(root_val_);
+      return OpInfo::RecoverFromVoidPointer(root_val_);
     return std::nullopt;
   }
 
   std::optional<TypeId> GetRootInterfaceID() const {
     if (root_kind_ == RootKind::InterfaceId)
-      return TypeId::RecoverFromOpaquePointer(root_val_);
+      return TypeId::RecoverFromVoidPointer(root_val_);
     return std::nullopt;
   }
 
   std::optional<TypeId> GetRootTraitID() const {
     if (root_kind_ == RootKind::TraitId)
-      return TypeId::RecoverFromOpaquePointer(root_val_);
+      return TypeId::RecoverFromVoidPointer(root_val_);
     return std::nullopt;
   }
 

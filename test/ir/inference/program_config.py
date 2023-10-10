@@ -113,7 +113,6 @@ _OP_WITHOUT_KERNEL_SET = {
     'fetch',
     'recurrent',
     'go',
-    'rnn_memory_helper_grad',
     'conditional_block',
     'static_pylayer',
     'while',
