@@ -488,8 +488,8 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNBackwardData(
 template <typename T, typename Context>
 void BatchNormGradFunctor(const Context &ctx,
                           const DenseTensor &x,
-                          const DenseTensor &scale,
-                          const DenseTensor &bias,
+                          const paddle::optional<DenseTensor> &scale_opt,
+                          const paddle::optional<DenseTensor> &bias_opt,
                           const paddle::optional<DenseTensor> &mean,
                           const paddle::optional<DenseTensor> &variance,
                           const DenseTensor &saved_mean,
@@ -548,6 +548,24 @@ void BatchNormGradFunctor(const Context &ctx,
   if (d_scale && d_bias) {
     ctx.template Alloc<BatchNormParamType<T>>(d_scale);
     ctx.template Alloc<BatchNormParamType<T>>(d_bias);
+  }
+
+  auto *scale_ptr = scale_opt.get_ptr();
+  auto *bias_ptr = bias_opt.get_ptr();
+
+  phi::DenseTensor scale;
+  phi::DenseTensor bias;
+
+  if (scale_ptr) {
+    scale = scale_opt.get();
+  } else {
+    scale = phi::Full<T, Context>(ctx, {C}, static_cast<T>(1));
+  }
+
+  if (bias_ptr) {
+    bias = bias_opt.get();
+  } else {
+    bias = phi::Full<T, Context>(ctx, {C}, static_cast<T>(0));
   }
 
   PADDLE_ENFORCE_EQ(
@@ -1280,28 +1298,10 @@ void BatchNormGradKernel(const Context &dev_ctx,
                          DenseTensor *x_grad,
                          DenseTensor *scale_grad,
                          DenseTensor *bias_grad) {
-  auto *scale_ptr = scale_opt.get_ptr();
-  auto *bias_ptr = bias_opt.get_ptr();
-
-  phi::DenseTensor scale;
-  phi::DenseTensor bias;
-
-  if (scale_ptr) {
-    scale = scale_opt.get();
-  } else {
-    scale = phi::Full<T, Context>(dev_ctx, C, 1);
-  }
-
-  if (bias_ptr) {
-    bias = bias_opt.get();
-  } else {
-    bias = phi::Full<T, Context>(dev_ctx, C, 0);
-  }
-
   BatchNormGradFunctor<T, Context>(dev_ctx,
                                    x,
-                                   scale,
-                                   bias,
+                                   scale_opt,
+                                   bias_opt,
                                    mean,
                                    variance,
                                    saved_mean,
@@ -1357,12 +1357,15 @@ void BatchNormDoubleGradKernel(
     running_mean = mean.get_ptr();
     running_variance = variance.get_ptr();
   }
+  const auto &x_dims = x.dims();
+  int N, C, H, W, D;
+  phi::funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
   auto *scale_ptr = scale_opt.get_ptr();
   phi::DenseTensor scale;
   if (scale_ptr) {
     scale = scale_opt.get();
   } else {
-    scale = phi::Full<T, Context>(dev_ctx, C, 1);
+    scale = phi::Full<T, Context>(ctx, {C}, static_cast<T>(1));
   }
   phi::funcs::NormDoubleGradFunctor<Context, T>(ctx,
                                                 data_layout,

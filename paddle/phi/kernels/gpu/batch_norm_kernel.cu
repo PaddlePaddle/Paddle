@@ -561,13 +561,13 @@ void BatchNormKernel(const Context &ctx,
   if (scale_ptr) {
     scale = scale_opt.get();
   } else {
-    scale = phi::Full<T, Context>(dev_ctx, C, 1);
+    scale = phi::Full<T, Context>(ctx, {C}, static_cast<T>(1));
   }
 
   if (bias_ptr) {
     bias = bias_opt.get();
   } else {
-    bias = phi::Full<T, Context>(dev_ctx, C, 0);
+    bias = phi::Full<T, Context>(ctx, {C}, static_cast<T>(0));
   }
 
 #ifdef PADDLE_WITH_HIP
