@@ -19,7 +19,7 @@ from .metrics import Recall  # noqa: F401
 from .metrics import Auc  # noqa: F401
 from .metrics import accuracy  # noqa: F401
 
-__all__ = [  # noqa
+__all__ = [
     'Metric',
     'Accuracy',
     'Precision',

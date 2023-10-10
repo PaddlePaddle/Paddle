@@ -1226,7 +1226,7 @@ def maximum(x, y, name=None):
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [5.  , 3.  , inf.])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.maximum(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_max', **locals()))
@@ -3509,7 +3509,7 @@ def clip(x, min=None, max=None, name=None):
         min_ = float(np.finfo(np.float32).min)
         max_ = float(np.finfo(np.float32).max)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if isinstance(min, Variable):
             min = min.item(0)
         if isinstance(max, Variable):
