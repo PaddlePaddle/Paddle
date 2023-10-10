@@ -644,7 +644,7 @@ class DrrRewritePattern : public pir::RewritePattern {
           }
         }
       }
-      if (max_input_op_index == -1UL) {
+      if (max_input_op_index == 0UL) {
         VLOG(6) << "Not found producer op for (" << op_call.name() << ")";
         Operation* source_patter_first_op =
             src_match_ctx
