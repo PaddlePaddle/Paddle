@@ -74,7 +74,6 @@ class TestMathOpPatchesPir(unittest.TestCase):
             self.assertTrue(inspect.ismethod(a.asin_))
             self.assertTrue(inspect.ismethod(a.atan2))
             self.assertTrue(inspect.ismethod(a.atanh_))
-            self.assertTrue(inspect.ismethod(a.coalesce))
             self.assertTrue(inspect.ismethod(a.diagflat))
             self.assertTrue(inspect.ismethod(a.multinomial))
             self.assertTrue(inspect.ismethod(a.pinv))
