@@ -53,7 +53,6 @@ fi
 FILE_WHITE_LIST="\
     box_clip_op.cc \
     box_clip_op.h \
-    random_crop_op.h \
     elementwise_op_function.cu.h \
     fused_elemwise_activation_op.cc \
     auc_op.cu \

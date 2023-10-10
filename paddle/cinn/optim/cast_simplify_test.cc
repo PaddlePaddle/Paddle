@@ -14,8 +14,8 @@
 
 #include <gtest/gtest.h>
 
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 namespace cinn::optim {
 
