@@ -46,4 +46,21 @@ extra {
     name: "force_fp32_output"
     type: BOOLEAN
   }
+  attrs {
+    name: "is_quant"
+    type: BOOLEAN
+  }
+  attrs {
+    name: "quant_round_type"
+    type: INT
+  }
+  attrs {
+    name: "quant_max_bound"
+    type: FLOAT
+  }
+  attrs {
+    name: "quant_min_bound"
+    type: FLOAT
+  }
+
 }
