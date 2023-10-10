@@ -3,7 +3,7 @@ cc_library(
   SRCS instruction_base.cc phi_kernel_instruction.cc
        legacy_kernel_instruction.cc cond_instruction.cc while_instruction.cc
        instruction_util.cc
-  DEPS phi framework_proto)
+  DEPS pir_adaptor phi framework_proto)
 
 if(WITH_CINN AND NOT CINN_ONLY)
   cc_library(

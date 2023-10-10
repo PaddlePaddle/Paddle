@@ -39,142 +39,113 @@
 namespace paddle {
 namespace framework {
 
-CondInstruction::CondInstruction(
-    size_t id,
-    const platform::Place& place,
-    pir::Operation* op,
-    Scope* scope,
-    Scope* local_scope,
-    ValueExecutionInfo* parent_exe_info,
-    const std::map<pir::Block*, paddle::framework::Scope*>& sub_blocks)
+CondInstruction::CondInstruction(size_t id,
+                                 const platform::Place& place,
+                                 pir::Operation* op,
+                                 ValueExecutionInfo* value_exec_info)
     : InstructionBase(id, place) {
+  PADDLE_ENFORCE(
+      op->isa<paddle::dialect::IfOp>(),
+      phi::errors::PreconditionNotMet("Cond instruction only support if op"));
+  auto if_op = op->dyn_cast<paddle::dialect::IfOp>();
   op_ = op;
-  VLOG(6) << "finish process dist attributes";
 
   SetKernelType(AnalyseOpFuncType(op, place));
   VLOG(6) << "finish process analyse kernel type";
 
-  Scope* inner_scope = local_scope == nullptr ? scope : local_scope;
-
-  VLOG(6) << "finish process inputs outputs index";
-
-  PADDLE_ENFORCE(
-      op->isa<paddle::dialect::IfOp>(),
-      phi::errors::PreconditionNotMet("Cond instruction only support if op"));
-
-  auto if_op = op->dyn_cast<paddle::dialect::IfOp>();
-
-  for (size_t i = 0; i < if_op.num_results(); ++i) {
-    if_op_outputs_.push_back(inner_scope->GetVar(
-        parent_exe_info->GetValue2VarName().at(if_op.result(i))));
-  }
-
   auto cond_value = if_op.operand_source(0);
-  auto var_name = parent_exe_info->GetValue2VarName().at(cond_value);
-  cond_var = inner_scope->FindVar(var_name);
+  cond_var_ = value_exec_info->GetScope()->FindVar(
+      value_exec_info->GetValue2VarName().at(cond_value));
+  for (size_t i = 0; i < if_op.num_results(); ++i) {
+    output_vars_.push_back(value_exec_info->GetScope()->GetVar(
+        value_exec_info->GetValue2VarName().at(if_op.result(i))));
+  }
+  VLOG(6) << "finish process cond_var and output_vars";
 
   auto true_branch_block = if_op.true_block();
-  auto false_branch_block = if_op.false_block();
-
   auto true_branch_yied_inputs = GetYiedOpInputs(true_branch_block);
-  auto false_branch_yied_inputs = GetYiedOpInputs(false_branch_block);
-
-  auto true_scope = sub_blocks.at(true_branch_block);
-  true_branch_inter =
+  Scope* true_scope = &(value_exec_info->GetScope()->NewScope());
+  true_branch_inter_ =
       new NewIRInterpreter(place,
                            {},
                            true_branch_block,
                            true_scope,
-                           parent_exe_info->NewChild(true_scope),
+                           value_exec_info->NewChild(true_scope),
                            {});
 
   std::set<std::string> true_skip_gc_names_set;
   for (auto value : true_branch_yied_inputs) {
-    true_skip_gc_names_.push_back(true_branch_inter->GetNameByValue(value));
-    true_skip_gc_names_set.insert(true_branch_inter->GetNameByValue(value));
+    true_skip_gc_names_.push_back(true_branch_inter_->GetNameByValue(value));
+    true_skip_gc_names_set.insert(true_branch_inter_->GetNameByValue(value));
   }
-  true_branch_inter->SetSkipGcVars(true_skip_gc_names_set);
+  true_branch_inter_->SetSkipGcVars(true_skip_gc_names_set);
+  VLOG(6) << "finish process true branch interpreter";
 
-  auto false_scope = sub_blocks.at(false_branch_block);
-  false_branch_inter =
+  auto false_branch_block = if_op.false_block();
+  auto false_branch_yied_inputs = GetYiedOpInputs(false_branch_block);
+  Scope* false_scope = &(value_exec_info->GetScope()->NewScope());
+  false_branch_inter_ =
       new NewIRInterpreter(place,
                            {},
                            false_branch_block,
                            false_scope,
-                           parent_exe_info->NewChild(false_scope),
+                           value_exec_info->NewChild(false_scope),
                            {});
 
   std::set<std::string> false_skip_gc_names_set;
   for (auto value : false_branch_yied_inputs) {
-    false_skip_gc_names_.push_back(false_branch_inter->GetNameByValue(value));
-    false_skip_gc_names_set.insert(false_branch_inter->GetNameByValue(value));
+    false_skip_gc_names_.push_back(false_branch_inter_->GetNameByValue(value));
+    false_skip_gc_names_set.insert(false_branch_inter_->GetNameByValue(value));
   }
-  false_branch_inter->SetSkipGcVars(false_skip_gc_names_set);
+  false_branch_inter_->SetSkipGcVars(false_skip_gc_names_set);
+  VLOG(6) << "finish process false branch interpreter";
 
-  // the true branch and false branch input will be the if_op inputs
-
+  // NOTE(zhangbo): IfOp sub_block's inputs include two kind of value: one is
+  // OpOperand of IfOp, and the other is external Values used in true_block or
+  // false_block.
   std::unordered_map<pir::Value, std::vector<int>> inputs;
-  GetInputIds(op,
-              inner_scope,
-              parent_exe_info->GetValue2VarName(),
-              parent_exe_info->GetVarName2Id(),
-              parent_exe_info->GetVar2VarName(),
-              &inputs);
-  GetOutsideOpInputs(true_branch_block,
-                     inner_scope,
-                     parent_exe_info->GetValue2VarName(),
-                     parent_exe_info->GetVarName2Id(),
-                     parent_exe_info->GetVar2VarName(),
-                     &inputs);
-
-  GetOutsideOpInputs(false_branch_block,
-                     inner_scope,
-                     parent_exe_info->GetValue2VarName(),
-                     parent_exe_info->GetVarName2Id(),
-                     parent_exe_info->GetVar2VarName(),
-                     &inputs);
+  GetInputIds(op, *value_exec_info, &inputs);
+  GetOutsideOpInputs(true_branch_block, *value_exec_info, &inputs);
+  GetOutsideOpInputs(false_branch_block, *value_exec_info, &inputs);
   SetInputs(inputs);
 
   std::unordered_map<pir::Value, std::vector<int>> outputs;
   for (size_t i = 0; i < op->num_results(); i++) {
     pir::Value value = op->result(i);
     if (value && value.type()) {
-      PADDLE_ENFORCE_NE(
-          parent_exe_info->GetValue2VarName().find(value),
-          parent_exe_info->GetValue2VarName().end(),
+      PADDLE_ENFORCE_EQ(
+          value_exec_info->HasValue(value),
+          true,
           phi::errors::PreconditionNotMet(
               "input should in name map, [%d] 'th input of [%s] op",
               i,
               "if op"));
-      std::vector<int> outputs_id =
-          GetValueIds(value,
-                      inner_scope,
-                      parent_exe_info->GetValue2VarName(),
-                      parent_exe_info->GetVarName2Id(),
-                      parent_exe_info->GetVar2VarName());
+      std::vector<int> outputs_id = GetValueIds(value, *value_exec_info);
       outputs.emplace(value, outputs_id);
     }
   }
   SetOutputs(outputs);
+  VLOG(6) << "finish process inputs outputs index";
 }
 
 void CondInstruction::CopyBranchOutput(
     const std::vector<std::string>& var_names, const NewIRInterpreter* inter) {
   for (size_t i = 0; i < var_names.size(); ++i) {
-    auto* inner_var = inter->local_scope()->GetVar(var_names[i]);
+    auto* inner_var = inter->InnerScope()->GetVar(var_names[i]);
 
-    if_op_outputs_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
+    output_vars_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
         inner_var->Get<phi::DenseTensor>());
   }
 }
 
 void CondInstruction::Run() {
-  if (cond_var->Get<phi::DenseTensor>().data<bool>()[0]) {
-    true_branch_inter->Run({}, false);
-    CopyBranchOutput(true_skip_gc_names_, true_branch_inter);
+  DeviceContext().Wait();
+  if (cond_var_->Get<phi::DenseTensor>().data<bool>()[0]) {
+    true_branch_inter_->Run({}, false);
+    CopyBranchOutput(true_skip_gc_names_, true_branch_inter_);
   } else {
-    false_branch_inter->Run({}, false);
-    CopyBranchOutput(false_skip_gc_names_, false_branch_inter);
+    false_branch_inter_->Run({}, false);
+    CopyBranchOutput(false_skip_gc_names_, false_branch_inter_);
   }
 
   // copy ouptut

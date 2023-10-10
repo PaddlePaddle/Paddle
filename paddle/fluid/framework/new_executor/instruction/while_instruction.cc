@@ -40,14 +40,12 @@
 namespace paddle {
 namespace framework {
 
-WhileInstruction::WhileInstruction(
-    size_t id,
-    const platform::Place& place,
-    pir::Operation* op,
-    Scope* scope,
-    Scope* local_scope,
-    ValueExecutionInfo* parent_exe_info,
-    const std::map<pir::Block*, paddle::framework::Scope*>& sub_blocks)
+WhileInstruction::WhileInstruction(size_t id,
+                                   const platform::Place& place,
+                                   pir::Operation* op,
+                                   Scope* scope,
+                                   Scope* local_scope,
+                                   ValueExecutionInfo* parent_exe_info)
     : InstructionBase(id, place) {
   op_ = op;
   VLOG(6) << "finish process dist attributes";
@@ -81,7 +79,7 @@ WhileInstruction::WhileInstruction(
   auto cond_yied_inputs = GetCondYiedOpInputs(cond_block_);
   auto body_yied_inputs = GetYiedOpInputs(body_block_);
 
-  auto cond_scope = sub_blocks.at(cond_block_);
+  Scope* cond_scope = &(parent_exe_info->GetScope()->NewScope());
   auto cond_exe_info = parent_exe_info->NewChild(cond_scope);
   for (size_t i = 0; i < cond_block_->args_size(); ++i) {
     auto var_name = "block_arg_" + std::to_string(i);
@@ -102,7 +100,7 @@ WhileInstruction::WhileInstruction(
   auto var_name = cond_inter_->GetNameByValue(cond_value);
   cond_var = cond_inter_->local_scope()->GetVar(var_name);
 
-  auto body_scope = sub_blocks.at(body_block_);
+  Scope* body_scope = &(parent_exe_info->GetScope()->NewScope());
   auto body_exe_info = parent_exe_info->NewChild(body_scope);
   for (size_t i = 0; i < body_block_->args_size(); ++i) {
     auto var_name = "body_block_arg_" + std::to_string(i);

@@ -16,115 +16,122 @@
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/builtin_type.h"
+#include "paddle/pir/core/enforce.h"
 
-namespace pir {
-namespace dialect {
+namespace pir::dialect {
 
-const char *SymbolicDim::attributes_name[attributes_num] = {"knownNegativeOne",
-                                                            "knownNonNegative",
-                                                            "knownNonSizeOne",
-                                                            "knownNonSizeZero",
-                                                            "sym_name",
-                                                            "value"};  // NOLINT
+const char *SymbolicDim::attributes_name[attributes_num] = {
+    "known_negative_one",   // value = -1
+    "known_non_negative",   // value >= 0
+    "known_non_size_one",   // value != 1
+    "known_non_size_zero",  // value != 0
+    "sym_name",
+    "value"};  // NOLINT
 
 void SymbolicDim::Build(Builder &builder,
                         OperationArgument &argument,
                         const std::string &sym_name,
                         int64_t value,
-                        bool knownNonNegative,
-                        bool knownNegativeOne,
-                        bool knownNonSizeOne,
-                        bool knownNonSizeZero) {
-  Attribute attr_sym_name = StrAttribute::get(IrContext::Instance(), sym_name);
+                        bool known_non_negative,
+                        bool known_negative_one,
+                        bool known_non_size_one,
+                        bool known_non_size_zero) {
+  IrContext *ctx = IrContext::Instance();
+  auto attr_sym_name = StrAttribute::get(ctx, sym_name);
+  auto attr_value = Int64Attribute::get(ctx, value);
+  auto attr_known_none_negative = BoolAttribute::get(ctx, known_non_negative);
+  auto attr_known_negative_one = BoolAttribute::get(ctx, known_negative_one);
+  auto attr_known_non_size_one = BoolAttribute::get(ctx, known_non_size_one);
+  auto attr_known_non_size_zero = BoolAttribute::get(ctx, known_non_size_zero);
+
   argument.AddAttribute("sym_name", attr_sym_name);
-  Attribute attr_value = Int64Attribute::get(IrContext::Instance(), value);
   argument.AddAttribute("value", attr_value);
-  Attribute attr_knownNonNegative =
-      BoolAttribute::get(IrContext::Instance(), knownNonNegative);
-  argument.AddAttribute("knownNonNegative", attr_knownNonNegative);
-  Attribute attr_knownNegativeOne =
-      BoolAttribute::get(IrContext::Instance(), knownNegativeOne);
-  argument.AddAttribute("knownNegativeOne", attr_knownNegativeOne);
-  Attribute attr_knownNonSizeOne =
-      BoolAttribute::get(IrContext::Instance(), knownNonSizeOne);
-  argument.AddAttribute("knownNonSizeOne", attr_knownNonSizeOne);
-  Attribute attr_knownNonSizeZero =
-      BoolAttribute::get(IrContext::Instance(), knownNonSizeZero);
-  argument.AddAttribute("knownNonSizeZero", attr_knownNonSizeZero);
+  argument.AddAttribute("known_non_negative", attr_known_none_negative);
+  argument.AddAttribute("known_negative_one", attr_known_negative_one);
+  argument.AddAttribute("known_non_size_one", attr_known_non_size_one);
+  argument.AddAttribute("known_non_size_zero", attr_known_non_size_zero);
 }
 
-const std::string SymbolicDim::getSymName() {
+const std::string SymbolicDim::GetSymName() {
   return attribute<StrAttribute>("sym_name").AsString();
 }
-int64_t SymbolicDim::getValue() {
+int64_t SymbolicDim::GetDimSize() {
   return attribute<Int64Attribute>("value").data();
 }
-bool SymbolicDim::getKnownNonNegative() {
-  return attribute<BoolAttribute>("knownNonNegative").data();
+bool SymbolicDim::GetKnownNonNegative() {
+  return attribute<BoolAttribute>("known_non_negative").data();
 }
-bool SymbolicDim::getKnownNegativeOne() {
-  return attribute<BoolAttribute>("knownNegativeOne").data();
+bool SymbolicDim::GetKnownNegativeOne() {
+  return attribute<BoolAttribute>("known_negative_one").data();
 }
-bool SymbolicDim::getKnownNonSizeOne() {
-  return attribute<BoolAttribute>("knownNonSizeOne").data();
+bool SymbolicDim::GetKnownNonSizeOne() {
+  return attribute<BoolAttribute>("known_non_size_one").data();
 }
-bool SymbolicDim::getKnownNonSizeZero() {
-  return attribute<BoolAttribute>("knownNonSizeZero").data();
-}
-
-void SymbolicDim::updateSymName(std::string attrValue) {
-  operation()->set_attribute(
-      "sym_name", StrAttribute::get(IrContext::Instance(), attrValue));
-}
-void SymbolicDim::updateValue(int64_t attrValue) {
-  operation()->set_attribute(
-      "value", Int64Attribute::get(IrContext::Instance(), attrValue));
+bool SymbolicDim::GetKnownNonSizeZero() {
+  return attribute<BoolAttribute>("known_non_size_zero").data();
 }
 
-void SymbolicDim::updateKnownNonNegative(bool attrValue) {
+void SymbolicDim::SetSymName(const std::string &attr_value) {
   operation()->set_attribute(
-      "knownNonNegative", BoolAttribute::get(IrContext::Instance(), attrValue));
+      "sym_name", StrAttribute::get(IrContext::Instance(), attr_value));
 }
-void SymbolicDim::updateKnownNegativeOne(bool attrValue) {
+void SymbolicDim::SetDimSize(int64_t attr_value) {
   operation()->set_attribute(
-      "knownNegativeOne", BoolAttribute::get(IrContext::Instance(), attrValue));
+      "value", Int64Attribute::get(IrContext::Instance(), attr_value));
 }
-void SymbolicDim::updateKnownNonSizeOne(bool attrValue) {
-  operation()->set_attribute(
-      "knownNonSizeOne", BoolAttribute::get(IrContext::Instance(), attrValue));
+
+void SymbolicDim::UpdateKnownNonNegative(bool flag) {
+  operation()->set_attribute("known_non_negative",
+                             BoolAttribute::get(IrContext::Instance(), flag));
 }
-void SymbolicDim::updateKnownNonSizeZero(bool attrValue) {
-  operation()->set_attribute(
-      "knownNonSizeZero", BoolAttribute::get(IrContext::Instance(), attrValue));
+void SymbolicDim::UpdateKnownNegativeOne(bool flag) {
+  operation()->set_attribute("known_negative_one",
+                             BoolAttribute::get(IrContext::Instance(), flag));
+}
+void SymbolicDim::UpdateKnownNonSizeOne(bool flag) {
+  operation()->set_attribute("known_non_size_one",
+                             BoolAttribute::get(IrContext::Instance(), flag));
+}
+void SymbolicDim::UpdateKnownNonSizeZero(bool flag) {
+  operation()->set_attribute("known_non_size_zero",
+                             BoolAttribute::get(IrContext::Instance(), flag));
 }
 
 bool SymbolicDim::IsDynamic() {
-  return getValue() == ShapedTypeInterface::kDynamic;
+  return GetDimSize() == ShapedTypeInterface::kDynamic;
 }
 
 bool SymbolicDim::Merge(SymbolicDim other) {
-  if (!IsDynamic() && !other.IsDynamic() && getValue() != other.getValue())
+  VLOG(4) << "Try to merge two SymbolicDim ops.";
+
+  if (!IsDynamic() && !other.IsDynamic() && GetDimSize() != other.GetDimSize())
     return false;
-  if (IsDynamic() && !other.IsDynamic()) updateValue(other.getValue());
-  if (!IsDynamic() && other.IsDynamic()) other.updateValue(getValue());
 
-  bool knownNonNegativeFlag =
-      getKnownNonNegative() || other.getKnownNonNegative();
-  bool knownNegativeOneFlag =
-      getKnownNegativeOne() || other.getKnownNegativeOne();
-  bool knownNonSizeOneFlag = getKnownNonSizeOne() ||
-                             other.getKnownNonSizeOne() || knownNegativeOneFlag;
-  bool knownNonSizeZeroFlag = getKnownNonSizeZero() ||
-                              other.getKnownNonSizeZero() ||
-                              knownNegativeOneFlag;
+  if (IsDynamic() && !other.IsDynamic()) SetDimSize(other.GetDimSize());
+  if (!IsDynamic() && other.IsDynamic()) other.SetDimSize(GetDimSize());
 
-  if (knownNonNegativeFlag && knownNegativeOneFlag) return false;
+  // eiter value >= 0
+  bool known_non_negative_flag =
+      GetKnownNonNegative() || other.GetKnownNonNegative();
 
-  updateKnownNonSizeZero(knownNonSizeZeroFlag);
-  updateKnownNonSizeOne(knownNonSizeOneFlag);
-  updateKnownNegativeOne(knownNegativeOneFlag);
-  updateKnownNonNegative(knownNonNegativeFlag);
+  // eiter value == -1
+  bool known_negative_one_flag =
+      GetKnownNegativeOne() || other.GetKnownNegativeOne();
 
+  if (known_non_negative_flag && known_negative_one_flag) return false;
+
+  bool known_non_size_one_flag = GetKnownNonSizeOne() ||
+                                 other.GetKnownNonSizeOne() ||
+                                 known_negative_one_flag;
+
+  bool known_non_size_zero_flag = GetKnownNonSizeZero() ||
+                                  other.GetKnownNonSizeZero() ||
+                                  known_negative_one_flag;
+
+  UpdateKnownNonSizeZero(known_non_size_zero_flag);
+  UpdateKnownNonSizeOne(known_non_size_one_flag);
+  UpdateKnownNegativeOne(known_negative_one_flag);
+  UpdateKnownNonNegative(known_non_negative_flag);
   return true;
 }
 
@@ -196,7 +203,7 @@ std::vector<Value> TieProductEqualOp::rhs() {
 }
 
 const char *TieShapeOp::attributes_name[attributes_num] = {
-    SymbolicDim::getSymbolicDimAttrName().c_str()};  // NOLINT
+    SymbolicDim::GetSymbolicDimAttrName().c_str()};  // NOLINT
 
 void TieShapeOp::Build(Builder &builder,
                        OperationArgument &argument,
@@ -266,8 +273,7 @@ void TensorDimOp::Build(Builder &builder,
 Value TensorDimOp::source() { return operand_source(0); }
 
 Value TensorDimOp::index() { return operand_source(1); }
-}  // namespace dialect
-}  // namespace pir
+}  // namespace pir::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::SymbolicDim)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::DimOp)

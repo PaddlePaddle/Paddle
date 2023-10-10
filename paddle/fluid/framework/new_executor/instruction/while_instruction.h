@@ -29,14 +29,12 @@ class ValueExecutionInfo;
 
 class WhileInstruction : public InstructionBase {
  public:
-  WhileInstruction(
-      size_t id,
-      const platform::Place& place,
-      ::pir::Operation* op,
-      Scope* scope,
-      Scope* local_scope,
-      ValueExecutionInfo* parent_exe_info,
-      const std::map<pir::Block*, paddle::framework::Scope*>& sub_blocks);
+  WhileInstruction(size_t id,
+                   const platform::Place& place,
+                   ::pir::Operation* op,
+                   Scope* scope,
+                   Scope* local_scope,
+                   ValueExecutionInfo* parent_exe_info);
 
   void Run() override;
 

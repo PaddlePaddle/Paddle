@@ -40,22 +40,17 @@ PHI_DECLARE_bool(dynamic_static_unified_comm);
 namespace paddle {
 namespace framework {
 
-std::vector<int> GetValueIds(
-    pir::Value value,
-    Scope* inner_scope,
-    const std::unordered_map<pir::Value, std::string>& value_2_var_name,
-    const std::map<std::string, int>& var_name_2_id,
-    const std::unordered_map<const paddle::framework::Variable*, std::string>&
-        variable_2_var_name) {
+std::vector<int> GetValueIds(pir::Value value,
+                             const ValueExecutionInfo& value_exec_info) {
   std::vector<int> ids;
-  auto& var_name = value_2_var_name.at(value);
-  ids.push_back(var_name_2_id.at(var_name));
+  ids.push_back(value_exec_info.GetVarId(value));
   // NOTE(zhangbo): Value maybe a VariableRefArray
-  auto var = inner_scope->FindVar(var_name);
+  auto var =
+      value_exec_info.GetScope()->FindVar(value_exec_info.GetVarName(value));
   if (var->IsType<paddle::framework::VariableRefArray>()) {
     auto& var_array = var->Get<paddle::framework::VariableRefArray>();
     for (auto item : var_array) {
-      ids.push_back(var_name_2_id.at(variable_2_var_name.at(item)));
+      ids.push_back(value_exec_info.GetVarId(item));
     }
   }
   return ids;
@@ -147,56 +142,49 @@ OpFuncType AnalyseOpFuncType(pir::Operation* op, const platform::Place& place) {
     return OpFuncType::kCpuSync;
   }
 
-  auto kernel_key = op->attributes()
-                        .at("kernel_key")
-                        .dyn_cast<dialect::KernelAttribute>()
-                        .data();
-  if (phi::TransToPhiPlace(kernel_key.backend()).GetType() ==
-      phi::AllocationType::CPU) {
-    return OpFuncType::kCpuSync;
-  }
-
   PADDLE_ENFORCE_EQ(interpreter::IsSupportedHeterPlace(place),
                     true,
                     phi::errors::Fatal("Unsupported current place %s", place));
+
+  auto& op_attributes = op->attributes();
+
+  if ((op->dialect()->name() == "pd_kernel") &&
+      (op_attributes.count("kernel_key") > 0)) {
+    auto kernel_key = op_attributes.at("kernel_key")
+                          .dyn_cast<dialect::KernelAttribute>()
+                          .data();
+    if (phi::TransToPhiPlace(kernel_key.backend()).GetType() ==
+        phi::AllocationType::CPU) {
+      return OpFuncType::kCpuSync;
+    }
+  }
 
   // Some GPU OPs do not launch CUDA Kernel, but spend a lot of time on CPU
   // computing. They execute serially in device thread and block CUDA kernel
   // launching in other GPU OPs. To improve performance, set them as kGpuSync
   // and so that they would be dispatched to host thread.
-  auto& op_attributes = op->attributes();
-  auto op_name =
-      op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
-  if (op_name == "pd_op.coalesce_tensor" &&
-      (!platform::is_xpu_place(place) ||
-       op->attribute<pir::BoolAttribute>("persist_output").data() == false) &&
-      op->attribute<pir::BoolAttribute>("set_constant").data() == false &&
-      op->attribute<pir::BoolAttribute>("copy_data").data() == false) {
-    return OpFuncType::kGpuSync;
-  }
+  if ((op->dialect()->name() == "pd_kernel") &&
+      (op_attributes.count("op_name") > 0)) {
+    auto op_name =
+        op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
+    if (op_name == "pd_op.coalesce_tensor" &&
+        (!platform::is_xpu_place(place) ||
+         op->attribute<pir::BoolAttribute>("persist_output").data() == false) &&
+        op->attribute<pir::BoolAttribute>("set_constant").data() == false &&
+        op->attribute<pir::BoolAttribute>("copy_data").data() == false) {
+      return OpFuncType::kGpuSync;
+    }
 
-  // for memcpy explicitly called by user
-  if (platform::is_gpu_place(place) && op_name == "pd_op.memcpy_d2h") {
-    return OpFuncType::kGpuSync;
-  }
+    if (platform::is_gpu_place(place) && op_name == "pd_op.memcpy_d2h") {
+      return OpFuncType::kGpuSync;
+    }
 
-  if (op_name == "pd_op.shape") {
-    return OpFuncType::kGpuSync;
-  }
-  return OpFuncType::kGpuAsync;
-}
-
-std::vector<pir::Value> GetYiedOpInputs(pir::Block* block) {
-  std::vector<pir::Value> vec_res;
-  for (auto op : (*block)) {
-    if (op->name() == "cf.yield") {
-      for (size_t i = 0; i < op->num_operands(); ++i) {
-        vec_res.push_back(op->operand_source(i));
-      }
+    if (op_name == "pd_op.shape") {
+      return OpFuncType::kGpuSync;
     }
   }
 
-  return vec_res;
+  return OpFuncType::kGpuAsync;
 }
 
 std::vector<pir::Value> GetCondYiedOpInputs(pir::Block* block) {
@@ -211,30 +199,32 @@ std::vector<pir::Value> GetCondYiedOpInputs(pir::Block* block) {
 
   return vec_res;
 }
+std::vector<pir::Value> GetYiedOpInputs(pir::Block* block) {
+  std::vector<pir::Value> vec_res;
+  for (auto op : (*block)) {
+    if (op->name() == "cf.yield") {
+      for (size_t i = 0; i < op->num_operands(); ++i) {
+        vec_res.push_back(op->operand_source(i));
+      }
+    }
+  }
+  return vec_res;
+}
 
-void GetInputIds(
-    pir::Operation* op,
-    Scope* inner_scope,
-    const std::unordered_map<::pir::Value, std::string>& value_2_var_name,
-    const std::map<std::string, int>& var_name_2_id,
-    const std::unordered_map<const paddle::framework::Variable*, std::string>&
-        variable_2_var_name,
-    std::unordered_map<pir::Value, std::vector<int>>* input_ids) {
+void GetInputIds(pir::Operation* op,
+                 const ValueExecutionInfo& value_exec_info,
+                 std::unordered_map<pir::Value, std::vector<int>>* input_ids) {
   for (size_t i = 0; i < op->num_operands(); i++) {
     pir::Value value = op->operand_source(i);
-    if (value) {
-      PADDLE_ENFORCE_NE(
-          value_2_var_name.find(value),
-          value_2_var_name.end(),
+    if (value && value.type()) {
+      PADDLE_ENFORCE_EQ(
+          value_exec_info.HasValue(value),
+          true,
           phi::errors::PreconditionNotMet(
               "input should in name map, [%d] 'th input of [%s] op",
               i,
               "if op"));
-      std::vector<int> inputs_id = GetValueIds(value,
-                                               inner_scope,
-                                               value_2_var_name,
-                                               var_name_2_id,
-                                               variable_2_var_name);
+      std::vector<int> inputs_id = GetValueIds(value, value_exec_info);
       input_ids->emplace(value, inputs_id);
     }
   }
@@ -242,11 +232,7 @@ void GetInputIds(
 
 void GetOutsideOpInputs(
     pir::Block* block,
-    Scope* inner_scope,
-    const std::unordered_map<::pir::Value, std::string>& value_2_var_name,
-    const std::map<std::string, int>& var_name_2_id,
-    const std::unordered_map<const paddle::framework::Variable*, std::string>&
-        variable_2_var_name,
+    const ValueExecutionInfo& value_exec_info,
     std::unordered_map<pir::Value, std::vector<int>>* input_ids) {
   std::unordered_set<pir::Value> inner_outputs;
   for (auto op : (*block)) {
@@ -259,18 +245,14 @@ void GetOutsideOpInputs(
     for (size_t i = 0; i < op->num_operands(); ++i) {
       pir::Value value = op->operand_source(i);
       if (value && (!inner_outputs.count(value))) {
-        PADDLE_ENFORCE_NE(
-            value_2_var_name.find(value),
-            value_2_var_name.end(),
+        PADDLE_ENFORCE_EQ(
+            value_exec_info.HasValue(value),
+            true,
             phi::errors::PreconditionNotMet(
                 "input should in name map, [%d] 'th input of [%s] op",
                 i,
-                "if op"));
-        std::vector<int> inputs_id = GetValueIds(value,
-                                                 inner_scope,
-                                                 value_2_var_name,
-                                                 var_name_2_id,
-                                                 variable_2_var_name);
+                op->name()));
+        std::vector<int> inputs_id = GetValueIds(value, value_exec_info);
 
         input_ids->emplace(value, inputs_id);
       }

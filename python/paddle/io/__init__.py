@@ -30,7 +30,7 @@ from .dataloader import WeightedRandomSampler  # noqa: F401
 from .dataloader import Subset  # noqa: F401
 from .dataloader import random_split  # noqa: F401
 
-__all__ = [  # noqa
+__all__ = [
     'Dataset',
     'IterableDataset',
     'TensorDataset',

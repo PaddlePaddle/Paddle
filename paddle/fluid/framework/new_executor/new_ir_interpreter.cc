@@ -49,6 +49,7 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/pir/core/builtin_attribute.h"
 
@@ -116,7 +117,7 @@ NewIRInterpreter::NewIRInterpreter(
 
   std::stringstream ss;
   ss << this;
-  ::pir::BuildScope(*ir_block_, ss.str(), &sub_blocks_, value_exe_info_.get());
+  BuildScope(*ir_block_, ss.str(), value_exe_info_.get());
 }
 
 NewIRInterpreter::NewIRInterpreter(
@@ -178,7 +179,7 @@ NewIRInterpreter::NewIRInterpreter(
 
   std::stringstream ss;
   ss << this;
-  ::pir::BuildScope(*ir_block_, ss.str(), &sub_blocks_, value_exe_info_.get());
+  BuildScope(*ir_block_, ss.str(), value_exe_info_.get());
 }
 
 NewIRInterpreter::~NewIRInterpreter() {
@@ -381,7 +382,7 @@ std::string NewIRInterpreter::GetDepsString() const {
 
 bool NewIRInterpreter::HasLocalScope() const { return local_scope_ != nullptr; }
 
-Scope* NewIRInterpreter::InnerScope() {
+Scope* NewIRInterpreter::InnerScope() const {
   return local_scope_ != nullptr ? local_scope_ : scope_;
 }
 
@@ -560,30 +561,19 @@ void NewIRInterpreter::BuildInstruction() {
     VLOG(6) << "Build Instruction for op: " << op_idx;
     if (op->dialect()->name() == "builtin") {
       if (interpreter::GetSpecialOpNames().count(op->name())) {
-        VLOG(6) << "skip process " << op->name();
+        VLOG(6) << "skip process builtin dialect op: " << op->name();
         continue;
       }
     } else if (op->dialect()->name() == "cf") {
+      VLOG(6) << "skip process cf dialect op: " << op->name();
       continue;
     } else if (op->dialect()->name() == "pd_op") {
       if (op->isa<paddle::dialect::IfOp>()) {
-        vec_instruction_base_.emplace_back(
-            std::make_unique<CondInstruction>(op_idx++,
-                                              place_,
-                                              op,
-                                              scope_,
-                                              local_scope_,
-                                              value_exe_info_.get(),
-                                              sub_blocks_));
+        vec_instruction_base_.emplace_back(std::make_unique<CondInstruction>(
+            op_idx++, place_, op, value_exe_info_.get()));
       } else if (op->isa<paddle::dialect::WhileOp>()) {
-        vec_instruction_base_.emplace_back(
-            std::make_unique<WhileInstruction>(op_idx++,
-                                               place_,
-                                               op,
-                                               scope_,
-                                               local_scope_,
-                                               value_exe_info_.get(),
-                                               sub_blocks_));
+        vec_instruction_base_.emplace_back(std::make_unique<WhileInstruction>(
+            op_idx++, place_, op, scope_, local_scope_, value_exe_info_.get()));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Now only support pd_kernel and cinn dialect."));
@@ -599,28 +589,14 @@ void NewIRInterpreter::BuildInstruction() {
       }
       VLOG(6) << "process " << op_name;
 
-      if (op->name().compare(paddle::dialect::LegacyKernelOp::name()) == 0) {
+      if (op->isa<paddle::dialect::LegacyKernelOp>()) {
         vec_instruction_base_.emplace_back(
             std::make_unique<LegacyKernelInstruction>(
-                op_idx++,
-                place_,
-                op,
-                scope_,
-                local_scope_,
-                value_exe_info_->GetValue2VarName(),
-                value_exe_info_->GetVarName2Id(),
-                value_exe_info_->GetVar2VarName()));
+                op_idx++, place_, op, *(value_exe_info_.get())));
       } else {
         vec_instruction_base_.emplace_back(
             std::make_unique<PhiKernelInstruction>(
-                op_idx++,
-                place_,
-                op,
-                scope_,
-                local_scope_,
-                value_exe_info_->GetValue2VarName(),
-                value_exe_info_->GetVarName2Id(),
-                value_exe_info_->GetVar2VarName()));
+                op_idx++, place_, op, *(value_exe_info_.get())));
       }
 #ifdef PADDLE_WITH_CINN
     } else if (op->dialect()->name() == "cinn_runtime") {
