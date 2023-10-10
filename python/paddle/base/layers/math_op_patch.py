@@ -16,11 +16,9 @@ import inspect
 import warnings
 
 from paddle.base.dygraph.base import in_to_static_mode
-from paddle.base.libpaddle.pir import OpResult
 
 from .. import core
 from ..framework import Variable, static_only, unique_name
-from ..variable_index import _getitem_static
 from .layer_function_generator import OpProtoHolder
 
 _supported_int_dtype_ = [
@@ -59,7 +57,6 @@ EXPRESSION_MAP = {
 }
 
 _already_patch_variable = False
-_already_patch_opresult = False
 
 
 def monkey_patch_variable():
@@ -737,10 +734,3 @@ def monkey_patch_variable():
                 setattr(Variable, magic_method, impl)
 
     _already_patch_variable = True
-
-
-def monkey_patch_opresult():
-    global _already_patch_opresult
-    if not _already_patch_opresult:
-        OpResult.__getitem__ = _getitem_static
-    _already_patch_opresult = True

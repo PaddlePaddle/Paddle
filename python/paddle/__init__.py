@@ -23,6 +23,9 @@ except ImportError:
      import paddle from the source directory; please install paddlepaddle*.whl firstly.'''
     )
 
+# NOTE(SigureMo): We should place the import of base.core before other modules,
+# because there are some initialization codes in base/core/__init__.py.
+from .base import core  # noqa: F401
 from .batch import batch
 
 # Do the *DUPLICATED* monkey-patch for the tensor object.
@@ -30,12 +33,11 @@ from .batch import batch
 # the illogical implement in the monkey-patch methods later.
 from .framework import monkey_patch_variable
 from .framework import monkey_patch_math_tensor
-from .framework import monkey_patch_opresult
+from .pir import monkey_patch_opresult
 
 monkey_patch_variable()
 monkey_patch_math_tensor()
 monkey_patch_opresult()
-
 
 from .framework import (
     disable_signal_handler,
@@ -535,8 +537,8 @@ disable_static()
 
 from .pir_utils import IrGuard
 
-ir_change = IrGuard()
-ir_change._switch_to_pir()
+ir_guard = IrGuard()
+ir_guard._switch_to_pir()
 
 __all__ = [
     'iinfo',
