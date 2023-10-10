@@ -14,11 +14,11 @@
 
 import unittest
 
-import sot
 from test_case_base import TestCaseBase
 
 import paddle
 from paddle import nn
+from paddle.jit import sot
 
 
 class Head(nn.Layer):

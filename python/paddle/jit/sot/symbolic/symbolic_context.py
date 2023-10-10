@@ -14,9 +14,17 @@
 
 from __future__ import annotations
 
-from ..utils import event_register, log
+from ..utils import log
 from .compile_cache import CompileSIRCache
-from .statement_ir import Statement, StatementIR, StatementIRFactory, Symbol
+from .statement_ir import (
+    ApiStatement,
+    CallStatement,
+    LayerStatement,
+    MethodStatement,
+    StatementIR,
+    StatementIRFactory,
+    Symbol,
+)
 
 
 class SymbolicTraceContext:
@@ -49,26 +57,23 @@ class SymbolicTraceContext:
 
         return self.sir_stack[-1]
 
-    @event_register("call_SIR", event_level=2)
     def call_SIR(self, sirname, inputs, outputs, stacks):
         """
         Call a SIR, which is a subgraph.
         """
 
-        stmt = Statement("call", sirname, inputs, outputs, stacks)
+        stmt = CallStatement(sirname, inputs, outputs, stacks)
         self.TOS.add_statement(stmt)
 
-    @event_register("call_API", event_level=2)
     def call_API(self, api, inputs, outputs, stacks):
         """
         Call a paddle api.
         """
 
         assert callable(api), "call_API must receive a paddle api."
-        stmt = Statement("api", api, inputs, outputs, stacks)
+        stmt = ApiStatement(api, inputs, outputs, stacks)
         self.TOS.add_statement(stmt)
 
-    @event_register("call_METHOD", event_level=2)
     def call_METHOD(self, method_name, inputs, outputs, stacks):
         """
         Call a method of a api. The API here can be python or Paddle
@@ -79,15 +84,14 @@ class SymbolicTraceContext:
         assert isinstance(
             inputs[0][0], Symbol
         ), "call_METHOD must first augument must be Symbol Variable."
-        stmt = Statement("method", method_name, inputs, outputs, stacks)
+        stmt = MethodStatement(method_name, inputs, outputs, stacks)
         self.TOS.add_statement(stmt)
 
-    @event_register("call_LAYER", event_level=2)
-    def call_LAYER(self, layer_name, inputs, outputs, stacks):
+    def call_LAYER(self, layer, inputs, outputs, stacks):
         """
         Call a layer of a api.
         """
-        stmt = Statement("layer", layer_name, inputs, outputs, stacks)
+        stmt = LayerStatement(layer, inputs, outputs, stacks)
         self.TOS.add_statement(stmt)
 
     def get_sir(self, name: str):

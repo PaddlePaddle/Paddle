@@ -17,9 +17,9 @@ from __future__ import annotations
 import unittest
 from typing import Iterable
 
-import sot
 from test_case_base import TestCaseBase, strict_mode_guard
 
+from paddle.jit import sot
 from paddle.jit.sot.psdb import check_no_breakgraph
 
 

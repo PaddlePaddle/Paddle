@@ -19,7 +19,8 @@ import inspect
 import re
 from typing import TYPE_CHECKING
 
-from ...utils import BreakGraphError, event_register, log
+from ...profiler import event_register
+from ...utils import BreakGraphError, log
 from ..instruction_utils import Instruction
 from .guard import StringifyExpression, union_free_vars
 from .opcode_executor import OpcodeExecutorBase, Stop
@@ -290,7 +291,9 @@ class OpcodeInlineExecutor(OpcodeExecutorBase):
             result: The result of the operation.
             instr (Instruction): The jump instruction.
         """
-        raise BreakGraphError("_break_graph_in_jump.")
+        raise BreakGraphError(
+            "OpcodeInlineExecutor want call _break_graph_in_jump."
+        )
 
     def _create_resume_fn(self, index: int, stack_size: int = 0):
         """

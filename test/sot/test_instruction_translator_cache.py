@@ -25,9 +25,9 @@ from test_case_base import (
     test_instruction_translator_cache_context,
 )
 
-from paddle.jit.sot.opcode_translator.executor.opcode_executor import (
-    CustomCode,
-    InstructionTranslatorCache,
+from paddle.jit.sot.opcode_translator.custom_code import CustomCode
+from paddle.jit.sot.opcode_translator.executor.executor_cache import (
+    OpcodeExecutorCache,
 )
 
 
@@ -95,56 +95,56 @@ def mock_start_translate(frame: types.FrameType, **kwargs):
     return translate_map[frame]
 
 
-class TestInstructionTranslatorCache(unittest.TestCase):
+class TestOpcodeExecutorCache(unittest.TestCase):
     def reset(self):
         global translate_count
         translate_count = 0
-        InstructionTranslatorCache().clear()
+        OpcodeExecutorCache().clear()
 
     @patch(
-        "sot.opcode_translator.executor.opcode_executor.start_translate",
+        "sot.opcode_translator.executor.executor_cache.start_translate",
         mock_start_translate,
     )
     def test_cache_hit(self):
         with test_instruction_translator_cache_context() as ctx:
-            translated_code_1 = InstructionTranslatorCache()(FRAME_1)
+            translated_code_1 = OpcodeExecutorCache()(FRAME_1)
             assert translated_code_1 is not None
             self.assertEqual(translated_code_1.code, FRAME_2.f_code)
             self.assertEqual(ctx.translate_count, 1)
             # cache hit
-            translated_code_2 = InstructionTranslatorCache()(FRAME_1)
+            translated_code_2 = OpcodeExecutorCache()(FRAME_1)
             assert translated_code_2 is not None
             self.assertEqual(translated_code_2.code, FRAME_2.f_code)
             self.assertEqual(ctx.translate_count, 1)
 
     @patch(
-        "sot.opcode_translator.executor.opcode_executor.start_translate",
+        "sot.opcode_translator.executor.executor_cache.start_translate",
         mock_start_translate,
     )
     def test_cache_miss_due_to_unknown_code(self):
         with test_instruction_translator_cache_context() as ctx:
-            translated_code_1 = InstructionTranslatorCache()(FRAME_1)
+            translated_code_1 = OpcodeExecutorCache()(FRAME_1)
             assert translated_code_1 is not None
             self.assertEqual(translated_code_1.code, FRAME_2.f_code)
             self.assertEqual(ctx.translate_count, 1)
             # cache miss
-            translated_code_2 = InstructionTranslatorCache()(FRAME_3)
+            translated_code_2 = OpcodeExecutorCache()(FRAME_3)
             assert translated_code_2 is not None
             self.assertEqual(translated_code_2.code, FRAME_4.f_code)
             self.assertEqual(ctx.translate_count, 2)
 
     @patch(
-        "sot.opcode_translator.executor.opcode_executor.start_translate",
+        "sot.opcode_translator.executor.executor_cache.start_translate",
         mock_start_translate,
     )
     def test_cache_miss_due_to_check_failed(self):
         with test_instruction_translator_cache_context() as ctx:
-            translated_code_1 = InstructionTranslatorCache()(FRAME_3)
+            translated_code_1 = OpcodeExecutorCache()(FRAME_3)
             assert translated_code_1 is not None
             self.assertEqual(translated_code_1.code, FRAME_4.f_code)
             self.assertEqual(ctx.translate_count, 1)
             # cache miss
-            translated_code_2 = InstructionTranslatorCache()(FRAME_3)
+            translated_code_2 = OpcodeExecutorCache()(FRAME_3)
             assert translated_code_2 is not None
             self.assertEqual(translated_code_2.code, FRAME_4.f_code)
             self.assertEqual(ctx.translate_count, 2)

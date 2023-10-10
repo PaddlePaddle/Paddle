@@ -25,7 +25,6 @@ from .paddle_api_config import (  # noqa: F401
     is_inplace_api,
     paddle_tensor_methods,
 )
-from .SotProfiler import EventGuard, SotProfiler, event_register  # noqa: F401
 from .utils import (  # noqa: F401
     Cache,
     GraphLogger,

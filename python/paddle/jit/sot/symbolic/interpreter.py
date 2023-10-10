@@ -134,26 +134,24 @@ class Interpreter:
         return replace_symbol(SIR.outputs, state)
 
     def call(self, stmt: Statement, inputs):
-        SIR = self.get_sir(stmt.name)
+        SIR = self.get_sir(stmt.sir_name)
         state = prepare_state(SIR, inputs)
-        return self.run_sir(stmt.name, state)
+        return self.run_sir(stmt.sir_name, state)
 
     def api(self, stmt, inputs):
         args, kwargs = inputs
-        return stmt.name(*args, **kwargs)
+        return stmt.api(*args, **kwargs)
 
     def method(self, stmt, inputs):
         args, kwargs = inputs
         var = args[0]
-        return getattr(var, stmt.name)(*args[1:], **kwargs)
+        return getattr(var, stmt.method)(*args[1:], **kwargs)
 
     def layer(self, stmt, inputs):
         args, kwargs = inputs
-        layer, args = args[0], args[1:]
+        layer = stmt.layer()
+        assert layer is not None, "SIR bound layer is None."
         return layer(*args, **kwargs)
-
-    def delete(self, stmt, inputs):
-        pass
 
 
 def compile_sir(context: SymbolicTraceContext, name: str):

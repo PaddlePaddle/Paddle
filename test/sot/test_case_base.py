@@ -25,14 +25,14 @@ import numpy as np
 
 import paddle
 from paddle.jit.sot import symbolic_translate
-from paddle.jit.sot.opcode_translator.executor.opcode_executor import (
-    InstructionTranslatorCache,
+from paddle.jit.sot.opcode_translator.executor.executor_cache import (
+    OpcodeExecutorCache,
 )
 
 
 @contextlib.contextmanager
 def test_instruction_translator_cache_context():
-    cache = InstructionTranslatorCache()
+    cache = OpcodeExecutorCache()
     cache.clear()
     yield cache
     cache.clear()

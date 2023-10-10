@@ -25,13 +25,12 @@ from functools import cached_property
 from typing import Any, Callable
 
 from ...infer_meta import InferMetaCache, LayerInferMetaCache, MetaInfo
+from ...profiler import EventGuard, event_register
 from ...symbolic.statement_ir import Symbol
 from ...symbolic.symbolic_context import SymbolicTraceContext
 from ...utils import (
-    EventGuard,
     NameGenerator,
     OrderedSet,
-    event_register,
     inner_error_default_handler,
     is_inplace_api,
     is_paddle_api,
@@ -176,19 +175,16 @@ class FunctionGraph:
         NOTE:
             Why don't use __deepcopy__, because memo is not a deepcopy, i.e inner_out is only a shallow copy, SIR is a deepcopy.
         """
-        with EventGuard(
-            f"Save SIR Checkpoint: len({len(self.sir_ctx.TOS)})", event_level=2
-        ):
-            saved_stmt_ir = deepcopy(self.sir_ctx.TOS)
-            return FunctionGraph.Memo(
-                inner_out=set(self.inner_out),
-                input_variables=list(self.input_variables),
-                stmt_ir=saved_stmt_ir,
-                global_guards=OrderedSet(self._global_guarded_variables),
-                side_effects_state=self.side_effects.get_state(),
-                print_variables=list(self._print_variables),
-                inplace_tensors=OrderedSet(self._inplace_tensors),
-            )
+        saved_stmt_ir = deepcopy(self.sir_ctx.TOS)
+        return FunctionGraph.Memo(
+            inner_out=set(self.inner_out),
+            input_variables=list(self.input_variables),
+            stmt_ir=saved_stmt_ir,
+            global_guards=OrderedSet(self._global_guarded_variables),
+            side_effects_state=self.side_effects.get_state(),
+            print_variables=list(self._print_variables),
+            inplace_tensors=OrderedSet(self._inplace_tensors),
+        )
 
     def restore_memo(self, memo: FunctionGraph.Memo):
         """
@@ -315,7 +311,7 @@ class FunctionGraph:
             found = False
             for variable in self.input_variables:
                 if (
-                    isinstance(variable, (TensorVariable, PaddleLayerVariable))
+                    isinstance(variable, TensorVariable)
                     and variable.get_symbol().name == name
                 ):
                     variable.tracker.gen_instructions(self.pycode_gen)
@@ -347,7 +343,6 @@ class FunctionGraph:
 
             view_tracker(list(ret_vars), tracker_output_path, format="png")
 
-    @event_register("call_paddle_api", event_level=2)
     def call_paddle_api(
         self,
         func: Callable[..., Any],
@@ -373,7 +368,6 @@ class FunctionGraph:
             InferMetaCache(), self.sir_ctx.call_API, func, *args, **kwargs
         )
 
-    @event_register("call_tensor_method", event_level=2)
     def call_tensor_method(
         self, method_name: str, *args: VariableBase, **kwargs
     ):
@@ -425,7 +419,6 @@ class FunctionGraph:
         stack.append(f'    {code_line}')
         return stack
 
-    @event_register("call_layer", event_level=2)
     def call_layer(
         self,
         layer: PaddleLayerVariable,
@@ -440,15 +433,12 @@ class FunctionGraph:
         """
 
         def infer_meta_fn(layer, *metas, **kwmetas):
-            metas = metas[1:]
             metas = LayerInferMetaCache()(layer.value, *metas, **kwmetas)
             return metas
 
         def compute_fn(layer, inputs, outputs, stacks):
-            inputs = (layer.get_symbol(), *inputs)
-            inputs = inputs[1:]
             self.sir_ctx.call_LAYER(
-                layer.value.__class__.__name__,
+                layer.value,
                 inputs=inputs,
                 outputs=outputs,
                 stacks=stacks,
@@ -458,10 +448,9 @@ class FunctionGraph:
             return f"Call paddle layer error: {layer}, may be not a valid paddle layer ?"
 
         return inner_error_default_handler(self.symbolic_call, message_handler)(
-            infer_meta_fn, compute_fn, layer, *[layer, *args], **kwargs
+            infer_meta_fn, compute_fn, layer, *args, **kwargs
         )
 
-    @event_register("symbolic_call", event_level=2)
     def symbolic_call(self, infer_meta_fn, compute_fn, func, *args, **kwargs):
         """
         Using infer_meta_fn and compute_fn convert func to symbolic function.
@@ -476,8 +465,7 @@ class FunctionGraph:
         metas = convert_to_meta(args)
         kwmetas = convert_to_meta(kwargs)
 
-        with EventGuard("infer_meta"):
-            out_metas = infer_meta_fn(func, *metas, **kwmetas)
+        out_metas = infer_meta_fn(func, *metas, **kwmetas)
         inputs_symbols = (
             convert_to_symbol(args),
             convert_to_symbol(kwargs),

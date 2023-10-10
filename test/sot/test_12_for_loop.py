@@ -24,8 +24,8 @@ from test_case_base import TestCaseBase, strict_mode_guard
 import paddle
 from paddle.jit import sot
 from paddle.jit.sot import symbolic_translate
-from paddle.jit.sot.opcode_translator.executor.opcode_executor import (
-    InstructionTranslatorCache,
+from paddle.jit.sot.opcode_translator.executor.executor_cache import (
+    OpcodeExecutorCache,
 )
 
 
@@ -259,7 +259,7 @@ class TestEnumerateCache(TestCaseBase):
 
         out = symbolic_translate(for_enumerate_cache)(func_list, x)
         out = symbolic_translate(for_enumerate_cache)(func_list, x)
-        self.assert_nest_match(InstructionTranslatorCache().translate_count, 1)
+        self.assert_nest_match(OpcodeExecutorCache().translate_count, 1)
 
 
 # after_loop_fn need zzz, and zzz is created as UndefinedVar when generating loop body

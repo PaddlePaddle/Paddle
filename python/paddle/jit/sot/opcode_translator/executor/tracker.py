@@ -22,6 +22,8 @@ from ...utils import InnerError, NameGenerator
 from .guard import StringifyExpression, union_free_vars
 
 if TYPE_CHECKING:
+    from typing import Sequence
+
     from .pycode_generator import PyCodeGen
     from .variables import VariableBase
 
@@ -38,10 +40,10 @@ class Tracker:
         It serves as an abstract class and should not be instantiated directly.
     """
 
-    inputs: list[VariableBase]
+    inputs: Sequence[VariableBase]
     name_generator = NameGenerator("tracker_")
 
-    def __init__(self, inputs: list[VariableBase], changed: bool = False):
+    def __init__(self, inputs: Sequence[VariableBase], changed: bool = False):
         self.inputs = inputs
         self.changed = changed
         self.id = Tracker.name_generator.next()
@@ -92,7 +94,7 @@ class DummyTracker(Tracker):
         inputs (list[VariableBase]): The input variables associated with the generated variables.
     """
 
-    def __init__(self, inputs: list[VariableBase]):
+    def __init__(self, inputs: Sequence[VariableBase]):
         super().__init__(inputs)
 
     def gen_instructions(self, codegen: PyCodeGen):

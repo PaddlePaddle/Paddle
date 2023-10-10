@@ -22,7 +22,8 @@ from typing import TYPE_CHECKING, Any, Callable, Optional
 
 import paddle
 
-from ....utils import NameGenerator, event_register, get_unbound_method, log
+from ....profiler import event_register
+from ....utils import NameGenerator, get_unbound_method, log
 from ....utils.exceptions import FallbackError, HasNoAttributeError
 from ..dispatcher import Dispatcher
 from ..guard import StringifyExpression, check_guard, union_free_vars

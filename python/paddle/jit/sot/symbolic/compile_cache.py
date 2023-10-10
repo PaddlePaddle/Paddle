@@ -18,10 +18,10 @@ from typing import TYPE_CHECKING
 
 import paddle
 
+from ..profiler import EventGuard
 from ..utils import (
     Cache,
     CodeStatus,
-    EventGuard,
     GraphLogger,
     Singleton,
     StepInfoManager,

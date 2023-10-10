@@ -15,7 +15,9 @@
 import inspect
 from enum import Enum
 
-from .utils import Singleton
+import paddle
+
+from .utils import Singleton, log
 
 
 class CodeState(Enum):
@@ -35,13 +37,26 @@ class CodeInfo:
 
 @Singleton
 class CodeStatus:
+    WITH_GRAPH_API = [
+        paddle.nn.Layer.__call__.__code__,
+        paddle.nn.Layer._dygraph_call_func.__code__,
+    ]
+
     def __init__(self):
         self.code_map = {}
+        self.setup_code_map()
+
+    def setup_code_map(self):
+        for code in self.WITH_GRAPH_API:
+            info = CodeInfo()
+            info.state = CodeState.WITH_GRAPH
+            self.code_map[code] = info
 
     def clear(self):
         self.code_map.clear()
+        self.setup_code_map()
 
-    def check_code(self, code):
+    def is_code_without_graph(self, code):
         if code not in self.code_map:
             info = CodeInfo()
             self.code_map[code] = info
@@ -50,15 +65,15 @@ class CodeStatus:
 
         if info.state == CodeState.WITHOUT_GRAPH:
             return True
-        elif info.state == CodeState.UNKNOW:
-            self.visit(code)
+        if info.state == CodeState.UNKNOW:
+            info.counter += 1
+            if info.counter >= 10:
+                log(
+                    3,
+                    f"[CodeStatus] Switch state to WITHOUT_GRAPH for {code}\n",
+                )
+                info.state = CodeState.WITHOUT_GRAPH
         return False
-
-    def visit(self, code):
-        info = self.code_map[code]
-        info.counter += 1
-        if info.state == CodeState.UNKNOW and info.counter > 10:
-            info.state = CodeState.WITHOUT_GRAPH
 
     def trace_back_frames(self):
         frame = inspect.currentframe()
@@ -67,4 +82,9 @@ class CodeStatus:
             code = frame.f_code
             if code in self.code_map:
                 info = self.code_map[code]
-                info.state = CodeState.WITH_GRAPH
+                if info.state != CodeState.WITH_GRAPH:
+                    log(
+                        3,
+                        f"[CodeStatus] Switch state to WITH_GRAPH for {code}\n",
+                    )
+                    info.state = CodeState.WITH_GRAPH

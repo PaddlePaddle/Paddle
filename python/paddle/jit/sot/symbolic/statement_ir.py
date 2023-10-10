@@ -19,6 +19,10 @@ use interface in symbolic_context.py first.
 """
 from __future__ import annotations
 
+import weakref
+from typing import Callable
+
+import paddle
 from paddle.utils import is_sequence, map_structure
 
 from ..utils import NameGenerator, OrderedSet, Singleton, flatten_extend
@@ -83,20 +87,67 @@ class Statement:
             inps = (x.__str__() for x in inps)
             return ", ".join(inps)
 
-        name = (
-            self.name
-            if isinstance(self.name, str)
-            else "paddle." + self.name.__name__
-        )
         return "{} || {} = {} ({}) ".format(
             self.type + " " * (10 - len(self.type)),
             to_string(self.outputs),
-            name,
+            self.name,
             to_string(self.inputs),
         )
 
     def __repr__(self):
         return self.__str__()
+
+
+class CallStatement(Statement):
+    def __init__(
+        self,
+        name: str,
+        inputs: list[Symbol],
+        outputs: list[Symbol],
+        stacks: list[str],
+    ):
+        super().__init__("call", name, inputs, outputs, stacks)
+        self.sir_name = name
+
+
+class ApiStatement(Statement):
+    def __init__(
+        self,
+        api: Callable,
+        inputs: list[Symbol],
+        outputs: list[Symbol],
+        stacks: list[str],
+    ):
+        super().__init__(
+            "api", "paddle." + api.__name__, inputs, outputs, stacks
+        )
+        self.api = api
+
+
+class MethodStatement(Statement):
+    def __init__(
+        self,
+        name: str,
+        inputs: list[Symbol],
+        outputs: list[Symbol],
+        stacks: list[str],
+    ):
+        super().__init__("method", name, inputs, outputs, stacks)
+        self.method = name
+
+
+class LayerStatement(Statement):
+    def __init__(
+        self,
+        layer: paddle.nn.Layer,
+        inputs: list[Symbol],
+        outputs: list[Symbol],
+        stacks: list[str],
+    ):
+        super().__init__(
+            "layer", layer.__class__.__name__, inputs, outputs, stacks
+        )
+        self.layer = weakref.ref(layer)
 
 
 class StatementIR:
@@ -215,7 +266,7 @@ class SIRRuntimeCache:
 
     def __init__(self):
         self.cache = {}
-        #       { name : (inputs, outputs, free_vars) }
+        #    { name : (inputs, outputs, free_vars) }
         #       inputs  : can be used when call_SIR, if free_vars exist
         #       outputs : used for generator new ProxyTensor output before fallback
         #       free_vars: (name, function)

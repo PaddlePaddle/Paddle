@@ -18,7 +18,8 @@ from test_case_base import TestCaseBase, strict_mode_guard
 
 import paddle
 from paddle.jit import sot
-from paddle.jit.sot.utils import CodeStatus
+from paddle.jit.sot.opcode_translator.skip_files import skip_function
+from paddle.jit.sot.utils.code_status import CodeState, CodeStatus
 
 
 class SimpleNet1(paddle.nn.Layer):
@@ -62,20 +63,26 @@ def run_net(net, x):
 
 
 class TestCodeInfo(TestCaseBase):
-    def _analyse_code_info(self, code_map):
-        return {k.co_name: str(v.state) for k, v in code_map.items()}
-
     def test_case_1(self):
         CodeStatus().clear()
         net = SimpleNet1()
         inp = paddle.rand((10, 10))
         self.assert_results(run_net, net, inp)
-        code_infos = self._analyse_code_info(CodeStatus().code_map)
-        states = list(code_infos.values())
+        code_map = CodeStatus().code_map
+        states = []
+        for k, v in code_map.items():
+            if k.co_name.startswith("#") or k.co_name.startswith("$"):
+                states.append(v)
+            elif k in CodeStatus().WITH_GRAPH_API:
+                assert v.state == CodeState.WITH_GRAPH
+            else:
+                assert v.state == CodeState.WITHOUT_GRAPH
         # run_net, forward, loop body, resumed part2 in loop body
-        assert len([v for v in states if v == "CodeState.WITH_GRAPH"]) == 4
+        assert len([v for v in states if v.state == CodeState.WITH_GRAPH]) == 4
         # resumed part1 in loop body
-        assert len([v for v in states if v == "CodeState.WITHOUT_GRAPH"]) == 1
+        assert (
+            len([v for v in states if v.state == CodeState.WITHOUT_GRAPH]) == 1
+        )
 
     def test_case_2(self):
         with strict_mode_guard(0):
@@ -83,10 +90,64 @@ class TestCodeInfo(TestCaseBase):
             net = SimpleNet2()
             inp = paddle.rand((10, 10))
             self.assert_results(run_net, net, inp)
-            code_infos = self._analyse_code_info(CodeStatus().code_map)
-            states = list(code_infos.values())
+            code_map = CodeStatus().code_map
+            states = []
+            for k, v in code_map.items():
+                if k.co_name.startswith("#") or k.co_name.startswith("$"):
+                    states.append(v)
+                elif k in CodeStatus().WITH_GRAPH_API:
+                    assert v.state == CodeState.WITH_GRAPH
+                else:
+                    assert v.state == CodeState.WITHOUT_GRAPH
             # no graph found because fallback (paddle api will not enter simulate)
-            assert len([v for v in states if v == "CodeState.WITH_GRAPH"]) == 0
+            assert (
+                len([v for v in states if v.state == CodeState.WITH_GRAPH]) == 0
+            )
+
+
+def no_skip_func_0(x):
+    return x + 1
+
+
+def skipped_func_0():
+    pass
+
+
+def skipped_func_1(x):
+    return x + 1
+
+
+def skipped_func_2(x):
+    return no_skip_func_0(x)
+
+
+def call_skipped_func_0(x):
+    for i in range(15):
+        skipped_func_0()
+        x = skipped_func_1(x)
+        x = skipped_func_2(x)
+    return x
+
+
+skip_function(skipped_func_0)
+skip_function(skipped_func_1)
+skip_function(skipped_func_2)
+skip_function(call_skipped_func_0)
+
+
+class TestDisableSkippedFrame(TestCaseBase):
+    def test_case_0(self):
+        CodeStatus().clear()
+        x = paddle.to_tensor([1])
+        self.assert_results(call_skipped_func_0, x)
+        code_map = CodeStatus().code_map
+        assert (
+            code_map[skipped_func_0.__code__].state == CodeState.WITHOUT_GRAPH
+        )
+        assert (
+            code_map[skipped_func_1.__code__].state == CodeState.WITHOUT_GRAPH
+        )
+        assert code_map[skipped_func_2.__code__].state == CodeState.WITH_GRAPH
 
 
 if __name__ == "__main__":
