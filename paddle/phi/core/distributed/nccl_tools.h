@@ -22,10 +22,10 @@
 #include <hip/hip_runtime.h>
 #include "paddle/phi/backends/dynload/rccl.h"
 #endif
- #ifdef PADDLE_WITH_NCCL
- #include <cuda_runtime.h>
- #include "paddle/phi/backends/dynload/nccl.h"
- #endif
+#ifdef PADDLE_WITH_NCCL
+#include <cuda_runtime.h>
+#include "paddle/phi/backends/dynload/nccl.h"
+#endif
 
 namespace phi {
 namespace distributed {
