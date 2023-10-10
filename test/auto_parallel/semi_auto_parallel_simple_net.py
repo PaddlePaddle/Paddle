@@ -135,6 +135,7 @@ class TestSimpleNetForSemiAutoParallel:
     def __init__(self):
         self._dtype = os.getenv("dtype")
         self._backend = os.getenv("backend")
+        self._seed = eval(os.getenv("seed"))
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
 
         paddle.set_device(self._backend)
@@ -144,8 +145,8 @@ class TestSimpleNetForSemiAutoParallel:
         self.init_single_card_net_result()
 
     def init_input_data(self):
-        paddle.seed(2023)
-        np.random.seed(2023)
+        paddle.seed(self._seed)
+        np.random.seed(self._seed)
 
         self.image = np.random.random([BATCH_SIZE, IMAGE_SIZE]).astype(
             'float32'
