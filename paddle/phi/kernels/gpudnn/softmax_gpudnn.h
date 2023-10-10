@@ -820,6 +820,9 @@ void SwitchWarpSoftmaxBackward(const int blocks,
       // PADDLE_THROW(phi::errors::Unimplemented(
       //     "Unsupported softmax dim: element_count=%d,
       //     log2_element_count=%d!", element_count, log2_element_count));
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Unexpected branch when Log2Elements = %d. This may be a bug.",
+          Log2Elements));
       break;
   }
 }
@@ -1254,11 +1257,6 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
 
   if (D == 1) {
     if (!UseCudnnSoftmax<T>(dev_ctx, dim, true)) {
-      if (dim >= MATRIX_SOFTMAX_THREAHOLD) {
-        LaunchKeMatrixSoftmaxForwardKernel<T, IndexType, LogMode>(
-            dev_ctx, out_data, x.data<T>(), N, dim);
-        return;
-      }
       int dim_log2 = static_cast<int>(Log2Ceil(dim));
       IndexType dim_ceil = 1 << dim_log2;
       int warp_size = (dim_ceil < 32) ? dim_ceil : 32;
