@@ -18,7 +18,6 @@
 #include <condition_variable>
 #include <cstdint>
 #include <exception>
-#include "glog/logging.h"
 #include "paddle/phi/core/distributed/utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/macros.h"
