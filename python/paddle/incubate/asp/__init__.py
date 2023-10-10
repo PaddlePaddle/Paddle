@@ -34,7 +34,7 @@ from .asp import ASPHelper  # noqa: F401
 from .supported_layer_list import add_supported_layer  # noqa: F401
 
 
-__all__ = [  # noqa
+__all__ = [
     'calculate_density',
     'decorate',
     'prune_model',

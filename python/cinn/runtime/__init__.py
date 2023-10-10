@@ -66,3 +66,7 @@ from cinn.core_api.runtime import (  # noqa: F401
     seed,
     set_cinn_cudnn_deterministic,
 )
+
+from .cinn_jit import CinnLowerLevelIrJit
+
+__all__ = ["CinnLowerLevelIrJit"]
