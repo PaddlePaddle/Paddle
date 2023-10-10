@@ -50,5 +50,4 @@ __all__ = [  # noqa
     'get_num_bytes_of_data_type',
     'PredictorPool',
     'XpuConfig',
-    'InternalUtils',
 ]
