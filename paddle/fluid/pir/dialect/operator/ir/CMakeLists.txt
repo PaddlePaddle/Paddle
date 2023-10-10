@@ -191,7 +191,7 @@ cc_library(
 cc_library(
   pd_op_dialect_op
   SRCS ${op_source_file} manual_op.cc control_flow_op.cc
-  DEPS pd_op_dialect_core)
+  DEPS pd_op_dialect_core pir_control_flow)
 cc_library(
   api_builder
   SRCS api_builder.cc

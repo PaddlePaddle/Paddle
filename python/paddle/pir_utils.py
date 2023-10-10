@@ -13,6 +13,8 @@
 # limitations under the License.
 
 
+from functools import wraps
+
 import paddle
 
 
@@ -64,9 +66,16 @@ class IrGuard:
                 {"FLAGS_enable_new_ir_in_executor": True}
             )
             paddle.pir.register_paddle_dialect()
-            paddle.static.Program = paddle.pir.Program
+
             paddle.base.Program = paddle.pir.Program
             paddle.base.program_guard = paddle.pir.core.program_guard
+            # paddle.base.default_main_program = (
+            #     paddle.pir.core.default_main_program
+            # )
+            # paddle.base.default_startup_program = (
+            #     paddle.pir.core.default_startup_program
+            # )
+            paddle.static.Program = paddle.pir.Program
             paddle.static.program_guard = paddle.pir.core.program_guard
             paddle.static.default_main_program = (
                 paddle.pir.core.default_main_program
@@ -82,9 +91,14 @@ class IrGuard:
             paddle.framework.set_flags(
                 {"FLAGS_enable_new_ir_in_executor": False}
             )
-            paddle.static.Program = self.old_Program
+
             paddle.base.Program = self.old_Program
             paddle.base.program_guard = self.old_program_guard
+            # paddle.base.default_main_program = self.old_default_main_program
+            # paddle.base.default_startup_program = (
+            #     self.old_default_startup_program
+            # )
+            paddle.static.Program = self.old_Program
             paddle.static.program_guard = self.old_program_guard
             paddle.static.default_main_program = self.old_default_main_program
             paddle.static.default_startup_program = (
@@ -95,3 +109,13 @@ class IrGuard:
                 "IrGuard._switch_to_old_ir only work when paddle.framework.in_pir_mode() is false, \
                 please set FLAGS_enable_pir_api = false"
             )
+
+
+def test_with_pir_api(func):
+    @wraps(func)
+    def impl(*args, **kwargs):
+        func(*args, **kwargs)
+        with IrGuard():
+            func(*args, **kwargs)
+
+    return impl
