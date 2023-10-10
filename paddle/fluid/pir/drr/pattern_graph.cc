@@ -122,8 +122,18 @@ void PatternGraph::Print() const {
   std::cout << std::endl;
 }
 
-OpCall *SourcePatternGraph::AnchorNode() const {
-  return id2owned_tensor_.at(*output_tensors_.begin())->producer();
+OpCall *SourcePatternGraph::AnchorNode() const {  
+  for (const auto &output_tensor : output_tensors_) {
+    OpCall *output_op_candidate =
+        id2owned_tensor_.at(output_tensor)->producer();
+    if (std::all_of(output_op_candidate->outputs().begin(),
+                    output_op_candidate->outputs().end(),
+                    [this](const Tensor *output) -> bool {
+                      return this->output_tensors().count(output->name());
+                    }))
+      return output_op_candidate;
+  }
+  IR_THROW("Unable to find a valid anchor");
 }
 
 std::unordered_set<const OpCall *> SourcePatternGraph::OutputNodes() const {
