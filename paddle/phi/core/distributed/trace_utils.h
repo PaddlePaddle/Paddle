@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include "glog/logging.h"
-#include "paddle/fluid/string/split.h"
 #include "paddle/phi/core/distributed/store/store.h"
 #include "paddle/utils/string/split.h"
 
