@@ -129,20 +129,4 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(Value lhs,
   return mgr_.IsSymbolicDimProductEqual(lhs_prod, rhs_prod);
 }
 
-bool IsIntOrIndex(Type type) {
-  return type.isa<IndexType>() || type.isa<Int8Type>() ||
-         type.isa<UInt8Type>() || type.isa<Int16Type>() ||
-         type.isa<Int32Type>() || type.isa<Int64Type>();
-}
-
-bool IsCandidateShapeTensorType(Type type) {
-  if (auto tensorTy = type.dyn_cast<paddle::dialect::DenseTensorType>()) {
-    auto shapedTy = tensorTy.dyn_cast<ShapedTypeInterface>();
-    return (shapedTy.GetRank() == 1 && shapedTy.HasStaticShape() &&
-            IsIntOrIndex(shapedTy.GetElementType()) &&
-            shapedTy.GetShape()[0] < 32);
-  }
-  return false;
-}
-
 }  // namespace pir
