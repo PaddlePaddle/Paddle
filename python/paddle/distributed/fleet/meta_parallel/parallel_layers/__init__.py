@@ -14,13 +14,11 @@
 
 from .mp_layers import (  # noqa: F401
     ColumnParallelLinear,
-    LayerDesc,
     ParallelCrossEntropy,
-    PipelineLayer,
     RowParallelLinear,
-    SharedLayerDesc,
     VocabParallelEmbedding,
 )
+from .pp_layers import LayerDesc, PipelineLayer, SharedLayerDesc  # noqa: F401
 from .random import (  # noqa: F401
     RNGStatesTracker,
     get_rng_state_tracker,
