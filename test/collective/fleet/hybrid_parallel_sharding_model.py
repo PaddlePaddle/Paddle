@@ -23,6 +23,7 @@ import paddle.distributed as dist
 from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding_optimizer import (
     DygraphShardingOptimizer,
+    DygraphShardingOptimizerV2,
 )
 from paddle.distributed.fleet.utils.mix_precision_utils import (
     MixPrecisionLayer,
@@ -281,10 +282,12 @@ class TestDistMPTraining(unittest.TestCase):
         model_a, optimizer_a, model_b, optimizer_b = self.build_model_optimizer(
             Optimizer=Optimizer, amp_level=amp_level
         )
-
-        self.assertTrue(
-            isinstance(optimizer_a._inner_opt, DygraphShardingOptimizer)
+        shard_opt_cls = (
+            DygraphShardingOptimizerV2
+            if g_shard_split_param
+            else DygraphShardingOptimizer
         )
+        self.assertTrue(isinstance(optimizer_a._inner_opt, shard_opt_cls))
 
         for idx in range(STEPS):
             if (
