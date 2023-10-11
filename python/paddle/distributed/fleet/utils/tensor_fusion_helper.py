@@ -18,7 +18,6 @@ from collections import OrderedDict
 import numpy as np
 
 import paddle
-from paddle import _legacy_C_ops
 from paddle.fluid import core
 from paddle.framework import base as imperative_base
 
@@ -38,50 +37,6 @@ class HOOK_ACTION:
     ALL_REDUCE = 0
     REDUCE = 1
     REDUCE_SCATTER = 2
-
-
-def get_tensor_bytes(tensor):
-    """Get the bytes a tensor occupied."""
-    elem_size = None
-    if tensor.dtype == paddle.float32:
-        elem_size = 4
-    elif tensor.dtype == paddle.float64:
-        elem_size = 8
-    elif tensor.dtype == paddle.int64:
-        elem_size = 8
-    elif tensor.dtype == paddle.int32:
-        elem_size = 4
-    elif tensor.dtype == paddle.float16:
-        elem_size = 2
-    elif tensor.dtype == paddle.int8:
-        elem_size = 1
-    else:
-        raise ValueError(f"unknown data type: {tensor.dtype}")
-    return tensor.numel() * elem_size
-
-
-def _all_gather(tensor, group=None, use_calc_stream=True):
-    """
-    The main difference with paddle.distributed.all_gather:
-    no need to pass in tensor_list, the returned tensor is spliced
-    """
-    if group is not None and not group.is_member():
-        return
-    ring_id = 0 if group is None else group.id
-    nranks = (
-        paddle.distributed.collective._get_global_group().nranks
-        if group is None
-        else group.nranks
-    )
-    return _legacy_C_ops.c_allgather(
-        tensor,
-        'use_calc_stream',
-        use_calc_stream,
-        'ring_id',
-        ring_id,
-        'nranks',
-        nranks,
-    )
 
 
 def flatten_dense_tensors(parameters, use_main_grad=False):
