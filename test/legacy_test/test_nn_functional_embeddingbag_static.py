@@ -17,22 +17,22 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.nn import functional
 
 
 class EmbeddingBagStatic(unittest.TestCase):
     def test_1(self):
         paddle.enable_static()
-        prog = fluid.Program()
-        with fluid.program_guard(prog):
+        prog = base.Program()
+        with base.program_guard(prog):
 
             def test_bad_x():
                 initializer = paddle.nn.initializer.Assign(
                     np.random.random(size=(5, 3))
                 )
 
-                param_attr = fluid.ParamAttr(
+                param_attr = base.ParamAttr(
                     name="emb_weight",
                     learning_rate=0.5,
                     initializer=initializer,
@@ -47,7 +47,7 @@ class EmbeddingBagStatic(unittest.TestCase):
                     np.random.random(size=(10, 5))
                 )
 
-                param_attr_params = fluid.ParamAttr(
+                param_attr_params = base.ParamAttr(
                     name='params',
                     learning_rate=0.5,
                     initializer=initializer_params,
@@ -76,15 +76,15 @@ class EmbeddingBagStatic(unittest.TestCase):
 
     def test_2(self):
         paddle.enable_static()
-        prog = fluid.Program()
-        with fluid.program_guard(prog):
+        prog = base.Program()
+        with base.program_guard(prog):
 
             def test_bad_x():
                 initializer = paddle.nn.initializer.Assign(
                     np.random.random(size=(5, 3))
                 )
 
-                param_attr = fluid.ParamAttr(
+                param_attr = base.ParamAttr(
                     name="emb_weight",
                     learning_rate=0.5,
                     initializer=initializer,
@@ -99,7 +99,7 @@ class EmbeddingBagStatic(unittest.TestCase):
                     np.random.random(size=(10, 5))
                 )
 
-                param_attr_params = fluid.ParamAttr(
+                param_attr_params = base.ParamAttr(
                     name='params',
                     learning_rate=0.5,
                     initializer=initializer_params,

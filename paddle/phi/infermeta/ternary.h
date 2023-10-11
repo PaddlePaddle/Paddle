@@ -63,6 +63,11 @@ void BoxCoderInferMeta(const MetaTensor& prior_box,
                        MetaTensor* output_box,
                        MetaConfig config = MetaConfig());
 
+void EmbeddingBagInferMeta(const MetaTensor& input,
+                           const MetaTensor& params,
+                           const MetaTensor& weight,
+                           MetaTensor* out);
+
 void FlashAttnInferMeta(const MetaTensor& q,
                         const MetaTensor& k,
                         const MetaTensor& v,
@@ -209,10 +214,5 @@ void ViterbiDecodeInferMeta(const MetaTensor& input,
                             MetaTensor* scores,
                             MetaTensor* path,
                             MetaConfig config = MetaConfig());
-
-void EmbeddingBagInferMeta(const MetaTensor& input,
-                           const MetaTensor& params,
-                           const MetaTensor& weight,
-                           MetaTensor* out);
 
 }  // namespace phi

@@ -57,7 +57,7 @@ from .layer.common import ZeroPad2D  # noqa: F401
 from .layer.common import Pad3D  # noqa: F401
 from .layer.common import CosineSimilarity  # noqa: F401
 from .layer.common import Embedding  # noqa: F401
-from .layer.common import EmbeddingBag
+from .layer.common import EmbeddingBag  # noqa: F401
 from .layer.common import Linear  # noqa: F401
 from .layer.common import Identity  # noqa: F401
 from .layer.common import Flatten  # noqa: F401

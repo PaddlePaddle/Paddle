@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 paddle.disable_static()
 
@@ -51,8 +50,6 @@ class EmbeddingBagDygraph(unittest.TestCase):
         adam.step()
 
     def test_1(self):
-        with _test_eager_guard():
-            self.func_1()
         self.func_1()
 
     def func_2(self):
@@ -83,8 +80,6 @@ class EmbeddingBagDygraph(unittest.TestCase):
         adam.step()
 
     def test_2(self):
-        with _test_eager_guard():
-            self.func_2()
         self.func_2()
 
     def func_3(self):
@@ -119,8 +114,6 @@ class EmbeddingBagDygraph(unittest.TestCase):
             adam.step()
 
     def test_3(self):
-        with _test_eager_guard():
-            self.func_3()
         self.func_3()
 
 
