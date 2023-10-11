@@ -19,7 +19,6 @@
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/pir/core/builtin_op.h"
@@ -111,9 +110,8 @@ static std::unordered_set<pir::Value> GetSkipDeletionValues(pir::Block* block) {
       skip_dels.insert(op->result(0));
       continue;
     }
-
-    if (upper_op_name.compare(paddle::dialect::FetchOp::name()) == 0 ||
-        upper_op_name.compare(pir::ShadowOutputOp::name()) == 0) {
+    if (upper_op_name == "pd_op.fetch" ||
+        upper_op_name == "builtin.shadow_output") {
       skip_dels.insert(op->operand_source(0));
       continue;
     }
