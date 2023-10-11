@@ -485,7 +485,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
   double push_sparse_time = 0.0;
   double push_dense_time = 0.0;
   double copy_table_time = 0.0;
-  int cur_batch;
+  int cur_batch = 0;
   int batch_cnt = 0;
   uint64_t total_inst = 0;
   timeline.Start();
@@ -804,7 +804,7 @@ void DownpourWorker::TrainFiles() {
   platform::SetNumThreads(1);
   device_reader_->Start();
   int batch_cnt = 0;
-  int cur_batch;
+  int cur_batch = 0;
   while ((cur_batch = device_reader_->Next()) > 0) {
     if (copy_table_config_.need_copy()) {
       if (batch_cnt % copy_table_config_.batch_num() == 0) {
