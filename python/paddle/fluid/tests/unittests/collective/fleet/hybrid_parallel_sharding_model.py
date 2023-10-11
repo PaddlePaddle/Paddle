@@ -22,6 +22,7 @@ import paddle
 from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding_optimizer import (
     DygraphShardingOptimizer,
+    DygraphShardingOptimizerV2,
 )
 from paddle.distributed.fleet.utils.mix_precision_utils import (
     MixPrecisionLayer,
@@ -211,7 +212,11 @@ class TestDistMPTraning(unittest.TestCase):
             Optimizer=Optimizer,
             amp_level=amp_level,
         )
-
+        opt_cls = (
+            DygraphShardingOptimizerV2
+            if g_shard_split_param
+            else DygraphShardingOptimizer
+        )
         self.assertTrue(
             isinstance(optimizer_a._inner_opt, DygraphShardingOptimizer)
         )
@@ -283,8 +288,9 @@ class TestDistMPTraning(unittest.TestCase):
             )
 
     def test_sharding_momentum_amp(self):
+
         sharded_accumulators = {
-            'linear_12.w_0_velocity_0',
+            'linear_12.b_0_velocity_0',
             'linear_13.b_0_velocity_0',
             'linear_14.b_0_velocity_0',
             'embedding_4.w_0_velocity_0',

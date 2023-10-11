@@ -434,7 +434,11 @@ class HybridParallelOptimizer:
             )
             inner_opt = unwrap_optimizer(
                 self._inner_opt,
-                (MixPrecisionOptimizer, DygraphShardingOptimizer),
+                (
+                    MixPrecisionOptimizer,
+                    DygraphShardingOptimizer,
+                    DygraphShardingOptimizerV2,
+                ),
             )
 
             if (
@@ -510,81 +514,72 @@ class HybridParallelOptimizer:
                 key=lambda p: p.name,
             )
 
-        def sync_grad(p):
-            if hasattr(p, "main_grad") and p.main_grad is not None:
-                assert p.grad is None
-                self._insert_sync(
-                    p.main_grad, src_rank, mp_group, mp_configs.sync_mode
-                )
-            elif p.grad is not None:
-                self._insert_sync(
-                    p.grad, src_rank, mp_group, mp_configs.sync_mode
-                )
-
         # Grad sync before opt
         if mp_group.nranks > 1 and mp_configs and mp_configs.sync_grad:
             for p in params:
-                sync_grad(p)
+                if hasattr(p, "main_grad") and p.main_grad is not None:
+                    assert p.grad is None
+                    self._insert_sync(
+                        p.main_grad, src_rank, mp_group, mp_configs.sync_mode
+                    )
+                elif p.grad is not None:
+                    self._insert_sync(
+                        p.grad, src_rank, mp_group, mp_configs.sync_mode
+                    )
 
         self._inner_opt.step()
 
-        def sync_param(p):
-            self._insert_sync(p, src_rank, mp_group, mp_configs.sync_mode)
-
-        def sync_master_weight(p):
-            if (
-                hasattr(self._inner_opt, "_multi_precision")
-                and self._inner_opt._multi_precision
-                and p.name in self._inner_opt._master_weights
-            ):
-                self._insert_sync(
-                    self._inner_opt._master_weights[p.name],
-                    src_rank,
-                    mp_group,
-                    mp_configs.sync_mode,
-                )
-
         if mp_group.nranks > 1 and mp_configs and mp_configs.sync_param:
             for p in params:
-                sync_param(p)
-                sync_master_weight(p)
+                # Param sync after opt
+                self._insert_sync(p, src_rank, mp_group, mp_configs.sync_mode)
 
-        def sync_moment(p):
-            # support opt state of adam and adamw to broadcast now.
-            if isinstance(
-                self._inner_opt,
-                (paddle.optimizer.Adam, paddle.optimizer.AdamW),
-            ):
+                # Master param sync after opt
                 if (
-                    p.name
-                    in self._inner_opt._accumulators[
-                        self._inner_opt._moment1_acc_str
-                    ]
+                    hasattr(self._inner_opt, "_multi_precision")
+                    and self._inner_opt._multi_precision
+                    and p.name in self._inner_opt._master_weights
                 ):
-                    moment1 = self._inner_opt._get_accumulator(
-                        self._inner_opt._moment1_acc_str, p
-                    )
                     self._insert_sync(
-                        moment1, src_rank, mp_group, mp_configs.sync_mode
-                    )
-
-                if (
-                    p.name
-                    in self._inner_opt._accumulators[
-                        self._inner_opt._moment2_acc_str
-                    ]
-                ):
-                    moment2 = self._inner_opt._get_accumulator(
-                        self._inner_opt._moment2_acc_str, p
-                    )
-                    self._insert_sync(
-                        moment2, src_rank, mp_group, mp_configs.sync_mode
+                        self._inner_opt._master_weights[p.name],
+                        src_rank,
+                        mp_group,
+                        mp_configs.sync_mode,
                     )
 
         # Moment sync after opt
         if mp_group.nranks > 1 and mp_configs and mp_configs.sync_moment:
             for p in params:
-                sync_moment(p)
+                # support opt state of adam and adamw to broadcast now.
+                if isinstance(
+                    self._inner_opt,
+                    (paddle.optimizer.Adam, paddle.optimizer.AdamW),
+                ):
+                    if (
+                        p.name
+                        in self._inner_opt._accumulators[
+                            self._inner_opt._moment1_acc_str
+                        ]
+                    ):
+                        moment1 = self._inner_opt._get_accumulator(
+                            self._inner_opt._moment1_acc_str, p
+                        )
+                        self._insert_sync(
+                            moment1, src_rank, mp_group, mp_configs.sync_mode
+                        )
+
+                    if (
+                        p.name
+                        in self._inner_opt._accumulators[
+                            self._inner_opt._moment2_acc_str
+                        ]
+                    ):
+                        moment2 = self._inner_opt._get_accumulator(
+                            self._inner_opt._moment2_acc_str, p
+                        )
+                        self._insert_sync(
+                            moment2, src_rank, mp_group, mp_configs.sync_mode
+                        )
 
     @no_grad()
     @framework.dygraph_only
@@ -592,7 +587,10 @@ class HybridParallelOptimizer:
         parameter_list = list(obtain_optimizer_parameters_list(self._inner_opt))
         dp_parameter_list = parameter_list
         if self._sharding_enable:
-            assert isinstance(self._inner_opt, DygraphShardingOptimizer)
+            assert isinstance(
+                self._inner_opt,
+                (DygraphShardingOptimizer, DygraphShardingOptimizerV2),
+            )
             self._inner_opt.reduce_gradients(parameter_list, self._hcg)
             # dp sync later do not need to use global parameter list
             if not g_shard_norm_align_dp:
@@ -619,7 +617,10 @@ class HybridParallelOptimizer:
         dp_parameter_list = parameter_list
         # Here sharding should use global parameter list
         if self._sharding_enable:
-            assert isinstance(self._inner_opt, DygraphShardingOptimizer)
+            assert isinstance(
+                self._inner_opt,
+                (DygraphShardingOptimizer, DygraphShardingOptimizerV2),
+            )
             self._inner_opt.reduce_gradients(parameter_list, self._hcg)
             # dp sync later do not need to use global parameter list
             if not g_shard_norm_align_dp:
