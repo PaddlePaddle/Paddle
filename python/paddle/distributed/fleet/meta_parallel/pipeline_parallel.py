@@ -201,6 +201,17 @@ class PipelineParallel(MetaParallelBase):
             "pp_configs"
         ].enable_timer
 
+        self._sharding_split_param = self._strategy.hybrid_configs[
+            "sharding_configs"
+        ].split_param
+
+        logger.info(
+            f"dp_comm_overlap {self._dp_comm_overlap}; \
+            sharding_comm_overlap {self._sharding_comm_overlap}; \
+            sharding_split_param {self._sharding_split_param}; \
+            g_shard_split_param {g_shard_split_param}"
+        )
+
         self._profiling = self._strategy.hybrid_configs["pp_configs"].profiling
         self._records = []
         self._record_format = (
@@ -320,7 +331,7 @@ class PipelineParallel(MetaParallelBase):
         else:
             models = [model]
 
-        act = get_action(dp)
+        act = get_action(dp, self._sharding_split_param)
 
         if act == HOOK_ACTION.REDUCE:
             assert hasattr(self, "optimizer")
