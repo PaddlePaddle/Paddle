@@ -537,20 +537,24 @@ phi::KernelKey GetKernelKey(
     // only suppurt non vector input for now
     int tensor_input_number =
         static_cast<int>(op_info_parser->InputTensorNumber());
-
+    VLOG(8) << "Begin to infer kernel key from op_info_parser(defined by yaml "
+               "info)";
     // get datatype info
     kernel_data_type =
         GetKernelDataTypeByYamlInfo(op, map_value_pair, op_info_parser);
+    VLOG(8) << "Infer kernel data_type: [" << kernel_data_type
+            << "] from yaml info";
     kernel_backend =
         GetKernelBackendByYamlInfo(op, map_value_pair, op_info_parser, place);
-
+    VLOG(8) << "Infer kernel backend: [" << kernel_backend
+            << "] from yaml info";
     // parse all the input tensor
     if (tensor_input_number == 0 || op->isa<paddle::dialect::Full_Op>()) {
       // all the information have to get from attribute and context
       if (kernel_backend == phi::Backend::UNDEFINED) {
         kernel_backend = paddle::experimental::ParseBackend(place);
-        VLOG(8) << "Infer kernel backend when tensor_input_number == 0  or is "
-                   "Full_Op";
+        VLOG(8) << "Infer kernel backend: [" << kernel_backend
+                << "] when tensor_input_number == 0  or is Full_Op";
       }
     }
   }
@@ -559,15 +563,17 @@ phi::KernelKey GetKernelKey(
        kernel_data_type == phi::DataType::UNDEFINED) &&
       op->num_operands() > 0) {
     paddle::experimental::detail::KernelKeyParser kernel_key_parser;
-
+    VLOG(8) << "Begin to infer kernel key from op operands";
     for (size_t i = 0; i < op->num_operands(); ++i) {
       // NOTE, only op with OpYamlInfo can have TensorArr
       if (op_info_parser != nullptr && op_info_parser->IsTensorAttribute(i)) {
+        VLOG(8) << "input (" << i << ") doesn't have TensorArr";
         continue;
       }
       auto input_tmp = op->operand_source(i);
       // NOTE: if not input_tmp, it's an optional input
       if (!input_tmp) {
+        VLOG(8) << "input (" << i << ") is NULL (optional input)";
         continue;
       }
       auto new_input_tmp = map_value_pair.at(input_tmp);
@@ -597,7 +603,8 @@ phi::KernelKey GetKernelKey(
         kernel_key_parser.key_set.backend_set =
             kernel_key_parser.key_set.backend_set |
             paddle::experimental::BackendSet(data_op_backend);
-        VLOG(8) << "Update kernel backend set from owner op (DataOp)";
+        VLOG(8) << "Update kernel backend set from owner op (DataOp): "
+                << data_op_backend;
       } else if (op->operand_source(i)
                      .dyn_cast<pir::OpResult>()
                      .owner()
@@ -622,7 +629,8 @@ phi::KernelKey GetKernelKey(
             kernel_key_parser.key_set.backend_set =
                 kernel_key_parser.key_set.backend_set |
                 paddle::experimental::BackendSet(data_op_backend);
-            VLOG(8) << "Update kernel backend set from owner op (CombineOp)";
+            VLOG(8) << "Update kernel backend set from owner op (CombineOp): "
+                    << data_op_backend;
             break;
           }
         }
@@ -1031,7 +1039,7 @@ std::vector<pir::Value> BuildOpInputList(
                           op_info_parser,
                           kernel.InputAt(tensor_param_index).backend,
                           i);
-        VLOG(6) << "Infer kernel backend by input " << i << " of op ";
+        VLOG(6) << "Infer kernel backend from input " << i << " of op ";
 
         bool need_trans =
             (in_place.GetType() != phi::AllocationType::UNDEFINED) &&
@@ -1155,7 +1163,7 @@ std::vector<pir::Value> BuildOpInputList(
                           op_info_parser,
                           kernel.InputAt(tensor_param_index).backend,
                           i);
-        VLOG(6) << "Infer kernel backend by input " << i << " of op ";
+        VLOG(6) << "Infer kernel backend from input " << i << " of op ";
         bool need_trans =
             (in_place.GetType() != phi::AllocationType::UNDEFINED) &&
             (paddle::experimental::NeedTransformPlace(
