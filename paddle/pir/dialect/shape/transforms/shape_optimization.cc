@@ -13,14 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/pir/dialect/shape/ir/shape_op.h"
-
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/program.h"
+#include "paddle/pir/dialect/shape/ir/shape_op.h"
 #include "paddle/pir/dialect/shape/utils/shape_utils.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pass/pass_registry.h"
+#include "paddle/pir/pattern_rewrite/pattern_match.h"
 
 namespace pir {
 namespace {
@@ -29,18 +29,19 @@ using PassPipelineRunner =
 
 bool InsertTieShapeOnValue(pir::Value value,
                            pir::Builder& builder) {  // NOLINT
-  auto ty = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  auto type = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
 
-  if (!ty || ty.dims().size() == 0) return true;
-  std::vector<pir::Value> dimSizes;
-  for (int64_t dim = 0, rank = ty.dims().size(); dim < rank; ++dim) {
-    auto dimOp = builder.Build<pir::dialect::TensorDimOp>(value, dim);
-    dimSizes.push_back(dimOp.out());
+  if (!type || type.dims().size() == 0) return true;
+  std::vector<pir::Value> dim_sizes;
+  for (int64_t dim = 0, rank = type.dims().size(); dim < rank; ++dim) {
+    auto dim_op = builder.Build<pir::dialect::TensorDimOp>(value, dim);
+    dim_sizes.push_back(dim_op.out());
   }
-  builder.Build<pir::dialect::TieShapeOp>(value, dimSizes);
+  builder.Build<pir::dialect::TieShapeOp>(value, dim_sizes);
   return true;
 }
 
+// Forward declaration
 bool InsertTieShapeOnRegion(pir::Region* region);
 
 bool InsertTieShapeOnOperation(pir::Operation* op,
@@ -74,15 +75,41 @@ bool InsertTieShapeOnBlock(pir::Block* block) {
 }
 
 bool InsertTieShapeOnRegion(pir::Region* region) {
-  for (pir::Block* block : *region) {
+  for (Block* block : *region) {
     if (!InsertTieShapeOnBlock(block)) return false;
   }
   return true;
 }
 
+struct ExpandShapeOfOpPattern : public OpRewritePattern<dialect::ShapeOfOp> {
+  using OpRewritePattern<dialect::ShapeOfOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(dialect::ShapeOfOp op,
+                       PatternRewriter& rewriter) const override {
+    auto type = op.out().type().dyn_cast<pir::DenseTensorType>();
+
+    if (!type || !type.dyn_cast<ShapedTypeInterface>().HasStaticShape() ||
+        !type.dyn_cast<ShapedTypeInterface>().GetElementType().IsIndex())
+      return false;
+
+    std::vector<Value> dim_sizes;
+    for (int dim = 0, rank = type.dyn_cast<ShapedTypeInterface>().GetShape()[0];
+         dim < rank;
+         ++dim) {
+      dim_sizes.push_back(
+          rewriter.Build<dialect::DimOp>(op.getName()).result(0));
+    }
+
+    rewriter.ReplaceOpWithNewOp<dialect::FromElementsOp>(op, dim_sizes);
+    return true;
+  }
+};
+
 bool MaterializeShapeComputation(pir::ModuleOp m) {
   if (!InsertTieShapeOnRegion(&(m->region(0)))) return false;
-  // TODO(liujinnan): add rewitter pattern for reifyInferShape.
+  // TODO(zhangbopd): add rewitter pattern for reifyInferShape.
+  RewritePatternSet patterns(m.ir_context());
+  patterns.Add<ExpandShapeOfOpPattern>(patterns.ir_context());
   return true;
 }
 
@@ -133,7 +160,6 @@ class ShapeComputationIRAnalysis {
 //    - element type of the tensor is int or index
 //    - number of elements of the tensor < 32, supposing that the
 //      higiest possible rank is smaller than 32.
-
 ShapeComputationIRAnalysis::ShapeComputationIRAnalysis(ModuleOp m,
                                                        SymbolicDimMgr& mgr)
     : m_(m), mgr_(mgr) {}
@@ -192,7 +218,7 @@ bool ShapeComputationIRAnalysis::BuildShapeOnOperation(Operation* op) {
       for (Attribute attr : attrs) {
         auto sym = mgr_.symbolTable().Lookup<SymbolicDim>(
             attr.dyn_cast<StrAttribute>().AsString());
-        assert(sym);
+        IR_ENFORCE(sym);
         SymbolicDim root = mgr_.GetRootSymbolicDim(sym);
         symbols.push_back(root);
       }
@@ -210,8 +236,8 @@ bool ShapeComputationIRAnalysis::BuildShapeOnOperation(Operation* op) {
     dense_tensor_to_sym_dims_[value] = std::move(symbols);
     return true;
   }
-  for (size_t i = 0; i < op->num_results(); ++i) {
-    if (!BuildShapeOnValue(op->result(i))) return false;
+  for (auto& result : op->results()) {
+    if (!BuildShapeOnValue(result)) return false;
   }
   return true;
 }

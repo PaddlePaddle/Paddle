@@ -62,7 +62,7 @@ SymbolicDimMgr::SymbolicDimMgr(ModuleOp m) : m_(m) {
 
 bool SymbolicDimMgr::Load() {
   auto func_op = symbol_table_.getOp()->dyn_cast<dialect::FuncOp>();
-  assert(func_op);
+  IR_ENFORCE(func_op);
   for (auto op : *(func_op.block())) {
     symbol_table_.insert(op);
     if (SymbolicDim sym_dim_op = op->dyn_cast<SymbolicDim>()) {
@@ -226,7 +226,7 @@ const std::string SymbolicDimMgr::GetNextName() {
 
 SymbolicDim SymbolicDimMgr::NewSymbolicDim(const std::string& name) {
   auto func_op = symbol_table_.getOp()->dyn_cast<dialect::FuncOp>();
-  assert(func_op);
+  IR_ENFORCE(func_op);
   Builder builder = Builder(m_.ir_context(), func_op.block());
   // default settting dim != 0
   dialect::SymbolicDim symbol =
@@ -462,7 +462,7 @@ bool SymbolicDimMgr::Save() {
     std::vector<Attribute> new_attrs;
     for (Attribute attr : attrs.AsVector()) {
       auto sym = fn(attr.dyn_cast<StrAttribute>().AsString());
-      assert(sym);
+      IR_ENFORCE(sym);
       SymbolicDim root = GetRootSymbolicDim(sym);
       Attribute root_symbol =
           StrAttribute::get(m_->ir_context(), root.GetSymName());
@@ -493,7 +493,7 @@ bool SymbolicDimMgr::Save() {
     for (Attribute attr : attrs.AsVector()) {
       auto sym = symbol_table_.Lookup<SymbolicDim>(
           attr.dyn_cast<StrAttribute>().AsString());
-      assert(sym);
+      IR_ENFORCE(sym);
       if (used_symbolic_ops.insert(sym).second)
         used_symbol_names.push_back(sym.GetSymName());
     }
@@ -505,7 +505,7 @@ bool SymbolicDimMgr::Save() {
     collect_used_symbols(attrs);
   }
   auto func_op = symbol_table_.getOp()->dyn_cast<dialect::FuncOp>();
-  assert(func_op);
+  IR_ENFORCE(func_op);
   for (auto& p : symbol_dim_union_set_) {
     if (!used_symbolic_ops.count(p.first)) {
       func_op.block()->erase(*(p.first.operation()));
@@ -574,7 +574,7 @@ bool SymbolicDimMgr::Save() {
 
 bool SymbolicDimMgr::SaveShapeConstraintGraph() {
   auto func_op = symbol_table_.getOp()->dyn_cast<dialect::FuncOp>();
-  assert(func_op);
+  IR_ENFORCE(func_op);
   auto op_it = func_op.block()->rbegin();
   while (op_it != func_op.block()->rend()) {
     if (((*op_it)->isa<dialect::SymbolicDim>()) ||

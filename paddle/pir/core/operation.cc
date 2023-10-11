@@ -292,6 +292,20 @@ std::string Operation::name() const {
   auto p_name = info_.name();
   return p_name ? p_name : "";
 }
+
+void Operation::erase() {
+  if (auto *parent = GetParent())
+    parent->erase(*this);
+  else
+    Destroy();
+}
+
+bool Operation::use_empty() {
+  return std::all_of(results().begin(), results().end(), [](OpResult result) {
+    return result.use_empty();
+  });
+}
+
 void Operation::ReplaceAllUsesWith(const std::vector<Value> &values) {
   IR_ENFORCE(num_results_ == values.size(),
              "the num of result should be the same.");

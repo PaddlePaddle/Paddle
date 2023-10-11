@@ -272,8 +272,10 @@ class RewriterBase : public Builder {
 
   virtual void ReplaceOp(Operation* op, const std::vector<Value>& new_values);
 
-  // template <typename OpTy, typename... Args>
-  // OpTy ReplaceOpWithNewOp(Operation *op, Args &&...args);
+  // Replaces the result op with a new op.
+  // The result values of the two ops must be the same types.
+  template <typename OpTy, typename... Args>
+  OpTy ReplaceOpWithNewOp(Operation* op, Args&&... args);
 
   virtual void EraseOp(Operation* op);
 
@@ -327,6 +329,7 @@ class RewritePatternSet {
  public:
   explicit RewritePatternSet(IrContext* context) : context_(context) {}
 
+  // Construct a RewritePatternSet with the given patterns.
   RewritePatternSet(IrContext* context, std::unique_ptr<RewritePattern> pattern)
       : context_(context) {
     native_patterns_.emplace_back(std::move(pattern));
@@ -344,7 +347,7 @@ class RewritePatternSet {
             typename... ConstructorArgs,
             typename = std::enable_if_t<sizeof...(Ts) != 0>>
   RewritePatternSet& Add(ConstructorArg&& arg, ConstructorArgs&&... args) {
-    std::initializer_list<int>{
+    (void)std::initializer_list<int>{
         (AddImpl<Ts>({},
                      std::forward<ConstructorArg>(arg),
                      std::forward<ConstructorArgs>(args)...),
@@ -359,7 +362,7 @@ class RewritePatternSet {
   RewritePatternSet& AddWithLabel(const std::vector<std::string>& debug_labels,
                                   ConstructorArg&& arg,
                                   ConstructorArgs&&... args) {
-    std::initializer_list<int>{
+    (void)std::initializer_list<int>{
         (AddImpl<Ts>(debug_labels,
                      std::forward<ConstructorArg>(arg),
                      std::forward<ConstructorArgs>(args)...),

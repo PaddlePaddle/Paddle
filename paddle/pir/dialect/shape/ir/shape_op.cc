@@ -273,6 +273,17 @@ void TensorDimOp::Build(Builder &builder,
 Value TensorDimOp::source() { return operand_source(0); }
 
 Value TensorDimOp::index() { return operand_source(1); }
+
+void ShapeOfOp::Build(Builder &builder,             // NOLINT
+                      OperationArgument &argument,  // NOLINT
+                      Value inputs) {
+  argument.AddInput(inputs);
+}
+
+const std::string ShapeOfOp::getName() {
+  return attribute<StrAttribute>("name").AsString();
+}
+
 }  // namespace pir::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::SymbolicDim)
@@ -281,3 +292,5 @@ IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::TieProductEqualOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::TieShapeOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::FuncOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::TensorDimOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::ShapeOfOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::FromElementsOp)
