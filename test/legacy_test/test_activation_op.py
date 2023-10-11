@@ -2240,6 +2240,9 @@ class TestRound(TestActivation):
     def init_shape(self):
         self.shape = [10, 12]
 
+    def test_check_output(self):
+        self.check_output(check_new_ir=True)
+
     def test_check_grad(self):
         pass
 
@@ -4582,7 +4585,7 @@ create_test_act_fp16_class(TestAtan)
 create_test_act_fp16_class(TestAcosh)
 create_test_act_fp16_class(TestAsinh)
 create_test_act_fp16_class(TestAtanh)
-create_test_act_fp16_class(TestRound, grad_check=False)
+create_test_act_fp16_class(TestRound, grad_check=False, check_new_ir=True)
 create_test_act_fp16_class(TestRelu, check_prim=True, enable_cinn=True)
 create_test_act_fp16_class(
     TestGelu,
@@ -4724,7 +4727,7 @@ create_test_act_bf16_class(TestAtan)
 create_test_act_bf16_class(TestAcosh)
 create_test_act_bf16_class(TestAsinh)
 create_test_act_bf16_class(TestAtanh)
-create_test_act_bf16_class(TestRound, grad_check=False)
+create_test_act_bf16_class(TestRound, grad_check=False, check_new_ir=True)
 create_test_act_bf16_class(TestRelu, check_prim=True)
 create_test_act_bf16_class(
     TestGelu,
