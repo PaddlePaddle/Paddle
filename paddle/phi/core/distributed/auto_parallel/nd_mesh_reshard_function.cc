@@ -38,7 +38,7 @@ ProcessMesh GetSubProcessMesh(const ProcessMesh& mesh, int64_t axis) {
   for (int64_t i = 0; i < shape_of_axis; ++i) {
     coord[axis] = i;
     int64_t rank = coord.back();
-    for (int64_t j = coord.size() - 2; j >= 0; --j) {
+    for (int64_t j = static_cast<int64_t>(coord.size() - 2); j >= 0; --j) {
       rank += coord[j] * mesh.dim_size(j + 1);
     }
     process_ids.emplace_back(rank);
@@ -58,7 +58,8 @@ int64_t FindFirstDiffShardAxis(const TensorDistAttr& in_dist_attr,
   const auto& out_dims_mapping = out_dist_attr.dims_mapping();
   int64_t axis = -1;
 
-  for (int64_t i = in_dims_mapping.size() - 1; i >= 0; --i) {
+  for (int64_t i = static_cast<int64_t>(in_dims_mapping.size() - 1); i >= 0;
+       --i) {
     if (in_dims_mapping[i] != out_dims_mapping[i]) {
       axis = i;
       break;
