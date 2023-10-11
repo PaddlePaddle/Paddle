@@ -64,8 +64,6 @@ class CCommInitOp : public framework::OperatorBase {
       PADDLE_ENFORCE_NOT_NULL(
           var, platform::errors::InvalidArgument("Input con not be empty."));
 
-      phi::ccl::CCLRootId* comm_id = var->GetMutable<phi::ccl::CCLRootId>();
-
       int nranks = Attr<int>("nranks");
       int rid = Attr<int>("ring_id");
 
@@ -74,8 +72,17 @@ class CCommInitOp : public framework::OperatorBase {
         device_id = Attr<int>("device_id");
       }
       int rank_id = Attr<int>("rank");
-      platform::XCCLCommContext::Instance(place.GetDeviceType())
-          .CreateComm(comm_id, nranks, rank_id, device_id, rid);
+      auto store = phi::distributed::CreateOrGetGlobalTCPStore();
+      if (!phi::distributed::CommContextManager::GetInstance().Has(
+              std::to_string(rid))) {
+        phi::distributed::CommContextManager::CreateXCCLCommContext(
+            store,
+            std::to_string(rid),
+            phi::CustomPlace(place.GetDeviceType(), device_id),
+            rank_id,
+            nranks,
+            "c_comm_init_op");
+      }
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with custom device."));

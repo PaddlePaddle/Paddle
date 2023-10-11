@@ -265,6 +265,7 @@ class TestCondInputOutput(unittest.TestCase):
             np.asarray(ret[1]), np.full((2, 3), True, bool), rtol=1e-05
         )
 
+    @test_and_compare_with_new_ir()
     def test_pass_and_modify_var(self):
         """
         pseudocode:
