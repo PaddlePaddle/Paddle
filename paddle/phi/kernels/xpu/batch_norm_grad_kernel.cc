@@ -73,6 +73,7 @@ template <typename T, typename Context>
 void BatchNormGradKernel(const Context &dev_ctx,
                          const DenseTensor &x,
                          const paddle::optional<DenseTensor> &scale_opt,
+                         const paddle::optional<DenseTensor> &bias_opt,
                          const paddle::optional<DenseTensor> &mean,
                          const paddle::optional<DenseTensor> &variance,
                          const DenseTensor &saved_mean,
