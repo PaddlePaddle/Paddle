@@ -2388,12 +2388,17 @@ set +x
                 matchstr=''
                 testcase=''
         done <<< "$test_cases";
-        card_test "$single_card_tests" 1
+        card_test "$single_card_tests" 2
         collect_failed_tests
 set -x
         ut_endTime_s=`date +%s`
         echo "CINN testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         if [[ "$EXIT_CODE" != "0" ]]; then
+            rm -f $tmp_dir/*
+            echo "Summary Failed Tests... "
+            echo "========================================"
+            echo "The following tests FAILED: "
+            echo "${failuretest}" | sort -u
             exit 8;
         fi
     fi
