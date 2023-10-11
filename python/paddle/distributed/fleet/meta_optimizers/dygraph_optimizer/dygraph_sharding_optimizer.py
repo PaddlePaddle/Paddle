@@ -446,6 +446,10 @@ class DygraphShardingOptimizerV2:
 
     def __init__(self, optimizer, hcg):
         logger.info("init DygraphShardingOptimizerV2")
+        assert (
+            g_shard_use_reduce
+        ), "must be g_shard_use_reduce if DygraphShardingOptimizerV2 is used"
+
         # TODO(pangengzheng): support param_groups
         if isinstance(optimizer._parameter_list[0], dict):
             raise TypeError(
