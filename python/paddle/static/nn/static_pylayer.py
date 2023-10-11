@@ -242,14 +242,14 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
     the logic of ``forward_fn`` and ``backward_fn``, with the operator ``pylayer``
     holding information about the two blocks.
 
-    ``forward_fn`` and ``backward_fn`` should return a nest structure of tensors.
-    A nest structure of tensors in PaddlePaddle is tensor(s), or tuple of tensors, or
-    list of tensors.
+    ``forward_fn`` and ``backward_fn`` should return a nest structure of Variables.
+    A nest structure of Variables in PaddlePaddle is Variable(s), or tuple of Variables, or
+    list of Variables.
 
     Note:
-        1. If ``backward_fn`` is not None, user needs to keep the number of inputs to ``forward_fn`` the same as the
-        number of outputs to ``backward_fn``, and the number of outputs to ``forward_fn``
-        the same as the number of inputs to ``backward_fn``.
+        1. If ``backward_fn`` is not None, user needs to keep the number of `Variable` inputs to ``forward_fn`` the same as the
+        number of `Variable` outputs to ``backward_fn``, and the number of `Variable` outputs to ``forward_fn``
+        the same as the number of `Variable` inputs to ``backward_fn``.
 
         2. If ``backward_fn`` is None, ``stop_gradient`` attr of all Variable in ``inputs`` is expected to be True.
         Otherwise it might get unexpected results in backward propagation.

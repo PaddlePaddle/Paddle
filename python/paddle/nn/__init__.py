@@ -207,7 +207,7 @@ def weight_norm(*args):
     return utils.weight_norm(*args)
 
 
-__all__ = [  # noqa
+__all__ = [
     'BatchNorm',
     'CELU',
     'GroupNorm',

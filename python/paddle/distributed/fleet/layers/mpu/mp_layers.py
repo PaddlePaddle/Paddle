@@ -52,7 +52,7 @@ class VocabParallelEmbedding(paddle.nn.Layer):
             default weight parameter property is used. See usage for details in :ref:`api_ParamAttr` . In addition,
             user-defined or pre-trained word vectors can be loaded with the :attr:`param_attr` parameter.
             The local word vector needs to be transformed into numpy format, and the shape of local word
-            vector should be consistent with :attr:`num_embeddings` . Then :ref:`api_initializer_NumpyArrayInitializer`
+            vector should be consistent with :attr:`num_embeddings` . Then :ref:`api_paddle_nn_initializer_Assign`
             is used to load custom or pre-trained word vectors. See code example for details.
         mp_group(Group): The tensor parallel group.
         name(str, optional): For detailed information, please refer
@@ -61,36 +61,34 @@ class VocabParallelEmbedding(paddle.nn.Layer):
 
     Examples:
         .. code-block:: python
-        import paddle
-        from paddle.distributed import fleet
 
-        class SimpleMPNet(paddle.nn.Layer):
-           def __init__(self, vocab_size, hidden_size, inner_size, output_size):
-              super().__init__()
-              self.linear1 = fleet.meta_parallel.ColumnParallelLinear(
-                    hidden_size,
-                    inner_size,
-                    gather_output=False,
-                    has_bias=True)
+            >>> import paddle
+            >>> from paddle.distributed import fleet
 
-              self.linear2 = fleet.meta_parallel.RowParallelLinear(
-                    inner_size,
-                    hidden_size,
-                    input_is_parallel=True,
-                    has_bias=True)
+            >>> class SimpleMPNet(paddle.nn.Layer):
+            ...     def __init__(self, vocab_size, hidden_size, inner_size, output_size):
+            ...         super().__init__()
+            ...         self.linear1 = fleet.meta_parallel.ColumnParallelLinear(
+            ...             hidden_size,
+            ...             inner_size,
+            ...             gather_output=False,
+            ...             has_bias=True)
+            ...         self.linear2 = fleet.meta_parallel.RowParallelLinear(
+            ...             inner_size,
+            ...             hidden_size,
+            ...             input_is_parallel=True,
+            ...             has_bias=True)
+            ...         self.linear3 = paddle.nn.Linear(hidden_size, output_size)
+            ...         self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
+            ...                         vocab_size,
+            ...                         hidden_size)
+            ...     def forward(self, x):
+            ...         x = self.embedding(x)
+            ...         x = self.linear1(x)
+            ...         x = self.linear2(x)
+            ...         x = self.linear3(x)
+            ...         return x
 
-              self.linear3 = paddle.nn.Linear(hidden_size, output_size)
-
-              self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
-                                vocab_size,
-                                hidden_size)
-
-           def forward(self, x):
-              x = self.embedding(x)
-              x = self.linear1(x)
-              x = self.linear2(x)
-              x = self.linear3(x)
-              return x
     """
 
     def __init__(
@@ -327,36 +325,33 @@ class ColumnParallelLinear(paddle.nn.Layer):
 
     Examples:
         .. code-block:: python
-        import paddle
-        from paddle.distributed import fleet
 
-        class SimpleMPNet(paddle.nn.Layer):
-           def __init__(self, vocab_size, hidden_size, inner_size, output_size):
-              super().__init__()
-              self.linear1 = fleet.meta_parallel.ColumnParallelLinear(
-                    hidden_size,
-                    inner_size,
-                    gather_output=False,
-                    has_bias=True)
+            >>> import paddle
+            >>> from paddle.distributed import fleet
 
-              self.linear2 = fleet.meta_parallel.RowParallelLinear(
-                    inner_size,
-                    hidden_size,
-                    input_is_parallel=True,
-                    has_bias=True)
-
-              self.linear3 = paddle.nn.Linear(hidden_size, output_size)
-
-              self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
-                                vocab_size,
-                                hidden_size)
-
-           def forward(self, x):
-              x = self.embedding(x)
-              x = self.linear1(x)
-              x = self.linear2(x)
-              x = self.linear3(x)
-              return x
+            >>> class SimpleMPNet(paddle.nn.Layer):
+            ...     def __init__(self, vocab_size, hidden_size, inner_size, output_size):
+            ...         super().__init__()
+            ...         self.linear1 = fleet.meta_parallel.ColumnParallelLinear(
+            ...             hidden_size,
+            ...             inner_size,
+            ...             gather_output=False,
+            ...             has_bias=True)
+            ...         self.linear2 = fleet.meta_parallel.RowParallelLinear(
+            ...             inner_size,
+            ...             hidden_size,
+            ...             input_is_parallel=True,
+            ...             has_bias=True)
+            ...         self.linear3 = paddle.nn.Linear(hidden_size, output_size)
+            ...         self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
+            ...                         vocab_size,
+            ...                         hidden_size)
+            ...     def forward(self, x):
+            ...         x = self.embedding(x)
+            ...         x = self.linear1(x)
+            ...         x = self.linear2(x)
+            ...         x = self.linear3(x)
+            ...         return x
     """
 
     def __init__(
@@ -537,36 +532,34 @@ class RowParallelLinear(paddle.nn.Layer):
 
     Examples:
         .. code-block:: python
-        import paddle
-        from paddle.distributed import fleet
 
-        class SimpleMPNet(paddle.nn.Layer):
-           def __init__(self, vocab_size, hidden_size, inner_size, output_size):
-              super().__init__()
-              self.linear1 = fleet.meta_parallel.ColumnParallelLinear(
-                    hidden_size,
-                    inner_size,
-                    gather_output=False,
-                    has_bias=True)
+            >>> import paddle
+            >>> from paddle.distributed import fleet
 
-              self.linear2 = fleet.meta_parallel.RowParallelLinear(
-                    inner_size,
-                    hidden_size,
-                    input_is_parallel=True,
-                    has_bias=True)
+            >>> class SimpleMPNet(paddle.nn.Layer):
+            ...     def __init__(self, vocab_size, hidden_size, inner_size, output_size):
+            ...         super().__init__()
+            ...         self.linear1 = fleet.meta_parallel.ColumnParallelLinear(
+            ...             hidden_size,
+            ...             inner_size,
+            ...             gather_output=False,
+            ...             has_bias=True)
+            ...         self.linear2 = fleet.meta_parallel.RowParallelLinear(
+            ...             inner_size,
+            ...             hidden_size,
+            ...             input_is_parallel=True,
+            ...             has_bias=True)
+            ...         self.linear3 = paddle.nn.Linear(hidden_size, output_size)
+            ...         self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
+            ...                         vocab_size,
+            ...                         hidden_size)
+            ...     def forward(self, x):
+            ...         x = self.embedding(x)
+            ...         x = self.linear1(x)
+            ...         x = self.linear2(x)
+            ...         x = self.linear3(x)
+            ...         return x
 
-              self.linear3 = paddle.nn.Linear(hidden_size, output_size)
-
-              self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
-                                vocab_size,
-                                hidden_size)
-
-           def forward(self, x):
-              x = self.embedding(x)
-              x = self.linear1(x)
-              x = self.linear2(x)
-              x = self.linear3(x)
-              return x
     """
 
     def __init__(
@@ -736,8 +729,12 @@ class ParallelCrossEntropy(paddle.nn.Layer):
 
     Examples:
         .. code-block:: python
-        loss_func = ParallelCrossEntropy()
-        loss = loss_func(img, lable)
+
+            >>> # doctest: +SKIP('No img to demonstrate')
+            >>> from paddle.distributed.fleet.layers.mpu import ParallelCrossEntropy
+            >>> loss_func = ParallelCrossEntropy
+            >>> loss = loss_func(img, lable)
+
     """
 
     def __init__(self, mp_group=None, name=None, ignore_index=-100):

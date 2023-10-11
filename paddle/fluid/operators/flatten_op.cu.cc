@@ -16,20 +16,6 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_CUDA_KERNEL(flatten,
-                        ops::FlattenKernel<phi::GPUContext, float>,
-                        ops::FlattenKernel<phi::GPUContext, double>,
-                        ops::FlattenKernel<phi::GPUContext, uint8_t>,
-                        ops::FlattenKernel<phi::GPUContext, int>,
-                        ops::FlattenKernel<phi::GPUContext, int8_t>,
-                        ops::FlattenKernel<phi::GPUContext, int64_t>);
-REGISTER_OP_CUDA_KERNEL(flatten_grad,
-                        ops::FlattenGradKernel<phi::GPUContext, float>,
-                        ops::FlattenGradKernel<phi::GPUContext, double>,
-                        ops::FlattenGradKernel<phi::GPUContext, uint8_t>,
-                        ops::FlattenGradKernel<phi::GPUContext, int>,
-                        ops::FlattenGradKernel<phi::GPUContext, int8_t>,
-                        ops::FlattenGradKernel<phi::GPUContext, int64_t>);
 REGISTER_OP_CUDA_KERNEL(flatten2,
                         ops::Flatten2Kernel<phi::GPUContext, float>,
                         ops::Flatten2Kernel<phi::GPUContext, double>,
