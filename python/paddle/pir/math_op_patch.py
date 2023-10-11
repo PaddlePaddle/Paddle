@@ -195,7 +195,6 @@ def monkey_patch_opresult():
             method_impl = method[1]
             setattr(OpResult, method_name, method_impl)
 
-    else:
         # Handling Tensor Methods
         import paddle.tensor
 
@@ -211,4 +210,4 @@ def monkey_patch_opresult():
 
         OpResult.__getitem__ = _getitem_static
 
-    _already_patch_opresult = True
+        _already_patch_opresult = True
