@@ -270,10 +270,10 @@ void MergedAdamKernel(
   auto beta1_ = beta1.to<float>();
   auto beta2_ = beta2.to<float>();
   auto epsilon_ = epsilon.to<float>();
-  int step_ = -1;
-  int mode_ = 0;
-  int bias_correction_ = 1;
-  float weight_decay_ = 1e-8;
+  int64_t step_ = -1;
+  int64_t mode_ = 2;
+  int64_t bias_correction_ = 1;
+  float weight_decay_ = 0.0;
 
   DenseTensor lr_host;
   lr_host.Resize(learning_rate[0]->dims());
@@ -478,12 +478,7 @@ PD_REGISTER_KERNEL(
   kernel->OutputAt(4).SetBackend(phi::Backend::UNDEFINED);
 }
 
-PD_REGISTER_KERNEL(merged_adam,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::MergedAdamKernel,
-                   float,
-                   phi::dtype::float16) {
+PD_REGISTER_KERNEL(merged_adam, XPU, ALL_LAYOUT, phi::MergedAdamKernel, float) {
   // Skip beta1_pow, beta2_pow data transform
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);

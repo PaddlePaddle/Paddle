@@ -53,7 +53,7 @@ def run_adam_op(
     assert len(params) == len(beta1_pows)
     assert len(params) == len(master_params)
     paddle.disable_static()
-    paddle.set_device("xpu")
+    paddle.set_device(place)
 
     param_vars = [paddle.base.dygraph.to_variable(p) for p in params]
     grad_vars = [paddle.base.dygraph.to_variable(g) for g in grads]
@@ -154,28 +154,26 @@ class XPUTestMergedAdamWrapper(XPUOpTestWrapper):
 
     class XPUTestMergedAdamBase(unittest.TestCase):
         def setUp(self):
-            paddle.disable_static()
             self.shapes = [[3, 4], [2, 7], [5, 6], [7, 8]]
             self.seed = 10
-            self.place = paddle.base.XPUPlace(0)
-            self.__class__.use_xpu = True
 
         def gen_rand_data(self, shapes, dtype):
             return [np.random.random(s).astype(dtype) for s in shapes]
 
-        def prepare_data(self, shapes, multi_precision, seed, place):
+        def prepare_data(self, shapes, seed):
             np.random.seed(seed)
             mp_dtype = np.float32
-            dtype = (
-                np.float16 if multi_precision and place == 'gpu' else np.float32
-            )
+            dtype = np.float32
             params = self.gen_rand_data(shapes, dtype)
             grads = self.gen_rand_data(shapes, dtype)
-            lrs = self.gen_rand_data([[1], [1], [1], [1]], mp_dtype)
+            learning_rate = self.gen_rand_data([[1]], mp_dtype)
+            lrs = [learning_rate.copy() for _ in shapes]
             moment1s = self.gen_rand_data(shapes, mp_dtype)
             moment2s = self.gen_rand_data(shapes, mp_dtype)
-            beta1_pows = self.gen_rand_data([[1], [1], [1], [1]], mp_dtype)
-            beta2_pows = self.gen_rand_data([[1], [1], [1], [1]], mp_dtype)
+            beta1_pow = self.gen_rand_data([[1]], mp_dtype)
+            beta2_pow = self.gen_rand_data([[1]], mp_dtype)
+            beta1_pows = [beta1_pow.copy() for _ in shapes]
+            beta2_pows = [beta2_pow.copy() for _ in shapes]
             master_params = [p.astype(mp_dtype) for p in params]
             return (
                 params,
@@ -188,7 +186,7 @@ class XPUTestMergedAdamWrapper(XPUOpTestWrapper):
                 master_params,
             )
 
-        def check_with_place(self, place, multi_precision):
+        def check_with_place(self):
             (
                 params,
                 grads,
@@ -198,11 +196,9 @@ class XPUTestMergedAdamWrapper(XPUOpTestWrapper):
                 beta1_pows,
                 beta2_pows,
                 master_params,
-            ) = self.prepare_data(
-                self.shapes, multi_precision, self.seed, place
-            )
+            ) = self.prepare_data(self.shapes, self.seed)
 
-            def run_op(use_merged):
+            def run_op(use_merged, place):
                 return run_adam_op(
                     params=params,
                     grads=grads,
@@ -216,13 +212,28 @@ class XPUTestMergedAdamWrapper(XPUOpTestWrapper):
                     beta1=0.9,
                     beta2=0.99,
                     place=place,
-                    multi_precision=multi_precision,
+                    multi_precision=False,
                     use_merged=use_merged,
                 )
 
-            outs1 = run_op(True)
-            outs2 = run_op(False)
+            outs1 = run_op(True, "xpu")
+            outs2 = run_op(True, "cpu")
+            outs3 = run_op(False, "cpu")
+
             self.assertEqual(len(outs1), len(outs2))
+            self.assertEqual(len(outs1), len(outs3))
+
+            for key in outs1.keys():
+                value1 = outs1[key]
+                value2 = outs2[key]
+                value3 = outs3[key]
+                for i in range(len(value1)):
+                    np.testing.assert_allclose(
+                        value1[i], value2[i], rtol=1e-05, atol=1e-07
+                    )
+                    np.testing.assert_allclose(
+                        value1[i], value3[i], rtol=1e-05, atol=1e-07
+                    )
 
     class TestMergedAdamOp(XPUTestMergedAdamBase):
         def setUp(self):
@@ -231,23 +242,22 @@ class XPUTestMergedAdamWrapper(XPUOpTestWrapper):
 
         def set_case(self):
             self.shapes = [[3, 4], [2, 7], [5, 6], [7, 8]]
-            self.place = paddle.base.XPUPlace(0)
-            self.seed = 1
+            self.seed = 10
 
         def testalltype(self):
-            self.check_with_place(self.place, self.in_type)
+            self.check_with_place()
 
     class TestMergedAdam1(TestMergedAdamOp):
         def set_case(self):
-            self.shapes = [[3, 4], [2, 7], [5, 6], [7, 8]]
+            self.shapes = [[3, 4]]
 
     class TestMergedAdam2(TestMergedAdamOp):
         def set_case(self):
-            self.shapes = [[3, 4], [2, 7], [5, 6], [3, 4]]
+            self.shapes = [[3, 4], [2, 7]]
 
     class TestMergedAdam3(TestMergedAdamOp):
         def set_case(self):
-            self.shapes = [[3, 4], [2, 4], [3, 4], [3, 4]]
+            self.shapes = [[3, 4], [2, 4], [3, 4]]
 
     class TestMergedAdam4(TestMergedAdamOp):
         def set_case(self):
