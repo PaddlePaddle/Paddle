@@ -125,12 +125,16 @@ class TestDistMPTraning(unittest.TestCase):
         paddle.seed(2021)
 
         self.strategy = fleet.DistributedStrategy()
+
         self.strategy.hybrid_configs = {
             "sharding_degree": 2,
             "dp_degree": 1,
             "mp_degree": 1,
             "pp_degree": 1,
         }
+        self.strategy.hybrid_configs[
+            "sharding_configs"
+        ].split_param = g_shard_split_param
         fleet.init(is_collective=True, strategy=self.strategy)
         self.data = [
             np.random.randint(
