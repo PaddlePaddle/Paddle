@@ -295,9 +295,7 @@ class TestDygraphInplaceMaskedFill(TestDygraphInplace):
             loss = paddle.nn.functional.relu(var_c)
             with self.assertRaisesRegex(
                 RuntimeError,
-                "received tensor_version:{} != wrapper_version_snapshot:{}".format(
-                    2, 0
-                ),
+                f"received tensor_version:{2} != wrapper_version_snapshot:{0}",
             ):
                 loss.backward()
 
