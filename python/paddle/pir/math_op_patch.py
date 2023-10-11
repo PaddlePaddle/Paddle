@@ -110,6 +110,7 @@ def monkey_patch_opresult():
 
             # 2. create OpResult for scalar
             lhs_dtype = safe_get_dtype(self)
+            other_var_opresult = other_var
             if not isinstance(other_var, OpResult):
                 if reverse:
                     for elem in self.shape:
