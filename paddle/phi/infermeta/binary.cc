@@ -1435,7 +1435,7 @@ void FusedMatmulInferMeta(const MetaTensor& x,
     y_broadcasted = true;
   }
 
-  size_t M, N;
+  size_t M = 0, N = 0;
   if (transpose_x) {
     M = dims_x[ndims_x - 1];
   } else {
@@ -2136,7 +2136,7 @@ void MatmulInferMeta(const MetaTensor& x,
     y_broadcasted = true;
   }
 
-  size_t M, N;
+  size_t M = 0, N = 0;
   if (trans_x) {
     M = dims_x[ndims_x - 1];
   } else {
@@ -3028,7 +3028,7 @@ void YoloBoxInferMeta(const MetaTensor& x,
                         "But received class_num (%s)",
                         class_num));
 
-  int box_num;
+  int box_num = 0;
   if ((dim_x[2] > 0 && dim_x[3] > 0) || config.is_runtime) {
     box_num = static_cast<int>(dim_x[2] * dim_x[3] * anchor_num);
   } else {
@@ -3103,7 +3103,7 @@ void SolveInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
     y_broadcasted = true;
   }
 
-  size_t M, N;
+  size_t M = 0, N = 0;
   if (trans_x) {
     M = x_dims_vec[x_dims_n - 1];
   } else {
