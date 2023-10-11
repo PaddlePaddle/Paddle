@@ -102,7 +102,7 @@ class TestOpcodeExecutorCache(unittest.TestCase):
         OpcodeExecutorCache().clear()
 
     @patch(
-        "sot.opcode_translator.executor.executor_cache.start_translate",
+        "paddle.jit.sot.opcode_translator.executor.executor_cache.start_translate",
         mock_start_translate,
     )
     def test_cache_hit(self):
@@ -118,7 +118,7 @@ class TestOpcodeExecutorCache(unittest.TestCase):
             self.assertEqual(ctx.translate_count, 1)
 
     @patch(
-        "sot.opcode_translator.executor.executor_cache.start_translate",
+        "paddle.jit.sot.opcode_translator.executor.executor_cache.start_translate",
         mock_start_translate,
     )
     def test_cache_miss_due_to_unknown_code(self):
@@ -134,7 +134,7 @@ class TestOpcodeExecutorCache(unittest.TestCase):
             self.assertEqual(ctx.translate_count, 2)
 
     @patch(
-        "sot.opcode_translator.executor.executor_cache.start_translate",
+        "paddle.jit.sot.opcode_translator.executor.executor_cache.start_translate",
         mock_start_translate,
     )
     def test_cache_miss_due_to_check_failed(self):
