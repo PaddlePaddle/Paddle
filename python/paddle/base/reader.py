@@ -42,12 +42,12 @@ from .layers.io import (
     _copy_reader_var_,
     monkey_patch_reader_methods,
 )
-from .multiprocess_utils import _cleanup  # noqa: F401
-from .multiprocess_utils import multiprocess_queue_set  # noqa: F401
-from .multiprocess_utils import (
+from .multiprocess_utils import (  # noqa: F401
     CleanupFuncRegistrar,
+    _cleanup,
     _cleanup_mmap,
     _set_SIGCHLD_handler,
+    multiprocess_queue_set,
 )
 from .unique_name import UniqueNameGenerator
 

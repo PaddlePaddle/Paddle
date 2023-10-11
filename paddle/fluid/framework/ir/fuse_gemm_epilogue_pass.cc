@@ -83,7 +83,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearFwd(ir::Graph *graph,
     auto matmul_op_desc = matmul_op->Op();
     if (!IsGemmFromLinear_(matmul_x_shape, matmul_w_shape)) return;
 
-    bool trans_x, trans_y;
+    bool trans_x = false, trans_y = false;
     GetTransposeAttrsFromOp(*matmul_op_desc, &trans_x, &trans_y);
 
     OpDesc fused_gemm_epilogue_op_desc(matmul_op->Op()->Block());
@@ -168,7 +168,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActFwd(
 
     auto activation = act_op->Op()->Type();
 
-    bool trans_x, trans_y;
+    bool trans_x = false, trans_y = false;
     GetTransposeAttrsFromOp(*matmul_op_desc, &trans_x, &trans_y);
 
     OpDesc fused_gemm_epilogue_op_desc(matmul_op->Op()->Block());
@@ -291,7 +291,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearBwd(ir::Graph *graph,
     auto matmul_grad_op_desc = matmul_grad_op->Op();
     if (!IsGemmFromLinear_(matmul_grad_x_shape, matmul_grad_w_shape)) return;
 
-    bool trans_x, trans_y;
+    bool trans_x = false, trans_y = false;
     GetTransposeAttrsFromOp(*matmul_grad_op_desc, &trans_x, &trans_y);
 
     OpDesc fused_gemm_epilogue_grad_op_desc(ele_add_grad_op->Op()->Block());
@@ -430,7 +430,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
 
     auto activation_grad = act_grad_op->Op()->Type();
 
-    bool trans_x, trans_y;
+    bool trans_x = false, trans_y = false;
     GetTransposeAttrsFromOp(*matmul_grad_op_desc, &trans_x, &trans_y);
     OpDesc fused_gemm_epilogue_grad_op_desc(ele_add_grad_op->Op()->Block());
     fused_gemm_epilogue_grad_op_desc.SetType("fused_gemm_epilogue_grad");

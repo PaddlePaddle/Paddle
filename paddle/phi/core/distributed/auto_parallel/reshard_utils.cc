@@ -95,11 +95,7 @@ CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
     } else if (phi::CustomContext::classof(&dev_ctx)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       CommContextManager::CreateXCCLCommContext(
-          store,
-          unique_comm_key,
-          dev_ctx.GetPlace().GetDeviceType(),
-          rank,
-          world_size);
+          store, unique_comm_key, dev_ctx.GetPlace(), rank, world_size);
 #endif
     } else {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)

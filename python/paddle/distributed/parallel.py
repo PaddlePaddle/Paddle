@@ -19,8 +19,7 @@ import time
 import warnings
 from collections import OrderedDict, namedtuple
 from contextlib import contextmanager
-from multiprocessing import Manager  # noqa: F401
-from multiprocessing import Process  # noqa: F401
+from multiprocessing import Manager, Process
 
 import numpy as np
 
@@ -43,7 +42,7 @@ from paddle.distributed.communication.group import (
     _get_global_group,
     is_initialized,
 )
-from paddle.distributed.fleet.base.private_helper_function import (  # noqa: F401
+from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
 from paddle.distributed.fleet.launch_utils import check_backend
