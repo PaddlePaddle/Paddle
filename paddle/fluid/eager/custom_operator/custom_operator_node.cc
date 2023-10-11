@@ -154,7 +154,7 @@ static void ConstructFwdAndBwdMap(
                 << "'s No." << j << " attrs: " << attrs_names[j]
                 << " related to No." << i
                 << " grad_attrs: " << grad_attrs_names[i];
-        in_out_map[op_type][1][4][j] = i;
+        in_out_map[op_type][1][4][j] = i;  // NOLINT
       }
     }
   }

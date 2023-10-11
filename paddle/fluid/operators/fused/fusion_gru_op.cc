@@ -129,7 +129,7 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
   framework::DDim out_dims({x_mat_dims[0], frame_size});
   ctx->SetOutputDim("Hidden", out_dims);
   ctx->ShareLoD("X", "Hidden");
-  int xx_width;
+  int xx_width = 0;
   if (ctx->Attrs().Get<bool>("use_seq")) {
     xx_width = static_cast<int>(wx_dims[1]);
   } else {

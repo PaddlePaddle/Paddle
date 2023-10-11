@@ -47,7 +47,7 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
                                  const platform::Place &place) {
   VLOG(3) << "Loading data from DistModelTensor for " << input_data.name;
   framework::DDim dims = phi::make_ddim(input_data.shape);
-  void *input_tensor_ptr;
+  void *input_tensor_ptr = nullptr;
   if (input_data.dtype == DistModelDataType::INT64) {
     input_tensor_ptr = input_tensor->mutable_data<int64_t>(dims, place);
   } else if (input_data.dtype == DistModelDataType::FLOAT32) {
