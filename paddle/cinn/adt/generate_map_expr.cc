@@ -364,10 +364,8 @@ AnchoredMapStmt GenerateAnchoredMapStmt(
   const auto& LoopDescriptor4IterVar =
       MakeGetterLoopDescriptor4IterVar(loop_iters, sd);
 
-  const auto& map_irs = GenerateMapIrListForLoopFuse(igroup->op_stmts(),
-                                                     loop_iters,
-                                                     LoopDescriptor4IterVar,
-                                                     TensorIndexExpr4Tensor);
+  const auto& map_irs = GenerateMapIrListForLoopFuse(
+      igroup->op_stmts(), loop_iters, TensorIndexExpr4Tensor);
   return AnchoredMapStmt{MakeMapStmt(map_irs),
                          sched_mesh,
                          GetAnchorTensor(igroup),

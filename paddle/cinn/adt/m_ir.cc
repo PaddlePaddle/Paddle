@@ -123,40 +123,27 @@ std::unordered_set<Iterator> GetTensorIndexIterators(
   return ret;
 }
 
-LoopIterators GetLeftAlignedSdIterators(
+LoopIterators GetSortedSdIterators(
     const std::unordered_set<Iterator>& tensor_index_loop_iters,
-    const LoopIterators& loop_iters,
-    const std::function<LoopDescriptor(const Iterator&)>& GetLoopDescriptor) {
-  const auto& Used = [&](const Iterator& iter_var) {
-    return tensor_index_loop_iters.count(iter_var) != 0;
-  };
-
-  const auto& IsIterVarLoopTypeSpatial = [&](const Iterator& iter_var) {
-    return IsSpatial(GetLoopDescriptor(iter_var).GetLoopType());
-  };
-
-  LoopIterators ret{loop_iters->begin(), loop_iters->end()};
-  for (int i = ret->size() - 1; i >= 0; --i) {
-    if (Used(ret->at(i)) || IsIterVarLoopTypeSpatial(ret->at(i))) {
-      break;
-    } else {
-      ret->resize(i);
+    const LoopIterators& loop_iters) {
+  LoopIterators ret{};
+  for (const auto& loop_iter : *loop_iters) {
+    if (tensor_index_loop_iters.count(loop_iter) > 0) {
+      ret->emplace_back(loop_iter);
     }
   }
   return ret;
 }
 
-LoopIterators GetTensorLoopIterators(
+LoopIterators GetAnchorTensorLoopIterators(
     const Tensor& tensor,
     const LoopIterators& loop_iters,
-    const std::function<LoopDescriptor(const Iterator&)>& GetLoopDescriptor,
     const std::function<TensorIndexExpr(const Tensor&)>&
         TensorIndexExpr4Tensor) {
   const auto& tensor_index_loop_iters =
       GetTensorIndexIterators(TensorIndexExpr4Tensor(tensor));
 
-  return GetLeftAlignedSdIterators(
-      tensor_index_loop_iters, loop_iters, GetLoopDescriptor);
+  return GetSortedSdIterators(tensor_index_loop_iters, loop_iters);
 }
 
 namespace {
@@ -192,15 +179,13 @@ Tensor GetAnchorTensor(const AnchorGroup& anchor_group) {
 std::unordered_map<Index, LoopIterators> GenerateAnchorIndex2LoopIterators(
     const std::vector<AnchorGroup>& partitioned_anchor_groups,
     const std::function<TensorIndexExpr(const Tensor&)>& TensorIndexExpr4Tensor,
-    const LoopIterators& loop_iters,
-    const std::function<LoopDescriptor(const Iterator&)>& GetLoopDescriptor) {
+    const LoopIterators& loop_iters) {
   std::unordered_map<Index, LoopIterators> anchor_index2loop_iters{};
   for (const auto& anchor_group : partitioned_anchor_groups) {
-    anchor_group.PrintEquations();
     const auto& anchor_index = anchor_group.anchor_index;
     const auto& anchor_tensor = GetAnchorTensor(anchor_group);
-    const auto& anchor_loop_iters = GetTensorLoopIterators(
-        anchor_tensor, loop_iters, GetLoopDescriptor, TensorIndexExpr4Tensor);
+    const auto& anchor_loop_iters = GetAnchorTensorLoopIterators(
+        anchor_tensor, loop_iters, TensorIndexExpr4Tensor);
     CHECK(anchor_index2loop_iters.emplace(anchor_index, anchor_loop_iters)
               .second);
   }
@@ -212,13 +197,9 @@ std::unordered_map<Index, LoopIterators> GenerateAnchorIndex2LoopIterators(
 MapIrList ConvertAnchorGroups2MapIrList(
     const std::vector<AnchorGroup>& partitioned_anchor_groups,
     const std::function<TensorIndexExpr(const Tensor&)>& TensorIndexExpr4Tensor,
-    const LoopIterators& loop_iters,
-    const std::function<LoopDescriptor(const Iterator&)>& GetLoopDescriptor) {
-  const auto& anchor_index2loop_iters =
-      GenerateAnchorIndex2LoopIterators(partitioned_anchor_groups,
-                                        TensorIndexExpr4Tensor,
-                                        loop_iters,
-                                        GetLoopDescriptor);
+    const LoopIterators& loop_iters) {
+  const auto& anchor_index2loop_iters = GenerateAnchorIndex2LoopIterators(
+      partitioned_anchor_groups, TensorIndexExpr4Tensor, loop_iters);
   MapIrList ret{};
   for (const auto& anchor_group : partitioned_anchor_groups) {
     const auto& anchor_index = anchor_group.anchor_index;
@@ -231,7 +212,6 @@ MapIrList ConvertAnchorGroups2MapIrList(
 MapIrList GenerateMapIrListForLoopFuse(
     const List<OpStmt>& op_stmts,
     const LoopIterators& loop_iters,
-    const std::function<LoopDescriptor(const Iterator&)>& GetLoopDescriptor,
     const std::function<TensorIndexExpr(const Tensor&)>&
         TensorIndexExpr4Tensor) {
   const auto& EquationCtx4OpStmt =
@@ -241,10 +221,8 @@ MapIrList GenerateMapIrListForLoopFuse(
           op_stmts, EquationCtx4OpStmt);
   const auto& partitioned_anchor_groups = PartitionOpStmts(
       EquationCtx4OpStmt, op_stmts, direction_equation_generator);
-  return ConvertAnchorGroups2MapIrList(partitioned_anchor_groups,
-                                       TensorIndexExpr4Tensor,
-                                       loop_iters,
-                                       GetLoopDescriptor);
+  return ConvertAnchorGroups2MapIrList(
+      partitioned_anchor_groups, TensorIndexExpr4Tensor, loop_iters);
 }
 
 }  // namespace cinn::adt

@@ -47,7 +47,6 @@ using MapIrList = List<MapIr>;
 MapIrList GenerateMapIrListForLoopFuse(
     const List<OpStmt>& op_stmts,
     const LoopIterators& loop_iters,
-    const std::function<LoopDescriptor(const Iterator&)>& GetLoopDescriptor,
     const std::function<TensorIndexExpr(const Tensor&)>&
         TensorIndexExpr4Tensor);
 
