@@ -40,52 +40,6 @@ class HOOK_ACTION:
     REDUCE_SCATTER = 2
 
 
-FLOAT_TYPE_DICT = {
-    paddle.float16: "float16",
-    paddle.float32: "float32",
-    paddle.float64: "float64",
-    paddle.bfloat16: "bfloat16",
-}
-
-PADDLE_TO_NUMBER = {
-    paddle.float16: 0,
-    paddle.float32: 1,
-    paddle.float64: 2,
-    paddle.int32: 3,
-    paddle.int64: 4,
-    paddle.bfloat16: 5,
-}
-
-NUMBER_TO_DTYPE = {
-    0: "float16",
-    1: "float32",
-    2: "float64",
-    3: "int32",
-    4: "int64",
-    5: "bfloat16",
-}
-
-
-def is_float_tensor(tensor):
-    """Is a float tensor"""
-    return tensor.dtype in FLOAT_TYPE_DICT.keys()
-
-
-def get_tensor_dtype(dtype):
-    assert dtype in FLOAT_TYPE_DICT.keys()
-    return FLOAT_TYPE_DICT[dtype]
-
-
-def paddle_2_number(dtype):
-    assert dtype in PADDLE_TO_NUMBER.keys()
-    return PADDLE_TO_NUMBER[dtype]
-
-
-def number_2_dtype(number):
-    assert number in NUMBER_TO_DTYPE.keys()
-    return NUMBER_TO_DTYPE[number]
-
-
 def get_tensor_bytes(tensor):
     """Get the bytes a tensor occupied."""
     elem_size = None
