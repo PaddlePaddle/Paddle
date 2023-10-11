@@ -307,7 +307,7 @@ void DownpourWorkerOpt::TrainFiles() {
   platform::SetNumThreads(1);
   device_reader_->Start();
   int batch_cnt = 0;
-  int cur_batch;
+  int cur_batch = 0;
   std::future<int32_t> pull_async_status;
   std::string async_wait_name = "";
   for (int i = 0; i < param_.program_config(0).pull_sparse_table_id_size();

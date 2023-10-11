@@ -16,7 +16,7 @@
 
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/hlir/op/op_util.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
+#include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/runtime/cpu/host_intrinsics.h"
 
 namespace cinn {

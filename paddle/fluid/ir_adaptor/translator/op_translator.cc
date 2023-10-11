@@ -225,6 +225,94 @@ pir::OpInfo OpTranscriber::LoopkUpOpInfo(pir::IrContext* ctx,
              target_op_name);
   }
 
+  if (!paddle::dialect::HaveOpToMultiKernelsMap(
+          OpNameCompatibleMapping(op_desc.Type()))) {
+    return op_info;
+  }
+
+  // for selected rows kernel choose
+  auto* op_info_concept =
+      op_info.GetInterfaceImpl<dialect::OpYamlInfoInterface>();
+
+  OpInputInfoList input_infos;
+  OpAttributeInfoList attr_infos;
+  OpOutputInfoList output_infos;
+  std::tie(input_infos, attr_infos, output_infos, std::ignore, std::ignore) =
+      op_info_concept->get_op_info_();
+
+  auto& op_normalizer = OpNameNormalizer::instance();
+  std::vector<std::string> need_inputs_sig;
+  for (const auto& info : input_infos) {
+    if (info.is_mutable_attribute) {
+      continue;
+    }
+    std::string legacy_input_name =
+        op_normalizer.GetLegacyArgName(op_desc.Type(), info.name);
+    auto legacy_input_vars = op_desc.Input(legacy_input_name, true);
+    IR_ENFORCE(legacy_input_vars.size() <= 1,
+               "Do not support duplicable tensor input, when op have multi "
+               "kernels. OP is %s",
+               op_desc.Type());
+
+    if (legacy_input_vars.empty()) {
+      need_inputs_sig.emplace_back("");
+      continue;
+    }
+    VarDesc* var = op_desc.Block()->FindVarRecursive(legacy_input_vars[0]);
+    if (var->GetType() == paddle::framework::proto::VarType::LOD_TENSOR) {
+      need_inputs_sig.emplace_back("dense");
+    } else if (var->GetType() ==
+               paddle::framework::proto::VarType::SELECTED_ROWS) {
+      need_inputs_sig.emplace_back("selected_rows");
+    } else {
+      IR_THROW("Op %d only support densetensor and selected_rows, but not %d",
+               op_desc.Type(),
+               var->GetType());
+    }
+  }
+
+  target_op_name = OpNameCompatibleMapping(op_desc.Type());
+
+  auto sig_infos = paddle::dialect::LegacyOpToPdOpsMapping(target_op_name);
+
+  target_op_name = "";
+  for (const auto& sig : sig_infos) {
+    if (need_inputs_sig.size() != sig.inputs.size()) {
+      continue;
+    }
+    size_t i = 0;
+    for (i = 0; i < need_inputs_sig.size(); ++i) {
+      if (need_inputs_sig[i] == "") {
+        continue;
+      }
+      if (need_inputs_sig[i] != sig.inputs[i]) {
+        break;
+      }
+    }
+    if (i == need_inputs_sig.size()) {
+      target_op_name = sig.name;
+      break;
+    }
+  }
+
+  IR_ENFORCE(!target_op_name.empty(),
+             "Op %d should have corresponding OpInfo %d",
+             op_desc.Type(),
+             target_op_name);
+
+  target_op_name = kTargetDialectPrefix + target_op_name;
+  if (IsInplace(op_desc) && *target_op_name.rbegin() != '_') {
+    target_op_name += "_";
+  }
+  VLOG(6) << "[op name normalizing]: " << op_desc.Type() << " to "
+          << target_op_name;
+  op_info = ctx->GetRegisteredOpInfo(target_op_name);
+  if (!op_info) {
+    IR_THROW("Op %d should have corresponding OpInfo %d",
+             op_desc.Type(),
+             target_op_name);
+  }
+
   return op_info;
 }
 
@@ -754,8 +842,8 @@ struct AssignValueOpTranscriber : public OpTranscriber {
         attribute_translator(attr_info_maps.at("dtype").type_name, legacy_attr);
     attribute_map["dtype"] = attr_dtype;
 
-    pir::Attribute attr_place =
-        dialect::PlaceAttribute::get(ctx, phi::CPUPlace());
+    pir::Attribute attr_place = dialect::PlaceAttribute::get(
+        ctx, phi::Place(phi::AllocationType::UNDEFINED));
     attribute_map["place"] = attr_place;
 
     int dtype = paddle::get<int>(op_desc.GetAttr("dtype"));
@@ -1720,6 +1808,65 @@ struct LegacySetValueDispatcher : public OpTranscriber {
   }
 };
 
+struct FusedFeedForwardOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "ln1_epsilon") {
+      (*attribute_map)[info.name] = pir::FloatAttribute::get(ctx, 1e-5f);
+    } else if (info.name == "ln2_epsilon") {
+      (*attribute_map)[info.name] = pir::FloatAttribute::get(ctx, 1e-5f);
+    } else if (info.name == "act_method") {
+      (*attribute_map)[info.name] = pir::StrAttribute::get(ctx, "gelu");
+    } else if (info.name == "dropout1_prob") {
+      (*attribute_map)[info.name] = pir::FloatAttribute::get(ctx, .5f);
+    } else if (info.name == "dropout2_prob") {
+      (*attribute_map)[info.name] = pir::FloatAttribute::get(ctx, .5f);
+    } else if (info.name == "dropout1_implementation") {
+      (*attribute_map)[info.name] =
+          pir::StrAttribute::get(ctx, "downgrade_in_infer");
+    } else if (info.name == "dropout2_implementation") {
+      (*attribute_map)[info.name] =
+          pir::StrAttribute::get(ctx, "downgrade_in_infer");
+    } else if (info.name == "is_test") {
+      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, false);
+    } else if (info.name == "dropout1_fix_seed") {
+      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, false);
+    } else if (info.name == "dropout2_fix_seed") {
+      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, false);
+    } else if (info.name == "dropout1_seed_val") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, false);
+    } else if (info.name == "dropout2_seed_val") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, false);
+    } else if (info.name == "add_residual") {
+      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, true);
+    } else if (info.name == "ring_id") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, -1);
+    }
+  }
+
+  void RecordOpResultMapping(pir::IrContext* ctx,
+                             TranslationContext* param_map,
+                             const OpDesc& op_desc,
+                             pir::Operation* operation,
+                             const OpOutputMapping& arg_to_idx) override {
+    OpTranscriber::RecordOpResultMapping(
+        ctx, param_map, op_desc, operation, arg_to_idx);
+    if (op_desc.HasOutput("Out")) {
+      const auto& output_vars = op_desc.Output("Out");
+      IR_ENFORCE(output_vars.size() == 1,
+                 "Expected op[%s]'s Out has only 1 var but got %s",
+                 op_desc.Type(),
+                 output_vars.size());
+      auto output_var = output_vars[0];
+      auto fused_feedforward_op =
+          operation->dyn_cast<dialect::FusedFeedforwardOp>();
+      (*param_map)[output_var] =
+          VariableDefiningInfo{fused_feedforward_op.out()};
+    }
+  }
+};
+
 OpTranslator::OpTranslator() {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -1733,6 +1880,7 @@ OpTranslator::OpTranslator() {
   special_handlers["fetch"] = FetchOpTranscriber();
   special_handlers["fetch_v2"] = FetchOpTranscriber();
   special_handlers["fill_constant"] = FillConstantTranscriber();
+  special_handlers["fused_feedforward"] = FusedFeedForwardOpTranscriber();
   special_handlers["grad_add"] = GradAddOpTranscriber();
   special_handlers["increment"] = IncrementOpTranscriber();
   special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();

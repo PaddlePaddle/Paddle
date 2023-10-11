@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import os
 from copy import deepcopy
 
 import numpy as np
 
 import paddle
-import paddle.ir.core as ir_static
+import paddle.pir.core as ir_static
 from paddle import _legacy_C_ops
 from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 from paddle.autograd.ir_backward import grad
@@ -27,9 +28,9 @@ from paddle.base.compiler import BuildStrategy
 from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.base.framework import _apply_pass
-from paddle.base.libpaddle.ir import OpResult, fake_op_result
 from paddle.framework import use_pir_api
 from paddle.optimizer.lr import LRScheduler
+from paddle.pir import OpResult, fake_op_result, is_fake_op_result
 
 from . import logging_utils
 from .utils import RETURN_NO_VALUE_MAGIC_NUM, backend_guard
@@ -175,7 +176,9 @@ class PartialProgramLayer:
         super().__init__()
         self._inputs = NestSequence(inputs)
         self._outputs = NestSequence(outputs, need_check=True)
-        self._params = parameters if parameters is not None else []
+        self._params, self._param_values = (
+            parameters if parameters is not None else ([], [])
+        )
 
         self._build_strategy = kwargs.get('build_strategy', BuildStrategy())
         assert isinstance(self._build_strategy, BuildStrategy)
@@ -642,14 +645,19 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _append_backward_desc(self, main_program):
         program = main_program
-        # if self._hooker:
-        # program = self._hooker.before_append_backward(program)
+
         targets = list(
             filter(lambda x: isinstance(x, OpResult), self._outputs.tolist())
         )
+        if self._hooker:
+            program, targets = self._hooker.before_append_backward(
+                program, targets
+            )
+            self._outputs = NestSequence(targets, need_check=True)
         inputs = list(
             filter(lambda x: isinstance(x, OpResult), self._inputs.tolist())
         )
+        combined_inputs = list(itertools.chain(inputs, self._param_values))
         forward_end_idx = len(program.global_block().ops)
         if targets:
             with backend_guard(self._backend):
@@ -660,8 +668,9 @@ class PartialProgramLayer:
                     'paddle.static.gradients',
                 )
                 with ir_static.program_guard(program, None):
-                    grad_info_map = grad(inputs=inputs, outputs=targets)
-
+                    grad_info_map = grad(
+                        inputs=combined_inputs, outputs=targets
+                    )
                 forward_outputs_grads = []
                 not_stop_gradient_num = 0
                 for out_op_result in self._outputs.tolist():
@@ -676,11 +685,15 @@ class PartialProgramLayer:
                     forward_outputs_grads.append(opres)
                     not_stop_gradient_num += 1
 
-            # TODO: add later.
-            # if self._hooker:
-            # program, start_idx = self._hooker.after_append_backward(
-            # program, start_idx
-            # )
+            if self._hooker:
+                (
+                    program,
+                    forward_end_idx,
+                    targets,
+                ) = self._hooker.after_append_backward(
+                    program, targets, forward_end_idx
+                )
+                self._outputs = NestSequence(targets, need_check=True)
 
             # TODO: add later
             # self.prepare_gradient_aggregation(
@@ -692,9 +705,15 @@ class PartialProgramLayer:
         )
         hash_id = paddle.utils._hash_with_id(program, self)
         extra_info = self._program_extra_info.get(hash_id, {})
+        extra_info['forward_inputs'] = inputs
+        extra_info['forward_outputs'] = targets
         extra_info['forward_end_op_idx'] = forward_end_idx
+        inputs_size = len(inputs)
         extra_info['forward_inputs_grads'] = list(
-            map(mapping_op_result, grad_info_map)
+            map(mapping_op_result, grad_info_map[0:inputs_size])
+        )
+        extra_info['forward_params_grads'] = list(
+            map(mapping_op_result, grad_info_map[inputs_size:])
         )
         extra_info['forward_outputs_grads'] = list(
             map(mapping_op_result, forward_outputs_grads)
@@ -712,21 +731,15 @@ class PartialProgramLayer:
         `run_program_op`.
         """
         required_params = []
-        for param in self._params:
-            found_param = False
-            for block in program.blocks:
-                for op in block.ops:
-                    if (
-                        param.name in op.input_arg_names
-                        or param.name in op.output_arg_names
-                    ):
-                        required_params.append(param)
-                        found_param = True
-                        break
-                if found_param:
-                    break
+        required_param_values = []
+        block = program.global_block()
+        for param, param_value in zip(self._params, self._param_values):
+            if not param_value.use_empty():
+                required_params.append(param)
+                required_param_values.append(param_value)
 
         self._params = required_params
+        self._param_values = required_param_values
 
     def _cast_fp16_if_pure_fp16(self, in_vars):
         if _in_pure_fp16_guard():
@@ -791,10 +804,16 @@ class PartialProgramLayer:
         forward_inputs_grads = self.get_program_extra(whole_program)[
             'forward_inputs_grads'
         ]
-        forward_inputs = self._inputs.tolist()
-        forward_outputs = self._outputs.tolist()
+        forward_inputs = self.get_program_extra(whole_program)['forward_inputs']
+        forward_outputs = self.get_program_extra(whole_program)[
+            'forward_outputs'
+        ]
+        forward_parameters = self._param_values
         forward_outputs_grads = self.get_program_extra(whole_program)[
             'forward_outputs_grads'
+        ]
+        forward_params_grads = self.get_program_extra(whole_program)[
+            'forward_params_grads'
         ]
         backward_start_op_index = forward_end_op_index + 2 * len(
             list(filter(lambda r: r.stop_gradient is False, self._outputs))
@@ -807,15 +826,16 @@ class PartialProgramLayer:
         # backward_skip_vars = self._parse_skip_gc_vars(
         # whole_program
         # ) + self._grad_var_names.get('param', [])
-
         (
             forward_program,
             backward_program,
-        ), program_attr = paddle.base.libpaddle.ir.program_split(
+        ), program_attr = paddle.base.libpaddle.pir.program_split(
             whole_program,
             forward_inputs,
+            forward_parameters,
             forward_outputs,
             forward_inputs_grads,
+            forward_params_grads,
             forward_outputs_grads,
             [0, forward_end_op_index],
             [backward_start_op_index, backward_end_op_index],
@@ -945,13 +965,8 @@ class PartialProgramLayer:
                 tensor_type = paddle.dtype(7)  # LOD TENSOR
             else:
                 tensor_type = paddle.dtype(8)  # SELECT ROW TENSOR
-
-            # TODO(xiongkun): more elegent way to do it.
-            ir_dtype_2_tensor_dtype = {
-                10: paddle.dtype(5),
-            }
             out = core.eager.Tensor(
-                ir_dtype_2_tensor_dtype[int(var.dtype)],
+                framework.paddle_type_to_proto_type[var.dtype],
                 var.shape,
                 "",
                 tensor_type,
@@ -1055,15 +1070,24 @@ class PartialProgramLayer:
         # If we don't change grad_var type here, RunProgramOp need
         # transform SelectedRows to LoDTensor forcibly, it may not
         # be user wanted result.
-        for param in params:
-            grad_name = param.name + core.grad_var_suffix()
-            grad_var = train_program.desc.global_block().find_var(
-                grad_name.encode()
-            )
-            # NOTE: cannot find var desc maybe no problem, such as in batch_norm
-            if grad_var is None:
+        forward_params_grads = self.get_program_extra(train_program)[
+            'forward_params_grads'
+        ]
+        for param, value in zip(params, forward_params_grads):
+            if is_fake_op_result(value):
                 continue
-            param._set_grad_type(grad_var.type())
+            if value.is_selected_row_type():
+                param._set_grad_type(
+                    paddle.base.core.VarDesc.VarType.SELECTED_ROWS
+                )
+            elif value.is_dense_tensor_type():
+                param._set_grad_type(
+                    paddle.base.core.VarDesc.VarType.LOD_TENSOR
+                )
+            else:
+                raise NotImplementedError(
+                    "only support selected_row and dense_tensor grad type."
+                )
 
     def _remove_op_call_stack(self, main_program):
         """
@@ -1126,12 +1150,4 @@ def partial_program_from(concrete_program, from_method=False):
 def add_build_strategy_for(
     program, start_op_index, end_op_index, build_strategy=None, skip_vars=None
 ):
-    paddle.base.libpaddle.ir.program_split(
-        program,
-    )
-    if start_op_index < end_op_index:
-        pass
-    else:
-        # can't just create a new program, we need copy the vardesc.
-        builded_program = ir_static.Program()
-    return builded_program
+    raise NotImplementedError("Not implemented yet.")

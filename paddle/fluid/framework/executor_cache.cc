@@ -47,7 +47,7 @@ static ExecutionStrategy GetExecutionStrategy(const platform::Place &place) {
       execution_strategy.num_threads_ = 2;
       break;
     }
-    case platform::DeviceType::CUDA: {
+    case platform::DeviceType::CUDA: {  // NOLINT
       // NOTE: According experiments, one thread is faster in
       // most model training.
       execution_strategy.num_threads_ = 1;
@@ -356,7 +356,7 @@ std::shared_ptr<InterpreterCore> CreateNewIRInterpreterCoreInfoToCache(
 std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
     const paddle::framework::BlockDesc *forward_global_block,
     const paddle::framework::BlockDesc *backward_global_block,
-    const std::vector<std::string> output_names,
+    const std::vector<std::string> &output_names,
     const std::vector<paddle::Tensor> &x,
     const std::vector<std::string> &x_names,
     const std::vector<paddle::Tensor> &params,
@@ -415,17 +415,19 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
   }
 
   std::set<std::string> set_parameter_names;
-  for (auto op_desc : backward_global_block->Program()->Block(0).AllOps()) {
-    for (const auto &n : op_desc->Inputs()) {
-      const auto &input_var_names = n.second;
-      for (const auto &var_name : input_var_names) {
-        set_parameter_names.insert(var_name);
-      }
-    }
-  }
-
   for (auto &t : output_names) {
     set_parameter_names.insert(t);
+  }
+
+  if (backward_global_block != nullptr) {
+    for (auto op_desc : backward_global_block->Program()->Block(0).AllOps()) {
+      for (const auto &n : op_desc->Inputs()) {
+        const auto &input_var_names = n.second;
+        for (const auto &var_name : input_var_names) {
+          set_parameter_names.insert(var_name);
+        }
+      }
+    }
   }
 
   for (auto &name : set_parameter_names) {
@@ -443,7 +445,6 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
     op_desc->SetInput("x", {name});
     op_desc->SetOutput("out", {"@EMPTY@"});
   }
-
   paddle::translator::ProgramTranslator program_translator(&local_program,
                                                            program.get());
 

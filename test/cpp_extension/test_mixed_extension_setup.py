@@ -169,9 +169,7 @@ class TestCppExtensionSetupInstall(unittest.TestCase):
             np.testing.assert_array_equal(
                 out,
                 pd_out,
-                err_msg='custom op out: {},\n paddle api out: {}'.format(
-                    out, pd_out
-                ),
+                err_msg=f'custom op out: {out},\n paddle api out: {pd_out}',
             )
 
     def _test_dynamic(self):
@@ -188,16 +186,12 @@ class TestCppExtensionSetupInstall(unittest.TestCase):
             np.testing.assert_array_equal(
                 out,
                 pd_out,
-                err_msg='custom op out: {},\n paddle api out: {}'.format(
-                    out, pd_out
-                ),
+                err_msg=f'custom op out: {out},\n paddle api out: {pd_out}',
             )
             np.testing.assert_array_equal(
                 x_grad,
                 pd_x_grad,
-                err_msg='custom op x grad: {},\n paddle api x grad: {}'.format(
-                    x_grad, pd_x_grad
-                ),
+                err_msg=f'custom op x grad: {x_grad},\n paddle api x grad: {pd_x_grad}',
             )
 
     def _test_double_grad_dynamic(self):
@@ -214,9 +208,7 @@ class TestCppExtensionSetupInstall(unittest.TestCase):
             np.testing.assert_array_equal(
                 out,
                 pd_out,
-                err_msg='custom op out: {},\n paddle api out: {}'.format(
-                    out, pd_out
-                ),
+                err_msg=f'custom op out: {out},\n paddle api out: {pd_out}',
             )
             np.testing.assert_array_equal(
                 dx_grad,

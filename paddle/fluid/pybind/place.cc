@@ -213,9 +213,10 @@ void BindPlace(pybind11::module &m) {  // NOLINT
     Examples:
         .. code-block:: python
 
-          import paddle
-          fake_cpu_place = paddle.CustomPlace("FakeCPU", 0)
-                                             )DOC");
+            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+            >>> import paddle
+            >>> fake_cpu_place = paddle.CustomPlace("FakeCPU", 0)
+                                                )DOC");
   g_customplace_pytype = reinterpret_cast<PyTypeObject *>(customplace.ptr());
   customplace
       .def("__init__",
@@ -293,7 +294,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
   py::class_<platform::CUDAPlace> cudaplace(m, "CUDAPlace", R"DOC(
 
     CUDAPlace is a descriptor of a device.
-    It represents a GPU device allocated or to be allocated with Tensor or LoDTensor.
+    It represents a GPU device allocated or to be allocated with Tensor.
     Each CUDAPlace has a dev_id to indicate the graphics card ID represented by the current CUDAPlace,
     staring from 0.
     The memory of CUDAPlace with different dev_id is not accessible.
@@ -309,9 +310,9 @@ void BindPlace(pybind11::module &m) {  // NOLINT
     Examples:
         .. code-block:: python
 
-          import paddle
-
-          place = paddle.CUDAPlace(0)
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> place = paddle.CUDAPlace(0)
 
         )DOC");
   g_cudaplace_pytype = reinterpret_cast<PyTypeObject *>(cudaplace.ptr());
@@ -391,11 +392,14 @@ void BindPlace(pybind11::module &m) {  // NOLINT
   });
 #endif
   py::class_<platform::XPUPlace> xpuplace(m, "XPUPlace", R"DOC(
-    **Note**:
+    Return a Baidu Kunlun Place
+
     Examples:
         .. code-block:: python
-          import paddle.base as base
-          xpu_place = base.XPUPlace(0)
+
+            >>> # doctest: +REQUIRES(env:XPU)
+            >>> import paddle.base as base
+            >>> xpu_place = base.XPUPlace(0)
         )DOC");
   g_xpuplace_pytype = reinterpret_cast<PyTypeObject *>(xpuplace.ptr());
   xpuplace
@@ -492,8 +496,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
     Examples:
         .. code-block:: python
 
-          import paddle
-          cpu_place = paddle.CPUPlace()
+            >>> import paddle
+            >>> cpu_place = paddle.CPUPlace()
 
         )DOC");
   g_cpuplace_pytype = reinterpret_cast<PyTypeObject *>(cpuplace.ptr());
@@ -531,8 +535,9 @@ void BindPlace(pybind11::module &m) {  // NOLINT
     Examples:
         .. code-block:: python
 
-          import paddle
-          place = paddle.CUDAPinnedPlace()
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> place = paddle.CUDAPinnedPlace()
 
         )DOC");
   g_cudapinnedplace_pytype =
@@ -567,11 +572,10 @@ void BindPlace(pybind11::module &m) {  // NOLINT
 
     Examples:
         .. code-block:: python
-          import paddle
 
-          # required: ipu
-
-          ipu_place = paddle.IPUPlace()
+            >>> # doctest: +REQUIRES(env:IPU)
+            >>> import paddle
+            >>> ipu_place = paddle.IPUPlace()
 
         )DOC");
   g_ipuplace_pytype = reinterpret_cast<PyTypeObject *>(ipuplace.ptr());

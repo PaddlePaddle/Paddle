@@ -844,7 +844,7 @@ static PyObject* tensor_clear_gradient(TensorObject* self,
     set_to_zero = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
   }
 
-  paddle::Tensor* grad;
+  paddle::Tensor* grad = nullptr;
   bool is_leaf = egr::EagerUtils::IsLeafTensor(self->tensor);
   if (is_leaf) {
     grad = egr::EagerUtils::mutable_grad(self->tensor);
@@ -1617,7 +1617,8 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
           py::isinstance<py::int_>(value_obj_tmp) ||
           py::isinstance<py::bool_>(value_obj_tmp) ||
           PyComplex_Check(value_obj)) {
-        if (self->tensor.dtype() == phi::DataType::FLOAT32) {
+        if (self->tensor.dtype() == phi::DataType::FLOAT32 ||
+            self->tensor.dtype() == phi::DataType::FLOAT16) {
           attrs["values"] = std::vector<paddle::experimental::Scalar>{
               value_obj_tmp.cast<float>()};
         } else if (self->tensor.dtype() == phi::DataType::FLOAT64) {
@@ -1632,9 +1633,6 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
         } else if (self->tensor.dtype() == phi::DataType::BOOL) {
           attrs["values"] = std::vector<paddle::experimental::Scalar>{
               value_obj_tmp.cast<bool>()};
-        } else if (self->tensor.dtype() == phi::DataType::FLOAT16) {
-          attrs["values"] = std::vector<paddle::experimental::Scalar>{
-              value_obj_tmp.cast<float>()};
         } else if (self->tensor.dtype() == phi::DataType::COMPLEX64) {
           attrs["values"] = std::vector<paddle::experimental::Scalar>{
               value_obj_tmp.cast<std::complex<float>>()};
@@ -1731,7 +1729,7 @@ static PyObject* tensor_register_grad_hook(TensorObject* self,
                                            PyObject* args,
                                            PyObject* kwargs) {
   EAGER_TRY
-  int64_t hook_id;
+  int64_t hook_id = 0;
   if (egr::EagerUtils::IsLeafTensor(self->tensor)) {
     VLOG(6) << "Register hook for leaf tensor: " << self->tensor.name();
 
