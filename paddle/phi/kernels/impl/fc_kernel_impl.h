@@ -47,7 +47,7 @@ void FcKernel(const Context& dev_ctx,
 
   output_dims.reserve(static_cast<size_t>(in_num_col_dims + 1));
   for (int i = 0; i < in_num_col_dims; ++i) {
-    output_dims.push_back(in_mat_dims[i]);
+    output_dims.push_back(input_dims[i]);
   }
   output_dims.push_back(w_dims1);
 
