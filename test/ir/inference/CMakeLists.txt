@@ -47,9 +47,11 @@ if(WIN32)
   list(REMOVE_ITEM TEST_TRT_CONVERTER
        "test_trt_convert_quantize_dequantize_linear")
   list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_explicit_quantization")
-  # list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_explicit_quantization_resnet")
-  # list(REMOVE_ITEM TEST_TRT_IR_PASSES
-  #      "test_trt_explicit_quantization_mobilenet")
+  if(NOT WITH_MKLDNN)
+    list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_explicit_quantization_resnet")
+    list(REMOVE_ITEM TEST_TRT_IR_PASSES
+         "test_trt_explicit_quantization_mobilenet")
+  endif()
 endif()
 
 # Only for cpu(mkl + openblas)
