@@ -14,14 +14,25 @@
 
 from . import OpResult
 
+_already_patch_opresult = False
+
 
 def monkey_patch_opresult():
-    # Handling Tensor Methods
-    import paddle.tensor
+    global _already_patch_opresult
+    if not _already_patch_opresult:
+        # Handling Tensor Methods
+        import paddle.tensor
 
-    for method_name in paddle.tensor.tensor_method_func:
-        if hasattr(OpResult, method_name):
-            continue
-        method_impl = getattr(paddle.tensor, method_name, None)
-        if method_impl:
-            setattr(OpResult, method_name, method_impl)
+        for method_name in paddle.tensor.tensor_method_func:
+            if hasattr(OpResult, method_name):
+                continue
+            method_impl = getattr(paddle.tensor, method_name, None)
+            if method_impl:
+                setattr(OpResult, method_name, method_impl)
+
+        # Handling __getitem__
+        from ..base.variable_index import _getitem_static
+
+        OpResult.__getitem__ = _getitem_static
+
+        _already_patch_opresult = True
