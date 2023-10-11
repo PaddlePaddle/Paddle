@@ -11,8 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "paddle/phi/kernels/group_norm_kernel.h"
+#include <stdio.h>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/layout.h"
@@ -24,6 +24,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/device_context.h"
+#include "paddle/phi/kernels/funcs/aligned_vector.h"
 
 namespace phi {
 
@@ -594,109 +595,6 @@ void groupNormNHWCScale<T>::operator()(const GroupNormNHWCParams<T>& params,
 }
 template class groupNormNHWCScale<half>;
 
-template <typename T, typename Context>
-void GroupNormNHWCKernel(const Context& dev_ctx,
-                         const DenseTensor& x,
-                         const paddle::optional<DenseTensor>& scale,
-                         const paddle::optional<DenseTensor>& bias,
-                         float epsilon,
-                         int groups,
-                         const std::string& data_layout_str,
-                         DenseTensor* y,
-                         DenseTensor* mean,
-                         DenseTensor* var) {
-  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
-  GroupNormNHWCParams<T> params_;
-  params_.withSilu = false;
-
-  const auto x_dims = x.dims();
-  dev_ctx.template Alloc<T>(y);
-  const T* x_data = x.data<T>();
-  T* y_data = y->data<T>();
-  const auto scale_ptr = scale.get_ptr();
-  const auto bias_ptr = bias.get_ptr();
-  const T* scale_data = nullptr;
-  if (scale_ptr) scale_data = scale_ptr->data<T>();
-  const T* bias_data = nullptr;
-  if (bias_ptr) bias_data = bias_ptr->data<T>();
-  params_.n = x_dims[0];
-  params_.c = x_dims[3];
-  params_.h = x_dims[1];
-  params_.w = x_dims[2];
-
-  dev_ctx.template Alloc<AccT>(mean);
-  dev_ctx.template Alloc<AccT>(var);
-  auto* mean_data = mean->data<AccT>();
-  auto* var_data = var->data<AccT>();
-  params_.var_data = var_data;
-
-  int32_t cPerBlock = 320;
-  int32_t maxBlocksPerHW = 1024;
-  switch (params_.c) {
-    case 2048:
-    case 1024:
-      cPerBlock = 512;
-      break;
-    case 960:
-    case 1920:
-      cPerBlock = 480;
-      break;
-    case 512:
-    case 256:
-      cPerBlock = 256;
-      break;
-    case 128:
-      cPerBlock = 128;
-      break;
-    default:
-      cPerBlock = 320;
-  }
-  params_.groups = groups;
-  params_.cPerGroup = params_.c / params_.groups;
-  if (cPerBlock % params_.cPerGroup != 0) {
-    cPerBlock = params_.cPerGroup;
-  }
-  params_.srcX = reinterpret_cast<const T*>(x_data);
-  params_.dst = reinterpret_cast<T*>(y_data);
-
-  params_.gamma = scale_data;
-  params_.beta = bias_data;
-  params_.hw = params_.h * params_.w;
-  const int32_t blocksPerHW = findMaxDivisor(params_.hw, maxBlocksPerHW);
-  params_.hwPerBlock = divUp(params_.hw, blocksPerHW);
-  params_.cPerBlock = cPerBlock;
-  params_.hwc = params_.hw * params_.c;
-  params_.invHWC = 1.F / static_cast<float>(params_.hw * params_.cPerGroup);
-  params_.eps = epsilon;
-  auto stream = dev_ctx.stream();
-  DenseTensor redBuffer;
-  int buffer_sizes = 2 * params_.n * groups;
-  redBuffer.Resize({1, buffer_sizes});
-  params_.redBuffer = dev_ctx.template Alloc<float>(&redBuffer);
-#ifdef PADDLE_WITH_HIP
-  hipMemset(params_.redBuffer, 0, buffer_sizes * sizeof(float));
-#else
-  cudaMemset(params_.redBuffer, 0, buffer_sizes * sizeof(float));
-#endif
-  groupNormNHWCSum<T> nhwc_sum;
-  nhwc_sum(&params_, stream);
-  groupNormNHWCScale<T> nhwc_scale;
-  nhwc_scale(params_, stream);
-#ifdef PADDLE_WITH_HIP
-  phi::backends::gpu::GpuMemcpyAsync(mean_data,
-                                     params_.redBuffer,
-                                     params_.n * groups * sizeof(float),
-                                     hipMemcpyDeviceToHost,
-                                     stream);
-#else
-  phi::backends::gpu::GpuMemcpyAsync(mean_data,
-                                     params_.redBuffer,
-                                     params_.n * groups * sizeof(float),
-                                     cudaMemcpyDeviceToHost,
-                                     stream);
-#endif
-}
-
 template <typename T, typename AccT>
 __global__ void GroupNormForwardGetMeanAndVar(const T* x,
                                               int N,
@@ -768,8 +666,7 @@ __global__ void GroupNormForward(const T* x,
                                  int group_size,
                                  AccT epsilon,
                                  T* y,
-                                 AccT* real_var,
-                                 const DataLayout data_layout) {
+                                 AccT* real_var) {
   int gid = blockIdx.y;
   int cid = blockIdx.x;
   int bid = blockIdx.z;
@@ -789,13 +686,9 @@ __global__ void GroupNormForward(const T* x,
     AccT val;
     int hid, wid;
     int index = (bid * C + ccid) * imsize + imid;
-    if (data_layout == DataLayout::kNCHW) {
-      val = static_cast<AccT>(x[index]);
-    } else {
-      hid = imid / W;
-      wid = imid % W;
-      val = static_cast<AccT>(x[(bid * H + hid) * W * C + wid * C + ccid]);
-    }
+
+    val = static_cast<AccT>(x[index]);
+
     val = (val - x_mean) * var_inv;
     if (flags & kHasScale) {
       val *= static_cast<AccT>(scale[ccid]);
@@ -803,11 +696,8 @@ __global__ void GroupNormForward(const T* x,
     if (flags & kHasBias) {
       val += static_cast<AccT>(bias[ccid]);
     }
-    if (data_layout == DataLayout::kNCHW) {
-      y[index] = static_cast<T>(val);
-    } else {
-      y[(bid * H + hid) * W * C + wid * C + ccid] = static_cast<T>(val);
-    }
+
+    y[index] = static_cast<T>(val);
   }
 }
 
@@ -949,8 +839,7 @@ void GroupNormDirectCUDAFunctor<T, AccT>::operator()(
                                        group_size,
                                        static_cast<AccT>(eps),
                                        output,
-                                       variance,
-                                       data_layout);
+                                       variance);
   } else {
 #ifdef PADDLE_WITH_HIP
     hipMemset(mean, 0, sizeof(AccT) * input_ddim[0] * groups);
@@ -983,28 +872,73 @@ void GroupNormDirectCUDAFunctor<T, AccT>::operator()(
             paddle::platform::CUDAPlace(0)));
     const phi::GPUContext& dev_ctx = *device_ctx;
     int numel = input_ddim[0] * input_ddim[1] * input_ddim[2] * input_ddim[3];
-    constexpr const int vec_size = 2;
+    int vec_size = phi::GetVectorizedSize(input);
     auto config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, vec_size);
     int grid_nhwc = config.block_per_grid.x;
     int block_nhwc = config.thread_per_block.x;
 
-    GroupNormForwardNHWC<T, AccT, 3>
-        <<<grid_nhwc, block_nhwc, 0, stream>>>(input,
-                                               mean,
-                                               temp_variance,
-                                               scale,
-                                               bias,
-                                               input_ddim[0],
-                                               C,
-                                               W,
-                                               image_size,
-                                               groups,
-                                               group_size,
-                                               static_cast<AccT>(eps),
-                                               output,
-                                               variance,
-                                               data_layout);
+    switch (vec_size) {
+      case 4:
+        GroupNormForwardNHWC<T, AccT, 3, 4>
+            <<<grid_nhwc, block_nhwc, 0, stream>>>(input,
+                                                   mean,
+                                                   temp_variance,
+                                                   scale,
+                                                   bias,
+                                                   input_ddim[0],
+                                                   C,
+                                                   W,
+                                                   image_size,
+                                                   groups,
+                                                   group_size,
+                                                   static_cast<AccT>(eps),
+                                                   output,
+                                                   variance,
+                                                   data_layout);
+        break;
+      case 2:
+        GroupNormForwardNHWC<T, AccT, 3, 2>
+            <<<grid_nhwc, block_nhwc, 0, stream>>>(input,
+                                                   mean,
+                                                   temp_variance,
+                                                   scale,
+                                                   bias,
+                                                   input_ddim[0],
+                                                   C,
+                                                   W,
+                                                   image_size,
+                                                   groups,
+                                                   group_size,
+                                                   static_cast<AccT>(eps),
+                                                   output,
+                                                   variance,
+                                                   data_layout);
+        break;
+      case 1:
+        GroupNormForwardNHWC<T, AccT, 3, 1>
+            <<<grid_nhwc, block_nhwc, 0, stream>>>(input,
+                                                   mean,
+                                                   temp_variance,
+                                                   scale,
+                                                   bias,
+                                                   input_ddim[0],
+                                                   C,
+                                                   W,
+                                                   image_size,
+                                                   groups,
+                                                   group_size,
+                                                   static_cast<AccT>(eps),
+                                                   output,
+                                                   variance,
+                                                   data_layout);
+        break;
+      default: {
+        PADDLE_THROW(paddle::platform::errors::Unimplemented(
+            "Unsupported vectorized size: %d !", vec_size));
+        break;
+      }
+    }
   }
 }
 template class GroupNormDirectCUDAFunctor<float, float>;
@@ -1013,16 +947,16 @@ template class GroupNormDirectCUDAFunctor<half, float>;
 #endif
 
 template <typename T, typename Context>
-void GroupNormGeneralCaseKernel(const Context& dev_ctx,
-                                const DenseTensor& x,
-                                const paddle::optional<DenseTensor>& scale,
-                                const paddle::optional<DenseTensor>& bias,
-                                float epsilon,
-                                int groups,
-                                const std::string& data_layout_str,
-                                DenseTensor* y,
-                                DenseTensor* mean,
-                                DenseTensor* var) {
+void GroupNormKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const paddle::optional<DenseTensor>& scale,
+                     const paddle::optional<DenseTensor>& bias,
+                     float epsilon,
+                     int groups,
+                     const std::string& data_layout_str,
+                     DenseTensor* y,
+                     DenseTensor* mean,
+                     DenseTensor* var) {
   using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
   const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   const auto scale_ptr = scale.get_ptr();
@@ -1112,8 +1046,7 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
                      group_size,
                      static_cast<AccT>(epsilon),
                      y_data,
-                     var_data,
-                     data_layout);
+                     var_data);
   } else {
     set_zero_AccT(dev_ctx, mean, static_cast<AccT>(0));
     set_zero_AccT(dev_ctx, &temp_var, static_cast<AccT>(0));
@@ -1138,76 +1071,80 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
                                                          temp_var_data);
 
     int numel = x.numel();
-    constexpr const int vec_size = 2;
+    int vec_size = phi::GetVectorizedSize(x_data);
     auto config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, vec_size);
     int grid_nhwc = config.block_per_grid.x;
     int block_nhwc = config.thread_per_block.x;
 
-    UNROLL_ALL_CASES_VEC(flags,
-                         GroupNormForwardNHWC,
-                         x_data,
-                         mean_data,
-                         temp_var_data,
-                         scale_data,
-                         bias_data,
-                         x_dims[0],
-                         C,
-                         W,
-                         imsize,
-                         groups,
-                         group_size,
-                         static_cast<AccT>(epsilon),
-                         y_data,
-                         var_data,
-                         data_layout);
+    switch (vec_size) {
+      case 4:
+        UNROLL_ALL_CASES_VEC(flags,
+                             4,
+                             GroupNormForwardNHWC,
+                             x_data,
+                             mean_data,
+                             temp_var_data,
+                             scale_data,
+                             bias_data,
+                             x_dims[0],
+                             C,
+                             W,
+                             imsize,
+                             groups,
+                             group_size,
+                             static_cast<AccT>(epsilon),
+                             y_data,
+                             var_data,
+                             data_layout);
+        break;
+      case 2:
+        UNROLL_ALL_CASES_VEC(flags,
+                             2,
+                             GroupNormForwardNHWC,
+                             x_data,
+                             mean_data,
+                             temp_var_data,
+                             scale_data,
+                             bias_data,
+                             x_dims[0],
+                             C,
+                             W,
+                             imsize,
+                             groups,
+                             group_size,
+                             static_cast<AccT>(epsilon),
+                             y_data,
+                             var_data,
+                             data_layout);
+        break;
+      case 1:
+        UNROLL_ALL_CASES_VEC(flags,
+                             1,
+                             GroupNormForwardNHWC,
+                             x_data,
+                             mean_data,
+                             temp_var_data,
+                             scale_data,
+                             bias_data,
+                             x_dims[0],
+                             C,
+                             W,
+                             imsize,
+                             groups,
+                             group_size,
+                             static_cast<AccT>(epsilon),
+                             y_data,
+                             var_data,
+                             data_layout);
+        break;
+      default: {
+        PADDLE_THROW(paddle::platform::errors::Unimplemented(
+            "Unsupported vectorized size: %d !", vec_size));
+        break;
+      }
+    }
   }
-}
-
-template <typename T, typename Context>
-void GroupNormKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const paddle::optional<DenseTensor>& scale,
-                     const paddle::optional<DenseTensor>& bias,
-                     float epsilon,
-                     int groups,
-                     const std::string& data_layout_str,
-                     DenseTensor* y,
-                     DenseTensor* mean,
-                     DenseTensor* var) {
-  using std::is_same;
-  if (is_same<T, phi::dtype::float16>::value && data_layout_str == "NHWC") {
-    GroupNormNHWCKernel<phi::dtype::float16, Context>(dev_ctx,
-                                                      x,
-                                                      scale,
-                                                      bias,
-                                                      epsilon,
-                                                      groups,
-                                                      data_layout_str,
-                                                      y,
-                                                      mean,
-                                                      var);
-    return;
-  }
-
-#ifdef PADDLE_CUDA_BF16
-  if (is_same<T, phi::dtype::bfloat16>::value && data_layout_str == "NHWC") {
-    GroupNormNHWCKernel<phi::dtype::bfloat16, Context>(dev_ctx,
-                                                       x,
-                                                       scale,
-                                                       bias,
-                                                       epsilon,
-                                                       groups,
-                                                       data_layout_str,
-                                                       y,
-                                                       mean,
-                                                       var);
-    return;
-  }
-#endif
-
-  GroupNormGeneralCaseKernel<T, Context>(
-      dev_ctx, x, scale, bias, epsilon, groups, data_layout_str, y, mean, var);
 }
 
 }  // namespace phi

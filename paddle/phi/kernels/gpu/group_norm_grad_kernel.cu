@@ -47,30 +47,29 @@ __global__ void GroupNormBackwardGetMeanAndVar(const T* x,
   int cw_size = C * W;
   int hwc_size = imsize * C;
   int index = bid * imsize * C + acc_size * aid * C;
-  int cal_size = (imsize - acc_size * aid) < acc_size
-                     ? ((imsize - acc_size * aid) * C)
-                     : (acc_size * C);
+  int cal_size = min(imsize - acc_size * aid, acc_size) * C;
   using VecType = phi::AlignedVector<T, VecSize>;
+
+  const VecType* x_vec = reinterpret_cast<const VecType*>(x);
+  const VecType* d_y_vec = reinterpret_cast<const VecType*>(d_y);
+  const VecType* scale_vec = reinterpret_cast<const VecType*>(scale);
+  const VecType* bias_vec = reinterpret_cast<const VecType*>(bias);
 
   for (int idx = threadIdx.x * VecSize; idx < C; idx += blockDim.x * VecSize) {
     int gid = idx / group_size;
     int ccid = idx;
 
-    T x_scale[VecSize];
-    T x_bias[VecSize];
+    VecType x_scale;
+    VecType x_bias;
     T x_scale_inv[VecSize];
     AccT d_mean_data[VecSize];
     AccT d_var_data[VecSize];
     AccT d_scale_data[VecSize];
     AccT d_bias_data[VecSize];
-    T x_data[VecSize];
-    T d_y_data[VecSize];
 
     if (flags & kHasScale) {
-      VecType* scale_vec = reinterpret_cast<VecType*>(x_scale);
-      scale_vec[0] = *(reinterpret_cast<const VecType*>(scale + ccid));
-      VecType* bias_vec = reinterpret_cast<VecType*>(x_bias);
-      bias_vec[0] = *(reinterpret_cast<const VecType*>(bias + ccid));
+      x_scale = scale_vec[ccid >> 1];
+      x_bias = bias_vec[ccid >> 1];
     }
 #pragma unroll
     for (int nx = 0; nx < VecSize; ++nx) {
@@ -90,12 +89,10 @@ __global__ void GroupNormBackwardGetMeanAndVar(const T* x,
 
     for (int gsid = ccid; gsid < cal_size; gsid += stride) {
       AccT val[VecSize], dval[VecSize];
-      int cur_idx = index + gsid;
+      int cur_idx = (index + gsid) >> 1;
 
-      VecType* x_vec = reinterpret_cast<VecType*>(x_data);
-      x_vec[0] = *(reinterpret_cast<const VecType*>(x + cur_idx));
-      VecType* d_y_vec = reinterpret_cast<VecType*>(d_y_data);
-      d_y_vec[0] = *(reinterpret_cast<const VecType*>(d_y + cur_idx));
+      VecType x_data = x_vec[cur_idx];
+      VecType d_y_data = d_y_vec[cur_idx];
 
 #pragma unroll
       for (int nx = 0; nx < VecSize; ++nx) {
@@ -487,6 +484,7 @@ void GroupNormGradKernel(const Context& dev_ctx,
     dim3 grid_nhwc(((imsize + acc_size - 1) / acc_size), x_dims[0], 1);
     dim3 block_nhwc(block_size_nhwc, 1, 1);
     UNROLL_ALL_CASES_VEC(flags,
+                         vec_size,
                          GroupNormBackwardGetMeanAndVar,
                          y_data,
                          scale_data,
