@@ -12,5 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .metrics import init_metric  # noqa: F401
-from .metrics import print_auc  # noqa: F401
+from .metrics import init_metric, print_auc  # noqa: F401
