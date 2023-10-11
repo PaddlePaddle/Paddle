@@ -21,11 +21,11 @@ from paddle import base
 from paddle.io import (
     ChainDataset,
     ComposeDataset,
+    ConcatDataset,
     DataLoader,
     Dataset,
     IterableDataset,
     TensorDataset,
-    ConcatDataset,
 )
 
 IMAGE_SIZE = 32
@@ -441,18 +441,6 @@ class TestDatasetWithDropLast(unittest.TestCase):
         self.run_main(dataset, 10, 3)
 
 
-class RandomIterableDataset(IterableDataset):
-    def __init__(self, sample_num):
-        self.sample_num = sample_num
-
-    def __iter__(self):
-        for i in range(self.sample_num):
-            np.random.seed(i)
-            image = np.random.random([IMAGE_SIZE]).astype('float32')
-            label = np.random.randint(0, 9, (1,)).astype('int64')
-            yield image, label
-
-
 class TestConcatDataset(unittest.TestCase):
     def run_main(self, num_workers, places):
         result = ConcatDataset([[0], [1]])
@@ -460,25 +448,20 @@ class TestConcatDataset(unittest.TestCase):
         self.assertEqual(0, result[0])
         self.assertEqual(1, result[1])
 
-        result = ConcatDataset([[0, 1, 2, 3, 4],
-                                [5, 6, 7, 8, 9]])
+        result = ConcatDataset([[0, 1, 2, 3, 4], [5, 6, 7, 8, 9]])
         self.assertEqual(10, len(result))
         self.assertEqual(0, result[0])
         self.assertEqual(5, result[5])
 
-        result = ConcatDataset([[0, 1, 2, 3, 4],
-                                [],
-                                [5, 6, 7, 8, 9]])
+        result = ConcatDataset([[0, 1, 2, 3, 4], [], [5, 6, 7, 8, 9]])
         self.assertEqual(10, len(result))
         self.assertEqual(0, result[0])
         self.assertEqual(5, result[5])
 
-        result = ConcatDataset([[0, 1, 2, 3, 4],
-                                [5, 6, 7, 8, 9]])
+        result = ConcatDataset([[0, 1, 2, 3, 4], [5, 6, 7, 8, 9]])
         with self.assertRaises(IndexError):
             # this one goes to 11
             result[11]
-
 
     def test_main(self):
         places = [paddle.CPUPlace()]
@@ -492,13 +475,19 @@ class TestConcatDataset(unittest.TestCase):
         it1 = RandomIterableDataset(10)
         it2 = RandomIterableDataset(10)
 
-        with self.assertRaisesRegex(AssertionError, "does not support IterableDataset"):
+        with self.assertRaisesRegex(
+            AssertionError, "does not support IterableDataset"
+        ):
             ConcatDataset([d1, it2, it1])
 
-        with self.assertRaisesRegex(AssertionError, "does not support IterableDataset"):
+        with self.assertRaisesRegex(
+            AssertionError, "does not support IterableDataset"
+        ):
             ConcatDataset([it2])
 
-        with self.assertRaisesRegex(AssertionError, "does not support IterableDataset"):
+        with self.assertRaisesRegex(
+            AssertionError, "does not support IterableDataset"
+        ):
             ConcatDataset([it1, d1])
 
 

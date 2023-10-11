@@ -88,7 +88,7 @@
 # To build a unit test binary, which is an executable binary with libpaddle.so
 # automatically linked:
 #
-#   paddle_test(example SHARED)
+#   paddle_test(example SRCS example_test.cc)
 #
 
 # including binary directory for generated headers.

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import bisect
+
 import paddle
 
 from ... import framework
@@ -621,9 +622,13 @@ class ConcatDataset(Dataset):
     def __init__(self, datasets) -> None:
         super().__init__()
         self.datasets = list(datasets)
-        assert len(self.datasets) > 0, 'datasets should not be an empty iterable'
+        assert (
+            len(self.datasets) > 0
+        ), 'datasets should not be an empty iterable'
         for d in self.datasets:
-            assert not isinstance(d, IterableDataset), "ConcatDataset does not support IterableDataset"
+            assert not isinstance(
+                d, IterableDataset
+            ), "ConcatDataset does not support IterableDataset"
         self.cumulative_sizes = self.cumsum(self.datasets)
 
     def __len__(self):
@@ -632,7 +637,9 @@ class ConcatDataset(Dataset):
     def __getitem__(self, idx):
         if idx < 0:
             if -idx > len(self):
-                raise ValueError("absolute value of index should not exceed dataset length")
+                raise ValueError(
+                    "absolute value of index should not exceed dataset length"
+                )
             idx = len(self) + idx
         dataset_idx = bisect.bisect_right(self.cumulative_sizes, idx)
         if dataset_idx == 0:
