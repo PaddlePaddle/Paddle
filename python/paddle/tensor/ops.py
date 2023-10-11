@@ -525,7 +525,7 @@ def ceil(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0., -0., 1. , 1. ])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.ceil(x)
     else:
         check_variable_and_dtype(
@@ -654,7 +654,7 @@ def exp(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.67032003, 0.81873077, 1.10517097, 1.34985888])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.exp(x)
     else:
         check_variable_and_dtype(
@@ -704,7 +704,7 @@ def expm1(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.32967997, -0.18126924,  0.10517092,  0.34985882])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.expm1(x)
     else:
         check_variable_and_dtype(
@@ -1057,7 +1057,7 @@ def sqrt(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.31622776, 0.44721359, 0.54772258, 0.63245553])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.sqrt(x)
     else:
         check_variable_and_dtype(

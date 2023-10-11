@@ -43,9 +43,7 @@ class TestPureFP16(TestMNIST):
                 static_loss,
                 rtol=1e-05,
                 atol=0.001,
-                err_msg='dygraph is {}\n static_res is \n{}'.format(
-                    dygraph_loss, static_loss
-                ),
+                err_msg=f'dygraph is {dygraph_loss}\n static_res is \n{static_loss}',
             )
 
     def train(self, to_static=False):

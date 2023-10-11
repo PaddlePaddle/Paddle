@@ -109,9 +109,7 @@ class TestRecursiveCall1(unittest.TestCase):
             dygraph_res,
             static_res,
             rtol=1e-05,
-            err_msg='dygraph res is {}\nstatic_res is {}'.format(
-                dygraph_res, static_res
-            ),
+            err_msg=f'dygraph res is {dygraph_res}\nstatic_res is {static_res}',
         )
 
 
@@ -288,7 +286,7 @@ class TestConvertPaddleAPI(unittest.TestCase):
         func = paddle.nn.functional.relu
         func = paddle.jit.to_static(func)
         self.assertNotIn("_jst.IfElse", func.code)
-        self.assertIn("if in_dynamic_mode()", func.code)
+        self.assertIn("if in_dynamic_or_pir_mode()", func.code)
 
     @ast_only_test
     def test_class_api(self):

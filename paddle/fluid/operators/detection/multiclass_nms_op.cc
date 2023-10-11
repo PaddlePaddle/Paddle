@@ -101,11 +101,7 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
     }
     // Here the box_dims[0] is not the real dimension of output.
     // It will be rewritten in the computing kernel.
-    if (score_size == 3) {
-      ctx->SetOutputDim("Out", {-1, box_dims[2] + 2});
-    } else {
-      ctx->SetOutputDim("Out", {-1, box_dims[2] + 2});
-    }
+    ctx->SetOutputDim("Out", {-1, box_dims[2] + 2});
     if (!ctx->IsRuntime()) {
       ctx->SetLoDLevel("Out", std::max(ctx->GetLoDLevel("BBoxes"), 1));
     }
@@ -254,7 +250,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     *num_nmsed_out = num_det;
     const T* scores_data = scores.data<T>();
     if (keep_top_k > -1 && num_det > keep_top_k) {
-      const T* sdata;
+      const T* sdata = nullptr;
       std::vector<std::pair<float, std::pair<int, int>>> score_index_pairs;
       for (const auto& it : *indices) {
         int label = it.first;
@@ -314,7 +310,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     auto* scores_data = scores.data<T>();
     auto* bboxes_data = bboxes.data<T>();
     auto* odata = outs->data<T>();
-    const T* sdata;
+    const T* sdata = nullptr;
     phi::DenseTensor bbox;
     bbox.Resize({scores.dims()[0], box_size});
     int count = 0;
@@ -329,7 +325,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
 
       for (auto idx : indices) {
         odata[count * out_dim] = label;  // label
-        const T* bdata;
+        const T* bdata = nullptr;
         if (scores_size == 3) {
           bdata = bboxes_data + idx * box_size;
           odata[count * out_dim + 1] = sdata[idx];  // score
@@ -584,14 +580,7 @@ class MultiClassNMS2Op : public MultiClassNMSOp {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     MultiClassNMSOp::InferShape(ctx);
-
-    auto score_dims = ctx->GetInputDim("Scores");
-    auto score_size = score_dims.size();
-    if (score_size == 3) {
-      ctx->SetOutputDim("Index", {-1, 1});
-    } else {
-      ctx->SetOutputDim("Index", {-1, 1});
-    }
+    ctx->SetOutputDim("Index", {-1, 1});
     if (!ctx->IsRuntime()) {
       ctx->SetLoDLevel("Index", std::max(ctx->GetLoDLevel("BBoxes"), 1));
     }

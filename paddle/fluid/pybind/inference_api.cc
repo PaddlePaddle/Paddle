@@ -97,6 +97,7 @@ using paddle::PaddlePredictor;
 using paddle::PaddleTensor;
 using paddle::PassStrategy;
 using paddle::ZeroCopyTensor;
+using paddle_infer::experimental::InternalUtils;
 
 namespace {
 void BindPaddleDType(py::module *m);
@@ -116,6 +117,7 @@ void BindPaddlePassBuilder(py::module *m);
 void BindPaddleInferPredictor(py::module *m);
 void BindPaddleInferTensor(py::module *m);
 void BindPredictorPool(py::module *m);
+void BindInternalUtils(py::module *m);
 
 #ifdef PADDLE_WITH_DNNL
 void BindMkldnnQuantizerConfig(py::module *m);
@@ -239,7 +241,7 @@ void PaddleInferTensorCreate(paddle_infer::Tensor &tensor,  // NOLINT
 
 paddle_infer::PlaceType ToPaddleInferPlace(
     phi::AllocationType allocation_type) {
-  if (allocation_type == phi::AllocationType::CPU) {
+  if (allocation_type == phi::AllocationType::CPU) {  // NOLINT
     return paddle_infer::PlaceType::kCPU;
   } else if (allocation_type == phi::AllocationType::GPU) {
     return paddle_infer::PlaceType::kGPU;
@@ -509,6 +511,7 @@ void BindInferenceApi(py::module *m) {
   BindPaddleInferTensor(m);
   BindPaddlePassBuilder(m);
   BindPredictorPool(m);
+  BindInternalUtils(m);
 #ifdef PADDLE_WITH_DNNL
   BindMkldnnQuantizerConfig(m);
 #endif
@@ -1303,6 +1306,19 @@ void BindPaddlePassBuilder(py::module *m) {
       .def("enable_mkldnn", &GpuPassStrategy::EnableMKLDNN)
       .def("enable_mkldnn_quantizer", &GpuPassStrategy::EnableMkldnnQuantizer)
       .def("enable_mkldnn_bfloat16", &GpuPassStrategy::EnableMkldnnBfloat16);
+}
+
+void BindInternalUtils(py::module *m) {
+  py::class_<InternalUtils> internal_utils(*m, "InternalUtils");
+  internal_utils
+      .def_static("set_transformer_posid",
+                  [](paddle_infer::Config &config, std::string tensor_name) {
+                    InternalUtils::SetTransformerPosid(&config, tensor_name);
+                  })
+      .def_static("set_transformer_maskid",
+                  [](paddle_infer::Config &config, std::string tensor_name) {
+                    InternalUtils::SetTransformerMaskid(&config, tensor_name);
+                  });
 }
 }  // namespace
 }  // namespace pybind

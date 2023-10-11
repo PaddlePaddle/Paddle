@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import random
 import unittest
 
@@ -38,6 +39,7 @@ paddle.seed(seed)
 
 class TestFusedMultiTransformerOp(OpTest):
     def setUp(self):
+        self.with_new_comm()
         self.config()
         self.generate_input_data()
 
@@ -107,6 +109,9 @@ class TestFusedMultiTransformerOp(OpTest):
         paddle.set_default_dtype(self.x_type)
         self.dropout = Dropout(self.dropout_prob, mode="upscale_in_train")
         self.activation = getattr(F, self.act_method)
+
+    def with_new_comm(self):
+        os.environ["FLAGS_dynamic_static_unified_comm"] = "0"
 
     def config(self):
         # for debug
@@ -1123,6 +1128,11 @@ class TestFusedMultiTransformerOp(OpTest):
             np.testing.assert_allclose(
                 final_out_ref, final_out, rtol=self.rtol, atol=self.atol
             )
+
+
+class TestFusedMultiTransformerOpWithNewComm(TestFusedMultiTransformerOp):
+    def with_new_comm(self):
+        os.environ["FLAGS_dynamic_static_unified_comm"] = "1"
 
 
 class TestFusedMultiTransformerOpRotaryFP16(TestFusedMultiTransformerOp):
