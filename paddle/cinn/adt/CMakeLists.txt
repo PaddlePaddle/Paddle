@@ -7,6 +7,7 @@ gather_srcs(
   equation_solver.cc
   equation_value.cc
   generate_map_expr.cc
+  get_sub_reshape_dim_ranges.cc
   igroup.cc
   index_expr_infer_context.cc
   kgroup.cc

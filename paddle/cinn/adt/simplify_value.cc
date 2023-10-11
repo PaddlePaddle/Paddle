@@ -17,6 +17,7 @@
 
 #include "paddle/cinn/adt/equation.h"
 #include "paddle/cinn/adt/equation_value_match_trait.h"
+#include "paddle/cinn/adt/get_sub_reshape_dim_ranges.h"
 #include "paddle/cinn/adt/index_expr_infer_context.h"
 #include "paddle/cinn/adt/match.h"
 #include "paddle/cinn/adt/print_value.h"
@@ -191,59 +192,6 @@ struct SimplifyGcdShape {
     return true;
   }
 
-  std::int64_t GetNumel(const List<Constant>& constants) {
-    std::int64_t ret = 1;
-    for (const auto& constant : *constants) {
-      ret *= constant.Get<std::int64_t>();
-    }
-    return ret;
-  }
-
-  std::tuple<std::vector<std::pair<int, int>>, std::vector<std::pair<int, int>>>
-  GetSubReshapeDimRanges(const List<Constant>& lhs_dims,
-                         const List<Constant>& rhs_dims) {
-    if (GetNumel(lhs_dims) != GetNumel(rhs_dims)) {
-      return std::make_tuple(std::vector<std::pair<int, int>>{},
-                             std::vector<std::pair<int, int>>{});
-    }
-    CHECK(!lhs_dims->empty());
-    CHECK(!rhs_dims->empty());
-    std::vector<std::pair<int, int>> lhs_ranges{};
-    std::vector<std::pair<int, int>> rhs_ranges{};
-    int lhs_start = 0;
-    int rhs_start = 0;
-    int lhs_end = 0;
-    int rhs_end = 0;
-    std::int64_t lhs_acc = 1;
-    std::int64_t rhs_acc = 1;
-    while (lhs_end < lhs_dims->size() || rhs_end < rhs_dims->size()) {
-      if (lhs_start == lhs_end) {
-        lhs_acc = lhs_dims->at(lhs_end++).Get<std::int64_t>();
-      }
-      if (rhs_start == rhs_end) {
-        rhs_acc = rhs_dims->at(rhs_end++).Get<std::int64_t>();
-      }
-      if (lhs_acc == rhs_acc) {
-        lhs_ranges.emplace_back(std::make_pair(lhs_start, lhs_end));
-        rhs_ranges.emplace_back(std::make_pair(rhs_start, rhs_end));
-        lhs_start = lhs_end;
-        rhs_start = rhs_end;
-      } else if (lhs_acc < rhs_acc) {
-        lhs_acc *= lhs_dims->at(lhs_end++).Get<std::int64_t>();
-      } else if (lhs_acc > rhs_acc) {
-        rhs_acc *= rhs_dims->at(rhs_end++).Get<std::int64_t>();
-      } else {
-        LOG(FATAL) << "Dead code";
-      }
-    }
-    CHECK(lhs_end == lhs_dims->size() && rhs_end == rhs_dims->size());
-    if (lhs_start < lhs_end && rhs_start < rhs_end) {
-      lhs_ranges.emplace_back(std::make_pair(lhs_start, lhs_end));
-      rhs_ranges.emplace_back(std::make_pair(rhs_start, rhs_end));
-    }
-    return std::make_tuple(lhs_ranges, rhs_ranges);
-  }
-
   Value MatchAndRewrite(const Value& value, const IndexExprInferContext& ctx) {
     const auto& [index_undot_value, constant_idx] =
         value.Get<ListGetItem<Value, Constant>>().tuple();
@@ -259,8 +207,14 @@ struct SimplifyGcdShape {
     CHECK(IsConstantListAllPositiveInt64(undot_dim_values));
     CHECK(IsConstantListAllPositiveInt64(dot_dim_values));
 
-    const auto& [undot_dim_ranges, dot_dim_ranges] =
+    const auto& sub_reshape_dim_ranges =
         GetSubReshapeDimRanges(undot_dim_values, dot_dim_values);
+    if (!sub_reshape_dim_ranges.has_value()) {
+      return ListGetItem<Value, Constant>{SimplifyValue(index_undot_value, ctx),
+                                          constant_idx};
+    }
+    const auto& [undot_dim_ranges, dot_dim_ranges] =
+        sub_reshape_dim_ranges.value();
     if (undot_dim_ranges.size() >= 1) {
       const auto& [sub_range_idx, sub_range_item_idx] = GetSubRangeItemIdx(
           undot_dim_ranges, constant_idx.Get<std::int64_t>());
