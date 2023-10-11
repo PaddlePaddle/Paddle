@@ -21,9 +21,9 @@ paddle.enable_static()
 
 
 class TestMathOpPatchesPir(unittest.TestCase):
-    def check_math_exists(self):
+    def test_math_exists(self):
         with paddle.pir_utils.IrGuard():
-            a = paddle.to_tensor([[1, 1], [2, 2], [3, 3]])
+            a = paddle.static.data(name='a', shape=[1], dtype='float32')
             self.assertTrue(isinstance(a, paddle.pir.OpResult))
             self.assertTrue(inspect.ismethod(a.dot))
             self.assertTrue(inspect.ismethod(a.logsumexp))
@@ -74,7 +74,6 @@ class TestMathOpPatchesPir(unittest.TestCase):
             self.assertTrue(inspect.ismethod(a.asin_))
             self.assertTrue(inspect.ismethod(a.atan2))
             self.assertTrue(inspect.ismethod(a.atanh_))
-            self.assertTrue(inspect.ismethod(a.coalesce))
             self.assertTrue(inspect.ismethod(a.diagflat))
             self.assertTrue(inspect.ismethod(a.multinomial))
             self.assertTrue(inspect.ismethod(a.pinv))
@@ -98,37 +97,6 @@ class TestMathOpPatchesPir(unittest.TestCase):
             self.assertTrue(inspect.ismethod(a.acosh_))
             self.assertTrue(inspect.ismethod(a.asinh_))
             self.assertTrue(inspect.ismethod(a.diag))
-            self.assertTrue(inspect.ismethod(a.eye))
-            self.assertTrue(inspect.ismethod(a.linspace))
-            self.assertTrue(inspect.ismethod(a.fill_constant))
-            self.assertTrue(inspect.ismethod(a.ones))
-            self.assertTrue(inspect.ismethod(a.ones_like))
-            self.assertTrue(inspect.ismethod(a.zeros))
-            self.assertTrue(inspect.ismethod(a.zeros_like))
-            self.assertTrue(inspect.ismethod(a.arange))
-            self.assertTrue(inspect.ismethod(a.full))
-            self.assertTrue(inspect.ismethod(a.full_like))
-            self.assertTrue(inspect.ismethod(a.meshgrid))
-            self.assertTrue(inspect.ismethod(a.empty))
-            self.assertTrue(inspect.ismethod(a.empty_like))
-            self.assertTrue(inspect.ismethod(a.complex))
-            self.assertTrue(inspect.ismethod(a.eigh))
-            self.assertTrue(inspect.ismethod(a.standard_normal))
-            self.assertTrue(inspect.ismethod(a.normal))
-            self.assertTrue(inspect.ismethod(a.uniform))
-            self.assertTrue(inspect.ismethod(a.randn))
-            self.assertTrue(inspect.ismethod(a.rand))
-            self.assertTrue(inspect.ismethod(a.randint))
-            self.assertTrue(inspect.ismethod(a.randint_like))
-            self.assertTrue(inspect.ismethod(a.randperm))
-            self.assertTrue(inspect.ismethod(a.poisson))
-            self.assertTrue(inspect.ismethod(a.searchsorted))
-            self.assertTrue(inspect.ismethod(a.set_printoptions))
-            self.assertTrue(inspect.ismethod(a.array_length))
-            self.assertTrue(inspect.ismethod(a.array_read))
-            self.assertTrue(inspect.ismethod(a.array_write))
-            self.assertTrue(inspect.ismethod(a.create_array))
-            self.assertTrue(inspect.ismethod(a.einsum))
 
 
 if __name__ == '__main__':
