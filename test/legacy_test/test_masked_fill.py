@@ -49,6 +49,8 @@ class TestMaskedFillAPI(unittest.TestCase):
         self.value_np = np.random.randn(1).astype(self.dtype)
         self.out_np = np_masked_fill(self.x_np, self.mask_np, self.value_np)
 
+        self.scalar_value = False
+
     def init(self):
         self.x_shape = (50, 3)
         self.mask_shape = self.x_shape
@@ -94,7 +96,10 @@ class TestMaskedFillAPI(unittest.TestCase):
         paddle.disable_static()
         x = paddle.to_tensor(self.x_np, dtype=self.dtype)
         mask = paddle.to_tensor(self.mask_np).astype('bool')
-        value = paddle.to_tensor(self.value_np, dtype=self.dtype)
+        if self.scalar_value:
+            value = self.value_np[0]
+        else:
+            value = paddle.to_tensor(self.value_np, dtype=self.dtype)
         result = paddle.masked_fill(x, mask, value)
         np.testing.assert_allclose(self.out_np, result.numpy(), rtol=1e-05)
 
@@ -113,6 +118,14 @@ class TestMaskedFillAPI2(TestMaskedFillAPI):
         self.x_shape = (168,)
         self.mask_shape = self.x_shape
         self.dtype = "float32"
+
+
+class TestMaskedFillAPI3(TestMaskedFillAPI):
+    def init(self):
+        self.x_shape = (6, 8, 9, 18)
+        self.mask_shape = self.x_shape
+        self.dtype = "float32"
+        self.scalar_value = True
 
 
 class TestMaskedFillGrad(unittest.TestCase):
@@ -182,6 +195,17 @@ class TestMaskedFillFP16API2(TestMaskedFillAPI):
         self.dtype = "float16"
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestMaskedFillFP16API3(TestMaskedFillAPI):
+    def init(self):
+        self.x_shape = (168,)
+        self.mask_shape = self.x_shape
+        self.dtype = "float16"
+        self.scalar_value = True
+
+
 class TestMaskedFillAPIBroadcast(TestMaskedFillAPI):
     def init(self):
         self.x_shape = (3, 40)
@@ -210,6 +234,14 @@ class TestMaskedFillAPIBroadcast4(TestMaskedFillAPI):
         self.dtype = "float32"
 
 
+class TestMaskedFillAPIBroadcast5(TestMaskedFillAPI):
+    def init(self):
+        self.x_shape = (300, 40)
+        self.mask_shape = (40,)
+        self.dtype = "float32"
+        self.scalar_value = True
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
@@ -228,6 +260,17 @@ class TestMaskedFillFP16APIBroadcast2(TestMaskedFillAPI):
         self.x_shape = (300, 1)
         self.mask_shape = (300, 40)
         self.dtype = "float16"
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestMaskedFillFP16APIBroadcast3(TestMaskedFillAPI):
+    def init(self):
+        self.x_shape = (300, 1)
+        self.mask_shape = (300, 40)
+        self.dtype = "float16"
+        self.scalar_value = True
 
 
 @unittest.skipIf(
