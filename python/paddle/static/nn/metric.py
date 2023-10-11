@@ -18,9 +18,9 @@ import numpy as np
 
 import paddle
 from paddle import _legacy_C_ops
-from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import Variable, _create_tensor, in_dygraph_mode
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base.data_feeder import check_variable_and_dtype
+from paddle.base.framework import Variable, _create_tensor, in_dygraph_mode
+from paddle.base.layer_helper import LayerHelper
 from paddle.nn.initializer import ConstantInitializer
 
 __all__ = []
@@ -525,7 +525,7 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
         attrs={
             'shape': [-1, 1],
             'dtype': tmp_ones.dtype,
-            'value': float(1.0),
+            'value': 1.0,
         },
     )
     helper.append_op(

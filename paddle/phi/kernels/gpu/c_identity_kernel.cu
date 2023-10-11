@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
+#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
 PD_REGISTER_KERNEL(c_identity,
                    GPU,
                    ALL_LAYOUT,
@@ -28,3 +29,14 @@ PD_REGISTER_KERNEL(c_identity,
                    int64_t,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {}
+#else
+PD_REGISTER_KERNEL(c_identity,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::CIdentityKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16) {}
+#endif

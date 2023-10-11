@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import Program
+from paddle.base import Program
 
 
 def compute_index_put_ref(x_np, indices_np, value_np, accumulate=False):

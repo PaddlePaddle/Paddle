@@ -20,10 +20,10 @@
 
 #include "paddle/cinn/common/cinn_value.h"
 #include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 
 namespace cinn {
@@ -257,7 +257,7 @@ Expr For::Make(Var loop_var,
   node->min = min;
   node->extent = extent;
   node->device_api = device_api;
-  node->body = body;
+  node->body = body.As<ir::Block>() ? body : ir::Block::Make({body});
   node->set_for_type(for_type);
   node->set_vectorize_info(vector_info);
   node->set_bind_info(bind_info);
@@ -346,6 +346,10 @@ std::vector<const Expr *> ScheduleBlockRealize::expr_fields() const {
 }
 
 Expr IfThenElse::Make(Expr condition, Expr true_case, Expr false_case) {
+  if (true_case.defined() && (!true_case.As<Block>()))
+    true_case = ir::Block::Make({true_case});
+  if (false_case.defined() && (!false_case.As<Block>()))
+    false_case = ir::Block::Make({false_case});
   auto node = make_shared<IfThenElse>(condition, true_case, false_case);
   return Expr(node);
 }
@@ -513,7 +517,7 @@ Expr PolyFor::Make(Var iterator,
   n->condition = condition;
   n->inc = inc;
   n->device_api = device_api;
-  n->body = body;
+  n->body = body.As<ir::Block>() ? body : ir::Block::Make({body});
   n->set_for_type(for_type);
   n->set_vectorize_info(vectorize_info);
   n->set_bind_info(bind_info);
@@ -531,7 +535,7 @@ std::vector<const Expr *> PolyFor::expr_fields() const {
 }
 
 Expr PolyFor::ExtractExtent() const {
-  auto nodes = CollectIRNodes(condition, [&](const Expr *e) {
+  auto nodes = ir::ir_utils::CollectIRNodes(condition, [&](const Expr *e) {
     return e->As<NE>() ||   //
            e->As<EQ>() ||   //
            e->As<Min>() ||  //

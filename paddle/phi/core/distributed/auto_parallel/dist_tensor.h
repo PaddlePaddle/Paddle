@@ -56,15 +56,28 @@ class DistTensor final
 
   /// \brief Set the global dims of the dist tensor.
   /// \return void
-  void set_dims(const DDim& dims);
+  void unsafe_set_dims(const DDim& dims);
 
   /// \brief Returns the dist attr of current dist tensor.
   /// \return The TensorDistAttr's const reference
   const TensorDistAttr& dist_attr() const { return dist_attr_; }
 
+  /// \brief Set the dist attr of current dist tensor.
+  /// \return void
+  void unsafe_set_dist_attr(const TensorDistAttr& dist_attr);
+
   /// \brief Returns the dense tensor value's const reference in dist tensor.
   /// \return The DenseTensor value's const reference
   const DenseTensor& value() const { return value_; }
+
+  /// \brief Returns the mutable dense tensor value in dist tensor.
+  /// \note If DenseTensor value is modified externally, the corresponding
+  /// relationship between it and the current tensor's global dims and
+  /// dist attr may be destroyed, which may introduce some subtle bugs,
+  /// so you need to make sure to consider it thoroughly when using
+  /// this method.
+  /// \return The mutable pointer of DenseTensor value
+  DenseTensor* unsafe_mutable_value() { return &value_; }
 
   /// \brief Returns the global dims of the dist tensor.
   /// \return The global dims of the dist tensor.

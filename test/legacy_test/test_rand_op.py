@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid, rand
-from paddle.fluid import Program, core, program_guard
+from paddle import base, rand
+from paddle.base import Program, core, program_guard
 
 
 class TestRandOpError(unittest.TestCase):
@@ -32,8 +32,8 @@ class TestRandOpError(unittest.TestCase):
         with program_guard(main_prog, start_prog):
 
             def test_Variable():
-                x1 = fluid.create_lod_tensor(
-                    np.zeros((4, 784)), [[1, 1, 1, 1]], fluid.CPUPlace()
+                x1 = base.create_lod_tensor(
+                    np.zeros((4, 784)), [[1, 1, 1, 1]], base.CPUPlace()
                 )
                 rand(x1)
 
@@ -53,12 +53,12 @@ class TestRandOp(unittest.TestCase):
     """
 
     def run_net(self, use_cuda=False):
-        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+        exe = base.Executor(place)
 
-        train_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(train_program, startup_program):
+        train_program = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(train_program, startup_program):
             result_0 = rand([3, 4])
             result_1 = rand([3, 4], 'float64')
 
@@ -98,8 +98,8 @@ class TestRandOpForDygraph(unittest.TestCase):
     """
 
     def run_net(self, use_cuda=False):
-        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-        with fluid.dygraph.guard(place):
+        place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+        with base.dygraph.guard(place):
             rand([3, 4])
 
             rand([3, 4], 'float64')
@@ -124,17 +124,17 @@ class TestRandDtype(unittest.TestCase):
         def test_default_fp16():
             paddle.framework.set_default_dtype('float16')
             out = paddle.tensor.random.rand([2, 3])
-            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP16)
+            self.assertEqual(out.dtype, base.core.VarDesc.VarType.FP16)
 
         def test_default_fp32():
             paddle.framework.set_default_dtype('float32')
             out = paddle.tensor.random.rand([2, 3])
-            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP32)
+            self.assertEqual(out.dtype, base.core.VarDesc.VarType.FP32)
 
         def test_default_fp64():
             paddle.framework.set_default_dtype('float64')
             out = paddle.tensor.random.rand([2, 3])
-            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP64)
+            self.assertEqual(out.dtype, base.core.VarDesc.VarType.FP64)
 
         if paddle.is_compiled_with_cuda():
             paddle.set_device('gpu')

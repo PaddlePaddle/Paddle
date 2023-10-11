@@ -47,7 +47,7 @@ OpHandleBase::~OpHandleBase() PADDLE_MAY_THROW {  // NOLINT
 void OpHandleBase::InitCUDA() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   for (auto &p : dev_ctxes_) {
-    int dev_id = p.first.device;
+    int dev_id = p.first.device;  // NOLINT
     platform::SetDeviceId(dev_id);
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(
@@ -61,7 +61,7 @@ void OpHandleBase::InitCUDA() {
     for (auto &out_var : outputs_) {
       auto *out_var_handle = dynamic_cast<VarHandle *>(out_var);
       if (out_var_handle) {
-        int dev_id = out_var_handle->place().device;
+        int dev_id = out_var_handle->place().device;  // NOLINT
         out_var_handle->SetGenerateEvent(events_.at(dev_id));
       }
     }
@@ -74,7 +74,7 @@ void OpHandleBase::InitCUDA() {
             Name(),
             dev_ctxes_.size()));
     auto &place = dev_ctxes_.begin()->first;
-    int dev_id = place.device;
+    int dev_id = place.device;  // NOLINT
     for (auto &out_var : outputs_) {
       auto *out_var_handle = dynamic_cast<VarHandle *>(out_var);
       if (out_var_handle) {

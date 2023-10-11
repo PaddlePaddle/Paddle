@@ -19,8 +19,8 @@ import numpy as np
 from decorator_helper import prog_scope
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -57,9 +57,9 @@ class TestMatmulDoubleGradCheck(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 

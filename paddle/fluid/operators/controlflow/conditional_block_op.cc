@@ -51,7 +51,7 @@ class ConditionalBlockOp : public ConditionalOp {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
-    bool need_run;
+    bool need_run = false;
     if (Attr<bool>("is_scalar_condition")) {
       // When is_scalar_condition is True, the conditional variable is a scalar,
       // whether need to execute the operators in sub-block depends on the
@@ -147,7 +147,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
-    bool need_run;
+    bool need_run = false;
     if (Attr<bool>("is_scalar_condition")) {
       auto xs = this->InputTensors(scope, ConditionalOp::kCondition);
       need_run = ScalarCondition(xs);
@@ -292,7 +292,7 @@ class ConditionalBlockGradInferVarType : public framework::VarTypeInference {
     for (size_t i = 0; i < output_size; ++i) {
       ctx->SyncTypeAndDataType(ConditionalOp::kInputs,
                                framework::GradVarName(ConditionalOp::kInputs),
-                               i);
+                               static_cast<int>(i));
     }
   }
 };

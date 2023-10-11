@@ -13,23 +13,23 @@
 # limitations under the License.
 
 import unittest
+from collections import OrderedDict
 
-from paddle.distributed.auto_parallel.static.completion import get_spmd_rule
 from paddle.distributed.auto_parallel.static.dist_attribute import (
     DistTensorSpec,
     TensorDistAttr,
 )
 from paddle.distributed.fleet import auto
+from paddle.framework import core
 
 
 class TestMatmulSPMDRule(unittest.TestCase):
     def setUp(self):
-        self.rule = get_spmd_rule("matmul")
+        # After replaced all spmd rules by phi impl, we can recover the
+        # api name to `get_spmd_rule`
+        self.rule = core.get_phi_spmd_rule("matmul")
 
-        self.attrs = {
-            'trans_x': False,
-            'trans_y': False,
-        }
+        self.attrs = OrderedDict([('trans_x', False), ('trans_y', False)])
 
     def test_matmul_infer_forward(self):
         # forward setup
@@ -49,8 +49,9 @@ class TestMatmulSPMDRule(unittest.TestCase):
 
         # TODO test partial: mk[1, 0],kn[0, -1] --> mk[1, 0],kn[0, -1] = nm[1, -1] partial[0]
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec, False, False
         )
+
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
 
@@ -67,9 +68,11 @@ class TestMatmulSPMDRule(unittest.TestCase):
         # test row parallel: mk[1, -1],kn[-1, -1] --> mk[1, -1],kn[-1, -1] = nm[1, -1] partial[]
         self.x_dist_tensor_spec.set_dims_mapping([1, -1])
         self.y_dist_tensor_spec.set_dims_mapping([-1, -1])
+
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec, False, False
         )
+
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
 
@@ -81,8 +84,9 @@ class TestMatmulSPMDRule(unittest.TestCase):
         # test row parallel: mk[1, -1],kn[-1, -1] --> mk[1, -1],kn[-1, -1] = nm[1, -1] partial[]
         self.x_dist_tensor_spec.set_dims_mapping([1, -1])
         self.y_dist_tensor_spec.set_dims_mapping([-1, -1])
+
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec, False, False
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -94,8 +98,9 @@ class TestMatmulSPMDRule(unittest.TestCase):
         # test n parallel: mk[-1, -1],kn[-1, 0] --> mk[-1, -1],kn[-1, 0] = nm[-1, 0] partial[]
         self.x_dist_tensor_spec.set_dims_mapping([-1, -1])
         self.y_dist_tensor_spec.set_dims_mapping([-1, 0])
+
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec, False, False
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -107,8 +112,9 @@ class TestMatmulSPMDRule(unittest.TestCase):
         # test partial with propogation: mk[1, 0],kn[-1,-1] --> mk[1, 0],kn[0, -1] = nm[1, -1] partial[0]
         self.x_dist_tensor_spec.set_dims_mapping([1, 0])
         self.y_dist_tensor_spec.set_dims_mapping([-1, -1])
+
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec, False, False
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -121,8 +127,9 @@ class TestMatmulSPMDRule(unittest.TestCase):
         # mk[-1,-1],kn[1,0] --> mk[-1, 1],kn[1, 0] = nm[-1, 0] partial[1]:
         self.x_dist_tensor_spec.set_dims_mapping([-1, -1])
         self.y_dist_tensor_spec.set_dims_mapping([1, 0])
+
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec, False, False
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -136,8 +143,9 @@ class TestMatmulSPMDRule(unittest.TestCase):
         self.x_dist_tensor_spec.shape = [512, 48, 64, 32]
         self.x_dist_tensor_spec.set_dims_mapping([0, 1, -1, -1])
         self.y_dist_tensor_spec.set_dims_mapping([-1, -1])
+
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec, False, False
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -153,9 +161,11 @@ class TestMatmulSPMDRule(unittest.TestCase):
         # abcmk[1, -1, -1, 0],kn[-1, -1] --> abcmk[1, -1, -1, 0],kn[0, -1] = abcmn[1,-1, -1, -1] partial[0]
         self.x_dist_tensor_spec.set_dims_mapping([1, -1, -1, 0])
         self.y_dist_tensor_spec.set_dims_mapping([-1, -1])
+
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec, False, False
         )
+
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
         self.assertEqual(
@@ -171,10 +181,11 @@ class TestMatmulSPMDRule(unittest.TestCase):
         # trans_x = True, abcmk[1, -1, -1, 0], kn[-1, -1] --> abcmk[1, -1, -1, 0],kn[-1, -1] = abcmn[1, -1, 0, -1] partial[]
         self.x_dist_tensor_spec.set_dims_mapping([1, -1, -1, 0])
         self.y_dist_tensor_spec.set_dims_mapping([-1, -1])
-        self.attrs['trans_x'] = True
+
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec, True, False
         )
+
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
         self.assertEqual(
@@ -189,11 +200,11 @@ class TestMatmulSPMDRule(unittest.TestCase):
         # trans_y = True, abcmk[-1, -1, -1, -1], kn[1, 0] --> abcmk[-1, -1, -1, 0],kn[1, 0] = abcmn[-1, -1, -1, 1] partial[0]: done
         self.x_dist_tensor_spec.set_dims_mapping([-1, -1, -1, -1])
         self.y_dist_tensor_spec.set_dims_mapping([1, 0])
-        self.attrs['trans_x'] = False
-        self.attrs['trans_y'] = True
+
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec, False, True
         )
+
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
         self.assertEqual(
@@ -212,11 +223,11 @@ class TestMatmulSPMDRule(unittest.TestCase):
         # multiple mesh dim shard same tensor axis
         self.x_dist_tensor_spec.set_dims_mapping([-1, -1, 0, 1])
         self.y_dist_tensor_spec.set_dims_mapping([1, 0])
-        self.attrs['trans_x'] = True
-        self.attrs['trans_y'] = True
+
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec, True, True
         )
+
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
         self.assertEqual(
@@ -238,8 +249,11 @@ class TestMatmulSPMDRule(unittest.TestCase):
         self.attrs['trans_x'] = True
         self.attrs['trans_y'] = True
         with self.assertRaises(NotImplementedError):
-            self.rule.infer_forward(
-                [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            result_dist_attrs = self.rule.infer_forward(
+                self.x_dist_tensor_spec,
+                self.y_dist_tensor_spec,
+                self.attrs['trans_x'],
+                self.attrs['trans_y'],
             )
 
     def test_matmul_infer_backward(self):
@@ -268,10 +282,13 @@ class TestMatmulSPMDRule(unittest.TestCase):
 
         # mn[1, 0] --> mk[1, -1],kn[-1, 0]
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
-            [self.out_dist_tensor_spec],
-            self.attrs,
+            self.x_dist_tensor_spec,
+            self.y_dist_tensor_spec,
+            self.out_dist_tensor_spec,
+            self.attrs['trans_x'],
+            self.attrs['trans_y'],
         )
+
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
 
@@ -303,12 +320,14 @@ class TestMatmulSPMDRule(unittest.TestCase):
             ]
         )  # dims mapping of input should not influence inferbackward
         self.out_dist_tensor_spec.set_dims_mapping([1, 0, -1, -1])
-
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
-            [self.out_dist_tensor_spec],
-            self.attrs,
+            self.x_dist_tensor_spec,
+            self.y_dist_tensor_spec,
+            self.out_dist_tensor_spec,
+            self.attrs['trans_x'],
+            self.attrs['trans_y'],
         )
+
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
 
@@ -327,10 +346,13 @@ class TestMatmulSPMDRule(unittest.TestCase):
         self.out_dist_tensor_spec.set_dims_mapping([-1, 0, -1, 1])
 
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
-            [self.out_dist_tensor_spec],
-            self.attrs,
+            self.x_dist_tensor_spec,
+            self.y_dist_tensor_spec,
+            self.out_dist_tensor_spec,
+            self.attrs['trans_x'],
+            self.attrs['trans_y'],
         )
+
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
 
@@ -351,11 +373,15 @@ class TestMatmulSPMDRule(unittest.TestCase):
         self.out_dist_tensor_spec.set_dims_mapping([-1, -1, 0, 1])
         self.attrs['trans_x'] = True
         self.attrs['trans_y'] = True
+
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
-            [self.out_dist_tensor_spec],
-            self.attrs,
+            self.x_dist_tensor_spec,
+            self.y_dist_tensor_spec,
+            self.out_dist_tensor_spec,
+            self.attrs['trans_x'],
+            self.attrs['trans_y'],
         )
+
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
 
@@ -373,10 +399,12 @@ class TestMatmulSPMDRule(unittest.TestCase):
         # one mesh dim shard multiple tensor axes
         self.out_dist_tensor_spec.set_dims_mapping([-1, 1, 0, 1])
         with self.assertRaises(RuntimeError):
-            self.rule.infer_backward(
-                [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
-                [self.out_dist_tensor_spec],
-                self.attrs,
+            result_dist_attrs = self.rule.infer_backward(
+                self.x_dist_tensor_spec,
+                self.y_dist_tensor_spec,
+                self.out_dist_tensor_spec,
+                self.attrs['trans_x'],
+                self.attrs['trans_y'],
             )
 
 

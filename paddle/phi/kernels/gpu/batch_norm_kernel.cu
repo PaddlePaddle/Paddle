@@ -41,7 +41,7 @@ namespace cub = hipcub;
 #define LAUNCH_BOUNDS(BlockDim)
 #endif
 
-DECLARE_bool(cudnn_batchnorm_spatial_persistent);
+PD_DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 
 namespace phi {
 
@@ -1255,6 +1255,9 @@ PD_REGISTER_KERNEL(batch_norm,
     kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
   }
+#if CUDNN_VERSION_MIN(7, 4, 1)
+  kernel->OutputAt(5).SetDataType(phi::DataType::UINT8);
+#endif
 }
 #else
 PD_REGISTER_KERNEL(batch_norm,
@@ -1274,6 +1277,9 @@ PD_REGISTER_KERNEL(batch_norm,
     kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
   }
+#if CUDNN_VERSION_MIN(7, 4, 1)
+  kernel->OutputAt(5).SetDataType(phi::DataType::UINT8);
+#endif
 }
 #endif
 

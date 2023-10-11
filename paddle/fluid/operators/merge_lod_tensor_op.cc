@@ -82,7 +82,7 @@ class MergeLoDTensorOp : public framework::OperatorBase {
     platform::Place place = dev_place;
     int64_t batch_size = in_true.dims()[0] + in_false.dims()[0];
     auto data_type = in_true.IsInitialized() ? in_true.type() : in_false.type();
-    int rank;
+    int rank = 0;
     framework::DDim in_dims;
     if (in_true.IsInitialized()) {
       rank = in_true.dims().size();
@@ -138,9 +138,11 @@ class MergeLoDTensorOp : public framework::OperatorBase {
       if (len == 0) {
         continue;
       }
-      auto slice = out->Slice(out_offset, out_offset + len);
-      framework::TensorCopy(
-          input->Slice(start_offset, end_offset), place, dev_ctx, &slice);
+      auto slice = out->Slice(out_offset, out_offset + len);         // NOLINT
+      framework::TensorCopy(input->Slice(start_offset, end_offset),  // NOLINT
+                            place,
+                            dev_ctx,
+                            &slice);
       out_offset += len;
       (*in_idx) += 1;
     }

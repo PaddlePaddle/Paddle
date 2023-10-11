@@ -27,7 +27,7 @@
 
 constexpr int64_t kWaitBlockTImeout = 10;
 
-DECLARE_bool(use_stream_safe_cuda_allocator);
+PD_DECLARE_bool(use_stream_safe_cuda_allocator);
 
 namespace paddle {
 namespace distributed {
@@ -494,7 +494,7 @@ void ProcessGroupCustom::CreateXCCLEnvCache(const Place& place,
           << ", place: " << place_key;
 
   phi::distributed::CommContextManager::CreateXCCLCommContext(
-      store_, std::to_string(gid_), place.GetDeviceType(), rank_, size_);
+      store_, std::to_string(gid_), place, rank_, size_);
 
   auto* calc_ctx = static_cast<phi::CustomContext*>(
       platform::DeviceContextPool::Instance().Get(place));
@@ -815,7 +815,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
       CommType::BROADCAST);
 }
 
-void CheckTensorsInDifferentDevices(
+inline void CheckTensorsInDifferentDevices(
     const std::vector<phi::DenseTensor>& tensors, const size_t num_devices) {
   PADDLE_ENFORCE_EQ(
       tensors.empty(),

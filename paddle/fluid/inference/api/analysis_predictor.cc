@@ -56,6 +56,7 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
@@ -154,7 +155,6 @@ void UpdatePrivateDeviceContext(InferGPUContext *gpu_context,
 #endif
 }  // namespace
 
-using inference::Singleton;
 #ifdef PADDLE_WITH_TENSORRT
 using inference::tensorrt::TRTCalibratorEngine;
 using inference::tensorrt::TRTCalibratorEngineManager;
@@ -217,7 +217,7 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
                                phi::DenseTensor *t,
                                const platform::Place &place) {
   framework::DDim ddim = phi::make_ddim(pt.shape);
-  void *input_ptr;
+  void *input_ptr = nullptr;
   if (pt.dtype == PaddleDType::INT64) {
     input_ptr = t->mutable_data<int64_t>(ddim, place);
   } else if (pt.dtype == PaddleDType::FLOAT32) {
@@ -839,6 +839,10 @@ void AnalysisPredictor::InsertCommOp(
     ss << ep << ", ";
   }
   VLOG(3) << ss.str();
+  std::string endpoints_str = config_.dist_config().current_endpoint();
+  for (const auto &peer : peer_endpoints) {
+    endpoints_str += "," + peer;
+  }
   if (config_.use_gpu()) {
     framework::VarDesc *new_var = block->Var(tmp_var_name);
     new_var->SetType(framework::proto::VarType::RAW);
@@ -860,6 +864,7 @@ void AnalysisPredictor::InsertCommOp(
     comm_init_op->SetAttr("rank", rank);
     comm_init_op->SetAttr("nranks", nranks);
     comm_init_op->SetAttr("ring_id", ring_id);
+    comm_init_op->SetAttr("endpoints", endpoints_str);
     comm_init_op->SetAttr("op_role",
                           static_cast<int>(framework::OpRole::kForward));
     comm_init_op->CheckAttrs();
@@ -884,6 +889,7 @@ void AnalysisPredictor::InsertCommOp(
     comm_init_op->SetAttr("rank", rank);
     comm_init_op->SetAttr("nranks", nranks);
     comm_init_op->SetAttr("ring_id", ring_id);
+    comm_init_op->SetAttr("endpoints", endpoints_str);
     comm_init_op->SetAttr("op_role",
                           static_cast<int>(framework::OpRole::kForward));
     comm_init_op->CheckAttrs();
@@ -908,6 +914,7 @@ void AnalysisPredictor::InsertCommOp(
     comm_init_op->SetAttr("rank", rank);
     comm_init_op->SetAttr("nranks", nranks);
     comm_init_op->SetAttr("ring_id", ring_id);
+    comm_init_op->SetAttr("endpoints", endpoints_str);
     comm_init_op->SetAttr("op_role",
                           static_cast<int>(framework::OpRole::kForward));
     comm_init_op->CheckAttrs();
@@ -1096,6 +1103,10 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   }
 #endif
 
+  if (config_.shape_range_info_collected()) {
+    HookCollectShapeRangeInfo();
+  }
+
   // Run the inference program
   // if share variables, we need not create variables
   executor_->Run();
@@ -1160,6 +1171,10 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   }
 #endif
 
+  if (config_.shape_range_info_collected()) {
+    HookCollectShapeRangeInfo();
+  }
+
   // Run the inference program
   // if share variables, we need not create variables
   executor_->Run();
@@ -1221,7 +1236,7 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
         LOG(ERROR) << "feed names from program do not have name: [" << name
                    << "] from specified input";
       }
-      idx = feed_names_[name];
+      idx = static_cast<int>(feed_names_[name]);
     } else {
       idx = PADDLE_GET_CONST(int, feeds_[i]->GetAttr("col"));
     }
@@ -1405,9 +1420,11 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetTensorRtAllowBuildAtRuntime(
         config_.trt_allow_build_at_runtime());
     argument_->SetTensorRtUseInspector(config_.trt_use_inspector_);
+    argument_->SetTensorRtInspectorSerialize(config_.trt_inspector_serialize_);
     argument_->SetTensorRtUseExplicitQuantization(
         config_.trt_use_explicit_quantization_);
     argument_->SetTrtEngineMemorySharing(config_.trt_engine_memory_sharing());
+    argument_->SetTensorRtOptimizationLevel(config_.trt_optimization_level_);
   }
 
   if (config_.dlnne_enabled()) {
@@ -1572,6 +1589,8 @@ void AnalysisPredictor::PrepareArgument() {
         }
       } else if (config_.use_xpu()) {
         // All passes support fp16. Not reset pass_builder.
+      } else if (config_.use_custom_device()) {
+        // All passes support fp16. Not reset pass_builder.
       } else {
         pass_builder->ClearPasses();
       }
@@ -1707,10 +1726,10 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
 
   auto SetGflags = [](const AnalysisConfig &config) {
     auto SetGflag = [](const char *name, const char *value) {
-      std::string ret = ::GFLAGS_NAMESPACE::SetCommandLineOption(name, value);
+      bool success = paddle::flags::SetFlagValue(name, value);
       PADDLE_ENFORCE_EQ(
-          ret.empty(),
-          false,
+          success,
+          true,
           platform::errors::InvalidArgument(
               "Fail to set gflag: %s, please make sure the gflag exists.",
               name));
@@ -1969,7 +1988,7 @@ AnalysisPredictor::GetOutputTypes() {
 
 std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
     const std::string &name) {
-  framework::Scope *scope;
+  framework::Scope *scope = nullptr;
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   if (config_.dist_config().use_dist_model()) {
     scope = scope_.get();
@@ -1988,7 +2007,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
       static_cast<void *>(scope), this->GetDeviceContexts()));
   res->input_or_output_ = true;
   res->SetName(name);
-  if (platform::is_cpu_place(place_)) {
+  if (platform::is_cpu_place(place_)) {  // NOLINT
     res->SetPlace(PaddlePlace::kCPU);
   } else if (platform::is_ipu_place(place_)) {
     // Currently, IPUPlace's tensor copy between cpu and ipu has been set in
@@ -2008,12 +2027,9 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
     }
   } else if (platform::is_custom_place(place_)) {
     auto custom_place = place_;
-    auto paddleplace = static_cast<PaddlePlace>(
-        static_cast<size_t>(PaddlePlace::kCUSTOM) +
-        phi::CustomRegisteredDeviceMap::Instance()
-            .GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
-    res->SetPlace(
-        paddleplace, custom_place.GetDeviceId(), place_.GetDeviceType());
+    res->SetPlace(PaddlePlace::kCUSTOM,
+                  custom_place.GetDeviceId(),
+                  custom_place.GetDeviceType());
   } else {
     auto gpu_place = place_;
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
@@ -2023,7 +2039,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
 
 std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
     const std::string &name) {
-  framework::Scope *scope;
+  framework::Scope *scope;  // NOLINT
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   if (config_.dist_config().use_dist_model()) {
     scope = scope_.get();
@@ -2042,7 +2058,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
       static_cast<void *>(scope), this->GetDeviceContexts()));
   res->input_or_output_ = false;
   res->SetName(name);
-  if (platform::is_cpu_place(place_)) {
+  if (platform::is_cpu_place(place_)) {  // NOLINT
     res->SetPlace(PaddlePlace::kCPU);
   } else if (platform::is_ipu_place(place_)) {
     // Currently, IPUPlace's tensor copy between cpu and ipu has been set in
@@ -2062,12 +2078,9 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
     }
   } else if (platform::is_custom_place(place_)) {
     auto custom_place = place_;
-    auto paddleplace = static_cast<PaddlePlace>(
-        static_cast<size_t>(PaddlePlace::kCUSTOM) +
-        phi::CustomRegisteredDeviceMap::Instance()
-            .GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
-    res->SetPlace(
-        paddleplace, custom_place.GetDeviceId(), place_.GetDeviceType());
+    res->SetPlace(PaddlePlace::kCUSTOM,
+                  custom_place.GetDeviceId(),
+                  custom_place.GetDeviceType());
   } else {
     auto gpu_place = place_;
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
@@ -2207,6 +2220,8 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
           UpdatePrivateDeviceContext(gpu_context, gpu_resource, place_);
           return std::unique_ptr<phi::DeviceContext>(gpu_context);
         }));
+    auto &pool = paddle::experimental::DeviceContextPool::Instance();
+    pool.SyncDeviceContext(place_);
   }
 
   return ZeroCopyRun();
@@ -2240,7 +2255,8 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
     if (!tensor.initialized()) return;
     framework::DDim dim = tensor.dims();
     std::vector<int32_t> shape(dim.size());
-    for (size_t i = 0; i < shape.size(); ++i) shape[i] = dim[i];
+    for (int i = 0; i < static_cast<int>(shape.size()); ++i)
+      shape[i] = static_cast<int32_t>(dim[i]);
     if (!shape.empty()) {
       shape_info_[input_name].emplace_back(shape);
     } else if (tensor.numel() > 0) {
@@ -2433,7 +2449,7 @@ bool AnalysisPredictor::LoadProgramDesc() {
     fin.seekg(0, std::ios::end);
     pb_content.resize(fin.tellg());
     fin.seekg(0, std::ios::beg);
-    fin.read(&(pb_content.at(0)), pb_content.size());
+    fin.read(&(pb_content.at(0)), pb_content.size());  // NOLINT
     fin.close();
 
     proto.ParseFromString(pb_content);
@@ -2527,6 +2543,7 @@ void AnalysisPredictor::ClearIntermediateTensor() {
 }
 
 #ifdef PADDLE_WITH_TENSORRT
+using inference::Singleton;
 bool AnalysisPredictor::SaveTrtCalibToDisk() {
   PADDLE_ENFORCE_EQ(config_.tensorrt_engine_enabled(),
                     true,
@@ -2581,7 +2598,7 @@ bool AnalysisPredictor::SaveTrtCalibToDisk() {
 }
 #endif
 
-AnalysisPredictor::~AnalysisPredictor() {
+AnalysisPredictor::~AnalysisPredictor() {  // NOLINT
 #ifdef PADDLE_WITH_TENSORRT
   if (config_.tensorrt_engine_enabled() &&
       config_.tensorrt_precision_mode_ == AnalysisConfig::Precision::kInt8 &&
@@ -2890,6 +2907,7 @@ USE_TRT_CONVERTER(sign);
 #endif
 USE_TRT_CONVERTER(rsqrt);
 USE_TRT_CONVERTER(fused_preln_embedding_eltwise_layernorm)
+USE_TRT_CONVERTER(prompt_tuning_emb_eltwise_layernorm);
 USE_TRT_CONVERTER(fused_embedding_eltwise_layernorm);
 USE_TRT_CONVERTER(preln_skip_layernorm)
 USE_TRT_CONVERTER(fused_bias_dropout_residual_layer_norm)
@@ -3087,8 +3105,8 @@ std::tuple<int, int, int> GetTrtRuntimeVersion() {
 #endif
 }
 
-std::string UpdateDllFlag(const char *name, const char *value) {
-  return paddle::UpdateDllFlag(name, value);
+void UpdateDllFlag(const char *name, const char *value) {
+  paddle::UpdateDllFlag(name, value);
 }
 
 void ConvertToMixedPrecision(const std::string &model_file,

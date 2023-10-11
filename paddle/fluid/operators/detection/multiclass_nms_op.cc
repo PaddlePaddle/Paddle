@@ -42,7 +42,7 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "MultiClassNMS");
     auto box_dims = ctx->GetInputDim("BBoxes");
     auto score_dims = ctx->GetInputDim("Scores");
-    auto score_size = score_dims.size();
+    int score_size = static_cast<int>(score_dims.size());
 
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(score_size == 2 || score_size == 3,
@@ -101,11 +101,7 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
     }
     // Here the box_dims[0] is not the real dimension of output.
     // It will be rewritten in the computing kernel.
-    if (score_size == 3) {
-      ctx->SetOutputDim("Out", {-1, box_dims[2] + 2});
-    } else {
-      ctx->SetOutputDim("Out", {-1, box_dims[2] + 2});
-    }
+    ctx->SetOutputDim("Out", {-1, box_dims[2] + 2});
     if (!ctx->IsRuntime()) {
       ctx->SetLoDLevel("Out", std::max(ctx->GetLoDLevel("BBoxes"), 1));
     }
@@ -128,9 +124,9 @@ void SliceOneClass(const platform::DeviceContext& ctx,
   T* item_data = one_class_item->mutable_data<T>(ctx.GetPlace());
   const T* items_data = items.data<T>();
   const int64_t num_item = items.dims()[0];
-  const int class_num = items.dims()[1];
+  const int class_num = static_cast<int>(items.dims()[1]);
   if (items.dims().size() == 3) {
-    int item_size = items.dims()[2];
+    int item_size = static_cast<int>(items.dims()[2]);
     for (int i = 0; i < num_item; ++i) {
       std::memcpy(item_data + i * item_size,
                   items_data + i * class_num * item_size + class_id * item_size,
@@ -243,18 +239,18 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
               nms_threshold,
               nms_eta,
               nms_top_k,
-              &((*indices)[c]),
+              &((*indices)[c]),  // NOLINT
               normalized);
       if (scores_size == 2) {
-        std::stable_sort((*indices)[c].begin(), (*indices)[c].end());
+        std::stable_sort((*indices)[c].begin(), (*indices)[c].end());  // NOLINT
       }
-      num_det += (*indices)[c].size();
+      num_det += (*indices)[c].size();  // NOLINT
     }
 
     *num_nmsed_out = num_det;
     const T* scores_data = scores.data<T>();
     if (keep_top_k > -1 && num_det > keep_top_k) {
-      const T* sdata;
+      const T* sdata = nullptr;
       std::vector<std::pair<float, std::pair<int, int>>> score_index_pairs;
       for (const auto& it : *indices) {
         int label = it.first;
@@ -292,7 +288,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
         }
       }
       new_indices.swap(*indices);
-      *num_nmsed_out = keep_top_k;
+      *num_nmsed_out = keep_top_k;  // NOLINT
     }
   }
 
@@ -314,7 +310,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     auto* scores_data = scores.data<T>();
     auto* bboxes_data = bboxes.data<T>();
     auto* odata = outs->data<T>();
-    const T* sdata;
+    const T* sdata = nullptr;
     phi::DenseTensor bbox;
     bbox.Resize({scores.dims()[0], box_size});
     int count = 0;
@@ -329,7 +325,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
 
       for (auto idx : indices) {
         odata[count * out_dim] = label;  // label
-        const T* bdata;
+        const T* bdata = nullptr;
         if (scores_size == 3) {
           bdata = bboxes_data + idx * box_size;
           odata[count * out_dim + 1] = sdata[idx];  // score
@@ -340,7 +336,8 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
           bdata = bbox.data<T>() + idx * box_size;
           odata[count * out_dim + 1] = *(scores_data + idx * class_num + label);
           if (oindices != nullptr) {
-            oindices[count] = offset + idx * class_num + label;
+            oindices[count] =
+                static_cast<int>(offset + idx * class_num + label);
           }
         }
         // xmin, ymin, xmax, ymax or multi-points coordinates
@@ -371,9 +368,10 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     phi::DenseTensor boxes_slice, scores_slice;
     int n = 0;
     if (has_roisnum) {
-      n = score_size == 3 ? batch_size : rois_num->numel();
+      n = static_cast<int>(score_size == 3 ? batch_size : rois_num->numel());
     } else {
-      n = score_size == 3 ? batch_size : boxes->lod().back().size() - 1;
+      n = static_cast<int>(score_size == 3 ? batch_size
+                                           : boxes->lod().back().size() - 1);
     }
     for (int i = 0; i < n; ++i) {
       std::map<int, std::vector<int>> indices;
@@ -394,8 +392,10 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
           batch_starts.push_back(batch_starts.back());
           continue;
         }
-        scores_slice = scores->Slice(boxes_lod[i], boxes_lod[i + 1]);
-        boxes_slice = boxes->Slice(boxes_lod[i], boxes_lod[i + 1]);
+        scores_slice = scores->Slice(static_cast<int64_t>(boxes_lod[i]),
+                                     static_cast<int64_t>(boxes_lod[i + 1]));
+        boxes_slice = boxes->Slice(static_cast<int64_t>(boxes_lod[i]),
+                                   static_cast<int64_t>(boxes_lod[i + 1]));
       }
       MultiClassNMS(
           ctx, scores_slice, boxes_slice, score_size, &indices, &num_nmsed_out);
@@ -403,7 +403,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
       batch_starts.push_back(batch_starts.back() + num_nmsed_out);
     }
 
-    int num_kept = batch_starts.back();
+    int num_kept = static_cast<int>(batch_starts.back());
     if (num_kept == 0) {
       if (return_index) {
         outs->mutable_data<T>({0, out_dim}, ctx.GetPlace());
@@ -434,15 +434,17 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
             boxes_lod = boxes->lod().back();
           }
           if (boxes_lod[i] == boxes_lod[i + 1]) continue;
-          scores_slice = scores->Slice(boxes_lod[i], boxes_lod[i + 1]);
-          boxes_slice = boxes->Slice(boxes_lod[i], boxes_lod[i + 1]);
+          scores_slice = scores->Slice(static_cast<int64_t>(boxes_lod[i]),
+                                       static_cast<int64_t>(boxes_lod[i + 1]));
+          boxes_slice = boxes->Slice(static_cast<int64_t>(boxes_lod[i]),
+                                     static_cast<int64_t>(boxes_lod[i + 1]));
           if (return_index) {
-            offset = boxes_lod[i] * score_dims[1];
+            offset = static_cast<int>(boxes_lod[i] * score_dims[1]);
           }
         }
 
-        int64_t s = batch_starts[i];
-        int64_t e = batch_starts[i + 1];
+        int64_t s = static_cast<int64_t>(batch_starts[i]);
+        int64_t e = static_cast<int64_t>(batch_starts[i + 1]);
         if (e > s) {
           phi::DenseTensor out = outs->Slice(s, e);
           if (return_index) {
@@ -466,7 +468,8 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
       nms_rois_num->mutable_data<int>({n}, ctx.GetPlace());
       int* num_data = nms_rois_num->data<int>();
       for (int i = 1; i <= n; i++) {
-        num_data[i - 1] = batch_starts[i] - batch_starts[i - 1];
+        num_data[i - 1] =
+            static_cast<int>(batch_starts[i] - batch_starts[i - 1]);
       }
       nms_rois_num->Resize({n});
     }
@@ -577,14 +580,7 @@ class MultiClassNMS2Op : public MultiClassNMSOp {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     MultiClassNMSOp::InferShape(ctx);
-
-    auto score_dims = ctx->GetInputDim("Scores");
-    auto score_size = score_dims.size();
-    if (score_size == 3) {
-      ctx->SetOutputDim("Index", {-1, 1});
-    } else {
-      ctx->SetOutputDim("Index", {-1, 1});
-    }
+    ctx->SetOutputDim("Index", {-1, 1});
     if (!ctx->IsRuntime()) {
       ctx->SetLoDLevel("Index", std::max(ctx->GetLoDLevel("BBoxes"), 1));
     }

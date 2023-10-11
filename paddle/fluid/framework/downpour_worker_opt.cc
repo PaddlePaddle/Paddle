@@ -197,7 +197,7 @@ void DownpourWorkerOpt::CreateThreadOperatorsWithRerank(
   auto& block = program.Block(0);
   std::vector<OpDesc*> ops = block.AllOps();
   // check if Independent between losses if not skip for now
-  int loss_num = loss_names_.size();
+  int loss_num = static_cast<int>(loss_names_.size());
   std::unordered_map<std::string, std::unordered_set<std::string>>
       loss_input_map;
   std::unordered_map<std::string, std::unordered_set<std::string>>
@@ -307,7 +307,7 @@ void DownpourWorkerOpt::TrainFiles() {
   platform::SetNumThreads(1);
   device_reader_->Start();
   int batch_cnt = 0;
-  int cur_batch;
+  int cur_batch = 0;
   std::future<int32_t> pull_async_status;
   std::string async_wait_name = "";
   for (int i = 0; i < param_.program_config(0).pull_sparse_table_id_size();

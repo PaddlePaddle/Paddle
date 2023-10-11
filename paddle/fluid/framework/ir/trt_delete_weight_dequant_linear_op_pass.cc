@@ -255,7 +255,7 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
 
     auto weight_scale_nums = weight_scale_tensor->numel();
     for (int i = 0; i < weight_scale_nums; i++) {
-      weight_scale.push_back(weight_scale_data[i] / range);
+      weight_scale.push_back(weight_scale_data[i] / static_cast<float>(range));
     }
 
     // dequant weight
@@ -292,7 +292,7 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
                             "conv2d_fusion)'s weight dims should be 4."));
 
       for (int i = 0; i < weight_tensor->numel(); i++) {
-        int inner_size = w_dims[1] * w_dims[2] * w_dims[3];
+        int inner_size = static_cast<int>(w_dims[1] * w_dims[2] * w_dims[3]);
         weight_data_tmp[i] = static_cast<float>(quantized_weight_data[i]) *
                              weight_scale[i / inner_size];
       }
@@ -313,7 +313,7 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
                 "When quant_axis == 1 means use per_channel quant_dequant, "
                 "only conv2d_transpose weight dims equal 4."));
         for (int i = 0; i < weight_tensor->numel(); i++) {
-          int inner_size = w_dims[2] * w_dims[3];
+          int inner_size = static_cast<int>(w_dims[2] * w_dims[3]);
           weight_data_tmp[i] = static_cast<float>(quantized_weight_data[i]) *
                                weight_scale[(i / inner_size) % w_dims[1]];
         }

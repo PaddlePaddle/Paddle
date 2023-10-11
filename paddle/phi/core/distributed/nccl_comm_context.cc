@@ -33,9 +33,36 @@ NCCLCommContext::NCCLCommContext(int rank, int size, ncclUniqueId nccl_id)
     : CommContext(rank, size) {
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::ncclCommInitRank(&nccl_comm_, size_, nccl_id, rank_));
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGetVersion(&nccl_version_));
 }
 
+int NCCLCommContext::GetNcclVersion() { return nccl_version_; }
+
 ncclComm_t NCCLCommContext::GetNcclComm() { return nccl_comm_; }
+
+gpuStream_t NCCLCommContext::GetStream() { return dev_ctx_->stream(); }
+
+phi::GPUContext* NCCLCommContext::GetDevContext() { return dev_ctx_.get(); }
+
+void NCCLCommContext::SetDevContext(
+    std::unique_ptr<phi::GPUContext>&& dev_ctx) {
+  dev_ctx_ = std::move(dev_ctx);
+}
+
+gpuEvent_t NCCLCommContext::GetComputeEvent() { return compute_event_.get(); }
+
+void NCCLCommContext::SetComputeEvent(
+    std::shared_ptr<std::remove_pointer<phi::gpuEvent_t>::type>&&
+        compute_event) {
+  compute_event_ = std::move(compute_event);
+}
+
+gpuEvent_t NCCLCommContext::GetCommEvent() { return comm_event_.get(); }
+
+void NCCLCommContext::SetCommEvent(
+    std::shared_ptr<std::remove_pointer<phi::gpuEvent_t>::type>&& comm_event) {
+  comm_event_ = std::move(comm_event);
+}
 
 void NCCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
                                 const phi::DenseTensor& in_tensor,
@@ -203,6 +230,20 @@ void NCCLCommContext::GroupStart() {
   NCCL_CHECK(phi::dynload::ncclGroupStart());
 }
 void NCCLCommContext::GroupEnd() { NCCL_CHECK(phi::dynload::ncclGroupEnd()); }
+
+#if NCCL_VERSION_CODE >= 21100
+void NCCLCommContext::RedOpCreatePreMulSum(ncclRedOp_t* op,
+                                           void* scalar,
+                                           ncclDataType_t dtype,
+                                           ncclScalarResidence_t residence) {
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclRedOpCreatePreMulSum(
+      op, scalar, dtype, residence, nccl_comm_));
+}
+
+void NCCLCommContext::RedOpDestroy(ncclRedOp_t op) {
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclRedOpDestroy(op, nccl_comm_));
+}
+#endif
 
 }  // namespace distributed
 }  // namespace phi

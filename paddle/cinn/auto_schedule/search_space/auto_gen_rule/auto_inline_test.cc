@@ -30,9 +30,9 @@
 #include "paddle/cinn/ir/function_base.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/lang/lower.h"
 #include "paddle/cinn/poly/stage.h"
@@ -161,14 +161,14 @@ TEST(AutoInline, AddReluInline) {
           "inferdtype");
   const auto& shape_dict = graph->GetAttrs<
       absl::flat_hash_map<std::string, hlir::framework::shape_t>>("infershape");
-  auto op_lowerer = std::make_unique<hlir::framework::OpLowerer>(
-      dtype_dict, shape_dict, target);
+  auto op_lowerer =
+      hlir::framework::CreateOpLowerer(dtype_dict, shape_dict, target);
 
   EXPECT_EQ(graph->fusion_groups.size(), 1UL);
   std::vector<ir::LoweredFunc> funcs =
-      op_lowerer->Lower(graph->fusion_groups[0],
-                        /*apply_op_schedule = */ false,
-                        /*apply_group_schedule=*/false);
+      op_lowerer.Lower(graph->fusion_groups[0],
+                       /*apply_op_schedule = */ false,
+                       /*apply_group_schedule=*/false);
 
   VLOG(6) << "Expr before auto inline: " << funcs[0]->body;
 

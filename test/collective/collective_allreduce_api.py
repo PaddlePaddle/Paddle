@@ -19,8 +19,8 @@ from legacy_test.test_collective_api_base import (
 
 import paddle
 import paddle.distributed as dist
-from paddle import fluid, framework
-from paddle.fluid import data_feeder
+from paddle import base, framework
+from paddle.base import data_feeder
 
 paddle.enable_static()
 
@@ -63,15 +63,13 @@ def all_reduce_new(tensor, reduce_type=str(dist.ReduceOp.SUM), group=None):
         attrs={'ring_id': ring_id, 'reduce_type': int(reduce_type)},
     )
 
-    return None
-
 
 class TestCollectiveAllreduceAPI(TestCollectiveAPIRunnerBase):
     def __init__(self):
         self.global_ring_id = 0
 
     def get_model(self, main_prog, startup_program, rank):
-        with fluid.program_guard(main_prog, startup_program):
+        with base.program_guard(main_prog, startup_program):
             tindata = paddle.static.data(
                 name="tindata", shape=[10, 1000], dtype='float32'
             )
@@ -86,11 +84,25 @@ class TestCollectiveAllreduceAPI(TestCollectiveAPIRunnerBase):
         dtype='float32',
         reduce_type=str(dist.ReduceOp.SUM),
     ):
-        with fluid.program_guard(main_prog, startup_program):
+        with base.program_guard(main_prog, startup_program):
             tindata = paddle.static.data(
                 name="tindata", shape=[10, 1000], dtype=dtype
             )
             all_reduce_new(tindata, reduce_type)
+            return [tindata]
+
+    def get_model_new_comm(
+        self,
+        main_prog,
+        startup_program,
+        rank,
+        dtype='float32',
+    ):
+        with base.program_guard(main_prog, startup_program):
+            tindata = paddle.static.data(
+                name="tindata", shape=[10, 1000], dtype=dtype
+            )
+            paddle.distributed.all_reduce(tindata)
             return [tindata]
 
 

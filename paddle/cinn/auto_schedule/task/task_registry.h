@@ -14,14 +14,13 @@
 
 #pragma once
 
-#include <gflags/gflags.h>
-
 #include <mutex>
 #include <string>
 
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/utils/registry.h"
+#include "paddle/utils/flags.h"
 
 namespace cinn {
 
@@ -64,7 +63,7 @@ class InitialTaskRegistry : public Registry<InitialTaskInfo> {
     std::lock_guard<std::mutex> guard(registering_mutex);
     if (fmap_.count(task_key) == 0) {
       InitialTaskInfo* task_info =
-          new InitialTaskInfo(task_key, optim::IRCopy(module_expr));
+          new InitialTaskInfo(task_key, ir::ir_utils::IRCopy(module_expr));
       __REGISTER__(task_key, task_info);
     }
   }

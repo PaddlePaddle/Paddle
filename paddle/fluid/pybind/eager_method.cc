@@ -61,13 +61,15 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/utils/pybind.h"
 
 PHI_DECLARE_bool(set_to_1d);
-DECLARE_bool(use_stride_kernel);
+PHI_DECLARE_bool(use_stride_kernel);
 
 namespace paddle {
 namespace pybind {
@@ -98,6 +100,29 @@ Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj) {
         "method, when you reach this means we got another type index."));
   }
 }
+
+namespace {
+#ifdef PADDLE_WITH_DISTRIBUTE
+phi::DenseTensor ReshardXToReplicated(
+    phi::distributed::DistTensor* dist_tensor) {
+  if (!dist_tensor->dist_attr().is_replicated()) {
+    phi::distributed::TensorDistAttr dist_attr(dist_tensor->dist_attr());
+    std::vector<int64_t> dims_mapping(dist_tensor->dims().size(), -1);
+    dist_attr.set_dims_mapping(dims_mapping);
+
+    // reshard to replicate dist tensor
+    auto* func =
+        phi::distributed::ChooseProperReshardFunction(*dist_tensor, dist_attr);
+    auto* dev_ctx =
+        phi::DeviceContextPool::Instance().Get(dist_tensor->place());
+    auto out_tensor = func->Eval(dev_ctx, *dist_tensor, dist_attr);
+    return out_tensor->value();
+  } else {
+    return dist_tensor->value();
+  }
+}
+#endif
+}  // namespace
 
 PyDoc_STRVAR(tensor_method_numpy__doc__,  // NOLINT
              R"DOC(numpy($self, /)
@@ -145,15 +170,6 @@ static PyObject* tensor_method_numpy(TensorObject* self,
     return array;
   }
   auto tensor_dims = self->tensor.shape();
-#ifdef PADDLE_WITH_DISTRIBUTE
-  // Now the DistTensor's numpy() return the local tensor value
-  if (self->tensor.is_dist_tensor()) {
-    tensor_dims = phi::vectorize(
-        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
-            ->value()
-            .dims());
-  }
-#endif
   auto numpy_dtype = TensorDtype2NumpyDtype(self->tensor.type());
   auto sizeof_dtype = phi::SizeOf(self->tensor.type());
   Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];     // NOLINT
@@ -185,20 +201,20 @@ static PyObject* tensor_method_numpy(TensorObject* self,
              "otherwise 'Tensor.numpy()[0]' will raise error in release 2.6.";
       py_rank = 1;
       py_dims[0] = 1;
-      py_strides[0] = sizeof_dtype * numel;
+      py_strides[0] = static_cast<Py_intptr_t>(sizeof_dtype * numel);
     }
   } else if (self->tensor.is_dense_tensor()) {
     auto tensor_stride = self->tensor.strides();
 
-    for (int i = tensor_dims.size() - 1; i >= 0; --i) {
-      py_dims[i] = static_cast<size_t>(tensor_dims[i]);
-      py_strides[i] = sizeof_dtype * tensor_stride[i];
+    for (int i = static_cast<int>(tensor_dims.size()) - 1; i >= 0; --i) {
+      py_dims[i] = static_cast<Py_intptr_t>(tensor_dims[i]);
+      py_strides[i] = static_cast<Py_intptr_t>(sizeof_dtype * tensor_stride[i]);
       numel *= py_dims[i];
     }
   } else {
-    for (int i = tensor_dims.size() - 1; i >= 0; --i) {
-      py_dims[i] = static_cast<size_t>(tensor_dims[i]);
-      py_strides[i] = sizeof_dtype * numel;
+    for (int i = static_cast<int>(tensor_dims.size()) - 1; i >= 0; --i) {
+      py_dims[i] = static_cast<Py_intptr_t>(tensor_dims[i]);
+      py_strides[i] = static_cast<Py_intptr_t>(sizeof_dtype * numel);
       numel *= py_dims[i];
     }
   }
@@ -207,7 +223,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
     PyObject* array = api.PyArray_NewFromDescr_(
         api.PyArray_Type_,
         api.PyArray_DescrFromType_(numpy_dtype),
-        py_rank,
+        static_cast<int>(py_rank),
         py_dims,
         py_strides,
         nullptr,
@@ -258,12 +274,11 @@ static PyObject* tensor_method_numpy(TensorObject* self,
                            dense_tensor->Holder()->size());
     } else if (self->tensor.is_dist_tensor()) {
 #ifdef PADDLE_WITH_DISTRIBUTE
-      // TODO(chenweihang): deal with DistTensor as local DenseTensor now,
-      // if the local DenseTensor is shard or partial, do gather or reduce?
       VLOG(6) << "Getting DistTensor's numpy value";
       auto* dist_tensor =
           static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
-      auto& dense_tensor = dist_tensor->value();
+      auto dense_tensor = ReshardXToReplicated(dist_tensor);
+
       cpu_tensor.set_meta(dense_tensor.meta());
       // deep copy
       auto tmp_allocation_ptr =
@@ -330,7 +345,8 @@ static PyObject* tensor_method_numpy(TensorObject* self,
       VLOG(6) << "Getting DistTensor's numpy value";
       auto* dist_tensor =
           static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
-      auto& dense_tensor = dist_tensor->value();
+      auto dense_tensor = ReshardXToReplicated(dist_tensor);
+
       cpu_tensor.set_meta(dense_tensor.meta());
       auto tmp_allocation_ptr =
           memory::Alloc(cpu_place, dense_tensor.Holder()->size());
@@ -455,7 +471,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   PyObject* array = api.PyArray_NewFromDescr_(
       api.PyArray_Type_,
       api.PyArray_DescrFromType_(numpy_dtype),
-      py_rank,
+      static_cast<int>(py_rank),
       py_dims,
       py_strides,
       reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(array_buffer) +
@@ -828,7 +844,7 @@ static PyObject* tensor_clear_gradient(TensorObject* self,
     set_to_zero = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
   }
 
-  paddle::Tensor* grad;
+  paddle::Tensor* grad = nullptr;
   bool is_leaf = egr::EagerUtils::IsLeafTensor(self->tensor);
   if (is_leaf) {
     grad = egr::EagerUtils::mutable_grad(self->tensor);
@@ -1102,7 +1118,7 @@ static PyObject* tensor_method_detach_(TensorObject* self,
   autograd_meta->SetPersistable(
       egr::EagerUtils::autograd_meta(&(self->tensor))->Persistable());
   self->tensor.set_autograd_meta(autograd_meta);
-
+  Py_INCREF(reinterpret_cast<PyObject*>(self));
   return reinterpret_cast<PyObject*>(self);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -1601,7 +1617,8 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
           py::isinstance<py::int_>(value_obj_tmp) ||
           py::isinstance<py::bool_>(value_obj_tmp) ||
           PyComplex_Check(value_obj)) {
-        if (self->tensor.dtype() == phi::DataType::FLOAT32) {
+        if (self->tensor.dtype() == phi::DataType::FLOAT32 ||
+            self->tensor.dtype() == phi::DataType::FLOAT16) {
           attrs["values"] = std::vector<paddle::experimental::Scalar>{
               value_obj_tmp.cast<float>()};
         } else if (self->tensor.dtype() == phi::DataType::FLOAT64) {
@@ -1616,9 +1633,6 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
         } else if (self->tensor.dtype() == phi::DataType::BOOL) {
           attrs["values"] = std::vector<paddle::experimental::Scalar>{
               value_obj_tmp.cast<bool>()};
-        } else if (self->tensor.dtype() == phi::DataType::FLOAT16) {
-          attrs["values"] = std::vector<paddle::experimental::Scalar>{
-              value_obj_tmp.cast<float>()};
         } else if (self->tensor.dtype() == phi::DataType::COMPLEX64) {
           attrs["values"] = std::vector<paddle::experimental::Scalar>{
               value_obj_tmp.cast<std::complex<float>>()};
@@ -1649,14 +1663,17 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       // use inplace set_value_ operator
       if (value_tensor.initialized() &&
           (self->tensor.dtype() != value_tensor.dtype())) {
-        paddle::small_vector<std::vector<paddle::Tensor>,
-                             egr::kSlotSmallVectorSize>
-            tmps = {{self->tensor}, {value_tensor}};
-        auto amp_dtype = egr::GetAmpDestDtype("set_value", tmps);
-        self->tensor = egr::EagerAmpAutoCast(
-            self->tensor.name(), self->tensor, amp_dtype, "set_value");
-        value_tensor = egr::EagerAmpAutoCast(
-            value_tensor.name(), value_tensor, amp_dtype, "set_value");
+        if (egr::Controller::Instance().GetAMPLevel() !=
+            paddle::imperative::AmpLevel::O0) {
+          paddle::small_vector<std::vector<paddle::Tensor>,
+                               egr::kSlotSmallVectorSize>
+              tmps = {{self->tensor}, {value_tensor}};
+          auto amp_dtype = egr::GetAmpDestDtype("set_value", tmps);
+          self->tensor = egr::EagerAmpAutoCast(
+              self->tensor.name(), self->tensor, amp_dtype, "set_value");
+          value_tensor = egr::EagerAmpAutoCast(
+              value_tensor.name(), value_tensor, amp_dtype, "set_value");
+        }
         if (self->tensor.dtype() != value_tensor.dtype()) {
           value_tensor = cast_ad_func(value_tensor, self->tensor.dtype());
         }
@@ -1712,7 +1729,7 @@ static PyObject* tensor_register_grad_hook(TensorObject* self,
                                            PyObject* args,
                                            PyObject* kwargs) {
   EAGER_TRY
-  int64_t hook_id;
+  int64_t hook_id = 0;
   if (egr::EagerUtils::IsLeafTensor(self->tensor)) {
     VLOG(6) << "Register hook for leaf tensor: " << self->tensor.name();
 
@@ -2680,6 +2697,30 @@ static PyObject* tensor__grad_value(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor__local_value(TensorObject* self,
+                                     PyObject* args,
+                                     PyObject* kwargs) {
+  EAGER_TRY
+  if (self->tensor.is_dist_tensor()) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+    phi::distributed::DistTensor* dist_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
+    paddle::Tensor result(
+        std::make_shared<phi::DenseTensor>(dist_tensor->value()));
+    return ToPyObject(result);
+#else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "The `_local_value` method of (Dist)Tensor is not supported "
+        "in the current PaddlePaddle, please recompile and install "
+        "PaddlePaddle "
+        "with the option of `WITH_DISTRIBUTE=ON`."));
+#endif
+  } else {
+    RETURN_PY_NONE
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor__unset_fake_empty(TensorObject* self,
                                           PyObject* args,
                                           PyObject* kwargs) {
@@ -2777,9 +2818,9 @@ static PyObject* tensor_method_strides(TensorObject* self,
     return ToPyObject(value);
   }
   auto stride = self->tensor.strides();
-  size_t rank = static_cast<size_t>(stride.size());
+  int rank = static_cast<int>(stride.size());
   value.resize(rank);
-  for (size_t i = 0; i < rank; i++) {
+  for (int i = 0; i < rank; i++) {
     value[i] = stride[i];
   }
   return ToPyObject(value);
@@ -2819,9 +2860,10 @@ static PyObject* tensor_contiguous(TensorObject* self,
       return reinterpret_cast<PyObject*>(self);
     } else {
       eager_gil_scoped_release guard;
-      return ToPyObject(
-          paddle::Tensor(std::make_shared<phi::DenseTensor>(std::move(
-              paddle::experimental::Trans2Contiguous(*(dense_tensor.get()))))));
+      self->tensor.set_impl(std::make_shared<phi::DenseTensor>(std::move(
+          paddle::experimental::Trans2Contiguous(*(dense_tensor.get())))));
+      Py_INCREF(self);
+      return reinterpret_cast<PyObject*>(self);
     }
 
   } else {
@@ -2860,6 +2902,18 @@ static PyObject* tensor_is_contiguous(TensorObject* self,
   } else {
     return ToPyObject(true);
   }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_method__set_impl(TensorObject* self,
+                                         PyObject* args,
+                                         PyObject* kwargs) {
+  EAGER_TRY
+  VLOG(4) << "Running in tensor_method__set_impl: set Tensor impl form the "
+             "other Tensor.";
+  auto tensor = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
+  self->tensor.set_impl(tensor.impl());
+  RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -3130,6 +3184,10 @@ PyMethodDef variable_methods[] = {  // NOLINT
      (PyCFunction)(void (*)())tensor__grad_value,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
+    {"_local_value",
+     (PyCFunction)(void (*)())tensor__local_value,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
     {"_unset_fake_empty",
      (PyCFunction)(void (*)())tensor__unset_fake_empty,
      METH_VARARGS | METH_KEYWORDS,
@@ -3154,6 +3212,10 @@ PyMethodDef variable_methods[] = {  // NOLINT
      (PyCFunction)(void (*)(void))tensor_method_strides,
      METH_VARARGS | METH_KEYWORDS,
      tensor_get_strides__doc__},
+    {"_set_impl",
+     (PyCFunction)(void (*)(void))tensor_method__set_impl,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
 #if defined(PADDLE_WITH_CUDA)
     {"_tensor_uva",
      (PyCFunction)(void (*)())tensor_method__uva,

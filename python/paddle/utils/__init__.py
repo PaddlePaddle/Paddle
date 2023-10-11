@@ -18,7 +18,7 @@ from .lazy_import import try_import  # noqa: F401
 from .op_version import OpLastCheckpointChecker  # noqa: F401
 from .install_check import run_check  # noqa: F401
 from . import unique_name  # noqa: F401
-from ..fluid.framework import require_version  # noqa: F401
+from ..base.framework import require_version  # noqa: F401
 
 from . import download  # noqa: F401
 from . import image_util  # noqa: F401
@@ -53,4 +53,4 @@ from .layers_utils import _is_symmetric_padding  # noqa: F401
 from .layers_utils import _contain_var  # noqa: F401
 from .layers_utils import _convert_to_tensor_list  # noqa: F401
 
-__all__ = ['deprecated', 'run_check', 'require_version', 'try_import']  # noqa
+__all__ = ['deprecated', 'run_check', 'require_version', 'try_import']

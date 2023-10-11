@@ -19,8 +19,7 @@ import time
 import warnings
 from collections import OrderedDict, namedtuple
 from contextlib import contextmanager
-from multiprocessing import Manager  # noqa: F401
-from multiprocessing import Process  # noqa: F401
+from multiprocessing import Manager, Process
 
 import numpy as np
 
@@ -43,7 +42,7 @@ from paddle.distributed.communication.group import (
     _get_global_group,
     is_initialized,
 )
-from paddle.distributed.fleet.base.private_helper_function import (  # noqa: F401
+from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
 from paddle.distributed.fleet.launch_utils import check_backend
@@ -185,7 +184,7 @@ def sync_params_buffers(
 
         for coalesced_var, origin_vars, var_shapes in coalesced_vars:
             var_len = [np.prod(v_shape) for v_shape in var_shapes]
-            paddle.fluid.framework._dygraph_tracer().trace_op(
+            paddle.base.framework._dygraph_tracer().trace_op(
                 type='split',
                 inputs={'X': coalesced_var},
                 outputs={'Out': origin_vars},
@@ -700,8 +699,8 @@ class ParallelEnv:
 
         # imperative only support one gpu or xpu
         if self._device_type != "":
-            FLAGS_selected_custom_devices = 'FLAGS_selected_{}s'.format(
-                self._device_type
+            FLAGS_selected_custom_devices = (
+                f'FLAGS_selected_{self._device_type}s'
             )
             selected_custom_devices = os.getenv(
                 FLAGS_selected_custom_devices, "0"
@@ -1014,8 +1013,8 @@ def init_parallel_env():
         )
 
     if backend == "xccl":
-        FLAGS_selected_custom_devices = 'FLAGS_selected_{}s'.format(
-            parallel_env.device_type
+        FLAGS_selected_custom_devices = (
+            f'FLAGS_selected_{parallel_env.device_type}s'
         )
         _check_var_exists(FLAGS_selected_custom_devices)
     else:
@@ -1084,13 +1083,7 @@ def init_parallel_env():
         master_port = int(master_port)
         is_master = rank == 0
         stop_check_timeout = int(os.getenv("FLAGS_stop_check_timeout", "900"))
-        default_store = core.TCPStore(
-            master_addr,
-            master_port,
-            is_master,
-            world_size,
-            timeout=stop_check_timeout,
-        )
+        default_store = core.create_or_get_global_tcp_store()
         _set_default_store(default_store)
         pg = _new_process_group_impl(
             backend,
@@ -1108,6 +1101,11 @@ def init_parallel_env():
         _add_new_group(group)
         parallel_helper._set_parallel_ctx(True)
 
+        # barrier will call CreateNCCLEnvCache which will call CreateNCCLCommContext.
+        # Set device_id to prevent creating null dev_ctx.
+        # TODO(mine): support XPU and other backends.
+        if backend in ["nccl", 'xccl', 'bkcl']:
+            core.CommContextManager.set_device_id(parallel_env.device_id)
         paddle.distributed.barrier(group=group)
         return group
 

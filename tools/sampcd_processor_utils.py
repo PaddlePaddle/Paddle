@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import argparse
-import dataclasses
 import inspect
 import logging
 import os
@@ -26,14 +25,20 @@ import typing
 logger = logging.getLogger(__name__)
 logger.propagate = False
 
-if logger.handlers:
-    console = logger.handlers[
-        0
-    ]  # we assume the first handler is the one we want to configure
-else:
-    console = logging.StreamHandler(stream=sys.stderr)
-    logger.addHandler(console)
-console.setFormatter(logging.Formatter("%(message)s"))
+formatter = logging.Formatter("%(message)s")
+
+# add stdout for all logs
+handler_stdout = logging.StreamHandler(stream=sys.stdout)
+handler_stdout.setLevel(logging.DEBUG)
+handler_stdout.setFormatter(formatter)
+
+# add stderr for bad code-block
+handler_stderr = logging.StreamHandler(stream=sys.stderr)
+handler_stderr.setLevel(logging.WARNING)
+handler_stderr.setFormatter(formatter)
+
+logger.addHandler(handler_stdout)
+logger.addHandler(handler_stderr)
 
 
 RUN_ON_DEVICE = 'cpu'
@@ -44,17 +49,165 @@ API_DIFF_SPEC_FN = 'dev_pr_diff_api.spec'
 TEST_TIMEOUT = 10
 
 
-@dataclasses.dataclass
+class Result:
+    # name/key for result
+    name: str = ''
+
+    # default value
+    default: bool = False
+
+    # is failed result or not
+    is_fail: bool = False
+
+    # logging
+    logger: typing.Callable = logger.info
+
+    # logging print order(not logging level, just for convenient)
+    order: int = 0
+
+    @classmethod
+    def msg(cls, count: int, env: typing.Set) -> str:
+        """Message for logging with api `count` and running `env`."""
+        raise NotImplementedError
+
+
+class MetaResult(type):
+    """A meta class to record `Result` subclasses."""
+
+    __slots__ = ()
+
+    # hold result cls
+    __cls_map = {}
+
+    # result added order
+    __order = 0
+
+    def __new__(
+        mcs,
+        name: str,
+        bases: typing.Tuple[type, ...],
+        namespace: typing.Dict[str, typing.Any],
+    ) -> type:
+        cls = super().__new__(mcs, name, bases, namespace)
+        if issubclass(cls, Result):
+            # set cls order as added to Meta
+            cls.order = mcs.__order
+            mcs.__order += 1
+
+            # put cls into Meta's map
+            mcs.__cls_map[namespace.get('name')] = cls
+
+        return cls
+
+    @classmethod
+    def get(mcs, name: str) -> type:
+        return mcs.__cls_map.get(name)
+
+    @classmethod
+    def cls_map(mcs) -> typing.Dict[str, Result]:
+        return mcs.__cls_map
+
+
+class RPassed(Result, metaclass=MetaResult):
+    name = 'passed'
+    is_fail = False
+
+    @classmethod
+    def msg(cls, count, env):
+        return f">>> {count} sample codes ran success in env: {env}"
+
+
+class RSkipped(Result, metaclass=MetaResult):
+    name = 'skipped'
+    is_fail = False
+    logger = logger.warning
+
+    @classmethod
+    def msg(cls, count, env):
+        return f">>> {count} sample codes skipped in env: {env}"
+
+
+class RFailed(Result, metaclass=MetaResult):
+    name = 'failed'
+    is_fail = True
+    logger = logger.error
+
+    @classmethod
+    def msg(cls, count, env):
+        return f">>> {count} sample codes ran failed in env: {env}"
+
+
+class RNoCode(Result, metaclass=MetaResult):
+    name = 'nocode'
+    is_fail = True
+    logger = logger.error
+
+    @classmethod
+    def msg(cls, count, env):
+        return f">>> {count} apis don't have sample codes or could not run test in env: {env}"
+
+
+class RTimeout(Result, metaclass=MetaResult):
+    name = 'timeout'
+    is_fail = True
+    logger = logger.error
+
+    @classmethod
+    def msg(cls, count, env):
+        return f">>> {count} sample codes ran timeout or error in env: {env}"
+
+
+class RBadStatement(Result, metaclass=MetaResult):
+    name = 'badstatement'
+    is_fail = True
+    logger = logger.error
+
+    @classmethod
+    def msg(cls, count, env):
+        return (
+            f">>> {count} bad statements detected in sample codes in env: {env}"
+        )
+
+
 class TestResult:
-    name: str
-    nocode: bool = False
-    passed: bool = False
-    skipped: bool = False
-    failed: bool = False
-    timeout: bool = False
+    name: str = ""
     time: float = float('inf')
     test_msg: str = ""
     extra_info: str = ""
+
+    # there should be only one result be True.
+    __unique_state: Result = None
+
+    def __init__(self, **kwargs) -> None:
+        # set all attr from metaclass
+        for result_name, result_cls in MetaResult.cls_map().items():
+            setattr(self, result_name, result_cls.default)
+
+        # overwrite attr from kwargs
+        for name, value in kwargs.items():
+            # check attr name
+            if not (hasattr(self, name) or name in MetaResult.cls_map()):
+                raise KeyError(f'`{name}` is not a valid result type.')
+
+            setattr(self, name, value)
+
+            if name in MetaResult.cls_map() and value:
+                if self.__unique_state is not None:
+                    logger.warning('Only one result state should be True.')
+
+                self.__unique_state = MetaResult.get(name)
+
+        if self.__unique_state is None:
+            logger.warning('Default result will be set to FAILED!')
+            setattr(self, RFailed.name, True)
+            self.__unique_state = RFailed
+
+    @property
+    def state(self) -> Result:
+        return self.__unique_state
+
+    def __str__(self) -> str:
+        return f'{self.name}, running time: {self.time:.3f}s'
 
 
 class DocTester:
@@ -376,6 +529,17 @@ def extract_code_blocks_from_docstr(docstr, google_style=True):
     return code_blocks
 
 
+def log_exit(arg=None):
+    if arg:
+        _logger = logger.warning
+    else:
+        _logger = logger.info
+
+    _logger("----------------End of the Check--------------------")
+
+    sys.exit(arg)
+
+
 def init_logger(debug=True, log_file=None):
     """
     init logger level and file handler
@@ -409,7 +573,7 @@ def check_test_mode(mode="cpu", gpu_id=0):
         logger.error(
             "Unrecognized argument:%s, 'cpu' or 'gpu' is desired.", mode
         )
-        sys.exit("Invalid arguments")
+        log_exit("Invalid arguments")
 
     return mode
 
@@ -465,8 +629,8 @@ def get_docstring(full_test=False):
                 docstrings_to_test[api] = api_obj.__doc__
 
     if len(docstrings_to_test) == 0 and len(whl_error) == 0:
-        logger.info("-----API_PR.spec is the same as API_DEV.spec-----")
-        sys.exit(0)
+        logger.warning("-----API_PR.spec is the same as API_DEV.spec-----")
+        log_exit(0)
     logger.info("API_PR is diff from API_DEV: %s", docstrings_to_test.keys())
     logger.info("Total api: %s", len(docstrings_to_test.keys()))
 
@@ -490,30 +654,26 @@ def check_old_style(docstrings_to_test: typing.Dict[str, str]):
                 codeblock_name = codeblock['name']
                 codeblock_id = codeblock['id']
 
-                docstring_name = '{}:{}'.format(
-                    api_name, codeblock_name or codeblock_id
-                )
+                docstring_name = f'{api_name}:{codeblock_name or codeblock_id}'
 
                 old_style_apis.append(docstring_name)
 
     if old_style_apis:
-        stdout_handler = logging.StreamHandler(stream=sys.stdout)
-        logger.addHandler(stdout_handler)
-
-        logger.info(
+        logger.warning(
             ">>> %d apis use plain sample code style.",
             len(old_style_apis),
         )
-        logger.info('=======================')
-        logger.info('\n'.join(old_style_apis))
-        logger.info('=======================')
-        logger.info("Check Failed!")
-        logger.info("DEPRECATION: Please do not use plain sample code style.")
-        logger.info(
-            "For more information: https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/dev_guides/style_guide_and_references/code_example_writing_specification_cn.html "
+        logger.warning('=======================')
+        logger.warning('\n'.join(old_style_apis))
+        logger.warning('=======================')
+        logger.warning(">>> Check Failed!")
+        logger.warning(
+            ">>> DEPRECATION: Please do not use plain sample code style."
         )
-        logger.info("----------------End of the Check--------------------")
-        sys.exit(1)
+        logger.warning(
+            ">>> For more information: https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/dev_guides/style_guide_and_references/code_example_writing_specification_cn.html "
+        )
+        log_exit(1)
 
 
 def exec_gen_doc():
@@ -578,9 +738,7 @@ def get_test_results(
                 docstring = doctester.ensemble_docstring(
                     codeblock=codeblock['codes']
                 )
-                docstring_name = '{}:{}'.format(
-                    api_name, codeblock_name or codeblock_id
-                )
+                docstring_name = f'{api_name}:{codeblock_name or codeblock_id}'
 
                 docstrings_extracted.append(
                     {'name': docstring_name, 'docstring': docstring}

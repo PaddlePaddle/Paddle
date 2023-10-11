@@ -44,7 +44,7 @@ class MatrixReduceSumFunctor<T, CPUContext> {
     std::vector<int64_t> out_reduce_dims;
     for (size_t idx = 0; idx <= in_size - 3; idx++) {
       if (in_dims[idx] != 1 && out_bst_dims[idx] == 1) {
-        out_reduce_dims.push_back(idx);
+        out_reduce_dims.push_back(static_cast<int>(idx));
       }
     }
     ReduceKernelImpl<CPUContext, T, T, phi::funcs::SumFunctor>(

@@ -18,7 +18,7 @@ from get_test_cover_info import XPUOpTestWrapper, create_test_class
 from test_collective_base_xpu import TestDistBase
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 paddle.enable_static()
 

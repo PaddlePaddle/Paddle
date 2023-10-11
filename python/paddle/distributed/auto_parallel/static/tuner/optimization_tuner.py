@@ -308,7 +308,7 @@ class OptimizationTuner:
                 self._baseline_dist_context.serial_feed_vars["inputs"]
                 + self._baseline_dist_context.serial_feed_vars["labels"]
             )
-            if config["use_pure_fp16"]:
+            if config["dtype"] == "float16" and config["level"] == "o2":
                 config["base_opt"] = dist_context.serial_optimizer
                 auto_parallel_fp16_pass = new_pass("auto_parallel_fp16", config)
                 auto_parallel_fp16_pass.apply(
@@ -538,9 +538,7 @@ class OptimizationTuner:
             )
 
         self._logger.info(
-            "Trial {} evaluation finish with {}.".format(
-                trial.name, parse_results(results)
-            )
+            f"Trial {trial.name} evaluation finish with {parse_results(results)}."
         )
         return results
 

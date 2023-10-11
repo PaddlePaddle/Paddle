@@ -130,10 +130,14 @@ class BeamSearchFunctor<phi::CPUContext, T> {
              ((score == in.score) && (offset < in.offset));
     }
 
-    inline void operator=(const Item &in) {
-      offset = in.offset;
-      id = in.id;
-      score = in.score;
+    inline Item &operator=(const Item &in) {
+      if (this != &in) {
+        this->offset = in.offset;
+        this->id = in.id;
+        this->score = in.score;
+        return *this;
+      }
+      return *this;
     }
 
     std::string ToString() {

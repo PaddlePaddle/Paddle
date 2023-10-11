@@ -208,7 +208,7 @@ class RandomSampler(Sampler):
         if not isinstance(self.replacement, bool):
             raise TypeError(
                 "expect boolean value for replacement, but got "
-                "replacement={}".format(self.replacement)
+                f"replacement={self.replacement}"
             )
 
         if self._num_samples is not None and not replacement:
@@ -219,7 +219,7 @@ class RandomSampler(Sampler):
         if not isinstance(self.num_samples, int) or self.num_samples <= 0:
             raise ValueError(
                 "num_samples should be a positive integer, "
-                "but got num_samples={}".format(self.num_samples)
+                f"but got num_samples={self.num_samples}"
             )
 
     @property

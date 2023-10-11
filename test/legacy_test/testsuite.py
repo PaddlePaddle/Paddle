@@ -15,7 +15,7 @@
 import numpy as np
 from op import Operator
 
-from paddle.fluid import core
+from paddle.base import core
 
 
 def create_op(scope, op_type, inputs, outputs, attrs, cache_list=None):

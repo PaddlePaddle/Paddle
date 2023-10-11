@@ -37,12 +37,15 @@ def _dygraph_distributed_optimizer(optimizer, strategy=None):
         Fleet: instance of fleet.
     Examples:
         .. code-block:: python
-            import paddle
-            import paddle.distributed.fleet as fleet
-            fleet.init(is_collective=True)
-            strategy = fleet.DistributedStrategy()
-            optimizer = paddle.optimizer.SGD(learning_rate=0.001)
-            optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+
+            >>> import paddle
+            >>> import paddle.distributed.fleet as fleet
+            >>> fleet.init(is_collective=True)
+            >>> strategy = fleet.DistributedStrategy()
+            >>> linear = paddle.nn.Linear(10, 10)
+            >>> optimizer = paddle.optimizer.SGD(learning_rate=0.001, parameters=linear.parameters())
+            >>> optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+
     """
     fleet_env = fleet.fleet
     fleet_env.user_defined_optimizer = optimizer
@@ -69,12 +72,17 @@ def _dygraph_distributed_optimizer(optimizer, strategy=None):
             if fleet_env._user_defined_strategy.hybrid_configs[
                 "pp_configs"
             ].dp_comm_overlap:
+                # grad all-reduce of dp and sep with be fused
                 hp_optim._dp_enable = False
+                hp_optim._sep_enable = False
 
             if fleet_env._user_defined_strategy.hybrid_configs[
                 "pp_configs"
             ].sharding_comm_overlap:
                 hp_optim._sharding_enable = False
+                assert (
+                    not hp_optim._sep_enable
+                ), "sep parallel can not coexist with sharding_comm_overlap"
 
             return hp_optim
         else:

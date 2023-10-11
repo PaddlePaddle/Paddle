@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/save_op.h"
 
-#include <stdint.h>
+#include <cstdint>
 
 #include <fstream>
 #include <numeric>
@@ -101,7 +101,9 @@ PD_REGISTER_KERNEL(save,
                    int16_t,
                    int64_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
 
 PD_REGISTER_KERNEL(save_sr,
                    CPU,
@@ -115,7 +117,9 @@ PD_REGISTER_KERNEL(save_sr,
                    int16_t,
                    int64_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(save,
@@ -130,7 +134,9 @@ PD_REGISTER_KERNEL(save,
                    int16_t,
                    int64_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
 
 PD_REGISTER_KERNEL(save_sr,
                    GPU,
@@ -144,5 +150,7 @@ PD_REGISTER_KERNEL(save_sr,
                    int16_t,
                    int64_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
 #endif

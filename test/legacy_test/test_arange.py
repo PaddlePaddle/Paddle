@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 from paddle.static import Program, program_guard
 
 
@@ -48,7 +48,7 @@ class TestArangeOp(OpTest):
         self.case = (0, 1, 0.2)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestFloatArangeOp(TestArangeOp):
@@ -65,7 +65,7 @@ class TestFloa16ArangeOp(TestArangeOp):
         self.case = (0, 5, 1)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 @unittest.skipIf(
@@ -99,7 +99,7 @@ class TestBFloat16ArangeOp(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_new_ir=True)
 
 
 class TestInt32ArangeOp(TestArangeOp):
@@ -131,13 +131,15 @@ class TestZeroSizeArangeOp(TestArangeOp):
 
 
 class TestArangeOpError(unittest.TestCase):
-    def test_errors(self):
+    def test_static_errors(self):
         with program_guard(Program(), Program()):
+            paddle.enable_static()
             self.assertRaises(TypeError, paddle.arange, 10, dtype='int8')
 
 
 class TestArangeAPI(unittest.TestCase):
     def test_out(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             x1 = paddle.arange(0, 5, 1, 'float32')
 
@@ -152,6 +154,7 @@ class TestArangeAPI(unittest.TestCase):
         expected_data = np.arange(0, 5, 1).astype(np.float32)
         self.assertEqual((out == expected_data).all(), True)
         self.assertListEqual(list(x1.shape), [5])
+        paddle.disable_static(place)
 
 
 class TestArangeImperative(unittest.TestCase):

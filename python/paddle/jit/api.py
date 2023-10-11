@@ -28,14 +28,14 @@ from typing import Any
 import types
 
 import paddle
-from paddle.fluid import core, dygraph
-from paddle.fluid.compiler import (
+from paddle.base import core, dygraph
+from paddle.base.compiler import (
     BuildStrategy,
     CompiledProgram,
     ExecutionStrategy,
 )
-from paddle.fluid.data_feeder import check_type
-from paddle.fluid.dygraph.base import (
+from paddle.base.data_feeder import check_type
+from paddle.base.dygraph.base import (
     program_desc_tracing_guard,
     switch_to_static_graph,
 )
@@ -59,21 +59,21 @@ from paddle.jit.translated_layer import (
     INFER_PROPERTY_SUFFIX,
 )
 from paddle.nn import Layer
-from paddle.fluid.executor import Executor, scope_guard
-from paddle.fluid.framework import (
+from paddle.base.executor import Executor, scope_guard
+from paddle.base.framework import (
     Block,
     Program,
     Variable,
     Parameter,
     EagerParamBase,
 )
-from paddle.fluid.framework import (
+from paddle.base.framework import (
     _current_expected_place,
     _dygraph_guard,
     _dygraph_tracer,
 )
-from paddle.fluid.framework import dygraph_only
-from paddle.fluid.wrapped_decorator import wrap_decorator
+from paddle.base.framework import dygraph_only
+from paddle.base.wrapped_decorator import wrap_decorator
 from paddle.static.io import save_inference_model
 from paddle.framework import in_dynamic_mode
 
@@ -94,7 +94,7 @@ def _extract_vars(inputs, result_list, err_tag='inputs'):
             _extract_vars(var, result_list, err_tag)
     else:
         raise TypeError(
-            "The type of 'each element of {}' in paddle.jit.TracedLayer.trace must be fluid.Variable, but received {}.".format(
+            "The type of 'each element of {}' in paddle.jit.api.TracedLayer.trace must be base.Variable, but received {}.".format(
                 err_tag, type(inputs)
             )
         )
@@ -129,6 +129,7 @@ def _dygraph_to_static_func_(dygraph_func):
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +SKIP('`paddle.jit.dygraph_to_static_func` can not run in xdoctest')
             >>> import paddle
             >>> from paddle.jit.api import dygraph_to_static_func
 
@@ -264,7 +265,7 @@ def to_static(
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP
+            >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
             >>> import paddle
             >>> from paddle.jit import to_static
 
@@ -361,7 +362,7 @@ def not_to_static(func=None):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP
+            >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
             >>> import paddle
 
             >>> @paddle.jit.not_to_static
@@ -417,6 +418,9 @@ class _SaveLoadConfig:
 
         # when need to save a prune model, use input_names_after_prune to specify the inputs left after pruning
         self.input_names_after_prune = None
+
+        # in the scene of llm-inference, prunning program can cause unexpectable result, an option to skip prune is necessary
+        self.skip_prune_program = False
 
     @property
     def output_spec(self):
@@ -497,6 +501,7 @@ def _parse_save_configs(configs):
         "clip_extra",
         "skip_forward",
         "input_names_after_prune",
+        "skip_prune_program",
     ]
 
     # input check
@@ -517,6 +522,7 @@ def _parse_save_configs(configs):
     inner_config.input_names_after_prune = configs.get(
         "input_names_after_prune", None
     )
+    inner_config.skip_prune_program = configs.get("skip_prune_program", False)
 
     return inner_config
 
@@ -642,11 +648,10 @@ def _get_output_vars(outputs, output_spec, with_hook=False):
 # 1. Expected cases:
 #   - paddle.jit.save
 #   - paddle.static.save_inference_model
-#   - paddle.fluid.io.save_inference_model
 # 2. Error cases:
 #   - paddle.save: no .pdmodel for prefix
 #   - paddle.static.save: no .pdiparams but .pdparams exists
-#   - paddle.fluid.io.save_params/save_persistables: no __model__
+#   - paddle.base.io.save_params/save_persistables: no __model__
 # TODO(chenweihang): polish error message in above error cases
 def _build_load_path_and_config(path, config):
     # NOTE(chenweihang): If both [prefix save format] and [directory save format] exist,
@@ -656,9 +661,9 @@ def _build_load_path_and_config(path, config):
     directory_format_exist = os.path.isdir(path)
     if prefix_format_exist and directory_format_exist:
         raise ValueError(
-            "The {}.pdmodel and {} directory exist at the same time, "
+            f"The {path}.pdmodel and {path} directory exist at the same time, "
             "don't know which one to load, please make sure that the specified target "
-            "of ``path`` is unique.".format(path, path)
+            "of ``path`` is unique."
         )
     elif not prefix_format_exist and not directory_format_exist:
         raise ValueError(
@@ -724,6 +729,7 @@ def _register_save_pre_hook(hook):
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +SKIP('`paddle.jit.api.to_static` can not run in xdoctest')
             >>> import numpy as np
             >>> import paddle
 
@@ -816,7 +822,6 @@ def _save_property(filename: str, property_vals: list[tuple[Any, str]]):
                 meta.set_strings(key, val)
         else:
             raise ValueError(f"Note support val type: {type(val)}")
-        return
 
     with open(filename, 'wb') as f:
         meta = paddle.framework.core.Property()
@@ -872,7 +877,7 @@ def save(layer, path, input_spec=None, **configs):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP
+            >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
             >>> # example 1: save layer
             >>> import numpy as np
             >>> import paddle
@@ -1248,10 +1253,10 @@ def save(layer, path, input_spec=None, **configs):
             file_prefix = file_prefix + '.' + attr_func
         file_prefix = os.path.join(model_path, file_prefix)
         with scope_guard(scope):
-            input_vars = []
-            for var in concrete_program.main_program.clone().list_vars():
-                if var.name in input_var_names:
-                    input_vars.append(var)
+            input_vars = [
+                concrete_program.main_program.global_block().var(name)
+                for name in input_var_names
+            ]
             save_inference_model(
                 path_prefix=file_prefix,
                 feed_vars=input_vars,
@@ -1259,6 +1264,7 @@ def save(layer, path, input_spec=None, **configs):
                 executor=Executor(_current_expected_place()),
                 program=concrete_program.main_program.clone(),
                 clip_extra=configs.clip_extra,
+                skip_prune_program=configs.skip_prune_program,
             )
 
         if combine_params:
@@ -1330,7 +1336,7 @@ def load(path, **configs):
     :api_attr: imperative
 
     Load model saved by ``paddle.jit.save`` or ``paddle.static.save_inference_model`` or
-    paddle 1.x API ``paddle.fluid.io.save_inference_model`` as ``paddle.jit.TranslatedLayer``,
+    paddle 1.x API ``paddle.static.save_inference_model`` as ``paddle.jit.TranslatedLayer``,
     then performing inference or fine-tune training.
 
     .. note::
@@ -1363,7 +1369,7 @@ def load(path, **configs):
             .. code-block:: python
                 :name: code-example1
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
                 >>> import numpy as np
                 >>> import paddle
                 >>> import paddle.nn as nn
@@ -1449,11 +1455,12 @@ def load(path, **configs):
                 >>> train(loaded_layer, loader, loss_fn, adam)
 
 
-        2. Load model saved by ``paddle.fluid.io.save_inference_model`` then performing and fine-tune training.
+        2. Load model saved by ``paddle.static.save_inference_model`` then performing and fine-tune training.
 
             .. code-block:: python
                 :name: code-example2
 
+                >>> # doctest: +SOLO('can not use multiprocessing testing `DataLoader`')
                 >>> import numpy as np
                 >>> import paddle
                 >>> import paddle.static as static
@@ -1510,15 +1517,19 @@ def load(path, **configs):
 
                 >>> # 1. train and save inference model
                 >>> for data in loader():
-                >>>     exe.run(
+                ...     exe.run(
                 ...         static.default_main_program(),
                 ...         feed=data,
                 ...         fetch_list=[avg_loss]
                 ...     )
 
                 >>> model_path = "fc.example.model"
-                >>> paddle.fluid.io.save_inference_model(
-                >>> model_path, ["image"], [pred], exe)
+                >>> paddle.static.save_inference_model(
+                ...     model_path,
+                ...     [image],
+                ...     [pred],
+                ...     exe
+                ... )
 
                 >>> # 2. load model
 
@@ -1684,7 +1695,7 @@ class TracedLayer:
 
                 >>> layer = ExampleLayer()
                 >>> in_var = paddle.uniform(shape=[2, 3], dtype='float32')
-                >>> out_dygraph, static_layer = paddle.jit.TracedLayer.trace(layer, inputs=[in_var])
+                >>> out_dygraph, static_layer = paddle.jit.api.TracedLayer.trace(layer, inputs=[in_var])
 
                 >>> # run the static graph model using Executor inside
                 >>> out_static_graph = static_layer([in_var])
@@ -1698,7 +1709,7 @@ class TracedLayer:
         """
         assert isinstance(
             layer, Layer
-        ), "The type of 'layer' in paddle.jit.TracedLayer.trace must be paddle.nn.Layer, but received {}.".format(
+        ), "The type of 'layer' in paddle.jit.api.TracedLayer.trace must be paddle.nn.Layer, but received {}.".format(
             type(layer)
         )
         outs, prog, feed, fetch, parameters = _trace(layer, inputs)
@@ -1734,7 +1745,7 @@ class TracedLayer:
                 >>> layer = ExampleLayer()
                 >>> in_var = paddle.uniform(shape=[2, 3], dtype='float32')
 
-                >>> out_dygraph, static_layer = paddle.jit.TracedLayer.trace(layer, inputs=[in_var])
+                >>> out_dygraph, static_layer = paddle.jit.api.TracedLayer.trace(layer, inputs=[in_var])
 
                 >>> build_strategy = paddle.static.BuildStrategy()
                 >>> build_strategy.enable_inplace = True
@@ -1749,12 +1760,12 @@ class TracedLayer:
         assert self._compiled_program is None, "Cannot set strategy after run"
         assert isinstance(
             build_strategy, (type(None), BuildStrategy)
-        ), "The type of 'build_strategy' in paddle.jit.TracedLayer.set_strategy must be fluid.BuildStrategy, but received {}.".format(
+        ), "The type of 'build_strategy' in paddle.jit.api.TracedLayer.set_strategy must be base.BuildStrategy, but received {}.".format(
             type(build_strategy)
         )
         assert isinstance(
             exec_strategy, (type(None), ExecutionStrategy)
-        ), "The type of 'exec_strategy' in paddle.jit.TracedLayer.set_strategy must be fluid.ExecutionStrategy, but received {}.".format(
+        ), "The type of 'exec_strategy' in paddle.jit.api.TracedLayer.set_strategy must be base.ExecutionStrategy, but received {}.".format(
             type(exec_strategy)
         )
         self._build_strategy = build_strategy
@@ -1840,7 +1851,7 @@ class TracedLayer:
                 >>> in_var = paddle.to_tensor(in_np)
                 >>> layer = ExampleLayer()
 
-                >>> out_dygraph, static_layer = paddle.jit.TracedLayer.trace(layer, inputs=[in_var])
+                >>> out_dygraph, static_layer = paddle.jit.api.TracedLayer.trace(layer, inputs=[in_var])
                 >>> static_layer.save_inference_model(save_dirname, feed=[0], fetch=[0])
 
                 >>> paddle.enable_static()
@@ -1859,13 +1870,13 @@ class TracedLayer:
             path,
             "path",
             str,
-            "paddle.jit.TracedLayer.save_inference_model",
+            "paddle.jit.api.TracedLayer.save_inference_model",
         )
         check_type(
             feed,
             "feed",
             (type(None), list),
-            "paddle.jit.TracedLayer.save_inference_model",
+            "paddle.jit.api.TracedLayer.save_inference_model",
         )
         if isinstance(feed, list):
             for f in feed:
@@ -1873,13 +1884,13 @@ class TracedLayer:
                     f,
                     "each element of feed",
                     int,
-                    "paddle.jit.TracedLayer.save_inference_model",
+                    "paddle.jit.api.TracedLayer.save_inference_model",
                 )
         check_type(
             fetch,
             "fetch",
             (type(None), list),
-            "paddle.jit.TracedLayer.save_inference_model",
+            "paddle.jit.api.TracedLayer.save_inference_model",
         )
         if isinstance(fetch, list):
             for f in fetch:
@@ -1887,7 +1898,7 @@ class TracedLayer:
                     f,
                     "each element of fetch",
                     int,
-                    "paddle.jit.TracedLayer.save_inference_model",
+                    "paddle.jit.api.TracedLayer.save_inference_model",
                 )
         clip_extra = kwargs.get('clip_extra', True)
         # path check

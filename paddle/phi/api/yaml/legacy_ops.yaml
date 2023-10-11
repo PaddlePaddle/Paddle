@@ -17,6 +17,7 @@
   output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : add
   inplace : (x -> out)
@@ -123,6 +124,35 @@
   backward : batch_norm_grad
   optional : reserve_space
 
+- op : c_allgather
+  args : (Tensor x, int ring_id, int nranks, bool use_calc_stream)
+  output : Tensor(out)
+  infer_meta :
+    func : AllGatherInferMeta
+    param: [x, nranks]
+  kernel :
+    func : c_allgather
+
+- op : c_allreduce_max
+  args : (Tensor x, int ring_id, bool use_calc_stream, bool use_model_parallel)
+  output : Tensor(out)
+  infer_meta :
+    func : AllReduceInferMeta
+    param : [x]
+  kernel :
+    func : c_allreduce_max
+  inplace : (x -> out)
+
+- op : c_allreduce_sum
+  args : (Tensor x, int ring_id, bool use_calc_stream, bool use_model_parallel)
+  output : Tensor(out)
+  infer_meta :
+    func : AllReduceInferMeta
+    param : [x]
+  kernel :
+    func : c_allreduce_sum
+  inplace : (x -> out)
+
 - op : c_broadcast
   args : (Tensor x, int ring_id=0, int root=0, bool use_calc_stream=false)
   output : Tensor(out)
@@ -142,15 +172,67 @@
   kernel :
     func : c_concat
 
+- op : c_embedding
+  args : (Tensor weight, Tensor x, int64_t start_index=0)
+  output : Tensor(out)
+  infer_meta :
+    func : CEmbeddingInferMeta
+    param : [weight, x, start_index]
+  kernel :
+    func : c_embedding
+    param : [weight, x, start_index]
+    data_type : weight
+  backward : c_embedding_grad
+
+- op : c_identity
+  args : (Tensor x, int ring_id, bool use_calc_stream, bool use_model_parallel)
+  output : Tensor(out)
+  infer_meta :
+    func : CIdentityInferMeta
+  kernel :
+    func : c_identity
+  inplace : (x -> out)
+
+- op : c_reduce_sum
+  args : (Tensor x, int ring_id, int root_id, bool use_calc_stream)
+  output : Tensor(out)
+  infer_meta :
+    func : DistReduceInferMeta
+    param : [x]
+  kernel :
+    func : c_reduce_sum
+  inplace : (x -> out)
+
+- op : c_sync_calc_stream
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : c_sync_calc_stream
+  inplace : (x -> out)
+
+- op : c_sync_comm_stream
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : c_sync_comm_stream
+  inplace : (x -> out)
+
 - op : cast
   args : (Tensor x, DataType dtype)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : CastInferMeta
   kernel :
     func : cast
     param : [x, dtype]
     data_type : x
+  inplace: (x -> out)
   backward : cast_grad
 
 - op : channel_shuffle
@@ -232,11 +314,12 @@
 
 - op : divide
   args : (Tensor x, Tensor y)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
   kernel :
     func : divide
+  inplace: (x -> out)
   backward : divide_grad
 
 - op : dropout
@@ -334,6 +417,7 @@
     func : CompareInferMeta
   kernel :
     func : equal
+  inplace: (x -> out)
 
 - op : exponential_
   args : (Tensor x, float lam)
@@ -365,6 +449,7 @@
     func : ElementwiseInferMeta
   kernel :
     func : floor_divide
+  inplace: (x -> out)
 
 - op : frobenius_norm
   args : (Tensor x, int64_t[] axis,  bool keep_dim,  bool reduce_all)
@@ -499,6 +584,7 @@
     func : CompareInferMeta
   kernel :
     func : greater_equal
+  inplace: (x -> out)
 
 - op : greater_than
   args : (Tensor x, Tensor y)
@@ -507,6 +593,7 @@
     func : CompareInferMeta
   kernel :
     func : greater_than
+  inplace: (x -> out)
 
 - op : hardswish
   args : (Tensor x)
@@ -545,6 +632,7 @@
     func : CompareInferMeta
   kernel :
     func : less_equal
+  inplace: (x -> out)
 
 - op : less_than
   args : (Tensor x, Tensor y)
@@ -553,6 +641,7 @@
     func : CompareInferMeta
   kernel :
     func : less_than
+  inplace: (x -> out)
 
 - op : linspace
   args : (Tensor start, Tensor stop, Tensor number, DataType dtype, Place place)
@@ -592,17 +681,10 @@
   output : Tensor
   infer_meta :
     func : MatmulInferMeta
+    spmd_rule : MatmulInferSpmd
   kernel :
     func : matmul
   backward : matmul_grad
-
-- op : matmul_int8
-  args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false)
-  output : Tensor
-  infer_meta :
-    func : MatmulInt8InferMeta
-  kernel :
-    func : matmul_int8
 
 - op : matrix_rank
   args : (Tensor x, float tol, bool use_default_tol=true, bool hermitian=false)
@@ -721,6 +803,7 @@
     func : CompareInferMeta
   kernel :
     func : not_equal
+  inplace: (x -> out)
 
 - op : one_hot
   args : (Tensor x, Scalar(int) num_classes)
@@ -921,6 +1004,7 @@
   output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : subtract
   inplace : (x -> out)
@@ -983,6 +1067,7 @@
     func : TransposeInferMeta
   kernel :
     func : transpose
+  inplace : (x -> out)
   backward : transpose_grad
 
 - op : tril

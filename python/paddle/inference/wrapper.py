@@ -12,20 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import os
 from typing import Set
 
 import numpy as np
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.core import (
+from paddle.base import core
+from paddle.base.core import (
     AnalysisConfig,
     PaddleDType,
     PaddleInferPredictor,
     PaddleInferTensor,
     PaddlePlace,
     convert_to_mixed_precision_bind,
+)
+from paddle.base.log_helper import get_logger
+
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
 
 DataType = PaddleDType
@@ -58,7 +64,7 @@ def tensor_share_external_data(self, data):
         self._share_external_data_bind(data)
     elif isinstance(data, paddle.Tensor):
         self._share_external_data_paddle_tensor_bind(data)
-    elif isinstance(data, paddle.fluid.framework.Variable):
+    elif isinstance(data, paddle.base.framework.Variable):
         raise TypeError(
             "The interface 'share_external_data' can only be used in dynamic graph mode. "
             "Maybe you called 'paddle.enable_static()' and you are in static graph mode now. "
@@ -96,6 +102,11 @@ def convert_to_mixed_precision(
         kwargs: Supported keys including 'white_list'.
             - white_list: Operators that do convert precision.
     '''
+    if backend is PlaceType.GPU and not core.is_compiled_with_cuda():
+        _logger.error(
+            "You shoule use PaddlePaddle compiled with GPU when backend set to PlaceType.GPU"
+        )
+
     mixed_model_dirname = os.path.dirname(mixed_model_file)
     # Support mixed_params_file is empty, because some models don't have params, but convert_to_mixed_precision will call
     # constant_folding_pass, it will generate a new params file to save persistable vars, which is saved in the same

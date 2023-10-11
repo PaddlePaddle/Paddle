@@ -175,7 +175,7 @@ bool OpSupportPrecision(const std::string& op_type,
 // The set of ops that support fp16 calculation and are considered
 // numerically-dangerous, slower and whose effects may also be observed in
 // downstream ops.
-// ref to python/paddle/fluid/contrib/mixed_precision/fp16_lists.py
+// ref to python/paddle/base/contrib/mixed_precision/fp16_lists.py
 void AutoMixedPrecisionPass::SetDefaultBlacklist() const {
   black_list_.insert({
       // numerically-dangerous
@@ -184,7 +184,6 @@ void AutoMixedPrecisionPass::SetDefaultBlacklist() const {
       "log",
       "mean",
       "sum",
-      "cos_sim",
       "softmax_with_cross_entropy",
       "sigmoid_cross_entropy_with_logits",
       "c_softmax_with_cross_entropy",

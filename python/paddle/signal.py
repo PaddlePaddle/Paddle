@@ -16,9 +16,9 @@ import paddle
 from paddle import _C_ops
 from paddle.framework import in_dynamic_mode
 
+from .base.data_feeder import check_variable_and_dtype
+from .base.layer_helper import LayerHelper
 from .fft import fft_c2c, fft_c2r, fft_r2c
-from .fluid.data_feeder import check_variable_and_dtype
-from .fluid.layer_helper import LayerHelper
 from .tensor.attribute import is_complex
 
 __all__ = [
@@ -49,60 +49,57 @@ def frame(x, frame_length, hop_length, axis=-1, name=None):
 
     Examples:
 
-    .. code-block:: python
+        .. code-block:: python
 
-        import paddle
-        from paddle.signal import frame
+            >>> import paddle
+            >>> from paddle import signal
 
-        # 1D
-        x = paddle.arange(8)
-        y0 = frame(x, frame_length=4, hop_length=2, axis=-1)  # [4, 3]
-        # [[0, 2, 4],
-        #  [1, 3, 5],
-        #  [2, 4, 6],
-        #  [3, 5, 7]]
+            >>> # 1D
+            >>> x = paddle.arange(8)
+            >>> y0 = signal.frame(x, frame_length=4, hop_length=2, axis=-1)
+            >>> print(y0)
+            Tensor(shape=[4, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 2, 4],
+             [1, 3, 5],
+             [2, 4, 6],
+             [3, 5, 7]])
 
-        y1 = frame(x, frame_length=4, hop_length=2, axis=0)   # [3, 4]
-        # [[0, 1, 2, 3],
-        #  [2, 3, 4, 5],
-        #  [4, 5, 6, 7]]
+            >>> y1 = signal.frame(x, frame_length=4, hop_length=2, axis=0)
+            >>> print(y1)
+            Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 1, 2, 3],
+             [2, 3, 4, 5],
+             [4, 5, 6, 7]])
 
-        # 2D
-        x0 = paddle.arange(16).reshape([2, 8])
-        y0 = frame(x0, frame_length=4, hop_length=2, axis=-1)  # [2, 4, 3]
-        # [[[0, 2, 4],
-        #   [1, 3, 5],
-        #   [2, 4, 6],
-        #   [3, 5, 7]],
-        #
-        #  [[8 , 10, 12],
-        #   [9 , 11, 13],
-        #   [10, 12, 14],
-        #   [11, 13, 15]]]
+            >>> # 2D
+            >>> x0 = paddle.arange(16).reshape([2, 8])
+            >>> y0 = signal.frame(x0, frame_length=4, hop_length=2, axis=-1)
+            >>> print(y0)
+            Tensor(shape=[2, 4, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[[0 , 2 , 4 ],
+              [1 , 3 , 5 ],
+              [2 , 4 , 6 ],
+              [3 , 5 , 7 ]],
+             [[8 , 10, 12],
+              [9 , 11, 13],
+              [10, 12, 14],
+              [11, 13, 15]]])
 
-        x1 = paddle.arange(16).reshape([8, 2])
-        y1 = frame(x1, frame_length=4, hop_length=2, axis=0)   # [3, 4, 2]
-        # [[[0 , 1 ],
-        #   [2 , 3 ],
-        #   [4 , 5 ],
-        #   [6 , 7 ]],
-        #
-        #   [4 , 5 ],
-        #   [6 , 7 ],
-        #   [8 , 9 ],
-        #   [10, 11]],
-        #
-        #   [8 , 9 ],
-        #   [10, 11],
-        #   [12, 13],
-        #   [14, 15]]]
+            >>> x1 = paddle.arange(16).reshape([8, 2])
+            >>> y1 = signal.frame(x1, frame_length=4, hop_length=2, axis=0)
+            >>> print(y1.shape)
+            [3, 4, 2]
 
-        # > 2D
-        x0 = paddle.arange(32).reshape([2, 2, 8])
-        y0 = frame(x0, frame_length=4, hop_length=2, axis=-1)  # [2, 2, 4, 3]
+            >>> # > 2D
+            >>> x0 = paddle.arange(32).reshape([2, 2, 8])
+            >>> y0 = signal.frame(x0, frame_length=4, hop_length=2, axis=-1)
+            >>> print(y0.shape)
+            [2, 2, 4, 3]
 
-        x1 = paddle.arange(32).reshape([8, 2, 2])
-        y1 = frame(x1, frame_length=4, hop_length=2, axis=0)   # [3, 4, 2, 2]
+            >>> x1 = paddle.arange(32).reshape([8, 2, 2])
+            >>> y1 = signal.frame(x1, frame_length=4, hop_length=2, axis=0)
+            >>> print(y1.shape)
+            [3, 4, 2, 2]
     """
     if axis not in [0, -1]:
         raise ValueError(f'Unexpected axis: {axis}. It should be 0 or -1.')
@@ -167,36 +164,53 @@ def overlap_add(x, hop_length, axis=-1, name=None):
 
     Examples:
 
-    .. code-block:: python
+        .. code-block:: python
 
-        import paddle
-        from paddle.signal import overlap_add
+            >>> import paddle
+            >>> from paddle.signal import overlap_add
 
-        # 2D
-        x0 = paddle.arange(16).reshape([8, 2])
-        # [[0 , 1 ],
-        #  [2 , 3 ],
-        #  [4 , 5 ],
-        #  [6 , 7 ],
-        #  [8 , 9 ],
-        #  [10, 11],
-        #  [12, 13],
-        #  [14, 15]]
-        y0 = overlap_add(x0, hop_length=2, axis=-1)  # [10]
-        # [0 , 2 , 5 , 9 , 13, 17, 21, 25, 13, 15]
+            >>> # 2D
+            >>> x0 = paddle.arange(16).reshape([8, 2])
+            >>> print(x0)
+            Tensor(shape=[8, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0 , 1 ],
+             [2 , 3 ],
+             [4 , 5 ],
+             [6 , 7 ],
+             [8 , 9 ],
+             [10, 11],
+             [12, 13],
+             [14, 15]])
 
-        x1 = paddle.arange(16).reshape([2, 8])
-        # [[0 , 1 , 2 , 3 , 4 , 5 , 6 , 7 ],
-        #  [8 , 9 , 10, 11, 12, 13, 14, 15]]
-        y1 = overlap_add(x1, hop_length=2, axis=0)   # [10]
-        # [0 , 1 , 10, 12, 14, 16, 18, 20, 14, 15]
 
-        # > 2D
-        x0 = paddle.arange(32).reshape([2, 1, 8, 2])
-        y0 = overlap_add(x0, hop_length=2, axis=-1)  # [2, 1, 10]
+            >>> y0 = overlap_add(x0, hop_length=2, axis=-1)
+            >>> print(y0)
+            Tensor(shape=[10], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [0 , 2 , 5 , 9 , 13, 17, 21, 25, 13, 15])
 
-        x1 = paddle.arange(32).reshape([2, 8, 1, 2])
-        y1 = overlap_add(x1, hop_length=2, axis=0)   # [10, 1, 2]
+            >>> x1 = paddle.arange(16).reshape([2, 8])
+            >>> print(x1)
+            Tensor(shape=[2, 8], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0 , 1 , 2 , 3 , 4 , 5 , 6 , 7 ],
+             [8 , 9 , 10, 11, 12, 13, 14, 15]])
+
+
+            >>> y1 = overlap_add(x1, hop_length=2, axis=0)
+            >>> print(y1)
+            Tensor(shape=[10], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [0 , 1 , 10, 12, 14, 16, 18, 20, 14, 15])
+
+
+            >>> # > 2D
+            >>> x0 = paddle.arange(32).reshape([2, 1, 8, 2])
+            >>> y0 = overlap_add(x0, hop_length=2, axis=-1)
+            >>> print(y0.shape)
+            [2, 1, 10]
+
+            >>> x1 = paddle.arange(32).reshape([2, 8, 1, 2])
+            >>> y1 = overlap_add(x1, hop_length=2, axis=0)
+            >>> print(y1.shape)
+            [10, 1, 2]
     """
     if axis not in [0, -1]:
         raise ValueError(f'Unexpected axis: {axis}. It should be 0 or -1.')
@@ -289,18 +303,30 @@ def stft(
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.signal import stft
+            >>> import paddle
+            >>> from paddle.signal import stft
 
-            # real-valued input
-            x = paddle.randn([8, 48000], dtype=paddle.float64)
-            y1 = stft(x, n_fft=512)  # [8, 257, 376]
-            y2 = stft(x, n_fft=512, onesided=False)  # [8, 512, 376]
+            >>> # real-valued input
+            >>> x = paddle.randn([8, 48000], dtype=paddle.float64)
+            >>> y1 = stft(x, n_fft=512)
+            >>> print(y1.shape)
+            [8, 257, 376]
 
-            # complex input
-            x = paddle.randn([8, 48000], dtype=paddle.float64) + \
-                    paddle.randn([8, 48000], dtype=paddle.float64)*1j  # [8, 48000] complex128
-            y1 = stft(x, n_fft=512, center=False, onesided=False)  # [8, 512, 372]
+            >>> y2 = stft(x, n_fft=512, onesided=False)
+            >>> print(y2.shape)
+            [8, 512, 376]
+
+            >>> # complex input
+            >>> x = paddle.randn([8, 48000], dtype=paddle.float64) + \
+            ...         paddle.randn([8, 48000], dtype=paddle.float64)*1j
+            >>> print(x.shape)
+            [8, 48000]
+            >>> print(x.dtype)
+            paddle.complex128
+
+            >>> y1 = stft(x, n_fft=512, center=False, onesided=False)
+            >>> print(y1.shape)
+            [8, 512, 372]
 
     """
 
@@ -348,9 +374,7 @@ def stft(
         assert pad_mode in [
             'constant',
             'reflect',
-        ], 'pad_mode should be "reflect" or "constant", but got "{}".'.format(
-            pad_mode
-        )
+        ], f'pad_mode should be "reflect" or "constant", but got "{pad_mode}".'
 
         pad_length = n_fft // 2
         # FIXME: Input `x` can be a complex tensor but pad does not support complex input.
@@ -465,20 +489,25 @@ def istft(
     Examples:
         .. code-block:: python
 
-            import numpy as np
-            import paddle
-            from paddle.signal import stft, istft
+            >>> import numpy as np
+            >>> import paddle
+            >>> from paddle.signal import stft, istft
 
-            paddle.seed(0)
+            >>> paddle.seed(0)
 
-            # STFT
-            x = paddle.randn([8, 48000], dtype=paddle.float64)
-            y = stft(x, n_fft=512)  # [8, 257, 376]
+            >>> # STFT
+            >>> x = paddle.randn([8, 48000], dtype=paddle.float64)
+            >>> y = stft(x, n_fft=512)
+            >>> print(y.shape)
+            [8, 257, 376]
 
-            # ISTFT
-            x_ = istft(y, n_fft=512)  # [8, 48000]
+            >>> # ISTFT
+            >>> x_ = istft(y, n_fft=512)
+            >>> print(x_.shape)
+            [8, 48000]
 
-            np.allclose(x, x_)  # True
+            >>> np.allclose(x, x_)
+            True
     """
     check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'istft')
 
@@ -486,9 +515,7 @@ def istft(
     assert x_rank in [
         2,
         3,
-    ], 'x should be a 2D or 3D complex tensor, but got rank of x is {}'.format(
-        x_rank
-    )
+    ], f'x should be a 2D or 3D complex tensor, but got rank of x is {x_rank}'
 
     if x_rank == 2:  # (batch, n_fft, n_frames)
         x = x.unsqueeze(0)
@@ -502,15 +529,11 @@ def istft(
     # Assure no gaps between frames.
     assert (
         0 < hop_length <= win_length
-    ), 'hop_length should be in (0, win_length({})], but got {}.'.format(
-        win_length, hop_length
-    )
+    ), f'hop_length should be in (0, win_length({win_length})], but got {hop_length}.'
 
     assert (
         0 < win_length <= n_fft
-    ), 'win_length should be in (0, n_fft({})], but got {}.'.format(
-        n_fft, win_length
-    )
+    ), f'win_length should be in (0, n_fft({n_fft})], but got {win_length}.'
 
     n_frames = x.shape[-1]
     fft_size = x.shape[-2]

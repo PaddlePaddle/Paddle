@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.static import Program, program_guard
 
 paddle.enable_static()
@@ -36,6 +36,7 @@ def output_hist(out):
 class TestRandintOp(OpTest):
     def setUp(self):
         self.op_type = "randint"
+        self.python_api = paddle.randint
         self.inputs = {}
         self.init_attrs()
         self.outputs = {"Out": np.zeros((10000, 784)).astype("float32")}
@@ -45,7 +46,7 @@ class TestRandintOp(OpTest):
         self.output_hist = output_hist
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        self.check_output_customized(self.verify_output, check_new_ir=True)
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
@@ -70,6 +71,7 @@ class TestRandintOpError(unittest.TestCase):
 class TestRandintOp_attr_tensorlist(OpTest):
     def setUp(self):
         self.op_type = "randint"
+        self.python_api = paddle.randint
         self.new_shape = (10000, 784)
         shape_tensor = []
         for index, ele in enumerate(self.new_shape):
@@ -85,7 +87,7 @@ class TestRandintOp_attr_tensorlist(OpTest):
         self.output_hist = output_hist
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        self.check_output_customized(self.verify_output, check_new_ir=True)
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
@@ -95,6 +97,7 @@ class TestRandintOp_attr_tensorlist(OpTest):
 class TestRandint_attr_tensor(OpTest):
     def setUp(self):
         self.op_type = "randint"
+        self.python_api = paddle.randint
         self.inputs = {"ShapeTensor": np.array([10000, 784]).astype("int64")}
         self.init_attrs()
         self.outputs = {"Out": np.zeros((10000, 784)).astype("int64")}
@@ -104,7 +107,7 @@ class TestRandint_attr_tensor(OpTest):
         self.output_hist = output_hist
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        self.check_output_customized(self.verify_output, check_new_ir=True)
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
@@ -219,14 +222,14 @@ class TestRandintAPI_ZeroDim(unittest.TestCase):
         paddle.enable_static()
 
     def test_static(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             x = paddle.randint(-10, 10, [])
 
             # Test compile shape
             self.assertEqual(x.shape, ())
 
             # Test runtime shape
-            exe = fluid.Executor()
+            exe = base.Executor()
             result = exe.run(fetch_list=[x])
             self.assertEqual(result[0].shape, ())
 

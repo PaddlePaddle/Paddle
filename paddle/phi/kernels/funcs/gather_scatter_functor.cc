@@ -78,13 +78,13 @@ struct cpu_gather_scatter_functor {
           "self_size, src_size, index_size cannot be 0");
       return;
     }
-    int select_dim_size = index_dims[dim];
+    int64_t select_dim_size = index_dims[dim];
     // index matrix has different shape with self matrix or src matrix.
     int replaced_select_dim_size =
         is_scatter_like ? self_dims[dim] : src_dims[dim];
     int64_t inner_dim_size = 1;
     int64_t outer_dim_size = 1;
-    for (int64_t i = 0; i < dim; ++i) {
+    for (int i = 0; i < dim; ++i) {
       inner_dim_size *= index_dims[i];
     }
 
@@ -92,7 +92,7 @@ struct cpu_gather_scatter_functor {
       outer_dim_size *= index_dims[i];
     }
     int64_t index_idx = 0;
-    int64_t self_idx, src_idx;
+    int64_t self_idx = 0, src_idx = 0;
 
     // N layer loop squeezed into 3 layers loop
     for (int64_t i = 0; i < inner_dim_size; i++) {
@@ -193,9 +193,9 @@ void cpu_scatter_input_grad_kernel(phi::DenseTensor self UNUSED,
 
   int64_t inner_dim_size = 1;
   int64_t outer_dim_size = 1;
-  int select_dim_size = index_dims[dim];
-  int output_select_dim_size = output_dims[dim];
-  for (int64_t i = 0; i < dim; ++i) {
+  int64_t select_dim_size = index_dims[dim];
+  int64_t output_select_dim_size = output_dims[dim];
+  for (int i = 0; i < dim; ++i) {
     inner_dim_size *= index_dims[i];
   }
 

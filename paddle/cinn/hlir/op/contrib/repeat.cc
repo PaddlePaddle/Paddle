@@ -14,8 +14,6 @@
 
 #include "paddle/cinn/hlir/op/contrib/repeat.h"
 
-#include <gflags/gflags.h>
-
 #include <memory>
 #include <string>
 #include <utility>

@@ -29,18 +29,34 @@ std::shared_ptr<DistTensor> ReshardFunction::Eval(
   return out;
 }
 
-void ReshardFunction::set_dist_props(DistTensor* tensor,
-                                     const DenseTensor& value,
-                                     const DDim& dims,
-                                     const TensorDistAttr& dist_attr) {
+void ReshardFunction::SetValue(DistTensor* tensor, const DenseTensor& value) {
+  tensor->value_ = value;
+}
+
+void ReshardFunction::SetDistProps(DistTensor* tensor,
+                                   const DDim& dims,
+                                   const TensorDistAttr& dist_attr) {
   PADDLE_ENFORCE_EQ(dist_attr.verify(vectorize(dims)),
                     true,
                     phi::errors::InvalidArgument(
                         "The input dist_attr and dims are improper."));
 
-  tensor->value_ = value;
   tensor->dims_ = dims;
   tensor->dist_attr_ = dist_attr;
+}
+
+void ReshardFunction::SetDistProps(DistTensor* tensor,
+                                   const TensorDistAttr& dist_attr) {
+  PADDLE_ENFORCE_EQ(dist_attr.verify(vectorize(tensor->dims())),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The input dist_attr and dims are improper."));
+
+  tensor->dist_attr_ = dist_attr;
+}
+
+DenseTensor* ReshardFunction::GetMutableTensor(DistTensor* tensor) {
+  return &tensor->value_;
 }
 
 ReshardFunction* ChooseProperReshardFunction(

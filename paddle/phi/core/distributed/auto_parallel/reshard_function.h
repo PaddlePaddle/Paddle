@@ -44,10 +44,12 @@ class ReshardFunction {
                     DistTensor* out) = 0;
 
  protected:
-  void set_dist_props(DistTensor* tensor,
-                      const DenseTensor& value,
-                      const DDim& dims,
-                      const TensorDistAttr& dist_attr);
+  void SetValue(DistTensor* tensor, const DenseTensor& value);
+  void SetDistProps(DistTensor* tensor,
+                    const DDim& dims,
+                    const TensorDistAttr& dist_attr);
+  void SetDistProps(DistTensor* tensor, const TensorDistAttr& dist_attr);
+  DenseTensor* GetMutableTensor(DistTensor* tensor);
 };
 
 std::vector<std::unique_ptr<ReshardFunction>>& GetReshardFunctionList();

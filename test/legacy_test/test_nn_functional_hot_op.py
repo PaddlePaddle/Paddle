@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.nn import functional
 
 
@@ -33,9 +33,9 @@ class TestOneHotOp(OpTest):
         x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
         x = np.array(x).astype('int32').reshape([sum(x_lod[0])])
 
-        out = np.zeros(shape=(np.product(x.shape), depth)).astype('float32')
+        out = np.zeros(shape=(np.prod(x.shape), depth)).astype('float32')
 
-        for i in range(np.product(x.shape)):
+        for i in range(np.prod(x.shape)):
             out[i, x[i]] = 1.0
 
         self.inputs = {'X': (x, x_lod), 'depth_tensor': depth_np}
@@ -55,11 +55,11 @@ class TestOneHotOp_attr(OpTest):
         x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
         x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
 
-        out = np.zeros(shape=(np.product(x.shape[:-1]), 1, depth)).astype(
+        out = np.zeros(shape=(np.prod(x.shape[:-1]), 1, depth)).astype(
             'float32'
         )
 
-        for i in range(np.product(x.shape)):
+        for i in range(np.prod(x.shape)):
             out[i, 0, x[i]] = 1.0
 
         self.inputs = {'X': (x, x_lod)}
@@ -80,9 +80,9 @@ class TestOneHotOp_default_dtype(OpTest):
         x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
         x = np.array(x).astype('int32').reshape([sum(x_lod[0])])
 
-        out = np.zeros(shape=(np.product(x.shape), depth)).astype('float32')
+        out = np.zeros(shape=(np.prod(x.shape), depth)).astype('float32')
 
-        for i in range(np.product(x.shape)):
+        for i in range(np.prod(x.shape)):
             out[i, x[i]] = 1.0
 
         self.inputs = {'X': (x, x_lod), 'depth_tensor': depth_np}
@@ -102,11 +102,11 @@ class TestOneHotOp_default_dtype_attr(OpTest):
         x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
         x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
 
-        out = np.zeros(shape=(np.product(x.shape[:-1]), 1, depth)).astype(
+        out = np.zeros(shape=(np.prod(x.shape[:-1]), 1, depth)).astype(
             'float32'
         )
 
-        for i in range(np.product(x.shape)):
+        for i in range(np.prod(x.shape)):
             out[i, 0, x[i]] = 1.0
 
         self.inputs = {'X': (x, x_lod)}
@@ -131,9 +131,9 @@ class TestOneHotOpApi(unittest.TestCase):
         label = np.array(
             [np.random.randint(0, num_classes - 1) for i in range(6)]
         ).reshape([6, 1])
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             one_hot_label = functional.one_hot(
-                x=fluid.dygraph.to_variable(label), num_classes=num_classes
+                x=base.dygraph.to_variable(label), num_classes=num_classes
             )
 
     def _run(self, num_classes):
@@ -141,13 +141,13 @@ class TestOneHotOpApi(unittest.TestCase):
         label.desc.set_need_check_feed(False)
         one_hot_label = functional.one_hot(x=label, num_classes=num_classes)
 
-        place = fluid.CPUPlace()
+        place = base.CPUPlace()
         label_data = np.array(
             [np.random.randint(0, 10 - 1) for i in range(6)]
         ).reshape([6, 1])
 
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
         ret = exe.run(
             feed={
                 'label': label_data,
@@ -159,7 +159,7 @@ class TestOneHotOpApi(unittest.TestCase):
 
 class BadInputTestOnehotV2(unittest.TestCase):
     def test_error(self):
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
 
             def test_bad_x():
                 label = paddle.static.data(

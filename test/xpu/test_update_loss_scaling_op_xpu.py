@@ -23,7 +23,7 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.static.amp import amp_nn
 
 paddle.enable_static()
@@ -108,7 +108,7 @@ class XPUTestUpdateLossScalingOp(XPUOpTestWrapper):
             # self.check_output()
 
     class TestUpdateLossScalingLayer(unittest.TestCase):
-        def loss_scaling_check(self, scope=fluid.Scope()):
+        def loss_scaling_check(self, scope=base.Scope()):
             a = paddle.static.data(
                 name="a", shape=[1024, 1024], dtype='float32'
             )
@@ -152,10 +152,10 @@ class XPUTestUpdateLossScalingOp(XPUOpTestWrapper):
                 name="update_loss_scaling",
             )
 
-            place = fluid.XPUPlace(0)
-            exe = fluid.Executor(place)
-            with fluid.scope_guard(scope):
-                exe.run(fluid.default_startup_program())
+            place = base.XPUPlace(0)
+            exe = base.Executor(place)
+            with base.scope_guard(scope):
+                exe.run(base.default_startup_program())
                 result_v = exe.run(
                     feed={
                         'a': a_v,
@@ -189,7 +189,7 @@ class XPUTestUpdateLossScalingOp(XPUOpTestWrapper):
                 result_v[7], np.zeros_like(num_bad_steps_v)
             )
 
-        def loss_scaling_check_inf(self, use_cuda=True, scope=fluid.Scope()):
+        def loss_scaling_check_inf(self, use_cuda=True, scope=base.Scope()):
             a = paddle.static.data(
                 name="a", shape=[1024, 1024], dtype='float32'
             )
@@ -236,10 +236,10 @@ class XPUTestUpdateLossScalingOp(XPUOpTestWrapper):
                 name="update_loss_scaling",
             )
 
-            place = fluid.XPUPlace(0)
-            exe = fluid.Executor(place)
-            with fluid.scope_guard(scope):
-                exe.run(fluid.default_startup_program())
+            place = base.XPUPlace(0)
+            exe = base.Executor(place)
+            with base.scope_guard(scope):
+                exe.run(base.default_startup_program())
                 result_v = exe.run(
                     feed={
                         'a': a_v,
@@ -274,17 +274,17 @@ class XPUTestUpdateLossScalingOp(XPUOpTestWrapper):
             )
 
         def test_loss_scaling(self):
-            main = fluid.Program()
-            startup = fluid.Program()
-            with fluid.unique_name.guard():
-                with fluid.program_guard(main, startup):
+            main = base.Program()
+            startup = base.Program()
+            with base.unique_name.guard():
+                with base.program_guard(main, startup):
                     self.loss_scaling_check()
 
         def test_loss_scaling_inf(self):
-            main = fluid.Program()
-            startup = fluid.Program()
-            with fluid.unique_name.guard():
-                with fluid.program_guard(main, startup):
+            main = base.Program()
+            startup = base.Program()
+            with base.unique_name.guard():
+                with base.program_guard(main, startup):
                     self.loss_scaling_check_inf()
 
 

@@ -16,14 +16,10 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/fluid/framework/threadpool.h"
-#include "paddle/fluid/platform/flags.h"
-DECLARE_bool(benchmark);
+#include "paddle/phi/core/flags.h"
+PD_DECLARE_bool(benchmark);
 
-PADDLE_DEFINE_EXPORTED_bool(
-    eager_delete_scope,
-    true,
-    "Delete local scope eagerly. It will reduce GPU memory usage but "
-    "slow down the destruction of variables.(around 1% performance harm)");
+PHI_DECLARE_bool(eager_delete_scope);
 
 #define SCOPE_KIDS_READER_LOCK phi::AutoRDLock auto_lock(&kids_lock_);
 #define SCOPE_KIDS_WRITER_LOCK phi::AutoWRLock auto_lock(&kids_lock_);
@@ -32,8 +28,8 @@ PADDLE_DEFINE_EXPORTED_bool(
 
 namespace paddle {
 namespace framework {
-
-Scope::~Scope() { DropKids(); }
+Scope::Scope() {}
+Scope::~Scope() { DropKids(); }  // NOLINT
 
 Scope& Scope::NewScope() const {
   Scope* child = new Scope(this);

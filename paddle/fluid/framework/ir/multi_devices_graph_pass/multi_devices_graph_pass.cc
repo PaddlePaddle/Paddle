@@ -1151,7 +1151,8 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
               "Parameter and Parameter@Grad.",
               node->Name(),
               OpProtoAndCheckerMaker::OpRoleVarAttrName()));
-      op_dev_id = GetAppropriateDeviceID({send_param_grad[1]});
+      op_dev_id =
+          static_cast<int>(GetAppropriateDeviceID({send_param_grad[1]}));
       VLOG(10) << "send grad " << input_var_names[0] << " origin "
                << send_param_grad[1] << " place: " << op_dev_id;
       for (auto &varname : input_var_names) {
@@ -1173,7 +1174,7 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
                << " get grad place: " << recv_param_grad[1]
                << " place: " << op_dev_id;
     } else {
-      op_dev_id = GetAppropriateDeviceID(output_var_names);
+      op_dev_id = static_cast<int>(GetAppropriateDeviceID(output_var_names));
     }
     for (auto &varname : output_var_names) {
       sharded_var_device_.emplace(varname, op_dev_id);
@@ -1213,7 +1214,7 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
     op_handle->SetDeviceContext(p,
                                 platform::DeviceContextPool::Instance().Get(p));
 
-    SetOpInputsAllPlaces(result, node, places_.size());
+    SetOpInputsAllPlaces(result, node, static_cast<int>(places_.size()));
     for (ir::Node *output : node->outputs) {
       int outvar_dev_id = op_dev_id;
       if (node->Op()->Type() == "fetch_barrier") {
@@ -1258,7 +1259,7 @@ int DistSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
     op_dev_id = GetVarDeviceID(input_var_names[0]);
     if (strategy_.reduce_ ==
         details::BuildStrategy::ReduceStrategy::kAllReduce) {
-      op_dev_id = GetAppropriateDeviceID(input_var_names);
+      op_dev_id = static_cast<int>(GetAppropriateDeviceID(input_var_names));
       for (auto &varname : input_var_names) {
         sharded_var_device_.emplace(varname, op_dev_id);
       }

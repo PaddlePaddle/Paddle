@@ -31,7 +31,7 @@
 #include "paddle/cinn/poly/isl_utils.h"
 #include "paddle/cinn/utils/string.h"
 
-DECLARE_bool(cinn_use_cuda_vectorize);
+PD_DECLARE_bool(cinn_use_cuda_vectorize);
 namespace cinn {
 namespace hlir {
 namespace pe {

@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class MyLayer(paddle.nn.Layer):
@@ -37,10 +37,10 @@ class TestImperativeContainer(unittest.TestCase):
             [paddle.nn.Linear(2**i, 2 ** (i + 1)) for i in range(6)]
         )
 
-    def layer_list(self, use_fluid_api):
+    def layer_list(self, use_base_api):
         data_np = np.random.uniform(-1, 1, [5, 1]).astype('float32')
-        with fluid.dygraph.guard():
-            x = fluid.dygraph.to_variable(data_np)
+        with base.dygraph.guard():
+            x = base.dygraph.to_variable(data_np)
             layerlist = self.paddle_imperative_list()
             size = len(layerlist)
 

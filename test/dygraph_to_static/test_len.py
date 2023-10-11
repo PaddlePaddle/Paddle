@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.jit.dy2static import Call
 from paddle.nn import clip
 
@@ -27,13 +27,13 @@ paddle.enable_static()
 
 
 def len_with_tensor(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     x_len = len(x)
     return x_len
 
 
 def len_with_lod_tensor_array(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
 
     i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)
     arr = paddle.tensor.array_write(x, i=i)
@@ -45,9 +45,9 @@ def len_with_lod_tensor_array(x):
 class TestLen(unittest.TestCase):
     def setUp(self):
         self.place = (
-            fluid.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
         self.x_data = np.random.random([10, 16]).astype('float32')
         self.init_func()
@@ -56,13 +56,13 @@ class TestLen(unittest.TestCase):
         self.func = len_with_tensor
 
     def _run(self, to_static):
-        with fluid.dygraph.guard(self.place):
+        with base.dygraph.guard(self.place):
             if to_static:
                 out = paddle.jit.to_static(self.func)(self.x_data)
             else:
                 out = self.func(self.x_data)
 
-            if isinstance(out, fluid.core.eager.Tensor):
+            if isinstance(out, base.core.eager.Tensor):
                 out = out.numpy()
             return out
 
@@ -80,14 +80,14 @@ class TestLenWithTensorArray(TestLen):
 # Note: Variable(SelectedRows) is not exposed directly in dygraph.
 # The unittest is used to test coverage by fake transformed code.
 def len_with_selected_rows(place):
-    block = fluid.default_main_program().global_block()
+    block = base.default_main_program().global_block()
     # create selected_rows variable
     var = block.create_var(
         name="X",
         dtype="float32",
         shape=[-1],
         persistable=True,
-        type=fluid.core.VarDesc.VarType.SELECTED_ROWS,
+        type=base.core.VarDesc.VarType.SELECTED_ROWS,
     )
     # y is Variable(SelectedRows)
     y = clip.merge_selected_rows(var)
@@ -102,23 +102,23 @@ def len_with_selected_rows(place):
     row_numel = 2
     np_array = np.ones((len(x_rows), row_numel)).astype("float32")
 
-    x_var = fluid.global_scope().var("X").get_selected_rows()
+    x_var = base.global_scope().var("X").get_selected_rows()
     x_var.set_rows(x_rows)
     x_var.set_height(20)
     x_tensor = x_var.get_tensor()
     x_tensor.set(np_array, place)
 
-    exe = fluid.Executor(place=place)
-    result = exe.run(fluid.default_main_program(), fetch_list=[y_len, z_len])
+    exe = base.Executor(place=place)
+    result = exe.run(base.default_main_program(), fetch_list=[y_len, z_len])
     return result
 
 
 class TestLenWithSelectedRows(unittest.TestCase):
     def setUp(self):
         self.place = (
-            fluid.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
 
     def test_len(self):

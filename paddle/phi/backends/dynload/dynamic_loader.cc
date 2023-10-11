@@ -103,7 +103,7 @@ PHI_DEFINE_string(rccl_dir,
 #endif
 
 #ifdef PADDLE_WITH_XPU
-DEFINE_string(xpti_dir, "", "Specify path for loading libxpti.so.");
+PD_DEFINE_string(xpti_dir, "", "Specify path for loading libxpti.so.");
 #endif
 
 namespace phi {
@@ -185,9 +185,9 @@ static inline std::string join(const std::string& part1,
 static inline std::vector<std::string> split(
     const std::string& str, const std::string separator = " ") {
   std::vector<std::string> str_list;
-  std::string::size_type firstPos;
+  std::string::size_type firstPos = 0;
   firstPos = str.find_first_not_of(separator, 0);
-  std::string::size_type lastPos;
+  std::string::size_type lastPos = 0;
   lastPos = str.find_first_of(separator, firstPos);
   while (std::string::npos != firstPos && std::string::npos != lastPos) {
     str_list.push_back(str.substr(firstPos, lastPos - firstPos));

@@ -16,7 +16,7 @@ from dist_mnist import cnn_model
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 DTYPE = "float32"
 
@@ -56,7 +56,7 @@ class TestDistMnist2x2(TestDistRunnerBase):
             input=predict, label=label, total=batch_size_tensor
         )
 
-        inference_program = fluid.default_main_program().clone()
+        inference_program = base.default_main_program().clone()
         # Optimization
         opt = paddle.optimizer.Momentum(learning_rate=0.001, momentum=0.9)
 

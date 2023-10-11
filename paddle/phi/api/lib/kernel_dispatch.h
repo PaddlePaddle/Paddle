@@ -96,8 +96,6 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   // data_promote
   DataTypeSet dtype_set{DataType::UNDEFINED};
 
-  // TODO(chenweihang): deal with multiple diff input Tensors
-  // TODO(chenweihang): add global device guard method to set backend
   inline void AssignKernelKeySet(const phi::TensorBase& tensor) {
     // assign Backend
     BackendSet tensor_backend_set = detail::GetTensorBackendSet(tensor);
@@ -173,20 +171,32 @@ struct KernelTypeParser : ArgsIterator<KernelTypeParser> {
 /* ------------------ for auto parallel ----------------------- */
 
 struct DistTensorTypeParser : ArgsIterator<DistTensorTypeParser> {
-  bool result = true;
+  bool result = false;
 
-  void operator()(const Tensor& x) { result &= x.is_dist_tensor(); }
+  bool short_circuit() { return result; }
+
+  void operator()(const Tensor& x) { result = x.is_dist_tensor(); }
 
   void operator()(const paddle::optional<Tensor>& x) {
     if (x) {
-      result &= x.get_ptr()->is_dist_tensor();
+      result = x.get_ptr()->is_dist_tensor();
     }
   }
 
   void operator()(const std::vector<Tensor>& x) {
     if (!x.empty()) {
       for (auto& t : x) {
-        result &= t.is_dist_tensor();
+        result = t.is_dist_tensor();
+      }
+    }
+  }
+
+  void operator()(const paddle::optional<std::vector<Tensor>>& x) {
+    if (x) {
+      if (!(x.get_ptr()->empty())) {
+        for (auto& t : *(x.get_ptr())) {
+          result = t.is_dist_tensor();
+        }
       }
     }
   }

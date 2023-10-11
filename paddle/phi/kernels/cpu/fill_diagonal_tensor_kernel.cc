@@ -59,7 +59,7 @@ void CalMatDims(phi::DDim out_dims,
     dimprod *= out_dims[i];
   }
 
-  auto diagdim = dim1;
+  int64_t diagdim = dim1;
   if (*offset >= 0) {
     diagdim = std::min(out_dims[dim1], out_dims[dim2] - *offset);
     *offset *= strides[0];

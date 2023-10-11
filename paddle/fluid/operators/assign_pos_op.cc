@@ -75,7 +75,6 @@ specially counter orderingly.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(assign_pos,
                              ops::AssignPosOp,

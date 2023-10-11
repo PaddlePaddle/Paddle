@@ -39,7 +39,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/data_set_py.h"
 
 namespace py = pybind11;
-namespace pd = paddle::framework;
 
 namespace paddle {
 namespace pybind {

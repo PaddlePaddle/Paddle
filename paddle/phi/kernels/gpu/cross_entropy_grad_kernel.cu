@@ -174,11 +174,7 @@ void CrossEntropyWithSoftmaxGradGPUKernel(const GPUContext& dev_ctx,
   const int64_t d = phi::funcs::SizeFromAxis(axis_v, logit_grad->dims());
   const int64_t remain = d / axis_dim;
 
-#ifdef __HIPCC__
-  int block = 256;
-#else
   int block = 512;
-#endif
   auto stream = dev_ctx.stream();
 
   // do not with softmax op, and input is softmax
