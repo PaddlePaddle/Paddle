@@ -1138,7 +1138,7 @@ std::unordered_set<std::string> GetSpecialOpNames() {
       "builtin.set_parameter",
       "builtin.get_parameter",
       "pd_op.data",
-      "pd_op.shadow_output",
+      "builtin.shadow_output",
   };
 }
 

@@ -2304,7 +2304,6 @@
   kernel:
     func : shadow_output
     param : [x]
-  optional : out
 
 - op : shape
   args : (Tensor input)

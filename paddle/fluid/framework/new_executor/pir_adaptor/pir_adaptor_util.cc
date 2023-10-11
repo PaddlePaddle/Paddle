@@ -286,7 +286,7 @@ const std::unordered_set<std::string> SpecialOps = {"pd_op.feed",
                                                     "builtin.slice",
                                                     "builtin.split",
                                                     "pd_op.data",
-                                                    "pd_op.shadow_output",
+                                                    "builtin.shadow_output",
                                                     "pd_op.if"};
 
 Variable* CreateVar(pir::Value value,
@@ -479,8 +479,8 @@ void HandleForSpecialOp(pir::Operation* op,
     value_exe_info->Rename(value, param_name, orig_name);
   }
 
-  if (op_name == "pd_op.shadow_output") {
-    VLOG(6) << "Handle for pd_op.shadow_ouptut";
+  if (op_name == "builtin.shadow_output") {
+    VLOG(6) << "Handle for builtin.shadow_ouptut";
     auto var_name =
         op->attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
 

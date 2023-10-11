@@ -1166,6 +1166,39 @@ struct FetchOpTranscriber : public OpTranscriber {
   }
 };
 
+struct ShadowOutputOpTranscriber : public OpTranscriber {
+  pir::Operation* operator()(pir::IrContext* ctx,
+                             TranslationContext* param_map,
+                             const OpDesc& op_desc,
+                             pir::Block* block) override {
+    auto op_info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
+
+    std::vector<pir::Value> op_inputs;
+    auto legacy_input_vars = op_desc.Input("x", true);
+
+    auto defining_info = (*param_map)[legacy_input_vars[0]];
+    if (defining_info.generated_by_vector) {
+      InsertSliceOperationForTarget(
+          ctx, param_map, block, defining_info, legacy_input_vars[0]);
+      defining_info = param_map->at(legacy_input_vars[0]).value;
+    }
+
+    op_inputs.push_back(defining_info.value);
+
+    pir::AttributeMap attribute_map = {
+        {"output_name",
+         pir::StrAttribute::get(ctx,
+                                op_desc.GetAttrIfExists<std::string>("name"))},
+    };
+
+    pir::Operation* operation =
+        pir::Operation::Create(op_inputs, attribute_map, {}, op_info);
+    block->push_back(operation);
+
+    return operation;
+  }
+};
+
 // NOTE, add_n op in legacy ops don't have a kernel, so we use a new op for now
 struct AddNOpTranscriber : public OpTranscriber {
   pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
@@ -1856,6 +1889,7 @@ OpTranslator::OpTranslator() {
   special_handlers["reduce_all"] = ReduceOpTranscriber();
   special_handlers["reduce_any"] = ReduceOpTranscriber();
   special_handlers["rnn"] = RnnOpTranscriber();
+  special_handlers["shadow_output"] = ShadowOutputOpTranscriber();
   special_handlers["set_value"] = LegacySetValueDispatcher();
   special_handlers["set_value_grad"] = SetValueGradOpTranscriber();
   special_handlers["split"] = SplitOpTranscriber();

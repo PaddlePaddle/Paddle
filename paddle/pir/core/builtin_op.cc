@@ -159,6 +159,32 @@ void SetParameterOp::Verify() const {
   IR_ENFORCE(num_results() == 0u, "The size of outputs must be equal to 0.");
 }
 
+const char *ShadowOutputOp::attributes_name[attributes_num] = {  // NOLINT
+    "output_name"};
+
+void ShadowOutputOp::Build(Builder &builder,             // NOLINT
+                           OperationArgument &argument,  // NOLINT
+                           Value parameter,
+                           const std::string &name) {
+  argument.AddInput(parameter);
+  argument.AddAttribute(attributes_name[0],
+                        pir::StrAttribute::get(builder.ir_context(), name));
+}
+void ShadowOutputOp::Verify() const {
+  VLOG(4) << "Verifying inputs, outputs and attributes for: ShadowOutputOp.";
+  // Verify inputs:
+  IR_ENFORCE(num_operands() == 1, "The size of outputs must be equal to 1.");
+
+  // Verify attributes:
+  auto &attributes = this->attributes();
+  auto iter = attributes.find("output_name");
+  IR_ENFORCE(iter != attributes.end() && iter->second.isa<StrAttribute>(),
+             "Type of attribute: output_name is not right.");
+
+  // Verify outputs:
+  IR_ENFORCE(num_results() == 0u, "The size of outputs must be equal to 0.");
+}
+
 void CombineOp::Build(Builder &builder,
                       OperationArgument &argument,
                       const std::vector<Value> &inputs) {

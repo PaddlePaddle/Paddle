@@ -80,6 +80,23 @@ class IR_API SetParameterOp : public pir::Op<SetParameterOp> {
 };
 
 ///
+/// \brief ShdowOutputOp: ShdowOutputOp(OpOperand, {StrAttribute,
+/// StrAttribute})
+///
+class IR_API ShadowOutputOp : public pir::Op<ShadowOutputOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "builtin.shadow_output"; }
+  static constexpr uint32_t attributes_num = 1;
+  static const char *attributes_name[attributes_num];
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    Value parameter,
+                    const std::string &name);
+  void Verify() const;
+};
+
+///
 /// \brief CombineOp: CombineOp(OpOperand)
 ///
 class IR_API CombineOp : public pir::Op<CombineOp> {
