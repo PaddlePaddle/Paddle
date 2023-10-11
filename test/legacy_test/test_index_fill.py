@@ -75,6 +75,8 @@ class TestIndexFillAPIBase(unittest.TestCase):
         )
 
         self.place = ['cpu']
+        if self.dtype_np == 'float16':
+            self.place = []
         if paddle.is_compiled_with_cuda():
             self.place.append('gpu')
 
@@ -162,3 +164,11 @@ class TestIndexFillAPI2(TestIndexFillAPIBase):
         self.x_shape = (10, 15, 10)
         self.axis = 1
         self.value = True
+
+
+class TestIndexFillAPI3(TestIndexFillAPIBase):
+    def modify_setting(self):
+        self.dtype_np = 'float16'
+        self.x_shape = (10, 15, 10)
+        self.axis = 1
+        self.value = 0.5

@@ -5184,22 +5184,21 @@ def _index_fill_impl(x, index, axis, value, inplace):
 
     if not (isinstance(axis, int)) or (axis > x_dim - 1) or axis < -x_dim:
         raise ValueError(
-            "The axis should be a int, and in range [-rank(x), rank(x))"
+            "The axis should be int, and in range [-rank(x), rank(x))"
         )
 
     perm = list(range(len(x.shape)))
     perm[0] = axis
     perm[axis] = 0
 
-    out = paddle.clone(x)
-    out = paddle.transpose(out, perm)
-    out = paddle.index_put(out, (index,), value)
-    out = paddle.transpose(out, perm)
-
     if inplace:
-        x[:] = out
+        paddle.transpose(x, perm)
+        paddle.index_put_(x, (index,), value)
         return x
     else:
+        out = paddle.transpose(x, perm)
+        out = paddle.index_put(out, (index,), value)
+        out = paddle.transpose(out, perm)
         return out
 
 
@@ -5211,23 +5210,23 @@ def index_fill(x, index, axis, value, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            arr = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]).astype('int64')
-            input_tensor = paddle.to_tensor(arr)
-            index = paddle.to_tensor([0, 2], dtype="int32")
-            value = -1
-            res = paddle.index_fill(input_tensor, index, 0, value)
-            print(input_tensor)
-            # Tensor(shape=[3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
-            #        [[1, 2, 3],
-            #         [4, 5, 6],
-            #         [7, 8, 9]])
-            print(res)
-            # Tensor(shape=[3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
-            #        [[-1, -1, -1],
-            #         [ 4,  5,  6],
-            #         [-1, -1, -1]])
+            >>> arr = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]).astype('int64')
+            >>> input_tensor = paddle.to_tensor(arr)
+            >>> index = paddle.to_tensor([0, 2], dtype="int32")
+            >>> value = -1
+            >>> res = paddle.index_fill(input_tensor, index, 0, value)
+            >>> print(input_tensor)
+            Tensor(shape=[3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                   [[1, 2, 3],
+                    [4, 5, 6],
+                    [7, 8, 9]])
+            >>> print(res)
+            Tensor(shape=[3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                   [[-1, -1, -1],
+                    [ 4,  5,  6],
+                    [-1, -1, -1]])
     """
     return _index_fill_impl(x, index, axis, value, False)
 
@@ -5251,22 +5250,22 @@ def index_fill_(x, index, axis, value, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            arr = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]).astype('int64')
-            input_tensor = paddle.to_tensor(arr)
-            index = paddle.to_tensor([0, 2], dtype="int32")
-            value = -1
-            res = paddle.index_fill(input_tensor, index, 0, value)
-            print(input_tensor)
-            # Tensor(shape=[3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
-            #        [[-1, -1, -1],
-            #         [ 4,  5,  6],
-            #         [-1, -1, -1]])
-            print(res)
-            # Tensor(shape=[3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
-            #        [[-1, -1, -1],
-            #         [ 4,  5,  6],
-            #         [-1, -1, -1]])
+            >>> arr = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]).astype('int64')
+            >>> input_tensor = paddle.to_tensor(arr)
+            >>> index = paddle.to_tensor([0, 2], dtype="int32")
+            >>> value = -1
+            >>> res = paddle.index_fill_(input_tensor, index, 0, value)
+            >>> print(input_tensor)
+            Tensor(shape=[3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                   [[-1, -1, -1],
+                    [ 4,  5,  6],
+                    [-1, -1, -1]])
+            >>> print(res)
+            Tensor(shape=[3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                   [[-1, -1, -1],
+                    [ 4,  5,  6],
+                    [-1, -1, -1]])
     """
     return _index_fill_impl(x, index, axis, value, True)
