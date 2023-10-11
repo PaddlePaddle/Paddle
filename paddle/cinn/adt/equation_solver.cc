@@ -165,7 +165,11 @@ tValueInferSuccess<bool> MergeInferedValuesIntoCtx(const Function* function,
 tValueInferSuccess<bool> MergeInferedValuesIntoCtx(const Function* function,
                                                    IndexExprInferContext* ctx) {
   return MergeInferedValuesIntoCtx(
-      function, ctx, [&](const auto&, const auto&) {
+      function, ctx, [&](const std::optional<Value>& lhs, const Value& rhs) {
+        if (lhs.has_value()) {
+          VLOG(1) << "opt_old_value = " << ToTxtString(lhs.value());
+        }
+        VLOG(1) << "simplified = " << ToTxtString(rhs);
         return tValueInferSuccess<bool>{false};
       });
 }

@@ -61,8 +61,8 @@ struct ToTxtStringStruct {
     std::string ret;
     const auto& [_, constant] = value.tuple();
     const Value& value_ = value.GetIteratorsValue();
-    ret += "IndexDotValue(" + ToTxtString(value_) + ", " +
-           ToTxtString(constant) + ")";
+    ret +=
+        "IndexDot(" + ToTxtString(value_) + ", " + ToTxtString(constant) + ")";
     return ret;
   }
 
@@ -70,7 +70,7 @@ struct ToTxtStringStruct {
     std::string ret;
     const auto& [_, constant] = value.tuple();
     const Value& value_ = value.GetIndexValue();
-    ret += "IndexUndot(" + ToTxtString(value_) + ", " + ToTxtString(constant) +
+    ret += "IndexUnDot(" + ToTxtString(value_) + ", " + ToTxtString(constant) +
            ")";
     return ret;
   }

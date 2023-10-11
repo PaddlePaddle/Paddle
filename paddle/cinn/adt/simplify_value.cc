@@ -176,6 +176,214 @@ struct SimplifyListGetItemList {
   }
 };
 
+struct SimplifyGcdShape {
+  using source_pattern_type = ListGetItem<
+      IndexUnDotValue<IndexDotValue<List<Value>, List<std::int64_t>>,
+                      List<std::int64_t>>,
+      std::int64_t>;
+
+  bool IsConstantListAllPositiveInt64(const List<Constant>& constants) {
+    for (const auto& constant : *constants) {
+      if (!constant.Has<std::int64_t>() || constant.Get<std::int64_t>() <= 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  std::int64_t GetNumel(const List<Constant>& constants) {
+    std::int64_t ret = 1;
+    for (const auto& constant : *constants) {
+      ret *= constant.Get<std::int64_t>();
+    }
+    return ret;
+  }
+
+  std::tuple<std::vector<std::pair<int, int>>, std::vector<std::pair<int, int>>>
+  GetSubReshapeDimRanges(const List<Constant>& lhs_dims,
+                         const List<Constant>& rhs_dims) {
+    if (GetNumel(lhs_dims) != GetNumel(rhs_dims)) {
+      return std::make_tuple(std::vector<std::pair<int, int>>{},
+                             std::vector<std::pair<int, int>>{});
+    }
+    CHECK(!lhs_dims->empty());
+    CHECK(!rhs_dims->empty());
+    std::vector<std::pair<int, int>> lhs_ranges{};
+    std::vector<std::pair<int, int>> rhs_ranges{};
+    int lhs_start = 0;
+    int rhs_start = 0;
+    int lhs_end = 0;
+    int rhs_end = 0;
+    std::int64_t lhs_acc = 1;
+    std::int64_t rhs_acc = 1;
+    while (lhs_end < lhs_dims->size() || rhs_end < rhs_dims->size()) {
+      if (lhs_start == lhs_end) {
+        lhs_acc = lhs_dims->at(lhs_end++).Get<std::int64_t>();
+      }
+      if (rhs_start == rhs_end) {
+        rhs_acc = rhs_dims->at(rhs_end++).Get<std::int64_t>();
+      }
+      if (lhs_acc == rhs_acc) {
+        lhs_ranges.emplace_back(std::make_pair(lhs_start, lhs_end));
+        rhs_ranges.emplace_back(std::make_pair(rhs_start, rhs_end));
+        lhs_start = lhs_end;
+        rhs_start = rhs_end;
+      } else if (lhs_acc < rhs_acc) {
+        lhs_acc *= lhs_dims->at(lhs_end++).Get<std::int64_t>();
+      } else if (lhs_acc > rhs_acc) {
+        rhs_acc *= rhs_dims->at(rhs_end++).Get<std::int64_t>();
+      } else {
+        LOG(FATAL) << "Dead code";
+      }
+    }
+    CHECK(lhs_end == lhs_dims->size() && rhs_end == rhs_dims->size());
+    if (lhs_start < lhs_end && rhs_start < rhs_end) {
+      lhs_ranges.emplace_back(std::make_pair(lhs_start, lhs_end));
+      rhs_ranges.emplace_back(std::make_pair(rhs_start, rhs_end));
+    }
+    return std::make_tuple(lhs_ranges, rhs_ranges);
+  }
+
+  Value MatchAndRewrite(const Value& value, const IndexExprInferContext& ctx) {
+    const auto& [index_undot_value, constant_idx] =
+        value.Get<ListGetItem<Value, Constant>>().tuple();
+    const auto& [index_value, undot_dims] =
+        index_undot_value.Get<IndexUnDotValue<Value, Constant>>().tuple();
+    const auto& [index_dot_values, dot_dims] =
+        index_value.Get<IndexDotValue<Value, Constant>>().tuple();
+    const auto& iter_values = index_dot_values.Get<List<Value>>();
+    CHECK(dot_dims.Has<List<Constant>>());
+    CHECK(undot_dims.Has<List<Constant>>());
+    const auto& undot_dim_values = undot_dims.Get<List<Constant>>();
+    const auto& dot_dim_values = dot_dims.Get<List<Constant>>();
+    CHECK(IsConstantListAllPositiveInt64(undot_dim_values));
+    CHECK(IsConstantListAllPositiveInt64(dot_dim_values));
+
+    const auto& [undot_dim_ranges, dot_dim_ranges] =
+        GetSubReshapeDimRanges(undot_dim_values, dot_dim_values);
+    if (undot_dim_ranges.size() >= 1) {
+      const auto& [sub_range_idx, sub_range_item_idx] = GetSubRangeItemIdx(
+          undot_dim_ranges, constant_idx.Get<std::int64_t>());
+      List<Constant> sub_range_undot_dims = GetSubRangeDotDims(
+          undot_dim_values, undot_dim_ranges.at(sub_range_idx));
+      List<Value> sub_range_dot_iterators = GetSubRangeDotIterators(
+          iter_values, dot_dim_ranges.at(sub_range_idx));
+      List<Constant> sub_range_dot_dims =
+          GetSubRangeDotDims(dot_dim_values, dot_dim_ranges.at(sub_range_idx));
+      if (sub_range_dot_dims == sub_range_undot_dims) {
+        return sub_range_dot_iterators.Get(sub_range_item_idx);
+      } else {
+        IndexDotValue<Value, Constant> sub_range_dot{sub_range_dot_iterators,
+                                                     sub_range_dot_dims};
+        if (sub_range_undot_dims->size() == 1) {
+          CHECK_EQ(sub_range_item_idx, 0);
+          return sub_range_dot;
+        } else {
+          IndexUnDotValue<Value, Constant> sub_range_undot{
+              sub_range_dot, sub_range_undot_dims};
+          return ListGetItem<Value, Constant>{sub_range_undot,
+                                              sub_range_item_idx};
+        }
+      }
+    }
+    return ListGetItem<Value, Constant>{SimplifyValue(index_undot_value, ctx),
+                                        constant_idx};
+  }
+
+  std::pair<int, int> GetSubRangeItemIdx(
+      const std::vector<std::pair<int, int>>& ranges,
+      std::int64_t index) const {
+    for (std::size_t i = 0; i < ranges.size(); ++i) {
+      const auto& [begin, end] = ranges.at(i);
+      if (index >= begin && index < end) {
+        return std::pair<int, int>{i, index - begin};
+      }
+    }
+  }
+
+  List<Value> GetSubRangeDotIterators(const List<Value>& iterators,
+                                      const std::pair<int, int>& range) const {
+    return GetSubRange<List<Value>>(iterators, range);
+  }
+
+  List<Constant> GetSubRangeDotDims(const List<Constant>& dims,
+                                    const std::pair<int, int>& range) const {
+    return GetSubRange<List<Constant>>(dims, range);
+  }
+
+  template <typename ContainerT>
+  ContainerT GetSubRange(const ContainerT& container,
+                         const std::pair<int, int>& range) const {
+    CheckRange(container, range);
+    ContainerT ret{};
+    ret->assign(std::next(container->begin(), range.first),
+                std::next(container->begin(), range.second));
+    return ret;
+  }
+
+  template <typename ContainerT>
+  void CheckRange(const ContainerT& container,
+                  const std::pair<int, int>& range) const {
+    CHECK_GE(range.first, 0);
+    CHECK_GE(range.second, 0);
+    CHECK_LE(range.first, container->size());
+    CHECK_LE(range.second, container->size());
+    CHECK_LT(range.first, range.second);
+  }
+};
+
+struct SimplifyDotDot {
+  using source_pattern_type = IndexDotValue<List<Value>, List<std::int64_t>>;
+
+  std::int64_t Product(const List<Constant>& dims) {
+    std::int64_t ret = 1;
+    for (const auto& dim : *dims) {
+      CHECK(dim.Has<std::int64_t>());
+      ret *= dim.Get<std::int64_t>();
+    }
+    return ret;
+  }
+
+  Value MatchAndRewrite(const Value& value, const IndexExprInferContext& ctx) {
+    const auto& [index_dot_values, dot_dims] =
+        value.Get<IndexDotValue<Value, Constant>>().tuple();
+    CHECK_EQ(index_dot_values.Get<List<Value>>()->size(),
+             dot_dims.Get<List<Constant>>()->size());
+    List<Value> new_dot_values{};
+    List<Constant> new_dot_dims{};
+    for (std::size_t i = 0; i < index_dot_values.Get<List<Value>>()->size();
+         ++i) {
+      const auto& index_dot_value = index_dot_values.Get<List<Value>>()->at(i);
+      const auto& dot_dim =
+          dot_dims.Get<List<Constant>>()->at(i).Get<std::int64_t>();
+      if (Match<source_pattern_type>(index_dot_value)) {
+        const auto& [sub_index_dot_values, sub_dot_dims] =
+            index_dot_value.Get<IndexDotValue<Value, Constant>>().tuple();
+        const auto& sub_dot_dim_values = sub_dot_dims.Get<List<Constant>>();
+        std::int64_t dim_product = Product(sub_dot_dim_values);
+        if (dim_product == dot_dim) {
+          for (std::size_t j = 0;
+               j < sub_index_dot_values.Get<List<Value>>()->size();
+               ++j) {
+            const auto& sub_index_dot_value =
+                sub_index_dot_values.Get<List<Value>>()->at(j);
+            const auto& sub_dot_dim = sub_dot_dim_values->at(j);
+            new_dot_values->emplace_back(sub_index_dot_value);
+            new_dot_dims->emplace_back(sub_dot_dim);
+          }
+        } else {
+          new_dot_values->emplace_back(index_dot_value);
+          new_dot_dims->emplace_back(dot_dim);
+        }
+      } else {
+        new_dot_values->emplace_back(index_dot_value);
+        new_dot_dims->emplace_back(dot_dim);
+      }
+    }
+    return IndexDotValue<Value, Constant>{new_dot_values, new_dot_dims};
+  }
+};
+
 // Only simplify top-layer of value
 Value SimplifyValue(Value value, const IndexExprInferContext& ctx) {
   value = MatchAndRewrite<SimplifyDot>(value, ctx);
@@ -185,6 +393,8 @@ Value SimplifyValue(Value value, const IndexExprInferContext& ctx) {
   value = MatchAndRewrite<SimplifyDotUndot>(value, ctx);
   value = MatchAndRewrite<SimplifyUndotDot>(value, ctx);
   value = MatchAndRewrite<SimplifyListGetItemList>(value, ctx);
+  value = MatchAndRewrite<SimplifyGcdShape>(value, ctx);
+  value = MatchAndRewrite<SimplifyDotDot>(value, ctx);
   return value;
 }
 
