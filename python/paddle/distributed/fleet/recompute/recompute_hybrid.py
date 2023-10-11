@@ -18,7 +18,7 @@ from paddle.autograd import PyLayer
 from paddle.framework import core
 
 from ..meta_parallel.parallel_layers.random import get_rng_state_tracker
-from ..meta_parallel.pp_utils import utils
+from ..utils.tensor_fusion_helper import is_float_tensor
 from .recompute import (
     check_recompute_necessary,
     detach_variable,
@@ -292,7 +292,7 @@ def recompute_hybrid(ctx, function, *args, **kwargs):
         return all_outputs[0]
     else:
         for output in all_outputs:
-            if paddle.is_tensor(output) and not utils.is_float_tensor(output):
+            if paddle.is_tensor(output) and not is_float_tensor(output):
                 output.stop_gradient = True
 
         return tuple(all_outputs)

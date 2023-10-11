@@ -24,6 +24,7 @@ from paddle.autograd import no_grad
 from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding_optimizer import (
     DygraphShardingOptimizer,
+    DygraphShardingOptimizerV2,
 )
 from paddle.distributed.fleet.utils.hybrid_parallel_util import (
     obtain_optimizer_parameters_list,
@@ -398,7 +399,15 @@ class HybridParallelOptimizer:
         # Note: Only sharding stage 1 is considered in HybridParallelOptimizer.
         # The sharding stage2 and stage3 optimizers are invoked in other api.
         if hcg.get_sharding_parallel_world_size() > 1:
-            optimizer = DygraphShardingOptimizer(optimizer, hcg)
+            split_param = strategy.hybrid_configs[
+                'sharding_configs'
+            ].split_param
+            ShardingOptimizer = (
+                DygraphShardingOptimizerV2
+                if split_param
+                else DygraphShardingOptimizer
+            )
+            optimizer = ShardingOptimizer(optimizer, hcg)
         self._inner_opt = optimizer
         self._strategy = strategy
         self._hcg = hcg
@@ -501,72 +510,81 @@ class HybridParallelOptimizer:
                 key=lambda p: p.name,
             )
 
+        def sync_grad(p):
+            if hasattr(p, "main_grad") and p.main_grad is not None:
+                assert p.grad is None
+                self._insert_sync(
+                    p.main_grad, src_rank, mp_group, mp_configs.sync_mode
+                )
+            elif p.grad is not None:
+                self._insert_sync(
+                    p.grad, src_rank, mp_group, mp_configs.sync_mode
+                )
+
         # Grad sync before opt
         if mp_group.nranks > 1 and mp_configs and mp_configs.sync_grad:
             for p in params:
-                if hasattr(p, "main_grad") and p.main_grad is not None:
-                    assert p.grad is None
-                    self._insert_sync(
-                        p.main_grad, src_rank, mp_group, mp_configs.sync_mode
-                    )
-                elif p.grad is not None:
-                    self._insert_sync(
-                        p.grad, src_rank, mp_group, mp_configs.sync_mode
-                    )
+                sync_grad(p)
 
         self._inner_opt.step()
 
+        def sync_param(p):
+            self._insert_sync(p, src_rank, mp_group, mp_configs.sync_mode)
+
+        def sync_master_weight(p):
+            if (
+                hasattr(self._inner_opt, "_multi_precision")
+                and self._inner_opt._multi_precision
+                and p.name in self._inner_opt._master_weights
+            ):
+                self._insert_sync(
+                    self._inner_opt._master_weights[p.name],
+                    src_rank,
+                    mp_group,
+                    mp_configs.sync_mode,
+                )
+
         if mp_group.nranks > 1 and mp_configs and mp_configs.sync_param:
             for p in params:
-                # Param sync after opt
-                self._insert_sync(p, src_rank, mp_group, mp_configs.sync_mode)
+                sync_param(p)
+                sync_master_weight(p)
 
-                # Master param sync after opt
+        def sync_moment(p):
+            # support opt state of adam and adamw to broadcast now.
+            if isinstance(
+                self._inner_opt,
+                (paddle.optimizer.Adam, paddle.optimizer.AdamW),
+            ):
                 if (
-                    hasattr(self._inner_opt, "_multi_precision")
-                    and self._inner_opt._multi_precision
-                    and p.name in self._inner_opt._master_weights
+                    p.name
+                    in self._inner_opt._accumulators[
+                        self._inner_opt._moment1_acc_str
+                    ]
                 ):
+                    moment1 = self._inner_opt._get_accumulator(
+                        self._inner_opt._moment1_acc_str, p
+                    )
                     self._insert_sync(
-                        self._inner_opt._master_weights[p.name],
-                        src_rank,
-                        mp_group,
-                        mp_configs.sync_mode,
+                        moment1, src_rank, mp_group, mp_configs.sync_mode
+                    )
+
+                if (
+                    p.name
+                    in self._inner_opt._accumulators[
+                        self._inner_opt._moment2_acc_str
+                    ]
+                ):
+                    moment2 = self._inner_opt._get_accumulator(
+                        self._inner_opt._moment2_acc_str, p
+                    )
+                    self._insert_sync(
+                        moment2, src_rank, mp_group, mp_configs.sync_mode
                     )
 
         # Moment sync after opt
         if mp_group.nranks > 1 and mp_configs and mp_configs.sync_moment:
             for p in params:
-                # support opt state of adam and adamw to broadcast now.
-                if isinstance(
-                    self._inner_opt,
-                    (paddle.optimizer.Adam, paddle.optimizer.AdamW),
-                ):
-                    if (
-                        p.name
-                        in self._inner_opt._accumulators[
-                            self._inner_opt._moment1_acc_str
-                        ]
-                    ):
-                        moment1 = self._inner_opt._get_accumulator(
-                            self._inner_opt._moment1_acc_str, p
-                        )
-                        self._insert_sync(
-                            moment1, src_rank, mp_group, mp_configs.sync_mode
-                        )
-
-                    if (
-                        p.name
-                        in self._inner_opt._accumulators[
-                            self._inner_opt._moment2_acc_str
-                        ]
-                    ):
-                        moment2 = self._inner_opt._get_accumulator(
-                            self._inner_opt._moment2_acc_str, p
-                        )
-                        self._insert_sync(
-                            moment2, src_rank, mp_group, mp_configs.sync_mode
-                        )
+                sync_moment(p)
 
     @no_grad()
     @framework.dygraph_only

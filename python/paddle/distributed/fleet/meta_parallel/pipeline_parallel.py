@@ -26,14 +26,27 @@ from ..utils.hybrid_parallel_util import (
     broadcast_sharding_parameters,
 )
 from ..utils.log_util import logger
+from ..utils.tensor_fusion_helper import (
+    HOOK_ACTION,
+    FusedCommBuffer,
+    assign_group_by_size,
+)
 from .meta_parallel_base import MetaParallelBase
 from .parallel_layers.pp_layers import PipelineLayer
 from .pp_utils import p2p_communication as p2p
-from .pp_utils.utils import HOOK_ACTION, FusedCommBuffer, assign_group_by_size
 
 __all__ = []
 
 g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 1))
+g_shard_split_param = int(os.environ.get("FLAGS_shard_split_param", 0))
+
+
+def get_action(is_dp, shard_split_param=False):
+    if is_dp or not g_shard_use_reduce:
+        return HOOK_ACTION.ALL_REDUCE
+    if g_shard_split_param or shard_split_param:
+        return HOOK_ACTION.REDUCE_SCATTER
+    return HOOK_ACTION.REDUCE
 
 
 # assume only the first stage and last stage need data, and data consumption are ordred;
@@ -177,6 +190,17 @@ class PipelineParallel(MetaParallelBase):
             "pp_configs"
         ].enable_timer
 
+        self._sharding_split_param = self._strategy.hybrid_configs[
+            "sharding_configs"
+        ].split_param
+
+        logger.info(
+            f"dp_comm_overlap {self._dp_comm_overlap}; \
+            sharding_comm_overlap {self._sharding_comm_overlap}; \
+            sharding_split_param {self._sharding_split_param}; \
+            g_shard_split_param {g_shard_split_param}"
+        )
+
         if self._dp_comm_overlap:
             assert self.use_data_parallel and self.num_stages > 1
 
@@ -264,16 +288,12 @@ class PipelineParallel(MetaParallelBase):
         else:
             models = [model]
 
-        if not dp:
+        act = get_action(dp, self._sharding_split_param)
+
+        if act == HOOK_ACTION.REDUCE:
             assert hasattr(self, "optimizer")
             assert hasattr(self.optimizer, "_param2rank")
             _param2rank = self.optimizer._param2rank
-
-        act = (
-            HOOK_ACTION.ALL_REDUCE
-            if (dp or not g_shard_use_reduce)
-            else HOOK_ACTION.REDUCE
-        )
 
         for chunk_idx, model in enumerate(models):
             # For virtual pipeline. Will separate parameters in different chunk into
@@ -287,9 +307,7 @@ class PipelineParallel(MetaParallelBase):
             if len(parameter_list) < 1:
                 return
 
-            if dp:
-                fused_parameter_group[-1] = parameter_list
-            else:
+            if act == HOOK_ACTION.REDUCE:
                 # Sort parameters for sharding, since they have different dst rank
                 for p in parameter_list:
                     assert p.name in _param2rank
@@ -298,10 +316,12 @@ class PipelineParallel(MetaParallelBase):
                         fused_parameter_group[dst_rank].append(p)
                     else:
                         fused_parameter_group[dst_rank] = [p]
+            else:
+                fused_parameter_group[-1] = parameter_list
 
             for dst in fused_parameter_group:
                 parameter_list = fused_parameter_group[dst]
-                if not dp:
+                if act == HOOK_ACTION.REDUCE:
                     # parse the relative dst rank to absolute dst rank for sharding
                     dst = comm_group.ranks[dst]
 
