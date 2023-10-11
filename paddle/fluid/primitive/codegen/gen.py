@@ -294,6 +294,7 @@ BACKENDS = [
     'diag_grad',
     'trace_grad',
     'flip',
+    'sign',
 ]
 
 
