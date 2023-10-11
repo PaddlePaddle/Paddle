@@ -229,12 +229,14 @@ def batch_norm(
 
         inputs = {
             "X": [x],
-            "Scale": [weight],
-            "Bias": [bias],
             "Mean": [running_mean],
             "Variance": [running_var],
         }
 
+        if weight:
+            inputs['Scale'] = [weight]
+        if bias:
+            inputs['Bias'] = [bias]
         helper = LayerHelper('batch_norm', **locals())
         from paddle.base.data_feeder import convert_dtype
 
