@@ -34,7 +34,7 @@ CrossEntropyWithSoftmaxSPMDRule::InferForward(
                                    input_specs_size));
 
   auto x_shape = input_specs[0].shape();
-  int x_ndim = x_shape.size();
+  int x_ndim = static_cast<int>(x_shape.size());
   auto x_dist_attr_src = input_specs[0].dist_attr();
   std::vector<int64_t> x_dims_mapping_src = x_dist_attr_src.dims_mapping();
 
@@ -176,8 +176,8 @@ CrossEntropyWithSoftmaxSPMDRule::InferBackward(
     const std::vector<DistTensorSpec>& output_specs,
     const paddle::framework::AttributeMap& attrs) {
   // step0: verify input args based on cross_entropy_with_softmax logic
-  int64_t ninputs = input_specs.size();
-  int64_t noutputs = output_specs.size();
+  int64_t ninputs = static_cast<int64_t>(input_specs.size());
+  int64_t noutputs = static_cast<int64_t>(output_specs.size());
   PADDLE_ENFORCE_EQ(
       ninputs,
       2,
@@ -194,7 +194,7 @@ CrossEntropyWithSoftmaxSPMDRule::InferBackward(
 
   // step1: build Einsum Notation
   std::vector<int64_t> x_shape = input_specs[0].shape();
-  int64_t x_ndim = x_shape.size();
+  int64_t x_ndim = static_cast<int64_t>(x_shape.size());
   std::vector<int64_t> label_shape = input_specs[1].shape();
 
   int axis = ExtractAttr<int>("axis", attrs);
@@ -205,7 +205,7 @@ CrossEntropyWithSoftmaxSPMDRule::InferBackward(
 
   // normalize axis
   if (axis < 0) {
-    axis = x_ndim + axis;
+    axis = static_cast<int>(x_ndim + axis);
   }
 
   std::string alphabet =

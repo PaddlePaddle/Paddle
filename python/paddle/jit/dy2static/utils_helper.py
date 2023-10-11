@@ -20,8 +20,7 @@ import numpy as np  # noqa: F401
 
 import paddle  # noqa: F401
 from paddle import base  # noqa: F401
-from paddle.base import dygraph  # noqa: F401
-from paddle.base import layers  # noqa: F401
+from paddle.base import dygraph, layers  # noqa: F401
 from paddle.base.dygraph import to_variable  # noqa: F401
 from paddle.utils import gast
 

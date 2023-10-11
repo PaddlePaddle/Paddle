@@ -28,7 +28,7 @@ from paddle.base.framework import (
 )
 from paddle.base.layer_helper import LayerHelper
 
-__all__ = [  # noqa
+__all__ = [
     'LRScheduler',
     'NoamDecay',
     'PiecewiseDecay',

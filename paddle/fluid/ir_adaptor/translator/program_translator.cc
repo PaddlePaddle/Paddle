@@ -23,6 +23,7 @@
 #include "paddle/fluid/ir_adaptor/translator/op_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/type_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
+#include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/attribute.h"
@@ -57,18 +58,21 @@ const std::unordered_set<std::string> ProgramTranslator::unsupported_ops = {
 static std::vector<uint64_t> GetCondOpIds(const BlockDesc& src_block,
                                           uint64_t first_id) {
   std::vector<uint64_t> op_list = {first_id};
-  if (src_block.Op(first_id + 1)->Type() == "logical_not") {
+  if (src_block.Op(static_cast<int>(first_id + 1))->Type() == "logical_not") {
     op_list.emplace_back(first_id + 1);
   }
-  if (src_block.Op(first_id + 2)->Type() == "conditional_block") {
+  if (src_block.Op(static_cast<int>(first_id + 2))->Type() ==
+      "conditional_block") {
     op_list.emplace_back(first_id + 2);
   }
-  if (src_block.Op(first_id + 3)->Type() == "cast") {
+  if (src_block.Op(static_cast<int>(first_id + 3))->Type() == "cast") {
     op_list.emplace_back(first_id + 3);
   }
-  size_t output_size = src_block.Op(first_id)->Output("Out").size();
+  size_t output_size =
+      src_block.Op(static_cast<int>(first_id))->Output("Out").size();
   for (size_t i = 0; i < output_size; i++) {
-    if (src_block.Op(first_id + 4 + i)->Type() == "select_input") {
+    if (src_block.Op(static_cast<int>(first_id + 4 + i))->Type() ==
+        "select_input") {
       op_list.emplace_back(first_id + 4 + i);
     }
   }
@@ -79,7 +83,7 @@ ConditionBlockCombination::ConditionBlockCombination(
     const ::paddle::framework::BlockDesc& src_block,
     const std::vector<uint64_t>& op_ids) {
   for (auto op_id : op_ids) {
-    op_list_.emplace_back(src_block.Op(op_id));
+    op_list_.emplace_back(src_block.Op(static_cast<int>(op_id)));
   }
   PADDLE_ENFORCE(Verify(op_list_),
                  platform::errors::NotFound(
@@ -223,7 +227,7 @@ void ProgramTranslator::TranslateBlock(const BlockDesc& src_block,
     if (translate_completed.count(op_id) && translate_completed.at(op_id)) {
       continue;
     }
-    auto op = src_block.Op(op_id);
+    auto op = src_block.Op(static_cast<int>(op_id));
     VLOG(8) << "=============>start to translate a op: " << op->Type();
 
     PADDLE_ENFORCE_EQ(unsupported_ops.count(op->Type()),
@@ -255,7 +259,7 @@ void ProgramTranslator::TranslateBlock(const BlockDesc& src_block,
           src_block.Op(id)->Type() == "assign",
           "The operator at the end of the sub block needs to be assign");
       yeild_inputs.emplace_back(
-          param_map_[src_block.Op(id)->Input("X")[0]].value);
+          param_map_[src_block.Op(static_cast<int>(id))->Input("X")[0]].value);
     }
     pir::AttributeMap attribute_map;
     auto yeild_info = ctx_->GetRegisteredOpInfo(pir::YieldOp::name());

@@ -25,7 +25,7 @@ from .lamb import Lamb  # noqa: F401
 from .lbfgs import LBFGS  # noqa: F401
 from . import lr  # noqa: F401
 
-__all__ = [  # noqa
+__all__ = [
     'Optimizer',
     'Adagrad',
     'Adam',
