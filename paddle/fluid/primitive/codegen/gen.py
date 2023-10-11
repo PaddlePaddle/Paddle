@@ -296,6 +296,7 @@ BACKENDS = [
     'trace_grad',
     'flip',
     'vdot_grad',
+    'sign',
 ]
 
 

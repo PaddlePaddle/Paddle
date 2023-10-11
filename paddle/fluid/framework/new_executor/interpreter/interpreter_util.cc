@@ -693,7 +693,7 @@ void BuildOpFuncList(const platform::Place& place,
         // op is not a operatorwithkernel, so direcly run OperatorBase::Run()
 
         std::vector<std::shared_ptr<OperatorBase>> following_ops(
-            ops.begin() + i + 1, ops.end());
+            ops.begin() + static_cast<int>(i) + 1, ops.end());
         HandleOperatorBase(place,
                            ops[i],
                            &op_func_node,
@@ -894,7 +894,7 @@ void BuildOpFuncList(const platform::Place& place,
             // avoid overwriting valid data
             if (static_build && original_tensor->initialized()) {
               const phi::Place& target_place = transformed_tensor->place();
-              platform::DeviceContext* dev_ctx_for_copy;
+              platform::DeviceContext* dev_ctx_for_copy = nullptr;
               if (target_place.GetType() != AllocationType::CPU) {
                 dev_ctx_for_copy = pool.Get(target_place);
               } else {

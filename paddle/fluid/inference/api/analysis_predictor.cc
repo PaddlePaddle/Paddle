@@ -217,7 +217,7 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
                                phi::DenseTensor *t,
                                const platform::Place &place) {
   framework::DDim ddim = phi::make_ddim(pt.shape);
-  void *input_ptr;
+  void *input_ptr = nullptr;
   if (pt.dtype == PaddleDType::INT64) {
     input_ptr = t->mutable_data<int64_t>(ddim, place);
   } else if (pt.dtype == PaddleDType::FLOAT32) {
@@ -1988,7 +1988,7 @@ AnalysisPredictor::GetOutputTypes() {
 
 std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
     const std::string &name) {
-  framework::Scope *scope;
+  framework::Scope *scope = nullptr;
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   if (config_.dist_config().use_dist_model()) {
     scope = scope_.get();
@@ -2039,7 +2039,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
 
 std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
     const std::string &name) {
-  framework::Scope *scope;
+  framework::Scope *scope;  // NOLINT
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   if (config_.dist_config().use_dist_model()) {
     scope = scope_.get();
@@ -2954,6 +2954,7 @@ USE_TRT_CONVERTER(cumsum)
 USE_TRT_CONVERTER(assign)
 USE_TRT_CONVERTER(unbind)
 USE_TRT_CONVERTER(flip)
+USE_TRT_CONVERTER(share_data)
 #if IS_TRT_VERSION_GE(8522)
 USE_TRT_CONVERTER(flash_multihead_matmul)
 USE_TRT_CONVERTER(cross_multihead_matmul)

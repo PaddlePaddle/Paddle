@@ -1143,7 +1143,7 @@ def dot(x, y, name=None):
             [32, 64])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.dot(x, y)
     else:
         op_type = 'dot'
