@@ -20,6 +20,7 @@ from op_test import OpTest
 import paddle
 from paddle import base, incubate
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -94,6 +95,7 @@ class TestDropoutBiasFuseOp2(unittest.TestCase):
         np.random.seed(123)
         self.dtypes = ['float16', 'float32']
 
+    @test_with_pir_api
     def test_static(self):
         for dtype in self.dtypes:
             with base.program_guard(base.Program(), base.Program()):

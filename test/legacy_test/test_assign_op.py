@@ -24,6 +24,7 @@ import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
 from paddle.base.backward import append_backward
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestAssignOp(op_test.OpTest):
@@ -275,6 +276,7 @@ class TestAssignOApiFP16(unittest.TestCase):
 
 
 class TestAssignOpErrorApi(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
@@ -288,6 +290,7 @@ class TestAssignOpErrorApi(unittest.TestCase):
             self.assertRaises(TypeError, paddle.assign, x2)
         paddle.disable_static()
 
+    @test_with_pir_api
     def test_type_error(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
