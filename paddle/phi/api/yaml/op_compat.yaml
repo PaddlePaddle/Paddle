@@ -3338,6 +3338,7 @@
     {x: X, i: I}
   outputs :
     out : Out
+
 - op: exponential
   backward: exponential_grad
   inputs :
