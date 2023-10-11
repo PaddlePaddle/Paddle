@@ -15,6 +15,7 @@
 
 from ..runtime import CinnLowerLevelIrJit
 from .compute_code_generator import ComputeCodeGenerator
+from .schedule_code_generator import ScheduleCodeGenerator
 
 
 def ast_to_llir(fn, inputs_signature):
@@ -24,7 +25,10 @@ def ast_to_llir(fn, inputs_signature):
         fn, function_name, inputs_signature
     )
     cinn_llir_func = llir_compute_generator.parse()
-    return cinn_llir_func
+
+    # 2. Parse CINN Schedule
+    llir_schedule_generator = ScheduleCodeGenerator(fn, cinn_llir_func)
+    return llir_schedule_generator.parse()
 
 
 def compile(fn, just_convert=False, jit_inputs_signature=[], **kwargs):
@@ -35,4 +39,3 @@ def compile(fn, just_convert=False, jit_inputs_signature=[], **kwargs):
 
     if just_convert:
         return llir_func
-    return llir_func
