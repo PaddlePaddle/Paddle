@@ -82,12 +82,12 @@ class TestException(unittest.TestCase):
             ), f"{match_results} is not equal {error_lines}"
 
     def test_all_case(self):
-        self.catch_error(case1, paddle.rand([2, 1]), 11)
+        self.catch_error(case1, paddle.rand([2, 1]), 25)
         # TODO: support runtime error, such as x[111], x@x
-        # self.catch_error(case2, paddle.rand([2, 1]), 16)
-        self.catch_error(case3, paddle.rand([2, 1]), 20)
-        self.catch_error(case4, paddle.rand([2, 1]), 28)
-        self.catch_error(case5, paddle.rand([3, 1]), [54, 49, 44])
+        # self.catch_error(case2, paddle.rand([2, 1]), 30)
+        self.catch_error(case3, paddle.rand([2, 1]), 34)
+        self.catch_error(case4, paddle.rand([2, 1]), 42)
+        self.catch_error(case5, paddle.rand([3, 1]), [68, 63, 58])
 
 
 if __name__ == "__main__":
