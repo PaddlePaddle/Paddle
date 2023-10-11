@@ -77,28 +77,26 @@ TEST_F(TestReductionFactoring, AnalyseApplyType) {
             RuleApplyType::kCannotApply);
 }
 
-TEST_F(TestReductionFactoring, ApplyOnBlock) {
+TEST_F(TestReductionFactoring, ApplyOnBlock1ReduceDim) {
   std::string expected_ir = R"({
   ScheduleBlock(root)
   {
     {
       serial for (i, 0, 32)
       {
-        serial for (rf_reduce_k_0, 0, 64)
+        serial for (reduce_k_0_0, 0, 8)
         {
-          ScheduleBlock(rf_var_0__reduce_init)
+          ScheduleBlock(var_0_rf__reduce_init)
           {
-            i0, i1_0 = axis.bind(i, rf_reduce_k_0)
-            rf_var_0__reduce_init[i0, i1_0] = 0.00000000f
+            vreduce_k_0_0, i0_0 = axis.bind(reduce_k_0_0, i)
+            var_0_rf__reduce_init[i0_0, vreduce_k_0_0] = 0.00000000f
           }
-          serial for (reduce_k_1, 0, 128)
+          serial for (reduce_k_0_1, 0, 8)
           {
-            ScheduleBlock(rf_var_0)
+            ScheduleBlock(var_0_rf)
             {
-              i0_0, i1, i2 = axis.bind(i, rf_reduce_k_0, reduce_k_1)
-              read_buffers(_var_0[i0_0(0:32)], _X[i0_0(0:32), i1(0:64), i2(0:128)])
-              write_buffers(_var_0[i0_0(0:32)])
-              rf_var_0[i0_0, i1] = (rf_var_0[i0_0, i1] + X[i0_0, i1, i2])
+              vreduce_k_0_0, i0_0, vreduce_k_0_1 = axis.bind(reduce_k_0_0, i, reduce_k_0_1)
+              var_0_rf[i0_0, vreduce_k_0_0] = (var_0_rf[i0_0, vreduce_k_0_0] + X[i0_0, ((8 * vreduce_k_0_0) + vreduce_k_0_1)])
             }
           }
         }
@@ -107,17 +105,61 @@ TEST_F(TestReductionFactoring, ApplyOnBlock) {
       {
         ScheduleBlock(var_0__reduce_init)
         {
-          i0 = axis.bind(i)
-          var_0__reduce_init[i0] = 0.00000000f
+          i0_0 = axis.bind(i)
+          var_0__reduce_init[i0_0] = 0.00000000f
         }
-        serial for (reduce_k_0, 0, 64)
+        serial for (reduce_k_0_0, 0, 8)
         {
           ScheduleBlock(var_0)
           {
-            i0_0, i1 = axis.bind(i, reduce_k_0)
-            read_buffers(_var_0[i0_0(0:32)], _X[i0_0(0:32), i1(0:64), i2(0:128)])
-            write_buffers(_var_0[i0_0(0:32)])
-            var_0[i0_0] = (var_0[i0_0] + rf_var_0[i0_0, i1])
+            vreduce_k_0_0, i0_0 = axis.bind(reduce_k_0_0, i)
+            var_0[i0_0] = (var_0[i0_0] + var_0_rf[i0_0, vreduce_k_0_0])
+          }
+        }
+      }
+    }
+  }
+})";
+  TestApplyOnReduce({32, 64}, {1}, "var_0", expected_ir);
+}
+
+TEST_F(TestReductionFactoring, ApplyOnBlock2ReduceDim) {
+  std::string expected_ir = R"({
+  ScheduleBlock(root)
+  {
+    {
+      serial for (i, 0, 32)
+      {
+        serial for (reduce_k_0_reduce_k_1_fused, 0, 128)
+        {
+          ScheduleBlock(var_0_rf__reduce_init)
+          {
+            vreduce_k_0_reduce_k_1_fused, i0_0 = axis.bind(reduce_k_0_reduce_k_1_fused, i)
+            var_0_rf__reduce_init[i0_0, vreduce_k_0_reduce_k_1_fused] = 0.00000000f
+          }
+          serial for (reduce_k_0_reduce_k_1_fused_0, 0, 64)
+          {
+            ScheduleBlock(var_0_rf)
+            {
+              vreduce_k_0_reduce_k_1_fused, i0_0, vreduce_k_0_reduce_k_1_fused_0 = axis.bind(reduce_k_0_reduce_k_1_fused, i, reduce_k_0_reduce_k_1_fused_0)
+              var_0_rf[i0_0, vreduce_k_0_reduce_k_1_fused] = (var_0_rf[i0_0, vreduce_k_0_reduce_k_1_fused] + X[i0_0, (((64 * vreduce_k_0_reduce_k_1_fused) + vreduce_k_0_reduce_k_1_fused_0) / 128), (((64 * vreduce_k_0_reduce_k_1_fused) + vreduce_k_0_reduce_k_1_fused_0) % 128)])
+            }
+          }
+        }
+      }
+      serial for (i, 0, 32)
+      {
+        ScheduleBlock(var_0__reduce_init)
+        {
+          i0_0 = axis.bind(i)
+          var_0__reduce_init[i0_0] = 0.00000000f
+        }
+        serial for (reduce_k_0_reduce_k_1_fused, 0, 128)
+        {
+          ScheduleBlock(var_0)
+          {
+            vreduce_k_0_reduce_k_1_fused, i0_0 = axis.bind(reduce_k_0_reduce_k_1_fused, i)
+            var_0[i0_0] = (var_0[i0_0] + var_0_rf[i0_0, vreduce_k_0_reduce_k_1_fused])
           }
         }
       }
@@ -125,6 +167,52 @@ TEST_F(TestReductionFactoring, ApplyOnBlock) {
   }
 })";
   TestApplyOnReduce({32, 64, 128}, {1, 2}, "var_0", expected_ir);
+}
+
+TEST_F(TestReductionFactoring, ApplyOnBlock3ReduceDim) {
+  std::string expected_ir = R"({
+  ScheduleBlock(root)
+  {
+    {
+      serial for (i, 0, 32)
+      {
+        serial for (reduce_k_0_reduce_k_1_reduce_k_2_fused, 0, 512)
+        {
+          ScheduleBlock(var_0_rf__reduce_init)
+          {
+            vreduce_k_0_reduce_k_1_reduce_k_2_fused, i0_0 = axis.bind(reduce_k_0_reduce_k_1_reduce_k_2_fused, i)
+            var_0_rf__reduce_init[i0_0, vreduce_k_0_reduce_k_1_reduce_k_2_fused] = 0.00000000f
+          }
+          serial for (reduce_k_0_reduce_k_1_reduce_k_2_fused_0, 0, 512)
+          {
+            ScheduleBlock(var_0_rf)
+            {
+              vreduce_k_0_reduce_k_1_reduce_k_2_fused, i0_0, vreduce_k_0_reduce_k_1_reduce_k_2_fused_0 = axis.bind(reduce_k_0_reduce_k_1_reduce_k_2_fused, i, reduce_k_0_reduce_k_1_reduce_k_2_fused_0)
+              var_0_rf[i0_0, vreduce_k_0_reduce_k_1_reduce_k_2_fused] = (var_0_rf[i0_0, vreduce_k_0_reduce_k_1_reduce_k_2_fused] + X[i0_0, ((((512 * vreduce_k_0_reduce_k_1_reduce_k_2_fused) + vreduce_k_0_reduce_k_1_reduce_k_2_fused_0) / 64) / 64), ((((512 * vreduce_k_0_reduce_k_1_reduce_k_2_fused) + vreduce_k_0_reduce_k_1_reduce_k_2_fused_0) / 64) % 64), (((512 * vreduce_k_0_reduce_k_1_reduce_k_2_fused) + vreduce_k_0_reduce_k_1_reduce_k_2_fused_0) % 64)])
+            }
+          }
+        }
+      }
+      serial for (i, 0, 32)
+      {
+        ScheduleBlock(var_0__reduce_init)
+        {
+          i0_0 = axis.bind(i)
+          var_0__reduce_init[i0_0] = 0.00000000f
+        }
+        serial for (reduce_k_0_reduce_k_1_reduce_k_2_fused, 0, 512)
+        {
+          ScheduleBlock(var_0)
+          {
+            vreduce_k_0_reduce_k_1_reduce_k_2_fused, i0_0 = axis.bind(reduce_k_0_reduce_k_1_reduce_k_2_fused, i)
+            var_0[i0_0] = (var_0[i0_0] + var_0_rf[i0_0, vreduce_k_0_reduce_k_1_reduce_k_2_fused])
+          }
+        }
+      }
+    }
+  }
+})";
+  TestApplyOnReduce({32, 64, 64, 64}, {1, 2, 3}, "var_0", expected_ir);
 }
 
 }  // namespace auto_schedule
