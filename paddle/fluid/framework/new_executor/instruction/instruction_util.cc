@@ -20,6 +20,8 @@
 #include <vector>
 
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/event.h"
 #include "paddle/pir/core/builtin_attribute.h"
@@ -148,7 +150,8 @@ OpFuncType AnalyseOpFuncType(pir::Operation* op, const platform::Place& place) {
 
   auto& op_attributes = op->attributes();
 
-  if ((op->dialect()->name() == "pd_kernel") &&
+  if ((op->dialect()->name().compare(paddle::dialect::KernelDialect::name()) ==
+       0) &&
       (op_attributes.count("kernel_key") > 0)) {
     auto kernel_key = op_attributes.at("kernel_key")
                           .dyn_cast<dialect::KernelAttribute>()
@@ -179,7 +182,7 @@ OpFuncType AnalyseOpFuncType(pir::Operation* op, const platform::Place& place) {
       return OpFuncType::kGpuSync;
     }
 
-    if (op_name == "pd_op.shape") {
+    if (op_name.compare(paddle::dialect::ShapeOp::name()) == 0) {
       return OpFuncType::kGpuSync;
     }
   }
@@ -199,6 +202,7 @@ std::vector<pir::Value> GetCondYiedOpInputs(pir::Block* block) {
 
   return vec_res;
 }
+
 std::vector<pir::Value> GetYiedOpInputs(pir::Block* block) {
   std::vector<pir::Value> vec_res;
   for (auto op : (*block)) {
@@ -224,8 +228,7 @@ void GetInputIds(pir::Operation* op,
               "input should in name map, [%d] 'th input of [%s] op",
               i,
               "if op"));
-      std::vector<int> inputs_id = GetValueIds(value, value_exec_info);
-      input_ids->emplace(value, inputs_id);
+      input_ids->emplace(value, GetValueIds(value, value_exec_info));
     }
   }
 }
@@ -252,9 +255,7 @@ void GetOutsideOpInputs(
                 "input should in name map, [%d] 'th input of [%s] op",
                 i,
                 op->name()));
-        std::vector<int> inputs_id = GetValueIds(value, value_exec_info);
-
-        input_ids->emplace(value, inputs_id);
+        input_ids->emplace(value, GetValueIds(value, value_exec_info));
       }
     }
   }

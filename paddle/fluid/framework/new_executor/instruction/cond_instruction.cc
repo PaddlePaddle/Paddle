@@ -120,12 +120,20 @@ CondInstruction::CondInstruction(size_t id,
               "input should in name map, [%d] 'th input of [%s] op",
               i,
               "if op"));
-      std::vector<int> outputs_id = GetValueIds(value, *value_exec_info);
-      outputs.emplace(value, outputs_id);
+      outputs.emplace(value, GetValueIds(value, *value_exec_info));
     }
   }
   SetOutputs(outputs);
   VLOG(6) << "finish process inputs outputs index";
+}
+
+CondInstruction::~CondInstruction() {
+  if (true_branch_inter_ != nullptr) {
+    delete true_branch_inter_;
+  }
+  if (false_branch_inter_ != nullptr) {
+    delete false_branch_inter_;
+  }
 }
 
 void CondInstruction::CopyBranchOutput(
