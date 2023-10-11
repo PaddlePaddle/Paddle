@@ -48,13 +48,12 @@ from paddle.distributed.fleet.utils.tensor_fusion_helper import (
 __all__ = []
 
 g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 1))
-g_shard_split_param = int(os.environ.get("FLAGS_shard_split_param", 0))
 
 
 def get_action(is_dp, shard_split_param=False):
     if is_dp or not g_shard_use_reduce:
         return HOOK_ACTION.ALL_REDUCE
-    if g_shard_split_param or shard_split_param:
+    if shard_split_param:
         return HOOK_ACTION.REDUCE_SCATTER
     return HOOK_ACTION.REDUCE
 
@@ -208,8 +207,7 @@ class PipelineParallel(MetaParallelBase):
         logger.info(
             f"dp_comm_overlap {self._dp_comm_overlap}; \
             sharding_comm_overlap {self._sharding_comm_overlap}; \
-            sharding_split_param {self._sharding_split_param}; \
-            g_shard_split_param {g_shard_split_param}"
+            sharding_split_param {self._sharding_split_param};"
         )
 
         self._profiling = self._strategy.hybrid_configs["pp_configs"].profiling

@@ -31,15 +31,11 @@ from ...utils.tensor_fusion_helper import (
 
 g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 1))
 g_shard_norm_align_dp = int(os.environ.get("FLAGS_shard_norm_align_dp", 0))
-g_shard_split_param = int(os.environ.get("FLAGS_shard_split_param", 0))
 
 if g_shard_norm_align_dp:
     assert (
         not g_shard_use_reduce
     ), "g_shard_norm_align_dp is not supported if g_shard_use_reduce is true"
-    assert (
-        not g_shard_split_param
-    ), "g_shard_norm_align_dp is not supported if g_shard_split_param is true"
 
 
 def _is_trainable(param):
@@ -699,10 +695,3 @@ class DygraphShardingOptimizerV2:
 
     def __getattr__(self, item):
         return getattr(self._inner_opt, item)
-
-
-DygraphShardingOptimizer = (
-    DygraphShardingOptimizerV2
-    if g_shard_split_param
-    else DygraphShardingOptimizer
-)
