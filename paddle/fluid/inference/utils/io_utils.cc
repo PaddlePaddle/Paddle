@@ -240,35 +240,41 @@ void DeserializeShapeRangeInfo(
       continue;
     } else {
       std::vector<int32_t> tmp(info.min_shape_size());
-      for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.min_shape(k);
+      for (size_t k = 0; k < tmp.size(); ++k)
+        tmp[k] = info.min_shape(static_cast<int>(k));
       min_shape->insert(std::make_pair(name, tmp));
 
       tmp.resize(info.max_shape_size());
-      for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.max_shape(k);
+      for (size_t k = 0; k < tmp.size(); ++k)
+        tmp[k] = info.max_shape(static_cast<int>(k));
       max_shape->insert(std::make_pair(name, tmp));
 
       tmp.resize(info.opt_shape_size());
-      for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.opt_shape(k);
+      for (size_t k = 0; k < tmp.size(); ++k)
+        tmp[k] = info.opt_shape(static_cast<int>(k));
       opt_shape->insert(std::make_pair(name, tmp));
     }
   }
   for (int i = 0; i < shape_range_infos.shape_range_info_size(); ++i) {
-    auto info = shape_range_infos.shape_range_info(i);
+    auto info = shape_range_infos.shape_range_info(static_cast<int>(i));
     auto name = info.name();
     if (min_value->count(name) || max_value->count(name) ||
         opt_value->count(name)) {
       continue;
     } else {
       std::vector<int32_t> tmp(info.min_value_size());
-      for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.min_value(k);
+      for (size_t k = 0; k < tmp.size(); ++k)
+        tmp[k] = info.min_value(static_cast<int>(k));
       min_value->insert(std::make_pair(name, tmp));
 
       tmp.resize(info.max_value_size());
-      for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.max_value(k);
+      for (size_t k = 0; k < tmp.size(); ++k)
+        tmp[k] = info.max_value(static_cast<int>(k));
       max_value->insert(std::make_pair(name, tmp));
 
       tmp.resize(info.opt_value_size());
-      for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.opt_value(k);
+      for (size_t k = 0; k < tmp.size(); ++k)
+        tmp[k] = info.opt_value(static_cast<int>(k));
       opt_value->insert(std::make_pair(name, tmp));
     }
   }
