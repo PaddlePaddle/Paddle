@@ -36,6 +36,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/transforms/conv2d_bn_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/block.h"
@@ -67,6 +68,7 @@ using pybind11::return_value_policy;
 
 USE_PASS(dead_code_elimination);
 USE_PASS(inplace);
+USE_PASS(conv2d_bn_fuse);
 
 PHI_DECLARE_bool(print_ir);
 

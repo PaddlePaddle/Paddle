@@ -19,6 +19,11 @@ cc_library(
   DEPS drr)
 
 cc_library(
+  conv2d_bn_fuse_pass
+  SRCS conv2d_bn_fuse_pass.cc
+  DEPS transform_general_functions)
+
+cc_library(
   pd_inplace_pass
   SRCS inplace_pass.cc
   DEPS pd_op_dialect_core op_yaml_info_parser)
