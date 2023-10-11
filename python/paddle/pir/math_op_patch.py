@@ -17,6 +17,8 @@ from paddle.base.libpaddle import DataType
 
 from . import OpResult
 
+_already_patch_opresult = False
+
 
 def create_tensor_with_batchsize(ref_var, value, dtype):
     assert isinstance(ref_var, OpResult)
@@ -42,9 +44,6 @@ def create_tensor_with_batchsize(ref_var, value, dtype):
     out.stop_gradient = True
 
     return out
-
-
-_already_patch_opresult = False
 
 
 def monkey_patch_opresult():
@@ -195,6 +194,7 @@ def monkey_patch_opresult():
             method_name = method[0]
             method_impl = method[1]
             setattr(OpResult, method_name, method_impl)
+
     else:
         # Handling Tensor Methods
         import paddle.tensor
@@ -205,5 +205,10 @@ def monkey_patch_opresult():
             method_impl = getattr(paddle.tensor, method_name, None)
             if method_impl:
                 setattr(OpResult, method_name, method_impl)
+
+        # Handling __getitem__
+        from ..base.variable_index import _getitem_static
+
+        OpResult.__getitem__ = _getitem_static
 
     _already_patch_opresult = True
