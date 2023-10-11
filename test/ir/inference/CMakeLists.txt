@@ -47,7 +47,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_TRT_CONVERTER
        "test_trt_convert_quantize_dequantize_linear")
   list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_explicit_quantization")
-  if(NOT WITH_MKLDNN)
+  if(WITH_MKLDNN)
     list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_explicit_quantization_resnet")
     list(REMOVE_ITEM TEST_TRT_IR_PASSES
          "test_trt_explicit_quantization_mobilenet")
