@@ -138,7 +138,7 @@ Attribute IrParser::ParseAttribute() {
     ConsumeAToken("Float");
     ConsumeAToken(")");
     std::string val = ConsumeToken().val_;
-    return builder->float_attr(atof(val.c_str()));
+    return builder->float_attr(static_cast<float>(atof(val.c_str())));
   } else if (attribute_type == "Double") {
     ConsumeAToken("Double");
     ConsumeAToken(")");

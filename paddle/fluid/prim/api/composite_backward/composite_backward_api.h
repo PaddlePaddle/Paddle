@@ -585,9 +585,8 @@ void sigmoid_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
 template <typename T>
 void abs_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
-    auto abs_tmp = abs<T>(x);
-    auto divide_tmp = divide<T>(x, abs_tmp);
-    set_output<T>(out_grad * divide_tmp, x_grad);
+    auto sign_tmp = sign<T>(x);
+    set_output<T>(out_grad * sign_tmp, x_grad);
   }
 }
 
