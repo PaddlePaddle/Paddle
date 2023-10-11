@@ -2937,7 +2937,7 @@ def min(x, axis=None, keepdim=False, name=None):
               [0., 0.]]])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.min(x, axis, keepdim)
     else:
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
