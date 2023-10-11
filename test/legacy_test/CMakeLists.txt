@@ -521,7 +521,6 @@ set(TEST_OPS_WITH_GC
     test_lod_reset_op
     test_lookup_table_op
     test_mean_op
-    test_pad2d_op
     test_scatter_op
     test_slice_op)
 
@@ -852,7 +851,6 @@ set_tests_properties(
   test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(
   test_sync_batch_norm_op
-  test_inplace_abn_op
   test_parallel_executor_seresnext_base_gpu
   test_parallel_executor_seresnext_with_reduce_gpu
   test_parallel_executor_seresnext_with_fuse_all_reduce_gpu

@@ -149,7 +149,7 @@ Attribute IrParser::ParseAttribute() {
       float pos_inf = std::numeric_limits<float>::infinity();
       return builder->float_attr(pos_inf);
     }
-    return builder->float_attr(atof(val.c_str()));
+    return builder->float_attr(static_cast<float>(atof(val.c_str())));
   } else if (attribute_type == "Double") {
     ConsumeAToken("Double");
     ConsumeAToken(")");

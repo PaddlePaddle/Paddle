@@ -24,10 +24,8 @@ class TestMatmulApiForSemiAutoParallel:
     def __init__(self):
         self._dtype = os.getenv("dtype")
         self._backend = os.getenv("backend")
+        self._seed = eval(os.getenv("seed"))
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
-
-        paddle.seed(2023)
-        np.random.seed(2023)
 
     def check_tensor_eq(self, a, b):
         np1 = a.numpy()
@@ -37,6 +35,9 @@ class TestMatmulApiForSemiAutoParallel:
     def test_body(
         self, x_shape, y_shape, x_specs, y_specs, trans_x=False, trans_y=False
     ):
+        paddle.seed(self._seed)
+        np.random.seed(self._seed)
+
         x_np = np.random.random(size=x_shape).astype(self._dtype)
         y_np = np.random.random(size=y_shape).astype(self._dtype)
         x = paddle.to_tensor(x_np)
