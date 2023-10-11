@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/batch_norm_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
