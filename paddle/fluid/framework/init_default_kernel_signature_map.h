@@ -16,6 +16,9 @@ limitations under the License. */
 
 #include "paddle/utils/test_macros.h"
 
-// NOTE(risemeup1):The implementation of  InitDefaultKernelSignatureMap is in
-// phi_utils.cc
+// The implementation of  InitDefaultKernelSignatureMap is in phi_utils.cc
+namespace paddle {
+namespace framework {
 TEST_API void InitDefaultKernelSignatureMap();
+}  // namespace framework
+}  // namespace paddle
