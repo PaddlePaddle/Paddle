@@ -42,6 +42,7 @@ set(PYBIND_DEPS
     pd_op_dialect
     program_translator
     pd_inplace_pass
+    conv2d_bn_fuse_pass
     pir
     new_profiler
     jit_layer
