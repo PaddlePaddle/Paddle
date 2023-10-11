@@ -383,7 +383,7 @@ from ..signal import istft  # noqa: F401
 from ..signal import stft  # noqa: F401
 
 # this list used in math_op_patch.py for _binary_creator_
-tensor_method_func = [  # noqa
+tensor_method_func = [
     'create_parameter',
     'create_tensor',
     'matmul',
@@ -718,37 +718,6 @@ tensor_method_func = [  # noqa
     'acosh_',
     'asinh_',
     'diag',
-    'eye',
-    'linspace',
-    'fill_constant',
-    'ones',
-    'ones_like',
-    'zeros',
-    'zeros_like',
-    'arange',
-    'full',
-    'full_like',
-    'meshgrid',
-    'empty',
-    'empty_like',
-    'complex',
-    'eigh',
-    'standard_normal',
-    'normal',
-    'uniform',
-    'randn',
-    'rand',
-    'randint',
-    'randint_like',
-    'randperm',
-    'poisson',
-    'searchsorted',
-    'set_printoptions',
-    'array_length',
-    'array_read',
-    'array_write',
-    'create_array',
-    'einsum',
     'normal_',
 ]
 

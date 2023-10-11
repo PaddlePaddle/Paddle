@@ -222,5 +222,17 @@ const std::string& OpYamlInfoParser::GetOriginOpName() const {
   return std::get<4>(op_info_tuple_);
 }
 
+int OpYamlInfoParser::GetTensorParamIndexByArgsName(
+    const std::string& args_name) const {
+  const auto& iter = std::find(kernel_fn_tensor_params_.begin(),
+                               kernel_fn_tensor_params_.end(),
+                               args_name);
+  if (iter != kernel_fn_tensor_params_.end()) {
+    return std::distance(kernel_fn_tensor_params_.begin(), iter);
+  } else {
+    return -1;
+  }
+}
+
 }  // namespace dialect
 }  // namespace paddle
