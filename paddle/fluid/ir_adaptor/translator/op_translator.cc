@@ -280,7 +280,7 @@ pir::OpInfo OpTranscriber::LoopkUpOpInfo(pir::IrContext* ctx,
     if (need_inputs_sig.size() != sig.inputs.size()) {
       continue;
     }
-    size_t i;
+    size_t i = 0;
     for (i = 0; i < need_inputs_sig.size(); ++i) {
       if (need_inputs_sig[i] == "") {
         continue;

@@ -67,7 +67,7 @@ def train(args, place, to_static):
     paddle.jit.enable_to_static(to_static)
 
     env = gym.make('CartPole-v0')
-    env.seed(SEED)
+    env.reset(seed=SEED)
 
     with base.dygraph.guard(place):
         paddle.seed(SEED)
@@ -172,12 +172,13 @@ def train(args, place, to_static):
         loss_data = []
         running_reward = 10
         for i_episode in itertools.count(1):
-            state, ep_reward = env.reset(), 0
+            state, _ = env.reset()
+            ep_reward = 0
             # The default loop number is 10000 is models, we changed it to 1000 for smaller test
             for t in range(1, 1000):
                 state = np.array(state).astype("float32")
                 action, loss = select_action(state)
-                state, reward, done, _ = env.step(action)
+                state, reward, done, _, _ = env.step(action)
 
                 # log loss_probs
                 loss_data.append(float(loss))
