@@ -145,7 +145,7 @@ class DistributedStrategy:
         if _global_flags().is_public(key):
             self.strategy.sync_nccl_allreduce = bool(_global_flags()[key])
 
-        self.hybrid_parallel_order = ['dp', 'pp', 'sharding', 'mp']
+        self.hybrid_parallel_order = ['dp', 'pp', 'sharding', 'sep', 'mp']
         self.sync_param_name = ["embedding", "layer_norm", ".b_"]
 
         self.__lock_attr = True
@@ -1657,10 +1657,10 @@ class DistributedStrategy:
     def hybrid_configs(self):
         """
 
-        Dynamic graph hybrid parallel strategy configuration. Three-way hybrid parallelism
+        Dynamic graph hybrid parallel strategy configuration. Five-way hybrid parallelism
         needs to meet the following relationships
 
-        total_number_GPUs = dp_degree * mp_degree * pp_degree
+        total_number_GPUs = dp_degree * mp_degree * pp_degree * sharding_degree * sep_degree
 
         **Note**:
             **dp_degree(int)**: set number of GPUs in a data parallel group. Default -1.
@@ -1672,7 +1672,11 @@ class DistributedStrategy:
 
             **pp_degree(int)**: set number of GPUs in a pipeline parallel group. Default 1
 
-            **order(list(string))**: set hybrid parallel dimensions, the order is from outside to inside. Default ['dp','pp','sharding','mp']
+            **sep_degree(int)**: set number of GPUs in a sep parallel group. Default 1
+
+            **sharding_degree(int)**: set number of GPUs in a sharding parallel group. Default 1
+
+            **order(list(string))**: set hybrid parallel dimensions, the order is from outside to inside. Default ['dp','pp','sharding','sep','mp']
 
         Examples:
             .. code-block:: python
@@ -1683,7 +1687,7 @@ class DistributedStrategy:
                     "dp_degree": 1,
                     "mp_degree": 2,
                     "pp_degree": 1,
-                    "order":['dp','pp','sharding','mp']}
+                    "order":['dp','pp','sharding','sep','mp']}
 
         """
         return get_msg_dict(self.strategy.hybrid_configs)
