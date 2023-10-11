@@ -313,7 +313,7 @@ class FCMKLDNNHandler
         LOG(INFO) << std::is_same<T_out, int8_t>::value;
 
         auto src_0_md = dnnl::memory::desc(
-            dims, OneDNNGetDataType<T_in>(), dnnl::memory::format_tag::ab);
+            dims, OneDNNGetDataType<T_out>(), dnnl::memory::format_tag::ab);
         auto src_1_md = dnnl::memory::desc(
             dims, dnnl::memory::data_type::f32, dnnl::memory::format_tag::ab);
         auto dst_md = dnnl::memory::desc(
@@ -325,12 +325,12 @@ class FCMKLDNNHandler
         }
         std::vector<float> src_data(size, scale_data);
 
-        const T_in* input_data = residual->data<T_in>();
+        const T_out* input_data = residual->data<T_out>();
         // const float* scale = scale_tensor->data<float>();
         auto src_0_mem =
             dnnl::memory(src_0_md,
                          this->dev_ctx_.GetEngine(),
-                         phi::funcs::to_void_cast<T_in>(input_data));
+                         phi::funcs::to_void_cast<T_out>(input_data));
         auto src_1_mem = dnnl::memory(src_1_md, this->dev_ctx_.GetEngine());
         src_1_mem.set_data_handle(phi::funcs::to_void_cast(src_data.data()));
 
