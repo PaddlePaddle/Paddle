@@ -308,22 +308,16 @@ class FCMKLDNNHandler
       if (phi::funcs::is_int8<T_in>()) {
         // Create src and dst memory descriptors.
         auto dims = this->fwd_pd_->dst_desc().get_dims();
-        const auto dt = std::is_same<T_in, int8_t>::value
-                            ? dnnl::memory::data_type::s8
-                            : dnnl::memory::data_type::u8;
-        const auto dt_out = std::is_same<T_out, int8_t>::value
-                                ? dnnl::memory::data_type::s8
-                                : dnnl::memory::data_type::u8;
         LOG(INFO) << "This is datatype";
         LOG(INFO) << std::is_same<T_in, int8_t>::value;
         LOG(INFO) << std::is_same<T_out, int8_t>::value;
 
-        auto src_0_md =
-            dnnl::memory::desc(dims, dt, dnnl::memory::format_tag::ab);
+        auto src_0_md = dnnl::memory::desc(
+            dims, OneDNNGetDataType<T_in>(), dnnl::memory::format_tag::ab);
         auto src_1_md = dnnl::memory::desc(
             dims, dnnl::memory::data_type::f32, dnnl::memory::format_tag::ab);
-        auto dst_md =
-            dnnl::memory::desc(dims, dt_out, dnnl::memory::format_tag::ab);
+        auto dst_md = dnnl::memory::desc(
+            dims, OneDNNGetDataType<T_out>(), dnnl::memory::format_tag::ab);
 
         int size = 1;
         for (size_t i = 0; i < dims.size(); ++i) {
