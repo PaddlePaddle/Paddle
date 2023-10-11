@@ -306,59 +306,83 @@ class FCMKLDNNHandler
         this->dev_ctx_.GetBlob(residual_key));
     if (!memory_p) {
       if (phi::funcs::is_int8<T_in>()) {
-        // Create src and dst memory descriptors.
+        LOG(INFO) << "11111111111111111111111111";
         auto dims = this->fwd_pd_->dst_desc().get_dims();
-        LOG(INFO) << "This is datatype";
-        LOG(INFO) << std::is_same<T_in, int8_t>::value;
-        LOG(INFO) << std::is_same<T_out, int8_t>::value;
-
-        auto src_0_md = dnnl::memory::desc(
-            dims, OneDNNGetDataType<T_out>(), dnnl::memory::format_tag::ab);
-        auto src_1_md = dnnl::memory::desc(
-            dims, dnnl::memory::data_type::f32, dnnl::memory::format_tag::ab);
+        auto src_md = dnnl::memory::desc(
+            dims, OneDNNGetDataType<float>(), dnnl::memory::format_tag::ab);
         auto dst_md = dnnl::memory::desc(
             dims, OneDNNGetDataType<T_out>(), dnnl::memory::format_tag::ab);
+        dnnl::primitive_attr attrs;
+        int mask = CreateMask(0, false);
+        attrs.set_scales_mask(DNNL_ARG_SRC, mask);
 
-        int size = 1;
-        for (size_t i = 0; i < dims.size(); ++i) {
-          size = size * dims[i];
-        }
-        std::vector<float> src_data(size, scale_data);
+        const auto& scale_data_vec = std::vector<float>(1, scale_data);
+        const T_out* weights_data = residual->data<T_out>();
 
-        const T_out* input_data = residual->data<T_out>();
-        // const float* scale = scale_tensor->data<float>();
-        auto src_0_mem =
-            dnnl::memory(src_0_md,
-                         this->dev_ctx_.GetEngine(),
-                         phi::funcs::to_void_cast<T_out>(input_data));
-        auto src_1_mem = dnnl::memory(src_1_md, this->dev_ctx_.GetEngine());
-        src_1_mem.set_data_handle(phi::funcs::to_void_cast(src_data.data()));
+        memory_p = this->AcquireMemoryWithReorderAndAttrs(
+            src_md,
+            dst_md,
+            to_void_cast<T_out>(weights_data),
+            attrs,
+            scale_data_vec);
 
-        auto dst_memory = dnnl::memory(dst_md, this->dev_ctx_.GetEngine());
+        LOG(INFO) << "22222222222222222222";
 
-        auto binary_pd =
-            dnnl::binary::primitive_desc(this->dev_ctx_.GetEngine(),
-                                         dnnl::algorithm::binary_mul,
-                                         src_0_md,
-                                         src_1_md,
-                                         dst_md);
+        // Create src and dst memory descriptors.
+        // auto dims = this->fwd_pd_->dst_desc().get_dims();
+        // LOG(INFO) << "This is datatype";
+        // LOG(INFO) << std::is_same<T_in, int8_t>::value;
+        // LOG(INFO) << std::is_same<T_out, int8_t>::value;
 
-        // Create the primitive.
-        auto binary_prim = dnnl::binary(binary_pd);
+        // auto src_0_md = dnnl::memory::desc(
+        //     dims, OneDNNGetDataType<T_out>(), dnnl::memory::format_tag::ab);
+        // auto src_1_md = dnnl::memory::desc(
+        //     dims, dnnl::memory::data_type::f32,
+        //     dnnl::memory::format_tag::ab);
+        // auto dst_md = dnnl::memory::desc(
+        //     dims, OneDNNGetDataType<T_out>(), dnnl::memory::format_tag::ab);
 
-        std::unordered_map<int, dnnl::memory> binary_args = {
-            {DNNL_ARG_SRC_0, src_0_mem},
-            {DNNL_ARG_SRC_1, src_1_mem},
-            {DNNL_ARG_DST, dst_memory}};
+        // int size = 1;
+        // for (size_t i = 0; i < dims.size(); ++i) {
+        //   size = size * dims[i];
+        // }
+        // std::vector<float> src_data(size, scale_data);
 
-        auto& astream = OneDNNContext::tls().get_stream();
-        binary_prim.execute(astream, binary_args);
+        // const T_out* input_data = residual->data<T_out>();
+        // // const float* scale = scale_tensor->data<float>();
+        // auto src_0_mem =
+        //     dnnl::memory(src_0_md,
+        //                  this->dev_ctx_.GetEngine(),
+        //                  phi::funcs::to_void_cast<T_out>(input_data));
+        // auto src_1_mem = dnnl::memory(src_1_md, this->dev_ctx_.GetEngine());
+        // src_1_mem.set_data_handle(phi::funcs::to_void_cast(src_data.data()));
 
-        astream.wait();
+        // auto dst_memory = dnnl::memory(dst_md, this->dev_ctx_.GetEngine());
 
-        memory_p =
-            std::make_shared<dnnl::memory>(dst_md, this->dev_ctx_.GetEngine());
-        LOG(INFO) << "End";
+        // auto binary_pd =
+        //     dnnl::binary::primitive_desc(this->dev_ctx_.GetEngine(),
+        //                                  dnnl::algorithm::binary_mul,
+        //                                  src_0_md,
+        //                                  src_1_md,
+        //                                  dst_md);
+
+        // // Create the primitive.
+        // auto binary_prim = dnnl::binary(binary_pd);
+
+        // std::unordered_map<int, dnnl::memory> binary_args = {
+        //     {DNNL_ARG_SRC_0, src_0_mem},
+        //     {DNNL_ARG_SRC_1, src_1_mem},
+        //     {DNNL_ARG_DST, dst_memory}};
+
+        // auto& astream = OneDNNContext::tls().get_stream();
+        // binary_prim.execute(astream, binary_args);
+
+        // astream.wait();
+
+        // memory_p =
+        //     std::make_shared<dnnl::memory>(dst_md,
+        //     this->dev_ctx_.GetEngine());
+        // LOG(INFO) << "End";
       } else {
         memory_p = this->AcquireSrcMemory(residual);
       }
