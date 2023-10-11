@@ -12,33 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import textwrap
 import collections
-from collections.abc import Iterable
-from .wrapped_decorator import signature_safe_contextmanager, wrap_decorator
+import copy
+import functools
+import multiprocessing
 import os
 import re
+import subprocess
+import sys
+import textwrap
+import threading
 import traceback
-import copy
-from types import MethodType, FunctionType
+import warnings
+from collections.abc import Iterable
+from types import FunctionType, MethodType
 
 import numpy as np
-import subprocess
-import multiprocessing
-import sys
 
-from .proto import framework_pb2
-from .proto import data_feed_pb2  # noqa: F401
+import paddle.version as paddle_version
 
-from . import core
-from . import unique_name
 from .. import pir
-from paddle.base.libpaddle import DataType
-import paddle.version as fluid_version
-import warnings
-import functools
-from .variable_index import _getitem_static, _setitem_static, _setitem_impl_
-import threading
+from . import core, unique_name
+from .libpaddle import DataType
+from .proto import data_feed_pb2  # noqa: F401
+from .proto import framework_pb2
+from .variable_index import _getitem_static, _setitem_impl_, _setitem_static
+from .wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 
 __all__ = []
 
@@ -467,13 +466,13 @@ def require_version(min_version, max_version=None):
     Examples:
         .. code-block:: python
 
-            >>> import paddle.base as base
+            >>> import paddle
 
             >>> # any version >= 0.1.0 is acceptable.
-            >>> base.require_version('0.1.0')
+            >>> paddle.utils.require_version('0.1.0')
 
             >>> # if 0.1.0 <= version <= 10.0.0, it is acceptable.
-            >>> base.require_version(min_version='0.1.0', max_version='10.0.0')
+            >>> paddle.utils.require_version(min_version='0.1.0', max_version='10.0.0')
     """
     if not isinstance(min_version, str):
         raise TypeError(
@@ -503,10 +502,10 @@ def require_version(min_version, max_version=None):
             )
 
     version_installed = [
-        fluid_version.major,
-        fluid_version.minor,
-        fluid_version.patch,
-        fluid_version.rc,
+        paddle_version.major,
+        paddle_version.minor,
+        paddle_version.patch,
+        paddle_version.rc,
     ]
     zero_version = ['0', '0', '0', '0']
 
@@ -524,7 +523,7 @@ def require_version(min_version, max_version=None):
                 "PaddlePaddle version in [{}, {}] required, but {} installed. "
                 "Maybe you are using a develop version, "
                 "please make sure the version is good with your code.".format(
-                    min_version, max_version, fluid_version.full_version
+                    min_version, max_version, paddle_version.full_version
                 )
             )
         else:
@@ -532,7 +531,7 @@ def require_version(min_version, max_version=None):
                 "PaddlePaddle version {} or higher is required, but {} installed, "
                 "Maybe you are using a develop version, "
                 "please make sure the version is good with your code.".format(
-                    min_version, fluid_version.full_version
+                    min_version, paddle_version.full_version
                 )
             )
         return
@@ -554,7 +553,7 @@ def require_version(min_version, max_version=None):
         ):
             raise Exception(
                 "VersionError: PaddlePaddle version in [{}, {}] required, but {} installed.".format(
-                    min_version, max_version, fluid_version.full_version
+                    min_version, max_version, paddle_version.full_version
                 )
             )
     else:
@@ -562,7 +561,7 @@ def require_version(min_version, max_version=None):
             raise Exception(
                 "VersionError: PaddlePaddle version {} or higher is required, but {} installed, "
                 "please upgrade your PaddlePaddle to {} or other higher version.".format(
-                    min_version, fluid_version.full_version, min_version
+                    min_version, paddle_version.full_version, min_version
                 )
             )
 
@@ -1023,7 +1022,7 @@ def cuda_pinned_places(device_count=None):
 
 class NameScope:
     def __init__(self, name="", parent=None):
-        self._children = dict()
+        self._children = {}
         self._name = name
         self._parent = parent
 
@@ -1219,7 +1218,7 @@ def _debug_string_(proto, throw_on_error=True):
     Returns(str): The debug string of the protobuf message
 
     """
-    error_fields = list()
+    error_fields = []
     if not proto.IsInitialized(error_fields) and throw_on_error:
         raise ValueError(
             f"{error_fields} are not initialized.\nThe message is {proto}:\n"
@@ -1385,7 +1384,7 @@ class Variable(metaclass=VariableMetaClass):
 
         In Static Graph Mode: Please use ** `Block.create_var` ** to create a Static variable which has no data until being feed.
 
-        In Dygraph Mode: Please use ** :ref:`api_base_dygraph_to_variable` ** to create a dygraph variable with real data.
+        In Dygraph Mode: Please use ** :ref:`api_paddle_to_tensor` ** to create a dygraph variable with real data.
 
     In Fluid, every input and output of an OP is a variable. In most
     cases, variables are used for holding different kinds of data or training
@@ -2879,7 +2878,6 @@ class Operator:
         'fetch',
         'recurrent',
         'go',
-        'rnn_memory_helper_grad',
         'conditional_block',
         'pylayer',
         'while',
@@ -2933,7 +2931,7 @@ class Operator:
             # https://github.com/PaddlePaddle/Paddle/pull/12583#pullrequestreview-145093173
             op_attrs = attrs
             if op_attrs is None:
-                op_attrs = dict()
+                op_attrs = {}
             del attrs
 
             # attr for static graph mode cuda graph
@@ -3957,7 +3955,7 @@ class Block:
     def __init__(self, program, idx):
         self.desc = program.desc.block(idx)
         self.vars = collections.OrderedDict()  # var_name --> var
-        self.ops = list()  # operator list
+        self.ops = []  # operator list
         self.program = program
 
     def __str__(self):
@@ -4115,7 +4113,7 @@ class Block:
         Returns:
             Variable: the Variable with the giving name. Or None if not found.
         """
-        frontier = list()
+        frontier = []
         visited = set()
 
         frontier.append(self)
@@ -5428,7 +5426,7 @@ class IrGraph:
 
     def resolve_hazard(self):
         ordered_nodes = core.topology_sort(self.graph)
-        var_nodes = dict()
+        var_nodes = {}
         for node in ordered_nodes:
             if node.is_op() and node.op() is not None:
                 for each_var_name in node.op().input_arg_names():
@@ -5485,7 +5483,7 @@ class IrGraph:
             dict{IrNode: set(IrNode)}: the adjacency list.
         """
         adj_list = core.build_adjacency_list(self.graph)
-        wrapped_adj_list = dict()
+        wrapped_adj_list = {}
         for k, v in adj_list.items():
             wrapped_adj_list[IrNode(k)] = {IrNode(n) for n in v}
         return wrapped_adj_list
@@ -7123,7 +7121,7 @@ class Program:
 
         var_list = filter(condition, self.list_vars())
 
-        state_dict = dict()
+        state_dict = {}
         for var in var_list:
             var_temp = scope.find_var(var.name)
             if var_temp is None:
@@ -7704,8 +7702,8 @@ def _get_var(name, program=None):
 
 @signature_safe_contextmanager
 def dygraph_guard_if_declarative():
-    from .dygraph.base import in_to_static_mode
     from .dygraph import Tracer
+    from .dygraph.base import in_to_static_mode
 
     if in_to_static_mode():
         # Under @paddle.jit.to_static decorator, we switch back dygraph mode temporarily.

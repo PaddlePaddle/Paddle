@@ -77,32 +77,33 @@ def group_sharded_parallel(
     Examples:
         .. code-block:: python
 
-            # required: distributed
-            import paddle
-            from paddle.nn import Linear
-            from paddle.distributed import fleet
-            from paddle.distributed.sharding import group_sharded_parallel
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> import paddle
+            >>> from paddle.nn import Linear
+            >>> from paddle.distributed import fleet
+            >>> from paddle.distributed.sharding import group_sharded_parallel
 
-            fleet.init(is_collective=True)
-            group = paddle.distributed.new_group([0, 1])
-            model = Linear(1000, 1000)
+            >>> fleet.init(is_collective=True)
+            >>> group = paddle.distributed.new_group([0, 1])
+            >>> model = Linear(1000, 1000)
 
-            clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
-            optimizer = paddle.optimizer.AdamW(learning_rate=0.001, parameters=model.parameters(), weight_decay=0.00001, grad_clip=clip)
+            >>> clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
+            >>> optimizer = paddle.optimizer.AdamW(learning_rate=0.001, parameters=model.parameters(), weight_decay=0.00001, grad_clip=clip)
 
-            # wrap sharding model, optimizer and scaler
-            model, optimizer, scaler = group_sharded_parallel(model, optimizer, "p_g", scaler=scaler)
+            >>> # wrap sharding model, optimizer and scaler
+            >>> model, optimizer, scaler = group_sharded_parallel(model, optimizer, "p_g", scaler=scaler)
 
-            img, label = data
-            label.stop_gradient = True
-            img.stop_gradient = True
+            >>> img, label = data
+            >>> label.stop_gradient = True
+            >>> img.stop_gradient = True
 
-            out = model(img)
-            loss = paddle.nn.functional.cross_entropy(input=out, label=label)
+            >>> out = model(img)
+            >>> loss = paddle.nn.functional.cross_entropy(input=out, label=label)
 
-            loss.backward()
-            optimizer.step()
-            optimizer.clear_grad()
+            >>> loss.backward()
+            >>> optimizer.step()
+            >>> optimizer.clear_grad()
+
     """
 
     device = paddle.get_device().split(":")[0]
@@ -195,35 +196,36 @@ def save_group_sharded_model(model, output, optimizer=None):
     Examples:
         .. code-block:: python
 
-            # required: distributed
-            import paddle
-            from paddle.nn import Linear
-            from paddle.distributed import fleet
-            from paddle.distributed.sharding import group_sharded_parallel, save_group_sharded_model
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> import paddle
+            >>> from paddle.nn import Linear
+            >>> from paddle.distributed import fleet
+            >>> from paddle.distributed.sharding import group_sharded_parallel, save_group_sharded_model
 
-            fleet.init(is_collective=True)
-            group = paddle.distributed.new_group([0, 1])
-            model = Linear(1000, 1000)
+            >>> fleet.init(is_collective=True)
+            >>> group = paddle.distributed.new_group([0, 1])
+            >>> model = Linear(1000, 1000)
 
-            clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
-            optimizer = paddle.optimizer.AdamW(learning_rate=0.001, parameters=model.parameters(), weight_decay=0.00001, grad_clip=clip)
+            >>> clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
+            >>> optimizer = paddle.optimizer.AdamW(learning_rate=0.001, parameters=model.parameters(), weight_decay=0.00001, grad_clip=clip)
 
-            # wrap sharding model, optimizer and scaler
-            model, optimizer, scaler = group_sharded_parallel(model, optimizer, "p_g", scaler=scaler)
+            >>> # wrap sharding model, optimizer and scaler
+            >>> model, optimizer, scaler = group_sharded_parallel(model, optimizer, "p_g", scaler=scaler)
 
-            img, label = data
-            label.stop_gradient = True
-            img.stop_gradient = True
+            >>> img, label = data
+            >>> label.stop_gradient = True
+            >>> img.stop_gradient = True
 
-            out = model(img)
-            loss = paddle.nn.functional.cross_entropy(input=out, label=label)
+            >>> out = model(img)
+            >>> loss = paddle.nn.functional.cross_entropy(input=out, label=label)
 
-            loss.backward()
-            optimizer.step()
-            optimizer.clear_grad()
+            >>> loss.backward()
+            >>> optimizer.step()
+            >>> optimizer.clear_grad()
 
-            # save model and optimizer state_dict
-            save_group_sharded_model(model, optimizer, output=output_dir)
+            >>> # save model and optimizer state_dict
+            >>> save_group_sharded_model(model, optimizer, output=output_dir)
+
     """
     logger_.info(
         "==========Begin to save group sharded model and optimizer=========="
