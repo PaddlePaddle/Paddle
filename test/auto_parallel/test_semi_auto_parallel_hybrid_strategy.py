@@ -22,6 +22,7 @@ class TestSemiAutoParallelHybridStrategy(test_base.CommunicationTestDistBase):
         super().setUp(num_of_devices=2, timeout=120, nnode=2)
         self._default_envs = {
             "dtype": "float32",
+            "seed": "2023",
         }
         # this test need to be run on 4-cards environment, but our CI only supports
         # 2-cards distribute test, so skip gpu test now

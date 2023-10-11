@@ -70,6 +70,7 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
     def __init__(self):
         self._dtype = os.getenv("dtype")
         self._backend = os.getenv("backend")
+        self._seed = eval(os.getenv("seed"))
         self._mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
 
         paddle.set_device(self._backend)
