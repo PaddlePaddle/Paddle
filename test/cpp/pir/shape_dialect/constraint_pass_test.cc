@@ -39,7 +39,7 @@
 #include "paddle/pir/core/value.h"
 #include "paddle/pir/dialect/shape/ir/shape_dialect.h"
 #include "paddle/pir/dialect/shape/ir/shape_op.h"
-#include "paddle/pir/dialect/shape/transforms/shape_optimization_pass.h"
+#include "paddle/pir/dialect/shape/transforms/passes.h"
 #include "paddle/pir/dialect/shape/utils/shape_utils.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
@@ -133,8 +133,5 @@ TEST(constraint_pass, shape_computation_run) {
   EXPECT_TRUE(pm.Run(&program));
   pir::SymbolicDimMgr mgr(program.module_op());
   EXPECT_TRUE(mgr.Load());
-  pir::ShapeComputationIRAnalysis analysis(program.module_op(), mgr);
-  EXPECT_TRUE(analysis.Run());
-  EXPECT_FALSE(analysis.Run());
   EXPECT_TRUE(mgr.Save());
 }

@@ -3228,6 +3228,35 @@ void Unpool3dInferMeta(const MetaTensor& x,
   }
 }
 
+void WeightDequantizeInferMeta(const MetaTensor& x,
+                               const MetaTensor& scale,
+                               const std::string& algo,
+                               DataType out_dtype,
+                               MetaTensor* out) {
+  PADDLE_ENFORCE_EQ(x.dims().size(),
+                    2UL,
+                    phi::errors::InvalidArgument(
+                        "The x tensor of dequantize op must be 2D, but got[%d]",
+                        x.dims().size()));
+  PADDLE_ENFORCE_EQ(
+      scale.dims().size(),
+      1UL,
+      phi::errors::InvalidArgument(
+          "The scale tensor of dequantize op must be 1D, but got[%d]",
+          scale.dims().size()));
+  PADDLE_ENFORCE_EQ(scale.dims()[0],
+                    x.dims()[0],
+                    phi::errors::InvalidArgument(
+                        "The scale tensor's shape must be equal to the x "
+                        "tensor's shape, but got [%d] not equal to [%d]",
+                        scale.dims()[0],
+                        x.dims()[0]));
+  int n = x.dims()[1];
+  int k = x.dims()[0];
+  out->set_dims(phi::make_ddim({n, k}));
+  out->set_dtype(out_dtype);
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(add_raw, phi::ElementwiseRawInferMeta);
