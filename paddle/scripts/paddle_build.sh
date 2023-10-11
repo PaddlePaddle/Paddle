@@ -2388,7 +2388,7 @@ set +x
                 matchstr=''
                 testcase=''
         done <<< "$test_cases";
-        card_test "$single_card_tests" 2
+        card_test "$single_card_tests" 1
         collect_failed_tests
 set -x
         ut_endTime_s=`date +%s`
