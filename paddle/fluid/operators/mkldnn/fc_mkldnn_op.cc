@@ -358,7 +358,7 @@ class FCMKLDNNHandler
 
         memory_p =
             std::make_shared<dnnl::memory>(dst_md, this->dev_ctx_.GetEngine());
-
+        LOG(INFO) << "End";
       } else {
         memory_p = this->AcquireSrcMemory(residual);
       }
@@ -623,7 +623,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
     auto& astream = OneDNNContext::tls().get_stream();
     fc_p->execute(astream, fc_args);
     astream.wait();
-
+    LOG(INFO) << "End fc exe";
     if (!inner_product_cache) {
       auto ip_cache = std::make_shared<InnerProductCache>();
       ip_cache->inner_product_p = *fc_p;
