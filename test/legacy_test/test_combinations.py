@@ -71,7 +71,9 @@ class TestCombinationsAPIBase(unittest.TestCase):
                     feed=feed_list,
                     fetch_list=[out],
                 )[0]
-                ref_res = convert_combinations_to_array(self.x_np, self.r, self.with_replacement)
+                ref_res = convert_combinations_to_array(
+                    self.x_np, self.r, self.with_replacement
+                )
                 np.testing.assert_allclose(ref_res, pd_res, atol=1e-5)
 
     def test_dygraph(self):
@@ -80,7 +82,9 @@ class TestCombinationsAPIBase(unittest.TestCase):
             paddle.device.set_device(place)
             x_pd = paddle.to_tensor(self.x_np)
             pd_res = paddle.combinations(x_pd, self.r, self.with_replacement)
-            ref_res = convert_combinations_to_array(self.x_np, self.r, self.with_replacement)
+            ref_res = convert_combinations_to_array(
+                self.x_np, self.r, self.with_replacement
+            )
             np.testing.assert_allclose(ref_res, pd_res, atol=1e-5)
 
     def test_errors(self):

@@ -6972,9 +6972,11 @@ def combinations(x, r=2, with_replacement=False, name=None):
 
     """
     if len(x.shape) != 1:
-        raise TypeError("Expect a 1-D vector, but got x shape {}".format(x.shape))
+        raise TypeError(
+            f"Expect a 1-D vector, but got x shape {x.shape}"
+        )
     if not isinstance(r, int) or r < 0:
-        raise ValueError("Expect a non-negative int, but got r={}".format(r))
+        raise ValueError(f"Expect a non-negative int, but got r={r}")
 
     if r == 0:
         return paddle.empty([0], dtype=x.dtype)
