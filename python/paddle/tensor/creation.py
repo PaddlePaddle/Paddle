@@ -2264,22 +2264,16 @@ def assign(x, output=None):
             )
             dtype = core.DataType.FLOAT32
 
-        if dtype == core.VarDesc.VarType.BOOL or dtype == core.DataType.BOOL:
+        if dtype in [core.VarDesc.VarType.BOOL, core.DataType.BOOL]:
             value_name = "bool_values"
             values = [int(v) for v in input.flat]
-        elif (
-            dtype == core.VarDesc.VarType.FP32 or dtype == core.DataType.FLOAT32
-        ):
+        elif dtype in [core.VarDesc.VarType.FP32, core.DataType.FLOAT32]:
             value_name = "fp32_values"
             values = [float(v) for v in input.flat]
-        elif (
-            dtype == core.VarDesc.VarType.INT32 or dtype == core.DataType.INT32
-        ):
+        elif dtype in [core.VarDesc.VarType.INT32, core.DataType.INT32]:
             value_name = "int32_values"
             values = [int(v) for v in input.flat]
-        elif (
-            dtype == core.VarDesc.VarType.INT64 or dtype == core.DataType.INT64
-        ):
+        elif dtype in [core.VarDesc.VarType.INT64, core.DataType.INT64]:
             value_name = "int64_values"
             values = [int(v) for v in input.flat]
         else:
