@@ -14,6 +14,7 @@
 
 #include <gtest/gtest.h>
 
+#include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/ir/ir.h"
 
@@ -42,15 +43,15 @@ TEST(CollectIRNodes, basic) {
   auto C = Compute(
       {M, N}, [&](Var i, Var j) { return A(i, j) + B(i, j); }, "C");
 
-  auto stages = CreateStages({C});
+  ast_gen_ius::TensorGroup tensor_group({C});
 
-  auto fn = Lower("fn", stages, {A, B, C});
+  auto fn = LowerToAst("fn", {A, B, C}, &tensor_group);
 
   LOG(INFO) << "fn:\n" << fn;
 
   auto tensors =
       CollectIRNodes(fn, [](const Expr* x) { return x->as_tensor(); });
-  ASSERT_EQ(tensors.size(), 5UL);
+  ASSERT_EQ(tensors.size(), 3UL);
 
   auto fn_body = fn.As<ir::_LoweredFunc_>()->body;
   LOG(INFO) << "fn.body:\n" << fn_body;

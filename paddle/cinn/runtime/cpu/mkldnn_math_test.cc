@@ -14,6 +14,7 @@
 
 #include <gtest/gtest.h>
 
+#include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/backends/compiler.h"
 #include "paddle/cinn/backends/extern_func_jit_register.h"
 #include "paddle/cinn/backends/llvm/execution_engine.h"
@@ -88,13 +89,14 @@ TEST(cinn_cpu_mkldnn_conv2d_nchw_fp32, test) {
   auto out = call->TupleGet(0);
   out->WithBuffer(Float(32));
 
-  auto stages = CreateStages({call, out});
+  ast_gen_ius::TensorGroup tensor_group(std::vector<ir::Tensor>{call, out});
+  tensor_group.ShowLog();
 
   auto target = common::DefaultHostTarget();
   target.arch = Target::Arch::X86;
   ir::Module::Builder builder("module0", target);
 
-  auto func = Lower("fn", stages, {input, weights, out, call});
+  auto func = LowerToAst("fn", {input, weights, out, call}, &tensor_group);
   builder.AddFunction(func);
 
   LOG(INFO) << "func:\n" << func;

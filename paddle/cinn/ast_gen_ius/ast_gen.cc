@@ -61,6 +61,7 @@ ir::Expr ConvertReduceBody(ir::Expr body,
 }
 
 ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
+  VLOG(6) << "In AstGen::Build, tensor = " << tensor;
   const std::vector<ir::Var>& axis = tensor->axis();
   const std::vector<ir::Expr>& shape = tensor->shape;
   size_t axis_len = axis.size();

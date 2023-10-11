@@ -18,7 +18,6 @@ gather_srcs(
   extern_call_process.cc
   map_extern_call.cc
   compute_inline_expand.cc
-  buffer_assign.cc
   replace_const_param_to_integer.cc
   lower_intrin.cc
   cast_bool_to_int8.cc

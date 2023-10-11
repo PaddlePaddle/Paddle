@@ -282,9 +282,11 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
 #endif
 
   // 2.Prepare temp buffers
-  poly::StageMap stages;
+  std::vector<ir::Tensor> empty_tensor_vec;
+  // Empty just to get temp buffers
+  ast_gen_ius::TensorGroup tensor_group(empty_tensor_vec);
   auto temp_buffers =
-      lang::GetTempBuffers(*group_func_arg_tensors, stages, func_body);
+      lang::GetTempBuffers(*group_func_arg_tensors, tensor_group, func_body);
   // 3.Building LoweredFunc
   auto func = ir::_LoweredFunc_::Make(group->GetFuncName(),
                                       group_func_args,

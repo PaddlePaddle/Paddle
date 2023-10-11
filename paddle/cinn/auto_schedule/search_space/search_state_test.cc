@@ -35,35 +35,20 @@ TEST(TestSearchState, SearchStateHash_Equal) {
   ir::Tensor C = lang::Compute(
       {M, N}, [&](Var i, Var j) { return A(i, j) + B(i, j); }, "C");
 
+  ast_gen_ius::TensorGroup const_group_1({A, B});
   cinn::common::Context::Global().ResetNameId();
-  auto a_plus_const_funcs_1 = lang::LowerVec("A_plus_const",
-                                             poly::CreateStages({A, B}),
-                                             {A, B},
-                                             {},
-                                             {},
-                                             nullptr,
-                                             target,
-                                             true);
+  auto a_plus_const_funcs_1 =
+      lang::LowerToAstVec("A_plus_const", {A, B}, &const_group_1, target);
 
   cinn::common::Context::Global().ResetNameId();
-  auto a_plus_const_funcs_2 = lang::LowerVec("A_plus_const",
-                                             poly::CreateStages({A, B}),
-                                             {A, B},
-                                             {},
-                                             {},
-                                             nullptr,
-                                             target,
-                                             true);
+  ast_gen_ius::TensorGroup const_group_2({A, B});
+  auto a_plus_const_funcs_2 =
+      lang::LowerToAstVec("A_plus_const", {A, B}, &const_group_2, target);
 
   cinn::common::Context::Global().ResetNameId();
-  auto a_plus_b_funcs = lang::LowerVec("A_plus_B",
-                                       poly::CreateStages({A, C}),
-                                       {A, C},
-                                       {},
-                                       {},
-                                       nullptr,
-                                       target,
-                                       true);
+  ast_gen_ius::TensorGroup plus_group({A, C});
+  auto a_plus_b_funcs =
+      lang::LowerToAstVec("A_plus_B", {A, C}, &plus_group, target);
 
   std::string a_plus_const_funcs_1_str = R"ROC(function A_plus_const (_A, _B)
 {
