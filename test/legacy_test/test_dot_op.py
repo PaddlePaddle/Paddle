@@ -234,20 +234,24 @@ class TestDotFP16Op(OpTest):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=0.125)
+                self.check_output_with_place(
+                    place, atol=0.125, check_new_ir=True
+                )
 
     def test_check_grad_normal(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_grad_with_place(place, ['X', 'Y'], 'Out')
+                self.check_grad_with_place(
+                    place, ['X', 'Y'], 'Out', check_new_ir=True
+                )
 
     def test_check_grad_ingore_x(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
                 self.check_grad_with_place(
-                    place, ['Y'], 'Out', no_grad_set=set("X")
+                    place, ['Y'], 'Out', no_grad_set=set("X"), check_new_ir=True
                 )
 
     def test_check_grad_ingore_y(self):
@@ -255,7 +259,7 @@ class TestDotFP16Op(OpTest):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
                 self.check_grad_with_place(
-                    place, ['X'], 'Out', no_grad_set=set("Y")
+                    place, ['X'], 'Out', no_grad_set=set("Y"), check_new_ir=True
                 )
 
     def init_input_output(self):
@@ -306,7 +310,7 @@ class TestDotBF16Op(OpTest):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
-                self.check_output_with_place(place, atol=0.5)
+                self.check_output_with_place(place, atol=0.5, check_new_ir=True)
 
     def test_check_grad_normal(self):
         if core.is_compiled_with_cuda():
@@ -317,6 +321,7 @@ class TestDotBF16Op(OpTest):
                     ['X', 'Y'],
                     'Out',
                     user_defined_grads=[self.inputs['Y'], self.inputs['X']],
+                    check_new_ir=True,
                 )
 
     def test_check_grad_ingore_x(self):
@@ -329,6 +334,7 @@ class TestDotBF16Op(OpTest):
                     'Out',
                     no_grad_set=set("X"),
                     user_defined_grads=[self.inputs['X']],
+                    check_new_ir=True,
                 )
 
     def test_check_grad_ingore_y(self):
@@ -341,6 +347,7 @@ class TestDotBF16Op(OpTest):
                     'Out',
                     no_grad_set=set("Y"),
                     user_defined_grads=[self.inputs['Y']],
+                    check_new_ir=True,
                 )
 
     def init_input_output(self):
@@ -378,6 +385,7 @@ class DotBF16OpBatch(TestDotBF16Op):
                         self.y / self.y.shape[0],
                         self.x / self.x.shape[0],
                     ],
+                    check_new_ir=True,
                 )
 
     def test_check_grad_ingore_x(self):
@@ -390,6 +398,7 @@ class DotBF16OpBatch(TestDotBF16Op):
                     'Out',
                     no_grad_set=set("X"),
                     user_defined_grads=[self.x / self.x.shape[0]],
+                    check_new_ir=True,
                 )
 
     def test_check_grad_ingore_y(self):
@@ -402,6 +411,7 @@ class DotBF16OpBatch(TestDotBF16Op):
                     'Out',
                     no_grad_set=set("Y"),
                     user_defined_grads=[self.y / self.y.shape[0]],
+                    check_new_ir=True,
                 )
 
 
