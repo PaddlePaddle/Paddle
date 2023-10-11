@@ -38,12 +38,11 @@ sys.path.append(
 
 
 VJPS_BLACK_LIST = [
-    'frobenius_norm_grad',
     'reshape_grad',
     'add_n_grad',
-    'cos_triple_grad',
-    'cos_triple_grad_',
 ]
+
+BACKENDS_BLACK_LIST = ['copy_to', 'add_n_grad', "allclose", "isclose"]
 
 
 PRIM_VJP = [
@@ -65,14 +64,6 @@ CUSTOM_VJP = [
     'dropout_grad',
 ]  # custom vjp list of composite op
 VJP_COMPS = PRIM_VJP + CUSTOM_VJP
-
-BACKENDS_BLACK_LIST = [
-    'frobenius_norm_grad',
-    'allclose',
-    'isclose',
-    'copy_to',
-    'add_n_grad',
-]
 
 
 def load(path: pathlib.Path):

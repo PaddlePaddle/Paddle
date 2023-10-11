@@ -198,7 +198,7 @@ class CodeGen:
         return False
 
     def _is_optional_output(self, op_info, op_name, output_name):
-        if op_name.endswith('_grad'):
+        if op_name.endswith(('_grad', '_grad_')):
             return False
         inplace_map = op_info.inplace_map
         input_optional_list = op_info.input_optional_list
