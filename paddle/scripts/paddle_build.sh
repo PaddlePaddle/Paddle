@@ -940,6 +940,7 @@ function run_sot_test() {
     export STRICT_MODE=1
     export COST_MODEL=False
     export MIN_GRAPH_SIZE=0
+    export LOG_LEVEL=0
 
     # Install PaddlePaddle
     $PYTHON_WITH_SPECIFY_VERSION -m pip install ${PADDLE_ROOT}/dist/paddlepaddle-0.0.0-cp${PY_VERSION_NO_DOT}-cp${PY_VERSION_NO_DOT}-linux_x86_64.whl

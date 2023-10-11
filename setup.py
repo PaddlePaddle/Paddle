@@ -1425,6 +1425,7 @@ def get_setup_parameters():
         'paddle.jit',
         'paddle.jit.dy2static',
         'paddle.jit.newir_dy2static',
+        'paddle.jit.sot',
         'paddle.inference',
         'paddle.inference.contrib',
         'paddle.inference.contrib.utils',
