@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 
+#include "paddle/cinn/hlir/framework/new_ir_compiler.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/enforce.h"
 
@@ -36,6 +37,12 @@ hlir::framework::Instruction* JitKernelOp::instruction() {
   void* ptr =
       attributes().at(kAttrName).dyn_cast<::pir::PointerAttribute>().data();
   return reinterpret_cast<hlir::framework::Instruction*>(ptr);
+}
+
+hlir::framework::CUDAJITInfo* JitKernelOp::cuda_jit_info() {
+  void* ptr =
+      attributes().at(kAttrName).dyn_cast<::pir::PointerAttribute>().data();
+  return reinterpret_cast<hlir::framework::CUDAJITInfo*>(ptr);
 }
 
 }  // namespace dialect

@@ -78,6 +78,32 @@ class CublasHandle {
   cublasHandle_t cuhandle;
 };
 
+void call_cuda_kernel(void *kernel_fn,
+                      void **kernel_args,
+                      int grid_x,
+                      int grid_y,
+                      int grid_z,
+                      int block_x,
+                      int block_y,
+                      int block_z,
+                      void *stream) {
+  {
+    cinn::utils::RecordEvent record_run("cuLaunchKernel",
+                                        cinn::utils::EventType::kInstruction);
+    CUDA_DRIVER_CALL(cuLaunchKernel(static_cast<CUfunction>(kernel_fn),
+                                    grid_x,
+                                    grid_y,
+                                    grid_z,
+                                    block_x,
+                                    block_y,
+                                    block_z,
+                                    0,  // share memory
+                                    static_cast<CUstream>(stream),
+                                    kernel_args,
+                                    nullptr))
+  }
+}
+
 void cinn_call_cuda_kernel(void *kernel_fn,
                            void *v_args,
                            int num_args,
@@ -93,6 +119,7 @@ void cinn_call_cuda_kernel(void *kernel_fn,
           << ", " << block_z << "}, num_args=" << num_args
           << ", stream=" << stream;
 
+  std::cerr << "can cuda kernel" << std::endl;
   std::vector<void *> kernel_args;
   {
     cinn::utils::RecordEvent record_run("prepare_args",

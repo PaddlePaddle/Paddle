@@ -21,6 +21,7 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 class Instruction;
+class CUDAJITInfo;
 }  // namespace framework
 }  // namespace hlir
 
@@ -50,6 +51,8 @@ class JitKernelOp : public ::pir::Op<JitKernelOp> {
   static const char* attributes_name[attributes_num];
 
   hlir::framework::Instruction* instruction();
+
+  hlir::framework::CUDAJITInfo* cuda_jit_info();
 
   void Verify();
 };

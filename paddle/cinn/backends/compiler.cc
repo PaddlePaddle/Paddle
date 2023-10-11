@@ -301,8 +301,11 @@ void Compiler::CompileCudaModule(const Module& module,
   RuntimeSymbols symbols;
   for (auto& fn : device_module.functions()) {
     std::string kernel_fn_name = fn->name;
+    std::cerr << "gen kernel name " << kernel_fn_name << std::endl;
     auto fn_kernel = cuda_module_->GetFunction(0, kernel_fn_name);
     CHECK(fn_kernel);
+
+    fn_ptr_.push_back(reinterpret_cast<void*>(fn_kernel));
 
     symbols.RegisterVar(kernel_fn_name + "_ptr_",
                         reinterpret_cast<void*>(fn_kernel));

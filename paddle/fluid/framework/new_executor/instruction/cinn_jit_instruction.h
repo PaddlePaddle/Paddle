@@ -42,7 +42,12 @@ class CinnJitInstruction : public InstructionBase {
 
  private:
   class Impl;
+  class FnPtrImpl;
   std::shared_ptr<Impl> impl_{nullptr};
+
+  std::shared_ptr<FnPtrImpl> fn_ptr_impl_{nullptr};
+
+  platform::Place place_;
 
   ::pir::Operation* op_{nullptr};  // not owned
 };

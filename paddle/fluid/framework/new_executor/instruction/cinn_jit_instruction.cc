@@ -17,6 +17,8 @@
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/cinn/hlir/framework/instruction.h"
+#include "paddle/cinn/hlir/framework/new_ir_compiler.h"
+#include "paddle/cinn/runtime/cuda/cuda_util.h"
 #include "paddle/fluid/framework/paddle2cinn/transform_type.h"
 
 namespace paddle {
@@ -91,6 +93,29 @@ class CinnJitInstruction::Impl {
   Instruction* instr_{nullptr};
 };
 
+class CinnJitInstruction::FnPtrImpl {
+  using CUDAJITInfo = cinn::hlir::framework::CUDAJITInfo;
+
+ public:
+  explicit FnPtrImpl(CUDAJITInfo* cuda_jit_info)
+      : cuda_jit_info_(cuda_jit_info) {}
+  // TODO(Aurelus84): Support to specify name2podargs and stream arguments.
+  void Run(void** kernel_args, void* stream) {
+    cinn::runtime::cuda::call_cuda_kernel(cuda_jit_info_->fn_ptr,
+                                          kernel_args,
+                                          cuda_jit_info_->grid_dims[0],
+                                          cuda_jit_info_->grid_dims[1],
+                                          cuda_jit_info_->grid_dims[2],
+                                          cuda_jit_info_->block_dims[0],
+                                          cuda_jit_info_->block_dims[1],
+                                          cuda_jit_info_->block_dims[2],
+                                          stream);
+  }
+
+ private:
+  CUDAJITInfo* cuda_jit_info_{nullptr};
+};
+
 CinnJitInstruction::CinnJitInstruction(size_t id,
                                        const platform::Place& place,
                                        ::pir::Operation* op,
@@ -100,13 +125,19 @@ CinnJitInstruction::CinnJitInstruction(size_t id,
   // only hold related function ptrs. Impl is the real runtime data structure
   // responsible to construct hlir::framework::Instruction.
   auto jit_kernel_op = op->dyn_cast<cinn::dialect::JitKernelOp>();
-  impl_ = std::make_shared<Impl>(jit_kernel_op.instruction());
+  fn_ptr_impl_ = std::make_shared<FnPtrImpl>(jit_kernel_op.cuda_jit_info());
   op_ = op;
+
+  place_ = place;
 }
 
 void CinnJitInstruction::Run() {
   VLOG(6) << "Run cinn jit_kernel_op : " << Name();
-  impl_->Run();
+  // Get kernel input
+
+  // Get context, set shape, allocate data
+  auto dev_ctx = phi::DeviceContextPool::Instance().Get(place_);
+  fn_ptr_impl_->Run();
 }
 
 const std::string& CinnJitInstruction::Name() const {
