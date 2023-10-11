@@ -17,9 +17,6 @@ import unittest
 
 import paddle
 from paddle import base
-from paddle.distributed.fleet.base.private_helper_function import (
-    wait_server_ready,
-)
 
 paddle.enable_static()
 
@@ -35,8 +32,6 @@ class TestCCommInitOp(unittest.TestCase):
         self.exe = base.Executor(self.place)
         self.endpoints.remove(self.current_endpoint)
         self.other_endpoints = self.endpoints
-        if self.rank == 0:
-            wait_server_ready(self.other_endpoints)
 
     def test_specifying_devices(self):
         program = base.Program()
