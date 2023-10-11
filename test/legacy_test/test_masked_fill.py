@@ -127,9 +127,10 @@ class TestMaskedFillGrad(unittest.TestCase):
         expected_np = np.array(
             [[2, 1, 1], [2, 1, 1], [2, 1, 1], [2, 1, 1]]
         ).astype('float32')
-        expected_grad = np.array(
+        expected_y_grad = np.array(
             [[1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0]]
         ).astype('float32')
+        expected_v_grad = np.array(8).astype('float32')
 
         for idx, p in enumerate(self.places):
             if idx == 0:
@@ -141,6 +142,7 @@ class TestMaskedFillGrad(unittest.TestCase):
                 x = paddle.ones((4, 3), dtype=self.dtype)
                 mask = paddle.to_tensor(np.array([0, 1, 1]).astype("bool"))
                 x.stop_gradient = False
+                v.stop_gradient = False
                 y = x * 2
                 y.retain_grads()
                 ny = y.masked_fill(mask=mask, value=v)
@@ -151,7 +153,11 @@ class TestMaskedFillGrad(unittest.TestCase):
                     (ny.numpy().astype('float32') == expected_np).all(), True
                 )
                 self.assertEqual(
-                    (y.grad.numpy().astype('float32') == expected_grad).all(),
+                    (y.grad.numpy().astype('float32') == expected_y_grad).all(),
+                    True,
+                )
+                self.assertEqual(
+                    (v.grad.numpy().astype('float32') == expected_v_grad).all(),
                     True,
                 )
 
