@@ -1137,6 +1137,7 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
             details::BuildStrategy::ReduceStrategy::kAllReduce &&
         node->inputs[0]->Name().find(".block") == std::string::npos) {
       std::vector<std::string> input_var_names;
+      input_var_names.reserve(node->inputs.size());
       for (ir::Node *n : node->inputs) {
         input_var_names.push_back(n->Name());
       }
@@ -1162,6 +1163,7 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
     }
   } else if (node->Op()->Type() == "recv") {
     std::vector<std::string> output_var_names;
+    output_var_names.reserve(node->inputs.size());
     for (ir::Node *n : node->outputs) {
       output_var_names.push_back(n->Name());
     }
@@ -1245,6 +1247,8 @@ int DistSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
   int op_dev_id = -1;
   std::vector<std::string> input_var_names;
   std::vector<std::string> output_var_names;
+  input_var_names.reserve(node->inputs.size());
+  output_var_names.reserve(node->outputs.size());
   for (ir::Node *input : node->inputs) {
     input_var_names.push_back(input->Name());
   }
