@@ -176,39 +176,6 @@ class SplitGradOp : public pir::Op<SplitGradOp, OpYamlInfoInterface> {
   static void InferMeta(phi::InferMetaContext *infer_meta);
 };
 
-class IfOp : public pir::Op<IfOp> {
- public:
-  using Op::Op;
-  static const char *name() { return "pd_op.if"; }
-  static constexpr const char **attributes_name = nullptr;
-  static constexpr uint32_t attributes_num = 0;
-  static void Build(pir::Builder &builder,             // NOLINT
-                    pir::OperationArgument &argument,  // NOLINT
-                    pir::Value cond,
-                    std::vector<pir::Type> &&output_types);
-  pir::Value cond() { return operand_source(0); }
-  pir::Block *true_block();
-  pir::Block *false_block();
-  void Print(pir::IrPrinter &printer);  // NOLINT
-  void Verify();
-};
-
-class WhileOp : public pir::Op<WhileOp> {
- public:
-  using Op::Op;
-  static const char *name() { return "pd.while"; }
-  static constexpr uint32_t attributes_num = 0;
-  static constexpr const char **attributes_name = nullptr;
-
-  static void Build(pir::Builder &builder,             // NOLINT
-                    pir::OperationArgument &argument,  // NOLINT
-                    const std::vector<pir::Value> &inputs,
-                    const std::vector<pir::Type> &output_types);
-  void Verify() {}
-  pir::Block *cond_block();
-  pir::Block *body_block();
-};
-
 }  // namespace dialect
 }  // namespace paddle
 
@@ -218,5 +185,3 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddN_Op)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNWithKernelOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueGradOp)
-IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::IfOp)
-IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::WhileOp)

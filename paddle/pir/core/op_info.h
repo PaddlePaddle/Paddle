@@ -72,7 +72,7 @@ class IR_API OpInfo {
   typename InterfaceT::Concept *GetInterfaceImpl() const;
 
   operator void *() const { return impl_; }
-  static OpInfo RecoverFromOpaquePointer(void *pointer) {
+  static OpInfo RecoverFromVoidPointer(void *pointer) {
     return OpInfo(static_cast<OpInfoImpl *>(pointer));
   }
 

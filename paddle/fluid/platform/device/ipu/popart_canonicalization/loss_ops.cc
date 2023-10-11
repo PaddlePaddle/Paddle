@@ -717,4 +717,3 @@ REGISTER_HANDLER(bce_loss, binary_cross_entropy_handler);
 REGISTER_HANDLER(huber_loss, huber_loss_handler);
 REGISTER_HANDLER(warpctc, warpctc_handler);
 REGISTER_HANDLER(rank_loss, rank_loss_handler);
-REGISTER_HANDLER(margin_rank_loss, margin_rank_loss_handler);
