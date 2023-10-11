@@ -340,7 +340,7 @@ class FCMKLDNNHandler
         auto src_1_mem = dnnl::memory(src_1_md, this->dev_ctx_.GetEngine());
         src_1_mem.set_data_handle(phi::funcs::to_void_cast(src_data.data()));
 
-        // auto dst_memory = dnnl::memory(dst_md, this->dev_ctx_.GetEngine());
+        auto dst_memory = dnnl::memory(dst_md, this->dev_ctx_.GetEngine());
 
         auto binary_pd =
             dnnl::binary::primitive_desc(this->dev_ctx_.GetEngine(),
@@ -355,7 +355,7 @@ class FCMKLDNNHandler
         std::unordered_map<int, dnnl::memory> binary_args = {
             {DNNL_ARG_SRC_0, src_0_mem},
             {DNNL_ARG_SRC_1, src_1_mem},
-            {DNNL_ARG_DST, src_0_mem}};
+            {DNNL_ARG_DST, dst_memory}};
 
         auto& astream = OneDNNContext::tls().get_stream();
         binary_prim.execute(astream, binary_args);
