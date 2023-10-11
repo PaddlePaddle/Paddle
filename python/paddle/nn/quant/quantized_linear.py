@@ -85,7 +85,7 @@ def weight_only_linear(
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:GPU)
+            >>>  # doctest: +SKIP('No testing required')
             >>> import paddle
             >>> from paddle.nn.quant import weight_only_linear
 
@@ -94,8 +94,8 @@ def weight_only_linear(
             >>> scale = paddle.randn([32], dtype='float32')
             >>> bias = paddle.cast(paddle.randn([32]), dtype='float16')
             >>> if paddle.device.cuda.get_device_capability()[0] >= 8:
-            ...     out = weight_only_linear(x, weight, bias=bias, weight_scale=scale, weight_dtype='int8')
-            ...     print(out.shape)
+            ...    out = weight_only_linear(x, weight, bias=bias, weight_scale=scale, weight_dtype='int8')
+            ...    print(out.shape)
             [1, 2, 32]
     """
     if in_dynamic_mode():
@@ -162,7 +162,7 @@ def llm_int8_linear(
             >>> scale = paddle.randn([32], dtype='float32')
             >>> bias = paddle.cast(paddle.randn([32]), dtype='float16')
             >>> if paddle.device.cuda.get_device_capability()[0] >= 8:
-            ...    out = weight_only_linear(x, weight, bias=bias, weight_scale=scale, weight_dtype='int8')
+            ...    out = llm_int8_linear(x, weight, bias=bias, weight_scale=scale, threshold=6.0)
             ...    print(out.shape)
             [1, 2, 32]
     """
