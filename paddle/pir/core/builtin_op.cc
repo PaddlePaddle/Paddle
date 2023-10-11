@@ -406,6 +406,7 @@ Attribute ConstantOp::value() const { return attributes().at("value"); }
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ModuleOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::GetParameterOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::SetParameterOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::ShadowOutputOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::CombineOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::SliceOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::SplitOp)

@@ -295,7 +295,7 @@ Variable* CreateVar(pir::Value value,
                     ValueExecutionInfo* value_exe_info) {
   pir::Operation* def_op = value.dyn_cast<pir::OpResult>().owner();
   bool is_persisable = false;
-  if (def_op->isa<::pir::SetParameterOp>()) {
+  if (def_op->isa<::pir::GetParameterOp>()) {
     is_persisable = true;
   } else if (def_op->HasAttribute(kAttrIsPersisable)) {
     is_persisable = def_op->attribute(kAttrIsPersisable)
@@ -478,11 +478,12 @@ void HandleForSpecialOp(pir::Operation* op,
 
     value_exe_info->Rename(value, param_name, orig_name);
   }
-
-  if (op_name == "builtin.shadow_output") {
+  if (op_name.compare(pir::ShadowOutputOp::name()) == 0) {
     VLOG(6) << "Handle for builtin.shadow_ouptut";
-    auto var_name =
-        op->attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
+    auto var_name = op->attributes()
+                        .at("output_name")
+                        .dyn_cast<pir::StrAttribute>()
+                        .AsString();
 
     auto value = op->operand_source(0);
     // change opreand name to param_name

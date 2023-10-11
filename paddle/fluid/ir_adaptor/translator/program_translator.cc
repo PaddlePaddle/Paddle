@@ -186,9 +186,6 @@ ProgramTranslator::ProgramTranslator(const ProgramDesc* legacy_program,
 void ProgramTranslator::Translate() {
   GetParameterForSingleBlock(legacy_program_->Block(0));
 
-  std::cout << "ProgramTranslator::Translate: "
-            << "start: " << 0 << ", end: " << legacy_program_->Block(0).OpSize()
-            << std::endl;
   TranslateBlock(legacy_program_->Block(0),
                  0,
                  legacy_program_->Block(0).OpSize(),
@@ -212,9 +209,6 @@ void ProgramTranslator::TranslateBlock(const BlockDesc& src_block,
                                        uint64_t end_id,
                                        pir::Block* dest_block,
                                        bool for_cond_block) {
-  std::cout << "ProgramTranslator::TranslateBlock: "
-            << "start_id: " << start_id << ", end_id: " << end_id
-            << ", block_size: " << src_block.OpSize() << std::endl;
   VLOG(8) << "=============>start to translate a block";
   PADDLE_ENFORCE(
       (src_block.OpSize() >= end_id) && (start_id <= end_id),
