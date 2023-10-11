@@ -2394,6 +2394,11 @@ set -x
         ut_endTime_s=`date +%s`
         echo "CINN testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         if [[ "$EXIT_CODE" != "0" ]]; then
+            rm -f $tmp_dir/*
+            echo "Summary Failed Tests... "
+            echo "========================================"
+            echo "The following tests FAILED: "
+            echo "${failuretest}" | sort -u
             exit 8;
         fi
     fi
