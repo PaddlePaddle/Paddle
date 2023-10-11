@@ -115,7 +115,7 @@ class TestComplex64VdotOp2D(TestComplex64VdotOp):
         ).astype(self.dtype)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.1)
+        self.check_grad(['X', 'Y'], 'Out')
 
 
 class TestComplex128VdotOp2D(TestComplex128VdotOp):
