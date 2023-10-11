@@ -15,6 +15,7 @@
 math functions
 """
 
+import math
 
 import numpy as np
 
@@ -5074,19 +5075,9 @@ def multigammaln(x, p, name=None):
                     26.09257698 , 170.68318176])
     """
 
-    c = 0.25 * p * (p - 1) * np.log(np.pi)
+    c = 0.25 * p * (p - 1) * math.log(math.pi)
     b = 0.5 * paddle.arange(start=(1 - p), end=1, step=1, dtype=x.dtype)
     return paddle.sum(paddle.lgamma(x.unsqueeze(-1) + b), axis=-1) + c
-
-
-@inplace_apis_in_dygraph_only
-def multigammaln_(x, p, name=None):
-    r"""
-    Inplace version of ``multigammaln`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_multigammaln`.
-    """
-    x[:] = multigammaln(x, p, name=name)
-    return x
 
 
 def neg(x, name=None):
