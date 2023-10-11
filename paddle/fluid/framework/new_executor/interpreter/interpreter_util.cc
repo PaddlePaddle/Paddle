@@ -693,7 +693,7 @@ void BuildOpFuncList(const platform::Place& place,
         // op is not a operatorwithkernel, so direcly run OperatorBase::Run()
 
         std::vector<std::shared_ptr<OperatorBase>> following_ops(
-            ops.begin() + i + 1, ops.end());
+            ops.begin() + static_cast<int>(i) + 1, ops.end());
         HandleOperatorBase(place,
                            ops[i],
                            &op_func_node,
