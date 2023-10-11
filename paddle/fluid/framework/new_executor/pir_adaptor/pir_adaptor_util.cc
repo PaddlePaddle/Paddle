@@ -300,7 +300,9 @@ Variable* CreateVar(pir::Value value,
   } else if (def_op->HasAttribute(kAttrIsPersisable)) {
     is_persisable = def_op->attribute(kAttrIsPersisable)
                         .dyn_cast<pir::ArrayAttribute>()
-                        .AsVector()[value.dyn_cast<pir::OpResult>().index()];
+                        .AsVector()[value.dyn_cast<pir::OpResult>().index()]
+                        .dyn_cast<pir::BoolAttribute>()
+                        .data();
   }
 
   Variable* var = nullptr;
@@ -486,8 +488,8 @@ void HandleForSpecialOp(pir::Operation* op,
     // change opreand name to param_name
     auto orig_name = value_exe_info->GetValue2VarName().at(value);
 
-    if (value_exe_info->GetScope()->root()->FindVar(var_name) == nullptr) {
-      const_cast<Scope*>(value_exe_info->GetScope()->root())
+    if (value_exe_info->GetScope()->FindVar(var_name) == nullptr) {
+      const_cast<Scope*>(value_exe_info->GetScope())
           ->Rename(orig_name, var_name);
     }
 
