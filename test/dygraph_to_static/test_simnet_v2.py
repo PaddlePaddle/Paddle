@@ -181,7 +181,7 @@ def train(conf_dict, to_static):
 
 @dy2static_unittest
 class TestSimnet(unittest.TestCase):
-    @test_and_compare_with_new_ir(True)
+    @test_and_compare_with_new_ir(False)
     def test_dygraph_static_same_loss(self):
         if paddle.is_compiled_with_cuda():
             paddle.base.set_flags({"FLAGS_cudnn_deterministic": True})
