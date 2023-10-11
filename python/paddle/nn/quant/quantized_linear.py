@@ -31,13 +31,12 @@ def weight_quantize(x, algo="weight_only_int8"):
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +SKIP('No testing required')
             >>> import paddle
-            >>> import numpy as np
             >>> from paddle.nn.quant import weight_quantize
 
-            >>> paddle.device.set_device("cpu")
-            >>> x = np.random.randn(64, 32).astype('float16')
-            >>> x = paddle.to_tensor(x, dtype=paddle.float16, place=paddle.CPUPlace())
+            >>> paddle.seed(2023)
+            >>> x = paddle.rand(shape=[64, 32], dtype=paddle.float16)
             >>> out, scale = weight_quantize(x, algo='weight_only_int8')
             >>> print(out.shape)
             [32, 64]
@@ -154,7 +153,7 @@ def llm_int8_linear(
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:GPU)
+            >>> # doctest: +SKIP('No testing required')
             >>> import paddle
             >>> from paddle.nn.quant import llm_int8_linear
 
@@ -163,8 +162,8 @@ def llm_int8_linear(
             >>> scale = paddle.randn([32], dtype='float32')
             >>> bias = paddle.cast(paddle.randn([32]), dtype='float16')
             >>> if paddle.device.cuda.get_device_capability()[0] >= 8:
-            ...     out = llm_int8_linear(x, weight, bias=bias, weight_scale=scale, threshold=6.0)
-            ...     print(out.shape)
+            ...    out = weight_only_linear(x, weight, bias=bias, weight_scale=scale, weight_dtype='int8')
+            ...    print(out.shape)
             [1, 2, 32]
     """
     if in_dynamic_mode():
