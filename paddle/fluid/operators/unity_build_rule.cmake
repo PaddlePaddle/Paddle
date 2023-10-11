@@ -123,7 +123,6 @@ register_unity_group(
   isfinite_v2_op.cc)
 register_unity_group(
   cc
-  inplace_abn_op.cc
   interpolate_v2_op.cc
   inverse_op.cc
   is_empty_op.cc
@@ -152,7 +151,6 @@ register_unity_group(
   cc
   log_loss_op.cc
   lookup_table_v2_op.cc
-  margin_rank_loss_op.cc
   masked_select_op.cc
   match_matrix_tensor_op.cc
   matmul_op.cc
@@ -165,7 +163,6 @@ register_unity_group(
 register_unity_group(
   cc
   concat_op.cc
-  conv_shift_op.cc
   dequantize_log_op.cc
   dropout_op.cc
   expand_op.cc
@@ -176,7 +173,6 @@ register_unity_group(
   matmul_v2_op.cc)
 register_unity_group(
   cc
-  mean_iou_op.cc
   mean_op.cc
   minus_op.cc
   mish_op.cc
@@ -223,11 +219,9 @@ register_unity_group(
   reverse_op.cc)
 register_unity_group(
   cc
-  rnn_memory_helper_op.cc
   roi_align_op.cc
   roll_op.cc
   run_program_op.cc
-  sample_logits_op.cc
   sampling_id_op.cc
   save_combine_op.cc
   save_op.cc
@@ -282,7 +276,6 @@ register_unity_group(
   unfold_op.cc)
 register_unity_group(
   cc
-  smooth_l1_loss_op.cc
   uniform_random_batch_size_like_op.cc
   unique_op.cc
   unique_with_counts_op.cc
@@ -409,7 +402,6 @@ register_unity_group(
   isfinite_v2_op.cu)
 register_unity_group(
   cu
-  inplace_abn_op.cu
   interpolate_v2_op.cu
   isfinite_op.cu
   l1_norm_op.cu
@@ -428,16 +420,10 @@ register_unity_group(
   rank_loss_op.cu
   real_op.cu)
 register_unity_group(
-  cu
-  log_loss_op.cu
-  lookup_table_v2_op.cu
-  margin_rank_loss_op.cu
-  masked_select_op.cu
-  shuffle_channel_op.cu
-  softmax_cudnn_op.cu)
+  cu log_loss_op.cu lookup_table_v2_op.cu masked_select_op.cu
+  shuffle_channel_op.cu softmax_cudnn_op.cu)
 register_unity_group(
   cu
-  conv_shift_op.cu
   dequantize_log_op.cu
   dropout_op.cu
   fake_quantize_op.cu
@@ -447,7 +433,6 @@ register_unity_group(
   softmax_with_cross_entropy_op.cu)
 register_unity_group(
   cu
-  mean_iou_op.cu
   mean_op.cu
   minus_op.cu
   mish_op.cu
@@ -475,7 +460,6 @@ register_unity_group(
   cu
   roi_align_op.cu
   roll_op.cu
-  sample_logits_op.cu
   sampling_id_op.cu
   save_combine_op.cu
   save_op.cu
@@ -503,15 +487,10 @@ register_unity_group(
   arg_max_op.cu)
 register_unity_group(cu row_conv_op.cu tril_triu_op.cu unfold_op.cu
                      arg_min_op.cu crop_tensor_op.cu)
-register_unity_group(
-  cu
-  smooth_l1_loss_op.cu
-  uniform_random_batch_size_like_op.cu
-  unstack_op.cu
-  where_index_op.cu
-  where_op.cu
-  layer_norm_op.cu)
+register_unity_group(cu uniform_random_batch_size_like_op.cu unstack_op.cu
+                     where_index_op.cu where_op.cu layer_norm_op.cu)
 register_unity_group(cu expand_as_op.cu stack_op.cu)
+
 # The following groups are to make better use of `/MP` which MSVC's parallel
 # compilation instruction when compiling in Unity Build.
 register_unity_group(cu activation_op.cu)

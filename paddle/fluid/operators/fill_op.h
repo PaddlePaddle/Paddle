@@ -42,42 +42,5 @@ struct FillOpVisitor {
   const std::vector<float> &value_;
 };
 
-template <typename T>
-class FillKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const paddle::framework::ExecutionContext &ctx) const override {
-    auto &out = GET_DATA_SAFELY(
-        ctx.Output<phi::DenseTensor>("Out"), "Output", "Out", "Fill");
-    out.Resize(phi::make_ddim(ctx.Attr<std::vector<int>>("shape")));
-    auto dtype =
-        static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
-    auto phi_dtype = framework::TransToPhiDataType(dtype);
-    platform::CPUPlace cpu;
-    auto force_cpu = ctx.Attr<bool>("force_cpu");
-    out.mutable_data(force_cpu ? cpu : ctx.GetPlace(), phi_dtype);
-
-    phi::DenseTensor tensor;
-
-    if (force_cpu || platform::is_cpu_place(ctx.GetPlace())) {
-      tensor.ShareDataWith(out);
-    } else {
-      // Always make tensor in CPU memory.
-      tensor.Resize(out.dims());
-      tensor.mutable_data(cpu, phi_dtype);
-    }
-
-    framework::VisitDataType(
-        dtype, FillOpVisitor(&tensor, ctx.Attr<std::vector<float>>("value")));
-
-    if (!force_cpu && platform::is_gpu_place(ctx.GetPlace())) {
-      // Copy tensor to out
-      framework::TensorCopy(
-          tensor,
-          ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(),
-          &out);
-    }
-  }
-};
 }  // namespace operators
 }  // namespace paddle

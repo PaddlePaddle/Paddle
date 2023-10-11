@@ -559,7 +559,7 @@ void ReplaceWithGroupOp(pir::Block* block,
   }
   // step 2: Replace the old op with GroupOp.
   auto new_group_op = builder.Build<cinn::dialect::GroupOp>(output_types);
-  pir::Block* group_block = new_group_op.Block();
+  pir::Block* group_block = new_group_op.block();
   for (auto* op : group_ops) {
     op->MoveTo(group_block, group_block->begin());
   }
