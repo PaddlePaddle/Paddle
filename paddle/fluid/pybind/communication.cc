@@ -38,7 +38,8 @@ namespace paddle {
 namespace pybind {
 
 void BindCommContextManager(py::module *m) {
-  auto P2POption = py::class_<phi::distributed::P2POption>(*m, "P2POption").def(py::init<>());
+  auto P2POption = py::class_<phi::distributed::P2POption>(*m, "P2POption")
+                       .def(py::init<>());
 
   auto CommContextManager =
       py::class_<phi::distributed::CommContextManager,
