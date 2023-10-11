@@ -85,7 +85,7 @@ def weight_only_linear(
     Examples:
         .. code-block:: python
 
-            >>>  # doctest: +SKIP('No testing required')
+            >>> # doctest: +SKIP('No testing required')
             >>> import paddle
             >>> from paddle.nn.quant import weight_only_linear
 
