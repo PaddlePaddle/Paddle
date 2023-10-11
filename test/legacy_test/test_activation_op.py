@@ -501,14 +501,25 @@ class TestSilu(TestActivation):
         pass
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            self.check_output(check_new_ir=True)
+        else:
+            self.check_output(
+                check_prim=True, check_new_ir=True, check_prim_pir=True
+            )
 
     def test_check_grad(self):
         # TODO(BeingGod): set `check_prim=True` when `fill_constant` supports `complex` dtype
         if self.dtype == np.complex64 or self.dtype == np.complex128:
-            self.check_grad(['X'], 'Out', check_prim=False, check_new_ir=True)
+            self.check_grad(['X'], 'Out', check_new_ir=True)
         else:
-            self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
+            self.check_grad(
+                ['X'],
+                'Out',
+                check_prim=True,
+                check_new_ir=True,
+                check_prim_pir=True,
+            )
 
 
 class TestSilu_ZeroDim(TestSilu):
