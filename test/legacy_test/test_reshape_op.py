@@ -43,7 +43,7 @@ class TestReshapeOp(OpTest):
         self.new_shape = (12, 10)
         self.infered_shape = (12, 10)
 
-    def _test_check_output(self):
+    def test_check_output(self):
         self.check_output(no_check_set=['XShape'], check_new_ir=True)
 
     def test_check_grad(self):

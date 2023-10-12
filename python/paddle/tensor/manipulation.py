@@ -1549,7 +1549,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
             img[0, 0, 0, 0] = -1
             print(out[0, 0, 0]) # [-1]
     """
-    if not (isinstance(x, Variable)):
+    if not (isinstance(x, (Variable, paddle.pir.OpResult))):
         raise ValueError("The input x should be a Tensor")
 
     x_dim = len(x.shape)
@@ -1586,7 +1586,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
         if start_axis > stop_axis:
             raise ValueError("The stop_axis should be larger than stat_axis")
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.flatten(x, start_axis, stop_axis)
     else:
         check_variable_and_dtype(
@@ -1844,7 +1844,7 @@ def stack(x, axis=0, name=None):
     """
     axis = 0 if axis is None else axis
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.stack(x, axis)
     else:
         if not isinstance(x, list) and not isinstance(x, tuple):

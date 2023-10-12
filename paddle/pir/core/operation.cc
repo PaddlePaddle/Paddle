@@ -282,6 +282,12 @@ void Operation::SetParent(Block *parent, const Block::Iterator &position) {
   position_ = position;
 }
 
+void Operation::MoveTo(Block *block, Block::Iterator position) {
+  IR_ENFORCE(parent_, "Operation does not have parent");
+  Operation *op = parent_->Take(this);
+  block->insert(position, op);
+}
+
 std::string Operation::name() const {
   auto p_name = info_.name();
   return p_name ? p_name : "";

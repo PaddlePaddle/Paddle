@@ -63,7 +63,6 @@ VJPS = [
     'fused_softmax_mask_upper_triangle_grad',
     'matmul_grad',
     'pow_grad',
-    'reshape_grad',
     'rsqrt_grad',
     'slice_grad',
     'transpose_grad',
@@ -295,6 +294,7 @@ BACKENDS = [
     'diag_grad',
     'trace_grad',
     'flip',
+    'sign',
 ]
 
 

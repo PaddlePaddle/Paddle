@@ -12,21 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .fs import LocalFS  # noqa: F401
-from .fs import HDFSClient  # noqa: F401
-from .ps_util import DistributedInfer  # noqa: F401
-from paddle.utils import deprecated
+import paddle  # noqa: F401
 from paddle.distributed import fleet
+from paddle.utils import deprecated  # noqa: F401
 
-import paddle
-from . import log_util  # noqa: F401
-from . import hybrid_parallel_util  # noqa: F401
-from . import tensor_parallel_utils  # noqa: F401
-from . import mix_precision_utils  # noqa: F401
-from . import sequence_parallel_utils
+from . import (  # noqa: F401
+    hybrid_parallel_util,
+    log_util,
+    mix_precision_utils,
+    sequence_parallel_utils,
+    tensor_parallel_utils,
+)
+from .fs import HDFSClient, LocalFS
+from .ps_util import DistributedInfer
 
-
-__all__ = ["LocalFS", "recompute", "DistributedInfer", "HDFSClient"]  # noqa
+__all__ = ["LocalFS", "recompute", "DistributedInfer", "HDFSClient"]
 
 
 def recompute(function, *args, **kwargs):
