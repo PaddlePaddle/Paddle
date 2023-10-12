@@ -22,9 +22,9 @@
 
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_error.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
 #include "paddle/cinn/utils/random_engine.h"
 #include "paddle/cinn/utils/string.h"
 
@@ -193,7 +193,7 @@ Tensor GetReadTensor(const Expr& block, int index);
 int GetLoopExtent(const Expr& loop);
 
 /**
- * \brief Given a vector of Exors, return whether they contain a var with
+ * \brief Given a vector of Exprs, return whether they contain a var with
  * specific name.
  * @param exprs The given vector of Exprs
  * @param var_name The name of specific var
@@ -240,6 +240,15 @@ std::vector<Expr> GetIfThenElseInRange(const Expr& top, const Expr& bottom);
 void ReplaceExpr(Expr* source,
                  const std::vector<Var>& replaced,
                  const std::vector<Expr>& candidates);
+
+/**
+ * Replace Vars in replaced to Exprs in candidates in source.
+ * @param source The Expr we will implement the change.
+ * @param replacing_map The one-to-one corresponded Vars -> Exprs to be
+ * replaced.
+ */
+void ReplaceExpr(Expr* source,
+                 const std::map<Var, Expr, CompVar>& replacing_map);
 
 /**
  * Validate the factors param of Split. We will check if factors are validate
