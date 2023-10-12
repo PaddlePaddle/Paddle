@@ -895,7 +895,6 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
                     dim = paddle.cast(x=dim, dtype='int32')
                 shape_tensor_list.append(dim)
             else:
-                print(dim)
                 temp_out = _C_ops.full([1], dim, core.DataType.INT32, place)
                 shape_tensor_list.append(temp_out)
         return shape_tensor_list
