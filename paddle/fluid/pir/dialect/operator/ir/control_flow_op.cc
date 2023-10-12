@@ -145,7 +145,7 @@ void IfOp::Verify() {
                       (*this)->num_results(),
                       phi::errors::PreconditionNotMet(
                           "The size of last of true block op's input must be "
-                          "equal to IfOp's outputs num."))
+                          "equal to IfOp's outputs num."));
   }
 }
 
