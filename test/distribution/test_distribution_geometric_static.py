@@ -73,7 +73,7 @@ class TestGeometric(unittest.TestCase):
             )
             np.testing.assert_allclose(
                 mean,
-                scipy.stats.geom.mean(self.probs),
+                scipy.stats.geom.mean(self.probs, loc=-1),
                 rtol=RTOL.get(str(self.probs.dtype)),
                 atol=ATOL.get(str(self.probs.dtype)),
             )
@@ -87,7 +87,7 @@ class TestGeometric(unittest.TestCase):
             )
             np.testing.assert_allclose(
                 variance,
-                scipy.stats.geom.var(self.probs),
+                scipy.stats.geom.var(self.probs, loc=-1),
                 rtol=RTOL.get(str(self.probs.dtype)),
                 atol=ATOL.get(str(self.probs.dtype)),
             )
@@ -101,7 +101,7 @@ class TestGeometric(unittest.TestCase):
             )
             np.testing.assert_allclose(
                 stddev,
-                scipy.stats.geom.std(self.probs),
+                scipy.stats.geom.std(self.probs, loc=-1),
                 rtol=RTOL.get(str(self.probs.dtype)),
                 atol=ATOL.get(str(self.probs.dtype)),
             )
@@ -137,7 +137,7 @@ class TestGeometric(unittest.TestCase):
             )
             np.testing.assert_allclose(
                 entropy,
-                scipy.stats.geom.entropy(self.probs),
+                scipy.stats.geom.entropy(self.probs, loc=-1),
                 rtol=RTOL.get(str(self.probs.dtype)),
                 atol=ATOL.get(str(self.probs.dtype)),
             )
@@ -204,7 +204,7 @@ class TestGeometricPMF(unittest.TestCase):
             )
             np.testing.assert_allclose(
                 pmf,
-                scipy.stats.geom.pmf(self.value, self.probs),
+                scipy.stats.geom.pmf(self.value, self.probs, loc=-1),
                 rtol=RTOL.get(str(self.probs.dtype)),
                 atol=ATOL.get(str(self.probs.dtype)),
             )
@@ -218,7 +218,7 @@ class TestGeometricPMF(unittest.TestCase):
             )
             np.testing.assert_allclose(
                 log_pmf,
-                scipy.stats.geom.logpmf(self.value, self.probs),
+                scipy.stats.geom.logpmf(self.value, self.probs, loc=-1),
                 rtol=RTOL.get(str(self.probs.dtype)),
                 atol=ATOL.get(str(self.probs.dtype)),
             )
@@ -232,7 +232,7 @@ class TestGeometricPMF(unittest.TestCase):
             )
             np.testing.assert_allclose(
                 cdf,
-                scipy.stats.geom.cdf(self.value, self.probs),
+                scipy.stats.geom.cdf(self.value, self.probs, loc=-1),
                 rtol=RTOL.get(str(self.probs.dtype)),
                 atol=ATOL.get(str(self.probs.dtype)),
             )
@@ -340,3 +340,7 @@ class TestGeometricKL(unittest.TestCase):
         return self.probs1 * np.log(self.probs1 / self.probs2) + (
             1.0 - self.probs1
         ) * np.log((1.0 - self.probs1) / (1.0 - self.probs2))
+
+
+if __name__ == '__main__':
+    unittest.main()

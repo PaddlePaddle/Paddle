@@ -26,7 +26,7 @@ PHI_DECLARE_bool(use_pinned_memory);
 void TestAllocator(paddle::memory::detail::SystemAllocator* a, size_t size) {
   bool freed = false;
   {
-    size_t index;
+    size_t index;  // NOLINT
     void* p = a->Alloc(&index, size);
     if (size > 0) {
       EXPECT_NE(p, nullptr);
