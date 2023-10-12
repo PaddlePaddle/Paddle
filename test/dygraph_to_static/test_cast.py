@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import (
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
     ast_only_test,
-    dy2static_unittest,
     test_and_compare_with_new_ir,
 )
 
@@ -64,8 +64,8 @@ def test_mix_cast(x):
     return x
 
 
-@dy2static_unittest
-class TestCastBase(unittest.TestCase):
+# @dy2static_unittest
+class TestCastBase(Dy2StTestBase):
     def setUp(self):
         self.place = (
             base.CUDAPlace(0)
@@ -95,6 +95,7 @@ class TestCastBase(unittest.TestCase):
 
     @ast_only_test  # TODO: add new symbolic only test.
     @test_and_compare_with_new_ir(False)
+    # @set_to_static_mode(ToStaticMode.LEGACY_AST)
     def test_cast_result(self):
         res = self.do_test().numpy()
         self.assertTrue(
@@ -191,9 +192,11 @@ class TestNotVarCast(TestCastBase):
     def set_func(self):
         self.func = test_not_var_cast
 
-    @ast_only_test  # TODO: add new symbolic only test.
+    @ast_only_test
     @test_and_compare_with_new_ir(False)
     def test_cast_result(self):
+        # breakpoint()
+        # print("run once!!!")
         res = self.do_test()
         self.assertTrue(type(res) == int, msg='The casted dtype is not int.')
         ref_val = int(self.input)
@@ -202,6 +205,14 @@ class TestNotVarCast(TestCastBase):
             msg=f'The casted value is {res}.\nThe correct value is {ref_val}.',
         )
 
+
+for attr in dir(TestCastBase):
+    if attr.startswith("test_"):
+        print(f"{attr}: {getattr(TestCastBase, attr)}")
+
+for attr in dir(TestNotVarCast):
+    if attr.startswith("test_"):
+        print(f"{attr}: {getattr(TestNotVarCast, attr)}")
 
 if __name__ == '__main__':
     unittest.main()
