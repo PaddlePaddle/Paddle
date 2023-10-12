@@ -265,11 +265,11 @@ void BatchNormOpMaker::Make() {
   AddInput("Scale",
            "Scale is a 1-dimensional tensor of size C "
            "that is applied to the output")
-      .AsDispensable() {}
+      .AsDispensable();
   AddInput("Bias",
            "Bias is a 1-dimensional tensor of size C "
            "that is applied to the output")
-      .AsDispensable() {}
+      .AsDispensable();
   AddInput("Mean",
            "The global mean (for training) or "
            "estimated mean (for testing)");
