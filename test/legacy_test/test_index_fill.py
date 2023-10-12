@@ -113,7 +113,7 @@ class TestIndexFillAPIBase(unittest.TestCase):
                 ref_res = compute_index_put_ref(
                     self.x_np, self.axis, self.index_np, self.value
                 )
-                np.testing.assert_allclose(ref_res, pd_res, atol=1e-5)
+                np.testing.assert_allclose(ref_res, pd_res)
 
     def test_dygraph(self):
         paddle.disable_static()
@@ -125,7 +125,7 @@ class TestIndexFillAPIBase(unittest.TestCase):
             ref_res = compute_index_put_ref(
                 self.x_np, self.axis, self.index_np, self.value
             )
-            np.testing.assert_allclose(ref_res, pd_res, atol=1e-5)
+            np.testing.assert_allclose(ref_res, pd_res)
 
     def test_errors(self):
         data_np = np.random.random((10, 10)).astype(np.float32)
