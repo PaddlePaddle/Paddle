@@ -62,7 +62,6 @@ PD_REGISTER_KERNEL(transpose,
                    int16_t,
                    int32_t,
                    int64_t,
-
                    uint8_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
