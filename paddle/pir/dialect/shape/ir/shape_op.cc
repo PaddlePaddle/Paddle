@@ -284,6 +284,11 @@ const std::string ShapeOfOp::getName() {
   return attribute<StrAttribute>("name").AsString();
 }
 
+void FromElementsOp::Build(Builder &builder,             // NOLINT
+                           OperationArgument &argument,  // NOLINT
+                           const std::vector<Value> &inputs) {
+  argument.AddInputs(inputs);
+}
 }  // namespace pir::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::SymbolicDim)

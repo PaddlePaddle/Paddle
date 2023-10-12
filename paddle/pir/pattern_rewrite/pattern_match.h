@@ -275,7 +275,11 @@ class RewriterBase : public Builder {
   // Replaces the result op with a new op.
   // The result values of the two ops must be the same types.
   template <typename OpTy, typename... Args>
-  OpTy ReplaceOpWithNewOp(Operation* op, Args&&... args);
+  OpTy ReplaceOpWithNewOp(Operation* op, Args&&... args) {
+    auto new_op = Build<OpTy>(std::forward<Args>(args)...);
+    ReplaceOpWithResultsOfAnotherOp(op, new_op.operation());
+    return new_op;
+  }
 
   virtual void EraseOp(Operation* op);
 

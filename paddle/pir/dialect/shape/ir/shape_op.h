@@ -198,8 +198,12 @@ class IR_API FromElementsOp : public Op<FromElementsOp> {
   static constexpr const char **attributes_name = nullptr;
   static constexpr uint32_t attributes_num = 0;
 
-  static void Build(Builder &builder,                // NOLINT
-                    OperationArgument &argument) {}  // NOLINT
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    const std::vector<Value> &inputs);
+
+  Value inputs() { return operand_source(0); }
+  OpResult out() { return result(0); }
   void Verify() {}
 };
 

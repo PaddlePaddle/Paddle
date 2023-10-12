@@ -127,13 +127,6 @@ void RewriterBase::ReplaceOp(Operation* op,
   op->erase();
 }
 
-template <typename OpTy, typename... Args>
-OpTy RewriterBase::ReplaceOpWithNewOp(Operation* op, Args&&... args) {
-  auto new_op = Build<OpTy>(std::forward<Args>(args)...);
-  ReplaceOpWithResultsOfAnotherOp(op, new_op.operation());
-  return new_op;
-}
-
 void RewriterBase::EraseOp(Operation* op) {
   IR_ENFORCE(op->use_empty(), "expected 'op' to have no uses");
   NotifyOperationRemoved(op);
