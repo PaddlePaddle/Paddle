@@ -1304,7 +1304,7 @@ class AFSClient(FS):
 
                 >>> client = AFSClient()
                 >>> client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
-                >>> ret = client.is_file("hdfs:/test_hdfs_client")
+                >>> ret = client.is_dir("hdfs:/test_hdfs_client")
 
         """
         if not self.is_exist(fs_path):
