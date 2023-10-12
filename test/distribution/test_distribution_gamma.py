@@ -230,7 +230,7 @@ class TestGammaSample(unittest.TestCase):
         self._paddle_gamma = gamma.Gamma(concentration, rate)
 
     def test_sample(self):
-        sample_shape = (20000,)
+        sample_shape = (10000,)
         self.assertRaises(
             NotImplementedError,
             self._paddle_gamma.sample,
@@ -238,7 +238,7 @@ class TestGammaSample(unittest.TestCase):
         )
 
     def test_rsample(self):
-        sample_shape = (20000,)
+        sample_shape = (10000,)
         self.assertRaises(
             NotImplementedError,
             self._paddle_gamma.rsample,

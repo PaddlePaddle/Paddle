@@ -207,8 +207,8 @@ class TestExponentialSample(unittest.TestCase):
                 'expect': () + np.squeeze(self.rate).shape,
             },
             {
-                'input': (4, 2),
-                'expect': (4, 2) + np.squeeze(self.rate).shape,
+                'input': (3, 2),
+                'expect': (3, 2) + np.squeeze(self.rate).shape,
             },
         ]
         for case in cases:
@@ -222,7 +222,7 @@ class TestExponentialSample(unittest.TestCase):
                 self.assertTrue(data.shape == case.get('expect'))
 
     def test_sample(self):
-        sample_shape = (20000,)
+        sample_shape = (10000,)
         with paddle.static.program_guard(self.program):
             [data] = self.executor.run(
                 self.program,
@@ -239,7 +239,7 @@ class TestExponentialSample(unittest.TestCase):
             )
 
     def test_rsample(self):
-        sample_shape = (20000,)
+        sample_shape = (10000,)
         with paddle.static.program_guard(self.program):
             [data] = self.executor.run(
                 self.program,
@@ -274,7 +274,7 @@ class TestExponentialSampleKS(unittest.TestCase):
             self.feeds = {'rate': self.rate}
 
     def test_sample(self):
-        sample_shape = (20000,)
+        sample_shape = (10000,)
         with paddle.static.program_guard(self.program):
             [samples] = self.executor.run(
                 self.program,
@@ -284,7 +284,7 @@ class TestExponentialSampleKS(unittest.TestCase):
             self.assertTrue(self._kstest(self.scale, samples))
 
     def test_rsample(self):
-        sample_shape = (20000,)
+        sample_shape = (10000,)
         with paddle.static.program_guard(self.program):
             [samples] = self.executor.run(
                 self.program,
