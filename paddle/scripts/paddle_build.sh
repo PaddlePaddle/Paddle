@@ -932,6 +932,51 @@ set -ex
     fi
 }
 
+function check_run_sot_ci() {
+    set +x
+    # use "git commit -m 'message, test=sot_fix'" to force ci to run
+    RUN_CI=$(git log -1 --pretty=format:"%s"|grep -w "test=sot_fix" || true)
+    if [[ ${RUN_CI} ]];then
+        set -x
+        return
+    fi
+
+    # git diff
+    SOT_FILE_LIST=(
+        paddle/fluid/operators/run_program_op.h
+        paddle/fluid/operators/run_program_op.cu
+        paddle/fluid/operators/run_program_op.cc
+        paddle/fluid/eager/to_static
+        paddle/fluid/pybind/
+        python/
+        test/sot
+    )
+
+    run_sot_ut="OFF"
+    for change_fie in $(git diff --name-only upstream/develop);
+    do
+        for sot_file in ${SOT_FILE_LIST[@]};
+        do
+            if [[ ${change_fie} =~ ^"${sot_file}".* ]]; then
+            echo "Detect change about SOT: "
+            echo "Changes related to the sot code were detected: " ${change_fie}
+            run_sot_ut="ON"
+            break
+            fi
+        done
+        if [[ "ON" == ${run_sot_ut} ]]; then
+            break
+        fi
+    done
+
+    if [[ "OFF" == ${run_sot_ut} ]]; then
+        echo "No SOT-related changes were found"
+        echo "Skip SOT UT CI"
+        exit 0
+    fi
+    set -x
+}
+
 function run_sot_test() {
     PADDLE_SOT_ROOT=$1
     PY_VERSION=$2
@@ -4127,6 +4172,7 @@ function main() {
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       cicheck_sot)
+        check_run_sot_ci
         export WITH_SHARED_PHI=ON
         PADDLE_SOT_ROOT=${PADDLE_ROOT}/sot
         git clone https://github.com/PaddlePaddle/PaddleSOT.git ${PADDLE_SOT_ROOT}
