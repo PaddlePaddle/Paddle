@@ -86,7 +86,7 @@ static void SplitIntoLoDTensorAndNonLoDTensorVars(
   lod_tensors->clear();
   other_vars->clear();
 
-  for (auto &op_vars_pair : m) {
+  for (auto const &op_vars_pair : m) {
     for (auto var_name : op_vars_pair.second) {
       auto *var_desc = TryGetLatestVarDesc(
           vars[op_vars_pair.first->GetScopeIdx()].at(var_name));

@@ -25,7 +25,12 @@ bool ShapeAnalysis::IsSameNumElements(Value lhs, Value rhs) {
   if (!lhs_type || !rhs_type || !lhs_type.HasRank() || !rhs_type.HasRank())
     return false;
 
-  return IsProductEqual(lhs, 0, lhs_type.GetRank(), rhs, 0, rhs_type.GetRank());
+  return IsProductEqual(lhs,
+                        0,
+                        static_cast<int>(lhs_type.GetRank()),
+                        rhs,
+                        0,
+                        static_cast<int>(rhs_type.GetRank()));
 }
 
 bool ShapeAnalysis::IsProductEqual(
@@ -127,22 +132,6 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(Value lhs,
   }
 
   return mgr_.IsSymbolicDimProductEqual(lhs_prod, rhs_prod);
-}
-
-bool IsIntOrIndex(Type type) {
-  return type.isa<IndexType>() || type.isa<Int8Type>() ||
-         type.isa<UInt8Type>() || type.isa<Int16Type>() ||
-         type.isa<Int32Type>() || type.isa<Int64Type>();
-}
-
-bool IsCandidateShapeTensorType(Type type) {
-  if (auto tensorTy = type.dyn_cast<paddle::dialect::DenseTensorType>()) {
-    auto shapedTy = tensorTy.dyn_cast<ShapedTypeInterface>();
-    return (shapedTy.GetRank() == 1 && shapedTy.HasStaticShape() &&
-            IsIntOrIndex(shapedTy.GetElementType()) &&
-            shapedTy.GetShape()[0] < 32);
-  }
-  return false;
 }
 
 }  // namespace pir

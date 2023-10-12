@@ -2448,9 +2448,9 @@ bool SlotRecordInMemoryDataFeed::ParseOneInstance(const std::string& line,
     }
     // parse_logkey
     std::string log_key = std::string(str + pos, len);
-    uint64_t search_id;
-    uint32_t cmatch;
-    uint32_t rank;
+    uint64_t search_id = 0;
+    uint32_t cmatch = 0;
+    uint32_t rank = 0;
     parser_log_key(log_key, &search_id, &cmatch, &rank);
 
     rec->ins_id_ = log_key;

@@ -907,7 +907,7 @@ void PartialGradTask::RunEachOp(OpBase *op) {
     } else {
       for (auto &grad_var : input_pair.second) {
         if (grad_var) {
-          bool is_last;
+          bool is_last = false;
           new_inputs.emplace_back(
               ready_grad_vars_.Get(grad_var.get(), op->place(), &is_last));
           VLOG(10) << "Got ready grad var " << grad_var->Name() << " "

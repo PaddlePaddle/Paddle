@@ -237,8 +237,8 @@ float CastPyArg2AttrFloat(PyObject* obj, ssize_t arg_pos) {
 
 std::string CastPyArg2AttrString(PyObject* obj, ssize_t arg_pos) {
   if (PyObject_CheckStr(obj)) {
-    Py_ssize_t size;
-    const char* data;
+    Py_ssize_t size = 0;
+    const char* data = nullptr;
     data = PyUnicode_AsUTF8AndSize(obj, &size);
     return std::string(data, static_cast<size_t>(size));
   } else {

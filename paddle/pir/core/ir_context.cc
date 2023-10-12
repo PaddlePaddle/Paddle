@@ -259,14 +259,14 @@ Dialect *IrContext::GetOrRegisterDialect(
 
 std::vector<Dialect *> IrContext::GetRegisteredDialects() {
   std::vector<Dialect *> result;
-  for (auto dialect_map : impl().registed_dialect_) {
+  for (auto const &dialect_map : impl().registed_dialect_) {
     result.push_back(dialect_map.second);
   }
   return result;
 }
 
 Dialect *IrContext::GetRegisteredDialect(const std::string &dialect_name) {
-  for (auto dialect_map : impl().registed_dialect_) {
+  for (auto const &dialect_map : impl().registed_dialect_) {
     if (dialect_map.first == dialect_name) {
       return dialect_map.second;
     }

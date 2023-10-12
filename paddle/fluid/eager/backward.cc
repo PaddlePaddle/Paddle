@@ -85,7 +85,7 @@ void EnforceGradNodeHasInput(GradNodeBase* node) {
 void DuplicateCheck(const std::vector<paddle::Tensor>& inputs, bool is_input) {
   std::unordered_set<AutogradMeta*> visisted_ins;
   std::string msg = is_input ? "inputs" : "outputs";
-  for (auto in : inputs) {
+  for (auto const& in : inputs) {
     AutogradMeta* auto_grad_meta = EagerUtils::unsafe_autograd_meta(in);
     PADDLE_ENFORCE_EQ(
         visisted_ins.count(auto_grad_meta),
