@@ -25,6 +25,7 @@
 #include "paddle/pir/core/builtin_op.h"
 
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
@@ -340,6 +341,14 @@ void BindOperation(py::module *m) {
            });
 }
 
+py::str Value2String(const Value &self) {
+  std::ostringstream print_stream;
+  print_stream << "Value(";
+  print_stream << GetValueInfo(self);
+  print_stream << ")";
+  return print_stream.str();
+}
+
 void BindValue(py::module *m) {
   py::class_<Value> value(*m, "Value", R"DOC(
     Value class represents the SSA value in the IR system. It is a directed edge
@@ -370,13 +379,8 @@ void BindValue(py::module *m) {
            })
       .def("__hash__",
            [](const Value &self) { return std::hash<pir::Value>{}(self); })
-      .def("__str__", [](const Value &self) -> py::str {
-        std::ostringstream print_stream;
-        print_stream << "Value(";
-        print_stream << GetValueInfo(self);
-        print_stream << ")";
-        return print_stream.str();
-      });
+      .def("__str__", &Value2String)
+      .def("__repr__", &Value2String);
 }
 
 void BindOpOperand(py::module *m) {
@@ -1149,6 +1153,24 @@ void BindUtils(pybind11::module *m) {
         pir::IrContext *ctx = pir::IrContext::Instance();
         return paddle::translator::CheckUnregisteredOperation(ctx,
                                                               legacy_program);
+      },
+      R"DOC(
+      Check unregistered operators in paddle dialect.
+
+      Args:
+        legacy_program (ProgramDesc): The Fluid Program that need checked.
+      Returns:
+        list[str] : List of unregistered operators in paddle dialect, the name is expressed by origin op name.
+    )DOC");
+  m->def(
+      "translate_to_new_ir_with_param_map",
+      [](const framework::ProgramDesc &legacy_program) {
+        auto ir_ctx = pir::IrContext::Instance();
+        auto program = std::make_shared<pir::Program>(ir_ctx);
+        translator::ProgramTranslator program_translator(&legacy_program,
+                                                         program.get());
+        program_translator.Translate();
+        return std::make_pair(program, program_translator.VarDesc2Value());
       },
       R"DOC(
       Check unregistered operators in paddle dialect.

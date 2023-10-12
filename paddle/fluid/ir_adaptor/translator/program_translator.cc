@@ -578,5 +578,13 @@ void ProgramTranslator::SetIsPersisableAttributeForAllValue(
   }
 }
 
+std::unordered_map<std::string, pir::Value> ProgramTranslator::VarDesc2Value() {
+  std::unordered_map<std::string, pir::Value> var_desc_2_value;
+  for (const auto& [var_name, value_info] : param_map_) {
+    var_desc_2_value[var_name] = value_info.value;
+  }
+  return var_desc_2_value;
+}
+
 }  // namespace translator
 }  // namespace paddle
