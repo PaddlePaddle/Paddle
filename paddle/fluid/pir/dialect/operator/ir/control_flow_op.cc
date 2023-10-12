@@ -113,10 +113,11 @@ void IfOp::Verify() {}
 
 void WhileOp::Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    const std::vector<pir::Value> &inputs,
-                    const std::vector<pir::Type> &output_types) {
+                    const std::vector<pir::Value> &inputs) {
   argument.AddInputs(inputs);
-  argument.AddOutputs(output_types);
+  for (auto val : inputs) {
+    argument.AddOutput(val.type());
+  }
   argument.AddRegions(2u);
 }
 pir::Block *WhileOp::cond_block() {
