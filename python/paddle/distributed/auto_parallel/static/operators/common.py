@@ -25,6 +25,7 @@ from ..utils import (
     _get_corresponding_rank,
     compute_compatible_dims_mapping,
     is_optimize_op,
+    set_dist_op_desc_original_id,
 )
 
 _logger = get_logger(
@@ -718,3 +719,15 @@ def get_default_distributed_operator_impl():
     num_impls = len(dist_op_default_impl_container.impls)
     assert num_impls == 1, f"Default dist op has [{num_impls}] impls"
     return dist_op_default_impl_container.get_impl(0)
+
+
+def copy_op_without_infer_shape(src_op, block, ctx, varname_kwargs):
+    new_op = block.append_op(type='nop')
+    new_op_desc = new_op.desc
+    new_op_desc.copy_from(src_op.desc)
+    set_dist_op_desc_original_id(new_op_desc, src_op.desc, ctx)
+    for input_name in src_op.desc.input_names():
+        new_op_desc.set_input(input_name, varname_kwargs[input_name])
+    for output_name in src_op.desc.output_names():
+        new_op_desc.set_output(output_name, varname_kwargs[output_name])
+    return new_op
