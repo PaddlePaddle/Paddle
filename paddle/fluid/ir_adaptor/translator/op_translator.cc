@@ -1171,7 +1171,7 @@ struct ShadowOutputOpTranscriber : public OpTranscriber {
                              TranslationContext* param_map,
                              const OpDesc& op_desc,
                              pir::Block* block) override {
-    auto op_info = ctx->GetRegisteredOpInfo(pir::SetParameterOp::name());
+    auto op_info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
 
     std::vector<pir::Value> op_inputs;
     auto legacy_input_vars = op_desc.Input("x", true);
@@ -1186,7 +1186,7 @@ struct ShadowOutputOpTranscriber : public OpTranscriber {
     op_inputs.push_back(defining_info.value);
 
     pir::AttributeMap attribute_map = {
-        {"parameter_name",
+        {"output_name",
          pir::StrAttribute::get(ctx,
                                 op_desc.GetAttrIfExists<std::string>("name"))},
     };
