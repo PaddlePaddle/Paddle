@@ -112,6 +112,7 @@ from .tensor.creation import (
     create_parameter,
     to_tensor,
     diag,
+    diag_embed,
     diagflat,
     eye,
     linspace,
