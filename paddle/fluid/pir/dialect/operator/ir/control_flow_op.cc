@@ -109,7 +109,44 @@ void IfOp::Print(pir::IrPrinter &printer) {
   }
   os << "\n }";
 }
-void IfOp::Verify() {}
+void IfOp::Verify() {
+  if ((*this)->region(0).empty() && (*this)->region(1).empty()) {
+    LOG(WARNING)
+        << "The true and false block of IfOp has not been initialized yet. "
+           "Please manually call Verify after completion the above content for "
+           "verification: op->dyn_cast<padding::dialect:IfOp>().Verify()";
+    return;
+  }
+  PADDLE_ENFORCE_EQ(
+      (*this)->region(0)->size(),
+      (*this)->region(1)->size(),
+      phi::errors::PreconditionNotMet("The size %d of true_region must be "
+                                      "equal to the size %d of false_region.",
+                                      (*this)->region(0)->size(),
+                                      (*this)->region(1)->size()));
+  if ((*this)->num_results() != 0) {
+    auto *true_last_op = (*this)->region(0).front()->back();
+    auto *false_last_op = (*this)->region(1).front()->back();
+    PADDLE_ENFORCE_EQ(true_last_op->isa<pir::YieldOp>(),
+                      true,
+                      phi::errors::PreconditionNotMet(
+                          "The last of true block must be YieldOp"));
+    PADDLE_ENFORCE_EQ(true_last_op->num_operands(),
+                      (*this)->num_results(),
+                      phi::errors::PreconditionNotMet(
+                          "The size of last of true block op's input must be "
+                          "equal to IfOp's outputs num."));
+    PADDLE_ENFORCE_EQ(false_last_op->isa<pir::YieldOp>(),
+                      true,
+                      phi::errors::PreconditionNotMet(
+                          "The last of true block must be YieldOp"));
+    PADDLE_ENFORCE_EQ(false_last_op->num_operands(),
+                      (*this)->num_results(),
+                      phi::errors::PreconditionNotMet(
+                          "The size of last of true block op's input must be "
+                          "equal to IfOp's outputs num."))
+  }
+}
 
 void WhileOp::Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
