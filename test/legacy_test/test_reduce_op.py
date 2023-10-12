@@ -22,6 +22,7 @@ import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
 from paddle.base.framework import convert_np_dtype_to_dtype_, in_pir_mode
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestSumOp(OpTest):
@@ -1615,6 +1616,15 @@ class TestReduceSumOpError(unittest.TestCase):
                 x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="uint8")
                 self.assertRaises(TypeError, paddle.sum, x2)
 
+            with paddle.pir_utils.IrGuard(), program_guard(
+                Program(), Program()
+            ):
+                # The input type of reduce_sum_op must be Variable.
+                x1 = base.create_lod_tensor(
+                    np.array([[-1]]), [[1]], base.CPUPlace()
+                )
+                self.assertRaises(ValueError, paddle.sum, x1)
+
 
 class API_TestSumOp(unittest.TestCase):
     def run_static(
@@ -1645,6 +1655,7 @@ class API_TestSumOp(unittest.TestCase):
                 rtol=1e-05,
             )
 
+    @test_with_pir_api
     def test_static(self):
         shape = [10, 10]
         axis = 1
