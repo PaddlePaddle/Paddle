@@ -120,6 +120,7 @@ VJPS = [
     'real_grad',
     'flip_grad',
     'softmax_grad',
+    'expand_grad',
     'conv2d_transpose_grad',
     'depthwise_conv2d_transpose_grad',
     'sigmoid_grad',
@@ -132,7 +133,6 @@ VJPS = [
     'solve_grad',
     'diag_grad',
     'trace_grad',
-    'max_grad',
 ]
 
 
@@ -148,23 +148,11 @@ PRIM_VJP = [
     'tanh_grad',
     'transpose_grad',
     'concat_grad',
-    'erf_grad',
-    'exp_grad',
-    'expand_grad',
-    'log_grad',
-    'gather_nd_grad',
-    'pad_grad',
-    'max_grad',
-    'slice_grad',
-    'tile_grad',
 ]  # vjp list of primitive op
 CUSTOM_VJP = [
     'gelu_grad',
     'layer_norm_grad',
     'dropout_grad',
-    'silu_grad',
-    'softmax_grad',
-    'sqrt_grad',
 ]  # custom vjp list of composite op
 VJP_COMPS = PRIM_VJP + CUSTOM_VJP
 
@@ -307,9 +295,6 @@ BACKENDS = [
     'trace_grad',
     'flip',
     'sign',
-    'max_grad',
-    'where',
-    'pad',
 ]
 
 
