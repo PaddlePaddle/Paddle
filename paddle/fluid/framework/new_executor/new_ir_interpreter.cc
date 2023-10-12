@@ -236,7 +236,8 @@ void NewIRInterpreter::reset_scope(Scope* new_scope) {
   scope_ = new_scope;
   for (size_t i = 0; i < value_exe_info_->GetVarList().size(); i++) {
     const auto& var_name = value_exe_info_->GetNameById(static_cast<int>(i));
-    value_exe_info_->ResetVarList(i, new_scope->FindVar(var_name));
+    value_exe_info_->ResetVarList(static_cast<int>(i),
+                                  new_scope->FindVar(var_name));
   }
   // The index should be assured valid, cause the InterpreterCore may not be
   // fully built, but was still cached and used. For example, see unit test
@@ -463,7 +464,7 @@ void NewIRInterpreter::UpdateNcclOpNum() {
       "pd_op.global_gather_grad",
       "pd_op.distributed_fused_lamb_grad",
       "pd_op.margin_cross_entropy_grad",
-      "pd_op.margin_cross_entropy_grad_"
+      "pd_op.margin_cross_entropy_grad_",
       "pd_op.sync_batch_norm_grad",
       "pd_op.data_norm_grad",
       "pd_op.class_center_sample_grad",
