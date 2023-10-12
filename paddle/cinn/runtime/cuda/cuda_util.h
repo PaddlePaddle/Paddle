@@ -113,7 +113,7 @@ void cinn_call_cuda_kernel(void* kernel_fn,
                            void* stream);
 
 void call_cuda_kernel(void* kernel_fn,
-                      void** kernel_args,
+                      const std::vector<void*>& kernel_args,
                       int grid_x,
                       int grid_y,
                       int grid_z,

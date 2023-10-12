@@ -74,6 +74,21 @@ std::vector<CUDAJITInfo> NewIRCompiler::BuildCUDAJITInfo(
     vec_res.push_back(node);
   }
 
+  // for (auto& name : scope_->var_names()) {
+  //   std::string var_name({name.data(), name.size()});
+  //   VLOG(4) << "Instantiate " << var_name << " on compile-time";
+  //   auto* var = scope_->Var<Tensor>(var_name);
+  //   auto& tensor = absl::get<Tensor>(*var);
+  //   tensor->mutable_data(target_, tensor->type());
+  // }
+
+  // std::cerr << "run herer" << std::endl;
+  // instructions[0]->Run( /*name2podargs=*/nullptr,
+  //               false,
+  //               /*stream=*/nullptr,
+  //               /*use_cache=*/true );
+  // std::cerr << "fin " << std::endl;
+
   return vec_res;
 }
 

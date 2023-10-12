@@ -77,10 +77,11 @@ class Allocation {
   operator bool() const noexcept { return ptr_; }
   const Place& place() const noexcept { return place_; }
   DeleterFnPtr deleter() const noexcept { return deleter_; }
+  void* ptr_{nullptr};
 
  protected:
   friend void swap(Allocation& a, Allocation& b) noexcept;
-  void* ptr_{nullptr};
+
   size_t size_{};
   DeleterFnPtr deleter_{nullptr};
   // TODO(Shixiaowei02): Enum needs to be used instead to reduce

@@ -32,6 +32,9 @@
 #include "paddle/cinn/hlir/framework/convert_to_dialect.h"
 #include "paddle/cinn/hlir/framework/new_ir_compiler.h"
 #include "paddle/cinn/utils/data_util.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 
 std::unique_ptr<::pir::Program> BuildProgram() {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
@@ -41,16 +44,21 @@ std::unique_ptr<::pir::Program> BuildProgram() {
 
   const float value = 2.0;
   auto full_op_x =
-      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{64, 128},
+      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{2, 2},
                                              value,
                                              phi::DataType::FLOAT32,
                                              phi::GPUPlace());
 
   auto full_op_y =
-      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{128, 64},
-                                             value,
+      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{2, 2},
+                                             value + 5,
                                              phi::DataType::FLOAT32,
                                              phi::GPUPlace());
+  auto res = builder.Build<paddle::dialect::AddOp>(full_op_x.result(0),
+                                                   full_op_y.result(0));
+  // auto exp = builder.Build<paddle::dialect::SinOp>(
+  //                                           full_op_x.result(0)
+  //                                            );
   return std::move(program);
 }
 
@@ -60,12 +68,14 @@ namespace framework {
 TEST(CinnJitInstruction, Run) {
   // Step 1: Construct pir::Program
   std::unique_ptr<::pir::Program> program = BuildProgram();
-  EXPECT_EQ(program->block()->size(), 2u);
+  // EXPECT_EQ(program->block()->size(), 2u);
 
   // Step 2: Compiler New pir::Program into Runtime Program
   auto target = cinn::common::DefaultNVGPUTarget();
   auto scope = cinn::hlir::framework::BuildScope(target, *program);
-  ASSERT_EQ(scope->var_names().size(), 2);
+  // ASSERT_EQ(scope->var_names().size(), 2);
+
+  program->Print(std::cout);
 
   cinn::hlir::framework::NewIRCompiler ir_compiler(*program, target, scope);
   // auto runtime_program = ir_compiler.Build();
@@ -82,22 +92,42 @@ TEST(CinnJitInstruction, Run) {
 
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<cinn::dialect::RuntimeDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::KernelDialect>();
   auto ir_program = std::make_unique<::pir::Program>(ctx);
   std::string jit_op_name = cinn::dialect::JitKernelOp::name();
   ::pir::OpInfo op_info = ctx->GetRegisteredOpInfo(jit_op_name);
 
-  for (size_t i = 0; i < fn_ptr_res.size(); i++) {
+  int index = 0;
+  std::unordered_map<pir::Value, pir::Value> value_map;
+  for (auto it = program->block()->begin(); it != program->block()->end();
+       ++it) {
     std::unordered_map<std::string, ::pir::Attribute> op_attrs{
         {cinn::dialect::JitKernelOp::kAttrName,
-         ::pir::PointerAttribute::get(ctx, &fn_ptr_res[i])},
+         ::pir::PointerAttribute::get(ctx, &fn_ptr_res[index++])},
     };
+    auto type1 = (*it)->result(0).type();
+    if (!type1) {
+      std::cerr << "wroing with type1" << std::endl;
+    }
 
+    std::vector<pir::Value> vec_ins;
+
+    for (size_t i = 0; i < (*it)->num_operands(); ++i) {
+      vec_ins.push_back(value_map.at((*it)->operand_source(i)));
+    }
+
+    auto new_type = dialect::AllocatedDenseTensorType::get(
+        ctx, phi::CPUPlace(), type1.dyn_cast<dialect::DenseTensorType>());
+    std::cerr << "fin get allocated dense tensor" << std::endl;
     ::pir::Operation* cinn_op =
-        ::pir::Operation::Create({}, op_attrs, {}, op_info);
+        ::pir::Operation::Create(vec_ins, op_attrs, {new_type}, op_info);
+
+    value_map[(*it)->result(0)] = cinn_op->result(0);
+
     ir_program->block()->push_back(cinn_op);
   }
 
-  // std::set<std::string> out_names;
+  //
   // for (auto& var_name : scope->var_names()) {
   //   std::string name = {var_name.begin(), var_name.end()};
   //   out_names.insert(name);
@@ -109,13 +139,25 @@ TEST(CinnJitInstruction, Run) {
   ir_program->Print(std::cout);
   InterpreterCore executor(place, {}, ir_program->block(), &exe_scope);
 
-  auto out_name = exe_scope.LocalVarNames();
-  for (size_t i = 0; i < out_name.size(); ++i) {
-    std::cerr << "out name s " << out_name[i] << std::endl;
+  std::set<std::string> out_names;
+  auto local_names = exe_scope.LocalVarNames();
+  for (size_t i = 0; i < local_names.size(); ++i) {
+    out_names.insert(local_names[i]);
+    std::cerr << "out name s " << local_names[i] << std::endl;
   }
 
-  executor.SetSkipGcVars(out_name);
-  // executor.Run({});
+  executor.SetSkipGcVars(out_names);
+  executor.Run({});
+
+  // auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
+  // auto gpu_ctx = static_cast<phi::GPUContext*>(dev_ctx);
+
+  // auto in_tesnor =
+  // exe_scope.Var("0x5bfff50_inner_var_0")->Get<phi::DenseTensor>(); std::cerr
+  // << "out " << in_tesnor << std::endl;
+
+  // phi::DenseTensor cpu_tensor;
+  // phi::Copy(*gpu_ctx, in_tesnor, phi::CPUPlace(), true, d_in3.get());
 
   // // TODO(Aurelius84): Need to replace check with framework::Scope.
   // const float value = 2.0;

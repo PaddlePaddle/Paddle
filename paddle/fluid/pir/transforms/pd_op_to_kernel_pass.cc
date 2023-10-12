@@ -61,7 +61,8 @@ const std::unordered_set<std::string> UnchangeOutputOps = {
     "pd_op.fetch",
     "builtin.set_parameter",
     "builtin.get_parameter",
-    "pd_op.shadow_output"};
+    "pd_op.shadow_output",
+    "cinn_runtime.jit_kernel"};
 
 const std::unordered_set<std::string> SpecialLowerOps = {"builtin.combine",
                                                          "builtin.slice",

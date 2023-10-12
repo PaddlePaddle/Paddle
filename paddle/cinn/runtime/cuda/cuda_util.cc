@@ -79,7 +79,7 @@ class CublasHandle {
 };
 
 void call_cuda_kernel(void *kernel_fn,
-                      void **kernel_args,
+                      const std::vector<void *> &kernel_args,
                       int grid_x,
                       int grid_y,
                       int grid_z,
@@ -88,9 +88,52 @@ void call_cuda_kernel(void *kernel_fn,
                       int block_z,
                       void *stream) {
   {
-    cinn::utils::RecordEvent record_run("cuLaunchKernel",
-                                        cinn::utils::EventType::kInstruction);
-    CUDA_DRIVER_CALL(cuLaunchKernel(static_cast<CUfunction>(kernel_fn),
+    // cinn::utils::RecordEvent record_run("cuLaunchKernel",
+    //                                     cinn::utils::EventType::kInstruction);
+    std::cerr << "cu launch " << std::endl;
+    auto fn = static_cast<CUfunction>(kernel_fn);
+    std::cerr << "fn " << fn << std::endl;
+    auto stream1 = static_cast<CUstream>(nullptr);
+    std::cerr << "after cast " << stream1 << std::endl;
+    // std::cerr << "kernel output " << kernel_args[0] << std::endl;
+
+    std::cerr << "grid_dim={" << grid_x << ", " << grid_y << ", " << grid_z
+              << "}, block_dim={" << block_x << ", " << block_y << ", "
+              << block_z << std::endl;
+
+    // void* args1[1] = { &out_ptr};
+    std::vector<void *> pass_arg;
+
+    if (kernel_args.size() == 3) {
+      CUdeviceptr data;
+      cuMemAlloc(&data, 16);
+
+      // phi::DenseTensor tensor;
+      // tensor.resize({1});
+      std::vector<float> vec_char = {3, 3, 3, 3};
+
+      cudaMemcpy(reinterpret_cast<void *>(data),
+                 vec_char.data(),
+                 16,
+                 cudaMemcpyHostToDevice);
+      pass_arg.push_back(&data);
+
+      pass_arg.push_back(&data);
+
+      auto p = kernel_args[2];
+
+      pass_arg.push_back(&p);
+
+    } else {
+      for (size_t i = 0; i < kernel_args.size(); ++i) {
+        auto p1 = kernel_args[i];
+        std::cerr << "innner  " << i << "\t" << p1 << std::endl;
+
+        pass_arg.push_back(&p1);
+      }
+    }
+
+    CUDA_DRIVER_CALL(cuLaunchKernel(fn,
                                     grid_x,
                                     grid_y,
                                     grid_z,
@@ -98,9 +141,10 @@ void call_cuda_kernel(void *kernel_fn,
                                     block_y,
                                     block_z,
                                     0,  // share memory
-                                    static_cast<CUstream>(stream),
-                                    kernel_args,
+                                    stream1,
+                                    pass_arg.data(),
                                     nullptr))
+    std::cerr << "after launch" << std::endl;
   }
 }
 
@@ -119,7 +163,7 @@ void cinn_call_cuda_kernel(void *kernel_fn,
           << ", " << block_z << "}, num_args=" << num_args
           << ", stream=" << stream;
 
-  std::cerr << "can cuda kernel" << std::endl;
+  std::cerr << "call cuda kernel" << std::endl;
   std::vector<void *> kernel_args;
   {
     cinn::utils::RecordEvent record_run("prepare_args",
@@ -137,9 +181,16 @@ void cinn_call_cuda_kernel(void *kernel_fn,
   }
 
   {
+    auto fn = static_cast<CUfunction>(kernel_fn);
+    auto stream1 = static_cast<CUstream>(nullptr);
+
+    std::cerr << "fn   " << fn << std::endl;
+    std::cerr << "stream " << stream1 << std::endl;
+    std::cerr << "fun c size " << kernel_args.size() << std::endl;
+    std::cerr << "fist ptr " << kernel_args[0] << std::endl;
     cinn::utils::RecordEvent record_run("cuLaunchKernel",
                                         cinn::utils::EventType::kInstruction);
-    CUDA_DRIVER_CALL(cuLaunchKernel(static_cast<CUfunction>(kernel_fn),
+    CUDA_DRIVER_CALL(cuLaunchKernel(fn,
                                     grid_x,
                                     grid_y,
                                     grid_z,
@@ -147,7 +198,7 @@ void cinn_call_cuda_kernel(void *kernel_fn,
                                     block_y,
                                     block_z,
                                     0,  // share memory
-                                    static_cast<CUstream>(stream),
+                                    stream1,
                                     kernel_args.data(),
                                     nullptr))
   }

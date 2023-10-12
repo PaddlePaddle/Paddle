@@ -30,7 +30,7 @@ class CinnJitInstruction : public InstructionBase {
   CinnJitInstruction(size_t id,
                      const platform::Place& place,
                      ::pir::Operation* op,
-                     Scope* scope);
+                     const ValueExecutionInfo& value_exec_info);
 
   // TODO(Aurelius84): Only implement core interface and need implement GC and
   // Event logic.
@@ -48,6 +48,12 @@ class CinnJitInstruction : public InstructionBase {
   std::shared_ptr<FnPtrImpl> fn_ptr_impl_{nullptr};
 
   platform::Place place_;
+
+  phi::DeviceContext* dev_ctx_;
+
+  phi::DenseTensor* out_tensor_;
+
+  std::vector<phi::DenseTensor*> tensor_list;
 
   ::pir::Operation* op_{nullptr};  // not owned
 };
