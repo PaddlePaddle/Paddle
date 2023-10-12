@@ -193,12 +193,6 @@ class PipelineParallel(MetaParallelBase):
             "sharding_configs"
         ].split_param
 
-        logger.info(
-            f"dp_comm_overlap {self._dp_comm_overlap}; \
-            sharding_comm_overlap {self._sharding_comm_overlap}; \
-            sharding_split_param {self._sharding_split_param};"
-        )
-
         if self._dp_comm_overlap:
             assert self.use_data_parallel and self.num_stages > 1
 

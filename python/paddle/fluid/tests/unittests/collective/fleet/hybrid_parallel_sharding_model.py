@@ -217,9 +217,7 @@ class TestDistMPTraning(unittest.TestCase):
             if g_shard_split_param
             else DygraphShardingOptimizer
         )
-        self.assertTrue(
-            isinstance(optimizer_a._inner_opt, DygraphShardingOptimizer)
-        )
+        self.assertTrue(isinstance(optimizer_a._inner_opt, opt_cls))
 
         for idx in range(STEPS):
 

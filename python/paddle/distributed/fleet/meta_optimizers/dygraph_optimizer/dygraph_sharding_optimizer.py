@@ -26,7 +26,6 @@ from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.framework import EagerParamBase
 from paddle.nn import ClipGradByGlobalNorm
 
-from ...utils.log_util import logger
 from ...utils.tensor_fusion_helper import (
     HOOK_ACTION,
     FusedCommBuffer,
@@ -65,7 +64,6 @@ class DygraphShardingOptimizer:
     # 4. option to choose fuse comm (more GPU MEM need) or un-fuse comm
 
     def __init__(self, optimizer, hcg):
-        logger.info("init DygraphShardingOptimizer")
         if not hasattr(optimizer, '_apply_optimize') or not callable(
             optimizer._apply_optimize
         ):
@@ -419,7 +417,6 @@ class DygraphShardingOptimizerV2:
     # 5. do not shard small params
 
     def __init__(self, optimizer, hcg):
-        logger.info("init DygraphShardingOptimizerV2")
         assert (
             g_shard_use_reduce
         ), "can not be not g_shard_use_reduce if DygraphShardingOptimizerV2 is used"
