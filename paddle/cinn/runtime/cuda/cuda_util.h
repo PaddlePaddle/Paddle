@@ -112,16 +112,6 @@ void cinn_call_cuda_kernel(void* kernel_fn,
                            int block_z,
                            void* stream);
 
-void call_cuda_kernel(void* kernel_fn,
-                      const std::vector<void*>& kernel_args,
-                      int grid_x,
-                      int grid_y,
-                      int grid_z,
-                      int block_x,
-                      int block_y,
-                      int block_z,
-                      void* stream);
-
 void cinn_call_cublas(void* v_args,
                       int num_args,
                       bool trans_a,
