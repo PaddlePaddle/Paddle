@@ -465,7 +465,7 @@ void NewIRInterpreter::UpdateNcclOpNum() {
       "pd_op.global_gather_grad",
       "pd_op.distributed_fused_lamb_grad",
       "pd_op.margin_cross_entropy_grad",
-      "pd_op.margin_cross_entropy_grad_"
+      "pd_op.margin_cross_entropy_grad_",
       "pd_op.sync_batch_norm_grad",
       "pd_op.data_norm_grad",
       "pd_op.class_center_sample_grad",
