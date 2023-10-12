@@ -105,7 +105,7 @@ void CustomTracer::CollectTraceData(TraceEventCollector* collector) {
   for (auto de : collector_.DeviceEvents()) {
     collector->AddDeviceEvent(std::move(de));
   }
-  for (auto tn : collector_.ThreadNames()) {
+  for (auto const& tn : collector_.ThreadNames()) {
     collector->AddThreadName(tn.first, tn.second);
   }
   collector_.ClearAll();

@@ -278,6 +278,14 @@ SpmdInfo MatmulInferSpmdReverse(const DistMetaTensor& x,
   return {{x_dist_attr_dst, y_dist_attr_dst}, {out_dist_attr_src}};
 }
 
+static bool DistAttrsAreBasicallyEqual(
+    const phi::distributed::TensorDistAttr& in_dist_attr,
+    const phi::distributed::TensorDistAttr& out_dist_attr) {
+  return (in_dist_attr.process_mesh() == out_dist_attr.process_mesh() &&
+          in_dist_attr.dims_mapping() == out_dist_attr.dims_mapping() &&
+          in_dist_attr.partial_status() == out_dist_attr.partial_status());
+}
+
 SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x,
                              const DistMetaTensor& y,
                              const DistMetaTensor& out_grad,
@@ -287,8 +295,8 @@ SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x,
                                        const DistMetaTensor& y,
                                        const char* debug_msg) {
     PADDLE_ENFORCE_EQ(
-        x_dist_attr,
-        y.dist_attr(),
+        DistAttrsAreBasicallyEqual(x_dist_attr, y.dist_attr()),
+        true,
         phi::errors::Unavailable("The matmul grad infer spmd `%s` verify "
                                  "error: left dist attr is %s, "
                                  "right dist attr is %s.",

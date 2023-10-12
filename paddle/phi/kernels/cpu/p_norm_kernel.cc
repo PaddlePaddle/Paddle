@@ -58,7 +58,7 @@ void PNormKernel(const Context& dev_ctx,
 
   auto xdim = in_x->dims();
   if (axis < 0) axis = xdim.size() + axis;
-  int pre, n, post;
+  int pre = 0, n = 0, post = 0;
   GetDims(xdim, axis, &pre, &n, &post, asvector);
 
   for (int i = 0; i < xdim.size(); i++) {

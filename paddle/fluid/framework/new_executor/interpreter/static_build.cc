@@ -54,7 +54,6 @@ std::set<std::string> OpsCanSkipedFakeAllocInStaticBuild = {
     "nop"};
 
 std::set<std::string> StaticBuildBlackList = {
-    "batch_norm" /*: to handle reserve_space output*/,
     "cinn_instruction_run" /*: to handle subgraph infermeta*/,
     "cinn_launch" /*: to handle subgraph infermeta*/,
     "run_program" /*: to handle scope output*/,
@@ -206,6 +205,14 @@ bool TensorShouldBeFakeInitialized(const OperatorBase& op,
     }
   }
 
+  if (op_type == "batch_norm" && parameter_name == "ReserveSpace") {
+    if (dynamic_cast<const OperatorWithKernel*>(&op)->kernel_type()->place_ ==
+        phi::CPUPlace()) {
+      VLOG(2) << "Skip fake initialization for: " << parameter_name;
+      return false;
+    }
+  }
+
   if (op_type == "coalesce_tensor" && parameter_name == "Output") {
     VLOG(2) << "Skip fake initialization for: " << parameter_name;
     return false;
@@ -248,6 +255,12 @@ bool TensorShouldBeFakeInitialized(const OperatorBase& op,
       VLOG(2) << "Skip fake initialization for: " << parameter_name;
       return false;
     }
+  }
+
+  if ((op_type == "flatten" || op_type == "flatten_contiguous_range") &&
+      parameter_name == "XShape") {
+    VLOG(2) << "Skip fake initialization for: " << parameter_name;
+    return false;
   }
 
   if (op_type == "segment_pool" && parameter_name == "SummedIds") {
@@ -317,7 +330,7 @@ void FakeInitializeTensor(const platform::DeviceContext& dev_ctx,
 
   // set place
   if (tensor->initialized()) {  // avoid overwriting valid data
-    platform::DeviceContext* dev_ctx_for_copy;
+    platform::DeviceContext* dev_ctx_for_copy = nullptr;
     if (place.GetType() != AllocationType::CPU) {
       dev_ctx_for_copy = platform::DeviceContextPool::Instance().Get(place);
     } else {
@@ -856,6 +869,8 @@ void FakeInitializeOutputsForFunctionKernel(
             dtype = InferDTypeFromAttr(op, runtime_ctx, "dtype");
           } else if (op_type == "bincount" || op_type == "reduce_sum_grad") {
             dtype = GetInputDType(runtime_ctx, "X");
+          } else if (op_type == "dequantize_linear") {
+            dtype = GetInputDType(runtime_ctx, "Scale");
           } else if (op_type == "lamb") {
             bool multi_precision = op.Attr<bool>("multi_precision");
             dtype = GetInputDType(runtime_ctx, "Moment1");

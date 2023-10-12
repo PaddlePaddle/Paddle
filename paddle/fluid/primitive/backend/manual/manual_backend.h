@@ -24,7 +24,7 @@ namespace primitive {
 namespace backend {
 
 using Tensor = paddle::Tensor;
-using Scalar = paddle::experimental::Scalar;
+using Scalar = phi::Scalar;
 using IntArray = paddle::experimental::IntArray;
 using DataType = phi::DataType;
 
@@ -39,6 +39,13 @@ Tensor frobenius_norm_grad(const Tensor& x,
                            const IntArray& axis,
                            bool keep_dim,
                            bool reduce_all);
+
+template <typename T>
+Tensor embedding_grad(const Tensor& x,
+                      const Tensor& weight,
+                      const Tensor& out_grad,
+                      int64_t padding_idx = -1,
+                      bool sparse = false);
 
 }  // namespace backend
 }  // namespace primitive

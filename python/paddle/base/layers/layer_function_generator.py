@@ -214,7 +214,7 @@ def generate_layer_fn(op_type):
 
         dtype = infer_and_check_dtype(op_proto, *args, **kwargs)
 
-        inputs = dict()
+        inputs = {}
         for ipt in op_proto.inputs:
             name = _convert_(ipt.name)
             val = kwargs.pop(name, [])
@@ -225,7 +225,7 @@ def generate_layer_fn(op_type):
                 args = args[1:]
             inputs[ipt.name] = val
 
-        outputs = dict()
+        outputs = {}
         out = kwargs.pop(_convert_(o_name), [])
         if out:
             out_var = out[0] if (isinstance(out, (list, tuple))) else out
