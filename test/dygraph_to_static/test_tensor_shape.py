@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import (
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
     ast_only_test,
-    dy2static_unittest,
     test_and_compare_with_new_ir,
 )
 
@@ -235,8 +235,7 @@ def dyfunc_dict_assign_shape():
 
 
 # 1. Basic tests without control flow
-@dy2static_unittest
-class TestTensorShapeBasic(unittest.TestCase):
+class TestTensorShapeBasic(Dy2StTestBase):
     def setUp(self):
         self.input = np.ones(5).astype("int32")
         self.place = (
@@ -495,8 +494,7 @@ class TestTensorShapeInWhile4(TestTensorShapeBasic):
 
 
 # 5. Test op num for negative dim
-@dy2static_unittest
-class TestOpNumBasicWithTensorShape(unittest.TestCase):
+class TestOpNumBasicWithTensorShape(Dy2StTestBase):
     def setUp(self):
         self._set_input_spec()
         self._set_test_func()
@@ -618,8 +616,7 @@ def dyfunc_with_static_convert_var_shape(x):
     return res
 
 
-@dy2static_unittest
-class TestFindStatiConvertVarShapeSuffixVar(unittest.TestCase):
+class TestFindStatiConvertVarShapeSuffixVar(Dy2StTestBase):
     @ast_only_test
     def test(self):
         x_spec = paddle.static.InputSpec(shape=[None, 10])

@@ -17,8 +17,9 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import (
-    dy2static_unittest,
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    ast_only_test,
     test_and_compare_with_new_ir,
 )
 from test_basic_api_transformation import dyfunc_to_variable
@@ -33,8 +34,6 @@ from paddle.jit.dy2static.program_translator import (
 )
 from paddle.nn import Layer
 from paddle.static import InputSpec
-
-os.environ['ENABLE_FALL_BACK'] = "False"  # NOTE: ast only
 
 
 class SimpleNet(Layer):
@@ -92,8 +91,7 @@ class SimpleNet(Layer):
         return z
 
 
-@dy2static_unittest
-class TestStaticFunctionInstance(unittest.TestCase):
+class TestStaticFunctionInstance(Dy2StTestBase):
     def test_instance_same_class(self):
         with base.dygraph.guard(base.CPUPlace()):
             net_1 = SimpleNet()
@@ -110,8 +108,7 @@ class TestStaticFunctionInstance(unittest.TestCase):
             self.assertTrue(len(net_2.forward.program_cache) == 0)
 
 
-@dy2static_unittest
-class TestInputSpec(unittest.TestCase):
+class TestInputSpec(Dy2StTestBase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.model_path = os.path.join(self.temp_dir.name, 'simple_net')
@@ -120,6 +117,7 @@ class TestInputSpec(unittest.TestCase):
         self.temp_dir.cleanup()
 
     @test_and_compare_with_new_ir(False)
+    @ast_only_test
     def test_with_input_spec(self):
         with base.dygraph.guard(base.CPUPlace()):
             x = to_variable(np.ones([4, 10]).astype('float32'))
@@ -180,6 +178,7 @@ class TestInputSpec(unittest.TestCase):
                 )
                 net.add_func(x, y)
 
+    @ast_only_test
     def test_concrete_program(self):
         with base.dygraph.guard(base.CPUPlace()):
             x = to_variable(np.ones([4, 10]).astype('float32'))
@@ -215,12 +214,12 @@ def foo_func(a, b, c=1, d=2):
     return z
 
 
-@dy2static_unittest
-class TestDifferentInputSpecCacheProgram(unittest.TestCase):
+class TestDifferentInputSpecCacheProgram(Dy2StTestBase):
     def setUp(self):
         paddle.jit.enable_to_static(True)
 
     @test_and_compare_with_new_ir(False)
+    @ast_only_test
     def test_with_different_input(self):
         with base.dygraph.guard(base.CPUPlace()):
             x_data = np.ones([16, 10]).astype('float32')
@@ -266,6 +265,7 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
             recent_program = foo.program_cache.last()
             self.assertTrue(first_program == recent_program)
 
+    @ast_only_test
     def test_get_concrete_program(self):
         foo = to_static(foo_func)
 
@@ -307,6 +307,7 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
             )
 
     @test_and_compare_with_new_ir(False)
+    @ast_only_test
     def test_concrete_program(self):
         with base.dygraph.guard(base.CPUPlace()):
             # usage 1
@@ -330,8 +331,7 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
                 foo_3.concrete_program  # noqa: B018
 
 
-@dy2static_unittest
-class TestInputDefaultName(unittest.TestCase):
+class TestInputDefaultName(Dy2StTestBase):
     def setUp(self):
         paddle.disable_static()
         self.net = SimpleNet()
@@ -355,8 +355,8 @@ class TestInputDefaultName(unittest.TestCase):
         self.assert_default_name('func_with_list_dict', ['dl_0', 'x', 'y'])
 
 
-@dy2static_unittest
-class TestDeclarativeAPI(unittest.TestCase):
+class TestDeclarativeAPI(Dy2StTestBase):
+    @ast_only_test
     def test_error(self):
         func = to_static(dyfunc_to_variable)
 
@@ -374,20 +374,21 @@ class TestDeclarativeAPI(unittest.TestCase):
             func(np.ones(5).astype("int32"))
 
 
-@dy2static_unittest
-class TestDecorateModelDirectly(unittest.TestCase):
+class TestDecorateModelDirectly(Dy2StTestBase):
     def setUp(self):
         paddle.disable_static()
         paddle.jit.enable_to_static(True)
         self.x = to_variable(np.ones([4, 10]).astype('float32'))
 
     @test_and_compare_with_new_ir(False)
+    @ast_only_test
     def test_fake_input(self):
         net = SimpleNet()
         net = to_static(net)
         y = net(self.x)
         self.assertTrue(len(net.forward.program_cache) == 1)
 
+    @ast_only_test
     def test_input_spec(self):
         net = SimpleNet()
         net = to_static(net, input_spec=[InputSpec([None, 8, 10])])
@@ -402,8 +403,7 @@ class TestDecorateModelDirectly(unittest.TestCase):
         self.assertListEqual(list(input_shape), [-1, 16, 10])
 
 
-@dy2static_unittest
-class TestErrorWithInitFromStaticMode(unittest.TestCase):
+class TestErrorWithInitFromStaticMode(Dy2StTestBase):
     def test_raise_error(self):
         # disable imperative
         paddle.enable_static()
@@ -445,8 +445,7 @@ class CallNonForwardFuncSubNet(paddle.nn.Layer):
         return x
 
 
-@dy2static_unittest
-class TestCallNonForwardFunc(unittest.TestCase):
+class TestCallNonForwardFunc(Dy2StTestBase):
     @test_and_compare_with_new_ir(False)
     def test_call_non_forward(self):
         paddle.disable_static()
@@ -479,8 +478,7 @@ class SetBuffersNet2(paddle.nn.Layer):
         return self.b
 
 
-@dy2static_unittest
-class TestSetBuffers(unittest.TestCase):
+class TestSetBuffers(Dy2StTestBase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.model_path = os.path.join(self.temp_dir.name, 'SetBuffersNet1')
@@ -497,6 +495,7 @@ class TestSetBuffers(unittest.TestCase):
         paddle.jit.save(net, self.model_path)
         paddle.enable_static()
 
+    @ast_only_test
     def test_set_buffers2(self):
         paddle.disable_static()
         net = SetBuffersNet2()
@@ -510,8 +509,7 @@ class ClassNoInheritLayer:
         return x + 1
 
 
-@dy2static_unittest
-class TestClassNoInheritLayer(unittest.TestCase):
+class TestClassNoInheritLayer(Dy2StTestBase):
     def test_to_static(self):
         paddle.disable_static()
         net = ClassNoInheritLayer()

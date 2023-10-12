@@ -14,9 +14,9 @@
 
 import unittest
 
-from dygraph_to_static_util import (
-    dy2static_unittest,
-    enable_fallback_guard,
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    ast_only_test,
     test_and_compare_with_new_ir,
 )
 
@@ -41,8 +41,7 @@ class Net(Layer):
         return paddle.sum(out)
 
 
-@dy2static_unittest
-class TestArgsSpecName(unittest.TestCase):
+class TestArgsSpecName(Dy2StTestBase):
     def read_from_dataset(self):
         self.x = paddle.randn([4, 2, 8])
         self.y = paddle.randn([4, 2, 8])
@@ -50,6 +49,7 @@ class TestArgsSpecName(unittest.TestCase):
         self.n = paddle.randn([4, 2, 8])
 
     @test_and_compare_with_new_ir(False)
+    @ast_only_test
     def test_spec_name_hash(self):
         net = Net()
         net = paddle.jit.to_static(net)
@@ -92,5 +92,4 @@ class TestArgsSpecName(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with enable_fallback_guard("False"):
-        unittest.main()
+    unittest.main()

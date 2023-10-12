@@ -17,14 +17,11 @@ import os
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import dy2static_unittest
 
 import paddle
 from paddle import base
 from paddle.jit.dy2static import error
 from paddle.jit.dy2static.origin_info import unwrap
-
-os.environ['ENABLE_FALL_BACK'] = "False"  # NOTE: ast only
 
 
 def inner_func():
@@ -136,7 +133,6 @@ def func_suggestion_error_in_runtime(x):
     net(x)
 
 
-@dy2static_unittest
 class TestFlags(unittest.TestCase):
     def setUp(self):
         self.reset_flags_to_default()
@@ -170,7 +166,6 @@ class TestFlags(unittest.TestCase):
         self._test_set_flag(error.SIMPLIFY_ERROR_ENV_NAME, 0)
 
 
-@dy2static_unittest
 class TestErrorBase(unittest.TestCase):
     def setUp(self):
         self.set_input()
@@ -260,9 +255,9 @@ class TestErrorStaticLayerCallInCompiletime(TestErrorBase):
 
     def set_message(self):
         self.expected_message = [
-            f'File "{self.filepath}", line 37, in func_error_in_compile_time',
+            f'File "{self.filepath}", line 35, in func_error_in_compile_time',
             'inner_func()',
-            f'File "{self.filepath}", line 30, in inner_func',
+            f'File "{self.filepath}", line 28, in inner_func',
             'def inner_func():',
             'paddle.tensor.fill_constant(shape=[1, 2], value=9, dtype="int")',
             '<--- HERE',
@@ -289,7 +284,7 @@ class TestErrorStaticLayerCallInCompiletime_2(
 
     def set_message(self):
         self.expected_message = [
-            f'File "{self.filepath}", line 48, in func_error_in_compile_time_2',
+            f'File "{self.filepath}", line 46, in func_error_in_compile_time_2',
             'def func_error_in_compile_time_2(x):',
             'x = base.dygraph.to_variable(x)',
             'x = paddle.reshape(x, shape=[1, 2])',
@@ -313,7 +308,7 @@ class TestErrorStaticLayerCallInCompiletime_3(
 
     def set_message(self):
         self.expected_message = [
-            f'File "{self.filepath}", line 93, in forward',
+            f'File "{self.filepath}", line 91, in forward',
             '@paddle.jit.to_static',
             'def forward(self):',
             'self.test_func()',
@@ -337,7 +332,7 @@ class TestErrorStaticLayerCallInRuntime(TestErrorStaticLayerCallInCompiletime):
 
     def set_message(self):
         self.expected_message = [
-            f'File "{self.filepath}", line 56, in func_error_in_runtime',
+            f'File "{self.filepath}", line 54, in func_error_in_runtime',
             'x = base.dygraph.to_variable(x)',
             'two = paddle.tensor.fill_constant(shape=[1], value=2, dtype="int32")',
             'x = paddle.reshape(x, shape=[1, two])',
@@ -352,7 +347,7 @@ class TestErrorStaticLayerCallInRuntime2(TestErrorStaticLayerCallInRuntime):
 
     def set_message(self):
         self.expected_message = [
-            'File "{}", line 108, in func_error_in_runtime_with_empty_line'.format(
+            'File "{}", line 106, in func_error_in_runtime_with_empty_line'.format(
                 self.filepath
             ),
             'two = paddle.tensor.fill_constant(shape=[1], value=2, dtype="int32")',
@@ -375,7 +370,7 @@ class TestJitSaveInCompiletime(TestErrorBase):
 
     def set_message(self):
         self.expected_message = [
-            f'File "{self.filepath}", line 82, in forward',
+            f'File "{self.filepath}", line 80, in forward',
             'def forward(self, x):',
             'y = self._linear(x)',
             'z = paddle.tensor.fill_constant(shape=[1, 2], value=9, dtype="int")',
@@ -401,7 +396,6 @@ def func_ker_error(x):
     return y
 
 
-@dy2static_unittest
 class TestKeyError(unittest.TestCase):
     def test_key_error(self):
         paddle.disable_static()
@@ -417,7 +411,6 @@ def NpApiErr():
     print(b)
 
 
-@dy2static_unittest
 class TestNumpyApiErr(unittest.TestCase):
     def test_numpy_api_err(self):
         with self.assertRaises(TypeError) as e:
@@ -455,7 +448,6 @@ class test_set_state_dict_err_layer(paddle.nn.Layer):
         return y
 
 
-@dy2static_unittest
 class TestSetStateDictErr(unittest.TestCase):
     def test_set_state_dict_err(self):
         with self.assertRaises(ValueError) as e:

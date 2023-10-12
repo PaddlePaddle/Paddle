@@ -19,14 +19,11 @@ import sys
 import unittest
 from unittest import mock
 
-from dygraph_to_static_util import dy2static_unittest
-
 import paddle
 from paddle.jit.dy2static import logging_utils
 from paddle.utils import gast
 
 
-@dy2static_unittest
 class TestLoggingUtils(unittest.TestCase):
     def setUp(self):
         self.verbosity_level = 1

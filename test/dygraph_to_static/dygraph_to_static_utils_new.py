@@ -14,15 +14,34 @@
 
 import contextlib
 import inspect
-import operator
 import os
 import unittest
 from enum import Flag, auto
-from functools import reduce, wraps
+from functools import wraps
 
 import numpy as np
 
 from paddle import set_flags, static
+from paddle.base import core
+
+"""
+# Usage:
+class MyTest(Dy2StTestBase):
+    @set_to_static_mode(
+        ToStaticMode.LEGACY_AST | ToStaticMode.SOT | ToStaticMode.PIR_AST
+    )
+    @set_ir_mode(IrMode.LEGACY_PROGRAM | IrMode.PIR)
+    def test_case1(self):
+        raise ValueError("MyTest 1")
+
+    def test_case2(self):
+        raise ValueError("MyTest 2")
+
+
+class MyTest2(MyTest):
+    def test_case1(self):
+        raise ValueError("MyTest2 1")
+"""
 
 
 class ToStaticMode(Flag):
@@ -44,6 +63,10 @@ class IrMode(Flag):
 
 DEFAULT_TO_STATIC_MODE = ToStaticMode.LEGACY_AST | ToStaticMode.SOT
 DEFAULT_IR_MODE = IrMode.LEGACY_PROGRAM
+
+
+def in_sot_mode():
+    return os.getenv("ENABLE_FALL_BACK", "False") == "True"
 
 
 @contextlib.contextmanager
@@ -137,7 +160,7 @@ class Dy2StTestMeta(type):
         original_test_cases = {
             key: value
             for key, value in attrs.items()
-            if key.startswith("test_") and inspect.isfunction(value)
+            if key.startswith("test") and inspect.isfunction(value)
         }
         print(f"[creating {name}]")
         print(attrs)
@@ -158,7 +181,6 @@ class Dy2StTestMeta(type):
                 value, "to_static_mode", DEFAULT_TO_STATIC_MODE
             )
             fn_ir_modes = getattr(value, "ir_mode", DEFAULT_IR_MODE)
-            fn_compare_groups = getattr(value, "compare_group", [])
             fn_disabled_test_cases = getattr(value, "disabled_test_cases", [])
             print("fn_to_static_modes", fn_to_static_modes)
             print("fn_ir_modes", fn_ir_modes)
@@ -170,37 +192,14 @@ class Dy2StTestMeta(type):
                 for ir_mode in IrMode
                 if to_static_mode & fn_to_static_modes and ir_mode & fn_ir_modes
             ]
-            # Add compare groups and patch it to TestCaseBase
-            for compare_group in fn_compare_groups:
-                group_name = f"{key}_COMPARE_GROUP"
-                for to_static_mode, ir_mode in compare_group:
-                    if (to_static_mode, ir_mode) not in to_static_with_ir_modes:
-                        raise ValueError(
-                            f"Invalid compare group: {compare_group}, please check your test case!"
-                        )
-                    group_name = Dy2StTestMeta.test_case_name(
-                        group_name, to_static_mode, ir_mode
-                    )
-                new_attrs[group_name] = Dy2StTestMeta.combine_test_cases(
-                    value, compare_group, group_name
-                )
-            flattened_fn_compare_groups = list(
-                reduce(operator.add, fn_compare_groups, ())
-            )
-            print(
-                "fn_compare_groups:",
-                fn_compare_groups,
-                flattened_fn_compare_groups,
-            )
             # Filter out disabled test cases and test cases already in compare groups
             to_static_with_ir_modes = list(
                 filter(
-                    lambda flags: (flags not in fn_disabled_test_cases)
-                    and (flags not in flattened_fn_compare_groups),
+                    lambda flags: (flags not in fn_disabled_test_cases),
                     to_static_with_ir_modes,
                 )
             )
-            # Patch all test cases
+            # Generate all test cases
             for to_static_mode, ir_mode in to_static_with_ir_modes:
                 if (
                     to_static_mode == ToStaticMode.PIR_AST
@@ -220,35 +219,9 @@ class Dy2StTestMeta(type):
         return f"{original_name}__{to_static_mode.lower_case_name()}_{ir_mode.lower_case_name()}"
 
     @staticmethod
-    def combine_test_cases(fn, compare_group, group_name):
-        def combined_test_case(self, *args, **kwargs):
-            results = []
-            # Run each test case in compare group
-            print("Running test group: ", group_name)
-            for to_static_mode, ir_mode in compare_group:
-                print(
-                    f"Running test case: to_static_mode is {to_static_mode}, ir_mode is {ir_mode}"
-                )
-                test_case = Dy2StTestMeta.convert_test_case(
-                    fn, to_static_mode, ir_mode
-                )
-                results.append(test_case(self, *args, **kwargs))
-            # Compare each results with first result
-            compare_base = results[0]
-            for i, result in enumerate(results[1:], 1):
-                np.testing.assert_allclose(
-                    compare_base,
-                    result,
-                    err_msg=f"Run compare {compare_group[0]} with {compare_group[i]} failed!",
-                )
-
-        combined_test_case.__name__ = group_name
-        return combined_test_case
-
-    @staticmethod
     def convert_test_case(fn, to_static_mode, ir_mode):
-        fn = Dy2StTestMeta.TO_STATIC_HANDLER_MAP[to_static_mode](fn)
         fn = Dy2StTestMeta.IR_HANDLER_MAP[ir_mode](fn)
+        fn = Dy2StTestMeta.TO_STATIC_HANDLER_MAP[to_static_mode](fn)
         return fn
 
 
@@ -269,16 +242,6 @@ def set_to_static_mode(mode: ToStaticMode):
 def set_ir_mode(mode: IrMode):
     def decorator(fn):
         fn.ir_mode = mode
-        return fn
-
-    return decorator
-
-
-def add_compare_group(*flags):
-    def decorator(fn):
-        compare_groups = getattr(fn, "compare_group", [])
-        compare_groups.append(flags)
-        fn.compare_group = compare_groups
         return fn
 
     return decorator
@@ -311,14 +274,34 @@ def test_with_new_ir(fn):
     return fn
 
 
-def test_and_compare_with_new_ir(compare=False):
+def _test_and_compare_with_new_ir(fn):
+    @wraps(fn)
+    def impl(*args, **kwargs):
+        outs = fn(*args, **kwargs)
+        if core._is_bwd_prim_enabled() or core._is_fwd_prim_enabled():
+            return outs
+        # Disable SOT + PIR test temprorily
+        if in_sot_mode():
+            return outs
+        ir_outs = to_pir_test(fn)(*args, **kwargs)
+        np.testing.assert_equal(
+            outs,
+            ir_outs,
+            err_msg=f'Dy2St Unittest Check ({fn.__name__}) has diff \n'
+            + f'Expect {outs}\n'
+            + f'But Got {ir_outs}',
+        )
+        return outs
+
+    return impl
+
+
+def test_and_compare_with_new_ir(need_check_output: bool = True):
     def decorator(fn):
         fn = set_ir_mode(IrMode.LEGACY_PROGRAM | IrMode.PIR)(fn)
-        if compare:
-            fn = add_compare_group(
-                (ToStaticMode.LEGACY_AST, IrMode.LEGACY_PROGRAM),
-                (ToStaticMode.LEGACY_AST, IrMode.PIR),
-            )(fn)
+        if need_check_output:
+            print(f"[need_check_output] {fn.__name__}")
+            fn = _test_and_compare_with_new_ir(fn)
         return fn
 
     return decorator
@@ -326,31 +309,8 @@ def test_and_compare_with_new_ir(compare=False):
 
 # For debug
 def show_all_test_cases(test_class):
-    print(f"[{test_class.__name__}]")
+    print(f"[showing {test_class.__name__}]")
     for attr in dir(test_class):
-        if attr.startswith("test_"):
+        if attr.startswith("test"):
             fn = getattr(test_class, attr)
             print(f"{attr}: {fn}")
-
-
-# class MyTest(Dy2StTestBase):
-#     @set_to_static_mode(
-#         ToStaticMode.LEGACY_AST | ToStaticMode.SOT | ToStaticMode.PIR_AST
-#     )
-#     @set_ir_mode(IrMode.LEGACY_PROGRAM | IrMode.PIR)
-#     @add_compare_group(
-#         (ToStaticMode.LEGACY_AST, IrMode.LEGACY_PROGRAM),
-#         (ToStaticMode.LEGACY_AST, IrMode.PIR),
-#     )
-#     def test_case1(self):
-#         print(1)
-#         raise ValueError("MyTest 1")
-
-#     def test_case2(self):
-#         raise ValueError("MyTest 2")
-
-
-# class MyTest2(MyTest):
-#     def test_case1(self):
-#         print(1)
-#         raise ValueError("MyTest2 1")

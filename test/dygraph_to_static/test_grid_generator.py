@@ -15,8 +15,8 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import (
-    dy2static_unittest,
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
     test_and_compare_with_new_ir,
 )
 
@@ -129,8 +129,7 @@ class GridGenerator(nn.Layer):
         return batch_C_ex_part_tensor
 
 
-@dy2static_unittest
-class TestGridGenerator(unittest.TestCase):
+class TestGridGenerator(Dy2StTestBase):
     def setUp(self):
         self.x = paddle.uniform(shape=[1, 20, 2], dtype='float32')
 

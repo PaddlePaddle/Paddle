@@ -206,13 +206,5 @@ class TestNotVarCast(TestCastBase):
         )
 
 
-for attr in dir(TestCastBase):
-    if attr.startswith("test_"):
-        print(f"{attr}: {getattr(TestCastBase, attr)}")
-
-for attr in dir(TestNotVarCast):
-    if attr.startswith("test_"):
-        print(f"{attr}: {getattr(TestNotVarCast, attr)}")
-
 if __name__ == '__main__':
     unittest.main()
