@@ -112,7 +112,6 @@ class TestMeanOpError(unittest.TestCase):
 
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'input2': self.x}, fetch_list=[out])
-            print("res = ", res)
 
         paddle.disable_static()
 
