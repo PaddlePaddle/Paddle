@@ -1173,12 +1173,41 @@ void BindUtils(pybind11::module *m) {
         return std::make_pair(program, program_translator.VarDesc2Value());
       },
       R"DOC(
-      Check unregistered operators in paddle dialect.
+        Convert Fluid Program to New IR Program and get the mappings of VarDesc -> pir::Value.
 
-      Args:
-        legacy_program (ProgramDesc): The Fluid Program that need checked.
-      Returns:
-        list[str] : List of unregistered operators in paddle dialect, the name is expressed by origin op name.
+        Args:
+
+            legacy_program (ProgramDesc): The Fluid Program that will be converted.
+
+        Returns:
+            Program: The New IR Program
+            dict[str, pir::Value]: Mapping between VarDesc(by name) and pir::Value.
+
+        Raises:
+            PreconditionNotMet: If legacy_program has multi block will raise error.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                from paddle import pir
+                paddle.enable_static()
+
+                x = paddle.randn([4, 4])
+                main_program, start_program = (
+                    paddle.static.Program(),
+                    paddle.static.Program(),
+                )
+                with paddle.static.program_guard(main_program, start_program):
+                    x_s = paddle.static.data('x', [4, 4], x.dtype)
+                    x_s.stop_gradient = False
+                    y_s = paddle.matmul(x_s, x_s)
+                    z_s = paddle.add(y_s, y_s)
+                    k_s = paddle.tanh(z_s)
+                newir_program, mappings = ir.translate_to_new_ir_with_param_map(main_program.desc)
+
+                print(newir_program)
+                print(mappings)
     )DOC");
 }
 
