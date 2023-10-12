@@ -352,26 +352,30 @@ void DropoutFwGPUKernelDriver(
 
       if (phi::backends::gpu::CUDAGraph::IsThisThreadCapturing() &&
           !is_fix_seed) {
-        auto parameterSetter =
-            [offset](phi::backends::gpu::CUDAKernelParams& params) {
-              auto* dev_ctx = phi::DeviceContextPool::Instance().GetByPlace(
-                  phi::backends::gpu::CUDAGraph::CapturingPlace());
-              uint64_t seed, increment;
-              phi::funcs::GetSeedDataAndIncrement(
-                  *dev_ctx, nullptr, false, 0, offset, &seed, &increment);
-              params.As<uint64_t>(2) =
-                  static_cast<decltype(params.As<uint64_t>(2))>(seed);
-              params.As<uint64_t>(8) =
-                  static_cast<decltype(params.As<uint64_t>(8))>(increment);
-            };
-
+        const phi::GPUContext* dev_ctx_p = &dev_ctx;
+        phi::backends::gpu::CUDAGraphKernelLauncher::parameterSetter_t
+            parameterSetter =
+                [offset,
+                 dev_ctx_p](phi::backends::gpu::CUDAKernelParams& params) {
+                  uint64_t seed, increment;
+                  phi::funcs::GetSeedDataAndIncrement(
+                      *dev_ctx_p, nullptr, false, 0, offset, &seed, &increment);
+                  params.As<uint64_t>(2) =
+                      static_cast<decltype(params.As<uint64_t>(2))>(seed);
+                  params.As<uint64_t>(8) =
+                      static_cast<decltype(params.As<uint64_t>(8))>(increment);
+                  VLOG(0) << "CUDA Graph curr seed = " << seed
+                          << ", increment = " << increment;
+                };
         phi::backends::gpu::CUDAGraphKernelLauncher::Instance().KernelLaunch(
             VectorizedRandomGenerator<T>,
             parameterSetter,
+
             grid_size,
             block_size,
             0,
             stream,
+
             size,
             seed_data,
             dropout_prob,
@@ -393,6 +397,8 @@ void DropoutFwGPUKernelDriver(
                                                    upscale_in_train,
                                                    increment,
                                                    main_offset);
+        VLOG(0) << "NORMAL curr seed = " << seed_data
+                << ", increment = " << increment;
       }
     }
     VLOG(4) << "Dropout seed: " << seed << ", offset: " << offset

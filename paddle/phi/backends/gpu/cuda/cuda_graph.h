@@ -103,6 +103,27 @@ class CUDAKernelParams {
   const cudaKernelNodeParams *params_;
 };
 
+using cudaGraphExecuterSetter_t = std::function<void(cudaGraphExec_t)>;
+
+// This class provides a mechanism for launching CUDA kernels that need
+// to utilize the `cudaGraphExecKernelNodeSetParams` function for setting
+// their parameters. Instead of directly launching the kernels, they should be
+// executed via this class to ensure proper management and parameter setup.
+//
+// NOTE: The first parameter of any kernel being launched through this class
+// should be reserved for an identifier of type `unsigned int`. This identifier
+// serves as a linkage to reconstruct the relationship between the kernel and
+// its associated CUDA graph node.
+//
+// Usage and Features:
+// 1. Use `KernelLaunch` to execute your kernels with their parameters.
+// 2. The class ensures each kernel launch gets a unique identifier.
+// 3. It provides facilities to check and retrieve the parameter setter
+// associated
+//    with a particular kernel using `HasParameterSetter` and
+//    `GetParameterSetter`.
+// 4. The class is designed as a singleton; use `Instance()` to get the global
+// instance.
 class CUDAGraphKernelLauncher {
  public:
   using parameterSetter_t = std::function<void(CUDAKernelParams &)>;
@@ -123,7 +144,8 @@ class CUDAGraphKernelLauncher {
     InnerLaunch(func_p, blockSize, numBlocks, sharedMem, stream, args_.data());
   }
 
-  bool HasParameterSetter(const CUDAKernelParams &params);
+  std::vector<cudaGraphExecuterSetter_t> GetParameterSettersForExecGraph(
+      cudaGraph_t graph);
 
   parameterSetter_t GetParameterSetter(const CUDAKernelParams &params);
 
@@ -293,7 +315,7 @@ class CUDAGraph {
   std::mutex mtx_;
 
   std::vector<SetSeedFunc> set_seed_funcs_;
-  std::vector<std::vector<std::function<void(cudaGraphExec_t)>>> pre_hooks_;
+  std::vector<std::vector<cudaGraphExecuterSetter_t>> pre_hooks_;
   std::mutex func_mtx_;
 
   bool is_first_run_{true};

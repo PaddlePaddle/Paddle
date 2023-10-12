@@ -189,17 +189,18 @@ void FusedDropoutAddKernel(const Context& dev_ctx,
         NoMaskFwFunctor<T, float>(1.0f - dropout_rate, upscale_in_train);
 
     if (phi::backends::gpu::CUDAGraph::IsThisThreadCapturing() && !fix_seed) {
+      const phi::GPUContext* dev_ctx_p = &dev_ctx;
       auto parameterSetter =
-          [offset](phi::backends::gpu::CUDAKernelParams& params) {
-            auto* dev_ctx = phi::DeviceContextPool::Instance().GetByPlace(
-                phi::backends::gpu::CUDAGraph::CapturingPlace());
+          [offset, dev_ctx_p](phi::backends::gpu::CUDAKernelParams& params) {
             uint64_t seed, increment;
             phi::funcs::GetSeedDataAndIncrement(
-                *dev_ctx, nullptr, false, 0, offset, &seed, &increment);
+                *dev_ctx_p, nullptr, false, 0, offset, &seed, &increment);
             params.As<uint64_t>(2) =
                 static_cast<decltype(params.As<uint64_t>(2))>(seed);
             params.As<uint64_t>(6) =
                 static_cast<decltype(params.As<uint64_t>(6))>(increment);
+            VLOG(0) << "CUDA Graph curr seed = " << seed
+                    << ", increment = " << increment;
           };
 
       phi::backends::gpu::CUDAGraphKernelLauncher::Instance().KernelLaunch(
@@ -230,6 +231,8 @@ void FusedDropoutAddKernel(const Context& dev_ctx,
                                                  increment,  // need save
                                                  main_offset,
                                                  dst_functor);
+      VLOG(0) << "NORMAL curr seed = " << seed_data
+              << ", increment = " << increment;
     }
   } else {
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
