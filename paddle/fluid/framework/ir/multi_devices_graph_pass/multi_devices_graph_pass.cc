@@ -351,7 +351,7 @@ bool MultiDevSSAGraphBuilderBase::NeedCollectiveForGrad(
   // NOTE: This is for the case that all gradients should add collective ops
   for (auto *node : ops) {
     if (node->Op()->Type() != "allreduce") continue;
-    for (auto in_name : node->Op()->InputArgumentNames()) {
+    for (auto const &in_name : node->Op()->InputArgumentNames()) {
       if (in_name == grad_name) {
         return false;
       }
@@ -862,7 +862,7 @@ int BalanceVarSSAGraphBuilder::GetOpDeviceID(ir::Node *node) const {
 size_t BalanceVarSSAGraphBuilder::GetAppropriateDeviceID(
     const std::vector<std::string> &var_names) const {
   int64_t numel_sum = 0;
-  for (auto var_name : var_names) {
+  for (auto const &var_name : var_names) {
     if (all_vars_.find(var_name) == all_vars_.end()) continue;
     auto var_desc = all_vars_.at(var_name);
     PADDLE_ENFORCE_NOT_NULL(var_desc,

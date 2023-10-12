@@ -164,7 +164,7 @@ std::vector<ir::Node *> TopologySortOperations(const Graph &graph) {
                         "Generated graph shouldn't contain cycle."));
   std::unordered_set<ir::Node *> visited;
   std::vector<ir::Node *> ret;
-  for (auto adj : adj_list) {
+  for (auto const &adj : adj_list) {
     if (visited.find(adj.first) == visited.end()) {
       SortHelper<ir::NodeComp>(adj_list, adj.first, &visited, &ret);
     }
@@ -449,7 +449,7 @@ std::vector<ir::Node *> TopologySortGraphByDescOrder(const Graph &graph) {
                         "Generated graph shouldn't contain cycle."));
   std::unordered_set<ir::Node *> visited;
   std::vector<ir::Node *> ret;
-  for (auto adj : adj_list) {
+  for (auto const &adj : adj_list) {
     if (visited.find(adj.first) == visited.end()) {
       SortHelper<DescOrderComparator>(adj_list, adj.first, &visited, &ret);
     }
@@ -742,7 +742,7 @@ template <class T = Node *>
 static void GetGraphVarDesc(const Graph &graph,
                             const std::unordered_set<T> &nodes,
                             std::vector<proto::VarDesc> *vars) {
-  for (T node : nodes) {
+  for (T const &node : nodes) {
     if (node->IsVar() && node->Var() &&
         node->GetVarNodeBlockId() == graph.GetBlockId()) {
       vars->emplace_back(*node->Var()->Proto());
