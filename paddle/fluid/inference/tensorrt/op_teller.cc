@@ -2918,7 +2918,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "assign",
       "flip",
       "quantize_linear",
-      "dequantize_linear"};
+      "dequantize_linear",
+      "share_data"};
 
   std::unordered_set<std::string> teller_set{
       "matrix_multiply",
@@ -3086,7 +3087,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "assign",
       "flip",
       "quantize_linear",
-      "dequantize_linear"};
+      "dequantize_linear",
+      "share_data"};
 };
 
 struct GenericPluginTeller : public Teller {

@@ -150,7 +150,7 @@ void ProgramProcessor::AddDepToBlockOp(const BlockDesc &block) {
       VLOG(3) << "sub_outputs.size:" << sub_outputs.size();
 
       auto *op_inputs = op->MutableInputs();
-      std::vector<std::string> *op_input_var_vec;
+      std::vector<std::string> *op_input_var_vec = nullptr;
       VLOG(3) << "op_type:>>>>>>" << op_type;
       if (op_type.compare("while") == 0) {
         op_input_var_vec = &((*op_inputs)["kX"]);
