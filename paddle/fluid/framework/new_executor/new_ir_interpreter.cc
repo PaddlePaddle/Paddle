@@ -641,6 +641,7 @@ void NewIRInterpreter::BuildInstructionDependences() {
   }
 
   std::vector<paddle::framework::InstructionBase*> instructions_ptr;
+  instructions_ptr.reserve(vec_instruction_base_.size());
   for (auto& instr : vec_instruction_base_) {
     instructions_ptr.push_back(instr.get());
   }

@@ -113,6 +113,7 @@ bool BlockDesc::HasVarRecursive(const std::string &name) const {
 
 std::vector<VarDesc *> BlockDesc::AllVars() const {
   std::vector<VarDesc *> res;
+  res.reserve(vars_.size());
   for (const auto &p : vars_) {
     res.push_back(p.second.get());
   }
@@ -170,6 +171,7 @@ void BlockDesc::RemoveOpInternal(const OpDesc *op_desc) {
 
 std::vector<OpDesc *> BlockDesc::AllOps() const {
   std::vector<OpDesc *> res;
+  res.reserve(ops_.size());
   for (const auto &op : ops_) {
     res.push_back(op.get());
   }
@@ -320,6 +322,7 @@ void BlockDesc::MoveFrom(BlockDesc *block) {
         // block->Program()->proto() will calls Flush() at first,
         // a null var_ptr will cause segmentation fault.
         int block_size = static_cast<int>(program->Size());
+        old_block_desc.reserve(block_size);
         for (int i = 0; i < block_size; ++i) {
           // record all block desc's ptr from origin block's program
           old_block_desc.emplace_back(program->MutableBlock(i));

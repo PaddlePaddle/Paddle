@@ -229,6 +229,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
   device_reader_->Start();
   std::vector<double> op_total_time;
   std::vector<std::string> op_name;
+  op_name.reserve(ops_.size());
   for (auto &op : ops_) {
     op_name.push_back(op->Type());
   }

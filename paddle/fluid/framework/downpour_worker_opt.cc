@@ -211,6 +211,7 @@ void DownpourWorkerOpt::CreateThreadOperatorsWithRerank(
   std::unordered_map<std::string, std::unordered_set<std::string>>
       metric_output_map;
   std::vector<std::string> loss_grad_names;
+  loss_grad_names.reserve(loss_num);
   for (int i = 0; i < loss_num; i++) {
     loss_grad_names.push_back(loss_names_[i] + "@GRAD");
   }
