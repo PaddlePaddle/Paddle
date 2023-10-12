@@ -2248,7 +2248,7 @@ class LinearLR(LRScheduler):
 
     Examples:
         .. code-block:: python
-            :name: code-example1
+            :name: code-dynamic
 
             >>> # Example1: train on default dynamic graph mode
             >>> import paddle
