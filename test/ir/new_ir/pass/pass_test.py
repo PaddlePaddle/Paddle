@@ -19,7 +19,7 @@ import warnings
 import numpy as np
 
 import paddle
-from paddle import base, pir
+from paddle import pir
 from paddle.base import core
 
 
@@ -42,9 +42,9 @@ class PassTest(unittest.TestCase):
         random.seed(124)
 
     def _get_places(self):
-        places = [base.CPUPlace()]
+        places = [paddle.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+            places.append(paddle.CUDAPlace(0))
         return places
 
     # No use for this time
@@ -90,7 +90,7 @@ class PassTest(unittest.TestCase):
         # for attr_name, attr_value in self.graph_attrs.items():
         #     graph.set(attr_name, attr_value)
 
-        self.newir_program = pir.translate_to_new_ir(self.main_program.desc)
+        newir_program = pir.translate_to_new_ir(self.main_program.desc)
         if not isinstance(self.pass_names, list):
             self.pass_names = [self.pass_names]
 
@@ -101,11 +101,10 @@ class PassTest(unittest.TestCase):
         for name in self.pass_names:
             pm.add_pass(name)
 
-        opt_program = self.newir_program.clone()
         # here I didn't know how to make pir.program run by the executor
-        pm.run(opt_program)
+        pm.run(newir_program)
 
-        return opt_program
+        return newir_program
 
     def check_output_with_place(self, place, startup_on_cpu=False, atol=1e-5):
         '''
@@ -119,7 +118,7 @@ class PassTest(unittest.TestCase):
         executor = paddle.static.Executor(place)
         if startup_on_cpu:
             # Initialize parameters on CPU
-            cpu_executor = paddle.static.Executor(base.CPUPlace())
+            cpu_executor = paddle.static.Executor(paddle.CPUPlace())
             cpu_executor.run(self.startup_program)
             outs, lods = self._run_program(cpu_executor, self.main_program)
         else:
@@ -138,7 +137,7 @@ class PassTest(unittest.TestCase):
         # TODO: check program, unfinished
         # self.check_program(opt_program)
 
-        if startup_on_cpu and not isinstance(place, base.CPUPlace):
+        if startup_on_cpu and not isinstance(place, paddle.CPUPlace):
             warnings.warn(
                 "Parameters are on CPU, and will be transferred to GPU "
                 "automatically by data transform."

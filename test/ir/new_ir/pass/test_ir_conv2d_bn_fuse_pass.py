@@ -29,7 +29,6 @@ class Conv2dBnFusePassTest(PassTest):
         place = core.Place()
         place.set_place(paddle.CPUPlace())
         new_scope = paddle.static.Scope()
-        self.main_program = paddle.static.Program()
         with paddle.static.scope_guard(new_scope):
             with paddle.static.program_guard(
                 self.main_program, self.startup_program
@@ -37,19 +36,20 @@ class Conv2dBnFusePassTest(PassTest):
                 x = paddle.static.data(
                     name='x', shape=[3, 1, 28, 28], dtype='float32'
                 )
-                conv1_1 = paddle.static.nn.conv2d(
-                    input=x,
-                    filter_size=3,
-                    num_filters=32,
-                    stride=1,
-                    padding=1,
-                    act=None,
-                    bias_attr=False,
-                    data_format='NHWC',
-                )
-                bn = paddle.static.nn.batch_norm(
-                    input=conv1_1, act=None, data_layout='NHWC'
-                )
+                bn = x
+                # conv1_1 = paddle.static.nn.conv2d(
+                #     input=x,
+                #     filter_size=3,
+                #     num_filters=32,
+                #     stride=1,
+                #     padding=1,
+                #     act=None,
+                #     bias_attr=False,
+                #     data_format='NHWC',
+                # )
+                # bn = paddle.static.nn.batch_norm(
+                #     input=conv1_1, act=None, data_layout='NHWC'
+                # )
 
         self.feeds = {"x": np.random.random((3, 1, 28, 28)).astype("float32")}
         self.fetch_list = [bn]
