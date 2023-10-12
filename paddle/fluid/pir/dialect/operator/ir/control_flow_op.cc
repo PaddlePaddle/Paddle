@@ -140,11 +140,11 @@ void IfOp::Verify() {
     PADDLE_ENFORCE_EQ(false_last_op->isa<pir::YieldOp>(),
                       true,
                       phi::errors::PreconditionNotMet(
-                          "The last of true block must be YieldOp"));
+                          "The last of false block must be YieldOp"));
     PADDLE_ENFORCE_EQ(false_last_op->num_operands(),
                       (*this)->num_results(),
                       phi::errors::PreconditionNotMet(
-                          "The size of last of true block op's input must be "
+                          "The size of last of false block op's input must be "
                           "equal to IfOp's outputs num."));
   }
 }
