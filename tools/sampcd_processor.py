@@ -102,7 +102,7 @@ def _patch_float_precision(digits):
     pattern_number = re.compile(
         r"""
         (?:
-            (?<=[\s*\[\(\'\"\:])                        # number starts
+            (?:(?<=[\s*\[\(\'\"\:])|^)                  # number starts
             (?:                                         # int/float or complex-real
                 (?:
                     [+-]?

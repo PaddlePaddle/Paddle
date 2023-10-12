@@ -2786,6 +2786,15 @@
   intermediate: warprnntgrad
   backward : warprnnt_grad
 
+- op : weight_dequantize
+  args : (Tensor x, Tensor scale, str algo="weight_only_int8", DataType out_dtype=DataType::FLOAT16)
+  output : Tensor(out)
+  infer_meta :
+    func : WeightDequantizeInferMeta
+  kernel :
+    func : weight_dequantize
+    data_type : out_dtype
+
 - op : weight_only_linear
   args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, str weight_dtype)
   output : Tensor(out)
@@ -2798,7 +2807,7 @@
   backward: weight_only_linear_grad
 
 - op : weight_quantize
-  args : (Tensor x, str algo = "weight_only_int8")
+  args : (Tensor x, str algo="weight_only_int8")
   output : Tensor(out), Tensor(scale)
   infer_meta :
     func : WeightQuantizeInferMeta

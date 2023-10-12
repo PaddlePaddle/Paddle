@@ -53,6 +53,9 @@ namespace distributed {
 PD_REGISTER_SPMD_RULE(matmul,
                       PD_INFER_SPMD(phi::distributed::MatmulInferSpmd),
                       PD_INFER_SPMD(phi::distributed::MatmulInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(matmul_v2,  // static mode
+                      PD_INFER_SPMD(phi::distributed::MatmulInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::MatmulInferSpmdReverse));
 
 PD_REGISTER_SPMD_RULE(
     elementwise_unary,
@@ -67,6 +70,10 @@ PD_REGISTER_SPMD_RULE(
 // default data parallel rule
 PD_REGISTER_SPMD_RULE(
     unsqueeze,
+    PD_INFER_SPMD(phi::distributed::DefaultDataParallelInferSpmd),
+    PD_INFER_SPMD(phi::distributed::DefaultDataParallelInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(
+    default_,
     PD_INFER_SPMD(phi::distributed::DefaultDataParallelInferSpmd),
     PD_INFER_SPMD(phi::distributed::DefaultDataParallelInferSpmdReverse));
 
@@ -467,6 +474,10 @@ PD_REGISTER_SPMD_RULE(
     sum,
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(
+    reduce_sum,  // static
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
 
 // layer_norm
 PD_REGISTER_SPMD_RULE(
@@ -476,6 +487,9 @@ PD_REGISTER_SPMD_RULE(
 
 // reshape rule
 PD_REGISTER_SPMD_RULE(reshape,
+                      PD_INFER_SPMD(phi::distributed::ReshapeInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::ReshapeInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(reshape2,
                       PD_INFER_SPMD(phi::distributed::ReshapeInferSpmd),
                       PD_INFER_SPMD(phi::distributed::ReshapeInferSpmdReverse));
 
@@ -506,6 +520,10 @@ PD_REGISTER_SPMD_RULE(
 // transpose rule
 PD_REGISTER_SPMD_RULE(
     transpose,
+    PD_INFER_SPMD(phi::distributed::TransposeInferSpmd),
+    PD_INFER_SPMD(phi::distributed::TransposeInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(
+    transpose2,
     PD_INFER_SPMD(phi::distributed::TransposeInferSpmd),
     PD_INFER_SPMD(phi::distributed::TransposeInferSpmdReverse));
 

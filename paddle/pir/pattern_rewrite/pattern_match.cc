@@ -29,7 +29,7 @@ Pattern::Pattern(const std::string& root_name,
                  PatternBenefit benefit,
                  IrContext* context,
                  const std::vector<std::string>& generated_names)
-    : Pattern(context->GetRegisteredOpInfo(root_name).AsOpaquePointer(),
+    : Pattern(context->GetRegisteredOpInfo(root_name),
               RootKind::OperationInfo,
               generated_names,
               benefit,
@@ -46,7 +46,7 @@ Pattern::Pattern(MatchInterfaceOpTypeTag tag,
                  PatternBenefit benefit,
                  IrContext* context,
                  const std::vector<std::string>& generated_names)
-    : Pattern(interface_id.AsOpaquePointer(),
+    : Pattern(interface_id,
               RootKind::InterfaceId,
               generated_names,
               benefit,
@@ -57,11 +57,7 @@ Pattern::Pattern(MatchTraitOpTypeTag tag,
                  PatternBenefit benefit,
                  IrContext* context,
                  const std::vector<std::string>& generated_names)
-    : Pattern(trait_id.AsOpaquePointer(),
-              RootKind::TraitId,
-              generated_names,
-              benefit,
-              context) {}
+    : Pattern(trait_id, RootKind::TraitId, generated_names, benefit, context) {}
 
 Pattern::Pattern(void* root_val,
                  RootKind root_kind,
