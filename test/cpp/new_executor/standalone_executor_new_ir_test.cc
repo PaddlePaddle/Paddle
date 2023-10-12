@@ -299,9 +299,8 @@ TEST(StandaloneExecutor, while_op) {
                      std::vector<int64_t>{1}, 10, phi::DataType::INT32)
                  .out();
 
-  auto while_op = builder.Build<paddle::dialect::WhileOp>(
-      std::vector<pir::Value>{i, ten},
-      std::vector<pir::Type>{i.type(), i.type()});
+  auto while_op =
+      builder.Build<paddle::dialect::WhileOp>(std::vector<pir::Value>{i, ten});
 
   // while(i < ten)
   pir::Block* cond_block = while_op.cond_block();
@@ -312,8 +311,7 @@ TEST(StandaloneExecutor, while_op) {
                         .Build<paddle::dialect::LessEqualOp>(cond_i_argument,
                                                              cond_ten_argument)
                         .out();
-  builder.Build<pir::CondYieldOp>(
-      cond_value, std::vector<pir::Value>{cond_i_argument, cond_ten_argument});
+  builder.Build<pir::YieldOp>(std::vector<pir::Value>{cond_value});
 
   // { i = i + 1}
   pir::Block* body_block = while_op.body_block();

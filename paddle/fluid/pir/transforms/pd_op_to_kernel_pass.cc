@@ -782,8 +782,7 @@ void HandleForWhileOp(
         place,
         base_while_op.result(i).type().dyn_cast<dialect::DenseTensorType>()));
   }
-  auto new_while_op = builder.Build<paddle::dialect::WhileOp>(
-      vec_in, std::move(op_output_types));
+  auto new_while_op = builder.Build<paddle::dialect::WhileOp>(vec_in);
 
   pir::Block* cond_block = new_while_op.cond_block();
   for (size_t i = 0; i < vec_in.size(); ++i) {
