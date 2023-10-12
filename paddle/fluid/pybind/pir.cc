@@ -364,8 +364,8 @@ void BindValue(py::module *m) {
       .def("has_one_use", &Value::HasOneUse)
       .def("use_empty", &Value::use_empty)
       .def("replace_all_uses_with",
-           [](Value &self, Value &op_results) {
-             self.ReplaceAllUsesWith(op_results);
+           [](Value &self, Value &op_value) {
+             self.ReplaceAllUsesWith(op_value);
            })
       .def("__eq__", &Value::operator==)
       .def("__eq__",
@@ -615,8 +615,8 @@ void BindOpResult(py::module *m) {
              }
            })
       .def("replace_all_uses_with",
-           [](OpResult &self, OpResult &op_results) {
-             self.ReplaceAllUsesWith(op_results);
+           [](OpResult &self, OpResult &op_result) {
+             self.ReplaceAllUsesWith(op_result);
            })
       .def_property(
           "stop_gradient",
