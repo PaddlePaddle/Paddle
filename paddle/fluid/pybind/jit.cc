@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/jit/serializer.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/pybind/eval_frame.h"
+#include "paddle/fluid/pybind/eval_frame_tools.h"
 #include "paddle/utils/pybind.h"
 
 namespace py = pybind11;
@@ -66,6 +67,15 @@ void BindEvalFrame(pybind11::module *m) {
       [](const py::object &py_func) {
         VLOG(5) << "start call set_eval_frame_py.";
         auto ret = set_eval_frame_py(py_func.ptr());
+        auto obj = py::reinterpret_borrow<py::object>(ret);
+        return obj;
+      },
+      py::arg("callback"));
+
+  m->def(
+      "zskip",
+      [](const py::object &py_codes) {
+        auto ret = zskip(py_codes.ptr());
         auto obj = py::reinterpret_borrow<py::object>(ret);
         return obj;
       },
