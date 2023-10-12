@@ -86,8 +86,8 @@ WhileInstruction::WhileInstruction(size_t id,
     cond_scope->Var(var_name);
     cond_exe_info->Add(cond_block_->argument(i), var_name);
   }
-  cond_inter_ = new NewIRInterpreter(
-      place, {}, cond_block_, cond_scope, cond_exe_info, {});
+  cond_inter_ = std::unique_ptr<NewIRInterpreter>(new NewIRInterpreter(
+      place, {}, cond_block_, cond_scope, cond_exe_info, {}));
 
   std::set<std::string> cond_skip_gc_names_set;
   for (auto value : cond_yied_inputs) {
@@ -107,8 +107,8 @@ WhileInstruction::WhileInstruction(size_t id,
     body_scope->Var(var_name);
     body_exe_info->Add(body_block_->argument(i), var_name);
   }
-  body_inter_ = new NewIRInterpreter(
-      place, {}, body_block_, body_scope, body_exe_info, {});
+  body_inter_ = std::unique_ptr<NewIRInterpreter>(new NewIRInterpreter(
+      place, {}, body_block_, body_scope, body_exe_info, {}));
 
   std::set<std::string> body_skip_gc_names_set;
   for (auto value : body_yied_inputs) {
@@ -117,10 +117,12 @@ WhileInstruction::WhileInstruction(size_t id,
   }
   body_inter_->SetSkipGcVars(body_skip_gc_names_set);
 
-  // the true branch and false branch input will be the if_op inputs
+  // the cond block and body block input also be the while_op inputs
 
   std::unordered_map<pir::Value, std::vector<int>> inputs;
   GetInputIds(op, *parent_exe_info, &inputs);
+
+  // TODO(phlrain): process cond and body block
   // GetOutsideOpInputs(cond_block_,
   //                    inner_scope,
   //                    parent_exe_info->GetValue2VarName(),
@@ -192,8 +194,8 @@ void WhileInstruction::CopyStepOutputToBlockArgs(const NewIRInterpreter* inter,
 }
 
 void WhileInstruction::Run() {
-  CopyWhileInputToBlockArgs(cond_inter_, cond_block_);
-  CopyWhileInputToBlockArgs(body_inter_, body_block_);
+  CopyWhileInputToBlockArgs(cond_inter_.get(), cond_block_);
+  CopyWhileInputToBlockArgs(body_inter_.get(), body_block_);
 
   while (true) {
     cond_inter_->Run({}, false);
@@ -201,8 +203,8 @@ void WhileInstruction::Run() {
     if (cond_var->Get<phi::DenseTensor>().data<bool>()[0]) {
       body_inter_->Run({}, false);
 
-      CopyStepOutputToBlockArgs(cond_inter_, cond_block_);
-      CopyStepOutputToBlockArgs(body_inter_, body_block_);
+      CopyStepOutputToBlockArgs(cond_inter_.get(), cond_block_);
+      CopyStepOutputToBlockArgs(body_inter_.get(), body_block_);
     } else {
       break;
     }

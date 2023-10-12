@@ -31,6 +31,7 @@
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
@@ -192,11 +193,11 @@ OpFuncType AnalyseOpFuncType(pir::Operation* op, const platform::Place& place) {
 
 std::vector<pir::Value> GetCondYiedOpInputs(pir::Block* block) {
   std::vector<pir::Value> vec_res;
-  for (auto op : (*block)) {
-    if (op->name() == "cf.cond_yield") {
-      for (size_t i = 0; i < op->num_operands(); ++i) {
-        vec_res.push_back(op->operand_source(i));
-      }
+
+  if (block && !block->empty() && block->back()->isa<pir::CondYieldOp>()) {
+    auto* op = block->back();
+    for (size_t i = 0; i < op->num_operands(); ++i) {
+      vec_res.emplace_back(op->operand_source(i));
     }
   }
 
@@ -205,11 +206,11 @@ std::vector<pir::Value> GetCondYiedOpInputs(pir::Block* block) {
 
 std::vector<pir::Value> GetYiedOpInputs(pir::Block* block) {
   std::vector<pir::Value> vec_res;
-  for (auto op : (*block)) {
-    if (op->name() == "cf.yield") {
-      for (size_t i = 0; i < op->num_operands(); ++i) {
-        vec_res.push_back(op->operand_source(i));
-      }
+
+  if (block && !block->empty() && block->back()->isa<pir::YieldOp>()) {
+    auto* op = block->back();
+    for (size_t i = 0; i < op->num_operands(); ++i) {
+      vec_res.emplace_back(op->operand_source(i));
     }
   }
   return vec_res;

@@ -58,8 +58,8 @@ class WhileInstruction : public InstructionBase {
   std::vector<Variable*> while_op_inputs_;
   std::vector<Variable*> while_op_outputs_;
 
-  NewIRInterpreter* cond_inter_;
-  NewIRInterpreter* body_inter_;
+  std::unique_ptr<NewIRInterpreter> cond_inter_;
+  std::unique_ptr<NewIRInterpreter> body_inter_;
 
   std::vector<std::string> cond_skip_gc_names_;
   std::vector<std::string> body_skip_gc_names_;
