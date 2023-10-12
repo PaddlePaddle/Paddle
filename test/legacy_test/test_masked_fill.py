@@ -49,12 +49,11 @@ class TestMaskedFillAPI(unittest.TestCase):
         self.value_np = np.random.randn(1).astype(self.dtype)
         self.out_np = np_masked_fill(self.x_np, self.mask_np, self.value_np)
 
-        self.scalar_value = False
-
     def init(self):
         self.x_shape = (50, 3)
         self.mask_shape = self.x_shape
         self.dtype = "float32"
+        self.scalar_value = False
 
     def test_static_graph(self):
         paddle.enable_static()
@@ -111,6 +110,7 @@ class TestMaskedFillAPI1(TestMaskedFillAPI):
         self.x_shape = (6, 8, 9, 18)
         self.mask_shape = self.x_shape
         self.dtype = "float32"
+        self.scalar_value = False
 
 
 class TestMaskedFillAPI2(TestMaskedFillAPI):
@@ -118,6 +118,7 @@ class TestMaskedFillAPI2(TestMaskedFillAPI):
         self.x_shape = (168,)
         self.mask_shape = self.x_shape
         self.dtype = "float32"
+        self.scalar_value = False
 
 
 class TestMaskedFillAPI3(TestMaskedFillAPI):
@@ -183,6 +184,7 @@ class TestMaskedFillFP16API1(TestMaskedFillAPI):
         self.x_shape = (6, 8, 9, 18)
         self.mask_shape = self.x_shape
         self.dtype = "float16"
+        self.scalar_value = False
 
 
 @unittest.skipIf(
@@ -193,6 +195,7 @@ class TestMaskedFillFP16API2(TestMaskedFillAPI):
         self.x_shape = (168,)
         self.mask_shape = self.x_shape
         self.dtype = "float16"
+        self.scalar_value = False
 
 
 @unittest.skipIf(
@@ -211,6 +214,7 @@ class TestMaskedFillAPIBroadcast(TestMaskedFillAPI):
         self.x_shape = (3, 40)
         self.mask_shape = (3, 1)
         self.dtype = "float32"
+        self.scalar_value = False
 
 
 class TestMaskedFillAPIBroadcast2(TestMaskedFillAPI):
@@ -218,6 +222,7 @@ class TestMaskedFillAPIBroadcast2(TestMaskedFillAPI):
         self.x_shape = (3, 3)
         self.mask_shape = (1, 3)
         self.dtype = "float32"
+        self.scalar_value = False
 
 
 class TestMaskedFillAPIBroadcast3(TestMaskedFillAPI):
@@ -225,6 +230,7 @@ class TestMaskedFillAPIBroadcast3(TestMaskedFillAPI):
         self.x_shape = (120,)
         self.mask_shape = (300, 120)
         self.dtype = "float32"
+        self.scalar_value = False
 
 
 class TestMaskedFillAPIBroadcast4(TestMaskedFillAPI):
@@ -232,6 +238,7 @@ class TestMaskedFillAPIBroadcast4(TestMaskedFillAPI):
         self.x_shape = (300, 40)
         self.mask_shape = (40,)
         self.dtype = "float32"
+        self.scalar_value = False
 
 
 class TestMaskedFillAPIBroadcast5(TestMaskedFillAPI):
@@ -250,6 +257,7 @@ class TestMaskedFillFP16APIBroadcast(TestMaskedFillAPI):
         self.x_shape = (3, 40)
         self.mask_shape = (3, 1)
         self.dtype = "float16"
+        self.scalar_value = False
 
 
 @unittest.skipIf(
@@ -260,6 +268,7 @@ class TestMaskedFillFP16APIBroadcast2(TestMaskedFillAPI):
         self.x_shape = (300, 1)
         self.mask_shape = (300, 40)
         self.dtype = "float16"
+        self.scalar_value = False
 
 
 @unittest.skipIf(
@@ -283,6 +292,7 @@ class TestMaskedFillBF16(TestMaskedFillAPI):
         self.x_shape = (300, 1)
         self.mask_shape = (300, 1)
         self.dtype = "uint16"
+        self.scalar_value = False
 
     def setUp(self):
         self.init()
@@ -305,11 +315,12 @@ class TestMaskedFillBF16(TestMaskedFillAPI):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA or not support bfloat16",
 )
-class TestMaskedFillBF16APIBroadcast2(TestMaskedFillAPI):
+class TestMaskedFillBF16APIBroadcast2(TestMaskedFillBF16):
     def init(self):
         self.x_shape = (300, 1)
         self.mask_shape = (300, 3)
         self.dtype = "uint16"
+        self.scalar_value = False
 
 
 if __name__ == '__main__':
