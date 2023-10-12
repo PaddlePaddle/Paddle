@@ -82,7 +82,9 @@ class DygraphShardingOptimizer:
         self.comm_overlap = strategy.hybrid_configs[
             'sharding_configs'
         ].comm_overlap
-        self.delay_scale_loss = strategy.hybrid_configs['delay_scale_loss']
+        self.delay_scale_loss = strategy.hybrid_configs[
+            'sharding_configs'
+        ].delay_scale_loss
         pp_overlap = strategy.hybrid_configs['pp_configs'].sharding_comm_overlap
         if self.tensor_fusion or self.comm_overlap:
             assert (
