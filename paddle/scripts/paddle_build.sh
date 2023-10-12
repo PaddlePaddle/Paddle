@@ -941,14 +941,6 @@ function check_run_sot_ci() {
         return
     fi
 
-    SKIP_CI=$(git log -1 --pretty=format:"%s"|grep -w "test=skip_sot" || true)
-    if [[ ${SKIP_CI} ]];then
-        echo "commite skip CI"
-        echo "Skip SOT UT CI"
-        exit 0
-    fi
-
-
     # git diff
     SOT_FILE_LIST=(
         paddle/fluid/operators/run_program_op.h
