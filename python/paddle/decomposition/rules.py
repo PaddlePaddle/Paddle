@@ -155,7 +155,7 @@ def dropout(x, seed_tensor, p, is_test, mode, seed, fix_seed):
         train: out = input * mask
         inference: out = input * (1.0 - p)
     """
-    from paddle import scale as pd_scale
+    from paddle import assign
     from paddle.base import core
     from paddle.base.data_feeder import convert_dtype
 
@@ -179,9 +179,7 @@ def dropout(x, seed_tensor, p, is_test, mode, seed, fix_seed):
                     shape=x.shape, value=(1.0 - p), dtype=x.dtype
                 ), cast(mask, uint8_type)
         else:
-            return pd_scale(x, 1.0), cast(
-                mask, uint8_type
-            )  # assign(x), cast(mask, mask, core.VarDesc.VarType.UINT8)
+            return assign(x), cast(mask, uint8_type)
     else:
         if not is_test:
             return x * mask, cast(mask, uint8_type)

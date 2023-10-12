@@ -182,9 +182,10 @@
   output: Tensor(ln_mean), Tensor(ln_var), Tensor(ln_out), Tensor(qkv_out), Tensor(qkv_bias_out), Tensor(transpose_out_2), Tensor(qk_out), Tensor(qktv_out), Tensor(softmax_out), Tensor(attn_dropout_mask_out), Tensor(attn_dropout_out), Tensor(src_mask_out), Tensor(fmha_out), Tensor(out_linear_out), Tensor(dropout_mask_out), Tensor(ln_mean_2), Tensor(ln_var_2), Tensor(bias_dropout_residual_out), Tensor(cache_kv_out), Tensor(out)
   kernel:
     func: fused_attention
+    data_type : x
   infer_meta:
     func: FusedAttentionInferMeta
-  optional: cache_kv, ln_scale, ln_bias, qkv_bias, src_mask, out_linear_bias, ln_scale_2, ln_bias_2, ln_mean_2
+  optional: cache_kv, ln_scale, ln_bias, qkv_bias, src_mask, out_linear_bias, ln_scale_2, ln_bias_2, ln_mean_2, ln_var_2, bias_dropout_residual_out, cache_kv_out
   backward: fused_attention_grad
 
 - op: fused_feedforward
@@ -192,6 +193,7 @@
   output: Tensor(out), Tensor(dropout1_mask), Tensor(dropout2_mask), Tensor(ln1_mean), Tensor(ln1_variance), Tensor(ln2_mean), Tensor(ln2_variance), Tensor(linear1_out), Tensor(ln1_out), Tensor(dropout1_out), Tensor(dropout2_out)
   kernel:
     func: fused_feedforward
+    data_type : x
   infer_meta:
     func: FusedFeedForwardInferMeta
   optional: dropout1_seed, dropout2_seed, linear1_bias, linear2_bias, ln1_scale, ln1_bias, ln2_scale, ln2_bias, ln2_mean, ln2_variance, ln1_mean, ln1_variance, ln1_out

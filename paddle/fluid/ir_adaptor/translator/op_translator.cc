@@ -280,7 +280,7 @@ pir::OpInfo OpTranscriber::LoopkUpOpInfo(pir::IrContext* ctx,
     if (need_inputs_sig.size() != sig.inputs.size()) {
       continue;
     }
-    size_t i;
+    size_t i = 0;
     for (i = 0; i < need_inputs_sig.size(); ++i) {
       if (need_inputs_sig[i] == "") {
         continue;
@@ -816,7 +816,7 @@ struct AssignValueOpTranscriber : public OpTranscriber {
     std::tie(input_infos, attr_infos, output_infos, std::ignore, std::ignore) =
         op_info_concept->get_op_info_();
     std::unordered_map<std::string, OpAttributeInfo> attr_info_maps;
-    for (auto info : attr_infos) {
+    for (auto const& info : attr_infos) {
       attr_info_maps.insert({info.name, info});
     }
 

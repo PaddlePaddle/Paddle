@@ -211,7 +211,7 @@ inline phi::DenseTensor TransDataPlace(const phi::DenseTensor& tensor,
   // But the embarrassment is that this solution this solution makes training
   // slower.
   phi::DenseTensor out;
-  phi::DeviceContext* dev_ctx;
+  phi::DeviceContext* dev_ctx = nullptr;
   if (dst_place.GetType() != AllocationType::CPU) {
     dev_ctx = pool.Get(dst_place);
   } else {
@@ -652,18 +652,9 @@ ReshardApiInputToReplicatedKernelInput(
     if (ReshardIsNeeded(dist_tensor->dist_attr(), dist_attr)) {
       VLOG(6) << "ApiIn to Replicated KernelIn - "
               << ReshardDebugInfo(*dist_tensor, dist_attr);
-      if (dist_tensor->initialized()) {
-        auto* func = phi::distributed::ChooseProperReshardFunction(*dist_tensor,
-                                                                   dist_attr);
-        return func->Eval(dev_ctx, *dist_tensor, dist_attr);
-      } else {
-        // when no tensor data need to be reshard, we still need to set correct
-        // replicated dist attr and local dims for output
-        dist_tensor->unsafe_set_dist_attr(dist_attr);
-        auto dense_tensor_meta = dist_tensor->value().meta();
-        dense_tensor_meta.dims = dist_tensor->dims();
-        dist_tensor->unsafe_mutable_value()->set_meta(dense_tensor_meta);
-      }
+      auto* func = phi::distributed::ChooseProperReshardFunction(*dist_tensor,
+                                                                 dist_attr);
+      return func->Eval(dev_ctx, *dist_tensor, dist_attr);
     }
     return std::static_pointer_cast<phi::distributed::DistTensor>(tensor_in);
   }
