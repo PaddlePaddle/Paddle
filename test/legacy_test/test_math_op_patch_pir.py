@@ -21,6 +21,13 @@ paddle.enable_static()
 
 
 class TestMathOpPatchesPir(unittest.TestCase):
+    def test_some_dim(self):
+        with paddle.pir_utils.IrGuard():
+            x = paddle.static.data(name='x', shape=[3, 2, 1])
+            self.assertEqual(x.dim(), 3)
+            self.assertEqual(x.ndimension(), 3)
+            self.assertEqual(x.ndim, 3)
+
     def test_math_exists(self):
         with paddle.pir_utils.IrGuard():
             a = paddle.static.data(name='a', shape=[1], dtype='float32')

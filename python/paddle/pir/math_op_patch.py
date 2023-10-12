@@ -13,11 +13,22 @@
 # limitations under the License.
 
 
+import warnings
+
 from paddle.base.libpaddle import DataType
 
 from . import OpResult
 
 _already_patch_opresult = False
+
+_supported_int_dtype_ = [
+    DataType.BOOL,
+    DataType.UINT8,
+    DataType.INT8,
+    DataType.INT16,
+    DataType.INT32,
+    DataType.INT64,
+]
 
 
 def create_tensor_with_batchsize(ref_var, value, dtype):
@@ -54,14 +65,85 @@ def monkey_patch_opresult():
             raise ValueError("Cannot get data type from var")
         return dtype
 
-    _supported_int_dtype_ = [
-        DataType.BOOL,
-        DataType.UINT8,
-        DataType.INT8,
-        DataType.INT16,
-        DataType.INT32,
-        DataType.INT64,
-    ]
+    def place(self):
+        """
+        OpResult don't have 'place' interface in static graph mode
+        But this interface can greatly facilitate dy2static.
+        So we give a warnning here and return None.
+        """
+        warnings.warn(
+            "OpResult do not have 'place' interface for pir graph mode, try not to use it. None will be returned."
+        )
+
+    @property
+    def _ndim_(self):
+        """
+        Returns the dimension of current OpResult
+
+        Returns:
+            the dimension
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+
+                >>> paddle.enable_static()
+
+                >>> # create a static OpResult
+                >>> with paddle.pir_utils.IrGuard():
+                >>>     x = paddle.static.data(name='x', shape=[3, 2, 1])
+                >>>     # print the dimension of the OpResult
+                >>>     print(x.ndim)
+                3
+        """
+        return len(self.shape)
+
+    def ndimension(self):
+        """
+        Returns the dimension of current OpResult
+
+        Returns:
+            the dimension
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+
+                >>> paddle.enable_static()
+
+                >>> # create a static OpResult
+                >>> with paddle.pir_utils.IrGuard():
+                >>>     x = paddle.static.data(name='x', shape=[3, 2, 1])
+                >>>     # print the dimension of the OpResult
+                >>>     print(x.ndimension())
+                3
+        """
+        return len(self.shape)
+
+    def dim(self):
+        """
+        Returns the dimension of current OpResult
+
+        Returns:
+            the dimension
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+
+                >>> paddle.enable_static()
+
+                >>> # create a static OpResult
+                >>> with paddle.pir_utils.IrGuard():
+                >>>     x = paddle.static.data(name='x', shape=[3, 2, 1])
+                >>>     # print the dimension of the OpResult
+                >>>     print(x.dim())
+                3
+        """
+        return len(self.shape)
 
     def _scalar_div_(var, value):
         return paddle.scale(var, 1.0 / value, 0.0)
@@ -166,6 +248,10 @@ def monkey_patch_opresult():
     import paddle
 
     opresult_methods = [
+        ('place', place),
+        ('dim', dim),
+        ('ndimension', ndimension),
+        ('ndim', _ndim_),
         (
             '__div__',
             _binary_creator_(
