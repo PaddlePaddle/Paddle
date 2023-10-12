@@ -31,15 +31,13 @@ def _inplace_reshape_dygraph(x, shape):
         with paddle.base.dygraph.no_grad():
             tmp_out = _C_ops.reshape(x, shape)
             tmp_out._share_underline_tensor_to(x)
-            tmp_out.stop_gradient = False
-            return tmp_out
     else:
         _dygraph_tracer().trace_op(
             type="reshape2",
             inputs={'X': x},
             outputs={'Out': x, 'XShape': x_shape},
             attrs={'shape': shape},
-            stop_gradient=False,
+            stop_gradient=True,
         )
 
 
@@ -113,18 +111,17 @@ def parameters_to_vector(parameters, name=None):
         with paddle.base.dygraph.no_grad():
             tmp = _C_ops.concat(parameters, 0)
             tmp._share_underline_tensor_to(out)
-            tmp.stop_gradient = False
-            return tmp
     else:
         _dygraph_tracer().trace_op(
             type='concat',
             inputs={'X': parameters},
             outputs={'Out': [out]},
             attrs={'axis': 0},
-            stop_gradient=False,
+            stop_gradient=True,
         )
     for i, param in enumerate(parameters):
         _inplace_reshape_dygraph(param, origin_shapes[i])
+    out.stop_gradient = False
     return out
 
 
