@@ -75,7 +75,6 @@ static void clear_unused_out_var_in_backward(
     }
   }
   delete garbages;
-  return;
 }
 
 static std::vector<paddle::Tensor> filter_unused_input_var_in_backward(

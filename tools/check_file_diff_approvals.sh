@@ -551,6 +551,12 @@ if [[ ${SKIP_CI} ]];then
     check_approval 1 tianshuo78520a zhiqiu phlrain Ligoml
 fi
 
+SKIP_SOT_CI=`git log --pretty=oneline|grep -w "test=skip_sot" || true`
+if [[ ${SKIP_CI} ]];then
+    echo_line="You must have one RD (SigureMo (Recommend), Aurelius84 ) approval you add test=skip_sot method in commit skips CI"
+    check_approval 1 SigureMo Aurelius84
+fi
+
 # Get the list of PR authors with unresolved unit test issues
 pip install PyGithub
 # For getting PR related data
