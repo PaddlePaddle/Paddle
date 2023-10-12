@@ -934,9 +934,11 @@ set -ex
 
 function check_run_sot_ci() {
     set +x
-    # use "git commit -m 'message, test=sot_fix'" to force ci to run
-    RUN_CI=$(git log -1 --pretty=format:"%s"|grep -w "test=sot_fix" || true)
-    if [[ ${RUN_CI} ]];then
+    # use "git commit -m 'message, test=sot'" to force ci to run
+    COMMIT_RUN_CI=$(git log -1 --pretty=format:"%s"|grep -w "test=sot" || true)
+    # check pr title
+    TITLE_RUN_CI= $(curl -s https://github.com/PaddlePaddle/Paddle/pull/{GIT_PR_ID} | grep "<title>" | grep -i "sot" || true)
+    if [[ ${COMMIT_RUN_CI} || ${TITLE_RUN_CI} ]];then
         set -x
         return
     fi
@@ -953,13 +955,13 @@ function check_run_sot_ci() {
     )
 
     run_sot_ut="OFF"
-    for change_fie in $(git diff --name-only upstream/develop);
+    for change_file in $(git diff --name-only upstream/develop);
     do
         for sot_file in ${SOT_FILE_LIST[@]};
         do
-            if [[ ${change_fie} =~ ^"${sot_file}".* ]]; then
+            if [[ ${change_file} =~ ^"${sot_file}".* ]]; then
             echo "Detect change about SOT: "
-            echo "Changes related to the sot code were detected: " ${change_fie}
+            echo "Changes related to the sot code were detected: " ${change_file}
             run_sot_ut="ON"
             break
             fi

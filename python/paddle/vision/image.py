@@ -147,6 +147,7 @@ def image_load(path, backend=None):
             >>> np_img = image_load(path)
             >>> print(type(np_img))
             <class 'numpy.ndarray'>
+
     """
 
     if backend is None:
