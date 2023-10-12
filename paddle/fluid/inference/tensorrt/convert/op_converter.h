@@ -376,8 +376,8 @@ class OpConverter {
                                nvinfer1::ILayer* layer) {
 #if IS_TRT_VERSION_GE(8210)
     if (engine_->OpIsRunFloat(output_name) || engine_->OpIsRunFloat(op_type)) {
-      LOG(INFO) << op_type << "(output: " << output_name << ")"
-                << " is forced to run in FP32 precision.";
+      VLOG(3) << op_type << "(output: " << output_name << ")"
+              << " is forced to run in FP32 precision.";
       layer->resetPrecision();
       layer->setPrecision(nvinfer1::DataType::kFLOAT);
     }

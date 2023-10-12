@@ -151,20 +151,17 @@ class ElementwiseTensorOpConverter : public OpConverter {
                                *X,
                                *reshape_y_tensor,
                                nvinfer1::ElementWiseOperation::kLESS);
-      SupportFP32MixPrecision(output_name, op_desc.Type(), less_layer);
       auto* equal_layer =
           TRT_ENGINE_ADD_LAYER(engine_,
                                ElementWise,
                                *X,
                                *reshape_y_tensor,
                                nvinfer1::ElementWiseOperation::kEQUAL);
-      SupportFP32MixPrecision(output_name, op_desc.Type(), equal_layer);
       auto* layer = TRT_ENGINE_ADD_LAYER(engine_,
                                          ElementWise,
                                          *(less_layer->getOutput(0)),
                                          *(equal_layer->getOutput(0)),
                                          nvinfer1::ElementWiseOperation::kOR);
-      SupportFP32MixPrecision(output_name, op_desc.Type(), layer);
       RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
     } else if (op_type_ == "greater_equal") {
       auto* greater_layer =
@@ -173,20 +170,17 @@ class ElementwiseTensorOpConverter : public OpConverter {
                                *X,
                                *reshape_y_tensor,
                                nvinfer1::ElementWiseOperation::kGREATER);
-      SupportFP32MixPrecision(output_name, op_desc.Type(), greater_layer);
       auto* equal_layer =
           TRT_ENGINE_ADD_LAYER(engine_,
                                ElementWise,
                                *X,
                                *reshape_y_tensor,
                                nvinfer1::ElementWiseOperation::kEQUAL);
-      SupportFP32MixPrecision(output_name, op_desc.Type(), equal_layer);
       auto* layer = TRT_ENGINE_ADD_LAYER(engine_,
                                          ElementWise,
                                          *(greater_layer->getOutput(0)),
                                          *(equal_layer->getOutput(0)),
                                          nvinfer1::ElementWiseOperation::kOR);
-      SupportFP32MixPrecision(output_name, op_desc.Type(), layer);
       RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
     } else if (op_type_ == "mod") {
       auto* div_layer =

@@ -24,8 +24,9 @@ TEST(TensorRT, disable_tensorrt_half_ops) {
   config.EnableUseGpu(100, 0);
   config.EnableTensorRtEngine(
       1 << 30, 1, 5, AnalysisConfig::Precision::kHalf, false, false);
-  // The name of the tensor that needs to be marked
-  config.Exp_DisableTensorRtHalfOps({"conv2d"});
+
+  paddle_infer::experimental::InternalUtils::DisableTensorRtHalfOps(&config,
+                                                                    {"conv2d"});
 
   std::vector<std::vector<PaddleTensor>> inputs_all;
   auto predictor = CreatePaddlePredictor(config);

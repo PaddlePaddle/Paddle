@@ -853,12 +853,6 @@ struct PD_INFER_DECL AnalysisConfig {
   bool tensorrt_inspector_enabled() { return trt_use_inspector_; }
 
   ///
-  /// \brief Prevent ops running in Paddle-TRT with half precision.
-  /// NOTE: just experimental, not an official stable API, easy to be broken.
-  ///
-  void Exp_DisableTensorRtHalfOps(const std::unordered_set<std::string>& ops);
-
-  ///
   /// \brief A boolean state telling whether to use TensorRT explicit
   /// quantization.
   ///

@@ -410,7 +410,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
             continue;
           if ((std::count(output_tensor_name.begin(),
                           output_tensor_name.end(),
-                          x->Name()) > 0) ||
+                          x->Name()) > 0) &&
               !x->outputs.empty()) {
             VLOG(3) << "output " << x->Name() << " has been marked";
             output_names.insert(x->Name());

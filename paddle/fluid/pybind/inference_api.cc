@@ -931,9 +931,6 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::EnableTensorRtExplicitQuantization)
       .def("tensorrt_explicit_quantization_enabled",
            &AnalysisConfig::tensorrt_explicit_quantization_enabled)
-      .def("exp_disable_tensorrt_half_ops",
-           &AnalysisConfig::Exp_DisableTensorRtHalfOps,
-           py::arg("ops") = std::unordered_set<std::string>({}))
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
       .def("set_tensorrt_optimization_level",
            &AnalysisConfig::SetTensorRtOptimizationLevel)
@@ -1321,6 +1318,11 @@ void BindInternalUtils(py::module *m) {
       .def_static("set_transformer_maskid",
                   [](paddle_infer::Config &config, std::string tensor_name) {
                     InternalUtils::SetTransformerMaskid(&config, tensor_name);
+                  })
+      .def_static("disable_tensorrt_half_ops",
+                  [](paddle_infer::Config &config,
+                     const std::unordered_set<std::string> &ops) {
+                    InternalUtils::DisableTensorRtHalfOps(&config, ops);
                   });
 }
 }  // namespace

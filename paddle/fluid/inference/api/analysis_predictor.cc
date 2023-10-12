@@ -3223,6 +3223,13 @@ void InternalUtils::SetTransformerMaskid(
 #endif
 }
 
+void InternalUtils::DisableTensorRtHalfOps(
+    paddle_infer::Config *c, const std::unordered_set<std::string> &ops) {
+#ifdef PADDLE_WITH_CUDA
+  c->trt_ops_run_float_ = ops;
+#endif
+}
+
 void InternalUtils::SyncStream(paddle_infer::Predictor *p) {
 #ifdef PADDLE_WITH_CUDA
   auto *pred = dynamic_cast<paddle::AnalysisPredictor *>(p->predictor_.get());

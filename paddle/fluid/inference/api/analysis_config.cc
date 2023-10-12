@@ -794,11 +794,6 @@ void AnalysisConfig::EnableTensorRTMemoryOptim(bool engine_memory_sharing,
   trt_engine_memory_sharing_identifier_ = sharing_identifier;
 }
 
-void AnalysisConfig::Exp_DisableTensorRtHalfOps(
-    const std::unordered_set<std::string> &ops) {
-  trt_ops_run_float_ = ops;
-}
-
 void AnalysisConfig::EnableLowPrecisionIO(bool x) {
   PADDLE_ENFORCE_EQ(
       enable_gpu_mixed_ || !x,

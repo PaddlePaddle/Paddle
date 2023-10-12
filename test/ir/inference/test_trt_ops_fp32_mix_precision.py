@@ -21,26 +21,11 @@ from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
+from paddle.inference import InternalUtils
 
 
 class TestTrtFp32MixPrecision(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        compile_version = paddle_infer.get_trt_compile_version()
-        runtime_version = paddle_infer.get_trt_runtime_version()
-        if (
-            compile_version[0] * 1000
-            + compile_version[1] * 100
-            + compile_version[2] * 10
-            < 8210
-        ):
-            return False
-        if (
-            runtime_version[0] * 1000
-            + runtime_version[1] * 100
-            + runtime_version[2] * 10
-            < 8210
-        ):
-            return False
         return True
 
     def sample_program_configs(self):
@@ -179,12 +164,13 @@ class TestTrtFp32MixPrecision(TrtLayerAutoScanTest):
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         program_config.set_input_type(np.float16)
         config = self.create_inference_config()
-        config.exp_disable_tensorrt_half_ops(
+        InternalUtils.disable_tensorrt_half_ops(
+            config,
             {
                 "conv_output_data",
                 "elementwise_output_data",
                 "matmul_v2_output_data",
-            }
+            },
         )
         yield config, generate_trt_nodes_num(attrs, True), (1e-3, 1e-3)
 
