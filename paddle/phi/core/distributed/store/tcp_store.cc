@@ -421,7 +421,7 @@ std::vector<uint8_t> TCPStore::get(const std::string& key) {
 }
 
 void TCPStore::wait(const std::string& key) {
-  ReplyType reply;
+  ReplyType reply;  // NOLINT
   VLOG(7) << "TCPStore wait.";
   _client->send_command_for_key(Command::WAIT, _key_prefix + key);
   reply = _client->receive_value<ReplyType>();

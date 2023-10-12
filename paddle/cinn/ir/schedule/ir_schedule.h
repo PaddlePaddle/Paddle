@@ -381,6 +381,46 @@ class IRSchedule {
    */
   Expr Rfactor(const Expr& rf_loop, int rf_axis);
 
+  /**
+   * \brief Factorize the reduction block by the given loop. The block will be
+   * split into two blocks: reduction-factorized block and write-back block.
+   * @param rf_loop the reduce loop to be factorized.
+   * @param rf_axis The position where the new dimension is placed in the new rf
+   * tensor.
+   * @return The new created rf tensor.
+   *
+   * For example, input the block:
+   * \code
+   * for (i, 0, 10)      // serial loop
+   *   B_init[i] = 0
+   *   for (j, 0, 20)    // reduce loop
+   *      for (k, 0, 30) // reduce loop
+   *         B[i] = B[i] + A[i, j, k]
+   * \endcode
+   *
+   * If the rf loop is j and rf_axis is 0, the transformation is
+   * divided into 2 steps:
+   * 1. get the rf block where the reduce loop j is transformed to the
+   * serial loop with no accumalation and a new rf tensor is created.
+   * The axis j will be placed in the rf_axis of the new rf_tensor.
+   * The rf_block is as follows:
+   * \code
+   * for (i, 0, 10)   // serial loop
+   *   for (j, 0, 20) //  rf loop j is transformed to the serial loop
+   *     rf_B_init[j, i] = 0
+   *     for (k, 0, 30)  // reduce loop.
+   *       rf_B[j, i] = rf_B[j, i] + A[i, j, k]
+   * \endcode
+   * 2. do reduction of the rf loop j to get the final result block:
+   * \code
+   *   for (i, 0, 10)     // serial loop
+   *      B_init[i] = 0
+   *      for (j, 0, 20)  // rf reduction loop
+   *        B[i] = B[i] + rf_B[j, i]
+   * \endcode
+   */
+  Expr FactorizeReduction(const Expr& rf_loop, int rf_axis);
+
   /*!
    * \brief Annotate a block with a key-value pair to set as its attribute
    * \param block The block to be annotated
