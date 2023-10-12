@@ -98,7 +98,9 @@ class TestDropoutBiasFuseOp2(unittest.TestCase):
     @test_with_pir_api
     def test_static(self):
         for dtype in self.dtypes:
-            with base.program_guard(base.Program(), base.Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 input_x = paddle.static.data(
                     name="x", shape=[1, 4, 32, 32], dtype=dtype
                 )
@@ -109,7 +111,7 @@ class TestDropoutBiasFuseOp2(unittest.TestCase):
 
                 exe = base.Executor(base.CUDAPlace(0))
                 fetches = exe.run(
-                    base.default_main_program(),
+                    paddle.static.default_main_program(),
                     feed={"x": x_in_np},
                     fetch_list=[rst],
                 )
