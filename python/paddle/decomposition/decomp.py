@@ -225,6 +225,8 @@ def _decompose_subgraph(block, orig_vars, dst_vars, op_filter):
                     input_args = _prepare_python_api_arguments(op)
                     pir.set_insertion_point(op)
                 orig_outs = op.results()
+                if op.name() == "pd_op.stack":
+                    input_args += (op.attrs()["axis"],)
                 new_outs = _build_tensor_tuple(decom_rule(*input_args))
 
                 # Todo: To cover such case: some outputs are no longer needed after decomposition.

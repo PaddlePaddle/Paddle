@@ -65,6 +65,26 @@ def gelu(x, approximate):
         return out
 
 
+@register_decomp('pd_op.sqrt')
+def sqrt(x):
+    """
+    define composite rule of op sqrt
+    res = pow(x, 0.5)
+    """
+    # breakpoint()
+    is_amp = False
+    from paddle.base.data_feeder import convert_dtype
+
+    dtype = convert_dtype(x.dtype)
+    if dtype in ["float16", "uint16"]:
+        is_amp = True
+        x = cast(x, "float32")
+
+    y = full(x.shape if len(x.shape) == 0 else [1], 0.5, x.dtype)
+    res = pow_composite(x, y)
+    return res if not is_amp else cast(res, dtype)
+
+
 @register_decomp('pd_op.rsqrt')
 def rsqrt(x):
     """define composite rule of op rsqrt."""
@@ -281,7 +301,8 @@ def stack(x, axis):
     x_shape = x[0].shape
     if axis < 0:
         axis += len(x_shape) + 1
-    out_shape = x_shape[:axis] + (1,) + x_shape[axis:]
+    # breakpoint()
+    out_shape = x_shape[:axis] + [1] + x_shape[axis:]
     out = concat([reshape(item, out_shape) for item in x], axis)
     return out
 

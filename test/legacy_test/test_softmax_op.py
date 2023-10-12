@@ -164,6 +164,29 @@ class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
                 check_prim=True, check_new_ir=True, check_prim_pir=True
             )
 
+    def test_check_grad(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        if self.use_cudnn or self.dtype == np.float16:
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_grad_with_place(
+                    place,
+                    ["X"],
+                    "Out",
+                    max_relative_error=0.01,
+                    check_dygraph=(not self.use_mkldnn),
+                    check_new_ir=True,
+                )
+        else:
+            self.check_grad(
+                ["X"],
+                "Out",
+                max_relative_error=0.01,
+                check_dygraph=(not self.use_mkldnn),
+                check_prim=True,
+                check_new_ir=True,
+            )
+
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
@@ -206,6 +229,29 @@ class TestSoftmaxOp_ZeroDim2(TestSoftmaxOp):
         else:
             self.check_output(
                 check_prim=True, check_new_ir=True, check_prim_pir=True
+            )
+
+    def test_check_grad(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        if self.use_cudnn or self.dtype == np.float16:
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_grad_with_place(
+                    place,
+                    ["X"],
+                    "Out",
+                    max_relative_error=0.01,
+                    check_dygraph=(not self.use_mkldnn),
+                    check_new_ir=True,
+                )
+        else:
+            self.check_grad(
+                ["X"],
+                "Out",
+                max_relative_error=0.01,
+                check_dygraph=(not self.use_mkldnn),
+                check_prim=True,
+                check_new_ir=True,
             )
 
 

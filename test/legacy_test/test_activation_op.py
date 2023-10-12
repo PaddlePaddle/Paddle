@@ -130,7 +130,13 @@ class TestExpFp32_Prim(OpTest):
         self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_new_ir=True,
+            check_prim_pir=True,
+        )
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -1450,7 +1456,7 @@ class TestSoftshrinkAPI(unittest.TestCase):
 class TestSqrt(TestActivation, TestParameter):
     def setUp(self):
         self.op_type = "sqrt"
-        self.prim_op_type = "prim"
+        self.prim_op_type = "comp"
         self.python_api = paddle.sqrt
         self.public_python_api = paddle.sqrt
 
@@ -1472,16 +1478,24 @@ class TestSqrt(TestActivation, TestParameter):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_new_ir=True,
+            check_prim_pir=True,
+        )
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(
+            check_prim=True, check_new_ir=True, check_prim_pir=True
+        )
 
 
 class TestSqrtPrimFp32(TestActivation):
     def setUp(self):
         self.op_type = "sqrt"
-        self.prim_op_type = "prim"
+        self.prim_op_type = "comp"
         self.python_api = paddle.sqrt
         self.public_python_api = paddle.sqrt
         self.init_dtype()
@@ -1497,10 +1511,16 @@ class TestSqrtPrimFp32(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_new_ir=True,
+            check_prim_pir=True,
+        )
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_new_ir=True, check_prim_pir=True)
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -1521,7 +1541,7 @@ class TestSqrt_ZeroDim(TestSqrt):
 class TestSqrtBF16(OpTest):
     def setUp(self):
         self.op_type = "sqrt"
-        self.prim_op_type = "prim"
+        self.prim_op_type = "comp"
         self.python_api = paddle.sqrt
         self.public_python_api = paddle.sqrt
         self.init_dtype()
@@ -1548,12 +1568,19 @@ class TestSqrtBF16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_new_ir=True)
+        self.check_output_with_place(
+            place, check_new_ir=True, check_prim_pir=True
+        )
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X'], 'Out', check_prim=True, check_new_ir=True
+            place,
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_new_ir=True,
+            check_prim_pir=True,
         )
 
 
@@ -1582,12 +1609,20 @@ class TestSqrtComp(TestActivation, TestParameter):
         if self.dtype == np.float16:
             return
         self.check_grad(
-            ['X'], 'Out', check_dygraph=True, check_prim=True, check_new_ir=True
+            ['X'],
+            'Out',
+            check_dygraph=True,
+            check_prim=True,
+            check_new_ir=True,
+            check_prim_pir=True,
         )
 
     def test_check_output(self):
         self.check_output(
-            check_dygraph=True, check_prim=True, check_new_ir=True
+            check_dygraph=True,
+            check_prim=True,
+            check_new_ir=True,
+            check_prim_pir=True,
         )
 
 
@@ -1614,12 +1649,20 @@ class TestSqrtCompFp32(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(
-            ['X'], 'Out', check_dygraph=True, check_prim=True, check_new_ir=True
+            ['X'],
+            'Out',
+            check_dygraph=True,
+            check_prim=True,
+            check_new_ir=True,
+            check_prim_pir=True,
         )
 
     def test_check_output(self):
         self.check_output(
-            check_dygraph=True, check_prim=True, check_new_ir=True
+            check_dygraph=True,
+            check_prim=True,
+            check_new_ir=True,
+            check_prim_pir=True,
         )
 
     def init_dtype(self):
@@ -3277,7 +3320,13 @@ class TestLog(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_new_ir=True,
+            check_prim_pir=True,
+        )
 
 
 class Test_Log_Op_Fp16(unittest.TestCase):
@@ -4569,10 +4618,14 @@ def create_test_act_fp16_class(
 
 
 create_test_act_fp16_class(TestActivation)
-create_test_act_fp16_class(TestExpFp32_Prim, check_prim=True, enable_cinn=True)
+create_test_act_fp16_class(
+    TestExpFp32_Prim, check_prim=True, enable_cinn=True, check_prim_pir=True
+)
 create_test_act_fp16_class(TestExpm1)
 create_test_act_fp16_class(TestSigmoid, check_prim=True, enable_cinn=True)
-create_test_act_fp16_class(TestSilu, check_prim=True, enable_cinn=True)
+create_test_act_fp16_class(
+    TestSilu, check_prim=True, enable_cinn=True, check_prim_pir=True
+)
 create_test_act_fp16_class(TestLogSigmoid)
 create_test_act_fp16_class(
     TestTanh, check_prim=True, check_prim_pir=True, enable_cinn=True
@@ -4581,10 +4634,18 @@ create_test_act_fp16_class(TestTanhshrink)
 create_test_act_fp16_class(TestHardShrink)
 create_test_act_fp16_class(TestSoftshrink)
 create_test_act_fp16_class(
-    TestSqrt, check_prim=True, enable_cinn=True, check_new_ir=True
+    TestSqrt,
+    check_prim=True,
+    enable_cinn=True,
+    check_new_ir=True,
+    check_prim_pir=True,
 )
 create_test_act_fp16_class(
-    TestSqrtComp, check_prim=True, enable_cinn=True, check_new_ir=True
+    TestSqrtComp,
+    check_prim=True,
+    enable_cinn=True,
+    check_new_ir=True,
+    check_prim_pir=True,
 )
 create_test_act_fp16_class(
     TestAbs, check_prim=True, enable_cinn=True, check_new_ir=True
@@ -4723,17 +4784,23 @@ def create_test_act_bf16_class(
 
 
 create_test_act_bf16_class(TestActivation)
-create_test_act_bf16_class(TestExpFp32_Prim, check_prim=True)
+create_test_act_bf16_class(
+    TestExpFp32_Prim, check_prim=True, check_prim_pir=True
+)
 create_test_act_bf16_class(TestExpm1)
 create_test_act_bf16_class(TestSigmoid, check_prim=True)
-create_test_act_bf16_class(TestSilu, check_prim=True)
+create_test_act_bf16_class(TestSilu, check_prim=True, check_prim_pir=True)
 create_test_act_bf16_class(TestLogSigmoid)
-create_test_act_bf16_class(TestTanh, check_prim=True)
+create_test_act_bf16_class(TestTanh, check_prim=True, check_prim_pir=True)
 create_test_act_bf16_class(TestTanhshrink)
 create_test_act_bf16_class(TestHardShrink)
 create_test_act_bf16_class(TestSoftshrink)
-create_test_act_bf16_class(TestSqrt, check_prim=True, check_new_ir=True)
-create_test_act_bf16_class(TestSqrtComp, check_prim=True, check_new_ir=True)
+create_test_act_bf16_class(
+    TestSqrt, check_prim=True, check_new_ir=True, check_prim_pir=True
+)
+create_test_act_bf16_class(
+    TestSqrtComp, check_prim=True, check_new_ir=True, check_prim_pir=True
+)
 create_test_act_bf16_class(TestAbs, check_prim=True, check_new_ir=True)
 create_test_act_bf16_class(TestCeil, grad_check=False, check_new_ir=True)
 create_test_act_bf16_class(TestFloor, grad_check=False, check_prim=True)

@@ -149,7 +149,7 @@ class TestFullLikeOp1(OpTest):
 
     def test_check_output(self):
         self.check_output(
-            check_prim=True, check_new_ir=True, check_prim_pir=False
+            check_prim=True, check_new_ir=True, check_prim_pir=True
         )
 
     def if_enable_cinn(self):

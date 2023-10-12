@@ -287,8 +287,9 @@ class TestMaxOp(OpTest):
             ['X'],
             'Out',
             check_prim=True,
-            only_check_prim=True,
             check_new_ir=True,
+            # only_check_prim=True,
+            # check_prim_pir=True,
         )
 
 
