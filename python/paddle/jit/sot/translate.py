@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     R = TypeVar("R")
 
 # Temporarily set the default log level to 2 to get more information in CI log.
-os.environ["LOG_LEVEL"] = os.getenv("LOG_LEVEL", "2")
+os.environ["SOT_LOG_LEVEL"] = os.getenv("SOT_LOG_LEVEL", "2")
 
 
 def symbolic_translate(fn: Callable[P, R], **kwargs) -> Callable[P, R]:
