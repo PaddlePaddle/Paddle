@@ -47,11 +47,12 @@ if(WIN32)
   list(REMOVE_ITEM TEST_TRT_CONVERTER
        "test_trt_convert_quantize_dequantize_linear")
   list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_explicit_quantization")
-  if(WITH_MKLDNN)
-    list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_explicit_quantization_resnet")
-    list(REMOVE_ITEM TEST_TRT_IR_PASSES
-         "test_trt_explicit_quantization_mobilenet")
-  endif()
+  # if(WITH_MKLDNN)
+  message(STATUS "TEST_TRT_IR_PASSES = ${TEST_TRT_IR_PASSES}.")
+  list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_explicit_quantization_resnet")
+  list(REMOVE_ITEM TEST_TRT_IR_PASSES
+       "test_trt_explicit_quantization_mobilenet")
+  # endif()
 endif()
 
 # Only for cpu(mkl + openblas)
