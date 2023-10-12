@@ -48,7 +48,7 @@ attr_types_map = {
     'int64_t[]': 'const std::vector<int64_t>&',
     'float[]': 'const std::vector<float>&',
     'double[]': 'const std::vector<double>&',
-    'str[]': 'const std::vector<<std::string>&',
+    'str[]': 'const std::vector<std::string>&',
 }
 
 opmaker_attr_types_map = {
@@ -86,8 +86,8 @@ output_type_map = {
 }
 
 optional_output_type_map = {
-    'Tensor': 'const paddle::optional<Tensor>&',
-    'Tensor[]': 'const paddle::optional<std::vector<Tensor>>&',
+    'Tensor': 'const paddle::optional<Tensor>',
+    'Tensor[]': 'const paddle::optional<std::vector<Tensor>>',
 }
 
 # ------------------------------ phi attr ------------------------------
