@@ -63,6 +63,8 @@ void ScatterKernel(const Context &ctx,
                                      new_index.dims()[1]));
     auto index_dim = new_index.dims()[0];
     new_index.Resize(make_ddim({index_dim}));
+  } else if (index.dims().size() == 0) {
+    new_index.Resize(make_ddim({1}));
   } else {
     PADDLE_ENFORCE_EQ(
         new_index.dims().size() == 1,

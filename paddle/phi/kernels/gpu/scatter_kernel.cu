@@ -265,9 +265,9 @@ void ScatterKernel(const Context& ctx,
 
   DenseTensor new_index = index;
 
-  if (new_index.dims().size() == 2) {
+  if (index.dims().size() == 2) {
     PADDLE_ENFORCE_EQ(
-        new_index.dims()[1],
+        index.dims()[1],
         1,
         phi::errors::InvalidArgument("index.dims()[1] should be 1 when "
                                      "index.dims().size() =2 in scatter_op."
@@ -275,13 +275,15 @@ void ScatterKernel(const Context& ctx,
                                      index.dims()[1]));
     auto index_dim = new_index.dims()[0];
     new_index.Resize(make_ddim({index_dim}));
+  } else if (index.dims().size() == 0) {
+    new_index.Resize(make_ddim({1}));
   } else {
     PADDLE_ENFORCE_EQ(
-        new_index.dims().size() == 1,
+        index.dims().size() == 1,
         true,
         phi::errors::InvalidArgument("index.dims().size() should be 1 in "
                                      "scatter_op. But received value is [%d]",
-                                     new_index.dims().size()));
+                                     index.dims().size()));
   }
 
   auto src_dims = updates.dims();
