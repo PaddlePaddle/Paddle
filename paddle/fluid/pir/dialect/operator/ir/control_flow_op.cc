@@ -117,13 +117,14 @@ void IfOp::Verify() {
            "verification: op->dyn_cast<padding::dialect:IfOp>().Verify()";
     return;
   }
+
   PADDLE_ENFORCE_EQ(
-      (*this)->region(0)->size(),
-      (*this)->region(1)->size(),
+      (*this)->region(0).size(),
+      (*this)->region(1).size(),
       phi::errors::PreconditionNotMet("The size %d of true_region must be "
                                       "equal to the size %d of false_region.",
-                                      (*this)->region(0)->size(),
-                                      (*this)->region(1)->size()));
+                                      (*this)->region(0).size(),
+                                      (*this)->region(1).size()));
   if ((*this)->num_results() != 0) {
     auto *true_last_op = (*this)->region(0).front()->back();
     auto *false_last_op = (*this)->region(1).front()->back();
