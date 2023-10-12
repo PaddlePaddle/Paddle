@@ -171,7 +171,7 @@ def log(x, name=None):
             [[0.69314718, 1.09861231, 1.38629436],
              [1.94591010, 2.07944155, 2.19722462]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.log(x)
     else:
         check_variable_and_dtype(
@@ -270,7 +270,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     elif in_pir_mode():
         if act is None:
             return _C_ops.scale(x, scale, float(bias), bias_after_scale)
-        raise ValueError("act is not implement in new ir of scale api.")
+        raise ValueError("act is not implement in pir of scale api.")
     else:
         check_variable_and_dtype(
             x,
@@ -503,7 +503,7 @@ def pow(x, y, name=None):
     if in_dynamic_or_pir_mode():
         if isinstance(y, (int, float)):
             return _C_ops.pow(x, y)
-        elif isinstance(y, (paddle.Tensor, Variable, paddle.ir.OpResult)):
+        elif isinstance(y, (paddle.Tensor, Variable, paddle.pir.OpResult)):
             return _C_ops.elementwise_pow(x, y)
         else:
             raise TypeError(
@@ -643,16 +643,11 @@ def add(x, y, name=None):
     $X$ the tensor of any dimension.
     $Y$ the tensor whose dimensions must be less than or equal to the dimensions of $X$.
 
-    There are two cases for this operator:
+    This operator is used in the following cases:
 
     1. The shape of $Y$ is the same with $X$.
     2. The shape of $Y$ is a continuous subsequence of $X$.
 
-    For case 2:
-
-    1. Broadcast $Y$ to match the shape of $X$, where axis is the start dimension index for broadcasting $Y$ onto $X$.
-    2. If $axis$ is -1 (default), $axis$=rank($X$)-rank($Y$).
-    3. The trailing dimensions of size 1 for $Y$ will be ignored for the consideration of subsequence, such as shape($Y$) = (2, 1) => (2).
 
         For example:
 
@@ -887,8 +882,6 @@ def divide(x, y, name=None):
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.divide(x, y)
-    elif in_pir_mode():
-        return paddle._ir_ops.divide(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_div', **locals()))
 
@@ -1233,7 +1226,7 @@ def maximum(x, y, name=None):
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [5.  , 3.  , inf.])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.maximum(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_max', **locals()))
@@ -1526,7 +1519,8 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         return _C_ops.sum(x, axis, dtype, keepdim)
     else:
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
-        attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all}
+
+        attrs = {'dim': axis, 'keep_dim': keepdim}
 
         if dtype_flag:
             attrs.update({'in_dtype': x.dtype, 'out_dtype': dtype})
@@ -3515,7 +3509,7 @@ def clip(x, min=None, max=None, name=None):
         min_ = float(np.finfo(np.float32).min)
         max_ = float(np.finfo(np.float32).max)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if isinstance(min, Variable):
             min = min.item(0)
         if isinstance(max, Variable):
@@ -4752,7 +4746,7 @@ def all(x, axis=None, keepdim=False, name=None):
              [True ]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.all(x, axis, keepdim)
     else:
         reduce_all, axis = _get_reduce_axis(axis, x)
@@ -5769,9 +5763,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
     """
     if n < 1:
         raise ValueError(
-            "Diff expects input to be at least one-dimensional but got {}".format(
-                n
-            )
+            f"Diff expects input to be at least one-dimensional but got {n}"
         )
 
     def _diff_handler(x, n=1, axis=-1, prepend=None, append=None, name=None):
@@ -6223,17 +6215,13 @@ def take(x, index, mode='raise', name=None):
     """
     if mode not in ['raise', 'wrap', 'clip']:
         raise ValueError(
-            "'mode' in 'take' should be 'raise', 'wrap', 'clip', but received {}.".format(
-                mode
-            )
+            f"'mode' in 'take' should be 'raise', 'wrap', 'clip', but received {mode}."
         )
 
     if in_dynamic_mode():
         if not isinstance(index, (paddle.Tensor, Variable)):
             raise TypeError(
-                "The type of 'index' must be Tensor, but got {}".format(
-                    type(index)
-                )
+                f"The type of 'index' must be Tensor, but got {type(index)}"
             )
         if index.dtype not in [paddle.int32, paddle.int64]:
             raise TypeError(

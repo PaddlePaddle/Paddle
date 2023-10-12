@@ -56,6 +56,7 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
@@ -216,7 +217,7 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
                                phi::DenseTensor *t,
                                const platform::Place &place) {
   framework::DDim ddim = phi::make_ddim(pt.shape);
-  void *input_ptr;
+  void *input_ptr = nullptr;
   if (pt.dtype == PaddleDType::INT64) {
     input_ptr = t->mutable_data<int64_t>(ddim, place);
   } else if (pt.dtype == PaddleDType::FLOAT32) {
@@ -1467,7 +1468,7 @@ void AnalysisPredictor::PrepareArgument() {
         config_.NNAdapter().nnadapter_subgraph_partition_config_path);
     std::vector<std::string> buffer_keys;
     std::vector<std::vector<char>> buffer_vals;
-    for (auto it : config_.NNAdapter().nnadapter_model_cache_buffers) {
+    for (auto const &it : config_.NNAdapter().nnadapter_model_cache_buffers) {
       buffer_keys.emplace_back(it.first);
       buffer_vals.emplace_back(it.second);
     }
@@ -1883,7 +1884,7 @@ std::map<std::string, std::vector<int64_t>>
 AnalysisPredictor::GetInputTensorShape() {
   std::map<std::string, std::vector<int64_t>> input_shapes;
   std::vector<std::string> names = GetInputNames();
-  for (std::string name : names) {
+  for (std::string const &name : names) {
     auto *var = inference_program_->Block(0).FindVar(name);
     PADDLE_ENFORCE_NOT_NULL(
         var,
@@ -1942,7 +1943,7 @@ std::map<std::string, std::vector<int64_t>>
 AnalysisPredictor::GetOutputTensorShape() {
   std::map<std::string, std::vector<int64_t>> output_shapes;
   std::vector<std::string> names = GetOutputNames();
-  for (std::string name : names) {
+  for (std::string const &name : names) {
     auto *var = inference_program_->Block(0).FindVar(name);
     PADDLE_ENFORCE_NOT_NULL(var,
                             platform::errors::PreconditionNotMet(
@@ -1987,7 +1988,7 @@ AnalysisPredictor::GetOutputTypes() {
 
 std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
     const std::string &name) {
-  framework::Scope *scope;
+  framework::Scope *scope = nullptr;
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   if (config_.dist_config().use_dist_model()) {
     scope = scope_.get();
@@ -2006,7 +2007,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
       static_cast<void *>(scope), this->GetDeviceContexts()));
   res->input_or_output_ = true;
   res->SetName(name);
-  if (platform::is_cpu_place(place_)) {
+  if (platform::is_cpu_place(place_)) {  // NOLINT
     res->SetPlace(PaddlePlace::kCPU);
   } else if (platform::is_ipu_place(place_)) {
     // Currently, IPUPlace's tensor copy between cpu and ipu has been set in
@@ -2038,7 +2039,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
 
 std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
     const std::string &name) {
-  framework::Scope *scope;
+  framework::Scope *scope;  // NOLINT
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   if (config_.dist_config().use_dist_model()) {
     scope = scope_.get();
@@ -2057,7 +2058,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
       static_cast<void *>(scope), this->GetDeviceContexts()));
   res->input_or_output_ = false;
   res->SetName(name);
-  if (platform::is_cpu_place(place_)) {
+  if (platform::is_cpu_place(place_)) {  // NOLINT
     res->SetPlace(PaddlePlace::kCPU);
   } else if (platform::is_ipu_place(place_)) {
     // Currently, IPUPlace's tensor copy between cpu and ipu has been set in
@@ -2219,6 +2220,8 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
           UpdatePrivateDeviceContext(gpu_context, gpu_resource, place_);
           return std::unique_ptr<phi::DeviceContext>(gpu_context);
         }));
+    auto &pool = paddle::experimental::DeviceContextPool::Instance();
+    pool.SyncDeviceContext(place_);
   }
 
   return ZeroCopyRun();
@@ -2360,7 +2363,7 @@ void AnalysisPredictor::StatisticShapeRangeInfo() {
          decltype(min_data) max_data,
          decltype(min_data) opt_data,
          decltype(shape_info_) shape_data) {
-        for (auto it : shape_data) {
+        for (auto const &it : shape_data) {
           auto name = it.first;
           auto shapes = it.second;
 
@@ -2951,6 +2954,7 @@ USE_TRT_CONVERTER(cumsum)
 USE_TRT_CONVERTER(assign)
 USE_TRT_CONVERTER(unbind)
 USE_TRT_CONVERTER(flip)
+USE_TRT_CONVERTER(share_data)
 #if IS_TRT_VERSION_GE(8522)
 USE_TRT_CONVERTER(flash_multihead_matmul)
 USE_TRT_CONVERTER(cross_multihead_matmul)

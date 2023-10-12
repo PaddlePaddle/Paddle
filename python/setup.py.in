@@ -429,6 +429,7 @@ packages=['paddle',
           'paddle.framework',
           'paddle.jit',
           'paddle.jit.dy2static',
+          'paddle.jit.newir_dy2static',
           'paddle.inference',
           'paddle.inference.contrib',
           'paddle.inference.contrib.utils',
@@ -509,7 +510,7 @@ packages=['paddle',
           'paddle.geometric',
           'paddle.geometric.message_passing',
           'paddle.geometric.sampling',
-          'paddle.ir',
+          'paddle.pir',
           'paddle.decomposition',
           ]
 
@@ -728,7 +729,7 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
                 # change rpath of phi.ext for loading 3rd party libb
                 commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
             if('${WITH_SHARED_IR}' == 'ON'):
-                # change rpath of ir.ext for loading 3rd party libb
+                # change rpath of pir.ext for loading 3rd party libb
                 commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
         else:
             commands = ["patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so']
@@ -736,7 +737,7 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
                 # change rpath of phi.ext for loading 3rd party lib
                 commands.append("patchelf --set-rpath '$ORIGIN' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
             if('${WITH_SHARED_IR}' == 'ON'):
-                # change rpath of ir.ext for loading 3rd party lib
+                # change rpath of pir.ext for loading 3rd party lib
                 commands.append("patchelf --set-rpath '$ORIGIN' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
         # The sw_64 not suppot patchelf, so we just disable that.
         if platform.machine() != 'sw_64' and platform.machine() != 'mips64':

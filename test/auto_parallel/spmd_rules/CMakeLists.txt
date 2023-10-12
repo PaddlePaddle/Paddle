@@ -17,6 +17,7 @@ if(WITH_DISTRIBUTE)
   py_test_modules(test_reshape_rule MODULES test_reshape_rule)
   py_test_modules(test_default_data_parallel_rule MODULES
                   test_default_data_parallel_rule)
+  py_test_modules(test_layer_norm_rule MODULES test_layer_norm_rule)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()
