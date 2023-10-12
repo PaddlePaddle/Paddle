@@ -27,14 +27,14 @@ template <>
   {%- set attr_names = [] -%}
   {%- for i in attrs -%} {%- do attr_names.append(i.name) -%} {%-endfor-%}
   {% filter indent(2, True) %}
-VLOG(4) << "Eager Prim API {name}_ad_func call";
+VLOG(4) << "Eager Prim API {{name}}_ad_func call";
 return ::{{name}}_ad_func({{common.args(input_names, attr_names)}});
   {% endfilter %}
 {% endmacro %}
 
 
 {% for api in apis %}
-  {%- if api.is_prim and api.name in backend_white_list -%}
+  {%- if api.is_prim and api.name not in backend_black_list and api.name[-1] !=  '_' -%}
 {{sig(api.name, api.inputs, api.attrs, api.outputs | trip_intermediate)}} {
 {{body(api.name, api.inputs, api.attrs, api.outputs | trip_intermediate)}} 
 }

@@ -68,9 +68,9 @@ Block *ModuleOp::block() {
 ModuleOp ModuleOp::Create(IrContext *context, Program *pointer) {
   pir::OpInfo info = context->GetRegisteredOpInfo(name());
   OperationArgument argument(info);
-  argument.num_regions = 1;
+  argument.AddRegion(nullptr);
   argument.AddAttribute("program", PointerAttribute::get(context, pointer));
-  Operation *op = Operation::Create(argument);
+  Operation *op = Operation::Create(std::move(argument));
   op->region(0).emplace_back();
   return ModuleOp(op);
 }
@@ -159,20 +159,42 @@ void SetParameterOp::Verify() const {
   IR_ENFORCE(num_results() == 0u, "The size of outputs must be equal to 0.");
 }
 
+const char *ShadowOutputOp::attributes_name[attributes_num] = {  // NOLINT
+    "output_name"};
+
+void ShadowOutputOp::Build(Builder &builder,             // NOLINT
+                           OperationArgument &argument,  // NOLINT
+                           Value parameter,
+                           const std::string &name) {
+  argument.AddInput(parameter);
+  argument.AddAttribute(attributes_name[0],
+                        pir::StrAttribute::get(builder.ir_context(), name));
+}
+void ShadowOutputOp::Verify() const {
+  VLOG(4) << "Verifying inputs, outputs and attributes for: ShadowOutputOp.";
+  // Verify inputs:
+  IR_ENFORCE(num_operands() == 1, "The size of outputs must be equal to 1.");
+
+  // Verify attributes:
+  auto &attributes = this->attributes();
+  auto iter = attributes.find("output_name");
+  IR_ENFORCE(iter != attributes.end() && iter->second.isa<StrAttribute>(),
+             "Type of attribute: output_name is not right.");
+
+  // Verify outputs:
+  IR_ENFORCE(num_results() == 0u, "The size of outputs must be equal to 0.");
+}
+
 void CombineOp::Build(Builder &builder,
                       OperationArgument &argument,
                       const std::vector<Value> &inputs) {
   argument.inputs = inputs;
-  if (inputs.size() == 0) {
-    argument.output_types.emplace_back(pir::Type());
-  } else {
-    std::vector<pir::Type> inputs_type(inputs.size());
-    for (size_t idx = 0; idx < inputs.size(); ++idx) {
-      inputs_type[idx] = inputs[idx].type();
-    }
-    argument.output_types.emplace_back(
-        pir::VectorType::get(builder.ir_context(), inputs_type));
+  std::vector<pir::Type> inputs_type(inputs.size());
+  for (size_t idx = 0; idx < inputs.size(); ++idx) {
+    inputs_type[idx] = inputs[idx].type();
   }
+  argument.output_types.emplace_back(
+      pir::VectorType::get(builder.ir_context(), inputs_type));
   PassStopGradientsDefaultly(argument);
 }
 
@@ -358,16 +380,7 @@ void SplitOp::Verify() const {
              input_type.size());
 
   // for all i in outputs.size(): outputs[i].type == inputs[0][i].type
-  for (size_t i = 0; i < output_num; ++i) {
-    auto type = (*this)->result(i).type();
-    IR_ENFORCE(input_type[i] == type,
-               "The type %s of inputs[0][%d] must be "
-               "equal to type %s of outputs[%d].",
-               input_type[i],
-               i,
-               type,
-               i);
-  }
+  // TODO(@xiongkun) consult zhangbo to check what to do with null type.
 }
 
 const char *ConstantOp::attributes_name[attributes_num] = {"value"};  // NOLINT
@@ -393,6 +406,7 @@ Attribute ConstantOp::value() const { return attributes().at("value"); }
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ModuleOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::GetParameterOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::SetParameterOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::ShadowOutputOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::CombineOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::SliceOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::SplitOp)

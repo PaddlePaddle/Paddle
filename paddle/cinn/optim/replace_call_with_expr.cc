@@ -14,9 +14,9 @@
 
 #include "paddle/cinn/optim/replace_call_with_expr.h"
 
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 
 namespace cinn {
@@ -36,7 +36,7 @@ struct ReplaceCallWithExprModifier : public ir::IRMutator<> {
     VLOG(3) << "Processing Call node " << *op;
     if (statement_ != node->name) return;
 
-    Expr expr_candidate = IRCopy(candidate_);
+    Expr expr_candidate = ir::ir_utils::IRCopy(candidate_);
     VLOG(3) << "Original candidate expr: " << candidate_;
     VLOG(3) << "Copied candidate expr: " << expr_candidate;
 
@@ -62,7 +62,7 @@ void ReplaceIslCallWithExpr(Expr *e,
                             const Expr &candidate,
                             const std::map<std::string, Expr> &axis_map) {
   VLOG(3) << "ReplaceCallWithExpr, original expression: " << candidate;
-  Expr copied = IRCopy(candidate);
+  Expr copied = ir::ir_utils::IRCopy(candidate);
   // update the axis in the copied expression.
 
   // we treat the Store node as the normal statement, the others like Call node

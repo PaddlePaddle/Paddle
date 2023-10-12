@@ -43,6 +43,8 @@ class IR_API Value {
 
   bool operator!() const;
 
+  bool operator<(const Value &other) const;
+
   explicit operator bool() const;
 
   template <typename U>

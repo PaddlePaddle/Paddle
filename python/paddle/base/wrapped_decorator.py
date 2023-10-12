@@ -16,7 +16,7 @@ import contextlib
 
 import decorator
 
-__all__ = ['wrap_decorator', 'signature_safe_contextmanager']
+__all__ = []
 
 
 def wrap_decorator(decorator_func):

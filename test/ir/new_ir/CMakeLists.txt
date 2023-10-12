@@ -6,7 +6,7 @@ string(REPLACE ".py" "" TEST_INTERP_CASES "${TEST_INTERP_CASES}")
 
 set(TEST_IR_SYSTEM_CASES
     test_build_model test_pd_inplace_pass test_symbol_overload
-    test_new_ir_to_static test_stop_gradient)
+    test_new_ir_to_static test_stop_gradient test_override_operator)
 list(REMOVE_ITEM TEST_INTERP_CASES ${TEST_IR_SYSTEM_CASES})
 
 foreach(target ${TEST_INTERP_CASES})

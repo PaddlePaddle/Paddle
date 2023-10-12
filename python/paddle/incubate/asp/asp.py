@@ -50,6 +50,7 @@ def set_excluded_layers(param_names, main_program=None):
         1. Usage of Dynamic Graph
 
             .. code-block:: python
+                :name: dynamic_graph
 
                 >>> import paddle
 
@@ -78,6 +79,7 @@ def set_excluded_layers(param_names, main_program=None):
         2. Usage of Static Graph
 
             .. code-block:: python
+                :name: static_graph
 
                 >>> import paddle
 
@@ -137,6 +139,7 @@ def reset_excluded_layers(main_program=None):
         1. Usage of Dynamic Graph
 
             .. code-block:: python
+                :name: dynamic_graph
 
                 >>> import paddle
 
@@ -168,6 +171,7 @@ def reset_excluded_layers(main_program=None):
         2. Usage of Static Graph
 
             .. code-block:: python
+                :name: static_graph
 
                 >>> import paddle
 
@@ -228,6 +232,7 @@ def decorate(optimizer):
         1. Usage of Dynamic Graph
 
             .. code-block:: python
+                :name: dynamic_graph
 
                 >>> import paddle
 
@@ -260,6 +265,7 @@ def decorate(optimizer):
         2. Usage of Static Graph
 
             .. code-block:: python
+                :name: static_graph
 
                 >>> import paddle
 
@@ -325,6 +331,7 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
         1. Usage of Dynamic Graph
 
             .. code-block:: python
+                :name: dynamic_graph
 
                 >>> import paddle
                 >>> import numpy as np
@@ -376,6 +383,7 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
         2. Usage of Static Graph
 
             .. code-block:: python
+                :name: static_graph
 
                 >>> import paddle
                 >>> import numpy as np
@@ -1002,9 +1010,9 @@ class OptimizerWithSparsityGuarantee:
         )
         for param_name, var in asp_info.mask_vars.items():
             param_mask_name = ASPHelper._get_mask_name(param_name)
-            assert param_mask_name in state_dict, "The {} is not found.".format(
-                param_mask_name
-            )
+            assert (
+                param_mask_name in state_dict
+            ), f"The {param_mask_name} is not found."
             var.set_value(state_dict[param_mask_name])
             asp_info.update_masks(param_name, var.numpy())
         return self._optimizer.set_state_dict(state_dict)

@@ -27,6 +27,7 @@ from ..framework import (
     convert_np_dtype_to_dtype_,
     core,
     in_dynamic_mode,
+    in_dynamic_or_pir_mode,
 )
 
 # from ..base.layers import has_inf  #DEFINE_ALIAS
@@ -536,7 +537,7 @@ def sort(x, axis=-1, descending=False, name=None):
             #  [4. 7. 4. 6.]
             #  [5. 7. 7. 9.]]]
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         outs, _ = _C_ops.argsort(x, axis, descending)
         return outs
     else:
@@ -686,7 +687,7 @@ def where(condition, x=None, y=None, name=None):
         broadcast_condition = paddle.add(cast_cond, broadcast_zeros)
         broadcast_condition = paddle.cast(broadcast_condition, 'bool')
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.where(broadcast_condition, broadcast_x, broadcast_y)
     else:
         check_variable_and_dtype(condition, 'condition', ['bool'], 'where')

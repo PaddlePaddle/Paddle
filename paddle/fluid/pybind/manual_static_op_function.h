@@ -54,7 +54,7 @@ static PyObject *static_api_set_parameter(PyObject *self,
 
     // Get OpResult from args
     PyObject *parameter_obj = PyTuple_GET_ITEM(args, 0);
-    auto parameter = CastPyArg2OpResult(parameter_obj, "parameter", 0);
+    auto parameter = CastPyArg2Value(parameter_obj, "parameter", 0);
 
     // Parse Attributes
     PyObject *name_obj = PyTuple_GET_ITEM(args, 1);
@@ -94,7 +94,7 @@ PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs) {
       pir::Value shape, value;
 
       if (PyObject_CheckIROpResult(shape_obj)) {
-        shape = CastPyArg2OpResult(shape_obj, "full", 0);
+        shape = CastPyArg2Value(shape_obj, "full", 0);
       } else if (PyObject_CheckIRVectorOfOpResult(shape_obj)) {
         std::vector<pir::Value> shape_tmp =
             CastPyArg2VectorOfValue(shape_obj, "full", 0);
@@ -106,7 +106,7 @@ PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs) {
       }
 
       if (PyObject_CheckIROpResult(value_obj)) {
-        value = CastPyArg2OpResult(value_obj, "full", 1);
+        value = CastPyArg2Value(value_obj, "full", 1);
       } else {
         float value_tmp = CastPyArg2Float(value_obj, "full", 1);
         value = paddle::dialect::full(std::vector<int64_t>{1},

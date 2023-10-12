@@ -16,12 +16,12 @@
 
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
+#include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
-#include "paddle/fluid/pir/phi_kernel_adaptor/phi_kernel_util.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -40,13 +40,8 @@ PhiKernelInstruction::PhiKernelInstruction(
     size_t id,
     const platform::Place& place,
     pir::Operation* op,
-    Scope* scope,
-    Scope* local_scope,
-    const std::unordered_map<pir::Value, std::string>& value_2_var_name,
-    const std::map<std::string, int>& var_name_2_id,
-    const std::unordered_map<const paddle::framework::Variable*, std::string>&
-        variable_2_var_name)
-    : InstructionBase(id, place) {
+    const ValueExecutionInfo& value_exec_info)
+    : InstructionBase(id, place), value_exec_info_(value_exec_info) {
   auto op_attributes = op->attributes();
   auto op_name =
       op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
@@ -103,18 +98,13 @@ PhiKernelInstruction::PhiKernelInstruction(
   VLOG(6) << "finish process yaml_info_parser";
 
   if (infer_meta_interface_) {
-    pir::BuildPhiContext<
+    BuildPhiContext<
         phi::InferMetaContext,
         phi::MetaTensor,
         phi::MetaTensor,
         paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
         paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-        false>(op,
-               value_2_var_name,
-               scope,
-               local_scope,
-               yaml_info_parser,
-               &infer_meta_context_);
+        false>(op, value_exec_info_, yaml_info_parser, &infer_meta_context_);
   }
   VLOG(6) << "finish process infer meta context";
 
@@ -130,17 +120,14 @@ PhiKernelInstruction::PhiKernelInstruction(
       phi_kernel_->IsValid(), true, "not found kernel for [%s]", kernel_name);
   VLOG(6) << "finish process select kernel";
 
-  pir::BuildPhiContext<phi::KernelContext,
-                       const phi::TensorBase*,
-                       phi::TensorBase*,
-                       paddle::small_vector<const phi::TensorBase*>,
-                       paddle::small_vector<phi::TensorBase*>,
-                       true>(op,
-                             value_2_var_name,
-                             scope,
-                             local_scope,
-                             yaml_info_parser,
-                             &kernel_context_);
+  BuildPhiContext<phi::KernelContext,
+                  const phi::TensorBase*,
+                  phi::TensorBase*,
+                  paddle::small_vector<const phi::TensorBase*>,
+                  paddle::small_vector<phi::TensorBase*>,
+                  true>(
+      op, value_exec_info_, yaml_info_parser, &kernel_context_);
+
   kernel_context_.SetDeviceContext(phi::DeviceContextPool::Instance().Get(
       phi::TransToPhiPlace(kernel_key.backend())));
   VLOG(6) << "finish process kernel context";
@@ -154,9 +141,7 @@ PhiKernelInstruction::PhiKernelInstruction(
                          GetStreamPriority()));
   VLOG(6) << "finish process device context";
 
-  Scope* inner_scope = local_scope == nullptr ? scope : local_scope;
-  InitInputsOutputsIds(
-      op, inner_scope, value_2_var_name, var_name_2_id, variable_2_var_name);
+  InitInputsOutputsIds(op, value_exec_info);
   VLOG(6) << "finish process inputs outputs index";
 
   auto& no_need_buffer_ids = yaml_info_parser.NoNeedBufferIds();

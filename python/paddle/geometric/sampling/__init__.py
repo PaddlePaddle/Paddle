@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .neighbors import sample_neighbors  # noqa: F401
-from .neighbors import weighted_sample_neighbors  # noqa: F401
+from .neighbors import sample_neighbors, weighted_sample_neighbors  # noqa: F401
 
 __all__ = []
