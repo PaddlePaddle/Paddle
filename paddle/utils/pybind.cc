@@ -16,9 +16,11 @@
 
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/flags.h"
+#include "paddle/utils/load_tensor.h"
 
 PHI_DECLARE_string(tensor_operants_mode);
 namespace paddle {
+void LoadTensor(const std::string& file_path, phi::DenseTensor* out);
 namespace pybind {
 
 PyTypeObject* p_tensor_type = nullptr;
@@ -79,6 +81,16 @@ PyObject* ToPyObject(const paddle::Tensor& value,
         phi::errors::Fatal("tp_alloc return null, can not new a PyObject."));
   }
   return obj;
+}
+
+phi::DenseTensor LoadTensor(std::string path) {
+  // paddle::Tensor tensor_load(static_cast<std::shared_ptr<phi::TensorBase>>(
+  //     std::make_shared<phi::DenseTensor>()));
+  // paddle::LoadTensor(path,
+  //                    static_cast<phi::DenseTensor*>(tensor_load.impl().get()));
+  phi::DenseTensor tensor_load;
+  paddle::LoadTensor(path, &tensor_load);
+  return tensor_load;
 }
 
 void EnableTensorOperantsToPhiMode() { FLAGS_tensor_operants_mode = "phi"; }

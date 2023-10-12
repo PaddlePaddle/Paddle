@@ -14,10 +14,13 @@ limitations under the License. */
 
 #include "paddle/fluid/pybind/io.h"
 
+#include <iostream>
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
+#include "paddle/utils/pybind.h"
 
 namespace py = pybind11;
 namespace paddle {
@@ -114,6 +117,13 @@ void BindIO(pybind11::module *m) {
                                   std::ios::in | std::ios::binary);
            paddle::framework::DeserializeFromStream(fin, &selected_rows);
          });
+  m->def("load_tensor_c", [](const std::string path) {
+    auto tensor = paddle::pybind::LoadTensor(path);
+    std::cout << "tensor.data " << tensor.data() << std::endl;
+    std::cout << "tensor.name" << tensor.name() << std::endl;
+    std::cout << "tensor type " << typeid(tensor).name() << std::endl;
+    return tensor;
+  });
 }
 }  // namespace pybind
 }  // namespace paddle
