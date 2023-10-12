@@ -50,7 +50,6 @@ class RecomputeOptimizer(Optimizer):
         .. code-block:: python
 
             >>> import paddle
-            >>> import paddle.base as base
             >>> import numpy as np
 
             >>> paddle.enable_static()
@@ -79,14 +78,14 @@ class RecomputeOptimizer(Optimizer):
 
             >>> print("Finished optimize")
             Finished optimize
-            >>> place = base.CPUPlace()
-            >>> exe = base.Executor(place)
-            >>> exe.run(base.default_startup_program())
+            >>> place = paddle.CPUPlace()
+            >>> exe = paddle.static.Executor(place)
+            >>> exe.run(paddle.static.default_startup_program())
             >>> step = 10
 
             >>> for i in range(step):
             ...     cost_val = exe.run(feed=gen_data(),
-            ...             program=base.default_main_program(),
+            ...             program=paddle.static.default_main_program(),
             ...             fetch_list=[cost.name])
             ...     print("step=%d cost=%f" % (i, cost_val[0]))
             var x : LOD_TENSOR.shape(-1, 32).dtype(float32).stop_gradient(True)
@@ -146,7 +145,6 @@ class RecomputeOptimizer(Optimizer):
             .. code-block:: python
 
                 >>> import paddle
-                >>> import paddle.base as base
 
                 >>> paddle.enable_static()
                 >>> def mlp(input_x, input_y, hid_dim=128, label_dim=2):
@@ -193,7 +191,6 @@ class RecomputeOptimizer(Optimizer):
             .. code-block:: python
 
                 >>> import paddle
-                >>> import paddle.base as base
                 >>> import paddle.base.framework as framework
 
                 >>> paddle.enable_static()
@@ -668,7 +665,6 @@ class RecomputeOptimizer(Optimizer):
             .. code-block:: python
 
                 >>> import paddle
-                >>> import paddle.base as base
 
                 >>> paddle.enable_static()
 
@@ -750,8 +746,8 @@ class RecomputeOptimizer(Optimizer):
             params_grads (list): list of (param, grad) pair to do optimization.
         Examples:
             .. code-block:: python
+
                 >>> import paddle
-                >>> import paddle.base as base
 
                 >>> paddle.enable_static()
 

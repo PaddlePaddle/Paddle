@@ -81,13 +81,13 @@ class PipelineOptimizer:
             ...         yield x, y
             >>> data_loader.set_sample_generator(train_reader, batch_size=1)
 
-            >>> place = base.CUDAPlace(0)
-            >>> exe = base.Executor(place)
-            >>> exe.run(base.default_startup_program())
+            >>> place = paddle.CUDAPlace(0)
+            >>> exe = paddle.static.Executor(place)
+            >>> exe.run(paddle.static.default_startup_program())
             >>> batch_size = 1
             >>> data_loader.start()
             >>> exe.train_from_dataset(
-            ...         base.default_main_program())
+            ...         paddle.static.default_main_program())
             >>> data_loader.reset()
     """
 
