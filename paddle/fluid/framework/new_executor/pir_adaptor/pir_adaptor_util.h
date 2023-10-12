@@ -299,6 +299,8 @@ void BuildPhiContext(pir::Operation* op,
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<pir::Int64Attribute>().data());
     } else if (attr_type_name == "pir::FloatAttribute") {
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<pir::FloatAttribute>().data());
+    } else if (attr_type_name == "pir::DoubleAttribute") {
+      ctx->EmplaceBackAttr(attr_map[t].dyn_cast<pir::DoubleAttribute>().data());
     } else if (attr_type_name == "pir::BoolAttribute") {
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<pir::BoolAttribute>().data());
     } else if (attr_type_name == "pir::StrAttribute") {

@@ -80,6 +80,23 @@ class IR_API SetParameterOp : public pir::Op<SetParameterOp> {
 };
 
 ///
+/// \brief ShdowOutputOp: ShdowOutputOp(OpOperand, {StrAttribute,
+/// StrAttribute})
+///
+class IR_API ShadowOutputOp : public pir::Op<ShadowOutputOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "builtin.shadow_output"; }
+  static constexpr uint32_t attributes_num = 1;
+  static const char *attributes_name[attributes_num];
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    Value parameter,
+                    const std::string &name);
+  void Verify() const;
+};
+
+///
 /// \brief CombineOp: CombineOp(OpOperand)
 ///
 class IR_API CombineOp : public pir::Op<CombineOp> {
@@ -198,6 +215,7 @@ void PassStopGradientsDefaultly(OperationArgument &argument);  // NOLINT
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ModuleOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::GetParameterOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::SetParameterOp)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ShadowOutputOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::CombineOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::SliceOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::SplitOp)
