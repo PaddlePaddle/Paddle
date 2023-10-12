@@ -121,7 +121,7 @@ void Carrier::CopyParameters(
     const framework::ProgramDesc& program,
     const std::vector<std::string>& inference_root_scope_vars) {
   std::map<std::string, int> inference_root_scope_var_map;
-  for (auto var_name : inference_root_scope_vars) {
+  for (auto const& var_name : inference_root_scope_vars) {
     inference_root_scope_var_map.insert({var_name, 1});
   }
   for (size_t i = 0; i < program.Size(); ++i) {
