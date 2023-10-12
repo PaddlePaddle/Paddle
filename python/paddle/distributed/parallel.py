@@ -670,10 +670,12 @@ class ParallelEnv:
             ...     dist.spawn(train, nprocs=2)
             ...     # 2. start by ``paddle.distributed.launch``
             ...     train()
-            print result in process 1:
+
+            # Print result in process 1:
             rank: 1
             world_size: 2
-            print result in process 2:
+
+            # Print result in process 2:
             rank: 2
             world_size: 2
 
