@@ -68,7 +68,6 @@ void OpCompatibleMap::InitOpCompatibleMap() {
   op_compatible_map_["sequence_pad"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
   op_compatible_map_["sequence_unpad"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
 
-  op_compatible_map_["center_loss"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
   op_compatible_map_["coalesce_tensor"] = {"1.6.0",
                                            OpCompatibleType::DEFIN_NOT};
   op_compatible_map_["crop_tensor"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
@@ -79,8 +78,6 @@ void OpCompatibleMap::InitOpCompatibleMap() {
   op_compatible_map_["dpsgd"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
   op_compatible_map_["eye"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
   op_compatible_map_["fill_any_like"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
-  op_compatible_map_["filter_by_instag"] = {"1.6.0",
-                                            OpCompatibleType::DEFIN_NOT};
   op_compatible_map_["hard_swish"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
   op_compatible_map_["gather_nd"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
   op_compatible_map_["instance_norm"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
@@ -91,12 +88,9 @@ void OpCompatibleMap::InitOpCompatibleMap() {
   op_compatible_map_["multiclass_nms2"] = {"1.6.0",
                                            OpCompatibleType::DEFIN_NOT};
   op_compatible_map_["one_hot_v2"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
-  op_compatible_map_["prroi_pool"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
   op_compatible_map_["pull_box_sparse"] = {"1.6.0",
                                            OpCompatibleType::DEFIN_NOT};
   op_compatible_map_["scatter_nd_add"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
-  op_compatible_map_["sequence_topk_avg_pooling"] = {
-      "1.6.0", OpCompatibleType::DEFIN_NOT};
   op_compatible_map_["shard_index"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
   op_compatible_map_["size"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
   op_compatible_map_["strided_slice"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};

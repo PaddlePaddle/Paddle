@@ -106,7 +106,7 @@ class IrContextImpl {
   void RegisterOpInfo(const std::string &name, OpInfo info) {
     std::lock_guard<pir::SpinLock> guard(registed_op_infos_lock_);
     VLOG(6) << "Register an operation of: [Name=" << name
-            << ", OpInfo ptr=" << info.AsOpaquePointer() << "].";
+            << ", OpInfo ptr=" << info << "].";
     registed_op_infos_.emplace(name, info);
   }
 
@@ -115,7 +115,7 @@ class IrContextImpl {
     auto iter = registed_op_infos_.find(name);
     if (iter != registed_op_infos_.end()) {
       VLOG(8) << "Found a cached OpInfo of: [name=" << name
-              << ", OpInfo: ptr=" << iter->second.AsOpaquePointer() << "].";
+              << ", OpInfo: ptr=" << iter->second << "].";
       return iter->second;
     }
     VLOG(8) << "No cache found operation of: [Name=" << name << "].";
@@ -258,14 +258,14 @@ Dialect *IrContext::GetOrRegisterDialect(
 
 std::vector<Dialect *> IrContext::GetRegisteredDialects() {
   std::vector<Dialect *> result;
-  for (auto dialect_map : impl().registed_dialect_) {
+  for (auto const &dialect_map : impl().registed_dialect_) {
     result.push_back(dialect_map.second);
   }
   return result;
 }
 
 Dialect *IrContext::GetRegisteredDialect(const std::string &dialect_name) {
-  for (auto dialect_map : impl().registed_dialect_) {
+  for (auto const &dialect_map : impl().registed_dialect_) {
     if (dialect_map.first == dialect_name) {
       return dialect_map.second;
     }

@@ -605,7 +605,7 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
     PyCodeObject *code = (PyCodeObject *)PyObject_GetAttrString(result, "code");
     PyObject *disable_eval_frame =
         PyObject_GetAttrString(result, "disable_eval_frame");
-    PyObject *out;
+    PyObject *out = NULL;
     // VLOG(7) << "Start eval new frame and code.";
     if (disable_eval_frame != Py_True) {
       // Re-enable custom behavior

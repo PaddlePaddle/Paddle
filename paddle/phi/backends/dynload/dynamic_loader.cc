@@ -185,9 +185,9 @@ static inline std::string join(const std::string& part1,
 static inline std::vector<std::string> split(
     const std::string& str, const std::string separator = " ") {
   std::vector<std::string> str_list;
-  std::string::size_type firstPos;
+  std::string::size_type firstPos = 0;
   firstPos = str.find_first_not_of(separator, 0);
-  std::string::size_type lastPos;
+  std::string::size_type lastPos = 0;
   lastPos = str.find_first_of(separator, firstPos);
   while (std::string::npos != firstPos && std::string::npos != lastPos) {
     str_list.push_back(str.substr(firstPos, lastPos - firstPos));
@@ -263,7 +263,7 @@ static inline void* GetDsoHandleFromSearchPath(
 #endif  // !_WIN32
   std::vector<std::string> dso_names = split(dso_name, ";");
   void* dso_handle = nullptr;
-  for (auto dso : dso_names) {
+  for (auto const& dso : dso_names) {
     // 1. search in user config path by FLAGS
     dso_handle = GetDsoHandleFromSpecificPath(config_path, dso, dynload_flags);
     // 2. search in system default path
@@ -272,7 +272,7 @@ static inline void* GetDsoHandleFromSearchPath(
     }
     // 3. search in extra paths
     if (nullptr == dso_handle) {
-      for (auto path : extra_paths) {
+      for (auto const& path : extra_paths) {
         VLOG(3) << "extra_paths: " << path;
         dso_handle = GetDsoHandleFromSpecificPath(path, dso, dynload_flags);
       }

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import os
 import re
 import struct
@@ -331,6 +332,40 @@ class WeightOnlyLinearTestCaseStatic(WeightOnlyLinearTestCase):
     def config(self):
         super().config()
         self.static = True
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11020
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class WeightOnlyLinearBackwardAndWeightDequantizeTestCase(unittest.TestCase):
+    def test_weightonly_linear_backward(self):
+        x = paddle.rand(shape=(128, 4096), dtype='float16')
+        x.stop_gradient = False
+        quant_x = copy.deepcopy(x)
+        quant_x.stop_gradient = False
+        weight = paddle.rand(shape=(4096, 12288), dtype='float16')
+
+        quant_weight, quant_scale = Q.weight_quantize(
+            x=weight, algo='weight_only_int8'
+        )
+        dequant_weight = Q.weight_dequantize(quant_weight, quant_scale)
+        np.testing.assert_allclose(weight, dequant_weight, rtol=1e-2, atol=1e-2)
+
+        quant_out = Q.weight_only_linear(
+            x=quant_x,
+            weight=quant_weight,
+            weight_scale=quant_scale,
+            weight_dtype="int8",
+        )
+        out = paddle.matmul(x=x, y=weight)
+        np.testing.assert_allclose(quant_out, out, rtol=1e-3, atol=1e-3)
+
+        quant_out.backward()
+        out.backward()
+        np.testing.assert_allclose(quant_x.grad, x.grad, rtol=1e-3, atol=1e-3)
 
 
 if __name__ == '__main__':

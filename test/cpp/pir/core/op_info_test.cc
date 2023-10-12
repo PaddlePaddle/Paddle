@@ -39,8 +39,8 @@ TEST(ir_op_info_test, op_op_info_test) {
   auto& info_map = context->registered_op_info_map();
   EXPECT_FALSE(info_map.empty());
 
-  void* info_1 = op->info().AsOpaquePointer();
-  auto info_2 = pir::OpInfo::RecoverFromOpaquePointer(info_1);
+  void* info_1 = op->info();
+  auto info_2 = pir::OpInfo::RecoverFromVoidPointer(info_1);
   EXPECT_EQ(op->info(), info_2);
   pir::Verify(program.module_op());
 }
