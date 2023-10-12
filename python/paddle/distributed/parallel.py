@@ -863,7 +863,6 @@ class ParallelEnv:
             import paddle.distributed as dist
 
             env = dist.ParallelEnv()
-            print("The pg_timeout is %d" % env.pg_timeout)
             # the pg_timeout of process group 1800000
         """
         return self._pg_timeout
