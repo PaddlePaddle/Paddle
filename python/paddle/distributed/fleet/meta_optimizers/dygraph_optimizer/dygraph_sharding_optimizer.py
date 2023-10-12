@@ -82,6 +82,7 @@ class DygraphShardingOptimizer:
         self.comm_overlap = strategy.hybrid_configs[
             'sharding_configs'
         ].comm_overlap
+        self.delay_scale_loss = strategy.hybrid_configs['delay_scale_loss']
         pp_overlap = strategy.hybrid_configs['pp_configs'].sharding_comm_overlap
         if self.tensor_fusion or self.comm_overlap:
             assert (
@@ -326,6 +327,14 @@ class DygraphShardingOptimizer:
 
     def step(self):
         # TODO Check whether the model trainable param changed and update state accordingly
+
+        if self.delay_scale_loss:
+            for p in self._parameter_list:
+                if hasattr(p, "main_grad") and p.main_grad is not None:
+                    assert p.grad is None
+                    p.main_grad.scale(1.0 / self.accumulate_steps)
+                elif p.grad is not None:
+                    p.grad = p.grad.scale(1.0 / self.accumulate_steps)
 
         # hack to grad_clip all parameters,
         # otherwise the self._inner_opt will only grad_clip the self._rank2params[self._sharding_rank] params
