@@ -490,6 +490,7 @@ phi::KernelKey GetKernelKey(
   if (op->isa<paddle::dialect::FeedOp>()) {
     // NOTE, for now feed op don't need a kernel, so the data type from Op
     // Result the next op use base program datatype
+    VLOG(6) << "FeedOp doesn't need a kernel. Backend: CPU, DataLayout: ANY";
     return {phi::Backend::CPU,
             phi::DataLayout::ANY,
             TransToPhiDataType(
@@ -499,6 +500,7 @@ phi::KernelKey GetKernelKey(
   if (op->isa<paddle::dialect::DataOp>()) {
     // NOTE, for now feed op don't need a kernel, so the data type from Op
     // Result the next op use base program datatype
+    VLOG(6) << "DataOp doesn't need a kernel";
     auto data_place =
         op->attributes().at("place").dyn_cast<dialect::PlaceAttribute>().data();
 
@@ -510,7 +512,8 @@ phi::KernelKey GetKernelKey(
                 op->result(0).type().dyn_cast<DenseTensorType>().dtype())};
   }
 
-  if (op->name() == "pd_op.seed") {
+  if (op->isa<paddle::dialect::SeedOp>()) {
+    VLOG(6) << "SeedOp doesn't need a kernel";
     auto backend = paddle::experimental::ParseBackend(place);
     return {backend,
             phi::DataLayout::ANY,
@@ -519,6 +522,7 @@ phi::KernelKey GetKernelKey(
   }
 
   if (op->isa<paddle::dialect::FullWithTensorOp>()) {
+    VLOG(6) << "FullWithTensorOp doesn't need a kernel";
     auto backend = paddle::experimental::ParseBackend(place);
     auto dtype = op->attributes()
                      .at("dtype")
@@ -536,31 +540,24 @@ phi::KernelKey GetKernelKey(
     // only suppurt non vector input for now
     int tensor_input_number =
         static_cast<int>(op_info_parser->InputTensorNumber());
-
+    VLOG(8) << "Begin to infer kernel key from op_info_parser(defined by yaml "
+               "info)";
     // get datatype info
     kernel_data_type =
         GetKernelDataTypeByYamlInfo(op, map_value_pair, op_info_parser);
+    VLOG(8) << "Infer kernel data_type: [" << kernel_data_type
+            << "] from yaml info";
     kernel_backend =
         GetKernelBackendByYamlInfo(op, map_value_pair, op_info_parser, place);
-
+    VLOG(8) << "Infer kernel backend: [" << kernel_backend
+            << "] from yaml info";
     // parse all the input tensor
     if (tensor_input_number == 0 || op->isa<paddle::dialect::Full_Op>()) {
       // all the information have to get from attribute and context
-
-      if (op->isa<paddle::dialect::UniformOp>()) {
-        // try to process uniform, use shape to determin backend
-        // TODO(phlrain): shuold support other initilize op
-        auto define_op =
-            op->operand_source(0).dyn_cast<pir::OpResult>().owner();
-        if (define_op->isa<paddle::dialect::FullIntArrayOp>()) {
-          auto shape = define_op->attribute<dialect::IntArrayAttribute>("value")
-                           .data()
-                           .GetData();
-        }
-      }
-
       if (kernel_backend == phi::Backend::UNDEFINED) {
         kernel_backend = paddle::experimental::ParseBackend(place);
+        VLOG(8) << "Infer kernel backend: [" << kernel_backend
+                << "] when tensor_input_number == 0  or is Full_Op";
       }
     }
   }
@@ -569,15 +566,17 @@ phi::KernelKey GetKernelKey(
        kernel_data_type == phi::DataType::UNDEFINED) &&
       op->num_operands() > 0) {
     paddle::experimental::detail::KernelKeyParser kernel_key_parser;
-
+    VLOG(8) << "Begin to infer kernel key from op operands";
     for (size_t i = 0; i < op->num_operands(); ++i) {
       // NOTE, only op with OpYamlInfo can have TensorArr
       if (op_info_parser != nullptr && op_info_parser->IsTensorAttribute(i)) {
+        VLOG(8) << "input (" << i << ") doesn't have TensorArr";
         continue;
       }
       auto input_tmp = op->operand_source(i);
       // NOTE: if not input_tmp, it's an optional input
       if (!input_tmp) {
+        VLOG(8) << "input (" << i << ") is NULL (optional input)";
         continue;
       }
       auto new_input_tmp = map_value_pair.at(input_tmp);
@@ -609,6 +608,8 @@ phi::KernelKey GetKernelKey(
         kernel_key_parser.key_set.backend_set =
             kernel_key_parser.key_set.backend_set |
             paddle::experimental::BackendSet(data_op_backend);
+        VLOG(8) << "Update kernel backend set from owner op (DataOp): "
+                << data_op_backend;
       } else if (op->operand_source(i)
                      .dyn_cast<pir::OpResult>()
                      .owner()
@@ -633,6 +634,8 @@ phi::KernelKey GetKernelKey(
             kernel_key_parser.key_set.backend_set =
                 kernel_key_parser.key_set.backend_set |
                 paddle::experimental::BackendSet(data_op_backend);
+            VLOG(8) << "Update kernel backend set from owner op (CombineOp): "
+                    << data_op_backend;
             break;
           }
         }
@@ -645,16 +648,26 @@ phi::KernelKey GetKernelKey(
 
     if (kernel_backend == phi::Backend::UNDEFINED) {
       kernel_backend = kernel_key.backend();
+      if (kernel_backend != phi::Backend::UNDEFINED) {
+        VLOG(8) << "Infer kernel backend from op operands";
+      }
     }
     if (kernel_layout == phi::DataLayout::UNDEFINED) {
       kernel_layout = kernel_key.layout();
+      if (kernel_layout != phi::DataLayout::UNDEFINED) {
+        VLOG(8) << "Infer kernel layout from op operands";
+      }
     }
     if (kernel_data_type == phi::DataType::UNDEFINED) {
       kernel_data_type = kernel_key.dtype();
+      if (kernel_data_type != phi::DataType::UNDEFINED) {
+        VLOG(8) << "Infer kernel data_type from op operands";
+      }
     }
   }
 
   if (kernel_backend == phi::Backend::UNDEFINED) {
+    VLOG(8) << "Kernel backend cannot be infered from op operands";
     kernel_backend = paddle::experimental::ParseBackend(place);
   }
 
@@ -662,13 +675,17 @@ phi::KernelKey GetKernelKey(
 
   if (op->isa<paddle::dialect::LoadCombineOp>()) {
     res.set_dtype(phi::DataType::FLOAT32);
+    VLOG(8) << "LoadCombineOp's kernel data type must be FLOAT32";
   }
   if (NeedFallBackCpu((op), kernel_fn_str, res)) {
     res.set_backend(phi::Backend::CPU);
+    VLOG(8) << "kernel backend must be on CPU when need fallback";
   }
 
   if (NeedFallBackFromGPUDNN2GPU(op, res)) {
     res.set_backend(phi::Backend::GPU);
+    VLOG(8) << "kernel backend must be on GPU when need fallback from GPUDNN "
+               "to GPU";
   }
 
   return res;
@@ -1095,6 +1112,7 @@ std::vector<pir::Value> BuildOpInputList(
                           op_info_parser,
                           kernel.InputAt(tensor_param_index).backend,
                           i);
+        VLOG(6) << "Infer kernel backend from input " << i << " of op ";
 
         bool need_trans =
             (in_place.GetType() != phi::AllocationType::UNDEFINED) &&
@@ -1218,7 +1236,7 @@ std::vector<pir::Value> BuildOpInputList(
                           op_info_parser,
                           kernel.InputAt(tensor_param_index).backend,
                           i);
-
+        VLOG(6) << "Infer kernel backend from input " << i << " of op ";
         bool need_trans =
             (in_place.GetType() != phi::AllocationType::UNDEFINED) &&
             (paddle::experimental::NeedTransformPlace(
@@ -1242,8 +1260,9 @@ std::vector<pir::Value> BuildOpInputList(
               new_in, out_type, in_place, out_place, kernel_key, block);
         }
       } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
-            "only support allocated dense tensor type for now"));
+        PADDLE_THROW(
+            phi::errors::Unimplemented("only support allocated dense tensor "
+                                       "type and selected rows for now"));
       }
     }
     vec_inputs.push_back(new_in);
@@ -1396,11 +1415,14 @@ void ProcessBlock(
     VLOG(6) << "op name " << op_item->name();
     if ((op_item->isa<paddle::dialect::FeedOp>()) &&
         SkipFeedOp(op_item, skip_feed_names)) {
+      VLOG(6) << "Skip FeedOp while lowering to kernel pass";
       continue;
     }
 
     // HandleSpecialOp
     if (SpecialLowerOps.count(op_item->name())) {
+      VLOG(6) << "Handle Special Op: [" << op_item->name()
+              << "] while lowering to kernel pass";
       HandleForSpecialOp(
           place, op_item, new_block, ctx, map_op_pair, map_value_pair);
       continue;
