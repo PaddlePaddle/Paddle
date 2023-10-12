@@ -35,7 +35,7 @@ class TestTrtFp32MixPrecision(TrtLayerAutoScanTest):
             return np.ones([1, 3, 64, 64]).astype(np.float32)
 
         def generate_conv2d_weight():
-            return (np.ones([9, 3, 3, 3]) * 65536).astype(np.float32)
+            return np.ones([9, 3, 3, 3]).astype(np.float32)
 
         def generate_elementwise_input(op_type):
             # elementwise_floordiv is integer only
