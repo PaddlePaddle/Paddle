@@ -48,7 +48,7 @@ if(WIN32)
        "test_trt_convert_quantize_dequantize_linear")
   list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_explicit_quantization")
   # if(WITH_MKLDNN)
-  message(STATUS "TEST_TRT_IR_PASSES = ${TEST_TRT_IR_PASSES}.")
+  # message(STATUS "TEST_TRT_IR_PASSES = ${TEST_TRT_IR_PASSES}.")
   list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_explicit_quantization_resnet")
   list(REMOVE_ITEM TEST_TRT_IR_PASSES
        "test_trt_explicit_quantization_mobilenet")
@@ -184,10 +184,10 @@ if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(test_trt_inference_predictor PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_inference_fp16_io PROPERTIES TIMEOUT 300)
   set_tests_properties(test_trt_optimization_level PROPERTIES TIMEOUT 300)
-  set_tests_properties(test_trt_explicit_quantization_resnet PROPERTIES TIMEOUT
-                                                                        300)
-  set_tests_properties(test_trt_explicit_quantization_mobilenet
-                       PROPERTIES TIMEOUT 300)
+  # set_tests_properties(test_trt_explicit_quantization_resnet PROPERTIES TIMEOUT
+  #                                                                       300)
+  # set_tests_properties(test_trt_explicit_quantization_mobilenet
+  #                      PROPERTIES TIMEOUT 300)
   if(WITH_MKLDNN)
     set_tests_properties(test_save_optimized_model_pass PROPERTIES TIMEOUT 300)
   endif()
