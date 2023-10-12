@@ -162,9 +162,10 @@ class TestFCOp(OpTest):
             }
 
     def test_check_output(self):
-        if hasattr(self, 'is_quant') and self.attrs['is_quant'] and core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            self.check_output_with_place(place, check_dygraph=False)
+        if hasattr(self, 'is_quant') and self.attrs['is_quant']:
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+                self.check_output_with_place(place, check_dygraph=False)
         else:
             self.check_output(check_dygraph=False)
 
