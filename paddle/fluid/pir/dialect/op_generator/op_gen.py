@@ -477,7 +477,7 @@ class OpInfoParser:
                     if (self.op_compat_item['op'] == "isclose") or (
                         self.op_compat_item['op'] == "allclose"
                     ):
-                        data_type = "float"
+                        data_type = "double"
                     mutable_attribute_type_list.append(
                         [
                             "paddle::dialect::ScalarAttribute",

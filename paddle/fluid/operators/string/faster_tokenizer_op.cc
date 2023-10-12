@@ -146,7 +146,7 @@ void WordPieceTokenizer::Tokenize(const wstring& text,
   while (start < len) {
     size_t end = len;
     std::wstring cur_substr;
-    int64_t cur_substr_id;
+    int64_t cur_substr_id = 0;
     while (start < end) {
       std::wstring sub = text.substr(start, end - start);
       if (start > 0) {
