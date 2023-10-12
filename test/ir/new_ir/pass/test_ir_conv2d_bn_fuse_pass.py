@@ -18,7 +18,7 @@ import numpy as np
 from pass_test import PassTest
 
 import paddle
-from paddle import base, pir
+from paddle import base
 from paddle.base import core
 
 paddle.enable_static()
@@ -29,9 +29,11 @@ class Conv2dBnFusePassTest(PassTest):
         place = core.Place()
         place.set_place(paddle.CPUPlace())
         new_scope = paddle.static.Scope()
-        main_program = paddle.static.Program()
+        self.main_program = paddle.static.Program()
         with paddle.static.scope_guard(new_scope):
-            with paddle.static.program_guard(main_program):
+            with paddle.static.program_guard(
+                self.main_program, self.startup_program
+            ):
                 x = paddle.static.data(
                     name='x', shape=[3, 1, 28, 28], dtype='float32'
                 )
@@ -48,16 +50,6 @@ class Conv2dBnFusePassTest(PassTest):
                 bn = paddle.static.nn.batch_norm(
                     input=conv1_1, act=None, data_layout='NHWC'
                 )
-
-        self.newir_program = pir.translate_to_new_ir(main_program.desc)
-        print(self.newir_program)
-
-        # exe = paddle.static.Executor(place)
-        # out = exe.run(
-        #         main_program,
-        #         feed={"x": np_a},
-        #         fetch_list=[out0.name],
-        #     )
 
         self.feeds = {"x": np.random.random((3, 1, 28, 28)).astype("float32")}
         self.fetch_list = [bn]

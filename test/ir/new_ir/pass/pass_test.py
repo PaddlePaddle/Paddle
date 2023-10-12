@@ -47,6 +47,7 @@ class PassTest(unittest.TestCase):
             places.append(base.CUDAPlace(0))
         return places
 
+    # No use for this time
     # def grad(self, var):
     #     grad_name = var.name + "@GRAD"
     #     return self.main_program.global_block().var(grad_name)
@@ -89,15 +90,19 @@ class PassTest(unittest.TestCase):
         # for attr_name, attr_value in self.graph_attrs.items():
         #     graph.set(attr_name, attr_value)
 
+        self.newir_program = pir.translate_to_new_ir(self.main_program.desc)
         if not isinstance(self.pass_names, list):
             self.pass_names = [self.pass_names]
+
+        # TODO: here maybe use self.pass_attrs to pass the attrs
+        # {"conv2d_bn_fuse": {"use_gpu": use_gpu}}
 
         pm = pir.PassManager()
         for name in self.pass_names:
             pm.add_pass(name)
 
         opt_program = self.newir_program.clone()
-
+        # here I didn't know how to make pir.program run by the executor
         pm.run(opt_program)
 
         return opt_program
