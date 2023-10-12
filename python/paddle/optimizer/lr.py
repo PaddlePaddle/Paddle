@@ -2269,7 +2269,7 @@ class LinearLR(LRScheduler):
             ...         scheduler.step()
 
         .. code-block:: python
-            :name: code-example2
+            :name: code-static
 
             >>> # Example2: train on static graph mode
             >>> import paddle
