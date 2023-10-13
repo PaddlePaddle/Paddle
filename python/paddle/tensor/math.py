@@ -5074,10 +5074,31 @@ def multigammaln(x, p, name=None):
                 [0.85704780  , 2.46648574  , 3.56509781  , 11.02241898 , 15.84497833 ,
                     26.09257698 , 170.68318176])
     """
-
+    assert p >= 1, (
+        "The p must be greater than or equal to 1, "
+        "But received p is %s.\n" % p
+    )
     c = 0.25 * p * (p - 1) * math.log(math.pi)
     b = 0.5 * paddle.arange(start=(1 - p), end=1, step=1, dtype=x.dtype)
     return paddle.sum(paddle.lgamma(x.unsqueeze(-1) + b), axis=-1) + c
+
+
+@inplace_apis_in_dygraph_only
+def multigammaln_(x, p, name=None):
+    r"""
+    Inplace version of ``multigammaln_`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_multigammaln`.
+    """
+    assert p >= 1, (
+        "The p must be greater than or equal to 1, "
+        "But received p is %s.\n" % p
+    )
+    c = 0.25 * p * (p - 1) * math.log(math.pi)
+    c = paddle.to_tensor(c, dtype=x.dtype)
+    b = 0.5 * paddle.arange(start=(1 - p), end=1, step=1, dtype=x.dtype)
+    b = b.add(x.unsqueeze(-1))
+    x[:] = b.lgamma_().sum(-1).add_(c)
+    return x
 
 
 def neg(x, name=None):
