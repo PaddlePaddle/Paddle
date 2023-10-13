@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 
 import paddle
 from paddle.framework import core
@@ -99,9 +98,9 @@ class CollectiveHelper:
             other_endpoints.remove(current_endpoint)
 
         if rank == 0 and wait_port:
-            use_new_comm = os.getenv(
-                "FLAGS_dynamic_static_unified_comm", "True"
-            )
+            use_new_comm = paddle.get_flags(
+                "FLAGS_dynamic_static_unified_comm"
+            )["FLAGS_dynamic_static_unified_comm"]
             if use_new_comm not in [1, "1", "True", "true"]:
                 wait_server_ready(other_endpoints)
 
