@@ -66,8 +66,11 @@ void ScatterKernel(const Context &ctx,
     new_index.Resize(make_ddim({index_dim}));
   } else if (index.dims().size() == 0) {
     new_index.Resize(make_ddim({1}));
-    if (updates.dims().size() == 0) {
-      new_updates.Resize(make_ddim({1}));
+
+    if (updates.dims().size() == x.dims().size() - 1) {
+      auto dims = vectorize(updates.dims());
+      dims.insert(dims.begin(), 1);
+      new_updates.Resize(make_ddim(dims));
     }
   } else {
     PADDLE_ENFORCE_EQ(
