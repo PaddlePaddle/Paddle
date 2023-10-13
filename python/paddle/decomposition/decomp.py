@@ -37,7 +37,13 @@ def _prepare_python_api_arguments(op):
     Args:
     op (Operator): The target operator.
     """
-    op_inputs = [x.source() for x in op.operands()]
+    op_inputs = []
+    for x in op.operands():
+        if x.source() and x.source().initialized():
+            op_inputs.append(x.source())
+        else:
+            op_inputs.append(None)
+
     # The inputs of PIR op builtin.combine will be restored as list of tensor.
     if op.name() in ["builtin.combine"]:
         return (op_inputs,)
@@ -49,7 +55,9 @@ def _prepare_python_api_arguments(op):
     return tuple(api_arguments)
 
 
-def _check_op_results(op_name, orig_outs, new_outs, orig_vars, dst_vars):
+def _check_op_results(
+    op_name, orig_outs, new_outs, orig_vars=None, dst_vars=None
+):
     """
     Check whether the replaced outputs are consistent with origin outputs.
 
@@ -79,8 +87,9 @@ def _check_op_results(op_name, orig_outs, new_outs, orig_vars, dst_vars):
             # to keep same as phi op definition, orig_out may receive None
             continue
         elif new_out is not None:
-            if orig_out in orig_vars.keys():
-                dst_vars[orig_vars[orig_out]] = new_out
+            if orig_vars is not None and dst_vars is not None:
+                if orig_out in orig_vars.keys():
+                    dst_vars[orig_vars[orig_out]] = new_out
             orig_dtype = orig_out.dtype
             new_dtype = new_out.dtype
             orig_shape = orig_out.shape
@@ -253,3 +262,145 @@ def _decompose_subgraph(block, orig_vars, dst_vars, op_filter):
     raise TypeError(
         f"Expect type Block or Sequence of Block, but got type {type(block)}"
     )
+
+
+def decompose_fwd_op(block, fwd_op, grad_var_to_var_map):
+    '''
+    This API decomposes the fwd_op into a list of primitive ops,
+
+    Args:
+        block (Block): the block to which the bwd_op belongs.
+        fwd_op (pir.Operation): the forward op to be decomposed.
+        grad_var_to_var_map (dict): a dict obtained after distributed processing,
+            which maps the backward grad variable to its corresponding forward variable.
+    '''
+
+    if not core._is_fwd_prim_enabled():
+        raise ValueError(
+            "To decompose forward op, please set `core._set_prim_forward_enabled(True)` firstly"
+        )
+    if not isinstance(block, Block):
+        raise TypeError(f"block should be Block, but got type {type(block)}")
+    if not isinstance(fwd_op, pir.Operation):
+        raise TypeError(
+            f"fwd_op should be paddle.pir.Operation, but got type {type(fwd_op)}"
+        )
+    if not isinstance(grad_var_to_var_map, dict):
+        raise TypeError(
+            f"grad_var_to_var_map should be dict which maps grad variable to forward variable, \
+            but got type {type(grad_var_to_var_map)}"
+        )
+
+    with pir.core.program_guard(block.program):
+        op_name = fwd_op.name()
+        orig_outs = fwd_op.results()
+        decom_rule = register.get_decomp_rule(op_name)
+
+        if decom_rule:
+            core.prim_config["composite_ops_record"].add(op_name)
+
+            input_args = _prepare_python_api_arguments(fwd_op)
+            pir.set_insertion_point(fwd_op)
+            new_outs = _build_tensor_tuple(decom_rule(*input_args))
+
+            _check_op_results(op_name, orig_outs, new_outs)
+
+            # update_grad_var_to_var_map
+            for grad_var, var in grad_var_to_var_map.items():
+                if var in orig_outs:
+                    grad_var_to_var_map[grad_var] = new_outs[
+                        orig_outs.index(var)
+                    ]
+            # ToDo: does the bwd_op_to_fwd_op map need to be updated?
+
+            fwd_op.replace_all_uses_with(new_outs)
+            block.remove_op(fwd_op)
+            return new_outs
+
+        else:
+            return orig_outs
+
+
+def get_global_outputs_infos(block, global_outputs):
+    '''
+    This API checks which forward OP contributes to the outputs of the entire computation graph,
+    as well as determining the corresponding output index.
+
+    Args:
+        block (Block): the block to which the fwd_op belongs.
+        global outputs (list): the outputs of the entire computation graph.
+
+    Returns:
+        related_fwd_ops (list): a list of fwd_op that contributes to the outputs of the entire graph.
+        related_fwd_ops_output_indexes (list) : a list records the mapping of [the output index of the fwd_op,  output index of the entire graph]
+    '''
+    if not isinstance(block, Block):
+        raise TypeError(f"block should be Block, but got type {type(block)}")
+    if not isinstance(global_outputs, list):
+        raise TypeError("The type of global_outputs should be list")
+
+    related_fwd_ops = []
+    related_fwd_ops_output_indexes = []
+
+    op_to_op_valid_result = {}
+    for op in block.ops:
+        op_valid_result = []
+        for x in op.results():
+            if x.initialized():
+                op_valid_result.append(x)
+        op_to_op_valid_result[op] = op_valid_result
+
+    for global_output in global_outputs:
+        for op in op_to_op_valid_result.keys():
+            if global_output in op_to_op_valid_result[op]:
+                if op not in related_fwd_ops:
+                    related_fwd_ops.append(op)
+                    related_fwd_ops_output_indexes.append(
+                        [
+                            [
+                                op.results().index(global_output),
+                                global_outputs.index(global_output),
+                            ]
+                        ]
+                    )
+                else:
+                    related_fwd_ops_output_indexes[
+                        related_fwd_ops.index(op)
+                    ].append(
+                        [
+                            op.results().index(global_output),
+                            global_outputs.index(global_output),
+                        ]
+                    )
+
+    return related_fwd_ops, related_fwd_ops_output_indexes
+
+
+def related_global_outputs(global_outputs, related_fwd_ops, fwd_op):
+    '''
+    This API checks whether the fwd_op contributes to the outputs of the entire computation graph.
+    '''
+
+    if not isinstance(global_outputs, list):
+        raise TypeError("The type of global_outputs should be list")
+
+    if fwd_op in related_fwd_ops:
+        fwd_op_index = related_fwd_ops.index(fwd_op)
+        return fwd_op_index
+    else:
+        return None
+
+
+def replace_global_outputs(
+    global_outputs,
+    fwd_op_outputs,
+    fwd_op_index,
+    related_fwd_ops_output_indexes,
+):
+    '''
+    This API replace the outputs of the entire computation graph with the new outputs of the fwd_op,
+    whether the fwd_op contributes to the outputs of the entire computation graph.
+    '''
+
+    for index in related_fwd_ops_output_indexes[fwd_op_index]:
+        global_outputs[index[1]] = fwd_op_outputs[index[0]]
