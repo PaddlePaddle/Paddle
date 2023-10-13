@@ -880,12 +880,6 @@ def full_like(x, fill_value, dtype=None, name=None):
 
 
 def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
-    def contain_var(list_or_tuple):
-        for item in list_or_tuple:
-            if isinstance(item, paddle.pir.OpResult):
-                return True
-        return False
-
     def get_shape_tensor(list_shape, place):
         shape_tensor_list = []
         for dim in list_shape:
@@ -915,8 +909,8 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
 
         else:
             if isinstance(shape, (list, tuple)):
-                if contain_var(shape):
-                    shape = get_shape_tensor(shape, place)
+                if paddle.utils._contain_var(shape):
+                    shape = paddle.utils.get_pir_shape_tensor(shape, place)
             elif isinstance(shape, paddle.pir.OpResult):
                 pass
             else:
