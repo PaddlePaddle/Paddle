@@ -44,9 +44,11 @@ namespace paddle {
 namespace framework {
 
 class CondInstruction;
+class WhileInstruction;
 class ValueExecutionInfo {
  public:
   friend class CondInstruction;
+  friend class WhileInstruction;
 
   explicit ValueExecutionInfo(Scope* scope) : scope_(scope) {}
 
