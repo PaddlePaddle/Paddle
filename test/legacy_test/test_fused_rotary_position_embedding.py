@@ -146,60 +146,45 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         tmp.stop_gradient = False
         return tmp
 
+    def get_inputs(self, seed, with_sin_cos=False):
+        paddle.disable_static()
+        paddle.seed(seed)
+        tensor_q = self.get_paddle_tensor()
+        tensor_k = self.get_paddle_tensor()
+        tensor_v = self.get_paddle_tensor()
+
+        tensor_sin, tensor_cos = (
+            get_sin_cos_tensor(tensor_q.shape[1], tensor_q.shape[3], 1)
+            if with_sin_cos
+            else (None, None)
+        )
+        return tensor_q, tensor_k, tensor_v, tensor_sin, tensor_cos
+
     def get_forward_backward(
         self,
         rope_function,
         seed,
-        flag=False,
+        with_sin_cos=False,
         use_neox_rotary_style=True,
         position_ids=None,
     ):
         paddle.disable_static()
-        paddle.seed(seed)
         fw = []
         bw = []
-        tensor_q = self.get_paddle_tensor()
-        tensor_k = self.get_paddle_tensor()
-        tensor_v = self.get_paddle_tensor()
-        if use_neox_rotary_style:
-            if flag:
-                tensor_sin, tensor_cos = get_sin_cos_tensor(
-                    tensor_q.shape[1], tensor_q.shape[3], 1
-                )
-                out_q, out_k, out_v = rope_function(
-                    tensor_q,
-                    tensor_k,
-                    tensor_v,
-                    tensor_sin,
-                    tensor_cos,
-                    position_ids=position_ids,
-                )
-            else:
-                out_q, out_k, out_v = rope_function(
-                    tensor_q, tensor_k, tensor_v, position_ids=position_ids
-                )
-        else:
-            if flag:
-                tensor_sin, tensor_cos = get_sin_cos_tensor(
-                    tensor_q.shape[1], tensor_q.shape[3], 1
-                )
-                out_q, out_k, out_v = rope_function(
-                    tensor_q,
-                    tensor_k,
-                    tensor_v,
-                    tensor_sin,
-                    tensor_cos,
-                    position_ids=position_ids,
-                    use_neox_rotary_style=False,
-                )
-            else:
-                out_q, out_k, out_v = rope_function(
-                    tensor_q,
-                    tensor_k,
-                    tensor_v,
-                    position_ids=position_ids,
-                    use_neox_rotary_style=False,
-                )
+
+        tensor_q, tensor_k, tensor_v, tensor_sin, tensor_cos = self.get_inputs(
+            seed, with_sin_cos
+        )
+
+        out_q, out_k, out_v = rope_function(
+            tensor_q,
+            tensor_k,
+            tensor_v,
+            tensor_sin,
+            tensor_cos,
+            position_ids=position_ids,
+            use_neox_rotary_style=use_neox_rotary_style,
+        )
 
         fw.append(out_q)
         fw.append(out_k)
@@ -208,6 +193,7 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         out_gq = paddle.randn(out_q.shape, self.dtype)
         out_gk = paddle.randn(out_q.shape, self.dtype)
         out_gv = paddle.randn(out_q.shape, self.dtype)
+
         paddle.autograd.backward(
             [out_q, out_k, out_v], [out_gq, out_gk, out_gv], True
         )
@@ -289,13 +275,57 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
                 p_bw[i].numpy(), f_bw[i].numpy(), rtol=1e-05
             )
 
-    def test_error(self):
+    def test_static(self):
+        tensor_q, tensor_k, tensor_v, tensor_sin, tensor_cos = self.get_inputs(
+            self.seed, with_sin_cos=True
+        )
+        p_fw, p_bw = self.get_forward_backward(
+            paddle_fused_rotary_position_embedding,
+            with_sin_cos=True,
+            seed=self.seed,
+        )
+
         paddle.enable_static()
-        with self.assertRaises(RuntimeError):
-            static_q = paddle.static.data(
-                name="q", shape=self.shape, dtype=self.dtype
-            )
-            fused_rotary_position_embedding(static_q, static_q, static_q)
+
+        q = paddle.static.data(name="q", shape=self.shape, dtype=self.dtype)
+        k = paddle.static.data(name="k", shape=self.shape, dtype=self.dtype)
+        v = paddle.static.data(name="v", shape=self.shape, dtype=self.dtype)
+        sin = paddle.static.data(
+            name="sin",
+            shape=(tensor_q.shape[1], tensor_q.shape[3], 1),
+            dtype=self.dtype,
+        )
+        cos = paddle.static.data(
+            name="cos",
+            shape=(tensor_q.shape[1], tensor_q.shape[3], 1),
+            dtype=self.dtype,
+        )
+
+        out_q, out_k, out_v = fused_rotary_position_embedding(
+            q,
+            k,
+            v,
+            sin,
+            cos,
+            position_ids=None,
+            use_neox_rotary_style=False,
+        )
+
+        exe = paddle.static.Executor()
+
+        feed = {
+            'q': tensor_q.numpy(),
+            'k': tensor_k.numpy(),
+            'v': tensor_v.numpy(),
+            'sin': tensor_sin.numpy(),
+            'cos': tensor_cos.numpy(),
+        }
+        out_q_, out_k_, out_v_ = exe.run(
+            paddle.static.default_main_program(),
+            feed=feed,
+            fetch_list=[out_q, out_k, out_v],
+        )
+
         paddle.disable_static()
 
 
