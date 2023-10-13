@@ -55,6 +55,8 @@ int ConvertActivationType(std::string act_type) {
     return static_cast<int>(xpu::Activation_t::SWISH);
   } else if (act_type == "relu6") {
     return static_cast<int>(xpu::Activation_t::RELU6);
+  } else if (act_type == "elu") {
+    return static_cast<int>(xpu::Activation_t::ELU);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Not support convert activation_type(%s).", act_type));

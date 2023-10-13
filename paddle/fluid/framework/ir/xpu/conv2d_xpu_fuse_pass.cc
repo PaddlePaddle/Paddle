@@ -380,6 +380,7 @@ void Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph) const {
                        "hard_sigmoid",
                        "relu6",
                        "swish",
+                       "elu",
                        "",
                    }) {
                 if (with_branch_x && with_branch_y) continue;
