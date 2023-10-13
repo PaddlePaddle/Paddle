@@ -59,23 +59,12 @@ static std::unordered_set<cinn::dialect::ir::OpNode> GetInputOps(
 
   std::unordered_set<cinn::dialect::ir::OpNode> input_ops;
   op_group.WalkOpNodes([&](const cinn::dialect::ir::OpNode& op) {
-    // const auto& input_tensors = op.inputs();
-    // auto* ir_op = op.Op();
     const auto& input_tensors = op.inputs();
     for (size_t i = 0; i < input_tensors.size(); ++i) {
       if (!ops_set.count(input_tensors[i].producer())) {
         input_ops.insert(input_tensors[i].producer());
       }
     }
-
-    // for (size_t i = 0; i < ir_op->num_operands(); ++i) {
-    //   auto in = ir_op->operand_source(i);
-    //   if (in) {
-    //     if (!ops_set.count(in.GetDefiningOp())) {
-    //       input_ops.insert(cinn::dialect::ir::OpNode(in.GetDefiningOp()));
-    //     }
-    //   }
-    // }
   });
   return input_ops;
 }
