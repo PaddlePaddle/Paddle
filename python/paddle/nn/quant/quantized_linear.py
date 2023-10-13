@@ -18,7 +18,7 @@ from paddle.base.framework import convert_np_dtype_to_dtype_
 from paddle.framework import LayerHelper, in_dynamic_mode
 
 
-def weight_quantize(x, algo="weight_only_int8"):
+def weight_quantize(x, algo="weight_only_int8", arch=80):
     """
     Quantization function for weight_only and llm.int8's weight.
 
@@ -47,7 +47,7 @@ def weight_quantize(x, algo="weight_only_int8"):
     """
 
     if in_dynamic_mode():
-        return _C_ops.weight_quantize(x, algo)
+        return _C_ops.weight_quantize(x, algo, arch)
     else:
         type = "weight_quantize"
         helper = LayerHelper(type, **locals())
@@ -58,7 +58,7 @@ def weight_quantize(x, algo="weight_only_int8"):
             type=type,
             inputs={"x": x},
             outputs={'out': out, "scale": scale},
-            attrs={"algo": algo},
+            attrs={"algo": algo, "arch": arch},
         )
         return (out, scale)
 
@@ -115,6 +115,7 @@ def weight_only_linear(
     bias=None,
     weight_scale=None,
     weight_dtype="int8",
+    arch=80
 ):
     """
     Applies matrix multiplication of two tensors and then bias addition if provided.
@@ -148,7 +149,7 @@ def weight_only_linear(
     """
     if in_dynamic_mode():
         out = _C_ops.weight_only_linear(
-            x, weight, bias, weight_scale, weight_dtype
+            x, weight, bias, weight_scale, weight_dtype, arch
         )
         return out
     else:
@@ -166,7 +167,7 @@ def weight_only_linear(
         }
         if bias:
             inputs["bias"] = [bias]
-        attrs = {'weight_dtype': weight_dtype}
+        attrs = {'weight_dtype': weight_dtype, 'arch': arch}
 
         out = helper.create_variable_for_type_inference(dtype)
 
