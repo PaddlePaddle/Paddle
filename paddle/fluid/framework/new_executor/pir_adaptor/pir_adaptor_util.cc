@@ -286,7 +286,7 @@ const std::unordered_set<std::string> SpecialOps = {"pd_op.feed",
                                                     "builtin.slice",
                                                     "builtin.split",
                                                     "pd_op.data",
-                                                    "pd_op.shadow_output",
+                                                    "builtin.shadow_output",
                                                     "pd_op.if"};
 
 Variable* CreateVar(pir::Value value,
@@ -295,8 +295,14 @@ Variable* CreateVar(pir::Value value,
                     ValueExecutionInfo* value_exe_info) {
   pir::Operation* def_op = value.dyn_cast<pir::OpResult>().owner();
   bool is_persisable = false;
-  if (def_op->isa<::pir::SetParameterOp>()) {
+  if (def_op->isa<::pir::GetParameterOp>()) {
     is_persisable = true;
+  } else if (def_op->HasAttribute(kAttrIsPersisable)) {
+    is_persisable = def_op->attribute(kAttrIsPersisable)
+                        .dyn_cast<pir::ArrayAttribute>()
+                        .AsVector()[value.dyn_cast<pir::OpResult>().index()]
+                        .dyn_cast<pir::BoolAttribute>()
+                        .data();
   }
 
   Variable* var = nullptr;
@@ -472,18 +478,19 @@ void HandleForSpecialOp(pir::Operation* op,
 
     value_exe_info->Rename(value, param_name, orig_name);
   }
-
-  if (op_name == "pd_op.shadow_output") {
-    VLOG(6) << "Handle for pd_op.shadow_ouptut";
-    auto var_name =
-        op->attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
+  if (op_name.compare(pir::ShadowOutputOp::name()) == 0) {
+    VLOG(6) << "Handle for builtin.shadow_ouptut";
+    auto var_name = op->attributes()
+                        .at("output_name")
+                        .dyn_cast<pir::StrAttribute>()
+                        .AsString();
 
     auto value = op->operand_source(0);
     // change opreand name to param_name
     auto orig_name = value_exe_info->GetValue2VarName().at(value);
 
-    if (value_exe_info->GetScope()->root()->FindVar(var_name) == nullptr) {
-      const_cast<Scope*>(value_exe_info->GetScope()->root())
+    if (value_exe_info->GetScope()->FindVar(var_name) == nullptr) {
+      const_cast<Scope*>(value_exe_info->GetScope())
           ->Rename(orig_name, var_name);
     }
 

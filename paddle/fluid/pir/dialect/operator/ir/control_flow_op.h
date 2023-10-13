@@ -31,11 +31,11 @@ class IfOp : public pir::Op<IfOp> {
                     pir::Value cond,
                     std::vector<pir::Type> &&output_types);
 
-  // static void Build(pir::Builder &builder,             // NOLINT
-  //                   pir::OperationArgument &argument,  // NOLINT
-  //                   pir::Value cond,
-  //                   std::unique_ptr<pir::Block>&& true_block,
-  //                   std::unique_ptr<pir::Block>&& false_block);
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value cond,
+                    std::unique_ptr<pir::Block> &&true_block,
+                    std::unique_ptr<pir::Block> &&false_block);
 
   pir::Value cond() { return operand_source(0); }
   pir::Block *true_block();
@@ -53,8 +53,7 @@ class WhileOp : public pir::Op<WhileOp> {
 
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    const std::vector<pir::Value> &inputs,
-                    const std::vector<pir::Type> &output_types);
+                    const std::vector<pir::Value> &inputs);
   pir::Block *cond_block();
   pir::Block *body_block();
   void Print(pir::IrPrinter &printer);  // NOLINT

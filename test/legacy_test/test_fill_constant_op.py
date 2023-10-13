@@ -21,6 +21,7 @@ from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 
 def fill_wrapper(shape, value=0.0):
@@ -279,7 +280,9 @@ class TestFillConstantOp2_ValueTensor(OpTest):
 
 # Test python API
 class TestFillConstantAPI(unittest.TestCase):
+    @test_with_pir_api
     def test_api(self):
+        paddle.enable_static()
         positive_2_int32 = paddle.tensor.fill_constant([1], "int32", 2)
         positive_2_int64 = paddle.tensor.fill_constant([1], "int64", 2)
 
@@ -330,7 +333,7 @@ class TestFillConstantAPI(unittest.TestCase):
 
         exe = base.Executor(place=base.CPUPlace())
         res_1, res_2, res_3, res_4, res_5, res_6, res_7, res_8 = exe.run(
-            base.default_main_program(),
+            paddle.static.default_main_program(),
             feed={
                 "shape_tensor_int32": np.array([1, 2]).astype("int32"),
                 "shape_tensor_int64": np.array([1, 2]).astype("int64"),
@@ -486,6 +489,58 @@ class TestFillConstantOpError(unittest.TestCase):
                 )
 
             self.assertRaises(TypeError, test_shape_tensor_list_dtype)
+
+        with paddle.pir_utils.IrGuard(), program_guard(Program()):
+            x1 = paddle.static.data(name='x1', shape=[-1, 1], dtype="int16")
+            self.assertRaises(
+                TypeError,
+                paddle.tensor.fill_constant,
+                shape=[1],
+                value=5,
+                dtype='uint4',
+            )
+
+            self.assertRaises(
+                ValueError,
+                paddle.tensor.fill_constant,
+                shape=[1.1],
+                value=5,
+                dtype='float32',
+                out=x1,
+            )
+
+            x3 = np.random.randn(100, 100).astype('int32')
+            self.assertRaises(
+                ValueError,
+                paddle.tensor.fill_constant,
+                shape=[100, 100],
+                value=5,
+                dtype='float64',
+                out=x3,
+            )
+
+    def test_pir_errors(self):
+        def test_shape_type():
+            # The shape dtype of fill_constant_op must be int32 or int64.
+            # test_shape_tensor_dtype:
+            with paddle.pir_utils.IrGuard():
+                new_ir_program = paddle.static.Program()
+                with paddle.static.program_guard(new_ir_program):
+                    shape = paddle.static.data(
+                        name="shape_tensor", shape=[2], dtype="int32"
+                    )
+                    out = paddle.tensor.fill_constant(
+                        shape=shape, dtype="float32", value=1
+                    )
+                    exe = base.Executor(place=base.CPUPlace())
+                    exe.run(
+                        feed={
+                            "shape_tensor": np.array([1, 2]).astype("float32")
+                        },
+                        fetch_list=[out],
+                    )
+
+        self.assertRaises(ValueError, test_shape_type)
 
 
 class TestFillConstantOp_ValueTensorBf16(OpTest):
