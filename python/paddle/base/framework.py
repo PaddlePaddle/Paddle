@@ -12,33 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import textwrap
 import collections
-from collections.abc import Iterable
-from .wrapped_decorator import signature_safe_contextmanager, wrap_decorator
+import copy
+import functools
+import multiprocessing
 import os
 import re
+import subprocess
+import sys
+import textwrap
+import threading
 import traceback
-import copy
-from types import MethodType, FunctionType
+import warnings
+from collections.abc import Iterable
+from types import FunctionType, MethodType
 
 import numpy as np
-import subprocess
-import multiprocessing
-import sys
 
-from .proto import framework_pb2
-from .proto import data_feed_pb2  # noqa: F401
+import paddle.version as paddle_version
 
-from . import core
-from . import unique_name
 from .. import pir
-from paddle.base.libpaddle import DataType
-import paddle.version as fluid_version
-import warnings
-import functools
-from .variable_index import _getitem_static, _setitem_static, _setitem_impl_
-import threading
+from . import core, unique_name
+from .libpaddle import DataType
+from .proto import data_feed_pb2  # noqa: F401
+from .proto import framework_pb2
+from .variable_index import _getitem_static, _setitem_impl_, _setitem_static
+from .wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 
 __all__ = []
 
@@ -467,13 +466,13 @@ def require_version(min_version, max_version=None):
     Examples:
         .. code-block:: python
 
-            >>> import paddle.base as base
+            >>> import paddle
 
             >>> # any version >= 0.1.0 is acceptable.
-            >>> base.require_version('0.1.0')
+            >>> paddle.utils.require_version('0.1.0')
 
             >>> # if 0.1.0 <= version <= 10.0.0, it is acceptable.
-            >>> base.require_version(min_version='0.1.0', max_version='10.0.0')
+            >>> paddle.utils.require_version(min_version='0.1.0', max_version='10.0.0')
     """
     if not isinstance(min_version, str):
         raise TypeError(
@@ -503,10 +502,10 @@ def require_version(min_version, max_version=None):
             )
 
     version_installed = [
-        fluid_version.major,
-        fluid_version.minor,
-        fluid_version.patch,
-        fluid_version.rc,
+        paddle_version.major,
+        paddle_version.minor,
+        paddle_version.patch,
+        paddle_version.rc,
     ]
     zero_version = ['0', '0', '0', '0']
 
@@ -521,17 +520,19 @@ def require_version(min_version, max_version=None):
     if version_cmp(version_installed, zero_version) == 0:
         if max_version is not None:
             warnings.warn(
-                "PaddlePaddle version in [%s, %s] required, but %s installed. "
+                "PaddlePaddle version in [{}, {}] required, but {} installed. "
                 "Maybe you are using a develop version, "
-                "please make sure the version is good with your code."
-                % (min_version, max_version, fluid_version.full_version)
+                "please make sure the version is good with your code.".format(
+                    min_version, max_version, paddle_version.full_version
+                )
             )
         else:
             warnings.warn(
-                "PaddlePaddle version %s or higher is required, but %s installed, "
+                "PaddlePaddle version {} or higher is required, but {} installed, "
                 "Maybe you are using a develop version, "
-                "please make sure the version is good with your code."
-                % (min_version, fluid_version.full_version)
+                "please make sure the version is good with your code.".format(
+                    min_version, paddle_version.full_version
+                )
             )
         return
 
@@ -551,15 +552,17 @@ def require_version(min_version, max_version=None):
             or version_cmp(version_installed, min_version_to_check) < 0
         ):
             raise Exception(
-                "VersionError: PaddlePaddle version in [%s, %s] required, but %s installed."
-                % (min_version, max_version, fluid_version.full_version)
+                "VersionError: PaddlePaddle version in [{}, {}] required, but {} installed.".format(
+                    min_version, max_version, paddle_version.full_version
+                )
             )
     else:
         if version_cmp(version_installed, min_version_to_check) < 0:
             raise Exception(
-                "VersionError: PaddlePaddle version %s or higher is required, but %s installed, "
-                "please upgrade your PaddlePaddle to %s or other higher version."
-                % (min_version, fluid_version.full_version, min_version)
+                "VersionError: PaddlePaddle version {} or higher is required, but {} installed, "
+                "please upgrade your PaddlePaddle to {} or other higher version.".format(
+                    min_version, paddle_version.full_version, min_version
+                )
             )
 
 
@@ -623,11 +626,12 @@ def _set_pipeline_stage(stage):
 def _fake_interface_only_(func):
     def __impl__(*args, **kwargs):
         raise AssertionError(
-            "'%s' only can be called by `paddle.Tensor` in dynamic graph mode. Suggestions:\n"
+            "'{}' only can be called by `paddle.Tensor` in dynamic graph mode. Suggestions:\n"
             "  1. If you are in static graph mode, you can switch to dynamic graph mode by turning off `paddle.enable_static()` or calling `paddle.disable_static()`.\n"
             "  2. If you are using `@paddle.jit.to_static`, you can call `paddle.jit.enable_to_static(False)`. "
-            "If you have to translate dynamic graph to static graph, please use other API to replace '%s'."
-            % (func.__name__, func.__name__)
+            "If you have to translate dynamic graph to static graph, please use other API to replace '{}'.".format(
+                func.__name__, func.__name__
+            )
         )
 
     return __impl__
@@ -664,7 +668,7 @@ def _dygraph_tracer():
     return global_var._dygraph_tracer_
 
 
-def _current_expected_place():
+def _current_expected_place_():
     global _global_expected_place_
     if _global_expected_place_ is None:
         if core.is_compiled_with_cuda():
@@ -710,6 +714,12 @@ def _current_expected_place():
             _global_expected_place_ = core.CPUPlace()
 
     return _global_expected_place_
+
+
+def _current_expected_place():
+    if in_pir_mode():
+        return core.Place()
+    return _current_expected_place_()
 
 
 def _set_dygraph_tracer_expected_place(place):
@@ -1012,7 +1022,7 @@ def cuda_pinned_places(device_count=None):
 
 class NameScope:
     def __init__(self, name="", parent=None):
-        self._children = dict()
+        self._children = {}
         self._name = name
         self._parent = parent
 
@@ -1208,7 +1218,7 @@ def _debug_string_(proto, throw_on_error=True):
     Returns(str): The debug string of the protobuf message
 
     """
-    error_fields = list()
+    error_fields = []
     if not proto.IsInitialized(error_fields) and throw_on_error:
         raise ValueError(
             f"{error_fields} are not initialized.\nThe message is {proto}:\n"
@@ -1374,7 +1384,7 @@ class Variable(metaclass=VariableMetaClass):
 
         In Static Graph Mode: Please use ** `Block.create_var` ** to create a Static variable which has no data until being feed.
 
-        In Dygraph Mode: Please use ** :ref:`api_base_dygraph_to_variable` ** to create a dygraph variable with real data.
+        In Dygraph Mode: Please use ** :ref:`api_paddle_to_tensor` ** to create a dygraph variable with real data.
 
     In Fluid, every input and output of an OP is a variable. In most
     cases, variables are used for holding different kinds of data or training
@@ -1882,7 +1892,7 @@ class Variable(metaclass=VariableMetaClass):
         if with_details:
             additional_attr = ("error_clip",)
             for attr_name in additional_attr:
-                res_str += "%s: %s\n" % (attr_name, getattr(self, attr_name))
+                res_str += f"{attr_name}: {getattr(self, attr_name)}\n"
 
         return res_str
 
@@ -2868,7 +2878,6 @@ class Operator:
         'fetch',
         'recurrent',
         'go',
-        'rnn_memory_helper_grad',
         'conditional_block',
         'pylayer',
         'while',
@@ -2922,7 +2931,7 @@ class Operator:
             # https://github.com/PaddlePaddle/Paddle/pull/12583#pullrequestreview-145093173
             op_attrs = attrs
             if op_attrs is None:
-                op_attrs = dict()
+                op_attrs = {}
             del attrs
 
             # attr for static graph mode cuda graph
@@ -3055,20 +3064,14 @@ class Operator:
                             or m.intermediate
                         ):
                             raise ValueError(
-                                (
-                                    "Incorrect setting for output(s) of "
-                                    "operator \"%s\", should set: [%s]."
-                                )
-                                % (type, m.name)
+                                "Incorrect setting for output(s) of "
+                                f"operator \"{type}\", should set: [{m.name}]."
                             )
                     else:
                         if not ((m.name in outputs) or m.dispensable):
                             raise ValueError(
-                                (
-                                    "Incorrect setting for output(s) of "
-                                    "operator \"%s\", should set: [%s]."
-                                )
-                                % (type, m.name)
+                                "Incorrect setting for output(s) of "
+                                f"operator \"{type}\", should set: [{m.name}]."
                             )
 
                 for out_proto in proto.outputs:
@@ -3110,9 +3113,7 @@ class Operator:
                     self._update_desc_attr(attr_name, attr_val)
                 for attr_name in extra_attrs_map.keys():
                     if os.environ.get('FLAGS_print_extra_attrs', '0') == '1':
-                        warnings.warn(
-                            "op %s use extra_attr: %s" % (type, attr_name)
-                        )
+                        warnings.warn(f"op {type} use extra_attr: {attr_name}")
 
                     if (attr_name not in op_attrs) or (
                         op_attrs[attr_name] is None
@@ -3129,7 +3130,7 @@ class Operator:
                         for attr in attrs:
                             if attr in op_attrs.keys():
                                 warnings.warn(
-                                    "op %s use extra_attr: %s" % (type, attr)
+                                    f"op {type} use extra_attr: {attr}"
                                 )
 
                     if type in special_op_attrs:
@@ -3142,8 +3143,7 @@ class Operator:
                                 and default_value != op_attrs[a_name]
                             ):
                                 warnings.warn(
-                                    "op %s's attr %s = %s is not the default value: %s"
-                                    % (
+                                    "op {}'s attr {} = {} is not the default value: {}".format(
                                         type,
                                         a_name,
                                         op_attrs[a_name],
@@ -3718,8 +3718,9 @@ def check_if_to_static_diff_with_dygraph(op_type, inplace_map, outputs):
                     and inplace_map.get("Input", None) == "Out"
                 ):
                     raise ValueError(
-                        'Sorry about what\'s happend. In to_static mode, %s\'s output variable %s is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.base.framework._stride_in_no_check_dy2st_diff() in your safe code block.'
-                        % (op_type, k)
+                        'Sorry about what\'s happend. In to_static mode, {}\'s output variable {} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.base.framework._stride_in_no_check_dy2st_diff() in your safe code block.'.format(
+                            op_type, k
+                        )
                     )
             elif isinstance(v, list):
                 for var in v:
@@ -3729,8 +3730,9 @@ def check_if_to_static_diff_with_dygraph(op_type, inplace_map, outputs):
                             and inplace_map.get("Input", None) == "Out"
                         ):
                             raise ValueError(
-                                'Sorry about what\'s happend. In to_static mode, %s\'s output variable %s is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.base.framework._stride_in_no_check_dy2st_diff() in your safe code block.'
-                                % (op_type, k)
+                                'Sorry about what\'s happend. In to_static mode, {}\'s output variable {} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.base.framework._stride_in_no_check_dy2st_diff() in your safe code block.'.format(
+                                    op_type, k
+                                )
                             )
 
 
@@ -3953,7 +3955,7 @@ class Block:
     def __init__(self, program, idx):
         self.desc = program.desc.block(idx)
         self.vars = collections.OrderedDict()  # var_name --> var
-        self.ops = list()  # operator list
+        self.ops = []  # operator list
         self.program = program
 
     def __str__(self):
@@ -4111,7 +4113,7 @@ class Block:
         Returns:
             Variable: the Variable with the giving name. Or None if not found.
         """
-        frontier = list()
+        frontier = []
         visited = set()
 
         frontier.append(self)
@@ -5424,7 +5426,7 @@ class IrGraph:
 
     def resolve_hazard(self):
         ordered_nodes = core.topology_sort(self.graph)
-        var_nodes = dict()
+        var_nodes = {}
         for node in ordered_nodes:
             if node.is_op() and node.op() is not None:
                 for each_var_name in node.op().input_arg_names():
@@ -5481,7 +5483,7 @@ class IrGraph:
             dict{IrNode: set(IrNode)}: the adjacency list.
         """
         adj_list = core.build_adjacency_list(self.graph)
-        wrapped_adj_list = dict()
+        wrapped_adj_list = {}
         for k, v in adj_list.items():
             wrapped_adj_list[IrNode(k)] = {IrNode(n) for n in v}
         return wrapped_adj_list
@@ -7119,7 +7121,7 @@ class Program:
 
         var_list = filter(condition, self.list_vars())
 
-        state_dict = dict()
+        state_dict = {}
         for var in var_list:
             var_temp = scope.find_var(var.name)
             if var_temp is None:
@@ -7309,7 +7311,7 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
                 "need_clip",
             )
             for attr_name in additional_attr:
-                res_str += "%s: %s\n" % (attr_name, getattr(self, attr_name))
+                res_str += f"{attr_name}: {getattr(self, attr_name)}\n"
         else:
             res_str = Variable.to_string(self, throw_on_error, False)
         return res_str
@@ -7700,8 +7702,8 @@ def _get_var(name, program=None):
 
 @signature_safe_contextmanager
 def dygraph_guard_if_declarative():
-    from .dygraph.base import in_to_static_mode
     from .dygraph import Tracer
+    from .dygraph.base import in_to_static_mode
 
     if in_to_static_mode():
         # Under @paddle.jit.to_static decorator, we switch back dygraph mode temporarily.

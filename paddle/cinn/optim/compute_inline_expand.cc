@@ -18,8 +18,8 @@
 #include <string>
 
 #include "paddle/cinn/common/graph_utils.h"
+#include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 
 namespace cinn {

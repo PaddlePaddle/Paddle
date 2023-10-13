@@ -1050,7 +1050,7 @@ cc_library(
 cc_library(
   executor_cache
   SRCS executor_cache.cc
-  DEPS parallel_executor standalone_executor phi_kernel_adaptor pd_inplace_pass
+  DEPS parallel_executor standalone_executor pir_adaptor pd_inplace_pass
        pd_op_to_kernel_pass pir)
 if(WITH_PSCORE)
   get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
@@ -1098,7 +1098,7 @@ endif()
 cc_library(
   prune
   SRCS prune.cc
-  DEPS framework_proto auto_parallel_proto)
+  DEPS framework_proto auto_parallel_proto proto_desc)
 cc_test(
   prune_test
   SRCS prune_test.cc

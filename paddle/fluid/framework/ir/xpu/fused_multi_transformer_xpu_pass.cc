@@ -528,6 +528,44 @@ int FusedMultiTransformerXPUPass::FusedMultiTransformerXPUQuant(
     cast_tofp32_func("FFN1Bias");
     cast_tofp32_func("FFN2Bias");
 
+    // Generate max_buffer: per_tensor_max and per_batch_max for kv_cache
+    int layer_num = fused_mt->Op()->Input("QKVW").size();
+    int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
+    phi::DenseTensor max_buffer_tensor;
+    max_buffer_tensor.set_type(phi::DataType::FLOAT32);
+    int max_buffer_len = max_ptr_size * layer_num * 2;
+    max_buffer_tensor.Resize({max_buffer_len});
+    std::vector<float> ones_vec(max_buffer_len, 1.f);
+    auto* cpu_ctx = static_cast<phi::CPUContext*>(
+        platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+    memcpy(cpu_ctx->Alloc<float>(&max_buffer_tensor),
+           ones_vec.data(),
+           max_buffer_len * sizeof(float));
+
+    size_t max_buffer_hash = HashTensor<float>(max_buffer_tensor);
+    std::string max_buffer_name =
+        "max_buffer_#" + std::to_string(max_buffer_hash);
+    auto* max_buffer_node = FindNodeWithName(graph, max_buffer_name);
+    if (max_buffer_node == nullptr) {
+      // Create dst node
+      // Update dst var_desc in block
+      VarDesc dst_desc(max_buffer_name);
+      dst_desc.SetPersistable(true);
+      dst_desc.SetShape(vectorize(max_buffer_tensor.dims()));
+      dst_desc.SetDataType(
+          framework::TransToProtoVarType(max_buffer_tensor.dtype()));
+      max_buffer_node = graph->CreateVarNode(&dst_desc);
+      auto* block_dst_desc = block->Var(max_buffer_name);
+      block_dst_desc->SetPersistable(dst_desc.Persistable());
+      block_dst_desc->SetShape(dst_desc.GetShape());
+      block_dst_desc->SetDataType(dst_desc.GetDataType());
+      auto* max_buffer_var = scope->FindVar(max_buffer_name);
+      if (max_buffer_var == nullptr) {
+        Assign(max_buffer_tensor,
+               scope->Var(max_buffer_name)->GetMutable<phi::DenseTensor>());
+      }
+    }
+
     // Generate fused_multi_transformer_xpu op inplace
     fused_mt->RenameOp("fused_multi_transformer_xpu");
     framework::OpDesc* fused_mt_xpu_op_desc = fused_mt->Op();
@@ -542,6 +580,7 @@ int FusedMultiTransformerXPUPass::FusedMultiTransformerXPUQuant(
     fused_mt_xpu_op_desc->MutableInputs()->clear();
     fused_mt_xpu_op_desc->MutableOutputs()->clear();
     fused_mt_xpu_op_desc->SetInput("x", name_caches.at("X"));
+    fused_mt_xpu_op_desc->SetInput("max_buffer", {max_buffer_name});
     fused_mt_xpu_op_desc->SetInput("ln_scale", name_caches.at("LnScale"));
     fused_mt_xpu_op_desc->SetInput("ln_bias", name_caches.at("LnBias"));
     fused_mt_xpu_op_desc->SetInput("qkv_bias", name_caches.at("QKVBias"));
@@ -613,7 +652,7 @@ int FusedMultiTransformerXPUPass::FusedMultiTransformerXPUQuant(
         IR_NODE_LINK_TO(node, fused_mt);
       }
     }
-
+    IR_NODE_LINK_TO(max_buffer_node, fused_mt);
     found_subgraph_count++;
   };
 

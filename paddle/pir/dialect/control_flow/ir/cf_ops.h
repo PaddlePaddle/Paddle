@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-
+#include <functional>
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/op_base.h"
 
