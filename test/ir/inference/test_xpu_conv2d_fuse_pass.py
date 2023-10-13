@@ -160,10 +160,10 @@ class TestConv2dXPUFusePass(PassAutoScanTest):
             ops.append(relu_op)
 
         else:
-            relu_op = OpConfig(
+            elu_op = OpConfig(
                 "elu", inputs={"X": ["add_out"]}, outputs={"Out": ["elu_out"]}
             )
-            ops.append(relu_op)
+            ops.append(elu_op)
         program_config = ProgramConfig(
             ops=ops,
             inputs={
