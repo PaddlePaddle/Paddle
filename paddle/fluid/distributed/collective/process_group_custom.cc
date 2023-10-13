@@ -31,6 +31,7 @@ PD_DECLARE_bool(use_stream_safe_cuda_allocator);
 namespace paddle {
 namespace distributed {
 
+using phi::distributed::GetPointerByOffset;
 static std::mutex g_unfinished_xccl_task_events_mutex;
 static std::list<std::unique_ptr<phi::event::Event>>
     g_unfinished_xccl_task_events;
