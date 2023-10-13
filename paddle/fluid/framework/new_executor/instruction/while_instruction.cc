@@ -76,7 +76,7 @@ WhileInstruction::WhileInstruction(size_t id,
   cond_block_ = while_op.cond_block();
   body_block_ = while_op.body_block();
 
-  auto cond_yied_inputs = GetCondYiedOpInputs(cond_block_);
+  auto cond_yied_inputs = GetYiedOpInputs(cond_block_);
   auto body_yied_inputs = GetYiedOpInputs(body_block_);
 
   Scope* cond_scope = &(parent_exe_info->GetScope()->NewScope());

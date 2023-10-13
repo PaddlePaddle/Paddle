@@ -45,8 +45,6 @@ OpFuncType AnalyseOpFuncType(::pir::Operation* op,
 
 std::vector<pir::Value> GetYiedOpInputs(pir::Block* block);
 
-std::vector<pir::Value> GetCondYiedOpInputs(pir::Block* block);
-
 void GetInputIds(pir::Operation* op,
                  const ValueExecutionInfo& value_exec_info,
                  std::unordered_map<pir::Value, std::vector<int>>* input_ids);
