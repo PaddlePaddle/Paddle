@@ -264,6 +264,7 @@ void ScatterKernel(const Context& ctx,
           reduce));
 
   DenseTensor new_index = index;
+  DenseTensor new_updates = updates;
 
   if (index.dims().size() == 2) {
     PADDLE_ENFORCE_EQ(
@@ -277,6 +278,9 @@ void ScatterKernel(const Context& ctx,
     new_index.Resize(make_ddim({index_dim}));
   } else if (index.dims().size() == 0) {
     new_index.Resize(make_ddim({1}));
+    if (updates.dims().size() == 0) {
+      new_updates.Resize(make_ddim({1}));
+    }
   } else {
     PADDLE_ENFORCE_EQ(
         index.dims().size() == 1,
@@ -365,7 +369,7 @@ void ScatterKernel(const Context& ctx,
   }
 
   IndexReduceKernel<T, Context>(
-      ctx, x, new_index, updates, axis, reducer, include_self, out);
+      ctx, x, new_index, new_updates, axis, reducer, include_self, out);
 }
 
 }  // namespace phi
