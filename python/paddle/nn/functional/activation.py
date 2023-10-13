@@ -136,7 +136,7 @@ def elu(x, alpha=1.0, name=None):
 def elu_(x, alpha=1.0, name=None):
     r"""
     Inplace version of ``elu`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_nn_cn_elu`.
+    Please refer to :ref:`api_paddle_nn_functional_elu`.
     """
     assert alpha >= 0.0, "elu_ only support alpha >= 0, please use elu instead."
     if in_dynamic_mode():
@@ -319,7 +319,7 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
 def hardtanh_(x, min=-1.0, max=1.0, name=None):
     r"""
     Inplace version of ``hardtanh`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`paddle_nn_functional_hardtanh`.
+    Please refer to :ref:`api_paddle_nn_functional_hardtanh`.
     """
     if in_dynamic_mode():
         return _C_ops.hardtanh_(x, min, max)
@@ -422,7 +422,17 @@ def hardswish(x, name=None):
         return _C_ops.hardswish(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'hardswish'
+            x,
+            'x',
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'complex64',
+                'complex128',
+            ],
+            'hardswish',
         )
 
         threshold = 6.0
@@ -495,7 +505,7 @@ def leaky_relu(x, negative_slope=0.01, name=None):
 def leaky_relu_(x, negative_slope=0.01, name=None):
     r"""
     Inplace version of ``leaky_relu`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`paddle_nn_functional_leaky_relu`.
+    Please refer to :ref:`api_paddle_nn_functional_leaky_relu`.
     """
     if in_dynamic_mode():
         return _C_ops.leaky_relu_(x, negative_slope)
@@ -754,13 +764,9 @@ def relu(x, name=None):
             [0., 0., 1.])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.relu(x)
     else:
-        if paddle.framework.in_dynamic_or_pir_mode():
-            # Below code will be removed after we can generate IR api automatically
-            return paddle._pir_ops.relu(x)
-
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'relu'
         )
@@ -774,7 +780,7 @@ def relu(x, name=None):
 def relu_(x, name=None):
     """
     Inplace version of ``relu`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_nn_cn_relu`.
+    Please refer to :ref:`api_paddle_nn_functional_relu`.
     """
     return _C_ops.relu_(x)
 
@@ -1248,7 +1254,7 @@ def softmax(x, axis=-1, dtype=None, name=None):
 def softmax_(x, axis=-1, dtype=None, name=None):
     r"""
     Inplace version of ``softmax`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_nn_cn_softmax`.
+    Please refer to :ref:`api_paddle_nn_functional_softmax`.
     """
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
@@ -1271,7 +1277,7 @@ def softplus(x, beta=1, threshold=20, name=None):
             \end{cases}
 
     Parameters:
-        x (Tensor): The input Tensor with data type float32, float64.
+        x (Tensor): The input Tensor with data type float32, float64, complex64, complex128.
         beta (float, optional): The value of :math:`\beta` for softplus. Default is 1
         threshold (float, optional): The value of :math:`\varepsilon` for softplus. Default is 20
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -1296,7 +1302,17 @@ def softplus(x, beta=1, threshold=20, name=None):
         return _C_ops.softplus(x, beta, threshold)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'softplus'
+            x,
+            'x',
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'complex64',
+                'complex128',
+            ],
+            'softplus',
         )
         helper = LayerHelper('softplus', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
@@ -1594,7 +1610,7 @@ def thresholded_relu(x, threshold=1.0, name=None):
 def thresholded_relu_(x, threshold=1.0, name=None):
     r"""
     Inplace version of ``thresholded_relu`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`paddle_nn_functional_thresholded_relu`.
+    Please refer to :ref:`api_paddle_nn_functional_thresholded_relu`.
     """
     if in_dynamic_mode():
         return _C_ops.thresholded_relu_(x, threshold)

@@ -883,7 +883,7 @@ def max_unpool2d(
 ):
     r"""
     This API implements max unpooling 2d opereation.
-    See more details in :ref:`api_nn_pooling_MaxUnPool2D` .
+    See more details in :ref:`api_paddle_nn_MaxUnPool2D` .
 
 
     Args:
@@ -1343,8 +1343,8 @@ def max_pool3d(
     name=None,
 ):
     """
-    This API implements max pooling 2d operation.
-    See more details in :ref:`api_nn_pooling_MaxPool3d` .
+    This API implements max pooling 3d operation.
+    See more details in :ref:`api_paddle_nn_MaxPool3D` .
 
     Args:
         x (Tensor): The input tensor of pooling operator, which is a 5-D tensor with

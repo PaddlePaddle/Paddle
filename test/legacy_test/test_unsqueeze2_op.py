@@ -43,10 +43,12 @@ class TestUnsqueezeOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(no_check_set=["XShape"], check_prim=True)
+        self.check_output(
+            no_check_set=["XShape"], check_prim=True, check_new_ir=True
+        )
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_prim=True)
+        self.check_grad(["X"], "Out", check_prim=True, check_new_ir=True)
 
     def init_test_case(self):
         self.ori_shape = (3, 40)
@@ -135,10 +137,10 @@ class TestUnsqueezeOp_AxesTensorList(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=["XShape"])
+        self.check_output(no_check_set=["XShape"], check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_new_ir=True)
 
     def init_test_case(self):
         self.ori_shape = (20, 5)
@@ -196,10 +198,10 @@ class TestUnsqueezeOp_AxesTensor(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=["XShape"])
+        self.check_output(no_check_set=["XShape"], check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_new_ir=True)
 
     def init_test_case(self):
         self.ori_shape = (20, 5)
