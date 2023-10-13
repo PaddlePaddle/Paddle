@@ -14,6 +14,7 @@
 
 import contextlib
 import inspect
+import logging
 import os
 import unittest
 from enum import Flag, auto
@@ -42,6 +43,9 @@ class MyTest2(MyTest):
     def test_case1(self):
         raise ValueError("MyTest2 1")
 """
+
+logger = logging.getLogger("Dygraph to static utils")
+logger.setLevel(logging.WARNING)
 
 
 class ToStaticMode(Flag):
@@ -87,7 +91,7 @@ def to_legacy_ast_test(fn):
 
     @wraps(fn)
     def impl(*args, **kwargs):
-        print("[AST] running AST")
+        logger.info("[AST] running AST")
         with enable_fallback_guard("False"):
             fn(*args, **kwargs)
 
@@ -101,7 +105,7 @@ def to_sot_test(fn):
 
     @wraps(fn)
     def impl(*args, **kwargs):
-        print("[SOT] running SOT")
+        logger.info("[SOT] running SOT")
         with enable_fallback_guard("True"):
             fn(*args, **kwargs)
 
@@ -114,7 +118,7 @@ def to_pir_ast_test(fn):
 
 def to_legacy_program_test(fn):
     def impl(*args, **kwargs):
-        print("[Program] running legacy program")
+        logger.info("[Program] running legacy program")
         return fn(*args, **kwargs)
 
     return impl
@@ -123,7 +127,7 @@ def to_legacy_program_test(fn):
 def to_pir_test(fn):
     @wraps(fn)
     def impl(*args, **kwargs):
-        print("[PIR] running pir")
+        logger.info("[PIR] running pir")
         ir_outs = None
         if os.environ.get('FLAGS_use_stride_kernel', False):
             return
@@ -162,8 +166,7 @@ class Dy2StTestMeta(type):
             for key, value in attrs.items()
             if key.startswith("test") and inspect.isfunction(value)
         }
-        print(f"[creating {name}]")
-        print(attrs)
+        logger.info(f"[creating {name}]")
         new_attrs.update(
             {
                 key: value
@@ -171,20 +174,21 @@ class Dy2StTestMeta(type):
                 if key not in original_test_cases
             }
         )
-        for key, value in original_test_cases.items():
+        for fn_name, fn in original_test_cases.items():
+            logger.info(f"Generating {fn_name}")
             # Disable inherited test cases
             for base in bases:
                 for attr in dir(base):
-                    if attr.startswith(key):
+                    if attr.startswith(fn_name):
                         new_attrs[attr] = None
             fn_to_static_modes = getattr(
-                value, "to_static_mode", DEFAULT_TO_STATIC_MODE
+                fn, "to_static_mode", DEFAULT_TO_STATIC_MODE
             )
-            fn_ir_modes = getattr(value, "ir_mode", DEFAULT_IR_MODE)
-            fn_disabled_test_cases = getattr(value, "disabled_test_cases", [])
-            print("fn_to_static_modes", fn_to_static_modes)
-            print("fn_ir_modes", fn_ir_modes)
-            print("fn_disabled_test_cases", fn_disabled_test_cases)
+            fn_ir_modes = getattr(fn, "ir_mode", DEFAULT_IR_MODE)
+            fn_disabled_test_cases = getattr(fn, "disabled_test_cases", [])
+            logger.info(f"fn_to_static_modes: {fn_to_static_modes}")
+            logger.info(f"fn_ir_modes: {fn_ir_modes}")
+            logger.info(f"fn_disabled_test_cases: {fn_disabled_test_cases}")
             # Get all valid test cases with to_static_mode and ir_mode
             to_static_with_ir_modes = [
                 (to_static_mode, ir_mode)
@@ -208,10 +212,10 @@ class Dy2StTestMeta(type):
                     # PIR with LEGACY_PROGRAM is not a valid combination
                     continue
                 new_attrs[
-                    Dy2StTestMeta.test_case_name(key, to_static_mode, ir_mode)
-                ] = Dy2StTestMeta.convert_test_case(
-                    value, to_static_mode, ir_mode
-                )
+                    Dy2StTestMeta.test_case_name(
+                        fn_name, to_static_mode, ir_mode
+                    )
+                ] = Dy2StTestMeta.convert_test_case(fn, to_static_mode, ir_mode)
         return type.__new__(cls, name, bases, new_attrs)
 
     @staticmethod
@@ -300,7 +304,7 @@ def test_and_compare_with_new_ir(need_check_output: bool = True):
     def decorator(fn):
         fn = set_ir_mode(IrMode.LEGACY_PROGRAM | IrMode.PIR)(fn)
         if need_check_output:
-            print(f"[need_check_output] {fn.__name__}")
+            logger.info(f"[need_check_output] {fn.__name__}")
             fn = _test_and_compare_with_new_ir(fn)
         return fn
 
@@ -309,8 +313,8 @@ def test_and_compare_with_new_ir(need_check_output: bool = True):
 
 # For debug
 def show_all_test_cases(test_class):
-    print(f"[showing {test_class.__name__}]")
+    logger.info(f"[showing {test_class.__name__}]")
     for attr in dir(test_class):
         if attr.startswith("test"):
             fn = getattr(test_class, attr)
-            print(f"{attr}: {fn}")
+            logger.info(f"{attr}: {fn}")
