@@ -230,6 +230,24 @@ void BindBlock(py::module *m) {
             None
 
       )DOC")
+      .def(
+          "move_op",
+          [](Block &self, Operation *op, uint32_t offset) {
+            Block::Iterator position = self.begin();
+            std::advance(position, offset);
+            op->MoveTo(&self, position);
+          },
+          R"DOC(
+          Move an op to a specific position (block.begin() + offset).
+
+          Args:
+              op (pir.Operation): the operator to be moved.
+              offset (uint32_t) : offset relative to the begin of the block
+
+          Returns:
+              None
+
+        )DOC")
       .def("all_parameters", [](Block &self) -> py::list {
         py::list param_list;
         for (auto iter = self.begin(); iter != self.end(); iter++) {
@@ -398,6 +416,8 @@ void BindOpOperand(py::module *m) {
              self.set_source(result);
            })
       .def("owner", &OpOperand::owner, return_value_policy::reference);
+  // .def("is_empty",
+  //      [](OpOperand &self) {return !self; });
 }
 
 bool GetOpResultBoolAttr(const OpResult &self, const std::string &attr_name) {
