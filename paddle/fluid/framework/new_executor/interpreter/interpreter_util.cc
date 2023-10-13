@@ -934,7 +934,7 @@ void BuildOpFuncList(const platform::Place& place,
       }
     } catch (platform::EnforceNotMet& ex) {
       framework::InsertCallStackInfo(op_type, op->Attrs(), &ex);
-      throw std::move(ex);
+      throw ex;
     } catch (platform::EOFException&) {
       std::rethrow_exception(std::current_exception());
     } catch (std::exception& ex) {
