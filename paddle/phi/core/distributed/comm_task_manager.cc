@@ -83,52 +83,54 @@ void CommTaskManager::CommTaskLoop() {
         std::chrono::milliseconds(loop_thread_sleep_millis),
         [&]() -> bool { return terminated_.load(); });
     for (auto iter = comm_task_list_.begin(); iter != comm_task_list_.end();) {
-        auto task = *iter;
-        if (task->IsTimeout()) {
-            if (!task->IsStarted()) {
-                LOG(ERROR) << "Find timeout init but not start task: "
-                    << task->GetTraceMsg() << ",comm:" << task->nccl_comm()
-                    << ",stream:" << task->nccl_stream();
-                std::string task_key = task->UniqueKey();
-                init_comm_task_map_[task_key] = task;
-            } else if (!task->IsCompleted()) {
-                LOG(ERROR) << "Find timeout start but not finish task: "
-                    << task->GetTraceMsg() << ",comm:" << task->nccl_comm()
-                    << ",stream:" << task->nccl_stream();
-                std::string task_key = task->UniqueKey();
-                start_comm_task_map_[task_key] = task;
-            }
-            iter = comm_task_list_.erase(iter);
-        } else {
-            ++iter;
+      auto task = *iter;
+      if (task->IsTimeout()) {
+        if (!task->IsStarted()) {
+          LOG(ERROR) << "Find timeout init but not start task: "
+                     << task->GetTraceMsg() << ",comm:" << task->nccl_comm()
+                     << ",stream:" << task->nccl_stream();
+          std::string task_key = task->UniqueKey();
+          init_comm_task_map_[task_key] = task;
+        } else if (!task->IsCompleted()) {
+          LOG(ERROR) << "Find timeout start but not finish task: "
+                     << task->GetTraceMsg() << ",comm:" << task->nccl_comm()
+                     << ",stream:" << task->nccl_stream();
+          std::string task_key = task->UniqueKey();
+          start_comm_task_map_[task_key] = task;
         }
+        iter = comm_task_list_.erase(iter);
+      } else {
+        ++iter;
+      }
     }
 
-    for (auto iter = init_comm_task_map_.begin(); iter != init_comm_task_map_.end();) {
-        auto task = iter->second; 
-        if (task->IsStarted()) {
-            std::string task_key = task->UniqueKey();
-            start_comm_task_map_[task_key] = task;
-            iter = init_comm_task_map_.erase(iter);
-            LOG(INFO) << "Start timeout task: " << task->GetTraceMsg();
-        } else { 
-            ++iter; 
-        } 
+    for (auto iter = init_comm_task_map_.begin();
+         iter != init_comm_task_map_.end();) {
+      auto task = iter->second;
+      if (task->IsStarted()) {
+        std::string task_key = task->UniqueKey();
+        start_comm_task_map_[task_key] = task;
+        iter = init_comm_task_map_.erase(iter);
+        LOG(INFO) << "Start timeout task: " << task->GetTraceMsg();
+      } else {
+        ++iter;
+      }
     }
 
-    for (auto iter = start_comm_task_map_.begin(); iter != start_comm_task_map_.end();) {
-        auto task = iter->second;
-        if (task->IsCompleted()) {
-            iter = start_comm_task_map_.erase(iter);
-            LOG(INFO) << "Finish timeout task: " << task->GetTraceMsg();
-        } else {
-            ++iter;
-        }
+    for (auto iter = start_comm_task_map_.begin();
+         iter != start_comm_task_map_.end();) {
+      auto task = iter->second;
+      if (task->IsCompleted()) {
+        iter = start_comm_task_map_.erase(iter);
+        LOG(INFO) << "Finish timeout task: " << task->GetTraceMsg();
+      } else {
+        ++iter;
+      }
     }
 
     if (comm_task_list_.empty() && init_comm_task_map_.empty() &&
-            start_comm_task_map_.empty()) {
-        done = true;
+        start_comm_task_map_.empty()) {
+      done = true;
     }
   }
 }
