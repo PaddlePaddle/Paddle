@@ -117,8 +117,8 @@ def _module_dir(m: types.ModuleType):
 skip_file_names = {_module_dir(m) for m in NEED_SKIP_THIRD_PARTIY_MODULES}
 
 
-sot_path = os.path.dirname(__file__).rpartition("/")[0] + "/"
-paddle_path = sys.modules["paddle"].__file__.rpartition("/")[0] + "/"
+sot_path = os.path.dirname(__file__).rpartition(os.sep)[0] + os.sep
+paddle_path = sys.modules["paddle"].__file__.rpartition(os.sep)[0] + os.sep
 
 skip_file_names.add(sot_path)
 skip_file_names.add(paddle_path)
