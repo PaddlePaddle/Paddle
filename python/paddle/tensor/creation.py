@@ -880,19 +880,6 @@ def full_like(x, fill_value, dtype=None, name=None):
 
 
 def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
-    def get_shape_tensor(list_shape, place):
-        shape_tensor_list = []
-        for dim in list_shape:
-            if isinstance(dim, paddle.pir.OpResult):
-                dim.stop_gradient = True
-                if convert_dtype(dim.dtype) != 'int32':
-                    dim = paddle.cast(x=dim, dtype='int32')
-                shape_tensor_list.append(dim)
-            else:
-                temp_out = _C_ops.full([1], dim, core.DataType.INT32, place)
-                shape_tensor_list.append(temp_out)
-        return shape_tensor_list
-
     if in_dynamic_or_pir_mode():
         place = _current_expected_place()
         if force_cpu:
