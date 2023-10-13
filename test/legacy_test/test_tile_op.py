@@ -50,7 +50,13 @@ class TestTileOpRank1(OpTest):
         self.check_output(check_cinn=self.check_cinn, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
 
 class TestTileOpRank_ZeroDim1(TestTileOpRank1):
@@ -265,7 +271,10 @@ class TestTileFP16OP(OpTest):
         self.check_output(check_cinn=self.check_cinn, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
 
 @unittest.skipIf(
@@ -305,7 +314,12 @@ class TestTileBF16OP(OpTest):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X'], 'Out', check_prim=True, check_pir=True
+            place,
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
 

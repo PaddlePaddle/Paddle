@@ -60,7 +60,13 @@ class TestPadOp(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
     def initTestCase(self):
         self.shape = (16, 16)
@@ -101,7 +107,13 @@ def create_test_fp16(parent):
             return np.float16
 
         def test_check_grad_normal(self):
-            self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+            self.check_grad(
+                ['X'],
+                'Out',
+                check_prim=True,
+                check_pir=True,
+                check_prim_pir=True,
+            )
 
     cls_name = "{}_{}".format(parent.__name__, "Fp16")
     TestPadFp16.__name__ = cls_name
@@ -258,7 +270,12 @@ class TestPadBP16Op(OpTest):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X'], 'Out', check_prim=True, check_pir=True
+            place,
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
 

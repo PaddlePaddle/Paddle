@@ -63,11 +63,15 @@ class TestStackOpBase(OpTest):
         self.attrs = {'axis': self.axis}
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_pir=True)
+        self.check_output(check_prim=True, check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
-            self.get_x_names(), 'Y', check_prim=True, check_pir=True
+            self.get_x_names(),
+            'Y',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
 
@@ -189,11 +193,15 @@ class TestStackBF16Op(OpTest):
         self.attrs = {'axis': self.axis}
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_pir=True)
+        self.check_output(check_prim=True, check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
-            self.get_x_names(), 'Y', check_prim=True, check_pir=True
+            self.get_x_names(),
+            'Y',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
 

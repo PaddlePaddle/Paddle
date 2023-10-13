@@ -50,7 +50,13 @@ class TestExpandV2OpRank1(OpTest):
         self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
 
 class TestExpandV2OpRank1_ZeroDim1(TestExpandV2OpRank1):
@@ -244,7 +250,13 @@ class TestExpandV2FP16Op(OpTest):
         self.check_output(check_cinn=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
 
 #  Situation 8: input x is BF16
@@ -273,7 +285,12 @@ class TestExpandV2BF16Op(OpTest):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X'], 'Out', check_prim=True, check_pir=True
+            place,
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
 
@@ -438,7 +455,7 @@ class TestExpandV2CompOpRank1(OpTest):
         self.check_output(check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_prim_pir=True)
 
 
 class TestExpandV2OpCompRank2_DimExpanding(TestExpandV2CompOpRank1):

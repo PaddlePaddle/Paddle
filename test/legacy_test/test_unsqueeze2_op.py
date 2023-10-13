@@ -44,11 +44,20 @@ class TestUnsqueezeOp(OpTest):
 
     def test_check_output(self):
         self.check_output(
-            no_check_set=["XShape"], check_prim=True, check_pir=True
+            no_check_set=["XShape"],
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_prim=True, check_pir=True)
+        self.check_grad(
+            ["X"],
+            "Out",
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
     def init_test_case(self):
         self.ori_shape = (3, 40)
