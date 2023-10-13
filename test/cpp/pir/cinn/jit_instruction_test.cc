@@ -44,7 +44,7 @@ std::unique_ptr<::pir::Program> BuildProgram() {
   auto program = std::make_unique<::pir::Program>(ctx);
   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
 
-  const float value = 2.0;
+  const float value = 0.5;
   auto full_op_x =
       builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{2, 2},
                                              value,
@@ -53,11 +53,14 @@ std::unique_ptr<::pir::Program> BuildProgram() {
 
   auto full_op_y =
       builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{2, 2},
-                                             value + 5,
+                                             value,
                                              phi::DataType::FLOAT32,
                                              phi::GPUPlace());
-  auto res = builder.Build<paddle::dialect::AddOp>(full_op_x.result(0),
-                                                   full_op_y.result(0));
+
+  auto sin = builder.Build<paddle::dialect::SinOp>(full_op_x.result(0));
+  auto cos = builder.Build<paddle::dialect::CosOp>(full_op_x.result(0));
+  auto res =
+      builder.Build<paddle::dialect::AddOp>(sin.result(0), cos.result(0));
   // auto exp = builder.Build<paddle::dialect::SinOp>(
   //                                           full_op_x.result(0)
   //                                            );
@@ -80,7 +83,8 @@ TEST(CinnJitInstruction, Run) {
   program->Print(std::cout);
 
   cinn::hlir::framework::NewIRCompiler ir_compiler(*program, target, scope);
-  // auto runtime_program = ir_compiler.Build();
+
+  // std::set<std::string> using_cinn_ops = {"pd_op.sin", "pd_op.cos"};
 
   std::vector<cinn::hlir::framework::newir::GroupPtr> groups;
   for (auto it = program->block()->begin(); it != program->block()->end();
