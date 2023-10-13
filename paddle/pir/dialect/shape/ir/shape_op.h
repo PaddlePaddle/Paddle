@@ -71,7 +71,7 @@ class IR_API SymbolicDim : public Op<SymbolicDim> {
     return "kSymbolicDimAttr";
   }
 
-  void Verify() {}
+  void VerifySig() {}
 };
 
 class IR_API DimOp : public Op<DimOp> {
@@ -89,7 +89,7 @@ class IR_API DimOp : public Op<DimOp> {
   const std::string getName();
   void setName(std::string attrValue);
   OpResult out() { return result(0); }
-  void Verify() {}
+  void VerifySig() {}
 };
 
 class IR_API TieProductEqualOp : public Op<TieProductEqualOp> {
@@ -111,7 +111,7 @@ class IR_API TieProductEqualOp : public Op<TieProductEqualOp> {
                     const std::vector<Value> &rhs);
   std::vector<Value> lhs();
   std::vector<Value> rhs();
-  void Verify() {}
+  void VerifySig() {}
 };
 
 class IR_API TieShapeOp : public Op<TieShapeOp> {
@@ -132,7 +132,7 @@ class IR_API TieShapeOp : public Op<TieShapeOp> {
                     const std::vector<Value> &dims);
   Value value();
   std::vector<Value> dims();
-  void Verify() {}
+  void VerifySig() {}
 };
 
 class IR_API FuncOp : public Op<FuncOp> {
@@ -147,7 +147,7 @@ class IR_API FuncOp : public Op<FuncOp> {
                     OperationArgument &argument);  // NOLINT
   void Print(IrPrinter &printer);                  // NOLINT
   Block *block();
-  void Verify() {}
+  void VerifySig() {}
 };
 
 class IR_API TensorDimOp : public Op<TensorDimOp> {
@@ -169,7 +169,7 @@ class IR_API TensorDimOp : public Op<TensorDimOp> {
   Value index();
   Value source();
   OpResult out() { return result(0); }
-  void Verify() {}
+  void VerifySig() {}
 };
 
 }  // namespace pir::dialect

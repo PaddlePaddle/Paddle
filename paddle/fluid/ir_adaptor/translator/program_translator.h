@@ -63,8 +63,29 @@ class ConditionBlockCombination {
   std::vector<::paddle::framework::OpDesc*> op_list_;
 };
 
-using TranslationContext =
-    std::unordered_map<std::string, VariableDefiningInfo>;
+class TranslationContext {
+ public:
+  using Key = std::string;
+  using Value = VariableDefiningInfo;
+  using ValueList = std::vector<Value>;
+  using Conatiner = std::unordered_map<Key, ValueList>;
+
+  TranslationContext() {}
+  ~TranslationContext() {}
+
+  const Value& operator[](const Key& key) const;
+  const Value& at(const Key& key) const;
+  size_t count(const Key& key)
+      const;  // Caution: not exactly same as count in stl library
+
+  void insert(const Key& key, const Value& value);
+
+  Conatiner::const_iterator begin() const { return container_.begin(); }
+  Conatiner::const_iterator end() const { return container_.end(); }
+
+ private:
+  Conatiner container_;
+};
 
 class ProgramTranslator {
   using ProgramDesc = ::paddle::framework::ProgramDesc;
@@ -77,6 +98,8 @@ class ProgramTranslator {
                              pir::Program* program);
 
   void Translate();
+
+  std::unordered_map<std::string, std::vector<pir::Value>> VarDesc2Value();
 
  private:
   const ProgramDesc* legacy_program_;  // not owned

@@ -747,7 +747,7 @@
   kernel :
     func : tile_grad
   no_need_buffer : x
-  composite : tile_grad(x, outgrad, repeat_times, x_grad)
+  composite : tile_grad(x, out_grad, repeat_times, x_grad)
   backward : tile_double_grad
 
 - backward_op : trans_layout_grad

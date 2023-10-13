@@ -42,6 +42,7 @@
 #include "paddle/fluid/framework/new_executor/instruction/cond_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/while_instruction.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
@@ -567,9 +568,17 @@ void NewIRInterpreter::BuildInstruction() {
     } else if (op->dialect()->name() == "cf") {
       VLOG(6) << "skip process cf dialect op: " << op->name();
       continue;
-    } else if (op->isa<paddle::dialect::IfOp>()) {
-      vec_instruction_base_.emplace_back(std::make_unique<CondInstruction>(
-          op_idx++, place_, op, value_exe_info_.get()));
+    } else if (op->dialect()->name() == "pd_op") {
+      if (op->isa<paddle::dialect::IfOp>()) {
+        vec_instruction_base_.emplace_back(std::make_unique<CondInstruction>(
+            op_idx++, place_, op, value_exe_info_.get()));
+      } else if (op->isa<paddle::dialect::WhileOp>()) {
+        vec_instruction_base_.emplace_back(std::make_unique<WhileInstruction>(
+            op_idx++, place_, op, scope_, local_scope_, value_exe_info_.get()));
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Now only support pd_kernel and cinn dialect."));
+      }
     } else if (op->dialect()->name() == "pd_kernel") {
       auto op_name = op->attributes()
                          .at("op_name")
@@ -1484,6 +1493,9 @@ void NewIRInterpreter::SolvePersisableVarNames() {
     ::pir::Value value = kv.first;
     const std::string& var_name = kv.second;
     ::pir::OpResult result = value.dyn_cast<::pir::OpResult>();
+    if (!result) {
+      continue;
+    }
     auto* defining_op = result.owner();
     if (defining_op->HasAttribute(kAttrIsPersisable)) {
       auto is_persisables =
