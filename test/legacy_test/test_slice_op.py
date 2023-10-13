@@ -167,6 +167,7 @@ class TestSliceOp_decs_dim(OpTest):
             max_relative_error=0.006,
             check_prim=True,
             check_pir=True,
+            check_prim_pir=True,
         )
 
 

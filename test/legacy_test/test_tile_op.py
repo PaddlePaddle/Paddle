@@ -272,6 +272,9 @@ class TestTileFP16OP(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=True,
             check_pir=True,
             check_prim_pir=True,
         )
