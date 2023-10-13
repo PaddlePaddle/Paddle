@@ -20,6 +20,7 @@ from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def broadcast_wrapper(shape=[1, 10, 12, 1]):
@@ -490,6 +491,7 @@ create_test_fp16_class(TestElementwiseDivOpXsizeLessThanYsize)
 
 
 class TestElementwiseDivBroadcast(unittest.TestCase):
+    @test_with_pir_api
     def test_shape_with_batch_sizes(self):
         paddle.enable_static()
         with base.program_guard(base.Program()):
@@ -514,6 +516,17 @@ class TestDivideOp(unittest.TestCase):
 
             y_1 = paddle.divide(x, y, name='div_res')
             self.assertEqual(('div_res' in y_1.name), True)
+
+        with paddle.pir_utils.IrGuard(), base.program_guard(base.Program()):
+            x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
+            y = paddle.static.data(name='y', shape=[2, 3], dtype='float32')
+
+            y_1 = paddle.divide(x, y, name='div_res')
+
+            def name_call():
+                self.assertEqual(('div_res' in y_1.name), True)
+
+            self.assertRaises(ValueError, name_call)
         paddle.disable_static()
 
     def test_dygraph(self):
