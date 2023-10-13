@@ -532,7 +532,6 @@ class TestFillConstantOpError(unittest.TestCase):
                     out = paddle.tensor.fill_constant(
                         shape=shape, dtype="float32", value=1
                     )
-                    print(paddle.static.default_main_program())
                     exe = base.Executor(place=base.CPUPlace())
                     exe.run(
                         feed={

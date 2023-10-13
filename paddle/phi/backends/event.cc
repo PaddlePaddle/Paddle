@@ -46,6 +46,7 @@ Event::Event(const Place& place, event_t event)
       own_data_(false) {}
 
 Event::~Event() {
+  Synchronize();
   Destroy();
   std::unique_lock lock(g_events_mutex);
   g_events.remove(this);
@@ -77,14 +78,35 @@ void Event::Destroy() {
     own_data_ = false;
     event_ = nullptr;
     device_ = nullptr;
+    is_recorded_ = false;
   }
 }
 
-void Event::Record(const stream::Stream* stream) { stream->RecordEvent(this); }
+void Event::Record(const stream::Stream* stream) {
+  if (device_) {
+    is_recorded_ = true;  // synchronize the event during detroy
+    stream->RecordEvent(this);
+  }
+}
 
-bool Event::Query() const { return device_->QueryEvent(this); }
+bool Event::Query() const {
+  if (device_ && is_recorded_) {
+    bool ret = device_->QueryEvent(this);
+    if (ret) {
+      is_recorded_ =
+          false;  // event completed, do not need to synchronize the event.
+    }
+    return ret;
+  } else {
+    return true;
+  }
+}
 
-void Event::Synchronize() const { device_->SynchronizeEvent(this); }
+void Event::Synchronize() const {
+  if (device_ && is_recorded_) {
+    device_->SynchronizeEvent(this);
+  }
+}
 
 const Place& Event::GetPlace() const { return place_; }
 
