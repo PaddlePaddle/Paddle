@@ -83,9 +83,6 @@ function do_cpython_build {
     rm -rf Python-$py_ver
     # Some python's install as bin/python3. Make them available as
     # bin/python.
-    if [ -e ${prefix}/bin/python3.7 ]; then
-        ln -s python3.7 ${prefix}/bin/python
-    fi
     if [ -e ${prefix}/bin/python3.8 ]; then
         ln -s python3.8 ${prefix}/bin/python
     fi
@@ -98,8 +95,11 @@ function do_cpython_build {
     if [ -e ${prefix}/bin/python3.11 ]; then
         ln -s python3.11 ${prefix}/bin/python
     fi
+    if [ -e ${prefix}/bin/python3.12 ]; then
+        ln -s python3.12 ${prefix}/bin/python
+    fi
     # NOTE Make libpython shared library visible to python calls below
-    if [ -e ${prefix}/bin/python3.10 ] || [ -e ${prefix}/bin/python3.11 ]; then
+    if [ -e ${prefix}/bin/python3.10 ] || [ -e ${prefix}/bin/python3.11 ] || [ -e ${prefix}/bin/python3.12 ]; then
         LD_LIBRARY_PATH="/usr/local/ssl/lib:${prefix}/lib" ${prefix}/bin/python -m pip config set global.trusted-host mirrors.aliyun.com
         LD_LIBRARY_PATH="/usr/local/ssl/lib:${prefix}/lib" ${prefix}/bin/python -m pip config set global.index-url http://mirrors.aliyun.com/pypi/simple/
     fi

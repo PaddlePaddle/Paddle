@@ -31,7 +31,7 @@ fi
 
 if [ "$1" == "gcc82" ]; then
   wget -q --no-proxy https://paddle-ci.gz.bcebos.com/gcc-8.2.0.tar.xz 
-  tar -xvf gcc-8.2.0.tar.xz && \
+  tar -xf gcc-8.2.0.tar.xz && \
   cd gcc-8.2.0 && \
   wget -q --no-proxy https://paddle-ci.gz.bcebos.com/sanitizer_platform_limits_posix.cc.patch
   wget -q --no-proxy https://paddle-ci.gz.bcebos.com/sanitizer_platform_limits_posix.h.patch
@@ -43,6 +43,12 @@ if [ "$1" == "gcc82" ]; then
   ../gcc-8.2.0/configure --prefix=/usr/local/gcc-8.2 --enable-threads=posix --disable-checking --disable-multilib && \
   make -j8 && make install
   cd .. && rm -rf temp_gcc82 gcc-8.2.0 gcc-8.2.0.tar.xz
+  if [ -f "/etc/redhat-release" ];then
+    cp ${lib_so_6} ${lib_so_6}.bak  && rm -f ${lib_so_6} && 
+    ln -s /usr/local/gcc-8.2/lib64/libgfortran.so.5 ${lib_so_5} && \
+    ln -s /usr/local/gcc-8.2/lib64/libstdc++.so.6 ${lib_so_6} && \
+    cp /usr/local/gcc-8.2/lib64/libstdc++.so.6.0.25 ${lib_path}
+  fi
 elif [ "$1" == "gcc122" ]; then
   wget -q --no-proxy https://paddle-ci.gz.bcebos.com/gcc-12.2.0.tar.gz
   tar -xzf gcc-12.2.0.tar.gz && \
