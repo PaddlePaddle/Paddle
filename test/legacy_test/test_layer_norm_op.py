@@ -838,6 +838,11 @@ class TestDygraphLayerNormAPIError(unittest.TestCase):
                 name='x2', shape=[-1, 3, 32, 32], dtype="int32"
             )
             self.assertRaises(TypeError, layer_norm, x2)
+        with paddle.pir_utils.IrGuard(), program_guard(Program(), Program()):
+            layer_norm = paddle.nn.LayerNorm([32, 32])
+            # the input of LayerNorm must be Variable.
+            x1 = np.random.random((3, 32, 32)).astype('float32')
+            self.assertRaises(ValueError, layer_norm, x1)
 
 
 @unittest.skipIf(

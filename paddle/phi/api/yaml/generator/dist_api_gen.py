@@ -171,6 +171,12 @@ INFER_GLOBAL_SHAPE_TEMPLATE = """
 # Dist Branch will not generated in the API that doesn't have input tensor.
 SET_SINGLE_OUT_REPLICATED_DIST_ATTR = """
     SetReplicatedDistAttrForOutput({}, spmd_info.first[0].process_mesh());"""
+SET_VECTOR_OUT_REPLICATED_DIST_ATTR = """
+    auto current_process_mesh = spmd_info.first[0].process_mesh();
+    for (size_t i = 0; i < dist_out.size(); ++i) {{
+        SetReplicatedDistAttrForOutput(dist_out[i], current_process_mesh);
+    }}
+"""
 
 # 4. Select Kernel
 KERNEL_SELECTION_TEMPLATE = """
@@ -680,6 +686,10 @@ class DistForwardAPI(ForwardAPI):
                     name=out_name
                 )
                 output_args_code += f"{out_name}_meta_ptr_vec, "
+                if self.generate_general_infer_spmd is True:
+                    set_out_dist_attr_code += (
+                        SET_VECTOR_OUT_REPLICATED_DIST_ATTR
+                    )
             else:
                 output_decl_code += SINGLE_GLOBAL_META_OUT_DECL_TEMPLATE.format(
                     out_name, out_name

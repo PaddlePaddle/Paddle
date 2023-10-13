@@ -195,5 +195,22 @@ class TestDy2staticNewIR5(unittest.TestCase):
         )
 
 
+class TestDy2staticNewIR6(unittest.TestCase):
+    # test basic-indexing __getitem__ for OpResult
+    def test_basic_network(self):
+        def func(x):
+            shape = paddle.shape(x)
+            out = shape[1:]
+            return out
+
+        static_func = paddle.jit.to_static(func)
+        x = paddle.randn((2, 3, 4))
+        x.stop_gradient = False
+        ans = func(x)
+        out = static_func(x)
+
+        np.testing.assert_allclose(out.numpy(), ans.numpy())
+
+
 if __name__ == "__main__":
     unittest.main()

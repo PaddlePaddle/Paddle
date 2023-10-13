@@ -25,17 +25,19 @@
 namespace phi {
 namespace distributed {
 
-XCCLCommContext::XCCLCommContext(const std::string& device_type,
+XCCLCommContext::XCCLCommContext(const phi::Place& place,
                                  int rank,
                                  int size,
                                  const ccl::CCLRootId& xccl_id)
     : CommContext(rank, size) {
-  device_type_ = device_type;
-  phi::DeviceManager::CCLCommInitRank(device_type,
+  place_ = place;
+  phi::DeviceManager::CCLCommInitRank(place_.GetDeviceType(),
                                       size_,
                                       const_cast<ccl::CCLRootId*>(&xccl_id),
                                       rank,
                                       &xccl_comm_);
+  stream_ = std::make_shared<phi::stream::Stream>();
+  stream_->Init(place_);
 }
 
 void XCCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
@@ -49,7 +51,7 @@ void XCCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
                              size_,
                              phi::AllocationType::CUSTOM);
   if (rank_ == root) {
-    phi::DeviceManager::CCLBroadcast(device_type_,
+    phi::DeviceManager::CCLBroadcast(place_.GetDeviceType(),
                                      const_cast<void*>(in_tensor.data()),
                                      in_tensor.numel(),
                                      phi::ccl::ToCCLDataType(in_tensor.dtype()),
@@ -57,7 +59,7 @@ void XCCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
                                      xccl_comm_,
                                      stream);
   } else {
-    phi::DeviceManager::CCLBroadcast(device_type_,
+    phi::DeviceManager::CCLBroadcast(place_.GetDeviceType(),
                                      out_tensor->data(),
                                      out_tensor->numel(),
                                      phi::ccl::ToCCLDataType(in_tensor.dtype()),
@@ -77,7 +79,7 @@ void XCCLCommContext::AllGather(phi::DenseTensor* out_tensor,
       /*cur_rank*/ rank_,
       size_,
       phi::AllocationType::CUSTOM);
-  phi::DeviceManager::CCLAllGather(device_type_,
+  phi::DeviceManager::CCLAllGather(place_.GetDeviceType(),
                                    const_cast<void*>(in_tensor.data()),
                                    out_tensor->data(),
                                    in_tensor.numel(),
@@ -97,7 +99,7 @@ void XCCLCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
       size_,
       phi::AllocationType::CUSTOM);
   phi::DeviceManager::CCLReduceScatter(
-      device_type_,
+      place_.GetDeviceType(),
       const_cast<void*>(in_tensor.data()),
       out_tensor->data(),
       out_tensor->numel(),
@@ -113,7 +115,7 @@ void XCCLCommContext::Send(const phi::DenseTensor& in_tensor,
                            const phi::stream::Stream& stream) const {
   phi::distributed::CommStaticCheck::CheckShape(
       in_tensor, rank_, size_, phi::AllocationType::CUSTOM);
-  phi::DeviceManager::CCLSend(device_type_,
+  phi::DeviceManager::CCLSend(place_.GetDeviceType(),
                               const_cast<void*>(in_tensor.data()),
                               count,
                               phi::ccl::ToCCLDataType(in_tensor.type()),
@@ -130,7 +132,7 @@ void XCCLCommContext::Recv(phi::DenseTensor* out_tensor,
                            const phi::stream::Stream& stream) const {
   phi::distributed::CommStaticCheck::CheckShape(
       *out_tensor, rank_, size_, phi::AllocationType::CUSTOM);
-  phi::DeviceManager::CCLRecv(device_type_,
+  phi::DeviceManager::CCLRecv(place_.GetDeviceType(),
                               out_tensor->data(),
                               count,
                               phi::ccl::ToCCLDataType(out_tensor->type()),
@@ -151,7 +153,7 @@ void XCCLCommContext::AllReduce(phi::DenseTensor* out_tensor,
                                                /*cur_rank*/ rank_,
                                                size_,
                                                phi::AllocationType::CUSTOM);
-  phi::DeviceManager::CCLAllReduce(device_type_,
+  phi::DeviceManager::CCLAllReduce(place_.GetDeviceType(),
                                    const_cast<void*>(in_tensor.data()),
                                    out_tensor->data(),
                                    in_tensor.numel(),
@@ -172,7 +174,7 @@ void XCCLCommContext::Reduce(phi::DenseTensor* out_tensor,
                                                /*cur_rank*/ rank_,
                                                size_,
                                                phi::AllocationType::CUSTOM);
-  phi::DeviceManager::CCLReduce(device_type_,
+  phi::DeviceManager::CCLReduce(place_.GetDeviceType(),
                                 const_cast<void*>(in_tensor.data()),
                                 out_tensor->data(),
                                 in_tensor.numel(),
@@ -184,10 +186,10 @@ void XCCLCommContext::Reduce(phi::DenseTensor* out_tensor,
 }
 
 void XCCLCommContext::GroupStart() const {
-  phi::DeviceManager::CCLGroupStart(device_type_);
+  phi::DeviceManager::CCLGroupStart(place_.GetDeviceType());
 }
 void XCCLCommContext::GroupEnd() const {
-  phi::DeviceManager::CCLGroupEnd(device_type_);
+  phi::DeviceManager::CCLGroupEnd(place_.GetDeviceType());
 }
 
 }  // namespace distributed
