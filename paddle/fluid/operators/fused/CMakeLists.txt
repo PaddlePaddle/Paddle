@@ -7,14 +7,11 @@ register_operators(
   EXCLUDES
   fused_bn_activation_op
   conv_fusion_op
-  fusion_transpose_flatten_concat_op
   fusion_conv_inception_op
-  fused_fc_elementwise_layernorm_op
   self_dp_attention_op
   skip_layernorm_op
   yolo_box_head_op
   yolo_box_post_op
-  fused_embedding_eltwise_layernorm_op
   fusion_group_op
   fusion_gru_op
   fusion_lstm_op
@@ -61,22 +58,15 @@ if(WITH_GPU OR WITH_ROCM)
   if(NOT ${CUDNN_VERSION} VERSION_LESS 7100)
     op_library(conv_fusion_op)
   endif()
-  # fusion_transpose_flatten_concat_op
   # HIP not support cudnnTransformTensor
-  if(NOT WITH_ROCM)
-    op_library(fusion_transpose_flatten_concat_op)
-  endif()
   # fusion_conv_inception_op needs cudnn 7 above
   # HIP not support cudnnConvolutionBiasActivationForward
   if((NOT WITH_ROCM) AND (NOT ${CUDNN_VERSION} VERSION_LESS 7100))
     op_library(fusion_conv_inception_op)
   endif()
-  # fused_fc_elementwise_layernorm_op
-  op_library(fused_fc_elementwise_layernorm_op)
   op_library(skip_layernorm_op)
   op_library(yolo_box_head_op)
   op_library(yolo_box_post_op)
-  op_library(fused_embedding_eltwise_layernorm_op DEPS bert_encoder_functor)
   op_library(fused_gate_attention_op)
   # fusion_group
   if(NOT APPLE AND NOT WIN32)

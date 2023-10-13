@@ -297,6 +297,7 @@ FetchResultType ParallelSSAGraphExecutor::Run(
         for (size_t i = 0; i < lodtensorarray_ptrs[0]->size(); ++i) {
           phi::DenseTensor var;
           std::vector<const phi::DenseTensor *> ptrs;
+          ptrs.reserve(lodtensor_ptrs.size());
           for (auto &lodtensorarray_ptr : lodtensorarray_ptrs) {
             ptrs.push_back(&(lodtensorarray_ptr->at(i)));
           }

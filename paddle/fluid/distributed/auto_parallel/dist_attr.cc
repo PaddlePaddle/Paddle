@@ -83,7 +83,7 @@ OperatorDistAttr& OperatorDistAttr::operator=(
 
 void OperatorDistAttr::initialize(const OpDesc* op) {
   if (op == nullptr) return;
-  for (std::string name : op->InputArgumentNames()) {
+  for (std::string const& name : op->InputArgumentNames()) {
     VarDesc* input = op->Block()->FindVarRecursive(name);
     VLOG(4) << "[OperatorDistAttr create input dist attr] " << name;
     if (input == nullptr || op->Type() == "create_py_reader") {
@@ -92,7 +92,7 @@ void OperatorDistAttr::initialize(const OpDesc* op) {
       input_dist_attrs_[name] = TensorDistAttr(get_tensor_shape(input));
     }
   }
-  for (std::string name : op->OutputArgumentNames()) {
+  for (std::string const& name : op->OutputArgumentNames()) {
     VarDesc* output = op->Block()->FindVarRecursive(name);
     VLOG(4) << "[OperatorDistAttr create output dist attr] " << name;
     if (output == nullptr) {
