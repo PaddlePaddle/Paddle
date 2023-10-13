@@ -118,7 +118,7 @@ class Scope {
               const std::string& new_name) const;
 
   // Return the number of variables in scope
-  size_t Size() { return vars_.size(); }
+  size_t Size() const { return vars_.size(); }
 
   // Rename variable to a new name and return the new name
   std::string Rename(const std::string& origin_name) const;

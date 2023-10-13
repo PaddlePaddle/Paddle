@@ -31,7 +31,8 @@ namespace interpreter {
 class Plan final {
  public:
   Plan(const std::vector<std::shared_ptr<Job>>& job_list,
-       const std::unordered_map<std::string, ProgramDesc*>& type_to_program);
+       const std::unordered_map<std::string, std::shared_ptr<ProgramDesc>>&
+           type_to_program);
   Plan(const std::vector<std::shared_ptr<Job>>& job_list,
        const std::unordered_map<std::string, std::shared_ptr<::pir::Program>>&
            type_to_ir_program);
@@ -40,7 +41,8 @@ class Plan final {
 
   const std::vector<std::shared_ptr<Job>>& JobList() const;
 
-  const ProgramDesc* Program(const std::string& job_type) const;
+  const std::shared_ptr<ProgramDesc> Program(const std::string& job_type) const;
+  std::shared_ptr<ProgramDesc> MutableProgram(const std::string& job_type);
   std::shared_ptr<::pir::Program> IrProgram(const std::string& job_type) const;
 
   void UpdateIrProgram(const std::string& job_type,
@@ -50,7 +52,10 @@ class Plan final {
 
  private:
   const std::vector<std::shared_ptr<Job>> job_list_;
-  const std::unordered_map<std::string, ProgramDesc*> type_to_program_;
+  // liuchenghao: remove const qualifier and wraps with std::shared_ptr for
+  // member "type_to_program_"
+  std::unordered_map<std::string, std::shared_ptr<ProgramDesc>>
+      type_to_program_;
   std::unordered_map<std::string, std::shared_ptr<::pir::Program>>
       type_to_ir_program_;
   int64_t micro_batch_num_;

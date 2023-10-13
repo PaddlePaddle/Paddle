@@ -164,18 +164,50 @@ void ProgramInterpreter::ProfileInstructionList(
 
   platform::Timer timer;
 
-  for (auto& instr : vec_instruction_) {
-    bool is_comm_op = interpreter::IsCommunicationOp(instr);
-    const std::string op_place =
-        instr.DeviceContext().GetPlace().GetDeviceType();
+  auto SyncDevice = []() {
+    // implement device sync for different platforms (hip, cuda, ...)
+    platform::GpuDeviceSync();
+  };
+
+  for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
+    auto& instr = vec_instruction_[trace_execute_order_[idx]];
     VLOG(4) << "** Profiling op: [id=" << instr.Id()
-            << ",name=" << instr.OpBase()->Type() << ",devtype=" << op_place
-            << "]";
-    // if (!is_comm_op && )
-    timer.Start();
-    RunInstruction(instr);
-    timer.Pause();
-    double dt = timer.ElapsedUS();
+            << ",name=" << instr.OpBase()->Type() << "]";
+
+    if (instr.IsSupportRuntimeProfiling()) {
+      // step 1: prepare
+      OperatorBase* op_base = instr.OpBase();
+      OpDesc* op_desc = block_.Op(op_base->Id());
+      OperatorDistAttr* op_dist_attr = op_desc->MutableDistAttr();
+      OpFuncType op_func_type = instr.KernelType();
+      bool require_sync = false;
+      if (!platform::is_cpu_place(place_)) {
+        if (op_func_type == OpFuncType::kGpuAsync ||
+            op_func_type == OpFuncType::kGpuSync) {
+          require_sync = true;
+        }
+      }
+
+      // step 2: start run
+      if (require_sync) SyncDevice();
+      timer.Start();
+      RunInstruction(instr);
+      timer.Pause();
+      if (require_sync) SyncDevice();
+
+      // step 3: record run time to operator dist attr
+      double dt_us = timer.ElapsedUS();
+      op_dist_attr->set_run_time_us(dt_us);
+      VLOG(4) << "** op "
+              << "[" << instr.Id() << "," << instr.OpBase()->Type() << "]"
+              << " run time: " << op_dist_attr->run_time_us() << " us.";
+      VLOG(4) << "** op dist_attr addr: "
+              << op_dist_attr->get_physical_address();
+    } else {
+      // don't need profiling
+      RunInstruction(instr);
+      VLOG(4) << "** op does not support runtime profiling.";
+    }
 
     if (UNLIKELY(exception_holder_.IsCaught())) {
       VLOG(4) << "Exception caught";
@@ -300,6 +332,12 @@ FetchList ProgramInterpreter::Run(
 
 void ProgramInterpreter::RunProfile(
     const std::vector<std::string>& feed_names) {
+  if (!static_build_) {
+    throw std::runtime_error(
+        "Run profile requires static_build==true, "
+        "use FLAGS_new_executor_static_build=1 to enable it.");
+  }
+
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
 
@@ -326,10 +364,8 @@ void ProgramInterpreter::RunProfile(
     // convert vec func_list to graph
     Convert(&op_func_nodes);
     UpdateSyncOpNum();
-    if (static_build_) {
-      VLOG(4) << "RUN impl";
-      RunProfileImpl();
-    }
+    RunProfileImpl();
+
     is_build_ = true;
     is_shared_results_build_ = true;
   } else {

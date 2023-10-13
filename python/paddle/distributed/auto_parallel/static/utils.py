@@ -15,6 +15,7 @@
 import copy
 import logging
 import os
+import sys
 import threading
 import warnings
 from functools import reduce
@@ -22,6 +23,13 @@ from functools import reduce
 import numpy as np
 
 import paddle
+from paddle.base.data_feeder import convert_dtype
+from paddle.base.executor import (
+    _as_lodtensor,
+    _StandaloneExecutor,
+    check_feed_shape_type,
+)
+from paddle.base.framework import Program
 from paddle.base.wrapped_decorator import wrap_decorator
 from paddle.framework import core
 from paddle.framework.io_utils import is_belong_to_optimizer, is_parameter
@@ -2515,3 +2523,201 @@ def wrap_data_for_completion(
         attrs[attr_name] = serial_op.desc.attr(attr_name)
 
     return input_specs, output_specs, attrs
+
+
+def measure_real_op_cost_wrt_program_and_place(program, place, verbose=False):
+    '''
+    Description
+    -----------
+    Measuring real op run time with respect to the given "program" and
+    "place" where the "program" is going to be executed.
+
+    Parameters
+    -----------
+    program: the program object waiting to be evaluated.
+    place: where the program is going to be executed, can be one of the
+            following types: base.CPUPlace, base.GPUPlace
+    verbose: print info generated during profiling.
+    '''
+    assert isinstance(program, Program), (
+        '"program" should be a instance of "paddle.base.framework.Program" but got type "%s".'
+        % type(program).__name__
+    )
+
+    def _verbose_print(s, length=None, align='left'):
+        assert align in [
+            'left',
+            'middle',
+            'right',
+        ], 'invalid text alignment setting.'
+        if verbose:
+            if align in ['middle', 'right'] and length is None:
+                pad = 0
+            else:
+                pad = (
+                    0
+                    if align == 'left'
+                    else (
+                        length - len(s)
+                        if align == 'right'
+                        else (length - len(s)) // 2
+                    )
+                )
+            sys.stdout.write(' ' * pad + s + '\n')
+            sys.stdout.flush()
+
+    # clone the program to avoid accidental change made to the vanilla program.
+    cloned_program = program.clone()
+    cloned_main_block = cloned_program.global_block()
+    _verbose_print("Program op profiling started.")
+    _verbose_print("Current program being profiled:\n" + str(cloned_program))
+
+    # We will run the executor in a newly created scope, so that our
+    # executor will not pollute the global scope when running. Since
+    # we created a brand new scope, we need to manually create input
+    # tensors and network parameters and feed fake data into them.
+    scope = core.Scope()
+
+    def _config_feed_ops():
+        """
+        configure feed op,
+        1. alloc feed op output var storage
+        2. fill feed op's input var
+        return feed var names
+        """
+        num_micro_batches = (
+            cloned_program._pipeline_opt["standalone_opt"]["num_micro_batches"]
+            if (
+                cloned_program._pipeline_opt
+                and "standalone_opt" in cloned_program._pipeline_opt
+            )
+            else 1
+        )
+        assert num_micro_batches == 1, 'num_micro_batches should be 1 here.'
+
+        feed_names = []
+        has_feed_op = False
+        for op in cloned_main_block.ops:
+            if op.type == "feed":
+                has_feed_op = True
+                out_var_name = op.desc.output('Out')[0]
+                in_var_name = op.desc.input('X')[0]  # this is usually "feed"
+                out_var = cloned_main_block.var(out_var_name)
+                out_var_shape = out_var.shape
+                out_var_dtype = out_var.dtype
+                input_index = op.desc.attr('col')
+                for dim_shape in out_var_shape:
+                    assert dim_shape > 0, (
+                        "Program profiler currently does not support "
+                        "dynamic shape variable. Found a variable with dynamic shape: "
+                        "name=\"{}\", shape={}.".format(
+                            out_var_name, out_var_shape
+                        )
+                    )
+                # feed random gaussian noises
+                out_var_np_dtype = (
+                    convert_dtype(out_var_dtype)
+                    if isinstance(out_var_dtype, core.VarDesc.VarType)
+                    else out_var_dtype
+                )
+                out_cur_feed = np.array(np.random.randn(*out_var_shape)).astype(
+                    out_var_np_dtype
+                )
+                out_cur_feed = _as_lodtensor(out_cur_feed, place, out_var_dtype)
+                check_feed_shape_type(out_var, out_cur_feed)
+                _verbose_print('[+] feed var: "%s".' % out_var_name)
+                core.set_variable(scope, out_cur_feed, out_var_name)
+                core.set_feed_variable(
+                    scope, out_cur_feed, in_var_name, input_index
+                )
+                feed_names.append(out_var_name)
+        if not has_feed_op:
+            _verbose_print("WARNING: program does not have any feed op.")
+        return feed_names
+
+    def _init_persist_vars_and_parameters():
+        """
+        create and initialize persist vars and parameters in program
+        """
+        all_var_names = []
+        supported_var_dtypes = ["paddle.float32"]
+        for block in cloned_program.blocks:
+            all_var_names += block.vars
+        for var_name in all_var_names:
+            if var_name == 'feed':
+                continue  # skip special variable
+            var = cloned_main_block.var(var_name)
+            var: Variable
+            if var.persistable or var.is_parameter:
+                var_shape = var.shape
+                var_dtype = var.dtype
+                assert str(var_dtype) in supported_var_dtypes, (
+                    "Found unsupported variable dtype: \"{}\", current supported "
+                    "dtype(s) is/are: {}. ".format(
+                        str(var_dtype), ", ".join(supported_var_dtypes)
+                    )
+                )
+                if scope.find_var(var_name) is None:
+                    _verbose_print(
+                        '[+] var: "{}", shape={}, dtype="{}".'.format(
+                            var_name, str(var_shape), str(var_dtype)
+                        )
+                    )
+                    # feed random gaussian noises
+                    np_dtype = (
+                        convert_dtype(var_dtype)
+                        if isinstance(var_dtype, core.VarDesc.VarType)
+                        else var_dtype
+                    )
+                    cur_feed = np.array(np.random.randn(*var_shape)).astype(
+                        np_dtype
+                    )
+                    cur_feed = _as_lodtensor(cur_feed, place, var_dtype)
+                    check_feed_shape_type(var, cur_feed)
+                    core.set_variable(scope, cur_feed, var_name)
+                else:
+                    _verbose_print(
+                        '[ ] var: "{}", shape={}, dtype="{}".'.format(
+                            var_name, str(var_shape), str(var_dtype)
+                        )
+                    )
+
+    feed_names = _config_feed_ops()
+    _init_persist_vars_and_parameters()
+
+    # build a simple plan from program and run profiling
+    plan = core.Plan([core.Job("default")], {"default": cloned_program.desc})
+    exe = _StandaloneExecutor(place, plan, scope)
+    exe.run_profile(feed_names)
+
+    # because we run the cloned program, we need to write profiling message to the vanilla program
+    TABLE_WIDTH = 50
+
+    def _format_single_line(idx, op):
+        bg_str = ' .' * (TABLE_WIDTH // 2)
+        left_str = '[*] %5d, %s' % (idx, op.type)
+        right_str = (
+            ('%d us' % int(op.get_runtime_us()))
+            if op.is_support_runtime_profiling()
+            else 'not supported'
+        )
+        out_str = (
+            left_str
+            + bg_str[len(left_str) : TABLE_WIDTH - len(right_str)]
+            + right_str
+        )
+        return out_str
+
+    main_block = program.global_block()
+    _verbose_print("=" * TABLE_WIDTH)
+    _verbose_print(
+        "Runtime Op Profiling Result", length=TABLE_WIDTH, align='middle'
+    )
+    _verbose_print("-" * TABLE_WIDTH)
+    for op_idx, cloned_op, op in zip(
+        range(len(main_block.ops)), cloned_main_block.ops, main_block.ops
+    ):
+        if cloned_op.is_support_runtime_profiling():
+            op.set_runtime_us(cloned_op.get_runtime_us())
+        _verbose_print(_format_single_line(op_idx, op))
+    _verbose_print("=" * TABLE_WIDTH)

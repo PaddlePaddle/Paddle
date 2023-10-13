@@ -170,6 +170,18 @@ Instruction::Instruction(size_t id,
                         "Required id >= 0, but received id = %d", id));
 }
 
+bool Instruction::IsSupportRuntimeProfiling() const {
+  if (this->OpBaseValid() == false) return false;
+  std::string op_type = this->OpBase()->Type();
+  if (op_type.substr(0, 2) == "c_") {
+    return false;
+  } else if (op_type.substr(0, 4) == "send" || op_type.substr(0, 4) == "recv") {
+    return false;
+  } else {
+    return true;
+  }
+}
+
 void Instruction::WaitEvent(const Place& place) const {
   // If InterpreterCore in on CPUPlace, do nothing.
   if (platform::is_cpu_place(place)) {
