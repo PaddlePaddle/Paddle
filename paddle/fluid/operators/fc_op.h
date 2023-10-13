@@ -51,5 +51,52 @@ inline void FCOutputSize(const framework::DDim& in_dims,
   out_dims.push_back(w_dims1);
 }
 
+template <typename T, typename DeviceContext>
+class FCOpKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const paddle::framework::ExecutionContext& ctx) const override {
+    auto* input = ctx.Input<phi::DenseTensor>("Input");
+    auto* w = ctx.Input<phi::DenseTensor>("W");
+    auto* bias = ctx.Input<phi::DenseTensor>("Bias");
+    auto* output = ctx.Output<phi::DenseTensor>("Out");
+    int in_num_col_dims = ctx.Attr<int>("in_num_col_dims");
+    bool with_relu =
+        (ctx.Attr<std::string>("activation_type") == "relu") ? true : false;
+
+    auto w_dims = w->dims();
+    bool padding_weights = ctx.Attr<bool>("padding_weights");
+
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+
+    std::vector<int64_t> output_dims;
+    FCOutputSize(
+        input->dims(), w_dims, output_dims, in_num_col_dims, padding_weights);
+    output->Resize(phi::make_ddim(output_dims));
+    output->set_lod(input->lod());
+
+    auto out_dims = output->dims();
+    auto w_dims0 = padding_weights ? w_dims[0] - 4 : w_dims[0];
+    auto w_dims1 = padding_weights ? w_dims[1] - 4 : w_dims[1];
+    int M = phi::product(out_dims) / w_dims1;
+
+    const T* input_data = input->data<T>();
+    const T* w_data = w->data<T>();
+    auto* output_data =
+        dev_ctx.template Alloc<T>(output, output->numel() * sizeof(T));
+
+    phi::funcs::FCFunctor<DeviceContext, T> fc;
+    fc(dev_ctx,
+       M,
+       w_dims1,
+       w_dims0,
+       input_data,
+       w_data,
+       output_data,
+       bias ? bias->data<T>() : NULL,
+       with_relu,
+       padding_weights);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
