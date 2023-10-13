@@ -99,7 +99,9 @@ class CollectiveHelper:
             other_endpoints.remove(current_endpoint)
 
         if rank == 0 and wait_port:
-            use_new_comm = os.getenv("FLAGS_dynamic_static_unified_comm", "0")
+            use_new_comm = os.getenv(
+                "FLAGS_dynamic_static_unified_comm", "True"
+            )
             if use_new_comm not in [1, "1", "True", "true"]:
                 wait_server_ready(other_endpoints)
 
