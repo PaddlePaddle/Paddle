@@ -7434,6 +7434,17 @@ class EagerParamBase(core.eager.Tensor):
                 type(trainable),
             )
 
+    @property
+    def actual_grad(self):
+        return self.main_grad if hasattr(self, "main_grad") else self.grad
+
+    @actual_grad.setter
+    def actual_grad(self, value):
+        if hasattr(self, "main_grad"):
+            self.main_grad = value
+        else:
+            self.grad = value
+
     def _create_init_op(self, block):
         """
         Call init_op_creator function to create initializer operation in block.
