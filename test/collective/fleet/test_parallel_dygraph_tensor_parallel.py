@@ -44,6 +44,9 @@ class TestHybridParallel(TestMultipleGpus):
     def test_hybrid_parallel_mp_broadcast_obj(self):
         self.run_mnist_2gpu('hybrid_parallel_mp_broadcast_obj.py')
 
+    def test_hybrid_parallel_mp_async_ar(self):
+        self.run_mnist_2gpu('hybrid_parallel_mp_async_ar.py')
+
 
 if __name__ == "__main__":
     unittest.main()
