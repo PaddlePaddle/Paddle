@@ -20,6 +20,7 @@ extern "C" {
 
 #include <Python.h>
 #include <frameobject.h>
+#include <string.h>
 #if PY_VERSION_HEX >= 0x030b0000
 typedef _PyInterpreterFrame FrameObject;
 #else

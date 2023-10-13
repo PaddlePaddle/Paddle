@@ -13,12 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/eval_frame_tools.h"
-#include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
+
+#include <unordered_map>
+#include <unordered_set>
 
 #include <Python.h>
-
 #include "glog/logging.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/errors.h"
 
 /*============================ Dict Tree ================================*/
 
