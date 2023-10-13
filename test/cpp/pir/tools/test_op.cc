@@ -18,11 +18,11 @@
 namespace test {
 
 void RegionOp::Build(pir::Builder &builder, pir::OperationArgument &argument) {
-  argument.num_regions = 1;
+  argument.AddRegion(nullptr);
 }
 
-void BranchOp::Build(pir::Builder &builder,  // NOLINT
-                     pir::OperationArgument &argument,
+void BranchOp::Build(pir::Builder &builder,             // NOLINT
+                     pir::OperationArgument &argument,  // NOLINT
                      const std::vector<pir::OpResult> &target_operands,
                      pir::Block *target) {
   argument.AddInputs(target_operands.begin(), target_operands.end());
@@ -35,9 +35,7 @@ void BranchOp::Verify() const {
   IR_ENFORCE((*this)->successor(0), "successor[0] can't be nullptr");
 }
 
-const char *Operation1::attributes_name[2] = {  // NOLINT
-    "op1_attr1",
-    "op1_attr2"};
+const char *Operation1::attributes_name[2] = {"op1_attr1", "op1_attr2"};
 
 void Operation1::Build(pir::Builder &builder,               // NOLINT
                        pir::OperationArgument &argument) {  // NOLINT
@@ -58,9 +56,120 @@ void Operation1::Verify() const {
     throw("Type of attribute: parameter_name is not right.");
   }
 }
+
+void TraitExampleOp::Build(pir::Builder &builder,             // NOLINT
+                           pir::OperationArgument &argument,  // NOLINT
+                           pir::Value l_operand,
+                           pir::Value r_operand,
+                           pir::Type out_type) {
+  argument.AddInput(l_operand);
+  argument.AddInput(r_operand);
+  argument.AddOutput(out_type);
+}
+
+void SameOperandsShapeTraitOp2::Build(
+    pir::Builder &builder,             // NOLINT
+    pir::OperationArgument &argument,  // NOLINT
+    pir::Value l_operand,
+    pir::Value r_operand,
+    pir::Type out_type) {
+  argument.AddInput(l_operand);
+  argument.AddInput(r_operand);
+  argument.AddOutput(out_type);
+}
+
+void SameOperandsAndResultShapeTraitOp2::Build(
+    pir::Builder &builder,             // NOLINT
+    pir::OperationArgument &argument,  // NOLINT
+    pir::Value l_operand,
+    pir::Value r_operand) {
+  argument.AddInput(l_operand);
+  argument.AddInput(r_operand);
+}
+
+void SameOperandsAndResultShapeTraitOp3::Build(
+    pir::Builder &builder,             // NOLINT
+    pir::OperationArgument &argument,  // NOLINT
+    pir::Value l_operand,
+    pir::Value r_operand,
+    pir::Type out_type) {
+  argument.AddInput(l_operand);
+  argument.AddInput(r_operand);
+  argument.AddOutput(out_type);
+}
+
+void SameOperandsElementTypeTraitOp2::Build(
+    pir::Builder &builder,             // NOLINT
+    pir::OperationArgument &argument,  // NOLINT
+    pir::Value l_operand,
+    pir::Value r_operand,
+    pir::Type out_type) {
+  argument.AddInput(l_operand);
+  argument.AddInput(r_operand);
+  argument.AddOutput(out_type);
+}
+
+void SameOperandsAndResultElementTypeTraitOp2::Build(
+    pir::Builder &builder,             // NOLINT
+    pir::OperationArgument &argument,  // NOLINT
+    pir::Value l_operand,
+    pir::Value r_operand) {
+  argument.AddInput(l_operand);
+  argument.AddInput(r_operand);
+}
+
+void SameOperandsAndResultElementTypeTraitOp3::Build(
+    pir::Builder &builder,             // NOLINT
+    pir::OperationArgument &argument,  // NOLINT
+    pir::Value l_operand,
+    pir::Value r_operand,
+    pir::Type out_type1,
+    pir::Type out_type2) {
+  argument.AddInput(l_operand);
+  argument.AddInput(r_operand);
+  argument.AddOutput(out_type1);
+  argument.AddOutput(out_type2);
+}
+
+void SameOperandsAndResultTypeTraitOp2::Build(
+    pir::Builder &builder,             // NOLINT
+    pir::OperationArgument &argument,  // NOLINT
+    pir::Value l_operand,
+    pir::Value r_operand) {
+  argument.AddInput(l_operand);
+  argument.AddInput(r_operand);
+}
+
+void SameOperandsAndResultTypeTraitOp3::Build(
+    pir::Builder &builder,             // NOLINT
+    pir::OperationArgument &argument,  // NOLINT
+    pir::Value l_operand,
+    pir::Value r_operand,
+    pir::Type out_type1,
+    pir::Type out_type2) {
+  argument.AddInput(l_operand);
+  argument.AddInput(r_operand);
+  argument.AddOutput(out_type1);
+  argument.AddOutput(out_type2);
+}
+
 }  // namespace test
 
 IR_DEFINE_EXPLICIT_TYPE_ID(test::RegionOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(test::BranchOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(test::Operation1)
 IR_DEFINE_EXPLICIT_TYPE_ID(test::Operation2)
+IR_DEFINE_EXPLICIT_TYPE_ID(test::TraitExampleOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(test::SameOperandsShapeTraitOp1)
+IR_DEFINE_EXPLICIT_TYPE_ID(test::SameOperandsShapeTraitOp2)
+IR_DEFINE_EXPLICIT_TYPE_ID(test::SameOperandsAndResultShapeTraitOp1)
+IR_DEFINE_EXPLICIT_TYPE_ID(test::SameOperandsAndResultShapeTraitOp2)
+IR_DEFINE_EXPLICIT_TYPE_ID(test::SameOperandsAndResultShapeTraitOp3)
+IR_DEFINE_EXPLICIT_TYPE_ID(test::SameOperandsElementTypeTraitOp1)
+IR_DEFINE_EXPLICIT_TYPE_ID(test::SameOperandsElementTypeTraitOp2)
+IR_DEFINE_EXPLICIT_TYPE_ID(test::SameOperandsAndResultElementTypeTraitOp1)
+IR_DEFINE_EXPLICIT_TYPE_ID(test::SameOperandsAndResultElementTypeTraitOp2)
+IR_DEFINE_EXPLICIT_TYPE_ID(test::SameOperandsAndResultElementTypeTraitOp3)
+IR_DEFINE_EXPLICIT_TYPE_ID(test::SameOperandsAndResultTypeTraitOp1)
+IR_DEFINE_EXPLICIT_TYPE_ID(test::SameOperandsAndResultTypeTraitOp2)
+IR_DEFINE_EXPLICIT_TYPE_ID(test::SameOperandsAndResultTypeTraitOp3)

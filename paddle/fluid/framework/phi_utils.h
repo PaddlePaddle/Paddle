@@ -31,6 +31,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
+#include "paddle/utils/test_macros.h"
 
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
@@ -59,7 +60,7 @@ class KernelArgsNameMaker {
   virtual const paddle::small_vector<const char*>& GetAttrsArgsNames() = 0;
 };
 
-void InitDefaultKernelSignatureMap();
+TEST_API void InitDefaultKernelSignatureMap();
 
 // TODO(Wilber): support others device context.
 template <typename T>

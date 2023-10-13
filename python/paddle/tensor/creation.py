@@ -880,32 +880,57 @@ def full_like(x, fill_value, dtype=None, name=None):
 
 
 def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
+    def contain_var(list_or_tuple):
+        for item in list_or_tuple:
+            if isinstance(item, paddle.pir.OpResult):
+                return True
+        return False
+
+    def get_shape_tensor(list_shape, place):
+        shape_tensor_list = []
+        for dim in list_shape:
+            if isinstance(dim, paddle.pir.OpResult):
+                dim.stop_gradient = True
+                if convert_dtype(dim.dtype) != 'int32':
+                    dim = paddle.cast(x=dim, dtype='int32')
+                shape_tensor_list.append(dim)
+            else:
+                temp_out = _C_ops.full([1], dim, core.DataType.INT32, place)
+                shape_tensor_list.append(temp_out)
+        return shape_tensor_list
+
     if in_dynamic_or_pir_mode():
-        place = (
-            _current_expected_place()
-            if not in_pir_mode()
-            else paddle.base.core.Place()
-        )
+        place = _current_expected_place()
         if force_cpu:
             place = core.CPUPlace()
-        if isinstance(shape, (list, tuple)):
-            shape = paddle.utils.convert_shape_to_list(shape)
 
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
+        if in_dynamic_mode():
+            value = float(value)
+            if isinstance(shape, (list, tuple)):
+                shape = paddle.utils.convert_shape_to_list(shape)
+
+        else:
+            if isinstance(shape, (list, tuple)):
+                if contain_var(shape):
+                    shape = get_shape_tensor(shape, place)
+            elif isinstance(shape, paddle.pir.OpResult):
+                pass
+            else:
+                TypeError("Shape only supports OpReslut, or list, or tuple.")
+
         if out is None:
-            value = float(value) if in_dynamic_mode() else value
             out = _C_ops.full(shape, value, dtype, place)
             out.stop_gradient = True
             return out
 
         if out is not None:
-            value = float(value) if in_dynamic_mode() else value
-            # final state mode is support out is not None.
             _C_ops.full_(out, shape, value, dtype, place)
             out.stop_gradient = True
             return out
+
     else:
         attrs = {'force_cpu': force_cpu}
         dtype = convert_dtype(dtype)
@@ -1343,8 +1368,8 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
 
     if dtype is None:
         for val in [start, end, step]:
-            if isinstance(val, Variable):
-                if not val.is_integer():
+            if isinstance(val, (Variable, paddle.pir.OpResult)):
+                if not paddle.is_integer(val):
                     dtype = paddle.get_default_dtype()
                     break
                 else:
@@ -1357,35 +1382,35 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
                     dtype = 'int64'
 
     out_shape = None
-    if not in_dynamic_mode() and (
-        not isinstance(start, Variable)
-        and not isinstance(end, Variable)
-        and not isinstance(step, Variable)
+    if not in_dynamic_or_pir_mode() and (
+        not isinstance(start, (Variable, paddle.pir.OpResult))
+        and not isinstance(end, (Variable, paddle.pir.OpResult))
+        and not isinstance(step, (Variable, paddle.pir.OpResult))
     ):
         out_shape = [int(math.ceil((end - start) / step))]
 
-    if not isinstance(dtype, core.VarDesc.VarType):
+    if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if not isinstance(start, Variable):
+    if not isinstance(start, (Variable, paddle.pir.OpResult)):
         with device_guard("cpu"):
             start = fill_constant([1], dtype, start, force_cpu=True)
     elif start.dtype != dtype:
         start = paddle.cast(start, dtype)
 
-    if not isinstance(end, Variable):
+    if not isinstance(end, (Variable, paddle.pir.OpResult)):
         with device_guard("cpu"):
             end = fill_constant([1], dtype, end, force_cpu=True)
     elif end.dtype != dtype:
         end = paddle.cast(end, dtype)
 
-    if not isinstance(step, Variable):
+    if not isinstance(step, (Variable, paddle.pir.OpResult)):
         with device_guard("cpu"):
             step = fill_constant([1], dtype, step, force_cpu=True)
     elif step.dtype != dtype:
         step = paddle.cast(step, dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.arange(start, end, step, dtype, _current_expected_place())
     else:
         check_dtype(
@@ -1504,7 +1529,7 @@ def tril(x, diagonal=0, name=None):
              [5 , 0 , 0 , 0 ],
              [9 , 10, 0 , 0 ]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.tril(x, diagonal)
     else:
         return _tril_triu_op(LayerHelper('tril', **locals()))
@@ -1581,7 +1606,7 @@ def triu(x, diagonal=0, name=None):
              [0 , 10, 11, 12]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.triu(x, diagonal)
     else:
         return _tril_triu_op(LayerHelper('triu', **locals()))
@@ -2146,7 +2171,7 @@ def assign(x, output=None):
              [2.5 2.5]]
     """
     # speed up
-    if x is output and isinstance(x, Variable):
+    if x is output and isinstance(x, (Variable, paddle.pir.OpResult)):
         return x
 
     input = x
@@ -2154,7 +2179,16 @@ def assign(x, output=None):
     check_type(
         input,
         'input',
-        (Variable, np.ndarray, list, tuple, float, int, bool),
+        (
+            Variable,
+            paddle.pir.OpResult,
+            np.ndarray,
+            list,
+            tuple,
+            float,
+            int,
+            bool,
+        ),
         'assign',
     )
 
@@ -2167,12 +2201,17 @@ def assign(x, output=None):
     # but in_dynamic_mode()==False under @to_static, which means
     # isinstance(Tensor, Variable) == False. It will cause return None
     # after this api.
-    if isinstance(input, (Variable, core.eager.Tensor)):
+    if isinstance(input, (Variable, core.eager.Tensor, paddle.pir.OpResult)):
         if in_dynamic_mode():
             if output is None:
                 output = _C_ops.assign(input)
             else:
                 _C_ops.assign_out_(input, output)
+        elif in_pir_mode():
+            if output is None:
+                output = _C_ops.assign(input)
+            else:
+                output = _C_ops.assign_out_(input, output)
         else:
             check_dtype(
                 input.dtype,
@@ -2200,19 +2239,25 @@ def assign(x, output=None):
             )
     elif isinstance(input, np.ndarray):
         # We now support the form of [var, VAR...] if the Var.shape=[1,]
-        if len(input.shape) > 0 and any(isinstance(x, Variable) for x in input):
+        if len(input.shape) > 0 and any(
+            isinstance(x, (Variable, paddle.pir.OpResult)) for x in input
+        ):
             # We only deal with the case where the list is nested one level, convert all scalars into variables, and then use stack to process. It is necessary to ensure the consistency of types.
             if not all(
                 x.shape == (1,)
                 for x in input
-                if isinstance(x, (Variable, core.eager.Tensor))
+                if isinstance(
+                    x, (Variable, core.eager.Tensor, paddle.pir.OpResult)
+                )
             ):
                 raise TypeError(
                     "Unsupport paddle.assign([Variable, Variable...]) with non-scalar variable."
                 )
 
             def convert_scalar(x):
-                if not isinstance(x, (Variable, core.eager.Tensor)):
+                if not isinstance(
+                    x, (Variable, core.eager.Tensor, paddle.pir.OpResult)
+                ):
                     return assign(x)
                 return x
 
@@ -2237,16 +2282,27 @@ def assign(x, output=None):
                 "it to float32"
             )
             dtype = core.VarDesc.VarType.FP32
-        if dtype == core.VarDesc.VarType.BOOL:
+
+        if dtype == core.DataType.FLOAT64:
+            # Setting FP64 numpy data is not supported in Paddle, so we
+            # use FP32 here
+            warnings.warn(
+                "paddle.assign doesn't support float64 input now due "
+                "to current platform protobuf data limitation, we convert "
+                "it to float32"
+            )
+            dtype = core.DataType.FLOAT32
+
+        if dtype in [core.VarDesc.VarType.BOOL, core.DataType.BOOL]:
             value_name = "bool_values"
             values = [int(v) for v in input.flat]
-        elif dtype == core.VarDesc.VarType.FP32:
+        elif dtype in [core.VarDesc.VarType.FP32, core.DataType.FLOAT32]:
             value_name = "fp32_values"
             values = [float(v) for v in input.flat]
-        elif dtype == core.VarDesc.VarType.INT32:
+        elif dtype in [core.VarDesc.VarType.INT32, core.DataType.INT32]:
             value_name = "int32_values"
             values = [int(v) for v in input.flat]
-        elif dtype == core.VarDesc.VarType.INT64:
+        elif dtype in [core.VarDesc.VarType.INT64, core.DataType.INT64]:
             value_name = "int64_values"
             values = [int(v) for v in input.flat]
         else:
@@ -2260,16 +2316,25 @@ def assign(x, output=None):
                 "The size of input is too big. Please consider "
                 "saving it to file and 'load_op' to load it"
             )
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             if output is None:
                 output = zeros(list(input.shape), dtype)
-            _C_ops.assign_value_(
-                output,
-                list(input.shape),
-                dtype,
-                values,
-                _current_expected_place(),
-            )
+            if in_dynamic_mode():
+                _C_ops.assign_value_(
+                    output,
+                    list(input.shape),
+                    dtype,
+                    values,
+                    _current_expected_place(),
+                )
+            else:
+                output = _C_ops.assign_value_(
+                    output,
+                    list(input.shape),
+                    dtype,
+                    values,
+                    _current_expected_place(),
+                )
         else:
             if output is None:
                 output = helper.create_variable_for_type_inference(

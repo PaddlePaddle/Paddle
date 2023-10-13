@@ -47,7 +47,7 @@ std::vector<int> GetSelectedDevices() {
   std::vector<int> devices;
   if (!FLAGS_selected_gpus.empty()) {
     auto devices_str = Split(FLAGS_selected_gpus, ',');
-    for (auto id : devices_str) {
+    for (auto const& id : devices_str) {
       devices.push_back(atoi(id.c_str()));
     }
   } else {

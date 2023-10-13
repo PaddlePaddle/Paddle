@@ -37,41 +37,12 @@ sys.path.append(
 # fmt: on
 
 
-VJPS = [
-    'tanh_grad',
-    'mean_grad',
-    'add_grad',
-    'divide_grad',
-    'sum_grad',
-    'concat_grad',
-    'split_grad',
-    'split_with_num_grad',
-    'gelu_grad',
-    'softmax_grad',
-    'silu_grad',
-    'multiply_grad',
-    'subtract_grad',
-    'erf_grad',
-    'expand_grad',
-    'exp_grad',
-    'elementwise_pow_grad',
-    'fused_softmax_mask_upper_triangle_grad',
-    'matmul_grad',
-    'pow_grad',
+VJPS_BLACK_LIST = [
     'reshape_grad',
-    'rsqrt_grad',
-    'slice_grad',
-    'transpose_grad',
-    'square_grad',
-    'dropout_grad',
-    'cast_grad',
-    'slice_double_grad',
-    'layer_norm_grad',
-    'embedding_grad',
-    'scale_grad',
-    'poisson_grad',
-    'gumbel_softmax_grad',
+    'add_n_grad',
 ]
+
+BACKENDS_BLACK_LIST = ['copy_to', 'add_n_grad', "allclose", "isclose"]
 
 
 PRIM_VJP = [
@@ -87,87 +58,12 @@ PRIM_VJP = [
     'transpose_grad',
     'concat_grad',
 ]  # vjp list of primitive op
-CUSTOM_VJP = ['gelu_grad', 'layer_norm_grad']  # custom vjp list of composite op
-VJP_COMPS = PRIM_VJP + CUSTOM_VJP
-
-BACKENDS = [
-    'add_n',
-    'mean',
-    'sum',
-    'divide',
-    'full',
-    'tanh',
-    'tanh_grad',
-    'mean_grad',
-    'concat',
-    'add',
-    'multiply',
-    'elementwise_pow',
-    'scale',
-    'reshape',
-    'expand',
-    'tile',
-    'add_grad',
-    'divide_grad',
-    'sum_grad',
-    'concat_grad',
-    'split_grad',
-    'split_with_num_grad',
+CUSTOM_VJP = [
     'gelu_grad',
-    'softmax_grad',
-    'silu_grad',
-    'multiply_grad',
-    'subtract_grad',
-    'erf_grad',
-    'expand_grad',
-    'exp_grad',
-    'multiply',
-    'exp',
-    'erf',
-    'cast',
-    'elementwise_pow_grad',
-    'fused_softmax_mask_upper_triangle_grad',
-    'matmul_grad',
-    'pow_grad',
-    'reshape_grad',
-    'rsqrt_grad',
-    'slice_grad',
-    'transpose_grad',
-    'subtract',
-    'assign',
-    'equal',
-    'greater_equal',
-    'greater_than',
-    'less_equal',
-    'less_than',
-    'matmul',
-    'max',
-    'maximum',
-    'minimum',
-    'not_equal',
-    'abs',
-    'bitwise_and',
-    'bitwise_not',
-    'bitwise_or',
-    'bitwise_xor',
-    'floor',
-    'gather_nd',
-    'log',
-    'roll',
-    'scatter',
-    'scatter_nd_add',
-    'square_grad',
-    'dropout_grad',
-    'slice',
     'layer_norm_grad',
-    'embedding_grad',
-    'sqrt',
-    'uniform',
-    'poisson_grad',
-    'gumbel_softmax_grad',
-    'split',
-    'transpose',
-]
+    'dropout_grad',
+]  # custom vjp list of composite op
+VJP_COMPS = PRIM_VJP + CUSTOM_VJP
 
 
 def load(path: pathlib.Path):
@@ -219,6 +115,7 @@ def render(src_dir: pathlib.Path, dst_dir: pathlib.Path, *args, **kwargs):
             'datatype': op_gen_tests.is_datatype,
             'exist_mutable_attribute': op_gen_tests.exist_mutable_attribute,
             'mutable_attribute': op_gen_tests.is_mutable_attribute,
+            'only_composite_op': op_gen_tests.is_only_composite_op,
         }
     )
     for tpl in env.list_templates(
@@ -369,6 +266,22 @@ def process_backward_invoke_info(apis):
             api['invoke']['args'] = ', '.join(args)
 
 
+def process_optional_output_info(apis):
+    for api in apis:
+        if not api['is_fwd']:
+            continue
+        inputs_dict = to_named_dict(api['inputs'])
+        for output in api['outputs']:
+            if (
+                api.get("inplace", None)
+                and output['name'] in api['inplace']
+                and inputs_dict[api['inplace'][output['name']]]['optional']
+            ):
+                output['optional'] = True
+            else:
+                output['optional'] = False
+
+
 def gen(
     prim_path: pathlib.Path,
     fwd_path: pathlib.Path,
@@ -417,12 +330,13 @@ def gen(
     apis = extend_compat_info(apis, compats)
     apis = apis + get_inplace_api(apis)
     process_backward_invoke_info(apis)
+    process_optional_output_info(apis)
     render(
         templates_dir,
         destination_dir,
         apis=apis,
-        backend_white_list=BACKENDS,
-        vjp_white_list=VJPS,
+        backend_black_list=BACKENDS_BLACK_LIST,
+        vjp_black_list=VJPS_BLACK_LIST,
         vjp_comp_white_list=VJP_COMPS,
     )
 

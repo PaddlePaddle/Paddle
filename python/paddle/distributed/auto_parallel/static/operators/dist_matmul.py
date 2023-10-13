@@ -14,7 +14,7 @@
 
 import copy
 
-from paddle.common_ops_import import check_dtype, check_variable_and_dtype
+from paddle.common_ops_import import check_variable_and_dtype
 from paddle.distributed.auto_parallel.static.cost.comm_op_cost import (
     AllreduceSumOpCost,
     IdentityOpCost,
@@ -23,6 +23,7 @@ from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 from paddle.framework import core
 from paddle.utils import unique_name
 
+from ..completion import get_phi_spmd_rule
 from ..cost import (
     MatmulGradOpCost,
     MatmulOpCost,
@@ -43,6 +44,7 @@ from ..utils import (
     _get_corresponding_rank,
     compute_compatible_and_update_dim_mapping,
     compute_compatible_dims_mapping,
+    get_dist_tensor_spec,
     is_dim_replicate,
     is_dim_shard,
     is_valid_list_index,
@@ -51,12 +53,13 @@ from ..utils import (
 from .common import (
     DistributedOperatorImpl,
     DistributedOperatorImplContainer,
+    copy_op_without_infer_shape,
     gradient_synchronization,
-    infer_shape,
     is_parameter_related,
     register_distributed_operator_impl,
     register_distributed_operator_impl_container,
     set_comm_op_dist_attr_for_program,
+    update_op_dims_mapping,
 )
 from .dist_default import DistributedDefaultImpl0
 
@@ -75,8 +78,6 @@ def trans_x_y_dims_mapping(trans_x, trans_y, x_dims_mapping, y_dims_mapping):
 
 
 def copy_op_with_new_input_output(ctx, block, src_op, **kwargs):
-    pass
-
     src_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
     dist_attr = copy.deepcopy(src_dist_attr)
     dist_op = block.append_op(type='nop')
@@ -89,12 +90,15 @@ def copy_op_with_new_input_output(ctx, block, src_op, **kwargs):
         dist_attr.rename_input(
             src_op.desc.input(input_name)[0], kwargs[input_name][0]
         )
+
     for output_name in src_op.desc.output_names():
-        assert output_name in kwargs
-        dist_op_desc.set_output(output_name, kwargs[output_name])
-        dist_attr.rename_output(
-            src_op.desc.output(output_name)[0], kwargs[output_name][0]
-        )
+        # NOTE if stop_gradient is set, some of the output of grad_op should be empty.
+        if len(src_op.desc.output(output_name)) > 0:
+            assert output_name in kwargs
+            dist_op_desc.set_output(output_name, kwargs[output_name])
+            dist_attr.rename_output(
+                src_op.desc.output(output_name)[0], kwargs[output_name][0]
+            )
     # TODO: this call leads to a deepcopy when we init the dist op
     ctx.set_op_dist_attr_for_program(dist_op, dist_attr)
 
@@ -381,7 +385,6 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
         if dim >= 0 and process_mesh_shape[dim] > 0:
             Y_var_partitioned = True
             break
-
     if is_parameter_related(Y_var.name, main_block) and Y_var_partitioned:
         if Y_var_dim_mapping[0] >= 0:
             # row parallel: c_identity + matmul
@@ -518,9 +521,101 @@ def _init_param_sync(Weight_var, dist_op_context, startup_block, ctx, rank_id):
             )
 
 
+def update_dims_mapping_matmul(dist_op):
+    # TODO (zhangyichen) provide a clean api for this.
+    # step1: prepare inputs need for rule (order args as PHI definition and filter out unnecessary args)
+    op_desc = dist_op.serial_op.desc
+    x_name = op_desc.input('X')[0]
+    y_name = op_desc.input('Y')[0]
+    out_name = op_desc.output('Out')[0]
+    if op_desc.type() == "matmul_v2":
+        trans_x = op_desc.attr('trans_x')
+        trans_y = op_desc.attr('trans_y')
+    elif op_desc.type() == "matmul":
+        trans_x = op_desc.attr('transpose_X')
+        trans_y = op_desc.attr('transpose_Y')
+    else:  # mul
+        trans_x = False
+        trans_y = False
+
+    # TODO (zhangyichen) replace dist tensor spece by dist tensor in future.
+    x_spec = get_dist_tensor_spec(dist_op, x_name)
+    y_spec = get_dist_tensor_spec(dist_op, y_name)
+    out_spec = get_dist_tensor_spec(dist_op, out_name, False)
+
+    # step2: infer spmd
+    rule = get_phi_spmd_rule("matmul")
+    # tensor order following order in PHI defition
+    fw_results = rule.infer_forward(x_spec, y_spec, trans_x, trans_y)
+    bw_results = rule.infer_backward(x_spec, y_spec, out_spec, trans_x, trans_y)
+
+    # step3: update dist_attr
+    # tensor order following order in PHI defition
+    input_arg_names = [x_name, y_name]
+    output_arg_names = [out_name]
+    changed = update_op_dims_mapping(
+        dist_op, input_arg_names, output_arg_names, fw_results, bw_results
+    )
+
+    return changed
+
+
+def mapping_to_dist_operator_impl_matmul(dist_op, original_op_dist_attr):
+    reverted = False
+    op_dist_attr = dist_op.dist_attr
+    op_desc = dist_op.serial_op.desc
+    x_name = op_desc.input('X')[0]
+    y_name = op_desc.input('Y')[0]
+    x_dims_mapping = copy.deepcopy(op_dist_attr.get_input_dims_mapping(x_name))
+    y_dims_mapping = copy.deepcopy(op_dist_attr.get_input_dims_mapping(y_name))
+    if op_desc.type() == "matmul_v2":
+        trans_x = op_desc.attr('trans_x')
+        trans_y = op_desc.attr('trans_y')
+    elif op_desc.type() == "matmul":
+        trans_x = op_desc.attr('transpose_X')
+        trans_y = op_desc.attr('transpose_Y')
+    else:  # mul
+        trans_x = False
+        trans_y = False
+
+    op_dist_attr.impl_type = op_desc.type()
+
+    # [m,k] * [k,n] --> [m, n]
+    # m_axis_dim = x_dims_mapping[-1] if trans_x else x_dims_mapping[-2]
+    k_axis_dim = x_dims_mapping[-2] if trans_x else x_dims_mapping[-1]
+    n_axis_dim = y_dims_mapping[-2] if trans_y else y_dims_mapping[-1]
+
+    # col parallel matmul
+    if is_dim_replicate(k_axis_dim) and is_dim_shard(n_axis_dim):
+        op_dist_attr.impl_idx = 0
+    # row parallel matmul
+    elif is_dim_shard(k_axis_dim) and is_dim_replicate(n_axis_dim):
+        op_dist_attr.impl_idx = 1
+    # k, n unsharded matmul
+    elif is_dim_replicate(n_axis_dim) and is_dim_replicate(k_axis_dim):
+        op_dist_attr.impl_idx = 2
+    # TODO support new dist op impl: m (not broadcast axis) sharded, backward need allreduce on Y
+    else:
+        dist_op.dist_attr = original_op_dist_attr
+        reverted = True
+
+    return reverted
+
+
 class DistributedMatmul(DistributedOperatorImplContainer):
     def __init__(self, op_type):
         super().__init__(op_type)
+
+    @staticmethod
+    def update_dims_mapping(dist_op):
+        return update_dims_mapping_matmul(dist_op)
+
+    # NOTE this function will be remove once we use local reshard to replace distopimpls
+    @staticmethod
+    def mapping_to_dist_operator_impl(dist_op, original_op_dist_attr):
+        return mapping_to_dist_operator_impl_matmul(
+            dist_op, original_op_dist_attr
+        )
 
 
 register_distributed_operator_impl_container(DistributedMatmul("matmul"))
@@ -763,37 +858,16 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         assert x_tensor_dist_attr is not None
         identity_var_dist_attr = op_dist_attr.get_input_dist_attr(X_var.name)
         assert identity_var_dist_attr is not None
-        ref_shape_x = infer_shape(
-            main_block, X_var, x_tensor_dist_attr, identity_var_dist_attr
-        )
+
         # infer out var shape with op dist attr
         out_tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(Out_var)
         assert out_tensor_dist_attr is not None
         out_var_dist_attr = op_dist_attr.get_output_dist_attr(Out_var.name)
         assert out_var_dist_attr is not None
-        ref_shape_out = infer_shape(
-            main_block, Out_var, out_tensor_dist_attr, out_var_dist_attr
-        )
 
-        check_variable_and_dtype(
-            X_var,
-            'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
-            '_c_identity',
-        )
-
-        attrs = {
-            'transpose_X': trans_x,
-            'transpose_Y': trans_y,
-            'alpha': 1,
-            OP_ROLE_KEY: src_op.attr('op_role'),
-        }
-        inputs = {'X': [X_var], 'Y': [Weight_var]}
-        matmul_op = main_block.append_op(
-            type='matmul', inputs=inputs, outputs={'Out': Out_var}, attrs=attrs
-        )
-        if Out_var.shape != ref_shape_out:
-            Out_var.desc.set_shape(ref_shape_out)
+        # copy op
+        matmul_op = copy_op_without_infer_shape(src_op, main_block, ctx, kwargs)
+        matmul_op._set_attr('alpha', 1)
 
         # matmul
         matmul_op_dist_attr = OperatorDistAttr()
@@ -1071,61 +1145,19 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         )
         group = new_process_group(group_ranks)
 
-        check_variable_and_dtype(
-            X_var, 'x', ['float16', 'float32', 'float64', 'uint16'], 'linear'
-        )
-        check_dtype(
-            X_var.dtype,
-            'dtype',
-            ['float16', 'float32', 'float64', 'uint16'],
-            'linear',
-        )
-        attrs = {
-            'transpose_X': trans_x,
-            'transpose_Y': trans_y,
-            'alpha': 1,
-            OP_ROLE_KEY: src_op.attr('op_role'),
-        }
-        inputs = {'X': X_var, 'Y': Weight_var}
-
         # infer out var shape with op dist attr
         out_tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(Out_var)
         assert out_tensor_dist_attr is not None
         out_var_dist_attr = op_dist_attr.get_output_dist_attr(Out_var.name)
         assert out_var_dist_attr is not None
-        ref_shape = infer_shape(
-            main_block, Out_var, out_tensor_dist_attr, out_var_dist_attr
-        )
 
-        intermediate_var_0 = main_block.create_var(
-            name=unique_name.generate_with_ignorable_key(
-                ".".join(["c_allreduce_sum", 'tmp'])
-            ),
-            shape=Out_var.shape,
-            dtype=Out_var.dtype,
-            type=Out_var.type,
-            lod_level=Out_var.lod_level,
-            persistable=False,
-            is_data=False,
-            need_check_feed=Out_var.desc.need_check_feed(),
-        )
-        # set intermediate_var_0's dist_attr with Out_var's dist_attr
-        ctx.set_tensor_dist_attr_for_program(
-            intermediate_var_0, out_var_dist_attr
-        )
+        # copy op
+        matmul_op = copy_op_without_infer_shape(src_op, main_block, ctx, kwargs)
 
-        matmul_op = main_block.append_op(
-            type='matmul',
-            inputs=inputs,
-            outputs={'Out': intermediate_var_0},
-            attrs=attrs,
-        )
-        if intermediate_var_0.shape != ref_shape:
-            intermediate_var_0.desc.set_shape(ref_shape)
-
+        # add allreduce (inplace)
         c_allreduce_sum_op = main_block.append_op(
             type='c_allreduce_sum',
-            inputs={'X': intermediate_var_0},
+            inputs={'X': Out_var},
             outputs={'Out': Out_var},
             attrs={
                 'ring_id': group.id,
@@ -1134,8 +1166,6 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
                 OP_ROLE_KEY: src_op.attr('op_role'),
             },
         )
-        if Out_var.shape != ref_shape:
-            Out_var.desc.set_shape(ref_shape)
 
         # set dist op's dist_attr with serial op's dist_attr
         # matmul
@@ -1334,6 +1364,17 @@ register_distributed_operator_impl(
 class DistributedMatmulV2(DistributedOperatorImplContainer):
     def __init__(self, op_type):
         super().__init__(op_type)
+
+    @staticmethod
+    def update_dims_mapping(dist_op):
+        return update_dims_mapping_matmul(dist_op)
+
+    # NOTE this function will be remove once we use local reshard to replace distopimpls
+    @staticmethod
+    def mapping_to_dist_operator_impl(dist_op, original_op_dist_attr):
+        return mapping_to_dist_operator_impl_matmul(
+            dist_op, original_op_dist_attr
+        )
 
 
 register_distributed_operator_impl_container(DistributedMatmulV2("matmul_v2"))
@@ -1567,55 +1608,25 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         ), "col_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
             matmul_col_dim_mapping
         )
-        process_mesh_shape = op_dist_attr.process_mesh.shape
-        process_mesh_group = op_dist_attr.process_mesh.process_ids
-
-        parallel_axis = matmul_col_dim_mapping
-        group_ranks = _get_comm_group(
-            process_mesh_group, process_mesh_shape, parallel_axis, rank_id
-        )
-        group = new_process_group(group_ranks)
 
         # infer new var shape with op dist attr
         x_tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(X_var)
         assert x_tensor_dist_attr is not None
         identity_var_dist_attr = op_dist_attr.get_input_dist_attr(X_var.name)
         assert identity_var_dist_attr is not None
-        ref_shape_x = infer_shape(
-            main_block, X_var, x_tensor_dist_attr, identity_var_dist_attr
-        )
+
         # infer out var shape with op dist attr
         out_tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(Out_var)
         assert out_tensor_dist_attr is not None
         out_var_dist_attr = op_dist_attr.get_output_dist_attr(Out_var.name)
         assert out_var_dist_attr is not None
-        ref_shape_out = infer_shape(
-            main_block, Out_var, out_tensor_dist_attr, out_var_dist_attr
+
+        # copy op
+        matmul_v2_op = copy_op_without_infer_shape(
+            src_op, main_block, ctx, kwargs
         )
 
-        check_variable_and_dtype(
-            X_var,
-            'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
-            '_c_identity',
-        )
-
-        attrs = {
-            'trans_x': trans_x,
-            'trans_y': trans_y,
-            OP_ROLE_KEY: src_op.attr('op_role'),
-        }
-        inputs = {'X': [X_var], 'Y': [Weight_var]}
-        matmul_v2_op = main_block.append_op(
-            type='matmul_v2',
-            inputs=inputs,
-            outputs={'Out': Out_var},
-            attrs=attrs,
-        )
-        if Out_var.shape != ref_shape_out:
-            Out_var.desc.set_shape(ref_shape_out)
-
-        # matmulv2
+        # set distattr
         matmulv2_op_dist_attr = OperatorDistAttr()
         matmulv2_op_dist_attr.process_mesh = op_dist_attr.process_mesh
         matmulv2_op_dist_attr.impl_type = op_dist_attr.impl_type
@@ -1889,60 +1900,20 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         )
         group = new_process_group(group_ranks)
 
-        check_variable_and_dtype(
-            X_var, 'x', ['float16', 'float32', 'float64', 'uint16'], 'linear'
-        )
-        check_dtype(
-            X_var.dtype,
-            'dtype',
-            ['float16', 'float32', 'float64', 'uint16'],
-            'linear',
-        )
-        attrs = {
-            'trans_x': trans_x,
-            'trans_y': trans_y,
-            OP_ROLE_KEY: src_op.attr('op_role'),
-        }
-        inputs = {'X': X_var, 'Y': Weight_var}
-
         # infer out var shape with op dist attr
         out_tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(Out_var)
         assert out_tensor_dist_attr is not None
         out_var_dist_attr = op_dist_attr.get_output_dist_attr(Out_var.name)
         assert out_var_dist_attr is not None
-        ref_shape = infer_shape(
-            main_block, Out_var, out_tensor_dist_attr, out_var_dist_attr
-        )
 
-        intermediate_var_0 = main_block.create_var(
-            name=unique_name.generate_with_ignorable_key(
-                ".".join(["c_allreduce_sum", 'tmp'])
-            ),
-            shape=Out_var.shape,
-            dtype=Out_var.dtype,
-            type=Out_var.type,
-            lod_level=Out_var.lod_level,
-            persistable=False,
-            is_data=False,
-            need_check_feed=Out_var.desc.need_check_feed(),
+        # copy op
+        matmul_v2_op = copy_op_without_infer_shape(
+            src_op, main_block, ctx, kwargs
         )
-        # set intermediate_var_0's dist_attr with Out_var's dist_attr
-        ctx.set_tensor_dist_attr_for_program(
-            intermediate_var_0, out_var_dist_attr
-        )
-
-        matmul_v2_op = main_block.append_op(
-            type='matmul_v2',
-            inputs=inputs,
-            outputs={'Out': intermediate_var_0},
-            attrs=attrs,
-        )
-        if intermediate_var_0.shape != ref_shape:
-            intermediate_var_0.desc.set_shape(ref_shape)
 
         c_allreduce_sum_op = main_block.append_op(
             type='c_allreduce_sum',
-            inputs={'X': intermediate_var_0},
+            inputs={'X': Out_var},
             outputs={'Out': Out_var},
             attrs={
                 'ring_id': group.id,
@@ -1951,11 +1922,8 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
                 OP_ROLE_KEY: src_op.attr('op_role'),
             },
         )
-        if Out_var.shape != ref_shape:
-            Out_var.desc.set_shape(ref_shape)
 
         # set dist op's dist_attr with serial op's dist_attr
-        # matmulv2
         matmulv2_op_dist_attr = OperatorDistAttr()
         matmulv2_op_dist_attr.process_mesh = op_dist_attr.process_mesh
         matmulv2_op_dist_attr.impl_type = op_dist_attr.impl_type
@@ -2153,6 +2121,17 @@ register_distributed_operator_impl(
 class DistributedMul(DistributedOperatorImplContainer):
     def __init__(self, op_type):
         super().__init__(op_type)
+
+    @staticmethod
+    def update_dims_mapping(dist_op):
+        return update_dims_mapping_matmul(dist_op)
+
+    # NOTE this function will be remove once we use local reshard to replace distopimpls
+    @staticmethod
+    def mapping_to_dist_operator_impl(dist_op, original_op_dist_attr):
+        return mapping_to_dist_operator_impl_matmul(
+            dist_op, original_op_dist_attr
+        )
 
 
 register_distributed_operator_impl_container(DistributedMul("mul"))
@@ -2384,60 +2363,17 @@ class DistributedMulImpl0(DistributedOperatorImpl):
         assert x_tensor_dist_attr is not None
         identity_var_dist_attr = op_dist_attr.get_input_dist_attr(X_var.name)
         assert identity_var_dist_attr is not None
-        ref_shape_x = infer_shape(
-            main_block, X_var, x_tensor_dist_attr, identity_var_dist_attr
-        )
+
         # infer out var shape with op dist attr
         out_tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(Out_var)
         assert out_tensor_dist_attr is not None
         out_var_dist_attr = op_dist_attr.get_output_dist_attr(Out_var.name)
         assert out_var_dist_attr is not None
-        ref_shape_out = infer_shape(
-            main_block, Out_var, out_tensor_dist_attr, out_var_dist_attr
-        )
 
-        check_variable_and_dtype(
-            X_var,
-            'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
-            '_c_identity',
-        )
+        # copy op
+        mul_op = copy_op_without_infer_shape(src_op, main_block, ctx, kwargs)
 
-        attrs = {
-            "x_num_col_dims": src_op.desc.attr("x_num_col_dims"),
-            "y_num_col_dims": src_op.desc.attr("y_num_col_dims"),
-            OP_ROLE_KEY: src_op.attr('op_role'),
-        }
-        inputs = {'X': X_var, 'Y': Weight_var}
-
-        inputs_ref_shape = {}
-        inputs_original_shape = {}
-        for var_name in inputs:
-            if var_name == "X":
-                var = X_var
-            else:
-                var = inputs[var_name]
-            inputs_original_shape[var_name] = var.shape
-            input_tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(var)
-            input_var_dist_attr = op_dist_attr.get_input_dist_attr(var.name)
-            input_ref_shape = infer_shape(
-                main_block, var, input_tensor_dist_attr, input_var_dist_attr
-            )
-            inputs_ref_shape[var_name] = input_ref_shape
-            var.desc.set_shape(input_ref_shape)
-
-        mul_op = main_block.append_op(
-            type='mul', inputs=inputs, outputs={'Out': Out_var}, attrs=attrs
-        )
-        if Out_var.shape != ref_shape_out:
-            Out_var.desc.set_shape(ref_shape_out)
-
-        for var_name in inputs:
-            var = inputs[var_name]
-            original_shape = inputs_original_shape[var_name]
-            var.desc.set_shape(original_shape)
-
-        # matmulv2
+        # set distattr
         matmulv2_op_dist_attr = OperatorDistAttr()
         matmulv2_op_dist_attr.process_mesh = op_dist_attr.process_mesh
         matmulv2_op_dist_attr.impl_type = op_dist_attr.impl_type
@@ -2699,80 +2635,18 @@ class DistributedMulImpl1(DistributedOperatorImpl):
         )
         group = new_process_group(group_ranks)
 
-        check_variable_and_dtype(
-            X_var, 'x', ['float16', 'float32', 'float64', 'uint16'], 'linear'
-        )
-        check_dtype(
-            X_var.dtype,
-            'dtype',
-            ['float16', 'float32', 'float64', 'uint16'],
-            'linear',
-        )
-        # attrs = {'trans_x': False, 'trans_y': False}
-        attrs = {
-            "x_num_col_dims": src_op.desc.attr("x_num_col_dims"),
-            "y_num_col_dims": src_op.desc.attr("y_num_col_dims"),
-            OP_ROLE_KEY: src_op.attr('op_role'),
-        }
-        inputs = {'X': X_var, 'Y': Weight_var}
-
         # infer out var shape with op dist attr
         out_tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(Out_var)
         assert out_tensor_dist_attr is not None
         out_var_dist_attr = op_dist_attr.get_output_dist_attr(Out_var.name)
         assert out_var_dist_attr is not None
-        ref_shape = infer_shape(
-            main_block, Out_var, out_tensor_dist_attr, out_var_dist_attr
-        )
 
-        intermediate_var_0 = main_block.create_var(
-            name=unique_name.generate_with_ignorable_key(
-                ".".join(["c_allreduce_sum", 'tmp'])
-            ),
-            shape=Out_var.shape,
-            dtype=Out_var.dtype,
-            type=Out_var.type,
-            lod_level=Out_var.lod_level,
-            persistable=False,
-            is_data=False,
-            need_check_feed=Out_var.desc.need_check_feed(),
-        )
-        # set intermediate_var_0's dist_attr with Out_var's dist_attr
-        ctx.set_tensor_dist_attr_for_program(
-            intermediate_var_0, out_var_dist_attr
-        )
-
-        inputs_ref_shape = {}
-        inputs_original_shape = {}
-        for var_name in inputs:
-            var = inputs[var_name]
-            inputs_original_shape[var_name] = var.shape
-            input_tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(var)
-            input_var_dist_attr = op_dist_attr.get_input_dist_attr(var.name)
-            input_ref_shape = infer_shape(
-                main_block, var, input_tensor_dist_attr, input_var_dist_attr
-            )
-            inputs_ref_shape[var_name] = input_ref_shape
-            var.desc.set_shape(input_ref_shape)
-
-        mul_op = main_block.append_op(
-            type='mul',
-            inputs=inputs,
-            outputs={'Out': intermediate_var_0},
-            attrs=attrs,
-        )
-
-        if intermediate_var_0.shape != ref_shape:
-            intermediate_var_0.desc.set_shape(ref_shape)
-
-        for var_name in inputs:
-            var = inputs[var_name]
-            original_shape = inputs_original_shape[var_name]
-            var.desc.set_shape(original_shape)
+        # copy op
+        mul_op = copy_op_without_infer_shape(src_op, main_block, ctx, kwargs)
 
         c_allreduce_sum_op = main_block.append_op(
             type='c_allreduce_sum',
-            inputs={'X': intermediate_var_0},
+            inputs={'X': Out_var},
             outputs={'Out': Out_var},
             attrs={
                 'ring_id': group.id,
@@ -2781,9 +2655,6 @@ class DistributedMulImpl1(DistributedOperatorImpl):
                 OP_ROLE_KEY: src_op.attr('op_role'),
             },
         )
-
-        if Out_var.shape != ref_shape:
-            Out_var.desc.set_shape(ref_shape)
 
         # set dist op's dist_attr with serial op's dist_attr
         # matmulv2

@@ -965,6 +965,38 @@ def monkey_patch_tensor():
     def __hash__(self):
         return hash(id(self))
 
+    @framework.dygraph_only
+    def coalesce(self, name=None):
+        r"""
+        the coalesced operator include sorted and merge, after coalesced, the indices of x is sorted and unique.
+
+        Parameters:
+            x (Tensor): the input SparseCooTensor.
+            name (str, optional): Name for the operation (optional, default is None).
+                For more information, please refer to :ref:`api_guide_Name`.
+
+        Returns:
+            Tensor: return the SparseCooTensor after coalesced.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+
+                >>> indices = [[0, 0, 1], [1, 1, 2]]
+                >>> values = [1.0, 2.0, 3.0]
+                >>> sp_x = paddle.sparse.sparse_coo_tensor(indices, values)
+                >>> sp_x = sp_x.coalesce()
+                >>> print(sp_x.indices())
+                Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+                [[0, 1],
+                [1, 2]])
+                >>> print(sp_x.values())
+                Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [3., 3.])
+        """
+        return _C_ops.sparse_coalesce(self)
+
     if not hasattr(core, "eager"):
         return
 
@@ -991,6 +1023,7 @@ def monkey_patch_tensor():
         ("values", values),
         ("to_dense", to_dense),
         ("to_sparse_coo", to_sparse_coo),
+        ("coalesce", coalesce),
         ("_set_grad_ivar", _set_grad_ivar),
         ("value", value),
         ("cpu", cpu),
@@ -1010,7 +1043,7 @@ def monkey_patch_tensor():
         # NOTE(zhiqiu): pybind11 will set a default __str__ method of enum class.
         # So, we need to overwrite it to a more readable one.
         # See details in https://github.com/pybind/pybind11/issues/2537.
-        origin = getattr(core.VarDesc.VarType, "__str__")
+        origin = core.VarDesc.VarType.__str__
 
         def dtype_str(dtype):
             if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:

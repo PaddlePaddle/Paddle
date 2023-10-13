@@ -371,8 +371,8 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
     bool mkldnn_with_bias = is_mkldnn && has_bias;
 
     // Create eltwise_y (conv bias) variable
-    phi::DenseTensor* eltwise_y_in_tensor;
-    Node* eltwise_y_in_node;
+    phi::DenseTensor* eltwise_y_in_tensor = nullptr;
+    Node* eltwise_y_in_node = nullptr;
     if (!mkldnn_with_bias) {
       VarDesc eltwise_y_in_desc(
           patterns::PDNodeName("fuse_conv_bn", conv_type() + "_eltwise_y_in"));

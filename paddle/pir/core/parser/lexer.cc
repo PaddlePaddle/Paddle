@@ -44,7 +44,7 @@ Token Lexer::PeekToken() {
 }
 
 char Lexer::GetChar() {
-  char c = is.get();
+  char c = static_cast<char>(is.get());
   if (c == '\n') {
     line++;
     column = 1;
@@ -59,13 +59,14 @@ size_t Lexer::GetColumn() { return column; }
 size_t Lexer::GetLine() { return line; }
 
 void Lexer::SkipWhitespace() {
-  while (IsSpace(is.peek())) {
+  while (IsSpace(static_cast<char>(is.peek()))) {
     GetChar();
   }
 }
 
 std::unique_ptr<Token> Lexer::LexIdentifer() {
-  if ((!isalpha(is.peek()) && is.peek() != '_') || IsEndTag(is.peek())) {
+  if ((!isalpha(is.peek()) && is.peek() != '_') ||
+      IsEndTag(static_cast<char>(is.peek()))) {
     return nullptr;
   }
   std::string token_identifier = "";
@@ -114,7 +115,7 @@ std::unique_ptr<Token> Lexer::LexNumberOrArraow() {
 }
 
 std::unique_ptr<Token> Lexer::LexEndTagOrNullVal() {
-  if (!IsEndTag(is.peek())) {
+  if (!IsEndTag(static_cast<char>(is.peek()))) {
     return nullptr;
   }
   std::string token_end = "";
