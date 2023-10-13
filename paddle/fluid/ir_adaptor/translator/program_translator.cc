@@ -58,21 +58,36 @@ const std::unordered_set<std::string> ProgramTranslator::unsupported_ops = {
 static std::vector<uint64_t> GetCondOpIds(const BlockDesc& src_block,
                                           uint64_t first_id) {
   std::vector<uint64_t> op_list = {first_id};
-  if (src_block.Op(static_cast<int>(first_id + 1))->Type() == "logical_not") {
+  if (((first_id + 1) < src_block.OpSize()) &&
+      (src_block.Op(static_cast<int>(first_id + 1))->Type() == "logical_not")) {
     op_list.emplace_back(first_id + 1);
   }
-  if (src_block.Op(static_cast<int>(first_id + 2))->Type() ==
-      "conditional_block") {
+  if (((first_id + 2) < src_block.OpSize()) &&
+      (src_block.Op(static_cast<int>(first_id + 2))->Type() ==
+       "conditional_block")) {
     op_list.emplace_back(first_id + 2);
   }
-  if (src_block.Op(static_cast<int>(first_id + 3))->Type() == "cast") {
+  if (((first_id + 3) < src_block.OpSize()) &&
+      (src_block.Op(static_cast<int>(first_id + 3))->Type() == "cast")) {
     op_list.emplace_back(first_id + 3);
   }
-  size_t output_size =
-      src_block.Op(static_cast<int>(first_id))->Output("Out").size();
+  // Note(zhangbo): Some output variables are input, without select_input op.
+  std::vector<std::string> output_names =
+      src_block.Op(static_cast<int>(first_id))->Output("Out");
+  std::vector<std::string> input_names =
+      src_block.Op(static_cast<int>(first_id))->Input("Input");
+  std::vector<std::string> diffs(output_names.size());
+  auto iter = std::set_difference(output_names.begin(),
+                                  output_names.end(),
+                                  input_names.begin(),
+                                  input_names.end(),
+                                  diffs.begin());
+  diffs.resize(iter - diffs.begin());
+  size_t output_size = diffs.size();
   for (size_t i = 0; i < output_size; i++) {
-    if (src_block.Op(static_cast<int>(first_id + 4 + i))->Type() ==
-        "select_input") {
+    if (((first_id + 4 + i) < src_block.OpSize()) &&
+        (src_block.Op(static_cast<int>(first_id + 4 + i))->Type() ==
+         "select_input")) {
       op_list.emplace_back(first_id + 4 + i);
     }
   }
@@ -97,7 +112,16 @@ const std::string& ConditionBlockCombination::CondVarName() const {
 }
 
 size_t ConditionBlockCombination::OutputSize() const {
-  return op_list_[0]->Output("Out").size();
+  std::vector<std::string> output_names = op_list_[0]->Output("Out");
+  std::vector<std::string> input_names = op_list_[0]->Input("Input");
+  std::vector<std::string> diffs(output_names.size());
+  auto iter = std::set_difference(output_names.begin(),
+                                  output_names.end(),
+                                  input_names.begin(),
+                                  input_names.end(),
+                                  diffs.begin());
+  diffs.resize(iter - diffs.begin());
+  return diffs.size();
 }
 
 std::vector<::paddle::framework::VarDesc*>
@@ -112,21 +136,39 @@ ConditionBlockCombination::OutputVars() const {
   return outputs;
 }
 
-const std::vector<std::string>&
-ConditionBlockCombination::TrueBlockOutputVarNames() const {
-  return op_list_[0]->Output("Out");
-}
-
-int ConditionBlockCombination::TrueBlockId() const {
-  return op_list_[0]->GetBlockAttrId("sub_block");
+std::vector<std::string> ConditionBlockCombination::TrueBlockOutputVarNames()
+    const {
+  std::vector<std::string> output_names = op_list_[0]->Output("Out");
+  std::vector<std::string> input_names = op_list_[0]->Input("Input");
+  std::vector<std::string> diffs(output_names.size());
+  auto iter = std::set_difference(output_names.begin(),
+                                  output_names.end(),
+                                  input_names.begin(),
+                                  input_names.end(),
+                                  diffs.begin());
+  diffs.resize(iter - diffs.begin());
+  return diffs;
 }
 
 std::vector<std::string> ConditionBlockCombination::FalseBlockOutputVarNames()
     const {
   if (op_list_.size() > 1) {
-    return op_list_[2]->Output("Out");
+    std::vector<std::string> output_names = op_list_[2]->Output("Out");
+    std::vector<std::string> input_names = op_list_[2]->Input("Input");
+    std::vector<std::string> diffs(output_names.size());
+    auto iter = std::set_difference(output_names.begin(),
+                                    output_names.end(),
+                                    input_names.begin(),
+                                    input_names.end(),
+                                    diffs.begin());
+    diffs.resize(iter - diffs.begin());
+    return diffs;
   }
   return {""};
+}
+
+int ConditionBlockCombination::TrueBlockId() const {
+  return op_list_[0]->GetBlockAttrId("sub_block");
 }
 
 int ConditionBlockCombination::FalseBlockId() const {
@@ -141,9 +183,6 @@ bool ConditionBlockCombination::Verify(
   for (size_t id = 0; id < op_list.size(); id++) {
     if (id == 0) {
       if (op_list[id]->Type() != "conditional_block") {
-        return false;
-      }
-      if (op_list.size() == 1 && op_list[id]->Output("Out").size() != 0) {
         return false;
       }
     } else if (id == 1) {
@@ -207,11 +246,13 @@ void ProgramTranslator::Translate() {
   }
 }
 
-void ProgramTranslator::TranslateBlock(const BlockDesc& src_block,
-                                       uint64_t start_id,
-                                       uint64_t end_id,
-                                       pir::Block* dest_block,
-                                       bool for_cond_block) {
+void ProgramTranslator::TranslateBlock(
+    const BlockDesc& src_block,
+    uint64_t start_id,
+    uint64_t end_id,
+    pir::Block* dest_block,
+    bool for_cond_block,
+    std::vector<std::string> skip_cond_assign) {
   VLOG(8) << "=============>start to translate a block";
   PADDLE_ENFORCE(
       (src_block.OpSize() >= end_id) && (start_id <= end_id),
@@ -227,6 +268,7 @@ void ProgramTranslator::TranslateBlock(const BlockDesc& src_block,
     if (translate_completed.count(op_id) && translate_completed.at(op_id)) {
       continue;
     }
+
     auto op = src_block.Op(static_cast<int>(op_id));
     VLOG(8) << "=============>start to translate a op: " << op->Type();
 
@@ -246,8 +288,15 @@ void ProgramTranslator::TranslateBlock(const BlockDesc& src_block,
       }
       VLOG(10) << "[op translated][conditional_block]" << if_op;
     } else {
-      TranslateGeneralOperation(op, dest_block);
-      translate_completed[op_id] = true;
+      if (for_cond_block && op->Type() == "assign" &&
+          std::count(skip_cond_assign.begin(),
+                     skip_cond_assign.end(),
+                     op->Output("Out")[0])) {
+        translate_completed[op_id] = true;
+      } else {
+        TranslateGeneralOperation(op, dest_block);
+        translate_completed[op_id] = true;
+      }
     }
   }
   // NOTE(zhangbo): If conditional_block operator has output, the cf.yeild
@@ -308,9 +357,10 @@ pir::Operation* ProgramTranslator::TranslateCondIfOperation(
     if (true_region.empty()) true_region.emplace_back();
     TranslateBlock(true_sub_block,
                    0,
-                   true_sub_block.OpSize() - cond_ops.OutputSize(),
+                   true_sub_block.OpSize(),
                    true_region.front(),
-                   true);
+                   true,
+                   cond_ops.TrueBlockOutputVarNames());
   }
   VLOG(4) << "[general op][conditional_block] IfOp true block translate end.";
 
@@ -321,9 +371,10 @@ pir::Operation* ProgramTranslator::TranslateCondIfOperation(
     if (false_region.empty()) false_region.emplace_back();
     TranslateBlock(false_sub_block,
                    0,
-                   false_sub_block.OpSize() - cond_ops.OutputSize(),
+                   false_sub_block.OpSize(),
                    false_region.front(),
-                   true);
+                   true,
+                   cond_ops.FalseBlockOutputVarNames());
   }
   VLOG(4) << "[general op][conditional_block] IfOp false block translate end.";
   VLOG(4) << "[general op][conditional_block] IfOp translate end.";

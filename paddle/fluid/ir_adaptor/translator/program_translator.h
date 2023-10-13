@@ -50,12 +50,12 @@ class ConditionBlockCombination {
   ConditionBlockCombination(const ::paddle::framework::BlockDesc& src_block,
                             const std::vector<uint64_t>& op_ids);
   const std::string& CondVarName() const;
+  int TrueBlockId() const;
+  int FalseBlockId() const;
   size_t OutputSize() const;
   std::vector<::paddle::framework::VarDesc*> OutputVars() const;
-  const std::vector<std::string>& TrueBlockOutputVarNames() const;
-  int TrueBlockId() const;
+  std::vector<std::string> TrueBlockOutputVarNames() const;
   std::vector<std::string> FalseBlockOutputVarNames() const;
-  int FalseBlockId() const;
 
  private:
   bool Verify(const std::vector<::paddle::framework::OpDesc*>& op_list);
@@ -101,7 +101,8 @@ class ProgramTranslator {
                       uint64_t start_id,
                       uint64_t end_id,
                       pir::Block* dest_block,
-                      bool for_cond_block = false);
+                      bool for_cond_block = false,
+                      std::vector<std::string> skip_cond_assign = {});
   void TranslateGeneralOperation(const OpDesc* src_op, pir::Block* dest_block);
   void GetParameterForSingleBlock(const BlockDesc& block);
   void InsertOperationToSingleBlock(const BlockDesc& block);
