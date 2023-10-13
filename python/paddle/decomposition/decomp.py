@@ -16,7 +16,7 @@ import logging
 import typing
 
 from paddle import pir
-from paddle.base.libpaddle.pir import Block, Program
+from paddle.base.libpaddle.pir import Block, Operation, Program
 from paddle.framework import core
 
 from . import register
@@ -41,7 +41,10 @@ def _prepare_python_api_arguments(op):
     for x in op.operands():
         op_input = x.source()
         upper_op = op_input.get_defining_op()
-        if upper_op.name() == 'builtin.combine':
+        if (
+            isinstance(upper_op, Operation)
+            and upper_op.name() == 'builtin.combine'
+        ):
             op_input = [item.source() for item in upper_op.operands()]
         op_inputs.append(op_input)
     # The inputs of PIR op builtin.combine will be restored as list of tensor.
