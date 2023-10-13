@@ -111,12 +111,14 @@ void IfOp::Print(pir::IrPrinter &printer) {
   os << "\n }";
 }
 void IfOp::VerifySig() {
+  VLOG(4) << "Start Verifying inputs, outputs and attributes for: IfOp.";
   auto input_size = num_operands();
   PADDLE_ENFORCE_EQ(
       input_size,
       1u,
       phi::errors::PreconditionNotMet(
           "The size %d of inputs must be equal to 1.", input_size));
+
   PADDLE_ENFORCE((*this)->operand_source(0).type().isa<pir::DenseTensorType>(),
                  phi::errors::PreconditionNotMet(
                      "Type validation failed for the 1th input, it should be a "
@@ -131,9 +133,16 @@ void IfOp::VerifySig() {
                  phi::errors::PreconditionNotMet(
                      "Type validation failed for the 1th input, it should be a "
                      "bool DenseTensorType."));
+
+  PADDLE_ENFORCE_EQ((*this)->num_regions(),
+                    2u,
+                    phi::errors::PreconditionNotMet(
+                        "The size %d of regions must be equal to 2.",
+                        (*this)->num_regions()));
 }
 
 void IfOp::VerifyRegion() {
+  VLOG(4) << "Start Verifying sub regions for: IfOp.";
   PADDLE_ENFORCE_EQ(
       (*this)->region(0).size(),
       1u,
