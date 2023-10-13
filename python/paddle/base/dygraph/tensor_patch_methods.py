@@ -549,6 +549,22 @@ def monkey_patch_tensor():
         warnings.warn(warning_msg)
         return self._grad_ivar()
 
+    @property
+    @framework.dygraph_only
+    def actual_grad(self):
+        if isinstance(self, EagerParamBase) and hasattr(self, "main_grad"):
+            return self.main_grad
+        else:
+            return self.grad
+
+    @actual_grad.setter
+    @framework.dygraph_only
+    def actual_grad(self, value):
+        if isinstance(self, EagerParamBase) and hasattr(self, "main_grad"):
+            self.main_grad = value
+        else:
+            self.grad = value
+
     def clear_grad(self):
         """
         The alias of clear_gradient().

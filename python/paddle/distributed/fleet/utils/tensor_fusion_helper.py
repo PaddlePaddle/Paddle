@@ -183,12 +183,7 @@ class FusedCommBuffer:
 
     def _record_addr(self):
         for param in self._params:
-            addr = (
-                param.main_grad.data_ptr()
-                if self.use_main_grad
-                else param.grad.data_ptr()
-            )
-            self._grads_to_addr[param.name] = addr
+            self._grads_to_addr[param.name] = param.actual_grad.data_ptr()
 
     def _init_step_dict(self):
         for p in self._params:
@@ -208,16 +203,12 @@ class FusedCommBuffer:
 
     def add_grad(self, param, use_comm=True):
         assert param.name in self._params_step_dict
-        current_ptr = (
-            param.main_grad.data_ptr()
-            if self.use_main_grad
-            else param.grad.data_ptr()
-        )
+        current_ptr = param.actual_grad.data_ptr()
         if self._grads_to_addr[param.name] != current_ptr:
             raise ValueError(
-                "The address of the grad/main_grad of the param has been changed during training, "
+                "The address of the actual_grad (grad/main_grad) of the param has been changed during training, "
                 "which is not allowed for dp/sharding overlap with pp. "
-                "This may be caused by some non-inplace operations on the grad/main_grad. "
+                "This may be caused by some non-inplace operations on the actual_grad (grad/main_grad). "
                 "Please use the inplace version of the operations or disable the overlapping."
             )
 
