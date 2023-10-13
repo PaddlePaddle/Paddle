@@ -2073,6 +2073,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : relu
   inplace : (x -> out)
@@ -2458,6 +2459,7 @@
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : square {dense -> dense},
            square_sr {selected_rows -> selected_rows}
