@@ -1142,7 +1142,7 @@ void BindUtils(pybind11::module *m) {
                     y_s = paddle.matmul(x_s, x_s)
                     z_s = paddle.add(y_s, y_s)
                     k_s = paddle.tanh(z_s)
-                newir_program = ir.translate_to_new_ir(main_program.desc)
+                newir_program = pir.translate_to_new_ir(main_program.desc)
 
                 print(newir_program)
 
@@ -1204,7 +1204,7 @@ void BindUtils(pybind11::module *m) {
                     y_s = paddle.matmul(x_s, x_s)
                     z_s = paddle.add(y_s, y_s)
                     k_s = paddle.tanh(z_s)
-                newir_program, mappings = ir.translate_to_new_ir_with_param_map(main_program.desc)
+                newir_program, mappings = pir.translate_to_new_ir_with_param_map(main_program.desc)
 
                 print(newir_program)
                 print(mappings)
