@@ -192,7 +192,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
   // Pass pre-condition check: check dtype of fusing vars
   auto fusing_var_dtype =
       GetDtypeOfVar(vars_info, aux_var_map.at(kParam).front());
-  for (auto vars : aux_var_map) {
+  for (auto const &vars : aux_var_map) {
     for (auto &var_name : vars.second) {
       if (fusing_var_dtype != GetDtypeOfVar(vars_info, var_name)) {
         // Note(chenweihang): Currently the fuse_optimizer_ops strategy
@@ -204,7 +204,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
 
   // Pass pre-condition check: gradients generated op kernel
   auto fusing_grad_var_names = aux_var_map.at(kGrad);
-  for (auto grad_var_name : fusing_grad_var_names) {
+  for (auto const &grad_var_name : fusing_grad_var_names) {
     if (!GradGeneratedOpKernelCheck(vars_info, grad_var_name)) {
       // Note(chenweihang): Currently the fuse_optimizer_ops strategy is risky
       //   when gradient generated operator with kernel just support CPU or
@@ -336,7 +336,7 @@ bool FuseOptimizerOpPass::GradGeneratedOpKernelCheck(
       }
     }
   }
-  for (auto op_type : check_op_set) {
+  for (auto const &op_type : check_op_set) {
     if (!OpWithKernelSupportCPUAndGPU(op_type)) {
       return false;
     }
@@ -365,6 +365,7 @@ void FuseOptimizerOpPass::GradientsFilter(
     }
   }
   std::vector<Node *> sorted_ops;
+  sorted_ops.reserve(new_grad_idx.size());
   for (size_t i : new_grad_idx) {
     sorted_ops.emplace_back(opt_nodes->at(i));
   }

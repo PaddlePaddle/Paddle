@@ -101,6 +101,27 @@ class TestElementwiseOpTranscriber(unittest.TestCase):
                     atol=1e-6,
                 )
 
+    def test_add_inplace(self):
+        place = core.Place()
+        place.set_place(paddle.CPUPlace())
+        exe = paddle.static.Executor(place)
+
+        new_scope = paddle.static.Scope()
+        main_program = paddle.static.Program()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                x = paddle.ones(shape=(100, 2, 3), dtype='float32')
+                y = paddle.ones(shape=(100, 2, 3), dtype='float32')
+
+                helper = LayerHelper('elementwise_add')
+                helper.append_op(
+                    type="elementwise_add",
+                    inputs={"X": x, "Y": y},
+                    outputs={"Out": y},
+                    attrs={"axis": -1},
+                )
+        _ = pir.translate_to_new_ir(main_program.desc)
+
 
 class TestEmbeddingOpTranscriber(unittest.TestCase):
     def test_op(self):

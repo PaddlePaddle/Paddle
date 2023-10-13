@@ -111,7 +111,7 @@ static std::unordered_set<pir::Value> GetSkipDeletionValues(pir::Block* block) {
       continue;
     }
     if (upper_op_name == "pd_op.fetch" ||
-        upper_op_name == "pd_op.shadow_output") {
+        upper_op_name == "builtin.shadow_output") {
       skip_dels.insert(op->operand_source(0));
       continue;
     }
