@@ -247,6 +247,89 @@ def fc(
     )
 
 
+@static_only
+def quant_linear(
+    x,
+    size,
+    num_flatten_dims=1,
+    weight_attr=None,
+    bias_attr=None,
+    activation=None,
+    is_quant=False,
+    scale_in=1.0,
+    scale_weights=[1.0],
+    quant_round_type=1,
+    quant_max_bound=127.0,
+    quant_min_bound=-127.0,
+    name=None,
+):
+
+    def quant_linear_base(
+        input,
+        size,
+        num_flatten_dims=1,
+        param_attr=None,
+        bias_attr=None,
+        act=None,
+        is_quant=False,
+        scale_in=1.0,
+        scale_weights=[1.0],
+        quant_round_type=1,
+        quant_max_bound=127.0,
+        quant_min_bound=-127.0,
+        name=None,
+    ):
+        helper = LayerHelper("quant_linear", **locals())
+        check_type(input, 'input', Variable, 'quant_linear')
+        dtype = helper.input_dtype()
+        check_dtype(
+            dtype, 'input', ['float16', 'uint16', 'float32', 'float64'], 'quant_linear'
+        )
+
+        input_shape = input.shape
+        if num_flatten_dims == -1:
+            num_flatten_dims = len(input_shape) - 1
+        param_shape = [
+                reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
+        ] + [size]
+        w = helper.create_parameter(
+            attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False
+        )
+        
+        inputs_of_quant_linear = {"x": input, "w": w}
+        if bias_attr != False:
+            bias_shape = [size]
+            bias = helper.create_parameter(
+                attr=bias_attr, shape=bias_shape, dtype=dtype, is_bias=True
+            )
+            inputs_of_quant_linear["bias"] = bias
+
+        out = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(
+            type="quant_linear",
+            inputs=inputs_of_quant_linear,
+            outputs={"out": out},
+            attrs={"in_num_col_dims": num_flatten_dims, "activation_type": act, "is_quant": is_quant, "scale_in":scale_in, "scale_weights":scale_weights, "quant_round_type":quant_round_type, "quant_max_bound":quant_max_bound, "quant_min_bound":quant_min_bound}
+        )
+        return out
+
+    return quant_linear_base(
+        input=x,
+        size=size,
+        num_flatten_dims=num_flatten_dims,
+        param_attr=weight_attr,
+        bias_attr=bias_attr,
+        act=activation,
+        is_quant=is_quant,
+        scale_in=scale_in,
+        scale_weights=scale_weights,
+        quant_round_type=quant_round_type,
+        quant_max_bound=quant_max_bound,
+        quant_min_bound=quant_min_bound,
+        name=name,
+    )
+
+
 def instance_norm(
     input, epsilon=1e-05, param_attr=None, bias_attr=None, name=None
 ):

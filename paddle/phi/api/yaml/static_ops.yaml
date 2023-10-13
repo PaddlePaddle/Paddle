@@ -689,3 +689,12 @@
     data_type: x
     param : [x, indices, ksize, strides, paddings,output_size, data_format]
   backward: unpool_grad
+
+- op : quant_linear
+  args: (Tensor x, Tensor w, Tensor bias, int in_num_col_dims = 1, str activation_type = "", bool padding_weights = false, bool is_quant = false, float scale_in = 1.0f, float[] scale_weights = {1.0f}, int quant_round_type = 1, float quant_max_bound = 127.0f, float quant_min_bound = -127.0f)
+  output: Tensor(out)
+  optional: bias
+  infer_meta:
+    func: QuantLinearInferMeta
+  kernel:
+    func: quant_linear

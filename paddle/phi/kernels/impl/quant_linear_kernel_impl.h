@@ -5,25 +5,20 @@
 namespace phi {
 
 template <typename T, typename Context>
-void FcKernel(const Context& dev_ctx,
-              const DenseTensor& x,
-              const DenseTensor& w,
-              const paddle::optional<DenseTensor>& bias,
-              int in_num_col_dims,
-              const std::string& activation_type,
-              bool use_mkldnn,
-              bool padding_weights,
-              bool use_quantizer,
-              const std::string& mkl_data_type,
-              float scale_in,
-              const std::vector<float>& scale_weights,
-              float scale_out,
-              bool force_fp32_output,
-              bool is_quant,
-              int quant_round_type,
-              float quant_max_bound,
-              float quant_min_bound,
-              DenseTensor* y) {
+void QuantLinearKernel(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& w,
+                       const paddle::optional<DenseTensor>& bias,
+                       int in_num_col_dims,
+                       const std::string& activation_type,
+                       bool padding_weights,
+                       bool is_quant,
+                       float scale_in,
+                       const std::vector<float>& scale_weights,
+                       int quant_round_type,
+                       float quant_max_bound,
+                       float quant_min_bound,
+                       DenseTensor* y) {
   bool with_relu = activation_type == "relu" ? true : false;
   auto w_dims = w.dims();
 

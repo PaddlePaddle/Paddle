@@ -1342,9 +1342,6 @@ template <typename T>
 Tensor zeros_like(const Tensor& x, DataType dtype = DataType::UNDEFINED, Place place = {});
 
 template <typename T>
-Tensor fc(const Tensor& x, const Tensor& w, const Tensor& bias, int in_num_col_dims, const std::string& activation_type, bool use_mkldnn, bool padding_weights, bool use_quantizer, const std::string& mkl_data_type, float scale_in, const std::vector<float>& scale_weights, float scale_out, bool force_fp32_output, bool is_quant, int quant_round_type, float quant_max_bound, float quant_min_bound);
-
-template <typename T>
 Tensor abs_double_grad(const Tensor& x, const Tensor& grad_x_grad);
 
 template <typename T>

@@ -5136,16 +5136,6 @@ Tensor zeros_like<LazyTensor>(const Tensor& x, DataType dtype, Place place) {
 }
 
 template <>
-Tensor fc<LazyTensor>(const Tensor& x, const Tensor& w, const Tensor& bias, int in_num_col_dims, const std::string& activation_type, bool use_mkldnn, bool padding_weights, bool use_quantizer, const std::string& mkl_data_type, float scale_in, const std::vector<float>& scale_weights, float scale_out, bool force_fp32_output, bool is_quant, int quant_round_type, float quant_max_bound, float quant_min_bound) {
-  pir::Value x_res = std::static_pointer_cast<LazyTensor>(x.impl())->value();
-  pir::Value w_res = std::static_pointer_cast<LazyTensor>(w.impl())->value();
-  pir::Value bias_res = std::static_pointer_cast<LazyTensor>(bias.impl())->value();
-  auto op_res = paddle::dialect::fc(x_res, w_res, bias_res, in_num_col_dims, activation_type, use_mkldnn, padding_weights, use_quantizer, mkl_data_type, scale_in, scale_weights, scale_out, force_fp32_output, is_quant, quant_round_type, quant_max_bound, quant_min_bound);
-  Tensor out(std::make_shared<LazyTensor>(op_res));
-  return out; 
-}
-
-template <>
 Tensor abs_double_grad<LazyTensor>(const Tensor& x, const Tensor& grad_x_grad) {
   pir::Value x_res = std::static_pointer_cast<LazyTensor>(x.impl())->value();
   pir::Value grad_x_grad_res = std::static_pointer_cast<LazyTensor>(grad_x_grad.impl())->value();
