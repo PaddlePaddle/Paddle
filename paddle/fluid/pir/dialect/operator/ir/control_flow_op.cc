@@ -19,6 +19,7 @@ paddle::dialect::IfOp, paddle::dialect::WhileOp
 
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/builder.h"
+#include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/ir_printer.h"
 #include "paddle/pir/core/operation_utils.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
