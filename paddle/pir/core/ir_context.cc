@@ -291,7 +291,8 @@ void IrContext::RegisterOpInfo(Dialect *dialect,
                                const std::vector<TypeId> &trait_set,
                                size_t attributes_num,
                                const char **attributes_name,
-                               VerifyPtr verify) {
+                               VerifyPtr verify_sig,
+                               VerifyPtr verify_region) {
   if (impl().IsOpInfoRegistered(name)) {
     LOG(WARNING) << name << " op already registered.";
   } else {
@@ -302,7 +303,8 @@ void IrContext::RegisterOpInfo(Dialect *dialect,
                                      trait_set,
                                      attributes_num,
                                      attributes_name,
-                                     verify);
+                                     verify_sig,
+                                     verify_region);
     impl().RegisterOpInfo(name, info);
   }
 }

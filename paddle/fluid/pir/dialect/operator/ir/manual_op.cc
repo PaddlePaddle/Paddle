@@ -50,7 +50,7 @@ OpInfoTuple AddNOp::GetOpInfo() {
   return std::make_tuple(inputs, attributes, outputs, run_time_info, "add_n");
 }
 
-void AddNOp::Verify() {
+void AddNOp::VerifySig() {
   VLOG(4) << "Start Verifying inputs, outputs and attributes for: AddNOp.";
   VLOG(4) << "Verifying inputs:";
   {
@@ -222,7 +222,7 @@ void AddN_Op::Build(pir::Builder &builder,
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
 }
 
-void AddN_Op::Verify() {
+void AddN_Op::VerifySig() {
   VLOG(4) << "Start Verifying inputs, outputs and attributes for: AddN_Op.";
   VLOG(4) << "Verifying inputs:";
   {
@@ -345,7 +345,7 @@ void AddNWithKernelOp::Build(pir::Builder &builder,
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
 }
 
-void AddNWithKernelOp::Verify() {
+void AddNWithKernelOp::VerifySig() {
   VLOG(4) << "Start Verifying inputs, outputs and attributes for: "
              "AddNWithKernelOp.";
   VLOG(4) << "Verifying inputs:";
@@ -561,7 +561,7 @@ void FusedGemmEpilogueOp::Build(pir::Builder &builder,
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
 }
 
-void FusedGemmEpilogueOp::Verify() {
+void FusedGemmEpilogueOp::VerifySig() {
   VLOG(4) << "Start Verifying inputs, outputs and attributes for: "
              "FusedGemmEpilogueOp.";
   VLOG(4) << "Verifying inputs:";
@@ -833,7 +833,7 @@ void FusedGemmEpilogueGradOp::Build(pir::Builder &builder,
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
 }
 
-void FusedGemmEpilogueGradOp::Verify() {}
+void FusedGemmEpilogueGradOp::VerifySig() {}
 
 void FusedGemmEpilogueGradOp::InferMeta(phi::InferMetaContext *infer_meta) {
   auto fn = PD_INFER_META(phi::FusedGemmEpilogueGradInferMeta);
@@ -983,7 +983,7 @@ void SplitGradOp::Build(pir::Builder &builder,
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
 }
 
-void SplitGradOp::Verify() {
+void SplitGradOp::VerifySig() {
   VLOG(4) << "Start Verifying inputs, outputs and attributes for: SplitGradOp.";
   VLOG(4) << "Verifying inputs:";
   {

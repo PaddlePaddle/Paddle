@@ -109,23 +109,46 @@ void IfOp::Print(pir::IrPrinter &printer) {
   }
   os << "\n }";
 }
-void IfOp::Verify() {
-  if ((*this)->region(0).empty() && (*this)->region(1).empty()) {
-    LOG(WARNING)
-        << "The true and false block of IfOp has not been initialized yet. "
-           "Please manually call Verify after completion the above content for "
-           "verification: op->dyn_cast<padding::dialect:IfOp>().Verify()";
-    return;
-  }
+void IfOp::VerifySig() {
+  auto input_size = num_operands();
+  PADDLE_ENFORCE_EQ(
+      input_size,
+      1u,
+      phi::errors::PreconditionNotMet(
+          "The size %d of inputs must be equal to 1.", input_size));
+  PADDLE_ENFORCE(
+      (*this)->operand_source(0).type().isa<paddle::dialect::DenseTensorType>(),
+      phi::errors::PreconditionNotMet(
+          "Type validation failed for the 1th input, it should be a "
+          "DenseTensorType."));
 
+  PADDLE_ENFORCE((*this)
+                     ->operand_source(0)
+                     .type()
+                     .dyn_cast<paddle::dialect::DenseTensorType>()
+                     .dtype()
+                     .isa<pir::BoolType>(),
+                 phi::errors::PreconditionNotMet(
+                     "Type validation failed for the 1th input, it should be a "
+                     "bool DenseTensorType."));
+}
+
+void IfOp::VerifyRegion() {
   PADDLE_ENFORCE_EQ(
       (*this)->region(0).size(),
-      (*this)->region(1).size(),
-      phi::errors::PreconditionNotMet("The size %d of true_region must be "
-                                      "equal to the size %d of false_region.",
-                                      (*this)->region(0).size(),
-                                      (*this)->region(1).size()));
+      1u,
+      phi::errors::PreconditionNotMet("The size %d of true_region must be 1.",
+                                      (*this)->region(0).size()));
+
   if ((*this)->num_results() != 0) {
+    PADDLE_ENFORCE_EQ(
+        (*this)->region(0).size(),
+        (*this)->region(1).size(),
+        phi::errors::PreconditionNotMet("The size %d of true_region must be "
+                                        "equal to the size %d of false_region.",
+                                        (*this)->region(0).size(),
+                                        (*this)->region(1).size()));
+
     auto *true_last_op = (*this)->region(0).front()->back();
     auto *false_last_op = (*this)->region(1).front()->back();
     PADDLE_ENFORCE_EQ(true_last_op->isa<pir::YieldOp>(),
