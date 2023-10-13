@@ -1592,8 +1592,8 @@ class MaxPool2dWithIndexFunctor<CPUContext, T1, T2> {
     T1* output_data = context.template Alloc<T1>(output);
     T2* mask_data = context.template Alloc<T2>(mask);
 
-    int hstart, hend;
-    int wstart, wend;
+    int hstart = 0, hend = 0;
+    int wstart = 0, wend = 0;
     for (int i = 0; i < batch_size; i++) {
       for (int c = 0; c < output_channels; ++c) {
         for (int ph = 0; ph < output_height; ++ph) {
@@ -1730,9 +1730,9 @@ class MaxPool3dWithIndexFunctor<CPUContext, T1, T2> {
     T1* output_data = context.template Alloc<T1>(output);
     T2* mask_data = context.template Alloc<T2>(mask);
 
-    int dstart, dend;
-    int hstart, hend;
-    int wstart, wend;
+    int dstart = 0, dend = 0;
+    int hstart = 0, hend = 0;
+    int wstart = 0, wend = 0;
     for (int i = 0; i < batch_size; i++) {
       for (int c = 0; c < output_channels; ++c) {
         for (int pd = 0; pd < output_depth; ++pd) {

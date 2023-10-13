@@ -81,20 +81,20 @@ void StringMapToStream(std::ostream& os,
 void StringMapFromStream(std::istream& is,
                          std::unordered_map<std::string, int32_t>* data) {
   // first read the map size
-  size_t map_size;
+  size_t map_size = 0;
   is.read(reinterpret_cast<char*>(&map_size), sizeof(map_size));
   data->reserve(map_size);
   // then read the data
   for (size_t i = 0; i < map_size; ++i) {
     // read the token
-    size_t token_length;
+    size_t token_length = 0;
     is.read(reinterpret_cast<char*>(&token_length), sizeof(token_length));
     char* tmp = new char[token_length];
     is.read(tmp, token_length);  // NOLINT
     std::string token(tmp, tmp + token_length);
     delete[] tmp;
     // read the token_id
-    int32_t token_id;
+    int32_t token_id = 0;
     is.read(reinterpret_cast<char*>(&token_id), sizeof(token_id));
 
     data->emplace(token, token_id);
