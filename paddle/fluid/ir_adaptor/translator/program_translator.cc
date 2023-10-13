@@ -367,6 +367,8 @@ pir::Operation* ProgramTranslator::TranslateCondIfOperation(
                    true);
   }
   VLOG(4) << "[general op][conditional_block] IfOp false block translate end.";
+
+  operation->Verify();
   VLOG(4) << "[general op][conditional_block] IfOp translate end.";
   return operation;
 }
