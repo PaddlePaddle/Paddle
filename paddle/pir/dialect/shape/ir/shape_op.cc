@@ -20,7 +20,7 @@
 
 namespace pir::dialect {
 
-const char *SymbolicDim::attributes_name[attributes_num] = {
+const char *SymbolicDimOp::attributes_name[attributes_num] = {
     "known_negative_one",   // value = -1
     "known_non_negative",   // value >= 0
     "known_non_size_one",   // value != 1
@@ -28,14 +28,14 @@ const char *SymbolicDim::attributes_name[attributes_num] = {
     "sym_name",
     "value"};  // NOLINT
 
-void SymbolicDim::Build(Builder &builder,
-                        OperationArgument &argument,
-                        const std::string &sym_name,
-                        int64_t value,
-                        bool known_non_negative,
-                        bool known_negative_one,
-                        bool known_non_size_one,
-                        bool known_non_size_zero) {
+void SymbolicDimOp::Build(Builder &builder,
+                          OperationArgument &argument,
+                          const std::string &sym_name,
+                          int64_t value,
+                          bool known_non_negative,
+                          bool known_negative_one,
+                          bool known_non_size_one,
+                          bool known_non_size_zero) {
   IrContext *ctx = IrContext::Instance();
   auto attr_sym_name = StrAttribute::get(ctx, sym_name);
   auto attr_value = Int64Attribute::get(ctx, value);
@@ -52,57 +52,57 @@ void SymbolicDim::Build(Builder &builder,
   argument.AddAttribute("known_non_size_zero", attr_known_non_size_zero);
 }
 
-const std::string SymbolicDim::GetSymName() {
+const std::string SymbolicDimOp::GetSymName() {
   return attribute<StrAttribute>("sym_name").AsString();
 }
-int64_t SymbolicDim::GetDimSize() {
+int64_t SymbolicDimOp::GetDimSize() {
   return attribute<Int64Attribute>("value").data();
 }
-bool SymbolicDim::GetKnownNonNegative() {
+bool SymbolicDimOp::GetKnownNonNegative() {
   return attribute<BoolAttribute>("known_non_negative").data();
 }
-bool SymbolicDim::GetKnownNegativeOne() {
+bool SymbolicDimOp::GetKnownNegativeOne() {
   return attribute<BoolAttribute>("known_negative_one").data();
 }
-bool SymbolicDim::GetKnownNonSizeOne() {
+bool SymbolicDimOp::GetKnownNonSizeOne() {
   return attribute<BoolAttribute>("known_non_size_one").data();
 }
-bool SymbolicDim::GetKnownNonSizeZero() {
+bool SymbolicDimOp::GetKnownNonSizeZero() {
   return attribute<BoolAttribute>("known_non_size_zero").data();
 }
 
-void SymbolicDim::SetSymName(const std::string &attr_value) {
+void SymbolicDimOp::SetSymName(const std::string &attr_value) {
   operation()->set_attribute(
       "sym_name", StrAttribute::get(IrContext::Instance(), attr_value));
 }
-void SymbolicDim::SetDimSize(int64_t attr_value) {
+void SymbolicDimOp::SetDimSize(int64_t attr_value) {
   operation()->set_attribute(
       "value", Int64Attribute::get(IrContext::Instance(), attr_value));
 }
 
-void SymbolicDim::UpdateKnownNonNegative(bool flag) {
+void SymbolicDimOp::UpdateKnownNonNegative(bool flag) {
   operation()->set_attribute("known_non_negative",
                              BoolAttribute::get(IrContext::Instance(), flag));
 }
-void SymbolicDim::UpdateKnownNegativeOne(bool flag) {
+void SymbolicDimOp::UpdateKnownNegativeOne(bool flag) {
   operation()->set_attribute("known_negative_one",
                              BoolAttribute::get(IrContext::Instance(), flag));
 }
-void SymbolicDim::UpdateKnownNonSizeOne(bool flag) {
+void SymbolicDimOp::UpdateKnownNonSizeOne(bool flag) {
   operation()->set_attribute("known_non_size_one",
                              BoolAttribute::get(IrContext::Instance(), flag));
 }
-void SymbolicDim::UpdateKnownNonSizeZero(bool flag) {
+void SymbolicDimOp::UpdateKnownNonSizeZero(bool flag) {
   operation()->set_attribute("known_non_size_zero",
                              BoolAttribute::get(IrContext::Instance(), flag));
 }
 
-bool SymbolicDim::IsDynamic() {
+bool SymbolicDimOp::IsDynamic() {
   return GetDimSize() == ShapedTypeInterface::kDynamic;
 }
 
-bool SymbolicDim::Merge(SymbolicDim other) {
-  VLOG(4) << "Try to merge two SymbolicDim ops.";
+bool SymbolicDimOp::Merge(SymbolicDimOp other) {
+  VLOG(4) << "Try to merge two SymbolicDimOp.";
 
   if (!IsDynamic() && !other.IsDynamic() && GetDimSize() != other.GetDimSize())
     return false;
@@ -203,7 +203,7 @@ std::vector<Value> TieProductEqualOp::rhs() {
 }
 
 const char *TieShapeOp::attributes_name[attributes_num] = {
-    SymbolicDim::GetSymbolicDimAttrName().c_str()};  // NOLINT
+    SymbolicDimOp::GetSymbolicDimAttrName().c_str()};  // NOLINT
 
 void TieShapeOp::Build(Builder &builder,
                        OperationArgument &argument,
@@ -291,7 +291,7 @@ void FromElementsOp::Build(Builder &builder,             // NOLINT
 }
 }  // namespace pir::dialect
 
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::SymbolicDim)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::SymbolicDimOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::DimOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::TieProductEqualOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::TieShapeOp)

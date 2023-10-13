@@ -187,7 +187,7 @@ void VerifySameTypeOperandsTrait(pir::Operation *op) {
 }
 
 void VerifyOneResultTrait(pir::Operation *op) {
-  IR_ENFORCE(op->num_results() == 0,
+  IR_ENFORCE(op->num_results() == 1,
              "Op %s with OneResultTrait requires 1 result, but got %u results.",
              op->name(),
              op->num_results());

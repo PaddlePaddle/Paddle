@@ -23,12 +23,14 @@ ShapeDialect::ShapeDialect(IrContext *context)
 }
 
 void ShapeDialect::initialize() {
-  RegisterOps<SymbolicDim,
+  RegisterOps<SymbolicDimOp,
               DimOp,
               TieProductEqualOp,
               TieShapeOp,
               FuncOp,
-              TensorDimOp>();
+              TensorDimOp,
+              ShapeOfOp,
+              FromElementsOp>();
 }
 
 void ShapeDialect::PrintOperation(Operation *op, IrPrinter &printer) const {

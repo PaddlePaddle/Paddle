@@ -16,51 +16,14 @@
 #include <gtest/gtest.h>
 #include <map>
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
-#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/builtin_type_interfaces.h"
 #include "paddle/pir/core/dialect.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/dialect/shape/ir/shape_dialect.h"
-#include "paddle/pir/dialect/shape/utils/shape_utils.h"
 #include "paddle/pir/dialect/shape/utils/symbol_table.h"
 
-pir::AttributeMap CreateAttributeMap(
-    const std::vector<std::string> &attribute_names,
-    const std::vector<std::string> &attributes) {
-  pir::IrContext *ctx = pir::IrContext::Instance();
-  pir::AttributeMap attr_map;
-  for (size_t i = 0; i < attribute_names.size(); i++) {
-    pir::Attribute attr_value = pir::StrAttribute::get(ctx, attributes[i]);
-    attr_map.insert(
-        std::pair<std::string, pir::Attribute>(attribute_names[i], attr_value));
-  }
-  return attr_map;
-}
-
-pir::Operation *CreateDenseTensorOp(
-    pir::IrContext *ctx,
-    const phi::DDim &dims,
-    const std::vector<std::string> &attribute_names,
-    const std::vector<std::string> &attributes) {
-  std::vector<pir::Value> op_inputs = {};
-  pir::Type fp32_dtype = pir::Float32Type::get(ctx);
-  phi::DataLayout data_layout = phi::DataLayout::NCHW;
-  phi::LoD lod = {{0, 1, 2}};
-  size_t offset = 0;
-  std::vector<pir::Type> op_output_types = {
-      paddle::dialect::DenseTensorType::get(
-          ctx, fp32_dtype, dims, data_layout, lod, offset)};
-  pir::Operation *op =
-      pir::Operation::Create(op_inputs,
-                             CreateAttributeMap(attribute_names, attributes),
-                             op_output_types,
-                             pir::OpInfo());
-  return op;
-}
+#include "test/cpp/pir/tools/test_pir_utils.h"
 
 TEST(shape_op, dim) {
   pir::IrContext *ctx = pir::IrContext::Instance();
@@ -122,7 +85,7 @@ TEST(shape_op, tie_shape) {
 
   pir::Builder builder = pir::Builder(ctx, program.block());
 
-  auto op = CreateDenseTensorOp(
+  auto op = test::CreateDenseTensorOp(
       ctx, {pir::ShapedTypeInterface::kDynamic, 2}, {"op_attr"}, {"op_name"});
   pir::OpResult res = op->result(0);
 
@@ -137,12 +100,12 @@ TEST(shape_op, tie_shape) {
 
   auto array_attr = pir::ArrayAttribute::get(ctx, new_attrs);
   tie_shape_op->set_attribute(
-      pir::dialect::SymbolicDim::GetSymbolicDimAttrName(), array_attr);
+      pir::dialect::SymbolicDimOp::GetSymbolicDimAttrName(), array_attr);
 
   std::vector<pir::Attribute> arr_attr_vec =
       tie_shape_op
           ->attribute<pir::ArrayAttribute>(
-              pir::dialect::SymbolicDim::GetSymbolicDimAttrName())
+              pir::dialect::SymbolicDimOp::GetSymbolicDimAttrName())
           .AsVector();
 
   EXPECT_EQ(tie_shape_op_value, res);
@@ -150,7 +113,7 @@ TEST(shape_op, tie_shape) {
   EXPECT_EQ(arr_attr_vec[0].dyn_cast<pir::StrAttribute>(), attr_s0);
   EXPECT_EQ(arr_attr_vec[1].dyn_cast<pir::StrAttribute>(), attr_s1);
   EXPECT_TRUE(tie_shape_op->HasAttribute(
-      pir::dialect::SymbolicDim::GetSymbolicDimAttrName()));
+      pir::dialect::SymbolicDimOp::GetSymbolicDimAttrName()));
 }
 
 TEST(shape_op, func_op) {
@@ -174,7 +137,7 @@ TEST(shape_op, tensor_dim) {
   ctx->GetOrRegisterDialect<pir::dialect::ShapeDialect>();
   pir::Builder builder = pir::Builder(ctx, program.block());
 
-  pir::Operation *op = CreateDenseTensorOp(
+  pir::Operation *op = test::CreateDenseTensorOp(
       ctx, {pir::ShapedTypeInterface::kDynamic, 2}, {"op_attr"}, {"op_name"});
   pir::OpResult res_dense_tensor_value = op->result(0);
 

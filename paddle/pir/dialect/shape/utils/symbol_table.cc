@@ -18,8 +18,8 @@ namespace pir {
 
 const std::string SymbolTable::insert(Operation* symbol) {
   std::string name;
-  if (symbol->isa<dialect::SymbolicDim>()) {
-    name = symbol->dyn_cast<SymbolicDim>().GetSymName();
+  if (symbol->isa<dialect::SymbolicDimOp>()) {
+    name = symbol->dyn_cast<SymbolicDimOp>().GetSymName();
     symbol_table_map_.insert({name, symbol});
   }
 

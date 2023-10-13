@@ -24,8 +24,6 @@
 
 namespace pir {
 namespace {
-using PassPipelineRunner =
-    std::function<bool(pir::PassManager&, pir::ModuleOp)>;
 
 bool InsertTieShapeOnValue(pir::Value value,
                            pir::Builder& builder) {  // NOLINT
@@ -113,6 +111,15 @@ bool MaterializeShapeComputation(pir::ModuleOp m) {
   return true;
 }
 
+using PassPipelineRunner =
+    std::function<bool(pir::PassManager&, pir::ModuleOp)>;
+
+// Returns true if the type is possible to be a shape tensor type.
+// Shape tensor type :
+//    - rank-1 static-shaped tensor type
+//    - element type of the tensor is int or index
+//    - number of elements of the tensor < 32, supposing that the
+//      higiest possible rank is smaller than 32.
 bool IsCandidateShapeTensorType(Type type) {
   auto tensor_type = type.dyn_cast<DenseTensorType>();
   auto shaped_type = tensor_type.dyn_cast<ShapedTypeInterface>();
@@ -146,20 +153,16 @@ class ShapeComputationIRAnalysis {
   ModuleOp m_;
   SymbolicDimMgr& mgr_;
 
-  std::unordered_map<Value, SymbolicDim> value_to_sym_dim_;
+  std::unordered_map<Value, SymbolicDimOp> value_to_sym_dim_;
 
   // shape tensor is the 1D ranked tensor with int/index dtype.
-  std::unordered_map<Value, std::vector<SymbolicDim>> shape_tensor_to_sym_dims_;
+  std::unordered_map<Value, std::vector<SymbolicDimOp>>
+      shape_tensor_to_sym_dims_;
 
-  std::unordered_map<Value, std::vector<SymbolicDim>> dense_tensor_to_sym_dims_;
+  std::unordered_map<Value, std::vector<SymbolicDimOp>>
+      dense_tensor_to_sym_dims_;
 };
 
-// Returns true if the type is possible to be a shape tensor type.
-// Shape tensor type :
-//    - rank-1 static-shaped tensor type
-//    - element type of the tensor is int or index
-//    - number of elements of the tensor < 32, supposing that the
-//      higiest possible rank is smaller than 32.
 ShapeComputationIRAnalysis::ShapeComputationIRAnalysis(ModuleOp m,
                                                        SymbolicDimMgr& mgr)
     : m_(m), mgr_(mgr) {}
@@ -210,27 +213,27 @@ bool ShapeComputationIRAnalysis::BuildShapeOnOperation(Operation* op) {
   if (op->isa<dialect::FuncOp>()) return true;
   if (op->isa<dialect::TieShapeOp>()) {
     Value value = op->operand_source(0);
-    std::vector<SymbolicDim> symbols;
-    if (op->HasAttribute(SymbolicDim::GetSymbolicDimAttrName())) {
+    std::vector<SymbolicDimOp> symbols;
+    if (op->HasAttribute(SymbolicDimOp::GetSymbolicDimAttrName())) {
       auto attrs =
-          op->attribute<ArrayAttribute>(SymbolicDim::GetSymbolicDimAttrName())
+          op->attribute<ArrayAttribute>(SymbolicDimOp::GetSymbolicDimAttrName())
               .AsVector();
       for (Attribute attr : attrs) {
-        auto sym = mgr_.symbolTable().Lookup<SymbolicDim>(
+        auto sym = mgr_.symbolTable().Lookup<SymbolicDimOp>(
             attr.dyn_cast<StrAttribute>().AsString());
         IR_ENFORCE(sym);
-        SymbolicDim root = mgr_.GetRootSymbolicDim(sym);
+        SymbolicDimOp root = mgr_.GetRootSymbolicDim(sym);
         symbols.push_back(root);
       }
     } else {
       symbols = mgr_.CreateSymbolicDimsForRankedValue(value);
       std::vector<Attribute> attrs;
-      for (SymbolicDim sym : symbols) {
+      for (SymbolicDimOp sym : symbols) {
         Attribute rootSymbol =
             StrAttribute::get(m_->ir_context(), sym.GetSymName());
         attrs.push_back(rootSymbol);
       }
-      op->set_attribute(SymbolicDim::GetSymbolicDimAttrName(),
+      op->set_attribute(SymbolicDimOp::GetSymbolicDimAttrName(),
                         ArrayAttribute::get(m_->ir_context(), attrs));
     }
     dense_tensor_to_sym_dims_[value] = std::move(symbols);
@@ -245,11 +248,11 @@ bool ShapeComputationIRAnalysis::BuildShapeOnOperation(Operation* op) {
 bool ShapeComputationIRAnalysis::BuildShapeOnValue(Value value) {
   Type type = value.type();
   if (type.IsIntOrIndex()) {
-    SymbolicDim sym = mgr_.NewSymbolicDim();
+    SymbolicDimOp sym = mgr_.NewSymbolicDim();
     value_to_sym_dim_[value] = sym;
   } else if (IsCandidateShapeTensorType(type)) {
     auto shaped_type = type.dyn_cast<ShapedTypeInterface>();
-    std::vector<SymbolicDim> symbols;
+    std::vector<SymbolicDimOp> symbols;
     for (size_t i = 0, d = shaped_type.GetShape()[0]; i < d; ++i)
       symbols.push_back(mgr_.NewSymbolicDim());
     shape_tensor_to_sym_dims_[value] = std::move(symbols);

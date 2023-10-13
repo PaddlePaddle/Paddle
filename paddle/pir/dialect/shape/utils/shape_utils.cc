@@ -51,10 +51,10 @@ ShapeConstraintIRAnalysis::ShapeConstraintIRAnalysis(ModuleOp m)
     auto& symbols = value_to_sym_dims_[result];
     auto attrs =
         tie_shape_op
-            .attribute<ArrayAttribute>(SymbolicDim::GetSymbolicDimAttrName())
+            .attribute<ArrayAttribute>(SymbolicDimOp::GetSymbolicDimAttrName())
             .AsVector();
     for (const auto& attr : attrs) {
-      auto sym_op = mgr_.symbolTable().Lookup<SymbolicDim>(
+      auto sym_op = mgr_.symbolTable().Lookup<SymbolicDimOp>(
           attr.dyn_cast<StrAttribute>().AsString());
       if (!sym_op) continue;
       symbols.push_back(sym_op);
@@ -85,8 +85,8 @@ bool ShapeConstraintIRAnalysis::IsShapeEqual(Value lhs, Value rhs) {
       lhs_it->second.size() != rhs_it->second.size())
     return false;
 
-  std::vector<SymbolicDim> lhs_syms;
-  std::vector<SymbolicDim> rhs_syms;
+  std::vector<SymbolicDimOp> lhs_syms;
+  std::vector<SymbolicDimOp> rhs_syms;
   for (auto sym : lhs_it->second) {
     lhs_syms.push_back(mgr_.GetRootSymbolicDim(sym));
   }

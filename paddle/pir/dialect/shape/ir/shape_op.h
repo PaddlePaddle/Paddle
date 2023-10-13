@@ -18,10 +18,11 @@
 #include "paddle/pir/core/builtin_type_interfaces.h"
 #include "paddle/pir/core/ir_printer.h"
 #include "paddle/pir/core/op_base.h"
+#include "paddle/pir/core/op_trait.h"
 
 namespace pir::dialect {
 
-class IR_API SymbolicDim : public Op<SymbolicDim> {
+class IR_API SymbolicDimOp : public Op<SymbolicDimOp> {
  public:
   using Op::Op;
   static const char *name() { return "shape.symbolic_dim"; }
@@ -61,11 +62,11 @@ class IR_API SymbolicDim : public Op<SymbolicDim> {
   // Sets `known_non_size_zero` to the value of `flag`
   void UpdateKnownNonSizeZero(bool flag);
 
-  // Returns true if this SymbolicDim is not known at compile-time.
+  // Returns true if this SymbolicDimOp is not known at compile-time.
   bool IsDynamic();
 
-  // Try to merge two SymbolicDim ops.
-  bool Merge(SymbolicDim other);
+  // Try to merge two SymbolicDimOp.
+  bool Merge(SymbolicDimOp other);
 
   static const std::string GetSymbolicDimAttrName() {
     return "kSymbolicDimAttr";
@@ -74,7 +75,7 @@ class IR_API SymbolicDim : public Op<SymbolicDim> {
   void Verify() {}
 };
 
-class IR_API DimOp : public Op<DimOp> {
+class IR_API DimOp : public Op<DimOp, OneResultTrait> {
  public:
   using Op::Op;
   static const char *name() { return "shape.dim"; }
@@ -209,7 +210,7 @@ class IR_API FromElementsOp : public Op<FromElementsOp> {
 
 }  // namespace pir::dialect
 
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::SymbolicDim);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::SymbolicDimOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::DimOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::TieProductEqualOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::TieShapeOp);
