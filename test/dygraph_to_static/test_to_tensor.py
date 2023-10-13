@@ -96,6 +96,10 @@ def case8(x):
     return a
 
 
+def case_to_tensor_default_dtype():
+    return paddle.to_tensor(1)
+
+
 @dy2static_unittest
 class TestToTensorReturnVal(unittest.TestCase):
     def test_to_tensor_badreturn(self):
@@ -146,6 +150,13 @@ class TestToTensorReturnVal(unittest.TestCase):
 
         a = paddle.jit.to_static(case7)(x)
         b = case7(x)
+        self.assertTrue(a.dtype == b.dtype)
+        self.assertTrue(a.stop_gradient == b.stop_gradient)
+        self.assertTrue(a.place._equals(b.place))
+
+    def test_to_tensor_default_dtype(self):
+        a = paddle.jit.to_static(case_to_tensor_default_dtype)()
+        b = case_to_tensor_default_dtype()
         self.assertTrue(a.dtype == b.dtype)
         self.assertTrue(a.stop_gradient == b.stop_gradient)
         self.assertTrue(a.place._equals(b.place))
