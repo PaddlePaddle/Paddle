@@ -21,7 +21,13 @@ from weakref import WeakKeyDictionary
 import paddle
 
 from ..base.data_feeder import check_dtype, convert_dtype
-from ..base.framework import Block, Variable, core, in_dygraph_mode
+from ..base.framework import (
+    Block,
+    Variable,
+    _current_expected_place,
+    core,
+    in_dygraph_mode,
+)
 
 
 def convert_to_list(value, n, name, dtype=int):
@@ -378,7 +384,7 @@ def _contain_var(list_or_tuple):
     return False
 
 
-def get_pir_shape_tensor(list_shape, place):
+def get_pir_shape_tensor(list_shape, place=_current_expected_place()):
     shape_tensor_list = []
     for dim in list_shape:
         if isinstance(dim, paddle.pir.OpResult):
