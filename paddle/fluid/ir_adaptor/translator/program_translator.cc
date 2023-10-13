@@ -44,6 +44,10 @@ using ProgramDesc = ::paddle::framework::ProgramDesc;
 using BlockDesc = ::paddle::framework::BlockDesc;
 using VarDesc = ::paddle::framework::VarDesc;
 
+using TCKey = TranslationContext::Key;
+using TCValue = TranslationContext::Value;
+using TCConatiner = TranslationContext::Conatiner;
+
 const std::unordered_set<std::string> ProgramTranslator::no_cast_var_names = {
     "feed",
     "fetch",
@@ -179,6 +183,43 @@ bool ConditionBlockCombination::Verify(
   return true;
 }
 
+const TCValue& TranslationContext::operator[](const TCKey& key) const {
+  return at(key);
+}
+
+const TCValue& TranslationContext::at(const TCKey& key) const {
+  auto it = container_.find(key);
+  PADDLE_ENFORCE_NE(it,
+                    container_.end(),
+                    platform::errors::InvalidArgument(
+                        "param %s should exists in TranslationContext", key));
+  const auto& values = it->second;
+  PADDLE_ENFORCE_NE(
+      values.size(),
+      0,
+      platform::errors::InvalidArgument(
+          "param %s should have size > 0, but get:%d", key, values.size()));
+  return values.back();
+}
+
+size_t TranslationContext::count(const TCKey& key) const {
+  auto it = container_.find(key);
+  if (it == container_.end()) {
+    return 0u;
+  }
+  const auto& values = it->second;
+  PADDLE_ENFORCE_NE(
+      values.size(),
+      0,
+      platform::errors::InvalidArgument(
+          "param %s should have size > 0, but get:%d", key, values.size()));
+  return values.size();
+}
+
+void TranslationContext::insert(const TCKey& key, const TCValue& value) {
+  container_[key].push_back(value);
+}
+
 ProgramTranslator::ProgramTranslator(const ProgramDesc* legacy_program,
                                      pir::Program* program)
     : legacy_program_(legacy_program), program_(program) {
@@ -294,8 +335,8 @@ pir::Operation* ProgramTranslator::TranslateCondIfOperation(
       op_inputs, attribute_map, op_output_types, op_info, 2);
 
   for (size_t i = 0; i < output_vardescs.size(); i++) {
-    param_map_[output_vardescs[i]->Name()] =
-        VariableDefiningInfo(operation->result(i));
+    param_map_.insert(output_vardescs[i]->Name(),
+                      VariableDefiningInfo(operation->result(i)));
   }
 
   dest_block->push_back(operation);
@@ -410,7 +451,7 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
                   "VarDesc of [%s] can not be nullptr", var_name));
           pir::Operation* op = InsertGetParamaterOp(ctx_, var_desc);
           program_->block()->push_back(op);
-          param_map_[var_name] = VariableDefiningInfo(op->result(0));
+          param_map_.insert(var_name, VariableDefiningInfo(op->result(0)));
           VLOG(10) << "[op translated][get parameter]" << var_name;
 
           program_->SetParameter(var_name, nullptr);
@@ -504,38 +545,40 @@ void ProgramTranslator::SetStopGradientAttributeForAllValue(
     const BlockDesc& block) {
   // Currently we set stop gradient for operation that generated a value
   // connected with VarDesc
-  for (const auto& [var_name, value_info] : param_map_) {
+  for (const auto& [var_name, value_list] : param_map_) {
     if (no_cast_var_names.count(var_name) != 0) continue;
     VLOG(10) << "[op translated][stop gradient]" << var_name;
     VarDesc* var = block.FindVarRecursive(var_name);
     if (var == nullptr) {
       continue;
     }
-    pir::OpResult value = value_info.value;
-    if (!value) {
-      PADDLE_THROW(phi::errors::PreconditionNotMet(
-          "Value of [%s] can not ber None", var_name));
+    for (const auto& value_info : value_list) {
+      pir::OpResult value = value_info.value;
+      if (!value) {
+        PADDLE_THROW(phi::errors::PreconditionNotMet(
+            "Value of [%s] can not ber None", var_name));
+      }
+      auto* defining_op = value.owner();
+      PADDLE_ENFORCE_NOT_NULL(
+          defining_op,
+          phi::errors::PreconditionNotMet(
+              "Defining operator of [%s] can not be nullptr", var_name));
+      VLOG(8) << "[op translated][stop gradient]" << var_name
+              << " from: " << defining_op->name();
+      std::vector<pir::Attribute> stop_gradients;
+      if (defining_op->HasAttribute(kAttrStopGradients)) {
+        stop_gradients = defining_op->attribute(kAttrStopGradients)
+                             .dyn_cast<pir::ArrayAttribute>()
+                             .AsVector();
+      } else {
+        stop_gradients = std::vector<pir::Attribute>(
+            defining_op->num_results(), pir::BoolAttribute::get(ctx_, false));
+      }
+      stop_gradients[value.index()] =
+          pir::BoolAttribute::get(ctx_, var->StopGradient());
+      defining_op->set_attribute(
+          kAttrStopGradients, pir::ArrayAttribute::get(ctx_, stop_gradients));
     }
-    auto* defining_op = value.owner();
-    PADDLE_ENFORCE_NOT_NULL(
-        defining_op,
-        phi::errors::PreconditionNotMet(
-            "Defining operator of [%s] can not be nullptr", var_name));
-    VLOG(8) << "[op translated][stop gradient]" << var_name
-            << " from: " << defining_op->name();
-    std::vector<pir::Attribute> stop_gradients;
-    if (defining_op->HasAttribute(kAttrStopGradients)) {
-      stop_gradients = defining_op->attribute(kAttrStopGradients)
-                           .dyn_cast<pir::ArrayAttribute>()
-                           .AsVector();
-    } else {
-      stop_gradients = std::vector<pir::Attribute>(
-          defining_op->num_results(), pir::BoolAttribute::get(ctx_, false));
-    }
-    stop_gradients[value.index()] =
-        pir::BoolAttribute::get(ctx_, var->StopGradient());
-    defining_op->set_attribute(kAttrStopGradients,
-                               pir::ArrayAttribute::get(ctx_, stop_gradients));
   }
 }
 
@@ -543,38 +586,40 @@ void ProgramTranslator::SetIsPersisableAttributeForAllValue(
     const BlockDesc& block) {
   // Currently we set is persisable for operation that generated a value
   // connected with VarDesc
-  for (const auto& [var_name, value_info] : param_map_) {
+  for (const auto& [var_name, value_list] : param_map_) {
     if (no_cast_var_names.count(var_name) != 0) continue;
     VLOG(10) << "[op translated][is persisable]" << var_name;
     VarDesc* var = block.FindVarRecursive(var_name);
     if (var == nullptr) {
       continue;
     }
-    pir::OpResult value = value_info.value;
-    if (!value) {
-      PADDLE_THROW(phi::errors::PreconditionNotMet(
-          "Value of [%s] can not ber None", var_name));
+    for (const auto& value_info : value_list) {
+      pir::OpResult value = value_info.value;
+      if (!value) {
+        PADDLE_THROW(phi::errors::PreconditionNotMet(
+            "Value of [%s] can not ber None", var_name));
+      }
+      auto* defining_op = value.owner();
+      PADDLE_ENFORCE_NOT_NULL(
+          defining_op,
+          phi::errors::PreconditionNotMet(
+              "Defining operator of [%s] can not be nullptr", var_name));
+      VLOG(8) << "[op translated][is persisable]" << var_name
+              << " from: " << defining_op->name();
+      std::vector<pir::Attribute> is_persisable;
+      if (defining_op->HasAttribute(kAttrIsPersisable)) {
+        is_persisable = defining_op->attribute(kAttrIsPersisable)
+                            .dyn_cast<pir::ArrayAttribute>()
+                            .AsVector();
+      } else {
+        is_persisable = std::vector<pir::Attribute>(
+            defining_op->num_results(), pir::BoolAttribute::get(ctx_, false));
+      }
+      is_persisable[value.index()] =
+          pir::BoolAttribute::get(ctx_, var->Persistable());
+      defining_op->set_attribute(kAttrIsPersisable,
+                                 pir::ArrayAttribute::get(ctx_, is_persisable));
     }
-    auto* defining_op = value.owner();
-    PADDLE_ENFORCE_NOT_NULL(
-        defining_op,
-        phi::errors::PreconditionNotMet(
-            "Defining operator of [%s] can not be nullptr", var_name));
-    VLOG(8) << "[op translated][is persisable]" << var_name
-            << " from: " << defining_op->name();
-    std::vector<pir::Attribute> is_persisable;
-    if (defining_op->HasAttribute(kAttrIsPersisable)) {
-      is_persisable = defining_op->attribute(kAttrIsPersisable)
-                          .dyn_cast<pir::ArrayAttribute>()
-                          .AsVector();
-    } else {
-      is_persisable = std::vector<pir::Attribute>(
-          defining_op->num_results(), pir::BoolAttribute::get(ctx_, false));
-    }
-    is_persisable[value.index()] =
-        pir::BoolAttribute::get(ctx_, var->Persistable());
-    defining_op->set_attribute(kAttrIsPersisable,
-                               pir::ArrayAttribute::get(ctx_, is_persisable));
   }
 }
 
