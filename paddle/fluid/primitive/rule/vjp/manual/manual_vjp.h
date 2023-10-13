@@ -28,14 +28,14 @@ std::vector<std::vector<paddle::Tensor>> add_n_vjp(
     const Tensor& out_grad,
     const std::vector<std::vector<bool>>& stop_gradients);
 
-std::vector<std::vector<paddle::Tensor>> frobenius_norm_vjp(
-    const Tensor& x,
-    const Tensor& out,
-    const Tensor& out_grad,
-    const IntArray& axis,
-    bool keep_dim,
-    bool reduce_all,
-    const std::vector<std::vector<bool>>& stop_gradients);
+// std::vector<std::vector<paddle::Tensor>> frobenius_norm_vjp(
+//     const Tensor& x,
+//     const Tensor& out,
+//     const Tensor& out_grad,
+//     const IntArray& axis,
+//     bool keep_dim,
+//     bool reduce_all,
+//     const std::vector<std::vector<bool>>& stop_gradients);
 
 std::vector<std::vector<paddle::Tensor>> reshape_vjp(
     const Tensor& xshape,

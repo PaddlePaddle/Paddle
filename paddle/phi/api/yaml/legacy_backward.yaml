@@ -246,8 +246,8 @@
   invoke : zeros_like(out_grad)
 
 - backward_op : frobenius_norm_grad
-  forward : frobenius_norm(Tensor x, int64_t[] axis,  bool keep_dim,  bool reduce_all) -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad, int64_t[] axis,  bool keep_dim,  bool reduce_all)
+  forward : frobenius_norm(Tensor x, IntArray axis,  bool keep_dim,  bool reduce_all) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, IntArray axis,  bool keep_dim,  bool reduce_all)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta

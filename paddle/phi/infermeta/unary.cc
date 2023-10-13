@@ -2061,7 +2061,7 @@ void LogsumexpInferMeta(const MetaTensor& input,
       4,
       errors::InvalidArgument("The input tensor X's dimensions of logsumexp "
                               "should be less or equal than 4. "));
-  ReduceInferMetaBase(input, axis, keepdim, reduce_all, out);
+  ReduceInferMetaBase(input, IntArray(axis), keepdim, reduce_all, out);
 }
 
 void MatrixPowerInferMeta(const MetaTensor& x, int n, MetaTensor* out) {
@@ -3240,11 +3240,11 @@ DDim ReduceInferDim(const MetaTensor& x,
 }
 
 void ReduceInferMetaBase(const MetaTensor& x,
-                         const std::vector<int64_t>& axis,
+                         const IntArray& axis,
                          bool keep_dim,
                          bool reduce_all,
                          MetaTensor* out) {
-  DDim out_dim = ReduceInferDim(x, axis, keep_dim, reduce_all);
+  DDim out_dim = ReduceInferDim(x, axis.GetData(), keep_dim, reduce_all);
   out->set_dims(out_dim);
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
@@ -3258,7 +3258,8 @@ void ReduceInferMeta(const MetaTensor& x,
   if (axis.empty()) {
     reduce_all = true;
   }
-  ReduceInferMetaBase(x, axis, keep_dim, reduce_all, out);
+
+  ReduceInferMetaBase(x, IntArray(axis), keep_dim, reduce_all, out);
 }
 
 DDim ReduceInferDimForIntArrayAxis(const MetaTensor& x,

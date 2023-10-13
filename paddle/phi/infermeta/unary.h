@@ -461,7 +461,7 @@ void ReduceInferMeta(const MetaTensor& x,
                      MetaTensor* out);
 
 void ReduceInferMetaBase(const MetaTensor& x,
-                         const std::vector<int64_t>& axis,
+                         const IntArray& axis,
                          bool keep_dim,
                          bool reduce_all,
                          MetaTensor* out);

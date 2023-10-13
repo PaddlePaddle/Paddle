@@ -32,13 +32,13 @@ template <typename T>
 std::vector<Tensor> add_n_grad(const std::vector<Tensor>& x,
                                const Tensor& out_grad);
 
-template <typename T>
-Tensor frobenius_norm_grad(const Tensor& x,
-                           const Tensor& out,
-                           const Tensor& out_grad,
-                           const IntArray& axis,
-                           bool keep_dim,
-                           bool reduce_all);
+// template <typename T>
+// Tensor frobenius_norm_grad(const Tensor& x,
+//                            const Tensor& out,
+//                            const Tensor& out_grad,
+//                            const IntArray& axis,
+//                            bool keep_dim,
+//                            bool reduce_all);
 
 template <typename T>
 Tensor embedding_grad(const Tensor& x,
