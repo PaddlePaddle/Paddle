@@ -416,8 +416,6 @@ void BindOpOperand(py::module *m) {
              self.set_source(result);
            })
       .def("owner", &OpOperand::owner, return_value_policy::reference);
-  // .def("is_empty",
-  //      [](OpOperand &self) {return !self; });
 }
 
 bool GetOpResultBoolAttr(const OpResult &self, const std::string &attr_name) {
