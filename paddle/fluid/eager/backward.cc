@@ -378,9 +378,9 @@ std::vector<paddle::Tensor> RunBackward(
         auto add_next_node_func = [&node_in_degree_map,
                                    &queue](GradNodeBase* next_node) {
           if (dynamic_cast<egr::GradNodeAccumulation*>(next_node)) {
-            queue.push_front(std::move(next_node));
+            queue.push_front(next_node);
           } else {
-            queue.push_back(std::move(next_node));
+            queue.push_back(next_node);
           }
         };
         if (node_in_degree_map[next_node] == 0) {

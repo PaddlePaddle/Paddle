@@ -1533,7 +1533,7 @@ void MultiSlotDataset::MergeByInsId() {
           break;
         }
         local_uint64.insert(slot);
-        rec.uint64_feasigns_.push_back(std::move(feature));
+        rec.uint64_feasigns_.push_back(feature);
       }
       if (has_conflict_slot) {
         break;
@@ -1550,7 +1550,7 @@ void MultiSlotDataset::MergeByInsId() {
           break;
         }
         local_float.insert(slot);
-        rec.float_feasigns_.push_back(std::move(feature));
+        rec.float_feasigns_.push_back(feature);
       }
       if (has_conflict_slot) {
         break;
