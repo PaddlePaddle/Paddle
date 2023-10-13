@@ -40,16 +40,18 @@ from paddle.utils import gast
 
 from .ast_utils import ast_to_source_code
 from .static_analysis import StaticAnalysisVisitor
-from .utils_helper import DYGRAPH_MODULE_PREFIX  # noqa: F401
-from .utils_helper import DYGRAPH_TO_STATIC_MODULE_PREFIX  # noqa: F401
-from .utils_helper import PADDLE_MODULE_PREFIX  # noqa: F401
-from .utils_helper import NodeVarType  # noqa: F401
-from .utils_helper import _is_api_in_module_helper  # noqa: F401
-from .utils_helper import index_in_list  # noqa: F401
-from .utils_helper import is_api_in_module  # noqa: F401
-from .utils_helper import is_dygraph_api  # noqa: F401
-from .utils_helper import is_numpy_api  # noqa: F401;
-from .utils_helper import is_paddle_api  # noqa: F401
+from .utils_helper import (  # noqa: F401
+    DYGRAPH_MODULE_PREFIX,
+    DYGRAPH_TO_STATIC_MODULE_PREFIX,
+    PADDLE_MODULE_PREFIX,
+    NodeVarType,
+    _is_api_in_module_helper,
+    index_in_list,
+    is_api_in_module,
+    is_dygraph_api,
+    is_numpy_api,
+    is_paddle_api,
+)
 
 __all__ = []
 
@@ -137,7 +139,7 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
     data can be various-length. This API is used in translating dygraph into
     static graph.
 
-     Note:
+    Note:
         The default :code:`stop_gradient` attribute of the Tensor created by
         this API is true, which means the gradient won't be passed backward
         through the data Tensor. Set :code:`var.stop_gradient = False` If
@@ -153,8 +155,7 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
            dtype: bool, float16, float32, float64, int8, int16, int32, int64,
            uint8. Default: float32
        lod_level (int, optional): The LoD level of the LoDTensor. Usually users
-           don't have to set this value. For more details about when and how to
-           use LoD level, see :ref:`user_guide_lod_tensor` . Default: 0
+           don't have to set this value. Default: 0
 
     Returns:
         Tensor: The global Tensor that gives access to the data.

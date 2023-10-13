@@ -24,6 +24,9 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/reduction.h"
 #include "paddle/phi/infermeta/spmd_rules/replicated.h"
 #include "paddle/phi/infermeta/spmd_rules/reshape.h"
+#include "paddle/phi/infermeta/spmd_rules/softmax.h"
+#include "paddle/phi/infermeta/spmd_rules/split.h"
+#include "paddle/phi/infermeta/spmd_rules/transpose.h"
 
 /**
  * Design Notes:
@@ -49,6 +52,9 @@ namespace distributed {
 PD_REGISTER_SPMD_RULE(matmul,
                       PD_INFER_SPMD(phi::distributed::MatmulInferSpmd),
                       PD_INFER_SPMD(phi::distributed::MatmulInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(matmul_v2,  // static mode
+                      PD_INFER_SPMD(phi::distributed::MatmulInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::MatmulInferSpmdReverse));
 
 PD_REGISTER_SPMD_RULE(
     elementwise_unary,
@@ -63,6 +69,10 @@ PD_REGISTER_SPMD_RULE(
 // default data parallel rule
 PD_REGISTER_SPMD_RULE(
     unsqueeze,
+    PD_INFER_SPMD(phi::distributed::DefaultDataParallelInferSpmd),
+    PD_INFER_SPMD(phi::distributed::DefaultDataParallelInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(
+    default_,
     PD_INFER_SPMD(phi::distributed::DefaultDataParallelInferSpmd),
     PD_INFER_SPMD(phi::distributed::DefaultDataParallelInferSpmdReverse));
 
@@ -463,6 +473,10 @@ PD_REGISTER_SPMD_RULE(
     sum,
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(
+    reduce_sum,  // static
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
 
 // layer_norm
 PD_REGISTER_SPMD_RULE(
@@ -472,6 +486,9 @@ PD_REGISTER_SPMD_RULE(
 
 // reshape rule
 PD_REGISTER_SPMD_RULE(reshape,
+                      PD_INFER_SPMD(phi::distributed::ReshapeInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::ReshapeInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(reshape2,
                       PD_INFER_SPMD(phi::distributed::ReshapeInferSpmd),
                       PD_INFER_SPMD(phi::distributed::ReshapeInferSpmdReverse));
 
@@ -484,6 +501,34 @@ PD_REGISTER_SPMD_RULE(
     lookup_table_v2,
     PD_INFER_SPMD(phi::distributed::EmbeddingInferSpmd),
     PD_INFER_SPMD(phi::distributed::EmbeddingInferSpmdReverse));
+
+// split rule
+PD_REGISTER_SPMD_RULE(split,
+                      PD_INFER_SPMD(phi::distributed::SplitInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::SplitInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(
+    split_with_num,
+    PD_INFER_SPMD(phi::distributed::SplitWithNumInferSpmd),
+    PD_INFER_SPMD(phi::distributed::SplitWithNumInferSpmdReverse));
+
+// transpose rule
+PD_REGISTER_SPMD_RULE(
+    transpose,
+    PD_INFER_SPMD(phi::distributed::TransposeInferSpmd),
+    PD_INFER_SPMD(phi::distributed::TransposeInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(
+    transpose2,
+    PD_INFER_SPMD(phi::distributed::TransposeInferSpmd),
+    PD_INFER_SPMD(phi::distributed::TransposeInferSpmdReverse));
+
+// softmax rule
+PD_REGISTER_SPMD_RULE(softmax,
+                      PD_INFER_SPMD(phi::distributed::SoftmaxInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::SoftmaxInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(log_softmax,
+                      PD_INFER_SPMD(phi::distributed::SoftmaxInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::SoftmaxInferSpmdReverse));
 
 }  // namespace distributed
 }  // namespace phi

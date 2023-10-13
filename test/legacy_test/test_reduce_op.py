@@ -22,6 +22,7 @@ import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
 from paddle.base.framework import convert_np_dtype_to_dtype_, in_pir_mode
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestSumOp(OpTest):
@@ -826,7 +827,7 @@ class TestAllOp(OpTest):
         self.attrs = {'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestAllFloatOp(OpTest):
@@ -838,7 +839,7 @@ class TestAllFloatOp(OpTest):
         self.attrs = {'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestAllIntOp(OpTest):
@@ -850,7 +851,7 @@ class TestAllIntOp(OpTest):
         self.attrs = {'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestAllOp_ZeroDim(OpTest):
@@ -862,7 +863,7 @@ class TestAllOp_ZeroDim(OpTest):
         self.attrs = {'dim': []}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestAll8DOp(OpTest):
@@ -878,7 +879,7 @@ class TestAll8DOp(OpTest):
         self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestAllOpWithDim(OpTest):
@@ -890,7 +891,7 @@ class TestAllOpWithDim(OpTest):
         self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestAll8DOpWithDim(OpTest):
@@ -906,7 +907,7 @@ class TestAll8DOpWithDim(OpTest):
         self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestAllOpWithKeepDim(OpTest):
@@ -920,7 +921,7 @@ class TestAllOpWithKeepDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestAll8DOpWithKeepDim(OpTest):
@@ -940,7 +941,7 @@ class TestAll8DOpWithKeepDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestAllOpError(unittest.TestCase):
@@ -1615,6 +1616,15 @@ class TestReduceSumOpError(unittest.TestCase):
                 x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="uint8")
                 self.assertRaises(TypeError, paddle.sum, x2)
 
+            with paddle.pir_utils.IrGuard(), program_guard(
+                Program(), Program()
+            ):
+                # The input type of reduce_sum_op must be Variable.
+                x1 = base.create_lod_tensor(
+                    np.array([[-1]]), [[1]], base.CPUPlace()
+                )
+                self.assertRaises(ValueError, paddle.sum, x1)
+
 
 class API_TestSumOp(unittest.TestCase):
     def run_static(
@@ -1645,6 +1655,7 @@ class API_TestSumOp(unittest.TestCase):
                 rtol=1e-05,
             )
 
+    @test_with_pir_api
     def test_static(self):
         shape = [10, 10]
         axis = 1
