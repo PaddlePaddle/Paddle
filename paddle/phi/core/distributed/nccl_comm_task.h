@@ -70,9 +70,6 @@ class NCCLCommTask : public CommTask {
   bool sync_op_;
   bool use_calc_stream_;
 
-  ncclComm_t nccl_comm_;
-  gpuStream_t nccl_stream_;
-
   bool start_event_created_;
   bool end_event_created_;
   cudaEvent_t nccl_start_event_;

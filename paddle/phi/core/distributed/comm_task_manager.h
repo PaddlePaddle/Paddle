@@ -45,7 +45,7 @@ class CommTaskManager {
     return instance;
   }
 
-  void CommTaskEnqueue(std::unique_ptr<CommTask> comm_task);
+  void CommTaskEnqueue(std::shared_ptr<CommTask> comm_task);
 
  private:
   void CommTaskLoop();
@@ -57,11 +57,15 @@ class CommTaskManager {
 
   static std::mutex comm_task_list_mutex_;
   static std::condition_variable comm_task_list_cv_;
-  static std::list<std::unique_ptr<CommTask>> comm_task_list_;
+  static std::list<std::shared_ptr<CommTask>> comm_task_list_;
+  // not start task
+  static std::unordered_map<std::string, std::shared_ptr<CommTask>>
+      init_comm_task_map_;
+  // start but not finish task
+  static std::unordered_map<std::string, std::shared_ptr<CommTask>>
+      start_comm_task_map_;
   std::shared_ptr<Store> store_;
   bool store_error_{false};
-
-  int comm_seq_;
 };
 
 }  // namespace distributed

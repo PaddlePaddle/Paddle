@@ -33,6 +33,10 @@
 #include "paddle/phi/core/distributed/trace_utils.h"
 #include "paddle/phi/core/enforce.h"
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+#endif
+
 namespace phi {
 namespace distributed {
 
@@ -42,7 +46,11 @@ const int64_t CommTaskManager::loop_thread_sleep_millis = 10000;
 std::atomic<bool> CommTaskManager::terminated_;
 std::mutex CommTaskManager::comm_task_list_mutex_;
 std::condition_variable CommTaskManager::comm_task_list_cv_;
-std::list<std::unique_ptr<CommTask>> CommTaskManager::comm_task_list_;
+std::list<std::shared_ptr<CommTask>> CommTaskManager::comm_task_list_;
+std::unordered_map<std::string, std::shared_ptr<CommTask>>
+    CommTaskManager::init_comm_task_map_;
+std::unordered_map<std::string, std::shared_ptr<CommTask>>
+    CommTaskManager::start_comm_task_map_;
 
 CommTaskManager::CommTaskManager() {
   terminated_.store(false);
@@ -59,7 +67,7 @@ CommTaskManager::~CommTaskManager() {
   LOG(INFO) << "CommTaskManager destruct success.";
 }
 
-void CommTaskManager::CommTaskEnqueue(std::unique_ptr<CommTask> comm_task) {
+void CommTaskManager::CommTaskEnqueue(std::shared_ptr<CommTask> comm_task) {
   if (!terminated_.load()) {
     std::lock_guard<std::mutex> lock(comm_task_list_mutex_);
     comm_task_list_.emplace_back(std::move(comm_task));
@@ -74,25 +82,53 @@ void CommTaskManager::CommTaskLoop() {
         lock,
         std::chrono::milliseconds(loop_thread_sleep_millis),
         [&]() -> bool { return terminated_.load(); });
-    for (auto task = comm_task_list_.begin(); task != comm_task_list_.end();) {
-      if ((*task)->IsTimeout()) {
-        LOG(WARNING) << "Detected timeout process_group: " << (*task)->GetGid();
-        std::string error_msg = (*task)->GetTraceMsg();
-        LOG(ERROR) << error_msg;
-
-        error_msg = (*task)->GetCommErrors();
-        if (!error_msg.empty()) {
-          LOG(ERROR) << error_msg;
+    for (auto iter = comm_task_list_.begin(); iter != comm_task_list_.end();) {
+        auto task = *iter;
+        if (task->IsTimeout()) {
+            if (!task->IsStarted()) {
+                LOG(ERROR) << "Find timeout init but not start task: "
+                    << task->GetTraceMsg() << ",comm:" << task->nccl_comm()
+                    << ",stream:" << task->nccl_stream();
+                std::string task_key = task->UniqueKey();
+                init_comm_task_map_[task_key] = task;
+            } else if (!task->IsCompleted()) {
+                LOG(ERROR) << "Find timeout start but not finish task: "
+                    << task->GetTraceMsg() << ",comm:" << task->nccl_comm()
+                    << ",stream:" << task->nccl_stream();
+                std::string task_key = task->UniqueKey();
+                start_comm_task_map_[task_key] = task;
+            }
+            iter = comm_task_list_.erase(iter);
+        } else {
+            ++iter;
         }
-      }
-      if ((*task)->IsCompleted()) {
-        task = comm_task_list_.erase(task);
-      } else {
-        ++task;
-      }
     }
-    if (comm_task_list_.empty()) {
-      done = true;
+
+    for (auto iter = init_comm_task_map_.begin(); iter != init_comm_task_map_.end();) {
+        auto task = iter->second; 
+        if (task->IsStarted()) {
+            std::string task_key = task->UniqueKey();
+            start_comm_task_map_[task_key] = task;
+            iter = init_comm_task_map_.erase(iter);
+            LOG(INFO) << "Start timeout task: " << task->GetTraceMsg();
+        } else { 
+            ++iter; 
+        } 
+    }
+
+    for (auto iter = start_comm_task_map_.begin(); iter != start_comm_task_map_.end();) {
+        auto task = iter->second;
+        if (task->IsCompleted()) {
+            iter = start_comm_task_map_.erase(iter);
+            LOG(INFO) << "Finish timeout task: " << task->GetTraceMsg();
+        } else {
+            ++iter;
+        }
+    }
+
+    if (comm_task_list_.empty() && init_comm_task_map_.empty() &&
+            start_comm_task_map_.empty()) {
+        done = true;
     }
   }
 }
