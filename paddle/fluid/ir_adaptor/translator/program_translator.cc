@@ -264,6 +264,7 @@ void ProgramTranslator::TranslateBlock(
           src_block.OpSize()));
 
   std::unordered_map<uint64_t, bool> translate_completed;
+  std::vector<std::string> assign_inputs;
   for (uint64_t op_id = start_id; op_id < end_id; op_id++) {
     if (translate_completed.count(op_id) && translate_completed.at(op_id)) {
       continue;
@@ -292,6 +293,7 @@ void ProgramTranslator::TranslateBlock(
           std::count(skip_cond_assign.begin(),
                      skip_cond_assign.end(),
                      op->Output("Out")[0])) {
+        assign_inputs.push_back(op->Input("X")[0]);
         translate_completed[op_id] = true;
       } else {
         TranslateGeneralOperation(op, dest_block);
@@ -303,12 +305,8 @@ void ProgramTranslator::TranslateBlock(
   // operator needs to be inserted
   if (for_cond_block) {
     std::vector<pir::Value> yeild_inputs;
-    for (size_t id = end_id; id < src_block.OpSize(); id++) {
-      PADDLE_ENFORCE(
-          src_block.Op(id)->Type() == "assign",
-          "The operator at the end of the sub block needs to be assign");
-      yeild_inputs.emplace_back(
-          param_map_[src_block.Op(static_cast<int>(id))->Input("X")[0]].value);
+    for (size_t id = 0; id < assign_inputs.size(); id++) {
+      yeild_inputs.emplace_back(param_map_[assign_inputs[id]].value);
     }
     pir::AttributeMap attribute_map;
     auto yeild_info = ctx_->GetRegisteredOpInfo(pir::YieldOp::name());
