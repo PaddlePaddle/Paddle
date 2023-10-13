@@ -240,14 +240,7 @@ def GroupShardedScaler(scaler):
         ):
             for group in optimizer._optim._param_groups:
                 for param in group['params']:
-                    tgt_grad = None
-                    if (
-                        hasattr(param, "main_grad")
-                        and param.main_grad is not None
-                    ):
-                        tgt_grad = param.main_grad
-                    elif param.grad is not None:
-                        tgt_grad = param.grad
+                    tgt_grad = param.actual_grad
                     if tgt_grad is not None:
                         param_grads.append(tgt_grad)
                         if tgt_grad.dtype in [
@@ -261,11 +254,7 @@ def GroupShardedScaler(scaler):
                             param_grads_fp32.append(tgt_grad)
         else:
             for param in optimizer._optim._parameter_list:
-                tgt_grad = None
-                if hasattr(param, "main_grad") and param.main_grad is not None:
-                    tgt_grad = param.main_grad
-                elif param.grad is not None:
-                    tgt_grad = param.grad
+                tgt_grad = param.actual_grad
                 if tgt_grad is not None:
                     param_grads.append(tgt_grad)
                     if tgt_grad.dtype in [

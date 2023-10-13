@@ -7436,7 +7436,13 @@ class EagerParamBase(core.eager.Tensor):
 
     @property
     def actual_grad(self):
-        return self.main_grad if hasattr(self, "main_grad") else self.grad
+        if hasattr(self, "main_grad"):
+            assert (
+                self.grad is None
+            ), "param.grad is expected to be None when main_grad exists."
+            return self.main_grad
+        else:
+            return self.grad
 
     @actual_grad.setter
     def actual_grad(self, value):
