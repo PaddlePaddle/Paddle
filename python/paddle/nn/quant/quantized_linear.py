@@ -18,7 +18,7 @@ from paddle.base.framework import convert_np_dtype_to_dtype_
 from paddle.framework import LayerHelper, in_dynamic_mode
 
 
-def weight_quantize(x, algo="weight_only_int8", arch=80):
+def weight_quantize(x, algo="weight_only_int8", arch=0):
     """
     Quantization function for weight_only and llm.int8's weight.
 
@@ -26,6 +26,7 @@ def weight_quantize(x, algo="weight_only_int8", arch=80):
         x (Tensor): The input Tensor to be quantized, the data type is float16 or bfloat16.
         algo (str): The algo that is x will be apply, must be one of 'weight_only_int8',
             'weight_only_int4' and 'llm.int8', default: 'weight_only_int8'.
+        arch (int): The compute arch for target device. For example, A100 is 80, v100 is 70, if you do not assign arch, we will get arch from your device, default: 0.
 
     Returns:
         out (Tensor): The Tensor which is the quantitative results, the data type is int8, the shape is transposition of x.
@@ -110,12 +111,7 @@ def weight_dequantize(x, scale, algo="weight_only_int8", out_dtype='float16'):
 
 
 def weight_only_linear(
-    x,
-    weight,
-    bias=None,
-    weight_scale=None,
-    weight_dtype="int8",
-    arch=80
+    x, weight, bias=None, weight_scale=None, weight_dtype="int8", arch=0
 ):
     """
     Applies matrix multiplication of two tensors and then bias addition if provided.
@@ -128,6 +124,7 @@ def weight_only_linear(
             be performed. Otherwise, The bias is added to the matrix multiplication result.
         weight_scale (Tensor|None): The input scale Tensor Provided to weight for dequantization. Its rank must be 1.
         weight_dtype(str): The dtype of  weight Tensor, must be one of 'int8', 'int4', Defaulted to 'int8'.
+        arch (int): The compute arch for target device. For example, A100 is 80, v100 is 70, if you do not assign arch, we will get arch from your device, default: 0.
     Returns:
         Tensor: the output Tensor, the data type is the same as that of x.
 

@@ -3846,13 +3846,8 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
                                const MetaTensor& bias,
                                const MetaTensor& weight_scale,
                                const std::string& weight_dtype,
-                               const int32_t arch, 
+                               const int32_t arch,
                                MetaTensor* out) {
-  PADDLE_ENFORCE_EQ(
-    ((arch == 80) || (arch == 70)),
-    true,
-    phi::errors::InvalidArgument("Currently, arch only support 70, 80."));
-  
   auto x_dims = x.dims();
   auto w_dims = weight.dims();
   auto n = weight_scale.dims()[0];
