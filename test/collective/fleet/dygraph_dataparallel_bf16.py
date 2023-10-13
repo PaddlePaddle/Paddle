@@ -155,6 +155,8 @@ def train_mlp(
 
 
 def test_dp_bf16():
+    if not paddle.amp.is_bfloat16_supported():
+        return
     paddle.distributed.init_parallel_env()
     mlp = MLP()
     state_dict = mlp.state_dict()
