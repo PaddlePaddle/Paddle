@@ -38,7 +38,7 @@ class WhileInstruction : public InstructionBase {
 
   void Run() override;
 
-  const std::string& Name() const override { return cond_name_; }
+  const std::string& Name() const override { return name_; }
 
   ::pir::Operation* Operation() const override { return op_; }
 
@@ -51,12 +51,12 @@ class WhileInstruction : public InstructionBase {
   void CopyStepOutputToBlockArgs(const NewIRInterpreter* inter,
                                  ::pir::Block* block);
 
-  std::string cond_name_{"while_instruction"};
+  std::string name_{"while_instruction"};
 
   Variable* cond_var;
 
-  std::vector<Variable*> while_op_inputs_;
-  std::vector<Variable*> while_op_outputs_;
+  std::vector<Variable*> inputs_;
+  std::vector<Variable*> outputs_;
 
   std::unique_ptr<NewIRInterpreter> cond_inter_;
   std::unique_ptr<NewIRInterpreter> body_inter_;

@@ -64,12 +64,12 @@ WhileInstruction::WhileInstruction(size_t id,
   auto while_op = op->dyn_cast<paddle::dialect::WhileOp>();
 
   for (size_t i = 0; i < while_op.num_operands(); ++i) {
-    while_op_inputs_.push_back(inner_scope->GetVar(
+    inputs_.push_back(inner_scope->GetVar(
         parent_exe_info->GetValue2VarName().at(while_op.operand_source(i))));
   }
 
   for (size_t i = 0; i < while_op.num_results(); ++i) {
-    while_op_outputs_.push_back(inner_scope->GetVar(
+    outputs_.push_back(inner_scope->GetVar(
         parent_exe_info->GetValue2VarName().at(while_op.result(i))));
   }
 
@@ -161,7 +161,7 @@ void WhileInstruction::CopyStepOutput() {
     auto* inner_var =
         body_inter_->local_scope()->GetVar(body_skip_gc_names_[i]);
 
-    while_op_outputs_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
+    outputs_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
         inner_var->Get<phi::DenseTensor>());
   }
 }
@@ -173,14 +173,14 @@ void WhileInstruction::CopyWhileInputToBlockArgs(const NewIRInterpreter* inter,
     auto var_name = inter->GetNameByValue(block_arg);
     auto* inner_var = inter->local_scope()->GetVar(var_name);
     inner_var->GetMutable<phi::DenseTensor>()->ShareDataWith(
-        while_op_inputs_[i]->Get<phi::DenseTensor>());
+        inputs_[i]->Get<phi::DenseTensor>());
   }
 }
 
 void WhileInstruction::CopyStepOutputToBlockArgs(const NewIRInterpreter* inter,
                                                  ::pir::Block* block) {
   for (size_t i = 0; i < block->args_size(); ++i) {
-    auto out_var_name = body_skip_gc_names_[i];
+    auto& out_var_name = body_skip_gc_names_[i];
     auto* out_var = body_inter_->local_scope()->GetVar(out_var_name);
 
     auto block_arg = block->argument(i);
