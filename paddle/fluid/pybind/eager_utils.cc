@@ -1842,7 +1842,7 @@ paddle::Tensor PyTensorHook::operator()(const paddle::Tensor& var) {
     res = PyObject_CallFunctionObjArgs(py_func_, p_tmp_var, nullptr);
     Py_DECREF(p_tmp_var);
   } catch (platform::EnforceNotMet& e) {
-    throw std::move(e);
+    throw e;
   } catch (std::exception& e) {
     PADDLE_THROW(platform::errors::Unavailable(
         "Hook function of Tensor raises an exception: %s.", e.what()));
@@ -1869,7 +1869,7 @@ void PyVoidHook::operator()() {
   try {
     PyObject_CallFunctionObjArgs(py_func_, nullptr);
   } catch (platform::EnforceNotMet& e) {
-    throw std::move(e);
+    throw e;
   } catch (std::exception& e) {
     PADDLE_THROW(platform::errors::Unavailable(
         "Hook function of Tensor raises an exception: %s.", e.what()));

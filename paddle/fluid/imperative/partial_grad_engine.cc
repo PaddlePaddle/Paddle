@@ -1031,7 +1031,7 @@ void PartialGradTask::RunEachOp(OpBase *op) {
         assign_op->SetPlace(op->place());
 
         if (auto grad_pending_node = grad_grad->GetGradNode()) {
-          assign_node->InsertGradPendingNode(std::move(grad_pending_node));
+          assign_node->InsertGradPendingNode(grad_pending_node);
         }
       }
       VLOG(10) << "Pending ops of assign is "
