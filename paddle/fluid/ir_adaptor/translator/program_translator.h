@@ -99,6 +99,8 @@ class ProgramTranslator {
 
   void Translate();
 
+  std::unordered_map<std::string, std::vector<pir::Value>> VarDesc2Value();
+
  private:
   const ProgramDesc* legacy_program_;  // not owned
   pir::Program* program_;              // not owned
