@@ -226,7 +226,8 @@ void IrContext::RegisterAbstractAttribute(
     pir::TypeId type_id, AbstractAttribute &&abstract_attribute) {
   if (GetRegisteredAbstractAttribute(type_id) == nullptr) {
     impl().RegisterAbstractAttribute(
-        type_id, new AbstractAttribute(std::move(abstract_attribute)));
+        type_id,
+        new AbstractAttribute(std::move(abstract_attribute)));  // NOLINT
   } else {
     LOG(WARNING) << " Attribute already registered.";
   }
@@ -258,14 +259,14 @@ Dialect *IrContext::GetOrRegisterDialect(
 
 std::vector<Dialect *> IrContext::GetRegisteredDialects() {
   std::vector<Dialect *> result;
-  for (auto dialect_map : impl().registed_dialect_) {
+  for (auto const &dialect_map : impl().registed_dialect_) {
     result.push_back(dialect_map.second);
   }
   return result;
 }
 
 Dialect *IrContext::GetRegisteredDialect(const std::string &dialect_name) {
-  for (auto dialect_map : impl().registed_dialect_) {
+  for (auto const &dialect_map : impl().registed_dialect_) {
     if (dialect_map.first == dialect_name) {
       return dialect_map.second;
     }
@@ -277,8 +278,8 @@ Dialect *IrContext::GetRegisteredDialect(const std::string &dialect_name) {
 void IrContext::RegisterAbstractType(pir::TypeId type_id,
                                      AbstractType &&abstract_type) {
   if (GetRegisteredAbstractType(type_id) == nullptr) {
-    impl().RegisterAbstractType(type_id,
-                                new AbstractType(std::move(abstract_type)));
+    impl().RegisterAbstractType(
+        type_id, new AbstractType(std::move(abstract_type)));  // NOLINT
   } else {
     LOG(WARNING) << " type already registered.";
   }
