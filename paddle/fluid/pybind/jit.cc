@@ -73,13 +73,40 @@ void BindEvalFrame(pybind11::module *m) {
       py::arg("callback"));
 
   m->def(
-      "zskip",
+      "sot_setup_codes_with_graph",
       [](const py::object &py_codes) {
-        auto ret = zskip(py_codes.ptr());
+        auto ret = setup_codes_with_graph(py_codes.ptr());
         auto obj = py::reinterpret_borrow<py::object>(ret);
         return obj;
       },
-      py::arg("callback"));
+      py::arg("py_codes"));
+
+  m->def(
+      "sot_set_with_graph",
+      [](const py::object &py_codes) {
+        auto ret = set_with_graph(py_codes.ptr());
+        auto obj = py::reinterpret_borrow<py::object>(ret);
+        return obj;
+      },
+      py::arg("py_codes"));
+
+  m->def(
+      "eval_frame_no_skip_codes",
+      [](const py::object &py_codes) {
+        auto ret = no_skip_codes(py_codes.ptr());
+        auto obj = py::reinterpret_borrow<py::object>(ret);
+        return obj;
+      },
+      py::arg("py_codes"));
+
+  m->def(
+      "eval_frame_skip_file_prefix",
+      [](const py::object &py_codes) {
+        auto ret = skip_file_prefix(py_codes.ptr());
+        auto obj = py::reinterpret_borrow<py::object>(ret);
+        return obj;
+      },
+      py::arg("py_codes"));
 }
 
 }  // namespace pybind

@@ -19,9 +19,20 @@ extern "C" {
 #endif
 
 #include <Python.h>
+#include <frameobject.h>
+#if PY_VERSION_HEX >= 0x030b0000
+typedef _PyInterpreterFrame FrameObject;
+#else
+typedef PyFrameObject FrameObject;
+#endif
 
-PyObject* zskip(PyObject* files);
-int need_skip(PyObject* frame);
+int need_skip(FrameObject* frame);
+int is_code_without_graph(PyCodeObject* code);
+
+PyObject* set_with_graph(PyObject* code);
+PyObject* setup_codes_with_graph(PyObject* code_tuple);
+PyObject* no_skip_codes(PyObject* code_tuple);
+PyObject* skip_file_prefix(PyObject* filepath_tuple);
 
 #ifdef __cplusplus
 }

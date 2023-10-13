@@ -558,7 +558,7 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
     eval_frame_callback_set(callback);
     return out;
   }
-  if (frame->f_code->co_exceptiontable != Py_None) {
+  if (PyBytes_GET_SIZE(frame->f_code->co_exceptiontable)) {
     eval_frame_callback_set(callback);
     auto out = eval_frame_default(tstate, frame, throw_flag);
     return out;
@@ -600,50 +600,39 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
   PyObject *code;
   PyObject *disable_eval_frame;
 
-  /*================= testing =================*/
-  if (need_skip((PyObject *)frame)) {
-    out = eval_frame_default(tstate, frame, throw_flag);
-    eval_frame_callback_set(callback);
-    return out;
-  }
-  /*================= testing =================*/
-
   // get code & disable_eval_frame
-  // TODO
-  if (0) {
+  if (need_skip(frame)) {
+    Py_INCREF(Py_None);
     code = Py_None;
+    Py_INCREF(Py_False);
     disable_eval_frame = Py_False;
   } else {
-    /* calculate guards here */
-    // TODO
-    int cache_hit = 0;
-    if (cache_hit)
-      ;
-    else {
+    /* should calculate guards here if we want */
 #if PY_VERSION_HEX >= 0x030b0000
-      PyObject *args = Py_BuildValue("(O)", PyInterpreterFrameProxy_New(frame));
+    PyObject *args = Py_BuildValue("(O)", PyInterpreterFrameProxy_New(frame));
 #else
-      PyObject *args = Py_BuildValue("(O)", frame);
+    PyObject *args = Py_BuildValue("(O)", frame);
 #endif
-      PyObject *result = PyObject_CallObject(callback, args);
-      Py_DECREF(args);
-      if (result == NULL) {
-        return NULL;
-      }
-      code = PyObject_GetAttrString(result, "code");
-      disable_eval_frame = PyObject_GetAttrString(result, "disable_eval_frame");
-      Py_DECREF(result);
+    PyObject *result = PyObject_CallObject(callback, args);
+    Py_DECREF(args);
+    if (result == NULL) {
+      return NULL;
     }
+    code = PyObject_GetAttrString(result, "code");
+    disable_eval_frame = PyObject_GetAttrString(result, "disable_eval_frame");
+    Py_DECREF(result);
   }
 
-  // // code status
-  // // TODO
-  // if (is_code_without_graph(code == Py_None ? frame->f_code : code)
-  //     && disable_eval_frame == Py_False){
-  //   out = eval_frame_default(tstate, frame, throw_flag);
-  //   eval_frame_callback_set(callback);
-  //   return out;
-  // }
+  // code status
+  if (is_code_without_graph(code == Py_None ? frame->f_code
+                                            : (PyCodeObject *)code) &&
+      disable_eval_frame == Py_False) {
+    out = eval_frame_default(tstate, frame, throw_flag);
+    eval_frame_callback_set(callback);
+    Py_DECREF(code);
+    Py_DECREF(disable_eval_frame);
+    return out;
+  }
 
   // run code
   if (disable_eval_frame != Py_True) {
