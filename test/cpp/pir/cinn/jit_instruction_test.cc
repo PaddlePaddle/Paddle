@@ -27,6 +27,8 @@
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/program.h"
 
+#include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/cinn/hlir/framework/convert_to_dialect.h"
@@ -92,6 +94,7 @@ TEST(CinnJitInstruction, Run) {
 
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<cinn::dialect::RuntimeDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<paddle::dialect::KernelDialect>();
   auto ir_program = std::make_unique<::pir::Program>(ctx);
   std::string jit_op_name = cinn::dialect::JitKernelOp::name();
@@ -101,10 +104,13 @@ TEST(CinnJitInstruction, Run) {
   std::unordered_map<pir::Value, pir::Value> value_map;
   for (auto it = program->block()->begin(); it != program->block()->end();
        ++it) {
+    std::cerr << "build attr" << std::endl;
     std::unordered_map<std::string, ::pir::Attribute> op_attrs{
         {cinn::dialect::JitKernelOp::kAttrName,
-         ::pir::PointerAttribute::get(ctx, &fn_ptr_res[index++])},
+         cinn::dialect::CUDAJITInfoAttribute::get(ctx, fn_ptr_res[index++])},
     };
+
+    std::cerr << "build fin" << std::endl;
     auto type1 = (*it)->result(0).type();
     if (!type1) {
       std::cerr << "wroing with type1" << std::endl;

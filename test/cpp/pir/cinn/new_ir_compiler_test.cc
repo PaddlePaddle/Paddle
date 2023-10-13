@@ -157,27 +157,27 @@ TEST(RuntimeDialect, CompilerAndRun) {
       cinn::hlir::framework::ConvertToRuntimeDialect(*runtime_program);
 
   // Step 4: Run cinn::dialect::RuntimeDialect
-  for (auto iter = ir_runtime_program->block()->begin();
-       iter != ir_runtime_program->block()->end();
-       ++iter) {
-    auto op = (*iter)->dyn_cast<cinn::dialect::JitKernelOp>();
-    auto* instr = op.instruction();
-    instr->Run(/*name2podargs=*/nullptr,
-               false,
-               /*stream=*/nullptr,
-               /*use_cache=*/true);
-  }
-#ifdef CINN_WITH_CUDA
-  CUDA_CALL(cudaDeviceSynchronize());
-#endif
+  //   for (auto iter = ir_runtime_program->block()->begin();
+  //        iter != ir_runtime_program->block()->end();
+  //        ++iter) {
+  //     auto op = (*iter)->dyn_cast<cinn::dialect::JitKernelOp>();
+  //     auto* instr = op.instruction();
+  //     instr->Run(/*name2podargs=*/nullptr,
+  //                false,
+  //                /*stream=*/nullptr,
+  //                /*use_cache=*/true);
+  //   }
+  // #ifdef CINN_WITH_CUDA
+  //   CUDA_CALL(cudaDeviceSynchronize());
+  // #endif
 
-  // Step 5: Check Scope Tensor Value.
-  for (auto& var_name : scope->var_names()) {
-    std::string name = {var_name.begin(), var_name.end()};
-    std::vector<float> data =
-        cinn::GetTensorData<float>(scope->GetTensor(name), target);
-    for (int i = 0; i < 1; ++i) {
-      LOG_FIRST_N(INFO, 10) << "data: " << data[i];
-    }
-  }
+  //   // Step 5: Check Scope Tensor Value.
+  //   for (auto& var_name : scope->var_names()) {
+  //     std::string name = {var_name.begin(), var_name.end()};
+  //     std::vector<float> data =
+  //         cinn::GetTensorData<float>(scope->GetTensor(name), target);
+  //     for (int i = 0; i < 1; ++i) {
+  //       LOG_FIRST_N(INFO, 10) << "data: " << data[i];
+  //     }
+  //   }
 }

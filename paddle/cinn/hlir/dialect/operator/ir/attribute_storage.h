@@ -77,5 +77,27 @@ struct GroupInfoAttributeStorage : public pir::AttributeStorage {
   ParamKey data_;
 };
 
+struct CUDAJITInfoAttributeStorage : public pir::AttributeStorage {
+  using ParamKey = cinn::hlir::framework::newir::CUDAJITInfo;
+  explicit CUDAJITInfoAttributeStorage(const ParamKey& key) : data_(key) {}
+
+  static CUDAJITInfoAttributeStorage* Construct(const ParamKey& key) {
+    return new CUDAJITInfoAttributeStorage(key);
+  }
+
+  static std::size_t HashValue(const ParamKey& key) {
+    return std::hash<int64_t>()(*(reinterpret_cast<int64_t*>(key.fn_ptr)));
+  }
+
+  bool operator==(const ParamKey& key) const {
+    return data_.fn_ptr == key.fn_ptr;
+  }
+
+  const ParamKey& GetAsKey() const { return data_; }
+
+ private:
+  ParamKey data_;
+};
+
 }  // namespace dialect
 }  // namespace cinn

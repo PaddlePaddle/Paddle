@@ -26,12 +26,6 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
-struct CUDAJITInfo {
-  void* fn_ptr;
-  std::vector<int> block_dims;
-  std::vector<int> grid_dims;
-};
-
 // TODO(Aurelius84): Need abstract this logic to implement Proxy for
 // the co-existance with GraphCompiler.
 class NewIRCompiler final {
@@ -46,7 +40,7 @@ class NewIRCompiler final {
 
   std::unique_ptr<Program> Build();
 
-  std::vector<CUDAJITInfo> BuildCUDAJITInfo(
+  std::vector<newir::CUDAJITInfo> BuildCUDAJITInfo(
       const std::vector<newir::GroupPtr>& groups);
 
   std::unique_ptr<Program> Build(const std::vector<newir::GroupPtr>& groups);

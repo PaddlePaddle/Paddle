@@ -36,17 +36,17 @@ std::unique_ptr<::pir::Program> ConvertToRuntimeDialect(
   std::string jit_op_name = dialect::JitKernelOp::name();
   ::pir::OpInfo op_info = ctx->GetRegisteredOpInfo(jit_op_name);
 
-  auto& instrs = program.GetRunInstructions();
-  for (auto& instr : instrs) {
-    std::unordered_map<std::string, ::pir::Attribute> op_attrs{
-        {dialect::JitKernelOp::kAttrName,
-         ::pir::PointerAttribute::get(ctx, instr.get())},
-    };
+  // auto& instrs = program.GetRunInstructions();
+  // for (auto& instr : instrs) {
+  //   std::unordered_map<std::string, ::pir::Attribute> op_attrs{
+  //       {dialect::JitKernelOp::kAttrName,
+  //        ::pir::PointerAttribute::get(ctx, instr.get())},
+  //   };
 
-    ::pir::Operation* cinn_op =
-        ::pir::Operation::Create({}, op_attrs, {}, op_info);
-    ir_program->block()->push_back(cinn_op);
-  }
+  //   ::pir::Operation* cinn_op =
+  //       ::pir::Operation::Create({}, op_attrs, {}, op_info);
+  //   ir_program->block()->push_back(cinn_op);
+  // }
   return std::move(ir_program);
 }
 

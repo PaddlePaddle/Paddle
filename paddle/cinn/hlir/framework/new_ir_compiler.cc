@@ -39,9 +39,9 @@ std::unique_ptr<Program> NewIRCompiler::Build() {
   return std::move(Build(groups));
 }
 
-std::vector<CUDAJITInfo> NewIRCompiler::BuildCUDAJITInfo(
+std::vector<newir::CUDAJITInfo> NewIRCompiler::BuildCUDAJITInfo(
     const std::vector<newir::GroupPtr>& groups) {
-  std::vector<CUDAJITInfo> vec_res;
+  std::vector<newir::CUDAJITInfo> vec_res;
 
   auto op_lowerer = CreateOpLowerer<newir::GroupPtr>(target_);
 
@@ -64,7 +64,7 @@ std::vector<CUDAJITInfo> NewIRCompiler::BuildCUDAJITInfo(
   auto fn_ptrs = compiler_->GetFnPtr();
 
   for (int idx = 0; idx < groups.size(); ++idx) {
-    CUDAJITInfo node;
+    newir::CUDAJITInfo node;
     node.fn_ptr = fn_ptrs[idx];
 
     lowered_funcs[idx][0]->cuda_axis_info.CopyBlockDimsTo(&(node.block_dims));
@@ -73,21 +73,6 @@ std::vector<CUDAJITInfo> NewIRCompiler::BuildCUDAJITInfo(
 
     vec_res.push_back(node);
   }
-
-  // for (auto& name : scope_->var_names()) {
-  //   std::string var_name({name.data(), name.size()});
-  //   VLOG(4) << "Instantiate " << var_name << " on compile-time";
-  //   auto* var = scope_->Var<Tensor>(var_name);
-  //   auto& tensor = absl::get<Tensor>(*var);
-  //   tensor->mutable_data(target_, tensor->type());
-  // }
-
-  // std::cerr << "run herer" << std::endl;
-  // instructions[0]->Run( /*name2podargs=*/nullptr,
-  //               false,
-  //               /*stream=*/nullptr,
-  //               /*use_cache=*/true );
-  // std::cerr << "fin " << std::endl;
 
   return vec_res;
 }

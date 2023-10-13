@@ -23,6 +23,12 @@ namespace hlir {
 namespace framework {
 namespace newir {
 
+struct CUDAJITInfo {
+  void* fn_ptr;
+  std::vector<int> block_dims;
+  std::vector<int> grid_dims;
+};
+
 struct CompatibleInfo {
   static constexpr char* kNamePrefix = "var_";
   // TODO(Aurelius): Need add name mapping logic in REGISTER_CINN_OP

@@ -41,9 +41,7 @@ class CinnJitInstruction : public InstructionBase {
   ::pir::Operation* Operation() const override { return op_; }
 
  private:
-  class Impl;
   class FnPtrImpl;
-  std::shared_ptr<Impl> impl_{nullptr};
 
   std::shared_ptr<FnPtrImpl> fn_ptr_impl_{nullptr};
 
