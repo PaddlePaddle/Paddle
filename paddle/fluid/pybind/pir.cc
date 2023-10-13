@@ -25,6 +25,7 @@
 #include "paddle/pir/core/builtin_op.h"
 
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
@@ -358,6 +359,14 @@ void BindOperation(py::module *m) {
            });
 }
 
+py::str Value2String(const Value &self) {
+  std::ostringstream print_stream;
+  print_stream << "Value(";
+  print_stream << GetValueInfo(self);
+  print_stream << ")";
+  return print_stream.str();
+}
+
 void BindValue(py::module *m) {
   py::class_<Value> value(*m, "Value", R"DOC(
     Value class represents the SSA value in the IR system. It is a directed edge
@@ -388,13 +397,8 @@ void BindValue(py::module *m) {
            })
       .def("__hash__",
            [](const Value &self) { return std::hash<pir::Value>{}(self); })
-      .def("__str__", [](const Value &self) -> py::str {
-        std::ostringstream print_stream;
-        print_stream << "Value(";
-        print_stream << GetValueInfo(self);
-        print_stream << ")";
-        return print_stream.str();
-      });
+      .def("__str__", &Value2String)
+      .def("__repr__", &Value2String);
 }
 
 void BindOpOperand(py::module *m) {
@@ -1156,7 +1160,7 @@ void BindUtils(pybind11::module *m) {
                     y_s = paddle.matmul(x_s, x_s)
                     z_s = paddle.add(y_s, y_s)
                     k_s = paddle.tanh(z_s)
-                newir_program = ir.translate_to_new_ir(main_program.desc)
+                newir_program = pir.translate_to_new_ir(main_program.desc)
 
                 print(newir_program)
 
@@ -1175,6 +1179,53 @@ void BindUtils(pybind11::module *m) {
         legacy_program (ProgramDesc): The Fluid Program that need checked.
       Returns:
         list[str] : List of unregistered operators in paddle dialect, the name is expressed by origin op name.
+    )DOC");
+  m->def(
+      "translate_to_new_ir_with_param_map",
+      [](const framework::ProgramDesc &legacy_program) {
+        auto ir_ctx = pir::IrContext::Instance();
+        auto program = std::make_shared<pir::Program>(ir_ctx);
+        translator::ProgramTranslator program_translator(&legacy_program,
+                                                         program.get());
+        program_translator.Translate();
+        return std::make_pair(program, program_translator.VarDesc2Value());
+      },
+      R"DOC(
+        Convert Fluid Program to New IR Program and get the mappings of VarDesc -> pir::Value.
+
+        Args:
+
+            legacy_program (ProgramDesc): The Fluid Program that will be converted.
+
+        Returns:
+            Program: The New IR Program
+            dict[str, pir::Value]: Mapping between VarDesc(by name) and pir::Value.
+
+        Raises:
+            PreconditionNotMet: If legacy_program has multi block will raise error.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                from paddle import pir
+                paddle.enable_static()
+
+                x = paddle.randn([4, 4])
+                main_program, start_program = (
+                    paddle.static.Program(),
+                    paddle.static.Program(),
+                )
+                with paddle.static.program_guard(main_program, start_program):
+                    x_s = paddle.static.data('x', [4, 4], x.dtype)
+                    x_s.stop_gradient = False
+                    y_s = paddle.matmul(x_s, x_s)
+                    z_s = paddle.add(y_s, y_s)
+                    k_s = paddle.tanh(z_s)
+                newir_program, mappings = pir.translate_to_new_ir_with_param_map(main_program.desc)
+
+                print(newir_program)
+                print(mappings)
     )DOC");
 }
 
