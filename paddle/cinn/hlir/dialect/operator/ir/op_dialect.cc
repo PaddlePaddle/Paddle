@@ -56,7 +56,9 @@ void OperatorDialect::PrintAttribute(pir::Attribute attr,
     }
     { os << "<#AttrNotImplemented>"; }
   } else if (attr.isa<CUDAJITInfoAttribute>()) {
-    os << "(" << attr.dialect().name();
+    auto cuda_jit_info = attr.dyn_cast<CUDAJITInfoAttribute>();
+
+    os << "(" << cuda_jit_info.data().fn_ptr;
     os << ')';
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
