@@ -119,20 +119,18 @@ void IfOp::VerifySig() {
       phi::errors::PreconditionNotMet(
           "The size %d of inputs must be equal to 1.", input_size));
 
-  PADDLE_ENFORCE((*this)->operand_source(0).type().isa<pir::DenseTensorType>(),
-                 phi::errors::PreconditionNotMet(
-                     "Type validation failed for the 1th input, it should be a "
-                     "DenseTensorType."));
-
-  PADDLE_ENFORCE((*this)
-                     ->operand_source(0)
-                     .type()
-                     .dyn_cast<pir::DenseTensorType>()
-                     .dtype()
-                     .isa<pir::BoolType>(),
-                 phi::errors::PreconditionNotMet(
-                     "Type validation failed for the 1th input, it should be a "
-                     "bool DenseTensorType."));
+  if ((*this)->operand_source(0).type().isa<pir::DenseTensorType>()) {
+    PADDLE_ENFORCE(
+        (*this)
+            ->operand_source(0)
+            .type()
+            .dyn_cast<pir::DenseTensorType>()
+            .dtype()
+            .isa<pir::BoolType>(),
+        phi::errors::PreconditionNotMet(
+            "Type validation failed for the 1th input, it should be a "
+            "bool DenseTensorType."));
+  }
 
   PADDLE_ENFORCE_EQ((*this)->num_regions(),
                     2u,
