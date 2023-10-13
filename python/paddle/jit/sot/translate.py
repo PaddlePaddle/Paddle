@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING, Callable, TypeVar
 
 import paddle
@@ -27,9 +26,6 @@ if TYPE_CHECKING:
 
     P = ParamSpec("P")
     R = TypeVar("R")
-
-# Temporarily set the default log level to 2 to get more information in CI log.
-os.environ["SOT_LOG_LEVEL"] = os.getenv("SOT_LOG_LEVEL", "2")
 
 
 def symbolic_translate(fn: Callable[P, R], **kwargs) -> Callable[P, R]:
