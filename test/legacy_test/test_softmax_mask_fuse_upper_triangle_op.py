@@ -93,7 +93,7 @@ class TestDropoutBiasFuseOp2(unittest.TestCase):
     # test the python side API for softmax_mask_fuse op
     def setUp(self):
         np.random.seed(123)
-        self.dtypes = ['float16', 'float32']
+        self.dtypes = ['float32', 'float16']
 
     @test_with_pir_api
     def test_static(self):
