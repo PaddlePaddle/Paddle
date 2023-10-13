@@ -62,4 +62,4 @@ add_custom_command(
 cc_library(
   drr
   SRCS ${DRR_SRCS} ${op_creator_file}
-  DEPS pd_op_dialect pir)
+  DEPS pd_op_dialect pir_pattern_rewrite pir_pass)
