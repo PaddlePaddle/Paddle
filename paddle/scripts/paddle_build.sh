@@ -960,10 +960,10 @@ function check_run_sot_ci() {
         for sot_file in ${SOT_FILE_LIST[@]};
         do
             if [[ ${change_file} =~ ^"${sot_file}".* ]]; then
-            echo "Detect change about SOT: "
-            echo "Changes related to the sot code were detected: " ${change_file}
-            run_sot_ut="ON"
-            break
+                echo "Detect change about SOT: "
+                echo "Changes related to the sot code were detected: " ${change_file}
+                run_sot_ut="ON"
+                break
             fi
         done
         if [[ "ON" == ${run_sot_ut} ]]; then
