@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/infermeta/spmd_rules/squeeze.h"
+#include <algorithm>
 #include <numeric>
 
 #include "glog/logging.h"
@@ -29,23 +30,85 @@ namespace distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
-bool SqueezeContain(const std::vector<int64_t>& axis, int64_t i, int64_t ndim) {
-  for (int64_t j = 0; i < static_cast<int64_t>(axis.size()); j++) {
-    int64_t tmp = axis[j] < 0 ? axis[j] + ndim : axis[j];
+std::vector<DimTrans*> MakeSqueezeDimTransWithoutAxis(
+    const std::vector<int64_t>& x_shape, std::vector<int64_t>* out_shape) {
+  std::vector<DimTrans*> ret;
 
-    if (tmp == i) {
-      return true;
+  for (int64_t i = 0, n = static_cast<int64_t>(x_shape.size()); i < n; i++) {
+    if (x_shape[i] != 1) {
+      ret.emplace_back(new InputDim(i));
+      out_shape->emplace_back(x_shape[i]);
     }
   }
 
-  return false;
+  return ret;
 }
+
+std::vector<DimTrans*> MakeSqueezeDimTransWithAxis(
+    const std::vector<int64_t>& x_shape,
+    std::vector<int64_t>* out_shape,
+    const std::vector<int64_t>& axis) {
+  std::vector<DimTrans*> ret;
+
+  for (int64_t i = 0, n = static_cast<int64_t>(x_shape.size()); i < n; i++) {
+    ret.emplace_back(new InputDim(i));
+    out_shape->emplace_back(x_shape[i]);
+  }
+
+  for (int64_t i = 0, n = static_cast<int64_t>(axis.size()); i < n; i++) {
+    if (x_shape[axis[i]] == 1) {
+      ret.erase(ret.begin() + axis[i]);
+      out_shape->erase(out_shape->begin() + axis[i]);
+    }
+  }
+
+  return ret;
+}
+
+std::vector<DimTrans*> MakeSqueezeDimTransReverseWithoutAxis(
+    const std::vector<int64_t>& x_shape) {
+  std::vector<DimTrans*> ret;
+
+  for (int64_t i = 0, j = 0, n = static_cast<int64_t>(x_shape.size()); i < n;
+       i++) {
+    if (x_shape[i] != 1) {
+      ret.emplace_back(new InputDim(j++));
+    } else {
+      ret.emplace_back(new Singleton());
+    }
+  }
+
+  return ret;
+}
+
+std::vector<DimTrans*> MakeSqueezeDimTransReverseWithAxis(
+    const std::vector<int64_t>& x_shape,
+    const std::vector<int64_t>& out_shape,
+    const std::vector<int64_t>& axis) {
+  std::vector<DimTrans*> ret;
+
+  for (int64_t i = 0, n = static_cast<int64_t>(out_shape.size()); i < n; i++) {
+    ret.emplace_back(new InputDim(i));
+  }
+
+  for (int64_t i = 0, n = static_cast<int64_t>(axis.size()); i < n; i++) {
+    if (x_shape[axis[i]] == 1) {
+      ret.emplace(ret.begin() + axis[i], new Singleton());
+    }
+  }
+
+  return ret;
+}
+
+bool squeezeCompare(const int64_t& a, const int64_t& b) { return a > b; }
+
+bool squeezeReverseCompare(const int64_t& a, const int64_t& b) { return a < b; }
 
 SpmdInfo SqueezeInferSpmd(const DistMetaTensor& x,
                           const std::vector<int64_t>& axis) {
   // Step0: Verify input args based on squeeze logic
-  auto src_shape = phi::vectorize(x.dims());
-  int x_ndim = src_shape.size();
+  auto x_shape = phi::vectorize(x.dims());
+  int x_ndim = x_shape.size();
   auto x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(
@@ -59,22 +122,22 @@ SpmdInfo SqueezeInferSpmd(const DistMetaTensor& x,
   // Step1: Build the transformation from
   // the original shape to the target shape
 
-  std::vector<int64_t> tgt_shape;
-  if (axis.size() == 0) {
-    for (int64_t i = 0; i < static_cast<int64_t>(src_shape.size()); i++) {
-      if (src_shape[i] != 1) {
-        tgt_shape.emplace_back(src_shape[i]);
-      }
-    }
-  } else {
-    for (int64_t i = 0; i < static_cast<int64_t>(src_shape.size()); i++) {
-      if (!(SqueezeContain(axis, i, x_ndim) && src_shape[i] == 1)) {
-        tgt_shape.emplace_back(src_shape[i]);
-      }
-    }
-  }
+  std::vector<DimTrans*> trans;
+  std::vector<int64_t> out_shape;
 
-  std::vector<DimTrans*> trans = MakeReshapeDimTrans(src_shape, tgt_shape);
+  if (static_cast<int64_t>(axis.size()) == 0) {
+    trans = MakeSqueezeDimTransWithoutAxis(x_shape, &out_shape);
+  } else {
+    std::vector<int64_t> axis_copy(axis);
+    for (int64_t i = 0, n = static_cast<int64_t>(axis_copy.size()); i < n;
+         i++) {
+      if (axis_copy[i] < 0) {
+        axis_copy[i] += x_ndim;
+      }
+    }
+    std::sort(axis_copy.begin(), axis_copy.end(), squeezeCompare);
+    trans = MakeSqueezeDimTransWithAxis(x_shape, &out_shape, axis_copy);
+  }
 
   // Step2: Infer the dims mapping of input (if reshard is
   // needed) and output from the dimension transformation.
@@ -88,8 +151,8 @@ SpmdInfo SqueezeInferSpmd(const DistMetaTensor& x,
   TensorDistAttr out_dist_attr(x_dist_attr_src);
   out_dist_attr.set_dims_mapping(dims_mapping_vec[1]);
 
-  VLOG(4) << "SqueezeInferSpmd: X shape: [" << str_join(src_shape)
-          << "] Out shape: [" << str_join(tgt_shape) << "]";
+  VLOG(4) << "SqueezeInferSpmd: X shape: [" << str_join(x_shape)
+          << "] Out shape: [" << str_join(out_shape) << "]";
   VLOG(4) << "Transformation from input to output:";
   for (int64_t i = 0, n = static_cast<int64_t>(trans.size()); i < n; i++) {
     DimTrans* t = trans[i];
@@ -110,6 +173,7 @@ SpmdInfo SqueezeInferSpmdReverse(const DistMetaTensor& x,
                                  const std::vector<int64_t>& axis) {
   // Step0: Verify input args based on squeeze logic
   auto x_shape = phi::vectorize(x.dims());
+  int x_ndim = x_shape.size();
   auto out_shape = phi::vectorize(out.dims());
   int out_ndim = out_shape.size();
   auto out_dist_attr_src = out.dist_attr();
@@ -127,7 +191,22 @@ SpmdInfo SqueezeInferSpmdReverse(const DistMetaTensor& x,
   // from output to input, we first get the transformation
   // from output to input so that we can infer the dims mapping
   // with the map from output axes to input axes.
-  std::vector<DimTrans*> trans = MakeReshapeDimTrans(out_shape, x_shape);
+
+  std::vector<DimTrans*> trans;
+
+  if (static_cast<int64_t>(axis.size()) == 0) {
+    trans = MakeSqueezeDimTransReverseWithoutAxis(x_shape);
+  } else {
+    std::vector<int64_t> axis_copy(axis);
+    for (int64_t i = 0, n = static_cast<int64_t>(axis_copy.size()); i < n;
+         i++) {
+      if (axis_copy[i] < 0) {
+        axis_copy[i] += x_ndim;
+      }
+    }
+    std::sort(axis_copy.begin(), axis_copy.end(), squeezeReverseCompare);
+    trans = MakeSqueezeDimTransReverseWithAxis(x_shape, out_shape, axis_copy);
+  }
 
   // Step2: Infer the dims mapping of input with
   // output's dims_mapping and the transformation.
