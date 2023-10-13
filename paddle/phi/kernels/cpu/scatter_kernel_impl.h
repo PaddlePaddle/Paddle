@@ -56,11 +56,7 @@ void IndexReduceInner(const Context& ctx,
   auto zeros = Full<T, Context>(ctx, vectorize(input_dim), 0);
   auto ones = Full<T, Context>(ctx, vectorize(input_dim), 1);
   auto counts = include_self ? ones : zeros;
-
   auto src_ones = Full<T, Context>(ctx, vectorize(source->dims()), 1);
-  std::cout << "x dims:" << counts.dims() << std::endl;
-  std::cout << "index dims:" << index.dims() << std::endl;
-  std::cout << "add_value dims:" << src_ones.dims() << std::endl;
   auto src_cnts = IndexAdd<T, Context>(ctx, counts, index, src_ones, axis);
   auto mask = Equal<T, Context>(ctx, src_cnts, zeros);
 
