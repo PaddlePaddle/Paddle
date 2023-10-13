@@ -122,7 +122,7 @@ void PatternGraph::Print() const {
   std::cout << std::endl;
 }
 
-OpCall *SourcePatternGraph::AnchorNode() const {  
+OpCall *SourcePatternGraph::AnchorNode() const {
   for (const auto &output_tensor : output_tensors_) {
     OpCall *output_op_candidate =
         id2owned_tensor_.at(output_tensor)->producer();
