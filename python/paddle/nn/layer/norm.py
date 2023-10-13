@@ -1573,6 +1573,24 @@ class SyncBatchNorm(_BatchNormBase):
             None,
             name,
         )
+        param_shape = [num_features]
+        if weight_attr is False:
+            self.weight = self.create_parameter(
+                attr=None,
+                shape=param_shape,
+                dtype=self._dtype,
+                default_initializer=Constant(1.0),
+            )
+            self.weight.stop_gradient = True
+        if bias_attr is False:
+            self.bias = self.create_parameter(
+                attr=None,
+                shape=param_shape,
+                dtype=self._dtype,
+                default_initializer=Constant(0.0),
+                is_bias=True,
+            )
+            self.bias.stop_gradient = True
 
     def _check_data_format(self):
         if self._data_format in ['NCHW', 'NCDHW', 'NC', 'NCL']:
