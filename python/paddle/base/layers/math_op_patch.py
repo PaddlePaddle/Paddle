@@ -355,7 +355,7 @@ def monkey_patch_variable():
 
         if self.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
             raise TypeError(
-                "Only Variable with VarType.LOD_TENSOR_ARRAY support `append` method, but received type: {}".format(
+                "Only Variable with VarType.LOD_TENSOR_ARRAY support `pop` method, but received type: {}".format(
                     self.type
                 )
             )
