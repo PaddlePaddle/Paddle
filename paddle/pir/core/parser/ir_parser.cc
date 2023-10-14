@@ -154,7 +154,7 @@ Attribute IrParser::ParseAttribute() {
     ConsumeAToken("Double");
     ConsumeAToken(")");
     std::string val = ConsumeToken().val_;
-    return builder->double_attr(stod(val.c_str()));
+    return builder->double_attr(std::stod(val.c_str()));
   } else if (attribute_type == "Int32") {
     ConsumeAToken("Int32");
     ConsumeAToken(")");
