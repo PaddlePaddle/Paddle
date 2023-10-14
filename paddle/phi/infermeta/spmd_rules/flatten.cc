@@ -33,9 +33,13 @@ int PreprocessAxis(int axis, int ndim) {
     axis += ndim;
   }
 
-  if (axis >= ndim) {
-    axis = ndim - 1;
-  }
+  PADDLE_ENFORCE_LT(
+      axis,
+      ndim,
+      phi::errors::InvalidArgument("The Start_axis or Stop_axis [%d] is not "
+                                   "less than the Tensor X's rank [%d].",
+                                   axis,
+                                   ndim));
 
   return axis;
 }
@@ -104,9 +108,7 @@ SpmdInfo FlattenInferSpmd(const DistMetaTensor& x,
 
   start_axis = PreprocessAxis(start_axis, x_ndim);
   stop_axis = PreprocessAxis(stop_axis, x_ndim);
-
   std::vector<int64_t> tgt_shape;
-
   for (int64_t i = 0; i < x_ndim; i++) {
     if (i <= start_axis || i > stop_axis) {
       tgt_shape.push_back(src_shape[i]);
@@ -114,7 +116,6 @@ SpmdInfo FlattenInferSpmd(const DistMetaTensor& x,
       tgt_shape[tgt_shape.size() - 1] *= src_shape[i];
     }
   }
-
   std::vector<DimTrans*> trans =
       MakeFlattenDimTrans(src_shape, start_axis, stop_axis);
 
@@ -138,9 +139,8 @@ SpmdInfo FlattenInferSpmd(const DistMetaTensor& x,
     VLOG(4) << "\tOut axis[" << i << "]: " << t->to_string();
   }
   VLOG(4) << "X dims_mapping_src: [" << str_join(x_dims_mapping)
-          << "] dims_mapping_dst: [" << str_join(dims_mapping_vec[0])
-          << "]\n Out dims_mapping: [" << str_join(dims_mapping_vec[1])
-          << "]\n\n";
+          << "] dims_mapping_dst: [" << str_join(dims_mapping_vec[0]) << "]";
+  VLOG(4) << "Out dims_mapping: [" << str_join(dims_mapping_vec[1]) << "]\n\n";
 
   CleanUp();
 

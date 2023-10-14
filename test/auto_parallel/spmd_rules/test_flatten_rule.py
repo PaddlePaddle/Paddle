@@ -147,6 +147,60 @@ class TestFlattenSPMDRule(unittest.TestCase):
         )
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [1])
 
+        # shape: [8, 16, 8, 24] --> [8, 16 * 8 * 24]
+        # dims_mapping: [-1, -1, 0, 1] --> [-1, -1, -1, -1] [-1, -1]
+        self.x_dist_tensor_spec.set_dims_mapping([-1, -1, 0, 1])
+        self.attrs['start_axis'] = 1
+        self.attrs['stop_axis'] = -1
+        result_dist_attrs = self.rule.infer_forward(
+            self.x_dist_tensor_spec,
+            self.attrs['start_axis'],
+            self.attrs['stop_axis'],
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(
+            infered_input_dist_attrs[0].dims_mapping, [-1, -1, -1, -1]
+        )
+        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1, -1])
+
+        # shape: [8, 16, 8, 24] --> [8, 16 * 8 * 24]
+        # dims_mapping: [-1, 0, -1, 1] --> [-1, 0, -1, -1] [-1, 0]
+        self.x_dist_tensor_spec.set_dims_mapping([-1, 0, -1, 1])
+        self.attrs['start_axis'] = 1
+        self.attrs['stop_axis'] = -1
+        result_dist_attrs = self.rule.infer_forward(
+            self.x_dist_tensor_spec,
+            self.attrs['start_axis'],
+            self.attrs['stop_axis'],
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(
+            infered_input_dist_attrs[0].dims_mapping, [-1, 0, -1, -1]
+        )
+        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1, 0])
+
+        # shape: [8, 16, 8, 24] --> [8, 16 * 8 * 24]
+        # dims_mapping: [0, 1, -1, -1] --> [0, 1, -1, -1] [0, 1]
+        self.x_dist_tensor_spec.set_dims_mapping([0, 1, -1, -1])
+        self.attrs['start_axis'] = 1
+        self.attrs['stop_axis'] = -1
+        result_dist_attrs = self.rule.infer_forward(
+            self.x_dist_tensor_spec,
+            self.attrs['start_axis'],
+            self.attrs['stop_axis'],
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(
+            infered_input_dist_attrs[0].dims_mapping, [0, 1, -1, -1]
+        )
+        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, 1])
+
     def test_flatten_infer_backward(self):
         process_mesh = auto.ProcessMesh(mesh=[[0, 1, 2, 3], [4, 5, 6, 7]])
 
@@ -278,6 +332,66 @@ class TestFlattenSPMDRule(unittest.TestCase):
             infered_input_dist_attrs[0].dims_mapping, [1, -1, -1, -1]
         )
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [1])
+
+        # shape: [8, 16, 8, 24] --> [8, 16 * 8 * 24] (input --> output)
+        # dims_mapping: [-1, -1] --> [-1, -1, -1, -1], [-1, -1] (output --> input, output)
+        self.output_dist_tensor_spec.shape = [8, 16 * 8 * 24]
+        self.output_dist_tensor_spec.set_dims_mapping([-1, -1])
+        self.attrs['start_axis'] = 1
+        self.attrs['stop_axis'] = -1
+        result_dist_attrs = self.rule.infer_backward(
+            self.x_dist_tensor_spec,
+            self.output_dist_tensor_spec,
+            self.attrs['start_axis'],
+            self.attrs['stop_axis'],
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(
+            infered_input_dist_attrs[0].dims_mapping, [-1, -1, -1, -1]
+        )
+        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1, -1])
+
+        # shape: [8, 16, 8, 24] --> [8, 16 * 8 * 24] (input --> output)
+        # dims_mapping: [0, -1] --> [0, -1, -1, -1], [0, -1] (output --> input, output)
+        self.output_dist_tensor_spec.shape = [8, 16 * 8 * 24]
+        self.output_dist_tensor_spec.set_dims_mapping([0, -1])
+        self.attrs['start_axis'] = 1
+        self.attrs['stop_axis'] = -1
+        result_dist_attrs = self.rule.infer_backward(
+            self.x_dist_tensor_spec,
+            self.output_dist_tensor_spec,
+            self.attrs['start_axis'],
+            self.attrs['stop_axis'],
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(
+            infered_input_dist_attrs[0].dims_mapping, [0, -1, -1, -1]
+        )
+        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, -1])
+
+        # shape: [8, 16, 8, 24] --> [8, 16 * 8 * 24] (input --> output)
+        # dims_mapping: [0, 1] --> [0, 1, -1, -1], [0, 1] (output --> input, output)
+        self.output_dist_tensor_spec.shape = [8, 16 * 8 * 24]
+        self.output_dist_tensor_spec.set_dims_mapping([0, 1])
+        self.attrs['start_axis'] = 1
+        self.attrs['stop_axis'] = -1
+        result_dist_attrs = self.rule.infer_backward(
+            self.x_dist_tensor_spec,
+            self.output_dist_tensor_spec,
+            self.attrs['start_axis'],
+            self.attrs['stop_axis'],
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(
+            infered_input_dist_attrs[0].dims_mapping, [0, 1, -1, -1]
+        )
+        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, 1])
 
 
 if __name__ == "__main__":
