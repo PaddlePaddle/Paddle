@@ -44,7 +44,7 @@ std::vector<pir::Operation *> GroupOp::ops() {
                                        inner_block->end());
 }
 
-void GroupOp::Verify() {}
+void GroupOp::VerifySig() {}
 
 void GroupOp::Print(pir::IrPrinter &printer) {
   auto &os = printer.os;

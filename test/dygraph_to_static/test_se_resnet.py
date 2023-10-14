@@ -20,7 +20,7 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test
+from dygraph_to_static_util import ast_only_test, dy2static_unittest
 from predictor_utils import PredictorTools
 
 import paddle
@@ -346,6 +346,7 @@ class SeResNeXt(paddle.nn.Layer):
         return out, avg_loss, acc_top1, acc_top5
 
 
+@dy2static_unittest
 class TestSeResnet(unittest.TestCase):
     def setUp(self):
         self.train_reader = paddle.batch(
