@@ -51,16 +51,6 @@
     param: [x, weight, out_grad, padding_idx, sparse]
     data_type : weight
 
-- op : exponential
-  args : (Tensor x, float lambda)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : exponential
-  backward : exponential_grad
-
 - op : feed
   args : (str name, int col)
   output : Tensor(out)
