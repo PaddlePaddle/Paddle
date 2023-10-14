@@ -62,6 +62,7 @@ test_digamma_op
 test_dist_op
 test_dot_op
 test_vdot_op
+test_dpsgd_op
 test_edit_distance_op
 test_eigh_op
 test_eigh_op_static_build

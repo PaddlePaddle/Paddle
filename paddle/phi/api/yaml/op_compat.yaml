@@ -3221,6 +3221,12 @@
   outputs:
     {out: Out}
 
+- op: dpsgd
+  inputs:
+    {param: Param,grad: Grad,learning_rate: LearningRate}
+  outputs:
+    param_out : ParamOut
+
 - op: fetch (fetch_v2)
   inputs: {x: X}
   outputs: {out: Out}

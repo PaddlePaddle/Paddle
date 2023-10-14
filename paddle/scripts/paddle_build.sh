@@ -933,23 +933,21 @@ set -ex
 }
 
 function run_sot_test() {
-    PADDLE_SOT_ROOT=$1
-    PY_VERSION=$2
+    PY_VERSION=$1
     PYTHON_WITH_SPECIFY_VERSION=python$PY_VERSION
     PY_VERSION_NO_DOT=`echo $PY_VERSION | sed 's/\.//g'`
 
     export STRICT_MODE=1
     export COST_MODEL=False
     export MIN_GRAPH_SIZE=0
+    export SOT_LOG_LEVEL=0
 
     # Install PaddlePaddle
     $PYTHON_WITH_SPECIFY_VERSION -m pip install ${PADDLE_ROOT}/dist/paddlepaddle-0.0.0-cp${PY_VERSION_NO_DOT}-cp${PY_VERSION_NO_DOT}-linux_x86_64.whl
     # Install PaddleSOT
-    cd $PADDLE_SOT_ROOT
-    $PYTHON_WITH_SPECIFY_VERSION -m pip install -e .
+    cd $PADDLE_ROOT/test/sot/
 
     # Run unittest
-    cd tests
     failed_tests=()
 
     for file in ./test_*.py; do
@@ -2394,6 +2392,11 @@ set -x
         ut_endTime_s=`date +%s`
         echo "CINN testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         if [[ "$EXIT_CODE" != "0" ]]; then
+            rm -f $tmp_dir/*
+            echo "Summary Failed Tests... "
+            echo "========================================"
+            echo "The following tests FAILED: "
+            echo "${failuretest}" | sort -u
             exit 8;
         fi
     fi
@@ -4123,14 +4126,12 @@ function main() {
         ;;
       cicheck_sot)
         export WITH_SHARED_PHI=ON
-        PADDLE_SOT_ROOT=${PADDLE_ROOT}/sot
-        git clone https://github.com/PaddlePaddle/PaddleSOT.git ${PADDLE_SOT_ROOT}
         PYTHON_VERSIONS=(3.8 3.9 3.10 3.11)
         for PY_VERSION in ${PYTHON_VERSIONS[@]}; do
             ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
             ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip
             run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
-            run_sot_test $PADDLE_SOT_ROOT $PY_VERSION
+            run_sot_test $PY_VERSION
             rm -rf ${PADDLE_ROOT}/build/CMakeCache.txt
         done
         ;;
