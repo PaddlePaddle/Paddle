@@ -106,7 +106,6 @@ class TestStaticFunctionInstance(Dy2StTestBase):
             self.assertTrue(len(net_1.forward.program_cache) == 1)
             # check no conversion applid with net_2
             self.assertTrue(len(net_2.forward.program_cache) == 0)
-        raise ValueError("CI should fail!")
 
 
 class TestInputSpec(Dy2StTestBase):
