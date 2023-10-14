@@ -12,19 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cstdint>
-#include <iostream>
-#include <memory>
-#include <numeric>
-#include <sstream>
-
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/cast_utils.h"
-#include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/op_info.h"
 #include "paddle/pir/core/parameter.h"
