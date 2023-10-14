@@ -17,7 +17,11 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test
+from dygraph_to_static_util import (
+    ast_only_test,
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 from test_fetch_feed import Linear
 
 import paddle
@@ -55,6 +59,7 @@ def forward_post_hook_for_prim_net(layer, input, output):
     return output * 2
 
 
+@dy2static_unittest
 class TestDyToStaticSaveLoad(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -112,6 +117,7 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
         )
 
     @ast_only_test
+    @test_and_compare_with_new_ir(False)
     def test_save_load_prim(self):
         with base.dygraph.guard(place):
             self.x = paddle.randn([4, 2, 6, 6], dtype="float32")
@@ -153,6 +159,7 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
             np.testing.assert_allclose(res.numpy(), new_res.numpy(), rtol=1e-05)
 
     @ast_only_test
+    @test_and_compare_with_new_ir(False)
     def test_save_load_prim_with_hook(self):
         with base.dygraph.guard(place):
             self.x = paddle.randn([4, 2, 6, 6], dtype="float32")

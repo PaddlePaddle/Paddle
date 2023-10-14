@@ -138,7 +138,7 @@ std::vector<std::string> DatasetImpl<T>::GetSlots() {
     }
   }
   std::cout << "dataset use slots: ";
-  for (auto s : use_slots_) {
+  for (auto const& s : use_slots_) {
     std::cout << s << " | ";
   }
   std::cout << " end " << std::endl;
@@ -216,7 +216,7 @@ template <typename T>
 std::vector<paddle::framework::DataFeed*> DatasetImpl<T>::GetReaders() {
   std::vector<paddle::framework::DataFeed*> ret;
   ret.reserve(readers_.size());
-  for (auto i : readers_) {
+  for (auto const& i : readers_) {
     ret.push_back(i.get());
   }
   return ret;
@@ -338,7 +338,7 @@ static int compute_thread_batch_nccl(
   auto& offset = (*nccl_offsets);
   // split data avg by thread num
   compute_batch_num(total_instance_num, minibatch_size, thr_num, &offset);
-  thread_avg_batch_num = static_cast<int>(offset.size() / thr_num);
+  thread_avg_batch_num = static_cast<int>(offset.size() / thr_num);  // NOLINT
 #ifdef PADDLE_WITH_GLOO
   auto gloo_wrapper = paddle::framework::GlooWrapper::GetInstance();
   if (gloo_wrapper->Size() > 1) {
@@ -1533,7 +1533,7 @@ void MultiSlotDataset::MergeByInsId() {
           break;
         }
         local_uint64.insert(slot);
-        rec.uint64_feasigns_.push_back(std::move(feature));
+        rec.uint64_feasigns_.push_back(feature);
       }
       if (has_conflict_slot) {
         break;
@@ -1550,7 +1550,7 @@ void MultiSlotDataset::MergeByInsId() {
           break;
         }
         local_float.insert(slot);
-        rec.float_feasigns_.push_back(std::move(feature));
+        rec.float_feasigns_.push_back(feature);
       }
       if (has_conflict_slot) {
         break;

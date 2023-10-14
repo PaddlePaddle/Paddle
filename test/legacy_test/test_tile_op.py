@@ -47,10 +47,16 @@ class TestTileOpRank1(OpTest):
         self.repeat_times = [2]
 
     def test_check_output(self):
-        self.check_output(check_cinn=self.check_cinn)
+        self.check_output(check_cinn=self.check_cinn, check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_new_ir=True,
+            check_prim_pir=True,
+        )
 
 
 class TestTileOpRank_ZeroDim1(TestTileOpRank1):
@@ -165,7 +171,7 @@ class TestTileOpRank1_tensor_attr(OpTest):
         self.infer_repeat_times = [-1]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
@@ -206,7 +212,7 @@ class TestTileOpRank1_tensor(OpTest):
         self.repeat_times = [2]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
@@ -235,7 +241,7 @@ class TestTileOpInteger(OpTest):
         self.check_cinn = True
 
     def test_check_output(self):
-        self.check_output(check_cinn=self.check_cinn)
+        self.check_output(check_cinn=self.check_cinn, check_new_ir=True)
 
 
 class TestTileFP16OP(OpTest):
@@ -262,10 +268,16 @@ class TestTileFP16OP(OpTest):
         self.repeat_times = [2, 1, 4]
 
     def test_check_output(self):
-        self.check_output(check_cinn=self.check_cinn)
+        self.check_output(check_cinn=self.check_cinn, check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_new_ir=True,
+            check_prim_pir=True,
+        )
 
 
 @unittest.skipIf(
@@ -293,7 +305,9 @@ class TestTileBF16OP(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_cinn=self.check_cinn)
+        self.check_output_with_place(
+            place, check_cinn=self.check_cinn, check_new_ir=True
+        )
 
     def init_data(self):
         self.dtype = np.uint16
@@ -302,7 +316,14 @@ class TestTileBF16OP(OpTest):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            place,
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_new_ir=True,
+            check_prim_pir=True,
+        )
 
 
 # Situation 5: input x is Bool
@@ -320,7 +341,7 @@ class TestTileOpBoolean(OpTest):
         self.check_cinn = True
 
     def test_check_output(self):
-        self.check_output(check_cinn=self.check_cinn)
+        self.check_output(check_cinn=self.check_cinn, check_new_ir=True)
 
 
 # Situation 56: input x is Integer
@@ -340,7 +361,7 @@ class TestTileOpInt64_t(OpTest):
         self.check_cinn = True
 
     def test_check_output(self):
-        self.check_output(check_cinn=self.check_cinn)
+        self.check_output(check_cinn=self.check_cinn, check_new_ir=True)
 
 
 class TestTileError(unittest.TestCase):

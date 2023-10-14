@@ -907,7 +907,7 @@ void PartialGradTask::RunEachOp(OpBase *op) {
     } else {
       for (auto &grad_var : input_pair.second) {
         if (grad_var) {
-          bool is_last;
+          bool is_last = false;
           new_inputs.emplace_back(
               ready_grad_vars_.Get(grad_var.get(), op->place(), &is_last));
           VLOG(10) << "Got ready grad var " << grad_var->Name() << " "
@@ -1031,7 +1031,7 @@ void PartialGradTask::RunEachOp(OpBase *op) {
         assign_op->SetPlace(op->place());
 
         if (auto grad_pending_node = grad_grad->GetGradNode()) {
-          assign_node->InsertGradPendingNode(std::move(grad_pending_node));
+          assign_node->InsertGradPendingNode(grad_pending_node);
         }
       }
       VLOG(10) << "Pending ops of assign is "

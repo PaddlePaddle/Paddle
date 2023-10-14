@@ -390,6 +390,7 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
     out->set_dims(in_dim);
   }
   out->share_lod(*x[0]);
+  out->set_dtype(x[0]->dtype());
 }
 
 // TODO(YuanRisheng) This InferMeta is used in Fluid
@@ -1509,7 +1510,7 @@ void FusedBiasActInferMeta(const MetaTensor& x,
             "The seconde dimension of x must be even, but receive %d", dim));
     dim /= 2;
     out->set_dims(phi::make_ddim({token_num, dim}));
-  } else if (act_method == "gelu") {
+  } else if (act_method == "gelu" || act_method == "relu") {
     out->set_dims(phi::make_ddim({token_num, dim}));
   } else {
     PADDLE_THROW(
@@ -1996,7 +1997,7 @@ static void Interpolate1DInferShapeCheck(
     return;
   }
 
-  int out_w_tmp;
+  int out_w_tmp = 0;
   if (scale_tensor) {
     auto scale_tensor_dim = scale_tensor.dims();
     PADDLE_ENFORCE_EQ(
@@ -2129,7 +2130,7 @@ static void Interpolate2DInferShapeCheck(
     return;
   }
 
-  int out_h_tmp, out_w_tmp;
+  int out_h_tmp = 0, out_w_tmp = 0;
 
   if (scale_tensor) {
     auto scale_tensor_dim = scale_tensor.dims();
@@ -2281,7 +2282,7 @@ static void Interpolate3DInferShapeCheck(
     return;
   }
 
-  int out_d_tmp, out_h_tmp, out_w_tmp;
+  int out_d_tmp = 0, out_h_tmp = 0, out_w_tmp = 0;
   if (scale_tensor) {
     auto scale_tensor_dim = scale_tensor.dims();
     PADDLE_ENFORCE_EQ(

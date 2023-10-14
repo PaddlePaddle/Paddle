@@ -104,15 +104,6 @@ void BuildOpFuncList(const platform::Place& place,
                      bool use_local_scope = true,
                      bool static_build = false);
 
-void BuildOpFuncList(
-    const platform::Place& place,
-    ::pir::Block* block,
-    std::vector<OpFuncNode>* vec_func_list,
-    framework::Scope* scope,
-    framework::Scope* local_scope,
-    const std::unordered_map<::pir::Value, std::string>& value_2_name_map,
-    const ExecutionConfig& execution_config);
-
 void BuildVariableScope(const framework::BlockDesc& block,
                         const ExecutionConfig& execution_config,
                         VariableScope* var_scope);
@@ -134,10 +125,14 @@ const paddle::framework::Variable* GetVariableByName(
     const std::unordered_map<const paddle::framework::Variable*, std::string>&
         variable_2_var_name);
 
+std::vector<std::string> GetOriginInputNames(std::string op_name);
+
+std::vector<std::string> GetOriginOutputNames(std::string op_name);
+
 void PrintValuesAndVariables(
     const pir::Block& block,
-    const std::unordered_map<pir::Value, std::string>* value_2_var_name,
-    const std::unordered_map<const paddle::framework::Variable*, std::string>*
+    const std::unordered_map<pir::Value, std::string>& value_2_var_name,
+    const std::unordered_map<const paddle::framework::Variable*, std::string>&
         variable_2_var_name);
 
 const std::vector<std::string> GetInstructionCallStack(

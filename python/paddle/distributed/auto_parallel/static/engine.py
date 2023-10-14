@@ -158,9 +158,7 @@ class Engine:
         for metric in auto_utils.to_list(metrics):
             if metric and not isinstance(metric, Metric):
                 raise TypeError(
-                    "{} is not sub class of Metric".format(
-                        metric.__class__.__name__
-                    )
+                    f"{metric.__class__.__name__} is not sub class of Metric"
                 )
         self._metrics = auto_utils.to_list(metrics)
 
@@ -331,9 +329,7 @@ class Engine:
         if inputs_spec:
             assert isinstance(
                 inputs_spec, list
-            ), "inputs should be list, but received {}".format(
-                type(inputs_spec)
-            )
+            ), f"inputs should be list, but received {type(inputs_spec)}"
             assert isinstance(
                 inputs, list
             ), f"inputs should be list, but received {type(inputs)}"
@@ -346,9 +342,7 @@ class Engine:
         if labels_spec:
             assert isinstance(
                 labels_spec, list
-            ), "labels should be list, but received {}".format(
-                type(labels_spec)
-            )
+            ), f"labels should be list, but received {type(labels_spec)}"
             assert isinstance(
                 labels, list
             ), f"labels should be list, but received {type(labels)}"
@@ -457,9 +451,7 @@ class Engine:
         if user_feeds is not None:
             assert isinstance(
                 user_feeds, dict
-            ), "user_feeds must be a dict, but receive {}".format(
-                type(user_feeds).__name__
-            )
+            ), f"user_feeds must be a dict, but receive {type(user_feeds).__name__}"
             for name, data in user_feeds.items():
                 feeds[name] = data
         return feeds
@@ -468,9 +460,7 @@ class Engine:
         if user_fetches is not None:
             assert isinstance(
                 user_fetches, list
-            ), "user_fetches must be a list, but receive {}".format(
-                type(user_fetches).__name__
-            )
+            ), f"user_fetches must be a list, but receive {type(user_fetches).__name__}"
         fetch_names = []
         fetch_indices = []
 
@@ -739,7 +729,7 @@ class Engine:
     def _plan(self, mode):
         if self._planned_mode is None:
             self._planned_mode = mode
-        else:
+        elif self._strategy.auto_mode != "semi":
             self._init_dist_context(mode)
 
         self._planners[mode] = Planner(mode, self._dist_contexts[mode])
@@ -1031,6 +1021,7 @@ class Engine:
                                 use_program_cache=self._strategy.use_cache,
                                 return_numpy=self._strategy.return_numpy,
                             )
+
                             lr = auto_utils.get_lr(self.optimizer)
                             logs = self._prepare_logger(
                                 outs,

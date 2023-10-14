@@ -19,9 +19,9 @@ from functools import wraps
 
 import decos
 import numpy as np
-from dygraph_to_static_util import (
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
     ast_only_test,
-    dy2static_unittest,
     test_and_compare_with_new_ir,
 )
 
@@ -185,8 +185,7 @@ def deco_with_paddle_api():
     return fun10()
 
 
-@dy2static_unittest
-class TestDecoratorTransform(unittest.TestCase):
+class TestDecoratorTransform(Dy2StTestBase):
     @test_and_compare_with_new_ir(False)
     def test_deco_transform(self):
         outs = paddle.jit.to_static(forward)()

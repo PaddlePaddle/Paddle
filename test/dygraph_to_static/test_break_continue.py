@@ -205,6 +205,7 @@ def test_optim_break_in_while(x):
     return x
 
 
+@dy2static_unittest
 class TestContinueInFor(unittest.TestCase):
     def setUp(self):
         self.input = np.zeros(1).astype('int64')
@@ -235,9 +236,7 @@ class TestContinueInFor(unittest.TestCase):
             dygraph_res,
             static_res,
             rtol=1e-05,
-            err_msg='dygraph res is {}\nstatic_res is {}'.format(
-                dygraph_res, static_res
-            ),
+            err_msg=f'dygraph res is {dygraph_res}\nstatic_res is {static_res}',
         )
 
 

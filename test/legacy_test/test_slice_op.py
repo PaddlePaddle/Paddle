@@ -71,7 +71,12 @@ class TestSliceOp(OpTest):
 
     def test_check_grad_normal(self):
         self.check_grad(
-            ['Input'], 'Out', max_relative_error=0.006, check_prim=True
+            ['Input'],
+            'Out',
+            max_relative_error=0.006,
+            check_prim=True,
+            check_new_ir=True,
+            check_prim_pir=True,
         )
 
 
@@ -157,7 +162,12 @@ class TestSliceOp_decs_dim(OpTest):
 
     def test_check_grad_normal(self):
         self.check_grad(
-            ['Input'], 'Out', max_relative_error=0.006, check_prim=True
+            ['Input'],
+            'Out',
+            max_relative_error=0.006,
+            check_prim=True,
+            check_new_ir=True,
+            check_prim_pir=True,
         )
 
 
@@ -195,10 +205,12 @@ class TestSliceOp_starts_ListTensor(OpTest):
         self.starts_infer = [-1, 0, -1]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+        self.check_grad(
+            ['Input'], 'Out', max_relative_error=0.006, check_new_ir=True
+        )
 
 
 # Situation 2: starts(list, have tensor), ends(list, no tensor)
@@ -238,10 +250,12 @@ class TestSliceOp_decs_dim_starts_ListTensor(OpTest):
         self.starts_infer = [1, -1, 2]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=True, check_new_ir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+        self.check_grad(
+            ['Input'], 'Out', max_relative_error=0.006, check_new_ir=True
+        )
 
 
 class TestSliceOp_decs_dim_5_starts_ListTensor(
@@ -289,10 +303,12 @@ class TestSliceOp_decs_dim_starts_OneTensor(OpTest):
         self.out = self.input[1, 0:3, 2:4, :]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+        self.check_grad(
+            ['Input'], 'Out', max_relative_error=0.006, check_new_ir=True
+        )
 
 
 # Situation 4: starts(tensor), ends(tensor)
@@ -325,10 +341,12 @@ class TestSliceOp_starts_OneTensor_ends_OneTensor(OpTest):
         self.out = self.input[1:3, 0:3, 2:4, :]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+        self.check_grad(
+            ['Input'], 'Out', max_relative_error=0.006, check_new_ir=True
+        )
 
 
 # Situation 5: starts(tensor), ends(tensor)
@@ -362,10 +380,12 @@ class TestSliceOp_decs_dim_starts_and_ends_OneTensor(OpTest):
         self.out = self.input[1, 0, 2:4, :]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+        self.check_grad(
+            ['Input'], 'Out', max_relative_error=0.006, check_new_ir=True
+        )
 
 
 # Situation 6: starts(tensor), ends(list, have tensor)
@@ -406,10 +426,12 @@ class TestSliceOp_starts_OneTensor_ends_ListTensor(OpTest):
         self.ends_infer = [-1, 3, 4]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+        self.check_grad(
+            ['Input'], 'Out', max_relative_error=0.006, check_new_ir=True
+        )
 
 
 class TestSliceOp_ZeroDim(OpTest):
@@ -448,10 +470,10 @@ class TestSliceOp_ZeroDim(OpTest):
         self.out = self.input[0:20, 1:3, 1:3]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out')
+        self.check_grad(['Input'], 'Out', check_new_ir=True)
 
 
 # Test CUDA float16
@@ -487,7 +509,7 @@ class TestFP16(OpTest):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
             self.check_output_with_place(
-                place, check_prim=True, check_new_ir=True
+                place, check_prim=True, check_new_ir=True, check_prim_pir=True
             )
 
     def test_check_grad_normal(self):
@@ -499,6 +521,8 @@ class TestFP16(OpTest):
                 ['Input'],
                 'Out',
                 check_prim=True,
+                check_new_ir=True,
+                check_prim_pir=True,
             )
 
 
@@ -534,7 +558,7 @@ class TestFP16_2(OpTest):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
             self.check_output_with_place(
-                place, check_prim=True, check_new_ir=True
+                place, check_prim=True, check_new_ir=True, check_prim_pir=True
             )
 
     def test_check_grad_normal(self):
@@ -546,6 +570,8 @@ class TestFP16_2(OpTest):
                 'Out',
                 numeric_grad_delta=0.5,
                 check_prim=True,
+                check_new_ir=True,
+                check_prim_pir=True,
             )
 
 
@@ -578,7 +604,13 @@ class TestBF16(OpTest):
         self.check_output(check_new_ir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', check_prim=True)
+        self.check_grad(
+            ['Input'],
+            'Out',
+            check_prim=True,
+            check_new_ir=True,
+            check_prim_pir=True,
+        )
 
 
 # Test python API

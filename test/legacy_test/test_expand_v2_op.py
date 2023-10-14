@@ -50,7 +50,13 @@ class TestExpandV2OpRank1(OpTest):
         self.check_output(check_cinn=True, check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_new_ir=True,
+            check_prim_pir=True,
+        )
 
 
 class TestExpandV2OpRank1_ZeroDim1(TestExpandV2OpRank1):
@@ -130,10 +136,10 @@ class TestExpandV2OpRank1_tensor_attr(OpTest):
         self.infer_expand_shape = [-1]
 
     def test_check_output(self):
-        self.check_output(check_cinn=True, check_new_ir=False)
+        self.check_output(check_cinn=True, check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_cinn=True, check_new_ir=False)
+        self.check_grad(['X'], 'Out', check_cinn=True, check_new_ir=True)
 
 
 class TestExpandV2OpRank2_Corner_tensor_attr(TestExpandV2OpRank1_tensor_attr):
@@ -167,10 +173,10 @@ class TestExpandV2OpRank1_tensor(OpTest):
         self.expand_shape = [2, 100]
 
     def test_check_output(self):
-        self.check_output(check_cinn=True, check_new_ir=False)
+        self.check_output(check_cinn=True, check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_cinn=True, check_new_ir=False)
+        self.check_grad(['X'], 'Out', check_cinn=True, check_new_ir=True)
 
 
 # Situation 4: input x is Integer
@@ -244,7 +250,13 @@ class TestExpandV2FP16Op(OpTest):
         self.check_output(check_cinn=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_new_ir=True,
+            check_prim_pir=True,
+        )
 
 
 #  Situation 8: input x is BF16
@@ -273,7 +285,12 @@ class TestExpandV2BF16Op(OpTest):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X'], 'Out', check_prim=True, check_new_ir=True
+            place,
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_new_ir=True,
+            check_prim_pir=True,
         )
 
 
@@ -438,7 +455,7 @@ class TestExpandV2CompOpRank1(OpTest):
         self.check_output(check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_prim_pir=True)
 
 
 class TestExpandV2OpCompRank2_DimExpanding(TestExpandV2CompOpRank1):

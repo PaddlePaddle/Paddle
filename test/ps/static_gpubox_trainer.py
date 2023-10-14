@@ -173,9 +173,7 @@ class Main:
         start_time = time.time()
         self.reader.load_into_memory()
         print(
-            "self.reader.load_into_memory cost :{} seconds".format(
-                time.time() - start_time
-            )
+            f"self.reader.load_into_memory cost :{time.time() - start_time} seconds"
         )
 
         begin_pass_time = time.time()

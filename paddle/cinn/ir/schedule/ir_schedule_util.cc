@@ -26,11 +26,11 @@
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
@@ -40,7 +40,7 @@ namespace ir {
 
 Tensor GetTensor(const Expr& block) {
   CHECK(block.As<ir::ScheduleBlockRealize>());
-  auto find_tensor = ir::CollectIRNodesWithoutTensor(
+  auto find_tensor = ir::ir_utils::CollectIRNodesWithoutTensor(
       block, [&](const Expr* x) { return x->As<ir::Store>(); }, true);
   CHECK_EQ(find_tensor.size(), 1U)
       << "One block should only have one Store node!(except for root block)";
@@ -52,13 +52,13 @@ Tensor GetTensor(const Expr& block) {
 
 Tensor GetReadTensor(const Expr& block, int index) {
   CHECK(block.As<ir::ScheduleBlockRealize>());
-  auto find_tensor = ir::CollectIRNodesWithoutTensor(
+  auto find_tensor = ir::ir_utils::CollectIRNodesWithoutTensor(
       block, [&](const Expr* x) { return x->As<ir::Store>(); }, true);
   CHECK_EQ(find_tensor.size(), 1U)
       << "One block should only have one Store node!(except for root block)";
   std::vector<Tensor> res;
   auto find_read_tensor =
-      ir::CollectIRNodesWithoutTensor(block, [&](const Expr* x) {
+      ir::ir_utils::CollectIRNodesWithoutTensor(block, [&](const Expr* x) {
         if (x->As<ir::Load>())
           res.push_back(x->As<ir::Load>()->tensor.as_tensor_ref());
         return x->As<ir::Load>();
@@ -86,41 +86,43 @@ void SetCudaAxisInfo(Expr* lowered_func) {
   auto func_body = lowered_func->as_lowered_func_ref()->body;
   CudaAxisInfo info;
 
-  auto block_nodes = ir::CollectIRNodes(func_body, [&](const Expr* x) {
-    if (x->As<ir::For>() && x->As<ir::For>()->bind_info().valid()) {
-      auto bind_info = x->As<ir::For>()->bind_info();
-      info.set_valid(true);
-      if (bind_info.for_type == ForType::GPUThread) {
-        CHECK(common::is_zero(x->As<ir::For>()->min));
-        CHECK(x->As<ir::For>()->extent.is_constant());
-        int range = x->As<ir::For>()->extent.get_constant();
-        range = range > info.block_dim(bind_info.offset)
-                    ? range
-                    : info.block_dim(bind_info.offset);
-        VLOG(3) << "Set block dim[" << bind_info.offset << "] with range "
-                << range;
-        info.set_block_dim(bind_info.offset, range);
-      } else if (bind_info.for_type == ForType::GPUBlock) {
-        CHECK(common::is_zero(x->As<ir::For>()->min));
-        CHECK(x->As<ir::For>()->extent.is_constant());
-        int range = x->As<ir::For>()->extent.get_constant();
-        range = range > info.grid_dim(bind_info.offset)
-                    ? range
-                    : info.grid_dim(bind_info.offset);
-        info.set_grid_dim(bind_info.offset, range);
-        VLOG(3) << "Set grid dim[" << bind_info.offset << "] with range "
-                << range;
-      } else {
-        LOG(FATAL) << "The for loop's bind info should be gpu block or thread!";
-      }
-    }
-    return (x->As<ir::For>() && x->As<ir::For>()->bind_info().valid());
-  });
+  auto block_nodes =
+      ir::ir_utils::CollectIRNodes(func_body, [&](const Expr* x) {
+        if (x->As<ir::For>() && x->As<ir::For>()->bind_info().valid()) {
+          auto bind_info = x->As<ir::For>()->bind_info();
+          info.set_valid(true);
+          if (bind_info.for_type == ForType::GPUThread) {
+            CHECK(common::is_zero(x->As<ir::For>()->min));
+            CHECK(x->As<ir::For>()->extent.is_constant());
+            int range = x->As<ir::For>()->extent.get_constant();
+            range = range > info.block_dim(bind_info.offset)
+                        ? range
+                        : info.block_dim(bind_info.offset);
+            VLOG(3) << "Set block dim[" << bind_info.offset << "] with range "
+                    << range;
+            info.set_block_dim(bind_info.offset, range);
+          } else if (bind_info.for_type == ForType::GPUBlock) {
+            CHECK(common::is_zero(x->As<ir::For>()->min));
+            CHECK(x->As<ir::For>()->extent.is_constant());
+            int range = x->As<ir::For>()->extent.get_constant();
+            range = range > info.grid_dim(bind_info.offset)
+                        ? range
+                        : info.grid_dim(bind_info.offset);
+            info.set_grid_dim(bind_info.offset, range);
+            VLOG(3) << "Set grid dim[" << bind_info.offset << "] with range "
+                    << range;
+          } else {
+            LOG(FATAL)
+                << "The for loop's bind info should be gpu block or thread!";
+          }
+        }
+        return (x->As<ir::For>() && x->As<ir::For>()->bind_info().valid());
+      });
   lowered_func->as_lowered_func_ref()->cuda_axis_info = info;
 }
 
 bool Contains(const Expr& container, const Expr& expr) {
-  auto find_expr = ir::CollectIRNodesWithoutTensor(
+  auto find_expr = ir::ir_utils::CollectIRNodesWithoutTensor(
       container,
       [&](const Expr* x) {
         return (x->node_type() == expr.node_type() && *x == expr);
@@ -219,6 +221,14 @@ void ReplaceExpr(Expr* source,
   return;
 }
 
+void ReplaceExpr(Expr* source,
+                 const std::map<Var, Expr, CompVar>& replacing_map) {
+  if (replacing_map.empty()) return;
+  MappingVarToExprMutator mapper(replacing_map);
+  mapper(source);
+  return;
+}
+
 std::vector<int> ValidateFactors(const std::vector<int>& factors,
                                  int total_extent,
                                  const ModuleExpr& module_expr) {
@@ -283,13 +293,13 @@ void CHECKRfactorValidation(const Expr& rf_loop, int rf_axis) {
   auto* rf_for = rf_loop.As<ir::For>();
   CHECK(rf_for) << "Expr param of Rfactor must be For node! Please check.";
   // check the rf_loop only has one schedule block
-  auto block_nodes = ir::CollectIRNodesWithoutTensor(
+  auto block_nodes = ir::ir_utils::CollectIRNodesWithoutTensor(
       rf_loop,
       [&](const Expr* x) { return x->As<ScheduleBlockRealize>(); },
       true);
   CHECK_EQ(block_nodes.size(), 1U)
       << "Rfactor Loop should only have one schedule block";
-  auto find_store = ir::CollectIRNodesWithoutTensor(
+  auto find_store = ir::ir_utils::CollectIRNodesWithoutTensor(
       rf_loop, [&](const Expr* x) { return x->As<Store>(); }, true);
   CHECK_EQ(find_store.size(), 1U);
   auto indice = find_store.begin()->As<Store>()->indices;
@@ -322,9 +332,9 @@ void CHECKRfactorValidation(const Expr& rf_loop, int rf_axis) {
 }
 
 std::vector<Expr> GetLoopsOfExpr(const Expr& expr, const Expr& root) {
-  auto loop_nodes = ir::CollectIRNodesWithoutTensor(root, [&](const Expr* x) {
-    return x->As<ir::For>() && Contains(*x, expr);
-  });
+  auto loop_nodes = ir::ir_utils::CollectIRNodesWithoutTensor(
+      root,
+      [&](const Expr* x) { return x->As<ir::For>() && Contains(*x, expr); });
   std::vector<Expr> result(loop_nodes.begin(), loop_nodes.end());
   if (result.empty())
     LOG(FATAL) << "Didn't find expr's : \n"
@@ -346,8 +356,8 @@ IterRange GetAccessedRange(const Expr& index,
     var_maxs.emplace_back(range.min + range.extent - 1);
   }
 
-  Expr indice_min = optim::IRCopy(index);
-  Expr indice_max = optim::IRCopy(index);
+  Expr indice_min = ir::ir_utils::IRCopy(index);
+  Expr indice_max = ir::ir_utils::IRCopy(index);
   // replace the var by the corresponding iter_value
   ReplaceExpr(&indice_min, iter_vars, var_mins);
   ReplaceExpr(&indice_max, iter_vars, var_maxs);
@@ -406,7 +416,7 @@ std::vector<IterRange> CalculateTensorRegions(
 
   std::vector<IterRange> result;
   for (int i = 0; i < tensor_indices.size(); ++i) {
-    Expr binded_index = optim::IRCopy(tensor_indices[i]);
+    Expr binded_index = ir::ir_utils::IRCopy(tensor_indices[i]);
     ReplaceExpr(&binded_index, iter_vars, iter_values);
     auto range = GetAccessedRange(binded_index, loop_vars, loop_ranges);
 
@@ -439,8 +449,8 @@ Expr GetNthAccessExpr(const Expr& block, int index, bool is_write) {
                           ->body;
   if (is_write) {
     std::vector<Expr> find_store_vec;
-    auto find_store =
-        ir::CollectIRNodesWithoutTensor(compute_body, [&](const Expr* x) {
+    auto find_store = ir::ir_utils::CollectIRNodesWithoutTensor(
+        compute_body, [&](const Expr* x) {
           if (x->As<ir::Store>()) find_store_vec.push_back(*x);
           return x->As<ir::Store>();
         });
@@ -450,8 +460,8 @@ Expr GetNthAccessExpr(const Expr& block, int index, bool is_write) {
     return store_index;
   } else {
     std::vector<Expr> find_load_vec;
-    auto find_load =
-        ir::CollectIRNodesWithoutTensor(compute_body, [&](const Expr* x) {
+    auto find_load = ir::ir_utils::CollectIRNodesWithoutTensor(
+        compute_body, [&](const Expr* x) {
           if (x->As<ir::Load>()) find_load_vec.push_back(*x);
           return x->As<ir::Load>();
         });
@@ -526,7 +536,7 @@ void FindInsertionPoint(const Expr& root, CacheBlockInfo* info, bool is_write) {
   Expr find_tensor =
       is_write ? Expr(info->write_tensor) : Expr(info->read_tensor);
   auto find_produce_read =
-      ir::CollectIRNodesWithoutTensor(root, [&](const Expr* x) {
+      ir::ir_utils::CollectIRNodesWithoutTensor(root, [&](const Expr* x) {
         return x->As<ir::Store>() && x->As<ir::Store>()->tensor == find_tensor;
       });
 
@@ -654,7 +664,7 @@ Expr ConstructOtherStmtChain(const std::vector<Expr>& stmts,
                              const std::vector<int> reordered_indices) {
   Expr new_loop;
   for (int i = reordered_indices.size() - 1; i >= 0; --i) {
-    Expr temp = optim::IRCopy(loops[reordered_indices[i]]);
+    Expr temp = ir::ir_utils::IRCopy(loops[reordered_indices[i]]);
     CHECK(temp.defined());
     CHECK(temp.As<ir::For>());
     if (new_loop.defined()) {
@@ -675,9 +685,9 @@ Expr ConstructNewLoopChain(const std::vector<Expr>& chain,
   // In each IfThenElse node, find the vars its condition depends on.
   for (auto& if_expr : if_nodes) {
     CHECK(if_expr.As<IfThenElse>());
-    auto var_set =
-        ir::CollectIRNodes(if_expr.As<IfThenElse>()->condition,
-                           [&](const Expr* x) { return x->as_var(); });
+    auto var_set = ir::ir_utils::CollectIRNodes(
+        if_expr.As<IfThenElse>()->condition,
+        [&](const Expr* x) { return x->as_var(); });
     std::set<std::string> var_name_set;
     for (auto& i : var_set) var_name_set.insert(i.as_var()->name);
     condition_vars.push_back(var_name_set);
@@ -693,10 +703,10 @@ Expr ConstructNewLoopChain(const std::vector<Expr>& chain,
     Expr temp;
     if (loop_set.count(loop_in_chain)) {
       CHECK_GE(index, 0);
-      temp = optim::IRCopy(ordered_loops[index]);
+      temp = ir::ir_utils::IRCopy(ordered_loops[index]);
       --index;
     } else {
-      temp = optim::IRCopy(loop_in_chain);
+      temp = ir::ir_utils::IRCopy(loop_in_chain);
     }
     CHECK(temp.defined());
     CHECK(temp.As<ir::For>());
@@ -863,7 +873,7 @@ std::vector<Expr> GetProducers(const Expr& block, const Expr& root) {
   std::string block_name = block.As<ir::ScheduleBlockRealize>()
                                ->schedule_block.As<ir::ScheduleBlock>()
                                ->name;
-  ir::CollectIRNodesWithoutTensor(
+  ir::ir_utils::CollectIRNodesWithoutTensor(
       compute_body, [&producer_tensor_names, &block_name](const Expr* x) {
         auto* load = x->As<ir::Load>();
         if (load) {
@@ -879,15 +889,15 @@ std::vector<Expr> GetProducers(const Expr& block, const Expr& root) {
 
   // traverse each of other blocks and filter those ones which contain at least
   // one producer tensor;
-  auto find_blocks =
-      ir::CollectIRNodesWithoutTensor(root, [&block, &root](const Expr* x) {
+  auto find_blocks = ir::ir_utils::CollectIRNodesWithoutTensor(
+      root, [&block, &root](const Expr* x) {
         return x->As<ir::ScheduleBlockRealize>() && *x != block && *x != root;
       });
   for (auto&& cur : find_blocks) {
     auto* cur_block = cur.As<ir::ScheduleBlockRealize>()
                           ->schedule_block.As<ir::ScheduleBlock>();
     CHECK(cur_block) << "block result should be a ScheduleBlockRealize";
-    auto find_stores = ir::CollectIRNodesWithoutTensor(
+    auto find_stores = ir::ir_utils::CollectIRNodesWithoutTensor(
         cur_block->body, [&producer_tensor_names](const Expr* x) {
           return x->As<ir::Store>() &&
                  producer_tensor_names.count(
@@ -905,27 +915,29 @@ std::vector<Expr> GetConsumers(const Expr& block, const Expr& root) {
   std::string block_tensor = GetTensor(block)->name;
   if (IsReduceInitTensorName(block_tensor)) {
     std::string consumer_name = GetOriginalReduceTensorName(block_tensor);
-    auto consumer = ir::CollectIRNodesWithoutTensor(root, [&](const Expr* x) {
-      return x->As<ir::ScheduleBlockRealize>() &&
-             x->As<ir::ScheduleBlockRealize>()
-                     ->schedule_block.As<ir::ScheduleBlock>()
-                     ->name == consumer_name;
-    });
+    auto consumer =
+        ir::ir_utils::CollectIRNodesWithoutTensor(root, [&](const Expr* x) {
+          return x->As<ir::ScheduleBlockRealize>() &&
+                 x->As<ir::ScheduleBlockRealize>()
+                         ->schedule_block.As<ir::ScheduleBlock>()
+                         ->name == consumer_name;
+        });
     CHECK_EQ(consumer.size(), 1);
     return {*consumer.begin()};
   }
 
-  auto find_block = ir::CollectIRNodesWithoutTensor(root, [&](const Expr* x) {
-    return x->As<ir::ScheduleBlockRealize>() && *x != block && *x != root;
-  });
+  auto find_block =
+      ir::ir_utils::CollectIRNodesWithoutTensor(root, [&](const Expr* x) {
+        return x->As<ir::ScheduleBlockRealize>() && *x != block && *x != root;
+      });
   for (auto& i : find_block) {
     CHECK(i.As<ir::ScheduleBlockRealize>()
               ->schedule_block.As<ir::ScheduleBlock>());
     auto block_body = i.As<ir::ScheduleBlockRealize>()
                           ->schedule_block.As<ir::ScheduleBlock>()
                           ->body;
-    auto find_load =
-        ir::CollectIRNodesWithoutTensor(block_body, [&](const Expr* x) {
+    auto find_load = ir::ir_utils::CollectIRNodesWithoutTensor(
+        block_body, [&](const Expr* x) {
           return x->As<ir::Load>() &&
                  x->As<ir::Load>()->tensor.as_tensor_ref()->name ==
                      block_tensor;
@@ -938,7 +950,7 @@ std::vector<Expr> GetConsumers(const Expr& block, const Expr& root) {
 void CheckComputeAtValidation(const Expr& block,
                               const Expr& loop,
                               const Expr& root) {
-  auto find_block = ir::CollectIRNodesWithoutTensor(
+  auto find_block = ir::ir_utils::CollectIRNodesWithoutTensor(
       root,
       [&](const Expr* x) {
         return x->As<ir::ScheduleBlockRealize>() && *x == block;
@@ -946,13 +958,13 @@ void CheckComputeAtValidation(const Expr& block,
       true);
   CHECK(!find_block.empty()) << "Didn't find block in root!";
 
-  auto find_loop = ir::CollectIRNodesWithoutTensor(
+  auto find_loop = ir::ir_utils::CollectIRNodesWithoutTensor(
       root,
       [&](const Expr* x) { return x->As<ir::For>() && *x == loop; },
       true);
   CHECK(!find_loop.empty()) << "Didn't find loop in root!";
 
-  auto find_block_in_loop = ir::CollectIRNodesWithoutTensor(
+  auto find_block_in_loop = ir::ir_utils::CollectIRNodesWithoutTensor(
       loop,
       [&](const Expr* x) {
         return x->As<ir::ScheduleBlockRealize>() && *x == block;
@@ -1005,10 +1017,10 @@ std::vector<IterRange> CalculateRequiredRegions(
 
   std::set<Expr> provided_nodes;
   if (is_store_provided) {
-    provided_nodes = ir::CollectIRNodesWithoutTensor(
+    provided_nodes = ir::ir_utils::CollectIRNodesWithoutTensor(
         block, [&](const Expr* x) { return x->As<ir::Store>(); });
   } else {
-    provided_nodes = ir::CollectIRNodesWithoutTensor(
+    provided_nodes = ir::ir_utils::CollectIRNodesWithoutTensor(
         block, [&](const Expr* x) { return x->As<ir::Load>(); });
   }
 
@@ -1025,9 +1037,9 @@ std::vector<IterRange> CalculateRequiredRegions(
     for (const Expr& req_block : required_blocks) {
       CHECK(req_block.As<ir::ScheduleBlockRealize>());
       Expr block_body =
-          optim::IRCopy(req_block.As<ir::ScheduleBlockRealize>()
-                            ->schedule_block.As<ir::ScheduleBlock>()
-                            ->body);
+          ir::ir_utils::IRCopy(req_block.As<ir::ScheduleBlockRealize>()
+                                   ->schedule_block.As<ir::ScheduleBlock>()
+                                   ->body);
       auto iter_vars = req_block.As<ir::ScheduleBlockRealize>()
                            ->schedule_block.As<ir::ScheduleBlock>()
                            ->iter_vars;
@@ -1036,7 +1048,7 @@ std::vector<IterRange> CalculateRequiredRegions(
 
       // Notice that we look for For nodes in loop's body instead of loop
       // itself.
-      auto find_loops = ir::CollectIRNodesWithoutTensor(
+      auto find_loops = ir::ir_utils::CollectIRNodesWithoutTensor(
           loop.As<ir::For>()->body, [&](const Expr* x) {
             return x->As<ir::For>() && Contains(*x, req_block);
           });
@@ -1052,15 +1064,15 @@ std::vector<IterRange> CalculateRequiredRegions(
 
       std::set<Expr> required_nodes;
       if (is_store_provided) {
-        required_nodes =
-            ir::CollectIRNodesWithoutTensor(block_body, [&](const Expr* x) {
+        required_nodes = ir::ir_utils::CollectIRNodesWithoutTensor(
+            block_body, [&](const Expr* x) {
               return x->As<ir::Load>() &&
                      x->As<ir::Load>()->tensor.as_tensor_ref()->name ==
                          provided_tensor_name;
             });
       } else {
-        required_nodes =
-            ir::CollectIRNodesWithoutTensor(block_body, [&](const Expr* x) {
+        required_nodes = ir::ir_utils::CollectIRNodesWithoutTensor(
+            block_body, [&](const Expr* x) {
               return x->As<ir::Store>() &&
                      x->As<ir::Store>()->tensor.as_tensor_ref()->name ==
                          provided_tensor_name;
@@ -1105,7 +1117,7 @@ std::vector<IterRange> CalculateRequiredRegions(
             block.As<ir::ScheduleBlockRealize>()->iter_values[i].is_constant());
       if (block.As<ir::ScheduleBlockRealize>()->iter_values[i].as_var()) {
         auto find_for_loops =
-            ir::CollectIRNodesWithoutTensor(root, [&](const Expr* x) {
+            ir::ir_utils::CollectIRNodesWithoutTensor(root, [&](const Expr* x) {
               return x->As<ir::For>() &&
                      x->As<ir::For>()->loop_var->name ==
                          block.As<ir::ScheduleBlockRealize>()
@@ -1134,13 +1146,13 @@ Expr CheckComputeInlineValidationAndGetStore(const Expr& schedule_block,
                           ->schedule_block.As<ir::ScheduleBlock>()
                           ->body;
   // 1. Check the schedule block to be inlined is not a reduce tensor.
-  auto find_store = ir::CollectIRNodesWithoutTensor(
+  auto find_store = ir::ir_utils::CollectIRNodesWithoutTensor(
       compute_body, [&](const Expr* x) { return x->As<ir::Store>(); }, true);
   CHECK_EQ(find_store.size(), 1U);
   Expr tensor = (*find_store.begin()).As<ir::Store>()->tensor;
   CHECK(!tensor.as_tensor_ref()->is_reduce_tensor());
   // 2. Check this schedule block is the only writer of the tensor.
-  find_store = ir::CollectIRNodesWithoutTensor(
+  find_store = ir::ir_utils::CollectIRNodesWithoutTensor(
       root,
       [&](const Expr* x) {
         return x->As<ir::Store>() &&
@@ -1151,8 +1163,8 @@ Expr CheckComputeInlineValidationAndGetStore(const Expr& schedule_block,
   CHECK_EQ(find_store.size(), 1U);
   // 3. Check there is no overlap between the buffers the schedule block reads
   // and writes.
-  auto find_load =
-      ir::CollectIRNodesWithoutTensor(compute_body, [&](const Expr* x) {
+  auto find_load = ir::ir_utils::CollectIRNodesWithoutTensor(
+      compute_body, [&](const Expr* x) {
         return x->As<ir::Load>() && x->As<ir::Load>()->tensor == tensor;
       });
   CHECK(find_load.empty());
@@ -1166,14 +1178,14 @@ std::tuple<Expr, Expr, Expr> CheckReverseComputeInlineValidationAndGetExprs(
                           ->schedule_block.As<ir::ScheduleBlock>()
                           ->body;
   // 1. Check the schedule block to be reverse inlined is not a reduce tensor.
-  auto find_inlined_load = ir::CollectIRNodesWithoutTensor(
+  auto find_inlined_load = ir::ir_utils::CollectIRNodesWithoutTensor(
       compute_body, [&](const Expr* x) { return x->As<ir::Load>(); }, true);
   CHECK_EQ(find_inlined_load.size(), 1U);
   Expr tensor = (*find_inlined_load.begin()).As<ir::Load>()->tensor;
   CHECK(!tensor.as_tensor_ref()->is_reduce_tensor());
   auto inlined_load = *find_inlined_load.begin();
   // 2. Check this schedule block is the only reader of the tensor.
-  auto find_load = ir::CollectIRNodesWithoutTensor(
+  auto find_load = ir::ir_utils::CollectIRNodesWithoutTensor(
       root,
       [&](const Expr* x) {
         return x->As<ir::Load>() &&
@@ -1184,20 +1196,20 @@ std::tuple<Expr, Expr, Expr> CheckReverseComputeInlineValidationAndGetExprs(
   CHECK_EQ(find_load.size(), 1U);
   // 3. Check there is no overlap between the buffers the schedule block reads
   // and writes.
-  auto find_store =
-      ir::CollectIRNodesWithoutTensor(compute_body, [&](const Expr* x) {
+  auto find_store = ir::ir_utils::CollectIRNodesWithoutTensor(
+      compute_body, [&](const Expr* x) {
         return x->As<ir::Store>() && x->As<ir::Store>()->tensor == tensor;
       });
   CHECK(find_store.empty());
   // 4. Get store that will be inlined.
   auto find_inlined_store =
-      ir::CollectIRNodesWithoutTensor(root, [&](const Expr* x) {
+      ir::ir_utils::CollectIRNodesWithoutTensor(root, [&](const Expr* x) {
         return x->As<ir::Store>() && x->As<ir::Store>()->tensor == tensor;
       });
   CHECK_EQ(find_inlined_store.size(), 1U);
   auto inlined_store = *find_inlined_store.begin();
   // 5. Get target store.
-  auto find_target_store = ir::CollectIRNodesWithoutTensor(
+  auto find_target_store = ir::ir_utils::CollectIRNodesWithoutTensor(
       compute_body, [&](const Expr* x) { return x->As<ir::Store>(); }, true);
   CHECK_EQ(find_target_store.size(), 1U);
   auto target_store = *find_target_store.begin();
@@ -1206,7 +1218,7 @@ std::tuple<Expr, Expr, Expr> CheckReverseComputeInlineValidationAndGetExprs(
 
 bool ContainVar(const std::vector<Expr>& exprs, const std::string& var_name) {
   for (auto& expr : exprs) {
-    auto find_expr = ir::CollectIRNodesWithoutTensor(
+    auto find_expr = ir::ir_utils::CollectIRNodesWithoutTensor(
         expr,
         [&](const Expr* x) {
           return x->As<_Var_>() && x->As<_Var_>()->name == var_name;

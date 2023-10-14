@@ -15,6 +15,7 @@
 import os
 import sys
 import atexit
+import platform
 
 # The legacy core need to be removed before "import core",
 # in case of users installing paddlepaddle without -U option
@@ -32,19 +33,52 @@ if os.path.exists(legacy_core):
     except Exception as e:
         raise e
 
+from . import core
+
 # import all class inside framework into base module
 from . import framework
-from .framework import *
+from .framework import (
+    Program,
+    default_startup_program,
+    default_main_program,
+    program_guard,
+    name_scope,
+    ipu_shard_guard,
+    set_ipu_shard,
+    cuda_places,
+    cpu_places,
+    xpu_places,
+    cuda_pinned_places,
+    in_dygraph_mode,
+    in_pir_mode,
+    in_dynamic_or_pir_mode,
+    is_compiled_with_cinn,
+    is_compiled_with_cuda,
+    is_compiled_with_rocm,
+    is_compiled_with_xpu,
+    Variable,
+    require_version,
+    device_guard,
+    set_flags,
+    get_flags,
+)
 
 # import all class inside executor into base module
 from . import executor
-from .executor import *
+from .executor import (
+    Executor,
+    global_scope,
+    scope_guard,
+)
 
 from . import data_feed_desc
-from .data_feed_desc import *
+from .data_feed_desc import DataFeedDesc
 
 from . import dataset
-from .dataset import *
+from .dataset import (
+    DatasetFactory,
+    InMemoryDataset,
+)
 
 from . import trainer_desc
 
@@ -72,7 +106,13 @@ from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
 
 from . import unique_name
 from . import compiler
-from .compiler import *
+from .compiler import (
+    CompiledProgram,
+    ExecutionStrategy,
+    BuildStrategy,
+    IpuCompiledProgram,
+    IpuStrategy,
+)
 from paddle.base.layers.math_op_patch import monkey_patch_variable
 from .dygraph.base import enable_dygraph, disable_dygraph
 from .dygraph.tensor_patch_methods import monkey_patch_tensor
@@ -91,40 +131,7 @@ Tensor = LoDTensor
 enable_imperative = enable_dygraph
 disable_imperative = disable_dygraph
 
-__all__ = (
-    framework.__all__
-    + executor.__all__
-    + trainer_desc.__all__
-    + lod_tensor.__all__
-    + data_feed_desc.__all__
-    + compiler.__all__
-    + backward.__all__
-    + [
-        'io',
-        'initializer',
-        'layers',
-        'dygraph',
-        'enable_dygraph',
-        'disable_dygraph',
-        'enable_imperative',
-        'disable_imperative',
-        'backward',
-        'LoDTensor',
-        'LoDTensorArray',
-        'CPUPlace',
-        'XPUPlace',
-        'CUDAPlace',
-        'CUDAPinnedPlace',
-        'IPUPlace',
-        'Tensor',
-        'ParamAttr',
-        'WeightNormParamAttr',
-        'DataFeeder',
-        'unique_name',
-        'Scope',
-        '_cuda_synchronize',
-    ]
-)
+__all__ = []
 
 
 def __bootstrap__():
@@ -134,11 +141,6 @@ def __bootstrap__():
     Returns:
         None
     """
-    import sys
-    import os
-    import platform
-    from . import core
-
     # NOTE(zhiqiu): When (1)numpy < 1.19; (2) python < 3.7,
     # unittest is always imported in numpy (maybe some versions not).
     # so is_test is True and p2p is not inited.
@@ -151,10 +153,10 @@ def __bootstrap__():
 
     if num_threads > 1:
         print(
-            'WARNING: OMP_NUM_THREADS set to {0}, not 1. The computation '
+            f'WARNING: OMP_NUM_THREADS set to {num_threads}, not 1. The computation '
             'speed will not be optimized if you use data parallel. It will '
             'fail if this PaddlePaddle binary is compiled with OpenBlas since'
-            ' OpenBlas does not support multi-threads.'.format(num_threads),
+            ' OpenBlas does not support multi-threads.',
             file=sys.stderr,
         )
         print('PLEASE USE OMP_NUM_THREADS WISELY.', file=sys.stderr)
