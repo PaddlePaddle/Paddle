@@ -22,7 +22,6 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/infermeta/spmd_rules/dim_trans.h"
-#include "paddle/phi/infermeta/spmd_rules/reshape.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
 namespace phi {
@@ -100,9 +99,9 @@ std::vector<DimTrans*> MakeSqueezeDimTransReverseWithAxis(
   return ret;
 }
 
-bool squeezeCompare(const int64_t& a, const int64_t& b) { return a > b; }
+bool SqueezeCompare(const int64_t& a, const int64_t& b) { return a > b; }
 
-bool squeezeReverseCompare(const int64_t& a, const int64_t& b) { return a < b; }
+bool SqueezeReverseCompare(const int64_t& a, const int64_t& b) { return a < b; }
 
 SpmdInfo SqueezeInferSpmd(const DistMetaTensor& x,
                           const std::vector<int64_t>& axis) {
@@ -135,7 +134,7 @@ SpmdInfo SqueezeInferSpmd(const DistMetaTensor& x,
         axis_copy[i] += x_ndim;
       }
     }
-    std::sort(axis_copy.begin(), axis_copy.end(), squeezeCompare);
+    std::sort(axis_copy.begin(), axis_copy.end(), SqueezeCompare);
     trans = MakeSqueezeDimTransWithAxis(x_shape, &out_shape, axis_copy);
   }
 
@@ -204,7 +203,7 @@ SpmdInfo SqueezeInferSpmdReverse(const DistMetaTensor& x,
         axis_copy[i] += x_ndim;
       }
     }
-    std::sort(axis_copy.begin(), axis_copy.end(), squeezeReverseCompare);
+    std::sort(axis_copy.begin(), axis_copy.end(), SqueezeReverseCompare);
     trans = MakeSqueezeDimTransReverseWithAxis(x_shape, out_shape, axis_copy);
   }
 
