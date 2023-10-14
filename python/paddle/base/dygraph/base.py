@@ -800,6 +800,8 @@ def grad(
         no_grad_vars = []
     elif isinstance(no_grad_vars, core.eager.Tensor):
         no_grad_vars = [no_grad_vars]
+    elif isinstance(no_grad_vars, core.eager.Tensor):
+        no_grad_vars = [no_grad_vars]
     elif isinstance(no_grad_vars, (list, tuple, set)):
         no_grad_vars = list(no_grad_vars)
         for var in no_grad_vars:
