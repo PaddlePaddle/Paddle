@@ -18,17 +18,15 @@ import paddle
 def convert_params_for_cell(np_cell, paddle_cell):
     state = np_cell.parameters
     for k, v in paddle_cell.named_parameters():
-        if k in state:
-            v.set_value(state[k])
+        v.set_value(state[k])
 
 
 def convert_params_for_cell_static(np_cell, paddle_cell, place):
     state = np_cell.parameters
     for k, v in paddle_cell.named_parameters():
-        if k in state:
-            scope = paddle.static.global_scope()
-            tensor = scope.find_var(v.name).get_tensor()
-            tensor.set(state[k], place)
+        scope = paddle.static.global_scope()
+        tensor = scope.find_var(v.name).get_tensor()
+        tensor.set(state[k], place)
 
 
 def convert_params_for_net(np_net, paddle_net):
