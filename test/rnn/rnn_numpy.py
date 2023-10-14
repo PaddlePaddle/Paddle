@@ -67,11 +67,11 @@ class SimpleRNNCell(LayerMixin):
             self.bias_hh = np.random.uniform(-std, std, (hidden_size,)).astype(
                 dtype
             )
-            self.parameters['bias_ih'] = self.bias_ih
-            self.parameters['bias_hh'] = self.bias_hh
         else:
-            self.bias_ih = np.zeros(hidden_size)
-            self.bias_hh = np.zeros(hidden_size)
+            self.bias_ih = np.zeros(hidden_size).astype(dtype)
+            self.bias_hh = np.zeros(hidden_size).astype(dtype)
+        self.parameters['bias_ih'] = self.bias_ih
+        self.parameters['bias_hh'] = self.bias_hh
 
     def init_state(self, inputs, batch_dim_index=0):
         batch_size = inputs.shape[batch_dim_index]
@@ -113,11 +113,11 @@ class GRUCell(LayerMixin):
             self.bias_hh = np.random.uniform(
                 -std, std, (3 * hidden_size)
             ).astype(dtype)
-            self.parameters['bias_ih'] = self.bias_ih
-            self.parameters['bias_hh'] = self.bias_hh
         else:
-            self.bias_ih = np.zeros(3 * hidden_size)
-            self.bias_hh = np.zeros(3 * hidden_size)
+            self.bias_ih = np.zeros(3 * hidden_size).astype(dtype)
+            self.bias_hh = np.zeros(3 * hidden_size).astype(dtype)
+        self.parameters['bias_ih'] = self.bias_ih
+        self.parameters['bias_hh'] = self.bias_hh
 
     def init_state(self, inputs, batch_dim_index=0):
         batch_size = inputs.shape[batch_dim_index]
@@ -165,11 +165,11 @@ class LSTMCell(LayerMixin):
             self.bias_hh = np.random.uniform(
                 -std, std, (4 * hidden_size)
             ).astype(dtype)
-            self.parameters['bias_ih'] = self.bias_ih
-            self.parameters['bias_hh'] = self.bias_hh
         else:
-            self.bias_ih = np.zeros(4 * hidden_size)
-            self.bias_hh = np.zeros(4 * hidden_size)
+            self.bias_ih = np.zeros(4 * hidden_size).astype(dtype)
+            self.bias_hh = np.zeros(4 * hidden_size).astype(dtype)
+        self.parameters['bias_ih'] = self.bias_ih
+        self.parameters['bias_hh'] = self.bias_hh
 
     def init_state(self, inputs, batch_dim_index=0):
         batch_size = inputs.shape[batch_dim_index]
