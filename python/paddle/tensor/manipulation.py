@@ -5211,8 +5211,7 @@ def index_fill(x, index, axis, value, name=None):
         .. code-block:: python
 
             >>> import paddle
-            >>> arr = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]).astype('int64')
-            >>> input_tensor = paddle.to_tensor(arr)
+            >>> input_tensor = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype='int64')
             >>> index = paddle.to_tensor([0, 2], dtype="int32")
             >>> value = -1
             >>> res = paddle.index_fill(input_tensor, index, 0, value)
@@ -5251,8 +5250,7 @@ def index_fill_(x, index, axis, value, name=None):
         .. code-block:: python
 
             >>> import paddle
-            >>> arr = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]).astype('int64')
-            >>> input_tensor = paddle.to_tensor(arr)
+            >>> input_tensor = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype='int64')
             >>> index = paddle.to_tensor([0, 2], dtype="int32")
             >>> value = -1
             >>> res = paddle.index_fill_(input_tensor, index, 0, value)
