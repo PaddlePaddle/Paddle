@@ -41,7 +41,7 @@ ProcessMesh GetSubProcessMesh(const ProcessMesh& mesh, int64_t axis) {
     for (int64_t j = static_cast<int64_t>(coord.size() - 2); j >= 0; --j) {
       rank += coord[j] * mesh.dim_size(j + 1);
     }
-    process_ids.emplace_back(rank);
+    process_ids.emplace_back(mesh.process_ids()[rank]);
   }
 
   ProcessMesh out_mesh(shape, process_ids, dim_names);

@@ -319,6 +319,8 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearBwd(ir::Graph *graph,
     auto ele_add_grad_op_role_val =
         details::GetOpRoleVarsOrEmpty(*(ele_add_grad_op->Op()));
     std::vector<std::string> fused_gemm_epilogue_grad_op_role_var;
+    fused_gemm_epilogue_grad_op_role_var.reserve(
+        matmul_grad_op_role_val.size());
     for (auto const &i : matmul_grad_op_role_val) {
       fused_gemm_epilogue_grad_op_role_var.push_back(i);
     }
@@ -455,6 +457,8 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
     auto ele_add_grad_op_role_val =
         details::GetOpRoleVarsOrEmpty(*(ele_add_grad_op->Op()));
     std::vector<std::string> fused_gemm_epilogue_grad_op_role_var;
+    fused_gemm_epilogue_grad_op_role_var.reserve(
+        matmul_grad_op_role_val.size());
     for (auto const &i : matmul_grad_op_role_val) {
       fused_gemm_epilogue_grad_op_role_var.push_back(i);
     }

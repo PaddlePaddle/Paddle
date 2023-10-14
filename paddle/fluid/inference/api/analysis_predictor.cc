@@ -1147,6 +1147,9 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
 bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
                             std::vector<paddle::Tensor> *outputs) {
   inference::DisplayMemoryInfo(place_, "before run");
+  if (private_context_) {
+    paddle::platform::DeviceContextPool::SetDeviceContexts(&device_contexts_);
+  }
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 #ifdef PADDLE_WITH_DNNL
   if (config_.use_mkldnn_) MkldnnPreSet(inputs);
@@ -1187,19 +1190,16 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
     return false;
   }
 
-  // All the containers in the scope will be hold in inference, but the
-  // operators assume that the container will be reset after each batch.
-  // Here is a bugfix, collect all the container variables, and reset then to a
-  // bool; the next time, the operator will call MutableData and construct a new
-  // container again, so that the container will be empty for each batch.
-  if (sub_scope_) {
-    tensor_array_batch_cleaner_.CollectNoTensorVars(sub_scope_);
-  }
-  tensor_array_batch_cleaner_.ResetNoTensorVars();
+  // Fix TensorArray reuse not cleaned bug.
+  tensor_array_batch_cleaner_.CollectTensorArrays(sub_scope_);
+  tensor_array_batch_cleaner_.ResetTensorArray();
 
   // recover the cpu_math_library_num_threads to 1, in order to avoid thread
   // conflict when integrating it into deployment service.
   paddle::platform::SetNumThreads(1);
+  if (private_context_) {
+    paddle::platform::DeviceContextPool::SetDeviceContexts(nullptr);
+  }
 #ifdef PADDLE_WITH_DNNL
   if (config_.use_mkldnn_) MkldnnPostReset();
 #endif
@@ -1425,6 +1425,7 @@ void AnalysisPredictor::PrepareArgument() {
         config_.trt_use_explicit_quantization_);
     argument_->SetTrtEngineMemorySharing(config_.trt_engine_memory_sharing());
     argument_->SetTensorRtOptimizationLevel(config_.trt_optimization_level_);
+    argument_->SetTensorRtOpsRunFloat(config_.trt_ops_run_float_);
   }
 
   if (config_.dlnne_enabled()) {
@@ -3219,6 +3220,13 @@ void InternalUtils::SetTransformerMaskid(
     paddle_infer::Config *c, const std::string &tensorrt_transformer_maskid) {
 #ifdef PADDLE_WITH_CUDA
   c->tensorrt_transformer_maskid_ = tensorrt_transformer_maskid;
+#endif
+}
+
+void InternalUtils::DisableTensorRtHalfOps(
+    paddle_infer::Config *c, const std::unordered_set<std::string> &ops) {
+#ifdef PADDLE_WITH_CUDA
+  c->trt_ops_run_float_ = ops;
 #endif
 }
 
