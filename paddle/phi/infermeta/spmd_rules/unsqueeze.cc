@@ -98,7 +98,7 @@ SpmdInfo UnsqueezeInferSpmd(const DistMetaTensor& x,
   std::sort(axis_copy.begin(), axis_copy.end(), UnsqueezeCompare);
 
   std::vector<DimTrans*> trans =
-      MakeUnsqueezeDimTrans(x_shape, out_shape, axis_copy);
+      MakeUnsqueezeDimTrans(x_shape, &out_shape, axis_copy);
 
   // Step2: Infer the dims mapping of input (if reshard is
   // needed) and output from the dimension transformation.
@@ -134,6 +134,7 @@ SpmdInfo UnsqueezeInferSpmdReverse(const DistMetaTensor& x,
                                    const std::vector<int64_t>& axis) {
   // Step0: Verify input args based on unsqueeze logic
   auto x_shape = phi::vectorize(x.dims());
+  int x_ndim = x_shape.size();
   auto out_shape = phi::vectorize(out.dims());
   int out_ndim = out_shape.size();
   auto out_dist_attr_src = out.dist_attr();
