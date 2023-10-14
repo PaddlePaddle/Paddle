@@ -14,6 +14,8 @@
 
 import unittest
 
+from dygraph_to_static_util import dy2static_unittest
+
 import paddle
 import paddle.distributed as dist
 from paddle import nn
@@ -52,6 +54,7 @@ def train():
         print(loss)
 
 
+@dy2static_unittest
 class TestParamsNoGrad(unittest.TestCase):
     def test_two_card(self):
         if (

@@ -2098,7 +2098,9 @@ class TestPirCompositeDropout(unittest.TestCase):
                     )
 
                     core._set_prim_forward_enabled(True)
-                    [output] = decompose(mp, [output])  # decompose forward
+                    [output] = decompose(
+                        mp, [output], whitelist={"pd_op.dropout"}
+                    )  # decompose forward
                     self.assertTrue(
                         'pd_op.dropout'
                         not in [op.name() for op in mp.global_block().ops]

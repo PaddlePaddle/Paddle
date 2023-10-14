@@ -19,6 +19,7 @@
 #include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/interpreter/data_transfer.h"
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
@@ -228,7 +229,9 @@ bool var_can_be_deleted(const std::string& name, const BlockDesc& block) {
 
   return type == proto::VarType::LOD_TENSOR ||
          type == proto::VarType::SELECTED_ROWS ||
-         type == proto::VarType::LOD_TENSOR_ARRAY;
+         type == proto::VarType::LOD_TENSOR_ARRAY ||
+         type == proto::VarType::SPARSE_COO ||
+         type == proto::VarType::SPARSE_CSR;
 }
 
 std::unordered_map<const paddle::framework::OperatorBase*,
@@ -934,7 +937,7 @@ void BuildOpFuncList(const platform::Place& place,
       }
     } catch (platform::EnforceNotMet& ex) {
       framework::InsertCallStackInfo(op_type, op->Attrs(), &ex);
-      throw std::move(ex);
+      throw ex;
     } catch (platform::EOFException&) {
       std::rethrow_exception(std::current_exception());
     } catch (std::exception& ex) {
@@ -1002,6 +1005,33 @@ void BuildOpFuncList(const platform::Place& place,
         if (var->IsType<phi::DenseTensor>()) {
           garbages->emplace_back(
               var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
+        } else if (var->IsType<phi::SelectedRows>()) {
+          garbages->emplace_back(var->GetMutable<phi::SelectedRows>()
+                                     ->mutable_value()
+                                     ->MoveMemoryHolder());
+          var->GetMutable<phi::SelectedRows>()->mutable_rows()->clear();
+        } else if (var->IsType<LoDTensorArray>()) {
+          auto* tensor_arr = var->GetMutable<LoDTensorArray>();
+          for (auto& t : *tensor_arr) {
+            garbages->emplace_back(t.MoveMemoryHolder());
+          }
+        } else if (var->IsType<phi::SparseCooTensor>()) {
+          garbages->emplace_back(var->GetMutable<phi::SparseCooTensor>()
+                                     ->mutable_indices()
+                                     ->MoveMemoryHolder());
+          garbages->emplace_back(var->GetMutable<phi::SparseCooTensor>()
+                                     ->mutable_values()
+                                     ->MoveMemoryHolder());
+        } else if (var->IsType<phi::SparseCsrTensor>()) {
+          garbages->emplace_back(var->GetMutable<phi::SparseCsrTensor>()
+                                     ->mutable_cols()
+                                     ->MoveMemoryHolder());
+          garbages->emplace_back(var->GetMutable<phi::SparseCsrTensor>()
+                                     ->mutable_crows()
+                                     ->MoveMemoryHolder());
+          garbages->emplace_back(var->GetMutable<phi::SparseCsrTensor>()
+                                     ->mutable_values()
+                                     ->MoveMemoryHolder());
         }
       }
       delete garbages;  // free mem
@@ -1022,6 +1052,33 @@ void BuildOpFuncList(const platform::Place& place,
     if (var->IsType<phi::DenseTensor>()) {
       garbages->emplace_back(
           var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
+    } else if (var->IsType<phi::SelectedRows>()) {
+      garbages->emplace_back(var->GetMutable<phi::SelectedRows>()
+                                 ->mutable_value()
+                                 ->MoveMemoryHolder());
+      var->GetMutable<phi::SelectedRows>()->mutable_rows()->clear();
+    } else if (var->IsType<LoDTensorArray>()) {
+      auto* tensor_arr = var->GetMutable<LoDTensorArray>();
+      for (auto& t : *tensor_arr) {
+        garbages->emplace_back(t.MoveMemoryHolder());
+      }
+    } else if (var->IsType<phi::SparseCooTensor>()) {
+      garbages->emplace_back(var->GetMutable<phi::SparseCooTensor>()
+                                 ->mutable_indices()
+                                 ->MoveMemoryHolder());
+      garbages->emplace_back(var->GetMutable<phi::SparseCooTensor>()
+                                 ->mutable_values()
+                                 ->MoveMemoryHolder());
+    } else if (var->IsType<phi::SparseCsrTensor>()) {
+      garbages->emplace_back(var->GetMutable<phi::SparseCsrTensor>()
+                                 ->mutable_cols()
+                                 ->MoveMemoryHolder());
+      garbages->emplace_back(var->GetMutable<phi::SparseCsrTensor>()
+                                 ->mutable_crows()
+                                 ->MoveMemoryHolder());
+      garbages->emplace_back(var->GetMutable<phi::SparseCsrTensor>()
+                                 ->mutable_values()
+                                 ->MoveMemoryHolder());
     }
   }
   delete garbages;
@@ -1138,7 +1195,7 @@ std::unordered_set<std::string> GetSpecialOpNames() {
       "builtin.set_parameter",
       "builtin.get_parameter",
       "pd_op.data",
-      "pd_op.shadow_output",
+      "builtin.shadow_output",
   };
 }
 
