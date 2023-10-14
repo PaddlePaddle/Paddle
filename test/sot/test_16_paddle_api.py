@@ -54,7 +54,6 @@ class TestPaddleApiCall(TestCaseBase):
         b = paddle.to_tensor([[5, 6], [7, 8]])
         self.assert_results(paddle_api_function_call_concat, a, b, 0)
         self.assert_results(paddle_api_function_call_concat, a, b, 1)
-        raise ValueError("CI should fail!")
 
 
 if __name__ == "__main__":
