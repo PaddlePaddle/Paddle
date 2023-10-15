@@ -59,16 +59,16 @@ class RandomDataset(paddle.io.Dataset):
         return self.num_samples
 
 
-def optimizer_setting(model, use_pure_bf16, use_main_grad):
+def optimizer_setting(model, use_pure_fp16, use_main_grad):
     if use_main_grad:
-        assert use_pure_bf16
+        assert use_pure_fp16
         model = mix_precision_utils.MixPrecisionLayer(model, dtype="float16")
     optimizer = paddle.optimizer.AdamW(
         parameters=model.parameters(),
         learning_rate=0.00001,
         weight_decay=0.00001,
         grad_clip=paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0),
-        multi_precision=use_pure_bf16,
+        multi_precision=use_pure_fp16,
     )
     if use_main_grad:
         optimizer = mix_precision_utils.MixPrecisionOptimizer(optimizer)
@@ -79,21 +79,22 @@ def optimizer_setting(model, use_pure_bf16, use_main_grad):
 def train_mlp(
     model,
     sharding_stage,
-    use_pure_bf16=False,
+    use_pure_fp16=False,
     accumulate_grad=False,
     use_main_grad=False,
     test_scaler=False,
+    scale_loss=1024,
 ):
     scaler = None
     if test_scaler:
         assert sharding_stage == 1
         assert not accumulate_grad
-        scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+        scaler = paddle.amp.GradScaler(init_loss_scaling=scale_loss)
         scaler = fleet.distributed_scaler(scaler)
     optimizer = optimizer_setting(
-        model=model, use_pure_bf16=use_pure_bf16, use_main_grad=use_main_grad
+        model=model, use_pure_fp16=use_pure_fp16, use_main_grad=use_main_grad
     )
-    if use_pure_bf16:
+    if use_pure_fp16:
         level = 'O2'
         custom_white_list = None
         model = paddle.amp.decorate(models=model, dtype="float16", level=level)
@@ -126,7 +127,7 @@ def train_mlp(
     if sharding_stage == 1:
         model.to(device="gpu")
 
-    if not use_pure_bf16:
+    if not use_pure_fp16:
         for param in model.parameters():
             t = paddle.cast(
                 paddle.cast(param, dtype='float16'), dtype='float32'
@@ -170,8 +171,8 @@ def train_mlp(
     return losses
 
 
-def test_stage1_bf16():
-    if not paddle.amp.is_bfloat16_supported():
+def test_stage1_fp16():
+    if not paddle.amp.is_float16_supported():
         return
     paddle.distributed.init_parallel_env()
 
@@ -182,19 +183,32 @@ def test_stage1_bf16():
         "pp_degree": 1,
         "sharding_degree": 2,
     }
+    scale_loss = 1024
+    amp_configs = {"init_loss_scaling": scale_loss, "use_pure_fp16": True}
     strategy.hybrid_configs = hybrid_configs
+    strategy.amp_configs = amp_configs
+
     fleet.init(is_collective=True, strategy=strategy)
     mlp = MLP()
     state_dict = mlp.state_dict()
 
-    # stage1 bf16 O1 vs stage1 bf16 O2 main_grad
+    # stage1 fp16 O1 vs stage1 fp16 O2 main_grad
     mlp1 = MLP()
     mlp2 = MLP()
     mlp1.set_state_dict(state_dict)
     mlp2.set_state_dict(state_dict)
-    o1_losses = train_mlp(mlp1, sharding_stage=1, use_pure_bf16=False)
+    o1_losses = train_mlp(
+        mlp1,
+        sharding_stage=1,
+        use_pure_fp16=False,
+        scale_loss=scale_loss,
+    )
     o2_losses = train_mlp(
-        mlp2, sharding_stage=1, use_pure_bf16=True, use_main_grad=True
+        mlp2,
+        sharding_stage=1,
+        use_pure_fp16=True,
+        use_main_grad=True,
+        scale_loss=scale_loss,
     )
     for i in range(len(o1_losses)):
         o1_32_loss = paddle.cast(o1_losses[i], dtype='float32').detach()
@@ -207,9 +221,10 @@ def test_stage1_bf16():
     train_mlp(
         mlp3,
         sharding_stage=1,
-        use_pure_bf16=True,
+        use_pure_fp16=True,
         use_main_grad=True,
         test_scaler=True,
+        scale_loss=scale_loss,
     )
 
     # grad accumulation test
@@ -218,14 +233,19 @@ def test_stage1_bf16():
     mlp5.set_state_dict(state_dict)
     mlp6.set_state_dict(state_dict)
     o1_losses_grad_acc = train_mlp(
-        mlp5, sharding_stage=1, use_pure_bf16=False, accumulate_grad=True
+        mlp5,
+        sharding_stage=1,
+        use_pure_fp16=False,
+        accumulate_grad=True,
+        scale_loss=scale_loss,
     )
     o2_losses_grad_acc = train_mlp(
         mlp6,
         sharding_stage=1,
-        use_pure_bf16=True,
+        use_pure_fp16=True,
         use_main_grad=True,
         accumulate_grad=True,
+        scale_loss=scale_loss,
     )
     for i in range(len(o2_losses_grad_acc)):
         o2_loss_grad_acc = paddle.cast(
@@ -240,4 +260,4 @@ def test_stage1_bf16():
 
 
 if __name__ == '__main__':
-    test_stage1_bf16()
+    test_stage1_fp16()

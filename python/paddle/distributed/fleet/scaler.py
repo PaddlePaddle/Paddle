@@ -31,7 +31,6 @@ def distributed_scaler(scaler):
             return
 
         param_grads = []
-        param_grads_bfp16 = []
         param_grads_fp16 = []
         param_grads_fp32 = []
         if getattr(optimizer, '_param_groups', None) and isinstance(
@@ -54,8 +53,6 @@ def distributed_scaler(scaler):
                             paddle.float16,
                         ]:
                             param_grads_fp16.append(tgt_grad)
-                        elif tgt_grad.dtype in [paddle.bfloat16]:
-                            param_grads_bfp16.append(tgt_grad)
                         else:
                             param_grads_fp32.append(tgt_grad)
         else:
@@ -93,8 +90,6 @@ def distributed_scaler(scaler):
                         paddle.float16,
                     ]:
                         param_grads_fp16.append(tgt_grad)
-                    elif tgt_grad.dtype in [paddle.bfloat16]:
-                        param_grads_bfp16.append(tgt_grad)
                     else:
                         param_grads_fp32.append(tgt_grad)
 
