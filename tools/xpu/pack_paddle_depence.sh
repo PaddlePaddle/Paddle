@@ -26,13 +26,13 @@ XDNN_DIR_NAME=$4
 XCCL_URL=$5
 XCCL_DIR_NAME=$6
 
-wget --no-check-certificate ${XRE_URL} -c -q -O xre.tar.gz
+wget --no-check-certificate ${XRE_URL} -q -O xre.tar.gz
 tar xvf xre.tar.gz
 
-wget --no-check-certificate ${XDNN_URL} -c -q -O xdnn.tar.gz
+wget --no-check-certificate ${XDNN_URL} -q -O xdnn.tar.gz
 tar xvf xdnn.tar.gz
 
-wget --no-check-certificate ${XCCL_URL} -c -q -O xccl.tar.gz
+wget --no-check-certificate ${XCCL_URL} -q -O xccl.tar.gz
 tar xvf xccl.tar.gz
 
 mkdir -p xpu/include/xpu

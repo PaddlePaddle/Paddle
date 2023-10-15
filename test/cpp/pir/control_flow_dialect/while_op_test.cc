@@ -14,7 +14,7 @@
 #include <gtest/gtest.h>
 #include <iostream>
 
-#include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/builder.h"
@@ -41,9 +41,7 @@ TEST(while_op_test, base) {
       builder.Build<FullOp>(std::vector<int64_t>{1}, 10, phi::DataType::INT32)
           .out();
 
-  auto while_op = builder.Build<WhileOp>(
-      std::vector<pir::Value>{i, ten},
-      std::vector<pir::Type>{builder.int32_type(), builder.int32_type()});
+  auto while_op = builder.Build<WhileOp>(std::vector<pir::Value>{i, ten});
 
   // while(i < ten)
   pir::Block* cond_block = while_op.cond_block();
@@ -52,8 +50,7 @@ TEST(while_op_test, base) {
   builder.SetInsertionPointToStart(cond_block);
   auto cond_value =
       builder.Build<LessThanOp>(cond_i_argument, cond_ten_argument).out();
-  builder.Build<pir::CondYieldOp>(
-      cond_value, std::vector<pir::Value>{cond_i_argument, cond_ten_argument});
+  builder.Build<pir::YieldOp>(std::vector<pir::Value>{cond_value});
 
   // { i = i + 1}
   pir::Block* body_block = while_op.body_block();

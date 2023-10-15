@@ -353,6 +353,10 @@ std::shared_ptr<InterpreterCore> CreateNewIRInterpreterCoreInfoToCache(
   return core;
 }
 
+bool TensorSortHelper(const paddle::Tensor &t1, const paddle::Tensor &t2) {
+  return t1.name() < t2.name();
+}
+
 std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
     const paddle::framework::BlockDesc *forward_global_block,
     const paddle::framework::BlockDesc *backward_global_block,
@@ -398,7 +402,9 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
   }
 
   std::set<std::string> input_param_names;
-  for (auto &param : params) {
+  auto sorted_params = params;
+  std::sort(sorted_params.begin(), sorted_params.end(), TensorSortHelper);
+  for (auto &param : sorted_params) {
     auto &name = param.name();
     auto p = param.place().GetType();
 
@@ -515,6 +521,8 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
   for (auto &t : x_grad) {
     param_grad_names.push_back(t->name());
   }
+
+  std::sort(param_grad_names.begin(), param_grad_names.end());
   for (auto &name : param_grad_names) {
     if (name == "@EMPTY@") {
       continue;

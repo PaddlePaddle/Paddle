@@ -51,7 +51,7 @@ class JitKernelOp : public ::pir::Op<JitKernelOp> {
 
   hlir::framework::Instruction* instruction();
 
-  void Verify();
+  void VerifySig();
 };
 
 }  // namespace dialect

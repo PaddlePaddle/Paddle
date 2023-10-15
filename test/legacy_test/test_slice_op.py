@@ -76,6 +76,7 @@ class TestSliceOp(OpTest):
             max_relative_error=0.006,
             check_prim=True,
             check_new_ir=True,
+            check_prim_pir=True,
         )
 
 
@@ -166,6 +167,7 @@ class TestSliceOp_decs_dim(OpTest):
             max_relative_error=0.006,
             check_prim=True,
             check_new_ir=True,
+            check_prim_pir=True,
         )
 
 
@@ -507,7 +509,7 @@ class TestFP16(OpTest):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
             self.check_output_with_place(
-                place, check_prim=True, check_new_ir=True
+                place, check_prim=True, check_new_ir=True, check_prim_pir=True
             )
 
     def test_check_grad_normal(self):
@@ -520,6 +522,7 @@ class TestFP16(OpTest):
                 'Out',
                 check_prim=True,
                 check_new_ir=True,
+                check_prim_pir=True,
             )
 
 
@@ -555,7 +558,7 @@ class TestFP16_2(OpTest):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
             self.check_output_with_place(
-                place, check_prim=True, check_new_ir=True
+                place, check_prim=True, check_new_ir=True, check_prim_pir=True
             )
 
     def test_check_grad_normal(self):
@@ -568,6 +571,7 @@ class TestFP16_2(OpTest):
                 numeric_grad_delta=0.5,
                 check_prim=True,
                 check_new_ir=True,
+                check_prim_pir=True,
             )
 
 
@@ -600,7 +604,13 @@ class TestBF16(OpTest):
         self.check_output(check_new_ir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', check_prim=True, check_new_ir=True)
+        self.check_grad(
+            ['Input'],
+            'Out',
+            check_prim=True,
+            check_new_ir=True,
+            check_prim_pir=True,
+        )
 
 
 # Test python API

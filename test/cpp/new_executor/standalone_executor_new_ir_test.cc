@@ -23,6 +23,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 #include "paddle/fluid/framework/new_executor/new_ir_interpreter.h"
+#include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
@@ -43,6 +44,7 @@ PD_DECLARE_KERNEL(full_int_array, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(uniform, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(sqrt, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(less_than, CPU, ALL_LAYOUT);
 
 bool simple_cmp(float a, float b) { return std::abs((a - b) / a) < 1e-5; }
 
@@ -276,6 +278,79 @@ TEST(StandaloneExecutor, if_op) {
 
   EXPECT_EQ(res0, true);
   EXPECT_EQ(res1, true);
+}
+
+TEST(StandaloneExecutor, while_op) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<pir::ControlFlowDialect>();
+
+  pir::Program program(ctx);
+  pir::Block* block = program.block();
+  pir::Builder builder(ctx, block);
+
+  auto i = builder
+               .Build<paddle::dialect::FullOp>(
+                   std::vector<int64_t>{1}, 1, phi::DataType::INT32)
+               .out();
+
+  auto ten = builder
+                 .Build<paddle::dialect::FullOp>(
+                     std::vector<int64_t>{1}, 10, phi::DataType::INT32)
+                 .out();
+
+  auto while_op =
+      builder.Build<paddle::dialect::WhileOp>(std::vector<pir::Value>{i, ten});
+
+  // while(i < ten)
+  pir::Block* cond_block = while_op.cond_block();
+  auto cond_i_argument = cond_block->AddArgument(i.type());
+  auto cond_ten_argument = cond_block->AddArgument(ten.type());
+  builder.SetInsertionPointToStart(cond_block);
+  auto cond_value = builder
+                        .Build<paddle::dialect::LessEqualOp>(cond_i_argument,
+                                                             cond_ten_argument)
+                        .out();
+  builder.Build<pir::YieldOp>(std::vector<pir::Value>{cond_value});
+
+  // { i = i + 1}
+  pir::Block* body_block = while_op.body_block();
+  auto body_i_argument = body_block->AddArgument(i.type());
+  auto body_ten_argument = body_block->AddArgument(ten.type());
+  builder.SetInsertionPointToStart(body_block);
+  auto one = builder
+                 .Build<paddle::dialect::FullOp>(
+                     std::vector<int64_t>{1}, 1, phi::DataType::INT32)
+                 .out();
+  auto new_i =
+      builder.Build<paddle::dialect::AddOp>(body_i_argument, one).out();
+  builder.Build<pir::YieldOp>(
+      std::vector<pir::Value>{new_i, body_ten_argument});
+
+  builder.SetInsertionPointAfter(while_op);
+
+  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
+
+  auto place = platform::CPUPlace();
+  Scope scope;
+  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
+
+  std::stringstream os;
+  os << reinterpret_cast<NewIRInterpreter*>(
+      const_cast<InterpreterBaseImpl*>(test_core.Impl()));
+  std::string out_name = os.str() + "_inner_var_2";
+  test_core.SetSkipGcVars({out_name});
+
+  test_core.Run({});
+
+  auto out_tensor =
+      test_core.local_scope() == nullptr
+          ? scope.FindVar(out_name)->Get<phi::DenseTensor>()
+          : test_core.local_scope()->FindVar(out_name)->Get<phi::DenseTensor>();
+
+  bool res0 = out_tensor.data<int>()[0] == 11;
+
+  EXPECT_EQ(res0, true);
 }
 
 }  // namespace framework
