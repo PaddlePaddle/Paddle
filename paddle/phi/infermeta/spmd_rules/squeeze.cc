@@ -29,74 +29,59 @@ namespace distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
-std::vector<DimTrans*> MakeSqueezeDimTransWithoutAxis(
-    const std::vector<int64_t>& x_shape, std::vector<int64_t>* out_shape) {
-  std::vector<DimTrans*> ret;
-
+void MakeSqueezeDimTransWithoutAxis(const std::vector<int64_t>& x_shape,
+                                    std::vector<int64_t>* out_shape,
+                                    std::vector<DimTrans*>* trans) {
   for (int64_t i = 0, n = static_cast<int64_t>(x_shape.size()); i < n; i++) {
     if (x_shape[i] != 1) {
-      ret.emplace_back(new InputDim(i));
+      trans->emplace_back(new InputDim(i));
       out_shape->emplace_back(x_shape[i]);
     }
   }
-
-  return ret;
 }
 
-std::vector<DimTrans*> MakeSqueezeDimTransWithAxis(
-    const std::vector<int64_t>& x_shape,
-    std::vector<int64_t>* out_shape,
-    const std::vector<int64_t>& axis) {
-  std::vector<DimTrans*> ret;
-
+void MakeSqueezeDimTransWithAxis(const std::vector<int64_t>& x_shape,
+                                 std::vector<int64_t>* out_shape,
+                                 const std::vector<int64_t>& axis,
+                                 std::vector<DimTrans*>* trans) {
   for (int64_t i = 0, n = static_cast<int64_t>(x_shape.size()); i < n; i++) {
-    ret.emplace_back(new InputDim(i));
+    trans->emplace_back(new InputDim(i));
     out_shape->emplace_back(x_shape[i]);
   }
 
   for (int64_t i = 0, n = static_cast<int64_t>(axis.size()); i < n; i++) {
     if (x_shape[axis[i]] == 1) {
-      ret.erase(ret.begin() + axis[i]);
+      trans->erase(trans->begin() + axis[i]);
       out_shape->erase(out_shape->begin() + axis[i]);
     }
   }
-
-  return ret;
 }
 
-std::vector<DimTrans*> MakeSqueezeDimTransReverseWithoutAxis(
-    const std::vector<int64_t>& x_shape) {
-  std::vector<DimTrans*> ret;
-
+void MakeSqueezeDimTransReverseWithoutAxis(const std::vector<int64_t>& x_shape,
+                                           std::vector<DimTrans*>* trans) {
   for (int64_t i = 0, j = 0, n = static_cast<int64_t>(x_shape.size()); i < n;
        i++) {
     if (x_shape[i] != 1) {
-      ret.emplace_back(new InputDim(j++));
+      trans->emplace_back(new InputDim(j++));
     } else {
-      ret.emplace_back(new Singleton());
+      trans->emplace_back(new Singleton());
     }
   }
-
-  return ret;
 }
 
-std::vector<DimTrans*> MakeSqueezeDimTransReverseWithAxis(
-    const std::vector<int64_t>& x_shape,
-    const std::vector<int64_t>& out_shape,
-    const std::vector<int64_t>& axis) {
-  std::vector<DimTrans*> ret;
-
+void MakeSqueezeDimTransReverseWithAxis(const std::vector<int64_t>& x_shape,
+                                        const std::vector<int64_t>& out_shape,
+                                        const std::vector<int64_t>& axis,
+                                        std::vector<DimTrans*>* trans) {
   for (int64_t i = 0, n = static_cast<int64_t>(out_shape.size()); i < n; i++) {
-    ret.emplace_back(new InputDim(i));
+    trans->emplace_back(new InputDim(i));
   }
 
   for (int64_t i = 0, n = static_cast<int64_t>(axis.size()); i < n; i++) {
     if (x_shape[axis[i]] == 1) {
-      ret.emplace(ret.begin() + axis[i], new Singleton());
+      trans->emplace(trans->begin() + axis[i], new Singleton());
     }
   }
-
-  return ret;
 }
 
 bool SqueezeCompare(const int64_t& a, const int64_t& b) { return a > b; }
@@ -125,7 +110,7 @@ SpmdInfo SqueezeInferSpmd(const DistMetaTensor& x,
   std::vector<int64_t> out_shape;
 
   if (static_cast<int64_t>(axis.size()) == 0) {
-    trans = MakeSqueezeDimTransWithoutAxis(x_shape, &out_shape);
+    MakeSqueezeDimTransWithoutAxis(x_shape, &out_shape, &trans);
   } else {
     std::vector<int64_t> axis_copy(axis);
     for (int64_t i = 0, n = static_cast<int64_t>(axis_copy.size()); i < n;
@@ -135,7 +120,7 @@ SpmdInfo SqueezeInferSpmd(const DistMetaTensor& x,
       }
     }
     std::sort(axis_copy.begin(), axis_copy.end(), SqueezeCompare);
-    trans = MakeSqueezeDimTransWithAxis(x_shape, &out_shape, axis_copy);
+    MakeSqueezeDimTransWithAxis(x_shape, &out_shape, axis_copy, &trans);
   }
 
   // Step2: Infer the dims mapping of input (if reshard is
@@ -194,7 +179,7 @@ SpmdInfo SqueezeInferSpmdReverse(const DistMetaTensor& x,
   std::vector<DimTrans*> trans;
 
   if (static_cast<int64_t>(axis.size()) == 0) {
-    trans = MakeSqueezeDimTransReverseWithoutAxis(x_shape);
+    MakeSqueezeDimTransReverseWithoutAxis(x_shape, &trans);
   } else {
     std::vector<int64_t> axis_copy(axis);
     for (int64_t i = 0, n = static_cast<int64_t>(axis_copy.size()); i < n;
@@ -204,7 +189,7 @@ SpmdInfo SqueezeInferSpmdReverse(const DistMetaTensor& x,
       }
     }
     std::sort(axis_copy.begin(), axis_copy.end(), SqueezeReverseCompare);
-    trans = MakeSqueezeDimTransReverseWithAxis(x_shape, out_shape, axis_copy);
+    MakeSqueezeDimTransReverseWithAxis(x_shape, out_shape, axis_copy, &trans);
   }
 
   // Step2: Infer the dims mapping of input with
