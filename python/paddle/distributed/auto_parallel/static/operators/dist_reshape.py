@@ -56,6 +56,8 @@ class DistributedReshape2(DistributedOperatorImplContainer):
         out_name = op_desc.output('Out')[0]
         xshape_name = op_desc.output('XShape')[0]
         shape = op_desc.attr('shape')
+        if shape == []:
+            return False
 
         x_spec = get_dist_tensor_spec(dist_op, x_name)
         output_spec = get_dist_tensor_spec(dist_op, out_name, False)
