@@ -121,7 +121,7 @@ def train_mlp(
             grad = paddle.rand(param.shape, dtype=param.dtype)
             model._get_scaled_grad_fn(param)(grad)
             param.grad = grad
-            model._get_scaled_grad_fn(param)(grad)
+            model._get_scaled_grad_fn(param)(None)
             return
     else:
         model = paddle.DataParallel(model)
