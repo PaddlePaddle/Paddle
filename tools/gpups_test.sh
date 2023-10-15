@@ -29,7 +29,10 @@ function collect_failed_tests() {
 
 serial_list="^test_conv2d_op$|\
 ^test_conv2d_transpose_op$|\
-^test_conv3d_op$"
+^test_conv3d_op$|\
+^test_dygraph_sharding_stage1_bf16$|\
+^test_dygraph_sharding_stage2_bf16$|\
+^test_dygraph_sharding_stage3_bf16$|"
 
 parallel_list="^init_phi_test$|\
 ^operator_test$|\
@@ -58,9 +61,6 @@ parallel_list="^init_phi_test$|\
 ^test_custom_kernel$|\
 ^test_dist_fleet_ps11$|\
 ^test_dist_fleet_ps12$|\
-^test_dygraph_sharding_stage1_bf16$|\
-^test_dygraph_sharding_stage2_bf16$|\
-^test_dygraph_sharding_stage3_bf16$|\
 ^test_executor_feed_non_tensor$|\
 ^test_flash_attention$|\
 ^test_fused_adam_op$|\
