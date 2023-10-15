@@ -45,6 +45,7 @@ __all__ = [
     'MultiplicativeDecay',
     'OneCycleLR',
     'CyclicLR',
+    'LinearLR',
 ]
 
 
@@ -2227,6 +2228,125 @@ class CyclicLR(LRScheduler):
         lr = self.base_lr + base_height * self.scale_fn(eval(self.scale_mode))
 
         return lr
+
+
+class LinearLR(LRScheduler):
+    r"""
+    Set the learning rate according to linear scheduler.
+    The learning rate will be firstly multiplied by start_factor and linearly increase to end learning rate.
+
+    Args:
+        learning_rate (float): The initial learning rate. It is a python float number.
+        total_steps (int): Number of iterations that the learning_rate reaches end learning_rate.
+        start_factor (float): Start learning rate is defined by `start_factor * learning_rate` . Default: 1./3.
+        end_factor (float) End learning rate is defined by `end_factor * learning_rate`. Default: 1.0.
+        last_epoch (int, optional): The index of last epoch. Can be set to restart training.Default: -1, means initial learning rate.
+        verbose: (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
+
+    Returns:
+        ``LinearLR`` instance to schedule learning rate.
+
+    Examples:
+        .. code-block:: python
+            :name: code-dynamic
+
+            >>> # Example1: train on default dynamic graph mode
+            >>> import paddle
+            >>> import numpy as np
+
+            >>> # train on default dynamic graph mode
+            >>> linear = paddle.nn.Linear(10, 10)
+            >>> scheduler = paddle.optimizer.lr.LinearLR(learning_rate=0.5, total_steps=5, verbose=True)
+            >>> sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
+            >>> for epoch in range(5):
+            ...     for batch_id in range(20):
+            ...         x = paddle.uniform([10, 10])
+            ...         out = linear(x)
+            ...         loss = paddle.mean(out)
+            ...         loss.backward()
+            ...         sgd.step()
+            ...         sgd.clear_gradients()
+            ...         scheduler.step()
+
+        .. code-block:: python
+            :name: code-static
+
+            >>> # Example2: train on static graph mode
+            >>> import paddle
+            >>> import numpy as np
+            >>> paddle.enable_static()
+            >>> main_prog = paddle.static.Program()
+            >>> start_prog = paddle.static.Program()
+            >>> with paddle.static.program_guard(main_prog, start_prog):
+            ...     x = paddle.static.data(name='x', shape=[None, 4, 5])
+            ...     y = paddle.static.data(name='y', shape=[None, 4, 5])
+            ...     z = paddle.static.nn.fc(x, 100)
+            ...     loss = paddle.mean(z)
+            ...     scheduler = paddle.optimizer.lr.LinearLR(learning_rate=0.5,
+            ...        total_steps=5, verbose=True)
+            ...     sgd = paddle.optimizer.SGD(learning_rate=scheduler)
+            ...     sgd.minimize(loss)
+            ...
+            >>> exe = paddle.static.Executor()
+            >>> exe.run(start_prog)
+            >>> for epoch in range(5):
+            ...     for batch_id in range(20):
+            ...         out = exe.run(
+            ...             main_prog,
+            ...             feed={
+            ...                 'x': np.random.randn(3, 4, 5).astype('float32'),
+            ...                 'y': np.random.randn(3, 4, 5).astype('float32')
+            ...             },
+            ...             fetch_list=loss.name)
+            ...         scheduler.step()
+    """
+
+    def __init__(
+        self,
+        learning_rate,
+        total_steps,
+        start_factor=1.0 / 3,
+        end_factor=1.0,
+        last_epoch=-1,
+        verbose=False,
+    ):
+        if start_factor > 1.0 or start_factor <= 0:
+            raise ValueError(
+                "`start_factor` must be greater than 0 and less or equal to 1, but got {}".format(
+                    start_factor
+                )
+            )
+
+        if end_factor > 1.0 or end_factor < 0:
+            raise ValueError(
+                "`end_factor` must be greater than 0 and less than 1, but got {}".format(
+                    end_factor
+                )
+            )
+
+        if total_steps <= 0:
+            raise ValueError(
+                f"`total_steps` must be greater than 0, but got {total_steps}"
+            )
+
+        self.start_factor = start_factor
+        self.end_factor = end_factor
+        self.total_steps = total_steps
+
+        super().__init__(learning_rate, last_epoch, verbose)
+
+    def get_lr(self):
+        if self.last_epoch == 0:
+            return self.base_lr * self.start_factor
+        elif self.last_epoch > self.total_steps:
+            return self.last_lr
+        else:
+            base_lr = self.total_steps * self.start_factor
+            cur_factor = self.end_factor - self.start_factor
+            factor = 1.0 + cur_factor / (
+                base_lr + (self.last_epoch - 1) * cur_factor
+            )
+            return self.last_lr * factor
 
 
 def autoincreased_step_counter(counter_name=None, begin=1, step=1):

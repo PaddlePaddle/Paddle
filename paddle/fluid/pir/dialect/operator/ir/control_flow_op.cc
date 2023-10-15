@@ -19,6 +19,7 @@ paddle::dialect::IfOp, paddle::dialect::WhileOp
 
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/builder.h"
+#include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/ir_printer.h"
 #include "paddle/pir/core/operation_utils.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
@@ -109,14 +110,82 @@ void IfOp::Print(pir::IrPrinter &printer) {
   }
   os << "\n }";
 }
-void IfOp::Verify() {}
+void IfOp::VerifySig() {
+  VLOG(4) << "Start Verifying inputs, outputs and attributes for: IfOp.";
+  auto input_size = num_operands();
+  PADDLE_ENFORCE_EQ(
+      input_size,
+      1u,
+      phi::errors::PreconditionNotMet(
+          "The size %d of inputs must be equal to 1.", input_size));
+
+  if ((*this)->operand_source(0).type().isa<pir::DenseTensorType>()) {
+    PADDLE_ENFORCE(
+        (*this)
+            ->operand_source(0)
+            .type()
+            .dyn_cast<pir::DenseTensorType>()
+            .dtype()
+            .isa<pir::BoolType>(),
+        phi::errors::PreconditionNotMet(
+            "Type validation failed for the 1th input, it should be a "
+            "bool DenseTensorType."));
+  }
+
+  PADDLE_ENFORCE_EQ((*this)->num_regions(),
+                    2u,
+                    phi::errors::PreconditionNotMet(
+                        "The size %d of regions must be equal to 2.",
+                        (*this)->num_regions()));
+}
+
+void IfOp::VerifyRegion() {
+  VLOG(4) << "Start Verifying sub regions for: IfOp.";
+  PADDLE_ENFORCE_EQ(
+      (*this)->region(0).size(),
+      1u,
+      phi::errors::PreconditionNotMet("The size %d of true_region must be 1.",
+                                      (*this)->region(0).size()));
+
+  if ((*this)->num_results() != 0) {
+    PADDLE_ENFORCE_EQ(
+        (*this)->region(0).size(),
+        (*this)->region(1).size(),
+        phi::errors::PreconditionNotMet("The size %d of true_region must be "
+                                        "equal to the size %d of false_region.",
+                                        (*this)->region(0).size(),
+                                        (*this)->region(1).size()));
+
+    auto *true_last_op = (*this)->region(0).front()->back();
+    auto *false_last_op = (*this)->region(1).front()->back();
+    PADDLE_ENFORCE_EQ(true_last_op->isa<pir::YieldOp>(),
+                      true,
+                      phi::errors::PreconditionNotMet(
+                          "The last of true block must be YieldOp"));
+    PADDLE_ENFORCE_EQ(true_last_op->num_operands(),
+                      (*this)->num_results(),
+                      phi::errors::PreconditionNotMet(
+                          "The size of last of true block op's input must be "
+                          "equal to IfOp's outputs num."));
+    PADDLE_ENFORCE_EQ(false_last_op->isa<pir::YieldOp>(),
+                      true,
+                      phi::errors::PreconditionNotMet(
+                          "The last of false block must be YieldOp"));
+    PADDLE_ENFORCE_EQ(false_last_op->num_operands(),
+                      (*this)->num_results(),
+                      phi::errors::PreconditionNotMet(
+                          "The size of last of false block op's input must be "
+                          "equal to IfOp's outputs num."));
+  }
+}
 
 void WhileOp::Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    const std::vector<pir::Value> &inputs,
-                    const std::vector<pir::Type> &output_types) {
+                    const std::vector<pir::Value> &inputs) {
   argument.AddInputs(inputs);
-  argument.AddOutputs(output_types);
+  for (auto val : inputs) {
+    argument.AddOutput(val.type());
+  }
   argument.AddRegions(2u);
 }
 pir::Block *WhileOp::cond_block() {
