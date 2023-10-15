@@ -163,7 +163,7 @@ class TestUnsqueezeSPMDRule(unittest.TestCase):
 
         # shape: [8, 16] --> [1, 8, 16] (input --> output)
         # dims_mapping: [-1, 0, 1] --> [0, 1], [-1, 0, 1] (output --> input, output)
-        self.output_dist_tensor_spec.shape = [8, 16]
+        self.output_dist_tensor_spec.shape = [1, 8, 16]
         self.output_dist_tensor_spec.set_dims_mapping([-1, 0, 1])
         self.attrs['axis'] = [0]
         result_dist_attrs = self.rule.infer_backward(
@@ -181,7 +181,7 @@ class TestUnsqueezeSPMDRule(unittest.TestCase):
 
         # shape: [8, 16] --> [8, 16, 1] (input --> output)
         # dims_mapping: [0, 1, -1] --> [0, 1], [0, 1, -1] (output --> input, output)
-        self.output_dist_tensor_spec.shape = [8, 16]
+        self.output_dist_tensor_spec.shape = [8, 16, 1]
         self.output_dist_tensor_spec.set_dims_mapping([0, 1, -1])
         self.attrs['axis'] = [-1]
         result_dist_attrs = self.rule.infer_backward(
@@ -197,7 +197,7 @@ class TestUnsqueezeSPMDRule(unittest.TestCase):
 
         # shape: [8, 16] --> [8, 1, 1, 16] (input --> output)
         # dims_mapping: [0, -1, -1, 1] --> [0, 1], [0, -1, -1, 1] (output --> input, output)
-        self.output_dist_tensor_spec.shape = [8, 16]
+        self.output_dist_tensor_spec.shape = [8, 1, 1, 16]
         self.output_dist_tensor_spec.set_dims_mapping([0, -1, -1, 1])
         self.attrs['axis'] = [1, 2]
         result_dist_attrs = self.rule.infer_backward(
@@ -215,7 +215,7 @@ class TestUnsqueezeSPMDRule(unittest.TestCase):
 
         # shape: [8, 16] --> [1, 1, 1, 8, 16] (input --> output)
         # dims_mapping: [-1, -1, -1, 0, 1] --> [0, 1], [-1, -1, -1, 0, 1] (output --> input, output)
-        self.output_dist_tensor_spec.shape = [8, 16]
+        self.output_dist_tensor_spec.shape = [1, 1, 1, 8, 16]
         self.output_dist_tensor_spec.set_dims_mapping([-1, -1, -1, 0, 1])
         self.attrs['axis'] = [0, 1, 2]
         result_dist_attrs = self.rule.infer_backward(
@@ -233,7 +233,7 @@ class TestUnsqueezeSPMDRule(unittest.TestCase):
 
         # shape: [8, 16] --> [1, 8, 16] (input --> output)
         # dims_mapping: [-1, 1, 0] --> [1, 0], [-1, 1, 0] (output --> input, output)
-        self.output_dist_tensor_spec.shape = [8, 16]
+        self.output_dist_tensor_spec.shape = [1, 8, 16]
         self.output_dist_tensor_spec.set_dims_mapping([-1, 1, 0])
         self.attrs['axis'] = [0]
         result_dist_attrs = self.rule.infer_backward(
@@ -251,7 +251,7 @@ class TestUnsqueezeSPMDRule(unittest.TestCase):
 
         # shape: [8, 16] --> [8, 16, 1] (input --> output)
         # dims_mapping: [1, 0, -1] --> [1, 0], [1, 0, -1] (output --> input, output)
-        self.output_dist_tensor_spec.shape = [8, 16]
+        self.output_dist_tensor_spec.shape = [8, 16, 1]
         self.output_dist_tensor_spec.set_dims_mapping([1, 0, -1])
         self.attrs['axis'] = [-1]
         result_dist_attrs = self.rule.infer_backward(
@@ -267,7 +267,7 @@ class TestUnsqueezeSPMDRule(unittest.TestCase):
 
         # shape: [8, 16] --> [8, 1, 1, 16] (input --> output)
         # dims_mapping: [1, -1, -1, 0] --> [1, 0], [1, -1, -1, 0] (output --> input, output)
-        self.output_dist_tensor_spec.shape = [8, 16]
+        self.output_dist_tensor_spec.shape = [8, 1, 1, 16]
         self.output_dist_tensor_spec.set_dims_mapping([1, -1, -1, 0])
         self.attrs['axis'] = [1, 2]
         result_dist_attrs = self.rule.infer_backward(
@@ -285,7 +285,7 @@ class TestUnsqueezeSPMDRule(unittest.TestCase):
 
         # shape: [8, 16] --> [1, 1, 1, 8, 16] (input --> output)
         # dims_mapping: [-1, -1, -1, 1, 0] --> [1, 0], [-1, -1, -1, 1, 0] (output --> input, output)
-        self.output_dist_tensor_spec.shape = [8, 16]
+        self.output_dist_tensor_spec.shape = [1, 1, 1, 8, 16]
         self.output_dist_tensor_spec.set_dims_mapping([-1, -1, -1, 1, 0])
         self.attrs['axis'] = [0, 1, 2]
         result_dist_attrs = self.rule.infer_backward(
