@@ -152,7 +152,7 @@ def monkey_patch_opresult():
         """
         if len(self.shape) > 1:
             raise TypeError(
-                f"Required input var should be 1-D Variable, but received {self.shape}"
+                f"Required input var should be 1-D OpResult, but received {self.shape}"
             )
         return self
 
