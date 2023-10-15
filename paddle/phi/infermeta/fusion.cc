@@ -2307,6 +2307,12 @@ void FusionSeqConvEltAddReluInferMeta(const MetaTensor& x,
                                       MetaTensor* col_mat) {
   auto x_dims = x.dims();
   auto w_dims = filter.dims();
+  PADDLE_ENFORCE_GT(
+      context_length,
+      0,
+      phi::errors::InvalidArgument("context_length should be greater than 0, "
+                                   "but received context_length is: %d",
+                                   context_length));
   PADDLE_ENFORCE_EQ(context_stride,
                     1,
                     phi::errors::InvalidArgument(
@@ -2339,7 +2345,7 @@ void FusionSeqConvEltAddReluInferMeta(const MetaTensor& x,
                         x_dims[1]));
 
   PADDLE_ENFORCE_GT(
-      context_start,
+      context_length + context_start,
       0,
       phi::errors::InvalidArgument(
           "contextStart size should be smaller than contextLength, "
@@ -2348,7 +2354,7 @@ void FusionSeqConvEltAddReluInferMeta(const MetaTensor& x,
           context_length,
           context_start));
   out->set_dims({x_dims[0], w_dims[1]});
-  out->set_dims({x_dims[0], w_dims[0]});
+  col_mat->set_dims({x_dims[0], w_dims[0]});
   out->share_lod(x);
 }
 
