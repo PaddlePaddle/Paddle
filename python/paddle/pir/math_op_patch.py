@@ -145,6 +145,17 @@ def monkey_patch_opresult():
         """
         return len(self.shape)
 
+    def _item(self):
+        """
+        In order to be compatible with the item interface introduced by the dynamic graph, it does nothing but returns self.
+        It will check that the shape must be a 1-D tensor
+        """
+        if len(self.shape) > 1:
+            raise TypeError(
+                f"Required input var should be 1-D Variable, but received {self.shape}"
+            )
+        return self
+
     def _scalar_div_(var, value):
         return paddle.scale(var, 1.0 / value, 0.0)
 
@@ -249,6 +260,7 @@ def monkey_patch_opresult():
 
     opresult_methods = [
         ('place', place),
+        ('item', _item),
         ('dim', dim),
         ('ndimension', ndimension),
         ('ndim', _ndim_),
