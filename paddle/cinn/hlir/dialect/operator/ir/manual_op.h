@@ -36,7 +36,7 @@ class GroupOp : public pir::Op<GroupOp> {
   pir::Block *block();
   std::vector<pir::Operation *> ops();
 
-  void Verify();
+  void VerifySig();
   void Print(pir::IrPrinter &printer);  // NOLINT
 };
 

@@ -99,7 +99,7 @@ class {op_name} : public pir::Op<{op_name}{interfaces}{traits}> {{
   {build_mutable_attr_is_input}
   {build_attr_num_over_1}
   {build_mutable_attr_is_input_attr_num_over_1}
-  void Verify();
+  void VerifySig();
 {get_inputs_and_outputs}
 {exclusive_interface}
 }};

@@ -15,7 +15,13 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    IrMode,
+    ToStaticMode,
+    disable_test_case,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 
@@ -24,16 +30,17 @@ class Net(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
-    @paddle.jit.to_static
     def forward(self, x):
         out = x + 1
         return out
 
 
-class TestBackwardWithoutParams(unittest.TestCase):
+# @dy2static_unittest
+class TestBackwardWithoutParams(Dy2StTestBase):
     @test_and_compare_with_new_ir(False)
+    @disable_test_case((ToStaticMode.SOT, IrMode.PIR))
     def test_run(self):
-        net = Net()
+        net = paddle.jit.to_static(Net())
 
         x = paddle.ones([2, 2])
         x.stop_gradient = False
@@ -47,7 +54,6 @@ class ZeroSizeNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
-    @paddle.jit.to_static
     def forward(self, x):
         y = paddle.randn((0,))
         out = paddle.nn.functional.relu(x)
@@ -55,10 +61,12 @@ class ZeroSizeNet(paddle.nn.Layer):
         return y, out
 
 
-class TestZeroSizeNet(unittest.TestCase):
+# @dy2static_unittest
+class TestZeroSizeNet(Dy2StTestBase):
     @test_and_compare_with_new_ir(False)
+    @disable_test_case((ToStaticMode.SOT, IrMode.PIR))
     def test_run(self):
-        net = ZeroSizeNet()
+        net = paddle.jit.to_static(ZeroSizeNet())
         x = paddle.ones([2, 2])
         x.stop_gradient = False
         _, out = net(x)

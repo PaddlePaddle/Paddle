@@ -50,7 +50,7 @@ def set_excluded_layers(param_names, main_program=None):
         1. Usage of Dynamic Graph
 
             .. code-block:: python
-                :name: dynamic_graph
+                :name: dynamic-graph
 
                 >>> import paddle
 
@@ -79,7 +79,7 @@ def set_excluded_layers(param_names, main_program=None):
         2. Usage of Static Graph
 
             .. code-block:: python
-                :name: static_graph
+                :name: static-graph
 
                 >>> import paddle
 
@@ -139,7 +139,7 @@ def reset_excluded_layers(main_program=None):
         1. Usage of Dynamic Graph
 
             .. code-block:: python
-                :name: dynamic_graph
+                :name: dynamic-graph
 
                 >>> import paddle
 
@@ -171,7 +171,7 @@ def reset_excluded_layers(main_program=None):
         2. Usage of Static Graph
 
             .. code-block:: python
-                :name: static_graph
+                :name: static-graph
 
                 >>> import paddle
 
@@ -232,7 +232,7 @@ def decorate(optimizer):
         1. Usage of Dynamic Graph
 
             .. code-block:: python
-                :name: dynamic_graph
+                :name: dynamic-graph
 
                 >>> import paddle
 
@@ -265,7 +265,7 @@ def decorate(optimizer):
         2. Usage of Static Graph
 
             .. code-block:: python
-                :name: static_graph
+                :name: static-graph
 
                 >>> import paddle
 
@@ -331,7 +331,7 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
         1. Usage of Dynamic Graph
 
             .. code-block:: python
-                :name: dynamic_graph
+                :name: dynamic-graph
 
                 >>> import paddle
                 >>> import numpy as np
@@ -383,7 +383,7 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
         2. Usage of Static Graph
 
             .. code-block:: python
-                :name: static_graph
+                :name: static-graph
 
                 >>> import paddle
                 >>> import numpy as np
