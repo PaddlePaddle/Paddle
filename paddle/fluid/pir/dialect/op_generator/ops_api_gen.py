@@ -98,6 +98,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'set_value_with_tensor',
     'set_value_with_tensor_',
     'shadow_feed',
+    'rpn_target_assign',
 ]
 
 

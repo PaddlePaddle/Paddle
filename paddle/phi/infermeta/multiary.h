@@ -867,4 +867,14 @@ void FullWithTensorInferMeta(const MetaTensor& shape,
                              DataType dtype,
                              MetaTensor* out);
 
+void RpnTargetAssignInferShape(const MetaTensor& anchor,
+                               const MetaTensor& gt_boxes,
+                               const MetaTensor& is_crowd,
+                               const MetaTensor& im_info,
+                               MetaTensor* location_index,
+                               MetaTensor* score_index,
+                               MetaTensor* target_bbox,
+                               MetaTensor* target_label,
+                               MetaTensor* bbox_inside_weight);
+
 }  // namespace phi

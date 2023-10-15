@@ -120,6 +120,7 @@
     param: [seed]
   kernel:
     func: seed
+    data_type: DataType::INT32
 
 - op : send_v2
   args : (Tensor x, int ring_id = 0, int peer = 0, bool use_calc_stream = false, bool dynamic_shape = false)
@@ -207,3 +208,12 @@
     func: FusedFeedForwardInferMeta
   optional: dropout1_seed, dropout2_seed, linear1_bias, linear2_bias, ln1_scale, ln1_bias, ln2_scale, ln2_bias, ln2_mean, ln2_variance, ln1_mean, ln1_variance, ln1_out
   backward: fused_feedforward_grad
+
+- op: rpn_target_assign_op
+  args: (Tensor anchor, Tensor gt_boxes, Tensor is_crowd, Tensor im_info, float rpn_straddle_thresh, int rpn_batch_size_per_im=256, float rpn_positive_overlap=0.7f, float rpn_negative_overlap=0.3, float rpn_fg_fraction=0.25f, bool use_random=true)
+  output: Tensor(location_index), Tensor(score_index), Tensor(target_bbox), Tensor(target_label), Tensor(bbox_inside_weight)
+  kernel:
+    func: rpn_target_assign
+  infer_meta:
+    func: RpnTargetAssignInferShape
+    param: [anchor, gt_boxes, is_crowd, im_info]

@@ -34,7 +34,9 @@ const std::unordered_set<std::string> LegacyOpList = {
     "pd_op.c_allreduce_max_",
     "pd_op.c_allgather",
     "pd_op.seed",
-    "pd_op.share_data"};
+    "pd_op.share_data",
+    "pd_op.seed",
+    "pd_op.rpn_target_assign"};
 
 enum class AttrType {
   UNDEFINED = 0,

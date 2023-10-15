@@ -4402,6 +4402,46 @@ void FullWithTensorInferMeta(const MetaTensor& shape,
   out->set_dims(make_ddim(std::vector<int64_t>(shape.numel(), -1)));
   out->set_dtype(dtype);
 }
+void RpnTargetAssignInferShape(const MetaTensor& anchor,
+                               const MetaTensor& gt_boxes,
+                               const MetaTensor& is_crowd,
+                               const MetaTensor& im_info,
+                               MetaTensor* location_index,
+                               MetaTensor* score_index,
+                               MetaTensor* target_bbox,
+                               MetaTensor* target_label,
+                               MetaTensor* bbox_inside_weight) {
+  auto anchor_dims = anchor.dims();
+  auto gt_boxes_dims = gt_boxes.dims();
+  auto im_info_dims = im_info.dims();
+  PADDLE_ENFORCE_EQ(anchor_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The dimensions size of Input(Anchor) must be 2. But "
+                        "received dimensions size=[%d], dimensions=[%s].",
+                        anchor_dims.size(),
+                        anchor_dims));
+  PADDLE_ENFORCE_EQ(gt_boxes_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The dimensions size of Input(GtBoxes) must be 2. "
+                        "But received dimensions size=[%d], dimensions=[%s].",
+                        gt_boxes_dims.size(),
+                        gt_boxes_dims));
+  PADDLE_ENFORCE_EQ(im_info_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The dimensions size of Input(ImInfo) must be 2. But "
+                        "received dimensions size=[%d], dimensions=[%s].",
+                        im_info_dims.size(),
+                        im_info_dims));
+
+  location_index->set_dims({-1});
+  score_index->set_dims({-1});
+  target_bbox->set_dims({-1, -1});
+  target_bbox->set_dims({-1, 4});
+  bbox_inside_weight->set_dims({-1, 4});
+}
 
 }  // namespace phi
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);
