@@ -21,6 +21,12 @@ paddle.enable_static()
 
 
 class TestMathOpPatchesPir(unittest.TestCase):
+    def test_item(self):
+        with paddle.pir_utils.IrGuard():
+            x = paddle.static.data(name='x', shape=[3, 2, 1])
+            with self.assertRaises(TypeError):
+                x.item()
+
     def test_some_dim(self):
         with paddle.pir_utils.IrGuard():
             x = paddle.static.data(name='x', shape=[3, 2, 1])
