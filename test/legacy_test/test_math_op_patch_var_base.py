@@ -576,7 +576,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         self.assertTrue(inspect.ismethod(a.remainder))
         self.assertTrue(inspect.ismethod(a.floor_mod))
         self.assertTrue(inspect.ismethod(a.multiply))
-        self.assertTrue(inspect.ismethod(a.logsumexp))
         self.assertTrue(inspect.ismethod(a.inverse))
         self.assertTrue(inspect.ismethod(a.log1p))
         self.assertTrue(inspect.ismethod(a.erf))

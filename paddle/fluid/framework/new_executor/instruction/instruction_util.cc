@@ -20,6 +20,8 @@
 #include <vector>
 
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/event.h"
 #include "paddle/pir/core/builtin_attribute.h"
@@ -29,6 +31,7 @@
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
@@ -148,7 +151,8 @@ OpFuncType AnalyseOpFuncType(pir::Operation* op, const platform::Place& place) {
 
   auto& op_attributes = op->attributes();
 
-  if ((op->dialect()->name() == "pd_kernel") &&
+  if ((op->dialect()->name().compare(paddle::dialect::KernelDialect::name()) ==
+       0) &&
       (op_attributes.count("kernel_key") > 0)) {
     auto kernel_key = op_attributes.at("kernel_key")
                           .dyn_cast<dialect::KernelAttribute>()
@@ -179,12 +183,70 @@ OpFuncType AnalyseOpFuncType(pir::Operation* op, const platform::Place& place) {
       return OpFuncType::kGpuSync;
     }
 
-    if (op_name == "pd_op.shape") {
+    if (op_name.compare(paddle::dialect::ShapeOp::name()) == 0) {
       return OpFuncType::kGpuSync;
     }
   }
 
   return OpFuncType::kGpuAsync;
+}
+
+std::vector<pir::Value> GetYiedOpInputs(pir::Block* block) {
+  std::vector<pir::Value> vec_res;
+
+  if (block && !block->empty() && block->back()->isa<pir::YieldOp>()) {
+    auto* op = block->back();
+    for (size_t i = 0; i < op->num_operands(); ++i) {
+      vec_res.emplace_back(op->operand_source(i));
+    }
+  }
+  return vec_res;
+}
+
+void GetInputIds(pir::Operation* op,
+                 const ValueExecutionInfo& value_exec_info,
+                 std::unordered_map<pir::Value, std::vector<int>>* input_ids) {
+  for (size_t i = 0; i < op->num_operands(); i++) {
+    pir::Value value = op->operand_source(i);
+    if (value && value.type()) {
+      PADDLE_ENFORCE_EQ(
+          value_exec_info.HasValue(value),
+          true,
+          phi::errors::PreconditionNotMet(
+              "input should in name map, [%d] 'th input of [%s] op",
+              i,
+              "if op"));
+      input_ids->emplace(value, GetValueIds(value, value_exec_info));
+    }
+  }
+}
+
+void GetOutsideOpInputs(
+    pir::Block* block,
+    const ValueExecutionInfo& value_exec_info,
+    std::unordered_map<pir::Value, std::vector<int>>* input_ids) {
+  std::unordered_set<pir::Value> inner_outputs;
+  for (auto op : (*block)) {
+    for (size_t i = 0; i < op->num_results(); ++i) {
+      inner_outputs.insert(op->result(i));
+    }
+  }
+
+  for (auto op : (*block)) {
+    for (size_t i = 0; i < op->num_operands(); ++i) {
+      pir::Value value = op->operand_source(i);
+      if (value && (!inner_outputs.count(value))) {
+        PADDLE_ENFORCE_EQ(
+            value_exec_info.HasValue(value),
+            true,
+            phi::errors::PreconditionNotMet(
+                "input should in name map, [%d] 'th input of [%s] op",
+                i,
+                op->name()));
+        input_ids->emplace(value, GetValueIds(value, value_exec_info));
+      }
+    }
+  }
 }
 
 }  // namespace framework

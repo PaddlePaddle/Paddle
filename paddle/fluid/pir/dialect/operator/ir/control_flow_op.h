@@ -41,7 +41,8 @@ class IfOp : public pir::Op<IfOp> {
   pir::Block *true_block();
   pir::Block *false_block();
   void Print(pir::IrPrinter &printer);  // NOLINT
-  void Verify();
+  void VerifySig();
+  void VerifyRegion();
 };
 
 class WhileOp : public pir::Op<WhileOp> {
@@ -53,12 +54,12 @@ class WhileOp : public pir::Op<WhileOp> {
 
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    const std::vector<pir::Value> &inputs,
-                    const std::vector<pir::Type> &output_types);
+                    const std::vector<pir::Value> &inputs);
   pir::Block *cond_block();
   pir::Block *body_block();
   void Print(pir::IrPrinter &printer);  // NOLINT
-  void Verify() {}
+  void VerifySig() {}
+  void VerifyRegion() {}
 };
 
 }  // namespace dialect

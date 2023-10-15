@@ -39,67 +39,6 @@
 namespace paddle {
 namespace framework {
 
-std::vector<pir::Value> GetYiedOpInputs(pir::Block* block) {
-  std::vector<pir::Value> vec_res;
-  for (auto op : (*block)) {
-    if (op->name() == "cf.yield") {
-      for (size_t i = 0; i < op->num_operands(); ++i) {
-        vec_res.push_back(op->operand_source(i));
-      }
-    }
-  }
-  return vec_res;
-}
-
-void GetInputIds(pir::Operation* op,
-                 const ValueExecutionInfo& value_exec_info,
-                 std::unordered_map<pir::Value, std::vector<int>>* input_ids) {
-  for (size_t i = 0; i < op->num_operands(); i++) {
-    pir::Value value = op->operand_source(i);
-    if (value && value.type()) {
-      PADDLE_ENFORCE_EQ(
-          value_exec_info.HasValue(value),
-          true,
-          phi::errors::PreconditionNotMet(
-              "input should in name map, [%d] 'th input of [%s] op",
-              i,
-              "if op"));
-      std::vector<int> inputs_id = GetValueIds(value, value_exec_info);
-      input_ids->emplace(value, inputs_id);
-    }
-  }
-}
-
-void GetOutsideOpInputs(
-    pir::Block* block,
-    const ValueExecutionInfo& value_exec_info,
-    std::unordered_map<pir::Value, std::vector<int>>* input_ids) {
-  std::unordered_set<pir::Value> inner_outputs;
-  for (auto op : (*block)) {
-    for (size_t i = 0; i < op->num_results(); ++i) {
-      inner_outputs.insert(op->result(i));
-    }
-  }
-
-  for (auto op : (*block)) {
-    for (size_t i = 0; i < op->num_operands(); ++i) {
-      pir::Value value = op->operand_source(i);
-      if (value && (!inner_outputs.count(value))) {
-        PADDLE_ENFORCE_EQ(
-            value_exec_info.HasValue(value),
-            true,
-            phi::errors::PreconditionNotMet(
-                "input should in name map, [%d] 'th input of [%s] op",
-                i,
-                op->name()));
-        std::vector<int> inputs_id = GetValueIds(value, value_exec_info);
-
-        input_ids->emplace(value, inputs_id);
-      }
-    }
-  }
-}
-
 CondInstruction::CondInstruction(size_t id,
                                  const platform::Place& place,
                                  pir::Operation* op,
@@ -181,12 +120,20 @@ CondInstruction::CondInstruction(size_t id,
               "input should in name map, [%d] 'th input of [%s] op",
               i,
               "if op"));
-      std::vector<int> outputs_id = GetValueIds(value, *value_exec_info);
-      outputs.emplace(value, outputs_id);
+      outputs.emplace(value, GetValueIds(value, *value_exec_info));
     }
   }
   SetOutputs(outputs);
   VLOG(6) << "finish process inputs outputs index";
+}
+
+CondInstruction::~CondInstruction() {
+  if (true_branch_inter_ != nullptr) {
+    delete true_branch_inter_;
+  }
+  if (false_branch_inter_ != nullptr) {
+    delete false_branch_inter_;
+  }
 }
 
 void CondInstruction::CopyBranchOutput(

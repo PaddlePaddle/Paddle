@@ -1032,7 +1032,9 @@ def get_tensor_with_basic_indexing(
         )
         attrs['infer_flags'] = infer_flags
 
-        if paddle.in_dynamic_mode():
+        from . import in_dynamic_or_pir_mode
+
+        if in_dynamic_or_pir_mode():
             if "StartsTensorList" in inputs.keys():
                 st = inputs['StartsTensorList']
             else:

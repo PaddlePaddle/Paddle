@@ -14,7 +14,7 @@
 
 # verify
 OP_VERIFY_TEMPLATE = """
-void {op_name}::Verify() {{
+void {op_name}::VerifySig() {{
   VLOG(4) << "Start Verifying inputs, outputs and attributes for: {op_name}.";
   VLOG(4) << "Verifying inputs:";
   {{
@@ -36,7 +36,7 @@ void {op_name}::Verify() {{
 """
 
 GRAD_OP_VERIFY_TEMPLATE = """
-void {op_name}::Verify() {{}}
+void {op_name}::VerifySig() {{}}
 """
 
 INPUT_TYPE_CHECK_TEMPLATE = """
