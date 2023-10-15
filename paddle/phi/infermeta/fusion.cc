@@ -2284,7 +2284,7 @@ void FusionGRUInferMeta(const MetaTensor& x,
   DDim out_dims({x_mat_dims[0], frame_size});
   hidden->set_dims(out_dims);
   hidden->share_lod(x);
-  int xx_width;
+  int xx_width = 0;
   if (use_seq) {
     xx_width = static_cast<int>(wx_dims[1]);
   } else {
@@ -2429,6 +2429,6 @@ void FusionSeqExpandConcatFCInferMeta(const std::vector<const MetaTensor*>& x,
   // fcout should be reshape when run since can not get lod in infershape
   // explicit share the ref lod
   // ctx->ShareLoD("X", "Out", 0);
-  // out->share_lod(x);
+  out->share_lod(*x[0]);
 }
 }  // namespace phi
