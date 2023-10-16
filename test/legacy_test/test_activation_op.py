@@ -1815,7 +1815,7 @@ class TestFloor(TestActivation):
         pass
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     # the gradient on floor, ceil, round is undefined.
     # we return zero as gradient, but the numpy return nan
@@ -1835,7 +1835,7 @@ class TestFloor(TestActivation):
                 'Out',
                 check_prim=True,
                 only_check_prim=True,
-                check_new_ir=True,
+                check_pir=True,
             )
 
 
@@ -4666,7 +4666,7 @@ create_test_act_fp16_class(
     check_prim=True,
     grad_check=False,
     enable_cinn=True,
-    check_new_ir=True,
+    check_pir=True,
 )
 create_test_act_fp16_class(TestCos)
 create_test_act_fp16_class(TestTan)
