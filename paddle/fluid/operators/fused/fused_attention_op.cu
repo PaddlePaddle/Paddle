@@ -35,7 +35,29 @@ limitations under the License. */
 #include "paddle/phi/kernels/fusion/gpu/attn_gemm.h"
 #include "paddle/phi/kernels/fusion/gpu/fmha_ref.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_helper.h"
+extern template void phi::funcs::ElementwiseKernel<float>(
+    const KPDevice &ctx,
+    const std::vector<const DenseTensor *> &ins,
+    std::vector<DenseTensor *> *outs,
+    Functor func);
 
+extern template void phi::funcs::ElementwiseKernel<double>(
+    const KPDevice &ctx,
+    const std::vector<const DenseTensor *> &ins,
+    std::vector<DenseTensor *> *outs,
+    Functor func);
+
+extern template void phi::funcs::ElementwiseKernel<phi::dtype::bfloat16>(
+    const KPDevice &ctx,
+    const std::vector<const DenseTensor *> &ins,
+    std::vector<DenseTensor *> *outs,
+    Functor func);
+
+extern template void phi::funcs::ElementwiseKernel<phi::dtype::float16>(
+    const KPDevice &ctx,
+    const std::vector<const DenseTensor *> &ins,
+    std::vector<DenseTensor *> *outs,
+    Functor func);
 namespace phi {
 namespace fusion {
 
