@@ -220,6 +220,10 @@ PD_DEFINE_double(cinn_infer_model_version,
                  "Paddle has different model format in inference model. We use "
                  "a flag to load different versions.");
 
+PD_DEFINE_bool(cinn_print_python_script,
+               BoolFromEnv("FLAGS_cinn_print_python_script", false),
+               "Whether to replace the default printer to python script.");
+
 namespace cinn {
 namespace runtime {
 

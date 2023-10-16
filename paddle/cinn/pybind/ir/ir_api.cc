@@ -177,6 +177,7 @@ void BindNode(py::module *m) {
   expr.def(py::init<ir::Expr &>());
   expr.def(py::init<ir::IrNode *>());
   expr.def(py::init<const ir::Var &>());
+  expr.def(py::init<bool>());
   expr.def(py::init<int32_t>());
   expr.def(py::init<uint32_t>());
   expr.def(py::init<int64_t>());
@@ -492,6 +493,7 @@ void BindIrIr(py::module *m) {
       .def("to_expr_mutable", py::overload_cast<>(&Var::operator ir::Expr))
       .def("to_expr_const",
            py::overload_cast<>(&Var::operator ir::Expr, py::const_))
+          BIND_PYTHON_PRINTER(Var)
       .def("__repr__",
            [](Var &self) -> std::string {
              return llvm::formatv("<cinn.ir.Var {0}>", self->name);
@@ -560,13 +562,18 @@ void BindIrIr(py::module *m) {
   _buffer_
       .def_static(
           "make",
-          py::overload_cast<const std::string &, Type>(&ir::_Buffer_::Make))
+          py::overload_cast<const std::string &,
+                            Type,
+                            const std::vector<Expr> &>(&ir::_Buffer_::Make),
+          py::arg("name"),
+          py::arg("type"),
+          py::arg("shape") = std::vector<Expr>())
       .def_static(
           "make",
           py::overload_cast<const std::string &, const std::vector<Expr> &>(
               &ir::_Buffer_::Make));
   py::class_<ir::Buffer> buffer(*m, "Buffer");
-  buffer.def(py::init<>());
+  buffer.def(py::init<>()) BIND_PYTHON_PRINTER(ir::Buffer);
 
   py::class_<ir::ModuleExpr> module_expr(*m, "ModuleExpr");
   module_expr.def(py::init<const std::vector<Expr> &>());
@@ -579,6 +586,14 @@ void BindIrIr(py::module *m) {
       py::arg("condition"),
       py::arg("true_case"),
       py::arg("false_case") = ir::Expr());
+
+  DefineExprNode<ir::Ramp>(m, "Ramp");
+  py::class_<ir::Ramp> ramp(*m, "Ramp");
+  ramp.def_static("make", &ir::Ramp::Make);
+
+  DefineExprNode<ir::Broadcast>(m, "Broadcast");
+  py::class_<ir::Broadcast> broadcast(*m, "Broadcast");
+  broadcast.def_static("make", &ir::Broadcast::Make);
 }
 
 void BindOperation(py::module *m) {

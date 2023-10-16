@@ -63,7 +63,7 @@ class DataArray:
         elif self.dtype.is_bool():
             np_dtype = "bool"
         else:
-            raise TypeError(f"no support {self.dtype} in CINN")
+            raise TypeError(f"Unsupported {self.dtype} in CINN")
 
         np_arr = np.empty(self.shape, np_dtype)
         assert np_arr.flags["C_CONTIGUOUS"]
@@ -97,7 +97,7 @@ class DataArray:
         }
         dtype_np = str(np_array.dtype).split(".")[-1]
         assert str(dtype_np) in dtype_np_to_common, (
-            str(dtype_np) + " not support in CINN"
+            str(dtype_np) + "Unsupported in CINN"
         )
         assert dtype_np in dtype_np_to_common.keys()
 
