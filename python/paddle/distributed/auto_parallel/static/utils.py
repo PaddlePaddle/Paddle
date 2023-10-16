@@ -2525,20 +2525,14 @@ def wrap_data_for_completion(
     return input_specs, output_specs, attrs
 
 
-def measure_real_op_cost_wrt_program_and_place(program, place, verbose=False):
+def _measure_real_op_cost_wrt_program_and_place_single_pass(
+    program, place, verbose
+):
     '''
-    Description
-    -----------
-    Measuring real op run time with respect to the given "program" and
-    "place" where the "program" is going to be executed.
+    Run op profiling for a single pass. Internal function for API, do not call this
+    function directly.
+    '''
 
-    Parameters
-    -----------
-    program: the program object waiting to be evaluated.
-    place: where the program is going to be executed, can be one of the
-            following types: base.CPUPlace, base.GPUPlace
-    verbose: print info generated during profiling.
-    '''
     assert isinstance(program, Program), (
         '"program" should be a instance of "paddle.base.framework.Program" but got type "%s".'
         % type(program).__name__
@@ -2690,7 +2684,8 @@ def measure_real_op_cost_wrt_program_and_place(program, place, verbose=False):
     exe = _StandaloneExecutor(place, plan, scope)
     exe.run_profile(feed_names)
 
-    # because we run the cloned program, we need to write profiling message to the vanilla program
+    # because we run the cloned program, we need to write profiling
+    # message to the vanilla program
     TABLE_WIDTH = 50
 
     def _format_single_line(idx, op):
@@ -2711,7 +2706,9 @@ def measure_real_op_cost_wrt_program_and_place(program, place, verbose=False):
     main_block = program.global_block()
     _verbose_print("=" * TABLE_WIDTH)
     _verbose_print(
-        "Runtime Op Profiling Result", length=TABLE_WIDTH, align='middle'
+        "Runtime Op Profiling Result (Single Pass)",
+        length=TABLE_WIDTH,
+        align='middle',
     )
     _verbose_print("-" * TABLE_WIDTH)
     for op_idx, cloned_op, op in zip(
@@ -2721,3 +2718,52 @@ def measure_real_op_cost_wrt_program_and_place(program, place, verbose=False):
             op.set_runtime_us(cloned_op.get_runtime_us())
         _verbose_print(_format_single_line(op_idx, op))
     _verbose_print("=" * TABLE_WIDTH)
+    _verbose_print("[*]/[x]: OK/FAIL, Op ID, Op Name, Execution Time")
+    _verbose_print("NOTE: Op ID does not represent Op execution order.")
+
+
+def measure_real_op_cost_wrt_program_and_place(program, place, verbose=False):
+    '''
+    Description
+    -----------
+    Measuring real op run time (us) with respect to the given "program" and "place".
+
+    Parameters
+    -----------
+    @param program: paddle.static.Program
+        The program object waiting to be executed.
+    @param place: paddle.CPUPlace | paddle.CUDAPlace | ...
+        Where the program is going to be executed, can be one of the following types:
+        base.CPUPlace, base.CUDAPlace(i)
+    @param verbose: bool
+        Print op profiling information generated during profiling.
+
+    Returns
+    -----------
+    No return value. This function will write op profiling info directly into program
+    object. For example, to retrieve the run time for the first op in program, use:
+    >>> program.global_block().ops[0].get_runtime_us()
+
+    Note
+    -----------
+    Not all ops support runtime profiling. Currently comm ops do not support runtime
+    profiling feature since their execution times are relied on other ops. To check
+    if an op supports runtime profiling, use:
+    >>> op.is_support_runtime_profiling()
+    where "op" is an instance of "paddle.base.framework.Operator".
+
+    Example
+    -----------
+    >>> program = ... # build your own program object here.
+    >>> measure_real_op_cost_wrt_program_and_place(
+    >>>     program, paddle.CUDAPlace(0), verbose=True
+    >>> )
+    >>> print("first op execution time: %d us." % \\
+    >>>     program.global_block().ops[0].get_runtime_us()
+    >>> )
+
+    '''
+
+    _measure_real_op_cost_wrt_program_and_place_single_pass(
+        program, place, verbose
+    )

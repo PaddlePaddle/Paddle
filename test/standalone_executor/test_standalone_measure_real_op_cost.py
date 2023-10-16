@@ -103,32 +103,62 @@ class TestOpProfiling(unittest.TestCase):
         # build program
         train_program, startup_program, loss = self._build_program()
 
-        print(startup_program)
-
-        # Run the startup program once and only once.
+        # run the startup program
         exe = Executor(place)
         exe.run(startup_program)
 
         if run_profiling:
-            measure_real_op_cost_wrt_program_and_place(
-                train_program, place, verbose=True
-            )
+            for i in range(30):
+                measure_real_op_cost_wrt_program_and_place(
+                    train_program, place, verbose=True
+                )
+
+            # run this line below to see if profiling results are
+            # successfully written, if not, an AssertionError will
+            # be raised.
+            train_program.global_block().ops[0].get_runtime_us()
 
         x = np.ones([1024, 1]).astype('float32')
         (loss_data,) = exe.run(
             train_program, feed={"X": x}, fetch_list=[loss.name]
         )
+
         return loss_data
 
+    def _compare_loss_between(self, loss_run1, loss_run2):
+        s1, s2 = '%.6f' % loss_run1, '%.6f' % loss_run2
+        if s1 == s2:
+            sys.stdout.write('PASSED.\n')
+        else:
+            raise AssertionError(
+                'FAILED. Loss values are different ({}, {}), expected them to be the same.\n'.format(
+                    s1, s2
+                )
+            )
+
     def test_op_profiling_cpu(self):
-        sys.stdout.write("Running on CPU with profiling enabled.\n")
-        loss0 = self._run_op_profiling(paddle.CPUPlace(), run_profiling=True)
-        sys.stdout.write("Running on CPU with profiling disabled.\n")
-        loss1 = self._run_op_profiling(paddle.CPUPlace(), run_profiling=False)
-        loss0_s, loss1_s = "%.6f" % loss0, "%.6f" % loss1
-        sys.stdout.write(f'loss comparison: "{loss0_s}" vs "{loss1_s}"\n')
-        assert loss0_s == loss1_s, "loss value changed after profiling!"
-        sys.stdout.write('PASSED.\n')
+        '''
+        * test if adding profiling before program execution can affect training process.
+        * test if C++ side can successfully write op profiling results and read by Python.
+        '''
+        sys.stdout.write("Running on CPU with profiling enabled/disabled.\n")
+        self._compare_loss_between(
+            self._run_op_profiling(paddle.CPUPlace(), run_profiling=True),
+            self._run_op_profiling(paddle.CPUPlace(), run_profiling=False),
+        )
+
+    def test_op_profiling_cuda0(self):
+        '''
+        * test if adding profiling before program execution can affect training process.
+        * test if C++ side can successfully write op profiling results and read by Python.
+        '''
+        sys.stdout.write(
+            "Running on CUDA GPU0 with profiling enabled/disabled.\n"
+        )
+        self._compare_loss_between(
+            self._run_op_profiling(paddle.CUDAPlace(0), run_profiling=True),
+            self._run_op_profiling(paddle.CUDAPlace(0), run_profiling=False),
+        )
 
 
 if __name__ == "__main__":

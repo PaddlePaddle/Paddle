@@ -201,8 +201,6 @@ void ProgramInterpreter::ProfileInstructionList(
       VLOG(4) << "** op "
               << "[" << instr.Id() << "," << instr.OpBase()->Type() << "]"
               << " run time: " << op_dist_attr->run_time_us() << " us.";
-      VLOG(4) << "** op dist_attr addr: "
-              << op_dist_attr->get_physical_address();
     } else {
       // don't need profiling
       RunInstruction(instr);
