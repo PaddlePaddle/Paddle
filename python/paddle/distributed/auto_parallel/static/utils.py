@@ -2533,38 +2533,9 @@ def _measure_real_op_cost_wrt_program_and_place_single_pass(
     function directly.
     '''
 
-    assert isinstance(program, Program), (
-        '"program" should be a instance of "paddle.base.framework.Program" but got type "%s".'
-        % type(program).__name__
-    )
-
-    def _verbose_print(s, length=None, align='left'):
-        assert align in [
-            'left',
-            'middle',
-            'right',
-        ], 'invalid text alignment setting.'
-        if verbose:
-            if align in ['middle', 'right'] and length is None:
-                pad = 0
-            else:
-                pad = (
-                    0
-                    if align == 'left'
-                    else (
-                        length - len(s)
-                        if align == 'right'
-                        else (length - len(s)) // 2
-                    )
-                )
-            sys.stdout.write(' ' * pad + s + '\n')
-            sys.stdout.flush()
-
     # clone the program to avoid accidental change made to the vanilla program.
     cloned_program = program.clone()
     cloned_main_block = cloned_program.global_block()
-    _verbose_print("Program op profiling started.")
-    _verbose_print("Current program being profiled:\n" + str(cloned_program))
 
     # We will run the executor in a newly created scope, so that our
     # executor will not pollute the global scope when running. Since
@@ -2619,14 +2590,18 @@ def _measure_real_op_cost_wrt_program_and_place_single_pass(
                 )
                 out_cur_feed = _as_lodtensor(out_cur_feed, place, out_var_dtype)
                 check_feed_shape_type(out_var, out_cur_feed)
-                _verbose_print('[+] feed var: "%s".' % out_var_name)
+                sys.stdout.write(
+                    '[+] feed var: "%s".\n' % out_var_name
+                ) if verbose else None
                 core.set_variable(scope, out_cur_feed, out_var_name)
                 core.set_feed_variable(
                     scope, out_cur_feed, in_var_name, input_index
                 )
                 feed_names.append(out_var_name)
         if not has_feed_op:
-            _verbose_print("WARNING: program does not have any feed op.")
+            sys.stdout.write(
+                "WARNING: program does not have any feed op.\n"
+            ) if verbose else None
         return feed_names
 
     def _init_persist_vars_and_parameters():
@@ -2652,11 +2627,11 @@ def _measure_real_op_cost_wrt_program_and_place_single_pass(
                     )
                 )
                 if scope.find_var(var_name) is None:
-                    _verbose_print(
-                        '[+] var: "{}", shape={}, dtype="{}".'.format(
+                    sys.stdout.write(
+                        '[+] var: "{}", shape={}, dtype="{}".\n'.format(
                             var_name, str(var_shape), str(var_dtype)
                         )
-                    )
+                    ) if verbose else None
                     # feed random gaussian noises
                     np_dtype = (
                         convert_dtype(var_dtype)
@@ -2670,11 +2645,11 @@ def _measure_real_op_cost_wrt_program_and_place_single_pass(
                     check_feed_shape_type(var, cur_feed)
                     core.set_variable(scope, cur_feed, var_name)
                 else:
-                    _verbose_print(
-                        '[ ] var: "{}", shape={}, dtype="{}".'.format(
+                    sys.stdout.write(
+                        '[ ] var: "{}", shape={}, dtype="{}".\n'.format(
                             var_name, str(var_shape), str(var_dtype)
                         )
-                    )
+                    ) if verbose else None
 
     feed_names = _config_feed_ops()
     _init_persist_vars_and_parameters()
@@ -2684,45 +2659,23 @@ def _measure_real_op_cost_wrt_program_and_place_single_pass(
     exe = _StandaloneExecutor(place, plan, scope)
     exe.run_profile(feed_names)
 
-    # because we run the cloned program, we need to write profiling
-    # message to the vanilla program
-    TABLE_WIDTH = 50
-
-    def _format_single_line(idx, op):
-        bg_str = ' .' * (TABLE_WIDTH // 2)
-        left_str = '[*] %5d, %s' % (idx, op.type)
-        right_str = (
-            ('%d us' % int(op.get_runtime_us()))
-            if op.is_support_runtime_profiling()
-            else 'not supported'
+    prof_result = []
+    for cloned_op in cloned_main_block.ops:
+        prof_result.append(
+            cloned_op.get_runtime_us()
+            if cloned_op.supports_runtime_profiling()
+            else None
         )
-        out_str = (
-            left_str
-            + bg_str[len(left_str) : TABLE_WIDTH - len(right_str)]
-            + right_str
-        )
-        return out_str
-
-    main_block = program.global_block()
-    _verbose_print("=" * TABLE_WIDTH)
-    _verbose_print(
-        "Runtime Op Profiling Result (Single Pass)",
-        length=TABLE_WIDTH,
-        align='middle',
-    )
-    _verbose_print("-" * TABLE_WIDTH)
-    for op_idx, cloned_op, op in zip(
-        range(len(main_block.ops)), cloned_main_block.ops, main_block.ops
-    ):
-        if cloned_op.is_support_runtime_profiling():
-            op.set_runtime_us(cloned_op.get_runtime_us())
-        _verbose_print(_format_single_line(op_idx, op))
-    _verbose_print("=" * TABLE_WIDTH)
-    _verbose_print("[*]/[x]: OK/FAIL, Op ID, Op Name, Execution Time")
-    _verbose_print("NOTE: Op ID does not represent Op execution order.")
+    return prof_result
 
 
-def measure_real_op_cost_wrt_program_and_place(program, place, verbose=False):
+def measure_real_op_cost_wrt_program_and_place(
+    program,
+    place,
+    run_iters=8,
+    profile_strategy='stable_average',
+    verbose=False,
+):
     '''
     Description
     -----------
@@ -2733,8 +2686,15 @@ def measure_real_op_cost_wrt_program_and_place(program, place, verbose=False):
     @param program: paddle.static.Program
         The program object waiting to be executed.
     @param place: paddle.CPUPlace | paddle.CUDAPlace | ...
-        Where the program is going to be executed, can be one of the following types:
-        base.CPUPlace, base.CUDAPlace(i)
+        Where the program is going to be executed.
+    @param run_iters: int
+        Specify how many iterations will be run during profiling. Larger value tends
+        to give more accurate profiling result but requires more time.
+    @param profile_strategy: str
+        Specify strategy used during profiling. Can be one of the following: 'average',
+        'last', 'stable_average'. 'average' will simply average the results from multiple
+        runs, 'last' will only take the last run as its profiling result, 'stable_average'
+        will first remove the outliers then average the remained result.
     @param verbose: bool
         Print op profiling information generated during profiling.
 
@@ -2749,7 +2709,7 @@ def measure_real_op_cost_wrt_program_and_place(program, place, verbose=False):
     Not all ops support runtime profiling. Currently comm ops do not support runtime
     profiling feature since their execution times are relied on other ops. To check
     if an op supports runtime profiling, use:
-    >>> op.is_support_runtime_profiling()
+    >>> op.supports_runtime_profiling()
     where "op" is an instance of "paddle.base.framework.Operator".
 
     Example
@@ -2764,6 +2724,133 @@ def measure_real_op_cost_wrt_program_and_place(program, place, verbose=False):
 
     '''
 
-    _measure_real_op_cost_wrt_program_and_place_single_pass(
-        program, place, verbose
+    # parameter checks
+    assert isinstance(program, Program), (
+        '"program" should be a instance of "paddle.base.framework.Program" but got type "%s".'
+        % type(program).__name__
     )
+    valid_place = False
+    supported_places = [
+        paddle.CPUPlace,
+        paddle.CUDAPlace,
+        paddle.IPUPlace,
+        paddle.XPUPlace,
+        paddle.CUDAPinnedPlace,
+        paddle.CustomPlace,
+    ]
+    for supported_place in supported_places:
+        if isinstance(place, supported_place):
+            valid_place = True
+    if not valid_place:
+        raise AssertionError(
+            'Invalid place given. "place" should be one of the following: %s.'
+            % str(supported_places)
+        )
+    assert isinstance(run_iters, int) and run_iters >= 1, (
+        'Invalid parameter run_iters set. run_iters '
+        'should be an integer >= 1.'
+    )
+    supported_strategies = ['average', 'last', 'stable_average']
+    assert profile_strategy in supported_strategies, (
+        'Invalid profile_strategy given, should be one '
+        'of the following: %s' % str(supported_strategies)
+    )
+    if run_iters == 1:
+        warnings.warn(
+            'run_iters was set to 1, profile_strategy will not work and profiling results '
+            'might be inaccurate.'
+        )
+
+    def _verbose_print(s, length=None, align='left'):
+        assert align in [
+            'left',
+            'middle',
+            'right',
+        ], 'invalid text alignment setting.'
+        if verbose:
+            if align in ['middle', 'right'] and length is None:
+                pad = 0
+            else:
+                pad = (
+                    0
+                    if align == 'left'
+                    else (
+                        length - len(s)
+                        if align == 'right'
+                        else (length - len(s)) // 2
+                    )
+                )
+            sys.stdout.write(' ' * pad + s + '\n')
+            sys.stdout.flush()
+
+    _verbose_print("* Started op runtime profiling.")
+    _verbose_print("* Current program being profiled:\n" + str(program))
+    _verbose_print("* Profile strategy: %s" % str(profile_strategy))
+
+    prof_results = None
+    for _ in range(run_iters):
+        single_prof_result = (
+            _measure_real_op_cost_wrt_program_and_place_single_pass(
+                program, place, verbose=False
+            )
+        )
+        if prof_results is None:
+            prof_results = []
+            for _ in range(len(single_prof_result)):
+                prof_results.append([])
+        for op_id, op_runtime_us in zip(
+            range(len(prof_results)), single_prof_result
+        ):
+            prof_results[op_id].append(op_runtime_us)
+    op_num = len(prof_results)
+    for op_id, op in zip(range(op_num), program.global_block().ops):
+        op_runtime_us_final = None
+        if prof_results[op_id][0] is not None:
+            if profile_strategy == 'average':
+                op_runtime_us_final = np.mean(prof_results[op_id])
+            elif profile_strategy == 'last':
+                op_runtime_us_final = prof_results[op_id][-1]
+            elif profile_strategy == 'stable_average':
+                keep = 1 if run_iters // 2 < 1 else run_iters // 2
+                op_runtime_us_final = np.mean(
+                    sorted(prof_results[op_id])[:keep]
+                )
+            else:
+                raise RuntimeError(
+                    'unknwon profile_strategy "%s" given.' % profile_strategy
+                )
+        if op.supports_runtime_profiling():
+            op.set_runtime_us(op_runtime_us_final)
+
+    # because we run the cloned program, we need to write profiling
+    # message to the vanilla program
+    TABLE_WIDTH = 50
+
+    def _format_single_line(idx, op):
+        bg_str = ' .' * (TABLE_WIDTH // 2)
+        left_str = '[*] %5d, %s' % (idx, op.type)
+        right_str = (
+            ('%d us' % int(op.get_runtime_us()))
+            if op.supports_runtime_profiling()
+            else 'not supported'
+        )
+        out_str = (
+            left_str
+            + bg_str[len(left_str) : TABLE_WIDTH - len(right_str)]
+            + right_str
+        )
+        return out_str
+
+    main_block = program.global_block()
+    _verbose_print("=" * TABLE_WIDTH)
+    _verbose_print(
+        "Runtime Op Profiling Result",
+        length=TABLE_WIDTH,
+        align='middle',
+    )
+    _verbose_print("-" * TABLE_WIDTH)
+    for op_idx, op in zip(range(len(main_block.ops)), main_block.ops):
+        _verbose_print(_format_single_line(op_idx, op))
+    _verbose_print("=" * TABLE_WIDTH)
+    _verbose_print("[*]/[x]: OK/FAIL, Op ID, Op Name, Execution Time")
+    _verbose_print("NOTE: Op ID does not represent Op execution order.")

@@ -3729,7 +3729,7 @@ class Operator:
         """
         self.desc.dist_attr = dist_attr
 
-    def is_support_runtime_profiling(self):
+    def supports_runtime_profiling(self):
         """
         An utility function to check if this operator supports runtime profiling feature.
         Now the criteria of judging if an operator can be profiled is by its type.
@@ -3753,7 +3753,7 @@ class Operator:
         Retrieve the actual run time of this operator if runtime profiling feature is enabled.
         """
         op_type = self.desc.type()
-        if not self.is_support_runtime_profiling():
+        if not self.supports_runtime_profiling():
             raise RuntimeError(
                 "This operator (type=%s) does not support runtime profiling feature."
                 % op_type
@@ -3771,7 +3771,7 @@ class Operator:
         Set the run time (us) for this op.
         """
         op_type = self.desc.type()
-        if not self.is_support_runtime_profiling():
+        if not self.supports_runtime_profiling():
             raise RuntimeError(
                 "This operator (type=%s) does not support runtime profiling feature."
                 % op_type

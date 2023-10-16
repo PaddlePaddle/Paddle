@@ -99,6 +99,7 @@ class TestOpProfiling(unittest.TestCase):
             }
         )
         paddle.seed(123)
+        np.random.seed(456)
 
         # build program
         train_program, startup_program, loss = self._build_program()
@@ -108,10 +109,9 @@ class TestOpProfiling(unittest.TestCase):
         exe.run(startup_program)
 
         if run_profiling:
-            for i in range(30):
-                measure_real_op_cost_wrt_program_and_place(
-                    train_program, place, verbose=True
-                )
+            measure_real_op_cost_wrt_program_and_place(
+                train_program, place, verbose=True
+            )
 
             # run this line below to see if profiling results are
             # successfully written, if not, an AssertionError will
