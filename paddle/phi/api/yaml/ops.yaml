@@ -134,7 +134,7 @@
   backward : angle_grad
 
 - op : argmax
-  args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false, int dtype = 3)
+  args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false, DataType dtype = DataType::INT64)
   output : Tensor(out)
   infer_meta :
     func : ArgMinMaxInferMeta
@@ -143,7 +143,7 @@
     data_type : x
 
 - op : argmin
-  args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false, int dtype = 3)
+  args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false, DataType dtype = DataType::INT64)
   output : Tensor(out)
   infer_meta :
     func : ArgMinMaxInferMeta

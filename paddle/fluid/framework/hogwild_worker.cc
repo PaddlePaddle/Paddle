@@ -126,7 +126,7 @@ void HogwildWorker::SetZero(phi::DenseTensor *tensor,
 void HogwildWorker::BindingDataFeedMemory() {
   const std::vector<std::string> &input_feed =
       device_reader_->GetUseSlotAlias();
-  for (auto name : input_feed) {
+  for (auto const &name : input_feed) {
     device_reader_->AddFeedVar(thread_scope_->FindVar(name), name);
   }
 }

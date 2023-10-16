@@ -24,6 +24,9 @@
 #include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
 
 using namespace paddle::dialect;  // NOLINT
+
+// example for while_op use
+// while(i < ten) { i = i + 1;}
 TEST(while_op_test, base) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<pir::ControlFlowDialect>();
@@ -36,24 +39,15 @@ TEST(while_op_test, base) {
   auto i =
       builder.Build<FullOp>(std::vector<int64_t>{1}, 1, phi::DataType::INT32)
           .out();
-
   auto ten =
       builder.Build<FullOp>(std::vector<int64_t>{1}, 10, phi::DataType::INT32)
           .out();
 
-  auto while_op = builder.Build<WhileOp>(
-      std::vector<pir::Value>{i, ten},
-      std::vector<pir::Type>{builder.int32_type(), builder.int32_type()});
+  // comput condition value: i < ten
+  auto cond_value = builder.Build<LessThanOp>(i, ten).out();
 
-  // while(i < ten)
-  pir::Block* cond_block = while_op.cond_block();
-  auto cond_i_argument = cond_block->AddArgument(i.type());
-  auto cond_ten_argument = cond_block->AddArgument(ten.type());
-  builder.SetInsertionPointToStart(cond_block);
-  auto cond_value =
-      builder.Build<LessThanOp>(cond_i_argument, cond_ten_argument).out();
-  builder.Build<pir::CondYieldOp>(
-      cond_value, std::vector<pir::Value>{cond_i_argument, cond_ten_argument});
+  auto while_op =
+      builder.Build<WhileOp>(cond_value, std::vector<pir::Value>{i, ten});
 
   // { i = i + 1}
   pir::Block* body_block = while_op.body_block();
@@ -64,12 +58,19 @@ TEST(while_op_test, base) {
       builder.Build<FullOp>(std::vector<int64_t>{1}, 1, phi::DataType::INT32)
           .out();
   auto new_i = builder.Build<AddOp>(body_i_argument, one).out();
+
+  // comput new condition value: new_i < new_ten
+  auto new_cond_value =
+      builder.Build<LessThanOp>(new_i, body_ten_argument).out();
+
   builder.Build<pir::YieldOp>(
-      std::vector<pir::Value>{new_i, body_ten_argument});
+      std::vector<pir::Value>{new_cond_value, new_i, body_ten_argument});
 
   builder.SetInsertionPointAfter(while_op);
   std::stringstream ss;
   program.Print(ss);
 
   LOG(INFO) << ss.str();
+
+  EXPECT_EQ(while_op.cond(), cond_value);
 }
