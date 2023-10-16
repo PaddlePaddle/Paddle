@@ -26,6 +26,9 @@ per-file-ignores =
     # These files need tabs for testing.
     test/dygraph_to_static/test_error.py:E101,W191
 
+    # Ignore compare with True in sot unittest
+    test/sot/test_dup_top.py:E712
+
     # temp ignore base directory
     python/paddle/base/*:
         E712,

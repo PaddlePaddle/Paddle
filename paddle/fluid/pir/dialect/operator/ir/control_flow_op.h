@@ -41,9 +41,20 @@ class IfOp : public pir::Op<IfOp> {
   pir::Block *true_block();
   pir::Block *false_block();
   void Print(pir::IrPrinter &printer);  // NOLINT
-  void Verify();
+  void VerifySig();
+  void VerifyRegion();
 };
 
+///
+/// \brief The WhileOp is an operation that iterates over a loop body based on a
+/// condition. It takes two inputs: cond_value and loop_vars. The output of the
+/// WhileOp must have the same arity (length and structure) with loop_vars." The
+/// semantics of WhileOp[outputs = while_op(cond, inputs)] are as below:
+///   outputs = inputs
+///   while(cond){
+///      cond, outputs = body(outputs)
+///   }
+///
 class WhileOp : public pir::Op<WhileOp> {
  public:
   using Op::Op;
@@ -53,12 +64,13 @@ class WhileOp : public pir::Op<WhileOp> {
 
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    const std::vector<pir::Value> &inputs,
-                    const std::vector<pir::Type> &output_types);
-  pir::Block *cond_block();
+                    pir::Value cond,
+                    const std::vector<pir::Value> &inputs);
   pir::Block *body_block();
+  pir::Value cond();
   void Print(pir::IrPrinter &printer);  // NOLINT
-  void Verify() {}
+  void VerifySig() {}
+  void VerifyRegion() {}
 };
 
 }  // namespace dialect
