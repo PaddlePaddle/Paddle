@@ -35,7 +35,8 @@ class TestCastOpTranscriber(unittest.TestCase):
                 x = paddle.to_tensor([2, 3, 4], 'float64')
                 y = paddle.cast(x, 'uint8')
 
-        _ = pir.translate_to_new_ir(main_program.desc)
+        _, mappings = pir.translate_to_new_ir_with_param_map(main_program.desc)
+        assert len(str(mappings)) > 0, "no mapping found"
 
 
 class TestElementwiseOpTranscriber(unittest.TestCase):

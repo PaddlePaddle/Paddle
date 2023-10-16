@@ -50,11 +50,11 @@ class TestSoftmaxMaskFuseOp(OpTest):
         self.outputs = {'Out': rst}
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0), check_new_ir=True)
+        self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            core.CUDAPlace(0), ["X"], "Out", check_new_ir=True
+            core.CUDAPlace(0), ["X"], "Out", check_pir=True
         )
 
 
@@ -72,14 +72,14 @@ class TestSoftmaxMaskFuseOp1(OpTest):
 
     def test_check_output(self):
         try:
-            self.check_output_with_place(core.CPUPlace(), check_new_ir=True)
+            self.check_output_with_place(core.CPUPlace(), check_pir=True)
         except (NotImplementedError, RuntimeError):
             pass
 
     def test_check_grad(self):
         try:
             self.check_grad_with_place(
-                core.CPUPlace(), ["X"], "Out", check_new_ir=True
+                core.CPUPlace(), ["X"], "Out", check_pir=True
             )
         except (NotImplementedError, RuntimeError):
             pass

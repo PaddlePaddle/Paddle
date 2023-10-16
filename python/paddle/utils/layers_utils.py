@@ -393,7 +393,6 @@ def get_pir_shape_tensor(list_shape, place=_current_expected_place()):
                 dim = paddle.cast(x=dim, dtype='int32')
             shape_tensor_list.append(dim)
         else:
-            print(dim)
             temp_out = paddle.full([1], dim, core.DataType.INT32, place)
             shape_tensor_list.append(temp_out)
     return shape_tensor_list

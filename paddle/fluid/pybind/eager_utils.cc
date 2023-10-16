@@ -2079,9 +2079,9 @@ void DistTensorConverter::convert(Tensor* x) {
     phi::distributed::TensorDistAttr dist_attr(
         phi::vectorize(x->impl()->dims()));
     dist_attr.set_process_mesh(*mesh);
-    auto dense_t = static_cast<phi::DenseTensor*>(x->impl().get());
+    auto dense_t = std::static_pointer_cast<phi::DenseTensor>(x->impl());
     x->set_impl(
-        std::make_shared<phi::distributed::DistTensor>(*dense_t, dist_attr));
+        std::make_shared<phi::distributed::DistTensor>(dense_t, dist_attr));
   }
 }
 
