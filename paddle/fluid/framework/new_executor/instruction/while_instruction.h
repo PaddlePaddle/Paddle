@@ -60,7 +60,7 @@ class WhileInstruction : public InstructionBase {
 
   std::string name_{"while_instruction"};
 
-  Variable* cond_var;
+  Variable* cond_var_;
 
   std::vector<Variable*> inputs_;
   std::vector<Variable*> outputs_;

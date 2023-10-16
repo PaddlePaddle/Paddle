@@ -135,14 +135,6 @@ void WhileInstruction::PassArgsToBodyBlock() {
   }
 }
 
-void WhileInstruction::CopyStepOutputToBlockArgs(const NewIRInterpreter* inter,
-                                                 ::pir::Block* block) {
-  for (size_t i = 0; i < block->args_size(); ++i) {
-    auto& out_var_name = body_skip_gc_names_[i];
-        outputs_[i]->Get<phi::DenseTensor>());
-  }
-}
-
 void WhileInstruction::GetValueFromBodyBlock() {
   cond_var_->GetMutable<phi::DenseTensor>()->ShareDataWith(
       body_inter_->local_scope()
