@@ -71,6 +71,7 @@ def foo(x, flag=False):
     return out
 
 
+@dy2static_unittest
 class TestRollBackPlainFunction(unittest.TestCase):
     def setUp(self):
         paddle.set_device("cpu")

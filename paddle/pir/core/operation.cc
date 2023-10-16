@@ -123,7 +123,7 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
 
   // 0. Verify
   if (op_info) {
-    op_info.Verify(op);
+    op_info.VerifySig(op);
   }
   return op;
 }
