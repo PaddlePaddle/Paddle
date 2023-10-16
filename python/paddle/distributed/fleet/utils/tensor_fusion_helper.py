@@ -128,14 +128,14 @@ class ShardingGradView:
         self._param_buffer._slice(
             self._index, self._index + self._param._numel()
         )._share_buffer_to(self._param)
-        paddle.device.cuda.empty_cache()
-
-    def _pad_param(self):
-        if self._param_buffer._is_shared_buffer_with(self._param):
-            return
-        self._share_param_buffer()
 
     def fill_slice_param(self, slice_param):
+        slice_begin = self._param_begin
+        slice_end = self._param_end
+        if slice_param._is_initialized():
+            assert self._param_buffer._is_shared_buffer_with(slice_param)
+            assert len(slice_param.shape) == 1
+            assert slice_param.shape[0] == (slice_end - slice_begin)
         slice_begin = self._param_begin
         slice_end = self._param_end
         slice_buffer = self._param_buffer._slice(slice_begin, slice_end)
@@ -143,15 +143,21 @@ class ShardingGradView:
         slice_buffer._share_buffer_to(slice_param)
 
     def assign_slice_grad(self, slice_param):
-        self._pad_param()
-        if self._slice_grad is None:
+        assert self._param_buffer._is_shared_buffer_with(self._param)
+        slice_grad = self._slice_grad
+        if slice_grad is None:
             return
         self.fill_slice_param(slice_param)
-        slice_grad = self._slice_grad
         if hasattr(self._param, "main_grad"):
-            slice_param.main_grad = slice_grad
+            if not hasattr(slice_param, "main_grad"):
+                slice_param.main_grad = slice_grad
+            else:
+                assert slice_param.main_grad is slice_grad
         elif slice_grad is not None:
-            slice_param._copy_gradient_from(slice_grad)
+            if slice_param.grad is None:
+                slice_param._copy_gradient_from(slice_grad)
+            else:
+                assert slice_param.grad._is_shared_buffer_with(slice_grad)
 
 
 def build_reduce_scatter_buffer(

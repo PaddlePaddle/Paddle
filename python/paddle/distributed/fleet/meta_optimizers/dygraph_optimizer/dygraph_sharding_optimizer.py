@@ -26,6 +26,7 @@ from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.framework import EagerParamBase
 from paddle.nn import ClipGradByGlobalNorm
 
+from ...utils.log_util import logger
 from ...utils.tensor_fusion_helper import (
     HOOK_ACTION,
     FusedCommBuffer,
@@ -64,6 +65,7 @@ class DygraphShardingOptimizer:
     # 4. option to choose fuse comm (more GPU MEM need) or un-fuse comm
 
     def __init__(self, optimizer, hcg):
+        logger.info("init DygraphShardingOptimizer")
         if not hasattr(optimizer, '_apply_optimize') or not callable(
             optimizer._apply_optimize
         ):
@@ -417,6 +419,7 @@ class DygraphShardingOptimizerV2:
     # 5. do not shard small params
 
     def __init__(self, optimizer, hcg):
+        logger.info("init DygraphShardingOptimizerV2")
         assert (
             g_shard_use_reduce
         ), "can not be not g_shard_use_reduce if DygraphShardingOptimizerV2 is used"
@@ -535,7 +538,7 @@ class DygraphShardingOptimizerV2:
 
     def _create_slice_param(self, param):
         # the buffer underlining is not initialized yet
-        slice_param = EagerParamBase(shape=[256], dtype=param.dtype)
+        slice_param = EagerParamBase(shape=[1], dtype=param.dtype)
         slice_param.name = param.name
         self._slice_params[param.name] = slice_param
         return slice_param
@@ -602,7 +605,7 @@ class DygraphShardingOptimizerV2:
     @framework.dygraph_only
     def set_state_dict(self, state_dict):
         inner_state = {}
-        parameters = self._rank2params[self._sharding_rank]
+        parameters = self._parameter_list
 
         if "LR_Scheduler" in state_dict:
             inner_state["LR_Scheduler"] = state_dict.pop("LR_Scheduler")
