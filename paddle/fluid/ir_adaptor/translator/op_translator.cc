@@ -1577,8 +1577,7 @@ struct ElementwiseTranscriber : public OpTranscriber {
       axis += static_cast<int>(x_shape.size());
     }
 
-    int append_size =
-        static_cast<int>(x_shape.size() - axis - 1 - y_shape.size());
+    int append_size = static_cast<int>(x_shape.size() - axis - y_shape.size());
     if (append_size < 0) {  // which means x.rank <= y.rank, mostly
                             // x.rank=y.rank
       return {x_value, y_value};
@@ -1605,7 +1604,7 @@ struct ElementwiseTranscriber : public OpTranscriber {
       auto shape_op = builder.Build<dialect::ShapeOp>(y_value);
       auto append_shape_op = builder.Build<dialect::FullIntArrayOp>(
           std::vector<int64_t>(append_size, 1),
-          phi::DataType::INT64,
+          phi::DataType::INT32,
           phi::CPUPlace());
       auto y_true_shape_op = builder.Build<pir::CombineOp>(
           std::vector<pir::Value>{shape_op.out(), append_shape_op.out()});
