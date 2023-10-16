@@ -451,7 +451,9 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
       (PyFunctionObject *)PyFunction_New((PyObject *)code, frame->f_globals);
   Py_XINCREF(frame->f_func->func_closure);
   func->func_closure = frame->f_func->func_closure;
+#if PY_VERSION_HEX < 0x030C0000
   _PyFrame_InitializeSpecials(shadow, func, NULL, code->co_nlocalsplus);
+#endif
 
   PyObject **fastlocals_old = frame->localsplus;
   PyObject **fastlocals_new = shadow->localsplus;
@@ -483,7 +485,9 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
   }
 
   PyObject *result = eval_frame_default(tstate, shadow, throw_flag);
+#if PY_VERSION_HEX < 0x030C0000
   Internal_PyFrame_Clear(shadow);
+#endif
   free(shadow);
   Py_DECREF(func);
   Py_DECREF(namemap);
