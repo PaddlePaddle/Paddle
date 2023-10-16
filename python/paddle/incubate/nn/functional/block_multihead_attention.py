@@ -28,12 +28,15 @@ def block_multihead_attention(
     cu_seqlens_q,
     cu_seqlens_k,
     block_tables,
+    pre_key_cache=None,
+    pre_value_cache=None,
     cache_k_quant_scales=None,
     cache_v_quant_scales=None,
     cache_k_dequant_scales=None,
     cache_v_dequant_scales=None,
     rope_emb=None,
     mask=None,
+    tgt_mask=None,
     max_seq_len=-1,
     block_size=64,
     use_neox_style=False,
@@ -59,8 +62,11 @@ def block_multihead_attention(
             cu_seqlens_q,
             cu_seqlens_k,
             block_tables,
+            pre_key_cache,
+            pre_value_cache,
             rope_emb,
             mask,
+            tgt_mask,
             cache_k_quant_scales,
             cache_v_quant_scales,
             cache_k_dequant_scales,
@@ -89,10 +95,16 @@ def block_multihead_attention(
     inputs['cu_seqlens_q'] = cu_seqlens_q
     inputs['cu_seqlens_k'] = cu_seqlens_k
     inputs['block_tables'] = block_tables
+    if pre_key_cache is not None:
+        inputs['pre_key_cache'] = pre_key_cache
+    if pre_value_cache is not None:
+        inputs['pre_value_cache'] = pre_value_cache
     if rope_emb is not None:
         inputs['rope_emb'] = rope_emb
     if mask is not None:
         inputs['mask'] = mask
+    if tgt_mask is not None:
+        inputs['tgt_mask'] = tgt_mask
     if cache_k_quant_scales is not None:
         inputs["cache_k_quant_scales"] = cache_k_quant_scales
     if cache_v_quant_scales is not None:

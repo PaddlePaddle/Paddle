@@ -83,13 +83,14 @@ struct Block_AttN_params {
   int timestep;
   int seq_len;
 
+  int pre_cache_length = 0;
+
   // 1.f / sqrt(Dh)
   float inv_sqrt_dh;
 
   bool add_qkv_bias;
   bool neox_rotary_style;
 
-  int cache_k_group_num;
   const float *cache_k_quant_scales = nullptr;
   const float *cache_v_quant_scales = nullptr;
   const float *cache_k_dequant_scales = nullptr;
@@ -109,10 +110,12 @@ template <typename T,
 __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
     Block_AttN_params<T> params, LoadFunc load_func, StoreFunc store_func) {
   const int bi = blockIdx.y;
-  const int act_time_step = params.sequence_lengths[bi];
+  int act_time_step = params.sequence_lengths[bi];
   if (act_time_step == 0) {
     return;
   }
+  act_time_step += params.pre_cache_length;
+
   const int *block_table =
       params.block_tables + bi * params.max_num_blocks_per_seq;
 
@@ -243,7 +246,8 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
 
     if (params.rotary_emb_dims != 0) {
       if (!params.neox_rotary_style) {
-        apply_rotary_embedding(q, k, tid, Dh, act_time_step);
+        apply_rotary_embedding(
+            q, k, tid, Dh, act_time_step - params.pre_cache_length);
       } else {
         int last_dim = Dh / params.rotary_emb_dims;
         int half_lastdim = last_dim / 2;
@@ -788,6 +792,7 @@ void blha(const phi::GPUContext &dev_ctx,
           const int max_num_blocks_per_seq,
           const int block_size,
           const int seq_len,
+          const int pre_cache_length,
           const int num_head,
           const int dim_head,
           const int timestep,
@@ -838,6 +843,7 @@ void blha(const phi::GPUContext &dev_ctx,
     params.cum_offsets = nullptr;
   }
   params.seq_len = seq_len;
+  params.pre_cache_length = pre_cache_length;
 
   if (rotary_tensor) {
     params.rotary_emb = rotary_tensor->data<float>();
@@ -854,7 +860,7 @@ void blha(const phi::GPUContext &dev_ctx,
   params.batch_size = batch_size;
   params.block_size = block_size;
   params.num_head = num_head;
-  params.timestep = timestep;
+  params.timestep = timestep + pre_cache_length;
   params.inv_sqrt_dh = inv_sqrt_dh;
   params.rotary_emb_dims = rotary_emb_dims;
   VLOG(1) << "batch_size: " << batch_size << " num_head: " << num_head
@@ -945,6 +951,7 @@ __global__ void cache_kernel(
     const int num_heads,
     const int head_size,
     const int block_size,
+    const int pre_cache_length,
     const int elem_cnt) {
   using LoadT = phi::AlignedVector<T, VecSize>;
   LoadT src_vec;
@@ -965,7 +972,7 @@ __global__ void cache_kernel(
     const int ori_token_idx = token_idx + padding_offsets[token_idx];
     const int ori_bi = ori_token_idx / max_seq_len;
     if (seq_lens[ori_bi] == 0) continue;
-    const int ori_seq_id = ori_token_idx % max_seq_len;
+    const int ori_seq_id = ori_token_idx % max_seq_len + pre_cache_length;
 
     const int *block_table_now = block_tables + ori_bi * max_blocks_per_seq;
     const int block_idx = block_table_now[ori_seq_id / block_size];
@@ -997,12 +1004,12 @@ __global__ void cache_int8_kernel(
     const int *__restrict__ seq_lens,         // [bsz]
     const float *cache_k_scales,
     const float *cache_v_scales,
-    const int cache_k_group_num,
     const int max_seq_len,
     const int max_blocks_per_seq,
     const int num_heads,
     const int head_size,
     const int block_size,
+    const int pre_cache_length,
     const int elem_cnt,
     const int round_type,
     const float max_bound,
@@ -1028,7 +1035,7 @@ __global__ void cache_int8_kernel(
     const int ori_token_idx = token_idx + padding_offsets[token_idx];
     const int ori_bi = ori_token_idx / max_seq_len;
     if (seq_lens[ori_bi] == 0) continue;
-    const int ori_seq_id = ori_token_idx % max_seq_len;
+    const int ori_seq_id = ori_token_idx % max_seq_len + pre_cache_length;
 
     const int *block_table_now = block_tables + ori_bi * max_blocks_per_seq;
     const int block_idx = block_table_now[ori_seq_id / block_size];
@@ -1041,9 +1048,7 @@ __global__ void cache_int8_kernel(
                         hi * head_size + h_bias;
     phi::Load<T, VecSize>(&qkv[ori_idx], &src_vec);
 
-    const int cache_idx = cache_k_group_num == 1 ? 0 : hi;
-    const float scale =
-        qkv_id == 1 ? cache_k_scales[cache_idx] : cache_v_scales[cache_idx];
+    const float scale = qkv_id == 1 ? cache_k_scales[hi] : cache_v_scales[hi];
 #pragma unroll
     for (int i = 0; i < VecSize; i++) {
       float quant_value = scale * static_cast<float>(src_vec[i]);
@@ -1065,6 +1070,153 @@ __global__ void cache_int8_kernel(
   }
 }
 
+template <typename T, int VecSize = 1>
+__global__ void write_pre_cache_int8_to_cache(
+    uint8_t *__restrict__ key_cache,  // [num_blocks, num_heads, block_size,
+                                      // head_size]
+    uint8_t *__restrict__ value_cache,
+    const T *__restrict__ pre_key_cache,  // [bsz, pre_cache_len, num_head,
+                                          // head_dim]
+    const T *__restrict__ pre_value_cache,
+    const int *__restrict__ block_tables,  // [bsz, max_blocks_per_seq]
+    const int *__restrict__ seq_lens,
+    const float *cache_k_scales,
+    const float *cache_v_scales,
+    const int max_seq_len,
+    const int max_blocks_per_seq,
+    const int num_heads,
+    const int head_size,
+    const int block_size,
+    const int pre_cache_length,
+    const int elem_cnt,
+    const int round_type,
+    const float max_bound,
+    const float min_bound) {
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadKVT = phi::AlignedVector<uint8_t, VecSize>;
+  LoadT src_vec;
+  LoadKVT cache_vec;
+
+  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  const int hidden_size = pre_cache_length * head_size;
+  const int cache_hidden_size = num_heads * hidden_size;
+  const int offset = 2 * cache_hidden_size;
+
+  for (int32_t linear_index = global_thread_idx * VecSize,
+               step = gridDim.x * blockDim.x * VecSize;
+       linear_index < elem_cnt;
+       linear_index += step) {
+    const int batch_id = linear_index / offset;
+    if (seq_lens[batch_id] == 0) continue;
+    const int *block_table_now = block_tables + batch_id * max_blocks_per_seq;
+
+    const int32_t cache_seq_id = (linear_index % hidden_size) / head_size;
+    const int32_t head_id = (linear_index % cache_hidden_size) / hidden_size;
+    const int32_t size_id = linear_index % head_size;
+
+    const int32_t kv_id = (linear_index % offset) / cache_hidden_size;
+    const int32_t read_id = batch_id * cache_hidden_size +
+                            head_id * hidden_size + cache_seq_id * head_size +
+                            size_id;
+    if (kv_id == 0) {
+      phi::Load<T, VecSize>(&pre_key_cache[read_id], &src_vec);
+    } else {
+      phi::Load<T, VecSize>(&pre_value_cache[read_id], &src_vec);
+    }
+
+    const int block_idx = block_table_now[cache_seq_id / block_size];
+    const int block_offset = cache_seq_id % block_size;
+
+    const int tgt_idx = block_idx * num_heads * block_size * head_size +
+                        head_id * block_size * head_size +
+                        block_offset * head_size + size_id;
+
+    const float scale =
+        kv_id == 0 ? cache_k_scales[head_id] : cache_v_scales[head_id];
+
+#pragma unroll
+    for (int i = 0; i < VecSize; i++) {
+      float quant_value = scale * static_cast<float>(src_vec[i]);
+      if (round_type == 0) {
+        quant_value = static_cast<float>(roundWithTiesToEven(quant_value));
+      } else {
+        quant_value = static_cast<float>(round(quant_value));
+      }
+      quant_value = quant_value > max_bound ? max_bound : quant_value;
+      quant_value = quant_value < min_bound ? min_bound : quant_value;
+      cache_vec[i] = static_cast<uint8_t>(quant_value + 128.0f);
+    }
+
+    if (kv_id == 0) {
+      phi::Store<uint8_t, VecSize>(cache_vec, &key_cache[tgt_idx]);
+    } else {
+      phi::Store<uint8_t, VecSize>(cache_vec, &value_cache[tgt_idx]);
+    }
+  }
+}
+
+template <typename T, int VecSize = 1>
+__global__ void write_pre_cache_to_cache(
+    T *__restrict__ key_cache,  // [num_blocks, num_heads, block_size,
+                                // head_size]
+    T *__restrict__ value_cache,
+    const T *__restrict__ pre_key_cache,  // [bsz, pre_cache_len, num_head,
+                                          // head_dim]
+    const T *__restrict__ pre_value_cache,
+    const int *__restrict__ block_tables,  // [bsz, max_blocks_per_seq]
+    const int *__restrict__ seq_lens,
+    const int max_seq_len,
+    const int max_blocks_per_seq,
+    const int num_heads,
+    const int head_size,
+    const int block_size,
+    const int pre_cache_length,
+    const int elem_cnt) {
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  LoadT src_vec;
+
+  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  const int hidden_size = pre_cache_length * head_size;
+  const int cache_hidden_size = num_heads * hidden_size;
+  const int offset = 2 * cache_hidden_size;
+
+  for (int32_t linear_index = global_thread_idx * VecSize,
+               step = gridDim.x * blockDim.x * VecSize;
+       linear_index < elem_cnt;
+       linear_index += step) {
+    const int batch_id = linear_index / offset;
+    if (seq_lens[batch_id] == 0) continue;
+    const int *block_table_now = block_tables + batch_id * max_blocks_per_seq;
+
+    const int32_t cache_seq_id = (linear_index % hidden_size) / head_size;
+    const int32_t head_id = (linear_index % cache_hidden_size) / hidden_size;
+    const int32_t size_id = linear_index % head_size;
+
+    const int32_t kv_id = (linear_index % offset) / cache_hidden_size;
+    const int32_t read_id = batch_id * cache_hidden_size +
+                            head_id * hidden_size + cache_seq_id * head_size +
+                            size_id;
+    if (kv_id == 0) {
+      phi::Load<T, VecSize>(&pre_key_cache[read_id], &src_vec);
+    } else {
+      phi::Load<T, VecSize>(&pre_value_cache[read_id], &src_vec);
+    }
+
+    const int block_idx = block_table_now[cache_seq_id / block_size];
+    const int block_offset = cache_seq_id % block_size;
+
+    const int tgt_idx = block_idx * num_heads * block_size * head_size +
+                        head_id * block_size * head_size +
+                        block_offset * head_size + size_id;
+
+    if (kv_id == 0) {
+      phi::Store<T, VecSize>(src_vec, &key_cache[tgt_idx]);
+    } else {
+      phi::Store<T, VecSize>(src_vec, &value_cache[tgt_idx]);
+    }
+  }
+}
+
 template <typename T>
 void CacheKernel(
     const phi::GPUContext &dev_ctx,
@@ -1072,26 +1224,31 @@ void CacheKernel(
     const phi::DenseTensor &block_tables,
     const phi::DenseTensor &padding_offsets,
     const phi::DenseTensor &seq_lens,
+    const paddle::optional<DenseTensor> &pre_key_cache,
+    const paddle::optional<DenseTensor> &pre_value_cache,
+    const paddle::optional<DenseTensor> &cache_k_scales,
+    const paddle::optional<DenseTensor> &cache_v_scales,
+    const int batch_size,
     const int num_tokens,
     const int num_heads,
     const int head_size,
     const int max_seq_len,
+    const int pre_cache_length,
     phi::DenseTensor *key_cache_out,
     phi::DenseTensor *value_cache_out,
     const int round_type = 0,
     const float max_bound = 0.0,
-    const float min_bound = 0.0,
-    const int cache_k_group_num = 1,
-    const phi::DenseTensor *cache_k_scales = nullptr,
-    const phi::DenseTensor *cache_v_scales = nullptr) {
+    const float min_bound = 0.0) {
   typedef PDDataTypeTraits<T> traits_;
   typedef typename traits_::DataType DataType_;
 
   const int max_blocks_per_seq = block_tables.dims()[1];
   const int32_t block_size = key_cache_out->dims()[2];
-  const int elem_nums = num_tokens * 2 * num_heads * head_size;  // just k and v
+
+  // stage 1: write qkv to cache [pre_cache_length:]
+  int elem_nums = num_tokens * 2 * num_heads * head_size;  // just k and v
   constexpr int PackSize = 16 / sizeof(T);
-  const int pack_num = elem_nums / PackSize;
+  int pack_num = elem_nums / PackSize;
   const int blocksize = 128;
   int grid_size = 1;
   GetNumBlocks(pack_num, &grid_size);
@@ -1106,14 +1263,14 @@ void CacheKernel(
             block_tables.data<int>(),
             padding_offsets.data<int>(),
             seq_lens.data<int>(),
-            cache_k_scales->data<float>(),
-            cache_v_scales->data<float>(),
-            cache_k_group_num,
+            cache_k_scales.get().data<float>(),
+            cache_v_scales.get().data<float>(),
             max_seq_len,
             max_blocks_per_seq,
             num_heads,
             head_size,
             block_size,
+            pre_cache_length,
             elem_nums,
             round_type,
             max_bound,
@@ -1133,7 +1290,57 @@ void CacheKernel(
             num_heads,
             head_size,
             block_size,
+            pre_cache_length,
             elem_nums);
+  }
+
+  if (pre_key_cache) {
+    // stage 2: write pre_cache to cache [:pre_cache_length]
+    elem_nums = batch_size * num_heads * pre_cache_length * head_size * 2;
+    pack_num = elem_nums / PackSize;
+    GetNumBlocks(pack_num, &grid_size);
+    if (cache_k_scales) {
+      write_pre_cache_int8_to_cache<DataType_, PackSize>
+          <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(
+              key_cache_out->data<uint8_t>(),
+              value_cache_out->data<uint8_t>(),
+              reinterpret_cast<const DataType_ *>(
+                  pre_key_cache.get().data<T>()),
+              reinterpret_cast<const DataType_ *>(
+                  pre_value_cache.get().data<T>()),
+              block_tables.data<int>(),
+              seq_lens.data<int>(),
+              cache_k_scales->data<float>(),
+              cache_v_scales->data<float>(),
+              max_seq_len,
+              max_blocks_per_seq,
+              num_heads,
+              head_size,
+              block_size,
+              pre_cache_length,
+              elem_nums,
+              round_type,
+              max_bound,
+              min_bound);
+    } else {
+      write_pre_cache_to_cache<DataType_, PackSize>
+          <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(
+              reinterpret_cast<DataType_ *>(key_cache_out->data<T>()),
+              reinterpret_cast<DataType_ *>(value_cache_out->data<T>()),
+              reinterpret_cast<const DataType_ *>(
+                  pre_key_cache.get().data<T>()),
+              reinterpret_cast<const DataType_ *>(
+                  pre_value_cache.get().data<T>()),
+              block_tables.data<int>(),
+              seq_lens.data<int>(),
+              max_seq_len,
+              max_blocks_per_seq,
+              num_heads,
+              head_size,
+              block_size,
+              pre_cache_length,
+              elem_nums);
+    }
   }
 }
 
@@ -1148,6 +1355,7 @@ __global__ void quant_write_cache_int8_kernel(
     const int *__restrict__ padding_offsets,  // [num_tokens]
     const int *__restrict__ seq_lens,         // [bsz]
     const int max_seq_len,
+    const int pre_cache_length,
     const int max_blocks_per_seq,
     const int num_tokens,
     const int num_heads,
@@ -1227,7 +1435,7 @@ __global__ void quant_write_cache_int8_kernel(
     const int ori_token_idx = token_idx + padding_offsets[token_idx];
     const int ori_bi = ori_token_idx / max_seq_len;
     if (seq_lens[ori_bi] == 0) continue;
-    const int ori_seq_id = ori_token_idx % max_seq_len;
+    const int ori_seq_id = ori_token_idx % max_seq_len + pre_cache_length;
 
     const int *block_table_now = block_tables + ori_bi * max_blocks_per_seq;
     const int block_idx = block_table_now[ori_seq_id / block_size];
@@ -1256,26 +1464,26 @@ void DynamicQuantCacheKernel(
     const phi::DenseTensor &v_quant_scales,
     const phi::DenseTensor &k_dequant_scales,
     const phi::DenseTensor &v_dequant_scales,
+    const paddle::optional<DenseTensor> &pre_key_cache,
+    const paddle::optional<DenseTensor> &pre_value_cache,
+    const int batch_size,
     const int num_heads,
     const int head_size,
     const int max_seq_len,
+    const int pre_cache_length,
     phi::DenseTensor *key_cache_out,
     phi::DenseTensor *value_cache_out) {
   typedef PDDataTypeTraits<T> traits_;
   typedef typename traits_::DataType DataType_;
 
-  const int bsz = block_tables.dims()[0];
   const int num_tokens = padding_offsets.dims()[0];
   const int max_blocks_per_seq = block_tables.dims()[1];
   const int32_t block_size = key_cache_out->dims()[2];
-  const int elem_nums = num_tokens * 2 * num_heads * head_size;  // just k and v
   constexpr int PackSize = 16 / sizeof(T);
-  const int pack_num = elem_nums / PackSize;
 
   assert(head_size % PackSize == 0);
 
-  const DataType_ *qkv_ptr =
-      reinterpret_cast<DataType_ *>(const_cast<T *>(qkv.data<T>()));
+  const DataType_ *qkv_ptr = reinterpret_cast<const DataType_ *>(qkv.data<T>());
 
   //  [max_block_num, num_head, block_size, head_dim]
 
@@ -1306,6 +1514,7 @@ void DynamicQuantCacheKernel(
                                                 padding_offsets.data<int>(),
                                                 seq_lens.data<int>(),
                                                 max_seq_len,
+                                                pre_cache_length,
                                                 max_blocks_per_seq,
                                                 num_tokens,
                                                 num_heads,
@@ -1315,6 +1524,37 @@ void DynamicQuantCacheKernel(
                                                 v_quant_scales_data,
                                                 k_dequant_scales_data,
                                                 v_dequant_scales_data);
+
+  if (pre_key_cache) {
+    // stage 2: write pre_cache to cache [:pre_cache_length]
+    const int elem_nums =
+        batch_size * num_heads * pre_cache_length * head_size * 2;
+    const int pack_num = elem_nums / PackSize;
+    const int blocksize = 128;
+    int grid_size = 1;
+    GetNumBlocks(pack_num, &grid_size);
+    write_pre_cache_int8_to_cache<DataType_, PackSize>
+        <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(
+            key_cache_out->data<uint8_t>(),
+            value_cache_out->data<uint8_t>(),
+            reinterpret_cast<const DataType_ *>(pre_key_cache.get().data<T>()),
+            reinterpret_cast<const DataType_ *>(
+                pre_value_cache.get().data<T>()),
+            block_tables.data<int>(),
+            seq_lens.data<int>(),
+            k_quant_scales.data<float>(),
+            v_quant_scales.data<float>(),
+            max_seq_len,
+            max_blocks_per_seq,
+            num_heads,
+            head_size,
+            block_size,
+            pre_cache_length,
+            elem_nums,
+            1,
+            127.0f,
+            -127.0f);
+  }
 }
 
 template <typename T, int VecSize = 1>
@@ -2179,6 +2419,181 @@ void qkv_transpose_split(const phi::GPUContext &dev_ctx,
 }
 
 template <typename T, int VecSize>
+__global__ void write_pre_cahe_to_kv_buffer(
+    T *k_buf,  // [bsz, num_head, seq_len + pre_cache_length, head_dim]
+    T *v_buf,
+    const T *pre_key_cache,  // [bsz, num_head, pre_cache_length, head_dim]
+    const T *pre_value_cache,
+    const int *seq_lens,
+    const int batch_size,
+    const int pre_cache_length,
+    const int num_head,
+    const int head_dim,
+    const int max_len_this_time,
+    const int elem_cnt) {
+  const int32_t hidden_size = pre_cache_length * head_dim;
+  const int32_t cache_hidden_size = num_head * hidden_size;
+  const int32_t fused_hidden_size = 2 * cache_hidden_size;
+  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  LoadT src_vec;
+
+  for (int32_t linear_index = global_thread_idx * VecSize,
+               step = gridDim.x * blockDim.x * VecSize;
+       linear_index < elem_cnt;
+       linear_index += step) {
+    const int32_t batch_id = linear_index / fused_hidden_size;
+    if (seq_lens[batch_id] == 0) continue;
+
+    const int32_t cache_seq_id = (linear_index % hidden_size) / head_dim;
+    const int32_t head_id = (linear_index % cache_hidden_size) / hidden_size;
+    const int32_t size_id = linear_index % head_dim;
+    const int32_t kv_id =
+        (linear_index % fused_hidden_size) / cache_hidden_size;
+
+    const int32_t read_id = batch_id * cache_hidden_size +
+                            head_id * hidden_size + cache_seq_id * head_dim +
+                            size_id;
+    if (kv_id == 0) {
+      phi::Load<T, VecSize>(&pre_key_cache[read_id], &src_vec);
+    } else {
+      phi::Load<T, VecSize>(&pre_value_cache[read_id], &src_vec);
+    }
+
+    const int tmp_max_len_this_time = max_len_this_time + pre_cache_length;
+    const int32_t write_idx =
+        batch_id * num_head * tmp_max_len_this_time * head_dim +
+        head_id * tmp_max_len_this_time * head_dim + cache_seq_id * head_dim +
+        size_id;
+    if (kv_id == 0) {
+      phi::Store<T, VecSize>(src_vec, &k_buf[write_idx]);
+    } else {
+      phi::Store<T, VecSize>(src_vec, &v_buf[write_idx]);
+    }
+  }
+}
+
+template <typename T, int VecSize>
+__global__ void fusedQKV_transpose_split_kernel(T *q_buf,
+                                                T *k_buf,
+                                                T *v_buf,
+                                                const T *qkv,
+                                                const int *padding_offset,
+                                                const int *seq_lens,
+                                                const int32_t elem_cnt,
+                                                const int batch_size,
+                                                const int max_len_this_time,
+                                                const int seq_len,
+                                                const int pre_cache_length,
+                                                const int token_num,
+                                                const int head_num,
+                                                const int size_per_head) {
+  const int32_t hidden_size = head_num * size_per_head;
+  const int32_t fused_hidden_size = 3 * hidden_size;
+  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  LoadT src_vec;
+
+  for (int32_t linear_index = global_thread_idx * VecSize,
+               step = gridDim.x * blockDim.x * VecSize;
+       linear_index < elem_cnt;
+       linear_index += step) {
+    phi::Load<T, VecSize>(&qkv[linear_index], &src_vec);
+    int32_t bias_idx = linear_index % fused_hidden_size;
+    const int32_t token_idx = linear_index / fused_hidden_size;
+    const int32_t ori_token_idx =
+        token_idx + (padding_offset == nullptr ? 0 : padding_offset[token_idx]);
+    const int32_t target_batch_id = ori_token_idx / seq_len;
+    if (seq_lens[target_batch_id] == 0) continue;
+    const int32_t seq_id = ori_token_idx % seq_len;
+
+    const int32_t qkv_id = bias_idx / hidden_size;
+    const int32_t head_id = (linear_index % hidden_size) / size_per_head;
+    const int32_t size_id = linear_index % size_per_head;
+
+    const int tmp_max_len_this_time =
+        max_len_this_time + (qkv_id == 0 ? 0 : pre_cache_length);
+    const int tmp_seq_id = qkv_id == 0 ? seq_id : seq_id + pre_cache_length;
+    const int write_idx =
+        target_batch_id * head_num * tmp_max_len_this_time * size_per_head +
+        head_id * tmp_max_len_this_time * size_per_head +
+        tmp_seq_id * size_per_head + size_id;
+    if (qkv_id == 0) {
+      phi::Store<T, VecSize>(src_vec, &q_buf[write_idx]);
+    } else if (qkv_id == 1) {
+      phi::Store<T, VecSize>(src_vec, &k_buf[write_idx]);
+    } else {
+      phi::Store<T, VecSize>(src_vec, &v_buf[write_idx]);
+    }
+  }
+}
+
+template <typename T>
+void qkv_transpose_split(
+    const phi::GPUContext &dev_ctx,
+    T *q_buf,
+    T *k_buf,
+    T *v_buf,
+    const T *qkv,
+    const T *pre_key_cache,  // [bsz, num_head, pre_cache_length, head_dim]
+    const T *pre_value_cache,
+    const int *padding_offset,
+    const int *seq_lens,
+    const int token_num,
+    const int batch_size,
+    const int head_num,
+    const int max_len_this_time,
+    const int seq_len,
+    const int pre_cache_length,
+    const int size_per_head) {
+  int32_t elem_cnt = token_num * head_num * size_per_head * 3;
+  constexpr int PackSize = VEC_16B / sizeof(T);
+  PADDLE_ENFORCE_EQ(size_per_head % PackSize,
+                    0,
+                    phi::errors::PreconditionNotMet(
+                        "dim_head=%d must be divisible by vec_size=%d",
+                        size_per_head,
+                        PackSize));
+  int32_t pack_num = elem_cnt / PackSize;
+  const int32_t blocksize = 128;
+  int32_t grid_size = 1;
+  GetNumBlocks(pack_num, &grid_size);
+  fusedQKV_transpose_split_kernel<T, PackSize>
+      <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(q_buf,
+                                                      k_buf,
+                                                      v_buf,
+                                                      qkv,
+                                                      padding_offset,
+                                                      seq_lens,
+                                                      elem_cnt,
+                                                      batch_size,
+                                                      max_len_this_time,
+                                                      seq_len,
+                                                      pre_cache_length,
+                                                      token_num,
+                                                      head_num,
+                                                      size_per_head);
+  if (pre_key_cache) {
+    // stage 2: write pre_cache to kv_buf
+    elem_cnt = batch_size * head_num * pre_cache_length * size_per_head * 2;
+    pack_num = elem_cnt / PackSize;
+    GetNumBlocks(pack_num, &grid_size);
+    write_pre_cahe_to_kv_buffer<T, PackSize>
+        <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(k_buf,
+                                                        v_buf,
+                                                        pre_key_cache,
+                                                        pre_value_cache,
+                                                        seq_lens,
+                                                        batch_size,
+                                                        pre_cache_length,
+                                                        head_num,
+                                                        size_per_head,
+                                                        max_len_this_time,
+                                                        elem_cnt);
+  }
+}
+
+template <typename T, int VecSize>
 __global__ void GetDecoderTensorKernel(const T *qkv_out,
                                        const int *cum_offsets,
                                        T *qkv_out_decoder,
@@ -2366,6 +2781,85 @@ void InitValue(const phi::GPUContext &dev_ctx,
   InitOutValueKernel<T, PackSize>
       <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(
           output_data, numel, init_value);
+}
+
+template <typename T, int VecSize>
+__global__ void TransposeRemovingPadding(const T *input_data,
+                                         const int *seq_lens,
+                                         T *output_data,
+                                         const int batch_size,
+                                         const int num_head,
+                                         const int max_len_this_time,
+                                         const int seq_len,
+                                         const int head_dim,
+                                         const int token_num,
+                                         const int elem_cnt,
+                                         const int *padding_offset) {
+  // transpose and remove padding
+  // [batch_size, num_head, max_len_this_time, head_dim] -> [token_num,
+  // num_head, head_dim]
+  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
+  const int dim_embed = num_head * head_dim;
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  LoadT src_vec;
+
+  for (int32_t linear_index = idx * VecSize,
+               step = gridDim.x * blockDim.x * VecSize;
+       linear_index < elem_cnt;
+       linear_index += step) {
+    const int token_idx = linear_index / dim_embed;
+    const int ori_token_idx =
+        token_idx + (padding_offset == nullptr ? 0 : padding_offset[token_idx]);
+    const int ori_batch_id = ori_token_idx / seq_len;
+    if (seq_lens && seq_lens[ori_batch_id] == 0) continue;
+    const int ori_seq_id = ori_token_idx % seq_len;
+    const int ori_head_id = (linear_index % dim_embed) / head_dim;
+    const int ori_head_lane = (linear_index % dim_embed) % head_dim;
+    const int ori_idx = ori_batch_id * num_head * max_len_this_time * head_dim +
+                        ori_head_id * max_len_this_time * head_dim +
+                        ori_seq_id * head_dim + ori_head_lane;
+    phi::Load<T, VecSize>(&input_data[ori_idx], &src_vec);
+    phi::Store<T, VecSize>(src_vec, &output_data[linear_index]);
+  }
+}
+
+template <typename T>
+void InvokeTransposeRemovePadding(const phi::GPUContext &dev_ctx,
+                                  const T *input_data,
+                                  const int *seq_lens,
+                                  T *output_data,
+                                  const int batch_size,
+                                  const int num_head,
+                                  const int max_len_this_time,
+                                  const int seq_len,
+                                  const int head_dim,
+                                  const int token_num,
+                                  const int *padding_offset) {
+  // [batch_size, num_head, max_len_this_time, head_dim] -> [token_num,
+  // num_head, head_dim]
+  constexpr int VEC_16B = 16;
+  const int elem_cnt = token_num * num_head * head_dim;
+  constexpr int PackSize = VEC_16B / sizeof(T);
+  PADDLE_ENFORCE_EQ(
+      head_dim % PackSize,
+      0,
+      phi::errors::PreconditionNotMet(
+          "dim_head=%d must be divisible by vec_size=%d", head_dim, PackSize));
+  const int32_t pack_num = elem_cnt / PackSize;
+  const int32_t block_size = 128;
+  int32_t grid_size = (pack_num + block_size - 1) / block_size;
+  TransposeRemovingPadding<T, PackSize>
+      <<<grid_size, block_size, 0, dev_ctx.stream()>>>(input_data,
+                                                       seq_lens,
+                                                       output_data,
+                                                       batch_size,
+                                                       num_head,
+                                                       max_len_this_time,
+                                                       seq_len,
+                                                       head_dim,
+                                                       token_num,
+                                                       elem_cnt,
+                                                       padding_offset);
 }
 
 }  // namespace fusion
