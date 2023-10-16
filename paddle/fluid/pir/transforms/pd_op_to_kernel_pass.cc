@@ -36,7 +36,9 @@
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/pir/core/builtin_op.h"
+#include "paddle/utils/flags.h"
 
+PHI_DECLARE_bool(print_ir);
 namespace paddle {
 namespace dialect {
 
@@ -1452,6 +1454,10 @@ void ProcessBlock(
 
 std::unique_ptr<pir::Program> PdOpLowerToKernelPass(pir::Program* prog,
                                                     phi::Place place) {
+  if (FLAGS_print_ir) {
+    std::cout << "IR before lowering = " << *prog << std::endl;
+  }
+
   auto program = std::make_unique<pir::Program>(pir::IrContext::Instance());
 
   auto block = prog->block();
@@ -1466,11 +1472,10 @@ std::unique_ptr<pir::Program> PdOpLowerToKernelPass(pir::Program* prog,
   ProcessBlock(
       place, block, program->block(), ctx, &map_op_pair, &map_value_pair);
 
-  if (VLOG_IS_ON(2)) {
-    std::stringstream ss1;
-    program->Print(ss1);
-    VLOG(2) << "Program after lowering to kernel pass : " << ss1.str();
+  if (FLAGS_print_ir) {
+    std::cout << "IR after lowering = " << *program << std::endl;
   }
+
   return program;
 }
 }  // namespace dialect
