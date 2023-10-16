@@ -25,6 +25,7 @@
 #include "paddle/pir/core/builtin_op.h"
 
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
@@ -340,6 +341,14 @@ void BindOperation(py::module *m) {
            });
 }
 
+py::str Value2String(const Value &self) {
+  std::ostringstream print_stream;
+  print_stream << "Value(";
+  print_stream << GetValueInfo(self);
+  print_stream << ")";
+  return print_stream.str();
+}
+
 void BindValue(py::module *m) {
   py::class_<Value> value(*m, "Value", R"DOC(
     Value class represents the SSA value in the IR system. It is a directed edge
@@ -363,6 +372,10 @@ void BindValue(py::module *m) {
       .def("first_use", &Value::first_use, return_value_policy::reference)
       .def("has_one_use", &Value::HasOneUse)
       .def("use_empty", &Value::use_empty)
+      .def("replace_all_uses_with",
+           [](Value &self, Value &op_value) {
+             self.ReplaceAllUsesWith(op_value);
+           })
       .def("__eq__", &Value::operator==)
       .def("__eq__",
            [](Value &self, OpResult &other) {
@@ -370,13 +383,8 @@ void BindValue(py::module *m) {
            })
       .def("__hash__",
            [](const Value &self) { return std::hash<pir::Value>{}(self); })
-      .def("__str__", [](const Value &self) -> py::str {
-        std::ostringstream print_stream;
-        print_stream << "Value(";
-        print_stream << GetValueInfo(self);
-        print_stream << ")";
-        return print_stream.str();
-      });
+      .def("__str__", &Value2String)
+      .def("__repr__", &Value2String);
 }
 
 void BindOpOperand(py::module *m) {
@@ -610,6 +618,10 @@ void BindOpResult(py::module *m) {
                return false;
              }
            })
+      .def("replace_all_uses_with",
+           [](OpResult &self, OpResult &op_result) {
+             self.ReplaceAllUsesWith(op_result);
+           })
       .def_property(
           "stop_gradient",
           [](OpResult &self) {
@@ -738,7 +750,7 @@ std::shared_ptr<Program> ProgramClone(const Program &program) {
 std::list<Operation *>::const_iterator list_offset(const Block *block,
                                                    int start_idx) {
   auto it = block->begin();
-  while (start_idx--) ++it;
+  while (it != block->end() && start_idx--) ++it;
   return it;
 }
 
@@ -913,6 +925,7 @@ SplitedResult ForwardBackwardSplit(
   std::unordered_map<pir::Value, pir::Value> forward_value_map;
   std::unordered_map<pir::Value, pir::Value> backward_value_map;
   pir::Builder backward_builder = pir::Builder(ctx, backward_program->block());
+  bool has_backward = (backward_range[1] > backward_range[0]);
 
   // forward program construct.
   VLOG(4) << "start create forward program.";
@@ -986,25 +999,28 @@ SplitedResult ForwardBackwardSplit(
   };
 
   // counter = 0;
-  VLOG(4) << "start create backward inputs, inserting pd.data ops.";
-  VLOG(4) << "Create pd.data for backward program: fo, start with input_"
-          << counter;
-  std::for_each(forward_outputs.begin(), forward_outputs.end(), create_data_fn);
-  VLOG(4) << "Create pd.data for backward program: fx, start with input_"
-          << counter;
-  std::for_each(forward_inputs.begin(), forward_inputs.end(), create_data_fn);
-  VLOG(4) << "Create pd.data for backward program: fp, start with input_"
-          << counter;
-  std::for_each(forward_params.begin(), forward_params.end(), create_data_fn);
-  VLOG(4) << "Create pd.data for backward program: fm, start with input_"
-          << counter;
-  std::for_each(middle_values.begin(), middle_values.end(), create_data_fn);
-  VLOG(4) << "Create pd.data for backward program: fo_g, start with input_"
-          << counter;
-  std::for_each(forward_outputs_grads.begin(),
-                forward_outputs_grads.end(),
-                create_data_fn);
-  VLOG(4) << "Create pd.data for backward program end. input_" << counter;
+  if (has_backward) {
+    VLOG(4) << "start create backward inputs, inserting pd.data ops.";
+    VLOG(4) << "Create pd.data for backward program: fo, start with input_"
+            << counter;
+    std::for_each(
+        forward_outputs.begin(), forward_outputs.end(), create_data_fn);
+    VLOG(4) << "Create pd.data for backward program: fx, start with input_"
+            << counter;
+    std::for_each(forward_inputs.begin(), forward_inputs.end(), create_data_fn);
+    VLOG(4) << "Create pd.data for backward program: fp, start with input_"
+            << counter;
+    std::for_each(forward_params.begin(), forward_params.end(), create_data_fn);
+    VLOG(4) << "Create pd.data for backward program: fm, start with input_"
+            << counter;
+    std::for_each(middle_values.begin(), middle_values.end(), create_data_fn);
+    VLOG(4) << "Create pd.data for backward program: fo_g, start with input_"
+            << counter;
+    std::for_each(forward_outputs_grads.begin(),
+                  forward_outputs_grads.end(),
+                  create_data_fn);
+    VLOG(4) << "Create pd.data for backward program end. input_" << counter;
+  }
 
   // counter = 0;
   VLOG(4) << "start create forward outputs, inserting set_parameter ops.";
@@ -1023,12 +1039,14 @@ SplitedResult ForwardBackwardSplit(
                  });
   // counter = 0;
   VLOG(4) << "start create backward outputs, inserting set_parameter ops.";
-  std::for_each(forward_inputs_grads.begin(),
-                forward_inputs_grads.end(),
-                create_output_fn_backward);
-  std::for_each(forward_params_grads.begin(),
-                forward_params_grads.end(),
-                create_output_fn_backward);
+  if (has_backward) {
+    std::for_each(forward_inputs_grads.begin(),
+                  forward_inputs_grads.end(),
+                  create_output_fn_backward);
+    std::for_each(forward_params_grads.begin(),
+                  forward_params_grads.end(),
+                  create_output_fn_backward);
+  }
 
   VLOG(4) << "forward_value_map.size() is " << forward_value_map.size();
   VLOG(4) << "backward_value_map.size() is " << backward_value_map.size();
@@ -1132,7 +1150,7 @@ void BindUtils(pybind11::module *m) {
                     y_s = paddle.matmul(x_s, x_s)
                     z_s = paddle.add(y_s, y_s)
                     k_s = paddle.tanh(z_s)
-                newir_program = ir.translate_to_new_ir(main_program.desc)
+                newir_program = pir.translate_to_new_ir(main_program.desc)
 
                 print(newir_program)
 
@@ -1151,6 +1169,53 @@ void BindUtils(pybind11::module *m) {
         legacy_program (ProgramDesc): The Fluid Program that need checked.
       Returns:
         list[str] : List of unregistered operators in paddle dialect, the name is expressed by origin op name.
+    )DOC");
+  m->def(
+      "translate_to_new_ir_with_param_map",
+      [](const framework::ProgramDesc &legacy_program) {
+        auto ir_ctx = pir::IrContext::Instance();
+        auto program = std::make_shared<pir::Program>(ir_ctx);
+        translator::ProgramTranslator program_translator(&legacy_program,
+                                                         program.get());
+        program_translator.Translate();
+        return std::make_pair(program, program_translator.VarDesc2Value());
+      },
+      R"DOC(
+        Convert Fluid Program to New IR Program and get the mappings of VarDesc -> pir::Value.
+
+        Args:
+
+            legacy_program (ProgramDesc): The Fluid Program that will be converted.
+
+        Returns:
+            Program: The New IR Program
+            dict[str, pir::Value]: Mapping between VarDesc(by name) and pir::Value.
+
+        Raises:
+            PreconditionNotMet: If legacy_program has multi block will raise error.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                from paddle import pir
+                paddle.enable_static()
+
+                x = paddle.randn([4, 4])
+                main_program, start_program = (
+                    paddle.static.Program(),
+                    paddle.static.Program(),
+                )
+                with paddle.static.program_guard(main_program, start_program):
+                    x_s = paddle.static.data('x', [4, 4], x.dtype)
+                    x_s.stop_gradient = False
+                    y_s = paddle.matmul(x_s, x_s)
+                    z_s = paddle.add(y_s, y_s)
+                    k_s = paddle.tanh(z_s)
+                newir_program, mappings = pir.translate_to_new_ir_with_param_map(main_program.desc)
+
+                print(newir_program)
+                print(mappings)
     )DOC");
 }
 

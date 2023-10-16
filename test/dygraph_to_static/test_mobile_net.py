@@ -19,7 +19,7 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_with_new_ir
+from dygraph_to_static_util import dy2static_unittest, test_with_new_ir
 from predictor_utils import PredictorTools
 
 import paddle
@@ -656,6 +656,7 @@ def predict_analysis_inference(args, data):
     return out
 
 
+@dy2static_unittest
 class TestMobileNet(unittest.TestCase):
     def setUp(self):
         self.args = Args()

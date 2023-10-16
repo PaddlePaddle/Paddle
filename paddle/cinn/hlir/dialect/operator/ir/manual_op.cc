@@ -32,18 +32,19 @@ void GroupOp::Build(pir::Builder &builder,
   argument.output_types = output_types;
 }
 
-pir::Block *GroupOp::Block() {
+pir::Block *GroupOp::block() {
   pir::Region &region = (*this)->region(0);
   if (region.empty()) region.emplace_back();
   return region.front();
 }
 
-std::vector<pir::Operation *> GroupOp::Ops() {
-  auto *block = this->Block();
-  return std::vector<pir::Operation *>(block->begin(), block->end());
+std::vector<pir::Operation *> GroupOp::ops() {
+  auto *inner_block = this->block();
+  return std::vector<pir::Operation *>(inner_block->begin(),
+                                       inner_block->end());
 }
 
-void GroupOp::Verify() {}
+void GroupOp::VerifySig() {}
 
 void GroupOp::Print(pir::IrPrinter &printer) {
   auto &os = printer.os;
@@ -54,7 +55,7 @@ void GroupOp::Print(pir::IrPrinter &printer) {
   os << " -> ";
   printer.PrintOpReturnType(op);
   os << " {";
-  for (auto &sub_op : Ops()) {
+  for (auto &sub_op : ops()) {
     os << "\n";
     printer.PrintOperation(sub_op);
   }

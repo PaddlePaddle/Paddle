@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import inspect
-import os
 import unittest
 
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    test_and_compare_with_new_ir,
+)
 from numpy import append
 
 import paddle
@@ -161,7 +163,7 @@ def test_push_pop_4(x, *args, **kargs):
     return l, k
 
 
-class TestClosureAnalysis(unittest.TestCase):
+class TestClosureAnalysis(Dy2StTestBase):
     def setUp(self):
         self.judge_type = "var and w_vars"
         self.init_dygraph_func()
@@ -260,7 +262,7 @@ class TestClosureAnalysis_PushPop(TestClosureAnalysis):
         ]
 
 
-class TestPushPopTrans(unittest.TestCase):
+class TestPushPopTrans(Dy2StTestBase):
     @test_and_compare_with_new_ir(False)
     def test(self):
         def vlist_of_dict(x):
@@ -270,7 +272,6 @@ class TestPushPopTrans(unittest.TestCase):
             return ma
 
         x = paddle.to_tensor([3])
-        print(paddle.jit.to_static(vlist_of_dict).code)
         print(paddle.jit.to_static(vlist_of_dict)(x))
 
     @test_and_compare_with_new_ir(False)
@@ -284,7 +285,6 @@ class TestPushPopTrans(unittest.TestCase):
             return a
 
         x = paddle.to_tensor([3])
-        print(paddle.jit.to_static(vlist_of_dict).code)
         print(paddle.jit.to_static(vlist_of_dict)(x))
 
     @test_and_compare_with_new_ir(False)
@@ -298,7 +298,6 @@ class TestPushPopTrans(unittest.TestCase):
             return a
 
         x = paddle.to_tensor([3])
-        print(paddle.jit.to_static(vlist_of_dict).code)
         print(paddle.jit.to_static(vlist_of_dict)(x))
 
     @test_and_compare_with_new_ir(False)
@@ -312,7 +311,6 @@ class TestPushPopTrans(unittest.TestCase):
             return a
 
         x = paddle.to_tensor([3])
-        print(paddle.jit.to_static(vlist_of_dict).code)
         print(paddle.jit.to_static(vlist_of_dict)(x))
 
     @test_and_compare_with_new_ir(False)
@@ -326,10 +324,8 @@ class TestPushPopTrans(unittest.TestCase):
             return a
 
         x = paddle.to_tensor([3])
-        print(paddle.jit.to_static(vlist_of_dict).code)
         print(paddle.jit.to_static(vlist_of_dict)(x))
 
 
 if __name__ == '__main__':
-    os.environ['ENABLE_FALL_BACK'] = "False"
     unittest.main()

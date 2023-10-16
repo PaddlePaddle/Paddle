@@ -123,7 +123,7 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
 
   // 0. Verify
   if (op_info) {
-    op_info.Verify(op);
+    op_info.VerifySig(op);
   }
   return op;
 }
@@ -280,6 +280,12 @@ Program *Operation::GetParentProgram() {
 void Operation::SetParent(Block *parent, const Block::Iterator &position) {
   parent_ = parent;
   position_ = position;
+}
+
+void Operation::MoveTo(Block *block, Block::Iterator position) {
+  IR_ENFORCE(parent_, "Operation does not have parent");
+  Operation *op = parent_->Take(this);
+  block->insert(position, op);
 }
 
 std::string Operation::name() const {
