@@ -123,8 +123,8 @@ class TestSubsetRandomSampler(unittest.TestCase):
         hints = {i: 0 for i in indices}
         for index in iter(sampler):
             hints[index] += 1
-        for h in hints.keys():
-            assert h != 1
+        for h in hints.values():
+            assert h == 1
 
     def test_raise(self):
         try:
