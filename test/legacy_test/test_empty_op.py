@@ -31,7 +31,7 @@ class TestEmptyOp(OpTest):
         self.init_config()
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output, check_new_ir=True)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def verify_output(self, outs):
         data_type = outs[0].dtype
@@ -121,7 +121,7 @@ class TestEmptyOp_ShapeTensor(OpTest):
         self.outputs = {'Out': np.zeros(self.shape).astype(dtype)}
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output, check_new_ir=True)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def verify_output(self, outs):
         data_type = outs[0].dtype
@@ -172,7 +172,7 @@ class TestEmptyOp_ShapeTensorList(OpTest):
         self.outputs = {'Out': np.zeros(self.shape).astype(dtype)}
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output, check_new_ir=True)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def verify_output(self, outs):
         data_type = outs[0].dtype
@@ -312,7 +312,7 @@ class TestEmptyBF16Op(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output, check_new_ir=True)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def verify_output(self, outs):
         max_value = np.nanmax(outs[0])
