@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test
+from dygraph_to_static_util import ast_only_test, dy2static_unittest
 from ifelse_simple_func import dyfunc_with_if_else
 
 import paddle
@@ -264,6 +264,7 @@ def test_return_nested(x):
     return func()
 
 
+@dy2static_unittest
 class TestReturnBase(unittest.TestCase):
     def setUp(self):
         self.input = np.ones(1).astype('int32')

@@ -77,6 +77,7 @@ def dyfunc_with_staticmethod(x_v):
     return a.add(x_v, x_v)
 
 
+@dy2static_unittest
 class TestRecursiveCall1(unittest.TestCase):
     def setUp(self):
         self.input = np.random.random([10, 16]).astype('float32')
@@ -168,6 +169,7 @@ class MyLayer(paddle.nn.Layer):
         return self.act(out)
 
 
+@dy2static_unittest
 class TestRecursiveCall2(unittest.TestCase):
     def setUp(self):
         self.input = np.random.random((1, 3, 3, 5)).astype('float32')

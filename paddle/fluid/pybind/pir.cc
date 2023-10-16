@@ -392,6 +392,10 @@ void BindValue(py::module *m) {
       .def("first_use", &Value::first_use, return_value_policy::reference)
       .def("has_one_use", &Value::HasOneUse)
       .def("use_empty", &Value::use_empty)
+      .def("replace_all_uses_with",
+           [](Value &self, Value &op_value) {
+             self.ReplaceAllUsesWith(op_value);
+           })
       .def("__eq__", &Value::operator==)
       .def("__eq__",
            [](Value &self, OpResult &other) {
@@ -478,6 +482,16 @@ phi::DataType GetOpResultDtype(const OpResult &result) {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Currently, we can only get phi::DataType from DenseTensorType and "
         "SelectedRowsType."));
+  }
+}
+
+const phi::DDim &GetOpResultDims(const OpResult &result) {
+  if (result.type().isa<DenseTensorType>()) {
+    return result.type().dyn_cast<DenseTensorType>().dims();
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get shape for dense "
+        "tensor."));
   }
 }
 
@@ -634,6 +648,12 @@ void BindOpResult(py::module *m) {
                return false;
              }
            })
+      .def("numel",
+           [](OpResult &self) { return phi::product(GetOpResultDims(self)); })
+      .def("replace_all_uses_with",
+           [](OpResult &self, OpResult &op_result) {
+             self.ReplaceAllUsesWith(op_result);
+           })
       .def_property(
           "stop_gradient",
           [](OpResult &self) {
@@ -662,16 +682,7 @@ void BindOpResult(py::module *m) {
           })
       .def_property(
           "shape",
-          [](OpResult &self) {
-            if (self.type().isa<DenseTensorType>()) {
-              return phi::vectorize(
-                  self.type().dyn_cast<DenseTensorType>().dims());
-            } else {
-              PADDLE_THROW(phi::errors::InvalidArgument(
-                  "Currently, we can only get shape for dense "
-                  "tensor."));
-            }
-          },
+          [](OpResult &self) { return phi::vectorize(GetOpResultDims(self)); },
           [](OpResult &self, const std::vector<int> &shape) {
             PADDLE_THROW(phi::errors::InvalidArgument(
                 "can't set shape when building static graph"));
