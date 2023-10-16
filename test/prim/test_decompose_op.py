@@ -42,9 +42,10 @@ def check_param_mappings(param_mappings):
 def get_new_ir_grad_var_to_var_map(param_mappings, old_ir_grad_var_to_var_map):
     new_ir_grad_var_to_var_map = {}
     for grad_var, var in old_ir_grad_var_to_var_map.items():
-        new_grad_var = param_mappings[grad_var][0].get_opresult()
-        new_var = param_mappings[var][0].get_opresult()
-        new_ir_grad_var_to_var_map[new_grad_var] = new_var
+        if grad_var in param_mappings.keys():
+            new_grad_var = param_mappings[grad_var][0].get_opresult()
+            new_var = param_mappings[var][0].get_opresult()
+            new_ir_grad_var_to_var_map[new_grad_var] = new_var
     return new_ir_grad_var_to_var_map
 
 
@@ -78,7 +79,7 @@ def get_layer_norm_pir_program_and_param_map():
             dtype=tmp2.dtype,
             value=1.0,
         )
-        scale.stop_gradient = True
+        scale.stop_gradient = False
         bias = paddle.tensor.fill_constant(
             shape=tmp2.shape[1:],
             dtype=tmp2.dtype,
@@ -133,6 +134,7 @@ class TestDecomposeOp(unittest.TestCase):
                 # get the old_ir_grad_var_to_var map
                 old_ir_grad_var_to_var_map = {
                     'layer_norm_1.tmp_2@GRAD': 'layer_norm_1.tmp_2',
+                    "fill_constant_5.tmp_0@GRAD": "fill_constant_5.tmp_0",
                     "fill_constant_7.tmp_0@GRAD": "fill_constant_7.tmp_0",
                     'elementwise_mul_1@GRAD': 'elementwise_mul_1',
                     'elementwise_add_1@GRAD': 'elementwise_add_1',
@@ -171,6 +173,7 @@ class TestDecomposeOp(unittest.TestCase):
                         and bwd_op.name() in decompose_bwd_ops_names
                     ):
                         fwd_op = get_fwd_op(bwd_op, grad_var_to_var_map)
+                        assert fwd_op is not None, "fwd_op is None"
                         fwd_inputs = [x.source() for x in fwd_op.operands()]
                         fwd_outputs = fwd_op.results()
 
