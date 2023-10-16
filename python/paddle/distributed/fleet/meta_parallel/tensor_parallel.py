@@ -41,11 +41,17 @@ class TensorParallel(MetaParallelBase):
             logger.info("start broadcast sharding parameters")
             broadcast_sharding_parameters(self._layers, self._hcg)
 
-        logger.info("start broadcast dp parameters")
-        broadcast_dp_parameters(self._layers, self._hcg)
+        if self._hcg.get_data_parallel_world_size() > 1:
+            logger.info("start broadcast dp parameters")
+            broadcast_dp_parameters(self._layers, self._hcg)
 
         logger.info("mp's parameters is ready")
 
     def _pre_forward(self, *inputs, **kwargs):
-        logger.debug("mp start broadcast input data")
-        return broadcast_input_data(self._hcg, *inputs, **kwargs)
+        need_broadcast_data = True
+        if self._strategy is not None:
+            mp_configs = self._strategy.hybrid_configs["mp_configs"]
+            need_broadcast_data = mp_configs.need_broadcast_data
+        if need_broadcast_data:
+            logger.debug("mp start broadcast input data")
+            return broadcast_input_data(self._hcg, *inputs, **kwargs)

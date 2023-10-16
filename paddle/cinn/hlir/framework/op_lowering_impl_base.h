@@ -32,10 +32,10 @@ class OpLowererImplBase {
   OpLowererImplBase() = default;
   ~OpLowererImplBase() = default;
 
-  virtual std::vector<ir::LoweredFunc> Lower(
-      const T& group,
-      bool apply_op_schedule = true,
-      bool apply_group_schedule = true) = 0;
+  virtual std::vector<ir::LoweredFunc> Lower(const T& group,
+                                             bool apply_op_schedule = true,
+                                             bool apply_group_schedule = true,
+                                             bool apply_pass = true) = 0;
 };
 
 }  // namespace framework
