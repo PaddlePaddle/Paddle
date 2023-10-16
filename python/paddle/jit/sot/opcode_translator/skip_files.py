@@ -175,3 +175,13 @@ def need_skip(frame):
         if isinstance(_filename, str):
             filename = _filename
     return need_skip_path(filename)
+
+
+with_graph_codes = (
+    paddle.nn.Layer.__call__.__code__,
+    paddle.nn.Layer._dygraph_call_func.__code__,
+)
+
+paddle.framework.core.eval_frame_no_skip_codes(tuple(no_skip_code))
+paddle.framework.core.eval_frame_skip_file_prefix(tuple(skip_file_names))
+paddle.framework.core.sot_setup_codes_with_graph(with_graph_codes)

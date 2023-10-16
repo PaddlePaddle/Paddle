@@ -14,23 +14,25 @@
 
 from __future__ import annotations
 
+import inspect
 from typing import TYPE_CHECKING
 
 import paddle
 
 from ..profiler import EventGuard
-from ..utils import (
-    Cache,
-    CodeStatus,
-    GraphLogger,
-    Singleton,
-    StepInfoManager,
-    log_do,
-)
+from ..utils import Cache, GraphLogger, Singleton, StepInfoManager, log_do
 from .interpreter import compile_sir
 
 if TYPE_CHECKING:
     from .symbolic_context import SymbolicTraceContext
+
+
+def trace_back_frames():
+    frame = inspect.currentframe()
+    while frame.f_back is not None:
+        frame = frame.f_back
+        code = frame.f_code
+        paddle.framework.core.sot_set_with_graph(code)
 
 
 def clear_eager_tensor_name(output_tensors):
@@ -52,7 +54,7 @@ class FallbackWrapper:
     def __call__(self, *args, **kwargs):
         with EventGuard(f"FallbackWrapper: {self.SIR.name}"):
             if StepInfoManager().need_back_trace:
-                CodeStatus().trace_back_frames()
+                trace_back_frames()
 
             log_do(
                 2,
