@@ -99,7 +99,7 @@ class TestMatMulV2Op(OpTest):
     def test_check_output(self):
         self.check_output(
             check_cinn=self.check_cinn if hasattr(self, 'check_cinn') else True,
-            check_new_ir=True,
+            check_pir=True,
         )
 
     def test_check_grad(self):
@@ -111,7 +111,7 @@ class TestMatMulV2Op(OpTest):
                 check_cinn=self.check_cinn
                 if hasattr(self, 'check_cinn')
                 else True,
-                check_new_ir=True,
+                check_pir=True,
             )
         else:
             self.check_grad(
@@ -120,7 +120,7 @@ class TestMatMulV2Op(OpTest):
                 check_cinn=self.check_cinn
                 if hasattr(self, 'check_cinn')
                 else True,
-                check_new_ir=True,
+                check_pir=True,
             )
 
 
@@ -362,7 +362,7 @@ def create_test_fp16_class(parent, atol=0.001, max_relative_error=1.0):
                         check_cinn=self.check_cinn
                         if hasattr(self, 'check_cinn')
                         else True,
-                        check_new_ir=True,
+                        check_pir=True,
                     )
 
         def test_check_grad(self):
@@ -376,7 +376,7 @@ def create_test_fp16_class(parent, atol=0.001, max_relative_error=1.0):
                     check_cinn=self.check_cinn
                     if hasattr(self, 'check_cinn')
                     else True,
-                    check_new_ir=True,
+                    check_pir=True,
                 )
 
     cls_name = "{}_{}".format(parent.__name__, "Fp16")
@@ -436,7 +436,7 @@ def create_test_bf16_class(parent, atol=0.01):
                 check_cinn=self.check_cinn
                 if hasattr(self, 'check_cinn')
                 else True,
-                check_new_ir=True,
+                check_pir=True,
             )
 
         def test_check_grad_x(self):
@@ -453,7 +453,7 @@ def create_test_bf16_class(parent, atol=0.01):
                 check_cinn=self.check_cinn
                 if hasattr(self, 'check_cinn')
                 else True,
-                check_new_ir=True,
+                check_pir=True,
             )
 
         def test_check_grad_y(self):
@@ -470,7 +470,7 @@ def create_test_bf16_class(parent, atol=0.01):
                 check_cinn=self.check_cinn
                 if hasattr(self, 'check_cinn')
                 else True,
-                check_new_ir=True,
+                check_pir=True,
             )
 
         def test_check_grad(self):
@@ -745,7 +745,7 @@ class TestInt32MatmulOp(OpTest):
         self.out = np.matmul(self.x, self.y)
 
     def test_check_output(self):
-        self.check_output(check_cinn=False, check_new_ir=True)
+        self.check_output(check_cinn=False, check_pir=True)
 
 
 class TestInt32MatMulOpBroadcast(OpTest):
@@ -797,7 +797,7 @@ class TestInt64MatmulOp(OpTest):
         self.out = np.matmul(self.x, self.y)
 
     def test_check_output(self):
-        self.check_output(check_cinn=False, check_new_ir=True)
+        self.check_output(check_cinn=False, check_pir=True)
 
 
 class TestInt64MatMulOpBroadcast(OpTest):

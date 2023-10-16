@@ -1321,6 +1321,11 @@ void BindInternalUtils(py::module *m) {
       .def_static("set_transformer_maskid",
                   [](paddle_infer::Config &config, std::string tensor_name) {
                     InternalUtils::SetTransformerMaskid(&config, tensor_name);
+                  })
+      .def_static("disable_tensorrt_half_ops",
+                  [](paddle_infer::Config &config,
+                     const std::unordered_set<std::string> &ops) {
+                    InternalUtils::DisableTensorRtHalfOps(&config, ops);
                   });
 }
 }  // namespace
