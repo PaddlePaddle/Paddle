@@ -15,7 +15,10 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_util import (
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 from paddle import base
@@ -33,6 +36,7 @@ def function(x: A) -> A:
     return 2 * x
 
 
+@dy2static_unittest
 class TestTransformWhileLoop(unittest.TestCase):
     def setUp(self):
         self.place = (

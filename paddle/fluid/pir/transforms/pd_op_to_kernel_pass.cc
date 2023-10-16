@@ -777,6 +777,7 @@ void HandleForWhileOp(
     std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
     std::unordered_map<pir::Value, pir::Value>* map_value_pair) {
   std::vector<pir::Value> vec_in;
+  pir::Value cond_val;
   for (size_t i = 0; i < op_item->num_operands(); ++i) {
     auto cur_in = op_item->operand_source(i);
 
@@ -786,36 +787,16 @@ void HandleForWhileOp(
         phi::errors::PreconditionNotMet(
             "[%d]'s input of [%s] op MUST in map pair", 0, op_item->name()));
     auto new_in = map_value_pair->at(cur_in);
-
-    vec_in.push_back(new_in);
+    if (i == 0)
+      cond_val = new_in;
+    else
+      vec_in.push_back(new_in);
   }
 
   pir::Builder builder(ctx, block);
 
   auto base_while_op = op_item->dyn_cast<paddle::dialect::WhileOp>();
-  std::vector<pir::Type> op_output_types;
-  for (size_t i = 0; i < base_while_op.num_results(); ++i) {
-    op_output_types.push_back(paddle::dialect::AllocatedDenseTensorType::get(
-        ctx,
-        place,
-        base_while_op.result(i).type().dyn_cast<dialect::DenseTensorType>()));
-  }
-  auto new_while_op = builder.Build<paddle::dialect::WhileOp>(vec_in);
-
-  pir::Block* cond_block = new_while_op.cond_block();
-  for (size_t i = 0; i < vec_in.size(); ++i) {
-    auto block_arg = cond_block->AddArgument(vec_in[i].type());
-    (*map_value_pair)[base_while_op.cond_block()->argument(i)] = block_arg;
-  }
-
-  // process cond block
-  ProcessBlock(place,
-               base_while_op.cond_block(),
-               cond_block,
-               ctx,
-               map_op_pair,
-               map_value_pair);
-
+  auto new_while_op = builder.Build<paddle::dialect::WhileOp>(cond_val, vec_in);
   pir::Block* body_block = new_while_op.body_block();
   for (size_t i = 0; i < vec_in.size(); ++i) {
     auto block_arg = body_block->AddArgument(vec_in[i].type());

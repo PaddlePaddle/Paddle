@@ -15,7 +15,10 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_util import (
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 
@@ -42,6 +45,7 @@ def apply_to_static(net, use_cinn):
     return paddle.jit.to_static(net, build_strategy=build_strategy)
 
 
+@dy2static_unittest
 class TestCINN(unittest.TestCase):
     def setUp(self):
         self.x = paddle.randn([2, 4])
