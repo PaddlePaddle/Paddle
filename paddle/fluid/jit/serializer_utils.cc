@@ -79,7 +79,7 @@ const std::vector<std::pair<std::string, std::string>> PdmodelFilePaths(
   std::string dir_path =
       format_path.substr(0, format_path.length() - layer_name.length());
   DIR* dir = opendir(dir_path.c_str());
-  struct dirent* ptr;
+  struct dirent* ptr = nullptr;
 
   while ((ptr = readdir(dir)) != nullptr) {
     std::string file_name = ptr->d_name;

@@ -1997,7 +1997,7 @@ static void Interpolate1DInferShapeCheck(
     return;
   }
 
-  int out_w_tmp;
+  int out_w_tmp = 0;
   if (scale_tensor) {
     auto scale_tensor_dim = scale_tensor.dims();
     PADDLE_ENFORCE_EQ(
@@ -2130,7 +2130,7 @@ static void Interpolate2DInferShapeCheck(
     return;
   }
 
-  int out_h_tmp, out_w_tmp;
+  int out_h_tmp = 0, out_w_tmp = 0;
 
   if (scale_tensor) {
     auto scale_tensor_dim = scale_tensor.dims();
@@ -2282,7 +2282,7 @@ static void Interpolate3DInferShapeCheck(
     return;
   }
 
-  int out_d_tmp, out_h_tmp, out_w_tmp;
+  int out_d_tmp = 0, out_h_tmp = 0, out_w_tmp = 0;
   if (scale_tensor) {
     auto scale_tensor_dim = scale_tensor.dims();
     PADDLE_ENFORCE_EQ(

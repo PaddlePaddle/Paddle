@@ -276,7 +276,6 @@ register_unity_group(
   unfold_op.cc)
 register_unity_group(
   cc
-  smooth_l1_loss_op.cc
   uniform_random_batch_size_like_op.cc
   unique_op.cc
   unique_with_counts_op.cc
@@ -421,12 +420,8 @@ register_unity_group(
   rank_loss_op.cu
   real_op.cu)
 register_unity_group(
-  cu
-  log_loss_op.cu
-  lookup_table_v2_op.cu
-  masked_select_op.cu
-  shuffle_channel_op.cu
-  softmax_cudnn_op.cu)
+  cu log_loss_op.cu lookup_table_v2_op.cu masked_select_op.cu
+  shuffle_channel_op.cu softmax_cudnn_op.cu)
 register_unity_group(
   cu
   dequantize_log_op.cu
@@ -492,15 +487,10 @@ register_unity_group(
   arg_max_op.cu)
 register_unity_group(cu row_conv_op.cu tril_triu_op.cu unfold_op.cu
                      arg_min_op.cu crop_tensor_op.cu)
-register_unity_group(
-  cu
-  smooth_l1_loss_op.cu
-  uniform_random_batch_size_like_op.cu
-  unstack_op.cu
-  where_index_op.cu
-  where_op.cu
-  layer_norm_op.cu)
+register_unity_group(cu uniform_random_batch_size_like_op.cu unstack_op.cu
+                     where_index_op.cu where_op.cu layer_norm_op.cu)
 register_unity_group(cu expand_as_op.cu stack_op.cu)
+
 # The following groups are to make better use of `/MP` which MSVC's parallel
 # compilation instruction when compiling in Unity Build.
 register_unity_group(cu activation_op.cu)

@@ -541,7 +541,7 @@ def sort(x, axis=-1, descending=False, name=None):
             #  [4. 7. 4. 6.]
             #  [5. 7. 7. 9.]]]
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         outs, _ = _C_ops.argsort(x, axis, descending)
         return outs
     else:

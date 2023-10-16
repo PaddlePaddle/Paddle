@@ -46,10 +46,10 @@ class TestGumbelSoftmaxOp(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output, check_new_ir=True)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_new_ir=True)
+        self.check_grad(["X"], "Out", check_pir=True)
 
 
 class TestGumbelSoftmax_ZeroDim(OpTest):
@@ -68,10 +68,10 @@ class TestGumbelSoftmax_ZeroDim(OpTest):
         self.attrs = {"hard": True, "axis": -1}
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_new_ir=True)
+        self.check_grad(["X"], "Out", check_pir=True)
 
 
 class TestGumbelSoftmaxOp2(TestGumbelSoftmaxOp):
@@ -176,7 +176,7 @@ class TestGumbelSoftmaxOpSampleDistribution(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output_customized(self.accumulate_output, check_new_ir=True)
+        self.check_output_customized(self.accumulate_output, check_pir=True)
         # Experiment should result in batch num .
         self.assertEqual(self.counts.sum(), self.shape[0])
 
@@ -192,7 +192,7 @@ class TestGumbelSoftmaxOpSampleDistribution(OpTest):
         self.assertLess(np.max(np.abs(z)).item(), 2.58)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_new_ir=True)
+        self.check_grad(["X"], "Out", check_pir=True)
 
 
 class TestGumbelSoftmaxOpGrad(unittest.TestCase):
