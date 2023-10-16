@@ -20,7 +20,10 @@ import unittest
 
 import numpy as np
 import transformer_util as util
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_util import (
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 from transformer_dygraph_model import (
     CrossEntropyCriterion,
     Transformer,
@@ -527,6 +530,7 @@ def predict_static(args, batch_generator):
     return seq_ids, seq_scores
 
 
+@dy2static_unittest
 class TestTransformer(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()

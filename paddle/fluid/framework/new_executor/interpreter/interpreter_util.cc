@@ -19,6 +19,7 @@
 #include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/interpreter/data_transfer.h"
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
@@ -228,7 +229,9 @@ bool var_can_be_deleted(const std::string& name, const BlockDesc& block) {
 
   return type == proto::VarType::LOD_TENSOR ||
          type == proto::VarType::SELECTED_ROWS ||
-         type == proto::VarType::LOD_TENSOR_ARRAY;
+         type == proto::VarType::LOD_TENSOR_ARRAY ||
+         type == proto::VarType::SPARSE_COO ||
+         type == proto::VarType::SPARSE_CSR;
 }
 
 std::unordered_map<const paddle::framework::OperatorBase*,
@@ -620,8 +623,6 @@ void BuildOpFuncList(const platform::Place& place,
         "pylayer",
         "pylayer_grad"
         "recurrent_grad",
-        "rnn_memory_helper",
-        "rnn_memory_helper_grad",
         "while",
         "while_grad"};
     bool allow_var_not_in_program = ops_with_var_not_in_program.count(op_type);
@@ -695,7 +696,7 @@ void BuildOpFuncList(const platform::Place& place,
         // op is not a operatorwithkernel, so direcly run OperatorBase::Run()
 
         std::vector<std::shared_ptr<OperatorBase>> following_ops(
-            ops.begin() + i + 1, ops.end());
+            ops.begin() + static_cast<int>(i) + 1, ops.end());
         HandleOperatorBase(place,
                            ops[i],
                            &op_func_node,
@@ -896,7 +897,7 @@ void BuildOpFuncList(const platform::Place& place,
             // avoid overwriting valid data
             if (static_build && original_tensor->initialized()) {
               const phi::Place& target_place = transformed_tensor->place();
-              platform::DeviceContext* dev_ctx_for_copy;
+              platform::DeviceContext* dev_ctx_for_copy = nullptr;
               if (target_place.GetType() != AllocationType::CPU) {
                 dev_ctx_for_copy = pool.Get(target_place);
               } else {
@@ -936,7 +937,7 @@ void BuildOpFuncList(const platform::Place& place,
       }
     } catch (platform::EnforceNotMet& ex) {
       framework::InsertCallStackInfo(op_type, op->Attrs(), &ex);
-      throw std::move(ex);
+      throw ex;
     } catch (platform::EOFException&) {
       std::rethrow_exception(std::current_exception());
     } catch (std::exception& ex) {
@@ -1004,6 +1005,33 @@ void BuildOpFuncList(const platform::Place& place,
         if (var->IsType<phi::DenseTensor>()) {
           garbages->emplace_back(
               var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
+        } else if (var->IsType<phi::SelectedRows>()) {
+          garbages->emplace_back(var->GetMutable<phi::SelectedRows>()
+                                     ->mutable_value()
+                                     ->MoveMemoryHolder());
+          var->GetMutable<phi::SelectedRows>()->mutable_rows()->clear();
+        } else if (var->IsType<LoDTensorArray>()) {
+          auto* tensor_arr = var->GetMutable<LoDTensorArray>();
+          for (auto& t : *tensor_arr) {
+            garbages->emplace_back(t.MoveMemoryHolder());
+          }
+        } else if (var->IsType<phi::SparseCooTensor>()) {
+          garbages->emplace_back(var->GetMutable<phi::SparseCooTensor>()
+                                     ->mutable_indices()
+                                     ->MoveMemoryHolder());
+          garbages->emplace_back(var->GetMutable<phi::SparseCooTensor>()
+                                     ->mutable_values()
+                                     ->MoveMemoryHolder());
+        } else if (var->IsType<phi::SparseCsrTensor>()) {
+          garbages->emplace_back(var->GetMutable<phi::SparseCsrTensor>()
+                                     ->mutable_cols()
+                                     ->MoveMemoryHolder());
+          garbages->emplace_back(var->GetMutable<phi::SparseCsrTensor>()
+                                     ->mutable_crows()
+                                     ->MoveMemoryHolder());
+          garbages->emplace_back(var->GetMutable<phi::SparseCsrTensor>()
+                                     ->mutable_values()
+                                     ->MoveMemoryHolder());
         }
       }
       delete garbages;  // free mem
@@ -1024,99 +1052,36 @@ void BuildOpFuncList(const platform::Place& place,
     if (var->IsType<phi::DenseTensor>()) {
       garbages->emplace_back(
           var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
+    } else if (var->IsType<phi::SelectedRows>()) {
+      garbages->emplace_back(var->GetMutable<phi::SelectedRows>()
+                                 ->mutable_value()
+                                 ->MoveMemoryHolder());
+      var->GetMutable<phi::SelectedRows>()->mutable_rows()->clear();
+    } else if (var->IsType<LoDTensorArray>()) {
+      auto* tensor_arr = var->GetMutable<LoDTensorArray>();
+      for (auto& t : *tensor_arr) {
+        garbages->emplace_back(t.MoveMemoryHolder());
+      }
+    } else if (var->IsType<phi::SparseCooTensor>()) {
+      garbages->emplace_back(var->GetMutable<phi::SparseCooTensor>()
+                                 ->mutable_indices()
+                                 ->MoveMemoryHolder());
+      garbages->emplace_back(var->GetMutable<phi::SparseCooTensor>()
+                                 ->mutable_values()
+                                 ->MoveMemoryHolder());
+    } else if (var->IsType<phi::SparseCsrTensor>()) {
+      garbages->emplace_back(var->GetMutable<phi::SparseCsrTensor>()
+                                 ->mutable_cols()
+                                 ->MoveMemoryHolder());
+      garbages->emplace_back(var->GetMutable<phi::SparseCsrTensor>()
+                                 ->mutable_crows()
+                                 ->MoveMemoryHolder());
+      garbages->emplace_back(var->GetMutable<phi::SparseCsrTensor>()
+                                 ->mutable_values()
+                                 ->MoveMemoryHolder());
     }
   }
   delete garbages;
-}
-
-void BuildOpFuncList(
-    const platform::Place& place,
-    pir::Block* block,
-    std::vector<OpFuncNode>* vec_func_list,
-    framework::Scope* scope,
-    framework::Scope* local_scope,
-    const std::unordered_map<pir::Value, std::string>& value_2_name_map,
-    const ExecutionConfig& execution_config) {
-  vec_func_list->reserve(block->size());
-  pir::IrContext* ctx = pir::IrContext::Instance();
-
-  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-
-  for (auto op : *block) {
-    OpFuncNode op_func_node;
-    auto attr_map = op->attributes();
-
-    auto op_name =
-        attr_map.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
-    op_func_node.phi_op_name_ = op_name;
-
-    if (GetSpecialOpNames().count(op_name)) {
-      VLOG(6) << "skip process " << op_name;
-      continue;
-    }
-
-    pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
-
-    auto impl =
-        op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
-
-    op_func_node.infer_meta_interface_ =
-        op_info.GetInterfaceImpl<paddle::dialect::InferMetaInterface>();
-
-    VLOG(6) << "op name" << op_func_node.phi_op_name_;
-    dialect::OpYamlInfoParser op_yaml_info_parser(impl->get_op_info_());
-    if (op_func_node.infer_meta_interface_) {
-      pir::BuildPhiContext<
-          phi::InferMetaContext,
-          phi::MetaTensor,
-          phi::MetaTensor,
-          paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-          paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-          false>(op,
-                 value_2_name_map,
-                 scope,
-                 local_scope,
-                 op_yaml_info_parser,
-                 &(op_func_node.infer_meta_context_));
-    }
-
-    auto kernel_name =
-        attr_map.at("kernel_name").dyn_cast<pir::StrAttribute>().AsString();
-    auto kernel_key = attr_map.at("kernel_key")
-                          .dyn_cast<paddle::dialect::KernelAttribute>()
-                          .data();
-
-    VLOG(6) << "finish process infer meta context";
-    auto t1 = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-        kernel_name, kernel_key);
-    op_func_node.phi_kernel_ = new phi::Kernel(t1.kernel);
-
-    PADDLE_ENFORCE_EQ(op_func_node.phi_kernel_->IsValid(),
-                      true,
-                      "not found kernel for [%s]",
-                      kernel_name);
-
-    pir::BuildPhiContext<phi::KernelContext,
-                         const phi::TensorBase*,
-                         phi::TensorBase*,
-                         paddle::small_vector<const phi::TensorBase*>,
-                         paddle::small_vector<phi::TensorBase*>,
-                         true>(op,
-                               value_2_name_map,
-                               scope,
-                               local_scope,
-                               op_yaml_info_parser,
-                               &(op_func_node.kernel_context_));
-
-    VLOG(6) << "finish process kernel context";
-    op_func_node.kernel_context_.SetDeviceContext(
-        phi::DeviceContextPool::Instance().Get(
-            phi::TransToPhiPlace(kernel_key.backend())));
-    op_func_node.dev_ctx_ = phi::DeviceContextPool::Instance().Get(
-        phi::TransToPhiPlace(kernel_key.backend()));
-
-    vec_func_list->emplace_back(op_func_node);
-  }
 }
 
 void BuildVariableScope(const framework::BlockDesc& block,
@@ -1230,7 +1195,7 @@ std::unordered_set<std::string> GetSpecialOpNames() {
       "builtin.set_parameter",
       "builtin.get_parameter",
       "pd_op.data",
-      "pd_op.shadow_output",
+      "builtin.shadow_output",
   };
 }
 
