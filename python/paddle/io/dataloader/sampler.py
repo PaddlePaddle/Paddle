@@ -354,20 +354,8 @@ class SubsetRandomSampler(Sampler):
 
         .. code-block:: python
 
-            >>> from paddle.io import Dataset, SubsetRandomSampler
+            >>> from paddle.io import SubsetRandomSampler
 
-            >>> class RandomDataset(Dataset):
-            ...     def __init__(self, num_samples):
-            ...         self.num_samples = num_samples
-            ...
-            ...     def __getitem__(self, idx):
-            ...         image = np.random.random([784]).astype('float32')
-            ...         label = np.random.randint(0, 9, (1, )).astype('int64')
-            ...         return image, label
-            ...
-            ...     def __len__(self):
-            ...         return self.num_samples
-            ...
             >>> sampler = SubsetRandomSampler(indices=[1, 3, 5, 7, 9])
 
             >>> for index in sampler:
@@ -382,6 +370,10 @@ class SubsetRandomSampler(Sampler):
     """
 
     def __init__(self, indices):
+        if len(indices) == 0:
+            raise ValueError(
+                "The length of `indices` in SubsetRandomSampler should be greater than 0."
+            )
         self.indices = indices
 
     def __iter__(self):
