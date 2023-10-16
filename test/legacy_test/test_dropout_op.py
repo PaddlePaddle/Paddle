@@ -26,6 +26,7 @@ from paddle.base import Program, Scope, core, program_guard
 from paddle.base.executor import scope_guard
 from paddle.decomposition import decompose
 from paddle.incubate.autograd import primapi
+from paddle.pir_utils import test_with_pir_api
 
 
 def dropout_wapper(
@@ -539,9 +540,11 @@ class TestDropoutFAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
+    @test_with_pir_api
     def check_static_result(self, place):
         paddle.enable_static()
-        with base.program_guard(base.Program(), base.Program()):
+        program = paddle.static.Program()
+        with base.program_guard(program):
             input = paddle.static.data(
                 name="input", shape=[-1, -1], dtype="float32"
             )
@@ -590,7 +593,6 @@ class TestDropoutFAPI(unittest.TestCase):
                 training=False,
                 mode='downscale_in_infer',
             )
-            res10 = paddle.nn.functional.dropout(x=input, p=1.0, training=True)
             res11 = paddle.nn.functional.dropout(x=input, p=0.0)
             res12 = paddle.nn.functional.dropout(
                 x=input,
@@ -600,13 +602,8 @@ class TestDropoutFAPI(unittest.TestCase):
                 mode='upscale_in_train',
             )
 
-            res13 = paddle.nn.functional.dropout(
-                x=input, p=0.7, axis=1, training=True, mode='upscale_in_train'
-            )
-
             in_np = np.ones([40, 40]).astype("float32")
             res_np = in_np
-            res_np2 = np.zeros_like(in_np)
 
             exe = base.Executor(place)
             res_list = [
@@ -624,26 +621,39 @@ class TestDropoutFAPI(unittest.TestCase):
             ]
             for res in res_list:
                 fetches = exe.run(
-                    base.default_main_program(),
+                    program,
                     feed={"input": in_np},
                     fetch_list=[res],
                 )
                 np.testing.assert_allclose(fetches[0], res_np, rtol=1e-05)
+
+    @test_with_pir_api
+    def check_static_result2(self, place):
+        paddle.enable_static()
+        program = paddle.static.Program()
+        with base.program_guard(program):
+            input = paddle.static.data(
+                name="input", shape=[-1, -1], dtype="float32"
+            )
+            res10 = paddle.nn.functional.dropout(x=input, p=1.0, training=True)
+            res13 = paddle.nn.functional.dropout(
+                x=input, p=0.7, axis=1, training=True, mode='upscale_in_train'
+            )
+            in_np = np.ones([40, 40]).astype("float32")
+            res_np2 = np.zeros_like(in_np)
+
+            exe = base.Executor(place)
             fetches2 = exe.run(
-                base.default_main_program(),
+                program,
                 feed={"input": in_np},
-                fetch_list=[res10],
+                fetch_list=[res10, res13],
             )
             np.testing.assert_allclose(fetches2[0], res_np2, rtol=1e-05)
-            fetches3 = exe.run(
-                base.default_main_program(),
-                feed={"input": in_np},
-                fetch_list=[res13],
-            )
 
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
+            self.check_static_result2(place=place)
 
     def test_dygraph(self):
         for place in self.places:
@@ -785,6 +795,13 @@ class TestDropoutFAPIError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_dtype)
 
+    @test_with_pir_api
+    def test_errors2(self):
+        paddle.enable_static()
+        program1 = paddle.static.Program()
+        program2 = paddle.static.Program()
+        with base.program_guard(program1, program2):
+
             def test_pdtype():
                 # p should be int or float
                 x2 = paddle.static.data(
@@ -877,9 +894,11 @@ class TestDropout2DFAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
+    @test_with_pir_api
     def check_static_result(self, place):
         paddle.enable_static()
-        with base.program_guard(base.Program(), base.Program()):
+        program = paddle.static.Program()
+        with base.program_guard(program, program):
             input = paddle.static.data(
                 name="input", shape=[2, 3, 4, 5], dtype="float32"
             )
@@ -897,7 +916,7 @@ class TestDropout2DFAPI(unittest.TestCase):
             res_list = [res1, res2]
             for res in res_list:
                 fetches = exe.run(
-                    base.default_main_program(),
+                    program,
                     feed={"input": in_np},
                     fetch_list=[res],
                 )
@@ -927,9 +946,12 @@ class TestDropout2DFAPI(unittest.TestCase):
 
 
 class TestDropout2DFAPIError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
-        with program_guard(Program(), Program()):
+        program1 = paddle.static.Program()
+        program2 = paddle.static.Program()
+        with base.program_guard(program1, program2):
 
             def test_xdim():
                 # dimentions of x should be 4
@@ -970,6 +992,7 @@ class TestDropout2DCAPI(unittest.TestCase):
                     result.numpy(), result_np, rtol=1e-05
                 )
 
+    @test_with_pir_api
     def test_static_fp16_with_gpu(self):
         if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
@@ -1002,9 +1025,12 @@ class TestDropout3DFAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
+    @test_with_pir_api
     def check_static_result(self, place):
         paddle.enable_static()
-        with base.program_guard(base.Program(), base.Program()):
+        program1 = paddle.static.Program()
+        program2 = paddle.static.Program()
+        with base.program_guard(program1, program2):
             input = paddle.static.data(
                 name="input", shape=[2, 3, 4, 5, 6], dtype="float32"
             )
@@ -1022,7 +1048,7 @@ class TestDropout3DFAPI(unittest.TestCase):
             res_list = [res1, res2]
             for res in res_list:
                 fetches = exe.run(
-                    base.default_main_program(),
+                    program1,
                     feed={"input": in_np},
                     fetch_list=[res],
                 )
@@ -1052,9 +1078,12 @@ class TestDropout3DFAPI(unittest.TestCase):
 
 
 class TestDropout3DFAPIError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
-        with program_guard(Program(), Program()):
+        program1 = paddle.static.Program()
+        program2 = paddle.static.Program()
+        with base.program_guard(program1, program2):
 
             def test_xdim():
                 # dimentions of x should be 5
@@ -1103,8 +1132,12 @@ class TestAlphaDropoutFAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
+    @test_with_pir_api
     def check_static_result(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        paddle.enable_static()
+        program1 = paddle.static.Program()
+        program2 = paddle.static.Program()
+        with base.program_guard(program1, program2):
             input = paddle.static.data(
                 name="input", shape=[40, 40], dtype="float32"
             )
@@ -1119,20 +1152,15 @@ class TestAlphaDropoutFAPI(unittest.TestCase):
             res_np3 = np.zeros_like(in_np)
 
             exe = base.Executor(place)
-            res_list = [res1, res2]
-            for res in res_list:
-                fetches = exe.run(
-                    base.default_main_program(),
-                    feed={"input": in_np},
-                    fetch_list=[res],
-                )
-                np.testing.assert_allclose(fetches[0], res_np, rtol=1e-05)
+
             fetches = exe.run(
-                base.default_main_program(),
+                program1,
                 feed={"input": in_np},
-                fetch_list=[res3],
+                fetch_list=[res1, res2, res3],
             )
-            np.testing.assert_allclose(fetches[0], res_np3, rtol=1e-05)
+            np.testing.assert_allclose(fetches[0], res_np, rtol=1e-05)
+            np.testing.assert_allclose(fetches[1], res_np, rtol=1e-05)
+            np.testing.assert_allclose(fetches[2], res_np3, rtol=1e-05)
 
     def test_static(self):
         for place in self.places:
@@ -1170,6 +1198,13 @@ class TestAlphaDropoutFAPIError(unittest.TestCase):
                 paddle.nn.functional.alpha_dropout(x1, p=0.5)
 
             self.assertRaises(TypeError, test_Variable)
+
+    @test_with_pir_api
+    def test_errors2(self):
+        paddle.enable_static()
+        program1 = paddle.static.Program()
+        program2 = paddle.static.Program()
+        with base.program_guard(program1, program2):
 
             def test_dtype():
                 # the input dtype of dropout must be float32 or float64
@@ -1219,6 +1254,7 @@ class TestAlphaDropoutCAPI(unittest.TestCase):
                     result.numpy(), result_np, rtol=1e-05
                 )
 
+    @test_with_pir_api
     def test_static_fp16_gpu(self):
         if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
@@ -1378,9 +1414,9 @@ class TestDropOutWithProbTensor(unittest.TestCase):
 
     def run_static(self, x):
         paddle.seed(2022)
-        main_program = Program()
         paddle.enable_static()
-        with program_guard(main_program):
+        main_program = paddle.static.Program()
+        with base.program_guard(main_program):
             input = paddle.static.data(shape=x.shape, name='x', dtype='float32')
             out = self.api_case(input)
             sgd = paddle.optimizer.SGD(learning_rate=0.1)
