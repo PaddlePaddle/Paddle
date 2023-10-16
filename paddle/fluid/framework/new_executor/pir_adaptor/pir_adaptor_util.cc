@@ -287,7 +287,8 @@ const std::unordered_set<std::string> SpecialOps = {"pd_op.feed",
                                                     "builtin.split",
                                                     "pd_op.data",
                                                     "builtin.shadow_output",
-                                                    "pd_op.if"};
+                                                    "pd_op.if",
+                                                    "pd_op.while"};
 
 Variable* CreateVar(pir::Value value,
                     const std::string& var_name_prefix,
@@ -564,9 +565,17 @@ void HandleForSpecialOp(pir::Operation* op,
   if (op_name == "pd_op.if") {
     auto if_op = op->dyn_cast<paddle::dialect::IfOp>();
     for (size_t i = 0; i < if_op->num_results(); ++i) {
-      // auto true_value = true_yeid_op->operand_source(i);
       auto if_op_out_value = if_op->result(i);
       BuildValue(if_op_out_value, var_name_prefix, value_exe_info);
+    }
+  }
+
+  if (op_name == "pd_op.while") {
+    auto while_op = op->dyn_cast<paddle::dialect::WhileOp>();
+
+    for (size_t i = 0; i < while_op->num_results(); ++i) {
+      auto while_op_out_value = while_op->result(i);
+      BuildValue(while_op_out_value, var_name_prefix, value_exe_info);
     }
   }
 }
