@@ -527,8 +527,8 @@ class TestDropoutFAPI(unittest.TestCase):
     @test_with_pir_api
     def check_static_result(self, place):
         paddle.enable_static()
-        program = paddle.static.Program()
-        with base.program_guard(program):
+        main_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog):
             input = paddle.static.data(
                 name="input", shape=[-1, -1], dtype="float32"
             )
@@ -605,7 +605,7 @@ class TestDropoutFAPI(unittest.TestCase):
             ]
             for res in res_list:
                 fetches = exe.run(
-                    program,
+                    main_prog,
                     feed={"input": in_np},
                     fetch_list=[res],
                 )
@@ -614,8 +614,8 @@ class TestDropoutFAPI(unittest.TestCase):
     @test_with_pir_api
     def check_static_result2(self, place):
         paddle.enable_static()
-        program = paddle.static.Program()
-        with base.program_guard(program):
+        main_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog):
             input = paddle.static.data(
                 name="input", shape=[-1, -1], dtype="float32"
             )
@@ -628,7 +628,7 @@ class TestDropoutFAPI(unittest.TestCase):
 
             exe = base.Executor(place)
             fetches2 = exe.run(
-                program,
+                main_prog,
                 feed={"input": in_np},
                 fetch_list=[res10, res13],
             )
@@ -782,9 +782,9 @@ class TestDropoutFAPIError(unittest.TestCase):
     @test_with_pir_api
     def test_errors2(self):
         paddle.enable_static()
-        program1 = paddle.static.Program()
-        program2 = paddle.static.Program()
-        with base.program_guard(program1, program2):
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
 
             def test_pdtype():
                 # p should be int or float
@@ -881,8 +881,9 @@ class TestDropout2DFAPI(unittest.TestCase):
     @test_with_pir_api
     def check_static_result(self, place):
         paddle.enable_static()
-        program = paddle.static.Program()
-        with base.program_guard(program, program):
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
             input = paddle.static.data(
                 name="input", shape=[2, 3, 4, 5], dtype="float32"
             )
@@ -900,7 +901,7 @@ class TestDropout2DFAPI(unittest.TestCase):
             res_list = [res1, res2]
             for res in res_list:
                 fetches = exe.run(
-                    program,
+                    main_prog,
                     feed={"input": in_np},
                     fetch_list=[res],
                 )
@@ -933,9 +934,9 @@ class TestDropout2DFAPIError(unittest.TestCase):
     @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
-        program1 = paddle.static.Program()
-        program2 = paddle.static.Program()
-        with base.program_guard(program1, program2):
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
 
             def test_xdim():
                 # dimentions of x should be 4
@@ -1012,9 +1013,9 @@ class TestDropout3DFAPI(unittest.TestCase):
     @test_with_pir_api
     def check_static_result(self, place):
         paddle.enable_static()
-        program1 = paddle.static.Program()
-        program2 = paddle.static.Program()
-        with base.program_guard(program1, program2):
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
             input = paddle.static.data(
                 name="input", shape=[2, 3, 4, 5, 6], dtype="float32"
             )
@@ -1032,7 +1033,7 @@ class TestDropout3DFAPI(unittest.TestCase):
             res_list = [res1, res2]
             for res in res_list:
                 fetches = exe.run(
-                    program1,
+                    main_prog,
                     feed={"input": in_np},
                     fetch_list=[res],
                 )
@@ -1065,9 +1066,9 @@ class TestDropout3DFAPIError(unittest.TestCase):
     @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
-        program1 = paddle.static.Program()
-        program2 = paddle.static.Program()
-        with base.program_guard(program1, program2):
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
 
             def test_xdim():
                 # dimentions of x should be 5
@@ -1119,9 +1120,9 @@ class TestAlphaDropoutFAPI(unittest.TestCase):
     @test_with_pir_api
     def check_static_result(self, place):
         paddle.enable_static()
-        program1 = paddle.static.Program()
-        program2 = paddle.static.Program()
-        with base.program_guard(program1, program2):
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
             input = paddle.static.data(
                 name="input", shape=[40, 40], dtype="float32"
             )
@@ -1138,7 +1139,7 @@ class TestAlphaDropoutFAPI(unittest.TestCase):
             exe = base.Executor(place)
 
             fetches = exe.run(
-                program1,
+                main_prog,
                 feed={"input": in_np},
                 fetch_list=[res1, res2, res3],
             )
@@ -1186,9 +1187,9 @@ class TestAlphaDropoutFAPIError(unittest.TestCase):
     @test_with_pir_api
     def test_errors2(self):
         paddle.enable_static()
-        program1 = paddle.static.Program()
-        program2 = paddle.static.Program()
-        with base.program_guard(program1, program2):
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
 
             def test_dtype():
                 # the input dtype of dropout must be float32 or float64
@@ -1400,7 +1401,7 @@ class TestDropOutWithProbTensor(unittest.TestCase):
         paddle.seed(2022)
         paddle.enable_static()
         main_program = paddle.static.Program()
-        with base.program_guard(main_program):
+        with paddle.static.program_guard(main_program):
             input = paddle.static.data(shape=x.shape, name='x', dtype='float32')
             out = self.api_case(input)
             sgd = paddle.optimizer.SGD(learning_rate=0.1)
