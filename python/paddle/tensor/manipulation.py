@@ -3734,6 +3734,72 @@ def reshape_(x, shape, name=None):
         return out
 
 
+def atleast_1d(*inputs, name=None):
+    """
+    TODO
+
+    """
+    out = []
+    for tensor in inputs:
+        tensor = paddle.to_tensor(tensor)
+        if tensor.dim() == 0:
+            result = tensor.reshape((1,))
+        else:
+            result = tensor
+        out.append(result)
+
+    if len(out) == 1:
+        return out[0]
+    else:
+        return out
+
+
+def atleast_2d(*inputs, name=None):
+    """
+    TODO
+
+    """
+    out = []
+    for tensor in inputs:
+        tensor = paddle.to_tensor(tensor)
+        if tensor.dim() == 0:
+            result = tensor.reshape((1, 1))
+        elif tensor.dim() == 1:
+            result = paddle.unsqueeze(tensor, axis=0)
+        else:
+            result = tensor
+        out.append(result)
+
+    if len(out) == 1:
+        return out[0]
+    else:
+        return out
+
+
+def atleast_3d(*inputs, name=None):
+    """
+    TODO
+
+    """
+    out = []
+    for tensor in inputs:
+        tensor = paddle.to_tensor(tensor)
+        if tensor.dim() == 0:
+            result = tensor.reshape((1, 1, 1))
+        elif tensor.dim() == 1:
+            result = paddle.unsqueeze(tensor, axis=[0, 2])
+        elif tensor.dim() == 2:
+            result = paddle.unsqueeze(tensor, axis=2)
+        else:
+            result = tensor
+        out.append(result)
+
+    if len(out) == 1:
+        return out[0]
+    else:
+        return out
+
+
 def gather_nd(x, index, name=None):
     """
 

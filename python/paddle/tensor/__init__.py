@@ -111,6 +111,9 @@ from .logic import allclose  # noqa: F401
 from .logic import isclose  # noqa: F401
 from .logic import equal_all  # noqa: F401
 from .logic import is_tensor  # noqa: F401
+from .manupulation import atleast_1d  # noqa: F401
+from .manupulation import atleast_2d  # noqa: F401
+from .manupulation import atleast_3d  # noqa: F401
 from .manipulation import cast  # noqa: F401
 from .manipulation import cast_  # noqa: F401
 from .manipulation import concat  # noqa: F401

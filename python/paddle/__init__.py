@@ -198,6 +198,9 @@ from .tensor.logic import (  # noqa: F401
 
 
 from .tensor.manipulation import (  # noqa: F401
+    atleast_1d,
+    atleast_2d,
+    atleast_3d,
     cast,
     cast_,
     concat,
