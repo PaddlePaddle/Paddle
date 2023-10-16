@@ -458,9 +458,9 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
   // Create a new function object from code object. Refer to MAKE_FUNCTION.
   PyFunctionObject *func =
       (PyFunctionObject *)PyFunction_New((PyObject *)code, frame->f_globals);
+#if PY_VERSION_HEX < 0x030C0000
   Py_XINCREF(frame->f_func->func_closure);
   func->func_closure = frame->f_func->func_closure;
-#if PY_VERSION_HEX < 0x030C0000
   _PyFrame_InitializeSpecials(shadow, func, NULL, code->co_nlocalsplus);
 #endif
 
