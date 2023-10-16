@@ -21,17 +21,15 @@ import numpy as np
 
 import paddle
 from paddle import pir
-from paddle.autograd.ir_backward import (
-    decompose_bwd_op,
-    get_global_grads_infos,
-    related_global_grads,
-    replace_global_grads,
-)
 from paddle.base import core
 from paddle.decomposition.decomp import (
+    decompose_bwd_op,
     decompose_fwd_op,
+    get_global_grads_infos,
     get_global_outputs_infos,
+    related_global_grads,
     related_global_outputs,
+    replace_global_grads,
     replace_global_outputs,
 )
 

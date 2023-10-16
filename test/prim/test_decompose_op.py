@@ -19,18 +19,16 @@ import numpy as np
 
 import paddle
 import paddle.tensor
-from paddle.autograd.ir_backward import (
-    decompose_bwd_op,
-    get_global_grads_infos,
-    grad,
-    related_global_grads,
-    replace_global_grads,
-)
+from paddle.autograd.ir_backward import grad
 from paddle.base import core
 from paddle.decomposition.decomp import (
+    decompose_bwd_op,
     decompose_fwd_op,
+    get_global_grads_infos,
     get_global_outputs_infos,
+    related_global_grads,
     related_global_outputs,
+    replace_global_grads,
     replace_global_outputs,
 )
 
