@@ -83,6 +83,7 @@ void AddKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const DenseTensor& y,
                DenseTensor* out) {
+  std::cerr << "add kernel " << std::endl;
 #ifdef PADDLE_WITH_CUDA
   if (x.dtype() == phi::DataType::FLOAT32 &&
       (y.dtype() == phi::DataType::BFLOAT16 ||

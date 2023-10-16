@@ -36,6 +36,7 @@
 #include "paddle/cinn/utils/data_util.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
+#include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 
 std::unique_ptr<::pir::Program> BuildProgram() {
@@ -56,14 +57,17 @@ std::unique_ptr<::pir::Program> BuildProgram() {
                                              value,
                                              phi::DataType::FLOAT32,
                                              phi::GPUPlace());
+  auto full_op_z =
+      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{2, 2},
+                                             value,
+                                             phi::DataType::FLOAT32,
+                                             phi::GPUPlace());
 
   auto sin = builder.Build<paddle::dialect::SinOp>(full_op_x.result(0));
-  auto cos = builder.Build<paddle::dialect::CosOp>(full_op_x.result(0));
-  auto res =
+  auto cos = builder.Build<paddle::dialect::CosOp>(full_op_y.result(0));
+  auto add =
       builder.Build<paddle::dialect::AddOp>(sin.result(0), cos.result(0));
-  // auto exp = builder.Build<paddle::dialect::SinOp>(
-  //                                           full_op_x.result(0)
-  //                                            );
+  builder.Build<paddle::dialect::FetchOp>(add.out(), "out", 0);
   return std::move(program);
 }
 
@@ -82,19 +86,20 @@ TEST(CinnJitInstruction, Run) {
 
   program->Print(std::cout);
 
-  cinn::hlir::framework::NewIRCompiler ir_compiler(*program, target, scope);
+  std::vector<cinn::hlir::framework::NewIRCompiler*> compiler_list;
 
-  // std::set<std::string> using_cinn_ops = {"pd_op.sin", "pd_op.cos"};
+  // std::set<std::string> using_cinn_ops = {"pd_op.full", "pd_op.sin",
+  // "pd_op.cos", "pd_op.add"};
+  std::set<std::string> using_cinn_ops = {"pd_op.sin", "pd_op.cos"};
+  // std::vector<cinn::hlir::framework::newir::GroupPtr> groups;
+  // for (auto it = program->block()->begin(); it != program->block()->end();
+  //      ++it) {
+  //   std::vector<::pir::Operation*> ops = {*it};
+  //   groups.push_back(
+  //       );
+  // }
 
-  std::vector<cinn::hlir::framework::newir::GroupPtr> groups;
-  for (auto it = program->block()->begin(); it != program->block()->end();
-       ++it) {
-    std::vector<::pir::Operation*> ops = {*it};
-    groups.push_back(
-        std::make_shared<cinn::hlir::framework::newir::Group>(ops));
-  }
-
-  auto fn_ptr_res = ir_compiler.BuildCUDAJITInfo(groups);
+  // auto fn_ptr_res = ir_compiler.BuildCUDAJITInfo(groups);
 
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<cinn::dialect::RuntimeDialect>();
@@ -108,33 +113,56 @@ TEST(CinnJitInstruction, Run) {
   std::unordered_map<pir::Value, pir::Value> value_map;
   for (auto it = program->block()->begin(); it != program->block()->end();
        ++it) {
-    std::cerr << "build attr" << std::endl;
-    std::unordered_map<std::string, ::pir::Attribute> op_attrs{
-        {cinn::dialect::JitKernelOp::kAttrName,
-         cinn::dialect::CUDAJITInfoAttribute::get(ctx, fn_ptr_res[index++])},
-    };
+    if (using_cinn_ops.count((*it)->name())) {
+      auto ir_compiler =
+          new cinn::hlir::framework::NewIRCompiler(*program, target, scope);
 
-    std::cerr << "build fin" << std::endl;
-    auto type1 = (*it)->result(0).type();
-    if (!type1) {
-      std::cerr << "wroing with type1" << std::endl;
+      std::vector<::pir::Operation*> ops = {*it};
+      auto group = std::make_shared<cinn::hlir::framework::newir::Group>(ops);
+      auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group});
+      compiler_list.push_back(ir_compiler);
+      std::cerr << "build attr" << std::endl;
+      std::unordered_map<std::string, ::pir::Attribute> op_attrs{
+          {cinn::dialect::JitKernelOp::kAttrName,
+           cinn::dialect::CUDAJITInfoAttribute::get(ctx, fn_ptr_res[0])},
+      };
+
+      std::cerr << "build fin" << std::endl;
+      auto type1 = (*it)->result(0).type();
+      if (!type1) {
+        std::cerr << "wroing with type1" << std::endl;
+      }
+
+      std::vector<pir::Value> vec_ins;
+
+      for (size_t i = 0; i < (*it)->num_operands(); ++i) {
+        vec_ins.push_back(value_map.at((*it)->operand_source(i)));
+      }
+
+      std::cerr << "fin get allocated dense tensor" << std::endl;
+      ::pir::Operation* cinn_op =
+          ::pir::Operation::Create(vec_ins, op_attrs, {type1}, op_info);
+
+      value_map[(*it)->result(0)] = cinn_op->result(0);
+
+      ir_program->block()->push_back(cinn_op);
+
+    } else {
+      std::vector<pir::Value> vec_ins;
+
+      for (size_t i = 0; i < (*it)->num_operands(); ++i) {
+        vec_ins.push_back(value_map.at((*it)->operand_source(i)));
+      }
+
+      auto type1 = (*it)->result(0).type();
+      ::pir::OpInfo info1 = ctx->GetRegisteredOpInfo((*it)->name());
+      ::pir::Operation* op = ::pir::Operation::Create(
+          vec_ins, (*it)->attributes(), {type1}, info1);
+
+      ir_program->block()->push_back(op);
+
+      value_map[(*it)->result(0)] = op->result(0);
     }
-
-    std::vector<pir::Value> vec_ins;
-
-    for (size_t i = 0; i < (*it)->num_operands(); ++i) {
-      vec_ins.push_back(value_map.at((*it)->operand_source(i)));
-    }
-
-    auto new_type = dialect::AllocatedDenseTensorType::get(
-        ctx, phi::CPUPlace(), type1.dyn_cast<dialect::DenseTensorType>());
-    std::cerr << "fin get allocated dense tensor" << std::endl;
-    ::pir::Operation* cinn_op =
-        ::pir::Operation::Create(vec_ins, op_attrs, {new_type}, op_info);
-
-    value_map[(*it)->result(0)] = cinn_op->result(0);
-
-    ir_program->block()->push_back(cinn_op);
   }
 
   //
@@ -143,13 +171,22 @@ TEST(CinnJitInstruction, Run) {
   //   out_names.insert(name);
   // }
 
+  ir_program->Print(std::cout);
   platform::Place place = platform::CUDAPlace(0);
+
+  auto kernel_program =
+      paddle::dialect::PdOpLowerToKernelPass(ir_program.get(), place);
+
   Scope exe_scope;
 
-  ir_program->Print(std::cout);
-  InterpreterCore executor(place, {}, ir_program->block(), &exe_scope);
+  kernel_program->Print(std::cout);
+  paddle::framework::interpreter::ExecutionConfig exe_conf;
+  exe_conf.create_local_scope = false;
+  InterpreterCore executor(
+      place, {"out@fetch"}, kernel_program->block(), &exe_scope);
 
   std::set<std::string> out_names;
+  out_names.insert("out@fetch");
   auto local_names = exe_scope.LocalVarNames();
   for (size_t i = 0; i < local_names.size(); ++i) {
     out_names.insert(local_names[i]);
@@ -157,7 +194,17 @@ TEST(CinnJitInstruction, Run) {
   }
 
   executor.SetSkipGcVars(out_names);
-  executor.Run({});
+  auto out = executor.Run({}, true);
+
+  std::cout << out.size() << std::endl;
+  std::cerr << "exe scope "
+            << (executor.local_scope()->FindVar("out@fetch") != nullptr)
+            << std::endl;
+  std::cerr
+      << executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>()
+      << std::endl;
+  // std::cerr << "out " << PADDLE_GET_CONST(phi::DenseTensor, out[0]) <<
+  // std::endl;
 
   // auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
   // auto gpu_ctx = static_cast<phi::GPUContext*>(dev_ctx);

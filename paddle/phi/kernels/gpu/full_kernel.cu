@@ -44,6 +44,9 @@ void FullKernel(const Context& dev_ctx,
   out->Resize(phi::make_ddim(shape.GetData()));
   int numel = out->numel();
   dev_ctx.template Alloc<T>(out);
+
+  std::cerr << "out ptr " << out << std::endl;
+  std::cerr << "full kernel out ptr " << out->data() << std::endl;
   if (numel > 0) {
     // in transformer model the numel of outpout will be zero.
     std::vector<const DenseTensor*> inputs = {};
