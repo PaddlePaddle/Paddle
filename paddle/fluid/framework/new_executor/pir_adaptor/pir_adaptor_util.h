@@ -285,7 +285,12 @@ void BuildPhiContext(pir::Operation* op,
 
       continue;
     }
-
+    PADDLE_ENFORCE_NE(
+        attr_map.find(t),
+        attr_map.end(),
+        phi::errors::NotFound("Not found %s in attr_map, it maybe need mapping "
+                              "it in OpTranslator.",
+                              t));
     auto& attr_type_name = op_yaml_info.AttrTypeName(t);
     if (attr_type_name == "paddle::dialect::IntArrayAttribute") {
       ctx->EmplaceBackAttr(
