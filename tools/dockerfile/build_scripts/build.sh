@@ -82,7 +82,7 @@ PY38_BIN=/opt/python/cp38-cp38/bin
 PY39_BIN=/opt/python/cp39-cp39/bin
 PY310_BIN=/opt/python/cp310-cp310/bin
 PY311_BIN=/opt/python/cp311-cp311/bin
-PY311_BIN=/opt/python/cp312-cp312/bin
+PY312_BIN=/opt/python/cp312-cp312/bin
 # NOTE Since our custom manylinux image builds pythons with shared
 # libpython, we need to add libpython's dir to LD_LIBRARY_PATH before running
 # python.
