@@ -627,7 +627,7 @@ std::string NewIRInterpreter::DebugValueInfo() {
     PADDLE_ENFORCE((bool)kv.first,
                    platform::errors::PreconditionNotMet(
                        "vlaue(%s) should not be nullptr", kv.second));
-    PADDLE_ENFORCE(value_exe_info_->HasVar(kv.second) > 0,
+    PADDLE_ENFORCE(value_exe_info_->HasVar(kv.second),
                    platform::errors::PreconditionNotMet(
                        "var(%s) should exist in var_name_2_id_", kv.second));
     auto* var = InnerScope()->FindVar(kv.second);
@@ -636,8 +636,7 @@ std::string NewIRInterpreter::DebugValueInfo() {
         platform::errors::PreconditionNotMet(
             "var(%s) should exist in scope (%p)", kv.second, InnerScope()));
     os << kv.first.impl() << " -> " << kv.second << " -> "
-       << value_exe_info_->GetVarName2Id().at(kv.second) << " -> " << var
-       << "\n";
+       << value_exe_info_->GetVarId(kv.first) << " -> " << var << "\n";
   }
   return os.str();
 }
