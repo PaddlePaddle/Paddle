@@ -93,7 +93,6 @@ void cinn_call_cuda_kernel(void *kernel_fn,
           << ", " << block_z << "}, num_args=" << num_args
           << ", stream=" << stream;
 
-  std::cerr << "call cuda kernel" << std::endl;
   std::vector<void *> kernel_args;
   {
     cinn::utils::RecordEvent record_run("prepare_args",

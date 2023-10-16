@@ -1470,7 +1470,7 @@ void NewIRInterpreter::PreAnalysis() {
 
   // add event for the input var of jit program, since there are async copied
   // from gpu_pinned place to gpu place on compute stream.
-  // ConstructEventForJitInput();
+  ConstructEventForJitInput();
   VLOG(4) << "AddEventToWait for JitInputVars";
 
   CalculateLastLiveOps();

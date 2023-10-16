@@ -951,7 +951,6 @@ void HandleForSpecialOp(
     }
 
     for (size_t i = 0; i < op_item->num_results(); ++i) {
-      std::cerr << "output place " << place << std::endl;
       op_output_types.push_back(paddle::dialect::AllocatedDenseTensorType::get(
           ctx,
           place,

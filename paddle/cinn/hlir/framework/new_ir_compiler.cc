@@ -50,7 +50,6 @@ std::vector<newir::CUDAJITInfo> NewIRCompiler::BuildCUDAJITInfo(
     lowered_funcs.emplace_back(op_lowerer.Lower(groups[i]));
   }
 
-  std::cerr << "cuda info " << lowered_funcs[0][0]->cuda_axis_info << std::endl;
   for (auto&& lowered_func : lowered_funcs) {
     ProcessFunction(lowered_func);
   }
@@ -86,7 +85,6 @@ std::unique_ptr<Program> NewIRCompiler::Build(
     lowered_funcs.emplace_back(op_lowerer.Lower(groups[i]));
   }
 
-  std::cerr << "cuda info " << lowered_funcs[0][0]->cuda_axis_info << std::endl;
   for (auto&& lowered_func : lowered_funcs) {
     ProcessFunction(lowered_func);
   }
