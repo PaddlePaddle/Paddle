@@ -18,6 +18,7 @@ import numpy as np
 from test_sum_op import TestReduceOPTensorAxisBase
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestProdOp(unittest.TestCase):
@@ -70,6 +71,7 @@ class TestProdOp(unittest.TestCase):
             dy_result.numpy(), expected_result, rtol=1e-05
         )
 
+    @test_with_pir_api
     def run_static(self, use_gpu=False):
         input = paddle.static.data(
             name='input', shape=[10, 10, 5], dtype='float32'
@@ -179,6 +181,10 @@ class TestProdWithTensorAxis1(TestReduceOPTensorAxisBase):
         self.np_axis = np.array([1, 2], dtype='int64')
         self.tensor_axis = paddle.to_tensor([1, 2], dtype='int64')
 
+    @test_with_pir_api
+    def test_static_and_infer(self):
+        super().test_static_and_infer()
+
 
 class TestProdWithTensorAxis2(TestReduceOPTensorAxisBase):
     def init_data(self):
@@ -191,6 +197,10 @@ class TestProdWithTensorAxis2(TestReduceOPTensorAxisBase):
             paddle.to_tensor([1], 'int64'),
             paddle.to_tensor([2], 'int64'),
         ]
+
+    @test_with_pir_api
+    def test_static_and_infer(self):
+        super().test_static_and_infer()
 
 
 if __name__ == "__main__":
