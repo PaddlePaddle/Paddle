@@ -64,7 +64,15 @@ class MixPrecisionLayer(nn.Layer):
                         name="main_grad@" + param.name,
                     )
                 else:
-                    param.main_grad.add_(tmp_grad.cast(paddle.float32))
+                    # Float32Bfloat16OrFloat16Add currently only available on gpu
+                    # PR: https://github.com/PaddlePaddle/Paddle/pull/54415
+                    if (
+                        paddle.is_compiled_with_cuda()
+                        or paddle.is_compiled_with_rocm()
+                    ):
+                        param.main_grad.add_(tmp_grad)
+                    else:
+                        param.main_grad.add_(tmp_grad.cast(paddle.float32))
 
                 tmp_grad._clear_data()
 
