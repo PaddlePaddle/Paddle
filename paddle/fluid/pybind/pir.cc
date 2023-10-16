@@ -387,6 +387,8 @@ void BindValue(py::module *m) {
             return nullptr;
           },
           return_value_policy::reference)
+      .def("get_opresult",
+           [](const Value &self) { return self.dyn_cast<pir::OpResult>(); })
       .def("first_use", &Value::first_use, return_value_policy::reference)
       .def("has_one_use", &Value::HasOneUse)
       .def("use_empty", &Value::use_empty)
