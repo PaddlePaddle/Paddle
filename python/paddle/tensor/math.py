@@ -6953,22 +6953,13 @@ def combinations(x, r=2, with_replacement=False, name=None):
         .. code-block:: python
 
             >>> import paddle
-
-            >>> # example1
-            >>> x = paddle.to_tensor([1, 2, 3], dtype='float32')
-            >>> y = paddle.to_tensor([2, 3, 4], dtype='int32')
-            >>> res = paddle.ldexp(x, y)
+            >>> x = paddle.to_tensor([1, 2, 3], dtype='int32')
+            >>> res = paddle.combinations(x)
             >>> print(res)
-            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [4. , 16., 48.])
-
-            >>> # example2
-            >>> x = paddle.to_tensor([1, 2, 3], dtype='float32')
-            >>> y = paddle.to_tensor([2], dtype='int32')
-            >>> res = paddle.ldexp(x, y)
-            >>> print(res)
-            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [4. , 8. , 12.])
+            Tensor(shape=[3, 2], dtype=int32, place=Place(gpu:0), stop_gradient=True,
+                   [[1, 2],
+                    [1, 3],
+                    [2, 3]])
 
     """
     if len(x.shape) != 1:
@@ -6976,7 +6967,7 @@ def combinations(x, r=2, with_replacement=False, name=None):
     if not isinstance(r, int) or r < 0:
         raise ValueError(f"Expect a non-negative int, but got r={r}")
 
-    if r == 0:
+    if r == 0 or r > x.shape[0]:
         return paddle.empty([0], dtype=x.dtype)
 
     if r > 1:

@@ -23,7 +23,7 @@ from paddle.base import Program
 paddle.enable_static()
 
 
-def convert_combinations_to_array(x, r, with_replacement):
+def convert_combinations_to_array(x, r=2, with_replacement=False):
     if r == 0:
         return np.array([]).astype(x.dtype)
     if with_replacement:
@@ -114,3 +114,11 @@ class TestIndexFillAPI2(TestCombinationsAPIBase):
         self.x_shape = [10]
         self.r = 0
         self.with_replacement = True
+
+
+class TestIndexFillAPI3(TestCombinationsAPIBase):
+    def modify_setting(self):
+        self.dtype_np = 'float32'
+        self.x_shape = [0]
+        self.r = 10
+        self.with_replacement = False
