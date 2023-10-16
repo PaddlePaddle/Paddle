@@ -32,6 +32,7 @@
 #include "paddle/pir/core/value.h"
 
 PHI_DECLARE_bool(enable_new_ir_in_executor);
+PHI_DECLARE_bool(print_ir);
 
 namespace details {
 using Tensor = paddle::Tensor;
@@ -469,7 +470,7 @@ inline void NewIRRunProgramAPI(
   auto *backward_program =
       backward_global_block->GetParentOp()->GetParentProgram();
 
-  if (VLOG_IS_ON(4)) {
+  if (FLAGS_print_ir) {
     std::ostringstream print_stream;
     print_stream << "ForwardProgram is :\n";
     forward_program->Print(print_stream);

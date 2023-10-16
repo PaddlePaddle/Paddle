@@ -47,6 +47,7 @@
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pass/pass_registry.h"
 #include "paddle/pir/transforms/dead_code_elimination_pass.h"
+#include "paddle/utils/flags.h"
 #include "pybind11/stl.h"
 
 namespace py = pybind11;
@@ -66,6 +67,8 @@ using pybind11::return_value_policy;
 
 USE_PASS(dead_code_elimination);
 USE_PASS(inplace);
+
+PHI_DECLARE_bool(print_ir);
 
 namespace paddle {
 namespace pybind {
@@ -1053,13 +1056,15 @@ SplitedResult ForwardBackwardSplit(
 
   VLOG(4) << "forward_value_map.size() is " << forward_value_map.size();
   VLOG(4) << "backward_value_map.size() is " << backward_value_map.size();
-  std::ostringstream print_stream;
-  print_stream << "ForwardProgram is :\n";
-  forward_program->Print(print_stream);
-  print_stream << "BackwardProgram is:\n";
-  backward_program->Print(print_stream);
-  std::cout << "Splited Program (fwd | bwd): \n"
-            << print_stream.str() << std::endl;
+  if (FLAGS_print_ir) {
+    std::ostringstream print_stream;
+    print_stream << "ForwardProgram is :\n";
+    forward_program->Print(print_stream);
+    print_stream << "BackwardProgram is:\n";
+    backward_program->Print(print_stream);
+    std::cout << "Splited Program (fwd | bwd): \n"
+              << print_stream.str() << std::endl;
+  }
 
   // construct all attributes we needed.
 
