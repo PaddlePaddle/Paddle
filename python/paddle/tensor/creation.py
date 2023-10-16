@@ -692,6 +692,9 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
             # fix numpy default dtype
             if data.dtype in ['float16', 'float32', 'float64']:
                 data = data.astype(paddle.get_default_dtype())
+            # Windows default type is 'int32', while Linux/Mac is 'int64'. Unify they.
+            elif data.dtype in ['int32']:
+                data = data.astype("int64")
 
         if dtype:
             target_dtype = dtype

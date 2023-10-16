@@ -16,7 +16,7 @@ import logging
 import typing
 
 from paddle import pir
-from paddle.base.libpaddle.pir import Block, Program
+from paddle.base.libpaddle.pir import Block, Operation, Program
 from paddle.framework import core
 
 from . import register
@@ -37,7 +37,16 @@ def _prepare_python_api_arguments(op):
     Args:
     op (Operator): The target operator.
     """
-    op_inputs = [x.source() for x in op.operands()]
+    op_inputs = []
+    for x in op.operands():
+        op_input = x.source()
+        upper_op = op_input.get_defining_op()
+        if (
+            isinstance(upper_op, Operation)
+            and upper_op.name() == 'builtin.combine'
+        ):
+            op_input = [item.source() for item in upper_op.operands()]
+        op_inputs.append(op_input)
     # The inputs of PIR op builtin.combine will be restored as list of tensor.
     if op.name() in ["builtin.combine"]:
         return (op_inputs,)
@@ -203,7 +212,6 @@ def _decompose_subgraph(block, orig_vars, dst_vars, op_filter):
     if isinstance(block, Block):
         ops_list = block.ops
         temp_op = None
-        temp_inputs = None
         for idx, op in enumerate(ops_list):
             op_name = op.name()
             decom_rule = register.get_decomp_rule(op_name)
@@ -211,7 +219,6 @@ def _decompose_subgraph(block, orig_vars, dst_vars, op_filter):
 
             if op.name() == "builtin.combine":
                 temp_op = op
-                temp_inputs = _prepare_python_api_arguments(op)
 
             if lower:
                 core.prim_config["composite_ops_record"].add(op_name)
@@ -219,14 +226,11 @@ def _decompose_subgraph(block, orig_vars, dst_vars, op_filter):
                     temp_op is not None
                     and ops_list[idx - 1].name() == "builtin.combine"
                 ):
-                    input_args = temp_inputs
                     pir.set_insertion_point(temp_op)
                 else:
-                    input_args = _prepare_python_api_arguments(op)
                     pir.set_insertion_point(op)
+                input_args = _prepare_python_api_arguments(op)
                 orig_outs = op.results()
-                if op.name() == "pd_op.stack":
-                    input_args += (op.attrs()["axis"],)
                 new_outs = _build_tensor_tuple(decom_rule(*input_args))
 
                 # Todo: To cover such case: some outputs are no longer needed after decomposition.
