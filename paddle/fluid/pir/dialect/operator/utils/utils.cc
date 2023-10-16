@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include <unordered_set>
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 
 namespace paddle {
