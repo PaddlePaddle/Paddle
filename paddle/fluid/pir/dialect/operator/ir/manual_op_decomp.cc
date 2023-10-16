@@ -51,22 +51,25 @@ std::vector<std::vector<pir::OpResult>> MeanOp::Decomp(pir::Operation* op) {
   Tensor op_res =
       paddle::primitive::details::mean_decomp<primitive::LazyTensor>(
           x, axis, keepdim);
-  std::vector<std::vector<Tensor>> tensor_res;
-  std::vector<Tensor> tmp;
-  tmp.push_back(op_res);
-  tensor_res.push_back(tmp);
-  std::vector<std::vector<pir::OpResult>> res(tensor_res.size());
-  for (size_t i = 0; i < tensor_res.size(); ++i) {
-    res[i].resize(tensor_res[i].size());
-    for (size_t j = 0; j < tensor_res[i].size(); ++j) {
-      if (tensor_res[i][j].defined()) {
-        res[i][j] = std::static_pointer_cast<primitive::LazyTensor>(
-                        tensor_res[i][j].impl())
-                        ->value()
-                        .dyn_cast<pir::OpResult>();
-      }
-    }
-  }
+  // std::vector<Tensor> tensor_res;
+  // tensor_res.push_back(op_res);
+  auto org_res = op->results();
+  std::vector<std::vector<pir::OpResult>> res(org_res.size());
+  res[0].push_back(
+      std::static_pointer_cast<primitive::LazyTensor>(op_res.impl())
+          ->value()
+          .dyn_cast<pir::OpResult>());
+  // for (size_t i = 0; i < tensor_res.size(); ++i) {
+  //   res[i].resize(tensor_res[i].size());
+  //   for (size_t j = 0; j < tensor_res[i].size(); ++j) {
+  //     if (tensor_res[i][j].defined()) {
+  //       res[i][j] = std::static_pointer_cast<primitive::LazyTensor>(
+  //                       tensor_res[i][j].impl())
+  //                       ->value()
+  //                       .dyn_cast<pir::OpResult>();
+  //     }
+  //   }
+  // }
   return res;
 }
 

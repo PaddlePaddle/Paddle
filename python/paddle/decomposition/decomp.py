@@ -31,6 +31,18 @@ def _build_tensor_tuple(xs):
     return TypeError(f"Type {type(xs)} is not supported.")
 
 
+def _analyse_decomp_results(orig_outs, decomp_outs):
+    assert len(orig_outs) == len(decomp_outs)
+    res = []
+    for org_item, new_item in zip(orig_outs, decomp_outs):
+        if isinstance(org_item, pir.OpResult):
+            assert len(new_item) == 1 and isinstance(new_item[0], pir.OpResult)
+            res.append(new_item[0])
+        else:
+            res.append(new_item)
+    return res
+
+
 def _prepare_python_api_arguments(op):
     """
     For standard api of operator, its inputs should keep consistent with organization of its inputs and attrs.
@@ -233,7 +245,8 @@ def _decompose_subgraph(block, orig_vars, dst_vars, op_filter):
                 input_args = _prepare_python_api_arguments(op)
                 orig_outs = op.results()
                 if has_decomp(op):
-                    new_outs = call_decomp(op)[0][0]
+                    decomp_outs = call_decomp(op)
+                    new_outs = _analyse_decomp_results(orig_outs, decomp_outs)
                 else:
                     new_outs = _build_tensor_tuple(decom_rule(*input_args))
 
