@@ -63,6 +63,56 @@ def monkey_patch_opresult():
         DataType.INT64,
     ]
 
+    def astype(self, dtype):
+        """
+        **Notes**:
+
+        Cast a OpResult to a specified data type.
+
+        Args:
+
+            self(OpResult): The source OpResult
+
+            dtype: The target data type
+
+        Returns:
+            OpResult: OpResult with new dtype
+
+        Examples:
+            In Static Graph Mode:
+
+            .. code-block:: python
+
+                >>> import paddle
+                >>> paddle.enable_static()
+                >>> startup_prog = paddle.static.Program()
+                >>> main_prog = paddle.static.Program()
+                >>> with paddle.static.program_guard(startup_prog, main_prog):
+                ...     original_value = paddle.static.data(name = "new_value", shape=[2,2], dtype='float32')
+                ...     new_value = original_value.astype('int64')
+                ...     print("new value's dtype is: {}".format(new_value.dtype))
+                ...
+                new OpResult's dtype is: paddle.int64
+
+        """
+        from paddle import _C_ops
+
+        if not isinstance(dtype, DataType):
+            dtype = paddle.pir.core.convert_np_dtype_to_dtype_(dtype)
+        return _C_ops.cast(self, dtype)
+
+    def _scalar_add_(var, value):
+        return paddle.scale(var, 1.0, value)
+
+    def _scalar_sub_(var, value):
+        return paddle.scale(var, 1.0, -value)
+
+    def _scalar_rsub_(var, value):
+        return paddle.scale(var, -1.0, value)
+
+    def _scalar_mul_(var, value):
+        return paddle.scale(var, value, 0.0)
+
     def _scalar_div_(var, value):
         return paddle.scale(var, 1.0 / value, 0.0)
 
@@ -78,7 +128,7 @@ def monkey_patch_opresult():
             if isinstance(other_var, float):
                 # in all cases(+, -, *, /, **, //, %), we need cast tensor.dtype to float
                 if self.dtype in _supported_int_dtype_:
-                    paddle.cast(self, DataType.FLOAT32)
+                    self = astype(self, DataType.FLOAT32)
                 # here use `scale` replace `elementwise` to get better performance
                 # but only +, -, *, / can use this method
                 if scalar_method is not None:
@@ -163,48 +213,46 @@ def monkey_patch_opresult():
         __impl__.__name__ = method_name
         return __impl__
 
-    def astype(self, dtype):
-        """
-        **Notes**:
-
-        Cast a OpResult to a specified data type.
-
-        Args:
-
-            self(OpResult): The source OpResult
-
-            dtype: The target data type
-
-        Returns:
-            OpResult: OpResult with new dtype
-
-        Examples:
-            In Static Graph Mode:
-
-            .. code-block:: python
-
-                >>> import paddle
-                >>> paddle.enable_static()
-                >>> startup_prog = paddle.static.Program()
-                >>> main_prog = paddle.static.Program()
-                >>> with paddle.static.program_guard(startup_prog, main_prog):
-                ...     original_value = paddle.static.data(name = "new_value", shape=[2,2], dtype='float32')
-                ...     new_value = original_value.astype('int64')
-                ...     print("new value's dtype is: {}".format(new_value.dtype))
-                ...
-                new OpResult's dtype is: paddle.int64
-
-        """
-        from paddle import _C_ops
-
-        if not isinstance(dtype, DataType):
-            dtype = paddle.pir.core.convert_np_dtype_to_dtype_(dtype)
-        return _C_ops.cast(self, dtype)
-
     import paddle
 
     opresult_methods = [
         ('astype', astype),
+        (
+            '__add__',
+            _binary_creator_('__add__', paddle.tensor.add, False, _scalar_add_),
+        ),
+        #  a+b == b+a. Do not need to reverse explicitly
+        (
+            '__radd__',
+            _binary_creator_(
+                '__radd__', paddle.tensor.add, False, _scalar_add_
+            ),
+        ),
+        (
+            '__sub__',
+            _binary_creator_(
+                '__sub__', paddle.tensor.subtract, False, _scalar_sub_
+            ),
+        ),
+        (
+            '__rsub__',
+            _binary_creator_(
+                '__rsub__', paddle.tensor.subtract, True, _scalar_rsub_
+            ),
+        ),
+        (
+            '__mul__',
+            _binary_creator_(
+                '__mul__', paddle.tensor.multiply, False, _scalar_mul_
+            ),
+        ),
+        #  a*b == b*a. Do not need to reverse explicitly
+        (
+            '__rmul__',
+            _binary_creator_(
+                '__rmul__', paddle.tensor.multiply, False, _scalar_mul_
+            ),
+        ),
         (
             '__div__',
             _binary_creator_(
