@@ -15,7 +15,10 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_util import (
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 
@@ -38,6 +41,7 @@ class SimpleNet(paddle.nn.Layer):
         return x, x
 
 
+@dy2static_unittest
 class TestDuplicateOutput(unittest.TestCase):
     """
     TestCase for the transformation from control flow `if/else`

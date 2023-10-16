@@ -172,6 +172,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
             )
 
 
+@dy2static_unittest
 class TestBackend(unittest.TestCase):
     @test_and_compare_with_new_ir(False)
     def test_backend(self):

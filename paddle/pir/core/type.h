@@ -39,7 +39,7 @@ class IR_API Type {
   using TypeBase = detail::StorageHelperBase<ConcreteType,
                                              BaseType,
                                              StorageType,
-                                             pir::TypeManager,
+                                             TypeManager,
                                              TraitOrInterface...>;
 
   using Storage = TypeStorage;
@@ -114,6 +114,12 @@ class IR_API Type {
   U cast() const {
     return pir::cast<U>(*this);
   }
+
+  ///
+  /// \brief Return true if this is an integer (any signedness) or an index
+  /// type.
+  ///
+  bool IsIntOrIndex() const;
 
  protected:
   const Storage *storage_{nullptr};
