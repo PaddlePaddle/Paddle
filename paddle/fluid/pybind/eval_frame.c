@@ -184,8 +184,13 @@ int Internal_PyFrame_FastToLocalsWithError(_PyInterpreterFrame *frame) {
   if (lasti < 0 && _Py_OPCODE(_PyCode_CODE(co)[0]) == COPY_FREE_VARS) {
     /* Free vars have not been initialized -- Do that */
     PyCodeObject *co = frame->f_code;
+#if PY_VERSION_HEX >= 0x030c0000
+    PyObject *closure = ((PyFunctionObject *)frame->f_funcobj)->func_closure;
+    int offset = co->co_nlocals + co->co_ncellvars;
+#else
     PyObject *closure = frame->f_func->func_closure;
     int offset = co->co_nlocals + co->co_nplaincellvars;
+#endif
     for (int i = 0; i < co->co_nfreevars; ++i) {
       PyObject *o = PyTuple_GET_ITEM(closure, i);
       Py_INCREF(o);
@@ -562,7 +567,11 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
   // original frame. So we pass a PyInterpreterFrame to
   // _PyFrame_FastToLocalsWithError directly. But this is an internal API, so we
   // copy many code from CPython project into our project.
+#if PY_VERSION_HEX >= 0x030c0000
+  if (true) {
+#else
   if (Internal_PyFrame_FastToLocalsWithError(frame) < 0) {
+#endif
 #else
   if (PyFrame_FastToLocalsWithError(frame) < 0) {
 #endif
