@@ -25,6 +25,7 @@ const std::unordered_set<std::string> LegacyOpList = {
     "pd_op.c_sync_calc_stream_",
     "pd_op.c_sync_comm_stream_",
     "pd_op.dpsgd",
+    "pd_op.exponential",
     "pd_op.send_v2",
     "pd_op.recv_v2",
     "pd_op.c_allreduce_sum",
