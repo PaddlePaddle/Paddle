@@ -52,7 +52,7 @@ class TestCastOpFp32ToFp64(OpTest):
         self.input_shape = [10, 10]
 
     def test_check_output(self):
-        self.check_output(check_prim_pir=True, check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_grad(self):
         self.check_grad(
@@ -60,7 +60,7 @@ class TestCastOpFp32ToFp64(OpTest):
             ['Out'],
             check_prim=True,
             check_prim_pir=True,
-            check_new_ir=True,
+            check_pir=True,
         )
 
 
@@ -84,7 +84,7 @@ class TestCastOpFp16ToFp32(OpTest):
         self.public_python_api = cast_wrapper
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_grad(self):
         self.check_grad(
@@ -92,7 +92,7 @@ class TestCastOpFp16ToFp32(OpTest):
             ['Out'],
             check_prim=True,
             only_check_prim=True,
-            check_new_ir=True,
+            check_pir=True,
         )
 
 
@@ -111,7 +111,7 @@ class TestCastOpFp32ToFp16(OpTest):
         self.public_python_api = cast_wrapper
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_grad(self):
         self.check_grad(
@@ -119,7 +119,7 @@ class TestCastOpFp32ToFp16(OpTest):
             ['Out'],
             check_prim=True,
             only_check_prim=True,
-            check_new_ir=True,
+            check_pir=True,
         )
 
 
@@ -146,7 +146,7 @@ class TestCastOpBf16ToFp32(OpTest):
         self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_grad(self):
         self.check_grad(
@@ -154,7 +154,7 @@ class TestCastOpBf16ToFp32(OpTest):
             ['Out'],
             check_prim=True,
             only_check_prim=True,
-            check_new_ir=True,
+            check_pir=True,
         )
 
 
@@ -181,7 +181,7 @@ class TestCastOpFp32ToBf16(OpTest):
         self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_grad(self):
         self.check_grad(
@@ -189,7 +189,7 @@ class TestCastOpFp32ToBf16(OpTest):
             ['Out'],
             check_prim=True,
             only_check_prim=True,
-            check_new_ir=True,
+            check_pir=True,
         )
 
 

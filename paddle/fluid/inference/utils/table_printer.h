@@ -16,6 +16,7 @@
 
 #include <string>
 #include <vector>
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace inference {
@@ -23,7 +24,7 @@ namespace inference {
 //
 // A simple table printer.
 //
-class TablePrinter {
+class TEST_API TablePrinter {
  public:
   explicit TablePrinter(const std::vector<std::string>& header);
 

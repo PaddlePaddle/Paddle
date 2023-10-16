@@ -25,10 +25,11 @@ class TestReplicatedSPmdApiForSemiAutoParallel:
     def __init__(self):
         self._dtype = os.getenv("dtype")
         self._backend = os.getenv("backend")
+        self._seed = eval(os.getenv("seed"))
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
 
-        paddle.seed(2023)
-        np.random.seed(2023)
+        paddle.seed(self._seed)
+        np.random.seed(self._seed)
 
     def check_tensor_eq(self, a, b):
         np1 = a.numpy()
@@ -71,6 +72,26 @@ class TestReplicatedSPmdApiForSemiAutoParallel:
         )
         self.check_tensor_eq(local_in.grad, dist_in.grad)
 
+    # input: phi::Tensor
+    # output: std::vector<phi::Tensor>
+    def test_unbind(self):
+        x = np.random.random(size=[2, 8]).astype("float32")
+        local_in, dist_in = self.create_local_and_dist_tensor_pair(
+            x, ['x', None]
+        )
+        local_out1, local_out2 = paddle.unbind(local_in, axis=0)
+        dist_out1, dist_out2 = paddle.unbind(dist_in, axis=0)
+        self.check_tensor_eq(local_out1, dist_out1)
+        self.check_tensor_eq(local_out2, dist_out2)
+
+        local_out = paddle.add(local_out1, local_out2)
+        dist_out = paddle.add(dist_out1, dist_out2)
+
+        local_out.backward()
+        dist_out.backward()
+        self.check_tensor_eq(local_in.grad, dist_in.grad)
+
+    # mutiple operators
     def test_mse_loss(self):
         x = np.random.random(size=[4, 4]).astype(self._dtype)
         y = np.random.random(size=[4]).astype(self._dtype)
@@ -105,6 +126,7 @@ class TestReplicatedSPmdApiForSemiAutoParallel:
 
         self.test_relu()
         self.test_mse_loss()
+        self.test_unbind()
 
 
 if __name__ == '__main__':
