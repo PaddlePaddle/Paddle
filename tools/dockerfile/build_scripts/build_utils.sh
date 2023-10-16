@@ -104,7 +104,7 @@ function do_cpython_build {
         LD_LIBRARY_PATH="/usr/local/ssl/lib:${prefix}/lib" ${prefix}/bin/python -m pip config set global.index-url http://mirrors.aliyun.com/pypi/simple/
     fi
     LD_LIBRARY_PATH="/usr/local/ssl/lib:${prefix}/lib" ${prefix}/bin/python get-pip.py
-    LD_LIBRARY_PATH="/usr/local/ssl/lib:${prefix}/lib" ${prefix}/bin/pip install wheel==0.32.2
+    LD_LIBRARY_PATH="/usr/local/ssl/lib:${prefix}/lib" ${prefix}/bin/pip install wheel==0.40.0
     cd /
     ls ${MY_DIR}
     local abi_tag=$(LD_LIBRARY_PATH="${prefix}/lib" ${prefix}/bin/python ${MY_DIR}/python-tag-abi-tag.py)
