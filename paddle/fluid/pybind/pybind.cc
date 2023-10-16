@@ -852,7 +852,7 @@ PYBIND11_MODULE(libpaddle, m) {
   m.def("clear_gradients",
         [](std::vector<std::shared_ptr<imperative::VarBase>> param_list,
            bool set_to_zero) {
-          for (auto param : param_list) {
+          for (auto const &param : param_list) {
             param->ClearGradient(set_to_zero);
           }
         });
@@ -868,8 +868,7 @@ PYBIND11_MODULE(libpaddle, m) {
           [](const std::shared_ptr<egr::GradNodeBase> &self) {
             return self->NextFunctions();
           })
-
-      .def("node_this_ptr", &egr::GradNodeBase::GetThisPtr)
+      .def("node_ptr", &egr::GradNodeBase::GetPtr)
       .def("input_meta",
            [](const std::shared_ptr<egr::GradNodeBase> &self) {
              return self->InputMeta();

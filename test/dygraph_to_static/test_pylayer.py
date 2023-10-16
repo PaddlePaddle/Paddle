@@ -26,6 +26,7 @@ import tempfile
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import dy2static_unittest
 from test_jit_save_load import train
 
 import paddle
@@ -243,7 +244,7 @@ class SimplePyLayerNetMultiIn(paddle.nn.Layer):
     def forward(self, x1, x2):
         y1 = self.linear1(x1)
         y2 = self.linear1(x2)
-        out = cus_tanh_2.apply(y1, func1=paddle.tanh)
+        out = cus_tanh_2.apply(y1, paddle.tanh)
         out = out + y2
         out = paddle.mean(out)
         return out
@@ -262,6 +263,7 @@ class SimplePyLayerNetStopGrad(paddle.nn.Layer):
         return out
 
 
+@dy2static_unittest
 class TestPyLayerBase(unittest.TestCase):
     def setUp(self):
         self.place = "gpu" if paddle.is_compiled_with_cuda() else "cpu"
@@ -512,6 +514,7 @@ class TestPyLayerInsideNet(TestPyLayerBase):
         self._run_and_compare(input1, input2)
 
 
+@dy2static_unittest
 class PyLayerTrainHelper(unittest.TestCase):
     def setUp(self):
         self.place = "gpu" if paddle.is_compiled_with_cuda() else "cpu"
@@ -583,6 +586,7 @@ class TestTrainingPyLayer(PyLayerTrainHelper):
         )
 
 
+@dy2static_unittest
 class TestPyLayerJitSaveLoad(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()

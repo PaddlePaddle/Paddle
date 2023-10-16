@@ -903,7 +903,7 @@ def bilinear(x1, x2, weight, bias=None, name=None):
     """
 
     This layer performs bilinear on two inputs.
-    See :ref:`api_nn_Bilinear` for details and output shape.
+    See :ref:`api_paddle_nn_Bilinear` for details and output shape.
 
     Parameters:
         x1 (Tensor): the first input tensor, it's data type should be float32, float64.
@@ -1662,6 +1662,12 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
             out = _C_ops.pad(x, paddings, float(pad_value))
             return out
 
+        if in_pir_mode():
+            if isinstance(pad_value, paddle.pir.OpResult):
+                return _C_ops.pad(x, paddings, pad_value)
+            else:
+                return _C_ops.pad(x, paddings, float(pad_value))
+
         check_variable_and_dtype(
             x,
             'x',
@@ -1712,7 +1718,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
 
     unsqueezed_dim = []
 
-    if isinstance(pad, Variable):
+    if isinstance(pad, (Variable, pir.OpResult)):
         if data_format in ["NCL", "NCHW", "NCDHW"]:
             data_format = "NCDHW"
             if x_dim == 3:
@@ -1756,7 +1762,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
                 unsqueezed_dim = [1]
                 x = unsqueeze(x, axis=unsqueezed_dim)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if isinstance(pad, Variable):
             pad = pad.tolist()
         out = _C_ops.pad3d(x, pad, mode, value, data_format)

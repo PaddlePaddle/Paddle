@@ -24,14 +24,22 @@ if(WITH_TESTING AND WITH_CINN)
   set_tests_properties(test_jit_instruction PROPERTIES LABELS "RUN_TYPE=CINN")
 
   cc_test_old(
-    test_group_op
+    ir_op_fusion_test
     SRCS
-    group_op_test.cc
+    ir_op_fusion_test.cc
     DEPS
+    op_with_group_merge_pass
+    pd_op_dialect
     cinn_op_dialect
     pir
-    phi
     gtest
     glog)
+
+  paddle_test(test_group_op SRCS group_op_test.cc DEPS cinn_op_dialect)
   set_tests_properties(test_group_op PROPERTIES LABELS "RUN_TYPE=CINN")
+
+  paddle_test(test_pir_build_cinn_pass SRCS build_cinn_pass_test.cc DEPS
+              pd_build_cinn_pass)
+  set_tests_properties(test_pir_build_cinn_pass PROPERTIES LABELS
+                                                           "RUN_TYPE=CINN")
 endif()

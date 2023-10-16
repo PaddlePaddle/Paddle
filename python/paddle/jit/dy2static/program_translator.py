@@ -559,7 +559,7 @@ class StaticFunction:
         Example::
             .. code-block:: python
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
                 >>> import paddle
 
                 >>> class Net(paddle.nn.Layer):
@@ -692,29 +692,21 @@ class SymbolicStaticFunction(StaticFunction):
     def __init__(self, function, input_spec=None, **kwargs):
         if input_spec is not None:
             warnings.warn(
-                "\nSymbolic Trace don't support input_spec arguments. It will Will not produce any effect.\n"
+                "\nSymbolic Trace don't support input_spec arguments. It will not produce any effect.\n"
                 "1. You can disable fallback mode by `paddle.jit.to_static(enable_fallback=False)` to switch to AST to static, then you can assign input spec.\n"
             )
         super().__init__(function, input_spec, **kwargs)
         self.last_call_input_spec = None
 
     def _perform_call(self, *args, **kwargs):
+        from ..sot import symbolic_translate
+
         args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
         (
             input_args_with_spec,
             input_kwargs_with_spec,
         ) = self._function_spec.args_to_input_spec(args, kwargs)
         self.last_call_input_spec = input_args_with_spec
-
-        try:
-            from sot import symbolic_translate
-        except:
-            import os
-
-            os.system(
-                "pip install git+https://github.com/PaddlePaddle/PaddleSOT@develop"
-            )
-            from sot import symbolic_translate
 
         build_strategy = self._kwargs.get("build_strategy", None)
         backend = self._kwargs.get("backend", None)
@@ -906,7 +898,7 @@ class ASTStaticFunction(StaticFunction):
         Examples:
             .. code-block:: python
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
                 >>> import paddle
                 >>> from paddle.jit import to_static
                 >>> from paddle.static import InputSpec
@@ -1231,12 +1223,13 @@ class ConcreteProgram:
                         raise
 
                 # 3. Gets all ParamBases and buffered VarBases in the function
-                all_parameters_and_buffers = (
-                    ProgramTranslator.get_instance()._params_recorder.pop(
-                        main_program
-                    )
+                from ..newir_dy2static.parameter_recorder import (
+                    _global_parameter_recorder,
                 )
 
+                all_parameters_and_buffers = _global_parameter_recorder.pop(
+                    main_program
+                )
                 if outputs is not None:
                     need_wrap_into_list = (
                         not isinstance(outputs, (tuple, list))
@@ -1782,7 +1775,7 @@ class ProgramTranslator:
         Examples:
             .. code-block:: python
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
                 >>> import paddle
                 >>> def func(x):
                 ...     if paddle.mean(x) > 0:
@@ -1825,7 +1818,7 @@ class ProgramTranslator:
         Examples:
             .. code-block:: python
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
                 >>> import paddle
                 >>> def func(x):
                 ...     if paddle.mean(x) > 0:
@@ -1908,7 +1901,7 @@ class ProgramTranslator:
         Examples:
             .. code-block:: python
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
                 >>> import paddle
                 >>> def func(x):
                 ...     if paddle.mean(x) > 0:
@@ -1957,7 +1950,7 @@ class ProgramTranslator:
         Examples:
             .. code-block:: python
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
                 >>> import paddle
                 >>> def func(x):
                 ...     if paddle.mean(x) > 0:
@@ -2024,7 +2017,7 @@ class ProgramTranslator:
         Examples:
             .. code-block:: python
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
                 >>> import paddle
                 >>> def func(x):
                 ...     if paddle.mean(x) > 0:

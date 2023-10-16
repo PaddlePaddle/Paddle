@@ -19,13 +19,12 @@
 #include "paddle/pir/core/ir_printer.h"
 #include "paddle/pir/core/op_base.h"
 
-namespace pir {
-namespace dialect {
+namespace pir::dialect {
 
 class IR_API SymbolicDim : public Op<SymbolicDim> {
  public:
   using Op::Op;
-  static const char *name() { return "shape.SymbolicDim"; }
+  static const char *name() { return "shape.symbolic_dim"; }
 
   static constexpr uint32_t attributes_num = 6;
   static const char *attributes_name[attributes_num];
@@ -34,32 +33,45 @@ class IR_API SymbolicDim : public Op<SymbolicDim> {
                     OperationArgument &argument,  // NOLINT
                     const std::string &sym_name,
                     int64_t value = ShapedTypeInterface::kDynamic,
-                    bool knownNonNegative = false,
-                    bool knownNegativeOne = false,
-                    bool knownNonSizeOne = false,
-                    bool knownNonSizeZero = false);
-  const std::string getSymName();
-  int64_t getValue();
-  bool getKnownNonNegative();
-  bool getKnownNegativeOne();
-  bool getKnownNonSizeOne();
-  bool getKnownNonSizeZero();
+                    bool known_non_negative = false,
+                    bool known_negative_one = false,
+                    bool known_non_size_one = false,
+                    bool known_non_size_zero = false);
 
-  void updateSymName(std::string attrValue);
-  void updateValue(int64_t attrValue);
-  void updateKnownNonNegative(bool attrValue);
-  void updateKnownNegativeOne(bool attrValue);
-  void updateKnownNonSizeOne(bool attrValue);
-  void updateKnownNonSizeZero(bool attrValue);
+  const std::string GetSymName();
+  int64_t GetDimSize();
 
+  bool GetKnownNonNegative();
+  bool GetKnownNegativeOne();
+  bool GetKnownNonSizeOne();
+  bool GetKnownNonSizeZero();
+
+  void SetSymName(const std::string &attr_value);
+  void SetDimSize(int64_t attr_value);
+
+  // Sets `known_non_negative` to the value of `flag`
+  void UpdateKnownNonNegative(bool flag);
+
+  // Sets `known_negative_one` to the value of `flag`
+  void UpdateKnownNegativeOne(bool flag);
+
+  // Sets `known_non_size_one` to the value of `flag`
+  void UpdateKnownNonSizeOne(bool flag);
+
+  // Sets `known_non_size_zero` to the value of `flag`
+  void UpdateKnownNonSizeZero(bool flag);
+
+  // Returns true if this SymbolicDim is not known at compile-time.
   bool IsDynamic();
+
+  // Try to merge two SymbolicDim ops.
   bool Merge(SymbolicDim other);
 
-  static const std::string getSymbolicDimAttrName() {
+  static const std::string GetSymbolicDimAttrName() {
     return "kSymbolicDimAttr";
   }
 
-  void Verify() {}
+  void VerifySig() {}
 };
 
 class IR_API DimOp : public Op<DimOp> {
@@ -77,7 +89,7 @@ class IR_API DimOp : public Op<DimOp> {
   const std::string getName();
   void setName(std::string attrValue);
   OpResult out() { return result(0); }
-  void Verify() {}
+  void VerifySig() {}
 };
 
 class IR_API TieProductEqualOp : public Op<TieProductEqualOp> {
@@ -99,7 +111,7 @@ class IR_API TieProductEqualOp : public Op<TieProductEqualOp> {
                     const std::vector<Value> &rhs);
   std::vector<Value> lhs();
   std::vector<Value> rhs();
-  void Verify() {}
+  void VerifySig() {}
 };
 
 class IR_API TieShapeOp : public Op<TieShapeOp> {
@@ -120,7 +132,7 @@ class IR_API TieShapeOp : public Op<TieShapeOp> {
                     const std::vector<Value> &dims);
   Value value();
   std::vector<Value> dims();
-  void Verify() {}
+  void VerifySig() {}
 };
 
 class IR_API FuncOp : public Op<FuncOp> {
@@ -135,7 +147,7 @@ class IR_API FuncOp : public Op<FuncOp> {
                     OperationArgument &argument);  // NOLINT
   void Print(IrPrinter &printer);                  // NOLINT
   Block *block();
-  void Verify() {}
+  void VerifySig() {}
 };
 
 class IR_API TensorDimOp : public Op<TensorDimOp> {
@@ -157,11 +169,10 @@ class IR_API TensorDimOp : public Op<TensorDimOp> {
   Value index();
   Value source();
   OpResult out() { return result(0); }
-  void Verify() {}
+  void VerifySig() {}
 };
 
-}  // namespace dialect
-}  // namespace pir
+}  // namespace pir::dialect
 
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::SymbolicDim);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::DimOp);
