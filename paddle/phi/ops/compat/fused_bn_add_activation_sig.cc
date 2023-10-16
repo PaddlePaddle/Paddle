@@ -33,13 +33,13 @@ KernelSignature FusedBatchNormAddActGradOpArgumentMapping(
     const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("fused_bn_add_activation_grad",
                          {"X",
-                          "Y",
-                          "Y@GRAD",
                           "Scale",
                           "Bias",
+                          "Y",
                           "SavedMean",
                           "SavedVariance",
-                          "ReserveSpace"},
+                          "ReserveSpace",
+                          "Y@GRAD"},
                          {"momentum", "epsilon", "act_type"},
                          {"X@GRAD", "Z@GRAD", "Scale@GRAD", "Bias@GRAD"});
 }

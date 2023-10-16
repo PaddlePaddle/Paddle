@@ -41,7 +41,8 @@ class IfOp : public pir::Op<IfOp> {
   pir::Block *true_block();
   pir::Block *false_block();
   void Print(pir::IrPrinter &printer);  // NOLINT
-  void Verify();
+  void VerifySig();
+  void VerifyRegion();
 };
 
 class WhileOp : public pir::Op<WhileOp> {
@@ -57,7 +58,8 @@ class WhileOp : public pir::Op<WhileOp> {
   pir::Block *cond_block();
   pir::Block *body_block();
   void Print(pir::IrPrinter &printer);  // NOLINT
-  void Verify() {}
+  void VerifySig() {}
+  void VerifyRegion() {}
 };
 
 }  // namespace dialect

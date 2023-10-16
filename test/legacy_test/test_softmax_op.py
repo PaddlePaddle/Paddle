@@ -88,12 +88,12 @@ class TestSoftmaxOp(OpTest):
                 place,
                 atol=1e-5,
                 check_prim=True,
-                check_new_ir=True,
+                check_pir=True,
                 check_prim_pir=True,
             )
         else:
             self.check_output(
-                check_prim=True, check_new_ir=True, check_prim_pir=True
+                check_prim=True, check_pir=True, check_prim_pir=True
             )
 
     def test_check_grad(self):
@@ -107,7 +107,7 @@ class TestSoftmaxOp(OpTest):
                     "Out",
                     max_relative_error=0.01,
                     check_dygraph=(not self.use_mkldnn),
-                    check_new_ir=True,
+                    check_pir=True,
                     check_prim_pir=True,
                 )
         else:
@@ -117,7 +117,7 @@ class TestSoftmaxOp(OpTest):
                 max_relative_error=0.01,
                 check_dygraph=(not self.use_mkldnn),
                 check_prim=True,
-                check_new_ir=True,
+                check_pir=True,
                 check_prim_pir=True,
             )
 
@@ -157,11 +157,11 @@ class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
         if self.use_cudnn:
             place = core.CUDAPlace(0)
             self.check_output_with_place(
-                place, atol=1e-5, check_new_ir=True, check_prim_pir=True
+                place, atol=1e-5, check_pir=True, check_prim_pir=True
             )
         else:
             self.check_output(
-                check_prim=True, check_new_ir=True, check_prim_pir=True
+                check_prim=True, check_pir=True, check_prim_pir=True
             )
 
 
@@ -200,12 +200,12 @@ class TestSoftmaxOp_ZeroDim2(TestSoftmaxOp):
                 place,
                 check_prim=True,
                 atol=1e-5,
-                check_new_ir=True,
+                check_pir=True,
                 check_prim_pir=True,
             )
         else:
             self.check_output(
-                check_prim=True, check_new_ir=True, check_prim_pir=True
+                check_prim=True, check_pir=True, check_prim_pir=True
             )
 
 
@@ -384,7 +384,7 @@ class TestSoftmaxFP16Op(TestSoftmaxOp):
                     place,
                     atol=1e-3,
                     check_prim=True,
-                    check_new_ir=True,
+                    check_pir=True,
                     check_prim_pir=True,
                 )
 
@@ -417,7 +417,7 @@ class TestSoftmaxFP16CUDNNOp(TestSoftmaxOp):
                     place,
                     atol=1e-3,
                     check_prim=True,
-                    check_new_ir=True,
+                    check_pir=True,
                     check_prim_pir=True,
                 )
 
@@ -469,7 +469,7 @@ class TestSoftmaxBF16Op(OpTest):
             place,
             check_dygraph=(not self.use_mkldnn),
             check_prim=True,
-            check_new_ir=(not self.use_mkldnn),
+            check_pir=(not self.use_mkldnn),
             check_prim_pir=(not self.use_mkldnn),
         )
 
@@ -482,7 +482,7 @@ class TestSoftmaxBF16Op(OpTest):
             numeric_grad_delta=0.05,
             check_dygraph=(not self.use_mkldnn),
             check_prim=True,
-            check_new_ir=(not self.use_mkldnn),
+            check_pir=(not self.use_mkldnn),
             check_prim_pir=(not self.use_mkldnn),
         )
 
