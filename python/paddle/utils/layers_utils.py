@@ -69,7 +69,7 @@ def convert_to_list(value, n, name, dtype=int):
             )
         for single_value in value_list:
             assert not isinstance(
-                single_value, (Variable, paddle.ir.OpResult)
+                single_value, (Variable, paddle.pir.OpResult)
             ), (
                 "Required numerical type with '%s', but received Tensor."
                 % dtype
