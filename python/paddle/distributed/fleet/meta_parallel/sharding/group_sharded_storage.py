@@ -37,6 +37,23 @@ class BufferWarper(core.eager.Tensor):
         self.is_distributed = False
         self.trainable = True
 
+    @property
+    def actual_grad(self):
+        if hasattr(self, "main_grad"):
+            assert (
+                self.grad is None
+            ), "param.grad is expected to be None when main_grad exists."
+            return self.main_grad
+        else:
+            return self.grad
+
+    @actual_grad.setter
+    def actual_grad(self, value):
+        if hasattr(self, "main_grad"):
+            self.main_grad = value
+        else:
+            self.grad = value
+
 
 class InternalStorage:
     """
