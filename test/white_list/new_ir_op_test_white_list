@@ -186,6 +186,7 @@ test_spectral_norm_op
 test_spectral_op
 test_squared_l2_norm_op
 test_svd_op
+test_target_assign_op
 test_take_along_axis_op
 test_temporal_shift_op
 test_tile_op

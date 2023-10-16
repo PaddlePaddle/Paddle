@@ -3268,6 +3268,12 @@
   outputs :
     {reindex_src : Reindex_Src, reindex_dst : Reindex_Dst, out_nodes : Out_Nodes}
 
+- op: retinanet_target_assign
+  inputs :
+    {anchor: Anchor, gt_boxes: GtBoxes, gt_labels: GtLabels, is_crowd: IsCrowd, im_info: ImInfo}
+  outputs :
+    {location_index: LocationIndex, score_index: ScoreIndex, target_bbox: TargetBBox, target_label: TargetLabel, bbox_inside_weight: BBoxInsideWeight, foreground_number: ForegroundNumber}
+
 - op: rpn_target_assign
   inputs :
     {anchor: Anchor, gt_boxes: GtBoxes, is_crowd: IsCrowd, im_info: ImInfo}

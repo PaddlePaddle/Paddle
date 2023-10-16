@@ -4402,6 +4402,61 @@ void FullWithTensorInferMeta(const MetaTensor& shape,
   out->set_dims(make_ddim(std::vector<int64_t>(shape.numel(), -1)));
   out->set_dtype(dtype);
 }
+void RetinanetTargetAssignInferShape(const MetaTensor& anchor,
+                                     const MetaTensor& gt_boxes,
+                                     const MetaTensor& gt_labels,
+                                     const MetaTensor& is_crowd,
+                                     const MetaTensor& im_info,
+                                     MetaTensor* location_index,
+                                     MetaTensor* score_index,
+                                     MetaTensor* target_bbox,
+                                     MetaTensor* target_label,
+                                     MetaTensor* bbox_inside_weight,
+                                     MetaTensor* foreground_number) {
+  auto anchor_dims = anchor.dims();
+  auto gt_boxes_dims = gt_boxes.dims();
+  auto gt_labels_dims = gt_labels.dims();
+  auto im_info_dims = im_info.dims();
+
+  PADDLE_ENFORCE_EQ(
+      anchor_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The rank of Input(Anchor) should be 2, but received Anchor "
+          "rank is :%d, Anchor shape is:[%s].",
+          anchor_dims.size(),
+          anchor_dims));
+  PADDLE_ENFORCE_EQ(
+      gt_boxes_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The rank of Input(GtBoxes) should be 2, but received GtBoxes "
+          "rank is :%d, GtBoxes shape is:[%s].",
+          gt_boxes_dims.size(),
+          gt_boxes_dims));
+  PADDLE_ENFORCE_EQ(
+      gt_labels_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The rank of Input(GtLabels) should be 2, but received GtLabels "
+          "rank is :%d, GtLabels shape is:[%s].",
+          gt_labels_dims.size(),
+          gt_labels_dims));
+  PADDLE_ENFORCE_EQ(
+      im_info_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The rank of Input(ImInfo) should be 2, but received ImInfo "
+          "rank is :%d, ImInfo shape is:[%s].",
+          im_info_dims.size(),
+          im_info_dims));
+  location_index->set_dims({gt_labels_dims[0]});
+  score_index->set_dims({gt_labels_dims[0]});
+  target_bbox->set_dims({gt_labels_dims[0], 4});
+  target_label->set_dims({gt_labels_dims[0], 1});
+  bbox_inside_weight->set_dims({gt_labels_dims[0], 4});
+  foreground_number->set_dims({gt_labels_dims[0], 1});
+}
 void RpnTargetAssignInferShape(const MetaTensor& anchor,
                                const MetaTensor& gt_boxes,
                                const MetaTensor& is_crowd,

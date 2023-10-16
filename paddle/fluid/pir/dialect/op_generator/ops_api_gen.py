@@ -90,7 +90,9 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'fused_scale_bias_relu_conv_bnstats',
     'print',
     'recv_v2',
+    'retinanet_target_assign',
     'rnn_',
+    'rpn_target_assign',
     'seed',
     'send_v2',
     'set_value',
@@ -98,7 +100,6 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'set_value_with_tensor',
     'set_value_with_tensor_',
     'shadow_feed',
-    'rpn_target_assign',
 ]
 
 

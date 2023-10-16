@@ -209,6 +209,15 @@
   optional: dropout1_seed, dropout2_seed, linear1_bias, linear2_bias, ln1_scale, ln1_bias, ln2_scale, ln2_bias, ln2_mean, ln2_variance, ln1_mean, ln1_variance, ln1_out
   backward: fused_feedforward_grad
 
+- op: retinanet_target_assign
+  args: (Tensor anchor, Tensor gt_boxes, Tensor gt_labels, Tensor is_crowd, Tensor im_info, float positive_overlap=0.5f, float negative_overlap=0.4f)
+  output: Tensor(location_index), Tensor(score_index), Tensor(target_bbox), Tensor(target_label), Tensor(bbox_inside_weight), Tensor(foreground_number)
+  kernel:
+    func: retinanet_target_assign
+  infer_meta:
+    func: RetinanetTargetAssignInferShape
+    param: [anchor, gt_boxes, gt_labels, is_crowd, im_info]
+
 - op: rpn_target_assign
   args: (Tensor anchor, Tensor gt_boxes, Tensor is_crowd, Tensor im_info, float rpn_straddle_thresh, int rpn_batch_size_per_im=256, float rpn_positive_overlap=0.7f, float rpn_negative_overlap=0.3, float rpn_fg_fraction=0.25f, bool use_random=true)
   output: Tensor(location_index), Tensor(score_index), Tensor(target_bbox), Tensor(target_label), Tensor(bbox_inside_weight)
