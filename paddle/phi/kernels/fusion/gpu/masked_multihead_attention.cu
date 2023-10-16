@@ -150,8 +150,6 @@ struct V_vec_acum_fp32_<bf16_8_t> {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// 这里面必然有规约！
-// 作用是：
 template <int THREADS_PER_KEY, typename K_vec, int N>
 inline __device__ float qk_dot_(const K_vec (&q)[N],
                                 const K_vec (&k)[N],
@@ -234,7 +232,6 @@ struct Qk_dot<float16, 4> {
                                      float inv_sqrt_dh) {
 #if defined(MMHA_USE_HMMA_FOR_REDUCTION) && defined(__CUDA_ARCH__) && \
     __CUDA_ARCH__ >= 750
-    // 卧槽，这个都没有用到奥！
     return qk_hmma_dot_(q, k, inv_sqrt_dh);
 #else
     return qk_dot_<4>(q, k, inv_sqrt_dh);
@@ -249,8 +246,7 @@ inline __device__ float block_sum(float *red_smem, float sum) {
 
 #pragma unroll
   for (int mask = WARP_SIZE / 2; mask >= 1; mask /= 2) {
-    //sum += __shfl_xor_sync(uint32_t(-1), sum, mask);
-    sum += __shfl_down_sync(uint32_t(-1), sum, mask);
+    sum += __shfl_xor_sync(uint32_t(-1), sum, mask);
   }
 
   if (lane == 0) {
@@ -372,7 +368,6 @@ __global__ void masked_multihead_attention_kernel(
     LoadFunc load_func,
     StoreFunc store_func) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
-  // bi 显然就是batch喽！
   const int bi = blockIdx.y;
   if (params.sequence_lengths && params.sequence_lengths[bi] == 0) {
     return;
@@ -399,24 +394,16 @@ __global__ void masked_multihead_attention_kernel(
 
   __shared__ float red_smem[WARPS_PER_BLOCK * 2];
   using Qk_vec = typename Qk_vec_<T, Dh_MAX>::Type;
-  // uint2
   using Qk_vec_RoPE = typename Qk_vec_RoPE_<T, float, Dh_MAX>::Type;
-  // float4.
   __shared__ __align__(sizeof(Qk_vec)) T q_smem[Dh_MAX];
 
   // beam id
-  // const int beami = bi % params.beam_width;
+  const int beami = bi % params.beam_width;
   // real batch id
   const int bbi = bi / params.beam_width;
   const int hi = blockIdx.x;
-  // bhi的意思那显然就是当前cdua thread所负责的具体batch和num_head!
-
   const int bhi = bi * params.num_head + hi;
-  // bbhi 没啥大用处，估计是被beam search用的！
   const int bbhi = bbi * params.beam_width * params.num_head + hi;
-  if (threadIdx.x == 0) {
-    //printf("bbhi %d \n",bbhi);
-  }
   const int ti =
       params.cum_offsets ? bi * params.seq_len - params.cum_offsets[bi] : -1;
   const int thi = params.cum_offsets ? ti * params.num_head + hi : -1;
@@ -426,24 +413,18 @@ __global__ void masked_multihead_attention_kernel(
 
   float qk_max = -FLT_MAX;
   float qk = 0;
-  // act_time_step means 
+
   int act_time_step = params.sequence_lengths == nullptr
                           ? params.timestep
                           : params.sequence_lengths[bi];
 
-  // qkv shape is [B, S=1, 3, num_head, head_dim]
-  // bi: batch id processed by the cuda thread in B dimension
-  // hi: head id processed by the cuda thread in num_head dimension.
+  // qkv [B, S=1, 3, num_head, head_dim]
   int qkv_base_offset = bi * 3 * params.num_head * Dh + hi * Dh;
-  
-  // we load QK_VEC_SIZE element once a time along head_dim dimension.
+
   constexpr int QK_VEC_SIZE = sizeof(Qk_vec) / sizeof(T);
   static_assert(Dh_MAX % QK_VEC_SIZE == 0, "");
   // Use block reduction if needed
   // static_assert(Dh_MAX / QK_VEC_SIZE <= WARP_SIZE, "");
-  
-  // QK_VECS_PER_WARP 这个变量的定义有bug吧！
-  // 明明是 QK_VECS_PER_BLOCK！
   constexpr int QK_VECS_PER_WARP = Dh_MAX / QK_VEC_SIZE;
 
   // cache_k, [B, num_head, head_dim / x, max_seq_len, x]
@@ -460,9 +441,8 @@ __global__ void masked_multihead_attention_kernel(
     q_bias_base = params.qkv_bias;
     k_bias_base = params.qkv_bias + params.num_head * Dh;
   }
-  // 为啥要这个if！！
+
   if (tid < QK_VECS_PER_WARP) {
-    // 当前的cuda thread
     int qk_offset = qkv_base_offset + tid * QK_VEC_SIZE;
     int qk_bias_offset = hi * Dh + tid * QK_VEC_SIZE;
 
@@ -504,16 +484,12 @@ __global__ void masked_multihead_attention_kernel(
       //   we may not require k_bias.
       k = add(k, k_bias);
     }
-    // 上面q和k已经被取得了！
+
     if (!params.neox_rotary_style) {
-      if (params.rotary_emb_dims != 0 && tid * QK_VEC_SIZE < Dh / 2) {
-        // bi 就是batch的意思吧！
-        int rotary_offset = bi * Dh / 2 + tid * QK_VEC_SIZE;
-        // int rotary_offset = 0 * Dh + tid * QK_VEC_SIZE;
-        // Dh的意思就是dim head！
+      if (params.rotary_emb_dims != 0) {
+        int rotary_offset = bi * Dh + tid * QK_VEC_SIZE;
         const float *cos_base = params.rotary_emb;
-        const float *sin_base = params.rotary_emb + params.batch_size * Dh / 2;
-        // const float *sin_base = params.rotary_emb + 1 * Dh / 2;
+        const float *sin_base = params.rotary_emb + params.batch_size * Dh;
         Qk_vec_RoPE cos_emb, sin_emb;
         zero(cos_emb);
         zero(sin_emb);
@@ -602,41 +578,17 @@ __global__ void masked_multihead_attention_kernel(
       }
     }
 
-    if(blockIdx.x == 0 && blockIdx.y == 0 && threadIdx.x >= 0 && 0) {
-      // printf("cos %f \n", *cos_base);
-      // printf("sin %f \n", *(sin_base+0));
-
-      // seq,batch=1
-      int head_i = blockIdx.x;
-      int j = threadIdx.x;
-      int global = head_i * 128 + j*4;
-
-      if (std::is_same<Qk_vec, uint2>::value) {
-        half * tmp = (half*)(&q);
-        printf("q %d %f \n",global, (float)(*(tmp + 0)));
-        printf("q %d %f \n",global+1, (float)(*(tmp + 1)));
-        printf("q %d %f \n",global+2, (float)(*(tmp + 2)));
-        printf("q %d %f \n",global+3, (float)(*(tmp + 3)));
-      }
-    }
-
-    // q被直接丢到了smem中！
     *reinterpret_cast<Qk_vec *>(&q_smem[tid * QK_VEC_SIZE]) = q;
-    // 用线程id除以【vector个数，这么多个vector正好能装满16个字节】
-    // 每个id正好读一个 vector！
+
     int co = tid / QK_VECS_IN_16B;
     int ci = (tid % QK_VECS_IN_16B) * QK_VEC_SIZE;
-    // 从下面可以看出来 act_time_step 第一次进入这个函数的时候必然是等于模型输入的seq的！
     int offset = bhi * params.max_seq_length * Dh +
                  co * params.max_seq_length * QK_ELTS_IN_16B +
                  act_time_step * QK_ELTS_IN_16B + ci;
-    // 为什么要搞这种很奇怪的方式呢？
-    // 他妈的，为啥一定要让后面的16个字节呆在一起呢！我匪夷所思啊！
-    // cache_k, [B, num_head, head_dim / QK_ELTS_IN_16B, max_seq_len, QK_ELTS_IN_16B]
     if (Dh == Dh_MAX || co < Dh / QK_ELTS_IN_16B) {
       *reinterpret_cast<Qk_vec *>(&params.cache_kv[offset]) = k;
     }
-    // qk 是个float数字！
+
     qk = dot<Qk_vec, Qk_vec>(q, k);
 
     if (QK_VECS_PER_WARP <= WARP_SIZE) {
@@ -651,50 +603,42 @@ __global__ void masked_multihead_attention_kernel(
         (QK_VECS_PER_WARP + WARP_SIZE - 1) / WARP_SIZE;
     qk = block_sum<WARPS_PER_RED>(&red_smem[WARPS_PER_RED], qk);
   }
-  // 上面是规约，被规约到了一个warp里面的第0个cuda thread里面去了！
-  // 但是我要计算的不只是一个数字哦，而是【1，seq】这样长度的矩阵，这里的qk相当于仅仅是【0，0】位置的数字！
-  // 下面开始将
   if (tid == 0) {
     // NOTE(wangxi): mask must be 0.0
     // T mask = params.attn_mask[
     //    bi * (params.timestep + 1) + params.timestep];
     // qk += static_cast<float>(mask);
     qk *= params.inv_sqrt_dh;
+    if (params.attn_mask) {
+      auto mask_bhi = params.mask_broadcast_num_heads ? bi : bhi;
+      T mask = params.attn_mask[mask_bhi * params.mask_length + act_time_step];
+      qk += static_cast<float>(mask);
+    }
     qk_max = qk;
     qk_smem[act_time_step] = qk;
   }
   __syncthreads();
-  // THREADS_PER_KEY 是个什么鬼东西啊？？？就是每个key用这么多个线程来处理的意思吧！每个key有head_dim个元素哦！
-  // 
+
   using K_vec = typename K_vec_<T, THREADS_PER_KEY>::Type;
   constexpr int K_VEC_SIZE = sizeof(K_vec) / sizeof(T);
   static_assert(Dh_MAX % K_VEC_SIZE == 0, "");
   constexpr int K_ELTS_PER_THREAD = Dh_MAX / THREADS_PER_KEY;
   constexpr int K_VECS_PER_THREAD = K_ELTS_PER_THREAD / K_VEC_SIZE;
-  // THREADS_PER_KEY 
+
   int ko = tid / THREADS_PER_KEY;
   int ki = (tid % THREADS_PER_KEY) * K_VEC_SIZE;
 
   static_assert(Dh_MAX == THREADS_PER_KEY * K_VEC_SIZE * K_VECS_PER_THREAD, "");
 
   K_vec q[K_VECS_PER_THREAD];
-  // q_smem 就是 dh_max个数字哦！
-  // ki 的意思显然就是此cuda thread所要读取的第一个vector数据的偏移！
 #pragma unroll
   for (int i = 0; i < K_VECS_PER_THREAD; ++i) {
     q[i] = *reinterpret_cast<const K_vec *>(
         &q_smem[ki + i * THREADS_PER_KEY * K_VEC_SIZE]);
   }
-  // 至此，head_dim个q的数据都拿到了寄存器中了，但是记住是分散在了THREADS_PER_KEY个cuda thread中的！
-  // 下面开始拿k了！，注意K的序列长度是好多哦！
-  
-  // K_PER_ITER 的含义就是每个cuda thread需要在seq维度上跳跃 K_PER_ITER 这么大！
-  // 因为每个head_dim只需要THREADS_PER_KEY这么多个cuda thread就够了！
+
   constexpr int K_PER_ITER = THREADS_PER_BLOCK / THREADS_PER_KEY;
   constexpr int K_PER_WARP = WARP_SIZE / THREADS_PER_KEY;
-  
-  // 我认为kv cahce是[B, groups, head_dim / QK_ELTS_IN_16B, max_seq_len, QK_ELTS_IN_16B]
-  int zkk_bhi = bi * params.num_head + hi / 16 * 16;
 
   T *k_cache = &params.cache_kv[bhi * params.max_seq_length * Dh + ki];
   T *k_cache_batch = &params.cache_kv[bbhi * params.max_seq_length * Dh + ki];
@@ -703,9 +647,6 @@ __global__ void masked_multihead_attention_kernel(
   const int *beam_offsets = params.beam_cache_offset
                                 ? &params.beam_cache_offset[bi_seq_len_offset]
                                 : nullptr;
-  // qk_smem 的长度至少是多大呢？
-  // ko的意思应该是当前的线程所分到的第一个seq！
-  // ti就是每个cuda thread所代表的seq号码！
   for (int ti = ko; ti < ti_end; ti += K_PER_ITER) {
     const int beam_offset = beam_offsets ? beam_offsets[ti] * params.num_head *
                                                params.max_seq_length * Dh
@@ -714,7 +655,6 @@ __global__ void masked_multihead_attention_kernel(
     K_vec k_vec_zero;
     zero(k_vec_zero);
 #pragma unroll
-    // 下面准备把这K_VECS_PER_THREAD个数字都读取出来。
     for (int ii = 0; ii < K_VECS_PER_THREAD; ++ii) {
       int jj = ii * params.max_seq_length + ti;
       if (ti < act_time_step) {
@@ -736,11 +676,9 @@ __global__ void masked_multihead_attention_kernel(
 
     // NOTE(liyurui): We should multiple q with inv_sqrt_dh first, for dot(q, k)
     // may overflow with FP16 in large model.
-    // 这里面必然有规约！！
     float qk = Qk_dot<T, THREADS_PER_KEY>::dot(q, k, params.inv_sqrt_dh);
 
     // bool is_mask = false;
-    // tid % THREADS_PER_KEY 的意思是想表明 这个cuda thread是第0个cuda thread！
     if (ti < act_time_step && tid % THREADS_PER_KEY == 0) {
       // qk_max = is_mask ? qk_max : fmaxf(qk_max, qk);
       auto mask_bhi = params.mask_broadcast_num_heads ? bi : bhi;
@@ -776,8 +714,7 @@ __global__ void masked_multihead_attention_kernel(
   }
 
   qk_max = __shfl_sync(uint32_t(-1), qk_max, 0);
-  
-  // 下面开始对 qk_smem 里面的seq个数字进行softmax了！
+
   float sum = 0.f;
   for (int ti = tid; ti <= act_time_step; ti += THREADS_PER_BLOCK) {
     // bool is_mask = false;
@@ -802,8 +739,6 @@ __global__ void masked_multihead_attention_kernel(
 
   int vo = tid / THREADS_PER_VALUE;
   int vi = (tid % THREADS_PER_VALUE) * V_VEC_SIZE;
-  
-  zkk_bhi = bi * params.num_head + hi / 16 * 16;
 
   T *v_cache = &params.cache_kv[params.cache_batch_size * params.num_head *
                                     params.max_seq_length * Dh +
@@ -978,11 +913,10 @@ void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
   } else if (params.timestep < 2048) {
 #if defined(MMHA_USE_HMMA_FOR_REDUCTION) && defined(__CUDA_ARCH__) && \
     __CUDA_ARCH__ >= 750
-    // 为什么要设定为每个threaed block为 256个cuda thread呢！
     MMHA_LAUNCH_KERNEL(T,
                        Dh,
                        Dh_MAX,
-                       4, // THREADS_PER_KEY
+                       4,
                        THREADS_PER_VALUE,
                        256,
                        stream,
@@ -1452,7 +1386,6 @@ void DispatchWithDtype(const Context &dev_ctx,
   params.cache_batch_size = cache_bsz;
   params.num_head = num_head;
   params.timestep = timestep;
-
   params.seq_len = seq_len;
   params.max_seq_length = max_seq_len;
   params.inv_sqrt_dh = inv_sqrt_dh;
