@@ -24,7 +24,8 @@
 
 #if defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/backends/dynload/rccl.h"
-#else
+#endif
+#if defined(PADDLE_WITH_NCCL)
 #include "paddle/phi/backends/dynload/nccl.h"
 #endif
 
