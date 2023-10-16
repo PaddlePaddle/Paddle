@@ -269,7 +269,7 @@ def decompose_fwd_op(block, fwd_op, grad_var_to_var_map):
     This API decomposes the fwd_op into a list of primitive ops,
 
     Args:
-        block (Block): the block to which the bwd_op belongs.
+        block (Block): the block to which the fwd_op belongs.
         fwd_op (pir.Operation): the forward op to be decomposed.
         grad_var_to_var_map (dict): a dict obtained after distributed processing,
             which maps the backward grad variable to its corresponding forward variable.
