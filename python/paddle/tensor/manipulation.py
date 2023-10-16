@@ -5014,7 +5014,7 @@ def atleast_1d(x):
     for tensor in x:
         check_type(
             tensor,
-            'x',
+            'tensor',
             (Variable),
             'atleast_1d',
             f"For 'atleast_1d', each element of 'inputs' must be a tensor, but got {type(tensor)}",
@@ -5073,7 +5073,7 @@ def atleast_2d(x):
     for tensor in x:
         check_type(
             tensor,
-            'x',
+            'tensor',
             (Variable),
             'atleast_2d',
             "expect Tensor or list of tensors, but got " + f"{type(tensor)}",
@@ -5156,7 +5156,7 @@ def atleast_3d(x):
     for tensor in x:
         check_type(
             tensor,
-            'x',
+            'tensor',
             (Variable),
             'atleast_3d',
             f"For 'atleast_3d', each element of 'x' must be a tensor, but got {type(tensor)}",
