@@ -47,14 +47,14 @@ class TestTileOpRank1(OpTest):
         self.repeat_times = [2]
 
     def test_check_output(self):
-        self.check_output(check_cinn=self.check_cinn, check_new_ir=True)
+        self.check_output(check_cinn=self.check_cinn, check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
             ['X'],
             'Out',
             check_prim=True,
-            check_new_ir=True,
+            check_pir=True,
             check_prim_pir=True,
         )
 
@@ -171,7 +171,7 @@ class TestTileOpRank1_tensor_attr(OpTest):
         self.infer_repeat_times = [-1]
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
@@ -212,7 +212,7 @@ class TestTileOpRank1_tensor(OpTest):
         self.repeat_times = [2]
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
@@ -241,7 +241,7 @@ class TestTileOpInteger(OpTest):
         self.check_cinn = True
 
     def test_check_output(self):
-        self.check_output(check_cinn=self.check_cinn, check_new_ir=True)
+        self.check_output(check_cinn=self.check_cinn, check_pir=True)
 
 
 class TestTileFP16OP(OpTest):
@@ -268,14 +268,14 @@ class TestTileFP16OP(OpTest):
         self.repeat_times = [2, 1, 4]
 
     def test_check_output(self):
-        self.check_output(check_cinn=self.check_cinn, check_new_ir=True)
+        self.check_output(check_cinn=self.check_cinn, check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
             ['X'],
             'Out',
             check_prim=True,
-            check_new_ir=True,
+            check_pir=True,
             check_prim_pir=True,
         )
 
@@ -306,7 +306,7 @@ class TestTileBF16OP(OpTest):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place(
-            place, check_cinn=self.check_cinn, check_new_ir=True
+            place, check_cinn=self.check_cinn, check_pir=True
         )
 
     def init_data(self):
@@ -321,7 +321,7 @@ class TestTileBF16OP(OpTest):
             ['X'],
             'Out',
             check_prim=True,
-            check_new_ir=True,
+            check_pir=True,
             check_prim_pir=True,
         )
 
@@ -341,7 +341,7 @@ class TestTileOpBoolean(OpTest):
         self.check_cinn = True
 
     def test_check_output(self):
-        self.check_output(check_cinn=self.check_cinn, check_new_ir=True)
+        self.check_output(check_cinn=self.check_cinn, check_pir=True)
 
 
 # Situation 56: input x is Integer
@@ -361,7 +361,7 @@ class TestTileOpInt64_t(OpTest):
         self.check_cinn = True
 
     def test_check_output(self):
-        self.check_output(check_cinn=self.check_cinn, check_new_ir=True)
+        self.check_output(check_cinn=self.check_cinn, check_pir=True)
 
 
 class TestTileError(unittest.TestCase):
