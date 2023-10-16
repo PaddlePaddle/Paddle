@@ -1252,6 +1252,21 @@ struct MulOpTranscriber : public OpTranscriber {
     }
     return op_info;
   }
+
+  pir::AttributeMap TranslateOpAttribute(
+      pir::IrContext* ctx,
+      const std::string& normalized_op_name,
+      const OpAttributeInfoList& op_attr_infos,
+      const OpDesc& op_desc) override {
+    auto& attribute_translator = AttributeTranslator::instance();
+    pir::AttributeMap attribute_map = {};
+
+    attribute_map["transpose_x"] = pir::BoolAttribute::get(ctx, false);
+    attribute_map["transpose_y"] = pir::BoolAttribute::get(ctx, false);
+
+    return attribute_map;
+  }
+
   std::vector<pir::Value> GenerateOperationInput(
       pir::IrContext* ctx,
       TranslationContext* param_map,
