@@ -20,7 +20,11 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test, dy2static_unittest, test_and_compare_with_new_ir
+from dygraph_to_static_util import (
+    ast_only_test,
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 from predictor_utils import PredictorTools
 
 import paddle
