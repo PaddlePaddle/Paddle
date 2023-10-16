@@ -270,26 +270,27 @@ def _decompose_subgraph(block, orig_vars, dst_vars, op_filter):
     )
 
 
-def get_global_outputs_infos(block, global_outputs):
+def get_graph_outputs_infos(block, global_outputs):
     '''
     This API checks which forward OP contributes to the outputs of the entire computation graph,
+    and which backward OP contributes to the grad outputs of the entire backward computation graph,
     as well as determining the corresponding output index.
 
     Args:
-        block (Block): the block to which the fwd_op belongs.
-        global outputs (list): the outputs of the entire computation graph.
+        block (Block): the block to which the op belongs.
+        global_outputs (list): the outputs (forward or backward) of the entire computation graph.
 
     Returns:
-        related_fwd_ops (list): a list of fwd_op that contributes to the outputs of the entire graph.
-        related_fwd_ops_output_indexes (list) : a list records the mapping of [the output index of the fwd_op,  output index of the entire graph]
+        related_ops (list): a list of op that contributes to the outputs of the entire graph.
+        related_ops_output_indexes (list) : a list records the mapping of [the output index of the op,  output index of the entire graph]
     '''
     if not isinstance(block, Block):
         raise TypeError(f"block should be Block, but got type {type(block)}")
     if not isinstance(global_outputs, list):
         raise TypeError("The type of global_outputs should be list")
 
-    related_fwd_ops = []
-    related_fwd_ops_output_indexes = []
+    related_ops = []
+    related_ops_output_indexes = []
 
     op_to_op_valid_result = {}
     for op in block.ops:
@@ -302,9 +303,9 @@ def get_global_outputs_infos(block, global_outputs):
     for global_output in global_outputs:
         for op in op_to_op_valid_result.keys():
             if global_output in op_to_op_valid_result[op]:
-                if op not in related_fwd_ops:
-                    related_fwd_ops.append(op)
-                    related_fwd_ops_output_indexes.append(
+                if op not in related_ops:
+                    related_ops.append(op)
+                    related_ops_output_indexes.append(
                         [
                             [
                                 op.results().index(global_output),
@@ -313,128 +314,44 @@ def get_global_outputs_infos(block, global_outputs):
                         ]
                     )
                 else:
-                    related_fwd_ops_output_indexes[
-                        related_fwd_ops.index(op)
-                    ].append(
+                    related_ops_output_indexes[related_ops.index(op)].append(
                         [
                             op.results().index(global_output),
                             global_outputs.index(global_output),
                         ]
                     )
 
-    return related_fwd_ops, related_fwd_ops_output_indexes
+    return related_ops, related_ops_output_indexes
 
 
-def get_global_grads_infos(block, global_grads):
+def related_graph_outputs(global_outputs, related_ops, op):
     '''
-    This API checks which backward OP contributes to the grad outputs of the entire backward computation graph,
-    as well as determining the corresponding output index.
-
-    Args:
-        block (Block): the block to which the bwd_op belongs.
-        global_grads (list): the grad outputs of the entire backward computation graph.
-
-    Returns:
-        related_bwd_ops (list): a list of bwd_op that contributes to the grad outputs.
-        related_bwd_ops_output_indexes (list) : a list records the mapping of [the output index of the bwd_op,  grad output index of the entire backward graph]
-    '''
-
-    if not isinstance(block, Block):
-        raise TypeError(f"block should be Block, but got type {type(block)}")
-    if not isinstance(global_grads, list):
-        raise TypeError("The type of global_grads should be list")
-
-    related_bwd_ops = []
-    related_bwd_ops_output_indexes = []
-
-    op_to_op_valid_result = {}
-    for op in block.ops:
-        op_valid_result = []
-        for x in op.results():
-            if x.initialized():
-                op_valid_result.append(x)
-        op_to_op_valid_result[op] = op_valid_result
-
-    for global_grad in global_grads:
-        for op in op_to_op_valid_result.keys():
-            if global_grad in op_to_op_valid_result[op]:
-                if op not in related_bwd_ops:
-                    related_bwd_ops.append(op)
-                    related_bwd_ops_output_indexes.append(
-                        [
-                            [
-                                op.results().index(global_grad),
-                                global_grads.index(global_grad),
-                            ]
-                        ]
-                    )
-                else:
-                    related_bwd_ops_output_indexes[
-                        related_bwd_ops.index(op)
-                    ].append(
-                        [
-                            op.results().index(global_grad),
-                            global_grads.index(global_grad),
-                        ]
-                    )
-
-    return related_bwd_ops, related_bwd_ops_output_indexes
-
-
-def related_global_outputs(global_outputs, related_fwd_ops, fwd_op):
-    '''
-    This API checks whether the fwd_op contributes to the outputs of the entire computation graph.
+    This API checks whether the op contributes to the outputs of the entire computation graph.
     '''
 
     if not isinstance(global_outputs, list):
         raise TypeError("The type of global_outputs should be list")
 
-    if fwd_op in related_fwd_ops:
-        fwd_op_index = related_fwd_ops.index(fwd_op)
-        return fwd_op_index
+    if op in related_ops:
+        op_index = related_ops.index(op)
+        return op_index
     else:
         return None
 
 
-def related_global_grads(global_grads, related_bwd_ops, bwd_op):
-    '''
-    This API checks whether the bwd_op contributes to the grad outputs of the entire backward computation graph.
-    '''
-
-    if not isinstance(global_grads, list):
-        raise TypeError("The type of global_outputs should be list")
-
-    if bwd_op in related_bwd_ops:
-        bwd_op_index = related_bwd_ops.index(bwd_op)
-        return bwd_op_index
-    else:
-        return None
-
-
-def replace_global_outputs(
+def replace_graph_outputs(
     global_outputs,
-    fwd_op_outputs,
-    fwd_op_index,
-    related_fwd_ops_output_indexes,
+    op_outputs,
+    op_index,
+    related_ops_output_indexes,
 ):
     '''
-    This API replace the outputs of the entire computation graph with the new outputs of the fwd_op,
-    whether the fwd_op contributes to the outputs of the entire computation graph.
+    This API replace the outputs of the entire computation graph with the new outputs of the op,
+    when the op contributes to the outputs of the entire computation graph.
     '''
 
-    for index in related_fwd_ops_output_indexes[fwd_op_index]:
-        global_outputs[index[1]] = fwd_op_outputs[index[0]]
-
-
-def replace_global_grads(
-    global_grads, bwd_op_grads, bwd_op_index, related_bwd_ops_output_indexes
-):
-    '''
-    This API replace the grad outputs of the entire backward graph with the new grads of the bwd_op,
-    whether the bwd_op contributes to the grad outputs of the entire backward graph.
-    '''
-    for index in related_bwd_ops_output_indexes[bwd_op_index]:
-        global_grads[index[1]] = bwd_op_grads[index[0]]
+    for index in related_ops_output_indexes[op_index]:
+        global_outputs[index[1]] = op_outputs[index[0]]
 
 
 def decompose_fwd_op(block, fwd_op, grad_var_to_var_map):
