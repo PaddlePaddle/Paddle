@@ -28,6 +28,38 @@
 #include "paddle/fluid/framework/variable.h"
 
 namespace egr {
+
+void SetGradOutputDistAttrIter::visit_element(paddle::Tensor* element,
+                                              const GradSlotMeta& meta) {
+  if (element == nullptr) {
+    VLOG(4) << "The input element is nullptr when calling "
+               "SetGradOutputDistAttrIter.";
+    return;
+  }
+  // Here the element is empty or defined DistTensor
+  VLOG(4) << "The input element is set DistTensor impl when calling "
+             "SetGradOutputDistAttrIter.";
+  element->set_impl(std::make_shared<phi::distributed::DistTensor>(
+      phi::DDim(), meta.DistAttr()));
+}
+
+void SetGradOutputDistAttrIter::visit(paddle::Tensor* element) {
+  if (!out_meta_[out_indexes_[cur_pos_]].empty()) {
+    visit_element(element, out_meta_[out_indexes_[cur_pos_]][0]);
+  }
+  cur_pos_++;
+}
+
+void SetGradOutputDistAttrIter::visit(
+    const std::vector<paddle::Tensor*>& elements) {
+  if (!out_meta_[out_indexes_[cur_pos_]].empty()) {
+    for (size_t i = 0; i < elements.size(); ++i) {
+      visit_element(elements.at(i), out_meta_[out_indexes_[cur_pos_]][i]);
+    }
+  }
+  cur_pos_++;
+}
+
 /**
  * Implementation of Eager Utils.
  **/

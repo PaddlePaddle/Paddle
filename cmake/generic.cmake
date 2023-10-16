@@ -88,7 +88,7 @@
 # To build a unit test binary, which is an executable binary with libpaddle.so
 # automatically linked:
 #
-#   paddle_test(example SHARED)
+#   paddle_test(example SRCS example_test.cc)
 #
 
 # including binary directory for generated headers.
@@ -1345,6 +1345,9 @@ function(math_library TARGET)
   if(WITH_GPU)
     if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
       list(APPEND math_common_deps cub)
+    elseif(${CMAKE_CUDA_COMPILER_VERSION} EQUAL 12.0
+           OR ${CMAKE_CUDA_COMPILER_VERSION} GREATER 12.0)
+      list(APPEND math_common_deps cccl)
     else()
       list(APPEND math_common_deps)
     endif()
