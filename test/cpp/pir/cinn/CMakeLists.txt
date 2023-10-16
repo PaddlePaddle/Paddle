@@ -23,6 +23,18 @@ if(WITH_TESTING AND WITH_CINN)
     convert_to_dialect)
   set_tests_properties(test_jit_instruction PROPERTIES LABELS "RUN_TYPE=CINN")
 
+  cc_test_old(
+    ir_op_fusion_test
+    SRCS
+    ir_op_fusion_test.cc
+    DEPS
+    op_with_group_merge_pass
+    pd_op_dialect
+    cinn_op_dialect
+    pir
+    gtest
+    glog)
+
   paddle_test(test_group_op SRCS group_op_test.cc DEPS cinn_op_dialect)
   set_tests_properties(test_group_op PROPERTIES LABELS "RUN_TYPE=CINN")
 

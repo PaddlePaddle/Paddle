@@ -27,6 +27,12 @@ class Value;
 class NewIRInterpreter;
 class ValueExecutionInfo;
 
+/// The execute semantics of while op ['output' = while_op('cond', 'intput')]
+/// is:
+///   'output' = 'input';
+///   while('cond') {
+///      'cond', 'output' = body_block('output');
+///  }
 class WhileInstruction : public InstructionBase {
  public:
   WhileInstruction(size_t id,
@@ -43,28 +49,24 @@ class WhileInstruction : public InstructionBase {
   ::pir::Operation* Operation() const override { return op_; }
 
  private:
-  void CopyStepOutput();
+  // 'output' = 'input'
+  void CopyInputsToOutputs();
 
-  void CopyWhileInputToBlockArgs(const NewIRInterpreter* inter,
-                                 ::pir::Block* block);
+  // Pass argument to body_block for execution.
+  void PassArgsToBodyBlock();
 
-  void CopyStepOutputToBlockArgs(const NewIRInterpreter* inter,
-                                 ::pir::Block* block);
+  // Get return value from body_block after each execution.
+  void GetValueFromBodyBlock();
 
   std::string cond_name_{"while_instruction"};
 
-  Variable* cond_var;
-
+  Variable* cond_var_;
   std::vector<Variable*> while_op_inputs_;
   std::vector<Variable*> while_op_outputs_;
 
-  std::unique_ptr<NewIRInterpreter> cond_inter_;
   std::unique_ptr<NewIRInterpreter> body_inter_;
-
-  std::vector<std::string> cond_skip_gc_names_;
   std::vector<std::string> body_skip_gc_names_;
 
-  ::pir::Block* cond_block_;
   ::pir::Block* body_block_;
 
   ::pir::Operation* op_;
