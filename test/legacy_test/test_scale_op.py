@@ -42,10 +42,10 @@ class TestScaleOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_cinn=True, check_new_ir=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_new_ir=True)
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestScaleOpScaleVariable(OpTest):
@@ -66,10 +66,10 @@ class TestScaleOpScaleVariable(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_cinn=True, check_new_ir=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_new_ir=True)
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestScaleOpSelectedRows(unittest.TestCase):
@@ -150,10 +150,10 @@ class TestScaleFp16Op(TestScaleOp):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output(check_cinn=True, check_new_ir=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_new_ir=True)
+        self.check_grad(["X"], "Out", check_pir=True)
 
 
 @unittest.skipIf(
@@ -172,10 +172,10 @@ class TestScaleBF16Op(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', numeric_grad_delta=0.8, check_new_ir=True)
+        self.check_grad(['X'], 'Out', numeric_grad_delta=0.8, check_pir=True)
 
 
 @unittest.skipIf(

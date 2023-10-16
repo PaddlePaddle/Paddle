@@ -54,7 +54,7 @@ class TestAssignValueOp(op_test.OpTest):
         self.attrs["fp32_values"] = [float(v) for v in self.value.flat]
 
     def test_forward(self):
-        self.check_output(check_cinn=True, check_new_ir=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
 
 class TestAssignValueOp2(TestAssignValueOp):
