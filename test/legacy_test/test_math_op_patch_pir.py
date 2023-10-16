@@ -14,6 +14,7 @@
 
 import inspect
 import unittest
+import warnings
 
 import paddle
 
@@ -24,8 +25,24 @@ class TestMathOpPatchesPir(unittest.TestCase):
     def test_item(self):
         with paddle.pir_utils.IrGuard():
             x = paddle.static.data(name='x', shape=[3, 2, 1])
+            y = paddle.static.data(
+                name='y',
+                shape=[
+                    3,
+                ],
+            )
+            self.assertTrue(y.item() == y)
             with self.assertRaises(TypeError):
                 x.item()
+
+    def test_place(self):
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            with paddle.pir_utils.IrGuard():
+                x = paddle.static.data(name='x', shape=[3, 2, 1])
+                x.place()
+                self.assertTrue(len(w) == 1)
+                self.assertTrue("place" in str(w[-1].message))
 
     def test_some_dim(self):
         with paddle.pir_utils.IrGuard():
