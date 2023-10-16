@@ -108,14 +108,6 @@ SpmdInfo FlattenInferSpmd(const DistMetaTensor& x,
 
   start_axis = PreprocessAxis(start_axis, x_ndim);
   stop_axis = PreprocessAxis(stop_axis, x_ndim);
-  std::vector<int64_t> tgt_shape;
-  for (int64_t i = 0; i < x_ndim; i++) {
-    if (i <= start_axis || i > stop_axis) {
-      tgt_shape.push_back(src_shape[i]);
-    } else {
-      tgt_shape[tgt_shape.size() - 1] *= src_shape[i];
-    }
-  }
   std::vector<DimTrans*> trans =
       MakeFlattenDimTrans(src_shape, start_axis, stop_axis);
 
@@ -131,8 +123,9 @@ SpmdInfo FlattenInferSpmd(const DistMetaTensor& x,
   TensorDistAttr out_dist_attr(x_dist_attr_src);
   out_dist_attr.set_dims_mapping(dims_mapping_vec[1]);
 
-  VLOG(4) << "FlattenInferSpmd: X shape: [" << str_join(src_shape)
-          << "] Out shape: [" << str_join(tgt_shape) << "]";
+  VLOG(4) << "FlattenInferSpmd: X shape: [" << str_join(src_shape) << "]";
+  VLOG(4) << "Start_axis: " << start_axis;
+  VLOG(4) << "Stop_axis: " << start_axis;
   VLOG(4) << "Transformation from input to output:";
   for (int64_t i = 0, n = static_cast<int64_t>(trans.size()); i < n; i++) {
     DimTrans* t = trans[i];
