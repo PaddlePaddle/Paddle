@@ -718,7 +718,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         use_new_comm = paddle.get_flags("FLAGS_dynamic_static_unified_comm")[
             "FLAGS_dynamic_static_unified_comm"
         ]
-        if use_new_comm not in ["1", "True", "true"]:
+        if not use_new_comm:
             self._wait()
         return optimize_ops, params_grads
 

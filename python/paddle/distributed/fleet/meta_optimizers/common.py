@@ -101,7 +101,7 @@ class CollectiveHelper:
             use_new_comm = paddle.get_flags(
                 "FLAGS_dynamic_static_unified_comm"
             )["FLAGS_dynamic_static_unified_comm"]
-            if use_new_comm not in [1, "1", "True", "true"]:
+            if not use_new_comm:
                 wait_server_ready(other_endpoints)
 
         def _add_sync_by_allreduce(block):

@@ -160,7 +160,7 @@ class ProcessGroup:
                 use_new_comm = paddle.get_flags(
                     "FLAGS_dynamic_static_unified_comm"
                 )["FLAGS_dynamic_static_unified_comm"]
-                if use_new_comm in ["1", "True", "true"]:
+                if use_new_comm:
                     store = core.create_or_get_global_tcp_store()
                     endpoints_str = ""
                     for endpoint in strategy.trainer_endpoints:
