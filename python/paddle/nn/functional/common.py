@@ -15,7 +15,7 @@
 import numpy
 
 import paddle
-from paddle import _C_ops, ir
+from paddle import _C_ops, pir
 from paddle.base.layer_helper import LayerHelper
 from paddle.common_ops_import import Variable, default_main_program
 from paddle.framework import (
@@ -592,8 +592,8 @@ def interpolate(
         elif isinstance(scale, (list, tuple)):
             if len(scale) != len(x.shape) - 2:
                 raise ValueError(
-                    "scale_shape length should be {} for "
-                    "input {}-D tensor.".format(len(x.shape) - 2, len(x.shape))
+                    f"scale_shape length should be {len(x.shape) - 2} for "
+                    f"input {len(x.shape)}-D tensor."
                 )
             for value in scale:
                 if value <= 0:
@@ -903,7 +903,7 @@ def bilinear(x1, x2, weight, bias=None, name=None):
     """
 
     This layer performs bilinear on two inputs.
-    See :ref:`api_nn_Bilinear` for details and output shape.
+    See :ref:`api_paddle_nn_Bilinear` for details and output shape.
 
     Parameters:
         x1 (Tensor): the first input tensor, it's data type should be float32, float64.
@@ -1099,7 +1099,7 @@ def dropout(
             [[0., 0., 6.],
              [0., 0., 0.]])
     """
-    if not isinstance(p, (float, int, Variable, ir.OpResult)):
+    if not isinstance(p, (float, int, Variable, pir.OpResult)):
         raise TypeError("p argument should be a number or Variable")
 
     if isinstance(p, (int, float)):
@@ -1366,9 +1366,7 @@ def dropout2d(x, p=0.5, training=True, data_format='NCHW', name=None):
     input_shape = x.shape
     if len(input_shape) != 4:
         raise ValueError(
-            "dimensions of x should be 4, but received {} != 4".format(
-                len(input_shape)
-            )
+            f"dimensions of x should be 4, but received {len(input_shape)} != 4"
         )
 
     if data_format not in ["NCHW", "NHWC"]:
@@ -1424,9 +1422,7 @@ def dropout3d(x, p=0.5, training=True, data_format='NCDHW', name=None):
     input_shape = x.shape
     if len(input_shape) != 5:
         raise ValueError(
-            "dimensions of x should be 5, but received {} != 5".format(
-                len(input_shape)
-            )
+            f"dimensions of x should be 5, but received {len(input_shape)} != 5"
         )
 
     if data_format not in ["NCDHW", "NDHWC"]:
@@ -1644,14 +1640,12 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
         'replicate',
         'constant',
         'circular',
-    ], "mode should be one of constant, reflect, replicate, circular, but got {}.".format(
-        mode
-    )
+    ], f"mode should be one of constant, reflect, replicate, circular, but got {mode}."
 
     data_format = data_format.upper()
     assert data_format in ["NCL", "NCHW", "NCDHW", "NLC", "NHWC", "NDHWC"], (
         "data_format should be in one of [NCL, NCHW, NCDHW, NLC, NHWC, NDHWC], "
-        "but got {}".format(data_format)
+        f"but got {data_format}"
     )
 
     x_dim = len(x.shape)
@@ -1667,6 +1661,12 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
         if in_dynamic_mode():
             out = _C_ops.pad(x, paddings, float(pad_value))
             return out
+
+        if in_pir_mode():
+            if isinstance(pad_value, paddle.pir.OpResult):
+                return _C_ops.pad(x, paddings, pad_value)
+            else:
+                return _C_ops.pad(x, paddings, float(pad_value))
 
         check_variable_and_dtype(
             x,
@@ -1718,7 +1718,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
 
     unsqueezed_dim = []
 
-    if isinstance(pad, Variable):
+    if isinstance(pad, (Variable, pir.OpResult)):
         if data_format in ["NCL", "NCHW", "NCDHW"]:
             data_format = "NCDHW"
             if x_dim == 3:
@@ -1762,7 +1762,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
                 unsqueezed_dim = [1]
                 x = unsqueeze(x, axis=unsqueezed_dim)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if isinstance(pad, Variable):
             pad = pad.tolist()
         out = _C_ops.pad3d(x, pad, mode, value, data_format)
@@ -1950,9 +1950,9 @@ def linear(x, weight, bias=None, name=None):
         return _C_ops.linear(x, weight, bias)
 
     elif in_pir_mode():
-        out = paddle._ir_ops.matmul(x, weight, False, False)
+        out = paddle._pir_ops.matmul(x, weight, False, False)
         if bias is not None:
-            return paddle._ir_ops.add(out, bias)
+            return paddle._pir_ops.add(out, bias)
         else:
             return out
     else:
@@ -2213,19 +2213,15 @@ def class_center_sample(label, num_classes, num_samples, group=None):
         label_size *= dim
     if label_size != -1 and label_size < 1:
         raise ValueError(
-            'Expected label_size > 0 \
-             (got label_size: {})'.format(
-                label_size
-            )
+            f'Expected label_size > 0 \
+             (got label_size: {label_size})'
         )
 
     label_dims = len(list(label.shape))
     if label_dims != 1:
         raise ValueError(
-            'Expected label_dims == 1 \
-             (got label_dims: {})'.format(
-                label_dims
-            )
+            f'Expected label_dims == 1 \
+             (got label_dims: {label_dims})'
         )
 
     seed = None

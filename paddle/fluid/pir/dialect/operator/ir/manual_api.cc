@@ -28,8 +28,8 @@ pir::OpResult builtin_combine(const std::vector<pir::Value>& x) {
   return combine_op.out();
 }
 
-std::vector<pir::OpResult> add_n_grad(std::vector<pir::Value> inputs,
-                                      pir::Value out_grad) {
+std::vector<pir::OpResult> add_n_grad(const std::vector<pir::Value>& inputs,
+                                      const pir::Value& out_grad) {
   std::vector<pir::OpResult> inputs_grad;
   for (size_t i = 0; i < inputs.size(); i++) {
     paddle::dialect::ScaleOp scale_op =
@@ -40,8 +40,8 @@ std::vector<pir::OpResult> add_n_grad(std::vector<pir::Value> inputs,
   return inputs_grad;
 }
 
-pir::OpResult zeros_like(pir::Value x,
-                         phi::DataType dtype,
+pir::OpResult zeros_like(const pir::Value& x,
+                         const phi::DataType dtype,
                          const Place& place) {
   return paddle::dialect::full_like(x, 0, dtype, place);
 }
@@ -54,7 +54,7 @@ pir::OpResult get_parameter(const std::string& name) {
   return get_parameter_op.result(0);
 }
 
-void set_parameter(pir::Value parameter, const std::string& name) {
+void set_parameter(const pir::Value& parameter, const std::string& name) {
   std::unique_ptr<pir::Parameter> param(
       new pir::Parameter(nullptr, 0, parameter.type()));
   APIBuilder::Instance().SetParameter(name, std::move(param));
@@ -62,9 +62,9 @@ void set_parameter(pir::Value parameter, const std::string& name) {
                                                                   name);
 }
 
-pir::OpResult embedding_grad(pir::Value x,
-                             pir::Value weight,
-                             pir::Value out_grad,
+pir::OpResult embedding_grad(const pir::Value& x,
+                             const pir::Value& weight,
+                             const pir::Value& out_grad,
                              int64_t padding_idx,
                              bool sparse) {
   if (weight.type().isa<paddle::dialect::DenseTensorType>()) {
@@ -81,7 +81,8 @@ pir::OpResult embedding_grad(pir::Value x,
   }
 }
 
-pir::OpResult split_with_num_grad(std::vector<pir::Value> out_grad, int axis) {
+pir::OpResult split_with_num_grad(const std::vector<pir::Value>& out_grad,
+                                  int axis) {
   auto out_grad_combine_op =
       APIBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(out_grad);
   paddle::dialect::SplitGradOp split_grad_op =
@@ -90,8 +91,8 @@ pir::OpResult split_with_num_grad(std::vector<pir::Value> out_grad, int axis) {
   return split_grad_op.result(0);
 }
 
-pir::OpResult split_with_num_grad(std::vector<pir::Value> out_grad,
-                                  pir::Value axis) {
+pir::OpResult split_with_num_grad(const std::vector<pir::Value>& out_grad,
+                                  const pir::Value& axis) {
   auto out_grad_combine_op =
       APIBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(out_grad);
   paddle::dialect::SplitGradOp split_grad_op =
@@ -99,5 +100,24 @@ pir::OpResult split_with_num_grad(std::vector<pir::Value> out_grad,
           out_grad_combine_op.out(), axis);
   return split_grad_op.result(0);
 }
+
+pir::OpResult ones(const std::vector<int64_t>& shape,
+                   phi::DataType dtype,
+                   const Place& place) {
+  return paddle::dialect::full(shape, 1, dtype, place);
+}
+
+pir::OpResult ones_like(pir::Value x_,
+                        phi::DataType dtype,
+                        const Place& place) {
+  return paddle::dialect::full_like(x_, 1, dtype, place);
+}
+
+pir::OpResult zeros(const std::vector<int64_t>& shape,
+                    phi::DataType dtype,
+                    const Place& place) {
+  return paddle::dialect::full(shape, 0, dtype, place);
+}
+
 }  // namespace dialect
 }  // namespace paddle

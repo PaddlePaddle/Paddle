@@ -24,10 +24,10 @@
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/buffer.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/operation.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/poly/isl_utils.h"
 #include "paddle/cinn/poly/stage.h"
@@ -49,6 +49,23 @@ Tensor _Tensor_::Make(const std::string &name,
   n->reduce_axis = reduce_axis;
   n->set_type(dtype);
   n->operation = fn;
+  n->InitAxis();
+
+  return Tensor(n);
+}
+Tensor _Tensor_::Make(const std::string &name,
+                      Type dtype,
+                      const std::vector<Expr> &shape,
+                      const std::vector<Expr> &domain,
+                      const std::vector<Var> &reduce_axis) {
+  CHECK(!name.empty()) << "Cannot set empty Tensor name in Tensor::Make";
+  auto n = make_shared<_Tensor_>();
+  n->name = name;
+  n->shape = shape;
+  n->domain = domain;
+  n->reduce_axis = reduce_axis;
+  n->operation = PlaceholderOp::Make(n->name, n->shape, Float(32));
+  n->set_type(dtype);
   n->InitAxis();
 
   return Tensor(n);

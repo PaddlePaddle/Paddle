@@ -122,9 +122,9 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/io.h"
-#include "paddle/fluid/pybind/ir.h"
 #include "paddle/fluid/pybind/jit.h"
 #include "paddle/fluid/pybind/metrics_py.h"
+#include "paddle/fluid/pybind/pir.h"
 #include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/fluid/pybind/xpu_streams_py.h"
@@ -852,7 +852,7 @@ PYBIND11_MODULE(libpaddle, m) {
   m.def("clear_gradients",
         [](std::vector<std::shared_ptr<imperative::VarBase>> param_list,
            bool set_to_zero) {
-          for (auto param : param_list) {
+          for (auto const &param : param_list) {
             param->ClearGradient(set_to_zero);
           }
         });
@@ -868,8 +868,7 @@ PYBIND11_MODULE(libpaddle, m) {
           [](const std::shared_ptr<egr::GradNodeBase> &self) {
             return self->NextFunctions();
           })
-
-      .def("node_this_ptr", &egr::GradNodeBase::GetThisPtr)
+      .def("node_ptr", &egr::GradNodeBase::GetPtr)
       .def("input_meta",
            [](const std::shared_ptr<egr::GradNodeBase> &self) {
              return self->InputMeta();
@@ -2939,7 +2938,7 @@ All parameter, weight, gradient are variables in Paddle.
   GetAllWorkerInfos(&m);
 #endif
 
-  BindNewIR(&m);
+  BindPIR(&m);
   BindVjp(&m);
 }
 }  // namespace pybind

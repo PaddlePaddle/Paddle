@@ -83,7 +83,7 @@ class TestRandpermOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def verify_output(self, outs):
         out_np = np.array(outs[0])

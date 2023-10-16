@@ -97,9 +97,7 @@ class SliceInfo:
                 self.pre_shape = self.indexes[-1].shape
         else:
             raise ValueError(
-                "Index should be list/tuple of int or Tensor, but received {}.".format(
-                    index
-                )
+                f"Index should be list/tuple of int or Tensor, but received {index}."
             )
 
     def shape_stride(self, shape):
@@ -116,9 +114,7 @@ class SliceInfo:
         for index in self.indexes:
             if not isinstance(index, paddle.base.Variable):
                 raise ValueError(
-                    "only support list/tensor index, but received {}.".format(
-                        type(index)
-                    )
+                    f"only support list/tensor index, but received {type(index)}."
                 )
 
         if len(self.indexes) <= len(tensor_shape) or len(self.indexes) == 1:
@@ -182,9 +178,7 @@ class SliceInfo:
                 or value_dims_bd[i] == 1
             ):
                 raise ValueError(
-                    "{} can not broadcast into {}".format(
-                        value.shape, gather_tensor_shape
-                    )
+                    f"{value.shape} can not broadcast into {gather_tensor_shape}"
                 )
 
         value_broadcast = paddle.broadcast_to(value, gather_tensor_shape)
@@ -324,7 +318,7 @@ def get_value_for_bool_tensor(var, item):
         raise IndexError(
             "The dims of bool index doesn't match indexed array, "
             "the dims of bool index except to be equal or less "
-            "than {}, but received {}.".format(len(var.shape), len(item.shape))
+            f"than {len(var.shape)}, but received {len(item.shape)}."
         )
     i = 0
     item_shape = item.shape
@@ -433,7 +427,7 @@ def _setitem_impl_(var, item, value):
             if not isinstance(step, Variable) and step == 0:
                 raise ValueError(
                     "When assign a value to a paddle.Tensor, step can not be 0, "
-                    "but received step is {}.".format(step)
+                    f"but received step is {step}."
                 )
 
             if isinstance(step, Variable) and (start is None or end is None):
@@ -454,9 +448,7 @@ def _setitem_impl_(var, item, value):
 
             for i in slice_item:
                 if not isinstance(i, bool):
-                    raise TypeError(
-                        "Doesn't support {} in index list.".format(type(i))
-                    )
+                    raise TypeError(f"Doesn't support {type(i)} in index list.")
 
             if len(item) != 1:
                 raise IndexError(
@@ -543,9 +535,7 @@ def _setitem_impl_(var, item, value):
     else:
         raise TypeError(
             "Only support to assign an integer, float, numpy.ndarray or "
-            "paddle.Tensor to a paddle.Tensor, but received {}".format(
-                type(value)
-            )
+            f"paddle.Tensor to a paddle.Tensor, but received {type(value)}"
         )
 
     if paddle.in_dynamic_mode():
@@ -587,7 +577,7 @@ def set_value_for_bool_tensor(var, item, value):
         raise IndexError(
             "The dims of bool index doesn't match indexed array, "
             "the dims of bool index except to be equal or less "
-            "than {}, but received {}.".format(len(var.shape), len(item.shape))
+            f"than {len(var.shape)}, but received {len(item.shape)}."
         )
     for i, dim_len in enumerate(item.shape):
         if dim_len != -1 and var.shape[i] != -1 and dim_len != var.shape[i]:
@@ -895,9 +885,7 @@ def _setitem_static(x, indices, values):
         else:
             raise TypeError(
                 "Only support to assign an integer, float, numpy.ndarray or "
-                "paddle.Tensor to a paddle.Tensor, but received {}".format(
-                    type(values)
-                )
+                f"paddle.Tensor to a paddle.Tensor, but received {type(values)}"
             )
 
         # step3.1: Only basic indexing, use OP set_value to set value.
@@ -908,7 +896,7 @@ def _setitem_static(x, indices, values):
                 StartsTensorList,
                 EndsTensorList,
                 StepsTensorList,
-                *itertools.chain.from_iterable(attrs.items())
+                *itertools.chain.from_iterable(attrs.items()),
             )
         else:
             helper = paddle.base.layer_helper.LayerHelper(
@@ -968,7 +956,8 @@ def _setitem_static(x, indices, values):
             values = values.astype(transed_sub_tensor.dtype)
 
         if paddle.in_dynamic_mode():
-            return transed_sub_tensor.index_put_(
+            # NOTE(zoooo0820): directly return result instead of another set_value, after backward bug fixed.
+            transed_sub_tensor = transed_sub_tensor.index_put_(
                 adjusted_advanced_index, values
             )
         else:
@@ -976,9 +965,13 @@ def _setitem_static(x, indices, values):
                 adjusted_advanced_index, values
             )
 
-            transback_sub_tensor = transed_sub_tensor.transpose(transback_dim)
-            inputs["ValueTensor"] = transback_sub_tensor
+        transback_sub_tensor = transed_sub_tensor.transpose(transback_dim)
+        inputs["ValueTensor"] = transback_sub_tensor
 
+        if paddle.in_dynamic_mode():
+            x._bump_inplace_version()
+            output = x
+        else:
             helper = paddle.base.layer_helper.LayerHelper(
                 'set_value', **locals()
             )
@@ -991,20 +984,21 @@ def _setitem_static(x, indices, values):
                 output = helper.create_variable_for_type_inference(
                     dtype=x.dtype
                 )
-            cur_block = default_main_program().current_block()
-            cur_block.append_op(
-                type="set_value",
-                inputs=inputs,
-                outputs={'Out': output},
-                attrs=attrs,
-                inplace_map={"Input": "Out"},
-            )
+        cur_block = default_main_program().current_block()
+        cur_block.append_op(
+            type="set_value",
+            inputs=inputs,
+            outputs={'Out': output},
+            attrs=attrs,
+            inplace_map={"Input": "Out"},
+        )
 
+        if not paddle.in_dynamic_mode():
             # map var to the new output
             paddle.jit.api.ProgramTranslator.get_instance()._inplace_map.add(
                 cur_block.program, x.desc.id(), output
             )
-            return output
+        return output
 
 
 def get_tensor_with_basic_indexing(
@@ -1038,7 +1032,9 @@ def get_tensor_with_basic_indexing(
         )
         attrs['infer_flags'] = infer_flags
 
-        if paddle.in_dynamic_mode():
+        from . import in_dynamic_or_pir_mode
+
+        if in_dynamic_or_pir_mode():
             if "StartsTensorList" in inputs.keys():
                 st = inputs['StartsTensorList']
             else:

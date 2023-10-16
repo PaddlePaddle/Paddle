@@ -51,8 +51,8 @@ void CumprodGradKernel(const Context& dev_ctx,
   size_t numel = outer_dim * mid_dim * inner_dim;
 
   // deal with complex
-  const T* x_data_deal;
-  const T* out_data_deal;
+  const T* x_data_deal = nullptr;
+  const T* out_data_deal = nullptr;
   Allocator::AllocationPtr x_conj;
   Allocator::AllocationPtr out_conj;
   if (phi::IsComplexType(x.dtype())) {

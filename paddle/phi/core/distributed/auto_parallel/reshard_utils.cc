@@ -24,13 +24,6 @@ namespace phi {
 namespace distributed {
 
 namespace {
-int64_t GetLocalRankInParticipate(const std::vector<int64_t>& process_ids) {
-  int64_t cur_global_rank = GetCurGlobalRank();
-  auto iter =
-      std::find(process_ids.begin(), process_ids.end(), cur_global_rank);
-  return iter - process_ids.begin();
-}
-
 std::string GenUniqueCommKey(const std::vector<int64_t>& process_ids) {
   std::string unique_comm_key = "ReshardGroup";
   for (const auto& id : process_ids) {
@@ -39,6 +32,20 @@ std::string GenUniqueCommKey(const std::vector<int64_t>& process_ids) {
   return unique_comm_key;
 }
 }  // namespace
+
+int64_t GetLocalRankInParticipate(const std::vector<int64_t>& process_ids,
+                                  int64_t global_rank) {
+  if (global_rank == -1) {
+    global_rank = GetCurGlobalRank();
+  }
+  auto iter = std::find(process_ids.begin(), process_ids.end(), global_rank);
+  PADDLE_ENFORCE_NE(
+      iter,
+      process_ids.end(),
+      phi::errors::NotFound("Global rank %lld cannot be found in process_mesh",
+                            global_rank));
+  return iter - process_ids.begin();
+}
 
 std::vector<int64_t> GetCurRankCoordInMesh(const ProcessMesh& process_mesh) {
   const auto& process_shape = process_mesh.shape();
@@ -88,11 +95,7 @@ CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
     } else if (phi::CustomContext::classof(&dev_ctx)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       CommContextManager::CreateXCCLCommContext(
-          store,
-          unique_comm_key,
-          dev_ctx.GetPlace().GetDeviceType(),
-          rank,
-          world_size);
+          store, unique_comm_key, dev_ctx.GetPlace(), rank, world_size);
 #endif
     } else {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -130,6 +133,13 @@ std::vector<int64_t> BalancedSplit(int64_t total_nums, int64_t num_of_pieces) {
     result[i] += 1;
   }
   return result;
+}
+
+bool IsCurRankInMesh(const ProcessMesh& process_mesh) {
+  int64_t cur_global_rank = GetCurGlobalRank();
+  const auto& process_ids = process_mesh.process_ids();
+  return (std::find(process_ids.begin(), process_ids.end(), cur_global_rank) !=
+          process_ids.end());
 }
 
 }  // namespace distributed

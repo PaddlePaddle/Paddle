@@ -15,7 +15,10 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_util import (
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 from paddle import base
@@ -62,6 +65,7 @@ class Linear(paddle.nn.Layer):
         return pre, loss
 
 
+@dy2static_unittest
 class TestPool2D(unittest.TestCase):
     def setUp(self):
         self.dygraph_class = Pool2D
@@ -94,9 +98,7 @@ class TestPool2D(unittest.TestCase):
             dygraph_res,
             static_res,
             rtol=1e-05,
-            err_msg='dygraph_res is {}\n static_res is \n{}'.format(
-                dygraph_res, static_res
-            ),
+            err_msg=f'dygraph_res is {dygraph_res}\n static_res is \n{static_res}',
         )
 
 

@@ -58,8 +58,10 @@ class DistributedOperator:
     def get_serial_input(self, name):
         if self._serial_op.type == "create_py_reader":
             tensor = None
-        else:
+        elif self._serial_op.block._find_var_recursive(name) is not None:
             tensor = self._serial_op.block._var_recursive(name)
+        else:
+            tensor = None
         return tensor
 
     def get_serial_output(self, name):
@@ -124,8 +126,8 @@ class DistributedOperator:
             annotated_str = "annotated"
         else:
             annotated_str = "non-annotated"
-        str += ", process_mesh ({}): {}".format(
-            annotated_str, self.dist_attr.process_mesh
+        str += (
+            f", process_mesh ({annotated_str}): {self.dist_attr.process_mesh}"
         )
 
         for arg_name in self.serial_op.desc.input_arg_names():
@@ -148,8 +150,17 @@ class DistributedOperator:
                     is_parameter_str = "non-parameter"
             else:
                 is_parameter_str = "non-parameter"
-            str += ", {}'s dims_mapping (input, {}, {}): {}".format(
-                arg_name, annotated_str, is_parameter_str, dims_mapping
+
+            # partial
+            input_dist_attr = self.dist_attr.get_input_dist_attr(arg_name)
+            partial_dims = sorted(input_dist_attr._partial_dims())
+
+            str += "; {}'s dims_mapping (input, {}, {}): {}, partial on dims: {}".format(
+                arg_name,
+                annotated_str,
+                is_parameter_str,
+                dims_mapping,
+                partial_dims,
             )
 
         for arg_name in self.serial_op.desc.output_arg_names():
@@ -172,8 +183,17 @@ class DistributedOperator:
                     is_parameter_str = "non-parameter"
             else:
                 is_parameter_str = "non-parameter"
-            str += ", {}'s dims_mapping (output, {}, {}): {}".format(
-                arg_name, annotated_str, is_parameter_str, dims_mapping
+
+            # partial
+            output_dist_attr = self.dist_attr.get_output_dist_attr(arg_name)
+            partial_dims = sorted(output_dist_attr._partial_dims())
+
+            str += "; {}'s dims_mapping (output, {}, {}): {}, partial on dims: {}".format(
+                arg_name,
+                annotated_str,
+                is_parameter_str,
+                dims_mapping,
+                partial_dims,
             )
 
         str += ", dist_impl idx: {} , dist_impl type {} }}".format(
