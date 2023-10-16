@@ -122,7 +122,7 @@ std::string ValueExecutionInfo::GetNameById(int id) const {
   if (it != id_2_var_name_.end()) {
     return it->second;
   }
-  return "";
+  return (parent_ == nullptr) ? "" : parent_->GetNameById(id);
 }
 
 const std::unordered_map<::pir::Value, std::string>&
@@ -630,7 +630,9 @@ void HandleForInplaceOp(pir::Operation* op,
       std::string var_name = value_exe_info->GetVarName(inplace_value);
       VLOG(4) << "inplace: " << value_name << " -> " << inplace_name
               << " (var: " << var_name << ")";
-      value_exe_info->AddValue2VarName(value, var_name);
+      if (value_exe_info->HasLocalValue(inplace_value)) {
+        value_exe_info->AddValue2VarName(value, var_name);
+      }
     } else if (yaml_parser.HasView(value_name)) {
       const std::string& view_name = yaml_parser.ViewName(value_name);
       pir::Value view_value =
@@ -639,7 +641,9 @@ void HandleForInplaceOp(pir::Operation* op,
       std::string var_name = value_exe_info->GetVarName(view_value);
       VLOG(4) << "view: " << value_name << " -> " << view_name
               << " (var: " << var_name << ")";
-      value_exe_info->AddValue2VarName(value, var_name);
+      if (value_exe_info->HasLocalValue(inplace_value)) {
+        value_exe_info->AddValue2VarName(value, var_name);
+      }
     } else {
       BuildValue(value, var_name_prefix, value_exe_info);
     }

@@ -857,6 +857,7 @@ void NewIRInterpreter::CheckGC(InstructionBase* instr) {
 }
 
 void NewIRInterpreter::CalculateLastLiveOps() {
+  VLOG(4) << "NewIRInterpreter(): " << this << " start CalculateLastLiveOps";
   // calculate last_live_ops_
   for (size_t op_idx = 0; op_idx < vec_instruction_base_.size(); ++op_idx) {
     InstructionBase* instr = vec_instruction_base_[op_idx].get();
@@ -882,11 +883,15 @@ void NewIRInterpreter::CalculateLastLiveOps() {
         gc_check_vars.insert(var_id);
       }
     }
+    VLOG(4) << "get gc check vars for: " << instr->Name();
 
     for (auto var_id : gc_check_vars) {
       Scope* inner_scope = InnerScope();
       paddle::framework::Variable* var = inner_scope->FindVar(
           value_exe_info_->GetNameById(static_cast<int>(var_id)));
+      PADDLE_ENFORCE_NOT_NULL(var,
+                              platform::errors::NotFound(
+                                  "Var(id=%d) should not be nullptr.", var_id));
       if (var->IsType<phi::DenseTensor>() || var->IsType<phi::SelectedRows>() ||
           var->IsType<LoDTensorArray>() ||
           var->IsType<phi::SparseCooTensor>() ||
@@ -899,6 +904,7 @@ void NewIRInterpreter::CalculateLastLiveOps() {
                 << framework::ToTypeName(var->Type());
       }
     }
+    VLOG(4) << "update last_live_ops for: " << instr->Name();
   }
   // clear the last_live_ops list for all vars in skip_gc_vars
   for (const std::string& skip_gc_var : execution_config_.skip_gc_vars) {
@@ -908,7 +914,7 @@ void NewIRInterpreter::CalculateLastLiveOps() {
       VLOG(8) << "Skip gc for var: " << skip_gc_var;
     }
   }
-  VLOG(4) << "calculate last_live_ops_";
+  VLOG(4) << "clear the last_live_ops list for all vars in skip_gc_vars";
 
   // shrink, find the downstream op that has no other op in the
   // downstream list happens before it
@@ -949,6 +955,7 @@ void NewIRInterpreter::CalculateLastLiveOps() {
     last_live_ops_[i] = minumum_last_live_ops;
     var_ref_count_[i] = static_cast<int>(last_live_ops_[i].size());
   }
+  VLOG(4) << "shrink the last_live_ops list for all vars in skip_gc_vars";
 
   for (auto& dep : *dependecy_count_) {
     deps_.emplace_back(std::make_shared<interpreter::OpDepInfo>(dep));
@@ -957,6 +964,7 @@ void NewIRInterpreter::CalculateLastLiveOps() {
     refs_.emplace_back(std::make_shared<interpreter::VarRefInfo>(
         var_ref_count_[i], value_exe_info_->GetVarList()[i]));
   }
+  VLOG(4) << "done CalculateLastLiveOps";
 }
 
 void NewIRInterpreter::ConstructEventForJitInput() {
@@ -1410,8 +1418,7 @@ void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
                            : "kGpuAsync"))
             << " runs on " << platform::GetCurrentThreadName();
     VLOG(4) << place_ << " "
-            << instr_node->DebugStringEx(scope_,
-                                         value_exe_info_->GetValue2VarName());
+            << instr_node->DebugStringEx(scope_, value_exe_info_.get());
     if (!instr_node->IsArtificial()) {
       instr_node->Run();
 
@@ -1433,8 +1440,7 @@ void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
                              : "kGpuAsync"))
               << " runs on " << platform::GetCurrentThreadName();
       VLOG(4) << place_ << " "
-              << instr_node->DebugStringEx(scope_,
-                                           value_exe_info_->GetValue2VarName());
+              << instr_node->DebugStringEx(scope_, value_exe_info_.get());
       CheckGC(instr_node);
       VLOG(4) << "done CheckGC";
       interpreter::LogDeviceMemoryStats(place_);
