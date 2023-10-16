@@ -175,22 +175,29 @@ static void ShareTensorsIntoScopeWithName(
 }
 
 static auto GetNameFromValue(const ::pir::Block *block,
-                             const std::vector<::pir::Value> &values) {
+                             const std::vector<::pir::Value> &values,
+                             bool is_input) {
   // we use name here, later value is used directly.
   std::unordered_map<::pir::Value, std::string> value2name;
   for (auto *op : *block) {
     std::string name;
-    if (op->name() == "pd_op.data") {
+    if (is_input && op->name() == "pd_op.data") {
       name =
           op->attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
       value2name[op->results()[0].Value::impl()] = name;
-    } else if (op->name() == "builtin.set_parameter") {
+    } else if (!is_input && op->name() == "builtin.set_parameter") {
       name = op->attributes()
                  .at("parameter_name")
                  .dyn_cast<pir::StrAttribute>()
                  .AsString();
       value2name[op->operand(0).source()] = name;
-    } else if (op->name() == "builtin.get_parameter") {
+    } else if (!is_input && op->name() == "builtin.shadow_output") {
+      name = op->attributes()
+                 .at("output_name")
+                 .dyn_cast<pir::StrAttribute>()
+                 .AsString();
+      value2name[op->operand(0).source()] = name;
+    } else if (is_input && op->name() == "builtin.get_parameter") {
       name = op->attributes()
                  .at("parameter_name")
                  .dyn_cast<pir::StrAttribute>()
@@ -256,7 +263,7 @@ static void ShareTensorsIntoScopeByValue(
     const std::vector<Tensor> &tensors,
     const std::vector<::pir::Value> &values,
     paddle::framework::Scope *scope) {
-  auto names = GetNameFromValue(block, values);
+  auto names = GetNameFromValue(block, values, true);
   if (VLOG_IS_ON(4)) {
     for (auto &s : names) {
       VLOG(4) << "ShareTensorIntoScopeByValue name: " << s;
@@ -270,7 +277,7 @@ static void ShareTensorsFromScopeByValue(
     const std::vector<Tensor *> &tensors,
     const std::vector<::pir::Value> &values,
     paddle::framework::Scope *scope) {
-  auto names = GetNameFromValue(block, values);
+  auto names = GetNameFromValue(block, values, false);
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto &name = names[i];
     auto &value = values[i];
@@ -506,15 +513,16 @@ inline void NewIRRunProgramAPI(
 
     // update interpretercore skip_gc_var
     auto skip_names =
-        details::GetNameFromValue(forward_global_block, middle_values);
+        details::GetNameFromValue(forward_global_block, middle_values, false);
     auto skip_names_set =
         std::set<std::string>(skip_names.begin(), skip_names.end());
-    skip_names = details::GetNameFromValue(forward_global_block, output_values);
+    skip_names =
+        details::GetNameFromValue(forward_global_block, output_values, false);
     skip_names_set.insert(skip_names.begin(), skip_names.end());
     auto no_need_buffer_values = PADDLE_GET_CONST(std::vector<::pir::Value>,
                                                   attrs.at("no_need_buffers"));
-    auto no_need_buffer_names =
-        details::GetNameFromValue(forward_global_block, no_need_buffer_values);
+    auto no_need_buffer_names = details::GetNameFromValue(
+        forward_global_block, no_need_buffer_values, false);
     VLOG(4) << "start skip no need buffer vars with name:";
     for (auto &name : no_need_buffer_names) {
       VLOG(4) << "Skip no need buffer vars with name:" << name;
@@ -1053,10 +1061,10 @@ inline void NewIRRunProgramGradAPI(
     // get all eager gc vars
     std::set<std::string> skip_eager_delete_vars;
     auto skip_names =
-        details::GetNameFromValue(backward_global_block, x_grad_values);
+        details::GetNameFromValue(backward_global_block, x_grad_values, false);
     skip_eager_delete_vars.insert(skip_names.begin(), skip_names.end());
     skip_names =
-        details::GetNameFromValue(backward_global_block, p_grad_values);
+        details::GetNameFromValue(backward_global_block, p_grad_values, false);
     skip_eager_delete_vars.insert(skip_names.begin(), skip_names.end());
     interpreter_core->SetSkipGcVars(skip_eager_delete_vars);
     interpretercore_info_cache.UpdateSkipEagerDeleteVars(

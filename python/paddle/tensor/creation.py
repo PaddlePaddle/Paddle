@@ -692,6 +692,9 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
             # fix numpy default dtype
             if data.dtype in ['float16', 'float32', 'float64']:
                 data = data.astype(paddle.get_default_dtype())
+            # Windows default type is 'int32', while Linux/Mac is 'int64'. Unify they.
+            elif data.dtype in ['int32']:
+                data = data.astype("int64")
 
         if dtype:
             target_dtype = dtype
@@ -884,24 +887,34 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         place = _current_expected_place()
         if force_cpu:
             place = core.CPUPlace()
-        if isinstance(shape, (list, tuple)):
-            shape = paddle.utils.convert_shape_to_list(shape)
 
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
+        if in_dynamic_mode():
+            value = float(value)
+            if isinstance(shape, (list, tuple)):
+                shape = paddle.utils.convert_shape_to_list(shape)
+
+        else:
+            if isinstance(shape, (list, tuple)):
+                if paddle.utils._contain_var(shape):
+                    shape = paddle.utils.get_pir_shape_tensor(shape, place)
+            elif isinstance(shape, paddle.pir.OpResult):
+                pass
+            else:
+                TypeError("Shape only supports OpReslut, or list, or tuple.")
+
         if out is None:
-            value = float(value) if in_dynamic_mode() else value
             out = _C_ops.full(shape, value, dtype, place)
             out.stop_gradient = True
             return out
 
         if out is not None:
-            value = float(value) if in_dynamic_mode() else value
-            # final state mode is support out is not None.
             _C_ops.full_(out, shape, value, dtype, place)
             out.stop_gradient = True
             return out
+
     else:
         attrs = {'force_cpu': force_cpu}
         dtype = convert_dtype(dtype)
@@ -2142,7 +2155,7 @@ def assign(x, output=None):
              [2.5 2.5]]
     """
     # speed up
-    if x is output and isinstance(x, Variable):
+    if x is output and isinstance(x, (Variable, paddle.pir.OpResult)):
         return x
 
     input = x
@@ -2150,7 +2163,16 @@ def assign(x, output=None):
     check_type(
         input,
         'input',
-        (Variable, np.ndarray, list, tuple, float, int, bool),
+        (
+            Variable,
+            paddle.pir.OpResult,
+            np.ndarray,
+            list,
+            tuple,
+            float,
+            int,
+            bool,
+        ),
         'assign',
     )
 
@@ -2163,12 +2185,17 @@ def assign(x, output=None):
     # but in_dynamic_mode()==False under @to_static, which means
     # isinstance(Tensor, Variable) == False. It will cause return None
     # after this api.
-    if isinstance(input, (Variable, core.eager.Tensor)):
+    if isinstance(input, (Variable, core.eager.Tensor, paddle.pir.OpResult)):
         if in_dynamic_mode():
             if output is None:
                 output = _C_ops.assign(input)
             else:
                 _C_ops.assign_out_(input, output)
+        elif in_pir_mode():
+            if output is None:
+                output = _C_ops.assign(input)
+            else:
+                output = _C_ops.assign_out_(input, output)
         else:
             check_dtype(
                 input.dtype,
@@ -2196,19 +2223,25 @@ def assign(x, output=None):
             )
     elif isinstance(input, np.ndarray):
         # We now support the form of [var, VAR...] if the Var.shape=[1,]
-        if len(input.shape) > 0 and any(isinstance(x, Variable) for x in input):
+        if len(input.shape) > 0 and any(
+            isinstance(x, (Variable, paddle.pir.OpResult)) for x in input
+        ):
             # We only deal with the case where the list is nested one level, convert all scalars into variables, and then use stack to process. It is necessary to ensure the consistency of types.
             if not all(
                 x.shape == (1,)
                 for x in input
-                if isinstance(x, (Variable, core.eager.Tensor))
+                if isinstance(
+                    x, (Variable, core.eager.Tensor, paddle.pir.OpResult)
+                )
             ):
                 raise TypeError(
                     "Unsupport paddle.assign([Variable, Variable...]) with non-scalar variable."
                 )
 
             def convert_scalar(x):
-                if not isinstance(x, (Variable, core.eager.Tensor)):
+                if not isinstance(
+                    x, (Variable, core.eager.Tensor, paddle.pir.OpResult)
+                ):
                     return assign(x)
                 return x
 
@@ -2233,16 +2266,27 @@ def assign(x, output=None):
                 "it to float32"
             )
             dtype = core.VarDesc.VarType.FP32
-        if dtype == core.VarDesc.VarType.BOOL:
+
+        if dtype == core.DataType.FLOAT64:
+            # Setting FP64 numpy data is not supported in Paddle, so we
+            # use FP32 here
+            warnings.warn(
+                "paddle.assign doesn't support float64 input now due "
+                "to current platform protobuf data limitation, we convert "
+                "it to float32"
+            )
+            dtype = core.DataType.FLOAT32
+
+        if dtype in [core.VarDesc.VarType.BOOL, core.DataType.BOOL]:
             value_name = "bool_values"
             values = [int(v) for v in input.flat]
-        elif dtype == core.VarDesc.VarType.FP32:
+        elif dtype in [core.VarDesc.VarType.FP32, core.DataType.FLOAT32]:
             value_name = "fp32_values"
             values = [float(v) for v in input.flat]
-        elif dtype == core.VarDesc.VarType.INT32:
+        elif dtype in [core.VarDesc.VarType.INT32, core.DataType.INT32]:
             value_name = "int32_values"
             values = [int(v) for v in input.flat]
-        elif dtype == core.VarDesc.VarType.INT64:
+        elif dtype in [core.VarDesc.VarType.INT64, core.DataType.INT64]:
             value_name = "int64_values"
             values = [int(v) for v in input.flat]
         else:
@@ -2256,16 +2300,25 @@ def assign(x, output=None):
                 "The size of input is too big. Please consider "
                 "saving it to file and 'load_op' to load it"
             )
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             if output is None:
                 output = zeros(list(input.shape), dtype)
-            _C_ops.assign_value_(
-                output,
-                list(input.shape),
-                dtype,
-                values,
-                _current_expected_place(),
-            )
+            if in_dynamic_mode():
+                _C_ops.assign_value_(
+                    output,
+                    list(input.shape),
+                    dtype,
+                    values,
+                    _current_expected_place(),
+                )
+            else:
+                output = _C_ops.assign_value_(
+                    output,
+                    list(input.shape),
+                    dtype,
+                    values,
+                    _current_expected_place(),
+                )
         else:
             if output is None:
                 output = helper.create_variable_for_type_inference(

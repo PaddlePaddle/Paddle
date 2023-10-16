@@ -39,7 +39,7 @@ def mean(x, axis, keepdim):
 
 
 @register_decomp('pd_op.gelu')
-def gelu_composite(x, approximate):
+def gelu(x, approximate):
     """define composite rule of op gelu"""
     M_SQRT1_2 = (
         0.70710678118654752440  # /* 1/sqrt(2) */ copy from gelu-kernel.cc
@@ -56,17 +56,34 @@ def gelu_composite(x, approximate):
         tanh_out = tanh(kAlpha * (x + GELU_CONSTANT * x * x * x))
         out = x * half * (one + tanh_out)
         return out
-
     else:
         # gelu(x) = 0.5 * x *  (1 + erf(x / sqrt(2)))
-
         cdf = half * (one + _pir_ops.erf(x * full(x.shape, M_SQRT1_2, x.dtype)))
         out = x * cdf
         return out
 
 
+@register_decomp('pd_op.sqrt')
+def sqrt(x):
+    """
+    define composite rule of op sqrt
+    res = pow(x, 0.5)
+    """
+    is_amp = False
+    from paddle.base.data_feeder import convert_dtype
+
+    dtype = convert_dtype(x.dtype)
+    if dtype in ["float16", "uint16"]:
+        is_amp = True
+        x = cast(x, "float32")
+
+    y = full(x.shape if len(x.shape) == 0 else [1], 0.5, x.dtype)
+    res = pow_composite(x, y)
+    return res if not is_amp else cast(res, dtype)
+
+
 @register_decomp('pd_op.rsqrt')
-def rsqrt_composite(x):
+def rsqrt(x):
     """define composite rule of op rsqrt."""
     # rsqrt(x) = x^(-0.5)
     is_amp = False
@@ -77,7 +94,7 @@ def rsqrt_composite(x):
         is_amp = True
         x = cast(x, "float32")
     y = full(x.shape if len(x.shape) == 0 else [1], -0.5, x.dtype)
-    res = pow(x, y)
+    res = pow_composite(x, y)
     return res if not is_amp else cast(res, dtype)
 
 
@@ -104,7 +121,7 @@ def pow_composite(x, y):
 
 
 @register_decomp('pd_op.layer_norm')
-def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
+def layernorm(x, scale, bias, epsilon, begin_norm_axis):
     """
     define composite rule of op layer_norm
     out = (x - mean(x)) / sqrt(var + epsilon))
@@ -146,7 +163,7 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
 
 
 @register_decomp('pd_op.dropout')
-def dropout_composite(x, seed_tensor, p, is_test, mode, seed, fix_seed):
+def dropout(x, seed_tensor, p, is_test, mode, seed, fix_seed):
     """define composite rule of op dropout.
     upscale_in_train:
         train: out = input * mask / ( 1.0 - p )
@@ -155,6 +172,7 @@ def dropout_composite(x, seed_tensor, p, is_test, mode, seed, fix_seed):
         train: out = input * mask
         inference: out = input * (1.0 - p)
     """
+    from paddle import assign
     from paddle.base import core
     from paddle.base.data_feeder import convert_dtype
 
@@ -178,9 +196,7 @@ def dropout_composite(x, seed_tensor, p, is_test, mode, seed, fix_seed):
                     shape=x.shape, value=(1.0 - p), dtype=x.dtype
                 ), cast(mask, uint8_type)
         else:
-            return x, cast(
-                mask, uint8_type
-            )  # assign(x), cast(mask, mask, core.VarDesc.VarType.UINT8)
+            return assign(x), cast(mask, uint8_type)
     else:
         if not is_test:
             return x * mask, cast(mask, uint8_type)
@@ -207,8 +223,125 @@ def bernoulli(shape, dtype, p, seed=0):
 
 
 @register_decomp('pd_op.add_n')
-def sum_composite(x):
+def add_n(x):
     ans = x[0]
     for xi in x[1:]:
         ans = xi + ans
     return ans
+
+
+@register_decomp('pd_op.silu')
+def silu(x):
+    """
+    define composite rule of op silu
+    res = x / (1 + exp(-x))
+    """
+    is_amp = False
+    from paddle.base.data_feeder import convert_dtype
+
+    dtype = convert_dtype(x.dtype)
+    if dtype in ["float16", "uint16"]:
+        is_amp = True
+        x = cast(x, "float32")
+
+    sum_temp = exp(-x) + 1
+    res = x / sum_temp
+    return res if not is_amp else cast(res, dtype)
+
+
+@register_decomp('pd_op.softmax')
+def softmax(x, axis):
+    """define composite rule of op softmax"""
+    is_amp = False
+    from paddle.base.data_feeder import convert_dtype
+
+    # Softmax need fp32 compute since it has sum op in
+    dtype = convert_dtype(x.dtype)
+    if dtype in ["float16", "uint16"]:
+        is_amp = True
+        x = cast(x, "float32")
+    if not x.shape:
+        # do not return 1, to ensure gradients
+        res = exp(x - x)
+        if is_amp:
+            res = cast(res, "float16")
+        return res
+    max_temp = max(x, axis, keepdim=True)
+    max_temp.stop_gradient = True
+    molecular = exp(x - max_temp)
+    denominator = sum(molecular, axis=axis, keepdim=True)
+    res = divide(molecular, denominator)
+    if is_amp:
+        res = cast(res, dtype)
+    return res
+
+
+@register_decomp('pd_op.full_like')
+def full_like(x, fill_value, dtype, place=None):
+    """define composite rule of op full_like."""
+    """op name: full_like  op type name: fill_any_like."""
+    """arg place is not used, add it here to keep same as python api."""
+    fill_value = fill_value.get_defining_op().attrs()["value"]
+    val = full(x.shape, fill_value, dtype)
+    return val
+
+
+@register_decomp('pd_op.stack')
+def stack(x, axis):
+    """
+    define composite rule of op stack
+    unsqueeze each dimension of the input (use reshape), and then concat
+    """
+    x_shape = x[0].shape
+    if axis < 0:
+        axis += len(x_shape) + 1
+    out_shape = x_shape[:axis] + [1] + x_shape[axis:]
+    out = concat([reshape(item, out_shape) for item in x], axis)
+    return out
+
+
+@register_decomp('pd_op.squeeze')
+def squeeze(x, axis):
+    """define composite rule of squeeze"""
+    """
+    canonicalize dim within range 0 to rank and
+    determine new shape after squeeze op
+    if axis not specified, remove all dims equal to 1
+    otherwise, remove dims equal to 1 in axis
+    axis can only be list, not int
+    """
+    axis = axis.get_defining_op().attrs()["value"]
+    rank = len(x.shape)
+    if rank == 0:
+        return [assign(x), None]
+    if len(axis) == 0:
+        dims = set(range(rank))
+    else:
+        dims = {ax % rank for ax in axis}
+    new_shape = []
+    for d, s in enumerate(x.shape):
+        if not (s == 1 and (d in dims)):
+            new_shape.append(s)
+    out = reshape(x, new_shape)
+    return [out, None]
+
+
+@register_decomp('pd_op.unsqueeze')
+def unsqueeze(x, axis):
+    """define composite rule of op unsqueeze"""
+    """using reshape to implement unsqueeze op"""
+    axis = axis.get_defining_op().attrs()["value"]
+    x_shape = list(x.shape)
+    axis_list = list(axis)
+    for i in axis_list:
+        if i < 0:
+            i += len(x_shape) + 1
+        x_shape = (
+            x_shape[:i]
+            + [
+                1,
+            ]
+            + x_shape[i:]
+        )
+    out = reshape(x, x_shape)
+    return [out, None]

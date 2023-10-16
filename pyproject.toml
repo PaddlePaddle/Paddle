@@ -17,8 +17,6 @@ extend_skip_glob = [
     # These files do not need to be formatted,
     # see .flake8 for more details
     "python/paddle/utils/gast/**",
-    "python/paddle/base/core.py",
-    "python/paddle/base/framework.py",
 ]
 
 [tool.ruff]
@@ -74,6 +72,9 @@ select = [
     "PLR1711",
     "PLR1722",
     "PLW3301",
+
+    # Pygrep-hooks
+    "PGH004",
 ]
 unfixable = [
     "NPY001"
@@ -105,13 +106,10 @@ ignore = [
 
 # Temporarily ignored
 "python/paddle/base/**" = [
-    "C408",
     "UP030",
-    "C405",
     "B019", # Confirmation required
     "C416",
     "F821",
-    "PLC0414",
 ]
 
 # B017
