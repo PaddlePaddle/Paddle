@@ -1055,7 +1055,8 @@ SplitedResult ForwardBackwardSplit(
   forward_program->Print(print_stream);
   print_stream << "BackwardProgram is:\n";
   backward_program->Print(print_stream);
-  VLOG(4) << "Splited Program (fwd | bwd): \n" << print_stream.str();
+  std::cout << "Splited Program (fwd | bwd): \n"
+            << print_stream.str() << std::endl;
 
   // construct all attributes we needed.
 

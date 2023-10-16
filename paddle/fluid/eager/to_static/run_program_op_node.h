@@ -471,10 +471,11 @@ inline void NewIRRunProgramAPI(
 
   if (VLOG_IS_ON(4)) {
     std::ostringstream print_stream;
+    print_stream << "ForwardProgram is :\n";
     forward_program->Print(print_stream);
-    print_stream << "\n";
+    print_stream << "BackwardProgram is:\n";
     backward_program->Print(print_stream);
-    VLOG(4) << print_stream.str();
+    std::cout << "Program (fwd | bwd): \n" << print_stream.str() << std::endl;
   }
 
   VLOG(10) << is_test << program_id;
