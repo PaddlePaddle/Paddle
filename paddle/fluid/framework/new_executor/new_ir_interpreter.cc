@@ -963,9 +963,6 @@ void NewIRInterpreter::ConstructEventForJitInput() {
   for (size_t i = 0; i < dependecy_count_->size(); ++i) {
     if ((*dependecy_count_)[i] == 0) {
       InstructionBase* inst = vec_instruction_base_[i].get();
-      std::cerr << "inst name " << std::endl;
-      std::cerr << inst->Name() << std::endl;
-      std::cerr << "inst name fin" << std::endl;
       if (inst->Name() == "pd_op.memcpy_d2h" &&
           platform::is_gpu_place(place_)) {
         for (auto& item : inst->Inputs()) {

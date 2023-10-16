@@ -128,11 +128,6 @@ PhiKernelInstruction::PhiKernelInstruction(
                   true>(
       op, value_exec_info_, yaml_info_parser, &kernel_context_);
 
-  for (size_t i = 0; i < op->num_results(); ++i) {
-    std::cerr << "var name  " << value_exec_info_.GetVarName(op->result(i))
-              << std::endl;
-  }
-
   kernel_context_.SetDeviceContext(phi::DeviceContextPool::Instance().Get(
       phi::TransToPhiPlace(kernel_key.backend())));
   VLOG(6) << "finish process kernel context";
@@ -165,15 +160,12 @@ PhiKernelInstruction::~PhiKernelInstruction() {
 }
 
 void PhiKernelInstruction::Run() {
-  std::cerr << "before phi kernel run" << std::endl;
   if (infer_meta_interface_) {
     infer_meta_interface_->infer_meta_(&(infer_meta_context_));
   }
-  std::cerr << "fin infer meta " << std::endl;
   VLOG(6) << "Run op " << phi_op_name_ << " infer meta.";
   (*(phi_kernel_))(&(kernel_context_));
   VLOG(6) << "Run op " << phi_op_name_ << " kernel.";
-  std::cerr << "fin kernel run " << std::endl;
 }
 
 }  // namespace framework

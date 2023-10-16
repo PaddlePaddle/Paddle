@@ -31,7 +31,6 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
-#include "paddle/cinn/hlir/framework/convert_to_dialect.h"
 #include "paddle/cinn/hlir/framework/new_ir_compiler.h"
 #include "paddle/cinn/utils/data_util.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"

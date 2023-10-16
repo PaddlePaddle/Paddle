@@ -33,7 +33,6 @@ class CinnJitInstruction::FnPtrImpl {
       : cuda_jit_info_(cuda_jit_info) {}
   // TODO(Aurelus84): Support to specify name2podargs and stream arguments.
   void Run(const std::vector<phi::DenseTensor*>& kernel_args, void* stream) {
-    std::cerr << "before run " << std::endl;
     auto fn = static_cast<CUfunction>(cuda_jit_info_.fn_ptr);
 
     auto stream1 = static_cast<CUstream>(stream);
@@ -41,18 +40,9 @@ class CinnJitInstruction::FnPtrImpl {
     pass_arg.clear();
     vec_temp_.resize(kernel_args.size());
     for (size_t i = 0; i < kernel_args.size(); ++i) {
-      std::cerr << kernel_args[i] << std::endl;
-      std::cerr << "i  " << i << "\t" << kernel_args[i]->data() << std::endl;
       vec_temp_[i] = kernel_args[i]->data();
       pass_arg.push_back(vec_temp_.data() + i);
     }
-
-    std::cerr << "befor launch " << std::endl;
-
-    // void *a;
-    // cudaMalloc(&a, 16);
-
-    // void* args1[1] = {&a}
 
     CUDA_DRIVER_CALL(cuLaunchKernel(fn,
                                     cuda_jit_info_.grid_dims[0],
@@ -89,50 +79,39 @@ CinnJitInstruction::CinnJitInstruction(
 
   place_ = place;
 
-  std::cerr << "before init " << std::endl;
   InitInputsOutputsIds(op, value_exec_info);
-  std::cerr << "after init " << std::endl;
-
-  std::cerr << "in jit instruction " << op->num_results() << std::endl;
 
   for (size_t i = 0; i < op->num_operands(); ++i) {
     auto in = op->operand_source(i);
 
     auto var_name = value_exec_info.GetVarName(in);
-    std::cerr << "var name  " << var_name << std::endl;
 
     auto tensor = value_exec_info.GetScope()
                       ->Var(var_name)
                       ->GetMutable<phi::DenseTensor>();
 
-    tensor_list.push_back(tensor);
+    tensor_args.push_back(tensor);
   }
 
   dev_ctx_ = phi::DeviceContextPool::Instance().Get(place_);
 
-  std::cerr << "place " << place_ << std::endl;
   for (size_t i = 0; i < op->num_results(); ++i) {
     pir::Value result = op->result(i);
     auto var_name = value_exec_info.GetVarName(result);
-    std::cerr << "output var name " << var_name << std::endl;
 
     auto tensor = value_exec_info.GetScope()
                       ->Var(var_name)
                       ->GetMutable<phi::DenseTensor>();
 
-    tensor_list.push_back(tensor);
+    tensor_args.push_back(tensor);
 
     out_tensor_ = tensor;
-
-    std::cerr << "tensor " << out_tensor_ << std::endl;
 
     auto alloc_tensor_type =
         result.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
     tensor->set_type(
         paddle::dialect::TransToPhiDataType(alloc_tensor_type.dtype()));
     tensor->Resize(alloc_tensor_type.dims());
-
-    std::cerr << "tensor size " << tensor->dims() << std::endl;
   }
 }
 
@@ -140,34 +119,14 @@ void CinnJitInstruction::Run() {
   // VLOG(6) << "Run cinn jit_kernel_op : " << Name();
   // Get kernel input
   auto gpu_ctx = static_cast<phi::GPUContext*>(dev_ctx_);
-  // gpu_ctx->Wait();
-
-  // Get context, set shape, allocate data
-  std::cerr << "get stream !!!" << std::endl;
 
   //  gpu_ctx->Wait();
   auto stream = gpu_ctx->stream();
-  std::cerr << "after get stream " << stream << std::endl;
-
-  for (size_t i = 0; i < tensor_list.size(); ++i) {
-    gpu_ctx->Alloc(tensor_list[i], phi::DataType::FLOAT32);
+  for (size_t i = 0; i < tensor_args.size(); ++i) {
+    gpu_ctx->Alloc(tensor_args[i], phi::DataType::FLOAT32);
   }
 
-  fn_ptr_impl_->Run(tensor_list, static_cast<void*>(stream));
-
-  std::cerr << "fin run" << std::endl;
-
-  // gpu_ctx->Wait();
-
-  std::cerr << "fin wait" << std::endl;
-
-  std::cerr << "tensor ptr " << out_tensor_->data() << std::endl;
-  std::cerr << "out tensor ptr " << out_tensor_ << std::endl;
-  std::cerr << *out_tensor_ << std::endl;
-
-  std::cerr << "fin   " << std::endl;
-  // phi::DenseTensor cpu_tensor;
-  // phi::Copy(*gpu_ctx, *out_tensor_, phi::CPUPlace(), true, &cpu_tensor);
+  fn_ptr_impl_->Run(tensor_args, static_cast<void*>(stream));
 }
 
 const std::string& CinnJitInstruction::Name() const {

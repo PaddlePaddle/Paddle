@@ -111,16 +111,9 @@ void cinn_call_cuda_kernel(void *kernel_fn,
   }
 
   {
-    auto fn = static_cast<CUfunction>(kernel_fn);
-    auto stream1 = static_cast<CUstream>(nullptr);
-
-    std::cerr << "fn   " << fn << std::endl;
-    std::cerr << "stream " << stream1 << std::endl;
-    std::cerr << "fun c size " << kernel_args.size() << std::endl;
-    std::cerr << "fist ptr " << kernel_args[0] << std::endl;
     cinn::utils::RecordEvent record_run("cuLaunchKernel",
                                         cinn::utils::EventType::kInstruction);
-    CUDA_DRIVER_CALL(cuLaunchKernel(fn,
+    CUDA_DRIVER_CALL(cuLaunchKernel(static_cast<CUfunction>(kernel_fn),
                                     grid_x,
                                     grid_y,
                                     grid_z,
@@ -128,7 +121,7 @@ void cinn_call_cuda_kernel(void *kernel_fn,
                                     block_y,
                                     block_z,
                                     0,  // share memory
-                                    stream1,
+                                    static_cast<CUstream>(stream),
                                     kernel_args.data(),
                                     nullptr))
   }

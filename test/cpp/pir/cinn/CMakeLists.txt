@@ -5,7 +5,6 @@ if(WITH_TESTING AND WITH_CINN)
     new_ir_compiler_test.cc
     DEPS
     new_ir_compiler
-    convert_to_dialect
     cinn_runtime_dialect
     pir
     phi
@@ -13,14 +12,8 @@ if(WITH_TESTING AND WITH_CINN)
     glog)
   set_tests_properties(test_new_ir_compiler PROPERTIES LABELS "RUN_TYPE=CINN")
 
-  cc_test_old(
-    test_jit_instruction
-    SRCS
-    jit_instruction_test.cc
-    DEPS
-    interpreter
-    new_ir_compiler
-    convert_to_dialect)
+  cc_test_old(test_jit_instruction SRCS jit_instruction_test.cc DEPS
+              interpreter new_ir_compiler)
   set_tests_properties(test_jit_instruction PROPERTIES LABELS "RUN_TYPE=CINN")
 
   paddle_test(test_group_op SRCS group_op_test.cc DEPS cinn_op_dialect)
