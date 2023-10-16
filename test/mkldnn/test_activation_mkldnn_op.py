@@ -483,12 +483,12 @@ class TestMKLDNNRound(TestActivation):
         self.attrs = {"use_mkldnn": True}
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_new_ir=True)
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestMKLDNNRound_ZeroDim(TestActivation_ZeroDim):
@@ -503,12 +503,12 @@ class TestMKLDNNRound_ZeroDim(TestActivation_ZeroDim):
         self.attrs = {"use_mkldnn": True}
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_new_ir=True)
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestMKLDNNSigmoidDim4(TestSigmoid):
