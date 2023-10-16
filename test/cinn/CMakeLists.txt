@@ -306,7 +306,8 @@ if(WITH_GPU)
       COMMAND
         ${CMAKE_COMMAND} -E env
         PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
-        python3 ${CMAKE_CURRENT_SOURCE_DIR}/${ir_test_name}.py
+        FLAGS_cinn_print_python_script=True python3
+        ${CMAKE_CURRENT_SOURCE_DIR}/${ir_test_name}.py
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   endforeach()
 

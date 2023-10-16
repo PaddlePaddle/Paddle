@@ -18,11 +18,13 @@
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
+#include "paddle/cinn/ir/utils/ir_python_printer.h"
 #include "paddle/cinn/pybind/bind.h"
 #include "paddle/cinn/pybind/bind_utils.h"
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/string.h"
 
+PD_DECLARE_bool(cinn_print_python_script);
 namespace py = pybind11;
 
 namespace cinn::pybind {
@@ -125,7 +127,17 @@ void BindType(py::module *m) {
   type.def("vector_of", &Type::VectorOf)
       .def("element_of", &Type::ElementOf)
       .def("pointer_of", &Type::PointerOf)
-      .def("__str__", [](const Type &self) { return GetStreamCnt(self); })
+      .def("__str__",
+           [](const Type &self) {
+             std::stringstream ss;
+             if (FLAGS_cinn_print_python_script) {
+               ir::IrPythonPrinter printer(ss);
+               printer.Print(self);
+               return ss.str();
+             } else {
+               return GetStreamCnt(self);
+             }
+           })
       .def("__repr__", [](const Type &self) {
         return StringFormat("<Type: %s>", GetStreamCnt(self).c_str());
       });
