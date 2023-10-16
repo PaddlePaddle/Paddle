@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/pybind/eval_frame_tools.h"
 
-#include <unordered_map>
 #include <unordered_set>
 
 #include <Python.h>
@@ -27,51 +26,50 @@
 
 class TreeNode {
  public:
-  TreeNode() {
-    is_prefix = 0;
-    children = std::unordered_map<char, TreeNode*>();
-  }
+  TreeNode() = default;
   ~TreeNode() { clear(); }
   void clear();
-  void add_prefix(const char* filename);
+  int add_prefix(const char* filename);
   int check_filename(const char* filename);
 
  private:
   int is_prefix;
-  std::unordered_map<char, TreeNode*> children;
+  TreeNode* children[256];
 };
 
 void TreeNode::clear() {
-  for (auto iter = children.begin(); iter != children.end(); iter++) {
-    delete iter->second;
+  for (int i = 0; i < 256; i++) {
+    if (children[i] != NULL) delete children[i];
   }
-  children.clear();
 }
 
-void TreeNode::add_prefix(const char* filepath) {
-  if (is_prefix) return;
-  if (filepath[0] == '\0') {
-    is_prefix = 1;
-    return;
+int TreeNode::add_prefix(const char* filepath) {
+  int ch = (int)filepath[0];  // NOLINT
+  if (is_prefix) return 0;
+  if (ch == '\0') return 1;
+
+  if (children[ch] == NULL) {
+    TreeNode* node = new TreeNode();
+    children[ch] = node;
   }
 
-  if (children.find(filepath[0]) != children.end()) {
-    children[filepath[0]]->add_prefix(filepath + 1);
-  } else {
-    TreeNode* node = new TreeNode();
-    children.emplace(filepath[0], node);
-    node->add_prefix(filepath + 1);
-  }
+  if (children[ch]->add_prefix(filepath + 1)) is_prefix = 1;
+
+  return 0;
 }
 
 int TreeNode::check_filename(const char* filename) {
-  if (is_prefix) return 1;
-  if (filename[0] == '\0') return 0;
+  int cur_idx = 0;
+  TreeNode* cur_node = this;
 
-  if (children.find(filename[0]) != children.end())
-    return children[filename[0]]->check_filename(filename + 1);
-  else
-    return 0;
+  while (filename[cur_idx] != '\0') {
+    cur_node = cur_node->children[(int)filename[cur_idx]];  // NOLINT
+    if (cur_node == NULL) return 0;
+    if (cur_node->is_prefix) return 1;
+    cur_idx += 1;
+  }
+
+  return 0;
 }
 
 /*========================== utils  ==========================*/
@@ -247,7 +245,9 @@ int need_skip(FrameObject* frame) {
 
 int is_code_without_graph(PyCodeObject* code) {
   paddle::platform::RecordEvent ecord_event(
-      "need_skip", paddle::platform::TracerEventType::UserDefined, 1);
+      "is_code_without_graph",
+      paddle::platform::TracerEventType::UserDefined,
+      1);
   auto& code_status = CodeStatus::Instance();
   return code_status.is_code_without_graph(code);
 }
