@@ -17,7 +17,7 @@
 #include "paddle/pir/dialect/shape/utils/symbol_table.h"
 
 namespace pir {
-using dialect::SymbolicDimOp;
+using shape::SymbolicDimOp;
 
 // Represents a product of symbolic and concrete factors.
 // Used to prove product equalities symbolically.

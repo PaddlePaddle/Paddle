@@ -41,6 +41,7 @@ enum class AttrType {
   UNDEFINED = 0,
   BOOL,
   INT32,
+  INDEX,
   INT64,
 
   FLOAT,
@@ -70,6 +71,8 @@ static inline AttrType GetAttributeType(const pir::Attribute& attr) {
     return AttrType::INT32;
   } else if (attr.isa<pir::Int64Attribute>()) {
     return AttrType::INT64;
+  } else if (attr.isa<pir::IndexAttribute>()) {
+    return AttrType::INDEX;
   } else if (attr.isa<pir::ArrayAttribute>()) {
     return AttrType::ARRAY;
   } else if (attr.isa<pir::StrAttribute>()) {
@@ -106,6 +109,10 @@ static std::unordered_map<
         {AttrType::INT32,
          [](const pir::Attribute& attr) {
            return VariantType{attr.dyn_cast<pir::Int32Attribute>().data()};
+         }},
+        {AttrType::INDEX,
+         [](const pir::Attribute& attr) {
+           return VariantType{attr.dyn_cast<pir::IndexAttribute>().data()};
          }},
         {AttrType::INT64,
          [](const pir::Attribute& attr) {

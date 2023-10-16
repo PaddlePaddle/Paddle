@@ -301,7 +301,8 @@ void Operation::erase() {
 }
 
 bool Operation::use_empty() {
-  return std::all_of(results().begin(), results().end(), [](OpResult result) {
+  auto res = results();
+  return std::all_of(res.begin(), res.end(), [](OpResult result) {
     return result.use_empty();
   });
 }

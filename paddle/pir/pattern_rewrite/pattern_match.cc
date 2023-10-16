@@ -128,30 +128,25 @@ void RewriterBase::ReplaceOp(Operation* op,
 }
 
 void RewriterBase::EraseOp(Operation* op) {
-  // TODO(zhangbopd): Operation support use_empty.
-  // IR_ENFORCE(op->use_empty(), "expected 'op' to have no uses");
+  IR_ENFORCE(op->use_empty(), "expected 'op' to have no uses");
   NotifyOperationRemoved(op);
   op->erase();
 }
 
 // Find uses of `from` and replace it with `to`.
 void RewriterBase::ReplaceAllUsesWith(Value from, Value to) {
-  // TODO(zhangbopd): Substitue a low level impl.
-  from.ReplaceAllUsesWith(to);
-  // for (auto it = from.use_begin(); it != from.use_begin(); ++it)
-  //   UpdateRootInplace(it.owner(), [&]() { it->set_source(to); });
+  for (auto it = from.use_begin(); it != from.use_end(); ++it)
+    UpdateRootInplace(it.owner(), [&]() { it->set_source(to); });
 }
 
 // Find uses of `from` and replace them with `to` if the `functor` returns true.
 void RewriterBase::ReplaceUseIf(Value from,
                                 Value to,
                                 std::function<bool(OpOperand&)> functor) {
-  // TODO(zhangbopd): Substitue a low level impl.
-  // for (auto it = from.use_begin(); it != from.use_begin(); ++it) {
-  //   if (functor(*it))
-
-  //     UpdateRootInplace(it.owner(), [&]() { it->set_source(to); });
-  // }
+  for (auto it = from.use_begin(); it != from.use_end(); ++it) {
+    if (functor(*it))
+      UpdateRootInplace(it.owner(), [&]() { it->set_source(to); });
+  }
 }
 
 // Replace theuses of op with uses of new_op.

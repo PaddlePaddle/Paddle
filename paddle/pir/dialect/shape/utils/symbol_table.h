@@ -28,7 +28,7 @@
 
 namespace pir {
 
-using dialect::SymbolicDimOp;
+using shape::SymbolicDimOp;
 class SymbolTable {
  public:
   explicit SymbolTable(Operation* symbol_table_op)

@@ -14,13 +14,14 @@
 
 #pragma once
 
+#include <optional>
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/builtin_type_interfaces.h"
 #include "paddle/pir/core/ir_printer.h"
 #include "paddle/pir/core/op_base.h"
 #include "paddle/pir/core/op_trait.h"
 
-namespace pir::dialect {
+namespace pir::shape {
 
 class IR_API SymbolicDimOp : public Op<SymbolicDimOp> {
  public:
@@ -75,7 +76,7 @@ class IR_API SymbolicDimOp : public Op<SymbolicDimOp> {
   void Verify() {}
 };
 
-class IR_API DimOp : public Op<DimOp, OneResultTrait> {
+class IR_API DimOp : public Op<DimOp> {
  public:
   using Op::Op;
   static const char *name() { return "shape.dim"; }
@@ -87,8 +88,8 @@ class IR_API DimOp : public Op<DimOp, OneResultTrait> {
                     OperationArgument &argument,  // NOLINT
                     const std::string &name);
 
-  const std::string getName();
-  void setName(std::string attrValue);
+  const std::string GetName();
+  void SetName(std::string attrValue);
   OpResult out() { return result(0); }
   void Verify() {}
 };
@@ -131,7 +132,7 @@ class IR_API TieShapeOp : public Op<TieShapeOp> {
                     OperationArgument &argument,  // NOLINT
                     Value input,
                     const std::vector<Value> &dims);
-  Value value();
+  Value input() { return operand_source(0); }
   std::vector<Value> dims();
   void Verify() {}
 };
@@ -151,7 +152,7 @@ class IR_API FuncOp : public Op<FuncOp> {
   void Verify() {}
 };
 
-class IR_API TensorDimOp : public Op<TensorDimOp> {
+class IR_API TensorDimOp : public Op<TensorDimOp, OneResultTrait> {
  public:
   using Op::Op;
   static const char *name() { return "shape.tensor_dim"; }
@@ -167,10 +168,12 @@ class IR_API TensorDimOp : public Op<TensorDimOp> {
                     OperationArgument &argument,  // NOLINT
                     Value source,
                     int64_t index);
-  Value index();
-  Value source();
+
+  Value source() { return operand_source(0); }
+  Value index() { return operand_source(1); }
   OpResult out() { return result(0); }
   void Verify() {}
+  std::optional<int64_t> GetConstantIndex();
 };
 
 class IR_API ShapeOfOp : public Op<ShapeOfOp> {
@@ -183,11 +186,10 @@ class IR_API ShapeOfOp : public Op<ShapeOfOp> {
 
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    Value inputs);
+                    Value input);
 
-  Value inputs() { return operand_source(0); }
+  Value input() { return operand_source(0); }
   OpResult out() { return result(0); }
-  const std::string getName();
   void Verify() {}
 };
 
@@ -201,20 +203,72 @@ class IR_API FromElementsOp : public Op<FromElementsOp> {
 
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    const std::vector<Value> &inputs);
+                    const std::vector<Value> &elements);
 
-  Value inputs() { return operand_source(0); }
+  std::vector<Value> elements();
   OpResult out() { return result(0); }
   void Verify() {}
 };
 
-}  // namespace pir::dialect
+class IR_API ExtractOp : public Op<ExtractOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "shape.extract"; }
 
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::SymbolicDimOp);
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::DimOp);
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::TieProductEqualOp);
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::TieShapeOp);
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::FuncOp);
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::TensorDimOp);
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::ShapeOfOp);
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::FromElementsOp);
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
+
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    Value tensor,
+                    std::vector<Value> indices);
+
+  Value tensor() { return operand_source(0); }
+  std::vector<Value> indices();
+  OpResult out() { return result(0); }
+  void Verify() {}
+};
+
+// Specialization of `constant` op that returns an integer of index type.
+class IR_API ConstantIndexOp : public ConstantOp {
+ public:
+  using ConstantOp::ConstantOp;
+  static const char *name() { return "shape.constant_index"; }
+
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    int64_t value);
+};
+
+// Cast between index and integer types.
+class IR_API IndexCastOp : public Op<IndexCastOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "shape.index_cast"; }
+
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
+
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    Type out,
+                    Value in);
+
+  Value in() { return operand_source(0); }
+  OpResult out() { return result(0); }
+  void Verify() {}
+};
+
+}  // namespace pir::shape
+
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::SymbolicDimOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::DimOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::TieProductEqualOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::TieShapeOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::FuncOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::TensorDimOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::ShapeOfOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::FromElementsOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::ExtractOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::ConstantIndexOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::IndexCastOp);

@@ -281,6 +281,7 @@ class RewriterBase : public Builder {
     return new_op;
   }
 
+  // This method erases an operation that is known to have no uses.
   virtual void EraseOp(Operation* op);
 
   IR_API void ReplaceAllUsesWith(Value from, Value to);

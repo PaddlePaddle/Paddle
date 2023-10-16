@@ -50,18 +50,18 @@ bool CompareSymbolicDimProduct(SymbolicDimProduct& lhs,    // NOLINT
 
 SymbolicDimMgr::SymbolicDimMgr(ModuleOp m) : m_(m) {
   for (auto op : *(m.block())) {
-    if (op->isa<dialect::FuncOp>()) {
+    if (op->isa<shape::FuncOp>()) {
       symbol_table_ = SymbolTable(op);
       return;
     }
   }
   Builder builder = Builder(m_.ir_context(), m_.block(), m_.block()->begin());
-  dialect::FuncOp func = builder.Build<dialect::FuncOp>();
+  shape::FuncOp func = builder.Build<shape::FuncOp>();
   symbol_table_ = SymbolTable(func);
 }
 
 bool SymbolicDimMgr::Load() {
-  auto func_op = symbol_table_.getOp()->dyn_cast<dialect::FuncOp>();
+  auto func_op = symbol_table_.getOp()->dyn_cast<shape::FuncOp>();
   IR_ENFORCE(func_op);
   for (auto op : *(func_op.block())) {
     symbol_table_.insert(op);
@@ -74,10 +74,10 @@ bool SymbolicDimMgr::Load() {
 }
 
 bool SymbolicDimMgr::LoadShapeConstraintGraph() {
-  // TODO(liujinnan): add more constraint function. currently, only support
+  // TODO(zhangbopd): add more constraint function. currently, only support
   // tie_product_equal.
   auto constraint_vec =
-      symbol_table_.Lookup<dialect::TieProductEqualOp>("tie_product_equal");
+      symbol_table_.Lookup<shape::TieProductEqualOp>("tie_product_equal");
 
   if (!constraint_vec.size()) return true;
 
@@ -88,8 +88,8 @@ bool SymbolicDimMgr::LoadShapeConstraintGraph() {
       if (auto constOp = defining_op->dyn_cast<ConstantOp>()) {
         product.factor *= constOp.value().dyn_cast<Int32Attribute>().data();
         continue;
-      } else if (auto dim_op = defining_op->dyn_cast<dialect::DimOp>()) {
-        auto sym = symbol_table_.Lookup<SymbolicDimOp>(dim_op.getName());
+      } else if (auto dim_op = defining_op->dyn_cast<shape::DimOp>()) {
+        auto sym = symbol_table_.Lookup<SymbolicDimOp>(dim_op.GetName());
         if (!sym) return false;
         product.symbols.push_back(sym);
         continue;
@@ -225,7 +225,7 @@ const std::string SymbolicDimMgr::GetNextName() {
 }
 
 SymbolicDimOp SymbolicDimMgr::NewSymbolicDim(const std::string& name) {
-  auto func_op = symbol_table_.getOp()->dyn_cast<dialect::FuncOp>();
+  auto func_op = symbol_table_.getOp()->dyn_cast<shape::FuncOp>();
   IR_ENFORCE(func_op);
   Builder builder = Builder(m_.ir_context(), func_op.block());
   // default settting dim != 0
@@ -471,7 +471,7 @@ bool SymbolicDimMgr::Save() {
     return ArrayAttribute::get(m_->ir_context(), new_attrs);
   };
 
-  // TODO(liujinnan): update attributes attached in DenseTensorType
+  // TODO(zhangbopd): update attributes attached in DenseTensorType
   for (auto op : *(m_.block())) {
     if (!op->HasAttribute(SymbolicDimOp::GetSymbolicDimAttrName())) continue;
     auto attrs =
@@ -488,7 +488,7 @@ bool SymbolicDimMgr::Save() {
   }
   std::unordered_set<SymbolicDimOp, SymDimHasher> used_symbolic_ops;
   std::vector<std::string> used_symbol_names;
-  // TODO(liujinnan): collect uses in value.
+  // TODO(zhangbopd): collect uses in value.
   auto collect_used_symbols = [&](ArrayAttribute attrs) {
     for (Attribute attr : attrs.AsVector()) {
       auto sym = symbol_table_.Lookup<SymbolicDimOp>(
@@ -504,7 +504,7 @@ bool SymbolicDimMgr::Save() {
         op->attribute<ArrayAttribute>(SymbolicDimOp::GetSymbolicDimAttrName());
     collect_used_symbols(attrs);
   }
-  auto func_op = symbol_table_.getOp()->dyn_cast<dialect::FuncOp>();
+  auto func_op = symbol_table_.getOp()->dyn_cast<shape::FuncOp>();
   IR_ENFORCE(func_op);
   for (auto& p : symbol_dim_union_set_) {
     if (!used_symbolic_ops.count(p.first)) {
@@ -568,18 +568,18 @@ bool SymbolicDimMgr::Save() {
                       symbolic_shape_attr);
   }
 
-  // TODO(liujinnan): update attributes attached to values.
+  // TODO(zhangbopd): update attributes attached to values.
 
   return SaveShapeConstraintGraph();
 }
 
 bool SymbolicDimMgr::SaveShapeConstraintGraph() {
-  auto func_op = symbol_table_.getOp()->dyn_cast<dialect::FuncOp>();
+  auto func_op = symbol_table_.getOp()->dyn_cast<shape::FuncOp>();
   IR_ENFORCE(func_op);
   auto op_it = func_op.block()->rbegin();
   while (op_it != func_op.block()->rend()) {
-    if (((*op_it)->isa<dialect::SymbolicDimOp>()) ||
-        ((*op_it)->isa<dialect::TieShapeOp>()))
+    if (((*op_it)->isa<shape::SymbolicDimOp>()) ||
+        ((*op_it)->isa<shape::TieShapeOp>()))
       op_it++;
     else
       op_it = decltype(op_it)(func_op.block()->erase(*(*op_it)));
@@ -599,7 +599,7 @@ bool SymbolicDimMgr::SaveShapeConstraintGraph() {
               ->result(0));
     }
     for (SymbolicDimOp sym : prod.symbols) {
-      values.push_back(builder.Build<dialect::DimOp>(sym.GetSymName()).out());
+      values.push_back(builder.Build<shape::DimOp>(sym.GetSymName()).out());
     }
     return values;
   };
@@ -614,7 +614,7 @@ bool SymbolicDimMgr::SaveShapeConstraintGraph() {
       if (!product_equality_map_[x][y]) continue;
       auto lhs_operands = build_operands(x);
       auto rhs_operands = build_operands(y);
-      builder.Build<dialect::TieProductEqualOp>(lhs_operands, rhs_operands);
+      builder.Build<shape::TieProductEqualOp>(lhs_operands, rhs_operands);
     }
   }
   return true;

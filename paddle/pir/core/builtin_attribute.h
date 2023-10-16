@@ -55,6 +55,15 @@ class IR_API Int32Attribute : public Attribute {
   int32_t data() const;
 };
 
+class IR_API IndexAttribute : public Attribute {
+ public:
+  using Attribute::Attribute;
+
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(IndexAttribute, IndexAttributeStorage);
+
+  int64_t data() const;
+};
+
 class IR_API Int64Attribute : public Attribute {
  public:
   using Attribute::Attribute;
@@ -123,6 +132,7 @@ IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::FloatAttribute)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::DoubleAttribute)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::Int32Attribute)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::Int64Attribute)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::IndexAttribute)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ArrayAttribute)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::PointerAttribute)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::TypeAttribute)

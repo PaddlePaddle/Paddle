@@ -187,7 +187,7 @@ class IR_API ConstantOp : public Op<ConstantOp, ConstantLikeTrait> {
                     Type output_type);
 
   void Verify() const;
-
+  OpResult out() { return result(0); }
   Attribute value() const;
 };
 

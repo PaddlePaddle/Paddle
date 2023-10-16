@@ -43,44 +43,55 @@
 
 #include "test/cpp/pir/tools/test_pir_utils.h"
 
-TEST(constraint_pass, materialize_and_build_shape) {
+TEST(shape_constraint_pass, materialize_and_build_shape) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   pir::Program program(ctx);
-  pir::PassManager pm(ctx);
-  ctx->GetOrRegisterDialect<pir::dialect::ShapeDialect>();
+  ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-  pir::Operation *op0 = test::CreateDenseTensorOp(
-      ctx, {pir::ShapedTypeInterface::kDynamic, 2}, {"op0_attr"}, {"op0_name"});
-  program.block()->push_back(op0);
+
+  pir::Operation *op0 =
+      test::CreateDenseTensorOp(ctx,
+                                {pir::ShapedTypeInterface::kDynamic, 2},
+                                {"op0_attr"},
+                                {"create_dense_tensor_op0"});
   pir::Operation *op1 =
       test::CreateDenseTensorOp(ctx,
                                 {pir::ShapedTypeInterface::kDynamic, 2, 2},
                                 {"op1_attr"},
-                                {"op1_name"});
+                                {"create_dense_tensor_op1"});
+  program.block()->push_back(op0);
   program.block()->push_back(op1);
 
-  EXPECT_EQ(program.block()->size(), static_cast<size_t>(2));
+  EXPECT_EQ(program.block()->size(), 2u);
+
+  std::stringstream ss1;
+  program.Print(ss1);
+  LOG(INFO) << " ================================================  Before Add "
+               "and Run Pass ================================================ ";
+  LOG(INFO) << ss1.str();
+
+  pir::PassManager pm(ctx);
   pm.AddPass(pir::CreateShapeOptimizationPass());
 
   EXPECT_TRUE(pm.Run(&program));
 
   // 5 ConstantOp + 5 TensorDim + 2 TieShape + op0 + op1 + 1 funcOp == 15 Ops.
-  EXPECT_EQ(program.block()->size(), static_cast<size_t>(15));
+  EXPECT_EQ(program.block()->size(), 15u);
 
-  std::stringstream ss;
-  program.Print(ss);
-
-  LOG(INFO) << ss.str();
+  std::stringstream ss2;
+  program.Print(ss2);
+  LOG(INFO) << " ================================================  After Add "
+               "and Run Pass ================================================ ";
+  LOG(INFO) << ss2.str();
 }
 
-TEST(constraint_pass, shape_computation_run) {
+TEST(shape_constraint_pass, shape_computation_run) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   pir::Program program(ctx);
-  pir::PassManager pm(ctx);
-  ctx->GetOrRegisterDialect<pir::dialect::ShapeDialect>();
+  ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-  ::pir::Builder builder = ::pir::Builder(ctx, program.block());
-  builder.Build<pir::dialect::FuncOp>();
+  pir::Builder builder = ::pir::Builder(ctx, program.block());
+  builder.Build<pir::shape::FuncOp>();
   pir::Operation *op0 = test::CreateDenseTensorOp(
       ctx,
       {2},
@@ -92,6 +103,7 @@ TEST(constraint_pass, shape_computation_run) {
       ctx, {pir::ShapedTypeInterface::kDynamic, 2}, {"op1_attr"}, {"op1_name"});
   program.block()->push_back(op1);
 
+  pir::PassManager pm(ctx);
   pm.AddPass(pir::CreateShapeOptimizationPass());
 
   EXPECT_TRUE(pm.Run(&program));
@@ -99,3 +111,5 @@ TEST(constraint_pass, shape_computation_run) {
   EXPECT_TRUE(mgr.Load());
   EXPECT_TRUE(mgr.Save());
 }
+
+// TODO(zhangbopd): ExpandShapeOfOpPattern etc.

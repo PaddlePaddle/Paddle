@@ -46,11 +46,13 @@ pir::Operation *CreateDenseTensorOp(
   std::vector<pir::Type> op_output_types = {
       paddle::dialect::DenseTensorType::get(
           ctx, dtype, dims, data_layout, lod, offset)};
+
+  pir::Builder builder = pir::Builder(ctx);
   pir::Operation *op =
-      pir::Operation::Create(op_inputs,
-                             CreateAttributeMap(attribute_names, attributes),
-                             op_output_types,
-                             pir::OpInfo());
+      builder.Build(op_inputs,
+                    CreateAttributeMap(attribute_names, attributes),
+                    op_output_types,
+                    pir::OpInfo());
   return op;
 }
 
