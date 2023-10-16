@@ -376,7 +376,7 @@ def monkey_patch_variable():
         return _scalar_op_(var, -1.0, 0.0)
 
     @property
-    def _ndim_(self):
+    def _ndim(self):
         """
         Returns the dimension of current Variable
 
@@ -627,7 +627,7 @@ def monkey_patch_variable():
         ('pop', pop),
         ('dim', dim),
         ('ndimension', ndimension),
-        ('ndim', _ndim_),
+        ('ndim', _ndim),
         (
             '__add__',
             _binary_creator_('__add__', 'elementwise_add', False, _scalar_add_),

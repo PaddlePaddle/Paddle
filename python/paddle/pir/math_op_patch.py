@@ -76,7 +76,7 @@ def monkey_patch_opresult():
         )
 
     @property
-    def _ndim_(self):
+    def _ndim(self):
         """
         Returns the dimension of current OpResult
 
@@ -91,10 +91,9 @@ def monkey_patch_opresult():
                 >>> paddle.enable_static()
 
                 >>> # create a static OpResult
-                >>> with paddle.pir_utils.IrGuard():
-                >>>     x = paddle.static.data(name='x', shape=[3, 2, 1])
-                >>>     # print the dimension of the OpResult
-                >>>     print(x.ndim)
+                >>> x = paddle.static.data(name='x', shape=[3, 2, 1])
+                >>> # print the dimension of the OpResult
+                >>> print(x.ndim)
                 3
         """
         return len(self.shape)
@@ -114,10 +113,9 @@ def monkey_patch_opresult():
                 >>> paddle.enable_static()
 
                 >>> # create a static OpResult
-                >>> with paddle.pir_utils.IrGuard():
-                >>>     x = paddle.static.data(name='x', shape=[3, 2, 1])
-                >>>     # print the dimension of the OpResult
-                >>>     print(x.ndimension())
+                >>> x = paddle.static.data(name='x', shape=[3, 2, 1])
+                >>> # print the dimension of the OpResult
+                >>> print(x.ndimension())
                 3
         """
         return len(self.shape)
@@ -137,10 +135,9 @@ def monkey_patch_opresult():
                 >>> paddle.enable_static()
 
                 >>> # create a static OpResult
-                >>> with paddle.pir_utils.IrGuard():
-                >>>     x = paddle.static.data(name='x', shape=[3, 2, 1])
-                >>>     # print the dimension of the OpResult
-                >>>     print(x.dim())
+                >>> x = paddle.static.data(name='x', shape=[3, 2, 1])
+                >>> # print the dimension of the OpResult
+                >>> print(x.dim())
                 3
         """
         return len(self.shape)
@@ -263,7 +260,7 @@ def monkey_patch_opresult():
         ('item', _item),
         ('dim', dim),
         ('ndimension', ndimension),
-        ('ndim', _ndim_),
+        ('ndim', _ndim),
         (
             '__div__',
             _binary_creator_(
