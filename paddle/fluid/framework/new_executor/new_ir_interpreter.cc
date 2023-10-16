@@ -390,7 +390,7 @@ Scope* NewIRInterpreter::InnerScope() const {
 }
 
 std::string NewIRInterpreter::GetNameByValue(::pir::Value value) const {
-  return value_exe_info_->GetValue2VarName().at(value);
+  return value_exe_info_->GetVarName(value);
 }
 
 void NewIRInterpreter::UpdateSyncOpNum() {
