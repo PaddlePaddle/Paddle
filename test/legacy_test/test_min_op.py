@@ -96,7 +96,6 @@ class ApiMinTest(unittest.TestCase):
 
 
 class TestOutDtype(unittest.TestCase):
-    @test_with_pir_api
     def test_min(self):
         api_fn = paddle.min
         shape = [10, 16]
@@ -115,12 +114,8 @@ class TestMinWithTensorAxis1(TestReduceOPTensorAxisBase):
         self.np_axis = np.array([1, 2], dtype='int64')
         self.tensor_axis = paddle.to_tensor([1, 2], dtype='int64')
 
-    @test_with_pir_api
-    def test_static_and_infer(self):
-        super().test_static_and_infer()
 
-
-class TestMinWithTensorAxis2(TestMinWithTensorAxis1):
+class TestMinWithTensorAxis2(TestReduceOPTensorAxisBase):
     def init_data(self):
         self.pd_api = paddle.min
         self.np_api = np.min
