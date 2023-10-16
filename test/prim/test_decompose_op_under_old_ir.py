@@ -160,7 +160,7 @@ class TestDecomposeOp1(unittest.TestCase):
                     fwd_outputs = fwd_op.results()
 
                     # if bwd_op has custom_vjp rule, then decompose bwd_op firstly and decompose fwd_op secondly
-                    if not core.has_custom_vjp(fwd_op):
+                    if core.has_custom_vjp(fwd_op):
                         related_bwd_op_index = related_graph_outputs(
                             global_grads, related_bwd_ops, bwd_op
                         )
