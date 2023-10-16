@@ -46,7 +46,7 @@ class JitKernelOp : public ::pir::Op<JitKernelOp> {
 
   const hlir::framework::newir::CUDAJITInfo& cuda_jit_info();
 
-  void Verify();
+  void VerifySig();
 };
 
 }  // namespace dialect
