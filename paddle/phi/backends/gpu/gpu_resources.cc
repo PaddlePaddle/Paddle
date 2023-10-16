@@ -174,7 +174,7 @@ void InitGpuProperties(Place place,
 
   // Compute cuDNN major
   auto local_cudnn_major = get_cudnn_major(cudnn_dso_ver);
-  auto compile_cudnn_major = CUDNN_MAJOR;
+  size_t compile_cudnn_major = CUDNN_MAJOR;
 
 #if defined(__linux__)
   PADDLE_ENFORCE_EQ(
