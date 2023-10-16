@@ -274,6 +274,8 @@ PyFrameObject *Internal_PyFrame_New_NoTrack(PyCodeObject *code) {
   return f;
 }
 
+#if PY_VERSION_HEX < 0x030c0000
+
 PyFrameObject *Internal_PyFrame_MakeAndSetFrameObject(
     _PyInterpreterFrame *frame) {
   assert(frame->frame_obj == NULL);
@@ -391,6 +393,8 @@ void Internal_PyFrame_Clear(_PyInterpreterFrame *frame) {
   Py_DECREF(frame->f_func);
   Py_DECREF(frame->f_code);
 }
+
+#endif
 
 #else
 typedef PyFrameObject FrameObject;
