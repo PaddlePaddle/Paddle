@@ -35,11 +35,18 @@ Token Lexer::ConsumeToken() {
 
 Token Lexer::PeekToken() {
   auto pos = is.tellg();
+  size_t cache_line = line;
+  size_t cache_column = column;
+
   auto token = ConsumeToken();
+
   if (is.eof()) {
     is.clear();
   }
   is.seekg(pos);
+  line = cache_line;
+  column = cache_column;
+
   return token;
 }
 
