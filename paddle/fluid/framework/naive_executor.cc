@@ -62,6 +62,7 @@ void NaiveExecutor::PrepareInterperterCore(
 
 void NaiveExecutor::RunInterperterCore(
     const std::vector<std::string> &feed_names, bool need_fetch) {
+  platform::ScopedFlushDenormal flush;
   interpreter_core_->Run(feed_names, need_fetch);
 }
 
