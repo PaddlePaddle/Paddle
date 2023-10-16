@@ -72,6 +72,7 @@ class TestDy2staticException(unittest.TestCase):
         paddle.jit.enable_to_static(False)
 
 
+@dy2static_unittest
 class TestDygraphIfElse(unittest.TestCase):
     """
     TestCase for the transformation from control flow `if/else`
@@ -238,6 +239,7 @@ class TestDygraphIfTensor(TestDygraphIfElse):
         self.dyfunc = if_tensor_case
 
 
+@dy2static_unittest
 class TestDygraphIfElseNet(unittest.TestCase):
     """
     TestCase for the transformation from control flow `if/else`
@@ -350,6 +352,7 @@ class DiffModeNet2(paddle.nn.Layer):
             raise ValueError('Illegal mode')
 
 
+@dy2static_unittest
 class TestDiffModeNet(unittest.TestCase):
     """
     TestCase for the net with different modes
@@ -392,6 +395,7 @@ class TestDiffModeNet2(TestDiffModeNet):
         self.Net = DiffModeNet2
 
 
+@dy2static_unittest
 class TestNewVarCreateInOneBranch(unittest.TestCase):
     def test_var_used_in_another_for(self):
         def case_func(training):
@@ -497,6 +501,7 @@ class IfElseNet(paddle.nn.Layer):
         return b
 
 
+@dy2static_unittest
 class TestDy2StIfElseBackward(unittest.TestCase):
     def test_run_backward(self):
         a = paddle.randn((4, 3), dtype='float32')
