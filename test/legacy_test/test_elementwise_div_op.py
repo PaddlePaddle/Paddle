@@ -497,7 +497,6 @@ class TestElementwiseDivBroadcast(unittest.TestCase):
                 name='x', dtype='float32', shape=[None, 3, None, None]
             )
             one = 2.0
-            breakpoint()
             out = one / x_var
             exe = base.Executor(base.CPUPlace())
             x = np.random.uniform(0.1, 0.6, (1, 3, 32, 32)).astype("float32")
