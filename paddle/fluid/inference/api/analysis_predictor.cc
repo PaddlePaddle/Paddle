@@ -1811,6 +1811,9 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
         if (std::getenv("FLAGS_initial_cpu_memory_in_mb") == nullptr) {
           SetGflag("initial_cpu_memory_in_mb", "0");
         }
+        if (std::getenv("FLAGS_new_executor_serial_run") == nullptr) {
+          SetGflag("new_executor_serial_run", "1");
+        }
       });
 
       if (config.thread_local_stream_enabled() &&
