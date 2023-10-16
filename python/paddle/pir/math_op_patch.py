@@ -253,6 +253,44 @@ def monkey_patch_opresult():
         __impl__.__name__ = method_name
         return __impl__
 
+    def astype(self, dtype):
+        """
+        **Notes**:
+
+        Cast a OpResult to a specified data type.
+
+        Args:
+
+            self(OpResult): The source OpResult
+
+            dtype: The target data type
+
+        Returns:
+            OpResult: OpResult with new dtype
+
+        Examples:
+            In Static Graph Mode:
+
+            .. code-block:: python
+
+                >>> import paddle
+                >>> paddle.enable_static()
+                >>> startup_prog = paddle.static.Program()
+                >>> main_prog = paddle.static.Program()
+                >>> with paddle.static.program_guard(startup_prog, main_prog):
+                ...     original_value = paddle.static.data(name = "new_value", shape=[2,2], dtype='float32')
+                ...     new_value = original_value.astype('int64')
+                ...     print("new value's dtype is: {}".format(new_value.dtype))
+                ...
+                new OpResult's dtype is: paddle.int64
+
+        """
+        from paddle import _C_ops
+
+        if not isinstance(dtype, DataType):
+            dtype = paddle.pir.core.convert_np_dtype_to_dtype_(dtype)
+        return _C_ops.cast(self, dtype)
+
     import paddle
 
     opresult_methods = [
@@ -261,6 +299,7 @@ def monkey_patch_opresult():
         ('dim', dim),
         ('ndimension', ndimension),
         ('ndim', _ndim),
+        ('astype', astype),
         (
             '__div__',
             _binary_creator_(

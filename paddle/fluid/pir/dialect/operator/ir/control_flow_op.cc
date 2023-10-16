@@ -22,6 +22,7 @@ paddle::dialect::IfOp, paddle::dialect::WhileOp
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/ir_printer.h"
 #include "paddle/pir/core/operation_utils.h"
+#include "paddle/pir/core/utils.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
 
 namespace paddle {
@@ -181,38 +182,41 @@ void IfOp::VerifyRegion() {
 
 void WhileOp::Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
+                    pir::Value cond,
                     const std::vector<pir::Value> &inputs) {
+  argument.AddInput(cond);
   argument.AddInputs(inputs);
   for (auto val : inputs) {
     argument.AddOutput(val.type());
   }
-  argument.AddRegions(2u);
-}
-pir::Block *WhileOp::cond_block() {
-  pir::Region &cond_region = (*this)->region(0);
-  if (cond_region.empty()) cond_region.emplace_back();
-  return cond_region.front();
+  argument.AddRegion(nullptr);
 }
 pir::Block *WhileOp::body_block() {
-  pir::Region &body_region = (*this)->region(1);
+  pir::Region &body_region = (*this)->region(0);
   if (body_region.empty()) body_region.emplace_back();
   return body_region.front();
 }
+pir::Value WhileOp::cond() { return (*this)->operand_source(0); }
 
 void WhileOp::Print(pir::IrPrinter &printer) {
   auto &os = printer.os;
   auto op = operation();
   printer.PrintOpResult(op);
-  os << " \"" << name() << "\"";
-  printer.PrintOpOperands(op);
-  os << " -> ";
-  printer.PrintOpReturnType(op);
-  os << "{";
-  for (auto item : *cond_block()) {
-    os << "\n  ";
-    printer.PrintOperation(item);
-  }
-  os << "\n } do {";
+  os << " = \"" << name() << "\"(";
+  printer.PrintValue(cond());
+  os << ") [";
+  auto operands = (*this)->operands_source();
+  pir::PrintInterleave(
+      operands.begin() + 1,
+      operands.end(),
+      [&](pir::Value v) { printer.PrintValue(v); },
+      [&]() { os << ", "; });
+  os << "] { \n ^";
+  pir::PrintInterleave(
+      body_block()->args_begin(),
+      body_block()->args_end(),
+      [&](pir::Value v) { printer.PrintValue(v); },
+      [&]() { os << ", "; });
   for (auto item : *body_block()) {
     os << "\n  ";
     printer.PrintOperation(item);
