@@ -697,8 +697,8 @@ DeviceManager& DeviceManager::Instance() {
 }
 
 void DeviceManager::Release() {
-  stream::Stream::ReleaseAll();
   event::Event::ReleaseAll();
+  stream::Stream::ReleaseAll();
   Instance().device_map_.clear();
   Instance().device_impl_map_.clear();
 }
