@@ -46,30 +46,18 @@ std::vector<std::vector<pir::OpResult>> MeanOp::Decomp(pir::Operation* op) {
   bool keepdim = op->attribute("keepdim").dyn_cast<pir::BoolAttribute>().data();
   VLOG(0) << "Decomp mean keep_dim " << keepdim;
 
-  VLOG(0) << "Decomp prepare call mean's decomp inteface";
+  VLOG(0) << "Decomp prepare call mean's decomp interface";
 
   Tensor op_res =
       paddle::primitive::details::mean_decomp<primitive::LazyTensor>(
           x, axis, keepdim);
-  // std::vector<Tensor> tensor_res;
-  // tensor_res.push_back(op_res);
+
   auto org_res = op->results();
   std::vector<std::vector<pir::OpResult>> res(org_res.size());
   res[0].push_back(
       std::static_pointer_cast<primitive::LazyTensor>(op_res.impl())
           ->value()
           .dyn_cast<pir::OpResult>());
-  // for (size_t i = 0; i < tensor_res.size(); ++i) {
-  //   res[i].resize(tensor_res[i].size());
-  //   for (size_t j = 0; j < tensor_res[i].size(); ++j) {
-  //     if (tensor_res[i][j].defined()) {
-  //       res[i][j] = std::static_pointer_cast<primitive::LazyTensor>(
-  //                       tensor_res[i][j].impl())
-  //                       ->value()
-  //                       .dyn_cast<pir::OpResult>();
-  //     }
-  //   }
-  // }
   return res;
 }
 

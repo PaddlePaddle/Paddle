@@ -27,7 +27,7 @@ namespace details {
 
 template <typename T>
 Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
-  std::cout << "******** mean decomp begin ********" << std::endl;
+  VLOG(0) << "Decomp prepare call mean's decomp rule ========";
   std::vector<int64_t> x_dim = phi::vectorize<int64_t>(x.dims());
   int64_t axis_size = axis.size();
   int64_t x_dim_size = x_dim.size();
@@ -44,7 +44,6 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
       }
     }
   }
-  std::cout << "******** mean decomp 1 ********" << std::endl;
 
   int64_t value = 1;
   for (size_t i = 0; i < axis_.size(); i++) {
@@ -53,8 +52,6 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
   auto sum_x = sum<T>(x, IntArray(axis_), x.dtype(), keepdim);
   auto res = divide<T>(
       sum_x, full<T>(phi::vectorize(sum_x.dims()), value, sum_x.dtype()));
-  std::cout << "******** mean decomp end ******** value " << value << std::endl;
-
   return res;
 }
 
