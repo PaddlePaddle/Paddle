@@ -16,6 +16,7 @@ import logging
 import typing
 
 from paddle import pir
+from paddle.base.core import call_decomp, has_decomp
 from paddle.base.libpaddle.pir import Block, Program
 from paddle.framework import core
 
@@ -225,7 +226,10 @@ def _decompose_subgraph(block, orig_vars, dst_vars, op_filter):
                     input_args = _prepare_python_api_arguments(op)
                     pir.set_insertion_point(op)
                 orig_outs = op.results()
-                new_outs = _build_tensor_tuple(decom_rule(*input_args))
+                if has_decomp(op):
+                    new_outs = call_decomp(op)[0][0]
+                else:
+                    new_outs = _build_tensor_tuple(decom_rule(*input_args))
 
                 # Todo: To cover such case: some outputs are no longer needed after decomposition.
                 _check_op_results(

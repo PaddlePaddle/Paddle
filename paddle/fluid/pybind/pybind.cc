@@ -195,6 +195,7 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
+#include "paddle/fluid/pir/dialect/operator/interface/decomp.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
 #include "paddle/fluid/pir/dialect/operator/trait/custom_vjp.h"
 #include "paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
@@ -766,6 +767,42 @@ void BindVjp(pybind11::module *m) {
                out (bool): True means that the op has custom vjp rules, False means it does not.
            )DOC");
 }
+
+void BindDecomp(pybind11::module *m) {
+  m->def("call_decomp", [](pir::Operation &fwd_op) {
+    py::list res;
+    paddle::dialect::DecompInterface decomp_interface =
+        fwd_op.dyn_cast<paddle::dialect::DecompInterface>();
+    PADDLE_ENFORCE(
+        decomp_interface,
+        phi::errors::InvalidArgument(
+            "The decomp function is not registered in %s op ", fwd_op.name()));
+    std::vector<std::vector<pir::OpResult>> decomp_res =
+        decomp_interface.Decomp(&fwd_op);
+    for (size_t i = 0; i < decomp_res.size(); ++i) {
+      py::list sub_res;
+      for (size_t j = 0; j < decomp_res[i].size(); ++j) {
+        if (!decomp_res[i][j]) {
+          sub_res.append(nullptr);
+        } else {
+          sub_res.append(decomp_res[i][j]);
+        }
+      }
+      res.append(sub_res);
+    }
+    return res;
+  });
+
+  m->def("has_decomp", [](pir::Operation &fwd_op) {
+    pir::IrContext *ctx = pir::IrContext::Instance();
+    pir::OpInfo fwd_op_info = ctx->GetRegisteredOpInfo(fwd_op.name());
+    auto decomp_interface_impl =
+        fwd_op_info.GetInterfaceImpl<paddle::dialect::DecompInterface>();
+    if (decomp_interface_impl == nullptr) return false;
+    return true;
+  });
+}
+
 PYBIND11_MODULE(libpaddle, m) {
   BindImperative(&m);
   BindEager(&m);
@@ -2940,6 +2977,7 @@ All parameter, weight, gradient are variables in Paddle.
 
   BindPIR(&m);
   BindVjp(&m);
+  BindDecomp(&m);
 }
 }  // namespace pybind
 }  // namespace paddle
