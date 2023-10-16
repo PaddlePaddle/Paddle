@@ -79,55 +79,19 @@ class ValueExecutionInfo {
 
   void ResetVarList(int id, Variable* var);
 
-  /// Check a value exist in the ValueExecutionInfo or any of its ancestors.
   bool HasVar(const std::string& var_name) const;
 
   bool HasValue(::pir::Value value) const;
-
-  /// Check a value exist in the ValueExecutionInfo.
-  bool HasLocalValue(::pir::Value value) const;
 
   std::string GetVarName(::pir::Value value) const;
 
   std::string GetVarName(const Variable* var) const;
 
-  std::string GetLocalVarName(::pir::Value value) const;
-
-  std::string GetLocalVarName(const Variable* var) const;
-
   int GetVarId(::pir::Value value) const;
 
   int GetVarId(const Variable* var) const;
 
-  int GetLocalVarId(::pir::Value value) const;
-
-  int GetLocalVarId(const Variable* var) const;
-
  private:
-  bool HasVarInternal(const std::string& var_name) const;
-
-  bool HasVarLocally(const std::string& var_name) const;
-
-  bool HasValueInternal(::pir::Value value) const;
-
-  bool HasValueLocally(::pir::Value value) const;
-
-  std::string GetVarNameInternal(::pir::Value value) const;
-
-  std::string GetVarNameLocally(::pir::Value value) const;
-
-  std::string GetVarNameInternal(const Variable* var) const;
-
-  std::string GetVarNameLocally(const Variable* var) const;
-
-  int GetVarIdInternal(::pir::Value value) const;
-
-  int GetVarIdLocally(::pir::Value value) const;
-
-  int GetVarIdInternal(const Variable* var) const;
-
-  int GetVarIdLocally(const Variable* var) const;
-
   std::shared_ptr<ValueExecutionInfo> NewChild(Scope* scope);
 
   ValueExecutionInfo* parent_{nullptr};  // not owned

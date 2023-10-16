@@ -888,9 +888,10 @@ void NewIRInterpreter::CalculateLastLiveOps() {
       Scope* inner_scope = InnerScope();
       paddle::framework::Variable* var = inner_scope->FindVar(
           value_exe_info_->GetNameById(static_cast<int>(var_id)));
-      PADDLE_ENFORCE_NOT_NULL(var,
-                              platform::errors::NotFound(
-                                  "Var(id=%d) should not be nullptr.", var_id));
+      PADDLE_ENFORCE_NOT_NULL(
+          var,
+          platform::errors::NotFound("Var(id=%d) should not be nullptr.",
+                                     static_cast<int>(var_id)));
       if (var->IsType<phi::DenseTensor>() || var->IsType<phi::SelectedRows>() ||
           var->IsType<LoDTensorArray>() ||
           var->IsType<phi::SparseCooTensor>() ||
