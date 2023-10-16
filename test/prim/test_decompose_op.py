@@ -24,12 +24,9 @@ from paddle.base import core
 from paddle.decomposition.decomp import (
     decompose_bwd_op,
     decompose_fwd_op,
-    get_global_grads_infos,
-    get_global_outputs_infos,
-    related_global_grads,
-    related_global_outputs,
-    replace_global_grads,
-    replace_global_outputs,
+    get_graph_outputs_infos,
+    related_graph_outputs,
+    replace_graph_outputs,
 )
 
 paddle.enable_static()
@@ -104,13 +101,13 @@ class TestDecomposeOp1(unittest.TestCase):
             (
                 related_fwd_ops,
                 related_fwd_ops_output_indexes,
-            ) = get_global_outputs_infos(
+            ) = get_graph_outputs_infos(
                 mp.global_block(), global_outputs
             )  # without update during execution
             (
                 related_bwd_ops,
                 related_bwd_ops_output_indexes,
-            ) = get_global_grads_infos(mp.global_block(), global_grads)
+            ) = get_graph_outputs_infos(mp.global_block(), global_grads)
 
             # setting "decompose" flag means decompsing composite op into primitive ops
             if flag == "decompose":
@@ -123,7 +120,7 @@ class TestDecomposeOp1(unittest.TestCase):
 
                     # if bwd_op has custom_vjp rule, then decompose bwd_op firstly and decompose fwd_op secondly
                     if core.has_custom_vjp(fwd_op):
-                        related_bwd_op_index = related_global_grads(
+                        related_bwd_op_index = related_graph_outputs(
                             global_grads, related_bwd_ops, bwd_op
                         )
                         new_grads = decompose_bwd_op(
@@ -134,14 +131,14 @@ class TestDecomposeOp1(unittest.TestCase):
                             fwd_inputs,
                         )
                         if related_bwd_op_index is not None:
-                            replace_global_grads(
+                            replace_graph_outputs(
                                 global_grads,
                                 new_grads,
                                 related_bwd_op_index,
                                 related_bwd_ops_output_indexes,
                             )
 
-                        related_fwd_op_index = related_global_outputs(
+                        related_fwd_op_index = related_graph_outputs(
                             global_outputs, related_fwd_ops, fwd_op
                         )
                         new_fwd_outputs = decompose_fwd_op(
@@ -150,7 +147,7 @@ class TestDecomposeOp1(unittest.TestCase):
                             simu_grad_var_to_var_map,
                         )
                         if related_fwd_op_index is not None:
-                            replace_global_outputs(
+                            replace_graph_outputs(
                                 global_outputs,
                                 new_fwd_outputs,
                                 related_fwd_op_index,
@@ -158,7 +155,7 @@ class TestDecomposeOp1(unittest.TestCase):
                             )
                     # if bwd_op has no custom_vjp rule, then decompose fwd_op into a set of primitive ops firstly and decompose bwd_op secondly
                     else:
-                        related_fwd_op_index = related_global_outputs(
+                        related_fwd_op_index = related_graph_outputs(
                             global_outputs, related_fwd_ops, fwd_op
                         )
                         new_fwd_outputs = decompose_fwd_op(
@@ -167,14 +164,14 @@ class TestDecomposeOp1(unittest.TestCase):
                             simu_grad_var_to_var_map,
                         )
                         if related_fwd_op_index is not None:
-                            replace_global_outputs(
+                            replace_graph_outputs(
                                 global_outputs,
                                 new_fwd_outputs,
                                 related_fwd_op_index,
                                 related_fwd_ops_output_indexes,
                             )
 
-                        related_bwd_op_index = related_global_grads(
+                        related_bwd_op_index = related_graph_outputs(
                             global_grads, related_bwd_ops, bwd_op
                         )
                         new_grads = decompose_bwd_op(
@@ -185,7 +182,7 @@ class TestDecomposeOp1(unittest.TestCase):
                             fwd_inputs,
                         )
                         if related_bwd_op_index is not None:
-                            replace_global_grads(
+                            replace_graph_outputs(
                                 global_grads,
                                 new_grads,
                                 related_bwd_op_index,
@@ -270,13 +267,13 @@ class TestDecomposeOp2(unittest.TestCase):
             (
                 related_fwd_ops,
                 related_fwd_ops_output_indexes,
-            ) = get_global_outputs_infos(
+            ) = get_graph_outputs_infos(
                 mp.global_block(), global_outputs
             )  # without update during execution
             (
                 related_bwd_ops,
                 related_bwd_ops_output_indexes,
-            ) = get_global_grads_infos(mp.global_block(), global_grads)
+            ) = get_graph_outputs_infos(mp.global_block(), global_grads)
 
             # setting "decompose" flag means decompsing composite op into primitive ops
             if flag == "decompose":
@@ -289,7 +286,7 @@ class TestDecomposeOp2(unittest.TestCase):
 
                     # if bwd_op has custom_vjp rule, then decompose bwd_op firstly and decompose fwd_op secondly
                     if core.has_custom_vjp(fwd_op):
-                        related_bwd_op_index = related_global_grads(
+                        related_bwd_op_index = related_graph_outputs(
                             global_grads, related_bwd_ops, bwd_op
                         )
                         new_grads = decompose_bwd_op(
@@ -300,14 +297,14 @@ class TestDecomposeOp2(unittest.TestCase):
                             fwd_inputs,
                         )
                         if related_bwd_op_index is not None:
-                            replace_global_grads(
+                            replace_graph_outputs(
                                 global_grads,
                                 new_grads,
                                 related_bwd_op_index,
                                 related_bwd_ops_output_indexes,
                             )
 
-                        related_fwd_op_index = related_global_outputs(
+                        related_fwd_op_index = related_graph_outputs(
                             global_outputs, related_fwd_ops, fwd_op
                         )
                         new_fwd_outputs = decompose_fwd_op(
@@ -316,7 +313,7 @@ class TestDecomposeOp2(unittest.TestCase):
                             simu_grad_var_to_var_map,
                         )
                         if related_fwd_op_index is not None:
-                            replace_global_outputs(
+                            replace_graph_outputs(
                                 global_outputs,
                                 new_fwd_outputs,
                                 related_fwd_op_index,
@@ -324,7 +321,7 @@ class TestDecomposeOp2(unittest.TestCase):
                             )
                     # if bwd_op has no custom_vjp rule, then decompose fwd_op into a set of primitive ops firstly and decompose bwd_op secondly
                     else:
-                        related_fwd_op_index = related_global_outputs(
+                        related_fwd_op_index = related_graph_outputs(
                             global_outputs, related_fwd_ops, fwd_op
                         )
                         new_fwd_outputs = decompose_fwd_op(
@@ -333,14 +330,14 @@ class TestDecomposeOp2(unittest.TestCase):
                             simu_grad_var_to_var_map,
                         )
                         if related_fwd_op_index is not None:
-                            replace_global_outputs(
+                            replace_graph_outputs(
                                 global_outputs,
                                 new_fwd_outputs,
                                 related_fwd_op_index,
                                 related_fwd_ops_output_indexes,
                             )
 
-                        related_bwd_op_index = related_global_grads(
+                        related_bwd_op_index = related_graph_outputs(
                             global_grads, related_bwd_ops, bwd_op
                         )
                         new_grads = decompose_bwd_op(
@@ -351,7 +348,7 @@ class TestDecomposeOp2(unittest.TestCase):
                             fwd_inputs,
                         )
                         if related_bwd_op_index is not None:
-                            replace_global_grads(
+                            replace_graph_outputs(
                                 global_grads,
                                 new_grads,
                                 related_bwd_op_index,
@@ -420,13 +417,13 @@ class TestDecomposeOp3(unittest.TestCase):
             (
                 related_fwd_ops,
                 related_fwd_ops_output_indexes,
-            ) = get_global_outputs_infos(
+            ) = get_graph_outputs_infos(
                 mp.global_block(), global_outputs
             )  # without update during execution
             (
                 related_bwd_ops,
                 related_bwd_ops_output_indexes,
-            ) = get_global_grads_infos(mp.global_block(), global_grads)
+            ) = get_graph_outputs_infos(mp.global_block(), global_grads)
 
             # setting "decompose" flag means decompsing composite op into primitive ops
             if flag == "decompose":
@@ -439,7 +436,7 @@ class TestDecomposeOp3(unittest.TestCase):
 
                     # if bwd_op has custom_vjp rule, then decompose bwd_op firstly and decompose fwd_op secondly
                     if core.has_custom_vjp(fwd_op):
-                        related_bwd_op_index = related_global_grads(
+                        related_bwd_op_index = related_graph_outputs(
                             global_grads, related_bwd_ops, bwd_op
                         )
                         new_grads = decompose_bwd_op(
@@ -450,14 +447,14 @@ class TestDecomposeOp3(unittest.TestCase):
                             fwd_inputs,
                         )
                         if related_bwd_op_index is not None:
-                            replace_global_grads(
+                            replace_graph_outputs(
                                 global_grads,
                                 new_grads,
                                 related_bwd_op_index,
                                 related_bwd_ops_output_indexes,
                             )
 
-                        related_fwd_op_index = related_global_outputs(
+                        related_fwd_op_index = related_graph_outputs(
                             global_outputs, related_fwd_ops, fwd_op
                         )
                         new_fwd_outputs = decompose_fwd_op(
@@ -466,7 +463,7 @@ class TestDecomposeOp3(unittest.TestCase):
                             simu_grad_var_to_var_map,
                         )
                         if related_fwd_op_index is not None:
-                            replace_global_outputs(
+                            replace_graph_outputs(
                                 global_outputs,
                                 new_fwd_outputs,
                                 related_fwd_op_index,
@@ -474,7 +471,7 @@ class TestDecomposeOp3(unittest.TestCase):
                             )
                     # if bwd_op has no custom_vjp rule, then decompose fwd_op into a set of primitive ops firstly and decompose bwd_op secondly
                     else:
-                        related_fwd_op_index = related_global_outputs(
+                        related_fwd_op_index = related_graph_outputs(
                             global_outputs, related_fwd_ops, fwd_op
                         )
                         new_fwd_outputs = decompose_fwd_op(
@@ -483,14 +480,14 @@ class TestDecomposeOp3(unittest.TestCase):
                             simu_grad_var_to_var_map,
                         )
                         if related_fwd_op_index is not None:
-                            replace_global_outputs(
+                            replace_graph_outputs(
                                 global_outputs,
                                 new_fwd_outputs,
                                 related_fwd_op_index,
                                 related_fwd_ops_output_indexes,
                             )
 
-                        related_bwd_op_index = related_global_grads(
+                        related_bwd_op_index = related_graph_outputs(
                             global_grads, related_bwd_ops, bwd_op
                         )
                         new_grads = decompose_bwd_op(
@@ -501,7 +498,7 @@ class TestDecomposeOp3(unittest.TestCase):
                             fwd_inputs,
                         )
                         if related_bwd_op_index is not None:
-                            replace_global_grads(
+                            replace_graph_outputs(
                                 global_grads,
                                 new_grads,
                                 related_bwd_op_index,
