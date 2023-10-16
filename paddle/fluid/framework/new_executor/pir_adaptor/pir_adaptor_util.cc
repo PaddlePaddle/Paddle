@@ -641,7 +641,7 @@ void HandleForInplaceOp(pir::Operation* op,
       std::string var_name = value_exe_info->GetVarName(view_value);
       VLOG(4) << "view: " << value_name << " -> " << view_name
               << " (var: " << var_name << ")";
-      if (value_exe_info->HasLocalValue(inplace_value)) {
+      if (value_exe_info->HasLocalValue(view_value)) {
         value_exe_info->AddValue2VarName(value, var_name);
       }
     } else {
