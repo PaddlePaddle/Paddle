@@ -44,9 +44,11 @@ namespace paddle {
 namespace framework {
 
 class CondInstruction;
+class WhileInstruction;
 class ValueExecutionInfo {
  public:
   friend class CondInstruction;
+  friend class WhileInstruction;
 
   explicit ValueExecutionInfo(Scope* scope) : scope_(scope) {}
 
@@ -285,7 +287,12 @@ void BuildPhiContext(pir::Operation* op,
 
       continue;
     }
-
+    PADDLE_ENFORCE_NE(
+        attr_map.find(t),
+        attr_map.end(),
+        phi::errors::NotFound("Not found %s in attr_map, it maybe need mapping "
+                              "it in OpTranslator.",
+                              t));
     auto& attr_type_name = op_yaml_info.AttrTypeName(t);
     if (attr_type_name == "paddle::dialect::IntArrayAttribute") {
       ctx->EmplaceBackAttr(
@@ -299,6 +306,8 @@ void BuildPhiContext(pir::Operation* op,
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<pir::Int64Attribute>().data());
     } else if (attr_type_name == "pir::FloatAttribute") {
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<pir::FloatAttribute>().data());
+    } else if (attr_type_name == "pir::DoubleAttribute") {
+      ctx->EmplaceBackAttr(attr_map[t].dyn_cast<pir::DoubleAttribute>().data());
     } else if (attr_type_name == "pir::BoolAttribute") {
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<pir::BoolAttribute>().data());
     } else if (attr_type_name == "pir::StrAttribute") {

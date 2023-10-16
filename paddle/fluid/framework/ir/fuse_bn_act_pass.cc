@@ -326,8 +326,8 @@ void FuseBatchNormActPass::ReLinkNodes(Graph *graph,
     IR_OP_VAR_LINK(fused_op, out);
   }
 
-  nodes2delete.insert(std::move(op_1));
-  nodes2delete.insert(std::move(op_2));
+  nodes2delete.insert(op_1);
+  nodes2delete.insert(op_2);
 
   GraphSafeRemoveNodes(graph, nodes2delete);
 }
