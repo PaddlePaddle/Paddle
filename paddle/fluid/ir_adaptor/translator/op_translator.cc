@@ -677,7 +677,7 @@ void OpTranscriber::RecordOpResultMapping(pir::IrContext* ctx,
     pir::OpResult value = operation->result(idx_in_op);
     bool generated_by_vector = value.type().isa<pir::VectorType>();
 
-    param_map->insert(
+    param_map->UpdateValue(
         arg_name,
         VariableDefiningInfo(
             value,
@@ -1283,7 +1283,7 @@ struct FillConstant2FullTranscriber : public OpTranscriber {
         {"dtype",
          paddle::dialect::DataTypeAttribute::get(
              ctx,
-             paddle::dialect::VarTypeToDataType(
+             paddle::translator::VarTypeToDataType(
                  static_cast<paddle::framework::proto::VarType_Type>(dtype)))}};
 
     int place_type = PADDLE_GET_CONST(int, op_desc.GetAttr("place_type"));
@@ -1390,7 +1390,7 @@ struct FillConstant2FullWithTensorTranscriber : public OpTranscriber {
         {"dtype",
          paddle::dialect::DataTypeAttribute::get(
              ctx,
-             paddle::dialect::VarTypeToDataType(
+             paddle::translator::VarTypeToDataType(
                  static_cast<paddle::framework::proto::VarType_Type>(dtype)))}};
     return attribute_map;
   }
@@ -1439,7 +1439,7 @@ pir::OpResult TranslateNumClassesForOneHot(
                "%s should be existed in one_hot_v2 as input depth_tensor.",
                legacy_vars[0]);
     auto defining_info = param_map->at(legacy_vars[0]);
-    return defining_info.value;
+    return defining_info.value.dyn_cast<pir::OpResult>();
   }
 
   auto& attribute_translator = AttributeTranslator::instance();
@@ -1529,7 +1529,7 @@ struct ElementwiseTranscriber : public OpTranscriber {
           ctx, param_map, block, x_defining_info, x_name);
       x_defining_info = param_map->at(x_name);
     }
-    pir::OpResult x_value = x_defining_info.value;
+    pir::OpResult x_value = x_defining_info.value.dyn_cast<pir::OpResult>();
     IR_ENFORCE(x_value,
                "Expected op[%s]'s input %s is not null",
                op_desc.Type(),
@@ -1560,7 +1560,7 @@ struct ElementwiseTranscriber : public OpTranscriber {
           ctx, param_map, block, y_defining_info, y_name);
       y_defining_info = param_map->at(y_name);
     }
-    pir::OpResult y_value = y_defining_info.value;
+    pir::OpResult y_value = y_defining_info.value.dyn_cast<pir::OpResult>();
     IR_ENFORCE(y_value,
                "Expected op[%s]'s input %s is not null",
                op_desc.Type(),
@@ -1680,7 +1680,7 @@ struct ElementwiseGradTranscriber : public OpTranscriber {
                op_desc.Type(),
                y_name);
     auto y_defining_info = param_map->at(y_name);
-    pir::OpResult y_value = y_defining_info.value;
+    pir::OpResult y_value = y_defining_info.value.dyn_cast<pir::OpResult>();
     IR_ENFORCE(y_value,
                "Expected op[%s]'s input %s is not null",
                op_desc.Type(),
@@ -1698,8 +1698,8 @@ struct ElementwiseGradTranscriber : public OpTranscriber {
     pir::OpResult value = operation->result(idx_in_op);
     pir::Builder builder(ctx, operation->GetParent());
     auto reshape_op = builder.Build<dialect::ReshapeOp>(value, y_shape);
-    param_map->insert(y_grad_var_name,
-                      VariableDefiningInfo(reshape_op.out(), false, -1));
+    param_map->UpdateValue(y_grad_var_name,
+                           VariableDefiningInfo(reshape_op.out(), false, -1));
   }
 };
 
@@ -1771,7 +1771,7 @@ struct SetValueWithTensorOpTranscriber : public SetValueOpTranscriber {
             ctx, param_map, block, defining_info, var_name);
         defining_info = param_map->at(var_name).value;
       }
-      return defining_info.value;
+      return defining_info.value.dyn_cast<pir::OpResult>();
     };
   }
 };
@@ -1866,8 +1866,8 @@ struct FusedFeedForwardOpTranscriber : public OpTranscriber {
       auto output_var = output_vars[0];
       auto fused_feedforward_op =
           operation->dyn_cast<dialect::FusedFeedforwardOp>();
-      param_map->insert(output_var,
-                        VariableDefiningInfo{fused_feedforward_op.out()});
+      param_map->UpdateValue(output_var,
+                             VariableDefiningInfo{fused_feedforward_op.out()});
     }
   }
 };
