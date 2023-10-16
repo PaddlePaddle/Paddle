@@ -31,7 +31,7 @@ def deal_qkv(init_q, init_k, init_v):
 
 def mult_qkv(value, cos_tensor, sin_tensor):
     rotate_half_q = paddle.reshape(
-        paddle.stack([value[:, :, :, 1::2], value[:, :, :, 0::2]], axis=-1),
+        paddle.stack([-value[:, :, :, 1::2], value[:, :, :, 0::2]], axis=-1),
         paddle.shape(value),
     )
     query = paddle.add(
@@ -59,7 +59,7 @@ def mult_qkv_rotate_half(value, cos_tensor, sin_tensor):
     return query
 
 
-def get_sin_cos_tensor(seq_len, head_dim, sign):
+def get_sin_cos_tensor(seq_len, head_dim, sign=1):
     pos_seq = paddle.arange(0, seq_len, 1, dtype="float32")
     indices = paddle.arange(0, head_dim, 2, dtype="float32")
 
@@ -149,15 +149,17 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         tmp.stop_gradient = False
         return tmp
 
-    def get_inputs(self, seed):
+    def get_inputs(self, seed, with_sin_cos):
         paddle.disable_static()
         paddle.seed(seed)
         tensor_q = self.get_paddle_tensor()
         tensor_k = self.get_paddle_tensor()
         tensor_v = self.get_paddle_tensor()
 
-        tensor_sin, tensor_cos = get_sin_cos_tensor(
-            tensor_q.shape[1], tensor_q.shape[3], 1
+        tensor_sin, tensor_cos = (
+            get_sin_cos_tensor(tensor_q.shape[1], tensor_q.shape[3], 1)
+            if with_sin_cos
+            else (None, None)
         )
         return tensor_q, tensor_k, tensor_v, tensor_sin, tensor_cos
 
@@ -174,9 +176,9 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         bw = []
 
         tensor_q, tensor_k, tensor_v, tensor_sin, tensor_cos = self.get_inputs(
-            seed
+            seed, with_sin_cos
         )
-        print('position_ids', position_ids)
+
         out_q, out_k, out_v = rope_function(
             tensor_q,
             tensor_k,
@@ -212,7 +214,6 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
             fused_rotary_position_embedding, seed=self.seed
         )
         for i in range(len(p_fw)):
-            print(p_fw[i].numpy(), '===', f_fw[i].numpy())
             np.testing.assert_allclose(
                 p_fw[i].numpy(), f_fw[i].numpy(), rtol=1e-05
             )
@@ -282,11 +283,12 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
 
     def test_static(self):
         tensor_q, tensor_k, tensor_v, tensor_sin, tensor_cos = self.get_inputs(
-            self.seed
+            self.seed, True
         )
         p_fw, p_bw = self.get_forward_backward(
             paddle_fused_rotary_position_embedding,
             seed=self.seed,
+            use_neox_rotary_style=False,
         )
 
         paddle.enable_static()
