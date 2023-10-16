@@ -38,7 +38,7 @@
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/utils/flags.h"
 
-PHI_DEFINE_EXPORTED_bool(print_ir, false, "Whether print ir debug str.");
+PHI_DECLARE_bool(print_ir);
 namespace paddle {
 namespace dialect {
 
