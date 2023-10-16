@@ -294,9 +294,9 @@ def to_static(
         nonlocal enable_fallback
         if enable_fallback is None:
             flag = os.environ.get("ENABLE_FALL_BACK", None)
-            if flag == "True":
+            if flag == "True" or flag is None:
                 enable_fallback = True
-            else:  # None or True
+            else:  # False
                 enable_fallback = False
 
         StaticClass = StaticFunctionClass = {
