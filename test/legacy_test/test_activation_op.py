@@ -2069,16 +2069,16 @@ class TestSin(TestActivation, TestParameter):
         super().test_out_name()
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         # TODO(ScottWong98): set `check_prim=False` when `fill_any_like` supports `complex` dtype
         if self.dtype == np.complex64 or self.dtype == np.complex128:
-            self.check_grad(['X'], 'Out', check_prim=False, check_new_ir=True)
+            self.check_grad(['X'], 'Out', check_prim=False, check_pir=True)
         else:
-            self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
+            self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
 
     def if_enable_cinn(self):
         pass
@@ -4673,7 +4673,7 @@ create_test_act_fp16_class(TestCos)
 create_test_act_fp16_class(TestTan)
 create_test_act_fp16_class(TestCosh)
 create_test_act_fp16_class(TestAcos)
-create_test_act_fp16_class(TestSin, check_new_ir=True)
+create_test_act_fp16_class(TestSin, check_pir=True)
 create_test_act_fp16_class(TestSinh)
 create_test_act_fp16_class(TestAsin)
 create_test_act_fp16_class(TestAtan)
@@ -4823,7 +4823,7 @@ create_test_act_bf16_class(TestCos)
 create_test_act_bf16_class(TestTan)
 create_test_act_bf16_class(TestCosh)
 create_test_act_bf16_class(TestAcos)
-create_test_act_bf16_class(TestSin, check_new_ir=True)
+create_test_act_bf16_class(TestSin, check_pir=True)
 create_test_act_bf16_class(TestSinh)
 create_test_act_bf16_class(TestAsin)
 create_test_act_bf16_class(TestAtan)
