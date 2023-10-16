@@ -84,13 +84,11 @@ class TestDropoutOp(OpTest):
         self.enable_check_static_comp = False
 
     def test_check_output(self):
-        self.check_output(
-            check_prim=True, check_prim_pir=True, check_new_ir=True
-        )
+        self.check_output(check_prim=True, check_prim_pir=True, check_pir=True)
 
     def test_check_grad_normal(self):
         # Now in dy2st mode x_grad = [], so set check_prim=False
-        self.check_grad(['X'], 'Out', check_prim=False, check_new_ir=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_pir=True)
 
 
 class TestDropoutOp_ZeroDim(TestDropoutOp):
@@ -129,13 +127,11 @@ class TestDropoutOpInput1d(OpTest):
         self.enable_check_static_comp = False
 
     def test_check_output(self):
-        self.check_output(
-            check_prim=True, check_prim_pir=True, check_new_ir=True
-        )
+        self.check_output(check_prim=True, check_prim_pir=True, check_pir=True)
 
     def test_check_grad_normal(self):
         # Now in dy2st mode x_grad = [], so set check_prim=False
-        self.check_grad(['X'], 'Out', check_prim=False, check_new_ir=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_pir=True)
 
 
 class TestDropoutOp2(TestDropoutOp):
@@ -198,9 +194,7 @@ class TestDropoutOp4(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(
-            check_prim=True, check_prim_pir=True, check_new_ir=True
-        )
+        self.check_output(check_prim=True, check_prim_pir=True, check_pir=True)
 
 
 @skip_check_grad_ci(reason="For inference, check_grad is not required.")
@@ -217,9 +211,7 @@ class TestDropoutOp5(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(
-            check_prim=True, check_prim_pir=True, check_new_ir=True
-        )
+        self.check_output(check_prim=True, check_prim_pir=True, check_pir=True)
 
 
 class TestDropoutOp6(TestDropoutOp):
@@ -281,9 +273,7 @@ class TestDropoutOp8(OpTest):
         self.outputs = {'Out': self.inputs['X']}
 
     def test_check_output(self):
-        self.check_output(
-            check_prim=True, check_prim_pir=True, check_new_ir=True
-        )
+        self.check_output(check_prim=True, check_prim_pir=True, check_pir=True)
 
 
 @skip_check_grad_ci(reason="For inference, check_grad is not required.")
@@ -302,9 +292,7 @@ class TestDropoutOp9(OpTest):
         self.outputs = {'Out': self.inputs['X']}
 
     def test_check_output(self):
-        self.check_output(
-            check_prim=True, check_prim_pir=True, check_new_ir=True
-        )
+        self.check_output(check_prim=True, check_prim_pir=True, check_pir=True)
 
 
 class TestDropoutOpWithSeed(OpTest):
@@ -331,9 +319,7 @@ class TestDropoutOpWithSeed(OpTest):
 
     def test_check_output(self):
         # ir backward don't support of variable derivation of itself
-        self.check_output(
-            check_prim=True, check_prim_pir=False, check_new_ir=True
-        )
+        self.check_output(check_prim=True, check_prim_pir=False, check_pir=True)
 
     def test_check_grad_normal(self):
         # Now in dy2st mode x_grad = [], so set check_prim=False
@@ -342,7 +328,7 @@ class TestDropoutOpWithSeed(OpTest):
             'Out',
             max_relative_error=0.05,
             check_prim=False,
-            check_new_ir=True,
+            check_pir=True,
         )
 
 
@@ -380,11 +366,11 @@ class TestFP16DropoutOp(OpTest):
             atol=1e-3,
             check_prim=True,
             check_prim_pir=True,
-            check_new_ir=True,
+            check_pir=True,
         )
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_new_ir=True)
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 @unittest.skipIf(
@@ -419,9 +405,7 @@ class TestBF16DropoutOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(
-            check_prim=True, check_prim_pir=True, check_new_ir=True
-        )
+        self.check_output(check_prim=True, check_prim_pir=True, check_pir=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -429,7 +413,7 @@ class TestBF16DropoutOp(OpTest):
             'Out',
             check_prim=True,
             check_prim_pir=True,
-            check_new_ir=True,
+            check_pir=True,
         )
 
 

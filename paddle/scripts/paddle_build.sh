@@ -932,24 +932,69 @@ set -ex
     fi
 }
 
+function check_run_sot_ci() {
+    set +x
+    # use "git commit -m 'message, test=sot'" to force ci to run
+    COMMIT_RUN_CI=$(git log -1 --pretty=format:"%s" | grep -w "test=sot" || true)
+    # check pr title
+    TITLE_RUN_CI=$(curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "sot" || true)
+    if [[ ${COMMIT_RUN_CI} || ${TITLE_RUN_CI} ]]; then
+        set -x
+        return
+    fi
+
+    # git diff
+    SOT_FILE_LIST=(
+        paddle/fluid/operators/run_program_op.h
+        paddle/fluid/operators/run_program_op.cu
+        paddle/fluid/operators/run_program_op.cc
+        paddle/fluid/eager/to_static
+        paddle/fluid/pybind/
+        python/
+        test/sot
+    )
+
+    run_sot_ut="OFF"
+    for change_file in $(git diff --name-only upstream/develop);
+    do
+        for sot_file in ${SOT_FILE_LIST[@]};
+        do
+            if [[ ${change_file} =~ ^"${sot_file}".* ]]; then
+                echo "Detect change about SOT: "
+                echo "Changes related to the sot code were detected: " ${change_file}
+                run_sot_ut="ON"
+                break
+            fi
+        done
+        if [[ "ON" == ${run_sot_ut} ]]; then
+            break
+        fi
+    done
+
+    if [[ "OFF" == ${run_sot_ut} ]]; then
+        echo "No SOT-related changes were found"
+        echo "Skip SOT UT CI"
+        exit 0
+    fi
+    set -x
+}
+
 function run_sot_test() {
-    PADDLE_SOT_ROOT=$1
-    PY_VERSION=$2
+    PY_VERSION=$1
     PYTHON_WITH_SPECIFY_VERSION=python$PY_VERSION
     PY_VERSION_NO_DOT=`echo $PY_VERSION | sed 's/\.//g'`
 
     export STRICT_MODE=1
     export COST_MODEL=False
     export MIN_GRAPH_SIZE=0
+    export SOT_LOG_LEVEL=0
 
     # Install PaddlePaddle
     $PYTHON_WITH_SPECIFY_VERSION -m pip install ${PADDLE_ROOT}/dist/paddlepaddle-0.0.0-cp${PY_VERSION_NO_DOT}-cp${PY_VERSION_NO_DOT}-linux_x86_64.whl
     # Install PaddleSOT
-    cd $PADDLE_SOT_ROOT
-    $PYTHON_WITH_SPECIFY_VERSION -m pip install -e .
+    cd $PADDLE_ROOT/test/sot/
 
     # Run unittest
-    cd tests
     failed_tests=()
 
     for file in ./test_*.py; do
@@ -4127,15 +4172,14 @@ function main() {
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       cicheck_sot)
+        check_run_sot_ci
         export WITH_SHARED_PHI=ON
-        PADDLE_SOT_ROOT=${PADDLE_ROOT}/sot
-        git clone https://github.com/PaddlePaddle/PaddleSOT.git ${PADDLE_SOT_ROOT}
         PYTHON_VERSIONS=(3.8 3.9 3.10 3.11)
         for PY_VERSION in ${PYTHON_VERSIONS[@]}; do
             ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
             ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip
             run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
-            run_sot_test $PADDLE_SOT_ROOT $PY_VERSION
+            run_sot_test $PY_VERSION
             rm -rf ${PADDLE_ROOT}/build/CMakeCache.txt
         done
         ;;

@@ -59,7 +59,7 @@ class TestMultinomialOp(OpTest):
         self.attrs = {"num_samples": 100000, "replacement": True}
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output, check_new_ir=True)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def sample_output(self, out):
         return sample_output_one_dimension(out, 4)
@@ -122,7 +122,7 @@ class TestMultinomialFP16Op(OpTest):
         self.attrs = {"num_samples": 100000, "replacement": True}
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output, check_new_ir=True)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def sample_output(self, out):
         return sample_output_one_dimension(out, 4)
