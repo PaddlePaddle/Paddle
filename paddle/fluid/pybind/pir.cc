@@ -465,6 +465,16 @@ phi::DataType GetOpResultDtype(const OpResult &result) {
   }
 }
 
+const phi::DDim &GetOpResultDims(const OpResult &result) {
+  if (result.type().isa<DenseTensorType>()) {
+    return result.type().dyn_cast<DenseTensorType>().dims();
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get shape for dense "
+        "tensor."));
+  }
+}
+
 #define OVERRIDE_OPERATOR(operator, api, other_type)              \
   op_result.def(#operator, [](OpResult &self, other_type other) { \
     return paddle::dialect::api(self, other);                     \
@@ -618,6 +628,8 @@ void BindOpResult(py::module *m) {
                return false;
              }
            })
+      .def("numel",
+           [](OpResult &self) { return phi::product(GetOpResultDims(self)); })
       .def("replace_all_uses_with",
            [](OpResult &self, OpResult &op_result) {
              self.ReplaceAllUsesWith(op_result);
@@ -650,16 +662,7 @@ void BindOpResult(py::module *m) {
           })
       .def_property(
           "shape",
-          [](OpResult &self) {
-            if (self.type().isa<DenseTensorType>()) {
-              return phi::vectorize(
-                  self.type().dyn_cast<DenseTensorType>().dims());
-            } else {
-              PADDLE_THROW(phi::errors::InvalidArgument(
-                  "Currently, we can only get shape for dense "
-                  "tensor."));
-            }
-          },
+          [](OpResult &self) { return phi::vectorize(GetOpResultDims(self)); },
           [](OpResult &self, const std::vector<int> &shape) {
             PADDLE_THROW(phi::errors::InvalidArgument(
                 "can't set shape when building static graph"));
