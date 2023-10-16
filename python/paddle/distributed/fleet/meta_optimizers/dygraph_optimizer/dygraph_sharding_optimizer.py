@@ -334,7 +334,7 @@ class DygraphShardingOptimizer:
             for p in self._parameter_list:
                 if hasattr(p, "main_grad") and p.main_grad is not None:
                     assert p.grad is None
-                    p.main_grad.scale(1.0 / self.accumulate_steps)
+                    p.main_grad = p.main_grad.scale(1.0 / self.accumulate_steps)
                 elif p.grad is not None:
                     p.grad = p.grad.scale(1.0 / self.accumulate_steps)
 
