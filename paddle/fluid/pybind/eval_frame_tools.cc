@@ -19,6 +19,7 @@
 
 #include <Python.h>
 #include "glog/logging.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 
@@ -215,6 +216,8 @@ void CodeStatus::clear() {
 /*========================== interfaces ===============================*/
 
 int need_skip(FrameObject* frame) {
+  paddle::platform::RecordEvent ecord_event(
+      "need_skip", paddle::platform::TracerEventType::UserDefined, 1);
   auto& skip_info = SkipCodeInfo::Instance();
   PyCodeObject* code = frame->f_code;  // NOLINT
   PyObject* co_filename = code->co_filename;
@@ -243,6 +246,8 @@ int need_skip(FrameObject* frame) {
 }
 
 int is_code_without_graph(PyCodeObject* code) {
+  paddle::platform::RecordEvent ecord_event(
+      "need_skip", paddle::platform::TracerEventType::UserDefined, 1);
   auto& code_status = CodeStatus::Instance();
   return code_status.is_code_without_graph(code);
 }
