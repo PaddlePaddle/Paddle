@@ -174,7 +174,7 @@ def vector_to_parameters(vec, parameters, name=None):
             inputs={'X': [vec]},
             outputs={'Out': parameters},
             attrs={'axis': 0, 'sections': sections},
-            stop_gradient=False,
+            stop_gradient=True,
         )
 
     for i, param in enumerate(parameters):
