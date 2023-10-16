@@ -28,6 +28,10 @@ namespace platform {
 
 CustomTracer::CustomTracer(const std::string& dev_type) : dev_type_(dev_type) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
+  auto selected_devices = phi::DeviceManager::GetSelectedDeviceList(dev_type_);
+  if (selected_devices.size()) {
+    phi::DeviceManager::SetDevice(dev_type_, selected_devices[0]);
+  }
   phi::DeviceManager::ProfilerInitialize(dev_type_, &collector_, &context_);
 #endif
 }
