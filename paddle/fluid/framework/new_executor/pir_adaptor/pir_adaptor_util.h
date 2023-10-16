@@ -80,6 +80,8 @@ class ValueExecutionInfo {
   void ResetVarList(int id, Variable* var);
 
   /// Check a value exist in the ValueExecutionInfo or any of its ancestors.
+  bool HasVar(const std::string& var_name) const;
+
   bool HasValue(::pir::Value value) const;
 
   /// Check a value exist in the ValueExecutionInfo.
@@ -102,6 +104,10 @@ class ValueExecutionInfo {
   int GetLocalVarId(const Variable* var) const;
 
  private:
+  bool HasVarInternal(const std::string& var_name) const;
+
+  bool HasVarLocally(const std::string& var_name) const;
+
   bool HasValueInternal(::pir::Value value) const;
 
   bool HasValueLocally(::pir::Value value) const;

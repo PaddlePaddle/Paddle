@@ -627,7 +627,7 @@ std::string NewIRInterpreter::DebugValueInfo() {
     PADDLE_ENFORCE((bool)kv.first,
                    platform::errors::PreconditionNotMet(
                        "vlaue(%s) should not be nullptr", kv.second));
-    PADDLE_ENFORCE(value_exe_info_->GetVarName2Id().count(kv.second) > 0,
+    PADDLE_ENFORCE(value_exe_info_->HasVar(kv.second) > 0,
                    platform::errors::PreconditionNotMet(
                        "var(%s) should exist in var_name_2_id_", kv.second));
     auto* var = InnerScope()->FindVar(kv.second);

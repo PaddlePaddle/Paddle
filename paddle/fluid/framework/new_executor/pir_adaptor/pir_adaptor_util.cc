@@ -157,6 +157,10 @@ void ValueExecutionInfo::ResetVarList(int id, Variable* var) {
   var_list_[id] = var;
 }
 
+bool ValueExecutionInfo::HasVar(const std::string& var_name) const {
+  return HasVarInternal(var_name);
+}
+
 bool ValueExecutionInfo::HasValue(::pir::Value value) const {
   return HasValueInternal(value);
 }
@@ -195,6 +199,21 @@ int ValueExecutionInfo::GetLocalVarId(::pir::Value value) const {
 
 int ValueExecutionInfo::GetLocalVarId(const Variable* var) const {
   return GetVarIdLocally(var);
+}
+
+bool ValueExecutionInfo::HasVarInternal(const std::string& var_name) const {
+  if (HasVarLocally(var_name)) {
+    return true;
+  }
+  return (parent_ == nullptr) ? false : parent_->HasVarInternal(var_name);
+}
+
+bool ValueExecutionInfo::HasVarLocally(const std::string& var_name) const {
+  auto it = var_name_2_id_.find(var_name);
+  if (it != var_name_2_id_.end()) {
+    return true;
+  }
+  return false;
 }
 
 bool ValueExecutionInfo::HasValueInternal(::pir::Value value) const {
