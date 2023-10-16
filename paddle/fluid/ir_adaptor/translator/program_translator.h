@@ -50,12 +50,12 @@ class ConditionBlockCombination {
   ConditionBlockCombination(const ::paddle::framework::BlockDesc& src_block,
                             const std::vector<uint64_t>& op_ids);
   const std::string& CondVarName() const;
+  int TrueBlockId() const;
+  int FalseBlockId() const;
   size_t OutputSize() const;
   std::vector<::paddle::framework::VarDesc*> OutputVars() const;
-  const std::vector<std::string>& TrueBlockOutputVarNames() const;
-  int TrueBlockId() const;
+  std::vector<std::string> TrueBlockOutputVarNames() const;
   std::vector<std::string> FalseBlockOutputVarNames() const;
-  int FalseBlockId() const;
 
  private:
   bool Verify(const std::vector<::paddle::framework::OpDesc*>& op_list);
@@ -63,8 +63,29 @@ class ConditionBlockCombination {
   std::vector<::paddle::framework::OpDesc*> op_list_;
 };
 
-using TranslationContext =
-    std::unordered_map<std::string, VariableDefiningInfo>;
+class TranslationContext {
+ public:
+  using Key = std::string;
+  using Value = VariableDefiningInfo;
+  using ValueList = std::vector<Value>;
+  using Conatiner = std::unordered_map<Key, ValueList>;
+
+  TranslationContext() {}
+  ~TranslationContext() {}
+
+  const Value& operator[](const Key& key) const;
+  const Value& at(const Key& key) const;
+  size_t count(const Key& key)
+      const;  // Caution: not exactly same as count in stl library
+
+  void insert(const Key& key, const Value& value);
+
+  Conatiner::const_iterator begin() const { return container_.begin(); }
+  Conatiner::const_iterator end() const { return container_.end(); }
+
+ private:
+  Conatiner container_;
+};
 
 class ProgramTranslator {
   using ProgramDesc = ::paddle::framework::ProgramDesc;
@@ -77,6 +98,8 @@ class ProgramTranslator {
                              pir::Program* program);
 
   void Translate();
+
+  std::unordered_map<std::string, std::vector<pir::Value>> VarDesc2Value();
 
  private:
   const ProgramDesc* legacy_program_;  // not owned
@@ -101,7 +124,8 @@ class ProgramTranslator {
                       uint64_t start_id,
                       uint64_t end_id,
                       pir::Block* dest_block,
-                      bool for_cond_block = false);
+                      bool for_cond_block = false,
+                      std::vector<std::string> skip_cond_assign = {});
   void TranslateGeneralOperation(const OpDesc* src_op, pir::Block* dest_block);
   void GetParameterForSingleBlock(const BlockDesc& block);
   void InsertOperationToSingleBlock(const BlockDesc& block);

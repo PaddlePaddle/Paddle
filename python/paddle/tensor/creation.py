@@ -692,6 +692,9 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
             # fix numpy default dtype
             if data.dtype in ['float16', 'float32', 'float64']:
                 data = data.astype(paddle.get_default_dtype())
+            # Windows default type is 'int32', while Linux/Mac is 'int64'. Unify they.
+            elif data.dtype in ['int32']:
+                data = data.astype("int64")
 
         if dtype:
             target_dtype = dtype
@@ -880,28 +883,57 @@ def full_like(x, fill_value, dtype=None, name=None):
 
 
 def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
+    def contain_var(list_or_tuple):
+        for item in list_or_tuple:
+            if isinstance(item, paddle.pir.OpResult):
+                return True
+        return False
+
+    def get_shape_tensor(list_shape, place):
+        shape_tensor_list = []
+        for dim in list_shape:
+            if isinstance(dim, paddle.pir.OpResult):
+                dim.stop_gradient = True
+                if convert_dtype(dim.dtype) != 'int32':
+                    dim = paddle.cast(x=dim, dtype='int32')
+                shape_tensor_list.append(dim)
+            else:
+                temp_out = _C_ops.full([1], dim, core.DataType.INT32, place)
+                shape_tensor_list.append(temp_out)
+        return shape_tensor_list
+
     if in_dynamic_or_pir_mode():
         place = _current_expected_place()
         if force_cpu:
             place = core.CPUPlace()
-        if isinstance(shape, (list, tuple)):
-            shape = paddle.utils.convert_shape_to_list(shape)
 
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
+        if in_dynamic_mode():
+            value = float(value)
+            if isinstance(shape, (list, tuple)):
+                shape = paddle.utils.convert_shape_to_list(shape)
+
+        else:
+            if isinstance(shape, (list, tuple)):
+                if contain_var(shape):
+                    shape = get_shape_tensor(shape, place)
+            elif isinstance(shape, paddle.pir.OpResult):
+                pass
+            else:
+                TypeError("Shape only supports OpReslut, or list, or tuple.")
+
         if out is None:
-            value = float(value) if in_dynamic_mode() else value
             out = _C_ops.full(shape, value, dtype, place)
             out.stop_gradient = True
             return out
 
         if out is not None:
-            value = float(value) if in_dynamic_mode() else value
-            # final state mode is support out is not None.
             _C_ops.full_(out, shape, value, dtype, place)
             out.stop_gradient = True
             return out
+
     else:
         attrs = {'force_cpu': force_cpu}
         dtype = convert_dtype(dtype)
@@ -2264,22 +2296,16 @@ def assign(x, output=None):
             )
             dtype = core.DataType.FLOAT32
 
-        if dtype == core.VarDesc.VarType.BOOL or dtype == core.DataType.BOOL:
+        if dtype in [core.VarDesc.VarType.BOOL, core.DataType.BOOL]:
             value_name = "bool_values"
             values = [int(v) for v in input.flat]
-        elif (
-            dtype == core.VarDesc.VarType.FP32 or dtype == core.DataType.FLOAT32
-        ):
+        elif dtype in [core.VarDesc.VarType.FP32, core.DataType.FLOAT32]:
             value_name = "fp32_values"
             values = [float(v) for v in input.flat]
-        elif (
-            dtype == core.VarDesc.VarType.INT32 or dtype == core.DataType.INT32
-        ):
+        elif dtype in [core.VarDesc.VarType.INT32, core.DataType.INT32]:
             value_name = "int32_values"
             values = [int(v) for v in input.flat]
-        elif (
-            dtype == core.VarDesc.VarType.INT64 or dtype == core.DataType.INT64
-        ):
+        elif dtype in [core.VarDesc.VarType.INT64, core.DataType.INT64]:
             value_name = "int64_values"
             values = [int(v) for v in input.flat]
         else:

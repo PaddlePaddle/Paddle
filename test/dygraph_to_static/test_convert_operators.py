@@ -15,7 +15,11 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test, test_and_compare_with_new_ir
+from dygraph_to_static_util import (
+    ast_only_test,
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 
@@ -40,6 +44,7 @@ net = ForwardNotExist()
 net.forward = "A string so that convert forward will fail"
 
 
+@dy2static_unittest
 class TestConvertCall(unittest.TestCase):
     # fallback mode will raise a InnerError, it's ok.
     @ast_only_test
@@ -68,6 +73,7 @@ class TestConvertCall(unittest.TestCase):
         self.assertEqual(callable_list(1, 2), 3)
 
 
+@dy2static_unittest
 class TestConvertShapeCompare(unittest.TestCase):
     def test_non_variable(self):
         self.assertEqual(
@@ -204,6 +210,7 @@ class ShapeLayer(paddle.nn.Layer):
         return out
 
 
+@dy2static_unittest
 class TestChooseShapeAttrOrApiWithLayer(unittest.TestCase):
     @test_and_compare_with_new_ir(False)
     def test_tensor_shape(self):
@@ -214,6 +221,7 @@ class TestChooseShapeAttrOrApiWithLayer(unittest.TestCase):
         np.testing.assert_array_equal(out.numpy(), x.numpy())
 
 
+@dy2static_unittest
 class TestIfElseNoValue(unittest.TestCase):
     @test_and_compare_with_new_ir(False)
     def test_else_ret_none(self):

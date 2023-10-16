@@ -15,9 +15,12 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import (
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    IrMode,
+    ToStaticMode,
     ast_only_test,
-    dy2static_unittest,
+    disable_test_case,
     test_and_compare_with_new_ir,
 )
 from test_fetch_feed import Linear
@@ -57,8 +60,7 @@ def fake_data(shape):
     return base.dygraph.to_variable(x_data)
 
 
-@dy2static_unittest
-class TestWithNestedInput(unittest.TestCase):
+class TestWithNestedInput(Dy2StTestBase):
     def setUp(self):
         self.x = None
         self.y = None
@@ -89,14 +91,14 @@ class TestWithNestedInput(unittest.TestCase):
         return out.numpy()
 
     @test_and_compare_with_new_ir(False)
+    @disable_test_case((ToStaticMode.SOT, IrMode.PIR))
     def test_nest(self):
         dygraph_res = self._run(to_static=False)
         static_res = self._run(to_static=True)
         np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
 
-@dy2static_unittest
-class TestWithNestedOutput(unittest.TestCase):
+class TestWithNestedOutput(Dy2StTestBase):
     def setUp(self):
         self.x = None
         self.y = None
@@ -133,8 +135,7 @@ class TestWithNestedOutput(unittest.TestCase):
                 self.assertTrue(dy_var, st_var)
 
 
-@dy2static_unittest
-class TestWithTrainAndEval(unittest.TestCase):
+class TestWithTrainAndEval(Dy2StTestBase):
     @ast_only_test
     @test_and_compare_with_new_ir(False)
     def test_switch_eval_and_train(self):
@@ -167,8 +168,7 @@ class TestWithTrainAndEval(unittest.TestCase):
             )
 
 
-@dy2static_unittest
-class TestWithNoGrad(unittest.TestCase):
+class TestWithNoGrad(Dy2StTestBase):
     @ast_only_test
     @test_and_compare_with_new_ir(False)
     def test_with_no_grad(self):
@@ -204,8 +204,7 @@ class GPT2LMHeadModel(paddle.nn.Layer):
         return x1
 
 
-@dy2static_unittest
-class TestPruneUnusedParamInProgram(unittest.TestCase):
+class TestPruneUnusedParamInProgram(Dy2StTestBase):
     @test_and_compare_with_new_ir(False)
     def test_prune(self):
         input_ids = np.array([[15, 11, 6, 3, 18, 13]]).astype("float32")
