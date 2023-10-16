@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 def reduce_lr_on_plateau(
@@ -464,6 +464,31 @@ def cyclic_lr(
     return base_learning_rate + base_height * scale_fn(eval(scale_mode))
 
 
+linear_last_lr = None
+
+
+def linear_lr(
+    epoch_num,
+    learning_rate,
+    total_steps,
+    start_factor=1.0 / 3,
+    end_factor=1.0,
+    verbose=False,
+):
+    global linear_last_lr
+    if epoch_num == 0:
+        linear_last_lr = learning_rate * start_factor
+        return linear_last_lr
+    elif epoch_num > total_steps:
+        return linear_last_lr
+    else:
+        base_lr = total_steps * start_factor
+        cur_factor = end_factor - start_factor
+        factor = 1.0 + cur_factor / (base_lr + (epoch_num - 1) * cur_factor)
+        linear_last_lr *= factor
+        return linear_last_lr
+
+
 class TestLRScheduler(unittest.TestCase):
     def _test_static(self, python_func, paddle_api, kwarg, place):
         scheduler = paddle_api(**kwarg)
@@ -711,6 +736,19 @@ class TestLRScheduler(unittest.TestCase):
             paddle.optimizer.lr.PiecewiseDecay(
                 boundaries=[100, 200], values=[0.5, 0.1]
             )
+        # check minus total_steps
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.LinearLR(learning_rate=1, total_steps=-1)
+        # check start_factor
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.LinearLR(
+                learning_rate=1, total_steps=5, start_factor=2
+            )
+        # check end_factor
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.LinearLR(
+                learning_rate=1, total_steps=5, end_factor=2
+            )
 
         func_api_kwargs = [
             (
@@ -941,6 +979,28 @@ class TestLRScheduler(unittest.TestCase):
                     "exp_gamma": 1.0,
                     "scale_fn": lambda x: 0.95,
                     "scale_mode": 'iterations',
+                    "verbose": False,
+                },
+            ),
+            (
+                linear_lr,
+                paddle.optimizer.lr.LinearLR,
+                {
+                    "learning_rate": 0.2,
+                    "total_steps": 40,
+                    "start_factor": 0.5,
+                    "end_factor": 1,
+                    "verbose": False,
+                },
+            ),
+            (
+                linear_lr,
+                paddle.optimizer.lr.LinearLR,
+                {
+                    "learning_rate": 0.2,
+                    "total_steps": 5,
+                    "start_factor": 0.2,
+                    "end_factor": 0.5,
                     "verbose": False,
                 },
             ),

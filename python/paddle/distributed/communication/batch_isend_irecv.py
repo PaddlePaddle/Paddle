@@ -41,23 +41,23 @@ class P2POp:
     Examples:
         .. code-block:: python
 
-            # required: distributed
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
 
-            import paddle
-            import paddle.distributed as dist
+            >>> import paddle
+            >>> import paddle.distributed as dist
 
-            dist.init_parallel_env()
-            rank = dist.get_rank()
-            world_size = dist.get_world_size()
+            >>> dist.init_parallel_env()
+            >>> rank = dist.get_rank()
+            >>> world_size = dist.get_world_size()
 
-            send_t = paddle.arange(2) + rank
-            # paddle.tensor([0, 1])  # Rank-0
-            # paddle.tensor([1, 2])  # Rank-1
+            >>> send_t = paddle.arange(2) + rank
+            >>> # paddle.tensor([0, 1])  # Rank-0
+            >>> # paddle.tensor([1, 2])  # Rank-1
 
-            recv_t = paddle.empty(shape=[2], dtype=send_t.dtype)
+            >>> recv_t = paddle.empty(shape=[2], dtype=send_t.dtype)
 
-            send_op = dist.P2POp(dist.isend, send_t, (rank + 1) % world_size)
-            recv_op = dist.P2POp(dist.irecv, recv_t, (rank - 1 + world_size) % world_size)
+            >>> send_op = dist.P2POp(dist.isend, send_t, (rank + 1) % world_size)
+            >>> recv_op = dist.P2POp(dist.irecv, recv_t, (rank - 1 + world_size) % world_size)
 
     """
 
@@ -127,32 +127,32 @@ def batch_isend_irecv(p2p_op_list):
     Examples:
         .. code-block:: python
 
-            # required: distributed
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
 
-            import paddle
-            import paddle.distributed as dist
+            >>> import paddle
+            >>> import paddle.distributed as dist
 
-            dist.init_parallel_env()
-            rank = dist.get_rank()
-            world_size = dist.get_world_size()
+            >>> dist.init_parallel_env()
+            >>> rank = dist.get_rank()
+            >>> world_size = dist.get_world_size()
 
-            send_t = paddle.arange(2) + rank
-            # paddle.tensor([0, 1])  # Rank-0
-            # paddle.tensor([1, 2])  # Rank-1
+            >>> send_t = paddle.arange(2) + rank
+            >>> # paddle.tensor([0, 1])  # Rank-0
+            >>> # paddle.tensor([1, 2])  # Rank-1
 
-            recv_t = paddle.empty(shape=[2], dtype=send_t.dtype)
+            >>> recv_t = paddle.empty(shape=[2], dtype=send_t.dtype)
 
-            send_op = dist.P2POp(dist.isend, send_t, (rank + 1) % world_size)
-            recv_op = dist.P2POp(dist.irecv, recv_t, (rank - 1 + world_size) % world_size)
+            >>> send_op = dist.P2POp(dist.isend, send_t, (rank + 1) % world_size)
+            >>> recv_op = dist.P2POp(dist.irecv, recv_t, (rank - 1 + world_size) % world_size)
 
-            tasks = dist.batch_isend_irecv([send_op, recv_op])
+            >>> tasks = dist.batch_isend_irecv([send_op, recv_op])
 
-            for task in tasks:
-                task.wait()
+            >>> for task in tasks:
+            ...     task.wait()
 
-            print(recv_t)
-            # paddle.tensor([1, 2])     # Rank-0
-            # paddle.tensor([0, 1])     # Rank-1
+            >>> print(recv_t)
+            >>> # paddle.tensor([1, 2])     # Rank-0
+            >>> # paddle.tensor([0, 1])     # Rank-1
     """
     _check_p2p_op_list(p2p_op_list)
     group = p2p_op_list[0].group

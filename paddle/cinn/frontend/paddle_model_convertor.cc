@@ -27,7 +27,7 @@
 #include "paddle/cinn/frontend/var_type_utils.h"
 #include "paddle/cinn/hlir/op/use_ops.h"
 
-DECLARE_double(cinn_infer_model_version);
+PD_DECLARE_double(cinn_infer_model_version);
 
 namespace cinn {
 namespace frontend {

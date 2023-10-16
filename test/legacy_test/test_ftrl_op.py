@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
 from op import Operator
+from op_test import OpTest
 
-from paddle.fluid import core
+from paddle.base import core
 
 
 def ftrl_step(param, grad, rows, sq_accum, lin_accum, lr, l1, l2, lr_power):

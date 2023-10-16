@@ -80,7 +80,7 @@ class KernelRegistryStatistics:
                     percent = float(self.num_ops_for_dtypes[dtype]) / float(
                         num_floats
                     )
-                    res += "({:.2f}%)".format(percent * 100)
+                    res += f"({percent * 100:.2f}%)"
                 else:
                     res += f"({0:.2f}%)"
             res += " "
@@ -94,13 +94,11 @@ def parse_paddle_kernels(lib="phi", kernel_type="function", print_detail=False):
     if lib == "phi":
         assert kernel_type in ["function", "structure", "all"]
         # phi kernel type can be: function, structure, all
-        kernel_infos = paddle.fluid.core._get_registered_phi_kernels(
-            kernel_type
-        )
+        kernel_infos = paddle.base.core._get_registered_phi_kernels(kernel_type)
     else:
         # fluid, phi, all
         assert kernel_type in ["fluid", "phi", "all"]
-        kernel_infos = paddle.fluid.core._get_all_register_op_kernels(
+        kernel_infos = paddle.base.core._get_all_register_op_kernels(
             kernel_type
         )
 

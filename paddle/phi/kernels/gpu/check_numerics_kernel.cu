@@ -505,12 +505,7 @@ void CheckNumericsKernel(const Context& ctx,
   // Print to the standard output.
   char* gpu_str_ptr = GetGpuHintStringPtr<T>(ctx, op_type, var_name, dev_id);
 
-#ifdef __HIPCC__
-  // HIP will throw GPU memory access fault if threads > 256
-  const size_t threads = 256;
-#else
   const size_t threads = 1024;
-#endif
   size_t blocks =
       std::min(static_cast<size_t>(128),
                static_cast<size_t>((tensor.numel() + threads - 1) / threads));

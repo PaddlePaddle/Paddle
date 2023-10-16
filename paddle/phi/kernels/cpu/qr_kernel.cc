@@ -29,19 +29,19 @@ void QrKernel(const Context& ctx,
               const std::string& mode,
               DenseTensor* q,
               DenseTensor* r) {
-  bool compute_q;
-  bool reduced_mode;
+  bool compute_q = false;
+  bool reduced_mode = false;
   std::tie(compute_q, reduced_mode) = phi::funcs::ParseQrMode(mode);
   auto numel = x.numel();
   PADDLE_ENFORCE_GT(
       numel, 0, errors::PreconditionNotMet("The input of QR is empty."));
   auto x_dims = x.dims();
   int x_rank = x_dims.size();
-  int m = x_dims[x_rank - 2];
-  int n = x_dims[x_rank - 1];
+  int m = static_cast<int>(x_dims[x_rank - 2]);
+  int n = static_cast<int>(x_dims[x_rank - 1]);
   int min_mn = std::min(m, n);
   int k = reduced_mode ? min_mn : m;
-  int batch_size = numel / (m * n);
+  int batch_size = static_cast<int>(numel / (m * n));
   int x_stride = m * n;
   int q_stride = m * k;
   int r_stride = k * n;

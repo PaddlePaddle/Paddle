@@ -31,7 +31,7 @@ class TestResnetWithPass(unittest.TestCase):
         self.build_strategy.enable_addto = True
         self.resnet_helper = ResNetHelper()
         # NOTE: for enable_addto
-        paddle.fluid.set_flags({"FLAGS_max_inplace_grad_add": 8})
+        paddle.base.set_flags({"FLAGS_max_inplace_grad_add": 8})
 
     def train(self, to_static):
         paddle.jit.enable_to_static(to_static)
@@ -53,17 +53,13 @@ class TestResnetWithPass(unittest.TestCase):
             dy_jit_pre,
             st_pre,
             rtol=1e-05,
-            err_msg='dy_jit_pre:\n {}\n, st_pre: \n{}.'.format(
-                dy_jit_pre, st_pre
-            ),
+            err_msg=f'dy_jit_pre:\n {dy_jit_pre}\n, st_pre: \n{st_pre}.',
         )
         np.testing.assert_allclose(
             predictor_pre,
             st_pre,
             rtol=1e-05,
-            err_msg='predictor_pre:\n {}\n, st_pre: \n{}.'.format(
-                predictor_pre, st_pre
-            ),
+            err_msg=f'predictor_pre:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
         )
 
     @ast_only_test
@@ -74,22 +70,21 @@ class TestResnetWithPass(unittest.TestCase):
             static_loss,
             dygraph_loss,
             rtol=1e-05,
-            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                static_loss, dygraph_loss
-            ),
+            err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
         )
         self.verify_predict()
 
     @ast_only_test
     def test_in_static_mode_mkldnn(self):
-        paddle.fluid.set_flags({'FLAGS_use_mkldnn': True})
+        paddle.base.set_flags({'FLAGS_use_mkldnn': True})
         try:
-            if paddle.fluid.core.is_compiled_with_mkldnn():
+            if paddle.base.core.is_compiled_with_mkldnn():
                 self.resnet_helper.train(True, self.build_strategy)
         finally:
-            paddle.fluid.set_flags({'FLAGS_use_mkldnn': False})
+            paddle.base.set_flags({'FLAGS_use_mkldnn': False})
 
 
+@dy2static_unittest
 class TestError(unittest.TestCase):
     def test_type_error(self):
         def foo(x):

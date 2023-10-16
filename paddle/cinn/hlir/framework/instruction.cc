@@ -22,8 +22,8 @@
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/profiler.h"
 
-DECLARE_bool(cinn_sync_run);
-DECLARE_string(cinn_self_check_accuracy);
+PD_DECLARE_bool(cinn_sync_run);
+PD_DECLARE_string(cinn_self_check_accuracy);
 
 namespace cinn {
 namespace hlir {

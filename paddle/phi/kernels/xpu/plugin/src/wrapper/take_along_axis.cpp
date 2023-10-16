@@ -25,8 +25,6 @@ template <typename T, typename TID>
 __attribute__((global)) void take_along_axis(const T* x,
                                              const TID* indices,
                                              T* y,
-                                             const int64_t* shape,
-                                             int64_t shape_size,
                                              int64_t batch,
                                              int64_t xlen,
                                              int64_t ylen);
@@ -74,43 +72,21 @@ static int xpu2_wrapper(Context* ctx,
                         const std::vector<int64_t>& idxshape,
                         int64_t axis) {
   int64_t m_idx = 1;
-  int64_t shape_new_size = idxshape.size() - 1;
-  std::vector<int64_t> shape_new = xshape;
-
   for (int64_t i = 0; i < axis; i++) {
     m_idx *= idxshape[i];
   }
-
-  for (int64_t i = axis + 1; i < xshape.size(); i++) {
-    shape_new[i - 1] = xshape[i];
-  }
-
   int64_t t_x = xshape[axis];
   int64_t t_idx = idxshape[axis];
   int64_t n_idx = vector_prod(idxshape) / m_idx / t_idx;
 
   if (m_idx < 64 && n_idx == 1) {
-    api::ctx_guard RAII_GUARD(ctx);
-    int64_t* shape_xpu = RAII_GUARD.alloc_l3_or_gm<int64_t>(shape_new_size);
-    WRAPPER_ASSERT_WORKSPACE(ctx, shape_xpu);
-    int ret = do_host2device(
-        ctx, shape_new.data(), shape_xpu, (shape_new_size) * sizeof(int64_t));
-    WRAPPER_ASSERT_SUCCESS(ctx, ret);
-
     using XPU_TID = typename XPUIndexType<TID>::type;
     const XPU_TID* casted_index =
         static_cast<const XPU_TID*>(static_cast<const void*>(index));
 
     xpu2::plugin::take_along_axis<T, XPU_TID>
         <<<ctx->ncluster(), 64, ctx->xpu_stream>>>(
-            x,
-            casted_index,
-            y,
-            reinterpret_cast<xpu2::int64_t*>(shape_xpu),
-            shape_new_size,
-            m_idx,
-            t_x,
-            t_idx);
+            x, casted_index, y, m_idx, t_x, t_idx);
   } else {
     return gather_element(ctx, x, index, y, xshape, idxshape, axis);
   }

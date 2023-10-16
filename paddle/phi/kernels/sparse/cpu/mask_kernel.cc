@@ -52,7 +52,7 @@ void MaskCooCPUKernel(const CPUContext& dev_ctx,
 
   const int64_t non_zero_num = mask.nnz();
   auto dims_2d = flatten_to_2d(dims, sparse_dim);
-  const int cols = dims_2d[1];
+  const int cols = static_cast<int>(dims_2d[1]);
   const IntT* indices_ptr = indices.data<IntT>();
 
   std::vector<IntT> out_indexs(non_zero_num), sparse_offsets(sparse_dim);

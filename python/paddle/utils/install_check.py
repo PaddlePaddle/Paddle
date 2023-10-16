@@ -60,7 +60,7 @@ def _is_cuda_available():
         logging.warning(
             "You are using GPU version PaddlePaddle, but there is no GPU "
             "detected on your machine. Maybe CUDA devices is not set properly."
-            "\n Original Error is {}".format(e)
+            f"\n Original Error is {e}"
         )
         return False
 
@@ -76,7 +76,7 @@ def _is_xpu_available():
         logging.warning(
             "You are using XPU version PaddlePaddle, but there is no XPU "
             "detected on your machine. Maybe XPU devices is not set properly."
-            "\n Original Error is {}".format(e)
+            f"\n Original Error is {e}"
         )
         return False
 
@@ -218,15 +218,15 @@ def run_check():
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.utils.run_check()
-            # Running verify PaddlePaddle program ...
-            # W1010 07:21:14.972093  8321 device_context.cc:338] Please NOTE: device: 0, CUDA Capability: 70, Driver API Version: 11.0, Runtime API Version: 10.1
-            # W1010 07:21:14.979770  8321 device_context.cc:346] device: 0, cuDNN Version: 7.6.
-            # PaddlePaddle works well on 1 GPU.
-            # PaddlePaddle works well on 8 GPUs.
-            # PaddlePaddle is installed successfully! Let's start deep learning with PaddlePaddle now.
+            >>> paddle.utils.run_check()
+            >>> # doctest: +SKIP('the output will change in different run')
+            Running verify PaddlePaddle program ...
+            I0818 15:35:08.335391 30540 program_interpreter.cc:173] New Executor is Running.
+            I0818 15:35:08.398319 30540 interpreter_util.cc:529] Standalone Executor is Used.
+            PaddlePaddle works well on 1 CPU.
+            PaddlePaddle is installed successfully! Let's start deep learning with PaddlePaddle now.
     """
 
     print("Running verify PaddlePaddle program ... ")
@@ -281,11 +281,7 @@ def run_check():
 
                 os.environ['PADDLE_DISTRI_BACKEND'] = "xccl"
             _run_parallel(device_list)
-            print(
-                "PaddlePaddle works well on {} {}s.".format(
-                    device_count, device_str
-                )
-            )
+            print(f"PaddlePaddle works well on {device_count} {device_str}s.")
         print(
             "PaddlePaddle is installed successfully! Let's start deep learning with PaddlePaddle now."
         )
@@ -302,9 +298,7 @@ def run_check():
 
         logging.warning(f"\n Original Error is: {e}")
         print(
-            "PaddlePaddle is installed successfully ONLY for single {}! "
-            "Let's start deep learning with PaddlePaddle now.".format(
-                device_str
-            )
+            f"PaddlePaddle is installed successfully ONLY for single {device_str}! "
+            "Let's start deep learning with PaddlePaddle now."
         )
         raise e

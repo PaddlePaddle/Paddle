@@ -19,8 +19,8 @@
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
 
-DECLARE_bool(free_idle_chunk);
-DECLARE_bool(free_when_no_cache_hit);
+PD_DECLARE_bool(free_idle_chunk);
+PD_DECLARE_bool(free_when_no_cache_hit);
 
 namespace paddle {
 namespace memory {
@@ -30,12 +30,12 @@ class RecordedAllocator : public Allocator {
  protected:
   phi::Allocation *AllocateImpl(size_t size) override {
     allocated_size_ += size;
-    return new Allocation(malloc(size), size, platform::CPUPlace());
+    return new Allocation(malloc(size), size, platform::CPUPlace());  // NOLINT
   }
 
   void FreeImpl(phi::Allocation *allocation) override {
     allocated_size_ -= allocation->size();
-    free(allocation->ptr());
+    free(allocation->ptr());  // NOLINT
     delete allocation;
   }
 
@@ -85,12 +85,12 @@ class LimitedResourceAllocator : public Allocator {
     }
 
     allocated_size_ += size;
-    return new Allocation(malloc(size), size, platform::CPUPlace());
+    return new Allocation(malloc(size), size, platform::CPUPlace());  // NOLINT
   }
 
   void FreeImpl(phi::Allocation *allocation) override {
     allocated_size_ -= allocation->size();
-    free(allocation->ptr());
+    free(allocation->ptr());  // NOLINT
     delete allocation;
   }
 

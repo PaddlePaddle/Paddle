@@ -15,12 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
-from paddle.fluid import (
+from paddle.base import (
     Executor,
     Program,
     core,
@@ -91,10 +91,10 @@ class TestPad3dOp(OpTest):
             self.outputs['Out'] = convert_float_to_uint16(self.outputs['Out'])
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
     def get_dtype(self):
         return np.float64
@@ -214,10 +214,12 @@ def create_test_fp16(parent):
             return np.float16
 
         def test_check_output(self):
-            self.check_output(atol=1e-3)
+            self.check_output(atol=1e-3, check_pir=True)
 
         def test_check_grad_normal(self):
-            self.check_grad(['X'], 'Out', max_relative_error=1.5e-3)
+            self.check_grad(
+                ['X'], 'Out', max_relative_error=1.5e-3, check_pir=True
+            )
 
     cls_name = "{}_{}".format(parent.__name__, "FP16OP")
     TestPad3dFp16.__name__ = cls_name
@@ -251,12 +253,12 @@ def create_test_bf16(parent):
 
         def test_check_output(self):
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-2)
+            self.check_output_with_place(place, atol=1e-2, check_pir=True)
 
         def test_check_grad_normal(self):
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, ['X'], 'Out', max_relative_error=1e-2
+                place, ['X'], 'Out', max_relative_error=1e-2, check_pir=True
             )
 
     cls_name = "{}_{}".format(parent.__name__, "BF16OP")

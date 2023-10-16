@@ -47,7 +47,7 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
                                  const platform::Place &place) {
   VLOG(3) << "Loading data from DistModelTensor for " << input_data.name;
   framework::DDim dims = phi::make_ddim(input_data.shape);
-  void *input_tensor_ptr;
+  void *input_tensor_ptr = nullptr;
   if (input_data.dtype == DistModelDataType::INT64) {
     input_tensor_ptr = input_tensor->mutable_data<int64_t>(dims, place);
   } else if (input_data.dtype == DistModelDataType::FLOAT32) {
@@ -242,7 +242,8 @@ bool DistModel::CommInit() {
   std::string var_name_base = "comm_init_";
   for (int64_t ring_id : ring_ids) {
     VLOG(3) << "Init comm for ring id: " << ring_id;
-    int64_t ranks_in_group = config_.ring_id_to_ranks_[ring_id].size();
+    int64_t ranks_in_group =
+        static_cast<int64_t>(config_.ring_id_to_ranks_[ring_id].size());
     int64_t rank_in_group = 0;
     std::vector<int64_t> &ranks = config_.ring_id_to_ranks_[ring_id];
     for (int64_t rank : ranks) {
@@ -259,11 +260,11 @@ bool DistModel::CommInit() {
       peer_endpoints.emplace_back(config_.trainer_endpoints[rank]);
     }
     InsertCommOp(var_name_base + std::to_string(order),
-                 ranks_in_group,
-                 rank_in_group,
+                 static_cast<int>(ranks_in_group),
+                 static_cast<int>(rank_in_group),
                  peer_endpoints,
                  comm_init_block,
-                 ring_id);
+                 static_cast<int>(ring_id));
     order += 1;
   }
   framework::NaiveExecutor e(place_);
@@ -294,10 +295,14 @@ void DistModel::InsertCommOp(std::string tmp_var_name,
      << ". The ring id is: " << ring_id << ". The group has: " << nranks
      << " ranks. Current rank in the group is: " << rank
      << ". The endpoint is: " << endpoint << ". Peer endpoints are: ";
-  for (auto ep : peer_endpoints) {
+  for (const auto &ep : peer_endpoints) {
     ss << ep << ", ";
   }
   VLOG(3) << ss.str();
+  std::string endpoints_str = config_.current_endpoint;
+  for (const auto &peer : peer_endpoints) {
+    endpoints_str += "," + peer;
+  }
   if (config_.place == "GPU") {
     framework::VarDesc *new_var = block->Var(tmp_var_name);
     new_var->SetType(framework::proto::VarType::RAW);
@@ -318,6 +323,7 @@ void DistModel::InsertCommOp(std::string tmp_var_name,
     comm_init_op->SetAttr("rank", rank);
     comm_init_op->SetAttr("nranks", nranks);
     comm_init_op->SetAttr("ring_id", ring_id);
+    comm_init_op->SetAttr("endpoints", endpoints_str);
     comm_init_op->SetAttr("op_role",
                           static_cast<int>(framework::OpRole::kForward));
     comm_init_op->CheckAttrs();
@@ -341,6 +347,7 @@ void DistModel::InsertCommOp(std::string tmp_var_name,
     comm_init_op->SetAttr("rank", rank);
     comm_init_op->SetAttr("nranks", nranks);
     comm_init_op->SetAttr("ring_id", ring_id);
+    comm_init_op->SetAttr("endpoints", endpoints_str);
     comm_init_op->SetAttr("op_role",
                           static_cast<int>(framework::OpRole::kForward));
     comm_init_op->CheckAttrs();
@@ -364,6 +371,7 @@ void DistModel::InsertCommOp(std::string tmp_var_name,
     comm_init_op->SetAttr("rank", rank);
     comm_init_op->SetAttr("nranks", nranks);
     comm_init_op->SetAttr("ring_id", ring_id);
+    comm_init_op->SetAttr("endpoints", endpoints_str);
     comm_init_op->SetAttr("op_role",
                           static_cast<int>(framework::OpRole::kForward));
     comm_init_op->CheckAttrs();
@@ -408,7 +416,7 @@ bool DistModel::LoadProgram() {
   fin.seekg(0, std::ios::end);
   pb_content.resize(fin.tellg());
   fin.seekg(0, std::ios::beg);
-  fin.read(&(pb_content.at(0)), pb_content.size());
+  fin.read(&(pb_content.at(0)), pb_content.size());  // NOLINT
   fin.close();
   program_proto.ParseFromString(pb_content);
   VLOG(5) << pb_content;
@@ -582,7 +590,7 @@ bool DistModel::FeedData(const std::vector<DistModelTensor> &input_data,
                  << DistModelDTypeToString(input_data[i].dtype) << ".";
       return false;
     }
-    int feed_idx = feed_names_[target_name];
+    int feed_idx = static_cast<int>(feed_names_[target_name]);
     framework::SetFeedVariable(scope, *input_tensor, "feed", feed_idx);
   }
   return true;

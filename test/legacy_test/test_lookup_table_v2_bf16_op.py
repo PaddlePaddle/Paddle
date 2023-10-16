@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import convert_uint16_to_float
+from op_test import convert_uint16_to_float
 from test_lookup_table_bf16_op import (
     TestLookupTableBF16Op,
     TestLookupTableBF16OpIds4D,
@@ -25,8 +25,8 @@ from test_lookup_table_bf16_op import (
 )
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestLookupTableV2BF16Op(TestLookupTableBF16Op):
@@ -101,25 +101,25 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
         self.flat_ids = self.ids.flatten()
         self.value = 3.0
         self.w_fp32 = np.full(self.w_shape, self.value)
-        self.place = fluid.CPUPlace()
-        self.prog = fluid.Program()
-        self.startup_prog = fluid.Program()
+        self.place = base.CPUPlace()
+        self.prog = base.Program()
+        self.startup_prog = base.Program()
         self.set_initializer()
 
-        with fluid.program_guard(self.prog, self.startup_prog):
+        with base.program_guard(self.prog, self.startup_prog):
             x = paddle.static.data(
                 name='x', shape=[-1] + self.ids_shape, dtype='int64'
             )
             self.emb = paddle.static.nn.embedding(
                 input=x,
                 size=self.w_shape,
-                param_attr=fluid.ParamAttr(
+                param_attr=base.ParamAttr(
                     name="emb_weight", initializer=self.initializer
                 ),
                 is_sparse=False,
                 dtype="uint16",
             )  # bfloat16
-        exe = fluid.Executor(self.place)
+        exe = base.Executor(self.place)
         exe.run(self.startup_prog)
         self.result = exe.run(
             self.prog, feed={'x': self.ids}, fetch_list=['emb_weight', self.emb]

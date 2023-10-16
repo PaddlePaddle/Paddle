@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestAllcloseOp(OpTest):
@@ -53,7 +53,7 @@ class TestAllcloseOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAllcloseOpException(TestAllcloseOp):
@@ -61,28 +61,28 @@ class TestAllcloseOpException(TestAllcloseOp):
         def test_rtol_num():
             self.inputs['Rtol'] = np.array([1e-05, 1e-05]).astype("float64")
             self.inputs['Atol'] = np.array([1e-08]).astype("float64")
-            self.check_output()
+            self.check_output(check_pir=True)
 
         self.assertRaises(ValueError, test_rtol_num)
 
         def test_rtol_type():
             self.inputs['Rtol'] = np.array([5]).astype("int32")
             self.inputs['Atol'] = np.array([1e-08]).astype("float64")
-            self.check_output()
+            self.check_output(check_pir=True)
 
         self.assertRaises(ValueError, test_rtol_type)
 
         def test_atol_num():
             self.inputs['Rtol'] = np.array([1e-05]).astype("float64")
             self.inputs['Atol'] = np.array([1e-08, 1e-08]).astype("float64")
-            self.check_output()
+            self.check_output(check_pir=True)
 
         self.assertRaises(ValueError, test_atol_num)
 
         def test_atol_type():
             self.inputs['Rtol'] = np.array([1e-05]).astype("float64")
             self.inputs['Atol'] = np.array([8]).astype("int32")
-            self.check_output()
+            self.check_output(check_pir=True)
 
         self.assertRaises(ValueError, test_atol_type)
 
@@ -200,7 +200,7 @@ class TestAllcloseOpFloat16(TestAllcloseOp):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place)
+                self.check_output_with_place(place, check_pir=True)
 
 
 class TestAllcloseOpFloat32(TestAllcloseOp):

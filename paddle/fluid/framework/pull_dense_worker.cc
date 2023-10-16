@@ -11,7 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include <time.h>
+#include <ctime>
 
 #include "paddle/fluid/framework/device_worker.h"
 
@@ -45,7 +45,7 @@ void PullDenseWorker::Initialize(const TrainerDesc& param) {
     uint64_t tid = static_cast<uint64_t>(
         dwp_param_.program_config(0).pull_dense_table_id(i));
     TableParameter table;
-    for (auto i : param_.dense_table()) {
+    for (auto const& i : param_.dense_table()) {
       if (i.table_id() == tid) {
         table = i;
         break;

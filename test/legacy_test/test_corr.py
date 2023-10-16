@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 np_minor_version = int((np.__version__).split('.')[1])
 
@@ -35,9 +35,9 @@ class Corr_Test(unittest.TestCase):
 
     def test_tensor_corr_default(self):
         typelist = ['float64', 'float32']
-        places = [fluid.CPUPlace()]
-        if fluid.core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+        places = [base.CPUPlace()]
+        if base.core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
         for idx, p in enumerate(places):
             if idx == 0:
                 paddle.set_device('cpu')
@@ -60,9 +60,9 @@ class Corr_Test(unittest.TestCase):
 
     def test_tensor_corr_rowvar(self):
         typelist = ['float64', 'float32']
-        places = [fluid.CPUPlace()]
-        if fluid.core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+        places = [base.CPUPlace()]
+        if base.core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
 
         for idx, p in enumerate(places):
             if idx == 0:

@@ -19,11 +19,13 @@ from dygraph_to_static_util import (
     ast_only_test,
     dy2static_unittest,
     sot_only_test,
+    test_and_compare_with_new_ir,
 )
 
 import paddle
 
 
+@dy2static_unittest
 class TestCpuCuda(unittest.TestCase):
     def test_cpu_cuda(self):
         def func(x):
@@ -37,7 +39,9 @@ class TestCpuCuda(unittest.TestCase):
         # print(paddle.jit.to_static(func)(x))
 
 
+@dy2static_unittest
 class TestToTensor(unittest.TestCase):
+    @test_and_compare_with_new_ir(False)
     def test_to_tensor_with_variable_list(self):
         def func(x):
             ones = paddle.to_tensor(1)
@@ -57,6 +61,7 @@ class TestToTensor(unittest.TestCase):
 @dy2static_unittest
 class TestToTensor1(unittest.TestCase):
     @ast_only_test
+    @test_and_compare_with_new_ir(False)
     def test_to_tensor_with_variable_list(self):
         def func(x):
             ones = paddle.to_tensor([1])
@@ -70,11 +75,12 @@ class TestToTensor1(unittest.TestCase):
         x = paddle.to_tensor([3])
         np.testing.assert_allclose(
             paddle.jit.to_static(func)(x).numpy(),
-            np.array([1, 2, 3, 4]),
+            np.array([[1], [2], [3], [4]]),
             rtol=1e-05,
         )
 
     @sot_only_test
+    @test_and_compare_with_new_ir(False)
     def test_to_tensor_with_variable_list_sot(self):
         def func(x):
             ones = paddle.to_tensor([1])
@@ -96,6 +102,7 @@ class TestToTensor1(unittest.TestCase):
 @dy2static_unittest
 class TestToTensor2(unittest.TestCase):
     @ast_only_test
+    @test_and_compare_with_new_ir(False)
     def test_to_tensor_with_variable_list(self):
         def func(x):
             x = paddle.to_tensor([[1], [2], [3], [4]])
@@ -109,6 +116,7 @@ class TestToTensor2(unittest.TestCase):
         )
 
     @sot_only_test
+    @test_and_compare_with_new_ir(False)
     def test_to_tensor_with_variable_list_sot(self):
         def func(x):
             x = paddle.to_tensor([[1], [2], [3], [4]])

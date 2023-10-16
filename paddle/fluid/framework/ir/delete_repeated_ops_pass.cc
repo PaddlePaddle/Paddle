@@ -36,7 +36,7 @@ namespace ir {
 bool HasOutVarName(Node* op_node, std::string name) {
   auto* op_desc = op_node->Op();
   auto outputs = op_desc->Outputs();
-  for (auto iter : outputs) {
+  for (auto const& iter : outputs) {
     auto out_names = iter.second;
     if (std::count(out_names.begin(), out_names.end(), name) > 0) {
       return true;
@@ -122,6 +122,10 @@ void DeleteRepeatedOpsPass::DeleteRepeatedOps(
                      Graph* graph) {
     VLOG(4) << "handle DeleteRepeatedOps";
     GET_IR_NODE_FROM_SUBGRAPH(in_var, in_var, pattern);
+    // in_var node may be deleted by the previous detected subgraph
+    if (graph->Nodes().count(in_var) == 0) {
+      return;
+    }
 
     std::vector<std::string> invalid_out_ops{
         "while", "conditional_block", "fetch"};
@@ -151,7 +155,7 @@ void DeleteRepeatedOpsPass::DeleteRepeatedOps(
       }
     }
 
-    for (auto iter : ops_map) {
+    for (auto const& iter : ops_map) {
       auto ops = iter.second;
       auto* first_op_out = ops[0]->outputs[0];
       auto first_op_out_name = first_op_out->Name();

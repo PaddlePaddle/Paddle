@@ -58,12 +58,12 @@ class TestBase(IPUOpTest):
         startup_prog = paddle.static.Program()
         main_prog.random_seed = self.SEED
         startup_prog.random_seed = self.SEED
-        generator = paddle.fluid.unique_name.UniqueNameGenerator()
+        generator = paddle.base.unique_name.UniqueNameGenerator()
         self.full_name = '/'.join(
             [self.attrs['path'].name, self.attrs['model_name']]
         )
 
-        with paddle.fluid.unique_name.guard(generator):
+        with paddle.base.unique_name.guard(generator):
             with paddle.static.scope_guard(scope):
                 with paddle.static.program_guard(main_prog, startup_prog):
                     x = paddle.static.data(

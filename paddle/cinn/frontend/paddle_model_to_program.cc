@@ -21,7 +21,7 @@
 #include "paddle/cinn/frontend/paddle/pb/program_desc.h"
 #include "paddle/cinn/hlir/framework/node.h"
 
-DECLARE_double(cinn_infer_model_version);
+PD_DECLARE_double(cinn_infer_model_version);
 
 namespace cinn {
 namespace frontend {

@@ -49,7 +49,7 @@ void TransferLayoutElimPass::PutTranferlayoutAfterOp(
   std::unordered_set<const Node *> remove_nodes;
   // Ensure op_node has only one output!
   int op_node_useful_output = 0;
-  Node *var2;
+  Node *var2 = nullptr;
   for (auto ele : op_node->outputs) {
     if (!ele->outputs.empty()) {
       op_node_useful_output++;
@@ -61,6 +61,7 @@ void TransferLayoutElimPass::PutTranferlayoutAfterOp(
   // group_norm has 3 inputs, but we do not need there is a transfer_layout
   // before Bias and Scale so we extract useful_var1s from op_node->inputs.
   std::vector<Node *> useful_var1s;
+  useful_var1s.reserve(op_node->inputs.size());
   for (auto var1 : op_node->inputs) {
     // if (var1->inputs.size() >= 1 &&
     //         var1->inputs[0]->Op()->Type() == "transfer_layout") {
@@ -148,7 +149,7 @@ bool TransferLayoutElimPass::AllInputIsTransferlayout(
   std::set<int> dst_layouts;
   std::set<int> src_layouts;
 
-  auto *scope = param_scope();
+  auto *scope = param_scope();  // NOLINT
 
   for (auto var : op_node->inputs) {
     // If this input is a 1D persistable tensor，we allow transfer_layout not

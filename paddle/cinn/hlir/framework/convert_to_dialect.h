@@ -16,16 +16,16 @@
 
 #include <memory>
 
-namespace ir {
+namespace pir {
 class Program;
-}  // namespace ir
+}  // namespace pir
 
 namespace cinn {
 namespace hlir {
 namespace framework {
 class Program;
 
-std::unique_ptr<::ir::Program> ConvertToRuntimeDialect(
+std::unique_ptr<::pir::Program> ConvertToRuntimeDialect(
     const hlir::framework::Program& program);
 
 }  // namespace framework

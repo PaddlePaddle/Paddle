@@ -157,7 +157,7 @@ T *Tensor::data(PlaceType *place, int *size) const {
     *place = PlaceType::kUNK;
   }
 
-  *size = tensor->numel();
+  *size = static_cast<int>(tensor->numel());
   return res;
 }
 
@@ -244,16 +244,11 @@ void Tensor::CopyFromCpu(const T *data) {
         "Can not create tensor with XPU place because paddle is not compiled "
         "with XPU."));
 #endif
-  } else {
+  } else if (place_ == PlaceType::kCUSTOM) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    auto device_type_id =
-        static_cast<size_t>(place_) - static_cast<size_t>(PlaceType::kCUSTOM);
     paddle::platform::DeviceContextPool &pool =
         paddle::platform::DeviceContextPool::Instance();
-    paddle::platform::CustomPlace custom_place(
-        phi::CustomRegisteredDeviceMap::Instance().GetGlobalDeviceType(
-            device_type_id),
-        device_);
+    paddle::platform::CustomPlace custom_place(device_type_, device_);
     auto *t_data = tensor->mutable_data<T>(custom_place);
     auto *dev_ctx = static_cast<const paddle::platform::CustomDeviceContext *>(
         pool.Get(custom_place));
@@ -264,9 +259,15 @@ void Tensor::CopyFromCpu(const T *data) {
                          ele_size,
                          dev_ctx->stream());
 #else
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "The analysis predictor supports CPU, GPU and XPU now."));
+    PADDLE_THROW(paddle::platform::errors::Unavailable(
+        "Can not create tensor with Custom place because paddle is not "
+        "compiled "
+        "with XPU."));
 #endif
+  } else {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "The analysis predictor supports CPU, GPU, XPU and CUSTOM_DEVICE "
+        "now."));
   }
 }
 
@@ -353,6 +354,14 @@ void Tensor::ShareExternalData(const T *data,
     phi::DenseTensor dtensor(
         std::make_shared<phi::Allocation>(
             const_cast<T *>(data), size, paddle::platform::XPUPlace(device_)),
+        meta);
+    *tensor = std::move(dtensor);
+  } else if (place == PlaceType::kCUSTOM) {
+    phi::DenseTensor dtensor(
+        std::make_shared<phi::Allocation>(
+            const_cast<T *>(data),
+            size,
+            paddle::platform::CustomPlace(device_type_, device_)),
         meta);
     *tensor = std::move(dtensor);
   } else {

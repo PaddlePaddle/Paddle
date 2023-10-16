@@ -16,7 +16,7 @@ import math
 
 import paddle
 from paddle import nn
-from paddle.fluid.param_attr import ParamAttr
+from paddle.base.param_attr import ParamAttr
 from paddle.nn import AdaptiveAvgPool2D, AvgPool2D, Dropout, Linear, MaxPool2D
 from paddle.nn.initializer import Uniform
 from paddle.utils.download import get_weights_path_from_url
@@ -592,7 +592,7 @@ def inception_v3(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`InceptionV3 <api_paddle_vision_InceptionV3>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`InceptionV3 <api_paddle_vision_models_InceptionV3>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of Inception v3 model.

@@ -15,7 +15,11 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test
+from dygraph_to_static_util import (
+    ast_only_test,
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 
@@ -40,6 +44,7 @@ net = ForwardNotExist()
 net.forward = "A string so that convert forward will fail"
 
 
+@dy2static_unittest
 class TestConvertCall(unittest.TestCase):
     # fallback mode will raise a InnerError, it's ok.
     @ast_only_test
@@ -68,6 +73,7 @@ class TestConvertCall(unittest.TestCase):
         self.assertEqual(callable_list(1, 2), 3)
 
 
+@dy2static_unittest
 class TestConvertShapeCompare(unittest.TestCase):
     def test_non_variable(self):
         self.assertEqual(
@@ -130,6 +136,7 @@ class TestConvertShapeCompare(unittest.TestCase):
             False,
         )
 
+    @test_and_compare_with_new_ir(False)
     def test_variable(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -203,7 +210,9 @@ class ShapeLayer(paddle.nn.Layer):
         return out
 
 
+@dy2static_unittest
 class TestChooseShapeAttrOrApiWithLayer(unittest.TestCase):
+    @test_and_compare_with_new_ir(False)
     def test_tensor_shape(self):
         x = paddle.zeros(shape=[4, 1], dtype='float32')
         net = ShapeLayer()
@@ -212,7 +221,9 @@ class TestChooseShapeAttrOrApiWithLayer(unittest.TestCase):
         np.testing.assert_array_equal(out.numpy(), x.numpy())
 
 
+@dy2static_unittest
 class TestIfElseNoValue(unittest.TestCase):
+    @test_and_compare_with_new_ir(False)
     def test_else_ret_none(self):
         input_x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
 
@@ -242,6 +253,7 @@ class TestIfElseNoValue(unittest.TestCase):
         out = without_common_value(input_x, False)
         self.assertIsNone(out)
 
+    @test_and_compare_with_new_ir(False)
     def test_else_ret_c(self):
         input_x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
 
@@ -274,6 +286,7 @@ class TestIfElseNoValue(unittest.TestCase):
         self.assertListEqual(paddle.tolist(y), paddle.tolist(input_x + 1))
         self.assertListEqual(paddle.tolist(z), paddle.tolist(input_x + 2))
 
+    @test_and_compare_with_new_ir(False)
     def test_else_ret_cz(self):
         input_x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
 

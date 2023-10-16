@@ -15,8 +15,8 @@
 import unittest
 
 import paddle
+from paddle.base import core
 from paddle.device.cuda import device_count, memory_reserved
-from paddle.fluid import core
 
 
 class TestMemoryreserved(unittest.TestCase):

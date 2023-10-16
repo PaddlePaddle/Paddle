@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.incubate.layers.nn import search_pyramid_hash
 
 
@@ -42,11 +42,11 @@ class TestPyramidHashOpApi(unittest.TestCase):
             black_list_len=2800,
             seed=3,
             lr=0.002,
-            param_attr=fluid.ParamAttr(
+            param_attr=base.ParamAttr(
                 name="PyramidHash_emb_0",
                 learning_rate=0,
             ),
-            param_attr_wl=fluid.ParamAttr(
+            param_attr_wl=base.ParamAttr(
                 name="Filter",
                 learning_rate=0,
             ),
@@ -55,13 +55,13 @@ class TestPyramidHashOpApi(unittest.TestCase):
             name=None,
         )
 
-        place = fluid.CPUPlace()
-        x_tensor = fluid.create_lod_tensor(
+        place = base.CPUPlace()
+        x_tensor = base.create_lod_tensor(
             np.random.randint(0, num_voc, x_shape).astype('int32'), x_lod, place
         )
 
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
         ret = exe.run(
             feed={'x': x_tensor}, fetch_list=[hash_embd], return_numpy=False
         )

@@ -30,11 +30,11 @@
 
 namespace cinn {
 namespace auto_schedule {
-
 // This class is entrance of auto-tune, users can use it
 // to tune graph (not supported yet) and search a series of schedules
 // that maybe more likely to obtain better performance.
 // Internally, it creates necessary components and use them to perform tuning.
+using GroupPtr = hlir::framework::GroupPtr;
 class AutoTuner {
  public:
   // configure how to perform auto-tune, such as
@@ -58,7 +58,7 @@ class AutoTuner {
  private:
   const common::Target& target_;
   hlir::framework::Graph* graph_;
-  std::unique_ptr<hlir::framework::OpLowerer> op_lowerer_;
+  std::unique_ptr<hlir::framework::OpLowerer<GroupPtr>> op_lowerer_;
 
   // Tasks to tune
   std::vector<TuneTask> tasks_;

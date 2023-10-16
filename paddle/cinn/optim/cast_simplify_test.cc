@@ -12,13 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/optim/cast_simplify.h"
-
 #include <gtest/gtest.h>
 
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
-
+#include "paddle/cinn/optim/ir_simplify.h"
 namespace cinn::optim {
 
 TEST(CastSimplify, same_type) {
@@ -26,7 +24,7 @@ TEST(CastSimplify, same_type) {
   Expr a = ir::Cast::Make(Int(32), n);
   LOG(INFO) << n->type();
   LOG(INFO) << a;
-  CastSimplify(&a);
+  SimplifyCast(&a);
   ASSERT_EQ(utils::GetStreamCnt(a), "n");
 }
 
@@ -34,7 +32,7 @@ TEST(CastSimplify, Imm_int) {
   Expr a = ir::Cast::Make(Int(64), Expr(1));
   Expr c = ir::Cast::Make(Int(32), a);
   LOG(INFO) << c;
-  CastSimplify(&c);
+  SimplifyCast(&c);
   LOG(INFO) << c;
   ASSERT_EQ(utils::GetStreamCnt(c), "1");
   ASSERT_EQ(c.type(), Int(32));
@@ -44,7 +42,7 @@ TEST(CastSimplify, Imm_double) {
   Expr a = ir::Cast::Make(Float(64), Expr(2.33));
   Expr c = ir::Cast::Make(Int(32), a);
   LOG(INFO) << c;
-  CastSimplify(&c);
+  SimplifyCast(&c);
   LOG(INFO) << c;
   ASSERT_EQ(utils::GetStreamCnt(c), "2");
   ASSERT_EQ(c.type(), Int(32));
@@ -54,7 +52,7 @@ TEST(CastSimplify, Imm_uint) {
   Expr a = ir::Cast::Make(UInt(64), Expr(1));
   Expr c = ir::Cast::Make(UInt(32), a);
   LOG(INFO) << c;
-  CastSimplify(&c);
+  SimplifyCast(&c);
   LOG(INFO) << c;
   ASSERT_EQ(utils::GetStreamCnt(c), "1");
   ASSERT_EQ(c.type(), UInt(32));

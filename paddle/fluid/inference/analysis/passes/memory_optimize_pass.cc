@@ -97,10 +97,10 @@ void MemoryOptimizePass::CollectLifeCycle(
           auto var_bytes = std::accumulate(in_shape.begin(),
                                            in_shape.end(),
                                            (int64_t)1,
-                                           std::multiplies<int64_t>());
-          persis_byte +=
+                                           std::multiplies<>());
+          persis_byte += static_cast<double>(
               paddle::framework::SizeOfType(node->Var()->GetDataType()) *
-              var_bytes;
+              var_bytes);
           continue;
         }
         std::string var = node->Name();
@@ -183,8 +183,8 @@ void MemoryOptimizePass::CollectVarMemorySize(
         if (v < 0) v = fake_batch_size;
       }
 
-      int size = std::accumulate(
-          shape.begin(), shape.end(), 1, std::multiplies<int>());
+      int size =
+          std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<>());
       (*space_table)[node->Var()->Name()] =
           size * paddle::framework::SizeOfType(node->Var()->GetDataType());
     }
@@ -226,9 +226,9 @@ void MakeSimpleReusePlan(
   // Generating Memory Reuse Strategy Based on Greedy Way
   for (size_t i = 0; i < mem_nodes.size(); i++) {
     if (mem_nodes[i].cluster >= 0) continue;
-    int cluster_index = cluster_size->size();
+    int cluster_index = static_cast<int>(cluster_size->size());
     mem_nodes[i].cluster = cluster_index;
-    (*cluster_size)[mem_nodes[i].name] = mem_nodes[i].size;
+    (*cluster_size)[mem_nodes[i].name] = static_cast<int>(mem_nodes[i].size);
     (*node2cluster)[mem_nodes[i].name] = mem_nodes[i].name;
     std::unordered_set<std::string> cluster_adj = mem_nodes[i].adj;
     for (size_t j = i + 1; j < mem_nodes.size(); j++) {

@@ -45,7 +45,7 @@ void GatherOpHandle::RunImpl() {
           in_var_handles.size(),
           places_.size()));
 
-  VarHandle *out_var_handle;
+  VarHandle *out_var_handle = nullptr;
   {
     auto out_var_handles = DynamicCast<VarHandle>(this->Outputs());
     PADDLE_ENFORCE_EQ(
@@ -129,7 +129,7 @@ void GatherOpHandle::RunImpl() {
       out_var_handle->place(), [in_tensors, out_tensor, &dev_ctx, t_out_p] {
         int s = 0, e = 0;
         for (const auto &in_tensor : in_tensors) {
-          e += in_tensor.dims()[0];
+          e += static_cast<int>(in_tensor.dims()[0]);
           auto sub_out = out_tensor->Slice(s, e);
           paddle::framework::TensorCopy(in_tensor, t_out_p, *dev_ctx, &sub_out);
           s = e;

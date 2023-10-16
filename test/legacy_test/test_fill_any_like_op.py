@@ -15,18 +15,28 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.framework.dtype as dtypes
-from paddle.fluid import core
+from paddle.base import core
+from paddle.framework import in_pir_mode
 
 
 def fill_any_like_wrapper(x, value, out_dtype=None, name=None):
     if isinstance(out_dtype, int):
-        tmp_dtype = dtypes.dtype(out_dtype)
+        if not in_pir_mode():
+            tmp_dtype = dtypes.dtype(out_dtype)
+        else:
+            from paddle.base.libpaddle import DataType
+
+            tmp_dtype = DataType(paddle.pir.core.vartype_to_datatype[out_dtype])
     else:
         tmp_dtype = out_dtype
+        if in_pir_mode() and isinstance(
+            out_dtype, paddle.framework.core.VarDesc.VarType
+        ):
+            tmp_dtype = paddle.pir.core.vartype_to_datatype[tmp_dtype]
     return paddle.full_like(x, value, tmp_dtype, name)
 
 
@@ -48,7 +58,7 @@ class TestFillAnyLikeOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_pir=True)
 
     def if_enable_cinn(self):
         pass
@@ -86,7 +96,7 @@ class TestFillAnyLikeOpBfloat16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_prim=True)
+        self.check_output_with_place(place, check_prim=True, check_pir=True)
 
     def if_enable_cinn(self):
         pass

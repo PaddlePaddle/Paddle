@@ -16,6 +16,7 @@
 
 #include "paddle/cinn/auto_schedule/measure/measure.h"
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 
 namespace cinn {
 namespace auto_schedule {

@@ -70,9 +70,10 @@ void sgd_dense_param_sparse_grad_impl(const DenseTensor& param,
   phi::jit::sgd_attr_t attr;
   attr.param_height = param_out->dims()[0];
   attr.param_width = param_out->numel() / attr.param_height;
-  attr.grad_height = grad_rows.size();  // note: it is not grad->height()
+  attr.grad_height =
+      static_cast<int>(grad_rows.size());  // note: it is not grad->height()
   attr.grad_width = grad_value.numel() / attr.grad_height;
-  attr.selected_rows_size = grad_rows.size();
+  attr.selected_rows_size = static_cast<int>(grad_rows.size());
 
   auto sgd =
       phi::jit::KernelFuncs<phi::jit::SgdTuple<T>, phi::CPUPlace>::Cache().At(

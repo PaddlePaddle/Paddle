@@ -27,7 +27,7 @@ class TestCollectiveReduceAPI(TestDistBase):
         pass
 
     def test_reduce_nccl(self):
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             self.check_with_place("collective_reduce_api.py", "reduce", "nccl")
 
     def test_reduce_nccl_with_comm_context(self):
@@ -47,7 +47,7 @@ class TestCollectiveReduceAPI(TestDistBase):
         if self._nccl_version >= 21000:
             dtypes_to_test.append("bfloat16")
         for dtype in dtypes_to_test:
-            if paddle.fluid.core.is_compiled_with_cuda():
+            if paddle.base.core.is_compiled_with_cuda():
                 for red_type in red_types_to_test:
                     self.check_with_place(
                         "collective_reduce_api.py",
@@ -58,8 +58,31 @@ class TestCollectiveReduceAPI(TestDistBase):
                         need_envs={"USE_COMM_CONTEXT": "1"},
                     )
 
+    def test_reduce_nccl_with_new_comm(self):
+        dtypes_to_test = [
+            "float16",
+            "float32",
+            "float64",
+            "int32",
+            "int64",
+        ]
+        red_types_to_test = [
+            dist.ReduceOp.SUM,
+        ]
+        for dtype in dtypes_to_test:
+            if paddle.base.core.is_compiled_with_cuda():
+                for red_type in red_types_to_test:
+                    self.check_with_place(
+                        "collective_reduce_api.py",
+                        "reduce",
+                        "nccl",
+                        dtype=dtype,
+                        reduce_type=red_type,
+                        need_envs={"FLAGS_dynamic_static_unified_comm": "1"},
+                    )
+
     def test_reduce_bkcl(self):
-        if paddle.fluid.core.is_compiled_with_xpu():
+        if paddle.base.core.is_compiled_with_xpu():
             self.check_with_place("collective_reduce_api.py", "reduce", "bkcl")
 
     def test_reduce_gloo(self):

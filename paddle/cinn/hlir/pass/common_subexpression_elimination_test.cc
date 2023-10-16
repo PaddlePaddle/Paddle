@@ -37,7 +37,7 @@
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/utils/data_util.h"
 
-DEFINE_string(model_dir, "", "");
+PD_DEFINE_string(model_dir, "", "");
 
 namespace cinn {
 namespace frontend {
@@ -71,7 +71,8 @@ TEST(common_subexpression_elimination, common_subexpression_elimination_case1) {
   hlir::framework::ApplyPass(graph.get(), "BuildNonFusedGroupsPass");
   auto scope = BuildScope(target, graph);
 
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
   auto& prerun_instrs = runtime_program->GetPreRunInstructions();
   auto& run_instrs = runtime_program->GetRunInstructions();
@@ -115,7 +116,8 @@ TEST(common_subexpression_elimination, common_subexpression_elimination_case2) {
   hlir::framework::ApplyPass(graph.get(), "BuildNonFusedGroupsPass");
   auto scope = BuildScope(target, graph);
 
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
   auto& prerun_instrs = runtime_program->GetPreRunInstructions();
   auto& run_instrs = runtime_program->GetRunInstructions();
@@ -180,7 +182,8 @@ TEST(common_subexpression_elimination, common_subexpression_elimination_case3) {
 
   auto scope = BuildScope(target, graph);
 
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
   auto& prerun_instrs = runtime_program->GetPreRunInstructions();
   auto& run_instrs = runtime_program->GetRunInstructions();

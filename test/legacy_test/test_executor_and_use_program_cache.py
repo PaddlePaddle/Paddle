@@ -18,14 +18,14 @@ import numpy as np
 from test_eager_deletion_padding_rnn import PaddingRNNTestBase, RNNConfig
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class TestExecutor(unittest.TestCase):
     def test_mul(self):
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(main_program, startup_program):
+        main_program = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(main_program, startup_program):
             a = paddle.static.data(name='a', shape=[-1, 784], dtype='float32')
             b = paddle.static.data(name='b', shape=[784, 100], dtype='float32')
             a.desc.set_need_check_feed(False)
@@ -38,7 +38,7 @@ class TestExecutor(unittest.TestCase):
         out_np = np.dot(a_np, b_np)
 
         place = paddle.CPUPlace()
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
 
         def _train(use_program_cache, max_iters=1):
             import time
@@ -86,7 +86,7 @@ class ExecutorPaddingRNNTest(PaddingRNNTestBase):
         self, rnn_model="static", use_program_cache=True
     ):
         config = RNNConfig("test", rnn_model)
-        with fluid.scope_guard(fluid.Scope()):
+        with base.scope_guard(base.Scope()):
             self.train(config, use_program_cache)
             paddle.static.io.save_inference_model(
                 path_prefix="padding_rnn." + rnn_model + ".inference_model",
@@ -125,7 +125,7 @@ class ExecutorPaddingRNNTest(PaddingRNNTestBase):
             ).astype("float32")
 
             for use_program_cache in [False, True]:
-                with fluid.scope_guard(fluid.Scope()):
+                with base.scope_guard(base.Scope()):
                     save_dirname = (
                         "padding_rnn." + rnn_model + ".inference_model"
                     )

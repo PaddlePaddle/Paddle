@@ -19,10 +19,10 @@ import numpy as np
 
 import paddle
 from paddle import _legacy_C_ops
-from paddle.fluid import backward, core, framework, unique_name
-from paddle.fluid.data_feeder import check_type
-from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.framework import OpProtoHolder
+from paddle.base import backward, core, framework, unique_name
+from paddle.base.data_feeder import check_type
+from paddle.base.dygraph.base import switch_to_static_graph
+from paddle.base.framework import OpProtoHolder
 from paddle.framework import in_dynamic_mode
 from paddle.jit.dy2static.partial_program import (
     LazyInitialized,
@@ -347,15 +347,11 @@ class _ProgramHolder:
         self._suffix_varname_dict = None
         # forward program
         self._infer_program_desc = self._preprocess(program_desc)
-        # forward + backward program
-        self._train_program_desc = self._append_backward_desc(
-            self._infer_program_desc
-        )
 
     # forward:
     @switch_to_static_graph
     def _create_forward_train_program(self):
-        whole_program = _build_program_by_desc(self._train_program_desc)
+        whole_program = _build_program_by_desc(self.train_program)
         end_op_index = self._infer_program_desc.block(0).op_size()
         if end_op_index > 0:
             return add_build_strategy_for(whole_program, 0, end_op_index)
@@ -369,7 +365,7 @@ class _ProgramHolder:
     # backward
     @switch_to_static_graph
     def _create_backward_train_program(self):
-        whole_program = _build_program_by_desc(self._train_program_desc)
+        whole_program = _build_program_by_desc(self.train_program)
         start_op_index = self._infer_program_desc.block(0).op_size() + len(
             self._output_descs
         )
@@ -389,9 +385,9 @@ class _ProgramHolder:
     def infer_program(self):
         return self._infer_program_desc
 
-    @property
+    @LazyInitialized
     def train_program(self):
-        return self._train_program_desc
+        return self._append_backward_desc(self._infer_program_desc)
 
     @property
     def forward_program(self):
@@ -898,6 +894,7 @@ def _valid_vars(vars):
 def _run_dygraph(instance, input, program_holder):
     # 1. prepare inputs, outputs, attrs
     input_vars = []
+    input_var_names = []
     for i, value in enumerate(input):
         if not isinstance(value, (np.ndarray, core.eager.Tensor)):
             raise TypeError(
@@ -918,6 +915,7 @@ def _run_dygraph(instance, input, program_holder):
             # NOTE: we changed var name here,
             # but it may be an important name set by user
             var.name = program_holder.input_descs[i].name()
+        input_var_names.append(var.name)
         input_vars.append(var)
     if instance._input_args_names is None:
         instance._input_args_names = [
@@ -986,6 +984,8 @@ def _run_dygraph(instance, input, program_holder):
         instance._is_test,
         'program_id',
         paddle.utils._hash_with_id(trace_program, instance),
+        'x_names',
+        input_var_names,
     ]
     if not instance._is_test:
         attrs.extend(
@@ -1006,10 +1006,15 @@ def _run_dygraph(instance, input, program_holder):
             (
                 'forward_global_block',
                 forward_program.block(0),
-                'backward_global_block',
-                program_holder.backward_program.block(0),
             )
         )
+        if not instance._is_test:
+            attrs.extend(
+                (
+                    'backward_global_block',
+                    program_holder.backward_program.block(0),
+                )
+            )
 
     _legacy_C_ops.run_program(
         _valid_vars(input_vars),
@@ -1051,7 +1056,6 @@ def _run_static_graph(input, program_holder, trace_program):
         trace_program, exclude=param_var_names
     )
     trace_program.flush()
-    output_names = [var.name() for var in program_holder.output_descs]
     # append blocks from 'trace_program'
     _append_block(
         main_program,
@@ -1312,7 +1316,7 @@ class TranslatedLayer(layers.Layer):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP
+            >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
             >>> import numpy as np
             >>> import paddle
             >>> import paddle.nn as nn
@@ -1522,7 +1526,7 @@ class TranslatedLayer(layers.Layer):
         Examples:
             .. code-block:: python
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
                 >>> import numpy as np
                 >>> import paddle
                 >>> from paddle import nn

@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class MyLayer(paddle.nn.Layer):
@@ -34,7 +34,7 @@ class MyLayer(paddle.nn.Layer):
 
 class TestImperativeNamedSubLayers(unittest.TestCase):
     def test_named_sublayers(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             fc1 = paddle.nn.Linear(10, 3)
             fc2 = paddle.nn.Linear(3, 10, bias_attr=False)
             custom = MyLayer(3, 10)
@@ -64,7 +64,7 @@ class TestImperativeNamedSubLayers(unittest.TestCase):
 
 class TestImperativeNamedParameters(unittest.TestCase):
     def test_named_parameters(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             fc1 = paddle.nn.Linear(10, 3)
             fc2 = paddle.nn.Linear(3, 10, bias_attr=False)
             custom = MyLayer(3, 10)
@@ -82,7 +82,7 @@ class TestImperativeNamedParameters(unittest.TestCase):
             self.assertListEqual(expected_named_parameters, named_parameters)
 
     def test_dir_layer(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
 
             class Mymodel(paddle.nn.Layer):
                 def __init__(self):
@@ -91,12 +91,12 @@ class TestImperativeNamedParameters(unittest.TestCase):
                     self.linear2 = paddle.nn.Linear(5, 5)
                     self.conv2d = paddle.nn.Conv2D(3, 2, 3)
                     self.embedding = paddle.nn.Embedding(128, 16)
-                    self.h_0 = fluid.dygraph.to_variable(
+                    self.h_0 = base.dygraph.to_variable(
                         np.zeros([10, 10]).astype('float32')
                     )
                     self.weight = self.create_parameter(
                         shape=[2, 3],
-                        attr=fluid.ParamAttr(),
+                        attr=base.ParamAttr(),
                         dtype="float32",
                         is_bias=False,
                     )

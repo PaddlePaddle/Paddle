@@ -17,12 +17,12 @@ import tempfile
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 import paddle.inference as paddle_infer
-from paddle import fluid
-from paddle.fluid.framework import in_dygraph_mode
+from paddle import base
+from paddle.base.framework import in_dygraph_mode
 
 paddle.enable_static()
 
@@ -31,18 +31,18 @@ class TestBincountOpAPI(unittest.TestCase):
     """Test bincount api."""
 
     def test_static_graph(self):
-        startup_program = fluid.Program()
-        train_program = fluid.Program()
-        with fluid.program_guard(train_program, startup_program):
+        startup_program = base.Program()
+        train_program = base.Program()
+        with base.program_guard(train_program, startup_program):
             inputs = paddle.static.data(name='input', dtype='int64', shape=[7])
             weights = paddle.static.data(
                 name='weights', dtype='int64', shape=[7]
             )
             output = paddle.bincount(inputs, weights=weights)
-            place = fluid.CPUPlace()
-            if fluid.core.is_compiled_with_cuda():
-                place = fluid.CUDAPlace(0)
-            exe = fluid.Executor(place)
+            place = base.CPUPlace()
+            if base.core.is_compiled_with_cuda():
+                place = base.CUDAPlace(0)
+            exe = base.Executor(place)
             exe.run(startup_program)
             img = np.array([0, 1, 1, 3, 2, 1, 7]).astype(np.int64)
             w = np.array([0, 1, 1, 2, 2, 1, 0]).astype(np.int64)
@@ -59,9 +59,9 @@ class TestBincountOpAPI(unittest.TestCase):
             )
 
     def test_dygraph(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             inputs_np = np.array([0, 1, 1, 3, 2, 1, 7]).astype(np.int64)
-            inputs = fluid.dygraph.to_variable(inputs_np)
+            inputs = base.dygraph.to_variable(inputs_np)
             actual = paddle.bincount(inputs)
             expected = np.bincount(inputs)
             self.assertTrue(
@@ -74,7 +74,7 @@ class TestBincountOpError(unittest.TestCase):
     """Test bincount op error."""
 
     def run_network(self, net_func):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             net_func()
 
     def test_input_value_error(self):
@@ -104,7 +104,7 @@ class TestBincountOpError(unittest.TestCase):
             input_value = paddle.to_tensor([1, 2, 3, 4, 5])
             paddle.bincount(input_value, minlength=-1)
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             if in_dygraph_mode():
                 # InvalidArgument for phi BincountKernel
                 with self.assertRaises(ValueError):
@@ -218,6 +218,14 @@ class TestCase5(TestBincountOp):
     def init_test_case(self):
         self.minlength = 20
         self.np_input = np.random.randint(low=0, high=10, size=10)
+        self.Out = np.bincount(self.np_input, minlength=self.minlength)
+
+
+class TestCase6(TestBincountOp):
+    # with bigger input size
+    def init_test_case(self):
+        self.minlength = 0
+        self.np_input = np.random.randint(low=0, high=10, size=1024)
         self.Out = np.bincount(self.np_input, minlength=self.minlength)
 
 

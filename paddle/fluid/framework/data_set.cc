@@ -138,7 +138,7 @@ std::vector<std::string> DatasetImpl<T>::GetSlots() {
     }
   }
   std::cout << "dataset use slots: ";
-  for (auto s : use_slots_) {
+  for (auto const& s : use_slots_) {
     std::cout << s << " | ";
   }
   std::cout << " end " << std::endl;
@@ -216,7 +216,7 @@ template <typename T>
 std::vector<paddle::framework::DataFeed*> DatasetImpl<T>::GetReaders() {
   std::vector<paddle::framework::DataFeed*> ret;
   ret.reserve(readers_.size());
-  for (auto i : readers_) {
+  for (auto const& i : readers_) {
     ret.push_back(i.get());
   }
   return ret;
@@ -295,7 +295,7 @@ static void compute_batch_num(const int64_t ins_num,
   int thread_batch_num = batch_size * thread_num;
   // less data
   if (static_cast<int64_t>(thread_batch_num) > ins_num) {
-    compute_left_batch_num(ins_num, thread_num, offset, 0);
+    compute_left_batch_num(static_cast<int>(ins_num), thread_num, offset, 0);
     return;
   }
 
@@ -338,7 +338,7 @@ static int compute_thread_batch_nccl(
   auto& offset = (*nccl_offsets);
   // split data avg by thread num
   compute_batch_num(total_instance_num, minibatch_size, thr_num, &offset);
-  thread_avg_batch_num = static_cast<int>(offset.size() / thr_num);
+  thread_avg_batch_num = static_cast<int>(offset.size() / thr_num);  // NOLINT
 #ifdef PADDLE_WITH_GLOO
   auto gloo_wrapper = paddle::framework::GlooWrapper::GetInstance();
   if (gloo_wrapper->Size() > 1) {
@@ -1271,7 +1271,7 @@ void MultiSlotDataset::PreprocessInstance() {
     input_channel_->Close();
     std::vector<PvInstance> pv_data;
     input_channel_->ReadAll(input_records_);
-    int all_records_num = input_records_.size();
+    int all_records_num = static_cast<int>(input_records_.size());
     std::vector<Record*> all_records;
     all_records.reserve(all_records_num);
     for (int index = 0; index < all_records_num; ++index) {
@@ -1333,7 +1333,7 @@ void MultiSlotDataset::GenerateLocalTablesUnlock(int table_id,
       local_map_tables = fleet_ptr_->GetLocalTable();
   local_map_tables.resize(shard_num);
   // read thread
-  int channel_num = multi_output_channel_.size();
+  int channel_num = static_cast<int>(multi_output_channel_.size());
   if (read_thread_num < channel_num) {
     read_thread_num = channel_num;
   }
@@ -1361,7 +1361,8 @@ void MultiSlotDataset::GenerateLocalTablesUnlock(int table_id,
         this->multi_output_channel_[i]->ReadAll(vec_data);
         for (auto& item : vec_data) {
           for (auto& feature : item.uint64_feasigns_) {
-            int shard = feature.sign().uint64_feasign_ % shard_num;
+            int shard =
+                static_cast<int>(feature.sign().uint64_feasign_ % shard_num);
             task_keys[shard].push_back(feature.sign().uint64_feasign_);
           }
         }
@@ -1532,7 +1533,7 @@ void MultiSlotDataset::MergeByInsId() {
           break;
         }
         local_uint64.insert(slot);
-        rec.uint64_feasigns_.push_back(std::move(feature));
+        rec.uint64_feasigns_.push_back(feature);
       }
       if (has_conflict_slot) {
         break;
@@ -1549,7 +1550,7 @@ void MultiSlotDataset::MergeByInsId() {
           break;
         }
         local_float.insert(slot);
-        rec.float_feasigns_.push_back(std::move(feature));
+        rec.float_feasigns_.push_back(feature);
       }
       if (has_conflict_slot) {
         break;
@@ -1634,11 +1635,11 @@ void MultiSlotDataset::PreprocessChannel(
   int out_channel_size = 0;
   if (cur_channel_ == 0) {
     for (auto& item : multi_output_channel_) {
-      out_channel_size += item->Size();
+      out_channel_size += static_cast<int>(item->Size());
     }
   } else {
     for (auto& item : multi_consume_channel_) {
-      out_channel_size += item->Size();
+      out_channel_size += static_cast<int>(item->Size());
     }
   }
   VLOG(2) << "DatasetImpl<T>::SlotsShuffle() begin with input channel size: "
@@ -1724,14 +1725,14 @@ void MultiSlotDataset::PreprocessChannel(
       if (!item) {
         continue;
       }
-      end_size += item->Size();
+      end_size += static_cast<int>(item->Size());
     }
   } else {
     for (auto& item : multi_consume_channel_) {
       if (!item) {
         continue;
       }
-      end_size += item->Size();
+      end_size += static_cast<int>(item->Size());
     }
   }
   CHECK(input_channel_->Size() == 0)

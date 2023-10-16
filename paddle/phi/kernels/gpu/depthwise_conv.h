@@ -1256,16 +1256,10 @@ class DepthwiseConvFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
         thread = (output_width - 1) / 2 + 1;
       else if (output_width > 512 && output_width <= 1024)
         thread = output_width;
-#ifdef __HIPCC__
-      thread = std::min(thread, 256);
-#endif
       blocks = std::min(std::max(thread / output_width, 1), output_height);
       threads = dim3(std::min(output_width, thread), blocks, 1);
       grid = dim3(output_channels, batch_size, 1);
     } else {
-#ifdef __HIPCC__
-      thread = std::min(thread, 256);
-#endif
       blocks = std::min(
           std::max(thread / output_channels, 1),
           ((output_width + dilate_width - 1) / dilate_width) * dilate_width);
@@ -1276,11 +1270,7 @@ class DepthwiseConvFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
     }
     int filter_multiplier = output_channels / input_channels;
     int nums_output = output->numel();
-#ifdef __HIPCC__
-    int block_size = 256;
-#else
     int block_size = 512;
-#endif
     int grid_size = (nums_output + block_size - 1) / block_size;
 
 #define check_case(c_filter_multiplier, c_stride, c_filter)             \
@@ -1449,11 +1439,7 @@ class DepthwiseConvInputGradFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
     }
     int filter_multiplier = output_channels / input_channels;
     int nums_input = input_grad->numel();
-#ifdef __HIPCC__
-    int block_size = 256;
-#else
     int block_size = 512;
-#endif
     int grid_size = (nums_input + block_size - 1) / block_size;
 
 #define check_case(c_filter_multiplier, c_stride, c_filter)             \

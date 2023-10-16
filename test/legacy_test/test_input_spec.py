@@ -19,8 +19,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.framework import convert_np_dtype_to_dtype_
+from paddle.base import core
+from paddle.base.framework import convert_np_dtype_to_dtype_
 from paddle.jit.dy2static.utils import _compatible_non_tensor_spec
 from paddle.static import InputSpec
 
@@ -295,7 +295,13 @@ class TestNetWithNonTensorSpecWithPrune(unittest.TestCase):
 
         # jit.save and jit.load with prune y and loss
         prune_specs = [self.x_spec, True]
-        paddle.jit.save(net, path, prune_specs, output_spec=[st_out])
+        paddle.jit.save(
+            net,
+            path,
+            prune_specs,
+            output_spec=[st_out],
+            input_names_after_prune=[self.x_spec.name],
+        )
         load_net = paddle.jit.load(path)
         load_net.eval()
         load_out = load_net(self.x)  # no y and no loss

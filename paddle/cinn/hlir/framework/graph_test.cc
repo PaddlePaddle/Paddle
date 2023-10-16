@@ -20,7 +20,7 @@
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/hlir/pass/use_pass.h"
 
-DECLARE_string(cinn_fusion_groups_graphviz_dir);
+PD_DECLARE_string(cinn_fusion_groups_graphviz_dir);
 
 namespace cinn {
 namespace hlir {

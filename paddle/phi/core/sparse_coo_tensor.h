@@ -55,10 +55,10 @@ class SparseCooTensor : public TensorBase,
   SparseCooTensor(const SparseCooTensor& other);
 
   /// \brief move constructor
-  SparseCooTensor(SparseCooTensor&& other);
+  SparseCooTensor(SparseCooTensor&& other) noexcept;
 
   /// \brief SparseCooTensor shallow copy assignment.
-  SparseCooTensor operator=(const SparseCooTensor& other);
+  SparseCooTensor& operator=(const SparseCooTensor& other);
 
   /// \brief Destroy the tensor object and release exclusive resources.
   virtual ~SparseCooTensor() = default;

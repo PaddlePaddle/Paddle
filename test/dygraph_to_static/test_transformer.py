@@ -20,6 +20,10 @@ import unittest
 
 import numpy as np
 import transformer_util as util
+from dygraph_to_static_util import (
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 from transformer_dygraph_model import (
     CrossEntropyCriterion,
     Transformer,
@@ -27,25 +31,24 @@ from transformer_dygraph_model import (
 )
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 trainer_count = 1
-place = (
-    fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
-)
+place = base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
 SEED = 10
 STEP_NUM = 10
 
 
+@test_and_compare_with_new_ir(True)
 def train_static(args, batch_generator):
     paddle.enable_static()
     paddle.seed(SEED)
     paddle.framework.random._manual_program_seed(SEED)
-    train_prog = fluid.Program()
-    startup_prog = fluid.Program()
+    train_prog = base.Program()
+    startup_prog = base.Program()
 
-    with fluid.program_guard(train_prog, startup_prog):
-        with fluid.unique_name.guard():
+    with base.program_guard(train_prog, startup_prog):
+        with base.unique_name.guard():
             # define input and reader
             input_field_names = (
                 util.encoder_data_input_fields
@@ -121,7 +124,7 @@ def train_static(args, batch_generator):
     step_idx = 0
     total_batch_num = 0
     avg_loss = []
-    exe = fluid.Executor(place)
+    exe = base.Executor(place)
     exe.run(startup_prog)
     for pass_id in range(args.epoch):
         batch_id = 0
@@ -182,7 +185,7 @@ def train_static(args, batch_generator):
 
 
 def train_dygraph(args, batch_generator):
-    with fluid.dygraph.guard(place):
+    with base.dygraph.guard(place):
         if SEED is not None:
             paddle.seed(SEED)
             paddle.framework.random._manual_program_seed(SEED)
@@ -324,7 +327,7 @@ def train_dygraph(args, batch_generator):
 
 
 def predict_dygraph(args, batch_generator):
-    with fluid.dygraph.guard(place):
+    with base.dygraph.guard(place):
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
@@ -419,9 +422,10 @@ def predict_dygraph(args, batch_generator):
         return seq_ids, seq_scores
 
 
+@test_and_compare_with_new_ir(True)
 def predict_static(args, batch_generator):
-    test_prog = fluid.Program()
-    with fluid.program_guard(test_prog):
+    test_prog = base.Program()
+    with base.program_guard(test_prog):
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
@@ -483,7 +487,7 @@ def predict_static(args, batch_generator):
     test_prog = test_prog.clone(for_test=True)
 
     # define the executor and program for training
-    exe = fluid.Executor(place)
+    exe = base.Executor(place)
 
     util.load(
         test_prog, os.path.join(args.save_static_model_path, "transformer"), exe
@@ -526,6 +530,7 @@ def predict_static(args, batch_generator):
     return seq_ids, seq_scores
 
 
+@dy2static_unittest
 class TestTransformer(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()

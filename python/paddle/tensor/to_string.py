@@ -14,7 +14,7 @@
 
 import numpy as np
 
-from paddle.fluid.data_feeder import check_type, convert_dtype
+from paddle.base.data_feeder import check_type, convert_dtype
 
 from ..framework import core
 
@@ -55,23 +55,20 @@ def set_printoptions(
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.seed(10)
-            a = paddle.rand([10, 20])
-            paddle.set_printoptions(4, 100, 3)
-            print(a)
-
-            '''
-            Tensor(shape=[10, 20], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-                   [[0.0002, 0.8503, 0.0135, ..., 0.9508, 0.2621, 0.6661],
-                    [0.9710, 0.2605, 0.9950, ..., 0.4427, 0.9241, 0.9363],
-                    [0.0948, 0.3226, 0.9955, ..., 0.1198, 0.0889, 0.9231],
-                    ...,
-                    [0.7206, 0.0941, 0.5292, ..., 0.4856, 0.1379, 0.0351],
-                    [0.1745, 0.5621, 0.3602, ..., 0.2998, 0.4011, 0.1764],
-                    [0.0728, 0.7786, 0.0314, ..., 0.2583, 0.1654, 0.0637]])
-            '''
+            >>> paddle.seed(10)
+            >>> a = paddle.rand([10, 20])
+            >>> paddle.set_printoptions(4, 100, 3)
+            >>> print(a)
+            Tensor(shape=[10, 20], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.2727, 0.5489, 0.8655, ..., 0.2916, 0.8525, 0.9000],
+             [0.3806, 0.8996, 0.0928, ..., 0.9535, 0.8378, 0.6409],
+             [0.1484, 0.4038, 0.8294, ..., 0.0148, 0.6520, 0.4250],
+             ...,
+             [0.3426, 0.1909, 0.7240, ..., 0.4218, 0.2676, 0.5679],
+             [0.5561, 0.2081, 0.0676, ..., 0.9778, 0.3302, 0.9559],
+             [0.2665, 0.8483, 0.5389, ..., 0.4956, 0.6862, 0.9178]])
     """
     kwargs = {}
 
@@ -129,15 +126,15 @@ def _format_item(np_var, max_width=0, signed=False):
         or np_var.dtype == np.float16
     ):
         if DEFAULT_PRINT_OPTIONS.sci_mode:
-            item_str = '{{:.{}e}}'.format(
-                DEFAULT_PRINT_OPTIONS.precision
-            ).format(np_var)
+            item_str = f'{{:.{DEFAULT_PRINT_OPTIONS.precision}e}}'.format(
+                np_var
+            )
         elif np.ceil(np_var) == np_var:
             item_str = f'{np_var:.0f}.'
         else:
-            item_str = '{{:.{}f}}'.format(
-                DEFAULT_PRINT_OPTIONS.precision
-            ).format(np_var)
+            item_str = f'{{:.{DEFAULT_PRINT_OPTIONS.precision}f}}'.format(
+                np_var
+            )
     else:
         item_str = f'{np_var}'
 

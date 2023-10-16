@@ -17,11 +17,11 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.backward import append_backward
-from paddle.fluid.executor import Executor
-from paddle.fluid.framework import Program, program_guard
+from paddle import base
+from paddle.base import core
+from paddle.base.backward import append_backward
+from paddle.base.executor import Executor
+from paddle.base.framework import Program, program_guard
 from paddle.static.nn.control_flow import select_input, select_output
 
 paddle.enable_static()
@@ -53,9 +53,9 @@ class TestSplitMergeSelectedVarOps(unittest.TestCase):
                 append_backward(mean)
 
             place = (
-                fluid.CUDAPlace(0)
+                base.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
-                else fluid.CPUPlace()
+                else base.CPUPlace()
             )
             exe = Executor(place)
 

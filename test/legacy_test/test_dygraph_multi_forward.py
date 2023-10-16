@@ -18,9 +18,9 @@ import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.dygraph.base import to_variable
+from paddle import base
+from paddle.base import core
+from paddle.base.dygraph.base import to_variable
 from paddle.nn import Linear
 
 SEED = 123123111
@@ -108,7 +108,7 @@ class TestDygraphMultiForward(unittest.TestCase):
     def test_mnist_forward_float32(self):
         epoch_num = 1
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             paddle.seed(SEED)
             paddle.framework.random._manual_program_seed(SEED)
             mnist = MNIST()
@@ -151,10 +151,10 @@ class TestDygraphMultiForward(unittest.TestCase):
         with new_program_scope():
             paddle.seed(SEED)
             paddle.framework.random._manual_program_seed(SEED)
-            exe = fluid.Executor(
-                fluid.CPUPlace()
+            exe = base.Executor(
+                base.CPUPlace()
                 if not core.is_compiled_with_cuda()
-                else fluid.CUDAPlace(0)
+                else base.CUDAPlace(0)
             )
 
             mnist = MNIST()
@@ -182,7 +182,7 @@ class TestDygraphMultiForward(unittest.TestCase):
                 static_param_name_list.append(param.name)
 
             out = exe.run(
-                fluid.default_startup_program(),
+                base.default_startup_program(),
                 fetch_list=static_param_name_list,
             )
 
@@ -202,7 +202,7 @@ class TestDygraphMultiForward(unittest.TestCase):
 
                     fetch_list = [avg_loss.name]
                     out = exe.run(
-                        fluid.default_main_program(),
+                        base.default_main_program(),
                         feed={"pixel": static_x_data, "label": y_data},
                         fetch_list=fetch_list,
                     )

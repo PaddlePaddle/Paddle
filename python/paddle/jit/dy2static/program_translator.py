@@ -20,14 +20,18 @@ import threading
 import warnings
 import weakref
 
-from paddle.fluid import core, framework
-from paddle.fluid.data_feeder import check_type
-from paddle.fluid.dygraph.base import (
-    _switch_declarative_mode_guard_,
+import paddle.pir.core as ir_static
+from paddle import decomposition
+from paddle.base import core, framework
+from paddle.base.data_feeder import check_type
+from paddle.base.dygraph.base import (
+    _to_static_mode_guard_,
     param_guard,
     switch_to_static_graph,
 )
-from paddle.framework import in_dynamic_mode
+from paddle.base.unique_name import UniqueNameGenerator
+from paddle.base.unique_name import guard as UniqueNameGuard
+from paddle.framework import in_dynamic_mode, use_pir_api
 from paddle.nn.layer import layers
 from paddle.utils import flatten, gast
 
@@ -39,12 +43,15 @@ from .function_spec import (
     get_buffers,
     get_parameters,
 )
+from .newir_partial_program import (
+    PartialProgramLayerHook as PirPartialProgramLayerHook,
+)
 from .origin_info import (
     attach_origin_info,
     create_and_update_origin_info_map,
     update_op_callstack_with_origin_info,
 )
-from .partial_program import PartialProgramLayerHook, partial_program_from
+from .partial_program import PartialProgramLayerHook
 from .utils import (
     ALREADY_D2S,
     NO_SHAPE_VAR_TYPE,
@@ -552,7 +559,7 @@ class StaticFunction:
         Example::
             .. code-block:: python
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
                 >>> import paddle
 
                 >>> class Net(paddle.nn.Layer):
@@ -685,29 +692,21 @@ class SymbolicStaticFunction(StaticFunction):
     def __init__(self, function, input_spec=None, **kwargs):
         if input_spec is not None:
             warnings.warn(
-                "\nSymbolic Trace don't support input_spec arguments. It will Will not produce any effect.\n"
+                "\nSymbolic Trace don't support input_spec arguments. It will not produce any effect.\n"
                 "1. You can disable fallback mode by `paddle.jit.to_static(enable_fallback=False)` to switch to AST to static, then you can assign input spec.\n"
             )
         super().__init__(function, input_spec, **kwargs)
         self.last_call_input_spec = None
 
     def _perform_call(self, *args, **kwargs):
+        from ..sot import symbolic_translate
+
         args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
         (
             input_args_with_spec,
             input_kwargs_with_spec,
         ) = self._function_spec.args_to_input_spec(args, kwargs)
         self.last_call_input_spec = input_args_with_spec
-
-        try:
-            from sot import symbolic_translate
-        except:
-            import os
-
-            os.system(
-                "pip install git+https://github.com/PaddlePaddle/PaddleSOT@develop"
-            )
-            from sot import symbolic_translate
 
         build_strategy = self._kwargs.get("build_strategy", None)
         backend = self._kwargs.get("backend", None)
@@ -899,7 +898,7 @@ class ASTStaticFunction(StaticFunction):
         Examples:
             .. code-block:: python
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
                 >>> import paddle
                 >>> from paddle.jit import to_static
                 >>> from paddle.static import InputSpec
@@ -942,72 +941,68 @@ class ASTStaticFunction(StaticFunction):
         # If specific `input_spec`, apply convertion from dygraph layers into static Program.
         # NOTE(jiabin): is_prim_infer indicates this method called by paddle.jit.save and it is worked in prim mode
 
-        if cached_program_len == 0:
-            desired_input_spec = input_spec
-            if self._function_spec.input_spec is not None:
-                if input_spec is not None and not input_specs_compatible(
-                    flatten(input_spec), flatten(self._function_spec.input_spec)
-                ):
-                    raise ValueError(
-                        "The `input_spec`: {} used to construct concrete_program is conflict with the `input_spec`: {} in `@paddle.jit.to_static`".format(
-                            input_spec, self._function_spec.input_spec
-                        )
+        desired_input_spec = input_spec
+        if self._function_spec.input_spec is not None:
+            if input_spec is not None and not input_specs_compatible(
+                flatten(input_spec), flatten(self._function_spec.input_spec)
+            ):
+                raise ValueError(
+                    "The `input_spec`: {} used to construct concrete_program is conflict with the `input_spec`: {} in `@paddle.jit.to_static`".format(
+                        input_spec, self._function_spec.input_spec
                     )
-                # NOTE(chenweihang): we should always translated program based on the `input_spec`
-                # decorated on forward if it is valid
-                desired_input_spec = self._function_spec.input_spec
-                if input_spec is not None:
+                )
+            # NOTE(chenweihang): we should always translated program based on the `input_spec`
+            # decorated on forward if it is valid
+            desired_input_spec = self._function_spec.input_spec
+            if input_spec is not None:
+                logging_utils.warn(
+                    "\n\nYou have specified `input_spec` both in function definition (higher priority) and `paddle.jit.save` (will be ignored.)\n\n\t Using: {}\n\n\t Ignore: {}\n".format(
+                        desired_input_spec, input_spec
+                    )
+                )
+
+        has_input_spec = desired_input_spec is not None
+        if has_input_spec:
+            concrete_program, _ = self.get_concrete_program(
+                *desired_input_spec,
+                with_hook=with_hook,
+                is_train=self._is_train_mode(),
+                is_prim_infer=is_prim_infer,
+            )
+            return concrete_program
+        else:
+            if cached_program_len != 0:
+                logging_utils.warn(
+                    "No input_spec is found, save cached program instead"
+                )
+                if cached_program_len > 1:
                     logging_utils.warn(
-                        "\n\nYou have specified `input_spec` both in function definition (higher priority) and `paddle.jit.save` (will be ignored.)\n\n\t Using: {}\n\n\t Ignore: {}\n".format(
-                            desired_input_spec, input_spec
+                        "Current {} has more than one cached programs: {}, the last traced progam will be return by default.".format(
+                            self._function_spec, cached_program_len
                         )
                     )
 
-            has_input_spec = desired_input_spec is not None
-            if has_input_spec:
-                concrete_program, _ = self.get_concrete_program(
-                    *desired_input_spec,
-                    with_hook=with_hook,
-                    is_train=self._is_train_mode(),
-                    is_prim_infer=is_prim_infer,
-                )
-                return concrete_program
+                cache_key = self._program_cache._recent_cache_key
+
+                if with_hook:
+                    cache_key.kwargs["with_hook"] = True
+
+                if is_prim_infer:
+                    (
+                        concrete_program,
+                        _,
+                    ) = self.get_concrete_program_with_cache_key(cache_key)
+                    return concrete_program
+                else:
+                    concrete_program, _ = self._program_cache[cache_key]
+                    return concrete_program
+
             else:
                 raise ValueError(
                     "No valid transformed program for {}.\n\t    Please specific `input_spec` in `@paddle.jit.to_static` or feed input tensor to call the decorated function at once.\n".format(
                         self._function_spec
                     )
                 )
-        elif with_hook:
-            cache_key = self._program_cache._recent_cache_key
-            cache_key.kwargs["with_hook"] = True
-            if not is_prim_infer:
-                concrete_program, _ = self._program_cache[cache_key]
-                return concrete_program
-            else:
-                concrete_program, _ = self.get_concrete_program_with_cache_key(
-                    cache_key
-                )
-                return concrete_program
-        # If more than one programs have been cached, return the recent converted program by default.
-        elif cached_program_len > 1:
-            logging_utils.warn(
-                "Current {} has more than one cached programs: {}, the last traced progam will be return by default.".format(
-                    self._function_spec, cached_program_len
-                )
-            )
-        if not is_prim_infer:
-            cache_key, (
-                concrete_program,
-                partial_layer,
-            ) = self._program_cache.last()
-            return concrete_program
-        else:
-            cache_key = self._program_cache._recent_cache_key
-            concrete_program, _ = self.get_concrete_program_with_cache_key(
-                cache_key
-            )
-            return concrete_program
 
     @property
     def inputs(self):
@@ -1134,6 +1129,7 @@ class ConcreteProgram:
         "startup_program",
         "parameters",
         "function",
+        "name_generator",
         'kwargs',
     ]
 
@@ -1143,6 +1139,7 @@ class ConcreteProgram:
         outputs,
         parameters,
         function,
+        name_generator,
         main_program,
         startup_program=None,
         **kwargs,
@@ -1153,8 +1150,110 @@ class ConcreteProgram:
         self.startup_program = startup_program
         self.parameters = parameters
         self.function = function
+        self.name_generator = name_generator
         self.kwargs = kwargs
 
+    @staticmethod
+    @switch_to_static_graph
+    def newir_from_func_spec(
+        func_spec, input_spec, input_kwargs_spec, class_instance, **kwargs
+    ):
+        """
+        Builds the main_program with specialized inputs and returns outputs
+        of program as fetch_list.
+
+        Args:
+            func_spec(FunctionSpec): A FunctionSpec instance for decorated function.
+            input_spec(list[InputSpec]):
+        """
+        # verify the instance is initialized in imperative mode.
+        _verify_init_in_dynamic_mode(class_instance)
+
+        # Transforms dygraph function into static function and caches it.
+        dygraph_function = func_spec.dygraph_function
+        static_func = convert_to_static(dygraph_function)
+        # apply pre\post hook for outermost layer
+        hook_helper = HookHelper(
+            dygraph_function, class_instance, kwargs.get("with_hook", False)
+        )
+
+        main_program, startup_program = ir_static.Program(), ir_static.Program()
+        # Note: The random seed should be synchronized into cached program
+        # if set in `fluid.dygraph_guard` because some ops rely on it, such as
+        # `fluid.layers.dropout`.
+
+        # TODO: new ir has no random seed.
+        #  {{{
+        # main_program.random_seed = static.default_main_program().random_seed
+        # startup_program.random_seed = (
+        # framework.default_startup_program().random_seed
+        # ) }}}
+        with ir_static.program_guard(main_program, startup_program):
+            with _to_static_mode_guard_(is_to_static=True):
+                # 1. Adds `paddle.static.data` layers for input if needed
+                static_inputs = func_spec.newir_to_static_inputs_with_spec(
+                    input_spec, main_program
+                )
+                _kwargs = func_spec.newir_to_static_inputs_with_spec(
+                    input_kwargs_spec, main_program
+                )
+                if class_instance:
+                    static_inputs = tuple(
+                        [class_instance] + list(static_inputs)
+                    )
+
+                # 2. Builds program only once and returns the output Variables.
+                with param_guard(
+                    get_parameters(class_instance, False)
+                ), param_guard(get_buffers(class_instance, False)):
+                    try:
+                        # only for jit.save, do nothing while train and eval process
+                        inputs = hook_helper.apply_pre_hooks(static_inputs)
+                        if _kwargs:
+                            outputs = static_func(*inputs, **_kwargs)
+                        else:
+                            outputs = static_func(*inputs)
+                        outputs = hook_helper.apply_post_hooks(inputs, outputs)
+                    except BaseException as e:
+                        # NOTE: If e is raised in compile time, e should be attached to ERROR_DATA here.
+                        error.attach_error_data(e)
+                        error_data = getattr(e, error.ERROR_DATA, None)
+                        if error_data:
+                            error_data.raise_new_exception()
+                        raise
+
+                # 3. Gets all ParamBases and buffered VarBases in the function
+                from ..newir_dy2static.parameter_recorder import (
+                    _global_parameter_recorder,
+                )
+
+                all_parameters_and_buffers = _global_parameter_recorder.pop(
+                    main_program
+                )
+                if outputs is not None:
+                    need_wrap_into_list = (
+                        not isinstance(outputs, (tuple, list))
+                        or len(outputs) == 1
+                    )
+                    if need_wrap_into_list:
+                        outputs = [outputs]
+
+        # TODO(@xiongkun): support op call stack in new ir?
+        # main_program = update_op_callstack_with_origin_info(main_program)
+
+        new_name_generator = UniqueNameGenerator()
+        return ConcreteProgram(
+            inputs=static_inputs,
+            outputs=outputs,
+            parameters=all_parameters_and_buffers,
+            name_generator=new_name_generator,
+            function=dygraph_function,
+            main_program=main_program,
+            startup_program=startup_program,
+            **kwargs,
+        )
+
+    # TODO(@xiongkun): remove after new ir is switch
     @staticmethod
     @switch_to_static_graph
     def from_func_spec(
@@ -1181,15 +1280,19 @@ class ConcreteProgram:
 
         main_program, startup_program = framework.Program(), framework.Program()
         # Note: The random seed should be synchronized into cached program
-        # if set in `fluid.dygraph_guard` because some ops rely on it, such as
-        # `fluid.layers.dropout`.
+        # if set in `base.dygraph_guard` because some ops rely on it, such as
+        # `base.layers.dropout`.
         main_program.random_seed = framework.default_main_program().random_seed
         startup_program.random_seed = (
             framework.default_startup_program().random_seed
         )
 
+        new_name_generator = UniqueNameGenerator()
+
         with framework.program_guard(main_program, startup_program):
-            with _switch_declarative_mode_guard_(is_declarative=True):
+            with _to_static_mode_guard_(is_to_static=True), UniqueNameGuard(
+                new_name_generator
+            ):
                 # 1. Adds `paddle.static.data` layers for input if needed
                 static_inputs = func_spec.to_static_inputs_with_spec(
                     input_spec, main_program
@@ -1244,10 +1347,19 @@ class ConcreteProgram:
             outputs=outputs,
             parameters=all_parameters_and_buffers,
             function=dygraph_function,
+            name_generator=new_name_generator,
             main_program=main_program,
             startup_program=startup_program,
             **kwargs,
         )
+
+
+def _program_hash(program):
+    """
+    because program is not deleted while calling from_func_spec.
+    so it's ok to use id(program)
+    """
+    return id(program)
 
 
 class ParametersRecorder:
@@ -1257,35 +1369,28 @@ class ParametersRecorder:
     @synchronized
     def add(self, program, param):
         """use the default_program as key, append param the parameter list."""
-        key = self._program_hash(program)
+        key = _program_hash(program)
         if key not in self.params_dict:
             self.params_dict[key] = set()
         params = self.params_dict[key]
         params.add(param)
 
     def pop(self, program):
-        params = self.params_dict.get(self._program_hash(program))
+        params = self.params_dict.get(_program_hash(program))
         if params is None:
             return []
-        del self.params_dict[self._program_hash(program)]
+        del self.params_dict[_program_hash(program)]
         return list(params)
 
-    def _program_hash(self, program):
-        """
-        because program is not deleted while calling from_func_spec.
-        so it's ok to use id(program)
-        """
-        return id(program)
 
-
-class ParametersMap:
+class InplaceMap:
     def __init__(self):
         self.params_dict = {}
 
     @synchronized
     def add(self, program, id, param):
         """use the default_program as key, append param the parameter list."""
-        key = self._program_hash(program)
+        key = _program_hash(program)
         if key not in self.params_dict:
             self.params_dict[key] = {}
 
@@ -1293,7 +1398,7 @@ class ParametersMap:
         params[id] = param
 
     def get(self, program, id):
-        params = self.params_dict.get(self._program_hash(program))
+        params = self.params_dict.get(_program_hash(program))
         if params is None:
             return None
         if id not in params:
@@ -1307,12 +1412,19 @@ class ParametersMap:
             params[var.desc.id()] = root_var
         return root_var
 
-    def _program_hash(self, program):
-        """
-        because program is not deleted while calling from_func_spec.
-        so it's ok to use id(program)
-        """
-        return id(program)
+    def restore_checkpoint(self, checkpoint):
+        # InplaceMap is a nested effect.
+        # when enter a block, we should save a checkpoint
+        # when exit a block, we should restore a checkpoint
+        # for example:
+        # if cond > 0:
+        #    x [:] = 0
+        # return x
+        # x[:] only effect current cond block, we should restore in false block.
+        self.params_dict = checkpoint
+
+    def save_checkpoint(self):
+        return dict(self.params_dict.items())
 
 
 class FallbackProgramLayer:
@@ -1358,6 +1470,50 @@ class FallbackProgramLayer:
         return super().__setattr__(key, value)
 
 
+class PirPrimHooker(PirPartialProgramLayerHook):
+    def __init__(self, original_program, backend):
+        self.backend = backend
+        self.custom_vjps = set()
+        with backend_guard(self.backend):
+            if core._is_all_prim_enabled():
+                self.custom_vjps = {
+                    op.name()
+                    for op in original_program.global_block().ops
+                    if core.has_custom_vjp(op)
+                }
+
+    def before_append_backward(self, forward_program, src_vars):
+        with backend_guard(self.backend):
+            if core._is_fwd_prim_enabled():
+                dst_vars = decomposition.decompose(
+                    forward_program, src_vars, blacklist=self.custom_vjps
+                )
+                return forward_program, dst_vars
+            return forward_program, src_vars
+
+    def after_append_backward(self, whole_program, src_vars, forward_end_idx):
+        with backend_guard(self.backend):
+            if core._is_fwd_prim_enabled() and len(self.custom_vjps) != 0:
+                backward_length = (
+                    len(whole_program.global_block().ops) - forward_end_idx
+                )
+                dst_vars = decomposition.decompose(
+                    whole_program, src_vars, whitelist=self.custom_vjps
+                )
+                new_start_index = (
+                    len(whole_program.global_block().ops) - backward_length
+                )
+                return whole_program, new_start_index, dst_vars
+            return whole_program, forward_end_idx, src_vars
+
+    def after_infer(self, infer_program, src_vars):
+        with backend_guard(self.backend):
+            if core._is_fwd_prim_enabled():
+                dst_vars = decomposition.decompose(infer_program, src_vars)
+                return infer_program, dst_vars
+            return infer_program, src_vars
+
+
 class ProgramCache:
     """
     Wrapper class for the program functions defined by dygraph function.
@@ -1379,13 +1535,22 @@ class ProgramCache:
         # NOTE(xiongkun): Need a global FLAGS to enable/disable fallback
         enable_fallback = enable_prim
         try:
-            concrete_program = ConcreteProgram.from_func_spec(
-                func_spec=cache_key.function_spec,
-                input_spec=cache_key.input_args_with_spec,
-                input_kwargs_spec=cache_key.input_kwargs_with_spec,
-                class_instance=cache_key.class_instance,
-                **cache_key.kwargs,
-            )
+            if use_pir_api():
+                concrete_program = ConcreteProgram.newir_from_func_spec(
+                    func_spec=cache_key.function_spec,
+                    input_spec=cache_key.input_args_with_spec,
+                    input_kwargs_spec=cache_key.input_kwargs_with_spec,
+                    class_instance=cache_key.class_instance,
+                    **cache_key.kwargs,
+                )
+            else:
+                concrete_program = ConcreteProgram.from_func_spec(
+                    func_spec=cache_key.function_spec,
+                    input_spec=cache_key.input_args_with_spec,
+                    input_kwargs_spec=cache_key.input_kwargs_with_spec,
+                    class_instance=cache_key.class_instance,
+                    **cache_key.kwargs,
+                )
         except Exception as e:
             if enable_fallback:
                 warnings.warn(
@@ -1406,7 +1571,10 @@ class ProgramCache:
                 raise
 
         backend = cache_key.kwargs['backend']
-        if prim_or_cinn_is_enabled(cache_key.kwargs['build_strategy'], backend):
+        if (
+            prim_or_cinn_is_enabled(cache_key.kwargs['build_strategy'], backend)
+            and not use_pir_api()
+        ):
             for var in concrete_program.main_program.list_vars():
                 if var.type not in NO_SHAPE_VAR_TYPE and -1 in var.shape:
                     warnings.warn(
@@ -1415,14 +1583,28 @@ class ProgramCache:
                         )
                     )
 
-        partial_program = partial_program_from(
-            concrete_program, cache_key.class_instance is not None
-        )
+        if use_pir_api():
+            from .newir_partial_program import partial_program_from
+
+            partial_program = partial_program_from(
+                concrete_program, cache_key.class_instance is not None
+            )
+        else:  # TODO(new_ir): remove later.
+            from .partial_program import partial_program_from
+
+            partial_program = partial_program_from(
+                concrete_program, cache_key.class_instance is not None
+            )
         with backend_guard(backend):
             if core._is_fwd_prim_enabled():
-                partial_program.set_hooker(
-                    PrimHooker(concrete_program.main_program, backend)
-                )
+                if use_pir_api():
+                    partial_program.set_hooker(
+                        PirPrimHooker(concrete_program.main_program, backend)
+                    )
+                else:
+                    partial_program.set_hooker(
+                        PrimHooker(concrete_program.main_program, backend)
+                    )
         return concrete_program, partial_program
 
     def __getitem__(self, item):
@@ -1576,7 +1758,7 @@ class ProgramTranslator:
         self._initialized = True
         self._program_cache = ProgramCache()
         self._params_recorder = ParametersRecorder()
-        self._params_map = ParametersMap()
+        self._inplace_map = InplaceMap()
         self.enable_to_static = True
 
     def enable(self, enable_to_static):
@@ -1593,7 +1775,7 @@ class ProgramTranslator:
         Examples:
             .. code-block:: python
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
                 >>> import paddle
                 >>> def func(x):
                 ...     if paddle.mean(x) > 0:
@@ -1636,7 +1818,7 @@ class ProgramTranslator:
         Examples:
             .. code-block:: python
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
                 >>> import paddle
                 >>> def func(x):
                 ...     if paddle.mean(x) > 0:
@@ -1719,7 +1901,7 @@ class ProgramTranslator:
         Examples:
             .. code-block:: python
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
                 >>> import paddle
                 >>> def func(x):
                 ...     if paddle.mean(x) > 0:
@@ -1768,7 +1950,7 @@ class ProgramTranslator:
         Examples:
             .. code-block:: python
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
                 >>> import paddle
                 >>> def func(x):
                 ...     if paddle.mean(x) > 0:
@@ -1835,7 +2017,7 @@ class ProgramTranslator:
         Examples:
             .. code-block:: python
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
                 >>> import paddle
                 >>> def func(x):
                 ...     if paddle.mean(x) > 0:

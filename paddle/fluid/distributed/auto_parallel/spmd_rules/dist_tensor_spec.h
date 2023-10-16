@@ -19,10 +19,10 @@ limitations under the License. */
 
 namespace paddle {
 namespace distributed {
-namespace auto_parallel {
+using phi::distributed::ProcessMesh;
+using phi::distributed::TensorDistAttr;
 
-using phi::distributed::auto_parallel::ProcessMesh;
-using phi::distributed::auto_parallel::TensorDistAttr;
+namespace auto_parallel {
 
 /**
  * A unified data class for inferring distributed attributes

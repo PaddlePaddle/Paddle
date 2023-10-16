@@ -48,7 +48,7 @@ class VOC2012(Dataset):
         download (bool, optional): Download dataset automatically if :attr:`data_file` is None. Default: True.
         backend (str, optional): Specifies which type of image to be returned:
             PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}.
-            If this option is not set, will get backend from :ref:`paddle.vision.get_image_backend <api_vision_image_get_image_backend>`,
+            If this option is not set, will get backend from :ref:`paddle.vision.get_image_backend <api_paddle_vision_get_image_backend>`,
             default backend is 'pil'. Default: None.
 
     Returns:
@@ -58,49 +58,50 @@ class VOC2012(Dataset):
 
         .. code-block:: python
 
-            import itertools
-            import paddle.vision.transforms as T
-            from paddle.vision.datasets import VOC2012
+            >>> # doctest: +TIMEOUT(75)
+            >>> import itertools
+            >>> import paddle.vision.transforms as T
+            >>> from paddle.vision.datasets import VOC2012
 
 
-            voc2012 = VOC2012()
-            print(len(voc2012))
-            # 2913
+            >>> voc2012 = VOC2012()
+            >>> print(len(voc2012))
+            2913
 
-            for i in range(5):  # only show first 5 images
-                img, label = voc2012[i]
-                # do something with img and label
-                print(type(img), img.size)
-                # <class 'PIL.JpegImagePlugin.JpegImageFile'> (500, 281)
-                print(type(label), label.size)
-                # <class 'PIL.PngImagePlugin.PngImageFile'> (500, 281)
+            >>> for i in range(5):  # only show first 5 images
+            ...     img, label = voc2012[i]
+            ...     # do something with img and label
+            ...     print(type(img), img.size)
+            ...     # <class 'PIL.JpegImagePlugin.JpegImageFile'> (500, 281)
+            ...     print(type(label), label.size)
+            ...     # <class 'PIL.PngImagePlugin.PngImageFile'> (500, 281)
 
 
-            transform = T.Compose(
-                [
-                    T.ToTensor(),
-                    T.Normalize(
-                        mean=[0.5, 0.5, 0.5],
-                        std=[0.5, 0.5, 0.5],
-                        to_rgb=True,
-                    ),
-                ]
-            )
+            >>> transform = T.Compose(
+            ...     [
+            ...         T.ToTensor(),
+            ...         T.Normalize(
+            ...             mean=[0.5, 0.5, 0.5],
+            ...             std=[0.5, 0.5, 0.5],
+            ...             to_rgb=True,
+            ...         ),
+            ...     ]
+            ... )
 
-            voc2012_test = VOC2012(
-                mode="test",
-                transform=transform,  # apply transform to every image
-                backend="cv2",  # use OpenCV as image transform backend
-            )
-            print(len(voc2012_test))
-            # 1464
+            >>> voc2012_test = VOC2012(
+            ...     mode="test",
+            ...     transform=transform,  # apply transform to every image
+            ...     backend="cv2",  # use OpenCV as image transform backend
+            ... )
+            >>> print(len(voc2012_test))
+            1464
 
-            for img, label in itertools.islice(iter(voc2012_test), 5):  # only show first 5 images
-                # do something with img and label
-                print(type(img), img.shape)
-                # <class 'paddle.Tensor'> [3, 281, 500]
-                print(type(label), label.shape)
-                # <class 'numpy.ndarray'> (281, 500)
+            >>> for img, label in itertools.islice(iter(voc2012_test), 5):  # only show first 5 images
+            ...     # do something with img and label
+            ...     print(type(img), img.shape)
+            ...     # <class 'paddle.Tensor'> [3, 281, 500]
+            ...     print(type(label), label.shape)
+            ...     # <class 'numpy.ndarray'> (281, 500)
     """
 
     def __init__(
@@ -121,9 +122,7 @@ class VOC2012(Dataset):
             backend = paddle.vision.get_image_backend()
         if backend not in ['pil', 'cv2']:
             raise ValueError(
-                "Expected backend are one of ['pil', 'cv2'], but got {}".format(
-                    backend
-                )
+                f"Expected backend are one of ['pil', 'cv2'], but got {backend}"
             )
         self.backend = backend
 

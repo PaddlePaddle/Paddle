@@ -88,7 +88,7 @@ class PyVariableWrapperHook : public imperative::VariableWrapperHook {
     Py_INCREF(py_func_);
   }
 
-  ~PyVariableWrapperHook() override {
+  ~PyVariableWrapperHook() override {  // NOLINT
     py::gil_scoped_acquire gil;
     Py_DECREF(py_func_);
   }
@@ -108,7 +108,7 @@ class PyVariableWrapperHook : public imperative::VariableWrapperHook {
       res = PyObject_CallFunctionObjArgs(
           py_func_, py::cast(tmp_varbase).ptr(), nullptr);
     } catch (platform::EnforceNotMet &e) {
-      throw std::move(e);
+      throw e;
     } catch (std::exception &e) {
       PADDLE_THROW(platform::errors::Unavailable(
           "Hook function of Tensor raises an exception: %s.", e.what()));
@@ -976,8 +976,8 @@ void BindImperative(py::module *m_ptr) {
       "to_uva_tensor",
       [](const py::object &obj, int device_id) {
         const auto &tracer = imperative::GetCurrentTracer();
-        auto new_tensor = std::shared_ptr<imperative::VarBase>(
-            new imperative::VarBase(tracer->GenerateUniqueName()));
+        auto new_tensor =
+            std::make_shared<imperative::VarBase>(tracer->GenerateUniqueName());
         auto array = obj.cast<py::array>();
         if (py::isinstance<py::array_t<int32_t>>(array)) {
           SetUVATensorFromPyArray<int32_t>(new_tensor, array, device_id);
@@ -1027,15 +1027,15 @@ void BindImperative(py::module *m_ptr) {
                                  shape with the input numpy array.
 
   Examples:
-      .. code-block:: python
+        .. code-block:: python
 
-        # required: gpu
-        import numpy as np
-        import paddle
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import numpy as np
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
 
-        data = np.random.randint(10, size=(3, 4))
-        tensor = paddle.fluid.core.to_uva_tensor(data)
-        print(tensor)
+            >>> data = np.random.randint(10, size=(3, 4))
+            >>> tensor = paddle.base.core.to_uva_tensor(data)
 )DOC");
 
 #endif
@@ -1161,29 +1161,29 @@ void BindImperative(py::module *m_ptr) {
                     should be one-dimensinal.
 
   Examples:
-      .. code-block:: python
+        .. code-block:: python
 
-          import numpy as np
-          import paddle
-          from paddle.fluid import core
-          from paddle.device import cuda
-
-          if core.is_compiled_with_cuda():
-              src = paddle.rand(shape=[100, 50, 50])
-              dst = paddle.emtpy(shape=[200, 50, 50]).pin_memory()
-              offset = paddle.to_tensor(
-                  np.array([0, 60], dtype="int64"), place=paddle.CPUPlace())
-              count = paddle.to_tensor(
-                  np.array([40, 60], dtype="int64"), place=paddle.CPUPlace())
-
-              stream = cuda.Stream()
-              with cuda.stream_guard(stream):
-                  core.async_write(src, dst, offset, count)
-
-              offset_a = paddle.gather(dst, paddle.to_tensor(np.arange(0, 40)))
-              offset_b = paddle.gather(dst, paddle.to_tensor(np.arange(60, 120)))
-              offset_array = paddle.concat([offset_a, offset_b], axis=0)
-              print(np.allclose(src.numpy(), offset_array.numpy())) # True
+            >>> import numpy as np
+            >>> import paddle
+            >>> from paddle.base import core
+            >>> from paddle.device import cuda
+            >>> if core.is_compiled_with_cuda():
+            ...     src = paddle.rand(shape=[100, 50, 50])
+            ...     dst = paddle.empty(shape=[200, 50, 50]).pin_memory()
+            ...     offset = paddle.to_tensor(
+            ...         np.array([0, 60], dtype="int64"), place=paddle.CPUPlace())
+            ...     count = paddle.to_tensor(
+            ...         np.array([40, 60], dtype="int64"), place=paddle.CPUPlace())
+            ...
+            ...     stream = cuda.Stream()
+            ...     with cuda.stream_guard(stream):
+            ...         core.eager.async_write(src, dst, offset, count)
+            ...
+            ...     offset_a = paddle.gather(dst, paddle.to_tensor(np.arange(0, 40)))
+            ...     offset_b = paddle.gather(dst, paddle.to_tensor(np.arange(60, 120)))
+            ...     offset_array = paddle.concat([offset_a, offset_b], axis=0)
+            ...     print(np.allclose(src.numpy(), offset_array.numpy()))
+            True
 )DOC");
 
   m.def(
@@ -1393,28 +1393,27 @@ void BindImperative(py::module *m_ptr) {
                     should be one-dimensinal.
 
   Examples:
-      .. code-block:: python
+        .. code-block:: python
 
-          import numpy as np
-          import paddle
-          from paddle.fluid import core
-          from paddle.device import cuda
-
-          if core.is_compiled_with_cuda():
-              src = paddle.rand(shape=[100, 50, 50], dtype="float32").pin_memory()
-              dst = paddle.empty(shape=[100, 50, 50], dtype="float32")
-              offset = paddle.to_tensor(
-                  np.array([0, 60], dtype="int64"), place=paddle.CPUPlace())
-              count = paddle.to_tensor(
-                  np.array([40, 60], dtype="int64"), place=paddle.CPUPlace())
-              buffer = paddle.empty(shape=[50, 50, 50], dtype="float32").pin_memory()
-              index = paddle.to_tensor(
-                  np.array([1, 3, 5, 7, 9], dtype="int64")).cpu()
-
-              stream = cuda.Stream()
-              with cuda.stream_guard(stream):
-                  core.async_read(src, dst, index, buffer, offset, count)
-
+            >>> import numpy as np
+            >>> import paddle
+            >>> from paddle.base import core
+            >>> from paddle.device import cuda
+            ...
+            >>> if core.is_compiled_with_cuda():
+            ...     src = paddle.rand(shape=[100, 50, 50], dtype="float32").pin_memory()
+            ...     dst = paddle.empty(shape=[100, 50, 50], dtype="float32")
+            ...     offset = paddle.to_tensor(
+            ...         np.array([0, 60], dtype="int64"), place=paddle.CPUPlace())
+            ...     count = paddle.to_tensor(
+            ...         np.array([40, 60], dtype="int64"), place=paddle.CPUPlace())
+            ...     buffer = paddle.empty(shape=[50, 50, 50], dtype="float32").pin_memory()
+            ...     index = paddle.to_tensor(
+            ...         np.array([1, 3, 5, 7, 9], dtype="int64")).cpu()
+            ...
+            ...     stream = cuda.Stream()
+            ...     with cuda.stream_guard(stream):
+            ...         core.eager.async_read(src, dst, index, buffer, offset, count)
 )DOC");
 #endif
 }

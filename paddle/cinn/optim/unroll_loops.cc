@@ -17,11 +17,11 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/optim/ir_replace.h"
+#include "paddle/cinn/ir/utils/ir_replace.h"
 
 namespace cinn {
 namespace optim {
@@ -94,8 +94,8 @@ struct UnrollMutator : public ir::IRMutator<Expr*> {
 
     for (int i = min->value; i < extent->value; i++) {
       Expr start = op->min + i;
-      body.push_back(optim::IRCopy(op->body));
-      optim::IrReplace(&body.back(), op->loop_var, start);
+      body.push_back(ir::ir_utils::IRCopy(op->body));
+      cinn::ir::ir_utils::IrReplace(&body.back(), op->loop_var, start);
     }
 
     *expr = ir::Block::Make(body);

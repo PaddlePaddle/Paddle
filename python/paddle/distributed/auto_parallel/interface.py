@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import paddle
+from paddle.framework import core
 
 from .process_mesh import ProcessMesh, get_current_process_mesh
 from .static.dist_context import get_default_distributed_context
@@ -55,22 +56,21 @@ def shard_tensor(x, process_mesh=None, shard_spec=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.distributed.fleet import auto
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> import paddle
+            >>> from paddle.distributed.fleet import auto
 
-            mesh = auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
-            x = paddle.ones([4, 6])
-            shard_spec = ["x", "y"]
-            auto.shard_tensor(x, mesh, shard_spec)
+            >>> mesh = auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
+            >>> x = paddle.ones([4, 6])
+            >>> shard_spec = ["x", "y"]
+            >>> auto.shard_tensor(x, mesh, shard_spec)
 
     """
 
     if process_mesh is not None:
         assert isinstance(
-            process_mesh, ProcessMesh
-        ), "Argument process_mesh {} is not an instance of ProcessMesh".format(
-            process_mesh
-        )
+            process_mesh, core.ProcessMesh
+        ), f"Argument process_mesh {process_mesh} is not an instance of ProcessMesh"
     else:
         process_mesh = get_current_process_mesh()
         assert (
@@ -144,25 +144,24 @@ def shard_op(op, process_mesh=None, in_shard_specs=None, out_shard_specs=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.distributed.fleet import auto
+            >>> import paddle
+            >>> from paddle.distributed.fleet import auto
 
-            x = paddle.ones([4, 6])
-            y = paddle.zeros([4, 6])
-            mesh = auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
-            dist_add = auto.shard_op(paddle.add,
-                                     in_shard_specs=[["x", "y"], ["y", None]],
-                                     out_shard_specs=[[None, "x"]])
-            dist_add(x, y)
+            >>> x = paddle.ones([4, 6])
+            >>> y = paddle.zeros([4, 6])
+            >>> mesh = auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
+            >>> dist_add = auto.shard_op(paddle.add,
+            ...                          mesh,
+            ...                          in_shard_specs=[["x", "y"], ["y", None]],
+            ...                          out_shard_specs=[[None, "x"]])
+            >>> dist_add(x, y)
 
     """
 
     if process_mesh is not None:
         assert isinstance(
             process_mesh, ProcessMesh
-        ), "Argument process_mesh {} is not an instance of ProcessMesh".format(
-            process_mesh
-        )
+        ), f"Argument process_mesh {process_mesh} is not an instance of ProcessMesh"
     else:
         process_mesh = get_current_process_mesh()
         assert (
@@ -173,9 +172,7 @@ def shard_op(op, process_mesh=None, in_shard_specs=None, out_shard_specs=None):
         assert all(
             (isinstance(shard_spec, list) or shard_spec is None)
             for shard_spec in in_shard_specs
-        ), "in_shard_spec {} is not a list of list or None".format(
-            in_shard_specs
-        )
+        ), f"in_shard_spec {in_shard_specs} is not a list of list or None"
         for shard_spec in in_shard_specs:
             if shard_spec is not None:
                 in_dims_mappings.append(
@@ -188,9 +185,7 @@ def shard_op(op, process_mesh=None, in_shard_specs=None, out_shard_specs=None):
         assert all(
             (isinstance(shard_spec, list) or shard_spec is None)
             for shard_spec in out_shard_specs
-        ), "out_shard_spec {} is not a list of list or None".format(
-            out_shard_specs
-        )
+        ), f"out_shard_spec {out_shard_specs} is not a list of list or None"
         for shard_spec in out_shard_specs:
             if shard_spec is not None:
                 out_dims_mappings.append(

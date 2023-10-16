@@ -74,7 +74,9 @@ void Split(const Context& dev_ctx,
     outs.push_back(&result->at(i));
   }
 
-  SplitKernel<T, Context>(dev_ctx, x, sections, axis, outs);
+  if (x.initialized()) {
+    SplitKernel<T, Context>(dev_ctx, x, sections, axis, outs);
+  }
 }
 
 template <typename T, typename Context>
@@ -85,7 +87,7 @@ std::vector<DenseTensor> Split(const Context& dev_ctx,
   size_t out_number = sections.GetData().size();
   std::vector<DenseTensor> result(out_number);
 
-  Split(dev_ctx, x, sections, axis, &result);
+  Split<T, Context>(dev_ctx, x, sections, axis, &result);
 
   return result;
 }

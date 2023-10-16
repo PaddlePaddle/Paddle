@@ -15,11 +15,14 @@
 import os
 import unittest
 
+from dygraph_to_static_util import dy2static_unittest
+
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 from paddle.jit.dy2static import partial_program, program_translator
 
 
+@dy2static_unittest
 class TestPartiaProgramLayerHook(unittest.TestCase):
     def setUp(self):
         os.environ["ENABLE_FALL_BACK"] = "False"
@@ -35,6 +38,7 @@ class TestPartiaProgramLayerHook(unittest.TestCase):
         self.assertIsNone(self._hook.after_infer(None))
 
 
+@dy2static_unittest
 class TestPrimHook(unittest.TestCase):
     def setUp(self):
         os.environ["ENABLE_FALL_BACK"] = "False"

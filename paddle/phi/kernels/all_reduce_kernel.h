@@ -16,6 +16,7 @@
 
 #include "paddle/phi/common/reduce_type.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace phi {
 
@@ -24,5 +25,19 @@ void AllReduceKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      int reduce_type,
                      DenseTensor* out);
+
+template <typename T, typename Context>
+void AllReduce(const Context& dev_ctx,
+               const DenseTensor& x,
+               int reduce_type,
+               DenseTensor* out) {
+  MetaTensor out_meta(*out);
+  MetaTensor* out_meta_ptr = &out_meta;
+
+  AllReduceInferMeta(phi::MetaTensor(x), out_meta_ptr);
+  if (x.initialized()) {
+    AllReduceKernel<T, Context>(dev_ctx, x, reduce_type, out);
+  }
+}
 
 }  // namespace phi

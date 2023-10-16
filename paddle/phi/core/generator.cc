@@ -205,7 +205,7 @@ Generator::Generator(uint64_t seed, uint64_t device_id) {
   std::seed_seq seq({seed});
   auto engine = std::make_shared<std::mt19937_64>(seq);
   this->state_.cpu_engine = *engine;
-  this->state_.device = device_id;
+  this->state_.device = static_cast<int64_t>(device_id);
   this->state_.current_seed = seed;
   this->state_.thread_offset = 0;
   this->engine_ = engine;
@@ -242,7 +242,7 @@ uint64_t Generator::GetCurrentSeed() {
 
 uint64_t Generator::Seed() {
   std::lock_guard<std::mutex> lock(this->mu_);
-  uint64_t seed;
+  uint64_t seed = 0;
   std::random_device de;
   seed = ((((uint64_t)de()) << 32) + de()) & 0x1FFFFFFFFFFFFF;
   this->state_.current_seed = seed;

@@ -38,10 +38,11 @@ set(PYBIND_DEPS
     global_utils
     phi_utils
     phi
-    phi_kernel_adaptor
-    pd_dialect
+    pir_adaptor
+    pd_op_dialect
     program_translator
-    ir
+    pd_inplace_pass
+    pir
     new_profiler
     jit_layer
     jit_property
@@ -57,18 +58,7 @@ if(WITH_PSCORE)
   endif()
 endif()
 if(WITH_RPC)
-  set(PYBIND_DEPS
-      ${PYBIND_DEPS}
-      paddle_rpc
-      brpc
-      ssl
-      crypto
-      protobuf
-      zlib
-      leveldb
-      snappy
-      phi
-      glog)
+  set(PYBIND_DEPS ${PYBIND_DEPS} paddle_rpc ${EXTERNAL_BRPC_DEPS} zlib phi)
 endif()
 if(WITH_GPU OR WITH_ROCM)
   set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
@@ -126,7 +116,7 @@ set(PYBIND_SRCS
     inference_api.cc
     ops_api.cc
     static_op_function.cc
-    ir.cc
+    pir.cc
     graph.cc
     bind_fleet_executor.cc
     reader_py.cc
@@ -154,7 +144,8 @@ set(PYBIND_SRCS
     custom_device_py.cc
     xpu_streams_py.cc
     jit.cc
-    auto_parallel_py.cc)
+    auto_parallel_py.cc
+    eval_frame.c)
 
 if(WITH_CUSTOM_DEVICE)
   set(PYBIND_DEPS ${PYBIND_DEPS} custom_device_common_op_registry)
@@ -284,8 +275,12 @@ if(WITH_PYTHON)
 
   add_executable(eager_legacy_op_function_generator
                  eager_legacy_op_function_generator.cc)
-  target_link_libraries(eager_legacy_op_function_generator
-                        ${OP_FUNCTION_GENERETOR_DEPS})
+  set(GENERATOR_DEPS ${PYBIND_DEPS})
+  list(REMOVE_DUPLICATES GENERATOR_DEPS)
+  if(NOT WITH_ARM)
+    list(REMOVE_ITEM GENERATOR_DEPS python)
+  endif()
+  target_link_libraries(eager_legacy_op_function_generator ${GENERATOR_DEPS})
   if(NOT WIN32)
     add_executable(kernel_signature_generator kernel_signature_generator.cc)
     target_link_libraries(kernel_signature_generator
@@ -354,7 +349,7 @@ if(WITH_PYTHON)
       add_custom_command(
         OUTPUT ${op_impl_path}/ir.dll
         COMMAND ${CMAKE_COMMAND} -E copy ${IR_LIB} ${op_impl_path}
-        DEPENDS ir)
+        DEPENDS pir)
       list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/ir.dll)
     endif()
 
@@ -536,6 +531,7 @@ if(WITH_PYTHON)
   #                PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
   # endif()
 
+  add_dependencies(${SHARD_LIB_NAME} ops_api_gen)
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     add_dependencies(${SHARD_LIB_NAME} legacy_eager_codegen)
     add_dependencies(${SHARD_LIB_NAME} eager_legacy_op_function_generator_cmd)

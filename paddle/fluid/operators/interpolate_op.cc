@@ -61,7 +61,7 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
     return;
   }
 
-  int out_w;
+  int out_w = 0;
   if (ctx->HasInput("Scale")) {
     auto scale_tensor = ctx->GetInputDim("Scale");
     PADDLE_ENFORCE_EQ(
@@ -76,8 +76,8 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
     if (scale > 0) {
       // round down
       out_w = (data_layout == DataLayout::kNCHW
-                   ? static_cast<int>(dim_x[2] * scale)
-                   : static_cast<int>(dim_x[1] * scale));
+                   ? static_cast<int>(dim_x[2] * scale)    // NOLINT
+                   : static_cast<int>(dim_x[1] * scale));  // NOLINT
       // protect when input shape is -1
       out_w = out_w > 0 ? out_w : -1;
     } else {
@@ -151,7 +151,7 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
     return;
   }
 
-  int out_h, out_w;
+  int out_h = 0, out_w = 0;
   if (ctx->HasInput("Scale")) {
     auto scale_tensor = ctx->GetInputDim("Scale");
     PADDLE_ENFORCE_EQ(
@@ -167,11 +167,11 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
     if (scale > 0) {
       // round down
       out_h = (data_layout == DataLayout::kNCHW
-                   ? static_cast<int>(dim_x[2] * scale)
-                   : static_cast<int>(dim_x[1] * scale));
+                   ? static_cast<int>(dim_x[2] * scale)    // NOLINT
+                   : static_cast<int>(dim_x[1] * scale));  // NOLINT
       out_w = (data_layout == DataLayout::kNCHW
-                   ? static_cast<int>(dim_x[3] * scale)
-                   : static_cast<int>(dim_x[2] * scale));
+                   ? static_cast<int>(dim_x[3] * scale)    // NOLINT
+                   : static_cast<int>(dim_x[2] * scale));  // NOLINT
       // protect when input shape is -1
       out_h = out_h > 0 ? out_h : -1;
       out_w = out_w > 0 ? out_w : -1;
@@ -247,7 +247,7 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
     return;
   }
 
-  int out_d, out_h, out_w;
+  int out_d = 0, out_h = 0, out_w = 0;
   if (ctx->HasInput("Scale")) {
     auto scale_tensor = ctx->GetInputDim("Scale");
     PADDLE_ENFORCE_EQ(
@@ -264,14 +264,14 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
     if (scale > 0) {
       // round down
       out_d = (data_layout == DataLayout::kNCHW
-                   ? static_cast<int>(dim_x[2] * scale)
-                   : static_cast<int>(dim_x[1] * scale));
+                   ? static_cast<int>(dim_x[2] * scale)    // NOLINT
+                   : static_cast<int>(dim_x[1] * scale));  // NOLINT
       out_h = (data_layout == DataLayout::kNCHW
-                   ? static_cast<int>(dim_x[3] * scale)
-                   : static_cast<int>(dim_x[2] * scale));
+                   ? static_cast<int>(dim_x[3] * scale)    // NOLINT
+                   : static_cast<int>(dim_x[2] * scale));  // NOLINT
       out_w = (data_layout == DataLayout::kNCHW
-                   ? static_cast<int>(dim_x[4] * scale)
-                   : static_cast<int>(dim_x[3] * scale));
+                   ? static_cast<int>(dim_x[4] * scale)    // NOLINT
+                   : static_cast<int>(dim_x[3] * scale));  // NOLINT
       // protect when input shape is -1
       out_d = out_d > 0 ? out_d : -1;
       out_h = out_h > 0 ? out_h : -1;

@@ -17,7 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class ApiMaximumTest(unittest.TestCase):
@@ -39,6 +40,7 @@ class ApiMaximumTest(unittest.TestCase):
         self.np_expected3 = np.maximum(self.input_a, self.input_c)
         self.np_expected4 = np.maximum(self.input_b, self.input_c)
 
+    @test_with_pir_api
     def test_static_api(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -119,3 +121,7 @@ class ApiMaximumTest(unittest.TestCase):
         res = paddle.maximum(b, c)
         res = res.numpy()
         np.testing.assert_allclose(res, self.np_expected4, rtol=1e-05)
+
+
+if __name__ == '__main__':
+    unittest.main()

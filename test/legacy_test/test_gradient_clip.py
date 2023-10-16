@@ -18,8 +18,8 @@ import numpy as np
 from fake_reader import fake_imdb_reader
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.nn.clip import _allow_pure_fp16_global_norm_clip
 
 paddle.enable_static()
@@ -31,7 +31,7 @@ def bow_net(
     """
     BOW net
     This model is from https://github.com/PaddlePaddle/models:
-    fluid/PaddleNLP/text_classification/nets.py
+    base/PaddleNLP/text_classification/nets.py
     """
     emb = paddle.static.nn.embedding(
         input=data, is_sparse=True, size=[dict_dim, emb_dim]
@@ -66,18 +66,18 @@ class TestGradientClip(unittest.TestCase):
         pass
 
     def get_places(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         return places
 
     def check_clip_result(self, out, out_clip):
         pass
 
     def check_gradient_clip(self, place, dtype='float32'):
-        prog = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(
+        prog = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(
             main_program=prog, startup_program=startup_program
         ):
             image = paddle.static.data(
@@ -105,12 +105,12 @@ class TestGradientClip(unittest.TestCase):
         prog_clip = prog.clone()
         avg_cost_clip = prog_clip.block(0).var(avg_cost.name)
 
-        p_g = fluid.backward.append_backward(loss=avg_cost)
-        p_g_clip = fluid.backward.append_backward(loss=avg_cost_clip)
+        p_g = base.backward.append_backward(loss=avg_cost)
+        p_g_clip = base.backward.append_backward(loss=avg_cost_clip)
 
         p_g = sorted(p_g, key=lambda x: x[0].name)
         p_g_clip = sorted(p_g_clip, key=lambda x: x[0].name)
-        with fluid.program_guard(
+        with base.program_guard(
             main_program=prog_clip, startup_program=startup_program
         ):
             p_g_clip = self.clip_gradient(p_g_clip)
@@ -119,8 +119,8 @@ class TestGradientClip(unittest.TestCase):
         grad_clip_list = [elem[1] for elem in p_g_clip]
 
         train_reader = paddle.batch(paddle.dataset.mnist.train(), batch_size=3)
-        exe = fluid.Executor(place)
-        feeder = fluid.DataFeeder(feed_list=[image, label], place=place)
+        exe = base.Executor(place)
+        feeder = base.DataFeeder(feed_list=[image, label], place=place)
         exe.run(startup_program)
 
         data = next(train_reader())
@@ -131,9 +131,9 @@ class TestGradientClip(unittest.TestCase):
         self.check_clip_result(out, out_clip)
 
     def check_sparse_gradient_clip(self, place):
-        prog = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(
+        prog = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(
             main_program=prog, startup_program=startup_program
         ):
             data = paddle.static.data(
@@ -146,8 +146,8 @@ class TestGradientClip(unittest.TestCase):
 
             self.backward_and_optimize(cost)
 
-        exe = fluid.Executor(place)
-        feeder = fluid.DataFeeder(feed_list=[data, label], place=place)
+        exe = base.Executor(place)
+        feeder = base.DataFeeder(feed_list=[data, label], place=place)
         exe.run(startup_program)
 
         data = next(self.train_data())
@@ -192,7 +192,7 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
             return paddle.nn.clip.append_gradient_clip_ops(params_grads)
 
         self.clip_gradient = func
-        self.check_gradient_clip(fluid.CPUPlace())
+        self.check_gradient_clip(base.CPUPlace())
 
     # test whether the output is right when use grad_clip
     def test_new_gradient_clip(self):
@@ -201,7 +201,7 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
             return clip(params_grads)
 
         self.clip_gradient = func
-        self.check_gradient_clip(fluid.CPUPlace())
+        self.check_gradient_clip(base.CPUPlace())
 
     # test whether the output is right when use grad_clip under float64
     def test_new_gradient_clip_fp64(self):
@@ -210,7 +210,7 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
             return clip(params_grads)
 
         self.clip_gradient = func
-        self.check_gradient_clip(fluid.CPUPlace(), "float64")
+        self.check_gradient_clip(base.CPUPlace(), "float64")
 
     # invoke 'set_gradient_clip' in a wrong order
     def test_wrong_API_order(self):
@@ -276,19 +276,19 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
         )
 
     def _test_none_grad_helper(self, dtype):
-        prog = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(
+        prog = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(
             main_program=prog, startup_program=startup_program
         ):
             clip = paddle.nn.ClipGradByGlobalNorm(self.clip_norm)
             x = (
-                fluid.default_main_program()
+                base.default_main_program()
                 .global_block()
                 .create_parameter(name="x", shape=[2, 3], dtype=dtype)
             )
             y = (
-                fluid.default_main_program()
+                base.default_main_program()
                 .global_block()
                 .create_parameter(name="y", shape=[2, 3], dtype=dtype)
             )
@@ -329,20 +329,20 @@ class TestGradientClipByNorm(TestGradientClip):
             return clip(params_grads)
 
         self.clip_gradient = func
-        self.check_gradient_clip(fluid.CPUPlace())
+        self.check_gradient_clip(base.CPUPlace())
 
     # if grad is None or not need clip
     def test_none_grad(self):
         clip = paddle.nn.ClipGradByNorm(self.clip_norm)
         x = (
-            fluid.default_main_program()
+            base.default_main_program()
             .global_block()
             .create_parameter(
                 name="x", shape=[2, 3], dtype="float32", need_clip=False
             )
         )
         y = (
-            fluid.default_main_program()
+            base.default_main_program()
             .global_block()
             .create_parameter(
                 name="y", shape=[2, 3], dtype="float32", need_clip=False
@@ -387,20 +387,20 @@ class TestGradientClipByValue(TestGradientClip):
             return clip(params_grads)
 
         self.clip_gradient = func
-        self.check_gradient_clip(fluid.CPUPlace())
+        self.check_gradient_clip(base.CPUPlace())
 
     # if grad is None or not need clip
     def test_none_grad(self):
         clip = paddle.nn.ClipGradByValue(self.max, self.min)
         x = (
-            fluid.default_main_program()
+            base.default_main_program()
             .global_block()
             .create_parameter(
                 name="x", shape=[2, 3], dtype="float32", need_clip=False
             )
         )
         y = (
-            fluid.default_main_program()
+            base.default_main_program()
             .global_block()
             .create_parameter(
                 name="y", shape=[2, 3], dtype="float32", need_clip=False
@@ -422,10 +422,10 @@ class TestGradientClipByValue(TestGradientClip):
 
 class TestDygraphGradientClip(unittest.TestCase):
     def test_gradient_clip(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             linear = paddle.nn.Linear(5, 5)
             inputs = paddle.uniform([16, 5], min=-10, max=10).astype('float32')
-            out = linear(fluid.dygraph.to_variable(inputs))
+            out = linear(base.dygraph.to_variable(inputs))
             loss = paddle.mean(out)
             loss.backward()
             sgd_optimizer = paddle.optimizer.SGD(
@@ -447,10 +447,10 @@ class TestDygraphGradientClipByGlobalNorm(TestDygraphGradientClip):
 
     def check_clip_result(self, loss, optimizer):
         # if grad is None
-        x = fluid.dygraph.to_variable(
+        x = base.dygraph.to_variable(
             np.array([2, 3]).astype("float32"), name="x"
         )
-        y = fluid.dygraph.to_variable(
+        y = base.dygraph.to_variable(
             np.array([3, 4]).astype("float32"), name="y"
         )
         assert len(self.clip1([(x, x), (x, y), (x, None)])) == 2
@@ -487,10 +487,10 @@ class TestDygraphGradientClipByNorm(TestDygraphGradientClip):
 
     def check_clip_result(self, loss, optimizer):
         # if grad is None
-        x = fluid.dygraph.to_variable(np.array([2, 3]).astype("float32"))
+        x = base.dygraph.to_variable(np.array([2, 3]).astype("float32"))
         assert len(self.clip([(x, None)])) == 0
         # get params and grads from network
-        self.clip([(fluid.dygraph.to_variable(np.array([2, 3])), None)])
+        self.clip([(base.dygraph.to_variable(np.array([2, 3])), None)])
         opt, params_grads = optimizer.minimize(loss)
         _, grads = zip(*params_grads)
         params_grads = self.clip(params_grads)
@@ -516,7 +516,7 @@ class TestDygraphGradientClipByValue(TestDygraphGradientClip):
 
     def check_clip_result(self, loss, optimizer):
         # if grad is None
-        x = fluid.dygraph.to_variable(np.array([2, 3]).astype("float32"))
+        x = base.dygraph.to_variable(np.array([2, 3]).astype("float32"))
         assert len(self.clip([(x, None)])) == 0
         # get params and grads from network
         opt, params_grads = optimizer.minimize(loss)
@@ -549,8 +549,8 @@ class SimpleNet(paddle.nn.Layer):
 
 class TestDygraphGradientClipFP16(unittest.TestCase):
     def test_gradient_clip(self):
-        if fluid.core.is_compiled_with_cuda():
-            with fluid.dygraph.guard():
+        if base.core.is_compiled_with_cuda():
+            with base.dygraph.guard():
                 paddle.seed(10)
                 model = SimpleNet()
                 sgd_optimizer = paddle.optimizer.SGD(
@@ -564,7 +564,7 @@ class TestDygraphGradientClipFP16(unittest.TestCase):
                     'float32'
                 )
                 with paddle.amp.auto_cast(level='O2'):
-                    out = model(fluid.dygraph.to_variable(inputs))
+                    out = model(base.dygraph.to_variable(inputs))
                     loss = paddle.mean(out)
                 scaled = scaler.scale(loss)
                 scaled.backward()
@@ -606,10 +606,10 @@ class TestDygraphGradientClipFP16(unittest.TestCase):
 
 class TestDygraphGradientClipFP64(unittest.TestCase):
     def test_gradient_clip(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             inputs = paddle.uniform([16, 5], min=-10, max=10).astype('float32')
             linear = paddle.nn.Linear(5, 5)
-            out = linear(fluid.dygraph.to_variable(inputs))
+            out = linear(base.dygraph.to_variable(inputs))
             loss = paddle.mean(out)
             loss.backward()
             # before clip

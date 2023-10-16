@@ -7,16 +7,7 @@ proto_library(interceptor_message_proto SRCS interceptor_message.proto)
 if(WITH_ARM_BRPC)
   set(BRPC_DEPS arm_brpc snappy phi glog)
 elseif(WITH_DISTRIBUTE AND NOT WITH_PSLIB)
-  set(BRPC_DEPS
-      brpc
-      ssl
-      crypto
-      protobuf
-      zlib
-      leveldb
-      snappy
-      phi
-      glog)
+  set(BRPC_DEPS ${EXTERNAL_BRPC_DEPS} zlib phi)
 else()
   set(BRPC_DEPS "")
 endif()

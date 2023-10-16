@@ -1,10 +1,8 @@
 # skip win32 since wget is not installed by default on windows machine.
 
 if(NOT WIN32)
-  cc_test(
-    standalone_executor_new_ir_test
-    SRCS standalone_executor_new_ir_test.cc
-    DEPS phi_kernel_adaptor pd_dialect ir)
+  paddle_test(standalone_executor_new_ir_test SRCS
+              standalone_executor_new_ir_test.cc)
 endif()
 
 set(OPS

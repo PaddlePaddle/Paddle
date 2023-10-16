@@ -20,7 +20,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed.fleet import fleet
 from paddle.distributed.fleet.base import role_maker
 
@@ -29,7 +29,7 @@ class SparseLoadOp(unittest.TestCase):
     """Test load operator."""
 
     def net(self, emb_array, fc_array):
-        with fluid.unique_name.guard():
+        with base.unique_name.guard():
             dense_input = paddle.static.data(
                 'input', shape=[None, 1], dtype="int64"
             )
@@ -38,7 +38,7 @@ class SparseLoadOp(unittest.TestCase):
                 input=dense_input,
                 is_sparse=True,
                 size=[10, 10],
-                param_attr=fluid.ParamAttr(
+                param_attr=base.ParamAttr(
                     name="embedding",
                     initializer=paddle.nn.initializer.Assign(emb_array),
                 ),
@@ -48,7 +48,7 @@ class SparseLoadOp(unittest.TestCase):
                 x=emb,
                 size=10,
                 activation="relu",
-                weight_attr=fluid.ParamAttr(
+                weight_attr=base.ParamAttr(
                     name='fc',
                     initializer=paddle.nn.initializer.Assign(fc_array),
                 ),
@@ -57,15 +57,15 @@ class SparseLoadOp(unittest.TestCase):
         return loss
 
     def save_origin_model(self, emb_array, fc_array):
-        startup_program = fluid.framework.Program()
-        test_program = fluid.framework.Program()
-        with fluid.framework.program_guard(test_program, startup_program):
-            with fluid.unique_name.guard():
+        startup_program = base.framework.Program()
+        test_program = base.framework.Program()
+        with base.framework.program_guard(test_program, startup_program):
+            with base.unique_name.guard():
                 loss = self.net(emb_array, fc_array)
                 optimizer = paddle.optimizer.Adam(1e-3)
                 optimizer.minimize(loss)
 
-                exe = fluid.Executor(fluid.CPUPlace())
+                exe = base.Executor(base.CPUPlace())
                 exe.run(startup_program)
                 model_path = tempfile.mkdtemp()
                 paddle.distributed.io.save_persistables(
@@ -112,10 +112,10 @@ class TestSparseLoadOpCase1(SparseLoadOp):
         optimizer.minimize(loss)
         fleet.init_server(model_path)
 
-        fc_w = np.array(fluid.global_scope().find_var("fc").get_tensor())
+        fc_w = np.array(base.global_scope().find_var("fc").get_tensor())
 
         emb = np.array(
-            fluid.global_scope().find_var("embedding.block0").get_tensor()
+            base.global_scope().find_var("embedding.block0").get_tensor()
         )
 
         assert fc_w.all() == fc_array.all()

@@ -30,6 +30,8 @@ void FusedRopeKernel(const Context& dev_ctx,
                      const paddle::optional<DenseTensor>& v,
                      const paddle::optional<DenseTensor>& sin,
                      const paddle::optional<DenseTensor>& cos,
+                     const paddle::optional<DenseTensor>& position_ids,
+                     bool use_neox_rotary_style,
                      DenseTensor* out_q,
                      DenseTensor* out_k,
                      DenseTensor* out_v) {
@@ -59,6 +61,7 @@ void FusedRopeKernel(const Context& dev_ctx,
   phi::Array<T*, 3> outs_data;
   phi::Array<const T*, 3> ins_data;
   phi::Array<const T*, 2> sin_cos_data;
+  const int64_t* position_ids_data = NULL;
 
   ins_data[0] = q.data<T>();
   outs_data[0] = out_q->data<T>();
@@ -109,15 +112,52 @@ void FusedRopeKernel(const Context& dev_ctx,
               "The batch_size and num_heads of sin and cos must be 1."));
     }
     int sin_seq_len_dim = (dims_size) == 4 ? 1 : 0;
-    PADDLE_ENFORCE_EQ((sin_dims[dims_size - 1] == head_dim &&
-                       sin_dims[sin_seq_len_dim] == seq_len),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The seq_len and head_dim of sin and cos "
-                          "must be the same as those of q. But recieved sin's "
-                          "shape is {%s}, q's shape is {%s}.",
-                          sin_dims,
-                          q.dims()));
+
+    if (position_ids.get_ptr()) {
+      PADDLE_ENFORCE_EQ(
+          (sin_dims[dims_size - 1] == head_dim &&
+           sin_dims[sin_seq_len_dim] >= seq_len),
+          true,
+          phi::errors::InvalidArgument(
+              "The seq_len of sin and cos must be greater than or equal to "
+              "this of q. The head_dim of sin and cos must be the same as this "
+              "of q. But recieved sin's "
+              "shape is {%s}, q's shape is {%s}.",
+              sin_dims,
+              q.dims()));
+
+      auto position_ids_dims = position_ids.get_ptr()->dims();
+      PADDLE_ENFORCE_EQ(position_ids_dims.size(),
+                        2,
+                        phi::errors::InvalidArgument(
+                            "The dims of position_ids is expected to "
+                            "be 2, but recieved %d.",
+                            position_ids_dims.size()));
+
+      PADDLE_ENFORCE_EQ(
+          (position_ids_dims[0] == batch_size &&
+           position_ids_dims[1] == seq_len),
+          true,
+          phi::errors::InvalidArgument(
+              "The batch_size and seq_len of position_ids must be the same as "
+              "those of q. But recieved position_ids's "
+              "shape is {%s}, q's shape is {%s}.",
+              position_ids_dims,
+              q.dims()));
+
+      position_ids_data = position_ids->data<int64_t>();
+    } else {
+      PADDLE_ENFORCE_EQ(
+          (sin_dims[dims_size - 1] == head_dim &&
+           sin_dims[sin_seq_len_dim] == seq_len),
+          true,
+          phi::errors::InvalidArgument(
+              "The seq_len and head_dim of sin and cos "
+              "must be the same as those of q. But recieved sin's "
+              "shape is {%s}, q's shape is {%s}.",
+              sin_dims,
+              q.dims()));
+    }
 
     sin_cos_data[0] = sin->data<T>();
     sin_cos_data[1] = cos->data<T>();
@@ -126,18 +166,35 @@ void FusedRopeKernel(const Context& dev_ctx,
   }
 
   int sign = 1;
-  VectorizedFusedRopeKernel<T, MPType, vec_size>
-      <<<grid, block, 0, stream>>>(ins_data,
-                                   sin_cos_data,
-                                   flag_sin_cos,
-                                   sign,
-                                   batch_size,
-                                   seq_len,
-                                   num_heads,
-                                   head_dim,
-                                   outs_data,
-                                   num_inputs,
-                                   div_c);
+  if (use_neox_rotary_style) {
+    VectorizedFusedRopeWithRotateEveryTwoKernel<T, MPType, vec_size>
+        <<<grid, block, 0, stream>>>(ins_data,
+                                     sin_cos_data,
+                                     position_ids_data,
+                                     flag_sin_cos,
+                                     sign,
+                                     batch_size,
+                                     seq_len,
+                                     num_heads,
+                                     head_dim,
+                                     outs_data,
+                                     num_inputs,
+                                     div_c);
+  } else {
+    VectorizedFusedRopeWithRotateHalfKernel<T, MPType, vec_size>
+        <<<grid, block, 0, stream>>>(ins_data,
+                                     sin_cos_data,
+                                     position_ids_data,
+                                     flag_sin_cos,
+                                     sign,
+                                     batch_size,
+                                     seq_len,
+                                     num_heads,
+                                     head_dim,
+                                     outs_data,
+                                     num_inputs,
+                                     div_c);
+  }
 }
 }  // namespace fusion
 }  // namespace phi

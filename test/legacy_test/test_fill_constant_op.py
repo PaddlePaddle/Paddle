@@ -15,12 +15,13 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
 from op import Operator
+from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 
 def fill_wrapper(shape, value=0.0):
@@ -44,7 +45,7 @@ class TestFillConstantOp(OpTest):
         self.outputs = {'Out': np.full(self.shape, self.value)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -115,7 +116,7 @@ class TestFillConstantBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_pir=True)
 
 
 class TestFillConstantOpWithSelectedRows(unittest.TestCase):
@@ -168,7 +169,7 @@ class TestFillConstantOp1_ShapeTensorList(OpTest):
         self.value = 3.8
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestFillConstantOp2_ShapeTensorList(OpTest):
@@ -192,7 +193,7 @@ class TestFillConstantOp2_ShapeTensorList(OpTest):
         self.infer_shape = [-1, -1]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestFillConstantOp3_ShapeTensorList(TestFillConstantOp1_ShapeTensorList):
@@ -226,7 +227,7 @@ class TestFillConstantOp1_ShapeTensor(OpTest):
         self.value = 3.8
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 # Situation 4: value is a tensor
@@ -250,7 +251,7 @@ class TestFillConstantOp1_ValueTensor(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 # Situation 5: value is a tensor
@@ -274,12 +275,14 @@ class TestFillConstantOp2_ValueTensor(OpTest):
         self.dtype = np.int32
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 # Test python API
 class TestFillConstantAPI(unittest.TestCase):
+    @test_with_pir_api
     def test_api(self):
+        paddle.enable_static()
         positive_2_int32 = paddle.tensor.fill_constant([1], "int32", 2)
         positive_2_int64 = paddle.tensor.fill_constant([1], "int64", 2)
 
@@ -328,9 +331,9 @@ class TestFillConstantAPI(unittest.TestCase):
             shape=shape_tensor_int64, dtype=np.float32, value=val2
         )
 
-        exe = fluid.Executor(place=fluid.CPUPlace())
+        exe = base.Executor(place=base.CPUPlace())
         res_1, res_2, res_3, res_4, res_5, res_6, res_7, res_8 = exe.run(
-            fluid.default_main_program(),
+            paddle.static.default_main_program(),
             feed={
                 "shape_tensor_int32": np.array([1, 2]).astype("int32"),
                 "shape_tensor_int64": np.array([1, 2]).astype("int64"),
@@ -366,13 +369,13 @@ class TestFillConstantAPI(unittest.TestCase):
 
 class TestFillConstantImperative(unittest.TestCase):
     def test_api(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             data1 = np.array([1, 2]).astype('int32')
             data2 = np.array([1.1]).astype('float32')
             data3 = np.array([88]).astype('int32')
-            shape = fluid.dygraph.to_variable(data1)
-            val = fluid.dygraph.to_variable(data2)
-            value = fluid.dygraph.to_variable(data3)
+            shape = base.dygraph.to_variable(data1)
+            val = base.dygraph.to_variable(data2)
+            value = base.dygraph.to_variable(data3)
             res1 = paddle.tensor.fill_constant(
                 shape=[1, 2], dtype='float32', value=1.1
             )
@@ -399,17 +402,17 @@ class TestFillConstantImperative(unittest.TestCase):
             )
 
     def test_nan(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             res = paddle.tensor.fill_constant([1], 'float32', np.nan)
             self.assertTrue(np.isnan(res.numpy().item(0)))
 
     def test_inf(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             res = paddle.tensor.fill_constant([1], 'float32', np.inf)
             self.assertTrue(np.isinf(res.numpy().item(0)))
 
     def test_ninf(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             res = paddle.tensor.fill_constant([1], 'float32', np.NINF)
             self.assertTrue(np.isinf(res.numpy().item(0)))
             self.assertEqual(np.NINF, res.numpy().item(0))
@@ -417,7 +420,7 @@ class TestFillConstantImperative(unittest.TestCase):
 
 class TestFillConstantOpError(unittest.TestCase):
     def test_errors(self):
-        with program_guard(Program(), Program()):
+        with paddle_static_guard(), program_guard(Program(), Program()):
             # for ci coverage
             x1 = paddle.static.data(name='x1', shape=[-1, 1], dtype="int16")
             self.assertRaises(
@@ -487,6 +490,58 @@ class TestFillConstantOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_shape_tensor_list_dtype)
 
+        with paddle.pir_utils.IrGuard(), program_guard(Program()):
+            x1 = paddle.static.data(name='x1', shape=[-1, 1], dtype="int16")
+            self.assertRaises(
+                TypeError,
+                paddle.tensor.fill_constant,
+                shape=[1],
+                value=5,
+                dtype='uint4',
+            )
+
+            self.assertRaises(
+                ValueError,
+                paddle.tensor.fill_constant,
+                shape=[1.1],
+                value=5,
+                dtype='float32',
+                out=x1,
+            )
+
+            x3 = np.random.randn(100, 100).astype('int32')
+            self.assertRaises(
+                ValueError,
+                paddle.tensor.fill_constant,
+                shape=[100, 100],
+                value=5,
+                dtype='float64',
+                out=x3,
+            )
+
+    def test_pir_errors(self):
+        def test_shape_type():
+            # The shape dtype of fill_constant_op must be int32 or int64.
+            # test_shape_tensor_dtype:
+            with paddle.pir_utils.IrGuard():
+                new_ir_program = paddle.static.Program()
+                with paddle.static.program_guard(new_ir_program):
+                    shape = paddle.static.data(
+                        name="shape_tensor", shape=[2], dtype="int32"
+                    )
+                    out = paddle.tensor.fill_constant(
+                        shape=shape, dtype="float32", value=1
+                    )
+                    exe = base.Executor(place=base.CPUPlace())
+                    exe.run(
+                        feed={
+                            "shape_tensor": np.array([1, 2]).astype("float32")
+                        },
+                        fetch_list=[out],
+                    )
+
+        self.assertRaises(ValueError, test_shape_type)
+
 
 class TestFillConstantOp_ValueTensorBf16(OpTest):
     def setUp(self):
@@ -512,7 +567,9 @@ class TestFillConstantOp_ValueTensorBf16(OpTest):
 
     def test_check_output(self):
         # no dynamic graph test for mkldnn
-        self.check_output_with_place(core.CPUPlace(), check_dygraph=False)
+        self.check_output_with_place(
+            core.CPUPlace(), check_dygraph=False, check_pir=False
+        )
 
 
 if __name__ == "__main__":

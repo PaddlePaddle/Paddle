@@ -20,11 +20,11 @@
 
 namespace phi {
 
-const ExportedFlagInfoMap &GetExportedFlagInfoMap() {
+TEST_API const ExportedFlagInfoMap &GetExportedFlagInfoMap() {
   return *GetMutableExportedFlagInfoMap();
 }
 
-ExportedFlagInfoMap *GetMutableExportedFlagInfoMap() {
+TEST_API ExportedFlagInfoMap *GetMutableExportedFlagInfoMap() {
   static ExportedFlagInfoMap g_exported_flag_info_map;
   return &g_exported_flag_info_map;
 }
@@ -749,9 +749,9 @@ PHI_DEFINE_EXPORTED_int32(
  * [false]: not set 0D Tensor to 1D Numpy, close the hack
  *
  * Now, just set true by default in 2.5 transition time
- * which will be removed in future (2.6 or 2.7) .
+ * which will be removed in future (2.6) .
  */
-PHI_DEFINE_EXPORTED_bool(set_to_1d, true, "set 0D Tensor to 1D numpy");
+PHI_DEFINE_EXPORTED_bool(set_to_1d, false, "set 0D Tensor to 1D numpy");
 
 /**
  * Debug related FLAG
@@ -1056,19 +1056,21 @@ PHI_DEFINE_EXPORTED_uint64(executor_log_deps_every_microseconds,
                            0,
                            "Enable new executor log deps every n microseconds");
 
-DEFINE_int32(record_pool_max_size,
-             2000000,
-             "SlotRecordDataset slot record pool max size");
-DEFINE_int32(slotpool_thread_num, 1, "SlotRecordDataset slot pool thread num");
-DEFINE_bool(enable_slotpool_wait_release,  // NOLINT
-            false,
-            "enable slotrecord object wait release, default false");
-DEFINE_bool(enable_slotrecord_reset_shrink,  // NOLINT
-            false,
-            "enable slotrecord object reset shrink memory, default false");
-DEFINE_bool(enable_ins_parser_file,  // NOLINT
-            false,
-            "enable parser ins file, default false");
+PD_DEFINE_int32(record_pool_max_size,
+                2000000,
+                "SlotRecordDataset slot record pool max size");
+PD_DEFINE_int32(slotpool_thread_num,
+                1,
+                "SlotRecordDataset slot pool thread num");
+PD_DEFINE_bool(enable_slotpool_wait_release,  // NOLINT
+               false,
+               "enable slotrecord object wait release, default false");
+PD_DEFINE_bool(enable_slotrecord_reset_shrink,  // NOLINT
+               false,
+               "enable slotrecord object reset shrink memory, default false");
+PD_DEFINE_bool(enable_ins_parser_file,  // NOLINT
+               false,
+               "enable parser ins file, default false");
 PHI_DEFINE_EXPORTED_bool(
     gpugraph_enable_hbm_table_collision_stat,
     false,
@@ -1276,18 +1278,16 @@ PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor,
 
 /**
  * Using new IR API in Python
- * Name: enable_new_ir_api
+ * Name: enable_pir_api
  * Since Version: 2.6.0
  * Value Range: bool, default=false
  * Example:
  * Note: If Ture, New IR API will be used in Python
  */
-PHI_DEFINE_EXPORTED_bool(enable_new_ir_api,
-                         false,
-                         "Enable new IR API in Python");
+PHI_DEFINE_EXPORTED_bool(enable_pir_api, false, "Enable new IR API in Python");
 
 /**
- * Using new IR in executor  FLAG
+ * Using new IR in executor FLAG
  * Name: enable_new_ir_in_executor_trace_run
  * Since Version: 2.6.0
  * Value Range: bool, default=false
@@ -1298,3 +1298,55 @@ PHI_DEFINE_EXPORTED_bool(enable_new_ir_api,
 PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor_trace_run,
                          false,
                          "Enable new IR in executor");
+
+/**
+ * Apply inplace pass to new IR FLAG
+ * Name: new_ir_apply_inplace_pass
+ * Since Version: 2.6.0
+ * Value Range: bool, default=true
+ * Example:
+ * Note: If Ture, will apply inplace pass to new IR.
+ */
+PHI_DEFINE_EXPORTED_bool(new_ir_apply_inplace_pass,
+                         true,
+                         "Whether to apply inplace pass on lowering "
+                         "::pir::Program to Kernel Dialect");
+
+PHI_DEFINE_EXPORTED_bool(enable_record_memory, false, "Enable memory recorder");
+
+PHI_DEFINE_EXPORTED_bool(
+    eager_delete_scope,
+    true,
+    "Delete local scope eagerly. It will reduce GPU memory usage but "
+    "slow down the destruction of variables.(around 1% performance harm)");
+
+// Used to filter events, works like glog VLOG(level).
+// RecordEvent will works if host_trace_level >= level.
+PHI_DEFINE_EXPORTED_int64(host_trace_level,
+                          1,
+                          "RecordEvent will works "
+                          "if host_trace_level >= level.");
+
+PHI_DEFINE_EXPORTED_int32(
+    multiple_of_cupti_buffer_size,
+    1,
+    "Multiple of the CUPTI device buffer size. If the timestamps have "
+    "been dropped when you are profiling, try increasing this value.");
+
+PHI_DEFINE_EXPORTED_bool(print_ir, false, "Whether print ir debug str.");
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+/**
+ * Communication library related FLAG
+ * Name: FLAGS_dynamic_static_unified_comm
+ * Since Version: 2.5
+ * Value Range: bool, default=true
+ * Example:
+ * Note: Whether to use new communication library in auto parallel and static
+ * mode. If true, it will use unified CommContextManager for communication.
+ */
+PHI_DEFINE_EXPORTED_bool(dynamic_static_unified_comm,
+                         true,
+                         "Whether to use new communication library in auto "
+                         "parallel and static mode.");
+#endif  // FLAGS_dynamic_static_unified_comm

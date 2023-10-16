@@ -18,9 +18,9 @@ import numpy as np
 from inference_pass_test import InferencePassTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.core import AnalysisConfig
+from paddle import base
+from paddle.base import core
+from paddle.base.core import AnalysisConfig
 
 
 # normal starts && ends
@@ -45,7 +45,7 @@ class SlicePluginTRTDynamicTest(InferencePassTest):
     def setUp(self):
         self.setUpSliceParams()
         self.setUpTensorRTParams()
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             data = paddle.static.data(
                 name="data", shape=[3, 3, 3, 3], dtype="float32"
             )
