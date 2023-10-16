@@ -127,6 +127,12 @@ class DistTensor final
   TensorDistAttr dist_attr_;
   // The local DenseTensor value
   std::shared_ptr<DenseTensor> value_;
+  // The place of DistTensor
+  // TODO(GhostScreaming): DistTensor's value could be a uninitialized
+  // DenseTensor, such as under pipeline parallel. But grad node construction
+  // needs its place, we need to assign its place to DistTensor. It's in
+  // accordance with its value's place as long as its value is initialized.
+  Place place_;
 };
 
 }  // namespace distributed

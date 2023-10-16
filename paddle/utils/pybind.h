@@ -75,7 +75,7 @@ struct type_caster<paddle::Tensor> {
                      return_value_policy /* policy */,
                      handle /* parent */) {
     return handle(paddle::pybind::ToPyObject(
-        src, true /* return_py_none_if_not_initialize */));
+        src, false /* return_py_none_if_not_initialize */));
   }
 };
 

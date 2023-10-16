@@ -30,7 +30,7 @@ bool SToRReshardFunction::IsSuitable(const DistTensor& in,
                                      const TensorDistAttr& out_dist_attr) {
   bool flag = true;
   const auto& in_dist_attr = in.dist_attr();
-  const auto& in_dims_mapping = in_dist_attr.dims_mapping();
+  // const auto& in_dims_mapping = in_dist_attr.dims_mapping();
 
   flag &= in_dist_attr.is_shard();
   flag &= out_dist_attr.is_replicated();
@@ -44,10 +44,11 @@ bool SToRReshardFunction::IsSuitable(const DistTensor& in,
 
   // Ensure the tensor is balanced split, or we need send/recv rather than
   // all_gather
-  int split_axis = GetSplitAxisWithDimsMapping(in_dims_mapping).begin()->first;
-  int64_t num_of_process = in_process_mesh.size();
-  flag &= (in.local_dims()[static_cast<int>(split_axis)] * num_of_process ==
-           in.dims()[static_cast<int>(split_axis)]);
+  // int split_axis =
+  // GetSplitAxisWithDimsMapping(in_dims_mapping).begin()->first; int64_t
+  // num_of_process = in_process_mesh.size(); flag &=
+  // (in.local_dims()[static_cast<int>(split_axis)] * num_of_process ==
+  //          in.dims()[static_cast<int>(split_axis)]);
 
   return flag;
 }

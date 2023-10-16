@@ -33,7 +33,8 @@ inline void check_defined(const DistTensor& dist_tensor,
           method_hint));
 }
 
-DistTensor::DistTensor() : value_(std::make_shared<DenseTensor>()) {}
+DistTensor::DistTensor()
+    : value_(std::make_shared<DenseTensor>()), place_(GetDefaultPlace()) {}
 
 DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
                        const TensorDistAttr& dist_attr)
@@ -43,6 +44,7 @@ DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
   // If the current rank doesn't in process_mesh, we should create an
   // uninitialized tensor only with tensor_meta.
   if (IsCurRankInMesh(dist_attr.process_mesh())) {
+    place_ = global_value->holder_->place();
     if (!dist_attr.is_replicated()) {
       // 1. create replicated global tensor
       TensorDistAttr replicated_dist_attr(vectorize(global_value->dims()));
@@ -61,6 +63,7 @@ DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
     // later. It exist temporary because the basic execution procedure is not
     // ready, even sometimes we try to construct a DistTensor with empty
     // DistAttr. Here we warning when the DistAttr is empty for debug use.
+    place_ = GetDefaultPlace();
     if (dist_attr.empty()) {
       LOG(WARNING) << "Try to construct a dist tensor with empty dist attr.";
     }
@@ -124,8 +127,12 @@ DataLayout DistTensor::layout() const {
 }
 
 const Place& DistTensor::place() const {
-  check_defined(*this, "place");
-  return value_->holder_->place();
+  // TODO(GhostScreaming): unsafe_mutable_value() may modify its place,
+  // which may make DistTensor's place is inconsistent with its value's place.
+  if (defined()) {
+    return value_->holder_->place();
+  }
+  return place_;
 }
 
 void* DistTensor::AllocateFrom(Allocator* allocator,
