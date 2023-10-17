@@ -998,7 +998,7 @@ def remainder(x, y, name=None):
             [0, 3, 2, 1])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.remainder(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_mod', **locals()))
