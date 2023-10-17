@@ -111,7 +111,7 @@ static std::unordered_set<pir::Value> GetSkipDeletionValues(pir::Block* block) {
       continue;
     }
     if (upper_op_name == "pd_op.fetch" ||
-        upper_op_name == "pd_op.shadow_output") {
+        upper_op_name == "builtin.shadow_output") {
       skip_dels.insert(op->operand_source(0));
       continue;
     }
@@ -349,7 +349,7 @@ class InplacePass : public pir::Pass {
           pir::BoolAttribute::get(pir::IrContext::Instance(), true));
     }
     LOG_FIRST_N(INFO, 1)
-        << "Apply inplace pass on lowering ::ir::Program to Kernel Dialect.";
+        << "Apply inplace pass on lowering ::pir::Program to Kernel Dialect.";
   }
 
   bool CanApplyOn(pir::Operation* op) const override {

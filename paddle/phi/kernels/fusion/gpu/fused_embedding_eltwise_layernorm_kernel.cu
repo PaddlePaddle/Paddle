@@ -16,6 +16,8 @@
 #include <type_traits>
 
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -48,12 +50,6 @@ void EmbeddingEltWiseLayerNormKernel(
 
   DenseTensor in_ids_(phi::DataType::INT64), in_embs_(phi::DataType::INT64);
   DDim in_dim{input_num};
-  int device_id;
-#ifdef PADDLE_WITH_HIP
-  hipGetDevice(&device_id);
-#else
-  cudaGetDevice(&device_id);
-#endif
 
   in_ids_.Resize(in_dim);
   in_embs_.Resize(in_dim);
@@ -68,29 +64,19 @@ void EmbeddingEltWiseLayerNormKernel(
     in1s.push_back(reinterpret_cast<uintptr_t>(ids[i]->data<int64_t>()));
     in2s.push_back(reinterpret_cast<uintptr_t>(embs[i]->data<T>()));
   }
-#ifdef PADDLE_WITH_HIP
-  hipMemcpyAsync(in_ids_d,
-                 in1s.data(),
-                 sizeof(int64_t) * input_num,
-                 hipMemcpyHostToDevice,
-                 dev_ctx.stream());
-  hipMemcpyAsync(in_embs_d,
-                 in2s.data(),
-                 sizeof(int64_t) * input_num,
-                 hipMemcpyHostToDevice,
-                 dev_ctx.stream());
-#else
-  cudaMemcpyAsync(in_ids_d,
-                  in1s.data(),
-                  sizeof(int64_t) * input_num,
-                  cudaMemcpyHostToDevice,
-                  dev_ctx.stream());
-  cudaMemcpyAsync(in_embs_d,
-                  in2s.data(),
-                  sizeof(int64_t) * input_num,
-                  cudaMemcpyHostToDevice,
-                  dev_ctx.stream());
-#endif
+
+  phi::memory_utils::Copy(phi::GPUPlace{},
+                          in_ids_d,
+                          phi::CPUPlace{},
+                          in1s.data(),
+                          sizeof(int64_t) * input_num,
+                          dev_ctx.stream());
+  phi::memory_utils::Copy(phi::GPUPlace{},
+                          in_embs_d,
+                          phi::CPUPlace{},
+                          in2s.data(),
+                          sizeof(int64_t) * input_num,
+                          dev_ctx.stream());
 
   // should be (B * S * hidden)
   auto id0_dims = ids[0]->dims();
