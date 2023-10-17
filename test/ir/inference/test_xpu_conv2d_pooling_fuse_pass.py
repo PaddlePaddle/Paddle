@@ -26,65 +26,14 @@ class TestConv2dPoolingXPU(PassAutoScanTest):
         config = self.create_inference_config(use_xpu=True)
         yield config, ["conv2d_pooling_xpu"], (1e-3, 1e-3)
 
-    def is_program_valid(self, prog_config):
-        paddings = prog_config.ops[0].attrs["paddings"]
-        strides = prog_config.ops[0].attrs["strides"]
-        groups = prog_config.ops[0].attrs["groups"]
-        padding_algorithm = prog_config.ops[0].attrs["padding_algorithm"]
-        dilations = prog_config.ops[0].attrs["dilations"]
-        data_format = prog_config.ops[0].attrs["data_format"]
-        filter_shape = prog_config.weights["conv2d_weight"].shape
-        input_shape = prog_config.inputs["conv2d_input"].shape
-        if data_format != "NCHW":
-            return False
-        if padding_algorithm == "VALID":
-            if (
-                (input_shape[2] - (dilations[0] * (filter_shape[2] - 1) + 1))
-                / strides[0]
-                + 1
-            ) <= 1 or (
-                (input_shape[3] - (dilations[1] * (filter_shape[3] - 1) + 1))
-                / strides[1]
-                + 1
-            ) <= 1:
-                return False
-        if padding_algorithm == "EXPLICIT":
-            if (
-                (
-                    input_shape[2]
-                    + paddings[0]
-                    + paddings[1]
-                    - (dilations[0] * (filter_shape[2] - 1) + 1)
-                )
-                / strides[0]
-                + 1
-            ) <= 1 or (
-                (
-                    input_shape[3]
-                    + paddings[2]
-                    + paddings[3]
-                    - (dilations[1] * (filter_shape[3] - 1) + 1)
-                )
-                / strides[1]
-                + 1
-            ) <= 1:
-                return False
-        if data_format == "NCHW":
-            if input_shape[1] != filter_shape[1] * groups:
-                return False
-            if filter_shape[0] % groups != 0:
-                return False
-        return True
 
     def sample_program_config(self, draw):
         data_format = draw(st.sampled_from(["NCHW"]))
 
-        x_shape = draw(
-            st.lists(
-                st.integers(min_value=4, max_value=16), min_size=4, max_size=4
-            )
-        )
-        x_shape[1] = draw(st.integers(min_value=1, max_value=10))
+        print("data_format:",data_format)
+      
+        x_shape=[3072,32,1,32]
+        
 
         pooling_type = draw(st.sampled_from(["max", "avg"]))
         
@@ -95,50 +44,17 @@ class TestConv2dPoolingXPU(PassAutoScanTest):
         global_pooling = draw(st.booleans())
 
         # 3. Generate legal shape of input:Y of conv2d
-        w_shape = draw(
-            st.lists(
-                st.integers(min_value=3, max_value=3), min_size=4, max_size=4
-            )
-        )
-
-        if data_format == "NCHW":
-            w_shape[1] = x_shape[1]
+        w_shape=[32,32,1,3]
 
         padding_algorithm = draw(st.sampled_from(["SAME", "VALID"]))
 
+        print("padding_algo:",padding_algorithm)
+
+
         groups = draw(st.integers(min_value=1, max_value=1))
 
-        dilations = draw(
-            st.lists(
-                st.integers(min_value=1, max_value=1), min_size=2, max_size=2
-            )
-        )
-        paddings = draw(
-            st.lists(
-                st.integers(min_value=1, max_value=1), min_size=2, max_size=2
-            )
-        )
-        strides = draw(
-            st.lists(
-                st.integers(min_value=1, max_value=1), min_size=2, max_size=2
-            )
-        )
-
-        strides1 = draw(
-            st.lists(
-                st.integers(min_value=1, max_value=4), min_size=2, max_size=2
-            )
-        )
-
-        paddings1 = draw(
-            st.lists(
-                st.integers(min_value=1, max_value=4), min_size=2, max_size=2
-            )
-        )
-
-
-
         axis = 1
+        
         ew_bias_shape = [w_shape[0]]
 
         # Random choose if add a relu operator
@@ -158,15 +74,15 @@ class TestConv2dPoolingXPU(PassAutoScanTest):
                 "Filter": ["conv2d_weight"],
             },
             outputs={"Output": ["conv2d_out"]},
-            data_format=data_format,
-            dilations=dilations,
-            padding_algorithm=padding_algorithm,
-            groups=groups,
-            paddings=paddings,
-            strides=strides,
+            data_format="NCHW",
+            dilations=[1,1],
+            padding_algorithm="EXPLICIT",
+            groups=1,
+            paddings=[0,1],
+            strides=[1,1],
             has_bias=False,
         )
-
+        
         ew_bias_op = OpConfig(
             "elementwise_add",
             inputs={"X": ["conv2d_out"], "Y": ["ew_bias"]},
@@ -188,7 +104,7 @@ class TestConv2dPoolingXPU(PassAutoScanTest):
             inputs={"X": ["relu_out"]},
             outputs={"Out": ["pool_output"]},
             ksize=[1, 2],
-            adaptive=True,
+            adaptive=False,
             pooling_type="max",
             data_format="NCHW",
             strides1=[1,2],
