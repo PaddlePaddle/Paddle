@@ -2737,7 +2737,7 @@ def gather(x, index, axis=None, name=None):
     if axis is None:
         axis = 0
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.gather(x, index, axis)
     else:
         check_variable_and_dtype(

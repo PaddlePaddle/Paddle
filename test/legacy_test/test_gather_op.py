@@ -21,6 +21,7 @@ import paddle
 from paddle import base
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.framework import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def gather_numpy(x, index, axis):
@@ -41,10 +42,10 @@ class TestGatherOp(OpTest):
         self.if_enable_cinn()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
 
     def config(self):
         """
@@ -114,11 +115,11 @@ class TestGatherOpBFP16(TestGatherOp):
         self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0))
+        self.check_output_with_place(place=paddle.CUDAPlace(0), check_pir=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True
+            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True, check_pir=True
         )
 
 
@@ -299,10 +300,10 @@ class TestGatherBF16Op(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', numeric_grad_delta=0.5)
+        self.check_grad(['X'], 'Out', numeric_grad_delta=0.5, check_pir=True)
 
     def config(self):
         """
@@ -328,10 +329,10 @@ class TestGatherOp1(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
     def config(self):
         """
@@ -435,6 +436,7 @@ class API_TestGather(unittest.TestCase):
             expected_output = np.array([[3, 4], [5, 6]])
         np.testing.assert_allclose(result, expected_output, rtol=1e-05)
 
+    @test_with_pir_api
     def test_out2(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
