@@ -56,17 +56,17 @@ def fused_feedforward(
     This operator only supports running on GPU. The function of the operator is consistent with
     the following pseudo code:
 
-    .. code-block:: python
+    .. code-block:: text
 
         >>> residual = x
         >>> if pre_layer_norm:
         ...     out = layer_norm1(x)
-        >>> else:
+        ...  else:
         ...     out = x
         >>> out = linear2(dropout1(activation(linear1(src))))
         >>> if add_residual:
         ...     out = residual + dropout2(out)
-        >>> else:
+        ... else:
         ...     out = dropout2(out)
         >>> if not pre_layer_norm:
         ...     out = layer_norm2(out)
@@ -289,7 +289,7 @@ def fused_bias_dropout_residual_layer_norm(
 
     The fused_bias_dropout_residual_layer_norm operator. The pseudo code is as follows:
 
-    .. code-block:: python
+    .. code-block:: text
 
         >>> y = layer_norm(residual + dropout(bias + x))
 
@@ -338,8 +338,8 @@ def fused_bias_dropout_residual_layer_norm(
             >>> # output: [batch_size, seq_len, embed_dim]
             >>> output = F.fused_bias_dropout_residual_layer_norm(
             ...     x, residual, bias)
-            >>> # [2, 4, 128]
             >>> print(output.shape)
+            (2, 4, 128)
 
     """
     seed = None
@@ -495,12 +495,12 @@ def fused_multi_head_attention(
     to information from different representation subspaces. This API only
     support self_attention. The pseudo code is as follows:
 
-    .. code-block:: python
+    .. code-block:: text
 
         >>> residual = x
         >>> if pre_layer_norm:
         ...     out = layer_norm(x)
-        >>> else:
+        ... else:
         ...     out = x
         >>> # compute q, k, v
         >>> out = matmul(out, qkv_weight) + qkv_bias
@@ -520,7 +520,7 @@ def fused_multi_head_attention(
         >>> out = linear(out)
         >>> if add_residual:
         ...     out = residual + dropout(out)
-        >>> else:
+        ... else:
         ...     out = dropout(out)
         >>> if not pre_layer_norm:
         ...     out = layer_norm(out)
@@ -606,8 +606,8 @@ def fused_multi_head_attention(
             ...     x, qkv_weight, linear_weight, False,
             ...     None, None, None, None, 1e-5, qkv_bias,
             ...     linear_bias, None, attn_mask)
-            >>> # [2, 4, 128]
             >>> print(output.shape)
+            (2, 4, 128)
     """
 
     seed = None
@@ -909,12 +909,12 @@ def fused_multi_transformer(
     This operator only supports running on GPU. The function of the transformer layer is consistent
     with the following pseudo code:
 
-    .. code-block:: python
+    .. code-block:: text
 
         >>> if pre_layer_norm:
         ...     out = layer_norm(x)
         ...     out = qkv_linear(out) + qkv_bias
-        >>> else:
+        ... else:
         ...     out = qkv_linear(x) + qkv_bias
         >>> out = transpose(out, perm=[2, 0, 3, 1, 4])
         >>> # extract q, k and v from out.
@@ -930,7 +930,7 @@ def fused_multi_transformer(
         >>> out = linear(out)
         >>> if pre_layer_norm:
         ...     out = x + dropout(out + bias)
-        >>> else:
+        ... else:
         ...     out = layer_norm(x + dropout(out + bias))
 
         >>> residual = out;
@@ -1040,8 +1040,8 @@ def fused_multi_transformer(
             ...     [linear_weight], [linear_bias], [ffn_ln_scale], [ffn_ln_bias],
             ...     [ffn1_weight], [ffn1_bias], [ffn2_weight], [ffn2_bias],
             ...     attn_mask=attn_mask)
-            >>> # [2, 4, 128]
             >>> print(output.shape)
+            (2, 4, 128)
     """
     if mode not in ('downscale_in_infer', 'upscale_in_train'):
         raise ValueError(

@@ -105,11 +105,11 @@ class Fleet:
     Returns:
         Fleet: A Fleet instance
 
-
+    Examples:
         .. code-block:: python
             :name: code-example1
 
-            # Example1: for collective training
+            >>> # Example1: for collective training
             >>> import paddle
             >>> paddle.enable_static()
             >>> import paddle.distributed.fleet as fleet
@@ -117,17 +117,18 @@ class Fleet:
             >>> fleet.init(is_collective=True)
 
             >>> strategy = fleet.DistributedStrategy()
-            >>> optimizer = paddle.optimizer.SGD(learning_rate=0.001)
+            >>> linear = paddle.nn.Linear(10, 10)
+            >>> optimizer = paddle.optimizer.SGD(learning_rate=0.001, parameters=linear.parameters())
             >>> optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
 
-            # do distributed training
+            >>> # do distributed training
 
 
 
         .. code-block:: python
             :name: code-example2
 
-            # Example2: for parameter server training
+            >>> # Example2: for parameter server training
             >>> import paddle
             >>> paddle.enable_static()
             >>> import paddle.distributed.fleet as fleet
@@ -662,8 +663,8 @@ class Fleet:
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
 
-                # build net
-                # fleet.distributed_optimizer(...)
+                >>> # build net
+                >>> # fleet.distributed_optimizer(...)
 
                 >>> fleet.init_worker()
 
@@ -707,8 +708,8 @@ class Fleet:
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
 
-                # build net
-                # fleet.distributed_optimizer(...)
+                >>> # build net
+                >>> # fleet.distributed_optimizer(...)
 
                 >>> fleet.init_server()
 
@@ -732,8 +733,8 @@ class Fleet:
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
 
-                # build net
-                # fleet.distributed_optimizer(...)
+                >>> # build net
+                >>> # fleet.distributed_optimizer(...)
 
                 >>> fleet.load_model("path", mode=0)
 
@@ -757,8 +758,8 @@ class Fleet:
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
 
-                # build net
-                # fleet.distributed_optimizer(...)
+                >>> # build net
+                >>> # fleet.distributed_optimizer(...)
 
                 >>> fleet.load_one_table(0, "path", mode=0)
 
@@ -782,8 +783,8 @@ class Fleet:
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
 
-                # build net
-                # fleet.distributed_optimizer(...)
+                >>> # build net
+                >>> # fleet.distributed_optimizer(...)
 
                 >>> fleet.load_inference_model("path", mode=1)
 
@@ -806,8 +807,8 @@ class Fleet:
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
 
-                # build net
-                # fleet.distributed_optimizer(...)
+                >>> # build net
+                >>> # fleet.distributed_optimizer(...)
 
                 >>> if fleet.is_server():
                 ...     fleet.init_server()
@@ -831,8 +832,8 @@ class Fleet:
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
 
-                # build net
-                # fleet.distributed_optimizer(...)
+                >>> # build net
+                >>> # fleet.distributed_optimizer(...)
 
                 >>> fleet.init_server()
 
@@ -911,8 +912,8 @@ class Fleet:
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
 
-                # build net
-                # fleet.distributed_optimizer(...)
+                >>> # build net
+                >>> # fleet.distributed_optimizer(...)
 
                 >>> fleet.init_server()
 
@@ -964,8 +965,8 @@ class Fleet:
 
                 >>> fleet.init()
 
-                # build net
-                # fleet.distributed_optimizer(...)
+                >>> # build net
+                >>> # fleet.distributed_optimizer(...)
 
                 >>> exe = paddle.static.Executor(paddle.CPUPlace())
                 >>> fleet.save_persistables(exe, "dirname", paddle.static.default_main_program())
@@ -1011,8 +1012,8 @@ class Fleet:
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
 
-                # build net
-                # fleet.distributed_optimizer(...)
+                >>> # build net
+                >>> # fleet.distributed_optimizer(...)
 
                 >>> fleet.save_one_table(0, "path", mode=0)
 
@@ -1041,8 +1042,8 @@ class Fleet:
                 >>> place = paddle.CPUPlace()
                 >>> exe =  paddle.static.Executor(place)
 
-                # build net
-                # fleet.distributed_optimizer(...)
+                >>> # build net
+                >>> # fleet.distributed_optimizer(...)
 
                 >>> fleet.save_dense_params(exe, "path", scope=paddle.static.global_scope(), program=paddle.static.default_main_program())
 
@@ -1081,8 +1082,9 @@ class Fleet:
                 >>> import paddle
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init(is_collective=True)
+                >>> linear = paddle.nn.Linear(10, 10)
                 >>> strategy = fleet.DistributedStrategy()
-                >>> optimizer = paddle.optimizer.SGD(learning_rate=0.001)
+                >>> optimizer = paddle.optimizer.SGD(learning_rate=0.001, parameters=linear.parameters())
                 >>> optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
 
         """
@@ -1290,11 +1292,12 @@ class Fleet:
 
                 >>> fleet.init(is_collective=True)
                 >>> strategy = fleet.DistributedStrategy()
-                >>> optimizer = paddle.optimizer.SGD(learning_rate=0.001)
+                >>> linear = paddle.nn.Linear(10, 10)
+                >>> optimizer = paddle.optimizer.SGD(learning_rate=0.001, parameters=linear.parameters())
                 >>> optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
                 >>> optimizer.minimize(avg_cost)
 
-                # for more examples, please reference https://github.com/PaddlePaddle/PaddleFleetX
+                >>> # for more examples, please reference https://github.com/PaddlePaddle/PaddleFleetX
 
         """
         if not isinstance(loss, list):
