@@ -263,7 +263,6 @@ class Conv2DTestCase(unittest.TestCase):
         return y_np
 
     def _test_equivalence(self, place):
-        place = base.CPUPlace()
         result1 = self.base_layer(place)
         result2 = self.functional(place)
         with dg.guard(place):
@@ -272,7 +271,6 @@ class Conv2DTestCase(unittest.TestCase):
         np.testing.assert_array_almost_equal(result2, result3)
 
     def _test_equivalence_in_pir(self, place):
-        place = base.CPUPlace()
         with paddle.pir_utils.IrGuard():
             result1 = self.run_Conv2D_static(place)
             with dg.guard(place):
