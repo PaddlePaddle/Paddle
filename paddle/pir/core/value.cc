@@ -14,7 +14,6 @@
 
 #include "paddle/pir/core/value.h"
 
-#include <glog/logging.h>
 #include <cstddef>
 
 #include "paddle/pir/core/enforce.h"
