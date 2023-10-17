@@ -521,7 +521,6 @@ set(TEST_OPS_WITH_GC
     test_lod_reset_op
     test_lookup_table_op
     test_mean_op
-    test_pad2d_op
     test_scatter_op
     test_slice_op)
 

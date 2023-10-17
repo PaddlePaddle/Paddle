@@ -18,6 +18,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/drr/api/tensor_interface.h"
+#include "paddle/pir/core/type.h"
 #include "paddle/pir/core/value.h"
 
 namespace pir {
@@ -25,23 +26,23 @@ namespace drr {
 
 class IrShape {
  public:
-  explicit IrShape(const phi::DDim* dims) : dims_(dims) {}
+  explicit IrShape(const phi::DDim& dims) : dims_(dims) {}
 
-  bool operator==(const IrShape& other) const { return *dims_ == *other.dims_; }
+  bool operator==(const IrShape& other) const { return dims_ == other.dims_; }
 
-  int size() const { return dims_->size(); }
+  int size() const { return dims_.size(); }
 
-  int64_t at(int idx) const { return dims_->at(idx); }
+  int64_t at(int idx) const { return dims_.at(idx); }
 
  private:
-  const phi::DDim* dims_;
+  const phi::DDim dims_;
 };
 
 class IrDtype {
  public:
-  explicit IrDtype(const pir::Type& dtype) : dtype_(dtype) {}
+  explicit IrDtype(pir::Type dtype) : dtype_(dtype) {}
 
-  bool operator==(const IrDtype& other) const { return dtype_ == other.dtype_; }
+  bool operator==(IrDtype other) const { return dtype_ == other.dtype_; }
 
  private:
   const pir::Type dtype_;
@@ -51,16 +52,18 @@ class IrValue : public TensorInterface {
  public:
   explicit IrValue(const pir::Value& value)
       : value_(value),
-        shape_((value && value.type())
-                   ? &value.type()
-                          .dyn_cast<paddle::dialect::DenseTensorType>()
-                          .dims()
-                   : nullptr),
-        dtype_((value && value.type())
+        shape_((value && value.type() &&
+                value.type().dyn_cast<paddle::dialect::DenseTensorType>())
+                   ? value.type()
+                         .dyn_cast<paddle::dialect::DenseTensorType>()
+                         .dims()
+                   : phi::DDim{}),
+        dtype_((value && value.type() &&
+                value.type().dyn_cast<paddle::dialect::DenseTensorType>())
                    ? value.type()
                          .dyn_cast<paddle::dialect::DenseTensorType>()
                          .dtype()
-                   : Type{}) {}
+                   : pir::Type{}) {}
 
   ShapeInterface Shape() const override { return ShapeInterface(&shape_); }
   DtypeInterface Dtype() const override { return DtypeInterface(&dtype_); }

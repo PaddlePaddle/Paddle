@@ -61,6 +61,7 @@ void TransferLayoutElimPass::PutTranferlayoutAfterOp(
   // group_norm has 3 inputs, but we do not need there is a transfer_layout
   // before Bias and Scale so we extract useful_var1s from op_node->inputs.
   std::vector<Node *> useful_var1s;
+  useful_var1s.reserve(op_node->inputs.size());
   for (auto var1 : op_node->inputs) {
     // if (var1->inputs.size() >= 1 &&
     //         var1->inputs[0]->Op()->Type() == "transfer_layout") {
