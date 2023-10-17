@@ -2173,6 +2173,17 @@
   outputs :
     out : Out
 
+- op : pad
+  backward : pad_grad, pad_double_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar:
+    pad_value:
+      data_type : float
+      support_tensor : true
+
 - op : pad2d
   backward : pad2d_grad
   extra :
