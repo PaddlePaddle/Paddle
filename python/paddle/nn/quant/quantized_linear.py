@@ -126,7 +126,7 @@ def weight_dequantize(x, scale, algo="weight_only_int8", out_dtype='float16'):
 
 
 def weight_only_linear(
-    x, weight, bias=None, weight_scale=None, weight_dtype="int8", arch=0
+    x, weight, bias=None, weight_scale=None, weight_dtype="int8", arch=None
 ):
     """
     Applies matrix multiplication of two tensors and then bias addition if provided.
@@ -139,7 +139,7 @@ def weight_only_linear(
             be performed. Otherwise, The bias is added to the matrix multiplication result.
         weight_scale (Tensor|None): The input scale Tensor Provided to weight for dequantization. Its rank must be 1.
         weight_dtype(str): The dtype of  weight Tensor, must be one of 'int8', 'int4', Defaulted to 'int8'.
-        arch (int): The compute arch for target device. For example, A100 is 80, v100 is 70, if you do not assign arch, we will get arch from your device, default: 0.
+        arch (int): The compute arch for target device. For example, A100 is 80, v100 is 70, if you do not assign arch, we will get arch from your device, default: None.
     Returns:
         Tensor: the output Tensor, the data type is the same as that of x.
 
@@ -159,6 +159,21 @@ def weight_only_linear(
             ...    print(out.shape)
             [1, 2, 32]
     """
+    if arch is None:
+        # Get SMVersion from device.
+        cuda_version = version.cuda()
+        if cuda_version is not None and cuda_version != 'False':
+            major, minor = get_device_capability()
+            arch = int(major * 10 + minor)
+        else:
+            raise ValueError(
+                "Paddle is not compiled with CUDA, we cannot get SMVersion from device, please try to compile Paddle with CUDA"
+            )
+
+    assert (
+        arch == 70 or arch == 80
+    ), "Currently weight_quantize only support SM70/80. "
+
     if in_dynamic_mode():
         out = _C_ops.weight_only_linear(
             x, weight, bias, weight_scale, weight_dtype, arch
