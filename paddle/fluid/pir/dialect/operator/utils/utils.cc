@@ -12,8 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include <glog/logging.h>
+
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/phi/core/kernel_factory.h"
+#include "paddle/pir/core/builtin_type.h"
 
 namespace paddle {
 namespace dialect {
@@ -198,6 +203,55 @@ bool IsLegacyOp(const std::string& name) { return LegacyOpList.count(name); }
 
 bool IsEmptyValue(const pir::Value& value) {
   return !value.impl() || !value.type();
+}
+
+std::set<std::string> GetRegisterDataType(const std::string& op_name) {
+  std::set<framework::proto::VarType::Type> proto_type;
+
+  auto phi_kernels = phi::KernelFactory::Instance().kernels();
+  for (auto& kernel_pair : phi_kernels) {
+    auto fluid_op_name = phi::TransToFluidOpName(kernel_pair.first);
+    if (kernel_pair.first != op_name && fluid_op_name != op_name) {
+      continue;
+    }
+    for (auto& info_pair : kernel_pair.second) {
+      framework::OpKernelType kernel_type =
+          framework::TransPhiKernelKeyToOpKernelType(info_pair.first);
+      proto_type.insert(kernel_type.data_type_);
+    }
+  }
+
+  std::set<std::string> data_type;
+  for (auto& iter : proto_type) {
+    data_type.insert(
+        phi::DataTypeToString(framework::TransToPhiDataType(iter)));
+  }
+
+  VLOG(1) << "data_type.size(): " << data_type.size();
+
+  for (auto& type : data_type) {
+    VLOG(1) << "data_type: " << type;
+  }
+
+  return data_type;
+}
+
+void CheckDtype(const pir::Value& value,
+                const std::string& input_name,
+                const std::string& op_name) {
+  std::set<std::string> expected_dtype = GetRegisterDataType(op_name);
+
+  if (value.type().isa<pir::DenseTensorType>()) {
+    std::string value_type = phi::DataTypeToString(dialect::TransToPhiDataType(
+        value.type().dyn_cast<pir::DenseTensorType>().dtype()));
+    if (expected_dtype.find(value_type) == expected_dtype.end()) {
+      PADDLE_THROW(phi::errors::InvalidArgument("Type error %s.", input_name));
+    }
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get dtype for dense "
+        "tensor."));
+  }
 }
 
 }  // namespace dialect

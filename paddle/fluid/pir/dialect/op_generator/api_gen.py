@@ -69,6 +69,7 @@ API_DECLARE_TEMPLATE = """
 
 API_IMPL_TEMPLATE = """
 {ret_type} {api_name}({args}){{
+    {check_value_and_dtype}
     {handle_optional_inputs}
     {in_combine}
     {compute_op}
@@ -78,6 +79,9 @@ API_IMPL_TEMPLATE = """
 }}
 
 """
+
+CHECK_DTYPE_TEMPLATE = """
+    CheckDtype({input}, "{input}", "{op_name}");"""
 
 OPTIONAL_VECTOR_VALUE_INPUT_TEMPLATE = """
     paddle::optional<pir::Value> optional_{name};
@@ -502,6 +506,20 @@ class CodeGen:
         elif len(ret_list) == 0:
             return 'return;'
 
+    def _gen_check_dtype(self, op_info, op_name):
+        name_list = op_info.input_name_list
+        type_list = op_info.input_type_list
+        if (
+            not op_name.endswith(('_grad', '_grad_'))
+            and len(name_list) > 0
+            and VECTOR_TYPE not in type_list[0]
+        ):
+            return CHECK_DTYPE_TEMPLATE.format(
+                input=name_list[0], op_name=op_name
+            )
+        else:
+            return ''
+
     def _gen_one_impl(
         self, op_info, op_name, is_mutable_attr, is_vector_mutable_attr
     ):
@@ -520,6 +538,7 @@ class CodeGen:
         )
 
         ret = API_IMPL_TEMPLATE.format(
+            check_value_and_dtype=self._gen_check_dtype(op_info, op_name),
             ret_type=ret_type,
             api_name=op_name,
             args=self._gen_api_args(
