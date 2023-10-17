@@ -1870,6 +1870,9 @@ class TestCos(TestActivation):
     def init_shape(self):
         self.shape = [10, 12]
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
@@ -1877,10 +1880,14 @@ class TestCos(TestActivation):
         if self.dtype == np.complex64 or self.dtype == np.complex128:
             # Complex64 [GPU]: AssertionError: 0.0057843705 not less than or equal to 0.005
             self.check_grad(
-                ['X'], 'Out', check_prim=False, max_relative_error=0.006
+                ['X'],
+                'Out',
+                check_prim=False,
+                max_relative_error=0.006,
+                check_pir=True,
             )
         else:
-            self.check_grad(['X'], 'Out', check_prim=True)
+            self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
 
     def if_enable_cinn(self):
         pass
@@ -2665,6 +2672,7 @@ class TestGELUAPI(unittest.TestCase):
         self.rev_comp_rtol = 1e-8
         self.rev_comp_atol = 1e-8
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -4680,7 +4688,7 @@ create_test_act_fp16_class(
     enable_cinn=True,
     check_pir=True,
 )
-create_test_act_fp16_class(TestCos)
+create_test_act_fp16_class(TestCos, check_pir=True)
 create_test_act_fp16_class(TestTan)
 create_test_act_fp16_class(TestCosh)
 create_test_act_fp16_class(TestAcos)
@@ -4832,7 +4840,7 @@ create_test_act_bf16_class(TestCeil, grad_check=False, check_pir=True)
 create_test_act_bf16_class(
     TestFloor, grad_check=False, check_prim=True, check_pir=True
 )
-create_test_act_bf16_class(TestCos)
+create_test_act_bf16_class(TestCos, check_pir=True)
 create_test_act_bf16_class(TestTan)
 create_test_act_bf16_class(TestCosh)
 create_test_act_bf16_class(TestAcos)
