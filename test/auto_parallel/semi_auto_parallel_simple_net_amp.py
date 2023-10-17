@@ -34,9 +34,7 @@ class TestSimpleNetWithAmpForSemiAutoParallel(TestSimpleNetForSemiAutoParallel):
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
 
         paddle.set_device(self._backend)
-
         self.init_input_data()
-
         self.init_single_card_net_result()
 
     def run_dynamic_amp(self, layer, level='O1'):
@@ -83,6 +81,8 @@ class TestSimpleNetWithAmpForSemiAutoParallel(TestSimpleNetForSemiAutoParallel):
     def run_test_case(self):
         self.test_dp_demo_net('O1')
         self.test_mp_demo_net('O1')
+        # self.test_dp_demo_net('O2')
+        # self.test_mp_demo_net('O2')
 
 
 if __name__ == '__main__':

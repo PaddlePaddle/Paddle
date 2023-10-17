@@ -159,6 +159,7 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
       grad_node->SetTensorWrapperx(x);
       grad_node->SetTensorWrappery(y);
     }
+
     // SetGradOutMeta & SetEdges
     grad_node->SetGradOutMeta(x, 0);
     grad_node->SetGradOutMeta(y, 1);
