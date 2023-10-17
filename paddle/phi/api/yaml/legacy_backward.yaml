@@ -380,6 +380,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
+    spmd_rule : ReductionGradInferSpmd
   kernel :
     func : mean_grad
   backward : mean_double_grad
@@ -702,6 +703,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ReductionGradInferSpmd
   kernel :
     func : sum_grad
   composite : sum_grad(x, out_grad, axis, keepdim, reduce_all, x_grad)
