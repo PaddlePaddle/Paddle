@@ -2188,6 +2188,16 @@ void FusionGRUInferMeta(const MetaTensor& x,
                         MetaTensor* batched_input,
                         MetaTensor* batched_out,
                         MetaTensor* hidden) {
+  std::string mkldnn_data_type_list[] = {"float32", "int8", "bfloat16"};
+  PADDLE_ENFORCE_EQ(
+      std::find(std::begin(mkldnn_data_type_list),
+                std::end(mkldnn_data_type_list),
+                mkldnn_data_type) != std::end(mkldnn_data_type_list),
+      true,
+      phi::errors::InvalidArgument("The mkldnn_data_type shoule be [float32, "
+                                   "int8, bfloat16], but found %s.",
+                                   mkldnn_data_type.c_str()));
+
   DDim x_dims = x.dims();
   auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1)
                         ? phi::flatten_to_2d(x_dims, 1)

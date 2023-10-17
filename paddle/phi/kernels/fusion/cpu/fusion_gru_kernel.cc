@@ -383,16 +383,6 @@ void FusionGRUKernel(const Context& dev_ctx,
                      DenseTensor* batched_input,
                      DenseTensor* batched_out,
                      DenseTensor* hidden) {
-  std::string mkldnn_data_type_list[] = {"float32", "int8", "bfloat16"};
-  PADDLE_ENFORCE_EQ(
-      std::find(std::begin(mkldnn_data_type_list),
-                std::end(mkldnn_data_type_list),
-                mkldnn_data_type) != std::end(mkldnn_data_type_list),
-      true,
-      phi::errors::InvalidArgument("The mkldnn_data_type shoule be [float32, "
-                                   "int8, bfloat16], but found %s.",
-                                   mkldnn_data_type.c_str()));
-
   if (use_seq) {
     SeqCompute<T, Context>(dev_ctx,
                            x,

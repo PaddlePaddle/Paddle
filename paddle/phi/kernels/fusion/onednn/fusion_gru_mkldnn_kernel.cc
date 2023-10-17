@@ -16,6 +16,7 @@
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
+#include "paddle/phi/core/expect.h"
 #include "paddle/phi/core/utils/data_type.h"
 
 #include "paddle/phi/core/kernel_registry.h"
@@ -34,7 +35,7 @@ template <typename T, typename T_out = T>
 class GRUMKLDNNHandler
     : public phi::funcs::OneDNNHandlerT<T, dnnl::gru_forward> {
  public:
-  RNNMKLDNNHandler(const phi::OneDNNContext& dev_ctx,
+  GRUMKLDNNHandler(const OneDNNContext& dev_ctx,
                    const dnnl::engine onednn_engine,
                    phi::Place cpu_place UNUSED,
                    const phi::DenseTensor* input,
@@ -43,9 +44,9 @@ class GRUMKLDNNHandler
                    const bool is_reverse,
                    const float scale_data,
                    const float shift_data,
-                   const std::string gate_activation,
-                   const std::string activation,
-                   const std::vector<float> scale_weights,
+                   const std::string& gate_activation,
+                   const std::string& activation,
+                   const std::vector<float>& scale_weights,
                    const int64_t N,
                    const int64_t Ti,
                    const int64_t IC,
@@ -77,8 +78,6 @@ class GRUMKLDNNHandler
       attr_.set_rnn_data_qparams(scale_data, shift_data);
       attr_.set_rnn_weights_qparams(weights_scale_mask, scale_weights);
     }
-
-    const bool is_INT8 = std::is_same<T, uint8_t>::value;
 
     if (unlikely(!this->isCached())) {
       // oneDNN kernel has hardcoded activation functions
@@ -420,7 +419,7 @@ class GRUMKLDNNHandler
   dnnl::primitive_attr attr_;
 };
 
-template <typename T>
+template <typename T, typename Tout = T>
 void RunKernel(const phi::OneDNNContext& dev_ctx,
                const DenseTensor& x,
                const paddle::optional<DenseTensor>& h0,
@@ -468,34 +467,37 @@ void RunKernel(const phi::OneDNNContext& dev_ctx,
   const int64_t IC = x_mat_dims_vec[1];  // Input channels
   const int64_t OC = weight_h_dims[0];   // Output channels
 
-  GRUMKLDNNHandler<T, Tout> handler(ctx,
-                                    dev_ctx,
+  GRUMKLDNNHandler<T, Tout> handler(dev_ctx,
                                     onednn_engine,
-                                    ctx.GetPlace(),
+                                    dev_ctx.GetPlace(),
                                     &x,
                                     &weight_h,
-                                    h0,
+                                    h0.get_ptr(),
                                     is_reverse,
+                                    scale_data,
+                                    shift_data,
+                                    gate_activation,
+                                    activation,
+                                    scale_weights,
                                     N,
                                     Ti,
                                     IC,
-                                    OC,
-                                    "XWeightH");
-
+                                    OC);
   auto input_memory_p = handler.AcquireInputMemoryWithReorder(&x, is_reverse);
 
   std::shared_ptr<dnnl::memory> h0_memory_p, weight_h_memory_p,
       weight_x_memory_p;
 
   if (phi::TransToProtoVarType(weight_h.dtype()) == phi::ProtoDataType::FP32) {
-    h0_memory_p = handler.template AcquireH0Memory<float>(h0);
+    h0_memory_p = handler.template AcquireH0Memory<float>(h0.get_ptr());
     weight_x_memory_p =
         handler.template AcquireWeightXMemory<float>(&weight_x, origin_mode);
     weight_h_memory_p =
         handler.template AcquireWeightHMemory<float>(&weight_h, origin_mode);
   } else if (phi::TransToProtoVarType(weight_h.dtype()) ==
-             phi::ProtoDataType::FP32) {
-    h0_memory_p = handler.template AcquireH0Memory<phi::dtype::bfloat16>(h0);
+             phi::ProtoDataType::BF16) {
+    h0_memory_p =
+        handler.template AcquireH0Memory<phi::dtype::bfloat16>(h0.get_ptr());
     weight_x_memory_p =
         handler.template AcquireWeightXMemory<phi::dtype::bfloat16>(
             &weight_x, origin_mode);
@@ -503,14 +505,14 @@ void RunKernel(const phi::OneDNNContext& dev_ctx,
         handler.template AcquireWeightHMemory<phi::dtype::bfloat16>(
             &weight_h, origin_mode);
   } else {
-    h0_memory_p = handler.template AcquireH0Memory<uint8_t>(h0);
+    h0_memory_p = handler.template AcquireH0Memory<uint8_t>(h0.get_ptr());
     weight_x_memory_p =
         handler.template AcquireWeightXMemory<int8_t>(&weight_x, origin_mode);
     weight_h_memory_p =
         handler.template AcquireWeightHMemory<int8_t>(&weight_h, origin_mode);
   }
 
-  auto bias_memory_p = handler.AcquireBiasMemory(&bias, origin_mode);
+  auto bias_memory_p = handler.AcquireBiasMemory(bias.get_ptr(), origin_mode);
   auto hidden_onednn_memory_p = handler.AcquireOutputMemory();
 
   std::unordered_map<int, dnnl::memory> gru_args = {
@@ -528,7 +530,8 @@ void RunKernel(const phi::OneDNNContext& dev_ctx,
   astream.wait();
 
   auto* hidden_onednn_data = hidden_onednn_memory_p->get_data_handle();
-  auto* hidden_data = phi::funcs::to_void_cast(dev_ctx.template Alloc(hidden));
+  auto* hidden_tmp_data = dev_ctx.template Alloc<Tout>(hidden);
+  auto* hidden_data = phi::funcs::to_void_cast(hidden_tmp_data);
   if (handler.is_NTC()) {
     handler.reorderRNNdata(hidden_onednn_data,
                            hidden_data,
@@ -544,8 +547,8 @@ void RunKernel(const phi::OneDNNContext& dev_ctx,
   }
 }
 
-template <typename T>
-void FusionGRUKernel(const phi::OneDNNContext& dev_ctx,
+template <typename T, typename Context>
+void FusionGRUKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const paddle::optional<DenseTensor>& h0,
                      const DenseTensor& weight_x,
@@ -570,51 +573,51 @@ void FusionGRUKernel(const phi::OneDNNContext& dev_ctx,
   const bool is_bf16 = std::is_same<T, phi::dtype::bfloat16>::value;
   // BF16 does not support force output
   if (!is_bf16 && force_fp32_output) {  // NOLINT
-    RunKernel<float, Context>(dev_ctx,
-                              x,
-                              h0,
-                              weight_x,
-                              weight_h,
-                              bias,
-                              activation,
-                              gate_activation,
-                              is_reverse,
-                              use_seq,
-                              origin_mode,
-                              use_mkldnn,
-                              mkldnn_data_type,
-                              scale_data,
-                              shift_data,
-                              scale_weights,
-                              force_fp32_output,
-                              reordered_h0,
-                              xx,
-                              batched_input,
-                              batched_out,
-                              hidden);
+    RunKernel<T, float>(dev_ctx,
+                        x,
+                        h0,
+                        weight_x,
+                        weight_h,
+                        bias,
+                        activation,
+                        gate_activation,
+                        is_reverse,
+                        use_seq,
+                        origin_mode,
+                        use_mkldnn,
+                        mkldnn_data_type,
+                        scale_data,
+                        shift_data,
+                        scale_weights,
+                        force_fp32_output,
+                        reordered_h0,
+                        xx,
+                        batched_input,
+                        batched_out,
+                        hidden);
   } else {
-    RunKernel<T, Context>(dev_ctx,
-                          x,
-                          h0,
-                          weight_x,
-                          weight_h,
-                          bias,
-                          activation,
-                          gate_activation,
-                          is_reverse,
-                          use_seq,
-                          origin_mode,
-                          use_mkldnn,
-                          mkldnn_data_type,
-                          scale_data,
-                          shift_data,
-                          scale_weights,
-                          force_fp32_output,
-                          reordered_h0,
-                          xx,
-                          batched_input,
-                          batched_out,
-                          hidden);
+    RunKernel<T>(dev_ctx,
+                 x,
+                 h0,
+                 weight_x,
+                 weight_h,
+                 bias,
+                 activation,
+                 gate_activation,
+                 is_reverse,
+                 use_seq,
+                 origin_mode,
+                 use_mkldnn,
+                 mkldnn_data_type,
+                 scale_data,
+                 shift_data,
+                 scale_weights,
+                 force_fp32_output,
+                 reordered_h0,
+                 xx,
+                 batched_input,
+                 batched_out,
+                 hidden);
   }
 }
 
