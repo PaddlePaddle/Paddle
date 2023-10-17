@@ -191,6 +191,7 @@ def summary(net, input_size=None, dtypes=None, input=None):
             >>> lenet_dict_input = LeNetDictInput()
             >>> input_data = {'x1': paddle.rand([1, 1, 28, 28]),
             ...               'x2': paddle.rand([1, 400])}
+            >>> params_info = paddle.summary(lenet_dict_input, input=input_data)
             >>> print(params_info)
             ---------------------------------------------------------------------------
             Layer (type)       Input Shape          Output Shape         Param #
