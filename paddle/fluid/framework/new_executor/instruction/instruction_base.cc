@@ -217,8 +217,11 @@ void InstructionBase::SetOutputs(
 void InstructionBase::InitInputsOutputsIds(
     ::pir::Operation* op, const ValueExecutionInfo& value_exec_info) {
   auto op_attributes = op->attributes();
-  auto op_name =
-      op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
+  std::string op_name;
+  if (op_attributes.count("op_name ")) {
+    op_name =
+        op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
+  }
   std::unordered_map<pir::Value, std::vector<int>> inputs;
   for (size_t i = 0; i < op->num_operands(); i++) {
     pir::Value value = op->operand_source(i);

@@ -603,8 +603,8 @@ void NewIRInterpreter::BuildInstruction() {
       }
 #ifdef PADDLE_WITH_CINN
     } else if (op->dialect()->name() == "cinn_runtime") {
-      vec_instruction_base_.emplace_back(
-          std::make_unique<CinnJitInstruction>(op_idx++, place_, op, scope_));
+      vec_instruction_base_.emplace_back(std::make_unique<CinnJitInstruction>(
+          op_idx++, place_, op, *(value_exe_info_.get())));
 #endif
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
