@@ -26,11 +26,11 @@
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
@@ -216,6 +216,14 @@ void ReplaceExpr(Expr* source,
       continue;
     replacing_map[replaced[i]] = candidates[i];
   }
+  MappingVarToExprMutator mapper(replacing_map);
+  mapper(source);
+  return;
+}
+
+void ReplaceExpr(Expr* source,
+                 const std::map<Var, Expr, CompVar>& replacing_map) {
+  if (replacing_map.empty()) return;
   MappingVarToExprMutator mapper(replacing_map);
   mapper(source);
   return;

@@ -1290,7 +1290,7 @@ class OpTest(unittest.TestCase):
         return static_inputs, attrs_outputs, input_dict, feed
 
     def _need_fetch(self, sig_name):
-        if sig_name in self.outputs.keys():
+        if sig_name in self.outputs:
             return True
         for _, value in self.outputs.items():
             if not isinstance(value, (tuple, list)):
@@ -1967,7 +1967,7 @@ class OpTest(unittest.TestCase):
         only_check_prim=False,
         inplace_atol=None,
         check_cinn=False,
-        check_new_ir=False,
+        check_pir=False,
     ):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
@@ -2538,7 +2538,7 @@ class OpTest(unittest.TestCase):
             dygraph_checker.check()
             dygraph_dygraph_outs = dygraph_checker.outputs
 
-        if check_new_ir:
+        if check_pir:
             if (
                 type(place) is paddle.base.libpaddle.CPUPlace
                 or type(place) is paddle.base.libpaddle.CUDAPlace
@@ -2657,7 +2657,7 @@ class OpTest(unittest.TestCase):
         inplace_atol=None,
         check_cinn=False,
         only_check_prim=False,
-        check_new_ir=False,
+        check_pir=False,
     ):
         self.__class__.op_type = self.op_type
         if self.is_mkldnn_op():
@@ -2683,7 +2683,7 @@ class OpTest(unittest.TestCase):
                 only_check_prim=only_check_prim,
                 inplace_atol=inplace_atol,
                 check_cinn=check_cinn,
-                check_new_ir=check_new_ir,
+                check_pir=check_pir,
             )
             if not res and only_check_prim:
                 continue
@@ -2700,7 +2700,7 @@ class OpTest(unittest.TestCase):
                 self.check_compile_vs_runtime(fetch_list, outs)
 
     def check_output_customized(
-        self, checker, custom_place=None, check_new_ir=False
+        self, checker, custom_place=None, check_pir=False
     ):
         self.__class__.op_type = self.op_type
         places = self._get_places()
@@ -2711,7 +2711,7 @@ class OpTest(unittest.TestCase):
             outs = [np.array(out) for out in outs]
             outs.sort(key=len)
             checker(outs)
-            if check_new_ir:
+            if check_pir:
                 with paddle.pir_utils.IrGuard():
                     outs_p = self._calc_new_ir_output(place)
                     outs_p = [outs_p[out] for out in outs_p]
@@ -2719,13 +2719,13 @@ class OpTest(unittest.TestCase):
                     checker(outs_p[0])
 
     def check_output_with_place_customized(
-        self, checker, place, check_new_ir=False
+        self, checker, place, check_pir=False
     ):
         outs = self.calc_output(place)
         outs = [np.array(out) for out in outs]
         outs.sort(key=len)
         checker(outs)
-        if check_new_ir:
+        if check_pir:
             with paddle.pir_utils.IrGuard():
                 outs_p = self._calc_new_ir_output(place)
                 outs_p = [outs_p[out] for out in outs_p]
@@ -2867,7 +2867,7 @@ class OpTest(unittest.TestCase):
         only_check_prim=False,
         atol=1e-5,
         check_cinn=False,
-        check_new_ir=False,
+        check_pir=False,
     ):
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
@@ -2891,7 +2891,7 @@ class OpTest(unittest.TestCase):
                 only_check_prim=only_check_prim,
                 atol=atol,
                 check_cinn=check_cinn,
-                check_new_ir=check_new_ir,
+                check_pir=check_pir,
             )
 
     def check_grad_with_place(
@@ -2912,7 +2912,7 @@ class OpTest(unittest.TestCase):
         numeric_place=None,
         atol=1e-5,
         check_cinn=False,
-        check_new_ir=False,
+        check_pir=False,
     ):
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
@@ -3126,7 +3126,7 @@ class OpTest(unittest.TestCase):
                 )
 
         # get pir gradient
-        if check_new_ir:
+        if check_pir:
             if (
                 type(place) is paddle.base.libpaddle.CPUPlace
                 or type(place) is paddle.base.libpaddle.CUDAPlace

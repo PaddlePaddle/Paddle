@@ -44,11 +44,15 @@ class TestElementwiseOp(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
-            ['X', 'Y'], 'Out', check_prim=self.check_prim, check_new_ir=True
+            ['X', 'Y'],
+            'Out',
+            check_prim=self.check_prim,
+            check_prim_pir=self.check_prim_pir,
+            check_pir=True,
         )
 
     def test_check_grad_ingore_x(self):
@@ -58,7 +62,8 @@ class TestElementwiseOp(OpTest):
             max_relative_error=0.005,
             no_grad_set=set("X"),
             check_prim=self.check_prim,
-            check_new_ir=True,
+            check_prim_pir=self.check_prim_pir,
+            check_pir=True,
         )
 
     def test_check_grad_ingore_y(self):
@@ -68,11 +73,13 @@ class TestElementwiseOp(OpTest):
             max_relative_error=0.005,
             no_grad_set=set('Y'),
             check_prim=self.check_prim,
-            check_new_ir=True,
+            check_prim_pir=self.check_prim_pir,
+            check_pir=True,
         )
 
     def if_check_prim(self):
         self.check_prim = True
+        self.check_prim_pir = True
 
     def if_enable_cinn(self):
         pass
@@ -125,7 +132,9 @@ class TestElementwiseBF16OP(TestElementwiseOp):
             'Out',
             no_grad_set=set("X"),
             max_relative_error=0.1,
-            check_new_ir=True,
+            check_prim=True,
+            check_prim_pir=True,
+            check_pir=True,
         )
 
     def test_check_grad_ingore_y(self):
@@ -137,7 +146,8 @@ class TestElementwiseBF16OP(TestElementwiseOp):
             no_grad_set=set('Y'),
             max_relative_error=0.1,
             check_prim=True,
-            check_new_ir=True,
+            check_prim_pir=True,
+            check_pir=True,
         )
 
 
@@ -382,12 +392,10 @@ class TestElementwiseSubOp_broadcast_0(TestElementwiseOp):
         }
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False, check_new_ir=False)
+        self.check_output(check_dygraph=False, check_pir=False)
 
     def test_check_grad_normal(self):
-        self.check_grad(
-            ['X', 'Y'], 'Out', check_dygraph=False, check_new_ir=False
-        )
+        self.check_grad(['X', 'Y'], 'Out', check_dygraph=False, check_pir=False)
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
@@ -396,7 +404,7 @@ class TestElementwiseSubOp_broadcast_0(TestElementwiseOp):
             max_relative_error=0.005,
             no_grad_set=set("X"),
             check_dygraph=False,
-            check_new_ir=False,
+            check_pir=False,
         )
 
     def test_check_grad_ingore_y(self):
@@ -406,7 +414,7 @@ class TestElementwiseSubOp_broadcast_0(TestElementwiseOp):
             max_relative_error=0.005,
             no_grad_set=set('Y'),
             check_dygraph=False,
-            check_new_ir=False,
+            check_pir=False,
         )
 
 
@@ -442,13 +450,13 @@ class TestElementwiseBF16OP_broadcast_0(TestElementwiseBF16OP):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place(
-            place, check_dygraph=False, check_new_ir=False
+            place, check_dygraph=False, check_pir=False
         )
 
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X', 'Y'], 'Out', check_dygraph=False, check_new_ir=False
+            place, ['X', 'Y'], 'Out', check_dygraph=False, check_pir=False
         )
 
     def test_check_grad_ingore_x(self):
@@ -459,7 +467,7 @@ class TestElementwiseBF16OP_broadcast_0(TestElementwiseBF16OP):
             'Out',
             no_grad_set=set("X"),
             check_dygraph=False,
-            check_new_ir=False,
+            check_pir=False,
         )
 
     def test_check_grad_ingore_y(self):
@@ -470,7 +478,7 @@ class TestElementwiseBF16OP_broadcast_0(TestElementwiseBF16OP):
             'Out',
             no_grad_set=set('Y'),
             check_dygraph=False,
-            check_new_ir=False,
+            check_pir=False,
         )
 
 
@@ -836,11 +844,11 @@ class TestComplexElementwiseSubOp(OpTest):
         self.out = self.x - self.y
 
     def test_check_output(self):
-        self.check_output(check_new_ir=False)
+        self.check_output(check_pir=False)
 
     def test_check_grad_normal(self):
         self.check_grad(
-            ['X', 'Y'], 'Out', check_prim=self.check_prim, check_new_ir=False
+            ['X', 'Y'], 'Out', check_prim=self.check_prim, check_pir=False
         )
 
     def test_check_grad_ingore_x(self):
@@ -849,7 +857,7 @@ class TestComplexElementwiseSubOp(OpTest):
             'Out',
             no_grad_set=set("X"),
             check_prim=self.check_prim,
-            check_new_ir=False,
+            check_pir=False,
         )
 
     def test_check_grad_ingore_y(self):
@@ -858,7 +866,7 @@ class TestComplexElementwiseSubOp(OpTest):
             'Out',
             no_grad_set=set('Y'),
             check_prim=self.check_prim,
-            check_new_ir=False,
+            check_pir=False,
         )
 
     def if_enable_cinn(self):

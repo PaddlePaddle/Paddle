@@ -903,7 +903,7 @@ def bilinear(x1, x2, weight, bias=None, name=None):
     """
 
     This layer performs bilinear on two inputs.
-    See :ref:`api_nn_Bilinear` for details and output shape.
+    See :ref:`api_paddle_nn_Bilinear` for details and output shape.
 
     Parameters:
         x1 (Tensor): the first input tensor, it's data type should be float32, float64.
@@ -1658,9 +1658,15 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
         paddings = pad
         pad_value = value
 
-        if in_dynamic_or_pir_mode():
+        if in_dynamic_mode():
             out = _C_ops.pad(x, paddings, float(pad_value))
             return out
+
+        if in_pir_mode():
+            if isinstance(pad_value, paddle.pir.OpResult):
+                return _C_ops.pad(x, paddings, pad_value)
+            else:
+                return _C_ops.pad(x, paddings, float(pad_value))
 
         check_variable_and_dtype(
             x,

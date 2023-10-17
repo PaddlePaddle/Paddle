@@ -64,6 +64,7 @@ void SameStatusReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                      const DistTensor& in,
                                      const TensorDistAttr& out_dist_attr,
                                      DistTensor* out) {
+  VLOG(3) << "Call SameStatusReshardFunction Eval";
   const auto& in_dist_attr = in.dist_attr();
   const auto& in_process_mesh = in_dist_attr.process_mesh();
   const auto& in_process_ids = in_process_mesh.process_ids();
@@ -89,8 +90,8 @@ void SameStatusReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   for (const auto& iter : p2p_pair) {
     int64_t src = iter.first;
     int64_t dst = iter.second;
-    VLOG(3) << "Send/Recv from src " << src << " to dst " << dst;
     if (src == cur_global_rank) {
+      VLOG(3) << "Send from src " << src << " to dst " << dst;
       int64_t dst_local_rank = GetLocalRankInParticipate(all_process_ids, dst);
       // Sice send kernel only has input, so we don't need to infermeta
       // actually. According to this reason, just use the kernel directly.
@@ -102,6 +103,7 @@ void SameStatusReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                 dst_local_rank,
                                 dynamic_shape);
     } else if (dst == cur_global_rank) {
+      VLOG(3) << "Recv from src " << src << " to dst " << dst;
       int64_t src_local_rank = GetLocalRankInParticipate(all_process_ids, src);
       RESHARD_FUNCTOR_WITH_COMM(dev_ctx,
                                 PRecv,

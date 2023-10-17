@@ -198,6 +198,8 @@ class Conv2dOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
+    framework::OpDesc op_desc(op, nullptr);
+    auto output_name = op_desc.Output("Output").front();
     ConvertConv2d(
         engine_,
         op,
@@ -215,6 +217,7 @@ class Conv2dOpConverter : public OpConverter {
                                              ksize,
                                              weight.get(),
                                              bias.get());
+          SupportFP32MixPrecision(output_name, op_desc.Type(), layer);
           return layer;
         },
         [](nvinfer1::IConvolutionLayer* layer, nvinfer1::DimsHW& dilations) {
@@ -229,6 +232,8 @@ class Deconv2dOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
+    framework::OpDesc op_desc(op, nullptr);
+    auto output_name = op_desc.Output("Output").front();
     ConvertConv2d(
         engine_,
         op,
@@ -246,6 +251,7 @@ class Deconv2dOpConverter : public OpConverter {
                                              ksize,
                                              weight.get(),
                                              bias.get());
+          SupportFP32MixPrecision(output_name, op_desc.Type(), layer);
           return layer;
         },
         [](nvinfer1::IDeconvolutionLayer* layer, nvinfer1::DimsHW& dilations) {

@@ -23,6 +23,8 @@
 #include "paddle/cinn/common/shared.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/operation.h"
@@ -30,8 +32,6 @@
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/ir/utils/ir_compare.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/lang/packed_func.h"
 #include "paddle/cinn/poly/stage.h"
 #include "paddle/cinn/pybind/bind.h"
@@ -842,6 +842,8 @@ void BindIrContext(py::module *m) {
                   []() { return IRContext(new ElseContextNode()); })
       .def_static("MakeThenContext",
                   []() { return IRContext(new ThenContextNode()); });
+
+  m->def("link_to_parent_context", &pybind::LinkToParentContext);
 
   py::class_<IRBuilder> ir_builder(*m, "IRBuilder");
   ir_builder.def(py::init<>())

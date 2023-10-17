@@ -44,7 +44,6 @@ FP16_BLACK_LIST = {
     'cosh',
     'atanh',
     'tanh_shrink',
-    'cos_sim',
     'erfinv',
     'exp',
     'expm1',

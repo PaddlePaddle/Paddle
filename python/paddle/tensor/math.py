@@ -171,7 +171,7 @@ def log(x, name=None):
             [[0.69314718, 1.09861231, 1.38629436],
              [1.94591010, 2.07944155, 2.19722462]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.log(x)
     else:
         check_variable_and_dtype(
@@ -685,8 +685,6 @@ def add(x, y, name=None):
     if in_dynamic_or_pir_mode():
         return _C_ops.add(x, y)
     else:
-        if in_pir_mode():
-            return paddle._pir_ops.add(x, y)
         return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 
 
@@ -1228,7 +1226,7 @@ def maximum(x, y, name=None):
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [5.  , 3.  , inf.])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.maximum(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_max', **locals()))
@@ -1290,7 +1288,7 @@ def minimum(x, y, name=None):
             Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
             [ 1.  , -inf.,  5.  ])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.minimum(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_min', **locals()))
@@ -2939,7 +2937,7 @@ def min(x, axis=None, keepdim=False, name=None):
               [0., 0.]]])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.min(x, axis, keepdim)
     else:
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
@@ -3511,7 +3509,7 @@ def clip(x, min=None, max=None, name=None):
         min_ = float(np.finfo(np.float32).min)
         max_ = float(np.finfo(np.float32).max)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if isinstance(min, Variable):
             min = min.item(0)
         if isinstance(max, Variable):
@@ -4748,7 +4746,7 @@ def all(x, axis=None, keepdim=False, name=None):
              [True ]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.all(x, axis, keepdim)
     else:
         reduce_all, axis = _get_reduce_axis(axis, x)

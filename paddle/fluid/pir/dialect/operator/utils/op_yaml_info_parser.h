@@ -49,6 +49,10 @@ class OpYamlInfoParser {
     return output_name_list_;
   }
 
+  const std::string& GetInputType(uint32_t input_id) const;
+
+  const std::string& GetOutputType(uint32_t output_id) const;
+
   bool HasInplace(const std::string& out_name) const;
 
   const std::string& InplaceName(const std::string& out_name) const;
@@ -60,6 +64,8 @@ class OpYamlInfoParser {
   const std::string& ViewName(const std::string& out_name) const;
 
   const std::string& GetOriginOpName() const;
+
+  int GetTensorParamIndexByArgsName(const std::string& args_name) const;
 
  private:
   void parse();
