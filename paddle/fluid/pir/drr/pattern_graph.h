@@ -52,8 +52,6 @@ class PatternGraph {
 
   size_t CountOfOpCalls() const;
 
-  void Print() const;
-
   const std::vector<std::shared_ptr<OpCall>>& owned_op_call() const {
     return owned_op_call_;
   }
@@ -69,6 +67,8 @@ class PatternGraph {
   std::unordered_set<std::string> input_tensors_;
   std::unordered_set<std::string> output_tensors_;
 };
+
+std::ostream& operator<<(std::ostream& os, const PatternGraph& pattern_graph);
 
 class SourcePatternGraph : public PatternGraph {
  public:
