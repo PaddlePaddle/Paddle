@@ -106,7 +106,7 @@ class IrContextImpl {
   void RegisterOpInfo(const std::string &name, OpInfo info) {
     std::lock_guard<pir::SpinLock> guard(registed_op_infos_lock_);
     VLOG(6) << "Register an operation of: [Name=" << name
-            << ", OpInfo ptr=" << info.AsOpaquePointer() << "].";
+            << ", OpInfo ptr=" << info << "].";
     registed_op_infos_.emplace(name, info);
   }
 
@@ -115,7 +115,7 @@ class IrContextImpl {
     auto iter = registed_op_infos_.find(name);
     if (iter != registed_op_infos_.end()) {
       VLOG(8) << "Found a cached OpInfo of: [name=" << name
-              << ", OpInfo: ptr=" << iter->second.AsOpaquePointer() << "].";
+              << ", OpInfo: ptr=" << iter->second << "].";
       return iter->second;
     }
     VLOG(8) << "No cache found operation of: [Name=" << name << "].";
@@ -226,7 +226,8 @@ void IrContext::RegisterAbstractAttribute(
     pir::TypeId type_id, AbstractAttribute &&abstract_attribute) {
   if (GetRegisteredAbstractAttribute(type_id) == nullptr) {
     impl().RegisterAbstractAttribute(
-        type_id, new AbstractAttribute(std::move(abstract_attribute)));
+        type_id,
+        new AbstractAttribute(std::move(abstract_attribute)));  // NOLINT
   } else {
     LOG(WARNING) << " Attribute already registered.";
   }
@@ -258,14 +259,14 @@ Dialect *IrContext::GetOrRegisterDialect(
 
 std::vector<Dialect *> IrContext::GetRegisteredDialects() {
   std::vector<Dialect *> result;
-  for (auto dialect_map : impl().registed_dialect_) {
+  for (auto const &dialect_map : impl().registed_dialect_) {
     result.push_back(dialect_map.second);
   }
   return result;
 }
 
 Dialect *IrContext::GetRegisteredDialect(const std::string &dialect_name) {
-  for (auto dialect_map : impl().registed_dialect_) {
+  for (auto const &dialect_map : impl().registed_dialect_) {
     if (dialect_map.first == dialect_name) {
       return dialect_map.second;
     }
@@ -277,8 +278,8 @@ Dialect *IrContext::GetRegisteredDialect(const std::string &dialect_name) {
 void IrContext::RegisterAbstractType(pir::TypeId type_id,
                                      AbstractType &&abstract_type) {
   if (GetRegisteredAbstractType(type_id) == nullptr) {
-    impl().RegisterAbstractType(type_id,
-                                new AbstractType(std::move(abstract_type)));
+    impl().RegisterAbstractType(
+        type_id, new AbstractType(std::move(abstract_type)));  // NOLINT
   } else {
     LOG(WARNING) << " type already registered.";
   }
@@ -291,7 +292,8 @@ void IrContext::RegisterOpInfo(Dialect *dialect,
                                const std::vector<TypeId> &trait_set,
                                size_t attributes_num,
                                const char **attributes_name,
-                               VerifyPtr verify) {
+                               VerifyPtr verify_sig,
+                               VerifyPtr verify_region) {
   if (impl().IsOpInfoRegistered(name)) {
     LOG(WARNING) << name << " op already registered.";
   } else {
@@ -302,7 +304,8 @@ void IrContext::RegisterOpInfo(Dialect *dialect,
                                      trait_set,
                                      attributes_num,
                                      attributes_name,
-                                     verify);
+                                     verify_sig,
+                                     verify_region);
     impl().RegisterOpInfo(name, info);
   }
 }

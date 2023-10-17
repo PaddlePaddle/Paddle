@@ -171,7 +171,9 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
             print(out4)
             # [[2, 2, 0, 1]]
     """
-    if axis is not None and not isinstance(axis, (int, Variable)):
+    if axis is not None and not isinstance(
+        axis, (int, Variable, paddle.pir.OpResult)
+    ):
         raise TypeError(
             "The type of 'axis'  must be int or Tensor or None in argmax, but received %s."
             % (type(axis))
@@ -188,7 +190,7 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
         flatten = True
         axis = 0
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.argmax(x, axis, keepdim, flatten, var_dtype)
     else:
         helper = LayerHelper("argmax", **locals())
@@ -261,7 +263,9 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
             print(out4)
             # [[1, 1, 1, 2]]
     """
-    if axis is not None and not isinstance(axis, (int, Variable)):
+    if axis is not None and not isinstance(
+        axis, (int, Variable, paddle.pir.OpResult)
+    ):
         raise TypeError(
             "The type of 'axis'  must be int or Tensor or None in argmin, but received %s."
             % (type(axis))
@@ -278,7 +282,7 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
         flatten = True
         axis = 0
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.argmin(x, axis, keepdim, flatten, var_dtype)
     else:
         helper = LayerHelper("argmin", **locals())
@@ -537,7 +541,7 @@ def sort(x, axis=-1, descending=False, name=None):
             #  [4. 7. 4. 6.]
             #  [5. 7. 7. 9.]]]
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         outs, _ = _C_ops.argsort(x, axis, descending)
         return outs
     else:

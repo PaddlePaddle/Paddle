@@ -27,10 +27,7 @@ from op_interface_gen import (
 )
 from op_member_func_gen import gen_op_get_inputs_outputs_str
 from op_verify_gen import gen_verify_func_str
-from vjp_interface_gen_op_list import (
-    vjp_interface_declare_gen_op_list,
-    vjp_interface_implementation_gen_op_list,
-)
+from vjp_interface_black_list import vjp_interface_black_list
 
 # import from paddle/fluid/primitive/code_gen/gen.py
 sys.path.append(
@@ -99,7 +96,7 @@ class {op_name} : public pir::Op<{op_name}{interfaces}{traits}> {{
   {build_mutable_attr_is_input}
   {build_attr_num_over_1}
   {build_mutable_attr_is_input_attr_num_over_1}
-  void Verify();
+  void VerifySig();
 {get_inputs_and_outputs}
 {exclusive_interface}
 }};
@@ -477,7 +474,7 @@ class OpInfoParser:
                     if (self.op_compat_item['op'] == "isclose") or (
                         self.op_compat_item['op'] == "allclose"
                     ):
-                        data_type = "float"
+                        data_type = "double"
                     mutable_attribute_type_list.append(
                         [
                             "paddle::dialect::ScalarAttribute",
@@ -1036,7 +1033,7 @@ def OpGenerator(
 
         if (
             op_info.backward_name
-            and op_info.op_phi_name[0] in vjp_interface_declare_gen_op_list
+            and op_info.op_phi_name[0] not in vjp_interface_black_list
         ):
             op_interfaces += ["paddle::dialect::VjpInterface"]
         exclusive_interface_str = gen_exclusive_interface_str(
@@ -1444,7 +1441,7 @@ def OpGenerator(
                     if (
                         op_info.backward_name
                         and op_info.op_phi_name[0]
-                        in vjp_interface_implementation_gen_op_list
+                        not in vjp_interface_black_list
                     ):
                         op_vjp_str = gen_op_vjp_str(
                             op_class_name,
