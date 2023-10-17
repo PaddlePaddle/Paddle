@@ -58,7 +58,7 @@ class TestSqueezeOp(OpTest):
         self.check_output(
             no_check_set=['XShape'],
             check_prim=True,
-            check_new_ir=True,
+            check_pir=True,
             check_prim_pir=True,
         )
 
@@ -67,7 +67,7 @@ class TestSqueezeOp(OpTest):
             ["X"],
             "Out",
             check_prim=True,
-            check_new_ir=True,
+            check_pir=True,
             check_prim_pir=True,
         )
 
