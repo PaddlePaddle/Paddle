@@ -17,7 +17,7 @@ import unittest
 import paddle
 
 
-class TestForLoopMeetDict(unittest.TestCase):
+class TestSetDynamicShape(unittest.TestCase):
     def test_start(self):
         def dygraph_func(loop_number):
             mask = paddle.randn([2, 2])
