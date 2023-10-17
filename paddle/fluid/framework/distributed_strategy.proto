@@ -56,6 +56,8 @@ message MpConfig {
     optional bool sync_grad= 2 [ default = false ];
     optional bool sync_moment= 3 [ default = false ];
     optional string sync_mode= 4 [ default = 'broadcast' ];
+    // Broadcast mp input data
+    optional bool need_broadcast_data=8 [default = true];
 }
 
 message PpConfig {
