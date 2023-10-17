@@ -390,8 +390,6 @@ void BindValue(py::module *m) {
             return nullptr;
           },
           return_value_policy::reference)
-      .def("get_opresult",
-           [](const Value &self) { return self.dyn_cast<pir::OpResult>(); })
       .def("first_use", &Value::first_use, return_value_policy::reference)
       .def("has_one_use", &Value::HasOneUse)
       .def("use_empty", &Value::use_empty)
@@ -407,7 +405,39 @@ void BindValue(py::module *m) {
       .def("__hash__",
            [](const Value &self) { return std::hash<pir::Value>{}(self); })
       .def("__str__", &Value2String)
-      .def("__repr__", &Value2String);
+      .def("__repr__", &Value2String)
+      .def_property(
+          "shape",
+          [](Value &self) {
+            if (self.type().isa<DenseTensorType>()) {
+              return phi::vectorize(
+                  self.type().dyn_cast<DenseTensorType>().dims());
+            } else {
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "Currently, we can only get shape for dense "
+                  "tensor."));
+            }
+          },
+          [](Value &self, const std::vector<int> &shape) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "can't set shape when building static graph"));
+          })
+      .def_property(
+          "dtype",
+          [](Value &self) {
+            if (self.type().isa<DenseTensorType>()) {
+              return paddle::dialect::TransToPhiDataType(
+                  self.type().dyn_cast<DenseTensorType>().dtype());
+            } else {
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "Currently, we can only get dtype for dense "
+                  "tensor."));
+            }
+          },
+          [](Value &self, phi::DataType dtype) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "can't set dtype when building static graph"));
+          });
 }
 
 void BindOpOperand(py::module *m) {
