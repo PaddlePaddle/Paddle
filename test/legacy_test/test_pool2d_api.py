@@ -53,7 +53,7 @@ class TestPool2D_API(unittest.TestCase):
 
             exe = base.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
+                paddle.static.default_main_program(),
                 feed={"input": input_np},
                 fetch_list=[result],
             )
@@ -145,7 +145,7 @@ class TestPool2D_API(unittest.TestCase):
 
             exe = base.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
+                paddle.static.default_main_program(),
                 feed={"input": input_np},
                 fetch_list=[result],
             )
@@ -371,9 +371,11 @@ class TestPool2D_API(unittest.TestCase):
 
     @test_with_pir_api
     def test_pool2d_static(self):
+        paddle.enable_static()
         for place in self.places:
             self.check_max_static_results(place)
             self.check_avg_static_results(place)
+        paddle.disable_static()
 
 
 class TestPool2DError_API(unittest.TestCase):
