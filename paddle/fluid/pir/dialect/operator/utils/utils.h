@@ -133,9 +133,9 @@ bool IsLegacyOp(const std::string& name);
 
 bool IsEmptyValue(const pir::Value& value);
 
-void CheckDtype(const pir::Value& value,
-                const std::string& input_name,
-                const std::string& op_name);
+void CheckInputDtype(const pir::Value& value,
+                     const std::string& input_name,
+                     const std::string& op_name);
 
 }  // namespace dialect
 }  // namespace paddle

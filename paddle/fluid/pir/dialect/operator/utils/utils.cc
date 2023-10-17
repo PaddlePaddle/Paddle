@@ -20,6 +20,7 @@
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/pir/core/builtin_type.h"
+#include "paddle/utils/string/string_helper.h"
 
 namespace paddle {
 namespace dialect {
@@ -207,12 +208,20 @@ bool IsEmptyValue(const pir::Value& value) {
 }
 
 std::set<std::string> GetRegisterDataType(const std::string& op_name) {
-  std::set<framework::proto::VarType::Type> proto_type;
+  std::string non_inplace_op_name;
+  if (paddle::string::ends_with(op_name, "_")) {
+    non_inplace_op_name = op_name.substr(0, op_name.size() - 1);
+  }
+  VLOG(1) << "op_name: " << op_name;
+  VLOG(1) << "non_inplace_op_name: " << non_inplace_op_name;
 
+  std::set<framework::proto::VarType::Type> proto_type;
   auto phi_kernels = phi::KernelFactory::Instance().kernels();
   for (auto& kernel_pair : phi_kernels) {
     auto fluid_op_name = phi::TransToFluidOpName(kernel_pair.first);
-    if (kernel_pair.first != op_name && fluid_op_name != op_name) {
+    if (kernel_pair.first != op_name && fluid_op_name != op_name &&
+        kernel_pair.first != non_inplace_op_name &&
+        fluid_op_name != non_inplace_op_name) {
       continue;
     }
     for (auto& info_pair : kernel_pair.second) {
@@ -237,9 +246,9 @@ std::set<std::string> GetRegisterDataType(const std::string& op_name) {
   return data_type;
 }
 
-void CheckDtype(const pir::Value& value,
-                const std::string& input_name,
-                const std::string& op_name) {
+void CheckInputDtype(const pir::Value& value,
+                     const std::string& input_name,
+                     const std::string& op_name) {
   std::set<std::string> expected_dtype = GetRegisterDataType(op_name);
 
   if (value.type().isa<pir::DenseTensorType>()) {

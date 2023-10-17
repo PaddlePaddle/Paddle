@@ -81,7 +81,7 @@ API_IMPL_TEMPLATE = """
 """
 
 CHECK_DTYPE_TEMPLATE = """
-    CheckDtype({input}, "{input}", "{op_name}");"""
+    CheckInputDtype({input}, "{input}", "{op_name}");"""
 
 OPTIONAL_VECTOR_VALUE_INPUT_TEMPLATE = """
     paddle::optional<pir::Value> optional_{name};
