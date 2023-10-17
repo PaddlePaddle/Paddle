@@ -271,6 +271,9 @@ class TestDygraphIfElseNet(unittest.TestCase):
             ret = net(x_v)
             return ret.numpy()
 
+    def test_ast_to_func(self):
+        self.assertTrue((self._run_dygraph() == self._run_static()).all())
+
 
 # Test to call function ahead caller.
 def relu(x):
