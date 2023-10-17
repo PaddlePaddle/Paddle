@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle
-from paddle.base import framework
 
 from ..dy2static.program_translator import _program_hash, synchronized
 
@@ -43,7 +42,7 @@ class ParametersRecorder:
                 type=tensor.type,
                 initializer=non_used_initializer,
             )
-            if isinstance(tensor, framework.EagerParamBase):
+            if isinstance(tensor, paddle.Tensor):
                 params.add(tensor)
             mappings[id(tensor)] = op_result
         return mappings[id(tensor)]

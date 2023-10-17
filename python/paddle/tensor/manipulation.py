@@ -3468,6 +3468,8 @@ def expand(x, shape, name=None):
             # [[1, 2, 3], [1, 2, 3]]
     """
     if in_dynamic_or_pir_mode():
+        if in_pir_mode():
+            shape = paddle.utils._convert_to_tensor_list(shape)
         return _C_ops.expand(x, shape)
     else:
         if isinstance(shape, Variable):
