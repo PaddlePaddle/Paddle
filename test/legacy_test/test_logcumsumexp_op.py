@@ -314,11 +314,11 @@ class TestLogcumsumexpFP16(unittest.TestCase):
         np.testing.assert_allclose(x_g_np_1, x_g_np_2, rtol=2e-03)
 
 
-# @unittest.skipIf(
-#     not core.is_compiled_with_cuda()
-#     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-#     "core is not complied with CUDA and not support the bfloat16",
-# )
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
 class TestLogcumsumexpBF16Op(OpTest):
     def setUp(self):
         self.op_type = 'logcumsumexp'
