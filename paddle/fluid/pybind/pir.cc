@@ -47,6 +47,7 @@
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pass/pass_registry.h"
 #include "paddle/pir/transforms/dead_code_elimination_pass.h"
+#include "paddle/utils/flags.h"
 #include "pybind11/stl.h"
 
 namespace py = pybind11;
@@ -66,6 +67,8 @@ using pybind11::return_value_policy;
 
 USE_PASS(dead_code_elimination);
 USE_PASS(inplace);
+
+PHI_DECLARE_bool(print_ir);
 
 namespace paddle {
 namespace pybind {
@@ -465,6 +468,16 @@ phi::DataType GetOpResultDtype(const OpResult &result) {
   }
 }
 
+const phi::DDim &GetOpResultDims(const OpResult &result) {
+  if (result.type().isa<DenseTensorType>()) {
+    return result.type().dyn_cast<DenseTensorType>().dims();
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get shape for dense "
+        "tensor."));
+  }
+}
+
 #define OVERRIDE_OPERATOR(operator, api, other_type)              \
   op_result.def(#operator, [](OpResult &self, other_type other) { \
     return paddle::dialect::api(self, other);                     \
@@ -618,6 +631,8 @@ void BindOpResult(py::module *m) {
                return false;
              }
            })
+      .def("numel",
+           [](OpResult &self) { return phi::product(GetOpResultDims(self)); })
       .def("replace_all_uses_with",
            [](OpResult &self, OpResult &op_result) {
              self.ReplaceAllUsesWith(op_result);
@@ -650,16 +665,7 @@ void BindOpResult(py::module *m) {
           })
       .def_property(
           "shape",
-          [](OpResult &self) {
-            if (self.type().isa<DenseTensorType>()) {
-              return phi::vectorize(
-                  self.type().dyn_cast<DenseTensorType>().dims());
-            } else {
-              PADDLE_THROW(phi::errors::InvalidArgument(
-                  "Currently, we can only get shape for dense "
-                  "tensor."));
-            }
-          },
+          [](OpResult &self) { return phi::vectorize(GetOpResultDims(self)); },
           [](OpResult &self, const std::vector<int> &shape) {
             PADDLE_THROW(phi::errors::InvalidArgument(
                 "can't set shape when building static graph"));
@@ -1050,12 +1056,15 @@ SplitedResult ForwardBackwardSplit(
 
   VLOG(4) << "forward_value_map.size() is " << forward_value_map.size();
   VLOG(4) << "backward_value_map.size() is " << backward_value_map.size();
-  std::ostringstream print_stream;
-  print_stream << "ForwardProgram is :\n";
-  forward_program->Print(print_stream);
-  print_stream << "BackwardProgram is:\n";
-  backward_program->Print(print_stream);
-  VLOG(4) << "Splited Program (fwd | bwd): \n" << print_stream.str();
+  if (FLAGS_print_ir) {
+    std::ostringstream print_stream;
+    print_stream << "ForwardProgram is :\n";
+    forward_program->Print(print_stream);
+    print_stream << "BackwardProgram is:\n";
+    backward_program->Print(print_stream);
+    std::cout << "Splited Program (fwd | bwd): \n"
+              << print_stream.str() << std::endl;
+  }
 
   // construct all attributes we needed.
 
