@@ -17,8 +17,7 @@ import typing
 
 from paddle import pir
 from paddle.base.core import call_decomp, has_decomp
-from paddle.base.libpaddle.pir import Block, Program, Operation
-
+from paddle.base.libpaddle.pir import Block, Operation, Program
 from paddle.framework import core
 
 from . import register

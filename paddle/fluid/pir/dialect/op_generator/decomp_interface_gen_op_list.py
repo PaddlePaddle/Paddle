@@ -13,13 +13,8 @@
 # limitations under the License.
 
 # =====================================
-# VjpInterface gen op list
+# DecompInterface gen op list
 # =====================================
-# we don't support vjp function code
-# gen now, so we use a whitelist to
-# control the generation of Vjp methods.
-# remove this file and support Vjp methods
-# code gen.
 
 
 decomp_interface_declare_gen_op_list = ['mean']
