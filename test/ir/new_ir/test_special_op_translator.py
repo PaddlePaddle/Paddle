@@ -35,7 +35,8 @@ class TestCastOpTranscriber(unittest.TestCase):
                 x = paddle.to_tensor([2, 3, 4], 'float64')
                 y = paddle.cast(x, 'uint8')
 
-        _ = pir.translate_to_new_ir(main_program.desc)
+        _, mappings = pir.translate_to_new_ir_with_param_map(main_program.desc)
+        assert len(str(mappings)) > 0, "no mapping found"
 
 
 class TestElementwiseOpTranscriber(unittest.TestCase):
@@ -427,6 +428,30 @@ class TestSetValueOp(unittest.TestCase):
                 fetch_list = [x.grad_name, value.grad_name]
                 ret = exe.run(main_program, fetch_list=fetch_list)
                 self.assertTrue((ret[0][6:0:-4] == 0).all())
+
+
+class TestShareBufferOpTranscriber(unittest.TestCase):
+    def test_program(self):
+        place = core.Place()
+        place.set_place(paddle.CPUPlace())
+
+        new_scope = paddle.static.Scope()
+        main_program = paddle.static.Program()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                x = paddle.ones(shape=(100, 2, 3), dtype='float32')
+                y = paddle.ones(shape=(100, 2, 3), dtype='float32')
+
+                helper = LayerHelper('share_buffer')
+                helper.append_op(
+                    type="share_buffer",
+                    inputs={"X": x},
+                    outputs={"Out": y, "XOut": x},
+                )
+        l = pir.translate_to_new_ir(main_program.desc)
+        assert (
+            l.global_block().ops[2].name() == "pd_op.share_data"
+        ), "share_buffer should be translated to share_data"
 
 
 class TestCheckUnregisteredOp(unittest.TestCase):
