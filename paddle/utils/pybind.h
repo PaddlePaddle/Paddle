@@ -80,7 +80,7 @@ struct type_caster<paddle::Tensor> {
     bool return_none =
         phi::distributed::DistTensor::classof(src.impl().get()) ? false : true;
     return handle(paddle::pybind::ToPyObject(
-        D src, return_none /* return_py_none_if_not_initialize */));
+        src, return_none /* return_py_none_if_not_initialize */));
   }
 };
 
