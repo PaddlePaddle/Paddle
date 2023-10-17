@@ -18,8 +18,8 @@ import numpy as np
 
 import paddle
 from paddle.autograd.ir_backward import grad
+from paddle.base import core
 from paddle.decomposition import decompose
-from paddle.framework import core
 
 paddle.enable_static()
 
@@ -31,6 +31,7 @@ class TestPrimMode(unittest.TestCase):
         self.shape_y = [8, 16, 32, 64]
         self.x = np.random.random(self.shape_x).astype("float32")
         self.y = np.random.random(self.shape_y).astype("float32")
+        self.prog = None
 
     def base_net(self, flag=None):
         if flag == "forward":
@@ -56,6 +57,7 @@ class TestPrimMode(unittest.TestCase):
             )
 
         whole_ops = [op.name() for op in main_program.global_block().ops]
+        self.prog = main_program
         if flag == "forward":
             core._set_prim_forward_enabled(False)
             assert (
@@ -97,6 +99,14 @@ class TestPrimMode(unittest.TestCase):
         res = self.base_net("all")
         for ref, actual in zip(res_ref, res):
             np.testing.assert_allclose(ref, actual, rtol=1e-6)
+
+    def test_has_decomp(self):
+        _ = self.base_net()
+        for op in self.prog.global_block().ops:
+            if op.name() == "pd_op.divide":
+                self.assertEqual(core.has_decomp(op), False)
+            if op.name() == "pd_op.mean":
+                self.assertEqual(core.has_decomp(op), True)
 
 
 if __name__ == "__main__":
