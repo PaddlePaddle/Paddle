@@ -26,8 +26,6 @@
 
 PD_DECLARE_bool(cudnn_deterministic);
 
-DECLARE_bool(cudnn_deterministic);
-
 namespace phi {
 
 int get_num_split() {
