@@ -1133,7 +1133,7 @@ void OpDesc::InferShape(const BlockDesc &block) {
     infer_shape(&ctx);
   } catch (platform::EnforceNotMet &exception) {
     framework::AppendErrorOpHint(Type(), &exception);
-    throw std::move(exception);
+    throw exception;
   } catch (...) {
     std::rethrow_exception(std::current_exception());
   }

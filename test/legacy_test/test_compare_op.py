@@ -23,7 +23,7 @@ from paddle import base
 from paddle.base import Program, core, program_guard
 
 
-def create_test_class(op_type, typename, callback, check_new_ir=False):
+def create_test_class(op_type, typename, callback, check_pir=False):
     class Cls(op_test.OpTest):
         def setUp(self):
             a = numpy.random.random(size=(10, 7)).astype(typename)
@@ -35,7 +35,7 @@ def create_test_class(op_type, typename, callback, check_new_ir=False):
             self.op_type = op_type
 
         def test_output(self):
-            self.check_output(check_cinn=True, check_new_ir=check_new_ir)
+            self.check_output(check_cinn=True, check_pir=check_pir)
 
         def test_errors(self):
             paddle.enable_static()
@@ -445,7 +445,7 @@ create_paddle_case('not_equal', lambda _a, _b: _a != _b)
 
 
 # add bf16 tests
-def create_bf16_case(op_type, callback, check_new_ir=False):
+def create_bf16_case(op_type, callback, check_pir=False):
     class TestCompareOpBF16Op(op_test.OpTest):
         def setUp(self):
             self.op_type = op_type
@@ -462,7 +462,7 @@ def create_bf16_case(op_type, callback, check_new_ir=False):
             self.outputs = {'Out': real_result}
 
         def test_check_output(self):
-            self.check_output(check_cinn=True, check_new_ir=check_new_ir)
+            self.check_output(check_cinn=True, check_pir=check_pir)
 
     cls_name = f"BF16TestCase_{op_type}"
     TestCompareOpBF16Op.__name__ = cls_name

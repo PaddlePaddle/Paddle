@@ -249,7 +249,7 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
                         weight.acutal_grad,
                         _,
                     ) = paddle._C_ops.fused_linear_param_grad_add(
-                        x, dy, weight.actual_grad, None, False, False
+                        x, dy, weight.actual_grad, None, True, False
                     )
                     task.wait()
                     return dx, None
@@ -269,7 +269,12 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
                     weight.actual_grad,
                     bias.actual_grad,
                 ) = paddle._C_ops.fused_linear_param_grad_add(
-                    x, dy, weight.actual_grad, bias.actual_grad, False, True
+                    x,
+                    dy,
+                    weight.actual_grad,
+                    bias.actual_grad,
+                    True,
+                    True,
                 )
                 task.wait()
                 return dx, None, None
@@ -283,9 +288,10 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
                 task.wait()
                 return dx, dw, dbias
         else:
+            dy = dy.reshape([-1, dy.shape[-1]])
             dw = paddle.matmul(
                 x.reshape([-1, x.shape[-1]]),
-                dy.reshape([-1, dy.shape[-1]]),
+                dy,
                 transpose_x=True,
             )
             if bias is None:

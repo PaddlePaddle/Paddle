@@ -377,7 +377,12 @@ class GroupShardedStage2(nn.Layer):
     def _get_scaled_grad_fn(self, param):
         @paddle.autograd.no_grad()
         def scale(grad):
-            param.actual_grad.scale_(self._world_size_scaling)
+            if grad is not None and grad._is_initialized():
+                grad.scale_(self._world_size_scaling)
+            else:
+                assert param.actual_grad is not None
+                assert param.actual_grad._is_initialized()
+                param.actual_grad.scale_(self._world_size_scaling)
 
         return scale
 

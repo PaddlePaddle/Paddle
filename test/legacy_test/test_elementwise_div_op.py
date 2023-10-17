@@ -99,9 +99,9 @@ class ElementwiseDivOp(OpTest):
 
     def test_check_output(self):
         if self.place is None:
-            self.check_output(check_new_ir=True)
+            self.check_output(check_pir=True)
         else:
-            self.check_output_with_place(self.place, check_new_ir=True)
+            self.check_output_with_place(self.place, check_pir=True)
 
     def test_check_gradient(self):
         check_list = []
@@ -129,11 +129,11 @@ class ElementwiseDivOp(OpTest):
                 'check_prim_pir': self.check_prim_pir,
             }
             if self.place is None:
-                self.check_grad(*check_args, **check_kwargs, check_new_ir=True)
+                self.check_grad(*check_args, **check_kwargs, check_pir=True)
             else:
                 check_args.insert(0, self.place)
                 self.check_grad_with_place(
-                    *check_args, **check_kwargs, check_new_ir=True
+                    *check_args, **check_kwargs, check_pir=True
                 )
 
 
@@ -222,11 +222,11 @@ class TestElementwiseDivOpBF16(ElementwiseDivOp):
                 'check_prim_pir': self.check_prim_pir,
             }
             if self.place is None:
-                self.check_grad(*check_args, **check_kwargs, check_new_ir=True)
+                self.check_grad(*check_args, **check_kwargs, check_pir=True)
             else:
                 check_args.insert(0, self.place)
                 self.check_grad_with_place(
-                    *check_args, **check_kwargs, check_new_ir=True
+                    *check_args, **check_kwargs, check_pir=True
                 )
 
     def if_check_prim(self):
@@ -280,11 +280,11 @@ class TestElementwiseDivOpNoPrim(ElementwiseDivOp):
                 'check_dygraph': self.check_dygraph,
             }
             if self.place is None:
-                self.check_grad(*check_args, **check_kwargs, check_new_ir=True)
+                self.check_grad(*check_args, **check_kwargs, check_pir=True)
             else:
                 check_args.insert(0, self.place)
                 self.check_grad_with_place(
-                    *check_args, **check_kwargs, check_new_ir=True
+                    *check_args, **check_kwargs, check_pir=True
                 )
 
 
@@ -455,15 +455,13 @@ def create_test_fp16_class(parent, max_relative_error=2e-3):
                     'max_relative_error': max_relative_error,
                 }
                 if self.place is None:
-                    self.check_grad(
-                        *check_args, **check_kwargs, check_new_ir=True
-                    )
+                    self.check_grad(*check_args, **check_kwargs, check_pir=True)
                 else:
                     check_args.insert(0, self.place)
                     self.check_grad_with_place(
                         *check_args,
                         **check_kwargs,
-                        check_new_ir=True,
+                        check_pir=True,
                         check_prim=True,
                         check_prim_pir=True
                     )
@@ -569,7 +567,7 @@ class TestComplexElementwiseDivOp(OpTest):
         self.out = self.x / self.y
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -577,7 +575,7 @@ class TestComplexElementwiseDivOp(OpTest):
             'Out',
             numeric_grad_delta=1e-5,
             max_relative_error=1e-6,
-            check_new_ir=True,
+            check_pir=True,
         )
 
     def test_check_grad_ingore_x(self):
@@ -587,7 +585,7 @@ class TestComplexElementwiseDivOp(OpTest):
             no_grad_set=set("X"),
             numeric_grad_delta=1e-5,
             max_relative_error=1e-6,
-            check_new_ir=True,
+            check_pir=True,
         )
 
     def test_check_grad_ingore_y(self):
@@ -597,7 +595,7 @@ class TestComplexElementwiseDivOp(OpTest):
             no_grad_set=set('Y'),
             numeric_grad_delta=1e-5,
             max_relative_error=1e-6,
-            check_new_ir=True,
+            check_pir=True,
         )
 
 

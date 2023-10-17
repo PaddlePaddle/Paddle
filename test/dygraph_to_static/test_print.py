@@ -15,7 +15,10 @@
 import unittest
 
 import numpy
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_util import (
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 from paddle import base
@@ -84,6 +87,7 @@ def dyfunc_print_with_kwargs(x):
     print("Tensor", x_t, end='\n\n', sep=': ')
 
 
+@dy2static_unittest
 class TestPrintBase(unittest.TestCase):
     def setUp(self):
         self.input = numpy.ones(5).astype("int32")
