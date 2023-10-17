@@ -20,6 +20,3 @@ paddle_test(drr_attention_fuse_test SRCS drr_attention_fuse_test.cc DEPS
 set_tests_properties(
   pattern_rewrite_test PROPERTIES ENVIRONMENT
                                   "FLAGS_enable_new_ir_in_executor=true")
-set_tests_properties(
-  drr_attention_fuse_test PROPERTIES ENVIRONMENT
-                                     "FLAGS_enable_new_ir_in_executor=true")

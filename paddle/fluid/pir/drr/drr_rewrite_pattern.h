@@ -48,7 +48,7 @@ class DrrRewritePattern : public pir::RewritePattern {
         source_pattern_graph_(drr_context.source_pattern_graph()),
         constraints_(drr_context.constraints()),
         result_pattern_graph_(drr_context.result_pattern_graph()) {
-    IR_ENFORCE(source_pattern_graph_->owned_op_call().size(),
+    IR_ENFORCE(!source_pattern_graph_->owned_op_call().empty(),
                "source_pattern_graph is empty, please check the drr pattern "
                "define code.");
   }
@@ -557,6 +557,8 @@ class DrrRewritePattern : public pir::RewritePattern {
       rewriter.EraseOp(op);
     }
   }
+
+ private:
   const std::shared_ptr<SourcePatternGraph> source_pattern_graph_;
   const std::vector<Constraint> constraints_;
   const std::shared_ptr<ResultPatternGraph> result_pattern_graph_;
