@@ -29,7 +29,7 @@ class RemoveRedundentReshapePattern
     : public pir::drr::DrrPatternBase<RemoveRedundentReshapePattern> {
  public:
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    // Source patterns：待匹配的子图
+    // Source patterns
     pir::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &reshape1 = pat.Op("pd_op.reshape");
     const auto &reshape2 = pat.Op("pd_op.reshape");
@@ -39,7 +39,7 @@ class RemoveRedundentReshapePattern
     reshape2({&pat.Tensor("out1"), &pat.Tensor("shape1")},
              {&pat.Tensor("ret"), &pat.Tensor("xshape_1")});
 
-    // Result patterns：要替换为的子图
+    // Result patterns
     pir::drr::ResultPattern res = pat.ResultPattern();
     res.Op("pd_op.reshape")({&res.Tensor("arg0"), &res.Tensor("shape1")},
                             {&res.Tensor("ret"), &res.Tensor("xshape_1")});
@@ -50,7 +50,7 @@ class FoldExpandToConstantPattern
     : public pir::drr::DrrPatternBase<FoldExpandToConstantPattern> {
  public:
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    // Source Pattern 中可匹配的类型包括 Op 和 Tensor
+    // Source Pattern
     pir::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &full1 = pat.Op("pd_op.full",
                                {{"shape", pat.Attr("shape_1")},
@@ -65,7 +65,7 @@ class FoldExpandToConstantPattern
     const auto &expand = pat.Op("pd_op.expand");
     pat.Tensor("ret") = expand(full1(), full_int_array1());
 
-    // Result patterns：要替换为的子图.      Constrains: 本Pass无额外约束规则
+    // Result patterns
     pir::drr::ResultPattern res = pat.ResultPattern();
     const auto &full2 = res.Op("pd_op.full",
                                {{"shape", pat.Attr("expand_shape_value")},
@@ -80,7 +80,6 @@ class RemoveRedundentTransposePattern
     : public pir::drr::DrrPatternBase<RemoveRedundentTransposePattern> {
  public:
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    // Source pattern: 待匹配的子图
     pir::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &transpose1 =
         pat.Op("pd_op.transpose", {{"perm", pat.Attr("perm_1")}});
@@ -89,7 +88,6 @@ class RemoveRedundentTransposePattern
 
     pat.Tensor("ret") = transpose2(transpose1(pat.Tensor("arg_transpose")));
 
-    // Result patterns: 要替换的子图
     pir::drr::ResultPattern res = pat.ResultPattern();
     const auto &new_perm_attr = res.Attr(
         [](const pir::drr::MatchContext &match_ctx) -> std::vector<int> {

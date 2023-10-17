@@ -67,6 +67,63 @@ class DrrRewritePattern : public pir::RewritePattern {
   }
 
  private:
+  bool PatternGraphMatch(pir::Operation* op,
+                         MatchContextImpl* source_pattern_match_ctx) const {
+    VLOG(6) << "PatternGraphMatch Start: op(" << op->name() << ")";
+    const OpCall* anchor = source_pattern_graph_->AnchorNode();
+    std::unordered_map<const OpCall*, std::unordered_set<pir::Operation*>>
+        bind_map =
+            FindCandidateIrOutputOp(op, anchor, *(source_pattern_graph_.get()));
+    if (bind_map.empty()) {
+      return false;
+    }
+    std::vector<const OpCall*> drr_output_sequence;
+    std::vector<Operation*> ir_output_sequence;
+    std::unordered_map<const OpCall*, Operation*> output_op_map;
+    for (auto pair : bind_map) {
+      drr_output_sequence.push_back(pair.first);
+    }
+    // using dfs to obtain the arrangement of all candidate ir ops
+    auto permute = [&](auto&& permute, size_t index) -> bool {
+      if (index == drr_output_sequence.size()) {
+        // avoiding duplicate binding of ir op
+        std::unordered_set<Operation*> ir_output_set;
+        for (Operation* op : ir_output_sequence) {
+          auto pr = ir_output_set.insert(op);
+          if (pr.second == false) {
+            return false;
+          }
+        }
+        // new match_ctx
+        std::shared_ptr<MatchContextImpl> match_ctx =
+            std::make_shared<MatchContextImpl>();
+        std::transform(drr_output_sequence.begin(),
+                       drr_output_sequence.end(),
+                       ir_output_sequence.begin(),
+                       std::inserter(output_op_map, output_op_map.end()),
+                       [](const OpCall* drr_op, Operation* ir_op) {
+                         return std::make_pair(drr_op, ir_op);
+                       });
+        if (MatchFromOutputToInput(
+                output_op_map, *(source_pattern_graph_.get()), match_ctx)) {
+          *source_pattern_match_ctx = *match_ctx;
+          return true;
+        }
+        return false;
+      }
+      for (auto* ir_op : bind_map[drr_output_sequence[index]]) {
+        ir_output_sequence.push_back(ir_op);
+        if (permute(permute, index + 1)) {
+          return true;
+        }
+        ir_output_sequence.pop_back();
+      }
+      return false;
+    };
+
+    return permute(permute, 0);
+  }
+
   std::unordered_map<const OpCall*, std::unordered_set<pir::Operation*>>
   FindCandidateIrOutputOp(
       pir::Operation* op,
@@ -281,63 +338,6 @@ class DrrRewritePattern : public pir::RewritePattern {
     }
 
     return matched;
-  }
-
-  bool PatternGraphMatch(pir::Operation* op,
-                         MatchContextImpl* source_pattern_match_ctx) const {
-    VLOG(6) << "PatternGraphMatch Start: op(" << op->name() << ")";
-    const OpCall* anchor = source_pattern_graph_->AnchorNode();
-    std::unordered_map<const OpCall*, std::unordered_set<pir::Operation*>>
-        bind_map =
-            FindCandidateIrOutputOp(op, anchor, *(source_pattern_graph_.get()));
-    if (bind_map.empty()) {
-      return false;
-    }
-    std::vector<const OpCall*> drr_output_sequence;
-    std::vector<Operation*> ir_output_sequence;
-    std::unordered_map<const OpCall*, Operation*> output_op_map;
-    for (auto pair : bind_map) {
-      drr_output_sequence.push_back(pair.first);
-    }
-    // using dfs to obtain the arrangement of all candidate ir ops
-    auto permute = [&](auto&& permute, size_t index) -> bool {
-      if (index == drr_output_sequence.size()) {
-        // avoiding duplicate binding of ir op
-        std::unordered_set<Operation*> ir_output_set;
-        for (Operation* op : ir_output_sequence) {
-          auto pr = ir_output_set.insert(op);
-          if (pr.second == false) {
-            return false;
-          }
-        }
-        // new match_ctx
-        std::shared_ptr<MatchContextImpl> match_ctx =
-            std::make_shared<MatchContextImpl>();
-        std::transform(drr_output_sequence.begin(),
-                       drr_output_sequence.end(),
-                       ir_output_sequence.begin(),
-                       std::inserter(output_op_map, output_op_map.end()),
-                       [](const OpCall* drr_op, Operation* ir_op) {
-                         return std::make_pair(drr_op, ir_op);
-                       });
-        if (MatchFromOutputToInput(
-                output_op_map, *(source_pattern_graph_.get()), match_ctx)) {
-          *source_pattern_match_ctx = *match_ctx;
-          return true;
-        }
-        return false;
-      }
-      for (auto* ir_op : bind_map[drr_output_sequence[index]]) {
-        ir_output_sequence.push_back(ir_op);
-        if (permute(permute, index + 1)) {
-          return true;
-        }
-        ir_output_sequence.pop_back();
-      }
-      return false;
-    };
-
-    return permute(permute, 0);
   }
 
   void PatternGraphRewrite(const MatchContextImpl& source_pattern_match_ctx,

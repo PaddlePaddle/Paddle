@@ -36,7 +36,6 @@ class FusedLinearPattern : public pir::drr::DrrPatternBase<FusedLinearPattern> {
     pat.Tensor("tmp") = matmul(pat.Tensor("x"), pat.Tensor("w"));
     pat.Tensor("out") = add(pat.Tensor("tmp"), pat.Tensor("bias"));
 
-    // Result patterns：要替换为的子图
     pir::drr::ResultPattern res = pat.ResultPattern();
     const auto &act_attr =
         res.Attr([](const pir::drr::MatchContext &match_ctx) -> std::any {
