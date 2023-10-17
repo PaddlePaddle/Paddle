@@ -139,7 +139,7 @@ class TestConv2dPoolingXPU(PassAutoScanTest):
         self.run_and_statis(
             quant=False,
             max_examples=25,
-            passes=["conv2d_pooling_xpu"],
+            passes=["conv2d_pooling_xpu_fuse_pass"],
         )
 
 
