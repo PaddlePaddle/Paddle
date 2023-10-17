@@ -27,6 +27,7 @@ import paddle.nn.functional as F
 from paddle import base, static
 from paddle.base import Program, core, program_guard
 from paddle.base.layer_helper import LayerHelper
+from paddle.pir_utils import test_with_pir_api
 
 
 @contextmanager
@@ -1814,6 +1815,9 @@ class TestFloor(TestActivation):
     def if_enable_cinn(self):
         pass
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     # the gradient on floor, ceil, round is undefined.
     # we return zero as gradient, but the numpy return nan
     # The same reason with TestFloor
@@ -1832,6 +1836,7 @@ class TestFloor(TestActivation):
                 'Out',
                 check_prim=True,
                 only_check_prim=True,
+                check_pir=True,
             )
 
 
@@ -1865,6 +1870,9 @@ class TestCos(TestActivation):
     def init_shape(self):
         self.shape = [10, 12]
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
@@ -1872,10 +1880,14 @@ class TestCos(TestActivation):
         if self.dtype == np.complex64 or self.dtype == np.complex128:
             # Complex64 [GPU]: AssertionError: 0.0057843705 not less than or equal to 0.005
             self.check_grad(
-                ['X'], 'Out', check_prim=False, max_relative_error=0.006
+                ['X'],
+                'Out',
+                check_prim=False,
+                max_relative_error=0.006,
+                check_pir=True,
             )
         else:
-            self.check_grad(['X'], 'Out', check_prim=True)
+            self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
 
     def if_enable_cinn(self):
         pass
@@ -2062,14 +2074,22 @@ class TestSin(TestActivation, TestParameter):
     def init_shape(self):
         self.shape = [10, 12]
 
+    @test_with_pir_api
+    def test_out_name(self):
+        # inherit from `TestParameter`
+        super().test_out_name()
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         # TODO(ScottWong98): set `check_prim=False` when `fill_any_like` supports `complex` dtype
         if self.dtype == np.complex64 or self.dtype == np.complex128:
-            self.check_grad(['X'], 'Out', check_prim=False)
+            self.check_grad(['X'], 'Out', check_prim=False, check_pir=True)
         else:
-            self.check_grad(['X'], 'Out', check_prim=True)
+            self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
 
     def if_enable_cinn(self):
         pass
@@ -2291,6 +2311,9 @@ class TestRound(TestActivation):
 
     def init_shape(self):
         self.shape = [10, 12]
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         pass
@@ -2649,6 +2672,7 @@ class TestGELUAPI(unittest.TestCase):
         self.rev_comp_rtol = 1e-8
         self.rev_comp_atol = 1e-8
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -4658,20 +4682,24 @@ create_test_act_fp16_class(
 )
 create_test_act_fp16_class(TestCeil, grad_check=False, check_pir=True)
 create_test_act_fp16_class(
-    TestFloor, check_prim=True, grad_check=False, enable_cinn=True
+    TestFloor,
+    check_prim=True,
+    grad_check=False,
+    enable_cinn=True,
+    check_pir=True,
 )
-create_test_act_fp16_class(TestCos)
+create_test_act_fp16_class(TestCos, check_pir=True)
 create_test_act_fp16_class(TestTan)
 create_test_act_fp16_class(TestCosh)
 create_test_act_fp16_class(TestAcos)
-create_test_act_fp16_class(TestSin)
+create_test_act_fp16_class(TestSin, check_pir=True)
 create_test_act_fp16_class(TestSinh)
 create_test_act_fp16_class(TestAsin)
 create_test_act_fp16_class(TestAtan)
 create_test_act_fp16_class(TestAcosh)
 create_test_act_fp16_class(TestAsinh)
 create_test_act_fp16_class(TestAtanh)
-create_test_act_fp16_class(TestRound, grad_check=False)
+create_test_act_fp16_class(TestRound, grad_check=False, check_pir=True)
 create_test_act_fp16_class(
     TestRelu, check_prim=True, enable_cinn=True, check_pir=True
 )
@@ -4809,19 +4837,21 @@ create_test_act_bf16_class(
 )
 create_test_act_bf16_class(TestAbs, check_prim=True, check_pir=True)
 create_test_act_bf16_class(TestCeil, grad_check=False, check_pir=True)
-create_test_act_bf16_class(TestFloor, grad_check=False, check_prim=True)
-create_test_act_bf16_class(TestCos)
+create_test_act_bf16_class(
+    TestFloor, grad_check=False, check_prim=True, check_pir=True
+)
+create_test_act_bf16_class(TestCos, check_pir=True)
 create_test_act_bf16_class(TestTan)
 create_test_act_bf16_class(TestCosh)
 create_test_act_bf16_class(TestAcos)
-create_test_act_bf16_class(TestSin)
+create_test_act_bf16_class(TestSin, check_pir=True)
 create_test_act_bf16_class(TestSinh)
 create_test_act_bf16_class(TestAsin)
 create_test_act_bf16_class(TestAtan)
 create_test_act_bf16_class(TestAcosh)
 create_test_act_bf16_class(TestAsinh)
 create_test_act_bf16_class(TestAtanh)
-create_test_act_bf16_class(TestRound, grad_check=False)
+create_test_act_bf16_class(TestRound, grad_check=False, check_pir=True)
 create_test_act_bf16_class(TestRelu, check_prim=True, check_pir=True)
 create_test_act_bf16_class(
     TestGelu,
