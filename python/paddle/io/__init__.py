@@ -25,6 +25,7 @@ from .dataloader import (
     Sampler,
     SequenceSampler,
     Subset,
+    SubsetRandomSampler,
     TensorDataset,
     WeightedRandomSampler,
     get_worker_info,
@@ -48,4 +49,5 @@ __all__ = [
     'WeightedRandomSampler',
     'random_split',
     'Subset',
+    'SubsetRandomSampler',
 ]
