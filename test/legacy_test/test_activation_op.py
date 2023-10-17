@@ -387,10 +387,19 @@ class TestSigmoid(TestActivation):
     def if_enable_cinn(self):
         pass
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.01, check_prim=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            max_relative_error=0.01,
+            check_prim=True,
+            check_pir=True,
+        )
 
 
 class TestSigmoid_Complex64(TestSigmoid):
@@ -398,7 +407,7 @@ class TestSigmoid_Complex64(TestSigmoid):
         self.dtype = np.complex64
 
     def test_check_output(self):
-        self.check_output(check_prim=False)
+        self.check_output(check_prim=False, check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -406,6 +415,7 @@ class TestSigmoid_Complex64(TestSigmoid):
             'Out',
             max_relative_error=0.006,
             check_prim=False,
+            check_pir=True,
         )
 
 
@@ -414,11 +424,7 @@ class TestSigmoid_Complex128(TestSigmoid_Complex64):
         self.dtype = np.complex128
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            check_prim=False,
-        )
+        self.check_grad(['X'], 'Out', check_prim=False, check_pir=True)
 
 
 class TestSigmoid_ZeroDim(TestSigmoid):
@@ -459,12 +465,13 @@ class TestSigmoidBF16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        # elementwise_pow doesn't support bfloat16, skip check_prim here.
-        self.check_output_with_place(place, check_prim=True)
+        self.check_output_with_place(place, check_prim=True, check_pir=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', check_prim=True, check_pir=True
+        )
 
 
 '''
@@ -4628,7 +4635,9 @@ create_test_act_fp16_class(
     TestExpFp32_Prim, check_prim=True, enable_cinn=True, check_prim_pir=True
 )
 create_test_act_fp16_class(TestExpm1)
-create_test_act_fp16_class(TestSigmoid, check_prim=True, enable_cinn=True)
+create_test_act_fp16_class(
+    TestSigmoid, check_prim=True, enable_cinn=True, check_pir=True
+)
 create_test_act_fp16_class(
     TestSilu, check_prim=True, enable_cinn=True, check_prim_pir=True
 )
@@ -4794,7 +4803,7 @@ create_test_act_bf16_class(
     TestExpFp32_Prim, check_prim=True, check_prim_pir=True
 )
 create_test_act_bf16_class(TestExpm1)
-create_test_act_bf16_class(TestSigmoid, check_prim=True)
+create_test_act_bf16_class(TestSigmoid, check_prim=True, check_pir=True)
 create_test_act_bf16_class(TestSilu, check_prim=True, check_prim_pir=True)
 create_test_act_bf16_class(TestLogSigmoid)
 create_test_act_bf16_class(TestTanh, check_prim=True, check_prim_pir=True)
