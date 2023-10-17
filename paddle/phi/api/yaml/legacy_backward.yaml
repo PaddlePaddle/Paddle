@@ -407,8 +407,8 @@
   composite : minimum_grad(x, y, out_grad, axis, x_grad, y_grad)
 
 - backward_op : mish_grad
-  forward : mish (Tensor x, float threshold) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, float threshold)
+  forward : mish (Tensor x, float lambda) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, float lambda)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -747,7 +747,7 @@
   kernel :
     func : tile_grad
   no_need_buffer : x
-  composite : tile_grad(x, outgrad, repeat_times, x_grad)
+  composite : tile_grad(x, out_grad, repeat_times, x_grad)
   backward : tile_double_grad
 
 - backward_op : trans_layout_grad

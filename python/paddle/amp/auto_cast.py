@@ -198,9 +198,10 @@ def set_excluded_layers(models, excluded_layers):
             include_self=True
         ):
             layer._cast_to_low_precison = False
+    excluded_layers_types = tuple(excluded_layers_types)
     for idx in range(len(models)):
         for layer in models[idx].sublayers(include_self=True):
-            if type(layer) in excluded_layers_types:
+            if isinstance(layer, excluded_layers_types):
                 layer._cast_to_low_precison = False
 
 
