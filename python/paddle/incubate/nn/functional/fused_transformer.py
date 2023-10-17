@@ -120,7 +120,7 @@ def fused_feedforward(
             >>> linear2_weight = paddle.randn(shape=(8, 8), dtype="float32")
             >>> out = F.fused_feedforward(x, linear1_weight, linear2_weight)
             >>> print(out.shape)
-            (1, 8, 8)
+            [1, 8, 8]
     """
     _verify_dropout_rate(dropout1_rate)
     _verify_dropout_rate(dropout2_rate)
@@ -339,7 +339,7 @@ def fused_bias_dropout_residual_layer_norm(
             >>> output = F.fused_bias_dropout_residual_layer_norm(
             ...     x, residual, bias)
             >>> print(output.shape)
-            (2, 4, 128)
+            [2, 4, 128]
 
     """
     seed = None
@@ -607,7 +607,7 @@ def fused_multi_head_attention(
             ...     None, None, None, None, 1e-5, qkv_bias,
             ...     linear_bias, None, attn_mask)
             >>> print(output.shape)
-            (2, 4, 128)
+            [2, 4, 128]
     """
 
     seed = None
@@ -1041,7 +1041,7 @@ def fused_multi_transformer(
             ...     [ffn1_weight], [ffn1_bias], [ffn2_weight], [ffn2_bias],
             ...     attn_mask=attn_mask)
             >>> print(output.shape)
-            (2, 4, 128)
+            [2, 4, 128]
     """
     if mode not in ('downscale_in_infer', 'upscale_in_train'):
         raise ValueError(
