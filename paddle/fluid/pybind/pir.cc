@@ -370,6 +370,30 @@ py::str Value2String(const Value &self) {
   return print_stream.str();
 }
 
+phi::DataType GetValueDtype(const Value &value) {
+  if (value.type().isa<DenseTensorType>()) {
+    return paddle::dialect::TransToPhiDataType(
+        value.type().dyn_cast<DenseTensorType>().dtype());
+  } else if (value.type().isa<SelectedRowsType>()) {
+    return paddle::dialect::TransToPhiDataType(
+        value.type().dyn_cast<SelectedRowsType>().dtype());
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get phi::DataType from DenseTensorType and "
+        "SelectedRowsType."));
+  }
+}
+
+phi::DDim GetValueDims(const Value &value) {
+  if (value.type().isa<DenseTensorType>()) {
+    return value.type().dyn_cast<DenseTensorType>().dims();
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get shape for dense "
+        "tensor."));
+  }
+}
+
 void BindValue(py::module *m) {
   py::class_<Value> value(*m, "Value", R"DOC(
     Value class represents the SSA value in the IR system. It is a directed edge
@@ -408,32 +432,14 @@ void BindValue(py::module *m) {
       .def("__repr__", &Value2String)
       .def_property(
           "shape",
-          [](Value &self) {
-            if (self.type().isa<DenseTensorType>()) {
-              return phi::vectorize(
-                  self.type().dyn_cast<DenseTensorType>().dims());
-            } else {
-              PADDLE_THROW(phi::errors::InvalidArgument(
-                  "Currently, we can only get shape for dense "
-                  "tensor."));
-            }
-          },
+          [](Value &self) { return phi::vectorize(GetValueDims(self)); },
           [](Value &self, const std::vector<int> &shape) {
             PADDLE_THROW(phi::errors::InvalidArgument(
                 "can't set shape when building static graph"));
           })
       .def_property(
           "dtype",
-          [](Value &self) {
-            if (self.type().isa<DenseTensorType>()) {
-              return paddle::dialect::TransToPhiDataType(
-                  self.type().dyn_cast<DenseTensorType>().dtype());
-            } else {
-              PADDLE_THROW(phi::errors::InvalidArgument(
-                  "Currently, we can only get dtype for dense "
-                  "tensor."));
-            }
-          },
+          [](Value &self) { return GetValueDtype(self); },
           [](Value &self, phi::DataType dtype) {
             PADDLE_THROW(phi::errors::InvalidArgument(
                 "can't set dtype when building static graph"));
