@@ -348,11 +348,10 @@ class FCMKLDNNHandler
 
         astream.wait();
 
-        // memory_p =
-        //     std::make_shared<dnnl::memory>(dst_memory);
-        memory_p = std::make_shared<dnnl::memory>(this->fwd_pd_->src_desc(),
-                                                  this->dev_ctx_.GetEngine(),
-                                                  dst_memory.get_data_handle());
+        memory_p = std::make_shared<dnnl::memory>(dst_memory);
+        // memory_p = std::make_shared<dnnl::memory>(this->fwd_pd_->src_desc(),
+        //                                           this->dev_ctx_.GetEngine(),
+        //                                           dst_memory.get_data_handle());
       } else {
         // memory_p = this->AcquireSrcMemory(residual);
         const float* input_data = residual->data<float>();
