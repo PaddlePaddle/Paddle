@@ -20,7 +20,7 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-std::unique_ptr<pir::Program> OpFusionPassInternal(::pir::Program* program);
+std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program);
 
 }  // namespace ir
 }  // namespace dialect

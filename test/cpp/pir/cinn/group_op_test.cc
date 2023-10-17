@@ -19,6 +19,7 @@
 
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_lowering_pass.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/builtin_type.h"
@@ -88,4 +89,64 @@ TEST(GroupOp, TestBuild) {
               op_num[i]);
     ++i;
   }
+}
+
+std::shared_ptr<::pir::Program> BuildGroupProgramForLowering() {
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<::pir::ControlFlowDialect>();
+
+  auto program = std::make_shared<::pir::Program>(ctx);
+  const std::vector<int64_t> shape = {64, 128};
+  ::pir::Builder builder = ::pir::Builder(ctx, program->block());
+  const float value = 0.5;
+  auto full_x = builder.Build<paddle::dialect::FullOp>(
+      shape, value, phi::DataType::FLOAT32, phi::GPUPlace());
+
+  auto full_y = builder.Build<paddle::dialect::FullOp>(
+      shape, value, phi::DataType::FLOAT32, phi::GPUPlace());
+
+  auto group_op1 = builder.Build<cinn::dialect::GroupOp>(
+      CreateDenseTensorTypes(phi::make_ddim(shape)));
+  pir::Block* block1 = group_op1.block();
+  builder.SetInsertionPointToEnd(block1);
+  auto sin = builder.Build<paddle::dialect::SinOp>(full_x->result(0));
+
+  builder.Build<::pir::YieldOp>(std::vector<::pir::Value>{
+      sin.out(),
+  });
+
+  builder.SetInsertionPointToEnd(program->block());
+  auto group_op2 = builder.Build<cinn::dialect::GroupOp>(
+      CreateDenseTensorTypes(phi::make_ddim(shape)));
+  pir::Block* block2 = group_op2.block();
+  builder.SetInsertionPointToEnd(block2);
+  auto cos_op = builder.Build<paddle::dialect::CosOp>(full_y->result(0));
+  builder.Build<::pir::YieldOp>(std::vector<::pir::Value>{cos_op.out()});
+
+  builder.SetInsertionPointToEnd(program->block());
+  auto group_op3 = builder.Build<cinn::dialect::GroupOp>(
+      CreateDenseTensorTypes(phi::make_ddim(shape)));
+  pir::Block* block3 = group_op3.block();
+  builder.SetInsertionPointToEnd(block3);
+  auto add = builder.Build<paddle::dialect::AddOp>(group_op1->result(0),
+                                                   group_op2->result(0));
+  builder.Build<::pir::YieldOp>(std::vector<::pir::Value>{cos_op.out()});
+
+  builder.SetInsertionPointToEnd(program->block());
+  auto exp = builder.Build<paddle::dialect::ExpOp>(group_op3->result(0));
+
+  return program;
+}
+
+TEST(GroupOp, CINNLowering) {
+  // Step 1: Construct pir::Program
+  std::shared_ptr<::pir::Program> program = BuildGroupProgramForLowering();
+
+  program->Print(std::cout);
+
+  auto res = CINNGroupLoweringPass(program.get());
+
+  res->Print(std::cout);
 }

@@ -71,7 +71,7 @@ std::vector<pir::Value> GetBlockOutsideOutput(
   return vec_res;
 }
 
-std::unique_ptr<pir::Program> OpFusionPassInternal(::pir::Program* program) {
+std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<cinn::dialect::RuntimeDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
