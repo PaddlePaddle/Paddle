@@ -29,7 +29,8 @@ class ProgramDesc : public cpp::ProgramDescAPI {
   ProgramDesc() = delete;
 
   explicit ProgramDesc(framework_proto::ProgramDesc *desc) : desc_(desc) {
-    // liuchenghao: problematic code
+    // liuchenghao: this is probably problematic code since ProgramDesc
+    // is passed by rawptr here but we should use shared ptr
     CHECK(desc_);
   }
 
