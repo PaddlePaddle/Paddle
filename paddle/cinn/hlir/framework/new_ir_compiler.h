@@ -40,6 +40,9 @@ class NewIRCompiler final {
 
   std::unique_ptr<Program> Build();
 
+  std::vector<newir::CUDAJITInfo> BuildCUDAJITInfo(
+      const std::vector<newir::GroupPtr>& groups);
+
   std::unique_ptr<Program> Build(const std::vector<newir::GroupPtr>& groups);
 
  private:
