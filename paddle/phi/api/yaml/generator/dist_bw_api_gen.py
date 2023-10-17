@@ -101,9 +101,9 @@ MULTI_VECTOR_OUT_CREATION_TEMPLATE = """
 
 # 9. Reshard Output
 RESHARD_SINGLE_OUTPUT_TEMPLATE = """
-    ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out, {});"""
+      ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out, {});"""
 RESHARD_MULTI_SINGLE_OUTPUT_TEMPLATE = """
-    ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out_{}, {});"""
+      ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out_{}, {});"""
 
 
 class DistBackwardAPI(DistForwardAPI, BackwardAPI):

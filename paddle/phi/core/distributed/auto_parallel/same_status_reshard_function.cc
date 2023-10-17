@@ -17,7 +17,6 @@
 #include <algorithm>
 
 #include "glog/logging.h"
-#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
@@ -72,7 +71,6 @@ void SameStatusReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   const auto& out_process_mesh = out_dist_attr.process_mesh();
   const auto& out_process_ids = out_process_mesh.process_ids();
   auto all_process_ids = GetUnionProcessIds(in_process_ids, out_process_ids);
-  VLOG(3) << "In datatype: " << in.dtype();
   auto dtype = in.dtype();
   // TODO(liyurui): Use dynamic shape will lead to poor performance, but we
   // don't have any other good idea now. For the following reasons:
@@ -104,10 +102,6 @@ void SameStatusReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                 in.value(),
                                 dst_local_rank,
                                 dynamic_shape);
-      // auto place = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());;
-      // *out->unsafe_mutable_value() = phi::DenseTensor(
-      //   std::make_shared<phi::Allocation>(nullptr, 0, place),
-      //   phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1})));
     } else if (dst == cur_global_rank) {
       VLOG(3) << "Recv from src " << src << " to dst " << dst;
       int64_t src_local_rank = GetLocalRankInParticipate(all_process_ids, src);

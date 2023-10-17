@@ -126,7 +126,7 @@ void MetaTensor::set_dtype(DataType dtype) {
   } else if (phi::distributed::DistTensor::classof(tensor_)) {
     // For pipeline parallelism, DistTensor holds an uninitialized DenseTensor,
     // But kernel launch needs to get it's placement, dtype and layout.
-    VLOG(3) << "DistTensor set dtype.";
+    VLOG(3) << "DistTensor set dtype: " << dtype;
     DenseTensorUtils::GetMutableMeta(
         static_cast<phi::distributed::DistTensor*>(tensor_)
             ->unsafe_mutable_value())
@@ -164,7 +164,7 @@ void MetaTensor::set_layout(DataLayout layout) {
     DenseTensorUtils::GetMutableMeta(static_cast<SparseCsrTensor*>(tensor_))
         ->layout = layout;
   } else if (phi::distributed::DistTensor::classof(tensor_)) {
-    VLOG(3) << "DistTensor set layout.";
+    VLOG(3) << "DistTensor set layout: " << layout;
     DenseTensorUtils::GetMutableMeta(
         static_cast<phi::distributed::DistTensor*>(tensor_)
             ->unsafe_mutable_value())

@@ -65,17 +65,16 @@ MAIN_DIST_BRANCH_TEMPLATE = """
 # 1. Non computation rank clip
 GET_MESH_TEMPLATE = """
     auto mesh = std::static_pointer_cast<phi::distributed::DistTensor>({}impl())->dist_attr().process_mesh();
-    computation_clip_for_pp = !phi::distributed::IsCurRankInMesh(mesh);
-"""
+    computation_clip_for_pp = !phi::distributed::IsCurRankInMesh(mesh);"""
 
 # Auto Parallel condition
 AUTO_PARALLEL_COND_TEMPLATE = """
   bool use_dist_branch = AllInputsAreDistTensor({input_args});
   bool computation_clip_for_pp = false;
-  if (use_dist_branch) {{{mesh}}}
+  if (use_dist_branch) {{{mesh}
+  }}
   if (!computation_clip_for_pp) {{{kernel_code}
   }}
-
 """
 
 # 1. InferSPMD
@@ -163,11 +162,6 @@ MULTI_VECTOR_INPLACE_AND_OPTIONAL_OUT_CREATION_TEMPLATE = """
     std::vector<phi::DenseTensor*> dense_out_{out_name}(dist_out_{out_name}.size());
     for (size_t i = 0; i < dist_out_{out_name}.size(); ++i) {{
         dense_out_{out_name}[i] = dist_out_{out_name}[i] ? const_cast<phi::DenseTensor*>(&dist_out_{out_name}[i]->value()) : nullptr;
-        if (dense_out_{out_name}[i] && computation_clip_for_pp) {{
-          *dense_out_{out_name}[i] = phi::DenseTensor(
-                  std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
-                  phi::DenseTensorMeta());
-        }}
     }}
 """
 
@@ -485,14 +479,6 @@ class DistForwardAPI(ForwardAPI):
         assert (
             self.outputs['out_size_expr'] is not None
         ), f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
-
-    def generate_if_condition_code(self) -> str:
-        input_args = ""
-        for input_name in self.inputs['names']:
-            input_args = input_args + input_name + ", "
-        if len(input_args) > 2:
-            input_args = input_args[:-2]
-        return AUTO_PARALLEL_COND_TEMPLATE.format(input_args)
 
     def generate_non_computation_rank_clip_code(self) -> str:
         if len(self.inputs['names']) > 0:

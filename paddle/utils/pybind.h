@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/utils/optional.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
@@ -74,8 +75,12 @@ struct type_caster<paddle::Tensor> {
   static handle cast(const paddle::Tensor& src,
                      return_value_policy /* policy */,
                      handle /* parent */) {
+    // TODO(GhostScreaming): pipeline parallel may return a uninitialized
+    // DistTensor, it should not return None.
+    bool return_none =
+        phi::distributed::DistTensor::classof(src.impl().get()) ? false : true;
     return handle(paddle::pybind::ToPyObject(
-        src, false /* return_py_none_if_not_initialize */));
+        D src, return_none /* return_py_none_if_not_initialize */));
   }
 };
 
