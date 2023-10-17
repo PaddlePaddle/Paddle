@@ -171,7 +171,7 @@ class AddLayernormXPUFusePass : public FusePassBase {
   void ApplyImpl(ir::Graph* graph) const override;
 
  private:
-  void FuseAddLayernorm(ir::Graph* graph, const std::string& act_type, ) const;
+  void FuseAddLayernorm(ir::Graph* graph, const std::string& act_type) const;
 
   const std::string name_scope_{"add_layernorm_xpu_fuse_pass"};
 };

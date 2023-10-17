@@ -501,7 +501,7 @@ int Conv2dPoolingXPUFusePass::ApplyImpl(ir::Graph* graph,
     conv2d_pooling_xpu_op_desc.SetAttr("pool2d_strides", pool2d_strides);
     conv2d_pooling_xpu_op_desc.SetAttr("pool2d_ksize", pool2d_ksize);
     bool is_avg = true;
-    auto pool_type = PADDLE_GET_CONST(std::string, pool2d->Op()->GetAttr("pooling_type")));
+    auto pool_type = PADDLE_GET_CONST(std::string, pool2d->Op()->GetAttr("pooling_type"));
     if (pool_type == "max") {
       is_avg = false;
     }
