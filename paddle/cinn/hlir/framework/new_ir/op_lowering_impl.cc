@@ -417,8 +417,10 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
       lower_fn_name, *op_func_arg_tensors, {&tensor_group}, this->target_);
   VLOG(4) << "Lower op: " << lower_fn_name << ", get " << funcs.size()
           << " LoweredFunc:\n";
-  for (auto fun : funcs) {
-    VLOG(4) << fun;
+  if (VLOG_IS_ON(4)) {
+    for (auto fun : funcs) {
+      VLOG(4) << fun;
+    }
   }
 
   op_func_arg_tensors->clear();
