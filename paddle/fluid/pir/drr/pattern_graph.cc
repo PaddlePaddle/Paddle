@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/pir/drr/pattern_graph.h"
 
-#include <iostream>
 #include <queue>
 
 #include "paddle/fluid/pir/drr/api/drr_pattern_context.h"
@@ -85,42 +84,6 @@ void PatternGraph::UpdateTmpTensor(const std::string &tmp_tensor_name,
 }
 
 size_t PatternGraph::CountOfOpCalls() const { return owned_op_call_.size(); }
-
-void PatternGraph::Print() const {
-  std::cout << "All Tensors:" << std::endl;
-  for (const auto &kv : id2owned_tensor_) {
-    std::cout << "  " << kv.first;
-  }
-  std::cout << "\n" << std::endl;
-
-  std::cout << "Input Tensors:" << std::endl;
-  for (const auto &tensor_name : input_tensors_) {
-    std::cout << "  " << tensor_name;
-  }
-  std::cout << "\n" << std::endl;
-
-  std::cout << "Output Tensors:" << std::endl;
-  for (const auto &tensor_name : output_tensors_) {
-    std::cout << "  " << tensor_name;
-  }
-  std::cout << "\n" << std::endl;
-
-  for (const auto &op_call : owned_op_call_) {
-    std::cout << "  " << op_call->name() << " : ";
-    std::cout << "inputs[ ";
-    for (const auto *input : op_call->inputs()) {
-      std::cout << input->name() << " ";
-    }
-    std::cout << "], ";
-
-    std::cout << "outputs[ ";
-    for (const auto &output : op_call->outputs()) {
-      std::cout << output->name() << " ";
-    }
-    std::cout << "]" << std::endl;
-  }
-  std::cout << std::endl;
-}
 
 OpCall *SourcePatternGraph::AnchorNode() const {
   for (const auto &output_tensor : output_tensors_) {
@@ -217,6 +180,43 @@ void GraphTopo::WalkGraphNodesTopoOrder(
       }
     }
   }
+}
+
+std::ostream &operator<<(std::ostream &os, const PatternGraph &pattern_graph) {
+  os << "\nAll Tensors:\n";
+  for (const auto &kv : pattern_graph.id2owend_tensor()) {
+    os << "  " << kv.first;
+  }
+  os << "\n\n";
+
+  os << "Input Tensors:\n";
+  for (const auto &tensor_name : pattern_graph.input_tensors()) {
+    os << "  " << tensor_name;
+  }
+  os << "\n\n";
+
+  os << "Output Tensors:\n";
+  for (const auto &tensor_name : pattern_graph.output_tensors()) {
+    os << "  " << tensor_name;
+  }
+  os << "\n\n";
+
+  for (const auto &op_call : pattern_graph.owned_op_call()) {
+    os << "  " << op_call->name() << " : ";
+    os << "inputs[ ";
+    for (const auto *input : op_call->inputs()) {
+      os << input->name() << " ";
+    }
+    os << "], ";
+
+    os << "outputs[ ";
+    for (const auto &output : op_call->outputs()) {
+      os << output->name() << " ";
+    }
+    os << "]\n";
+  }
+  os << "\n";
+  return os;
 }
 
 }  // namespace drr

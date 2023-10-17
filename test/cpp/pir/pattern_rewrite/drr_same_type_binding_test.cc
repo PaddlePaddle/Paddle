@@ -56,7 +56,6 @@ class SameTypeBindingTestPattern
     : public pir::drr::DrrPatternBase<SameTypeBindingTestPattern> {
  public:
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    // Source re sterns：待匹配的子图
     pir::drr::SourcePattern src = ctx->SourcePattern();
 
     // path 1
@@ -142,7 +141,6 @@ class SameTypeBindingTestPattern
     const auto &relu_2 = src.Op("pd_op.relu");
     src.Tensor("output6") = relu_2(src.Tensor("add_2_out"));
 
-    // Result patterns：要替换为的子图
     pir::drr::ResultPattern res = src.ResultPattern();
     const auto &transpose_7 =
         res.Op("pd_op.transpose", {{"perm", src.Attr("perm_4")}});
