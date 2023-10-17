@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/cinn/hlir/dialect/operator/transforms/op_with_group_merge_pass.h"
+
 #include <limits.h>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-
-#include "paddle/cinn/hlir/dialect/operator/transforms/op_with_group_merge_pass.h"
 
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/builtin_attribute.h"
@@ -143,19 +143,19 @@ using ConditionFunction =
 // code generation.
 class OpFusionPassHelper {
  public:
-  explicit OpFusionPassHelper(const ::pir::Program& graph) {
+  explicit OpFusionPassHelper(::pir::Block* block) {
     // init fusion relation
     InitFusionRelation();
     // filter node data, create group for each node
     // auto nodes_inorder = std::get<0>(graph->topological_order());
 
-    for (auto it = graph.block()->begin(); it != graph.block()->end(); ++it) {
+    for (auto it = block->begin(); it != block->end(); ++it) {
       auto node = *it;
       local_ops_.insert(node);
     }
 
     int index = 0;
-    for (auto it = graph.block()->begin(); it != graph.block()->end(); ++it) {
+    for (auto it = block->begin(); it != block->end(); ++it) {
       auto node = *it;
       if (node) {
         nodes_.push_back(node);
@@ -491,9 +491,9 @@ class OpFusionPassHelper {
   std::unordered_map<OpPatternKind, FusionRelation> fusion_relation_map_;
 };
 
-GroupList OpFusionPassInternal(const ::pir::Program& program) {
+GroupList OpFusionPassInternal(::pir::Block* block) {
   VLOG(3) << "OpFusionPass...!";
-  auto op_fusion_helper = OpFusionPassHelper(program);
+  auto op_fusion_helper = OpFusionPassHelper(block);
   auto res = op_fusion_helper();
 
   for (size_t i = 0; i < res.size(); ++i) {
