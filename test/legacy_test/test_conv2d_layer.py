@@ -227,13 +227,22 @@ class Conv2DTestCase(unittest.TestCase):
         np.testing.assert_array_almost_equal(result1, result2)
         np.testing.assert_array_almost_equal(result2, result3)
 
+    def _test_equivalence_in_pir(self, place):
+        with paddle.pir_utils.IrGuard():
+            place = base.CPUPlace()
+            result1 = self.base_layer(place)
+            result2 = self.functional(place)
+            np.testing.assert_array_almost_equal(result1, result2)
+
     def runTest(self):
         place = base.CPUPlace()
         self._test_equivalence(place)
+        self._test_equivalence_in_pir(place)
 
         if base.core.is_compiled_with_cuda():
             place = base.CUDAPlace(0)
             self._test_equivalence(place)
+            self._test_equivalence_in_pir(place)
 
 
 class Conv2DErrorTestCase(Conv2DTestCase):
