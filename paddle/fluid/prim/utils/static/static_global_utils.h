@@ -41,7 +41,7 @@ class UniqueNameGenerator {
   std::string prefix_;
 };
 
-class TEST_API StaticCompositeContext {
+class StaticCompositeContext {
  public:
   static StaticCompositeContext& Instance() {
     return *static_composite_context_;
