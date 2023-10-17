@@ -41,8 +41,8 @@ def get_new_ir_grad_var_to_var_map(param_mappings, old_ir_grad_var_to_var_map):
     new_ir_grad_var_to_var_map = {}
     for grad_var, var in old_ir_grad_var_to_var_map.items():
         if grad_var in param_mappings.keys():
-            new_grad_var = param_mappings[grad_var][0].get_opresult()
-            new_var = param_mappings[var][0].get_opresult()
+            new_grad_var = param_mappings[grad_var][0]
+            new_var = param_mappings[var][0]
             new_ir_grad_var_to_var_map[new_grad_var] = new_var
     return new_ir_grad_var_to_var_map
 
