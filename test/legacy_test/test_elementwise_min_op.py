@@ -443,4 +443,5 @@ class TestElementwiseMinBF16Op_Vector(TestElementwiseBF16Op):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    with paddle.jit.api.fallback_guard(False):
+        unittest.main()

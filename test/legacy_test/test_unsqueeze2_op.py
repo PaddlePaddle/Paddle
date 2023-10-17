@@ -336,5 +336,6 @@ class TestUnsqueezeAPI_ZeroDim(unittest.TestCase):
         paddle.enable_static()
 
 
-if __name__ == "__main__":
-    unittest.main()
+if __name__ == '__main__':
+    with paddle.jit.api.fallback_guard(False):
+        unittest.main()

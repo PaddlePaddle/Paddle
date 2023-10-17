@@ -573,5 +573,6 @@ class TestFlatten0DTensorOpError(unittest.TestCase):
         self.assertRaises(ValueError, test_ValueError2)
 
 
-if __name__ == "__main__":
-    unittest.main()
+if __name__ == '__main__':
+    with paddle.jit.api.fallback_guard(False):
+        unittest.main()

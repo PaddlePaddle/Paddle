@@ -4877,5 +4877,6 @@ create_test_act_bf16_class(
     TestRsqrt, check_prim=True, check_new_ir=True, check_prim_pir=True
 )
 
-if __name__ == "__main__":
-    unittest.main()
+if __name__ == '__main__':
+    with paddle.jit.api.fallback_guard(False):
+        unittest.main()

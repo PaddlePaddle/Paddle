@@ -159,6 +159,7 @@ class TestFillAnyLikeOpFloat16(TestFillAnyLikeOp):
         pass
 
 
-if __name__ == "__main__":
-    paddle.enable_static()
-    unittest.main()
+if __name__ == '__main__':
+    with paddle.jit.api.fallback_guard(False):
+        paddle.enable_static()
+        unittest.main()

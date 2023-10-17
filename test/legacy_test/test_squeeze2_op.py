@@ -297,5 +297,7 @@ class TestSqueezeInplaceAPI(TestSqueezeAPI):
         self.squeeze = paddle.squeeze_
 
 
-if __name__ == "__main__":
-    unittest.main()
+if __name__ == '__main__':
+    with paddle.jit.api.fallback_guard(False):
+        paddle.enable_static()
+        unittest.main()

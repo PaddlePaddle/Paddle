@@ -2137,5 +2137,6 @@ class TestPirCompositeDropout(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    paddle.enable_static()
-    unittest.main()
+    with paddle.jit.api.fallback_guard(False):
+        paddle.enable_static()
+        unittest.main()

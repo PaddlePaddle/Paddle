@@ -283,6 +283,7 @@ class TestExpandAsV2API(unittest.TestCase):
         np.testing.assert_array_equal(res_1[0], np.tile(input1, (2, 1, 1)))
 
 
-if __name__ == "__main__":
-    paddle.enable_static()
-    unittest.main()
+if __name__ == '__main__':
+    with paddle.jit.api.fallback_guard(False):
+        paddle.enable_static()
+        unittest.main()

@@ -96,5 +96,6 @@ class TestAssignBoolValue(TestBase):
         self.fetch_list = [out.name]
 
 
-if __name__ == "__main__":
-    unittest.main()
+if __name__ == '__main__':
+    with paddle.jit.api.fallback_guard(False):
+        unittest.main()

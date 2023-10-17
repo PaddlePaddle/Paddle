@@ -212,5 +212,6 @@ class TestDy2staticNewIR6(unittest.TestCase):
         np.testing.assert_allclose(out.numpy(), ans.numpy())
 
 
-if __name__ == "__main__":
-    unittest.main()
+if __name__ == '__main__':
+    with paddle.jit.api.fallback_guard(False):
+        unittest.main()

@@ -313,4 +313,5 @@ class TestElementwisePowBF16Op(OpTest):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    with paddle.jit.api.fallback_guard(False):
+        unittest.main()

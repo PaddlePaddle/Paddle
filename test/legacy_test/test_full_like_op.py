@@ -218,5 +218,6 @@ class TestFullLikeBF16Op(TestFullLikeOp1):
         self.dtype = np.uint16
 
 
-if __name__ == "__main__":
-    unittest.main()
+if __name__ == '__main__':
+    with paddle.jit.api.fallback_guard(False):
+        unittest.main()

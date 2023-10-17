@@ -25,7 +25,7 @@ from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
 import paddle.inference as paddle_infer
-from paddle import base, enable_static
+from paddle import base
 from paddle.base import core
 from paddle.base.layer_helper import LayerHelper
 
@@ -817,6 +817,7 @@ class TestSumAPIWarnings(unittest.TestCase):
             os.environ["FLAGS_print_extra_attrs"] = '0'
 
 
-if __name__ == "__main__":
-    enable_static()
-    unittest.main()
+if __name__ == '__main__':
+    with paddle.jit.api.fallback_guard(False):
+        paddle.enable_static()
+        unittest.main()
