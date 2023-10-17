@@ -20,6 +20,7 @@ import paddle
 import paddle.nn.functional as F
 from paddle.base import core
 from paddle.decomposition import decompose
+from paddle.jit.api import fallback_guard
 
 
 class TestPrimBlacklistFlags(unittest.TestCase):
@@ -125,4 +126,5 @@ class TestPrimBackwardBlacklistFlags(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    with fallback_guard(True):
+        unittest.main()
