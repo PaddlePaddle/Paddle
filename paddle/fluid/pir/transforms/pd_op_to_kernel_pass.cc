@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
+
 #include <iostream>
 
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
@@ -28,7 +30,6 @@
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_util.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
@@ -36,7 +37,10 @@
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/pir/core/builtin_op.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
+#include "paddle/utils/flags.h"
 
+PHI_DECLARE_bool(print_ir);
 namespace paddle {
 namespace dialect {
 
@@ -61,15 +65,17 @@ const std::unordered_set<std::string> UnchangeOutputOps = {
     "pd_op.fetch",
     "builtin.set_parameter",
     "builtin.get_parameter",
-    "builtin.shadow_output"};
-
-const std::unordered_set<std::string> SpecialLowerOps = {"builtin.combine",
-                                                         "builtin.slice",
-                                                         "builtin.split",
-                                                         "pd_op.if",
-                                                         "pd_op.while",
-                                                         "cf.yield",
-                                                         "cf.cond_yield"};
+    "builtin.shadow_output",
+    "cinn_runtime.jit_kernel"};
+const std::unordered_set<std::string> SpecialLowerOps = {
+    "builtin.combine",
+    "builtin.slice",
+    "builtin.split",
+    "pd_op.if",
+    "pd_op.while",
+    "cf.yield",
+    "cf.cond_yield",
+    "cinn_runtime.jit_kernel"};
 
 bool NeedFallBackCpu(const pir::Operation* op,
                      const std::string& kernel_fn_name,
@@ -776,6 +782,7 @@ void HandleForWhileOp(
     std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
     std::unordered_map<pir::Value, pir::Value>* map_value_pair) {
   std::vector<pir::Value> vec_in;
+  pir::Value cond_val;
   for (size_t i = 0; i < op_item->num_operands(); ++i) {
     auto cur_in = op_item->operand_source(i);
 
@@ -785,36 +792,16 @@ void HandleForWhileOp(
         phi::errors::PreconditionNotMet(
             "[%d]'s input of [%s] op MUST in map pair", 0, op_item->name()));
     auto new_in = map_value_pair->at(cur_in);
-
-    vec_in.push_back(new_in);
+    if (i == 0)
+      cond_val = new_in;
+    else
+      vec_in.push_back(new_in);
   }
 
   pir::Builder builder(ctx, block);
 
   auto base_while_op = op_item->dyn_cast<paddle::dialect::WhileOp>();
-  std::vector<pir::Type> op_output_types;
-  for (size_t i = 0; i < base_while_op.num_results(); ++i) {
-    op_output_types.push_back(paddle::dialect::AllocatedDenseTensorType::get(
-        ctx,
-        place,
-        base_while_op.result(i).type().dyn_cast<dialect::DenseTensorType>()));
-  }
-  auto new_while_op = builder.Build<paddle::dialect::WhileOp>(vec_in);
-
-  pir::Block* cond_block = new_while_op.cond_block();
-  for (size_t i = 0; i < vec_in.size(); ++i) {
-    auto block_arg = cond_block->AddArgument(vec_in[i].type());
-    (*map_value_pair)[base_while_op.cond_block()->argument(i)] = block_arg;
-  }
-
-  // process cond block
-  ProcessBlock(place,
-               base_while_op.cond_block(),
-               cond_block,
-               ctx,
-               map_op_pair,
-               map_value_pair);
-
+  auto new_while_op = builder.Build<paddle::dialect::WhileOp>(cond_val, vec_in);
   pir::Block* body_block = new_while_op.body_block();
   for (size_t i = 0; i < vec_in.size(); ++i) {
     auto block_arg = body_block->AddArgument(vec_in[i].type());
@@ -834,7 +821,7 @@ pir::Value GetNewInput(
     const pir::Value cur_in,
     const std::unordered_map<pir::Value, pir::Value>& map_value_pair,
     const int index,
-    const std::string op_name) {
+    const std::string& op_name) {
   PADDLE_ENFORCE_EQ(
       map_value_pair.count(cur_in),
       true,
@@ -935,7 +922,7 @@ void HandleForSpecialOp(
     }
   }
 
-  if (op_item->name() == "cf.yield" || op_item->name() == "cf.cond_yield") {
+  if (op_item->isa<::pir::YieldOp>()) {
     if (op_item->num_operands() > 0) {
       for (size_t i = 0; i < op_item->num_operands(); ++i) {
         auto cur_in = op_item->operand_source(i);
@@ -947,6 +934,28 @@ void HandleForSpecialOp(
             cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
         vec_inputs.push_back(new_in);
       }
+    }
+  }
+
+  if (op_item->name() == "cinn_runtime.jit_kernel") {
+    if (op_item->num_operands() > 0) {
+      for (size_t i = 0; i < op_item->num_operands(); ++i) {
+        auto cur_in = op_item->operand_source(i);
+        if (!cur_in) {
+          vec_inputs.emplace_back();
+          continue;
+        }
+        auto new_in = GetNewInput(
+            cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+        vec_inputs.push_back(new_in);
+      }
+    }
+
+    for (size_t i = 0; i < op_item->num_results(); ++i) {
+      op_output_types.push_back(paddle::dialect::AllocatedDenseTensorType::get(
+          ctx,
+          place,
+          op_item->result(i).type().dyn_cast<dialect::DenseTensorType>()));
     }
   }
 
@@ -1471,6 +1480,10 @@ void ProcessBlock(
 
 std::unique_ptr<pir::Program> PdOpLowerToKernelPass(pir::Program* prog,
                                                     phi::Place place) {
+  if (FLAGS_print_ir) {
+    std::cout << "IR before lowering = " << *prog << std::endl;
+  }
+
   auto program = std::make_unique<pir::Program>(pir::IrContext::Instance());
 
   auto block = prog->block();
@@ -1485,11 +1498,10 @@ std::unique_ptr<pir::Program> PdOpLowerToKernelPass(pir::Program* prog,
   ProcessBlock(
       place, block, program->block(), ctx, &map_op_pair, &map_value_pair);
 
-  if (VLOG_IS_ON(2)) {
-    std::stringstream ss1;
-    program->Print(ss1);
-    VLOG(2) << "Program after lowering to kernel pass : " << ss1.str();
+  if (FLAGS_print_ir) {
+    std::cout << "IR after lowering = " << *program << std::endl;
   }
+
   return program;
 }
 }  // namespace dialect
