@@ -677,7 +677,7 @@ void OpTranscriber::RecordOpResultMapping(pir::IrContext* ctx,
     pir::OpResult value = operation->result(idx_in_op);
     bool generated_by_vector = value.type().isa<pir::VectorType>();
 
-    param_map->UpdateValue(
+    param_map->PushValue(
         arg_name,
         VariableDefiningInfo(
             value,
@@ -1697,8 +1697,8 @@ struct ElementwiseGradTranscriber : public OpTranscriber {
     pir::OpResult value = operation->result(idx_in_op);
     pir::Builder builder(ctx, operation->GetParent());
     auto reshape_op = builder.Build<dialect::ReshapeOp>(value, y_shape);
-    param_map->UpdateValue(y_grad_var_name,
-                           VariableDefiningInfo(reshape_op.out(), false, -1));
+    param_map->PushValue(y_grad_var_name,
+                         VariableDefiningInfo(reshape_op.out(), false, -1));
   }
 };
 
@@ -1865,8 +1865,8 @@ struct FusedFeedForwardOpTranscriber : public OpTranscriber {
       auto output_var = output_vars[0];
       auto fused_feedforward_op =
           operation->dyn_cast<dialect::FusedFeedforwardOp>();
-      param_map->UpdateValue(output_var,
-                             VariableDefiningInfo{fused_feedforward_op.out()});
+      param_map->PushValue(output_var,
+                           VariableDefiningInfo{fused_feedforward_op.out()});
     }
   }
 };

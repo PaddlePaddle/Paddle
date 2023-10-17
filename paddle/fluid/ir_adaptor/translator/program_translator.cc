@@ -261,14 +261,6 @@ void TranslationContext::PopValue(const Key& key) {
   container_[key].pop_back();
 }
 
-void TranslationContext::UpdateValue(const Key& key, const Value& value) {
-  auto& vec = container_[key];
-  if (vec.empty())
-    vec.push_back(value);
-  else
-    vec.back() = value;
-}
-
 ProgramTranslator::ProgramTranslator(const ProgramDesc* legacy_program,
                                      pir::Program* program)
     : legacy_program_(legacy_program), program_(program) {
