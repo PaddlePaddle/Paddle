@@ -488,7 +488,7 @@ void ProgramTranslator::TranslateWhileOperation(const OpDesc* op,
   }
   auto name_iter = loop_vars_reverse.rbegin();
   for (size_t idx = 0; idx < while_op->num_results(); ++idx) {
-    param_map_.UpdateValue(name_iter++->first, while_op->result(idx));
+    param_map_.PushValue(name_iter++->first, while_op->result(idx));
   }
   while_op->Verify();
   VLOG(8) << "=============>end to translate while op:" << op;
