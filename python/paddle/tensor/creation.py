@@ -692,6 +692,9 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
             # fix numpy default dtype
             if data.dtype in ['float16', 'float32', 'float64']:
                 data = data.astype(paddle.get_default_dtype())
+            # Windows default type is 'int32', while Linux/Mac is 'int64'. Unify they.
+            elif data.dtype in ['int32']:
+                data = data.astype("int64")
 
         if dtype:
             target_dtype = dtype
@@ -884,24 +887,34 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         place = _current_expected_place()
         if force_cpu:
             place = core.CPUPlace()
-        if isinstance(shape, (list, tuple)):
-            shape = paddle.utils.convert_shape_to_list(shape)
 
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
+        if in_dynamic_mode():
+            value = float(value)
+            if isinstance(shape, (list, tuple)):
+                shape = paddle.utils.convert_shape_to_list(shape)
+
+        else:
+            if isinstance(shape, (list, tuple)):
+                if paddle.utils._contain_var(shape):
+                    shape = paddle.utils.get_pir_shape_tensor(shape, place)
+            elif isinstance(shape, paddle.pir.OpResult):
+                pass
+            else:
+                TypeError("Shape only supports OpReslut, or list, or tuple.")
+
         if out is None:
-            value = float(value) if in_dynamic_mode() else value
             out = _C_ops.full(shape, value, dtype, place)
             out.stop_gradient = True
             return out
 
         if out is not None:
-            value = float(value) if in_dynamic_mode() else value
-            # final state mode is support out is not None.
             _C_ops.full_(out, shape, value, dtype, place)
             out.stop_gradient = True
             return out
+
     else:
         attrs = {'force_cpu': force_cpu}
         dtype = convert_dtype(dtype)

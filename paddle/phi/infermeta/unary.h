@@ -49,7 +49,7 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
                         const Scalar& axis,
                         bool keepdims,
                         bool flatten,
-                        int dtype,
+                        DataType dtype,
                         MetaTensor* out,
                         MetaConfig config = MetaConfig());
 
@@ -88,6 +88,11 @@ void CheckNumericsInferMeta(const MetaTensor& tensor,
                             MetaTensor* values);
 
 void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out);
+
+void CINNBroadcastInferMeta(const MetaTensor& x,
+                            const std::vector<int64_t>& axes,
+                            const std::vector<int64_t>& out_shape,
+                            MetaTensor* output);
 
 void ClassCenterSampleInferMeta(const MetaTensor& label,
                                 int num_classes,
