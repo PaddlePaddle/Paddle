@@ -168,7 +168,7 @@ test_reshape_op
 test_reverse_op
 test_roi_align_op
 test_roi_pool_op
-test_rpn_assign_target
+test_rpn_assign_target_op
 test_rrelu_op
 test_scale_op
 test_searchsorted_op
