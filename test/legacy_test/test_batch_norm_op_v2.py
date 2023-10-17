@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestBatchNorm(unittest.TestCase):
@@ -210,6 +211,7 @@ class TestBatchNorm(unittest.TestCase):
             np.testing.assert_allclose(y1, y2, rtol=1e-05)
             np.testing.assert_allclose(y3, y4, rtol=1e-05)
 
+    @test_with_pir_api
     def test_static(self):
         places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -229,7 +231,7 @@ class TestBatchNorm(unittest.TestCase):
                         name='x', shape=x_np.shape, dtype=x_np.dtype
                     )
                     y = bn(x)
-                    exe.run(base.default_startup_program())
+                    exe.run(paddle.static.default_startup_program())
                     r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
                 return r
 
@@ -240,7 +242,7 @@ class TestBatchNorm(unittest.TestCase):
                         name='x', shape=x_np.shape, dtype=x_np.dtype
                     )
                     y = bn(x)
-                    exe.run(base.default_startup_program())
+                    exe.run(paddle.static.default_startup_program())
                     r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
                 return r
 

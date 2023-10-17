@@ -37,7 +37,13 @@ from paddle.device import get_all_custom_device_type
 
 from ...base import dygraph_utils
 from ...base.data_feeder import check_variable_and_dtype
-from ...framework import ParamAttr, _global_flags, get_default_dtype, no_grad
+from ...framework import (
+    ParamAttr,
+    _global_flags,
+    get_default_dtype,
+    in_dynamic_or_pir_mode,
+    no_grad,
+)
 from .. import functional as F
 from ..functional import batch_norm, instance_norm, layer_norm
 from ..initializer import Constant, Normal
@@ -1076,7 +1082,7 @@ class BatchNorm(Layer):
         self._trainable_statistics = trainable_statistics
 
     def forward(self, input):
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             batch_norm_out, t1, t2, t3, t4, _ = _C_ops.batch_norm(
                 input,
                 self._mean,
