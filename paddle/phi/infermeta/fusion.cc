@@ -355,10 +355,10 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
 }
 
 inline int PoolOutputSize(int input_size,
-                             int k_size,
-                             int padding_left,
-                             int padding_right,
-                             int stride) {
+                          int k_size,
+                          int padding_left,
+                          int padding_right,
+                          int stride) {
   PADDLE_ENFORCE_NE(
       stride,
       0,

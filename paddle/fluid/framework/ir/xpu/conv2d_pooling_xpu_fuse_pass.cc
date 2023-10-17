@@ -205,7 +205,8 @@ Conv2dPoolingXPUPattern::Conv2dPoolingXPUPattern(PDPattern* pattern,
                      op_desc->GetAttrIfExists<std::string>("pooling_type");
                  auto is_global =
                      op_desc->GetAttrIfExists<bool>("global_pooling");
-                 return (pooling_type == "max" && !is_global) || (pooling_type == "avg" && !is_global);
+                 return (pooling_type == "max" && !is_global) ||
+                        (pooling_type == "avg" && !is_global);
                });
   pool2d_out = pattern->NewNode(pool2d_out_repr())
                    ->assert_is_op_output("pool2d", "Out")
@@ -502,7 +503,7 @@ int Conv2dPoolingXPUFusePass::ApplyImpl(ir::Graph* graph,
     bool is_avg = true;
     auto pool_type = PADDLE_GET_CONST(std::string, pool2d->Op()->GetAttr("pooling_type")));
     if (pool_type == "max") {
-        is_avg = false;
+      is_avg = false;
     }
     conv2d_pooling_xpu_op_desc.SetAttr("is_avg", is_avg);
     // create conv2d_pooling_xpu op

@@ -113,7 +113,7 @@ void AddLayernormXPUKernel(const Context& ctx,
       /* float* mean */ nullptr,
       /* float* variance */ nullptr,
       /* T* z_add */ nullptr,
-      /* float* z_max */out_max_data,
+      /* float* z_max */ out_max_data,
       /* const baidu::xpu::api::Activation_t& act */ act);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "add_layer_norm_fusion");
 }

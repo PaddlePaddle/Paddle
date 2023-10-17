@@ -65,7 +65,7 @@ After the pass is applied:
                     Output
 */
 struct AddLayernormXPUPattern : public PatternBase {
-  AddLayernormXPUPattern(PDPattern* pattern, 
+  AddLayernormXPUPattern(PDPattern* pattern,
                          const std::string& name_scope,
                          const std::string& act_type);
   // declare operator node's name
@@ -121,10 +121,10 @@ AddLayernormXPUPattern::AddLayernormXPUPattern(PDPattern* pattern,
                            ->AsOutput()
                            ->assert_is_op_output("layer_norm", "Variance")
                            ->assert_has_n_outputs(0);
-  auto norm_out = pattern->NewNode(norm_out_repr())
-                         ->assert_is_op_output("layer_norm", "Y");
+  auto norm_out =
+      pattern->NewNode(norm_out_repr())->assert_is_op_output("layer_norm", "Y");
   if (!act_type_.empty()) {
-      norm_out->assert_has_n_outputs(1);
+    norm_out->assert_has_n_outputs(1);
   }
   l_norm->LinksFrom({ele_out, norm_bias, norm_scale})
       .LinksTo({norm_out, norm_mean, norm_variance});
@@ -171,7 +171,7 @@ class AddLayernormXPUFusePass : public FusePassBase {
   void ApplyImpl(ir::Graph* graph) const override;
 
  private:
-  void FuseAddLayernorm(ir::Graph* graph, const std::string& act_type,) const;
+  void FuseAddLayernorm(ir::Graph* graph, const std::string& act_type, ) const;
 
   const std::string name_scope_{"add_layernorm_xpu_fuse_pass"};
 };
@@ -185,9 +185,11 @@ void AddLayernormXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   }
 }
 
-void AddLayernormXPUFusePass::FuseAddLayernorm(ir::Graph* graph, const std::string& act_type) const {
+void AddLayernormXPUFusePass::FuseAddLayernorm(
+    ir::Graph* graph, const std::string& act_type) const {
   GraphPatternDetector gpd;
-  patterns::AddLayernormXPUPattern pattern(gpd.mutable_pattern(), name_scope_, act_type);
+  patterns::AddLayernormXPUPattern pattern(
+      gpd.mutable_pattern(), name_scope_, act_type);
 
   int found_subgraph_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
