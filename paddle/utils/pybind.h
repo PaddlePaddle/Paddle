@@ -15,7 +15,9 @@
 #pragma once
 
 #include "paddle/phi/api/include/tensor.h"
+#ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#endif
 #include "paddle/utils/optional.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
