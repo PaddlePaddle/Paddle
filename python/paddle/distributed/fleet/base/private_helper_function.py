@@ -35,9 +35,13 @@ def wait_server_ready(endpoints):
 
              >>> wait_server_ready(["127.0.0.1:8080", "127.0.0.1:8081"])
     """
-    use_new_comm = paddle.get_flags("FLAGS_dynamic_static_unified_comm")[
-        "FLAGS_dynamic_static_unified_comm"
-    ]
+    try:
+        use_new_comm = paddle.get_flags("FLAGS_dynamic_static_unified_comm")[
+            "FLAGS_dynamic_static_unified_comm"
+        ]
+    except:
+        use_new_comm = False
+
     if use_new_comm:
         return
     assert not isinstance(endpoints, str)
