@@ -604,11 +604,15 @@ class TestGathertError(unittest.TestCase):
 
 
 class TestCheckOutType(unittest.TestCase):
+    @test_with_pir_api
     def test_out_type(self):
         data = paddle.static.data(shape=[16, 10], dtype='int64', name='x')
         index = paddle.static.data(shape=[4], dtype='int64', name='index')
         out = paddle.gather(data, index)
-        self.assertTrue(out.dtype == core.VarDesc.VarType.INT64)
+        self.assertTrue(
+            out.dtype == core.VarDesc.VarType.INT64
+            or out.dtype == core.DataType.INT64
+        )
 
 
 if __name__ == "__main__":
