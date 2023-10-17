@@ -130,15 +130,16 @@ __global__ void FindChannelAbsMaxKernelQuantAxis1(
   extern __shared__ char *shared_max_data_tmp[];
   auto shared_max_data = reinterpret_cast<T *>(shared_max_data_tmp);
   int cout_wh_size = n / cin;
-  int wh_size = n / (cin * cout);
+  int wh_size = cout / blockDim.x + 1;
 
   int tid = threadIdx.x;
   int bid = blockIdx.x;
-  const T *in_current = in + tid * cout_wh_size + bid * wh_size;
+  const T *in_current = in + tid * cout_wh_size * wh_size + bid;
   T local_max_data = T(0);
   for (int i = 0; i < wh_size; i++) {
-    T tmp = static_cast<T>(
-        fabs(static_cast<typename QuantizeDataType<T>::type>(in_current[i])));
+    if ((i + tid * wh_size) >= cout) break;
+    T tmp = static_cast<T>(fabs(static_cast<typename QuantizeDataType<T>::type>(
+        in_current[i * cout_wh_size])));
     if (tmp > local_max_data) {
       local_max_data = tmp;
     }
@@ -196,20 +197,10 @@ struct FindChannelAbsMaxFunctor<phi::GPUContext, T> {
       cudaMemset(out_abs_max, 0, sizeof(T) * cout);
 #endif  // PADDLE_FLUID_OPERATORS_FAKE_QUANTIZE_OP_CU_H_
 
-      for (int i = 0; i < cin / max_threads; i++) {
-        int block = max_threads;
-        FindChannelAbsMaxKernelQuantAxis1<T>
-            <<<grid, block, block * sizeof(T), ctx.stream()>>>(
-                in_data, num, cin, cout, out_abs_max);
-        in_data += num / cin;
-      }
-
-      int block = cin % max_threads;
-      if (block > 0) {
-        FindChannelAbsMaxKernelQuantAxis1<T>
-            <<<grid, block, block * sizeof(T), ctx.stream()>>>(
-                in_data, num, in_dims[0], in_dims[1], out_abs_max);
-      }
+      int block_size = max_threads;
+      FindChannelAbsMaxKernelQuantAxis1<T>
+          <<<grid, block_size, block_size * sizeof(T), ctx.stream()>>>(
+              in_data, num, cin, cout, out_abs_max);
     }
   }
 };
