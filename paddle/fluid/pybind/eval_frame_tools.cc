@@ -75,12 +75,11 @@ int TreeNode::check_filename(const char* filename) {
 /*========================== utils  ==========================*/
 
 const char* pystr_to_cstr(PyObject* pystr) {
-  if (PyUnicode_Check(pystr)) {
-    const char* cstr = PyUnicode_AsUTF8(pystr);
+  const char* cstr = PyUnicode_AsUTF8(pystr);
+  if (cstr)
     return cstr;
-  } else {
+  else
     PADDLE_THROW(phi::errors::InvalidArgument("Input PyObject is not string!"));
-  }
 }
 
 /*========================== SkipCodeInfo ===============================*/
@@ -133,6 +132,8 @@ int SkipCodeInfo::is_no_skip_code(PyCodeObject* code) {
 }
 
 int SkipCodeInfo::in_skip_path(PyObject* filename) {
+  paddle::platform::RecordEvent ecord_event(
+      "in_skip_path", paddle::platform::TracerEventType::UserDefined, 1);
   const char* name = pystr_to_cstr(filename);
   return root->check_filename(name);
 }
