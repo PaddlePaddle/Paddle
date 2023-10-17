@@ -546,7 +546,7 @@ def adjust_hue(img, hue_factor):
 
             >>> import numpy as np
             >>> from PIL import Image
-            >>> from paddle.vision.transforms import functional as F
+            >>> from paddle.vision.transforms.adjust_hue import functional as F
             >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
             >>> fake_img = Image.fromarray(fake_img)
             >>> converted_img = F.adjust_hue(fake_img, 0.4)
