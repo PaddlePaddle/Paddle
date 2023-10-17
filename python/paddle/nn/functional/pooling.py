@@ -15,7 +15,7 @@
 import numpy as np
 
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
-from paddle.base.framework import Variable, in_dygraph_mode
+from paddle.base.framework import Variable, in_dygraph_mode, in_pir_mode
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
@@ -1662,7 +1662,20 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
             True,
             "EXPLICIT",
         )
-
+    elif in_pir_mode():
+        return _C_ops.pool2d(
+            x,
+            output_size,
+            [1, 1],
+            [0, 0],
+            False,
+            True,
+            data_format,
+            'avg',
+            False,
+            True,
+            "EXPLICIT",
+        )
     else:
         l_type = 'pool2d'
         check_variable_and_dtype(
