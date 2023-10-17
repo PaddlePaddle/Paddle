@@ -205,7 +205,7 @@ Conv2dPoolingXPUPattern::Conv2dPoolingXPUPattern(PDPattern* pattern,
                      op_desc->GetAttrIfExists<std::string>("pooling_type");
                  auto is_global =
                      op_desc->GetAttrIfExists<bool>("global_pooling");
-                 return pooling_type == "max" && !is_global;
+                 return (pooling_type == "max" && !is_global) || (pooling_type == "avg" && !is_global);
                });
   pool2d_out = pattern->NewNode(pool2d_out_repr())
                    ->assert_is_op_output("pool2d", "Out")
