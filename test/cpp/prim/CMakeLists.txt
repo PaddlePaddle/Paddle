@@ -17,8 +17,7 @@ set(prim_generated_deps final_dygraph_function final_dygraph_node
 if(WITH_CINN)
   set(CINN_DEPS cinn_compiler)
 endif()
-paddle_test(test_comp_static SRCS test_static_prim.cc DEPS static_prim_api
-            prim_utils)
+paddle_test(test_comp_static SRCS test_static_prim.cc DEPS)
 
 if(NOT (NOT WITH_PYTHON AND ON_INFER))
   if(WITH_CINN)

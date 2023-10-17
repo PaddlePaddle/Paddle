@@ -25,7 +25,6 @@
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/type_defs.h"
-#include "paddle/utils/test_macros.h"
 namespace paddle {
 namespace prim {
 
