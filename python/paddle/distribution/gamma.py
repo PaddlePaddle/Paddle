@@ -139,25 +139,11 @@ class Gamma(exponential_family.ExponentialFamily):
         )
 
     def sample(self, shape=()):
-        """Generate samples of the specified shape.
-
-        Args:
-            shape (Sequence[int], optional): Shape of the generated samples.
-
-        Returns:
-            Tensor, A tensor with prepended dimensions shape.The data type is float32.
-        """
+        """Generate samples of the specified shape."""
         raise NotImplementedError
 
     def rsample(self, shape=()):
-        """Generate reparameterized samples of the specified shape.
-
-        Args:
-            shape (Sequence[int], optional): Shape of the generated samples.
-
-        Returns:
-            Tensor: A tensor with prepended dimensions shape. The data type is float32.
-        """
+        """Generate reparameterized samples of the specified shape."""
         raise NotImplementedError
 
     def kl_divergence(self, other):
