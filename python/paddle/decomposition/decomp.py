@@ -228,7 +228,8 @@ def _decompose_subgraph(block, orig_vars, dst_vars, op_filter):
         for idx, op in enumerate(ops_list):
             op_name = op.name()
             decom_rule = register.get_decomp_rule(op_name)
-            lower = decom_rule and op_filter(op)
+            has_sink_decomp_rule = has_decomp(op)
+            lower = (decom_rule or has_sink_decomp_rule) and op_filter(op)
 
             if op.name() == "builtin.combine":
                 temp_op = op
@@ -244,7 +245,7 @@ def _decompose_subgraph(block, orig_vars, dst_vars, op_filter):
                     pir.set_insertion_point(op)
                 input_args = _prepare_python_api_arguments(op)
                 orig_outs = op.results()
-                if has_decomp(op):
+                if has_sink_decomp_rule:
                     decomp_outs = call_decomp(op)
                     new_outs = _analyse_decomp_results(orig_outs, decomp_outs)
                 else:
