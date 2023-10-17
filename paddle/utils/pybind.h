@@ -77,8 +77,12 @@ struct type_caster<paddle::Tensor> {
                      handle /* parent */) {
     // TODO(GhostScreaming): pipeline parallel may return a uninitialized
     // DistTensor, it should not return None.
+#ifdef PADDLE_WITH_DISTRIBUTE
     bool return_none =
         phi::distributed::DistTensor::classof(src.impl().get()) ? false : true;
+#else
+    bool return_none = true;
+#endif
     return handle(paddle::pybind::ToPyObject(
         src, return_none /* return_py_none_if_not_initialize */));
   }
