@@ -248,7 +248,6 @@ class TestDecomposeOp(unittest.TestCase):
                                 )
 
             # execution
-            print("final graph: ", newir_program)
             exe = paddle.static.Executor()
             outs = exe.run(
                 newir_program,
