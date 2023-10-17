@@ -36,7 +36,10 @@ void AddLayernormXPUInferMeta(const MetaTensor& x,
                               const MetaTensor& bias,
                               int begin_norm_axis,
                               float epsilon,
-                              MetaTensor* out);
+                              int act_type,
+                              float act_param,
+                              MetaTensor* out,
+                              MetaTensor* out_max);
 
 void Conv1dXPUInferMeta(const MetaTensor& x,
                         const MetaTensor& x_max,

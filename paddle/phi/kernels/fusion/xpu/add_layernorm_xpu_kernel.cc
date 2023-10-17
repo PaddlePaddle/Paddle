@@ -73,7 +73,10 @@ void AddLayernormXPUKernel(const Context& ctx,
                            const DenseTensor& bias,
                            int begin_norm_axis,
                            float epsilon,
-                           DenseTensor* out) {
+                           int act_type,
+                           float act_param,
+                           DenseTensor* out,
+                           DenseTensor* out_max) {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   auto* x_data = reinterpret_cast<const XPUType*>(x.data<T>());
@@ -89,6 +92,13 @@ void AddLayernormXPUKernel(const Context& ctx,
   int64_t n = layer_norm_x_mat_dims[1];
 
   auto* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(out));
+  auto* out_max_data = ctx.template Alloc<float>(out_max);
+  xpu::Activation_t act(static_cast<xpu::Activation_t::act_enum>(act_type));
+  if (act_type == xpu::Activation_t::LEAKY_RELU) {
+    act.leaky_alpha = act_param;
+  } else if (act_type == xpu::Activation_t::HARD_SIGMOID) {
+    act.hard_sigmoid_slope = act_param;
+  }
 
   int r = xpu::add_layer_norm_fusion<XPUType>(  // T
       /* baidu::xpu::api::Context* ctx */ ctx.x_context(),
@@ -102,7 +112,9 @@ void AddLayernormXPUKernel(const Context& ctx,
       /* const float* bias */ bias_data,
       /* float* mean */ nullptr,
       /* float* variance */ nullptr,
-      /* T* z_add */ nullptr);
+      /* T* z_add */ nullptr,
+      /* float* z_max */out_max_data,
+      /* const baidu::xpu::api::Activation_t& act */ act);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "add_layer_norm_fusion");
 }
 

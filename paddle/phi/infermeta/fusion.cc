@@ -99,7 +99,10 @@ void AddLayernormXPUInferMeta(const MetaTensor& x,
                               const MetaTensor& bias,
                               int begin_norm_axis,
                               float epsilon,
-                              MetaTensor* out) {
+                              int act_type,
+                              float act_param,
+                              MetaTensor* out,
+                              MetaTensor* out_max) {
   int axis = -1;
   auto x_dims = x.dims();
   auto y_dims = y.dims();
@@ -113,6 +116,9 @@ void AddLayernormXPUInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
   out->share_lod(x);
+  out_max->set_dims(phi::make_ddim({6}));
+  out_max->set_dtype(x.dtype());
+  out_max->set_layout(x.layout());
 }
 
 inline int ConvOutSize(int input_size,
