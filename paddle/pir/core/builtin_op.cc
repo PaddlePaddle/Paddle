@@ -82,7 +82,7 @@ void ModuleOp::Destroy() {
   }
 }
 
-void ModuleOp::Verify() const {
+void ModuleOp::VerifySig() const {
   VLOG(4) << "Verifying inputs, outputs and attributes for: ModuleOp.";
   // Verify inputs:
   IR_ENFORCE(num_operands() == 0u, "The size of inputs must be equal to 0.");
@@ -118,7 +118,7 @@ void GetParameterOp::PassStopGradients(OperationArgument &argument) {
       pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
 }
 
-void GetParameterOp::Verify() const {
+void GetParameterOp::VerifySig() const {
   VLOG(4) << "Verifying inputs, outputs and attributes for: GetParameterOp.";
   // Verify inputs:
   IR_ENFORCE(num_operands() == 0u, "The size of inputs must be equal to 0.");
@@ -144,7 +144,7 @@ void SetParameterOp::Build(Builder &builder,             // NOLINT
   argument.AddAttribute(attributes_name[0],
                         pir::StrAttribute::get(builder.ir_context(), name));
 }
-void SetParameterOp::Verify() const {
+void SetParameterOp::VerifySig() const {
   VLOG(4) << "Verifying inputs, outputs and attributes for: SetParameterOp.";
   // Verify inputs:
   IR_ENFORCE(num_operands() == 1, "The size of outputs must be equal to 1.");
@@ -154,6 +154,32 @@ void SetParameterOp::Verify() const {
   auto iter = attributes.find("parameter_name");
   IR_ENFORCE(iter != attributes.end() && iter->second.isa<StrAttribute>(),
              "Type of attribute: parameter_name is not right.");
+
+  // Verify outputs:
+  IR_ENFORCE(num_results() == 0u, "The size of outputs must be equal to 0.");
+}
+
+const char *ShadowOutputOp::attributes_name[attributes_num] = {  // NOLINT
+    "output_name"};
+
+void ShadowOutputOp::Build(Builder &builder,             // NOLINT
+                           OperationArgument &argument,  // NOLINT
+                           Value parameter,
+                           const std::string &name) {
+  argument.AddInput(parameter);
+  argument.AddAttribute(attributes_name[0],
+                        pir::StrAttribute::get(builder.ir_context(), name));
+}
+void ShadowOutputOp::VerifySig() const {
+  VLOG(4) << "Verifying inputs, outputs and attributes for: ShadowOutputOp.";
+  // Verify inputs:
+  IR_ENFORCE(num_operands() == 1, "The size of outputs must be equal to 1.");
+
+  // Verify attributes:
+  auto &attributes = this->attributes();
+  auto iter = attributes.find("output_name");
+  IR_ENFORCE(iter != attributes.end() && iter->second.isa<StrAttribute>(),
+             "Type of attribute: output_name is not right.");
 
   // Verify outputs:
   IR_ENFORCE(num_results() == 0u, "The size of outputs must be equal to 0.");
@@ -172,7 +198,7 @@ void CombineOp::Build(Builder &builder,
   PassStopGradientsDefaultly(argument);
 }
 
-void CombineOp::Verify() const {
+void CombineOp::VerifySig() const {
   // outputs.size() == 1
   IR_ENFORCE(num_results() == 1u, "The size of outputs must be equal to 1.");
 
@@ -234,7 +260,7 @@ void SliceOp::PassStopGradients(OperationArgument &argument, int index) {
       pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
 }
 
-void SliceOp::Verify() const {
+void SliceOp::VerifySig() const {
   // inputs.size() == 1
   auto input_size = num_operands();
   IR_ENFORCE(
@@ -338,7 +364,7 @@ void SplitOp::PassStopGradients(OperationArgument &argument) {
       pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
 }
 
-void SplitOp::Verify() const {
+void SplitOp::VerifySig() const {
   // inputs.size() == 1
   IR_ENFORCE(num_operands() == 1u, "The size of inputs must be equal to 1.");
 
@@ -367,7 +393,7 @@ void ConstantOp::Build(Builder &builder,
   argument.output_types.push_back(output_type);
 }
 
-void ConstantOp::Verify() const {
+void ConstantOp::VerifySig() const {
   IR_ENFORCE(num_operands() == 0, "The size of inputs must be equal to 0.");
   IR_ENFORCE(num_results() == 1, "The size of outputs must be equal to 1.");
   IR_ENFORCE(attributes().count("value") > 0, "must has value attribute");
@@ -380,6 +406,7 @@ Attribute ConstantOp::value() const { return attributes().at("value"); }
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ModuleOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::GetParameterOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::SetParameterOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::ShadowOutputOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::CombineOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::SliceOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::SplitOp)

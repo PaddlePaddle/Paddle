@@ -224,7 +224,7 @@ def replace_ellipsis(var, item):
     item_remove_var = [
         ele
         for ele in item
-        if not isinstance(ele, (paddle.pir.OpResult, Variable, np.ndarray))
+        if not isinstance(ele, (Variable, paddle.pir.OpResult, np.ndarray))
         and ele is not None
     ]
     ell_count = item_remove_var.count(Ellipsis)
@@ -285,6 +285,9 @@ def is_integer_or_scalar_tensor(ele):
                 return True
         if len(ele.shape) == 0 and ele.dtype != paddle.bool:
             return True
+    elif isinstance(ele, paddle.pir.OpResult):
+        if len(ele.shape) == 0 and ele.dtype != paddle.base.libpaddle.BOOL:
+            return True
     return False
 
 
@@ -292,6 +295,11 @@ def is_bool_tensor(ele):
     from .framework import Variable
 
     if isinstance(ele, Variable) and ele.dtype == paddle.bool:
+        return True
+    elif (
+        isinstance(ele, paddle.pir.OpResult)
+        and ele.dtype == paddle.base.libpaddle.BOOL
+    ):
         return True
     return False
 
@@ -304,7 +312,7 @@ def deal_attrs(attrs, attr, attr_name, tensor_attr_name, inputs, infer_flags):
             attr, dtype="int64"
         )
         for i, dim in enumerate(attr):
-            if isinstance(dim, Variable):
+            if isinstance(dim, (Variable, paddle.pir.OpResult)):
                 attrs[attr_name].append(-1)
                 infer_flags[i] = -1
             else:
@@ -759,9 +767,14 @@ def parse_index(x, indices):
             has_advanced_index = True
             estimated_dim += 1
 
-        elif isinstance(slice_item, paddle.base.Variable):
+        elif isinstance(
+            slice_item, (paddle.base.Variable, paddle.pir.OpResult)
+        ):
             # In this case, the Variable is not 0-dim Tensor and will be treated as advanced-indexing.
-            if slice_item.dtype == paddle.bool:
+            if (
+                slice_item.dtype == paddle.bool
+                or slice_item.dtype == paddle.base.libpaddle.BOOL
+            ):
                 if slice_item.ndim == 0:
                     # 0-D bool Tensor, same as single PY-bool.
                     none_axes.append(dim)
@@ -806,7 +819,12 @@ def parse_index(x, indices):
             axes.append(dim)
             use_strided_slice = (
                 True
-                if (isinstance(step, paddle.base.Variable) or step != 1)
+                if (
+                    isinstance(
+                        step, (paddle.base.Variable, paddle.pir.OpResult)
+                    )
+                    or step != 1
+                )
                 else use_strided_slice
             )
     return (

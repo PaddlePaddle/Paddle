@@ -144,6 +144,7 @@ mutable_attribute_phi_type_maps = {
     'int': 'phi::DataType::INT32',
     'int64_t': 'phi::DataType::INT64',
     'float': 'phi::DataType::FLOAT32',
+    'double': 'phi::DataType::FLOAT64',
     'std::vector<int64_t>': 'phi::DataType::INT64',
     'const std::vector<int64_t>&': 'phi::DataType::INT64',
     'bool': 'phi::DataType::BOOL',

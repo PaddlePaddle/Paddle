@@ -1277,7 +1277,7 @@ def softplus(x, beta=1, threshold=20, name=None):
             \end{cases}
 
     Parameters:
-        x (Tensor): The input Tensor with data type float32, float64.
+        x (Tensor): The input Tensor with data type float32, float64, complex64, complex128.
         beta (float, optional): The value of :math:`\beta` for softplus. Default is 1
         threshold (float, optional): The value of :math:`\varepsilon` for softplus. Default is 20
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -1302,7 +1302,17 @@ def softplus(x, beta=1, threshold=20, name=None):
         return _C_ops.softplus(x, beta, threshold)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'softplus'
+            x,
+            'x',
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'complex64',
+                'complex128',
+            ],
+            'softplus',
         )
         helper = LayerHelper('softplus', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
