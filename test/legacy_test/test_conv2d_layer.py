@@ -219,6 +219,7 @@ class Conv2DTestCase(unittest.TestCase):
         return y_np, t1
 
     def run_Conv2D_static(self, place):
+        paddle.seed(2023)
         main = base.Program()
         start = base.Program()
         with base.unique_name.guard():
@@ -245,6 +246,7 @@ class Conv2DTestCase(unittest.TestCase):
         return y_np
 
     def run_Conv2D_dygraph(self):
+        paddle.seed(2023)
         x_var = paddle.to_tensor(self.input)
         x_var.stop_gradient = False
         conv = nn.Conv2D(
