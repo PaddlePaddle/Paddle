@@ -243,9 +243,8 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
                     "with cuda 11.6 or higher."
                 )
 
-            has_bias = bias is not None
             multi_precision = hasattr(weight, "main_grad")
-            if not has_bias:
+            if bias is None:
                 if weight.actual_grad is not None:
                     (
                         weight.acutal_grad,
@@ -256,7 +255,7 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
                         weight.actual_grad,
                         None,
                         multi_precision,
-                        has_bias,
+                        False,
                     )
                     task.wait()
                     return dx, None
@@ -265,7 +264,7 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
                         dw,
                         _,
                     ) = paddle._C_ops.fused_linear_param_grad_add(
-                        x, dy, None, None, False, has_bias
+                        x, dy, None, None, False, False
                     )
                     task.wait()
                     return dx, dw
@@ -281,7 +280,7 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
                     weight.actual_grad,
                     bias.actual_grad,
                     multi_precision,
-                    has_bias,
+                    True,
                 )
                 task.wait()
                 return dx, None, None
@@ -290,7 +289,7 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
                     dw,
                     dbias,
                 ) = paddle._C_ops.fused_linear_param_grad_add(
-                    x, dy, None, None, False, has_bias
+                    x, dy, None, None, False, True
                 )
                 task.wait()
                 return dx, dw, dbias
