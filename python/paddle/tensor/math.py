@@ -1288,7 +1288,7 @@ def minimum(x, y, name=None):
             Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
             [ 1.  , -inf.,  5.  ])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.minimum(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_min', **locals()))

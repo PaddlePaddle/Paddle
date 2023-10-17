@@ -189,8 +189,8 @@ void CreateDistTensorWithNumpyValue(TensorObject* self,
         "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/CustomPlace"));
   }
 
-  auto dist_tensor =
-      std::make_shared<phi::distributed::DistTensor>(dense_tensor, dist_attr);
+  auto dist_tensor = std::make_shared<phi::distributed::DistTensor>(
+      std::make_shared<phi::DenseTensor>(dense_tensor), dist_attr);
   self->tensor.set_impl(dist_tensor);
 
   if (!autograd_meta->GetMutableGradNode()) {
@@ -280,13 +280,13 @@ void InitDistTensorWithTensor(TensorObject* self,
   if (place == src.place()) {
     std::shared_ptr<phi::DenseTensor> tensor =
         std::static_pointer_cast<phi::DenseTensor>(src.impl());
-    self->tensor.set_impl(std::make_shared<DistTensor>(*tensor, dist_attr));
+    self->tensor.set_impl(std::make_shared<DistTensor>(tensor, dist_attr));
     VLOG(4) << "Same place, do ShareDataWith for DistTensor.";
   } else {
     std::shared_ptr<phi::DenseTensor> tensor =
         std::static_pointer_cast<phi::DenseTensor>(
             src.copy_to(place, true).impl());
-    self->tensor.set_impl(std::make_shared<DistTensor>(*tensor, dist_attr));
+    self->tensor.set_impl(std::make_shared<DistTensor>(tensor, dist_attr));
     VLOG(4) << "Different place, do TensorCopy for DistTensor.";
   }
   if (src.get_autograd_meta()) {
