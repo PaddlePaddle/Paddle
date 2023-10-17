@@ -754,8 +754,6 @@ void EagerReducer::AddDistHook(size_t var_index) {
     auto &group = groups_[group_index];
     auto &group_tensor = group.dense_tensors_[inside_group_index];
 
-    if (!group_tensor.initialized()) return;
-
     auto *autograd_meta = tensors_[var_index].get_autograd_meta();
     auto &grad_tensor = static_cast<egr::AutogradMeta *>(autograd_meta)->Grad();
 
