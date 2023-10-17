@@ -74,7 +74,7 @@ class TestCombinationsAPIBase(unittest.TestCase):
                 ref_res = convert_combinations_to_array(
                     self.x_np, self.r, self.with_replacement
                 )
-                np.testing.assert_allclose(ref_res, pd_res, atol=1e-5)
+                np.testing.assert_allclose(ref_res, pd_res)
 
     def test_dygraph(self):
         paddle.disable_static()
@@ -85,7 +85,7 @@ class TestCombinationsAPIBase(unittest.TestCase):
             ref_res = convert_combinations_to_array(
                 self.x_np, self.r, self.with_replacement
             )
-            np.testing.assert_allclose(ref_res, pd_res, atol=1e-5)
+            np.testing.assert_allclose(ref_res, pd_res)
 
     def test_errors(self):
         def test_input_not_1D():
@@ -100,7 +100,7 @@ class TestCombinationsAPIBase(unittest.TestCase):
         self.assertRaises(ValueError, test_r_range)
 
 
-class TestIndexFillAPI1(TestCombinationsAPIBase):
+class TestCombinationsAPI1(TestCombinationsAPIBase):
     def modify_setting(self):
         self.dtype_np = 'int32'
         self.x_shape = [10]
@@ -108,7 +108,7 @@ class TestIndexFillAPI1(TestCombinationsAPIBase):
         self.with_replacement = True
 
 
-class TestIndexFillAPI2(TestCombinationsAPIBase):
+class TestCombinationsAPI2(TestCombinationsAPIBase):
     def modify_setting(self):
         self.dtype_np = 'int64'
         self.x_shape = [10]
@@ -116,9 +116,25 @@ class TestIndexFillAPI2(TestCombinationsAPIBase):
         self.with_replacement = True
 
 
-class TestIndexFillAPI3(TestCombinationsAPIBase):
-    def modify_setting(self):
-        self.dtype_np = 'float32'
-        self.x_shape = [0]
-        self.r = 10
-        self.with_replacement = False
+class TestCombinationsEmpty(unittest.TestCase):
+    def setUp(self):
+        self.place = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            self.place.append('gpu')
+
+    def test_dygraph(self):
+        paddle.disable_static()
+        for place in self.place:
+            paddle.device.set_device(place)
+            a = paddle.to_tensor([1, 2, 3])
+            c = paddle.combinations(a, r=4)
+            expected = paddle.empty([0, 4])
+            np.testing.assert_allclose(c, expected)
+
+            # test empty imput
+            a = paddle.empty([0])
+            c1 = paddle.combinations(a)
+            c2 = paddle.combinations(a, with_replacement=True)
+            expected = paddle.empty([0, 2])
+            np.testing.assert_allclose(c1, expected)
+            np.testing.assert_allclose(c2, expected)

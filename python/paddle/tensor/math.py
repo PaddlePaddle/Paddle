@@ -6967,8 +6967,11 @@ def combinations(x, r=2, with_replacement=False, name=None):
     if not isinstance(r, int) or r < 0:
         raise ValueError(f"Expect a non-negative int, but got r={r}")
 
-    if r == 0 or r > x.shape[0]:
-        return paddle.empty([0], dtype=x.dtype)
+    if r == 0:
+        return paddle.empty(shape=[0], dtype=x.dtype)
+
+    if r > x.shape[0]:
+        return paddle.empty(shape=[0, r], dtype=x.dtype)
 
     if r > 1:
         t_l = [x for i in range(r)]
