@@ -1325,16 +1325,18 @@ inline __device__ void apply_rotary_embedding(uint2& q,      // NOLINT
   k.y = rotary_embedding_transform(k.y, cos.y, sin.x);
 }
 
-inline __device__ void apply_rotary_embedding(uint2& q,       // NOLINT
-                                              uint2& k,       // NOLINT
-                                              float4& cos,    // NOLINT
-                                              float4& sin) {  // NOLINT
+inline __device__ void apply_rotary_embedding(
+    uint2& q,       // NOLINT equals 4 half.
+    uint2& k,       // NOLINT
+    float4& cos,    // NOLINT 2 float2 cos.
+    float4& sin) {  // NOLINT
   Float4_& cos_ = *reinterpret_cast<Float4_*>(&cos);
   Float4_& sin_ = *reinterpret_cast<Float4_*>(&sin);
+  // cos_.x is float2
   q.x = rotary_embedding_transform(q.x, cos_.x, sin_.x);
   k.x = rotary_embedding_transform(k.x, cos_.x, sin_.x);
   q.y = rotary_embedding_transform(q.y, cos_.y, sin_.y);
-  k.y = rotary_embedding_transform(k.y, cos_.y, sin_.x);
+  k.y = rotary_embedding_transform(k.y, cos_.y, sin_.y);
 }
 
 inline __device__ void apply_rotary_embedding(uint4& q,      // NOLINT
