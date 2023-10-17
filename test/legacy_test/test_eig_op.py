@@ -183,7 +183,7 @@ class TestEigOp(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place_customized(
-            checker=self.checker, place=core.CPUPlace(), check_new_ir=True
+            checker=self.checker, place=core.CPUPlace(), check_pir=True
         )
 
     def test_check_grad(self):
@@ -193,7 +193,7 @@ class TestEigOp(OpTest):
             ['Eigenvalues', 'Eigenvectors'],
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_w, self.grad_v],
-            check_new_ir=True,
+            check_pir=True,
         )
 
 

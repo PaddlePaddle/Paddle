@@ -124,6 +124,8 @@ vjp_interface_declare_gen_op_list = [
     'diag',
     'trace',
     'tile',
+    'eig',
+    'logcumsumexp',
 ]
 vjp_interface_implementation_gen_op_list = [
     'where',
@@ -226,4 +228,6 @@ vjp_interface_implementation_gen_op_list = [
     'diag',
     'trace',
     'tile',
+    'eig',
+    'logcumsumexp',
 ]

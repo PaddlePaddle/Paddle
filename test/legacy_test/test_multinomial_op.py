@@ -192,7 +192,7 @@ class TestMultinomialBF16OP(OpTest):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place_customized(
-            self.verify_output, place, check_new_ir=True
+            self.verify_output, place, check_pir=True
         )
 
     def sample_output(self, out):

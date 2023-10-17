@@ -145,7 +145,7 @@ class TestRandpermBF16Op(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place_customized(
-            self.verify_output, self.place, check_new_ir=True
+            self.verify_output, self.place, check_pir=True
         )
 
     def verify_output(self, outs):
