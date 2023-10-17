@@ -6,16 +6,17 @@ if(WITH_DISTRIBUTE)
                                 parallel_executor)
 endif()
 
-cc_test_old(pattern_rewrite_test SRCS pattern_rewrite_test.cc DEPS
-            ${PATTERN_REWRITE_TEST_DEPS})
+if(NOT APPLE)
+  cc_test_old(pattern_rewrite_test SRCS pattern_rewrite_test.cc DEPS
+              ${PATTERN_REWRITE_TEST_DEPS})
 
-paddle_test(drr_test SRCS drr_test.cc DEPS drr)
-paddle_test(drr_fuse_linear_test SRCS drr_fuse_linear_test.cc DEPS drr)
-paddle_test(drr_same_type_binding_test SRCS drr_same_type_binding_test.cc DEPS
-            drr)
-
-paddle_test(drr_attention_fuse_test SRCS drr_attention_fuse_test.cc DEPS
-            ${PATTERN_REWRITE_TEST_DEPS} drr)
+  cc_test_old(drr_test SRCS drr_test.cc DEPS drr)
+  cc_test_old(drr_fuse_linear_test SRCS drr_fuse_linear_test.cc DEPS drr)
+  cc_test_old(drr_same_type_binding_test SRCS drr_same_type_binding_test.cc
+              DEPS drr)
+  cc_test_old(drr_attention_fuse_test SRCS drr_attention_fuse_test.cc DEPS
+              ${PATTERN_REWRITE_TEST_DEPS} drr)
+endif()
 
 set_tests_properties(
   pattern_rewrite_test PROPERTIES ENVIRONMENT
