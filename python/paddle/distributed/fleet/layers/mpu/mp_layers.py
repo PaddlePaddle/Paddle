@@ -243,13 +243,20 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
                     "with cuda 11.6 or higher."
                 )
 
-            if bias is None:
+            has_bias = bias is not None
+            multi_precision = hasattr(weight, "main_grad")
+            if not has_bias:
                 if weight.actual_grad is not None:
                     (
                         weight.acutal_grad,
                         _,
                     ) = paddle._C_ops.fused_linear_param_grad_add(
-                        x, dy, weight.actual_grad, None, True, False
+                        x,
+                        dy,
+                        weight.actual_grad,
+                        None,
+                        multi_precision,
+                        has_bias,
                     )
                     task.wait()
                     return dx, None
@@ -258,7 +265,7 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
                         dw,
                         _,
                     ) = paddle._C_ops.fused_linear_param_grad_add(
-                        x, dy, None, None, False, False
+                        x, dy, None, None, False, has_bias
                     )
                     task.wait()
                     return dx, dw
@@ -273,8 +280,8 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
                     dy,
                     weight.actual_grad,
                     bias.actual_grad,
-                    True,
-                    True,
+                    multi_precision,
+                    has_bias,
                 )
                 task.wait()
                 return dx, None, None
@@ -283,7 +290,7 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
                     dw,
                     dbias,
                 ) = paddle._C_ops.fused_linear_param_grad_add(
-                    x, dy, None, None, False, True
+                    x, dy, None, None, False, has_bias
                 )
                 task.wait()
                 return dx, dw, dbias
