@@ -20,7 +20,6 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_CUTLASS)
 #include "paddle/phi/kernels/funcs/weight_dequant_functor.h"
-#include "paddle/phi/kernels/fusion/cutlass/utils/cuda_utils.h"
 #endif
 
 namespace phi {
@@ -36,16 +35,8 @@ void WeightOnlyLinearGradKernel(const Context& dev_ctx,
                                 const int32_t arch,
                                 DenseTensor* x_grad) {
 #if defined(PADDLE_WITH_CUTLASS)
-  int32_t cuda_arch_version;
-  if (arch == 0) {
-    // Note(Zhengzekang): user do not set the arch, we will get SM Arch from
-    // device.
-    cuda_arch_version = getSMVersion();
-  } else {
-    cuda_arch_version = arch;
-  }
   PADDLE_ENFORCE_EQ(
-      cuda_arch_version,
+      arch,
       80,
       phi::errors::InvalidArgument(
           "Currently weightonly linear grad only support arch = 80. "));

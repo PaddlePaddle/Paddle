@@ -19,7 +19,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/weight_only_gemv.h"
 #if defined(PADDLE_WITH_CUTLASS)
 #include "paddle/phi/kernels/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/fpA_intB_gemm_template.h"
-#include "paddle/phi/kernels/fusion/cutlass/utils/cuda_utils.h"
 #endif
 
 namespace phi {
@@ -33,19 +32,11 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
                             const std::string& weight_dtype,
                             const int32_t arch,
                             DenseTensor* out) {
-  int32_t cuda_arch_version;
 #if defined(PADDLE_WITH_CUTLASS)
-  if (arch == 0) {
-    // Note(Zhengzekang): user do not set the arch, we will get SM Arch from
-    // device.
-    cuda_arch_version = getSMVersion();
-  } else {
-    cuda_arch_version = arch;
-  }
-  PADDLE_ENFORCE_EQ(((cuda_arch_version == 80) || (cuda_arch_version == 70)),
-                    true,
-                    phi::errors::InvalidArgument(
-                        "Currently, cuda_arch_version only support 70, 80."));
+  PADDLE_ENFORCE_EQ(
+      ((arch == 80) || (arch == 70)),
+      true,
+      phi::errors::InvalidArgument("Currently, arch only support 70, 80."));
 #else
   PADDLE_THROW(phi::errors::Unimplemented(
       "Please compile with cutlass to make cutlass available"));
@@ -64,7 +55,7 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
   int m = x.numel() / k;
 
   // m > 1: run gemm.
-  if (m > 1 || weight_dtype == "int4" || (cuda_arch_version == 70)) {
+  if (m > 1 || weight_dtype == "int4" || (arch == 70)) {
 /*
 Note(Zhengzekang):
 If using arch = 70, we always dispatch to weightonly Gemm,

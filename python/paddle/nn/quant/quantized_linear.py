@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _C_ops
+from paddle import _C_ops, version
 from paddle.base.data_feeder import check_dtype
 from paddle.base.framework import convert_np_dtype_to_dtype_
+from paddle.device.cuda import get_device_capability
 from paddle.framework import LayerHelper, in_dynamic_mode
 
 
-def weight_quantize(x, algo="weight_only_int8", arch=0):
+def weight_quantize(x, algo="weight_only_int8", arch=None):
     """
     Quantization function for weight_only and llm.int8's weight.
 
@@ -26,7 +27,7 @@ def weight_quantize(x, algo="weight_only_int8", arch=0):
         x (Tensor): The input Tensor to be quantized, the data type is float16 or bfloat16.
         algo (str): The algo that is x will be apply, must be one of 'weight_only_int8',
             'weight_only_int4' and 'llm.int8', default: 'weight_only_int8'.
-        arch (int): The compute arch for target device. For example, A100 is 80, v100 is 70, if you do not assign arch, we will get arch from your device, default: 0.
+        arch (int): The compute arch for target device. For example, A100 is 80, v100 is 70, if you do not assign arch, we will get arch from your device, default: None.
 
     Returns:
         out (Tensor): The Tensor which is the quantitative results, the data type is int8, the shape is transposition of x.
@@ -46,6 +47,20 @@ def weight_quantize(x, algo="weight_only_int8", arch=0):
             >>> print(scale.shape)
             [32]
     """
+    if arch is None:
+        # Get SMVersion from device.
+        cuda_version = version.cuda()
+        if cuda_version is not None and cuda_version != 'False':
+            major, minor = get_device_capability()
+            arch = int(major * 10 + minor)
+        else:
+            raise ValueError(
+                "Paddle is not compiled with CUDA, we cannot get SMVersion from device, please try to compile Paddle with CUDA"
+            )
+
+    assert (
+        arch == 70 or arch == 80
+    ), "Currently weight_quantize only support SM70/80. "
 
     if in_dynamic_mode():
         return _C_ops.weight_quantize(x, algo, arch)

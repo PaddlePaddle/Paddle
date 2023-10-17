@@ -19,9 +19,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/impl/weight_quantize_kernel_impl.h"
-#if defined(PADDLE_WITH_CUTLASS)
-#include "paddle/phi/kernels/fusion/cutlass/utils/cuda_utils.h"
-#endif
 
 namespace phi {
 
@@ -32,19 +29,11 @@ void quant_compute(const DeviceContext& dev_ctx,
                    DenseTensor* scale,
                    const std::string& algo,
                    const int32_t arch) {
-  int32_t cuda_arch_version;
 #if defined(PADDLE_WITH_CUTLASS)
-  if (arch == 0) {
-    // Note(Zhengzekang): user do not set the arch, we will get SM Arch from
-    // device.
-    cuda_arch_version = getSMVersion();
-  } else {
-    cuda_arch_version = arch;
-  }
-  PADDLE_ENFORCE_EQ(((cuda_arch_version == 80) || (cuda_arch_version == 70)),
-                    true,
-                    phi::errors::InvalidArgument(
-                        "Currently, cuda_arch_version only support 70, 80."));
+  PADDLE_ENFORCE_EQ(
+      ((arch == 80) || (arch == 70)),
+      true,
+      phi::errors::InvalidArgument("Currently, arch only support 70, 80."));
 #else
   PADDLE_THROW(phi::errors::Unimplemented(
       "Please compile with cutlass to make cutlass available"));
@@ -65,7 +54,7 @@ void quant_compute(const DeviceContext& dev_ctx,
   float* scale_data = scale->data<float>();
 
   DenseTensor x_int(out->type());
-  if (cuda_arch_version == 80) {
+  if (arch == 80) {
     x_int.Resize({static_cast<int64_t>(m), static_cast<int64_t>(n)});
   } else {
     // phi::Copy may change tensor meta info, here we transpose the quanted
@@ -93,12 +82,12 @@ void quant_compute(const DeviceContext& dev_ctx,
     funcs::Transpose<DeviceContext, int8_t, 2> trans;
     trans(dev_ctx, x_int, out, axis);
   } else {
-    if (cuda_arch_version == 70) {
+    if (arch == 70) {
       // Note(Zhengzekang): In sm70, we only need RowMajor layout, just add bias
       // to make it unsigned.
       add_bias_and_interleave_inplace<bits>(x_int_data, num);
       phi::Copy(dev_ctx, x_int, dev_ctx.GetPlace(), false, out);
-    } else if (cuda_arch_version == 80) {
+    } else if (arch == 80) {
       permute_B_rows_for_mixed_gemm<bits>(
           int_processed_data, x_int_data, std::vector<size_t>{m, n});
       subbyte_transpose_impl<bits>(
