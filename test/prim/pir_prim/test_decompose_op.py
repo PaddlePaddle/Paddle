@@ -13,8 +13,6 @@
 # limitations under the License.
 
 
-# run this: FLAGS_enable_new_ir_in_executor=True python test_program_prim.py or
-#           FLAGS_enable_pir_api=True FLAGS_enable_new_ir_in_executor=True python test_program_prim.py
 import unittest
 
 import numpy as np
