@@ -205,6 +205,9 @@ phi::DenseTensor *NaiveExecutor::FindTensor(const std::string &name) {
 
 void NaiveExecutor::RegisterOutputHook(const HookFunc &hookfunc) {
   output_hookfuncs_.push_back(hookfunc);
+  if (interpreter_core_) {
+    interpreter_core_->SetOutputHooks(output_hookfuncs_);
+  }
 }
 
 void NaiveExecutor::RegisterInputHook(const HookFunc &hookfunc) {
