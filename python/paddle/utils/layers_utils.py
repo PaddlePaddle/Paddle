@@ -393,6 +393,8 @@ def get_pir_shape_tensor(list_shape, place=_current_expected_place()):
             dim.stop_gradient = True
             if convert_dtype(dim.dtype) != 'int32':
                 dim = paddle.cast(x=dim, dtype='int32')
+            if dim.shape == []:
+                dim = paddle.reshape(dim, [-1])
             shape_tensor_list.append(dim)
         else:
             temp_out = paddle.full([1], dim, core.DataType.INT32, place)
