@@ -143,11 +143,12 @@ bool IsCurRankInMesh(const ProcessMesh& process_mesh) {
 }
 
 Place GetDefaultPlace() {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (phi::backends::gpu::GetGPUDeviceCount() >= 0) {
     return paddle::DefaultGPUPlace();
-  } else {
-    return paddle::CPUPlace();
   }
+#endif
+  return paddle::CPUPlace();
 }
 
 }  // namespace distributed
