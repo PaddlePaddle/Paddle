@@ -62,51 +62,17 @@ CondInstruction::CondInstruction(size_t id,
   }
   VLOG(6) << "finish process cond_var and output_vars";
 
-  auto true_branch_block = if_op.true_block();
-  auto true_branch_yied_inputs = GetYiedOpInputs(true_branch_block);
-  Scope* true_scope = &(value_exec_info->GetScope()->NewScope());
-  true_branch_inter_ =
-      new NewIRInterpreter(place,
-                           {},
-                           true_branch_block,
-                           true_scope,
-                           value_exec_info->NewChild(true_scope),
-                           {});
-
-  std::set<std::string> true_skip_gc_names_set;
-  for (auto value : true_branch_yied_inputs) {
-    true_skip_gc_names_.push_back(true_branch_inter_->GetNameByValue(value));
-    true_skip_gc_names_set.insert(true_branch_inter_->GetNameByValue(value));
-  }
-  true_branch_inter_->SetSkipGcVars(true_skip_gc_names_set);
-  VLOG(6) << "finish process true branch interpreter";
-
-  auto false_branch_block = if_op.false_block();
-  auto false_branch_yied_inputs = GetYiedOpInputs(false_branch_block);
-  Scope* false_scope = &(value_exec_info->GetScope()->NewScope());
-  false_branch_inter_ =
-      new NewIRInterpreter(place,
-                           {},
-                           false_branch_block,
-                           false_scope,
-                           value_exec_info->NewChild(false_scope),
-                           {});
-
-  std::set<std::string> false_skip_gc_names_set;
-  for (auto value : false_branch_yied_inputs) {
-    false_skip_gc_names_.push_back(false_branch_inter_->GetNameByValue(value));
-    false_skip_gc_names_set.insert(false_branch_inter_->GetNameByValue(value));
-  }
-  false_branch_inter_->SetSkipGcVars(false_skip_gc_names_set);
-  VLOG(6) << "finish process false branch interpreter";
-
   // NOTE(zhangbo): IfOp sub_block's inputs include two kind of value: one is
   // OpOperand of IfOp, and the other is external Values used in true_block or
   // false_block.
+  auto true_branch_block = if_op.true_block();
+  auto false_branch_block = if_op.false_block();
   std::unordered_map<pir::Value, std::vector<int>> inputs;
   GetInputIds(op, *value_exec_info, &inputs);
-  GetOutsideOpInputs(true_branch_block, *value_exec_info, &inputs);
-  GetOutsideOpInputs(false_branch_block, *value_exec_info, &inputs);
+  auto true_outside_inputs =
+      GetOutsideOpInputs(true_branch_block, *value_exec_info, &inputs);
+  auto false_outside_inputs =
+      GetOutsideOpInputs(false_branch_block, *value_exec_info, &inputs);
   SetInputs(inputs);
 
   std::unordered_map<pir::Value, std::vector<int>> outputs;
@@ -125,6 +91,52 @@ CondInstruction::CondInstruction(size_t id,
   }
   SetOutputs(outputs);
   VLOG(6) << "finish process inputs outputs index";
+
+  Scope* true_scope = &(value_exec_info->GetScope()->NewScope());
+  true_branch_inter_ =
+      new NewIRInterpreter(place,
+                           {},
+                           true_branch_block,
+                           true_scope,
+                           value_exec_info->NewChild(true_scope),
+                           {});
+
+  std::set<std::string> true_skip_gc_names_set;
+  for (auto value : GetYiedOpInputs(true_branch_block)) {
+    true_branch_outputs_.push_back(true_branch_inter_->GetNameByValue(value));
+    true_skip_gc_names_.push_back(true_branch_inter_->GetNameByValue(value));
+    true_skip_gc_names_set.insert(true_branch_inter_->GetNameByValue(value));
+  }
+  // NOTE(zhangbo): According to the concept of control flow, child scopes
+  // should not control the lifecycle of parent scope variables.
+  for (auto value : true_outside_inputs) {
+    true_skip_gc_names_.push_back(true_branch_inter_->GetNameByValue(value));
+    true_skip_gc_names_set.insert(true_branch_inter_->GetNameByValue(value));
+  }
+  true_branch_inter_->SetSkipGcVars(true_skip_gc_names_set);
+  VLOG(6) << "finish process true branch interpreter";
+
+  Scope* false_scope = &(value_exec_info->GetScope()->NewScope());
+  false_branch_inter_ =
+      new NewIRInterpreter(place,
+                           {},
+                           false_branch_block,
+                           false_scope,
+                           value_exec_info->NewChild(false_scope),
+                           {});
+
+  std::set<std::string> false_skip_gc_names_set;
+  for (auto value : GetYiedOpInputs(false_branch_block)) {
+    false_branch_outputs_.push_back(false_branch_inter_->GetNameByValue(value));
+    false_skip_gc_names_.push_back(false_branch_inter_->GetNameByValue(value));
+    false_skip_gc_names_set.insert(false_branch_inter_->GetNameByValue(value));
+  }
+  for (auto value : false_outside_inputs) {
+    false_skip_gc_names_.push_back(false_branch_inter_->GetNameByValue(value));
+    false_skip_gc_names_set.insert(false_branch_inter_->GetNameByValue(value));
+  }
+  false_branch_inter_->SetSkipGcVars(false_skip_gc_names_set);
+  VLOG(6) << "finish process false branch interpreter";
 }
 
 CondInstruction::~CondInstruction() {
@@ -150,10 +162,10 @@ void CondInstruction::Run() {
   DeviceContext().Wait();
   if (cond_var_->Get<phi::DenseTensor>().data<bool>()[0]) {
     true_branch_inter_->Run({}, false);
-    CopyBranchOutput(true_skip_gc_names_, true_branch_inter_);
+    CopyBranchOutput(true_branch_outputs_, true_branch_inter_);
   } else {
     false_branch_inter_->Run({}, false);
-    CopyBranchOutput(false_skip_gc_names_, false_branch_inter_);
+    CopyBranchOutput(false_branch_outputs_, false_branch_inter_);
   }
 
   // copy ouptut
