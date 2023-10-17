@@ -496,7 +496,7 @@ class ElasticManager:
 
         os.environ[
             'PADDLE_TRAINER_ID'
-        ] = f'{host_endpoints.index(self.curr_host)}'
+        ] = str(host_endpoints.index(self.curr_host))
         hosts = ','.join(
             [host_port.split(":")[0] for host_port in host_endpoints]
         )
@@ -549,7 +549,7 @@ class ElasticManager:
         self.args.ips = hosts
         os.environ[
             'PADDLE_TRAINER_ID'
-        ] = f'{sorted_endpoints.index(self.curr_host)}'
+        ] = str(sorted_endpoints.index(self.curr_host))
         os.environ['PADDLE_TRAINERS'] = hosts
         self.np = len(sorted_endpoints)
         os.environ['PADDLE_TRAINER_ENDPOINTS'] = ','.join(sorted_endpoints)
