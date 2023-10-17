@@ -20,6 +20,7 @@ from op_test import OpTest
 import paddle
 from paddle import base, incubate
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -92,11 +93,14 @@ class TestDropoutBiasFuseOp2(unittest.TestCase):
     # test the python side API for softmax_mask_fuse op
     def setUp(self):
         np.random.seed(123)
-        self.dtypes = ['float16', 'float32']
+        self.dtypes = ['float32', 'float16']
 
+    @test_with_pir_api
     def test_static(self):
         for dtype in self.dtypes:
-            with base.program_guard(base.Program(), base.Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 input_x = paddle.static.data(
                     name="x", shape=[1, 4, 32, 32], dtype=dtype
                 )
@@ -107,7 +111,7 @@ class TestDropoutBiasFuseOp2(unittest.TestCase):
 
                 exe = base.Executor(base.CUDAPlace(0))
                 fetches = exe.run(
-                    base.default_main_program(),
+                    paddle.static.default_main_program(),
                     feed={"x": x_in_np},
                     fetch_list=[rst],
                 )
