@@ -22,20 +22,11 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
-#include "paddle/fluid/pir/transforms/constant_folding_pass.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
-
-PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(full_int_array, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(reshape, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(fetch, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(transpose, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(concat, CPU, ALL_LAYOUT);
 
 class MultiHeadMatmulFusePattern
     : public pir::drr::DrrPatternBase<MultiHeadMatmulFusePattern> {
@@ -383,7 +374,6 @@ TEST(DrrTest, AttentionFuse) {
 
   pir::PassManager pm(ctx);
   pm.AddPass(pir::CreateAttentionFusePass());
-  //   pm.AddPass(pir::CreateConstantFoldingPass());
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);
