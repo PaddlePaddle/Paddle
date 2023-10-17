@@ -1,4 +1,4 @@
-# TODO(Aurelius84): new_ir_compiler depends on pd_op_dialect and could
+# TODO(Aurelius84): pir_compiler depends on pd_op_dialect and could
 # not found under CINN_ONLY mode
 if(NOT CINN_ONLY)
   set(CINN_DIALECT_BINARY_DIR
