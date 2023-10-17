@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstring>  // for memcpy
+#include <string>
+#include <vector>
+
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
@@ -219,11 +223,9 @@ void BatchCompute(const Context& dev_ctx,
     return;
   }
   INIT_OTHER_DEFINES;
-
   T* batched_input_data = dev_ctx.template Alloc<T>(batched_input);
   T* batched_out_data = dev_ctx.template Alloc<T>(batched_out);
   dev_ctx.template Alloc<T>(hidden);
-
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
   phi::funcs::LoDTensor2BatchFunctor<Context, T> to_batch;
 
