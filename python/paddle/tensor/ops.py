@@ -839,7 +839,7 @@ def round(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-1., -0.,  1.,  2.])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.round(x)
     else:
         check_variable_and_dtype(
