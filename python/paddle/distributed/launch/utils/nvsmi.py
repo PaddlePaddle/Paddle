@@ -76,7 +76,7 @@ def query_smi(query=None, query_type="gpu", index=None, dtype=None):
     return ret
 
 
-def query_rocm_smi(query=None, index=None, dtype=None):
+def query_rocm_smi(query=None, index=None, dtype=None, mem=32150):
     if not has_rocm_smi():
         return []
 
@@ -98,9 +98,9 @@ def query_rocm_smi(query=None, index=None, dtype=None):
         line = [
             line[0],
             line[7][: len(line[7]) - 1],
-            32000,
-            32000 * float(line[6][: len(line[6]) - 1]) / 100,
-            32000 - 32000 * float(line[6][: len(line[6]) - 1]) / 100,
+            mem,
+            mem * float(line[6][: len(line[6]) - 1]) / 100,
+            mem - mem * float(line[6][: len(line[6]) - 1]) / 100,
             time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
         ]
         for k, v, d in zip(query, line, dtype):
