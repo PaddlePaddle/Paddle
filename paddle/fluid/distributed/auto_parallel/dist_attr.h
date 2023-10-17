@@ -229,6 +229,10 @@ class OperatorDistAttr {
     return key + "_" + std::to_string(id_++);
   }
 
+  double run_time_us() const { return this->run_time_us_; }
+
+  void set_run_time_us(const double& us) { this->run_time_us_ = us; }
+
  private:
   static std::vector<std::string> fields_;
   std::map<std::string, TensorDistAttr> input_dist_attrs_;
@@ -245,6 +249,7 @@ class OperatorDistAttr {
   int stream_priority_ = 0;          // lower value, higher priority
   int64_t scheduling_priority_ = 0;  // lower value, higher priority
   std::map<std::string, bool> annotated_;
+  double run_time_us_ = -1.0;  // assign an invalid value here
 };
 
 inline std::ostream& operator<<(std::ostream& os, const OperatorDistAttr& obj) {
