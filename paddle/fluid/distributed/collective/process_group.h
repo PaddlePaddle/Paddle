@@ -91,6 +91,13 @@ class ProcessGroup {
 
   int GetGid() const { return gid_; }
 
+  std::string GetGroupMessage() const {
+    return std::string("rank_in_group: ") + std::to_string(rank_) +
+           std::string(", nranks: ") + std::to_string(size_) +
+           std::string(", gid: ") + std::to_string(gid_) +
+           std::string(", backend: ") + GetBackendName();
+  }
+
   virtual std::string GetBackendName() const = 0;
 
   virtual phi::DeviceContext* GetDeviceContext(

@@ -192,7 +192,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
                 << ", stream: " << stream << ", rank_in_group: " << rank_
                 << ", nranks: " << size_ << ", offset: " << offset
                 << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream;
+                << ", use_calc_stream: " << use_calc_stream
+                << GetGroupMessage();
         comm_context->AllGather(out_tensor, in_tensor_maybe_partial, stream);
       },
       in_tensor_maybe_partial,
@@ -219,7 +220,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
                 << ", ncclcomm: " << comm_context->GetNcclComm()
                 << ", stream: " << stream << ", rank_in_group: " << rank_
                 << ", nranks: " << size_ << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream;
+                << ", use_calc_stream: " << use_calc_stream
+                << GetGroupMessage();
 
         comm_context->AllReduce(
             out_tensor, in_tensor, ToNCCLRedType(opts.reduce_op), stream);
@@ -281,7 +283,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
                 << ", in_size_each_rank: "
                 << string::join_strings(in_size_each_rank, ',')
                 << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream;
+                << ", use_calc_stream: " << use_calc_stream
+                << GetGroupMessage();
 
         GroupStart();
         for (auto i = 0; i < size_; i++) {
@@ -347,7 +350,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
                 << ", ncclcomm: " << comm_context->GetNcclComm()
                 << ", stream: " << stream << ", rank_in_group: " << rank_
                 << ", nranks: " << size_ << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream;
+                << ", use_calc_stream: " << use_calc_stream
+                << GetGroupMessage();
         comm_context->Broadcast(out_tensor, in_tensor, root, stream);
       },
       in_tensor,
@@ -375,7 +379,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
                 << ", ncclcomm: " << comm_context->GetNcclComm()
                 << ", stream: " << stream << ", rank_in_group: " << rank_
                 << ", nranks: " << size_ << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream;
+                << ", use_calc_stream: " << use_calc_stream
+                << GetGroupMessage();
         comm_context->Reduce(out_tensor,
                              in_tensor,
                              ToNCCLRedType(opts.reduce_op),
@@ -406,7 +411,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::ReduceScatter(
                 << ", ncclcomm: " << comm_context->GetNcclComm()
                 << ", stream: " << stream << ", rank_in_group: " << rank_
                 << ", nranks: " << size_ << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream;
+                << ", use_calc_stream: " << use_calc_stream
+                << GetGroupMessage();
         comm_context->ReduceScatter(
             out_tensor, in_tensor, ToNCCLRedType(opts.reduce_op), stream);
       },
@@ -447,7 +453,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
                 << ", ncclcomm: " << comm_context->GetNcclComm()
                 << ", stream: " << stream << ", rank_in_group: " << rank_
                 << ", nranks: " << size_ << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream;
+                << ", use_calc_stream: " << use_calc_stream
+                << GetGroupMessage();
 
         int64_t numel = in_tensor.numel() / size_;
         if (rank_ == opts.root_rank) {
@@ -524,7 +531,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
             << ", ncclcomm: " << comm_context->GetNcclComm()
             << ", stream: " << stream << ", rank_in_group: " << rank_
             << ", nranks: " << size_ << ", sync_op: " << sync_op
-            << ", use_calc_stream: " << use_calc_stream;
+            << ", use_calc_stream: " << use_calc_stream << GetGroupMessage();
 
     GroupStart();
     // root receive from all devices
@@ -569,7 +576,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
                 << ", stream: " << stream << ", rank_in_group: " << rank_
                 << ", nranks: " << size_ << ", offset: " << offset
                 << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream;
+                << ", use_calc_stream: " << use_calc_stream
+                << GetGroupMessage();
 
         comm_context->Recv(tensor, tensor->numel(), src_rank, stream);
       },
@@ -605,7 +613,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send(
                 << ", stream: " << stream << ", rank_in_group: " << rank_
                 << ", nranks: " << size_ << ", offset: " << offset
                 << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream;
+                << ", use_calc_stream: " << use_calc_stream
+                << GetGroupMessage();
 
         comm_context->Send(tensor_maybe_partial,
                            tensor_maybe_partial.numel(),
@@ -650,7 +659,7 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
   ncclUniqueId nccl_id;
 
   VLOG(3) << "init nccl rank_in_group: " << rank_ << ", nranks: " << size_
-          << ", place key: " << place_key
+          << ", gid: " << gid_ << ", place key: " << place_key
           << ", nccl uniqueid: " << SerializeNCCLUniqueId(nccl_id);
 
   for (size_t i = 0; i < s_group_call_counter; ++i) {
@@ -674,7 +683,7 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
   auto nccl_comm_ctx = this->GetCommContext(&store_key);
   VLOG(3) << "Get nccl comm: " << nccl_comm_ctx->GetNcclComm()
           << " for place_key: " << place_key << " on rank_in_group: " << rank
-          << " nranks: " << num_ranks;
+          << " nranks: " << num_ranks << " gid: " << gid_;
 
   auto comm_ctx = std::make_unique<phi::GPUContext>(place);
   comm_ctx->set_nccl_comm(nccl_comm_ctx->GetNcclComm());
