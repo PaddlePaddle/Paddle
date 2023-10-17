@@ -131,7 +131,7 @@ void WhileInstruction::PassArgsToBodyBlock() {
     auto var_name = body_inter_->GetNameByValue(block_arg);
     auto* inner_var = body_inter_->local_scope()->GetVar(var_name);
     inner_var->GetMutable<phi::DenseTensor>()->ShareDataWith(
-        inputs_[i]->Get<phi::DenseTensor>());
+        outputs_[i]->Get<phi::DenseTensor>());
   }
 }
 
