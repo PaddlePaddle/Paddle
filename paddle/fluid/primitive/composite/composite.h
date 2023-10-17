@@ -14,9 +14,6 @@
 
 #pragma once
 
-#include <math.h>
-#include <vector>
-
 #include "paddle/fluid/primitive/primitive/primitive.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/fluid/primitive/utils/utils.h"
@@ -27,7 +24,6 @@ namespace details {
 
 template <typename T>
 Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
-  VLOG(0) << "Decomp prepare call mean's decomp rule ========";
   std::vector<int64_t> x_dim = phi::vectorize<int64_t>(x.dims());
   int64_t axis_size = axis.size();
   int64_t x_dim_size = x_dim.size();
