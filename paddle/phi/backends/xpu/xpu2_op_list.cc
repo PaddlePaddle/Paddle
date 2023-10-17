@@ -184,6 +184,8 @@ XPUOpMap& get_kl2_ops() {
       {"conv2d_transpose_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"conv2d_transpose",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
+      {"conv2d_pooling_xpu",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"conv2d_transpose_xpu",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"cumsum",
