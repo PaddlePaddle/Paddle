@@ -298,10 +298,6 @@ class TestAst2FuncWithExternalFunc(TestDygraphIfElse):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = call_external_func
 
-    @test_and_compare_with_new_ir()
-    def test_ast_to_func(self):
-        self.assertTrue((self._run_dygraph() == self._run_static()).all())
-
 
 class NetWithExternalFunc(paddle.nn.Layer):
     @paddle.jit.to_static
