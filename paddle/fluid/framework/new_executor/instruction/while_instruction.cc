@@ -66,12 +66,12 @@ WhileInstruction::WhileInstruction(size_t id,
   cond_var_ = inner_scope->GetVar(
       parent_exe_info->GetValue2VarName().at(while_op.operand_source(0)));
   for (size_t i = 1; i < while_op.num_operands(); ++i) {
-    while_op_inputs_.push_back(inner_scope->GetVar(
+    inputs_.push_back(inner_scope->GetVar(
         parent_exe_info->GetValue2VarName().at(while_op.operand_source(i))));
   }
 
   for (size_t i = 0; i < while_op.num_results(); ++i) {
-    while_op_outputs_.push_back(inner_scope->GetVar(
+    outputs_.push_back(inner_scope->GetVar(
         parent_exe_info->GetValue2VarName().at(while_op.result(i))));
   }
 
@@ -119,9 +119,9 @@ WhileInstruction::WhileInstruction(size_t id,
 }
 
 void WhileInstruction::CopyInputsToOutputs() {
-  for (size_t i = 0; i < while_op_outputs_.size(); ++i) {
-    while_op_outputs_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
-        while_op_inputs_[i]->Get<phi::DenseTensor>());
+  for (size_t i = 0; i < outputs_.size(); ++i) {
+    outputs_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
+        inputs_[i]->Get<phi::DenseTensor>());
   }
 }
 
@@ -131,7 +131,7 @@ void WhileInstruction::PassArgsToBodyBlock() {
     auto var_name = body_inter_->GetNameByValue(block_arg);
     auto* inner_var = body_inter_->local_scope()->GetVar(var_name);
     inner_var->GetMutable<phi::DenseTensor>()->ShareDataWith(
-        while_op_outputs_[i]->Get<phi::DenseTensor>());
+        outputs_[i]->Get<phi::DenseTensor>());
   }
 }
 
@@ -140,10 +140,10 @@ void WhileInstruction::GetValueFromBodyBlock() {
       body_inter_->local_scope()
           ->GetVar(body_skip_gc_names_[0])
           ->Get<phi::DenseTensor>());
-  for (size_t i = 0; i < while_op_outputs_.size(); ++i) {
+  for (size_t i = 0; i < outputs_.size(); ++i) {
     auto& out_var_name = body_skip_gc_names_[i + 1];
     auto* out_var = body_inter_->local_scope()->GetVar(out_var_name);
-    while_op_outputs_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
+    outputs_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
         out_var->Get<phi::DenseTensor>());
   }
 }
