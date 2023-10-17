@@ -5142,8 +5142,7 @@ def atleast_3d(x):
         if ndim == 0:
             return paddle.reshape(arr, (1, 1, 1))
         if ndim == 1:
-            size = arr.size
-
+            size = arr.shape[0]
             return paddle.reshape(arr, (1, size, 1))
         if ndim == 2:
             arr = paddle.unsqueeze(arr, axis=-1)

@@ -253,6 +253,26 @@ class TestAtleast3D0D(AtleastBase):
         super().dygraph_api('atleast_3d')
 
 
+class TestAtleast3D1D(AtleastBase):
+    # test atleast_3d function using 0 dim tensor
+    def setUp(self):
+        # for 0 dim
+        self.x = np.array([1.0], dtype="float64")
+        self.x_shape = [1]
+        self.x_dtype = "float64"
+        self.place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+
+    def test_static_api(self):
+        super().static_api('atleast_3d')
+
+    def test_dygraph_api(self):
+        super().dygraph_api('atleast_3d')
+
+
 class TestAtleast3D2D(AtleastBase):
     # test atleast_3d function using 2 dim tensor
     def setUp(self):
