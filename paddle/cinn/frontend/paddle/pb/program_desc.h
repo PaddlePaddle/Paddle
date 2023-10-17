@@ -29,6 +29,7 @@ class ProgramDesc : public cpp::ProgramDescAPI {
   ProgramDesc() = delete;
 
   explicit ProgramDesc(framework_proto::ProgramDesc *desc) : desc_(desc) {
+    // liuchenghao: problematic code
     CHECK(desc_);
   }
 
