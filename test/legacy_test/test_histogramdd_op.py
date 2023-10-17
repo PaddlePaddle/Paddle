@@ -87,6 +87,11 @@ class TestHistogramddAPI(unittest.TestCase):
             np.testing.assert_allclose(edge, expect_edge, atol=1e-8)
 
         paddle.enable_static()
+        
+        
+    def test_error(self):
+        pass
+        
 
 class TestHistogramddAPICase1ForDensity(TestHistogramddAPI):
     def init_input(self):
@@ -376,7 +381,86 @@ class TestHistogramddAPICase10ForTensorBin(TestHistogramddAPI):
                             [  0.,  20., 100.]]
 
 
+# histogramdd(sample, bins=10, range=None, density=False, weights=None, name=None):
+class TestHistogramddAPI_type_error1(TestHistogramddAPI):
+    def test_error(self):
+        sample = paddle.to_tensor([[False, True],[True, False]])
+        with self.assertRaises(TypeError):
+            paddle.histogramdd(sample)
 
+class TestHistogramddAPI_type_error2(TestHistogramddAPI):
+    def test_error(self):
+        sample = paddle.to_tensor([
+                [[1., 2.], [3., 4.]],
+                [[5., 6.], [7., 8.]],
+                [[9., 10.], [11., 12.]],
+                [[13., 14.], [15., 16.]],
+            ])
+        bins = [3.4, 4.5]
+        with self.assertRaises(ValueError):
+            paddle.histogramdd(sample, bins=bins)
+
+class TestHistogramddAPI_type_error3(TestHistogramddAPI):
+    def test_error(self):
+        sample = paddle.to_tensor([
+                [[1., 2.], [3., 4.]],
+                [[5., 6.], [7., 8.]],
+                [[9., 10.], [11., 12.]],
+                [[13., 14.], [15., 16.]],
+            ])
+        range = 10
+        with self.assertRaises(TypeError):
+            paddle.histogramdd(sample, range=range)
+
+class TestHistogramddAPI_type_error4(TestHistogramddAPI):
+    def test_error(self):
+        sample = paddle.to_tensor([
+                [[1., 2.], [3., 4.]],
+                [[5., 6.], [7., 8.]],
+                [[9., 10.], [11., 12.]],
+                [[13., 14.], [15., 16.]],
+            ])
+        density = 10
+        with self.assertRaises(TypeError):
+            paddle.histogramdd(sample, density=density)
+        
+class TestHistogramddAPI_type_error5(TestHistogramddAPI):
+    def test_error(self):
+        sample = paddle.to_tensor([
+                [[1., 2.], [3., 4.]],
+                [[5., 6.], [7., 8.]],
+                [[9., 10.], [11., 12.]],
+                [[13., 14.], [15., 16.]],
+            ])
+        weights = 10
+        with self.assertRaises(AttributeError):
+            paddle.histogramdd(sample, weights=weights)
+        
+class TestHistogramddAPI_sample_weights_shape(TestHistogramddAPI):
+    def test_error(self):
+        sample = paddle.to_tensor([  # shape: [4,2]
+                [[1., 2.], [3., 4.]],
+                [[5., 6.], [7., 8.]],
+                [[9., 10.], [11., 12.]],
+                [[13., 14.], [15., 16.]],
+            ])
+        weights = paddle.to_tensor([2.,3.,4.])  # shape: [3,]
+        with self.assertRaises(AssertionError):
+            paddle.histogramdd(sample, weights=weights)
+            
+class TestHistogramddAPI_sample_weights_type(TestHistogramddAPI):
+    def test_error(self):
+        sample = paddle.to_tensor([  # float32
+                [[1., 2.], [3., 4.]],
+                [[5., 6.], [7., 8.]],
+                [[9., 10.], [11., 12.]],
+                [[13., 14.], [15., 16.]],
+            ], dtype=paddle.float32)
+        weights = paddle.to_tensor([2.,3.,4.], dtype=paddle.float64)  # float64
+        with self.assertRaises(AssertionError):
+            paddle.histogramdd(sample, weights=weights)
+            
+            
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

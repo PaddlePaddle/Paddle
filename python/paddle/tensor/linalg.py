@@ -3782,8 +3782,35 @@ def histogramdd(sample, bins=10, range=None, density=False, weights=None, name=N
 
 
     """
-    
-
+    def __check_sample(sample):
+        assert len(sample.shape) >= 2, (
+            "input sample must be a tensor with at least 2 dimensions."
+        )
+        check_variable_and_dtype(
+            sample,
+            'sample',
+            [
+                'float32',
+                'float64',
+            ],
+            'histogramdd',
+        )
+    def __check_bins(bins, sample):  # when Tensor[], check dtype
+        for bins_tensor in bins:
+            bins_tensor = paddle.to_tensor(bins_tensor)
+            check_variable_and_dtype(
+                bins_tensor,
+                'bins',
+                [
+                    'float32',
+                    'float64',
+                ],
+                'histogramdd',
+            )
+            assert bins_tensor.dtype == sample.dtype, (
+                "When bins is Tensor[], the dtype of bins must be the same as sample.\n"
+            )
+        
     def __check_weights(sample, weights):
         if weights is None: return
         sample_shape, weights_shape = sample.shape, weights.shape
@@ -3796,15 +3823,27 @@ def histogramdd(sample, bins=10, range=None, density=False, weights=None, name=N
                 "if weight tensor is provided,"
                 "it should have the same shape as the input tensor excluding its innermost dimension.\n"
             )
+        check_variable_and_dtype(
+            weights,
+            'weights',
+            [
+                'float32',
+                'float64',
+            ],
+            'histogramdd',
+        )
+        assert weights.dtype == sample.dtype, (
+            "The dtype of weights must be the same as sample.\n"
+        )
     def __check_range(D, range):
         if range is None: return
         check_type(range, 'range', (list, tuple), 'histogramdd')
         assert D * 2 == len(range), (
             "The length of range list must be %d\n" % (D * 2)
         )
-    assert len(sample.shape) >= 2, (
-        "input sample must be a tensor with at least 2 dimensions."
-    )
+    check_type(density, 'density', bool, 'histogramdd')
+    
+    __check_sample(sample)
     # weights
     __check_weights(sample, weights)
     D = sample.shape[-1]
@@ -3812,6 +3851,7 @@ def histogramdd(sample, bins=10, range=None, density=False, weights=None, name=N
     N = reshaped_input.shape[0]
     reshaped_weights = None
     if weights is not None:
+        weights = weights.astype('float32')
         reshaped_weights = weights.reshape([N])
         assert reshaped_weights.shape[0] == N, (
             "The size of weight must be %d" % N
@@ -3819,7 +3859,7 @@ def histogramdd(sample, bins=10, range=None, density=False, weights=None, name=N
     # range
     __check_range(D, range)
     if range is None:
-        range = paddle.zeros([D, 2])
+        range = paddle.zeros([D, 2], dtype=paddle.float32)
         maxv = paddle.max(reshaped_input, axis=0).reshape([-1])
         minv = paddle.min(reshaped_input, axis=0).reshape([-1])
 
@@ -3833,24 +3873,34 @@ def histogramdd(sample, bins=10, range=None, density=False, weights=None, name=N
             range = paddle.static.setitem(
                 range, (slice(None), 1), maxv
             )
-
-
-    else: range = paddle.to_tensor(range).reshape([D, 2])
+    else: range = paddle.to_tensor(range, dtype=paddle.float32).reshape([D, 2])
     # bins to edges
     edges = []
     hist_shape = []
     dedges = []
     if isinstance(bins, (int, list)): # int or int[]
         if isinstance(bins, int): bins = [bins] * D
+        assert len(bins) == D, (
+            "The length of bins must be %d when bins is a list.\n" % D
+        )
         for idx, r in enumerate(range):
+            if not isinstance(bins[idx], int):
+                raise ValueError(
+                    "The type of %d-th element in bins list must be int." % idx
+                )
             e = paddle.linspace(r[0], r[1], bins[idx] + 1, 'float32')
             edges.append(e)
             dedges.append(e.diff())
     elif isinstance(bins, tuple):  # tuple with D tensors for each innermost dimension
+        __check_bins(bins, sample)
         for bin in bins:
             bin = paddle.to_tensor(bin)
             edges.append(bin)
             dedges.append(bin.diff())
+    else:
+        raise ValueError(
+            "Input bins must be Tensor[], int[], or int."
+        )
     hist_shape = [edge.shape[0] + 1 for edge in edges]
     index_list = []
     # edges shape: [D, linspaced]
