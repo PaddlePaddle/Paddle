@@ -675,6 +675,16 @@ phi::KernelKey GetKernelKey(
 
   phi::KernelKey res(kernel_backend, kernel_layout, kernel_data_type);
 
+  if (op->isa<paddle::dialect::MemcpyOp>()) {
+    VLOG(6) << "MemcpyOp need a special handle";
+    int dst_place_type =
+        op->attribute("dst_place_type").dyn_cast<pir::Int32Attribute>().data();
+    std::cout << dst_place_type << std::endl;
+    if (dst_place_type == 1) {
+      res.set_backend(phi::Backend::GPU);
+    }
+  }
+
   if (op->isa<paddle::dialect::LoadCombineOp>()) {
     res.set_dtype(phi::DataType::FLOAT32);
     VLOG(8) << "LoadCombineOp's kernel data type must be FLOAT32";

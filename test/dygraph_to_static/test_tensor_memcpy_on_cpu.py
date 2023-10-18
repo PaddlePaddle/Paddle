@@ -69,6 +69,7 @@ class TestTensorCopyToCUDAOnDefaultCPU(unittest.TestCase):
         x2 = tensor_copy_to_cuda(x1)
         return x1.place, x2.place, x2.numpy()
 
+    @test_and_compare_with_new_ir(False)
     def test_tensor_cuda_on_default_cpu(self):
         if not paddle.base.is_compiled_with_cuda():
             return
