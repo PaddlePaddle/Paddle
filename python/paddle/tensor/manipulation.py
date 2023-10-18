@@ -5179,13 +5179,13 @@ def _index_fill_impl(x, index, axis, value, inplace):
             raise ValueError("value must be scalar or 0-D tensor")
 
     x_dim = len(x.shape)
-    if axis < 0:
-        axis = axis + x_dim
-
     if not (isinstance(axis, int)) or (axis > x_dim - 1) or axis < -x_dim:
         raise ValueError(
             "The axis should be int, and in range [-rank(x), rank(x))"
         )
+
+    if axis < 0:
+        axis = axis + x_dim
 
     perm = list(range(len(x.shape)))
     perm[0] = axis
@@ -5237,9 +5237,9 @@ def index_fill_(x, index, axis, value, name=None):
 
     Args:
         x (Tensor) : The Destination Tensor. Supported data types are int32, int64, float16, float32, float64.
-        axis (int): The dimension along which to index.
         index (Tensor): The 1-D Tensor containing the indices to index.
             The data type of ``index`` must be int32 or int64.
+        axis (int): The dimension along which to index.
         value (float): The tensor used to fill with.
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 

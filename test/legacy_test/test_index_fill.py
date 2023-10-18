@@ -23,46 +23,15 @@ from paddle.base import Program
 paddle.enable_static()
 
 
-def compute_index_put_ref(x, axis, index, value):
-    def compute_stride(axis, dims):
-        size = 1
-        for i in range(axis + 1, len(dims)):
-            size *= dims[i]
-        return size
+def compute_index_fill_ref(x, axis, index, value):
+    perm = list(range(len(x.shape)))
+    perm[0] = axis
+    perm[axis] = 0
 
-    ndims = len(x.shape)
-    finished = 0
-    counter = [0] * ndims
-    x_data = 0
-    x_stride = compute_stride(axis, x.shape)
-    x_dim_vec = x.shape
-    out = np.ndarray.flatten(x)
-
-    while finished == 0:
-        for i in index:
-            out[x_data + i * x_stride] = value
-        if ndims == 1:
-            break
-        for dim_i in range(ndims):
-            if dim_i == axis:
-                if dim_i == ndims - 1:
-                    finished = 1
-                    break
-                continue
-            x_stride_ = compute_stride(dim_i, x_dim_vec)
-            counter[dim_i] += 1
-            x_data += x_stride_
-            if counter[dim_i] == x_dim_vec[dim_i]:
-                if dim_i == ndims - 1:
-                    finished = 1
-                    break
-                else:
-                    x_data -= counter[dim_i] * x_stride_
-                    counter[dim_i] = 0
-            else:
-                break
-
-    return np.reshape(out, x_dim_vec)
+    out = np.transpose(x, perm)
+    out[index] = value
+    out = np.transpose(out, perm)
+    return out
 
 
 class TestIndexFillAPIBase(unittest.TestCase):
@@ -110,7 +79,7 @@ class TestIndexFillAPIBase(unittest.TestCase):
                     feed=feed_list,
                     fetch_list=[out],
                 )[0]
-                ref_res = compute_index_put_ref(
+                ref_res = compute_index_fill_ref(
                     self.x_np, self.axis, self.index_np, self.value
                 )
                 np.testing.assert_allclose(ref_res, pd_res)
@@ -122,7 +91,7 @@ class TestIndexFillAPIBase(unittest.TestCase):
             x_pd = paddle.to_tensor(self.x_np)
             index_pd = paddle.to_tensor(self.index_np)
             pd_res = paddle.index_fill(x_pd, index_pd, self.axis, self.value)
-            ref_res = compute_index_put_ref(
+            ref_res = compute_index_fill_ref(
                 self.x_np, self.axis, self.index_np, self.value
             )
             np.testing.assert_allclose(ref_res, pd_res)
