@@ -172,7 +172,7 @@ class IR_API TensorDimOp : public Op<TensorDimOp, OneResultTrait> {
   Value source() { return operand_source(0); }
   Value index() { return operand_source(1); }
   OpResult out() { return result(0); }
-  void Verify() {}
+  void VerifySig() {}
   std::optional<int64_t> GetConstantIndex();
 };
 
@@ -190,7 +190,7 @@ class IR_API ShapeOfOp : public Op<ShapeOfOp> {
 
   Value input() { return operand_source(0); }
   OpResult out() { return result(0); }
-  void Verify() {}
+  void VerifySig() {}
 };
 
 class IR_API FromElementsOp : public Op<FromElementsOp> {
@@ -207,7 +207,7 @@ class IR_API FromElementsOp : public Op<FromElementsOp> {
 
   std::vector<Value> elements();
   OpResult out() { return result(0); }
-  void Verify() {}
+  void VerifySig() {}
 };
 
 class IR_API ExtractOp : public Op<ExtractOp> {
@@ -256,7 +256,7 @@ class IR_API IndexCastOp : public Op<IndexCastOp> {
 
   Value in() { return operand_source(0); }
   OpResult out() { return result(0); }
-  void Verify() {}
+  void VerifySig() {}
 };
 
 }  // namespace pir::shape
