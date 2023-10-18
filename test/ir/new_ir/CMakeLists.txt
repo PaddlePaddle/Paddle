@@ -18,4 +18,6 @@ foreach(target ${TEST_IR_SYSTEM_CASES})
   py_test_modules(${target} MODULES ${target} ENVS FLAGS_enable_pir_api=true)
 endforeach()
 
+add_subdirectory(pass)
+
 set_tests_properties(test_pd_inplace_pass PROPERTIES TIMEOUT 60)
