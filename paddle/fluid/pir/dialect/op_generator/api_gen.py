@@ -69,7 +69,7 @@ API_DECLARE_TEMPLATE = """
 
 API_IMPL_TEMPLATE = """
 {ret_type} {api_name}({args}){{
-    {check_value_and_dtype}
+    {check_value_data_type}
     {handle_optional_inputs}
     {in_combine}
     {compute_op}
@@ -557,7 +557,7 @@ class CodeGen:
         )
 
         ret = API_IMPL_TEMPLATE.format(
-            check_value_and_dtype=self._gen_check_input_dtype(op_info, op_name),
+            check_value_data_type=self._gen_check_input_dtype(op_info, op_name),
             ret_type=ret_type,
             api_name=op_name,
             args=self._gen_api_args(
