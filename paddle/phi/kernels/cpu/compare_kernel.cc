@@ -110,6 +110,7 @@ PD_REGISTER_KERNEL(equal_all,
                      ALL_LAYOUT,                          \
                      phi::func##Kernel,                   \
                      bool,                                \
+                     int8_t,                              \
                      int16_t,                             \
                      int,                                 \
                      int64_t,                             \
