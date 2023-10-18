@@ -23,7 +23,7 @@ cc_test_old(
   SRCS
   drr_fuse_linear_test.cc
   DEPS
-  drr
+  fused_gemm_epilogue_pass
   gtest
   pd_op_dialect
   pir)
