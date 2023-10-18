@@ -89,18 +89,17 @@ class CUDAGraphContextManager {
 
 class CUDAKernelParams {
  public:
-  explicit CUDAKernelParams(const cudaKernelNodeParams *params)
-      : params_(params) {}
-
-  const void *func() const { return params_->func; }
+  explicit CUDAKernelParams(void **params) : kernelParams(params) {}
 
   template <typename T>
   T &As(size_t idx) const {
-    return *reinterpret_cast<T *>(params_->kernelParams[idx]);
+    return *reinterpret_cast<T *>(kernelParams[idx]);
   }
 
+  void **getParams() const { return kernelParams; };
+
  private:
-  const cudaKernelNodeParams *params_;
+  void **kernelParams;
 };
 
 using cudaGraphExecuterSetter_t = std::function<void(cudaGraphExec_t)>;
@@ -128,14 +127,10 @@ class CUDAGraphNodeLauncher {
  public:
   using parameterSetter_t = std::function<void(CUDAKernelParams &)>;
   using cudaKernelCallback_t = std::function<void(unsigned int)>;
-  using cudaMemcpyPreHook_t = std::function<void()>;
 
-  void KernelNodeLaunch(const void *cudaKernelPtr,
+  void KernelNodeLaunch(cudaFunction_t cudaFunc,
                         parameterSetter_t parameterSetter,
                         cudaKernelCallback_t cudakernelCallback);
-
-  void MemcpyNodeRegisterPreHook(const void *DstPtr,
-                                 cudaMemcpyPreHook_t prehook);
 
   std::vector<cudaGraphExecuterSetter_t> GetParameterSettersForExecGraph(
       cudaGraph_t graph);
@@ -161,8 +156,7 @@ class CUDAGraphNodeLauncher {
                    void **args);
 
   unsigned int id;
-  std::unordered_map<const void *,
-                     std::map<unsigned int, parameterSetter_t>>
+  std::unordered_map<cudaFunction_t, std::map<unsigned int, parameterSetter_t>>
       parameterSetters;
 };
 

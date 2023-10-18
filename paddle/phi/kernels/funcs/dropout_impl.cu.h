@@ -351,6 +351,8 @@ void DropoutFwGPUKernelDriver(
           dev_ctx, seed, is_fix_seed, seed_val, offset, &seed_data, &increment);
       void* functionPtr =
           reinterpret_cast<void*>(&(VectorizedRandomGenerator<T>));
+      cudaFunction_t cudaFunc;
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaGetFuncBySymbol(&cudaFunc, functionPtr));
       const phi::GPUContext* dev_ctx_p = &dev_ctx;
       phi::backends::gpu::CUDAGraphNodeLauncher::parameterSetter_t
           parameterSetter = [offset, dev_ctx_p](
@@ -362,7 +364,7 @@ void DropoutFwGPUKernelDriver(
                 static_cast<decltype(params.As<uint64_t>(2))>(seed_data);
             params.As<uint64_t>(8) =
                 static_cast<decltype(params.As<uint64_t>(8))>(increment);
-            VLOG(0) << "CUDA Graph curr seed = " << seed_data
+            VLOG(9) << "CUDA_GRAPH seed_data = " << seed_data
                     << ", increment = " << increment;
           };
       phi::backends::gpu::CUDAGraphNodeLauncher::cudaKernelCallback_t
@@ -380,13 +382,11 @@ void DropoutFwGPUKernelDriver(
                                                        main_offset);
           };
       phi::backends::gpu::CUDAGraphNodeLauncher::Instance().KernelNodeLaunch(
-          functionPtr, parameterSetter, cudaKernelCallback);
+          cudaFunc, parameterSetter, cudaKernelCallback);
 
-      VLOG(0) << "NORMAL curr seed = " << seed_data
+      VLOG(9) << "NON_CUDA_GRAPH seed_data = " << seed_data
               << ", increment = " << increment;
     }
-    VLOG(4) << "Dropout seed: " << seed << ", offset: " << offset
-            << ", seed_data:" << seed_data;
   } else {
     if (upscale_in_train) {
       // y = x
