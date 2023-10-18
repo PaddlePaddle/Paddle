@@ -352,9 +352,6 @@ def related_graph_outputs(global_outputs, related_ops, op):
     This API checks whether the op contributes to the outputs of the entire computation graph.
     '''
 
-    if not isinstance(global_outputs, list):
-        raise TypeError("The type of global_outputs should be list")
-
     if op in related_ops:
         op_index = related_ops.index(op)
         return op_index
@@ -410,8 +407,6 @@ def decompose_fwd_op(block, fwd_op, grad_var_to_var_map):
         decom_rule = register.get_decomp_rule(op_name)
 
         if decom_rule:
-            core.prim_config["composite_ops_record"].add(op_name)
-
             input_args = _prepare_python_api_arguments(fwd_op)
             pir.set_insertion_point(fwd_op)
             new_outs = _build_tensor_tuple(decom_rule(*input_args))
@@ -424,12 +419,10 @@ def decompose_fwd_op(block, fwd_op, grad_var_to_var_map):
                     grad_var_to_var_map[grad_var] = new_outs[
                         orig_outs.index(var)
                     ]
-            # ToDo: does the bwd_op_to_fwd_op map need to be updated?
 
             fwd_op.replace_all_uses_with(new_outs)
             block.remove_op(fwd_op)
             return new_outs
-
         else:
             return orig_outs
 
@@ -535,8 +528,7 @@ def decompose_bwd_op(
     # move the primitive ops to the insertion point
     insert_idx = bwd_op_idx
     for i in range(before_num_ops, after_num_ops):
-        appended_bwd_op = block.ops[i]
-        block.move_op(appended_bwd_op, insert_idx)
+        block.move_op(block.ops[i], insert_idx)
         insert_idx += 1
 
     # update_grad_var_to_var_map
@@ -545,7 +537,6 @@ def decompose_bwd_op(
             grad_var_to_var_map[new_input_grads[idx]] = grad_var_to_var_map.pop(
                 grad_var
             )
-    # ToDo: does the bwd_op_to_fwd_op map need to be updated?
 
     # replace the following use of original bwd_op's results with new primitive ops' results, and then remove original bwd_op
     bwd_op.replace_all_uses_with(new_input_grads)
