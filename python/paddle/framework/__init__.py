@@ -37,6 +37,7 @@ from ..base.framework import (  # noqa: F401
     _apply_pass,
     _create_tensor,
     _current_expected_place,
+    _current_expected_place_,
     _dygraph_tracer,
     _get_paddle_place,
     _global_flags,
