@@ -1356,11 +1356,11 @@ PHI_DEFINE_EXPORTED_bool(
     false,
     "Whether to use the auto_growth CUDA pinned allocator.");
 
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_bool(
     sync_after_alloc,
     false,
     "Whether to perform device synchronization after allocation.");
-PADDLE_DEFINE_EXPORTED_int64(alloc_fill_value,
+PHI_DEFINE_EXPORTED_int64(alloc_fill_value,
                              -1,
                              "Whether to fill fixed value after allocation. "
                              "This is usefull for debugging.");
