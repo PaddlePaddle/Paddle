@@ -145,7 +145,6 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_tensor_scalar_type_promotion_dynamic$|\
 ^test_model$|\
 ^test_py_reader_combination$|\
-^test_trt_convert_flatten$|\
 ^test_py_reader_push_pop$|\
 ^test_parallel_executor_feed_persistable_var$|\
 ^test_parallel_executor_inference_feed_partial_data$|\
@@ -217,7 +216,6 @@ long_time_test="^test_gru_op$|\
 ^test_gather_op$|\
 ^test_gather_nd_op$|\
 ^test_sequence_conv$|\
-^test_space_to_depth_op$|\
 ^test_activation_nn_grad$|\
 ^test_activation_op$|\
 ^test_bicubic_interp_v2_op$|\

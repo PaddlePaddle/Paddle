@@ -29,6 +29,7 @@
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/utils/test_macros.h"
 #ifdef PADDLE_WITH_TESTING
 #include <gtest/gtest.h>
 #include <gtest/gtest_prod.h>
@@ -82,27 +83,27 @@ class AnalysisPredictor::MkldnnQuantizer {
                                        std::vector<int> reference_bins) const;
 
   // Using the KL-divergence method get the most precise scaling factor.
-  std::pair<bool, phi::DenseTensor> GetKLScalingFactor(
+  TEST_API std::pair<bool, phi::DenseTensor> GetKLScalingFactor(
       const phi::DenseTensor& var_tensor, bool is_unsigned) const;
 
-  std::pair<bool, phi::DenseTensor> GetMaxChScalingFactor(
+  TEST_API std::pair<bool, phi::DenseTensor> GetMaxChScalingFactor(
       const phi::DenseTensor& var_tensor,
       bool is_unsigned,
       bool is_transposed) const;
 
-  std::pair<bool, phi::DenseTensor> GetMaxChGRUScalingFactor(
+  TEST_API std::pair<bool, phi::DenseTensor> GetMaxChGRUScalingFactor(
       const phi::DenseTensor& wx_tensor,
       const phi::DenseTensor& wh_tensor) const;
 
-  std::pair<bool, phi::DenseTensor> GetMaxChLSTMScalingFactor(
+  TEST_API std::pair<bool, phi::DenseTensor> GetMaxChLSTMScalingFactor(
       const phi::DenseTensor& wx_tensor,
       const phi::DenseTensor& wh_tensor) const;
 
-  std::pair<bool, phi::DenseTensor> GetMaxScalingFactor(
+  TEST_API std::pair<bool, phi::DenseTensor> GetMaxScalingFactor(
       const phi::DenseTensor& var_tensor, bool is_unsigned) const;
 
   // Returns histogram and bin width
-  std::pair<std::vector<int>, float> Histogram(
+  TEST_API std::pair<std::vector<int>, float> Histogram(
       const phi::DenseTensor& var_tensor,
       float min_val,
       float max_val,

@@ -78,7 +78,8 @@ void TensorCopyImpl(const TENSOR& src,
   auto size = src.numel() * phi::SizeOf(src.dtype());
 #endif
 
-  if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
+  if (platform::is_cpu_place(src_place) &&
+      platform::is_cpu_place(dst_place)) {  // NOLINT
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -273,7 +274,7 @@ void TensorCopyImpl(const TENSOR& src,
                     const platform::Place& dst_place,
                     TENSOR* dst) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  const platform::DeviceContext* dev_ctx;
+  const platform::DeviceContext* dev_ctx = nullptr;
   if (platform::is_gpu_place(dst_place) ||
       platform::is_custom_place(dst_place)) {
     dev_ctx = pool.Get(dst_place);
@@ -327,7 +328,8 @@ void TensorCopySync(const phi::DenseTensor& src,
     return;
   }
   auto size = src.numel() * phi::SizeOf(src.dtype());
-  if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
+  if (platform::is_cpu_place(src_place) &&
+      platform::is_cpu_place(dst_place)) {  // NOLINT
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -583,7 +585,7 @@ void TensorFromStream(std::istream& is,
                       const platform::DeviceContext& dev_ctx,
                       const size_t& seek,
                       const std::vector<int64_t>& shape) {
-  uint32_t version;
+  uint32_t version = 0;
   is.read(reinterpret_cast<char*>(&version), sizeof(version));
 
   PADDLE_ENFORCE_EQ(
@@ -596,7 +598,7 @@ void TensorFromStream(std::istream& is,
   proto::VarType::TensorDesc desc;
   {  // int32_t size
     // proto buffer
-    int32_t size;
+    int32_t size = 0;
     is.read(reinterpret_cast<char*>(&size), sizeof(size));
     std::unique_ptr<char[]> buf(new char[size]);  // NOLINT
     is.read(reinterpret_cast<char*>(buf.get()), size);
@@ -610,7 +612,7 @@ void TensorFromStream(std::istream& is,
     size_t seekg = seek * framework::SizeOfType(desc.data_type());
     is.seekg(seekg, is.cur);  // NOLINT
 
-    void* buf;
+    void* buf = nullptr;
     phi::CPUContext ctx;
     size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
     if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
@@ -650,7 +652,7 @@ void TensorFromStream(std::istream& is,
 void TensorFromStream(std::istream& is,
                       phi::DenseTensor* tensor,
                       const platform::DeviceContext& dev_ctx) {
-  uint32_t version;
+  uint32_t version = 0;
   is.read(reinterpret_cast<char*>(&version), sizeof(version));
   PADDLE_ENFORCE_EQ(
       version,
@@ -683,7 +685,7 @@ void TensorFromStream(std::istream& is,
     dims.reserve(static_cast<size_t>(desc.dims().size()));
     std::copy(desc.dims().begin(), desc.dims().end(), std::back_inserter(dims));
     tensor->Resize(phi::make_ddim(dims));
-    void* buf;
+    void* buf = nullptr;
     phi::CPUContext ctx;
     size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
     if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
@@ -961,7 +963,7 @@ std::ostream& operator<<(std::ostream& os, const LoD& lod) {
   return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const phi::DenseTensor& t) {
+TEST_API std::ostream& operator<<(std::ostream& os, const phi::DenseTensor& t) {
   if (!t.lod().empty()) {
     os << "  - lod: " << t.lod() << "\n";
   }

@@ -16,6 +16,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import dy2static_unittest
 
 import paddle
 from paddle import base
@@ -207,6 +208,7 @@ def test_list_pop_in_while_loop(x, iter_num):
     return a[0], b[2]
 
 
+@dy2static_unittest
 class TestListWithoutControlFlow(unittest.TestCase):
     def setUp(self):
         self.place = (
@@ -261,9 +263,7 @@ class TestListWithoutControlFlow(unittest.TestCase):
                     stat_res,
                     dy_res,
                     rtol=1e-05,
-                    err_msg='dygraph_res is {}\nstatic_res is {}'.format(
-                        dy_res, stat_res
-                    ),
+                    err_msg=f'dygraph_res is {dy_res}\nstatic_res is {stat_res}',
                 )
 
 
@@ -356,6 +356,7 @@ class ListWithCondNet(paddle.nn.Layer):
         return z
 
 
+@dy2static_unittest
 class TestListWithCondGradInferVarType(unittest.TestCase):
     def test_to_static(self):
         net = ListWithCondNet()

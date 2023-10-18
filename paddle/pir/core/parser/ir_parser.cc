@@ -24,23 +24,14 @@ IrParser::IrParser(IrContext* ctx, std::istream& is) {
   builder.reset(new Builder{ctx});
 }
 
-Token IrParser::ConsumeToken() {
-  auto token = lexer->ConsumeToken();
-  return token;
-}
+Token IrParser::ConsumeToken() { return lexer->ConsumeToken(); }
 
 std::string IrParser::GetErrorLocationInfo() {
   return "The error occurred in line " + std::to_string(lexer->GetLine()) +
          ", column " + std::to_string(lexer->GetColumn());
 }
 
-Token IrParser::PeekToken() {
-  auto token = lexer->ConsumeToken();
-  if (token.token_type_ != EOF_) {
-    lexer->Unget(token.val_.size());
-  }
-  return token;
-}
+Token IrParser::PeekToken() { return lexer->PeekToken(); }
 
 void IrParser::ConsumeAToken(std::string expect_token_val) {
   std::string token_val = ConsumeToken().val_;
@@ -65,7 +56,7 @@ Type IrParser::ParseType() {
     return builder->bfloat16_type();
   } else if (type_val == "f16") {
     ConsumeToken();
-    return builder->bfloat16_type();
+    return Float16Type::get(ctx);
   } else if (type_val == "f32") {
     ConsumeToken();
     return builder->float32_type();
@@ -86,13 +77,13 @@ Type IrParser::ParseType() {
     return builder->int16_type();
   } else if (type_val == "i32") {
     ConsumeToken();
-    return Int32Type::get(ctx);
+    return builder->int32_type();
   } else if (type_val == "i64") {
     ConsumeToken();
     return Int64Type::get(ctx);
   } else if (type_val == "index") {
     ConsumeToken();
-    return IndexType::get(ctx);
+    return builder->index_type();
   } else if (type_val == "c64") {
     ConsumeToken();
     return builder->complex64_type();
@@ -104,12 +95,15 @@ Type IrParser::ParseType() {
     ConsumeAToken("[");
     std::vector<Type> vec_type;
     Token vec_type_token = PeekToken();
+    if (vec_type_token.val_ == "]") {
+      ConsumeAToken("]");
+    }
     while (vec_type_token.val_ != "]") {
       Type cur_type = ParseType();
       vec_type.push_back(cur_type);
       vec_type_token = ConsumeToken();
     }
-    return VectorType::get(ctx, vec_type);
+    return builder->vec_type(vec_type);
   } else {
     IR_ENFORCE(type_val.find('.') != std::string::npos,
                "No function parsing " + type_val + " exists!" +
@@ -128,23 +122,39 @@ Attribute IrParser::ParseAttribute() {
   auto parenthesis_token = ConsumeToken();
   if (parenthesis_token.val_ == "true" || parenthesis_token.val_ == "false") {
     return builder->bool_attr(parenthesis_token.val_ == "true");
+  } else if (parenthesis_token.token_type_ == STRING) {
+    std::string val = parenthesis_token.val_;
+    val = val.substr(1, val.size() - 2);
+    return builder->str_attr(val);
+  } else if (parenthesis_token.val_ == "[") {
+    std::vector<Attribute> array_attribute;
+    while (PeekToken().val_ != "]") {
+      array_attribute.push_back(ParseAttribute());
+      if (PeekToken().val_ == "]") break;
+      ConsumeAToken(",");
+    }
+    ConsumeAToken("]");
+    return builder->array_attr(array_attribute);
   }
   std::string attribute_type = PeekToken().val_;
-  if (attribute_type == "String") {
-    ConsumeAToken("String");
-    ConsumeAToken(")");
-    std::string val = ConsumeToken().val_;
-    return builder->str_attr(val);
-  } else if (attribute_type == "Float") {
+  if (attribute_type == "Float") {
     ConsumeAToken("Float");
     ConsumeAToken(")");
     std::string val = ConsumeToken().val_;
-    return builder->float_attr(atof(val.c_str()));
+    if (val == "-") {
+      ConsumeAToken("inf");
+      float neg_inf = -std::numeric_limits<float>::infinity();
+      return builder->float_attr(neg_inf);
+    } else if (val == "inf") {
+      float pos_inf = std::numeric_limits<float>::infinity();
+      return builder->float_attr(pos_inf);
+    }
+    return builder->float_attr(static_cast<float>(atof(val.c_str())));
   } else if (attribute_type == "Double") {
     ConsumeAToken("Double");
     ConsumeAToken(")");
     std::string val = ConsumeToken().val_;
-    return builder->double_attr(atof(val.c_str()));
+    return builder->double_attr(std::stod(val.c_str()));
   } else if (attribute_type == "Int32") {
     ConsumeAToken("Int32");
     ConsumeAToken(")");
@@ -157,18 +167,6 @@ Attribute IrParser::ParseAttribute() {
     return builder->int64_attr(atoll(val.c_str()));
   } else if (attribute_type == "Pointer") {
     IR_THROW("This attribute is not currently supported by parser");
-  } else if (attribute_type == "Array") {
-    ConsumeAToken("Array");
-    ConsumeAToken(")");
-    ConsumeAToken("[");
-    std::vector<Attribute> array_attribute;
-    while (PeekToken().val_ != "]") {
-      array_attribute.push_back(ParseAttribute());
-      if (PeekToken().val_ == "]") break;
-      ConsumeAToken(",");
-    }
-    ConsumeAToken("]");
-    return builder->array_attr(array_attribute);
   } else {
     IR_ENFORCE(attribute_type.find('.') != std::string::npos,
                "No function parsing " + attribute_type + " exists!" +
@@ -216,7 +214,7 @@ Operation* IrParser::ParseOperation() {
 
   OpInfo opinfo = ParseOpInfo();
 
-  std::vector<Value> inputs = ParseOprandList();
+  std::vector<Value> inputs = ParseOperandList();
 
   pir::AttributeMap attributeMap = ParseAttributeMap();
 
@@ -268,7 +266,7 @@ OpInfo IrParser::ParseOpInfo() {
 
 // OprandList := ValueList
 // ValueList := ValueId(,ValueId)*
-std::vector<Value> IrParser::ParseOprandList() {
+std::vector<Value> IrParser::ParseOperandList() {
   ConsumeAToken("(");
   std::vector<Value> inputs{};
   Token ind_token = ConsumeToken();

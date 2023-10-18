@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import ir
+from paddle import pir
 from paddle.base import core
 from paddle.framework import LayerHelper
 
@@ -35,7 +35,8 @@ class TestCastOpTranscriber(unittest.TestCase):
                 x = paddle.to_tensor([2, 3, 4], 'float64')
                 y = paddle.cast(x, 'uint8')
 
-        _ = ir.translate_to_new_ir(main_program.desc)
+        _, mappings = pir.translate_to_new_ir_with_param_map(main_program.desc)
+        assert len(str(mappings)) > 0, "no mapping found"
 
 
 class TestElementwiseOpTranscriber(unittest.TestCase):
@@ -100,6 +101,27 @@ class TestElementwiseOpTranscriber(unittest.TestCase):
                     atol=1e-6,
                 )
 
+    def test_add_inplace(self):
+        place = core.Place()
+        place.set_place(paddle.CPUPlace())
+        exe = paddle.static.Executor(place)
+
+        new_scope = paddle.static.Scope()
+        main_program = paddle.static.Program()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                x = paddle.ones(shape=(100, 2, 3), dtype='float32')
+                y = paddle.ones(shape=(100, 2, 3), dtype='float32')
+
+                helper = LayerHelper('elementwise_add')
+                helper.append_op(
+                    type="elementwise_add",
+                    inputs={"X": x, "Y": y},
+                    outputs={"Out": y},
+                    attrs={"axis": -1},
+                )
+        _ = pir.translate_to_new_ir(main_program.desc)
+
 
 class TestEmbeddingOpTranscriber(unittest.TestCase):
     def test_op(self):
@@ -115,7 +137,7 @@ class TestEmbeddingOpTranscriber(unittest.TestCase):
                 )
                 output = embedding(x)
 
-        _ = ir.translate_to_new_ir(main_program.desc)
+        _ = pir.translate_to_new_ir(main_program.desc)
 
 
 class TestIncrementOpTranscriber(unittest.TestCase):
@@ -129,7 +151,7 @@ class TestIncrementOpTranscriber(unittest.TestCase):
                 data = paddle.zeros(shape=[1], dtype='float32')
                 counter = paddle.increment(data)
 
-        _ = ir.translate_to_new_ir(main_program.desc)
+        _ = pir.translate_to_new_ir(main_program.desc)
 
 
 class TestAssignValueOpTranscriber(unittest.TestCase):
@@ -146,7 +168,7 @@ class TestAssignValueOpTranscriber(unittest.TestCase):
                     stop_gradient=False,
                 )
 
-        _ = ir.translate_to_new_ir(main_program.desc)
+        _ = pir.translate_to_new_ir(main_program.desc)
 
 
 class TestRnnOpTranscriber(unittest.TestCase):
@@ -163,7 +185,7 @@ class TestRnnOpTranscriber(unittest.TestCase):
                 cell = paddle.nn.SimpleRNNCell(16, 32)
                 y, h = cell(x, prev_h)
 
-        _ = ir.translate_to_new_ir(main_program.desc)
+        _ = pir.translate_to_new_ir(main_program.desc)
 
 
 class TestEmptyVarTranslate(unittest.TestCase):
@@ -185,7 +207,7 @@ class TestEmptyVarTranslate(unittest.TestCase):
                 out2 = paddle.mean(out1)
                 sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.1)
                 sgd_optimizer.minimize(out2)
-        _ = ir.translate_to_new_ir(main_program.desc)
+        _ = pir.translate_to_new_ir(main_program.desc)
 
 
 class TestOneHotOpTranscriber(unittest.TestCase):
@@ -204,7 +226,7 @@ class TestOneHotOpTranscriber(unittest.TestCase):
                     x=label, num_classes=depth
                 )
 
-        _ = ir.translate_to_new_ir(main_program.desc)
+        _ = pir.translate_to_new_ir(main_program.desc)
 
     def test_normal_attribute(self):
         place = core.Place()
@@ -221,7 +243,7 @@ class TestOneHotOpTranscriber(unittest.TestCase):
                     x=label, num_classes=depth
                 )
 
-        _ = ir.translate_to_new_ir(main_program.desc)
+        _ = pir.translate_to_new_ir(main_program.desc)
 
 
 class TestReduceOpTranscriber(unittest.TestCase):
@@ -271,7 +293,7 @@ class TestIndexPutOpTranscriber(unittest.TestCase):
                 value = paddle.randn([2])
                 y = paddle.index_put(x, indices, value, False)
 
-        _ = ir.translate_to_new_ir(main_program.desc)
+        _ = pir.translate_to_new_ir(main_program.desc)
 
 
 class TestGradAddOpTranscriber(unittest.TestCase):
@@ -297,7 +319,7 @@ class TestGradAddOpTranscriber(unittest.TestCase):
                     attrs={"axis": -1},
                 )
 
-        _ = ir.translate_to_new_ir(main_program.desc)
+        _ = pir.translate_to_new_ir(main_program.desc)
 
 
 class TestShadowOutputSlice(unittest.TestCase):
@@ -322,7 +344,7 @@ class TestShadowOutputSlice(unittest.TestCase):
                     attrs={"name": out.name},
                 )
 
-        l = ir.translate_to_new_ir(main_program.desc)
+        l = pir.translate_to_new_ir(main_program.desc)
 
 
 class TestSetValueOp(unittest.TestCase):
@@ -408,6 +430,30 @@ class TestSetValueOp(unittest.TestCase):
                 self.assertTrue((ret[0][6:0:-4] == 0).all())
 
 
+class TestShareBufferOpTranscriber(unittest.TestCase):
+    def test_program(self):
+        place = core.Place()
+        place.set_place(paddle.CPUPlace())
+
+        new_scope = paddle.static.Scope()
+        main_program = paddle.static.Program()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                x = paddle.ones(shape=(100, 2, 3), dtype='float32')
+                y = paddle.ones(shape=(100, 2, 3), dtype='float32')
+
+                helper = LayerHelper('share_buffer')
+                helper.append_op(
+                    type="share_buffer",
+                    inputs={"X": x},
+                    outputs={"Out": y, "XOut": x},
+                )
+        l = pir.translate_to_new_ir(main_program.desc)
+        assert (
+            l.global_block().ops[2].name() == "pd_op.share_data"
+        ), "share_buffer should be translated to share_data"
+
+
 class TestCheckUnregisteredOp(unittest.TestCase):
     def test_program(self):
         main_program = paddle.static.Program()
@@ -418,7 +464,7 @@ class TestCheckUnregisteredOp(unittest.TestCase):
             cell = paddle.nn.SimpleRNNCell(16, 32)
             y, h = cell(x, prev_h)
 
-        ops = ir.check_unregistered_ops(main_program.desc)
+        ops = pir.check_unregistered_ops(main_program.desc)
         assert len(ops) == 0
 
 

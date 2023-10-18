@@ -25,21 +25,40 @@ namespace dialect {
 
 pir::OpResult builtin_combine(const std::vector<pir::Value>& x);
 
-pir::OpResult zeros_like(pir::Value x,
+std::vector<pir::OpResult> add_n_grad(const std::vector<pir::Value>& inputs,
+                                      const pir::Value& out_grad);
+
+pir::OpResult zeros_like(const pir::Value& x,
                          phi::DataType dtype = phi::DataType::UNDEFINED,
                          const Place& place = {});
 
-pir::OpResult get_parameter(const std::string& name,
-                            phi::DataType dtype,
-                            const std::vector<int64_t>& shape);
+pir::OpResult get_parameter(const std::string& name);
 
-void set_parameter(pir::Value parameter, const std::string& name);
+void set_parameter(const pir::Value& parameter, const std::string& name);
 
-pir::OpResult embedding_grad(pir::Value x,
-                             pir::Value weight,
-                             pir::Value out_grad,
+pir::OpResult embedding_grad(const pir::Value& x,
+                             const pir::Value& weight,
+                             const pir::Value& out_grad,
                              int64_t padding_idx = -1,
                              bool sparse = false);
+
+pir::OpResult split_with_num_grad(const std::vector<pir::Value>& out_grad,
+                                  int axis);
+
+pir::OpResult split_with_num_grad(const std::vector<pir::Value>& out_grad,
+                                  const pir::Value& axis);
+
+pir::OpResult ones(const std::vector<int64_t>& shape,
+                   phi::DataType dtype = phi::DataType::FLOAT32,
+                   const Place& place = phi::CPUPlace());
+
+pir::OpResult ones_like(pir::Value x_,
+                        phi::DataType dtype = phi::DataType::UNDEFINED,
+                        const Place& place = {});
+
+pir::OpResult zeros(const std::vector<int64_t>& shape,
+                    phi::DataType dtype = phi::DataType::FLOAT32,
+                    const Place& place = phi::CPUPlace());
 
 }  // namespace dialect
 }  // namespace paddle

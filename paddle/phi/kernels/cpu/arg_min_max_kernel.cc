@@ -151,9 +151,9 @@ void ArgMinMaxKernel(const Context& dev_ctx,
                      const Scalar& axis,
                      bool keepdims,
                      bool flatten,
-                     int dtype,
+                     DataType dtype,
                      DenseTensor* out) {
-  if (dtype < 0) {
+  if (dtype == DataType::UNDEFINED) {
     phi::VisitDataTypeTiny(
         phi::DataType::INT64,
         VisitDataArgMinMaxFunctor<Context, T, EnumArgMinMaxValue>(
@@ -161,7 +161,7 @@ void ArgMinMaxKernel(const Context& dev_ctx,
     return;
   }
   phi::VisitDataTypeTiny(
-      phi::TransToPhiDataType(dtype),
+      dtype,
       VisitDataArgMinMaxFunctor<Context, T, EnumArgMinMaxValue>(
           dev_ctx, x, axis.to<int64_t>(), keepdims, flatten, out));
 }
@@ -172,7 +172,7 @@ void ArgMinKernel(const Context& dev_ctx,
                   const Scalar& axis,
                   bool keepdims,
                   bool flatten,
-                  int dtype,
+                  DataType dtype,
                   DenseTensor* out) {
   ArgMinMaxKernel<Context, T, ArgMinMaxType::kArgMin>(
       dev_ctx, x, axis, keepdims, flatten, dtype, out);
@@ -184,7 +184,7 @@ void ArgMaxKernel(const Context& dev_ctx,
                   const Scalar& axis,
                   bool keepdims,
                   bool flatten,
-                  int dtype,
+                  DataType dtype,
                   DenseTensor* out) {
   ArgMinMaxKernel<Context, T, ArgMinMaxType::kArgMax>(
       dev_ctx, x, axis, keepdims, flatten, dtype, out);

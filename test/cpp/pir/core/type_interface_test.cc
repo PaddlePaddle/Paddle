@@ -45,25 +45,25 @@ TEST(shapedtype_test, shapedtype_test) {
   EXPECT_EQ(dense_tensor_type.offset(), offset);
 
   pir::ShapedTypeInterface dense_tensor_type_interface =
-      dense_tensor_type.dyn_cast_interface<pir::ShapedTypeInterface>();
+      dense_tensor_type.dyn_cast<pir::ShapedTypeInterface>();
 
   EXPECT_TRUE(dense_tensor_type_interface);
   EXPECT_EQ(
-      dense_tensor_type_interface.getElementType().isa<pir::Float32Type>(),
+      dense_tensor_type_interface.GetElementType().isa<pir::Float32Type>(),
       true);
-  EXPECT_EQ(dense_tensor_type_interface.getShape(), dims);
+  EXPECT_EQ(dense_tensor_type_interface.GetShape(), dims);
   EXPECT_EQ(dense_tensor_type_interface.kDynamic,
             std::numeric_limits<int64_t>::min());
-  EXPECT_EQ(dense_tensor_type_interface.getRank(), 2);
-  EXPECT_EQ(dense_tensor_type_interface.isDynamic(2), false);
-  EXPECT_EQ(dense_tensor_type_interface.isDynamicShape(dims), false);
-  EXPECT_EQ(dense_tensor_type_interface.isDynamicDim(1), false);
-  EXPECT_EQ(dense_tensor_type_interface.getNumDynamicDims(), 0);
-  EXPECT_EQ(dense_tensor_type_interface.getDimSize(0), 2);
+  EXPECT_EQ(dense_tensor_type_interface.GetRank(), 2);
+  EXPECT_EQ(dense_tensor_type_interface.IsDynamic(2), false);
+  EXPECT_EQ(dense_tensor_type_interface.IsDynamicShape(dims), false);
+  EXPECT_EQ(dense_tensor_type_interface.IsDynamicDim(1), false);
+  EXPECT_EQ(dense_tensor_type_interface.GetNumDynamicDims(), 0);
+  EXPECT_EQ(dense_tensor_type_interface.GetDimSize(0), 2);
 
   pir::Type fp32_type = pir::Float32Type::get(ctx);
   pir::ShapedTypeInterface fp32_type_interface =
-      fp32_type.dyn_cast_interface<pir::ShapedTypeInterface>();
+      fp32_type.dyn_cast<pir::ShapedTypeInterface>();
 
   EXPECT_FALSE(fp32_type_interface);
 }

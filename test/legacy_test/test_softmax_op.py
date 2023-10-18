@@ -84,9 +84,17 @@ class TestSoftmaxOp(OpTest):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.use_cudnn:
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+            self.check_output_with_place(
+                place,
+                atol=1e-5,
+                check_prim=True,
+                check_pir=True,
+                check_prim_pir=True,
+            )
         else:
-            self.check_output(check_prim=True)
+            self.check_output(
+                check_prim=True, check_pir=True, check_prim_pir=True
+            )
 
     def test_check_grad(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
@@ -99,6 +107,8 @@ class TestSoftmaxOp(OpTest):
                     "Out",
                     max_relative_error=0.01,
                     check_dygraph=(not self.use_mkldnn),
+                    check_pir=True,
+                    check_prim_pir=True,
                 )
         else:
             self.check_grad(
@@ -107,6 +117,8 @@ class TestSoftmaxOp(OpTest):
                 max_relative_error=0.01,
                 check_dygraph=(not self.use_mkldnn),
                 check_prim=True,
+                check_pir=True,
+                check_prim_pir=True,
             )
 
 
@@ -144,9 +156,13 @@ class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.use_cudnn:
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+            self.check_output_with_place(
+                place, atol=1e-5, check_pir=True, check_prim_pir=True
+            )
         else:
-            self.check_output(check_prim=True)
+            self.check_output(
+                check_prim=True, check_pir=True, check_prim_pir=True
+            )
 
 
 @unittest.skipIf(
@@ -156,6 +172,8 @@ class TestSoftmaxOp_ZeroDim2(TestSoftmaxOp):
     def setUp(self):
         self.op_type = "softmax"
         self.python_api = F.softmax
+        self.public_python_api = F.softmax
+        self.prim_op_type = "comp"
         self.use_cudnn = True
         self.use_mkldnn = False
         # explicilty use float32 for ROCm, as MIOpen does not yet support float64
@@ -178,9 +196,17 @@ class TestSoftmaxOp_ZeroDim2(TestSoftmaxOp):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.use_cudnn:
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+            self.check_output_with_place(
+                place,
+                check_prim=True,
+                atol=1e-5,
+                check_pir=True,
+                check_prim_pir=True,
+            )
         else:
-            self.check_output(check_prim=True)
+            self.check_output(
+                check_prim=True, check_pir=True, check_prim_pir=True
+            )
 
 
 class TestSoftmaxOp2(TestSoftmaxOp):
@@ -354,7 +380,13 @@ class TestSoftmaxFP16Op(TestSoftmaxOp):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
+                self.check_output_with_place(
+                    place,
+                    atol=1e-3,
+                    check_prim=True,
+                    check_pir=True,
+                    check_prim_pir=True,
+                )
 
     # FIXME: If the x_shape is [10, 10], gradient failed.
     def test_check_grad(self):
@@ -381,7 +413,13 @@ class TestSoftmaxFP16CUDNNOp(TestSoftmaxOp):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
+                self.check_output_with_place(
+                    place,
+                    atol=1e-3,
+                    check_prim=True,
+                    check_pir=True,
+                    check_prim_pir=True,
+                )
 
 
 @unittest.skipIf(
@@ -428,7 +466,11 @@ class TestSoftmaxBF16Op(OpTest):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place(
-            place, check_dygraph=(not self.use_mkldnn), check_prim=True
+            place,
+            check_dygraph=(not self.use_mkldnn),
+            check_prim=True,
+            check_pir=(not self.use_mkldnn),
+            check_prim_pir=(not self.use_mkldnn),
         )
 
     def test_check_grad(self):
@@ -440,6 +482,8 @@ class TestSoftmaxBF16Op(OpTest):
             numeric_grad_delta=0.05,
             check_dygraph=(not self.use_mkldnn),
             check_prim=True,
+            check_pir=(not self.use_mkldnn),
+            check_prim_pir=(not self.use_mkldnn),
         )
 
 

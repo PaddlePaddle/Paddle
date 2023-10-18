@@ -130,15 +130,19 @@ void CommContextManager::CreateGlooCommContext(
 void CommContextManager::CreateXCCLCommContext(
     const std::shared_ptr<Store>& store,
     const std::string& unique_comm_key,
-    const std::string& device_type,
+    const phi::Place& place,
     int rank,
-    int size) {
+    int size,
+    const std::string& hash_key) {
   phi::ccl::CCLRootId xccl_root_id;
   if (rank == 0) {
-    phi::DeviceManager::CCLGetUniqueId(device_type, &xccl_root_id);
+    phi::DeviceManager::CCLGetUniqueId(place.GetDeviceType(), &xccl_root_id);
   }
 
   std::string unique_key = "XCCLCommContext/" + unique_comm_key;
+  if (!hash_key.empty()) {
+    unique_key += "/" + hash_key;
+  }
   if (rank == 0) {
     store->set(unique_key, xccl_root_id);
   } else {
@@ -148,7 +152,7 @@ void CommContextManager::CreateXCCLCommContext(
           << ", unique_comm_key: " << unique_comm_key << ", xccl uniqueid: "
           << phi::ccl::SerializeXCCLUniqueId(xccl_root_id);
   auto xccl_comm_context =
-      std::make_unique<XCCLCommContext>(device_type, rank, size, xccl_root_id);
+      std::make_unique<XCCLCommContext>(place, rank, size, xccl_root_id);
   auto& comm_context_manager = CommContextManager::GetInstance();
   comm_context_manager.SetStore(store);
   comm_context_manager.Emplace(unique_comm_key, std::move(xccl_comm_context));
@@ -175,6 +179,20 @@ CommContext* CommContextManager::Get(const std::string& unique_comm_key) const {
 
   return id_to_comm_context_.at(unique_comm_key).get();
 }
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+int CommContextManager::GetRingId(const ncclComm_t& comm) const {
+  for (auto iter = id_to_comm_context_.begin();
+       iter != id_to_comm_context_.end();
+       ++iter) {
+    if (static_cast<phi::distributed::NCCLCommContext*>(iter->second.get())
+            ->GetNcclComm() == comm) {
+      return std::stoi(iter->first);
+    }
+  }
+  return -1;
+}
+#endif
 
 bool CommContextManager::Has(const std::string& unique_comm_key) const {
   return id_to_comm_context_.find(unique_comm_key) != id_to_comm_context_.end();

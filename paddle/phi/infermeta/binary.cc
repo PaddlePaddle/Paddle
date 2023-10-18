@@ -1170,7 +1170,7 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
 void ElementwiseInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
                           MetaTensor* out) {
-  return ElementwiseRawInferMeta(x, y, -1, std::move(out));
+  return ElementwiseRawInferMeta(x, y, -1, out);
 }
 
 void ElementwiseRawInferMeta(const MetaTensor& x,
@@ -1435,7 +1435,7 @@ void FusedMatmulInferMeta(const MetaTensor& x,
     y_broadcasted = true;
   }
 
-  size_t M, N;
+  size_t M = 0, N = 0;
   if (transpose_x) {
     M = dims_x[ndims_x - 1];
   } else {
@@ -2136,7 +2136,7 @@ void MatmulInferMeta(const MetaTensor& x,
     y_broadcasted = true;
   }
 
-  size_t M, N;
+  size_t M = 0, N = 0;
   if (trans_x) {
     M = dims_x[ndims_x - 1];
   } else {
@@ -3028,7 +3028,7 @@ void YoloBoxInferMeta(const MetaTensor& x,
                         "But received class_num (%s)",
                         class_num));
 
-  int box_num;
+  int box_num = 0;
   if ((dim_x[2] > 0 && dim_x[3] > 0) || config.is_runtime) {
     box_num = static_cast<int>(dim_x[2] * dim_x[3] * anchor_num);
   } else {
@@ -3103,7 +3103,7 @@ void SolveInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
     y_broadcasted = true;
   }
 
-  size_t M, N;
+  size_t M = 0, N = 0;
   if (trans_x) {
     M = x_dims_vec[x_dims_n - 1];
   } else {
@@ -3225,6 +3225,35 @@ void Unpool3dInferMeta(const MetaTensor& x,
     out->set_dims(phi::make_ddim(output_shape));
     out->set_dtype(x.dtype());
   }
+}
+
+void WeightDequantizeInferMeta(const MetaTensor& x,
+                               const MetaTensor& scale,
+                               const std::string& algo,
+                               DataType out_dtype,
+                               MetaTensor* out) {
+  PADDLE_ENFORCE_EQ(x.dims().size(),
+                    2UL,
+                    phi::errors::InvalidArgument(
+                        "The x tensor of dequantize op must be 2D, but got[%d]",
+                        x.dims().size()));
+  PADDLE_ENFORCE_EQ(
+      scale.dims().size(),
+      1UL,
+      phi::errors::InvalidArgument(
+          "The scale tensor of dequantize op must be 1D, but got[%d]",
+          scale.dims().size()));
+  PADDLE_ENFORCE_EQ(scale.dims()[0],
+                    x.dims()[0],
+                    phi::errors::InvalidArgument(
+                        "The scale tensor's shape must be equal to the x "
+                        "tensor's shape, but got [%d] not equal to [%d]",
+                        scale.dims()[0],
+                        x.dims()[0]));
+  int n = x.dims()[1];
+  int k = x.dims()[0];
+  out->set_dims(phi::make_ddim({n, k}));
+  out->set_dtype(out_dtype);
 }
 
 }  // namespace phi

@@ -41,7 +41,10 @@ void Concat(const Context& dev_ctx,
 
   MetaTensor meta_out(dense_out);
   ConcatInferMeta(meta_x_ptr, axis.to<int>(), &meta_out);
-  ConcatKernel<T, Context>(dev_ctx, x, axis, dense_out);
+
+  if (x[0]->initialized()) {
+    ConcatKernel<T, Context>(dev_ctx, x, axis, dense_out);
+  }
 }
 
 template <typename T, typename Context>

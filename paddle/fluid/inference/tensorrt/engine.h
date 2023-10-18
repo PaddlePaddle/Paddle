@@ -168,12 +168,14 @@ class TensorRTEngine {
     // not run fp16. When running fp16, the output accuracy of the model will be
     // affected, closing the plugin fp16 may bring some improvement on accuracy.
     bool disable_trt_plugin_fp16{false};
+    int optimization_level{3};
+    bool use_explicit_quantization{false};
   };
 
   // Weight is model parameter.
   class Weight {
    public:
-    Weight() = default;
+    Weight() { w_ = nvinfer1::Weights{}; }
     Weight(nvinfer1::DataType dtype, void* value, size_t num_elem) {
       w_.type = dtype;
       w_.values = value;
@@ -315,6 +317,14 @@ class TensorRTEngine {
 
   bool DynamicRangeIsSet(nvinfer1::ITensor* tensor) {
     return quant_dynamic_range_.count(tensor);
+  }
+
+  void SetRunFloat(const std::unordered_set<std::string>& ops) {
+    trt_ops_run_float_ = ops;
+  }
+
+  bool OpIsRunFloat(const std::string& op) const {
+    return trt_ops_run_float_.count(op) > 0;
   }
 
   // A pointer to CPU memory is needed of the TRT weight.
@@ -526,6 +536,10 @@ class TensorRTEngine {
 
   bool LowPrecisionIOEnabled() const { return params_.enable_low_precision_io; }
 
+  bool use_explicit_quantization() const {
+    return params_.use_explicit_quantization;
+  }
+
  private:
   // Each ICudaEngine object is bound to a specific GPU when it is instantiated,
   // ensure that the thread is associated with the correct device by calling
@@ -586,6 +600,9 @@ class TensorRTEngine {
 
   // Used for convert weight into Itensor
   const framework::Scope* scope_{nullptr};
+
+  // specify run on float to avoid overflow
+  std::unordered_set<std::string> trt_ops_run_float_;
 
 #if IS_TRT_VERSION_GE(6000)
   int binding_num_;

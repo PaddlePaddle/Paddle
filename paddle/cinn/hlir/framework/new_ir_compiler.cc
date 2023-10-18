@@ -23,7 +23,6 @@
 namespace cinn {
 namespace hlir {
 namespace framework {
-using newir::CompatibleInfo;
 
 // TODO(Aurelius84): Need abstract this logic to implement Proxy for
 // the co-existance with GraphCompiler.
@@ -38,6 +37,44 @@ std::unique_ptr<Program> NewIRCompiler::Build() {
   }
   VLOG(4) << "Groups size: " << groups.size();
   return std::move(Build(groups));
+}
+
+std::vector<newir::CUDAJITInfo> NewIRCompiler::BuildCUDAJITInfo(
+    const std::vector<newir::GroupPtr>& groups) {
+  std::vector<newir::CUDAJITInfo> vec_res;
+
+  auto op_lowerer = CreateOpLowerer<newir::GroupPtr>(target_);
+
+  std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
+  for (int i = 0; i < groups.size(); ++i) {
+    lowered_funcs.emplace_back(op_lowerer.Lower(groups[i]));
+  }
+
+  for (auto&& lowered_func : lowered_funcs) {
+    ProcessFunction(lowered_func);
+  }
+
+  compiler_ = backends::Compiler::Create(target_);
+  auto build_module = m_builder_.Build();
+  compiler_->Build(build_module, "");
+
+  auto instructions = BuildInstructions(groups);
+
+  auto fn_ptrs = compiler_->GetFnPtr();
+
+  for (int idx = 0; idx < groups.size(); ++idx) {
+    newir::CUDAJITInfo jit_info;
+    jit_info.fn_ptr = fn_ptrs[idx];
+
+    lowered_funcs[idx][0]->cuda_axis_info.CopyBlockDimsTo(
+        &(jit_info.block_dims));
+
+    lowered_funcs[idx][0]->cuda_axis_info.CopyGridDimsTo(&(jit_info.grid_dims));
+
+    vec_res.push_back(jit_info);
+  }
+
+  return vec_res;
 }
 
 std::unique_ptr<Program> NewIRCompiler::Build(
@@ -131,7 +168,7 @@ std::shared_ptr<Scope> BuildScope(const Target& target,
     if (visited.count(value) > 0) return;
     visited.emplace(value);
 
-    std::string name = CompatibleInfo::ValueName(value);
+    std::string name = newir::CompatibleInfo::ValueName(value);
     auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
     auto* var = scope->Var<Tensor>(name);
     auto& tensor = absl::get<Tensor>(*var);
