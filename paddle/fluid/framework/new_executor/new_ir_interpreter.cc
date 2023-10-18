@@ -1437,7 +1437,7 @@ void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
                                            value_exe_info_->GetValue2VarName());
       CheckGC(instr_node);
       VLOG(4) << "done CheckGC";
-      interpreter::LogDeviceMemoryStats(place_);
+      memory::LogDeviceMemoryStats(place_, instr_node->Name());
     }
     VLOG(5) << "after run kernel";
     instr_node->RecordEvent(place_);
