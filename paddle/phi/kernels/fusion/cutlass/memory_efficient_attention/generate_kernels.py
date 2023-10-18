@@ -39,8 +39,8 @@ assert sorted(DEFAULT_ARCH) == DEFAULT_ARCH
 
 
 def find_arch_range(min_arch, max_arch):
-    assert min_arch >= DEFAULT_ARCH[0] and min_arch < MAX_ARCH
-    assert max_arch >= DEFAULT_ARCH[0] and max_arch < MAX_ARCH
+    assert min_arch >= DEFAULT_ARCH[0] and min_arch <= MAX_ARCH
+    assert max_arch >= DEFAULT_ARCH[0] and max_arch <= MAX_ARCH
     assert min_arch <= max_arch
     n = len(DEFAULT_ARCH)
 

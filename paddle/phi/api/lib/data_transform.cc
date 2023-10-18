@@ -211,7 +211,7 @@ inline phi::DenseTensor TransDataPlace(const phi::DenseTensor& tensor,
   // But the embarrassment is that this solution this solution makes training
   // slower.
   phi::DenseTensor out;
-  phi::DeviceContext* dev_ctx;
+  phi::DeviceContext* dev_ctx = nullptr;
   if (dst_place.GetType() != AllocationType::CPU) {
     dev_ctx = pool.Get(dst_place);
   } else {
@@ -785,7 +785,8 @@ PrepareDataForDistTensor(const std::vector<Tensor>& input,
         // change(NCHW->NHWC), so the new DistTensor's meta maybe not unified.
         VLOG(6) << "PrepareDataForDistTensor return transformed dist tensor";
         out.push_back(std::make_shared<phi::distributed::DistTensor>(
-            trans_in_tensor, dist_tensor->dist_attr()));
+            std::make_shared<phi::DenseTensor>(trans_in_tensor),
+            dist_tensor->dist_attr()));
       }
     } else {
       out.push_back(nullptr);
