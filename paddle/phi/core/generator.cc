@@ -282,6 +282,8 @@ std::pair<uint64_t, uint64_t> Generator::IncrementOffset(
   std::lock_guard<std::mutex> lock(this->mu_);
   uint64_t cur_offset = this->state_.thread_offset;
   this->state_.thread_offset += increment_offset;
+  VLOG(0) << "cur_offset = " << cur_offset
+          << " increment_offset = " << increment_offset;
   return std::make_pair(this->state_.current_seed, cur_offset);
 #else
   PADDLE_THROW(phi::errors::PermissionDenied(

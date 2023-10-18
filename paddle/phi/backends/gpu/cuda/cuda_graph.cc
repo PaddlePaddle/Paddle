@@ -206,8 +206,7 @@ void CUDAGraph::EndSegmentCapture() {
   }
 
   capturing_graph_->pre_hooks_.emplace_back(
-      CUDAGraphKernelLauncher::Instance().GetParameterSettersForExecGraph(
-          graph));
+      CUDAGraphNodeLauncher::Instance().GetParameterSettersForExecGraph(graph));
 
   cudaGraphExec_t exec_graph;
   PADDLE_ENFORCE_GPU_SUCCESS(
@@ -273,7 +272,7 @@ void CUDAGraph::PrintToDotFiles(const std::string &dirname,
 }
 
 std::vector<cudaGraphExecuterSetter_t>
-CUDAGraphKernelLauncher::GetParameterSettersForExecGraph(cudaGraph_t graph) {
+CUDAGraphNodeLauncher::GetParameterSettersForExecGraph(cudaGraph_t graph) {
   size_t num_nodes;
   PADDLE_ENFORCE_GPU_SUCCESS(cudaGraphGetNodes(graph, nullptr, &num_nodes));
   std::vector<cudaGraphNode_t> nodes(num_nodes);
@@ -288,6 +287,7 @@ CUDAGraphKernelLauncher::GetParameterSettersForExecGraph(cudaGraph_t graph) {
       cudaKernelNodeParams params;
       auto err = cudaGraphKernelNodeGetParams(node, &params);
       if (err == cudaErrorInvalidDeviceFunction) {
+        VLOG(0) << "cudaErrorInvalidDeviceFunction!";
         continue;
       } else {
         PADDLE_ENFORCE_GPU_SUCCESS(err);
@@ -315,22 +315,56 @@ CUDAGraphKernelLauncher::GetParameterSettersForExecGraph(cudaGraph_t graph) {
 
         VLOG(0) << "Found a kernel paramter setter";
       }
+    } else if (type == cudaGraphNodeTypeMemcpy) {
+      cudaMemcpy3DParms params;
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaGraphMemcpyNodeGetParams(node, &params));
+
+      // TODO : MATCH MEMCPY NODES with CallBacks
+      auto memcpy = parameterSetters.find(params.dstPtr.ptr);
+      if (memcpy != parameterSetters.end()) {
+        auto launchSequence = memcpy->second;
+
+      }
     }
   }
 
   return hooks;
 }
 
-void CUDAGraphKernelLauncher::InnerLaunch(const void *func,
-                                          unsigned int blockSize,
-                                          unsigned int numBlocks,
-                                          size_t sharedMem,
-                                          cudaStream_t stream,
-                                          void **args) {
+void CUDAGraphNodeLauncher::InnerLaunch(const void *func,
+                                        unsigned int blockSize,
+                                        unsigned int numBlocks,
+                                        size_t sharedMem,
+                                        cudaStream_t stream,
+                                        void **args) {
   dim3 blockDims(blockSize, 1, 1);
   dim3 gridDims(numBlocks, 1, 1);
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaLaunchKernel(func, gridDims, blockDims, args, sharedMem, stream));
+}
+
+void CUDAGraphNodeLauncher::KernelNodeLaunch(
+    const void *cudaKernelPtr,
+    parameterSetter_t parameterSetter,
+    cudaKernelCallback_t cudakernelCallback) {
+  if (phi::backends::gpu::CUDAGraph::IsThisThreadCapturing()) {
+    unsigned int id = GenerateIndentifier();
+
+    parameterSetters[cudaKernelPtr][id] = parameterSetter;
+    cudakernelCallback(id);
+
+  } else {
+    cudakernelCallback(0);
+  }
+}
+
+void CUDAGraphNodeLauncher::MemcpyNodeRegisterPreHook(
+    const void *DstPtr, cudaMemcpyPreHook_t prehook) {
+  if (phi::backends::gpu::CUDAGraph::IsThisThreadCapturing()) {
+    // unsigned int id = GenerateIndentifier();
+
+    // parameterSetters[DstPtr][id] = prehook;
+  }
 }
 
 }  // namespace gpu

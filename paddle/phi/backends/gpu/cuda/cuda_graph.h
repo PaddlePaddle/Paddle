@@ -124,39 +124,32 @@ using cudaGraphExecuterSetter_t = std::function<void(cudaGraphExec_t)>;
 //    `GetParameterSetter`.
 // 4. The class is designed as a singleton; use `Instance()` to get the global
 // instance.
-class CUDAGraphKernelLauncher {
+class CUDAGraphNodeLauncher {
  public:
   using parameterSetter_t = std::function<void(CUDAKernelParams &)>;
+  using cudaKernelCallback_t = std::function<void(unsigned int)>;
+  using cudaMemcpyPreHook_t = std::function<void()>;
 
-  template <typename F, typename... Args>
-  void KernelLaunch(F func,
-                    parameterSetter_t parameterSetter,
-                    unsigned int blockSize,
-                    unsigned int numBlocks,
-                    size_t sharedMem,
-                    cudaStream_t stream,
-                    Args &...args) {
-    unsigned int id = GenerateIndentifier();
-    auto args_ = std::array<void *, sizeof...(Args) + 1>{(void *)(&id),
-                                                         (void *)(&args)...};
-    const void *func_p = (const void *)(func);
-    parameterSetters[func_p][id] = parameterSetter;
-    InnerLaunch(func_p, blockSize, numBlocks, sharedMem, stream, args_.data());
-  }
+  void KernelNodeLaunch(const void *cudaKernelPtr,
+                        parameterSetter_t parameterSetter,
+                        cudaKernelCallback_t cudakernelCallback);
+
+  void MemcpyNodeRegisterPreHook(const void *DstPtr,
+                                 cudaMemcpyPreHook_t prehook);
 
   std::vector<cudaGraphExecuterSetter_t> GetParameterSettersForExecGraph(
       cudaGraph_t graph);
 
   parameterSetter_t GetParameterSetter(const CUDAKernelParams &params);
 
-  static CUDAGraphKernelLauncher &Instance() {
-    static CUDAGraphKernelLauncher *launcher = new CUDAGraphKernelLauncher;
+  static CUDAGraphNodeLauncher &Instance() {
+    static CUDAGraphNodeLauncher *launcher = new CUDAGraphNodeLauncher;
     return *launcher;
   }
 
  private:
-  CUDAGraphKernelLauncher() : id(0) {}
-  DISABLE_COPY_AND_ASSIGN(CUDAGraphKernelLauncher);
+  CUDAGraphNodeLauncher() : id(0) {}
+  DISABLE_COPY_AND_ASSIGN(CUDAGraphNodeLauncher);
 
   unsigned int GenerateIndentifier() { return id++; }
 
@@ -169,7 +162,7 @@ class CUDAGraphKernelLauncher {
 
   unsigned int id;
   std::unordered_map<const void *,
-                     std::unordered_map<unsigned int, parameterSetter_t>>
+                     std::map<unsigned int, parameterSetter_t>>
       parameterSetters;
 };
 
@@ -315,6 +308,8 @@ class CUDAGraph {
   std::mutex mtx_;
 
   std::vector<SetSeedFunc> set_seed_funcs_;
+  // we collect all callbacks as a sequence of 'prehooks', i.e. these functions
+  // are called prior to the execution of the cudagraph.
   std::vector<std::vector<cudaGraphExecuterSetter_t>> pre_hooks_;
   std::mutex func_mtx_;
 
