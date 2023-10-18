@@ -55,7 +55,6 @@ const std::unordered_set<std::string> ProgramTranslator::no_cast_var_names = {
 
 const std::unordered_set<std::string> ProgramTranslator::unsupported_ops = {
     "conditional_block_grad",
-    "while",
     "while_grad",
 };
 
@@ -255,8 +254,11 @@ size_t TranslationContext::count(const TCKey& key) const {
   return values.size();
 }
 
-void TranslationContext::insert(const TCKey& key, const TCValue& value) {
+void TranslationContext::PushValue(const Key& key, const Value& value) {
   container_[key].push_back(value);
+}
+void TranslationContext::PopValue(const Key& key) {
+  container_[key].pop_back();
 }
 
 ProgramTranslator::ProgramTranslator(const ProgramDesc* legacy_program,
@@ -329,6 +331,8 @@ void ProgramTranslator::TranslateBlock(
         translate_completed[cond_id] = true;
       }
       VLOG(10) << "[op translated][conditional_block]" << if_op;
+    } else if (op->Type() == "while") {
+      TranslateWhileOperation(op, dest_block);
     } else {
       if (for_cond_block && op->Type() == "assign" &&
           std::count(skip_cond_assign.begin(),
@@ -382,8 +386,8 @@ pir::Operation* ProgramTranslator::TranslateCondIfOperation(
       op_inputs, attribute_map, op_output_types, op_info, 2);
 
   for (size_t i = 0; i < output_vardescs.size(); i++) {
-    param_map_.insert(output_vardescs[i]->Name(),
-                      VariableDefiningInfo(operation->result(i)));
+    param_map_.PushValue(output_vardescs[i]->Name(),
+                         VariableDefiningInfo(operation->result(i)));
   }
 
   dest_block->push_back(operation);
@@ -422,6 +426,74 @@ pir::Operation* ProgramTranslator::TranslateCondIfOperation(
   return operation;
 }
 
+void ProgramTranslator::TranslateWhileOperation(const OpDesc* op,
+                                                pir::Block* dest_block) {
+  VLOG(8) << "=============>Start to translate while op:" << op;
+  auto& sub_block = legacy_program_->Block(op->GetBlockAttrId("sub_block"));
+  int index = static_cast<int>(sub_block.OpSize()) - 1;
+  std::vector<std::pair<std::string, std::string>> loop_vars_reverse;
+  while (index >= 0) {
+    auto sub_op = sub_block.Op(index);
+    if (sub_op->Type() == "assign" &&
+        param_map_.count(sub_op->Output("Out")[0]) > 0) {
+      loop_vars_reverse.emplace_back(sub_op->Output("Out")[0],
+                                     sub_op->Input("X")[0]);
+      --index;
+    } else {
+      break;
+    }
+  }
+  PADDLE_ENFORCE(!loop_vars_reverse.empty(),
+                 platform::errors::PreconditionNotMet(
+                     "While op must has condition value input"));
+  PADDLE_ENFORCE(loop_vars_reverse.front().first == op->Input("Condition")[0],
+                 platform::errors::PreconditionNotMet(
+                     "The last op in sub_block of While op must used to assign "
+                     "condition var"));
+  auto op_info = ctx_->GetRegisteredOpInfo(paddle::dialect::WhileOp::name());
+  std::vector<pir::Value> op_inputs{
+      param_map_.at(loop_vars_reverse[0].first).value};
+  std::vector<pir::Type> op_outputs_type;
+  auto body_block = new pir::Block();
+  std::vector<TCValue> param_map_status;
+  for (size_t idx = loop_vars_reverse.size() - 1u; idx > 0; --idx) {
+    auto& name = loop_vars_reverse[idx].first;
+    auto& tc_value = param_map_.at(name);
+    auto val_type = tc_value.value.type();
+    op_inputs.push_back(tc_value.value);
+    op_outputs_type.push_back(val_type);
+    param_map_status.emplace_back(tc_value);
+    param_map_.PushValue(name, body_block->AddArgument(val_type));
+  }
+  pir::Operation* while_op =
+      pir::Operation::Create(op_inputs, {}, op_outputs_type, op_info, 1);
+  dest_block->push_back(while_op);
+  while_op->region(0).push_back(body_block);
+  TranslateBlock(sub_block, 0, index + 1, body_block);
+
+  auto yeild_info = ctx_->GetRegisteredOpInfo(pir::YieldOp::name());
+  std::vector<pir::Value> yeild_inputs{
+      param_map_.at(loop_vars_reverse[0].second).value};
+  for (size_t idx = loop_vars_reverse.size() - 1u; idx > 0; --idx) {
+    auto& name = loop_vars_reverse[idx].second;
+    yeild_inputs.push_back(param_map_.at(name).value);
+  }
+  body_block->push_back(
+      pir::Operation::Create(yeild_inputs, {}, {}, yeild_info));
+
+  index = 0;
+  for (size_t idx = loop_vars_reverse.size() - 1u; idx > 0; --idx) {
+    auto& name = loop_vars_reverse[idx].first;
+    param_map_.PushValue(name, param_map_status[index++]);
+  }
+  auto name_iter = loop_vars_reverse.rbegin();
+  for (size_t idx = 0; idx < while_op->num_results(); ++idx) {
+    param_map_.PushValue(name_iter++->first, while_op->result(idx));
+  }
+  while_op->Verify();
+  VLOG(8) << "=============>end to translate while op:" << op;
+}
+
 void ProgramTranslator::TranslateGeneralOperation(const OpDesc* src_op,
                                                   pir::Block* dest_block) {
   auto& op_translator = OpTranslator::instance();
@@ -432,7 +504,7 @@ void ProgramTranslator::TranslateGeneralOperation(const OpDesc* src_op,
     }
   }
   pir::Operation* operation = fn(ctx_, &param_map_, *src_op, dest_block);
-  VLOG(10) << "[op translated][special]" << operation << "end";
+  VLOG(10) << "[op translated][general]" << operation << "end";
 }
 
 inline pir::Operation* InsertGetParamaterOp(pir::IrContext* ctx,
@@ -451,7 +523,7 @@ inline pir::Operation* InsertGetParamaterOp(pir::IrContext* ctx,
 }
 
 inline pir::Operation* InsertSetParamaterOp(pir::IrContext* ctx,
-                                            pir::OpResult defining_op_result,
+                                            pir::Value defining_op_result,
                                             const VarDesc* var) {
   std::string set_parameter_op_name(pir::SetParameterOp::name());
   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(set_parameter_op_name);
@@ -502,7 +574,7 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
                   "VarDesc of [%s] can not be nullptr", var_name));
           pir::Operation* op = InsertGetParamaterOp(ctx_, var_desc);
           program_->block()->push_back(op);
-          param_map_.insert(var_name, VariableDefiningInfo(op->result(0)));
+          param_map_.PushValue(var_name, VariableDefiningInfo(op->result(0)));
           VLOG(10) << "[op translated][get parameter]" << var_name;
 
           program_->SetParameter(var_name, nullptr);
@@ -554,7 +626,8 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
         need_set_parameter_op &= (param_map_.count(var_name) != 0);
         need_set_parameter_op &= (!set_input_var_names.count(var_name));
         if (need_set_parameter_op) {
-          pir::OpResult defining_op_result = param_map_[var_name].value;
+          pir::OpResult defining_op_result =
+              param_map_[var_name].value.dyn_cast<pir::OpResult>();
           if (!defining_op_result) {
             continue;
           }
@@ -565,7 +638,8 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
                                           program_->block(),
                                           param_map_[var_name],
                                           var_name);
-            defining_op_result = param_map_.at(var_name).value;
+            defining_op_result =
+                param_map_.at(var_name).value.dyn_cast<pir::OpResult>();
           }
 
           pir::Operation* op = InsertSetParamaterOp(
@@ -604,11 +678,8 @@ void ProgramTranslator::SetStopGradientAttributeForAllValue(
       continue;
     }
     for (const auto& value_info : value_list) {
-      pir::OpResult value = value_info.value;
-      if (!value) {
-        PADDLE_THROW(phi::errors::PreconditionNotMet(
-            "Value of [%s] can not ber None", var_name));
-      }
+      pir::OpResult value = value_info.value.dyn_cast<pir::OpResult>();
+      if (!value) continue;
       auto* defining_op = value.owner();
       PADDLE_ENFORCE_NOT_NULL(
           defining_op,
@@ -645,11 +716,8 @@ void ProgramTranslator::SetIsPersisableAttributeForAllValue(
       continue;
     }
     for (const auto& value_info : value_list) {
-      pir::OpResult value = value_info.value;
-      if (!value) {
-        PADDLE_THROW(phi::errors::PreconditionNotMet(
-            "Value of [%s] can not ber None", var_name));
-      }
+      pir::OpResult value = value_info.value.dyn_cast<pir::OpResult>();
+      if (!value) continue;
       auto* defining_op = value.owner();
       PADDLE_ENFORCE_NOT_NULL(
           defining_op,
