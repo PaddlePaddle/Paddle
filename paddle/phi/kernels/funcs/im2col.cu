@@ -509,7 +509,7 @@ template <class DeviceContext, class T>
 class Im2ColFuseFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
  public:
   void operator()(const DeviceContext& context,
-                  T** im_data,
+                  const std::vector<T*>& im_datas,
                   const int size,
                   const int filter_height,
                   const int filter_width,
@@ -517,14 +517,48 @@ class Im2ColFuseFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
                   const int col_width,
                   const int max_col_height,
                   const int im_channels,
-                  int* col_height_data,
-                  int* im_height_data,
-                  size_t* lod_level_0_data,
+                  const std::vector<int>& col_height,
+                  const std::vecotr<int>& im_height,
+                  const std::vector<size_t>& lod_level_0,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding,
-                  T** col_data,
+                  std::vector<T*>& col_datas,  // NOLINT
                   const DataLayout data_layout) {
+    auto gpu_place = context.GetPlace();
+    auto all_hbm = memory::Alloc(
+        gpu_place,
+        (4 * thread_size + 1 + (4 * thread_size + 1) % 2) * sizeof(uint64_t));
+
+    int* im_height_data = reinterpret_cast<int*>(all_hbm->ptr());
+    int* col_height_data = reinterpret_cast<int*>(im_height_data + thread_size);
+    size_t* lod_level_0_data =
+        reinterpret_cast<size_t*>(col_height_data + thread_size);
+    float** im_data =
+        reinterpret_cast<float**>(lod_level_0_data + thread_size + 1);
+    float** col_data = reinterpret_cast<float**>(im_data + thread_size);
+
+    cudaMemcpy(im_height_data,
+               im_height.data(),
+               thread_size * sizeof(int),
+               cudaMemcpyHostToDevice);
+    cudaMemcpy(col_height_data,
+               col_height.data(),
+               thread_size * sizeof(int),
+               cudaMemcpyHostToDevice);
+    cudaMemcpy(lod_level_0_data,
+               lod_level_0.data(),
+               (thread_size + 1) * sizeof(size_t),
+               cudaMemcpyHostToDevice);
+    cudaMemcpy(im_data,
+               im_datas.data(),
+               thread_size * sizeof(T*),
+               cudaMemcpyHostToDevice);
+    cudaMemcpy(col_data,
+               col_datas.data(),
+               thread_size * sizeof(T*),
+               cudaMemcpyHostToDevice);
+
     int block_dim_x = 0;
     int block_dim_y = 0;
     if (filter_height <= 4 && filter_width <= 4) {
@@ -748,7 +782,7 @@ template <class DeviceContext, class T>
 class Col2ImFuseFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
  public:
   void operator()(const DeviceContext& context,
-                  T** col_data,
+                  const std::vecot<T*>& col_datas,
                   const int size,
                   const int filter_height,
                   const int filter_width,
@@ -756,13 +790,13 @@ class Col2ImFuseFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
                   const int col_width,
                   const int max_col_height,
                   const int im_channels,
-                  int* col_height_data,
-                  int* im_height_data,
-                  size_t* lod_level_0_data,
+                  const std::vector<int>& col_height,
+                  const std::vector<int>& im_height,
+                  const std::vector<size_t>& lod_level_0,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding,
-                  T** im_data,
+                  std::vector<T*>& im_datas,  // NOLINT
                   const DataLayout data_layout) {
     PADDLE_ENFORCE_EQ(
         (im_width + padding[1] + padding[3] -
@@ -772,6 +806,42 @@ class Col2ImFuseFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
         col_width,
         phi::errors::InvalidArgument("col_width and padding(padding_left, "
                                      "padding_right) are inconsistent."));
+
+    auto gpu_place = context.GetPlace();
+    auto all_hbm = memory::Alloc(
+        gpu_place,
+        (4 * thread_size + 1 + (4 * thread_size + 1) % 2) * sizeof(uint64_t));
+
+    int* im_height_data = reinterpret_cast<int*>(all_hbm->ptr());
+    int* col_height_data = reinterpret_cast<int*>(im_height_data + thread_size);
+    size_t* lod_level_0_data =
+        reinterpret_cast<size_t*>(col_height_data + thread_size);
+    float** im_data =
+        reinterpret_cast<float**>(lod_level_0_data + thread_size + 1);
+    float** col_data = reinterpret_cast<float**>(im_data + thread_size);
+
+    // 其实im_height 就是col_height，这块可以继续优化
+    cudaMemcpy(im_height_data,
+               im_height.data(),
+               thread_size * sizeof(int),
+               cudaMemcpyHostToDevice);
+    cudaMemcpy(col_height_data,
+               col_height.data(),
+               thread_size * sizeof(int),
+               cudaMemcpyHostToDevice);
+    cudaMemcpy(lod_level_0_data,
+               lod_level_0.data(),
+               (thread_size + 1) * sizeof(size_t),
+               cudaMemcpyHostToDevice);
+    cudaMemcpy(im_data,
+               im_datas.data(),
+               thread_size * sizeof(float*),
+               cudaMemcpyHostToDevice);
+    cudaMemcpy(col_data,
+               col_datas.data(),
+               thread_size * sizeof(float*),
+               cudaMemcpyHostToDevice);
+
     int block_dim_x = 0;
     int block_dim_y = 0;
     if (filter_height <= 4 && filter_width <= 4) {

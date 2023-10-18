@@ -20,6 +20,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/im2col.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -118,8 +121,6 @@ class ContextProjectFunctor {
     int filter_width = sequence_width;
     int col_width = 1;
     std::vector<int> col_height(thread_size, 0);
-    // framework::Vector<size_t> lod_level_0_cuda = lod_level_0;
-    // im_data, col_data
     std::vector<float*> im_datas(thread_size);
     std::vector<float*> col_datas(thread_size);
     int max_col_height = -1;
@@ -185,43 +186,43 @@ class ContextProjectFunctor {
 
     max_col_height = *std::max_element(col_height.begin(), col_height.end());
     // === kernel ===
-    auto gpu_place = context.GetPlace();
-    auto all_hbm = memory::Alloc(
-        gpu_place,
-        (4 * thread_size + 1 + (4 * thread_size + 1) % 2) * sizeof(uint64_t));
+    // auto gpu_place = context.GetPlace();
+    // auto all_hbm = memory::Alloc(
+    //     gpu_place,
+    //     (4 * thread_size + 1 + (4 * thread_size + 1) % 2) *
+    //     sizeof(uint64_t));
 
-    int* im_height_data = reinterpret_cast<int*>(all_hbm->ptr());
-    int* col_height_data = reinterpret_cast<int*>(im_height_data + thread_size);
-    size_t* lod_level_0_data =
-        reinterpret_cast<size_t*>(col_height_data + thread_size);
-    float** im_data =
-        reinterpret_cast<float**>(lod_level_0_data + thread_size + 1);
-    float** col_data = reinterpret_cast<float**>(im_data + thread_size);
+    // int* im_height_data = reinterpret_cast<int*>(all_hbm->ptr());
+    // int* col_height_data = reinterpret_cast<int*>(im_height_data +
+    // thread_size); size_t* lod_level_0_data =
+    //     reinterpret_cast<size_t*>(col_height_data + thread_size);
+    // float** im_data =
+    //    reinterpret_cast<float**>(lod_level_0_data + thread_size + 1);
+    // float** col_data = reinterpret_cast<float**>(im_data + thread_size);
 
-    // 其实im_height 就是col_height，这块可以继续优化
-    cudaMemcpy(im_height_data,
-               im_height.data(),
-               thread_size * sizeof(int),
-               cudaMemcpyHostToDevice);
-    cudaMemcpy(col_height_data,
-               col_height.data(),
-               thread_size * sizeof(int),
-               cudaMemcpyHostToDevice);
-    cudaMemcpy(lod_level_0_data,
-               lod_level_0.data(),
-               (thread_size + 1) * sizeof(size_t),
-               cudaMemcpyHostToDevice);
-    cudaMemcpy(im_data,
-               im_datas.data(),
-               thread_size * sizeof(float*),
-               cudaMemcpyHostToDevice);
-    cudaMemcpy(col_data,
-               col_datas.data(),
-               thread_size * sizeof(float*),
-               cudaMemcpyHostToDevice);
+    // cudaMemcpy(im_height_data,
+    //           im_height.data(),
+    //            thread_size * sizeof(int),
+    //            cudaMemcpyHostToDevice);
+    // cudaMemcpy(col_height_data,
+    //            col_height.data(),
+    //           thread_size * sizeof(int),
+    //            cudaMemcpyHostToDevice);
+    // cudaMemcpy(lod_level_0_data,
+    //            lod_level_0.data(),
+    //            (thread_size + 1) * sizeof(size_t),
+    //            cudaMemcpyHostToDevice);
+    // cudaMemcpy(im_data,
+    //            im_datas.data(),
+    //            thread_size * sizeof(float*),
+    //            cudaMemcpyHostToDevice);
+    // cudaMemcpy(col_data,
+    //            col_datas.data(),
+    //            thread_size * sizeof(float*),
+    //            cudaMemcpyHostToDevice);
 
     im2col_ocf_fuse(context,
-                    im_data,
+                    im_datas,
                     thread_size,
                     filter_height,
                     filter_width,
@@ -229,13 +230,13 @@ class ContextProjectFunctor {
                     col_width,
                     max_col_height,
                     im_channels,
-                    col_height_data,
-                    im_height_data,
-                    lod_level_0_data,
+                    col_height,
+                    im_height,
+                    lod_level_0,
                     dilation,
                     stride,
                     padding,
-                    col_data);
+                    col_datas);
     // === kernel ===
     if (padding_trainable) {
       PADDLE_ENFORCE_NOT_NULL(
@@ -417,44 +418,46 @@ class ContextProjectGradFunctor {
       threads_vec.clear();
       threads_vec.resize(concurrency_size);
       max_col_height = *std::max_element(col_height.begin(), col_height.end());
+      /*
+            auto gpu_place = context.GetPlace();
+            auto all_hbm = memory::Alloc(
+                gpu_place,
+                (4 * thread_size + 1 + (4 * thread_size + 1) % 2) *
+         sizeof(uint64_t));
 
-      auto gpu_place = context.GetPlace();
-      auto all_hbm = memory::Alloc(
-          gpu_place,
-          (4 * thread_size + 1 + (4 * thread_size + 1) % 2) * sizeof(uint64_t));
+            int* im_height_data = reinterpret_cast<int*>(all_hbm->ptr());
+            int* col_height_data =
+                reinterpret_cast<int*>(im_height_data + thread_size);
+            size_t* lod_level_0_data =
+                reinterpret_cast<size_t*>(col_height_data + thread_size);
+            float** im_data =
+                reinterpret_cast<float**>(lod_level_0_data + thread_size + 1);
+            float** col_data = reinterpret_cast<float**>(im_data + thread_size);
 
-      int* im_height_data = reinterpret_cast<int*>(all_hbm->ptr());
-      int* col_height_data =
-          reinterpret_cast<int*>(im_height_data + thread_size);
-      size_t* lod_level_0_data =
-          reinterpret_cast<size_t*>(col_height_data + thread_size);
-      float** im_data =
-          reinterpret_cast<float**>(lod_level_0_data + thread_size + 1);
-      float** col_data = reinterpret_cast<float**>(im_data + thread_size);
-
-      // 其实im_height 就是col_height，这块可以继续优化
-      cudaMemcpy(im_height_data,
-                 im_height.data(),
-                 thread_size * sizeof(int),
-                 cudaMemcpyHostToDevice);
-      cudaMemcpy(col_height_data,
-                 col_height.data(),
-                 thread_size * sizeof(int),
-                 cudaMemcpyHostToDevice);
-      cudaMemcpy(lod_level_0_data,
-                 lod_level_0.data(),
-                 (thread_size + 1) * sizeof(size_t),
-                 cudaMemcpyHostToDevice);
-      cudaMemcpy(im_data,
-                 im_datas.data(),
-                 thread_size * sizeof(float*),
-                 cudaMemcpyHostToDevice);
-      cudaMemcpy(col_data,
-                 col_datas.data(),
-                 thread_size * sizeof(float*),
-                 cudaMemcpyHostToDevice);
+            // 其实im_height 就是col_height，这块可以继续优化
+            cudaMemcpy(im_height_data,
+                       im_height.data(),
+                       thread_size * sizeof(int),
+                       cudaMemcpyHostToDevice);
+            cudaMemcpy(col_height_data,
+                       col_height.data(),
+                       thread_size * sizeof(int),
+                       cudaMemcpyHostToDevice);
+            cudaMemcpy(lod_level_0_data,
+                       lod_level_0.data(),
+                       (thread_size + 1) * sizeof(size_t),
+                       cudaMemcpyHostToDevice);
+            cudaMemcpy(im_data,
+                       im_datas.data(),
+                       thread_size * sizeof(float*),
+                       cudaMemcpyHostToDevice);
+            cudaMemcpy(col_data,
+                       col_datas.data(),
+                       thread_size * sizeof(float*),
+                       cudaMemcpyHostToDevice);
+      */
       col2im_ocf_fuse(context,
-                      col_data,
+                      col_datas,
                       thread_size,
                       filter_height,
                       filter_width,
@@ -462,13 +465,13 @@ class ContextProjectGradFunctor {
                       col_width,
                       max_col_height,
                       im_channels,
-                      col_height_data,
-                      im_height_data,
-                      lod_level_0_data,
+                      col_height,
+                      im_height,
+                      lod_level_0,
                       dilation,
                       stride,
                       padding,
-                      im_data);
+                      im_datas);
     }
     if (pad_grad) {
       if (padding_trainable) {

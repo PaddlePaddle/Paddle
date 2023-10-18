@@ -111,7 +111,7 @@ template <ColFormat Format, typename DeviceContext, typename T>
 class Im2ColFuseFunctor {
  public:
   void operator()(const DeviceContext& context,
-                  T** im_data,
+                  const std::vector<T*>& im_datas,
                   const int size,
                   const int filter_height,
                   const int filter_width,
@@ -119,13 +119,13 @@ class Im2ColFuseFunctor {
                   const int col_width,
                   const int max_col_height,
                   const int im_channels,
-                  int* col_height_data,
-                  int* im_height_data,
-                  size_t* lod_level_0_data,
+                  const std::vector<int>& col_height,
+                  const std::vecotr<int>& im_height,
+                  const std::vector<size_t>& lod_level_0,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding,
-                  T** col_data,
+                  std::vector<T*>& col_datas,  // NOLINT
                   const DataLayout data_layout = DataLayout::kNCHW);
 };
 
@@ -133,7 +133,7 @@ template <ColFormat Format, typename DeviceContext, typename T>
 class Col2ImFuseFunctor {
  public:
   void operator()(const DeviceContext& context,
-                  T** col_data,
+                  const std::vecot<T*>& col_datas,
                   const int size,
                   const int filter_height,
                   const int filter_width,
@@ -141,13 +141,13 @@ class Col2ImFuseFunctor {
                   const int col_width,
                   const int max_col_height,
                   const int im_channels,
-                  int* col_height_data,
-                  int* im_height_data,
-                  size_t* lod_level_0_data,
+                  const std::vector<int>& col_height,
+                  const std::vector<int>& im_height,
+                  const std::vector<size_t>& lod_level_0,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding,
-                  T** im_data,
+                  std::vector<T*>& im_datas,  // NOLINT
                   const DataLayout data_layout = DataLayout::kNCHW);
 };
 
