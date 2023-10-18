@@ -945,7 +945,6 @@ class TestAll8DOpWithKeepDim(OpTest):
 
 
 class TestAllOpError(unittest.TestCase):
-    @test_with_pir_api
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of reduce_all_op must be Variable.

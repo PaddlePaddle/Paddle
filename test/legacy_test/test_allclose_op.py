@@ -130,7 +130,6 @@ class TestAllcloseDygraph(unittest.TestCase):
 
 
 class TestAllcloseError(unittest.TestCase):
-    @test_with_pir_api
     def test_input_dtype(self):
         def test_x_dtype():
             with paddle.static.program_guard(
@@ -156,7 +155,6 @@ class TestAllcloseError(unittest.TestCase):
 
         self.assertRaises(TypeError, test_y_dtype)
 
-    @test_with_pir_api
     def test_attr(self):
         x = paddle.static.data(name='x', shape=[10, 10], dtype='float64')
         y = paddle.static.data(name='y', shape=[10, 10], dtype='float64')

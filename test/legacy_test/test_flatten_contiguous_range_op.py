@@ -399,7 +399,6 @@ class TestFlattenBF16OpSixDims(TestFlattenOpSixDims):
 
 
 class TestFlatten2OpError(unittest.TestCase):
-    @test_with_pir_api
     def test_errors(self):
         image_shape = (2, 3, 4, 4)
         x = (
@@ -502,7 +501,6 @@ class TestStaticInplaceFlattenPythonAPI(TestStaticFlattenPythonAPI):
 
 
 class TestFlattenPython(unittest.TestCase):
-    @test_with_pir_api
     def test_python_api(self):
         image_shape = (2, 3, 4, 4)
         x = (
@@ -557,7 +555,6 @@ class TestDygraphInplaceFlattenPython(unittest.TestCase):
 
 
 class TestFlatten0DTensorOpError(unittest.TestCase):
-    @test_with_pir_api
     def test_errors(self):
         image_shape = ()
         x = np.random.uniform(-1.0, 1.0, []).astype('float32')

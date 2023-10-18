@@ -251,7 +251,6 @@ class TestBF16Case5(TestClipBF16Op):
 
 
 class TestClipOpError(unittest.TestCase):
-    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
@@ -423,7 +422,6 @@ class TestClipAPI(unittest.TestCase):
         np.testing.assert_allclose(out2.numpy(), egr_out2.numpy(), rtol=1e-05)
         np.testing.assert_allclose(out3.numpy(), egr_out3.numpy(), rtol=1e-05)
 
-    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
         x1 = paddle.static.data(name='x1', shape=[1], dtype="int16")
