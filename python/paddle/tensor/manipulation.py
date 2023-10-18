@@ -312,7 +312,7 @@ def slice(input, axes, starts, ends):
             sliced_2 = paddle.slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends)
             # sliced_2 is input[1:3, 0:2, 2:4].
     """
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         attrs = ()
         starts_tensor = None
         ends_tensor = None
@@ -356,6 +356,38 @@ def slice(input, axes, starts, ends):
             ends = list(tensor_t)
             infer_flags = [-1 for i in range(len(axes))]
 
+        return _C_ops.slice(input, axes, starts, ends, infer_flags, [])
+    elif in_pir_mode():
+        if not isinstance(starts, (list, tuple, paddle.pir.OpResult)):
+            raise ValueError(
+                "Input starts must be an OpResult, python list or tuple."
+            )
+        if not isinstance(ends, (list, tuple, paddle.pir.OpResult)):
+            raise ValueError(
+                "Input ends must be an OpResult, python list or tuple."
+            )
+        infer_flags = [1 for i in range(len(axes))]
+        # starts
+        if isinstance(starts, paddle.pir.OpResult):
+            starts.stop_gradient = True
+            infer_flags = [-1 for i in range(len(axes))]
+        elif isinstance(starts, (list, tuple)):
+            if paddle.utils._contain_var(starts):
+                for i, dim in enumerate(starts):
+                    if isinstance(dim, paddle.pir.OpResult):
+                        infer_flags[i] = -1
+                starts = paddle.utils.get_int_tensor_list(starts)
+
+        # ends
+        if isinstance(ends, paddle.pir.OpResult):
+            ends.stop_gradient = True
+            infer_flags = [-1 for i in range(len(axes))]
+        elif isinstance(ends, (list, tuple)):
+            if paddle.utils._contain_var(ends):
+                for i, dim in enumerate(ends):
+                    if isinstance(dim, paddle.pir.OpResult):
+                        infer_flags[i] = -1
+                ends = paddle.utils.get_int_tensor_list(ends)
         return _C_ops.slice(input, axes, starts, ends, infer_flags, [])
     else:
         if not isinstance(starts, (list, tuple, Variable)):
@@ -2217,7 +2249,18 @@ def squeeze(x, axis=None, name=None):
 
     input = x
     axes = axis
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
+        return _C_ops.squeeze(input, axes)
+    elif in_pir_mode():
+        if isinstance(axes, int):
+            axes = [axes]
+        if isinstance(axes, paddle.pir.OpResult):
+            axes.stop_gradient = True
+        elif isinstance(axes, (list, tuple)):
+            if paddle.utils._contain_var(axes):
+                axes = paddle.utils.get_int_tensor_list(
+                    axes, default_dtype='int64'
+                )
         return _C_ops.squeeze(input, axes)
     else:
         helper = LayerHelper("squeeze", **locals())
@@ -2608,7 +2651,7 @@ def unsqueeze(x, axis, name=None):
     """
     input = x
     axes = axis
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         if isinstance(axes, int):
             axes = [axes]
         elif isinstance(axes, Variable):
@@ -2618,6 +2661,17 @@ def unsqueeze(x, axis, name=None):
                 item.item(0) if isinstance(item, Variable) else item
                 for item in axes
             ]
+        return _C_ops.unsqueeze(input, axes)
+    elif in_pir_mode():
+        if isinstance(axes, int):
+            axes = [axes]
+        if isinstance(axes, paddle.pir.OpResult):
+            axes.stop_gradient = True
+        elif isinstance(axes, (list, tuple)):
+            if paddle.utils._contain_var(axes):
+                axes = paddle.utils.get_int_tensor_list(
+                    axes, default_dtype='int64'
+                )
         return _C_ops.unsqueeze(input, axes)
     else:
         check_type(axes, 'axis/axes', (int, list, tuple, Variable), 'unsqueeze')
@@ -3237,7 +3291,7 @@ def tile(x, repeat_times, name=None):
         def get_attr_repeat_times(list_repeat_times):
             attrs_repeat_times = []
             for idx, times in enumerate(list_repeat_times):
-                if isinstance(times, (Variable, paddle.pir.OpResult)):
+                if isinstance(times, Variable):
                     attrs_repeat_times.append(-1)
                 else:
                     attrs_repeat_times.append(times)

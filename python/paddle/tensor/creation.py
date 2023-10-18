@@ -899,7 +899,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         else:
             if isinstance(shape, (list, tuple)):
                 if paddle.utils._contain_var(shape):
-                    shape = paddle.utils.get_pir_shape_tensor(shape, place)
+                    shape = paddle.utils.get_int_tensor_list(shape, place)
             elif isinstance(shape, paddle.pir.OpResult):
                 pass
             else:
