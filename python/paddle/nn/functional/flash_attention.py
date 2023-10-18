@@ -93,10 +93,10 @@ def _select_sdp(head_dim):
     scaled dot product attention, and the chosen approach depends on whether it
     is determined by the sdp_kernel configuration or specified through input values.
     """
-    place = paddle.get_device()
+    place = paddle.get_device().split(':')[0]
     # not use sdp_kernel
     if g_enable_flash is None:
-        if "gpu" not in place:
+        if place not in ['gpu'] + paddle.device.get_all_custom_device_type():
             return "math"
         else:
             return _select_sdp_cuda(head_dim)
