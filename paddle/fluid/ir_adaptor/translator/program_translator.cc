@@ -261,14 +261,6 @@ void TranslationContext::PopValue(const Key& key) {
   container_[key].pop_back();
 }
 
-void TranslationContext::UpdateValue(const Key& key, const Value& value) {
-  auto& vec = container_[key];
-  if (vec.empty())
-    vec.push_back(value);
-  else
-    vec.back() = value;
-}
-
 ProgramTranslator::ProgramTranslator(const ProgramDesc* legacy_program,
                                      pir::Program* program)
     : legacy_program_(legacy_program), program_(program) {
@@ -496,7 +488,7 @@ void ProgramTranslator::TranslateWhileOperation(const OpDesc* op,
   }
   auto name_iter = loop_vars_reverse.rbegin();
   for (size_t idx = 0; idx < while_op->num_results(); ++idx) {
-    param_map_.UpdateValue(name_iter++->first, while_op->result(idx));
+    param_map_.PushValue(name_iter++->first, while_op->result(idx));
   }
   while_op->Verify();
   VLOG(8) << "=============>end to translate while op:" << op;
