@@ -744,6 +744,11 @@ def _can_use_interpreter_core(program, place):
     return True
 
 
+@lru_cache()
+def _warning_once(msg):
+    logging.warning(msg)
+
+
 class FetchHandler:
     def __init__(self, var_dict=None, period_secs=60):
         assert var_dict is not None
@@ -1027,13 +1032,6 @@ class _ExecutorCache:
         return program, new_exe
 
 
-@lru_cache()
-def _log_force_set_program_cache(self, use_program_cache):
-    logging.warning(
-        f"use_program_cache is force set to {use_program_cache} by FLAGS_FORCE_USE_PROGRAM_CACHE"
-    )
-
-
 class Executor:
     """
     :api_attr: Static Graph
@@ -1184,9 +1182,8 @@ class Executor:
     def _get_micro_scopes_cache(self, program_cache_key):
         return self.micro_scope_cache.get(program_cache_key, None)
 
-    # just for testing, will be removed later
     def _log_force_set_program_cache(self, use_program_cache):
-        logging.warning(
+        _warning_once(
             f"use_program_cache is force set to {use_program_cache} by FLAGS_FORCE_USE_PROGRAM_CACHE"
         )
 
