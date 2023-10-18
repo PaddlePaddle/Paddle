@@ -102,7 +102,7 @@ class TestPrimBackwardBlacklistFlags(unittest.TestCase):
         x = paddle.randn([2, 4])
         x.stop_gradient = False
         net = PrimeNet()
-        net = paddle.jit.to_static(net)
+        net.forward = paddle.jit.to_static(fullgraph=True)(net.forward)
         out = net(x)
         loss = paddle.mean(out)
         loss.backward()
@@ -125,5 +125,4 @@ class TestPrimBackwardBlacklistFlags(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with paddle.jit.api.fallback_guard(False):
-        unittest.main()
+    unittest.main()

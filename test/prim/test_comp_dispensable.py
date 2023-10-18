@@ -25,11 +25,10 @@ class TestDispensable(unittest.TestCase):
         paddle.base.core._set_prim_all_enabled(False)
 
     def test_dispensable(self):
-        @paddle.jit.to_static
         def f(x):
             return paddle.split(x, num_or_sections=2)
 
-        f = paddle.jit.to_static(f)
+        f = paddle.jit.to_static(fullgraph=True)(f)
         x = paddle.rand((8,))
         x.stop_gradient = False
 
@@ -42,5 +41,4 @@ class TestDispensable(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with paddle.jit.api.fallback_guard(False):
-        unittest.main()
+    unittest.main()
