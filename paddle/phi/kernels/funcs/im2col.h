@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
-
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
@@ -110,26 +109,44 @@ class Col2ImFunctor {
 template <ColFormat Format, typename DeviceContext, typename T>
 class Im2ColFuseFunctor {
  public:
-  void operator()(const DeviceContext& context, T** im_data,
-                  const int size, const int filter_height, const int filter_width,
-                  const int im_width, const int col_width, const int max_col_height, const int im_channels,
-                  int* col_height_data, int* im_height_data, size_t* lod_level_0_data,
+  void operator()(const DeviceContext& context,
+                  T** im_data,
+                  const int size,
+                  const int filter_height,
+                  const int filter_width,
+                  const int im_width,
+                  const int col_width,
+                  const int max_col_height,
+                  const int im_channels,
+                  int* col_height_data,
+                  int* im_height_data,
+                  size_t* lod_level_0_data,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
-                  const std::vector<int>& padding, T** col_data,
+                  const std::vector<int>& padding,
+                  T** col_data,
                   const DataLayout data_layout = DataLayout::kNCHW);
 };
 
 template <ColFormat Format, typename DeviceContext, typename T>
 class Col2ImFuseFunctor {
  public:
-  void operator()(const DeviceContext& context, T** col_data,
-                  const int size, const int filter_height, const int filter_width,
-                  const int im_width, const int col_width, const int max_col_height, const int im_channels,
-                  int* col_height_data, int* im_height_data, size_t* lod_level_0_data,
+  void operator()(const DeviceContext& context,
+                  T** col_data,
+                  const int size,
+                  const int filter_height,
+                  const int filter_width,
+                  const int im_width,
+                  const int col_width,
+                  const int max_col_height,
+                  const int im_channels,
+                  int* col_height_data,
+                  int* im_height_data,
+                  size_t* lod_level_0_data,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
-                  const std::vector<int>& padding, T** im_data,
+                  const std::vector<int>& padding,
+                  T** im_data,
                   const DataLayout data_layout = DataLayout::kNCHW);
 };
 
