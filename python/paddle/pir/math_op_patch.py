@@ -203,56 +203,6 @@ def monkey_patch_opresult():
     def _scalar_mul_(var, value):
         return paddle.scale(var, value, 0.0)
 
-    def astype(self, dtype):
-        """
-        **Notes**:
-
-        Cast a OpResult to a specified data type.
-
-        Args:
-
-            self(OpResult): The source OpResult
-
-            dtype: The target data type
-
-        Returns:
-            OpResult: OpResult with new dtype
-
-        Examples:
-            In Static Graph Mode:
-
-            .. code-block:: python
-
-                >>> import paddle
-                >>> paddle.enable_static()
-                >>> startup_prog = paddle.static.Program()
-                >>> main_prog = paddle.static.Program()
-                >>> with paddle.static.program_guard(startup_prog, main_prog):
-                ...     original_value = paddle.static.data(name = "new_value", shape=[2,2], dtype='float32')
-                ...     new_value = original_value.astype('int64')
-                ...     print("new value's dtype is: {}".format(new_value.dtype))
-                ...
-                new OpResult's dtype is: paddle.int64
-
-        """
-        from paddle import _C_ops
-
-        if not isinstance(dtype, DataType):
-            dtype = paddle.pir.core.convert_np_dtype_to_dtype_(dtype)
-        return _C_ops.cast(self, dtype)
-
-    def _scalar_add_(var, value):
-        return paddle.scale(var, 1.0, value)
-
-    def _scalar_sub_(var, value):
-        return paddle.scale(var, 1.0, -value)
-
-    def _scalar_rsub_(var, value):
-        return paddle.scale(var, -1.0, value)
-
-    def _scalar_mul_(var, value):
-        return paddle.scale(var, value, 0.0)
-
     def _scalar_div_(var, value):
         return paddle.scale(var, 1.0 / value, 0.0)
 
