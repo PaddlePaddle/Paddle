@@ -2505,15 +2505,20 @@ def _measure_real_op_cost_wrt_program_and_place_single_pass(
     # build a simple plan from program and run profiling
     plan = core.Plan([core.Job("default")], {"default": cloned_program.desc})
     exe = _StandaloneExecutor(place, plan, scope)
-    exe.run_profile(feed_names)
+    prof_recorder = exe.run_profile(feed_names)
 
     prof_result = []
-    for cloned_op in cloned_main_block.ops:
-        prof_result.append(
-            cloned_op.get_runtime_us()
-            if cloned_op.supports_runtime_profiling()
-            else None
-        )
+    for op_id, cloned_op in zip(
+        range(len(cloned_main_block.ops)), cloned_main_block.ops
+    ):
+        op_prof_key = 'op:%d,%s' % (op_id, cloned_op.type)
+        if (
+            prof_recorder.find_op_runtime_record(op_prof_key)
+            and cloned_op.supports_runtime_profiling()
+        ):
+            prof_result.append(prof_recorder.get_op_runtime(op_prof_key))
+        else:
+            prof_result.append(None)
     return prof_result
 
 

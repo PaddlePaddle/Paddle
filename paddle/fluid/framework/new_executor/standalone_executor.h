@@ -22,6 +22,7 @@
 #include "paddle/fluid/framework/new_executor/interpreter/plan.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
+#include "paddle/fluid/framework/new_executor/op_runtime_profiler.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/pir/core/program.h"
@@ -43,7 +44,8 @@ class StandaloneExecutor {
 
   // Perform a profiling run, retrieving the actual time cost of each kernel
   // this API will insert sync for every kernel in the graph
-  void RunProfile(const std::vector<std::string>& feed_names);
+  std::shared_ptr<profiling::OpRuntimeProfilingRecorder> RunProfile(
+      const std::vector<std::string>& feed_names);
 
  private:
   bool is_interpretercore_build_result_shared_{false};

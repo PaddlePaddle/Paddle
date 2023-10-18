@@ -30,6 +30,7 @@
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
+#include "paddle/fluid/framework/new_executor/op_runtime_profiler.h"
 #include "paddle/fluid/framework/new_executor/profiler.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -73,7 +74,9 @@ class InterpreterBaseImpl {
       const std::vector<std::string>& feed_names, bool need_fetch = true) = 0;
 
   // optional interface
-  virtual void RunProfile(const std::vector<std::string>& feed_names) {
+  virtual void RunProfile(
+      const std::vector<std::string>& feed_names,
+      std::shared_ptr<profiling::OpRuntimeProfilingRecorder> prof_recorder) {
     VLOG(1) << "WARNING: RunProfile() was not implemented in this class. "
                "Please provide a valid implementation.";
   }

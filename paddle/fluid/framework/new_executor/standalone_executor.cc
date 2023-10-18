@@ -225,8 +225,8 @@ paddle::framework::FetchList StandaloneExecutor::Run(
   }
 }
 
-void StandaloneExecutor::RunProfile(
-    const std::vector<std::string>& feed_names) {
+std::shared_ptr<profiling::OpRuntimeProfilingRecorder>
+StandaloneExecutor::RunProfile(const std::vector<std::string>& feed_names) {
   platform::RecordEvent record_event("StandaloneExecutor::run_profile",
                                      platform::TracerEventType::UserDefined,
                                      1);
@@ -246,6 +246,9 @@ void StandaloneExecutor::RunProfile(
     }
     is_interpretercore_build_result_shared_ = true;
   }
+
+  std::shared_ptr<profiling::OpRuntimeProfilingRecorder> prof_recorder =
+      std::make_shared<profiling::OpRuntimeProfilingRecorder>();
 
   for (size_t job_idx = 0; job_idx < jobs.size(); ++job_idx) {
     const auto& job = jobs[job_idx];
@@ -268,12 +271,12 @@ void StandaloneExecutor::RunProfile(
     // Run forward/backward for each microbatch
     if (jobs.size() > 1 && job_type != "forward") {
       const std::vector<std::string> tmp_feed_names = {};
-      interpretercores_[job_idx]->RunProfile(tmp_feed_names);
+      interpretercores_[job_idx]->RunProfile(tmp_feed_names, prof_recorder);
     } else {
-      interpretercores_[job_idx]->RunProfile(feed_names);
+      interpretercores_[job_idx]->RunProfile(feed_names, prof_recorder);
     }
   }
-  // Profile run does not need to fetch any tensor here.
+  return prof_recorder;
 }
 
 }  // namespace framework

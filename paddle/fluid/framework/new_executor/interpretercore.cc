@@ -74,8 +74,10 @@ FetchList InterpreterCore::Run(const std::vector<std::string>& feed_names,
   return impl_->Run(feed_names, need_fetch);
 }
 
-void InterpreterCore::RunProfile(const std::vector<std::string>& feed_names) {
-  return impl_->RunProfile(feed_names);
+void InterpreterCore::RunProfile(
+    const std::vector<std::string>& feed_names,
+    std::shared_ptr<profiling::OpRuntimeProfilingRecorder> prof_recorder) {
+  return impl_->RunProfile(feed_names, prof_recorder);
 }
 
 void InterpreterCore::ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src) {

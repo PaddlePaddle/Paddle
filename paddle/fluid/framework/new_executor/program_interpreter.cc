@@ -174,7 +174,8 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
 }
 
 void ProgramInterpreter::RunProfile(
-    const std::vector<std::string>& feed_names) {
+    const std::vector<std::string>& feed_names,
+    std::shared_ptr<profiling::OpRuntimeProfilingRecorder> prof_recorder) {
   if (!static_build_) {
     throw std::runtime_error(
         "Run profile requires static_build==true, "
@@ -207,12 +208,12 @@ void ProgramInterpreter::RunProfile(
     // convert vec func_list to graph
     Convert(&op_func_nodes);
     UpdateSyncOpNum();
-    RunProfileImpl();
+    RunProfileImpl(prof_recorder);
 
     is_build_ = true;
     is_shared_results_build_ = true;
   } else {
-    RunProfileImpl();
+    RunProfileImpl(prof_recorder);
   }
 
   if (HasLocalScope()) {
@@ -220,7 +221,8 @@ void ProgramInterpreter::RunProfile(
   }
 }
 
-void ProgramInterpreter::RunProfileImpl() {
+void ProgramInterpreter::RunProfileImpl(
+    std::shared_ptr<profiling::OpRuntimeProfilingRecorder> prof_recorder) {
   // lazy initialization of gc, do not create gc is the program only run once
   if (!gc_) {
     gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
@@ -229,7 +231,7 @@ void ProgramInterpreter::RunProfileImpl() {
   interpreter::ResetAtomicGuard guard(&deps_, &refs_);
 
   VLOG(4) << "Profiling Instruction List";
-  ProfileInstructionList(vec_instruction_);
+  ProfileInstructionList(vec_instruction_, prof_recorder);
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (platform::is_custom_place(place_)) {
@@ -239,7 +241,8 @@ void ProgramInterpreter::RunProfileImpl() {
 }
 
 void ProgramInterpreter::ProfileInstructionList(
-    const std::vector<Instruction>& vec_instr) {
+    const std::vector<Instruction>& vec_instr,
+    std::shared_ptr<profiling::OpRuntimeProfilingRecorder> prof_recorder) {
   unfinished_op_number_ = vec_instr.size();
   if (unfinished_op_number_ == 0) {
     VLOG(4) << "No op to run, return";
@@ -267,6 +270,11 @@ void ProgramInterpreter::ProfileInstructionList(
     VLOG(4) << "** Profiling op: [id=" << instr.Id()
             << ",name=" << instr.OpBase()->Type() << "]";
 
+    std::string op_ident_name_for_prof =
+        std::string("op:") + std::to_string(trace_execute_order_[idx]) + "," +
+        instr.OpBase()->Type();
+    double dt_us = -1.0;
+
     if (instr.IsSupportRuntimeProfiling()) {
       // step 1: prepare
       OperatorBase* op_base = instr.OpBase();
@@ -289,11 +297,12 @@ void ProgramInterpreter::ProfileInstructionList(
       if (require_sync) SyncDevice();
 
       // step 3: record run time to operator dist attr
-      double dt_us = timer.ElapsedUS();
+      dt_us = timer.ElapsedUS();
       op_dist_attr->set_run_time_us(dt_us);
       VLOG(4) << "** op "
               << "[" << instr.Id() << "," << instr.OpBase()->Type() << "]"
               << " run time: " << op_dist_attr->run_time_us() << " us.";
+      prof_recorder->RecordOpRuntime(op_ident_name_for_prof, dt_us);
     } else {
       // don't need profiling
       RunInstruction(instr);

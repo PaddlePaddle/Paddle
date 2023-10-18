@@ -29,6 +29,7 @@ class OpRuntimeProfilingRecorder {
 
   void RecordOpRuntime(const std::string& key, double us);
   double GetOpRuntime(const std::string& key) const;
+  bool FindOpRuntimeRecord(const std::string& key) const;
 
  private:
   std::unordered_map<std::string, double> all_ops_runtime_us_;

@@ -1984,8 +1984,14 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("run_profile",
            [](StandaloneExecutor &self, std::vector<std::string> feed_names) {
-             pybind11::gil_scoped_release release;
-             self.RunProfile(feed_names);
+             std::shared_ptr<
+                 paddle::framework::profiling::OpRuntimeProfilingRecorder>
+                 prof_recorder;
+             {
+               pybind11::gil_scoped_release release;
+               prof_recorder = self.RunProfile(feed_names);
+             }
+             return py::cast(std::move(prof_recorder));
            });
 
   py::class_<framework::interpreter::Job,
@@ -2025,7 +2031,10 @@ All parameter, weight, gradient are variables in Paddle.
       .def("record_op_runtime",
            &framework::profiling::OpRuntimeProfilingRecorder::RecordOpRuntime)
       .def("get_op_runtime",
-           &framework::profiling::OpRuntimeProfilingRecorder::GetOpRuntime);
+           &framework::profiling::OpRuntimeProfilingRecorder::GetOpRuntime)
+      .def("find_op_runtime_record",
+           &framework::profiling::OpRuntimeProfilingRecorder::
+               FindOpRuntimeRecord);
 
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);

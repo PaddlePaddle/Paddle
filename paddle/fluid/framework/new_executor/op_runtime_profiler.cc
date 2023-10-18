@@ -45,6 +45,12 @@ double OpRuntimeProfilingRecorder::GetOpRuntime(const std::string& key) const {
   }
 }
 
+bool OpRuntimeProfilingRecorder::FindOpRuntimeRecord(
+    const std::string& key) const {
+  auto it = all_ops_runtime_us_.find(key);
+  return it != all_ops_runtime_us_.end();
+}
+
 }  // namespace profiling
 }  // namespace framework
 }  // namespace paddle
