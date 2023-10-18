@@ -285,9 +285,9 @@ static CutlassGemmConfig estimate_best_config_from_occupancies(
     throw std::runtime_error(
         "[FT Error] Heurisitc failed to find a valid config.");
   }
-  // std::cout<<"m n k:"<<m<<" "<<n<<" "<<k
-  //           <<" with best_config: split_factor: "<<best_config.split_k_factor
-  //           <<" stage: "<<best_config.stages<<std::endl;
+  VLOG(3)<<"m n k:"<<m<<" "<<n<<" "<<k
+            <<" with best_config: split_factor: "<<best_config.split_k_factor
+            <<" stage: "<<best_config.stages;
   return best_config;
 }
 }  // namespace phi

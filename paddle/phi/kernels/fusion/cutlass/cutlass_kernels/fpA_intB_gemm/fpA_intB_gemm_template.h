@@ -117,7 +117,9 @@ void generic_mixed_gemm_kernelLauncher(const T* A,
                                        MixedGemmArchTraits::ElementsPerAccessC,
                                        ElementAccumulator,
                                        EpilogueTag>::Op;
-if(gemm_config.split_k_style == SplitKStyle::NO_SPLIT_K){
+// TODO(wangbojun), for llama 13b, we don't want to use normal-dp gemm
+// if(gemm_config.split_k_style == SplitKStyle::NO_SPLIT_K){
+if (false){
     using GemmKernel_ = typename cutlass::gemm::kernel::DefaultGemm<
         ElementType,
         cutlass::layout::RowMajor,
