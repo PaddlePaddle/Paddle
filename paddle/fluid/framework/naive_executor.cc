@@ -52,7 +52,7 @@ void NaiveExecutor::Prepare(Scope *scope,
   CreateOps(program_desc, block_id, with_feed_fetch_ops);
 }
 
-void NaiveExecutor::PrepareInterperterCore(
+void NaiveExecutor::PrepareInterpreterCore(
     Scope *scope,
     const ProgramDesc &program_desc,
     const framework::interpreter::ExecutionConfig &execution_config) {
@@ -60,10 +60,16 @@ void NaiveExecutor::PrepareInterperterCore(
       place_, program_desc.Block(0), scope, execution_config);
 }
 
-void NaiveExecutor::RunInterperterCore(
+void NaiveExecutor::RunInterpreterCore(
     const std::vector<std::string> &feed_names, bool need_fetch) {
   platform::ScopedFlushDenormal flush;
+#ifdef PADDLE_WITH_NVTX
+  platform::CudaNvtxRangePush("model", platform::NvtxRangeColor::Yellow);
+#endif
   interpreter_core_->Run(feed_names, need_fetch);
+#ifdef PADDLE_WITH_NVTX
+  platform::CudaNvtxRangePop();
+#endif
 }
 
 void NaiveExecutor::Run() {

@@ -55,7 +55,7 @@ class NaiveExecutor {
                int block_id,
                bool with_feed_fetch_ops);
 
-  void PrepareInterperterCore(
+  void PrepareInterpreterCore(
       Scope* scope,
       const ProgramDesc& program_desc,
       const framework::interpreter::ExecutionConfig& execution_config =
@@ -72,7 +72,7 @@ class NaiveExecutor {
   // Run all the operators.
   void Run();
 
-  void RunInterperterCore(const std::vector<std::string>& feed_names = {},
+  void RunInterpreterCore(const std::vector<std::string>& feed_names = {},
                           bool need_fetch = false);
 
   // Get an tensor to operating directly, without the need for feed_ops.

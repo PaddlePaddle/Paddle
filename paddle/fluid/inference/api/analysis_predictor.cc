@@ -712,7 +712,7 @@ bool AnalysisPredictor::PrepareExecutor() {
     auto output_names = GetOutputNames();
     execution_config.skip_gc_vars.insert(output_names.begin(),
                                          output_names.end());
-    executor_->PrepareInterperterCore(
+    executor_->PrepareInterpreterCore(
         sub_scope_, *inference_program_, execution_config);
   }
 
@@ -1122,7 +1122,7 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   }
 
   if (config_.new_executor_enabled()) {
-    executor_->RunInterperterCore();
+    executor_->RunInterpreterCore();
   } else {
     // Run the inference program
     // if share variables, we need not create variables
@@ -1197,7 +1197,7 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   }
 
   if (config_.new_executor_enabled()) {
-    executor_->RunInterperterCore();
+    executor_->RunInterpreterCore();
   } else {
     // Run the inference program
     // if share variables, we need not create variables
@@ -2181,7 +2181,7 @@ bool AnalysisPredictor::ZeroCopyRun() {
 #endif
 
   if (config_.new_executor_enabled()) {
-    executor_->RunInterperterCore();
+    executor_->RunInterpreterCore();
   } else {
     executor_->Run();
   }

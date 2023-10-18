@@ -30,6 +30,9 @@
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+#ifdef PADDLE_WITH_NVTX
+#include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
+#endif
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/device_manager.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -861,6 +864,11 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
     op->SetOutputHooks(hookfuncs_);
   }
 
+#ifdef PADDLE_WITH_NVTX
+  platform::CudaNvtxRangePush(op->Type() + "|" + op->OutputVars(true).front(),
+                              platform::NvtxRangeColor::Green);
+#endif
+
   auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);
   {
     // If it is OperatorBase, InferShape do nothing.
@@ -959,6 +967,10 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
             << "): context wait and get last error";
 #endif
   }
+
+#ifdef PADDLE_WITH_NVTX
+  platform::CudaNvtxRangePop();
+#endif
 
   for (auto& hook : hookfuncs_) {
     hook(op, local_scope);
