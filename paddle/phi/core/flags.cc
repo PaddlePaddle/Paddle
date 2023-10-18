@@ -765,6 +765,10 @@ PHI_DEFINE_EXPORTED_string(tracer_mkldnn_ops_on,
                            "",
                            "List of OneDNN operation types to be turned on");
 
+PHI_DEFINE_EXPORTED_string(save_load_path,
+                           "./",
+                           "set the auto save load path");
+
 /**
  * Debug related FLAG
  * Name: tracer_mkldnn_ops_off
@@ -838,6 +842,11 @@ PHI_DEFINE_EXPORTED_bool(
     apply_pass_to_program,
     false,
     "It controls whether to apply IR pass to program when using Fleet APIs");
+
+PHI_DEFINE_EXPORTED_bool(
+    save_tensor,
+    false,
+    "It controls whether to save tensor");
 
 /**
  * Distributed related FLAG

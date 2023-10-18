@@ -53,6 +53,8 @@ PADDLE_DEFINE_EXPORTED_bool(
 
 PHI_DECLARE_bool(use_mkldnn);
 PHI_DECLARE_bool(check_nan_inf);
+PHI_DECLARE_string(save_load_path);
+PHI_DECLARE_bool(save_tensor);
 
 namespace paddle {
 namespace framework {
@@ -852,26 +854,27 @@ void BuildOpFuncList(const platform::Place& place,
             op_with_kernel->BuildPhiKernelContext(
                 runtime_context, dev_ctx, &phi_kernel_context);
             (*op_func_node.phi_kernel_)(&phi_kernel_context);
+            if (FLAGS_save_tensor){
             auto len = phi_kernel_context.OutputsSize();
+            auto root_path = FLAGS_save_load_path;
             for (size_t i = 0; i < len; i++) {
               auto out_tensor =
                   phi_kernel_context.MutableOutputAt<phi::DenseTensor>(i);
-              auto data = out_tensor->data<float>();
-              VLOG(6) << "origin data 0 :" << *data;
-              VLOG(6) << "save " << op_type << i << "st"
+              VLOG(6) << "save " << op_type << i << " st"
                       << " output";
-              if (out_tensor->initialized() && op_type != "share_buffer") {
+              if (out_tensor && out_tensor->initialized() && op_type != "share_buffer" ) {
                 paddle::SaveTensor(
                     *dev_ctx,
                     *out_tensor,
-                    op_type + "-out-" + std::to_string(i) + ".pd",
+                    root_path + op_type + "-out-" + std::to_string(i) + "_1",
                     true,
                     false);
-                VLOG(6) << "save " << op_type << i << "st"
+                VLOG(6) << "save " << op_type << i << " st"
                         << " output success";
               }
               VLOG(6) << op_type << i << "st"
                       << " output is not initialized";
+            }
             }
           }
         } else if (run_phi_kernel &&

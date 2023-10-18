@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "glog/logging.h"
 
 #ifdef PADDLE_WITH_DNNL
 #include "dnnl_debug.h"  // NOLINT
@@ -485,7 +486,8 @@ void TensorToStream(std::ostream& os,
                           "tensor size %d overflow when writing tensor", size));
     if (platform::is_gpu_place(tensor.place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
+      VLOG(6)<< "start copy tensor data from GPU to CPU";
+      constexpr size_t kBufSize = 2048 * 2048 * 64;  // 256MB
       std::unique_ptr<char[]> buf(new char[kBufSize]);
       auto& gpu_dev_ctx = static_cast<const phi::GPUContext&>(dev_ctx);
       platform::CPUPlace cpu;
@@ -509,7 +511,7 @@ void TensorToStream(std::ostream& os,
 #endif
     } else if (platform::is_xpu_place(tensor.place())) {
 #ifdef PADDLE_WITH_XPU
-      constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
+      constexpr size_t kBufSize = 2048 * 2048 * 64;  // 256MB
       std::unique_ptr<char[]> buf(new char[kBufSize]);
       auto& xpu_dev_ctx =
           static_cast<const platform::XPUDeviceContext&>(dev_ctx);
@@ -533,7 +535,7 @@ void TensorToStream(std::ostream& os,
 #endif
     } else if (platform::is_custom_place(tensor.place())) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-      constexpr size_t kBufSize = 1024 * 1024 * 64;     // 64MB
+      constexpr size_t kBufSize = 2048 * 2048 * 64;     // 256MB
       std::unique_ptr<char[]> buf(new char[kBufSize]);  // NOLINT
       auto& custom_device_context =
           static_cast<const platform::CustomDeviceContext&>(dev_ctx);

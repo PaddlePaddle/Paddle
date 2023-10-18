@@ -12,6 +12,7 @@ limitations under the License. */
 #pragma once
 
 #include <cstdint>
+#include <iostream>
 
 #include <fstream>
 #include <numeric>
@@ -20,6 +21,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/version.h"
+#include "glog/logging.h"
 
 namespace paddle {
 
@@ -145,23 +147,36 @@ void SaveTensor(const platform::DeviceContext& dev_ctx,
                 const std::string& file_path,
                 bool overwrite,
                 bool save_as_fp16) {
-  PADDLE_ENFORCE_EQ(
-      FileExists(file_path) && !overwrite,
-      false,
-      phi::errors::PreconditionNotMet(
-          "%s exists!, cannot save to it when overwrite is set to false.",
-          file_path,
-          overwrite));
+    std::string new_path(file_path);
+    std::cout<<"new path : "<<new_path<<std::endl;
+    while (FileExists(new_path)){
+    auto pos = new_path.find_last_of('_');
+    if (pos == new_path.npos){
+        return ;
+    }
+    auto pre = new_path.substr(0, pos+1);
+    auto num = std::atoi(new_path.substr(pos + 1).c_str());
+    new_path = pre + std::to_string(num+1);
+    }
+//   PADDLE_ENFORCE_EQ(
+//       FileExists(file_path) && !overwrite,
+//       false,
+//       phi::errors::PreconditionNotMet(
+//           "%s exists!, cannot save to it when overwrite is set to false.",
+//           file_path,
+//           overwrite));
 
-  MkDirRecursively(DirName(file_path).c_str());
+  VLOG(6)<<"SAVE TO "<<new_path;
+  MkDirRecursively(DirName(new_path).c_str());
 
-  std::ofstream fout(file_path, std::ios::binary);
+  std::ofstream fout(new_path, std::ios::binary);
   PADDLE_ENFORCE_EQ(
       static_cast<bool>(fout),
       true,
-      phi::errors::Unavailable("Cannot open %s to save variables.", file_path));
-
+      phi::errors::Unavailable("Cannot open %s to save variables.", new_path));
+  VLOG(6)<<"START SerializeToStream";
   framework::SerializeToStream(fout, x, dev_ctx);
+  VLOG(6)<<"end SerializeToStream";
 
   fout.close();
 }
