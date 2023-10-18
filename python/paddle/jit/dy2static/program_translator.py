@@ -14,7 +14,6 @@
 
 import collections
 import inspect
-import os
 import textwrap
 import threading
 import warnings
@@ -29,6 +28,7 @@ from paddle.base.dygraph.base import (
     param_guard,
     switch_to_static_graph,
 )
+from paddle.base.framework import get_flags
 from paddle.base.unique_name import UniqueNameGenerator
 from paddle.base.unique_name import guard as UniqueNameGuard
 from paddle.framework import in_dynamic_mode, use_pir_api
@@ -230,9 +230,9 @@ class CacheKey:
         self._spec_names_id = _hash_spec_names(
             input_args_with_spec, input_kwargs_with_spec
         )
-        self._new_ir_flags = os.environ.get(
-            'FLAGS_enable_new_ir_in_executor', None
-        )
+        self._new_ir_flags = get_flags('FLAGS_enable_new_ir_in_executor')[
+            'FLAGS_enable_new_ir_in_executor'
+        ]
 
     @classmethod
     def from_func_and_args(cls, function_spec, args, kwargs, class_instance):

@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 
 import paddle
 from paddle.base import Variable, core
 from paddle.base.data_feeder import check_type
 from paddle.base.framework import (
     convert_np_dtype_to_dtype_,
+    get_flags,
     in_pir_mode,
     static_only,
 )
@@ -143,7 +143,9 @@ def data(name, shape, dtype=None, lod_level=0):
         need_check_feed=True,
     )
 
-    is_pir_mode = os.environ.get("FLAGS_enable_new_ir_in_executor", None)
+    is_pir_mode = get_flags('FLAGS_enable_new_ir_in_executor')[
+        'FLAGS_enable_new_ir_in_executor'
+    ]
     if evaluate_flag(is_pir_mode):
         helper = LayerHelper('data', **locals())
         if not isinstance(dtype, core.VarDesc.VarType):
