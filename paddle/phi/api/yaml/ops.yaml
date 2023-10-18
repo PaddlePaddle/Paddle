@@ -2807,7 +2807,7 @@
   backward: weight_only_linear_grad
 
 - op : weight_quantize
-  args : (Tensor x, str algo = "weight_only_int8", int arch)
+  args : (Tensor x, str algo = "weight_only_int8", int arch = -1)
   output : Tensor(out), Tensor(scale)
   infer_meta :
     func : WeightQuantizeInferMeta
