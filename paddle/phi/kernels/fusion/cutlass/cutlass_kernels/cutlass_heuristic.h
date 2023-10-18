@@ -53,7 +53,7 @@ static TileShape get_cta_shape_for_config(CutlassTileConfig tile_config) {
     // TODO(wangbojun) check the Tile Shape here,
     // {256, 128} have better performance than 128, 128
     case CutlassTileConfig::CtaShape128x256x64_WarpShape64x64x64:
-      return TileShape{256, 128};
+      return TileShape{128, 256};
     // TODO(wangbojun) CtaShape256x128x64_WarpShape64x64x64 is not a
     case CutlassTileConfig::CtaShape256x128x64_WarpShape64x64x64:
       return TileShape{256, 128};
@@ -160,8 +160,8 @@ static std::vector<CutlassGemmConfig> get_candidate_configs(
       is_weight_only, is_weight_only_encoder, simt_configs_only, sm);
 
   std::vector<CutlassGemmConfig> candidate_configs;
-  const int min_stages = 2;
-  const int max_stages = sm >= 80 ? 4 : 2;
+  const int min_stages = 5;
+  const int max_stages = sm >= 80 ? 5 : 2;
 
   for (const auto& tile_config : tiles) {
     for (int stages = min_stages; stages <= max_stages; ++stages) {
@@ -191,7 +191,15 @@ static CutlassGemmConfig estimate_best_config_from_occupancies(
   }
 
   CutlassGemmConfig best_config;
-  if(m >= 256){
+  if (m <= 64){
+    best_config=CutlassGemmConfig{CutlassTileConfig::CtaShape32x128x64_WarpShape32x32x64, SplitKStyle::NO_SPLIT_K, 1, 5};
+  } else if (m<256){
+    if(n>=k*2){
+      best_config=CutlassGemmConfig{CutlassTileConfig::CtaShape128x256x64_WarpShape64x64x64, SplitKStyle::NO_SPLIT_K, 1, 5};
+    } else{
+      best_config=CutlassGemmConfig{CutlassTileConfig::CtaShape128x128x64_WarpShape128x32x64, SplitKStyle::NO_SPLIT_K, 1, 5};
+    }
+  } else if( (m >= 256) && (n >= k * 2)){
       best_config=CutlassGemmConfig{CutlassTileConfig::CtaShape128x256x64_WarpShape64x64x64, SplitKStyle::NO_SPLIT_K, 1, 5};
   } else {
     // Score will be [0, 1]. The objective is to minimize this score.
@@ -277,7 +285,9 @@ static CutlassGemmConfig estimate_best_config_from_occupancies(
     throw std::runtime_error(
         "[FT Error] Heurisitc failed to find a valid config.");
   }
-
+  // std::cout<<"m n k:"<<m<<" "<<n<<" "<<k
+  //           <<" with best_config: split_factor: "<<best_config.split_k_factor
+  //           <<" stage: "<<best_config.stages<<std::endl;
   return best_config;
 }
 }  // namespace phi

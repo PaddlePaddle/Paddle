@@ -90,8 +90,8 @@ ThreadblockShapes = [
 ]
 WarpShapes = [
     "cutlass::gemm::GemmShape<32, 32, 64>",
-    "cutlass::gemm::GemmShape<64, 32, 64>",
-    "cutlass::gemm::GemmShape<128, 32, 64>",
+    "cutlass::gemm::GemmShape<64, 64, 64>",
+    "cutlass::gemm::GemmShape<64, 64, 64>",
     "cutlass::gemm::GemmShape<64, 64, 64>",
     "cutlass::gemm::GemmShape<64, 64, 64>",
 ]
