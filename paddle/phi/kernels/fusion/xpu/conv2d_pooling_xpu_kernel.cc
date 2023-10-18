@@ -40,6 +40,7 @@ void Conv2dPoolingXPUKernelImpl(const Context& ctx,
                                 const std::vector<int>& pool2d_paddings,
                                 const std::vector<int>& pool2d_strides,
                                 const std::vector<int>& pool2d_ksize,
+                                bool is_avg,
                                 DenseTensor* out,
                                 DenseTensor* out_max) {
   using XPUTypeX = typename XPUTypeTrait<T_X>::Type;
@@ -119,7 +120,7 @@ void Conv2dPoolingXPUKernelImpl(const Context& ctx,
       /* const std::vector<int64_t>& pool_stride */ pool_stride,
       /* const std::vector<int64_t>& pool_pad */ pool_pad,
       /* bool count_include_pad */ false,
-      /* bool is_avg */ false,
+      /* bool is_avg */ is_avg,
       /* bool is_nchw */ true,
       /* const float* x_maxptr */ input_max_data,
       /* const float* w_maxptr */ filter_max_data,
@@ -151,6 +152,7 @@ void Conv2dPoolingXPUKernelImpl(const Context& ctx,
                                       pool2d_paddings,   \
                                       pool2d_strides,    \
                                       pool2d_ksize,      \
+                                      is_avg,            \
                                       out,               \
                                       out_max);
 
@@ -172,6 +174,7 @@ void Conv2dPoolingXPUKernel(const Context& ctx,
                             const std::vector<int>& pool2d_paddings,
                             const std::vector<int>& pool2d_strides,
                             const std::vector<int>& pool2d_ksize,
+                            bool is_avg,
                             DenseTensor* out,
                             DenseTensor* out_max) {
   if (out_dtype == DataType::FLOAT32) {

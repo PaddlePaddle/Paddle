@@ -105,7 +105,7 @@ class TestConv2dPoolingXPU(PassAutoScanTest):
             outputs={"Out": ["pool_output"]},
             ksize=[1, 2],
             adaptive=False,
-            pooling_type="max",
+            pooling_type="avg", # or pooling_type="avg"
             data_format="NCHW",
             strides1=[1,2],
             paddings1=[0,0],

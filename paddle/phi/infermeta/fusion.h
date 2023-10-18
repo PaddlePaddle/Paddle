@@ -89,6 +89,7 @@ void Conv2dPoolingXPUInferMeta(const MetaTensor& x,
                                const std::vector<int>& pool2d_paddings,
                                const std::vector<int>& pool2d_strides,
                                const std::vector<int>& pool2d_ksize,
+                               bool is_avg,
                                MetaTensor* out,
                                MetaTensor* out_max);
 

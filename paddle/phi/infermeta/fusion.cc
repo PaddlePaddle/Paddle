@@ -348,11 +348,11 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
   out->set_dtype(out_dtype);
 }
 
-inline int MaxPoolOutputSize(int input_size,
-                             int k_size,
-                             int padding_left,
-                             int padding_right,
-                             int stride) {
+inline int PoolOutputSize(int input_size,
+                          int k_size,
+                          int padding_left,
+                          int padding_right,
+                          int stride) {
   PADDLE_ENFORCE_NE(
       stride,
       0,
@@ -379,6 +379,7 @@ void Conv2dPoolingXPUInferMeta(const MetaTensor& x,
                                const std::vector<int>& pool2d_paddings,
                                const std::vector<int>& pool2d_strides,
                                const std::vector<int>& pool2d_ksize,
+                               bool is_avg,
                                MetaTensor* out,
                                MetaTensor* out_max) {
   auto in_dims = x.dims();
@@ -490,19 +491,17 @@ void Conv2dPoolingXPUInferMeta(const MetaTensor& x,
   // compute pool2d output size
   for (size_t i = 0; i < pool2d_strides.size(); ++i) {
     auto insize = out_shape[i + 2];
-    out_shape[i + 2] = MaxPoolOutputSize(insize,
-                                         pool2d_ksize[i],
-                                         pool2d_paddings[i * 2],
-                                         pool2d_paddings[i * 2 + 1],
-                                         pool2d_strides[i]);
+    out_shape[i + 2] = PoolOutputSize(insize,
+                                      pool2d_ksize[i],
+                                      pool2d_paddings[i * 2],
+                                      pool2d_paddings[i * 2 + 1],
+                                      pool2d_strides[i]);
   }
   // set output and output max dims
   out->set_dims(DDim(out_shape.data(), out_shape.size()));
   out->set_dtype(out_dtype);
   out_max->set_dims(phi::make_ddim({6}));
 }
-
-
 
 void EmbeddingWithEltwiseAddXPUInferMeta(
     const std::vector<const MetaTensor*>& ids,
