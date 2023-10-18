@@ -20,9 +20,8 @@ from op_gen import OpCompatParser, OpInfoParser, to_pascal_case
 CPP_FILE_TEMPLATE = """
 #include "paddle/fluid/pir/drr/ir_operation_factory.h"
 
-#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+{op_header}
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
-#include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 
 namespace pir {{
 namespace drr {{
@@ -65,6 +64,10 @@ MUTABLE_ATTR_FUNCTION_TEMPLATE = """
 """
 
 Dialect2NameSpaceMap = {"pd_op": "paddle::dialect", "cinn_op": "cinn::dialect"}
+Dialect2OpHeaderMap = {
+    "pd_op": "#include \"paddle/fluid/pir/dialect/operator/ir/pd_op.h\"",
+    "cinn_op": "#include \"paddle/cinn/hlir/dialect/operator/ir/cinn_op.h\"",
+}
 
 
 class OpCreatorCodeGen:
@@ -143,7 +146,12 @@ class OpCreatorCodeGen:
                     )
 
         with open(cpp_file_path, 'w') as f:
-            f.write(CPP_FILE_TEMPLATE.format(body=body_code))
+            f.write(
+                CPP_FILE_TEMPLATE.format(
+                    op_header=Dialect2OpHeaderMap[self.dialect_name],
+                    body=body_code,
+                )
+            )
 
 
 def ParseArguments():

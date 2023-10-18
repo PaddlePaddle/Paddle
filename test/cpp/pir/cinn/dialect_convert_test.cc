@@ -59,11 +59,13 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
                                              phi::DataType::FLOAT32,
                                              phi::CPUPlace());
 
-  auto relu_op =
+  auto sum_op =
       builder.Build<paddle::dialect::SumOp>(full_input_op.result(0),
                                             std::vector<int64_t>({-1}),
                                             phi::DataType::FLOAT32,
                                             true);
+  auto relu_op = builder.Build<paddle::dialect::ReluOp>(sum_op.result(0));
+  auto exp_op = builder.Build<paddle::dialect::ExpOp>(sum_op.result(0));
 }
 
 class DrrPatternRewritePass : public pir::Pass {

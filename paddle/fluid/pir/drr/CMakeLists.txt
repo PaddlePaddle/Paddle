@@ -49,7 +49,7 @@ set(cinn_op_creator_file_tmp ${op_creator_file}.tmp)
 set(cinn_dialect_name cinn_op)
 
 add_custom_command(
-  OUTPUT ${op_creator_file}
+  OUTPUT ${op_creator_file} ${cinn_op_creator_file}
   COMMAND
     ${PYTHON_EXECUTABLE} ${op_creator_gen_file} --op_yaml_files ${op_yaml_files}
     --op_compat_yaml_file ${op_compat_yaml_file} --dialect_name ${dialect_name}
