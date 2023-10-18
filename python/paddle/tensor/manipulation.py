@@ -4582,7 +4582,7 @@ def masked_fill(x, mask, value, name=None):
     if np.isscalar(value):
         value = paddle.full([], value, x.dtype)
 
-    mask = paddle.bitwise_not(mask)
+    mask = paddle.logical_not(mask)
     out = paddle.where(mask, x, value)
     return out
 
@@ -4609,7 +4609,7 @@ def masked_fill_(x, mask, value, name=None):
     if np.isscalar(value):
         value = paddle.full([], value, x.dtype)
 
-    mask = paddle.bitwise_not(mask)
+    mask = paddle.logical_not(mask)
     out = paddle.where_(mask, x, value)
     return out
 
