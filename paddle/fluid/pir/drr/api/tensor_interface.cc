@@ -12,22 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include <memory>
+#include "paddle/fluid/pir/drr/api/tensor_interface.h"
+#include "paddle/fluid/pir/drr/ir_value.h"
 
 namespace pir {
-class Program;
+namespace drr {
+
+bool ShapeInterface::operator==(const ShapeInterface& other) const {
+  return *shape_ == *other.shape_;
+}
+
+int ShapeInterface::size() const { return shape_->size(); }
+
+int64_t ShapeInterface::at(int idx) const { return shape_->at(idx); }
+
+bool DtypeInterface::operator==(const DtypeInterface& other) const {
+  return *dtype_ == *other.dtype_;
+}
+
+}  // namespace drr
 }  // namespace pir
-
-namespace cinn {
-namespace hlir {
-namespace framework {
-class Program;
-
-std::unique_ptr<::pir::Program> ConvertToRuntimeDialect(
-    const hlir::framework::Program& program);
-
-}  // namespace framework
-}  // namespace hlir
-}  // namespace cinn
