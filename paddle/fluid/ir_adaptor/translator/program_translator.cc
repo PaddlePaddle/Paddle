@@ -16,8 +16,6 @@
 
 #include <unordered_map>
 
-#include <iostream>
-
 #include "glog/logging.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
