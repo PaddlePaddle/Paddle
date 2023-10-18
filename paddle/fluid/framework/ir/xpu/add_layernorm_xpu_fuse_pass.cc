@@ -232,9 +232,6 @@ void AddLayernormXPUFusePass::FuseAddLayernorm(
     } else {
       fused_op_out_name = norm_out->Name();
     }
-    std::string fused_op_out_max_name = fused_op_out_name + "_max";
-    VarDesc fused_op_out_max_desc(fused_op_out_max_name);
-    Node* fused_op_out_max = graph->CreateVarNode(&fused_op_out_max_desc);
     // Generate add_layernorm fused op
     framework::OpDesc fused_op_desc(block);
 
@@ -247,7 +244,6 @@ void AddLayernormXPUFusePass::FuseAddLayernorm(
     fused_op_desc.SetAttr("epsilon", eps);
     fused_op_desc.SetAttr("begin_norm_axis", begin_norm_axis);
     fused_op_desc.SetOutput("out", {fused_op_out_name});
-    fused_op_desc.SetOutput("out_max", {fused_op_out_name});
     // set attrs of fused_op
     float act_param_ = 0.0f;
     if (!act_type.empty()) {
@@ -270,7 +266,6 @@ void AddLayernormXPUFusePass::FuseAddLayernorm(
     } else {
       IR_NODE_LINK_TO(fused_op, norm_out);
     }
-    IR_NODE_LINK_TO(fused_op, fused_op_out_max);
 
     delete_nodes.insert({ele_add, l_norm, ele_out, norm_mean, norm_variance});
     if (act != nullptr) {

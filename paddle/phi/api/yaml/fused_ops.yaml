@@ -16,7 +16,7 @@
 
 - op : add_layernorm_xpu
   args : (Tensor x, Tensor y, Tensor scale, Tensor bias, int begin_norm_axis, float epsilon, int act_type, float act_param)
-  output : Tensor(out), Tensor(out_max)
+  output : Tensor(out)
   infer_meta :
     func : AddLayernormXPUInferMeta
   kernel :

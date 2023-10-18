@@ -29,25 +29,13 @@ class TestConv2dPoolingXPU(PassAutoScanTest):
 
     def sample_program_config(self, draw):
         data_format = draw(st.sampled_from(["NCHW"]))
-
-        print("data_format:", data_format)
-
-        x_shape=[3072,32,1,32]
-
-        pooling_type = draw(st.sampled_from(["max", "avg"]))
-        
-        ceil_mode = draw(st.booleans())
-
-        exclusive = draw(st.booleans())
-        
-        global_pooling = draw(st.booleans())
+        batch_size = draw(st.integers(min_value=1, max_value=50))
+        x_shape = [batch_size,32,1,32]
 
         # 3. Generate legal shape of input:Y of conv2d
         w_shape=[32,32,1,3]
 
-        padding_algorithm = draw(st.sampled_from(["SAME", "VALID"]))
-
-        print("padding_algo:",padding_algorithm)
+        # padding_algorithm = draw(st.sampled_from(["SAME", "VALID"]))
 
         groups = draw(st.integers(min_value=1, max_value=1))
 
@@ -57,6 +45,10 @@ class TestConv2dPoolingXPU(PassAutoScanTest):
 
         # Random choose if add a relu operator
         has_relu = True
+        
+        pooling_type = draw(st.sampled_from(["max", "avg"]))
+        
+        ceil_mode = draw(st.booleans())        
 
         def generate_data(shape):
             return np.random.random(shape).astype(np.float32)
@@ -102,7 +94,7 @@ class TestConv2dPoolingXPU(PassAutoScanTest):
             outputs={"Out": ["pool_output"]},
             ksize=[1, 2],
             adaptive=False,
-            pooling_type="avg",
+            pooling_type=pooling_type,
             data_format="NCHW",
             strides1=[1,2],
             paddings1=[0,0],
