@@ -534,6 +534,7 @@ __device__ inline float cinn_warp_reduce_avg_fp32(const float *buf, int offset, 
   if (warp_id == 0) {                                                                        \
     tmp[threadIdx.x] = init_value;                                                           \
   }                                                                                          \
+  __syncthreads();                                                                           \
   TYPE tmp_val = cinn_warp_shuffle_internal(value);                                          \
   if (blockDim.x <= 32) {                                                                    \
     return tmp_val;                                                                          \
