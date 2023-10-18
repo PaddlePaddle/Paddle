@@ -998,7 +998,7 @@ def remainder(x, y, name=None):
             [0, 3, 2, 1])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.remainder(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_mod', **locals()))
@@ -2937,7 +2937,7 @@ def min(x, axis=None, keepdim=False, name=None):
               [0., 0.]]])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.min(x, axis, keepdim)
     else:
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)

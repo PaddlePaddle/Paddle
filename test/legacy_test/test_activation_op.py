@@ -388,10 +388,19 @@ class TestSigmoid(TestActivation):
     def if_enable_cinn(self):
         pass
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.01, check_prim=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            max_relative_error=0.01,
+            check_prim=True,
+            check_pir=True,
+        )
 
 
 class TestSigmoid_Complex64(TestSigmoid):
@@ -399,7 +408,7 @@ class TestSigmoid_Complex64(TestSigmoid):
         self.dtype = np.complex64
 
     def test_check_output(self):
-        self.check_output(check_prim=False)
+        self.check_output(check_prim=False, check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -407,6 +416,7 @@ class TestSigmoid_Complex64(TestSigmoid):
             'Out',
             max_relative_error=0.006,
             check_prim=False,
+            check_pir=True,
         )
 
 
@@ -415,11 +425,7 @@ class TestSigmoid_Complex128(TestSigmoid_Complex64):
         self.dtype = np.complex128
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            check_prim=False,
-        )
+        self.check_grad(['X'], 'Out', check_prim=False, check_pir=True)
 
 
 class TestSigmoid_ZeroDim(TestSigmoid):
@@ -460,12 +466,13 @@ class TestSigmoidBF16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        # elementwise_pow doesn't support bfloat16, skip check_prim here.
-        self.check_output_with_place(place, check_prim=True)
+        self.check_output_with_place(place, check_prim=True, check_pir=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', check_prim=True, check_pir=True
+        )
 
 
 '''
@@ -1815,6 +1822,9 @@ class TestFloor(TestActivation):
     def if_enable_cinn(self):
         pass
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     # the gradient on floor, ceil, round is undefined.
     # we return zero as gradient, but the numpy return nan
     # The same reason with TestFloor
@@ -1833,6 +1843,7 @@ class TestFloor(TestActivation):
                 'Out',
                 check_prim=True,
                 only_check_prim=True,
+                check_pir=True,
             )
 
 
@@ -1866,6 +1877,9 @@ class TestCos(TestActivation):
     def init_shape(self):
         self.shape = [10, 12]
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
@@ -1873,10 +1887,14 @@ class TestCos(TestActivation):
         if self.dtype == np.complex64 or self.dtype == np.complex128:
             # Complex64 [GPU]: AssertionError: 0.0057843705 not less than or equal to 0.005
             self.check_grad(
-                ['X'], 'Out', check_prim=False, max_relative_error=0.006
+                ['X'],
+                'Out',
+                check_prim=False,
+                max_relative_error=0.006,
+                check_pir=True,
             )
         else:
-            self.check_grad(['X'], 'Out', check_prim=True)
+            self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
 
     def if_enable_cinn(self):
         pass
@@ -2063,14 +2081,22 @@ class TestSin(TestActivation, TestParameter):
     def init_shape(self):
         self.shape = [10, 12]
 
+    @test_with_pir_api
+    def test_out_name(self):
+        # inherit from `TestParameter`
+        super().test_out_name()
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         # TODO(ScottWong98): set `check_prim=False` when `fill_any_like` supports `complex` dtype
         if self.dtype == np.complex64 or self.dtype == np.complex128:
-            self.check_grad(['X'], 'Out', check_prim=False)
+            self.check_grad(['X'], 'Out', check_prim=False, check_pir=True)
         else:
-            self.check_grad(['X'], 'Out', check_prim=True)
+            self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
 
     def if_enable_cinn(self):
         pass
@@ -2292,6 +2318,9 @@ class TestRound(TestActivation):
 
     def init_shape(self):
         self.shape = [10, 12]
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         pass
@@ -4630,7 +4659,9 @@ create_test_act_fp16_class(
     TestExpFp32_Prim, check_prim=True, enable_cinn=True, check_prim_pir=True
 )
 create_test_act_fp16_class(TestExpm1)
-create_test_act_fp16_class(TestSigmoid, check_prim=True, enable_cinn=True)
+create_test_act_fp16_class(
+    TestSigmoid, check_prim=True, enable_cinn=True, check_pir=True
+)
 create_test_act_fp16_class(
     TestSilu, check_prim=True, enable_cinn=True, check_prim_pir=True
 )
@@ -4660,20 +4691,24 @@ create_test_act_fp16_class(
 )
 create_test_act_fp16_class(TestCeil, grad_check=False, check_pir=True)
 create_test_act_fp16_class(
-    TestFloor, check_prim=True, grad_check=False, enable_cinn=True
+    TestFloor,
+    check_prim=True,
+    grad_check=False,
+    enable_cinn=True,
+    check_pir=True,
 )
-create_test_act_fp16_class(TestCos)
+create_test_act_fp16_class(TestCos, check_pir=True)
 create_test_act_fp16_class(TestTan)
 create_test_act_fp16_class(TestCosh)
 create_test_act_fp16_class(TestAcos)
-create_test_act_fp16_class(TestSin)
+create_test_act_fp16_class(TestSin, check_pir=True)
 create_test_act_fp16_class(TestSinh)
 create_test_act_fp16_class(TestAsin)
 create_test_act_fp16_class(TestAtan)
 create_test_act_fp16_class(TestAcosh)
 create_test_act_fp16_class(TestAsinh)
 create_test_act_fp16_class(TestAtanh)
-create_test_act_fp16_class(TestRound, grad_check=False)
+create_test_act_fp16_class(TestRound, grad_check=False, check_pir=True)
 create_test_act_fp16_class(
     TestRelu, check_prim=True, enable_cinn=True, check_pir=True
 )
@@ -4796,7 +4831,7 @@ create_test_act_bf16_class(
     TestExpFp32_Prim, check_prim=True, check_prim_pir=True
 )
 create_test_act_bf16_class(TestExpm1)
-create_test_act_bf16_class(TestSigmoid, check_prim=True)
+create_test_act_bf16_class(TestSigmoid, check_prim=True, check_pir=True)
 create_test_act_bf16_class(TestSilu, check_prim=True, check_prim_pir=True)
 create_test_act_bf16_class(TestLogSigmoid)
 create_test_act_bf16_class(TestTanh, check_prim=True, check_prim_pir=True)
@@ -4811,19 +4846,21 @@ create_test_act_bf16_class(
 )
 create_test_act_bf16_class(TestAbs, check_prim=True, check_pir=True)
 create_test_act_bf16_class(TestCeil, grad_check=False, check_pir=True)
-create_test_act_bf16_class(TestFloor, grad_check=False, check_prim=True)
-create_test_act_bf16_class(TestCos)
+create_test_act_bf16_class(
+    TestFloor, grad_check=False, check_prim=True, check_pir=True
+)
+create_test_act_bf16_class(TestCos, check_pir=True)
 create_test_act_bf16_class(TestTan)
 create_test_act_bf16_class(TestCosh)
 create_test_act_bf16_class(TestAcos)
-create_test_act_bf16_class(TestSin)
+create_test_act_bf16_class(TestSin, check_pir=True)
 create_test_act_bf16_class(TestSinh)
 create_test_act_bf16_class(TestAsin)
 create_test_act_bf16_class(TestAtan)
 create_test_act_bf16_class(TestAcosh)
 create_test_act_bf16_class(TestAsinh)
 create_test_act_bf16_class(TestAtanh)
-create_test_act_bf16_class(TestRound, grad_check=False)
+create_test_act_bf16_class(TestRound, grad_check=False, check_pir=True)
 create_test_act_bf16_class(TestRelu, check_prim=True, check_pir=True)
 create_test_act_bf16_class(
     TestGelu,
