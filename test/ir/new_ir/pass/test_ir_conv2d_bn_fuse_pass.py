@@ -29,30 +29,54 @@ class Conv2dBnFusePassTest(PassTest):
         place = core.Place()
         place.set_place(paddle.CPUPlace())
         new_scope = paddle.static.Scope()
-        with paddle.static.scope_guard(new_scope):
-            with paddle.static.program_guard(
-                self.main_program, self.startup_program
-            ):
-                x = paddle.static.data(
-                    name='x', shape=[3, 1, 28, 28], dtype='float32'
-                )
-                bn = x
-                # conv1_1 = paddle.static.nn.conv2d(
-                #     input=x,
-                #     filter_size=3,
-                #     num_filters=32,
-                #     stride=1,
-                #     padding=1,
-                #     act=None,
-                #     bias_attr=False,
-                #     data_format='NHWC',
-                # )
-                # bn = paddle.static.nn.batch_norm(
-                #     input=conv1_1, act=None, data_layout='NHWC'
-                # )
+        # main_program, start_program = (
+        #     paddle.static.Program(),
+        #     paddle.static.Program(),
+        # )
+        # with paddle.static.program_guard(main_program, start_program):
+        #     x = paddle.static.data(
+        #         name='x', shape=[3, 1, 28, 28], dtype='float32'
+        #     )
+        #     conv2d = paddle.nn.Conv2D(
+        #         in_channels=1,
+        #         out_channels=32,
+        #         kernel_size=3,
+        #         padding=1,
+        #         data_format='NCHW',
+        #         bias_attr=False,
+        #     )
+        #     bn = paddle.nn.BatchNorm2D(
+        #         num_features=32, data_format='NCHW'
+        #     )
+        #     result1 = conv2d(x)
+        #     result2 = bn(result1)
+
+        with paddle.pir_utils.IrGuard():
+            x = paddle.static.data(
+                name='x', shape=[3, 1, 28, 28], dtype='float32'
+            )
+            conv2d = paddle.nn.Conv2D(
+                in_channels=1,
+                out_channels=32,
+                kernel_size=3,
+                padding=1,
+                data_format='NCHW',
+                bias_attr=False,
+            )
+            bn = paddle.nn.BatchNorm2D(num_features=32, data_format='NCHW')
+            result1 = conv2d(x)
+            result2 = bn(result1)
+
+            executor = base.Executor(place)
+            out = executor.run(
+                feed={"x": np.random.random((3, 1, 28, 28)).astype("float32")},
+                fetch_list=[result2],
+            )
+            # exit(0)
+            breakpoint()
 
         self.feeds = {"x": np.random.random((3, 1, 28, 28)).astype("float32")}
-        self.fetch_list = [bn]
+        self.fetch_list = [result2]
         self.pass_names = "conv2d_bn_fuse"
         self.fused_op_type = "conv2d"
         # self.num_fused_ops = 2
