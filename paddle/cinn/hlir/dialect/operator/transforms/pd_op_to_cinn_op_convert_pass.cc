@@ -50,11 +50,37 @@ class PDSum2CINNReduceSumPattern
   }
 };
 
+class PDSum2CINNReduceMaxPattern
+    : public pir::drr::DrrPatternBase<PDSum2CINNReduceMaxPattern> {
+ public:
+  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+    // Source Pattern
+    pir::drr::SourcePattern pat = ctx->SourcePattern();
+    const auto &full_int_array = pat.Op("pd_op.full_int_array",
+                                        {{"value", pat.Attr("axis_info")},
+                                         {"dtype", pat.Attr("dtype_2")},
+                                         {"place", pat.Attr("place_2")}});
+
+    const auto &pd_max = pat.Op(
+        "pd_op.max",
+        {{"dtype", pat.Attr("dtype")}, {"keepdim", pat.Attr("keep_dim")}});
+    pat.Tensor("ret") = pd_max(pat.Tensor("arg0"), full_int_array());
+
+    // Result patterns
+    pir::drr::ResultPattern res = pat.ResultPattern();
+    const auto &cinn_reduce_max = res.Op(
+        "cinn_op.reduce_max",
+        {{"axis", pat.Attr("axis_info")}, {"keep_dim", pat.Attr("keep_dim")}});
+    res.Tensor("ret") = cinn_reduce_max(res.Tensor("arg0"));
+  }
+};
+
 PdOpToCinnOpPass::PdOpToCinnOpPass() : pir::Pass("PdOpToCinnOpPass", 1) {}
 
 bool PdOpToCinnOpPass::Initialize(pir::IrContext *context) {
   pir::RewritePatternSet ps(context);
   ps.Add(PDSum2CINNReduceSumPattern().Build(context));
+  ps.Add(PDSum2CINNReduceMaxPattern().Build(context));
 
   patterns_ = ::pir::FrozenRewritePatternSet(std::move(ps));
   return true;

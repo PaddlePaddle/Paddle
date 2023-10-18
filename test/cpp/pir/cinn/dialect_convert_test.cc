@@ -44,7 +44,23 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
   auto exp_op = builder.Build<paddle::dialect::ExpOp>(sum_op.result(0));
 }
 
-TEST(DrrTest, drr_demo) {
+void BuildProgramMax(pir::Builder &builder) {  // NOLINT
+  paddle::dialect::FullOp full_input_op =
+      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{4, 3, 16},
+                                             1.5,
+                                             phi::DataType::FLOAT32,
+                                             phi::CPUPlace());
+
+  auto max_op =
+      builder.Build<paddle::dialect::MaxOp>(full_input_op.result(0),
+                                            std::vector<int64_t>({-1}),
+                                            phi::DataType::FLOAT32,
+                                            true);
+  auto relu_op = builder.Build<paddle::dialect::ReluOp>(max_op.result(0));
+  auto exp_op = builder.Build<paddle::dialect::ExpOp>(max_op.result(0));
+}
+
+TEST(DrrTest, reduce_sum) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
@@ -60,6 +76,28 @@ TEST(DrrTest, drr_demo) {
   CHECK_EQ((*it)->isa<paddle::dialect::FullOp>(), true);
   it++;
   CHECK_EQ((*it)->isa<cinn::dialect::ReduceSumOp>(), true);
+  it++;
+  CHECK_EQ((*it)->isa<paddle::dialect::ReluOp>(), true);
+  it++;
+  CHECK_EQ((*it)->isa<paddle::dialect::ExpOp>(), true);
+}
+
+TEST(DrrTest, reduce_max) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+  pir::Program program(ctx);
+  pir::Builder builder = pir::Builder(ctx, program.block());
+  BuildProgramMax(builder);
+
+  cinn::dialect::ir::PdOp2CinnOpConverter(&program);
+
+  auto it = program.block()->begin();
+
+  CHECK_EQ((*it)->isa<paddle::dialect::FullOp>(), true);
+  it++;
+  CHECK_EQ((*it)->isa<cinn::dialect::ReduceMaxOp>(), true);
   it++;
   CHECK_EQ((*it)->isa<paddle::dialect::ReluOp>(), true);
   it++;
