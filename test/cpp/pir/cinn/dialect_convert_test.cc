@@ -51,11 +51,8 @@ void BuildProgramMax(pir::Builder &builder) {  // NOLINT
                                              phi::DataType::FLOAT32,
                                              phi::CPUPlace());
 
-  auto max_op =
-      builder.Build<paddle::dialect::MaxOp>(full_input_op.result(0),
-                                            std::vector<int64_t>({-1}),
-                                            phi::DataType::FLOAT32,
-                                            true);
+  auto max_op = builder.Build<paddle::dialect::MaxOp>(
+      full_input_op.result(0), std::vector<int64_t>({-1}), true);
   auto relu_op = builder.Build<paddle::dialect::ReluOp>(max_op.result(0));
   auto exp_op = builder.Build<paddle::dialect::ExpOp>(max_op.result(0));
 }

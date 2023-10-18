@@ -61,9 +61,8 @@ class PDSum2CINNReduceMaxPattern
                                          {"dtype", pat.Attr("dtype_2")},
                                          {"place", pat.Attr("place_2")}});
 
-    const auto &pd_max = pat.Op(
-        "pd_op.max",
-        {{"dtype", pat.Attr("dtype")}, {"keepdim", pat.Attr("keep_dim")}});
+    const auto &pd_max =
+        pat.Op("pd_op.max", {{"keepdim", pat.Attr("keep_dim")}});
     pat.Tensor("ret") = pd_max(pat.Tensor("arg0"), full_int_array());
 
     // Result patterns
