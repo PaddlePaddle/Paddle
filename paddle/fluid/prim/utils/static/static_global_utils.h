@@ -42,7 +42,7 @@ class UniqueNameGenerator {
 
 class StaticCompositeContext {
  public:
-  TEST_API static StaticCompositeContext& Instance() {
+  static StaticCompositeContext& Instance() {
     return *static_composite_context_;
   }
 
@@ -108,7 +108,7 @@ class StaticCompositeContext {
   static thread_local bool enable_bwd_prim_;
   static thread_local bool enable_fwd_prim_;
   static thread_local bool enable_eager_prim_;
-  static StaticCompositeContext* static_composite_context_;
+  TEST_API static StaticCompositeContext* static_composite_context_;
   DISABLE_COPY_AND_ASSIGN(StaticCompositeContext);
 };
 
