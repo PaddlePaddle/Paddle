@@ -19,6 +19,7 @@
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/flags.h"
 
+#include "paddle/fluid/pir/transforms/fused_gemm_epilogue_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
@@ -83,6 +84,12 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       if (!FLAGS_enable_pir_api) {
         VLOG(6) << "begin to translate" << std::endl;
         base_program = paddle::TranslateLegacyProgramToProgram(*program);
+      }
+      {
+        pir::PassManager pm(pir::IrContext::Instance(), 3);
+        pm.AddPass(pir::CreateFusedGemmEpiloguePass());
+        // pm.EnableIRPrinting();
+        pm.Run(base_program.get());
       }
       auto block = base_program->block();
       for (auto it = block->begin(); it != block->end(); ++it) {
