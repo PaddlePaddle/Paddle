@@ -1098,9 +1098,13 @@ class BatchNorm(Layer):
             )
             if self._act is None:
                 return batch_norm_out
-            return dygraph_utils._append_activation_in_dygraph(
-                batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn
-            )
+            if in_dynamic_mode():
+                return dygraph_utils._append_activation_in_dygraph(
+                    batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn
+                )
+            else:
+                act_op = getattr(_C_ops, self._act)
+                return act_op(input)
         else:
             # create output
             # mean and mean_out share the same memory
