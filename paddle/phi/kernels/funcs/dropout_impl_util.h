@@ -34,7 +34,7 @@ inline bool GetSeedDataAndIncrement(const phi::GPUContext& dev_ctx,
   auto gen_cuda = dev_ctx.GetGenerator();
 
   if (seed) {
-    VLOG(0) << "GetSeedDataAndIncrement using copy, seed_ptr = " << seed;
+    VLOG(10) << "GetSeedDataAndIncrement using copy, seed_ptr = " << seed;
     if (use_copy) {
       phi::DenseTensor seed_cpu_tensor;
       phi::Copy(dev_ctx, *seed, phi::CPUPlace(), true, &seed_cpu_tensor);
@@ -46,14 +46,15 @@ inline bool GetSeedDataAndIncrement(const phi::GPUContext& dev_ctx,
     auto seed_offset = gen_cuda->IncrementOffset(offset);
     *seed_data = seed_offset.first;
     *increment = seed_offset.second;
-    VLOG(0) << "GetSeedDataAndIncrement using IncrementOffset, Generator = "
-            << gen_cuda << " offset = " << offset << " seed_data = " << (*seed_data)
+    VLOG(10) << "GetSeedDataAndIncrement using IncrementOffset, Generator = "
+            << gen_cuda << " offset = " << offset
+            << " seed_data = " << (*seed_data)
             << " increment = " << (*increment);
     return false;
   } else {
     *seed_data = seed_val;
     *increment = offset;
-    VLOG(0) << "GetSeedDataAndIncrement direct, seed_data = " << (*seed_data)
+    VLOG(10) << "GetSeedDataAndIncrement direct, seed_data = " << (*seed_data)
             << " increment = " << (*increment);
     return false;
   }

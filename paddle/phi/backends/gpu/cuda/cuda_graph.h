@@ -24,12 +24,10 @@
 #include <unordered_map>
 #include <vector>
 
-#include "cuda.h"          // NOLINT
-#include "cuda_runtime.h"  // NOLINT
-
 #include "glog/logging.h"
 
 #include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/backends/device_code.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
@@ -104,25 +102,51 @@ class CUDAKernelParams {
 
 using cudaGraphExecuterSetter_t = std::function<void(cudaGraphExec_t)>;
 
-// This class provides a mechanism for launching CUDA kernels that need
-// to utilize the `cudaGraphExecKernelNodeSetParams` function for setting
-// their parameters. Instead of directly launching the kernels, they should be
-// executed via this class to ensure proper management and parameter setup.
+//  This class offers a interface for launching CUDA kernels in CUDA Graph, we
+//  utilize the `cudaGraphExecKernelNodeSetParams` function for parameter setup.
+//  Launching kernels via this class ensures proper management.
 //
-// NOTE: The first parameter of any kernel being launched through this class
-// should be reserved for an identifier of type `unsigned int`. This identifier
-// serves as a linkage to reconstruct the relationship between the kernel and
-// its associated CUDA graph node.
+//  NOTE: It's essential that the first parameter for any kernel launched
+//  through this class is an `unsigned int` identifier. This identifier plays a
+//  crucial role in linking the CUDA kernel to its corresponding CUDA graph
+//  node. We tag each kernel launch with a unique identifier to maintain
+//  structured linkage with its CUDA graph node.
 //
-// Usage and Features:
-// 1. Use `KernelLaunch` to execute your kernels with their parameters.
-// 2. The class ensures each kernel launch gets a unique identifier.
-// 3. It provides facilities to check and retrieve the parameter setter
-// associated
-//    with a particular kernel using `HasParameterSetter` and
-//    `GetParameterSetter`.
-// 4. The class is designed as a singleton; use `Instance()` to get the global
-// instance.
+//  NOTE: This class use a singleton design pattern ensures there's only a
+//  single global instance accessible via the `Instance()` method.
+//
+//  === Callback Definitions ===
+//
+//  [Parameter Setter Callback]
+//  Sets the kernel's parameters BEFORE activating the CUDA graph. It enables
+//  dynamic determination and setup of kernel arguments.
+//
+//  parameterSetter_t parameterSetter = [saved_state](CUDAKernelParams &param){
+//      // Code to compute and the parameter values from the saved_state
+//      // ...
+//      param.As<type>(idx) = calculated_value;
+//  };
+//
+//  [CUDA Kernel Callback]
+//  Acts as the launcher for the kernel. It accepts an `unsigned int` identifier
+//  and uses it for the kernel launch.
+//
+//  cudaKernelCallback_t cudaKernelCallback = [=](unsigned int id) {
+//      kernel<<<>>>(id, ...);  // Launching the kernel with id
+//  };
+//
+//  [Retrieving CUDA Function]
+//  The `cudaGetFuncBySymbol` method can be used to fetch the `cudaFunction_t`
+//  reference of the kernel from the kernel pointer.
+//
+//  cudaFunction_t cudaFunc;
+//  PADDLE_ENFORCE_GPU_SUCCESS(cudaGetFuncBySymbol(&cudaFunc, &kernel));
+//
+//  [Kernel Launch]
+//  With the callbacks defined and the CUDA function obtained, the kernel can be
+//  launched using the `KernelNodeLaunch` method.
+//
+//  KernelNodeLaunch(cudaFunc, parameterSetter, cudaKernelCallback);
 class CUDAGraphNodeLauncher {
  public:
   using parameterSetter_t = std::function<void(CUDAKernelParams &)>;

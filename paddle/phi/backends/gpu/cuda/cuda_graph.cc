@@ -283,10 +283,11 @@ CUDAGraphNodeLauncher::GetParameterSettersForExecGraph(cudaGraph_t graph) {
   for (auto node : nodes) {
     CUgraphNode cuNode = node;
     CUgraphNodeType pType;
-    PADDLE_ENFORCE_GPU_SUCCESS(cuGraphNodeGetType(cuNode, &pType));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cuGraphNodeGetType(cuNode, &pType));
     if (pType == CU_GRAPH_NODE_TYPE_KERNEL) {
       CUDA_KERNEL_NODE_PARAMS cuParams;
-      PADDLE_ENFORCE_GPU_SUCCESS(cuGraphKernelNodeGetParams(cuNode, &cuParams));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          dynload::cuGraphKernelNodeGetParams(cuNode, &cuParams));
       CUDAKernelParams kernel_params(cuParams.kernelParams);
       auto kernel =
           parameterSetters.find(static_cast<cudaFunction_t>(cuParams.func));
@@ -298,19 +299,17 @@ CUDAGraphNodeLauncher::GetParameterSettersForExecGraph(cudaGraph_t graph) {
         auto parameterSetter = launchSequence.find(id);
         if (parameterSetter != launchSequence.end()) {
           auto setter = parameterSetter->second;
-          hooks.push_back(
-              [setter, cuNode, cuParams](cudaGraphExec_t exec_graph) {
-                CUDAKernelParams kernel_params(cuParams.kernelParams);
-                setter(kernel_params);
-                PADDLE_ENFORCE_GPU_SUCCESS(cuGraphExecKernelNodeSetParams(
-                    static_cast<CUgraphExec>(exec_graph), cuNode, &cuParams));
-              });
+          hooks.push_back([setter, cuNode, cuParams](
+                              cudaGraphExec_t exec_graph) {
+            CUDAKernelParams kernel_params(cuParams.kernelParams);
+            setter(kernel_params);
+            PADDLE_ENFORCE_GPU_SUCCESS(dynload::cuGraphExecKernelNodeSetParams(
+                static_cast<CUgraphExec>(exec_graph), cuNode, &cuParams));
+          });
         } else {
           PADDLE_THROW(
               phi::errors::InvalidArgument("Error: does not find launch id"));
         }
-
-        VLOG(0) << "Found a kernel paramter setter";
       }
     }
   }

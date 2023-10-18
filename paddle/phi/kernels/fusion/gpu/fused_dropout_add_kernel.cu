@@ -211,8 +211,8 @@ void FusedDropoutAddKernel(const Context& dev_ctx,
                                               &increment);
           params.As<uint64_t>(2) = seed_data;
           params.As<uint64_t>(6) = increment;
-          VLOG(0) << "CUDA_GRAPH seed_data = " << seed_data
-                  << ", increment = " << increment;
+          VLOG(10) << "CUDA_GRAPH seed_data = " << seed_data
+                   << ", increment = " << increment;
 
           seed_offset_data[0] = static_cast<int64_t>(seed_data);
           seed_offset_data[1] = static_cast<int64_t>(increment);
@@ -233,8 +233,8 @@ void FusedDropoutAddKernel(const Context& dev_ctx,
     phi::backends::gpu::CUDAGraphNodeLauncher::Instance().KernelNodeLaunch(
         cudaFunc, parameterSetter, cudaKernelCallback);
 
-    VLOG(9) << "NON_CUDA_GRAPH seed_data = " << seed_data
-            << ", increment = " << increment;
+    VLOG(10) << "NON_CUDA_GRAPH seed_data = " << seed_data
+             << ", increment = " << increment;
   } else {
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     MT factor = static_cast<MT>(1.0f - dropout_rate);

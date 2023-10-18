@@ -364,8 +364,8 @@ void DropoutFwGPUKernelDriver(
                 static_cast<decltype(params.As<uint64_t>(2))>(seed_data);
             params.As<uint64_t>(8) =
                 static_cast<decltype(params.As<uint64_t>(8))>(increment);
-            VLOG(9) << "CUDA_GRAPH seed_data = " << seed_data
-                    << ", increment = " << increment;
+            VLOG(10) << "CUDA_GRAPH seed_data = " << seed_data
+                     << ", increment = " << increment;
           };
       phi::backends::gpu::CUDAGraphNodeLauncher::cudaKernelCallback_t
           cudaKernelCallback = [=](unsigned int id) {
@@ -384,8 +384,8 @@ void DropoutFwGPUKernelDriver(
       phi::backends::gpu::CUDAGraphNodeLauncher::Instance().KernelNodeLaunch(
           cudaFunc, parameterSetter, cudaKernelCallback);
 
-      VLOG(9) << "NON_CUDA_GRAPH seed_data = " << seed_data
-              << ", increment = " << increment;
+      VLOG(10) << "NON_CUDA_GRAPH seed_data = " << seed_data
+               << ", increment = " << increment;
     }
   } else {
     if (upscale_in_train) {

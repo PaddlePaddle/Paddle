@@ -213,8 +213,8 @@ void FusedDropoutAddGradKernel(const Context& dev_ctx,
 
       params.As<uint64_t>(2) = seed_data;
       params.As<uint64_t>(6) = increment;
-      VLOG(9) << "CUDA_GRAPH seed_data = " << seed_data
-              << ", increment = " << increment;
+      VLOG(10) << "CUDA_GRAPH seed_data = " << seed_data
+               << ", increment = " << increment;
     };
     void* functionPtr = reinterpret_cast<void*>(
         &(VectorizedDropoutBackward<T, NoMaskBwFunctor<T, float>>));
@@ -237,8 +237,8 @@ void FusedDropoutAddGradKernel(const Context& dev_ctx,
     phi::backends::gpu::CUDAGraphNodeLauncher::Instance().KernelNodeLaunch(
         cudaFunc, parameterSetter, cudaKernelCallback);
 
-    VLOG(9) << "NON_CUDA_GRAPH seed_data = " << seed_data
-            << ", increment = " << increment;
+    VLOG(10) << "NON_CUDA_GRAPH seed_data = " << seed_data
+             << ", increment = " << increment;
   }
 }
 
