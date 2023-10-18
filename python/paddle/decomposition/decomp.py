@@ -16,6 +16,7 @@ import logging
 import typing
 
 from paddle import pir
+from paddle.base.core import call_decomp, has_decomp
 from paddle.base.libpaddle.pir import Block, Operation, Program
 from paddle.framework import core
 
@@ -28,6 +29,18 @@ def _build_tensor_tuple(xs):
     elif isinstance(xs, typing.Sequence):
         return tuple(xs)
     return TypeError(f"Type {type(xs)} is not supported.")
+
+
+def _analyse_decomp_results(orig_outs, decomp_outs):
+    assert len(orig_outs) == len(decomp_outs)
+    res = []
+    for org_item, new_item in zip(orig_outs, decomp_outs):
+        if isinstance(org_item, pir.OpResult):
+            assert len(new_item) == 1 and isinstance(new_item[0], pir.OpResult)
+            res.append(new_item[0])
+        else:
+            res.append(new_item)
+    return res
 
 
 def _prepare_python_api_arguments(op):
@@ -215,7 +228,8 @@ def _decompose_subgraph(block, orig_vars, dst_vars, op_filter):
         for idx, op in enumerate(ops_list):
             op_name = op.name()
             decom_rule = register.get_decomp_rule(op_name)
-            lower = decom_rule and op_filter(op)
+            has_sink_decomp_rule = has_decomp(op)
+            lower = (decom_rule or has_sink_decomp_rule) and op_filter(op)
 
             if op.name() == "builtin.combine":
                 temp_op = op
@@ -231,7 +245,11 @@ def _decompose_subgraph(block, orig_vars, dst_vars, op_filter):
                     pir.set_insertion_point(op)
                 input_args = _prepare_python_api_arguments(op)
                 orig_outs = op.results()
-                new_outs = _build_tensor_tuple(decom_rule(*input_args))
+                if has_sink_decomp_rule:
+                    decomp_outs = call_decomp(op)
+                    new_outs = _analyse_decomp_results(orig_outs, decomp_outs)
+                else:
+                    new_outs = _build_tensor_tuple(decom_rule(*input_args))
 
                 # Todo: To cover such case: some outputs are no longer needed after decomposition.
                 _check_op_results(

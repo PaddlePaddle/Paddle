@@ -916,7 +916,7 @@ def sigmoid(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.40131235, 0.45016602, 0.52497917, 0.57444251])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.sigmoid(x)
     else:
         check_variable_and_dtype(
@@ -1097,7 +1097,7 @@ def square(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.16000001, 0.04000000, 0.01000000, 0.09000000])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.square(x)
     else:
         check_variable_and_dtype(
