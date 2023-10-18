@@ -755,7 +755,7 @@ class PyCodeGen:
         """
         Generate the bytecode for loading a null variable.
         """
-        null_var = self.global_null_variable()
+        null_var = self.global_null_variable
         self.gen_load_object(null_var, "___null_var", push_null=False)
 
     def gen_load_fast(self, name):
