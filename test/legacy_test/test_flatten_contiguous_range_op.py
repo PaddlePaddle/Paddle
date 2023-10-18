@@ -573,5 +573,5 @@ class TestFlatten0DTensorOpError(unittest.TestCase):
         self.assertRaises(ValueError, test_ValueError2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

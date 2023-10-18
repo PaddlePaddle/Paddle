@@ -260,6 +260,5 @@ class TestRollAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_np, expected_out, rtol=1e-05)
 
 
-if __name__ == '__main__':
-    paddle.enable_static()
+if __name__ == "__main__":
     unittest.main()

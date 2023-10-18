@@ -4906,5 +4906,5 @@ create_test_act_bf16_class(
     TestRsqrt, check_prim=True, check_pir=True, check_prim_pir=True
 )
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

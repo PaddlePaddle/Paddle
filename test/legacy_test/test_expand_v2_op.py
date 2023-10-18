@@ -538,6 +538,6 @@ class TestExpandV2CompOpInt64_t(OpTest):
         self.check_output(check_prim=True)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

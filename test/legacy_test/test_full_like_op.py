@@ -216,5 +216,5 @@ class TestFullLikeBF16Op(TestFullLikeOp1):
         self.dtype = np.uint16
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

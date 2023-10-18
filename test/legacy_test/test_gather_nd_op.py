@@ -701,6 +701,6 @@ class TestGatherNdAPI2(unittest.TestCase):
         paddle.enable_static()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

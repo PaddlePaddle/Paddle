@@ -479,6 +479,6 @@ class TestTopKAPI(unittest.TestCase):
                 paddle.topk(x, k=0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

@@ -530,6 +530,6 @@ class TestDygraph(unittest.TestCase):
             output = paddle.scatter_nd_add(x, index, updates)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

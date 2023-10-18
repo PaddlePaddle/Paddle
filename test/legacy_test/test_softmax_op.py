@@ -616,6 +616,5 @@ class TestSoftmaxInplaceAPI(TestSoftmaxAPI):
         self.softmax = F.softmax_
 
 
-if __name__ == '__main__':
-    paddle.enable_static()
+if __name__ == "__main__":
     unittest.main()
