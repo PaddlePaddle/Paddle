@@ -820,9 +820,6 @@ void SwitchWarpSoftmaxBackward(const int blocks,
       // PADDLE_THROW(phi::errors::Unimplemented(
       //     "Unsupported softmax dim: element_count=%d,
       //     log2_element_count=%d!", element_count, log2_element_count));
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "Unexpected branch when Log2Elements = %d. This may be a bug.",
-          Log2Elements));
       break;
   }
 }
