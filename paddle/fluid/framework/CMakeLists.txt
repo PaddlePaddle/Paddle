@@ -688,8 +688,7 @@ set(NAIVE_EXECUTOR_DEPS
     lod_rank_table
     feed_fetch_method
     graph_to_program_pass
-    variable_helper
-    standalone_executor)
+    variable_helper)
 
 if(TENSORRT_FOUND)
   set(NAIVE_EXECUTOR_DEPS ${NAIVE_EXECUTOR_DEPS} tensorrt_engine_op)
