@@ -116,7 +116,6 @@ class TestAllcloseOpNanTrue(TestAllcloseOp):
 
 
 class TestAllcloseDygraph(unittest.TestCase):
-    @test_with_pir_api
     def test_api_case(self):
         paddle.disable_static()
         x_data = np.random.rand(10, 10)

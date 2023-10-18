@@ -492,7 +492,7 @@ class TestStaticFlattenInferShapePythonAPI(unittest.TestCase):
                 name="x", shape=[-1, 3, -1, -1], dtype='float32'
             )
             out = self.execute_api(x, start_axis=2, stop_axis=3)
-        self.assertTrue((-1, 3, -1) == out.shape)
+        self.assertTrue((-1, 3, -1) == tuple(out.shape))
 
 
 class TestStaticInplaceFlattenPythonAPI(TestStaticFlattenPythonAPI):
