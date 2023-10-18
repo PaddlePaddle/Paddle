@@ -87,7 +87,7 @@ def train_static():
         parameters=net.parameters(), learning_rate=0.01, grad_clip=clip
     )
 
-    return to_static(train)(net, adam, x)
+    return to_static(train, fullgraph=True)(net, adam, x)
 
 
 class TestSimnet(unittest.TestCase):
@@ -101,5 +101,4 @@ class TestSimnet(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with paddle.jit.api.fallback_guard(False):
-        unittest.main()
+    unittest.main()

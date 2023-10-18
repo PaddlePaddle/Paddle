@@ -121,7 +121,7 @@ class TestIntCast(TestCastBase):
         self.cast_dtype = 'int32'
 
     def set_func(self):
-        self.func = to_static(test_int_cast)
+        self.func = to_static(fullgraph=True)(test_int_cast)
 
 
 class TestFloatCast(TestCastBase):
@@ -136,7 +136,7 @@ class TestFloatCast(TestCastBase):
         self.cast_dtype = 'float32'
 
     def set_func(self):
-        self.func = to_static(test_float_cast)
+        self.func = to_static(fullgraph=True)(test_float_cast)
 
 
 class TestMixCast(TestCastBase):
