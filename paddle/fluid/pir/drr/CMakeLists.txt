@@ -44,7 +44,7 @@ set(dialect_name pd_op)
 
 set(cinn_op_creator_file
     ${PADDLE_BINARY_DIR}/paddle/fluid/pir/drr/cinn_op_factory_generated.cc)
-set(cinn_op_creator_file_tmp ${op_creator_file}.tmp)
+set(cinn_op_creator_file_tmp ${cinn_op_creator_file}.tmp)
 
 set(cinn_dialect_name cinn_op)
 
@@ -64,6 +64,7 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${cinn_op_creator_file_tmp}
           ${cinn_op_creator_file}
   COMMENT "copy_if_different ${op_creator_file}"
+  COMMENT "copy_if_different ${cinn_op_creator_file}"
   DEPENDS ${op_creator_gen_file}
           ${op_forward_yaml_file1}
           ${op_forward_yaml_file2}
