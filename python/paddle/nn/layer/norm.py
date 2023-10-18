@@ -721,24 +721,25 @@ class _BatchNormBase(Layer):
         param_shape = [num_features]
 
         # create parameter
-        if weight_attr is False:
-            self.weight = None
-        else:
+        if weight_attr is not False:
             self.weight = self.create_parameter(
                 attr=self._weight_attr,
                 shape=param_shape,
                 dtype=self._dtype,
                 default_initializer=Constant(1.0),
             )
-        if bias_attr is False:
-            self.bias = None
+
         else:
+            self.weight = None
+        if bias_attr is not False:
             self.bias = self.create_parameter(
                 attr=self._bias_attr,
                 shape=param_shape,
                 dtype=self._dtype,
                 is_bias=True,
             )
+        else:
+            self.bias = None
 
         moving_mean_name = None
         moving_variance_name = None
@@ -972,24 +973,24 @@ class BatchNorm(Layer):
         param_shape = [num_channels]
 
         # create parameter
-        if param_attr is False:
-            self.weight = None
-        else:
+        if param_attr is not False:
             self.weight = self.create_parameter(
                 attr=self._param_attr,
                 shape=param_shape,
                 dtype=self._dtype,
                 default_initializer=Constant(1.0),
             )
-        if bias_attr is False:
-            self.bias = None
         else:
+            self.weight = None
+        if bias_attr is not False:
             self.bias = self.create_parameter(
                 attr=self._bias_attr,
                 shape=param_shape,
                 dtype=self._dtype,
                 is_bias=True,
             )
+        else:
+            self.bias = None
 
         self._mean = self.create_parameter(
             attr=ParamAttr(

@@ -26,8 +26,8 @@ void BatchNormKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& mean,
                      const DenseTensor& variance,
-                     const paddle::optional<DenseTensor>& scale_opt,
-                     const paddle::optional<DenseTensor>& bias_opt,
+                     const paddle::optional<DenseTensor>& scale,
+                     const paddle::optional<DenseTensor>& bias,
                      bool is_test,
                      float momentum,
                      float epsilon,
@@ -70,27 +70,27 @@ void BatchNormKernel(const Context& dev_ctx,
 
   W = W * D;
 
-  auto* scale_ptr = scale_opt.get_ptr();
-  auto* bias_ptr = bias_opt.get_ptr();
+  auto* Scale = scale.get_ptr();
+  auto* Bias = bias.get_ptr();
 
-  phi::DenseTensor scale;
-  phi::DenseTensor bias;
+  phi::DenseTensor new_scale;
+  phi::DenseTensor new_bias;
 
-  if (scale_ptr) {
-    scale = scale_opt.get();
+  if (Scale) {
+    new_scale = scale.get();
   } else {
-    scale = phi::Full<T, Context>(dev_ctx, {C}, static_cast<T>(1));
+    new_scale = phi::Full<T, Context>(dev_ctx, {C}, static_cast<T>(1));
   }
 
-  if (bias_ptr) {
-    bias = bias_opt.get();
+  if (Bias) {
+    new_bias = bias.get();
   } else {
-    bias = phi::Full<T, Context>(dev_ctx, {C}, static_cast<T>(0));
+    new_bias = phi::Full<T, Context>(dev_ctx, {C}, static_cast<T>(0));
   }
 
   const auto* x_data = reinterpret_cast<const XPUType*>(x.data<T>());
-  const auto* scale_data = scale.data<float>();
-  const auto* bias_data = bias.data<float>();
+  const auto* scale_data = new_scale.data<float>();
+  const auto* bias_data = new_bias.data<float>();
 
   // alloc memory
   auto* y_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(y));

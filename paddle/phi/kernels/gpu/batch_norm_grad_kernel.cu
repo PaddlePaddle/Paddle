@@ -488,8 +488,8 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNBackwardData(
 template <typename T, typename Context>
 void BatchNormGradFunctor(const Context &ctx,
                           const DenseTensor &x,
-                          const paddle::optional<DenseTensor> &scale_opt,
-                          const paddle::optional<DenseTensor> &bias_opt,
+                          const paddle::optional<DenseTensor> &scale,
+                          const paddle::optional<DenseTensor> &bias,
                           const paddle::optional<DenseTensor> &mean,
                           const paddle::optional<DenseTensor> &variance,
                           const DenseTensor &saved_mean,
@@ -550,41 +550,41 @@ void BatchNormGradFunctor(const Context &ctx,
     ctx.template Alloc<BatchNormParamType<T>>(d_bias);
   }
 
-  auto *scale_ptr = scale_opt.get_ptr();
-  auto *bias_ptr = bias_opt.get_ptr();
+  auto *Scale = scale.get_ptr();
+  auto *Bias = bias.get_ptr();
 
-  phi::DenseTensor scale;
-  phi::DenseTensor bias;
+  phi::DenseTensor new_scale;
+  phi::DenseTensor new_bias;
 
-  if (scale_ptr) {
-    scale = scale_opt.get();
+  if (Scale) {
+    new_scale = scale.get();
   } else {
-    scale = phi::Full<T, Context>(ctx, {C}, static_cast<T>(1));
+    new_scale = phi::Full<T, Context>(ctx, {C}, static_cast<T>(1));
   }
 
-  if (bias_ptr) {
-    bias = bias_opt.get();
+  if (Bias) {
+    new_bias = bias.get();
   } else {
-    bias = phi::Full<T, Context>(ctx, {C}, static_cast<T>(0));
+    new_bias = phi::Full<T, Context>(ctx, {C}, static_cast<T>(0));
   }
 
   PADDLE_ENFORCE_EQ(
-      scale.dims().size(),
+      new_scale.dims().size(),
       1UL,
       phi::errors::InvalidArgument(
           "The size of scale's dimensions must equal to 1. But received: "
           "the size of scale's dimensions is [%d], the dimensions of scale "
           "is [%s].",
-          scale.dims().size(),
-          scale.dims()));
+          new_scale.dims().size(),
+          new_scale.dims()));
   PADDLE_ENFORCE_EQ(
-      scale.dims()[0],
+      new_scale.dims()[0],
       C,
       phi::errors::InvalidArgument(
           "The first dimension of scale must equal to Channels[%d]. But "
           "received: the first dimension of scale is [%d]",
           C,
-          scale.dims()[0]));
+          new_scale.dims()[0]));
 
   auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
 #ifdef PADDLE_WITH_HIP
@@ -732,8 +732,8 @@ void BatchNormGradFunctor(const Context &ctx,
     if (is_inplace) {
       inplace_functor(compute_format,
                       transformed_x.data<T>(),
-                      scale.template data<BatchNormParamType<T>>(),
-                      bias.template data<BatchNormParamType<T>>(),
+                      new_scale.template data<BatchNormParamType<T>>(),
+                      new_bias.template data<BatchNormParamType<T>>(),
                       saved_mean_data,
                       saved_var_data,
                       epsilon,
@@ -754,7 +754,7 @@ void BatchNormGradFunctor(const Context &ctx,
             <<<grid2, block, 0, ctx.stream()>>>(
                 transformed_d_y.template data<T>(),
                 transformed_x.template data<T>(),
-                scale.template data<BatchNormParamType<T>>(),
+                new_scale.template data<BatchNormParamType<T>>(),
                 saved_mean_data,
                 saved_var_data,
                 C,
@@ -769,7 +769,7 @@ void BatchNormGradFunctor(const Context &ctx,
             <<<grid2, block, 0, ctx.stream()>>>(
                 transformed_d_y.template data<T>(),
                 transformed_x.template data<T>(),
-                scale.template data<BatchNormParamType<T>>(),
+                new_scale.template data<BatchNormParamType<T>>(),
                 saved_mean_data,
                 saved_var_data,
                 C,
@@ -899,7 +899,7 @@ void BatchNormGradFunctor(const Context &ctx,
               <<<grid, block, 0, ctx.stream()>>>(
                   transformed_d_y.template data<T>(),
                   transformed_x.template data<T>(),
-                  scale.template data<BatchNormParamType<T>>(),
+                  new_scale.template data<BatchNormParamType<T>>(),
                   dscale,
                   dbias,
                   mean_ptr,
@@ -916,7 +916,7 @@ void BatchNormGradFunctor(const Context &ctx,
                 <<<grid2, block, 0, ctx.stream()>>>(
                     transformed_d_y.template data<T>(),
                     transformed_x.template data<T>(),
-                    scale.template data<BatchNormParamType<T>>(),
+                    new_scale.template data<BatchNormParamType<T>>(),
                     saved_mean_data,
                     saved_var_data,
                     C,
@@ -931,7 +931,7 @@ void BatchNormGradFunctor(const Context &ctx,
                 <<<grid2, block, 0, ctx.stream()>>>(
                     transformed_d_y.template data<T>(),
                     transformed_x.template data<T>(),
-                    scale.template data<BatchNormParamType<T>>(),
+                    new_scale.template data<BatchNormParamType<T>>(),
                     saved_mean_data,
                     saved_var_data,
                     C,
@@ -988,7 +988,8 @@ void BatchNormGradFunctor(const Context &ctx,
                 /*dxDesc=*/data_desc_,
                 /*dxData=*/ctx.template Alloc<T>(&transformed_d_x),
                 /*dBnScaleBiasDesc=*/bn_param_desc_,
-                /*bnScaleData=*/scale.template data<BatchNormParamType<T>>(),
+                /*bnScaleData=*/
+                new_scale.template data<BatchNormParamType<T>>(),
                 /*bnBiasData=*/nullptr,
                 /*dBnScaleData=*/
                 ctx.template Alloc<BatchNormParamType<T>>(d_scale),
@@ -1019,7 +1020,7 @@ void BatchNormGradFunctor(const Context &ctx,
                 data_desc_,
                 ctx.template Alloc<T>(&transformed_d_x),
                 bn_param_desc_,
-                scale.template data<BatchNormParamType<T>>(),
+                new_scale.template data<BatchNormParamType<T>>(),
                 ctx.template Alloc<BatchNormParamType<T>>(d_scale),
                 ctx.template Alloc<BatchNormParamType<T>>(d_bias),
                 epsilon,
@@ -1042,7 +1043,7 @@ void BatchNormGradFunctor(const Context &ctx,
             BNBackwardData<T, block, phi::DataLayout::kNHWC>
                 <<<grid2, block, 0, ctx.stream()>>>(
                     d_y->data<T>(),
-                    scale.data<BatchNormParamType<T>>(),
+                    new_scale.data<BatchNormParamType<T>>(),
                     saved_mean_data,
                     x.data<T>(),
                     saved_var_data,
@@ -1070,7 +1071,7 @@ void BatchNormGradFunctor(const Context &ctx,
             BNBackwardData<T, block, phi::DataLayout::kNCHW>
                 <<<grid2, block, 0, ctx.stream()>>>(
                     d_y->data<T>(),
-                    scale.data<BatchNormParamType<T>>(),
+                    new_scale.data<BatchNormParamType<T>>(),
                     saved_mean_data,
                     x.data<T>(),
                     saved_var_data,
@@ -1099,7 +1100,7 @@ void BatchNormGradFunctor(const Context &ctx,
           BNBackwardData<T, block, phi::DataLayout::kNHWC>
               <<<grid2, block, 0, ctx.stream()>>>(
                   d_y->data<T>(),
-                  scale.data<BatchNormParamType<T>>(),
+                  new_scale.data<BatchNormParamType<T>>(),
                   saved_mean_data,
                   x.data<T>(),
                   saved_var_data,
@@ -1153,8 +1154,8 @@ void BatchNormGradFunctor(const Context &ctx,
       auto px = x;
       inplace_functor(data_layout,
                       ctx.template Alloc<T>(&px),
-                      scale.template data<BatchNormParamType<T>>(),
-                      bias.template data<BatchNormParamType<T>>(),
+                      new_scale.template data<BatchNormParamType<T>>(),
+                      new_bias.template data<BatchNormParamType<T>>(),
                       running_mean_data,
                       running_var_data,
                       epsilon,
@@ -1171,14 +1172,15 @@ void BatchNormGradFunctor(const Context &ctx,
       if (data_layout == DataLayout::kNHWC) {
         if (d_x) {
           KeBNBackwardData<T, phi::DataLayout::kNHWC>
-              <<<grid1, block, 0, stream>>>(d_y->data<T>(),
-                                            scale.data<BatchNormParamType<T>>(),
-                                            running_var_data,
-                                            epsilon,
-                                            C,
-                                            H * W,
-                                            num,
-                                            d_x->data<T>());
+              <<<grid1, block, 0, stream>>>(
+                  d_y->data<T>(),
+                  new_scale.data<BatchNormParamType<T>>(),
+                  running_var_data,
+                  epsilon,
+                  C,
+                  H * W,
+                  num,
+                  d_x->data<T>());
         }
         if (d_scale && d_bias) {
           KeBNBackwardScaleBias<T, block, phi::DataLayout::kNHWC>
@@ -1197,14 +1199,15 @@ void BatchNormGradFunctor(const Context &ctx,
       } else {
         if (d_x) {
           KeBNBackwardData<T, phi::DataLayout::kNCHW>
-              <<<grid1, block, 0, stream>>>(d_y->data<T>(),
-                                            scale.data<BatchNormParamType<T>>(),
-                                            running_var_data,
-                                            epsilon,
-                                            C,
-                                            H * W,
-                                            num,
-                                            d_x->data<T>());
+              <<<grid1, block, 0, stream>>>(
+                  d_y->data<T>(),
+                  new_scale.data<BatchNormParamType<T>>(),
+                  running_var_data,
+                  epsilon,
+                  C,
+                  H * W,
+                  num,
+                  d_x->data<T>());
         }
         if (d_scale && d_bias) {
           KeBNBackwardScaleBias<T, block, phi::DataLayout::kNCHW>
@@ -1224,14 +1227,15 @@ void BatchNormGradFunctor(const Context &ctx,
     } else {
       if (d_x) {
         KeBNBackwardData<T, phi::DataLayout::kNHWC>
-            <<<grid1, block, 0, stream>>>(d_y->data<T>(),
-                                          scale.data<BatchNormParamType<T>>(),
-                                          running_var_data,
-                                          epsilon,
-                                          C,
-                                          H * W,
-                                          num,
-                                          d_x->data<T>());
+            <<<grid1, block, 0, stream>>>(
+                d_y->data<T>(),
+                new_scale.data<BatchNormParamType<T>>(),
+                running_var_data,
+                epsilon,
+                C,
+                H * W,
+                num,
+                d_x->data<T>());
       }
       if (d_scale && d_bias) {
         dim3 block;
@@ -1281,8 +1285,8 @@ void BatchNormGradFunctor(const Context &ctx,
 template <typename T, typename Context>
 void BatchNormGradKernel(const Context &dev_ctx,
                          const DenseTensor &x,
-                         const paddle::optional<DenseTensor> &scale_opt,
-                         const paddle::optional<DenseTensor> &bias_opt,
+                         const paddle::optional<DenseTensor> &scale,
+                         const paddle::optional<DenseTensor> &bias,
                          const paddle::optional<DenseTensor> &mean,
                          const paddle::optional<DenseTensor> &variance,
                          const DenseTensor &saved_mean,
@@ -1300,8 +1304,8 @@ void BatchNormGradKernel(const Context &dev_ctx,
                          DenseTensor *bias_grad) {
   BatchNormGradFunctor<T, Context>(dev_ctx,
                                    x,
-                                   scale_opt,
-                                   bias_opt,
+                                   scale,
+                                   bias,
                                    mean,
                                    variance,
                                    saved_mean,
@@ -1324,7 +1328,7 @@ template <typename T, typename Context>
 void BatchNormDoubleGradKernel(
     const Context &ctx,
     const DenseTensor &x,
-    const paddle::optional<DenseTensor> &scale_opt,
+    const paddle::optional<DenseTensor> &scale,
     const paddle::optional<DenseTensor> &mean,
     const paddle::optional<DenseTensor> &variance,
     const DenseTensor &saved_mean,
@@ -1360,17 +1364,17 @@ void BatchNormDoubleGradKernel(
   const auto &x_dims = x.dims();
   int N, C, H, W, D;
   phi::funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
-  auto *scale_ptr = scale_opt.get_ptr();
-  phi::DenseTensor scale;
-  if (scale_ptr) {
-    scale = scale_opt.get();
+  auto *Scale = scale.get_ptr();
+  phi::DenseTensor new_scale;
+  if (Scale) {
+    new_scale = scale.get();
   } else {
-    scale = phi::Full<T, Context>(ctx, {C}, static_cast<T>(1));
+    new_scale = phi::Full<T, Context>(ctx, {C}, static_cast<T>(1));
   }
   phi::funcs::NormDoubleGradFunctor<Context, T>(ctx,
                                                 data_layout,
                                                 &x,
-                                                &scale,
+                                                &new_scale,
                                                 &y_grad,
                                                 &saved_mean,
                                                 &saved_variance,

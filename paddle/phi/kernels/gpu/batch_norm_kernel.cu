@@ -516,8 +516,8 @@ void BatchNormKernel(const Context &ctx,
                      const DenseTensor &x,
                      const DenseTensor &mean,
                      const DenseTensor &variance,
-                     const paddle::optional<DenseTensor> &scale_opt,
-                     const paddle::optional<DenseTensor> &bias_opt,
+                     const paddle::optional<DenseTensor> &scale,
+                     const paddle::optional<DenseTensor> &bias,
                      bool is_test,
                      float momentum,
                      float epsilon_f,
@@ -552,22 +552,22 @@ void BatchNormKernel(const Context &ctx,
 
   auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
 
-  auto *scale_ptr = scale_opt.get_ptr();
-  auto *bias_ptr = bias_opt.get_ptr();
+  auto *Scale = scale.get_ptr();
+  auto *Bias = bias.get_ptr();
 
-  phi::DenseTensor scale;
-  phi::DenseTensor bias;
+  phi::DenseTensor new_scale;
+  phi::DenseTensor new_bias;
 
-  if (scale_ptr) {
-    scale = scale_opt.get();
+  if (Scale) {
+    new_scale = scale.get();
   } else {
-    scale = phi::Full<T, Context>(ctx, {C}, static_cast<T>(1));
+    new_scale = phi::Full<T, Context>(ctx, {C}, static_cast<T>(1));
   }
 
-  if (bias_ptr) {
-    bias = bias_opt.get();
+  if (Bias) {
+    new_bias = bias.get();
   } else {
-    bias = phi::Full<T, Context>(ctx, {C}, static_cast<T>(0));
+    new_bias = phi::Full<T, Context>(ctx, {C}, static_cast<T>(0));
   }
 
 #ifdef PADDLE_WITH_HIP
@@ -741,8 +741,8 @@ void BatchNormKernel(const Context &ctx,
               transformed_x.template data<T>(),
               est_mean->template data<BatchNormParamType<T>>(),
               est_var->template data<BatchNormParamType<T>>(),
-              scale.template data<BatchNormParamType<T>>(),
-              bias.template data<BatchNormParamType<T>>(),
+              new_scale.template data<BatchNormParamType<T>>(),
+              new_bias.template data<BatchNormParamType<T>>(),
               C,
               N,
               H * W * D,
@@ -754,8 +754,8 @@ void BatchNormKernel(const Context &ctx,
               transformed_x.template data<T>(),
               est_mean->template data<BatchNormParamType<T>>(),
               est_var->template data<BatchNormParamType<T>>(),
-              scale.template data<BatchNormParamType<T>>(),
-              bias.template data<BatchNormParamType<T>>(),
+              new_scale.template data<BatchNormParamType<T>>(),
+              new_bias.template data<BatchNormParamType<T>>(),
               C,
               N,
               H * W * D,
@@ -798,8 +798,8 @@ void BatchNormKernel(const Context &ctx,
                 transformed_x.template data<T>(),
                 est_mean->template data<BatchNormParamType<T>>(),
                 est_var->template data<BatchNormParamType<T>>(),
-                scale.template data<BatchNormParamType<T>>(),
-                bias.template data<BatchNormParamType<T>>(),
+                new_scale.template data<BatchNormParamType<T>>(),
+                new_bias.template data<BatchNormParamType<T>>(),
                 C,
                 N,
                 H * W * D,
@@ -822,8 +822,8 @@ void BatchNormKernel(const Context &ctx,
                   est_mean->template data<BatchNormParamType<T>>(),
                   // est_var->template data<BatchNormParamType<T>>(),
                   inv_var_ptr,
-                  scale.template data<BatchNormParamType<T>>(),
-                  bias.template data<BatchNormParamType<T>>(),
+                  new_scale.template data<BatchNormParamType<T>>(),
+                  new_bias.template data<BatchNormParamType<T>>(),
                   C,
                   N,
                   H * W * D,
@@ -835,8 +835,8 @@ void BatchNormKernel(const Context &ctx,
                   transformed_x.template data<T>(),
                   est_mean->template data<BatchNormParamType<T>>(),
                   est_var->template data<BatchNormParamType<T>>(),
-                  scale.template data<BatchNormParamType<T>>(),
-                  bias.template data<BatchNormParamType<T>>(),
+                  new_scale.template data<BatchNormParamType<T>>(),
+                  new_bias.template data<BatchNormParamType<T>>(),
                   C,
                   N,
                   H * W * D,
@@ -857,8 +857,8 @@ void BatchNormKernel(const Context &ctx,
               data_desc_,
               ctx.template Alloc<T>(&transformed_y),
               bn_param_desc_,
-              scale.template data<BatchNormParamType<T>>(),
-              bias.template data<BatchNormParamType<T>>(),
+              new_scale.template data<BatchNormParamType<T>>(),
+              new_bias.template data<BatchNormParamType<T>>(),
               est_mean->template data<BatchNormParamType<T>>(),
               est_var->template data<BatchNormParamType<T>>(),
               epsilon));
@@ -903,8 +903,8 @@ void BatchNormKernel(const Context &ctx,
         BNForwardTraining<T, block, DataLayout::kNCHW>
             <<<grid, block, 0, ctx.stream()>>>(
                 transformed_x.template data<T>(),
-                scale.template data<BatchNormParamType<T>>(),
-                bias.template data<BatchNormParamType<T>>(),
+                new_scale.template data<BatchNormParamType<T>>(),
+                new_bias.template data<BatchNormParamType<T>>(),
                 C,
                 N,
                 H * W * D,
@@ -919,8 +919,8 @@ void BatchNormKernel(const Context &ctx,
         BNForwardTraining<T, block, DataLayout::kNHWC>
             <<<grid, block, 0, ctx.stream()>>>(
                 transformed_x.template data<T>(),
-                scale.template data<BatchNormParamType<T>>(),
-                bias.template data<BatchNormParamType<T>>(),
+                new_scale.template data<BatchNormParamType<T>>(),
+                new_bias.template data<BatchNormParamType<T>>(),
                 C,
                 N,
                 H * W * D,
@@ -1021,8 +1021,8 @@ void BatchNormKernel(const Context &ctx,
           BNForwardTraining2DCompStat<T, block_size>
               <<<grid, block, 0, ctx.stream()>>>(
                   transformed_x.template data<T>(),
-                  scale.template data<BatchNormParamType<T>>(),
-                  bias.template data<BatchNormParamType<T>>(),
+                  new_scale.template data<BatchNormParamType<T>>(),
+                  new_bias.template data<BatchNormParamType<T>>(),
                   C,
                   N,
                   H * W * D,
@@ -1040,8 +1040,8 @@ void BatchNormKernel(const Context &ctx,
 
           BNForwardTraining2DWriteRes<T><<<grid, block, 0, ctx.stream()>>>(
               transformed_x.template data<T>(),
-              scale.template data<BatchNormParamType<T>>(),
-              bias.template data<BatchNormParamType<T>>(),
+              new_scale.template data<BatchNormParamType<T>>(),
+              new_bias.template data<BatchNormParamType<T>>(),
               C,
               N,
               H * W * D,
@@ -1082,8 +1082,8 @@ void BatchNormKernel(const Context &ctx,
           BNForwardTraining2DChannelLastCompStat<T, block_size>
               <<<grid, block, 0, ctx.stream()>>>(
                   transformed_x.template data<T>(),
-                  scale.template data<BatchNormParamType<T>>(),
-                  bias.template data<BatchNormParamType<T>>(),
+                  new_scale.template data<BatchNormParamType<T>>(),
+                  new_bias.template data<BatchNormParamType<T>>(),
                   C,
                   N,
                   H * W * D,
@@ -1102,8 +1102,8 @@ void BatchNormKernel(const Context &ctx,
           BNForwardTraining2DChannelLastWriteRes<T>
               <<<grid, block, 0, ctx.stream()>>>(
                   transformed_x.template data<T>(),
-                  scale.template data<BatchNormParamType<T>>(),
-                  bias.template data<BatchNormParamType<T>>(),
+                  new_scale.template data<BatchNormParamType<T>>(),
+                  new_bias.template data<BatchNormParamType<T>>(),
                   C,
                   N,
                   H * W * D,
@@ -1174,8 +1174,8 @@ void BatchNormKernel(const Context &ctx,
                 data_desc_,
                 transformed_y.template data<T>(),
                 bn_param_desc_,
-                scale.template data<BatchNormParamType<T>>(),
-                bias.template data<BatchNormParamType<T>>(),
+                new_scale.template data<BatchNormParamType<T>>(),
+                new_bias.template data<BatchNormParamType<T>>(),
                 this_factor,
                 ctx.template Alloc<BatchNormParamType<T>>(mean_out),
                 ctx.template Alloc<BatchNormParamType<T>>(variance_out),
@@ -1199,8 +1199,8 @@ void BatchNormKernel(const Context &ctx,
                 data_desc_,
                 ctx.template Alloc<T>(&transformed_y),
                 bn_param_desc_,
-                scale.template data<BatchNormParamType<T>>(),
-                bias.template data<BatchNormParamType<T>>(),
+                new_scale.template data<BatchNormParamType<T>>(),
+                new_bias.template data<BatchNormParamType<T>>(),
                 this_factor,
                 ctx.template Alloc<BatchNormParamType<T>>(mean_out),
                 ctx.template Alloc<BatchNormParamType<T>>(variance_out),

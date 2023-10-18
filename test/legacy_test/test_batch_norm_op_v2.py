@@ -200,6 +200,18 @@ class TestBatchNorm(unittest.TestCase):
                         shape[1],
                         is_test=is_test,
                         param_attr=False,
+                        bias_attr=False,
+                        trainable_statistics=trainable_statistics,
+                    )
+                    y = bn(paddle.to_tensor(x))
+                return y.numpy()
+
+            def compute_v3_2(x, is_test, trainable_statistics):
+                with base.dygraph.guard(p):
+                    bn = paddle.nn.BatchNorm(
+                        shape[1],
+                        is_test=is_test,
+                        param_attr=False,
                         bias_attr=base.ParamAttr(
                             initializer=paddle.nn.initializer.Constant(0.0),
                             trainable=False,
@@ -209,7 +221,7 @@ class TestBatchNorm(unittest.TestCase):
                     y = bn(paddle.to_tensor(x))
                 return y.numpy()
 
-            def compute_v3_2(x, is_test, trainable_statistics):
+            def compute_v3_3(x, is_test, trainable_statistics):
                 with base.dygraph.guard(p):
                     bn = paddle.nn.BatchNorm(
                         shape[1],
@@ -238,11 +250,13 @@ class TestBatchNorm(unittest.TestCase):
             y3 = compute_v3(x, False, False)
             y3_1 = compute_v3_1(x, False, False)
             y3_2 = compute_v3_2(x, False, False)
+            y3_3 = compute_v3_3(x, False, False)
             y4 = compute_v4(x)
             np.testing.assert_allclose(y1, y2, rtol=1e-05)
             np.testing.assert_allclose(y3, y4, rtol=1e-05)
             np.testing.assert_allclose(y3_1, y4, rtol=1e-05)
             np.testing.assert_allclose(y3_2, y4, rtol=1e-05)
+            np.testing.assert_allclose(y3_3, y4, rtol=1e-05)
 
     def test_static(self):
         places = [base.CPUPlace()]
