@@ -13,6 +13,8 @@
 # limitations under the License.
 
 from paddle import _C_ops
+from paddle.base.data_feeder import check_dtype
+from paddle.base.framework import convert_np_dtype_to_dtype_
 from paddle.framework import LayerHelper, in_dynamic_mode
 
 
@@ -22,25 +24,26 @@ def weight_quantize(x, algo="weight_only_int8"):
 
     Args:
         x (Tensor): The input Tensor to be quantized, the data type is float16 or bfloat16.
-        algo (str|None): The algo that is x will be apply, must be one of 'weight_only_int8',
+        algo (str): The algo that is x will be apply, must be one of 'weight_only_int8',
             'weight_only_int4' and 'llm.int8', default: 'weight_only_int8'.
 
     Returns:
-        out (Tensor): The Tensor which is the quantitative results, the data type is the same as that of x.
+        out (Tensor): The Tensor which is the quantitative results, the data type is int8, the shape is transposition of x.
         scale (Tensor): The scale Tensor which is the scale of pre-channel, the data type is float32.
     Examples:
         .. code-block:: python
 
-            import paddle
-            import numpy as np
-            from paddle.nn.quant import weight_quantize
+            >>> # doctest: +SKIP('No testing required')
+            >>> import paddle
+            >>> from paddle.nn.quant import weight_quantize
 
-            paddle.device.set_device("cpu")
-            x = np.random.randn(64, 32).astype('float16')
-            x = paddle.to_tensor(x, dtype=paddle.float16, place=paddle.CPUPlace())
-            out, scale = weight_quantize(x, algo='weight_only_int8')
-            print(out.shape) # [32, 64]
-            print(scale.shape) # [32]
+            >>> paddle.seed(2023)
+            >>> x = paddle.rand(shape=[64, 32], dtype=paddle.float16)
+            >>> out, scale = weight_quantize(x, algo='weight_only_int8')
+            >>> print(out.shape)
+            [32, 64]
+            >>> print(scale.shape)
+            [32]
     """
 
     if in_dynamic_mode():
@@ -58,6 +61,52 @@ def weight_quantize(x, algo="weight_only_int8"):
             attrs={"algo": algo},
         )
         return (out, scale)
+
+
+def weight_dequantize(x, scale, algo="weight_only_int8", out_dtype='float16'):
+    """
+    Dequantization function for weight_only and llm.int8's weight.
+
+    Args:
+        x (Tensor): The input Tensor to be dequantized, the data type is int8.
+        scale (Tensor): The scale Tensor which is the output of weight_quantize, the data type is float32.
+        algo (str): The algo that is x will be apply, must be one of 'weight_only_int8',
+            'weight_only_int4' and 'llm.int8', default: 'weight_only_int8'.
+        out_dtype (str|np.dtype): The output Tensor's data type, must be one of 'float16' and 'bfloat16', default: 'float16'.
+
+    Returns:
+        out (Tensor): The Tensor which is the dequantitative results, the data type is float16 or bfloat16, the shape is transposition of x.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +SKIP('No testing required')
+            >>> import paddle
+            >>> from paddle.nn.quant import weight_quantize, weight_dequantize
+
+            >>> paddle.seed(2023)
+            >>> x = paddle.rand(shape=[64, 32], dtype=paddle.float16)
+            >>> out, scale = weight_quantize(x, algo='weight_only_int8')
+            >>> x_dequant = weight_dequantize(out, scale)
+    """
+    check_dtype(
+        out_dtype, 'out_dtype', ['float16', 'bfloat16'], 'weight_dequantize'
+    )
+    out_dtype = convert_np_dtype_to_dtype_(out_dtype)
+    if in_dynamic_mode():
+        return _C_ops.weight_dequantize(x, scale, algo, out_dtype)
+    else:
+        type = "weight_dequantize"
+        helper = LayerHelper(type, **locals())
+        out = helper.create_variable_for_type_inference(out_dtype)
+
+        helper.append_op(
+            type=type,
+            inputs={"x": x, "scale": scale},
+            outputs={'out': out},
+            attrs={"algo": algo, "out_dtype": out_dtype},
+        )
+        return out
 
 
 def weight_only_linear(
@@ -84,17 +133,18 @@ def weight_only_linear(
     Examples:
         .. code-block:: python
 
-            # required: gpu
-            import paddle
-            from paddle.nn.quant import weight_only_linear
+            >>> # doctest: +SKIP('No testing required')
+            >>> import paddle
+            >>> from paddle.nn.quant import weight_only_linear
 
-            x = paddle.cast(paddle.randn([1, 2, 64]), dtype='float16')
-            weight = paddle.cast(paddle.randint(0, 127, [32, 64]), dtype='int8')
-            scale = paddle.randn([32], dtype='float32')
-            bias = paddle.cast(paddle.randn([32]), dtype='float16')
-            if paddle.device.cuda.get_device_capability()[0] >= 8:
-                out = weight_only_linear(x, weight, bias=bias, weight_scale=scale, weight_dtype='int8')
-                print(out.shape) # [1, 2, 32]
+            >>> x = paddle.cast(paddle.randn([1, 2, 64]), dtype='float16')
+            >>> weight = paddle.cast(paddle.randint(0, 127, [32, 64]), dtype='int8')
+            >>> scale = paddle.randn([32], dtype='float32')
+            >>> bias = paddle.cast(paddle.randn([32]), dtype='float16')
+            >>> if paddle.device.cuda.get_device_capability()[0] >= 8:
+            ...    out = weight_only_linear(x, weight, bias=bias, weight_scale=scale, weight_dtype='int8')
+            ...    print(out.shape)
+            [1, 2, 32]
     """
     if in_dynamic_mode():
         out = _C_ops.weight_only_linear(
@@ -102,6 +152,9 @@ def weight_only_linear(
         )
         return out
     else:
+        check_dtype(
+            weight_dtype, 'weight_dtype', ['int8', 'int4'], 'weight_only_linear'
+        )
         type = "weight_only_linear"
         helper = LayerHelper(type, **locals())
         dtype = x.dtype
@@ -111,7 +164,7 @@ def weight_only_linear(
             'weight': [weight],
             'weight_scale': [weight_scale],
         }
-        if bias:
+        if bias is not None:
             inputs["bias"] = [bias]
         attrs = {'weight_dtype': weight_dtype}
 
@@ -151,17 +204,18 @@ def llm_int8_linear(
     Examples:
         .. code-block:: python
 
-            # required: gpu
-            import paddle
-            from paddle.nn.quant import llm_int8_linear
+            >>> # doctest: +SKIP('No testing required')
+            >>> import paddle
+            >>> from paddle.nn.quant import llm_int8_linear
 
-            x = paddle.cast(paddle.randn([1, 2, 64]), dtype='float16')
-            weight = paddle.cast(paddle.randint(0, 127, [32, 64]), dtype='int8')
-            scale = paddle.randn([32], dtype='float32')
-            bias = paddle.cast(paddle.randn([32]), dtype='float16')
-            if paddle.device.cuda.get_device_capability()[0] >= 8:
-                out = llm_int8_linear(x, weight, bias=bias, weight_scale=scale, threshold=6.0)
-                print(out.shape) # [1, 2, 32]
+            >>> x = paddle.cast(paddle.randn([1, 2, 64]), dtype='float16')
+            >>> weight = paddle.cast(paddle.randint(0, 127, [32, 64]), dtype='int8')
+            >>> scale = paddle.randn([32], dtype='float32')
+            >>> bias = paddle.cast(paddle.randn([32]), dtype='float16')
+            >>> if paddle.device.cuda.get_device_capability()[0] >= 8:
+            ...    out = llm_int8_linear(x, weight, bias=bias, weight_scale=scale, threshold=6.0)
+            ...    print(out.shape)
+            [1, 2, 32]
     """
     if in_dynamic_mode():
         out = _C_ops.llm_int8_linear(x, weight, bias, weight_scale, threshold)

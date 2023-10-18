@@ -834,6 +834,59 @@ class TestDygraphInplaceGcd(TestDygraphInplace):
         self.assertRaises(ValueError, paddle.gcd_, x, y)
 
 
+class TestDygraphInplaceHypot(TestDygraphInplace):
+    def init_data(self):
+        self.input_var_numpy = np.random.randint(2, size=200)
+        self.input_var_numpy = self.input_var_numpy.reshape([10, 20])
+        self.dtype = "float32"
+        self.y = paddle.randn(shape=[10, 20], dtype="float32")
+
+    def inplace_api_processing(self, var):
+        return paddle.hypot_(var, self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.hypot(var, self.y)
+
+    def test_errors(self):
+        x = 3.0
+        self.assertRaises(TypeError, paddle.hypot_, x, self.y)
+        self.assertRaises(TypeError, paddle.hypot_, self.y, x)
+
+    def test_forward_version(self):
+        with paddle.base.dygraph.guard():
+            var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            self.assertEqual(var.inplace_version, 0)
+
+            inplace_var = self.inplace_api_processing(var)
+            self.assertEqual(var.inplace_version, 3)
+
+            inplace_var[0] = 2.0
+            self.assertEqual(var.inplace_version, 4)
+
+            inplace_var = self.inplace_api_processing(inplace_var)
+            self.assertEqual(var.inplace_version, 7)
+
+    def test_backward_error(self):
+        # It raises an error because the inplace operator will result
+        # in incorrect gradient computation.
+        with paddle.base.dygraph.guard():
+            var_a = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            var_a.stop_gradient = False
+
+            var_b = var_a**2
+            # Here, the gradient computation will use the value of var_b
+            var_c = var_b**2
+            self.inplace_api_processing(var_b)
+            var_c = paddle.cast(var_c, "float32")
+
+            loss = paddle.nn.functional.relu(var_c)
+            with self.assertRaisesRegex(
+                RuntimeError,
+                f"received tensor_version:{3} != wrapper_version_snapshot:{0}",
+            ):
+                loss.backward()
+
+
 class TestDygraphInplaceNanToNum(TestDygraphInplace):
     def init_data(self):
         self.input_var_numpy = np.array(

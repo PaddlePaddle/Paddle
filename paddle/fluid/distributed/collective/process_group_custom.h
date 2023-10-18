@@ -61,8 +61,8 @@ class ProcessGroupCustom final : public ProcessGroupWithStream {
 
    private:
     bool block_cpu_in_wait_{false};
-    phi::event::Event comm_event_;  // event on comm stream
     Place task_place_;
+    std::unique_ptr<phi::event::Event> comm_event_;  // event on comm stream
   };
 
  public:

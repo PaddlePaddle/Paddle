@@ -36,7 +36,7 @@ void DiagonalStridedKernel(const Context& dev_ctx,
     axis2 += static_cast<int>(x_rank);
   }
 
-  int64_t diag_size;
+  int64_t diag_size = 0;
   int64_t x_offset = static_cast<int64_t>(x.offset());
   if (offset >= 0) {
     diag_size = std::max<int64_t>(

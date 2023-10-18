@@ -34,7 +34,7 @@ class TestNumelOp(OpTest):
         self.outputs = {'Out': np.array(np.size(x))}
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def init(self):
         self.shape = (6, 56, 8, 55)
@@ -136,7 +136,7 @@ class TestNumelOpBF16(OpTest):
 
     def test_check_output(self):
         place = paddle.CUDAPlace(0)
-        self.check_output_with_place(place, check_new_ir=True)
+        self.check_output_with_place(place, check_pir=True)
 
     def init(self):
         self.shape = (6, 56, 8, 55)
