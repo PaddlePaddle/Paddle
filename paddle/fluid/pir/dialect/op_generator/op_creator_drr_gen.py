@@ -22,6 +22,7 @@ CPP_FILE_TEMPLATE = """
 
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 
 namespace pir {{
 namespace drr {{
@@ -41,7 +42,7 @@ NORMAL_FUNCTION_TEMPLATE = """
       [](const std::vector<Value>& inputs,
          const pir::AttributeMap& attrs,
          pir::PatternRewriter& rewriter) {{
-        return rewriter.Build<paddle::dialect::{op_class_name}>(
+        return rewriter.Build<{namespace}::{op_class_name}>(
          {params_code});
       }});
 """
@@ -62,6 +63,8 @@ MUTABLE_ATTR_FUNCTION_TEMPLATE = """
         }}
       }});
 """
+
+Dialect2NameSpaceMap = {"pd_op": "paddle::dialect", "cinn_op": "cinn::dialect"}
 
 
 class OpCreatorCodeGen:
@@ -107,6 +110,7 @@ class OpCreatorCodeGen:
                 if len(op_info_item.mutable_attribute_name_list) == 0:
                     body_code += NORMAL_FUNCTION_TEMPLATE.format(
                         op_name=ir_op_name,
+                        namespace=Dialect2NameSpaceMap[self.dialect_name],
                         op_class_name=(to_pascal_case(phi_op_name) + "Op"),
                         params_code=", ".join(params_no_mutable_attr),
                     )

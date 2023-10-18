@@ -16,6 +16,7 @@
 
 #include <any>
 
+#include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/attr_type_uilts.h"
