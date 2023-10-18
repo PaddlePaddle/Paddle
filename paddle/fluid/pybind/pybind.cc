@@ -57,6 +57,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/new_executor/executor_statistics.h"
 #include "paddle/fluid/framework/new_executor/interpreter/job.h"
 #include "paddle/fluid/framework/new_executor/interpreter/plan.h"
+#include "paddle/fluid/framework/new_executor/op_runtime_profiler.h"
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -1984,7 +1985,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("run_profile",
            [](StandaloneExecutor &self, std::vector<std::string> feed_names) {
              pybind11::gil_scoped_release release;
-             self.RunProfile(feed_names)
+             self.RunProfile(feed_names);
            });
 
   py::class_<framework::interpreter::Job,
@@ -2016,6 +2017,15 @@ All parameter, weight, gradient are variables in Paddle.
       .def("job_list", &framework::interpreter::Plan::JobList)
       .def("micro_batch_num", &framework::interpreter::Plan::MicroBatchNum)
       .def("program", &framework::interpreter::Plan::Program);
+
+  py::class_<framework::profiling::OpRuntimeProfilingRecorder,
+             std::shared_ptr<framework::profiling::OpRuntimeProfilingRecorder>>(
+      m, "OpRuntimeProfilingRecorder")
+      .def(py::init<>())
+      .def("record_op_runtime",
+           &framework::profiling::OpRuntimeProfilingRecorder::RecordOpRuntime)
+      .def("get_op_runtime",
+           &framework::profiling::OpRuntimeProfilingRecorder::GetOpRuntime);
 
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
