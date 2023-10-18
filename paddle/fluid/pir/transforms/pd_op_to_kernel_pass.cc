@@ -37,6 +37,7 @@
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/pir/core/builtin_op.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
 #include "paddle/utils/flags.h"
 
 PHI_DECLARE_bool(print_ir);
@@ -819,7 +820,7 @@ pir::Value GetNewInput(
     const pir::Value cur_in,
     const std::unordered_map<pir::Value, pir::Value>& map_value_pair,
     const int index,
-    const std::string op_name) {
+    const std::string& op_name) {
   PADDLE_ENFORCE_EQ(
       map_value_pair.count(cur_in),
       true,
@@ -920,7 +921,7 @@ void HandleForSpecialOp(
     }
   }
 
-  if (op_item->name() == "cf.yield" || op_item->name() == "cf.cond_yield") {
+  if (op_item->isa<::pir::YieldOp>()) {
     if (op_item->num_operands() > 0) {
       for (size_t i = 0; i < op_item->num_operands(); ++i) {
         auto cur_in = op_item->operand_source(i);
