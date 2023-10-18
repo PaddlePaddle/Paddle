@@ -63,14 +63,15 @@ std::vector<newir::CUDAJITInfo> NewIRCompiler::BuildCUDAJITInfo(
   auto fn_ptrs = compiler_->GetFnPtr();
 
   for (int idx = 0; idx < groups.size(); ++idx) {
-    newir::CUDAJITInfo node;
-    node.fn_ptr = fn_ptrs[idx];
+    newir::CUDAJITInfo jit_info;
+    jit_info.fn_ptr = fn_ptrs[idx];
 
-    lowered_funcs[idx][0]->cuda_axis_info.CopyBlockDimsTo(&(node.block_dims));
+    lowered_funcs[idx][0]->cuda_axis_info.CopyBlockDimsTo(
+        &(jit_info.block_dims));
 
-    lowered_funcs[idx][0]->cuda_axis_info.CopyGridDimsTo(&(node.grid_dims));
+    lowered_funcs[idx][0]->cuda_axis_info.CopyGridDimsTo(&(jit_info.grid_dims));
 
-    vec_res.push_back(node);
+    vec_res.push_back(jit_info);
   }
 
   return vec_res;
