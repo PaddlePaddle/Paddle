@@ -71,7 +71,7 @@ struct ProductVisitor {
   }
 };
 
-int64_t product(const DDim& ddim) {
+TEST_API int64_t product(const DDim& ddim) {
   if (ddim.size() == -1) {
     return 0;
   }
