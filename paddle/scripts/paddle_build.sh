@@ -3390,7 +3390,13 @@ function build_pr_and_develop() {
         run_setup ${PYTHON_ABI:-""} "rerun-cmake bdist_wheel" ${parallel_number}
         #NOTE(risemeup1):remove build directory of develop branch to avoid conflict with pr branch,we only need whl package of develop branch
         rm -rf ${PADDLE_ROOT}/build
-        tar  --use-compress-program="pigz -1" -xpf build.tar.gz 
+        if [ -e "${PADDLE_ROOT}/build.tar.gz" ]; then
+            tar  --use-compress-program="pigz -1" -xpf build.tar.gz 
+        else
+            echo "build.tar.gz of pr branch not exist"
+            exit 123
+        fi
+        
         if [ ! -d "${PADDLE_ROOT}/build/python/dist/" ]; then
             mkdir ${PADDLE_ROOT}/build/python/dist/
         fi
