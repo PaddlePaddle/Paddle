@@ -1958,14 +1958,12 @@ def slogdet(x, name=None):
 
             >>> import paddle
             >>> paddle.seed(2023)
-            >>> x =  paddle.randn([3,3,3])
+            >>> x =  paddle.randn([3, 3, 3])
             >>> A = paddle.linalg.slogdet(x)
             >>> print(A)
-            >>> # doctest: +SKIP
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-1.        ,  1.        ,  1.        ],
              [ 0.25681755, -0.25061053, -0.10809582]])
-            >>> # doctest: -SKIP
 
     """
     if in_dynamic_mode():

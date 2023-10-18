@@ -183,10 +183,22 @@ def flash_attention(
 
             >>> import paddle
 
-            >>> paddle.seed(1)
+            >>> paddle.seed(2023)
             >>> q = paddle.rand((1, 128, 2, 16))
 
             >>> output = paddle.nn.functional.flash_attention.flash_attention(q, q, q, 0.9, False, False)
+            >>> print(output)
+            (Tensor(shape=[1, 128, 2, 16], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[0.34992966, 0.34456208, 0.45826620, ..., 0.39883569,
+                0.42132431, 0.39157745],
+               [0.76687670, 0.65837246, 0.69117945, ..., 0.82817286,
+                0.76690865, 0.71485823]],
+              ...,
+              [[0.71662450, 0.57275224, 0.57053083, ..., 0.48108247,
+                0.53336465, 0.54540104],
+               [0.59137970, 0.51350880, 0.50449550, ..., 0.38860250,
+                0.40526697, 0.60541755]]]]), None)
+
     """
     head_dim = query.shape[3]
     sdp_func_name = _select_sdp(head_dim)
@@ -339,12 +351,16 @@ def flash_attn_unpadded(
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +SKIP("`is_sm8x || is_sm75` check failed at /paddle/third_party/flashattn/csrc/flash_attn/flash_attn.cpp:293")
             >>> import paddle
-            >>> paddle.seed(1)
-            >>> q = paddle.rand((1, 128, 2, 16))
 
-            >>> output = paddle.nn.functional.flash_attention.flash_attn_unpadded(q, q, q, 0.9, False, False)
+            >>> paddle.seed(2023)
+            >>> q = paddle.rand((2, 128, 8, 16), dtype='float16')
+            >>> cu = paddle.arange(0, 384, 128, dtype='int32')
+            >>> qq = paddle.reshape(q, [256, 8, 16])
+            >>> output = paddle.nn.functional.flash_attention.flash_attn_unpadded(qq, qq, qq, cu, cu, 128, 128, 0.25, 0.0, False, False)
             >>> print(output)
+            >>> # doctest: -SKIP
     """
     if in_dynamic_mode():
         (
@@ -461,7 +477,7 @@ def scaled_dot_product_attention(
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP()
+            >>> # doctest: +SKIP((InvalidArgument) flash_attn(): argument (position 5) must be double, but got NoneType (at ../paddle/fluid/pybind/op_function_common.cc:241))
             >>> import paddle
             >>> q = paddle.rand((1, 128, 2, 16), dtype=paddle.bfloat16)
             >>> output = paddle.nn.functional.scaled_dot_product_attention(q, q, q, None, 0.9, False)

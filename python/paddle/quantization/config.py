@@ -127,12 +127,10 @@ class QuantConfig:
                 >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
                 >>> q_config = QuantConfig(activation=None, weight=None)
                 >>> q_config.add_layer_config([model.fc], activation=quanter, weight=quanter)
-                >>> # doctest: +SKIP
-                >>> print(q_config)
-                Global config:
-                None
-                Layer prefix config:
-                {'linear_0': <paddle.quantization.config.SingleLayerConfig object at 0x7fe41a680ee0>}
+                >>> print(q_config.default_qat_layer_mapping)
+                {<class 'paddle.nn.quant.stub.Stub'>: <class 'paddle.nn.quant.stub.QuanterStub'>,
+                <class 'paddle.nn.layer.common.Linear'>: <class 'paddle.nn.quant.qat.linear.QuantedLinear'>,
+                <class 'paddle.nn.layer.conv.Conv2D'>: <class 'paddle.nn.quant.qat.conv.QuantedConv2D'>}
 
         """
         if isinstance(layer, list):
@@ -176,12 +174,10 @@ class QuantConfig:
                 >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
                 >>> q_config = QuantConfig(activation=None, weight=None)
                 >>> q_config.add_name_config([model.fc.full_name()], activation=quanter, weight=quanter)
-                >>> # doctest: +SKIP
-                >>> print(q_config)
-                Global config:
-                None
-                Layer prefix config:
-                {'linear_0': <paddle.quantization.config.SingleLayerConfig object at 0x7fe41a680fd0>}
+                >>> print(q_config.default_qat_layer_mapping)
+                {<class 'paddle.nn.quant.stub.Stub'>: <class 'paddle.nn.quant.stub.QuanterStub'>,
+                <class 'paddle.nn.layer.common.Linear'>: <class 'paddle.nn.quant.qat.linear.QuantedLinear'>,
+                <class 'paddle.nn.layer.conv.Conv2D'>: <class 'paddle.nn.quant.qat.conv.QuantedConv2D'>}
 
         """
         if isinstance(layer_name, str):
@@ -226,12 +222,10 @@ class QuantConfig:
                 >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
                 >>> q_config = QuantConfig(activation=None, weight=None)
                 >>> q_config.add_type_config([Linear], activation=quanter, weight=quanter)
-                >>> # doctest: +SKIP
-                >>> print(q_config)
-                Global config:
-                None
-                Layer type config:
-                {<class 'paddle.nn.layer.common.Linear'>: <paddle.quantization.config.SingleLayerConfig object at 0x7fe41a680a60>}
+                >>> print(q_config.default_qat_layer_mapping)
+                {<class 'paddle.nn.quant.stub.Stub'>: <class 'paddle.nn.quant.stub.QuanterStub'>,
+                <class 'paddle.nn.layer.common.Linear'>: <class 'paddle.nn.quant.qat.linear.QuantedLinear'>,
+                <class 'paddle.nn.layer.conv.Conv2D'>: <class 'paddle.nn.quant.qat.conv.QuantedConv2D'>}
 
         """
         if isinstance(layer_type, type) and issubclass(
