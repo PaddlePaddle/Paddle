@@ -72,6 +72,12 @@ class InterpreterBaseImpl {
   virtual paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names, bool need_fetch = true) = 0;
 
+  // optional interface
+  virtual void RunProfile(const std::vector<std::string>& feed_names) {
+    VLOG(1) << "WARNING: RunProfile() was not implemented in this class. "
+               "Please provide a valid implementation.";
+  }
+
   virtual void ShareWorkQueueFrom(InterpreterBaseImpl* src) = 0;
 
   virtual void ShareBuildResultsFrom(const InterpreterBaseImpl& src) = 0;

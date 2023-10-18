@@ -286,5 +286,17 @@ void Instruction::AddInplace(Variable* in, Variable* out) {
 
 void Instruction::ClearInplace() { vec_inplace_in_to_out_.clear(); }
 
+bool Instruction::IsSupportRuntimeProfiling() const {
+  if (this->OpBaseValid() == false) return false;
+  std::string op_type = this->OpBase()->Type();
+  if (op_type.substr(0, 2) == "c_") {
+    return false;
+  } else if (op_type.substr(0, 4) == "send" || op_type.substr(0, 4) == "recv") {
+    return false;
+  } else {
+    return true;
+  }
+}
+
 }  // namespace framework
 }  // namespace paddle
