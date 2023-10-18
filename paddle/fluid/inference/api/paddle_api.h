@@ -26,6 +26,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "crypto/cipher.h"
@@ -516,6 +517,9 @@ class PD_INFER_DECL InternalUtils {
 
   static void SetTransformerMaskid(
       paddle_infer::Config* c, const std::string& tensorrt_transformer_maskid);
+
+  static void DisableTensorRtHalfOps(
+      paddle_infer::Config* c, const std::unordered_set<std::string>& ops);
 
   static void SyncStream(paddle_infer::Predictor* pred);
   static void SyncStream(cudaStream_t stream);

@@ -128,7 +128,7 @@ inline FetchResultType ThreadedSSAGraphExecutor::RunImpl(
       run_all_ops(ready_ops);
 
       // 2. Find ready variable
-      bool timeout;
+      bool timeout = false;
       auto cur_ready_vars = ready_vars->PopAll(1, &timeout);
       if (timeout) {
         for (auto &run_op_future : run_op_futures_) {

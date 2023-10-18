@@ -35,6 +35,7 @@ if(NOT CINN_ONLY)
     COMMAND ${CMAKE_COMMAND} -E make_directory ${parsed_op_dir}
     COMMAND ${PYTHON_EXECUTABLE} ${cinn_op_gen_parsed_yaml_file} --op_yaml_path
             ${cinn_op_yaml_file} --output_path ${cinn_op_parsed_yaml_file}
+    DEPENDS ${cinn_op_gen_parsed_yaml_file} ${cinn_op_yaml_file}
     VERBATIM)
 
   add_custom_command(

@@ -89,11 +89,11 @@ void GradTensorHolder::CopyValueFromTensor(size_t slot_id,
         auto init_grad =
             paddle::experimental::full(t.shape(), 1, t.dtype(), t.place());
         auto global_dense_t =
-            static_cast<phi::DenseTensor*>(init_grad.impl().get());
+            std::static_pointer_cast<phi::DenseTensor>(init_grad.impl());
         auto dist_t =
             static_cast<phi::distributed::DistTensor*>(t.impl().get());
         init_grad.set_impl(std::make_shared<phi::distributed::DistTensor>(
-            *global_dense_t, dist_t->dist_attr()));
+            global_dense_t, dist_t->dist_attr()));
         buffer_[slot_id][rank] = init_grad;
       } else {
         PADDLE_THROW(paddle::platform::errors::Fatal(

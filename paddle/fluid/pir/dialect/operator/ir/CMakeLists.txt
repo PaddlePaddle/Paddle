@@ -191,7 +191,7 @@ cc_library(
 cc_library(
   pd_op_dialect_op
   SRCS ${op_source_file} manual_op.cc control_flow_op.cc
-  DEPS pd_op_dialect_core)
+  DEPS pd_op_dialect_core pir_control_flow)
 cc_library(
   api_builder
   SRCS api_builder.cc
@@ -209,6 +209,6 @@ target_include_directories(pd_op_dialect_api INTERFACE ${PD_DIALECT_BINARY_DIR})
 
 cc_library(
   pd_op_dialect
-  SRCS op_dialect.cc manual_op_vjp.cc ${op_vjp_source_file}
+  SRCS op_dialect.cc manual_op_decomp.cc manual_op_vjp.cc ${op_vjp_source_file}
   DEPS pd_op_dialect_api param_to_variable primitive_vjp_experimental
        pd_op_dialect_utils op_yaml_info_parser)
