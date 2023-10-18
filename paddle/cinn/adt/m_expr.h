@@ -138,6 +138,9 @@ using Stmt = Tree<MapStmt, OpStmt>;
 
 using TensorIndexExpr = Value;
 using TensorIndexExpr4TensorT = std::function<TensorIndexExpr(const Tensor&)>;
+using TensorIteratorExpr = Value;
+using TensorIteratorExpr4TensorT =
+    std::function<List<TensorIteratorExpr>(const Tensor&)>;
 using LoopDescriptor4LoopIteratorT =
     std::function<LoopDescriptor(const Iterator&)>;
 
@@ -147,12 +150,14 @@ class AnchoredMapStmt final : public Tuple<MapStmt<Stmt>,
                                            ScheduleMesh,
                                            tAnchor<Tensor>,
                                            TensorIndexExpr4TensorT,
+                                           TensorIteratorExpr4TensorT,
                                            LoopDescriptor4LoopIteratorT> {
  public:
   using Tuple<MapStmt<Stmt>,
               ScheduleMesh,
               tAnchor<Tensor>,
               TensorIndexExpr4TensorT,
+              TensorIteratorExpr4TensorT,
               LoopDescriptor4LoopIteratorT>::Tuple;
 };
 

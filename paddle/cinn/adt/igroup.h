@@ -113,7 +113,15 @@ class IGroup final {
     return anchor_sd_equation_ctx_.value().sd_iterators();
   }
 
-  List<Iterator> GetAnchorIterators() const;
+  List<Iterator> GetIndexIterators(const Index& index) const;
+
+  List<Iterator> GetTensorIterators(const Tensor& tensor) const {
+    return GetIndexIterators(GetIndexes(tensor).at(0));
+  }
+
+  List<Iterator> GetAnchorIterators() const {
+    return GetIndexIterators(anchor_index_);
+  }
 
  private:
   void InitAnchorScheduleDims();

@@ -31,8 +31,8 @@ class KGroup final {
       const std::vector<std::shared_ptr<IGroup>>& igroups)
       : cinn_group_(cinn_group), igroups_(igroups) {}
 
-  const std::shared_ptr<hlir::framework::Graph::Group>& cinn_group() const {
-    return cinn_group_;
+  std::shared_ptr<hlir::framework::Graph::Group> cinn_group() const {
+    return CHECK_NOTNULL(cinn_group_.lock());
   }
 
   const std::shared_ptr<IGroup>& GetSoleIGroup() const {
@@ -46,7 +46,7 @@ class KGroup final {
       const std::shared_ptr<IGroup>& igroup) const;
 
  private:
-  std::shared_ptr<hlir::framework::Graph::Group> cinn_group_;
+  std::weak_ptr<hlir::framework::Graph::Group> cinn_group_;
   // NOTE: Use single igroup temporarily. Actually KGroup contains
   // multiple IGroups
   std::vector<std::shared_ptr<IGroup>> igroups_;
