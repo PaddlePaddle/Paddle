@@ -32,6 +32,7 @@ from .tensor.linalg import norm  # noqa: F401
 from .tensor.linalg import pca_lowrank  # noqa: F401
 from .tensor.linalg import pinv  # noqa: F401
 from .tensor.linalg import qr  # noqa: F401
+from .tensor.linalg import householder_product  # noqa: F401
 from .tensor.linalg import slogdet  # noqa: F401
 from .tensor.linalg import solve  # noqa: F401
 from .tensor.linalg import svd  # noqa: F401
@@ -51,6 +52,7 @@ __all__ = [
     'matrix_rank',
     'svd',
     'qr',
+    'householder_product',
     'pca_lowrank',
     'lu',
     'lu_unpack',
