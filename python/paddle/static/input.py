@@ -29,10 +29,6 @@ from ..base.variable_index import _setitem_impl_, _setitem_static
 __all__ = []
 
 
-def evaluate_flag(val) -> bool:
-    return str(val).lower() not in ('false', 'off', '0', 'none')
-
-
 @static_only
 def data(name, shape, dtype=None, lod_level=0):
     """
@@ -143,10 +139,9 @@ def data(name, shape, dtype=None, lod_level=0):
         need_check_feed=True,
     )
 
-    is_pir_mode = get_flags('FLAGS_enable_new_ir_in_executor')[
+    if get_flags('FLAGS_enable_new_ir_in_executor')[
         'FLAGS_enable_new_ir_in_executor'
-    ]
-    if evaluate_flag(is_pir_mode):
+    ]:
         helper = LayerHelper('data', **locals())
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
