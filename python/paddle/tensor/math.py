@@ -6932,3 +6932,56 @@ def ldexp_(x, y, name=None):
     y = paddle.cast(y, dtype=out_dtype)
     two = paddle.to_tensor(2, dtype=out_dtype)
     return paddle.multiply_(x, paddle.pow(two, y))
+
+
+def hypot(x, y, name=None):
+    """
+    Calculate the length of the hypotenuse of a right-angle triangle. The equation is:
+
+    .. math::
+        out = {\\sqrt{x^2 + y^2}}
+
+    Args:
+        x (Tensor): The input Tensor, the data type is float32, float64, int32 or int64.
+        y (Tensor): The input Tensor, the data type is float32, float64, int32 or int64.
+        name (str, optional): Name for the operation (optional, default is None).For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): An N-D Tensor. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape, its shape is the same as x and y. And the data type is float32 or float64.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([3], dtype='float32')
+            >>> y = paddle.to_tensor([4], dtype='float32')
+            >>> res = paddle.hypot(x, y)
+            >>> print(res)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [5.])
+
+    """
+    if not isinstance(x, (paddle.Tensor, Variable)):
+        raise TypeError(f"x must be tensor type, but got {type(x)}")
+    if not isinstance(y, (paddle.Tensor, Variable)):
+        raise TypeError(f"y must be tensor type, but got {type(y)}")
+
+    out = (paddle.pow(x, 2) + paddle.pow(y, 2)).sqrt()
+    return out
+
+
+@inplace_apis_in_dygraph_only
+def hypot_(x, y, name=None):
+    r"""
+    Inplace version of ``hypot`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_hypot`.
+    """
+    if not isinstance(x, (paddle.Tensor, Variable)):
+        raise TypeError(f"x must be tensor type, but got {type(x)}")
+    if not isinstance(y, (paddle.Tensor, Variable)):
+        raise TypeError(f"y must be tensor type, but got {type(y)}")
+
+    out = x.pow_(2).add_(y.pow(2)).sqrt_()
+    return out

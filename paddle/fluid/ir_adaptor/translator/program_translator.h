@@ -78,7 +78,6 @@ class TranslationContext {
   size_t count(const Key& key)
       const;  // Caution: not exactly same as count in stl library
 
-  void UpdateValue(const Key& key, const Value& value);
   void PushValue(const Key& key, const Value& value);
   void PopValue(const Key& key);
 
