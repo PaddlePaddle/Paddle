@@ -15,6 +15,7 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 
+#include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -518,15 +519,16 @@ class Im2ColFuseFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
                   const int max_col_height,
                   const int im_channels,
                   const std::vector<int>& col_height,
-                  const std::vecotr<int>& im_height,
+                  const std::vector<int>& im_height,
                   const std::vector<size_t>& lod_level_0,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding,
                   std::vector<T*>& col_datas,  // NOLINT
                   const DataLayout data_layout) {
+    int thread_size = static_cast<int>(lod_level_0.size()) - 1;
     auto gpu_place = context.GetPlace();
-    auto all_hbm = memory::Alloc(
+    auto all_hbm = paddle::memory::Alloc(
         gpu_place,
         (4 * thread_size + 1 + (4 * thread_size + 1) % 2) * sizeof(uint64_t));
 
@@ -534,9 +536,8 @@ class Im2ColFuseFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
     int* col_height_data = reinterpret_cast<int*>(im_height_data + thread_size);
     size_t* lod_level_0_data =
         reinterpret_cast<size_t*>(col_height_data + thread_size);
-    float** im_data =
-        reinterpret_cast<float**>(lod_level_0_data + thread_size + 1);
-    float** col_data = reinterpret_cast<float**>(im_data + thread_size);
+    T** im_data = reinterpret_cast<T**>(lod_level_0_data + thread_size + 1);
+    T** col_data = reinterpret_cast<T**>(im_data + thread_size);
 
     cudaMemcpy(im_height_data,
                im_height.data(),
@@ -782,7 +783,7 @@ template <class DeviceContext, class T>
 class Col2ImFuseFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
  public:
   void operator()(const DeviceContext& context,
-                  const std::vecot<T*>& col_datas,
+                  const std::vector<T*>& col_datas,
                   const int size,
                   const int filter_height,
                   const int filter_width,
@@ -807,8 +808,9 @@ class Col2ImFuseFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
         phi::errors::InvalidArgument("col_width and padding(padding_left, "
                                      "padding_right) are inconsistent."));
 
+    int thread_size = static_cast<int>(lod_level_0.size()) - 1;
     auto gpu_place = context.GetPlace();
-    auto all_hbm = memory::Alloc(
+    auto all_hbm = paddle::memory::Alloc(
         gpu_place,
         (4 * thread_size + 1 + (4 * thread_size + 1) % 2) * sizeof(uint64_t));
 
@@ -816,9 +818,8 @@ class Col2ImFuseFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
     int* col_height_data = reinterpret_cast<int*>(im_height_data + thread_size);
     size_t* lod_level_0_data =
         reinterpret_cast<size_t*>(col_height_data + thread_size);
-    float** im_data =
-        reinterpret_cast<float**>(lod_level_0_data + thread_size + 1);
-    float** col_data = reinterpret_cast<float**>(im_data + thread_size);
+    T** im_data = reinterpret_cast<T**>(lod_level_0_data + thread_size + 1);
+    T** col_data = reinterpret_cast<T**>(im_data + thread_size);
 
     // 其实im_height 就是col_height，这块可以继续优化
     cudaMemcpy(im_height_data,
@@ -835,11 +836,11 @@ class Col2ImFuseFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
                cudaMemcpyHostToDevice);
     cudaMemcpy(im_data,
                im_datas.data(),
-               thread_size * sizeof(float*),
+               thread_size * sizeof(T*),
                cudaMemcpyHostToDevice);
     cudaMemcpy(col_data,
                col_datas.data(),
-               thread_size * sizeof(float*),
+               thread_size * sizeof(T*),
                cudaMemcpyHostToDevice);
 
     int block_dim_x = 0;

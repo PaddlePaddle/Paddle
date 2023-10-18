@@ -120,7 +120,7 @@ class Im2ColFuseFunctor {
                   const int max_col_height,
                   const int im_channels,
                   const std::vector<int>& col_height,
-                  const std::vecotr<int>& im_height,
+                  const std::vector<int>& im_height,
                   const std::vector<size_t>& lod_level_0,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
@@ -133,7 +133,7 @@ template <ColFormat Format, typename DeviceContext, typename T>
 class Col2ImFuseFunctor {
  public:
   void operator()(const DeviceContext& context,
-                  const std::vecot<T*>& col_datas,
+                  const std::vector<T*>& col_datas,
                   const int size,
                   const int filter_height,
                   const int filter_width,

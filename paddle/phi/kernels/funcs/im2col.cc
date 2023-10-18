@@ -351,7 +351,7 @@ class Im2ColFuseFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
                   const int max_col_height,
                   const int im_channels,
                   const std::vector<int>& col_height,
-                  const std::vecotr<int>& im_height,
+                  const std::vector<int>& im_height,
                   const std::vector<size_t>& lod_level_0,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
@@ -373,7 +373,7 @@ template <class T, typename DeviceContext>
 class Col2ImFuseFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
  public:
   void operator()(const DeviceContext& context,
-                  const std::vecot<T*>& col_datas,
+                  const std::vector<T*>& col_datas,
                   const int size,
                   const int filter_height,
                   const int filter_width,
