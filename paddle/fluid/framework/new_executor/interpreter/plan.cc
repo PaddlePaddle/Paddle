@@ -71,10 +71,6 @@ const std::shared_ptr<ProgramDesc> Plan::Program(
   return type_to_program_.at(job_type);
 }
 
-std::shared_ptr<ProgramDesc> Plan::MutableProgram(const std::string& job_type) {
-  return type_to_program_.at(job_type);
-}
-
 std::shared_ptr<::pir::Program> Plan::IrProgram(
     const std::string& job_type) const {
   return type_to_ir_program_.at(job_type);
