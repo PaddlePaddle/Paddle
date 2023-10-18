@@ -3379,6 +3379,7 @@ function build_pr_and_develop() {
         mkdir ${PADDLE_ROOT}/build/dev_whl && wget -q -P ${PADDLE_ROOT}/build/dev_whl ${dev_url}
         cp ${PADDLE_ROOT}/build/dev_whl/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl ${PADDLE_ROOT}/build/python/dist
     else
+        tar --use-compress-program="pigz -1" -cpPf build.tar.gz ${PADDLE_ROOT}
         if [[ ${cmake_change} ]];then
             rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt ${PADDLE_ROOT}/build/build.ninja
             rm -rf ${PADDLE_ROOT}/build/third_party
