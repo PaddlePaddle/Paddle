@@ -73,6 +73,7 @@ class TestPoissonOp1(OpTest):
             user_defined_grad_outputs=[
                 np.random.rand(2048, 1024).astype(self.dtype)
             ],
+            check_pir=True,
         )
 
 

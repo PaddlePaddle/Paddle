@@ -261,14 +261,6 @@ void TranslationContext::PopValue(const Key& key) {
   container_[key].pop_back();
 }
 
-void TranslationContext::UpdateValue(const Key& key, const Value& value) {
-  auto& vec = container_[key];
-  if (vec.empty())
-    vec.push_back(value);
-  else
-    vec.back() = value;
-}
-
 ProgramTranslator::ProgramTranslator(const ProgramDesc* legacy_program,
                                      pir::Program* program)
     : legacy_program_(legacy_program), program_(program) {
@@ -463,12 +455,14 @@ void ProgramTranslator::TranslateWhileOperation(const OpDesc* op,
       param_map_.at(loop_vars_reverse[0].first).value};
   std::vector<pir::Type> op_outputs_type;
   auto body_block = new pir::Block();
+  std::vector<TCValue> param_map_status;
   for (size_t idx = loop_vars_reverse.size() - 1u; idx > 0; --idx) {
     auto& name = loop_vars_reverse[idx].first;
-    auto val = param_map_.at(name).value;
-    auto val_type = val.type();
-    op_inputs.push_back(val);
+    auto& tc_value = param_map_.at(name);
+    auto val_type = tc_value.value.type();
+    op_inputs.push_back(tc_value.value);
     op_outputs_type.push_back(val_type);
+    param_map_status.emplace_back(tc_value);
     param_map_.PushValue(name, body_block->AddArgument(val_type));
   }
   pir::Operation* while_op =
@@ -487,13 +481,14 @@ void ProgramTranslator::TranslateWhileOperation(const OpDesc* op,
   body_block->push_back(
       pir::Operation::Create(yeild_inputs, {}, {}, yeild_info));
 
+  index = 0;
   for (size_t idx = loop_vars_reverse.size() - 1u; idx > 0; --idx) {
     auto& name = loop_vars_reverse[idx].first;
-    param_map_.PopValue(name);
+    param_map_.PushValue(name, param_map_status[index++]);
   }
   auto name_iter = loop_vars_reverse.rbegin();
   for (size_t idx = 0; idx < while_op->num_results(); ++idx) {
-    param_map_.UpdateValue(name_iter++->first, while_op->result(idx));
+    param_map_.PushValue(name_iter++->first, while_op->result(idx));
   }
   while_op->Verify();
   VLOG(8) << "=============>end to translate while op:" << op;
@@ -684,10 +679,7 @@ void ProgramTranslator::SetStopGradientAttributeForAllValue(
     }
     for (const auto& value_info : value_list) {
       pir::OpResult value = value_info.value.dyn_cast<pir::OpResult>();
-      if (!value) {
-        PADDLE_THROW(phi::errors::PreconditionNotMet(
-            "Value of [%s] can not ber None", var_name));
-      }
+      if (!value) continue;
       auto* defining_op = value.owner();
       PADDLE_ENFORCE_NOT_NULL(
           defining_op,
@@ -725,10 +717,7 @@ void ProgramTranslator::SetIsPersisableAttributeForAllValue(
     }
     for (const auto& value_info : value_list) {
       pir::OpResult value = value_info.value.dyn_cast<pir::OpResult>();
-      if (!value) {
-        PADDLE_THROW(phi::errors::PreconditionNotMet(
-            "Value of [%s] can not ber None", var_name));
-      }
+      if (!value) continue;
       auto* defining_op = value.owner();
       PADDLE_ENFORCE_NOT_NULL(
           defining_op,
