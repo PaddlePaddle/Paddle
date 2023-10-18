@@ -328,40 +328,6 @@ KERNEL_CALL_TEMPLATE = """
       auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
       (*kernel_fn)({}, {});
 """
-# """
-#     if (!computation_clip_for_pp) {{
-#         using kernel_signature = {};
-#         auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-#         (*kernel_fn)({}, {});
-#     }} else {{
-#         {}
-#     }}
-# """
-# OUTPUT_PLACE_TEMPLATE = """auto place = phi::TransToPhiPlace(kernel_backend);"""
-# SINGLE_OUTPUT_CREATE_EMPTY_TENSOR_TEMPLATE = """
-#         *dense_out = phi::DenseTensor(
-#             std::make_shared<phi::Allocation>(nullptr, 0, place),
-#             phi::DenseTensorMeta(meta_dense_out.dtype(), meta_dense_out.dims()));
-# """
-# VECTOR_OUTPUT_CREATE_EMPTY_TENSOR_TEMPLATE = """
-#         for (size_t i = 0; i < dense_out.size(); ++i) {{
-#             *dense_out[i] = phi::DenseTensor(
-#                 std::make_shared<phi::Allocation>(nullptr, 0, place),
-#                 phi::DenseTensorMeta(dense_out_meta_vec[i].dtype(), dense_out_meta_vec[i].dims()));
-#         }}
-# """
-# MULTI_SINGLE_OUTPUT_CREATE_EMPTY_TENSOR_TEMPLATE = """
-#         *dense_out_{idx} = phi::DenseTensor(
-#             std::make_shared<phi::Allocation>(nullptr, 0, place),
-#             phi::DenseTensorMeta(meta_dense_out_{idx}.dtype(), meta_dense_out_{idx}.dims()));"""
-
-# MULTI_VECTOR_OUTPUT_CREATE_EMPTY_TENSOR_TEMPLATE = """
-#         for (size_t i = 0; i < dense_out_{idx}.size(); ++i) {{
-#             *dense_out_{idx}[i] = phi::DenseTensor(
-#                 std::make_shared<phi::Allocation>(nullptr, 0, place),
-#                 phi::DenseTensorMeta(dense_out_{idx}_meta_vec[i].dtype(), dense_out_{idx}_meta_vec[i].dims()));
-#         }}"""
-
 
 # TODO(GhostScreaming): Some operators generate shape info in runtime,
 # bincount. As a result, dist_output's global shape is set uncorrectly,

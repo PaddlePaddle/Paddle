@@ -613,10 +613,8 @@ std::string ReshardDebugInfo(
     const phi::distributed::DistTensor& src_tensor,
     const phi::distributed::TensorDistAttr& dist_attr) {
   std::stringstream sstream;
-  phi::DDim local_dims =
-      src_tensor.defined() ? src_tensor.local_dims() : phi::DDim();
   sstream << "Reshard from src {Global Shape: " << src_tensor.dims()
-          << ", Local Shape: " << local_dims
+          << ", Local Shape: " << src_tensor.local_dims()
           << ", DistAttr: " << src_tensor.dist_attr()
           << "} to {DistAttr: " << dist_attr << "}";
   return sstream.str();

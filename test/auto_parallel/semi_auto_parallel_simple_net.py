@@ -145,9 +145,7 @@ class PPDemoNet(nn.Layer):
         )
 
     def forward(self, x):
-        y = paddle.matmul(
-            dist.shard_tensor(x, dist_attr=self.replicate_dist_attr0), self.w0
-        )
+        y = paddle.matmul(x, self.w0)
         y = dist.reshard(y, dist_attr=self.replicate_dist_attr1)
         z = paddle.matmul(y, self.w1)
         return z
