@@ -38,6 +38,7 @@ set(PYBIND_DEPS
     global_utils
     phi_utils
     phi
+    drr
     pir_adaptor
     pd_op_dialect
     program_translator
