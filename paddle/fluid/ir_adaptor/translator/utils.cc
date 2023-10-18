@@ -59,7 +59,7 @@ pir::Operation* InsertSliceOperationForTarget(
                              op_info);
   block->push_back(operation);
   pir::OpResult target_op_result = operation->result(0);
-  param_map->UpdateValue(arg_name, VariableDefiningInfo(target_op_result));
+  param_map->PushValue(arg_name, VariableDefiningInfo(target_op_result));
   return operation;
 }
 
