@@ -297,19 +297,20 @@ class TestCosineAnnealingWarmRestarts(unittest.TestCase):
             places.append(paddle.CUDAPlace(0))
 
         for place in places:
-            kwargs = {
-                'learning_rate': 0.5,
-                'T_0': 1,
-                'T_mult': 2,
-                'eta_min': 0,
-                'last_epoch': -1,
-                'verbose': False,
-            }
-            paddle.enable_static()
-            self._test_static(place, kwargs)
-            paddle.disable_static(place)
-            self._test_dygraph(place, kwargs)
-            paddle.enable_static()
+            for T_0 in [1, 2, 3]:
+                kwargs = {
+                    'learning_rate': 0.5,
+                    'T_0': T_0,
+                    'T_mult': 2,
+                    'eta_min': 0,
+                    'last_epoch': -1,
+                    'verbose': False,
+                }
+                paddle.enable_static()
+                self._test_static(place, kwargs)
+                paddle.disable_static(place)
+                self._test_dygraph(place, kwargs)
+                paddle.enable_static()
 
     def _test_static(self, place, kwargs):
         paddle.enable_static()
