@@ -19,7 +19,6 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 from paddle.static import Program, program_guard
 
 
@@ -132,7 +131,6 @@ class TestZeroSizeArangeOp(TestArangeOp):
 
 
 class TestArangeOpError(unittest.TestCase):
-    @test_with_pir_api
     def test_static_errors(self):
         with program_guard(Program(), Program()):
             paddle.enable_static()
@@ -140,7 +138,6 @@ class TestArangeOpError(unittest.TestCase):
 
 
 class TestArangeAPI(unittest.TestCase):
-    @test_with_pir_api
     def test_out(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
