@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
+import os
+
 import paddle
 from paddle import framework
 
@@ -28,6 +30,8 @@ from .pp_utils import p2p_communication as p2p
 from .pp_utils.utils import HOOK_ACTION, FusedCommBuffer, assign_group_by_size
 
 __all__ = []
+
+g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 1))
 
 
 class PipelineParallel(MetaParallelBase):
@@ -178,8 +182,12 @@ class PipelineParallel(MetaParallelBase):
             assert hasattr(self, "optimizer")
             assert hasattr(self.optimizer, "_param2rank")
             _param2rank = self.optimizer._param2rank
-
-        act = HOOK_ACTION.ALL_REDUCE if dp else HOOK_ACTION.REDUCE
+        # Note: after sharding change to reduce operation, here need to be cleared
+        act = (
+            HOOK_ACTION.ALL_REDUCE
+            if (dp or not g_shard_use_reduce)
+            else HOOK_ACTION.REDUCE
+        )
 
         fused_parameter_group = {}
 

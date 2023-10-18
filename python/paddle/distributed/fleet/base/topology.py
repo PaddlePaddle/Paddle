@@ -183,6 +183,11 @@ class HybridCommunicateGroup:
             "data"
         )
 
+        (
+            self.sharding_check_group,
+            self.sharding_check_comm_group,
+        ) = self._set_check_group("sharding")
+
         # create p2p group
         self.is_first_stage = self.stage_id == 0
         self.is_last_stage = self.stage_id == (self._pp_degree - 1)
@@ -225,16 +230,21 @@ class HybridCommunicateGroup:
         # adding its parallel logic within that parallelism
         # when use sharding alone, it should have its own parallelism for its parallel logic
         # TODO modify 3 others parallel to support sharding
+        # pp -> mp -> sharding -> dp
         if (
-            self._mp_degree == 1
-            and self._pp_degree == 1
-            and self._dp_degree == 1
+            self._pp_degree == 1
+            and self._mp_degree == 1
+            and self._sharding_degree == 1
+            and self._dp_degree > 1
+        ):
+            return ParallelMode.DATA_PARALLEL
+        elif (
+            self._pp_degree == 1
+            and self._mp_degree == 1
             and self._sharding_degree > 1
         ):
             return ParallelMode.SHARDING_PARALLEL
-        elif self._mp_degree == 1 and self._pp_degree == 1:
-            return ParallelMode.DATA_PARALLEL
-        elif self._mp_degree > 1 and self._pp_degree == 1:
+        elif self._pp_degree == 1 and self._mp_degree > 1:
             # initialize the seed
             return ParallelMode.TENSOR_PARALLEL
         elif self._pp_degree > 1:
@@ -412,8 +422,11 @@ class HybridCommunicateGroup:
         return self._sharding_comm_group.ranks[0]
 
     # check parallel group
-    def get_check_parallel_group(self):
-        return self._check_comm_group
+    def get_check_parallel_group(self, sharding=False):
+        if sharding:
+            return self.sharding_check_comm_group
+        else:
+            return self._check_comm_group
 
     def get_rank_from_stage(self, stage_id, **kwargs):
         return self._topo.get_rank_from_stage(
