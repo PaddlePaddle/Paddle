@@ -183,3 +183,14 @@ class NodeVarType:
         # raise warning if not found
         warn("Currently we don't support annotation: %s" % annotation_str)
         return NodeVarType.UNKNOWN
+
+
+def set_dynamic_shape(variable, shape_list):
+    if paddle.base.dygraph.base.in_to_static_mode():
+        assert isinstance(
+            variable, paddle.base.framework.Variable
+        ), "In to_static mode, variable must be a Variable."
+        variable.desc.set_shape(shape_list)
+    else:
+        # in dygraph mode, dynamic shape is not needed, just do nothing.
+        return
