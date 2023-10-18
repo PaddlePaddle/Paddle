@@ -32,9 +32,9 @@ constexpr bool FLAGS_enable_nccl_dynamic_check = false;
 
 NCCLCommContext::NCCLCommContext(int rank, int size, ncclUniqueId nccl_id)
     : CommContext(rank, size) {
-  PADDLE_ENFORCE_GPU_SUCCESS(
+  NCCL_CHECK(
       phi::dynload::ncclCommInitRank(&nccl_comm_, size_, nccl_id, rank_));
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGetVersion(&nccl_version_));
+  NCCL_CHECK(phi::dynload::ncclGetVersion(&nccl_version_));
 }
 
 int NCCLCommContext::GetNcclVersion() { return nccl_version_; }
