@@ -329,6 +329,8 @@ from .math import polygamma  # noqa: F401
 from .math import polygamma_  # noqa: F401
 from .math import renorm  # noqa: F401
 from .math import renorm_  # noqa: F401
+from .math import hypot  # noqa: F401
+from .math import hypot_  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
@@ -464,6 +466,8 @@ tensor_method_func = [
     'sum',
     'nan_to_num',
     'nan_to_num_',
+    'hypot',
+    'hypot_',
     'nansum',
     'nanmean',
     'count_nonzero',

@@ -15,7 +15,12 @@
 import numpy as np
 
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
-from paddle.base.framework import Variable, in_dygraph_mode, in_pir_mode
+from paddle.base.framework import (
+    Variable,
+    in_dygraph_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode
+)
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
@@ -372,7 +377,7 @@ def avg_pool2d(
         padding, 2, channel_last, ceil_mode=ceil_mode
     )
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         output = _C_ops.pool2d(
             x,
             kernel_size,
@@ -1254,7 +1259,7 @@ def max_pool2d(
             "When setting return_mask to true, data_format must be set to NCHW in API:max_pool2d"
         )
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         if return_mask:
             output = _C_ops.max_pool2d_with_index(
                 x, kernel_size, stride, padding, False, False
