@@ -635,4 +635,5 @@ class TestPyLayerJitSaveLoad(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    with paddle.jit.api.fallback_guard(False):
+        unittest.main()

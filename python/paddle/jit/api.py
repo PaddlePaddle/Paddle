@@ -237,7 +237,6 @@ def to_static(
     input_spec=None,
     build_strategy=None,
     backend=None,
-    enable_fallback=None,
     **kwargs,
 ):
     """
@@ -286,24 +285,25 @@ def to_static(
 
     """
     property = kwargs.get("property", False)
+    fullgraph = kwargs.get("fullgraph", None)
 
     def decorated(python_func):
         """
         Decorates a python function into a ASTStaticFunction object.
         """
 
-        nonlocal enable_fallback
-        if enable_fallback is None:
+        nonlocal fullgraph
+        if fullgraph is None:
             flag = os.environ.get("ENABLE_FALL_BACK", None)
             if flag == "True" or flag is None:
-                enable_fallback = True
+                fullgraph = False
             else:  # False
-                enable_fallback = False
+                fullgraph = True
 
         StaticClass = StaticFunctionClass = {
-            True: SymbolicStaticFunction,
-            False: ASTStaticFunction,
-        }[enable_fallback]
+            False: SymbolicStaticFunction,
+            True: ASTStaticFunction,
+        }[fullgraph]
 
         # Step 1. unwrap the function if it is already decorated.
         _, python_func = unwrap_decorators(python_func)
@@ -1109,7 +1109,7 @@ def save(layer, path, input_spec=None, **configs):
                 static_forward = to_static(
                     inner_layer.forward,
                     input_spec=inner_input_spec,
-                    enable_fallback=False,
+                    fullgraph=True,
                 )
                 concrete_program = (
                     static_forward.concrete_program_specify_input_spec(
@@ -1147,7 +1147,7 @@ def save(layer, path, input_spec=None, **configs):
                 static_function = to_static(
                     static_func,
                     input_spec=inner_input_spec,
-                    enable_fallback=False,
+                    fullgraph=True,
                 )
                 concrete_program = static_function.concrete_program
 
