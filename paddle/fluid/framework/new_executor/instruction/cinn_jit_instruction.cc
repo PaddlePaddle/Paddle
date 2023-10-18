@@ -31,37 +31,33 @@ class CinnJitInstruction::FnPtrImpl {
  public:
   explicit FnPtrImpl(const CUDAJITInfo& cuda_jit_info)
       : cuda_jit_info_(cuda_jit_info) {}
-  // TODO(Aurelus84): Support to specify name2podargs and stream arguments.
   void Run(const std::vector<phi::DenseTensor*>& kernel_args, void* stream) {
-    auto fn = static_cast<CUfunction>(cuda_jit_info_.fn_ptr);
-
-    auto stream1 = static_cast<CUstream>(stream);
-
-    pass_arg.clear();
-    vec_temp_.resize(kernel_args.size());
+    func_args_.clear();
+    ptr_storage_.resize(kernel_args.size());
     for (size_t i = 0; i < kernel_args.size(); ++i) {
-      vec_temp_[i] = kernel_args[i]->data();
-      pass_arg.push_back(vec_temp_.data() + i);
+      ptr_storage_[i] = kernel_args[i]->data();
+      func_args_.push_back(ptr_storage_.data() + i);
     }
 
-    CUDA_DRIVER_CALL(cuLaunchKernel(fn,
-                                    cuda_jit_info_.grid_dims[0],
-                                    cuda_jit_info_.grid_dims[1],
-                                    cuda_jit_info_.grid_dims[2],
-                                    cuda_jit_info_.block_dims[0],
-                                    cuda_jit_info_.block_dims[1],
-                                    cuda_jit_info_.block_dims[2],
-                                    0,  // share memory
-                                    stream1,
-                                    pass_arg.data(),
-                                    nullptr))
+    CUDA_DRIVER_CALL(
+        cuLaunchKernel(static_cast<CUfunction>(cuda_jit_info_.fn_ptr),
+                       cuda_jit_info_.grid_dims[0],
+                       cuda_jit_info_.grid_dims[1],
+                       cuda_jit_info_.grid_dims[2],
+                       cuda_jit_info_.block_dims[0],
+                       cuda_jit_info_.block_dims[1],
+                       cuda_jit_info_.block_dims[2],
+                       0,  // share memory
+                       static_cast<CUstream>(stream),
+                       func_args_.data(),
+                       nullptr))
   }
 
  private:
   CUDAJITInfo cuda_jit_info_;
 
-  std::vector<void*> vec_temp_;
-  std::vector<void*> pass_arg;
+  std::vector<void*> ptr_storage_;
+  std::vector<void*> func_args_;
 };
 
 CinnJitInstruction::CinnJitInstruction(
@@ -70,9 +66,6 @@ CinnJitInstruction::CinnJitInstruction(
     ::pir::Operation* op,
     const ValueExecutionInfo& value_exec_info)
     : InstructionBase(id, place) {
-  // TODO(Aurelius84): We shall simplify members of JitKernelOp to make it
-  // only hold related function ptrs. Impl is the real runtime data structure
-  // responsible to construct hlir::framework::Instruction.
   auto jit_kernel_op = op->dyn_cast<cinn::dialect::JitKernelOp>();
   fn_ptr_impl_ = std::make_shared<FnPtrImpl>(jit_kernel_op.cuda_jit_info());
   op_ = op;
@@ -90,7 +83,7 @@ CinnJitInstruction::CinnJitInstruction(
                       ->Var(var_name)
                       ->GetMutable<phi::DenseTensor>();
 
-    tensor_args.push_back(tensor);
+    tensor_args_.push_back(tensor);
   }
 
   dev_ctx_ = phi::DeviceContextPool::Instance().Get(place_);
@@ -103,7 +96,7 @@ CinnJitInstruction::CinnJitInstruction(
                       ->Var(var_name)
                       ->GetMutable<phi::DenseTensor>();
 
-    tensor_args.push_back(tensor);
+    tensor_args_.push_back(tensor);
 
     out_tensor_ = tensor;
 
@@ -116,23 +109,17 @@ CinnJitInstruction::CinnJitInstruction(
 }
 
 void CinnJitInstruction::Run() {
-  // VLOG(6) << "Run cinn jit_kernel_op : " << Name();
-  // Get kernel input
   auto gpu_ctx = static_cast<phi::GPUContext*>(dev_ctx_);
 
-  //  gpu_ctx->Wait();
   auto stream = gpu_ctx->stream();
-  for (size_t i = 0; i < tensor_args.size(); ++i) {
-    gpu_ctx->Alloc(tensor_args[i], phi::DataType::FLOAT32);
+  for (size_t i = 0; i < tensor_args_.size(); ++i) {
+    gpu_ctx->Alloc(tensor_args_[i], tensor_args_[i]->dtype());
   }
 
-  fn_ptr_impl_->Run(tensor_args, static_cast<void*>(stream));
+  fn_ptr_impl_->Run(tensor_args_, static_cast<void*>(stream));
 }
 
 const std::string& CinnJitInstruction::Name() const {
-  // TODO(Aurelius84): Consider the case for instrucitons constaning
-  // multipule function ptrs and function names.
-  // return impl_->pointer()->function_name();
   static const std::string name = "cinn_jit";
   return name;
 }
