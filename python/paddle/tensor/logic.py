@@ -718,7 +718,7 @@ def greater_than(x, y, name=None):
             Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
             [False, False, True ])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.greater_than(x, y)
     else:
         check_variable_and_dtype(
@@ -807,7 +807,7 @@ def less_equal(x, y, name=None):
             Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
             [True , True , False])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.less_equal(x, y)
     else:
         check_variable_and_dtype(
@@ -896,7 +896,7 @@ def less_than(x, y, name=None):
             Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
             [False, True , False])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.less_than(x, y)
     else:
         check_variable_and_dtype(
@@ -985,7 +985,7 @@ def not_equal(x, y, name=None):
             Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
             [False, True , True ])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.not_equal(x, y)
     else:
         check_variable_and_dtype(

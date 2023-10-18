@@ -37,6 +37,7 @@ class TestEigvalsOp(OpTest):
     def setUp(self):
         np.random.seed(0)
         paddle.enable_static()
+        self.python_api = paddle.linalg.eigvals
         self.op_type = "eigvals"
         self.set_dtype()
         self.set_input_dims()
@@ -67,7 +68,7 @@ class TestEigvalsOp(OpTest):
     def test_check_output(self):
         self.__class__.no_need_check_grad = True
         self.check_output_with_place_customized(
-            checker=self.verify_output, place=core.CPUPlace()
+            checker=self.verify_output, place=core.CPUPlace(), check_pir=True
         )
 
     def verify_output(self, outs):
