@@ -48,6 +48,7 @@ message ShardingConfig {
   optional bool _dp_as_optimizer_sharding = 13 [ default = false ];
   optional int32 stage = 14 [ default = 1 ];
   optional bool enable_tuning = 15 [ default = false ]; // incubate for auto parallel
+
 }
 
 // for dygraph
@@ -65,6 +66,11 @@ message PpConfig {
     optional bool sharding_comm_overlap = 4 [ default = false ];
 }
 
+message DygraphShardingConfig {
+  optional bool split_param = 1 [ default = false ];
+}
+
+
 message HybridConfig {
   optional int32 dp_degree = 1 [ default = -1 ];
   optional int32 mp_degree = 2 [ default = 1 ];
@@ -72,6 +78,7 @@ message HybridConfig {
   optional int32 sharding_degree = 4 [ default = 1 ];
   optional MpConfig mp_configs = 5;
   optional PpConfig pp_configs = 6;
+  optional DygraphShardingConfig sharding_configs = 7;
 }
 
 message AMPConfig {

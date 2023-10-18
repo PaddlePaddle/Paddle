@@ -24,6 +24,7 @@ from paddle.autograd import no_grad
 from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding_optimizer import (
     DygraphShardingOptimizer,
+    DygraphShardingOptimizerV2,
 )
 from paddle.distributed.fleet.utils.hybrid_parallel_util import (
     obtain_optimizer_parameters_list,
@@ -398,7 +399,15 @@ class HybridParallelOptimizer:
         # Note: Only sharding stage 1 is considered in HybridParallelOptimizer.
         # The sharding stage2 and stage3 optimizers are invoked in other api.
         if hcg.get_sharding_parallel_world_size() > 1:
-            optimizer = DygraphShardingOptimizer(optimizer, hcg)
+            split_param = strategy.hybrid_configs[
+                'sharding_configs'
+            ].split_param
+            ShardingOptimizer = (
+                DygraphShardingOptimizerV2
+                if split_param
+                else DygraphShardingOptimizer
+            )
+            optimizer = ShardingOptimizer(optimizer, hcg)
         self._inner_opt = optimizer
         self._strategy = strategy
         self._hcg = hcg
@@ -425,7 +434,11 @@ class HybridParallelOptimizer:
             )
             inner_opt = unwrap_optimizer(
                 self._inner_opt,
-                (MixPrecisionOptimizer, DygraphShardingOptimizer),
+                (
+                    MixPrecisionOptimizer,
+                    DygraphShardingOptimizer,
+                    DygraphShardingOptimizerV2,
+                ),
             )
 
             if (
@@ -574,7 +587,10 @@ class HybridParallelOptimizer:
         parameter_list = list(obtain_optimizer_parameters_list(self._inner_opt))
         dp_parameter_list = parameter_list
         if self._sharding_enable:
-            assert isinstance(self._inner_opt, DygraphShardingOptimizer)
+            assert isinstance(
+                self._inner_opt,
+                (DygraphShardingOptimizer, DygraphShardingOptimizerV2),
+            )
             self._inner_opt.reduce_gradients(parameter_list, self._hcg)
             # dp sync later do not need to use global parameter list
             if not g_shard_norm_align_dp:
@@ -601,7 +617,10 @@ class HybridParallelOptimizer:
         dp_parameter_list = parameter_list
         # Here sharding should use global parameter list
         if self._sharding_enable:
-            assert isinstance(self._inner_opt, DygraphShardingOptimizer)
+            assert isinstance(
+                self._inner_opt,
+                (DygraphShardingOptimizer, DygraphShardingOptimizerV2),
+            )
             self._inner_opt.reduce_gradients(parameter_list, self._hcg)
             # dp sync later do not need to use global parameter list
             if not g_shard_norm_align_dp:
