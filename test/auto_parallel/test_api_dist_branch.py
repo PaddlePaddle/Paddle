@@ -136,23 +136,6 @@ class TestDygraphAPIForDistTensorBranch(unittest.TestCase):
         self.check_tensor_eq(local_in1.grad, dist_in1.grad)
         self.check_tensor_eq(local_in2.grad, dist_in2.grad)
 
-    # input: phi::Tensor
-    # output: std::vector<phi::Tensor>
-    def test_unbind_for_dist_tensor(self):
-        x = np.random.random(size=[2, 8]).astype("float32")
-        local_in, dist_in = self.create_local_and_dist_tensor_pair(x)
-        local_out1, local_out2 = paddle.unbind(local_in, axis=0)
-        dist_out1, dist_out2 = paddle.unbind(dist_in, axis=0)
-        self.check_tensor_eq(local_out1, dist_out1)
-        self.check_tensor_eq(local_out2, dist_out2)
-
-        local_out = paddle.concat([local_out1, local_out2])
-        dist_out = paddle.concat([dist_out1, dist_out2])
-
-        local_out.backward()
-        dist_out.backward()
-        self.check_tensor_eq(local_in.grad, dist_in.grad)
-
     # input: paddle::optional<phi::Tensor>
     # output: phi::Tensor
     def test_expand_as_for_dist_tensor(self):

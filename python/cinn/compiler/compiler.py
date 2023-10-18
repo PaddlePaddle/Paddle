@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import cinn
 
 from ..runtime import CinnLowerLevelIrJit
 from .compute_code_generator import ComputeCodeGenerator
@@ -31,6 +32,13 @@ def ast_to_llir(fn, inputs_signature):
     return llir_schedule_generator.parse()
 
 
+def llir_to_runtime_module(llir_func, target, function_name, arg_names):
+    cinn_builder = cinn.lang.Module.Builder(function_name, target)
+    cinn_builder.add_function(llir_func)
+    llir_module = cinn_builder.build()
+    return cinn.runtime.Module(llir_module, target, function_name, arg_names)
+
+
 def compile(fn, just_convert=False, jit_inputs_signature=[], **kwargs):
     if isinstance(fn, CinnLowerLevelIrJit):
         llir_func = ast_to_llir(fn, jit_inputs_signature)
@@ -39,3 +47,9 @@ def compile(fn, just_convert=False, jit_inputs_signature=[], **kwargs):
 
     if just_convert:
         return llir_func
+
+    rt_module = llir_to_runtime_module(
+        llir_func, kwargs["target"], fn.__name__, kwargs["arg_names"]
+    )
+
+    return rt_module
