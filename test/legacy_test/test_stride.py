@@ -662,5 +662,4 @@ class TestToStaticCheck(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with paddle.jit.api.fallback_guard(False):
-        unittest.main()
+    unittest.main()

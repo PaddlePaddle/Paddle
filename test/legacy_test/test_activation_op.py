@@ -4907,5 +4907,4 @@ create_test_act_bf16_class(
 )
 
 if __name__ == '__main__':
-    with paddle.jit.api.fallback_guard(False):
-        unittest.main()
+    unittest.main()

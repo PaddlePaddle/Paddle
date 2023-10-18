@@ -150,5 +150,4 @@ class TestErfBF16OP(OpTest):
 
 
 if __name__ == '__main__':
-    with paddle.jit.api.fallback_guard(False):
-        unittest.main()
+    unittest.main()

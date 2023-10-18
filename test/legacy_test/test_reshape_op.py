@@ -680,6 +680,5 @@ class TestReshapeAPI_ZeroDim(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with paddle.jit.api.fallback_guard(False):
-        paddle.enable_static()
-        unittest.main()
+    paddle.enable_static()
+    unittest.main()
