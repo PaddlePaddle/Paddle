@@ -42,7 +42,7 @@ class UniqueNameGenerator {
 
 class StaticCompositeContext {
  public:
-  static StaticCompositeContext& Instance() {
+  TEST_API static StaticCompositeContext& Instance() {
     return *static_composite_context_;
   }
 
