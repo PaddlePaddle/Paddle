@@ -354,17 +354,19 @@ class SubsetRandomSampler(Sampler):
 
         .. code-block:: python
 
+            >>> import paddle
             >>> from paddle.io import SubsetRandomSampler
 
+            >>> paddle.seed(2023)
             >>> sampler = SubsetRandomSampler(indices=[1, 3, 5, 7, 9])
 
             >>> for index in sampler:
             ...     print(index)
-            5
-            3
-            1
-            7
             9
+            3
+            7
+            5
+            1
 
     see `paddle.io.Sampler`
     """
