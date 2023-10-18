@@ -455,7 +455,7 @@
   args : (Tensor x, IntArray axis,  bool keep_dim,  bool reduce_all)
   output : Tensor(out)
   infer_meta :
-    func : ReduceInferMetaBase
+    func : ReduceInferMetaBaseFN
   kernel :
     func : frobenius_norm
   backward : frobenius_norm_grad
