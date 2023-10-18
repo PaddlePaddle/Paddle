@@ -27,6 +27,7 @@
 #include "paddle/pir/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
+#include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 
 #include "paddle/fluid/pir/transforms/conv2d_bn_fuse_pass.h"
