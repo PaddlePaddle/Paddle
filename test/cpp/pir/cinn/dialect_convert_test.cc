@@ -18,6 +18,7 @@
 
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/pd_op_to_cinn_op_convert_pass.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
@@ -26,31 +27,6 @@
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 #include "paddle/pir/transforms/dead_code_elimination_pass.h"
-
-class PDSum2CINNReduceSumPattern
-    : public pir::drr::DrrPatternBase<PDSum2CINNReduceSumPattern> {
- public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    // Source Pattern
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
-    const auto &full_int_array = pat.Op("pd_op.full_int_array",
-                                        {{"value", pat.Attr("axis_info")},
-                                         {"dtype", pat.Attr("dtype_2")},
-                                         {"place", pat.Attr("place_2")}});
-
-    const auto &sum = pat.Op(
-        "pd_op.sum",
-        {{"dtype", pat.Attr("dtype")}, {"keepdim", pat.Attr("keep_dim")}});
-    pat.Tensor("ret") = sum(pat.Tensor("arg0"), full_int_array());
-
-    // Result patterns
-    pir::drr::ResultPattern res = pat.ResultPattern();
-    const auto &cinn_reduce_sum = res.Op(
-        "cinn_op.reduce_sum",
-        {{"axis", pat.Attr("axis_info")}, {"keep_dim", pat.Attr("keep_dim")}});
-    res.Tensor("ret") = cinn_reduce_sum(res.Tensor("arg0"));
-  }
-};
 
 void BuildProgram(pir::Builder &builder) {  // NOLINT
   paddle::dialect::FullOp full_input_op =
@@ -68,33 +44,6 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
   auto exp_op = builder.Build<paddle::dialect::ExpOp>(sum_op.result(0));
 }
 
-class DrrPatternRewritePass : public pir::Pass {
- public:
-  DrrPatternRewritePass() : pir::Pass("DrrPatternRewritePass", 1) {}
-
-  bool Initialize(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
-    ps.Add(PDSum2CINNReduceSumPattern().Build(context));
-
-    patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
-    return true;
-  }
-
-  void Run(pir::Operation *op) override {
-    pir::GreedyRewriteConfig cfg;
-    cfg.use_top_down_traversal = true;
-    cfg.max_iterations = 10;
-    pir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
-  }
-
-  bool CanApplyOn(pir::Operation *op) const override {
-    return op->name() == "builtin.module" && op->num_regions() > 0;
-  }
-
- private:
-  pir::FrozenRewritePatternSet patterns_;
-};
-
 TEST(DrrTest, drr_demo) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -104,17 +53,15 @@ TEST(DrrTest, drr_demo) {
   pir::Builder builder = pir::Builder(ctx, program.block());
   BuildProgram(builder);
 
-  program.Print(std::cout);
+  cinn::dialect::ir::PdOp2CinnOpConverter(&program);
 
-  //   EXPECT_EQ(program.block()->size(), 14u);
+  auto it = program.block()->begin();
 
-  pir::PassManager pm(ctx);
-  pm.AddPass(std::make_unique<DrrPatternRewritePass>());
-  // pm.EnablePassTiming();
-  pm.EnableIRPrinting();
-
-  CHECK_EQ(pm.Run(&program), true);
-
-  program.Print(std::cout);
-  //   EXPECT_EQ(program.block()->size(), 7u);
+  CHECK_EQ((*it)->isa<paddle::dialect::FullOp>(), true);
+  it++;
+  CHECK_EQ((*it)->isa<cinn::dialect::ReduceSumOp>(), true);
+  it++;
+  CHECK_EQ((*it)->isa<paddle::dialect::ReluOp>(), true);
+  it++;
+  CHECK_EQ((*it)->isa<paddle::dialect::ExpOp>(), true);
 }

@@ -15,11 +15,12 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_op_to_cinn_op_convert_pass.h"
 
 #include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
+#include "paddle/fluid/pir/drr/api/match_context.h"
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
-#include "paddle/pir/transforms/dead_code_elimination_pass.h"
+
 namespace cinn {
 namespace dialect {
 namespace ir {
@@ -49,13 +50,13 @@ class PDSum2CINNReduceSumPattern
   }
 };
 
-PdOpToCinnOpPass::PdOpToCinnOpPass() : pir::Pass("DrrPatternRewritePass", 1) {}
+PdOpToCinnOpPass::PdOpToCinnOpPass() : pir::Pass("PdOpToCinnOpPass", 1) {}
 
 bool PdOpToCinnOpPass::Initialize(pir::IrContext *context) {
   pir::RewritePatternSet ps(context);
   ps.Add(PDSum2CINNReduceSumPattern().Build(context));
 
-  patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
+  patterns_ = ::pir::FrozenRewritePatternSet(std::move(ps));
   return true;
 }
 
@@ -71,12 +72,12 @@ bool PdOpToCinnOpPass::CanApplyOn(pir::Operation *op) const {
 }
 
 void PdOp2CinnOpConverter(::pir::Program *program) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+
   pir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<PdOpToCinnOpPass>());
-  // pm.EnablePassTiming();
-  pm.EnableIRPrinting();
 
-  pm.Run(&program);
+  pm.Run(program);
 }
 }  // namespace ir
 }  // namespace dialect
