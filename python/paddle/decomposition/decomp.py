@@ -16,7 +16,7 @@ import logging
 import typing
 
 from paddle import pir
-from paddle.autograd.ir_backward import _as_list, check_type, grad
+from paddle.autograd import ir_backward
 from paddle.base.core import call_decomp, has_decomp
 from paddle.base.libpaddle.pir import Block, Operation, Program
 from paddle.framework import core
@@ -51,27 +51,32 @@ def _prepare_python_api_arguments(op):
     Args:
     op (Operator): The target operator.
     """
-    op_inputs = []
+    combine_op_name = "builtin.combine"
+    inputs = []
     for x in op.operands():
-        op_input = x.source()
-        if op_input and op_input.initialized():
-            upper_op = op_input.get_defining_op()
+        input = x.source()
+        if input and input.initialized():
+            prev_op = input.get_defining_op()
             if (
-                isinstance(upper_op, Operation)
-                and upper_op.name() == 'builtin.combine'
+                isinstance(prev_op, Operation)
+                and prev_op.name() == combine_op_name
             ):
-                op_input = [item.source() for item in upper_op.operands()]
-            op_inputs.append(op_input)
+                input = [item.source() for item in prev_op.operands()]
+            inputs.append(input)
         else:
-            op_inputs.append(None)
-    # The inputs of PIR op builtin.combine will be restored as list of tensor.
-    if op.name() in ["builtin.combine"]:
-        return (op_inputs,)
+            # for optional input, such as scale for layer_norm op,
+            # if it is not set, there will be an empty OpResult which is not initialized in ops.operands
+            # therefore append None for it.
+            inputs.append(None)
 
-    op_attrs_dict = op.attrs()
-    op_attrs_name = op.get_attr_names()
-    op_attrs = [op_attrs_dict[x] for x in op_attrs_name]
-    api_arguments = op_inputs + op_attrs
+    # The inputs of PIR op builtin.combine will be restored as list of tensor.
+    if op.name() in [combine_op_name]:
+        return (inputs,)
+
+    attrs_dict = op.attrs()
+    attrs_name = op.get_attr_names()
+    attrs = [attrs_dict[x] for x in attrs_name]
+    api_arguments = inputs + attrs
     return tuple(api_arguments)
 
 
@@ -464,21 +469,21 @@ def decompose_bwd_op(
             f"grad_var_to_var_map should be dict which maps grad variable to forward variable, \
             but got type {type(grad_var_to_var_map)}"
         )
-    check_type(
+    ir_backward.check_type(
         fwd_outputs,
         'fwd_outputs',
         ((pir.Value, pir.OpResult), list, tuple),
         'paddle.autograd.ir_backward.decompose_bwd_op',
     )
-    check_type(
+    ir_backward.check_type(
         fwd_inputs,
         'fwd_outputs',
         ((pir.Value, pir.OpResult), list, tuple),
         'paddle.autograd.ir_backward.decompose_bwd_op',
     )
 
-    fwd_outputs = _as_list(fwd_outputs)
-    fwd_inputs = _as_list(fwd_inputs)
+    fwd_outputs = ir_backward._as_list(fwd_outputs)
+    fwd_inputs = ir_backward._as_list(fwd_inputs)
 
     # intercept grad_outputs from the original bwd_op
     # grad_outputs = bwd_op.operands() - fwd_inputs - fwd_outputs
@@ -510,7 +515,9 @@ def decompose_bwd_op(
     bwd_op_idx = block.ops.index(bwd_op)
     # decompose bwd_op into a list of primitive ops
     before_num_ops = len(block.ops)
-    input_grads = grad(new_fwd_outputs, new_fwd_inputs, grad_outputs)
+    input_grads = ir_backward.grad(
+        new_fwd_outputs, new_fwd_inputs, grad_outputs
+    )
     after_num_ops = len(block.ops)
 
     # update the bwd_op's results
