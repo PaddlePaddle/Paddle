@@ -1027,6 +1027,13 @@ class _ExecutorCache:
         return program, new_exe
 
 
+@lru_cache()
+def _log_force_set_program_cache(self, use_program_cache):
+    logging.warning(
+        f"use_program_cache is force set to {use_program_cache} by FLAGS_FORCE_USE_PROGRAM_CACHE"
+    )
+
+
 class Executor:
     """
     :api_attr: Static Graph
@@ -1178,7 +1185,6 @@ class Executor:
         return self.micro_scope_cache.get(program_cache_key, None)
 
     # just for testing, will be removed later
-    @lru_cache()
     def _log_force_set_program_cache(self, use_program_cache):
         logging.warning(
             f"use_program_cache is force set to {use_program_cache} by FLAGS_FORCE_USE_PROGRAM_CACHE"
@@ -2722,7 +2728,7 @@ class Executor:
                         if return_numpy:
                             tensor = as_numpy(tensor)
                         else:
-                            tensor = [t for t in tensor]
+                            tensor = list(tensor)
 
                     if tensor:
                         scope_result_list.append(tensor)
