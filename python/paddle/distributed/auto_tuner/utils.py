@@ -355,9 +355,13 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                     else:
                         value = value[key]
                 if value:
-                    value[keys[-1]] = prefix + str(cfg[arg])
+                    value[keys[-1]] = (
+                        prefix + str(cfg[arg]) if prefix else cfg[arg]
+                    )
                 else:
-                    cmd_cfg[keys[-1]] = prefix + str(cfg[arg])
+                    cmd_cfg[keys[-1]] = (
+                        prefix + str(cfg[arg]) if prefix else cfg[arg]
+                    )
                 json.dump(cmd_cfg, open(cmd[arg][0], "w"))
             elif ".yaml" in cmd[arg][0]:
                 import yaml
@@ -381,9 +385,13 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                     else:
                         value = value[key]
                 if value:
-                    value[keys[-1]] = prefix + str(cfg[arg])
+                    value[keys[-1]] = (
+                        prefix + str(cfg[arg]) if prefix else cfg[arg]
+                    )
                 else:
-                    cmd_cfg[keys[-1]] = prefix + str(cfg[arg])
+                    cmd_cfg[keys[-1]] = (
+                        prefix + str(cfg[arg]) if prefix else cfg[arg]
+                    )
                 yaml.dump(cmd_cfg, open(cmd[arg][0], "w"))
         elif arg == "local_batch_size" and arg in cmd:
             local_batch_size = (
@@ -423,9 +431,17 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                     else:
                         value = value[key]
                 if value:
-                    value[keys[-1]] = prefix + str(local_batch_size)
+                    value[keys[-1]] = (
+                        prefix + str(local_batch_size)
+                        if prefix
+                        else local_batch_size
+                    )
                 else:
-                    cmd_cfg[keys[-1]] = prefix + str(local_batch_size)
+                    cmd_cfg[keys[-1]] = (
+                        prefix + str(local_batch_size)
+                        if prefix
+                        else local_batch_size
+                    )
                 json.dump(cmd_cfg, open(cmd[arg][0], "w"))
             elif ".yaml" in cmd[arg][0]:
                 import yaml
@@ -449,9 +465,17 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                     else:
                         value = value[key]
                 if value:
-                    value[keys[-1]] = prefix + str(local_batch_size)
+                    value[keys[-1]] = (
+                        prefix + str(local_batch_size)
+                        if prefix
+                        else local_batch_size
+                    )
                 else:
-                    cmd_cfg[keys[-1]] = prefix + str(local_batch_size)
+                    cmd_cfg[keys[-1]] = (
+                        prefix + str(local_batch_size)
+                        if prefix
+                        else local_batch_size
+                    )
                 yaml.dump(cmd_cfg, open(cmd[arg][0], "w"))
 
         elif arg == "gradient_accumulation_steps" and arg in cmd:
@@ -499,10 +523,16 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                     else:
                         value = value[key]
                 if value:
-                    value[keys[-1]] = prefix + str(gradient_accumulation_steps)
+                    value[keys[-1]] = (
+                        prefix + str(gradient_accumulation_steps)
+                        if prefix
+                        else gradient_accumulation_steps
+                    )
                 else:
-                    cmd_cfg[keys[-1]] = prefix + str(
-                        gradient_accumulation_steps
+                    cmd_cfg[keys[-1]] = (
+                        prefix + str(gradient_accumulation_steps)
+                        if prefix
+                        else gradient_accumulation_steps
                     )
                 json.dump(cmd_cfg, open(cmd[arg][0], "w"))
             elif ".yaml" in cmd[arg][0]:
@@ -527,10 +557,16 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                     else:
                         value = value[key]
                 if value:
-                    value[keys[-1]] = prefix + str(gradient_accumulation_steps)
+                    value[keys[-1]] = (
+                        prefix + str(gradient_accumulation_steps)
+                        if prefix
+                        else gradient_accumulation_steps
+                    )
                 else:
-                    cmd_cfg[keys[-1]] = prefix + str(
-                        gradient_accumulation_steps
+                    cmd_cfg[keys[-1]] = (
+                        prefix + str(gradient_accumulation_steps)
+                        if prefix
+                        else gradient_accumulation_steps
                     )
                 yaml.dump(cmd_cfg, open(cmd[arg][0], "w"))
 
