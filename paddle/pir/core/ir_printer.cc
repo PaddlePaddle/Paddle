@@ -206,11 +206,17 @@ void IrPrinter::PrintValue(Value v) {
     os << ret->second;
     return;
   }
-
-  std::string new_name = "%" + std::to_string(cur_var_number_);
-  cur_var_number_++;
-  aliases_[key] = new_name;
-  os << new_name;
+  if (v.isa<OpResult>()) {
+    std::string new_name = "%" + std::to_string(cur_result_number_);
+    cur_result_number_++;
+    aliases_[key] = new_name;
+    os << new_name;
+  } else {
+    std::string new_name = "%arg" + std::to_string(cur_block_argument_number_);
+    cur_block_argument_number_++;
+    aliases_[key] = new_name;
+    os << new_name;
+  }
 }
 
 void IrPrinter::PrintOpResult(Operation* op) {

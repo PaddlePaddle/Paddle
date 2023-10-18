@@ -164,7 +164,7 @@ def weight_only_linear(
             'weight': [weight],
             'weight_scale': [weight_scale],
         }
-        if bias:
+        if bias is not None:
             inputs["bias"] = [bias]
         attrs = {'weight_dtype': weight_dtype}
 

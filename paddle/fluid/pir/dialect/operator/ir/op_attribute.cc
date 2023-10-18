@@ -52,10 +52,10 @@ phi::Scalar ScalarAttribute::data() {
 
 IntArrayAttribute IntArrayAttribute::Parse(pir::IrParser &parser) {  // NOLINT
   Token buket_token = parser.ConsumeToken();
-  std::vector<int32_t> vec{};
+  std::vector<int> vec{};
   while (parser.PeekToken().val_ != "]") {
     Token val_token = parser.ConsumeToken();
-    vec.push_back(atoll(val_token.val_.c_str()));
+    vec.push_back(atoi(val_token.val_.c_str()));
     if (parser.PeekToken().val_ == "]") break;
     parser.ConsumeToken();
   }

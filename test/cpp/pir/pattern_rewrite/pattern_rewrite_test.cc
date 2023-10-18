@@ -79,11 +79,11 @@ class Operation1 : public pir::Op<Operation1> {
   static const char *name() { return "test.Operation1"; }
   static constexpr uint32_t attributes_num = 2;
   static const char *attributes_name[attributes_num];  // NOLINT
-  void Verify();
+  void VerifySig();
   static void InferShape() { VLOG(2) << "This is op2's InferShape interface."; }
 };
 
-void Operation1::Verify() {
+void Operation1::VerifySig() {
   auto &attributes = this->attributes();
   if (attributes.count("op2_attr1") == 0 ||
       (!attributes.at("op2_attr1").isa<pir::StrAttribute>())) {
@@ -390,7 +390,7 @@ class Conv2dFusionOpTest : public pir::Op<Conv2dFusionOpTest,
                     pir::OpResult bias_,
                     pir::OpResult residual_,
                     pir::AttributeMap attributes);
-  void Verify();
+  void VerifySig();
   pir::Value input() { return operand_source(0); }
   pir::Value filter() { return operand_source(1); }
   pir::Value bias() { return operand_source(2); }
@@ -767,7 +767,7 @@ void Conv2dFusionOpTest::Build(pir::Builder &builder,
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
 }
 
-void Conv2dFusionOpTest::Verify() {
+void Conv2dFusionOpTest::VerifySig() {
   VLOG(4)
       << "Start Verifying inputs, outputs and attributes for: Conv2dFusionOp.";
   VLOG(4) << "Verifying inputs:";
@@ -1111,9 +1111,12 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
 // TODO(wilber): Add a normal test.
 TEST(pattern_rewrite, Patterns) {
   pir::IrContext *ctx = pir::IrContext::Instance();
+
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
   auto *test_dialect = ctx->GetOrRegisterDialect<Conv2dFusionTestDialect>();
   test_dialect->RegisterOp<paddle::dialect::Conv2dFusionOpTest>();
-  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+
   pir::Program program(ctx);
   pir::Builder builder = pir::Builder(ctx, program.block());
   BuildProgram(builder);
@@ -1122,7 +1125,7 @@ TEST(pattern_rewrite, Patterns) {
 
   pir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<TestPass>());
-  //   pm.AddPass(ir::CreateConstantFoldingPass());
+  //   pm.AddPass(pir::CreateConstantFoldingPass());
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.AddPass(pir::CreateReorderBlockOpsPass());
   pm.EnablePassTiming();

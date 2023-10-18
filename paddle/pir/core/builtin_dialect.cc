@@ -54,6 +54,7 @@ void BuiltinDialect::initialize() {
   RegisterOps<ModuleOp,
               GetParameterOp,
               SetParameterOp,
+              ShadowOutputOp,
               CombineOp,
               SliceOp,
               SplitOp,
