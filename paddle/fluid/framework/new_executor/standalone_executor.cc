@@ -58,7 +58,9 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     if (FLAGS_enable_pir_api) {
       ir_program = plan_.IrProgram(job_type);
     } else {
-      program = std::make_shared<ProgramDesc>(*(plan_.Program(job_type)));
+      // Old implementation uses std::make_shared to obtain its pointer but
+      // this causes the duplication of program instance.
+      program = plan_.MutableProgram(job_type);
     }
 
     int64_t micro_batch_id = job->MicroBatchId();
