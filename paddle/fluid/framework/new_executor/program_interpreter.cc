@@ -39,6 +39,7 @@
 #include "paddle/phi/core/flags.h"
 PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
+PHI_DECLARE_bool(auto_parallel_profiler);
 
 namespace paddle {
 namespace framework {
@@ -103,6 +104,12 @@ ProgramInterpreter::~ProgramInterpreter() {
 }
 
 void ProgramInterpreter::RunImpl() {
+  if (FLAGS_auto_parallel_profiler) {
+    for (auto& timer : gpu_stream_timer_) {
+      timer.Start();
+    }
+  }
+
   // lazy initialization of gc, do not create gc is the program only run once
   if (!gc_) {
     gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
@@ -127,6 +134,11 @@ void ProgramInterpreter::RunImpl() {
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
   }
 #endif
+  if (FLAGS_auto_parallel_profiler) {
+    for (auto& timer : gpu_stream_timer_) {
+      timer.Stop();
+    }
+  }
 }
 
 FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
@@ -151,6 +163,12 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
 
   if (HasLocalScope()) {
     ClearLoDTensorArrayInLocalScope();
+  }
+
+  if (FLAGS_auto_parallel_profiler) {
+    for (auto& timer : gpu_stream_timer_) {
+      VLOG(3) << "GPU stream event time: " << timer.ElapsedTime();
+    }
   }
 
   // return Fetch Tensors
@@ -622,6 +640,27 @@ void ProgramInterpreter::ClearLoDTensorArrayInLocalScope() {
   }
 }
 
+void ProgramInterpreter::AddGpuStreamEvents() {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  for (auto& instr : vec_instruction_) {
+    if (instr.KernelType() != OpFuncType::kGpuAsync) {
+      return;
+    }
+
+    if (instr.DeviceContext().GetPlace().GetType() ==
+        phi::AllocationType::CUSTOM) {
+      return;
+    }
+
+    gpuStream_t stream =
+        reinterpret_cast<const phi::GPUContext&>(instr.DeviceContext())
+            .stream();
+
+    gpu_stream_timer_.emplace_back(stream);
+  }
+#endif
+}
+
 void ProgramInterpreter::Convert(
     std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {
   auto& vec_meta_info = var_scope_.MutableVecMetaInfo();
@@ -656,6 +695,10 @@ void ProgramInterpreter::Convert(
     }
 #endif
     vec_instruction_.emplace_back(op_idx, std::move(op_func_node), *dev_ctx_);
+  }
+
+  if (FLAGS_auto_parallel_profiler) {
+    AddGpuStreamEvents();
   }
 
   BuildOperatorDependences();

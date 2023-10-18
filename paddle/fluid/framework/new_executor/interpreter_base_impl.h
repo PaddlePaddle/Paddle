@@ -37,6 +37,7 @@
 #include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform/device_event.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/kernels/autotune/gpu_timer.h"
 
 PD_DECLARE_bool(new_executor_serial_run);
 PD_DECLARE_bool(new_executor_static_build);

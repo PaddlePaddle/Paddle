@@ -149,6 +149,8 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   // For log and debug
   std::string GetDepsString() const;
 
+  void AddGpuStreamEvents();
+
   bool is_build_{false};
   bool static_build_{false};
   // Note(sonder): share the op dependency and event analysis procedure.
@@ -210,6 +212,8 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   InstructionSchedulingPriorityLess instruction_scheduling_priority_less;
 
   std::vector<HookFunc> hookfuncs_;
+
+  std::vector<phi::GpuTimer> gpu_stream_timer_;
 };
 
 }  // namespace framework

@@ -42,6 +42,20 @@ class GpuTimer {
         stop_, phi::errors::PreconditionNotMet("Stop Event is not ready."));
   }
 
+  explicit GpuTimer(gpuStream_t stream) : stream_(stream) {
+#ifdef PADDLE_WITH_HIP
+    hipEventCreate(&start_);
+    hipEventCreate(&stop_);
+#else
+    cudaEventCreate(&start_);
+    cudaEventCreate(&stop_);
+#endif
+    PADDLE_ENFORCE_NOT_NULL(
+        start_, phi::errors::PreconditionNotMet("Start Event is not ready."));
+    PADDLE_ENFORCE_NOT_NULL(
+        stop_, phi::errors::PreconditionNotMet("Stop Event is not ready."));
+  }
+
   ~GpuTimer() {
 #ifdef PADDLE_WITH_HIP
     hipEventDestroy(start_);
@@ -68,6 +82,9 @@ class GpuTimer {
 #endif
   }
 
+  void Start() { Start(stream_); }
+  void Stop() { Stop(stream_); }
+
   float ElapsedTime() {
     float milliseconds = 0;
 #ifdef PADDLE_WITH_HIP
@@ -83,6 +100,7 @@ class GpuTimer {
  private:
   gpuEvent_t start_;
   gpuEvent_t stop_;
+  gpuStream_t stream_;
 };
 
 }  // namespace phi
