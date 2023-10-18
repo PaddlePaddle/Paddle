@@ -337,72 +337,30 @@ class Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
   }
 };
 
-
-/// Fuse
-
-
+// Fuse
 template <class T, typename DeviceContext>
 class Im2ColFuseFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
  public:
-  void operator()(const DeviceContext& context, T** im_data,
-                  const int size, const int filter_height, const int filter_width,
-                  const int im_width, const int col_width, const int max_col_height, const int im_channels,
-                  int* col_height_data, int* im_height_data, size_t* lod_level_0_data,
+  void operator()(const DeviceContext& context,
+                  T** im_data,
+                  const int size,
+                  const int filter_height,
+                  const int filter_width,
+                  const int im_width,
+                  const int col_width,
+                  const int max_col_height,
+                  const int im_channels,
+                  int* col_height_data,
+                  int* im_height_data,
+                  size_t* lod_level_0_data,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
-                  const std::vector<int>& padding, T** col_data,
+                  const std::vector<int>& padding,
+                  T** col_data,
                   const DataLayout data_layout) {
-/*
-    PADDLE_ENFORCE_EQ(im.dims().size(), 3,
-                      platform::errors::InvalidArgument(
-                          "The dimension of tensor 'im' should be 3. But got "
-                          "the dims of tensor 'im' is [%s].",
-                          im.dims()));
-    PADDLE_ENFORCE_EQ(col->dims().size(), 5,
-                      platform::errors::InvalidArgument(
-                          "The dimension of tensor 'col' should be 5. But got "
-                          "the dims of tensor 'col' is [%s].",
-                          col->dims()));
-    int im_channels = im.dims()[0];
-    int im_height = im.dims()[1];
-    int im_width = im.dims()[2];
-    int filter_height = col->dims()[3];
-    int filter_width = col->dims()[4];
-    int col_height = col->dims()[0];
-    int col_width = col->dims()[1];
-    const T* im_data = im.data<T>();
-    T* col_data = col->data<T>();
-    for (int col_row_idx = 0; col_row_idx < col_height; ++col_row_idx) {
-      for (int col_col_idx = 0; col_col_idx < col_width; ++col_col_idx) {
-        for (int channel = 0; channel < im_channels; ++channel) {
-          for (int filter_row_idx = 0; filter_row_idx < filter_height;
-               ++filter_row_idx) {
-            int im_row_offset =
-                col_row_idx * stride[0] + filter_row_idx - padding[0];
-            for (int filter_col_idx = 0; filter_col_idx < filter_width;
-                 ++filter_col_idx) {
-              int im_col_offset =
-                  col_col_idx * stride[1] + filter_col_idx - padding[1];
-              int col_offset =
-                  ((((col_row_idx)*col_width + col_col_idx) * im_channels +
-                    channel) *
-                       filter_height +
-                   filter_row_idx) *
-                      filter_width +
-                  filter_col_idx;
-              int im_offset = (channel * im_height + im_row_offset) * im_width +
-                              im_col_offset;
-              col_data[col_offset] =
-                  (im_row_offset < 0 || im_row_offset >= im_height ||
-                   im_col_offset < 0 || im_col_offset >= im_width)
-                      ? static_cast<T>(0)
-                      : im_data[im_offset];
-            }
-          }
-        }
-      }
-    }
-*/
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Im2ColFuseFunctor cpu version is not implemented, only gpu version is "
+        "supported"));
   }
 };
 
@@ -414,82 +372,30 @@ class Im2ColFuseFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
 template <class T, typename DeviceContext>
 class Col2ImFuseFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
  public:
-  void operator()(const DeviceContext& context, T** col_data,
-                  const int size, const int filter_height, const int filter_width,
-                  const int im_width, const int col_width, const int max_col_height, const int im_channels,
-                  int* col_height_data, int* im_height_data, size_t* lod_level_0_data,
+  void operator()(const DeviceContext& context,
+                  T** col_data,
+                  const int size,
+                  const int filter_height,
+                  const int filter_width,
+                  const int im_width,
+                  const int col_width,
+                  const int max_col_height,
+                  const int im_channels,
+                  int* col_height_data,
+                  int* im_height_data,
+                  size_t* lod_level_0_data,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
-                  const std::vector<int>& padding, T** im_data,
+                  const std::vector<int>& padding,
+                  T** im_data,
                   const DataLayout data_layout) {
-/*
-    PADDLE_ENFORCE_EQ(im->dims().size(), 3,
-                      platform::errors::InvalidArgument(
-                          "The dimension of tensor 'im' should be 3. But got "
-                          "the dims of tensor 'im' is [%s].",
-                          im->dims()));
-    PADDLE_ENFORCE_EQ(col.dims().size(), 5,
-                      platform::errors::InvalidArgument(
-                          "The dimension of tensor 'col' should be 5. But got "
-                          "the dims of tensor 'col' is [%s].",
-                          col.dims()));
-    int im_channels = im->dims()[0];
-    int im_height = im->dims()[1];
-    int im_width = im->dims()[2];
-    int filter_height = col.dims()[3];
-    int filter_width = col.dims()[4];
-    int col_height = col.dims()[0];
-    int col_width = col.dims()[1];
-    PADDLE_ENFORCE_EQ(
-        (im_height + padding[0] + padding[2] - filter_height) / stride[0] + 1,
-        col_height, platform::errors::InvalidArgument(
-                        "Output_height and padding(padding_up, padding_down) "
-                        "are inconsistent."));
-    PADDLE_ENFORCE_EQ(
-        (im_width + padding[1] + padding[3] - filter_width) / stride[1] + 1,
-        col_width,
-        platform::errors::InvalidArgument("col_width and padding(padding_left, "
-                                          "padding_right) are inconsistent."));
-    T* im_data = im->data<T>();
-    const T* col_data = col.data<T>();
-    for (int col_row_idx = 0; col_row_idx < col_height; ++col_row_idx) {
-      for (int col_col_idx = 0; col_col_idx < col_width; ++col_col_idx) {
-        for (int channel = 0; channel < im_channels; ++channel) {
-          for (int filter_row_idx = 0; filter_row_idx < filter_height;
-               ++filter_row_idx) {
-            int im_row_offset =
-                col_row_idx * stride[0] + filter_row_idx - padding[0];
-            for (int filter_col_idx = 0; filter_col_idx < filter_width;
-                 ++filter_col_idx) {
-              int im_col_offset =
-                  col_col_idx * stride[1] + filter_col_idx - padding[1];
-              int col_offset =
-                  (((col_row_idx * col_width + col_col_idx) * im_channels +
-                    channel) *
-                       filter_height +
-                   filter_row_idx) *
-                      filter_width +
-                  filter_col_idx;
-              if (im_row_offset >= 0 && im_row_offset < im_height &&
-                  im_col_offset >= 0 && im_col_offset < im_width) {
-                int im_offset =
-                    (channel * im_height + im_row_offset) * im_width +
-                    im_col_offset;
-                im_data[im_offset] += col_data[col_offset];
-              }
-            }
-          }
-        }
-      }
-    }
-*/
-
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Col2ImFuseFunctor cpu version is not implemented, only gpu version is "
+        "supported"));
   }
 };
 /// Fuse
 
-
-
 template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
                              phi::CPUContext,
                              float>;
@@ -514,7 +420,6 @@ template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
 template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
                              phi::CPUContext,
                              phi::dtype::complex<double>>;
-
 
 template class Im2ColFuseFunctor<phi::funcs::ColFormat::kOCF,
                                  phi::CPUContext,
