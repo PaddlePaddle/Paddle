@@ -123,7 +123,6 @@ class TestDygraphIfElse4(TestDygraphIfElse):
         self.dyfunc = dyfunc_empty_nonlocal
 
 
-@dy2static_unittest
 class TestDygraphIfElseWithListGenerator(TestDygraphIfElse):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
@@ -141,7 +140,7 @@ class TestDygraphNestedIfElse(unittest.TestCase):
 
     def _run_dygraph(self, to_static=False):
         with base.dygraph.guard(place):
-            x_v = base.dygraph.to_variable(self.x)
+            x_v = paddle.to_tensor(self.x)
             if to_static:
                 ret = paddle.jit.to_static(self.dyfunc)(x_v)
             else:
@@ -268,7 +267,7 @@ class TestDygraphIfTensor(unittest.TestCase):
 
     def _run_dygraph(self, to_static=False):
         with base.dygraph.guard(place):
-            x_v = base.dygraph.to_variable(self.x)
+            x_v = paddle.to_tensor(self.x)
             if to_static:
                 ret = paddle.jit.to_static(self.dyfunc)(x_v)
             else:
