@@ -133,9 +133,13 @@ bool IsLegacyOp(const std::string& name);
 
 bool IsEmptyValue(const pir::Value& value);
 
-void CheckInputDtype(const pir::Value& value,
-                     const std::string& input_name,
-                     const std::string& op_name);
+void CheckValueDataType(const pir::Value& value,
+                        const std::string& input_name,
+                        const std::string& op_name);
+
+void CheckVectorOfValueDataType(const std::vector<pir::Value>& vector_value,
+                                const std::string& input_name,
+                                const std::string& op_name);
 
 }  // namespace dialect
 }  // namespace paddle

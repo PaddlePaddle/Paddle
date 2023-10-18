@@ -246,11 +246,10 @@ std::set<std::string> GetRegisterDataType(const std::string& op_name) {
   return data_type;
 }
 
-void CheckInputDtype(const pir::Value& value,
-                     const std::string& input_name,
-                     const std::string& op_name) {
-  std::set<std::string> expected_dtype = GetRegisterDataType(op_name);
-
+void DoCheck(const pir::Value& value,
+             const std::string& input_name,
+             const std::set<std::string>& expected_dtype,
+             const std::string& op_name) {
   if (value.type().isa<pir::DenseTensorType>()) {
     std::string value_type = phi::DataTypeToString(dialect::TransToPhiDataType(
         value.type().dyn_cast<pir::DenseTensorType>().dtype()));
@@ -261,6 +260,22 @@ void CheckInputDtype(const pir::Value& value,
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Currently, we can only get dtype for dense "
         "tensor."));
+  }
+}
+
+void CheckValueDataType(const pir::Value& value,
+                        const std::string& input_name,
+                        const std::string& op_name) {
+  std::set<std::string> expected_dtype = GetRegisterDataType(op_name);
+  DoCheck(value, input_name, expected_dtype, op_name);
+}
+
+void CheckVectorOfValueDataType(const std::vector<pir::Value>& vector_value,
+                                const std::string& input_name,
+                                const std::string& op_name) {
+  std::set<std::string> expected_dtype = GetRegisterDataType(op_name);
+  for (auto& value : vector_value) {
+    DoCheck(value, input_name, expected_dtype, op_name);
   }
 }
 

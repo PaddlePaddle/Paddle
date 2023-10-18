@@ -80,8 +80,11 @@ API_IMPL_TEMPLATE = """
 
 """
 
-CHECK_DTYPE_TEMPLATE = """
-    CheckInputDtype({input}, "{input}", "{op_name}");"""
+CHECK_VALUE_DTYPE_TEMPLATE = """
+    CheckValueDataType({input}, "{input}", "{op_name}");"""
+
+CHECK_VECTOR_OF_VALUE_DTYPE_TEMPLATE = """
+    CheckVectorOfValueDataType({input}, "{input}", "{op_name}");"""
 
 OPTIONAL_VECTOR_VALUE_INPUT_TEMPLATE = """
     paddle::optional<pir::Value> optional_{name};
@@ -506,19 +509,35 @@ class CodeGen:
         elif len(ret_list) == 0:
             return 'return;'
 
-    def _gen_check_dtype(self, op_info, op_name):
+    def _gen_check_input_dtype(self, op_info, op_name):
         name_list = op_info.input_name_list
         type_list = op_info.input_type_list
-        if (
-            not op_name.endswith(('_grad', '_grad_'))
-            and len(name_list) > 0
-            and VECTOR_TYPE not in type_list[0]
-        ):
-            return CHECK_DTYPE_TEMPLATE.format(
-                input=name_list[0], op_name=op_name
-            )
-        else:
+        if op_name.endswith(('_grad', '_grad_')) or len(name_list) == 0:
             return ''
+        data_type_candidates = None
+        if (
+            op_info.kernel_map is not None
+            and 'data_type' in op_info.kernel_map
+            and op_info.kernel_map['data_type'] is not None
+            and 'candidates' in op_info.kernel_map['data_type']
+        ):
+            data_type_candidates = op_info.kernel_map['data_type']['candidates']
+        ret = ''
+        if data_type_candidates is not None:
+            for name in data_type_candidates:
+                if name not in name_list:
+                    continue
+                index = name_list.index(name)
+                type = type_list[index]
+                if VECTOR_TYPE in type:
+                    ret += CHECK_VECTOR_OF_VALUE_DTYPE_TEMPLATE.format(
+                        input=name, op_name=op_name
+                    )
+                else:
+                    ret += CHECK_VALUE_DTYPE_TEMPLATE.format(
+                        input=name, op_name=op_name
+                    )
+        return ret
 
     def _gen_one_impl(
         self, op_info, op_name, is_mutable_attr, is_vector_mutable_attr
@@ -538,7 +557,7 @@ class CodeGen:
         )
 
         ret = API_IMPL_TEMPLATE.format(
-            check_value_and_dtype=self._gen_check_dtype(op_info, op_name),
+            check_value_and_dtype=self._gen_check_input_dtype(op_info, op_name),
             ret_type=ret_type,
             api_name=op_name,
             args=self._gen_api_args(
