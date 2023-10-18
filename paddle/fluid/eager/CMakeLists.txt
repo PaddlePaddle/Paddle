@@ -75,3 +75,5 @@ cc_library(
        generated_op
        autograd_meta
        hook_utils)
+
+set_target_properties(utils PROPERTIES LINK_INTERFACE_MULTIPLICITY 3)
