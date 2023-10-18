@@ -123,16 +123,34 @@ class TestDygraphIfElse4(TestDygraphIfElse):
         self.dyfunc = dyfunc_empty_nonlocal
 
 
+@dy2static_unittest
 class TestDygraphIfElseWithListGenerator(TestDygraphIfElse):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = dyfunc_with_if_else_with_list_generator
 
 
-class TestDygraphNestedIfElse(TestDygraphIfElse):
+@dy2static_unittest
+class TestDygraphNestedIfElse(unittest.TestCase):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = nested_if_else
+
+    def _run_static(self):
+        return self._run_dygraph(to_static=True)
+
+    def _run_dygraph(self, to_static=False):
+        with base.dygraph.guard(place):
+            x_v = base.dygraph.to_variable(self.x)
+            if to_static:
+                ret = paddle.jit.to_static(self.dyfunc)(x_v)
+            else:
+                ret = self.dyfunc(x_v)
+            return ret.numpy()
+
+    # TODO(zhangbo): open pir test (sub block cannot find var in parent block)
+    def test_ast_to_func(self):
+        self.assertTrue((self._run_dygraph() == self._run_static()).all())
 
 
 class TestDygraphNestedIfElse2(TestDygraphIfElse):
@@ -239,10 +257,27 @@ class TestDygraphIfElseWithClassVar(TestDygraphIfElse):
         self.dyfunc = if_with_class_var
 
 
-class TestDygraphIfTensor(TestDygraphIfElse):
+@dy2static_unittest
+class TestDygraphIfTensor(unittest.TestCase):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = if_tensor_case
+
+    def _run_static(self):
+        return self._run_dygraph(to_static=True)
+
+    def _run_dygraph(self, to_static=False):
+        with base.dygraph.guard(place):
+            x_v = base.dygraph.to_variable(self.x)
+            if to_static:
+                ret = paddle.jit.to_static(self.dyfunc)(x_v)
+            else:
+                ret = self.dyfunc(x_v)
+            return ret.numpy()
+
+    # TODO(zhangbo): open pir test (abnormal insertion of fill constant op after conditional block op)
+    def test_ast_to_func(self):
+        self.assertTrue((self._run_dygraph() == self._run_static()).all())
 
 
 @dy2static_unittest
@@ -271,6 +306,7 @@ class TestDygraphIfElseNet(unittest.TestCase):
             ret = net(x_v)
             return ret.numpy()
 
+    # TODO(zhangbo): open pir test (sub block cannot find var in parent block)
     def test_ast_to_func(self):
         self.assertTrue((self._run_dygraph() == self._run_static()).all())
 
@@ -468,6 +504,7 @@ class TestDy2StIfElseRetInt3(TestDy2StIfElseRetInt1):
         self.dyfunc = paddle.jit.to_static(dyfunc_ifelse_ret_int3)
         self.out = self.get_dy2stat_out()
 
+    # TODO(zhangbo): open pir test (abnormal insertion of fill constant op after conditional block op)
     @ast_only_test
     def test_ast_to_func(self):
         self.setUp()
@@ -518,6 +555,7 @@ class IfElseNet(paddle.nn.Layer):
 
 @dy2static_unittest
 class TestDy2StIfElseBackward(unittest.TestCase):
+    # TODO(zhangbo): open pir test (IfOp grad execution not yet supported)
     def test_run_backward(self):
         a = paddle.randn((4, 3), dtype='float32')
         a.stop_gradient = False
