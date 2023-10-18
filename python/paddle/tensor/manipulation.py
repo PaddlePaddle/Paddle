@@ -4946,28 +4946,6 @@ def index_put(x, indices, value, accumulate=False, name=None):
     return out
 
 
-def _add_unit_axes(shape, ndim, append=False):
-    """
-    Prepends shape with 1s so that it has the number of dimensions ndim.
-    If append is set to True, returns shape appended with 1s instead.
-    """
-    if isinstance(shape, int):
-        shape = (shape,)
-    ndim_diff = ndim - len(shape)
-    if ndim_diff > 0:
-        if append:
-            shape = list(shape) + [1] * ndim_diff
-        else:
-            shape = [1] * ndim_diff + list(shape)
-    return tuple(shape)
-
-
-def _expand(x, ndim, axis=0):
-    """Expand x to ndim from axis, which can be 0 or -1."""
-    shape = _add_unit_axes(x.shape, ndim, axis == -1)
-    return paddle.reshape(x, shape)
-
-
 def atleast_1d(x):
     r"""
     Returns a 1-dimensional view of each input tensor with zero dimensions. Input tensors with one or more dimensions are returned as-is.
@@ -5008,9 +4986,16 @@ def atleast_1d(x):
             [0.50000000]), Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
             [1.]))
     """
+
+    def _expend1(tensor):
+        if tensor.ndim == 0:
+            return paddle.reshape(tensor, [1])
+        else:
+            return tensor
+
     check_type(x, 'x', (Variable, list, tuple), 'atleast_1d')
     if isinstance(x, Variable):
-        return _expand(x, 1)
+        return _expend1(x)
     for tensor in x:
         check_type(
             tensor,
@@ -5021,7 +5006,7 @@ def atleast_1d(x):
         )
         # if not isinstance(tensor, Variable):
         #     raise TypeError(f"For 'atleast_1d', each element of 'inputs' must be a tensor, but got {type(tensor)}")
-    return tuple([_expand(arr, 1) for arr in x])
+    return tuple([_expend1(tensor) for tensor in x])
 
 
 def atleast_2d(x):
@@ -5067,9 +5052,18 @@ def atleast_2d(x):
             [[1.]]))
 
     """
+
+    def _expand2(x):
+        if x.ndim == 0:
+            return paddle.reshape(x, [1, 1])
+        elif x.ndim == 1:
+            return paddle.unsqueeze(x, 0)
+        else:
+            return x
+
     check_type(x, 'x', (Variable, list, tuple), 'atleast_2d')
     if isinstance(x, Variable):
-        return _expand(x, 2)
+        return _expand2(x)
     for tensor in x:
         check_type(
             tensor,
@@ -5079,7 +5073,7 @@ def atleast_2d(x):
             "expect Tensor or list of tensors, but got " + f"{type(tensor)}",
         )
 
-    return tuple([_expand(arr, 2) for arr in x])
+    return tuple([_expand2(tensor) for tensor in x])
 
 
 def atleast_3d(x):
