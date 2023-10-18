@@ -343,7 +343,7 @@ class TestTensordotAPIAxesType(TestTensordotAPI):
         x = paddle.to_tensor(self.x)
         y = paddle.to_tensor(self.y)
         for axes in self.all_axes:
-            with self.assertRaises(ValueError):
+            with self.assertRaises(TypeError):
                 paddle.tensordot(x, y, axes)
 
 
