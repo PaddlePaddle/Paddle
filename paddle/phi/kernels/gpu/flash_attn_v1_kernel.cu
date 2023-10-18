@@ -30,7 +30,7 @@
 #include "paddle/phi/backends/dynload/flashattn_v1.h"
 #endif
 
-DECLARE_bool(cudnn_deterministic);
+PHI_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 
