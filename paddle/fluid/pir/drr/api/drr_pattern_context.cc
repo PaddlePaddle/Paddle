@@ -132,7 +132,7 @@ Tensor& Op::operator()() const {
   return out;
 }
 
-int64_t Op::count = 0;
+thread_local int64_t Op::count = 0;
 const char* Op::prefix = "@drr_temp@_";
 
 const char Tensor::NONE_TENSOR_NAME[] = "__@none_tensor@__";

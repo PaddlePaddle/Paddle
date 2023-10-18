@@ -552,7 +552,7 @@ class DrrRewritePattern : public pir::RewritePattern {
                  "Drr OpCall [%s] must exists in match context.",
                  op_call->name());
       auto* op = src_match_ctx.operation_map().at(op_call)->get();
-      VLOG(1) << "Delete (" << op_call->name() << " @" << op_call << " :@" << op
+      VLOG(6) << "Delete (" << op_call->name() << " @" << op_call << " :@" << op
               << ") in source_pattern_graph ";
       rewriter.EraseOp(op);
     }

@@ -15,6 +15,8 @@
 #include "paddle/cinn/hlir/framework/new_ir/op_lowering_impl.h"
 
 #include <string>
+
+#include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/hlir/framework/op_lowering_util.h"
 #include "paddle/cinn/hlir/op/external_api_registry.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
@@ -409,16 +411,17 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
 
   // 2.Do lower
   std::string lower_fn_name = CompatibleInfo::OpFuncName(*op);
-  std::vector<ir::LoweredFunc> funcs = lang::LowerVec(lower_fn_name,
-                                                      tmp_stages,
-                                                      *op_func_arg_tensors,
-                                                      {},
-                                                      {},
-                                                      nullptr,
-                                                      this->target_,
-                                                      true);
+  ast_gen_ius::TensorGroup tensor_group =
+      ast_gen_ius::ConvertStageMapToTensorGroup(tmp_stages);
+  std::vector<ir::LoweredFunc> funcs = lang::LowerToAstVec(
+      lower_fn_name, *op_func_arg_tensors, {&tensor_group}, this->target_);
   VLOG(4) << "Lower op: " << lower_fn_name << ", get " << funcs.size()
           << " LoweredFunc:\n";
+  if (VLOG_IS_ON(4)) {
+    for (auto fun : funcs) {
+      VLOG(4) << fun;
+    }
+  }
 
   op_func_arg_tensors->clear();
   for (int idx = 0; idx < pack.size() - 1; ++idx) {

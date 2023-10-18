@@ -177,7 +177,7 @@ class Op {
     return attributes_;
   }
 
-  static int64_t count;
+  thread_local static int64_t count;
 
   std::string op_type_name_;
   std::unordered_map<std::string, Attribute> attributes_;
