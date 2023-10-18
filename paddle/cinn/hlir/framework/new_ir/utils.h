@@ -15,6 +15,7 @@
 #pragma once
 #include <string>
 #include <unordered_map>
+#include "paddle/cinn/common/context.h"
 #include "paddle/pir/core/operation.h"
 
 namespace cinn {

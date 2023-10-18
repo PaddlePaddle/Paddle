@@ -40,6 +40,8 @@ std::unordered_map<std::string, OpPatternKind> OpKindMap = {
     {"pd_op.full", OpPatternKind::kElementWise},
     {"pd_op.relu", OpPatternKind::kElementWise},
     {"pd_op.exp", OpPatternKind::kElementWise},
+    {"pd_op.sin", OpPatternKind::kElementWise},
+    {"pd_op.cos", OpPatternKind::kElementWise},
     {"pd_op.sum", OpPatternKind::kReduction},
     {"cinn_op.reduce_sum", OpPatternKind::kReduction},
     {"cinn_op.reduce_max", OpPatternKind::kReduction},
@@ -49,6 +51,7 @@ std::unordered_map<std::string, OpPatternKind> OpKindMap = {
 OpPatternKind GetOpKind(const std::string& op_name) {
   auto found_it = OpKindMap.find(op_name);
   if (found_it == OpKindMap.end()) {
+    std::cerr << "not upport op name " << op_name << std::endl;
     throw std::runtime_error("not support op yet in op kind map");
   }
 
@@ -143,19 +146,18 @@ using ConditionFunction =
 // code generation.
 class OpFusionPassHelper {
  public:
-  explicit OpFusionPassHelper(::pir::Block* block) {
+  explicit OpFusionPassHelper(const std::vector<pir::Operation*>& op_list) {
     // init fusion relation
     InitFusionRelation();
     // filter node data, create group for each node
     // auto nodes_inorder = std::get<0>(graph->topological_order());
 
-    for (auto it = block->begin(); it != block->end(); ++it) {
-      auto node = *it;
-      local_ops_.insert(node);
+    for (auto it = op_list.begin(); it != op_list.end(); ++it) {
+      local_ops_.insert(*it);
     }
 
     int index = 0;
-    for (auto it = block->begin(); it != block->end(); ++it) {
+    for (auto it = op_list.begin(); it != op_list.end(); ++it) {
       auto node = *it;
       if (node) {
         nodes_.push_back(node);
@@ -491,9 +493,9 @@ class OpFusionPassHelper {
   std::unordered_map<OpPatternKind, FusionRelation> fusion_relation_map_;
 };
 
-GroupList OpFusionPassInternal(::pir::Block* block) {
+GroupList OpFusionPassInternal(const std::vector<pir::Operation*>& op_list) {
   VLOG(3) << "OpFusionPass...!";
-  auto op_fusion_helper = OpFusionPassHelper(block);
+  auto op_fusion_helper = OpFusionPassHelper(op_list);
   auto res = op_fusion_helper();
 
   for (size_t i = 0; i < res.size(); ++i) {
@@ -502,26 +504,10 @@ GroupList OpFusionPassInternal(::pir::Block* block) {
     for (size_t j = 0; j < group->nodes.size(); ++j) {
     }
   }
-
-  // for (auto& group : graph->fusion_groups) {
-  //   VLOG(3) << "Group Id : " << group->group_id;
-  //   for (const auto& producer : group->producer_groups()) {
-  //     VLOG(3) << "  producer group -> " << producer->group_id;
-  //   }
-  //   for (const auto& consumer : group->consumer_groups()) {
-  //     VLOG(3) << "  consumer group -> " << consumer->group_id;
-  //   }
-  // }
   VLOG(3) << "OpFusionPass Finish...!";
 
   return res;
 }
-
-// void BuildNonFusedGroupsPassInternal(framework::Graph* graph) {
-//   auto op_fusion_helper = OpFusionPassHelper(graph);
-//   VLOG(3) << "Apply OpFusionPass to generate initial non-fusion groups";
-//   graph->fusion_groups = op_fusion_helper(false);
-// }
 
 }  // namespace ir
 }  // namespace dialect

@@ -24,7 +24,7 @@ namespace ir {
 using GroupPtr = std::shared_ptr<Group>;
 using GroupList = std::vector<GroupPtr>;
 
-GroupList OpFusionPassInternal(::pir::Block* block);
+GroupList OpFusionPassInternal(const std::vector<pir::Operation*>& op_list);
 
 GroupList GeneralFusionMergePassInternal(const GroupList& group_list);
 
