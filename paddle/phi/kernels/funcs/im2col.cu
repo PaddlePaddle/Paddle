@@ -15,11 +15,11 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 
-#include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/funcs/im2col.h"
 
 namespace phi {
@@ -528,9 +528,13 @@ class Im2ColFuseFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
                   const DataLayout data_layout) {
     int thread_size = static_cast<int>(lod_level_0.size()) - 1;
     auto gpu_place = context.GetPlace();
-    auto all_hbm = paddle::memory::Alloc(
-        gpu_place,
-        (4 * thread_size + 1 + (4 * thread_size + 1) % 2) * sizeof(uint64_t));
+    auto num_bytes =
+        (4 * thread_size + 1 + (4 * thread_size + 1) % 2) * sizeof(uint64_t);
+    auto all_hbm = phi::memory_utils::Alloc(gpu_place, num_bytes);
+    // auto all_hbm = paddle::memory::Alloc(
+    //     gpu_place,
+    //     (4 * thread_size + 1 + (4 * thread_size + 1) % 2) *
+    //     sizeof(uint64_t));
 
     int* im_height_data = reinterpret_cast<int*>(all_hbm->ptr());
     int* col_height_data = reinterpret_cast<int*>(im_height_data + thread_size);
@@ -810,9 +814,13 @@ class Col2ImFuseFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
 
     int thread_size = static_cast<int>(lod_level_0.size()) - 1;
     auto gpu_place = context.GetPlace();
-    auto all_hbm = paddle::memory::Alloc(
-        gpu_place,
-        (4 * thread_size + 1 + (4 * thread_size + 1) % 2) * sizeof(uint64_t));
+    auto num_bytes =
+        (4 * thread_size + 1 + (4 * thread_size + 1) % 2) * sizeof(uint64_t);
+    auto all_hbm = phi::memory_utils::Alloc(gpu_place, num_bytes);
+    // auto all_hbm = paddle::memory::Alloc(
+    //     gpu_place,
+    //     (4 * thread_size + 1 + (4 * thread_size + 1) % 2) *
+    //     sizeof(uint64_t));
 
     int* im_height_data = reinterpret_cast<int*>(all_hbm->ptr());
     int* col_height_data = reinterpret_cast<int*>(im_height_data + thread_size);
@@ -821,7 +829,6 @@ class Col2ImFuseFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
     T** im_data = reinterpret_cast<T**>(lod_level_0_data + thread_size + 1);
     T** col_data = reinterpret_cast<T**>(im_data + thread_size);
 
-    // 其实im_height 就是col_height，这块可以继续优化
     cudaMemcpy(im_height_data,
                im_height.data(),
                thread_size * sizeof(int),
