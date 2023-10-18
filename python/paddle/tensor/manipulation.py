@@ -1874,10 +1874,10 @@ def stack(x, axis=0, name=None):
             >>> print(out.shape)
             [1, 3, 2]
             >>> print(out)
-            Tensor(shape=[3, 1, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[[1., 2.]],
-             [[3., 4.]],
-             [[5., 6.]]])
+            Tensor(shape=[1, 3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[1., 2.],
+              [3., 4.],
+              [5., 6.]]])
     """
     axis = 0 if axis is None else axis
 

@@ -1188,10 +1188,10 @@ def kthvalue(x, k, axis=None, keepdim=False, name=None):
         .. code-block:: python
 
             >>> import paddle
-            >>> paddle.seed(1)
 
             >>> x = paddle.randn((2,3,2))
             >>> print(x)
+            >>> # doctest: +SKIP('Different environments yield different output.')
             Tensor(shape=[2, 3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[ 0.11855337, -0.30557564],
               [-0.09968963,  0.41220093],
@@ -1199,13 +1199,16 @@ def kthvalue(x, k, axis=None, keepdim=False, name=None):
              [[ 0.08612321, -0.92485696],
               [-0.09276631,  1.15149164],
               [-1.46587241,  1.22873247]]])
+            >>> # doctest: -SKIP
             >>> y = paddle.kthvalue(x, 2, 1)
             >>> print(y)
+            >>> # doctest: +SKIP('Different environments yield different output.')
             (Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[ 0.11855337,  0.41220093],
              [-0.09276631,  1.15149164]]), Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[0, 1],
              [1, 1]]))
+            >>> # doctest: -SKIP
     """
     if in_dynamic_mode():
         if axis is not None:
