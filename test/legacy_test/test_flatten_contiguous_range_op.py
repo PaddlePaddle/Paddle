@@ -50,11 +50,11 @@ class TestFlattenOp(OpTest):
                 core.CUDAPlace(0),
                 no_check_set=["XShape"],
                 check_prim=True,
-                check_new_ir=True,
+                check_pir=True,
             )
         else:
             self.check_output(
-                no_check_set=["XShape"], check_prim=True, check_new_ir=True
+                no_check_set=["XShape"], check_prim=True, check_pir=True
             )
 
     def test_check_grad(self):
@@ -64,10 +64,10 @@ class TestFlattenOp(OpTest):
                 ["X"],
                 "Out",
                 check_prim=True,
-                check_new_ir=True,
+                check_pir=True,
             )
         else:
-            self.check_grad(["X"], "Out", check_prim=True, check_new_ir=True)
+            self.check_grad(["X"], "Out", check_prim=True, check_pir=True)
 
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)

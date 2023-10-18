@@ -56,14 +56,14 @@ class TestSumOp(OpTest):
         self.out = self.x.sum(axis=tuple(self.attrs['dim']))
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
             ['X'],
             'Out',
             check_prim=True,
-            check_new_ir=True,
+            check_pir=True,
             check_prim_pir=True,
         )
 
@@ -96,7 +96,7 @@ class TestSumOp_ZeroDim(TestSumOp):
         self.check_grad(
             ['X'],
             'Out',
-            check_new_ir=True,
+            check_pir=True,
             check_prim=True,
             check_prim_pir=True,
         )
@@ -126,10 +126,10 @@ class TestSumOp8D(TestSumOp):
         self.attrs = {'dim': (0, 3)}
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_new_ir=True)
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestSumOp_withInt(TestSumOp):
@@ -142,7 +142,7 @@ class TestSumOp_withInt(TestSumOp):
         self.attrs = {'dim': (0, 1)}
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def calc_gradient(self):
         x = self.inputs["X"]
@@ -156,7 +156,7 @@ class TestSumOp_withInt(TestSumOp):
             user_defined_grads=self.calc_gradient(),
             check_prim=True,
             check_prim_pir=True,
-            check_new_ir=True,
+            check_pir=True,
         )
 
 
@@ -168,7 +168,7 @@ class TestSumOp3Dim(TestSumOp):
         self.attrs = {'dim': (0, 1, 2)}
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def calc_gradient(self):
         x = self.inputs["X"]
@@ -182,7 +182,7 @@ class TestSumOp3Dim(TestSumOp):
             user_defined_grads=self.calc_gradient(),
             check_prim=True,
             check_prim_pir=True,
-            check_new_ir=True,
+            check_pir=True,
         )
 
 
@@ -195,7 +195,7 @@ def create_test_fp16_class(parent):
             self.dtype = np.float16
 
         def test_check_output(self):
-            self.check_output(check_new_ir=True)
+            self.check_output(check_pir=True)
 
         def test_check_grad(self):
             self.check_grad(
@@ -203,7 +203,7 @@ def create_test_fp16_class(parent):
                 'Out',
                 check_prim=True,
                 check_prim_pir=True,
-                check_new_ir=True,
+                check_pir=True,
             )
 
 
@@ -232,7 +232,7 @@ def create_test_bf16_class(parent):
 
         def test_check_output(self):
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, check_new_ir=True)
+            self.check_output_with_place(place, check_pir=True)
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
@@ -243,7 +243,7 @@ def create_test_bf16_class(parent):
                 user_defined_grads=self.gradient,
                 check_prim=True,
                 check_prim_pir=True,
-                check_new_ir=True,
+                check_pir=True,
             )
 
         def calc_gradient(self):
@@ -280,7 +280,7 @@ class TestMaxOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         # only composite op support gradient check of reduce_max
@@ -289,7 +289,7 @@ class TestMaxOp(OpTest):
             'Out',
             check_prim=True,
             only_check_prim=True,
-            check_new_ir=True,
+            check_pir=True,
         )
 
 
@@ -315,7 +315,7 @@ class TestMaxOp_ZeroDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         # only composite op support gradient check of reduce_max
@@ -324,7 +324,7 @@ class TestMaxOp_ZeroDim(OpTest):
             'Out',
             check_prim=True,
             only_check_prim=True,
-            check_new_ir=True,
+            check_pir=True,
         )
 
 
@@ -369,7 +369,7 @@ class TestMaxFP32Op(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         # only composite op support gradient check of reduce_max
@@ -378,7 +378,7 @@ class TestMaxFP32Op(OpTest):
             'Out',
             check_prim=True,
             only_check_prim=True,
-            check_new_ir=True,
+            check_pir=True,
         )
 
     def init_dtype(self):
@@ -404,7 +404,7 @@ class TestMaxBF16Op(TestMaxFP32Op):
         self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0), check_new_ir=True)
+        self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
 
     def test_check_grad(self):
         # only composite op support gradient check of reduce_max
@@ -414,7 +414,7 @@ class TestMaxBF16Op(TestMaxFP32Op):
             'Out',
             check_prim=True,
             only_check_prim=True,
-            check_new_ir=True,
+            check_pir=True,
         )
 
 
@@ -827,7 +827,7 @@ class TestAllOp(OpTest):
         self.attrs = {'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
 
 class TestAllFloatOp(OpTest):
@@ -839,7 +839,7 @@ class TestAllFloatOp(OpTest):
         self.attrs = {'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
 
 class TestAllIntOp(OpTest):
@@ -851,7 +851,7 @@ class TestAllIntOp(OpTest):
         self.attrs = {'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
 
 class TestAllOp_ZeroDim(OpTest):
@@ -863,7 +863,7 @@ class TestAllOp_ZeroDim(OpTest):
         self.attrs = {'dim': []}
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
 
 class TestAll8DOp(OpTest):
@@ -879,7 +879,7 @@ class TestAll8DOp(OpTest):
         self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
 
 class TestAllOpWithDim(OpTest):
@@ -891,7 +891,7 @@ class TestAllOpWithDim(OpTest):
         self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
 
 class TestAll8DOpWithDim(OpTest):
@@ -907,7 +907,7 @@ class TestAll8DOpWithDim(OpTest):
         self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
 
 class TestAllOpWithKeepDim(OpTest):
@@ -921,7 +921,7 @@ class TestAllOpWithKeepDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
 
 class TestAll8DOpWithKeepDim(OpTest):
@@ -941,7 +941,7 @@ class TestAll8DOpWithKeepDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
 
 class TestAllOpError(unittest.TestCase):
@@ -1305,7 +1305,7 @@ class TestReduceMaxOpMultiAxises(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         # only composite op support gradient check of reduce_max
@@ -1314,7 +1314,7 @@ class TestReduceMaxOpMultiAxises(OpTest):
             'Out',
             check_prim=True,
             only_check_prim=True,
-            check_new_ir=True,
+            check_pir=True,
         )
 
 
@@ -1617,6 +1617,15 @@ class TestReduceSumOpError(unittest.TestCase):
                 x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="uint8")
                 self.assertRaises(TypeError, paddle.sum, x2)
 
+            with paddle.pir_utils.IrGuard(), program_guard(
+                Program(), Program()
+            ):
+                # The input type of reduce_sum_op must be Variable.
+                x1 = base.create_lod_tensor(
+                    np.array([[-1]]), [[1]], base.CPUPlace()
+                )
+                self.assertRaises(ValueError, paddle.sum, x1)
+
 
 class API_TestSumOp(unittest.TestCase):
     def run_static(
@@ -1647,6 +1656,7 @@ class API_TestSumOp(unittest.TestCase):
                 rtol=1e-05,
             )
 
+    @test_with_pir_api
     def test_static(self):
         shape = [10, 10]
         axis = 1
