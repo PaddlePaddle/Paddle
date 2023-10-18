@@ -415,7 +415,7 @@ class RNNMixin(LayerListMixin):
         batch_size = inputs.shape[batch_index]
         dtype = inputs.dtype
         if initial_states is None:
-            state_shape = (self.wum_layers * self.num_directions, batch_size)
+            state_shape = (self.num_layers * self.num_directions, batch_size)
             proj_size = self.proj_size if hasattr(self, 'proj_size') else None
 
             dims = ((proj_size or self.hidden_size), (self.hidden_size))
