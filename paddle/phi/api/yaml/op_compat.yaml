@@ -2173,6 +2173,17 @@
   outputs :
     out : Out
 
+- op : pad
+  backward : pad_grad, pad_double_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar:
+    pad_value:
+      data_type : float
+      support_tensor : true
+
 - op : pad2d
   backward : pad2d_grad
   extra :
@@ -3214,6 +3225,12 @@
     {x: X}
   outputs:
     {out: Out}
+
+- op: dpsgd
+  inputs:
+    {param: Param,grad: Grad,learning_rate: LearningRate}
+  outputs:
+    param_out : ParamOut
 
 - op: fetch (fetch_v2)
   inputs: {x: X}

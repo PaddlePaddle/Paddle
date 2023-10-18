@@ -148,18 +148,19 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
                         const Scalar& axis,
                         bool keepdims,
                         bool flatten,
-                        int dtype,
+                        DataType dtype,
                         MetaTensor* out,
                         MetaConfig config) {
   PADDLE_ENFORCE_EQ(
-      (dtype < 0 || dtype == 2 || dtype == 3),
+      (dtype == DataType::UNDEFINED || dtype == DataType::INT32 ||
+       dtype == DataType::INT64),
       true,
       phi::errors::InvalidArgument(
           "The attribute of dtype in argmin/argmax must be [%s] or [%s], but "
           "received [%s]",
           DataTypeToString(DataType::INT32),
           DataTypeToString(DataType::INT64),
-          DataTypeToString(phi::TransToPhiDataType(dtype))));
+          DataTypeToString(dtype)));
 
   if (!config.is_runtime && axis.FromTensor()) {
     std::vector<int64_t> vec;
@@ -177,10 +178,8 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
       }
     }
     out->set_dims(phi::make_ddim(vec));
-    if (dtype == 2) {
-      out->set_dtype(DataType::INT32);
-    } else if (dtype == 3) {
-      out->set_dtype(DataType::INT64);
+    if (dtype == DataType::INT32 || dtype == DataType::INT64) {
+      out->set_dtype(dtype);
     }
     return;
   }
@@ -216,7 +215,7 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
   if (int_axis < 0) int_axis += x_rank;
 
   if (config.is_runtime) {
-    if (dtype == phi::TransToProtoVarType(DataType::INT32)) {
+    if (dtype == DataType::INT32) {
       int64_t all_element_num = 0;
       if (flatten) {
         all_element_num = phi::product(x_dims);
@@ -253,10 +252,8 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
   }
 
   out->set_dims(phi::make_ddim(vec));
-  if (dtype == 2) {
-    out->set_dtype(DataType::INT32);
-  } else if (dtype == 3) {
-    out->set_dtype(DataType::INT64);
+  if (dtype == DataType::INT32 || dtype == DataType::INT64) {
+    out->set_dtype(dtype);
   }
 }
 
@@ -424,6 +421,14 @@ void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out) {
           dims[rank - 2],
           dims[rank - 1]));
   out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+}
+
+void CINNBroadcastInferMeta(const MetaTensor& x,
+                            const std::vector<int64_t>& axes,
+                            const std::vector<int64_t>& out_shape,
+                            MetaTensor* out) {
+  out->set_dims(phi::make_ddim(out_shape));
   out->set_dtype(x.dtype());
 }
 

@@ -76,3 +76,23 @@ f16
 //CHECK attribute
 []
 //END
+
+//CHECK type
+vec[vec[],vec[]]
+//END
+
+//CHECK attribute
+[(Float)inf,(Float)-inf]
+//END
+
+//CHECK attribute
+[(Float)-1,(Float)-1.00001,(Double)-1.00001,(Float)-1.1e+30,(Double)1e+200,(Float)0.123456,(Double)0.123456]
+//END
+
+//CHECK type
+vec[vec[i8,bf16],vec[]]
+//END
+
+//CHECK type
+vec[vec[i8,bf16],vec[],vec[u8]]
+//END

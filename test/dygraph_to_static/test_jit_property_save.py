@@ -14,9 +14,12 @@
 
 import unittest
 
+from dygraph_to_static_util import dy2static_unittest
+
 import paddle
 
 
+@dy2static_unittest
 class TestPropertySave(unittest.TestCase):
     """test jit property save"""
 

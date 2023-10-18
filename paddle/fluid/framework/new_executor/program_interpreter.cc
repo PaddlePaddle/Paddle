@@ -25,6 +25,8 @@
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_context.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/sparse_csr_tensor.h"
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -740,7 +742,9 @@ void ProgramInterpreter::Convert(
       paddle::framework::Variable* var = inner_scope->FindVar(
           var_scope_.GetNameById(static_cast<int>(var_id)));
       if (var->IsType<phi::DenseTensor>() || var->IsType<phi::SelectedRows>() ||
-          var->IsType<LoDTensorArray>()) {
+          var->IsType<LoDTensorArray>() ||
+          var->IsType<phi::SparseCooTensor>() ||
+          var->IsType<phi::SparseCsrTensor>()) {
         last_live_ops_[var_id].insert(op_idx);
       } else {
         VLOG(4) << "not clear "
@@ -1018,7 +1022,7 @@ void ProgramInterpreter::RunInstruction(const Instruction& instr_node) {
     instr_node.RecordEvent(place_);
   } catch (platform::EnforceNotMet& ex) {
     framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
-    exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
+    exception_holder_.Catch(std::make_exception_ptr(ex));
   } catch (platform::EOFException&) {
     exception_holder_.Catch(std::current_exception());
   } catch (std::exception& ex) {
@@ -1305,6 +1309,18 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
       for (auto& tensor : *tensor_arr) {
         TensorRecordStream(tensor);
       }
+    } else if (var->IsType<phi::SparseCooTensor>()) {
+      TensorRecordStream(
+          *(var->GetMutable<phi::SparseCooTensor>()->mutable_indices()));
+      TensorRecordStream(
+          *(var->GetMutable<phi::SparseCooTensor>()->mutable_values()));
+    } else if (var->IsType<phi::SparseCsrTensor>()) {
+      TensorRecordStream(
+          *(var->GetMutable<phi::SparseCsrTensor>()->mutable_cols()));
+      TensorRecordStream(
+          *(var->GetMutable<phi::SparseCsrTensor>()->mutable_crows()));
+      TensorRecordStream(
+          *(var->GetMutable<phi::SparseCsrTensor>()->mutable_values()));
     } else if (var->IsType<std::vector<Scope*>>()) {
       // do nothing
     } else {
@@ -1331,6 +1347,8 @@ void ProgramInterpreter::CheckGC(const Instruction& instr) {
     // ignore all persistable var while GC
     if (var_scope.VarDesc(static_cast<int>(var_id)) &&
         var_scope.VarDesc(static_cast<int>(var_id))->Persistable()) {
+      VLOG(4) << "Skip persistable var: "
+              << var_scope_.GetNameById(static_cast<int>(var_id));
       continue;
     }
     if (is_ready) {

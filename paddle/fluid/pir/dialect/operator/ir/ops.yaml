@@ -7,7 +7,6 @@
   kernel:
     func: add_n
     param: [inputs]
-  backward: add_n_grad
 
 - op : add_n_with_kernel
   args : (Tensor[] inputs)
@@ -18,7 +17,6 @@
   kernel:
     func: add_n
     param: [inputs]
-  backward: add_n_grad
 
 - op : assert
   args : (Tensor cond, Tensor[] data, int64_t summarize = -1)
@@ -175,7 +173,15 @@
 - op : write_to_array
   args : (Tensor i, Tensor x)
   output : Tensor[](out)
-  backward: write_to_array_grad
+
+- op: dpsgd
+  args: (Tensor param, Tensor grad, Tensor learning_rate, float clip = 10.0f, float batch_size = 16.0f, float sigma = 1.0f, int seed = 0)
+  output: Tensor(param_out)
+  infer_meta:
+     func: DpsgdInferMeta
+  kernel:
+     func: dpsgd
+     data_type: param
 
 - op: fused_attention
   args: (Tensor x, Tensor ln_scale, Tensor ln_bias, Tensor qkv_weight, Tensor qkv_bias, Tensor cache_kv, Tensor src_mask, Tensor out_linear_weight, Tensor out_linear_bias, Tensor ln_scale_2, Tensor ln_bias_2, int num_heads, bool transpose_qkv_wb, bool pre_layer_norm, float epsilon, float attn_dropout_rate, bool is_test, bool attn_dropout_fix_seed, int attn_dropout_seed, str attn_dropout_implementation, float dropout_rate, bool dropout_fix_seed, int dropout_seed, str dropout_implementation, float ln_epsilon, bool add_residual, int ring_id)

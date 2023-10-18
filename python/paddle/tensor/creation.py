@@ -36,6 +36,7 @@ from ..base.param_attr import ParamAttr
 from ..framework import (
     LayerHelper,
     _current_expected_place,
+    _current_expected_place_,
     _get_paddle_place,
     convert_np_dtype_to_dtype_,
     core,
@@ -651,10 +652,11 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
 
 
 def _to_tensor_static(data, dtype=None, stop_gradient=None):
-    if isinstance(data, Variable):
+    if isinstance(data, (Variable, paddle.pir.OpResult)):
         output = data
         if dtype is not None and dtype != data.dtype:
             output = paddle.cast(output, dtype)
+
     else:
         if isinstance(data, np.number):  # Special case for numpy scalars
             data = np.array(data)
@@ -692,6 +694,9 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
             # fix numpy default dtype
             if data.dtype in ['float16', 'float32', 'float64']:
                 data = data.astype(paddle.get_default_dtype())
+            # Windows default type is 'int32', while Linux/Mac is 'int64'. Unify they.
+            elif data.dtype in ['int32']:
+                data = data.astype("int64")
 
         if dtype:
             target_dtype = dtype
@@ -782,8 +787,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     """
     place = _get_paddle_place(place)
     if place is None:
-        place = _current_expected_place()
-
+        place = _current_expected_place_()
     if in_dynamic_mode():
         return _to_tensor_non_static(data, dtype, place, stop_gradient)
 
@@ -791,7 +795,6 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     else:
         re_exp = re.compile(r'[(](.+?)[)]', re.S)
         place_str = re.findall(re_exp, str(place))[0]
-
         with paddle.static.device_guard(place_str):
             return _to_tensor_static(data, dtype, stop_gradient)
 
@@ -880,25 +883,6 @@ def full_like(x, fill_value, dtype=None, name=None):
 
 
 def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
-    def contain_var(list_or_tuple):
-        for item in list_or_tuple:
-            if isinstance(item, paddle.pir.OpResult):
-                return True
-        return False
-
-    def get_shape_tensor(list_shape, place):
-        shape_tensor_list = []
-        for dim in list_shape:
-            if isinstance(dim, paddle.pir.OpResult):
-                dim.stop_gradient = True
-                if convert_dtype(dim.dtype) != 'int32':
-                    dim = paddle.cast(x=dim, dtype='int32')
-                shape_tensor_list.append(dim)
-            else:
-                temp_out = _C_ops.full([1], dim, core.DataType.INT32, place)
-                shape_tensor_list.append(temp_out)
-        return shape_tensor_list
-
     if in_dynamic_or_pir_mode():
         place = _current_expected_place()
         if force_cpu:
@@ -914,8 +898,8 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
 
         else:
             if isinstance(shape, (list, tuple)):
-                if contain_var(shape):
-                    shape = get_shape_tensor(shape, place)
+                if paddle.utils._contain_var(shape):
+                    shape = paddle.utils.get_pir_shape_tensor(shape, place)
             elif isinstance(shape, paddle.pir.OpResult):
                 pass
             else:
