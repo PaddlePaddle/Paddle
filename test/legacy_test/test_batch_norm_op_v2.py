@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 from paddle import base
-from paddle.base import Program, core, program_guard
+from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -221,7 +221,9 @@ class TestBatchNorm(unittest.TestCase):
             shape = [4, 10, 16, 16]
 
             def compute_v1(x_np, is_test, trainable_statistics):
-                with program_guard(Program(), Program()):
+                main_program = paddle.static.Program()
+                startup_program = paddle.static.Program()
+                with base.program_guard(main_program, startup_program):
                     bn = paddle.nn.BatchNorm(
                         shape[1],
                         is_test=is_test,
@@ -231,18 +233,20 @@ class TestBatchNorm(unittest.TestCase):
                         name='x', shape=x_np.shape, dtype=x_np.dtype
                     )
                     y = bn(x)
-                    exe.run(paddle.static.default_startup_program())
+                    exe.run(startup_program)
                     r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
                 return r
 
             def compute_v2(x_np):
-                with program_guard(Program(), Program()):
+                main_program = paddle.static.Program()
+                startup_program = paddle.static.Program()
+                with base.program_guard(main_program, startup_program):
                     bn = paddle.nn.BatchNorm2D(shape[1])
                     x = paddle.static.data(
                         name='x', shape=x_np.shape, dtype=x_np.dtype
                     )
                     y = bn(x)
-                    exe.run(paddle.static.default_startup_program())
+                    exe.run(startup_program)
                     r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
                 return r
 
