@@ -547,9 +547,6 @@ class DygraphShardingOptimizerV2:
             clear_grad_func(p)
 
     def filter_parameters(self, parameter_list, hcg):
-        for param in parameter_list:
-            assert param.name in self._slice_params
-
         parameter_list = [
             self._slice_params[param.name] for param in parameter_list
         ]
@@ -576,12 +573,6 @@ class DygraphShardingOptimizerV2:
             for comm_buffer in self._comm_buffer_list:
                 comm_buffer.sync_params()
 
-            for param in self._parameter_list:
-                assert param.name in self._slice_params
-                slice_param = self._slice_params[param.name]
-                slice_param._clear_data()
-                slice_param.clear_gradient(set_to_zero=False)
-
     def _update_trainable(self):
         """
         allow user to update trainable parameters list during training
@@ -597,7 +588,7 @@ class DygraphShardingOptimizerV2:
 
     def _create_slice_param(self, param):
         # not initialized yet
-        slice_param = EagerParamBase(shape=[param._numel()], dtype=param.dtype)
+        slice_param = EagerParamBase(shape=[1], dtype=param.dtype)
         slice_param.name = param.name
         self._slice_params[param.name] = slice_param
         return slice_param
@@ -623,6 +614,8 @@ class DygraphShardingOptimizerV2:
                 assert param.name in self._slice_params
                 slice_param = self._slice_params[param.name]
                 comm_buffer.assign_slice_grad(param, slice_param)
+
+        assert param_num == len(self._parameter_list)
 
     def step(self):
         # TODO Check whether the model trainable param changed and update state accordingly
@@ -663,7 +656,7 @@ class DygraphShardingOptimizerV2:
     @framework.dygraph_only
     def set_state_dict(self, state_dict):
         inner_state = {}
-        parameters = self._rank2params[self._sharding_rank]
+        parameters = self._parameter_list
 
         if "LR_Scheduler" in state_dict:
             inner_state["LR_Scheduler"] = state_dict.pop("LR_Scheduler")

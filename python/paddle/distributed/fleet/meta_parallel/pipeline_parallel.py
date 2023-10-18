@@ -564,6 +564,17 @@ class PipelineParallel(MetaParallelBase):
         self.timer_printer()
         return train_loss
 
+    def register_sharding_comm_overlap_hook(self, optimizer):
+        """for delayed hook register until we get optimizer"""
+        assert isinstance(
+            optimizer, HybridParallelOptimizer
+        ), 'optimizer should be HybridParallelOptimizer subclass.'
+        self.optimizer = optimizer
+        if self._sharding_comm_overlap and len(self._chunk_2_comm_buffers) == 0:
+            self.register_allreduce_overlap_hook(
+                self._layers, self.sharding_group, self.accumulate_steps, False
+            )
+
     def _prepare_training(self, data, optimizer, lr_scheduler):
         # reset the virtual pp rank for each run
         self.set_virtual_pipeline_rank(0)
@@ -587,13 +598,8 @@ class PipelineParallel(MetaParallelBase):
 
         self.optimizer = optimizer
         self.lr_scheduler = lr_scheduler
-
         self._layers.train()
-
-        if self._sharding_comm_overlap and len(self._chunk_2_comm_buffers) == 0:
-            self.register_allreduce_overlap_hook(
-                self._layers, self.sharding_group, self.accumulate_steps, False
-            )
+        self.register_sharding_comm_overlap_hook(optimizer)
 
         return data
 
